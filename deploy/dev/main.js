@@ -30,7 +30,7 @@ function initViewer() {
       }
       // Load sub-modules in dependency order, then the bootstrap
       var modules = [
-        'navigate_find.js?v=2',
+        'navigate_find.js?v=3',
         'navigate_grid.js?v=1',
         'navigate_path.js?v=1',
         'navigate_engine.js?v=1',
@@ -493,7 +493,7 @@ function initViewer() {
 
   // §S260b: Reduce pixel ratio during orbit for smoother interaction on heavy scenes
   var _fullDPR = Math.min(window.devicePixelRatio || 1, 2);
-  var _orbitDPR = Math.min(_fullDPR, 1);  // render at 1x during drag
+  var _orbitDPR = window._isMobile ? 0.75 : Math.min(_fullDPR, 1);  // §S274: mobile=0.75x during drag
   var _orbiting = false;
   APP.controls.addEventListener('start', function() {
     if (!_orbiting && APP.streamedCount > 5000) {
@@ -509,8 +509,18 @@ function initViewer() {
     }
   });
 
+  // §S271: Pause rAF when tab backgrounded — saves battery, avoids WebGL context kill
+  var _tabVisible = true;
+  document.addEventListener('visibilitychange', function() {
+    _tabVisible = !document.hidden;
+    if (_tabVisible) { _needsRender = true; _rafId = requestAnimationFrame(animate); }
+    else if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+    console.log('§TAB_VISIBILITY visible=' + _tabVisible);
+  });
+
+  var _rafId;
   function animate() {
-    requestAnimationFrame(animate);
+    _rafId = requestAnimationFrame(animate);
     if (!APP.walkModeActive) {
       APP.controls.update();
       if (APP.walkMode) { APP.walkTick(); } else { APP.flyTick(); }
@@ -523,13 +533,21 @@ function initViewer() {
     APP.walkModeGpsTick();
     // Device orientation LAST — nothing may overwrite the quaternion after this
     if (APP.walkModeActive) APP.walkOrientTick();
-    // §S265c: Unconditional render — on-demand gate broke sliders, palette, bbox loading.
-    // markDirty() calls remain harmless throughout codebase.
+    // §S274: On-demand render gate — mobile only.
+    // Desktop: unconditional (too many paths skip markDirty — panels, sliders, palette).
+    // Mobile: fewer UI paths, and GPU savings from skipping idle frames are critical.
     APP.updateMeasureLabels();
     if (APP.ground && APP.ground.visible) {
       APP.ground.material.visible = APP.camera.position.y > APP.ground.position.y;
     }
-    APP.renderer.render(APP.scene, APP.camera);
+    if (window._isMobile) {
+      if (_needsRender || APP.streaming || APP.walkModeActive || _orbiting) {
+        APP.renderer.render(APP.scene, APP.camera);
+        _needsRender = false;
+      }
+    } else {
+      APP.renderer.render(APP.scene, APP.camera);
+    }
   }
 
   // Go
