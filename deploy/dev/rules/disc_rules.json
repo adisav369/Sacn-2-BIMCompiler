@@ -1,0 +1,88 @@
+{
+  "rules": [
+    {
+      "ad_org_id": 0,
+      "name": "SPACE_MIN_AREA",
+      "rule_type": "DIMENSION",
+      "check_method": "MIN_AREA",
+      "standard_ref": "UBBL s.43(1)",
+      "jurisdiction": "MY",
+      "severity": "BLOCK",
+      "params": { "min_area_m2": 9.3 },
+      "condition": "bomType IN ('ROOM','SET')"
+    },
+    {
+      "ad_org_id": 0,
+      "name": "CORRIDOR_MIN_WIDTH",
+      "rule_type": "DIMENSION",
+      "check_method": "MIN_DIMENSION",
+      "standard_ref": "UBBL s.165(1)",
+      "jurisdiction": "MY",
+      "severity": "BLOCK",
+      "params": { "axis": "w", "min_mm": 1200 },
+      "condition": "bomType = 'CORRIDOR'"
+    },
+    {
+      "ad_org_id": 0,
+      "name": "ROOM_HEIGHT_RANGE",
+      "rule_type": "DIMENSION",
+      "check_method": "DIMENSION_RANGE",
+      "standard_ref": "UBBL s.41(1)",
+      "jurisdiction": "MY",
+      "severity": "WARN",
+      "params": { "axis": "h", "min_mm": 2600, "max_mm": 6000 }
+    },
+    {
+      "ad_org_id": 3,
+      "name": "FP_SPRINKLER_SPACING",
+      "rule_type": "SPACING",
+      "check_method": "MAX_DISTANCE",
+      "standard_ref": "NFPA 13 \u00a78.6.2.2.1",
+      "jurisdiction": "INTL",
+      "severity": "BLOCK",
+      "params": { "max_spacing_mm": 4600 }
+    },
+    {
+      "ad_org_id": 3,
+      "name": "FP_SPRINKLER_CLEARANCE",
+      "rule_type": "SPACING",
+      "check_method": "MIN_DISTANCE",
+      "standard_ref": "NFPA 13 \u00a78.6.3",
+      "jurisdiction": "INTL",
+      "severity": "BLOCK",
+      "params": { "min_spacing_mm": 1800 }
+    },
+    {
+      "ad_org_id": 0,
+      "name": "FP_COVERAGE_AREA",
+      "rule_type": "STANDARD",
+      "check_method": "MAX_COVERAGE",
+      "standard_ref": "NFPA 13 \u00a78.5.2.1",
+      "jurisdiction": "INTL",
+      "severity": "BLOCK",
+      "params": { "max_coverage_m2": 21.0 }
+    },
+    {
+      "ad_org_id": 0,
+      "name": "STAIR_MIN_WIDTH",
+      "rule_type": "DIMENSION",
+      "check_method": "MIN_DIMENSION",
+      "standard_ref": "UBBL s.173(1)",
+      "jurisdiction": "MY",
+      "severity": "BLOCK",
+      "params": { "axis": "w", "min_mm": 900 },
+      "condition": "bomType = 'STAIR'"
+    },
+    {
+      "ad_org_id": 0,
+      "name": "DOOR_MIN_WIDTH",
+      "rule_type": "DIMENSION",
+      "check_method": "MIN_DIMENSION",
+      "standard_ref": "UBBL s.176(1)",
+      "jurisdiction": "MY",
+      "severity": "BLOCK",
+      "params": { "axis": "w", "min_mm": 850 },
+      "condition": "bomType = 'OPENING'"
+    }
+  ]
+}

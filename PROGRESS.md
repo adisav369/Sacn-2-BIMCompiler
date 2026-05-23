@@ -20,11 +20,13 @@
 
 ## Active Work — Browser BIM OOTB
 
-**S272 Phase 1+2 DONE (2026-05-23): BOM Recomposition Engine — pure math + data layer. 373 tests.**
-  - Phase 1: `bom_engine/` — bom_strategies.js (8 strategies), bom_constraints.js (5 checks), bom_diff.js (state diff), bom_node.js (BOMNode + 5-step recompose). Bug found+fixed: _stepFill reserved space.
-  - Phase 2: bom_tree.js (DB→BOMNode via sql.js), bom_grid.js (GridLineManager), W022 migration (10 columns), W022b seed (SH rules).
-  - Advanced whitebox: fast-check (P1-P5, 2100 random inputs), metamorphic (M1-M5), golden master, state trace.
-  - **Next: Phase 3 — doc_canvas integration. Prompt: `prompts/S272_BOM_ENGINE_PHASE3.md`.**
+**S272 ALL PHASES DONE (2026-05-23): BOM Recomposition Engine — 438 tests, 0 failures.**
+  - Phase 1: `bom_engine/` — 4 files, 284 tests. Bug found+fixed: _stepFill reserved space.
+  - Phase 2: bom_tree.js, bom_grid.js, W022 migration, W022b SH seed. 89 tests.
+  - Phase 3: doc_canvas integration — L0→L1→L3 flow (debounced), DISC/Next BOM controller, instance-aware diff execution, kernel_ops BOM_RECOMPOSE logging. §-log verified.
+  - Phase 4: bom_rules.js (DiscRuleProvider, 6 check methods), disc_rules.json (8 UBBL+NFPA seed rules), L3 rule validation wired. 31 tests.
+  - Deep tests: diff-self invariant, containment, idempotency, full-cycle smoke, 500-node perf (12ms), 7 devil cases, rule monotonicity. 34 tests.
+  - **Next: S273 — Red Pill UI hardening + SC validation. Prompt: `prompts/S273_RED_PILL_HARDENING.md`.**
 
 **S266 IN PROGRESS (2026-05-22): New From Reference — Doc Pill + JS BOM + Design Canvas + RouteWalker. See `docs/NEW_FROM_REFERENCE.md`.**
   - Red Pill icon replaces TM in main pill → swaps to 9-icon red glass Doc pill (Home/Grid/TM/Next/Disc/Open/Save/UBBL/Rosetta)

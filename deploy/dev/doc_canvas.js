@@ -29,6 +29,14 @@ var _activeDisc = 'ARC'; // active discipline for Next — default ARC
 var _shownCount = 0;     // running count of elements revealed by Next
 var _appRef = null;      // §S268: reference to A for mesh traversal in helpers
 
+// ── §S272 Phase 3: BOM engine integration state ───────────────────────────
+var _bomNodes = [];       // flat list of materialized BOMNode[]
+var _bomGridMgr = null;   // GridLineManager instance (from bom_grid.js)
+var _bomLevel = 0;        // current BOM depth (0 = building, 1 = floor, ...)
+var _bomRootId = null;    // root BOM id (BUILDING level)
+var _bomDebounceTimer = null; // 16ms debounce for L1 recompose
+var _bomDiscRules = null;     // cached discipline rules from disc_rules.json
+
 // ── IFC class → grid strategy table (data, not code) ────────────────────────
 // Each entry: { axes: 'XZ'|'long'|'none', desc: string }
 //   'XZ'   = add grid lines on both X and Z axes (intersection marker)
@@ -86,6 +94,11 @@ function activate(A) {
   }
   _active = true;
   _appRef = A;
+
+  // §S272 Phase 4c: lazy-load discipline rules on first activate
+  if (!_bomDiscRules && window.BomRules) {
+    _loadDiscRules();
+  }
 
   // Create root group
   _group = new THREE.Group();
@@ -273,6 +286,9 @@ function nextPhase(A) {
   var phase = filtered[_phaseIndex];
   _materializePhase(A, phase);
   _kinEngineDirty = true; // §S270: new elements revealed, rebuild engine on next drag
+
+  // §S272 Phase 3b: materialize BOM level on Next
+  _materializeBomLevel(A);
 
   // §S270: Ceiling grid auto-placement — when Phase 3 (Finishes) reveals IfcRoof,
   // auto-place a Y-axis grid line at eave height for roof lift handle.
@@ -1209,6 +1225,9 @@ function setActiveDisc(disc, A) {
   var prev = _activeDisc;
   _activeDisc = disc;
   _phaseIndex = -1;  // reset phase stepper for new discipline
+
+  // §S272 Phase 3b: DISC switch resets BOM depth to 0, clears all level grids
+  _resetBomDepth();
   // Log discipline switch — enables per-discipline sequence recall
   if (window.KernelOps && A && A.db) {
     try {
@@ -1221,6 +1240,125 @@ function setActiveDisc(disc, A) {
   if (window.APP && APP.status) {
     APP.status.textContent = disc + ' selected — press Next to step through';
   }
+}
+
+// ── §S272 Phase 4c: Lazy-load discipline rules ───────────────────────────
+function _loadDiscRules() {
+  if (_bomDiscRules) return;
+  // Try fetch (browser) or require (Node.js test)
+  if (typeof fetch !== 'undefined') {
+    fetch('rules/disc_rules.json')
+      .then(function(r) { return r.json(); })
+      .then(function(json) {
+        _bomDiscRules = BomRules.loadFromJSON(json);
+        console.log('§BOM_RULES loaded=' + _bomDiscRules.length + ' rules');
+      })
+      .catch(function(e) {
+        console.log('§BOM_RULES_ERR ' + e.message);
+      });
+  }
+}
+
+// ── §S272 Phase 3b: BOM level materialize/dematerialize ───────────────────
+// On Next: materializeLevel for current BOM, add grids for that level.
+// On Prev: remove grids for current level, decrement depth.
+// On DISC switch: reset depth to 0, clear all BOM grids.
+
+function _materializeBomLevel(A) {
+  if (!window.BomTree || !window.BomGrid) return;
+  var bomDb = A._bomDb || A.db;
+  if (!bomDb) return;
+
+  // Find root BOM on first call
+  if (!_bomRootId) {
+    _bomRootId = _findRootBom(bomDb);
+    if (!_bomRootId) return;
+  }
+
+  // Initialize GridLineManager on first call
+  if (!_bomGridMgr) {
+    _bomGridMgr = new BomGrid.GridLineManager();
+  }
+
+  // Determine which BOM to materialize (walk depth from root)
+  var parentBomId = _bomRootId;
+  // If we already have nodes at the current level, use them to find next level parent
+  if (_bomNodes.length && _bomLevel > 0) {
+    // Use the first node with children as the next parent
+    for (var ni = 0; ni < _bomNodes.length; ni++) {
+      if (_bomNodes[ni].id) {
+        parentBomId = _bomNodes[ni].id;
+        break;
+      }
+    }
+  }
+
+  try {
+    var result = BomTree.materializeLevel(bomDb, parentBomId, null);
+    if (!result.parentNode || !result.children.length) {
+      console.log('§BOM_NEXT no children for bomId=' + parentBomId);
+      return;
+    }
+
+    // Store nodes flat for getAffectedBranch lookups
+    _bomNodes = _bomNodes.concat(result.children);
+    // Include parent so children can find it
+    if (_bomNodes.indexOf(result.parentNode) === -1) {
+      _bomNodes.push(result.parentNode);
+    }
+
+    // Add grids for this level
+    var grids = _bomGridMgr.addGridsForLevel(result.children, _bomLevel);
+    _bomLevel++;
+
+    console.log('§BOM_NEXT level=' + _bomLevel +
+      ' children=' + result.children.length +
+      ' grids=' + grids.length);
+  } catch(e) {
+    console.log('§BOM_NEXT_ERR ' + e.message);
+  }
+}
+
+function _dematerializeBomLevel() {
+  if (_bomLevel <= 0) return;
+  _bomLevel--;
+
+  // Remove grids for the level we're leaving
+  if (_bomGridMgr) {
+    _bomGridMgr.removeGridsForLevel(_bomLevel);
+  }
+
+  // Remove nodes at this level (those added in the last materialize)
+  // Simple approach: rebuild from scratch would be safest, but for now
+  // just trim nodes that belong to the removed level
+  var kept = [];
+  for (var i = 0; i < _bomNodes.length; i++) {
+    var node = _bomNodes[i];
+    // Keep nodes from lower levels (they have _storey or were added earlier)
+    if (node._bomLevelTag === undefined || node._bomLevelTag < _bomLevel) {
+      kept.push(node);
+    }
+  }
+  _bomNodes = kept;
+
+  console.log('§BOM_PREV level=' + _bomLevel + ' remainingNodes=' + _bomNodes.length);
+}
+
+function _resetBomDepth() {
+  if (_bomLevel <= 0 && !_bomNodes.length) return;
+
+  // Clear all BOM grids at all levels
+  if (_bomGridMgr) {
+    for (var lv = _bomLevel - 1; lv >= 0; lv--) {
+      _bomGridMgr.removeGridsForLevel(lv);
+    }
+  }
+  _bomNodes = [];
+  _bomLevel = 0;
+  _bomRootId = null;
+  _bomGridMgr = null;
+
+  console.log('§BOM_DISC_RESET depth=0');
 }
 
 // ── User-initiated grid lines — double-click to add/remove ──────────────────
@@ -1730,6 +1868,10 @@ function _getZeroMatrix() {
  */
 function prevPhase(A) {
   if (!_active || !A || _phaseIndex < 0) return;
+
+  // §S272 Phase 3b: dematerialize BOM level on Prev
+  _dematerializeBomLevel();
+
   _scrubToPhase(A, _phaseIndex - 1);
   console.log('§DOC_PREV phase=' + (_phaseIndex + 1));
 }
@@ -2130,6 +2272,150 @@ function recomposeAfterGridDrag(A) {
 
   console.log('§RECOMPOSE_DONE translated=' + translated + ' scaled=' + scaled +
     ' roofOps=' + roofOps);
+
+  // §S272 Phase 3a: After L0 kinematics, fire L1 BOM recompose (debounced 16ms)
+  if (_bomNodes.length && _kinEngine && window.BomTree && window.BomDiff) {
+    clearTimeout(_bomDebounceTimer);
+    _bomDebounceTimer = setTimeout(function() { _fireBomRecompose(A); }, 16);
+  }
+}
+
+// ── §S272 Phase 3a: L1 BOM recompose after L0 kinematics ──────────────────
+// Finds affected BOM branches via attach map, recomposes them, diffs, applies.
+// Runs debounced (16ms) so L0 stays fast on every frame.
+
+function _fireBomRecompose(A) {
+  if (!_kinEngine || !_bomNodes.length) return;
+  if (!window.BomTree || !window.BomDiff) return;
+
+  var attachMap = _kinEngine.getAttachMap();
+  var totalMoves = 0, totalAdds = 0, totalRemoves = 0, totalScales = 0;
+  var allCommands = [];
+
+  // For each grid that has attachments, find affected BOM parents
+  for (var gridId in attachMap) {
+    var affectedParents = BomTree.getAffectedBranch(_bomNodes, attachMap, gridId);
+    if (!affectedParents.length) continue;
+
+    for (var pi = 0; pi < affectedParents.length; pi++) {
+      var parent = affectedParents[pi];
+      if (!parent.hostAABB) continue;
+
+      // Snapshot current state before recompose
+      var currentState = [];
+      var children = parent.getChildren();
+      for (var ci = 0; ci < children.length; ci++) {
+        var ch = children[ci];
+        if (ch.currentAABB) {
+          currentState.push({
+            id: ch._elementRef || ch.id,
+            x: ch.currentAABB.x, y: ch.currentAABB.y, z: ch.currentAABB.z,
+            w: ch.currentAABB.w, d: ch.currentAABB.d, h: ch.currentAABB.h,
+            productId: ch.productId
+          });
+        }
+      }
+
+      // L1: recompose with updated hostAABB
+      var result = parent.recompose(parent.hostAABB);
+
+      // Build target state from recomposed children
+      var targetState = [];
+      var rechildren = parent.getChildren();
+      for (var ti = 0; ti < rechildren.length; ti++) {
+        var rch = rechildren[ti];
+        if (rch.currentAABB) {
+          targetState.push({
+            id: rch._elementRef || rch.id,
+            x: rch.currentAABB.x, y: rch.currentAABB.y, z: rch.currentAABB.z,
+            w: rch.currentAABB.w, d: rch.currentAABB.d, h: rch.currentAABB.h,
+            productId: rch.productId
+          });
+        }
+      }
+
+      // Diff current → target
+      var cmds = BomDiff.diff(currentState, targetState);
+
+      // Apply diff commands to scene (Step 3c)
+      for (var di = 0; di < cmds.length; di++) {
+        _applyBomDiffCommand(cmds[di]);
+        if (cmds[di].type === 'MOVE') totalMoves++;
+        else if (cmds[di].type === 'ADD') totalAdds++;
+        else if (cmds[di].type === 'REMOVE') totalRemoves++;
+        else if (cmds[di].type === 'SCALE') totalScales++;
+        allCommands.push(cmds[di]);
+      }
+
+      // L3: structural conflicts from recompose (non-blocking)
+      if (result.conflicts && result.conflicts.length) {
+        console.log('§BOM_L3_CONFLICTS parent=' + parent.id +
+          ' count=' + result.conflicts.length +
+          ' first=' + result.conflicts[0]);
+      }
+
+      // §S272 Phase 4c: discipline rule validation (non-blocking)
+      if (window.BomRules && _bomDiscRules) {
+        var ruleResult = BomRules.checkPlacement(parent, parent.hostAABB, targetState, _bomDiscRules);
+        if (!ruleResult.ok) {
+          for (var vi = 0; vi < ruleResult.violations.length; vi++) {
+            var v = ruleResult.violations[vi];
+            console.log('§BOM_RULE_VIOLATION parent=' + parent.id +
+              ' rule=' + v.rule + ' severity=' + v.severity +
+              ' ref=' + v.ref + ' ' + v.message);
+          }
+        }
+      }
+
+      console.log('§BOM_RECOMPOSE parent=' + parent.id +
+        ' reserved=' + (result.commands ? result.commands.length : 0) +
+        ' filled=' + targetState.length +
+        ' phantom.w=' + (result.phantom ? result.phantom.w : 0));
+    }
+  }
+
+  if (allCommands.length) {
+    console.log('§BOM_L1_DONE moves=' + totalMoves + ' adds=' + totalAdds +
+      ' removes=' + totalRemoves + ' scales=' + totalScales);
+
+    // §S272 Phase 3d: Log BOM_RECOMPOSE to kernel_ops
+    _logBomRecomposeOp(A, allCommands);
+  }
+}
+
+// ── §S272 Phase 3d: kernel_ops BOM_RECOMPOSE logging ──────────────────────
+// Logs a BOM_RECOMPOSE op after diff execution. Undo replays in reverse
+// (REMOVE↔ADD, MOVE reversed). Same pattern as RouteWalker's ELEMENT_PLACE.
+
+function _logBomRecomposeOp(A, commands) {
+  if (!window.KernelOps || !A || !A.db) return;
+  if (!commands || !commands.length) return;
+
+  // Build compact payload — only non-KEEP commands
+  var payload = [];
+  var inputGuids = [];
+  for (var i = 0; i < commands.length; i++) {
+    var c = commands[i];
+    if (c.type === 'KEEP') continue;
+    payload.push({
+      type: c.type,
+      id: c.id,
+      from: c.from || null,
+      to: c.to || null
+    });
+    inputGuids.push(c.id);
+  }
+  if (!payload.length) return;
+
+  try {
+    KernelOps.commitOp(A.db, 'BOM_RECOMPOSE', {
+      bomLevel: _bomLevel,
+      commandCount: payload.length,
+      commands: payload
+    }, inputGuids, null);
+  } catch(e) {
+    console.log('§BOM_RECOMPOSE_LOG_ERR ' + e.message);
+  }
 }
 
 /**
@@ -2165,6 +2451,87 @@ function _translateMesh(guid, axis, delta) {
         else obj.position.z += delta;
       }
     });
+  }
+}
+
+// ── §S272 Phase 3c: Instance-aware BOM diff execution ─────────────────────
+// Maps BOM diff commands (from bom_diff.js) to Three.js mesh operations.
+// MOVE/SCALE → setMatrixAt, ADD → count++, REMOVE → zero-scale (retains for undo).
+
+function _applyBomDiffCommand(cmd) {
+  if (cmd.type === 'KEEP') return; // no-op
+
+  var guid = cmd.id;
+
+  if (cmd.type === 'MOVE' || cmd.type === 'SCALE') {
+    // Build new matrix from target state (mm → metres for Three.js)
+    var to = cmd.to;
+    var mat = new THREE.Matrix4();
+    var sx = (to.w || 1) / 1000;
+    var sy = (to.h || 1) / 1000;
+    var sz = (to.d || 1) / 1000;
+    mat.makeScale(sx, sy, sz);
+    mat.setPosition(to.x / 1000, to.z / 1000, -(to.y / 1000)); // IFC→Three
+
+    var slot = _guidToSlot[guid];
+    if (slot) {
+      slot.mesh.setMatrixAt(slot.slotId, mat);
+      if (slot.mesh.instanceMatrix) slot.mesh.instanceMatrix.needsUpdate = true;
+      return;
+    }
+    var inst = _guidToInstance[guid];
+    if (inst) {
+      inst.mesh.setMatrixAt(inst.index, mat);
+      inst.mesh.instanceMatrix.needsUpdate = true;
+      return;
+    }
+    return;
+  }
+
+  if (cmd.type === 'ADD') {
+    // Clone from sibling: increment InstancedMesh.count, set matrix at new slot
+    // Find a sibling mesh to clone from (same productId)
+    var template = null;
+    for (var g in _guidToInstance) {
+      template = _guidToInstance[g];
+      break; // use first available as template
+    }
+    if (!template) return;
+
+    var mesh = template.mesh;
+    if (mesh.count < mesh.instanceMatrix.count) {
+      var newIdx = mesh.count;
+      mesh.count++;
+      var addMat = new THREE.Matrix4();
+      var t = cmd.to;
+      addMat.makeScale((t.w || 1) / 1000, (t.h || 1) / 1000, (t.d || 1) / 1000);
+      addMat.setPosition(t.x / 1000, t.z / 1000, -(t.y / 1000));
+      mesh.setMatrixAt(newIdx, addMat);
+      mesh.instanceMatrix.needsUpdate = true;
+      // Register in lookup for future diffs
+      _guidToInstance[guid] = { mesh: mesh, index: newIdx, origMatrix: addMat.clone() };
+    }
+    return;
+  }
+
+  if (cmd.type === 'REMOVE') {
+    // Zero-scale hides the instance (retains slot for undo)
+    var zMat = new THREE.Matrix4();
+    zMat.set(0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0);
+
+    var rSlot = _guidToSlot[guid];
+    if (rSlot) {
+      rSlot.mesh.setMatrixAt(rSlot.slotId, zMat);
+      if (rSlot.mesh.instanceMatrix) rSlot.mesh.instanceMatrix.needsUpdate = true;
+      return;
+    }
+    var rInst = _guidToInstance[guid];
+    if (rInst) {
+      rInst.mesh.setMatrixAt(rInst.index, zMat);
+      rInst.mesh.instanceMatrix.needsUpdate = true;
+      return;
+    }
+    return;
   }
 }
 
