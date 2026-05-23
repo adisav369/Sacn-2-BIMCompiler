@@ -67,34 +67,34 @@ The BIM Intent Compiler project began October 2025 (concept) → January 2026 (J
 ## Next
 
 ### S276 DONE — Three.js r184 + WebGPU Upgrade
-Upgraded from r160 (Dec 2023) to r184 (Apr 2025) — 24 releases. WebGPURenderer with compatibility mode deployed.
+Upgraded from r160 (Dec 2023) to r184 (Apr 2025) — 24 releases. LTU 122K verified smooth on Chrome.
 
 **What shipped:**
-- **r184 split build:** `three.webgpu.min.js` (622KB) + `three.core.min.js` (375KB) = 998KB
-- **WebGPURenderer** with compatibility mode — auto WebGPU or WebGL2 fallback, one code path
-- **Async renderer init:** `await renderer.init()` — `setupScene`/`initViewer` now async
-- **Physically-correct lighting:** `useLegacyLights` removed (r165), intensities × π
+- **r184 split build:** `three.webgpu.min.js` (622KB) + `three.core.min.js` (375KB) = 998KB runtime
+- **Native-only WebGPU detection:** `navigator.gpu.requestAdapter()` → if adapter found, use WebGPURenderer. If null, reload THREE from `three.module.min.js` and use WebGLRenderer. No mixed-build issues.
+- **Async renderer init:** `setupScene`/`initViewer` async for `await renderer.init()`
+- **Physically-correct lighting:** `useLegacyLights` removed (r165), intensities × π (ambient 0.785, sun 4.4, hemi 1.257)
 - **BatchedMesh `addInstance()`:** required since r166, added at 3 call sites in streaming.js
 - **BVH 0.7.8→0.8.0:** targets r170+
-- **`compileAsync` gate:** WebGPU compiles shader pipelines per material — 122K scenes with 100+ materials caused main-thread timeout. Fix: after streaming, `renderer.compileAsync(scene, camera)` pre-warms pipelines asynchronously. Render loop skips during compilation. Bboxes stay visible. Status bar shows "Compiling GPU shaders — please wait..."
-- **Streaming log spam reduced:** BLOB_FETCH/BATCHED_FLUSH log first + every 50K + final only
-- **Whitebox tests:** `§WB_S276_LIBS` (size budget <1.2MB) + `§WB_S276_WIRING` (8 integration checks)
+- **Render gates (WebGPU):** skip `render()` during streaming + `compileAsync()` after streaming with status message + deferred bbox clear
+- **Dead files removed:** `three.min.js` (UMD 630KB), `OrbitControls.js` (IIFE 28KB), `.r160.bak` files
+- **Streaming log spam reduced:** first + every 50K + final only
+- **Whitebox tests:** `§WB_S276_LIBS` (998KB budget), `§WB_S276_WIRING` (8 checks), `§WB_S276_RESOURCES` (gates + precache audit)
 
-**Breaking changes resolved (r160→r184):**
-
-| Version | Break | Fix |
-|---|---|---|
-| r161 | UMD removed | Already ESM — removed UMD/IIFE fallbacks in loader.js |
-| r165 | `useLegacyLights` removed | Re-tuned: ambient 0.785, sun 4.4, hemi 1.257 |
-| r166 | BatchedMesh `addInstance()` | Added at 3 sites in streaming.js |
-| r168 | Import paths | Importmap: `three` → `three.webgpu.min.js` |
+**Verified working (2026-05-24):** LTU 122K smooth on Chrome (WebGLRenderer r184, adapter=null). Time Machine 122667 ops, DLOD 13611 IM, cinematic 1633 scenes, shadows, night mode, find panel — all functional.
 
 **Key lessons learned:**
-1. **Compat mode is slower, not faster.** WebGPURenderer's compat mode (WebGL2 backend) transpiles TSL node graphs → GLSL per material. On 48K-122K element scenes with 100+ materials, this blocks the main thread for 10+ seconds during both `render()` and `compileAsync()`, causing script timeout. Direct WebGLRenderer skips TSL entirely and is faster. See [Three.js issue #31055](https://github.com/mrdoob/three.js/issues/31055).
-2. **Native WebGPU only.** Fix: check `navigator.gpu`, init WebGPURenderer, verify `backend.constructor.name === 'WebGPUBackend'`. If compat (WebGLBackend), dispose and fall back to direct WebGLRenderer. Only native WebGPU gets the 2-10x draw-call improvement.
-3. **Render gates during streaming.** Even with native WebGPU, skip `renderer.render()` while `APP.streaming` is true — progressive flushes add materials that trigger synchronous pipeline compilation. After streaming, `compileAsync()` pre-warms all pipelines before first render.
+1. **Compat mode is slower.** WebGPURenderer compat (WebGL2 backend) transpiles TSL→GLSL per material. 9.2s for 44 materials on Intel iGPU. `compileAsync()` works (doesn't crash) but too slow for production. Direct WebGLRenderer skips TSL.
+2. **Native WebGPU only.** Check `navigator.gpu.requestAdapter()` — if null, use WebGLRenderer from standard build. Don't mix builds (webgpu PMREMGenerator expects WebGPURenderer API → ENV_MAP_FAIL).
+3. **Laptop GPU selection.** Chrome defaults to Intel iGPU on laptops → adapter=null. Need `chrome://flags/#force-high-performance-gpu` for NVIDIA dGPU.
+4. **Render gates during streaming.** `render()` compiles pipelines synchronously — skip during streaming, use `compileAsync()` after.
 
-**Browser support:** Native WebGPU: Chrome 148+, Edge, Safari 26+. WebGL2 fallback (WebGLRenderer): all browsers. Mobile: Chrome Android (WebGPU), Safari iOS 26+ (WebGPU), others (WebGL2).
+**Open items (S276b):**
+- ENV_MAP fix needs cache purge (scene.js v=47 deployed, browser may cache v=46)
+- Chrome NVIDIA dGPU test pending (`chrome://flags/#force-high-performance-gpu`)
+- X-ray toggle stutters on 133 materials — explore `scene.overrideMaterial`
+- "Multiple instances of Three.js" warning — BVH CDN imports separate three.js
+- PCFSoftShadowMap deprecated → update to PCFShadowMap
 
 ### S274 DONE — DLOD + Mobile Perf
 - r160 `perObjectFrustumCulled` handles BM natively (zero JS cost)

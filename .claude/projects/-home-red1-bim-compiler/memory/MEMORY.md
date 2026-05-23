@@ -59,6 +59,7 @@ Details belong in `docs/` specs and `prompts/`. Memory files are pointers. Do NO
 - [S266 New From Ref](project_s266_new_from_ref.md) — Red Pill Doc pill, JS BOM extractor, design canvas, Gantt stepper. POC: drag grid→mesh→UBBL
 - [S267 BOM Walker](project_s267_bom_walker.md) — 100% browser: port Java BOMWalker+expandVerb to JS, load BOM.db via sql.js, verb re-expansion on grid drag
 - [Grid Kinematics](project_grid_kinematics.md) — S270b: BUG-1/BUG-4 fixed, grid flood fixed, label-based deltas, grid_state.js extracted. 359 tests.
+- S272 BOM Engine — all 4 phases done, 438 tests. S273 Red Pill hardening done (Save/Open/guards/W023 SC seed), 73 tests.
 - [BOM-as-Context](project_bom_context.md) — spec ready, next: S271 design session to examine if present model is sufficient
 - [Repo migration](project_repo_migration.md) — sandbox/→viewer/ rename, S270 files must move with correct script order
 - [S260c Cinematic Drone](project_s260c_cinematic.md) — two-pass Gantt, IDB JSON cache, PBR-lite, outline+dust+sound, sw v359
