@@ -38,8 +38,8 @@ test.describe('Find & Navigate', () => {
     expect(resultCount).toBeGreaterThan(0);
   });
 
-  test('17.2 result click highlights without camera jump @fast', async ({ page }) => {
-    // Issue: clicking a result must highlight element but NOT jump camera (Navigate does that)
+  test('17.2 result click flies to element and shows info panel @fast', async ({ page }) => {
+    // Issue S275: clicking a result must fly camera to element, show IFC bbox + info panel
     await page.evaluate(() => {
       if (typeof window.APP._nlpExecute === 'function') {
         window.APP._nlpExecute('Find door');
@@ -58,25 +58,36 @@ test.describe('Find & Navigate', () => {
 
     if (await items.nth(clickIdx).isVisible()) {
       await items.nth(clickIdx).click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(1500); // wait for fly-to animation (~25 frames)
 
       const posAfter = await page.evaluate(() => {
         const cam = window.APP?.camera || window.camera;
-        return cam ? { x: cam.position.x, y: cam.position.y, z: cam.position.z } : null;
+        const infoPanel = document.getElementById('info-panel');
+        return cam ? {
+          x: cam.position.x, y: cam.position.y, z: cam.position.z,
+          infoVisible: infoPanel && infoPanel.style.display !== 'none',
+          infoClass: document.getElementById('info-class')?.textContent || '—'
+        } : null;
       });
 
-      // Camera should NOT have moved — highlight only
+      // S275: Camera MUST have moved (fly-to)
       if (posBefore && posAfter) {
-        const moved = Math.abs(posAfter.x - posBefore.x) > 0.1 ||
-                      Math.abs(posAfter.y - posBefore.y) > 0.1 ||
-                      Math.abs(posAfter.z - posBefore.z) > 0.1;
-        console.log(`§PW_FIND_SELECT moved=${moved} idx=${clickIdx}`);
-        expect(moved).toBe(false);
+        const moved = Math.sqrt(
+          Math.pow(posAfter.x - posBefore.x, 2) +
+          Math.pow(posAfter.y - posBefore.y, 2) +
+          Math.pow(posAfter.z - posBefore.z, 2)
+        );
+        console.log(`§PW_FIND_SELECT moved=${moved.toFixed(1)}m idx=${clickIdx} infoVisible=${posAfter.infoVisible} class=${posAfter.infoClass}`);
+        expect(moved).toBeGreaterThan(0.5);
       }
 
       // Active class should be set
       const activeCount = await page.locator('.find-result-item.active').count();
       expect(activeCount).toBe(1);
+
+      // S275: Info panel must be visible with IFC class
+      expect(posAfter.infoVisible).toBe(true);
+      expect(posAfter.infoClass).not.toBe('—');
     }
   });
 
@@ -821,8 +832,8 @@ test.describe('Find & Navigate', () => {
     expect(panelBox.width).toBeLessThan(panelBox.vw * 0.5);
   });
 
-  test('17.24 click result: highlight only, camera stays put @fast', async ({ page }) => {
-    // Issue: clicking a result jumped camera to element, bypassing navigation
+  test('17.24 click result: fly-to + IFC bbox + info panel close works @fast', async ({ page }) => {
+    // Issue S275: click flies to element, shows IFC bbox + info panel; × close works
     const logs = [];
     page.on('console', msg => { if (msg.text().includes('§')) logs.push(msg.text()); });
 
@@ -842,12 +853,17 @@ test.describe('Find & Navigate', () => {
       if (items.length > 1) items[1].click();
       else if (items.length > 0) items[0].click();
     });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1500); // wait for fly-to
 
     const posAfter = await page.evaluate(() => {
       const c = window.APP?.camera;
       const active = document.querySelectorAll('.find-result-item.active').length;
-      return c ? { x: c.position.x, y: c.position.y, z: c.position.z, active: active } : null;
+      const infoPanel = document.getElementById('info-panel');
+      return c ? {
+        x: c.position.x, y: c.position.y, z: c.position.z, active: active,
+        infoVisible: infoPanel && infoPanel.style.display !== 'none',
+        hasHighlight: !!window._pickHighlight
+      } : null;
     });
 
     if (posBefore && posAfter) {
@@ -856,12 +872,34 @@ test.describe('Find & Navigate', () => {
         Math.pow(posAfter.y - posBefore.y, 2) +
         Math.pow(posAfter.z - posBefore.z, 2)
       );
-      console.log(`§PW_CLICK_NO_JUMP moved=${moved.toFixed(2)}m active=${posAfter.active}`);
-      // Camera must NOT have moved
-      expect(moved).toBeLessThan(0.5);
+      console.log(`§PW_CLICK_FLY moved=${moved.toFixed(2)}m active=${posAfter.active} info=${posAfter.infoVisible} hl=${posAfter.hasHighlight}`);
+      // S275: Camera MUST have moved (fly-to)
+      expect(moved).toBeGreaterThan(0.5);
       // Active class must be set
       expect(posAfter.active).toBe(1);
+      // Info panel must be visible
+      expect(posAfter.infoVisible).toBe(true);
+      // IFC bbox highlight must exist
+      expect(posAfter.hasHighlight).toBe(true);
     }
+
+    // S275: Test info panel close button (pointerup for mobile)
+    await page.evaluate(() => {
+      const closeBtn = document.getElementById('info-panel-close');
+      if (closeBtn) closeBtn.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    });
+    await page.waitForTimeout(300);
+
+    const afterClose = await page.evaluate(() => {
+      const infoPanel = document.getElementById('info-panel');
+      return {
+        infoVisible: infoPanel && infoPanel.style.display !== 'none',
+        hasHighlight: !!window._pickHighlight
+      };
+    });
+    console.log(`§PW_INFO_CLOSE info=${afterClose.infoVisible} hl=${afterClose.hasHighlight}`);
+    expect(afterClose.infoVisible).toBe(false);
+    expect(afterClose.hasHighlight).toBe(false);
   });
 
   test('17.25 navigate: starts from main door, >3 waypoints, step-by-step @slow', async ({ page }) => {
