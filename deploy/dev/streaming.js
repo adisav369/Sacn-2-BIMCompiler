@@ -346,8 +346,14 @@ function setupStreaming(A) {
           A._pendingBboxBuckets = null;
         }
         // §S261: Keep bbox placeholders if no real geometry was rendered (all BLOB_MISS)
+        // §S276: On WebGPU, defer bbox clear until compileAsync completes (prevents blank gap)
         if (A.streamedCount > 0) {
-          A._clearBboxPlaceholders();
+          if (A._isWebGPU && A._onStreamDone) {
+            // Bboxes stay visible while pipelines compile — cleared in _onStreamDone callback
+            console.log('§S276_BBOX_DEFER keeping bboxes until compileAsync completes');
+          } else {
+            A._clearBboxPlaceholders();
+          }
           A._bboxCleared = true;
         } else {
           console.warn('§BBOX_KEEP placeholders=' + A._bboxPlaceholders.length + ' — no real geometry, keeping bboxes visible');
@@ -411,6 +417,8 @@ function setupStreaming(A) {
         A.updateHash();
         const iCount = Object.keys(A._instanceMeta).length;
         A.status.textContent = (typeof _TRL!=='undefined'&&_TRL.ui_status_done||'DONE — {name} {n} elements ({g} instanced groups). {b} building(s) rendered.').replace('{name}',A.activeBuilding).replace('{n}',A.streamedCount.toLocaleString()).replace('{g}',iCount).replace('{b}',A.buildingsRendered.size);
+        // §S276: Pre-compile WebGPU pipelines after all materials in scene
+        if (A._onStreamDone) A._onStreamDone();
         // §S265: Force render after stream-complete — DLOD/consolidation/bbox-clear happen after streaming=false
         if (A.markDirty) A.markDirty();
       }
@@ -530,7 +538,10 @@ function setupStreaming(A) {
         if (!A._normalsPrecomputed) A._normalsPrecomputed = 0;
         if (!A._normalsComputed) A._normalsComputed = 0;
         const bvhCount = window._bvhReady ? Object.values(A.meshCache).filter(g => g && g.boundsTree).length : 0;
-        console.log(`[S231] §BLOB_FETCH new=${fetched} total_cached=${Object.keys(A.meshCache).length} normals_pre=${A._normalsPrecomputed} normals_cpu=${A._normalsComputed} bvh=${bvhCount}`);
+        // §S276: log first, every 50K, and final only — suppress intermediate spam
+        var _cacheSize = Object.keys(A.meshCache).length;
+        if (_cacheSize <= fetched || _cacheSize % 50000 < fetched || A.streamIdx >= A.streamQueue.length - 1)
+          console.log(`[S231] §BLOB_FETCH new=${fetched} total_cached=${_cacheSize} normals_pre=${A._normalsPrecomputed} normals_cpu=${A._normalsComputed} bvh=${bvhCount}`);
       }
       if (fetched === 0 && hashesNeeded.size > 0) {
         console.warn(`[S231] §BLOB_MISS hashes=${hashesNeeded.size} — no geometry found in library`);
@@ -568,7 +579,9 @@ function setupStreaming(A) {
       A._flushInstanced();
       if (!A._bboxCleared) A._bboxCleared = true;  // §S260c: switch to 5000 after first flush
       A._lastFlushIdx = A.streamIdx;
-      console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
+      // §S276: log first flush + every 50K only — suppress intermediate spam
+      if (A.streamIdx <= _flushAt + 1 || A.streamIdx % 50000 < _flushAt)
+        console.log(`[S260] §PROGRESSIVE_FLUSH at=${A.streamIdx}/${A.streamQueue.length} drawCalls=${A.scene.children.length}`);
     }
 
     document.getElementById('s-streamed').textContent = A.streamedCount.toLocaleString();
@@ -619,7 +632,7 @@ function setupStreaming(A) {
         // 2+ instances — InstancedMesh (both desktop and mobile)
         const mat = A._getMaterial(elements[0].rgba, elements[0].ifcClass);
         const iMesh = new THREE.InstancedMesh(geo, mat, elements.length);
-        iMesh.frustumCulled = false;
+        iMesh.frustumCulled = false;  // §S271b: must stay false — InstancedMesh boundingSphere is base geometry only, not instance spread
         const meta = [];
 
         for (let i = 0; i < elements.length; i++) {
@@ -631,7 +644,7 @@ function setupStreaming(A) {
           _m4.compose(_pos, _quat, _scale);
           iMesh.setMatrixAt(i, _m4);
 
-          meta.push({ guid: el.guid, storey: el.storey, disc: el.disc, ifcClass: el.ifcClass || '', instanceIndex: i });
+          meta.push({ guid: el.guid, storey: el.storey, disc: el.disc, ifcClass: el.ifcClass || '', instanceIndex: i, bx: el.bx || 0.3, by: el.by || 0.3, bz: el.bz || 0.3 });
           A._instanceGuids[el.guid] = { meshId: iMesh.id, instanceIndex: i };
           A.guidMap[iMesh.id + '_' + i] = el.guid;
         }
@@ -706,7 +719,9 @@ function setupStreaming(A) {
           const geo = items[i].geo;
           var slotId;
           try {
-            slotId = bm.addGeometry(geo);
+            // §S276: r166+ requires addInstance() after addGeometry() to enable rendering
+            var geoId = bm.addGeometry(geo);
+            slotId = bm.addInstance(geoId);
           } catch(e) {
             console.warn('§BATCHED_ADDGEO_FAIL bucket=' + key + ' i=' + i + ' err=' + e.message);
             continue;
@@ -727,7 +742,7 @@ function setupStreaming(A) {
           if (!vis) bm.setVisibleAt(slotId, false);
 
           // Metadata for pick + filter
-          meta.push({ guid: el.guid, storey: el.storey, disc: el.disc, ifcClass: el.ifcClass || '', slotId: slotId });
+          meta.push({ guid: el.guid, storey: el.storey, disc: el.disc, ifcClass: el.ifcClass || '', slotId: slotId, bx: el.bx || 0.3, by: el.by || 0.3, bz: el.bz || 0.3 });
           A.guidMap[bm.id + '_' + slotId] = el.guid;
 
           // Reverse maps for filter
@@ -865,9 +880,14 @@ function setupStreaming(A) {
     }
 
     A._pendingInstances = {};
-    console.log(`[S260] §BATCHED_FLUSH instanced=${instancedCount} batched=${batchedCount} drawCalls=${drawCalls} (was ${instancedCount + batchedCount}) mobile=${A._isMobile}`);
-    if (batchedCount > 0) {
-      console.log(`§BATCHED_DETAIL buckets=${Object.keys(batchBuckets).length} elements=${batchedCount} saved=${_prevDrawCalls - Object.keys(batchBuckets).length} drawCalls`);
+    // §S276: suppress intermediate flush logs — final summary logged at stream end
+    if (!A._batchFlushCount) A._batchFlushCount = 0;
+    A._batchFlushCount++;
+    if (A._batchFlushCount <= 1 || A.streamIdx >= A.streamQueue.length - 1) {
+      console.log(`[S260] §BATCHED_FLUSH instanced=${instancedCount} batched=${batchedCount} drawCalls=${drawCalls} (was ${instancedCount + batchedCount}) mobile=${A._isMobile}`);
+      if (batchedCount > 0) {
+        console.log(`§BATCHED_DETAIL buckets=${Object.keys(batchBuckets).length} elements=${batchedCount} saved=${_prevDrawCalls - Object.keys(batchBuckets).length} drawCalls`);
+      }
     }
     document.getElementById('s-meshes').textContent = drawCalls.toLocaleString() + ' draw calls';
   };
@@ -979,7 +999,9 @@ function setupStreaming(A) {
         // §S262: Start with REAL geometry — looks correct immediately.
         // DLOD demotes far elements to bbox later as an optimization.
         try {
-          slotId = bm.addGeometry(realGeo, sr.rv, sr.ri);
+          // §S276: r166+ requires addInstance() after addGeometry()
+          var geoId = bm.addGeometry(realGeo, sr.rv, sr.ri);
+          slotId = bm.addInstance(geoId);
         } catch(e) {
           console.warn('§S261_ADDGEO_FAIL bucket=' + key + ' i=' + si + ' err=' + e.message);
           continue;
@@ -1153,7 +1175,8 @@ function setupStreaming(A) {
         var el = items[ji];
         var geo = A.meshCache[el.hash];
         var slotId;
-        try { slotId = newBM.addGeometry(geo); } catch(e) { continue; }
+        // §S276: r166+ requires addInstance() after addGeometry()
+        try { var geoId = newBM.addGeometry(geo); slotId = newBM.addInstance(geoId); } catch(e) { continue; }
 
         var pos = A.ifc2three(el.cx, el.cy, el.cz);
         _pos.set(pos.x, pos.y, pos.z);

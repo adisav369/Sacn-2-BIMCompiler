@@ -1214,6 +1214,142 @@ test('share_clash_text_format', () => {
   };
 });
 
+// ─── S276: Three.js r184 upgrade — library size, WebGPU wiring, compileAsync gate ─────
+test('s276_library_budget', () => {
+  var libDir = path.join(DEV_DIR, 'lib');
+  var webgpu = fs.existsSync(path.join(libDir, 'three.webgpu.min.js'));
+  var core = fs.existsSync(path.join(libDir, 'three.core.min.js'));
+  var esm = fs.existsSync(path.join(libDir, 'three.module.min.js'));
+  var orbit = fs.existsSync(path.join(libDir, 'OrbitControls.module.js'));
+
+  // Size budget: WebGPU (622KB) + core (375KB) = ~1MB loaded at runtime
+  var webgpuSize = webgpu ? fs.statSync(path.join(libDir, 'three.webgpu.min.js')).size : 0;
+  var coreSize = core ? fs.statSync(path.join(libDir, 'three.core.min.js')).size : 0;
+  var totalKB = Math.round((webgpuSize + coreSize) / 1024);
+  var budgetOk = totalKB > 0 && totalKB < 1200; // <1.2MB combined
+
+  var allOk = webgpu && core && esm && orbit && budgetOk;
+  return {
+    ok: allOk,
+    log: '§WB_S276_LIBS webgpu=' + webgpu + ' core=' + core + ' esm=' + esm +
+         ' orbit=' + orbit + ' totalKB=' + totalKB + ' budget=' + (budgetOk ? 'OK' : 'OVER'),
+    reason: allOk ? '' : 'missing lib or over 1.2MB budget'
+  };
+});
+
+test('s276_webgpu_wiring', () => {
+  var sceneSrc = fs.readFileSync(path.join(DEV_DIR, 'scene.js'), 'utf8');
+  var mainSrc = fs.readFileSync(path.join(DEV_DIR, 'main.js'), 'utf8');
+  var streamSrc = fs.readFileSync(path.join(DEV_DIR, 'streaming.js'), 'utf8');
+  var loaderSrc = fs.readFileSync(path.join(DEV_DIR, 'loader.js'), 'utf8');
+
+  // Scene: native-only WebGPU selection + async init + compat fallback
+  var hasRendererSelect = sceneSrc.includes('navigator.gpu') && sceneSrc.includes('WebGPURenderer');
+  var hasAsyncInit = sceneSrc.includes('await renderer.init()');
+  var hasCompatFallback = sceneSrc.includes('WebGPUBackend') && sceneSrc.includes('dispose');
+  var noLegacyLights = !sceneSrc.includes('useLegacyLights = true');
+  var asyncSetup = sceneSrc.includes('async function setupScene');
+
+  // Main: compileAsync gate
+  var hasCompileAsync = mainSrc.includes('compileAsync');
+  var hasPipelinesGate = mainSrc.includes('_pipelinesCompiling');
+  var hasStreamDone = mainSrc.includes('_onStreamDone');
+  var asyncInit = mainSrc.includes('async function initViewer');
+
+  // Streaming: addInstance + onStreamDone hook + deferred bbox clear
+  var hasAddInstance = streamSrc.includes('addInstance(geoId)');
+  var hasStreamDoneHook = streamSrc.includes('_onStreamDone');
+  var hasBboxDefer = streamSrc.includes('S276_BBOX_DEFER');
+
+  // Loader: WebGPU build import
+  var hasWebGPUImport = loaderSrc.includes('three.webgpu.min.js');
+
+  var issues = [];
+  if (!hasRendererSelect) issues.push('no native WebGPU check (navigator.gpu)');
+  if (!hasCompatFallback) issues.push('no compat→WebGL fallback');
+  if (!hasAsyncInit) issues.push('no await renderer.init()');
+  if (!noLegacyLights) issues.push('useLegacyLights still present');
+  if (!asyncSetup) issues.push('setupScene not async');
+  if (!hasCompileAsync) issues.push('no compileAsync');
+  if (!hasPipelinesGate) issues.push('no pipeline gate');
+  if (!hasStreamDone) issues.push('no _onStreamDone');
+  if (!asyncInit) issues.push('initViewer not async');
+  if (!hasAddInstance) issues.push('no addInstance(geoId)');
+  if (!hasStreamDoneHook) issues.push('no _onStreamDone hook in streaming');
+  if (!hasBboxDefer) issues.push('no bbox defer on WebGPU');
+  if (!hasWebGPUImport) issues.push('loader not importing webgpu build');
+
+  var allOk = issues.length === 0;
+  return {
+    ok: allOk,
+    log: '§WB_S276_WIRING renderer=' + hasRendererSelect + ' asyncInit=' + hasAsyncInit +
+         ' noLegacy=' + noLegacyLights + ' compileAsync=' + hasCompileAsync +
+         ' pipeGate=' + hasPipelinesGate + ' addInstance=' + hasAddInstance +
+         ' bboxDefer=' + hasBboxDefer + ' webgpuImport=' + hasWebGPUImport,
+    reason: allOk ? '' : issues.join(', ')
+  };
+});
+
+// ─── S276: Resource budget — total JS parse weight, precache size, render gate ─────
+test('s276_resource_budget', () => {
+  var libDir = path.join(DEV_DIR, 'lib');
+  var mainSrc = fs.readFileSync(path.join(DEV_DIR, 'main.js'), 'utf8');
+  var swSrc = fs.readFileSync(path.join(DEV_DIR, 'sw.js'), 'utf8');
+
+  // 1. JS parse weight: webgpu + core (loaded at runtime via importmap)
+  var webgpuKB = Math.round(fs.statSync(path.join(libDir, 'three.webgpu.min.js')).size / 1024);
+  var coreKB = Math.round(fs.statSync(path.join(libDir, 'three.core.min.js')).size / 1024);
+  var orbitKB = Math.round(fs.statSync(path.join(libDir, 'OrbitControls.module.js')).size / 1024);
+  var runtimeKB = webgpuKB + coreKB + orbitKB;
+  var runtimeOk = runtimeKB < 1100;  // <1.1MB runtime Three.js parse
+
+  // 2. Fallback ESM (not loaded unless webgpu fails)
+  var esmKB = Math.round(fs.statSync(path.join(libDir, 'three.module.min.js')).size / 1024);
+
+  // 3. Dead weight: old files still on disk but not loaded
+  var oldUmd = fs.existsSync(path.join(libDir, 'three.min.js'));
+  var oldIIFE = fs.existsSync(path.join(libDir, 'OrbitControls.js'));
+  var deadFiles = [];
+  if (oldUmd) deadFiles.push('three.min.js(UMD)');
+  if (oldIIFE) deadFiles.push('OrbitControls.js(IIFE)');
+
+  // 4. SW precache includes webgpu + core + esm fallback
+  var swHasWebgpu = swSrc.includes('three.webgpu.min.js');
+  var swHasCore = swSrc.includes('three.core.min.js');
+  var swHasEsm = swSrc.includes('three.module.min.js');
+
+  // 5. Render gates: streaming skip + compileAsync skip (prevent pipeline timeout)
+  var hasStreamGate = mainSrc.includes('_isWebGPU && APP.streaming');
+  var hasCompileGate = mainSrc.includes('_pipelinesCompiling');
+
+  // 6. Total precache budget (all lib/ files)
+  var libFiles = fs.readdirSync(libDir);
+  var totalPrecacheKB = 0;
+  libFiles.forEach(function(f) {
+    totalPrecacheKB += Math.round(fs.statSync(path.join(libDir, f)).size / 1024);
+  });
+  var precacheOk = totalPrecacheKB < 4000;  // <4MB total lib/
+
+  var issues = [];
+  if (!runtimeOk) issues.push('runtime>' + runtimeKB + 'KB');
+  if (!precacheOk) issues.push('precache>' + totalPrecacheKB + 'KB');
+  if (!hasStreamGate) issues.push('no streaming render gate');
+  if (!hasCompileGate) issues.push('no compileAsync render gate');
+  if (!swHasWebgpu) issues.push('sw missing webgpu');
+  if (!swHasCore) issues.push('sw missing core');
+
+  var allOk = issues.length === 0;
+  return {
+    ok: allOk,
+    log: '§WB_S276_RESOURCES runtime=' + runtimeKB + 'KB(webgpu=' + webgpuKB +
+         '+core=' + coreKB + '+orbit=' + orbitKB + ') fallback=' + esmKB +
+         'KB precache=' + totalPrecacheKB + 'KB dead=[' + deadFiles.join(',') +
+         '] gates=stream:' + hasStreamGate + '+compile:' + hasCompileGate +
+         ' sw=webgpu:' + swHasWebgpu + '+core:' + swHasCore + '+esm:' + swHasEsm,
+    reason: allOk ? '' : issues.join(', ')
+  };
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log(`§WB_SUMMARY pass=${pass} fail=${fail} total=${pass + fail}`);
 process.exit(fail > 0 ? 1 : 0);

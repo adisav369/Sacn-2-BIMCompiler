@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 // scene.js — Three.js scene, camera, controls, lighting, ground
-function setupScene(A) {
+// §S276: async for WebGPURenderer.init()
+async function setupScene(A) {
   const canvas = document.getElementById('canvas');
   A.canvas = canvas;
 
@@ -27,11 +28,35 @@ function setupScene(A) {
 
   // §S271: Mobile — disable antialias (4x MSAA fill cost), cap DPR at 1
   var _isMobileRenderer = (navigator.maxTouchPoints > 0 && window.screen.width < 1024);
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: !_isMobileRenderer,
-    preserveDrawingBuffer: true
-  });
+  // §S276: Native WebGPU when available, WebGLRenderer fallback.
+  // compileAsync takes 9s/44 materials (Intel iGPU), ~30s for LTU 122K — acceptable one-time cost.
+  // render() must be skipped during streaming (synchronous pipeline compile blocks main thread).
+  // compileAsync is truly async (no timeout). Chunked compilation for safety.
+  var _hasNativeWebGPU = !!navigator.gpu && !!THREE.WebGPURenderer;
+  var _isWebGPU = false;
+  var renderer;
+  if (_hasNativeWebGPU) {
+    renderer = new THREE.WebGPURenderer({
+      canvas,
+      antialias: !_isMobileRenderer,
+      preserveDrawingBuffer: true
+    });
+    await renderer.init();
+    var _backend = renderer.backend ? renderer.backend.constructor.name : 'unknown';
+    if (_backend === 'WebGPUBackend') {
+      _isWebGPU = true;
+      console.log('§S276_RENDERER WebGPURenderer native backend=' + _backend);
+    } else {
+      // Compat mode — TSL overhead makes it slower than direct WebGL
+      console.log('§S276_RENDERER compat backend=' + _backend + ' — using WebGLRenderer');
+      renderer.dispose();
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: !_isMobileRenderer, preserveDrawingBuffer: true });
+    }
+  } else {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: !_isMobileRenderer, preserveDrawingBuffer: true });
+    console.log('§S276_RENDERER WebGLRenderer (no navigator.gpu)');
+  }
+  A._isWebGPU = _isWebGPU;
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(_isMobileRenderer ? 1 : Math.min(window.devicePixelRatio, 2));  // §S271: mobile=1x, desktop=cap 2x
   renderer.setClearColor(0x1a1a2e);

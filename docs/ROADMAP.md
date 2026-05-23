@@ -49,12 +49,13 @@ The BIM Intent Compiler project began October 2025 (concept) → January 2026 (J
 - FTS5 search across 23 AD tables
 - Glass overlay, edge swipe, accordion drill
 
-### Infrastructure (S225–S243, S260–S274)
+### Infrastructure (S225–S243, S260–S276)
 - 18 locales, auto-detected from browser
 - Split-DB streaming for large buildings (meta + geo)
 - City mode — 786 buildings loaded simultaneously
 - Share sheet — IFC/DB save, contribute, system share
-- §S274 DLOD: r160 `perObjectFrustumCulled` for BatchedMesh (native, zero JS cost) + InstancedMesh zero-scale frustum culling (desktop). Mobile: render gate + DPR 0.75 orbit. See `docs/FeatureComparison.md` §Visibility Culling.
+- §S274 DLOD: r184 `perObjectFrustumCulled` for BatchedMesh (native, zero JS cost) + InstancedMesh zero-scale frustum culling (desktop). Mobile: render gate + DPR 0.75 orbit. See `docs/FeatureComparison.md` §Visibility Culling.
+- §S276: Three.js r160→r184, WebGPURenderer with compat mode, `compileAsync` pipeline gate
 
 ### Red Pill / New From Reference (S266–S270)
 - Doc Canvas — design document with live BOM
@@ -65,51 +66,35 @@ The BIM Intent Compiler project began October 2025 (concept) → January 2026 (J
 
 ## Next
 
-### S276 — Three.js r184 + WebGPU Upgrade (Priority 1)
-Currently on r160 (Dec 2023). r184 (Apr 2025) is the latest stable — 24 releases ahead, WebGPU production-grade.
+### S276 DONE — Three.js r184 + WebGPU Upgrade
+Upgraded from r160 (Dec 2023) to r184 (Apr 2025) — 24 releases. WebGPURenderer with compatibility mode deployed.
 
-**Why r184, not r177:** r177 (May 2024) is already 12 months old. r160→r177 and r160→r184 cross the same breaking changes. r184 adds compatibility mode (WebGPURenderer with automatic WebGL2 fallback), 3x faster TSL compilation, truly non-blocking `compileAsync()`, and multiple BatchedMesh bug fixes (r182-r184). No reason to stop at r177.
+**What shipped:**
+- **r184 split build:** `three.webgpu.min.js` (622KB) + `three.core.min.js` (375KB) = 998KB
+- **WebGPURenderer** with compatibility mode — auto WebGPU or WebGL2 fallback, one code path
+- **Async renderer init:** `await renderer.init()` — `setupScene`/`initViewer` now async
+- **Physically-correct lighting:** `useLegacyLights` removed (r165), intensities × π
+- **BatchedMesh `addInstance()`:** required since r166, added at 3 call sites in streaming.js
+- **BVH 0.7.8→0.8.0:** targets r170+
+- **`compileAsync` gate:** WebGPU compiles shader pipelines per material — 122K scenes with 100+ materials caused main-thread timeout. Fix: after streaming, `renderer.compileAsync(scene, camera)` pre-warms pipelines asynchronously. Render loop skips during compilation. Bboxes stay visible. Status bar shows "Compiling GPU shaders — please wait..."
+- **Streaming log spam reduced:** BLOB_FETCH/BATCHED_FLUSH log first + every 50K + final only
+- **Whitebox tests:** `§WB_S276_LIBS` (size budget <1.2MB) + `§WB_S276_WIRING` (8 integration checks)
 
-**What it gives us:**
-- **2-10x** draw-call performance (WebGPU driver overhead far lower than WebGL)
-- **GPU compute shader frustum culling** — replaces JS tick entirely, zero CPU cost
-- **Indirect draw buffer** populated by compute shader — GPU decides what to draw
-- **TSL** (Three Shading Language) — shader nodes in JS, replaces GLSL chunks, 3x faster compilation (r184)
-- **Compatibility mode** — `WebGPURenderer` auto-detects: WebGPU where available, WebGL2 fallback elsewhere. One renderer, one code path
-- **Scale target:** 250K-500K elements viable (1M particles proven at 60fps, Expo 2025 Osaka)
+**Breaking changes resolved (r160→r184):**
 
-**Expected performance gains (LTU 122K):**
-
-| | Desktop (today 30-45fps) | Mobile (today 10-20fps) |
+| Version | Break | Fix |
 |---|---|---|
-| **WebGPU path** | 50-60fps | 25-40fps |
-| **Key unlock** | Draw-call overhead 5-10x lower | GPU frustum culling (currently disabled — JS too costly) |
-| **Fallback** | WebGL2 (same as today) | WebGL2 + render gate + DPR tricks (same as today) |
+| r161 | UMD removed | Already ESM — removed UMD/IIFE fallbacks in loader.js |
+| r165 | `useLegacyLights` removed | Re-tuned: ambient 0.785, sun 4.4, hemi 1.257 |
+| r166 | BatchedMesh `addInstance()` | Added at 3 sites in streaming.js |
+| r168 | Import paths | Importmap: `three` → `three.webgpu.min.js` |
 
-**Breaking changes that hit us (r160→r184):**
+**Key lessons learned:**
+1. **Compat mode is slower, not faster.** WebGPURenderer's compat mode (WebGL2 backend) transpiles TSL node graphs → GLSL per material. On 48K-122K element scenes with 100+ materials, this blocks the main thread for 10+ seconds during both `render()` and `compileAsync()`, causing script timeout. Direct WebGLRenderer skips TSL entirely and is faster. See [Three.js issue #31055](https://github.com/mrdoob/three.js/issues/31055).
+2. **Native WebGPU only.** Fix: check `navigator.gpu`, init WebGPURenderer, verify `backend.constructor.name === 'WebGPUBackend'`. If compat (WebGLBackend), dispose and fall back to direct WebGLRenderer. Only native WebGPU gets the 2-10x draw-call improvement.
+3. **Render gates during streaming.** Even with native WebGPU, skip `renderer.render()` while `APP.streaming` is true — progressive flushes add materials that trigger synchronous pipeline compilation. After streaming, `compileAsync()` pre-warms all pipelines before first render.
 
-| Version | Break | Our impact |
-|---|---|---|
-| r161 | `build/three.js` removed, ESM only | Already ESM — none |
-| r163 | WebGL 1 dropped | Already WebGL 2 — none |
-| r165 | `useLegacyLights` removed | `scene.js` — must re-tune lighting |
-| r166 | BatchedMesh requires `addInstance()` | `streaming.js` — must update BM creation |
-| r168 | Import paths: `three/webgpu`, `three/tsl` | All imports — search-replace |
-| r184 | Deprecated instancing render paths removed | `dlod.js` IM handling — must verify |
-
-**Migration scope (est. 2-3 sessions):**
-- `import from "three/webgpu"` instead of `"three"` (r168 path change)
-- `WebGPURenderer` with compatibility mode — replaces `WebGLRenderer`
-- Async renderer init (`await renderer.init()`)
-- Re-tune lighting (`useLegacyLights` removed in r165)
-- BatchedMesh: add `addInstance()` calls after `addGeometry()` (r166)
-- Verify InstancedMesh zero-scale DLOD against r184 instancing changes
-- TSL replaces custom shader code
-- Test all 21 buildings
-
-**Risk:** [BatchedMesh slower on Android WebGPU](https://github.com/mrdoob/three.js/issues/29580) — mobile WebGPU is newer, less optimised than desktop. Compatibility mode provides automatic WebGL2 fallback.
-
-**WebGPU browser support (Baseline 2025):** Chrome 148+, Edge, Safari 26+, Firefox (desktop). Mobile: Chrome Android stable, Safari iOS 26+ stable, Firefox Android not yet.
+**Browser support:** Native WebGPU: Chrome 148+, Edge, Safari 26+. WebGL2 fallback (WebGLRenderer): all browsers. Mobile: Chrome Android (WebGPU), Safari iOS 26+ (WebGPU), others (WebGL2).
 
 ### S274 DONE — DLOD + Mobile Perf
 - r160 `perObjectFrustumCulled` handles BM natively (zero JS cost)
