@@ -5338,7 +5338,7 @@ bbox_z  →  bboxY (IFC height → Three Y)
 <td>B2</td>
 <td><strong>Wall→Window cascade</strong></td>
 <td><code>recompose()</code> with UNIFORM strategy recounts windows when parent AABB changes</td>
-<td>L1 debounce fires (<code>_fireBomRecompose</code>) but <code>_bomNodes</code> is empty until first <code>materializeLevel()</code> call from BOM.db</td>
+<td><code>materializeBomLevel()</code> exists in <code>grid_recompose.js</code> but only fires on explicit Next press. After B1, first Next populates <code>_bomNodes</code> → subsequent grid drags trigger L1 recompose. Verify with §-logs.</td>
 </tr>
 <tr>
 <td>B3</td>
