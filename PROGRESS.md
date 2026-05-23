@@ -20,13 +20,17 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S273 DONE (2026-05-23): Red Pill UI Hardening — 73 tests, 0 failures.**
+  - F1+F2: Save/Open design to IndexedDB (grid state + kernel_ops serialize/restore via prompt picker)
+  - F3: Timeline scrub preserves user-placed grid lines (`_userGrids` tracking, re-added after replay)
+  - F4: Rosetta delete — drag grid 2m beyond envelope removes it + GRID_DELETE kernel_op
+  - F5: Grid attachment guard — blocks drag on grids with no attached elements
+  - F6: W023 SC BOM seed — 342/348 lines typed (9 IFC classes), strategies, storey, dimensions applied to SampleCastle
+  - **Next: S270 — Grid Kinematics Engine. Prompt: `prompts/S270_GRID_KINEMATICS.md`.**
+
 **S272 ALL PHASES DONE (2026-05-23): BOM Recomposition Engine — 438 tests, 0 failures.**
-  - Phase 1: `bom_engine/` — 4 files, 284 tests. Bug found+fixed: _stepFill reserved space.
-  - Phase 2: bom_tree.js, bom_grid.js, W022 migration, W022b SH seed. 89 tests.
-  - Phase 3: doc_canvas integration — L0→L1→L3 flow (debounced), DISC/Next BOM controller, instance-aware diff execution, kernel_ops BOM_RECOMPOSE logging. §-log verified.
-  - Phase 4: bom_rules.js (DiscRuleProvider, 6 check methods), disc_rules.json (8 UBBL+NFPA seed rules), L3 rule validation wired. 31 tests.
-  - Deep tests: diff-self invariant, containment, idempotency, full-cycle smoke, 500-node perf (12ms), 7 devil cases, rule monotonicity. 34 tests.
-  - **Next: S273 — Red Pill UI hardening + SC validation. Prompt: `prompts/S273_RED_PILL_HARDENING.md`.**
+  - Phase 1-4: `bom_engine/` (4 files), bom_tree/grid/rules, W022 migration, disc_rules.json.
+  - Deep tests: diff-self invariant, containment, idempotency, full-cycle smoke, 500-node perf, rule monotonicity.
 
 **S266 IN PROGRESS (2026-05-22): New From Reference — Doc Pill + JS BOM + Design Canvas + RouteWalker. See `docs/NEW_FROM_REFERENCE.md`.**
   - Red Pill icon replaces TM in main pill → swaps to 9-icon red glass Doc pill (Home/Grid/TM/Next/Disc/Open/Save/UBBL/Rosetta)
