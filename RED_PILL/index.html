@@ -1732,10 +1732,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#116-deferred-stage-2" class="md-nav__link">
+  <a href="#116-bom-driven-cascade-tasks-s272-engine-ready-needs-wiring" class="md-nav__link">
     <span class="md-ellipsis">
       
-        11.6 Deferred (Stage 2+)
+        11.6 BOM-Driven Cascade Tasks (S272 engine ready, needs wiring)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#117-deferred-stage-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.7 Deferred (Stage 2+)
       
     </span>
   </a>
@@ -4403,10 +4414,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#116-deferred-stage-2" class="md-nav__link">
+  <a href="#116-bom-driven-cascade-tasks-s272-engine-ready-needs-wiring" class="md-nav__link">
     <span class="md-ellipsis">
       
-        11.6 Deferred (Stage 2+)
+        11.6 BOM-Driven Cascade Tasks (S272 engine ready, needs wiring)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#117-deferred-stage-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.7 Deferred (Stage 2+)
       
     </span>
   </a>
@@ -5039,12 +5061,12 @@ bbox_z  →  bboxY (IFC height → Three Y)
 <tbody>
 <tr>
 <td><code>doc_canvas.js</code></td>
-<td>2088</td>
+<td>2214</td>
 <td>Orchestrator: UX, phases, grid rendering, timeline, save/open</td>
 </tr>
 <tr>
 <td><code>grid_state.js</code></td>
-<td>335</td>
+<td>353</td>
 <td>Grid positions, labels, originals, deltas — single source of truth</td>
 </tr>
 <tr>
@@ -5149,6 +5171,11 @@ bbox_z  →  bboxY (IFC height → Three Y)
 <td>S273</td>
 <td>IndexedDB, kernel_ops replay</td>
 </tr>
+<tr>
+<td>Y-axis Ceiling Drag UI</td>
+<td>S270c</td>
+<td>Click disc → drag up/down → ROOF_LIFT + WALL_HEIGHT_SCALE cascade</td>
+</tr>
 </tbody>
 </table>
 <h3 id="113-tests">11.3 Tests<a class="headerlink" href="#113-tests" title="Permanent link">&para;</a></h3>
@@ -5163,8 +5190,8 @@ bbox_z  →  bboxY (IFC height → Three Y)
 <tbody>
 <tr>
 <td><code>test_doc_canvas.js</code></td>
-<td>73</td>
-<td>UX, grid ops, BatchedMesh, BUG-1/BUG-4, save/open, grid guards</td>
+<td>79</td>
+<td>UX, grid ops, BatchedMesh, BUG-1/BUG-4, save/open, grid guards, ceiling drag</td>
 </tr>
 <tr>
 <td><code>test_grid_kinematics.js</code></td>
@@ -5187,8 +5214,13 @@ bbox_z  →  bboxY (IFC height → Three Y)
 <td>Split/IFC/offline/variance/ground (2 pre-existing)</td>
 </tr>
 <tr>
+<td><code>test_bom_*.js</code> (7 files)</td>
+<td>438</td>
+<td>BOM engine: strategies, constraints, diff, node, tree, grid, rules, deep</td>
+</tr>
+<tr>
 <td><strong>Total</strong></td>
-<td><strong>348+34</strong></td>
+<td><strong>354+34+438</strong></td>
 <td>All whitebox, §-tagged logs</td>
 </tr>
 </tbody>
@@ -5253,9 +5285,9 @@ bbox_z  →  bboxY (IFC height → Three Y)
 </thead>
 <tbody>
 <tr>
-<td>P1</td>
-<td>Y-axis drag UI</td>
-<td>Click ceiling disc → ROOF_LIFT + WALL_HEIGHT_SCALE cascade</td>
+<td>~~P1~~</td>
+<td>~~Y-axis drag UI~~</td>
+<td>~~Done S270c — click disc → drag → cascade~~</td>
 </tr>
 <tr>
 <td>P2</td>
@@ -5265,12 +5297,12 @@ bbox_z  →  bboxY (IFC height → Three Y)
 <tr>
 <td>P3</td>
 <td>BUG-3 phase-aware recompose</td>
-<td>New elements snap to moved grid positions</td>
+<td>BOM engine solves this: <code>materializeLevel()</code> reads CURRENT AABBs. Wire B1+B2.</td>
 </tr>
 <tr>
 <td>P4</td>
 <td>UBBL Validator</td>
-<td>Compliance engine, clearance rules, code checks</td>
+<td><code>bom_rules.js</code> + <code>disc_rules.json</code> done (8 rules). Wire B1 to activate.</td>
 </tr>
 <tr>
 <td>P5</td>
@@ -5284,10 +5316,53 @@ bbox_z  →  bboxY (IFC height → Three Y)
 </tr>
 </tbody>
 </table>
-<h3 id="116-deferred-stage-2">11.6 Deferred (Stage 2+)<a class="headerlink" href="#116-deferred-stage-2" title="Permanent link">&para;</a></h3>
+<h3 id="116-bom-driven-cascade-tasks-s272-engine-ready-needs-wiring">11.6 BOM-Driven Cascade Tasks (S272 engine ready, needs wiring)<a class="headerlink" href="#116-bom-driven-cascade-tasks-s272-engine-ready-needs-wiring" title="Permanent link">&para;</a></h3>
+<p>The BOM engine (438 tests) provides the algebra. These tasks wire it to visible behaviour.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Task</th>
+<th>What the engine already does</th>
+<th>What's missing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B1</td>
+<td><strong>Script tags</strong></td>
+<td>All 6 <code>bom_engine/*.js</code> + <code>disc_rules.json</code> exist</td>
+<td>Not in <code>index.html</code> — modules load but no <code>&lt;script&gt;</code> includes them</td>
+</tr>
+<tr>
+<td>B2</td>
+<td><strong>Wall→Window cascade</strong></td>
+<td><code>recompose()</code> with UNIFORM strategy recounts windows when parent AABB changes</td>
+<td>L1 debounce fires (<code>_fireBomRecompose</code>) but <code>_bomNodes</code> is empty until first <code>materializeLevel()</code> call from BOM.db</td>
+</tr>
+<tr>
+<td>B3</td>
+<td><strong>DISC switch → MEP fresh route</strong></td>
+<td>ROUTE strategy stub exists, <code>route_walker.js</code> exists</td>
+<td>ROUTE stub returns straight line. Wire: <code>ROUTE(p)</code> → <code>RouteWalker.walk(db, anchors, disc)</code> (~10 lines)</td>
+</tr>
+<tr>
+<td>B4</td>
+<td><strong>Tile recount on resize</strong></td>
+<td>UNIFORM/PACKED strategies compute count from available space</td>
+<td>verb_expand.js TILE formula not connected to BOM engine</td>
+</tr>
+<tr>
+<td>B5</td>
+<td><strong>Cross-DISC read-only cascade</strong></td>
+<td><code>recompose()</code> is stateless — reads current AABBs, doesn't care who moved them</td>
+<td>No code needed. DISC switch → <code>materializeLevel()</code> → children read current positions. Already wired in <code>_materializeBomLevel()</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key insight (2026-05-24 watchdog review):</strong> "MEP rerouting after grid drag" (previously Deferred) is NOT needed. MEP never sees drag. User switches DISC → MEP reads current structural positions → RouteWalker fires once. One-way, user-triggered. No live coupling.</p>
+<h3 id="117-deferred-stage-2">11.7 Deferred (Stage 2+)<a class="headerlink" href="#117-deferred-stage-2" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Tile recount / FRAME coord replacement at runtime</li>
-<li>MEP rerouting after grid drag</li>
 <li>IFC export from NewBuilding.db</li>
 <li>Diagonal grids / rotation / mirroring</li>
 <li>Git-like branching (parallel design timelines)</li>
