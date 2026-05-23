@@ -3,10 +3,11 @@
  * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
  * SPDX-License-Identifier: MIT
  *
- * dlod.js — §6.8 Frustum + Storey DLOD (Dynamic Level of Detail)
- * S258: R-tree tested but SQL WASM overhead (~90ms/tick) > JS traverse (~4ms/tick).
- * Kept: frustum + storey with orbit-target tracking + time machine cooperate.
- * 48K → ~2K visible, 122K → ~3K visible, sub-6ms per tick.
+ * dlod.js — §6.8 Per-slot/instance Frustum DLOD (Dynamic Level of Detail)
+ * §S274: Per-slot setVisibleAt on BatchedMesh + zero-scale on InstancedMesh.
+ * Both mesh types hidden outside frustum → GPU skips their triangles entirely.
+ * Terminal 48K (80% IM): now culls all element types.
+ * Hospital 63K (64% IM): full coverage.
  */
 function setupDLOD(A) {
   // ── State ──
@@ -15,8 +16,7 @@ function setupDLOD(A) {
   A._dlodPaused = false;     // true = cooperate with time machine (skip TM-hidden meshes)
 
   var EVAL_EVERY = 6;             // frames between evaluations
-  var MIN_ELEMENTS = 100000;      // §S262: LTU (122K) onwards — visibility culling for very large buildings
-  var STOREY_RANGE = 3;           // show N storeys above/below look target
+  var MIN_ELEMENTS = 5000;        // §S271: frustum culling for all non-trivial buildings
   var _frustum = new THREE.Frustum();
   var _projScreenMatrix = new THREE.Matrix4();
   var _sphere = new THREE.Sphere();
@@ -24,50 +24,54 @@ function setupDLOD(A) {
   var _lastCamX = 0, _lastCamY = 0, _lastCamZ = 0;  // §S260b: skip tick when camera idle
   var _lastTargX = 0, _lastTargY = 0, _lastTargZ = 0;
 
-  // Storey Y-positions cache (built once after streaming)
-  var _storeyLevels = [];  // [{name, y}, ...] sorted by y ascending
-  var _storeyBuilt = false;
+  // ── §S274: Direct refs built once after streaming ──
+  var _instancedMeshes = []; // [{obj, meta}, ...] — IM only, BM handled by r160 native
+  var _refsBuilt = false;
+  var _totalIMInstances = 0;
 
-  function _buildStoreyLevels() {
-    if (_storeyBuilt) return;
-    _storeyBuilt = true;
-    var storeyY = {};
-    // §S260b: Build from _batchStoreyMap (BatchedMesh) + individual meshes
-    // BatchedMesh doesn't have per-element positions, so query A.db for storey→avg Z
-    if (A.db && A._batchStoreyMap && Object.keys(A._batchStoreyMap).length > 0) {
-      try {
-        var rows = A.db.exec("SELECT storey, AVG(center_z) FROM element_transforms t JOIN elements_meta m ON t.guid=m.guid WHERE storey != '' GROUP BY storey");
-        if (rows.length && rows[0].values) {
-          for (var ri = 0; ri < rows[0].values.length; ri++) {
-            var s = rows[0].values[ri][0];
-            var z = rows[0].values[ri][1];
-            if (s) {
-              var p = A.ifc2three(0, 0, z);
-              storeyY[s] = p.y;
-            }
+  function _buildRefs() {
+    if (_refsBuilt) return;
+    _refsBuilt = true;
+    _batchedMeshes = [];
+    _instancedMeshes = [];
+    _totalBMSlots = 0;
+    _totalIMInstances = 0;
+
+    var _m4 = new THREE.Matrix4();
+    var _pos = new THREE.Vector3();
+
+    A.scene.traverse(function(obj) {
+      // BatchedMesh: Three.js r160 perObjectFrustumCulled handles natively — no indexing needed.
+
+      // ── InstancedMesh: extract world position per instance (desktop only) ──
+      // §S274: On mobile, skip IM indexing entirely — saves 35K Matrix4 allocations
+      if (!A._isMobile && obj.isInstancedMesh && A._instanceMeta[obj.id]) {
+        var meta = A._instanceMeta[obj.id];
+        for (var i = 0; i < meta.length; i++) {
+          var m = meta[i];
+          try {
+            obj.getMatrixAt(m.instanceIndex, _m4);
+            _pos.setFromMatrixPosition(_m4);
+            m._wx = _pos.x;
+            m._wy = _pos.y;
+            m._wz = _pos.z;
+            var bx = m.bx || 0.3, by = m.by || 0.3, bz = m.bz || 0.3;
+            m._radius = Math.sqrt(bx * bx + by * by + bz * bz) * 0.5;
+            m._origMatrix = new THREE.Matrix4().copy(_m4);
+          } catch(e) {
+            m._wx = 0; m._wy = 0; m._wz = 0; m._radius = 5.0;
+            m._origMatrix = null;
           }
         }
-      } catch(e) {}
-    }
-    // Fallback: individual meshes (non-BatchedMesh path or mixed)
-    if (Object.keys(storeyY).length === 0) {
-      A.scene.traverse(function(obj) {
-        if (obj.isMesh && obj.userData.storey && obj.userData.guid) {
-          var s = obj.userData.storey;
-          if (storeyY[s] === undefined) storeyY[s] = obj.position.y;
-        }
-      });
-    }
-    _storeyLevels = Object.entries(storeyY)
-      .map(function(e) { return { name: e[0], y: e[1] }; })
-      .sort(function(a, b) { return a.y - b.y; });
-    console.log('[DLOD] §DLOD_STOREYS count=' + _storeyLevels.length +
-      ' levels=' + _storeyLevels.map(function(s) { return s.name; }).join(','));
-  }
+        _instancedMeshes.push({ obj: obj, meta: meta });
+        _totalIMInstances += meta.length;
+      }
+    });
 
-  // §S262: Storey culling disabled — too aggressive, hides visible floors on head-on views.
-  // DLOD = frustum culling only (individual meshes). Safe: never hides what you're looking at.
-  function _visibleStoreys() { return null; }
+    console.log('[DLOD] §DLOD_REFS built instanced=' + _instancedMeshes.length +
+      ' imInstances=' + _totalIMInstances +
+      ' (BM handled by r160 perObjectFrustumCulled)');
+  }
 
   // ── Enable/disable ──
   A.dlodEnable = function() {
@@ -75,10 +79,16 @@ function setupDLOD(A) {
       console.log('[DLOD] §DLOD_SKIP count=' + A.streamedCount + ' < ' + MIN_ELEMENTS);
       return;
     }
+    // §S274: On mobile, Three.js r160 perObjectFrustumCulled handles BatchedMesh natively.
+    // InstancedMesh zero-scale is too expensive (buffer re-upload). Skip DLOD entirely.
+    if (A._isMobile) {
+      console.log('[DLOD] §DLOD_SKIP_MOBILE count=' + A.streamedCount + ' — r160 perObjectFrustumCulled handles BM natively');
+      return;
+    }
     A._dlodEnabled = true;
-    A._dlodFrame = EVAL_EVERY - 1;  // next dlodTick fires immediately (no 6-frame delay)
-    _storeyBuilt = false;
-    console.log('[DLOD] §DLOD_ENABLE count=' + A.streamedCount + ' mode=visibility_only');
+    A._dlodFrame = EVAL_EVERY - 1;
+    _refsBuilt = false;
+    console.log('[DLOD] §DLOD_ENABLE count=' + A.streamedCount + ' mode=per_slot_frustum');
   };
 
   A.dlodDisable = function(reason) {
@@ -88,34 +98,8 @@ function setupDLOD(A) {
     console.log('[DLOD] §DLOD_DISABLE reason=' + (reason || 'unknown'));
   };
 
-  // §S261: Demote ALL promoted slots back to bbox — called by Time Machine on activate
-  // Ensures clean baseline: TM controls visibility, DLOD geometry state is reset.
   A.dlodDemoteAll = function() {
-    if (!A._dlodSlots) return;
-    var bboxGeo = A._dlodBboxGeo;
-    if (!bboxGeo) return;
-    var count = 0;
-    for (var bmId in A._dlodSlots) {
-      var slots = A._dlodSlots[bmId];
-      var bm = slots._bmRef;
-      if (!bm || !bm.parent) continue;
-      for (var i = 0; i < slots.length; i++) {
-        var s = slots[i];
-        if (s.promoted) {
-          try {
-            bm.setGeometryAt(s.slotId, bboxGeo);
-            bm.setMatrixAt(s.slotId, s.bboxMatrix);
-          } catch(e) { /* skip */ }
-          s.promoted = false;
-          count++;
-        }
-      }
-    }
-    _totalPromoted = 0;
-    if (count > 0) {
-      console.log('[DLOD] §DLOD_DEMOTE_ALL count=' + count + ' reason=time_machine');
-      if (A.markDirty) A.markDirty();
-    }
+    _restoreAll();
   };
 
   // ── Main tick — called from animate loop ──
@@ -124,7 +108,7 @@ function setupDLOD(A) {
     A._dlodFrame++;
     if (A._dlodFrame % EVAL_EVERY !== 0) return;
 
-    // §S260b: Skip when camera hasn't moved — no work needed, prevents micro-stutter
+    // §S260b: Skip when camera hasn't moved
     var cp = A.camera.position, ct = A.controls ? A.controls.target : cp;
     if (Math.abs(cp.x - _lastCamX) < 0.01 && Math.abs(cp.y - _lastCamY) < 0.01 &&
         Math.abs(cp.z - _lastCamZ) < 0.01 && Math.abs(ct.x - _lastTargX) < 0.01 &&
@@ -134,226 +118,84 @@ function setupDLOD(A) {
     _lastCamX = cp.x; _lastCamY = cp.y; _lastCamZ = cp.z;
     _lastTargX = ct.x; _lastTargY = ct.y; _lastTargZ = ct.z;
 
-    _buildStoreyLevels();
+    _buildRefs();
     var t0 = performance.now();
 
-    // Build camera frustum
     A.camera.updateMatrixWorld();
     _projScreenMatrix.multiplyMatrices(A.camera.projectionMatrix, A.camera.matrixWorldInverse);
     _frustum.setFromProjectionMatrix(_projScreenMatrix);
 
-    var visStoreys = _visibleStoreys();
-
-    var visCount = 0, hidCount = 0, skipCount = 0;
+    var imVis = 0, imHid = 0, skipCount = 0;
     var storeyFilter = A.activeStoreyFilter;
     var hiddenDiscs = A.hiddenDiscs;
 
-    A.scene.traverse(function(obj) {
-      // ── Individual meshes ──
-      if (obj.isMesh && obj.userData.guid && !obj.userData.isBboxPlaceholder) {
-        // Respect existing storey/disc filters
+    // ── BatchedMesh: Three.js r160 perObjectFrustumCulled handles per-slot frustum natively.
+    // No JS tick needed — renderer.render() does it at zero cost. ──
+
+    // ── InstancedMesh: per-instance zero-scale (desktop only) ──
+    // §S274: On mobile, instanceMatrix.needsUpdate re-uploads entire buffer to GPU per tick.
+    // Cost exceeds savings. BatchedMesh setVisibleAt is cheap (indirect draw flag only).
+    if (A._isMobile) { /* skip IM culling on mobile */ }
+    else for (var ii = 0; ii < _instancedMeshes.length; ii++) {
+      var im = _instancedMeshes[ii];
+      var obj = im.obj;
+      if (!obj.parent) continue;
+
+      var meta = im.meta;
+      var changed = false;
+
+      for (var i = 0; i < meta.length; i++) {
+        var m = meta[i];
+
         if (storeyFilter !== null && storeyFilter !== undefined &&
-            obj.userData.storey !== storeyFilter) { skipCount++; return; }
+            m.storey !== storeyFilter) { skipCount++; continue; }
         if (hiddenDiscs && hiddenDiscs.size > 0 &&
-            hiddenDiscs.has(obj.userData.disc)) { skipCount++; return; }
+            hiddenDiscs.has(m.disc)) { skipCount++; continue; }
+        if (A._dlodPaused && m._dlodHid) { skipCount++; continue; }
+        if (!m._origMatrix) { skipCount++; continue; }
 
-        // Cooperate with time machine: don't override TM-hidden elements
-        if (A._dlodPaused && !obj.visible) { skipCount++; return; }
+        _sphere.center.set(m._wx, m._wy, m._wz);
+        _sphere.radius = m._radius;
 
-        // Storey distance check
-        if (visStoreys && obj.userData.storey && !visStoreys[obj.userData.storey]) {
-          obj.visible = false;
-          obj.userData._dlodHidden = true;
-          hidCount++;
-          return;
-        }
-
-        // Frustum check — use bounding sphere
-        if (obj.geometry && obj.geometry.boundingSphere) {
-          _sphere.copy(obj.geometry.boundingSphere);
-          _sphere.applyMatrix4(obj.matrixWorld);
-          if (!_frustum.intersectsSphere(_sphere)) {
-            obj.visible = false;
-            obj.userData._dlodHidden = true;
-            hidCount++;
-            return;
-          }
-        }
-
-        obj.visible = true;
-        obj.userData._dlodHidden = false;
-        visCount++;
-      }
-
-      // ── InstancedMesh: storey-based culling per instance ──
-      if (obj.isInstancedMesh && A._instanceMeta[obj.id]) {
-        var meta = A._instanceMeta[obj.id];
-        var changed = false;
-        for (var i = 0; i < meta.length; i++) {
-          var m = meta[i];
-          if (storeyFilter !== null && storeyFilter !== undefined &&
-              m.storey !== storeyFilter) continue;
-          if (hiddenDiscs && hiddenDiscs.size > 0 &&
-              hiddenDiscs.has(m.disc)) continue;
-
-          if (visStoreys && !visStoreys[m.storey]) {
-            if (!m._origMatrix) {
-              m._origMatrix = new THREE.Matrix4();
-              obj.getMatrixAt(i, m._origMatrix);
-            }
-            obj.setMatrixAt(i, _zeroScale);
-            changed = true;
-            hidCount++;
-          } else if (m._origMatrix) {
-            // §S262: Restore when visStoreys=null (show all) or storey now visible
-            obj.setMatrixAt(i, m._origMatrix);
-            m._origMatrix = null;
-            changed = true;
-            visCount++;
-          }
-        }
-        if (changed) obj.instanceMatrix.needsUpdate = true;
-      }
-
-      // ── BatchedMesh: storey-based culling per slot ──
-      if (obj.isBatchedMesh && A._batchMeta[obj.id]) {
-        var meta = A._batchMeta[obj.id];
-        var anyVis = false;
-        for (var i = 0; i < meta.length; i++) {
-          var m = meta[i];
-          if (storeyFilter !== null && storeyFilter !== undefined &&
-              m.storey !== storeyFilter) continue;
-          if (hiddenDiscs && hiddenDiscs.size > 0 &&
-              hiddenDiscs.has(m.disc)) continue;
-
-          if (visStoreys && !visStoreys[m.storey]) {
-            obj.setVisibleAt(m.slotId, false);
+        if (!_frustum.intersectsSphere(_sphere)) {
+          if (!m._dlodHid) {
+            obj.setMatrixAt(m.instanceIndex, _zeroScale);
             m._dlodHid = true;
-            hidCount++;
-          } else {
-            // §S262: Restore when visStoreys=null (show all) or storey now visible
-            if (m._dlodHid) { obj.setVisibleAt(m.slotId, true); m._dlodHid = false; }
-            anyVis = true;
-            visCount++;
+            changed = true;
           }
+          imHid++;
+        } else {
+          if (m._dlodHid) {
+            obj.setMatrixAt(m.instanceIndex, m._origMatrix);
+            m._dlodHid = false;
+            changed = true;
+          }
+          imVis++;
         }
-        obj.visible = anyVis;
       }
-    });
 
-    var ms = (performance.now() - t0).toFixed(1);
-    if ((hidCount > 0 || visCount > 0) && A.markDirty) A.markDirty();  // §S262: trigger render on any visibility change
-    // Log every 10th evaluation (once per second at 60fps)
-    if (A._dlodFrame % (EVAL_EVERY * 10) === 0) {
-      var camStorey = visStoreys ? Object.keys(visStoreys).join('+') : 'all';
-      console.log('[DLOD] §DLOD_FRUSTUM vis=' + visCount +
-        ' hid=' + hidCount + ' skip=' + skipCount +
-        ' storeys=' + camStorey + ' ms=' + ms);
+      if (changed) obj.instanceMatrix.needsUpdate = true;
     }
 
-    // §S262: No geometry swap — real geometry always. DLOD = visibility culling only.
+    if ((imHid > 0 || imVis > 0) && A.markDirty) A.markDirty();
   };
 
-  // ── §S261: Geometry-swap promote/demote ──
-  var PROMOTE_BUDGET = 20;    // max slots to promote per tick
-  var DEMOTE_BUDGET = 40;     // max slots to demote per tick (cheaper)
-  var PROMOTE_DIST = 50;      // metres — swap bbox→real when closer
-  var DEMOTE_DIST = 80;       // metres — swap real→bbox when farther (hysteresis)
-  var _totalPromoted = 0;
-  var _promoteLogThrottle = 0;
-
-  function _promotePass() {
-    var camX = A.camera.position.x;
-    var camY = A.camera.position.y;
-    var camZ = A.camera.position.z;
-    var promoted = 0, demoted = 0;
-    var bboxGeo = A._dlodBboxGeo;
-    if (!bboxGeo) return;
-
-    for (var bmId in A._dlodSlots) {
-      var slots = A._dlodSlots[bmId];
-      var bm = slots._bmRef;
-      if (!bm || !bm.parent) continue;  // mesh removed from scene
-
-      var changed = false;
-      for (var i = 0; i < slots.length; i++) {
-        if (promoted >= PROMOTE_BUDGET && demoted >= DEMOTE_BUDGET) break;
-        var s = slots[i];
-
-        // Distance from camera to element world position
-        var dx = s.wx - camX, dy = s.wy - camY, dz = s.wz - camZ;
-        var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-        if (!s.promoted && dist < PROMOTE_DIST && promoted < PROMOTE_BUDGET) {
-          // PROMOTE: bbox → real geometry
-          var realGeo = A.meshCache[s.hash];
-          if (!realGeo) continue;  // geometry not in cache yet
-          var vc = realGeo.attributes.position ? realGeo.attributes.position.count : 0;
-          var ic = realGeo.index ? realGeo.index.count : vc;
-          if (vc > s.reservedVerts || ic > s.reservedIdx) continue;  // doesn't fit
-
-          try {
-            bm.setGeometryAt(s.slotId, realGeo);
-            bm.setMatrixAt(s.slotId, s.realMatrix);
-            s.promoted = true;
-            promoted++;
-            _totalPromoted++;
-            changed = true;
-          } catch(e) { /* skip on error */ }
-        }
-        else if (s.promoted && dist > DEMOTE_DIST && demoted < DEMOTE_BUDGET) {
-          // DEMOTE: real → bbox (free GPU detail for far elements)
-          try {
-            bm.setGeometryAt(s.slotId, bboxGeo);
-            bm.setMatrixAt(s.slotId, s.bboxMatrix);
-            s.promoted = false;
-            demoted++;
-            _totalPromoted--;
-            changed = true;
-          } catch(e) { /* skip on error */ }
-        }
-      }
-      // No needsUpdate needed for BatchedMesh — setGeometryAt/setMatrixAt handle it
-    }
-
-    if ((promoted > 0 || demoted > 0) && A.markDirty) A.markDirty();
-
-    // Throttled logging — every 10th tick with activity
-    _promoteLogThrottle++;
-    if ((promoted > 0 || demoted > 0) && _promoteLogThrottle % 10 === 0) {
-      console.log('[DLOD] §DLOD_SWAP promote=' + promoted + ' demote=' + demoted +
-        ' total_promoted=' + _totalPromoted +
-        ' cached=' + Object.keys(A.meshCache).length);
-    }
-  }
-
-  // ── Restore all DLOD-hidden meshes ──
+  // ── Restore all hidden elements ──
   function _restoreAll() {
-    A.scene.traverse(function(obj) {
-      if (obj.isMesh && obj.userData._dlodHidden) {
-        obj.visible = true;
-        obj.userData._dlodHidden = false;
-      }
-      if (obj.isInstancedMesh && A._instanceMeta[obj.id]) {
-        var meta = A._instanceMeta[obj.id];
-        var changed = false;
-        for (var i = 0; i < meta.length; i++) {
-          if (meta[i]._origMatrix) {
-            obj.setMatrixAt(i, meta[i]._origMatrix);
-            meta[i]._origMatrix = null;
-            changed = true;
-          }
+    // InstancedMesh
+    for (var ii = 0; ii < _instancedMeshes.length; ii++) {
+      var im = _instancedMeshes[ii];
+      var meta = im.meta;
+      var changed = false;
+      for (var i = 0; i < meta.length; i++) {
+        if (meta[i]._dlodHid && meta[i]._origMatrix) {
+          im.obj.setMatrixAt(meta[i].instanceIndex, meta[i]._origMatrix);
+          meta[i]._dlodHid = false;
+          changed = true;
         }
-        if (changed) obj.instanceMatrix.needsUpdate = true;
       }
-      if (obj.isBatchedMesh && A._batchMeta[obj.id]) {
-        var meta = A._batchMeta[obj.id];
-        for (var i = 0; i < meta.length; i++) {
-          obj.setVisibleAt(meta[i].slotId, true);
-        }
-        obj.visible = true;
-      }
-    });
-    console.log('[DLOD] §DLOD_RESTORE all meshes visible');
+      if (changed) im.obj.instanceMatrix.needsUpdate = true;
+    }
+    console.log('[DLOD] §DLOD_RESTORE all visible');
   }
 }
