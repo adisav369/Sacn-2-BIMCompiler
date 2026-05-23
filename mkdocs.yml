@@ -92,6 +92,7 @@ nav:
   - Designer:
       - "Red Pill — Design From Grammar": RED_PILL.md
       - "BOM-as-Context": BOM_AS_CONTEXT.md
+      - "BOM Engine Spec": BOM_ENGINE_SPEC.md
       - Browser as Modeller: BIM_Modeller_OOTB.md
       - BIM OOTB (Browser): BIM_Designer_Browser.md
       - Clash Detection: CLASH_DETECTION.md

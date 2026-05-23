@@ -2,7 +2,8 @@
 
 > **One-line:** A universal recursive engine where every element is a BOMNode. Parent provides AABB. Child fills it per strategy. `getChildren()` empty = leaf. `getParentBOM()` null = root. One algorithm, data-driven.
 
-**Status:** Spec v4 — Java contract alignment, interface patterns defined
+**Status:** Spec v5 — hardened, roadmap added, existing stack integration confirmed
+**Reviewed by:** DeepSeek (2026-05-23) — validated against S270 bugs, confirmed existing stack sufficiency
 **Builds on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §2, §3, §4.2 | [BOM_AS_CONTEXT.md](BOM_AS_CONTEXT.md) | [REFACTOR_DOC_CANVAS.md](REFACTOR_DOC_CANVAS.md)
 **Java precedent:** `DAGCompiler/src/main/java/com/bim/compiler/contract/` — 15 interfaces already define the abstract patterns. This spec is the JS port for browser-side recomposition.
 **Relationship to grid_kinematics:** BOM engine **layers on top** of kinematics, consuming its attach map. L0 = geometry primitives. L1 = BOM reasoning. Both run.
@@ -616,26 +617,139 @@ deploy/dev/
 
 ---
 
-## 15. Implementation Order
+## 15. Existing Stack Integration
 
-| Step | Deliverable | Depends On | Tests |
-|------|-------------|-----------|-------|
-| 1 | `bom_strategies.js` — 8 pure functions | Nothing | ~35 |
-| 2 | `bom_constraints.js` — validation + PHANTOM | Nothing | ~25 |
-| 3 | `bom_diff.js` — state diff → commands | Nothing | ~15 |
-| 4 | `bom_node.js` — BOMNode + recompose() | 1, 2 | ~40 |
-| 5 | DB migration — ALTER TABLE m_bom_line | Nothing | SQL |
-| 6 | `bom_grid.js` — GridLineManager | Nothing | ~10 |
-| 7 | `bom_tree.js` — materializeLevel + attach map bridge | 4, 5 | ~15 |
-| 8 | `bom_rules.js` — DiscRuleProvider stubs | Nothing | ~10 |
-| 9 | `disc_rules.json` — UBBL + NFPA seed rules | 8 | JSON validation |
-| 10 | `doc_canvas.js` rewiring — DISC/Next/L0→L1→L3 | All above | Integration |
+The BOM engine is NOT a replacement for the existing technology stack. It is a **new reasoning layer** that sits on top of proven infrastructure. Confirmed by review:
 
-Steps 1, 2, 3, 5, 6, 8 are independent — parallel.
+### 15.1 kernel_ops — Undo/Redo Logging (STAYS AS-IS)
+
+`kernel_ops.js` is the fossil record — `ELEMENT_PLACE`, `ELEMENT_MOVE`, `GRID_DRAG` ops logged to SQLite. The BOM engine extends it with one new op type:
+
+```js
+KernelOps.commitOp(db, 'BOM_RECOMPOSE', JSON.stringify({
+  parentBomId: 'SH_GF_ARC',
+  commands: [
+    { type: 'MOVE', guid: 'win_03', from: {x:2.1}, to: {x:3.6} },
+    { type: 'ADD',  guid: 'win_07_fill_4', productId: 'WIN_1200x900' },
+    { type: 'REMOVE', guid: 'win_06' }
+  ]
+}), parentBomId, 'BOM_RECOMPOSE_' + Date.now());
+```
+
+Undo = replay in reverse. Same pattern as RouteWalker's `ELEMENT_PLACE` logging. No changes to kernel_ops.js internals.
+
+### 15.2 Three.js — BatchedMesh/InstancedMesh (ALREADY OPTIMAL)
+
+The viewer already uses BatchedMesh + InstancedMesh (S260/S260b, r160 ESM). The BOM diff engine produces **instance-aware commands**:
+
+| Diff Command | Three.js Execution | Existing mechanism |
+|-------------|-------------------|-------------------|
+| `MOVE` | `InstancedMesh.setMatrixAt(i, newMatrix)` | `_guidToInstance` lookup → matrix update |
+| `SCALE` | Same — matrix encodes position + scale | Same path |
+| `ADD` | `InstancedMesh.count++`, set new matrix | Increment instance count |
+| `REMOVE` | Set matrix to zero-scale (hide) | Retain for undo |
+| `KEEP` | No-op | — |
+
+No changes to the rendering layer. The BOM engine outputs what to do; the existing scene layer knows how to do it.
+
+### 15.3 SQLite WASM (sql.js) — Already the Data Layer
+
+The entire viewer runs on sql.js queries against in-memory SQLite databases:
+- Building geometry: `{PREFIX}_extracted.db` (elements, transforms, geometries)
+- BOM structure: `{PREFIX}_BOM.db` (m_bom, m_bom_line)
+- ERP rules: `ERP.db` (AD_DocEvent_Rule, ad_val_rule)
+
+The BOM engine queries `m_bom_line` directly via the existing `db` object. No new persistence module needed. The only addition: an in-memory cache of the active BOM level's rules to avoid re-querying on every drag frame.
+
+```js
+// Cache pattern — load once per materializeLevel(), use on every drag
+var _cachedRules = null;
+function materializeLevel(parentBomId) {
+  _cachedRules = db.exec("SELECT ... FROM m_bom_line WHERE bom_id = ?", [parentBomId]);
+  // ... build BOMNodes from cached rows
+}
+```
+
+### 15.4 What the BOM Engine Actually Adds
+
+| New Capability | What Exists Today | What the BOM Engine Provides |
+|---------------|-------------------|------------------------------|
+| Idempotent recomposition | Incremental deltas (bug-prone) | Pure function: `(gridState, bomRules, elements) → targetState` |
+| Label-based grid tracking | ✓ Already in `grid_state.js` (S270) | Consumed as-is |
+| BOM rule propagation | None — children don't know parent rules | Child inherits parent's AABB, fills per `m_bom_line` strategy |
+| Child recount on resize | None — element count is fixed | FILL strategy adds/removes children |
+| Override promotion | None | Writes new `m_bom_line` rows (variant) on user "apply to all" |
+| Level-scoped grids | One flat grid set | Per-level grids with editable/shared/display-only properties |
+| PHANTOM tracking | None at runtime | `SUM(children) + PHANTOM = parent` verified per recompose |
+| Discipline rule validation | `clash_rules.json` (clash only) | Full `AD_DocEvent_Rule` checks during VALIDATE step |
 
 ---
 
-## 16. Deferred to v2
+## 16. Implementation Roadmap
+
+### Phase 1: Pure Math Engine (no DOM, no Three.js, no DB)
+
+Build and test the core algorithms in isolation. All files runnable with `node`.
+
+| Step | File | What | Tests | Depends On |
+|------|------|------|-------|-----------|
+| 1a | `bom_strategies.js` | 8 pure placement functions | ~35 | Nothing |
+| 1b | `bom_constraints.js` | Validation checks + PHANTOM computation | ~25 | Nothing |
+| 1c | `bom_diff.js` | State diff → KEEP/MOVE/ADD/REMOVE commands | ~15 | Nothing |
+| 1d | `bom_node.js` | BOMNode class + `recompose()` Template Method | ~40 | 1a, 1b |
+
+**Gate:** All ~115 tests pass. No external dependencies. Pure functions proven.
+
+### Phase 2: Data Layer (SQL + grid bridge)
+
+Connect the engine to real BOM data and the existing grid system.
+
+| Step | File | What | Tests | Depends On |
+|------|------|------|-------|-----------|
+| 2a | DB migration | `ALTER TABLE m_bom_line` — 11 new columns | SQL test | Nothing |
+| 2b | `bom_tree.js` | `materializeLevel()` — one-level DB query → BOMNode tree | ~15 | 1d, 2a |
+| 2c | `bom_tree.js` | `getAffectedBranch()` — consume kinematics attach map | ~5 | 2b |
+| 2d | `bom_grid.js` | GridLineManager — level-scoped grids, shared keys, editable | ~10 | Nothing |
+| 2e | Seed data | Populate `m_bom_line` rules for SH (Sample House) | Verification | 2a |
+
+**Gate:** BOMNode tree builds from real SH data. Attach map bridge works. Grids create/destroy per level.
+
+### Phase 3: Integration (doc_canvas rewiring)
+
+Wire the engine into the existing viewer. The big integration step.
+
+| Step | File | What | Tests | Depends On |
+|------|------|------|-------|-----------|
+| 3a | `doc_canvas.js` | L0→L1→L3 flow: kinematics first, BOM recompose second | Integration | Phase 1+2 |
+| 3b | `doc_canvas.js` | DISC/Next controller: depth axis within discipline | Integration | 3a |
+| 3c | `doc_canvas.js` | Instance-aware diff execution: MOVE→setMatrixAt, ADD→count++ | Integration | 3a |
+| 3d | `kernel_ops.js` | Log `BOM_RECOMPOSE` ops. Undo/redo for ADD/REMOVE. | ~5 | 3a |
+
+**Gate:** Grid drag on SH produces BOM-driven recount. Next/Prev walks BOM depth. Undo works.
+
+### Phase 4: Rules & Polish
+
+| Step | File | What | Tests | Depends On |
+|------|------|------|-------|-----------|
+| 4a | `bom_rules.js` | DiscRuleProvider stubs + JSON loader | ~10 | Nothing |
+| 4b | `disc_rules.json` | UBBL + NFPA seed rules (from AD_DocEvent_Rule) | JSON validation | 4a |
+| 4c | Integration | Rule violations shown in UI during VALIDATE | Integration | 4a, Phase 3 |
+
+**Gate:** UBBL dimension checks fire during recompose. Violations flagged.
+
+### Phase Summary
+
+| Phase | Focus | Files | Tests | Duration (sessions) |
+|-------|-------|-------|-------|---------------------|
+| 1 | Pure math | 4 files | ~115 | 2-3 |
+| 2 | Data + grid | 3 files + migration | ~30 | 2 |
+| 3 | Integration | doc_canvas + kernel_ops | ~10 + integration | 2-3 |
+| 4 | Rules | 2 files | ~10 | 1 |
+| **Total** | | **9 files + migration + JSON** | **~165** | **7-9 sessions** |
+
+---
+
+## 18. Deferred to v2
 
 | Item | Prerequisite |
 |------|-------------|
@@ -649,7 +763,7 @@ Steps 1, 2, 3, 5, 6, 8 are independent — parallel.
 
 ---
 
-## 17. Glossary — Abstract Terms Only
+## 19. Glossary — Abstract Terms Only
 
 | Term | Definition | Source |
 |------|-----------|--------|
