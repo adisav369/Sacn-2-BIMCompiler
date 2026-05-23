@@ -44,7 +44,7 @@ Mobile skips the custom DLOD tick entirely — r160 native culling handles Batch
 
 What you see is exactly what is in the IFC file — no proxies, no LOD geometry, no simplification.
 
-**Next: Three.js r177 WebGPU upgrade (S276)** — GPU compute shader frustum culling replaces JS tick entirely. 2-10x draw-call improvement. Scale target: 250K-500K elements. See `docs/ROADMAP.md` §S276.
+**Next: Three.js r184 WebGPU upgrade (S276)** — GPU compute shader frustum culling replaces JS tick entirely. 2-10x draw-call improvement. WebGPURenderer with compatibility mode (auto WebGL2 fallback). Scale target: 250K-500K elements. See `docs/ROADMAP.md` §S276.
 
 ## Feature Overview
 
