@@ -20,6 +20,12 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S272 Phase 1+2 DONE (2026-05-23): BOM Recomposition Engine — pure math + data layer. 373 tests.**
+  - Phase 1: `bom_engine/` — bom_strategies.js (8 strategies), bom_constraints.js (5 checks), bom_diff.js (state diff), bom_node.js (BOMNode + 5-step recompose). Bug found+fixed: _stepFill reserved space.
+  - Phase 2: bom_tree.js (DB→BOMNode via sql.js), bom_grid.js (GridLineManager), W022 migration (10 columns), W022b seed (SH rules).
+  - Advanced whitebox: fast-check (P1-P5, 2100 random inputs), metamorphic (M1-M5), golden master, state trace.
+  - **Next: Phase 3 — doc_canvas integration. Prompt: `prompts/S272_BOM_ENGINE_PHASE3.md`.**
+
 **S266 IN PROGRESS (2026-05-22): New From Reference — Doc Pill + JS BOM + Design Canvas + RouteWalker. See `docs/NEW_FROM_REFERENCE.md`.**
   - Red Pill icon replaces TM in main pill → swaps to 9-icon red glass Doc pill (Home/Grid/TM/Next/Disc/Open/Save/UBBL/Rosetta)
   - `bom_extract.js`: JS BOM extractor from elements_meta. Groups storey→discipline→ifc_class, envelope, storey heights, cadence. STD_MEP fallback. Cached in IndexedDB.

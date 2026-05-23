@@ -622,32 +622,54 @@ When a user drags a child to a new position (U1 override) and then accepts "appl
 
 ## 14. Testing Strategy
 
-### 14.1 Unit Tests (~150, pure JS, no DOM)
+### 14.1 Unit Tests — Actual Results (Phase 1+2)
 
-| File | Focus | Est. |
-|------|-------|------|
-| `bom_strategies.js` | Each strategy × edge cases | ~35 |
-| `bom_constraints.js` | Fit, overlap, buffer, mandatory, PHANTOM | ~25 |
-| `bom_node.js` | recompose() 5-step, 2/3-level cascade | ~40 |
-| `bom_diff.js` | Command generation from state pairs | ~15 |
-| `bom_tree.js` | One-level materialization, affected branch | ~15 |
-| `bom_grid.js` | Level-scoped grids, shared keys, editable | ~10 |
-| `bom_rules.js` | Rule loading, placement checks | ~10 |
+| File | Focus | Est. | Actual |
+|------|-------|------|--------|
+| `test_bom_strategies.js` | Each strategy × edge cases | ~35 | **56** |
+| `test_bom_constraints.js` | Fit, overlap, buffer, mandatory, PHANTOM | ~25 | **41** |
+| `test_bom_node.js` | recompose() 5-step, cascade, reserved space, I7 | ~40 | **114** |
+| `test_bom_diff.js` | Command generation, sort order, idempotency | ~15 | **36** |
+| `test_bom_tree.js` | materializeLevel, getAffectedBranch, 2-level | ~15 | **53** |
+| `test_bom_grid.js` | Level-scoped grids, shared keys, clamping | ~10 | **36** |
+| `test_bom_whitebox.js` | Property-based, metamorphic, golden master | — | **37** |
+| **Total** | | **~140** | **373** |
 
-### 14.2 Integration Tests
+### 14.2 Advanced Whitebox Techniques (S272, all Node.js, no browser)
 
-| Scenario | Proves |
-|----------|--------|
-| Parent elongated → child count increases | UNIFORM recount |
-| Parent shrunk → optional children removed, mandatory stays | REMOVE + mandatory + fit_priority |
-| Shared grid drag → all same-key children adjust | grid_shared_key |
-| UBBL-locked grid → not draggable | grid_editable=false |
-| Level 0 drag → Level 1 materializes with new AABB | Levelled materialization |
-| Level 1 drag → Level 2 adjusts | Cross-level cascade |
-| DISC switch resets depth | Mutual exclusion |
-| ROUTE strategy → RouteWalker | MEP integration |
-| Discipline rule violation flagged | DiscRuleProvider |
-| PHANTOM = 0 after fill | BUFFER invariant |
+| Technique | Tests | What it proves |
+|-----------|-------|----------------|
+| **Property-based (fast-check)** | P1–P5 (2100 random) | UNIFORM count ≥ 0, PHANTOM ≥ 0, MANDATORY always positioned, BUFFER I7 (overflow-aware), diff idempotency |
+| **Metamorphic** | M1–M5 (900 trials) | Doubling host ≥ count, PACKED ≥ UNIFORM, SPAN=1 iff space>0, CENTERED symmetric, shrink ≤ count |
+| **Golden master** | G1–G3 | Snapshot JSON serialization, determinism, file-based regression |
+| **State recording** | T1–T3 | `_trace` on BOMNode: hostAABB, reserved/filled counts, phantom, child details |
+
+### 14.3 Integration Test Scenarios — Status
+
+| Scenario | Proves | Status |
+|----------|--------|--------|
+| Parent elongated → child count increases | UNIFORM recount | **PASS** (exact counts: 4000→3, 8000→5) |
+| Parent shrunk → optional removed, mandatory stays | REMOVE + mandatory | **PASS** (window IS null, door positioned) |
+| Reserved space from mandatory reduces FILL | FILL available = parent - reserved | **PASS** (found+fixed _stepFill bug) |
+| Override at tack, not strategy position | Override excluded from FILL | **PASS** (sofa.x ≠ strategy pos) |
+| 3-level cascade containment | Transitive AABB: child ⊆ room ⊆ floor ⊆ building | **PASS** |
+| BUFFER invariant I7 | SUM(children) + PHANTOM = parent per axis | **PASS** (+ 500 random fast-check) |
+| Diff integration: shrink→REMOVE, grow→ADD | Command counts match | **PASS** |
+| Diff idempotency: recompose×2 → 0 diff | Stability | **PASS** (+ 300 random fast-check) |
+| Shared grid drag → all same-key adjust | grid_shared_key | **PASS** (GridLineManager) |
+| Non-editable grid → setPosition is no-op | grid_editable=false | **PASS** |
+| Level add/remove grids | Level-scoped lifecycle | **PASS** |
+| materialize → recompose on real SH_BOM.db | End-to-end DB→BOMNode→positions | **PASS** (10 children, 0 conflicts) |
+| 2-level materialize (Building→Floor) | Cross-level DB bridge | **PASS** |
+| Zero-length host | Edge case | **PASS** (0 children, no crash) |
+| Child size > host | Edge case | **PASS** (0 children, no crash) |
+
+### 14.4 Bugs Found by Testing
+
+| Bug | Found by | Fix |
+|-----|----------|-----|
+| `_stepFill` uses full parent width, ignoring mandatory reserved space | Reserved-space unit test | Subtract `totalReserved`, offset `parentOrigin` past rightmost reserved child |
+| I7 invariant fails when children overflow parent (minCount forcing) | fast-check P4 counterexample `[500,251,1,2]` | Overflow = FIT conflict, not I7 violation. Invariant holds when no overflow. |
 
 ---
 
@@ -721,32 +743,29 @@ function materializeLevel(parentBomId) {
 
 ## 16. Implementation Roadmap
 
-### Phase 1: Pure Math Engine (no DOM, no Three.js, no DB)
+### Phase 1: Pure Math Engine (no DOM, no Three.js, no DB) — DONE
 
-Build and test the core algorithms in isolation. All files runnable with `node`.
+| Step | File | What | Tests | Status |
+|------|------|------|-------|--------|
+| 1a | `bom_strategies.js` | 8 pure placement functions | **56** | DONE |
+| 1b | `bom_constraints.js` | Validation checks + PHANTOM computation | **41** | DONE |
+| 1c | `bom_diff.js` | State diff → KEEP/MOVE/ADD/REMOVE commands | **36** | DONE |
+| 1d | `bom_node.js` | BOMNode + `recompose()` + `snapshot()` + `_trace` | **114** | DONE |
+| — | `test_bom_whitebox.js` | Property-based + metamorphic + golden master | **37** | DONE |
 
-| Step | File | What | Tests | Depends On |
-|------|------|------|-------|-----------|
-| 1a | `bom_strategies.js` | 8 pure placement functions | ~35 | Nothing |
-| 1b | `bom_constraints.js` | Validation checks + PHANTOM computation | ~25 | Nothing |
-| 1c | `bom_diff.js` | State diff → KEEP/MOVE/ADD/REMOVE commands | ~15 | Nothing |
-| 1d | `bom_node.js` | BOMNode class + `recompose()` Template Method | ~40 | 1a, 1b |
+**Gate:** 284 tests pass. Bug found+fixed (_stepFill reserved space). fast-check validates across 2100 random inputs.
 
-**Gate:** All ~115 tests pass. No external dependencies. Pure functions proven.
+### Phase 2: Data Layer (SQL + grid bridge) — DONE
 
-### Phase 2: Data Layer (SQL + grid bridge)
+| Step | File | What | Tests | Status |
+|------|------|------|-------|--------|
+| 2a | `W022_bom_engine_columns.sql` | `ALTER TABLE m_bom_line` — 10 new columns | SQL verified | DONE |
+| 2b | `bom_tree.js` | `materializeLevel()` — DB → BOMNode tree | **53** | DONE |
+| 2c | `bom_tree.js` | `getAffectedBranch()` — attach map → affected parents | (in 2b) | DONE |
+| 2d | `bom_grid.js` | GridLineManager — level-scoped grids, shared keys | **36** | DONE |
+| 2e | `W022b_sh_bom_seed.sql` | SH rules: walls=FIXED, windows=UNIFORM, floor=SPAN | Verified | DONE |
 
-Connect the engine to real BOM data and the existing grid system.
-
-| Step | File | What | Tests | Depends On |
-|------|------|------|-------|-----------|
-| 2a | DB migration | `ALTER TABLE m_bom_line` — 11 new columns | SQL test | Nothing |
-| 2b | `bom_tree.js` | `materializeLevel()` — one-level DB query → BOMNode tree | ~15 | 1d, 2a |
-| 2c | `bom_tree.js` | `getAffectedBranch()` — consume kinematics attach map | ~5 | 2b |
-| 2d | `bom_grid.js` | GridLineManager — level-scoped grids, shared keys, editable | ~10 | Nothing |
-| 2e | Seed data | Populate `m_bom_line` rules for SH (Sample House) | Verification | 2a |
-
-**Gate:** BOMNode tree builds from real SH data. Attach map bridge works. Grids create/destroy per level.
+**Gate:** 89 tests pass. Real SH_BOM.db: 10 children materialized, all positioned, 0 conflicts.
 
 ### Phase 3: Integration (doc_canvas rewiring)
 
@@ -773,13 +792,13 @@ Wire the engine into the existing viewer. The big integration step.
 
 ### Phase Summary
 
-| Phase | Focus | Files | Tests | Duration (sessions) |
-|-------|-------|-------|-------|---------------------|
-| 1 | Pure math | 4 files | ~115 | 2-3 |
-| 2 | Data + grid | 3 files + migration | ~30 | 2 |
-| 3 | Integration | doc_canvas + kernel_ops | ~10 + integration | 2-3 |
-| 4 | Rules | 2 files | ~10 | 1 |
-| **Total** | | **9 files + migration + JSON** | **~165** | **7-9 sessions** |
+| Phase | Focus | Files | Tests | Status |
+|-------|-------|-------|-------|--------|
+| 1 | Pure math | 4 engine + 1 whitebox | **284** | **DONE** |
+| 2 | Data + grid | 2 engine + 2 migrations | **89** | **DONE** |
+| 3 | Integration | doc_canvas + kernel_ops | §-log verified | Prompt ready |
+| 4 | Rules | 2 files | ~10 | Pending |
+| **Total** | | **6 engine + 2 migration + 1 whitebox** | **373+** | **Phase 1+2 done** |
 
 ---
 
