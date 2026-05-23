@@ -796,13 +796,7 @@ function setupPanels(A) {
       btnGrid.classList.add('active');  // starts ON
       btnGrid.id = 'doc-grid-btn';
       pill.appendChild(btnGrid);
-      // 3. TM — Time Machine replay
-      var btnTM = A.icon('clock', { size: 24, title: 'Time Machine', onClick: function() {
-        if (window._isMobile) { APP.status.textContent = 'Time Machine — Desktop only'; return; }
-        if (typeof toggleTimeMachine === 'function') toggleTimeMachine();
-      }});
-      btnTM.id = 'doc-tm-btn';
-      pill.appendChild(btnTM);
+      // §S273: TM removed from doc pill — timeline slider is permanent, TM goes back to main pill
       // 4. Next — advance one construction phase
       var btnNext = A.icon('next', { size: 24, title: 'Next Phase', onClick: function() {
         if (window.DocCanvas) DocCanvas.nextPhase(A);
