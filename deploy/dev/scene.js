@@ -9,6 +9,22 @@ function setupScene(A) {
   A.canvas = canvas;
 
   // §S258: ColorManagement.enabled=false set in loader.js (before any THREE.Color created)
+  // §S271b: Suppress WEBGL_multi_draw warning spam — r160 BatchedMesh logs it per draw call.
+  // Cache the null result so console.warn fires only once, not 117K times per frame.
+  var _origWarn = console.warn;
+  var _multiDrawWarned = false;
+  console.warn = function() {
+    if (!_multiDrawWarned && arguments[0] && typeof arguments[0] === 'string' &&
+        arguments[0].indexOf('WEBGL_multi_draw') !== -1) {
+      _multiDrawWarned = true;
+      _origWarn.apply(console, arguments);
+      return;
+    }
+    if (_multiDrawWarned && arguments[0] && typeof arguments[0] === 'string' &&
+        arguments[0].indexOf('WEBGL_multi_draw') !== -1) return;
+    _origWarn.apply(console, arguments);
+  };
+
   // §S271: Mobile — disable antialias (4x MSAA fill cost), cap DPR at 1
   var _isMobileRenderer = (navigator.maxTouchPoints > 0 && window.screen.width < 1024);
   const renderer = new THREE.WebGLRenderer({
@@ -194,10 +210,10 @@ function setupScene(A) {
         console.warn('[S203] §QUOTA_LOW — possible private/incognito mode. IDB cache disabled.');
         A._cacheDisabled = true;
       }
-      // §S260b: If storage is full (>95%), nuke our IDB cache to reclaim space
+      // §S271b: Log quota but do NOT auto-delete — usage includes all sites, not just ours.
+      // Old code nuked our IDB at 95% total quota, killing imported IFCs unnecessarily.
       if (e.usage > 0 && e.usage >= e.quota * 0.95) {
-        console.warn('[S203] §QUOTA_FULL usage=' + uMB + '/' + qMB + 'MB — deleting IDB cache to reclaim space');
-        try { indexedDB.deleteDatabase(A.CACHE_DB_NAME); } catch(x) {}
+        console.warn('[S203] §QUOTA_HIGH usage=' + uMB + '/' + qMB + 'MB — browser storage nearly full (other sites). Our cache preserved.');
       }
     }).catch(function() {});
   }
@@ -300,7 +316,11 @@ function setupScene(A) {
     }
 
     // import:// URLs live only in IndexedDB — no network fallback
-    if (url.startsWith('import://')) throw new Error('DB not found in cache: ' + url);
+    if (url.startsWith('import://')) {
+      A.status.textContent = 'Imported IFC not found — browser storage was cleared. Please re-import the file.';
+      console.log('§IMPORT_CACHE_MISS url=' + url + ' — IDB cleared or quota reclaimed');
+      throw new Error('DB not found in cache: ' + url);
+    }
 
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`Failed to fetch ${url}: ${resp.status}`);
@@ -446,7 +466,7 @@ function setupScene(A) {
       var b = document.getElementById('section-btn'); if (b) b.click();
     },
     '4':  function() { if (typeof A.export4D5D === 'function') A.export4D5D(); },
-    'f':  function() { if (typeof A.openFindPanel === 'function') A.openFindPanel(''); },
+    'f':  function() { if (typeof A.openFindPanel === 'function') { A.openFindPanel(''); } else if (A.loadNavigate) { A.loadNavigate().then(function() { if (A.openFindPanel) A.openFindPanel(''); }); } },
     'p':  function() { if (typeof window.toggleSunglass === 'function') window.toggleSunglass(); },
     't':  function() { if (typeof toggleTimeMachine === 'function') toggleTimeMachine(); },
     'l':  function() { if (typeof window.toggleFlyAround === 'function') window.toggleFlyAround(); },
