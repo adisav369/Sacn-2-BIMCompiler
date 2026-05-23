@@ -28,7 +28,7 @@ geometry/BOM — read feedback files: deployment, pipeline, tack point, geometry
 
 ### Tests passing
 - `test_grid_kinematics.js`: 98/98
-- `test_doc_canvas.js`: 57/57
+- `test_doc_canvas.js`: 66/66
 - `test_s268_recompose.js`: 63/63
 - `test_grid_modules.js`: 114/114
 - `whitebox_regression.js`: 34/36 (2 pre-existing)
@@ -61,34 +61,49 @@ new phase elements at their ORIGINAL positions (from DB), not accounting for gri
 elements to their bay-proportional positions immediately.
 **Scope:** Triage — could be deferred to UBBL Stage 2.
 
-### BUG-4: SCALE commands not firing (all TRANSLATE)
-**Symptom:** Log shows `translated=1085 scaled=0` — every element translates, none scale.
-**Expected:** Walls spanning a grid line should SCALE (stretch), not translate.
-**Root cause:** `_collectElementData` reads `bbox_x/bbox_y/bbox_z` from DB, but the
-SC DB now has 3504 elements while `_getShownGuids()` returns phase GUIDs from BOM walk.
-Need to verify that bbox lookup matches the shown GUIDs. Possibly the bbox query
-returns rows keyed by a different GUID format.
-**Fix:** Add §-tagged log in `_collectElementData` showing element count, bbox match
-count, and sample bbox values. Then trace why no SPAN/EDGE relations form.
+### BUG-4: SCALE commands not firing — FIXED ✓
+**Was:** `_collectElementData` passed IFC bbox (Z-up: X,Y=depth,Z=height) to engine
+without coordinate swizzle. Engine used bboxZ (IFC height) as Three.js Z-axis extent
+and bboxY (IFC depth) as Three.js Y-axis extent — inverted. SPAN/EDGE could never
+form correctly because half-extents were on wrong axes.
+**Fix:** Swizzle in `_collectElementData`: `bboxY→bboxZ` (IFC depth→Three Z),
+`bboxZ→bboxY` (IFC height→Three Y). Added `§COLLECT_ELEMENTS` diag log showing
+bbox match count + sample values, and per-relation-type counts in `§RECOMPOSE_ENGINE`.
+**Tests:** T55 (swizzle), T56 (SPAN forms), T57 (EDGE forms), T58 (SCALE fires, scaleZ=1.1667).
+All 61/61 pass.
 
 ## What's Next — S270b (next session)
 
 ### Priority 1: Fix BUG-1 (incremental delta) — DONE ✓
 Fixed: `_lastAppliedDeltas` map, incremental delta computation, T52-T54 tests.
 
-### Priority 2: Fix BUG-4 (all TRANSLATE, no SCALE)
-Debug with §-tagged logs. If bbox data is missing or zero for all elements,
-SPAN/EDGE can never trigger. The engine classification is correct (98/98 tests)
-so the issue is in `_collectElementData`.
+### Priority 2: Fix BUG-4 (all TRANSLATE, no SCALE) — DONE ✓
+Fixed: IFC→Three.js bbox coordinate swizzle in `_collectElementData`. T55-T58 tests.
 
-### Priority 3: Y-axis drag UI
+### Priority 3: Refactor doc_canvas.js → 3 modules — DONE ✓ (Steps 1-2)
+Spec: `docs/REFACTOR_DOC_CANVAS.md`. Reviewed by DeepSeek 2026-05-23.
+**Step 1 (GridState wiring):** `grid_state.js` (already existed, 335 lines) wired into
+doc_canvas.js. All `_xPositions`, `_zPositions`, `_xLabels`, `_zLabels`, `_gridOriginals`,
+`_gridOrigByLabel`, `_ceilingGridY` vars removed from doc_canvas. Duplicate functions
+(`_snapshotGridOriginals`, `_computeGridDeltas`, `_collectGridLines`, `_resortLabels`,
+`_nextXLabel`, `_addGridPosition`, `_removeGridPosition`) replaced with GridState delegates.
+Added `getPosition()`, `getLabel()`, `getCount()` accessors to GridState.
+**Step 2 (GridRecompose extraction):** Created `grid_recompose.js` (682 lines).
+Extracted engine lifecycle, command dispatch, mesh transforms, BOM recompose, delta tracking.
+`_kinEngine`, `_kinEngineDirty`, `_lastAppliedDeltas`, all BOM state moved to GridRecompose.
+doc_canvas.js shrank from 2862 → 2088 lines.
+**Step 3 (GridInteraction):** Deferred — interaction code is ~190 lines, low priority.
+All 4 test suites pass: 73 + 98 + 63 + 114 = 348 tests. Whitebox 34/36 (2 pre-existing).
+Script tags and sw.js precache updated. CACHE_VERSION v442.
+
+### Priority 4: Y-axis drag UI
 The ceiling grid auto-places at eave Y (translucent disc visible). But the current
 drag UI only handles X/Z axis lines. Need to wire Y-axis grid interaction:
 - Click on ceiling disc → select CEIL grid
 - Drag up/down → engine produces ROOF_LIFT + WALL_HEIGHT_SCALE cascade
 - Status shows "Ceiling grid selected (1 ROOF_LIFT, 2 cascades)"
 
-### Priority 4: BUG-2 and BUG-3 (triage)
+### Priority 5: BUG-2 and BUG-3 (triage)
 - BUG-2: Warning on empty attach map — small UX fix
 - BUG-3: Phase-aware recompose — may defer to UBBL Stage 2
 

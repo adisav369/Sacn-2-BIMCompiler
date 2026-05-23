@@ -227,6 +227,21 @@
   function getCeilingY() { return _ceilingY; }
   function setCeilingY(y) { _ceilingY = y; }
 
+  /** getPosition(axis, index) — single-value read without copy overhead */
+  function getPosition(axis, index) {
+    return (axis === 'x' ? _xPositions : _zPositions)[index];
+  }
+
+  /** getLabel(axis, index) — single-value read */
+  function getLabel(axis, index) {
+    return (axis === 'x' ? _xLabels : _zLabels)[index];
+  }
+
+  /** getCount(axis) — number of lines on axis */
+  function getCount(axis) {
+    return (axis === 'x' ? _xPositions : _zPositions).length;
+  }
+
   // ── Re-sort ───────────────────────────────────────────────────────────────
 
   /**
@@ -312,6 +327,9 @@
   exports.getOriginal = getOriginal;
   exports.getCeilingY = getCeilingY;
   exports.setCeilingY = setCeilingY;
+  exports.getPosition = getPosition;
+  exports.getLabel = getLabel;
+  exports.getCount = getCount;
   exports.resortLabels = resortLabels;
 
 })(typeof module !== 'undefined' ? module.exports : (window.GridState = {}));

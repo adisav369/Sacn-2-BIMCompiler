@@ -244,15 +244,23 @@ var mockDocument = {
 
 // ── Load modules into sandboxed context ────────────────────────────────────
 function loadDocCanvas() {
+  // Load GridState + GridRecompose first — doc_canvas.js depends on them
+  var gsSrc = readFile('grid_state.js');
+  var grSrc = readFile('grid_recompose.js');
   var src = readFile('doc_canvas.js');
   var ctx = {
     window: {},
     document: mockDocument,
     THREE: THREE,
     console: { log: function() {}, warn: function() {} },
-    performance: { now: function() { return 0; } }
+    performance: { now: function() { return 0; } },
+    module: undefined  // ensure IIFE uses window.* path
   };
   vm.createContext(ctx);
+  vm.runInContext(gsSrc, ctx);
+  ctx.GridState = ctx.window.GridState;
+  vm.runInContext(grSrc, ctx);
+  ctx.GridRecompose = ctx.window.GridRecompose;
   vm.runInContext(src, ctx);
   return ctx.window.DocCanvas;
 }
@@ -1329,8 +1337,10 @@ test('T51 Issue: HUD grid bays section hidden after deactivate', function() {
 // ── T52-T54: §S270 BUG-1 Incremental delta fix ──
 console.log('\n── T52-T54: §S270 BUG-1 Incremental Delta Fix ──');
 
-// Load doc_canvas + grid_kinematics in same VM context
+// Load grid_state + doc_canvas + grid_kinematics in same VM context
 function loadDocCanvasWithEngine() {
+  var gsSrc = readFile('grid_state.js');
+  var grSrc = readFile('grid_recompose.js');
   var gkSrc = readFile('grid_kinematics.js');
   var dcSrc = readFile('doc_canvas.js');
   var ctx = {
@@ -1341,9 +1351,13 @@ function loadDocCanvasWithEngine() {
     performance: { now: function() { return 0; } }
   };
   vm.createContext(ctx);
-  vm.runInContext(gkSrc, ctx);  // exports GridKinematics to window
-  ctx.GridKinematics = ctx.window.GridKinematics;  // expose as global for _rebuildEngine
-  vm.runInContext(dcSrc, ctx);  // reads GridKinematics
+  vm.runInContext(gsSrc, ctx);
+  ctx.GridState = ctx.window.GridState;
+  vm.runInContext(gkSrc, ctx);
+  ctx.GridKinematics = ctx.window.GridKinematics;
+  vm.runInContext(grSrc, ctx);
+  ctx.GridRecompose = ctx.window.GridRecompose;
+  vm.runInContext(dcSrc, ctx);
   return ctx.window.DocCanvas;
 }
 
