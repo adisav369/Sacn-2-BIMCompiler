@@ -8,7 +8,7 @@ DB = model. Template = view. Browser = runtime. Three concerns, never merged.
 
 ## Shipped (S200–S271, April–May 2026)
 
-Built in 33 days (April 20 – May 23). 490 commits. 80+ JS modules. 396 tests.
+Built in 33 days (April 20 – May 23). 552 commits. 92 JS modules. 30 test suites.
 
 The BIM Intent Compiler project began October 2025 (concept) → January 2026 (Java compiler) → April 2026 (browser OOTB). The browser viewer outgrew the backend in one month.
 
@@ -49,12 +49,12 @@ The BIM Intent Compiler project began October 2025 (concept) → January 2026 (J
 - FTS5 search across 23 AD tables
 - Glass overlay, edge swipe, accordion drill
 
-### Infrastructure (S225–S243, S260–S262)
+### Infrastructure (S225–S243, S260–S274)
 - 18 locales, auto-detected from browser
 - Split-DB streaming for large buildings (meta + geo)
 - City mode — 786 buildings loaded simultaneously
 - Share sheet — IFC/DB save, contribute, system share
-- DLOD visibility culling, BatchedMesh instancing
+- §S274 DLOD: r160 `perObjectFrustumCulled` for BatchedMesh (native, zero JS cost) + InstancedMesh zero-scale frustum culling (desktop). Mobile: render gate + DPR 0.75 orbit. See `docs/FeatureComparison.md` §Visibility Culling.
 
 ### Red Pill / New From Reference (S266–S270)
 - Doc Canvas — design document with live BOM
@@ -65,10 +65,32 @@ The BIM Intent Compiler project began October 2025 (concept) → January 2026 (J
 
 ## Next
 
-### S271+ — Mobile Performance
-- Render gate (stop GPU spinning when idle)
-- Background tab pause (visibilitychange → stop rAF)
-- WebGL context-lost recovery
+### S276 — Three.js r177 + WebGPU Upgrade (Priority 1)
+Currently on r160 (Dec 2023). r177 (May 2026) brings WebGPU — the single biggest performance unlock.
+
+**What it gives us:**
+- **2-10x** draw-call performance (WebGPU driver overhead far lower than WebGL)
+- **GPU compute shader frustum culling** — replaces JS tick entirely, zero CPU cost
+- **Indirect draw buffer** populated by compute shader — GPU decides what to draw
+- **TSL** (Three Shading Language) — shader nodes in JS, replaces GLSL chunks
+- **Scale target:** 250K-500K elements viable (1M particles proven at 60fps, Expo 2025 Osaka)
+
+**Migration scope (est. 2-3 sessions):**
+- `import from "three/webgpu"` instead of `"three"`
+- Async renderer init (`await renderer.init()`)
+- Re-tune lighting (`useLegacyLights` removed in r165)
+- TSL replaces custom shader code
+- Test all 21 buildings
+
+**Risk:** [BatchedMesh slower on Android WebGPU](https://github.com/mrdoob/three.js/issues/29580) — mobile WebGPU is newer, less optimised than desktop. WebGL fallback available.
+
+**WebGPU browser support (Baseline Jan 2026):** Chrome, Edge, Firefox, Safari 26 — all ship stable.
+
+### S274 DONE — DLOD + Mobile Perf
+- r160 `perObjectFrustumCulled` handles BM natively (zero JS cost)
+- IM zero-scale frustum culling (desktop only, ~1.5ms tick)
+- Mobile: DLOD off, on-demand render gate, DPR 0.75 orbit, tab pause
+- Bench: `viewer/dlod_bench.html`
 
 ### Grid UX Polish
 - Roof appearing in ground floor (storey filter)
