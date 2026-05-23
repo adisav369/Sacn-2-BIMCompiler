@@ -2004,6 +2004,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#125-override-promotion-data-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.5 Override Promotion — Data Mechanics
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2211,6 +2222,34 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-review-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Review Log
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. Review Log">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v5-review-deepseek-2026-05-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v5 Review — DeepSeek (2026-05-23)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4958,6 +4997,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#125-override-promotion-data-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.5 Override Promotion — Data Mechanics
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5165,6 +5215,34 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-review-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Review Log
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. Review Log">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v5-review-deepseek-2026-05-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v5 Review — DeepSeek (2026-05-23)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -6038,7 +6116,7 @@ PHANTOM is transparent to user — an internal guardrail. Only surfaces as "no m
 <tr>
 <td>U2</td>
 <td>Promote override</td>
-<td>Update m_bom_line columns. Clear overridden on siblings.</td>
+<td>Clone m_bom_line row with new values → see §12.5</td>
 </tr>
 <tr>
 <td>U3</td>
@@ -6106,6 +6184,34 @@ PHANTOM is transparent to user — an internal guardrail. Only surfaces as "no m
 </tr>
 </tbody>
 </table>
+<hr />
+<h3 id="125-override-promotion-data-mechanics">12.5 Override Promotion — Data Mechanics<a class="headerlink" href="#125-override-promotion-data-mechanics" title="Permanent link">&para;</a></h3>
+<p>When a user drags a child to a new position (U1 override) and then accepts "apply to all siblings":</p>
+<div class="highlight"><pre><span></span><code>1. User drags one child → overridden=true, new position stored in scene
+
+2. Engine offers: &quot;Apply spacing=1600mm to all [productId] children on this parent?&quot;
+
+3. User accepts → Promote:
+   a. Compute new spacing from override position:
+      newSpacing = (overriddenPos - edgeOffset) / instanceIndex
+
+   b. Clone the m_bom_line row:
+      INSERT INTO m_bom_line (bom_id, child_product_id, layout_strategy,
+        min_space_mm, entity_type, ...)
+      SELECT bom_id, child_product_id, layout_strategy,
+        [newSpacing], &#39;U&#39;,  ...     -- entity_type=&#39;U&#39; (user variant)
+      FROM m_bom_line WHERE bom_child_id = [original]
+
+   c. Mark original row: is_active=0 (soft delete, never hard delete)
+
+   d. Clear overridden flag on all siblings of same child_product_id
+
+   e. Recompose parent with new rule → all siblings reposition
+
+4. Log to kernel_ops: BOM_PROMOTE op with original + new bom_child_id
+   Undo = reactivate original row, deactivate variant, recompose
+</code></pre></div>
+<p><strong>Key:</strong> The original <code>entity_type='D'</code> (dictionary) row is never modified — it's deactivated. The new <code>entity_type='U'</code> (user) row carries the variant. This preserves the reference building's original rules for comparison or rollback.</p>
 <hr />
 <h2 id="13-fallback-degradation">13. Fallback &amp; Degradation<a class="headerlink" href="#13-fallback-degradation" title="Permanent link">&para;</a></h2>
 <table>
@@ -6702,6 +6808,56 @@ PHANTOM is transparent to user — an internal guardrail. Only surfaces as "no m
 <td><strong>Contractor</strong></td>
 <td>Best-fit assignment engine (v2). Finds closest catalog match.</td>
 <td><code>IBOMContractor</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="20-review-log">20. Review Log<a class="headerlink" href="#20-review-log" title="Permanent link">&para;</a></h2>
+<h3 id="v5-review-deepseek-2026-05-23">v5 Review — DeepSeek (2026-05-23)<a class="headerlink" href="#v5-review-deepseek-2026-05-23" title="Permanent link">&para;</a></h3>
+<p><strong>Accepted:</strong>
+- Phased rollout starting with pure math (Phase 1)
+- Gentle integration via ALTER TABLE (not new tables)
+- Idempotent recomposition as definitive fix for S270 bugs
+- Data-driven approach aligned with BOM-as-Context vision</p>
+<p><strong>Raised concerns — disposition:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Disposition</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Web Worker for recompose</td>
+<td><strong>Deferred</strong> — measure first</td>
+<td>Tree is small (~50 nodes per level). §13 has debounce fallback. Worker adds serialization overhead. Profile Phase 3 before deciding.</td>
+</tr>
+<tr>
+<td>InstancedMesh command execution</td>
+<td><strong>Already specified</strong> in §15.2</td>
+<td>MOVE→setMatrixAt, ADD→count++, REMOVE→zero-scale. <code>_guidToInstance</code> is the existing bridge.</td>
+</tr>
+<tr>
+<td>kernel_ops undo/redo</td>
+<td><strong>Already specified</strong> in §15.1</td>
+<td><code>BOM_RECOMPOSE</code> op type with full command payload. Same pattern as RouteWalker.</td>
+</tr>
+<tr>
+<td>BOM variant promotion</td>
+<td><strong>Added</strong> — §12.5</td>
+<td>Clone m_bom_line row, entity_type='U', soft-delete original. Undo = reactivate original.</td>
+</tr>
+<tr>
+<td>PHANTOM &amp; discipline validation</td>
+<td><strong>Already specified</strong></td>
+<td>PHANTOM in recompose Step 5 (§4). Discipline rules in Phase 4 (§16).</td>
+</tr>
+<tr>
+<td>Event-sourced kernel_ops</td>
+<td><strong>Rejected</strong></td>
+<td>Engine is idempotent — computes from current state, not event replay. kernel_ops is append-only log, not state machine. Coupling them defeats the purpose.</td>
 </tr>
 </tbody>
 </table>
