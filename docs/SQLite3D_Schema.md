@@ -1,6 +1,6 @@
 # SQLite Schema — BIM OOTB Viewer Database
 
-> **The innovation:** IFC → web-ifc WASM → SQLite BLOBs → Three.js GPU. No server. No format conversion. No proprietary viewer. Two DBs (or one), straight from the IFC standard to the browser.
+> **The innovation:** IFC → web-ifc WASM → SQLite BLOBs → Three.js GPU. No server. No format conversion. No proprietary viewer. One DB per building, straight from the IFC standard to the browser.
 
 **Updated:** 2026-05-19
 
@@ -255,14 +255,14 @@ The WASM binary is also vendored locally at `deploy/dev/lib/sql-wasm.wasm` for l
 | **sql.js** v1.14.1 | [github.com/sql-js/sql.js](https://github.com/sql-js/sql.js) | MIT | Active (Ophir Lojkine) | Upstream of rtree-sql.js |
 | **SQLite** (C source) | [sqlite.org/src](https://sqlite.org/src/dir?ci=tip) | Public domain | Active (D. Richard Hipp) | Compiled into WASM |
 | **Emscripten** | [github.com/emscripten-core/emscripten](https://github.com/emscripten-core/emscripten) | MIT | Active (Alon Zakai + community) | Compiler toolchain |
-| **Three.js** r128 | [github.com/mrdoob/three.js](https://github.com/mrdoob/three.js) | MIT | Active | 3D renderer |
+| **Three.js** r160 ESM | [github.com/mrdoob/three.js](https://github.com/mrdoob/three.js) | MIT | Active | 3D renderer |
 | **web-ifc** v0.0.77 | [github.com/ThatOpenCompany/engine](https://github.com/ThatOpenCompany/engine) | MPL-2.0 | Active | IFC parser (import only) |
 
 ### Live Demonstration — Shareable Clash Deep-Link
 
 The R-tree powers the entire clash detection pipeline: spatial index → O(log N) query → fly-to → shareable URL. This link opens a specific clash pair in the Hospital Garage (63K elements), pre-positioned at the overlap zone:
 
-[**Open Clash Pair — Hospital Garage MEP vs ARC**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/sandbox/index.html?db=https%3A%2F%2Fobjectstorage.ap-kulai-2.oraclecloud.com%2Fn%2Fax3cp6tzwuy2%2Fb%2Fbim-ootb-live%2Fo%2Fbuildings%2FHospitalGarage_extracted.db#clash=0GjpF04mX1K8P$TdM8fU2_~3ltWc9XO98DfOXi0yjJr4p&st=&cam=-44.21,-8.22,-42.42&tgt=-52.01,-7.95,-35.39&tol=25)
+[**Open Clash Pair — Hospital Garage MEP vs ARC**](https://red1oon.github.io/bim-ootb/viewer/viewer.html?db=buildings%2FHospitalGarage_extracted.db#clash=0GjpF04mX1K8P$TdM8fU2_~3ltWc9XO98DfOXi0yjJr4p&st=&cam=-44.21,-8.22,-42.42&tgt=-52.01,-7.95,-35.39&tol=25)
 
 URL anatomy:
 ```
@@ -323,7 +323,7 @@ Areas where our production experience gives us unique credibility to contribute 
 |------|-------------------|-------|
 | Example: SQLite → BufferGeometry → InstancedMesh | Working pipeline: `new Float32Array(blob)` → `setAttribute('position', ...)` → GPU. No tutorial exists. | three.js/examples |
 | Mobile GPU instancing limits | Real data: which phones fail at which element count, memory thresholds | Documentation |
-| DLOD (proximity level-of-detail) with spatial index | Our approach: R-tree query near camera → load real meshes, wireframe the rest. Novel. | Example/blog |
+| DLOD §S274 per-slot/instance frustum culling | r160 native BM culling + IM zero-scale. See `docs/FeatureComparison.md` §Visibility Culling. | `viewer/dlod.js` |
 
 #### To web-ifc / That Open Engine — IFC4 edge cases at scale
 

@@ -35,7 +35,14 @@ The viewer uses Three.js r160 with physically-based rendering (PBR):
 
 ### Visibility Culling (DLOD)
 
-For buildings above 100,000 elements, a frustum-based visibility system hides geometry that is behind the camera. This is pure visibility toggling — no geometry is simplified or replaced with proxies. What you see is exactly what is in the IFC file.
+Two-tier frustum culling, both pure visibility — no geometry simplified or replaced:
+
+- **BatchedMesh** (unique elements): Three.js r160 `perObjectFrustumCulled` handles per-slot culling natively inside `renderer.render()` — zero JS cost. 84% of slots hidden when camera is inside a room.
+- **InstancedMesh** (repeated elements, desktop only): Custom zero-scale matrix trick hides off-screen instances. ~32% hidden at typical zoom. ~1.5ms tick for 35K instances.
+
+Mobile skips the custom DLOD tick entirely — r160 native culling handles BatchedMesh, and InstancedMesh buffer re-upload (`instanceMatrix.needsUpdate`) costs more than it saves on mobile GPUs. Instead: on-demand render gate (skip `renderer.render()` when idle) + DPR 0.75 during orbit (44% fewer pixels while dragging).
+
+What you see is exactly what is in the IFC file — no proxies, no LOD geometry, no simplification.
 
 ## Feature Overview
 
@@ -239,7 +246,7 @@ All open-source dependencies. No proprietary components.
 
 ## Catalogue
 
-30 buildings from public IFC test files, ranging from a 65-element sample house to a 125,698-element university campus (LTU A-House, Sweden). Includes residential, commercial, hospital, airport terminal, and federated MEP models.
+33 buildings from public IFC test files, ranging from a 65-element sample house to a 125,698-element university campus (LTU A-House, Sweden). Includes residential, commercial, hospital, airport terminal, and federated MEP models.
 
 ## Contact
 

@@ -16,7 +16,7 @@ In February 2025, Andrej Karpathy (co-founder of OpenAI, former Tesla AI directo
 
 He described accepting LLM suggestions without fully reading the code, running the app, seeing if it works, and iterating. He noted this works for throwaway weekend projects, not production code.
 
-**This project disagrees with half of that statement.** The BIM Compiler is production-grade — 35 buildings compiled, 6 mathematical gates, deterministic output. But it was built entirely through AI-assisted programming. The difference: **domain expertise is the guard rail, not the code.**
+**This project disagrees with half of that statement.** The BIM Compiler is production-grade — 33 buildings compiled, 6 mathematical gates, deterministic output. But it was built entirely through AI-assisted programming. The difference: **domain expertise is the guard rail, not the code.**
 
 ---
 
@@ -177,7 +177,7 @@ The strongest evidence for vibe programming at scale is the RTree federation vie
 
 ### Proven at scale
 
-- **1,063,911 elements** in sandbox city (12 disciplines, 35 buildings)
+- **1,063,911 elements** in sandbox city (12 disciplines, 33 buildings)
 - **190,000 meshes** tessellated from SQLite BLOBs in <45s
 - **Fine-grained Outliner** — VENT/HEAT/PLB/SAN/HVAC/ARC/STR/VOID, not generic MEP
 - **Session .blend ~1MB** — links to baked chunks, instant save
@@ -255,7 +255,7 @@ The second crack: Blender was the bottleneck, not the data.
 
 ### S192–S193: The last Blender steps
 
-S192 bridged the BLOB gap to the browser — the first time geometry from `component_geometries` was served to a client other than Blender. S193 implemented DLOD auto-linker: `.blend` link/unlink by camera position. These were still Blender sessions. The pivot hadn't happened yet.
+S192 bridged the BLOB gap to the browser — the first time geometry from `component_geometries` was served to a client other than Blender. S193 implemented DLOD auto-linker: `.blend` link/unlink by camera position. These were still Blender sessions. The pivot hadn't happened yet. (DLOD later rewritten as S274 per-slot frustum culling — see `docs/FeatureComparison.md` §Visibility Culling.)
 
 ### S195: Bonsai out. Browser in.
 
@@ -408,11 +408,11 @@ The R-tree spatial index is not an optimisation. It is the reason the product wo
 | Package | Version | Date | Role |
 |---------|---------|------|------|
 | **rtree-sql.js** | v1.7.0 | 3 Jun 2022 | All DB queries + R-tree clash detection — loaded on **every page view** |
-| **Three.js** | r128 | 23 Apr 2021 | 3D rendering, InstancedMesh, clipping — loaded on **every page view** |
+| **Three.js** | r160 | 13 Dec 2023 | 3D rendering, BatchedMesh, clipping — loaded on **every page view** |
 | **web-ifc** | v0.0.77 | 6 Mar 2026 | IFC parsing — loaded **only when user drops an IFC file** |
 | **SheetJS** | v0.20.3 | — | Excel export — loaded on **every page view** |
 
-The core viewer (DB streaming, 3D rendering, clash detection, sharing) runs entirely on **rtree-sql.js v1.7.0 (2022)** and **Three.js r128 (2021)**. Both are 3-4 years old. The sql.js stability fixes from 2024 are not in our build (rtree-sql.js is a separate fork). web-ifc only matters for IFC import — the viewer never touches it. **This product could have been built in 2022** — the technology was ready. Nobody connected the pieces until Oct 2025.
+The core viewer (DB streaming, 3D rendering, clash detection, sharing) runs entirely on **rtree-sql.js v1.7.0 (2022)** and **Three.js r160 (2023)**. Both are 2-3 years old. The sql.js stability fixes from 2024 are not in our build (rtree-sql.js is a separate fork). web-ifc only matters for IFC import — the viewer never touches it. **This product could have been built in 2022** — the technology was ready. Nobody connected the pieces until Oct 2025.
 
 ### No Prior Art — In Any Industry
 
