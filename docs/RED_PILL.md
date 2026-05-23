@@ -391,7 +391,7 @@ The BOM engine (438 tests) provides the algebra. These tasks wire it to visible 
 | ID | Task | What the engine already does | What's missing |
 |---|---|---|---|
 | B1 | **Script tags** | All 6 `bom_engine/*.js` + `disc_rules.json` exist | Not in `index.html` — modules load but no `<script>` includes them |
-| B2 | **Wall→Window cascade** | `recompose()` with UNIFORM strategy recounts windows when parent AABB changes | L1 debounce fires (`_fireBomRecompose`) but `_bomNodes` is empty until first `materializeLevel()` call from BOM.db |
+| B2 | **Wall→Window cascade** | `recompose()` with UNIFORM strategy recounts windows when parent AABB changes | `materializeBomLevel()` exists in `grid_recompose.js` but only fires on explicit Next press. After B1, first Next populates `_bomNodes` → subsequent grid drags trigger L1 recompose. Verify with §-logs. |
 | B3 | **DISC switch → MEP fresh route** | ROUTE strategy stub exists, `route_walker.js` exists | ROUTE stub returns straight line. Wire: `ROUTE(p)` → `RouteWalker.walk(db, anchors, disc)` (~10 lines) |
 | B4 | **Tile recount on resize** | UNIFORM/PACKED strategies compute count from available space | verb_expand.js TILE formula not connected to BOM engine |
 | B5 | **Cross-DISC read-only cascade** | `recompose()` is stateless — reads current AABBs, doesn't care who moved them | No code needed. DISC switch → `materializeLevel()` → children read current positions. Already wired in `_materializeBomLevel()`. |
