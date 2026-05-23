@@ -20,6 +20,15 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S274 DONE (2026-05-24): DLOD Rewrite + Mobile Perf — bench proven.**
+  - Discovered Three.js r160 `perObjectFrustumCulled=true` handles BatchedMesh frustum culling natively — zero JS cost.
+  - Desktop: InstancedMesh zero-scale frustum culling (35K instances, ~32% hidden when zoomed in). ~1.5ms tick.
+  - Mobile: DLOD off (r160 native handles BM, IM zero-scale too expensive). On-demand render gate restored. DPR 0.75 during orbit.
+  - Stripped 250 lines dead code (spatial grid, geometry swap, storey culling — all indexed zero meshes).
+  - Bench tool: `viewer/dlod_bench.html` — localhost direct test, no Playwright overhead.
+  - Watchdog fixes: sw v444, share.js precache, bom_engine scripts + viewer.html tags.
+  - **Net:** Desktop IM culling is new. Mobile faster via render gate + DPR reduction + no DLOD overhead.
+
 **S273 DONE (2026-05-23): Red Pill UI Hardening — 73 tests, 0 failures.**
   - F1+F2: Save/Open design to IndexedDB (grid state + kernel_ops serialize/restore via prompt picker)
   - F3: Timeline scrub preserves user-placed grid lines (`_userGrids` tracking, re-added after replay)
