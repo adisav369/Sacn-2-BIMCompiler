@@ -76,16 +76,37 @@ function setupTools(A) {
   };
 
   // X-Ray
+  // §S271b: Optimized — update unique materials via _matCache, disable sortObjects during X-Ray.
+  // Old approach iterated all meshes (120K) and set mat.needsUpdate on each = GPU stall + per-frame sort.
   A.xrayOn = false;
   A.toggleXray = function() {
     A.xrayOn = !A.xrayOn;
     const btn = document.getElementById('xray-btn');
     btn.style.background = A.xrayOn ? '#4fc3f7' : '#444';
     btn.style.color = A.xrayOn ? '#000' : '#fff';
-    A.collectMeshes(o => o.isMesh).forEach(obj => {
-      const mat = obj.material;
+
+    // §S271b: Update unique materials only (via _matCache) — O(unique mats) not O(all meshes)
+    // No scene.traverse — _matCache has all streaming materials, ground/helpers are negligible.
+    var updated = 0;
+    var seen = new Set();
+    var mats = [];
+    if (A._matCache) {
+      for (var k in A._matCache) {
+        var m = A._matCache[k];
+        if (m && !seen.has(m)) { seen.add(m); mats.push(m); }
+      }
+    }
+    // Ground material
+    if (A.ground && A.ground.material && !seen.has(A.ground.material)) {
+      mats.push(A.ground.material);
+    }
+
+    // §S276b: Batch material updates across frames to avoid GPU shader recompile stutter.
+    // Set properties immediately (cheap), but stagger needsUpdate in batches via rAF.
+    var BATCH = Math.ceil(mats.length / 3);
+    for (var i = 0; i < mats.length; i++) {
+      var mat = mats[i];
       if (A.xrayOn) {
-        // Save originals before modifying
         if (mat.userData.origOpacity === undefined) mat.userData.origOpacity = mat.opacity;
         if (mat.userData.origTransparent === undefined) mat.userData.origTransparent = mat.transparent;
         if (mat.userData.origSide === undefined) mat.userData.origSide = mat.side;
@@ -93,7 +114,6 @@ function setupTools(A) {
         mat.opacity = 0.15;
         mat.side = THREE.DoubleSide;
       } else {
-        // Restore originals — only if we saved them (skip late-streamed meshes)
         if (mat.userData.origOpacity !== undefined) {
           mat.opacity = mat.userData.origOpacity;
           mat.transparent = mat.userData.origTransparent;
@@ -103,9 +123,21 @@ function setupTools(A) {
           delete mat.userData.origSide;
         }
       }
-      mat.needsUpdate = true;
-    });
-    console.log(`[S200] §XRAY ${A.xrayOn ? 'ON' : 'OFF'}`);
+      updated++;
+    }
+    // Stagger needsUpdate across 3 frames
+    function _batchNeedsUpdate(start) {
+      var end = Math.min(start + BATCH, mats.length);
+      for (var j = start; j < end; j++) mats[j].needsUpdate = true;
+      if (end < mats.length) requestAnimationFrame(function() { _batchNeedsUpdate(end); });
+    }
+    _batchNeedsUpdate(0);
+
+    // §S271b: Disable transparent sort during X-Ray — uniform opacity doesn't need back-to-front order.
+    // Saves O(n log n) sort per frame on 122K elements.
+    A.renderer.sortObjects = !A.xrayOn;
+
+    console.log(`[S200] §XRAY ${A.xrayOn ? 'ON' : 'OFF'} materials=${updated} sortObjects=${A.renderer.sortObjects} batch=${BATCH}`);
     if (A.markDirty) A.markDirty();
   };
 
@@ -494,35 +526,40 @@ function setupTools(A) {
       // §S260: Full shadow setup on first enable — r160 needs this before any shadow render
       if (!A._shadowInited) {
         A.renderer.shadowMap.enabled = true;
-        A.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        A.renderer.shadowMap.type = THREE.PCFShadowMap;
         A._shadowInited = true;
-        console.log('§SHADOW_INIT shadowMap enabled + PCFSoft');
+        console.log('§SHADOW_INIT shadowMap enabled + PCF');
       }
       A.sun.castShadow = true;
+      // §S276b: Show Sky shader when shadows enabled
+      if (A._sky) { A._sky.visible = true; if (A.updateSky) A.updateSky(45, 180); }
     } else {
       A.sun.castShadow = false;
+      // §S276b: Hide Sky when shadows off (unless TM sun cycle active)
+      if (A._sky && !A._sunCycleActive) A._sky.visible = false;
     }
     if (A._shadowOn) {
-      // §S260: Scale shadow frustum to building envelope + sun distance
+      // §S276b: Scale shadow frustum to full building envelope — no reduction.
+      // LTU is 426m wide — 0.7x was clipping shadow edges.
       var _env = 300;
       var _bc = Object.values(A.buildingCentres)[0];
-      if (_bc && _bc.envelope) _env = Math.ceil(_bc.envelope * 0.7);
+      if (_bc && _bc.envelope) _env = Math.ceil(_bc.envelope);
       _env = Math.max(_env, 50);  // minimum 50m frustum
-      // Position sun relative to building centre for tighter shadow
+      // Position sun relative to building centre — high enough for full coverage
       var _ctr = A.controls.target;
-      A.sun.position.set(_ctr.x + _env * 1.5, _ctr.y + _env * 3, _ctr.z + _env * 2);
+      A.sun.position.set(_ctr.x + _env * 0.8, _ctr.y + _env * 2, _ctr.z + _env * 0.6);
       A.sun.target.position.copy(_ctr);
       A.sun.target.updateMatrixWorld();
       var _sunDist = A.sun.position.distanceTo(_ctr);
       A.sun.shadow.mapSize.width = 4096;
       A.sun.shadow.mapSize.height = 4096;
-      A.sun.shadow.camera.near = _sunDist * 0.1;
-      A.sun.shadow.camera.far = _sunDist * 3;
+      A.sun.shadow.camera.near = _sunDist * 0.05;
+      A.sun.shadow.camera.far = _sunDist * 4;
       A.sun.shadow.camera.left = -_env;
       A.sun.shadow.camera.right = _env;
       A.sun.shadow.camera.top = _env;
       A.sun.shadow.camera.bottom = -_env;
-      A.sun.shadow.bias = -0.001;
+      A.sun.shadow.bias = -0.0005;
       A.sun.shadow.camera.updateProjectionMatrix();
       console.log('§SHADOW_FRUSTUM env=' + _env + ' sunDist=' + _sunDist.toFixed(0) + ' near=' + (A.sun.shadow.camera.near).toFixed(0) + ' far=' + (A.sun.shadow.camera.far).toFixed(0));
       // Show ground plane at building base

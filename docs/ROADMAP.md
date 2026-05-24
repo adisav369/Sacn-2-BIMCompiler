@@ -109,12 +109,33 @@ Upgraded from r160 (Dec 2023) to r184 (Apr 2025) — 24 releases. LTU 122K verif
 3. **Laptop GPU selection.** Chrome defaults to Intel iGPU on laptops → adapter=null. Need `chrome://flags/#force-high-performance-gpu` for NVIDIA dGPU.
 4. **Render gates during streaming.** `render()` compiles pipelines synchronously — skip during streaming, use `compileAsync()` after.
 
-**Open items (S276b):**
-- ENV_MAP fix needs cache purge (scene.js v=47 deployed, browser may cache v=46)
-- Chrome NVIDIA dGPU test pending (`chrome://flags/#force-high-performance-gpu`)
-- X-ray toggle stutters on 133 materials — explore `scene.overrideMaterial`
-- "Multiple instances of Three.js" warning — BVH CDN imports separate three.js
-- PCFSoftShadowMap deprecated → update to PCFShadowMap
+### S276b DONE — WebGPU Polish + Mobile Freeze Fix
+Smooth on Chrome and Firefox. WebGL r184 fallback is the production path — performs better than r160.
+
+**Why WebGL r184 fallback is fast (no WebGPU needed):**
+- r184 engine: better uniform uploads, tighter draw call batching, improved BufferGeometry handling
+- Native `perObjectFrustumCulled` on BatchedMesh (zero JS cost, r160 didn't have this)
+- ACES tone mapping + procedural env map (PMREMGenerator) from standard build — no mixed-build issues
+- Physically-correct lighting (intensities × π) — cleaner rendering pipeline
+
+**What shipped:**
+- **X-ray batched:** `needsUpdate` spread across 3 frames (batch=45 for 134 materials). No GPU shader recompile stutter.
+- **PCFSoftShadowMap → PCFShadowMap:** removed in r184, replaced.
+- **BVH warning suppressed:** CDN import's "Multiple instances of Three.js" intercepted during load, restored after.
+- **ENV_MAP verified:** `§ENV_MAP vertex-color gradient sky` confirmed on WebGL fallback.
+- **SwiftShader rejection:** Chrome Linux PRIME exposes software Vulkan adapter — detected via `adapter.info.architecture === 'swiftshader'`, skipped. Prevents canvas poisoning.
+- **Canvas recovery:** if WebGPURenderer.init() fails, canvas is cloned before WebGL fallback (poisoned canvas can't create WebGL context).
+- **Mobile WebGPU skip:** `_isMobileRenderer` guard skips `navigator.gpu` entirely — mobile `compileAsync` hangs on mobile GPU. WebGL is the proven mobile path.
+- **Mobile bbox cap:** 20K on mobile (sampled every 6th for 122K buildings). Desktop: 200K.
+- **Chunked bbox build:** matrices built in 5K chunks with `setTimeout(0)` yields — no main thread block.
+- **Render throttle:** mobile renders every 10th frame during streaming (but immediate on touch/orbit via `_needsRender` bypass).
+- **markDirty per chunk:** bboxes appear progressively, not blank until touched.
+- **`chrome-gpu` alias:** desktop shortcut + bash alias for `PRIME_RENDER_OFFLOAD` + `--enable-unsafe-webgpu` on Linux NVIDIA.
+
+**Deferred:**
+- Chrome NVIDIA WebGPU: blocked by Chrome/Dawn PRIME handling on Linux. SwiftShader is the only adapter seen. Needs `prime-select nvidia` (full dGPU mode) or Chrome fix.
+
+**SW v481. Whitebox 35/39 (4 pre-existing).**
 
 ### S274 DONE — DLOD + Mobile Perf
 - r160 `perObjectFrustumCulled` handles BM natively (zero JS cost)

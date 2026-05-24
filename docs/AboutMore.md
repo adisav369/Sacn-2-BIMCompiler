@@ -15,20 +15,20 @@ Browser-native BIM viewer. Drop an IFC file or pick a building — geometry stre
 from SQLite databases directly to the GPU via Three.js. No server, no plugins,
 no build step. Works on desktop and mobile.
 
-17K lines of vanilla JavaScript — no framework, no build step, no npm, no bundler.
+~50K lines of vanilla JavaScript — no framework, no build step, no npm, no bundler.
 ~4MB total download (cached after first visit). Static files only — zero server-side code.
-Compare typical web BIM viewers at 50K–200K+ lines with Node backends and heavy frameworks.
+Compare typical web BIM viewers at 100K–500K+ lines with Node backends and heavy frameworks.
 
-- 17K lines of JavaScript + HTML
-- 15 languages, locale-aware currency
-- 155 Playwright E2E tests
-- OCI Object Storage (Always Free tier)
+- ~50K lines of JavaScript + HTML
+- 18 languages, locale-aware currency
+- 30 Playwright test suites
+- GitHub Pages (free hosting)
 
 ### Third-Party Libraries (all loaded via CDN, not modified)
 
 | Library | Version | License | What it does |
 |---------|---------|---------|--------------|
-| [Three.js](https://github.com/mrdoob/three.js) | r128 | MIT | WebGL 3D rendering |
+| [Three.js](https://threejs.org/) | r184 | MIT | WebGL/WebGPU 3D rendering. [Release notes](https://github.com/mrdoob/three.js/releases). Upgraded from r160→r184 (24 releases, Dec 2023→Apr 2025). WebGPU-ready architecture with WebGL fallback — see [Three.js WebGPU guide](https://threejs.org/docs/#manual/en/introduction/Installation). |
 | [sql.js](https://github.com/sql-js/sql.js) | 1.10.3 | MIT | WASM SQLite in browser |
 | [web-ifc](https://github.com/ThatOpenCompany/engine_web-ifc) | 0.0.77 | MPL-2.0 | IFC2x3 + IFC4 parsing/tessellation |
 | [SheetJS](https://github.com/SheetJS/sheetjs) | 0.20.3 | Apache-2.0 | Excel export |
@@ -54,7 +54,7 @@ None of these are modified. They are called via their public APIs.
 | `diff.js` | Compare two DBs | Variation order from SQL |
 | `walk.js` | First-person walk mode | Camera + collision from DB |
 | `sitecam.js` | GPS/compass/AR mobile overlay | Real-world BIM overlay |
-| + 15 more modules | UI, i18n, city mode, BOQ, wizard, NLP, etc. | All original |
+| + 70 more modules | UI, i18n, city mode, BOQ, wizard, NLP, etc. | All original |
 
 ### The Innovation Boundary
 
@@ -68,7 +68,7 @@ into a serverless BIM pipeline.** The original contribution is:
 
 ### Language and Currency
 
-15 languages with local currency and exchange rates. Click the flag to switch.
+18 languages with local currency and exchange rates. Click the flag to switch.
 
 **Locale files:** `deploy/dev/locales/*.js` — one file per country.
 Each file contains all UI translations and currency settings (`cur`, `cur2`, `cur_rate`).
@@ -96,8 +96,8 @@ Full guide: [Localization Guide](https://red1oon.github.io/BIMCompiler/Localizat
 **Stage 1 (current) — Pure Browser**
 Everything runs in the browser. No server, no APIs, no backend.
 IFC/mesh files are parsed client-side via Web Workers, stored in IndexedDB,
-streamed to the GPU. The two SQLite databases ARE the application — there is
-no server to talk to. Static HTML + JS files served from OCI Object Storage.
+streamed to the GPU. The SQLite database IS the application.
+Static HTML + JS files served from GitHub Pages.
 
 **Stage 2 (planned) — DAGCompiler Backend**
 Java-based BOM compilation engine. Reads IFC, builds recursive Bill of Materials
@@ -124,7 +124,7 @@ Libraries loaded from CDN on first use, then cached offline by the Service Worke
 2. Run `python3 -m http.server 8080` in the folder
 3. Open `http://localhost:8080` — drop any IFC file
 
-Or use the **DIY Downloader** in the About box of the [live viewer](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html) — it generates an install script for your platform (Windows/Mac/Linux) that handles prerequisites automatically.
+Or use the **DIY Downloader** in the About box of the [live viewer](https://red1oon.github.io/bim-ootb/) — it generates an install script for your platform (Windows/Mac/Linux) that handles prerequisites automatically.
 
 ### What gets installed
 
@@ -202,7 +202,7 @@ Browser
 
   ┌─ i18n ──────────────────────────────────────┐
   │ locale_loader.js  Detect locale, settings UI │
-  │ locales/*.js      15 language packs          │
+  │ locales/*.js      18 language packs          │
   └─────────────────────────────────────────────┘
 
   ┌─ Infrastructure ────────────────────────────┐
@@ -218,8 +218,7 @@ Browser
 IFC / OBJ / DAE / 3DS
         │
         ▼
-  [Web Worker]  ──→  extracted.db  (metadata, transforms, hierarchy)
-        │             library.db   (geometry BLOBs: vertices + faces)
+  [Web Worker]  ──→  extracted.db  (metadata, transforms, hierarchy, geometry BLOBs)
         ▼
   [IndexedDB cache]
         │
@@ -230,11 +229,12 @@ IFC / OBJ / DAE / 3DS
   Three.js BufferGeometry  ──→  GPU
 ```
 
-Two SQLite databases per building. `extracted.db` holds element metadata,
-spatial transforms, and BOM hierarchy. `library.db` holds geometry BLOBs
-(pre-tessellated vertices and face indices). The viewer streams BLOBs into
-`Float32Array` buffers and pushes them to Three.js `BufferGeometry` — no
-intermediate mesh formats.
+One SQLite database per building. `_extracted.db` holds element metadata,
+spatial transforms, BOM hierarchy, and geometry BLOBs (pre-tessellated
+vertices and face indices). Large buildings (15K+ elements) split into
+`_meta.db` (metadata) and `_geo.db` (geometry) for streaming performance.
+The viewer streams BLOBs into `Float32Array` buffers and pushes them to
+Three.js `BufferGeometry` — no intermediate mesh formats.
 
 ## Folder Layout
 
@@ -242,8 +242,8 @@ intermediate mesh formats.
 deploy/
   dev/                 Active development (NEVER in production directly)
     *.js, *.html       Viewer modules + pages
-    locales/           15 language packs (3.8K lines)
-    tests/             Playwright E2E suite (26 files, 5.2K lines)
+    locales/           18 language packs (3.8K lines)
+    tests/             Playwright E2E suite (30 files, ~6K lines)
     test/              Manual test harnesses
     test-results/      Playwright artifacts (gitignored)
   live/               Production mirror (promote from dev, never edit)
@@ -256,29 +256,25 @@ deploy/
 
 ## Deployment
 
-Three OCI buckets:
+Deployed via GitHub Pages. Building databases hosted on OCI `bim-ootb` bucket.
 
-| Bucket | Role |
+| Target | Role |
 |--------|------|
-| `bim-ootb-dev` | Staging — test here first |
-| `bim-ootb-live` | Production — what users see |
-| `bim-ootb-backup` | Snapshot before each deploy |
+| `red1oon.github.io/bim-ootb/` | Production — code via GitHub Pages |
+| OCI `bim-ootb` bucket | Building databases only |
 
-Deploy SOP: Test → Snapshot → Copy dev→prod → Smoke test → Git commit.
-Rollback: one command copies backup→prod.
-
-See `deploy/OCI_UPLOAD.md` for full procedure.
+Deploy SOP: `git push` → live. No build step. No server.
 
 ## Size
 
 | Component | Files | Lines |
 |-----------|------:|------:|
-| Viewer JS modules | ~30 | 14,000 |
+| Viewer JS modules | 92 | 49,000 |
 | Viewer HTML pages | 4 | 3,200 |
-| Playwright tests | 26 | 5,200 |
-| Locale packs | 15 | 3,800 |
+| Playwright tests | 30 | ~6,000 |
+| Locale packs | 18 | ~4,500 |
 | Landing page | 1 | 1,200 |
-| **Total** | **~76** | **~27,400** |
+| **Total** | **~145** | **~64,000** |
 
 ---
 

@@ -1309,6 +1309,10 @@
     var app = A();
     if (!app || !app.sun) return;
 
+    // §S276b: Show Sky shader during sun cycle
+    if (app._sky && !app._sky.visible) app._sky.visible = true;
+    app._sunCycleActive = true;
+
     // Save original sky color once
     if (_savedClearColor === null && app.renderer) {
       _savedClearColor = app.renderer.getClearColor(new THREE.Color()).getHex();
@@ -1324,38 +1328,107 @@
     var azimuth = Math.cos(angle);
     var dayFactor = Math.max(0, elevation); // 0 at night, 1 at noon
 
-    // Sun position — orbit around scene center
-    var cx = 0, cy = 0, cz = 0;
-    if (app.controls && app.controls.target) {
-      cx = app.controls.target.x; cy = app.controls.target.y; cz = app.controls.target.z;
+    // §S276b: Sun position moves every tick (shadows follow smoothly).
+    // Sky shader visual update throttled to every 10th tick (avoids rapid sky flicker).
+    var elDeg = elevation * 90;
+    var azDeg = (azimuth * 0.5 + 0.5) * 360;
+    // Always move sun — shadows must track every tick
+    var phi = (90 - elDeg) * Math.PI / 180;
+    var theta = azDeg * Math.PI / 180;
+    var sx = Math.sin(phi) * Math.cos(theta);
+    var sy = Math.cos(phi);
+    var sz = Math.sin(phi) * Math.sin(theta);
+    // §S276b: Position sun relative to building center (not origin) for shadow coverage
+    var _ctr = app.controls ? app.controls.target : { x: 0, y: 0, z: 0 };
+    var _env = 300;
+    var _bc = Object.values(app.buildingCentres || {})[0];
+    if (_bc && _bc.envelope) _env = Math.ceil(_bc.envelope);
+    app.sun.position.set(_ctr.x + sx * _env * 2, Math.max(sy * _env * 2, 10), _ctr.z + sz * _env * 2);
+    app.sun.target.position.copy(_ctr);
+    app.sun.target.updateMatrixWorld();
+    app.sun.updateMatrixWorld();
+    if (app.sun.shadow && app.sun.shadow.camera) {
+      app.sun.shadow.camera.updateProjectionMatrix();
+      app.sun.shadow.camera.updateMatrixWorld();
     }
-    app.sun.position.set(cx + azimuth * 400, Math.max(elevation * 400, 5), cz + 200);
-
-    // Smooth lighting
-    app.sun.intensity = 0.05 + dayFactor * 1.2;
-    if (app.ambient) app.ambient.intensity = 0.15 + dayFactor * 0.5;
-    if (app.hemi) app.hemi.intensity = 0.1 + dayFactor * 0.3;
-
-    // Smooth sky: interpolate through 4 key colors based on dayFactor
-    // 0.0 = night (dark blue), 0.3 = dawn/dusk (warm), 0.6 = day (pale blue), 1.0 = noon (bright)
-    var NIGHT = 0x0a0a2e, DAWN = 0x664433, DAY = 0x88aacc, NOON = 0xaaccee;
-    var skyColor;
-    if (dayFactor < 0.3) {
-      skyColor = lerpColor(NIGHT, DAWN, dayFactor / 0.3);
-    } else if (dayFactor < 0.6) {
-      skyColor = lerpColor(DAWN, DAY, (dayFactor - 0.3) / 0.3);
-    } else {
-      skyColor = lerpColor(DAY, NOON, (dayFactor - 0.6) / 0.4);
+    if (app.renderer && app.renderer.shadowMap) app.renderer.shadowMap.needsUpdate = true;
+    // §S276b: Sky shader visual — update every tick near horizon (dawn/dusk fade),
+    // throttle to every 5th tick during midday/midnight (less visual change).
+    if (!applySunCycle._count) applySunCycle._count = 0;
+    applySunCycle._count++;
+    // §S276b: Sky transitions — Preetham for day/dusk/dawn, starfield for night.
+    var _nearHorizon = Math.abs(elDeg) < 25;
+    var _skyInterval = _nearHorizon ? 1 : 3;
+    // §S276b: Sky always visible — Preetham goes dark naturally at low sun, no flash.
+    if (app._sky && applySunCycle._count % _skyInterval === 0) {
+      app._sky.visible = true;
+      // Clamp sun slightly below horizon — Preetham darkens to deep blue/purple
+      var _clampedSy = Math.max(sy, -0.08);
+      app._sky.material.uniforms['sunPosition'].value.set(sx, _clampedSy, sz);
+      // Richer dusk/dawn: boost turbidity + rayleigh near horizon
+      app._sky.material.uniforms['turbidity'].value = elDeg < 10 ? 8 : 4;
+      app._sky.material.uniforms['rayleigh'].value = elDeg < 10 ? 4 : 2;
     }
-    if (app.renderer) app.renderer.setClearColor(skyColor);
+    // §S276b: Night starfield — appears when sun is well below horizon
+    if (elDeg <= -15 && !app._nightStars) {
+      var _starGeo = new THREE.BufferGeometry();
+      var _starPos = new Float32Array(600 * 3);  // 600 stars
+      for (var si = 0; si < 600; si++) {
+        // Random positions on a large sphere
+        var _sth = Math.random() * Math.PI * 2;
+        var _sph = Math.acos(2 * Math.random() - 1);
+        var _sr = 40000;
+        _starPos[si * 3]     = _sr * Math.sin(_sph) * Math.cos(_sth);
+        _starPos[si * 3 + 1] = Math.abs(_sr * Math.cos(_sph));  // upper hemisphere only
+        _starPos[si * 3 + 2] = _sr * Math.sin(_sph) * Math.sin(_sth);
+      }
+      _starGeo.setAttribute('position', new THREE.BufferAttribute(_starPos, 3));
+      var _starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 30, sizeAttenuation: true });
+      app._nightStars = new THREE.Points(_starGeo, _starMat);
+      app._nightStars.userData.isTmEffect = true;
+      app.scene.add(app._nightStars);
+      // Moon — simple bright sphere
+      var _moonGeo = new THREE.SphereGeometry(200, 16, 16);
+      var _moonMat = new THREE.MeshBasicMaterial({ color: 0xeeeedd });
+      app._moon = new THREE.Mesh(_moonGeo, _moonMat);
+      app._moon.position.set(15000, 25000, -10000);
+      app._moon.userData.isTmEffect = true;
+      app.scene.add(app._moon);
+      // Dim ambient for moonlight feel
+      console.log('§TM_NIGHT stars=600 moon=1');
+    }
+    if (elDeg > -10 && app._nightStars) {
+      // Dawn — remove stars and moon
+      app.scene.remove(app._nightStars);
+      app._nightStars.geometry.dispose();
+      app._nightStars.material.dispose();
+      app._nightStars = null;
+      if (app._moon) {
+        app.scene.remove(app._moon);
+        app._moon.geometry.dispose();
+        app._moon.material.dispose();
+        app._moon = null;
+      }
+      console.log('§TM_DAWN stars removed');
+    }
+
+    // Smooth lighting — intensity follows day/night
+    app.sun.intensity = 0.05 + dayFactor * 4.4;
+    if (app.ambient) app.ambient.intensity = 0.15 + dayFactor * 0.6;
+    if (app.hemi) app.hemi.intensity = 0.1 + dayFactor * 1.1;
   }
 
   function restoreSky() {
     var app = A();
-    if (app && app.renderer && _savedClearColor !== null) {
+    if (!app) return;
+    // §S276b: Hide Sky and restore default state
+    app._sunCycleActive = false;
+    if (app._sky && !app._shadowOn) app._sky.visible = false;  // keep sky if shadows still on
+    if (app.updateSky) app.updateSky(45, 180);
+    if (app.renderer && _savedClearColor !== null) {
       app.renderer.setClearColor(_savedClearColor);
-      _savedClearColor = null;
     }
+    _savedClearColor = null;
   }
 
   function updateStatus() {
@@ -1405,9 +1478,10 @@
     // Outline forms, dust/sparks play out (~1.2s per element at 80ms/tick = 15 ticks)
     // §S260e: Opening = construction plays while camera orbits wide for context
     // §S260f: DAY/HR/MIN mode always respected — drone uses same speed as manual playback
-    if (_mode === 'DAY') return 3600000;  // 1 hour per tick (24 ticks = 1 day)
-    if (_mode === 'HR') return 60000;     // 1 minute per tick (60 ticks = 1 hour)
-    return 10000;                         // 10 seconds per tick (fine grain)
+    // §S276b: ~1.2x slower than original — sun/shadow watchable
+    if (_mode === 'DAY') return 3200000;  // ~53 min per tick (27 ticks = 1 day)
+    if (_mode === 'HR') return 52000;     // 52 sec per tick (69 ticks = 1 hour)
+    return 9000;                          // 9 seconds per tick
   }
 
   // ── Scene state save/restore ──
@@ -1449,6 +1523,7 @@
 
   function restoreVisibility() {
     clearHighlight();
+    var app = A();
     // Restore InstancedMesh matrices and visibility from saved state
     for (var meshId in _savedInstanceState) {
       var state = _savedInstanceState[meshId];
@@ -1508,7 +1583,7 @@
       '<div style="display:flex;align-items:center;width:100%;cursor:grab" class="tm-drag">' +
         '<button id="tm-share" style="font-size:9px;padding:2px 6px" title="Copy shareable link">&#x1F517; Share</button>' +
         '<button id="tm-sun" style="font-size:14px;padding:4px 8px;min-width:32px;min-height:32px" title="Day/night cycle"><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:linear-gradient(90deg,#fff 50%,#222 50%);vertical-align:middle"></span></button>' +
-        '<button id="tm-eye" style="padding:2px 6px;min-width:36px;min-height:36px;background:#888" title="Drone Pilot — cinematic camera"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFMUlEQVR4nLWXa4hVVRTHf3ufe+51HEfRdHyNGmqoZZJaWdpUYxGCmiClEYGFFRRFYCT1NaLoU0SF9sQg7EmEYi8oCYSU3ob2MEtNB7Ww1HQe95y9+7DWnrvnzrmGQgsusx9nr/Vf//XYewwDxQIOmAqsBcYDp4Fm4DDwCHAEMIAvOF+v52JgDdAKnAJagH3Aw8DxokMAs4GngOuAkq4NBlYBm4A2BWDOYBxggepZEK21APcCbwIj40NB4TDgTiCt2wsyC2HGREqL9LQCqwv2gswHHipCfTkwWccl+nsaQN0AjCtQGutpB8bqOKn7JuhZXuTBYCRWBsiROIdY52rgINBUcDaWQUBXdM5EQIKe/UUAepA4BaMVnQdPHZKQJ/8DQBUYQo1Br4aDOKA5BhAM7gVmRGt3AFt17BTQcOBPiishzH8FZkbzSUjogvEhwOB6AAY4CnTqYYOU4xgk+UpIbHepkiIJeg4AfwPTde1m4AMkNIOAK4Fv4oMhRqHsxiNUtwHvAAt1Pir6/kwS9icgrG0Gnld9w5Fq65OiXEDBtOnhF6P1tPjzM8omoKMeZCgzp6jakezeB+wAMoSuHOkNY4C7kI5oo7NFHdGoA1VgBDAR6Q0pUXVZHSwFnkDiPQRYCbyK0F0GJhljsiRJlgA7gdvUcFAUQhd+QW8VyYFP9O9xXSMGfa0qDLGP1x8HnkOSLk+S5FC5XN5ujOkFvgZuUoBFMhlYmyRJJ7UKek1Z7GtuRr3frIdK+rFVpPN0/DnwHTDLGPNbmqZbnHPj8jxf6L3vVjA/ASeAZmPM6CRJhllrx2VZNsc59x7wPnIxrQd+Ur3OAJcBX1HrfEEs0hVnAtuBDcAqY0wOOGPMR5VKZQtQybKsDWlWzlp7GkjyPJ+ZZVk78IfaOFxEUwkpLUetEko6d0gCVhXcX7pfTdN0R7VaXdDV1bXEGNNpjNmNXNlplmWTvPdTkNI7DFwRGU+RxO6LfwkYimR+6NtZBHAqsF8PtAJ479NqtTqrXC4/65xLsixb5L2/0Bhz3Fo7Isuy0Xr2S+BBYC7SQ3Yr0/0kXJsTgG8V0DLgYwV2HhJ7C+wBzleAJQBr7bulUmkbkDrn5uV53uG9Hw6sA95Q6g8iHXE+8A/yPggM90mz0hPaZocCCLfXfdQuk5DRvsFvnepaxMAGtxS4Rsd9e3FLvR7p189EayuRGzJX7w+ooZNAt457dW+vgp6N9JNYgjPzY5uh7EJdbkVureXAYuB2pNYz9boXKaGxwKMK6hLgVjWwQb9r0rlRg2OR+8Qgb40BEp5XLcD9NKbXI4l0EnhLGVgPHFIwa1TfNGCOjl9HOmCKNKGLIpsDuh9I6Z0CfgB+UeVHde00EqbZ6mEF6fEj1YG7gReUlenAFKSSXlLjzUiYBrwjAgOjgI1KVyO5Sj3fqECMsrBTle4Dro6c2YY8cMLl1U8CAxahcDFC0du6XqHWHUOezEAuqpeR++Ie9dwi+bBaHdgDfIZUU5uyEvQ0/H+i0bsg3tsAfAqsSJLklTRN1wE31n07GnhaDR1ESq+QgXqDjZ5ZATnAz0CHMeaWpqamL8rl8i5r7TTdTxFWjwAPIPfIUOBShM2GXp2NHACOGWPm9vT0dPf29h5DHjKhUWWqN0Gu8Q+RBjSR2k3bJ0VV0EhC3L4HTnjvh1prLzDGdGVZFppM/HRHja2o09OP5bNhwKmBXUCn936Qc67FOdfqvf+9DkB8pjD25yrB02UII90I7e11+/+rBCOPIY3pSZ2fSz7xL5BFfyfdke8FAAAAAElFTkSuQmCC" style="width:28px;height:28px;vertical-align:middle" alt="Drone"></button>' +
+        '<button id="tm-eye" style="padding:2px 6px;min-width:36px;min-height:36px;background:#888" title="Drone Pilot — cinematic camera"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2"/><circle cx="12" cy="12" r="3"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M12 2v4"/><path d="M12 18v4"/></svg></button>' +
         '<button id="tm-gantt" style="font-size:12px;padding:2px 6px" title="Gantt chart">&#x1F4CA;</button>' +
         '<button id="tm-dash" style="font-size:12px;padding:2px 6px" title="Dashboard">&#x1F4CB;</button>' +
         '<span id="tm-big-counter" style="flex:1;font-size:18px;font-weight:bold;color:#4fc3f7;text-align:center;letter-spacing:1px">DAY 0 | HR 0</span>' +
@@ -1890,7 +1965,7 @@
   var _playing = false;
   var _playDir = 0;
   var _playTimer = null;
-  function TICK_MS() { return _isLargeBuilding ? 200 : 80; }  // §S260b: slower TM ticks on large scenes
+  function TICK_MS() { return _isLargeBuilding ? 220 : 90; }  // §S276b: ~1.1x original (tuned for sky/shadow)
 
   function startPlayback(dir) {
     if (_playing && _playDir === dir) { stopPlayback(); return; }
@@ -2860,7 +2935,9 @@
   function _finishActivate(app) {
     _active = true;
     _isLargeBuilding = (app.activeBuildingTotal || 0) > LARGE_BUILDING;
-    if (_isLargeBuilding) console.log('§S259_TM_LITE elements=' + app.activeBuildingTotal + ' — sparks/sunCycle disabled (>50K)');
+    if (_isLargeBuilding) console.log('§S259_TM_LITE elements=' + app.activeBuildingTotal + ' — sparks disabled (>50K)');
+    // §S276b: Always enable sun cycle when shadows are on — Sky shader is near-zero cost
+    if (app._shadowOn || app._sky) { _sunCycle = true; console.log('§TM_SUNCYCLE_ON shadow=' + !!app._shadowOn + ' sky=' + !!app._sky); }
     console.log('§TM_SHADOW_INHERIT shadowOn=' + !!app._shadowOn + ' groundVisible=' + (app.ground ? app.ground.visible : 'n/a'));
     computeDays();
     saveVisibility();
