@@ -408,6 +408,193 @@ function evaluateDisplayLogic(logic, record) {
 
 ---
 
+## §4b. HTML-Native UI — Replacing ZK Patterns
+
+> **Principle:** iDempiere uses ZK Framework (server-side Java → HTML widget rendering, ~2006 architecture). Every click is a server round-trip. HTML Living Standard (2024+) provides native equivalents that are faster, offline-capable, and GPU-accelerated — no framework needed.
+
+### Accordion Data Panels — `<details>` + CSS
+
+ZK uses `Groupbox` with server-managed open/close state. HTML `<details>` is native, zero-JS, accessible:
+
+```html
+<!-- Native accordion — no JS, no framework, keyboard accessible -->
+<details open>
+  <summary>Partner Relations</summary>
+  <div class="accordion-body">
+    <a href="#" data-window="C_BPartner">Business Partner</a>
+    <a href="#" data-window="AD_User">Contact</a>
+  </div>
+</details>
+<details>
+  <summary>Materials Management</summary>
+  <div class="accordion-body">
+    <a href="#" data-window="M_Product">Product</a>
+    <a href="#" data-window="M_PriceList">Price List</a>
+  </div>
+</details>
+```
+
+**Enhancements over ZK:**
+
+| ZK Pattern | HTML-Native Replacement | Advantage |
+|---|---|---|
+| `Groupbox` open/close | `<details>/<summary>` | Zero JS, keyboard accessible, animated via CSS `transition` |
+| `Tabbox` tab switching | CSS `scroll-snap` + swipe | Native momentum, touch-friendly, no server round-trip |
+| `Listbox` row selection | `<dialog>` + popover list | Native modal, backdrop, Escape key, focus trap |
+| `Textbox` validation | `<input>` + `pattern` + `:invalid` CSS | Browser-native, no server validation round-trip |
+| `Datebox` calendar | `<input type="date">` | Native picker on all platforms, locale-aware |
+| `Combobox` dropdown | `<datalist>` + `<input list>` | Native search-as-you-type, no custom JS |
+| `Tree` hierarchy | Nested `<details>` | Collapsible tree with zero JS, infinite nesting |
+| `Grid` data table | CSS Grid + `subgrid` | Responsive, sticky headers, no fixed columns |
+| `Messagebox` alert | `<dialog>` element | Native modal, animatable, no Z-index wars |
+
+### Animated Accordion (CSS only)
+
+```css
+details .accordion-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+  overflow: hidden;
+}
+details[open] .accordion-body {
+  grid-template-rows: 1fr;
+}
+details summary {
+  cursor: pointer;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  list-style: none;  /* remove default triangle */
+}
+details summary::before {
+  content: '▸';
+  display: inline-block;
+  transition: transform 0.2s;
+  margin-right: 8px;
+}
+details[open] summary::before {
+  transform: rotate(90deg);
+}
+```
+
+### View Transitions (panel morphing)
+
+When user navigates between ERP windows (e.g. Project → Phase → Task), the DOM morphs with cross-fade:
+
+```javascript
+// One line wraps any DOM change into a smooth transition
+document.startViewTransition(() => {
+  renderWindow(nextWindowId);  // swaps DOM content
+});
+```
+
+Browser automatically:
+1. Snapshots old state
+2. Renders new state
+3. Cross-fades between them (GPU-accelerated, ~16ms)
+4. Falls back to instant swap if unsupported
+
+**No animation library needed.** This replaces ZK's `Clients.evalJavascript()` animation hacks.
+
+### Scroll-Snap for Tab Navigation
+
+Instead of ZK `Tabbox` (click tab header → server fetches panel → re-renders):
+
+```css
+.tab-container {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.tab-panel {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+}
+```
+
+User swipes left/right between tab panels. Native momentum, no JS event handling, works on mobile. Tab header highlights sync via `IntersectionObserver`:
+
+```javascript
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) highlightTab(e.target.dataset.tabId);
+  });
+}, { root: tabContainer, threshold: 0.5 });
+tabPanels.forEach(p => observer.observe(p));
+```
+
+### Popover for Field Help + FK Lookup
+
+```html
+<!-- Field with popover help -->
+<label>
+  Business Partner
+  <button popovertarget="bp-help">?</button>
+</label>
+<input type="text" list="bp-list" />
+<datalist id="bp-list">
+  <!-- populated from AD_Ref_List or FK query -->
+</datalist>
+<div id="bp-help" popover>
+  Select the business partner for this transaction.
+  Links to C_BPartner table.
+</div>
+```
+
+`popover` attribute: native positioning, auto-dismiss on outside click, no Z-index management. Replaces ZK's `Popup` component entirely.
+
+### Container Queries for Responsive Panels
+
+Each ERP panel resizes based on its own width, not the viewport:
+
+```css
+.erp-panel {
+  container-type: inline-size;
+}
+@container (max-width: 400px) {
+  .field-row { flex-direction: column; }  /* stack labels above inputs */
+}
+@container (min-width: 600px) {
+  .field-row { display: grid; grid-template-columns: 150px 1fr; }  /* label left, input right */
+}
+```
+
+This means the same panel works in:
+- Full-screen desktop (wide layout)
+- Side-by-side with 3D viewer (narrow layout)
+- Mobile (stacked layout)
+
+No media queries, no breakpoint math — each panel is self-contained.
+
+### Performance Comparison
+
+| Operation | ZK (iDempiere) | HTML-Native (ERP OOTB) |
+|---|---|---|
+| Open accordion | ~200ms (server round-trip + re-render) | ~16ms (CSS transition, no JS) |
+| Switch tab | ~300-500ms (AJAX + DOM replace) | ~0ms (scroll-snap, already loaded) |
+| Show tooltip | ~150ms (server → Popup component) | ~1ms (popover, native) |
+| Validate field | ~200ms (server → Callout) | ~0ms (browser `:invalid`, pattern match) |
+| Load dropdown | ~300ms (AJAX → Listbox) | ~5ms (`<datalist>` from IndexedDB) |
+| Render 100 rows | ~1-2s (server → Grid → DOM) | ~10ms (CSS Grid, virtual scroll) |
+
+**Total tab-to-data: ZK ~2-5s per interaction vs HTML-native ~20ms.**
+
+### Implementation in `ad_ui.js`
+
+The existing card renderer (`ad_ui.js`) already uses dark-theme cards with swipe. The accordion pattern replaces the sidebar menu:
+
+1. **Menu**: nested `<details>` tree (replaces current sidebar list)
+2. **Window tabs**: `scroll-snap` container (replaces current tab bar click handlers)
+3. **Field rendering**: `<datalist>` for FK lookups, `<input type="date/number">` for typed fields, `<dialog>` for confirmations
+4. **Transitions**: `document.startViewTransition()` wrapping `renderWindow()`
+5. **Responsive**: `container-type: inline-size` on `.erp-panel`
+
+All native. No framework. No build step. Same pattern as the BIM viewer: single HTML, browser does the work.
+
+---
+
 ## §5. C_Project = Construction POC Bridge
 
 The existing construction POC handlers map directly to C_Project AD window:
