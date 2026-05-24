@@ -113,6 +113,7 @@ The DAGCompiler defined 8 abstract interfaces. The JS BOM engine maps each to a 
 | `IRoutable` | ROUTE strategy (delegates to RouteWalker) | Anchor-to-anchor pairing, cross-section, clearance, waypoints |
 | `IStackable` | Vertical cascade (fill_axis='y') | stackId persists across levels, grid position alignment |
 | `IBOMContractor` | `bom_contractor.js` (v2) | Best-fit assignment: requirement → catalog search → candidate scoring |
+| `IBOMResolver` | `bom_resolver.js` | Junction query: condition → targeted SQL JOIN → recipe → BOMNode. See §21. |
 
 ### 2.1 What Carries Over Directly
 
@@ -796,9 +797,11 @@ Wire the engine into the existing viewer. The big integration step.
 |-------|-------|-------|-------|--------|
 | 1 | Pure math | 4 engine + 1 whitebox | **284** | **DONE** |
 | 2 | Data + grid | 2 engine + 2 migrations | **89** | **DONE** |
-| 3 | Integration | doc_canvas + kernel_ops | §-log verified | Prompt ready |
-| 4 | Rules | 2 files | ~10 | Pending |
-| **Total** | | **6 engine + 2 migration + 1 whitebox** | **373+** | **Phase 1+2 done** |
+| 3 | Integration | doc_canvas + kernel_ops | **438** (combined 3+4) | **DONE** (S272, commit `464f5cc1`) |
+| 4 | Rules | bom_rules.js + disc_rules.json | included in 438 | **DONE** (S272, commit `464f5cc1`) |
+| **Total** | | **7 engine + 2 migration + 1 whitebox** | **438** | **Phase 1–4 done** |
+
+> **Note (2026-05-24 watchdog):** ROUTE strategy (§strategy table) says "delegates to RouteWalker" — correct intent, but the delegation is still a stub returning a straight line. Actual wiring is tracked as RED_PILL.md §11.6 task B3.
 
 ---
 
@@ -833,6 +836,245 @@ Wire the engine into the existing viewer. The big integration step.
 | **Override** | User-repositioned child. Excluded from FILL. | §12.2 U1 |
 | **DISC** | Active discipline. Determines which BOM subtree is active. | §1.8 |
 | **Contractor** | Best-fit assignment engine (v2). Finds closest catalog match. | `IBOMContractor` |
+
+---
+
+## 21. IBOMResolver — Junction Query Contract
+
+### 21.1 The Problem
+
+`materializeLevel()` walks one full BOM level — ALL children of a parent. This is correct for
+initial materialization but wrong for cross-level responses. When GF extends past L1, you don't
+need 50 children — you need 1 slab recipe.
+
+### 21.2 The Interface
+
+```
+IBOMResolver
+  .resolve(db, condition) → { node: BOMNode, hostAABB: {x,y,z,w,d,h} } | null
+```
+
+**Contract:**
+- Input: a `condition` object describing WHAT happened (envelope mismatch, corner, boundary)
+- Output: ONE BOMNode recipe instantiated at a computed hostAABB, ready for `recompose()`
+- Returns `null` if no recipe exists for the condition (building BOM doesn't define one)
+- **Never invents.** If the BOM has no recipe, the junction is left open. The user adds it.
+- **Stateless.** Same condition + same DB = same result. No cache, no side effects.
+- **Targeted SQL.** Each resolve is a single JOIN query, not a tree walk.
+
+### 21.3 Condition Types
+
+Each condition type maps to a concrete SQL JOIN and returns a typed recipe.
+
+#### BOUNDARY — storey envelope mismatch
+
+```javascript
+BomResolver.resolve(db, {
+  type: 'BOUNDARY',
+  parentA: 'SC_GF_STR',     // the storey that grew
+  parentB: 'SC_L1_STR',     // the storey that stayed
+  axis: 'x',                // axis of mismatch
+  delta: { x: 10000, y: 0, z: 3000, w: 2000, d: 6000, h: 200 }  // the gap AABB
+})
+```
+
+SQL:
+```sql
+SELECT bl.*, parent.bom_id
+FROM m_bom_line bl
+JOIN m_bom parent ON bl.bom_id = parent.bom_id
+WHERE bl.role = 'BOUNDARY'
+  AND bl.child_element_type IN ('IfcSlab', 'IfcCovering')
+  AND parent.bom_type = 'STOREY'
+ORDER BY bl.sequence LIMIT 1
+```
+
+Returns: BOMNode with strategy=SPAN, children = insulation + membrane + finish.
+
+#### CORNER — wall junction at storey boundary
+
+```javascript
+BomResolver.resolve(db, {
+  type: 'CORNER',
+  wallA: 'geveldrager_GF',  // GF wall element_ref
+  wallB: 'geveldrager_L1',  // L1 wall element_ref (or null if L1 doesn't extend)
+  axis: 'x',
+  position: { x: 12000, y: 0, z: 3000 }  // junction point
+})
+```
+
+SQL:
+```sql
+SELECT bl.*
+FROM m_bom_line bl
+WHERE bl.role = 'CORNER_DETAIL'
+  AND bl.anchor_face IN ('LEFT', 'RIGHT')
+  AND bl.bom_id IN (SELECT bom_id FROM m_bom WHERE bom_type = 'STOREY')
+ORDER BY bl.sequence LIMIT 1
+```
+
+Returns: BOMNode with strategy=FIXED, positioned at junction point.
+
+#### SUPPORT — structural continuity across levels
+
+```javascript
+BomResolver.resolve(db, {
+  type: 'SUPPORT',
+  element: 'column_GF_B2',  // the element that moved
+  sourceStorey: 'SC_GF_STR',
+  targetStorey: 'SC_L1_STR',
+  axis: 'z'                 // vertical
+})
+```
+
+SQL:
+```sql
+SELECT bl.*
+FROM m_bom_line bl
+WHERE bl.role = 'STRUCTURAL_SUPPORT'
+  AND bl.child_element_type IN ('IfcColumn', 'IfcBeam')
+  AND bl.host_element_ref = ?1
+ORDER BY bl.sequence
+```
+
+Returns: BOMNode[] — column + beam at bearing point. Positioned at source element's X/Y, target storey's Z.
+
+#### SHAFT — vertical circulation
+
+```javascript
+BomResolver.resolve(db, {
+  type: 'SHAFT',
+  shaftId: 'LIFT_01',
+  storeys: ['SC_FDN_STR', 'SC_GF_STR', 'SC_L1_STR']
+})
+```
+
+SQL:
+```sql
+SELECT bl.*
+FROM m_bom_line bl
+WHERE bl.role = 'SHAFT'
+  AND bl.grid_shared_key = ?1
+  AND bl.bom_id IN (SELECT bom_id FROM m_bom WHERE bom_type = 'BUILDING')
+ORDER BY bl.sequence
+```
+
+Returns: BOMNode with strategy=FIXED, mandatory=true. BUILDING-level child that reserves a zone through all storeys.
+
+#### CANTILEVER — overhang condition
+
+```javascript
+BomResolver.resolve(db, {
+  type: 'CANTILEVER',
+  upperStorey: 'SC_L1_STR',
+  lowerStorey: 'SC_GF_STR',
+  overhang: { x: 10000, y: 0, z: 3000, w: 2000, d: 6000, h: 200 }
+})
+```
+
+SQL:
+```sql
+SELECT bl.*
+FROM m_bom_line bl
+WHERE bl.role = 'CANTILEVER'
+  AND bl.child_element_type IN ('IfcSlab', 'IfcBeam')
+ORDER BY bl.sequence
+```
+
+Returns: BOMNode with I1 exemption flag (`_i1Exempt = true`). Contains cantilever slab + support beam.
+
+#### ROUTE — MEP path between anchors
+
+```javascript
+BomResolver.resolve(db, {
+  type: 'ROUTE',
+  disc: 'ACMV',
+  startAnchor: { x: 1000, y: 3000, z: 2800 },
+  endAnchor:   { x: 8000, y: 3000, z: 2800 },
+  clearance: 300
+})
+```
+
+SQL:
+```sql
+SELECT bl.*
+FROM m_bom_line bl
+WHERE bl.layout_strategy = 'ROUTE'
+  AND bl.child_element_type IN ('IfcDuctSegment', 'IfcPipeSegment')
+  AND bl.storey = ?1
+ORDER BY bl.sequence
+```
+
+Returns: BOMNode with strategy=ROUTE. Delegates to `RouteWalker.walk()` for path computation. Children (diffusers, grilles) placed by UNIFORM along the route.
+
+#### SETBACK — regulatory constraint
+
+```javascript
+BomResolver.resolve(db, {
+  type: 'SETBACK',
+  storey: 'SC_L2_STR',
+  height: 9000,         // height above ground
+  maxWidth: 20000       // zoning limit at this height
+})
+```
+
+SQL: None — reads `disc_rules.json`:
+```json
+{ "type": "SETBACK", "height_above_mm": 9000, "max_envelope_mm": 20000, "axis": "x" }
+```
+
+Returns: `{ clampedHostAABB }` — not a BOMNode, but a constraint on the storey's hostAABB. Fed back into `recompose()` as a clamped input.
+
+### 21.4 Implementation — `bom_resolver.js`
+
+```javascript
+(function(exports) {
+  'use strict';
+
+  /**
+   * Resolve a junction condition to a BOM recipe.
+   * @param {object} db — sql.js database handle
+   * @param {object} condition — { type, ...params }
+   * @returns {{ node: BOMNode, hostAABB: object }|null}
+   */
+  function resolve(db, condition) {
+    var handler = _handlers[condition.type];
+    if (!handler) return null;
+    return handler(db, condition);
+  }
+
+  var _handlers = {};
+  // Each handler: function(db, condition) → { node, hostAABB } | null
+
+  exports.resolve = resolve;
+  exports.registerHandler = function(type, fn) { _handlers[type] = fn; };
+
+})(window.BomResolver = {});
+```
+
+**Key design:** `registerHandler()` makes it extensible. Each condition type is a plug-in handler. The resolver doesn't know about slabs or columns — it dispatches to registered handlers. New junction types added without modifying the resolver.
+
+### 21.5 Integration with recompose chain
+
+```
+Grid drag
+  → L0: GridKinematics.dragGrid()
+  → L1: _fireBomRecompose() — existing single-level
+  → L2: _fireResolvers() — NEW: detect cross-level conditions, call BomResolver.resolve()
+       → for each resolved recipe: node.recompose(hostAABB)
+       → diff + apply commands to scene
+```
+
+`_fireResolvers()` is one function in `grid_recompose.js`. It compares sibling storey envelopes after L1 completes. If mismatches found, calls `BomResolver.resolve()` for each. Same debounce as L1.
+
+### 21.6 Glossary additions
+
+| Term | Definition | Spec reference |
+|------|-----------|----------------|
+| **Resolver** | Junction query: condition → targeted SQL JOIN → recipe | §21 `IBOMResolver` |
+| **Condition** | Typed object describing a cross-level event | §21.3 — 7 types |
+| **Recipe** | One BOMNode with strategy/attachments, ready for `recompose()` | §21.2 return value |
+| **Junction** | Point where two BOM branches meet (storey boundary, corner, shaft) | §21.1 |
 
 ---
 
