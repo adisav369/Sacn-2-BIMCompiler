@@ -404,7 +404,50 @@ The BOM engine (438 tests) provides the algebra. These tasks wire it to visible 
 - `BOM_ENGINE_SPEC.md §10` file layout lists `bom_rules.js` and `disc_rules.json` — both exist and pass tests, but §6.3 `DiscRuleProvider` still shows `// TODO: loadFromDB`. Acceptable — JSON-first is the current path, DB-load is v2.
 - `NEW_FROM_REFERENCE.md` §17.9 BOM Completion Triage (items A-I) — not cross-checked against B1-B5 tasks. May have duplicates or gaps. Verify on next full review.
 
-### 11.7 Deferred (Stage 2+)
+### 11.7 S270e Coherence — Single-Level Recompose (Done)
+
+3 engine bugs found and fixed by 36-test coherence suite (`test_coherence.js`):
+- **BUG-1 SPAN sizing:** `_stepFill` ignored `stratResult.size` for SPAN leaves — wall/slab stayed at `childSize` instead of stretching. Fixed: SPAN child dimension on fill axis uses strategy result.
+- **BUG-2 Fill-origin:** `parentOrigin = maxReservedEnd` pushed optionals past parent when mandatory walls at both edges. Fixed: uses leftmost reserved end.
+- **BUG-3 Edge-follow:** Right wall's `tack.dx` was static from DB. Fixed: `_positionChild` detects edge-anchored children and repositions relative to current host dimensions. `_anchorFace` stored from `m_bom_line.anchor_face`.
+
+8 scenarios proven: storey grow/shrink (A), SPAN on X/Y/Z (B/C/D), UNIFORM recount (E), FIXED position (F), idempotency (G), mandatory-survives-shrink (H).
+
+### 11.8 Cross-Level BOM Scenarios (Stage 2)
+
+**Principle: BOM JOIN query, not geometry invention.** A cross-level response is a targeted SQL JOIN that pulls a recipe (one BOM line + its strategy/attachments) without materializing the full tree. The recipe is instantiated at a computed hostAABB, then `recompose()` fills it via the same single-level operation.
+
+```sql
+-- Example: "What slab recipe covers a storey boundary?"
+SELECT bl.child_product_id, bl.layout_strategy, bl.allocated_*
+FROM m_bom_line bl
+JOIN m_bom parent ON bl.bom_id = parent.bom_id
+WHERE bl.child_element_type = 'IfcSlab' AND bl.role = 'BOUNDARY'
+```
+
+The JOIN can pull across BOM sets — a slab recipe in a shared component library, a standard detail from a different BOM. Neither BOM knows about the other; the query crosses that boundary.
+
+| ID | Scenario | Trigger | Status |
+|---|---|---|---|
+| S1 | **Boundary slab** — GF extends past L1, gap needs slab | `GF.envelope > L1.envelope` | Next — first cross-level JOIN |
+| S2 | **Column continuity** — GF column supports L1 floor | Column repositioned by drag | Later — needs anchorFace=TOP propagation |
+| S3 | **Foundation follows footprint** | Any storey grows → building grows | **Already works** — SPAN child of BUILDING |
+| S4 | **Roof follows envelope** | Any storey width/depth change | **Already works** — same as S3 |
+| S5 | **Cantilever** — L1 wider than GF | `L1.envelope > GF.envelope` | Later — needs I1 exemption |
+| S6 | **Stair/lift shaft** — vertical continuity | Any storey shifts on X/Y | Later — needs SPAN_VERTICAL type |
+| S7 | **External wall segment** — corner at storey junction | GF extends, L1 stays | Next — paired with S1 |
+| S8 | **MEP rerouting** — duct/pipe recount after resize | Room size change | B3 task — ROUTE→RouteWalker |
+| S9 | **Setback** — zoning limits upper storeys | Building envelope exceeds limit | Later — rule feedback to hostAABB |
+| S10 | **Party wall** — shared wall at boundary, never moves | Grid drag near boundary | **Already works** — mandatory FIXED |
+
+**Extension points (all exist in code, need new roles/strategies):**
+- `_stepCascade` (bom_node.js) — sibling envelope comparison for S1/S7
+- `_positionChild` (bom_node.js) — anchorFace=TOP propagation for S2
+- `Constraints.fitCheck` (bom_constraints.js) — I1 exemption for S5
+- `BomRules.checkPlacement` (bom_rules.js) — SETBACK rule for S9
+- `_stepReserve` at BUILDING level — shaft reservation for S6
+
+### 11.9 Deferred (Stage 3+)
 
 - IFC export from NewBuilding.db
 - Diagonal grids / rotation / mirroring
