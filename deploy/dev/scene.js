@@ -34,20 +34,40 @@ async function setupScene(A) {
   var _isWebGPU = false;
   var renderer;
   var _adapter = null;
-  if (navigator.gpu && THREE.WebGPURenderer) {
-    try { _adapter = await navigator.gpu.requestAdapter(); } catch(e) {}
+  // §S276b: Skip WebGPU on mobile — compileAsync hangs on mobile GPU, WebGL+DPR is proven.
+  if (!_isMobileRenderer && navigator.gpu && THREE.WebGPURenderer) {
+    try {
+      _adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+      // §S276b: Reject SwiftShader (software) — it poisons the canvas on context creation failure
+      if (_adapter && _adapter.info && _adapter.info.architecture === 'swiftshader') {
+        console.log('§S276_ADAPTER_REJECT SwiftShader detected — falling back to WebGL');
+        _adapter = null;
+      }
+    } catch(e) {}
   }
+  if (_isMobileRenderer) console.log('§S276_MOBILE_SKIP WebGPU skipped — mobile uses WebGL');
   if (_adapter) {
     // Native WebGPU adapter found — use WebGPURenderer
-    renderer = new THREE.WebGPURenderer({
-      canvas,
-      antialias: !_isMobileRenderer,
-      preserveDrawingBuffer: true
-    });
-    await renderer.init();
-    _isWebGPU = true;
-    console.log('§S276_RENDERER WebGPURenderer native adapter=' + _adapter.name);
-  } else {
+    try {
+      renderer = new THREE.WebGPURenderer({
+        canvas,
+        antialias: !_isMobileRenderer,
+        preserveDrawingBuffer: true
+      });
+      await renderer.init();
+      _isWebGPU = true;
+      console.log('§S276_RENDERER WebGPURenderer native adapter=' + (_adapter.info?.device || _adapter.name));
+    } catch(e) {
+      // §S276b: WebGPU init failed — canvas may be poisoned. Replace it.
+      console.warn('§S276_WEBGPU_FAIL ' + e.message + ' — replacing canvas, falling back to WebGL');
+      _adapter = null;
+      var newCanvas = canvas.cloneNode();
+      canvas.parentNode.replaceChild(newCanvas, canvas);
+      canvas = newCanvas;
+      A.canvas = canvas;
+    }
+  }
+  if (!_adapter) {
     // No native WebGPU — reload THREE entirely from standard build.
     // WebGPU build's PMREMGenerator/Scene/etc expect WebGPURenderer internals
     // (e.g. hasInitialized()) — mixing builds causes ENV_MAP_FAIL and dark night mode.
@@ -58,7 +78,7 @@ async function setupScene(A) {
       antialias: !_isMobileRenderer,
       preserveDrawingBuffer: true
     });
-    console.log('§S276_RENDERER WebGLRenderer r184 (adapter=' + _adapter + ')');
+    console.log('§S276_RENDERER WebGLRenderer r184 (adapter=null)');
   }
   A._isWebGPU = _isWebGPU;
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -965,6 +985,7 @@ async function setupScene(A) {
   A._registerPanel = _registerPanel;
   window._registerPanel = _registerPanel;
   window._focusPanel = _focusPanel;
+  window._blurPanel = _blurPanel;
   window._panels = _panels;
 
   // ── Keyboard handler ──────────────────────────────────────────
