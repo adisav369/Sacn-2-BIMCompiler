@@ -66,6 +66,26 @@ The BIM Intent Compiler project began October 2025 (concept) → January 2026 (J
 
 ## Next
 
+### S275 DONE — Find Panel Fly-to + UX Overhaul
+Click a Find result → camera flies to element with smooth ease-in-out animation. Full IFC info panel + yellow bbox highlight (unified `A._bboxMaterial`, linewidth 3).
+
+**What shipped:**
+- **Fly-to on click:** direction-preserving camera animation (keeps viewing angle)
+- **IFC info panel:** shows Class/Name/GUID/Storey/Discipline/Material on result click; tap panel to re-highlight bbox
+- **Slim accordion layout:** storey/type/results as collapsible single-line rows (desktop + mobile)
+- **Click-to-deselect:** tap same element again to close info panel + clear highlight
+- **Prefer-small pick:** raycaster depth-band (0.5m) prefers smallest bbox — doors/windows win over walls
+- **Navigate ▶ inline:** small icon next to selected item, not full-width button
+- **Find pill toggle:** tap to open, tap again to close
+- **Nav stop X button:** red X on bottom bar with delegated listener, clears direction cue
+- **Drag keeps panel open:** orbit/pan doesn't close panel (tap-only dismiss)
+- **Keyboard nav:** Left/Right cycles search→storey→type→navigate. Up/Down navigates accordion items or results. Enter selects. Registered with `makeListKeyNav`/`_registerPanel`.
+- **Mic icon:** bright blue, left of search input. Voice search via Web Speech API.
+- **Panel focus release:** `closeFindPanel` calls `_blurPanel()` so other panels (Clash Matrix etc.) regain keyboard focus
+- **Unified bbox:** `A._bboxMaterial` in helpers.js — one material for picking, find, diff, wizard
+
+**Open:** Left/Right + Enter within accordion items needs further refinement (non-critical).
+
 ### S276 DONE — Three.js r184 + WebGPU Upgrade
 Upgraded from r160 (Dec 2023) to r184 (Apr 2025) — 24 releases. LTU 122K verified smooth on Chrome.
 
