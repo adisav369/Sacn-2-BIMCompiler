@@ -170,11 +170,9 @@ var beforeState = storey.getChildren().map(function(c) {
 console.log('  before:', JSON.stringify(beforeState));
 
 // A2: Grid drag — parent grows 2m on X (10m → 12m)
+// wallR has _anchorFace or tack at right edge — should auto-follow
 section('A2: Drag +2m on X (grow)');
 var hostGrown = { x: 0, y: 0, z: 0, w: 12000, d: 6000, h: 3000 };
-
-// Update wallR tack to follow right edge
-wallR.tack.dx = 11800;
 
 var r2 = storey.recompose(hostGrown);
 var ch2 = coherenceCheck(storey, 'x');
@@ -206,9 +204,9 @@ approx(wallR.currentAABB.x, 11800, 1, 'A2: right wall at new edge');
 approx(wallR.currentAABB.w, 200, 1, 'A2: right wall stays 200mm thick');
 
 // A3: Grid drag — parent shrinks 3m on X (10m → 7m)
+// wallR auto-follows right edge
 section('A3: Drag -3m on X (shrink)');
 var hostShrunk = { x: 0, y: 0, z: 0, w: 7000, d: 6000, h: 3000 };
-wallR.tack.dx = 6800;
 
 var r3 = storey.recompose(hostShrunk);
 var ch3 = coherenceCheck(storey, 'x');
@@ -228,6 +226,7 @@ assert(ch3.gaps === 0, 'A3: no gaps after shrink');
 assert(ch3.overlaps === 0, 'A3: no overlaps after shrink');
 assert(wallL.currentAABB, 'A3: mandatory left wall still present');
 assert(wallR.currentAABB, 'A3: mandatory right wall still present');
+approx(wallR.currentAABB.x, 6800, 1, 'A3: right wall auto-follows to x=6800');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SCENARIO B: SPAN child (slab) stretches on X
