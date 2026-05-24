@@ -3,13 +3,18 @@
 > **Spec for S277+: Production-quality rendering in browser BIM OOTB.**
 > Built on Three.js r184 addons. All effects are post-process passes via EffectComposer — zero geometry changes, additive cost only.
 
-## Current State (S276b DONE)
+## Current State (S277b DONE)
 
 - **Sky shader** (Preetham atmospheric scattering) — sunrise/sunset/dusk/dawn/night
 - **Stars + moon** at night during Time Machine
 - **PCF shadows** following sun position
 - **ACES tone mapping** + procedural env map from sky
 - **PBR materials** with per-IFC-class roughness/metalness (42 types)
+- **Cloud Layer** (S277d) — scrolling Perlin noise plane at Y=5000m, casts shadows via sun
+- **Lensflare** (S277f) — sun disc + halo sprites, strongest at sunrise/sunset, auto-hide at night
+- **Bloom** (S277b) — emissive boost on TM frontier meshes during night (construction floodlight glow)
+- **Procedural normals** (S277) — onBeforeCompile noise perturbation: brushed metal on pipes, rough grain on concrete
+- **TM lighting restore** (S277b fix) — restoreSky() now saves/restores full lighting state (sun/ambient/hemi/exposure)
 
 ## Planned Effects (priority order)
 

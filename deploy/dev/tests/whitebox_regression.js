@@ -1318,8 +1318,8 @@ test('s276_resource_budget', () => {
   var swHasCore = swSrc.includes('three.core.min.js');
   var swHasEsm = swSrc.includes('three.module.min.js');
 
-  // 5. Render gates: streaming skip + compileAsync skip (prevent pipeline timeout)
-  var hasStreamGate = mainSrc.includes('_isWebGPU && APP.streaming');
+  // 5. Render gates: compileAsync skip (WebGPU deferred in S277b — WebGL only now)
+  var hasStreamGate = true;  // §S277b: WebGPU stream gate removed — WebGL doesn't need it
   var hasCompileGate = mainSrc.includes('_pipelinesCompiling');
 
   // 6. Total precache budget (all lib/ files)
