@@ -472,6 +472,175 @@ console.log('§COH_H2 1000mm wall: gaps=' + chH2.gaps + ' overlaps=' + chH2.over
 assert(chH2.overlaps === 0, 'H2: no overlaps after shrink');
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SCENARIO I: Full wall with openings — metadata-driven resize
+// Wall=SPAN (infill), Door=FIXED/mandatory/max1, Windows=UNIFORM/VARIABLE
+// Wall grows → windows may ADD, door stays, wall infills between them
+// ═══════════════════════════════════════════════════════════════════════════
+
+section('I: Metadata-driven wall resize — door stays, windows add, wall infills');
+
+// Wall is SPAN parent — stretches on X. Its children are the openings.
+var wallI = new BOMNode({
+  id: 'WALL_EXT', strategy: 'UNIFORM', fillAxis: 'x',
+  spacing: 2000
+});
+
+// Door: FIXED, mandatory=1, max_count=1, qty_type=FIXED → never moves, exactly 1
+var doorI = new BOMNode({
+  id: 'DOOR_ENTRY', strategy: 'FIXED', mandatory: true,
+  tack: { dx: 1000, dy: 0, dz: 0 },
+  allocatedSize: { w: 900, d: 200, h: 2100 },
+  fitPriority: 1,
+  // These metadata props control: singular, never resized
+  maxCount: 1
+});
+
+// Windows: UNIFORM, mandatory=0, qty_type=VARIABLE → count adjusts to fill
+var winI1 = new BOMNode({
+  id: 'WIN_I1', strategy: 'UNIFORM',
+  childSize: 1200,
+  allocatedSize: { w: 1200, d: 100, h: 1500 }
+});
+var winI2 = new BOMNode({
+  id: 'WIN_I2', strategy: 'UNIFORM',
+  childSize: 1200,
+  allocatedSize: { w: 1200, d: 100, h: 1500 }
+});
+var winI3 = new BOMNode({
+  id: 'WIN_I3', strategy: 'UNIFORM',
+  childSize: 1200,
+  allocatedSize: { w: 1200, d: 100, h: 1500 }
+});
+
+wallI.addChild(doorI);
+wallI.addChild(winI1);
+wallI.addChild(winI2);
+wallI.addChild(winI3);
+
+// I1: Original 8m wall
+wallI.recompose({ x: 0, y: 0, z: 0, w: 8000, d: 200, h: 3000 });
+
+// Door stays at tack
+approx(doorI.currentAABB.x, 1000, 1, 'I1: door at tack x=1000');
+approx(doorI.currentAABB.w, 900, 1, 'I1: door width=900 (never changes)');
+approx(doorI.currentAABB.h, 2100, 1, 'I1: door height=2100 (never changes)');
+
+// Windows keep their size
+var winsI1 = [winI1, winI2, winI3].filter(function(w) { return w.currentAABB; });
+console.log('§COH_I1 8m wall: door.x=' + doorI.currentAABB.x + ' door.w=' + doorI.currentAABB.w +
+  ' windows=' + winsI1.length);
+for (var wi1 = 0; wi1 < winsI1.length; wi1++) {
+  approx(winsI1[wi1].currentAABB.w, 1200, 1, 'I1: window ' + winsI1[wi1].id + ' width=1200');
+}
+
+// I2: Wall grows to 14m — more space, windows may add but door stays
+wallI.recompose({ x: 0, y: 0, z: 0, w: 14000, d: 200, h: 3000 });
+
+approx(doorI.currentAABB.x, 1000, 1, 'I2: door still at x=1000 after grow');
+approx(doorI.currentAABB.w, 900, 1, 'I2: door still 900mm after grow');
+
+var winsI2 = [winI1, winI2, winI3].filter(function(w) { return w.currentAABB; });
+console.log('§COH_I2 14m wall: door.x=' + doorI.currentAABB.x +
+  ' windows=' + winsI2.length);
+for (var wi2 = 0; wi2 < winsI2.length; wi2++) {
+  approx(winsI2[wi2].currentAABB.w, 1200, 1, 'I2: window ' + winsI2[wi2].id + ' still 1200mm (never resized)');
+}
+
+// I3: Wall shrinks to 4m — door must stay (mandatory), some windows may not fit
+wallI.recompose({ x: 0, y: 0, z: 0, w: 4000, d: 200, h: 3000 });
+
+assert(doorI.currentAABB !== null, 'I3: mandatory door survives shrink');
+approx(doorI.currentAABB.w, 900, 1, 'I3: door still 900mm');
+
+var winsI3 = [winI1, winI2, winI3].filter(function(w) { return w.currentAABB; });
+console.log('§COH_I3 4m wall: door.x=' + doorI.currentAABB.x +
+  ' windows=' + winsI3.length);
+
+// Column: allocatedSize is never mutated — check the original objects
+approx(winI1.allocatedSize.w, 1200, 1, 'I3: WIN_I1.allocatedSize unchanged');
+approx(doorI.allocatedSize.w, 900, 1, 'I3: DOOR_ENTRY.allocatedSize unchanged');
+approx(doorI.allocatedSize.h, 2100, 1, 'I3: DOOR_ENTRY.allocatedSize.h unchanged');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCENARIO J: Column — FIXED, mandatory, never moves on any resize
+// ═══════════════════════════════════════════════════════════════════════════
+
+section('J: Column — FIXED mandatory, never moves');
+
+var frameJ = new BOMNode({
+  id: 'FRAME_J', strategy: 'UNIFORM', fillAxis: 'x', spacing: 5000
+});
+var col1 = new BOMNode({
+  id: 'COL_A', strategy: 'FIXED', mandatory: true,
+  tack: { dx: 0, dy: 0, dz: 0 },
+  allocatedSize: { w: 300, d: 300, h: 3000 },
+  fitPriority: 1
+});
+var col2 = new BOMNode({
+  id: 'COL_B', strategy: 'FIXED', mandatory: true,
+  tack: { dx: 5000, dy: 0, dz: 0 },
+  allocatedSize: { w: 300, d: 300, h: 3000 },
+  fitPriority: 1
+});
+frameJ.addChild(col1);
+frameJ.addChild(col2);
+
+// J1: Original 10m frame
+frameJ.recompose({ x: 0, y: 0, z: 0, w: 10000, d: 6000, h: 3000 });
+approx(col1.currentAABB.x, 0, 1, 'J1: column A at x=0');
+approx(col2.currentAABB.x, 5000, 1, 'J1: column B at x=5000');
+approx(col1.currentAABB.w, 300, 1, 'J1: column A 300mm (never changes)');
+approx(col1.currentAABB.d, 300, 1, 'J1: column A depth 300mm');
+approx(col1.currentAABB.h, 3000, 1, 'J1: column A height 3000mm');
+
+// J2: Frame grows to 15m — columns stay at tack
+frameJ.recompose({ x: 0, y: 0, z: 0, w: 15000, d: 6000, h: 3000 });
+approx(col1.currentAABB.x, 0, 1, 'J2: column A still x=0');
+approx(col2.currentAABB.x, 5000, 1, 'J2: column B still x=5000');
+approx(col1.currentAABB.w, 300, 1, 'J2: column A still 300mm');
+
+// J3: Frame shrinks to 6m — both columns still present (mandatory)
+frameJ.recompose({ x: 0, y: 0, z: 0, w: 6000, d: 6000, h: 3000 });
+assert(col1.currentAABB !== null, 'J3: column A survives shrink');
+assert(col2.currentAABB !== null, 'J3: column B survives shrink');
+approx(col1.currentAABB.w, 300, 1, 'J3: column A still 300mm');
+
+// allocatedSize never mutated
+approx(col1.allocatedSize.w, 300, 1, 'J3: COL_A.allocatedSize.w unchanged');
+approx(col1.allocatedSize.h, 3000, 1, 'J3: COL_A.allocatedSize.h unchanged');
+
+console.log('§COH_J columns: A.x=' + col1.currentAABB.x + ' B.x=' + col2.currentAABB.x +
+  ' A.w=' + col1.currentAABB.w + ' A.h=' + col1.currentAABB.h);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCENARIO K: Slab — SPAN on X and Y, height fixed
+// ═══════════════════════════════════════════════════════════════════════════
+
+section('K: Slab — SPAN stretches length+depth, height fixed');
+
+var storeyK = new BOMNode({
+  id: 'GF_K', strategy: 'SPAN', fillAxis: 'x'
+});
+var slabK = new BOMNode({
+  id: 'SLAB_K', strategy: 'SPAN',
+  childSize: 200  // thickness
+});
+storeyK.addChild(slabK);
+
+// K1: Original 10m × 6m
+storeyK.recompose({ x: 0, y: 0, z: 0, w: 10000, d: 6000, h: 200 });
+approx(slabK.currentAABB.w, 10000, 1, 'K1: slab spans 10m on X');
+approx(slabK.currentAABB.h, 200, 1, 'K1: slab height=200mm (thickness, fixed by childSize)');
+
+// K2: Grows to 14m × 8m
+storeyK.recompose({ x: 0, y: 0, z: 0, w: 14000, d: 8000, h: 200 });
+approx(slabK.currentAABB.w, 14000, 1, 'K2: slab stretches to 14m');
+approx(slabK.currentAABB.h, 200, 1, 'K2: slab thickness still 200mm');
+
+// allocatedSize is null for SPAN — it uses stratResult.size
+assert(slabK.allocatedSize === null, 'K2: SPAN slab has no allocatedSize (engine computes it)');
+
+// ═══════════════════════════════════════════════════════════════════════════
 
 console.log('\n═══════════════════════════════════════════════');
 console.log('§COH_SUMMARY ' + _pass + ' passed, ' + _fail + ' failed, ' + (_pass + _fail) + ' total');

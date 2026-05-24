@@ -214,13 +214,62 @@ BOMNode
 | Strategy | Behavior | Java Parallel |
 |----------|----------|--------------|
 | `LINEAR` | Alias for UNIFORM (backwards compat) | — |
-| `UNIFORM` | Equal spacing, recount on resize | `IRepeatable` with equal spacing |
+| `UNIFORM` | Add/remove instances to fill available space. Existing instances stay at their positions — new ones fill the remaining gap. Count governed by `min_count`, `max_count`, `qty_type`. Does NOT redistribute spacing. | `IRepeatable` with equal spacing |
 | `PACKED` | Minimum gap, maximize count | Dense placement per clearance rules |
 | `CENTERED` | Fixed count, centered in space | Focal placement |
 | `REPEAT` | Clone entire child set with buffer | `IRepeatable.templateId()` + transform |
-| `FIXED` | Never recount, proportional repositioning | Mandatory items, `isRequired()=true` |
-| `SPAN` | Single child stretches to fill parent entirely | Envelope elements |
+| `FIXED` | Stays at tack offset, never recounted, never resized. Used with `mandatory=1` for elements that must not move (doors, columns, party walls). `max_count` enforces singular placement. | Mandatory items, `isRequired()=true` |
+| `SPAN` | Stretches to fill parent on `fill_axis`, other axes fixed. Wall stretches length, slab stretches length+depth, thickness never changes. The SPAN element IS the infill — its children (openings) are placed inside it. | Envelope elements |
 | `ROUTE` | Anchor-to-anchor pairing (delegates to RouteWalker) | `IRoutable` — MEP routing |
+
+### 3.4 Resize Control Columns (`m_bom_line`)
+
+All element resize behaviour is driven by metadata. No hardcoded element-type checks.
+
+| Column | Values | Controls |
+|--------|--------|----------|
+| `layout_strategy` | SPAN / FIXED / UNIFORM / PACKED / CENTERED / REPEAT / ROUTE | HOW the element responds to parent resize |
+| `mandatory` | 0 / 1 | Whether the element can be removed on shrink. 1 = always present. |
+| `max_count` | NULL / integer | Upper bound on instances. `1` = singular (doors). NULL = unlimited. |
+| `min_count` | 0 / integer | Lower bound. `1` = at least one must be placed. |
+| `qty_type` | VARIABLE / FIXED | VARIABLE = engine may add/remove. FIXED = count never changes. |
+| `fill_axis` | x / y / z | Which axis the strategy operates on. Wall: x (length). Slab: x. Shaft: z. |
+| `allocated_width/depth/height_mm` | integer | The element's own physical size. Never mutated by recompose. |
+| `anchor_face` | BACK / LEFT / RIGHT / FRONT / TOP | Which parent face the element attaches to. RIGHT = auto-follows parent edge. |
+| `fit_priority` | integer | Reservation order. Lower = reserves space first. Doors before windows. |
+
+**Example — IfcDoor "cannot stretch, singular, stays put":**
+```
+layout_strategy = FIXED
+mandatory = 1
+max_count = 1
+qty_type = FIXED
+allocated_width_mm = 900  ← never changes
+```
+
+**Example — IfcWindow "may add more, each keeps its size":**
+```
+layout_strategy = UNIFORM
+mandatory = 0
+max_count = NULL
+qty_type = VARIABLE
+allocated_width_mm = 1200  ← each instance is 1200mm, count varies
+```
+
+**Example — IfcWall "stretches to fill, is the infill":**
+```
+layout_strategy = SPAN
+fill_axis = x
+allocated_depth_mm = 200  ← thickness, never changes
+allocated_height_mm = 3000  ← follows parent Z if parent is SPAN on z
+```
+
+**Validation (post-recompose):** Rules in `disc_rules.json` check the result:
+- Wall >6m without opening → UBBL violation
+- Window count below minimum → fire safety violation
+- Structural span without support → engineering violation
+
+Rules flag violations via `BomRules.checkPlacement()`. The engine never auto-fixes — it reports. The user or a higher-level process decides.
 
 ---
 

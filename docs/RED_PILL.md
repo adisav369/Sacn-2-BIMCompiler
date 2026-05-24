@@ -413,6 +413,26 @@ The BOM engine (438 tests) provides the algebra. These tasks wire it to visible 
 
 8 scenarios proven: storey grow/shrink (A), SPAN on X/Y/Z (B/C/D), UNIFORM recount (E), FIXED position (F), idempotency (G), mandatory-survives-shrink (H).
 
+#### Element resize behaviour (metadata-driven, no hardcode)
+
+Every element's response to parent resize is controlled by `m_bom_line` metadata:
+
+| Element | `layout_strategy` | `mandatory` | `max_count` | `qty_type` | Resize behaviour |
+|---------|-------------------|-------------|-------------|------------|-----------------|
+| Wall | SPAN | 0 | — | — | Stretches on length axis, thickness fixed |
+| Door | FIXED | 1 | 1 | FIXED | Stays at tack, exactly 1, never resized |
+| Window | UNIFORM | 0 | NULL | VARIABLE | May ADD more to fill new space, existing stay put |
+| Column | FIXED | 1 | — | FIXED | Stays at tack, never moves |
+| Slab | SPAN | 0 | — | — | Stretches on both length and depth |
+| Beam | SPAN | 0 | — | — | Stretches on span axis |
+| Roof | SPAN | 0 | — | — | Follows building envelope |
+
+**Key distinction:** UNIFORM does NOT redistribute spacing. It fills remaining gap with additional instances if `qty_type=VARIABLE`. Wall material between openings is the infill — the wall itself is the SPAN parent, openings are its children.
+
+**Validation (post-recompose):** A bare wall >6m without opening is not fixed by the engine — it's flagged by UBBL rules (`disc_rules.json` via `BomRules.checkPlacement`). The rule fires AFTER recompose and reports a violation. The user decides what to do. See `BOM_ENGINE_SPEC.md §21.3 SETBACK` for the pattern.
+
+**Controlling columns:** `layout_strategy`, `mandatory`, `max_count`, `min_count`, `qty_type`, `fill_axis`, `allocated_width/depth/height_mm` — all in `m_bom_line`. See `BOM_ENGINE_SPEC.md §3.3` for strategy vocabulary.
+
 ### 11.8 Cross-Level BOM Scenarios (Stage 2)
 
 **Principle: BOM JOIN query, not geometry invention.** A cross-level response is a targeted SQL JOIN that pulls a recipe (one BOM line + its strategy/attachments) without materializing the full tree. The recipe is instantiated at a computed hostAABB, then `recompose()` fills it via the same single-level operation.
