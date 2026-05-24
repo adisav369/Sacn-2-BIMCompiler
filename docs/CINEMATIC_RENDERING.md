@@ -143,17 +143,50 @@ This is NOT real-time — it renders frame-by-frame to a buffer. A 60-second TM 
 
 **Three.js addon**: No official. Use `canvas.toBlob()` per frame + `MediaRecorder` API (browser-native, no addon).
 
+### 8. City Benchmark (1M Element Suburb Strip)
+
+**What**: `city_bench.html` — 19 real buildings × 4 suburb strips = 1,196,164 IFC elements. Proves the architecture scales to 1M+ in a browser. Each building downloaded once, geometry cached, placed at 4 grid positions via InstancedMesh.
+
+**Current state**: Deployed but not fully tested. Known issues:
+- `faces` column name in component_geometries (fixed but needs verification on all 19 buildings)
+- `normals` column may not exist on some DBs (probe added)
+- Split-DB (meta+geo) vs single extracted — both paths implemented
+- Large buildings (LTU 379MB, Hospital 229MB) may timeout on first download
+- Memory pressure: 19 buildings × 4 copies → need to verify Chrome doesn't hit 4GB tab limit
+- InstancedMesh reuse across strips — geometry shared, but each placement creates new InstancedMesh objects (draw call count may be higher than expected)
+
+**Testing needed**:
+1. Load individual buildings (small first: SampleHouse, Duplex, HospitalGarage)
+2. Load a medium building (Clinic 16K, Terminal 48K)
+3. Load a large building (Hospital 63K, LTU 122K)
+4. Click "LOAD ALL" — measure peak memory, draw calls, FPS
+5. Verify Sky shader + sun sliders + shadow work during city viewing
+6. Verify click-on-bbox loads the correct building
+7. Check if geometry cache (`cachedGeoData`) correctly shares across strips
+
+**URL**: `https://red1oon.github.io/bim-ootb/viewer/city_bench.html`
+
+**Files**: `deploy/dev/city_bench.html` (standalone, no viewer dependency)
+
+**Success criteria**:
+- All 19 unique buildings load without error
+- 4 strips render (total ~1.2M elements)
+- FPS >15 on desktop with all buildings loaded
+- Memory <3.5GB (Chrome tab limit headroom)
+- Console: `§CITY_BENCH` log for each building with draw calls + ms
+
 ## Implementation Order
 
 | Phase | Effect | Files | Est. lines |
 |-------|--------|-------|-----------|
-| S277a | EffectComposer + Bloom (TM nights) | scene.js, time_machine.js | ~60 |
-| S277b | OutlinePass (pick + clash) | scene.js, picking.js, measure.js | ~80 |
-| S277c | Cloud layer + shadows | scene.js, time_machine.js | ~50 |
-| S277d | SSAO | scene.js | ~30 |
-| S277e | Lensflare | scene.js, time_machine.js | ~30 |
-| S277f | CSM | scene.js, tools.js | ~50 |
-| S277g | Animation export | time_machine.js, new record.js | ~120 |
+| S277a | City benchmark 1M troubleshoot | city_bench.html | ~50 |
+| S277b | EffectComposer + Bloom (TM nights) | scene.js, time_machine.js | ~60 |
+| S277c | OutlinePass (pick + clash) | scene.js, picking.js, measure.js | ~80 |
+| S277d | Cloud layer + shadows | scene.js, time_machine.js | ~50 |
+| S277e | SSAO | scene.js | ~30 |
+| S277f | Lensflare | scene.js, time_machine.js | ~30 |
+| S277g | CSM | scene.js, tools.js | ~50 |
+| S277h | Animation export | time_machine.js, new record.js | ~120 |
 
 ## Dependencies
 
