@@ -72,7 +72,7 @@ async function setupScene(A) {
   };
   A.scene = scene;
 
-  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 50000);
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 50000);  // §S277c: near=0.1m (was 0.5) — get within 10cm of surfaces without clipping
   camera.position.set(300, 200, 400);
   A.camera = camera;
 
@@ -315,11 +315,14 @@ async function setupScene(A) {
   A._outlinePass = null;
   A._composerEnabled = false;
   try {
-    var _ecMod = await import('./lib/EffectComposer.js');
-    var _rpMod = await import('./lib/RenderPass.js');
-    var _ssaoMod = await import('./lib/SSAOPass.js');
-    var _outMod = await import('./lib/OutlinePass.js');
-    var _opMod = await import('./lib/OutputPass.js');
+    // §S277c: Parallel import — all 5 addons load concurrently, not sequentially
+    var [_ecMod, _rpMod, _ssaoMod, _outMod, _opMod] = await Promise.all([
+      import('./lib/EffectComposer.js'),
+      import('./lib/RenderPass.js'),
+      import('./lib/SSAOPass.js'),
+      import('./lib/OutlinePass.js'),
+      import('./lib/OutputPass.js')
+    ]);
 
     var _composer = new _ecMod.EffectComposer(renderer);
     _composer.setSize(window.innerWidth, window.innerHeight);
