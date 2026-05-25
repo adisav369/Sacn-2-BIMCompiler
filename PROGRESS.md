@@ -20,6 +20,16 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S277 DONE (2026-05-25): Cinematic Rendering + Isolation Pick + Movie Maker.**
+  - WebGL-only (WebGPU deferred). EffectComposer: SSAO + OutlinePass + OutputPass.
+  - Isolation pick: dim 15%, picked 70% transparent, orange outline (Bonsai-style). Find: blue outline.
+  - TM twilight: 20x detail at dawn/dusk (5x slower + 4x finer steps). Auto-speed by element count.
+  - Night mode: 12 POL at orbit target + ambient 0.2 + fixture emissive glow (all surfaces, zero cost).
+  - Movie maker: record icon → .webm via MediaRecorder. Desktop only.
+  - Fog, lensflare, procedural normals, near clip 0.1m, clash red+blue.
+  - Keyboard: shortcuts over typeahead. Shadow: chunked traverse. Scissors: envelope range.
+  - **Spec: `docs/CINEMATIC_RENDERING.md`. Next: CSM, animation export.**
+
 **S274 DONE (2026-05-24): DLOD Rewrite + Mobile Perf — bench proven.**
   - Discovered Three.js r160 `perObjectFrustumCulled=true` handles BatchedMesh frustum culling natively — zero JS cost.
   - Desktop: InstancedMesh zero-scale frustum culling (35K instances, ~32% hidden when zoomed in). ~1.5ms tick.
