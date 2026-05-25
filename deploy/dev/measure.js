@@ -932,7 +932,15 @@ function setupMeasure(A) {
         var target = ev.target.closest('[data-clash-idx]');
         if (target) {
           var idx = parseInt(target.getAttribute('data-clash-idx'));
-          A._flyToClash(idx);
+          // §S278: ALL clicks route through ListKeyNav so anchor/cursor track correctly
+          // onToggle handles single (fly-to) vs multi (red dots + zoom)
+          if (A._clashListNav) {
+            var rows = Array.from(A._clashListDiv.querySelectorAll('[data-clash-idx]'));
+            var rowIdx = rows.indexOf(target);
+            if (rowIdx >= 0) A._clashListNav.onClick(rowIdx, ev);
+          } else {
+            A._flyToClash(idx);
+          }
         }
       }
     });
@@ -969,7 +977,16 @@ function setupMeasure(A) {
       // On desktop, click also triggers fly-to (mobile uses pointerup above)
       if (!_isMobile) {
         var target = ev.target.closest('[data-clash-idx]');
-        if (target) A._flyToClash(parseInt(target.getAttribute('data-clash-idx')));
+        if (target) {
+          // §S278: ALL clicks route through ListKeyNav
+          if (A._clashListNav) {
+            var rows = Array.from(A._clashListDiv.querySelectorAll('[data-clash-idx]'));
+            var rowIdx = rows.indexOf(target);
+            if (rowIdx >= 0) A._clashListNav.onClick(rowIdx, ev);
+          } else {
+            A._flyToClash(parseInt(target.getAttribute('data-clash-idx')));
+          }
+        }
       }
     });
 
