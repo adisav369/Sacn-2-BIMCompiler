@@ -644,10 +644,10 @@ function setupTools(A) {
   A._nightLights = [];       // active THREE.PointLight objects
   A._nightFixtures = [];     // [{x,y,z}] from DB — IFC coordinates
   A._nightSaved = null;      // saved day settings
-  var NIGHT_MAX_LIGHTS = 24; // §S277d: fill halls — 24 proximity-culled lights
-  var NIGHT_LIGHT_RANGE = 0; // §S277d: 0 = infinite range — no artificial cutoff, inverse-square does the physics
-  var NIGHT_LIGHT_INTENSITY = 8.0; // §S277d: high intensity — inverse-square decay handles falloff naturally
-  var NIGHT_LIGHT_DECAY = 1.5; // §S277d: between linear (1) and quadratic (2) — reaches further than physics
+  var NIGHT_MAX_LIGHTS = 12; // §S277d: 12 POL — fills rooms properly
+  var NIGHT_LIGHT_RANGE = 30; // §S277d: 30m radius
+  var NIGHT_LIGHT_INTENSITY = 1.5; // §S277d: brighter — 4 lights need to cover more
+  var NIGHT_LIGHT_DECAY = 1.5; // §S277d: gentler decay — reaches further per light
 
   A.toggleNightMode = function() {
     A._nightMode = !A._nightMode;
@@ -666,7 +666,7 @@ function setupTools(A) {
       // Moonlight: original values — worked well for SH
       A.sun.intensity = 0.15;
       A.sun.color.setHex(0x8899cc);
-      A.ambient.intensity = 0.1;
+      A.ambient.intensity = 0.2;  // §S277d: brighter moonlight — walls/floors visible everywhere
       A.hemi.intensity = 0.08;
       A.hemi.color.setHex(0x222244);
       A.renderer.toneMappingExposure = 0.8;
@@ -682,8 +682,8 @@ function setupTools(A) {
       // Update sliders to reflect
       document.getElementById('sl-sun').value = 0.15;
       document.getElementById('sl-sun-val').textContent = '0.2';
-      document.getElementById('sl-ambient').value = 0.1;
-      document.getElementById('sl-ambient-val').textContent = '0.1';
+      document.getElementById('sl-ambient').value = 0.2;
+      document.getElementById('sl-ambient-val').textContent = '0.2';
       document.getElementById('sl-hemi').value = 0.08;
       document.getElementById('sl-hemi-val').textContent = '0.1';
       document.getElementById('sl-exposure').value = 0.8;
@@ -727,15 +727,49 @@ function setupTools(A) {
           } catch(e) { console.warn('§NIGHT fallback query failed', e); }
         }
       }
-      console.log('§NIGHT_MODE on fixtures=' + A._nightFixtures.length + ' source=' + source);
-      // Place initial proximity lights
+      // §S277d: Make light fixture materials emissive — glow at any distance, zero cost.
+      // Uses matCache keys (rgba|ifcClass) — catches ALL material surfaces per fixture.
+      var _glowCount = 0;
+      A._nightGlowMats = [];
+      // Determine which IFC classes to glow
+      var _glowClasses = ['IfcLightFixture'];
+      // Check if building has any IfcLightFixture — if not, fallback to FlowTerminal
+      var _hasNamedLights = false;
+      if (A.db) {
+        try {
+          var lr = A.db.exec("SELECT COUNT(*) FROM elements_meta WHERE ifc_class='IfcLightFixture' OR LOWER(element_name) LIKE '%light%' OR LOWER(element_name) LIKE '%lamp%' OR LOWER(element_name) LIKE '%led%' OR LOWER(element_name) LIKE '%luminaire%'");
+          _hasNamedLights = lr.length && lr[0].values[0][0] > 0;
+        } catch(e) {}
+      }
+      if (!_hasNamedLights) {
+        _glowClasses.push('IfcFlowTerminal', 'IfcElectricAppliance');
+        source += '+fallback';
+      }
+      // Apply emissive to ALL matCache entries matching glow classes
+      var mc = A._matCache || {};
+      for (var mk in mc) {
+        var isLight = false;
+        for (var gi = 0; gi < _glowClasses.length; gi++) {
+          if (mk.indexOf(_glowClasses[gi]) >= 0) { isLight = true; break; }
+        }
+        if (!isLight) continue;
+        var m = mc[mk];
+        if (m && m.emissive) {
+          A._nightGlowMats.push({ mat: m, origE: m.emissive.getHex(), origEI: m.emissiveIntensity });
+          m.emissive.setHex(0xffe4b5);
+          m.emissiveIntensity = 0.8;
+          m.needsUpdate = true;
+          _glowCount++;
+        }
+      }
+      console.log('§NIGHT_MODE on fixtures=' + A._nightFixtures.length + ' source=' + source + ' glowMeshes=' + _glowCount);
+      // §S277d: 4 POL follow camera — subtle ambient on nearby walls/floor
       A._nightUpdateLights();
-      // Hook camera change to update proximity lights
       if (A.controls && !A._nightControlsListener) {
         var _nightLastCamPos = A.camera.position.clone();
         A._nightControlsListener = function() {
           var d2 = A.camera.position.distanceToSquared(_nightLastCamPos);
-          if (d2 < 25) return;  // only update when camera moves >5m
+          if (d2 < 25) return;
           _nightLastCamPos.copy(A.camera.position);
           A._nightUpdateLights();
         };
@@ -745,6 +779,15 @@ function setupTools(A) {
       btn.style.color = '#000';
       label.textContent = 'On — ' + A._nightFixtures.length + ' fixtures';
     } else {
+      // §S277d: Restore fixture emissive glow
+      if (A._nightGlowMats) {
+        A._nightGlowMats.forEach(function(g) {
+          g.mat.emissive.setHex(g.origE);
+          g.mat.emissiveIntensity = g.origEI;
+          g.mat.needsUpdate = true;
+        });
+        A._nightGlowMats = null;
+      }
       // Restore day
       if (A._nightSaved) {
         A.sun.intensity = A._nightSaved.sunI;
@@ -804,31 +847,20 @@ function setupTools(A) {
       // Small building — place ALL fixtures, no culling
       needed = allPos.map(function(p) { return { pos: p }; });
     } else {
-      // Large building — camera-facing priority culling
-      var camDir = new THREE.Vector3();
-      A.camera.getWorldDirection(camDir);
-      // §S277d: Score by distance + direction. Nearby lights always prioritised (fill the room).
-      // Forward bias weaker — behind-camera lights at <30m still included (room fill).
-      var scored = allPos.map(function(p) {
-        var dx = p.x - camPos.x, dy = p.y - camPos.y, dz = p.z - camPos.z;
-        var dist2 = dx*dx + dy*dy + dz*dz;
-        var dist = Math.sqrt(dist2) || 1;
-        var dot = (dx * camDir.x + dy * camDir.y + dz * camDir.z) / dist;
-        // Close lights (<30m) always score well regardless of direction
-        var score = dist < 30 ? dist2 : (dot > 0 ? dist2 : dist2 * 3);
-        return { pos: p, score: score };
-      }).sort(function(a, b) { return a.score - b.score; });
-      needed = scored.slice(0, NIGHT_MAX_LIGHTS);
+      // §S277d: Nearest 4 fixtures to orbit target (stable) — not camera (jumps on orbit)
+      var _tgt = A.controls ? A.controls.target : camPos;
+      var sorted = allPos.map(function(p) {
+        var dx = p.x - _tgt.x, dy = p.y - _tgt.y, dz = p.z - _tgt.z;
+        return { pos: p, dist2: dx*dx + dy*dy + dz*dz };
+      }).sort(function(a, b) { return a.dist2 - b.dist2; });
+      needed = sorted.slice(0, NIGHT_MAX_LIGHTS);
     }
     // Remove old lights
     A._nightLights.forEach(function(l) { A.scene.remove(l); l.dispose(); });
     A._nightLights = [];
-    // Add new — intensity fades when camera is close (avoid blowout inside rooms)
+    // §S277d: Fixed intensity at fixture positions — no camera-distance fade
     needed.forEach(function(f) {
-      var dist = camPos.distanceTo(f.pos);
-      var fade = Math.min(1.0, dist / 15);  // ramp from 0 at point to full at 15m
-      var intensity = NIGHT_LIGHT_INTENSITY * (0.3 + 0.7 * fade);  // never below 30%
-      var light = new THREE.PointLight(0xffe4b5, intensity, NIGHT_LIGHT_RANGE, NIGHT_LIGHT_DECAY);
+      var light = new THREE.PointLight(0xffe4b5, NIGHT_LIGHT_INTENSITY, NIGHT_LIGHT_RANGE, NIGHT_LIGHT_DECAY);
       light.position.copy(f.pos);
       A.scene.add(light);
       A._nightLights.push(light);
