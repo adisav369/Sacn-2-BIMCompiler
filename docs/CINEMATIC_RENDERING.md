@@ -77,5 +77,25 @@ Addons in `lib/` (window.THREE pattern, parallel import):
 - `Pass.js`, `MaskPass.js`
 - `Sky.js` (Preetham atmospheric scattering)
 
+## FPS Optimization Notes
+
+### Where frame time goes (LTU 122K at 30fps = 33ms budget)
+- **Draw calls** (~7ms): 229 calls × 0.03ms CPU-GPU overhead. Calls are lightweight index pointers — geometry + materials already in GPU VRAM from first frame. Not re-uploaded.
+- **Fragment shader** (~15ms): Per-pixel lighting. 2M pixels × PBR + N lights. Night mode 12 POL = 15 light evaluations per pixel. This is the main bottleneck.
+- **DLOD frustum** (~1.5ms): Hides ~33-84% of elements outside camera cone.
+- **JS overhead** (~3ms): controls.update, streamTick, dlodTick, traverse.
+
+### Improvement levers (future)
+1. **Material merging** — quantize colors to 16 buckets → fewer unique materials → ~80 draw calls (from 229). Could push LTU to 45fps.
+2. **Geometry LOD** — swap distant meshes to simplified versions. BatchedMesh supports per-slot geometry swap. 10K-tri slab at 200m → 100 tris.
+3. **Occlusion culling** — WebGL2 query objects skip geometry behind walls. Interior views: 60-70% of in-frustum geometry is occluded.
+4. **`renderer.sortObjects = false`** — skip per-frame depth sort (~1ms on 229 draws).
+
+### City 1M scaling
+Architecture works (InstancedMesh reuse, split-DB streaming). Bottleneck is memory. Fix: aggressive geometry LOD — distant buildings as simplified shells (~500 tris instead of 50K). Close buildings full-res.
+
+### R-tree
+Spatial index for queries (clash detection, pick proximity, night light nearest). Not a render optimization — DLOD frustum culling is the render-side equivalent.
+
 ## PointsMaterial Status
 Tested in r184 (`tests/test_points_r184.html`). **White square artifacts confirmed** — sizeAttenuation + AdditiveBlending still produce squares at distance. Sparks/particles remain disabled.
