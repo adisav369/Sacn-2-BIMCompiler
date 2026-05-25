@@ -20,8 +20,18 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S278 DONE (2026-05-25): Memory Leaks + Clash Polish + Mobile Perf + Find Optimization.**
+  - Memory leaks: PointLight shadow disposal, peel material clone, per-frame Vector3 caching (time_machine, picking, walk).
+  - Clash: color orange→blue (0x2266ff). First-phase behavior preserved — no invented guards/isolation/outline.
+  - Clash multi-select: keyboard Shift+Arrow works (red spheres + fly-to bbox). Ctrl+click deferred to refactor.
+  - Clash matrix: query cache per discipline, offset reset on pair change.
+  - Find: deferred element query on open (storeys+types only), cached storey list, BatchedMesh/InstancedMesh guid search.
+  - Mobile: EffectComposer skipped entirely (no creation, no GPU allocation). Direct render always.
+  - Storey active button: bright red (#ff2222).
+  - **Spec: `prompts/S278_REFACTOR_CLASH_PANELS.md`. Next: refactor clash_panels/matrix/effects out of scene.js, restore Palette.**
+
 **S277 DONE (2026-05-25): Cinematic Rendering + Isolation Pick + Movie Maker.**
-  - WebGL-only (WebGPU deferred). EffectComposer: SSAO + OutlinePass + OutputPass.
+  - WebGL-only (WebGPU deferred). EffectComposer: SSAO + OutlinePass + OutputPass (desktop only).
   - Isolation pick: dim 15%, picked 70% transparent, orange outline (Bonsai-style). Find: blue outline.
   - TM twilight: 20x detail at dawn/dusk (5x slower + 4x finer steps). Auto-speed by element count.
   - Night mode: 12 POL at orbit target + ambient 0.2 + fixture emissive glow (all surfaces, zero cost).

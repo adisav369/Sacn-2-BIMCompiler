@@ -2,11 +2,11 @@
 > **Foundation:** [BIM_Designer_Browser.md](BIM_Designer_Browser.md) · [4D5DAnalysis.md](4D5DAnalysis.md)
 
 <div class="bim-banner" markdown>
-<b>BIM in your pocket.</b> One HTML viewer. Two SQLite DBs per building. Works on desktop and mobile — same URL, same code. No server, no install, no account.
+<b>BIM in your pocket.</b> One HTML viewer. One SQLite DB per building (split meta+geo for large buildings). Works on desktop and mobile — same URL, same code. No server, no install, no account.
 </div>
 
-**Version:** 0.3 (2026-05-09)
-**Status:** LIVE — 37 buildings streaming from OCI Object Storage
+**Version:** 0.4 (2026-05-25)
+**Status:** LIVE — 33 buildings streaming from OCI Object Storage and GitHub Pages
 **Depends on:** `deploy/dev/index.html` + 30+ JS modules, per-building DBs
 **New:** [2D Guide](BIM_2D_Guide.md) | [kernel_ops architecture](BIM_Modeller_OOTB.md#the-modelling-inversion) | [2D Layout](2D_LAYOUT.md)
 
@@ -18,9 +18,9 @@ Open any link below in your browser (desktop or phone):
 
 | Link | What | Download | Mobile? |
 |------|------|----------|---------|
-| [**LIVE — Landing**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html) | 37 buildings, 1M elements — pick a building to stream | ~5-10 MB/building | Yes |
-| [**LTU A-House (126K)**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/sandbox/index.html?db=https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/buildings/LTU_AHouse_extracted.db&lib=https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-full/o/buildings/LTU_AHouse_library.db) | 126K elements — stress test, streams in seconds | ~68 MB | Yes |
-| [**DEV — Landing**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/index.html) | Dev/staging — latest changes under test | same | Yes |
+| [**LIVE — Landing**](https://red1oon.github.io/bim-ootb/) | 33 buildings, 1M elements — pick a building to stream | ~5-10 MB/building | Yes |
+| [**LTU A-House (126K)**](https://red1oon.github.io/bim-ootb/viewer/viewer.html?db=buildings/LTU_AHouse_extracted.db) | 126K elements — stress test, streams in seconds | ~68 MB | Yes |
+| [**DEV — Landing**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/index.html) | (deprecated — now same as LIVE via GitHub Pages) | same | Yes |
 
 **OCI Object Storage** (Malaysia West 2 Kulai). Always Free tier. No login required.
 
@@ -31,7 +31,7 @@ Open any link below in your browser (desktop or phone):
 The fastest way: click **DIY Downloader** in the About box of the [live viewer](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html). It generates a platform-specific install script that checks prerequisites, downloads the viewer (~49MB), and starts a local server — all automatic.
 
 Installs to `~/bim-ootb/` (Mac/Linux) or `C:\Users\{you}\bim-ootb\` (Windows).
-Includes all templates, rates, 15 language packs. Buildings load from OCI cloud.
+Includes all templates, rates, 18 language packs. Buildings load from OCI cloud.
 See [About — DIY Self-Host](https://red1oon.github.io/BIMCompiler/AboutMore/#diy-self-host) for full details.
 
 ## 3. Run It Locally — Manual (3 Steps)
@@ -58,7 +58,7 @@ That's it. The landing page lists all buildings. Click one — it loads from the
 | Folder | Contents | Size |
 |--------|----------|------|
 | `deploy/dev/` | HTML viewer + 30+ JS modules | ~400 KB |
-| `deploy/buildings/` | 31 buildings × 2 DBs each (extracted + library) | ~2 GB total |
+| `deploy/buildings/` | 33 buildings (single DB each, split meta+geo for large) | ~2 GB total |
 | `deploy/dev/boq_charts.html` | 4D/5D analytics dashboard | ~50 KB |
 | `deploy/dev/mep_report.html` | MEP quantity takeoff report | ~30 KB |
 | `deploy/dev/clash_report.html` | Clash analysis matrix page | ~40 KB |
@@ -141,7 +141,7 @@ These features work in `deploy/dev/` and pass Playwright tests, but are **not ye
 | **Drop → Wizard E2E** | OK | OK | `15-drop-zone-wizard` | Full pipeline: drop file → import → wizard → view |
 | **Two-DB diff/variance** | OK | OK | `08-diff` | Compare building versions, highlight changes |
 | **InstancedMesh perf** | OK | OK | `16-instanced-perf` | 85% draw call reduction (48K elements). Dev only — needs updated `streaming.js` |
-| **Rates + Locale** | OK | OK | — | `rates.js` — CIDB Malaysia rates, 15 locales. Dev only. See [Localization Guide](Localization.md) |
+| **Rates + Locale** | OK | OK | — | `rates.js` — CIDB Malaysia rates, 18 locales. Dev only. See [Localization Guide](Localization.md) |
 | **Service Worker** | OK | OK | — | `sw.js` — offline cache for HTML/JS/WASM. Dev only |
 | **Find & Navigate** | OK | **issues** | `17-find-navigate` | Search elements, waypoint navigation. Dev only — needs `navigate.js` |
 | **4D Gantt → Scene** | OK | OK | — | BroadcastChannel sync: Gantt chart phases animate ghostglass overlays on 3D model. Dev only |
@@ -511,7 +511,7 @@ After uploading changed JS files, users must hard-refresh (Ctrl+Shift+R). The `?
 - [x] IFC export from browser — dev tested
 - [x] InstancedMesh performance (85% draw call reduction) — dev tested
 - [x] Service Worker offline cache — dev tested
-- [x] Rates + Locale (CIDB Malaysia, 15 locales) — dev tested
+- [x] Rates + Locale (CIDB Malaysia, 18 locales) — dev tested
 - [ ] Promote all above to production OCI bucket
 
 ### Phase B: Mobile Polish (IN PROGRESS — S232-S233)
@@ -582,7 +582,7 @@ All leverage the existing stack: phone sensors + BIM DB + Walk/Site mode.
 
 ## 11. Files
 
-### Production (`deploy/live/` → live OCI bucket)
+### Production (`deploy/live/` → GitHub Pages)
 
 | File | Role |
 |------|------|
@@ -612,7 +612,7 @@ All leverage the existing stack: phone sensors + BIM DB + Walk/Site mode.
 |------|------|-------|
 | `wizard.js` | Classification Wizard (4-step) | S229a |
 | `navigate.js` | Find & Navigate wayfinding | S233b |
-| `rates.js` | CIDB Malaysia rates + 15 locales | S225b |
+| `rates.js` | CIDB Malaysia rates + 18 locales | S225b |
 | `sw.js` | Service Worker offline cache | S232 |
 | `semantic_enrichment.js` | Auto-classify imported meshes | S228a |
 | `scene_to_db.js` | Three.js scene → DB pipeline | S228a |
@@ -639,7 +639,7 @@ All leverage the existing stack: phone sensors + BIM DB + Walk/Site mode.
 
 | Path | Contents |
 |------|----------|
-| `deploy/buildings/*.db` | 31 buildings × 2 DBs (extracted + library) |
+| `deploy/buildings/*.db` | 33 buildings (single DB each, split meta+geo for large) |
 | `docs/MOBILE_DEPLOY.md` | This spec |
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

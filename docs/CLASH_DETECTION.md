@@ -6,9 +6,16 @@
 <b>48,000 elements. 12 discipline-pair rules. One browser tab. Zero server.</b> Clash detection that runs entirely in the browser — SQL queries against a local SQLite database, bounding-box geometry rendered by the GPU, results in milliseconds. No Navisworks. No license. No desktop.
 </div>
 
-**Version:** 1.0 (2026-05-04)
+**Version:** 1.1 (2026-05-25)
 **Status:** LIVE — storey-scoped progressive queries, discipline matrix, in-viewer review workflow
 **Depends on:** `measure.js`, `clash_rules.json`, `rtree-sql.js` (WASM), Three.js
+
+### S278 Changes (2026-05-25)
+- Clash pair colors: red `0xff0000` + blue `0x2266ff` (was red + orange)
+- Multi-select: Shift+Arrow keyboard selects range → solid red spheres at midpoints + fly-to bbox
+- Matrix: query cache per discipline, offset reset on pair change
+- Overlap mesh: `depthTest: false`, shines through geometry
+- Refactor prompt: `prompts/S278_REFACTOR_CLASH_PANELS.md`
 
 
 ---
@@ -132,7 +139,7 @@ Click the share icon on any clash pair to copy a URL that encodes the full viewi
 <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:8px;">15-second demo: opening a shared clash link — the viewer loads the building, flies to the clash pair, and highlights the overlap. <a href="https://youtu.be/8jSSQSv0SJg">Watch on YouTube</a></figcaption>
 </figure>
 
-**Try it live:** [Open Clash Pair — Hospital Garage MEP vs ARC](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/sandbox/index.html?db=https%3A%2F%2Fobjectstorage.ap-kulai-2.oraclecloud.com%2Fn%2Fax3cp6tzwuy2%2Fb%2Fbim-ootb-live%2Fo%2Fbuildings%2FHospitalGarage_extracted.db#clash=0GjpF04mX1K8P$TdM8fU2_~3ltWc9XO98DfOXi0yjJr4p&st=&cam=-44.21,-8.22,-42.42&tgt=-52.01,-7.95,-35.39&tol=25)
+**Try it live:** [Open Clash Pair — Hospital Garage MEP vs ARC](https://red1oon.github.io/bim-ootb/viewer/viewer.html?db=https%3A%2F%2Fobjectstorage.ap-kulai-2.oraclecloud.com%2Fn%2Fax3cp6tzwuy2%2Fb%2Fbim-ootb-live%2Fo%2Fbuildings%2FHospitalGarage_extracted.db#clash=0GjpF04mX1K8P$TdM8fU2_~3ltWc9XO98DfOXi0yjJr4p&st=&cam=-44.21,-8.22,-42.42&tgt=-52.01,-7.95,-35.39&tol=25)
 
 URL anatomy:
 ```
@@ -267,6 +274,6 @@ Horizontal bar chart showing clash density per storey — storey-scoped counts a
 
 ## 10. Try It
 
-Open the [BIM OOTB viewer](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html), load any multi-discipline building (Terminal recommended), activate the Measure tool, right-click any element or empty space, and click the clash sphere.
+Open the [BIM OOTB viewer](https://red1oon.github.io/bim-ootb/viewer/viewer.html), load any multi-discipline building (Terminal recommended), activate the Measure tool, right-click any element or empty space, and click the clash sphere.
 
 No install. No sign-up. No server. Just a browser.
