@@ -71,17 +71,52 @@ scene.js (1355 lines) has grown into a dumping ground. Extract clash-list LISTNA
 5. **Update viewer.html** — add `<script src="new_file.js?v=1">` in correct order
 6. **Bump sw.js** CACHE_VERSION after each extraction
 
-## Phase 4: Palette (Sunglass) — restore coloring
+## Phase 4: Palette (Sunglass) — DONE (S279)
 
-**Problem:** Palette/sunglass coloring may have been broken by S277/S278 changes (night mode glow mats, material cloning, isolation dimming all touch mesh materials).
+Fixed in S279: `_restoreSunglass` clears isolation before restore, `_recolorMesh` guards colorless materials and resets dimmed opacity on clones. Slider compressed to 9 combos (3 palettes × 3 groupings) + zebra/mono/gradient/hard. Base saturation boosted +0.15.
 
-**Investigation:**
-- `tools.js` lines 312-450: `_restoreSunglass`, `_recolorMesh`, `applyPalette`, `_sunglassBackups`
-- Night mode `_nightGlowMats` modifies `emissive`/`emissiveIntensity` — may conflict with palette
-- S277d isolation `_pickIsolated` sets `opacity: 0.15` — may overwrite palette opacity
-- `_matCache` keys are `rgba|ifcClass` — palette recolor changes color but matCache key stays old
+## Phase 5: Pill Icon State — fix toggle visual sync
 
-**Task:** Compare `tools.js` sunglass code against the last commit before S277c (`74b1e9a`) and restore any broken behavior. Do NOT invent — only restore what was working.
+**Problem:** Pill buttons and overflow buttons don't truthfully show selected state.
+
+**Root cause:** Two competing visual state systems:
+- Toggle functions (tools.js, measure.js, walk.js, tour.js) set inline `style.background`
+- Overflow open sync (panels.js:735) uses `.classList.toggle('active')`
+- Inline styles always override CSS classes → `.active` class has no effect
+
+**Affected buttons:**
+| Button | Toggle function | State indicator | Problem |
+|--------|----------------|-----------------|---------|
+| xray-btn | tools.js:84 | `style.background` | Inline overrides .active |
+| section-btn | tools.js:153 | `style.background` | Inline overrides .active |
+| sunglass-btn | tools.js:320 | `style.background` | Inline overrides .active |
+| night-btn | tools.js:691 | `style.background` | No overflow sync at all |
+| shadow-overflow-btn | tools.js:647 | `style.background` | Inline overrides .active |
+| fly-btn | tour.js:5 | `style.background` | Inline overrides .active |
+| measure-btn | measure.js:1455 | `style.background` | Inline overrides .active |
+| pill-walk | walk.js:190 | `style.background` | No .active, uses inline |
+| pill-tm | - | NONE | No state sync at all |
+
+**Fix:** Convert ALL toggle functions to use `.classList.toggle('active')` instead of inline `style.background`. Remove inline style manipulation. The CSS already defines `#icon-pill button.active` and overflow button `.active` styling.
+
+**Night button:** Missing from overflow sync (panels.js:735-741). Add `_s('night-btn', A._nightMode)`.
+
+## Phase 6: Mobile Performance — safe improvements
+
+**Done in S279:**
+- Gate `updateMeasureLabels` + ground check behind dirty flag on mobile (main.js)
+- Reuse static Vector3 in `updateMeasureLabels` (measure.js)
+- Single-pass `_collectAllMeshes` (tools.js)
+- Cache streaming DOM refs, skip unchanged updates (streaming.js)
+- Reuse Matrix3 in mobile merge loop (streaming.js)
+- Hoist flush temp objects to module scope (streaming.js)
+
+**Remaining opportunities (safe, no behavior change):**
+| What | Where | Impact |
+|------|-------|--------|
+| Replace 300ms clash watcher setInterval with event-driven callback | scene.js:800 | Eliminates 3.3 polls/sec |
+| Cache `collectMeshes` result in hover highlight, invalidate on stream | tools.js:946 | Skip full traverse per mousemove |
+| Use requestIdleCallback for clash matrix background checks | measure.js:1365-1415 | Reduce UI thread pressure |
 
 ## Verification
 - All §-tagged logs must appear unchanged
@@ -91,7 +126,9 @@ scene.js (1355 lines) has grown into a dumping ground. Extract clash-list LISTNA
 - Single click fly-to works
 - Mobile: no composer created
 - Desktop: SSAO/Outline toggle works
-- Palette slider ticks 1-30 cycle through warm/cool/earth palettes
+- Palette slider ticks 1-100 all show distinct color schemes
 - Palette off restores original IFC colors
 - Palette works after night mode toggle (on/off cycle)
 - Palette works after pick isolation (click element, then adjust palette)
+- All pill/overflow buttons show correct active state after toggle
+- Night mode: exterior surfaces visible, LEDs glow, POL lights nearby surfaces
