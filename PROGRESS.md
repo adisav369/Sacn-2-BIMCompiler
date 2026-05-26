@@ -20,6 +20,14 @@
 
 ## Active Work — Browser BIM OOTB
 
+**S274b DONE (2026-05-26): Import Perf + CI + Auto-Open.**
+  - Split-DB for dropped IFC: landing page persists metaDb/geoDb, openProject uses split URLs.
+  - Instant card click (64ms): cache pre-populated during import, count() key check skips 760MB record read.
+  - Auto-open: viewer launches immediately after import (single + multi-file). No card click needed.
+  - Error reporter: toast fires on uncaught errors, Report button → GitHub/Email.
+  - GitHub Actions CI: Tier 1 (syntax+audit, 7s) + Tier 2 (golden-path Playwright, 47s). Vogel fixture.
+  - **Open: IFC export broken (IFCFLOWSEGMENT), email report too long, material white handling. See `prompts/S280_IMPORT_POLISH.md`.**
+
 **S278 DONE (2026-05-25): Memory Leaks + Clash Polish + Mobile Perf + Find Optimization.**
   - Memory leaks: PointLight shadow disposal, peel material clone, per-frame Vector3 caching (time_machine, picking, walk).
   - Clash: color orange→blue (0x2266ff). First-phase behavior preserved — no invented guards/isolation/outline.
