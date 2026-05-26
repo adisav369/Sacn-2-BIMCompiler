@@ -834,7 +834,7 @@ async function setupScene(A) {
                 // BUG-5 fix: delay focus to allow DOM layout before offsetWidth check
                 setTimeout(function() { _focusPanel('clashlist'); }, 50);
               }
-            }, 300);
+            }, 100);
           }
         }, 200);
       });
