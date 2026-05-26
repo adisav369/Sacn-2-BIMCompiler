@@ -368,6 +368,10 @@ function setupMeasure(A) {
         var oz = Math.min(maxZ, bMaxZ) - Math.max(minZ, bMinZ);
         var overlap = Math.min(ox, oy, oz);
 
+        // §S278: Filter by tolerance — only report clashes above the threshold
+        var tol = rules._activeTolerance || 0.025;
+        if (overlap < tol) continue;
+
         if (skip > 0) { skip--; continue; }
         results.push([ra[1], rb[1], ra[2], rb[2], discA, discB, ra[3], rb[3], overlap]);
       }
@@ -440,9 +444,10 @@ function setupMeasure(A) {
         if (el) el.textContent = 'Total: ' + total;
       }
       if (!A._cachedPairCounts) A._cachedPairCounts = {};
-      var key = [discA, discB].sort().join('|');
+      var tol = rules._activeTolerance || 0;
+      var key = [discA, discB].sort().join('|') + '@' + tol.toFixed(3);
       A._cachedPairCounts[key] = total;
-      console.log('§CLASH_COUNT total=' + total + ' rtree=true cached=' + key);
+      console.log('§CLASH_COUNT total=' + total + ' tol=' + (tol*1000).toFixed(0) + 'mm rtree=true cached=' + key);
       return;
     }
     // Fallback: storey-by-storey cross-join (R-tree not ready)
@@ -864,6 +869,7 @@ function setupMeasure(A) {
       });
       slider.addEventListener('change', function() {
         pairRule.tolerance_m = parseInt(slider.value) / 1000;
+        rules._activeTolerance = pairRule.tolerance_m;
         console.log('§CLASH_TOL_SLIDER ' + (pairLabel || '') + ' to ' + slider.value + 'mm');
         // §S278: Save list position before rebuild (preserves drag state)
         var prevRect = listDiv.getBoundingClientRect();
