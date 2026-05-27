@@ -1350,6 +1350,112 @@ test('s276_resource_budget', () => {
   };
 });
 
+// ─── 3.20 Streaming contract — S280d routing threshold + metadata integrity ─
+// Issue: S280b changed threshold ===1 to <=5, broke TM/picking (GUIDs in wrong meta map)
+test('streaming_contract_routing', () => {
+  var src = fs.readFileSync(path.join(DEV_DIR, 'streaming.js'), 'utf8');
+  var issues = [];
+
+  // 1. Routing threshold must be exactly === 1 (single-instance → BatchedMesh)
+  //    The if-block in _flushInstanced that routes elements.length === 1 to batchBuckets
+  var thresholdMatch = src.match(/if\s*\(\s*elements\.length\s*(===?\s*1)\s*\)/);
+  if (!thresholdMatch) {
+    issues.push('routing threshold not found or changed from ===1');
+  } else if (!thresholdMatch[1].includes('===')) {
+    issues.push('routing threshold uses == not === (' + thresholdMatch[1] + ')');
+  }
+
+  // 2. _registerBatchSlot must exist and populate guidMap + _batchStoreyMap + _batchDiscMap
+  var hasBatchReg = src.includes('A._registerBatchSlot');
+  var batchPopGuid = src.match(/_registerBatchSlot[\s\S]*?guidMap\[/);
+  var batchPopStorey = src.match(/_registerBatchSlot[\s\S]*?_batchStoreyMap/);
+  var batchPopDisc = src.match(/_registerBatchSlot[\s\S]*?_batchDiscMap/);
+  if (!hasBatchReg) issues.push('_registerBatchSlot function missing');
+  if (!batchPopGuid) issues.push('_registerBatchSlot does not populate guidMap');
+  if (!batchPopStorey) issues.push('_registerBatchSlot does not populate _batchStoreyMap');
+  if (!batchPopDisc) issues.push('_registerBatchSlot does not populate _batchDiscMap');
+
+  // 3. _registerInstanceSlot must exist and populate guidMap + _instanceGuids
+  var hasInstReg = src.includes('A._registerInstanceSlot');
+  var instPopGuid = src.match(/_registerInstanceSlot[\s\S]*?guidMap\[/);
+  var instPopGuids = src.match(/_registerInstanceSlot[\s\S]*?_instanceGuids\[/);
+  if (!hasInstReg) issues.push('_registerInstanceSlot function missing');
+  if (!instPopGuid) issues.push('_registerInstanceSlot does not populate guidMap');
+  if (!instPopGuids) issues.push('_registerInstanceSlot does not populate _instanceGuids');
+
+  // 4. Contract assertion must exist (§CONTRACT_CHECK at final flush)
+  var hasContractCheck = src.includes('§CONTRACT_CHECK') && src.includes('§CONTRACT_FAIL');
+  if (!hasContractCheck) issues.push('§CONTRACT_CHECK/FAIL assertion missing from final flush');
+
+  // 5. Both flush paths must use the shared registration functions (not inline)
+  //    _flushInstanced must call _registerBatchSlot and _registerInstanceSlot
+  //    _flushBboxBatched must call _registerBatchSlot
+  // Anchor on function assignment, not just name mention
+  var flushStart = src.indexOf('A._flushInstanced = function');
+  var bboxStart = src.indexOf('A._flushBboxBatched = function');
+  var flushSrc = (flushStart >= 0 && bboxStart >= 0) ? src.substring(flushStart, bboxStart) : '';
+  var bboxSrc = bboxStart >= 0 ? src.substring(bboxStart) : '';
+  var flushUsesBatch = flushSrc.includes('_registerBatchSlot');
+  var flushUsesInst = flushSrc.includes('_registerInstanceSlot');
+  var bboxUsesBatch = bboxSrc.includes('_registerBatchSlot');
+  if (!flushUsesBatch) issues.push('_flushInstanced does not use _registerBatchSlot');
+  if (!flushUsesInst) issues.push('_flushInstanced does not use _registerInstanceSlot');
+  if (!bboxUsesBatch) issues.push('_flushBboxBatched does not use _registerBatchSlot');
+
+  var allOk = issues.length === 0;
+  return {
+    ok: allOk,
+    log: '§WB_STREAMING_CONTRACT threshold=1 batchReg=' + hasBatchReg +
+         ' instReg=' + hasInstReg + ' contractAssert=' + hasContractCheck +
+         ' sharedPaths=flush:' + flushUsesBatch + '/' + flushUsesInst +
+         '+bbox:' + bboxUsesBatch,
+    reason: allOk ? '' : issues.join(', ')
+  };
+});
+
+// ─── 3.21 Streaming contract — LTU hash distribution sanity ─────────────────
+// Issue: S280b routed 2-5 instance hashes to BatchedMesh, losing InstancedMesh GUIDs
+test('streaming_contract_hash_distribution', () => {
+  // Verify LTU has both single-instance and multi-instance hashes
+  // (so both routing paths are exercised)
+  var dbPath = findBldFile('LTU_AHouse_meta.db');
+  if (!dbPath) return { ok: true, log: '§WB_HASH_DIST skip — no LTU_AHouse_meta.db', reason: '' };
+
+  var totalElements = parseInt(sqlQuery(dbPath, "SELECT COUNT(*) FROM elements_meta WHERE ifc_class != 'IfcOpeningElement'"), 10);
+  var geoPath = findBldFile('LTU_AHouse_geo.db');
+  if (!geoPath) return { ok: true, log: '§WB_HASH_DIST skip — no LTU_AHouse_geo.db', reason: '' };
+
+  // Count hash distribution: how many hashes have exactly 1 instance vs 2+
+  var hashCounts = sqlQuery(dbPath,
+    "SELECT cnt, COUNT(*) FROM (SELECT geometry_hash, COUNT(*) as cnt FROM " +
+    "(SELECT i.geometry_hash FROM elements_meta m JOIN element_instances i ON m.guid=i.guid " +
+    "WHERE m.ifc_class != 'IfcOpeningElement' AND i.geometry_hash IS NOT NULL) " +
+    "GROUP BY geometry_hash) GROUP BY cnt ORDER BY cnt"
+  );
+  var single = 0, multi = 0;
+  hashCounts.split('\n').forEach(function(line) {
+    var parts = line.split('|');
+    if (parts.length !== 2) return;
+    var cnt = parseInt(parts[0], 10);
+    var numHashes = parseInt(parts[1], 10);
+    if (cnt === 1) single = numHashes;
+    else multi += numHashes;
+  });
+
+  var issues = [];
+  if (single === 0) issues.push('zero single-instance hashes — BatchedMesh path untested');
+  if (multi === 0) issues.push('zero multi-instance hashes — InstancedMesh path untested');
+  if (totalElements < 1000) issues.push('LTU has only ' + totalElements + ' elements — too few for meaningful test');
+
+  var allOk = issues.length === 0;
+  return {
+    ok: allOk,
+    log: '§WB_HASH_DIST elements=' + totalElements + ' single_hashes=' + single +
+         ' multi_hashes=' + multi + ' (threshold===1: single→BM, multi→IM)',
+    reason: allOk ? '' : issues.join(', ')
+  };
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 console.log(`§WB_SUMMARY pass=${pass} fail=${fail} total=${pass + fail}`);
 process.exit(fail > 0 ? 1 : 0);
