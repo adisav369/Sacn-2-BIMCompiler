@@ -4347,15 +4347,24 @@
 </table>
 <p>The viewer shows the building outline instantly from positions, populates storey/discipline panels from metadata, and streams real geometry in the background sorted by camera distance — nearest elements appear first. You can orbit, pick, and filter while geometry is still loading.</p>
 <h3 id="rendering-pipeline">Rendering Pipeline<a class="headerlink" href="#rendering-pipeline" title="Permanent link">&para;</a></h3>
-<p>The viewer uses Three.js r160 with physically-based rendering (PBR):</p>
+<p>The viewer uses <a href="https://threejs.org/">Three.js r184</a> (Apr 2025) with physically-based rendering (PBR). Upgraded from r160 across 24 releases — r184 brings better uniform uploads, tighter draw call batching, and a WebGPU-ready architecture with seamless WebGL fallback. See <a href="https://github.com/mrdoob/three.js/releases">Three.js release notes</a> and <a href="https://threejs.org/docs/#manual/en/introduction/Installation">WebGPU migration guide</a>.</p>
 <ul>
 <li><strong>Geometry instancing</strong>: Elements sharing the same shape are rendered as a single GPU draw call via <code>BatchedMesh</code>. A 122K-element building produces roughly 15,000 draw calls instead of 122,000.</li>
 <li><strong>IFC-faithful materials</strong>: Colours are extracted from the IFC's own <code>IfcSurfaceStyle</code> definitions. Where the IFC author assigned no colour (common in Revit exports), a class-based palette provides physically plausible defaults — concrete is warm grey, steel is reflective, glass is smooth and blue-tinted.</li>
 <li><strong>Per-class PBR properties</strong>: Roughness and metalness vary by IFC class. Structural steel (IfcBeam, IfcColumn) is smooth and reflective. Concrete (IfcSlab, IfcWall) is rough and matte. Glass (IfcWindow, IfcCurtainWall) is near-mirror.</li>
 <li><strong>Cinematic tone mapping</strong>: ACESFilmic with tuned exposure. No washed-out greys.</li>
+<li><strong>Procedural environment map</strong>: vertex-coloured gradient sky via PMREMGenerator — subtle reflections on all PBR materials without HDR textures.</li>
+<li><strong>Batched X-ray</strong>: material <code>needsUpdate</code> spread across 3 frames (45 materials per frame) — eliminates GPU shader recompile stutter on toggle.</li>
 </ul>
 <h3 id="visibility-culling-dlod">Visibility Culling (DLOD)<a class="headerlink" href="#visibility-culling-dlod" title="Permanent link">&para;</a></h3>
-<p>For buildings above 100,000 elements, a frustum-based visibility system hides geometry that is behind the camera. This is pure visibility toggling — no geometry is simplified or replaced with proxies. What you see is exactly what is in the IFC file.</p>
+<p>Two-tier frustum culling, both pure visibility — no geometry simplified or replaced:</p>
+<ul>
+<li><strong>BatchedMesh</strong> (unique elements): Three.js r184 <code>perObjectFrustumCulled</code> handles per-slot culling natively inside <code>renderer.render()</code> — zero JS cost. 84% of slots hidden when camera is inside a room.</li>
+<li><strong>InstancedMesh</strong> (repeated elements, desktop only): Custom zero-scale matrix trick hides off-screen instances. ~32% hidden at typical zoom. ~1.5ms tick for 35K instances.</li>
+</ul>
+<p>Mobile skips the custom DLOD tick entirely — r184 native culling handles BatchedMesh, and InstancedMesh buffer re-upload (<code>instanceMatrix.needsUpdate</code>) costs more than it saves on mobile GPUs. Instead: on-demand render gate (skip <code>renderer.render()</code> when idle) + DPR 0.75 during orbit (44% fewer pixels while dragging) + render throttle (1/10 frames during streaming) + 20K bbox cap (sampled for buildings &gt;20K elements).</p>
+<p>What you see is exactly what is in the IFC file — no proxies, no LOD geometry, no simplification.</p>
+<p><strong>WebGPU status (S276b):</strong> The viewer is WebGPU-ready — <code>navigator.gpu.requestAdapter()</code> detects hardware WebGPU and activates <code>WebGPURenderer</code> automatically. Currently all browsers fall back to WebGL r184 (Intel iGPU = no adapter, mobile = skipped for stability, Chrome Linux PRIME = SwiftShader rejected). WebGL r184 performs better than r160 even without WebGPU — the upgrade delivers improved batching, native frustum culling, and cleaner shader compilation. WebGPU will activate automatically when browser/GPU support matures.</p>
 <h2 id="feature-overview">Feature Overview<a class="headerlink" href="#feature-overview" title="Permanent link">&para;</a></h2>
 <h3 id="viewing">Viewing<a class="headerlink" href="#viewing" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4792,7 +4801,7 @@ SQLite Database (.db)
   ↓  (browser loads from URL or cache)
 sql.js (SQLite over WASM)
   ↓  (query → BufferGeometry)
-Three.js r160
+Three.js r184
   ├── InstancedMesh    — elements sharing geometry (2+ instances)
   ├── BatchedMesh      — single-instance elements grouped by bucket
   └── MeshStandardMaterial — PBR with per-class roughness/metalness
@@ -4812,8 +4821,8 @@ WebGL → Screen
 <tbody>
 <tr>
 <td>Rendering</td>
-<td>Three.js r160 ESM</td>
-<td>WebGL, BatchedMesh, InstancedMesh, PBR</td>
+<td><a href="https://threejs.org/">Three.js r184</a> ESM</td>
+<td>WebGL/WebGPU, BatchedMesh, InstancedMesh, PBR</td>
 </tr>
 <tr>
 <td>Database</td>

@@ -2664,10 +2664,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#infrastructure-s225s243-s260s262" class="md-nav__link">
+  <a href="#infrastructure-s225s243-s260s276" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Infrastructure (S225–S243, S260–S262)
+        Infrastructure (S225–S243, S260–S276)
       
     </span>
   </a>
@@ -2703,10 +2703,43 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#s271-mobile-performance" class="md-nav__link">
+  <a href="#s275-done-find-panel-fly-to-ux-overhaul" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S271+ — Mobile Performance
+        S275 DONE — Find Panel Fly-to + UX Overhaul
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s276-done-threejs-r184-webgpu-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S276 DONE — Three.js r184 + WebGPU Upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s276b-done-webgpu-polish-mobile-freeze-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S276b DONE — WebGPU Polish + Mobile Freeze Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s274-done-dlod-mobile-perf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S274 DONE — DLOD + Mobile Perf
       
     </span>
   </a>
@@ -3915,10 +3948,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#infrastructure-s225s243-s260s262" class="md-nav__link">
+  <a href="#infrastructure-s225s243-s260s276" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Infrastructure (S225–S243, S260–S262)
+        Infrastructure (S225–S243, S260–S276)
       
     </span>
   </a>
@@ -3954,10 +3987,43 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#s271-mobile-performance" class="md-nav__link">
+  <a href="#s275-done-find-panel-fly-to-ux-overhaul" class="md-nav__link">
     <span class="md-ellipsis">
       
-        S271+ — Mobile Performance
+        S275 DONE — Find Panel Fly-to + UX Overhaul
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s276-done-threejs-r184-webgpu-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S276 DONE — Three.js r184 + WebGPU Upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s276b-done-webgpu-polish-mobile-freeze-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S276b DONE — WebGPU Polish + Mobile Freeze Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s274-done-dlod-mobile-perf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S274 DONE — DLOD + Mobile Perf
       
     </span>
   </a>
@@ -4095,13 +4161,14 @@
 <li>FTS5 search across 23 AD tables</li>
 <li>Glass overlay, edge swipe, accordion drill</li>
 </ul>
-<h3 id="infrastructure-s225s243-s260s262">Infrastructure (S225–S243, S260–S262)<a class="headerlink" href="#infrastructure-s225s243-s260s262" title="Permanent link">&para;</a></h3>
+<h3 id="infrastructure-s225s243-s260s276">Infrastructure (S225–S243, S260–S276)<a class="headerlink" href="#infrastructure-s225s243-s260s276" title="Permanent link">&para;</a></h3>
 <ul>
 <li>18 locales, auto-detected from browser</li>
 <li>Split-DB streaming for large buildings (meta + geo)</li>
 <li>City mode — 786 buildings loaded simultaneously</li>
 <li>Share sheet — IFC/DB save, contribute, system share</li>
-<li>DLOD visibility culling, BatchedMesh instancing</li>
+<li>§S274 DLOD: r184 <code>perObjectFrustumCulled</code> for BatchedMesh (native, zero JS cost) + InstancedMesh zero-scale frustum culling (desktop). Mobile: render gate + DPR 0.75 orbit. See <code>docs/FeatureComparison.md</code> §Visibility Culling.</li>
+<li>§S276: Three.js r160→r184, WebGPURenderer with compat mode, <code>compileAsync</code> pipeline gate</li>
 </ul>
 <h3 id="red-pill-new-from-reference-s266s270">Red Pill / New From Reference (S266–S270)<a class="headerlink" href="#red-pill-new-from-reference-s266s270" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4112,11 +4179,71 @@
 <li>UBBL validator spec (trigger semantics, O(K) invariants)</li>
 </ul>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
-<h3 id="s271-mobile-performance">S271+ — Mobile Performance<a class="headerlink" href="#s271-mobile-performance" title="Permanent link">&para;</a></h3>
+<h3 id="s275-done-find-panel-fly-to-ux-overhaul">S275 DONE — Find Panel Fly-to + UX Overhaul<a class="headerlink" href="#s275-done-find-panel-fly-to-ux-overhaul" title="Permanent link">&para;</a></h3>
+<p>Click a Find result → camera flies to element with smooth ease-in-out animation. Full IFC info panel + yellow bbox highlight (unified <code>A._bboxMaterial</code>, linewidth 3).</p>
+<p><strong>What shipped:</strong>
+- <strong>Fly-to on click:</strong> direction-preserving camera animation (keeps viewing angle)
+- <strong>IFC info panel:</strong> shows Class/Name/GUID/Storey/Discipline/Material on result click; tap panel to re-highlight bbox
+- <strong>Slim accordion layout:</strong> storey/type/results as collapsible single-line rows (desktop + mobile)
+- <strong>Click-to-deselect:</strong> tap same element again to close info panel + clear highlight
+- <strong>Prefer-small pick:</strong> raycaster depth-band (0.5m) prefers smallest bbox — doors/windows win over walls
+- <strong>Navigate ▶ inline:</strong> small icon next to selected item, not full-width button
+- <strong>Find pill toggle:</strong> tap to open, tap again to close
+- <strong>Nav stop X button:</strong> red X on bottom bar with delegated listener, clears direction cue
+- <strong>Drag keeps panel open:</strong> orbit/pan doesn't close panel (tap-only dismiss)
+- <strong>Keyboard nav:</strong> Left/Right cycles search→storey→type→navigate. Up/Down navigates accordion items or results. Enter selects. Registered with <code>makeListKeyNav</code>/<code>_registerPanel</code>.
+- <strong>Mic icon:</strong> bright blue, left of search input. Voice search via Web Speech API.
+- <strong>Panel focus release:</strong> <code>closeFindPanel</code> calls <code>_blurPanel()</code> so other panels (Clash Matrix etc.) regain keyboard focus
+- <strong>Unified bbox:</strong> <code>A._bboxMaterial</code> in helpers.js — one material for picking, find, diff, wizard</p>
+<p><strong>Open:</strong> Left/Right + Enter within accordion items needs further refinement (non-critical).</p>
+<h3 id="s276-done-threejs-r184-webgpu-upgrade">S276 DONE — Three.js r184 + WebGPU Upgrade<a class="headerlink" href="#s276-done-threejs-r184-webgpu-upgrade" title="Permanent link">&para;</a></h3>
+<p>Upgraded from r160 (Dec 2023) to r184 (Apr 2025) — 24 releases. LTU 122K verified smooth on Chrome.</p>
+<p><strong>What shipped:</strong>
+- <strong>r184 split build:</strong> <code>three.webgpu.min.js</code> (622KB) + <code>three.core.min.js</code> (375KB) = 998KB runtime
+- <strong>Native-only WebGPU detection:</strong> <code>navigator.gpu.requestAdapter()</code> → if adapter found, use WebGPURenderer. If null, reload THREE from <code>three.module.min.js</code> and use WebGLRenderer. No mixed-build issues.
+- <strong>Async renderer init:</strong> <code>setupScene</code>/<code>initViewer</code> async for <code>await renderer.init()</code>
+- <strong>Physically-correct lighting:</strong> <code>useLegacyLights</code> removed (r165), intensities × π (ambient 0.785, sun 4.4, hemi 1.257)
+- <strong>BatchedMesh <code>addInstance()</code>:</strong> required since r166, added at 3 call sites in streaming.js
+- <strong>BVH 0.7.8→0.8.0:</strong> targets r170+
+- <strong>Render gates (WebGPU):</strong> skip <code>render()</code> during streaming + <code>compileAsync()</code> after streaming with status message + deferred bbox clear
+- <strong>Dead files removed:</strong> <code>three.min.js</code> (UMD 630KB), <code>OrbitControls.js</code> (IIFE 28KB), <code>.r160.bak</code> files
+- <strong>Streaming log spam reduced:</strong> first + every 50K + final only
+- <strong>Whitebox tests:</strong> <code>§WB_S276_LIBS</code> (998KB budget), <code>§WB_S276_WIRING</code> (8 checks), <code>§WB_S276_RESOURCES</code> (gates + precache audit)</p>
+<p><strong>Verified working (2026-05-24):</strong> LTU 122K smooth on Chrome (WebGLRenderer r184, adapter=null). Time Machine 122667 ops, DLOD 13611 IM, cinematic 1633 scenes, shadows, night mode, find panel — all functional.</p>
+<p><strong>Key lessons learned:</strong>
+1. <strong>Compat mode is slower.</strong> WebGPURenderer compat (WebGL2 backend) transpiles TSL→GLSL per material. 9.2s for 44 materials on Intel iGPU. <code>compileAsync()</code> works (doesn't crash) but too slow for production. Direct WebGLRenderer skips TSL.
+2. <strong>Native WebGPU only.</strong> Check <code>navigator.gpu.requestAdapter()</code> — if null, use WebGLRenderer from standard build. Don't mix builds (webgpu PMREMGenerator expects WebGPURenderer API → ENV_MAP_FAIL).
+3. <strong>Laptop GPU selection.</strong> Chrome defaults to Intel iGPU on laptops → adapter=null. Need <code>chrome://flags/#force-high-performance-gpu</code> for NVIDIA dGPU.
+4. <strong>Render gates during streaming.</strong> <code>render()</code> compiles pipelines synchronously — skip during streaming, use <code>compileAsync()</code> after.</p>
+<h3 id="s276b-done-webgpu-polish-mobile-freeze-fix">S276b DONE — WebGPU Polish + Mobile Freeze Fix<a class="headerlink" href="#s276b-done-webgpu-polish-mobile-freeze-fix" title="Permanent link">&para;</a></h3>
+<p>Smooth on Chrome and Firefox. WebGL r184 fallback is the production path — performs better than r160.</p>
+<p><strong>Why WebGL r184 fallback is fast (no WebGPU needed):</strong>
+- r184 engine: better uniform uploads, tighter draw call batching, improved BufferGeometry handling
+- Native <code>perObjectFrustumCulled</code> on BatchedMesh (zero JS cost, r160 didn't have this)
+- ACES tone mapping + procedural env map (PMREMGenerator) from standard build — no mixed-build issues
+- Physically-correct lighting (intensities × π) — cleaner rendering pipeline</p>
+<p><strong>What shipped:</strong>
+- <strong>X-ray batched:</strong> <code>needsUpdate</code> spread across 3 frames (batch=45 for 134 materials). No GPU shader recompile stutter.
+- <strong>PCFSoftShadowMap → PCFShadowMap:</strong> removed in r184, replaced.
+- <strong>BVH warning suppressed:</strong> CDN import's "Multiple instances of Three.js" intercepted during load, restored after.
+- <strong>ENV_MAP verified:</strong> <code>§ENV_MAP vertex-color gradient sky</code> confirmed on WebGL fallback.
+- <strong>SwiftShader rejection:</strong> Chrome Linux PRIME exposes software Vulkan adapter — detected via <code>adapter.info.architecture === 'swiftshader'</code>, skipped. Prevents canvas poisoning.
+- <strong>Canvas recovery:</strong> if WebGPURenderer.init() fails, canvas is cloned before WebGL fallback (poisoned canvas can't create WebGL context).
+- <strong>Mobile WebGPU skip:</strong> <code>_isMobileRenderer</code> guard skips <code>navigator.gpu</code> entirely — mobile <code>compileAsync</code> hangs on mobile GPU. WebGL is the proven mobile path.
+- <strong>Mobile bbox cap:</strong> 20K on mobile (sampled every 6th for 122K buildings). Desktop: 200K.
+- <strong>Chunked bbox build:</strong> matrices built in 5K chunks with <code>setTimeout(0)</code> yields — no main thread block.
+- <strong>Render throttle:</strong> mobile renders every 10th frame during streaming (but immediate on touch/orbit via <code>_needsRender</code> bypass).
+- <strong>markDirty per chunk:</strong> bboxes appear progressively, not blank until touched.
+- <strong><code>chrome-gpu</code> alias:</strong> desktop shortcut + bash alias for <code>PRIME_RENDER_OFFLOAD</code> + <code>--enable-unsafe-webgpu</code> on Linux NVIDIA.</p>
+<p><strong>Deferred:</strong>
+- Chrome NVIDIA WebGPU: blocked by Chrome/Dawn PRIME handling on Linux. SwiftShader is the only adapter seen. Needs <code>prime-select nvidia</code> (full dGPU mode) or Chrome fix.</p>
+<p><strong>SW v481. Whitebox 35/39 (4 pre-existing).</strong></p>
+<h3 id="s274-done-dlod-mobile-perf">S274 DONE — DLOD + Mobile Perf<a class="headerlink" href="#s274-done-dlod-mobile-perf" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Render gate (stop GPU spinning when idle)</li>
-<li>Background tab pause (visibilitychange → stop rAF)</li>
-<li>WebGL context-lost recovery</li>
+<li>r160 <code>perObjectFrustumCulled</code> handles BM natively (zero JS cost)</li>
+<li>IM zero-scale frustum culling (desktop only, ~1.5ms tick)</li>
+<li>Mobile: DLOD off, on-demand render gate, DPR 0.75 orbit, tab pause</li>
+<li>Bench: <code>viewer/dlod_bench.html</code></li>
 </ul>
 <h3 id="grid-ux-polish">Grid UX Polish<a class="headerlink" href="#grid-ux-polish" title="Permanent link">&para;</a></h3>
 <ul>
