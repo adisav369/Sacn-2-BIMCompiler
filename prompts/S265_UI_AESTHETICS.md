@@ -269,3 +269,104 @@ Every icon in the app — pill, overflow, panels, command palette, sliders — c
 - All panels + pill + HUD at 50% opacity, blur(16px), unified borders
 - G2 fixed: focus stack dedup. SW v416→v431.
 - **BUG OPEN: Find panel mic button not rendering.** Next session: debug navigate_find.js mic wiring.
+
+### S281: Input registry + tap/long-press standard + platform gating (2026-05-27)
+
+Scope: the live pill is `#mobile-pill` (built by `_buildPill` from the `_actions` list in
+panels.js) on BOTH desktop + mobile — the old `#icon-pill` is `display:none`. Red Pill doc-mode
+(`toggleDocPill`, swaps `#icon-pill`) is a separate working "scene change" — left untouched.
+
+- **Input registry** (`viewer/input_registry.js`, `window.InputReg`): facade over scene.js focus
+  state. Live uses today: `syncActiveButtons()` (single icon-highlight authority, replaced the
+  manual 7-button sync block) + `focusTop()` (fixed the `[]` double-tap focus-only-latest bug —
+  it walked `_focusStack` which never holds the *current* panel).
+- **Shortcut self-check** — `InputReg.checkShortcuts()` auto-runs 2.5s after load. CONSISTENT
+  per-shortcut signature (matches §TAG key=val convention), one line each:
+  `§SHORTCUT key=<k> status=ok|dead|inline target=<fn>` + summary
+  `§SHORTCUT_AUDIT total=N ok=N inline=N dead=N deadKeys=<k,k>`. Grep `status=dead` to see exactly
+  which shortcut fails, by key+target. Resolver skips keywords/object-prefixes/DOM-builtins to
+  avoid false positives (e.g. `x`→`section-btn.click()` is inline-ok, not dead). `window._shortcuts`
+  exposed for it. Static CI-style twin: `tests/audit_input_registry.js`.
+  LIMIT (raised): verifies the target fn EXISTS/reachable — NOT that it does the right thing, so it
+  would NOT catch a fn acting on a dead/hidden element (the original .→#search-box bug). Effect-level
+  testing needs a Playwright keypress spec.
+- **NOT-EASY-YET (one-place gap):** a shortcut still needs TWO edits — key→fn in `_shortcuts`
+  (scene.js) AND the pill icon tap in `_actions` (panels.js). They can silently disagree. TRUE
+  single-place authoring = each `_actions` entry declares `key:`, engine derives `_shortcuts`.
+  Pending (central refactor of scene.js keydown).
+- **Tap/long-press STANDARD** (reusable `_buildPill` hook: `act.hold` + `act.keepOpen`, buttons
+  get stable id `pill-<id>`): TAP = primary toggle (`.active` highlight #4fc3f7); LONG-PRESS
+  (450ms) = reveal secondary sideways via `_revealChip` (icon-only chip, no word labels).
+    - Feather (Precision Camera): tap=Fine toggle, long-press=Reset chip. Restored — was knocked
+      out by a stale `#search-body > div` self-mount selector; now a pill `_actions` entry.
+    - Background+Screenshot pair: tap=White Background (prep), long-press=Screenshot chip.
+      (Removed standalone `screenshot` pill entry.)
+- **Platform gating** (`act.platform: 'mobile'|'desktop'`): wrong-platform icon greyed (opacity
+  0.35, not-allowed) + tap shows status "Mobile use"/"Desktop use". Walk-on-site=mobile-only
+  (GPS+orientation), Red Pill=desktop-only. Red Pill action rewired to the working
+  `window.toggleDocPill` (was calling undefined `toggleDocMode`/`_enterRedPill`).
+- `.` shortcut = ⋯ pill toggle (`toggleMobilePill`, not the dead `#search-box` `toggleOverflow`).
+- Deployed to OCI `bim-ootb-dev` `viewer/` prefix (md5-verified; OCI edge cache makes curl 200s
+  unreliable — verify by content-md5 via HEAD). sw v505. NOT yet on GitHub (branch
+  `feat/input-registry-s281`, uncommitted).
+
+HONEST FRAMING (confirmed with user): this is STILL icon-to-icon handling — each icon is its own
+_actions entry, _actions and _shortcuts remain separate lists. Nothing was fundamentally
+re-architected. What improved is MAINTAINABILITY + self-checking, not the model: behaviours are now
+declarative tokens on the entry (platform:/hold:/keepOpen:), highlight has one authority
+(syncActiveButtons), and the shortcut audit self-reports the whole map + breakage. Audit timing fixed:
+poll for window._shortcuts (exported late inside async setupScene, gated on renderer+DB init) instead
+of a blind 2.5s timer that raced the async setup and reported a false total=0 on DB loads.
+Audit confirms targets RESOLVE (fn exists/reachable) — NOT that pressing produces the right effect.
+Press-time layer: _fireShortcut wraps main dispatch → §SHORTCUT_FIRE key=X before, §SHORTCUT_FAIL
+key=X error=... if it throws (loud, without killing keydown). POC scope: only main _dispatchSeq path
+wrapped, not all 4 call sites.
+
+VISION (not built): InputReg manages multiple named PILL SETS (main, doc, future) — doc-mode
+becomes a registry pill-set rather than an innerHTML swap. Connect Red Pill as-is for now;
+migrate to pill-set after full testing. THAT step (plus declaring key: on each entry, #15) is what
+would make it genuinely NOT icon-to-icon anymore.
+DONE (consolidation built this session): Measure+Clash (tap=Measure, long-press=Clash chip →
+reuses 'c' handler; restores pill access removed in 726fe77). Background+Screenshot (tap=White
+BG, long-press=Screenshot chip; removed standalone screenshot entry).
+BACKLOG (consolidation, not built): Section, Palette(=legacy "Sunglass"), Night/lighting.
+
+### BUG FIXES (2026-05-27)
+- **X (Section Cut) was dead** — handler did `getElementById('section-btn').click()` but
+  `section-btn` is `<button style="display:none"></button>` (empty + hidden) → no-op. Same class
+  as the `.` bug. FIXED: call `A.toggleSection()` directly. Systematic grep confirmed X was the
+  ONLY shortcut with the dead-button-click pattern.
+- **F11 (fullscreen) not responding** — NOT our bug: browser natively intercepts F11 + Fullscreen
+  API needs a user gesture. Working path exists: single-tap the `[]`/minmax button
+  (panels.js:896 → toggleFullscreen). Left F11 as-is (browser-dependent).
+
+### Input-event TEST suite (2026-05-27) — tests/specs/42-pill-shortcuts.spec.js
+Per scope: registry RECEIVES/ROUTES events (keypress, panel focus, Tab, arrow) — NOT effect-level
+(functions = NEXT PHASE). 4 tests assert purely on dispatcher §-signals: §SHORTCUT_FIRE/§KBD_SEQ_FIRE
+(keypress), §KBD_ROUTE tab/§PANEL_TAB (Tab), §PANEL_FOCUS (focus), §KBD_ROUTE panel=X key=Arrow
+(arrow traverse). Static twin: tests/audit_input_registry.js. (Deleted infer_shortcuts.js — function
+tracing gave false positives, not needed.) RUN BLOCKER: harness openViewer loads /dev/index.html (HP
+deploy/ layout) + Playwright not installed; run on HP tree or adapt openViewer to viewer/ paths.
+
+### GitHub status (2026-05-27) — branch pushed, NOT yet in main
+Branch `feat/input-registry-s281` (commit 95e9567) pushed to GitHub. NOT merged to main (main is
+branch-protected → PR required; main HEAD still "Fix split-DB wiring T7/T8/T25/T26").
+CI result (run 26506020613):
+- ✅ fast-checks PASSED (syntax, audits, node tests — covers all S281 changes)
+- ❌ e2e-tests FAILED — but NOT a S281 regression. Only GP.3 "Error reporter works" failed
+  (s274-golden-path.spec.js:99): waitForFunction(APP.reportError) timed out 15s. GP.1/2/4 PASSED.
+  input_registry.js loaded fine in CI (HTTP 200, no §LOAD_FAIL). The missing thing is
+  APP.reportError (from error_reporter.js) — pre-existing/flaky (main's own CI is mixed
+  success/failure on recent runs). UNRELATED to pill/registry work.
+TO PROMOTE TO MAIN: next session — fix or confirm-flaky GP.3 (error_reporter.js APP.reportError
+timing on slow load), then PR feat/input-registry-s281 → main. Do NOT bypass branch protection.
+
+PUSH AUTH NOTE: the gho_ token works for READ (ls-remote) but git rejects it for PUSH in the
+stored `red1oon:TOKEN` form ("Invalid username or token"). Working push form = token as USERNAME:
+`git push https://<TOKEN>@github.com/red1oon/bim-ootb.git <branch>`. (Durable fix deferred — user
+weighing token-in-URL plaintext vs gh auth keyring; classifier blocked auto re-embedding.)
+
+NEXT PHASE: effect-level testing (does the handler do the right thing), + the #15 one-place
+unification (declare key: on each icon entry, derive _shortcuts), + multi-pill-set registry.
+Also: connect doc-mode as a registry pill-set; build the consolidation backlog (Section, Palette,
+Night); decide push-auth durable fix.
