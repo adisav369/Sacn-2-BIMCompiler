@@ -284,20 +284,27 @@ function setupHelpers(A) {
         ].join('\n');
 
         var title = encodeURIComponent('Bug: ' + (userDesc ? userDesc.slice(0, 60) : ''));
-        var url = 'https://github.com/red1oon/BIMCompiler/issues/new?title=' + title +
+        var url = 'https://github.com/red1oon/bim-ootb/issues/new?title=' + title +
                   '&body=' + encodeURIComponent(body) + '&labels=bug';
 
         // GitHub URL limit ~8KB — truncate logs if needed
         if (url.length > 8000) {
           var shortLogs = logs.split('\n').slice(-20).join('\n');
           body = body.replace(/```[\s\S]*?```/, '```\n' + shortLogs + '\n```');
-          url = 'https://github.com/red1oon/BIMCompiler/issues/new?title=' + title +
+          url = 'https://github.com/red1oon/bim-ootb/issues/new?title=' + title +
                 '&body=' + encodeURIComponent(body) + '&labels=bug';
         }
 
-        window.open(url, '_blank');
+        // §S280: Use location.href — window.open is popup-blocked on mobile
+        window.location.href = url;
       }
     };
+
+    // Email must stay synchronous — mailto: needs user-gesture context (lost in async IndexedDB callback)
+    if (mode === 'email') {
+      _openIssue((window._bimLogBuffer || []).slice(-50).join('\n'));
+      return;
+    }
 
     // Try IndexedDB for full history (includes previous sessions)
     if (window._bimLogDb) {
