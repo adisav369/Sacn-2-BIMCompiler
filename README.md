@@ -1,3 +1,5 @@
+> **This repo is the compiler backend, giving way to a PWA now active at → [bim-ootb](https://github.com/red1oon/bim-ootb)**
+
 <div align="center">
 
 # BIM Intent Compiler
