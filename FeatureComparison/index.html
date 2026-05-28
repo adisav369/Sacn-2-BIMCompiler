@@ -841,22 +841,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#spatial-erp-construction-project-management-in-the-browser" class="md-nav__link">
+  <a href="#spatial-erp-browser-based-erp-engine" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Spatial ERP — Construction Project Management in the Browser
+        Spatial ERP — Browser-Based ERP Engine
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Spatial ERP — Construction Project Management in the Browser">
+    <nav class="md-nav" aria-label="Spatial ERP — Browser-Based ERP Engine">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#what-this-means" class="md-nav__link">
+  <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What This Means
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Coverage
       
     </span>
   </a>
@@ -875,10 +886,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#roadmap-construction-erp-vs-primavera-procore" class="md-nav__link">
+  <a href="#construction-erp-vs-primavera-procore" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Roadmap: Construction ERP vs Primavera / Procore
+        Construction ERP vs Primavera / Procore
       
     </span>
   </a>
@@ -886,10 +897,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#idempiere-graduation-path" class="md-nav__link">
+  <a href="#idempiere-relationship" class="md-nav__link">
     <span class="md-ellipsis">
       
-        iDempiere Graduation Path
+        iDempiere Relationship
       
     </span>
   </a>
@@ -980,7 +991,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#architecture" class="md-nav__link">
+  <a href="#architecture_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Architecture
@@ -4208,22 +4219,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#spatial-erp-construction-project-management-in-the-browser" class="md-nav__link">
+  <a href="#spatial-erp-browser-based-erp-engine" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Spatial ERP — Construction Project Management in the Browser
+        Spatial ERP — Browser-Based ERP Engine
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Spatial ERP — Construction Project Management in the Browser">
+    <nav class="md-nav" aria-label="Spatial ERP — Browser-Based ERP Engine">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#what-this-means" class="md-nav__link">
+  <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What This Means
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Coverage
       
     </span>
   </a>
@@ -4242,10 +4264,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#roadmap-construction-erp-vs-primavera-procore" class="md-nav__link">
+  <a href="#construction-erp-vs-primavera-procore" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Roadmap: Construction ERP vs Primavera / Procore
+        Construction ERP vs Primavera / Procore
       
     </span>
   </a>
@@ -4253,10 +4275,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#idempiere-graduation-path" class="md-nav__link">
+  <a href="#idempiere-relationship" class="md-nav__link">
     <span class="md-ellipsis">
       
-        iDempiere Graduation Path
+        iDempiere Relationship
       
     </span>
   </a>
@@ -4347,7 +4369,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#architecture" class="md-nav__link">
+  <a href="#architecture_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Architecture
@@ -4602,11 +4624,36 @@
 </tbody>
 </table>
 <p>All measurements with geometry cached in IndexedDB. First load depends on network speed for the initial database download.</p>
-<h2 id="spatial-erp-construction-project-management-in-the-browser">Spatial ERP — Construction Project Management in the Browser<a class="headerlink" href="#spatial-erp-construction-project-management-in-the-browser" title="Permanent link">&para;</a></h2>
-<p>BIM OOTB includes a browser-based ERP engine built on the same zero-infrastructure principle. The system renders iDempiere's Application Dictionary (AD) — the metadata-driven UI framework behind one of the most mature open-source ERPs — entirely in a browser using SQLite WASM.</p>
-<h3 id="what-this-means">What This Means<a class="headerlink" href="#what-this-means" title="Permanent link">&para;</a></h3>
-<p>iDempiere is a full enterprise ERP (accounting, procurement, manufacturing, HR) with a unique architecture: the entire UI is defined as database rows, not code. Change a row in <code>AD_Field</code> and the UI changes. No recompile. This Application Dictionary (60,000+ metadata rows across 10 tables) has been exported from PostgreSQL, loaded into SQLite, and parsed by a JavaScript renderer.</p>
-<p>The result: the same menu tree, windows, tabs, fields, validation rules, and display logic that run on a JVM + PostgreSQL + OSGi stack — running in a browser tab with no server.</p>
+<h2 id="spatial-erp-browser-based-erp-engine">Spatial ERP — Browser-Based ERP Engine<a class="headerlink" href="#spatial-erp-browser-based-erp-engine" title="Permanent link">&para;</a></h2>
+<p>BIM OOTB includes an ERP engine using iDempiere's Application Dictionary
+(AD) rendered in a browser via SQLite WASM. Full specification: <code>docs/ERP.md</code>.</p>
+<h3 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h3>
+<p>Three-layer separation (ERP.md §11):
+- <strong>Data:</strong> 5 core tables (containers, items, documents, document_lines,
+  journal) + kernel_ops event log. Legacy iDempiere tables (C_BPartner,
+  M_Product, etc.) coexist in the same SQLite database for imported
+  reference data.
+- <strong>Logic:</strong> Business rules as pure JavaScript functions (<code>rules/*.js</code>).
+  Each takes a db handle + document ID, reads via SQL, writes via
+  <code>commitOp()</code>. Independently testable.
+- <strong>Presentation:</strong> Constellation globe (initbubble.json, &lt;300ms first
+  paint), cascading accordion drill, compiled manifest for field
+  definitions.</p>
+<p>AD metadata (13MB, 1,003 table definitions, 59K rows) is treated as
+compile-time input. A build script extracts the needed window/tab/field
+definitions into a ~2KB manifest.json. The browser loads the manifest,
+not the full AD. See ERP.md §13.</p>
+<h3 id="database-coverage">Database Coverage<a class="headerlink" href="#database-coverage" title="Permanent link">&para;</a></h3>
+<p>ad_seed.db contains 356 of iDempiere's 1,003 tables (35%). Missing
+tables are server-only infrastructure (~400: processors, auth, alerts,
+import staging, views, translations) and advanced business modules
+(~250: manufacturing, commissions, dunning, subscriptions, quality
+control). All GardenWorld business data and all AD metadata are present.
+See ERP.md §16.1.</p>
+<p>Storage: PostgreSQL GardenWorld ~350MB; SQLite equivalent 12.1MB (29x
+compression). 151 bytes/row vs 500-800 in PostgreSQL. Difference is
+MVCC, WAL, TOAST, and system catalog overhead — required for multi-user
+servers, unnecessary in single-user browser. See ERP.md §16.2.</p>
 <h3 id="current-state">Current State<a class="headerlink" href="#current-state" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -4637,34 +4684,49 @@
 <td>Working</td>
 </tr>
 <tr>
-<td>Multi-panel master-detail</td>
+<td>Data Globe (spatial constellation)</td>
 <td>Working</td>
 </tr>
 <tr>
-<td>Data Globe (3D record visualisation)</td>
+<td>Instant globe (&lt;300ms, no WASM)</td>
 <td>Working</td>
 </tr>
 <tr>
-<td>Role-based access</td>
-<td>In progress</td>
+<td>Cascading accordion drill</td>
+<td>Working</td>
 </tr>
 <tr>
-<td>DocAction state machine</td>
-<td>In progress</td>
+<td>QR code + deep links (?window, ?record, ?client)</td>
+<td>Working</td>
 </tr>
 <tr>
-<td>Construction POC (Land → BOQ → Approval)</td>
-<td>In progress</td>
+<td>kernel_ops (undo/redo/audit)</td>
+<td>Working</td>
+</tr>
+<tr>
+<td>Journal (double-entry accounting)</td>
+<td>Working</td>
+</tr>
+<tr>
+<td>Compiled manifest</td>
+<td>Specified (ERP.md §13)</td>
+</tr>
+<tr>
+<td>Kernel invariant enforcement (10 rules)</td>
+<td>Specified (ERP.md §15.1)</td>
+</tr>
+<tr>
+<td>Settings JSON (cross-OOTB config)</td>
+<td>Specified (S282)</td>
 </tr>
 </tbody>
 </table>
-<h3 id="roadmap-construction-erp-vs-primavera-procore">Roadmap: Construction ERP vs Primavera / Procore<a class="headerlink" href="#roadmap-construction-erp-vs-primavera-procore" title="Permanent link">&para;</a></h3>
-<p>The construction ERP roadmap targets the workflow that Primavera P6, Procore, and SAP PS serve today — project scheduling, cost control, procurement, and progress tracking — but delivered as a browser-first application that lives alongside the 3D BIM model.</p>
+<h3 id="construction-erp-vs-primavera-procore">Construction ERP vs Primavera / Procore<a class="headerlink" href="#construction-erp-vs-primavera-procore" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th>Capability</th>
-<th>BIM OOTB (Roadmap)</th>
+<th>BIM OOTB</th>
 <th>Primavera P6</th>
 <th>Procore</th>
 <th>SAP PS</th>
@@ -4673,72 +4735,77 @@
 <tbody>
 <tr>
 <td>4D Schedule + 3D Model</td>
-<td><strong>Same browser tab</strong></td>
+<td>Same browser tab</td>
 <td>Separate tools</td>
 <td>Separate</td>
 <td>Separate</td>
 </tr>
 <tr>
 <td>5D Cost + BOQ</td>
-<td><strong>Extracted from IFC</strong></td>
+<td>Extracted from IFC</td>
 <td>Manual input</td>
 <td>Manual</td>
 <td>Manual</td>
 </tr>
 <tr>
 <td>Offline</td>
-<td><strong>Yes</strong></td>
+<td>Yes</td>
 <td>No</td>
 <td>No</td>
 <td>No</td>
 </tr>
 <tr>
 <td>Server required</td>
-<td><strong>No</strong></td>
+<td>No</td>
 <td>Oracle DB</td>
 <td>Cloud</td>
 <td>SAP HANA</td>
 </tr>
 <tr>
 <td>Licence cost</td>
-<td><strong>Free (MIT)</strong></td>
+<td>Free (MIT)</td>
 <td>$3-8K/user/yr</td>
 <td>$375+/mo</td>
-<td>Enterprise contract</td>
+<td>Enterprise</td>
 </tr>
 <tr>
 <td>IFC integration</td>
-<td><strong>Native</strong></td>
+<td>Native</td>
 <td>None</td>
-<td>Limited (viewer)</td>
+<td>Limited</td>
 <td>None</td>
 </tr>
 <tr>
 <td>BOM from model</td>
-<td><strong>Automatic</strong></td>
+<td>Automatic</td>
 <td>N/A</td>
 <td>N/A</td>
 <td>Manual</td>
 </tr>
 <tr>
 <td>Install</td>
-<td><strong>URL</strong></td>
+<td>URL</td>
 <td>Desktop</td>
 <td>Cloud</td>
 <td>On-premise/cloud</td>
 </tr>
 <tr>
 <td>ERP foundation</td>
-<td><strong>iDempiere AD (open)</strong></td>
+<td>iDempiere AD (open)</td>
 <td>Proprietary</td>
 <td>Proprietary</td>
 <td>Proprietary</td>
 </tr>
 </tbody>
 </table>
-<p>The key differentiator: in Primavera, the schedule is disconnected from the model. An architect updates a wall in Revit, exports IFC, and someone manually reconciles the schedule. In BIM OOTB, the 4D schedule is derived from the IFC elements — change the model, the schedule updates. The 3D viewer, the Gantt chart, and the cost dashboard are the same application.</p>
-<h3 id="idempiere-graduation-path">iDempiere Graduation Path<a class="headerlink" href="#idempiere-graduation-path" title="Permanent link">&para;</a></h3>
-<p>BIM OOTB is not a replacement for enterprise ERP. It is a <strong>browser-first entry point</strong> that graduates to iDempiere when an organisation needs multi-user, multi-tenant, accounting, and audit. The same Application Dictionary runs in both environments. Data migrates up. Users don't retrain.</p>
+<h3 id="idempiere-relationship">iDempiere Relationship<a class="headerlink" href="#idempiere-relationship" title="Permanent link">&para;</a></h3>
+<p>ERP OOTB uses iDempiere's AD as the source for UI metadata. The
+compiled manifest preserves the AD's tab hierarchy, field ordering,
+FK relationships, and mandatory flags in a 2KB JSON file. Legacy
+tables from the PostgreSQL export coexist with the 5-table runtime
+model. When a user needs a feature served by a table not yet loaded
+(e.g., C_Commission), the manifest defines its structure and data is
+fetched on demand. See ERP.md §16.6.</p>
 <h2 id="comparison">Comparison<a class="headerlink" href="#comparison" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4946,7 +5013,7 @@
 <p>B-rep kernels (OpenCascade, Parasolid) are essential for <strong>design authoring</strong> — push/pull faces, fillet edges, compute precise booleans. That is Revit's job.</p>
 <p>Construction-phase BIM — viewing, measuring, clash detection, 4D scheduling, 5D costing, field coordination — operates on the <strong>IFC deliverable</strong>, which is already tessellated at source. Sub-millimeter measurement accuracy is a coordinate precision problem (Float64), not a surface representation problem.</p>
 <p>BIM OOTB consumes the IFC file as-is. What the architect exported is what the site team sees. No re-modelling, no re-tessellation, no geometry invented beyond what the authoring tool provided.</p>
-<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<h2 id="architecture_1">Architecture<a class="headerlink" href="#architecture_1" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>IFC File
   ↓  (extract once)
 SQLite Database (.db)
