@@ -54,7 +54,7 @@ var FK_TYPES = { tableDirect: true, search: true, table: true };
 // ERP has no tenants/orgs, and audit is covered by kernel_ops. Dropping these
 // also stops the kernel mandatory-check from demanding a Tenant on every record.
 var SYSTEM_COLS = {
-  AD_Client_ID: true, AD_Org_ID: true,
+  AD_Client_ID: true, AD_Org_ID: true, IsActive: true,
   Created: true, CreatedBy: true, Updated: true, UpdatedBy: true
 };
 
@@ -138,10 +138,14 @@ function buildWindow(winId) {
       }
     }
 
+    // Full field contract — mirrors ad_parser.getFields() so the manifest can
+    // replace the DB query without losing displayLogic / readonly / defaults.
     var fields = q(
       "SELECT f.Name AS label, c.ColumnName AS col, c.AD_Reference_ID AS ref," +
       " f.SeqNo AS seq, f.IsMandatory AS fMand, c.IsMandatory AS cMand," +
-      " c.IsKey AS isKey " +
+      " c.IsKey AS isKey, f.IsReadOnly AS ro, f.DisplayLogic AS dl," +
+      " f.DefaultValue AS fDef, c.DefaultValue AS cDef," +
+      " c.FieldLength AS len, c.IsIdentifier AS ident " +
       "FROM AD_Field f JOIN AD_Column c ON f.AD_Column_ID=c.AD_Column_ID " +
       "WHERE f.AD_Tab_ID=" + t.tabId +
       " AND f.IsDisplayed='Y' AND f.IsActive='Y' AND c.IsActive='Y' " +
@@ -152,15 +156,25 @@ function buildWindow(winId) {
     for (var k = 0; k < fields.length; k++) {
       var f = fields[k];
       if (SYSTEM_COLS[f.col]) continue;           // multi-tenant/audit (§3)
-      var type = TYPE_BY_REF[f.ref] || 'string';
+      var type = TYPE_BY_REF[f.ref] || 'string';  // readability only; ad_ui maps ref→type
       if (type === 'button') continue;            // not a data field
+      // Optional keys emitted only when truthy — keeps the payload small.
       var entry = {
         col: f.col,
         label: f.label,
+        ref: Number(f.ref) || 10,                 // AD_Reference_ID — authoritative
         type: type,
         seq: f.seq
       };
       if (f.fMand === 'Y' || f.cMand === 'Y') entry.mandatory = true;
+      if (f.ro === 'Y') entry.readonly = true;
+      if (f.isKey === 'Y') entry.key = true;
+      if (f.ident === 'Y') entry.identifier = true;
+      if (f.dl) entry.dl = f.dl;                   // DisplayLogic expression
+      var dflt = f.fDef || f.cDef;
+      if (dflt) entry.def = dflt;
+      if (f.len) entry.len = Number(f.len);
+      // descriptions deliberately NOT carried — §3: help-panel lookup from ad_seed.db
       if (FK_TYPES[type]) {
         var tgt = fkTarget(f.col);
         if (tgt) entry.fk = tgt;
