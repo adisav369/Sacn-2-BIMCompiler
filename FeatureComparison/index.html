@@ -930,6 +930,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ifc-geometry-what-authoring-tools-actually-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IFC Geometry: What Authoring Tools Actually Export
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IFC Geometry: What Authoring Tools Actually Export">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-ifc-tessellation-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The IFC Tessellation Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#downstream-industry-practice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Downstream Industry Practice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#where-b-rep-matters-and-where-it-doesnt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where B-rep Matters (and Where It Doesn't)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4247,6 +4297,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ifc-geometry-what-authoring-tools-actually-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IFC Geometry: What Authoring Tools Actually Export
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IFC Geometry: What Authoring Tools Actually Export">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-ifc-tessellation-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The IFC Tessellation Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#downstream-industry-practice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Downstream Industry Practice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#where-b-rep-matters-and-where-it-doesnt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where B-rep Matters (and Where It Doesn't)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4790,6 +4890,62 @@
 <p><strong>vs Autodesk APS</strong>: Autodesk requires a cloud pipeline — IFC uploads to their server, converts to a proprietary format (SVF2), and streams pre-processed tiles back. This takes minutes per model, costs per API call, and cannot function offline. BIM OOTB processes IFC once into SQLite and runs entirely from local cache thereafter.</p>
 <p><strong>vs IFC.js / ThatOpen Company</strong>: IFC.js parses IFC files in the browser using a WASM module at load time. This works for small models but becomes slow above 20K elements because it re-parses geometry on every page load. BIM OOTB pre-extracts geometry into a SQLite database with content-hash deduplication, so repeat visits load from cache without re-parsing.</p>
 <p><strong>vs Desktop viewers (Solibri, BIMvision, Navisworks)</strong>: Desktop applications require installation, licensing, and specific operating systems. BIM OOTB runs on any device with a browser — including tablets on a construction site with no internet after the initial cache.</p>
+<h2 id="ifc-geometry-what-authoring-tools-actually-export">IFC Geometry: What Authoring Tools Actually Export<a class="headerlink" href="#ifc-geometry-what-authoring-tools-actually-export" title="Permanent link">&para;</a></h2>
+<p>A common objection to mesh-based BIM viewers is that triangle meshes lose the mathematical precision of B-rep (boundary representation) solids — NURBS surfaces, exact booleans, parametric history. This is technically true but misidentifies where the loss occurs.</p>
+<h3 id="the-ifc-tessellation-chain">The IFC Tessellation Chain<a class="headerlink" href="#the-ifc-tessellation-chain" title="Permanent link">&para;</a></h3>
+<p>Authoring tools (Revit, ArchiCAD, Tekla) maintain B-rep internally for interactive editing. But when they export to IFC, they tessellate:</p>
+<table>
+<thead>
+<tr>
+<th>IFC Representation</th>
+<th>What It Is</th>
+<th>Who Exports It</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IfcFacetedBrep</code></td>
+<td>Planar polygonal faces (triangle soup)</td>
+<td>Revit, ArchiCAD, most exporters</td>
+</tr>
+<tr>
+<td><code>IfcTriangulatedFaceSet</code></td>
+<td>Explicit triangle mesh (IFC4)</td>
+<td>Revit (IFC4 mode), Tekla</td>
+</tr>
+<tr>
+<td><code>IfcExtrudedAreaSolid</code></td>
+<td>Linear extrusion of a 2D profile</td>
+<td>All (simple walls, columns)</td>
+</tr>
+<tr>
+<td><code>IfcSweptSolid</code></td>
+<td>Profile swept along a path</td>
+<td>ArchiCAD, Tekla</td>
+</tr>
+<tr>
+<td><code>IfcAdvancedBrep</code></td>
+<td>NURBS surfaces (true B-rep)</td>
+<td>Virtually no production exporter</td>
+</tr>
+</tbody>
+</table>
+<p>A dome that is a parametric <code>Revolution</code> family inside Revit's <code>.rvt</code> arrives in the IFC as <code>IfcFacetedBrep</code> — thousands of flat triangles. The B-rep was discarded by the authoring tool's own exporter, not by the viewer.</p>
+<h3 id="downstream-industry-practice">Downstream Industry Practice<a class="headerlink" href="#downstream-industry-practice" title="Permanent link">&para;</a></h3>
+<p>No commercial BIM workflow downstream of authoring operates on B-rep:</p>
+<ul>
+<li><strong>Navisworks</strong> (Autodesk's own clash detection) — tessellated meshes internally</li>
+<li><strong>Solibri</strong> (model checking) — tessellated meshes</li>
+<li><strong>Robot / ETABS</strong> (structural analysis) — simplified stick/shell models, not NURBS</li>
+<li><strong>CostX / Procore</strong> (cost estimation) — quantities from schedules + faceted visual reference</li>
+<li><strong>Primavera P6</strong> (4D scheduling) — no geometry at all</li>
+<li><strong>Trimble FieldLink</strong> (site layout) — survey points and coordinates</li>
+</ul>
+<p>If Autodesk's own billion-dollar coordination product (Navisworks) runs clash detection on tessellated meshes, the precision is sufficient for construction delivery.</p>
+<h3 id="where-b-rep-matters-and-where-it-doesnt">Where B-rep Matters (and Where It Doesn't)<a class="headerlink" href="#where-b-rep-matters-and-where-it-doesnt" title="Permanent link">&para;</a></h3>
+<p>B-rep kernels (OpenCascade, Parasolid) are essential for <strong>design authoring</strong> — push/pull faces, fillet edges, compute precise booleans. That is Revit's job.</p>
+<p>Construction-phase BIM — viewing, measuring, clash detection, 4D scheduling, 5D costing, field coordination — operates on the <strong>IFC deliverable</strong>, which is already tessellated at source. Sub-millimeter measurement accuracy is a coordinate precision problem (Float64), not a surface representation problem.</p>
+<p>BIM OOTB consumes the IFC file as-is. What the architect exported is what the site team sees. No re-modelling, no re-tessellation, no geometry invented beyond what the authoring tool provided.</p>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>IFC File
   ↓  (extract once)
