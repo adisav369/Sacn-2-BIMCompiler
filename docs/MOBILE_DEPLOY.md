@@ -368,7 +368,7 @@ The report auto-includes:
 - Last 50 `§`-tagged console lines (the whitebox debug log)
 - Prompt to paste a screenshot (PrtScn → Ctrl+V in the GitHub issue)
 
-**GitHub mode:** Opens a pre-filled issue at `red1oon/BIMCompiler/issues` with markdown tables, collapsible console log, and `bug` label. URL is truncated to 8KB if logs are large.
+**GitHub mode:** Opens a pre-filled issue at `red1oon/bim-ootb/issues` with markdown tables, collapsible console log, and `bug` label. URL is truncated to 8KB if logs are large.
 
 **Email mode:** Opens `mailto:` with plain text body — works even without a GitHub account.
 

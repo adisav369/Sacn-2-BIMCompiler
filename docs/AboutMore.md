@@ -6,7 +6,7 @@
 
 Version 0.6 alpha (October 2025 - May 2026)
 Creator: Redhuan D. Oon <red1org@gmail.com>
-Tickets: github.com/red1oon/BIMCompiler/issues
+Tickets: github.com/red1oon/bim-ootb/issues
 License: MIT
 
 **Probably the lightest BIM app ever made.** See [Feature Comparison](FeatureComparison.md) for a technical breakdown and industry comparison.
