@@ -1248,6 +1248,40 @@ else citation), not the full FK tangle.
 → PP_Order` — because the derivation hubs are where usage, money, WfMC richness, and
 gravity all concentrate. See `prompts/ERP_KERNEL_BUILD.md` for the phased plan.
 
+### §18.6 Scaffold vs business logic — the handler registry
+
+The state machine is **not** where the complexity lives. The bloat-and-hell is the
+**business logic**: pre-conditions, side effects, post-conditions, and conditional
+fan-out (`Order→Invoice only if IsInvoice`). Every hellish rule attaches to exactly
+one **cell**: `(DocType, currentStatus, action)`.
+
+**The scaffold contains the hell; it does not remove it.**
+`DocType + DocAction + DocStatus + kernel_ops` is scaffold — it guarantees you only
+call `completeInvoice()` on a valid Invoice, never on a voided Order. The mechanism
+is **dispatch by cell**:
+
+- **State machine** — which cells are *reachable* (legal transitions). Compiled data.
+- **Handler registry** — the *behavior at a cell*: `handler[(DocType, action)] =
+  fn(doc, ctx) → ops[]`. Contains all the bespoke logic. A handler may invoke other
+  handlers → composed workflows. **Each handler touches only its own DocType**, so
+  the bloat scattered across 1003 tables is partitioned into isolated, nameable units.
+- **kernel_ops** — every effect a handler produces is an op. **A side effect that
+  bypasses the log is a violation, and it is detectable.** Handlers *return* ops; the
+  kernel *applies* them (this is the path to B1: kernel owns the write). That makes
+  every handler a pure, testable function and the log the single source of truth.
+
+**Why this tames the 15,000 lines:**
+- The hell becomes **visible** (one cell, one handler), **testable** (given doc+ctx,
+  assert emitted ops), **replayable/undoable/auditable** (it's all ops).
+- Handlers are written **hot-first**, ranked by gravity (§14). Most cells are never
+  exercised — so most handlers are never written. The product compiles its own
+  business-logic backlog from observed usage. The 90% nobody uses costs nothing.
+
+**Summary for code:**
+- State machine = *allowed transitions* (compiled — build P2).
+- Handler registry = *business logic* (per-cell handlers — build phase, gravity-ranked).
+- Log = *single source of truth* (already `kernel_ops`).
+
 ---
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
