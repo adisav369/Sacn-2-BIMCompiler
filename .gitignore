@@ -83,6 +83,10 @@ site/
 /scripts/*.txt
 /IFCtoBOM/src/main/resources/*.db
 
+# ERP raw migration artifacts (regenerable from PG via scripts/migrate_pg_to_sqlite.js)
+/build/erp/*.db
+/build/erp/*.log
+
 # Deploy — per-building DB pairs (large binaries, built by pipeline)
 deploy/buildings/
 deploy/component_library*.db

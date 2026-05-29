@@ -20,6 +20,18 @@
 
 ## Active Work — Browser BIM OOTB
 
+**ERP Step 0 DONE (2026-05-29): raw PG→SQLite migration — full iDempiere dictionary, no column-strip.**
+  - `scripts/migrate_pg_to_sqlite.js`: drives `docker exec psql "COPY … TO STDOUT"` (TEXT format — escapes embedded newlines, so rule bodies round-trip byte-identical), builds `build/erp/ad_full.db` (43MB, gitignored) via better-sqlite3. bytea→BLOB hex-decode. Loose affinity.
+  - Witness (`build/erp/migrate.log`): `§MIGRATE tables=925 rows=187133`; `§MIGRATE rules AD_Rule=4 AD_Val_Rule=332 callouts=284 docTypeFlags=4/4 docTypes=52`; `§MIGRATE flagged sequences=0(dropped) functions=83(skipped) triggers=4(skipped) views=161(snapshot,deferred)`. The rule/Callout/DocType-flag layer ad_seed.db STRIPPED is now present raw.
+  - Gate `scripts/verify_migration.js` (`build/erp/verify.log`): per-table count vs PG = **0 mismatches**; AD_Rule.Script **4/4 byte-identical** (md5 vs PG); blob ad_attachment 400803B exact; sql.js opens cluster + reads every major table. **VERDICT PASS.** Deterministic (re-run = identical counts).
+  - Java NOT migrated (stays §18.10 oracle). Spec: `prompts/ERP_RAW_MIGRATION.md` Step 0, `docs/ERP.md §0.10`.
+
+**ERP Step 1 DONE (2026-05-29): the Rule Compiler — §0.9 rule records + handler backlog from ad_full.db.**
+  - `scripts/compile_rules.js`: reads LOCAL `ad_full.db` (not PG/Java), emits `build/erp/erp_rules.db`. AUTO-EXTRACT (declarative): AD_Rule→sql, AD_Val_Rule→sql (binding=referencing columns), C_DocType flags→policy JSON, ad_workflow→table. HAND-PORT BACKLOG (procedural Java, NOT auto-translated): 284 Callout bindings→handler stubs (oracle ptr=class.method); product-scope (§0.3) DocEvent stubs (C_Order/Invoice/InOut/Payment/GL_Journal × CO/VO) gravity-ranked to the confirmed §18.10 oracle. `rules` + `handler_backlog` tables; every rule ships `editable=1` (§0.8 capability-first).
+  - Witness (`build/erp/compile_rules.log`): `§RULES extracted=445 (sql=335 expr=0 policy=52 workflow=58) callouts=284 docevents=10 handler-stubs=155 backlog=294`; totalRecords=739 presets=445 stubs=294 oraclePresent=146/155 (9 absent = eevolution/cm plugins, out of scope).
+  - Gate `scripts/verify_rules.js` (`build/erp/verify_rules.log`): 739 records 0 defects; AD_Rule **PG→ad_full→erp_rules 4/4 byte-identical**; product DocEvents **10/10 oracle-present**, hottest=C_Order:CO@100; sql.js dispatch-by-form reads OK. **VERDICT PASS.**
+  - Next: runtime rule evaluator (§0.10 "abstract engine" — dispatch by form: sql→sql.js, expression→sandbox, table→§0.5 matcher, handler→named fn) wired at the kernel cell (P3/P3b); hand-port hottest cell C_Order:CO (MOrder.completeIt, diff-oracle verified). erp_rules.db destined for bim-ootb (push=live) — NOT deployed.
+
 **ERP P2 DONE (2026-05-29): WfMC state-machine-per-DocType compile + extracted derivation graph (NOT deployed).**
   - `scripts/compile_manifest.js` extended: `manifest.wfmc` (shared iDempiere doc engine — 11 states, 22 transitions, oracle DocumentEngine), `manifest.doctypes` (51 real DocTypes, sentinel id=0 excluded), `manifest.downstream` (EXTRACTED, replaces §4 hardcode) + `manifest.settlement` (tagged back-edges, excluded from acyclicity). §3 compiler/view/temp tables excluded.
   - Gate `scripts/test_manifest_wfmc.js`: `§MANIFEST doctypes=51 transitions=22`; downstream acyclic=PASS (settlement=2); C_Order→[C_Invoice,M_InOut,...]; gz 19.1KB (<25KB). VERDICT PASS (`/tmp/pb/p2_gate.log`).
