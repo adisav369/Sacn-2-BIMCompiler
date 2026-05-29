@@ -331,6 +331,114 @@ fire which actions" when needed, without touching the foundation. Same graceful 
 everywhere else: capable/open by default, narrowed by additive policy. The fundamental
 right comes first; the lock is optional and comes second.
 
+### §0.9 The rule mechanism — metadata, preset, always editable (JSR-223, PWA-native)
+
+**Governing principle: model everything as metadata.** Business logic is not hardcoded;
+it is a **rule record** in the dictionary — iDempiere's own `AD_Rule` pattern, confirmed
+in source (`MRule.java`: `RULETYPE_JSR223ScriptingAPIs`, `SCRIPT_PREFIX="@script:"`,
+engine-by-name, `setContext()` injecting the record/context as script bindings). A rule
+is `{ eventType, form, body, binding }`:
+- **eventType / binding** — the cell hook, straight from iDempiere: a **Callout**
+  (field `onChange`, bound to a column) or a **DocEvent** (a `ModelValidator` TIMING —
+  `BEFORE/AFTER_PREPARE/COMPLETE/VOID…`, bound to a `(DocType, action)` cell).
+- **form** (how the body is expressed) — a tier, all metadata-housed:
+  - **SQL** — runs *natively* in sql.js (the common ones you wrote in SQL translate
+    1:1, no port — a real win); for set-based validation/lookup/derivation + `AD_Val_Rule`.
+  - **expression (JS)** — sandboxed; per-record value-derivation + predicates. Your
+    Groovy/BeanShell scripts port here; JSR-223's engine abstraction is *unnecessary* —
+    the browser host language IS JavaScript, so the rule language = the runtime language.
+  - **decision table** (§0.5) — declarative which-effect-when sugar.
+  - **named handler** — the side-effecting / heavy-procedural 20% (e.g. `completeIt`'s
+    `createShipment`/`createInvoice` fan-out). Side-effect rules become handlers that
+    **return ops**, never mutate directly.
+- The three rule kinds you confirmed map onto the tiers: **derivation** → SQL/expression
+  (Callout), **validation** → SQL/expression predicate+message (DocEvent BEFORE_*),
+  **side-effects** → named handler returning ops (DocEvent), parameterized by policy.
+
+**Authored by power-users/consultants (your answer)** — so the SQL/expression tier *is*
+the democratisation layer (not core-dev work); tables serve the simplest cases, handlers
+the implementor/dev cases. Capability-first (§0.8) means every rule ships editable.
+
+**Preset the common rules, always editable.** The system is *batteries-included*: it
+ships the proven common rules **extracted from iDempiere's model logic** — and that
+logic is *already metadata-driven*, which is why presetting works. `MOrder.completeIt()`
+(source, confirmed) fans out conditionally on `C_DocType` flags
+(`isAutoGenerateInout`, `isAutoGenerateInvoice`, `DeliveryRule`, `DocSubTypeSO`,
+`evalAutoGenerateInOutRule`) and fires `fireDocValidate(BEFORE/AFTER_COMPLETE)`. So a
+preset = {those DocType flags as editable policy} + {validation/derivation as
+SQL/expression rules} + {the fan-out as named handlers}. Out-of-box working
+O2C/P2P/GL/inventory; **nothing blank, everything editable.**
+
+**Determinism sandbox (the one cost iDempiere didn't bear):** expression/handler rules
+run with no `Date.now`/`Math.random`/network/DOM, timeout-bounded, pure over
+record+context — so replay, dry-run, and the no-AI-nondeterminism thesis hold. SQL rules
+are deterministic by nature.
+
+**Oracle is local & confirmed:** `~/idempiere-dev-setup/idempiere/org.adempiere.base/
+src/org/compiere/model/` (`MOrder`/`MInvoice`/`MInOut`/`MPayment`/`MMatchInv`,
+`MRule`). P3b extracts presets from here (§18.10). **Extraction TODO grows:** re-export
+`AD_Rule` + `AD_Val_Rule` + `Callout` (+ the `C_DocType` policy flags) from the source
+PostgreSQL — currently stripped from `ad_seed.db` (only dangling FK ids survived).
+
+### §0.10 Building it — the Rule Compiler + streamable rule store
+
+A **Rule Compiler** (analyser/migration, the rules analogue of `compile_manifest.js`)
+reads the logic and *places* it as §0.9 rule records. Two sources, two honesty tiers:
+- **AD metadata (auto-extractable, deterministic):** `AD_Rule` scripts, `Callout`
+  bindings, `AD_Val_Rule` SQL, `C_DocType` policy flags, the `ad_wf_*` graph → emitted
+  directly as rule records (SQL/expression/table forms + policy). This is pure
+  extraction — safe to automate.
+- **iDempiere Model Java (NOT auto-translatable):** procedural bodies like
+  `completeIt()`'s fan-out **cannot be safely machine-translated** to JS — that's the
+  §18.10 hand-port, verified by the diff-oracle. So the compiler instead **emits the
+  handler backlog**: which cells have logic (from the Callout/Validator/DocType
+  bindings) + the oracle pointer (class/method) + the gravity rank (§0.6), and scaffolds
+  handler **stubs**. Humans fill the bodies, hottest cell first. *Auto-extract the
+  declarative/script/flag layer; hand-port the procedural layer — never pretend the
+  latter is automatic.*
+
+**Separate, streamable store.** Output is a distinct **rule DB** (name it `erp_rules.db`
+to avoid colliding with the BIM pipeline's product-catalog `ERP.db`), kept OUT of the
+slim instant-load manifest. Reusing the proven split-DB pattern (lazy-fetch +
+IndexedDB cache, as `panels.js`/buildings already do): **fetch a cell's rules on first
+use, cache only the used ones** — gravity (§0.6) ranks what to preset/cache. The long
+tail stays remote until touched (the Objective's "reference, lazy-loaded" principle).
+
+**The "abstract engine" = the runtime rule evaluator.** One uniform interface that
+dispatches by `form`: SQL → run in sql.js; expression → deterministic JS sandbox;
+table → the §0.5 matcher; handler → the named fn (returns ops). The kernel calls it at
+each cell; it never cares which form a rule took. The compiler SEEDS `erp_rules.db` with
+the presets; the Settings editor edits them; every edit is a `kernel_ops` op (§0.6).
+
+### §0.11 Housed vs active — the full extent, hidden but callable
+
+This resolves the apparent tension with §0.3 (narrow scope). **Two distinct things:**
+- **PRODUCT scope (active, §0.3)** — what is *built, preset, handler-backed, and shown
+  by default*: O2C / P2P / GL / inventory. A clean, modern, narrow ERP.
+- **PLATFORM housing (this)** — the **full extent of iDempiere** is *housed*: all
+  models, all rules, and the **set reports**, as streamable metadata in `erp_rules.db`
+  — dormant but **callable**. The long tail isn't *excluded*, it's *not loaded yet*.
+
+**This vindicates PB.** Mapping all 1003 tables / 2192 edges (incl. the `PP_/MP_/HR_/A_`
+long tail) was not scope-creep — it is the **housing**: PB *proved* the 5-table model
+holds the full iDempiere corpus. Those long-tail rows sit dormant in the runtime /
+`erp_rules.db` and stream in when touched (§0.10 lazy-fetch + gravity cache).
+
+**Reporting too — the "set ones."** iDempiere's preset reports are housed: `AD_PrintFormat`
+/ `ad_printformatitem` (present in `ad_seed.db`) + the `RV_*` reporting views (correctly
+*excluded from the runtime lifecycle graph* in P2 — they aren't documents — but kept as
+**report artifacts**). The §0.7 self-graphing + these presets = the reporting layer;
+modern artifacts (accordion, graphs, decision tables, op-log analytics) manage what
+iDempiere managed with its legacy Java/ZK surface.
+
+**The UX is progressive disclosure: "when an iDempiere user walks in."** A new user sees
+the clean narrow ERP. A seasoned iDempiere user reaches for manufacturing, a specific
+validator, or a standard report — and **it's there**, streamed and activated on demand,
+familiar. The bulk is *hidden* (not in the instant payload, not cluttering the UI) yet
+*callable* (lazy-stream + gravity-cache). **Narrow product, full platform** — the same
+graceful-degradation shape as everywhere: minimal/clean by default, full depth on
+demand.
+
 ---
 
 ## §1. iDempiere AD → SQLite Table Mapping
