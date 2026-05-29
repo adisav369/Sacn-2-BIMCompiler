@@ -298,6 +298,39 @@ derivation graph), **cycle-time** and **undo-rate** charts (the rule-grading of 
 rendered as graphs), and **forecast** overlays (dry-run forward-replay). Same renderer,
 the log supplies a time axis Odoo's aggregations don't have.
 
+### §0.8 Surfacing the hooks + the right to touch rules
+
+iDempiere already separated **hook-point from behavior**: `AD_Column.Callout` names a
+Java method that fires on field change; `ModelValidator` / DocEvent registers a Java
+class that fires on a document action. The *binding* is declarative metadata in AD; the
+*behavior* is opaque compiled Java — visible only to, and editable only by, a coder.
+This is precisely the cell→handler dispatch we generalise: Callout = a field-change
+cell, DocEvent = a `(DocType, status, action)` cell. **We make both halves visible:**
+the parameterisable part becomes an editable decision table (§0.5), the computational
+part a named handler (§0.4), and the binding is *already in AD* so we compile it as the
+cell→handler wiring.
+
+**Concrete extraction gap (TODO for P3b):** our current `ad_seed.db` **stripped
+`Callout`** (the §1 column-subset) and never exported `AD_ModelValidator`. Re-export
+both from the source PostgreSQL (docker, §1). Compiled, the Callout/Validator strings
+are simultaneously **(a)** the cell→handler wiring, **(b)** the P3b backlog (*where
+logic exists* — cross-referenced with op-log gravity §0.6 for *where it matters*), and
+**(c)** the §18.10 oracle pointers (*which Java to port*). What survived the strip and
+helps now: `AD_Val_Rule_ID` + `ValueMin/Max` (declarative validation), the `ad_wf_*`
+workflow graph (a second declarative process source beside P2's WfMC), and the full
+role/access layer (below).
+
+**Capability-first — the fundamental right is structural, security is a later layer.**
+Because a rule is just editable metadata behind the accordion editor, **the right to
+touch rules is granted by default** — not gated behind a permission system we must build
+first. iDempiere's default is "locked unless you're a coder"; ours flips to "open unless
+an implementor restricts it." Security is an **additive** layer implementors add later —
+and its metadata is **already present** (`ad_role`, `ad_document_action_access`,
+`ad_table_access`, `ad_window_access`): compile those into "who may edit which rules /
+fire which actions" when needed, without touching the foundation. Same graceful shape as
+everywhere else: capable/open by default, narrowed by additive policy. The fundamental
+right comes first; the lock is optional and comes second.
+
 ---
 
 ## §1. iDempiere AD → SQLite Table Mapping
