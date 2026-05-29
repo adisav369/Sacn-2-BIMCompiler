@@ -115,6 +115,58 @@ Playwright exits 0. Then push (with go).
 
 ---
 
+## PB — Bridge + 5-table storage (the structural unlock — NEXT)
+
+Gate PV is OPEN (§5TBL 98.4% mappable, hub preserved). PB is what the whole 5-table
+runtime depends on, so it goes before P2. **P1 (deploy P0) is independent — run it in
+parallel or after; it does not block PB.** Build three artifacts:
+
+**1. `schema_5table.sql`** — the gate-derived minimal schema (docs/ERP.md §0):
+- `containers(id, parent_id, type, metadata)` — spatial hierarchy.
+- `items(id, parent_id, type, metadata)` — **`parent_id`**: master is recursive
+  (Product→Category, Product→Price/Substitute).
+- `documents(id, doc_type, doc_status, source_id, container_id, metadata)` —
+  **`source_id`** = derivation lineage; `parent_id` for sub-documents.
+- `document_lines(id, document_id, source_line_id, line_no, metadata)` —
+  **`source_line_id`** = line-level lineage (InvoiceLine→OrderLine).
+- `journal(id, batch_id, journal_id, …)` — Batch→Journal→Line; entries only.
+- `kernel_ops` (exists).
+- **CRUX: domain fields live in `metadata` JSON, NOT columns.** The 5 tables are
+  generic; `C_Order`'s ~60 fields go into `documents.metadata` keyed by `ColumnName`,
+  and the P0 manifest tells the UI which keys to render per doc_type. This is what
+  lets 5 tables hold 1003 tables' worth of fields.
+
+**2. `ad_table_map.js`** — explicit map, every business table → 5-table target:
+- `"C_Order": {slot:'documents', docType: <by AD/DocBaseType>, fk_map:{C_Order_ID:'source_id', C_BPartner_ID:'metadata.ref', …}}`
+- lines → `document_lines` (`C_OrderLine`: `{C_Order_ID:'document_id', source line ref:'source_line_id'}`).
+- master → `items` (M_Product, C_BPartner, M_Product_Category via `parent_id`).
+- spatial → `containers`; accounting entries → `journal`; `GL_Category/Budget` → `items`.
+- **The 36 residual edges** (`M_MatchInv`, `M_MatchPO`, `M_*LineMA`, `C_LandedCost*`):
+  these are the §18.2 **settlement / three-way-match junction** — a match LINKS ≥2
+  lines across documents, so model as `document_lines` with `match_type` + `source_line_id`
+  to one line and the counterpart ref in `metadata` (it's an edge, not plain content).
+  Slot each of the 36 explicitly.
+- `AD_*` / `_Trl` / `RV_*` → `compiler` (excluded from runtime, §3).
+
+**3. `ad_data.js` swap layer** — redirect all CRUD from the legacy table name to the
+mapped 5-table target via `ad_table_map`, resolving FKs through the map (a read of
+`C_Invoice WHERE C_Order_ID=N` → `documents WHERE doc_type='INVOICE' AND source_id=…`).
+PB scope = storage redirection + read/write through the map. (The effect-op gatekeeper
+— handlers return ops, kernel applies — is P3/P3b, not PB. PB just makes the storage
+exist and be reachable behind the existing AD-faithful UI.)
+
+**Test-spec / §-log acceptance:**
+- Extend the gate to the EXPLICIT map (not the heuristic): `§BRIDGE map windows=N
+  docTypes=M unmapped=0` — the 36 now slotted, zero unmapped.
+- Round-trip: create `C_Order` via `ad_data` → lands in `documents`+`metadata`; read
+  back via the legacy name → identical field set: `§BRIDGE roundtrip C_Order fields=N match=OK`.
+- Lineage: Order→Invoice via `source_id`; InvoiceLine→OrderLine via `source_line_id`.
+- A match (`M_MatchInv`) → `document_lines` row with `match_type` + both line refs.
+
+Then P2 compiles state machines onto these `documents`.
+
+---
+
 ## P2 — State-machine-per-DocType compile (WfMC)  ← own phase, before enforcement
 
 **Why before enforcement:** invariants 3 (state transitions) and 4 (downstream
