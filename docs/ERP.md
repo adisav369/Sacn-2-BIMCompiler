@@ -613,6 +613,64 @@ The prototype's `commitOp` shape is exactly what `bim-ootb/viewer/kernel_ops.js`
 shared module erp.html imports (with `kernel_ops.js` NOT forking) is **T3 — push=live, no deploy
 without explicit go.**
 
+### §0.17 P3b BREADTH — the contained-set thesis, diff-verified across O2C/P2P/GL (2026-05-29, §ORACLE-SUITE 5/6 + §GRAVITY PASS)
+
+The §0.12 thesis — *"the handler hell collapses to ~8 effect-verbs + decision tables + ONE
+generic matcher"* — was on trial here against the **whole hot-cell scope**, each cell diffed
+against the iDempiere oracle, not asserted on the one proven path. **It held.** Witnesses:
+`build/erp/{diff_oracle,gravity_seed}.log`.
+
+**The diff-oracle harness (`scripts/diff_oracle.js` + `diff_oracle_cells.js`).** Per hot cell:
+register the PURE handler → dispatch the document-event through `Kernel.dispatch` (the §18.6
+ladder) → normalise the emitted op-group + the GardenWorld oracle rows to a canonical effect set
+→ diff. **The oracle is STATIC, not live (§0.12):** GardenWorld already executed every O2C/P2P/GL
+transaction, so the `M_InOut`/`C_Invoice`/`M_Match*`/`C_Allocation` rows in `ad_full.db` ARE the
+oracle's output — deterministic (no `Date.now`/sequence/id drift the live Docker path introduces).
+**Live Docker iDempiere is the documented FALLBACK** for a cell the static data can't ground —
+logged `oracle=NO-DATA(docker-fallback)`, never silently skipped.
+
+**Six hot cells, each EXTRACTED from its Java oracle method (not ported):**
+
+| cell | oracle | verbs | matcher | diff |
+|---|---|---|---|---|
+| `C_Order` SOO:CO | `MOrder.completeIt()` | `createShipment` | – | shipment **6/6** |
+| `C_Order` POO:CO | `MOrder.completeIt()` (purch) | `completeOrder` | – | no-fanout **MATCH** |
+| `M_InOut` MMR:CO | `MInOut.completeIt()` | setStatus | **Y** | M_MatchPO **19/19** + no-mutation |
+| `C_Invoice` API:CO | `MInvoice.completeIt():2077` | setStatus | **Y** | M_MatchInv **18/18** + M_MatchPO **18/18** |
+| `C_Payment` APP:CO | `MPayment`/`MAllocation*` | `allocate` | – | allocation **1/1** |
+| `GL_Journal` GLJ:CO | `MJournal.completeIt()` | – | – | **dataless** (fact_acct=0 → docker) |
+
+**Verdict — the contained set is sufficient:**
+- **Settlement (the §0.13 "hell") = ONE matcher, ZERO new verbs.** M_MatchInv + M_MatchPO across
+  *both* MMR:CO and API:CO are the same `E.match` (partition=BPartner, key=product, qty±tol) with
+  opts loaded from data (`MATCHPOLICY`/`ACCESS`). No bespoke per-cell algorithm.
+- **Derivation = `completeOrder` + a decision table.** SOO ships (DocType 133/135 `Y/Y`); POO does
+  NOT (DocType 126 `isautogenerateinout=N`) — the *same* verb, behaviour flipped by a data flag.
+
+**Two findings logged loud (the real output of a breadth test, §18.6):**
+1. **The matcher RE-DERIVES what iDempiere reads off a FK** (documented divergence, §18.10).
+   `MInvoice.completeIt()` follows the invoice line's own `M_InOutLine_ID`/`C_OrderLine_ID`; our
+   generic matcher reconstructs the identical pairs from partner+product+qty — and additionally
+   works when the FK is absent (invoice-before-receipt). It needs an **input-scoping** refinement
+   (MMR match restricted to order-linked receipts, else 2 false positives from no-PO receipts that
+   coincidentally share partner+product+qty) — that is caller *structure*, not a matcher change.
+2. **Allocation is NOT the matcher class** (this REFINES §0.14, which had listed it there).
+   Payment 100 (`PayAmt` 98.5) settles invoice 101 (`GrandTotal` 100.7) — a **partial, user-directed**
+   settlement. The qty-equality constraint does not apply; it is reproduced by **following
+   `C_Payment.C_Invoice_ID` + the existing ALLOCATE verb** (derivation-by-FK) — *cheaper* than
+   3-way match, not part of the settlement-lattice hell.
+
+**Kernel gravity seed (`scripts/gravity_seed.js`, P4 preview).** Ops stamped with their emitting
+cell; one §14-weighted query self-ranks the backlog: **`(C_Invoice,CO)` is #1** (weight 56.0, 36
+`MATCH` ops) — empirical confirmation of §0.13 (the settlement spine is where the logic concentrates).
+155 cold cells stay unwritten and cost nothing (§18.6). The product compiles its own backlog from use.
+
+**Kernel change:** added a `MATCH` op (the §0.1 `document_lines.match_type` settlement edge — the
+GENERATE output of the §0.14 matcher) and extended `ALLOCATE` to carry `invoice_id`. The four
+baselines (`§POC`/`§POCMATCH`/`§WIRE`/`§KERNEL`) all still PASS — no regression. GL posting
+(`Fact_Acct`) is the one genuinely unwritten effect; it is dataless in this snapshot (async posting
+not run) and routes to the Docker fallback — the honest edge of the static-oracle method.
+
 ---
 
 ## §1. iDempiere AD → SQLite Table Mapping

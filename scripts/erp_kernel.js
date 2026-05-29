@@ -93,11 +93,22 @@ function applyOne(db, op, state) {
     return { output_guid: did, input_guids: [String(op.id)], before: before, after: after };
   }
   if (op.op_type === 'ALLOCATE') {
-    // settlement edge: link Order<->Payment + amount, as a journal entry (Batch->Journal).
-    var aid = 'ALLOC:' + op.payment_id + ':' + op.order_id;
+    // settlement edge: link Order/Invoice <-> Payment + amount, as a journal entry (Batch->Journal).
+    var target = op.invoice_id != null ? 'C_Invoice#' + op.invoice_id : 'C_Order#' + op.order_id;
+    var aid = 'ALLOC:' + op.payment_id + ':' + (op.invoice_id != null ? 'inv' + op.invoice_id : 'ord' + op.order_id);
     db.run('INSERT OR REPLACE INTO journal (id, batch_id, journal_id, source, metadata) VALUES (?,?,?,?,?)',
-      [aid, 'BATCH@pay' + op.payment_id, 'JRN@pay' + op.payment_id, 'DOC:C_Order#' + op.order_id, JSON.stringify(metaOf(op, ['op_type']))]);
-    return { output_guid: aid, input_guids: ['DOC:C_Order#' + op.order_id, 'DOC:C_Payment#' + op.payment_id], before: null, after: aid };
+      [aid, 'BATCH@pay' + op.payment_id, 'JRN@pay' + op.payment_id, 'DOC:' + target, JSON.stringify(metaOf(op, ['op_type']))]);
+    return { output_guid: aid, input_guids: ['DOC:' + target, 'DOC:C_Payment#' + op.payment_id], before: null, after: aid };
+  }
+  if (op.op_type === 'MATCH') {
+    // settlement edge (§0.1 document_lines.match_type): a row LINKING >=2 lines across documents.
+    // source_line_id -> one line; counterpart line-ref + qty in metadata; tagged match_type.
+    // This is GENERATE output of the §0.14 matcher — a "must-agree" edge in the settlement DAG.
+    var mid = 'MATCH:' + op.table + '@' + op.source_line_id + ':' + op.counterpart_line_id;
+    var mmeta = metaOf(op, ['op_type', 'table', 'source_line_id', 'match_type']);
+    db.run('INSERT OR REPLACE INTO document_lines (id, document_id, source_line_id, match_type, metadata) VALUES (?,?,?,?,?)',
+      [mid, 'DOC:' + op.table, String(op.source_line_id), op.match_type || op.table, JSON.stringify(mmeta)]);
+    return { output_guid: mid, input_guids: [String(op.source_line_id), String(op.counterpart_line_id)], before: null, after: mid };
   }
   throw new Error('unknown op_type ' + op.op_type);
 }
