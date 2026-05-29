@@ -380,10 +380,33 @@ src/org/compiere/model/` (`MOrder`/`MInvoice`/`MInOut`/`MPayment`/`MMatchInv`,
 `AD_Rule` + `AD_Val_Rule` + `Callout` (+ the `C_DocType` policy flags) from the source
 PostgreSQL — currently stripped from `ad_seed.db` (only dangling FK ids survived).
 
-### §0.10 Building it — the Rule Compiler + streamable rule store
+### §0.10 Building it — raw migration first, then the Rule Compiler
 
-A **Rule Compiler** (analyser/migration, the rules analogue of `compile_manifest.js`)
-reads the logic and *places* it as §0.9 rule records. Two sources, two honesty tiers:
+**Step 0 — raw PG→SQLite migration (mechanical, faithful, do this first).** We already
+*have* it all: the iDempiere PostgreSQL DB (full AD + config + `AD_Rule`/`AD_Val_Rule`
+scripts + `Callout` + `C_DocType` flags + `AD_PrintFormat` + `RV_*` views) and the Java
+source. Don't build a clever extractor against PG/Java — first **migrate the whole PG
+DB straight into "SQLite speak" as a separate cluster** of SQLite files. SQLite's loose
+typing makes the bulk (tables + data + the rule *scripts*, which are just text columns)
+near-mechanical; the flagged subset that needs care: **sequences** (drop — §5 forbids
+MAX+1 anyway), **stored functions/triggers** (skip — logic lives in Java/rules, not
+data), and **`RV_*` views** (translate the PG-specific SQL, or snapshot, or defer). The
+**Java is NOT migrated** — it can't be; it stays the §18.10 oracle for hand-porting
+handlers. Output: a raw, complete `ad_full` / `erp_rules` SQLite cluster the PWA's sql.js
+reads directly. This also *supersedes* the "selectively re-export the stripped columns"
+TODO (§0.8/0.9) — migrate everything raw, decide what to use later.
+
+*Working principle (aligned with the onset).* `ad_seed.db` was already a PG→SQLite
+export (§1), just stripped; Step 0 is **the same proven pipeline run complete** (raw, no
+strip). And it's incremental by design: get the faithful raw corpus in, then
+**refactor/compile as we go** — expect **several iterations before the better model and
+the right separation emerge.** Don't perfect the compiler or the cluster boundaries
+before the data exists; let the clean separation reveal itself through use (gravity,
+§0.6) rather than be designed up front.
+
+**Step 1 — the Rule Compiler** (analyser, the rules analogue of `compile_manifest.js`)
+now reads **local SQLite** (not PG, not Java — much easier, like P0 already does) and
+*places* the logic as §0.9 rule records. Two sources, two honesty tiers:
 - **AD metadata (auto-extractable, deterministic):** `AD_Rule` scripts, `Callout`
   bindings, `AD_Val_Rule` SQL, `C_DocType` policy flags, the `ad_wf_*` graph → emitted
   directly as rule records (SQL/expression/table forms + policy). This is pure
