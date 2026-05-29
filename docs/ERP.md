@@ -667,9 +667,52 @@ cell; one §14-weighted query self-ranks the backlog: **`(C_Invoice,CO)` is #1**
 
 **Kernel change:** added a `MATCH` op (the §0.1 `document_lines.match_type` settlement edge — the
 GENERATE output of the §0.14 matcher) and extended `ALLOCATE` to carry `invoice_id`. The four
-baselines (`§POC`/`§POCMATCH`/`§WIRE`/`§KERNEL`) all still PASS — no regression. GL posting
+baselines (`§POC`/`§POCMATCH`/`§WIRE`/`§KERNEL`) all still PASS — no regression; the `MATCH` op
+also round-trips through **replay** (live-hash == replay-hash, 39 match rows reproduced). GL posting
 (`Fact_Acct`) is the one genuinely unwritten effect; it is dataless in this snapshot (async posting
 not run) and routes to the Docker fallback — the honest edge of the static-oracle method.
+
+### §0.18 Stepping back — what P3b means for the PRODUCT (not just the verification)
+
+A post-P3b reflection (the in-frame review verified the harness; this asks whether the frame fits
+the product). Three reframings that keep the next session sharp:
+
+**(a) The kernel is NOT iDempiere server heritage — it is the spine BIM already chose.** The
+temptation is to read kernel + matcher + dispatch as a faithful port of iDempiere's *server*
+architecture and ask whether that is overkill for a single-user, no-concurrency PWA. It is not a
+port: the kernel is ~150 lines replacing ~15,000, and it earns its keep on **three single-user axes
+today** — (1) undo/redo + time-machine (the BIM viewer *already* ships `kernel_ops` for exactly
+this), (2) deterministic replay / frozen effects (editable rules without corrupting history), (3)
+it is the *same* op-log BIM committed to. Concurrency is the *fourth* thing the same log buys later
+for free, not the reason it exists.
+
+**(b) P3b surfaced the PRODUCT-TIERING line — this is the real finding, beyond "thesis holds."**
+The data says the **entire long-tail flow is the cheap path**: `order→ship` and `pay→allocate` are
+FK-following + decision tables (derivation-by-FK, §0.13 BOM spine). The expensive **settlement
+lattice** (3-way match, costing, bank-rec, landed-cost) is the **buyer/pro tier** — the user who
+reconciles PO↔receipt↔invoice. A lone operator's *"bought it, here's the bill, mark paid"* is
+literally the allocation path P3b proved is **cheaper than the matcher** (§0.17 finding 2). This
+maps onto the existing **usage tier (§0.11): active-narrow vs housed-long-tail** — so the seam to
+**ship the cheap path to everyone and gate the matcher behind a pro mode** is already in the model.
+
+**(c) The op-log IS an operation-based CRDT (CmRDT) — the correct sync substrate, vs state CRDT.**
+For multi-user/server-side sync later (the question was raised explicitly), the SQLite-world options
+split two ways: **state CRDT** (e.g. `cr-sqlite` — column-level LWW relations, WASM build, automatic
+row merge) vs **op CRDT** (our `kernel_ops` — causal lineage GUIDs + parent pointers + deterministic
+frozen replay, Git-style DAG merge per §18.5/§18.7). State CRDT auto-merges but **LWW silently
+violates invariants** (two peers each "fully allocate" the same invoice → money lost). The op-log
+carries semantic intent and concentrates the hard merges at the few **document-handoff seams**
+(single-invoice-per-order, budget) where §18.7's *designated-owner node* / detect-and-reconcile is
+the right answer. Verdict: **do not adopt a state CRDT as the foundation — that downgrades the
+op-log**; reserve `cr-sqlite`-style LWW only for cold, invariant-free reference tables. The
+document-event op-GROUP (§18.8) is already the atomic causal unit that ships and replays together.
+
+**Open questions for the next session (not P3b blockers):** the editable-rules loop is proven for
+*flag edits* (FIFO→LIFO, fan-out on/off) but NOT for a user **inventing a new DocType behaviour
+needing a new verb** (that is the gravity-backlog path, §18.6 — write it when hot); the GL leg
+(`GLJ:CO → Fact_Acct`) is asserted, not tested (the static oracle has no posted facts); and the
+settlement cells dispatch the *universe* in one synthetic event rather than per-document (the count
+is faithful only because partitioning is clean — a per-document dispatch would test isolation).
 
 ---
 
