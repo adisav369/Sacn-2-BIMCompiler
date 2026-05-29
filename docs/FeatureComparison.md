@@ -4,7 +4,7 @@
 
 BIM OOTB is a browser-based IFC viewer that runs entirely on the client. No server. No cloud subscription. No software to install. Open a URL, drop an IFC file, and view a full BIM model with construction scheduling, cost breakdown, and clash detection — all in a single browser tab.
 
-The viewer handles buildings from 200 to 122,000+ elements with smooth orbit, pick, and section cut. After first load, it works offline from local cache. The entire application is under 500KB of code.
+The viewer handles buildings from 200 to 122,000+ elements with smooth orbit, pick, and section cut — and a **whole-city view that streams a 1,000,000+ element city** (52 buildings, 24 archetypes) in the same single browser tab. After first load, it works offline from local cache. The entire application is under 500KB of code.
 
 ## How It Works
 
@@ -47,6 +47,18 @@ Mobile skips the custom DLOD tick entirely — r184 native culling handles Batch
 What you see is exactly what is in the IFC file — no proxies, no LOD geometry, no simplification.
 
 **WebGPU status (S276b):** The viewer is WebGPU-ready — `navigator.gpu.requestAdapter()` detects hardware WebGPU and activates `WebGPURenderer` automatically. Currently all browsers fall back to WebGL r184 (Intel iGPU = no adapter, mobile = skipped for stability, Chrome Linux PRIME = SwiftShader rejected). WebGL r184 performs better than r160 even without WebGPU — the upgrade delivers improved batching, native frustum culling, and cleaner shader compilation. WebGPU will activate automatically when browser/GPU support matures.
+
+### City-Scale Streaming — 1,000,000+ elements (S285)
+
+The same viewer scales from one building to an entire city: **1,035,522 elements across 52 buildings (24 archetypes)** in one browser tab, with no server and the same 500KB of code. Five techniques make a million elements tractable on a desktop browser:
+
+- **Facade-first residency.** A city is mostly hidden services — across the city, MEP/plumbing/structure is ~86% of elements; the architectural facade (ARC) is only ~14% (145K elements). The city streams **ARC only** by default, so the whole facade builds and stays resident. Structure and MEP for a building load on demand when you go into it. From the street you never see a building's pipes, so they are never fetched or built.
+- **Element-count memory budget.** Residency is bounded by **element count (~250K, the measured browser-pressure knee)**, not bytes — the honest limit for geometry the browser can hold. The whole ARC facade (145K) sits comfortably under it and is never evicted while panning the overview.
+- **Visibility streaming by ray-blast.** A 6×4 grid of rays from the camera is tested against one axis-aligned bounding box per building (≈52 boxes, sub-millisecond) — first-hit per ray gives free occlusion: a building behind another is never streamed. The set of streamed buildings follows the camera.
+- **Distance/visibility eviction with hysteresis.** Buildings that leave the view are demoted back to their bounding-box placeholder and their geometry freed — farthest and largest first, never the small spread-out buildings (kept as cheap context), and only after being out of view for two consecutive frames (no pop-off/pop-back churn). A ghost sweep frees any straggler mesh whose building was evicted mid-stream.
+- **Incremental BVH.** Bounding-volume hierarchies are built only for newly-added geometry in a single background pass — never a re-walk of the whole geometry cache — so a heavy building no longer stalls the tab.
+
+The launch sprouts small buildings first (they render fast and are visibly spread out), then fills in the large ones. Entering a building (it fills ~70% of the view) frees the distant facades and meshes that one building in full.
 
 ## Feature Overview
 
@@ -127,15 +139,43 @@ Measured on a standard laptop (Intel i7, integrated GPU, Chrome):
 
 All measurements with geometry cached in IndexedDB. First load depends on network speed for the initial database download.
 
-## Spatial ERP — Construction Project Management in the Browser
+## Spatial ERP — Browser-Based ERP Engine
 
-BIM OOTB includes a browser-based ERP engine built on the same zero-infrastructure principle. The system renders iDempiere's Application Dictionary (AD) — the metadata-driven UI framework behind one of the most mature open-source ERPs — entirely in a browser using SQLite WASM.
+BIM OOTB includes an ERP engine using iDempiere's Application Dictionary
+(AD) rendered in a browser via SQLite WASM. Full specification: `docs/ERP.md`.
 
-### What This Means
+### Architecture
 
-iDempiere is a full enterprise ERP (accounting, procurement, manufacturing, HR) with a unique architecture: the entire UI is defined as database rows, not code. Change a row in `AD_Field` and the UI changes. No recompile. This Application Dictionary (60,000+ metadata rows across 10 tables) has been exported from PostgreSQL, loaded into SQLite, and parsed by a JavaScript renderer.
+Three-layer separation (ERP.md §11):
+- **Data:** 5 core tables (containers, items, documents, document_lines,
+  journal) + kernel_ops event log. Legacy iDempiere tables (C_BPartner,
+  M_Product, etc.) coexist in the same SQLite database for imported
+  reference data.
+- **Logic:** Business rules as pure JavaScript functions (`rules/*.js`).
+  Each takes a db handle + document ID, reads via SQL, writes via
+  `commitOp()`. Independently testable.
+- **Presentation:** Constellation globe (initbubble.json, <300ms first
+  paint), cascading accordion drill, compiled manifest for field
+  definitions.
 
-The result: the same menu tree, windows, tabs, fields, validation rules, and display logic that run on a JVM + PostgreSQL + OSGi stack — running in a browser tab with no server.
+AD metadata (13MB, 1,003 table definitions, 59K rows) is treated as
+compile-time input. A build script extracts the needed window/tab/field
+definitions into a ~2KB manifest.json. The browser loads the manifest,
+not the full AD. See ERP.md §13.
+
+### Database Coverage
+
+ad_seed.db contains 356 of iDempiere's 1,003 tables (35%). Missing
+tables are server-only infrastructure (~400: processors, auth, alerts,
+import staging, views, translations) and advanced business modules
+(~250: manufacturing, commissions, dunning, subscriptions, quality
+control). All GardenWorld business data and all AD metadata are present.
+See ERP.md §16.1.
+
+Storage: PostgreSQL GardenWorld ~350MB; SQLite equivalent 12.1MB (29x
+compression). 151 bytes/row vs 500-800 in PostgreSQL. Difference is
+MVCC, WAL, TOAST, and system catalog overhead — required for multi-user
+servers, unnecessary in single-user browser. See ERP.md §16.2.
 
 ### Current State
 
@@ -146,33 +186,39 @@ The result: the same menu tree, windows, tabs, fields, validation rules, and dis
 | FK resolution (Name lookup) | Working |
 | DisplayLogic (conditional fields) | Working |
 | CRUD (Create/Read/Update/Delete) | Working |
-| Multi-panel master-detail | Working |
-| Data Globe (3D record visualisation) | Working |
-| Role-based access | In progress |
-| DocAction state machine | In progress |
-| Construction POC (Land → BOQ → Approval) | In progress |
+| Data Globe (spatial constellation) | Working |
+| Instant globe (<300ms, no WASM) | Working |
+| Cascading accordion drill | Working |
+| QR code + deep links (?window, ?record, ?client) | Working |
+| kernel_ops (undo/redo/audit) | Working |
+| Journal (double-entry accounting) | Working |
+| Compiled manifest | Specified (ERP.md §13) |
+| Kernel invariant enforcement (10 rules) | Specified (ERP.md §15.1) |
+| Settings JSON (cross-OOTB config) | Specified (S282) |
 
-### Roadmap: Construction ERP vs Primavera / Procore
+### Construction ERP vs Primavera / Procore
 
-The construction ERP roadmap targets the workflow that Primavera P6, Procore, and SAP PS serve today — project scheduling, cost control, procurement, and progress tracking — but delivered as a browser-first application that lives alongside the 3D BIM model.
-
-| Capability | BIM OOTB (Roadmap) | Primavera P6 | Procore | SAP PS |
+| Capability | BIM OOTB | Primavera P6 | Procore | SAP PS |
 |---|---|---|---|---|
-| 4D Schedule + 3D Model | **Same browser tab** | Separate tools | Separate | Separate |
-| 5D Cost + BOQ | **Extracted from IFC** | Manual input | Manual | Manual |
-| Offline | **Yes** | No | No | No |
-| Server required | **No** | Oracle DB | Cloud | SAP HANA |
-| Licence cost | **Free (MIT)** | $3-8K/user/yr | $375+/mo | Enterprise contract |
-| IFC integration | **Native** | None | Limited (viewer) | None |
-| BOM from model | **Automatic** | N/A | N/A | Manual |
-| Install | **URL** | Desktop | Cloud | On-premise/cloud |
-| ERP foundation | **iDempiere AD (open)** | Proprietary | Proprietary | Proprietary |
+| 4D Schedule + 3D Model | Same browser tab | Separate tools | Separate | Separate |
+| 5D Cost + BOQ | Extracted from IFC | Manual input | Manual | Manual |
+| Offline | Yes | No | No | No |
+| Server required | No | Oracle DB | Cloud | SAP HANA |
+| Licence cost | Free (MIT) | $3-8K/user/yr | $375+/mo | Enterprise |
+| IFC integration | Native | None | Limited | None |
+| BOM from model | Automatic | N/A | N/A | Manual |
+| Install | URL | Desktop | Cloud | On-premise/cloud |
+| ERP foundation | iDempiere AD (open) | Proprietary | Proprietary | Proprietary |
 
-The key differentiator: in Primavera, the schedule is disconnected from the model. An architect updates a wall in Revit, exports IFC, and someone manually reconciles the schedule. In BIM OOTB, the 4D schedule is derived from the IFC elements — change the model, the schedule updates. The 3D viewer, the Gantt chart, and the cost dashboard are the same application.
+### iDempiere Relationship
 
-### iDempiere Graduation Path
-
-BIM OOTB is not a replacement for enterprise ERP. It is a **browser-first entry point** that graduates to iDempiere when an organisation needs multi-user, multi-tenant, accounting, and audit. The same Application Dictionary runs in both environments. Data migrates up. Users don't retrain.
+ERP OOTB uses iDempiere's AD as the source for UI metadata. The
+compiled manifest preserves the AD's tab hierarchy, field ordering,
+FK relationships, and mandatory flags in a 2KB JSON file. Legacy
+tables from the PostgreSQL export coexist with the 5-table runtime
+model. When a user needs a feature served by a table not yet loaded
+(e.g., C_Commission), the manifest defines its structure and data is
+fetched on demand. See ERP.md §16.6.
 
 ## Comparison
 
@@ -205,6 +251,45 @@ BIM OOTB is not a replacement for enterprise ERP. It is a **browser-first entry 
 **vs IFC.js / ThatOpen Company**: IFC.js parses IFC files in the browser using a WASM module at load time. This works for small models but becomes slow above 20K elements because it re-parses geometry on every page load. BIM OOTB pre-extracts geometry into a SQLite database with content-hash deduplication, so repeat visits load from cache without re-parsing.
 
 **vs Desktop viewers (Solibri, BIMvision, Navisworks)**: Desktop applications require installation, licensing, and specific operating systems. BIM OOTB runs on any device with a browser — including tablets on a construction site with no internet after the initial cache.
+
+## IFC Geometry: What Authoring Tools Actually Export
+
+A common objection to mesh-based BIM viewers is that triangle meshes lose the mathematical precision of B-rep (boundary representation) solids — NURBS surfaces, exact booleans, parametric history. This is technically true but misidentifies where the loss occurs.
+
+### The IFC Tessellation Chain
+
+Authoring tools (Revit, ArchiCAD, Tekla) maintain B-rep internally for interactive editing. But when they export to IFC, they tessellate:
+
+| IFC Representation | What It Is | Who Exports It |
+|---|---|---|
+| `IfcFacetedBrep` | Planar polygonal faces (triangle soup) | Revit, ArchiCAD, most exporters |
+| `IfcTriangulatedFaceSet` | Explicit triangle mesh (IFC4) | Revit (IFC4 mode), Tekla |
+| `IfcExtrudedAreaSolid` | Linear extrusion of a 2D profile | All (simple walls, columns) |
+| `IfcSweptSolid` | Profile swept along a path | ArchiCAD, Tekla |
+| `IfcAdvancedBrep` | NURBS surfaces (true B-rep) | Virtually no production exporter |
+
+A dome that is a parametric `Revolution` family inside Revit's `.rvt` arrives in the IFC as `IfcFacetedBrep` — thousands of flat triangles. The B-rep was discarded by the authoring tool's own exporter, not by the viewer.
+
+### Downstream Industry Practice
+
+No commercial BIM workflow downstream of authoring operates on B-rep:
+
+- **Navisworks** (Autodesk's own clash detection) — tessellated meshes internally
+- **Solibri** (model checking) — tessellated meshes
+- **Robot / ETABS** (structural analysis) — simplified stick/shell models, not NURBS
+- **CostX / Procore** (cost estimation) — quantities from schedules + faceted visual reference
+- **Primavera P6** (4D scheduling) — no geometry at all
+- **Trimble FieldLink** (site layout) — survey points and coordinates
+
+If Autodesk's own billion-dollar coordination product (Navisworks) runs clash detection on tessellated meshes, the precision is sufficient for construction delivery.
+
+### Where B-rep Matters (and Where It Doesn't)
+
+B-rep kernels (OpenCascade, Parasolid) are essential for **design authoring** — push/pull faces, fillet edges, compute precise booleans. That is Revit's job.
+
+Construction-phase BIM — viewing, measuring, clash detection, 4D scheduling, 5D costing, field coordination — operates on the **IFC deliverable**, which is already tessellated at source. Sub-millimeter measurement accuracy is a coordinate precision problem (Float64), not a surface representation problem.
+
+BIM OOTB consumes the IFC file as-is. What the architect exported is what the site team sees. No re-modelling, no re-tessellation, no geometry invented beyond what the authoring tool provided.
 
 ## Architecture
 
