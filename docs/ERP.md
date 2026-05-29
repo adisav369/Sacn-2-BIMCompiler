@@ -741,4 +741,513 @@ demo. The full 826-node menu tree is the mic drop.
 
 ---
 
+## §11. The Three-Layer Architecture
+
+§1-§10 proved the AD can run in a browser. But running it unchanged —
+13MB of metadata, 1003 tables, 20,911 field definitions — is carrying
+the server's luggage into a building designed for hand baggage.
+
+The next evolution separates the ERP into three clean layers:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  PRESENTATION — what the user sees and touches          │
+│  Globe constellation, accordion drill, pills, settings  │
+│  Reads data via SQL. Triggers logic via user actions.    │
+│  Files: ad_ui.js, ad_graph.js, erp.html                │
+├─────────────────────────────────────────────────────────┤
+│  LOGIC — business rules, pure functions                 │
+│  "When payment completes, allocate against invoices"     │
+│  Takes db + document. Produces kernel_ops. Testable.     │
+│  Files: rules/*.js (allocation, pricing, tax, bom, etc) │
+├─────────────────────────────────────────────────────────┤
+│  DATA — 5 tables + kernel_ops + journal                 │
+│  Dumb storage. No triggers. No procedures. Portable.     │
+│  The op log IS the audit trail. Journal IS the books.    │
+│  Files: SQLite WASM (ad_seed.db or business.db)         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Boundaries (enforced, not suggested):**
+- Presentation → Logic: calls rule functions on user action
+- Logic → Data: `commitOp()` is the ONLY write path
+- Data → Presentation: SQL queries are the ONLY read path
+- No layer reaches into another's internals
+
+### §11.1 Why separation matters
+
+In iDempiere, logic is scattered across 6 extension points:
+ModelValidator, Callout, DocAction, Process, DB triggers, AD_Val_Rule.
+A developer changing "what happens when an invoice completes" must check
+all six. This is the real ERP monster — not the data model, not the UI,
+but the logic spaghetti.
+
+In ERP OOTB, logic lives in ONE place: rule functions. Each is a pure
+function that takes a database handle and a document ID, reads what it
+needs, and produces kernel_ops. No framework. No base class. No interface
+to implement. Just: data in, ops out.
+
+```javascript
+// rules/allocation.js — pure function, testable, readable
+function allocatePayment(db, paymentId) {
+  var payment = getDoc(db, paymentId);
+  var invoices = getOpenInvoices(db, payment.metadata.partner_id);
+  var remaining = payment.metadata.amount;
+  for (var i = 0; i < invoices.length && remaining > 0; i++) {
+    var allocated = Math.min(remaining, invoices[i].metadata.amount);
+    commitOp(db, 'ALLOCATE', {
+      payment: paymentId, invoice: invoices[i].id, amount: allocated
+    });
+    remaining -= allocated;
+  }
+}
+```
+
+This function is:
+- **Testable** — pass it a mock db, verify the ops it produces
+- **Readable** — a business person can follow the logic
+- **Reversible** — undo the commitOps, the allocation unwinds
+- **Auditable** — kernel_ops records which rule fired and why
+
+---
+
+## §12. The 5-Table Foundation
+
+iDempiere has 1003 tables because it grew organically over 20 years —
+each module adding its own tables. The 5-table design (from SpatialERP
+POC §3.1) says: **a document is a document.**
+
+| Table | What | Replaces in iDempiere |
+|---|---|---|
+| `containers` | Spatial hierarchy: Site→Building→Floor | C_Project, C_ProjectPhase, M_Warehouse |
+| `items` | Things in containers: products, partners, materials | M_Product, C_BPartner, M_BOM |
+| `documents` | ALL doc types in ONE table | C_Order, C_Invoice, C_Payment, M_InOut |
+| `document_lines` | Lines for any document | C_OrderLine, C_InvoiceLine, M_InOutLine |
+| `journal` | Auto-posted double-entry accounting | GL_Journal, Fact_Acct |
+| + `kernel_ops` | Event log, undo/redo, audit trail | AD_ChangeLog (no undo equivalent) |
+
+A Purchase Order, an Invoice, a Lead, a Credit Memo — they're all rows
+in `documents` with different `doc_type`. The structure is identical.
+Only the business rules differ, and those live in the logic layer, not
+the schema.
+
+### §12.1 The journal as proof of correctness
+
+Every document completion produces journal entries:
+```
+Complete PO #1001 → debit INVENTORY, credit ACCOUNTS_PAYABLE
+Complete Invoice #5001 → debit ACCOUNTS_PAYABLE, credit CASH
+```
+
+Undo a completion → `journalReverse()` posts counter-entries → net = 0.
+This is double-entry bookkeeping — Luca Pacioli's 1494 invention — in
+30 lines of JavaScript. The journal is the source of truth for finance.
+If the journal balances, the books are correct. Everything else is UI.
+
+### §12.2 The metadata JSON column
+
+Each table has a `metadata TEXT DEFAULT '{}'` column. This is where
+domain-specific fields live: `land_size` for a property lead,
+`payment_terms` for a PO, `tax_rate` for an invoice line.
+
+This is a deliberate trade-off: schemaless flexibility over rigid columns.
+The compiled manifest (§13) tells the UI which metadata fields to render
+for each doc_type. The kernel enforces mandatory metadata fields at
+commitOp time. But the table schema never changes.
+
+---
+
+## §13. The Compiled Manifest — AD as Compiler Input
+
+The full AD (13MB, 1003 tables, 20,911 fields) is **compile-time input**,
+not a runtime dependency. A build script reads ad_seed.db and outputs a
+slim manifest:
+
+```
+ad_seed.db (13MB)  →  compile_manifest.js  →  manifest.json (~2KB)
+   source code              compiler               compiled artifact
+```
+
+The manifest contains only what the browser needs:
+
+```json
+{
+  "windows": {
+    "123": {
+      "name": "Business Partner",
+      "table": "items",
+      "doc_type": null,
+      "tabs": [
+        { "name": "Partner", "level": 0,
+          "fields": [
+            {"col": "Name", "type": "string", "mandatory": true},
+            {"col": "IsCustomer", "type": "yesno"}
+          ]},
+        { "name": "Contact", "level": 1, "fk": "partner_id",
+          "fields": [
+            {"col": "Name", "type": "string", "mandatory": true},
+            {"col": "EMail", "type": "string"}
+          ]}
+      ]
+    }
+  },
+  "state_machine": {
+    "PURCHASE_ORDER": ["Drafted","Completed","Voided","Closed"],
+    "INVOICE": ["Drafted","Completed","Reversed","Voided"]
+  },
+  "downstream": {
+    "PURCHASE_ORDER": ["INVOICE","SHIPMENT"],
+    "INVOICE": ["PAYMENT"]
+  }
+}
+```
+
+**Runtime payload:** initbubble.json (2KB) + manifest.json (2KB) = 4KB.
+Everything the globe, accordion, and kernel enforcement need. WASM + the
+business data SQLite only loads when the user drills into actual records.
+
+The AD stays on the shelf as the reference — the source code. The manifest
+is the compiled binary. The browser runs the binary. You edit the source
+when you need to change the UI structure, then recompile.
+
+---
+
+## §14. Kernel Gravity — The Op Log as Constellation Driver
+
+Traditional ERP dashboards query data volume: `SELECT COUNT(*) FROM C_Order`.
+This tells you how much data exists, not what matters right now.
+
+kernel_ops provides **activity gravity**: what's being worked on, by whom,
+how recently. One query replaces N per-table counts:
+
+```sql
+SELECT json_extract(parameters, '$.table') AS tbl,
+       COUNT(DISTINCT json_extract(parameters, '$.id')) AS records,
+       MAX(timestamp) AS last_touch
+FROM kernel_ops
+WHERE undone = 0 AND timestamp > ?
+GROUP BY tbl
+```
+
+The constellation's bubble aura (glow radius) is driven by this gravity.
+Bright = active. Dim = dormant. Pulsing = just changed. The globe becomes
+a **live operations monitor** — the user's activity shapes the view.
+
+Op type weighting prevents noise (20 typo edits ≠ 20 meaningful actions):
+
+| Op type | Gravity weight |
+|---|---|
+| AD_SAVE (new record) | 1.0 |
+| AD_SAVE (update) | 0.2 |
+| DOC_COMPLETE | 2.0 |
+| DOC_VOID | 1.5 |
+| ALLOCATE | 1.0 |
+| AD_DELETE | 0.5 |
+| SESSION_START | 0.0 |
+
+---
+
+## §15. The Known Monsters — Local-First Risk Assessment
+
+Replacing a server-mediated ERP with browser-only storage creates three
+known failure modes. Each is bounded and solvable.
+
+**Full analysis:** `prompts/ERP_KERNEL_MONSTERS.md`
+
+| Monster | Risk | Core mitigation |
+|---|---|---|
+| Two tabs overwrite same record | LOW (single user) | BroadcastChannel awareness toast |
+| Orphaned documents (undo parent with children) | MEDIUM | Downstream FK check in kernel (50 lines) |
+| Gravity noise (edits ≠ significance) | LOW (UX only) | Distinct record count + op type weighting |
+
+### §15.1 The 10 Invariants
+
+Business rules ERP OOTB must enforce. If the kernel handles all 10,
+AD field settings become optional structural metadata.
+
+| # | Invariant | Kernel enforcement |
+|---|---|---|
+| 1 | Mandatory fields | commitOp rejects null on mandatory |
+| 2 | FK integrity | commitOp checks referenced record exists |
+| 3 | Doc state transitions | State map: `{Drafted:[Complete,Void]}` |
+| 4 | Downstream protection | DOWNSTREAM map check before undo |
+| 5 | Sequence numbering | MAX+1 (single-user = no collision) |
+| 6 | Period closing | Check C_Period.IsActive on DOC_COMPLETE |
+| 7 | Duplicate prevention | SELECT COUNT WHERE Value = ? before INSERT |
+| 8 | Audit trail | kernel_ops logs everything (already done) |
+| 9 | Undo boundary | compact() prunes past 2 sessions (already done) |
+| 10 | Currency consistency | Store CurrencyISO in metadata |
+
+~150 lines total for all 10. iDempiere uses ~15,000 lines for the same
+invariants plus 200 others that single-user browser ERP doesn't need.
+
+### §15.2 What we deliberately don't solve (yet)
+
+- Multi-device sync → only if users need phone + laptop simultaneously
+- Multi-currency conversion → only if users operate across currencies
+- Full AD runtime loading → compiled manifest replaces it
+- Server-side locking → single-user browser makes it unnecessary
+
+---
+
+## §16. Database Coverage and Storage Economics
+
+### §16.1 Current coverage of iDempiere schema
+
+ad_seed.db contains 356 of iDempiere's 1,003 table definitions (35%).
+
+| Category | Missing | Examples |
+|---|---|---|
+| AD_ (system/admin) | 160 | Alert, Auth, Processor, Archive, ChangeLog |
+| Views + translations (_V, _Trl) | 41 | Report views, multi-language overlays |
+| I_ (import) | 18 | Data migration staging tables |
+| GL_ (accounting) | 4 | GL_Distribution, GL_Fund, GL_FundRestriction |
+| C_ (commercial) | 120 | Commission, Dunning, RfQ, Subscription, POS |
+| M_ (material) | 65 | Production, QualityTest, CostQueue, LotCtl |
+| Other (workflow, HR, asset, mfg) | 239 | A_Asset, PP_*, HR_*, W_* |
+
+The missing 647 tables fall into two groups:
+- **Server-only plumbing** (~400): processors, schedulers, auth, import,
+  views, translations. These have no function in a browser runtime.
+- **Advanced business modules** (~250): manufacturing, commissions, dunning,
+  subscriptions, RfQ, quality control. These serve enterprises with
+  dedicated ERP administrators.
+
+The 356 present tables include all AD metadata (10 tables, 59K rows) and
+all GardenWorld business data (C_BPartner, M_Product, C_Order, C_Invoice,
+C_Payment, M_InOut, etc.).
+
+### §16.2 Storage comparison: PostgreSQL vs SQLite
+
+Measured from GardenWorld seed data:
+
+| Metric | PostgreSQL | SQLite (ad_seed.db) |
+|---|---|---|
+| Full GardenWorld install | ~350MB | 12.1MB |
+| Compression ratio | — | **29x smaller** |
+| Total rows | ~84K | 84,134 |
+| Bytes per row | ~500-800 | 151 |
+| AD metadata (70% of rows) | ~250MB | ~8.4MB |
+| Business data only (30%) | ~100MB | ~3.6MB |
+
+PostgreSQL overhead comes from: WAL (write-ahead log), TOAST (large
+object storage), MVCC (multi-version concurrency control — stores
+multiple row versions for concurrent transactions), per-row transaction
+IDs, system catalogs, and index structures. All required for a multi-user
+server. None needed in a single-user browser.
+
+SQLite stores page-aligned data with no concurrency overhead. One file,
+no fragmentation, no transaction versioning.
+
+### §16.3 Browser storage limits
+
+IndexedDB quotas (where the SQLite file is cached):
+
+| Browser | Default | With `navigator.storage.persist()` |
+|---|---|---|
+| Chrome | 60% of device disk | Same, marked non-evictable |
+| Firefox | 50% of device disk | Same, marked non-evictable |
+| Safari/iOS | 1GB per origin | Up to 20% of disk on request |
+
+A medium business with 100K documents would produce ~50MB in SQLite.
+A 256GB phone allows ~150GB in IndexedDB. Storage is not the constraint.
+
+Transfer time is the constraint: 12MB on 3G = ~30 seconds. This is why
+the architecture uses lazy fetch — load only the tables the user drills
+into. The manifest (2KB) + initbubble.json (2KB) + a single table
+fetch (~3KB for 18 partners) = under 10KB for first interaction.
+
+### §16.4 Metadata JSON queryability
+
+The `metadata TEXT` column on core tables stores domain-specific fields
+as JSON. SQLite's `json_extract()` is slower than real column access.
+
+Measured bounds:
+- `json_extract` over 5,000 rows: <10ms desktop, <30ms mobile
+- Over 84K rows (full ad_seed.db): <50ms
+- Acceptable for interactive drill; insufficient for batch reporting
+
+Mitigation: fields that become frequent query targets are promoted to
+real columns via `ALTER TABLE ADD COLUMN` (SQLite supports this without
+table rebuild). The JSON column is a staging area for schemaless fields,
+not the permanent home for high-frequency analytics.
+
+### §16.5 Manifest override mechanism
+
+The compiled manifest (§13) is the base configuration. Two override
+paths exist for runtime customisation without recompilation:
+
+1. **Direct JSON edit** — manifest.json is human-readable. Change a
+   field's mandatory flag, reorder tabs, add a field. Reload the page.
+   No compiler, no server, no PostgreSQL.
+
+2. **Settings JSON (localStorage)** — the S282 settings template stores
+   user preferences that patch the manifest at load time: hidden fields,
+   reordered tabs, custom labels, bubble order. The manifest is the
+   default; localStorage overrides are the personalisation layer.
+
+The compiler (`scripts/compile_manifest.js`) is for cold-start generation
+from the AD source. It is not required for day-to-day configuration.
+
+### §16.6 Relationship between legacy tables and 5-table model
+
+The 5 core tables (§12) and the legacy iDempiere tables coexist in the
+same SQLite database. They serve different roles:
+
+| Concern | Legacy tables (C_*, M_*) | 5-table model |
+|---|---|---|
+| Role | Imported reference data | Runtime working data |
+| Schema | Fixed columns per table | Generic + metadata JSON |
+| Source | PostgreSQL export (ad_seed.db) | Created by doc_engine.js |
+| Growth | Static (GardenWorld demo) | Grows with user activity |
+| Example | C_BPartner has 30+ columns | items has 8 columns + metadata JSON |
+
+The compiled manifest maps each window to its backing table — whether
+that table is `C_BPartner` (legacy) or `items` (5-table). The accordion
+and kernel_ops work identically with both.
+
+When a feature requires a table not in the 5-table model (e.g.,
+C_Commission for sales commissions), the lazy fetch retrieves that
+table's schema from the manifest and its data from the server or
+ad_seed.db. The 5-table runtime does not grow unless needed.
+
+Tables that exist in both models (e.g., partners exist in C_BPartner
+AND could be stored in items) are not migrated. Legacy data stays in
+legacy tables. New data created by the user goes to the 5-table model.
+The manifest tells the UI which table to query for each window.
+
+---
+
+## §17. The Seismic Claim (Revised)
+
+§10 claimed: the AD running in a browser. That was the first act.
+
+The second act is larger: **an ERP engine in 5 tables, with business
+logic as pure functions, undo/redo via event sourcing, and a spatial
+constellation UI that replaces the 1990s menu tree.**
+
+No JVM. No PostgreSQL. No OSGi. No server. No 2-week training course.
+Open a URL. See your business as a constellation of glowing entities.
+Tap one. Drill. Edit. Done.
+
+The 13MB Application Dictionary — 20 years of iDempiere community
+wisdom — compiled down to a 2KB manifest that tells the browser what
+to render. The full AD stays as the source code, available for reference
+and recompilation. But the runtime is hand baggage.
+
+150 lines of kernel enforcement. 5 tables. One write path (commitOp).
+One audit trail (kernel_ops). One accounting proof (journal).
+
+This is not iDempiere in a browser. This is what iDempiere would be
+if it were designed in 2026 for the device everyone actually carries.
+
+---
+
+## §18. The Unified Model — BOM + WfMC on One Log (empirically validated)
+
+This section is not theory. Every claim below was tested against the WHOLE
+iDempiere dictionary (1003 tables, 8,957 FK columns) by
+`scripts/test_bom_theory.js` (in the bim-compiler repo). The §BOM_TEST log is
+the witness. Re-run it to reproduce.
+
+### §18.1 Every relationship is one of two edges
+
+Strip the labels off iDempiere's schema and only two relationship kinds remain:
+
+1. **Structure edge** — recursive parent→children (the BOM). Two flavours:
+   - **Containment** ("has-a"): `Building→Floors`, `Order→OrderLines`,
+     `Window→Tabs→Fields`. The parent *holds* the child.
+   - **Derivation** ("made-from, by a verb"): `Order→Invoice→Shipment→Payment`.
+     The child is *computed from* the source document by a DocAction (see §18.3).
+2. **Component citation** — a leaf names independently-existing master/reference
+   data by quantity (`OrderLine→Product`, `Invoice→Partner`). Cited, not composed.
+
+This is the BOM principle (`docs/BOMBasedCompilation.md`) applied to business
+documents. **There is one compiler.** A building is a BOM; a purchase order is a
+BOM; the AD window hierarchy is a BOM. BIM and ERP are the same recursion over
+different leaves. The op-log (`kernel_ops`) is the BOM's composition history.
+
+### §18.2 What the data said (witness: §BOM_TEST, 2026-05-29)
+
+| Test | Result | Verdict |
+|---|---|---|
+| T1 resolution | 3,465 / 5,231 domain FKs resolve (66%) via `_ID` convention | conclusions robust on the resolved sample |
+| T2 acyclicity | TWO cycles found | naive "structure = DAG" **falsified — and refined** |
+| T5 hubs | `C_Order` in-degree **23** (#1), then Invoice 20, Payment 17, RMA 12, PP_Order 10 | source-replication **CONFIRMED** |
+
+The two T2 cycles are not refutations — they forced two true distinctions:
+
+- **Derivation cycle `Order→Payment→Invoice→Order`** = the **three-way match**.
+  Resolved by *direction*: forward **lineage** (Invoice derived-from Order) is a
+  DAG; the closing edge is a **settlement back-reference** — a third relation, the
+  reconciliation citation. This is how a source document stays bound to its replicas.
+- **Containment cycle `OrderLine↔RequisitionLine`** = **component reuse**. A part
+  appears in two BOMs (Order, Requisition). **Per-context, containment is always a
+  DAG** (tab levels strictly increase). Reuse across assemblies is the BOM
+  superpower, not a cycle. Containment must be compiled *per-window*, never as a
+  global tree.
+
+**The refined rule:** containment is per-context; derivation is causal-forward;
+settlement back-references close reconciliation loops. Nothing fell outside the model.
+
+### §18.3 A document is a *lifecycle*, not a table
+
+Witness §BOM_TEST: 51 tables carry **both** `DocStatus` and `DocAction`; 52
+`C_DocType` configurations exist. The definitive split is **lifecycle vs none**:
+
+> **Document** = `DocType` (configures) + `DocAction` (drives — the verbs) +
+> `DocStatus` (records) + `kernel_ops` (audits). **Master data** has none — it is
+> a lifeless citation.
+
+- **DocAction *is* the verb.** The 14 actions — `PR` Prepare, `CO` Complete,
+  `AP` Approve, `RJ` Reject, `WC` Wait-Complete, `VO` Void, `CL` Close,
+  `RE` Re-activate, `RC` Reverse-Correct, `RA` Reverse-Accrual, `PO` Post,
+  `IN` Invalidate, `XL` Unlock — are the operators that advance state **and fire
+  derivations**. `Complete` on `C_Order` is what produces the 23 replicas T5 measured.
+- **`C_DocType` is the parameterization** — "one source, many purposes." Same
+  `C_Order` table; DocType selects which sequence, which downstream docs, which
+  GL treatment.
+
+So the *behavioural* surface of all 1003 tables is tiny: **~51 documents × 52
+DocTypes × 14 verbs.** The bloat is parts on a shelf; the behaviour is small and
+WfMC-shaped.
+
+### §18.4 WfMC from the ground up — and it collapses into one log
+
+| WfMC reference element | Compiled artifact |
+|---|---|
+| Process definition | `C_DocType` (+ optional `AD_Workflow`) |
+| States / activities | `DocStatus` values |
+| Transitions | the 14 `DocAction` verbs |
+| Worklist | the **gravity globe** — what needs action, glowing |
+| Audit trail | **`kernel_ops`** |
+
+`kernel_ops` is therefore *simultaneously*: WfMC execution history, sync/replication
+substrate (§ multi-node), undo/time-machine, and gravity source (§14 already weights
+`DOC_COMPLETE`=2.0, `DOC_VOID`=1.5). **One append-only log, replayed, is the whole
+engine.** The workflow engine and the replication engine were never separate.
+
+**Correction this forces:** the manifest's `state_machine` must be compiled
+**per `C_DocType`** (from the DocAction set + transition rules), NOT hardcoded per
+table — because one `C_Order` table behaves differently by DocType. The current
+`compile_manifest.js` §4 hardcoding is a placeholder, replaced in the build plan.
+
+### §18.5 Local-first mesh — no one node holds the whole
+
+Each user is a local-first node owning their ~10% working set; the org ERP is the
+**union of nodes**, synced user-to-user by merging op-logs (Git-style DAG: parent
+pointers, fetch-fills-gaps, deterministic replay). "Heavy mode" is the mesh, not a
+monolith. Integrity goes eventually-consistent and conflicts cluster at **document
+handoffs** (the derivation seams) — the same few places where global invariants
+(single-invoice-per-order, cross-user budget) live. Those few get *detect-and-reconcile*
+or a *designated owner node*; everything else is enforced locally. Causality follows
+the **lineage spine** (compile-time taggable: FK to a lifecycle table = lineage;
+else citation), not the full FK tangle.
+
+**Build order is therefore hub-first** — `C_Order → C_Invoice → C_Payment → M_RMA
+→ PP_Order` — because the derivation hubs are where usage, money, WfMC richness, and
+gravity all concentrate. See `prompts/ERP_KERNEL_BUILD.md` for the phased plan.
+
+---
+
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
