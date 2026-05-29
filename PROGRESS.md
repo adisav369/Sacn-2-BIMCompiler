@@ -20,6 +20,33 @@
 
 ## Active Work — Browser BIM OOTB
 
+**ERP PB DONE (2026-05-29): AD→5-table bridge built + gate GREEN (NOT deployed).**
+  - `bim-ootb/viewer/`: `schema_5table.sql` (canonical 5-table, domain fields in metadata JSON), `ad_table_map.js` (37 explicit overrides + 10 hub fk_maps + PV heuristic), `ad_data.js` bridge mode (default OFF, behavior-preserving; `useBridge` routes CRUD to 5 tables).
+  - Gate `scripts/test_bridge.js`: `§BRIDGE map windows=7 docTypes=49 unmapped=0`; roundtrip C_Order match=OK; lineage source_id/source_line_id; M_MatchInv match_type. VERDICT PASS (`/tmp/pb/bridge.log`).
+  - ⚠ doc_engine.js (Spatial ERP POC) has same-named tables, different columns — reconciliation deferred. bim-ootb uncommitted (push=live). Spec: `prompts/ERP_KERNEL_BUILD.md §PB`, `docs/ERP.md §0/§0.1`. Next: P2 (WfMC state machines) or P1 (deploy P0).
+
+
+**S284b DONE (2026-05-29): web-ifc JS embedded — IFC import from offline HTML proven.**
+  - web-ifc JS (6MB) embedded as `<script type="text/plain" id="webifc-src">` — browser stores as inert text, `_createWorker()` reads via DOM `.textContent`.
+  - Fixed `$'` corruption in `String.replace()` — all html.replace() use function replacement.
+  - Removed `_STANDALONE` redirect guard — `handleImportFile()` now runs Blob Worker locally.
+  - Sandbox e2e: Playwright Chromium from `file://`, real IFC dropped, parsed, saved to IndexedDB. 165 tests, 0 failures.
+  - Output: BIM-OOTB.html ~6.8MB. IFC import works but **web-ifc.wasm (~4MB) still fetches from CDN**.
+  - **Next: embed web-ifc.wasm as base64 for true zero-CDN offline. Prompt: `prompts/S284b_WEBIFC_EMBED.md`.**
+
+**S284 DONE (2026-05-28): Save Offline Copy — About box packages landing as single HTML.**
+  - `packageLandingPage()`: inlines 2 external JS + Sysnova.png (base64) + manifest snapshot, injects `_STANDALONE` flag, absolute GH Pages URLs, strips analytics. Downloads `BIM-OOTB.html` (~250KB→6.8MB with web-ifc).
+  - Standalone manifest guard: `_MANIFEST_SNAPSHOT` bypasses fetch, cards render from embedded data.
+  - sql-wasm.js + sql-wasm.wasm (base64) + worker sources embedded for offline SQLite + import.
+
+**S282b DONE (2026-05-28): PanelNav + ListBuilder + _isMobile registry.**
+  - `panel_nav.js`: universal zone-based keyboard nav (~135 lines). Fixes ArrowDown-from-input bug.
+  - `list_builder.js`: reorderable list extraction from PillBuilder (~85 lines).
+  - Find panel migrated to PanelNav (4 zones). Settings panel gets PanelNav.
+  - `_isMobile` single source in `config.js` — no UI re-detection. Renderer files keep stricter `screen.width` checks.
+  - Status bar persists in maxed (`[][]`) mode. 143 whitebox tests.
+  - **Spec: `prompts/S282b_LISTBUILDER_PANEL_NAV.md`. Next: Phase 2c Locale + Rate pickers.**
+
 **S274b DONE (2026-05-26): Import Perf + CI + Auto-Open.**
   - Split-DB for dropped IFC: landing page persists metaDb/geoDb, openProject uses split URLs.
   - Instant card click (64ms): cache pre-populated during import, count() key check skips 760MB record read.

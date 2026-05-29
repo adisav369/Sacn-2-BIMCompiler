@@ -74,6 +74,40 @@ Plus two rules the gate forced: **`AD_*` / `_Trl` / `RV_*` are compiler input, n
 runtime** (§3); **citations are reference-ids in metadata-JSON, always representable.**
 GATE = OPEN (residue is `ad_table_map` slotting, tracked into PB).
 
+### §0.1 PB explicit slotting (resolves the 36 residual edges → unmapped=0)
+
+The PV gate's heuristic dumped 32 tables into the `items` fallback (or the
+`/Year|Project/` `containers` regex) when they are really lines / sub-documents /
+junctions. The explicit `ad_table_map.js` (PB artifact 2) overrides them. Each
+override is **extract-derived** — it resolves a specific unmappable edge logged by
+`test_5table_bom.js` (witness: `/tmp/pb/unmappable_all.txt`, 2026-05-29) and is
+confirmed against `DocStatus` membership (isDoc query, same date):
+
+| Override slot | Tables | Why (the edge it fixes) |
+|---|---|---|
+| `documents` (sub-doc, `parent_id`) | `M_ProductionPlan` | groups lines under `M_Production`; no `DocStatus` so heuristic mis-slotted it `items`. `M_ProductionLine→M_ProductionPlan` then = line→doc. |
+| `document_lines` (line / MA / confirm) | `C_InvoicePaySchedule` `C_OrderPaySchedule` `C_OrderLandedCost` `C_PaymentAllocate` `C_POSPayment` `M_Package` `M_InOutLineConfirm` `M_InOutLineMA` `M_InventoryLineMA` `M_MovementLineConfirm` `M_MovementLineMA` `M_ProductionLineMA` `PP_Cost_CollectorMA` `PP_Order_BOM` `PP_Order_Cost` `PP_Order_Workflow` `PP_Order_Node_Asset` `PP_Order_NodeNext` `PP_Order_Node_Product` `MP_Maintain_Task` `MP_OT_Task` `A_Depreciation_Exp` | child of a document (→`document_id`) or of another line (→`source_line_id`); parents confirmed `documents` by isDoc (`M_InOutConfirm`, `MP_Maintain`, `PP_Order_Node`, …). |
+| `document_lines` (settlement, `match_type`) | `M_MatchInv` `M_MatchPO` `C_LandedCost` `C_LandedCostAllocation` | §18.2 three-way-match: a row LINKS ≥2 lines across documents — `source_line_id` to one line, counterpart line-ref in `metadata`, tagged `match_type`. An edge, not content. |
+| `items` (master / link) | `R_IssueProject` `HR_Year` | not spatial containers — the `/Project|Year/` regex over-grabbed; both reduce to `items→items`. |
+
+Two `representable()` refinements the explicit slots expose (the true 5-table
+relationship set, not heuristic gaps): **(a)** a line citing master data
+(`document_lines → items`, e.g. `S_TimeExpenseLine → C_BPartner`) is a metadata
+reference — representable, same as the already-allowed `documents → items`;
+**(b)** a document posting to the ledger (`documents → journal`, e.g.
+`A_Asset_Addition → GL_JournalBatch`) is a posting reference carried in
+`metadata`/`journal.source` — not a lifecycle derivation.
+
+**2nd-order cascade (found by running the explicit gate, `test_bridge.js`):** moving
+a table to `document_lines`/`documents` re-slots its *children*. 8 more tables
+slotted: child lines `M_PackageLine` `M_PackageMPS` `PP_Order_BOMLine`
+`MP_Maintain_Resource` `MP_OT_Resource` `C_OrderLandedCostAllocation` →
+`document_lines` (→`source_line_id`); `PP_Order_Workflow` → `documents` (sub-doc
+header that `PP_Order_Node` nests under); `HR_Period` → `items` (sibling of
+`HR_Year`). **GATE RESULT (witness `§BRIDGE`, `scripts/test_bridge.js`, 2026-05-29):
+`map windows=7 docTypes=49 unmapped=0`; round-trip/lineage/match all PASS; PB gate
+GREEN.**
+
 ---
 
 ## §1. iDempiere AD → SQLite Table Mapping

@@ -63,7 +63,7 @@ wire-in is the interim shipped product until the bridge lands.
 | P0 | Manifest compiler + behavior-preserving wire-in (AD-faithful front-end) | ✅ DONE 2026-05-29 | see P0 below |
 | P1 | Deploy P0 to bim-ootb | ⏸ awaiting go | `§BENCH manifest loaded windows=7` + Playwright green |
 | PV | Bridge validation GATE (`test_5table_bom.js`) | ✅ OPEN 2026-05-29 | `§5TBL mappable=98.4% hubTop=C_Order` (residue=36 slotting) |
-| PB | Bridge + 5-table storage (`ad_table_map`, schema, `ad_data` swap) | ☐ next | `§BRIDGE map windows=… docTypes=… unmapped=0` |
+| PB | Bridge + 5-table storage (`ad_table_map`, schema, `ad_data` swap) | ✅ DONE 2026-05-29 | `§BRIDGE map windows=7 docTypes=49 unmapped=0` + roundtrip/lineage/match PASS |
 | P2 | State-machine-per-DocType compile (WfMC) | ☐ | `§MANIFEST doctypes=N transitions=M` |
 | P3 | Kernel enforcement (invariants = scaffold) | ☐ | `§KERNEL_OP reject …` |
 | P3b | Handler registry (business logic = the hell, contained) | ☐ | `§HANDLER (DocType,action) ops=…` |
@@ -115,11 +115,41 @@ Playwright exits 0. Then push (with go).
 
 ---
 
-## PB — Bridge + 5-table storage (the structural unlock — NEXT)
+## PB — Bridge + 5-table storage (the structural unlock — ✅ DONE 2026-05-29)
 
-Gate PV is OPEN (§5TBL 98.4% mappable, hub preserved). PB is what the whole 5-table
-runtime depends on, so it goes before P2. **P1 (deploy P0) is independent — run it in
-parallel or after; it does not block PB.** Build three artifacts:
+**Built (3 artifacts + gate, all in a `bim-ootb` clone — PUSH=LIVE, NOT deployed):**
+- `bim-ootb/viewer/schema_5table.sql` — canonical 5-table runtime (PB §0 columns:
+  `documents.source_id/parent_id/container_id`, `document_lines.document_id/
+  source_line_id/line_no/match_type`, `items.parent_id`, `containers.parent_id`,
+  `journal.batch_id/journal_id`). Domain fields live in `metadata` JSON keyed by
+  ColumnName. IDs TEXT (GUID-ready). ⚠ Reconciliation point logged in the file
+  header: `doc_engine.js` (Spatial ERP POC, 79 tests) defines same-named tables with
+  different columns — must NOT share one runtime DB until unified (deferred).
+- `bim-ootb/viewer/ad_table_map.js` — explicit map: 37 OVERRIDE entries resolving the
+  36 first-order + 8 second-order unmappable edges (each citing the edge it fixes,
+  docs/ERP.md §0.1) + 10 curated-hub `fk_map`s + the PV heuristic ported verbatim.
+- `bim-ootb/viewer/ad_data.js` — bridge mode added (`useBridge`/`legacyMode`,
+  default OFF = behavior-preserving). When on, read/save/delete route through the map
+  to the 5 tables; domain cols → metadata, structural cols → real columns; FK
+  reverse-map on read-back.
+- `scripts/test_bridge.js` — the gate harness (sql.js + ad_seed.db facts).
+
+**Witness (`§BRIDGE`, `/tmp/pb/bridge.log`, 2026-05-29):**
+`map windows=7 docTypes=49 unmapped=0`; `roundtrip C_Order fields=8 match=OK`;
+lineage `Invoice.source_id=1001 InvoiceLine.source_line_id=2001`; match
+`M_MatchInv type=MATCH_INV src_line=6001 counterpart=4001`. VERDICT PASS.
+
+**Status:** uncommitted in `bim-ootb` (push=live). Not wired into `ad_ui.js` and not
+deployed — bridge is OFF by default; turning it on + wiring is an integration step
+after P1/P2. Next per ladder: **P2** (state-machine-per-DocType compile onto these
+`documents`), or **P1** (deploy P0, independent).
+
+---
+
+### PB build spec (record — what was built against)
+
+Gate PV was OPEN (§5TBL 98.4% mappable, hub preserved). PB is what the whole 5-table
+runtime depends on, so it goes before P2. **P1 (deploy P0) is independent.** Three artifacts:
 
 **1. `schema_5table.sql`** — the gate-derived minimal schema (docs/ERP.md §0):
 - `containers(id, parent_id, type, metadata)` — spatial hierarchy.
