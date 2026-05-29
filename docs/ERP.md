@@ -26,6 +26,56 @@ AD tree.
 
 ---
 
+## §0. Storage Model Decision (2026-05-29) — chosen path: (c) The Bridge
+
+**Chosen:** 5-table runtime (`containers`, `items`, `documents`, `document_lines`,
+`journal`) + `kernel_ops`. **AD is the compiler input** (→ `manifest.json`); the
+runtime never touches `C_Order` etc. directly. `ad_data.js` is the **explicit swap
+layer**, mapping every AD window to its 5-table slot via an `ad_table_map`
+(e.g. `C_Order → {storage:'documents', docType:'PURCHASE_ORDER', fk_map:{…}}`).
+
+**Why:** `Doc = Event` (§18.8) wants a `documents` table whose rows ARE the
+event-bearing entities; the AD-faithful compiler (proven by §BOM_TEST) becomes
+the front-end that feeds it. The bridge keeps the pivot auditable and reversible.
+
+**Costs (recorded, not hidden):** storage schema rebuilt; `ad_data` CRUD rewritten
+(<200 lines); the already-shipped real-table `erp.html` needs a one-time data
+migration (not a UI rewrite); P0's manifest compiler **survives**, P0's wire-in is
+partially redone.
+
+**Validation GATE (discipline — do before any 5-table build):**
+`scripts/test_5table_bom.js` must show the `ad_table_map` is **expressive enough**
+to represent every edge §BOM_TEST classified (mapping-completeness, ~0 unmappable)
+AND that the derivation hub ranking survives the table→`doc_type` collapse
+(`C_Order` group still #1). Acyclicity is now a *runtime instance* invariant
+(no document is its own ancestor via `source_id`), enforced by the kernel, not a
+schema property. The §-log makes the call.
+
+**Status:** P0 (AD-faithful manifest + wire-in) stays as the compiler front-end and
+the interim shipped product until the bridge validation passes.
+
+**Gate RESULT (witness: §5TBL, `scripts/test_5table_bom.js`, 2026-05-29):**
+**98.4% of business edges mappable** (2,156 / 2,192); **hub `C_Order` #1, preserved.**
+The residual 1.6% (36 edges) are slotting refinements for the real `ad_table_map`
+(line-level junction/confirm/allocation records mis-slotted as `items` — e.g.
+`M_MatchInv`, `M_MatchPO`, `M_*LineMA`, `C_LandedCost*` are all `document_lines`),
+**not** expressiveness gaps. The gate **derived the minimal runtime schema**:
+
+| Slot | + columns derived by the gate |
+|------|-------------------------------|
+| `containers` | `parent_id` (Site→Building→Floor) |
+| `items` | **`parent_id`** — master data is recursive (Product→Category, Product→Price/Substitute) |
+| `documents` | `source_id` (derivation lineage), `container_id`, `doc_type` |
+| `document_lines` | `document_id`, **`source_line_id`** — lineage recurses to the line (InvoiceLine→OrderLine) |
+| `journal` | Batch→Journal→Line; **entries only** (`Fact_Acct`, `GL_Journal*`). `GL_Category`/`GL_Budget` are accounting MASTER → `items` |
+| + `kernel_ops` | the log |
+
+Plus two rules the gate forced: **`AD_*` / `_Trl` / `RV_*` are compiler input, never
+runtime** (§3); **citations are reference-ids in metadata-JSON, always representable.**
+GATE = OPEN (residue is `ad_table_map` slotting, tracked into PB).
+
+---
+
 ## §1. iDempiere AD → SQLite Table Mapping
 
 ### Source: live PostgreSQL (docker)
@@ -1281,6 +1331,69 @@ is **dispatch by cell**:
 - State machine = *allowed transitions* (compiled — build P2).
 - Handler registry = *business logic* (per-cell handlers — build phase, gravity-ranked).
 - Log = *single source of truth* (already `kernel_ops`).
+
+### §18.7 The mailbox and the rulebook — out-of-band, content-addressed, never a server brain
+
+**The engine lives where the user lives.** Every peer runs the same deterministic
+kernel on its local SQLite; there is no server-side engine. The server, if any, is a
+**pure relay** — "an S3 bucket with auth" — storing op-logs and snapshots for peers
+to push/pull (Git-remote style). It never applies, merges, or arbitrates. Removing
+the central brain does not delete the hard problems; it **relocates** them — into the
+op-log protocol and into *peer roles*, never back into the server:
+
+- **Visibility/auth** — the relay still needs *addressed* inboxes (per-org/per-user)
+  and keys. It reads the envelope address; it never opens the letter.
+- **Global invariants** (single-invoice-per-order, cross-user budget) — moved to a
+  **designated peer role** (the AP node owns invoice issuance; others request) or
+  detect-and-reconcile at merge. Coordination is a *user with a hat*, never a server.
+- **Hints** ("hot ops you may want") — computed from op *metadata* (table, type, ts,
+  user_tag) only, never by applying the op; or dropped entirely in favour of peer
+  gossip. Encrypt op bodies → the relay sees only routing headers.
+- **Version skew is THE hard problem** — each PWA self-updates, so ops from mixed
+  kernel/handler versions coexist with no central migration. Defence: every op carries
+  `kernel_version`; handlers stay deterministic AND backward-compatible.
+
+**Rules are two layers, not one:**
+- **Handler *code*** (imperative `completeOrder()` logic) ships *with* the PWA
+  (service worker), versioned with the kernel. **Never** hot-swapped as remote code.
+- **Policy *data*** (declarative flags: `(Order,Complete):{creditCheck:false}`) is a
+  **signed, content-addressed manifest** (`policy_vN.json`, Git/IPFS) the admin
+  publishes; handlers *read* it at write time. Hot-swappable, governable, auditable.
+
+**Two append-only logs, one link.** The event log (`kernel_ops`) and the policy/config
+log (content-addressed, signed) are stitched by a `policy_hash` stamped on every op —
+not needed for replay (effects are frozen, §18.8) but required for AUDIT: *"why did
+this complete with no credit check?"* → the op cites `policy_v2`. Local rule overrides
+must be **marked** so un-synced policy can't silently pollute shared history; admin-key
+trust (who publishes, rotation/compromise) is an org-root-key / designated-peer concern.
+
+### §18.8 Doc is the Event — the document-event as the atomic unit
+
+A document is **not** a row that events happen *to*. Its lifecycle **is** the event
+stream: PO #5 *is* `created → completed → invoiced → paid`. The row (current
+`DocStatus`) is the fold; the `DocAction`s are the events.
+
+"The transaction" is the giveaway: the **document-event is the atomicity boundary.**
+When `Complete` fires, the handler returns a *group* of effect-ops (status change +
+invoice + lines + journal). That group is the single unit of four things at once:
+
+- **Atomic** — commits or rolls back together (the transaction).
+- **Undoable** — undo a document-event undoes the whole group, never a stray op.
+- **Syncable** — the causal unit that ships and replays together.
+- **Auditable** — stamped with `policy_hash` + `kernel_version`.
+
+This is the unit that makes the op-log coherent rather than a flat stream — and it is
+exactly P3b's handler contract (`handler → ops[]`). In the 5-table model, each
+`documents` row **is** the event-carrying aggregate root.
+
+### §18.9 Aggregates are checkpointed projections (precise rule)
+
+Not "no mutable aggregates." The authoritative state is the log; aggregates
+(`StorageOnHand`, `OrderLine.Price`) are **rebuildable projections**, never sources of
+truth. But a naive JOIN-over-all-history is O(history) and won't scale — so they MAY
+be **materialised as checkpoints**: `StorageOnHand = checkpoint_at_cursor_N +
+Σ(mutations since N)`. The kernel treats them as a cache the log can always
+regenerate. This is the same snapshot+delta needed for mesh compaction/bootstrap.
 
 ---
 
