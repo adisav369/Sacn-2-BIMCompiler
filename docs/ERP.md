@@ -462,6 +462,119 @@ familiar. The bulk is *hidden* (not in the instant payload, not cluttering the U
 graceful-degradation shape as everywhere: minimal/clean by default, full depth on
 demand.
 
+### §0.12 Empirical validation — the Sales→Ship POC (2026-05-29, §POC PASS)
+
+Steps 0 + 1 ran complete and we POC'd the **hard parts first** against the GardenWorld
+oracle. Witnesses: `build/erp/{migrate,verify,compile_rules,verify_rules,probe,poc,poc_match}.log`.
+
+**The diff-oracle needs NO live iDempiere.** GardenWorld already executed its
+transactions, so the `M_InOut` / `C_Invoice` / `M_MatchPO` / `M_MatchInv` rows already in
+`ad_full.db` **are** the oracle's output. We replay our logic on the *inputs* and compare to
+those rows. (Live iDempiere is only needed to oracle *ambiguous* cases we don't have data for.)
+
+What is now **proven**, not asserted:
+- **Derivation** (`completeOrder` fan-out) reproduces the oracle's shipment/invoice lines
+  *exactly* — built as **state + decision-table(C_DocType policy flags) + a tiny verb
+  registry** (`createShipment`/`createInvoice`), NOT a ported `MOrder.completeIt`.
+- **Settlement** (three-way match) reproduces the oracle **18/18** for both `M_MatchInv`
+  and `M_MatchPO`, 0 missed / 0 extra — as a **constraint (partitioned JOIN + balance)**,
+  NOT a ported `MMatchPO`/`MMatchInv` algorithm.
+- **Frozen effects** (§18.8): editing a decision-table flag is forward-only — a new order
+  changes, but **replaying the old order's stored ops reproduces the original shipment.**
+- **The two probe gaps close cheaply**: a `@ctx@` resolver (176/331 validation rules need
+  it) + a PG→SQLite dialect shim (`least`→`min`). With them, `sql=335 + policy=52` of the
+  739 records are engine-serveable for free.
+
+**Model-handling verdict (answers "do we hand-port 294 handlers?" — no).** The handler hell
+collapses to **~8 effect-verbs + decision tables (derivation) + ONE generic matcher
+(settlement)**. The 51 DocTypes share ~5 base-table model methods that differ only by
+flag-driven fan-out — that difference is *data* (already extracted in Step 1), not code.
+
+### §0.13 The two spines — where the ERP hell actually lives
+
+The BOM insight (every FK is a containment or derivation edge, §18.1) is confirmed — but
+the POC surfaced its crucial exception, **the third edge**, and *that* is the hell:
+
+- **The BOM tree** — containment (header→line) + derivation (order→ship→invoice). One tree
+  per document, parent/source pointers, deterministic replay. **Trivial; falls out for free.**
+- **The settlement lattice** — `M_Match*`, allocation, costing, bank-rec, landed-cost. These
+  are **"must-agree" edges that LINK ≥2 independently-grown trees**. A match node has **N
+  parents** (the graph is a DAG, not a forest) — which is exactly why P2 had to exclude
+  settlement back-edges to keep the lifecycle graph acyclic.
+
+The decisive evidence: matched **vendor invoices carry `c_order_id = NULL`** — settlement does
+not follow the order chain. A naive "same-order + product + qty" match scored **0/18**;
+re-partitioned by the **trading-partner account (`C_BPartner_ID`) + document polarity
+(vendor `V+`/`issotrx=N`)** it scored **18/18**. So:
+
+> **BIM = pure BOM (containment + derivation). ERP = BOM + settlement.** The two spines have
+> different organizing keys — the BOM tree is keyed by the document; the settlement lattice is
+> keyed by the *partner account*. **The entire ERP hell is concentrated on the settlement
+> spine** (the multi-parent DAG joins). Tame that and ERP is tamed.
+
+This refines the tiering: the **usage tier** (active narrow / housed long-tail, §0.11) governs
+*what to load*; the **spine tier** (derivation-cheap / settlement-costly) governs *where to
+spend logic* — orthogonal axes, two concerns.
+
+### §0.14 Everything is a predicate on an edge — GUARD vs GENERATE, one engine
+
+Composing the BOM insight (relationships are typed edges) with the rule insight (Step 1: every
+rule is `{binding, form, body}`) yields the whole runtime in one sentence: **a graph of typed
+edges, each carrying predicates, all evaluated by one engine, dispatched by `form`.** Four
+iDempiere mechanisms are the *same* primitive — a predicate bound to an edge:
+
+| mechanism | predicate on which edge | polarity |
+|---|---|---|
+| `AD_Val_Rule` (331) | "this FK may point to rows WHERE …" (data guard) | **GUARD** → bool |
+| role / `document_action_access` (2156) | "this **actor** may fire this action" (state-edge guard) | **GUARD** → bool |
+| WfMC transition (22) | "this status→status is legal" | **GUARD** → bool |
+| three-way **match** | "these two lines pair WHERE …" (settlement-edge *generator*) | **GENERATE** → ops[] |
+| derivation verbs | "derive child document from parent" | **GENERATE** → ops[] |
+
+Two refinements that keep it safe/deterministic: **(a) abstract body, typed binding** — the
+body can be anything (`form` = sql/expression/table/handler), but the *binding* is typed on
+three axes (which edge · what subject: data-row/line-pair/actor/state · when: the cell hook);
+**(b) GUARD vs GENERATE** — a predicate either gates an edge (→bool) or produces edges (→ops).
+
+**Access composes INTO the engine, not beside it (§0.8 made literal).** `ad_role_orgaccess`
+*narrows the matcher's partition* (you may only match within orgs your role sees);
+`document_action_access` *gates whether you may run the cell at all*. Access is just more
+predicates on the same edges — capability-first by default, narrowed by additive policy.
+
+**The generic Detail⋈Detail matcher** (the prize). One parameterized function serves the whole
+hard class — three-way match, payment allocation, inventory costing, bank reconciliation,
+landed-cost — because they are all *line-set ⋈ line-set under a non-unique key*:
+
+```
+match = partition(BPartner ∩ role-visible-orgs)   // the settlement spine, access-scoped
+      + key (product) + qty within tolerance       // the constraint
+      + ordering policy (FIFO/LIFO/by-amount/…)     // disambiguation, EDITABLE knob (data)
+      + greedy first-fit                            // deterministic
+```
+
+Proven: on real data it reproduces the oracle 18/18; on a synthetic *ambiguous* fixture the
+ordering policy is a real deterministic knob (FIFO→earliest, LIFO→latest) and role-scope
+narrows the partition and *overrides* the policy. One engine: match + ordering + access + guard,
+all via data, never bespoke code. (Ambiguity oracle = FIFO/LIFO *spec*; real-data = iDempiere.)
+
+### §0.15 The abstract engine, extracted — `scripts/erp_engine.js`
+
+The §0.10 "abstract engine" is now a real, separated module — **pure, no DB binding imported;
+the host injects `query(sql)→rows`**, so the *same core* runs under `sql.js` (browser) and
+`better-sqlite3` (node tests). Exports: `resolveCtx`, `dialectShim`, `evalGuard` (GUARD),
+`match`/`VERBS`/`completeOrder` (GENERATE). No `Date.now`/`Math.random`/DOM/network →
+replay/dry-run safe (§0.9 determinism). This paid the separation debt (the engine had been
+smeared/inlined across two probes); the regression — both POCs still green on the extracted
+module — proves it is the same logic.
+
+**Remaining debt (the next session's work):** (1) the matcher's partition/policy/access are
+still passed as JS opts in the harness — **not yet LOADED from `erp_rules` policy JSON +
+`ad_role`/`ad_role_orgaccess`** (the compile→engine wire); (2) **no kernel** applies + commits
+the returned ops to `kernel_ops` (handlers return ops; they're diff-compared, not yet
+committed/replayed through the log); (3) the engine lives in `bim-compiler/scripts` and must
+**move to `bim-ootb` as the shared module** both BIM and ERP import, when wired. See
+`prompts/ERP_RUNTIME_ENGINE.md`.
+
 ---
 
 ## §1. iDempiere AD → SQLite Table Mapping

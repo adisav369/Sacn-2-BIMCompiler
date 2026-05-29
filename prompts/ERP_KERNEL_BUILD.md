@@ -68,8 +68,10 @@ wire-in is the interim shipped product until the bridge lands.
 | PV | Bridge validation GATE (`test_5table_bom.js`) | ✅ OPEN 2026-05-29 | `§5TBL mappable=98.4% hubTop=C_Order` (residue=36 slotting) |
 | PB | Bridge + 5-table storage (`ad_table_map`, schema, `ad_data` swap) | ✅ DONE 2026-05-29 | `§BRIDGE map windows=7 docTypes=49 unmapped=0` + roundtrip/lineage/match PASS |
 | P2 | State-machine-per-DocType compile (WfMC) | ✅ DONE 2026-05-29 | `§MANIFEST doctypes=51 transitions=22` + `downstream acyclic=PASS` |
-| P3 | Kernel enforcement (invariants = scaffold) | ☐ | `§KERNEL_OP reject …` |
-| P3b | Handler registry (business logic = the hell, contained) | ☐ | `§HANDLER (DocType,action) ops=…` |
+| S0/S1 | Raw migration + Rule Compiler (`ad_full.db` / `erp_rules.db`) | ✅ DONE 2026-05-29 | `§MIGRATE tables=925` + `§RULES extracted=445` |
+| POC | Sales→Ship hard-parts, diff vs oracle (engine extracted) | ✅ DONE 2026-05-29 | `§POC PASS` (settlement 18/18, derivation exact, frozen) + `§POCMATCH PASS` |
+| P3 | Kernel enforcement (invariants = scaffold) — **POC-de-risked, see `prompts/ERP_RUNTIME_ENGINE.md`** | ☐ | `§KERNEL_OP reject …` / `§KERNEL apply` |
+| P3b | Handler registry (business logic = the hell, contained) — **patterns proven (verbs+tables / generic matcher), `docs/ERP.md §0.12–§0.15`** | ☐ | `§HANDLER (DocType,action) ops=…` |
 | P4 | Kernel gravity (op-log → aura + handler backlog rank) | ☐ | `§GRAVITY tbl=… weight=…` |
 | P5 | User-to-user sync (op-log merge + replay + snapshots) | ☐ | `§SYNC merged ops=… replayed=… conflicts=…` |
 | P6 | Governance: Rule Console (view/toggle signed policy, dry-run handlers) | ☐ capstone | `§POLICY published hash=… verified=Y` |
