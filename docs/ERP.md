@@ -575,6 +575,44 @@ committed/replayed through the log); (3) the engine lives in `bim-compiler/scrip
 **move to `bim-ootb` as the shared module** both BIM and ERP import, when wired. See
 `prompts/ERP_RUNTIME_ENGINE.md`.
 
+### §0.16 The wire + the kernel — data-driven evaluator and op-log kernel (2026-05-29, §WIRE/§KERNEL PASS)
+
+The three debts of §0.15 are now closed for the O2C spine (witnesses: `build/erp/{poc_wire,poc_kernel}.log`; gate `verify_rules.log`):
+
+**(1) The compile→engine WIRE (`scripts/erp_runtime.js` · §WIRE PASS).** A `loadCell(ruleQuery,
+baseTable, action)` host layer sources EVERY engine opt from a rule record — no JS literals:
+ordering ← `MATCHPOLICY:<cell>` (new editable seed, default FIFO logged), fan-out flags ←
+`DOCPOLICY:<docTypeId>`, access scope (allowOrgs partition + may-run gate) ← `ACCESS:<roleId>`
+(new Step-1 extension compiling `ad_role` + `ad_role_orgaccess` + `ad_document_action_access`),
+guards ← `Validation` records bound to the table. Re-running Sales→Ship with zero JS opts kept
+settlement **18/18** for both `M_MatchInv`/`M_MatchPO` and derivation exact. The editable-rule
+loop is real: flipping the `MATCHPOLICY` body FIFO→LIFO **deterministically moved the pairing**
+(`pairsChanged=1`); a role scoped to org {0} **emptied the matcher partition** (`match=0/18` —
+access composes INTO the engine, §0.8); a role with no doc-action grant gave `mayRun=N`. The
+rule compiler now emits **746 records** (matchpolicy=2, access=5 added); the gate `verify_rules.js`
+extends `EVENT_TYPES` with `MatchPolicy`/`Access` and asserts the wiring inputs — PASS.
+
+**(2) The op-log KERNEL (`scripts/erp_kernel.js` · §KERNEL PASS).** Handlers are PURE
+`(doc,ctx)→ops[]` (read-only ctx, never a writable db); `Kernel.apply` applies each op to the
+5-table projection AND commits a **RICH op** (payload + actor + before/after + lineage GUIDs —
+the §0.6 keystone, witnessed: `§KERNEL rich-op actor=… payload.op=… lineage.out=…`).
+`Kernel.dispatch` runs the §18.6 ladder — state-machine legal (P2 `manifest.wfmc`) → `evalGuard`
+→ `Handlers.run` → `Kernel.apply`. The **violation guard** rolls back and rejects an out-of-log
+write (`§KERNEL violation out-of-log-write=BLOCKED`, sneaky row gone). **Replay** rebuilds the
+projection from `kernel_ops` ALONE with an identical hash (`§KERNEL replay projection==committed
+HASH=…`), and **frozen effects** hold: editing the rule is forward-only — a new order under the
+flipped policy doesn't ship, yet replaying the old order's stored ops still produces its original
+shipment (`old-ship=3 new-ship=0 replay-old-ship=3`). Worked fixture `T_ORDER_SHIPMENT_ALLOCATION`
+green end-to-end (shipment lines ARE the inventory fact — no inventory-mutation op; StorageOnHand
+deduction exact; shipment-Complete no double-count; payment-Allocate → ALLOCATE edge + journal).
+Deterministic (natural-key ids, ctx timestamps — no `Date.now`/`Math.random`), so replay is exact.
+The prototype's `commitOp` shape is exactly what `bim-ootb/viewer/kernel_ops.js` already ALLOWS.
+
+**(3) Relocation to `bim-ootb` — PARKED, awaiting go.** `erp_engine.js` + `erp_runtime.js` +
+`erp_kernel.js` still live in `bim-compiler/scripts/`. Moving them into `bim-ootb/viewer/` as the
+shared module erp.html imports (with `kernel_ops.js` NOT forking) is **T3 — push=live, no deploy
+without explicit go.**
+
 ---
 
 ## §1. iDempiere AD → SQLite Table Mapping

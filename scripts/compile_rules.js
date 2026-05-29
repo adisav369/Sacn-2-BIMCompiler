@@ -72,6 +72,16 @@ var PRODUCT_DOCEVENTS = [
   { base: 'GL_Journal', bases: ['GLJ'], oracle: 'MJournal.completeIt', gravity: 60, effect: 'GL posting' }
 ];
 
+// Settlement cells run the generic Detail⋈Detail matcher (§0.14). Each gets an EDITABLE
+// ordering-policy rule record (§0.5) so the FIFO/LIFO/by-amount knob is DATA the engine
+// loads, not a JS literal in the harness. Default FIFO (logged). The matcher narrows its
+// partition by role/org access (§0.8); the Access records below supply allowOrgs.
+var SETTLEMENT_CELLS = [
+  { cell: 'M_InOut:CO', key: 'm_product_id', effect: 'matchPO + matchInv (vendor receipt ⋈ invoice/PO line)' },
+  { cell: 'C_Invoice:CO', key: 'm_product_id', effect: 'matchInv (vendor invoice ⋈ receipt line)' }
+];
+var MATCHPOLICY_DEFAULT = { order: 'FIFO', key: 'm_product_id', tol: 0.0001, dateField: 'movementdate' };
+
 function main() {
   if (!fs.existsSync(SRC)) {
     console.error('§RULES FATAL — source not found: ' + SRC + ' (run migrate_pg_to_sqlite.js first)');
@@ -120,7 +130,7 @@ function main() {
     '(cell,kind,oracle_class,oracle_method,oracle_present,binding_count,gravity_rank,notes) ' +
     'VALUES (@cell,@kind,@oracle_class,@oracle_method,@oracle_present,@binding_count,@gravity_rank,@notes)');
 
-  var n = { sql: 0, expr: 0, policy: 0, workflow: 0, callouts: 0, docevents: 0 };
+  var n = { sql: 0, expr: 0, policy: 0, workflow: 0, callouts: 0, docevents: 0, matchpolicy: 0, access: 0 };
 
   var tx = rdb.transaction(function () {
     // 1) AD_Rule — SQL (ruletype 'Q') / expression ('S').
@@ -246,6 +256,51 @@ function main() {
         });
       });
     });
+
+    // 7) MATCHPOLICY — editable ordering-policy rule per settlement cell (§0.5/§0.14).
+    //    body=JSON the engine loads as E.match() opts; default FIFO (logged at runtime).
+    SETTLEMENT_CELLS.forEach(function (s) {
+      var pol = Object.assign({}, MATCHPOLICY_DEFAULT, { key: s.key });
+      insRule.run({
+        rule_key: 'MATCHPOLICY:' + s.cell, event_type: 'MatchPolicy', form: 'policy',
+        binding: s.cell, body: JSON.stringify(pol),
+        params: JSON.stringify({ effect: s.effect, default: MATCHPOLICY_DEFAULT.order }),
+        source: 'seed:§0.5', oracle_ptr: null, gravity_rank: 0, status: 'preset'
+      });
+      n.matchpolicy++;
+    });
+
+    // 8) ACCESS — compile ad_role + ad_role_orgaccess + ad_document_action_access into one
+    //    editable rule record per role (§0.8). body carries: allowOrgs (the matcher's
+    //    partition narrowing) + the may-run gate {docTypeId -> [action codes]}. Capability
+    //    -first: isaccessallorgs='Y' => allOrgs (no narrowing). Every opt traces to a row.
+    var orgAccess = {};   // roleId -> [orgId]
+    ad.prepare('SELECT ad_role_id, ad_org_id FROM ad_role_orgaccess WHERE isactive=\'Y\'').all()
+      .forEach(function (r) { (orgAccess[r.ad_role_id] = orgAccess[r.ad_role_id] || []).push(r.ad_org_id); });
+    var actAccess = {};   // roleId -> { doctypeId -> [code] } (ad_ref_list.value = action code)
+    ad.prepare("SELECT daa.ad_role_id rid, daa.c_doctype_id dt, rl.value code " +
+      "FROM ad_document_action_access daa JOIN ad_ref_list rl ON rl.ad_ref_list_id=daa.ad_ref_list_id " +
+      "WHERE daa.isactive='Y'").all()
+      .forEach(function (r) {
+        var byRole = actAccess[r.rid] = actAccess[r.rid] || {};
+        (byRole[r.dt] = byRole[r.dt] || []).push(r.code);
+      });
+    ad.prepare('SELECT ad_role_id, name, isaccessallorgs FROM ad_role').all().forEach(function (r) {
+      var allOrgs = r.isaccessallorgs === 'Y';
+      var body = {
+        role: r.ad_role_id, name: r.name, allOrgs: allOrgs,
+        allowOrgs: allOrgs ? null : (orgAccess[r.ad_role_id] || []).sort(function (a, b) { return a - b; }),
+        actions: actAccess[r.ad_role_id] || {}   // {} => no explicit doc-action grants (gate closed unless allOrgs role)
+      };
+      insRule.run({
+        rule_key: 'ACCESS:' + r.ad_role_id, event_type: 'Access', form: 'policy',
+        binding: 'AD_Role:' + r.ad_role_id, body: JSON.stringify(body),
+        params: JSON.stringify({ name: r.name, orgCount: allOrgs ? '*' : (orgAccess[r.ad_role_id] || []).length }),
+        source: 'ad_role+ad_role_orgaccess+ad_document_action_access', oracle_ptr: null,
+        gravity_rank: 0, status: 'preset'
+      });
+      n.access++;
+    });
   });
   tx();
 
@@ -268,6 +323,7 @@ function main() {
   console.log('§RULES extracted=' + extracted + ' (sql=' + n.sql + ' expr=' + n.expr +
     ' policy=' + n.policy + ' workflow=' + n.workflow + ')' +
     ' callouts=' + n.callouts + ' docevents=' + n.docevents +
+    ' matchpolicy=' + n.matchpolicy + ' access=' + n.access +
     ' handler-stubs=' + distinctHandlers + ' backlog=' + stubs);
   console.log('§RULES totalRecords=' + totalRules + ' presets=' + presets + ' stubs=' + stubs +
     ' distinctHandlers=' + distinctHandlers + ' oraclePresent=' + oracleFound + '/' + distinctHandlers);

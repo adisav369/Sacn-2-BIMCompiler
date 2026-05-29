@@ -28,7 +28,8 @@ var CONTAINER = process.env.ERP_PG_CONTAINER || 'postgres';
 var PGDB = process.env.ERP_PG_DB || 'idempiere';
 var PGUSER = process.env.ERP_PG_USER || 'adempiere';
 
-var EVENT_TYPES = ['Callout', 'DocEvent', 'Validation', 'AccountingRule', 'DocPolicy', 'Workflow'];
+var EVENT_TYPES = ['Callout', 'DocEvent', 'Validation', 'AccountingRule', 'DocPolicy', 'Workflow',
+  'MatchPolicy', 'Access'];  // MatchPolicy/Access added by the compile→engine wiring (§0.14)
 var FORMS = ['sql', 'expression', 'table', 'handler', 'policy'];
 
 (async function () {
@@ -102,6 +103,16 @@ var FORMS = ['sql', 'expression', 'table', 'handler', 'policy'];
   console.log('§RULES verify sql.js dispatch sql=' + bySql + ' handler=' + byHandler +
     ' policy=' + byPolicy + ' table=' + byTable + ' rulesAt(C_Order:CO)=' + atCell);
   check(bySql > 0 && byHandler > 0 && byPolicy > 0 && atCell > 0, 'sql.js dispatch query returned empty');
+
+  // 5) Wiring inputs (§0.14): the loadCell evaluator sources ordering + access from these.
+  var mpCount = one("SELECT count(*) FROM rules WHERE event_type='MatchPolicy'");
+  var mpFifo = one("SELECT count(*) FROM rules WHERE event_type='MatchPolicy' AND body LIKE '%\"order\":\"FIFO\"%'");
+  var acCount = one("SELECT count(*) FROM rules WHERE event_type='Access'");
+  var acAllOrgs = one("SELECT count(*) FROM rules WHERE event_type='Access' AND body LIKE '%\"allOrgs\":true%'");
+  console.log('§RULES verify wiring matchpolicy=' + mpCount + ' (FIFO-default=' + mpFifo + ')' +
+    ' access=' + acCount + ' (allOrgs-roles=' + acAllOrgs + ')');
+  check(mpCount > 0 && mpFifo === mpCount, 'MatchPolicy records missing or not FIFO-default');
+  check(acCount > 0, 'Access records missing');
   sdb.close();
 
   console.log('§RULES VERIFY ' + (fail ? 'FAIL (' + fail + ' checks failed)' : 'PASS — all checks green'));

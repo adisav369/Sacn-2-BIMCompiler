@@ -20,6 +20,11 @@
 
 ## Active Work — Browser BIM OOTB
 
+**ERP RUNTIME ENGINE DONE (2026-05-29): the compile→engine WIRE + the op-log KERNEL. §WIRE PASS + §KERNEL PASS.** (record: `docs/ERP.md §0.16`)
+  - **T1 wire (`scripts/erp_runtime.js`):** `loadCell` sources EVERY engine opt from data — ordering ← `MATCHPOLICY:<cell>` (new seed, FIFO default), fan-out ← `DOCPOLICY`, access (allowOrgs+may-run) ← `ACCESS:<roleId>` (new Step-1 ext compiling ad_role+orgaccess+document_action_access), guards ← Validation. Sales→Ship with **zero JS opts** still 18/18; FIFO→LIFO rule-edit moved the pairing (`pairsChanged=1`); org-scope emptied the partition (`match=0/18`); no-grant role `mayRun=N`. Compiler now 746 records; `verify_rules.js` extended (MatchPolicy/Access) — gate PASS.
+  - **T2 kernel (`scripts/erp_kernel.js`):** handlers PURE `(doc,ctx)→ops[]`; `Kernel.apply` applies to 5-table projection + commits a RICH op (payload+actor+before/after+lineage). `dispatch` = §18.6 ladder (wfmc→evalGuard→Handlers.run→apply). Violation guard rolls back out-of-log writes (`BLOCKED`); replay rebuilds projection from `kernel_ops` alone (hash match); frozen effects hold (`old-ship=3 new-ship=0 replay-old-ship=3`). Fixture `T_ORDER_SHIPMENT_ALLOCATION` green. Witnesses: `build/erp/{poc_wire,poc_kernel}.log`.
+  - **T3 PARKED (needs go):** relocate erp_engine/erp_runtime/erp_kernel → `bim-ootb/viewer/` as shared module (kernel_ops.js must NOT fork). push=live.
+
 **ERP POC DONE (2026-05-29): Sales→Ship hard-parts vertical, diff-verified vs GardenWorld oracle. §POC PASS.**
   - `scripts/erp_runtime_probe.js` (`build/erp/probe.log`): abstract engine on sql.js over the real corpus. READ/DECIDE/policy GREEN free; surfaced 2 gaps — `@ctx@` unresolved (176/331 val rules) + PG dialect (`least`); handlers RED (backlog). Corpus serveable: sql=335 policy=52 free, handler=294 hand-port, table=58 matcher.
   - `scripts/poc_sales_to_ship.js` (`build/erp/poc.log`): diff-oracle WITHOUT live iDempiere — GardenWorld's M_InOut/M_Match* rows ARE the oracle output; replay logic on inputs, compare. Results:

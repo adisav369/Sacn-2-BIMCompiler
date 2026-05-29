@@ -70,8 +70,8 @@ wire-in is the interim shipped product until the bridge lands.
 | P2 | State-machine-per-DocType compile (WfMC) | ✅ DONE 2026-05-29 | `§MANIFEST doctypes=51 transitions=22` + `downstream acyclic=PASS` |
 | S0/S1 | Raw migration + Rule Compiler (`ad_full.db` / `erp_rules.db`) | ✅ DONE 2026-05-29 | `§MIGRATE tables=925` + `§RULES extracted=445` |
 | POC | Sales→Ship hard-parts, diff vs oracle (engine extracted) | ✅ DONE 2026-05-29 | `§POC PASS` (settlement 18/18, derivation exact, frozen) + `§POCMATCH PASS` |
-| P3 | Kernel enforcement (invariants = scaffold) — **POC-de-risked, see `prompts/ERP_RUNTIME_ENGINE.md`** | ☐ | `§KERNEL_OP reject …` / `§KERNEL apply` |
-| P3b | Handler registry (business logic = the hell, contained) — **patterns proven (verbs+tables / generic matcher), `docs/ERP.md §0.12–§0.15`** | ☐ | `§HANDLER (DocType,action) ops=…` |
+| P3 | Kernel enforcement (invariants = scaffold) — **WIRE + KERNEL built/proven on sql.js, `docs/ERP.md §0.16`; not yet relocated to bim-ootb (T3)** | ◑ | `§KERNEL apply ops=9 committed=9` + `§KERNEL violation out-of-log-write=BLOCKED` + `§KERNEL replay projection==committed` ✅ |
+| P3b | Handler registry (business logic = the hell, contained) — **dispatch ladder + registry + violation guard proven; O2C cells wired data-driven (`§WIRE`/`§KERNEL` PASS, §0.16)** | ◑ | `§KERNEL apply` (completeOrder/allocate) + `§WIRE cell=(M_InOut,CO) match=18/18` ✅ |
 | P4 | Kernel gravity (op-log → aura + handler backlog rank) | ☐ | `§GRAVITY tbl=… weight=…` |
 | P5 | User-to-user sync (op-log merge + replay + snapshots) | ☐ | `§SYNC merged ops=… replayed=… conflicts=…` |
 | P6 | Governance: Rule Console (view/toggle signed policy, dry-run handlers) | ☐ capstone | `§POLICY published hash=… verified=Y` |
