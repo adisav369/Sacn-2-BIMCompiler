@@ -16,7 +16,10 @@
 ## Objective
 
 Replace iDempiere's ~15,000-line server framework with a **browser-only,
-local-first PWA** where:
+local-first PWA**. **Thesis (docs/ERP.md §0.4–0.7):** ERP was always the hard rules
+monster; here it becomes a **smart rule assistant — deterministic, without AI
+intrusion, closed and controlled.** "Smart" = statistics over the op-log (suggest →
+human decides → dry-run proves), never an LLM. Where:
 
 - **AD is compiled, not loaded** — a slim manifest (per-window structure +
   per-DocType WfMC process definitions) drives the UI; the 13MB `ad_seed.db`

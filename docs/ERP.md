@@ -216,6 +216,88 @@ code, everything around them = editable metadata) is the discipline that keeps t
 grand-but-shippable. Achievable **for the narrow spine today** (§0.3); the long tail is
 incremental, not a prerequisite.
 
+> **Thesis (§0.4–0.7).** ERP was always the *hard rules monster* — logic hardcoded,
+> changes dangerous, analytics bolted on. Here it becomes a **smart rule assistant:
+> deterministic, without AI intrusion, in a closed controlled environment.** "Smart"
+> comes from the op-log (statistics over real actions — frequencies, recurrence,
+> outcomes), NOT from an LLM. So the assistant *suggests and explains*, the human
+> *decides*, dry-run *proves* — every step reproducible, auditable, and offline. No
+> hallucination, no nondeterminism, no data leaving the tab. The PRIME DIRECTIVE
+> (Deterministic · Non-invent · Extract) holds all the way up to the rules layer.
+
+### §0.5 The rules engine — per-cell decision tables
+
+The concrete shape of §0.4's editable policy. NOT Rete/DSL/inference — a **decision
+table per `(DocType, status, action)` cell**. The cell decomposition already removed
+the hard part (ordering/conflict/salience): within a cell there is no rule graph, just
+rows. Each cell has:
+- a **fixed menu of named effects** — *code* handlers (`createShipment`, `postJournal`,
+  `allocatePayment`, `creditHold`, `matchThreeWay`; ~6–10 for the whole §0.3 spine).
+  Users pick from it, never write it.
+- an **editable decision table** (policy JSON): rows of
+  `when: [[field, op, value], …]` (AND within a row, first-match across rows) →
+  `then: [{effect, params}]`. `value` may be a literal or a `@policy-ref`
+  (`@CreditLimit`, `@AR`) so mappings are defined once.
+
+The engine is **one ~50-line evaluator**: for the cell, walk rows, eval `when` against
+the document, dispatch matched `then` effects → `ops[]` → kernel applies. Democratised
+because (1) it's a *table* rendered in the shared accordion-table UI (§0.3), (2)
+conditions use the document's own field names, (3) effects are a dropdown, (4) it can be
+authored/round-tripped in **Excel** (`excel.js`/SheetJS already ships). Safe because the
+predicate language is tiny and non-Turing-complete (`= ≠ > ≥ < ≤ in empty`; field /
+literal / `@ref`; no functions, loops, or arithmetic) → statically checkable; and every
+table edit is a `kernel_ops` op → **dry-runnable** (§0.6) and undoable. **Boundary:** the
+table *selects and parameterizes* effects; novel computation (an allocation algorithm)
+stays a named handler the table calls.
+
+### §0.6 The op-log as analytical + rule-feedback substrate (the keystone)
+
+`kernel_ops` is already audit + undo + sync substrate + gravity (§14). It is *also* the
+**analytical store** — no bolt-on warehouse/ETL (the normal-ERP analytics pain). Every
+action is a timestamped, typed, parameterized event with actor + input/output GUIDs
+(`commitOp` already carries `timestamp, op_type, parameters, input_guids, output_guid`).
+So in-browser over `kernel_ops`:
+- **Optics** — frequency per `(DocType, action)`, where users hesitate or **undo** (undo
+  is an op), who does what.
+- **Flow / cycle-time** — order→ship latency, receipt lateness, approval lag = timestamp
+  deltas along a lineage.
+- **Budget / forecast** — journal ops are the *actuals*; budget is policy metadata;
+  variance is one query. Forecasting reuses the **dry-run replay** machinery (P6): a
+  forecast is replaying *hypothetical future ops* forward — same engine that dry-runs a
+  rule change.
+
+**The closed loop (preemptive, not after-the-fact):** the log *mines candidate decision
+rows* — "credit holds from BPartner Y are approved 100% → suggest auto-approve"; "users
+undo this auto-shipment 40% → flag the rule as wrong"; "these monthly manual journal
+corrections recur → suggest an auto-posting rule." Flow: **log → suggestion → dry-run →
+human commit.** P4 gravity reaches its full form: not just "what's hot" but "what rule
+should exist." Disciplines: **suggest, never auto-apply** (human-in-loop = safety AND
+democratisation); **explainable simple stats, not an ML platform** (frequencies,
+recurrence, conditional-outcome rates, cycle-times — readable by a user).
+
+**Keystone:** editable-safe-rules, analytics, forecasting, AND sync all share ONE
+dependency — **the op-log must be rich** (payload + actor + before/after + lineage
+GUIDs). Thin `{table,id,action}` ops (PB's current usage) support none of it; the
+`commitOp` schema already *allows* rich ops — we just must *use* them. This elevates
+"make the op-log real" from a P4 detail to the **foundation** the rest stands on.
+
+### §0.7 Every model is self-graphing (Odoo-like — and more)
+
+Like Odoo, every model can switch from its accordion-table view to a **graph/pivot
+view** with no per-model code. We already have the asset: `ad_charts.js`
+(`renderOverlay(db, tableName)`, `drawBar/Pie/Treemap/Completeness`, canvas, DPR-aware)
+and the 📊 Charts entry in `ad_ui.js`. The generalisation: **derive the measures and
+dimensions from the compiled manifest field types** (P0) — `amount`/`number`/`qty` →
+measures; `list`/`yesno`/`tableDirect`/`date` → group-by dimensions — so any model
+graphs itself automatically, no `getPrebuilt` curation needed.
+
+**The "more" Odoo can't do natively** (because ours is event-sourced, not a state
+snapshot): **temporal** views (how this model evolved over time, from the log),
+**flow/funnel** views (the document lineage `order→invoice→payment` straight from P2's
+derivation graph), **cycle-time** and **undo-rate** charts (the rule-grading of §0.6
+rendered as graphs), and **forecast** overlays (dry-run forward-replay). Same renderer,
+the log supplies a time axis Odoo's aggregations don't have.
+
 ---
 
 ## §1. iDempiere AD → SQLite Table Mapping
