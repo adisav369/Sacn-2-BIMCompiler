@@ -322,11 +322,20 @@ its own folder):
 - **Violation guard:** after a handler runs, assert no DB row changed except via the
   returned ops. A handler that mutates outside the log fails the guard. (Cheap to
   enforce if handlers only return ops and never get a writable `db`.)
-- **Build order = gravity (P4) ranking.** Start with the hottest cells:
-  `(C_Order, CO)` completeOrder, `(C_Invoice, CO)` completeInvoice,
-  `(C_Payment, CO)`, `(C_Order, VO)`, `(C_Invoice, RC)`. Port from iDempiere's
-  `Doc*.java` / DocAction logic, ONE cell at a time, EXTRACTing the rule (don't
-  invent). Log every cell left unwritten — silent gaps read as "covered."
+- **Build order = gravity (P4) ranking, BOUNDED to product scope (docs/ERP.md §0.3:
+  O2C / P2P / GL / inventory).** Hottest cells: `(C_Order SOO, CO)` completeOrder →
+  derive `M_InOut`, `(C_Order POO, CO)` → receipt + `M_MatchPO`, `(C_Invoice, CO)` +
+  `M_MatchInv`, `(C_Payment, CO)` + allocation, `M_InOut,CO` → `StorageOnHand` (§18.9),
+  journal-on-complete. NOT the long tail (`PP_*`/`MP_*`/`HR_*`/`A_*` — mapped for
+  model-completeness only). Port from iDempiere's `MOrder`/`MInvoice`/`MInOut`/
+  `MPayment` Java (§18.10) — that is the CONTENT oracle. `doc_engine.js`/`construction.js`
+  (retired POC, §0.2) is a STRUCTURAL template only (handler→ops shape), not content.
+  ONE cell at a time, EXTRACT the rule (don't invent). Log every cell left unwritten.
+- **Knobs come from policy JSON, never hardcoded (docs/ERP.md §0.4).** A handler reads
+  its conditional flags / account mappings / tolerances from an editable policy JSON
+  (the SystemAdmin role edits it via the shared Settings accordion editor) — so
+  `JOURNAL_RULES`-style tables are metadata, not code. Editability is built-in here, not
+  retrofitted in P6.
 
 **Test-spec** (node, in-memory sql.js + tiny manifest):
 - Per handler, a test NAMED for its rule: given a doc + ctx, assert the exact ops
@@ -419,6 +428,22 @@ the Monster-3 fix). Whitebox; no browser needed.
 with a deterministic converged-state hash equal on both nodes.
 
 ---
+
+## Resolved structural decisions
+- **One engine (2026-05-29, docs/ERP.md §0.2).** Canonical 5-table runtime =
+  `schema_5table.sql` (PB). `doc_engine.js`/`construction.js`/`category_loader.js`/
+  `erp_panel.js` (Spatial ERP POC) are UNREACHABLE dead code (no HTML loads them) →
+  **retired as the P3b reference oracle**, not a live engine. No shared-DB hazard.
+- **Product scope (2026-05-29, docs/ERP.md §0.3).** Narrow: O2C (Sales→Ship), P2P
+  (Procure→Receipt), GL, inventory storage. The long tail is mapped for
+  model-completeness only — not a handler target.
+- **Shared from BIM viewer (free):** the main pill of icons + the Settings JSON
+  accordion editor (built by another session). ERP policy/config edited there; P6 Rule
+  Console reuses it; AD renderer + Settings editor share the same accordion methods.
+- **Editable rules over hardcode (docs/ERP.md §0.4).** Cell legality, validation,
+  posting rules, and conditional flags are policy JSON a SystemAdmin role edits; only
+  effect *shapes* stay as handlers (parameterized by that policy). Safe because every
+  rule change is a `kernel_ops` op (auditable, reversible, dry-runnable).
 
 ## Parked structural decisions
 - **ERP its own folder.** We work in a `bim-ootb` clone; ERP currently lives in

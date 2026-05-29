@@ -108,6 +108,114 @@ header that `PP_Order_Node` nests under); `HR_Period` → `items` (sibling of
 `map windows=7 docTypes=49 unmapped=0`; round-trip/lineage/match all PASS; PB gate
 GREEN.**
 
+### §0.2 One engine — `doc_engine.js` reconciliation (resolved 2026-05-29)
+
+There were two implementations of "the 5-table model": `schema_5table.sql` (PB,
+AD-bridge) and `doc_engine.js` (the earlier **Spatial ERP POC** — `containers/items/
+documents/document_lines/journal` + `StateMachine` + `JournalEngine` + construction
+handlers, 79 tests). **Evidence (grep, 2026-05-29):** the POC's only consumer
+`erp_panel.js` is loaded by **zero** HTML entries; the live `erp.html` references it 0
+times. The POC (≈1,149 lines incl. tests) is **unreachable dead code** — its tests
+pass but exercise a module nothing loads.
+
+**Decision — canonical = `schema_5table.sql` (PB).** Not preference:
+- It is the only schema validated against real data (§BRIDGE, 2,192 edges) and it
+  **has the columns the full ERP provably needs** that `doc_engine` lacks
+  (`source_id`, `source_line_id`, `match_type`, `parent_id`). Making `doc_engine`
+  canonical would mean re-adding all of those — strictly more work for a worse start.
+- `doc_engine`'s 5-state `StateMachine` is **superseded** by P2's `manifest.wfmc`
+  (52 DocTypes, AD-faithful codes).
+
+The POC is **retired as the P3b reference oracle**, not migrated column-by-column:
+`construction.js` demonstrates the handler→effects pattern (structural template only —
+its *content* is the construction domain, out of product scope §0.3), `JournalEngine`
+shows journal-on-complete. The real P3b content oracle is the iDempiere Java
+(`MOrder`/`MInvoice`/`MInOut`/`MPayment`, §18.10). `kernel_ops.js` stays the shared
+module (BIM undo == ERP audit). The two-engine fork is closed; no live breakage
+(nothing loads the POC).
+
+### §0.3 Product scope — narrow O2C / P2P / GL / Inventory (2026-05-29)
+
+The PB/PV gates proved the 5-table model is **expressive enough for all of iDempiere**
+(a universality result — that's why the 37 overrides reach into the HR/manufacturing/
+asset long tail). The **product**, however, is deliberately narrow: emulate iDempiere
+for **Sales→Ship (O2C)**, **Procure→Receipt (P2P)**, **GL**, and **inventory storage** —
+nothing more. So:
+- **In-scope lifecycle tables / DocTypes:** `C_Order` (SOO/POO), `C_Invoice`
+  (ARI/API), `C_Payment` (ARR/APP), `M_InOut` (MMS/MMR), `M_Inventory`/`M_Movement`
+  (MMI/MMM) + `StorageOnHand` (§18.9), `GL_Journal`/`Fact_Acct` (GLJ). `M_MatchInv`/
+  `M_MatchPO` for three-way match.
+- **Out of product scope** (mapped for model-completeness only, NOT handler targets):
+  manufacturing (`PP_*`), maintenance (`MP_*`), HR (`HR_*`), assets (`A_*`), projects.
+- **P3b hot cells follow this spine:** `(C_Order,CO)`→derive `M_InOut`,
+  `(C_Order POO,CO)`→receipt+`M_MatchPO`, `(C_Invoice,CO)`+`M_MatchInv`,
+  `(C_Payment,CO)`+allocation, journal-on-complete, `M_InOut,CO`→`StorageOnHand`.
+  This is exactly the hub-first ordering, now bounded.
+
+**Adopted for free from the BIM viewer (shared, not rebuilt):** the **main pill** of
+icons, and the **Settings JSON editor** (another session builds it — JSONs edited in
+the standard accordion-table format). ERP's config (`manifest`, `clash`-style rules,
+and the P6 signed-policy / handler-policy JSON) is editable through that shared editor,
+so **P6 Rule Console reuses Settings**, and the AD accordion renderer and the Settings
+editor **share the same table/accordion methods**.
+
+### §0.4 Editable business rules — the SystemAdmin role (the differentiator)
+
+**The pain in normal ERP:** business logic is hardcoded in compiled server code
+(iDempiere's ~15k lines). Changing a rule needs a developer + redeploy; the change is
+unaudited, irreversible, and can't be tried safely. We push as much as possible from
+*code* into *editable metadata* a **SystemAdmin role** edits via the shared Settings
+JSON accordion editor (§0.3). The split (this is §18.6/§18.7 made concrete):
+
+| Layer | Where it lives | Editable by SystemAdmin? |
+|---|---|---|
+| **Cell legality** — which actions are valid from which status, per DocType | `manifest.wfmc` + `doctypes` (P2) | ✅ JSON |
+| **Field validation** — mandatory / readonly / displayLogic / defaults | `manifest` field contract (P0) | ✅ JSON |
+| **Posting rules** — account mappings per doc_type, debit/credit | a **policy JSON** (replaces `doc_engine`'s hardcoded `JOURNAL_RULES`) | ✅ JSON |
+| **Conditional flags** — `autoCreateShipment`, `creditCheck`, match `tolerance`, downstream-protection | a **policy JSON** (`scope:"global"` marked, §18.5) | ✅ JSON |
+| **Effect *shape*** — "Complete order ⇒ emit shipment + lines" | a P3b **handler** (`(doc,ctx)→ops[]`) | ❌ code — but *parameterized by* the policy above |
+
+**The honest boundary:** parameters, mappings, conditions, and which-action-when become
+metadata; the *shape* of a novel procedural effect stays a handler. Trying to
+metadata-ize arbitrary procedural logic rebuilds the complexity as a DSL (the classic
+"configurable rules engine that's harder than code" anti-pattern). So handlers stay
+small code; **everything around them is editable knobs.** Rule: a P3b handler must read
+its knobs from the policy JSON, never hardcode them — so editability is built-in, not
+retrofitted.
+
+**Why ours is safe where normal ERP isn't:** because the op-log is the truth (event
+sourcing), a SystemAdmin rule change is *itself a `kernel_ops` op* — auditable,
+reversible, and **dry-runnable** (P6 Rule Console: edit policy → replay affected
+documents → diff effects, before committing). Editable rules that can't silently break
+production. (This depends on the op-log actually being replayable — see the foundation
+note: ops must carry enough payload to rebuild the projection.)
+
+**Positioning — this was once the domain of Drools/BRMS.** Externalizing business
+rules into editable, declarative, safe-to-change artifacts is the exact ambition of
+heavyweight rules engines (Drools/JBoss BRMS, the KIE workbench, DRL/decision tables).
+Those needed a JVM, a server, Rete expertise, and rule-ordering/conflict-resolution
+(salience) — and the generality became its own complexity monster, often harder to
+reason about than the code it replaced. It is **more achievable today, and simpler,**
+for four reasons, and only if we hold one line:
+1. **We don't build a general inference engine.** Rete matches arbitrary rules in
+   arbitrary order — that generality is the cost. We metadata-ize only *knobs and
+   dispatch*; effect shapes stay handlers (§0.4 boundary). Small, tractable surface.
+2. **Cell decomposition replaces conflict resolution.** Drools' hard problem is "which
+   rules fire, in what order." Our state-machine-per-DocType makes dispatch
+   deterministic: the cell `(DocType,status,action)` selects exactly one handler + its
+   policy. No Rete, no salience.
+3. **iDempiere already did the declarative modeling.** The AD is a 60k-row metadata
+   dictionary; we *compile* it (P0/P2), we don't reinvent it. Half the "rules engine"
+   already exists as data.
+4. **The op-log gives safety Drools never had** — change-as-op, replay, dry-run, undo.
+   In-browser, local-first, ~150-line kernel — no JVM, no workbench.
+
+**The one line to hold:** the temptation is to drift *into* Drools — make handlers
+themselves data, build a DSL. That rebuilds the monster. The §0.4 boundary (handlers =
+code, everything around them = editable metadata) is the discipline that keeps this
+grand-but-shippable. Achievable **for the narrow spine today** (§0.3); the long tail is
+incremental, not a prerequisite.
+
 ---
 
 ## §1. iDempiere AD → SQLite Table Mapping
