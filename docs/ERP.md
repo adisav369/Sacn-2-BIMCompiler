@@ -1395,6 +1395,34 @@ be **materialised as checkpoints**: `StorageOnHand = checkpoint_at_cursor_N +
 Σ(mutations since N)`. The kernel treats them as a cache the log can always
 regenerate. This is the same snapshot+delta needed for mesh compaction/bootstrap.
 
+### §18.10 The oracle: iDempiere's model classes validate handlers (extract, don't port)
+
+We have the golden reference — iDempiere's 20-year Java source. Use it to **validate**
+that each JS handler implements the same business rules, **never to port blindly**.
+This is EXTRACT-don't-invent applied to behaviour (the §18.6 "hell").
+
+- **Per `(DocType, action)`, the Java method is the spec.** Before writing
+  `completeOrder()`, open `org.compiere.model.MOrder.completeIt()`; copy its
+  pre-conditions, side effects and post-conditions as the handler's pre-flight
+  citation (`// Oracle: MOrder.completeIt() — checks: isProcessed, credit, …`).
+  Each check → one test fixture (a test names the rule it proves).
+- **Diff-oracle (Docker) — the strongest test.** Run the same transaction in a real
+  iDempiere (`docker start postgres`), dump the affected rows, run the JS handler on
+  the same input, compare. **The schemas differ** (real tables vs 5-table) — so
+  compare at the **semantic/op level, normalised through `ad_table_map`** (a created
+  `C_Invoice` ⇄ `documents[INVOICE]` + lines), or compare the effect-ops both sides
+  emit. Mismatch = bug OR a *documented* intentional divergence.
+- **Gravity-ordered.** Extract oracle rules HOT-CELL-FIRST — `MOrder.completeIt()`
+  before the long tail — the same backlog as the handler registry (§18.6, §14).
+- **The oracle grounds the policy schema (§18.7).** The flags (`creditCheck`,
+  `autoCreateShipment`) are *read off* what `completeIt()` conditionally does; the
+  `Order→Invoice iff IsInvoice` fan-out (§BOM_TEST T3) is literally a branch in the Java.
+- **Scope the diff to the document-event (§18.8)** — compare the documents/lines/journal
+  the transaction produced (the atomic op-group), not transient state. iDempiere posts
+  accounting asynchronously; our `journal` is synchronous — normalise that.
+- **Don't copy:** concurrency locking, server round-trips, OSGi/plugins, the framework.
+  The ~150-line kernel + per-cell handlers replace ~15,000 lines.
+
 ---
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
