@@ -118,7 +118,8 @@ function buildWindow(winId) {
 
   var tabs = q(
     "SELECT t.AD_Tab_ID AS tabId, t.Name AS name, t.TabLevel AS level," +
-    " t.SeqNo AS seq, tb.TableName AS tbl " +
+    " t.SeqNo AS seq, tb.TableName AS tbl, t.IsSingleRow AS single," +
+    " t.IsReadOnly AS ro, t.WhereClause AS wc, t.OrderByClause AS ob " +
     "FROM AD_Tab t JOIN AD_Table tb ON t.AD_Table_ID=tb.AD_Table_ID " +
     "WHERE t.AD_Window_ID=" + winId + " AND t.IsActive='Y' " +
     "ORDER BY t.SeqNo"
@@ -183,7 +184,13 @@ function buildWindow(winId) {
     }
     fieldTotal += outFields.length;
 
-    var tabOut = { name: t.name, table: t.tbl, level: t.level, fields: outFields };
+    var tabOut = {
+      name: t.name, table: t.tbl, level: t.level, seq: t.seq, fields: outFields
+    };
+    if (t.single === 'Y') tabOut.singleRow = true;
+    if (t.ro === 'Y') tabOut.readonly = true;
+    if (t.wc) tabOut.where = t.wc;
+    if (t.ob) tabOut.orderBy = t.ob;
     if (fk) tabOut.fk = fk;
     outTabs.push(tabOut);
   }
