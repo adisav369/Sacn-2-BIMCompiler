@@ -20,6 +20,11 @@
 
 ## Active Work — Browser BIM OOTB
 
+**ERP P2 DONE (2026-05-29): WfMC state-machine-per-DocType compile + extracted derivation graph (NOT deployed).**
+  - `scripts/compile_manifest.js` extended: `manifest.wfmc` (shared iDempiere doc engine — 11 states, 22 transitions, oracle DocumentEngine), `manifest.doctypes` (51 real DocTypes, sentinel id=0 excluded), `manifest.downstream` (EXTRACTED, replaces §4 hardcode) + `manifest.settlement` (tagged back-edges, excluded from acyclicity). §3 compiler/view/temp tables excluded.
+  - Gate `scripts/test_manifest_wfmc.js`: `§MANIFEST doctypes=51 transitions=22`; downstream acyclic=PASS (settlement=2); C_Order→[C_Invoice,M_InOut,...]; gz 19.1KB (<25KB). VERDICT PASS (`/tmp/pb/p2_gate.log`).
+  - Additive/behavior-preserving (no consumer reads new keys). manifest.json uncommitted in bim-ootb (push=live). Next: P3 (kernel enforcement). Spec: `prompts/ERP_KERNEL_BUILD.md §P2`.
+
 **ERP PB DONE (2026-05-29): AD→5-table bridge built + gate GREEN (NOT deployed).**
   - `bim-ootb/viewer/`: `schema_5table.sql` (canonical 5-table, domain fields in metadata JSON), `ad_table_map.js` (37 explicit overrides + 10 hub fk_maps + PV heuristic), `ad_data.js` bridge mode (default OFF, behavior-preserving; `useBridge` routes CRUD to 5 tables).
   - Gate `scripts/test_bridge.js`: `§BRIDGE map windows=7 docTypes=49 unmapped=0`; roundtrip C_Order match=OK; lineage source_id/source_line_id; M_MatchInv match_type. VERDICT PASS (`/tmp/pb/bridge.log`).

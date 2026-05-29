@@ -64,7 +64,7 @@ wire-in is the interim shipped product until the bridge lands.
 | P1 | Deploy P0 to bim-ootb | ⏸ awaiting go | `§BENCH manifest loaded windows=7` + Playwright green |
 | PV | Bridge validation GATE (`test_5table_bom.js`) | ✅ OPEN 2026-05-29 | `§5TBL mappable=98.4% hubTop=C_Order` (residue=36 slotting) |
 | PB | Bridge + 5-table storage (`ad_table_map`, schema, `ad_data` swap) | ✅ DONE 2026-05-29 | `§BRIDGE map windows=7 docTypes=49 unmapped=0` + roundtrip/lineage/match PASS |
-| P2 | State-machine-per-DocType compile (WfMC) | ☐ | `§MANIFEST doctypes=N transitions=M` |
+| P2 | State-machine-per-DocType compile (WfMC) | ✅ DONE 2026-05-29 | `§MANIFEST doctypes=51 transitions=22` + `downstream acyclic=PASS` |
 | P3 | Kernel enforcement (invariants = scaffold) | ☐ | `§KERNEL_OP reject …` |
 | P3b | Handler registry (business logic = the hell, contained) | ☐ | `§HANDLER (DocType,action) ops=…` |
 | P4 | Kernel gravity (op-log → aura + handler backlog rank) | ☐ | `§GRAVITY tbl=… weight=…` |
@@ -197,7 +197,36 @@ Then P2 compiles state machines onto these `documents`.
 
 ---
 
-## P2 — State-machine-per-DocType compile (WfMC)  ← own phase, before enforcement
+## P2 — State-machine-per-DocType compile (WfMC) — ✅ DONE 2026-05-29
+
+**Built (extends `scripts/compile_manifest.js`; regenerates `bim-ootb/viewer/manifest.json`,
+additive/behavior-preserving — no consumer reads the new keys yet):**
+- `manifest.wfmc` — the shared iDempiere document engine: `states[]` (11, from
+  AD_Ref_List ref 131 minus the `??` sentinel), `transitions[]` (22 `(from,action,to)`
+  triples, oracle `org.compiere.process.DocumentEngine`, verbs extracted from ref 135),
+  `statusNames`/`actions` label maps.
+- `manifest.doctypes` — 51 real DocTypes (the `id=0 "** New **"` sentinel excluded),
+  each `{id,name,docBaseType,baseTable,isSOTrx}`; all share `wfmc` (per-DocType
+  *behavior* is handlers, P3b — the status wiring is universal, §18.4). `baseTable`
+  via the cited `DocBaseType→table` map (1/51 exotic → null).
+- `manifest.downstream` — EXTRACTED derivation graph (replaces the §4 hardcode),
+  oriented forward; back-edges tagged `manifest.settlement` (2, the prepayment refs)
+  and excluded from acyclicity. Reuses §BOM_TEST T2/T3 classification; **excludes §3
+  compiler/view/temp tables** (`AD_*`/`_Trl`/`RV_*`/`*_v`/`T_*`) that carry DocStatus
+  but aren't runtime — without that the graph was polluted by reporting views.
+- Test `scripts/test_manifest_wfmc.js` (T1 doctypes+machine, T2 closure, T3 acyclic,
+  T4 hub sanity).
+
+**Witness (`§MANIFEST`, `/tmp/pb/p2_gate.log`, 2026-05-29):** `doctypes=51
+transitions=22 states=11`; `downstream acyclic=PASS (settlement excluded=2)`;
+`C_Order downstream=[C_Invoice,DD_Order,M_InOut,M_RMA,PP_MRP]`; gz 19.1KB (<25KB).
+VERDICT PASS. Not deployed (manifest.json uncommitted in bim-ootb, push=live).
+
+**Next:** P3 (kernel enforcement — invariants interpret these compiled WfMC defs).
+
+---
+
+### P2 build spec (record — what was built against)
 
 **Why before enforcement:** invariants 3 (state transitions) and 4 (downstream
 protection) are *interpreters over* the compiled WfMC definitions. Enforcement

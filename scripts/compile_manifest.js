@@ -97,6 +97,52 @@ var BUSINESS_SEMANTICS = {
   }
 };
 
+// ── P2: WfMC state machine — the iDempiere document engine (cited, not invented) ─
+// Oracle: org.compiere.process.DocumentEngine (prepareIt/completeIt/voidIt/closeIt/
+// reActivateIt/reverseCorrectIt/reverseAccrualIt + getValidActions). Status-changing
+// transitions; AP/RJ/PO are status-neutral self-loops. Verbs are EXTRACTED from
+// AD_Ref_List ref 135; the legal (from,action,to) wiring is this cited spec.
+var WFMC_TRANSITIONS = [
+  ['DR', 'PR', 'IP'],  // prepareIt: Drafted -> In Progress
+  ['IN', 'PR', 'IP'],  // re-prepare an Invalid doc
+  ['DR', 'CO', 'CO'],  // completeIt direct from Draft
+  ['IP', 'CO', 'CO'],  // completeIt
+  ['WC', 'CO', 'CO'],  // Wait-Complete -> Complete
+  ['IP', 'WC', 'WC'],  // -> Waiting Confirmation
+  ['DR', 'VO', 'VO'],  // voidIt
+  ['IP', 'VO', 'VO'],
+  ['IN', 'VO', 'VO'],
+  ['CO', 'VO', 'VO'],
+  ['WC', 'VO', 'VO'],
+  ['WP', 'VO', 'VO'],
+  ['DR', 'IN', 'IN'],  // invalidateIt
+  ['IP', 'IN', 'IN'],
+  ['IN', 'XL', 'IP'],  // unlockIt: Invalid -> In Progress
+  ['CO', 'CL', 'CL'],  // closeIt
+  ['CO', 'RE', 'IP'],  // reActivateIt
+  ['CO', 'RC', 'RE'],  // reverseCorrectIt
+  ['CO', 'RA', 'RE'],  // reverseAccrualIt
+  ['IP', 'AP', 'IP'],  // approveIt   (sets IsApproved; status neutral)
+  ['IP', 'RJ', 'IP'],  // rejectIt    (status neutral)
+  ['CO', 'PO', 'CO']   // postIt      (status neutral)
+];
+
+// DocBaseType -> lifecycle base table. Oracle: iDempiere DocBaseType constants
+// (org.compiere.model.X_C_DocType / MDocType). Unmapped types -> baseTable:null.
+var DOC_BASE_TABLE = {
+  SOO: 'C_Order', POO: 'C_Order', POR: 'C_Order', MQO: 'C_Order',
+  ARI: 'C_Invoice', ARC: 'C_Invoice', API: 'C_Invoice', APC: 'C_Invoice', ARF: 'C_Invoice',
+  ARR: 'C_Payment', APP: 'C_Payment',
+  MMS: 'M_InOut', MMR: 'M_InOut',
+  MMI: 'M_Inventory', MMM: 'M_Movement', MMP: 'M_Production',
+  GLJ: 'GL_Journal', GLD: 'GL_JournalBatch',
+  CMA: 'C_Cash', CMB: 'C_BankStatement', CMC: 'C_Cash',
+  MOF: 'PP_Order', MOP: 'PP_Order', MCC: 'PP_Cost_Collector',
+  DOO: 'DD_Order', PJI: 'C_ProjectIssue', HRP: 'HR_Process',
+  FAA: 'A_Asset_Addition', FAD: 'A_Asset_Disposed',
+  MXI: 'M_MatchInv', MXP: 'M_MatchPO'
+};
+
 // ── sqlite3 -json helper ─────────────────────────────────────────────────────
 function q(sql) {
   var out = execFileSync('sqlite3', [DB, '-json', sql], {
@@ -205,6 +251,103 @@ function buildWindow(winId) {
   };
 }
 
+// ── P2: compile the shared WfMC machine + per-DocType definitions ────────────
+// All 52 DocTypes share the same iDempiere document engine (the legal-cell graph);
+// what differs per DocType is identity (baseTable/docBaseType/isSOTrx) and, later,
+// the HANDLER behavior at each cell (P3b, §18.4/§18.6) — not the status wiring.
+function buildWfmc() {
+  var statusNames = {}, actionNames = {};
+  q("SELECT Value v, Name n FROM AD_Ref_List WHERE AD_Reference_ID=131 AND IsActive='Y'")
+    .forEach(function (r) { statusNames[r.v] = r.n; });
+  q("SELECT Value v, Name n FROM AD_Ref_List WHERE AD_Reference_ID=135 AND IsActive='Y'")
+    .forEach(function (r) { if (r.v !== '--') actionNames[r.v] = r.n; });
+  // states = real DocStatus values (drop the synthetic '??' Unknown). Closure of the
+  // transition table is checked by the harness, not asserted here.
+  var states = Object.keys(statusNames).filter(function (s) { return s !== '??'; });
+  var trans = WFMC_TRANSITIONS.filter(function (t) {
+    return states.indexOf(t[0]) >= 0 && states.indexOf(t[2]) >= 0 && actionNames[t[1]];
+  });
+  return { states: states, statusNames: statusNames, actions: actionNames, transitions: trans };
+}
+
+function buildDocTypes() {
+  // C_DocType_ID=0 is the "** New **" sentinel (blank DocBaseType, no process) —
+  // not a real DocType; exclude it.
+  var rows = q("SELECT C_DocType_ID id, Name name, DocBaseType bt, IsSOTrx so " +
+    "FROM C_DocType WHERE IsActive='Y' AND C_DocType_ID>0 ORDER BY C_DocType_ID");
+  var unmapped = 0;
+  var out = rows.map(function (r) {
+    var base = DOC_BASE_TABLE[r.bt] || null;
+    if (!base) unmapped++;
+    return { id: r.id, name: r.name, docBaseType: r.bt, baseTable: base, isSOTrx: r.so === 'Y' };
+  });
+  console.log('§MANIFEST doctype baseTable unmapped=' + unmapped + '/' + out.length +
+    ' (exotic DocBaseTypes -> null; spine resolved)');
+  return out;
+}
+
+// Derivation graph among lifecycle (document) tables, oriented forward + back-edges
+// tagged settlement. Reuses §BOM_TEST classification (witness test_bom_theory T2/T3).
+function buildDerivation() {
+  var nameByLc = {};
+  q("SELECT TableName n FROM AD_Table").forEach(function (r) { nameByLc[r.n.toLowerCase()] = r.n; });
+  var isDoc = {};
+  q("SELECT DISTINCT t.TableName n FROM AD_Column c JOIN AD_Table t ON c.AD_Table_ID=t.AD_Table_ID WHERE c.ColumnName='DocStatus'")
+    .forEach(function (r) { isDoc[r.n] = true; });
+  var contain = {};
+  (function () {
+    var rows = q("SELECT t.AD_Window_ID w, t.SeqNo s, t.TabLevel lvl, tb.TableName tbl " +
+      "FROM AD_Tab t JOIN AD_Table tb ON t.AD_Table_ID=tb.AD_Table_ID WHERE t.IsActive='Y' ORDER BY t.AD_Window_ID, t.SeqNo");
+    var byWin = {}; rows.forEach(function (r) { (byWin[r.w] = byWin[r.w] || []).push(r); });
+    Object.keys(byWin).forEach(function (w) {
+      var stack = {};
+      byWin[w].forEach(function (r) {
+        stack[r.lvl] = r.tbl;
+        if (r.lvl > 0 && stack[r.lvl - 1] && stack[r.lvl - 1] !== r.tbl) contain[r.tbl + '>' + stack[r.lvl - 1]] = true;
+      });
+    });
+  })();
+  var SYS = { ad_client_id: 1, ad_org_id: 1, createdby: 1, updatedby: 1 };
+  // §3: dictionary / reporting views / temp tables are COMPILER input, never runtime.
+  // Without this, view tables (RV_*, *_v) and temp tables (T_*) carry DocStatus and
+  // pollute the lifecycle derivation graph.
+  function excluded(t) { return /^AD_/.test(t) || /_Trl$/.test(t) || /^RV_/.test(t) || /_v$/i.test(t) || /^T_/.test(t); }
+  var fk = q("SELECT t.TableName src, c.ColumnName col FROM AD_Column c JOIN AD_Table t ON c.AD_Table_ID=t.AD_Table_ID WHERE c.AD_Reference_ID IN (18,19,30) AND c.IsActive='Y'");
+  // derivation edge src->tgt means src has FK tgt_ID; lineage flows tgt(upstream)->src.
+  var fwd = {};                         // forward adjacency: upstream -> [downstream]
+  var edgeSeen = {};
+  fk.forEach(function (f) {
+    if (SYS[f.col.toLowerCase()]) return;
+    if (!/_ID$/i.test(f.col)) return;
+    var tgt = nameByLc[f.col.replace(/_ID$/i, '').toLowerCase()];
+    if (!tgt || tgt === f.src) return;
+    if (excluded(f.src) || excluded(tgt)) return;       // §3 compiler/view/temp, not runtime
+    if (contain[f.src + '>' + tgt]) return;             // containment, not derivation
+    if (!(isDoc[f.src] && isDoc[tgt])) return;          // doc<->doc only
+    var k = tgt + '->' + f.src; if (edgeSeen[k]) return; edgeSeen[k] = true;
+    (fwd[tgt] = fwd[tgt] || []).push(f.src);
+  });
+  // DFS classify: edge to a GRAY node = back-edge = settlement; rest = lineage.
+  Object.keys(fwd).forEach(function (k) { fwd[k].sort(); });
+  var color = {}, lineage = [], settlement = [];
+  var nodes = Object.keys(fwd).sort();
+  function dfs(u) {
+    color[u] = 1;
+    (fwd[u] || []).forEach(function (v) {
+      if (color[v] === 1) settlement.push([u, v]);       // back-edge
+      else { lineage.push([u, v]); if (!color[v]) dfs(v); }
+    });
+    color[u] = 2;
+  }
+  nodes.forEach(function (n) { if (!color[n]) dfs(n); });
+  var downstream = {};
+  lineage.forEach(function (e) { (downstream[e[0]] = downstream[e[0]] || []).push(e[1]); });
+  Object.keys(downstream).forEach(function (k) { downstream[k].sort(); });
+  console.log('§MANIFEST downstream tables=' + Object.keys(downstream).length +
+    ' lineageEdges=' + lineage.length + ' settlement=' + settlement.length);
+  return { downstream: downstream, settlement: settlement };
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 function main() {
   if (!fs.existsSync(DB)) {
@@ -225,13 +368,25 @@ function main() {
     for (var t = 0; t < w.tabs.length; t++) totalFields += w.tabs[t].fields.length;
   }
 
+  // P2: compile WfMC machine + per-DocType definitions + extracted derivation graph.
+  var wfmc = buildWfmc();
+  var doctypes = buildDocTypes();
+  var deriv = buildDerivation();
+  console.log('§MANIFEST doctypes=' + doctypes.length + ' transitions=' + wfmc.transitions.length +
+    ' states=' + wfmc.states.length);
+
   var manifest = {
-    version: 1,
+    version: 2,
     generated: new Date().toISOString(),
     source: 'ad_seed.db',
     windows: windows,
+    // P2 additive payload (all 52 DocTypes share `wfmc`; identity differs per type):
+    wfmc: wfmc,
+    doctypes: doctypes,
+    downstream: deriv.downstream,            // EXTRACTED, replaces the §4 hardcode (superset shape)
+    settlement: deriv.settlement,            // tagged back-edges (excluded from acyclicity)
+    // legacy P0 keys kept for compatibility (no consumer today, behavior-preserving):
     state_machine: BUSINESS_SEMANTICS.state_machine,
-    downstream: BUSINESS_SEMANTICS.downstream,
     dropdowns: BUSINESS_SEMANTICS.dropdowns
   };
 
