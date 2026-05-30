@@ -2527,6 +2527,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#views-seeing-the-underlying-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Views — seeing the underlying model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Views — seeing the underlying model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#view-1-glassbowl-docsglassbowlhtml-the-engine-mapped" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View 1 — Glassbowl (docs/glassbowl.html) — the engine, mapped
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#view-2-glassbowl-gravity-builderpglassbowl_gravityhtml-the-engine-weighed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View 2 — Glassbowl Gravity (build/erp/glassbowl_gravity.html) — the engine, weighed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#positioning-the-views-carry-the-talkable-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Positioning the views carry (the talkable line)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#0-storage-model-decision-2026-05-29-chosen-path-c-the-bridge" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4857,6 +4907,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#views-seeing-the-underlying-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Views — seeing the underlying model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Views — seeing the underlying model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#view-1-glassbowl-docsglassbowlhtml-the-engine-mapped" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View 1 — Glassbowl (docs/glassbowl.html) — the engine, mapped
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#view-2-glassbowl-gravity-builderpglassbowl_gravityhtml-the-engine-weighed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View 2 — Glassbowl Gravity (build/erp/glassbowl_gravity.html) — the engine, weighed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#positioning-the-views-carry-the-talkable-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Positioning the views carry (the talkable line)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#0-storage-model-decision-2026-05-29-chosen-path-c-the-bridge" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6048,6 +6148,73 @@ mockup — the thing renders and explains itself, live, from its own data.</em><
 </ul>
 <p><em>Read on for the storage decision (§0), the cell model, the kernel, and the
 diff-oracle that holds it all to the GardenWorld truth.</em></p>
+<hr />
+<h2 id="views-seeing-the-underlying-model">Views — seeing the underlying model<a class="headerlink" href="#views-seeing-the-underlying-model" title="Permanent link">&para;</a></h2>
+<p>The model below (the 5-table cells, the FK spines, the kernel op-log, the rule
+tables) is not just storage — it is <strong>the thing the views render</strong>. Each view is a
+different <em>projection of the same extracted structure</em>; none carries its own data.
+Two are built today, both <strong>read-only, extract-only, 0 hand-authored</strong>, both in
+<code>bim-compiler</code> and served from the BIMCompiler Pages site (they touch nothing in
+<code>bim-ootb</code>/live). They are how an iDempiere mind <em>looks at</em> the §0.18b duality.</p>
+<h3 id="view-1-glassbowl-docsglassbowlhtml-the-engine-mapped">View 1 — Glassbowl (<code>docs/glassbowl.html</code>) — the engine, mapped<a class="headerlink" href="#view-1-glassbowl-docsglassbowlhtml-the-engine-mapped" title="Permanent link">&para;</a></h3>
+<p><strong>What it is:</strong> the engine rendered <em>from itself</em> — bubbles are the <strong>cells</strong>
+(§12 5-table foundation, §0.7 self-graphing), the lines between them are the <strong>FK
+spines</strong> (§0.13 the two spines — derivation green, settlement amber, reference
+behind). Spec: <code>docs/GLASSBOWL_DOSSIER.md</code>; prior art <code>docs/GLASSBOWL.md</code>.</p>
+<p><strong>How it uses the model — every surface traces to a model section:</strong>
+- <strong>The map</strong> = the FK graph of <code>ad_full</code> collapsed onto the cell layer (§0.7). A
+  bubble <em>is</em> a <code>C_*</code> type-cell; an edge <em>is</em> a real foreign key, classified by spine.
+- <strong>The trace</strong> = a lineage walk down the derivation spine (§0.6 op-log lineage,
+  §0.19 long-tail): pick <code>C_Order</code> and its real journey
+  <code>Order → Shipment → Invoice → Payment → Allocation</code> lights as <strong>one instance's
+  path over the type-level spine</strong> — the §0.18b two-logins-fused moment made literal.
+- <strong>The dossier</strong> (Data / Rules / Columns / History) = the 5–7 iDempiere windows
+  fused: <strong>Data</strong> = real rows from <code>glassbowl_data.db</code>; <strong>Rules</strong> = <code>erp_rules</code>
+  validation SQL (§0.5, §0.8); <strong>Columns</strong> = <code>ad_column</code>; <strong>History</strong> = the
+  <code>kernel_ops</code> op-log with before/after (§0.6, §0.16) as a read-only undo-preview.
+- <strong>The eye candy</strong> (orbit depth-planes, swipe picker, WebAudio, QR scan, mobile
+  handle) maps to data, never decoration: planes come from spine role, audio pitch
+  rises per real lineage hop. <em>Spectacle on the surface, substance underneath.</em>
+- <strong>Witness:</strong> <code>§GLASSBOWL-WIRING 85/85</code>, gen <code>§GLASSBOWL/§LIFECYCLE/§ORBIT PASS</code>,
+  <code>hand=0</code>. Live + proven (deployed commit <code>e2d6702d</code>).</p>
+<h3 id="view-2-glassbowl-gravity-builderpglassbowl_gravityhtml-the-engine-weighed">View 2 — Glassbowl Gravity (<code>build/erp/glassbowl_gravity.html</code>) — the engine, <em>weighed</em><a class="headerlink" href="#view-2-glassbowl-gravity-builderpglassbowl_gravityhtml-the-engine-weighed" title="Permanent link">&para;</a></h3>
+<p><strong>What it is:</strong> a focused companion view that distils ONE claim — <em>legacy ERP makes
+you build a report; this engine presents itself.</em> Three knobs, every number a <strong>live
+<code>GROUP BY</code> over the 8 real GardenWorld orders</strong> (extracted from <code>glassbowl_data.db</code>,
+0 invented). Built as a separate file precisely so the loved Glassbowl stays untouched.</p>
+<p><strong>How it uses the model — the three knobs ARE three model facets:</strong>
+- <strong>Pivot (lens)</strong> = the analytical substrate (§0.6 op-log as analytical store, §0.7
+  graph/pivot view). Flick <code>Partner · Month · Status · Type</code> and the population
+  re-blooms — a literal <code>GROUP BY</code> re-run client-side over real rows, the friendly
+  name kept, the facet value riding under as a subtitle. Customer-vs-vendor colour
+  comes straight from <code>issotrx</code>, not assigned.
+- <strong>Gravity (measure)</strong> = <strong>kernel gravity</strong> (§14 the op-log as constellation driver,
+  §0.17 <em>gravity self-ranks <code>C_Invoice</code> #1</em>). Mass = count or <code>grandtotal</code>; the
+  heaviest group is biggest and pulled to centre, deterministic (golden-angle, eased,
+  no <code>Math.random</code> — replay-safe per the §0.16 discipline). <em>Position becomes earned.</em>
+- <strong>Depth dial (AD ↔ GW)</strong> = the <strong>§0.18b duality made a continuous control</strong>: drag
+  down to the <strong>type/dictionary</strong> layer (the 5-cell FK spine — what the engine <em>is</em>),
+  up through the <strong>instance/record</strong> population, up again into one record's <strong>real
+  line items</strong>. One gesture spans dictionary → records → lines.
+- <strong>The honest stop:</strong> the trace lights <em>exactly as far as the FKs link it</em> — order
+  <code>80001</code> runs full to allocation (<code>$98.50</code>); the others halt at invoice with a note
+  saying <strong>why</strong> (no payment FK in this dataset). The extract-only rule (§0.17
+  contained-set, §Non-goals "never fake one") shown as a feature, not hidden.
+- <strong>Witness:</strong> <code>§GRAVITY orders=8 chains=4 hand=0</code>, plus <code>§PIVOT</code>/<code>§TRACE</code> on each
+  interaction. Inlined totals reconcile to the DB to the cent (<code>$9,914.07</code>).</p>
+<h3 id="positioning-the-views-carry-the-talkable-line">Positioning the views carry (the talkable line)<a class="headerlink" href="#positioning-the-views-carry-the-talkable-line" title="Permanent link">&para;</a></h3>
+<p>These are <strong>not a prettier BI tool.</strong> PowerBI/OLAP run the same <em>operation</em> (slice,
+pivot, drill) but on a <strong>decoupled copy you must model first</strong>, and they bottom out at
+<em>detail rows</em>. Glassbowl's drill bottoms out at the <strong>live operational document</strong> — its
+rules, its workflow, its lineage, and (T3) its edit — on one canvas, every number
+extracted from the system's own structure. <em>You build a view of your data in PowerBI;
+Glassbowl is your engine presenting itself.</em> The extract-only discipline is the moat,
+not a constraint: a dashboard is a construction on stale data; this is the engine, live,
+explaining itself — and the organic motion is the proof it's real, not a mockup.</p>
+<p><strong>Parked (T3):</strong> both views are read-only. Editing rules/records in place, the live
+rule-impact preview (§0.4, §2d-3 in the Glassbowl spec), and writing through the depth
+dial open with the write-loop (<code>push=live</code>, explicit go) — the greyed CRUD and the
+History undo-preview are the honest seam, not the step.</p>
 <hr />
 <h2 id="0-storage-model-decision-2026-05-29-chosen-path-c-the-bridge">§0. Storage Model Decision (2026-05-29) — chosen path: (c) The Bridge<a class="headerlink" href="#0-storage-model-decision-2026-05-29-chosen-path-c-the-bridge" title="Permanent link">&para;</a></h2>
 <p><strong>Chosen:</strong> 5-table runtime (<code>containers</code>, <code>items</code>, <code>documents</code>, <code>document_lines</code>,
