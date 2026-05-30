@@ -172,22 +172,24 @@ for(var it=0;it<320;it++){
 N.forEach(function(n){n.hx=n.x;n.hy=n.y;});   // remember each bubble\u2019s HOME so Reset can truly re-home them
 // ── ORBIT (GLASSBOWL_DOSSIER \u00a72-viz, W-ORBIT): the 3 spines are depth planes; the trackball moves the eye ──
 // z is read from the data (n.z, assigned in the generator from spine role — NOT placed here).
-var yaw=0,pitch=0;window.__yaw=0;window.__pitch=0;
+var yaw=0,pitch=0,SP=1,SPREADK=0.8;window.__yaw=0;window.__pitch=0;
+// SP = declutter spread: 1 at rest, grows with orbit so leaning the trackball SPACES the bubbles apart
+// (its main job — arrange the view; further = more organised). At rest SP=1 → identity preserved.
 var CX=N.reduce(function(s,n){return s+n.x;},0)/N.length,CY=N.reduce(function(s,n){return s+n.y;},0)/N.length;
 var ZMAX=Math.max(1,Math.max.apply(null,N.map(function(n){return Math.abs(n.z||0);})));
 function orbitAmt(){return Math.min(1,Math.abs(Math.sin(yaw))+Math.abs(Math.sin(pitch)));}
 // orthographic projection (yaw about Y, then pitch about X). At yaw=pitch=0 it is the IDENTITY on x,y —
 // the planes collapse head-on, so the at-rest bowl is PIXEL-IDENTICAL to the flat static layout.
-function project(n){var ax=n.x-CX,ay=n.y-CY,az=(n.z||0);var cY=Math.cos(yaw),sY=Math.sin(yaw),cP=Math.cos(pitch),sP=Math.sin(pitch);var X1=ax*cY+az*sY,Z1=-ax*sY+az*cY;var Y2=ay*cP-Z1*sP,Z2=ay*sP+Z1*cP;n.sx=CX+X1;n.sy=CY+Y2;n.depth=Z2;}
+function project(n){var ax=(n.x-CX)*SP,ay=(n.y-CY)*SP,az=(n.z||0)*SP;var cY=Math.cos(yaw),sY=Math.sin(yaw),cP=Math.cos(pitch),sP=Math.sin(pitch);var X1=ax*cY+az*sY,Z1=-ax*sY+az*cY;var Y2=ay*cP-Z1*sP,Z2=ay*sP+Z1*cP;n.sx=CX+X1;n.sy=CY+Y2;n.depth=Z2;}
 // inverse: recover a node\u2019s plane (x,y) from a desired screen point + its fixed z (keeps bubble-drag working under orbit).
-function unproject(sx,sy,az){var cY=Math.cos(yaw),sY=Math.sin(yaw),cP=Math.cos(pitch),sP=Math.sin(pitch);if(Math.abs(cY)<0.15||Math.abs(cP)<0.15)return null;var ax=((sx-CX)-az*sY)/cY;var Z1=-ax*sY+az*cY;var ay=((sy-CY)+Z1*sP)/cP;return {x:CX+ax,y:CY+ay};}
+function unproject(sx,sy,az){var cY=Math.cos(yaw),sY=Math.sin(yaw),cP=Math.cos(pitch),sP=Math.sin(pitch);if(Math.abs(cY)<0.15||Math.abs(cP)<0.15)return null;var azS=(az||0)*SP;var ax=((sx-CX)-azS*sY)/cY;var Z1=-ax*sY+azS*cY;var ay=((sy-CY)+Z1*sP)/cP;return {x:CX+ax/SP,y:CY+ay/SP};}
 // build SVG via createElementNS (NOT innerHTML — innerHTML-built SVG fails to lay out headless).
 // ── FOCUS filter: click a bubble \u2192 show only its own links (Order \u2192 its Order lines\u2026); bg-click clears ──
-var focusId=null;
+var focusId=null;var dossierTab="Data";  /* the dossier STICKS to the last-open tab across bubbles */
 function edgeFocus(e){return e.from===focusId||e.to===focusId;}
 function inFocus(id){return id===focusId||E.some(function(e){return (e.from===focusId&&e.to===id)||(e.to===focusId&&e.from===id);});}
 function setFocus(id){focusId=(focusId===id?null:id);draw();}
-function draw(){N.forEach(project);while(vp.firstChild)vp.removeChild(vp.firstChild);var oa=orbitAmt(),fo=focusId&&!traceMode;
+function draw(){SP=1+orbitAmt()*SPREADK;N.forEach(project);while(vp.firstChild)vp.removeChild(vp.firstChild);var oa=orbitAmt(),fo=focusId&&!traceMode;
  E.forEach(function(e){if(!show[e.kind])return;var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var lo=litEdge(e),ef=fo&&edgeFocus(e),op,sw,col=lo?"#ffd479":COLOR[e.kind];if(traceMode){op=lo?0.95:0.04;sw=lo?3:0.8;}else if(fo){op=ef?0.85:0.035;sw=ef?2:0.6;if(ef)col="#ffd479";}else{op=e.kind==="reference"?0.18:0.5;sw=e.kind==="reference"?1:1.6;}var ln=el("line",{x1:a.sx,y1:a.sy,x2:b.sx,y2:b.sy,stroke:col,"stroke-opacity":op,"stroke-width":sw});if(lo)ln.setAttribute("class","litedge");vp.appendChild(ln);});
  var order=N.slice().sort(function(a,b){return a.depth-b.depth;});
  order.forEach(function(n){var vis=E.some(function(e){return show[e.kind]&&(e.from===n.id||e.to===n.id)})||(n.cells&&n.cells.length);if(!vis&&n.kind==="master")return;var col=n.settlement?"#e2574c":n.kind==="master"?"#2b3744":(n.gravity>0?"#4caf7d":"#3a4a5a");
@@ -317,9 +319,9 @@ function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"
 // count the real ops tracked for a cell: prefer the node\u2019s diff_oracle cell.ops, else count it in the op-log.
 function opCountFor(id){var n=N[idx[id]];if(n&&n.cells&&n.cells.length){var s=n.cells.reduce(function(a,c){return a+(c.ops||0);},0);if(s>0)return s;}var cap=id.toUpperCase().replace(/_/g,""),hits=0;OPLOG.forEach(function(o){if(o.cell&&o.cell.toUpperCase().replace(/[(),_]/g,"").indexOf(cap)>=0)hits++;});return hits;}
 function openDossier(id){if(idx[id]==null)return;dossierJive();dossierId=id;dossierRendered={};DTITLE.textContent=fname(id);DPILL.textContent=id;DOSS.classList.add("open");
- DTABS.innerHTML="";["Data","Rules","Columns","History"].forEach(function(name,i){var b=document.createElement("button");b.className="dtab"+(i===0?" active":"");b.textContent=name;b.addEventListener("click",function(){selectTab(name,b);});DTABS.appendChild(b);});
- selectTab("Data",DTABS.firstChild);}
-function selectTab(name,btn){Array.prototype.forEach.call(DTABS.children,function(b){b.classList.toggle("active",b===btn);});DBODY.innerHTML="";renderTab(name);}
+ DTABS.innerHTML="";["Data","Rules","Columns","History"].forEach(function(name,i){var b=document.createElement("button");b.className="dtab"+(name===dossierTab?" active":"");b.textContent=name;b.addEventListener("click",function(){selectTab(name,b);});DTABS.appendChild(b);});
+ var _ti=["Data","Rules","Columns","History"].indexOf(dossierTab);if(_ti<0)_ti=0;selectTab(dossierTab,DTABS.children[_ti]);}
+function selectTab(name,btn){dossierTab=name;Array.prototype.forEach.call(DTABS.children,function(b){b.classList.toggle("active",b===btn);});DBODY.innerHTML="";renderTab(name);}
 function renderTab(name){var id=dossierId,n=N[idx[id]],doss=(n&&n.dossier)||{columns:[],ruleCount:0,rules:[]};
  if(name==="Data")return renderDataTab(id);
  if(name==="Rules")return renderRulesTab(doss);

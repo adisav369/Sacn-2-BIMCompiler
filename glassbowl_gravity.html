@@ -376,7 +376,7 @@ function openModelCard(id,n){
     `<div class="row"><span>Foreign keys</span><span>${m.fk.length}</span></div>`+
     `<div class="who" style="margin-top:5px;font-size:11px">→ ${m.fk.join(' · ')}</div>`+
     `<div class="act"><a class="b go" style="text-decoration:none;display:inline-block" `+
-      `href="https://red1oon.github.io/BIMCompiler/glassbowl.html" target="_blank" rel="noopener">⊞ Full dossier in Glassbowl</a></div>`;
+      `href="https://red1oon.github.io/BIMCompiler/glassbowl.html" target="glassbowl" rel="noopener">⊞ Full dossier in Glassbowl</a></div>`;
   const px=Math.min(Math.max(n.x+n.r+12,12), W-242), py=Math.min(Math.max(n.y-40,12), H-230);
   card.style.left=px+'px'; card.style.top=py+'px'; card.style.display='block';
 }
