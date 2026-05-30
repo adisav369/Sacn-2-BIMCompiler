@@ -126,7 +126,7 @@
 <div id="stage"><svg id="svg" width="100%" height="100%"></svg>
   <div class="legend" id="legend"></div>
   <div class="cold" id="coldbox"></div>
-  <div class="ctl"><button id="traceBtn">▸ Trace a record</button><button id="muteBtn" title="mute / unmute the interface sounds">&#128266;</button><button id="resetBtn">⤢ Reset view</button><button id="panelToggle" title="hide / show the info panel">⟩</button></div>
+  <div class="ctl"><button id="traceBtn">▸ Trace a record</button><button id="untangleBtn" title="spread bunched lines apart \u2014 angular declutter (bubbles stay movable)">&#10022; Untangle</button><button id="muteBtn" title="mute / unmute the interface sounds">&#128266;</button><button id="resetBtn">⤢ Reset view</button><button id="panelToggle" title="hide / show the info panel">⟩</button></div>
   <div id="strip"></div>
   <div id="recwrap"><input id="recsearch" list="reclist" placeholder="search a record &mdash; e.g. 80001" autocomplete="off"><datalist id="reclist"></datalist><button id="qrbtn" title="scan a record&rsquo;s QR &mdash; no typing">&#9635; Scan QR</button></div>
   <div id="recpick"></div>
@@ -172,30 +172,33 @@ for(var it=0;it<320;it++){
 N.forEach(function(n){n.hx=n.x;n.hy=n.y;});   // remember each bubble\u2019s HOME so Reset can truly re-home them
 // ── ORBIT (GLASSBOWL_DOSSIER \u00a72-viz, W-ORBIT): the 3 spines are depth planes; the trackball moves the eye ──
 // z is read from the data (n.z, assigned in the generator from spine role — NOT placed here).
-var yaw=0,pitch=0;window.__yaw=0;window.__pitch=0;
-// W-ARRANGE: leaning the trackball MORPHS the organic blob \u2192 a tidy BFS-ordered MATRIX (grid), so the
-// bubbles space out and the edges un-bunch. orbitAmt drives the morph t; at rest t=0 \u2192 identity preserved.
+var yaw=0,pitch=0;window.__yaw=0;window.__pitch=0;  // the trackball ORBITS only (bubbles stay movable); decluttering is the Untangle routine.
 var CX=N.reduce(function(s,n){return s+n.x;},0)/N.length,CY=N.reduce(function(s,n){return s+n.y;},0)/N.length;
 var ZMAX=Math.max(1,Math.max.apply(null,N.map(function(n){return Math.abs(n.z||0);})));
-// the 3D LAYERED CUBE: split bubbles into their spine ROLE layers (reference back / doc-flow mid / settlement
-// front), lay each layer out as its OWN self-sorting grid (barycentre sweeps align connected bubbles across
-// layers so cross-layer flow edges stay short), and stack the layers in depth (gz). Lean = the cube; rotate to read it.
-(function computeTidy(){var adj={};E.forEach(function(e){(adj[e.from]=adj[e.from]||[]).push(e.to);(adj[e.to]=adj[e.to]||[]).push(e.from);});
- var ZC=270,LZ=[-ZC,0,ZC];function layerOf(n){return n.settlement?2:(n.kind==="master"?0:1);}
- var groups=[[],[],[]];N.forEach(function(n){groups[layerOf(n)].push(n);});
- var xs=N.map(function(n){return n.x;}),ys=N.map(function(n){return n.y;});
- var spanX=Math.max.apply(null,xs)-Math.min.apply(null,xs);
- var maxC=Math.max.apply(null,groups.map(function(g){return Math.ceil(Math.sqrt(g.length||1));}));
- var cell=Math.max(92,1.25*spanX/Math.max(1,maxC-1));
- groups.forEach(function(g){if(!g.length)return;g.C=Math.ceil(Math.sqrt(g.length));g.rows=Math.ceil(g.length/g.C);
-  g._assign=function(){var by=g.slice().sort(function(a,b){return a._oy-b._oy||a._ox-b._ox;});for(var r=0;r<g.rows;r++){by.slice(r*g.C,(r+1)*g.C).sort(function(a,b){return a._ox-b._ox;}).forEach(function(n,c){n._col=c;n._row=r;});}};
-  g.forEach(function(n){n._ox=n.x;n._oy=n.y;});g._assign();});
- for(var s=0;s<14;s++){N.forEach(function(n){var nb=adj[n.id]||[],sx=0,sy=0,k=0;nb.forEach(function(m){var mn=N[idx[m]];if(mn&&mn._col!=null){sx+=mn._col;sy+=mn._row;k++;}});if(k){n._ox=sx/k;n._oy=sy/k;}else{n._ox=n._col;n._oy=n._row;}});groups.forEach(function(g){if(g._assign)g._assign();});}
- groups.forEach(function(g,li){if(!g.length)return;g.forEach(function(n){n.gx=CX+(n._col-(g.C-1)/2)*cell;n.gy=CY+(n._row-(g.rows-1)/2)*cell;n.gz=LZ[li];});});})();
+// ── UNTANGLE routine (line-density mitigation by ANGULAR RESOLUTION): at each node, edges with too-small
+//    angles between them are BUNCHED \u2014 rotate the neighbours apart around the node toward even angular
+//    spacing, iterate, damp. Mutates real x,y so bubbles STAY MOVABLE; Reset re-homes. The trackball only orbits.
+var UADJ={};E.forEach(function(e){(UADJ[e.from]=UADJ[e.from]||[]).push(e.to);(UADJ[e.to]=UADJ[e.to]||[]).push(e.from);});
+function untangleStep(){var dx={},dy={};
+ N.forEach(function(n){var nb=UADJ[n.id]||[];if(nb.length<2)return;
+  var arr=nb.map(function(id){var m=N[idx[id]];return {id:id,a:Math.atan2(m.y-n.y,m.x-n.x),d:Math.max(8,Math.hypot(m.x-n.x,m.y-n.y))};}).sort(function(p,q){return p.a-q.a;});
+  var k=arr.length,ideal=2*Math.PI/k;
+  for(var i=0;i<k;i++){var j=(i+1)%k,gap=arr[j].a-arr[i].a;if(j===0)gap+=2*Math.PI;
+   if(gap<ideal){var push=Math.min(0.12,(ideal-gap)*0.12),pi=arr[i],pj=arr[j];
+    dx[pi.id]=(dx[pi.id]||0)+(n.x+pi.d*Math.cos(pi.a-push)-N[idx[pi.id]].x);dy[pi.id]=(dy[pi.id]||0)+(n.y+pi.d*Math.sin(pi.a-push)-N[idx[pi.id]].y);
+    dx[pj.id]=(dx[pj.id]||0)+(n.x+pj.d*Math.cos(pj.a+push)-N[idx[pj.id]].x);dy[pj.id]=(dy[pj.id]||0)+(n.y+pj.d*Math.sin(pj.a+push)-N[idx[pj.id]].y);}}});
+ E.forEach(function(e){var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var ddx=b.x-a.x,ddy=b.y-a.y,d=Math.hypot(ddx,ddy)+0.01,L=(e.kind==="reference"?210:125),f=(d-L)*0.05;dx[a.id]=(dx[a.id]||0)+ddx/d*f;dy[a.id]=(dy[a.id]||0)+ddy/d*f;dx[b.id]=(dx[b.id]||0)-ddx/d*f;dy[b.id]=(dy[b.id]||0)-ddy/d*f;});
+ N.forEach(function(n){dx[n.id]=(dx[n.id]||0)+(CX-n.x)*0.004;dy[n.id]=(dy[n.id]||0)+(CY-n.y)*0.004;});
+ var moved=0;N.forEach(function(n){if(dx[n.id]){var d=Math.max(-10,Math.min(10,dx[n.id]));n.x+=d;moved+=Math.abs(d);}if(dy[n.id]){var e2=Math.max(-10,Math.min(10,dy[n.id]));n.y+=e2;moved+=Math.abs(e2);}});return moved;}
+// AVG of each node\u2019s SMALLEST incident-edge gap (radians) \u2014 the bunching metric (small = lines bunched).
+function avgMinAngle(){var sum=0,cnt=0;N.forEach(function(n){var nb=UADJ[n.id]||[];if(nb.length<2)return;var ang=nb.map(function(id){var m=N[idx[id]];return Math.atan2(m.y-n.y,m.x-n.x);}).sort(function(a,b){return a-b;});var lo=2*Math.PI;for(var i=0;i<ang.length;i++){var j=(i+1)%ang.length,g=ang[j]-ang[i];if(j===0)g+=2*Math.PI;if(g<lo)lo=g;}sum+=lo;cnt++;});return cnt?sum/cnt:0;}
+window.avgMinAngle=avgMinAngle;window.UADJ=UADJ;
+function untangle(){var fr=0;(function pass(){for(var r=0;r<4;r++)untangleStep();draw();if(++fr<34)requestAnimationFrame(pass);else{N.forEach(function(n){n.hx=n.x;n.hy=n.y;});console.log("\u00a7UNTANGLE avgMinAngle="+(avgMinAngle()*180/Math.PI).toFixed(1)+"deg");}})();}
+window.untangle=untangle;
 function orbitAmt(){return Math.min(1,Math.abs(Math.sin(yaw))+Math.abs(Math.sin(pitch)));}
 // orthographic projection (yaw about Y, then pitch about X). At yaw=pitch=0 it is the IDENTITY on x,y —
 // the planes collapse head-on, so the at-rest bowl is PIXEL-IDENTICAL to the flat static layout.
-function project(n){var t=orbitAmt();t=t*t*(3-2*t);var ex=n.x+((n.gx==null?n.x:n.gx)-n.x)*t,ey=n.y+((n.gy==null?n.y:n.gy)-n.y)*t,ez=(n.z||0)+((n.gz==null?(n.z||0):n.gz)-(n.z||0))*t;var ax=ex-CX,ay=ey-CY,az=ez;var cY=Math.cos(yaw),sY=Math.sin(yaw),cP=Math.cos(pitch),sP=Math.sin(pitch);var X1=ax*cY+az*sY,Z1=-ax*sY+az*cY,Y2=ay*cP-Z1*sP,Z2=ay*sP+Z1*cP;n.sx=CX+X1;n.sy=CY+Y2;n.depth=Z2;}
+function project(n){var ax=n.x-CX,ay=n.y-CY,az=(n.z||0);var cY=Math.cos(yaw),sY=Math.sin(yaw),cP=Math.cos(pitch),sP=Math.sin(pitch);var X1=ax*cY+az*sY,Z1=-ax*sY+az*cY,Y2=ay*cP-Z1*sP,Z2=ay*sP+Z1*cP;n.sx=CX+X1;n.sy=CY+Y2;n.depth=Z2;}
 // inverse: recover a node\u2019s plane (x,y) from a desired screen point + its fixed z (keeps bubble-drag working under orbit).
 function unproject(sx,sy,az){var cY=Math.cos(yaw),sY=Math.sin(yaw),cP=Math.cos(pitch),sP=Math.sin(pitch);if(Math.abs(cY)<0.15||Math.abs(cP)<0.15)return null;var ax=((sx-CX)-az*sY)/cY;var Z1=-ax*sY+az*cY;var ay=((sy-CY)+Z1*sP)/cP;return {x:CX+ax,y:CY+ay};}
 // build SVG via createElementNS (NOT innerHTML — innerHTML-built SVG fails to lay out headless).
@@ -205,7 +208,7 @@ function edgeFocus(e){return e.from===focusId||e.to===focusId;}
 function inFocus(id){return id===focusId||E.some(function(e){return (e.from===focusId&&e.to===id)||(e.to===focusId&&e.from===id);});}
 function setFocus(id){focusId=(focusId===id?null:id);draw();}
 function draw(){N.forEach(project);while(vp.firstChild)vp.removeChild(vp.firstChild);var oa=orbitAmt(),fo=focusId&&!traceMode;
- E.forEach(function(e){if(!show[e.kind])return;var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var lo=litEdge(e),ef=fo&&edgeFocus(e),op,sw,col=lo?"#ffd479":COLOR[e.kind];if(traceMode){op=lo?0.95:0.04;sw=lo?3:0.8;}else if(fo){op=ef?0.85:0.035;sw=ef?2:0.6;if(ef)col="#ffd479";}else{op=e.kind==="reference"?0.18*(1-0.92*oa):0.5;sw=e.kind==="reference"?1:1.6;}  /* fade the bunched reference web as you organise → only the clean spine remains */var ln=el("line",{x1:a.sx,y1:a.sy,x2:b.sx,y2:b.sy,stroke:col,"stroke-opacity":op,"stroke-width":sw});if(lo)ln.setAttribute("class","litedge");vp.appendChild(ln);});
+ E.forEach(function(e){if(!show[e.kind])return;var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var lo=litEdge(e),ef=fo&&edgeFocus(e),op,sw,col=lo?"#ffd479":COLOR[e.kind];if(traceMode){op=lo?0.95:0.04;sw=lo?3:0.8;}else if(fo){op=ef?0.85:0.035;sw=ef?2:0.6;if(ef)col="#ffd479";}else{op=e.kind==="reference"?0.18:0.5;sw=e.kind==="reference"?1:1.6;}var ln=el("line",{x1:a.sx,y1:a.sy,x2:b.sx,y2:b.sy,stroke:col,"stroke-opacity":op,"stroke-width":sw});if(lo)ln.setAttribute("class","litedge");vp.appendChild(ln);});
  var order=N.slice().sort(function(a,b){return a.depth-b.depth;});
  order.forEach(function(n){var vis=E.some(function(e){return show[e.kind]&&(e.from===n.id||e.to===n.id)})||(n.cells&&n.cells.length);if(!vis&&n.kind==="master")return;var col=n.settlement?"#e2574c":n.kind==="master"?"#2b3744":(n.gravity>0?"#4caf7d":"#3a4a5a");
   var sc=Math.max(0.6,Math.min(1.5,1+(n.depth/ZMAX)*0.45*oa)),r=radius(n)*sc;
@@ -228,12 +231,13 @@ svg.addEventListener("wheel",function(ev){ev.preventDefault();var rc=svg.getBoun
 // ── the trackball: grab the sphere to ORBIT the view (bubbles stay static in 3D; only the eye moves) ──
 var ball=document.getElementById("ball"),balldot=document.getElementById("balldot"),orbiting=null;
 function updateBall(){balldot.style.left=(50+Math.sin(yaw)*28)+"%";balldot.style.top=(50-Math.sin(pitch)*28)+"%";}
-function setOrbit(y,p){yaw=Math.max(-1.25,Math.min(1.25,y));pitch=Math.max(-0.95,Math.min(0.95,p));window.__yaw=yaw;window.__pitch=pitch;updateBall();draw();}  /* clamp so leaning further can\u2019t over-rotate the cube past a readable angle */
+function setOrbit(y,p){yaw=y;pitch=Math.max(-1.3,Math.min(1.3,p));window.__yaw=yaw;window.__pitch=pitch;updateBall();draw();}
 ball.addEventListener("pointerdown",function(ev){ev.preventDefault();ev.stopPropagation();orbiting={x:ev.clientX,y:ev.clientY,y0:yaw,p0:pitch};try{ball.setPointerCapture(ev.pointerId);}catch(e){}});
 ball.addEventListener("pointermove",function(ev){if(!orbiting)return;setOrbit(orbiting.y0+(ev.clientX-orbiting.x)*0.012,orbiting.p0+(ev.clientY-orbiting.y)*0.012);});
 function endOrbit(){orbiting=null;}ball.addEventListener("pointerup",endOrbit);ball.addEventListener("pointercancel",endOrbit);
 window.setOrbit=setOrbit;updateBall();
 document.getElementById("resetBtn").addEventListener("click",function(){px=0;py=0;k=1;yaw=0;pitch=0;focusId=null;window.__yaw=0;window.__pitch=0;N.forEach(function(n){n.x=n.hx;n.y=n.hy;});updateBall();applyT();draw();});
+document.getElementById("untangleBtn").addEventListener("click",function(){untangle();});
 // collapse the right info panel \u2192 the graph takes the full canvas (positions are absolute, no re-layout needed).
 // driven by BOTH the toolbar \u27e9 button AND the mobile-friendly yellow #phandle at the panel border.
 function isMobile(){try{return window.matchMedia("(max-width:760px)").matches||window.innerWidth<760;}catch(e){return window.innerWidth<760;}}

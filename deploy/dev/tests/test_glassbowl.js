@@ -196,7 +196,6 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   const ballBox = await page.locator('#ball').boundingBox();
   check(!!ballBox, 'trackball sphere present at the bottom', ballBox ? 'at x=' + Math.round(ballBox.x) : 'missing');
   const cxRest = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
-  const areaRest = await page.$$eval('#svg circle', cs => { const xs = cs.map(c => +c.getAttribute('cx')), ys = cs.map(c => +c.getAttribute('cy')); return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys)); });
   const yawRest = await page.evaluate(() => window.__yaw);
   check(yawRest === 0, 'starts at rest (yaw=0) — the static flat bowl persists', 'yaw=' + yawRest);
   // drag the ball → yaw changes and the depth planes shear (node screen-x positions move)
@@ -207,10 +206,6 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   const cxOrbit = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
   check(Math.abs(yawOrbit) > 0.1, 'trackball drag orbits the camera (yaw changes)', 'yaw=' + yawOrbit.toFixed(2));
   check(cxRest !== cxOrbit, 'orbit shears the depth planes apart (bubbles move on screen, static in 3D)', 'positions changed=' + (cxRest !== cxOrbit));
-  // W-ARRANGE (the trackball's main job): orbiting organises the bubbles into the spread layered CUBE — the
-  // 2D screen area they occupy grows vs the blob (they space out, not bunch). Angle-independent (unlike x-span).
-  const areaOrbit = await page.$$eval('#svg circle', cs => { const xs = cs.map(c => +c.getAttribute('cx')), ys = cs.map(c => +c.getAttribute('cy')); return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys)); });
-  check(areaOrbit > areaRest * 1.1, 'W-ARRANGE: orbiting spreads the bubbles into the layered cube (screen area grows)', 'restArea=' + Math.round(areaRest / 1000) + 'k orbitArea=' + Math.round(areaOrbit / 1000) + 'k');
   const shotO = path.join(ROOT, 'glassbowl_orbit.png');
   await page.screenshot({ path: shotO });
   // reset → back to the at-rest flat view, pixel-identical (W-ORBIT: identity at yaw=pitch=0)
@@ -560,6 +555,16 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   const abClosed = await page.locator('#about').evaluate(e => !e.classList.contains('open'));
   check(abClosed, 'MOBILE: the About panel has a close (✕) that dismisses it', 'closed=' + abClosed);
   await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+
+  // ── W-UNTANGLE (LAST — it permanently moves bubbles): the routine widens the avg smallest angle between
+  //    incident edges (small angle = bunching), and bubbles stay movable. Run after all position-based checks. ──
+  await page.evaluate(() => { window.setTrace(false); document.getElementById('resetBtn').click(); });
+  await page.waitForTimeout(40);
+  const angBefore = await page.evaluate(() => window.avgMinAngle());
+  await page.locator('#untangleBtn').click();
+  await page.waitForTimeout(1000); // let the animated angular-spread passes run
+  const angAfter = await page.evaluate(() => window.avgMinAngle());
+  check(angAfter > angBefore + 0.01, 'W-UNTANGLE: routine widens the avg smallest angle between bunched lines (de-bunch)', 'avgMinAngle ' + (angBefore * 180 / Math.PI).toFixed(1) + '°→' + (angAfter * 180 / Math.PI).toFixed(1) + '°');
 
   await browser.close();
   server.close();
