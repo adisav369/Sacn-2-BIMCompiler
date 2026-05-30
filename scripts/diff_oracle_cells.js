@@ -135,15 +135,22 @@ var POO_CO = {
 // receipts with no PO (102,104) coincidentally share partner+product+qty with a PO and otherwise
 // produce 2 false positives the FK-following oracle never makes. The scoping is caller STRUCTURE
 // (which rows are candidates), not a change to the matcher — the thesis holds.
+// P3c TASK 1: dispatched PER RECEIPT-DOCUMENT (was one synthetic receiptDocId:'ALL' event). Each
+// receipt matches ONLY its own lines within its partition; consumed PO lines are withheld from later
+// receipts. Σ(per-document) == the universe count (19) is the isolation regression guard (§perdoc).
 var MMR_CO = {
   docType: 'M_InOut', action: 'CO',
   oracle: 'org.compiere.model.MInOut.completeIt() — MStorageOnHand.add + MMatchPO.create(po↔receipt)',
   run: function (env) {
     var E = env.E, K = env.K;
     var poLines = env.all("SELECT ol.c_orderline_id, ol.m_product_id, ol.qtyordered, o.c_bpartner_id bp, o.ad_org_id org FROM c_orderline ol JOIN c_order o ON o.c_order_id=ol.c_order_id WHERE o.issotrx='N'");
-    var recvLinked = env.all("SELECT l.m_inoutline_id, l.m_product_id, l.movementqty, io.c_bpartner_id bp, io.ad_org_id org FROM m_inoutline l JOIN m_inout io ON io.m_inout_id=l.m_inout_id WHERE io.movementtype='V+' AND io.c_order_id IS NOT NULL");
     var opts = matcherOpts(env, { idL: 'c_orderline_id', idR: 'm_inoutline_id', qtyL: 'qtyordered', qtyR: 'movementqty', partition: function (r) { return r.bp; }, orgOf: function (r) { return r.org; } });
-    var pairs = E.match(poLines, recvLinked, opts);     // GENERATE → settlement pairs (data-driven opts)
+
+    // P3c Task 1 — PER-DOCUMENT dispatch (close the P3b universe-in-one-event shortcut, §0.18b).
+    // UNIVERSE reference (the P3b behaviour) = match the WHOLE order-linked receipt pool at once.
+    // This stays as the isolation regression guard: Σ(per-document) MUST equal it (0 drop, 0 extra).
+    var recvAll = env.all("SELECT l.m_inoutline_id, l.m_product_id, l.movementqty, io.c_bpartner_id bp, io.ad_org_id org FROM m_inoutline l JOIN m_inout io ON io.m_inout_id=l.m_inout_id WHERE io.movementtype='V+' AND io.c_order_id IS NOT NULL");
+    var universePairs = E.match(poLines, recvAll, opts).map(function (p) { return p[0] + ':' + p[1]; });
 
     // handler: PURE (doc,ctx)→ops. SET_STATUS + a MATCH op per pair. NO storage-mutation op.
     K.register('M_InOut', 'CO', function (doc) {
@@ -151,21 +158,35 @@ var MMR_CO = {
       doc.pairs.forEach(function (p) { ops.push({ op_type: 'MATCH', table: 'M_MatchPO', source_line_id: p[0], counterpart_line_id: p[1], match_type: 'po', qty: 0 }); });
       return ops;
     });
+
+    // each order-linked receipt completes INDEPENDENTLY: ITS own lines vs the partition-visible
+    // PO lines, minus PO lines already consumed by an earlier receipt (no double-claim, §18.8).
+    var receipts = env.all("SELECT DISTINCT io.m_inout_id, io.documentno FROM m_inoutline l JOIN m_inout io ON io.m_inout_id=l.m_inout_id WHERE io.movementtype='V+' AND io.c_order_id IS NOT NULL ORDER BY io.m_inout_id");
     var db = env.freshDb();
-    var d = dispatch(env, db, { actor: 'whse:demo', baseTs: 2000 },
-      { docType: 'M_InOut', action: 'CO', status: 'DR', receiptDocId: 'ALL', pairs: pairs });
-    if (!d.ok) throw new Error('dispatch MMR ' + d.stage + ':' + d.reason);
-    // §18.9 invariant: NO inventory-mutation op (the receipt lines ARE the fact).
-    var mutationOps = (d.ops || []).filter(function (o) { return /STORAGE|DEDUCT|INVENTORY/.test(o.op_type); });
-    var mine = (d.ops || []).filter(function (o) { return o.op_type === 'MATCH'; }).map(function (o) { return o.source_line_id + ':' + o.counterpart_line_id; });
+    var consumedPo = {}, mine = [], allOps = [], totalOps = 0;
+    receipts.forEach(function (rc) {
+      var rlines = env.all("SELECT l.m_inoutline_id, l.m_product_id, l.movementqty, io.c_bpartner_id bp, io.ad_org_id org FROM m_inoutline l JOIN m_inout io ON io.m_inout_id=l.m_inout_id WHERE l.m_inout_id=@id", { id: rc.m_inout_id });
+      var poAvail = poLines.filter(function (pl) { return !consumedPo[pl.c_orderline_id]; });
+      var pairs = E.match(poAvail, rlines, opts);     // ONE receipt's lines vs partition-visible PO lines
+      pairs.forEach(function (p) { consumedPo[p[0]] = 1; });
+      var d = dispatch(env, db, { actor: 'whse:demo', baseTs: 2000 + rc.m_inout_id },
+        { docType: 'M_InOut', action: 'CO', status: 'DR', receiptDocId: rc.m_inout_id, pairs: pairs });
+      if (!d.ok) throw new Error('dispatch MMR receipt ' + rc.m_inout_id + ' ' + d.stage + ':' + d.reason);
+      totalOps += d.applied; allOps = allOps.concat(d.ops || []);
+      (d.ops || []).filter(function (o) { return o.op_type === 'MATCH'; }).forEach(function (o) { mine.push(o.source_line_id + ':' + o.counterpart_line_id); });
+    });
     env.closeDb(db);
+    // §18.9 invariant: NO inventory-mutation op anywhere across the per-document run.
+    var mutationOps = allOps.filter(function (o) { return /STORAGE|DEDUCT|INVENTORY/.test(o.op_type); });
     var oracle = env.all("SELECT c_orderline_id, m_inoutline_id FROM m_matchpo WHERE c_orderline_id IS NOT NULL AND m_inoutline_id IS NOT NULL AND c_invoiceline_id IS NULL").map(function (r) { return r.c_orderline_id + ':' + r.m_inoutline_id; });
+    var iso = env.diffSet(mine, universePairs);   // per-document == universe?  (the isolation guard)
     return {
       groups: [
         { name: 'M_MatchPO (po↔receipt) reproduces oracle', mine: mine, oracle: oracle },
         { name: 'NO inventory-mutation op (storage is a computed projection, §18.9)', mine: mutationOps.map(function (o) { return o.op_type; }), oracle: [] }
       ],
-      verbs: ['setStatus'], matcher: true, ops: d.applied
+      verbs: ['setStatus'], matcher: true, ops: totalOps,
+      perdoc: { docs: receipts.length, checks: [{ label: 'M_MatchPO', matched: mine.length, universe: universePairs.length, ok: iso.ok }] }
     };
   }
 };
@@ -179,18 +200,24 @@ var MMR_CO = {
 // agrees on GardenWorld (18/18 both) and additionally works when the FK is absent (invoice-before-
 // receipt). Journal posting (Fact_Acct) is ASYNC in iDempiere (§18.10) and UNPOSTED in this dataset
 // (fact_acct=0) — that sub-effect is dataless (docker-fallback), logged, not faked.
+// P3c TASK 1: dispatched PER INVOICE-DOCUMENT (was one synthetic invoiceDocId:'ALL' event). Each
+// invoice reconciles ONLY its own lines within its partition; consumed receipt/PO lines are withheld
+// from later invoices. Σ(per-document) == universe (18 + 18) is the isolation guard (§perdoc).
 var API_CO = {
   docType: 'C_Invoice', action: 'CO',
   oracle: 'org.compiere.model.MInvoice.completeIt():2077-2190 — MMatchInv + MMatchPO',
   run: function (env) {
     var E = env.E, K = env.K;
     var recv = env.all("SELECT l.m_inoutline_id, l.m_product_id, l.movementqty, io.c_bpartner_id bp, io.ad_org_id org FROM m_inoutline l JOIN m_inout io ON io.m_inout_id=l.m_inout_id WHERE io.movementtype='V+'");
-    var vinv = env.all("SELECT il.c_invoiceline_id, il.m_product_id, il.qtyinvoiced, inv.c_bpartner_id bp, inv.ad_org_id org FROM c_invoiceline il JOIN c_invoice inv ON inv.c_invoice_id=il.c_invoice_id WHERE inv.issotrx='N'");
     var poLines = env.all("SELECT ol.c_orderline_id, ol.m_product_id, ol.qtyordered, o.c_bpartner_id bp, o.ad_org_id org FROM c_orderline ol JOIN c_order o ON o.c_order_id=ol.c_order_id WHERE o.issotrx='N'");
     var miOpts = matcherOpts(env, { idL: 'm_inoutline_id', idR: 'c_invoiceline_id', qtyL: 'movementqty', qtyR: 'qtyinvoiced', partition: function (r) { return r.bp; }, orgOf: function (r) { return r.org; } });
     var poOpts = matcherOpts(env, { idL: 'c_orderline_id', idR: 'c_invoiceline_id', qtyL: 'qtyordered', qtyR: 'qtyinvoiced', partition: function (r) { return r.bp; }, orgOf: function (r) { return r.org; } });
-    var miPairs = E.match(recv, vinv, miOpts);          // M_MatchInv: receipt ↔ invoice
-    var poPairs = E.match(poLines, vinv, poOpts);       // M_MatchPO:  PO line ↔ invoice
+
+    // P3c Task 1 — UNIVERSE reference (P3b behaviour): match ALL vendor-invoice lines at once.
+    // Σ(per-document) MUST equal this (0 drop, 0 extra) — the isolation regression guard.
+    var vinvAll = env.all("SELECT il.c_invoiceline_id, il.m_product_id, il.qtyinvoiced, inv.c_bpartner_id bp, inv.ad_org_id org FROM c_invoiceline il JOIN c_invoice inv ON inv.c_invoice_id=il.c_invoice_id WHERE inv.issotrx='N'");
+    var universeMI = E.match(recv, vinvAll, miOpts).map(function (p) { return p[0] + ':' + p[1]; });
+    var universePO = E.match(poLines, vinvAll, poOpts).map(function (p) { return p[0] + ':' + p[1]; });
 
     K.register('C_Invoice', 'CO', function (doc) {
       var ops = [{ op_type: 'SET_STATUS', table: 'C_Invoice', id: doc.invoiceDocId, doc_status: 'CO' }];
@@ -198,21 +225,41 @@ var API_CO = {
       doc.poPairs.forEach(function (p) { ops.push({ op_type: 'MATCH', table: 'M_MatchPO', source_line_id: p[0], counterpart_line_id: p[1], match_type: 'po', qty: 0 }); });
       return ops;
     });
+
+    // each vendor invoice reconciles INDEPENDENTLY: ITS own lines vs the partition-visible receipt
+    // and PO lines, minus counterpart lines already consumed by an earlier invoice (no double-claim).
+    var invoices = env.all("SELECT DISTINCT inv.c_invoice_id FROM c_invoiceline il JOIN c_invoice inv ON inv.c_invoice_id=il.c_invoice_id WHERE inv.issotrx='N' ORDER BY inv.c_invoice_id");
     var db = env.freshDb();
-    var d = dispatch(env, db, { actor: 'ap:demo', baseTs: 3000 },
-      { docType: 'C_Invoice', action: 'CO', status: 'DR', invoiceDocId: 'ALL', miPairs: miPairs, poPairs: poPairs });
-    if (!d.ok) throw new Error('dispatch API ' + d.stage + ':' + d.reason);
-    var mineMI = (d.ops || []).filter(function (o) { return o.op_type === 'MATCH' && o.table === 'M_MatchInv'; }).map(function (o) { return o.source_line_id + ':' + o.counterpart_line_id; });
-    var minePO = (d.ops || []).filter(function (o) { return o.op_type === 'MATCH' && o.table === 'M_MatchPO'; }).map(function (o) { return o.source_line_id + ':' + o.counterpart_line_id; });
+    var consumedRecv = {}, consumedPo = {}, mineMI = [], minePO = [], totalOps = 0;
+    invoices.forEach(function (iv) {
+      var vlines = env.all("SELECT il.c_invoiceline_id, il.m_product_id, il.qtyinvoiced, inv.c_bpartner_id bp, inv.ad_org_id org FROM c_invoiceline il JOIN c_invoice inv ON inv.c_invoice_id=il.c_invoice_id WHERE il.c_invoice_id=@id", { id: iv.c_invoice_id });
+      var recvAvail = recv.filter(function (r) { return !consumedRecv[r.m_inoutline_id]; });
+      var poAvail = poLines.filter(function (pl) { return !consumedPo[pl.c_orderline_id]; });
+      var miPairs = E.match(recvAvail, vlines, miOpts);   // this invoice ↔ partition receipts
+      var poPairs = E.match(poAvail, vlines, poOpts);     // this invoice ↔ partition PO lines
+      miPairs.forEach(function (p) { consumedRecv[p[0]] = 1; });
+      poPairs.forEach(function (p) { consumedPo[p[0]] = 1; });
+      var d = dispatch(env, db, { actor: 'ap:demo', baseTs: 3000 + iv.c_invoice_id },
+        { docType: 'C_Invoice', action: 'CO', status: 'DR', invoiceDocId: iv.c_invoice_id, miPairs: miPairs, poPairs: poPairs });
+      if (!d.ok) throw new Error('dispatch API invoice ' + iv.c_invoice_id + ' ' + d.stage + ':' + d.reason);
+      totalOps += d.applied;
+      (d.ops || []).filter(function (o) { return o.op_type === 'MATCH' && o.table === 'M_MatchInv'; }).forEach(function (o) { mineMI.push(o.source_line_id + ':' + o.counterpart_line_id); });
+      (d.ops || []).filter(function (o) { return o.op_type === 'MATCH' && o.table === 'M_MatchPO'; }).forEach(function (o) { minePO.push(o.source_line_id + ':' + o.counterpart_line_id); });
+    });
     env.closeDb(db);
     var oracleMI = env.all("SELECT m_inoutline_id, c_invoiceline_id FROM m_matchinv WHERE m_inoutline_id IS NOT NULL AND c_invoiceline_id IS NOT NULL").map(function (r) { return r.m_inoutline_id + ':' + r.c_invoiceline_id; });
     var oraclePO = env.all("SELECT c_orderline_id, c_invoiceline_id FROM m_matchpo WHERE c_orderline_id IS NOT NULL AND c_invoiceline_id IS NOT NULL").map(function (r) { return r.c_orderline_id + ':' + r.c_invoiceline_id; });
+    var isoMI = env.diffSet(mineMI, universeMI), isoPO = env.diffSet(minePO, universePO);
     return {
       groups: [
         { name: 'M_MatchInv (receipt↔invoice) reproduces oracle [matcher re-derives the FK]', mine: mineMI, oracle: oracleMI },
         { name: 'M_MatchPO (PO↔invoice) reproduces oracle [matcher re-derives the FK]', mine: minePO, oracle: oraclePO }
       ],
-      verbs: ['setStatus'], matcher: true, ops: d.applied,
+      verbs: ['setStatus'], matcher: true, ops: totalOps,
+      perdoc: { docs: invoices.length, checks: [
+        { label: 'M_MatchInv', matched: mineMI.length, universe: universeMI.length, ok: isoMI.ok },
+        { label: 'M_MatchPO', matched: minePO.length, universe: universePO.length, ok: isoPO.ok }
+      ] },
       finding: 'Journal posting (Fact_Acct) is ASYNC in iDempiere and UNPOSTED in this dataset (fact_acct=0 rows) — the GL sub-effect of API:CO is dataless; static-oracle diff covers the two Match* effects, journal posting → docker-fallback.'
     };
   }

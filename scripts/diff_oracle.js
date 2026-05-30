@@ -95,6 +95,7 @@ async function run(opts) {
     if (cell.dataless) {                       // a cell the static oracle can't ground (§0.12)
       console.log('   ⚪ ' + cell.dataless);
       console.log('§ORACLE cell=' + name + ' checks=0 fixtures=0 oracle=NO-DATA(docker-fallback) — ' + cell.dataless + '\n');
+      if (opts.collect) opts.collect.push({ cell: name, docType: cell.docType, action: cell.action, label: cell.label || null, oracle: cell.oracle || cell.dataless || null, verbs: [], matcher: false, ops: 0, dataless: true });
       continue;
     }
 
@@ -114,9 +115,20 @@ async function run(opts) {
 
     var verbs = result.verbs || [];
     var matcher = result.matcher ? 'Y' : 'N';
+    // P3c Glassbowl: optionally collect authoritative per-cell engine facts for the explorer
+    // (the engine-as-data surface, docs/GLASSBOWL.md). Backward-compatible: no-op without opts.collect.
+    if (opts.collect) opts.collect.push({ cell: name, docType: cell.docType, action: cell.action, label: cell.label || null, oracle: cell.oracle || cell.dataless || null, verbs: verbs, matcher: result.matcher === true, ops: result.ops != null ? result.ops : 0, dataless: !!cell.dataless });
     // a genuinely new bespoke verb / shape is a §18.6 FINDING — logged loud, never buried.
     if (result.newVerb) console.log('   ⚠ §HANDLER new-verb cell=' + name + ' reason=' + result.newVerb);
     if (result.finding) console.log('   ℹ §HANDLER finding cell=' + name + ' — ' + result.finding);
+    // P3c Task 1: per-document isolation guard — Σ(per-document matches) == the P3b universe count.
+    if (result.perdoc) {
+      var pd = result.perdoc;
+      var allOk = pd.checks.every(function (c) { return c.ok; });
+      var parts = pd.checks.map(function (c) { return c.label + ' matched=' + c.matched + ' universe=' + c.universe + (c.ok ? ' OK' : ' DROP/EXTRA'); });
+      verdict(allOk, name + ' per-document isolation == universe (no cross-document leak)', parts.join(' | '));
+      console.log('§VERTICAL perdoc cell=' + name + ' docs=' + pd.docs + ' | ' + parts.join(' | ') + ' isolation=' + (allOk ? 'OK' : 'LEAK'));
+    }
     console.log('§HANDLER cell=' + name + ' verbs=[' + verbs.join(',') + '] matcher=' + matcher + ' ops=' + (result.ops != null ? result.ops : '?') + ' diff=' + (allMatch ? 'MATCH' : 'MISMATCH'));
     console.log('§ORACLE cell=' + name + ' checks=' + checks + ' fixtures=' + fixtures + ' diff=' + (allMatch ? 'MATCH' : 'MISMATCH') + '\n');
     ranCells++;

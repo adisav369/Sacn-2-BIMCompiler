@@ -714,6 +714,45 @@ needing a new verb** (that is the gravity-backlog path, §18.6 — write it when
 settlement cells dispatch the *universe* in one synthetic event rather than per-document (the count
 is faithful only because partitioning is clean — a per-document dispatch would test isolation).
 
+### §0.19 P3c — the long-tail vertical ships matcher-free; the matcher composes in at one seam (2026-05-30, §VERTICAL + §GATE + §LONGTAIL PASS)
+
+P3c turned the §0.18b product-tiering finding into running code and closed the §0.18 per-document
+faithfulness gap. Witnesses: `build/erp/{diff_oracle,poc_longtail}.log`. Three results:
+
+**(1) Per-document dispatch — the §0.18 faithfulness gap, closed (Task 1).** The P3b settlement cells
+dispatched the whole vendor universe in ONE synthetic `invoiceDocId:'ALL'` event; `diff_oracle_cells.js`
+MMR:CO / API:CO now dispatch **per receipt / per invoice**, each reconciling ONLY its own lines within
+its partition, with consumed counterpart lines withheld from later documents (no double-claim, §18.8).
+The matcher opts still load from data; the candidate set is now one document's lines. **Isolation guard:**
+`Σ(per-document matches) == the P3b universe count` (M_MatchPO **19/19**, M_MatchInv **18/18**, M_MatchPO
+**18/18**), 0 missed / 0 extra — proving no cross-document leak the universe run was hiding. The clean
+data (no partner+product+qty ambiguity within any partition) makes per-document == universe exact.
+`§VERTICAL perdoc cell=(C_Invoice,CO) docs=4 … isolation=OK`. §ORACLE-SUITE stayed 5/6 PASS — no regression.
+
+**(2) The lone-operator vertical runs end-to-end, matcher NOT invoked (Task 2).** `scripts/poc_longtail.js`
+drives the one full GardenWorld chain — sales order 101 (DocType 135, BPartner 112) — through the kernel
+as **five per-document-event op-groups**: `raise SO → ship → invoice → receive payment → allocate`, using
+ONLY derivation verbs (`completeOrder` PLANS the fan-out from the decision table; `createShipment`/
+`createInvoice` emit the planned ship/invoice op-groups), FK-directed `ALLOCATE` (partial: PayAmt 98.5 of
+GrandTotal 100.7), and the C_DocType decision table. **`E.match` is monkey-patched with a call counter
+and asserted NOT-INVOKED across the whole path** (calls=0). The effects reproduce the oracle exactly
+(shipment line, invoice line, allocation edge — each 1/1) and **replay rebuilds the projection EXACTLY**
+(live-hash == replay-hash, 7 ops). `§VERTICAL flow=lone-operator events=5 matcher=NOT-INVOKED ops=7
+replay=EXACT diff=MATCH`. This is the empirical proof of §0.18b: the entire long-tail flow is the cheap
+path (derivation-by-FK), not the settlement lattice.
+
+**(3) The pro-gate seam — capability-first, additive not a fork (Task 3).** The exact cell where the
+matcher becomes necessary is **buyer reconciliation (`C_Invoice:CO` 3-way, PO↔receipt↔invoice)**. The tier
+split is expressed as **DATA** — a `CAPABILITY.pro_reconciliation.enabledFor` flag the SystemAdmin toggles
+per (DocType,action), §0.11 made operational. With the flag OFF (lone operator), the invoice completes
+with the cheap `setStatus` handler and the matcher is not invoked (settlement edges=0). With the flag ON,
+the matcher **composes IN**: the *same* cheap status op is emitted, with the settlement-edge ops APPENDED
+(`pro.ops == cheap.ops + matcher.edges`) — additive policy, the cheap-path handler never rewritten.
+`§GATE cheap-path-cells=[(C_Order,CO),(M_InOut,CO),(C_Invoice,CO cheap),(C_Payment,CO),(C_AllocationHdr,CO)]
+pro-gate-cell=(C_Invoice,CO 3-way) composes=Y data-gated=Y`. **Open edge:** the capability flag lives in
+memory in the POC; persisting it as a `CAPABILITY` rule in `erp_rules.db` (alongside `ACCESS`/`DOCPOLICY`)
+is the one-line next step. No `bim-ootb`, no Docker — T3 relocation still parked.
+
 ---
 
 ## §1. iDempiere AD → SQLite Table Mapping
