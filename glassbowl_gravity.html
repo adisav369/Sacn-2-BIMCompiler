@@ -92,7 +92,11 @@
 </style>
 </head>
 <body>
-<script>if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+<script>/* offline SW — register on load, but warm the cache LATER (on idle) so there's no load lag */
+if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').then(function(reg){
+  var warm=function(){var a=reg.active||navigator.serviceWorker.controller;if(a)a.postMessage({type:'precache'});else navigator.serviceWorker.ready.then(function(r){r.active&&r.active.postMessage({type:'precache'});});};
+  if('requestIdleCallback' in window)requestIdleCallback(warm,{timeout:7000});else setTimeout(warm,4000);
+}).catch(function(){});});}</script>
 <svg id="bowl"></svg>
 
 <div id="title">Glassbowl · Gravity<small>GardenWorld — engine presenting itself</small></div>
