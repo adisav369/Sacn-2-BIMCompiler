@@ -203,6 +203,22 @@ sounds on interactions: bubble pick (soft tick), bar drop-in (whoosh), trace flo
   `AudioContext` created + a node scheduled); mute silences scheduling; first-gesture unlock works. Pure UI,
   no data writes, no T3. Runs as a sequential follow-on (same shared file) after Task 4.
 
+### Task 6 — QR camera input ("that is a new one", user 2026-05-30). Witness **W-QR-INPUT**
+The input panel gains a **camera/QR affordance** — another **no-typing, pointer-free** input (the same thread as
+the swipe-picker + on-screen keyboard). **Mobile:** open the camera to **scan a QR**. **Desktop:** use the
+webcam to read a QR **flashed at it** (hold a phone/printed badge up to the cam). Use case: a printed invoice's
+QR → instantly **opens that record's dossier / traces its flow** (scan-to-find), no documentno typed.
+- **Tech:** `getUserMedia` for the video stream + the **native `BarcodeDetector` API** to decode QR — **zero
+  external libs** where supported (Chrome/Edge/Android), keeping the viewer self-contained; honest *"QR scan not
+  supported on this browser"* fallback (never a broken-silent feature). NO bundled jsQR asset unless we accept it.
+- **Permissions/mobile:** camera needs a user-gesture + permission prompt; handle deny gracefully
+  ([[feedback_mobile_events]]). Stop the stream when the panel closes (no hot camera left running).
+- **Gate split:** **read-only slice buildable now** — scan a QR carrying a record id/documentno → **trace / open
+  dossier** (pure-read lookup). **T3 / parked** — scan a QR to **fill an edit value** (write loop, greyed until go).
+- **Acceptance:** a QR/cam affordance in the input panel requests the camera on tap; a decoded payload matching a
+  bundle record opens its trace/dossier; unsupported browser shows the honest fallback; closing the panel stops
+  the stream. Pure-read for the lookup slice; no data writes.
+
 ### The 360° model (user's framing, 2026-05-30) — the canonical description
 **The page is a 360° view of records.** The **bubbles are the type / SystemAdmin layer** — relationships
 (FK graph) and rules (validation/workflow/columns), the *dictionary* an admin traces. The **right panel
@@ -312,3 +328,88 @@ records looked at; bars *up over an input* = one field's life over time.
 regenerate (`node scripts/system_explorer.js`), extend `test_glassbowl.js` with checks **naming the issue**,
 run it green (all prior + new), report the §-logs. Final integration + copy to `docs/` + deploy = **explicit
 go only** (commit to `full` + `mkdocs gh-deploy --force`, verify live with curl).
+
+---
+
+## Phase 3 — The Organic View (SPEC / DESIGN, captured 2026-05-30) — "data comes alive"
+
+> **Status:** SPEC / DESIGN — to craft in a NEW session. Pure-read (no T3/writes). Built in `bim-compiler`,
+> same Pages URL. This captures a co-design arc (2026-05-30): the static FK map becomes an **organic,
+> gravity-driven, lens-driven** view. **Start by confirming the OPEN FORKS below with the user BEFORE casting
+> code.** Baseline to protect: `test_glassbowl.js` **85/85 §GLASSBOWL-WIRING PASS**; gen `§GLASSBOWL/§LIFECYCLE/
+> §ORBIT PASS`, `hand=0`. Phase 2efg+mobile is DEPLOYED LIVE (commit e2d6702d).
+
+### The thesis (the leap from erp.html)
+erp.html drew the *skeleton* — relationships, but **static**: a bubble's position was arbitrary, you read only
+the wires. Phase 3 makes position **earned**: mass (op-log gravity / money / recency), focus (a gravity well),
+and the chosen lens decide *where* a bubble sits and *what* it shows. **Topology becomes terrain.** The data
+presents itself TO you (TikTok's *push*, not the user's *pull*) — every force **EXTRACTED, never faked** (real
+gravity, or it's a gimmick). erp.html showed *that* records relate; this shows **how much, which way, right now.**
+
+### Three pieces (the user's model, 2026-05-30)
+1. **The WEB stays.** Same post-its (document bubbles), same lines (FK relationships), always present — the
+   current view is *Lens 0*.
+2. **The LENS = which COLUMN the whole web wears.** Flick a lens → every bubble **re-reads itself through ONE
+   facet at once**. The friendly **name stays**; the facet shows as a **SUBTITLE under it** (user, 2026-05-30 —
+   "those do not replace, but sort of subtitling"). It's the iDempiere window's *columns*, shown across **all**
+   documents at once instead of one grid at a time:
+   - **Lens 0 — relationships / the transactional web** (as now) + the present spine filter.
+   - **Identity** — each bubble shows its real **DocNo** (Order `80001`, its `Invoice.DocNo`, `M_InOut.DocNo`, …).
+   - **# of lines** — each doc's line count.
+   - **Totals** — `grandtotal` / `payamt`.
+   - **Dates** — `dateordered` / `dateinvoiced` / … (GW chronology).
+   - **Status** — open / completed / voided; **Inactive**.
+   - *More families (suggested):* newest/oldest · biggest/lowest · aging 30/60/90 · unpaid balance · partials ·
+     busiest (op-log) · most-connected · most-pointed-to (reverse-deps) · by customer/supplier/product/doctype/
+     stage · "For you" (gravity+recency feed) · anomalies-first · discover-shuffle.
+3. **The TRACKBALL = the same gesture at two strengths** (a **DEPTH dial**, no longer a 3D camera):
+   - **small lean** → *arrange / jiggle* the post-its for clearer viewing (shake them into a readable mind-map;
+     fewer crossing lines).
+   - **push past a threshold** → **dive a level**: the focused document opens into its **LINES** — the *X-scissors*
+     slice from doc-skin down to the detail rows. Surface = documents, deeper = line items. The ball is the depth.
+
+### Focus-gravity bloom (the reform)
+Focusing a document (a **deliberate** gesture — dossier open / a ⊙ Focus control / double-tap, **NOT** every casual
+click) makes it the **centre of gravity**: its neighbours **ease into a ring** around it (flow near, reference far,
+reverse-deps in their own arc; heavier = closer), the rest **recede + fade**. Clear focus / Reset → everyone eases
+**home** (`hx/hy`). The present **spine FILTER panel is kept** — as it's toggled, *"that formation morphs back in."*
+
+### Guardrails (so it's "consistent," never the erp.html tumble)
+- **Damped + DETERMINISTIC** eased targets (~300ms), not live physics. Computed slots, no jitter — replay/scene-
+  persistence safe (no `Math.random`).
+- **Fully REVERSIBLE** — clear/Reset eases back to home (machinery exists: `hx/hy`, Reset re-homes).
+- **At NEUTRAL** (no lens-shift, no focus, ball centred) the layout is the **flat at-rest bowl** — the W-ORBIT
+  pixel-identical promise carries over. *(The ball's MEANING changes from camera→arranger; the at-rest-flat
+  invariant stays. The new session decides whether any 3D depth survives — see forks.)*
+- **Keep ALL existing artifacts** — spine filter, dossier (Data/Rules/Columns/History), trace + step-strip, swipe
+  picker, search, QR, audio, mobile handle, recent-items accordion. Phase 3 **augments, never removes**; gate the
+  reform to the deliberate gesture so casual `pick()` stays light and the **85 checks don't move**.
+- **EXTRACT-ONLY** — every lens value, mass, date, count read from the bundle / `ad_full` / `erp_rules` /
+  `kernel_ops`. Tables/columns not carried → honest **"not carried,"** never faked.
+
+### OPEN FORKS — confirm with the user BEFORE casting code
+1. **Slice-in target:** when the ball dives into a doc's lines, do the lines become little **bubbles fanning off**
+   the doc, or a **row-strip across the bottom** (like the trace strip)?
+2. **Lens scope:** does a lens repaint the **whole web**, or only the **focused doc + its neighbours**?
+3. ~~**Label facet:** replace the name, or ride under it?~~ **RESOLVED (user, 2026-05-30):** the facet **rides under
+   as a SUBTITLE** — the friendly name stays, the DocNo/total/date/etc. appears as a second line beneath it.
+   *(Still open, fold in: ball roam-free vs always-settle · one sort-axis at a time vs both · z=mass-forward vs
+   keep spine planes · reform on plain click vs deliberate gesture only.)*
+
+### Witnesses (each EXTRACT-only, 0 hand-authored)
+- **W-LENS** — selecting a lens re-expresses the whole web by a REAL data column (DocNo/#lines/total/date/status)
+  shown as a **subtitle under each bubble's name** (name unchanged); values pulled from the bundle; "not carried"
+  honest where absent; the spine filter still composes. `§LENS lens=<name> bubbles-subtitled=N source=bundle`.
+- **W-ARRANGE** — leaning the trackball slides bubbles along the lens axes / jiggles for clearer viewing; release
+  settles tidy (eased, deterministic); neutral = the flat at-rest bowl (W-ORBIT preserved). `§ARRANGE neutral-flat=Y`.
+- **W-SLICE** — pushing the ball past the depth threshold opens the focused document into its real line rows (the
+  X-scissors), lines read from the bundle; pulling back closes them. `§SLICE doc=<DocNo> lines=N source=bundle`.
+- **W-REFORM** — a deliberate focus blooms neighbours into a weighted ring (flow/reference/reverse-dep arcs,
+  heavier=closer), rest recede; clear/Reset eases home; casual single-click unchanged. `§REFORM focus=<id> neighbours=N`.
+
+### Build loop (same discipline as Phase 2) — suggested order: W-LENS → W-ARRANGE → W-SLICE → W-REFORM
+Spec-cite each change; implement **ADDITIVELY** in `scripts/system_explorer.js` (`VIEWER_JS` + `renderHtml`);
+regenerate `node scripts/system_explorer.js 2>&1 | tee build/erp/system_explorer.log` (`§GLASSBOWL/§LIFECYCLE/
+§ORBIT` stay PASS, `hand=0`); extend `deploy/dev/tests/test_glassbowl.js` with checks **naming the issue**; run
+green (all 85 prior + new); read the §-log before concluding. **Deploy ONLY on explicit go.** W-LENS first — it's
+the cheapest and the highest "alive" payoff (the whole web re-reading by a column is the headline moment).
