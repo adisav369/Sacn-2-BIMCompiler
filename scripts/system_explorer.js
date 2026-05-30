@@ -130,22 +130,32 @@ var LIFECYCLE = ['c_order', 'c_orderline', 'm_inout', 'm_inoutline', 'c_invoice'
 // ── the self-contained viewer (graph inlined; deterministic force layout; no deps, file://-safe) ──
 function renderHtml(graph) {
   var data = JSON.stringify(graph);
-  return '<!doctype html><html><head><meta charset="utf-8"><title>Glassbowl — the ERP engine</title>\n' +
+  return '<!doctype html><html><head><meta charset="utf-8"><title>Glassbowl — your business, mapped</title>\n' +
+'<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
 '<style>\n' +
 '  :root{--bg:#0c0f14;--panel:#141a22;--ink:#e7edf3;--dim:#5a6b7a;--line:#222c38;}\n' +
 '  *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}\n' +
 '  body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden}\n' +
 '  #wrap{display:flex;height:100vh}\n' +
-'  #stage{flex:1;position:relative}\n' +
+'  #stage{flex:1;position:relative;overflow:hidden}\n' +
+'  #svg{touch-action:none;cursor:grab} #svg.panning{cursor:grabbing}\n' +
 '  #panel{width:340px;background:var(--panel);border-left:1px solid var(--line);padding:16px;overflow:auto}\n' +
 '  h1{font-size:15px;margin:0 0 2px} .sub{color:var(--dim);font-size:11px;margin-bottom:14px}\n' +
 '  .legend{position:absolute;top:12px;left:12px;background:rgba(20,26,34,.92);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12px}\n' +
 '  .legend label{display:block;cursor:pointer;margin:3px 0;user-select:none}\n' +
 '  .legend .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;vertical-align:-1px}\n' +
-'  .cold{position:absolute;bottom:12px;left:12px;background:rgba(20,26,34,.92);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:12px;max-width:300px}\n' +
+'  .legend .ttl{margin-bottom:6px;color:#8aa;font-weight:600}\n' +
+'  .cold{position:absolute;bottom:12px;left:12px;background:rgba(20,26,34,.92);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:12px;max-width:280px}\n' +
 '  .cold b{color:#c8923a} .pill{font-size:10px;color:var(--dim)}\n' +
-'  text{fill:var(--ink);font-size:11px;pointer-events:none}\n' +
-'  .node{cursor:pointer} .node:hover circle{stroke:#fff;stroke-width:2px}\n' +
+'  .ctl{position:absolute;top:12px;right:12px;display:flex;gap:6px}\n' +
+'  .ctl button{background:rgba(20,26,34,.95);border:1px solid var(--line);color:var(--ink);border-radius:7px;padding:6px 11px;font-size:12px;cursor:pointer}\n' +
+'  .ctl button:hover{border-color:#3a5a7a}\n' +
+'  #about{position:absolute;top:54px;right:12px;width:330px;max-height:calc(100vh - 80px);overflow:auto;background:rgba(16,22,30,.98);border:1px solid var(--line);border-radius:10px;padding:16px 18px;font-size:13px;line-height:1.5;display:none;box-shadow:0 8px 40px rgba(0,0,0,.5)}\n' +
+'  #about.open{display:block} #about h2{font-size:14px;margin:0 0 8px} #about h3{font-size:12px;margin:14px 0 4px;color:#8aa}\n' +
+'  #about p{margin:6px 0;color:#c7d2dc} #about .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}\n' +
+'  #about .em{color:#e7edf3}\n' +
+'  text{fill:var(--ink);font-size:11px;pointer-events:none;user-select:none}\n' +
+'  .node{cursor:grab} .node:hover circle{stroke:#fff;stroke-width:2px}\n' +
 '  .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 4px}\n' +
 '  .row{font-size:13px;padding:3px 0;border-bottom:1px solid var(--line)}\n' +
 '  .tag{display:inline-block;background:#1d2630;border-radius:4px;padding:1px 6px;font-size:11px;margin:2px 4px 2px 0}\n' +
@@ -154,18 +164,29 @@ function renderHtml(graph) {
 '<div id="stage"><svg id="svg" width="100%" height="100%"></svg>\n' +
 '  <div class="legend" id="legend"></div>\n' +
 '  <div class="cold" id="coldbox"></div>\n' +
+'  <div class="ctl"><button id="aboutBtn">ⓘ How to read this</button><button id="resetBtn">⤢ Reset view</button></div>\n' +
+'  <div id="about"></div>\n' +
 '</div>\n' +
-'<div id="panel"><h1>Glassbowl</h1><div class="sub">the ERP engine, rendered from its own data — click a bubble</div>\n' +
-'  <div id="detail"><div class="k">spines (FK edges)</div><div id="spines"></div>\n' +
-'  <div class="k">written cells</div><div id="cellcount"></div></div>\n' +
+'<div id="panel"><h1>Glassbowl</h1><div class="sub">a live map of how your documents connect &amp; flow — built from the system itself. Click a bubble.</div>\n' +
+'  <div id="detail"><div class="k">the links on this map</div><div id="spines"></div>\n' +
+'  <div class="k">what the system runs</div><div id="cellcount"></div></div>\n' +
 '</div></div>\n' +
 '<script>\nvar G=' + data + ';\n' + VIEWER_JS + '\n</script></body></html>';
 }
 
 var VIEWER_JS = [
 'var COLOR={containment:"#6aa9ff",derivation:"#4caf7d",settlement:"#e2574c",reference:"#5a6b7a"};',
+'// business-user labels (the engine internals translated to what an operator sees).',
+'var LABEL={containment:"document & its line items",derivation:"sales flow (order\\u2192ship\\u2192invoice\\u2192pay)",settlement:"matching & reconciliation",reference:"reference data (products, partners\\u2026)"};',
+'var FRIENDLY={c_order:"Order",c_orderline:"Order line",m_inout:"Shipment / Receipt",m_inoutline:"Shipment line",c_invoice:"Invoice",c_invoiceline:"Invoice line",c_payment:"Payment",c_allocationhdr:"Payment applied",c_allocationline:"Payment applied",m_matchpo:"Order\\u2194Receipt match",m_matchinv:"Receipt\\u2194Invoice match",gl_journal:"Accounting journal",gl_journalline:"Journal line",c_bpartner:"Customer / Supplier",m_product:"Product"};',
+'function fname(id){return FRIENDLY[id]||id;}',
+'var VERB={createShipment:"creates a shipment/receipt",createInvoice:"creates an invoice",completeOrder:"completes the order",setStatus:"completes the document",allocate:"applies a payment to an invoice"};',
 'var svg=document.getElementById("svg"),W=svg.clientWidth||window.innerWidth-340,H=svg.clientHeight||window.innerHeight;',
 'var show={containment:1,derivation:1,settlement:1,reference:1};',
+'var SVGNS="http://www.w3.org/2000/svg";',
+'function el(tag,a){var e=document.createElementNS(SVGNS,tag);for(var key in a)e.setAttribute(key,a[key]);return e;}',
+'var vp=el("g",{id:"vp"});svg.appendChild(vp);   // viewport group: pan/zoom transform live here',
+'var px=0,py=0,k=1;function applyT(){vp.setAttribute("transform","translate("+px+","+py+") scale("+k+")");}',
 '// deterministic init positions on a circle by index (no Math.random — replay/refresh stable).',
 'var N=G.nodes,E=G.edges,idx={};N.forEach(function(n,i){idx[n.id]=i;var a=i/N.length*6.283;n.x=W/2+Math.cos(a)*Math.min(W,H)*0.32;n.y=H/2+Math.sin(a)*Math.min(W,H)*0.32;});',
 'var maxG=Math.max.apply(null,N.map(function(n){return n.gravity||0}).concat([1]));',
@@ -174,27 +195,41 @@ var VIEWER_JS = [
 'for(var it=0;it<320;it++){',
 ' for(var i=0;i<N.length;i++){var a=N[i];a.fx=(W/2-a.x)*0.002;a.fy=(H/2-a.y)*0.002;',
 '  for(var j=0;j<N.length;j++){if(i===j)continue;var b=N[j],dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy+0.01,d=Math.sqrt(d2);var f=2400/d2;a.fx+=dx/d*f;a.fy+=dy/d*f;}}',
-' E.forEach(function(e){var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)+0.01,k=(d-120)*0.01;a.fx+=dx/d*k;a.fy+=dy/d*k;b.fx-=dx/d*k;b.fy-=dy/d*k;});',
-' N.forEach(function(n){n.x+=Math.max(-8,Math.min(8,n.fx));n.y+=Math.max(-8,Math.min(8,n.fy));n.x=Math.max(40,Math.min(W-40,n.x));n.y=Math.max(40,Math.min(H-40,n.y));});}',
-'var SVGNS="http://www.w3.org/2000/svg";',
-'function el(tag,a){var e=document.createElementNS(SVGNS,tag);for(var k in a)e.setAttribute(k,a[k]);return e;}',
+' E.forEach(function(e){var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)+0.01,kk=(d-120)*0.01;a.fx+=dx/d*kk;a.fy+=dy/d*kk;b.fx-=dx/d*kk;b.fy-=dy/d*kk;});',
+' N.forEach(function(n){n.x+=Math.max(-8,Math.min(8,n.fx));n.y+=Math.max(-8,Math.min(8,n.fy));});}',
 '// build SVG via createElementNS (NOT innerHTML — innerHTML-built SVG fails to lay out headless).',
-'function draw(){while(svg.firstChild)svg.removeChild(svg.firstChild);',
-' E.forEach(function(e){if(!show[e.kind])return;var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;svg.appendChild(el("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:COLOR[e.kind],"stroke-opacity":(e.kind==="reference"?0.18:0.5),"stroke-width":(e.kind==="reference"?1:1.6)}));});',
+'function draw(){while(vp.firstChild)vp.removeChild(vp.firstChild);',
+' E.forEach(function(e){if(!show[e.kind])return;var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;vp.appendChild(el("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:COLOR[e.kind],"stroke-opacity":(e.kind==="reference"?0.18:0.5),"stroke-width":(e.kind==="reference"?1:1.6)}));});',
 ' N.forEach(function(n){var vis=E.some(function(e){return show[e.kind]&&(e.from===n.id||e.to===n.id)})||(n.cells&&n.cells.length);if(!vis&&n.kind==="master")return;var col=n.settlement?"#e2574c":n.kind==="master"?"#2b3744":(n.gravity>0?"#4caf7d":"#3a4a5a");var r=radius(n);',
-'  var g=el("g",{"class":"node"});g.style.cursor="pointer";(function(id){g.addEventListener("click",function(){pick(id);});})(n.id);',
+'  var g=el("g",{"class":"node"});(function(node){g.addEventListener("pointerdown",function(ev){startDragNode(ev,node);});g.addEventListener("click",function(){if(!moved)pick(node.id);});})(n);',
 '  g.appendChild(el("circle",{cx:n.x,cy:n.y,r:r,fill:col,stroke:"#0c0f14","stroke-width":1.5}));',
-'  var t=el("text",{x:n.x,y:(n.y+r+11),"text-anchor":"middle"});t.textContent=n.id;g.appendChild(t);svg.appendChild(g);});}',
-'function pick(id){var n=N[idx[id]];var d=document.getElementById("detail");var h=\'<div class=k>table</div><div class=row><b>\'+id+\'</b> <span class=pill>\'+n.kind+(n.settlement?" · settlement":"")+\'</span></div>\';',
-' var ce=E.filter(function(e){return e.from===id});if(ce.length){h+=\'<div class=k>FK edges out</div>\';ce.forEach(function(e){h+=\'<div class=row><span class=tag style="border-left:3px solid \'+COLOR[e.kind]+\'">\'+e.kind+\'</span>\'+e.via+\' &rarr; \'+e.to+\'</div>\';});}',
-' if(n.cells&&n.cells.length){h+=\'<div class=k>cells (the engine here)</div>\';n.cells.forEach(function(c){h+=\'<div class=row><b>\'+c.cell+\'</b><br><span class=pill>matcher </span><span class=\'+(c.matcher?"y":"n")+\'>\'+(c.matcher?"Y":"N")+\'</span> <span class=pill>guards \'+c.guards+\' · ops \'+c.ops+\' · gravity \'+(c.gravity||0).toFixed(1)+\'</span>\';if(c.verbs.length)h+=\'<br>\'+c.verbs.map(function(v){return \'<span class=tag>\'+v+\'</span>\'}).join("");h+=\'<br><span class=pill>oracle: \'+(c.oracle||"").slice(0,90)+\'</span></div>\';});}else{h+=\'<div class=k>cells</div><div class=row class=n>no written cell — cold / reference table</div>\';}',
+'  var t=el("text",{x:n.x,y:(n.y+r+11),"text-anchor":"middle"});t.textContent=fname(n.id);g.appendChild(t);vp.appendChild(g);});}',
+'// ── interaction: drag a bubble, pan the background, scroll to zoom ──',
+'function world(ev){var rc=svg.getBoundingClientRect();return {x:(ev.clientX-rc.left-px)/k,y:(ev.clientY-rc.top-py)/k};}',
+'var drag=null,panning=null,moved=false;',
+'function startDragNode(ev,node){ev.stopPropagation();var w=world(ev);drag={node:node,ox:w.x-node.x,oy:w.y-node.y};moved=false;try{svg.setPointerCapture(ev.pointerId);}catch(e){}}',
+'svg.addEventListener("pointerdown",function(ev){if(drag)return;var rc=svg.getBoundingClientRect();panning={sx:ev.clientX-rc.left-px,sy:ev.clientY-rc.top-py};moved=false;svg.classList.add("panning");try{svg.setPointerCapture(ev.pointerId);}catch(e){}});',
+'svg.addEventListener("pointermove",function(ev){if(drag){var w=world(ev);drag.node.x=w.x-drag.ox;drag.node.y=w.y-drag.oy;moved=true;draw();}else if(panning){var rc=svg.getBoundingClientRect();px=ev.clientX-rc.left-panning.sx;py=ev.clientY-rc.top-panning.sy;moved=true;applyT();}});',
+'function endPtr(){drag=null;panning=null;svg.classList.remove("panning");}',
+'svg.addEventListener("pointerup",endPtr);svg.addEventListener("pointercancel",endPtr);',
+'svg.addEventListener("wheel",function(ev){ev.preventDefault();var rc=svg.getBoundingClientRect();var mx=ev.clientX-rc.left,my=ev.clientY-rc.top;var f=ev.deltaY<0?1.12:0.89;var nk=Math.max(0.25,Math.min(6,k*f));px=mx-(mx-px)*(nk/k);py=my-(my-py)*(nk/k);k=nk;applyT();},{passive:false});',
+'document.getElementById("resetBtn").addEventListener("click",function(){px=0;py=0;k=1;applyT();});',
+'// ── inspector (right panel), in plain business language ──',
+'function pick(id){var n=N[idx[id]];var d=document.getElementById("detail");var h=\'<div class=k>this is</div><div class=row><b>\'+fname(id)+\'</b> <span class=pill>\'+id+\'</span></div>\';',
+' var ce=E.filter(function(e){return e.from===id&&show[e.kind]});if(ce.length){h+=\'<div class=k>connects to</div>\';ce.slice(0,40).forEach(function(e){h+=\'<div class=row><span class=tag style="border-left:3px solid \'+COLOR[e.kind]+\'">\'+LABEL[e.kind].split(" (")[0]+\'</span>\'+fname(e.to)+\'</div>\';});}',
+' if(n.cells&&n.cells.length){h+=\'<div class=k>what the system does here</div>\';n.cells.forEach(function(c){var acts=c.verbs.map(function(v){return VERB[v]||v;});h+=\'<div class=row>\'+(acts.length?acts.map(function(a){return \'<span class=tag>\'+a+\'</span>\'}).join(""):\'<span class=pill>completes the document</span>\')+\'<br><span class=pill>needs matching/reconciliation: </span><span class=\'+(c.matcher?"y":"n")+\'>\'+(c.matcher?"yes":"no")+\'</span><br><span class=pill>checks before saving: \'+c.guards+\' \\u00b7 times used: \'+c.ops+\'</span></div>\';});}else if(n.kind==="master"){h+=\'<div class=k>what the system does here</div><div class=row class=n>a reference list — looked up by the documents, no workflow of its own</div>\';}',
 ' d.innerHTML=h;}',
-'// legend with spine toggles',
-'var lg=document.getElementById("legend"),lh="<div style=\'margin-bottom:5px;color:#8aa\'>spines &mdash; toggle</div>";["containment","derivation","settlement","reference"].forEach(function(k){lh+=\'<label><input type=checkbox checked onchange="show.\'+k+\'=this.checked;draw()"><span class=sw style="background:\'+COLOR[k]+\'"></span>\'+k+\' (\'+G.spines[k]+\')</label>\';});lg.innerHTML=lh;',
-'// cold backlog box',
-'var cb=document.getElementById("coldbox");var byk=Object.keys(G.coldByKind).map(function(k){return k+":"+G.coldByKind[k]}).join(" · ");cb.innerHTML=\'<b>cold backlog: \'+G.cold.length+\' unwritten cells</b><br><span class=pill>the gravity long tail — written when hot (§18.6)</span><br><span class=pill>\'+byk+\'</span>\';',
-'// spine + cell summary in panel',
-'document.getElementById("spines").innerHTML=Object.keys(G.spines).map(function(k){return \'<div class=row><span class=sw style="display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;background:\'+COLOR[k]+\'"></span>\'+k+\' <b>\'+G.spines[k]+\'</b></div>\'}).join("");',
-'document.getElementById("cellcount").innerHTML=\'<div class=row>\'+G.cells.length+\' written · top gravity <b>\'+(G.gravityTop?G.gravityTop.cell:"-")+\'</b></div>\';',
-'draw();'
+'// ── legend (business labels) ──',
+'var lg=document.getElementById("legend"),lh="<div class=ttl>the links &mdash; click to hide</div>";["derivation","settlement","containment","reference"].forEach(function(kk){lh+=\'<label><input type=checkbox checked onchange="show.\'+kk+\'=this.checked;draw()"><span class=sw style="background:\'+COLOR[kk]+\'"></span>\'+LABEL[kk]+\' (\'+G.spines[kk]+\')</label>\';});lg.innerHTML=lh;',
+'// ── "not switched on yet" badge ──',
+'document.getElementById("coldbox").innerHTML=\'<b>\'+G.cold.length+\' features not switched on yet</b><br><span class=pill>the whole platform is already here, dormant — it turns on the moment you use it. Nothing to install.</span>\';',
+'// ── right-panel summary ──',
+'document.getElementById("spines").innerHTML=["derivation","settlement","containment","reference"].map(function(kk){return \'<div class=row><span class=sw style="display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;background:\'+COLOR[kk]+\'"></span>\'+LABEL[kk].split(" (")[0]+\' <b>\'+G.spines[kk]+\'</b></div>\'}).join("");',
+'var gt=G.gravityTop?G.gravityTop.cell.replace(/[()]/g,"").split(",")[0].toLowerCase():"";',
+'document.getElementById("cellcount").innerHTML=\'<div class=row>\'+G.cells.length+\' active workflows \\u00b7 busiest is <b>\'+(gt?fname(gt):"-")+\'</b></div>\';',
+'// ── About panel (aimed at a business / ERP user) ──',
+'var ABOUT=\'<h2>What am I looking at?</h2><p>A live map of how your business documents connect and flow \\u2014 orders, shipments, invoices, payments \\u2014 drawn automatically from the system itself.</p><h3>The bubbles</h3><p>Each bubble is something your business tracks. <span class=em>Bigger means used more.</span> Click a bubble to see what it links to and what the system does there. Drag bubbles to tidy them up, scroll to zoom, drag the empty background to move around.</p><h3>The coloured links</h3><p><span class=sw style="background:#4caf7d"></span><span class=em>Sales flow</span> \\u2014 an order becomes a shipment, then an invoice, then a payment. This is most of your day.</p><p><span class=sw style="background:#e2574c"></span><span class=em>Matching &amp; reconciliation</span> \\u2014 checking that what was ordered, received, billed and paid all agree. The careful part a bookkeeper double-checks.</p><p><span class=sw style="background:#6aa9ff"></span><span class=em>Document &amp; its lines</span> \\u2014 an invoice and the products listed on it.</p><p><span class=sw style="background:#5a6b7a"></span><span class=em>Reference data</span> \\u2014 links to your lists of products, customers and suppliers.</p><h3>Why it matters</h3><p>The green flow is the easy everyday path. The red links are where money is reconciled \\u2014 where mistakes cost you. The map shows at a glance where the real work concentrates.</p><h3>\\u201cNot switched on yet\\u201d</h3><p>The full platform is already here, most of it dormant. Features light up the moment you use them \\u2014 nothing to install or configure up front.</p>\';',
+'document.getElementById("about").innerHTML=ABOUT;',
+'document.getElementById("aboutBtn").addEventListener("click",function(){document.getElementById("about").classList.toggle("open");});',
+'applyT();draw();'
 ].join('\n');

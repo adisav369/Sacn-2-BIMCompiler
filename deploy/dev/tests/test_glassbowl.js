@@ -65,35 +65,64 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   const shot1 = path.join(ROOT, 'glassbowl_render.png');
   await page.screenshot({ path: shot1 });
 
-  // click a node → detail panel populates. SVG <g> trips Playwright's visibility precheck, so we
-  // fire a real DOM click event on the group — this genuinely exercises the inline onclick→pick path.
+  // click a node → inspector populates. SVG <g> trips Playwright's visibility precheck, so we fire
+  // a real DOM click event on the group — this genuinely exercises the click→pick path.
   await page.evaluate(() => document.querySelector('#svg g.node').dispatchEvent(new MouseEvent('click', { bubbles: true })));
   let detail = await page.locator('#detail').innerText();
-  check(/table/i.test(detail) && detail.length > 40, 'click a bubble → detail panel populates', detail.replace(/\n/g, ' ').slice(0, 70));
+  check(/this is/i.test(detail) && detail.length > 30, 'click a bubble → inspector populates', detail.replace(/\n/g, ' ').slice(0, 70));
 
-  // pick the HOT settlement cell (c_invoice) → must surface matcher=Y + its oracle citation
+  // the HOT reconciliation cell (c_invoice) → business language: matching=yes + times used
   await page.evaluate(() => window.pick('c_invoice'));
-  detail = await page.locator('#detail').innerText();
-  check(/C_Invoice/.test(detail), 'c_invoice detail names its cell', detail.replace(/\n/g, ' ').slice(0, 60));
-  check(/matcher\s*Y/i.test(detail.replace(/\s+/g, ' ')), 'c_invoice shows matcher=Y (the settlement cell)', /matcher[^]{0,8}/i.exec(detail.replace(/\n/g, ' ')) ? RegExp.lastMatch : '?');
-  check(/MInvoice|gravity/i.test(detail), 'c_invoice shows oracle/gravity annotation', detail.replace(/\n/g, ' ').slice(0, 90));
+  detail = await page.locator('#detail').innerText().then(t => t.replace(/\s+/g, ' '));
+  check(/Invoice/i.test(detail), 'c_invoice inspector names it in plain language', detail.slice(0, 60));
+  check(/reconciliation:\s*yes/i.test(detail), 'c_invoice shows "needs matching/reconciliation: yes"', /reconciliation[^]{0,8}/i.exec(detail) ? RegExp.lastMatch : '?');
+  check(/times used/i.test(detail), 'c_invoice shows usage annotation', detail.slice(0, 90));
   const shot2 = path.join(ROOT, 'glassbowl_invoice.png');
   await page.screenshot({ path: shot2 });
 
-  // pick a derivation cell (c_order) → matcher=N + a derivation verb
+  // a sales-flow cell (c_order) → plain-English actions
   await page.evaluate(() => window.pick('c_order'));
   const odetail = await page.locator('#detail').innerText();
-  check(/createShipment|completeOrder/.test(odetail), 'c_order shows derivation verbs', odetail.replace(/\n/g, ' ').slice(0, 80));
+  check(/creates a shipment|completes the order/i.test(odetail), 'c_order shows plain-English actions', odetail.replace(/\n/g, ' ').slice(0, 80));
 
-  // toggle reference spine off → fewer lines (proves the legend filter is wired)
+  // ── interactivity: About panel, drag, zoom, reset ──
+  await page.locator('#aboutBtn').click();
+  await page.waitForTimeout(60);
+  const aboutOpen = await page.locator('#about').evaluate(e => e.classList.contains('open'));
+  const aboutTxt = await page.locator('#about').innerText();
+  check(aboutOpen && /Sales flow/i.test(aboutTxt), 'About panel opens with the business explainer', aboutTxt.replace(/\n/g, ' ').slice(0, 60));
+  await page.locator('#aboutBtn').click();   // close again
+
+  // DRAG a bubble → node positions change (the layout is no longer static)
+  const cxBefore = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
+  const cbox = await page.locator('#svg circle').first().boundingBox();
+  await page.mouse.move(cbox.x + cbox.width / 2, cbox.y + cbox.height / 2);
+  await page.mouse.down(); await page.mouse.move(cbox.x + cbox.width / 2 + 100, cbox.y + cbox.height / 2 + 50, { steps: 6 }); await page.mouse.up();
+  await page.waitForTimeout(80);
+  const cxAfter = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
+  check(cxBefore !== cxAfter, 'drag a bubble moves it (layout is interactive, not static)', 'positions changed=' + (cxBefore !== cxAfter));
+
+  // ZOOM via wheel → viewport scale grows
+  await page.mouse.move(450, 400);
+  await page.mouse.wheel(0, -360);
+  await page.waitForTimeout(60);
+  const tZoom = await page.locator('#vp').getAttribute('transform');
+  const scale = parseFloat((tZoom.match(/scale\(([0-9.]+)\)/) || [])[1] || '1');
+  check(scale > 1.05, 'scroll wheel zooms in (viewport scale > 1)', 'transform=' + tZoom);
+
+  // RESET view → transform back to identity
+  await page.locator('#resetBtn').click();
+  await page.waitForTimeout(60);
+  const tReset = (await page.locator('#vp').getAttribute('transform')).replace(/\s+/g, '');
+  check(/translate\(0,0\)scale\(1\)/.test(tReset), 'reset view restores the default viewport', tReset);
+
+  // toggle reference spine off → fewer lines (legend filter wired)
   const before = await page.locator('#svg line').count();
-  await page.locator('#legend input[type=checkbox]').nth(3).uncheck();   // 'reference' is 4th
+  await page.locator('#legend input[type=checkbox]').nth(3).uncheck();   // 'reference' is 4th in the legend
   await page.waitForTimeout(200);
   const after = await page.locator('#svg line').count();
   check(after < before, 'legend toggle filters edges (reference off → fewer lines)', before + '→' + after);
-  // with reference off, remaining edges == containment+derivation+settlement
-  const expectedSpine = 7 + 10 + 32;
-  check(after === expectedSpine, 'remaining edges == the 3 structural spines (7+10+32)', 'after=' + after + ' expected=' + expectedSpine);
+  check(after === 7 + 10 + 32, 'remaining edges == the 3 structural spines (49)', 'after=' + after);
   const shot3 = path.join(ROOT, 'glassbowl_spines.png');
   await page.screenshot({ path: shot3 });
   console.log('\n   screenshots: ' + [shot1, shot2, shot3].map(s => path.basename(s)).join(', '));
