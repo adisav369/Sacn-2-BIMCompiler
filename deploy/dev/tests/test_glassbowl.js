@@ -206,6 +206,9 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   const cxOrbit = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
   check(Math.abs(yawOrbit) > 0.1, 'trackball drag orbits the camera (yaw changes)', 'yaw=' + yawOrbit.toFixed(2));
   check(cxRest !== cxOrbit, 'orbit shears the depth planes apart (bubbles move on screen, static in 3D)', 'positions changed=' + (cxRest !== cxOrbit));
+  // W-ARRANGE (the trackball's main job): orbiting must SPREAD the bubbles apart to declutter — further = more organised.
+  const spanOf = s => { const a = s.split(',').map(Number); return a[a.length - 1] - a[0]; };
+  check(spanOf(cxOrbit) > spanOf(cxRest) * 1.05, 'W-ARRANGE: orbiting spreads the bubbles apart (declutter, not just shear)', 'restSpan=' + Math.round(spanOf(cxRest)) + ' orbitSpan=' + Math.round(spanOf(cxOrbit)));
   const shotO = path.join(ROOT, 'glassbowl_orbit.png');
   await page.screenshot({ path: shotO });
   // reset → back to the at-rest flat view, pixel-identical (W-ORBIT: identity at yaw=pitch=0)
