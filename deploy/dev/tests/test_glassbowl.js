@@ -39,6 +39,9 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   page.on('console', m => { logs.push(m.text()); if (m.type() === 'error') errs.push('console:' + m.text()); });
 
   await page.goto('http://localhost:' + PORT + '/glassbowl.html', { waitUntil: 'networkidle' });
+  // clean slate: a prior run's persisted scene must not leak into this run's assertions
+  await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('#svg circle', { timeout: 8000 }).catch(() => {});
 
   const circles = await page.locator('#svg circle').count();
@@ -212,6 +215,39 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   const cxReset = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
   check(yawReset === 0 && cxReset === cxRest, 'reset restores the at-rest flat bowl (identity projection at rest)', 'yaw=' + yawReset + ' restored=' + (cxReset === cxRest));
 
+  // ── Reset RE-HOMES dragged bubbles (not just the camera) ──
+  await page.evaluate(() => window.setTrace(false));
+  await page.waitForTimeout(30);
+  const homeCx = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
+  const cb2 = await page.locator('#svg circle').first().boundingBox();
+  await page.mouse.move(cb2.x + cb2.width / 2, cb2.y + cb2.height / 2);
+  await page.mouse.down(); await page.mouse.move(cb2.x + 160, cb2.y + 130, { steps: 6 }); await page.mouse.up();
+  await page.waitForTimeout(40);
+  const movedCx = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
+  await page.locator('#resetBtn').click(); await page.waitForTimeout(40);
+  const rehomeCx = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
+  check(movedCx !== homeCx && rehomeCx === homeCx, 'reset re-homes dragged bubbles (not just the camera)', 'moved=' + (movedCx !== homeCx) + ' rehomed=' + (rehomeCx === homeCx));
+
+  // ── click a lifecycle bubble → its recent bar offers "trace this flow" ──
+  await page.evaluate(() => window.pick('c_order'));
+  const traceBtns = await page.locator('#stack .bar').first().locator('.tracebtn').count();
+  check(traceBtns === 1, 'lifecycle bubble bar offers a "trace this flow" button', 'btn=' + traceBtns);
+  await page.locator('#stack .bar').first().locator('.tracebtn').click();
+  await page.waitForTimeout(50);
+  check(await page.locator('#strip').evaluate(e => e.classList.contains('open')), 'clicking the bubble’s trace button opens the trace', 'opened');
+
+  // ── record SEARCH: pick a different order from the bundle → trace THAT record in-browser ──
+  const opts = await page.$$eval('#reclist option', os => os.map(o => o.value));
+  const other = opts.find(v => v !== '80001');
+  check(opts.length > 1 && !!other, 'record search datalist populated from the bundle (multiple records)', 'opts=' + opts.length + ' other=' + other);
+  if (other) {
+    await page.evaluate((v) => { const i = document.getElementById('recsearch'); i.value = v; window.doSearch(); }, other);
+    await page.waitForTimeout(50);
+    const stripDoc = (await page.locator('#strip').innerText()).replace(/\s+/g, ' ');
+    check(stripDoc.includes(other), 'searching a record traces THAT record (step-strip updates)', stripDoc.slice(0, 80));
+  }
+  await page.evaluate(() => window.setTrace(false));
+
   // toggle reference spine off → fewer lines (legend filter wired)
   const before = await page.locator('#svg line').count();
   await page.locator('#legend input[type=checkbox]').nth(3).uncheck();   // 'reference' is 4th in the legend
@@ -222,6 +258,20 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   const shot3 = path.join(ROOT, 'glassbowl_spines.png');
   await page.screenshot({ path: shot3 });
   console.log('\n   screenshots: ' + [shot1, shot2, shot3, shotT, shotO].map(s => path.basename(s)).join(', '));
+
+  // ── SCENE PERSISTENCE: the screen survives a hard refresh (continue exactly where you left off) ──
+  await page.evaluate(() => { window.setOrbit(0.6, 0.25); window.pick('c_payment'); });
+  await page.waitForTimeout(40);
+  const barsPre = await page.locator('#stack .bar').count();
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));   // triggers save()
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('#svg circle', { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(120);
+  const restored = await page.evaluate(() => window.__restored === true);
+  const yawR = await page.evaluate(() => window.__yaw);
+  const barsPost = await page.locator('#stack .bar').count();
+  check(restored && Math.abs(yawR - 0.6) < 0.02 && barsPost >= 1 && barsPost === barsPre, 'scene SURVIVES a hard refresh (orbit + recent-items log restored)', 'restored=' + restored + ' yaw=' + (yawR || 0).toFixed(2) + ' bars=' + barsPre + '→' + barsPost);
+  await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });   // leave a clean slate
 
   await browser.close();
   server.close();

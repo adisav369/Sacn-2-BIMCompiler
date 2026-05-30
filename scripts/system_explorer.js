@@ -131,9 +131,19 @@ var LIFECYCLE = ['c_order', 'c_orderline', 'm_inout', 'm_inoutline', 'c_invoice'
   var adWalk = runWalk(STEPS, function (sql) { var r = ad.prepare(sql).get(); return r || null; });
   var chainStr = adWalk.chain.map(function (c) { return cap(c.table) + '#' + c.id + (c.documentno != null ? '(' + c.documentno + ')' : '') + (c.amount != null ? '[$' + c.amount + ']' : ''); }).join(' → ');
   console.log('   §LIFECYCLE record=C_Order#' + LINEAGE_SEED + ' hops=' + adWalk.chain.length + ' chain=[' + chainStr + '] missing=' + adWalk.missing + ' fk-hops-validated=' + validHops + '/' + totalHops);
+  // declarative walk (parameterizable by ANY seed order) — the browser re-runs these against the
+  // bundle to trace a SEARCHED record. Mirrors lineageSteps; dep='seed' uses the chosen order id.
+  var STEP_DECL = [
+    { table: 'c_order',          friendly: 'Order',      dep: 'seed',      base: 'SELECT c_order_id AS id, documentno, grandtotal AS amount FROM c_order WHERE c_order_id=', order: '' },
+    { table: 'm_inout',          friendly: 'Shipment',   dep: 'c_order',   base: 'SELECT m_inout_id AS id, documentno, NULL AS amount FROM m_inout WHERE c_order_id=', order: ' ORDER BY m_inout_id LIMIT 1' },
+    { table: 'c_invoice',        friendly: 'Invoice',    dep: 'c_order',   base: 'SELECT c_invoice_id AS id, documentno, grandtotal AS amount FROM c_invoice WHERE c_order_id=', order: ' ORDER BY c_invoice_id LIMIT 1' },
+    { table: 'c_payment',        friendly: 'Payment',    dep: 'c_invoice', base: 'SELECT c_payment_id AS id, documentno, payamt AS amount FROM c_payment WHERE c_invoice_id=', order: ' ORDER BY c_payment_id LIMIT 1' },
+    { table: 'c_allocationline', friendly: 'Allocation', dep: 'c_payment', base: 'SELECT c_allocationline_id AS id, NULL AS documentno, amount FROM c_allocationline WHERE c_payment_id=', order: ' ORDER BY c_allocationline_id LIMIT 1' }
+  ];
   var lineage = {
     seed: LINEAGE_SEED, record: 'C_Order#' + LINEAGE_SEED, hops: adWalk.chain.length, missing: adWalk.missing,
     chain: adWalk.chain, walk: adWalk.walkSQL,                  // walk = resolved per-table SQL (re-run in the browser against the bundle)
+    steps: STEP_DECL,                                           // declarative steps for in-browser search/trace of any order
     litNodes: adWalk.chain.map(function (c) { return c.table; })
   };
 
@@ -160,10 +170,13 @@ var LIFECYCLE = ['c_order', 'c_orderline', 'm_inout', 'm_inoutline', 'c_invoice'
   //   "like BIM disciplines, orbited." z is DERIVED from each node's existing classification (extract,
   //   not invent): spine docs z=0, settlement floats +D, reference shell behind −D. 0 hand-placed.
   console.log('\n── Layer 5: orbit depth (3 spine-planes, deterministic from classification) ──');
-  var ZD = 220, planes = { spine: 0, settlement: 0, reference: 0 };
+  var ZD = 220, planes = { spine: 0, settlement: 0, reference: 0 }, si = 0, ri = 0;
+  // z-JITTER gives each plane THICKNESS (a shell, not a flat sheet) so orbiting separates the many
+  // reference bubbles in depth instead of bunching them edge-on. Deterministic (index-based); and
+  // invisible at rest (head-on projection ignores z) — the flat layout is unchanged.
   nodes.forEach(function (n) {
-    if (n.settlement) { n.z = ZD; planes.settlement++; }
-    else if (n.kind === 'master') { n.z = -ZD; planes.reference++; }
+    if (n.settlement) { n.z = ZD + ((si++ % 5) - 2) * 26; planes.settlement++; }
+    else if (n.kind === 'master') { n.z = -ZD + ((ri++ % 9) - 4) * 34; planes.reference++; }
     else { n.z = 0; planes.spine++; }
   });
   var orbitOk = planes.spine > 0 && planes.settlement > 0 && planes.reference > 0;
@@ -319,6 +332,10 @@ function renderHtml(graph) {
 '  #strip .arr{color:#5a6b7a} #strip .ttl{color:#8aa;font-weight:600;margin-right:2px}\n' +
 '  #strip .xx{cursor:pointer;color:#5a6b7a;margin-left:4px;font-weight:700;font-size:13px} #strip .xx:hover{color:#e7edf3}\n' +
 '  @keyframes flow{to{stroke-dashoffset:-16}} .litedge{stroke-dasharray:6 6;animation:flow .8s linear infinite}\n' +
+'  #recwrap{position:absolute;bottom:54px;left:50%;transform:translateX(-50%);display:none}\n' +
+'  #recwrap.open{display:block}\n' +
+'  #recsearch{background:rgba(16,22,30,.97);border:1px solid #3a5a7a;border-radius:8px;color:var(--ink);padding:6px 11px;font-size:12px;width:240px;outline:none;box-shadow:0 8px 40px rgba(0,0,0,.45)}\n' +
+'  #recsearch::placeholder{color:#5a6b7a}\n' +
 '  #ball{position:absolute;bottom:64px;right:20px;width:62px;height:62px;border-radius:50%;cursor:grab;touch-action:none;background:radial-gradient(circle at 34% 30%,#4a6075,#1a2330 72%,#0c1118);border:1px solid #3a4a5a;box-shadow:0 6px 22px rgba(0,0,0,.55),inset 0 2px 7px rgba(255,255,255,.09)}\n' +
 '  #ball:active{cursor:grabbing} #ball::after{content:"orbit";position:absolute;bottom:-15px;left:0;right:0;text-align:center;font-size:9px;color:#5a6b7a;letter-spacing:.1em}\n' +
 '  #balldot{position:absolute;width:9px;height:9px;border-radius:50%;background:#ffd479;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 7px #ffd479;pointer-events:none}\n' +
@@ -333,12 +350,14 @@ function renderHtml(graph) {
 '  .bar .bx{color:var(--dim);cursor:pointer;font-weight:700;font-size:13px;padding:0 2px} .bar .bx:hover{color:#e2574c}\n' +
 '  .bar .bb{padding:2px 10px 9px} .bar.col .bb{display:none}\n' +
 '  .bar .trk{color:#c8923a;font-size:11px;margin-top:6px}\n' +
+'  .tracebtn{margin-top:8px;background:#19222c;border:1px solid #3a5a7a;color:#ffd479;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer} .tracebtn:hover{border-color:#ffd479}\n' +
 '</style></head><body><div id="wrap">\n' +
 '<div id="stage"><svg id="svg" width="100%" height="100%"></svg>\n' +
 '  <div class="legend" id="legend"></div>\n' +
 '  <div class="cold" id="coldbox"></div>\n' +
 '  <div class="ctl"><button id="traceBtn">▸ Trace a record</button><button id="resetBtn">⤢ Reset view</button><button id="panelToggle" title="hide / show the info panel">⟩</button></div>\n' +
 '  <div id="strip"></div>\n' +
+'  <div id="recwrap"><input id="recsearch" list="reclist" placeholder="search a record &mdash; e.g. 80001" autocomplete="off"><datalist id="reclist"></datalist></div>\n' +
 '  <div id="ball" title="drag to orbit \\u2014 arrange the view like a BIM model"><div id="balldot"></div></div>\n' +
 '  <div id="about"></div>\n' +
 '</div>\n' +
@@ -373,8 +392,9 @@ var VIEWER_JS = [
 'for(var it=0;it<320;it++){',
 ' for(var i=0;i<N.length;i++){var a=N[i];a.fx=(W/2-a.x)*0.002;a.fy=(H/2-a.y)*0.002;',
 '  for(var j=0;j<N.length;j++){if(i===j)continue;var b=N[j],dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy+0.01,d=Math.sqrt(d2);var f=2400/d2;a.fx+=dx/d*f;a.fy+=dy/d*f;}}',
-' E.forEach(function(e){var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)+0.01,kk=(d-120)*0.01;a.fx+=dx/d*kk;a.fy+=dy/d*kk;b.fx-=dx/d*kk;b.fy-=dy/d*kk;});',
+' E.forEach(function(e){var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)+0.01,kk=(d-(e.kind==="reference"?240:120))*0.01;a.fx+=dx/d*kk;a.fy+=dy/d*kk;b.fx-=dx/d*kk;b.fy-=dy/d*kk;});',
 ' N.forEach(function(n){n.x+=Math.max(-8,Math.min(8,n.fx));n.y+=Math.max(-8,Math.min(8,n.fy));});}',
+'N.forEach(function(n){n.hx=n.x;n.hy=n.y;});   // remember each bubble\\u2019s HOME so Reset can truly re-home them',
 '// ── ORBIT (GLASSBOWL_DOSSIER \\u00a72-viz, W-ORBIT): the 3 spines are depth planes; the trackball moves the eye ──',
 '// z is read from the data (n.z, assigned in the generator from spine role — NOT placed here).',
 'var yaw=0,pitch=0;window.__yaw=0;window.__pitch=0;',
@@ -421,7 +441,7 @@ var VIEWER_JS = [
 'ball.addEventListener("pointermove",function(ev){if(!orbiting)return;setOrbit(orbiting.y0+(ev.clientX-orbiting.x)*0.012,orbiting.p0+(ev.clientY-orbiting.y)*0.012);});',
 'function endOrbit(){orbiting=null;}ball.addEventListener("pointerup",endOrbit);ball.addEventListener("pointercancel",endOrbit);',
 'window.setOrbit=setOrbit;updateBall();',
-'document.getElementById("resetBtn").addEventListener("click",function(){px=0;py=0;k=1;yaw=0;pitch=0;focusId=null;window.__yaw=0;window.__pitch=0;updateBall();applyT();draw();});',
+'document.getElementById("resetBtn").addEventListener("click",function(){px=0;py=0;k=1;yaw=0;pitch=0;focusId=null;window.__yaw=0;window.__pitch=0;N.forEach(function(n){n.x=n.hx;n.y=n.hy;});updateBall();applyT();draw();});',
 '// collapse the right info panel \\u2192 the graph takes the full canvas (positions are absolute, no re-layout needed).',
 'document.getElementById("panelToggle").addEventListener("click",function(){var w=document.getElementById("wrap"),c=w.classList.toggle("collapsed");this.textContent=c?"\\u27e8":"\\u27e9";this.title=(c?"show":"hide")+" the info panel";});',
 '// drag the gripper to RESIZE the info panel (width \\u2192 a CSS var, clamped). Composes with collapse.',
@@ -433,6 +453,7 @@ var VIEWER_JS = [
 'function pick(id){var n=N[idx[id]];var h=\'<div class=k>this is</div><div class=row><b>\'+fname(id)+\'</b> <span class=pill>\'+id+\'</span></div>\';',
 ' var ce=E.filter(function(e){return e.from===id&&show[e.kind]});if(ce.length){h+=\'<div class=k>connects to</div>\';ce.slice(0,40).forEach(function(e){h+=\'<div class=row><span class=tag style="border-left:3px solid \'+COLOR[e.kind]+\'">\'+LABEL[e.kind].split(" (")[0]+\'</span>\'+fname(e.to)+\'</div>\';});}',
 ' if(n.cells&&n.cells.length){h+=\'<div class=k>what the system does here</div>\';n.cells.forEach(function(c){var acts=c.verbs.map(function(v){return VERB[v]||v;});h+=\'<div class=row>\'+(acts.length?acts.map(function(a){return \'<span class=tag>\'+a+\'</span>\'}).join(""):\'<span class=pill>completes the document</span>\')+\'<br><span class=pill>needs matching/reconciliation: </span><span class=\'+(c.matcher?"y":"n")+\'>\'+(c.matcher?"yes":"no")+\'</span><br><span class=pill>checks before saving: \'+c.guards+\' \\u00b7 times used: \'+c.ops+\'</span></div>\';});}else if(n.kind==="master"){h+=\'<div class=k>what the system does here</div><div class=row class=n>a reference list — looked up by the documents, no workflow of its own</div>\';}',
+' if(LIN&&LIN.litNodes&&LIN.litNodes.indexOf(id)>=0)h+=\'<button class=tracebtn onclick="window.setTrace(true)">\\u25b8 trace this record\\u2019s flow</button>\';',
 ' var runs=(n.cells||[]).reduce(function(s,c){return s+(c.ops||0);},0);focusId=id;pushBar(id,fname(id),h,runs);draw();}',
 'function clearFocus(){if(focusId){focusId=null;draw();}}',
 '// ── the RECENT stack: each look-up drops a collapsible bar (accordion); swipe or \\u2715 to dismiss. The',
@@ -461,18 +482,31 @@ var VIEWER_JS = [
 'document.getElementById("about").innerHTML=ABOUT;',
 'document.getElementById("aboutBtn").addEventListener("click",function(){document.getElementById("about").classList.toggle("open");});',
 '// ── Phase 2a: LINEAGE TRACE (GLASSBOWL_DOSSIER \\u00a72a, W-LIFECYCLE) — light a real record\\u2019s whole life ──',
-'var LIN=G.lineage||null,traceMode=false,litN={},xchecked=false;',
-'if(LIN){LIN.chain.forEach(function(c){if(c.id!=null)litN[c.table]=1;});}',
+'var LIN=G.lineage||null,traceMode=false,litN={},xchecked=false,GDB=null,recMap={},curChain=(LIN?LIN.chain:[]);',
+'function rebuildLit(){litN={};curChain.forEach(function(c){if(c.id!=null)litN[c.table]=1;});}rebuildLit();',
 'function litNode(id){return traceMode&&!!litN[id];}',
 'function litEdge(e){return traceMode&&litN[e.from]&&litN[e.to]&&(e.kind==="derivation"||e.kind==="settlement");}',
 'function fmtAmt(a){return a==null?"":" <span class=amt>("+Number(a).toFixed(2)+")</span>";}',
-'function buildStrip(){var s=document.getElementById("strip");if(!LIN){s.innerHTML="<span class=pill>no lineage in data</span>";return;}var h="<span class=ttl>this record\\u2019s life:</span>";LIN.chain.forEach(function(c,i){if(i)h+=\'<span class=arr>\\u25b8</span>\';var who=c.documentno!=null?"#"+c.documentno:"#"+c.id;h+=\'<span class=step data-t="\'+c.table+\'"><b>\'+(c.friendly||c.table)+\'</b> \'+who+fmtAmt(c.amount)+\'</span>\';});h+=\'<span class=xx id=stripX title="exit trace">\\u2715</span>\';s.innerHTML=h;Array.prototype.forEach.call(s.querySelectorAll(".step"),function(elm){elm.addEventListener("click",function(){pick(elm.getAttribute("data-t"));});});document.getElementById("stripX").addEventListener("click",function(){setTrace(false);});}',
-'function setTrace(on){if(on)focusId=null;traceMode=on;document.getElementById("strip").classList.toggle("open",on);document.getElementById("traceBtn").classList.toggle("active",on);if(on)buildStrip();draw();if(on)ensureXcheck();}',
+'function buildStrip(){var s=document.getElementById("strip");if(!curChain.length){s.innerHTML="<span class=pill>no record traced</span>";return;}var h="<span class=ttl>this record\\u2019s life:</span>";curChain.forEach(function(c,i){if(i)h+=\'<span class=arr>\\u25b8</span>\';var who=c.id==null?"\\u2014":(c.documentno!=null?"#"+c.documentno:"#"+c.id);h+=\'<span class=step data-t="\'+c.table+\'"><b>\'+(c.friendly||c.table)+\'</b> \'+who+fmtAmt(c.amount)+\'</span>\';});h+=\'<span class=xx id=stripX title="exit trace">\\u2715</span>\';s.innerHTML=h;Array.prototype.forEach.call(s.querySelectorAll(".step"),function(elm){elm.addEventListener("click",function(){pick(elm.getAttribute("data-t"));});});document.getElementById("stripX").addEventListener("click",function(){setTrace(false);});}',
+'function applyChain(ch){curChain=ch;rebuildLit();buildStrip();draw();}',
+'function setTrace(on){if(on)focusId=null;traceMode=on;document.getElementById("strip").classList.toggle("open",on);var rw=document.getElementById("recwrap");if(rw)rw.classList.toggle("open",on);document.getElementById("traceBtn").classList.toggle("active",on);if(on){if(!curChain.length&&LIN)curChain=LIN.chain;rebuildLit();buildStrip();}draw();if(on)ensureXcheck();}',
 'document.getElementById("traceBtn").addEventListener("click",function(){setTrace(!traceMode);});',
-'// lazy cross-check: load the sql.js data bundle in-browser, re-run the SAME walk, prove it agrees.',
-'// graceful — wrapped so a missing asset (file:// / offline) never breaks the trace (browser-first).',
+'// load the sql.js bundle ONCE, retain it (GDB) for the xcheck AND the record search.',
+'function withBundle(cb){if(GDB){cb(GDB);return;}try{var sc=document.createElement("script");sc.src="sqljs/sql-wasm.js";sc.onload=function(){if(!window.initSqlJs){xcDone("skip=no-initSqlJs");return;}window.initSqlJs({locateFile:function(f){return "sqljs/"+f;}}).then(function(SQL){return fetch("glassbowl_data.db").then(function(r){return r.arrayBuffer();}).then(function(buf){GDB=new SQL.Database(new Uint8Array(buf));cb(GDB);});}).catch(function(e){xcDone("error="+e.message);});};sc.onerror=function(){xcDone("skip=no-sqljs-asset");};document.head.appendChild(sc);}catch(e){xcDone("error="+e.message);}}',
+'// walk the bundle for ANY seed order, using the declarative LIN.steps (dep=seed|prior table) — extract.',
+'function walkBundle(db,seed){var got={},chain=[];LIN.steps.forEach(function(s){var pid=s.dep==="seed"?seed:(got[s.dep]?got[s.dep].id:null),row=null;if(pid!=null){var res=db.exec(s.base+pid+s.order);if(res.length&&res[0].values.length){var cols=res[0].columns,v=res[0].values[0],o={};cols.forEach(function(c,i){o[c]=v[i];});row=o;}}if(row){got[s.table]=row;chain.push({table:s.table,friendly:s.friendly,id:row.id,documentno:row.documentno==null?null:row.documentno,amount:row.amount==null?null:row.amount});}else chain.push({table:s.table,friendly:s.friendly,id:null,documentno:null,amount:null});});return chain;}',
 'function xcDone(msg){console.log("\\u00a7LIFECYCLE-XCHECK "+msg);window.__xchecked=true;}',
-'function ensureXcheck(){if(xchecked||!LIN||!LIN.walk)return;xchecked=true;try{var sc=document.createElement("script");sc.src="sqljs/sql-wasm.js";sc.onload=function(){if(!window.initSqlJs){xcDone("skip=no-initSqlJs");return;}window.initSqlJs({locateFile:function(f){return "sqljs/"+f;}}).then(function(SQL){return fetch("glassbowl_data.db").then(function(r){return r.arrayBuffer();}).then(function(buf){var db=new SQL.Database(new Uint8Array(buf));var ok=true,parts=[];LIN.chain.forEach(function(c){var sql=LIN.walk[c.table],id=null;if(sql){var res=db.exec(sql);if(res.length&&res[0].values.length)id=res[0].values[0][0];}if(String(id)!==String(c.id))ok=false;parts.push(c.table+"#"+id);});db.close();xcDone("record="+LIN.record+" bundle=[ "+parts.join(" \\u2192 ")+" ] agree="+(ok?"Y":"N"));});}).catch(function(e){xcDone("error="+e.message);});};sc.onerror=function(){xcDone("skip=no-sqljs-asset");};document.head.appendChild(sc);}catch(e){xcDone("error="+e.message);}}',
-'window.setTrace=setTrace;',
-'applyT();draw();'
+'function ensureXcheck(){if(xchecked||!LIN||!LIN.steps)return;xchecked=true;withBundle(function(db){var bw=walkBundle(db,LIN.seed),ok=true,parts=[];LIN.chain.forEach(function(c,i){if(String(bw[i].id)!==String(c.id))ok=false;parts.push(c.table+"#"+bw[i].id);});xcDone("record="+LIN.record+" bundle=[ "+parts.join(" \\u2192 ")+" ] agree="+(ok?"Y":"N"));populateRecs(db);if(pendingSeed!=null){applyChain(walkBundle(db,pendingSeed));pendingSeed=null;}});}',
+'// the SEARCH control: a datalist of real orders (documentno) from the bundle; pick \\u2192 trace it in-browser.',
+'function populateRecs(db){try{var dl=document.getElementById("reclist");if(!dl||dl.childElementCount)return;var res=db.exec("SELECT documentno, c_order_id FROM c_order ORDER BY documentno");if(!res.length)return;res[0].values.forEach(function(v){var dn=String(v[0]);recMap[dn]=v[1];var o=document.createElement("option");o.value=dn;dl.appendChild(o);});window.__recs=Object.keys(recMap).length;}catch(e){}}',
+'function doSearch(){var inp=document.getElementById("recsearch"),dn=inp.value.trim();if(!dn)return;var oid=recMap[dn];if(oid==null||!GDB){inp.style.borderColor="#e2574c";return;}inp.style.borderColor="";applyChain(walkBundle(GDB,oid));}',
+'(function(){var inp=document.getElementById("recsearch");if(inp){inp.addEventListener("change",doSearch);inp.addEventListener("keydown",function(e){if(e.key==="Enter")doSearch();});}})();',
+'window.setTrace=setTrace;window.applyChain=applyChain;window.doSearch=doSearch;',
+'// ── SCENE PERSISTENCE: the screen survives a hard refresh, so you continue exactly where you left',
+'//    off \\u2014 no re-login, no hunting \\u201crecent changes\\u201d. Saved on unload, restored on load (localStorage). ──',
+'var pendingSeed=null,SKEY="glassbowl.scene";',
+'function save(){try{var bars=[];Array.prototype.forEach.call(STACK.children,function(b){bars.push({id:b.getAttribute("data-id"),col:b.classList.contains("col")});});localStorage.setItem(SKEY,JSON.stringify({yaw:yaw,pitch:pitch,px:px,py:py,k:k,pw:(window.__pw||null),col:document.getElementById("wrap").classList.contains("collapsed"),focus:focusId,trace:traceMode,seed:(traceMode&&curChain[0]?curChain[0].id:null),pos:N.map(function(n){return [Math.round(n.x),Math.round(n.y)];}),bars:bars}));}catch(e){}}',
+'function loadState(){try{var s=JSON.parse(localStorage.getItem(SKEY)||"null");if(!s)return;if(s.pos&&s.pos.length===N.length)N.forEach(function(n,i){n.x=s.pos[i][0];n.y=s.pos[i][1];});if(s.pw){document.documentElement.style.setProperty("--pw",s.pw+"px");window.__pw=s.pw;}if(s.col){document.getElementById("wrap").classList.add("collapsed");var pt=document.getElementById("panelToggle");if(pt)pt.textContent="\\u27e8";}if(s.bars&&s.bars.length){for(var i=s.bars.length-1;i>=0;i--){if(idx[s.bars[i].id]!=null)pick(s.bars[i].id);}Array.prototype.forEach.call(STACK.children,function(b){var f=null;s.bars.forEach(function(x){if(x.id===b.getAttribute("data-id"))f=x;});if(f&&f.col)b.classList.add("col");else b.classList.remove("col");});}yaw=s.yaw||0;pitch=s.pitch||0;px=s.px||0;py=s.py||0;k=s.k||1;window.__yaw=yaw;window.__pitch=pitch;focusId=s.focus||null;window.__restored=true;updateBall();if(s.trace){pendingSeed=(s.seed!=null&&LIN&&String(s.seed)!==String(LIN.seed))?s.seed:null;setTrace(true);}}catch(e){}}',
+'window.addEventListener("pagehide",save);window.addEventListener("beforeunload",save);',
+'loadState();applyT();draw();'
 ].join('\n');
