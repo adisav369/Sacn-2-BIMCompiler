@@ -2455,6 +2455,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-underlying-structure-an-appraisal-for-the-idempiere-mind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Underlying Structure — an appraisal for the iDempiere mind
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Underlying Structure — an appraisal for the iDempiere mind">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-one-sentence-thesis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The one-sentence thesis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-actually-collapses-and-why-an-ad-veteran-should-care" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What actually collapses (and why an AD veteran should care)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-is-more-than-a-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this is more than a port
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-discipline-that-makes-the-claim-trustworthy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The discipline that makes the claim trustworthy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proven-vs-parked-no-overclaim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proven vs. parked (no overclaim)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#0-storage-model-decision-2026-05-29-chosen-path-c-the-bridge" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4713,6 +4785,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-underlying-structure-an-appraisal-for-the-idempiere-mind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Underlying Structure — an appraisal for the iDempiere mind
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Underlying Structure — an appraisal for the iDempiere mind">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-one-sentence-thesis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The one-sentence thesis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-actually-collapses-and-why-an-ad-veteran-should-care" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What actually collapses (and why an AD veteran should care)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-is-more-than-a-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this is more than a port
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-discipline-that-makes-the-claim-trustworthy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The discipline that makes the claim trustworthy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#proven-vs-parked-no-overclaim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proven vs. parked (no overclaim)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#0-storage-model-decision-2026-05-29-chosen-path-c-the-bridge" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5815,6 +5959,95 @@ via sql.js, parsed by a JavaScript AD renderer.</p>
 <p><strong>This has never been done.</strong> And it's the natural culmination of Spatial ERP
 OOTB — the construction POC (C_Project) is just one menu node in the full
 AD tree.</p>
+<hr />
+<h2 id="the-underlying-structure-an-appraisal-for-the-idempiere-mind">The Underlying Structure — an appraisal for the iDempiere mind<a class="headerlink" href="#the-underlying-structure-an-appraisal-for-the-idempiere-mind" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><em>If you come from iDempiere, you already believe the radical half of this idea.</em>
+The AD is the proof: a window, a tab, a field, a validation rule, a menu — none
+are code, all are <strong>rows</strong>. "The application is data" is not our claim; it is
+iDempiere's, and it is why AD-driven ERP won. What follows is an honest read of
+what this project does <strong>differently</strong>, why it matters, and what is proven vs. parked.</p>
+</blockquote>
+<h3 id="the-one-sentence-thesis">The one-sentence thesis<a class="headerlink" href="#the-one-sentence-thesis" title="Permanent link">&para;</a></h3>
+<p>iDempiere made the <strong>UI</strong> data and left the <strong>engine</strong> as code (the <code>M*</code> model
+classes, doc processors, callouts, the workflow/accounting/costing engines, OSGi).
+This project pushes the <em>same bet one layer deeper</em>: <strong>the engine becomes data too</strong>
+— the document lifecycle, the matchers, the accounting postings, even <em>where the
+work concentrates</em> — extracted into a structure small enough to render, run, replay,
+and explain <strong>itself</strong> in a browser, with <strong>zero hand-authored glue</strong> (the
+extract-only rule, §0.1). Glassbowl is that structure made visible.</p>
+<h3 id="what-actually-collapses-and-why-an-ad-veteran-should-care">What actually collapses (and why an AD veteran should care)<a class="headerlink" href="#what-actually-collapses-and-why-an-ad-veteran-should-care" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>In iDempiere you know…</th>
+<th>…here it becomes</th>
+<th>The merit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>~925 tables</strong>, each an <code>M*</code> class</td>
+<td>a <strong>5-table runtime</strong> (<code>containers</code>, <code>items</code>, <code>documents</code>, <code>document_lines</code>, <code>journal</code>) + a <code>doc_type</code> discriminator (§0)</td>
+<td>one storage shape the whole catalogue maps onto — <strong>98.4 % of business edges mappable, hub <code>C_Order</code> still #1</strong> (witness §5TBL). The schema stops growing with the feature list.</td>
+</tr>
+<tr>
+<td><strong><code>completeIt()</code> across dozens of models</strong></td>
+<td>a handful of <strong>pure verbs</strong> <code>(doc,ctx)→ops[]</code> — <code>completeOrder</code>, <code>createShipment</code>, <code>createInvoice</code>, <code>allocate</code>, <code>match</code></td>
+<td>the O2C / P2P / GL verticals reproduce the <strong>GardenWorld oracle exactly</strong> (§VERTICAL, §ORACLE-SUITE) — and the long-tail document ships <strong>matcher-free</strong>, the matcher <em>composing in</em> only at the buyer-reconciliation gate (§0.19). Less engine, not more.</td>
+</tr>
+<tr>
+<td><strong>Modules you install &amp; activate</strong></td>
+<td><strong>hot vs. cold cells</strong> of a <code>(doc_type × doc_status)</code> grid; 155 stay dormant</td>
+<td>"the whole platform is already here, dormant — it turns on the moment you use it." Nothing to install; <strong>op-log gravity self-ranks</strong> where the work really is (<code>C_Invoice</code> #1 = the settlement spine, §0.13/§14).</td>
+</tr>
+<tr>
+<td><strong>9,423 foreign keys</strong></td>
+<td><strong>4 structural roles</strong> — containment / derivation / settlement / reference (the "two spines")</td>
+<td>the map reads at a glance: green <strong>derivation</strong> = the easy everyday O2C flow; red <strong>settlement</strong> = matching &amp; reconciliation, where money — and mistakes — concentrate. Classification is <strong>derived, 0 hand-authored</strong> (witness §GLASSBOWL).</td>
+</tr>
+<tr>
+<td><strong>AD_ChangeLog + an audit trail bolted on</strong></td>
+<td><strong><code>kernel_ops</code></strong> — every state change a rich op (payload + actor + <strong>before/after</strong> + lineage), replayable</td>
+<td>the audit log <strong>is</strong> the source of truth: replay rebuilds the projection from the op-log alone (hash-match). History, undo-preview, and the future write-loop all read the <em>same</em> log.</td>
+</tr>
+<tr>
+<td><strong>Two logins</strong> — System Admin (the dictionary) vs. a client like GardenWorld (the rows)</td>
+<td><strong>one canvas</strong> — the §0.18b duality fused</td>
+<td>click the <code>C_Invoice</code> <em>type-cell</em> (admin view) and its real invoices (<code>#200001 = $100.70</code>) surface right there (operator view). The <strong>trace</strong> is where the two layers meet: a type-level FK spine lit by one instance's journey. No tab-switching, no second login.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="why-this-is-more-than-a-port">Why this is more than a port<a class="headerlink" href="#why-this-is-more-than-a-port" title="Permanent link">&para;</a></h3>
+<p>A port would re-skin the 925 tables in a browser. This <strong>re-bases</strong> them. The merit
+is not "iDempiere without a JVM" (though it is also that — SQLite WASM, sql.js, no
+PostgreSQL/OSGi/server); it is that the engine is now <strong>inspectable as data</strong>, so it
+can do the things a code-engine structurally resists: surface <em>everything about one
+entity in one place</em>; ship <em>dormant and self-activating</em>; <strong>draw its own map</strong> of
+where value and risk pool; and — the parked endgame — let you <strong>edit a rule and watch
+the affected records flip on that map</strong> (the diff-oracle in the browser, §2d-3). That
+last step turns the map of the engine into the <em>console you run the engine from</em>.</p>
+<h3 id="the-discipline-that-makes-the-claim-trustworthy">The discipline that makes the claim trustworthy<a class="headerlink" href="#the-discipline-that-makes-the-claim-trustworthy" title="Permanent link">&para;</a></h3>
+<p>The same instinct AD embodies — <em>don't write what you can declare</em> — is taken to its
+limit here as <strong>EXTRACT OR COMPILE ONLY</strong>: every node, edge, rule, row, op, and even
+the sound-pitch and depth-plane is <strong>read</strong> from <code>ad_full.db</code> / <code>erp_rules.db</code> /
+<code>kernel_ops</code>, never invented. A value with no source is a <strong>logged finding, not a
+guess</strong> (e.g. GL <code>fact_acct=0</code> → the Accounting view says <em>"not posted in this
+dataset,"</em> it never fakes a posting). This is why the demo is sticky: <em>it isn't a
+mockup — the thing renders and explains itself, live, from its own data.</em></p>
+<h3 id="proven-vs-parked-no-overclaim">Proven vs. parked (no overclaim)<a class="headerlink" href="#proven-vs-parked-no-overclaim" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Proven, witnessed:</strong> AD→manifest compile; the 5-table bridge (§5TBL); the
+  diff-verified O2C/P2P/GL verticals + matcher-free long-tail (§0.17–§0.19); the
+  runtime kernel + replay (§0.16); Glassbowl rendering the engine from data alone,
+  with the lifecycle trace, dossier, real rows, and op-log History (§GLASSBOWL).</li>
+<li><strong>Parked behind T3 (write-loop, <code>push=live</code>, explicit go):</strong> editing rules/records
+  in place, the live rule-impact preview, the on-screen keyboard / view-back input.
+  Today's surface is <strong>read-only</strong>; the greyed CRUD and the History undo-preview are
+  the honest <em>seam</em> to that next step, not the step itself.</li>
+</ul>
+<p><em>Read on for the storage decision (§0), the cell model, the kernel, and the
+diff-oracle that holds it all to the GardenWorld truth.</em></p>
 <hr />
 <h2 id="0-storage-model-decision-2026-05-29-chosen-path-c-the-bridge">§0. Storage Model Decision (2026-05-29) — chosen path: (c) The Bridge<a class="headerlink" href="#0-storage-model-decision-2026-05-29-chosen-path-c-the-bridge" title="Permanent link">&para;</a></h2>
 <p><strong>Chosen:</strong> 5-table runtime (<code>containers</code>, <code>items</code>, <code>documents</code>, <code>document_lines</code>,

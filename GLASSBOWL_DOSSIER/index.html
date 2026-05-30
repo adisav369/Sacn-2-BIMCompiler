@@ -3813,6 +3813,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#task-6-qr-camera-input-that-is-a-new-one-user-2026-05-30-witness-w-qr-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 6 — QR camera input ("that is a new one", user 2026-05-30). Witness W-QR-INPUT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-360-model-users-framing-2026-05-30-the-canonical-description" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4154,6 +4165,21 @@ sounds on interactions: bubble pick (soft tick), bar drop-in (whoosh), trace flo
 - <strong>Acceptance:</strong> a persisted mute toggle exists; pick/trace schedule a WebAudio gain node (assert
   <code>AudioContext</code> created + a node scheduled); mute silences scheduling; first-gesture unlock works. Pure UI,
   no data writes, no T3. Runs as a sequential follow-on (same shared file) after Task 4.</p>
+<h3 id="task-6-qr-camera-input-that-is-a-new-one-user-2026-05-30-witness-w-qr-input">Task 6 — QR camera input ("that is a new one", user 2026-05-30). Witness <strong>W-QR-INPUT</strong><a class="headerlink" href="#task-6-qr-camera-input-that-is-a-new-one-user-2026-05-30-witness-w-qr-input" title="Permanent link">&para;</a></h3>
+<p>The input panel gains a <strong>camera/QR affordance</strong> — another <strong>no-typing, pointer-free</strong> input (the same thread as
+the swipe-picker + on-screen keyboard). <strong>Mobile:</strong> open the camera to <strong>scan a QR</strong>. <strong>Desktop:</strong> use the
+webcam to read a QR <strong>flashed at it</strong> (hold a phone/printed badge up to the cam). Use case: a printed invoice's
+QR → instantly <strong>opens that record's dossier / traces its flow</strong> (scan-to-find), no documentno typed.
+- <strong>Tech:</strong> <code>getUserMedia</code> for the video stream + the <strong>native <code>BarcodeDetector</code> API</strong> to decode QR — <strong>zero
+  external libs</strong> where supported (Chrome/Edge/Android), keeping the viewer self-contained; honest <em>"QR scan not
+  supported on this browser"</em> fallback (never a broken-silent feature). NO bundled jsQR asset unless we accept it.
+- <strong>Permissions/mobile:</strong> camera needs a user-gesture + permission prompt; handle deny gracefully
+  ([[feedback_mobile_events]]). Stop the stream when the panel closes (no hot camera left running).
+- <strong>Gate split:</strong> <strong>read-only slice buildable now</strong> — scan a QR carrying a record id/documentno → <strong>trace / open
+  dossier</strong> (pure-read lookup). <strong>T3 / parked</strong> — scan a QR to <strong>fill an edit value</strong> (write loop, greyed until go).
+- <strong>Acceptance:</strong> a QR/cam affordance in the input panel requests the camera on tap; a decoded payload matching a
+  bundle record opens its trace/dossier; unsupported browser shows the honest fallback; closing the panel stops
+  the stream. Pure-read for the lookup slice; no data writes.</p>
 <h3 id="the-360-model-users-framing-2026-05-30-the-canonical-description">The 360° model (user's framing, 2026-05-30) — the canonical description<a class="headerlink" href="#the-360-model-users-framing-2026-05-30-the-canonical-description" title="Permanent link">&para;</a></h3>
 <p><strong>The page is a 360° view of records.</strong> The <strong>bubbles are the type / SystemAdmin layer</strong> — relationships
 (FK graph) and rules (validation/workflow/columns), the <em>dictionary</em> an admin traces. The <strong>right panel
