@@ -177,16 +177,17 @@ var yaw=0,pitch=0;window.__yaw=0;window.__pitch=0;
 // bubbles space out and the edges un-bunch. orbitAmt drives the morph t; at rest t=0 \u2192 identity preserved.
 var CX=N.reduce(function(s,n){return s+n.x;},0)/N.length,CY=N.reduce(function(s,n){return s+n.y;},0)/N.length;
 var ZMAX=Math.max(1,Math.max.apply(null,N.map(function(n){return Math.abs(n.z||0);})));
-// the TIDY MATRIX target (gx,gy) per node: BFS-order from the busiest hubs so CONNECTED bubbles land in
-// adjacent grid cells \u2192 edges stay short + un-bunched; grid is sized larger than the blob so balls space out.
-(function computeTidy(){var deg={},adj={};E.forEach(function(e){deg[e.from]=(deg[e.from]||0)+1;deg[e.to]=(deg[e.to]||0)+1;(adj[e.from]=adj[e.from]||[]).push(e.to);(adj[e.to]=adj[e.to]||[]).push(e.from);});
- var order=[],seen={},starts=N.slice().sort(function(a,b){return (deg[b.id]||0)-(deg[a.id]||0);});
- starts.forEach(function(s){if(seen[s.id])return;var q=[s.id];seen[s.id]=1;while(q.length){var id=q.shift();order.push(id);(adj[id]||[]).slice().sort(function(a,b){return (deg[b]||0)-(deg[a]||0);}).forEach(function(m){if(!seen[m]){seen[m]=1;q.push(m);}});}});
- var xs=N.map(function(n){return n.x;}),ys=N.map(function(n){return n.y;});
- var spanX=Math.max.apply(null,xs)-Math.min.apply(null,xs),spanY=Math.max.apply(null,ys)-Math.min.apply(null,ys);
- var C=Math.ceil(Math.sqrt(order.length)),rows=Math.ceil(order.length/C);
+// the TIDY MATRIX target (gx,gy): the balls SORT THEMSELVES to minimise line-bunching \u2014 snap to a grid by
+// organic position, then run BARYCENTER sweeps (each node eases to the avg grid-cell of its neighbours) so
+// connected bubbles cluster and edges shorten/uncross. Grid is sized larger than the blob so balls space out.
+(function computeTidy(){var adj={};E.forEach(function(e){(adj[e.from]=adj[e.from]||[]).push(e.to);(adj[e.to]=adj[e.to]||[]).push(e.from);});
+ var nodes=N.slice(),C=Math.ceil(Math.sqrt(nodes.length)),rows=Math.ceil(nodes.length/C);
+ function assign(){var by=nodes.slice().sort(function(a,b){return a._oy-b._oy||a._ox-b._ox;});for(var r=0;r<rows;r++){by.slice(r*C,(r+1)*C).sort(function(a,b){return a._ox-b._ox;}).forEach(function(n,c){n._col=c;n._row=r;});}}
+ nodes.forEach(function(n){n._ox=n.x;n._oy=n.y;});assign();
+ for(var s=0;s<12;s++){nodes.forEach(function(n){var nb=adj[n.id]||[],sx=0,sy=0,k=0;nb.forEach(function(m){var mn=N[idx[m]];if(mn&&mn._col!=null){sx+=mn._col;sy+=mn._row;k++;}});n._ox=k?sx/k:n._col;n._oy=k?sy/k:n._row;});assign();}
+ var xs=N.map(function(n){return n.x;}),ys=N.map(function(n){return n.y;}),spanX=Math.max.apply(null,xs)-Math.min.apply(null,xs),spanY=Math.max.apply(null,ys)-Math.min.apply(null,ys);
  var cellX=Math.max(82,1.35*spanX/Math.max(1,C-1)),cellY=Math.max(76,1.2*spanY/Math.max(1,rows-1));
- order.forEach(function(id,i){var col=i%C,row=Math.floor(i/C),n=N[idx[id]];n.gx=CX+(col-(C-1)/2)*cellX;n.gy=CY+(row-(rows-1)/2)*cellY;});})();
+ nodes.forEach(function(n){n.gx=CX+(n._col-(C-1)/2)*cellX;n.gy=CY+(n._row-(rows-1)/2)*cellY;});})();
 function orbitAmt(){return Math.min(1,Math.abs(Math.sin(yaw))+Math.abs(Math.sin(pitch)));}
 // orthographic projection (yaw about Y, then pitch about X). At yaw=pitch=0 it is the IDENTITY on x,y —
 // the planes collapse head-on, so the at-rest bowl is PIXEL-IDENTICAL to the flat static layout.
