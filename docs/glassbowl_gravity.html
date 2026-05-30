@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<!--
+  Glassbowl · Gravity — a focused concept demo (NOT glassbowl.html; that one stays untouched).
+  Three knobs: PIVOT lens · MEASURE (gravity) · AD↔GW depth dial.
+  EVERY number is a live GROUP BY over the 8 real GardenWorld orders extracted from
+  build/erp/glassbowl_data.db on 2026-05-30. 0 invented. Tables/values not carried say so.
+  Chain lights exactly as far as the FKs link it (80001 → allocation; others stop at invoice).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Glassbowl · Gravity</title>
+<style>
+  :root{
+    --bg0:#0b0f17; --bg1:#060810; --ink:#cdd6e4; --dim:#6c7a90; --line:#1c2433;
+    --flow:#5ad07f; --settle:#f2b85a; --vendor:#5aa9e0; --cust:#5ad07f; --accent:#56d6e0;
+    --panel:rgba(14,20,32,.92);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%; overflow:hidden; background:radial-gradient(120% 100% at 50% 30%, var(--bg0), var(--bg1) 80%); color:var(--ink); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  #bowl{position:fixed; inset:0; width:100%; height:100%; touch-action:none}
+  .edge{stroke-width:1.5; fill:none; opacity:.5}
+  .node circle{cursor:pointer; transition:filter .2s}
+  .node text{pointer-events:none; text-anchor:middle; dominant-baseline:middle; font-weight:600}
+  .node .nm{fill:var(--ink)}
+  .node .sub{fill:var(--dim); font-weight:500}
+  .node:hover circle{filter:brightness(1.25)}
+
+  /* top: lens + measure */
+  #top{position:fixed; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:18px; align-items:center; z-index:5; flex-wrap:wrap; justify-content:center; max-width:96vw}
+  .grp{display:flex; gap:6px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:5px 8px; backdrop-filter:blur(6px)}
+  .grp .lbl{color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.08em; padding:0 6px}
+  .chip{border:0; background:transparent; color:var(--dim); padding:6px 12px; border-radius:16px; cursor:pointer; font:inherit; font-weight:600; transition:.15s}
+  .chip:hover{color:var(--ink)}
+  .chip.on{background:var(--accent); color:#04121a; box-shadow:0 0 16px -2px var(--accent)}
+
+  /* depth dial (right) */
+  #dial{position:fixed; right:18px; top:50%; transform:translateY(-50%); height:54vh; width:64px; display:flex; flex-direction:column; align-items:center; z-index:5}
+  #track{position:relative; flex:1; width:6px; background:linear-gradient(var(--line),#0c1420); border-radius:3px; margin:8px 0}
+  #ball{position:absolute; left:50%; width:34px; height:34px; margin-left:-17px; border-radius:50%; cursor:grab; touch-action:none;
+        background:radial-gradient(circle at 35% 30%, #b9f0ff, var(--accent) 60%, #1c6b7a);
+        box-shadow:0 0 22px -2px var(--accent), inset 0 0 8px rgba(255,255,255,.4); transition:box-shadow .2s}
+  #ball:active{cursor:grabbing}
+  .dl{font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.06em; text-align:center; line-height:1.2}
+  .dl b{display:block; color:var(--ink); font-size:11px}
+  #dlTop,#dlBot{height:30px; display:flex; align-items:center}
+
+  /* lifecycle strip (bottom) */
+  #strip{position:fixed; left:50%; bottom:0; transform:translateX(-50%) translateY(110%); display:flex; gap:0; align-items:stretch; background:var(--panel); border:1px solid var(--line); border-bottom:0; border-radius:14px 14px 0 0; padding:10px 14px; z-index:6; transition:transform .35s cubic-bezier(.2,.8,.2,1); max-width:96vw; overflow-x:auto}
+  #strip.on{transform:translateX(-50%) translateY(0)}
+  .step{display:flex; align-items:center; gap:10px; padding:2px 4px}
+  .step .dot{width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-weight:700; color:#04121a; flex:0 0 auto}
+  .step .meta{white-space:nowrap}
+  .step .t{font-size:11px; color:var(--dim)}
+  .step .v{font-weight:700}
+  .arrow{align-self:center; color:var(--dim); padding:0 4px; font-size:18px}
+  .stop{align-self:center; color:var(--settle); font-size:11px; padding:0 8px; max-width:120px; white-space:normal; line-height:1.2}
+  #stripClose{align-self:center; margin-left:8px; border:0; background:transparent; color:var(--dim); font-size:20px; cursor:pointer}
+
+  /* floating dossier card */
+  #card{position:fixed; z-index:7; width:230px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; backdrop-filter:blur(8px); box-shadow:0 10px 40px -8px #000; display:none}
+  #card h3{margin:0 0 2px; font-size:15px}
+  #card .who{color:var(--dim); font-size:12px; margin-bottom:8px}
+  #card .row{display:flex; justify-content:space-between; padding:3px 0; border-top:1px solid var(--line); font-size:13px}
+  #card .row span:first-child{color:var(--dim)}
+  #card .act{margin-top:10px; display:flex; gap:6px; flex-wrap:wrap}
+  #card .b{border:1px solid var(--line); background:#0e1626; color:var(--ink); border-radius:8px; padding:6px 10px; cursor:pointer; font:inherit; font-weight:600; font-size:12px}
+  #card .b.go{border-color:var(--accent); color:var(--accent)}
+  #card .b.off{opacity:.4; cursor:not-allowed}
+
+  /* footer provenance */
+  #foot{position:fixed; left:12px; bottom:10px; color:var(--dim); font-size:11px; z-index:5; max-width:48vw}
+  #foot b{color:var(--flow)}
+  #title{position:fixed; left:14px; top:12px; z-index:5; font-weight:800; letter-spacing:.02em; font-size:16px}
+  #title small{color:var(--dim); font-weight:500; font-size:11px; display:block; letter-spacing:0}
+  #hint{position:fixed; left:50%; bottom:14px; transform:translateX(-50%); color:var(--dim); font-size:12px; z-index:4; text-align:center; pointer-events:none; transition:opacity .4s}
+</style>
+</head>
+<body>
+<svg id="bowl"></svg>
+
+<div id="title">Glassbowl · Gravity<small>GardenWorld — engine presenting itself</small></div>
+
+<div id="top">
+  <div class="grp"><span class="lbl">Pivot</span>
+    <button class="chip on" data-lens="partner">Partner</button>
+    <button class="chip" data-lens="month">Month</button>
+    <button class="chip" data-lens="status">Status</button>
+    <button class="chip" data-lens="type">Type</button>
+  </div>
+  <div class="grp"><span class="lbl">Gravity</span>
+    <button class="chip" data-measure="count"># count</button>
+    <button class="chip on" data-measure="value">$ value</button>
+  </div>
+</div>
+
+<div id="dial">
+  <div id="dlTop" class="dl"><div><b>Lines</b>detail</div></div>
+  <div id="track"><div id="ball"></div></div>
+  <div id="dlBot" class="dl"><div><b>Dictionary</b>AD model</div></div>
+</div>
+
+<div id="strip"></div>
+
+<div id="card"></div>
+
+<div id="foot">Every number is a live <b>GROUP BY</b> over 8 real GardenWorld orders ·
+  <span id="prov">extracted from glassbowl_data.db · 0 invented</span></div>
+<div id="hint">drag the <b>gravity ball</b> ↑ down to the AD dictionary · up into a record's lines &nbsp;·&nbsp; tap a bubble</div>
+
+<script>
+"use strict";
+/* ── REAL DATA (extracted 2026-05-30 from build/erp/glassbowl_data.db) ───────────── */
+const ORDERS = [
+  {no:'800000', typ:'PO', partner:'Tree Farm Inc.',   st:'CO', total:3657.50, dt:'2003-01-22'},
+  {no:'800001', typ:'PO', partner:'Seed Farm Inc.',   st:'CO', total:2895.55, dt:'2003-01-22'},
+  {no:'800002', typ:'PO', partner:'Patio Fun, Inc.',  st:'CO', total:2160.00, dt:'2003-01-22'},
+  {no:'8000',   typ:'PO', partner:'Tree Farm Inc.',   st:'CO', total:660.00,  dt:'2002-02-22'},
+  {no:'60000',  typ:'SO', partner:'Joe Block',        st:'CO', total:228.85,  dt:'2003-11-01'},
+  {no:'80002',  typ:'SO', partner:'C&W Construction', st:'CL', total:161.12,  dt:'2002-08-01'},
+  {no:'80001',  typ:'SO', partner:'Standard',         st:'CO', total:100.70,  dt:'2002-02-22'},
+  {no:'80000',  typ:'SO', partner:'Standard',         st:'CO', total:50.35,   dt:'2002-02-22'},
+];
+// order lines (all 27 real rows), keyed by order documentno
+const LINES = {
+  '60000':[['Azalea Bush',10,215.90]],
+  '8000':[['Oak Tree',10,360.00],['Plum Tree',10,300.00]],
+  '80000':[['Plum Tree',1,47.50]],
+  '80001':[['Plum Tree',2,95.00]],
+  '80002':[['Planting Service',1,42.75],['Plum Tree',1,47.50],['Oak Tree',1,61.75]],
+  '800000':[['Azalea Bush',15,356.25],['Elm Tree',15,855.00],['Holly Bush',10,380.00],['Oak Tree',15,926.25],['Plum Tree',12,570.00],['Rose Bush',20,570.00]],
+  '800001':[['Fertilizer #50',40,720.00],['Grass Seed Container',12,576.00],['Hoe 4 ft',20,255.00],['Mulch 10#',50,135.00],['Rake Bamboo',15,114.75],['Rake Metal',20,204.00],['Grass Seeder',8,204.00],['Lawn Tiller',12,357.00],['Transplanter',30,89.40],['Weeder',30,76.50]],
+  '800002':[['Patio Chair',30,1012.50],['Patio Table',12,810.00],['Patio Sun Screen',15,337.50]],
+};
+// lifecycle chain per SO — lights exactly as far as the FKs actually link (verified by join)
+const CHAINS = {
+  '60000':{steps:[['C_Order','60000',228.85,'flow'],['M_InOut','600003',null,'flow'],['C_Invoice','100000',228.85,'flow']], stop:'invoice unpaid — no payment FK in this dataset'},
+  '80000':{steps:[['C_Order','80000',50.35,'flow'],['M_InOut','600000',null,'flow'],['C_Invoice','200000',50.35,'flow']], stop:'paid, but payment not FK-linked by c_invoice_id here'},
+  '80001':{steps:[['C_Order','80001',100.70,'flow'],['M_InOut','600001',null,'flow'],['C_Invoice','200001',100.70,'flow'],['C_Payment','400000',98.50,'settle'],['C_AllocationLine','13208',98.50,'settle']], stop:null},
+  '80002':{steps:[['C_Order','80002',161.12,'flow'],['M_InOut','600002',null,'flow'],['C_Invoice','200002',161.12,'flow']], stop:'closed (CL) — invoice unpaid'},
+};
+// the AD dictionary spine (5 type cells) — what the engine IS, with its real population counts
+const SPINE = [
+  {id:'t_order', nm:'C_Order',          sub:'8 records',  kind:'flow'},
+  {id:'t_inout', nm:'M_InOut',          sub:'9 records',  kind:'flow'},
+  {id:'t_inv',   nm:'C_Invoice',        sub:'8 records',  kind:'flow'},
+  {id:'t_pay',   nm:'C_Payment',        sub:'2 records',  kind:'settle'},
+  {id:'t_alloc', nm:'C_AllocationLine', sub:'2 records',  kind:'settle'},
+];
+const NS='http://www.w3.org/2000/svg';
+const money=v=> v==null?'' : '$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const colorFor=k=> k==='settle'?'var(--settle)':k==='vendor'?'var(--vendor)':k==='cust'?'var(--cust)':k==='flow'?'var(--flow)':'var(--accent)';
+const isCust=p=> ORDERS.some(o=>o.partner===p && o.typ==='SO');
+console.log('§GRAVITY orders=%d lines-orders=%d chains=%d source=glassbowl_data.db hand=0',
+  ORDERS.length, Object.keys(LINES).length, Object.keys(CHAINS).length);
+
+/* ── ENGINE ──────────────────────────────────────────────────────────────────── */
+const bowl=document.getElementById('bowl');
+const gEdges=document.createElementNS(NS,'g'), gNodes=document.createElementNS(NS,'g');
+bowl.append(gEdges,gNodes);
+let W=0,H=0,cx=0,cy=0,Rmax=0;
+function resize(){ W=innerWidth; H=innerHeight; cx=W/2; cy=H*0.5; Rmax=Math.min(W,H)*0.34; bowl.setAttribute('viewBox',`0 0 ${W} ${H}`);}
+addEventListener('resize',()=>{resize();relayout();}); resize();
+
+const state={lens:'partner', measure:'value', depth:1, focusGroup:null, focusOrder:null};
+const live=new Map();           // id -> {el,circle,nm,sub, x,y,r, tx,ty,tr, op,top, kind, data}
+const measVal=o=> state.measure==='count'?1:o.total;
+
+/* group the 8 real orders by the chosen lens — a literal GROUP BY */
+function groups(){
+  const key={partner:o=>o.partner, type:o=>o.typ, status:o=>o.st, month:o=>o.dt.slice(0,7)}[state.lens];
+  const m=new Map();
+  for(const o of ORDERS){ const k=key(o); (m.get(k)||m.set(k,[]).get(k)).push(o); }
+  const out=[];
+  for(const [k,members] of m){
+    const mass=members.reduce((s,o)=>s+measVal(o),0);
+    let nm=k, kind='flow';
+    if(state.lens==='partner'){ kind=isCust(k)?'cust':'vendor'; }
+    if(state.lens==='type'){ nm=k==='SO'?'Sales':'Purchase'; kind=k==='SO'?'cust':'vendor'; }
+    if(state.lens==='status'){ nm=k==='CO'?'Completed':k==='CL'?'Closed':k; kind=k==='CO'?'flow':'settle'; }
+    out.push({id:'g_'+state.lens+'_'+k, nm, kind, mass, members,
+      sub:(members.length+' ord · '+money(members.reduce((s,o)=>s+o.total,0)))});
+  }
+  out.sort((a,b)=>b.mass-a.mass);
+  return out;
+}
+
+/* deterministic gravity placement: heaviest → biggest & nearest centre (golden-angle spiral) */
+function placeGravity(items, maxMass, cx0, cy0, spread){
+  const GA=2.39996323;
+  items.forEach((it,i)=>{
+    const mn=maxMass? it.mass/maxMass : 0;
+    it.tr=16+48*Math.sqrt(mn);
+    if(i===0 && items.length>1 && it._center){ it.tx=cx0; it.ty=cy0; return; }
+    const rad=spread*Math.sqrt(i+ (it._center?0:0.6));
+    const ang=i*GA;
+    it.tx=cx0+rad*Math.cos(ang);
+    it.ty=cy0+rad*Math.sin(ang);
+  });
+}
+
+/* build the desired node list for the current state */
+function desired(){
+  const d=Math.round(state.depth);
+  if(d===0){ // AD dictionary spine
+    const n=SPINE.length, gap=Math.min(W*0.17,180);
+    return SPINE.map((c,i)=>({id:c.id, nm:c.nm, sub:c.sub, kind:c.kind, tr:38,
+      tx:cx+(i-(n-1)/2)*gap, ty:cy, data:{spine:true}}));
+  }
+  if(d===2){ // dive into a record's real lines
+    const o=state.focusOrder || ORDERS[0];
+    const ls=LINES[o.no]||[];
+    const maxNet=Math.max(...ls.map(l=>l[2]),1);
+    const headR=40;
+    const items=ls.map((l,i)=>{ const mn=l[2]/maxNet;
+      return {id:'ln_'+o.no+'_'+i, nm:l[0], sub:l[1]+'× · '+money(l[2]), kind:'flow',
+        mass:l[2], tr:13+23*Math.sqrt(mn), data:{line:true}}; });
+    // sunflower spread sized to the bubbles so they never overlap (spacing ≈ bubble Ø)
+    const maxR=Math.max(...items.map(x=>x.tr),18);
+    const c=Math.max(2.4*maxR, Rmax*0.17), minRad=headR+maxR+14;
+    items.forEach((it,i)=>{ const ang=i*2.39996323;
+      const rad=Math.min(Math.max(minRad, c*Math.sqrt(i+0.7)), Rmax*0.96);
+      it.tx=cx+rad*Math.cos(ang); it.ty=cy+rad*Math.sin(ang); });
+    const head={id:'ln_head', nm:o.no, sub:ls.length+' lines · '+money(o.total),
+      kind:o.typ==='SO'?'cust':'vendor', tr:headR, tx:cx, ty:cy, data:{head:true}};
+    return [head,...items];
+  }
+  // d===1 : GW records pivot
+  const gs=groups();
+  const maxMass=Math.max(...gs.map(g=>g.mass),1);
+  if(state.focusGroup){
+    const g=gs.find(x=>x.id===state.focusGroup)||gs[0];
+    const head={id:g.id, nm:g.nm, sub:g.sub, kind:g.kind, tr:46, tx:cx, ty:cy, mass:g.mass, data:{group:true,g}};
+    const maxT=Math.max(...g.members.map(measVal),1);
+    const mem=g.members.map((o,i)=>{ const mn=measVal(o)/maxT;
+      const ang=i*2.39996323+0.6, rad=Rmax*(0.55+0.25*(1-mn));
+      return {id:'o_'+o.no, nm:o.no, sub:money(o.total), kind:o.typ==='SO'?'cust':'vendor',
+        tr:16+34*Math.sqrt(mn), tx:cx+rad*Math.cos(ang), ty:cy+rad*Math.sin(ang), data:{order:o}};});
+    return [head,...mem];
+  }
+  gs.forEach((g,i)=> g._center=(i===0));
+  placeGravity(gs, maxMass, cx, cy, Rmax*0.62);
+  return gs.map(g=>({id:g.id, nm:g.nm, sub:g.sub, kind:g.kind, tr:g.tr, tx:g.tx, ty:g.ty, mass:g.mass, data:{group:true,g}}));
+}
+
+/* diff desired into live DOM, ease toward targets */
+function relayout(){
+  const want=desired(); const wantIds=new Set(want.map(w=>w.id));
+  // edges: only spine (dict) gets FK lines
+  gEdges.textContent='';
+  if(Math.round(state.depth)===0){
+    for(let i=0;i<SPINE.length-1;i++){
+      const e=document.createElementNS(NS,'line'); e.setAttribute('class','edge');
+      e.setAttribute('stroke', colorFor(SPINE[i+1].kind));
+      e.dataset.a=SPINE[i].id; e.dataset.b=SPINE[i+1].id; gEdges.append(e);
+    }
+  }
+  for(const w of want){
+    let n=live.get(w.id);
+    if(!n){
+      const el=document.createElementNS(NS,'g'); el.setAttribute('class','node');
+      const c=document.createElementNS(NS,'circle');
+      const nm=document.createElementNS(NS,'text'); nm.setAttribute('class','nm');
+      const sub=document.createElementNS(NS,'text'); sub.setAttribute('class','sub');
+      el.append(c,nm,sub); gNodes.append(el);
+      n={el,c,nm,sub, x:cx,y:cy,r:0, op:0};
+      el.addEventListener('pointerdown',ev=>{ev.stopPropagation(); onPick(w.id);});
+      live.set(w.id,n);
+    }
+    Object.assign(n,{tx:w.tx,ty:w.ty,tr:w.tr,top:1, kind:w.kind, data:w.data});
+    n.nm.textContent=w.nm; n.sub.textContent=w.sub;
+    n.c.setAttribute('fill', colorFor(w.kind));
+    n.c.setAttribute('fill-opacity','.18'); n.c.setAttribute('stroke',colorFor(w.kind)); n.c.setAttribute('stroke-width','2');
+  }
+  for(const [id,n] of live){ if(!wantIds.has(id)){ n.tr=0; n.top=0; n._kill=true; } }
+}
+
+function tick(){
+  for(const [id,n] of live){
+    n.x+=(n.tx-n.x)*0.18; n.y+=(n.ty-n.y)*0.18; n.r+=(n.tr-n.r)*0.2; n.op+=((n.top??1)-n.op)*0.2;
+    n.el.setAttribute('transform',`translate(${n.x.toFixed(1)},${n.y.toFixed(1)})`);
+    n.el.setAttribute('opacity', n.op.toFixed(2));
+    n.c.setAttribute('r', Math.max(n.r,0.1).toFixed(1));
+    n.nm.setAttribute('y', n.r>26?-4:0); n.nm.setAttribute('font-size', Math.min(15,9+n.r*0.18).toFixed(0));
+    n.sub.setAttribute('y', 12); n.sub.setAttribute('font-size','10');
+    n.sub.setAttribute('opacity', n.r>22?1:0);
+    if(n._kill && n.r<0.6){ n.el.remove(); live.delete(id); }
+  }
+  // route spine edges to live node centres
+  for(const e of gEdges.children){
+    const a=live.get(e.dataset.a), b=live.get(e.dataset.b); if(!a||!b)continue;
+    e.setAttribute('x1',a.x);e.setAttribute('y1',a.y);e.setAttribute('x2',b.x);e.setAttribute('y2',b.y);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ── interactions ───────────────────────────────────────────────────────────── */
+function onPick(id){
+  const n=live.get(id); if(!n)return;
+  if(n.data?.group){ state.focusGroup = state.focusGroup===id? null : id; hideCard(); relayout(); return; }
+  if(n.data?.order){ openCard(n.data.order, n); return; }
+  if(n.data?.spine){ flashHint('that\'s the dictionary — flick a Pivot or drag the ball up to the records'); return; }
+}
+const card=document.getElementById('card');
+function hideCard(){ card.style.display='none'; }
+function openCard(o,n){
+  const ch=CHAINS[o.no];
+  card.innerHTML=`<h3>${o.no}</h3><div class="who">${o.typ==='SO'?'Sales order':'Purchase order'} · ${o.partner}</div>`+
+    `<div class="row"><span>Status</span><span>${o.st==='CO'?'Completed':o.st==='CL'?'Closed':o.st}</span></div>`+
+    `<div class="row"><span>Total</span><span>${money(o.total)}</span></div>`+
+    `<div class="row"><span>Ordered</span><span>${o.dt}</span></div>`+
+    `<div class="row"><span>Lines</span><span>${(LINES[o.no]||[]).length}</span></div>`+
+    `<div class="act">`+
+      (ch?`<button class="b go" id="cTrace">▸ Trace flow</button>`:'')+
+      `<button class="b" id="cDive">▦ View lines</button>`+
+      `<button class="b off" title="editing — coming later (T3)">✎ Edit</button>`+
+    `</div>`;
+  const px=Math.min(Math.max(n.x+ n.r+12, 12), W-242), py=Math.min(Math.max(n.y-40,12), H-160);
+  card.style.left=px+'px'; card.style.top=py+'px'; card.style.display='block';
+  const t=card.querySelector('#cTrace'); if(t) t.onclick=()=>{ trace(o.no); };
+  card.querySelector('#cDive').onclick=()=>{ state.focusOrder=o; setDepth(2); hideCard(); };
+}
+addEventListener('pointerdown',()=>{ hideCard(); });
+
+const strip=document.getElementById('strip');
+function trace(no){
+  const ch=CHAINS[no]; if(!ch)return;
+  let html='';
+  ch.steps.forEach((s,i)=>{
+    const [type,n,amt,kind]=s;
+    if(i) html+='<div class="arrow">→</div>';
+    html+=`<div class="step"><div class="dot" style="background:${colorFor(kind)}">${type[2]}</div>`+
+      `<div class="meta"><div class="t">${type}</div><div class="v">${n}${amt!=null?' · '+money(amt):''}</div></div></div>`;
+  });
+  if(ch.stop) html+=`<div class="stop">▢ stops here — ${ch.stop}</div>`;
+  html+=`<button id="stripClose">×</button>`;
+  strip.innerHTML=html; strip.classList.add('on');
+  strip.querySelector('#stripClose').onclick=()=>strip.classList.remove('on');
+  console.log('§TRACE order=%s hops=%d stop=%s', no, ch.steps.length, ch.stop||'full→allocation');
+}
+
+/* depth ball drag */
+const track=document.getElementById('track'), ball=document.getElementById('ball');
+function setDepth(d){ state.depth=Math.max(0,Math.min(2,d)); positionBall(); hideCard(); strip.classList.remove('on'); relayout(); }
+function positionBall(){ const t=track.getBoundingClientRect(); const frac=1-(state.depth/2); ball.style.top=(frac*(t.height-34))+'px'; }
+let dragging=false;
+ball.addEventListener('pointerdown',e=>{dragging=true; ball.setPointerCapture(e.pointerId); e.stopPropagation();});
+ball.addEventListener('pointermove',e=>{ if(!dragging)return; const t=track.getBoundingClientRect();
+  let frac=(e.clientY-t.top)/(t.height); frac=Math.max(0,Math.min(1,frac)); state.depth=(1-frac)*2;
+  const fr2=1-(state.depth/2); ball.style.top=(fr2*(t.height-34))+'px'; relayout(); });
+ball.addEventListener('pointerup',e=>{ dragging=false; setDepth(Math.round(state.depth)); });
+ball.style.position='absolute';
+
+/* chips */
+document.querySelectorAll('[data-lens]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-lens]').forEach(x=>x.classList.toggle('on',x===b));
+  state.lens=b.dataset.lens; state.focusGroup=null; if(Math.round(state.depth)!==1) setDepth(1); else relayout();
+  console.log('§PIVOT lens=%s measure=%s groups=%d', state.lens, state.measure, groups().length);
+});
+document.querySelectorAll('[data-measure]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-measure]').forEach(x=>x.classList.toggle('on',x===b));
+  state.measure=b.dataset.measure; relayout();
+});
+const hint=document.getElementById('hint'); let hintT;
+function flashHint(t){ hint.textContent=t; hint.style.opacity=1; clearTimeout(hintT); hintT=setTimeout(()=>hint.style.opacity=0,2600); }
+
+positionBall(); relayout(); tick();
+setTimeout(()=>hint.style.opacity=0,5000);
+</script>
+</body>
+</html>

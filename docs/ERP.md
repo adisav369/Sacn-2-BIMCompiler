@@ -88,6 +88,82 @@ diff-oracle that holds it all to the GardenWorld truth.*
 
 ---
 
+## Views — seeing the underlying model
+
+The model below (the 5-table cells, the FK spines, the kernel op-log, the rule
+tables) is not just storage — it is **the thing the views render**. Each view is a
+different *projection of the same extracted structure*; none carries its own data.
+Two are built today, both **read-only, extract-only, 0 hand-authored**, both in
+`bim-compiler` and served from the BIMCompiler Pages site (they touch nothing in
+`bim-ootb`/live). They are how an iDempiere mind *looks at* the §0.18b duality.
+
+### View 1 — Glassbowl (`docs/glassbowl.html`) — the engine, mapped
+**What it is:** the engine rendered *from itself* — bubbles are the **cells**
+(§12 5-table foundation, §0.7 self-graphing), the lines between them are the **FK
+spines** (§0.13 the two spines — derivation green, settlement amber, reference
+behind). Spec: `docs/GLASSBOWL_DOSSIER.md`; prior art `docs/GLASSBOWL.md`.
+
+**How it uses the model — every surface traces to a model section:**
+- **The map** = the FK graph of `ad_full` collapsed onto the cell layer (§0.7). A
+  bubble *is* a `C_*` type-cell; an edge *is* a real foreign key, classified by spine.
+- **The trace** = a lineage walk down the derivation spine (§0.6 op-log lineage,
+  §0.19 long-tail): pick `C_Order` and its real journey
+  `Order → Shipment → Invoice → Payment → Allocation` lights as **one instance's
+  path over the type-level spine** — the §0.18b two-logins-fused moment made literal.
+- **The dossier** (Data / Rules / Columns / History) = the 5–7 iDempiere windows
+  fused: **Data** = real rows from `glassbowl_data.db`; **Rules** = `erp_rules`
+  validation SQL (§0.5, §0.8); **Columns** = `ad_column`; **History** = the
+  `kernel_ops` op-log with before/after (§0.6, §0.16) as a read-only undo-preview.
+- **The eye candy** (orbit depth-planes, swipe picker, WebAudio, QR scan, mobile
+  handle) maps to data, never decoration: planes come from spine role, audio pitch
+  rises per real lineage hop. *Spectacle on the surface, substance underneath.*
+- **Witness:** `§GLASSBOWL-WIRING 85/85`, gen `§GLASSBOWL/§LIFECYCLE/§ORBIT PASS`,
+  `hand=0`. Live + proven (deployed commit `e2d6702d`).
+
+### View 2 — Glassbowl Gravity (`build/erp/glassbowl_gravity.html`) — the engine, *weighed*
+**What it is:** a focused companion view that distils ONE claim — *legacy ERP makes
+you build a report; this engine presents itself.* Three knobs, every number a **live
+`GROUP BY` over the 8 real GardenWorld orders** (extracted from `glassbowl_data.db`,
+0 invented). Built as a separate file precisely so the loved Glassbowl stays untouched.
+
+**How it uses the model — the three knobs ARE three model facets:**
+- **Pivot (lens)** = the analytical substrate (§0.6 op-log as analytical store, §0.7
+  graph/pivot view). Flick `Partner · Month · Status · Type` and the population
+  re-blooms — a literal `GROUP BY` re-run client-side over real rows, the friendly
+  name kept, the facet value riding under as a subtitle. Customer-vs-vendor colour
+  comes straight from `issotrx`, not assigned.
+- **Gravity (measure)** = **kernel gravity** (§14 the op-log as constellation driver,
+  §0.17 *gravity self-ranks `C_Invoice` #1*). Mass = count or `grandtotal`; the
+  heaviest group is biggest and pulled to centre, deterministic (golden-angle, eased,
+  no `Math.random` — replay-safe per the §0.16 discipline). *Position becomes earned.*
+- **Depth dial (AD ↔ GW)** = the **§0.18b duality made a continuous control**: drag
+  down to the **type/dictionary** layer (the 5-cell FK spine — what the engine *is*),
+  up through the **instance/record** population, up again into one record's **real
+  line items**. One gesture spans dictionary → records → lines.
+- **The honest stop:** the trace lights *exactly as far as the FKs link it* — order
+  `80001` runs full to allocation (`$98.50`); the others halt at invoice with a note
+  saying **why** (no payment FK in this dataset). The extract-only rule (§0.17
+  contained-set, §Non-goals "never fake one") shown as a feature, not hidden.
+- **Witness:** `§GRAVITY orders=8 chains=4 hand=0`, plus `§PIVOT`/`§TRACE` on each
+  interaction. Inlined totals reconcile to the DB to the cent (`$9,914.07`).
+
+### Positioning the views carry (the talkable line)
+These are **not a prettier BI tool.** PowerBI/OLAP run the same *operation* (slice,
+pivot, drill) but on a **decoupled copy you must model first**, and they bottom out at
+*detail rows*. Glassbowl's drill bottoms out at the **live operational document** — its
+rules, its workflow, its lineage, and (T3) its edit — on one canvas, every number
+extracted from the system's own structure. *You build a view of your data in PowerBI;
+Glassbowl is your engine presenting itself.* The extract-only discipline is the moat,
+not a constraint: a dashboard is a construction on stale data; this is the engine, live,
+explaining itself — and the organic motion is the proof it's real, not a mockup.
+
+**Parked (T3):** both views are read-only. Editing rules/records in place, the live
+rule-impact preview (§0.4, §2d-3 in the Glassbowl spec), and writing through the depth
+dial open with the write-loop (`push=live`, explicit go) — the greyed CRUD and the
+History undo-preview are the honest seam, not the step.
+
+---
+
 ## §0. Storage Model Decision (2026-05-29) — chosen path: (c) The Bridge
 
 **Chosen:** 5-table runtime (`containers`, `items`, `documents`, `document_lines`,
