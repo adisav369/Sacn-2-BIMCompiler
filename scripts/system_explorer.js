@@ -159,6 +159,8 @@ var LIFECYCLE = ['c_order', 'c_orderline', 'm_inout', 'm_inoutline', 'c_invoice'
   if (!bundleAgree) hand++;   // a bundle that can't reproduce the chain is a FINDING, not a pass
   var bundleBytes = fs.statSync(OUT_BUNDLE).size;
   console.log('   §LIFECYCLE-BUNDLE file=' + path.relative(path.join(__dirname, '..'), OUT_BUNDLE) + ' bytes=' + bundleBytes + ' rows=' + bundle.rowTotal + ' chain=[' + bundleStr + '] agree=' + (bundleAgree ? 'Y' : 'N'));
+  // §2bcd Task 1 W-DATA-BARS: which tables can surface REAL rows in their accordion bar (= the bundle).
+  console.log('   §DATA-BARS bundle-tables=' + BUNDLE_TABLES.length + ' tables=[' + BUNDLE_TABLES.join(',') + ']');
   bundle.close();
   // copy the sql.js runtime next to the bundle so the viewer can load it (Pages + headless test).
   copyLibAssets();
@@ -182,13 +184,63 @@ var LIFECYCLE = ['c_order', 'c_orderline', 'm_inout', 'm_inoutline', 'c_invoice'
   var orbitOk = planes.spine > 0 && planes.settlement > 0 && planes.reference > 0;
   console.log('   §ORBIT planes=3 spine=' + planes.spine + ' settlement=' + planes.settlement + ' reference=' + planes.reference + ' depth=' + ZD + ' (hand-placed=0)');
 
+  // ── Layer 6: DOSSIER metadata (GLASSBOWL_DOSSIER.md §2bcd Task 3, Witness: W-DOSSIER) ──
+  //   Per node, EXTRACT (never invent): its ad_column list (type/mandatory/FK target), its validation
+  //   rule count + a small sample of rule bodies from erp_rules. Surfaced read-only in the right-click
+  //   dossier (Columns / Rules tabs). The Data tab loads real rows from the bundle in-browser; History
+  //   reads graph.oplog (below). 0 hand-authored — counts trace to ad_full / erp_rules.
+  console.log('\n── Layer 6: dossier metadata (ad_column + erp_rules validation) per node ──');
+  // friendly type label for the common ad_reference_id values (else show the raw id) — a display aid only.
+  var REFTYPE = { 10: 'String', 11: 'Integer', 12: 'Amount', 13: 'ID', 14: 'Text', 15: 'Date', 16: 'DateTime', 17: 'List', 18: 'Table', 19: 'TableDir', 20: 'Yes/No', 21: 'Location', 22: 'Number', 23: 'Binary', 24: 'Time', 25: 'Account', 28: 'Button', 29: 'Quantity', 30: 'Search', 37: 'Costs+Prices' };
+  function dossierFor(tn) {
+    var tid = tables[tn]; if (tid == null) return null;
+    var cols = [];
+    try {
+      ad.prepare("SELECT columnname, ad_reference_id, ismandatory, ad_reference_value_id FROM ad_column WHERE ad_table_id=? ORDER BY columnname LIMIT 30").all(tid).forEach(function (c) {
+        cols.push({ name: c.columnname, type: REFTYPE[c.ad_reference_id] || ('ref#' + c.ad_reference_id), mandatory: c.ismandatory === 'Y', fk: resolveTarget(c.columnname, c.ad_reference_value_id) });
+      });
+    } catch (e) { /* table without ad_column rows — honest empty list */ }
+    var rulesRows = [];
+    try {
+      er.prepare("SELECT binding, body FROM rules WHERE event_type='Validation' AND binding LIKE ?").all(tn + '.%').forEach(function (rr) {
+        rulesRows.push({ binding: rr.binding, body: (rr.body || '').slice(0, 120) });
+      });
+    } catch (e) { /* no rules recorded — honest 0 */ }
+    return { columns: cols, ruleCount: guardCount(tn), rules: rulesRows };
+  }
+  // attach dossier to every CORE/master node (the bubbles a user right-clicks).
+  nodes.forEach(function (n) { n.dossier = dossierFor(n.id); });
+  var invDoss = nodeSet['c_invoice'] ? nodeSet['c_invoice'].dossier : null;
+  console.log('   §DOSSIER table=c_invoice rules=' + (invDoss ? invDoss.ruleCount : 0) + ' columns=' + (invDoss ? invDoss.columns.length : 0));
+
+  // ── graph.oplog: a small REAL sample of the kernel_ops op-log (History tab). EXTRACT from the
+  //   diff_oracle runtime (it HAS kernel_ops, see Layer 3a). Read the real columns, take the last ~12. ──
+  var oplog = [];
+  if (r.db) {
+    var opCols = r.query("PRAGMA table_info(kernel_ops)").map(function (c) { return c.name; });   // introspect real columns
+    r.query("SELECT id, op_type, user_tag, output_guid FROM kernel_ops ORDER BY id DESC LIMIT 12").forEach(function (row) {
+      oplog.push({ id: row.id, op: row.op_type, cell: row.user_tag, out: row.output_guid });
+    });
+    console.log('   §OPLOG ops=' + oplog.length + ' cols=[' + opCols.join(',') + '] sample=' + (oplog.length ? JSON.stringify(oplog[0]) : 'NONE'));
+  } else {
+    console.log('   §OPLOG ops=0 sample=NONE (no runtime db)');
+  }
+  if (oplog.length === 0) hand++;   // an empty op-log is a FINDING (kernel_ops should be populated), not a pass
+
   var graph = {
     meta: { generated: 'system_explorer.js', witness: 'W-GLASSBOWL', handAuthored: hand, core: CORE, settlement: SETTLEMENT },
     nodes: nodes, edges: edges, spines: spineCounts,
     cells: collected, cold: cold, coldByKind: coldByKind,
     gravityTop: topCell ? { cell: topCell.cell, weight: topCell.gravity } : null,
     lineage: lineage,                                           // §2a W-LIFECYCLE — the traced record's chain (inlined, file://-safe)
-    orbit: { depth: ZD, planes: planes }                        // §2-viz W-ORBIT — depth-plane metadata (z is inlined per node)
+    orbit: { depth: ZD, planes: planes },                       // §2-viz W-ORBIT — depth-plane metadata (z is inlined per node)
+    // Implementing GLASSBOWL_DOSSIER.md §2bcd Task 1 — Witness: W-DATA-BARS. The whitelist of tables
+    // whose REAL rows the viewer can surface in a bar (= the bundle subset). Any other table is honestly
+    // "records not carried in this dataset" — no fake rows (extract-only). 0 hand-authored.
+    bundleTables: BUNDLE_TABLES,
+    // Implementing GLASSBOWL_DOSSIER.md §2bcd Task 3 — Witness: W-DOSSIER. The real kernel_ops op-log
+    // sample (History tab change-log). Per-node dossier (columns/rules) is inlined as node.dossier above.
+    oplog: oplog
   };
   fs.writeFileSync(OUT_JSON, JSON.stringify(graph, null, 1));
   fs.writeFileSync(OUT_HTML, renderHtml(graph));
@@ -350,7 +402,45 @@ function renderHtml(graph) {
 '  .bar .bx{color:var(--dim);cursor:pointer;font-weight:700;font-size:13px;padding:0 2px} .bar .bx:hover{color:#e2574c}\n' +
 '  .bar .bb{padding:2px 10px 9px} .bar.col .bb{display:none}\n' +
 '  .bar .trk{color:#c8923a;font-size:11px;margin-top:6px}\n' +
+'  .recrows{margin-top:7px;border-top:1px solid var(--line);padding-top:6px}\n' +
+'  .recrows .rk{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}\n' +
+'  .recrows table{width:100%;border-collapse:collapse;font-size:11px}\n' +
+'  .recrows td{padding:2px 6px 2px 0;color:#cdd6df;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}\n' +
+'  .recrows td.amt{color:#9fe0bd;text-align:right} .recrows tr+tr td{border-top:1px solid #161e28}\n' +
+'  .recrows .rn{color:var(--dim);font-style:italic}\n' +
 '  .tracebtn{margin-top:8px;background:#19222c;border:1px solid #3a5a7a;color:#ffd479;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer} .tracebtn:hover{border-color:#ffd479}\n' +
+'  /* §2bcd Task 3 W-DOSSIER: the right-click dossier panel (movable, lazy tabs Data|Rules|Columns|History). */\n' +
+'  #dossier{position:absolute;top:70px;left:70px;width:440px;max-width:calc(100% - 40px);max-height:calc(100vh - 110px);display:none;flex-direction:column;background:rgba(16,22,30,.99);border:1px solid #3a4a5a;border-radius:11px;box-shadow:0 10px 48px rgba(0,0,0,.6);overflow:hidden;z-index:20}\n' +
+'  #dossier.open{display:flex}\n' +
+'  #dossier .dh{display:flex;align-items:center;gap:8px;padding:10px 13px;cursor:move;user-select:none;background:#121823;border-bottom:1px solid var(--line)}\n' +
+'  #dossier .dh b{flex:1;font-size:14px} #dossier .dh .dpill{color:var(--dim);font-size:11px}\n' +
+'  #dossier .dx{cursor:pointer;color:var(--dim);font-weight:700;font-size:15px;padding:0 3px} #dossier .dx:hover{color:#e2574c}\n' +
+'  #dossier .dtabs{display:flex;gap:2px;padding:7px 10px 0;background:#121823;border-bottom:1px solid var(--line)}\n' +
+'  #dossier .dtab{background:transparent;border:1px solid transparent;border-bottom:none;color:var(--dim);border-radius:7px 7px 0 0;padding:6px 12px;font-size:12px;cursor:pointer}\n' +
+'  #dossier .dtab:hover{color:#cdd6df} #dossier .dtab.active{color:#ffd479;background:#0c1118;border-color:var(--line)}\n' +
+'  #dossier .dbody{padding:12px 14px;overflow:auto;font-size:12px;line-height:1.5}\n' +
+'  #dossier .dlead{color:#8aa;font-size:11px;margin-bottom:8px}\n' +
+'  #dossier table.dt{width:100%;border-collapse:collapse;font-size:11px}\n' +
+'  #dossier table.dt td,#dossier table.dt th{padding:3px 7px 3px 0;text-align:left;color:#cdd6df;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}\n' +
+'  #dossier table.dt th{color:var(--dim);font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:.05em;border-bottom:1px solid var(--line)}\n' +
+'  #dossier table.dt tr+tr td{border-top:1px solid #161e28}\n' +
+'  #dossier .rule{border-left:3px solid #4caf7d;padding:5px 9px;margin:6px 0;background:#10161e;border-radius:0 6px 6px 0}\n' +
+'  #dossier .rule .rb{color:#8aa;font-size:11px;margin-bottom:3px} #dossier .rule code{color:#9fe0bd;font-family:ui-monospace,Menlo,monospace;font-size:11px;word-break:break-all;white-space:pre-wrap}\n' +
+'  #dossier .col{padding:3px 0;border-bottom:1px solid #161e28} #dossier .col .cn{color:#e7edf3} #dossier .col .ct{color:var(--dim)} #dossier .col .cm{color:#e2a04c} #dossier .col .cfk{color:#6aa9ff}\n' +
+'  #dossier .ophist{display:flex;flex-direction:column;gap:4px}\n' +
+'  #dossier .oprow{display:flex;align-items:center;gap:8px;padding:5px 8px;background:#10161e;border:1px solid var(--line);border-radius:7px}\n' +
+'  #dossier .oprow.reversed{opacity:.42;text-decoration:line-through} #dossier .oprow.reversed .opnote{text-decoration:none;display:block}\n' +
+'  #dossier .oprow .opt{color:#ffd479;font-size:11px} #dossier .oprow .opc{color:#8aa;font-size:11px;flex:1} #dossier .oprow .opo{color:var(--dim);font-size:10px}\n' +
+'  #dossier .oprow .oprev{cursor:pointer;color:#5a6b7a;font-size:13px;padding:0 3px} #dossier .oprow .oprev:hover{color:#ffd479}\n' +
+'  #dossier .opnote{display:none;color:#c8923a;font-size:10px;margin-left:6px} #dossier .none{color:var(--dim);font-style:italic}\n' +
+'  /* §2bcd Task 2 W-ACTIONS: the double-tap ACTION BLURB \\u2014 a small anchored chooser that follows the bubble. */\n' +
+'  #blurb{position:absolute;display:none;flex-direction:column;min-width:168px;max-width:230px;background:rgba(16,22,30,.99);border:1px solid #3a4a5a;border-radius:10px;box-shadow:0 8px 34px rgba(0,0,0,.55);padding:9px 9px 8px;font-size:12px;z-index:25;transform:translate(-50%,14px)}\n' +
+'  #blurb.open{display:flex} #blurb .bt{font-size:13px;font-weight:600;color:#e7edf3;margin:0 2px 6px;display:flex;align-items:center;gap:6px}\n' +
+'  #blurb .bt .bn{flex:1} #blurb .bt .bp{color:var(--dim);font-size:10px;font-weight:400} #blurb .bx2{cursor:pointer;color:var(--dim);font-weight:700;font-size:13px;padding:0 2px} #blurb .bx2:hover{color:#e7edf3}\n' +
+'  #blurb .act{display:block;width:100%;text-align:left;background:#19222c;border:1px solid #2b3744;color:#cdd6df;border-radius:7px;padding:6px 9px;font-size:12px;cursor:pointer;margin:3px 0}\n' +
+'  #blurb .act:hover{border-color:#ffd479;color:#ffd479}\n' +
+'  #blurb .crudk{color:var(--dim);font-size:9px;text-transform:uppercase;letter-spacing:.06em;margin:7px 2px 3px}\n' +
+'  #blurb .act.crud.disabled{cursor:not-allowed;opacity:.42;color:#5a6b7a;border-style:dashed;pointer-events:none} #blurb .act.crud.disabled:hover{border-color:#2b3744;color:#5a6b7a}\n' +
 '</style></head><body><div id="wrap">\n' +
 '<div id="stage"><svg id="svg" width="100%" height="100%"></svg>\n' +
 '  <div class="legend" id="legend"></div>\n' +
@@ -360,6 +450,9 @@ function renderHtml(graph) {
 '  <div id="recwrap"><input id="recsearch" list="reclist" placeholder="search a record &mdash; e.g. 80001" autocomplete="off"><datalist id="reclist"></datalist></div>\n' +
 '  <div id="ball" title="drag to orbit \\u2014 arrange the view like a BIM model"><div id="balldot"></div></div>\n' +
 '  <div id="about"></div>\n' +
+'  <div id="dossier"><div class="dh"><b id="dossierTitle">Dossier</b> <span class="dpill" id="dossierPill"></span><span class="dx" id="dossierX" title="close">\\u2715</span></div>\n' +
+'    <div class="dtabs" id="dossierTabs"></div><div class="dbody" id="dossierBody"></div></div>\n' +
+'  <div id="blurb"></div>\n' +
 '</div>\n' +
 '<div id="pgrip" title="drag to resize the panel"></div>\n' +
 '<div id="panel"><h1>Glassbowl <span id="aboutBtn" class="appx" title="how to read this">ⓘ</span></h1><div class="sub">a live map of how your documents connect &amp; flow — built from the system itself. Click a bubble.</div>\n' +
@@ -418,10 +511,10 @@ var VIEWER_JS = [
 ' order.forEach(function(n){var vis=E.some(function(e){return show[e.kind]&&(e.from===n.id||e.to===n.id)})||(n.cells&&n.cells.length);if(!vis&&n.kind==="master")return;var col=n.settlement?"#e2574c":n.kind==="master"?"#2b3744":(n.gravity>0?"#4caf7d":"#3a4a5a");',
 '  var sc=Math.max(0.6,Math.min(1.5,1+(n.depth/ZMAX)*0.45*oa)),r=radius(n)*sc;',   // depth size cue, gated by orbit amount (0 at rest)
 '  var far=Math.max(0,(ZMAX-n.depth)/(2*ZMAX)),dop=1-far*0.6*oa;',                   // far plane dims, also gated → 1 at rest
-'  var g=el("g",{"class":"node"});(function(node){g.addEventListener("pointerdown",function(ev){startDragNode(ev,node);});g.addEventListener("click",function(){if(!moved)pick(node.id);});})(n);',
+'  var g=el("g",{"class":"node"});(function(node){g.addEventListener("pointerdown",function(ev){startDragNode(ev,node);});g.addEventListener("click",function(){if(!moved)pick(node.id);});g.addEventListener("contextmenu",function(ev){ev.preventDefault();openDossier(node.id);});g.addEventListener("dblclick",function(ev){ev.preventDefault();ev.stopPropagation();openBlurb(node.id);});})(n);',
 '  var dim=(traceMode&&!litNode(n.id))||(fo&&!inFocus(n.id)),hi=litNode(n.id)||(fo&&n.id===focusId),fop=dim?0.12:(traceMode?1:dop);',
 '  g.appendChild(el("circle",{cx:n.sx,cy:n.sy,r:r,fill:col,"fill-opacity":fop,stroke:hi?"#ffd479":"#0c0f14","stroke-width":hi?3:1.5}));',
-'  var t=el("text",{x:n.sx,y:(n.sy+r+11),"text-anchor":"middle","fill-opacity":(dim?0.18:(traceMode?1:dop))});t.textContent=fname(n.id);g.appendChild(t);vp.appendChild(g);});}',
+'  var t=el("text",{x:n.sx,y:(n.sy+r+11),"text-anchor":"middle","fill-opacity":(dim?0.18:(traceMode?1:dop))});t.textContent=fname(n.id);g.appendChild(t);vp.appendChild(g);});if(typeof positionBlurb==="function")positionBlurb();}',
 '// ── interaction: drag a bubble, pan the background, scroll to zoom ──',
 'function world(ev){var rc=svg.getBoundingClientRect();return {x:(ev.clientX-rc.left-px)/k,y:(ev.clientY-rc.top-py)/k};}',
 'var drag=null,panning=null,moved=false;',
@@ -454,8 +547,29 @@ var VIEWER_JS = [
 ' var ce=E.filter(function(e){return e.from===id&&show[e.kind]});if(ce.length){h+=\'<div class=k>connects to</div>\';ce.slice(0,40).forEach(function(e){h+=\'<div class=row><span class=tag style="border-left:3px solid \'+COLOR[e.kind]+\'">\'+LABEL[e.kind].split(" (")[0]+\'</span>\'+fname(e.to)+\'</div>\';});}',
 ' if(n.cells&&n.cells.length){h+=\'<div class=k>what the system does here</div>\';n.cells.forEach(function(c){var acts=c.verbs.map(function(v){return VERB[v]||v;});h+=\'<div class=row>\'+(acts.length?acts.map(function(a){return \'<span class=tag>\'+a+\'</span>\'}).join(""):\'<span class=pill>completes the document</span>\')+\'<br><span class=pill>needs matching/reconciliation: </span><span class=\'+(c.matcher?"y":"n")+\'>\'+(c.matcher?"yes":"no")+\'</span><br><span class=pill>checks before saving: \'+c.guards+\' \\u00b7 times used: \'+c.ops+\'</span></div>\';});}else if(n.kind==="master"){h+=\'<div class=k>what the system does here</div><div class=row class=n>a reference list — looked up by the documents, no workflow of its own</div>\';}',
 ' if(LIN&&LIN.litNodes&&LIN.litNodes.indexOf(id)>=0)h+=\'<button class=tracebtn onclick="window.setTrace(true)">\\u25b8 trace this record\\u2019s flow</button>\';',
-' var runs=(n.cells||[]).reduce(function(s,c){return s+(c.ops||0);},0);focusId=id;pushBar(id,fname(id),h,runs);draw();}',
-'function clearFocus(){if(focusId){focusId=null;draw();}}',
+' var runs=(n.cells||[]).reduce(function(s,c){return s+(c.ops||0);},0);focusId=id;pushBar(id,fname(id),h,runs);injectRecs(id);draw();}',
+'// ── Task 1 (GLASSBOWL_DOSSIER \\u00a72bcd, W-DATA-BARS): surface the REAL rows in the clicked bubble\\u2019s bar.',
+'//    The map shows FK structure; this shows the actual records. Bundle tables \\u2192 lazy-load via withBundle',
+'//    (the same glassbowl_data.db the trace uses) and inject \\u223c3 real rows. Non-bundle tables \\u2192 the honest',
+'//    \\u201cnot carried\\u201d note (never faked). Columns are chosen from the table\\u2019s PRAGMA \\u2014 extract, not hardcode. ──',
+'var BUNDLE_T=(G.bundleTables||[]),DATA_N=3;',
+'function barFor(id){return STACK.querySelector(\'[data-id="\'+id+\'"]\');}',
+'// pick business-meaningful columns from the actual PRAGMA: an identity (documentno|name), an amount, a status.',
+'function recCols(db,t){var cols=[];try{var pr=db.exec("PRAGMA table_info("+t+")");if(pr.length)pr[0].values.forEach(function(v){cols.push(String(v[1]).toLowerCase());});}catch(e){return null;}if(!cols.length)return null;var have=function(c){return cols.indexOf(c)>=0;},pick=[];',
+' if(have("documentno"))pick.push({c:"documentno",cls:""});else if(have("name"))pick.push({c:"name",cls:""});else if(have("value"))pick.push({c:"value",cls:""});',
+' ["grandtotal","payamt","amount","linenetamt","priceactual"].some(function(c){if(have(c)){pick.push({c:c,cls:"amt"});return true;}return false;});',
+' if(have("docstatus"))pick.push({c:"docstatus",cls:""});else if(have("isactive"))pick.push({c:"isactive",cls:""});',
+' return pick.length?pick:null;}',
+'function injectRecs(id){var bar=barFor(id);if(!bar)return;var bb=bar.querySelector(".bb");if(!bb||bb.querySelector(".recrows"))return;',
+' var box=document.createElement("div");box.className="recrows";bb.appendChild(box);',
+' if(BUNDLE_T.indexOf(id)<0){box.innerHTML=\'<div class=rk>the actual records</div><div class=rn>records not carried in this dataset</div>\';return;}',
+' box.innerHTML=\'<div class=rk>the actual records</div><div class=rn>loading\\u2026</div>\';',
+' withBundle(function(db){var cur=barFor(id);if(!cur)return;var b2=cur.querySelector(".recrows");if(!b2)return;var cols=recCols(db,id);',
+'  if(!cols){b2.innerHTML=\'<div class=rk>the actual records</div><div class=rn>records not carried in this dataset</div>\';return;}',
+'  var sel=cols.map(function(o){return o.c;}).join(", "),res;try{res=db.exec("SELECT "+sel+" FROM "+id+" LIMIT "+DATA_N);}catch(e){b2.innerHTML=\'<div class=rk>the actual records</div><div class=rn>records not carried in this dataset</div>\';return;}',
+'  if(!res.length||!res[0].values.length){b2.innerHTML=\'<div class=rk>the actual records</div><div class=rn>no rows</div>\';return;}',
+'  var rc=res[0].values.length,html=\'<div class=rk>the actual records (\'+rc+\' shown)</div><table>\';res[0].values.forEach(function(v){html+="<tr>";cols.forEach(function(o,i){var raw=v[i],val;if(raw==null)val="\\u2014";else if(o.cls==="amt"&&!isNaN(Number(raw)))val=Number(raw).toFixed(2);else val=String(raw);html+=\'<td\'+(o.cls?\' class="\'+o.cls+\'"\':"")+\' title="\'+val.replace(/"/g,"&quot;")+\'">\'+val+"</td>";});html+="</tr>";});html+="</table>";b2.innerHTML=html;b2.setAttribute("data-rows",rc);});}',
+'function clearFocus(){if(typeof hideBlurb==="function")hideBlurb();if(focusId){focusId=null;draw();}}',
 '// ── the RECENT stack: each look-up drops a collapsible bar (accordion); swipe or \\u2715 to dismiss. The',
 '//    \\u201ctracked N runs\\u201d line is the real op-count (kernel op-log depth, §0.6) — extracted, not invented. ──',
 'var STACK=document.getElementById("stack"),RH=document.getElementById("recentHdr"),RECN=10;',
@@ -502,6 +616,77 @@ var VIEWER_JS = [
 'function doSearch(){var inp=document.getElementById("recsearch"),dn=inp.value.trim();if(!dn)return;var oid=recMap[dn];if(oid==null||!GDB){inp.style.borderColor="#e2574c";return;}inp.style.borderColor="";applyChain(walkBundle(GDB,oid));}',
 '(function(){var inp=document.getElementById("recsearch");if(inp){inp.addEventListener("change",doSearch);inp.addEventListener("keydown",function(e){if(e.key==="Enter")doSearch();});}})();',
 'window.setTrace=setTrace;window.applyChain=applyChain;window.doSearch=doSearch;',
+'// ── Task 3 (GLASSBOWL_DOSSIER \\u00a72bcd, W-DOSSIER): the right-click DOSSIER — the 5\\u20137 iDempiere',
+'//    windows fused into one movable panel with lazy tabs Data | Rules | Columns | History. Every tab is',
+'//    EXTRACTED: Data = real bundle rows; Rules = node.dossier.rules (erp_rules Validation); Columns =',
+'//    node.dossier.columns (ad_column); History = G.oplog (real kernel_ops). History\\u2019s \\u21b6 preview is',
+'//    PURE-READ (className toggle only — no localStorage, no db write); the read-only undo seam to T3. ──',
+'var DOSS=document.getElementById("dossier"),DTITLE=document.getElementById("dossierTitle"),DPILL=document.getElementById("dossierPill"),DTABS=document.getElementById("dossierTabs"),DBODY=document.getElementById("dossierBody");',
+'var OPLOG=(G.oplog||[]),dossierId=null,dossierRendered={};',
+'function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}',
+'// count the real ops tracked for a cell: prefer the node\\u2019s diff_oracle cell.ops, else count it in the op-log.',
+'function opCountFor(id){var n=N[idx[id]];if(n&&n.cells&&n.cells.length){var s=n.cells.reduce(function(a,c){return a+(c.ops||0);},0);if(s>0)return s;}var cap=id.toUpperCase().replace(/_/g,""),hits=0;OPLOG.forEach(function(o){if(o.cell&&o.cell.toUpperCase().replace(/[(),_]/g,"").indexOf(cap)>=0)hits++;});return hits;}',
+'function openDossier(id){if(idx[id]==null)return;dossierId=id;dossierRendered={};DTITLE.textContent=fname(id);DPILL.textContent=id;DOSS.classList.add("open");',
+' DTABS.innerHTML="";["Data","Rules","Columns","History"].forEach(function(name,i){var b=document.createElement("button");b.className="dtab"+(i===0?" active":"");b.textContent=name;b.addEventListener("click",function(){selectTab(name,b);});DTABS.appendChild(b);});',
+' selectTab("Data",DTABS.firstChild);}',
+'function selectTab(name,btn){Array.prototype.forEach.call(DTABS.children,function(b){b.classList.toggle("active",b===btn);});DBODY.innerHTML="";renderTab(name);}',
+'function renderTab(name){var id=dossierId,n=N[idx[id]],doss=(n&&n.dossier)||{columns:[],ruleCount:0,rules:[]};',
+' if(name==="Data")return renderDataTab(id);',
+' if(name==="Rules")return renderRulesTab(doss);',
+' if(name==="Columns")return renderColumnsTab(doss);',
+' if(name==="History")return renderHistoryTab(id);}',
+'function renderDataTab(id){DBODY.innerHTML=\'<div class=dlead>the actual records for this document \\u2014 the GardenWorld instance layer.</div>\';',
+' if(BUNDLE_T.indexOf(id)<0){DBODY.innerHTML+=\'<div class=none>records not carried in this dataset</div>\';return;}',
+' var load=document.createElement("div");load.className="none";load.textContent="loading\\u2026";DBODY.appendChild(load);',
+' withBundle(function(db){if(dossierId!==id)return;var cols=recCols(db,id);if(!cols){DBODY.innerHTML=\'<div class=none>records not carried in this dataset</div>\';return;}var sel=cols.map(function(o){return o.c;}).join(", "),res;try{res=db.exec("SELECT "+sel+" FROM "+id+" LIMIT 20");}catch(e){DBODY.innerHTML=\'<div class=none>records not carried in this dataset</div>\';return;}',
+'  if(!res.length||!res[0].values.length){DBODY.innerHTML=\'<div class=none>no rows</div>\';return;}var cs=res[0].columns,h=\'<table class=dt data-rows="\'+res[0].values.length+\'"><tr>\';cs.forEach(function(c){h+="<th>"+esc(c)+"</th>";});h+="</tr>";res[0].values.forEach(function(v){h+="<tr>";cols.forEach(function(o,i){var raw=v[i],val=raw==null?"\\u2014":(o.cls==="amt"&&!isNaN(Number(raw))?Number(raw).toFixed(2):String(raw));h+=\'<td title="\'+esc(val)+\'">\'+esc(val)+"</td>";});h+="</tr>";});h+="</table>";DBODY.innerHTML=\'<div class=dlead>the actual records for this document.</div>\'+h;});}',
+'function renderRulesTab(doss){if(!doss.ruleCount){DBODY.innerHTML=\'<div class=none>no validation rules recorded for this table</div>\';return;}',
+' var h=\'<div class=dlead>the checks the system runs before saving (\'+doss.ruleCount+\' validation rule\'+(doss.ruleCount==1?"":"s")+\') \\u2014 read-only.</div>\';',
+' (doss.rules||[]).forEach(function(rr){h+=\'<div class=rule><div class=rb>\'+esc(rr.binding)+\'</div><code>\'+esc(rr.body)+\'</code></div>\';});DBODY.innerHTML=h;}',
+'function renderColumnsTab(doss){var cols=doss.columns||[];if(!cols.length){DBODY.innerHTML=\'<div class=none>no columns recorded for this table</div>\';return;}',
+' var h=\'<div class=dlead>the fields on this document (\'+cols.length+\' shown) \\u2014 from the data dictionary.</div>\';',
+' cols.forEach(function(c){h+=\'<div class=col><span class=cn>\'+esc(c.name)+\'</span> <span class=ct>\'+esc(c.type)+\'</span>\'+(c.mandatory?\' <span class=cm>required</span>\':"")+(c.fk?\' <span class=cfk>\\u2192 \'+esc(fname(c.fk))+\'</span>\':"")+\'</div>\';});DBODY.innerHTML=h;}',
+'function renderHistoryTab(id){var n=opCountFor(id);',
+' var h=\'<div class=dlead>what the engine did \\u2014 the real op-log (most recent first). \\u21b6 previews a reversal (read-only, not enabled).</div>\';',
+' if(!OPLOG.length){DBODY.innerHTML=h+\'<div class=none>no engine activity recorded</div>\';return;}',
+' h+=\'<div class=ophist>\';OPLOG.forEach(function(o,i){var rev=i<3;h+=\'<div class=oprow data-i="\'+i+\'"><span class=opt>\'+esc(o.op)+\'</span><span class=opc>\'+esc(o.cell)+\'</span><span class=opo>\'+esc(o.out)+\'</span>\'+(rev?\'<span class=oprev title="preview reversal">\\u21b6</span>\':"")+\'<span class=opnote></span></div>\';});h+="</div>";DBODY.innerHTML=h;',
+' Array.prototype.forEach.call(DBODY.querySelectorAll(".oprow"),function(row){var rev=row.querySelector(".oprev");if(!rev)return;rev.addEventListener("click",function(){',
+'  if(row.classList.contains("reversed")){row.classList.remove("reversed");rev.textContent="\\u21b6";rev.title="preview reversal";row.querySelector(".opnote").textContent="";}',
+'  else{row.classList.add("reversed");rev.textContent="\\u21b7";rev.title="undo preview";row.querySelector(".opnote").textContent="would reverse "+n+" tracked op"+(n==1?"":"s")+" \\u2014 read-only, not enabled";}',
+' });});}',
+'document.getElementById("dossierX").addEventListener("click",function(){DOSS.classList.remove("open");dossierId=null;});',
+'// drag the dossier by its header (simple left/top move). No layout dependency \\u2014 it floats over the stage.',
+'(function(){var dh=DOSS.querySelector(".dh"),dr=null;dh.addEventListener("pointerdown",function(ev){if(ev.target.classList.contains("dx"))return;ev.preventDefault();var rc=DOSS.getBoundingClientRect();dr={x:ev.clientX,y:ev.clientY,l:rc.left,t:rc.top};try{dh.setPointerCapture(ev.pointerId);}catch(e){}});',
+' dh.addEventListener("pointermove",function(ev){if(!dr)return;DOSS.style.left=Math.max(0,dr.l+(ev.clientX-dr.x))+"px";DOSS.style.top=Math.max(0,dr.t+(ev.clientY-dr.y))+"px";});',
+' function de(){dr=null;}dh.addEventListener("pointerup",de);dh.addEventListener("pointercancel",de);})();',
+'window.openDossier=openDossier;',
+'// open the dossier on a NAMED tab (e.g. History) \\u2014 used by the action blurb\\u2019s \\u27f2 History button.',
+'function openDossierTab(id,tabName){openDossier(id);if(!tabName)return;var btn=null;Array.prototype.forEach.call(DTABS.children,function(b){if(b.textContent===tabName)btn=b;});if(btn)selectTab(tabName,btn);}',
+'window.openDossierTab=openDossierTab;',
+'// ── Task 2 (GLASSBOWL_DOSSIER \\u00a72bcd, W-ACTIONS): the DOUBLE-TAP ACTION BLURB \\u2014 the friendly per-bubble',
+'//    chooser. Double-click a bubble \\u2192 a small anchored blurb of REAL actions: \\u25b8 Trace (lifecycle bubbles',
+'//    only) \\u00b7 \\u25a6 View data (Task 1) \\u00b7 \\u27f2 History / \\u229e Full dossier (Task 3). Plus a CRUD teaser (\\uff0b/\\u270e/\\ud83d\\uddd1)',
+'//    rendered GREYED + inert (no handler, no write) \\u2014 the read-only T3 seam. Single-click is UNCHANGED. ──',
+'var BLURB=document.getElementById("blurb"),blurbId=null;',
+'// lifecycle bubbles = the chain tables (LIN.litNodes for order 101) \\u2014 only these offer Trace. EXTRACT, not hardcode.',
+'var LIFE_T=(LIN&&LIN.litNodes)?LIN.litNodes.slice():[];',
+'function isLifecycle(id){return LIFE_T.indexOf(id)>=0;}',
+'function blurbAct(label,fn){var b=document.createElement("button");b.className="act";b.textContent=label;b.addEventListener("click",function(ev){ev.stopPropagation();fn();});return b;}',
+'function openBlurb(id){if(idx[id]==null)return;blurbId=id;BLURB.innerHTML="";',
+' var hd=document.createElement("div");hd.className="bt";hd.innerHTML=\'<span class=bn>\'+fname(id)+\'</span><span class=bp>\'+id+\'</span><span class=bx2 title=close>\\u2715</span>\';BLURB.appendChild(hd);',
+' hd.querySelector(".bx2").addEventListener("click",function(ev){ev.stopPropagation();hideBlurb();});',
+' if(isLifecycle(id))BLURB.appendChild(blurbAct("\\u25b8 Trace this flow",function(){window.setTrace(true);}));',
+' BLURB.appendChild(blurbAct("\\u25a6 View data",function(){pick(id);var bar=barFor(id);if(bar)bar.scrollIntoView({block:"nearest"});}));',
+' BLURB.appendChild(blurbAct("\\u27f2 History",function(){openDossierTab(id,"History");}));',
+' BLURB.appendChild(blurbAct("\\u229e Full dossier",function(){openDossier(id);}));',
+' var ck=document.createElement("div");ck.className="crudk";ck.textContent="editing \\u2014 coming later (T3)";BLURB.appendChild(ck);',
+' ["\\uff0b New","\\u270e Edit","\\ud83d\\uddd1 Delete"].forEach(function(lbl){var c=document.createElement("button");c.className="act crud disabled";c.textContent=lbl;c.title="editing \\u2014 coming later (T3)";BLURB.appendChild(c);});',
+' BLURB.classList.add("open");positionBlurb();}',
+'function hideBlurb(){if(blurbId){blurbId=null;BLURB.classList.remove("open");}}',
+'// follow the bubble: place the blurb at its PROJECTED screen point, transformed by the viewport (px,py,k) \\u2014',
+'// exactly the transform the circles ride (translate(px,py) scale(k)). Called from draw() after project().',
+'function positionBlurb(){if(!blurbId){return;}var n=N[idx[blurbId]];if(!n){return;}project(n);var sc=Math.max(0.6,Math.min(1.5,1+(n.depth/ZMAX)*0.45*orbitAmt())),r=radius(n)*sc;BLURB.style.left=(px+n.sx*k)+"px";BLURB.style.top=(py+(n.sy+r)*k)+"px";}',
+'window.openBlurb=openBlurb;window.hideBlurb=hideBlurb;',
 '// ── SCENE PERSISTENCE: the screen survives a hard refresh, so you continue exactly where you left',
 '//    off \\u2014 no re-login, no hunting \\u201crecent changes\\u201d. Saved on unload, restored on load (localStorage). ──',
 'var pendingSeed=null,SKEY="glassbowl.scene";',

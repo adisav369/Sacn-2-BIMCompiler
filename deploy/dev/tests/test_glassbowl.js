@@ -248,6 +248,148 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   }
   await page.evaluate(() => window.setTrace(false));
 
+  // ── Task 1 (W-DATA-BARS): the REAL rows surface in the clicked bubble's accordion bar ──
+  // PROVES: the map (FK structure) is augmented with the actual records, lazy-loaded from the bundle —
+  //         c_invoice's bar must contain the §0.19 invoice (documentno 200001, grandtotal 100.70), not invented.
+  await page.evaluate(() => window.pick('c_invoice'));
+  await page.waitForFunction(() => {
+    const bar = document.querySelector('#stack .bar[data-id="c_invoice"] .recrows[data-rows]');
+    return !!bar;
+  }, { timeout: 6000 }).catch(() => {});
+  const invRows = await page.evaluate(() => {
+    const b = document.querySelector('#stack .bar[data-id="c_invoice"] .recrows');
+    return b ? { txt: b.innerText.replace(/\s+/g, ' '), n: +(b.getAttribute('data-rows') || 0) } : { txt: '', n: 0 };
+  });
+  check(invRows.n > 0 && /200001/.test(invRows.txt) && /100\.70/.test(invRows.txt),
+    'W-DATA-BARS: c_invoice bar surfaces the REAL row (200001 + 100.70) from the bundle',
+    'rows=' + invRows.n + ' txt="' + invRows.txt.slice(0, 70) + '"');
+  check(/the actual records/i.test(invRows.txt),
+    'W-DATA-BARS: bundle bar is headed "the actual records"', invRows.txt.slice(0, 40));
+
+  // a NON-bundle table (gl_journal is a real graph node, NOT in the bundle whitelist) → honest note, no fake rows
+  await page.evaluate(() => window.pick('gl_journal'));
+  await page.waitForFunction(() => {
+    const b = document.querySelector('#stack .bar[data-id="gl_journal"] .recrows');
+    return b && /not carried in this dataset/i.test(b.innerText);
+  }, { timeout: 4000 }).catch(() => {});
+  const glTxt = await page.evaluate(() => {
+    const b = document.querySelector('#stack .bar[data-id="gl_journal"] .recrows');
+    return b ? b.innerText.replace(/\s+/g, ' ') : '';
+  });
+  const glHasRows = await page.evaluate(() => !!document.querySelector('#stack .bar[data-id="gl_journal"] .recrows[data-rows]'));
+  check(/not carried in this dataset/i.test(glTxt) && !glHasRows,
+    'W-DATA-BARS: a non-bundle table shows the honest "not carried" note (no fake rows)',
+    'note="' + glTxt.slice(0, 50) + '" fakeRows=' + glHasRows);
+
+  // ── Task 3 (W-DOSSIER): the right-click DOSSIER — Data | Rules | Columns | History, all EXTRACTED ──
+  // PROVES: the 5–7 iDempiere windows fuse into one movable panel; each tab populates from data alone;
+  //         History's ↶ reversal preview is PURE-READ (className toggle, no localStorage/db write — the T3 seam).
+
+  // gen-side op-log is real + non-empty (G is the inlined graph var) — the History tab's data source.
+  const oplogLen = await page.evaluate(() => (window.G ? G.oplog.length : 0));
+  check(oplogLen > 0, 'W-DOSSIER: graph.oplog is present + non-empty (real kernel_ops inlined)', 'oplog=' + oplogLen);
+
+  // right-click semantics via the exposed API: openDossier('c_invoice') opens the panel with ≥3 tabs
+  await page.evaluate(() => window.openDossier('c_invoice'));
+  await page.waitForTimeout(40);
+  const dossOpen = await page.locator('#dossier').evaluate(e => e.classList.contains('open'));
+  const tabCount = await page.locator('#dossier .dtab').count();
+  check(dossOpen && tabCount >= 3, 'W-DOSSIER: openDossier opens #dossier with ≥3 tabs', 'open=' + dossOpen + ' tabs=' + tabCount);
+
+  // Data tab (default) → real bundle row 200001 surfaces (waits for the lazy sql.js bundle)
+  await page.waitForFunction(() => /200001/.test(document.getElementById('dossierBody').innerText), { timeout: 6000 }).catch(() => {});
+  const dataTxt = await page.locator('#dossierBody').innerText().then(t => t.replace(/\s+/g, ' '));
+  check(/200001/.test(dataTxt), 'W-DOSSIER: Data tab shows the REAL invoice 200001 from the bundle', dataTxt.slice(0, 60));
+
+  // Rules tab → lists ≥1 validation rule, and the count must EQUAL the gen-side §DOSSIER inlined count
+  const genRuleCount = await page.evaluate(() => { const n = G.nodes.find(x => x.id === 'c_invoice'); return n.dossier.ruleCount; });
+  await page.locator('#dossier .dtab', { hasText: 'Rules' }).click();
+  await page.waitForTimeout(40);
+  const ruleRows = await page.locator('#dossier .rule').count();
+  check(ruleRows >= 1 && ruleRows === genRuleCount, 'W-DOSSIER: Rules tab lists the rules, count == gen-side §DOSSIER count', 'shown=' + ruleRows + ' gen=' + genRuleCount);
+
+  // Columns tab → ad_column metadata (≥1 column, FK target rendered)
+  await page.locator('#dossier .dtab', { hasText: 'Columns' }).click();
+  await page.waitForTimeout(40);
+  const colRows = await page.locator('#dossier .col').count();
+  check(colRows >= 1, 'W-DOSSIER: Columns tab renders ad_column metadata', 'cols=' + colRows);
+
+  // History tab → ≥1 real op row; ↶ preview adds .reversed WITHOUT any localStorage/db write (pure-read)
+  await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+  const lsBefore = await page.evaluate(() => localStorage.length);
+  await page.locator('#dossier .dtab', { hasText: 'History' }).click();
+  await page.waitForTimeout(40);
+  const opRows = await page.locator('#dossier .oprow').count();
+  check(opRows >= 1, 'W-DOSSIER: History tab renders ≥1 real op from graph.oplog', 'ops=' + opRows);
+  await page.locator('#dossier .oprow .oprev').first().click();
+  await page.waitForTimeout(40);
+  const reversed = await page.locator('#dossier .oprow.reversed').count();
+  const noteTxt = await page.locator('#dossier .oprow.reversed .opnote').first().innerText().catch(() => '');
+  const lsAfter = await page.evaluate(() => localStorage.length);
+  check(reversed === 1 && /would reverse \d+ tracked op/i.test(noteTxt) && lsAfter === lsBefore,
+    'W-DOSSIER: ↶ preview greys the row (read-only) — no localStorage write',
+    'reversed=' + reversed + ' note="' + noteTxt.slice(0, 50) + '" ls=' + lsBefore + '→' + lsAfter);
+  // ↷ un-greys (the read-only undo/redo preview, both directions)
+  await page.locator('#dossier .oprow.reversed .oprev').first().click();
+  await page.waitForTimeout(40);
+  const reversedAfter = await page.locator('#dossier .oprow.reversed').count();
+  check(reversedAfter === 0, 'W-DOSSIER: ↷ un-greys the row (reversal preview toggles both ways)', 'reversed=' + reversedAfter);
+  const shotD = path.join(ROOT, 'glassbowl_dossier.png');
+  await page.screenshot({ path: shotD });
+  // close the dossier so it does not occlude later assertions
+  await page.locator('#dossier .dx').click();
+  await page.waitForTimeout(30);
+
+  // ── Task 2 (W-ACTIONS): DOUBLE-TAP a bubble → the ACTION BLURB (the friendly per-bubble chooser) ──
+  // PROVES: double-click opens an anchored blurb of REAL actions; lifecycle bubbles offer Trace, the CRUD
+  //         teaser is visible but inert (read-only T3 seam), the blurb follows the bubble on orbit + hides on bg.
+  await page.evaluate(() => { window.setOrbit(0, 0); window.hideBlurb && window.hideBlurb(); });
+  // dblclick a node <g> → #blurb opens with ≥2 action buttons (single-click path stays untouched)
+  await page.evaluate(() => document.querySelector('#svg g.node').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })));
+  await page.waitForTimeout(40);
+  const blurbOpen = await page.locator('#blurb').evaluate(e => e.classList.contains('open') && getComputedStyle(e).display !== 'none');
+  const blurbActs = await page.locator('#blurb .act:not(.crud)').count();
+  check(blurbOpen && blurbActs >= 2, 'W-ACTIONS: double-tap a bubble opens #blurb with ≥2 action buttons', 'open=' + blurbOpen + ' acts=' + blurbActs);
+
+  // the CRUD teaser is rendered but DISABLED (visible future, inert now — no handler, no write)
+  const crudCount = await page.locator('#blurb .act.crud.disabled').count();
+  const crudTitle = await page.locator('#blurb .act.crud.disabled').first().getAttribute('title').catch(() => '');
+  check(crudCount >= 1 && /coming later \(T3\)/i.test(crudTitle || ''), 'W-ACTIONS: CRUD teaser shown greyed/disabled (read-only T3 seam)', 'crud=' + crudCount + ' title="' + (crudTitle || '') + '"');
+
+  // open the blurb for a LIFECYCLE bubble (c_order) → its ▸ Trace button opens the strip
+  await page.evaluate(() => { window.setTrace(false); window.openBlurb('c_order'); });
+  await page.waitForTimeout(30);
+  const orderTrace = await page.locator('#blurb .act', { hasText: 'Trace' }).count();
+  check(orderTrace === 1, 'W-ACTIONS: a lifecycle bubble (c_order) blurb offers ▸ Trace', 'traceBtn=' + orderTrace);
+  await page.locator('#blurb .act', { hasText: 'Trace' }).first().click();
+  await page.waitForTimeout(50);
+  check(await page.locator('#strip').evaluate(e => e.classList.contains('open')), 'W-ACTIONS: clicking the blurb’s ▸ Trace opens the lifecycle strip (#strip.open)', 'opened');
+  await page.evaluate(() => window.setTrace(false));
+
+  // a NON-lifecycle bubble (c_bpartner, a reference master) OMITS Trace but still offers ≥2 read actions
+  await page.evaluate(() => window.openBlurb('c_bpartner'));
+  await page.waitForTimeout(30);
+  const bpTrace = await page.locator('#blurb .act', { hasText: 'Trace' }).count();
+  const bpActs = await page.locator('#blurb .act:not(.crud)').count();
+  check(bpTrace === 0 && bpActs >= 2, 'W-ACTIONS: a non-lifecycle bubble omits Trace (offers View data / Dossier)', 'trace=' + bpTrace + ' acts=' + bpActs);
+
+  // the blurb FOLLOWS the bubble on orbit — its left position changes when the camera orbits
+  await page.evaluate(() => window.openBlurb('c_order'));
+  await page.waitForTimeout(30);
+  const blurbLeft0 = await page.locator('#blurb').evaluate(e => e.style.left);
+  await page.evaluate(() => window.setOrbit(0.6, 0.2));
+  await page.waitForTimeout(40);
+  const blurbLeft1 = await page.locator('#blurb').evaluate(e => e.style.left);
+  check(blurbLeft0 && blurbLeft1 && blurbLeft0 !== blurbLeft1, 'W-ACTIONS: the blurb follows the bubble on orbit (left changes)', 'left ' + blurbLeft0 + '→' + blurbLeft1);
+  await page.evaluate(() => window.setOrbit(0, 0));
+
+  // background click hides the blurb (dismiss on click-away). A real click-away is pointerdown (resets the
+  // drag/moved flag) then click on the empty background — mirror that so the !moved-gated handler fires.
+  await page.evaluate(() => { const s = document.getElementById('svg'); s.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 5, clientY: 5 })); s.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 5, clientY: 5 })); s.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+  await page.waitForTimeout(40);
+  const blurbHidden = await page.locator('#blurb').evaluate(e => !e.classList.contains('open'));
+  check(blurbHidden, 'W-ACTIONS: background click hides the action blurb (dismiss on click-away)', 'hidden=' + blurbHidden);
+
   // toggle reference spine off → fewer lines (legend filter wired)
   const before = await page.locator('#svg line').count();
   await page.locator('#legend input[type=checkbox]').nth(3).uncheck();   // 'reference' is 4th in the legend
