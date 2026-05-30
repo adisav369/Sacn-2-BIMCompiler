@@ -11,11 +11,8 @@ const ASSETS = [
   'sqljs/sql-wasm.wasm'
 ];
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_VERSION).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
-  );
-});
+// install is INSTANT — no precache here (that's what caused upfront load lag).
+self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', e => {
   e.waitUntil(
@@ -23,6 +20,14 @@ self.addEventListener('activate', e => {
       .then(keys => Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// the page asks for the full precache LATER (on idle, a few seconds after load) — off the critical path,
+// so the user feels no lag. Until then, the fetch handler below still caches whatever is actually used.
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'precache') {
+    e.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(ASSETS)).catch(() => {}));
+  }
 });
 
 self.addEventListener('fetch', e => {

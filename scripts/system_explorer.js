@@ -479,7 +479,7 @@ function renderHtml(graph) {
 '  #blurb .crudk{color:var(--dim);font-size:9px;text-transform:uppercase;letter-spacing:.06em;margin:7px 2px 3px}\n' +
 '  #blurb .act.crud.disabled{cursor:not-allowed;opacity:.42;color:#5a6b7a;border-style:dashed;pointer-events:none} #blurb .act.crud.disabled:hover{border-color:#2b3744;color:#5a6b7a}\n' +
 '</style></head><body>\n' +
-'<script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>\n' +
+'<script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").then(function(reg){var warm=function(){var a=reg.active||navigator.serviceWorker.controller;if(a)a.postMessage({type:"precache"});else navigator.serviceWorker.ready.then(function(r){r.active&&r.active.postMessage({type:"precache"});});};if("requestIdleCallback" in window)requestIdleCallback(warm,{timeout:7000});else setTimeout(warm,4000);}).catch(function(){});});}</script>\n' +
 '<div id="wrap">\n' +
 '<div id="stage"><svg id="svg" width="100%" height="100%"></svg>\n' +
 '  <div class="legend" id="legend"></div>\n' +
