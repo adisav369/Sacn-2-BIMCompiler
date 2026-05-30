@@ -36,6 +36,19 @@
   .chip.on{background:var(--accent); color:#04121a; box-shadow:0 0 16px -2px var(--accent)}
   .chip:disabled{opacity:.3; cursor:default; color:var(--dim); box-shadow:none}
 
+  /* bottom view-log scrubber */
+  #vbar{position:fixed; left:50%; bottom:8px; transform:translateX(-50%); display:flex; align-items:center; gap:8px; z-index:6;
+        width:min(560px,92vw); background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:5px 10px; backdrop-filter:blur(6px)}
+  #vbar button{border:0; background:transparent; color:var(--ink); font-size:17px; cursor:pointer; padding:3px 9px; border-radius:10px; line-height:1}
+  #vbar button:disabled{opacity:.28; cursor:default}
+  #vbar button:hover:not(:disabled){background:#1a2433}
+  #scrub{position:relative; flex:1; height:26px; cursor:pointer; touch-action:none}
+  #scrubline{position:absolute; left:4px; right:4px; top:50%; height:2px; background:var(--line); transform:translateY(-50%)}
+  #scrubticks{position:absolute; left:4px; right:4px; top:0; bottom:0}
+  .vtick{position:absolute; top:50%; width:9px; height:9px; margin:-4.5px 0 0 -4.5px; border-radius:50%; background:#3a4a5a; cursor:pointer; transition:transform .12s, background .12s}
+  .vtick:hover{background:var(--ink); transform:scale(1.35)}
+  .vtick.cur{background:var(--accent); width:13px; height:13px; margin:-6.5px 0 0 -6.5px; box-shadow:0 0 10px -1px var(--accent)}
+
   /* depth dial (right) */
   #dial{position:fixed; right:18px; top:50%; transform:translateY(-50%); height:54vh; width:64px; display:flex; flex-direction:column; align-items:center; z-index:5}
   #track{position:relative; flex:1; width:6px; background:linear-gradient(var(--line),#0c1420); border-radius:3px; margin:8px 0}
@@ -48,7 +61,7 @@
   #dlTop,#dlBot{height:30px; display:flex; align-items:center}
 
   /* lifecycle strip (bottom) */
-  #strip{position:fixed; left:50%; bottom:0; transform:translateX(-50%) translateY(110%); display:flex; gap:0; align-items:stretch; background:var(--panel); border:1px solid var(--line); border-bottom:0; border-radius:14px 14px 0 0; padding:10px 14px; z-index:6; transition:transform .35s cubic-bezier(.2,.8,.2,1); max-width:96vw; overflow-x:auto}
+  #strip{position:fixed; left:50%; bottom:50px; transform:translateX(-50%) translateY(160%); display:flex; gap:0; align-items:stretch; background:var(--panel); border:1px solid var(--line); border-bottom:0; border-radius:14px 14px 0 0; padding:10px 14px; z-index:6; transition:transform .35s cubic-bezier(.2,.8,.2,1); max-width:96vw; overflow-x:auto}
   #strip.on{transform:translateX(-50%) translateY(0)}
   .step{display:flex; align-items:center; gap:10px; padding:2px 4px}
   .step .dot{width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-weight:700; color:#04121a; flex:0 0 auto}
@@ -71,11 +84,11 @@
   #card .b.off{opacity:.4; cursor:not-allowed}
 
   /* footer provenance */
-  #foot{position:fixed; left:12px; bottom:10px; color:var(--dim); font-size:11px; z-index:5; max-width:48vw}
+  #foot{position:fixed; left:12px; bottom:46px; color:var(--dim); font-size:11px; z-index:5; max-width:42vw}
   #foot b{color:var(--flow)}
   #title{position:fixed; left:14px; top:12px; z-index:5; font-weight:800; letter-spacing:.02em; font-size:16px}
   #title small{color:var(--dim); font-weight:500; font-size:11px; display:block; letter-spacing:0}
-  #hint{position:fixed; left:50%; bottom:14px; transform:translateX(-50%); color:var(--dim); font-size:12px; z-index:4; text-align:center; pointer-events:none; transition:opacity .4s}
+  #hint{position:fixed; left:50%; bottom:46px; transform:translateX(-50%); color:var(--dim); font-size:12px; z-index:4; text-align:center; pointer-events:none; transition:opacity .4s}
 </style>
 </head>
 <body>
@@ -84,7 +97,6 @@
 <div id="title">Glassbowl · Gravity<small>GardenWorld — engine presenting itself</small></div>
 
 <div id="top">
-  <div class="grp"><button class="chip" id="undoBtn" title="back to the last view — Ctrl+Z (the kernel-log magic, on views)">↶</button><button class="chip" id="redoBtn" title="forward — Ctrl+Shift+Z">↷</button></div>
   <div class="grp"><span class="lbl">Pivot</span>
     <button class="chip on" data-lens="partner">Partner</button>
     <button class="chip" data-lens="month">Month</button>
@@ -106,6 +118,13 @@
 <div id="strip"></div>
 
 <div id="card"></div>
+
+<!-- view-log scrubber (Red Pill TM pattern): ↶ · timeline of views · ↷ -->
+<div id="vbar">
+  <button id="undoBtn" title="back to the last view — Ctrl+Z">↶</button>
+  <div id="scrub" title="scrub the view-log — the kernel-log magic, on views"><div id="scrubline"></div><div id="scrubticks"></div></div>
+  <button id="redoBtn" title="forward — Ctrl+Shift+Z">↷</button>
+</div>
 
 <div id="foot">Every number is a live <b>GROUP BY</b> over 8 real GardenWorld orders ·
   <span id="prov">extracted from glassbowl_data.db · 0 invented</span></div>
@@ -467,7 +486,20 @@ function applyView(v){ restoring=true;
   hideCard(); positionBall();
   if(v.traceNo){ trace(v.traceNo); } else { state.trace=null; strip.classList.remove('on'); relayout(); }
   restoring=false; syncUndo(); }
-function syncUndo(){ if(undoBtn) undoBtn.disabled=viewIdx<=0; if(redoBtn) redoBtn.disabled=viewIdx>=viewHist.length-1; }
+function syncUndo(){ if(undoBtn) undoBtn.disabled=viewIdx<=0; if(redoBtn) redoBtn.disabled=viewIdx>=viewHist.length-1; renderScrub(); }
+/* the view-log drawn as a timeline of clickable ticks (Red Pill TM scrubber) */
+function viewLabel(v){ if(v.traceNo) return 'trace '+v.traceNo; if(v.depth===0) return 'dictionary'; if(v.depth===2) return 'lines'+(v.focusOrderNo?' '+v.focusOrderNo:''); if(v.focusGroup) return 'focus'; return v.lens+' · '+(v.measure==='count'?'#':'$'); }
+function renderScrub(){ const t=document.getElementById('scrubticks'); if(!t) return; t.innerHTML=''; const N=viewHist.length;
+  viewHist.forEach((v,i)=>{ const d=document.createElement('div'); d.className='vtick'+(i===viewIdx?' cur':'');
+    d.style.left=(N<=1?50:(i/(N-1))*100)+'%'; d.title=(i+1)+'. '+viewLabel(v);
+    d.onclick=ev=>{ ev.stopPropagation(); if(i!==viewIdx){ viewIdx=i; applyView(viewHist[i]); } }; t.appendChild(d); }); }
+(function(){ const scrub=document.getElementById('scrub'); if(!scrub) return; let scrubbing=false;
+  function scrubTo(cx){ const r=scrub.getBoundingClientRect(); let f=(cx-r.left)/r.width; f=Math.max(0,Math.min(1,f));
+    const N=viewHist.length; if(N<1) return; const i=Math.round(f*(N-1)); if(i!==viewIdx){ viewIdx=i; applyView(viewHist[i]); } }
+  scrub.addEventListener('pointerdown',e=>{ scrubbing=true; try{scrub.setPointerCapture(e.pointerId);}catch(x){} scrubTo(e.clientX); });
+  scrub.addEventListener('pointermove',e=>{ if(scrubbing) scrubTo(e.clientX); });
+  scrub.addEventListener('pointerup',()=>{ scrubbing=false; });
+})();
 function undoView(){ if(viewIdx>0){ viewIdx--; applyView(viewHist[viewIdx]); flashHint('↶ stepped back through the view-log (the kernel-log magic, read-only)'); } }
 function redoView(){ if(viewIdx<viewHist.length-1){ viewIdx++; applyView(viewHist[viewIdx]); } }
 if(undoBtn) undoBtn.onclick=undoView; if(redoBtn) redoBtn.onclick=redoView;
