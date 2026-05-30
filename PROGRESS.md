@@ -20,6 +20,12 @@
 
 ## Active Work — Browser BIM OOTB
 
+**SETTINGS / 4D SCHEDULE (2026-05-31): READ-ONLY schedule showcase + Settings-panel fixes, DEPLOYED live (sw v554).** (spec: `prompts/SETTINGS_JSON_EDITOR.md`; memory: [[project_settings_json_editor]])
+  - **PR #68:** Settings → "4D Schedule (this building)" opens native IFC `IfcWorkSchedule` read-only. `panels.js _projectSchedule()` = CAPTURED provider → contract `Project + Phases[]` (Ceiling/TOS→Level, span=own structural span, elements=count). Hospital 2.0 = captured 2900 / 10 phases. Contract jointly owned w/ gantt-support-gate session (`internal/schedule_instance.template.json`). `test_schedule_projector` 10/10 on real `Hospital 2.0_meta.db`.
+  - **settings_editor.js:** `opts.readonly` (§PROPSHEET_READONLY writable=0); recursive `children[]` view handler (DORMANT — needs contract `children[]`); `__labelKey`/`__summary` display directives.
+  - **PR #70/#71/#73:** fixed `_openSettingsPanel` (hidden until 2nd click) + `_makeDraggable` (measure.js) — capture pointer only after >4px move, release via capture-phase pointerup; fixes section-fold AND "panel sticks to cursor". Benefits ALL draggable panels. Verified LIVE via Playwright real clicks.
+  - **NEXT (Phase 2, parked):** editable schedule → `schedule_override` DB table, captured rows protected.
+
 **GLASSBOWL — engine-as-data explorer (2026-05-30): LIVE read-only MVP + interactive.** (spec: `docs/GLASSBOWL.md`; Phase 2 spec: `docs/GLASSBOWL_DOSSIER.md`)
   - **What:** the ERP engine renders ITSELF from data (W-GLASSBOWL) — FK graph (273 edges, 0 hand-authored) + 6 cells + 155 cold backlog, spine-classified. `scripts/system_explorer.js` → `build/erp/{system_graph.json,glassbowl.html}` (self-contained). §GLASSBOWL PASS.
   - **Live:** https://red1oon.github.io/BIMCompiler/glassbowl.html (BIMCompiler repo, `mkdocs gh-deploy`, `docs/glassbowl.html`). Interactive (drag/zoom/pan), business-user explainer + plain-English legend/inspector. Proven in real browser: `deploy/dev/tests/test_glassbowl.js` 18/18 §GLASSBOWL-WIRING PASS (incl. drag/zoom/reset/About). Render bug found+fixed: SVG via `createElementNS` NOT `innerHTML` (innerHTML SVG counts but never lays out headless).

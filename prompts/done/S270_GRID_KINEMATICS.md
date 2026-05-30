@@ -97,11 +97,16 @@ All 61/61 pass.
 
 ## What's Next — S270d (next session)
 
-### Priority 1: BUG-2 and BUG-3 (triage)
-- BUG-2: Warning on empty attach map — already partially done (drag blocked with status message)
-- BUG-3: Phase-aware recompose — new elements should respect moved grid. May defer to UBBL Stage 2.
+### Priority 1: BOM wiring (B1-B5) — see RED_PILL.md §11.6
+- B1: Add `<script>` tags for 6 `bom_engine/*.js` + `disc_rules.json` to `index.html`
+- B2: Wall→Window cascade — wire `materializeLevel()` so `_bomNodes` is populated
+- B3: ROUTE strategy → `RouteWalker.walk()` (~10 lines)
+- BUG-3 closes after B1+B2 are wired (materializeLevel reads CURRENT AABBs)
 
-### Priority 2: UBBL Validator (Stage 2)
+### Priority 2: BUG-2 (triage)
+- Warning on empty attach map — already partially done (drag blocked with status message)
+
+### Priority 3: UBBL Validator (Stage 2)
 Compliance engine, clearance rules, code checks. Needs triage session first.
 
 ## Main Doc
@@ -120,6 +125,19 @@ Read §10 (Grid CUD + Attachment + Cascade) and §11 (Implementation Status) bef
 
 ## Out of Scope
 - Tile recount / FRAME coord replacement at runtime (Stage 2)
-- MEP rerouting (Stage 2)
+- MEP rerouting — NOT needed per §11.6 insight: DISC switch → MEP reads current positions
 - IFC export, GPU throttle
 - GridInteraction extraction (deferred, ~190 lines, low priority)
+
+## Watchdog — S270c DONE appendix
+
+| Claim | §-log evidence |
+|---|---|
+| getDeltas includes CEIL | T71: `§CEIL_DELTAS CEIL delta=1.500` |
+| getLines uses original pos | T72: `§CEIL_LINES CEIL original pos=6.500` |
+| reset clears ceiling state | T73: `§CEIL_RESET` |
+| threshold excludes tiny delta | T74: `§CEIL_THRESHOLD CEIL delta 0.005 excluded` |
+| ROOF_LIFT + WALL_HEIGHT_SCALE cascade | T75: `§CEIL_CASCADE ROOF_LIFT=1 WALL_SCALE=2 totalCmds=3` |
+| getCeilingYCurrent fallback | T76: `§CEIL_FALLBACK` |
+| All suites green | 79 + 98 + 63 + 114 = 354 pass, whitebox 34/36 |
+| Commit | `96989ac0` on branch `full` |
