@@ -26,6 +26,68 @@ AD tree.
 
 ---
 
+## The Underlying Structure — an appraisal for the iDempiere mind
+
+> *If you come from iDempiere, you already believe the radical half of this idea.*
+> The AD is the proof: a window, a tab, a field, a validation rule, a menu — none
+> are code, all are **rows**. "The application is data" is not our claim; it is
+> iDempiere's, and it is why AD-driven ERP won. What follows is an honest read of
+> what this project does **differently**, why it matters, and what is proven vs. parked.
+
+### The one-sentence thesis
+iDempiere made the **UI** data and left the **engine** as code (the `M*` model
+classes, doc processors, callouts, the workflow/accounting/costing engines, OSGi).
+This project pushes the *same bet one layer deeper*: **the engine becomes data too**
+— the document lifecycle, the matchers, the accounting postings, even *where the
+work concentrates* — extracted into a structure small enough to render, run, replay,
+and explain **itself** in a browser, with **zero hand-authored glue** (the
+extract-only rule, §0.1). Glassbowl is that structure made visible.
+
+### What actually collapses (and why an AD veteran should care)
+
+| In iDempiere you know… | …here it becomes | The merit |
+|---|---|---|
+| **~925 tables**, each an `M*` class | a **5-table runtime** (`containers`, `items`, `documents`, `document_lines`, `journal`) + a `doc_type` discriminator (§0) | one storage shape the whole catalogue maps onto — **98.4 % of business edges mappable, hub `C_Order` still #1** (witness §5TBL). The schema stops growing with the feature list. |
+| **`completeIt()` across dozens of models** | a handful of **pure verbs** `(doc,ctx)→ops[]` — `completeOrder`, `createShipment`, `createInvoice`, `allocate`, `match` | the O2C / P2P / GL verticals reproduce the **GardenWorld oracle exactly** (§VERTICAL, §ORACLE-SUITE) — and the long-tail document ships **matcher-free**, the matcher *composing in* only at the buyer-reconciliation gate (§0.19). Less engine, not more. |
+| **Modules you install & activate** | **hot vs. cold cells** of a `(doc_type × doc_status)` grid; 155 stay dormant | "the whole platform is already here, dormant — it turns on the moment you use it." Nothing to install; **op-log gravity self-ranks** where the work really is (`C_Invoice` #1 = the settlement spine, §0.13/§14). |
+| **9,423 foreign keys** | **4 structural roles** — containment / derivation / settlement / reference (the "two spines") | the map reads at a glance: green **derivation** = the easy everyday O2C flow; red **settlement** = matching & reconciliation, where money — and mistakes — concentrate. Classification is **derived, 0 hand-authored** (witness §GLASSBOWL). |
+| **AD_ChangeLog + an audit trail bolted on** | **`kernel_ops`** — every state change a rich op (payload + actor + **before/after** + lineage), replayable | the audit log **is** the source of truth: replay rebuilds the projection from the op-log alone (hash-match). History, undo-preview, and the future write-loop all read the *same* log. |
+| **Two logins** — System Admin (the dictionary) vs. a client like GardenWorld (the rows) | **one canvas** — the §0.18b duality fused | click the `C_Invoice` *type-cell* (admin view) and its real invoices (`#200001 = $100.70`) surface right there (operator view). The **trace** is where the two layers meet: a type-level FK spine lit by one instance's journey. No tab-switching, no second login. |
+
+### Why this is more than a port
+A port would re-skin the 925 tables in a browser. This **re-bases** them. The merit
+is not "iDempiere without a JVM" (though it is also that — SQLite WASM, sql.js, no
+PostgreSQL/OSGi/server); it is that the engine is now **inspectable as data**, so it
+can do the things a code-engine structurally resists: surface *everything about one
+entity in one place*; ship *dormant and self-activating*; **draw its own map** of
+where value and risk pool; and — the parked endgame — let you **edit a rule and watch
+the affected records flip on that map** (the diff-oracle in the browser, §2d-3). That
+last step turns the map of the engine into the *console you run the engine from*.
+
+### The discipline that makes the claim trustworthy
+The same instinct AD embodies — *don't write what you can declare* — is taken to its
+limit here as **EXTRACT OR COMPILE ONLY**: every node, edge, rule, row, op, and even
+the sound-pitch and depth-plane is **read** from `ad_full.db` / `erp_rules.db` /
+`kernel_ops`, never invented. A value with no source is a **logged finding, not a
+guess** (e.g. GL `fact_acct=0` → the Accounting view says *"not posted in this
+dataset,"* it never fakes a posting). This is why the demo is sticky: *it isn't a
+mockup — the thing renders and explains itself, live, from its own data.*
+
+### Proven vs. parked (no overclaim)
+- **Proven, witnessed:** AD→manifest compile; the 5-table bridge (§5TBL); the
+  diff-verified O2C/P2P/GL verticals + matcher-free long-tail (§0.17–§0.19); the
+  runtime kernel + replay (§0.16); Glassbowl rendering the engine from data alone,
+  with the lifecycle trace, dossier, real rows, and op-log History (§GLASSBOWL).
+- **Parked behind T3 (write-loop, `push=live`, explicit go):** editing rules/records
+  in place, the live rule-impact preview, the on-screen keyboard / view-back input.
+  Today's surface is **read-only**; the greyed CRUD and the History undo-preview are
+  the honest *seam* to that next step, not the step itself.
+
+*Read on for the storage decision (§0), the cell model, the kernel, and the
+diff-oracle that holds it all to the GardenWorld truth.*
+
+---
+
 ## §0. Storage Model Decision (2026-05-29) — chosen path: (c) The Bridge
 
 **Chosen:** 5-table runtime (`containers`, `items`, `documents`, `document_lines`,

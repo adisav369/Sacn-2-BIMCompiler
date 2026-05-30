@@ -401,6 +401,107 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   await page.screenshot({ path: shot3 });
   console.log('\n   screenshots: ' + [shot1, shot2, shot3, shotT, shotO].map(s => path.basename(s)).join(', '));
 
+  // ── Task 4 (W-SWIPE-PICKER): the swipe/scroll record list at the trackball (mobile-first, less typing) ──
+  // PROVES: the typed search is AUGMENTED (not replaced) by a scrollable, tappable list of real bundle orders;
+  //         tapping a non-seed row traces THAT record — zero keyboard. (issue: no-typing record pick on mobile)
+  await page.evaluate(() => window.setTrace(true));
+  await page.waitForFunction(() => document.querySelectorAll('#recpick .rpr').length > 1, { timeout: 6000 }).catch(() => {});
+  const pickOpen = await page.locator('#recpick').evaluate(e => e.classList.contains('open') && getComputedStyle(e).display !== 'none');
+  const pickRows = await page.locator('#recpick .rpr').count();
+  check(pickOpen && pickRows > 1, 'W-SWIPE-PICKER: trace mode shows a scrollable record list (>1 real rows) at the trackball', 'open=' + pickOpen + ' rows=' + pickRows);
+  const pickTxt = await page.locator('#recpick').innerText().then(t => t.replace(/\s+/g, ' '));
+  check(/80001/.test(pickTxt), 'W-SWIPE-PICKER: the list carries real bundle rows incl. the seed (80001)', pickTxt.slice(0, 70));
+  const scrollable = await page.locator('#recpick').evaluate(e => e.scrollHeight > e.clientHeight + 2);
+  check(scrollable, 'W-SWIPE-PICKER: the list is vertically scrollable (touch pan-y — more rows than fit)', 'scrollable=' + scrollable);
+  // the typed search is AUGMENTED, not removed — the datalist stays populated (desktop fallback unbroken)
+  const dlOpts = await page.locator('#reclist option').count();
+  check(dlOpts > 1, 'W-SWIPE-PICKER: the typed #recsearch datalist is preserved (augment, not replace)', 'opts=' + dlOpts);
+  // TAP a non-seed row → it traces THAT record (the step-strip updates to its documentno), no keyboard
+  const otherIdx = await page.evaluate(() => { const rows = [...document.querySelectorAll('#recpick .rpr')]; for (let i = 0; i < rows.length; i++) { if (!/80001/.test(rows[i].innerText)) return i; } return -1; });
+  if (otherIdx >= 0) {
+    const otherDn = (await page.locator('#recpick .rpr').nth(otherIdx).locator('b').innerText()).replace(/[^0-9]/g, '');
+    await page.locator('#recpick .rpr').nth(otherIdx).click();
+    await page.waitForTimeout(60);
+    const pickStrip = (await page.locator('#strip').innerText()).replace(/\s+/g, ' ');
+    check(pickStrip.includes(otherDn), 'W-SWIPE-PICKER: tapping a non-seed row traces THAT record (strip updates, no typing)', 'tapped #' + otherDn + ' strip="' + pickStrip.slice(0, 50) + '"');
+  }
+  const swipeLog = logs.find(l => /§SWIPE-PICKER/.test(l)) || '';
+  check(/rows=\d+/.test(swipeLog) && /seed=80001/.test(swipeLog), 'W-SWIPE-PICKER: §SWIPE-PICKER whitebox log confirms real rows + seed', swipeLog.slice(0, 70));
+  const shotP = path.join(ROOT, 'glassbowl_swipe.png');
+  await page.screenshot({ path: shotP });
+  await page.evaluate(() => window.setTrace(false));
+
+  // ── Task 5 (W-AUDIO): WebAudio "ear candy" — synthesized, mute toggle persisted, gesture-unlock ──
+  // PROVES: a persisted mute toggle exists; a pick schedules a WebAudio node (AudioContext created + node
+  //         scheduled); mute silences scheduling — jive on mundane work that never blocks interaction.
+  const muteExists = await page.locator('#muteBtn').count();
+  check(muteExists === 1, 'W-AUDIO: a mute toggle button exists', 'muteBtn=' + muteExists);
+  // first-gesture unlock: a real pointerdown lazily creates the AudioContext (autoplay policy honoured)
+  await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+  await page.waitForTimeout(30);
+  const ctxMade = await page.evaluate(() => !!(window.__audio && window.__audio.ctx));
+  check(ctxMade, 'W-AUDIO: first user gesture unlocks the AudioContext (created lazily, not at load)', 'ctx=' + ctxMade);
+  // a pick schedules a WebAudio gain node → the scheduled counter increments (sound is actually synthesized)
+  const schedBefore = await page.evaluate(() => window.__audioScheduled || 0);
+  await page.evaluate(() => { window.__audio.muted = false; window.pick('c_order'); });
+  await page.waitForTimeout(30);
+  const schedAfter = await page.evaluate(() => window.__audioScheduled || 0);
+  check(schedAfter > schedBefore, 'W-AUDIO: a pick schedules a WebAudio node (ear candy is real, not a stub)', schedBefore + '→' + schedAfter);
+  // MUTE silences scheduling — with muted=true a pick schedules NOTHING (respects the user)
+  await page.evaluate(() => { window.__audio.muted = true; });
+  const mB = await page.evaluate(() => window.__audioScheduled || 0);
+  await page.evaluate(() => window.pick('c_invoice'));
+  await page.waitForTimeout(30);
+  const mA = await page.evaluate(() => window.__audioScheduled || 0);
+  check(mA === mB, 'W-AUDIO: mute silences scheduling (a muted pick schedules no node)', mB + '→' + mA);
+  await page.evaluate(() => { window.__audio.muted = false; });
+  // the mute state is PERSISTED in the scene localStorage (survives a refresh)
+  await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} window.toggleMute(); });   // mute on → save()
+  const mutePersisted = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('glassbowl.scene') || '{}').mute === true; } catch (e) { return false; } });
+  check(mutePersisted, 'W-AUDIO: mute is persisted in the scene localStorage (survives refresh)', 'persisted=' + mutePersisted);
+  await page.evaluate(() => { window.toggleMute(); try { localStorage.clear(); } catch (e) {} });   // back to unmuted + clean slate
+  const audioLog = logs.find(l => /§AUDIO unlocked/.test(l)) || '';
+  check(/§AUDIO unlocked/.test(audioLog), 'W-AUDIO: §AUDIO unlocked whitebox log confirms the context came up', audioLog.slice(0, 60));
+
+  // ── Task 6 (W-QR-INPUT): scan a QR carrying a record id → trace/open it (read-only slice) ──
+  // PROVES: a camera/QR affordance exists; an unsupported browser shows an honest fallback (never broken-silent);
+  //         a decoded payload matching a bundle record traces it; closing the panel stops the stream.
+  const qrBtnExists = await page.locator('#qrbtn').count();
+  check(qrBtnExists === 1, 'W-QR-INPUT: a camera/QR affordance exists in the input panel', 'qrbtn=' + qrBtnExists);
+  // the QR affordance rides the trace-mode input panel (#recwrap) — enter trace so it is visible
+  await page.evaluate(() => window.setTrace(true));
+  await page.waitForSelector('#qrbtn', { state: 'visible', timeout: 4000 }).catch(() => {});
+  const qrSup = await page.evaluate(() => ('BarcodeDetector' in window) && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+  await page.locator('#qrbtn').click();
+  await page.waitForTimeout(90);
+  const camOpen = await page.locator('#qrcam').evaluate(e => e.classList.contains('open'));
+  const qstat = await page.locator('#qrstatus').innerText().then(t => t.replace(/\s+/g, ' '));
+  if (!qrSup) check(camOpen && /not supported/i.test(qstat), 'W-QR-INPUT: unsupported browser shows the honest "not supported" fallback (no broken-silent feature)', 'open=' + camOpen + ' status="' + qstat.slice(0, 50) + '"');
+  else check(camOpen && /(point the camera|unavailable|denied)/i.test(qstat), 'W-QR-INPUT: supported browser opens the camera affordance with an honest status', 'open=' + camOpen + ' status="' + qstat.slice(0, 50) + '"');
+  await page.evaluate(() => window.qrClose());
+  // the lookup SLICE (pure-read): a decoded payload matching a bundle record traces it — no documentno typed
+  await page.evaluate(() => window.setTrace(true));
+  await page.waitForFunction(() => window.__recs > 0, { timeout: 6000 }).catch(() => {});
+  const qrTraced = await page.evaluate(() => window.qrLookup('80002'));   // 80002 → order 102, a non-seed record
+  await page.waitForTimeout(60);
+  const qrStrip = (await page.locator('#strip').innerText()).replace(/\s+/g, ' ');
+  check(qrTraced === true && /80002/.test(qrStrip), 'W-QR-INPUT: a decoded payload matching a bundle record traces it (scan→find, read-only)', 'traced=' + qrTraced + ' strip="' + qrStrip.slice(0, 50) + '"');
+  // an UNMATCHED payload returns false honestly (never fabricates a record — extract-only)
+  const qrMiss = await page.evaluate(() => window.qrLookup('NOPE-9999'));
+  check(qrMiss === false, 'W-QR-INPUT: an unmatched payload returns false (no faked record)', 'miss=' + qrMiss);
+  // closing the panel STOPS the camera stream (no hot camera left running) — proven with a stub track
+  const streamStopped = await page.evaluate(() => {
+    let stopped = false;
+    window.__qr.stream = { getTracks: () => [{ stop: () => { stopped = true; } }] };
+    window.__qr.scanning = true;
+    window.qrClose();
+    return stopped && window.__qr.stream === null;
+  });
+  check(streamStopped, 'W-QR-INPUT: closing the panel stops the camera stream (no hot camera left running)', 'stopped=' + streamStopped);
+  const qrLog = logs.find(l => /§QR-INPUT supported=/.test(l)) || '';
+  check(/§QR-INPUT supported=/.test(qrLog), 'W-QR-INPUT: §QR-INPUT support-detection whitebox log emitted at load', qrLog.slice(0, 50));
+  await page.evaluate(() => window.setTrace(false));
+
   // ── SCENE PERSISTENCE: the screen survives a hard refresh (continue exactly where you left off) ──
   await page.evaluate(() => { window.setOrbit(0.6, 0.25); window.pick('c_payment'); });
   await page.waitForTimeout(40);
@@ -414,6 +515,46 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   const barsPost = await page.locator('#stack .bar').count();
   check(restored && Math.abs(yawR - 0.6) < 0.02 && barsPost >= 1 && barsPost === barsPre, 'scene SURVIVES a hard refresh (orbit + recent-items log restored)', 'restored=' + restored + ' yaw=' + (yawR || 0).toFixed(2) + ' bars=' + barsPre + '→' + barsPost);
   await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });   // leave a clean slate
+
+  // ── MOBILE: the yellow border handle toggles the panel; the About panel stays in frame ──
+  // PROVES: the small yellow #phandle at the panel border slides the panel open/closed on tap (mobile-friendly,
+  //         large target); the "What am I looking at" panel is bounded to the viewport (its bottom is NOT cut off).
+  const handleExists = await page.locator('#phandle').count();
+  const handleColor = await page.locator('#phandle').evaluate(e => getComputedStyle(e).backgroundColor);
+  check(handleExists === 1 && /255,\s*212,\s*121/.test(handleColor), 'MOBILE: yellow panel handle present at the border (#ffd479)', 'handle=' + handleExists + ' bg=' + handleColor);
+  // tap the handle → the panel collapses; tap again → it opens (the slide-open/closed toggle)
+  await page.evaluate(() => window.setPanelCollapsed(false));
+  await page.waitForTimeout(60);
+  const wWide = await page.locator('#panel').evaluate(e => e.getBoundingClientRect().width);
+  await page.locator('#phandle').click(); await page.waitForTimeout(220);
+  const wCollapsed = await page.locator('#panel').evaluate(e => e.getBoundingClientRect().width);
+  await page.locator('#phandle').click(); await page.waitForTimeout(220);
+  const wReopen = await page.locator('#panel').evaluate(e => e.getBoundingClientRect().width);
+  check(wWide > 200 && wCollapsed < 5 && wReopen > 200, 'MOBILE: tapping the yellow handle slides the panel closed, tapping again opens it', wWide + '→' + wCollapsed + '→' + wReopen);
+
+  // mobile viewport: a FRESH load starts with the panel collapsed; the About panel stays fully in frame.
+  // (neuter setItem first so the pagehide/beforeunload save() can't re-persist a scene during the reload —
+  //  otherwise the reloaded page would "restore" and never count as a fresh load.)
+  await page.setViewportSize({ width: 390, height: 720 });
+  await page.evaluate(() => { try { localStorage.clear(); localStorage.setItem = function () {}; } catch (e) {} });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('#svg circle', { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(120);
+  const mobileCollapsed = await page.locator('#wrap').evaluate(e => e.classList.contains('collapsed'));
+  check(mobileCollapsed, 'MOBILE: a fresh load on a small screen starts with the panel collapsed (graph gets the screen)', 'collapsed=' + mobileCollapsed);
+  // open the About panel → its bottom must be within the frame (the reported overflow is fixed)
+  await page.evaluate(() => document.getElementById('about').classList.add('open'));
+  await page.waitForTimeout(60);
+  const ab = await page.evaluate(() => { const r = document.getElementById('about').getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), ih: window.innerHeight }; });
+  check(ab.bottom <= ab.ih && ab.top >= 0, 'MOBILE: the "What am I looking at" panel stays fully in frame (bottom not cut off)', 'top=' + ab.top + ' bottom=' + ab.bottom + ' vh=' + ab.ih);
+  const shotM = path.join(ROOT, 'glassbowl_mobile.png');
+  await page.screenshot({ path: shotM });
+  // the About panel has a close (✕) that dismisses it (reachable when it fills the small screen)
+  await page.locator('#about .aboutx').click();
+  await page.waitForTimeout(40);
+  const abClosed = await page.locator('#about').evaluate(e => !e.classList.contains('open'));
+  check(abClosed, 'MOBILE: the About panel has a close (✕) that dismisses it', 'closed=' + abClosed);
+  await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
 
   await browser.close();
   server.close();

@@ -12,6 +12,10 @@
   #wrap.resizing #panel{transition:none}
   #pgrip{flex:0 0 6px;cursor:ew-resize;background:transparent} #pgrip:hover,#wrap.resizing #pgrip{background:#2b3744}
   #wrap.collapsed #pgrip{display:none}
+  /* mobile-friendly panel handle: a small yellow indicator midway at the panel border \u2014 tap to slide open/closed.
+     Lives at the stage right edge, so it tracks the border whether the panel is open or collapsed. */
+  #phandle{position:absolute;top:50%;right:0;transform:translateY(-50%);width:17px;height:58px;background:#ffd479;border-radius:9px 0 0 9px;cursor:pointer;z-index:16;display:flex;align-items:center;justify-content:center;color:#0c0f14;font-size:12px;font-weight:700;box-shadow:-2px 0 9px rgba(0,0,0,.45);touch-action:manipulation;user-select:none}
+  #phandle:hover{background:#ffe1a3}
   h1{font-size:15px;margin:0 0 2px} .sub{color:var(--dim);font-size:11px;margin-bottom:14px}
   .appx{float:right;font-size:14px;color:var(--dim);cursor:pointer;font-weight:400;line-height:1} .appx:hover{color:#8aa}
   .legend{position:absolute;top:12px;left:12px;background:rgba(20,26,34,.92);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12px}
@@ -27,6 +31,12 @@
   #about.open{display:block} #about h2{font-size:14px;margin:0 0 8px} #about h3{font-size:12px;margin:14px 0 4px;color:#8aa}
   #about p{margin:6px 0;color:#c7d2dc} #about .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
   #about .em{color:#e7edf3}
+  #about .aboutx{position:absolute;top:9px;right:12px;cursor:pointer;color:#5a6b7a;font-weight:700;font-size:17px;line-height:1;padding:2px} #about .aboutx:hover{color:#e7edf3}
+  /* mobile: bound the \u201cWhat am I looking at\u201d panel to the viewport (8px margins) so its bottom is never out of frame; scrolls inside. */
+  @media (max-width:760px){
+    #about{top:8px;left:8px;right:8px;bottom:8px;width:auto;max-height:none;overflow:auto;-webkit-overflow-scrolling:touch}
+    #panel{width:var(--pw,86vw)}
+  }
   text{fill:var(--ink);font-size:11px;pointer-events:none;user-select:none}
   .node{cursor:grab} .node:hover circle{stroke:#fff;stroke-width:2px}
   .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 4px}
@@ -45,6 +55,20 @@
   #recwrap.open{display:block}
   #recsearch{background:rgba(16,22,30,.97);border:1px solid #3a5a7a;border-radius:8px;color:var(--ink);padding:6px 11px;font-size:12px;width:240px;outline:none;box-shadow:0 8px 40px rgba(0,0,0,.45)}
   #recsearch::placeholder{color:#5a6b7a}
+  /* §2bcd Task 6 W-QR-INPUT: the no-typing camera affordance + the honest fallback overlay. */
+  #qrbtn{margin-left:7px;background:rgba(16,22,30,.97);border:1px solid #3a5a7a;border-radius:8px;color:#ffd479;padding:6px 11px;font-size:12px;cursor:pointer;vertical-align:middle} #qrbtn:hover{border-color:#ffd479}
+  #qrcam{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;width:300px;max-width:calc(100% - 40px);background:rgba(12,16,22,.99);border:1px solid #3a4a5a;border-radius:12px;box-shadow:0 10px 48px rgba(0,0,0,.6);overflow:hidden;z-index:22}
+  #qrcam.open{display:flex} #qrcam .qrh{display:flex;align-items:center;gap:8px;padding:8px 11px;background:#121823;border-bottom:1px solid var(--line);font-size:12px} #qrcam .qrh b{flex:1;color:#e7edf3}
+  #qrcam .qrx{cursor:pointer;color:var(--dim);font-weight:700;font-size:14px;padding:0 3px} #qrcam .qrx:hover{color:#e2574c}
+  #qrvid{width:100%;height:200px;object-fit:cover;background:#05080c;display:none} #qrcam.live #qrvid{display:block}
+  #qrstatus{padding:9px 12px;font-size:12px;color:#c7d2dc;line-height:1.4} #qrstatus .qok{color:#4caf7d} #qrstatus .qbad{color:#e2a04c}
+  /* §2bcd Task 4 W-SWIPE-PICKER: the swipeable, scrollable record list at the trackball \u2014 no typing. */
+  #recpick{position:absolute;bottom:140px;right:14px;width:190px;max-height:232px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;display:none;flex-direction:column;gap:4px;background:rgba(16,22,30,.97);border:1px solid #3a5a7a;border-radius:11px;padding:7px;box-shadow:0 8px 40px rgba(0,0,0,.5);z-index:18}
+  #recpick.open{display:flex}
+  #recpick .rph{color:#8aa;font-size:9px;text-transform:uppercase;letter-spacing:.05em;padding:2px 4px 6px;position:sticky;top:0;background:rgba(16,22,30,.99)}
+  #recpick .rpr{display:flex;align-items:center;gap:8px;padding:9px 9px;border-radius:8px;background:#19222c;border:1px solid #2b3744;cursor:pointer;min-height:42px;touch-action:manipulation}
+  #recpick .rpr:hover,#recpick .rpr.sel{border-color:#ffd479} #recpick .rpr.sel{background:#1d2937}
+  #recpick .rpr b{flex:1;font-size:13px;color:#e7edf3} #recpick .rpr .rpa{color:#9fe0bd;font-size:11px}
   #ball{position:absolute;bottom:64px;right:20px;width:62px;height:62px;border-radius:50%;cursor:grab;touch-action:none;background:radial-gradient(circle at 34% 30%,#4a6075,#1a2330 72%,#0c1118);border:1px solid #3a4a5a;box-shadow:0 6px 22px rgba(0,0,0,.55),inset 0 2px 7px rgba(255,255,255,.09)}
   #ball:active{cursor:grabbing} #ball::after{content:"orbit";position:absolute;bottom:-15px;left:0;right:0;text-align:center;font-size:9px;color:#5a6b7a;letter-spacing:.1em}
   #balldot{position:absolute;width:9px;height:9px;border-radius:50%;background:#ffd479;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 7px #ffd479;pointer-events:none}
@@ -102,14 +126,17 @@
 <div id="stage"><svg id="svg" width="100%" height="100%"></svg>
   <div class="legend" id="legend"></div>
   <div class="cold" id="coldbox"></div>
-  <div class="ctl"><button id="traceBtn">▸ Trace a record</button><button id="resetBtn">⤢ Reset view</button><button id="panelToggle" title="hide / show the info panel">⟩</button></div>
+  <div class="ctl"><button id="traceBtn">▸ Trace a record</button><button id="muteBtn" title="mute / unmute the interface sounds">&#128266;</button><button id="resetBtn">⤢ Reset view</button><button id="panelToggle" title="hide / show the info panel">⟩</button></div>
   <div id="strip"></div>
-  <div id="recwrap"><input id="recsearch" list="reclist" placeholder="search a record &mdash; e.g. 80001" autocomplete="off"><datalist id="reclist"></datalist></div>
+  <div id="recwrap"><input id="recsearch" list="reclist" placeholder="search a record &mdash; e.g. 80001" autocomplete="off"><datalist id="reclist"></datalist><button id="qrbtn" title="scan a record&rsquo;s QR &mdash; no typing">&#9635; Scan QR</button></div>
+  <div id="recpick"></div>
+  <div id="qrcam"><div class="qrh"><b>Scan a record&rsquo;s QR</b><span class="qrx" id="qrx" title="close">&#10005;</span></div><video id="qrvid" playsinline muted></video><div id="qrstatus"></div></div>
   <div id="ball" title="drag to orbit \u2014 arrange the view like a BIM model"><div id="balldot"></div></div>
   <div id="about"></div>
   <div id="dossier"><div class="dh"><b id="dossierTitle">Dossier</b> <span class="dpill" id="dossierPill"></span><span class="dx" id="dossierX" title="close">\u2715</span></div>
     <div class="dtabs" id="dossierTabs"></div><div class="dbody" id="dossierBody"></div></div>
   <div id="blurb"></div>
+  <div id="phandle" title="show / hide the info panel">&#10217;</div>
 </div>
 <div id="pgrip" title="drag to resize the panel"></div>
 <div id="panel"><h1>Glassbowl <span id="aboutBtn" class="appx" title="how to read this">ⓘ</span></h1><div class="sub">a live map of how your documents connect &amp; flow — built from the system itself. Click a bubble.</div>
@@ -191,14 +218,21 @@ function endOrbit(){orbiting=null;}ball.addEventListener("pointerup",endOrbit);b
 window.setOrbit=setOrbit;updateBall();
 document.getElementById("resetBtn").addEventListener("click",function(){px=0;py=0;k=1;yaw=0;pitch=0;focusId=null;window.__yaw=0;window.__pitch=0;N.forEach(function(n){n.x=n.hx;n.y=n.hy;});updateBall();applyT();draw();});
 // collapse the right info panel \u2192 the graph takes the full canvas (positions are absolute, no re-layout needed).
-document.getElementById("panelToggle").addEventListener("click",function(){var w=document.getElementById("wrap"),c=w.classList.toggle("collapsed");this.textContent=c?"\u27e8":"\u27e9";this.title=(c?"show":"hide")+" the info panel";});
+// driven by BOTH the toolbar \u27e9 button AND the mobile-friendly yellow #phandle at the panel border.
+function isMobile(){try{return window.matchMedia("(max-width:760px)").matches||window.innerWidth<760;}catch(e){return window.innerWidth<760;}}
+function syncPanelUI(c){var pt=document.getElementById("panelToggle");if(pt){pt.textContent=c?"\u27e8":"\u27e9";pt.title=(c?"show":"hide")+" the info panel";}var ph=document.getElementById("phandle");if(ph){ph.innerHTML=c?"&#10216;":"&#10217;";ph.title=(c?"show":"hide")+" the info panel";}}
+function setPanelCollapsed(c){document.getElementById("wrap").classList.toggle("collapsed",c);syncPanelUI(c);}
+function togglePanel(){setPanelCollapsed(!document.getElementById("wrap").classList.contains("collapsed"));}
+document.getElementById("panelToggle").addEventListener("click",togglePanel);
+(function(){var ph=document.getElementById("phandle");if(ph)ph.addEventListener("click",function(ev){ev.stopPropagation();togglePanel();});})();
+window.togglePanel=togglePanel;window.setPanelCollapsed=setPanelCollapsed;
 // drag the gripper to RESIZE the info panel (width \u2192 a CSS var, clamped). Composes with collapse.
 (function(){var grip=document.getElementById("pgrip"),WR=document.getElementById("wrap"),PAN=document.getElementById("panel"),rz=null;
  grip.addEventListener("pointerdown",function(ev){ev.preventDefault();rz={x:ev.clientX,w:PAN.getBoundingClientRect().width};WR.classList.add("resizing");try{grip.setPointerCapture(ev.pointerId);}catch(e){}});
  grip.addEventListener("pointermove",function(ev){if(!rz)return;var nw=Math.max(240,Math.min(640,rz.w-(ev.clientX-rz.x)));document.documentElement.style.setProperty("--pw",nw+"px");window.__pw=nw;});
  function ez(){rz=null;WR.classList.remove("resizing");}grip.addEventListener("pointerup",ez);grip.addEventListener("pointercancel",ez);})();
 // ── inspector (right panel), in plain business language ──
-function pick(id){var n=N[idx[id]];var h='<div class=k>this is</div><div class=row><b>'+fname(id)+'</b> <span class=pill>'+id+'</span></div>';
+function pick(id){var n=N[idx[id]];pickJive(n);var h='<div class=k>this is</div><div class=row><b>'+fname(id)+'</b> <span class=pill>'+id+'</span></div>';
  var ce=E.filter(function(e){return e.from===id&&show[e.kind]});if(ce.length){h+='<div class=k>connects to</div>';ce.slice(0,40).forEach(function(e){h+='<div class=row><span class=tag style="border-left:3px solid '+COLOR[e.kind]+'">'+LABEL[e.kind].split(" (")[0]+'</span>'+fname(e.to)+'</div>';});}
  if(n.cells&&n.cells.length){h+='<div class=k>what the system does here</div>';n.cells.forEach(function(c){var acts=c.verbs.map(function(v){return VERB[v]||v;});h+='<div class=row>'+(acts.length?acts.map(function(a){return '<span class=tag>'+a+'</span>'}).join(""):'<span class=pill>completes the document</span>')+'<br><span class=pill>needs matching/reconciliation: </span><span class='+(c.matcher?"y":"n")+'>'+(c.matcher?"yes":"no")+'</span><br><span class=pill>checks before saving: '+c.guards+' \u00b7 times used: '+c.ops+'</span></div>';});}else if(n.kind==="master"){h+='<div class=k>what the system does here</div><div class=row class=n>a reference list — looked up by the documents, no workflow of its own</div>';}
  if(LIN&&LIN.litNodes&&LIN.litNodes.indexOf(id)>=0)h+='<button class=tracebtn onclick="window.setTrace(true)">\u25b8 trace this record\u2019s flow</button>';
@@ -217,7 +251,7 @@ function recCols(db,t){var cols=[];try{var pr=db.exec("PRAGMA table_info("+t+")"
  return pick.length?pick:null;}
 function injectRecs(id){var bar=barFor(id);if(!bar)return;var bb=bar.querySelector(".bb");if(!bb||bb.querySelector(".recrows"))return;
  var box=document.createElement("div");box.className="recrows";bb.appendChild(box);
- if(BUNDLE_T.indexOf(id)<0){box.innerHTML='<div class=rk>the actual records</div><div class=rn>records not carried in this dataset</div>';return;}
+ if(BUNDLE_T.indexOf(id)<0){thunkJive();box.innerHTML='<div class=rk>the actual records</div><div class=rn>records not carried in this dataset</div>';return;}
  box.innerHTML='<div class=rk>the actual records</div><div class=rn>loading\u2026</div>';
  withBundle(function(db){var cur=barFor(id);if(!cur)return;var b2=cur.querySelector(".recrows");if(!b2)return;var cols=recCols(db,id);
   if(!cols){b2.innerHTML='<div class=rk>the actual records</div><div class=rn>records not carried in this dataset</div>';return;}
@@ -228,9 +262,9 @@ function clearFocus(){if(typeof hideBlurb==="function")hideBlurb();if(focusId){f
 // ── the RECENT stack: each look-up drops a collapsible bar (accordion); swipe or \u2715 to dismiss. The
 //    \u201ctracked N runs\u201d line is the real op-count (kernel op-log depth, §0.6) — extracted, not invented. ──
 var STACK=document.getElementById("stack"),RH=document.getElementById("recentHdr"),RECN=10;
-function removeBar(b){b.style.transition="transform .15s,opacity .15s";b.style.transform="translateX(60px)";b.style.opacity=0;setTimeout(function(){if(b.parentNode)b.parentNode.removeChild(b);if(!STACK.children.length)RH.style.display="none";},150);}
+function removeBar(b){dismissJive();b.style.transition="transform .15s,opacity .15s";b.style.transform="translateX(60px)";b.style.opacity=0;setTimeout(function(){if(b.parentNode)b.parentNode.removeChild(b);if(!STACK.children.length)RH.style.display="none";},150);}
 function addSwipe(b){var sx=0,on=false;b.addEventListener("pointerdown",function(e){if(e.target.classList.contains("bx"))return;sx=e.clientX;on=true;});b.addEventListener("pointermove",function(e){if(!on)return;var dx=e.clientX-sx;if(dx>0)b.style.transform="translateX("+dx+"px)";});b.addEventListener("pointerup",function(e){if(!on)return;on=false;if(e.clientX-sx>60)removeBar(b);else b.style.transform="";});b.addEventListener("pointercancel",function(){on=false;b.style.transform="";});}
-function pushBar(id,title,bodyHtml,runs){var ex=STACK.querySelector('[data-id="'+id+'"]');if(ex)ex.parentNode.removeChild(ex);Array.prototype.forEach.call(STACK.children,function(c){c.classList.add("col");});
+function pushBar(id,title,bodyHtml,runs){barJive();var ex=STACK.querySelector('[data-id="'+id+'"]');if(ex)ex.parentNode.removeChild(ex);Array.prototype.forEach.call(STACK.children,function(c){c.classList.add("col");});
  var b=document.createElement("div");b.className="bar";b.setAttribute("data-id",id);
  var trk=runs>0?'<div class=trk>\u27d0 the engine has tracked '+runs+' run'+(runs==1?"":"s")+' here, kept in the op-log</div>':"";
  b.innerHTML='<div class=bh><span class=car>\u25be</span><b>'+title+'</b><span class=bx title=dismiss>\u2715</span></div><div class=bb>'+bodyHtml+trk+'</div>';
@@ -248,8 +282,9 @@ var gt=G.gravityTop?G.gravityTop.cell.replace(/[()]/g,"").split(",")[0].toLowerC
 document.getElementById("cellcount").innerHTML='<div class=row>'+G.cells.length+' active workflows \u00b7 busiest is <b>'+(gt?fname(gt):"-")+'</b></div>';
 // ── About panel (aimed at a business / ERP user) ──
 var ABOUT='<h2>What am I looking at?</h2><p>A live map of how your business documents connect and flow \u2014 orders, shipments, invoices, payments \u2014 drawn automatically from the system itself.</p><h3>The bubbles</h3><p>Each bubble is something your business tracks. <span class=em>Bigger means used more.</span> Click a bubble to see what it links to and what the system does there. Drag bubbles to tidy them up, scroll to zoom, drag the empty background to move around.</p><h3>The coloured links</h3><p><span class=sw style="background:#4caf7d"></span><span class=em>Sales flow</span> \u2014 an order becomes a shipment, then an invoice, then a payment. This is most of your day.</p><p><span class=sw style="background:#e2574c"></span><span class=em>Matching &amp; reconciliation</span> \u2014 checking that what was ordered, received, billed and paid all agree. The careful part a bookkeeper double-checks.</p><p><span class=sw style="background:#6aa9ff"></span><span class=em>Document &amp; its lines</span> \u2014 an invoice and the products listed on it.</p><p><span class=sw style="background:#5a6b7a"></span><span class=em>Reference data</span> \u2014 links to your lists of products, customers and suppliers.</p><h3>Why it matters</h3><p>The green flow is the easy everyday path. The red links are where money is reconciled \u2014 where mistakes cost you. The map shows at a glance where the real work concentrates.</p><h3>\u201cNot switched on yet\u201d</h3><p>The full platform is already here, most of it dormant. Features light up the moment you use them \u2014 nothing to install or configure up front.</p>';
-document.getElementById("about").innerHTML=ABOUT;
+document.getElementById("about").innerHTML='<span class="aboutx" id="aboutX" title="close">\u2715</span>'+ABOUT;
 document.getElementById("aboutBtn").addEventListener("click",function(){document.getElementById("about").classList.toggle("open");});
+(function(){var ax=document.getElementById("aboutX");if(ax)ax.addEventListener("click",function(){document.getElementById("about").classList.remove("open");});})();
 // ── Phase 2a: LINEAGE TRACE (GLASSBOWL_DOSSIER \u00a72a, W-LIFECYCLE) — light a real record\u2019s whole life ──
 var LIN=G.lineage||null,traceMode=false,litN={},xchecked=false,GDB=null,recMap={},curChain=(LIN?LIN.chain:[]);
 function rebuildLit(){litN={};curChain.forEach(function(c){if(c.id!=null)litN[c.table]=1;});}rebuildLit();
@@ -258,7 +293,7 @@ function litEdge(e){return traceMode&&litN[e.from]&&litN[e.to]&&(e.kind==="deriv
 function fmtAmt(a){return a==null?"":" <span class=amt>("+Number(a).toFixed(2)+")</span>";}
 function buildStrip(){var s=document.getElementById("strip");if(!curChain.length){s.innerHTML="<span class=pill>no record traced</span>";return;}var h="<span class=ttl>this record\u2019s life:</span>";curChain.forEach(function(c,i){if(i)h+='<span class=arr>\u25b8</span>';var who=c.id==null?"\u2014":(c.documentno!=null?"#"+c.documentno:"#"+c.id);h+='<span class=step data-t="'+c.table+'"><b>'+(c.friendly||c.table)+'</b> '+who+fmtAmt(c.amount)+'</span>';});h+='<span class=xx id=stripX title="exit trace">\u2715</span>';s.innerHTML=h;Array.prototype.forEach.call(s.querySelectorAll(".step"),function(elm){elm.addEventListener("click",function(){pick(elm.getAttribute("data-t"));});});document.getElementById("stripX").addEventListener("click",function(){setTrace(false);});}
 function applyChain(ch){curChain=ch;rebuildLit();buildStrip();draw();}
-function setTrace(on){if(on)focusId=null;traceMode=on;document.getElementById("strip").classList.toggle("open",on);var rw=document.getElementById("recwrap");if(rw)rw.classList.toggle("open",on);document.getElementById("traceBtn").classList.toggle("active",on);if(on){if(!curChain.length&&LIN)curChain=LIN.chain;rebuildLit();buildStrip();}draw();if(on)ensureXcheck();}
+function setTrace(on){if(on)focusId=null;traceMode=on;document.getElementById("strip").classList.toggle("open",on);var rw=document.getElementById("recwrap");if(rw)rw.classList.toggle("open",on);var rp=document.getElementById("recpick");if(rp)rp.classList.toggle("open",on);if(!on)qrClose();document.getElementById("traceBtn").classList.toggle("active",on);if(on){if(!curChain.length&&LIN)curChain=LIN.chain;rebuildLit();buildStrip();traceJive();}draw();if(on)ensureXcheck();}
 document.getElementById("traceBtn").addEventListener("click",function(){setTrace(!traceMode);});
 // load the sql.js bundle ONCE, retain it (GDB) for the xcheck AND the record search.
 function withBundle(cb){if(GDB){cb(GDB);return;}try{var sc=document.createElement("script");sc.src="sqljs/sql-wasm.js";sc.onload=function(){if(!window.initSqlJs){xcDone("skip=no-initSqlJs");return;}window.initSqlJs({locateFile:function(f){return "sqljs/"+f;}}).then(function(SQL){return fetch("glassbowl_data.db").then(function(r){return r.arrayBuffer();}).then(function(buf){GDB=new SQL.Database(new Uint8Array(buf));cb(GDB);});}).catch(function(e){xcDone("error="+e.message);});};sc.onerror=function(){xcDone("skip=no-sqljs-asset");};document.head.appendChild(sc);}catch(e){xcDone("error="+e.message);}}
@@ -267,7 +302,7 @@ function walkBundle(db,seed){var got={},chain=[];LIN.steps.forEach(function(s){v
 function xcDone(msg){console.log("\u00a7LIFECYCLE-XCHECK "+msg);window.__xchecked=true;}
 function ensureXcheck(){if(xchecked||!LIN||!LIN.steps)return;xchecked=true;withBundle(function(db){var bw=walkBundle(db,LIN.seed),ok=true,parts=[];LIN.chain.forEach(function(c,i){if(String(bw[i].id)!==String(c.id))ok=false;parts.push(c.table+"#"+bw[i].id);});xcDone("record="+LIN.record+" bundle=[ "+parts.join(" \u2192 ")+" ] agree="+(ok?"Y":"N"));populateRecs(db);if(pendingSeed!=null){applyChain(walkBundle(db,pendingSeed));pendingSeed=null;}});}
 // the SEARCH control: a datalist of real orders (documentno) from the bundle; pick \u2192 trace it in-browser.
-function populateRecs(db){try{var dl=document.getElementById("reclist");if(!dl||dl.childElementCount)return;var res=db.exec("SELECT documentno, c_order_id FROM c_order ORDER BY documentno");if(!res.length)return;res[0].values.forEach(function(v){var dn=String(v[0]);recMap[dn]=v[1];var o=document.createElement("option");o.value=dn;dl.appendChild(o);});window.__recs=Object.keys(recMap).length;}catch(e){}}
+function populateRecs(db){try{var dl=document.getElementById("reclist");if(!dl||dl.childElementCount)return;var res=db.exec("SELECT documentno, c_order_id, grandtotal FROM c_order ORDER BY documentno");if(!res.length)return;var rows=[];res[0].values.forEach(function(v){var dn=String(v[0]);recMap[dn]=v[1];var o=document.createElement("option");o.value=dn;dl.appendChild(o);rows.push({dn:dn,oid:v[1],amt:v[2]});});window.__recs=Object.keys(recMap).length;buildRecPick(rows);}catch(e){}}
 function doSearch(){var inp=document.getElementById("recsearch"),dn=inp.value.trim();if(!dn)return;var oid=recMap[dn];if(oid==null||!GDB){inp.style.borderColor="#e2574c";return;}inp.style.borderColor="";applyChain(walkBundle(GDB,oid));}
 (function(){var inp=document.getElementById("recsearch");if(inp){inp.addEventListener("change",doSearch);inp.addEventListener("keydown",function(e){if(e.key==="Enter")doSearch();});}})();
 window.setTrace=setTrace;window.applyChain=applyChain;window.doSearch=doSearch;
@@ -281,7 +316,7 @@ var OPLOG=(G.oplog||[]),dossierId=null,dossierRendered={};
 function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 // count the real ops tracked for a cell: prefer the node\u2019s diff_oracle cell.ops, else count it in the op-log.
 function opCountFor(id){var n=N[idx[id]];if(n&&n.cells&&n.cells.length){var s=n.cells.reduce(function(a,c){return a+(c.ops||0);},0);if(s>0)return s;}var cap=id.toUpperCase().replace(/_/g,""),hits=0;OPLOG.forEach(function(o){if(o.cell&&o.cell.toUpperCase().replace(/[(),_]/g,"").indexOf(cap)>=0)hits++;});return hits;}
-function openDossier(id){if(idx[id]==null)return;dossierId=id;dossierRendered={};DTITLE.textContent=fname(id);DPILL.textContent=id;DOSS.classList.add("open");
+function openDossier(id){if(idx[id]==null)return;dossierJive();dossierId=id;dossierRendered={};DTITLE.textContent=fname(id);DPILL.textContent=id;DOSS.classList.add("open");
  DTABS.innerHTML="";["Data","Rules","Columns","History"].forEach(function(name,i){var b=document.createElement("button");b.className="dtab"+(i===0?" active":"");b.textContent=name;b.addEventListener("click",function(){selectTab(name,b);});DTABS.appendChild(b);});
  selectTab("Data",DTABS.firstChild);}
 function selectTab(name,btn){Array.prototype.forEach.call(DTABS.children,function(b){b.classList.toggle("active",b===btn);});DBODY.innerHTML="";renderTab(name);}
@@ -327,7 +362,7 @@ var BLURB=document.getElementById("blurb"),blurbId=null;
 var LIFE_T=(LIN&&LIN.litNodes)?LIN.litNodes.slice():[];
 function isLifecycle(id){return LIFE_T.indexOf(id)>=0;}
 function blurbAct(label,fn){var b=document.createElement("button");b.className="act";b.textContent=label;b.addEventListener("click",function(ev){ev.stopPropagation();fn();});return b;}
-function openBlurb(id){if(idx[id]==null)return;blurbId=id;BLURB.innerHTML="";
+function openBlurb(id){if(idx[id]==null)return;pickJive(N[idx[id]]);blurbId=id;BLURB.innerHTML="";
  var hd=document.createElement("div");hd.className="bt";hd.innerHTML='<span class=bn>'+fname(id)+'</span><span class=bp>'+id+'</span><span class=bx2 title=close>\u2715</span>';BLURB.appendChild(hd);
  hd.querySelector(".bx2").addEventListener("click",function(ev){ev.stopPropagation();hideBlurb();});
  if(isLifecycle(id))BLURB.appendChild(blurbAct("\u25b8 Trace this flow",function(){window.setTrace(true);}));
@@ -342,11 +377,70 @@ function hideBlurb(){if(blurbId){blurbId=null;BLURB.classList.remove("open");}}
 // exactly the transform the circles ride (translate(px,py) scale(k)). Called from draw() after project().
 function positionBlurb(){if(!blurbId){return;}var n=N[idx[blurbId]];if(!n){return;}project(n);var sc=Math.max(0.6,Math.min(1.5,1+(n.depth/ZMAX)*0.45*orbitAmt())),r=radius(n)*sc;BLURB.style.left=(px+n.sx*k)+"px";BLURB.style.top=(py+(n.sy+r)*k)+"px";}
 window.openBlurb=openBlurb;window.hideBlurb=hideBlurb;
+// ── Task 4 (GLASSBOWL_DOSSIER \u00a72bcd, W-SWIPE-PICKER): the swipe/scroll record list at the trackball.
+//    The typed #recsearch stays (desktop fallback); THIS is the mobile-first, no-typing PRIMARY affordance \u2014 a
+//    scrollable list of REAL bundle orders (documentno + grandtotal). Flick up/down, TAP a row to trace that
+//    record (applyChain(walkBundle(GDB,oid))). Rows EXTRACTED from the bundle via populateRecs \u2014 0 invented. ──
+function buildRecPick(rows){var rp=document.getElementById("recpick");if(!rp||rp.childElementCount||!rows||!rows.length)return;
+ rp.innerHTML='<div class=rph>tap a record \u00b7 swipe to scroll</div>';
+ rows.forEach(function(r){var row=document.createElement("div");row.className="rpr";row.setAttribute("data-oid",r.oid);
+  var amt=(r.amt!=null&&!isNaN(Number(r.amt)))?'<span class=rpa>'+Number(r.amt).toFixed(2)+'</span>':"";
+  row.innerHTML='<b>#'+r.dn+'</b>'+amt;
+  row.addEventListener("click",function(){if(!GDB)return;Array.prototype.forEach.call(rp.querySelectorAll(".rpr"),function(x){x.classList.remove("sel");});row.classList.add("sel");if(!traceMode)setTrace(true);applyChain(walkBundle(GDB,r.oid));traceJive();});
+  rp.appendChild(row);});
+ console.log("\u00a7SWIPE-PICKER rows="+rows.length+" seed="+(rows.some(function(r){return String(r.dn)==="80001";})?"80001":"?")+" scrollable="+(rp.scrollHeight>rp.clientHeight?"Y":"maybe"));}
+window.buildRecPick=buildRecPick;
+// ── Task 5 (GLASSBOWL_DOSSIER \u00a72bcd, W-AUDIO): WebAudio \u201cear candy\u201d \u2014 synthesized, ZERO assets,
+//    file://-safe. Subtle UI sounds; AudioContext unlocked on first gesture (autoplay policy); a persisted mute
+//    toggle. Pitch is mapped to DATA where cheap (pick tone by spine colour, trace arpeggio rises ONE note per real
+//    hop) \u2014 ear candy that is *true*, mirroring the eye-candy bet. Never blocks interaction. ──
+var AUDIO={ctx:null,muted:false,n:0};window.__audio=AUDIO;
+function audioUnlock(){try{if(!AUDIO.ctx){var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;AUDIO.ctx=new AC();window.__audioCtx=AUDIO.ctx;console.log("\u00a7AUDIO unlocked state="+AUDIO.ctx.state+" muted="+AUDIO.muted);}if(AUDIO.ctx.state==="suspended")AUDIO.ctx.resume();}catch(e){}}
+function beep(freq,dur,type,vol){if(AUDIO.muted||!AUDIO.ctx)return;try{var t=AUDIO.ctx.currentTime,o=AUDIO.ctx.createOscillator(),g=AUDIO.ctx.createGain();o.type=type||"sine";o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol||0.05,t+0.012);g.gain.exponentialRampToValueAtTime(0.0006,t+(dur||0.12));o.connect(g);g.connect(AUDIO.ctx.destination);o.start(t);o.stop(t+(dur||0.12)+0.02);AUDIO.n++;window.__audioScheduled=AUDIO.n;}catch(e){}}
+function sweep(f0,f1,dur,vol){if(AUDIO.muted||!AUDIO.ctx)return;try{var t=AUDIO.ctx.currentTime,o=AUDIO.ctx.createOscillator(),g=AUDIO.ctx.createGain();o.type="sawtooth";o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol||0.03,t+0.02);g.gain.exponentialRampToValueAtTime(0.0006,t+dur);o.connect(g);g.connect(AUDIO.ctx.destination);o.start(t);o.stop(t+dur+0.02);AUDIO.n++;window.__audioScheduled=AUDIO.n;}catch(e){}}
+// pick tone keyed to the bubble\u2019s spine colour (settlement tenser/higher, reference lower) \u2014 sound from data.
+function pickJive(n){if(!n)return beep(660,0.07,"sine",0.04);var f=n.settlement?740:(n.kind==="master"?392:(n.gravity>0?587:494));beep(f,0.07,"sine",0.04);}
+function barJive(){sweep(220,520,0.18,0.03);}
+function dismissJive(){beep(247,0.1,"sine",0.04);}
+function dossierJive(){beep(880,0.05,"square",0.03);}
+function thunkJive(){beep(120,0.16,"sine",0.05);}
+// trace = a rising arpeggio, ONE note per real (non-empty) hop in the chain (pitch rises per hop) \u2014 chain length IS the data.
+function traceJive(){if(AUDIO.muted||!AUDIO.ctx)return;var ch=curChain||[];var lit=ch.filter(function(c){return c.id!=null;}).length||5;for(var i=0;i<lit;i++){(function(k){setTimeout(function(){beep(330*Math.pow(1.155,k),0.15,"triangle",0.04);},k*95);})(i);}}
+["pointerdown","keydown","touchstart"].forEach(function(ev){window.addEventListener(ev,audioUnlock);});
+// the mute toggle (\ud83d\udd0a / \ud83d\udd07), persisted in the scene localStorage \u2014 respect the user, quiet + subtle.
+var muteBtn=document.getElementById("muteBtn");
+function applyMuteLabel(){if(muteBtn){muteBtn.textContent=AUDIO.muted?"\ud83d\udd07":"\ud83d\udd0a";muteBtn.classList.toggle("active",AUDIO.muted);}}
+function toggleMute(){AUDIO.muted=!AUDIO.muted;applyMuteLabel();if(!AUDIO.muted){audioUnlock();beep(523,0.06,"sine",0.04);}save();}
+if(muteBtn)muteBtn.addEventListener("click",function(ev){ev.stopPropagation();toggleMute();});
+applyMuteLabel();window.toggleMute=toggleMute;
+// ── Task 6 (GLASSBOWL_DOSSIER \u00a72bcd, W-QR-INPUT): scan a QR carrying a record id/documentno \u2192 trace/open
+//    that record. Native BarcodeDetector + getUserMedia, ZERO external libs; honest \u201cnot supported\u201d fallback;
+//    the stream is stopped when the panel closes. READ-ONLY slice (scan\u2192trace); scan-to-FILL-an-edit-value is T3. ──
+var QR={stream:null,detector:null,raf:0,scanning:false};window.__qr=QR;
+function qrSupported(){return ("BarcodeDetector" in window)&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);}
+// the lookup (pure-read): a QR payload = an order documentno OR a numeric order id \u2192 walk + trace it. EXTRACT.
+function qrLookup(payload){if(payload==null)return false;var s=String(payload).trim();if(!s||!GDB)return false;var oid=recMap[s];if(oid==null&&/^\d+$/.test(s)){var probe=walkBundle(GDB,s);if(probe[0]&&probe[0].id!=null)oid=s;}if(oid==null)return false;if(!traceMode)setTrace(true);applyChain(walkBundle(GDB,oid));traceJive();return true;}
+window.qrLookup=qrLookup;
+var QSTAT=document.getElementById("qrstatus"),QCAM=document.getElementById("qrcam"),QVID=document.getElementById("qrvid");
+function qrStatus(html){if(QSTAT)QSTAT.innerHTML=html;}
+function qrClose(){QR.scanning=false;if(QR.raf){cancelAnimationFrame(QR.raf);QR.raf=0;}try{if(QR.stream){QR.stream.getTracks().forEach(function(t){t.stop();});}}catch(e){}QR.stream=null;if(QVID)QVID.srcObject=null;if(QCAM){QCAM.classList.remove("open");QCAM.classList.remove("live");}}
+window.qrClose=qrClose;
+function qrTick(){if(!QR.scanning||!QR.detector||!QVID)return;QR.detector.detect(QVID).then(function(codes){if(codes&&codes.length){var raw=codes[0].rawValue||"";if(qrLookup(raw)){qrStatus('<span class=qok>\u2713 found #'+esc(raw)+' \u2014 tracing\u2026</span>');dossierJive();setTimeout(qrClose,650);return;}else qrStatus('<span class=qbad>scanned \u201c'+esc(raw)+'\u201d \u2014 no matching record in this dataset</span>');}if(QR.scanning)QR.raf=requestAnimationFrame(qrTick);}).catch(function(){if(QR.scanning)QR.raf=requestAnimationFrame(qrTick);});}
+function qrOpen(){if(!QCAM)return;QCAM.classList.add("open");QCAM.classList.remove("live");
+ if(!qrSupported()){qrStatus('<span class=qbad>QR scan not supported on this browser.</span><br><span class=pill>use the swipe list or the search box instead \u2014 same record, no camera needed.</span>');console.log("\u00a7QR-INPUT open supported=N (honest fallback shown)");return;}
+ qrStatus("requesting the camera\u2026");try{QR.detector=new window.BarcodeDetector({formats:["qr_code"]});}catch(e){QR.detector=null;}
+ navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}).then(function(stream){QR.stream=stream;QVID.srcObject=stream;QVID.play&&QVID.play();QCAM.classList.add("live");qrStatus("point the camera at a record\u2019s QR\u2026");QR.scanning=true;console.log("\u00a7QR-INPUT open supported=Y scanning=Y");QR.raf=requestAnimationFrame(qrTick);}).catch(function(err){qrStatus('<span class=qbad>camera unavailable \u2014 '+esc(err&&err.name||"denied")+'.</span><br><span class=pill>permission needed; the swipe list works without it.</span>');console.log("\u00a7QR-INPUT open supported=Y camera=denied");});}
+(function(){var qb=document.getElementById("qrbtn"),qx=document.getElementById("qrx");if(qb)qb.addEventListener("click",function(ev){ev.stopPropagation();audioUnlock();dossierJive();qrOpen();});if(qx)qx.addEventListener("click",function(ev){ev.stopPropagation();qrClose();});})();
+window.qrOpen=qrOpen;
+console.log("\u00a7QR-INPUT supported="+(qrSupported()?"Y":"N"));
 // ── SCENE PERSISTENCE: the screen survives a hard refresh, so you continue exactly where you left
 //    off \u2014 no re-login, no hunting \u201crecent changes\u201d. Saved on unload, restored on load (localStorage). ──
 var pendingSeed=null,SKEY="glassbowl.scene";
-function save(){try{var bars=[];Array.prototype.forEach.call(STACK.children,function(b){bars.push({id:b.getAttribute("data-id"),col:b.classList.contains("col")});});localStorage.setItem(SKEY,JSON.stringify({yaw:yaw,pitch:pitch,px:px,py:py,k:k,pw:(window.__pw||null),col:document.getElementById("wrap").classList.contains("collapsed"),focus:focusId,trace:traceMode,seed:(traceMode&&curChain[0]?curChain[0].id:null),pos:N.map(function(n){return [Math.round(n.x),Math.round(n.y)];}),bars:bars}));}catch(e){}}
-function loadState(){try{var s=JSON.parse(localStorage.getItem(SKEY)||"null");if(!s)return;if(s.pos&&s.pos.length===N.length)N.forEach(function(n,i){n.x=s.pos[i][0];n.y=s.pos[i][1];});if(s.pw){document.documentElement.style.setProperty("--pw",s.pw+"px");window.__pw=s.pw;}if(s.col){document.getElementById("wrap").classList.add("collapsed");var pt=document.getElementById("panelToggle");if(pt)pt.textContent="\u27e8";}if(s.bars&&s.bars.length){for(var i=s.bars.length-1;i>=0;i--){if(idx[s.bars[i].id]!=null)pick(s.bars[i].id);}Array.prototype.forEach.call(STACK.children,function(b){var f=null;s.bars.forEach(function(x){if(x.id===b.getAttribute("data-id"))f=x;});if(f&&f.col)b.classList.add("col");else b.classList.remove("col");});}yaw=s.yaw||0;pitch=s.pitch||0;px=s.px||0;py=s.py||0;k=s.k||1;window.__yaw=yaw;window.__pitch=pitch;focusId=s.focus||null;window.__restored=true;updateBall();if(s.trace){pendingSeed=(s.seed!=null&&LIN&&String(s.seed)!==String(LIN.seed))?s.seed:null;setTrace(true);}}catch(e){}}
+function save(){try{var bars=[];Array.prototype.forEach.call(STACK.children,function(b){bars.push({id:b.getAttribute("data-id"),col:b.classList.contains("col")});});localStorage.setItem(SKEY,JSON.stringify({yaw:yaw,pitch:pitch,px:px,py:py,k:k,pw:(window.__pw||null),col:document.getElementById("wrap").classList.contains("collapsed"),focus:focusId,trace:traceMode,seed:(traceMode&&curChain[0]?curChain[0].id:null),mute:AUDIO.muted,pos:N.map(function(n){return [Math.round(n.x),Math.round(n.y)];}),bars:bars}));}catch(e){}}
+function loadState(){try{var s=JSON.parse(localStorage.getItem(SKEY)||"null");if(!s)return;if(s.pos&&s.pos.length===N.length)N.forEach(function(n,i){n.x=s.pos[i][0];n.y=s.pos[i][1];});if(s.pw){document.documentElement.style.setProperty("--pw",s.pw+"px");window.__pw=s.pw;}if(s.col){document.getElementById("wrap").classList.add("collapsed");var pt=document.getElementById("panelToggle");if(pt)pt.textContent="\u27e8";}if(s.bars&&s.bars.length){for(var i=s.bars.length-1;i>=0;i--){if(idx[s.bars[i].id]!=null)pick(s.bars[i].id);}Array.prototype.forEach.call(STACK.children,function(b){var f=null;s.bars.forEach(function(x){if(x.id===b.getAttribute("data-id"))f=x;});if(f&&f.col)b.classList.add("col");else b.classList.remove("col");});}yaw=s.yaw||0;pitch=s.pitch||0;px=s.px||0;py=s.py||0;k=s.k||1;window.__yaw=yaw;window.__pitch=pitch;focusId=s.focus||null;if(s.mute){AUDIO.muted=true;applyMuteLabel();}window.__restored=true;updateBall();if(s.trace){pendingSeed=(s.seed!=null&&LIN&&String(s.seed)!==String(LIN.seed))?s.seed:null;setTrace(true);}}catch(e){}}
 window.addEventListener("pagehide",save);window.addEventListener("beforeunload",save);
 loadState();applyT();draw();
+// mobile-first: on a fresh load (no restored scene) start with the panel COLLAPSED \u2014 the graph gets the small
+//   screen and the yellow #phandle invites a tap to slide it open. A restored scene keeps the user\u2019s last state.
+if(!window.__restored&&isMobile())setPanelCollapsed(true);else syncPanelUI(document.getElementById("wrap").classList.contains("collapsed"));
 </script></body></html>
