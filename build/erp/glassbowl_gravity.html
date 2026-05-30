@@ -34,6 +34,7 @@
   .chip{border:0; background:transparent; color:var(--dim); padding:6px 12px; border-radius:16px; cursor:pointer; font:inherit; font-weight:600; transition:.15s}
   .chip:hover{color:var(--ink)}
   .chip.on{background:var(--accent); color:#04121a; box-shadow:0 0 16px -2px var(--accent)}
+  .chip:disabled{opacity:.3; cursor:default; color:var(--dim); box-shadow:none}
 
   /* depth dial (right) */
   #dial{position:fixed; right:18px; top:50%; transform:translateY(-50%); height:54vh; width:64px; display:flex; flex-direction:column; align-items:center; z-index:5}
@@ -83,6 +84,7 @@
 <div id="title">Glassbowl · Gravity<small>GardenWorld — engine presenting itself</small></div>
 
 <div id="top">
+  <div class="grp"><button class="chip" id="undoBtn" title="back to the last view — Ctrl+Z (the kernel-log magic, on views)">↶</button><button class="chip" id="redoBtn" title="forward — Ctrl+Shift+Z">↷</button></div>
   <div class="grp"><span class="lbl">Pivot</span>
     <button class="chip on" data-lens="partner">Partner</button>
     <button class="chip" data-lens="month">Month</button>
@@ -360,7 +362,7 @@ function tick(){
 /* ── interactions ───────────────────────────────────────────────────────────── */
 function onPick(id){
   const n=live.get(id); if(!n)return;
-  if(n.data?.group){ state.focusGroup = state.focusGroup===id? null : id; hideCard(); relayout(); return; }
+  if(n.data?.group){ state.focusGroup = state.focusGroup===id? null : id; hideCard(); relayout(); recordView(); return; }
   if(n.data?.order){ openCard(n.data.order, n); return; }
   if(n.data?.spine){ openModelCard(id, n); return; }
 }
@@ -395,7 +397,7 @@ function openCard(o,n){
   const px=Math.min(Math.max(n.x+ n.r+12, 12), W-242), py=Math.min(Math.max(n.y-40,12), H-160);
   card.style.left=px+'px'; card.style.top=py+'px'; card.style.display='block';
   const t=card.querySelector('#cTrace'); if(t) t.onclick=()=>{ trace(o.no); };
-  card.querySelector('#cDive').onclick=()=>{ state.focusOrder=o; setDepth(2); hideCard(); };
+  card.querySelector('#cDive').onclick=()=>{ state.focusOrder=o; setDepth(2); hideCard(); recordView(); };
 }
 addEventListener('pointerdown',()=>{ hideCard(); });
 
@@ -403,7 +405,7 @@ const strip=document.getElementById('strip');
 function trace(no){
   const ch=CHAINS[no]; if(!ch)return;
   hideCard();
-  state.trace={steps:ch.steps, stop:ch.stop, lit:0}; state.cometT=0;  // spine view + comet
+  state.trace={no:no, steps:ch.steps, stop:ch.stop, lit:0}; state.cometT=0;  // spine view + comet
   let html='';
   ch.steps.forEach((s,i)=>{
     const [type,n,amt,kind]=s;
@@ -414,9 +416,10 @@ function trace(no){
   if(ch.stop) html+=`<div class="stop">▢ stops here — ${ch.stop}</div>`;
   html+=`<button id="stripClose">×</button>`;
   strip.innerHTML=html; strip.classList.add('on');
-  strip.querySelector('#stripClose').onclick=()=>{ strip.classList.remove('on'); state.trace=null; relayout(); };
+  strip.querySelector('#stripClose').onclick=()=>{ strip.classList.remove('on'); state.trace=null; relayout(); recordView(); };
   relayout();
   console.log('§TRACE order=%s hops=%d stop=%s', no, ch.steps.length, ch.stop?'dashed@'+(ch.steps.length):'full→allocation');
+  recordView();
 }
 
 /* depth ball drag */
@@ -428,7 +431,7 @@ ball.addEventListener('pointerdown',e=>{dragging=true; state.trace=null; ball.se
 ball.addEventListener('pointermove',e=>{ if(!dragging)return; const t=track.getBoundingClientRect();
   let frac=(e.clientY-t.top)/(t.height); frac=Math.max(0,Math.min(1,frac)); state.depth=(1-frac)*2;
   const fr2=1-(state.depth/2); ball.style.top=(fr2*(t.height-34))+'px'; relayout(); });
-ball.addEventListener('pointerup',e=>{ dragging=false; setDepth(Math.round(state.depth)); });
+ball.addEventListener('pointerup',e=>{ dragging=false; setDepth(Math.round(state.depth)); recordView(); });
 ball.style.position='absolute';
 
 /* chips */
@@ -436,15 +439,42 @@ document.querySelectorAll('[data-lens]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('[data-lens]').forEach(x=>x.classList.toggle('on',x===b));
   state.lens=b.dataset.lens; state.focusGroup=null; state.trace=null; if(Math.round(state.depth)!==1) setDepth(1); else relayout();
   console.log('§PIVOT lens=%s measure=%s groups=%d', state.lens, state.measure, groups().length);
+  recordView();
 });
 document.querySelectorAll('[data-measure]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('[data-measure]').forEach(x=>x.classList.toggle('on',x===b));
-  state.measure=b.dataset.measure; relayout();
+  state.measure=b.dataset.measure; relayout(); recordView();
 });
 const hint=document.getElementById('hint'); let hintT;
 function flashHint(t){ hint.textContent=t; hint.style.opacity=1; clearTimeout(hintT); hintT=setTimeout(()=>hint.style.opacity=0,2600); }
 
+/* ── VIEW HISTORY (undo/redo) — showcases the kernel-log "step back in time" magic, applied to VIEWS:
+      read-only navigation of where you've looked, NOT data transactions (those are T3). Each distinct view
+      is logged like an op; ↶/↷ (or Ctrl+Z / Ctrl+Shift+Z) walk the log. The seam to a real kernel_ops feed. */
+let viewHist=[], viewIdx=-1, restoring=false;
+const undoBtn=document.getElementById('undoBtn'), redoBtn=document.getElementById('redoBtn');
+function captureView(){ return {lens:state.lens, measure:state.measure, depth:Math.round(state.depth),
+  focusGroup:state.focusGroup, focusOrderNo:state.focusOrder?state.focusOrder.no:null, traceNo:state.trace?state.trace.no:null}; }
+function recordView(){ if(restoring) return; const v=captureView();
+  if(viewIdx>=0 && JSON.stringify(viewHist[viewIdx])===JSON.stringify(v)) return;
+  viewHist=viewHist.slice(0,viewIdx+1); viewHist.push(v); viewIdx=viewHist.length-1; syncUndo();
+  console.log('§VIEWLOG idx=%d depth=%d total=%d', viewIdx, viewHist.length-1, viewHist.length); }
+function applyView(v){ restoring=true;
+  state.lens=v.lens; state.measure=v.measure; state.depth=v.depth; state.focusGroup=v.focusGroup;
+  state.focusOrder=v.focusOrderNo?ORDERS.find(o=>o.no===v.focusOrderNo):null;
+  document.querySelectorAll('[data-lens]').forEach(x=>x.classList.toggle('on',x.dataset.lens===state.lens));
+  document.querySelectorAll('[data-measure]').forEach(x=>x.classList.toggle('on',x.dataset.measure===state.measure));
+  hideCard(); positionBall();
+  if(v.traceNo){ trace(v.traceNo); } else { state.trace=null; strip.classList.remove('on'); relayout(); }
+  restoring=false; syncUndo(); }
+function syncUndo(){ if(undoBtn) undoBtn.disabled=viewIdx<=0; if(redoBtn) redoBtn.disabled=viewIdx>=viewHist.length-1; }
+function undoView(){ if(viewIdx>0){ viewIdx--; applyView(viewHist[viewIdx]); flashHint('↶ stepped back through the view-log (the kernel-log magic, read-only)'); } }
+function redoView(){ if(viewIdx<viewHist.length-1){ viewIdx++; applyView(viewHist[viewIdx]); } }
+if(undoBtn) undoBtn.onclick=undoView; if(redoBtn) redoBtn.onclick=redoView;
+addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); e.shiftKey?redoView():undoView(); } });
+
 positionBall(); relayout(); tick();
+recordView();  // log the opening view as the first entry
 setTimeout(()=>hint.style.opacity=0,5000);
 </script>
 </body>
