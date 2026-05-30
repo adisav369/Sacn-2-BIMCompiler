@@ -148,6 +148,15 @@ const SPINE = [
   {id:'t_pay',   nm:'C_Payment',        sub:'2 records',  kind:'settle'},
   {id:'t_alloc', nm:'C_AllocationLine', sub:'2 records',  kind:'settle'},
 ];
+// AD model per spine type-cell (real ad_column metadata, extracted from ad_full.db) — a GLANCE,
+// not Glassbowl's full dossier: counts + key columns + FK targets, with a link out to the deep view.
+const AD_MODEL={
+  t_order:{cols:94,mand:49, key:[['DocumentNo','String'],['GrandTotal','Amount'],['DocStatus','List'],['DateOrdered','Date'],['IsSOTrx','YesNo']], fk:['C_BPartner_ID','C_Payment_ID']},
+  t_inout:{cols:80,mand:31, key:[['DocumentNo','String'],['MovementDate','Date'],['DocStatus','List']], fk:['C_Order_ID','C_Invoice_ID','C_BPartner_ID']},
+  t_inv:{cols:76,mand:37, key:[['DocumentNo','String'],['GrandTotal','Amount'],['DateInvoiced','Date'],['DocStatus','List']], fk:['C_Order_ID','C_Payment_ID','C_BPartner_ID']},
+  t_pay:{cols:105,mand:32, key:[['DocumentNo','String'],['PayAmt','Amount'],['DocStatus','List']], fk:['C_Invoice_ID','C_Order_ID','C_BPartner_ID']},
+  t_alloc:{cols:23,mand:12, key:[['Amount','Amount']], fk:['C_Invoice_ID','C_Payment_ID','C_Order_ID','C_BPartner_ID']},
+};
 const NS='http://www.w3.org/2000/svg';
 const money=v=> v==null?'' : '$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const colorFor=k=> k==='settle'?'var(--settle)':k==='vendor'?'var(--vendor)':k==='cust'?'var(--cust)':k==='flow'?'var(--flow)':'var(--accent)';
@@ -159,11 +168,31 @@ console.log('§GRAVITY orders=%d lines-orders=%d chains=%d source=glassbowl_data
 const bowl=document.getElementById('bowl');
 const gEdges=document.createElementNS(NS,'g'), gNodes=document.createElementNS(NS,'g');
 bowl.append(gEdges,gNodes);
-let W=0,H=0,cx=0,cy=0,Rmax=0;
-function resize(){ W=innerWidth; H=innerHeight; cx=W/2; cy=H*0.5; Rmax=Math.min(W,H)*0.34; bowl.setAttribute('viewBox',`0 0 ${W} ${H}`);}
-addEventListener('resize',()=>{resize();relayout();}); resize();
+// the trace comet (sits above everything)
+const comet=document.createElementNS(NS,'circle');
+comet.setAttribute('r','6'); comet.setAttribute('opacity','0'); comet.setAttribute('fill','#eaffff');
+comet.style.filter='drop-shadow(0 0 8px #ffffff)'; bowl.append(comet);
+let W=0,H=0,cx=0,cy=0,Rmax=0,frameHX=0,frameHY=0;
+function resize(){
+  W=innerWidth; H=innerHeight;
+  const mobile=W<600;
+  const padL=14, padR=92 /* reserve the depth-dial column */, padT=mobile?104:64, padB=30;
+  const uW=Math.max(140,W-padL-padR), uH=Math.max(180,H-padT-padB);
+  cx=padL+uW/2; cy=padT+uH/2; frameHX=uW/2; frameHY=uH/2;
+  Rmax=Math.min(uW,uH)/2;
+  bowl.setAttribute('viewBox',`0 0 ${W} ${H}`);
+}
+addEventListener('resize',()=>{resize(); positionBall(); relayout();}); resize();
+/* uniformly scale a layout so EVERY bubble stays inside the usable frame (mobile-safe) */
+function fitToFrame(nodes){
+  let exX=1, exY=1;
+  for(const n of nodes){ exX=Math.max(exX, Math.abs(n.tx-cx)+n.tr+4); exY=Math.max(exY, Math.abs(n.ty-cy)+n.tr+4); }
+  const s=Math.min(1, frameHX/exX, frameHY/exY);
+  if(s<1) for(const n of nodes){ n.tx=cx+(n.tx-cx)*s; n.ty=cy+(n.ty-cy)*s; }
+  return nodes;
+}
 
-const state={lens:'partner', measure:'value', depth:1, focusGroup:null, focusOrder:null};
+const state={lens:'partner', measure:'value', depth:1, focusGroup:null, focusOrder:null, trace:null, cometT:0};
 const live=new Map();           // id -> {el,circle,nm,sub, x,y,r, tx,ty,tr, op,top, kind, data}
 const measVal=o=> state.measure==='count'?1:o.total;
 
@@ -202,10 +231,22 @@ function placeGravity(items, maxMass, cx0, cy0, spread){
 
 /* build the desired node list for the current state */
 function desired(){
+  if(state.trace){ // TRACE: the lifecycle journey lit on the AD type-spine (comet runs it)
+    const st=state.trace.steps, stop=state.trace.stop, slots=st.length+(stop?1:0);
+    const cr=Math.max(17,Math.min(34, frameHX*2/(slots*1.7)));
+    const gap=Math.min((frameHX*2-2*cr)/Math.max(1,slots-1), 150);
+    const X=k=>cx+(k-(slots-1)/2)*gap;
+    const out=st.map((s,i)=>({id:'tr_'+i, nm:s[1], sub:s[0]+(s[2]!=null?' · '+money(s[2]):''),
+      kind:s[3], tr:cr, tx:X(i), ty:cy, op:(i<=state.trace.lit?1:0.22), data:{trace:true}}));
+    if(stop) out.push({id:'tr_stop', nm:'✕', sub:stop, kind:'settle', tr:cr*0.72,
+      tx:X(st.length), ty:cy, op:0.3, data:{}});
+    return out;
+  }
   const d=Math.round(state.depth);
-  if(d===0){ // AD dictionary spine
-    const n=SPINE.length, gap=Math.min(W*0.17,180);
-    return SPINE.map((c,i)=>({id:c.id, nm:c.nm, sub:c.sub, kind:c.kind, tr:38,
+  if(d===0){ // AD dictionary spine — span the usable width, never overflow
+    const n=SPINE.length, cr=Math.max(20,Math.min(38, frameHX*2/(n*1.7)));
+    const gap=Math.min((frameHX*2-2*cr)/(n-1), 170);
+    return SPINE.map((c,i)=>({id:c.id, nm:c.nm, sub:c.sub, kind:c.kind, tr:cr,
       tx:cx+(i-(n-1)/2)*gap, ty:cy, data:{spine:true}}));
   }
   if(d===2){ // dive into a record's real lines
@@ -234,27 +275,31 @@ function desired(){
     const head={id:g.id, nm:g.nm, sub:g.sub, kind:g.kind, tr:46, tx:cx, ty:cy, mass:g.mass, data:{group:true,g}};
     const maxT=Math.max(...g.members.map(measVal),1);
     const mem=g.members.map((o,i)=>{ const mn=measVal(o)/maxT;
-      const ang=i*2.39996323+0.6, rad=Rmax*(0.55+0.25*(1-mn));
+      const ang=i*2.39996323+0.6, rad=Rmax*(0.42+0.22*(1-mn));
       return {id:'o_'+o.no, nm:o.no, sub:money(o.total), kind:o.typ==='SO'?'cust':'vendor',
         tr:16+34*Math.sqrt(mn), tx:cx+rad*Math.cos(ang), ty:cy+rad*Math.sin(ang), data:{order:o}};});
     return [head,...mem];
   }
   gs.forEach((g,i)=> g._center=(i===0));
-  placeGravity(gs, maxMass, cx, cy, Rmax*0.62);
+  placeGravity(gs, maxMass, cx, cy, Rmax*0.52);
   return gs.map(g=>({id:g.id, nm:g.nm, sub:g.sub, kind:g.kind, tr:g.tr, tx:g.tx, ty:g.ty, mass:g.mass, data:{group:true,g}}));
 }
 
+function mkEdge(a,b,color,dashed){
+  const e=document.createElementNS(NS,'line'); e.setAttribute('class','edge');
+  e.setAttribute('stroke',color); if(dashed) e.setAttribute('stroke-dasharray','5 6');
+  e.dataset.a=a; e.dataset.b=b; return e;
+}
 /* diff desired into live DOM, ease toward targets */
 function relayout(){
-  const want=desired(); const wantIds=new Set(want.map(w=>w.id));
-  // edges: only spine (dict) gets FK lines
+  const want=fitToFrame(desired()); const wantIds=new Set(want.map(w=>w.id));
   gEdges.textContent='';
-  if(Math.round(state.depth)===0){
-    for(let i=0;i<SPINE.length-1;i++){
-      const e=document.createElementNS(NS,'line'); e.setAttribute('class','edge');
-      e.setAttribute('stroke', colorFor(SPINE[i+1].kind));
-      e.dataset.a=SPINE[i].id; e.dataset.b=SPINE[i+1].id; gEdges.append(e);
-    }
+  if(state.trace){ // light the spine up to where the FKs actually link; dashed past the stop
+    const st=state.trace.steps;
+    for(let i=0;i<st.length-1;i++) gEdges.append(mkEdge('tr_'+i,'tr_'+(i+1), colorFor(st[i+1][3]), false));
+    if(state.trace.stop) gEdges.append(mkEdge('tr_'+(st.length-1),'tr_stop','var(--settle)', true));
+  } else if(Math.round(state.depth)===0){ // AD dictionary FK spine
+    for(let i=0;i<SPINE.length-1;i++) gEdges.append(mkEdge(SPINE[i].id, SPINE[i+1].id, colorFor(SPINE[i+1].kind), false));
   }
   for(const w of want){
     let n=live.get(w.id);
@@ -268,7 +313,7 @@ function relayout(){
       el.addEventListener('pointerdown',ev=>{ev.stopPropagation(); onPick(w.id);});
       live.set(w.id,n);
     }
-    Object.assign(n,{tx:w.tx,ty:w.ty,tr:w.tr,top:1, kind:w.kind, data:w.data});
+    Object.assign(n,{tx:w.tx,ty:w.ty,tr:w.tr,top:(w.op!==undefined?w.op:1), kind:w.kind, data:w.data});
     n.nm.textContent=w.nm; n.sub.textContent=w.sub;
     n.c.setAttribute('fill', colorFor(w.kind));
     n.c.setAttribute('fill-opacity','.18'); n.c.setAttribute('stroke',colorFor(w.kind)); n.c.setAttribute('stroke-width','2');
@@ -287,11 +332,28 @@ function tick(){
     n.sub.setAttribute('opacity', n.r>22?1:0);
     if(n._kill && n.r<0.6){ n.el.remove(); live.delete(id); }
   }
-  // route spine edges to live node centres
+  // route edges to live node centres
   for(const e of gEdges.children){
     const a=live.get(e.dataset.a), b=live.get(e.dataset.b); if(!a||!b)continue;
     e.setAttribute('x1',a.x);e.setAttribute('y1',a.y);e.setAttribute('x2',b.x);e.setAttribute('y2',b.y);
   }
+  // the comet: travels the lit trace path, green→amber, lighting each hop as it arrives
+  if(state.trace){
+    const st=state.trace.steps, last=st.length-1;
+    if(state.trace.lit<last){
+      state.cometT+=0.04;
+      const a=live.get('tr_'+state.trace.lit), b=live.get('tr_'+(state.trace.lit+1));
+      if(a&&b){ const t=state.cometT, e=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+        comet.setAttribute('cx',(a.x+(b.x-a.x)*e).toFixed(1));
+        comet.setAttribute('cy',(a.y+(b.y-a.y)*e).toFixed(1));
+        comet.setAttribute('fill', colorFor(st[state.trace.lit+1][3])); comet.setAttribute('opacity','1');
+      }
+      if(state.cometT>=1){ state.cometT=0; state.trace.lit++; relayout(); }
+    } else {
+      const ln=live.get('tr_'+last); if(ln){ comet.setAttribute('cx',ln.x.toFixed(1)); comet.setAttribute('cy',ln.y.toFixed(1)); }
+      comet.setAttribute('opacity',(Math.max(0,parseFloat(comet.getAttribute('opacity')||0)-0.03)).toFixed(2));
+    }
+  } else comet.setAttribute('opacity','0');
   requestAnimationFrame(tick);
 }
 
@@ -300,10 +362,24 @@ function onPick(id){
   const n=live.get(id); if(!n)return;
   if(n.data?.group){ state.focusGroup = state.focusGroup===id? null : id; hideCard(); relayout(); return; }
   if(n.data?.order){ openCard(n.data.order, n); return; }
-  if(n.data?.spine){ flashHint('that\'s the dictionary — flick a Pivot or drag the ball up to the records'); return; }
+  if(n.data?.spine){ openModelCard(id, n); return; }
 }
 const card=document.getElementById('card');
+card.addEventListener('pointerdown',e=>e.stopPropagation()); // clicks inside the card don't dismiss it
 function hideCard(){ card.style.display='none'; }
+/* dictionary type-cell → its AD model AT A GLANCE (not Glassbowl's full dossier — link out for that) */
+function openModelCard(id,n){
+  const m=AD_MODEL[id], sp=SPINE.find(s=>s.id===id); if(!m||!sp)return;
+  card.innerHTML=`<h3>${sp.nm}</h3><div class="who">AD model · ${sp.sub}</div>`+
+    `<div class="row"><span>Columns</span><span>${m.cols} · ${m.mand} mandatory</span></div>`+
+    m.key.map(k=>`<div class="row"><span>${k[0]}</span><span>${k[1]}</span></div>`).join('')+
+    `<div class="row"><span>Foreign keys</span><span>${m.fk.length}</span></div>`+
+    `<div class="who" style="margin-top:5px;font-size:11px">→ ${m.fk.join(' · ')}</div>`+
+    `<div class="act"><a class="b go" style="text-decoration:none;display:inline-block" `+
+      `href="https://red1oon.github.io/BIMCompiler/glassbowl.html" target="_blank" rel="noopener">⊞ Full dossier in Glassbowl</a></div>`;
+  const px=Math.min(Math.max(n.x+n.r+12,12), W-242), py=Math.min(Math.max(n.y-40,12), H-230);
+  card.style.left=px+'px'; card.style.top=py+'px'; card.style.display='block';
+}
 function openCard(o,n){
   const ch=CHAINS[o.no];
   card.innerHTML=`<h3>${o.no}</h3><div class="who">${o.typ==='SO'?'Sales order':'Purchase order'} · ${o.partner}</div>`+
@@ -326,6 +402,8 @@ addEventListener('pointerdown',()=>{ hideCard(); });
 const strip=document.getElementById('strip');
 function trace(no){
   const ch=CHAINS[no]; if(!ch)return;
+  hideCard();
+  state.trace={steps:ch.steps, stop:ch.stop, lit:0}; state.cometT=0;  // spine view + comet
   let html='';
   ch.steps.forEach((s,i)=>{
     const [type,n,amt,kind]=s;
@@ -336,16 +414,17 @@ function trace(no){
   if(ch.stop) html+=`<div class="stop">▢ stops here — ${ch.stop}</div>`;
   html+=`<button id="stripClose">×</button>`;
   strip.innerHTML=html; strip.classList.add('on');
-  strip.querySelector('#stripClose').onclick=()=>strip.classList.remove('on');
-  console.log('§TRACE order=%s hops=%d stop=%s', no, ch.steps.length, ch.stop||'full→allocation');
+  strip.querySelector('#stripClose').onclick=()=>{ strip.classList.remove('on'); state.trace=null; relayout(); };
+  relayout();
+  console.log('§TRACE order=%s hops=%d stop=%s', no, ch.steps.length, ch.stop?'dashed@'+(ch.steps.length):'full→allocation');
 }
 
 /* depth ball drag */
 const track=document.getElementById('track'), ball=document.getElementById('ball');
-function setDepth(d){ state.depth=Math.max(0,Math.min(2,d)); positionBall(); hideCard(); strip.classList.remove('on'); relayout(); }
+function setDepth(d){ state.depth=Math.max(0,Math.min(2,d)); state.trace=null; positionBall(); hideCard(); strip.classList.remove('on'); relayout(); }
 function positionBall(){ const t=track.getBoundingClientRect(); const frac=1-(state.depth/2); ball.style.top=(frac*(t.height-34))+'px'; }
 let dragging=false;
-ball.addEventListener('pointerdown',e=>{dragging=true; ball.setPointerCapture(e.pointerId); e.stopPropagation();});
+ball.addEventListener('pointerdown',e=>{dragging=true; state.trace=null; ball.setPointerCapture(e.pointerId); e.stopPropagation();});
 ball.addEventListener('pointermove',e=>{ if(!dragging)return; const t=track.getBoundingClientRect();
   let frac=(e.clientY-t.top)/(t.height); frac=Math.max(0,Math.min(1,frac)); state.depth=(1-frac)*2;
   const fr2=1-(state.depth/2); ball.style.top=(fr2*(t.height-34))+'px'; relayout(); });
@@ -355,7 +434,7 @@ ball.style.position='absolute';
 /* chips */
 document.querySelectorAll('[data-lens]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('[data-lens]').forEach(x=>x.classList.toggle('on',x===b));
-  state.lens=b.dataset.lens; state.focusGroup=null; if(Math.round(state.depth)!==1) setDepth(1); else relayout();
+  state.lens=b.dataset.lens; state.focusGroup=null; state.trace=null; if(Math.round(state.depth)!==1) setDepth(1); else relayout();
   console.log('§PIVOT lens=%s measure=%s groups=%d', state.lens, state.measure, groups().length);
 });
 document.querySelectorAll('[data-measure]').forEach(b=>b.onclick=()=>{
