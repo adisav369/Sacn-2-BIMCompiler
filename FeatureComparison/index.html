@@ -708,6 +708,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#city-scale-streaming-1000000-elements-s285" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        City-Scale Streaming — 1,000,000+ elements (S285)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4086,6 +4097,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#city-scale-streaming-1000000-elements-s285" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        City-Scale Streaming — 1,000,000+ elements (S285)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4435,7 +4457,7 @@
 <h1 id="bim-ootb-technical-feature-paper">BIM OOTB — Technical Feature Paper<a class="headerlink" href="#bim-ootb-technical-feature-paper" title="Permanent link">&para;</a></h1>
 <h2 id="what-it-is">What It Is<a class="headerlink" href="#what-it-is" title="Permanent link">&para;</a></h2>
 <p>BIM OOTB is a browser-based IFC viewer that runs entirely on the client. No server. No cloud subscription. No software to install. Open a URL, drop an IFC file, and view a full BIM model with construction scheduling, cost breakdown, and clash detection — all in a single browser tab.</p>
-<p>The viewer handles buildings from 200 to 122,000+ elements with smooth orbit, pick, and section cut. After first load, it works offline from local cache. The entire application is under 500KB of code.</p>
+<p>The viewer handles buildings from 200 to 122,000+ elements with smooth orbit, pick, and section cut — and a <strong>whole-city view that streams a 1,000,000+ element city</strong> (52 buildings, 24 archetypes) in the same single browser tab. After first load, it works offline from local cache. The entire application is under 500KB of code.</p>
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <h3 id="ifc-in-building-out">IFC In, Building Out<a class="headerlink" href="#ifc-in-building-out" title="Permanent link">&para;</a></h3>
 <p>An IFC file is parsed once into a SQLite database. Geometry is content-hashed and deduplicated — identical columns, beams, or fittings share one mesh. The database is cached locally in the browser's IndexedDB. On return visits, the building loads from cache in under one second.</p>
@@ -4487,6 +4509,16 @@
 <p>Mobile skips the custom DLOD tick entirely — r184 native culling handles BatchedMesh, and InstancedMesh buffer re-upload (<code>instanceMatrix.needsUpdate</code>) costs more than it saves on mobile GPUs. Instead: on-demand render gate (skip <code>renderer.render()</code> when idle) + DPR 0.75 during orbit (44% fewer pixels while dragging) + render throttle (1/10 frames during streaming) + 20K bbox cap (sampled for buildings &gt;20K elements).</p>
 <p>What you see is exactly what is in the IFC file — no proxies, no LOD geometry, no simplification.</p>
 <p><strong>WebGPU status (S276b):</strong> The viewer is WebGPU-ready — <code>navigator.gpu.requestAdapter()</code> detects hardware WebGPU and activates <code>WebGPURenderer</code> automatically. Currently all browsers fall back to WebGL r184 (Intel iGPU = no adapter, mobile = skipped for stability, Chrome Linux PRIME = SwiftShader rejected). WebGL r184 performs better than r160 even without WebGPU — the upgrade delivers improved batching, native frustum culling, and cleaner shader compilation. WebGPU will activate automatically when browser/GPU support matures.</p>
+<h3 id="city-scale-streaming-1000000-elements-s285">City-Scale Streaming — 1,000,000+ elements (S285)<a class="headerlink" href="#city-scale-streaming-1000000-elements-s285" title="Permanent link">&para;</a></h3>
+<p>The same viewer scales from one building to an entire city: <strong>1,035,522 elements across 52 buildings (24 archetypes)</strong> in one browser tab, with no server and the same 500KB of code. Five techniques make a million elements tractable on a desktop browser:</p>
+<ul>
+<li><strong>Facade-first residency.</strong> A city is mostly hidden services — across the city, MEP/plumbing/structure is ~86% of elements; the architectural facade (ARC) is only ~14% (145K elements). The city streams <strong>ARC only</strong> by default, so the whole facade builds and stays resident. Structure and MEP for a building load on demand when you go into it. From the street you never see a building's pipes, so they are never fetched or built.</li>
+<li><strong>Element-count memory budget.</strong> Residency is bounded by <strong>element count (~250K, the measured browser-pressure knee)</strong>, not bytes — the honest limit for geometry the browser can hold. The whole ARC facade (145K) sits comfortably under it and is never evicted while panning the overview.</li>
+<li><strong>Visibility streaming by ray-blast.</strong> A 6×4 grid of rays from the camera is tested against one axis-aligned bounding box per building (≈52 boxes, sub-millisecond) — first-hit per ray gives free occlusion: a building behind another is never streamed. The set of streamed buildings follows the camera.</li>
+<li><strong>Distance/visibility eviction with hysteresis.</strong> Buildings that leave the view are demoted back to their bounding-box placeholder and their geometry freed — farthest and largest first, never the small spread-out buildings (kept as cheap context), and only after being out of view for two consecutive frames (no pop-off/pop-back churn). A ghost sweep frees any straggler mesh whose building was evicted mid-stream.</li>
+<li><strong>Incremental BVH.</strong> Bounding-volume hierarchies are built only for newly-added geometry in a single background pass — never a re-walk of the whole geometry cache — so a heavy building no longer stalls the tab.</li>
+</ul>
+<p>The launch sprouts small buildings first (they render fast and are visibly spread out), then fills in the large ones. Entering a building (it fills ~70% of the view) frees the distant facades and meshes that one building in full.</p>
 <h2 id="feature-overview">Feature Overview<a class="headerlink" href="#feature-overview" title="Permanent link">&para;</a></h2>
 <h3 id="viewing">Viewing<a class="headerlink" href="#viewing" title="Permanent link">&para;</a></h3>
 <ul>
