@@ -19,12 +19,22 @@
 var path = require('path');
 var fs = require('fs');
 var Database = require('better-sqlite3');
+var initSqlJs = require('sql.js');
 var DO = require('./diff_oracle');
 
 var AD = process.env.ERP_AD_FULL || path.join(__dirname, '..', 'build', 'erp', 'ad_full.db');
 var RULES = process.env.ERP_RULES_OUT || path.join(__dirname, '..', 'build', 'erp', 'erp_rules.db');
-var OUT_JSON = path.join(__dirname, '..', 'build', 'erp', 'system_graph.json');
-var OUT_HTML = path.join(__dirname, '..', 'build', 'erp', 'glassbowl.html');
+var OUT_DIR = path.join(__dirname, '..', 'build', 'erp');
+var OUT_JSON = path.join(OUT_DIR, 'system_graph.json');
+var OUT_HTML = path.join(OUT_DIR, 'glassbowl.html');
+var OUT_BUNDLE = path.join(OUT_DIR, 'glassbowl_data.db');                       // the sql.js data bundle (§2a)
+var LIB_SRC = path.join(__dirname, '..', 'deploy', 'dev', 'lib');              // sql-wasm.js + sql-wasm.wasm source
+var LIB_OUT = path.join(OUT_DIR, 'sqljs');                                     // served dir — NOT 'lib/' (.gitignore'd as Maven deps)
+
+// the lifecycle document world — the SUBSET of tables the data bundle carries (real rows for the
+// trace + the later dossier). Tiny (≈180 rows); whole tables copied, so the bundle is self-sufficient.
+var BUNDLE_TABLES = ['c_order', 'c_orderline', 'm_inout', 'm_inoutline', 'c_invoice', 'c_invoiceline', 'c_payment', 'c_allocationhdr', 'c_allocationline', 'c_bpartner', 'm_product'];
+var LINEAGE_SEED = 101;   // sales order 101 — the §0.19 chain (W-LIFECYCLE acceptance record)
 
 // §14 op-type weights — activity, not row count, is gravity (same as gravity_seed.js).
 var WEIGHT = { SET_STATUS: 2.0, CREATE_DOCUMENT: 1.0, CREATE_LINE: 1.0, MATCH: 1.5, ALLOCATE: 1.5 };
@@ -39,6 +49,7 @@ var LIFECYCLE = ['c_order', 'c_orderline', 'm_inout', 'm_inoutline', 'c_invoice'
   console.log('═══ GLASSBOWL — the engine renders itself from data (W-GLASSBOWL) ═══\n');
   var ad = new Database(AD, { readonly: true });
   var er = new Database(RULES, { readonly: true });
+  var SQL = await initSqlJs();
   var hand = 0;   // counter: anything hand-authored. MUST stay 0 (the claim).
 
   // ── name→ad_table_id, and the FK-target resolver (ad_ref_table else strip _ID) ──
@@ -108,13 +119,63 @@ var LIFECYCLE = ['c_order', 'c_orderline', 'm_inout', 'm_inoutline', 'c_invoice'
   var coldByKind = {}; cold.forEach(function (c) { coldByKind[c.kind] = (coldByKind[c.kind] || 0) + 1; });
   console.log('   §GLASS cold-backlog=' + cold.length + ' by-kind=' + JSON.stringify(coldByKind));
 
+  // ── Layer 4: LINEAGE — a real record's whole life, FK-walked from data ────────
+  //   Implementing docs/GLASSBOWL_DOSSIER.md §2a — Witness: W-LIFECYCLE. The chain is the §0.19
+  //   derivation/settlement walk; every hop follows a FK column that MUST exist in the extracted
+  //   graph (asserted → 0 hand-authored hops) and every row is read from ad_full (never invented).
+  console.log('\n── Layer 4: lineage chain (FK walk for sales order ' + LINEAGE_SEED + ') ──');
+  var STEPS = lineageSteps(LINEAGE_SEED);
+  var validHops = STEPS.filter(function (s) { return s.via; }).filter(function (s) { return edgeExists(edges, s.table, s.parent, s.via); }).length;
+  var totalHops = STEPS.filter(function (s) { return s.via; }).length;
+  if (validHops !== totalHops) hand += (totalHops - validHops);   // a hop whose FK is NOT in the graph would be hand-authored
+  var adWalk = runWalk(STEPS, function (sql) { var r = ad.prepare(sql).get(); return r || null; });
+  var chainStr = adWalk.chain.map(function (c) { return cap(c.table) + '#' + c.id + (c.documentno != null ? '(' + c.documentno + ')' : '') + (c.amount != null ? '[$' + c.amount + ']' : ''); }).join(' → ');
+  console.log('   §LIFECYCLE record=C_Order#' + LINEAGE_SEED + ' hops=' + adWalk.chain.length + ' chain=[' + chainStr + '] missing=' + adWalk.missing + ' fk-hops-validated=' + validHops + '/' + totalHops);
+  var lineage = {
+    seed: LINEAGE_SEED, record: 'C_Order#' + LINEAGE_SEED, hops: adWalk.chain.length, missing: adWalk.missing,
+    chain: adWalk.chain, walk: adWalk.walkSQL,                  // walk = resolved per-table SQL (re-run in the browser against the bundle)
+    litNodes: adWalk.chain.map(function (c) { return c.table; })
+  };
+
+  // ── the sql.js DATA BUNDLE (§2a "enabling step"): a small subset the viewer loads in-browser ──
+  console.log('\n── data bundle: sql.js subset (' + BUNDLE_TABLES.length + ' lifecycle tables) ──');
+  var bundle = buildBundle(ad, SQL);
+  fs.writeFileSync(OUT_BUNDLE, Buffer.from(bundle.export()));
+  // PROOF: re-walk the BUNDLE ALONE (via sql.js) and require the identical chain — the bundle is
+  //        sufficient & correct, independent of the browser (the deterministic data-bundle witness).
+  var bundleWalk = runWalk(STEPS, sqljsFirst(bundle));
+  var bundleStr = bundleWalk.chain.map(function (c) { return cap(c.table) + '#' + c.id; }).join(' → ');
+  var bundleAgree = adWalk.chain.every(function (c, i) { return String(c.id) === String(bundleWalk.chain[i].id); }) && bundleWalk.missing === 0;
+  if (!bundleAgree) hand++;   // a bundle that can't reproduce the chain is a FINDING, not a pass
+  var bundleBytes = fs.statSync(OUT_BUNDLE).size;
+  console.log('   §LIFECYCLE-BUNDLE file=' + path.relative(path.join(__dirname, '..'), OUT_BUNDLE) + ' bytes=' + bundleBytes + ' rows=' + bundle.rowTotal + ' chain=[' + bundleStr + '] agree=' + (bundleAgree ? 'Y' : 'N'));
+  bundle.close();
+  // copy the sql.js runtime next to the bundle so the viewer can load it (Pages + headless test).
+  copyLibAssets();
+
   // ── assemble + emit ──────────────────────────────────────────────────────────
   var nodes = Object.keys(nodeSet).map(function (k) { return nodeSet[k]; });
+
+  // ── Layer 5: ORBIT depth — the 3 spines lifted onto depth planes (GLASSBOWL_DOSSIER §2-viz, W-ORBIT) ──
+  //   "like BIM disciplines, orbited." z is DERIVED from each node's existing classification (extract,
+  //   not invent): spine docs z=0, settlement floats +D, reference shell behind −D. 0 hand-placed.
+  console.log('\n── Layer 5: orbit depth (3 spine-planes, deterministic from classification) ──');
+  var ZD = 220, planes = { spine: 0, settlement: 0, reference: 0 };
+  nodes.forEach(function (n) {
+    if (n.settlement) { n.z = ZD; planes.settlement++; }
+    else if (n.kind === 'master') { n.z = -ZD; planes.reference++; }
+    else { n.z = 0; planes.spine++; }
+  });
+  var orbitOk = planes.spine > 0 && planes.settlement > 0 && planes.reference > 0;
+  console.log('   §ORBIT planes=3 spine=' + planes.spine + ' settlement=' + planes.settlement + ' reference=' + planes.reference + ' depth=' + ZD + ' (hand-placed=0)');
+
   var graph = {
     meta: { generated: 'system_explorer.js', witness: 'W-GLASSBOWL', handAuthored: hand, core: CORE, settlement: SETTLEMENT },
     nodes: nodes, edges: edges, spines: spineCounts,
     cells: collected, cold: cold, coldByKind: coldByKind,
-    gravityTop: topCell ? { cell: topCell.cell, weight: topCell.gravity } : null
+    gravityTop: topCell ? { cell: topCell.cell, weight: topCell.gravity } : null,
+    lineage: lineage,                                           // §2a W-LIFECYCLE — the traced record's chain (inlined, file://-safe)
+    orbit: { depth: ZD, planes: planes }                        // §2-viz W-ORBIT — depth-plane metadata (z is inlined per node)
   };
   fs.writeFileSync(OUT_JSON, JSON.stringify(graph, null, 1));
   fs.writeFileSync(OUT_HTML, renderHtml(graph));
@@ -122,10 +183,95 @@ var LIFECYCLE = ['c_order', 'c_orderline', 'm_inout', 'm_inoutline', 'c_invoice'
 
   ad.close(); er.close();
   console.log('\n═══ VERDICT ═══');
-  var ok = hand === 0 && edges.length > 0 && nodes.length > 0 && collected.length > 0 && cold.length > 0 && r.fails === 0;
-  console.log('§GLASSBOWL ' + (ok ? 'PASS — engine rendered from DATA ALONE (0 hand-authored nodes/edges); FK graph + ' + collected.length + ' cells + ' + cold.length + ' cold backlog' : 'FAIL — hand=' + hand + ' edges=' + edges.length + ' cells=' + collected.length + ' diffFails=' + r.fails));
+  var lineageOk = adWalk.missing === 0 && adWalk.chain.length === 5 && bundleAgree && validHops === totalHops;
+  var ok = hand === 0 && edges.length > 0 && nodes.length > 0 && collected.length > 0 && cold.length > 0 && r.fails === 0 && lineageOk && orbitOk;
+  console.log('§GLASSBOWL ' + (ok ? 'PASS — engine rendered from DATA ALONE (0 hand-authored nodes/edges); FK graph + ' + collected.length + ' cells + ' + cold.length + ' cold backlog + lineage chain (5 hops, bundle reproduces)' : 'FAIL — hand=' + hand + ' edges=' + edges.length + ' cells=' + collected.length + ' diffFails=' + r.fails + ' lineageOk=' + lineageOk));
+  console.log('§LIFECYCLE ' + (lineageOk ? 'PASS — W-LIFECYCLE: order ' + LINEAGE_SEED + ' chain reconstructed from data (' + adWalk.chain.length + ' hops, 0 hand-authored, bundle agrees)' : 'FAIL — missing=' + adWalk.missing + ' hops=' + adWalk.chain.length + ' bundleAgree=' + bundleAgree + ' fkHops=' + validHops + '/' + totalHops));
+  console.log('§ORBIT ' + (orbitOk ? 'PASS — W-ORBIT: 3 depth planes from data (spine=' + planes.spine + ' settlement=' + planes.settlement + ' reference=' + planes.reference + ', 0 hand-placed)' : 'FAIL — planes spine=' + planes.spine + ' settlement=' + planes.settlement + ' reference=' + planes.reference));
   process.exit(ok ? 0 : 1);
 })();
+
+// ════════════════════════════════════════════════════════════════════════════════
+//  LINEAGE (§2a) — the derivation/settlement FK walk, expressed as DATA, not a hop stack
+// ════════════════════════════════════════════════════════════════════════════════
+function cap(t) { return t.split('_').map(function (s) { return s.charAt(0).toUpperCase() + s.slice(1); }).join('_'); }
+function edgeExists(edges, from, to, via) { return edges.some(function (e) { return e.from === from && e.to === to && e.via.toLowerCase() === via.toLowerCase(); }); }
+
+// the §0.19 chain as an ordered, data-validated walk. Each step (a) names a real FK column so the
+// hop is the EXTRACTED spine (asserted via edgeExists), and (b) carries the SQL that fetches its
+// row keyed off a prior result — so the SAME definition drives the Node walk AND the bundle re-walk.
+function lineageSteps(seed) {
+  return [
+    { table: 'c_order',          friendly: 'Order',      parent: null,        via: null,
+      sql: function () { return 'SELECT c_order_id AS id, documentno, grandtotal AS amount FROM c_order WHERE c_order_id=' + seed; } },
+    { table: 'm_inout',          friendly: 'Shipment',   parent: 'c_order',   via: 'c_order_id',
+      sql: function (g) { return g.c_order ? 'SELECT m_inout_id AS id, documentno, NULL AS amount FROM m_inout WHERE c_order_id=' + g.c_order.id + ' ORDER BY m_inout_id LIMIT 1' : null; } },
+    { table: 'c_invoice',        friendly: 'Invoice',    parent: 'c_order',   via: 'c_order_id',
+      sql: function (g) { return g.c_order ? 'SELECT c_invoice_id AS id, documentno, grandtotal AS amount FROM c_invoice WHERE c_order_id=' + g.c_order.id + ' ORDER BY c_invoice_id LIMIT 1' : null; } },
+    { table: 'c_payment',        friendly: 'Payment',    parent: 'c_invoice', via: 'c_invoice_id',
+      sql: function (g) { return g.c_invoice ? 'SELECT c_payment_id AS id, documentno, payamt AS amount FROM c_payment WHERE c_invoice_id=' + g.c_invoice.id + ' ORDER BY c_payment_id LIMIT 1' : null; } },
+    { table: 'c_allocationline', friendly: 'Allocation', parent: 'c_payment', via: 'c_payment_id',
+      sql: function (g) { return g.c_payment ? 'SELECT c_allocationline_id AS id, NULL AS documentno, amount FROM c_allocationline WHERE c_payment_id=' + g.c_payment.id + ' ORDER BY c_allocationline_id LIMIT 1' : null; } }
+  ];
+}
+
+// run the walk against ANY store: first(sql)->rowObj|null. Returns the chain + the resolved SQL map.
+function runWalk(steps, first) {
+  var got = {}, chain = [], walkSQL = {}, missing = 0;
+  steps.forEach(function (s) {
+    var sql = s.sql(got);
+    walkSQL[s.table] = sql;
+    var row = sql ? first(sql) : null;
+    if (!row) { missing++; chain.push({ table: s.table, friendly: s.friendly, id: null, documentno: null, amount: null }); }
+    else { got[s.table] = row; chain.push({ table: s.table, friendly: s.friendly, id: row.id, documentno: row.documentno == null ? null : row.documentno, amount: row.amount == null ? null : row.amount }); }
+  });
+  return { chain: chain, missing: missing, walkSQL: walkSQL };
+}
+
+// a first()-er over a sql.js Database (used to re-walk the bundle for the §LIFECYCLE-BUNDLE proof).
+function sqljsFirst(db) {
+  return function (sql) {
+    var res = db.exec(sql);
+    if (!res.length || !res[0].values.length) return null;
+    var cols = res[0].columns, v = res[0].values[0], o = {};
+    cols.forEach(function (c, i) { o[c] = v[i]; });
+    return o;
+  };
+}
+
+// build the data bundle: copy the lifecycle tables whole (tiny) into a fresh sql.js db. Generic —
+// schema read from PRAGMA, every row copied verbatim (BLOBs → Uint8Array). EXTRACT, never invent.
+function buildBundle(ad, SQL) {
+  var bdb = new SQL.Database();
+  var rowTotal = 0;
+  BUNDLE_TABLES.forEach(function (t) {
+    var info = ad.prepare('PRAGMA table_info(' + t + ')').all();
+    if (!info.length) return;
+    var cols = info.map(function (c) { return c.name; });
+    bdb.run('CREATE TABLE ' + t + ' (' + cols.map(function (c) { return '"' + c + '"'; }).join(',') + ')');
+    var rows = ad.prepare('SELECT ' + cols.map(function (c) { return '"' + c + '"'; }).join(',') + ' FROM ' + t).all();
+    var stmt = bdb.prepare('INSERT INTO ' + t + ' VALUES (' + cols.map(function () { return '?'; }).join(',') + ')');
+    rows.forEach(function (r) {
+      stmt.run(cols.map(function (c) { var v = r[c]; if (v === undefined) return null; if (Buffer.isBuffer(v)) return new Uint8Array(v); return v; }));
+    });
+    stmt.free();
+    rowTotal += rows.length;
+  });
+  bdb.rowTotal = rowTotal;
+  return bdb;
+}
+
+// copy the sql.js runtime (glue + wasm) next to the bundle so the browser can lazy-load it.
+function copyLibAssets() {
+  try {
+    if (!fs.existsSync(LIB_OUT)) fs.mkdirSync(LIB_OUT, { recursive: true });
+    ['sql-wasm.js', 'sql-wasm.wasm'].forEach(function (f) {
+      var src = path.join(LIB_SRC, f);
+      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(LIB_OUT, f));
+      else console.log('   §GLASS WARN sql.js asset missing: ' + src);
+    });
+  } catch (e) { console.log('   §GLASS WARN copyLibAssets: ' + e.message); }
+}
 
 // ── the self-contained viewer (graph inlined; deterministic force layout; no deps, file://-safe) ──
 function renderHtml(graph) {
@@ -139,8 +285,13 @@ function renderHtml(graph) {
 '  #wrap{display:flex;height:100vh}\n' +
 '  #stage{flex:1;position:relative;overflow:hidden}\n' +
 '  #svg{touch-action:none;cursor:grab} #svg.panning{cursor:grabbing}\n' +
-'  #panel{width:340px;background:var(--panel);border-left:1px solid var(--line);padding:16px;overflow:auto}\n' +
+'  #panel{width:var(--pw,340px);background:var(--panel);border-left:1px solid var(--line);padding:16px;overflow:auto;transition:width .18s ease,padding .18s ease}\n' +
+'  #wrap.collapsed #panel{width:0;padding:0;border-left:none;overflow:hidden}\n' +
+'  #wrap.resizing #panel{transition:none}\n' +
+'  #pgrip{flex:0 0 6px;cursor:ew-resize;background:transparent} #pgrip:hover,#wrap.resizing #pgrip{background:#2b3744}\n' +
+'  #wrap.collapsed #pgrip{display:none}\n' +
 '  h1{font-size:15px;margin:0 0 2px} .sub{color:var(--dim);font-size:11px;margin-bottom:14px}\n' +
+'  .appx{float:right;font-size:14px;color:var(--dim);cursor:pointer;font-weight:400;line-height:1} .appx:hover{color:#8aa}\n' +
 '  .legend{position:absolute;top:12px;left:12px;background:rgba(20,26,34,.92);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12px}\n' +
 '  .legend label{display:block;cursor:pointer;margin:3px 0;user-select:none}\n' +
 '  .legend .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;vertical-align:-1px}\n' +
@@ -160,16 +311,43 @@ function renderHtml(graph) {
 '  .row{font-size:13px;padding:3px 0;border-bottom:1px solid var(--line)}\n' +
 '  .tag{display:inline-block;background:#1d2630;border-radius:4px;padding:1px 6px;font-size:11px;margin:2px 4px 2px 0}\n' +
 '  .y{color:#4caf7d} .n{color:var(--dim)}\n' +
+'  .ctl button.active{border-color:#ffd479;color:#ffd479}\n' +
+'  #strip{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:8px;background:rgba(16,22,30,.97);border:1px solid #3a4a5a;border-radius:10px;padding:9px 12px;font-size:12px;max-width:calc(100% - 40px);overflow-x:auto;box-shadow:0 8px 40px rgba(0,0,0,.5)}\n' +
+'  #strip.open{display:flex}\n' +
+'  #strip .step{cursor:pointer;padding:4px 9px;border-radius:7px;background:#19222c;border:1px solid #2b3744;white-space:nowrap}\n' +
+'  #strip .step:hover{border-color:#ffd479} #strip .step b{color:#ffd479} #strip .step .amt{color:#4caf7d}\n' +
+'  #strip .arr{color:#5a6b7a} #strip .ttl{color:#8aa;font-weight:600;margin-right:2px}\n' +
+'  #strip .xx{cursor:pointer;color:#5a6b7a;margin-left:4px;font-weight:700;font-size:13px} #strip .xx:hover{color:#e7edf3}\n' +
+'  @keyframes flow{to{stroke-dashoffset:-16}} .litedge{stroke-dasharray:6 6;animation:flow .8s linear infinite}\n' +
+'  #ball{position:absolute;bottom:64px;right:20px;width:62px;height:62px;border-radius:50%;cursor:grab;touch-action:none;background:radial-gradient(circle at 34% 30%,#4a6075,#1a2330 72%,#0c1118);border:1px solid #3a4a5a;box-shadow:0 6px 22px rgba(0,0,0,.55),inset 0 2px 7px rgba(255,255,255,.09)}\n' +
+'  #ball:active{cursor:grabbing} #ball::after{content:"orbit";position:absolute;bottom:-15px;left:0;right:0;text-align:center;font-size:9px;color:#5a6b7a;letter-spacing:.1em}\n' +
+'  #balldot{position:absolute;width:9px;height:9px;border-radius:50%;background:#ffd479;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 7px #ffd479;pointer-events:none}\n' +
+'  #summary{margin-bottom:4px}\n' +
+'  .rhdr{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 6px;line-height:1.4}\n' +
+'  #stack{display:flex;flex-direction:column;gap:6px}\n' +
+'  @keyframes barin{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}\n' +
+'  .bar{background:#10161e;border:1px solid var(--line);border-radius:8px;overflow:hidden;touch-action:pan-y;animation:barin .22s ease}\n' +
+'  .bar.col{opacity:.78} .bar.col .bh b{color:var(--dim)}\n' +
+'  .bar .bh{display:flex;align-items:center;gap:7px;padding:7px 9px;cursor:pointer;user-select:none}\n' +
+'  .bar .bh b{flex:1;font-size:13px} .bar .car{color:var(--dim);font-size:10px;transition:transform .15s} .bar.col .car{transform:rotate(-90deg)}\n' +
+'  .bar .bx{color:var(--dim);cursor:pointer;font-weight:700;font-size:13px;padding:0 2px} .bar .bx:hover{color:#e2574c}\n' +
+'  .bar .bb{padding:2px 10px 9px} .bar.col .bb{display:none}\n' +
+'  .bar .trk{color:#c8923a;font-size:11px;margin-top:6px}\n' +
 '</style></head><body><div id="wrap">\n' +
 '<div id="stage"><svg id="svg" width="100%" height="100%"></svg>\n' +
 '  <div class="legend" id="legend"></div>\n' +
 '  <div class="cold" id="coldbox"></div>\n' +
-'  <div class="ctl"><button id="aboutBtn">ⓘ How to read this</button><button id="resetBtn">⤢ Reset view</button></div>\n' +
+'  <div class="ctl"><button id="traceBtn">▸ Trace a record</button><button id="resetBtn">⤢ Reset view</button><button id="panelToggle" title="hide / show the info panel">⟩</button></div>\n' +
+'  <div id="strip"></div>\n' +
+'  <div id="ball" title="drag to orbit \\u2014 arrange the view like a BIM model"><div id="balldot"></div></div>\n' +
 '  <div id="about"></div>\n' +
 '</div>\n' +
-'<div id="panel"><h1>Glassbowl</h1><div class="sub">a live map of how your documents connect &amp; flow — built from the system itself. Click a bubble.</div>\n' +
-'  <div id="detail"><div class="k">the links on this map</div><div id="spines"></div>\n' +
+'<div id="pgrip" title="drag to resize the panel"></div>\n' +
+'<div id="panel"><h1>Glassbowl <span id="aboutBtn" class="appx" title="how to read this">ⓘ</span></h1><div class="sub">a live map of how your documents connect &amp; flow — built from the system itself. Click a bubble.</div>\n' +
+'  <div id="summary"><div class="k">the links on this map</div><div id="spines"></div>\n' +
 '  <div class="k">what the system runs</div><div id="cellcount"></div></div>\n' +
+'  <div class="rhdr" id="recentHdr" style="display:none">recent items &mdash; like iDempiere&rsquo;s, but spatial &amp; glanceable. the engine keeps every step (op-log). tap to minimise &middot; swipe or &times; to dismiss</div>\n' +
+'  <div id="stack"></div>\n' +
 '</div></div>\n' +
 '<script>\nvar G=' + data + ';\n' + VIEWER_JS + '\n</script></body></html>';
 }
@@ -197,28 +375,79 @@ var VIEWER_JS = [
 '  for(var j=0;j<N.length;j++){if(i===j)continue;var b=N[j],dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy+0.01,d=Math.sqrt(d2);var f=2400/d2;a.fx+=dx/d*f;a.fy+=dy/d*f;}}',
 ' E.forEach(function(e){var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)+0.01,kk=(d-120)*0.01;a.fx+=dx/d*kk;a.fy+=dy/d*kk;b.fx-=dx/d*kk;b.fy-=dy/d*kk;});',
 ' N.forEach(function(n){n.x+=Math.max(-8,Math.min(8,n.fx));n.y+=Math.max(-8,Math.min(8,n.fy));});}',
+'// ── ORBIT (GLASSBOWL_DOSSIER \\u00a72-viz, W-ORBIT): the 3 spines are depth planes; the trackball moves the eye ──',
+'// z is read from the data (n.z, assigned in the generator from spine role — NOT placed here).',
+'var yaw=0,pitch=0;window.__yaw=0;window.__pitch=0;',
+'var CX=N.reduce(function(s,n){return s+n.x;},0)/N.length,CY=N.reduce(function(s,n){return s+n.y;},0)/N.length;',
+'var ZMAX=Math.max(1,Math.max.apply(null,N.map(function(n){return Math.abs(n.z||0);})));',
+'function orbitAmt(){return Math.min(1,Math.abs(Math.sin(yaw))+Math.abs(Math.sin(pitch)));}',
+'// orthographic projection (yaw about Y, then pitch about X). At yaw=pitch=0 it is the IDENTITY on x,y —',
+'// the planes collapse head-on, so the at-rest bowl is PIXEL-IDENTICAL to the flat static layout.',
+'function project(n){var ax=n.x-CX,ay=n.y-CY,az=(n.z||0);var cY=Math.cos(yaw),sY=Math.sin(yaw),cP=Math.cos(pitch),sP=Math.sin(pitch);var X1=ax*cY+az*sY,Z1=-ax*sY+az*cY;var Y2=ay*cP-Z1*sP,Z2=ay*sP+Z1*cP;n.sx=CX+X1;n.sy=CY+Y2;n.depth=Z2;}',
+'// inverse: recover a node\\u2019s plane (x,y) from a desired screen point + its fixed z (keeps bubble-drag working under orbit).',
+'function unproject(sx,sy,az){var cY=Math.cos(yaw),sY=Math.sin(yaw),cP=Math.cos(pitch),sP=Math.sin(pitch);if(Math.abs(cY)<0.15||Math.abs(cP)<0.15)return null;var ax=((sx-CX)-az*sY)/cY;var Z1=-ax*sY+az*cY;var ay=((sy-CY)+Z1*sP)/cP;return {x:CX+ax,y:CY+ay};}',
 '// build SVG via createElementNS (NOT innerHTML — innerHTML-built SVG fails to lay out headless).',
-'function draw(){while(vp.firstChild)vp.removeChild(vp.firstChild);',
-' E.forEach(function(e){if(!show[e.kind])return;var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;vp.appendChild(el("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:COLOR[e.kind],"stroke-opacity":(e.kind==="reference"?0.18:0.5),"stroke-width":(e.kind==="reference"?1:1.6)}));});',
-' N.forEach(function(n){var vis=E.some(function(e){return show[e.kind]&&(e.from===n.id||e.to===n.id)})||(n.cells&&n.cells.length);if(!vis&&n.kind==="master")return;var col=n.settlement?"#e2574c":n.kind==="master"?"#2b3744":(n.gravity>0?"#4caf7d":"#3a4a5a");var r=radius(n);',
+'// ── FOCUS filter: click a bubble \\u2192 show only its own links (Order \\u2192 its Order lines\\u2026); bg-click clears ──',
+'var focusId=null;',
+'function edgeFocus(e){return e.from===focusId||e.to===focusId;}',
+'function inFocus(id){return id===focusId||E.some(function(e){return (e.from===focusId&&e.to===id)||(e.to===focusId&&e.from===id);});}',
+'function setFocus(id){focusId=(focusId===id?null:id);draw();}',
+'function draw(){N.forEach(project);while(vp.firstChild)vp.removeChild(vp.firstChild);var oa=orbitAmt(),fo=focusId&&!traceMode;',
+' E.forEach(function(e){if(!show[e.kind])return;var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var lo=litEdge(e),ef=fo&&edgeFocus(e),op,sw,col=lo?"#ffd479":COLOR[e.kind];if(traceMode){op=lo?0.95:0.04;sw=lo?3:0.8;}else if(fo){op=ef?0.85:0.035;sw=ef?2:0.6;if(ef)col="#ffd479";}else{op=e.kind==="reference"?0.18:0.5;sw=e.kind==="reference"?1:1.6;}var ln=el("line",{x1:a.sx,y1:a.sy,x2:b.sx,y2:b.sy,stroke:col,"stroke-opacity":op,"stroke-width":sw});if(lo)ln.setAttribute("class","litedge");vp.appendChild(ln);});',
+' var order=N.slice().sort(function(a,b){return a.depth-b.depth;});',   // painter: far plane (low depth) drawn first
+' order.forEach(function(n){var vis=E.some(function(e){return show[e.kind]&&(e.from===n.id||e.to===n.id)})||(n.cells&&n.cells.length);if(!vis&&n.kind==="master")return;var col=n.settlement?"#e2574c":n.kind==="master"?"#2b3744":(n.gravity>0?"#4caf7d":"#3a4a5a");',
+'  var sc=Math.max(0.6,Math.min(1.5,1+(n.depth/ZMAX)*0.45*oa)),r=radius(n)*sc;',   // depth size cue, gated by orbit amount (0 at rest)
+'  var far=Math.max(0,(ZMAX-n.depth)/(2*ZMAX)),dop=1-far*0.6*oa;',                   // far plane dims, also gated → 1 at rest
 '  var g=el("g",{"class":"node"});(function(node){g.addEventListener("pointerdown",function(ev){startDragNode(ev,node);});g.addEventListener("click",function(){if(!moved)pick(node.id);});})(n);',
-'  g.appendChild(el("circle",{cx:n.x,cy:n.y,r:r,fill:col,stroke:"#0c0f14","stroke-width":1.5}));',
-'  var t=el("text",{x:n.x,y:(n.y+r+11),"text-anchor":"middle"});t.textContent=fname(n.id);g.appendChild(t);vp.appendChild(g);});}',
+'  var dim=(traceMode&&!litNode(n.id))||(fo&&!inFocus(n.id)),hi=litNode(n.id)||(fo&&n.id===focusId),fop=dim?0.12:(traceMode?1:dop);',
+'  g.appendChild(el("circle",{cx:n.sx,cy:n.sy,r:r,fill:col,"fill-opacity":fop,stroke:hi?"#ffd479":"#0c0f14","stroke-width":hi?3:1.5}));',
+'  var t=el("text",{x:n.sx,y:(n.sy+r+11),"text-anchor":"middle","fill-opacity":(dim?0.18:(traceMode?1:dop))});t.textContent=fname(n.id);g.appendChild(t);vp.appendChild(g);});}',
 '// ── interaction: drag a bubble, pan the background, scroll to zoom ──',
 'function world(ev){var rc=svg.getBoundingClientRect();return {x:(ev.clientX-rc.left-px)/k,y:(ev.clientY-rc.top-py)/k};}',
 'var drag=null,panning=null,moved=false;',
-'function startDragNode(ev,node){ev.stopPropagation();var w=world(ev);drag={node:node,ox:w.x-node.x,oy:w.y-node.y};moved=false;try{svg.setPointerCapture(ev.pointerId);}catch(e){}}',
+'// bubble-drag anchors in SCREEN space then inverse-projects back to the node\\u2019s plane (identity at rest).',
+'function startDragNode(ev,node){ev.stopPropagation();project(node);var w=world(ev);drag={node:node,sx0:node.sx,sy0:node.sy,w0x:w.x,w0y:w.y,az:(node.z||0)};moved=false;try{svg.setPointerCapture(ev.pointerId);}catch(e){}}',
 'svg.addEventListener("pointerdown",function(ev){if(drag)return;var rc=svg.getBoundingClientRect();panning={sx:ev.clientX-rc.left-px,sy:ev.clientY-rc.top-py};moved=false;svg.classList.add("panning");try{svg.setPointerCapture(ev.pointerId);}catch(e){}});',
-'svg.addEventListener("pointermove",function(ev){if(drag){var w=world(ev);drag.node.x=w.x-drag.ox;drag.node.y=w.y-drag.oy;moved=true;draw();}else if(panning){var rc=svg.getBoundingClientRect();px=ev.clientX-rc.left-panning.sx;py=ev.clientY-rc.top-panning.sy;moved=true;applyT();}});',
+'svg.addEventListener("pointermove",function(ev){if(drag){var w=world(ev);var p=unproject(drag.sx0+(w.x-drag.w0x),drag.sy0+(w.y-drag.w0y),drag.az);if(p){drag.node.x=p.x;drag.node.y=p.y;}moved=true;draw();}else if(panning){var rc=svg.getBoundingClientRect();px=ev.clientX-rc.left-panning.sx;py=ev.clientY-rc.top-panning.sy;moved=true;applyT();}});',
 'function endPtr(){drag=null;panning=null;svg.classList.remove("panning");}',
 'svg.addEventListener("pointerup",endPtr);svg.addEventListener("pointercancel",endPtr);',
+'svg.addEventListener("click",function(ev){if((ev.target===svg||ev.target.id==="vp")&&!moved)clearFocus();});',
 'svg.addEventListener("wheel",function(ev){ev.preventDefault();var rc=svg.getBoundingClientRect();var mx=ev.clientX-rc.left,my=ev.clientY-rc.top;var f=ev.deltaY<0?1.12:0.89;var nk=Math.max(0.25,Math.min(6,k*f));px=mx-(mx-px)*(nk/k);py=my-(my-py)*(nk/k);k=nk;applyT();},{passive:false});',
-'document.getElementById("resetBtn").addEventListener("click",function(){px=0;py=0;k=1;applyT();});',
+'// ── the trackball: grab the sphere to ORBIT the view (bubbles stay static in 3D; only the eye moves) ──',
+'var ball=document.getElementById("ball"),balldot=document.getElementById("balldot"),orbiting=null;',
+'function updateBall(){balldot.style.left=(50+Math.sin(yaw)*28)+"%";balldot.style.top=(50-Math.sin(pitch)*28)+"%";}',
+'function setOrbit(y,p){yaw=y;pitch=Math.max(-1.3,Math.min(1.3,p));window.__yaw=yaw;window.__pitch=pitch;updateBall();draw();}',
+'ball.addEventListener("pointerdown",function(ev){ev.preventDefault();ev.stopPropagation();orbiting={x:ev.clientX,y:ev.clientY,y0:yaw,p0:pitch};try{ball.setPointerCapture(ev.pointerId);}catch(e){}});',
+'ball.addEventListener("pointermove",function(ev){if(!orbiting)return;setOrbit(orbiting.y0+(ev.clientX-orbiting.x)*0.012,orbiting.p0+(ev.clientY-orbiting.y)*0.012);});',
+'function endOrbit(){orbiting=null;}ball.addEventListener("pointerup",endOrbit);ball.addEventListener("pointercancel",endOrbit);',
+'window.setOrbit=setOrbit;updateBall();',
+'document.getElementById("resetBtn").addEventListener("click",function(){px=0;py=0;k=1;yaw=0;pitch=0;focusId=null;window.__yaw=0;window.__pitch=0;updateBall();applyT();draw();});',
+'// collapse the right info panel \\u2192 the graph takes the full canvas (positions are absolute, no re-layout needed).',
+'document.getElementById("panelToggle").addEventListener("click",function(){var w=document.getElementById("wrap"),c=w.classList.toggle("collapsed");this.textContent=c?"\\u27e8":"\\u27e9";this.title=(c?"show":"hide")+" the info panel";});',
+'// drag the gripper to RESIZE the info panel (width \\u2192 a CSS var, clamped). Composes with collapse.',
+'(function(){var grip=document.getElementById("pgrip"),WR=document.getElementById("wrap"),PAN=document.getElementById("panel"),rz=null;',
+' grip.addEventListener("pointerdown",function(ev){ev.preventDefault();rz={x:ev.clientX,w:PAN.getBoundingClientRect().width};WR.classList.add("resizing");try{grip.setPointerCapture(ev.pointerId);}catch(e){}});',
+' grip.addEventListener("pointermove",function(ev){if(!rz)return;var nw=Math.max(240,Math.min(640,rz.w-(ev.clientX-rz.x)));document.documentElement.style.setProperty("--pw",nw+"px");window.__pw=nw;});',
+' function ez(){rz=null;WR.classList.remove("resizing");}grip.addEventListener("pointerup",ez);grip.addEventListener("pointercancel",ez);})();',
 '// ── inspector (right panel), in plain business language ──',
-'function pick(id){var n=N[idx[id]];var d=document.getElementById("detail");var h=\'<div class=k>this is</div><div class=row><b>\'+fname(id)+\'</b> <span class=pill>\'+id+\'</span></div>\';',
+'function pick(id){var n=N[idx[id]];var h=\'<div class=k>this is</div><div class=row><b>\'+fname(id)+\'</b> <span class=pill>\'+id+\'</span></div>\';',
 ' var ce=E.filter(function(e){return e.from===id&&show[e.kind]});if(ce.length){h+=\'<div class=k>connects to</div>\';ce.slice(0,40).forEach(function(e){h+=\'<div class=row><span class=tag style="border-left:3px solid \'+COLOR[e.kind]+\'">\'+LABEL[e.kind].split(" (")[0]+\'</span>\'+fname(e.to)+\'</div>\';});}',
 ' if(n.cells&&n.cells.length){h+=\'<div class=k>what the system does here</div>\';n.cells.forEach(function(c){var acts=c.verbs.map(function(v){return VERB[v]||v;});h+=\'<div class=row>\'+(acts.length?acts.map(function(a){return \'<span class=tag>\'+a+\'</span>\'}).join(""):\'<span class=pill>completes the document</span>\')+\'<br><span class=pill>needs matching/reconciliation: </span><span class=\'+(c.matcher?"y":"n")+\'>\'+(c.matcher?"yes":"no")+\'</span><br><span class=pill>checks before saving: \'+c.guards+\' \\u00b7 times used: \'+c.ops+\'</span></div>\';});}else if(n.kind==="master"){h+=\'<div class=k>what the system does here</div><div class=row class=n>a reference list — looked up by the documents, no workflow of its own</div>\';}',
-' d.innerHTML=h;}',
+' var runs=(n.cells||[]).reduce(function(s,c){return s+(c.ops||0);},0);focusId=id;pushBar(id,fname(id),h,runs);draw();}',
+'function clearFocus(){if(focusId){focusId=null;draw();}}',
+'// ── the RECENT stack: each look-up drops a collapsible bar (accordion); swipe or \\u2715 to dismiss. The',
+'//    \\u201ctracked N runs\\u201d line is the real op-count (kernel op-log depth, §0.6) — extracted, not invented. ──',
+'var STACK=document.getElementById("stack"),RH=document.getElementById("recentHdr"),RECN=10;',
+'function removeBar(b){b.style.transition="transform .15s,opacity .15s";b.style.transform="translateX(60px)";b.style.opacity=0;setTimeout(function(){if(b.parentNode)b.parentNode.removeChild(b);if(!STACK.children.length)RH.style.display="none";},150);}',
+'function addSwipe(b){var sx=0,on=false;b.addEventListener("pointerdown",function(e){if(e.target.classList.contains("bx"))return;sx=e.clientX;on=true;});b.addEventListener("pointermove",function(e){if(!on)return;var dx=e.clientX-sx;if(dx>0)b.style.transform="translateX("+dx+"px)";});b.addEventListener("pointerup",function(e){if(!on)return;on=false;if(e.clientX-sx>60)removeBar(b);else b.style.transform="";});b.addEventListener("pointercancel",function(){on=false;b.style.transform="";});}',
+'function pushBar(id,title,bodyHtml,runs){var ex=STACK.querySelector(\'[data-id="\'+id+\'"]\');if(ex)ex.parentNode.removeChild(ex);Array.prototype.forEach.call(STACK.children,function(c){c.classList.add("col");});',
+' var b=document.createElement("div");b.className="bar";b.setAttribute("data-id",id);',
+' var trk=runs>0?\'<div class=trk>\\u27d0 the engine has tracked \'+runs+\' run\'+(runs==1?"":"s")+\' here, kept in the op-log</div>\':"";',
+' b.innerHTML=\'<div class=bh><span class=car>\\u25be</span><b>\'+title+\'</b><span class=bx title=dismiss>\\u2715</span></div><div class=bb>\'+bodyHtml+trk+\'</div>\';',
+' b.querySelector(".bh").addEventListener("click",function(ev){if(ev.target.classList.contains("bx"))return;b.classList.toggle("col");});',
+' b.querySelector(".bx").addEventListener("click",function(){removeBar(b);});',
+' addSwipe(b);STACK.insertBefore(b,STACK.firstChild);RH.style.display="block";',
+' while(STACK.children.length>RECN)STACK.removeChild(STACK.lastChild);}',
 '// ── legend (business labels) ──',
 'var lg=document.getElementById("legend"),lh="<div class=ttl>the links &mdash; click to hide</div>";["derivation","settlement","containment","reference"].forEach(function(kk){lh+=\'<label><input type=checkbox checked onchange="show.\'+kk+\'=this.checked;draw()"><span class=sw style="background:\'+COLOR[kk]+\'"></span>\'+LABEL[kk]+\' (\'+G.spines[kk]+\')</label>\';});lg.innerHTML=lh;',
 '// ── "not switched on yet" badge ──',
@@ -231,5 +460,19 @@ var VIEWER_JS = [
 'var ABOUT=\'<h2>What am I looking at?</h2><p>A live map of how your business documents connect and flow \\u2014 orders, shipments, invoices, payments \\u2014 drawn automatically from the system itself.</p><h3>The bubbles</h3><p>Each bubble is something your business tracks. <span class=em>Bigger means used more.</span> Click a bubble to see what it links to and what the system does there. Drag bubbles to tidy them up, scroll to zoom, drag the empty background to move around.</p><h3>The coloured links</h3><p><span class=sw style="background:#4caf7d"></span><span class=em>Sales flow</span> \\u2014 an order becomes a shipment, then an invoice, then a payment. This is most of your day.</p><p><span class=sw style="background:#e2574c"></span><span class=em>Matching &amp; reconciliation</span> \\u2014 checking that what was ordered, received, billed and paid all agree. The careful part a bookkeeper double-checks.</p><p><span class=sw style="background:#6aa9ff"></span><span class=em>Document &amp; its lines</span> \\u2014 an invoice and the products listed on it.</p><p><span class=sw style="background:#5a6b7a"></span><span class=em>Reference data</span> \\u2014 links to your lists of products, customers and suppliers.</p><h3>Why it matters</h3><p>The green flow is the easy everyday path. The red links are where money is reconciled \\u2014 where mistakes cost you. The map shows at a glance where the real work concentrates.</p><h3>\\u201cNot switched on yet\\u201d</h3><p>The full platform is already here, most of it dormant. Features light up the moment you use them \\u2014 nothing to install or configure up front.</p>\';',
 'document.getElementById("about").innerHTML=ABOUT;',
 'document.getElementById("aboutBtn").addEventListener("click",function(){document.getElementById("about").classList.toggle("open");});',
+'// ── Phase 2a: LINEAGE TRACE (GLASSBOWL_DOSSIER \\u00a72a, W-LIFECYCLE) — light a real record\\u2019s whole life ──',
+'var LIN=G.lineage||null,traceMode=false,litN={},xchecked=false;',
+'if(LIN){LIN.chain.forEach(function(c){if(c.id!=null)litN[c.table]=1;});}',
+'function litNode(id){return traceMode&&!!litN[id];}',
+'function litEdge(e){return traceMode&&litN[e.from]&&litN[e.to]&&(e.kind==="derivation"||e.kind==="settlement");}',
+'function fmtAmt(a){return a==null?"":" <span class=amt>("+Number(a).toFixed(2)+")</span>";}',
+'function buildStrip(){var s=document.getElementById("strip");if(!LIN){s.innerHTML="<span class=pill>no lineage in data</span>";return;}var h="<span class=ttl>this record\\u2019s life:</span>";LIN.chain.forEach(function(c,i){if(i)h+=\'<span class=arr>\\u25b8</span>\';var who=c.documentno!=null?"#"+c.documentno:"#"+c.id;h+=\'<span class=step data-t="\'+c.table+\'"><b>\'+(c.friendly||c.table)+\'</b> \'+who+fmtAmt(c.amount)+\'</span>\';});h+=\'<span class=xx id=stripX title="exit trace">\\u2715</span>\';s.innerHTML=h;Array.prototype.forEach.call(s.querySelectorAll(".step"),function(elm){elm.addEventListener("click",function(){pick(elm.getAttribute("data-t"));});});document.getElementById("stripX").addEventListener("click",function(){setTrace(false);});}',
+'function setTrace(on){if(on)focusId=null;traceMode=on;document.getElementById("strip").classList.toggle("open",on);document.getElementById("traceBtn").classList.toggle("active",on);if(on)buildStrip();draw();if(on)ensureXcheck();}',
+'document.getElementById("traceBtn").addEventListener("click",function(){setTrace(!traceMode);});',
+'// lazy cross-check: load the sql.js data bundle in-browser, re-run the SAME walk, prove it agrees.',
+'// graceful — wrapped so a missing asset (file:// / offline) never breaks the trace (browser-first).',
+'function xcDone(msg){console.log("\\u00a7LIFECYCLE-XCHECK "+msg);window.__xchecked=true;}',
+'function ensureXcheck(){if(xchecked||!LIN||!LIN.walk)return;xchecked=true;try{var sc=document.createElement("script");sc.src="sqljs/sql-wasm.js";sc.onload=function(){if(!window.initSqlJs){xcDone("skip=no-initSqlJs");return;}window.initSqlJs({locateFile:function(f){return "sqljs/"+f;}}).then(function(SQL){return fetch("glassbowl_data.db").then(function(r){return r.arrayBuffer();}).then(function(buf){var db=new SQL.Database(new Uint8Array(buf));var ok=true,parts=[];LIN.chain.forEach(function(c){var sql=LIN.walk[c.table],id=null;if(sql){var res=db.exec(sql);if(res.length&&res[0].values.length)id=res[0].values[0][0];}if(String(id)!==String(c.id))ok=false;parts.push(c.table+"#"+id);});db.close();xcDone("record="+LIN.record+" bundle=[ "+parts.join(" \\u2192 ")+" ] agree="+(ok?"Y":"N"));});}).catch(function(e){xcDone("error="+e.message);});};sc.onerror=function(){xcDone("skip=no-sqljs-asset");};document.head.appendChild(sc);}catch(e){xcDone("error="+e.message);}}',
+'window.setTrace=setTrace;',
 'applyT();draw();'
 ].join('\n');

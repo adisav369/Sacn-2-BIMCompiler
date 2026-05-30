@@ -98,9 +98,47 @@ Lazy tabs, each EXTRACTED from data; each replaces an iDempiere window/tab:
 6. **Available reports** — housed `AD_PrintFormat` ("the set ones", §0.11).
 7. **Plain-language labels** — `AD_Element` so the data view reads in business terms.
 
+## Phase 2-viz — the ORBIT (pseudo-3D depth-plane view)
+**The product framing (the user's, 2026-05-30):** *"like BIM looking at each discipline, then moving it
+around (trackball), arranging the view."* In a BIM model you orbit the building to read its disciplines
+(arch / struct / MEP) in depth. The same gesture, brought to ERP: the three spines ARE the ERP's
+disciplines — lift them onto separate **depth planes** and orbit to read them. **Arranging the view** is
+the new concept; "fresh eye candy iDempiere users will welcome," at canvas speed.
+
+### The depth planes (deterministic, by spine role — EXTRACT, not invent)
+Each bubble gets a `z` from its existing classification (no new data): **spine plane** `z=0` (the doc
+flow Order→…→Allocation), **settlement plane** `z=+D` floating above (matching/reconciliation), **reference
+shell** `z=−D` behind & dim (products/partners). `§ORBIT planes=3 spine=N settlement=M reference=K`.
+
+### Witness — W-ORBIT
+1. **At rest (yaw=pitch=0) the bowl is pixel-identical to the flat 2D layout** — orthographic head-on
+   collapses the planes onto each other, so the static circle-seed layout the user likes *persists*
+   untouched (projected `sx==x, sy==y`). No regression to any existing wiring check.
+2. **Depth is assigned from data** — `§ORBIT` logs 3 non-empty planes from `node.settlement`/`node.kind`,
+   0 hand-placed.
+3. **The trackball orbits the camera; bubbles stay static in 3D** — dragging the bottom sphere changes
+   yaw/pitch; each bubble's `x,y,z` are unchanged (you move your eye, not the model); the planes shear
+   apart and depth-cue (size/opacity) grows with orbit amount. Reset restores the at-rest view.
+   Cheap & fast: same lightweight SVG redraw (no engine, no raster-canvas swap), `createElementNS`.
+
+Pure read, no T3 — a viewing affordance, parallel to (not blocking) the 2b/2c read roadmap below.
+
+### The RECENT-ITEMS accordion (the activity / RecentChanges log)
+The right info panel is a **stack of collapsible bars**, not a single overwriting inspector. Each look-up
+*flows in* as the next bar (slide-in animation); **minimise** rolls it to a title-only bar that **stays**
+(so the user can return); **swipe / ✕** dismisses it. This keeps a running **sense of activity** — and
+it's not foreign: **iDempiere already has "Recent Items"** (and per-record change history). This is that,
+made spatial & glanceable. Each bar with engine activity shows `⟐ the engine has tracked N runs here, kept
+in the op-log` — the **real op-count** (kernel op-log depth, §0.6), extracted not invented. The honest next
+step: feed the stack from actual `kernel_ops` events → a true **RecentChanges log** (the audit/time-machine,
+Phase 2d-2). For now it logs the user's own look-ups; the bar shape & op-count are the seam to real events.
+
 ## Build order (each its own session + witness)
-1. **2a Lifecycle chain** (W-LIFECYCLE) — START HERE. + the `sql.js` data bundle (the enabling step).
-2. **2b Floating card** (replace fixed panel).
+1. **2a Lifecycle chain** (W-LIFECYCLE) — START HERE. + the `sql.js` data bundle (the enabling step). ✅ DONE.
+1b. **2-viz** (W-ORBIT) ✅ DONE — orbit depth-planes + trackball, the recent-items accordion log, click-to-focus
+    filter, collapsible/resizable panel, ⓘ appendix. All pure read, "fresh eye candy."
+2. **2b Floating card** (replace fixed panel) — and the **per-bubble action array**: left-click=focus+log (done),
+   right-click=dossier/edit, double-click=expand/trace. "An array of actions & views on one screen."
 3. **2c Dossier tabs** (W-DOSSIER) — Data + Rules first, then Workflow/Access/Columns/Accounting.
 4. **2d extras** — reverse-deps + audit first (both pure reads, both gasp-worthy).
 5. **Editing / impact-preview** — LAST, T3-gated (engine in browser, `push=live`, explicit go).
