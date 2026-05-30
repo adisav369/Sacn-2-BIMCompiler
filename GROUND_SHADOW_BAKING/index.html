@@ -3603,10 +3603,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#a-static-ground-map-the-main-ask" class="md-nav__link">
+  <a href="#a-static-ground-map-the-main-ask-resolved-2026-05-30" class="md-nav__link">
     <span class="md-ellipsis">
       
-        A. Static ground map (the main ask)
+        A. Static ground map (the main ask) — RESOLVED 2026-05-30
       
     </span>
   </a>
@@ -3614,10 +3614,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#b-free-at-idle-shadow-the-little-cost-for-tm-ask-optional-low-risk" class="md-nav__link">
+  <a href="#b-free-at-idle-shadow-the-shadows-on-is-heavy-fix-deferred-see-6" class="md-nav__link">
     <span class="md-ellipsis">
       
-        B. Free-at-idle shadow (the "little cost for TM" ask) — optional, low-risk
+        B. Free-at-idle shadow (the "shadows-ON is heavy" fix) — DEFERRED, see §6
       
     </span>
   </a>
@@ -3652,10 +3652,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-open-decisions-ask-user" class="md-nav__link">
+  <a href="#4-decisions-resolved-2026-05-30" class="md-nav__link">
     <span class="md-ellipsis">
       
-        §4 Open decisions (ask user)
+        §4 Decisions — RESOLVED 2026-05-30
       
     </span>
   </a>
@@ -3667,6 +3667,17 @@
     <span class="md-ellipsis">
       
         §4b FEASIBILITY &amp; COST — Photographic terrain ground (decision: deferred to future update)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-deferred-standalone-spec-free-at-idle-shadow-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6 DEFERRED — Standalone spec: free-at-idle shadow gate
       
     </span>
   </a>
@@ -3758,21 +3769,41 @@ no RefLatitude/RefLongitude stored. Only GPS is the live device camera for AR sn
 (<code>sitecam.js</code>). ⇒ a real satellite tile keyed to the building location is out of scope
 unless geo-extraction is added later.</p>
 <h2 id="2-design-three-independent-composable-pieces">§2 Design — three independent, composable pieces<a class="headerlink" href="#2-design-three-independent-composable-pieces" title="Permanent link">&para;</a></h2>
-<h3 id="a-static-ground-map-the-main-ask">A. Static ground map (the main ask)<a class="headerlink" href="#a-static-ground-map-the-main-ask" title="Permanent link">&para;</a></h3>
-<p>Apply a static texture to <code>A.ground.material.map</code> (or swap the material). Zero runtime
-cost. Texture-source options (pick in §4):
-- <strong>A1 Procedural / tiled site texture</strong> — ship a seamless aerial-style or
-  grass/soil/concrete texture, tiled across the plane (<code>repeat</code> scaled to envelope).
-  Always available, no geo data, no network. Simplest.
-- <strong>A2 Shipped per-building site image</strong> — a real aerial/site photo placed under the
-  building, baked once per hero building (manual, like a presentation backdrop).
-- <strong>A3 Radial gradient + faint CAD grid</strong> — procedural canvas/shader texture that reads
-  as "infinite site," fades into the existing fog horizon. Cleanest CAD look, no assets.
-Constraints: must not white-flash (keep ground off <code>scene.environment</code>, low
+<h3 id="a-static-ground-map-the-main-ask-resolved-2026-05-30">A. Static ground map (the main ask) — RESOLVED 2026-05-30<a class="headerlink" href="#a-static-ground-map-the-main-ask-resolved-2026-05-30" title="Permanent link">&para;</a></h3>
+<p><strong>Decision:</strong> ship <strong>three</strong> seamless CC0 site textures + an <strong>None</strong> option, all
+<strong>runtime-selectable</strong> from the <strong>Sunglass panel</strong>, with the option list driven by a
+<strong>JSON config file</strong> (no hard-coded paths in JS). Picking a row swaps
+<code>A.ground.material.map</code>; zero per-frame cost regardless of which is active.</p>
+<p>Three shipped textures (CC0 — Poly Haven / ambientCG, seamless, 1K, tile across plane):
+- <strong>grass</strong> — aerial grass/meadow (the user's lead choice; default-on look).
+- <strong>earth</strong> — bare soil / gravel construction-site (closest to today's <code>0x5C4033</code>).
+- <strong>paved</strong> — concrete/paving plaza (clean CAD-presentation neutral grey).
+Plus <strong>none</strong> — the current flat colored plane (texture cleared), so nothing regresses.</p>
+<p><strong>Config-driven (JSON).</strong> The viewer reads a <code>ground</code> block from the settings JSON
+(consumer of <code>settings_editor.js</code>, like corporate/grid/clash). The Sunglass "Ground:"
+row is rendered <em>from</em> this config — adding a 4th texture later = a JSON edit, no code.</p>
+<div class="highlight"><pre><span></span><code>// settings JSON — new &quot;ground&quot; consumer block
+&quot;ground&quot;: {
+  &quot;default&quot;: &quot;grass&quot;,            // which option is active on load (&quot;none&quot; = legacy flat)
+  &quot;repeat&quot;: 64,                   // tiles across the 50000² plane (tune to footprint)
+  &quot;anisotropy&quot;: 8,
+  &quot;options&quot;: [
+    { &quot;key&quot;: &quot;none&quot;,  &quot;label&quot;: &quot;None&quot;,  &quot;src&quot;: null },
+    { &quot;key&quot;: &quot;grass&quot;, &quot;label&quot;: &quot;Grass&quot;, &quot;src&quot;: &quot;textures/ground/grass_1k.jpg&quot; },
+    { &quot;key&quot;: &quot;earth&quot;, &quot;label&quot;: &quot;Earth&quot;, &quot;src&quot;: &quot;textures/ground/earth_1k.jpg&quot; },
+    { &quot;key&quot;: &quot;paved&quot;, &quot;label&quot;: &quot;Paved&quot;, &quot;src&quot;: &quot;textures/ground/paved_1k.jpg&quot; }
+  ]
+}
+</code></pre></div>
+<p><strong>Loader behaviour:</strong> lazy <code>TextureLoader</code> per option, decoded on first selection (or
+prefetched during load), <code>RepeatWrapping</code> + <code>repeat</code> from config, <code>SRGBColorSpace</code>,
+<code>anisotropy</code>. Cache loaded textures on <code>A._groundTex[key]</code> so switching is instant.</p>
+<p>Constraints (unchanged): must not white-flash (keep ground off <code>scene.environment</code>, low
 <code>envMapIntensity</code> as today); must still receive the moving shadow (keep
-<code>receiveShadow=true</code>); recolor hooks in <code>tools.js</code> (theme/night/white-bg) must tint or
-swap the texture sensibly.</p>
-<h3 id="b-free-at-idle-shadow-the-little-cost-for-tm-ask-optional-low-risk">B. Free-at-idle shadow (the "little cost for TM" ask) — optional, low-risk<a class="headerlink" href="#b-free-at-idle-shadow-the-little-cost-for-tm-ask-optional-low-risk" title="Permanent link">&para;</a></h3>
+<code>receiveShadow=true</code>); recolor hooks in <code>tools.js</code> (theme/night/white-bg) must set
+<code>material.color</code> to <strong>white</strong> when a map is present (color <em>multiplies</em> the texture —
+overwriting it would tint the photo), and dim (not black-fill) for night.</p>
+<h3 id="b-free-at-idle-shadow-the-shadows-on-is-heavy-fix-deferred-see-6">B. Free-at-idle shadow (the "shadows-ON is heavy" fix) — DEFERRED, see §6<a class="headerlink" href="#b-free-at-idle-shadow-the-shadows-on-is-heavy-fix-deferred-see-6" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Set <code>A.renderer.shadowMap.autoUpdate = false</code> once shadows are initialized.</li>
 <li>Set <code>A.renderer.shadowMap.needsUpdate = true</code> exactly where the sun/geometry changes:
@@ -3795,10 +3826,18 @@ swap the texture sensibly.</p>
 <li><strong>W-THEME</strong>: ground texture survives theme / night / white-background toggles
   (<code>tools.js</code>) without going black/white-flat.</li>
 </ul>
-<h2 id="4-open-decisions-ask-user">§4 Open decisions (ask user)<a class="headerlink" href="#4-open-decisions-ask-user" title="Permanent link">&para;</a></h2>
+<h2 id="4-decisions-resolved-2026-05-30">§4 Decisions — RESOLVED 2026-05-30<a class="headerlink" href="#4-decisions-resolved-2026-05-30" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Which ground-map source: A1 procedural tile / A2 shipped site image / A3 gradient+grid.</li>
-<li>Do the optional free-at-idle shadow gate (B) now, or ground texture only first.</li>
+<li><strong>Ground source:</strong> ship <strong>three</strong> CC0 textures (grass / earth / paved) <strong>+ None</strong>,
+  runtime-selectable, list driven by <strong>JSON config</strong> (§2.A). Grass is the lead/default.</li>
+<li><strong>Chooser UI:</strong> a "Ground:" row in the <strong>Sunglass panel</strong> (<code>panels.js</code> sunglass
+  builder), rendered from the JSON <code>ground.options</code>.</li>
+<li><strong>Idle shadow gate (§2.B):</strong> <strong>DEFERRED</strong> to its own session. User confirmed the
+  existing moving sun shadow is good and must not be disturbed; the gate is the only
+  change that <em>reduces</em> the heavy shadows-ON cost, but carries a stale-shadow risk, so it
+  ships standalone only with §-log proof (see §6). This session = ground textures only.</li>
+<li><strong>Asset acquisition:</strong> 3 seamless 1K CC0 JPGs sourced from Poly Haven / ambientCG,
+  vendored under <code>viewer/textures/ground/</code>, added to SW precache (one CACHE_VERSION bump).</li>
 </ul>
 <h2 id="4b-feasibility-cost-photographic-terrain-ground-decision-deferred-to-future-update">§4b FEASIBILITY &amp; COST — Photographic terrain ground (decision: deferred to future update)<a class="headerlink" href="#4b-feasibility-cost-photographic-terrain-ground-decision-deferred-to-future-update" title="Permanent link">&para;</a></h2>
 <p>User chose <strong>Photographic terrain</strong> (seamless real photo, tiled, fading to fog horizon),
@@ -3825,9 +3864,40 @@ already drawn), no shadow change, no streaming impact.</p>
   color to white (show photo) / dim for night, don't overwrite.
 - Asset must be CC0/owned (e.g. Poly Haven, ambientCG) — not a scraped image (licensing).
 - Mobile: cap at 1K.</p>
-<p><strong>Verdict:</strong> low-cost, low-risk, ~zero runtime. Recommend bundling with the optional
-shadow <code>autoUpdate=false</code> idle gate (§2.B) in the same future session — that gate is the
-only thing that actually <em>reduces</em> current cost. Ground texture adds ~200KB + ~5MB VRAM.</p>
+<p><strong>Verdict:</strong> low-cost, low-risk, ~zero runtime. Per §4 we ship <strong>3</strong> selectable textures,
+so payload is ~3× one tile (~450–900KB at 1K) + ~5–15MB VRAM (only the selected map is
+resident; others lazy-load on pick). The shadow <code>autoUpdate=false</code> idle gate is <strong>split
+off to §6</strong> (separate session) — it is the only thing that <em>reduces</em> current shadows-ON
+cost, but it touches the working sun shadow so it ships standalone with §-log proof.</p>
+<h2 id="6-deferred-standalone-spec-free-at-idle-shadow-gate">§6 DEFERRED — Standalone spec: free-at-idle shadow gate<a class="headerlink" href="#6-deferred-standalone-spec-free-at-idle-shadow-gate" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>Separate future session. Do NOT bundle with the ground textures. The user's working
+sun shadow is sacred — this ships ONLY after §-logs prove it never stales.</p>
+</blockquote>
+<p><strong>Problem it solves:</strong> shadows-ON is heavy because <code>renderer.shadowMap.autoUpdate</code>
+defaults <code>true</code>, so the 4096² depth pass (≤500 casters) re-renders <strong>every rAF frame</strong>
+even when the sun is parked and the user is only orbiting (<code>main.js:589-593</code>). That
+constant re-render is the "heavy cost when shadows are ON" the user feels.</p>
+<p><strong>The change (small):</strong>
+- After shadows are initialized, set <code>A.renderer.shadowMap.autoUpdate = false</code> once.
+- Set <code>A.renderer.shadowMap.needsUpdate = true</code> at EVERY point the sun or casters move:
+  1. TM sun-cycle tick (already <code>time_machine.js:1377</code>),
+  2. Sunglass sun/time slider,
+  3. shadow toggle ON (<code>tools.js</code> <code>toggleShadow</code>),
+  4. after the chunked caster traverse completes (<code>tools.js:~581</code>),
+  5. any frontier promotion that adds casters (<code>time_machine.js:811-828</code>).
+- Each with a §-log: <code>§SHADOW_UPDATE reason=tm-tick|slider|toggle|casters|frontier</code>.</p>
+<p><strong>The risk (why it's deferred):</strong> miss ANY of those sites → the shadow freezes (goes
+stale) until the next update — visibly lagging the sun. That would "bother" the good
+shadow. So the acceptance bar is exhaustive coverage, proven by log.</p>
+<p><strong>W-IDLE acceptance (prove ALL before deploy):</strong>
+- Idle free-orbit (sun parked): <code>§SHADOW_UPDATE</code> fires <strong>zero</strong> times over N frames, and
+  measured frame time drops vs. current build on a real building. → confirms saving.
+- TM playback: <code>§SHADOW_UPDATE reason=tm-tick</code> fires every tick; shadow tracks the sun
+  identically to today (diff screenshots). → confirms no stale regression.
+- Sun slider drag: one <code>§SHADOW_UPDATE reason=slider</code> per change, shadow follows. 
+- Toggle off→on, building load mid-session, frontier promotion: shadow correct each time.
+- W-TM existing <code>§SHADOW_FRONTIER</code> logs unchanged.</p>
 <h2 id="5-out-of-scope">§5 Out of scope<a class="headerlink" href="#5-out-of-scope" title="Permanent link">&para;</a></h2>
 <p>Live satellite/geo ground (needs geo-extraction), terrain heightfield, clouds, mobile
 tuning beyond existing gates, city-wide multi-building ground.</p>
