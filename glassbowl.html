@@ -122,6 +122,23 @@
   #blurb .act:hover{border-color:#ffd479;color:#ffd479}
   #blurb .crudk{color:var(--dim);font-size:9px;text-transform:uppercase;letter-spacing:.06em;margin:7px 2px 3px}
   #blurb .act.crud.disabled{cursor:not-allowed;opacity:.42;color:#5a6b7a;border-style:dashed;pointer-events:none} #blurb .act.crud.disabled:hover{border-color:#2b3744;color:#5a6b7a}
+  /* Feature 1 W-COMET: the glowing dot that walks the lit trace chain (pure overlay \u2014 NOT an SVG edge/node, so structural counts are untouched). */
+  #comet{position:absolute;width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#ffd479 55%,rgba(255,212,121,0) 72%);box-shadow:0 0 18px 4px rgba(255,212,121,.7);pointer-events:none;opacity:0;transition:opacity .25s;z-index:14;transform:translate(-50%,-50%);left:-100px;top:-100px}
+  #comet.on{opacity:1} #comet.dashed{background:radial-gradient(circle at 40% 35%,#fff,rgba(255,212,121,.45) 55%,rgba(255,212,121,0) 72%);box-shadow:0 0 12px 2px rgba(255,212,121,.35);opacity:.55}
+  /* Feature 2 W-VIEWLOG: a thin single-line view-history scrubber at the very bottom; double-tap blooms it open into labelled previews. Read-only navigation. */
+  #scrub{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:6px;z-index:13;max-width:calc(100% - 30px)}
+  #scrub.show{display:flex}
+  #scrub .scrubbtn{background:rgba(16,22,30,.92);border:1px solid #2b3744;color:#8aa;cursor:pointer;font-size:13px;border-radius:7px;padding:2px 7px;line-height:1.2} #scrub .scrubbtn:hover{color:#ffd479;border-color:#3a5a7a}
+  #scrub .scrubline{display:flex;gap:5px;align-items:center;padding:5px 11px;background:rgba(16,22,30,.92);border:1px solid #2b3744;border-radius:20px;cursor:pointer;overflow-x:auto;max-width:60vw}
+  #scrub .scrubdot{width:9px;height:9px;min-width:9px;border-radius:50%;background:#3a4a5a;cursor:pointer;transition:background .2s,box-shadow .2s} #scrub .scrubdot:hover{background:#5a6b7a}
+  #scrub .scrubdot.on{background:#ffd479;box-shadow:0 0 8px #ffd479}
+  /* bloomed (double-tapped) state: each view becomes a labelled chip */
+  #scrub.bloom .scrubline{border-radius:11px;gap:6px;flex-wrap:wrap;max-width:74vw}
+  #scrub.bloom .scrubdot{width:auto;height:auto;min-width:0;border-radius:7px;padding:3px 9px;font-size:11px;color:#8aa;background:#19222c;border:1px solid #2b3744;white-space:nowrap}
+  #scrub.bloom .scrubdot.on{color:#ffd479;background:#1d2937;border-color:#ffd479;box-shadow:none}
+  /* Feature 3 W-DIAG: the mobile-only diagonal-arrange button \u2014 sibling to Untangle, hidden on desktop. */
+  #diagBtn{display:none;position:absolute;bottom:64px;left:20px;background:rgba(16,22,30,.95);border:1px solid #3a5a7a;color:#ffd479;border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer;z-index:15;touch-action:manipulation} #diagBtn:hover{border-color:#ffd479}
+  @media (max-width:760px){ #diagBtn{display:block} }
 </style></head><body>
 <script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").then(function(reg){var warm=function(){var a=reg.active||navigator.serviceWorker.controller;if(a)a.postMessage({type:"precache"});else navigator.serviceWorker.ready.then(function(r){r.active&&r.active.postMessage({type:"precache"});});};if("requestIdleCallback" in window)requestIdleCallback(warm,{timeout:7000});else setTimeout(warm,4000);}).catch(function(){});});}</script>
 <div id="wrap">
@@ -138,6 +155,9 @@
   <div id="dossier"><div class="dh"><b id="dossierTitle">Dossier</b> <span class="dpill" id="dossierPill"></span><span class="dx" id="dossierX" title="close">\u2715</span></div>
     <div class="dtabs" id="dossierTabs"></div><div class="dbody" id="dossierBody"></div></div>
   <div id="blurb"></div>
+  <div id="comet"></div>
+  <div id="scrub"></div>
+  <button id="diagBtn" title="arrange the bubbles along the screen diagonal \u2014 cuts overlap on a narrow phone screen">&#10696; Diagonal</button>
   <div id="phandle" title="show / hide the info panel">&#10217;</div>
 </div>
 <div id="pgrip" title="drag to resize the panel"></div>
@@ -456,13 +476,130 @@ function qrOpen(){if(!QCAM)return;QCAM.classList.add("open");QCAM.classList.remo
 (function(){var qb=document.getElementById("qrbtn"),qx=document.getElementById("qrx");if(qb)qb.addEventListener("click",function(ev){ev.stopPropagation();audioUnlock();dossierJive();qrOpen();});if(qx)qx.addEventListener("click",function(ev){ev.stopPropagation();qrClose();});})();
 window.qrOpen=qrOpen;
 console.log("\u00a7QR-INPUT supported="+(qrSupported()?"Y":"N"));
+// ════════════════════════════════════════════════════════════════════════════════
+//  Feature 1 \u2014 W-COMET: a glowing dot walks the LIT trace chain hop-by-hop. Pure HTML
+//   overlay (the #comet div, positioned in stage-pixel space like positionBlurb) \u2014 NOT an
+//   SVG circle/line, so structural node/edge counts are untouched (additive). Colour shifts
+//   green\u2192amber per hop\u2019s spine colour; DASHED/faded on a hop where the FK derivation actually
+//   STOPS (id==null \u2014 honest \u201ctrail ends here\u201d). On each hop arrival it fires the existing audio
+//   (beep), synced to the trace arpeggio (one note per real hop). Replay-safe (no Math.random). ──
+var COMET=document.getElementById("comet"),cometRAF=0,cometState=null;
+// the lit chain as an ordered list of node ids that EXIST as bubbles (curChain rows whose table is a node).
+function cometPath(){var ch=curChain||[],out=[];for(var i=0;i<ch.length;i++){var c=ch[i];if(idx[c.table]!=null)out.push({id:c.table,stop:(c.id==null)});}return out;}
+function stagePt(n){project(n);return {x:px+n.sx*k,y:py+n.sy*k};}
+function spineColorTo(toId){var e=null;E.forEach(function(ee){if(ee.to===toId&&(ee.kind==="derivation"||ee.kind==="settlement"))e=ee;});return e?COLOR[e.kind]:"#ffd479";}
+function stopComet(){if(cometRAF){cancelAnimationFrame(cometRAF);cometRAF=0;}cometState=null;if(COMET){COMET.classList.remove("on");COMET.classList.remove("dashed");}}
+function startComet(){if(!COMET)return;stopComet();var path=cometPath();
+ if(path.length<2){console.log("\u00a7COMET hops=0 (no traversable chain)");return;}
+ var firstStop=-1;for(var i=0;i<path.length;i++){if(path[i].stop){firstStop=i;break;}}
+ var hops=(firstStop<0?path.length:firstStop+1)-1;   // hops actually walked (stop hop is the last, dashed)
+ if(hops<1)hops=path.length-1;
+ console.log("\u00a7COMET hops="+hops+" path=["+path.map(function(p){return fname(p.id)+(p.stop?"(stop)":"");}).join(" \u2192 ")+"]");
+ cometState={path:path,seg:0,t:0,hops:hops};COMET.classList.add("on");
+ var DUR=620;   // ms per hop \u2014 matches the trace arpeggio cadence (~95ms*notes feel)
+ function frame(ts){if(!cometState)return;if(cometState.t0==null)cometState.t0=ts;var seg=cometState.seg;var a=N[idx[path[seg].id]],b=N[idx[path[seg+1].id]];if(!a||!b){stopComet();return;}
+  var raw=(ts-cometState.t0)/DUR,t=raw>1?1:raw;var e=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;var pa=stagePt(a),pb=stagePt(b);
+  COMET.style.left=(pa.x+(pb.x-pa.x)*e)+"px";COMET.style.top=(pa.y+(pb.y-pa.y)*e)+"px";
+  COMET.style.background="radial-gradient(circle at 40% 35%,#fff,"+spineColorTo(path[seg+1].id)+" 55%,rgba(255,212,121,0) 72%)";
+  COMET.classList.toggle("dashed",!!path[seg+1].stop);
+  if(t>=1){
+   cometBeep(seg+1);   // arrived at hop seg+1 \u2014 a rising tick
+   if(path[seg+1].stop||seg+1>=path.length-1){   // reached the end (or the honest stop) \u2014 hold then fade
+    cometState.fading=(cometState.fading||0)+1;COMET.style.opacity=Math.max(0,0.85-cometState.fading*0.04);
+    if(cometState.fading>22){stopComet();return;}cometRAF=requestAnimationFrame(frame);return;}
+   cometState.seg++;cometState.t0=ts;}
+  cometRAF=requestAnimationFrame(frame);}
+ cometRAF=requestAnimationFrame(frame);}
+// one rising tick per hop (synced to the trace arpeggio pitch ramp); honours mute via beep().
+function cometBeep(hop){beep(330*Math.pow(1.155,hop),0.11,"triangle",0.035);}
+window.startComet=startComet;window.stopComet=stopComet;
+// ════════════════════════════════════════════════════════════════════════════════
+//  Feature 2 \u2014 W-VIEWLOG: a READ-ONLY view-history scrubber (\u201ckernel-log magic, on views\u201d).
+//   Salient VIEW state (focus filter, active spine toggles, trace target, dossier-open target,
+//   orbit yaw/pitch) is captured on each meaningful change + deduped. A thin bottom bar shows one
+//   DOT per recorded view; click/drag to scrub\u2192restore. DOUBLE-TAP the bar \u2192 it blooms into a
+//   labelled preview row (viewLabel); double-tap again collapses. Restoring is PURE-READ \u2014 no new
+//   localStorage/db writes, never mutates kernel_ops. Soft audio tick on scrub. Replay-safe. ──
+var SCRUB=document.getElementById("scrub"),viewHist=[],viewIdx=-1,vlRestoring=false,vlBloom=false;
+function captureView(){return {focus:focusId,trace:traceMode,seed:(traceMode&&curChain&&curChain[0]?curChain[0].id:null),dossier:dossierId,yaw:Math.round(yaw*100)/100,pitch:Math.round(pitch*100)/100,show:{containment:!!show.containment,derivation:!!show.derivation,settlement:!!show.settlement,reference:!!show.reference}};}
+function viewLabel(v){if(v.trace)return "trace"+(v.seed!=null?" #"+v.seed:"");if(v.dossier)return "dossier "+fname(v.dossier);if(v.focus)return "focus "+fname(v.focus);var off=["containment","derivation","settlement","reference"].filter(function(kk){return !v.show[kk];});if(off.length)return "filter \u2212"+off.length;if(Math.abs(v.yaw)>0.05||Math.abs(v.pitch)>0.05)return "orbit";return "overview";}
+function recordView(){if(vlRestoring)return;var v=captureView();if(viewIdx>=0&&JSON.stringify(viewHist[viewIdx])===JSON.stringify(v))return;viewHist=viewHist.slice(0,viewIdx+1);viewHist.push(v);viewIdx=viewHist.length-1;renderScrub();console.log("\u00a7VIEWLOG idx="+viewIdx+" total="+viewHist.length+" label="+viewLabel(v));}
+window.recordView=recordView;window.__viewHist=viewHist;
+// restore a captured view (PURE-READ): re-apply focus/trace/spine-toggles/orbit. No persistence writes.
+function applyView(v){vlRestoring=true;try{
+ ["containment","derivation","settlement","reference"].forEach(function(kk,i){show[kk]=v.show[kk];var cb=document.querySelectorAll("#legend input[type=checkbox]")[i];if(cb)cb.checked=v.show[kk];});
+ if(v.trace){if(v.seed!=null&&GDB){applyChain(walkBundle(GDB,v.seed));}setTrace(true);}else if(traceMode){setTrace(false);}
+ focusId=v.focus||null;
+ if(v.dossier){if(dossierId!==v.dossier)openDossier(v.dossier);}else if(dossierId){DOSS.classList.remove("open");dossierId=null;}
+ yaw=v.yaw||0;pitch=v.pitch||0;window.__yaw=yaw;window.__pitch=pitch;updateBall();draw();
+}catch(e){}vlRestoring=false;scrubJive();renderScrub();}
+window.applyView=applyView;
+function scrubTo(i){if(i<0||i>=viewHist.length||i===viewIdx)return;viewIdx=i;applyView(viewHist[i]);}
+function undoView(){if(viewIdx>0){viewIdx--;applyView(viewHist[viewIdx]);}}
+function redoView(){if(viewIdx<viewHist.length-1){viewIdx++;applyView(viewHist[viewIdx]);}}
+window.undoView=undoView;window.redoView=redoView;
+// render the thin dotted bar (default) or the bloomed labelled row (after a double-tap).
+function renderScrub(){if(!SCRUB)return;if(viewHist.length<1){SCRUB.classList.remove("show");return;}SCRUB.classList.add("show");SCRUB.classList.toggle("bloom",vlBloom);
+ var h='<span class="scrubbtn" id="vlUndo" title="back \u2014 Ctrl+Z">\u21b6</span><div class="scrubline" id="scrubline">';
+ viewHist.forEach(function(v,i){h+='<div class="scrubdot'+(i===viewIdx?" on":"")+'" data-i="'+i+'" title="'+(i+1)+'. '+viewLabel(v)+'">'+(vlBloom?viewLabel(v):"")+'</div>';});
+ h+='</div><span class="scrubbtn" id="vlRedo" title="forward \u2014 Ctrl+Shift+Z">\u21b7</span>';SCRUB.innerHTML=h;
+ var u=document.getElementById("vlUndo"),r=document.getElementById("vlRedo");if(u)u.addEventListener("click",function(ev){ev.stopPropagation();undoView();});if(r)r.addEventListener("click",function(ev){ev.stopPropagation();redoView();});
+ Array.prototype.forEach.call(SCRUB.querySelectorAll(".scrubdot"),function(d){d.addEventListener("click",function(ev){ev.stopPropagation();scrubTo(+d.getAttribute("data-i"));});});}
+// double-tap the bar \u2192 toggle bloom (rich labelled preview) / collapse back to the thin dots.
+(function(){if(!SCRUB)return;var last=0;function onTap(ev){if(ev.target.classList&&ev.target.classList.contains("scrubdot"))return;var now=Date.now();if(now-last<320){vlBloom=!vlBloom;renderScrub();last=0;}else last=now;}SCRUB.addEventListener("click",onTap);SCRUB.addEventListener("dblclick",function(ev){if(ev.target.classList&&ev.target.classList.contains("scrubdot"))return;vlBloom=!vlBloom;renderScrub();});})();
+// drag along the line to scrub (pointer) \u2014 maps x to the nearest recorded view.
+(function(){if(!SCRUB)return;var on=false;function pick(cx){var line=document.getElementById("scrubline");if(!line||viewHist.length<1)return;var rc=line.getBoundingClientRect();var f=(cx-rc.left)/Math.max(1,rc.width);f=Math.max(0,Math.min(1,f));var i=Math.round(f*(viewHist.length-1));scrubTo(i);}
+ SCRUB.addEventListener("pointerdown",function(ev){if(ev.target.classList&&(ev.target.classList.contains("scrubbtn")||ev.target.classList.contains("scrubdot")))return;on=true;pick(ev.clientX);});
+ SCRUB.addEventListener("pointermove",function(ev){if(on)pick(ev.clientX);});
+ function end(){on=false;}SCRUB.addEventListener("pointerup",end);SCRUB.addEventListener("pointercancel",end);})();
+window.addEventListener("keydown",function(e){if((e.ctrlKey||e.metaKey)&&(e.key==="z"||e.key==="Z")){e.preventDefault();if(e.shiftKey)redoView();else undoView();}});
+// soft audio tick on scrub (honours mute).
+function scrubJive(){beep(415,0.05,"sine",0.03);}
+// ════════════════════════════════════════════════════════════════════════════════
+//  Feature 3 \u2014 W-DIAG: MOBILE-ONLY diagonal arrange (sibling to Untangle). Eases the bubbles
+//   onto the screen DIAGONAL (corner\u2192corner, the longest span) to cut overlap on a narrow phone.
+//   Positions are DETERMINISTIC from each bubble\u2019s index along the diagonal (no Math.random). It is
+//   an EXPLICIT, reversible action \u2014 never the default layout; hx,hy (the home) are LEFT UNTOUCHED so
+//   Reset reverts to the original home. Desktop at-rest stays pixel-identical (W-ORBIT). Swoosh
+//   via the existing audio (sweep). ──
+function diagonalArrange(){var n=N.length;if(!n)return;sweep(180,640,0.4,0.035);   // the swoosh
+ // the diagonal axis = unit vector (1,1)/\u221a2 (corner\u2192corner, the longest screen span). Target span is
+ // the LARGER of the screen diagonal and 1.5\u00d7 the current cloud spread, so the result ALWAYS spreads
+ // bubbles further along the diagonal than the flat layout (the whole point). Centred on the centroid.
+ var ux=1/Math.SQRT2,uy=1/Math.SQRT2,perpx=-uy,perpy=ux;
+ var xs0=N.map(function(node){return node.x;}),ys0=N.map(function(node){return node.y;});
+ var cxC=xs0.reduce(function(a,b){return a+b;},0)/n,cyC=ys0.reduce(function(a,b){return a+b;},0)/n;
+ var curSpan=Math.hypot(Math.max.apply(null,xs0)-Math.min.apply(null,xs0),Math.max.apply(null,ys0)-Math.min.apply(null,ys0));
+ var L=Math.max(Math.hypot(W,H)*0.85,curSpan*1.5);   // guarantee a wider diagonal than the flat cloud
+ // deterministic target per bubble: spread evenly by index along the diagonal axis, tiny perpendicular
+ // zig (index parity) so coincident-index bubbles do not perfectly overlap. Pure index math (no random).
+ N.forEach(function(node,i){var f=(n===1)?0:(i/(n-1)-0.5);var along=f*L;var zig=((i%2)?1:-1)*Math.min(W,H)*0.05*(i%3);node.dgx=cxC+ux*along+perpx*zig;node.dgy=cyC+uy*along+perpy*zig;});
+ var fr=0,STEPS=26;(function pass(){fr++;var e=fr/STEPS,ease=e<0.5?2*e*e:1-Math.pow(-2*e+2,2)/2;
+  N.forEach(function(node){if(node.dsx==null){node.dsx=node.x;node.dsy=node.y;}node.x=node.dsx+(node.dgx-node.dsx)*ease;node.y=node.dsy+(node.dgy-node.dsy)*ease;});draw();
+  if(fr<STEPS)requestAnimationFrame(pass);else{N.forEach(function(node){node.dsx=null;});   // do NOT touch hx,hy \u2014 Reset reverts to the original home (reversible)
+   var xs=N.map(function(node){return node.x;}),ys=N.map(function(node){return node.y;});var span=Math.hypot(Math.max.apply(null,xs)-Math.min.apply(null,xs),Math.max.apply(null,ys)-Math.min.apply(null,ys));
+   window.__diagDone=true;console.log("\u00a7DIAG bubbles="+N.length+" axis=diagonal span="+span.toFixed(0));recordView();}})();}
+window.diagonalArrange=diagonalArrange;
+(function(){var db=document.getElementById("diagBtn");if(db)db.addEventListener("click",function(ev){ev.stopPropagation();audioUnlock();diagonalArrange();});})();
 // ── SCENE PERSISTENCE: the screen survives a hard refresh, so you continue exactly where you left
 //    off \u2014 no re-login, no hunting \u201crecent changes\u201d. Saved on unload, restored on load (localStorage). ──
 var pendingSeed=null,SKEY="glassbowl.scene";
 function save(){try{var bars=[];Array.prototype.forEach.call(STACK.children,function(b){bars.push({id:b.getAttribute("data-id"),col:b.classList.contains("col")});});localStorage.setItem(SKEY,JSON.stringify({yaw:yaw,pitch:pitch,px:px,py:py,k:k,pw:(window.__pw||null),col:document.getElementById("wrap").classList.contains("collapsed"),focus:focusId,trace:traceMode,seed:(traceMode&&curChain[0]?curChain[0].id:null),mute:AUDIO.muted,pos:N.map(function(n){return [Math.round(n.x),Math.round(n.y)];}),bars:bars}));}catch(e){}}
 function loadState(){try{var s=JSON.parse(localStorage.getItem(SKEY)||"null");if(!s)return;if(s.pos&&s.pos.length===N.length)N.forEach(function(n,i){n.x=s.pos[i][0];n.y=s.pos[i][1];});if(s.pw){document.documentElement.style.setProperty("--pw",s.pw+"px");window.__pw=s.pw;}if(s.col){document.getElementById("wrap").classList.add("collapsed");var pt=document.getElementById("panelToggle");if(pt)pt.textContent="\u27e8";}if(s.bars&&s.bars.length){for(var i=s.bars.length-1;i>=0;i--){if(idx[s.bars[i].id]!=null)pick(s.bars[i].id);}Array.prototype.forEach.call(STACK.children,function(b){var f=null;s.bars.forEach(function(x){if(x.id===b.getAttribute("data-id"))f=x;});if(f&&f.col)b.classList.add("col");else b.classList.remove("col");});}yaw=s.yaw||0;pitch=s.pitch||0;px=s.px||0;py=s.py||0;k=s.k||1;window.__yaw=yaw;window.__pitch=pitch;focusId=s.focus||null;if(s.mute){AUDIO.muted=true;applyMuteLabel();}window.__restored=true;updateBall();if(s.trace){pendingSeed=(s.seed!=null&&LIN&&String(s.seed)!==String(LIN.seed))?s.seed:null;setTrace(true);}}catch(e){}}
 window.addEventListener("pagehide",save);window.addEventListener("beforeunload",save);
+// ── WIRING: hook the comet onto the existing trace, and record VIEW snapshots on meaningful changes.
+//   Done by WRAPPING (not editing) the existing functions \u2014 additive, existing behavior preserved. ──
+(function(){var _setTrace=setTrace,_applyChain=applyChain,_setFocus=setFocus,_setOrbit=setOrbit,_openDossier=openDossier;
+ setTrace=window.setTrace=function(on){_setTrace(on);if(on)startComet();else stopComet();recordView();};
+ applyChain=window.applyChain=function(ch){_applyChain(ch);if(traceMode)startComet();recordView();};
+ setFocus=window.setFocus=function(id){_setFocus(id);recordView();};
+ setOrbit=window.setOrbit=function(y,p){_setOrbit(y,p);recordView();};
+ openDossier=window.openDossier=function(id){_openDossier(id);recordView();};
+})();
+// also record a view when a legend spine toggle flips (the onchange handlers call draw()).
+Array.prototype.forEach.call(document.querySelectorAll("#legend input[type=checkbox]"),function(cb){cb.addEventListener("change",function(){if(typeof recordView==="function")recordView();});});
 loadState();applyT();draw();
+if(typeof recordView==="function")recordView();   // log the opening view as the first entry
 // mobile-first: on a fresh load (no restored scene) start with the panel COLLAPSED \u2014 the graph gets the small
 //   screen and the yellow #phandle invites a tap to slide it open. A restored scene keeps the user\u2019s last state.
 if(!window.__restored&&isMobile())setPanelCollapsed(true);else syncPanelUI(document.getElementById("wrap").classList.contains("collapsed"));
