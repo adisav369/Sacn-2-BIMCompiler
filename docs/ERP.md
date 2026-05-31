@@ -852,6 +852,38 @@ needing a new verb** (that is the gravity-backlog path, §18.6 — write it when
 settlement cells dispatch the *universe* in one synthetic event rather than per-document (the count
 is faithful only because partitioning is clean — a per-document dispatch would test isolation).
 
+**(d) Enabling-tech timing — what gave us the edge, and when (so "are we too early?" is answered).**
+The *market-timing* statement is canonical in `SpatialERP_OOTB.md §11.5` ("three technologies matured
+2022–2024: SQLite WASM + Three.js r150+ + Web Payment Request API"). This note adds the one axis §11.5
+does **not** cover — the **concurrency-layer** distinction, which is what the "too early?" question is
+actually about. The recurring outside question is whether a browser-native ERP is *early* against the
+immature SQLite-WASM **multi-tab concurrency** layer. It is not — because that layer is **not our path**. Our
+window opened from three *mature* capabilities, and we deliberately route around the one still settling:
+
+| Capability | Matured | Role here | Concurrency exposure |
+|---|---|---|---|
+| **sql.js** (Emscripten→WASM SQLite, **in-memory**) | ~2014, rock-solid | the DB we actually ride: load file → query in RAM → export whole file | **none** — single in-memory context, no OPFS access-handle contention |
+| Official **SQLite WASM** build | beta late-2022 | reference / option; we do *not* depend on its persistent VFS | (would expose us if adopted — see below) |
+| **web-ifc** WASM (browser IFC parse) | 2023+ | drop-IFC onboarding, IFC2x3+IFC4, 122K elements | n/a |
+| **Three.js** r160 (Dec 2023) → r184 (Apr 2025); `BatchedMesh.addInstance` since r166 | 2024 | the *recent* enabler — 122K-element buildings / 1M-element cities smooth in a tab | n/a |
+
+The layer that is genuinely *still settling 2023→2027* is **persistent OPFS multi-tab concurrency**:
+`opfs-sahpool` (SQLite 3.43.0, 2023) is fast but has **zero** multi-tab concurrency; `OPFSCoopSyncVFS`
+allows concurrent connections but single transaction; wa-sqlite's `OPFSWriteAheadVFS` (Apr 2026, Chrome
+121+ only) is the first to allow reads parallel to a writer. **We touch none of it.** Persistence/sync is
+the **op-log (`kernel_ops`, a CmRDT — see (c))**, not concurrent OPFS writes; IndexedDB caches the file
+blob (our real ceiling is the ~1GB IDB record cap, already hit + fixed, not access handles). So the
+"too early" framing rests on a false premise: we are **not** perched on the immature concurrency feature
+waiting for Memory64/SharedWorkers — we ride 2014-era in-memory SQLite + a 2024-era 3D pipeline and treat
+concurrency as the *fourth* thing the op-log buys later for free (per (a)). **Read the right way, that
+immaturity is a first-mover *bonus*, not a risk:** the layer the field is still waiting on is the layer
+we routed around — so its unsettled state is direct evidence we arrived ahead of the pack, not early
+against an unproven bet (see `SpatialERP_OOTB.md §11.5`). The only move that *would*
+expose us to the OPFS timeline is migrating off sql.js to a persistent VFS — a choice to make only when a
+concrete need forces it, at which point the table above is the caveat list. (Verified May 2026 against
+sqlite.org/wasm + powersync.com state-of-persistence; external version/date claims from the DeepSeek
+analysis were largely fabricated and should not be cited.)
+
 ### §0.19 P3c — the long-tail vertical ships matcher-free; the matcher composes in at one seam (2026-05-30, §VERTICAL + §GATE + §LONGTAIL PASS)
 
 P3c turned the §0.18b product-tiering finding into running code and closed the §0.18 per-document

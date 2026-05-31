@@ -1549,7 +1549,9 @@ OOTB inverts this: `User → commitOp(kernel_ops) → state derived from log`. T
 
 ### 11.5 Market Timing
 
-Three technologies matured simultaneously (2022-2024): **SQLite WASM** (full relational DB in browser, microsecond queries), **Three.js r150+** (60fps 3D on mobile GPUs, 100K+ objects), and **Web Payment Request API** (browser-native payment). BIM OOTB walked through this window first (126K elements, 155 Playwright specs). Spatial ERP is the second step — same runtime, new data.
+Three technologies matured into the same window: **in-memory SQLite WASM** (sql.js — Emscripten→WASM, **rock-solid since ~2014**; full relational DB in the browser, microsecond queries, the DB we actually ride), **Three.js r150+** (2024 — 60fps 3D on mobile GPUs, 100K+ objects), and **Web Payment Request API** (browser-native payment). BIM OOTB walked through this window first (126K elements, 155 Playwright specs). Spatial ERP is the second step — same runtime, new data.
+
+**First-mover, not early-mover — the distinction is the persistence layer.** Note what we ride and what we *don't*. Our foundation is **in-memory sql.js** (2014): load file → query in RAM → export the whole file; persistence and sync are the **op-log (`kernel_ops`)**, with IndexedDB caching the file blob. We do **not** depend on the *persistent* SQLite-WASM build (official beta late-2022) or its **OPFS multi-tab concurrency** layer — which is genuinely *still settling 2023→2027* (`opfs-sahpool`, 2023, has zero multi-tab concurrency; wa-sqlite's `OPFSWriteAheadVFS`, Apr 2026, is Chrome-121+-only). That layer's immaturity is **not a risk to us — it is the confirmation we are first**: the field that has to wait for OPFS/Memory64/SharedWorkers to mature is the field still standing at the gate, while we walked through on the 2014 in-memory path years earlier. We did not bet on an unproven feature; we routed around it. See `ERP.md §0.18(d)` for the full concurrency-layer table and why "are we too early?" is answered *no*.
 
 ### 11.6 Addressable Market
 

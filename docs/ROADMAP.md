@@ -87,7 +87,7 @@ Click a Find result → camera flies to element with smooth ease-in-out animatio
 **Open:** Left/Right + Enter within accordion items needs further refinement (non-critical).
 
 ### S276 DONE — Three.js r184 + WebGPU Upgrade
-Upgraded from r160 (Dec 2023) to r184 (Apr 2025) — 24 releases. LTU 122K verified smooth on Chrome.
+Upgraded from r160 (22 Dec 2023) to r184 (16 Apr 2026) — 24 releases. LTU 122K verified smooth on Chrome.
 
 **What shipped:**
 - **r184 split build:** `three.webgpu.min.js` (622KB) + `three.core.min.js` (375KB) = 998KB runtime
@@ -159,6 +159,9 @@ Smooth on Chrome and Firefox. WebGL r184 fallback is the production path — per
 - Every record has a place — WMS, POS, MFG, logistics
 - Five tables, one state machine, zero install
 - See [SpatialERP_OOTB.md](SpatialERP_OOTB.md)
+
+### Interop
+- BCF export from clash detection — `.bcfzip` with topics, viewpoints, snapshots. Imports into Navisworks, Solibri, BIMcollab. See [CLASH_DETECTION.md §8.5](CLASH_DETECTION.md#85-bcf-export)
 
 ### Community
 - Contributed buildings gallery
