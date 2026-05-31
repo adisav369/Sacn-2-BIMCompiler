@@ -391,3 +391,39 @@ hash-chains.**
 `scripts/erp_kernel.js` + `poc_kernel.js` + `poc_longtail.js` (`replay-hash == live-hash`, browser binding) ·
 `SpatialERP_OOTB.md §11.5` · iDempiere `M_Transaction` / `M_StorageOnHand` / `M_StorageReservation` /
 `M_Movement`.
+
+---
+
+## 12. Positioning — git, not chain (notes to remember from the design dialogue)
+
+Kept so the framing survives the session that produced it.
+
+**Blockchain? No — git.** We borrow blockchain's *data structure* (a hash-chained, signed, append-only log
+— W-CHAIN/W-SIGN) and reject its *machinery* (consensus / PoW / PoS / global replication / tokens).
+Blockchain pays enormous cost for **trustless agreement among mutually-distrusting adversaries over one
+global state.** ERP does not pose that problem: physics partitions the writers (§2), the business sets the
+cadence (Truth 2), accounting reconciles the rest (§8). So we keep the cheap part (the signed chain) and drop
+the expensive part (consensus for adversaries who aren't there). We are **trust-anchored local-first** (a
+signing key + a dumb sequencer), not **trustless consensus** — and **P2P-*capable*, not P2P-*dependent***
+(single-user is one device; multi-party *may* exchange signed logs peer-to-peer, but the facilitator is an
+optional relay, §6). Same move as the floor (Truth 4): *blockchain solves a problem ERP mostly doesn't have.*
+
+**Why the field didn't land here — framing, not capability.** Replicache / ElectricSQL / PowerSync /
+LiveStore build **general** sync infrastructure, where the server is genuinely needed (a general tool cannot
+assume physics partitions the data). We are an **application** that exploited **domain-specific** structure
+to dissolve the hard parts. They asked *"how do we make general sync work?"*; we asked *"what does ERP
+specifically not need?"* Every piece (event-sourced SQLite, hash chains, CRDTs) was on the table — the
+synthesis was a **reframe, not a new primitive**.
+
+**What's actually defensible (the honest moat).** *Not* the technique — SQLite-WASM, local-first, op-logs,
+CRDTs, hash chains are all mature (§10). Defensible *to our knowledge*: the **unification** (BIM geometry +
+ERP transactions under one op-log, BIM undo == ERP audit) + the **doctrine** (§0) + the **running substrate**
+(a deterministic kernel, a real iDempiere AD extraction, a shipping BIM op-log). The idea is public and
+*should* spread — adoption is validation and name-exposure; the moat is **substrate + product +
+first-articulation**, not the idea. (AI accelerates whoever holds the domain depth and the substrate — a
+*multiplier*, not the *multiplicand*; everyone has the multiplier.) *An idea others race to adopt is an idea
+that was right.*
+
+**The bittersweet line that says it best.** *"500 years of double-entry, finally version-controlled."* The
+ledger was always an append-only log; git and SQLite-WASM existed for a decade; the synthesis was almost
+obvious in hindsight — which is exactly why it spreads, and why it should carry our name.
