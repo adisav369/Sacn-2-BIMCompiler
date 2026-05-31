@@ -6249,7 +6249,7 @@ prior-art comparison in <a href="../DistributedERP/#10-comparison-with-related-s
 </tbody>
 </table>
 <p><strong>Proofs (spec-first, witness-led; each witness asserts <code>replay-hash == live-hash</code> against a browser sql.js binding):</strong>
-- <strong><a href="https://github.com/red1oon/BIMCompiler/blob/full/prompts/DISTRIBUTED_POC.md">prompts/DISTRIBUTED_POC.md</a></strong> — the POC work-order and <code># DONE</code> ledger. Six in-process witnesses pass: W-CHAIN, Merge/G-IDENTITY, W-OWNER/CAS, W-SIGN, W-PERSIST/email-recovery, lease-expiry/value-tiering.
+- <strong>Witnesses.</strong> Six in-process witnesses pass: W-CHAIN, Merge/G-IDENTITY, W-OWNER/CAS, W-SIGN, W-PERSIST/email-recovery, lease-expiry/value-tiering. Each corresponds to one of the scripts listed below; the secured/durable phase frame is in <a href="#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet">§0.20</a>.
 - <strong><a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/erp_kernel.js">scripts/erp_kernel.js</a></strong> — the deterministic kernel; exercised by <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_kernel.js">poc_kernel.js</a> and <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_longtail.js">poc_longtail.js</a>.
 - The §9 witnesses, each doubling as the spec for its production change: <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_chain.js">poc_chain.js</a>, <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_distributed.js">poc_distributed.js</a>, <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_sign.js">poc_sign.js</a>, <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_persist.js">poc_persist.js</a>, <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_policy.js">poc_policy.js</a>, <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_identity.js">poc_identity.js</a>. W-CHAIN is implemented in <code>bim-ootb/viewer/kernel_ops.js</code> (<code>sealChain</code>/<code>verifyChain</code>/<code>setSigner</code>, v5).</p>
 <p>See <a href="#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet">§0.20</a> for the phase frame (witnesses W-CHAIN/W-SIGN/W-PERSIST/W-OWNER) and <a href="#021-g-identity-wired-into-the-kernel--identity-is-an-input-never-computed-2026-06-01-spec--identity">§0.21</a> for the landed G-IDENTITY change.</p>
@@ -8345,10 +8345,11 @@ client-side.</p>
 is the worked example, three windows are wired end-to-end, and the remaining
 menu tree is present as metadata but not every cell is handler-backed (the
 housed-vs-active distinction, <a href="#011-housed-vs-active--the-full-extent-hidden-but-callable">§0.11</a>).
-For proven-vs-parked, see <a href="#017-p3b-breadth--the-contained-set-thesis-diff-verified-across-o2cp2pgl-2026-05-29-oracle-suite-56--gravity-pass">§0.17</a>
-and the witness ledger (<a href="https://github.com/red1oon/BIMCompiler/blob/full/prompts/DISTRIBUTED_POC.md">prompts/DISTRIBUTED_POC.md</a>).
-This is not the first SQLite-WASM or local-first system; the prior-art floor is
-in <a href="../DistributedERP/#10-comparison-with-related-systems">DistributedERP.md §10</a>.</p>
+For proven-vs-parked, see <a href="#017-p3b-breadth--the-contained-set-thesis-diff-verified-across-o2cp2pgl-2026-05-29-oracle-suite-56--gravity-pass">§0.17</a>,
+<a href="#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet">§0.20</a>, and the
+witness scripts (<a href="https://github.com/red1oon/BIMCompiler/tree/full/scripts">scripts/</a> — <code>poc_*.js</code>, each
+asserting <code>replay-hash == live-hash</code>). This is not the first SQLite-WASM or local-first system; the prior-art
+floor is in <a href="../DistributedERP/#10-comparison-with-related-systems">DistributedERP.md §10</a>.</p>
 <hr />
 <h2 id="11-the-three-layer-architecture">§11. The three-layer architecture<a class="headerlink" href="#11-the-three-layer-architecture" title="Permanent link">&para;</a></h2>
 <p>§1–§10 establish that the AD can run in a browser. Running it unchanged,
