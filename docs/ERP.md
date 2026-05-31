@@ -66,15 +66,15 @@ extract-only rule, §0.1). Glassbowl is that structure made visible.
 
 | In iDempiere you know… | …here it becomes | The merit |
 |---|---|---|
-| **~925 tables**, each an `M*` class | a **5-table runtime** (`containers`, `items`, `documents`, `document_lines`, `journal`) + a `doc_type` discriminator (§0) | one storage shape the whole catalogue maps onto — **98.4 % of business edges mappable, hub `C_Order` still #1** (witness §5TBL). The schema stops growing with the feature list. |
-| **`completeIt()` across dozens of models** | a handful of **pure verbs** `(doc,ctx)→ops[]` — `completeOrder`, `createShipment`, `createInvoice`, `allocate`, `match` | the O2C / P2P / GL verticals reproduce the **GardenWorld oracle exactly** (§VERTICAL, §ORACLE-SUITE) — and the long-tail document ships **matcher-free**, the matcher *composing in* only at the buyer-reconciliation gate (§0.19). Less engine, not more. |
+| **~a thousand tables**, each an `M*` class | a **5-table runtime** (`containers`, `items`, `documents`, `document_lines`, `journal`) + a `doc_type` discriminator (§0) | one storage shape the whole catalogue maps onto — **98.4 % of business edges mappable, hub `C_Order` still #1** (witness §5TBL). The schema stops growing with the feature list. |
+| **`completeIt()` across dozens of models** | a handful of **pure verbs** `(doc,ctx)→ops[]` — `completeOrder`, `createShipment`, `createInvoice`, `allocate`, `match` | the O2C / P2P verticals reproduce the **GardenWorld oracle exactly** (§VERTICAL, §ORACLE-SUITE); GL is structurally mapped but not yet data-verified (§0.17) — and the long-tail document ships **matcher-free**, the matcher *composing in* only at the buyer-reconciliation gate (§0.19). Less engine, not more. |
 | **Modules you install & activate** | **hot vs. cold cells** of a `(doc_type × doc_status)` grid; 155 stay dormant | "the whole platform is already here, dormant — it turns on the moment you use it." Nothing to install; **op-log gravity self-ranks** where the work really is (`C_Invoice` #1 = the settlement spine, §0.13/§14). |
-| **9,423 foreign keys** | **4 structural roles** — containment / derivation / settlement / reference (the "two spines") | the map reads at a glance: green **derivation** = the easy everyday O2C flow; red **settlement** = matching & reconciliation, where money — and mistakes — concentrate. Classification is **derived, 0 hand-authored** (witness §GLASSBOWL). |
+| **thousands of foreign keys** | **4 structural roles** — containment / derivation / settlement / reference (the "two spines") | the map reads at a glance: green **derivation** = the easy everyday O2C flow; red **settlement** = matching & reconciliation, where money — and mistakes — concentrate. Classification is **derived, 0 hand-authored** (witness §GLASSBOWL). |
 | **AD_ChangeLog + an audit trail bolted on** | **`kernel_ops`** — every state change a rich op (payload + actor + **before/after** + lineage), replayable | the audit log **is** the source of truth: replay rebuilds the projection from the op-log alone (hash-match). History, undo-preview, and the future write-loop all read the *same* log. |
 | **Two logins** — System Admin (the dictionary) vs. a client like GardenWorld (the rows) | **one canvas** — the §0.18b duality fused | click the `C_Invoice` *type-cell* (admin view) and its real invoices (`#200001 = $100.70`) surface right there (operator view). The **trace** is where the two layers meet: a type-level FK spine lit by one instance's journey. No tab-switching, no second login. |
 
 ### Why this is more than a port
-A port would re-skin the 925 tables in a browser. This **re-bases** them. The merit
+A port would re-skin those ~thousand tables in a browser. This **re-bases** them. The merit
 is not "iDempiere without a JVM" (though it is also that — SQLite WASM, sql.js, no
 PostgreSQL/OSGi/server); it is that the engine is now **inspectable as data**, so it
 can do the things a code-engine structurally resists: surface *everything about one
@@ -599,7 +599,7 @@ This resolves the apparent tension with §0.3 (narrow scope). **Two distinct thi
   models, all rules, and the **set reports**, as streamable metadata in `erp_rules.db`
   — dormant but **callable**. The long tail isn't *excluded*, it's *not loaded yet*.
 
-**This vindicates PB.** Mapping all 1003 tables / 2192 edges (incl. the `PP_/MP_/HR_/A_`
+**This vindicates PB.** Mapping the *entire* dictionary — every table and edge, incl. the `PP_/MP_/HR_/A_`
 long tail) was not scope-creep — it is the **housing**: PB *proved* the 5-table model
 holds the full iDempiere corpus. Those long-tail rows sit dormant in the runtime /
 `erp_rules.db` and stream in when touched (§0.10 lazy-fetch + gravity cache). **How they stream
@@ -947,7 +947,7 @@ pro-gate-cell=(C_Invoice,CO 3-way) composes=Y data-gated=Y`. **Open edge:** the 
 memory in the POC; persisting it as a `CAPABILITY` rule in `erp_rules.db` (alongside `ACCESS`/`DOCPOLICY`)
 is the one-line next step. No `bim-ootb`, no Docker — T3 relocation still parked.
 
-### §0.20 NEXT PHASE — the secured/durable axis (UI POC frozen) (2026-05-31, SPEC — no code yet)
+### §0.20 NEXT PHASE — the secured/durable axis (UI POC frozen) (2026-05-31, SPEC — first witnesses have since landed; see §0.21)
 
 **Pivot.** The UI POC is proven: §0.19 drives the full O2C/P2P/GL chain through the kernel,
 matcher-gated, `replay-hash == live-hash`. **No further UI work** — the next phase tackles the
@@ -961,8 +961,8 @@ matcher-gated, `replay-hash == live-hash`. **No further UI work** — the next p
 > auth + Postgres Row-Level-Security mirrored into sync rules) and Replicache (server *re-runs* every
 > mutation — the server is the authority, the client an optimistic cache) all answer security + auth +
 > durability + multi-user the same way: **the server is the source of truth; the client is an offline
-> cache.** Conflict-convergence is a *mature, solved* category — CRDTs (Automerge 3.0, May 2025, ~10×
-> less memory, Rust core; Yjs powering Figma/Linear/Notion). Tamper-evidence is *mature crypto* —
+> cache.** Conflict-convergence is a *mature, solved* category — CRDTs (Automerge's recent memory/performance
+> rewrite; Yjs powering Figma/Linear/Notion). Tamper-evidence is *mature crypto* —
 > hash-chained + Merkle append-only logs (Trillian, Rekor / Certificate Transparency).
 
 **What that means for us (and where "first" does and does NOT apply):**
@@ -1035,7 +1035,7 @@ trust anchor. **The full distributed-contention design — physics-partitions-da
 guard set, the 90/10 + one-way-circle, the single customer-entitlement op-class with its URL-issued →
 phone-carried → touch/reconcile → ledger lifecycle, and the accounting-as-reconciler capstone — is specced
 in `docs/DistributedERP.md`** (stress-tested end-to-end: gapless DocNo, two-client ship, StorageOnHand,
-100-branch overnight, bonus-card double-claim, credit-on-phone, van-sales scan). **Sources:** [PowerSync](https://powersync.com/) · [ElectricSQL — local-first with your API](https://electric-sql.com/blog/2024/11/21/local-first-with-your-existing-api) · [Replicache push/auth](https://doc.replicache.dev/reference/server-push) · [Automerge 3.0](https://automerge.org/blog/automerge-2/) · [Trillian / transparency.dev](https://transparency.dev/) · [LiveStore](https://livestore.dev/) (nearest-neighbour event-sourced local-first data layer).
+100-branch overnight, bonus-card double-claim, credit-on-phone, van-sales scan). **Sources:** [PowerSync](https://powersync.com/) · [ElectricSQL — local-first with your API](https://electric-sql.com/blog/2024/11/21/local-first-with-your-existing-api) · [Replicache push/auth](https://doc.replicache.dev/reference/server-push) · [Automerge](https://automerge.org/) · [Trillian / transparency.dev](https://transparency.dev/) · [LiveStore](https://livestore.dev/) (nearest-neighbour event-sourced local-first data layer).
 
 ### §0.21 G-IDENTITY wired into the kernel — identity is an input, never computed (2026-06-01, SPEC + §IDENTITY)
 
@@ -1368,13 +1368,14 @@ ADParser.getTableName(db, tableId)
 | 15 | Date | `<input type="date">` |
 | 16 | DateTime | `<input type="datetime-local">` |
 | 17 | List | `<select>` from AD_Ref_List |
-| 19 | TableDirect | `<select>` from referenced table |
-| 20 | Table | `<select>` with AD_Val_Rule filter |
+| 18 | Table | `<select>` with AD_Val_Rule filter |
+| 19 | TableDir | `<select>` from referenced table |
+| 20 | YesNo | `<input type="checkbox">` |
 | 22 | Number | `<input type="number" step="any">` |
 | 28 | Button | `<button>` (triggers DocAction) |
 | 29 | Quantity | `<input type="number">` |
 | 30 | Search | `<input>` with typeahead lookup |
-| 38 | YesNo | `<input type="checkbox">` |
+| 38 | FilePath | `<input type="file">` |
 
 ---
 
@@ -1813,7 +1814,7 @@ floor is in [DistributedERP.md §10](DistributedERP.md#10-comparison-with-relate
 ## §11. The three-layer architecture
 
 §1–§10 establish that the AD can run in a browser. Running it unchanged,
-however — 13MB of metadata, 1003 tables, 20,911 field definitions — carries
+however — roughly a thousand tables and tens of thousands of field definitions — carries
 the full server-side footprint into a client-side runtime that does not need
 it. The architecture separates the ERP into three layers:
 
@@ -1881,7 +1882,7 @@ This function is:
 
 ## §12. The 5-Table Foundation
 
-iDempiere has 1003 tables because it grew organically over 20 years —
+iDempiere has on the order of a thousand tables because it grew organically over 20 years —
 each module adding its own tables. The 5-table design (from SpatialERP
 POC §3.1) says: **a document is a document.**
 
@@ -1927,7 +1928,7 @@ commitOp time. But the table schema never changes.
 
 ## §13. The Compiled Manifest — AD as Compiler Input
 
-The full AD (13MB, 1003 tables, 20,911 fields) is **compile-time input**,
+The full AD (roughly a thousand tables, tens of thousands of fields) is **compile-time input**,
 not a runtime dependency. A build script reads ad_seed.db and outputs a
 slim manifest:
 
@@ -2062,7 +2063,7 @@ invariants plus 200 others that single-user browser ERP doesn't need.
 
 ### §16.1 Current coverage of iDempiere schema
 
-ad_seed.db contains 356 of iDempiere's 1,003 table definitions (35%).
+ad_seed.db contains roughly a third of iDempiere's table definitions.
 
 | Category | Missing | Examples |
 |---|---|---|
@@ -2074,7 +2075,7 @@ ad_seed.db contains 356 of iDempiere's 1,003 table definitions (35%).
 | M_ (material) | 65 | Production, QualityTest, CostQueue, LotCtl |
 | Other (workflow, HR, asset, mfg) | 239 | A_Asset, PP_*, HR_*, W_* |
 
-The missing 647 tables fall into two groups:
+The missing tables fall into two groups:
 - **Server-only plumbing** (~400): processors, schedulers, auth, import,
   views, translations. These have no function in a browser runtime.
 - **Advanced business modules** (~250): manufacturing, commissions, dunning,
@@ -2209,7 +2210,7 @@ path (`commitOp`), one audit trail (`kernel_ops`), one accounting projection
 ## §18. The Unified Model — BOM + WfMC on One Log (empirically validated)
 
 This section is not theory. Every claim below was tested against the WHOLE
-iDempiere dictionary (1003 tables, 8,957 FK columns) by
+iDempiere dictionary (roughly a thousand tables and thousands of FK columns) by
 `scripts/test_bom_theory.js` (in the bim-compiler repo). The §BOM_TEST log is
 the witness. Re-run it to reproduce.
 
@@ -2271,8 +2272,8 @@ Witness §BOM_TEST: 51 tables carry **both** `DocStatus` and `DocAction`; 52
   `C_Order` table; DocType selects which sequence, which downstream docs, which
   GL treatment.
 
-So the *behavioural* surface of all 1003 tables is tiny: **~51 documents × 52
-DocTypes × 14 verbs.** The bloat is parts on a shelf; the behaviour is small and
+So the *behavioural* surface of the whole dictionary is tiny: a few dozen document
+types driven by a handful of verbs. The bloat is parts on a shelf; the behaviour is small and
 WfMC-shaped.
 
 ### §18.4 WfMC from the ground up — and it collapses into one log
@@ -2327,7 +2328,7 @@ is **dispatch by cell**:
 - **Handler registry** — the *behavior at a cell*: `handler[(DocType, action)] =
   fn(doc, ctx) → ops[]`. Contains all the bespoke logic. A handler may invoke other
   handlers → composed workflows. **Each handler touches only its own DocType**, so
-  the bloat scattered across 1003 tables is partitioned into isolated, nameable units.
+  the bloat scattered across the whole dictionary is partitioned into isolated, nameable units.
 - **kernel_ops** — every effect a handler produces is an op. **A side effect that
   bypasses the log is a violation, and it is detectable.** Handlers *return* ops; the
   kernel *applies* them (this is the path to B1: kernel owns the write). That makes
