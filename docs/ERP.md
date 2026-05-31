@@ -923,6 +923,85 @@ pro-gate-cell=(C_Invoice,CO 3-way) composes=Y data-gated=Y`. **Open edge:** the 
 memory in the POC; persisting it as a `CAPABILITY` rule in `erp_rules.db` (alongside `ACCESS`/`DOCPOLICY`)
 is the one-line next step. No `bim-ootb`, no Docker — T3 relocation still parked.
 
+### §0.20 NEXT PHASE — the secured/durable axis (UI POC frozen) (2026-05-31, SPEC — no code yet)
+
+**Pivot.** The UI POC is proven: §0.19 drives the full O2C/P2P/GL chain through the kernel,
+matcher-gated, `replay-hash == live-hash`. **No further UI work** — the next phase tackles the
+*weak axes* §0.18(d) named (security, tamper-evidence, durability, multi-user) instead.
+
+**State of the art — has anyone solved these? Yes, and they all solved it the *same way*** (researched
+2026-05-31; sources below). The honest, load-bearing finding:
+
+> **Every production local-first system anchors trust in a server.** ElectricSQL and PowerSync (JWT
+> auth + Postgres Row-Level-Security mirrored into sync rules) and Replicache (server *re-runs* every
+> mutation — the server is the authority, the client an optimistic cache) all answer security + auth +
+> durability + multi-user the same way: **the server is the source of truth; the client is an offline
+> cache.** Conflict-convergence is a *mature, solved* category — CRDTs (Automerge 3.0, May 2025, ~10×
+> less memory, Rust core; Yjs powering Figma/Linear/Notion). Tamper-evidence is *mature crypto* —
+> hash-chained + Merkle append-only logs (Trillian, Rekor / Certificate Transparency).
+
+**What that means for us (and where "first" does and does NOT apply):**
+
+| Weak axis | Field's solved answer | Our move | First? |
+|---|---|---|---|
+| **Multi-user convergence** | CRDTs (Automerge/Yjs) — but they solve *convergence, not business invariants* | **Keep our semantic op-CRDT** (§0.18c): generic CRDT/LWW would silently violate invariants (double-allocate). We are *at frontier* here, not behind | No, but **we're ahead** on invariant-preserving merge |
+| **Tamper-evidence** | hash-chain + Merkle transparency logs (server/CA infra) | **Hash-chain + optionally sign each `kernel_ops` op** — extend today's replay-hash into a per-op chained hash; verifiable *offline* | **Narrowly yes** — the *placement* (transparency-log technique inside a browser-resident *business* log) is the one genuinely distinctive win |
+| **Durability** | `persist()` + treat local as cache + sync-to-server-of-truth | Finish §16.3: `navigator.storage.persist()` + op-log export/backup. Proven pattern | No — adopt it |
+| **Security / auth (multi-user)** | trusted backend: JWT + RLS / server-re-run | When multi-user is needed, adopt a **thin trust anchor** — §18.7 *designated-owner node* IS this. Proven, not novel | No — adopt it |
+
+**The architecture — two domains, one async op-log seam (this resolves the tension).** Separate the
+concerns cleanly into **two asynchronous domains that never block each other**, with `kernel_ops` as the
+boundary between them:
+
+- **UI domain (instant, optimistic, offline)** — the proven POC. Every action commits an op locally and the
+  projection updates at **0ms**; the user never waits on the network. Unchanged from today.
+- **Server domain (trusted, secured, async)** — receives pushed ops, **validates / re-runs / signs** them
+  as the authority (the Replicache pattern: the server re-executes mutations; PowerSync/ElectricSQL mirror
+  RLS into sync), then returns authoritative state. Enforcement, tamper-validation, and multi-user
+  reconciliation live *here*, off the UI's critical path.
+
+Because the seam is **asynchronous**, security does **not** cost instant UX — the two domains "work together
+while the UI keeps its instant experience, in a secured universe." This refines §0.18(d): the zero-server
+moat narrows only to *"single-user/offline runs with no server at all; secured multi-user adds a trusted
+async authority"* — it does **not** trade away the 0ms feel, because the UI domain is never gated on the
+server domain. The op-log is already the right payload for this (push = new ops, pull = authoritative ops);
+the designated-owner node (§18.7) is the server domain's reconcile role.
+
+**Residual honesty.** Server-grade security/tamper-resistance still **cannot** be done purely client-side —
+the *secured* universe is the server domain doing the validating/signing; user-held keys give offline
+tamper-*evidence* (W-CHAIN/W-SIGN) but the *authority* is the trusted node. So we are **not "first to make a
+serverless ERP secure"** (the secured path has a server domain — that's the point). What stays distinctive,
+narrowly: a **cryptographically tamper-evident, offline-verifiable business op-log** + invariant-preserving
+merge + a **clean async two-domain split that preserves 0ms UX** — known techniques in an unusual
+arrangement, consistent with every other claim in this doc.
+
+**"First for BIM *and* ERP?" — defensible as combination, NOT as technique (researched 2026-05-31).** The
+*pattern* (op-log + optimistic UI + async trusted sync) is a **mature category** with off-the-shelf
+frameworks — nearest neighbor **LiveStore** ("git-inspired syncing via event-sourcing on reactive SQLite",
+conceptually almost identical to `kernel_ops` at the data layer); also ElectricSQL, Replicache, RxDB. **No
+"first" on the mechanism.** But by *domain*: offline BIM tools (OpenSpace, xeokit, BIMvision) are
+cache-for-*viewing*, not op-log local-first *editing* — none found; and no prominent local-first ERP
+*product* surfaced (SAP/Odoo/iDempiere stay server-authoritative). The **unification — BIM geometry *and*
+ERP transactions under ONE op-log (BIM undo == ERP audit, same kernel)** — turned up **no prior art**.
+Defensible claim, with the epistemic limit stated: ***first to our knowledge* to unify spatial-BIM and
+transactional-ERP under a single local-first op-log with an instant-UI / async-secured-server split** —
+*placement/combination* first, not *technique* first. (Cannot prove a negative; absence of search evidence
+≠ proof. LiveStore named so the claim is made knowing the neighbour exists.)
+
+**Phase tasks (spec-first — witness claim precedes code):**
+- **W-CHAIN** — each `kernel_ops` op stores `prev_hash`; `verifyChain()` walks the log and proves
+  `tamper detected at op N` on any altered payload. *Witness:* mutate one op's payload → chain breaks at
+  exactly that op; clean log → `chain OK len=N`.
+- **W-SIGN** *(optional, gated)* — ops signed with a user/device key; `verifyChain()` also checks signature.
+  *Witness:* op signed by key A fails verification under key B.
+- **W-PERSIST** — `navigator.storage.persist()` requested on first load; log export/restore round-trips.
+  *Witness:* `persisted=true` logged; export→wipe→import → `replay-hash == pre-export hash`.
+- **W-OWNER** *(multi-user, later)* — designated-owner-node reconcile at document-handoff seams (§18.7).
+  *Witness:* two peers each allocate the same invoice → owner rejects the second, no money lost.
+
+UI is frozen at the proven POC; this phase touches only `kernel_ops` integrity + persistence + (later) the
+trust anchor. **Sources:** [PowerSync](https://powersync.com/) · [ElectricSQL — local-first with your API](https://electric-sql.com/blog/2024/11/21/local-first-with-your-existing-api) · [Replicache push/auth](https://doc.replicache.dev/reference/server-push) · [Automerge 3.0](https://automerge.org/blog/automerge-2/) · [Trillian / transparency.dev](https://transparency.dev/) · [LiveStore](https://livestore.dev/) (nearest-neighbour event-sourced local-first data layer).
+
 ---
 
 ## §1. iDempiere AD → SQLite Table Mapping
