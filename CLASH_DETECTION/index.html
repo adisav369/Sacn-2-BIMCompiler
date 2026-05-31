@@ -1814,6 +1814,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#11-mode-exclusion-clash-vs-cascade-colors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Mode Exclusion — Clash vs Cascade Colors
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4260,6 +4271,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#11-mode-exclusion-clash-vs-cascade-colors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Mode Exclusion — Clash vs Cascade Colors
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4564,7 +4586,53 @@ Show cluster count on matrix spheres instead of raw totals. Click cluster to exp
 <h3 id="84-trend-tracking">8.4 Trend Tracking<a class="headerlink" href="#84-trend-tracking" title="Permanent link">&para;</a></h3>
 <p>Store clash counts per discipline pair per date in <code>localStorage</code>. Show delta: "Last check: 45 clashes. Now 32." Progress visible across sessions without any server.</p>
 <h3 id="85-bcf-export">8.5 BCF Export<a class="headerlink" href="#85-bcf-export" title="Permanent link">&para;</a></h3>
-<p>Industry-standard clash exchange format (<a href="https://www.buildingsmart.org/standards/bsi-standards/bim-collaboration-format-bcf/">BIM Collaboration Format</a>). One clash becomes one BCF topic with viewpoint, camera position, and element GUIDs. Interoperable with any BCF-compatible tool.</p>
+<p>Industry-standard clash exchange format (<a href="https://www.buildingsmart.org/standards/bsi-standards/bim-collaboration-format-bcf/">BIM Collaboration Format</a>, buildingSMART). A BCF file is a <code>.bcfzip</code> containing XML topics + optional PNG snapshots. One clash = one topic.</p>
+<p><strong>Why this matters:</strong> BCF is the only open standard for exchanging issues between BIM tools. A clash found in BIM OOTB becomes importable in Navisworks, Solibri, BIMcollab, Revit (via plugins), and Trimble Connect. Firms with mixed toolchains can use BIM OOTB for detection and hand off issues to their existing review workflow.</p>
+<p><strong>What BIM OOTB already has that maps to BCF:</strong></p>
+<table>
+<thead>
+<tr>
+<th>BCF Field</th>
+<th>BIM OOTB Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Topic.Title</code></td>
+<td>Discipline pair + storey (e.g. "Structure–MEP clash, Level 2")</td>
+</tr>
+<tr>
+<td><code>Topic.Description</code></td>
+<td>Overlap distance, element names</td>
+</tr>
+<tr>
+<td><code>Topic.CreationDate</code></td>
+<td><code>Date.now()</code> at export</td>
+</tr>
+<tr>
+<td><code>Topic.Priority</code></td>
+<td>Severity from <code>clash_rules.json</code> (Critical/Major/Minor)</td>
+</tr>
+<tr>
+<td><code>Topic.Status</code></td>
+<td>Review status from clash matrix (Review/Resolve/Accept)</td>
+</tr>
+<tr>
+<td><code>Viewpoint.Camera</code></td>
+<td>Current orbit camera position + direction + FOV</td>
+</tr>
+<tr>
+<td><code>Viewpoint.Components</code></td>
+<td>IFC GUIDs of both clashing elements</td>
+</tr>
+<tr>
+<td><code>Viewpoint.Snapshot</code></td>
+<td>Canvas screenshot (already built for snag/share)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation:</strong> Pure browser-side. Build XML strings, PNG from canvas, pack into a zip using JSZip (already a pattern in the Excel export). No server. Download triggers from the clash report "Export" button alongside the existing CSV option.</p>
+<p><strong>BCF version:</strong> BCF 2.1 (XML, widest tool support). BCF 3.0 (JSON) is newer but less widely imported.</p>
 <h3 id="86-scene-sync-from-report">8.6 Scene Sync from Report<a class="headerlink" href="#86-scene-sync-from-report" title="Permanent link">&para;</a></h3>
 <p>Click a clash row in the HTML report and the 3D viewer (if open) flies to that clash via <code>window.opener.postMessage</code>. Report becomes a live navigation tool, not a dead PDF.</p>
 <h3 id="87-storey-heatmap-bar-chart">8.7 Storey Heatmap Bar Chart<a class="headerlink" href="#87-storey-heatmap-bar-chart" title="Permanent link">&para;</a></h3>
@@ -4601,6 +4669,32 @@ Show cluster count on matrix spheres instead of raw totals. Click cluster to exp
 <h2 id="10-try-it">10. Try It<a class="headerlink" href="#10-try-it" title="Permanent link">&para;</a></h2>
 <p>Open the <a href="https://red1oon.github.io/bim-ootb/viewer/viewer.html">BIM OOTB viewer</a>, load any multi-discipline building (Terminal recommended), activate the Measure tool, right-click any element or empty space, and click the clash sphere.</p>
 <p>No install. No sign-up. No server. Just a browser.</p>
+<hr />
+<h2 id="11-mode-exclusion-clash-vs-cascade-colors">11. Mode Exclusion — Clash vs Cascade Colors<a class="headerlink" href="#11-mode-exclusion-clash-vs-cascade-colors" title="Permanent link">&para;</a></h2>
+<p>Clash review colors (red/blue for clash pairs, orange for envelope overlap, green for clear) and RS drag cascade colors (BOM_ENGINE_SPEC.md §22) share the same palette but carry different meanings. They never co-exist:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Active when</th>
+<th>Colors mean</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Clash review</strong></td>
+<td>Measure tool → clash sphere → matrix open</td>
+<td>Red=element A overlap, Blue=element B overlap, Orange=envelope overlap, Green=clear</td>
+</tr>
+<tr>
+<td><strong>RS drag</strong></td>
+<td>RS line has focus, user is dragging</td>
+<td>Green=original extent, Blue=new area, Orange=being removed, Red=clash zone (informational)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rule:</strong> RS drag mode disables clash overlay. Clash mode disables drag colors. If the user switches between modes, colors reset and reapply for the new mode.</p>
+<p><strong>Clash during drag:</strong> Red clash highlighting CAN appear during RS drag — it marks overlap zones where two elements now intersect. This is informational, not a gate. The user may intend to fix the overlap in a subsequent operation. Only structural invariant failures (adjacency, coverage) block the drag via the red-line gate (BOM_ENGINE_SPEC.md §22.5).</p>
 
 
 
