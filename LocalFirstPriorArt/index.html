@@ -4046,7 +4046,7 @@ PowerSync, and ElectricSQL at once.</p>
 <tr>
 <td><strong>Non-persistent storage</strong> (Safari evicts after 7 days)</td>
 <td>universal browser gap</td>
-<td>Mitigate same way: <code>navigator.storage.persist()</code> + op-log as cache, <strong>cloud = source of truth</strong> (W-PERSIST). Shared gap, no magic</td>
+<td>Mitigate same way: <code>navigator.storage.persist()</code> + the signed op-log spilled to <strong>any durable replica</strong> — cloud <em>or</em> the user's own email/social (<code>DistributedERP.md §5.2b</code>). <strong>The source of truth is the signed log itself, not a host</strong> — determinism replays any replica to identical state, so the local copy is disposable (W-PERSIST). Shared gap, no magic</td>
 </tr>
 <tr>
 <td><strong>Conflict resolution complexity</strong></td>
@@ -4056,7 +4056,7 @@ PowerSync, and ElectricSQL at once.</p>
 <tr>
 <td><strong>Eventual consistency unsafe for finance</strong></td>
 <td>"risk in banking/financial apps"</td>
-<td><strong>The reason for the secured server domain</strong> — money-touching invariants route through the authority; single-user offline is safe (one writer). We do <strong>not</strong> pretend offline multi-writer finance is safe</td>
+<td>money-touching invariants are <strong>serialised at the one total-order / CAS seam</strong> (<code>DistributedERP.md §5-6</code>) + enforced by the deterministic kernel on replay — <strong>not</strong> routed through a re-running server; single-user offline is safe (one writer). We do <strong>not</strong> pretend offline multi-writer finance is safe</td>
 </tr>
 <tr>
 <td><strong>Schema migration to N offline clients</strong></td>

@@ -2455,6 +2455,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#companion-documents-the-erp-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Companion documents (the ERP map)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-underlying-structure-an-appraisal-for-the-idempiere-mind" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2802,6 +2813,17 @@
     <span class="md-ellipsis">
       
         §0.20 NEXT PHASE — the secured/durable axis (UI POC frozen) (2026-05-31, SPEC — no code yet)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#021-g-identity-wired-into-the-kernel-identity-is-an-input-never-computed-2026-06-01-spec-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §0.21 G-IDENTITY wired into the kernel — identity is an input, never computed (2026-06-01, SPEC + §IDENTITY)
       
     </span>
   </a>
@@ -4936,6 +4958,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#companion-documents-the-erp-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Companion documents (the ERP map)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-underlying-structure-an-appraisal-for-the-idempiere-mind" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5283,6 +5316,17 @@
     <span class="md-ellipsis">
       
         §0.20 NEXT PHASE — the secured/durable axis (UI POC frozen) (2026-05-31, SPEC — no code yet)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#021-g-identity-wired-into-the-kernel-identity-is-an-input-never-computed-2026-06-01-spec-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §0.21 G-IDENTITY wired into the kernel — identity is an input, never computed (2026-06-01, SPEC + §IDENTITY)
       
     </span>
   </a>
@@ -6172,6 +6216,44 @@ via sql.js, parsed by a JavaScript AD renderer.</p>
 OOTB — the construction POC (C_Project) is just one menu node in the full
 AD tree.</p>
 <hr />
+<h2 id="companion-documents-the-erp-map">Companion documents (the ERP map)<a class="headerlink" href="#companion-documents-the-erp-map" title="Permanent link">&para;</a></h2>
+<p>The secured/distributed thinking and its proofs live in dedicated sub-docs — read in this order:</p>
+<table>
+<thead>
+<tr>
+<th>Doc</th>
+<th>What it holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a href="../DistributedERP/">DistributedERP.md</a></strong></td>
+<td>The contention map — the <strong>two truths</strong> + <em>server→serverless</em> mapping (§0), normal multi-POS day (§3), the guard set (§4), the one real-time op-class (§5), the <strong>dumb facilitator</strong> (§6), determinism (§7), accounting-as-reconciler (§8), the <strong>edge-scenario adversarial suite</strong> (§9), <strong>how we differ on this turf</strong> (§10), and <strong><a href="../DistributedERP/#13-sharding-the-engine-by-gravity-what-arrives-and-when-2026-06-01-spec">sharding the engine by gravity</a></strong> (§13 — op-log mass as the LOD metric; what arrives, and when).</td>
+</tr>
+<tr>
+<td><strong><a href="../LocalFirstPriorArt/">LocalFirstPriorArt.md</a></strong></td>
+<td>How Replicache / ElectricSQL / PowerSync / LiveStore / CRDTs do it — their documented weaknesses, our deterministic-verbs-both-sides lever, the honest shared pain.</td>
+</tr>
+<tr>
+<td><strong><a href="../EnablingTechTimeline/">EnablingTechTimeline.md</a></strong></td>
+<td>The cited technology timeline — what made this possible when; the two compasses.</td>
+</tr>
+<tr>
+<td><strong><a href="../SpatialERP_OOTB/">SpatialERP_OOTB.md</a></strong></td>
+<td>Spatial ERP — the browser-only ERP replacing iDempiereOOTB; §11.5 inventory/movement model.</td>
+</tr>
+<tr>
+<td><strong><a href="../BOM_ENGINE_SPEC/">BOM_ENGINE_SPEC.md</a></strong> · <strong><a href="../DATA_MODEL/">DATA_MODEL.md</a></strong></td>
+<td>The BOM recipe engine (the verb that compiles a building <em>and</em> backflushes a POS sale) + the 5-table bridge.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Proofs (spec-first, witness-led — <code>replay-hash == live-hash</code>, browser sql.js binding):</strong>
+- <strong><a href="../prompts/DISTRIBUTED_POC.md">prompts/DISTRIBUTED_POC.md</a></strong> — the POC work-order + <code># DONE</code> ledger. All 6 in-process witnesses 🟢: W-CHAIN, Merge/G-IDENTITY, W-OWNER/CAS, W-SIGN, W-PERSIST/email-recovery, lease-expiry/value-tiering.
+- <strong><a href="../scripts/erp_kernel.js">scripts/erp_kernel.js</a></strong> — the deterministic kernel; witnesses <code>poc_kernel.js</code> / <code>poc_longtail.js</code>.
+- The §9 witnesses, each doubling as the spec for its production change: <strong><a href="../scripts/poc_chain.js">poc_chain.js</a></strong> · <strong><a href="../scripts/poc_distributed.js">poc_distributed.js</a></strong> · <strong><a href="../scripts/poc_sign.js">poc_sign.js</a></strong> · <strong><a href="../scripts/poc_persist.js">poc_persist.js</a></strong> · <strong><a href="../scripts/poc_policy.js">poc_policy.js</a></strong>. W-CHAIN is <strong>live</strong> in <code>bim-ootb/viewer/kernel_ops.js</code> (<code>sealChain</code>/<code>verifyChain</code>/<code>setSigner</code>, v5).</p>
+<p>See <strong>§0.20</strong> below for the phase frame (witnesses W-CHAIN/W-SIGN/W-PERSIST/W-OWNER, UI POC frozen).</p>
+<hr />
 <h2 id="the-underlying-structure-an-appraisal-for-the-idempiere-mind">The Underlying Structure — an appraisal for the iDempiere mind<a class="headerlink" href="#the-underlying-structure-an-appraisal-for-the-idempiere-mind" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><em>If you come from iDempiere, you already believe the radical half of this idea.</em>
@@ -6772,7 +6854,12 @@ the presets; the Settings editor edits them; every edit is a <code>kernel_ops</c
 <p><strong>This vindicates PB.</strong> Mapping all 1003 tables / 2192 edges (incl. the <code>PP_/MP_/HR_/A_</code>
 long tail) was not scope-creep — it is the <strong>housing</strong>: PB <em>proved</em> the 5-table model
 holds the full iDempiere corpus. Those long-tail rows sit dormant in the runtime /
-<code>erp_rules.db</code> and stream in when touched (§0.10 lazy-fetch + gravity cache).</p>
+<code>erp_rules.db</code> and stream in when touched (§0.10 lazy-fetch + gravity cache). <strong>How they stream
+— smart per-table, ranked by gravity:</strong> each table is a shard; the manifest is sorted by op-log
+gravity (tier 0 = the prefetched settlement spine; cold cells at the tail, fetched on touch).
+Because gravity is a fold over op-log <em>traversal</em>, a hot table's walked FK neighbours <strong>co-rank
+and arrive with it</strong> — the closure self-bundles, no banding needed; an unresolved FK draws a
+<em>stub</em>, never an invention. Full spec: <strong><a href="../DistributedERP/#13-sharding-the-engine-by-gravity-what-arrives-and-when-2026-06-01-spec">DistributedERP.md §13 — Sharding the engine by gravity</a></strong>.</p>
 <p><strong>Reporting too — the "set ones."</strong> iDempiere's preset reports are housed: <code>AD_PrintFormat</code>
 / <code>ad_printformatitem</code> (present in <code>ad_seed.db</code>) + the <code>RV_*</code> reporting views (correctly
 <em>excluded from the runtime lifecycle graph</em> in P2 — they aren't documents — but kept as
@@ -7227,17 +7314,23 @@ boundary between them:</p>
 <ul>
 <li><strong>UI domain (instant, optimistic, offline)</strong> — the proven POC. Every action commits an op locally and the
   projection updates at <strong>0ms</strong>; the user never waits on the network. Unchanged from today.</li>
-<li><strong>Server domain (trusted, secured, async)</strong> — receives pushed ops, <strong>validates / re-runs / signs</strong> them
-  as the authority (the Replicache pattern: the server re-executes mutations; PowerSync/ElectricSQL mirror
-  RLS into sync), then returns authoritative state. Enforcement, tamper-validation, and multi-user
-  reconciliation live <em>here</em>, off the UI's critical path.</li>
+<li><strong>Server domain (a dumb facilitator, async)</strong> — <em>not</em> a re-running authority. It <strong>accepts</strong> pushed ops
+  (append-only), <strong>assigns a total order</strong> (the one thing that must be centralised), and <strong>persists + fans
+  out</strong>. It runs <strong>no business logic</strong> — determinism (§0.16) makes server re-execution redundant: clients
+  replay the ordered log to identical state, so there is no "server disagrees → overwrite" case (the
+  Replicache tax). <em>Signing is at the edge</em> (the user/merchant key, W-SIGN); <em>enforcement is the deterministic
+  kernel on every client</em> (non-owner ops rejected on replay, G-SINGLE-WRITER); <em>the facilitator only
+  sequences.</em> See <code>docs/DistributedERP.md §6</code> (facilitator-not-actor) + §10 (why this differs from
+  Replicache/PowerSync/ElectricSQL, which DO re-run/route writes through a backend).</li>
 </ul>
 <p>Because the seam is <strong>asynchronous</strong>, security does <strong>not</strong> cost instant UX — the two domains "work together
 while the UI keeps its instant experience, in a secured universe." This refines §0.18(d): the zero-server
-moat narrows only to <em>"single-user/offline runs with no server at all; secured multi-user adds a trusted
-async authority"</em> — it does <strong>not</strong> trade away the 0ms feel, because the UI domain is never gated on the
-server domain. The op-log is already the right payload for this (push = new ops, pull = authoritative ops);
-the designated-owner node (§18.7) is the server domain's reconcile role.</p>
+moat narrows only to <em>"single-user/offline runs with no server at all; secured multi-user adds a thin
+async </em><em>facilitator</em><em> (order + persist + relay) — not a trusted compute authority"</em> — it does <strong>not</strong> trade
+away the 0ms feel, because the UI domain is never gated on the facilitator. The op-log is already the right
+payload (push = new ops, pull = the ordered/total-ordered log); the designated-owner node (§18.7) is a
+<em>client</em> role (the owner-gating that runs on replay), not a server that recomputes. <em>(The fact is a fold over
+the ordered log; the facilitator orders, the clients fold — <code>DistributedERP.md §0</code>.)</em></p>
 <p><strong>Residual honesty.</strong> Server-grade security/tamper-resistance still <strong>cannot</strong> be done purely client-side —
 the <em>secured</em> universe is the server domain doing the validating/signing; user-held keys give offline
 tamper-<em>evidence</em> (W-CHAIN/W-SIGN) but the <em>authority</em> is the trusted node. So we are <strong>not "first to make a
@@ -7273,6 +7366,55 @@ guard set, the 90/10 + one-way-circle, the single customer-entitlement op-class 
 phone-carried → touch/reconcile → ledger lifecycle, and the accounting-as-reconciler capstone — is specced
 in <code>docs/DistributedERP.md</code></strong> (stress-tested end-to-end: gapless DocNo, two-client ship, StorageOnHand,
 100-branch overnight, bonus-card double-claim, credit-on-phone, van-sales scan). <strong>Sources:</strong> <a href="https://powersync.com/">PowerSync</a> · <a href="https://electric-sql.com/blog/2024/11/21/local-first-with-your-existing-api">ElectricSQL — local-first with your API</a> · <a href="https://doc.replicache.dev/reference/server-push">Replicache push/auth</a> · <a href="https://automerge.org/blog/automerge-2/">Automerge 3.0</a> · <a href="https://transparency.dev/">Trillian / transparency.dev</a> · <a href="https://livestore.dev/">LiveStore</a> (nearest-neighbour event-sourced local-first data layer).</p>
+<h3 id="021-g-identity-wired-into-the-kernel-identity-is-an-input-never-computed-2026-06-01-spec-identity">§0.21 G-IDENTITY wired into the kernel — identity is an input, never computed (2026-06-01, SPEC + §IDENTITY)<a class="headerlink" href="#021-g-identity-wired-into-the-kernel-identity-is-an-input-never-computed-2026-06-01-spec-identity" title="Permanent link">&para;</a></h3>
+<p>The Merge/G-IDENTITY POC (<code>scripts/poc_distributed.js</code>, §0.20 ledger #2) proved the property in a
+throwaway harness; this section ports it into the real prototype kernel <code>scripts/erp_kernel.js</code>. It is
+Phase-A item #2 of <code>prompts/ERP_DEPLOY_AND_TOUR.md</code>. <strong>Witness:</strong> <code>build/erp/poc_identity.log</code>
+(<code>§IDENTITY PASS</code>), driving the <em>actual</em> <code>Kernel.apply</code>/<code>Kernel.replay</code> — not a model of them.</p>
+<p><strong>The defect being fixed (two conflated identities, both computed).</strong>
+- <em>Op id</em> — <code>kernel_ops</code> PK was <code>INTEGER PRIMARY KEY AUTOINCREMENT</code> (<code>erp_kernel.js</code>). Two devices each
+  mint <code>1,2,3…</code>; their logs <strong>cannot union</strong> without PK collision — the exact failure the POC's
+  "numeric-seq PKs collide" contrast names (<code>poc_distributed.js</code>).
+- <em>Entity id</em> (<code>output_guid</code>) — computed by <code>docKey</code>/<code>lineKey</code> (format <code>DOC:table@from&lt;srcId&gt;</code>) <strong>on every
+  replay</strong> from the payload. Computing identity at replay time violates DistributedERP §7 ("identity is an
+  input, never computed"): a recomputation can diverge from what the edge originally minted.</p>
+<p><strong>The decisions (D1–D4).</strong></p>
+<ul>
+<li><strong>D1 — Op id becomes an edge-minted UUID, recorded.</strong> <code>kernel_ops</code> PK → <code>op_uuid TEXT</code>, plus a <code>seq INTEGER</code>
+  for stable intra-device ordering. Minted via <code>ctx.mintOp(op,i)</code> (injectable) — prod passes
+  <code>crypto.randomUUID()</code>; the test default is the deterministic <code>actor + ':' + (baseTs+i)</code> so two devices
+  (<code>A:1000…</code>, <code>B:1000…</code>) union <strong>clash-free without randomness</strong> (replay-safe, §0.16 — no <code>Math.random</code>).</li>
+<li><strong>D2 — Entity identity is supplied to the kernel and recorded in the op payload; replay READS it.</strong> <code>apply</code>
+  stamps <code>op.uuid</code> once at first application and the rich payload carries it; <code>replay</code> finds <code>op.uuid</code>
+  present and uses it verbatim — <code>edgeMint</code> is <strong>never invoked on the replay path</strong>. This is the §7 fix:
+  the kernel no longer <em>computes</em> identity during replay, it <em>reads the recorded input</em>.</li>
+<li><strong>D3 — <code>docKey</code>/<code>lineKey</code> are retired as the kernel's identity source.</strong> Their deterministic-seed logic is
+  relocated into a single <code>edgeMint(op,state)</code> (folding the <code>DOC:</code>/<code>LINE:</code>/<code>ALLOC:</code>/<code>MATCH:</code> constructors)
+  that runs <strong>at most once, at first apply, only when an op arrives without a <code>uuid</code></strong> — i.e. it models the
+  <em>edge</em> minting identity before the op enters the kernel. For source-derived docs <code>edgeMint</code> reproduces the
+  prior <code>DOC:…@from…</code> string <strong>so the §ORACLE-SUITE / §LONGTAIL witnesses stay byte-stable</strong> (<code>poc_longtail.js</code>
+  queries <code>document_id='DOC:M_InOut@from&lt;id&gt;'</code> — unchanged). The behaviour preserved; the <em>placement</em> of the
+  computation moved from "kernel, every replay" to "edge, once, recorded."</li>
+<li><strong>D4 — This is the New-doc seam (forward, T3 stays parked).</strong> A genuinely new document (no <code>source_id</code>)
+  takes an edge-minted <code>crypto.randomUUID()</code> at creation — exactly the moment a future <strong>"New doc"</strong> button
+  needs an identity <em>before any server exists</em>. The famed iDempiere <strong><code>ProcessIt()</code>/Complete</strong> doc-action is
+  already <code>Kernel.dispatch</code> through the §18.6 ladder (<code>erp_kernel.js</code>); editing/CRUD surfacing from the
+  read-only stub (the "ring of fire" <code>+ (eye) (pencil) -</code> around a bubble is one rendering of it) is the
+  parked <strong>T3</strong> phase. #2 does not build T3 — it satisfies the identity contract T3 will require, so New-doc</li>
+<li>ProcessIt can be added later without re-touching the kernel.</li>
+</ul>
+<p><strong>Scope discipline.</strong> All edits land in <strong><code>scripts/erp_kernel.js</code> only</strong> — op generators (<code>erp_engine.js</code>
+verbs, inline handlers) emit <em>logical</em> ops with no guid, so <code>apply</code> is the single stamping chokepoint; no
+verb/handler/UI change, no <code>bim-ootb</code>, no deploy. T3 relocation (§0.16(3)) still parked.</p>
+<p><strong>Witnesses (W-IDENTITY-LIVE — must hold AND no regression):</strong>
+- <code>§IDENTITY merge devices=2 ops=N</code> — two kernels apply disjoint op groups; union of their <code>kernel_ops</code>
+  has <strong>distinct <code>op_uuid</code> count == N</strong> (no PK clash).
+- <code>§IDENTITY replay hashA=… hashB=…</code> — replaying the merged, totally-ordered (<code>timestamp,op_uuid</code>) log into
+  two fresh kernels yields the <strong>same projection hash</strong> (holder-irrelevant).
+- <code>§IDENTITY no-recompute</code> — replay reproduces every <code>output_guid</code> from the recorded payload with
+  <code>edgeMint</code> call-count <strong>0</strong> on the replay path.
+- <strong>No regression:</strong> <code>poc_kernel.log §KERNEL PASS</code>, <code>poc_longtail.log §VERTICAL … replay=EXACT</code>,
+  <code>diff_oracle.log §ORACLE-SUITE 5/6</code>, <code>poc_distributed.log §DIST PASS</code> all still green.</p>
 <hr />
 <h2 id="1-idempiere-ad-sqlite-table-mapping">§1. iDempiere AD → SQLite Table Mapping<a class="headerlink" href="#1-idempiere-ad-sqlite-table-mapping" title="Permanent link">&para;</a></h2>
 <h3 id="source-live-postgresql-docker">Source: live PostgreSQL (docker)<a class="headerlink" href="#source-live-postgresql-docker" title="Permanent link">&para;</a></h3>

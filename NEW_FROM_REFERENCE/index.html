@@ -6487,15 +6487,17 @@ print-ready output. User controls grid density via double-click (add) / double-c
   bubbles become dark, dim labels become dark — automatic reverse for print</li>
 </ul>
 <h4 id="i-next-session-priority-order">I. Next Session Priority Order<a class="headerlink" href="#i-next-session-priority-order" title="Permanent link">&para;</a></h4>
+<blockquote>
+<p><strong>Cross-reference (2026-05-24 watchdog):</strong> Items below overlap with RED_PILL.md §11.6 B-tasks (B1–B5) which track the BOM engine wiring. B1 (script tags) done. See §11.6 for current status.</p>
+</blockquote>
 <ol>
 <li>~~<strong>BOM completion jump</strong>~~ — DONE (S267). See §17.10.</li>
-<li><strong>User-initiated grid lines</strong> — remove auto-grid, add tap-to-place from walls.
-   Rosetta templates remain for manual placement.</li>
+<li>~~<strong>User-initiated grid lines</strong>~~ — DONE (S273). Rosetta drag-to-place + double-click toggle.</li>
 <li><strong>Multi-axis opening drag</strong> — requires <code>bom_tree</code> for parent lookup</li>
-<li><strong>Grid edit cascade</strong> — requires <code>bom_tree</code> for child dependency</li>
-<li><strong>Z-axis grid lines</strong> — storey heights</li>
-<li><strong>GPU throttle</strong> — chunked reveal, 30fps cap</li>
-<li><strong>Save/recall</strong> — IndexedDB session store</li>
+<li><strong>Grid edit cascade</strong> — requires <code>bom_tree</code> for child dependency → §11.6 B2</li>
+<li>~~<strong>Z-axis grid lines</strong>~~ — DONE (S270c). Y-axis ceiling drag + ROOF_LIFT cascade.</li>
+<li><strong>GPU throttle</strong> — chunked reveal, 30fps cap → partially addressed by S274 per-slot DLOD</li>
+<li>~~<strong>Save/recall</strong>~~ — DONE (S273). IndexedDB session store + Open/Save in Doc pill.</li>
 <li><strong>Bubble rotation</strong> — already coded, needs visual testing</li>
 </ol>
 <h3 id="1710-s267-bom-walker-javajs-port-bom-driven-phases-2026-05-22">17.10 S267 BOM Walker — Java→JS Port + BOM-Driven Phases (2026-05-22)<a class="headerlink" href="#1710-s267-bom-walker-javajs-port-bom-driven-phases-2026-05-22" title="Permanent link">&para;</a></h3>
