@@ -3722,6 +3722,8 @@
       
         
       
+        
+      
     
     
     
@@ -4006,6 +4008,34 @@
     
   
     Local-First Prior Art
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DistributedERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distributed ERP (Contention Map)
   
 
     
@@ -7238,7 +7268,11 @@ transactional-ERP under a single local-first op-log with an instant-UI / async-s
 - <strong>W-OWNER</strong> <em>(multi-user, later)</em> — designated-owner-node reconcile at document-handoff seams (§18.7).
   <em>Witness:</em> two peers each allocate the same invoice → owner rejects the second, no money lost.</p>
 <p>UI is frozen at the proven POC; this phase touches only <code>kernel_ops</code> integrity + persistence + (later) the
-trust anchor. <strong>Sources:</strong> <a href="https://powersync.com/">PowerSync</a> · <a href="https://electric-sql.com/blog/2024/11/21/local-first-with-your-existing-api">ElectricSQL — local-first with your API</a> · <a href="https://doc.replicache.dev/reference/server-push">Replicache push/auth</a> · <a href="https://automerge.org/blog/automerge-2/">Automerge 3.0</a> · <a href="https://transparency.dev/">Trillian / transparency.dev</a> · <a href="https://livestore.dev/">LiveStore</a> (nearest-neighbour event-sourced local-first data layer).</p>
+trust anchor. <strong>The full distributed-contention design — physics-partitions-data (branch→van→box), the
+guard set, the 90/10 + one-way-circle, the single customer-entitlement op-class with its URL-issued →
+phone-carried → touch/reconcile → ledger lifecycle, and the accounting-as-reconciler capstone — is specced
+in <code>docs/DistributedERP.md</code></strong> (stress-tested end-to-end: gapless DocNo, two-client ship, StorageOnHand,
+100-branch overnight, bonus-card double-claim, credit-on-phone, van-sales scan). <strong>Sources:</strong> <a href="https://powersync.com/">PowerSync</a> · <a href="https://electric-sql.com/blog/2024/11/21/local-first-with-your-existing-api">ElectricSQL — local-first with your API</a> · <a href="https://doc.replicache.dev/reference/server-push">Replicache push/auth</a> · <a href="https://automerge.org/blog/automerge-2/">Automerge 3.0</a> · <a href="https://transparency.dev/">Trillian / transparency.dev</a> · <a href="https://livestore.dev/">LiveStore</a> (nearest-neighbour event-sourced local-first data layer).</p>
 <hr />
 <h2 id="1-idempiere-ad-sqlite-table-mapping">§1. iDempiere AD → SQLite Table Mapping<a class="headerlink" href="#1-idempiere-ad-sqlite-table-mapping" title="Permanent link">&para;</a></h2>
 <h3 id="source-live-postgresql-docker">Source: live PostgreSQL (docker)<a class="headerlink" href="#source-live-postgresql-docker" title="Permanent link">&para;</a></h3>
