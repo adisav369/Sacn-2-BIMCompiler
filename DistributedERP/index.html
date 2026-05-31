@@ -4058,7 +4058,16 @@ pure OOTB (no fat server):</p>
 <li><strong>Activation link</strong> → one narrow <code>DateLastUsed</code>-style touch so a link can't mint infinite cards.</li>
 <li><strong>Carry = signed op-log on the customer's phone.</strong> The customer is their own single-writer. The token is
    <strong>merchant-signed + hash-chained</strong> (= <code>§0.20</code> W-SIGN/W-CHAIN) so the holder can <em>present</em> but not
-   <em>forge</em> it — they don't hold the signing key.</li>
+   <em>forge</em> it — they don't hold the signing key.
+2b. <strong>Persist &amp; recover = the user's own email / social account</strong> (zero-infra durability — resolves the
+   §0.20 W-PERSIST eviction worry for this op-class). Each use emits a <strong>signed email</strong> (a full signed
+   snapshot of the latest count, or a hash-chained delta) to the customer's own inbox. <strong>The inbox is a
+   durable, user-owned, append-only, tamper-evident log</strong> — already universal, already backed up, accessible
+   from any device. <strong>Recovery:</strong> lost phone/PWA → the new PWA reads the customer's <strong>latest email</strong> and
+   restores the count. No server owns the data — <em>the user's own channel does.</em> (Caveats: pick the chain tip
+   by signed <code>seq</code>/<code>prev_hash</code>, not arrival order; send a <strong>full signed snapshot per email</strong> for
+   single-email recovery robustness; encrypt-to-user for privacy. "Email receipt" is old — "<strong>inbox as the
+   recoverable signed state-log</strong>" is the fresh framing.)</li>
 <li><strong>Claim/spend:</strong></li>
 <li><strong>Online (normal POS):</strong> sub-second authority <strong>compare-and-set</strong> (set-if-unset) → first-wins. Same
      weight as a card-payment auth — not a burden. (A plain <code>DateLastUsed</code> <em>read</em> is best-effort only — two
@@ -4147,7 +4156,15 @@ auditable than a centralised system (full lineage, deterministic first-wins).</p
 2. <strong>A thin async post office</strong> (order + persist + relay), run <strong>daily</strong> — the one-way trip circle.
 3. <strong>A sub-second touch</strong> for the <em>one</em> customer-global op-class (online CAS), high-value only.
 4. <strong>Signed, hash-chained logs</strong> (W-CHAIN/W-SIGN) — justified concretely by credit-on-phone.
-5. <strong>The ledger</strong> — doing the reconciliation job it has done since 1494.</p>
+5. <strong>The user's own email / social account</strong> as zero-infra durable persistence + recovery (§4.2b).
+6. <strong>The ledger</strong> — doing the reconciliation job it has done since 1494.</p>
+<blockquote>
+<p><strong>Second mantra (proposed).</strong> The prime directive governs <em>computation</em> — <em>"Deterministic. Non-invent.
+Extract."</em> This architecture suggests a second, governing <em>persistence &amp; ownership</em>: <strong>the durable record
+belongs to the user, signed; we own no server of record; the ledger reconciles the rest.</strong> Candidate
+short forms: <em>"User-owned. Server-less. Ledger-reconciled."</em> / <em>"Carry. Sign. Reconcile."</em> /
+<em>"No server of record — the user's own log is."</em> (Wording to be ratified before it enters <code>CLAUDE.md</code>.)</p>
+</blockquote>
 <p><strong>Sources / cross-refs:</strong> <code>ERP.md §0.20</code> (phase + witnesses W-CHAIN/SIGN/PERSIST/OWNER) ·
 <code>LocalFirstPriorArt.md</code> (Replicache/ElectricSQL/PowerSync/LiveStore/CRDTs) ·
 <code>SpatialERP_OOTB.md §11.5</code> · iDempiere <code>M_StorageOnHand</code> / <code>M_StorageReservation</code> / <code>M_Movement</code>.</p>
