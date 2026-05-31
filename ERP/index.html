@@ -3720,6 +3720,8 @@
       
         
       
+        
+      
     
     
     
@@ -3976,6 +3978,34 @@
     
   
     Enabling-Tech Timeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LocalFirstPriorArt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local-First Prior Art
   
 
     
@@ -7113,7 +7143,8 @@ is the one-line next step. No <code>bim-ootb</code>, no Docker — T3 relocation
 matcher-gated, <code>replay-hash == live-hash</code>. <strong>No further UI work</strong> — the next phase tackles the
 <em>weak axes</em> §0.18(d) named (security, tamper-evidence, durability, multi-user) instead.</p>
 <p><strong>State of the art — has anyone solved these? Yes, and they all solved it the <em>same way</em></strong> (researched
-2026-05-31; sources below). The honest, load-bearing finding:</p>
+2026-05-31; sources below; <strong>per-system mechanism / weakness / our-workaround deep-dive in
+<code>docs/LocalFirstPriorArt.md</code></strong>). The honest, load-bearing finding:</p>
 <blockquote>
 <p><strong>Every production local-first system anchors trust in a server.</strong> ElectricSQL and PowerSync (JWT
 auth + Postgres Row-Level-Security mirrored into sync rules) and Replicache (server <em>re-runs</em> every
