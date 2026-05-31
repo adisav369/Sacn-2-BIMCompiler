@@ -43,7 +43,7 @@ Where a date could not be independently confirmed this session it is marked *(un
 | **2025-05** | Chrome 137 — JSPI without a flag | Async WASM I/O at Asyncify-parity perf | **NEUTRAL** — see above | [PowerSync](https://powersync.com/blog/sqlite-persistence-on-the-web) |
 | **2026-04-16** | three.js **r184** | Native `perObjectFrustumCulled` (zero-JS-cost culling), WebGPU-ready architecture | **ENABLER** — current viewer target; WebGL r184 beats r160 even without WebGPU | [r184 release (16 Apr)](https://github.com/mrdoob/three.js/releases/tag/r184); FeatureComparison.md L29 |
 | **2026-04** | wa-sqlite **OPFSWriteAheadVFS** | First VFS allowing **reads parallel to a writer** (Chrome 121+ only) | **ROUTED-AROUND** — the most-advanced persistent-concurrency option to date, *and the layer the field is still waiting on*. We shipped without it | [PowerSync](https://powersync.com/blog/sqlite-persistence-on-the-web) |
-| **2026** | **kernel_ops** (our op-log) | Append-only op-log as the persistence + sync + undo/redo + time-machine substrate, in-browser | **OUR CONTRIBUTION** — an operation-based CRDT (CmRDT, `ERP.md §0.18c`) that makes concurrency the *fourth* thing the log buys later, not a dependency | `ERP.md §14`, `SpatialERP_OOTB.md §11.3` |
+| **2026** | **kernel_ops** (our op-log) | Append-only op-log as the persistence + sync + undo/redo + time-machine substrate, in-browser | **OUR APPLICATION of a known primitive** (see Prior art below) — an operation-based CRDT (CmRDT, `ERP.md §0.18c`). *Idea-gated, not tech-gated:* its substrate (sql.js 2014 + IndexedDB ~2015) existed a decade earlier | `ERP.md §14`, `SpatialERP_OOTB.md §11.3` |
 | **future** | WASM **Memory64** (Safari pending) *(no confirmed date)* | >4GB linear memory in a tab | **FUTURE** — would lift the *in-memory* ceiling (our real scaling axis: RAM + the ~1GB IndexedDB blob cap), unrelated to multi-tab concurrency | flagged speculative; not used for any decision |
 
 ---
@@ -143,6 +143,26 @@ we have *not yet needed to walk through* (so no margin to report — they widen 
 - **sql.js first year.** PowerSync dates the in-memory JS port to **2014**; the kripken
   origin (asm.js era) may be earlier (~2012). Used 2014 as the cited figure.
 - **Web Payment Request API date (~2018).** Asserted in §11.5; not re-verified this session.
+
+## Prior art — the log concept is NOT ours (no novelty-of-concept claim)
+
+The log-as-source-of-truth is one of the most trodden ideas in computing; we claim **application and
+combination**, never the primitive. Lineage (already credited in `SpatialERP_OOTB.md §11.3`):
+Write-Ahead Log / ARIES (1970s–1992) · Event Sourcing (Fowler, ~2005) · Git (2005) · CQRS / Event Store
+(~2010s) · operation-based CRDTs / CmRDT (Shapiro et al., 2011) · **Datomic** (Hickey, 2012 — "the log is
+the database," philosophically nearest) · Kafka / "The Log" (Kreps, 2013) · Redux (2015, but RAM-only) ·
+local-first / Automerge (Kleppmann, Ink & Switch, 2019). And adjacent **today**: Replicache, Triplit,
+InstantDB, RxDB, ElectricSQL, PowerSync all do persisted client-side op-logs/CRDTs.
+
+**What is honestly distinctive about kernel_ops** (narrowly, with humility — local-first DBs are nearby):
+(1) a *persisted, offline, browser-resident* op-log as the **primary ERP substrate** (most prior art is
+server-side; Redux is client-side but ephemeral); (2) **one log spanning BIM geometry *and* ERP** (same
+kernel_ops drives construction time-machine *and* document ops) — the cross-domain unification is the
+genuinely unusual part; (3) a **semantic op-CRDT carrying ERP intent** (merges concentrated at
+document-handoff seams, vs. cr-sqlite-style LWW that silently violates invariants — `§0.18c`); (4) applied
+as a **reduction** — ~150 lines of op-log + verbs standing in for iDempiere's ~15,000-line AD model.
+Framing: *a known primitive, placed where few place it, applied as a radical reduction* — not "we invented
+the log."
 
 ## Provenance — extracted facts vs synthesized framing (non-invent honesty)
 
