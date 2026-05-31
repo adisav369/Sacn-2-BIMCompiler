@@ -142,6 +142,7 @@ nav:
       - Spatial Compilation Paper: SPATIAL_COMPILATION_PAPER.md
       - Enabling-Tech Timeline: EnablingTechTimeline.md
       - Local-First Prior Art: LocalFirstPriorArt.md
+      - Distributed ERP (Contention Map): DistributedERP.md
 
   # ─── Proven buildings ─────────────────────────────────
   - Buildings:

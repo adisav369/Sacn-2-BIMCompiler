@@ -1001,7 +1001,11 @@ transactional-ERP under a single local-first op-log with an instant-UI / async-s
   *Witness:* two peers each allocate the same invoice → owner rejects the second, no money lost.
 
 UI is frozen at the proven POC; this phase touches only `kernel_ops` integrity + persistence + (later) the
-trust anchor. **Sources:** [PowerSync](https://powersync.com/) · [ElectricSQL — local-first with your API](https://electric-sql.com/blog/2024/11/21/local-first-with-your-existing-api) · [Replicache push/auth](https://doc.replicache.dev/reference/server-push) · [Automerge 3.0](https://automerge.org/blog/automerge-2/) · [Trillian / transparency.dev](https://transparency.dev/) · [LiveStore](https://livestore.dev/) (nearest-neighbour event-sourced local-first data layer).
+trust anchor. **The full distributed-contention design — physics-partitions-data (branch→van→box), the
+guard set, the 90/10 + one-way-circle, the single customer-entitlement op-class with its URL-issued →
+phone-carried → touch/reconcile → ledger lifecycle, and the accounting-as-reconciler capstone — is specced
+in `docs/DistributedERP.md`** (stress-tested end-to-end: gapless DocNo, two-client ship, StorageOnHand,
+100-branch overnight, bonus-card double-claim, credit-on-phone, van-sales scan). **Sources:** [PowerSync](https://powersync.com/) · [ElectricSQL — local-first with your API](https://electric-sql.com/blog/2024/11/21/local-first-with-your-existing-api) · [Replicache push/auth](https://doc.replicache.dev/reference/server-push) · [Automerge 3.0](https://automerge.org/blog/automerge-2/) · [Trillian / transparency.dev](https://transparency.dev/) · [LiveStore](https://livestore.dev/) (nearest-neighbour event-sourced local-first data layer).
 
 ---
 
