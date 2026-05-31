@@ -19,8 +19,14 @@
  *
  * PROTOTYPE in scripts/ on sql.js (per T2). It does NOT fork bim-ootb/viewer/kernel_ops.js;
  * the commitOp shape here (rich `parameters` JSON) is exactly what that shared module already
- * ALLOWS — relocating (T3) wires this onto it without schema change. Deterministic: ids are
- * natural-key derived, timestamps come from ctx (no Date.now / Math.random) so replay is exact.
+ * ALLOWS — relocating (T3) wires this onto it without schema change.
+ *
+ * IDENTITY IS AN INPUT (ERP.md §0.21 / DistributedERP §7). The kernel_ops PK is an edge-minted
+ * `op_uuid` (was INTEGER AUTOINCREMENT — two devices' rowids collide and can't union). Every entity
+ * `output_guid` is stamped ONCE at first apply (`edgeMint`, recorded into the op payload) and the
+ * replay path RE-READS it — `edgeMint` never runs on replay, so identity is never re-computed.
+ * Deterministic: op ids + entity ids + timestamps are all inputs (no Date.now / Math.random) so
+ * replay is exact and two devices' logs union clash-free (witness build/erp/poc_identity.log).
  */
 
 // ── projection schema (a self-contained copy of schema_5table.sql's runtime tables) ──
@@ -30,7 +36,7 @@ var PROJECTION_SQL =
   'CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, parent_id TEXT, type TEXT, metadata TEXT DEFAULT \'{}\');' +
   'CREATE TABLE IF NOT EXISTS containers (id TEXT PRIMARY KEY, parent_id TEXT, type TEXT, metadata TEXT DEFAULT \'{}\');' +
   'CREATE TABLE IF NOT EXISTS journal (id TEXT PRIMARY KEY, batch_id TEXT, journal_id TEXT, source TEXT, metadata TEXT DEFAULT \'{}\');' +
-  'CREATE TABLE IF NOT EXISTS kernel_ops (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER, op_type TEXT, parameters TEXT, input_guids TEXT, output_guid TEXT, undone INTEGER DEFAULT 0, user_tag TEXT DEFAULT \'local\');';
+  'CREATE TABLE IF NOT EXISTS kernel_ops (op_uuid TEXT PRIMARY KEY, timestamp INTEGER, op_type TEXT, parameters TEXT, input_guids TEXT, output_guid TEXT, undone INTEGER DEFAULT 0, user_tag TEXT DEFAULT \'local\');';
 var PROJECTION_TABLES = ['documents', 'document_lines', 'items', 'containers', 'journal'];
 
 function initProjection(db) { db.run(PROJECTION_SQL); }
@@ -53,62 +59,74 @@ function projectionHash(db) {
   return (acc >>> 0).toString(16);
 }
 
-// ── the natural-key id scheme (deterministic, replay-stable) ────────────────
-function docKey(op) {
-  if (op.op_type === 'SET_STATUS') return 'DOC:' + op.table + '#' + op.id;          // a doc's own id
-  return 'DOC:' + op.table + '@from' + (op.source_id != null ? op.source_id : 'NA'); // derived doc
+// ── edge-mint: identity is SUPPLIED to the kernel as an INPUT (§0.21 / DistributedERP §7) ────
+// Runs at most ONCE, at first apply, ONLY when an op arrives without op.uuid — modelling the edge
+// minting a doc's id before it enters the kernel. The result is recorded into the op payload; the
+// replay path finds op.uuid already present and NEVER calls this (recompute=0 → §7 holds). For
+// source-derived docs it reproduces the prior DOC:/LINE: string so §ORACLE-SUITE/§LONGTAIL stay
+// byte-stable; a source-less New doc (D4) arrives with a crypto.randomUUID() already in op.uuid.
+var _stats = { edgeMintCalls: 0 };               // white-box witness: must be 0 across a replay
+function edgeMint(op) {
+  _stats.edgeMintCalls++;
+  switch (op.op_type) {
+    case 'CREATE_DOCUMENT': return 'DOC:' + op.table + '@from' + (op.source_id != null ? op.source_id : 'NA');
+    case 'SET_STATUS':      return 'DOC:' + op.table + '#' + op.id;                  // a doc's own id
+    case 'CREATE_LINE':     return 'LINE:' + op.table + '@from' + (op.source_line_id != null ? op.source_line_id : 'NA');
+    case 'ALLOCATE':        return 'ALLOC:' + op.payment_id + ':' + (op.invoice_id != null ? 'inv' + op.invoice_id : 'ord' + op.order_id);
+    case 'MATCH':           return 'MATCH:' + op.table + '@' + op.source_line_id + ':' + op.counterpart_line_id;
+    default: throw new Error('edgeMint: unknown op_type ' + op.op_type);
+  }
 }
-function lineKey(op) { return 'LINE:' + op.table + '@from' + (op.source_line_id != null ? op.source_line_id : 'NA'); }
 function metaOf(op, drop) {
   var m = {}; Object.keys(op).forEach(function (k) { if (drop.indexOf(k) < 0) m[k] = op[k]; }); return m;
 }
 
 // ── apply ONE op to the projection; returns {output_guid, input_guids, before, after} ──
+// The entity identity is op.uuid — a RECORDED INPUT (stamped by `apply` at first application,
+// re-read verbatim on replay). applyOne never computes identity; references to OTHER entities
+// (a shared source id, the in-log currentDoc) are resolved the same way on apply and replay.
 function applyOne(db, op, state) {
-  var did, lid, before = null, after = null, inputs = [];
+  var guid = op.uuid, before = null, after = null, inputs = [];
   if (op.op_type === 'CREATE_DOCUMENT') {
-    did = docKey(op); inputs = op.source_id != null ? [String(op.source_id)] : [];
-    var meta = metaOf(op, ['op_type', 'table', 'source_id', 'doc_status']);
+    inputs = op.source_id != null ? [String(op.source_id)] : [];
+    var meta = metaOf(op, ['op_type', 'table', 'source_id', 'doc_status', 'uuid', 'op_uuid']);
     db.run('INSERT OR REPLACE INTO documents (id, doc_type, doc_status, source_id, metadata) VALUES (?,?,?,?,?)',
-      [did, op.table, op.doc_status || 'DR', op.source_id != null ? String(op.source_id) : null, JSON.stringify(meta)]);
-    state.currentDoc = did; after = did;
-    return { output_guid: did, input_guids: inputs, before: before, after: after };
+      [guid, op.table, op.doc_status || 'DR', op.source_id != null ? String(op.source_id) : null, JSON.stringify(meta)]);
+    state.currentDoc = guid; after = guid;
+    return { output_guid: guid, input_guids: inputs, before: before, after: after };
   }
   if (op.op_type === 'CREATE_LINE') {
-    lid = lineKey(op); inputs = op.source_line_id != null ? [String(op.source_line_id)] : [];
-    var lmeta = metaOf(op, ['op_type', 'table', 'source_line_id', 'line_no', 'match_type']);
+    inputs = op.source_line_id != null ? [String(op.source_line_id)] : [];
+    var lmeta = metaOf(op, ['op_type', 'table', 'source_line_id', 'line_no', 'match_type', 'uuid', 'op_uuid']);
     db.run('INSERT OR REPLACE INTO document_lines (id, document_id, source_line_id, line_no, match_type, metadata) VALUES (?,?,?,?,?,?)',
-      [lid, state.currentDoc || null, op.source_line_id != null ? String(op.source_line_id) : null, op.line_no != null ? op.line_no : null, op.match_type || null, JSON.stringify(lmeta)]);
-    return { output_guid: lid, input_guids: state.currentDoc ? [state.currentDoc] : inputs, before: before, after: lid };
+      [guid, state.currentDoc || null, op.source_line_id != null ? String(op.source_line_id) : null, op.line_no != null ? op.line_no : null, op.match_type || null, JSON.stringify(lmeta)]);
+    return { output_guid: guid, input_guids: state.currentDoc ? [state.currentDoc] : inputs, before: before, after: guid };
   }
   if (op.op_type === 'SET_STATUS') {
-    did = docKey(op);
-    var prev = query(db, 'SELECT doc_status FROM documents WHERE id=?', [did]);
+    var prev = query(db, 'SELECT doc_status FROM documents WHERE id=?', [guid]);
     before = prev.length ? prev[0].doc_status : null;
     // upsert: an order doc may not be in the projection yet (it pre-exists in source).
     db.run('INSERT INTO documents (id, doc_type, doc_status, metadata) VALUES (?,?,?,?) ' +
       'ON CONFLICT(id) DO UPDATE SET doc_status=excluded.doc_status',
-      [did, op.table, op.doc_status, '{}']);
+      [guid, op.table, op.doc_status, '{}']);
     after = op.doc_status;
-    return { output_guid: did, input_guids: [String(op.id)], before: before, after: after };
+    return { output_guid: guid, input_guids: [String(op.id)], before: before, after: after };
   }
   if (op.op_type === 'ALLOCATE') {
     // settlement edge: link Order/Invoice <-> Payment + amount, as a journal entry (Batch->Journal).
     var target = op.invoice_id != null ? 'C_Invoice#' + op.invoice_id : 'C_Order#' + op.order_id;
-    var aid = 'ALLOC:' + op.payment_id + ':' + (op.invoice_id != null ? 'inv' + op.invoice_id : 'ord' + op.order_id);
     db.run('INSERT OR REPLACE INTO journal (id, batch_id, journal_id, source, metadata) VALUES (?,?,?,?,?)',
-      [aid, 'BATCH@pay' + op.payment_id, 'JRN@pay' + op.payment_id, 'DOC:' + target, JSON.stringify(metaOf(op, ['op_type']))]);
-    return { output_guid: aid, input_guids: ['DOC:' + target, 'DOC:C_Payment#' + op.payment_id], before: null, after: aid };
+      [guid, 'BATCH@pay' + op.payment_id, 'JRN@pay' + op.payment_id, 'DOC:' + target, JSON.stringify(metaOf(op, ['op_type', 'uuid', 'op_uuid']))]);
+    return { output_guid: guid, input_guids: ['DOC:' + target, 'DOC:C_Payment#' + op.payment_id], before: null, after: guid };
   }
   if (op.op_type === 'MATCH') {
     // settlement edge (§0.1 document_lines.match_type): a row LINKING >=2 lines across documents.
     // source_line_id -> one line; counterpart line-ref + qty in metadata; tagged match_type.
     // This is GENERATE output of the §0.14 matcher — a "must-agree" edge in the settlement DAG.
-    var mid = 'MATCH:' + op.table + '@' + op.source_line_id + ':' + op.counterpart_line_id;
-    var mmeta = metaOf(op, ['op_type', 'table', 'source_line_id', 'match_type']);
+    var mmeta = metaOf(op, ['op_type', 'table', 'source_line_id', 'match_type', 'uuid', 'op_uuid']);
     db.run('INSERT OR REPLACE INTO document_lines (id, document_id, source_line_id, match_type, metadata) VALUES (?,?,?,?,?)',
-      [mid, 'DOC:' + op.table, String(op.source_line_id), op.match_type || op.table, JSON.stringify(mmeta)]);
-    return { output_guid: mid, input_guids: [String(op.source_line_id), String(op.counterpart_line_id)], before: null, after: mid };
+      [guid, 'DOC:' + op.table, String(op.source_line_id), op.match_type || op.table, JSON.stringify(mmeta)]);
+    return { output_guid: guid, input_guids: [String(op.source_line_id), String(op.counterpart_line_id)], before: null, after: guid };
   }
   throw new Error('unknown op_type ' + op.op_type);
 }
@@ -117,14 +135,26 @@ function applyOne(db, op, state) {
 function apply(db, ops, ctx) {
   initProjection(db);
   ctx = ctx || {}; var actor = ctx.actor || 'local'; var ts = ctx.baseTs || 1000;
+  // global per-device order: continue numbering across apply() calls so op_uuid/timestamp are
+  // unique within a device's log (was implicit via the old AUTOINCREMENT rowid).
+  var seqBase = query(db, 'SELECT COUNT(*) AS c FROM kernel_ops')[0].c;
+  // op-id mint: injectable (prod erp.html passes crypto.randomUUID); default is the deterministic
+  // actor-prefixed sequence so two devices union clash-free with NO randomness (§0.16 replay-safe).
+  var mintOp = ctx.mintOp || function (op, gseq) { return actor + ':' + (ts + gseq); };
   var state = { currentDoc: ctx.currentDoc || null };
   var committed = 0, ids = [];
   ops.forEach(function (op, i) {
+    var gseq = seqBase + i;
+    // D1/D2 — stamp identity as RECORDED INPUTS (edge mint, §0.21/§7). Idempotent: an op that
+    // already carries uuid/op_uuid (a New doc from the UI, or a replayed/merged op) keeps them,
+    // so edgeMint/mintOp never run twice and the replay path re-reads, never re-computes.
+    if (op.uuid == null) op.uuid = edgeMint(op);
+    if (op.op_uuid == null) op.op_uuid = mintOp(op, gseq);
     var res = applyOne(db, op, state);
-    // RICH op (§0.6 keystone): payload + actor + before/after + lineage GUIDs.
+    // RICH op (§0.6 keystone): payload (now carrying the recorded uuid) + actor + before/after + lineage GUIDs.
     var rich = { payload: op, actor: actor, before: res.before, after: res.after, lineage: { input_guids: res.input_guids, output_guid: res.output_guid } };
-    db.run('INSERT INTO kernel_ops (timestamp, op_type, parameters, input_guids, output_guid, user_tag) VALUES (?,?,?,?,?,?)',
-      [ts + i, op.op_type, JSON.stringify(rich), JSON.stringify(res.input_guids), res.output_guid, actor]);
+    db.run('INSERT INTO kernel_ops (op_uuid, timestamp, op_type, parameters, input_guids, output_guid, user_tag) VALUES (?,?,?,?,?,?,?)',
+      [op.op_uuid, ts + gseq, op.op_type, JSON.stringify(rich), JSON.stringify(res.input_guids), res.output_guid, actor]);
     committed++; ids.push(res.output_guid);
   });
   return { applied: ops.length, committed: committed, ids: ids };
@@ -135,7 +165,7 @@ function apply(db, ops, ctx) {
 // Because we re-apply stored ops (not re-evaluate rules), old effects are FROZEN (§18.8).
 function replay(srcDbWithLog, freshDb) {
   initProjection(freshDb);
-  var log = query(srcDbWithLog, 'SELECT op_type, parameters FROM kernel_ops WHERE undone=0 ORDER BY id');
+  var log = query(srcDbWithLog, 'SELECT op_type, parameters FROM kernel_ops WHERE undone=0 ORDER BY rowid');
   var state = { currentDoc: null };
   var n = 0;
   log.forEach(function (row) {
@@ -212,5 +242,5 @@ module.exports = {
   initProjection: initProjection, query: query, projectionHash: projectionHash,
   apply: apply, replay: replay, legalTransition: legalTransition,
   register: register, getHandler: getHandler, dispatch: dispatch,
-  PROJECTION_TABLES: PROJECTION_TABLES
+  PROJECTION_TABLES: PROJECTION_TABLES, _stats: _stats
 };

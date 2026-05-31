@@ -427,3 +427,74 @@ that was right.*
 **The bittersweet line that says it best.** *"500 years of double-entry, finally version-controlled."* The
 ledger was always an append-only log; git and SQLite-WASM existed for a decade; the synthesis was almost
 obvious in hindsight — which is exactly why it spreads, and why it should carry our name.
+
+---
+
+## 13. Sharding the engine by gravity — what arrives, and when (2026-06-01, SPEC)
+
+§2 partitions the **transaction data** by where atoms physically are. This section partitions the **engine
+itself** — the dictionary (925 AD tables → cells → verbs → FK spines, ERP.md §12) — for the client that must
+hold it. The two are **orthogonal axes of the same root** (§7, *identity/inputs recorded, never recomputed*):
+§2 is *where the goods are*, §13 is *which of the engine you've pulled down yet*.
+
+**The problem, stated honestly.** The full AD is too big to ship whole to a browser, and the naïve fix
+(stream every table) makes the first paint wait on the long tail. But you never need it whole *at once* —
+and the engine already tells you what matters: **op-log gravity** (ERP.md §0.6/§0.13/§0.17) self-ranks the
+cells by real mass (`C_Invoice` #1 = the settlement spine). So don't shard by schema; **shard by gravity**,
+and stream shards *on approach* — the same doctrine as BIM geometry DLOD, with one substitution.
+
+> **One streaming doctrine, two distance metrics.** Geometry streams by **camera distance** (DLOD / split-DB
+> / click-to-stream, S285 city). The engine streams by **op-log mass**. *Distance to the work* replaces
+> *distance to the eye.* That a single pattern serves both spatial-BIM and transactional-ERP is the §0.20
+> unification made operational — not a coincidence, the same op-log seen two ways.
+
+**The shard unit — a *single table, ranked by gravity* (smart per-table; the resolved fork).** Three
+granularities were on the table; the spectrum, and why per-table wins *once gravity is computed from real
+traversal*:
+
+| Granularity | What it is | Verdict |
+|---|---|---|
+| **per-module** | iDempiere's own packaging | ❌ modules cut *across* gravity (one "module" mixes hot + cold cells) → pull one hot cell, over-fetch its cold module-mates |
+| **per-gravity-band** | a contiguous gravity slice **+ its explicit 1-hop FK closure** | workable, but **coarser than needed** — it bundles by hand a closure that gravity already encodes; you ship cold band-mates you may never touch |
+| **smart per-table** ✅ | one AD table per shard, the manifest **ranked by op-log gravity** | finest grain, zero over-fetch — and *no dangling trace*, because **gravity is itself a fold over op-log traversal, which crosses FKs**: a hot table's frequently-walked neighbours therefore *co-rank* and arrive alongside it. The closure self-bundles; it isn't bolted on |
+
+**The key realization: gravity already *is* the closure.** Because the op-log records real journeys down the
+FK spines (§0.6/§0.13 — derivation green, settlement amber), a table and the neighbours actually traversed
+*from* it accrue mass **together**. So a per-table manifest sorted by gravity pulls the hot closure in
+naturally — the band machinery was solving a problem the gravity score had already solved. The rare,
+genuinely-cold FK is the *stub* case below, not a reason to coarsen the unit. This is the engine analogue of a
+DLOD level — "the N nearest tables," where *near* = op-log mass, not metres. **Tier 0 = the top-gravity
+tables** (`C_Invoice` #1, the O2C/P2P spine) — the prefetched `<300ms` `initbubble.json` (ERP.md
+instant-globe). The 155 dormant cold cells (ERP.md §0.11 *housed-vs-active*) sit at the bottom of the
+ranking — present in the manifest, **fetched only on touch**.
+
+**The manifest is a fold over the log (no new infrastructure, §6).** Gravity is an aggregation over
+`kernel_ops` (count / `grandtotal`, ERP.md §0.6 analytical substrate) — computed **offline, deterministically**
+(no `Date.now`/`Math.random`, §7). The shard manifest is just that fold — every table with its gravity rank.
+The **dumb post office** that already orders + persists + fans out the op-log (§6) serves the tables too:
+*pull = "give me table T."* No authority, no business logic server-side — and because the log is deterministic
+(§7), a client **verifies a shard's content hash against the ordered log** rather than trusting it. A shard is
+*checked, not believed* — the same stance W-CHAIN takes on ops (§9-B).
+
+**The fetch trigger — lazy, gravity-cached, with a feedback loop (ERP.md §0.10).** A table is pulled when the
+user *moves toward* a not-yet-resident cell: clicks a cold bubble, follows an FK spine into an unfetched table,
+or scans a code (§2 *the scan is the op*) that references a cold doc-type. Once fetched, a table stays resident
+and **its access bumps its own gravity** (the §0.6 op-log feedback loop) — so next session's tier 0 reflects
+*this* operator's real usage, not a static default. The cache warms toward the work.
+
+**The honest edge — a stub, never an invention.** An FK followed *before* its target table is resident draws a
+**stub bubble** (`cold — fetching`), not a guessed or stale value — extract-only, never-invent (ERP.md §0.17).
+The fetch resolves it in place. This is exactly S285's invisible-bbox frontier (place the marker, stream the
+content) carried onto the engine graph. **No silent truncation:** the stub is visible and logged, so "I
+haven't pulled that yet" can never masquerade as "that's all there is."
+
+**What this is and isn't.** It **is** a deterministic, gravity-ordered lazy-loader for an engine-as-data, on
+the infrastructure §6 already requires. It is **not** a new sync primitive (the §10/§12 honesty holds — DLOD,
+lazy-fetch, content-addressing are all mature); the distinctive move is the *substitution* — **op-log mass as
+the LOD metric for a business engine**, unifying the spatial and transactional loaders under one rule.
+**Witness (when built, mirroring the suite's discipline):** a `gravity_seed`-ranked per-table manifest whose
+tier-0 content-hash matches the prefetched globe; a cold-cell touch pulls exactly that table (its hot
+neighbours already co-resident **by rank**, not by an explicit closure — proving gravity self-bundles), with
+over-fetch counted = 0; an unresolved FK renders a stub (not a value); the resident set's replay-hash equals
+the full-engine replay-hash for every path actually walked. SPEC only — no code yet; T3-adjacent (it serves
+the read-only trace first, edit later).

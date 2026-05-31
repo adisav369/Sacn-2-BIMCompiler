@@ -32,7 +32,7 @@ The secured/distributed thinking and its proofs live in dedicated sub-docs — r
 
 | Doc | What it holds |
 |---|---|
-| **[DistributedERP.md](DistributedERP.md)** | The contention map — the **two truths** + *server→serverless* mapping (§0), normal multi-POS day (§3), the guard set (§4), the one real-time op-class (§5), the **dumb facilitator** (§6), determinism (§7), accounting-as-reconciler (§8), the **edge-scenario adversarial suite** (§9), **how we differ on this turf** (§10). |
+| **[DistributedERP.md](DistributedERP.md)** | The contention map — the **two truths** + *server→serverless* mapping (§0), normal multi-POS day (§3), the guard set (§4), the one real-time op-class (§5), the **dumb facilitator** (§6), determinism (§7), accounting-as-reconciler (§8), the **edge-scenario adversarial suite** (§9), **how we differ on this turf** (§10), and **[sharding the engine by gravity](DistributedERP.md#13-sharding-the-engine-by-gravity-what-arrives-and-when-2026-06-01-spec)** (§13 — op-log mass as the LOD metric; what arrives, and when). |
 | **[LocalFirstPriorArt.md](LocalFirstPriorArt.md)** | How Replicache / ElectricSQL / PowerSync / LiveStore / CRDTs do it — their documented weaknesses, our deterministic-verbs-both-sides lever, the honest shared pain. |
 | **[EnablingTechTimeline.md](EnablingTechTimeline.md)** | The cited technology timeline — what made this possible when; the two compasses. |
 | **[SpatialERP_OOTB.md](SpatialERP_OOTB.md)** | Spatial ERP — the browser-only ERP replacing iDempiereOOTB; §11.5 inventory/movement model. |
@@ -604,7 +604,12 @@ This resolves the apparent tension with §0.3 (narrow scope). **Two distinct thi
 **This vindicates PB.** Mapping all 1003 tables / 2192 edges (incl. the `PP_/MP_/HR_/A_`
 long tail) was not scope-creep — it is the **housing**: PB *proved* the 5-table model
 holds the full iDempiere corpus. Those long-tail rows sit dormant in the runtime /
-`erp_rules.db` and stream in when touched (§0.10 lazy-fetch + gravity cache).
+`erp_rules.db` and stream in when touched (§0.10 lazy-fetch + gravity cache). **How they stream
+— smart per-table, ranked by gravity:** each table is a shard; the manifest is sorted by op-log
+gravity (tier 0 = the prefetched settlement spine; cold cells at the tail, fetched on touch).
+Because gravity is a fold over op-log *traversal*, a hot table's walked FK neighbours **co-rank
+and arrive with it** — the closure self-bundles, no banding needed; an unresolved FK draws a
+*stub*, never an invention. Full spec: **[DistributedERP.md §13 — Sharding the engine by gravity](DistributedERP.md#13-sharding-the-engine-by-gravity-what-arrives-and-when-2026-06-01-spec)**.
 
 **Reporting too — the "set ones."** iDempiere's preset reports are housed: `AD_PrintFormat`
 / `ad_printformatitem` (present in `ad_seed.db`) + the `RV_*` reporting views (correctly
@@ -1033,6 +1038,60 @@ guard set, the 90/10 + one-way-circle, the single customer-entitlement op-class 
 phone-carried → touch/reconcile → ledger lifecycle, and the accounting-as-reconciler capstone — is specced
 in `docs/DistributedERP.md`** (stress-tested end-to-end: gapless DocNo, two-client ship, StorageOnHand,
 100-branch overnight, bonus-card double-claim, credit-on-phone, van-sales scan). **Sources:** [PowerSync](https://powersync.com/) · [ElectricSQL — local-first with your API](https://electric-sql.com/blog/2024/11/21/local-first-with-your-existing-api) · [Replicache push/auth](https://doc.replicache.dev/reference/server-push) · [Automerge 3.0](https://automerge.org/blog/automerge-2/) · [Trillian / transparency.dev](https://transparency.dev/) · [LiveStore](https://livestore.dev/) (nearest-neighbour event-sourced local-first data layer).
+
+### §0.21 G-IDENTITY wired into the kernel — identity is an input, never computed (2026-06-01, SPEC + §IDENTITY)
+
+The Merge/G-IDENTITY POC (`scripts/poc_distributed.js`, §0.20 ledger #2) proved the property in a
+throwaway harness; this section ports it into the real prototype kernel `scripts/erp_kernel.js`. It is
+Phase-A item #2 of `prompts/ERP_DEPLOY_AND_TOUR.md`. **Witness:** `build/erp/poc_identity.log`
+(`§IDENTITY PASS`), driving the *actual* `Kernel.apply`/`Kernel.replay` — not a model of them.
+
+**The defect being fixed (two conflated identities, both computed).**
+- *Op id* — `kernel_ops` PK was `INTEGER PRIMARY KEY AUTOINCREMENT` (`erp_kernel.js`). Two devices each
+  mint `1,2,3…`; their logs **cannot union** without PK collision — the exact failure the POC's
+  "numeric-seq PKs collide" contrast names (`poc_distributed.js`).
+- *Entity id* (`output_guid`) — computed by `docKey`/`lineKey` (format `DOC:table@from<srcId>`) **on every
+  replay** from the payload. Computing identity at replay time violates DistributedERP §7 ("identity is an
+  input, never computed"): a recomputation can diverge from what the edge originally minted.
+
+**The decisions (D1–D4).**
+
+- **D1 — Op id becomes an edge-minted UUID, recorded.** `kernel_ops` PK → `op_uuid TEXT`, plus a `seq INTEGER`
+  for stable intra-device ordering. Minted via `ctx.mintOp(op,i)` (injectable) — prod passes
+  `crypto.randomUUID()`; the test default is the deterministic `actor + ':' + (baseTs+i)` so two devices
+  (`A:1000…`, `B:1000…`) union **clash-free without randomness** (replay-safe, §0.16 — no `Math.random`).
+- **D2 — Entity identity is supplied to the kernel and recorded in the op payload; replay READS it.** `apply`
+  stamps `op.uuid` once at first application and the rich payload carries it; `replay` finds `op.uuid`
+  present and uses it verbatim — `edgeMint` is **never invoked on the replay path**. This is the §7 fix:
+  the kernel no longer *computes* identity during replay, it *reads the recorded input*.
+- **D3 — `docKey`/`lineKey` are retired as the kernel's identity source.** Their deterministic-seed logic is
+  relocated into a single `edgeMint(op,state)` (folding the `DOC:`/`LINE:`/`ALLOC:`/`MATCH:` constructors)
+  that runs **at most once, at first apply, only when an op arrives without a `uuid`** — i.e. it models the
+  *edge* minting identity before the op enters the kernel. For source-derived docs `edgeMint` reproduces the
+  prior `DOC:…@from…` string **so the §ORACLE-SUITE / §LONGTAIL witnesses stay byte-stable** (`poc_longtail.js`
+  queries `document_id='DOC:M_InOut@from<id>'` — unchanged). The behaviour preserved; the *placement* of the
+  computation moved from "kernel, every replay" to "edge, once, recorded."
+- **D4 — This is the New-doc seam (forward, T3 stays parked).** A genuinely new document (no `source_id`)
+  takes an edge-minted `crypto.randomUUID()` at creation — exactly the moment a future **"New doc"** button
+  needs an identity *before any server exists*. The famed iDempiere **`ProcessIt()`/Complete** doc-action is
+  already `Kernel.dispatch` through the §18.6 ladder (`erp_kernel.js`); editing/CRUD surfacing from the
+  read-only stub (the "ring of fire" `+ (eye) (pencil) -` around a bubble is one rendering of it) is the
+  parked **T3** phase. #2 does not build T3 — it satisfies the identity contract T3 will require, so New-doc
+  + ProcessIt can be added later without re-touching the kernel.
+
+**Scope discipline.** All edits land in **`scripts/erp_kernel.js` only** — op generators (`erp_engine.js`
+verbs, inline handlers) emit *logical* ops with no guid, so `apply` is the single stamping chokepoint; no
+verb/handler/UI change, no `bim-ootb`, no deploy. T3 relocation (§0.16(3)) still parked.
+
+**Witnesses (W-IDENTITY-LIVE — must hold AND no regression):**
+- `§IDENTITY merge devices=2 ops=N` — two kernels apply disjoint op groups; union of their `kernel_ops`
+  has **distinct `op_uuid` count == N** (no PK clash).
+- `§IDENTITY replay hashA=… hashB=…` — replaying the merged, totally-ordered (`timestamp,op_uuid`) log into
+  two fresh kernels yields the **same projection hash** (holder-irrelevant).
+- `§IDENTITY no-recompute` — replay reproduces every `output_guid` from the recorded payload with
+  `edgeMint` call-count **0** on the replay path.
+- **No regression:** `poc_kernel.log §KERNEL PASS`, `poc_longtail.log §VERTICAL … replay=EXACT`,
+  `diff_oracle.log §ORACLE-SUITE 5/6`, `poc_distributed.log §DIST PASS` all still green.
 
 ---
 
