@@ -8,6 +8,9 @@
 ## BOM PRINCIPLE
 A BOM is a recipe: one parent, N children, each with a quantity. Each child can itself be a BOM — building → floor → room → furniture → leaf, recursively. Each level is atomic and self-contained. **Three Concerns never merge:** WHAT (Orders, Categories, Products), HOW (BOMs, AttributeSets, Validation), WHERE (output.db for 4D–8D downstream).
 
+## ERP Blueprint
+ERP / secured-distributed / serverless work → **`docs/ERP.md`** is the overarching blueprint; its Companion-docs map fans out to `docs/DistributedERP.md` (the doctrine + edge suite) + the `scripts/poc_*.js` witnesses. Read it first for ERP-side sessions.
+
 ## Session Startup
 1. User states activity category (BOM/geometry | schema/ERP | IFC/extraction | SRS/spec | pipeline/debug) → read only matching [category] feedback files from MEMORY.md
 2. Read PROGRESS.md §Current State (gate table, what's next)
