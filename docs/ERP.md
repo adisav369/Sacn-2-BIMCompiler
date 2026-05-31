@@ -930,7 +930,8 @@ matcher-gated, `replay-hash == live-hash`. **No further UI work** — the next p
 *weak axes* §0.18(d) named (security, tamper-evidence, durability, multi-user) instead.
 
 **State of the art — has anyone solved these? Yes, and they all solved it the *same way*** (researched
-2026-05-31; sources below). The honest, load-bearing finding:
+2026-05-31; sources below; **per-system mechanism / weakness / our-workaround deep-dive in
+`docs/LocalFirstPriorArt.md`**). The honest, load-bearing finding:
 
 > **Every production local-first system anchors trust in a server.** ElectricSQL and PowerSync (JWT
 > auth + Postgres Row-Level-Security mirrored into sync rules) and Replicache (server *re-runs* every

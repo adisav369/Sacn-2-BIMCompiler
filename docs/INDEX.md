@@ -95,6 +95,7 @@ Single-page entry point. All active docs by tier.
 |-----|------|
 | [BIMERPPaper.md](BIMERPPaper.md) | Academic paper: BIM as ERP |
 | [EnablingTechTimeline.md](EnablingTechTimeline.md) | Dated, cited enabling-tech record: what moved when (sql.js 2014, three.js r166 Jul 2024, OPFS layer routed-around), two compasses (BIM tech-gated vs ERP idea-gated), first-mover margin |
+| [LocalFirstPriorArt.md](LocalFirstPriorArt.md) | How Replicache/ElectricSQL/PowerSync/LiveStore/CRDTs do sync+security, their documented weaknesses, and our workarounds (deterministic verbs = one kernel both sides). Companion to ERP.md §0.20 |
 | [SPATIAL_COMPILATION_PAPER.md](SPATIAL_COMPILATION_PAPER.md) | Academic paper: Deterministic spatial compilation — 0.002mm verified, cross-domain (protein/robotics). *Along the way, we wrote to the Nobel Prize Committee for Physics.* |
 | [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) | Market positioning, 4 moats, IFC scorecard |
 | [BIM_Compiler_Market_Impact_Report.pdf](BIM_Compiler_Market_Impact_Report.pdf) | Market impact: USD 10B BIM market, MY mandate, go-to-market timeline, risk assessment |
