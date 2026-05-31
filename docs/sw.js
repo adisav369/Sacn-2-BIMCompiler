@@ -2,7 +2,7 @@
    sql.js + bundle so they work with no network. Scoped to /BIMCompiler/; passes every
    other request straight through, so the rest of the docs site is unaffected.
    Bump CACHE_VERSION on any change to glassbowl.html / glassbowl_gravity.html / the bundle. */
-const CACHE_VERSION = 'glassbowl-offline-v3';
+const CACHE_VERSION = 'glassbowl-offline-v4';
 const ASSETS = [
   'glassbowl.html',
   'glassbowl_gravity.html',
@@ -28,6 +28,9 @@ self.addEventListener('message', e => {
   if (e.data && e.data.type === 'precache') {
     e.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(ASSETS)).catch(() => {}));
   }
+  // W-SWUPDATE: the page's "tap to refresh" toast posts this so the PARKED (waiting) worker
+  // takes over on demand — then the page's controllerchange handler does a single guarded reload.
+  if (e.data && e.data.type === 'skipWaiting') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {
