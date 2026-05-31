@@ -154,6 +154,20 @@ the database," philosophically nearest) · Kafka / "The Log" (Kreps, 2013) · Re
 local-first / Automerge (Kleppmann, Ink & Switch, 2019). And adjacent **today**: Replicache, Triplit,
 InstantDB, RxDB, ElectricSQL, PowerSync all do persisted client-side op-logs/CRDTs.
 
+**Undo/redo and log-as-business-database are equally NOT ours** — they are event sourcing's *home turf*.
+Undo/redo via a command/event log is the Command + Memento patterns (GoF, 1994) and Redux time-travel
+devtools. Log-as-database *for business apps specifically* is where Event Sourcing was born (Greg Young,
+Vaughn Vernon; EventStoreDB / Axon / Marten run in banks and insurers) — and its 500-year ancestor is
+**double-entry bookkeeping** (Pacioli, 1494): an append-only log as the immutable source of business truth.
+Business + log is the *oldest* pairing in the field.
+
+**The "stable, secured" axis is where we are weaker, not novel — state it plainly.** A *server-side* event
+store has real security boundaries (auth, access control, tamper-evidence, controlled durability). A
+**browser-resident** log (SQLite-WASM + OPFS/IndexedDB) sits on the user's device, is LRU-evictable, and its
+security depends entirely on signing + cloud-sync-as-source-of-truth (the OPFS-as-cache discipline). So on
+"secured" we make **no novelty and no superiority claim** — it is a trade-off we *pay for* (zero-server +
+offline in exchange for weaker default durability/security), and the part of the model needing the most care.
+
 **What is honestly distinctive about kernel_ops** (narrowly, with humility — local-first DBs are nearby):
 (1) a *persisted, offline, browser-resident* op-log as the **primary ERP substrate** (most prior art is
 server-side; Redux is client-side but ephemeral); (2) **one log spanning BIM geometry *and* ERP** (same
