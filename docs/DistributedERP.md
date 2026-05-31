@@ -82,6 +82,15 @@ pure OOTB (no fat server):
 2. **Carry = signed op-log on the customer's phone.** The customer is their own single-writer. The token is
    **merchant-signed + hash-chained** (= `§0.20` W-SIGN/W-CHAIN) so the holder can *present* but not
    *forge* it — they don't hold the signing key.
+2b. **Persist & recover = the user's own email / social account** (zero-infra durability — resolves the
+   §0.20 W-PERSIST eviction worry for this op-class). Each use emits a **signed email** (a full signed
+   snapshot of the latest count, or a hash-chained delta) to the customer's own inbox. **The inbox is a
+   durable, user-owned, append-only, tamper-evident log** — already universal, already backed up, accessible
+   from any device. **Recovery:** lost phone/PWA → the new PWA reads the customer's **latest email** and
+   restores the count. No server owns the data — *the user's own channel does.* (Caveats: pick the chain tip
+   by signed `seq`/`prev_hash`, not arrival order; send a **full signed snapshot per email** for
+   single-email recovery robustness; encrypt-to-user for privacy. "Email receipt" is old — "**inbox as the
+   recoverable signed state-log**" is the fresh framing.)
 3. **Claim/spend:**
    - **Online (normal POS):** sub-second authority **compare-and-set** (set-if-unset) → first-wins. Same
      weight as a card-payment auth — not a burden. (A plain `DateLastUsed` *read* is best-effort only — two
@@ -170,7 +179,14 @@ auditable than a centralised system (full lineage, deterministic first-wins).
 2. **A thin async post office** (order + persist + relay), run **daily** — the one-way trip circle.
 3. **A sub-second touch** for the *one* customer-global op-class (online CAS), high-value only.
 4. **Signed, hash-chained logs** (W-CHAIN/W-SIGN) — justified concretely by credit-on-phone.
-5. **The ledger** — doing the reconciliation job it has done since 1494.
+5. **The user's own email / social account** as zero-infra durable persistence + recovery (§4.2b).
+6. **The ledger** — doing the reconciliation job it has done since 1494.
+
+> **Second mantra (proposed).** The prime directive governs *computation* — *"Deterministic. Non-invent.
+> Extract."* This architecture suggests a second, governing *persistence & ownership*: **the durable record
+> belongs to the user, signed; we own no server of record; the ledger reconciles the rest.** Candidate
+> short forms: *"User-owned. Server-less. Ledger-reconciled."* / *"Carry. Sign. Reconcile."* /
+> *"No server of record — the user's own log is."* (Wording to be ratified before it enters `CLAUDE.md`.)
 
 **Sources / cross-refs:** `ERP.md §0.20` (phase + witnesses W-CHAIN/SIGN/PERSIST/OWNER) ·
 `LocalFirstPriorArt.md` (Replicache/ElectricSQL/PowerSync/LiveStore/CRDTs) ·
