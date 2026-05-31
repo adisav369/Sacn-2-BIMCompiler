@@ -6,23 +6,21 @@
 
 # ERP OOTB — iDempiere Application Dictionary in a Browser
 
-## The Big Show
+## Overview
 
-iDempiere's Application Dictionary (AD) is the most powerful metadata-driven
-UI framework in open-source ERP. It defines windows, tabs, fields, menus,
-validation rules, and display logic — ALL as database rows, not code. Change
-a row in AD_Field → the UI changes. No recompile.
+iDempiere's Application Dictionary (AD) is a metadata-driven UI framework:
+windows, tabs, fields, menus, validation rules, and display logic are stored
+as database rows rather than code. Editing a row in `AD_Field` changes the
+rendered UI with no recompilation.
 
-**What if the entire AD ran in a browser?**
-
-Same menu tree. Same windows. Same tabs and fields. Same validation logic.
-But: no JVM, no PostgreSQL, no OSGi, no server. SQLite WASM in the browser.
-The AD metadata exported from a live iDempiere PostgreSQL instance, loaded
-via sql.js, parsed by a JavaScript AD renderer.
-
-**This has never been done.** And it's the natural culmination of Spatial ERP
-OOTB — the construction POC (C_Project) is just one menu node in the full
-AD tree.
+This document describes running the AD client-side. The AD metadata is
+exported from a live iDempiere PostgreSQL instance, loaded into SQLite via
+[sql.js](https://sql.js.org) (SQLite compiled to WebAssembly), and rendered
+by a JavaScript AD interpreter — with no JVM, PostgreSQL, OSGi, or server
+process. The construction-project bridge (`C_Project`, see
+[SpatialERP_OOTB.md](SpatialERP_OOTB.md)) is one menu node within the full
+AD tree. Scope and limits are stated in [§10](#10-scope-and-status) and the
+prior-art comparison in [DistributedERP.md §10](DistributedERP.md#10-comparison-with-related-systems).
 
 ---
 
@@ -38,22 +36,22 @@ The secured/distributed thinking and its proofs live in dedicated sub-docs — r
 | **[SpatialERP_OOTB.md](SpatialERP_OOTB.md)** | Spatial ERP — the browser-only ERP replacing iDempiereOOTB; §11.5 inventory/movement model. |
 | **[BOM_ENGINE_SPEC.md](BOM_ENGINE_SPEC.md)** · **[DATA_MODEL.md](DATA_MODEL.md)** | The BOM recipe engine (the verb that compiles a building *and* backflushes a POS sale) + the 5-table bridge. |
 
-**Proofs (spec-first, witness-led — `replay-hash == live-hash`, browser sql.js binding):**
-- **[prompts/DISTRIBUTED_POC.md](../prompts/DISTRIBUTED_POC.md)** — the POC work-order + `# DONE` ledger. All 6 in-process witnesses 🟢: W-CHAIN, Merge/G-IDENTITY, W-OWNER/CAS, W-SIGN, W-PERSIST/email-recovery, lease-expiry/value-tiering.
-- **[scripts/erp_kernel.js](../scripts/erp_kernel.js)** — the deterministic kernel; witnesses `poc_kernel.js` / `poc_longtail.js`.
-- The §9 witnesses, each doubling as the spec for its production change: **[poc_chain.js](../scripts/poc_chain.js)** · **[poc_distributed.js](../scripts/poc_distributed.js)** · **[poc_sign.js](../scripts/poc_sign.js)** · **[poc_persist.js](../scripts/poc_persist.js)** · **[poc_policy.js](../scripts/poc_policy.js)**. W-CHAIN is **live** in `bim-ootb/viewer/kernel_ops.js` (`sealChain`/`verifyChain`/`setSigner`, v5).
+**Proofs (spec-first, witness-led; each witness asserts `replay-hash == live-hash` against a browser sql.js binding):**
+- **[prompts/DISTRIBUTED_POC.md](https://github.com/red1oon/BIMCompiler/blob/full/prompts/DISTRIBUTED_POC.md)** — the POC work-order and `# DONE` ledger. Six in-process witnesses pass: W-CHAIN, Merge/G-IDENTITY, W-OWNER/CAS, W-SIGN, W-PERSIST/email-recovery, lease-expiry/value-tiering.
+- **[scripts/erp_kernel.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/erp_kernel.js)** — the deterministic kernel; exercised by [poc_kernel.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_kernel.js) and [poc_longtail.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_longtail.js).
+- The §9 witnesses, each doubling as the spec for its production change: [poc_chain.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_chain.js), [poc_distributed.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_distributed.js), [poc_sign.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_sign.js), [poc_persist.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_persist.js), [poc_policy.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_policy.js), [poc_identity.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_identity.js). W-CHAIN is implemented in `bim-ootb/viewer/kernel_ops.js` (`sealChain`/`verifyChain`/`setSigner`, v5).
 
-See **§0.20** below for the phase frame (witnesses W-CHAIN/W-SIGN/W-PERSIST/W-OWNER, UI POC frozen).
+See [§0.20](#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet) for the phase frame (witnesses W-CHAIN/W-SIGN/W-PERSIST/W-OWNER) and [§0.21](#021-g-identity-wired-into-the-kernel--identity-is-an-input-never-computed-2026-06-01-spec--identity) for the landed G-IDENTITY change.
 
 ---
 
-## The Underlying Structure — an appraisal for the iDempiere mind
+## Underlying structure (for readers familiar with iDempiere)
 
-> *If you come from iDempiere, you already believe the radical half of this idea.*
-> The AD is the proof: a window, a tab, a field, a validation rule, a menu — none
-> are code, all are **rows**. "The application is data" is not our claim; it is
-> iDempiere's, and it is why AD-driven ERP won. What follows is an honest read of
-> what this project does **differently**, why it matters, and what is proven vs. parked.
+> For readers from an iDempiere background, the premise is already familiar. The AD
+> demonstrates it: a window, tab, field, validation rule, and menu are not code — they
+> are rows. "The application is data" is iDempiere's design, not a claim of this
+> project. What follows is an account of what this project does differently, the
+> reasoning, and what is proven versus parked.
 
 ### The one-sentence thesis
 iDempiere made the **UI** data and left the **engine** as code (the `M*` model
@@ -85,14 +83,14 @@ where value and risk pool; and — the parked endgame — let you **edit a rule 
 the affected records flip on that map** (the diff-oracle in the browser, §2d-3). That
 last step turns the map of the engine into the *console you run the engine from*.
 
-### The discipline that makes the claim trustworthy
-The same instinct AD embodies — *don't write what you can declare* — is taken to its
-limit here as **EXTRACT OR COMPILE ONLY**: every node, edge, rule, row, op, and even
-the sound-pitch and depth-plane is **read** from `ad_full.db` / `erp_rules.db` /
-`kernel_ops`, never invented. A value with no source is a **logged finding, not a
-guess** (e.g. GL `fact_acct=0` → the Accounting view says *"not posted in this
-dataset,"* it never fakes a posting). This is why the demo is sticky: *it isn't a
-mockup — the thing renders and explains itself, live, from its own data.*
+### Verification discipline (extract-only)
+The same principle the AD embodies — declare rather than hand-write — is applied here
+as **extract or compile only**: every node, edge, rule, row, op, and rendering
+parameter is read from `ad_full.db` / `erp_rules.db` / `kernel_ops`, not invented. A
+value with no source is recorded as a finding rather than guessed (for example, with
+GL `fact_acct=0` the Accounting view reports "not posted in this dataset" instead of
+synthesising a posting). Consequently the running views render from the source data
+directly rather than from a separate mock dataset.
 
 ### Proven vs. parked (no overclaim)
 - **Proven, witnessed:** AD→manifest compile; the 5-table bridge (§5TBL); the
@@ -168,15 +166,15 @@ you build a report; this engine presents itself.* Three knobs, every number a **
 - **Witness:** `§GRAVITY orders=8 chains=4 hand=0`, plus `§PIVOT`/`§TRACE` on each
   interaction. Inlined totals reconcile to the DB to the cent (`$9,914.07`).
 
-### Positioning the views carry (the talkable line)
-These are **not a prettier BI tool.** PowerBI/OLAP run the same *operation* (slice,
-pivot, drill) but on a **decoupled copy you must model first**, and they bottom out at
-*detail rows*. Glassbowl's drill bottoms out at the **live operational document** — its
-rules, its workflow, its lineage, and (T3) its edit — on one canvas, every number
-extracted from the system's own structure. *You build a view of your data in PowerBI;
-Glassbowl is your engine presenting itself.* The extract-only discipline is the moat,
-not a constraint: a dashboard is a construction on stale data; this is the engine, live,
-explaining itself — and the organic motion is the proof it's real, not a mockup.
+### How the views compare to BI tools
+A BI/OLAP tool (PowerBI and similar) performs the same operations — slice, pivot,
+drill — but over a decoupled copy that must be modelled first, and the drill path
+terminates at detail rows. The Glassbowl views operate directly on the live engine
+tables: the drill terminates at the operational document together with its rules,
+workflow, and lineage (editing is parked, T3), and every displayed value is read
+from the system's own structure rather than a separate analytical model. The
+distinction is the data source (live engine vs. modelled copy), not the set of
+operations.
 
 **Parked (T3):** both views are read-only. Editing rules/records in place, the live
 rule-impact preview (§0.4, §2d-3 in the Glassbowl spec), and writing through the depth
@@ -328,11 +326,11 @@ JSON accordion editor (§0.3). The split (this is §18.6/§18.7 made concrete):
 
 | Layer | Where it lives | Editable by SystemAdmin? |
 |---|---|---|
-| **Cell legality** — which actions are valid from which status, per DocType | `manifest.wfmc` + `doctypes` (P2) | ✅ JSON |
-| **Field validation** — mandatory / readonly / displayLogic / defaults | `manifest` field contract (P0) | ✅ JSON |
-| **Posting rules** — account mappings per doc_type, debit/credit | a **policy JSON** (replaces `doc_engine`'s hardcoded `JOURNAL_RULES`) | ✅ JSON |
-| **Conditional flags** — `autoCreateShipment`, `creditCheck`, match `tolerance`, downstream-protection | a **policy JSON** (`scope:"global"` marked, §18.5) | ✅ JSON |
-| **Effect *shape*** — "Complete order ⇒ emit shipment + lines" | a P3b **handler** (`(doc,ctx)→ops[]`) | ❌ code — but *parameterized by* the policy above |
+| **Cell legality** — which actions are valid from which status, per DocType | `manifest.wfmc` + `doctypes` (P2) | Yes (JSON) |
+| **Field validation** — mandatory / readonly / displayLogic / defaults | `manifest` field contract (P0) | Yes (JSON) |
+| **Posting rules** — account mappings per doc_type, debit/credit | a **policy JSON** (replaces `doc_engine`'s hardcoded `JOURNAL_RULES`) | Yes (JSON) |
+| **Conditional flags** — `autoCreateShipment`, `creditCheck`, match `tolerance`, downstream-protection | a **policy JSON** (`scope:"global"` marked, §18.5) | Yes (JSON) |
+| **Effect *shape*** — "Complete order ⇒ emit shipment + lines" | a P3b **handler** (`(doc,ctx)→ops[]`) | No — code, parameterized by the policy above |
 
 **The honest boundary:** parameters, mappings, conditions, and which-action-when become
 metadata; the *shape* of a novel procedural effect stays a handler. Trying to
@@ -991,11 +989,11 @@ boundary between them:
   sequences.* See `docs/DistributedERP.md §6` (facilitator-not-actor) + §10 (why this differs from
   Replicache/PowerSync/ElectricSQL, which DO re-run/route writes through a backend).
 
-Because the seam is **asynchronous**, security does **not** cost instant UX — the two domains "work together
-while the UI keeps its instant experience, in a secured universe." This refines §0.18(d): the zero-server
-moat narrows only to *"single-user/offline runs with no server at all; secured multi-user adds a thin
-async **facilitator** (order + persist + relay) — not a trusted compute authority"* — it does **not** trade
-away the 0ms feel, because the UI domain is never gated on the facilitator. The op-log is already the right
+Because the seam is **asynchronous**, security does not cost interactive latency: the UI domain commits
+locally and is never gated on the facilitator. This refines §0.18(d): the zero-server property holds only for
+single-user/offline operation with no server at all; secured multi-user adds a thin async **facilitator**
+(order + persist + relay) that is not a trusted compute authority. The local commit path is unchanged in
+either case. The op-log is already the right
 payload (push = new ops, pull = the ordered/total-ordered log); the designated-owner node (§18.7) is a
 *client* role (the owner-gating that runs on replay), not a server that recomputes. *(The fact is a fold over
 the ordered log; the facilitator orders, the clients fold — `DistributedERP.md §0`.)*
@@ -1685,10 +1683,10 @@ C_Project window gets a special "BIM" action button:
 
 ---
 
-## §6. Cross-Table Analytics — Surpassing Odoo
+## §6. Cross-table analytics
 
-**The killer feature.** Because ALL data is in one SQLite DB in the browser,
-any SQL query across any tables renders as a chart instantly. No server.
+Because all data is in one SQLite database in the browser, an SQL query across
+any tables can be rendered as a chart client-side, with no server round-trip.
 
 ### Built-in chart views
 
@@ -1716,11 +1714,11 @@ GROUP BY bp.Name ORDER BY MIN(inv.DateInvoiced)
 
 Rendered using Canvas bar/pie charts — same pattern as `boq_charts.html`.
 
-**Why this surpasses Odoo:**
-- Odoo needs server + ORM + Python for cross-table queries
-- We need one SQL statement + Canvas — executes in milliseconds, offline
-- User can type ANY SQL in a query box and see results as a chart
-- The query IS the report. No Jasper. No report designer. Just SQL.
+**Comparison with a server-side approach (e.g. Odoo):**
+- A server-side stack performs cross-table queries via server + ORM + (in Odoo's case) Python.
+- The client-side approach here uses one SQL statement plus Canvas, executing locally and offline.
+- Any SQL can be entered in a query box and rendered as a chart.
+- The query is the report definition; no separate report-designer or reporting engine (e.g. Jasper) is required.
 
 ---
 
@@ -1792,31 +1790,31 @@ bootstraps containers from BIM elements_meta storeys.
 
 ---
 
-## §10. The Seismic Claim
+## §10. Scope and status
 
-**iDempiere's Application Dictionary — 826 menu nodes, 458 windows, 1167 tabs,
-21,432 fields — running in a browser from a 12MB SQLite file loaded via
-WebAssembly. Zero server. Zero install. Offline capable.**
+The Application Dictionary in this build comprises 826 menu nodes, 458 windows,
+1167 tabs, and 21,432 fields, served from a ~12MB SQLite file loaded via
+WebAssembly, with no server process and offline operation. The AD metadata is
+not modified — it is extracted from a live iDempiere instance and reinterpreted
+client-side.
 
-No one in the FOSS ERP world has done this. Not SAP. Not Odoo. Not ERPNext.
-Not even iDempiere itself.
-
-The AD is iDempiere's crown jewel — 20 years of metadata accumulated by a
-global community. We're not replacing it. We're **liberating it** from the
-JVM/PostgreSQL/OSGi stack and putting it in every browser on every phone.
-
-The construction POC (C_Project) is the proof. The 3 live windows are the
-demo. The full 826-node menu tree is the mic drop.
+Status, stated without overclaim: the construction-project window (`C_Project`)
+is the worked example, three windows are wired end-to-end, and the remaining
+menu tree is present as metadata but not every cell is handler-backed (the
+housed-vs-active distinction, [§0.11](#011-housed-vs-active--the-full-extent-hidden-but-callable)).
+For proven-vs-parked, see [§0.17](#017-p3b-breadth--the-contained-set-thesis-diff-verified-across-o2cp2pgl-2026-05-29-oracle-suite-56--gravity-pass)
+and the witness ledger ([prompts/DISTRIBUTED_POC.md](https://github.com/red1oon/BIMCompiler/blob/full/prompts/DISTRIBUTED_POC.md)).
+This is not the first SQLite-WASM or local-first system; the prior-art floor is
+in [DistributedERP.md §10](DistributedERP.md#10-comparison-with-related-systems).
 
 ---
 
-## §11. The Three-Layer Architecture
+## §11. The three-layer architecture
 
-§1-§10 proved the AD can run in a browser. But running it unchanged —
-13MB of metadata, 1003 tables, 20,911 field definitions — is carrying
-the server's luggage into a building designed for hand baggage.
-
-The next evolution separates the ERP into three clean layers:
+§1–§10 establish that the AD can run in a browser. Running it unchanged,
+however — 13MB of metadata, 1003 tables, 20,911 field definitions — carries
+the full server-side footprint into a client-side runtime that does not need
+it. The architecture separates the ERP into three layers:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -2187,28 +2185,23 @@ The manifest tells the UI which table to query for each window.
 
 ---
 
-## §17. The Seismic Claim (Revised)
+## §17. Architecture summary (extends §10)
 
-§10 claimed: the AD running in a browser. That was the first act.
+[§10](#10-scope-and-status) covers running the AD client-side. This section
+summarises the runtime architecture built on top of it: an ERP runtime over
+five tables, business logic as pure functions, undo/redo via event sourcing
+([§0.16](#016-the-wire--the-kernel--data-driven-evaluator-and-op-log-kernel-2026-05-29-wirekernel-pass)),
+and a constellation UI in place of the menu-tree navigator. No JVM,
+PostgreSQL, OSGi, or server process is required at runtime.
 
-The second act is larger: **an ERP engine in 5 tables, with business
-logic as pure functions, undo/redo via event sourcing, and a spatial
-constellation UI that replaces the 1990s menu tree.**
-
-No JVM. No PostgreSQL. No OSGi. No server. No 2-week training course.
-Open a URL. See your business as a constellation of glowing entities.
-Tap one. Drill. Edit. Done.
-
-The 13MB Application Dictionary — 20 years of iDempiere community
-wisdom — compiled down to a 2KB manifest that tells the browser what
-to render. The full AD stays as the source code, available for reference
-and recompilation. But the runtime is hand baggage.
-
-150 lines of kernel enforcement. 5 tables. One write path (commitOp).
-One audit trail (kernel_ops). One accounting proof (journal).
-
-This is not iDempiere in a browser. This is what iDempiere would be
-if it were designed in 2026 for the device everyone actually carries.
+The ~13MB Application Dictionary is compiled to a compact manifest
+([§13](#13-the-compiled-manifest--ad-as-compiler-input)) that drives rendering;
+the full AD is retained as the source for reference and recompilation, but is
+not loaded wholesale at runtime (it streams by gravity rank,
+[DistributedERP.md §13](DistributedERP.md#13-sharding-the-engine-by-gravity-what-arrives-and-when-2026-06-01-spec)).
+The enforcement surface is small: ~150 lines of kernel, five tables, one write
+path (`commitOp`), one audit trail (`kernel_ops`), one accounting projection
+(`journal`).
 
 ---
 
