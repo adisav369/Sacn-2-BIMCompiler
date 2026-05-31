@@ -4234,6 +4234,18 @@ Write-Ahead Log / ARIES (1970s–1992) · Event Sourcing (Fowler, ~2005) · Git 
 the database," philosophically nearest) · Kafka / "The Log" (Kreps, 2013) · Redux (2015, but RAM-only) ·
 local-first / Automerge (Kleppmann, Ink &amp; Switch, 2019). And adjacent <strong>today</strong>: Replicache, Triplit,
 InstantDB, RxDB, ElectricSQL, PowerSync all do persisted client-side op-logs/CRDTs.</p>
+<p><strong>Undo/redo and log-as-business-database are equally NOT ours</strong> — they are event sourcing's <em>home turf</em>.
+Undo/redo via a command/event log is the Command + Memento patterns (GoF, 1994) and Redux time-travel
+devtools. Log-as-database <em>for business apps specifically</em> is where Event Sourcing was born (Greg Young,
+Vaughn Vernon; EventStoreDB / Axon / Marten run in banks and insurers) — and its 500-year ancestor is
+<strong>double-entry bookkeeping</strong> (Pacioli, 1494): an append-only log as the immutable source of business truth.
+Business + log is the <em>oldest</em> pairing in the field.</p>
+<p><strong>The "stable, secured" axis is where we are weaker, not novel — state it plainly.</strong> A <em>server-side</em> event
+store has real security boundaries (auth, access control, tamper-evidence, controlled durability). A
+<strong>browser-resident</strong> log (SQLite-WASM + OPFS/IndexedDB) sits on the user's device, is LRU-evictable, and its
+security depends entirely on signing + cloud-sync-as-source-of-truth (the OPFS-as-cache discipline). So on
+"secured" we make <strong>no novelty and no superiority claim</strong> — it is a trade-off we <em>pay for</em> (zero-server +
+offline in exchange for weaker default durability/security), and the part of the model needing the most care.</p>
 <p><strong>What is honestly distinctive about kernel_ops</strong> (narrowly, with humility — local-first DBs are nearby):
 (1) a <em>persisted, offline, browser-resident</em> op-log as the <strong>primary ERP substrate</strong> (most prior art is
 server-side; Redux is client-side but ephemeral); (2) <strong>one log spanning BIM geometry <em>and</em> ERP</strong> (same
