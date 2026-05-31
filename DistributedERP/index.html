@@ -2924,6 +2924,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="6. How much central persistence? — a dumb async post office">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-the-centralized-id-problem-in-one-place" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 The centralized-ID problem, in one place
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3032,10 +3049,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#10-how-we-differ-on-this-turf" class="md-nav__link">
+  <a href="#10-comparison-with-related-systems" class="md-nav__link">
     <span class="md-ellipsis">
       
-        10. How we differ on this turf
+        10. Comparison with related systems
       
     </span>
   </a>
@@ -3054,10 +3071,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#12-positioning-git-not-chain-notes-to-remember-from-the-design-dialogue" class="md-nav__link">
+  <a href="#12-relationship-to-blockchain-and-to-general-purpose-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
-        12. Positioning — git, not chain (notes to remember from the design dialogue)
+        12. Relationship to blockchain and to general-purpose sync
       
     </span>
   </a>
@@ -4051,6 +4068,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="6. How much central persistence? — a dumb async post office">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-the-centralized-id-problem-in-one-place" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 The centralized-ID problem, in one place
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4159,10 +4193,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#10-how-we-differ-on-this-turf" class="md-nav__link">
+  <a href="#10-comparison-with-related-systems" class="md-nav__link">
     <span class="md-ellipsis">
       
-        10. How we differ on this turf
+        10. Comparison with related systems
       
     </span>
   </a>
@@ -4181,10 +4215,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#12-positioning-git-not-chain-notes-to-remember-from-the-design-dialogue" class="md-nav__link">
+  <a href="#12-relationship-to-blockchain-and-to-general-purpose-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
-        12. Positioning — git, not chain (notes to remember from the design dialogue)
+        12. Relationship to blockchain and to general-purpose sync
       
     </span>
   </a>
@@ -4227,9 +4261,10 @@
 domain as it physically is — goods have a <em>location</em>, work has an <em>owner</em>, money moves at the <em>cadence of
 atoms</em> — and contention dissolves for ~90% of usage, collapses to a daily pipeline for ~10%, and reduces to
 <strong>one genuinely real-time op-class</strong> (customer-global entitlements). None of it needs a fat always-on server.</p>
-<p>Companion to <code>ERP.md §0.20</code> (secured/durable phase) and <code>LocalFirstPriorArt.md</code> (how others did it). This
-doc is the <em>tested</em> architecture — every scenario below was stress-tested in design dialogue, and the
-residuals always land in "the ledger reconciles it" (see §8). Beneath the mechanics sit the truths in §0,
+<p>Companion to <a href="../ERP/#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet">ERP.md §0.20</a>
+(secured/durable phase) and <a href="../LocalFirstPriorArt/">LocalFirstPriorArt.md</a> (comparison of related systems).
+This doc is the architecture under test — each scenario below was worked through against the residuals in §8,
+which the ledger reconciles. Beneath the mechanics sit the truths in §0,
 from which the whole design falls out. SPEC, 2026-05-31 (consolidated rev).</p>
 <hr />
 <h2 id="0-the-two-truths-and-the-root-beneath-them">0. The two truths — and the root beneath them<a class="headerlink" href="#0-the-two-truths-and-the-root-beneath-them" title="Permanent link">&para;</a></h2>
@@ -4344,7 +4379,7 @@ transactions what git did to source code:</strong> the log is the truth, the hos
 and signable. The one thing git lacks that we add — <em>invariant enforcement</em> (no double-spend) — is the
 owner-gate + the single CAS op-class. Everything else, git already proves is possible.</p>
 <p>The rest is these truths meeting concrete scenarios — the normal multi-POS day (§3), the adversarial edges
-(§9), and how this sets us apart on the turf (§10).</p>
+(§9), and how it compares to related systems (§10).</p>
 <hr />
 <h2 id="1-the-9010-reframe">1. The 90/10 reframe<a class="headerlink" href="#1-the-9010-reframe" title="Permanent link">&para;</a></h2>
 <ul>
@@ -4552,6 +4587,26 @@ CAS (a compare-and-set register over an opaque token — still facilitation, not
 <em>only</em> always-fast online need; everything else is daily. <strong>Even the post office is disposable:</strong> because
 every op is signed + hash-chained, the total order is reconstructible from the collected signed logs
 (<code>prev_hash</code> encodes order) — lose the broker and the union of clients'/emails' logs rebuilds it.</p>
+<h3 id="61-the-centralized-id-problem-in-one-place">6.1 The centralized-ID problem, in one place<a class="headerlink" href="#61-the-centralized-id-problem-in-one-place" title="Permanent link">&para;</a></h3>
+<p>Classic ERP centralises identity allocation: a single sequence service (<code>AD_Sequence</code>) hands out primary
+keys and gapless document numbers, which forces an always-available coordinator. That requirement is split
+into three parts here, only one of which needs any centralisation:</p>
+<ol>
+<li><strong>Primary-key identity is fully decentralised.</strong> Each entity's PK is an <strong>edge-minted UUID</strong>, recorded as
+   an op input (G-IDENTITY, §4; implemented per
+   <a href="../ERP/#021-g-identity-wired-into-the-kernel--identity-is-an-input-never-computed-2026-06-01-spec--identity">ERP.md §0.21</a>).
+   Two devices mint without coordination and their logs union with no clash
+   (<a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_distributed.js">poc_distributed.js</a>).</li>
+<li><strong>Total order is the one part that is centralised — minimally.</strong> Ordering across parties is assigned by
+   the dumb facilitator (above), which runs no business logic and is itself reconstructible from the signed
+   logs. It sequences; it is not an authority.</li>
+<li><strong>The gapless human document number is a per-device namespace.</strong> The sequential identifier users expect
+   (e.g. <code>INV-2026-0001</code>) is issued as <code>user/date/doc/#</code> within each device's own namespace — gapless in that
+   namespace, unique across devices without coordination — and is distinct from the global UUID PK. No shared
+   counter is required.</li>
+</ol>
+<p>So the only centralised function is sequencing, and even that is rebuildable offline. Identity allocation,
+the part that classically forces a coordinator, requires none.</p>
 <hr />
 <h2 id="7-determinism-is-load-bearing-not-just-nice">7. Determinism is load-bearing (not just nice)<a class="headerlink" href="#7-determinism-is-load-bearing-not-just-nice" title="Permanent link">&para;</a></h2>
 <p>The dumb-broker model only works if <strong>clients converge from the ordered log</strong> — so <em>any</em> nondeterministic
@@ -4598,7 +4653,7 @@ that carries it, the acceptance witness, and the <strong>honest residual</strong
 <td>T3 / W-PERSIST</td>
 <td>self-securing log + email durability; <code>navigator.storage.persist()</code> requested on first load</td>
 <td><code>persisted=true</code>; export→wipe→import → <code>replay-hash == pre-export hash</code></td>
-<td>shared browser gap — mitigated, not magicked</td>
+<td>shared browser limitation — mitigated, not eliminated</td>
 </tr>
 <tr>
 <td>Lost phone / local copy</td>
@@ -4766,14 +4821,14 @@ that carries it, the acceptance witness, and the <strong>honest residual</strong
 <td>T1 / G-IDENTITY</td>
 <td><strong>edge-minted UUID PK</strong> (not numeric seq); identity is an op input</td>
 <td>two devices' logs union with <strong>no PK clash</strong></td>
-<td><strong>LANDED in the kernel</strong> — <code>ERP.md §0.21</code>, witness <code>§IDENTITY</code> (<code>poc_identity.js</code>): natural-key <code>docKey</code>/<code>lineKey</code> retired, replay re-reads recorded ids (<code>edgeMintCalls=0</code>)</td>
+<td>Implemented in the kernel (<a href="../ERP/#021-g-identity-wired-into-the-kernel--identity-is-an-input-never-computed-2026-06-01-spec--identity">ERP.md §0.21</a>, witness <code>§IDENTITY</code> / <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_identity.js">poc_identity.js</a>): natural-key <code>docKey</code>/<code>lineKey</code> retired; replay re-reads recorded ids (<code>edgeMintCalls=0</code>)</td>
 </tr>
 <tr>
 <td>Schema migration to N offline clients</td>
 <td>(shared hard)</td>
 <td>compiled-AD <strong>manifest</strong> + forward-only / frozen-effects replay</td>
 <td>old ops replay to original effect (frozen)</td>
-<td><strong>stays hard — honest partial, no magic</strong></td>
+<td>an open problem across the category; partial mitigation only</td>
 </tr>
 </tbody>
 </table>
@@ -4813,68 +4868,72 @@ that carries it, the acceptance witness, and the <strong>honest residual</strong
 </tbody>
 </table>
 <hr />
-<h2 id="10-how-we-differ-on-this-turf">10. How we differ on this turf<a class="headerlink" href="#10-how-we-differ-on-this-turf" title="Permanent link">&para;</a></h2>
-<p>Per <code>LocalFirstPriorArt.md</code> (deep-dive there; summary here). The field's common tax: <strong>server and client run
-different code</strong>, so they hand-code conflict logic, overwrite optimistic state, or implement business logic
-twice. Our lever — <strong>deterministic semantic verbs, one kernel both sides</strong> — waives it.</p>
+<h2 id="10-comparison-with-related-systems">10. Comparison with related systems<a class="headerlink" href="#10-comparison-with-related-systems" title="Permanent link">&para;</a></h2>
+<p>Detailed in <a href="../LocalFirstPriorArt/">LocalFirstPriorArt.md</a>; summarised here. A recurring constraint in
+local-first systems is that server and client run different code, which leads implementations to hand-code
+conflict logic, overwrite optimistic state, or implement business logic twice. The approach here —
+deterministic semantic verbs, with one kernel on both sides — avoids that constraint. The table states each
+system's approach, its documented limitation, and the corresponding difference here; sources are cited in
+<a href="../LocalFirstPriorArt/">LocalFirstPriorArt.md</a>.</p>
 <table>
 <thead>
 <tr>
-<th>Player</th>
-<th>Their anchor / approach</th>
-<th>Their documented weakness</th>
-<th>How we differ</th>
+<th>System</th>
+<th>Approach</th>
+<th>Documented limitation</th>
+<th>Difference here</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Replicache</strong></td>
-<td>server <strong>re-runs</strong> mutations as authority</td>
-<td>docs admit server may not compute the same result → optimistic state <strong>overwritten</strong>; conflict logic per-mutator; <strong>no offline-only mode</strong></td>
-<td>determinism removes divergence (no overwrite case); we <em>do</em> have true offline-only</td>
+<td><a href="https://doc.replicache.dev/">Replicache</a></td>
+<td>server re-runs mutations as the authority</td>
+<td>the server may not compute the same result, so optimistic state can be overwritten; conflict logic is per-mutator; no offline-only mode</td>
+<td>determinism removes the divergence case; offline-only operation is supported</td>
 </tr>
 <tr>
-<td><strong>ElectricSQL</strong></td>
-<td>read-path sync only; <strong>writes via your own API</strong></td>
-<td>explicit <em>retreat</em> — bidirectional sync "fundamentally difficult"; two disjoint paths; Postgres + SUPERUSER</td>
-<td>the op-log is <strong>symmetric</strong> — push-ops <em>are</em> the read-ops; one model, no Postgres coupling</td>
+<td><a href="https://electric-sql.com/">ElectricSQL</a></td>
+<td>read-path sync; writes go through the application's own API</td>
+<td>bidirectional sync documented as "fundamentally difficult"; two disjoint paths; requires Postgres with SUPERUSER</td>
+<td>the op-log is symmetric — push-ops are the read-ops; one model, no Postgres coupling</td>
 </tr>
 <tr>
-<td><strong>PowerSync</strong></td>
-<td>Postgres→SQLite; <strong>writes through your backend</strong></td>
-<td>you implement write-side logic + conflict resolution <strong>twice</strong> (client + server)</td>
-<td>our deterministic kernel <strong>is</strong> the write path — authored once, run both sides</td>
+<td><a href="https://powersync.com/">PowerSync</a></td>
+<td>Postgres→SQLite; writes routed through the backend</td>
+<td>write-side logic and conflict resolution are implemented twice (client and server)</td>
+<td>the deterministic kernel is the write path, authored once and run on both sides</td>
 </tr>
 <tr>
-<td><strong>LiveStore</strong></td>
-<td>event-sourced, SQLite-materialised (nearest neighbour)</td>
-<td>BETA; needs a sync-provider; "no built-in auth," "doesn't scale unbounded," "no P2P"</td>
-<td>conceptually identical at the data layer (<strong>no technique novelty</strong>); we differ at the <em>application</em> level (BIM⊕ERP, AD→5-table reduction, batteries-included)</td>
+<td><a href="https://livestore.dev/">LiveStore</a></td>
+<td>event-sourced, SQLite-materialised (the nearest neighbour)</td>
+<td>beta; requires a sync provider; no built-in auth; documented scale and P2P limits</td>
+<td>identical at the data layer (no technique novelty); the difference is at the application level (combined BIM and ERP, AD→5-table reduction)</td>
 </tr>
 <tr>
-<td><strong>CRDTs</strong> (Automerge/Yjs)</td>
-<td>guaranteed convergence, no referee</td>
-<td>literature: "cannot enforce invariants that depend on the latest version"; no access control</td>
-<td>we need only the <strong>degenerate CRDT</strong> (grow-only op-set + total-order + replay); invariants are enforced by the <strong>deterministic kernel</strong>, not the CRDT</td>
+<td>CRDTs (<a href="https://automerge.org/">Automerge</a>/<a href="https://yjs.dev/">Yjs</a>)</td>
+<td>guaranteed convergence with no referee</td>
+<td>per the literature, cannot enforce invariants that depend on the latest version; no access control</td>
+<td>only a degenerate CRDT is needed (grow-only op-set + total order + replay); invariants are enforced by the deterministic kernel, not the CRDT</td>
 </tr>
 </tbody>
 </table>
-<p><strong>The CRDT reframe (why reconciliation is <em>easier</em>, not harder).</strong> Because the fact is a fold over an
-append-only log, "merge" is <code>union → verify-signatures → order → replay</code>. For the 90% single-writer it is
-<em>trivial</em> (disjoint entities); for derived quantities it is <em>addition</em> (a PN-counter, free); for the one
-contended op-class we use <strong>total-order + owner-gating</strong> — exactly the "server-authoritative sequencing for
-invariants" the CRDT literature itself prescribes. The field's CRDT pain ("converges but breaks invariants →
-hand-code per type") we answer with the kernel we already run. The honest price: determinism must hold
-<em>perfectly</em> (pre-paid by the prime directive), semantic seams still need the owner-node (few, not per-type),
-and <strong>schema migration stays hard</strong> (shared, no magic).</p>
-<p><strong>What we are NOT first at (the honest floor on claims).</strong> SQLite-in-WASM (sql.js 2012; official WASM/OPFS
-2022; wa-sqlite) — <em>old</em>. Local-first ERP as a category (LiveStore/Electric/Replicache/RxDB) — <em>old</em>; ERP.md
-§0.20: "No 'first' on the mechanism." "Replace <strong>any</strong> database app" — <em>false</em> (full-dataset download,
-eviction, unbounded-scale, no built-in auth are documented limits; not for multi-TB analytics or
-high-concurrency OLTP at scale). <strong>We did not invent SQLite-WASM, local-first, op-logs, CRDTs, or
-hash-chains.</strong></p>
-<p><strong>What is defensibly ours — <em>to our knowledge</em>, combination-not-technique</strong> (consistent with <code>ERP.md</code>
-:979-990; cannot prove a negative):
+<p><strong>Reconciliation cost.</strong> Because a fact is a fold over an append-only log, a merge is
+<code>union → verify signatures → order → replay</code>. For single-writer cases (≈90%) it is trivial (disjoint
+entities); for derived quantities it is addition (a PN-counter); for the one contended op-class it uses
+total order plus owner-gating — the same server-authoritative sequencing the CRDT literature prescribes for
+invariant-bearing state. The cost: determinism must hold exactly (the prime directive), semantic seams still
+require an owner node (few, not per-type), and schema migration remains an open problem (shared across the
+category).</p>
+<p><strong>Limits on novelty claims.</strong> SQLite-in-WASM (sql.js, 2012; official WASM/OPFS, 2022; wa-sqlite) is
+established. Local-first as a category (LiveStore, ElectricSQL, Replicache, RxDB) is established
+(<a href="../ERP/#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet">ERP.md §0.20</a>:
+no novelty on the mechanism). "Replace any database app" would be incorrect: full-dataset download, browser
+eviction, unbounded scale, and built-in auth are documented limits, and this is not intended for multi-TB
+analytics or high-concurrency OLTP at scale. SQLite-WASM, local-first, op-logs, CRDTs, and hash-chains are
+all prior work, not contributions of this project.</p>
+<p><strong>What is specific to this project — to the authors' knowledge, a combination rather than a technique</strong>
+(consistent with <a href="../ERP/#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet">ERP.md §0.20</a>;
+the absence of prior art cannot be proven):
 1. <strong>BIM geometry + ERP transactions under one op-log / one kernel</strong> (BIM undo == ERP audit) — no prior art found.
 2. <strong>The domain reduction</strong> — iDempiere AD (925 tables, <code>M*</code> classes) → <strong>5 tables + deterministic verbs</strong>.
 3. <strong>The doctrine</strong> (§0) — fact-is-a-fold, secure-the-fact, business-time, the non-solution floor — a coherent
@@ -4898,49 +4957,47 @@ short forms for the persistence/ownership axis: <em>"Data is truth; the signed l
 both."</em> / <em>"User-owned. Server-less. Ledger-reconciled."</em> / <em>"No server of record — the user's own log is."</em>
 Keystones: <em>determinism earns business-time</em>; <em>self-securing facts terminate the regress</em>.</p>
 </blockquote>
-<p><strong>Sources / cross-refs:</strong> <code>ERP.md §0.20</code> (phase + witnesses W-CHAIN/SIGN/PERSIST/OWNER) ·
-<code>LocalFirstPriorArt.md</code> (Replicache/ElectricSQL/PowerSync/LiveStore/CRDTs, per-system deep-dive) ·
-<code>scripts/erp_kernel.js</code> + <code>poc_kernel.js</code> + <code>poc_longtail.js</code> (<code>replay-hash == live-hash</code>, browser binding) ·
-<code>SpatialERP_OOTB.md §11.5</code> · iDempiere <code>M_Transaction</code> / <code>M_StorageOnHand</code> / <code>M_StorageReservation</code> /
-<code>M_Movement</code>.</p>
+<p><strong>Sources / cross-refs:</strong> <a href="../ERP/#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet">ERP.md §0.20</a>
+(phase + witnesses W-CHAIN/SIGN/PERSIST/OWNER) ·
+<a href="../LocalFirstPriorArt/">LocalFirstPriorArt.md</a> (Replicache/ElectricSQL/PowerSync/LiveStore/CRDTs, per-system
+analysis) · <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/erp_kernel.js">scripts/erp_kernel.js</a>
++ <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_kernel.js">poc_kernel.js</a>
++ <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_longtail.js">poc_longtail.js</a>
+(<code>replay-hash == live-hash</code>, browser binding) · <a href="../SpatialERP_OOTB/">SpatialERP_OOTB.md §11.5</a> ·
+iDempiere <code>M_Transaction</code> / <code>M_StorageOnHand</code> / <code>M_StorageReservation</code> / <code>M_Movement</code>.</p>
 <hr />
-<h2 id="12-positioning-git-not-chain-notes-to-remember-from-the-design-dialogue">12. Positioning — git, not chain (notes to remember from the design dialogue)<a class="headerlink" href="#12-positioning-git-not-chain-notes-to-remember-from-the-design-dialogue" title="Permanent link">&para;</a></h2>
-<p>Kept so the framing survives the session that produced it.</p>
-<p><strong>Blockchain? No — git.</strong> We borrow blockchain's <em>data structure</em> (a hash-chained, signed, append-only log
-— W-CHAIN/W-SIGN) and reject its <em>machinery</em> (consensus / PoW / PoS / global replication / tokens).
-Blockchain pays enormous cost for <strong>trustless agreement among mutually-distrusting adversaries over one
-global state.</strong> ERP does not pose that problem: physics partitions the writers (§2), the business sets the
-cadence (Truth 2), accounting reconciles the rest (§8). So we keep the cheap part (the signed chain) and drop
-the expensive part (consensus for adversaries who aren't there). We are <strong>trust-anchored local-first</strong> (a
-signing key + a dumb sequencer), not <strong>trustless consensus</strong> — and <strong>P2P-<em>capable<em>, not P2P-</em>dependent</em></strong>
-(single-user is one device; multi-party <em>may</em> exchange signed logs peer-to-peer, but the facilitator is an
-optional relay, §6). Same move as the floor (Truth 4): <em>blockchain solves a problem ERP mostly doesn't have.</em></p>
-<p><strong>Why the field didn't land here — framing, not capability.</strong> Replicache / ElectricSQL / PowerSync /
-LiveStore build <strong>general</strong> sync infrastructure, where the server is genuinely needed (a general tool cannot
-assume physics partitions the data). We are an <strong>application</strong> that exploited <strong>domain-specific</strong> structure
-to dissolve the hard parts. They asked <em>"how do we make general sync work?"</em>; we asked <em>"what does ERP
-specifically not need?"</em> Every piece (event-sourced SQLite, hash chains, CRDTs) was on the table — the
-synthesis was a <strong>reframe, not a new primitive</strong>.</p>
-<p><strong>What's actually defensible (the honest moat).</strong> <em>Not</em> the technique — SQLite-WASM, local-first, op-logs,
-CRDTs, hash chains are all mature (§10). Defensible <em>to our knowledge</em>: the <strong>unification</strong> (BIM geometry +
-ERP transactions under one op-log, BIM undo == ERP audit) + the <strong>doctrine</strong> (§0) + the <strong>running substrate</strong>
-(a deterministic kernel, a real iDempiere AD extraction, a shipping BIM op-log). The idea is public and
-<em>should</em> spread — adoption is validation and name-exposure; the moat is <strong>substrate + product +
-first-articulation</strong>, not the idea. (AI accelerates whoever holds the domain depth and the substrate — a
-<em>multiplier</em>, not the <em>multiplicand</em>; everyone has the multiplier.) <em>An idea others race to adopt is an idea
-that was right.</em></p>
-<p><strong>The bittersweet line that says it best.</strong> <em>"500 years of double-entry, finally version-controlled."</em> The
-ledger was always an append-only log; git and SQLite-WASM existed for a decade; the synthesis was almost
-obvious in hindsight — which is exactly why it spreads, and why it should carry our name.</p>
+<h2 id="12-relationship-to-blockchain-and-to-general-purpose-sync">12. Relationship to blockchain and to general-purpose sync<a class="headerlink" href="#12-relationship-to-blockchain-and-to-general-purpose-sync" title="Permanent link">&para;</a></h2>
+<p><strong>Blockchain: shared data structure, different problem.</strong> This design uses blockchain's data structure — a
+hash-chained, signed, append-only log (W-CHAIN/W-SIGN) — but not its consensus machinery (proof-of-work or
+-stake, global replication, tokens). That machinery buys trustless agreement among mutually distrusting
+parties over a single global state. ERP does not pose that problem: physics partitions the writers (§2), the
+business sets the cadence (Truth 2), and accounting reconciles the remainder (§8). The signed append-only log
+is retained; the consensus layer is not required. The model is <strong>trust-anchored local-first</strong> (a signing key
+plus a sequencer), not trustless consensus — and <strong>P2P-capable rather than P2P-dependent</strong>: single-user is
+one device, multi-party exchange of signed logs is possible, and the facilitator (§6) is an optional relay. A
+closer analogy than blockchain is version control (git): a content-addressed, append-only history any
+participant can hold and reconcile.</p>
+<p><strong>Why general-purpose frameworks centralise more.</strong> Replicache, ElectricSQL, PowerSync, and LiveStore build
+<em>general</em> sync infrastructure, where a server is genuinely necessary because a general tool cannot assume the
+domain partitions the data. This project is an <em>application</em> that uses domain-specific structure — location,
+ownership, cadence — to remove the parts a general tool must keep. The components involved (event-sourced
+SQLite, hash chains, CRDTs) are all established; the difference is the synthesis, not a new primitive (§10).</p>
+<p><strong>Scope of any novelty claim.</strong> The technique is not novel (§10). What is specific to this project, to the
+authors' knowledge, is the combination: BIM geometry and ERP transactions under one op-log (BIM undo and ERP
+audit are the same mechanism), the design principles in §0, and a running substrate — a deterministic kernel,
+a real iDempiere AD extraction, and a BIM op-log. This is a claim about combination and placement, not about
+any underlying technique, and is stated subject to the limit that the absence of prior art cannot be proven.
+In summary: the ledger is an append-only log, and git and SQLite-WASM are long-established; the work here is
+the synthesis — applying that log structure to ERP transactions and BIM geometry under one kernel.</p>
 <hr />
 <h2 id="13-sharding-the-engine-by-gravity-what-arrives-and-when-2026-06-01-spec">13. Sharding the engine by gravity — what arrives, and when (2026-06-01, SPEC)<a class="headerlink" href="#13-sharding-the-engine-by-gravity-what-arrives-and-when-2026-06-01-spec" title="Permanent link">&para;</a></h2>
 <p>§2 partitions the <strong>transaction data</strong> by where atoms physically are. This section partitions the <strong>engine
-itself</strong> — the dictionary (925 AD tables → cells → verbs → FK spines, ERP.md §12) — for the client that must
+itself</strong> — the dictionary (925 AD tables → cells → verbs → FK spines, <a href="../ERP/">ERP.md</a> §12) — for the client that must
 hold it. The two are <strong>orthogonal axes of the same root</strong> (§7, <em>identity/inputs recorded, never recomputed</em>):
 §2 is <em>where the goods are</em>, §13 is <em>which of the engine you've pulled down yet</em>.</p>
 <p><strong>The problem, stated honestly.</strong> The full AD is too big to ship whole to a browser, and the naïve fix
 (stream every table) makes the first paint wait on the long tail. But you never need it whole <em>at once</em> —
-and the engine already tells you what matters: <strong>op-log gravity</strong> (ERP.md §0.6/§0.13/§0.17) self-ranks the
+and the engine already tells you what matters: <strong>op-log gravity</strong> (<a href="../ERP/">ERP.md</a> §0.6/§0.13/§0.17) self-ranks the
 cells by real mass (<code>C_Invoice</code> #1 = the settlement spine). So don't shard by schema; <strong>shard by gravity</strong>,
 and stream shards <em>on approach</em> — the same doctrine as BIM geometry DLOD, with one substitution.</p>
 <blockquote>
@@ -4962,19 +5019,19 @@ traversal</em>:</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>per-module</strong></td>
+<td>per-module</td>
 <td>iDempiere's own packaging</td>
-<td>❌ modules cut <em>across</em> gravity (one "module" mixes hot + cold cells) → pull one hot cell, over-fetch its cold module-mates</td>
+<td>Rejected — modules cut <em>across</em> gravity (one module mixes hot and cold cells), so pulling one hot cell over-fetches its cold module-mates</td>
 </tr>
 <tr>
-<td><strong>per-gravity-band</strong></td>
-<td>a contiguous gravity slice <strong>+ its explicit 1-hop FK closure</strong></td>
-<td>workable, but <strong>coarser than needed</strong> — it bundles by hand a closure that gravity already encodes; you ship cold band-mates you may never touch</td>
+<td>per-gravity-band</td>
+<td>a contiguous gravity slice plus its explicit 1-hop FK closure</td>
+<td>Workable but coarser than needed: it bundles by hand a closure that gravity already encodes, shipping cold band-mates that may never be touched</td>
 </tr>
 <tr>
-<td><strong>smart per-table</strong> ✅</td>
-<td>one AD table per shard, the manifest <strong>ranked by op-log gravity</strong></td>
-<td>finest grain, zero over-fetch — and <em>no dangling trace</em>, because <strong>gravity is itself a fold over op-log traversal, which crosses FKs</strong>: a hot table's frequently-walked neighbours therefore <em>co-rank</em> and arrive alongside it. The closure self-bundles; it isn't bolted on</td>
+<td>per-table, gravity-ranked</td>
+<td>one AD table per shard, the manifest ordered by op-log gravity</td>
+<td><strong>Chosen.</strong> Finest grain, no over-fetch, and no dangling trace: gravity is itself a fold over op-log traversal, which crosses FKs, so a hot table's frequently-walked neighbours co-rank and arrive alongside it. The closure is implied by the ranking rather than added separately</td>
 </tr>
 </tbody>
 </table>
@@ -4984,23 +5041,23 @@ FK spines (§0.6/§0.13 — derivation green, settlement amber), a table and the
 naturally — the band machinery was solving a problem the gravity score had already solved. The rare,
 genuinely-cold FK is the <em>stub</em> case below, not a reason to coarsen the unit. This is the engine analogue of a
 DLOD level — "the N nearest tables," where <em>near</em> = op-log mass, not metres. <strong>Tier 0 = the top-gravity
-tables</strong> (<code>C_Invoice</code> #1, the O2C/P2P spine) — the prefetched <code>&lt;300ms</code> <code>initbubble.json</code> (ERP.md
-instant-globe). The 155 dormant cold cells (ERP.md §0.11 <em>housed-vs-active</em>) sit at the bottom of the
+tables</strong> (<code>C_Invoice</code> #1, the O2C/P2P spine) — the prefetched <code>&lt;300ms</code> <code>initbubble.json</code> (<a href="../ERP/">ERP.md</a>
+instant-globe). The 155 dormant cold cells (<a href="../ERP/">ERP.md</a> §0.11 <em>housed-vs-active</em>) sit at the bottom of the
 ranking — present in the manifest, <strong>fetched only on touch</strong>.</p>
 <p><strong>The manifest is a fold over the log (no new infrastructure, §6).</strong> Gravity is an aggregation over
-<code>kernel_ops</code> (count / <code>grandtotal</code>, ERP.md §0.6 analytical substrate) — computed <strong>offline, deterministically</strong>
+<code>kernel_ops</code> (count / <code>grandtotal</code>, <a href="../ERP/">ERP.md</a> §0.6 analytical substrate) — computed <strong>offline, deterministically</strong>
 (no <code>Date.now</code>/<code>Math.random</code>, §7). The shard manifest is just that fold — every table with its gravity rank.
 The <strong>dumb post office</strong> that already orders + persists + fans out the op-log (§6) serves the tables too:
 <em>pull = "give me table T."</em> No authority, no business logic server-side — and because the log is deterministic
 (§7), a client <strong>verifies a shard's content hash against the ordered log</strong> rather than trusting it. A shard is
 <em>checked, not believed</em> — the same stance W-CHAIN takes on ops (§9-B).</p>
-<p><strong>The fetch trigger — lazy, gravity-cached, with a feedback loop (ERP.md §0.10).</strong> A table is pulled when the
+<p><strong>The fetch trigger — lazy, gravity-cached, with a feedback loop (<a href="../ERP/">ERP.md</a> §0.10).</strong> A table is pulled when the
 user <em>moves toward</em> a not-yet-resident cell: clicks a cold bubble, follows an FK spine into an unfetched table,
 or scans a code (§2 <em>the scan is the op</em>) that references a cold doc-type. Once fetched, a table stays resident
 and <strong>its access bumps its own gravity</strong> (the §0.6 op-log feedback loop) — so next session's tier 0 reflects
 <em>this</em> operator's real usage, not a static default. The cache warms toward the work.</p>
 <p><strong>The honest edge — a stub, never an invention.</strong> An FK followed <em>before</em> its target table is resident draws a
-<strong>stub bubble</strong> (<code>cold — fetching</code>), not a guessed or stale value — extract-only, never-invent (ERP.md §0.17).
+<strong>stub bubble</strong> (<code>cold — fetching</code>), not a guessed or stale value — extract-only, never-invent (<a href="../ERP/">ERP.md</a> §0.17).
 The fetch resolves it in place. This is exactly S285's invisible-bbox frontier (place the marker, stream the
 content) carried onto the engine graph. <strong>No silent truncation:</strong> the stub is visible and logged, so "I
 haven't pulled that yet" can never masquerade as "that's all there is."</p>
