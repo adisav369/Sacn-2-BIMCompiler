@@ -26,6 +26,27 @@ AD tree.
 
 ---
 
+## Companion documents (the ERP map)
+
+The secured/distributed thinking and its proofs live in dedicated sub-docs — read in this order:
+
+| Doc | What it holds |
+|---|---|
+| **[DistributedERP.md](DistributedERP.md)** | The contention map — the **two truths** + *server→serverless* mapping (§0), normal multi-POS day (§3), the guard set (§4), the one real-time op-class (§5), the **dumb facilitator** (§6), determinism (§7), accounting-as-reconciler (§8), the **edge-scenario adversarial suite** (§9), **how we differ on this turf** (§10). |
+| **[LocalFirstPriorArt.md](LocalFirstPriorArt.md)** | How Replicache / ElectricSQL / PowerSync / LiveStore / CRDTs do it — their documented weaknesses, our deterministic-verbs-both-sides lever, the honest shared pain. |
+| **[EnablingTechTimeline.md](EnablingTechTimeline.md)** | The cited technology timeline — what made this possible when; the two compasses. |
+| **[SpatialERP_OOTB.md](SpatialERP_OOTB.md)** | Spatial ERP — the browser-only ERP replacing iDempiereOOTB; §11.5 inventory/movement model. |
+| **[BOM_ENGINE_SPEC.md](BOM_ENGINE_SPEC.md)** · **[DATA_MODEL.md](DATA_MODEL.md)** | The BOM recipe engine (the verb that compiles a building *and* backflushes a POS sale) + the 5-table bridge. |
+
+**Proofs (spec-first, witness-led — `replay-hash == live-hash`, browser sql.js binding):**
+- **[prompts/DISTRIBUTED_POC.md](../prompts/DISTRIBUTED_POC.md)** — the POC work-order + `# DONE` ledger. All 6 in-process witnesses 🟢: W-CHAIN, Merge/G-IDENTITY, W-OWNER/CAS, W-SIGN, W-PERSIST/email-recovery, lease-expiry/value-tiering.
+- **[scripts/erp_kernel.js](../scripts/erp_kernel.js)** — the deterministic kernel; witnesses `poc_kernel.js` / `poc_longtail.js`.
+- The §9 witnesses, each doubling as the spec for its production change: **[poc_chain.js](../scripts/poc_chain.js)** · **[poc_distributed.js](../scripts/poc_distributed.js)** · **[poc_sign.js](../scripts/poc_sign.js)** · **[poc_persist.js](../scripts/poc_persist.js)** · **[poc_policy.js](../scripts/poc_policy.js)**. W-CHAIN is **live** in `bim-ootb/viewer/kernel_ops.js` (`sealChain`/`verifyChain`/`setSigner`, v5).
+
+See **§0.20** below for the phase frame (witnesses W-CHAIN/W-SIGN/W-PERSIST/W-OWNER, UI POC frozen).
+
+---
+
 ## The Underlying Structure — an appraisal for the iDempiere mind
 
 > *If you come from iDempiere, you already believe the radical half of this idea.*
@@ -956,17 +977,23 @@ boundary between them:
 
 - **UI domain (instant, optimistic, offline)** — the proven POC. Every action commits an op locally and the
   projection updates at **0ms**; the user never waits on the network. Unchanged from today.
-- **Server domain (trusted, secured, async)** — receives pushed ops, **validates / re-runs / signs** them
-  as the authority (the Replicache pattern: the server re-executes mutations; PowerSync/ElectricSQL mirror
-  RLS into sync), then returns authoritative state. Enforcement, tamper-validation, and multi-user
-  reconciliation live *here*, off the UI's critical path.
+- **Server domain (a dumb facilitator, async)** — *not* a re-running authority. It **accepts** pushed ops
+  (append-only), **assigns a total order** (the one thing that must be centralised), and **persists + fans
+  out**. It runs **no business logic** — determinism (§0.16) makes server re-execution redundant: clients
+  replay the ordered log to identical state, so there is no "server disagrees → overwrite" case (the
+  Replicache tax). *Signing is at the edge* (the user/merchant key, W-SIGN); *enforcement is the deterministic
+  kernel on every client* (non-owner ops rejected on replay, G-SINGLE-WRITER); *the facilitator only
+  sequences.* See `docs/DistributedERP.md §6` (facilitator-not-actor) + §10 (why this differs from
+  Replicache/PowerSync/ElectricSQL, which DO re-run/route writes through a backend).
 
 Because the seam is **asynchronous**, security does **not** cost instant UX — the two domains "work together
 while the UI keeps its instant experience, in a secured universe." This refines §0.18(d): the zero-server
-moat narrows only to *"single-user/offline runs with no server at all; secured multi-user adds a trusted
-async authority"* — it does **not** trade away the 0ms feel, because the UI domain is never gated on the
-server domain. The op-log is already the right payload for this (push = new ops, pull = authoritative ops);
-the designated-owner node (§18.7) is the server domain's reconcile role.
+moat narrows only to *"single-user/offline runs with no server at all; secured multi-user adds a thin
+async **facilitator** (order + persist + relay) — not a trusted compute authority"* — it does **not** trade
+away the 0ms feel, because the UI domain is never gated on the facilitator. The op-log is already the right
+payload (push = new ops, pull = the ordered/total-ordered log); the designated-owner node (§18.7) is a
+*client* role (the owner-gating that runs on replay), not a server that recomputes. *(The fact is a fold over
+the ordered log; the facilitator orders, the clients fold — `DistributedERP.md §0`.)*
 
 **Residual honesty.** Server-grade security/tamper-resistance still **cannot** be done purely client-side —
 the *secured* universe is the server domain doing the validating/signing; user-held keys give offline

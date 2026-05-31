@@ -88,9 +88,9 @@ PowerSync, and ElectricSQL at once.
 | Industry weakness (RxDB) | Their exposure | Our angle |
 |---|---|---|
 | **Initial full-dataset download** | must replicate whole dataset to client | **Already solved** — split-DB streaming (positions/metadata/geometry tiers; `initbubble.json` 2KB) → lazy fetch, never download all |
-| **Non-persistent storage** (Safari evicts after 7 days) | universal browser gap | Mitigate same way: `navigator.storage.persist()` + op-log as cache, **cloud = source of truth** (W-PERSIST). Shared gap, no magic |
+| **Non-persistent storage** (Safari evicts after 7 days) | universal browser gap | Mitigate same way: `navigator.storage.persist()` + the signed op-log spilled to **any durable replica** — cloud *or* the user's own email/social (`DistributedERP.md §5.2b`). **The source of truth is the signed log itself, not a host** — determinism replays any replica to identical state, so the local copy is disposable (W-PERSIST). Shared gap, no magic |
 | **Conflict resolution complexity** | hand-rolled per collection | Semantic op-CRDT + owner node (§18.7) — concentrated at few seams, not per-collection |
-| **Eventual consistency unsafe for finance** | "risk in banking/financial apps" | **The reason for the secured server domain** — money-touching invariants route through the authority; single-user offline is safe (one writer). We do **not** pretend offline multi-writer finance is safe |
+| **Eventual consistency unsafe for finance** | "risk in banking/financial apps" | money-touching invariants are **serialised at the one total-order / CAS seam** (`DistributedERP.md §5-6`) + enforced by the deterministic kernel on replay — **not** routed through a re-running server; single-user offline is safe (one writer). We do **not** pretend offline multi-writer finance is safe |
 | **Schema migration to N offline clients** | "weeks-long unpredictable windows" | Partial lever: compiled-AD **manifest** (recompile UI structure) + **forward-only rules / frozen-effects** replay (§0.16). **Shared hard problem — honest about it** |
 | **No SQL joins / relational limits** | document-CRDT systems can't join | **We are stronger here** — sql.js is real SQLite: full joins + FK (the AD/BOM spine). Native relational, not a document store |
 
