@@ -20,10 +20,12 @@
 
 ## Active Work — Browser BIM OOTB
 
-**SETTINGS / 4D SCHEDULE (2026-05-31): READ-ONLY schedule showcase + Settings-panel fixes, DEPLOYED live (sw v554).** (spec: `prompts/SETTINGS_JSON_EDITOR.md`; memory: [[project_settings_json_editor]])
-  - **PR #68:** Settings → "4D Schedule (this building)" opens native IFC `IfcWorkSchedule` read-only. `panels.js _projectSchedule()` = CAPTURED provider → contract `Project + Phases[]` (Ceiling/TOS→Level, span=own structural span, elements=count). Hospital 2.0 = captured 2900 / 10 phases. Contract jointly owned w/ gantt-support-gate session (`internal/schedule_instance.template.json`). `test_schedule_projector` 10/10 on real `Hospital 2.0_meta.db`.
+**SETTINGS / 4D SCHEDULE (2026-05-31): READ-ONLY schedule showcase (both providers) + Settings-panel fixes, DEPLOYED live (sw v556).** (spec: `prompts/SETTINGS_JSON_EDITOR.md`; memory: [[project_settings_json_editor]])
+  - **PR #68:** Settings → "4D Schedule (this building)" read-only, contract `Project + Phases[]` (`internal/schedule_instance.template.json`, jointly owned w/ gantt-support-gate session). `panels.js _projectSchedule()` = **CAPTURED provider** — native IFC `IfcWorkSchedule` (`tasks`/`task_elements`), Ceiling/TOS→Level, span=own structural span. Hospital 2.0 = captured 2900 / 10 phases. `test_schedule_projector` 10/10 on real `Hospital_meta.db`.
+  - **PR #76 (v556):** `_projectGenerated()` = **GENERATED provider** — dropped IFCs (e.g. LTU) have NO native 4D; the support-gate fallback writes the instance to `kernel_ops` (ELEMENT_PLACE) and TM plays it. When captured is empty, project `kernel_ops` into the SAME contract: storey-grouped (Ceiling/TOS collapsed), `source` generated/captured/mixed (from `_captured` overlay). `test_schedule_generated` 8/8. Honest "open TM" note only when kernel_ops also empty.
   - **settings_editor.js:** `opts.readonly` (§PROPSHEET_READONLY writable=0); recursive `children[]` view handler (DORMANT — needs contract `children[]`); `__labelKey`/`__summary` display directives.
   - **PR #70/#71/#73:** fixed `_openSettingsPanel` (hidden until 2nd click) + `_makeDraggable` (measure.js) — capture pointer only after >4px move, release via capture-phase pointerup; fixes section-fold AND "panel sticks to cursor". Benefits ALL draggable panels. Verified LIVE via Playwright real clicks.
+  - **OPEN (pre-existing, cosmetic):** `§PANEL_FOCUS` stack churn — every panel double-registered (`createPanel`'s `_registerPanel` dash-stripped id + `InputReg.register` fixed id) + not popped on close. Fix = single id + pop-on-close in `scene.js`/`input_registry.js` (all-panels blast radius, deferred).
   - **NEXT (Phase 2, parked):** editable schedule → `schedule_override` DB table, captured rows protected.
 
 **GLASSBOWL — engine-as-data explorer (2026-05-30): LIVE read-only MVP + interactive.** (spec: `docs/GLASSBOWL.md`; Phase 2 spec: `docs/GLASSBOWL_DOSSIER.md`)
