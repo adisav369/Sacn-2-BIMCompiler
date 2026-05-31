@@ -556,8 +556,81 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   check(abClosed, 'MOBILE: the About panel has a close (✕) that dismisses it', 'closed=' + abClosed);
   await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
 
-  // ── W-UNTANGLE (LAST — it permanently moves bubbles): the routine widens the avg smallest angle between
-  //    incident edges (small angle = bunching), and bubbles stay movable. Run after all position-based checks. ──
+  // ════════════════════════════════════════════════════════════════════════════════
+  //  Feature 1 — W-COMET: tracing order 101 spawns a comet that becomes visible (opacity>0) on the
+  //  lit chain, WHILE the chain still lights exactly 5 bubbles (existing check stays green) and edge
+  //  counts are unchanged (the comet is an HTML overlay div, NOT an SVG circle/line).
+  //  Issue it proves: "the trace spawns a moving glowing marker that walks the chain without disturbing
+  //  the structural node/edge graph". ──
+  await page.evaluate(() => { window.setTrace(false); document.getElementById('resetBtn').click(); try { localStorage.clear(); } catch (e) {} });
+  await page.waitForTimeout(40);
+  const cometExists = await page.locator('#comet').count();
+  check(cometExists === 1, 'W-COMET: the comet overlay element exists (HTML div, not an SVG edge/node)', 'comet=' + cometExists);
+  const edgesBeforeComet = await page.locator('#svg line').count();
+  const circlesBeforeComet = await page.locator('#svg circle').count();
+  await page.evaluate(() => window.setTrace(true));   // trace order 101 → comet should start walking
+  await page.waitForSelector('#strip.open', { timeout: 4000 }).catch(() => {});
+  const cometVisible = await page.waitForFunction(() => {
+    const c = document.getElementById('comet');
+    if (!c) return false;
+    const op = parseFloat(getComputedStyle(c).opacity || '0');
+    return c.classList.contains('on') && op > 0;
+  }, { timeout: 4000 }).then(() => true).catch(() => false);
+  check(cometVisible, 'W-COMET: tracing order 101 spawns a comet that becomes visible (opacity>0)', 'visible=' + cometVisible);
+  const litWithComet = await page.evaluate(() => [...document.querySelectorAll('#svg circle')].filter(c => +c.getAttribute('fill-opacity') === 1).length);
+  check(litWithComet === 5, 'W-COMET: the chain still lights exactly 5 bubbles (comet does not disturb the trace)', 'lit=' + litWithComet);
+  const edgesAfterComet = await page.locator('#svg line').count();
+  const circlesAfterComet = await page.locator('#svg circle').count();
+  check(edgesAfterComet === edgesBeforeComet && circlesAfterComet === circlesBeforeComet, 'W-COMET: edge/node counts unchanged (the comet is a pure overlay, not a structural edge)', 'edges ' + edgesBeforeComet + '→' + edgesAfterComet + ' circles ' + circlesBeforeComet + '→' + circlesAfterComet);
+  const cometLog = logs.find(l => /§COMET hops=/.test(l)) || '';
+  check(/§COMET hops=[1-9]/.test(cometLog), 'W-COMET: §COMET whitebox log reports the hop count for the traced chain', cometLog.slice(0, 70));
+  await page.evaluate(() => window.setTrace(false));
+  await page.waitForTimeout(40);
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  //  Feature 2 — W-VIEWLOG: the bottom view-history scrubber. Navigating yields >1 dot; undo then redo
+  //  moves the index and round-trips a captured field; double-tap toggles a bloom/open class on then off;
+  //  scrubbing writes NOTHING to localStorage (pure-read navigation).
+  //  Issue it proves: "the big bowl gains read-only view-history navigation (kernel-log magic, on views)
+  //  without any data writes". ──
+  await page.evaluate(() => { document.getElementById('resetBtn').click(); try { localStorage.clear(); } catch (e) {} });
+  await page.waitForTimeout(40);
+  await page.evaluate(() => { window.setFocus ? window.setFocus('c_order') : window.pick('c_order'); });
+  await page.evaluate(() => window.setOrbit(0.5, 0.2));
+  await page.evaluate(() => window.openDossier('c_invoice'));
+  await page.waitForTimeout(120);
+  const scrubShown = await page.locator('#scrub').evaluate(e => e.classList.contains('show'));
+  const dotCount = await page.locator('#scrub .scrubdot').count();
+  check(scrubShown && dotCount > 1, 'W-VIEWLOG: navigating yields a scrubber with >1 view dot', 'shown=' + scrubShown + ' dots=' + dotCount);
+  const onIdxStart = await page.evaluate(() => [...document.querySelectorAll('#scrub .scrubdot')].findIndex(d => d.classList.contains('on')));
+  await page.evaluate(() => window.undoView());
+  await page.waitForTimeout(60);
+  const onIdxAfterUndo = await page.evaluate(() => [...document.querySelectorAll('#scrub .scrubdot')].findIndex(d => d.classList.contains('on')));
+  await page.evaluate(() => window.redoView());
+  await page.waitForTimeout(60);
+  const onIdxAfterRedo = await page.evaluate(() => [...document.querySelectorAll('#scrub .scrubdot')].findIndex(d => d.classList.contains('on')));
+  check(onIdxAfterUndo === onIdxStart - 1 && onIdxAfterRedo === onIdxStart, 'W-VIEWLOG: undo moves the index back, redo round-trips it forward', 'on ' + onIdxStart + '→(undo)' + onIdxAfterUndo + '→(redo)' + onIdxAfterRedo);
+  const bloom0 = await page.locator('#scrub').evaluate(e => e.classList.contains('bloom'));
+  await page.evaluate(() => document.getElementById('scrub').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })));
+  await page.waitForTimeout(40);
+  const bloom1 = await page.locator('#scrub').evaluate(e => e.classList.contains('bloom'));
+  await page.evaluate(() => document.getElementById('scrub').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })));
+  await page.waitForTimeout(40);
+  const bloom2 = await page.locator('#scrub').evaluate(e => e.classList.contains('bloom'));
+  check(bloom0 === false && bloom1 === true && bloom2 === false, 'W-VIEWLOG: double-tap blooms the bar open then collapses it back to the thin line', 'bloom ' + bloom0 + '→' + bloom1 + '→' + bloom2);
+  await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+  const lsBeforeScrub = await page.evaluate(() => localStorage.length);
+  await page.evaluate(() => { const d = document.querySelector('#scrub .scrubdot'); if (d) d.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+  await page.waitForTimeout(60);
+  const lsAfterScrub = await page.evaluate(() => localStorage.length);
+  check(lsAfterScrub === lsBeforeScrub, 'W-VIEWLOG: scrubbing to a view writes nothing to localStorage (pure-read)', 'ls ' + lsBeforeScrub + '→' + lsAfterScrub);
+  const viewlogLog = logs.find(l => /§VIEWLOG idx=/.test(l)) || '';
+  check(/§VIEWLOG idx=\d+ total=\d+/.test(viewlogLog), 'W-VIEWLOG: §VIEWLOG whitebox log reports the index + total view count', viewlogLog.slice(0, 70));
+  await page.evaluate(() => { document.getElementById('resetBtn').click(); try { localStorage.clear(); } catch (e) {} });
+  await page.waitForTimeout(40);
+
+  // ── W-UNTANGLE (LAST among edge-angle checks — it permanently moves bubbles): the routine widens the
+  //    avg smallest angle between incident edges (small angle = bunching), and bubbles stay movable. ──
   await page.evaluate(() => { window.setTrace(false); document.getElementById('resetBtn').click(); });
   await page.waitForTimeout(40);
   const angBefore = await page.evaluate(() => window.avgMinAngle());
@@ -565,6 +638,46 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   await page.waitForTimeout(1000); // let the animated angular-spread passes run
   const angAfter = await page.evaluate(() => window.avgMinAngle());
   check(angAfter > angBefore + 0.01, 'W-UNTANGLE: routine widens the avg smallest angle between bunched lines (de-bunch)', 'avgMinAngle ' + (angBefore * 180 / Math.PI).toFixed(1) + '°→' + (angAfter * 180 / Math.PI).toFixed(1) + '°');
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  //  Feature 3 — W-DIAG (mobile-only diagonal arrange): on a mobile-sized viewport, invoking diagonal
+  //  arrange increases the bubbles' extent ALONG THE DIAGONAL vs the flat layout, eased; Reset re-homes;
+  //  the diagonal button is hidden on desktop so the at-rest layout (W-ORBIT) is never overridden.
+  //  Issue it proves: "mobile gets a deterministic, reversible diagonal declutter that never becomes the
+  //  default layout, so the desktop at-rest invariant holds". ──
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.evaluate(() => { document.getElementById('resetBtn').click(); try { localStorage.clear(); } catch (e) {} });
+  await page.waitForTimeout(40);
+  const diagBtnDesktop = await page.locator('#diagBtn').evaluate(e => getComputedStyle(e).display);
+  check(diagBtnDesktop === 'none', 'W-DIAG: the diagonal-arrange button is HIDDEN on desktop (mobile-only, never the default)', 'display=' + diagBtnDesktop);
+  const diagExtent = () => page.evaluate(() => {
+    const cs = [...document.querySelectorAll('#svg circle')];
+    const proj = cs.map(c => (+c.getAttribute('cx') + +c.getAttribute('cy')) / Math.SQRT2);
+    return Math.max(...proj) - Math.min(...proj);
+  });
+  await page.setViewportSize({ width: 390, height: 720 });
+  await page.evaluate(() => { try { localStorage.clear(); localStorage.setItem = function () {}; } catch (e) {} });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('#svg circle', { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(120);
+  const diagBtnMobile = await page.locator('#diagBtn').evaluate(e => getComputedStyle(e).display);
+  check(diagBtnMobile !== 'none', 'W-DIAG: the diagonal-arrange button is VISIBLE on a mobile viewport', 'display=' + diagBtnMobile);
+  const homeDiagExtent = await diagExtent();
+  const homeCxDiag = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
+  await page.locator('#diagBtn').click();
+  await page.waitForTimeout(700);   // let the eased glide (~26 frames) finish + the §DIAG log fire
+  const afterDiagExtent = await diagExtent();
+  check(afterDiagExtent > homeDiagExtent + 10, 'W-DIAG: diagonal arrange increases the bubbles’ extent along the diagonal vs the flat layout', 'diagExtent ' + Math.round(homeDiagExtent) + '→' + Math.round(afterDiagExtent));
+  const movedCxDiag = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
+  check(movedCxDiag !== homeCxDiag, 'W-DIAG: the bubbles actually moved (the glide ran)', 'moved=' + (movedCxDiag !== homeCxDiag));
+  await page.locator('#resetBtn').click();
+  await page.waitForTimeout(60);
+  const rehomeCxDiag = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
+  check(rehomeCxDiag !== movedCxDiag, 'W-DIAG: Reset re-homes the diagonally-arranged bubbles (reversible action)', 'rehomed=' + (rehomeCxDiag !== movedCxDiag));
+  const diagLog = logs.find(l => /§DIAG bubbles=/.test(l)) || '';
+  check(/§DIAG bubbles=\d+ axis=diagonal/.test(diagLog), 'W-DIAG: §DIAG whitebox log reports the bubble count + diagonal axis', diagLog.slice(0, 70));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
 
   await browser.close();
   server.close();
