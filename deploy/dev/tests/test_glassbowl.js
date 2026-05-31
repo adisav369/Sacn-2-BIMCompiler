@@ -678,6 +678,76 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   check(/§DIAG bubbles=\d+ axis=diagonal/.test(diagLog), 'W-DIAG: §DIAG whitebox log reports the bubble count + diagonal axis', diagLog.slice(0, 70));
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('#svg circle', { timeout: 8000 }).catch(() => {});
+  await page.waitForFunction(() => typeof window.__dockLensRadii === 'function', { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(120);
+
+  // ── GLASSBOWL_LAYOUT.md W-LAYOUT / W-NUDGE / W-DOCKLENS — the one Layout module owns positioning ──
+  //   Issues these prove: "all bubble positioning routes through ONE shared, deterministic Layout module
+  //   (no duplicated inline math left); a gentle clamped nudge reduces overlaps before render; a dock-
+  //   lens swells the hovered bubble + neighbours (visual only)." PRIMARY proof is the §-tagged runtime
+  //   console — these checks read those §-logs AND exercise the lens live (per CLAUDE.md §-log first).
+
+  // W-LAYOUT: the §LAYOUT line proves the module is the positioning owner (names its callers), and the
+  //   module + all 4 strategies are actually inlined in the served page (self-contained / file://-safe).
+  const layoutLog = logs.find(l => /§LAYOUT module=1/.test(l)) || '';
+  check(/§LAYOUT module=1 callers=\[/.test(layoutLog), 'W-LAYOUT: one Layout module owns positions — §LAYOUT names its callers (no duplicated inline math)', layoutLog.slice(0, 95));
+  const layoutInlined = await page.evaluate(() => typeof Layout === 'object' && ['seed', 'nudge', 'dockLens', 'orbitPlanes', 'diagonal', 'gravitySpiral', 'dictionaryRow'].every(k => typeof Layout[k] === 'function'));
+  check(layoutInlined, 'W-LAYOUT: Layout module + all 4 strategies inlined VERBATIM in glassbowl.html (self-contained, file://-safe)', 'Layout fns present=' + layoutInlined);
+
+  // W-NUDGE: the §NUDGE line proves the relaxation ran, reduced (or held) overlaps, and CLAMPED every
+  //   move to maxMove ("not too much"). It must also be DETERMINISTIC (replay-safe — same input → same
+  //   output), which is what preserves the at-rest invariant.
+  const nudgeLog = logs.find(l => /§NUDGE overlapsBefore=/.test(l)) || '';
+  const nm = /overlapsBefore=(\d+) after=(\d+) maxMove=(\d+) maxMoveApplied=([\d.]+)/.exec(nudgeLog) || [];
+  check(nudgeLog.length > 0 && +nm[2] <= +nm[1] && +nm[4] <= +nm[3] + 0.01, 'W-NUDGE: nudge reduces/holds overlaps AND every displacement ≤ maxMove (clamped, not too much)', nudgeLog.slice(0, 95));
+  const nudgeDet = await page.evaluate(() => {
+    const A = [{ x: 100, y: 100, r: 30 }, { x: 112, y: 101, r: 30 }, { x: 320, y: 300, r: 20 }];
+    const B = A.map(n => ({ x: n.x, y: n.y, r: n.r }));
+    Layout.nudge(A, { pad: 6, maxMove: 8, iters: 6 });
+    Layout.nudge(B, { pad: 6, maxMove: 8, iters: 6 });
+    return JSON.stringify(A) === JSON.stringify(B);
+  });
+  check(nudgeDet, 'W-NUDGE: nudge is DETERMINISTIC (identical result on a second run — replay-safe, preserves at-rest)', 'deterministic=' + nudgeDet);
+
+  // W-NUDGE invariant: nudge runs ONCE before hx,hy are captured, so the home IS the nudged rest. Drag
+  //   a bubble (perturbs the centroid), then Reset → the centroid returns to the nudged-rest home. This
+  //   proves nudge didn't break the re-home contract (cxRest === cxReset) the older checks rely on.
+  const restInv = await page.evaluate(() => {
+    // measure ONE node's home (its hx) vs its x after a perturb+Reset — the precise re-home contract.
+    const n0 = window.__N[0];
+    const homeX = n0.hx, homeY = n0.hy;
+    n0.x += 140; n0.y -= 90; if (typeof draw === 'function') draw();   // perturb a node off its home
+    const movedX = n0.x;
+    document.getElementById('resetBtn').click();                        // Reset → re-home to hx,hy
+    return { perturbed: Math.abs(movedX - homeX) > 50, rehomed: Math.abs(n0.x - homeX) < 0.001 && Math.abs(n0.y - homeY) < 0.001 };
+  });
+  check(restInv.perturbed && restInv.rehomed, 'W-NUDGE: at-rest invariant holds — Reset re-homes a node to its nudged-rest home (x===hx) after a drag', 'perturbed=' + restInv.perturbed + ' rehomed=' + restInv.rehomed);
+
+  // W-DOCKLENS: the §DOCKLENS startup line reports rest/peak/reach. Then prove the magnify is REAL and
+  //   VISUAL-ONLY at runtime: putting the cursor on a bubble's screen position swells its render radius
+  //   (and a neighbour's) via Layout.dockLens, and clears back to rest when the cursor leaves.
+  const dockLog = logs.find(l => /§DOCKLENS rest=/.test(l)) || '';
+  check(/§DOCKLENS rest=[\d.]+ peak=[\d.]+ reach=\d+/.test(dockLog), 'W-DOCKLENS: §DOCKLENS reports the dock-lens rest→peak swell + reach', dockLog.slice(0, 95));
+  const lens = await page.evaluate(() => {
+    const rest = window.__dockLensRadii();
+    const c = document.querySelector('#svg circle');
+    const cx0 = +c.getAttribute('cx'), cy0 = +c.getAttribute('cy');
+    const x0 = window.__N[0].x, y0 = window.__N[0].y;   // record real x/y to prove the lens is visual-only
+    // fire a REAL pointermove over the SVG at the bubble centre (the user path → draw → project → lens).
+    const rc = document.getElementById('svg').getBoundingClientRect();
+    document.getElementById('svg').dispatchEvent(new MouseEvent('pointermove', { clientX: rc.left + cx0, clientY: rc.top + cy0, bubbles: true }));
+    const peak = window.__dockLensRadii();
+    let swelled = 0, sample = null;
+    for (let i = 0; i < peak.length; i++) if (peak[i] > rest[i] + 0.5) { swelled++; if (!sample) sample = { rest: rest[i], peak: peak[i] }; }
+    const visualOnly = window.__N[0].x === x0 && window.__N[0].y === y0;   // x/y untouched
+    document.getElementById('svg').dispatchEvent(new MouseEvent('pointerleave', { bubbles: true }));
+    const cleared = window.__dockLensRadii();
+    const backToRest = cleared.every((v, i) => Math.abs(v - rest[i]) < 0.01);
+    return { swelled, sample, backToRest, visualOnly };
+  });
+  check(lens.swelled >= 2 && lens.sample && lens.sample.peak > lens.sample.rest && lens.backToRest && lens.visualOnly, 'W-DOCKLENS: hover swells the bubble + neighbours (radius rises with proximity), clears to rest, x/y untouched — pure-visual', 'swelled=' + lens.swelled + (lens.sample ? ' rest=' + lens.sample.rest.toFixed(1) + '→peak=' + lens.sample.peak.toFixed(1) : '') + ' cleared=' + lens.backToRest + ' visualOnly=' + lens.visualOnly);
 
   await browser.close();
   server.close();

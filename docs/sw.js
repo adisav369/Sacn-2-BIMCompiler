@@ -2,7 +2,7 @@
    sql.js + bundle so they work with no network. Scoped to /BIMCompiler/; passes every
    other request straight through, so the rest of the docs site is unaffected.
    Bump CACHE_VERSION on any change to glassbowl.html / glassbowl_gravity.html / the bundle. */
-const CACHE_VERSION = 'glassbowl-offline-v2';
+const CACHE_VERSION = 'glassbowl-offline-v3';
 const ASSETS = [
   'glassbowl.html',
   'glassbowl_gravity.html',

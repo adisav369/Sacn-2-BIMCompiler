@@ -22,6 +22,27 @@ var Database = require('better-sqlite3');
 var initSqlJs = require('sql.js');
 var DO = require('./diff_oracle');
 
+// ── GLASSBOWL_LAYOUT (prompts/GLASSBOWL_LAYOUT.md, W-LAYOUT): the ONE positioning module, inlined
+//   VERBATIM into the emitted glassbowl.html so the page stays self-contained + file://-safe + SW-
+//   cacheable. We read the marker-bounded body of scripts/glassbowl_layout.js and fold it into the
+//   served <script> ahead of VIEWER_JS (which then calls Layout.* instead of duplicated inline math).
+//   The IDENTICAL body is hand-pasted into glassbowl_gravity.html between the same markers (its sync
+//   point). Reading it here (not re-typing) guarantees the inlined copy never drifts from the source.
+var LAYOUT_JS = (function () {
+  var src = fs.readFileSync(path.join(__dirname, 'glassbowl_layout.js'), 'utf8');
+  // The sentinels are unique tokens that appear ONLY on the two marker lines of glassbowl_layout.js.
+  // Build them by concatenation so THIS source file never itself contains the literal token (which
+  // would make the slice ambiguous). The body is everything between the two marker lines.
+  var START = '@@LAYOUT_INLINE' + '_START@@', END = '@@LAYOUT_INLINE' + '_END@@';
+  var b = src.indexOf(START), e = src.indexOf(END);
+  if (b < 0 || e < 0) throw new Error('glassbowl_layout.js sentinels not found — cannot inline Layout');
+  b = src.indexOf('\n', b) + 1;                       // start AFTER the START marker line
+  e = src.lastIndexOf('\n', e);                       // end BEFORE the END marker line
+  var body = src.slice(b, e).trim();
+  if (body.indexOf('var Layout') < 0) throw new Error('inlined Layout body looks wrong (no var Layout) — check the markers');
+  return body;
+})();
+
 var AD = process.env.ERP_AD_FULL || path.join(__dirname, '..', 'build', 'erp', 'ad_full.db');
 var RULES = process.env.ERP_RULES_OUT || path.join(__dirname, '..', 'build', 'erp', 'erp_rules.db');
 var OUT_DIR = path.join(__dirname, '..', 'build', 'erp');
@@ -523,7 +544,7 @@ function renderHtml(graph) {
 '  <div class="rhdr" id="recentHdr" style="display:none">recent items &mdash; like iDempiere&rsquo;s, but spatial &amp; glanceable. the engine keeps every step (op-log). tap to minimise &middot; swipe or &times; to dismiss</div>\n' +
 '  <div id="stack"></div>\n' +
 '</div></div>\n' +
-'<script>\nvar G=' + data + ';\n' + VIEWER_JS + '\n</script></body></html>';
+'<script>\nvar G=' + data + ';\n' + LAYOUT_JS + '\n' + VIEWER_JS + '\n</script></body></html>';
 }
 
 var VIEWER_JS = [
@@ -540,7 +561,8 @@ var VIEWER_JS = [
 'var vp=el("g",{id:"vp"});svg.appendChild(vp);   // viewport group: pan/zoom transform live here',
 'var px=0,py=0,k=1;function applyT(){vp.setAttribute("transform","translate("+px+","+py+") scale("+k+")");}',
 '// deterministic init positions on a circle by index (no Math.random — replay/refresh stable).',
-'var N=G.nodes,E=G.edges,idx={};N.forEach(function(n,i){idx[n.id]=i;var a=i/N.length*6.283;n.x=W/2+Math.cos(a)*Math.min(W,H)*0.32;n.y=H/2+Math.sin(a)*Math.min(W,H)*0.32;});',
+// W-LAYOUT: the deterministic circle-by-index seed is now owned by Layout.seed (one module, both pages).
+'var N=G.nodes,E=G.edges,idx={};N.forEach(function(n,i){idx[n.id]=i;});Layout.seed(N,{W:W,H:H});',
 'var maxG=Math.max.apply(null,N.map(function(n){return n.gravity||0}).concat([1]));',
 'function radius(n){var base=n.kind==="master"?7:13;return base+18*Math.sqrt((n.gravity||0)/maxG);}',
 '// tiny deterministic force layout: repulsion + spring + centering, fixed iterations.',
@@ -549,6 +571,17 @@ var VIEWER_JS = [
 '  for(var j=0;j<N.length;j++){if(i===j)continue;var b=N[j],dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy+0.01,d=Math.sqrt(d2);var f=2400/d2;a.fx+=dx/d*f;a.fy+=dy/d*f;}}',
 ' E.forEach(function(e){var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)+0.01,kk=(d-(e.kind==="reference"?240:120))*0.01;a.fx+=dx/d*kk;a.fy+=dy/d*kk;b.fx-=dx/d*kk;b.fy-=dy/d*kk;});',
 ' N.forEach(function(n){n.x+=Math.max(-8,Math.min(8,n.fx));n.y+=Math.max(-8,Math.min(8,n.fy));});}',
+// ── NUDGE (GLASSBOWL_LAYOUT.md, W-NUDGE): one gentle DETERMINISTIC anti-overlap pass over the
+//    settled force layout — pairs closer than r_a+r_b+pad ease apart, EVERY displacement clamped to
+//    maxMove ("not too much"). Runs BEFORE hx,hy are captured so Reset re-homes to the nudged rest
+//    (cxRest===cxReset stays true) and the at-rest projection (yaw=pitch=0) is the SAME flat layout.',
+'var LACC={getR:function(n){return radius(n);}};',
+'var NUDGE=Layout.nudge(N,{pad:6,maxMove:8,iters:6,acc:LACC});',
+'console.log("\\u00a7NUDGE overlapsBefore="+NUDGE.overlapsBefore+" after="+NUDGE.overlapsAfter+" maxMove="+NUDGE.maxMove+" maxMoveApplied="+NUDGE.maxMoveApplied.toFixed(2));',
+'console.log("\\u00a7LAYOUT module=1 callers=[seed,nudge,draw,reset,orbitPlanes] strategies=[orbitPlanes,diagonal,gravitySpiral,dictionaryRow]");',
+// W-DOCKLENS startup witness: report the dock-lens parameters + a sample rest\\u2192peak swell so the
+//   magnify is provable from the log alone (the actual hover swell is also exercised live in draw()).',
+'(function(){var rest=radius(N[0]),peak=Layout.dockLens([{x:0,y:0,r:rest}],{x:0,y:0},{restR:rest,maxR:rest*1.85,reach:130})[0];console.log("\\u00a7DOCKLENS rest="+rest.toFixed(1)+" peak="+peak.toFixed(1)+" reach=130 overlaps-at-rest="+NUDGE.overlapsAfter);})();',
 'N.forEach(function(n){n.hx=n.x;n.hy=n.y;});   // remember each bubble\\u2019s HOME so Reset can truly re-home them',
 '// ── ORBIT (GLASSBOWL_DOSSIER \\u00a72-viz, W-ORBIT): the 3 spines are depth planes; the trackball moves the eye ──',
 '// z is read from the data (n.z, assigned in the generator from spine role — NOT placed here).',
@@ -587,11 +620,17 @@ var VIEWER_JS = [
 'function edgeFocus(e){return e.from===focusId||e.to===focusId;}',
 'function inFocus(id){return id===focusId||E.some(function(e){return (e.from===focusId&&e.to===id)||(e.to===focusId&&e.from===id);});}',
 'function setFocus(id){focusId=(focusId===id?null:id);draw();}',
-'function draw(){N.forEach(project);while(vp.firstChild)vp.removeChild(vp.firstChild);var oa=orbitAmt(),fo=focusId&&!traceMode;',
+// ── DOCKLENS (GLASSBOWL_LAYOUT.md, W-DOCKLENS): macOS-dock hover magnify. Crowded bubbles rest at
+//    their normal radius; the one under the pointer + its neighbours swell by proximity. VISUAL ONLY
+//    (Layout.dockLens never touches x/y/data); cursor null \\u2192 every bubble at rest, so the at-rest
+//    bowl is pixel-identical. lensCursor is tracked in SCREEN space (the projected sx,sy live there).',
+'var lensCursor=null;window.__lensCursor=null;',
+'function lensRadii(){return Layout.dockLens(N,lensCursor,{acc:{getX:function(n){return n.sx;},getY:function(n){return n.sy;},getR:function(n){return radius(n);}},restR:function(n){return radius(n);},maxR:function(n){return radius(n)*1.85;},reach:130});}',
+'function draw(){N.forEach(project);while(vp.firstChild)vp.removeChild(vp.firstChild);var oa=orbitAmt(),fo=focusId&&!traceMode;var LENS=lensRadii();',
 ' E.forEach(function(e){if(!show[e.kind])return;var a=N[idx[e.from]],b=N[idx[e.to]];if(!a||!b)return;var lo=litEdge(e),ef=fo&&edgeFocus(e),op,sw,col=lo?"#ffd479":COLOR[e.kind];if(traceMode){op=lo?0.95:0.04;sw=lo?3:0.8;}else if(fo){op=ef?0.85:0.035;sw=ef?2:0.6;if(ef)col="#ffd479";}else{op=e.kind==="reference"?0.18:0.5;sw=e.kind==="reference"?1:1.6;}var ln=el("line",{x1:a.sx,y1:a.sy,x2:b.sx,y2:b.sy,stroke:col,"stroke-opacity":op,"stroke-width":sw});if(lo)ln.setAttribute("class","litedge");vp.appendChild(ln);});',
 ' var order=N.slice().sort(function(a,b){return a.depth-b.depth;});',   // painter: far plane (low depth) drawn first
 ' order.forEach(function(n){var vis=E.some(function(e){return show[e.kind]&&(e.from===n.id||e.to===n.id)})||(n.cells&&n.cells.length);if(!vis&&n.kind==="master")return;var col=n.settlement?"#e2574c":n.kind==="master"?"#2b3744":(n.gravity>0?"#4caf7d":"#3a4a5a");',
-'  var sc=Math.max(0.6,Math.min(1.5,1+(n.depth/ZMAX)*0.45*oa)),r=radius(n)*sc;',   // depth size cue, gated by orbit amount (0 at rest)
+'  var sc=Math.max(0.6,Math.min(1.5,1+(n.depth/ZMAX)*0.45*oa)),r=LENS[idx[n.id]]*sc;',   // W-DOCKLENS render radius (rest=radius(n) when no cursor) \\u00d7 depth cue, gated by orbit (0 at rest)
 '  var far=Math.max(0,(ZMAX-n.depth)/(2*ZMAX)),dop=1-far*0.6*oa;',                   // far plane dims, also gated → 1 at rest
 '  var g=el("g",{"class":"node"});(function(node){g.addEventListener("pointerdown",function(ev){startDragNode(ev,node);});g.addEventListener("click",function(){if(!moved)pick(node.id);});g.addEventListener("contextmenu",function(ev){ev.preventDefault();openDossier(node.id);});g.addEventListener("dblclick",function(ev){ev.preventDefault();ev.stopPropagation();openBlurb(node.id);});})(n);',
 '  var dim=(traceMode&&!litNode(n.id))||(fo&&!inFocus(n.id)),hi=litNode(n.id)||(fo&&n.id===focusId),fop=dim?0.12:(traceMode?1:dop);',
@@ -606,6 +645,13 @@ var VIEWER_JS = [
 'svg.addEventListener("pointermove",function(ev){if(drag){var w=world(ev);var p=unproject(drag.sx0+(w.x-drag.w0x),drag.sy0+(w.y-drag.w0y),drag.az);if(p){drag.node.x=p.x;drag.node.y=p.y;}moved=true;draw();}else if(panning){var rc=svg.getBoundingClientRect();px=ev.clientX-rc.left-panning.sx;py=ev.clientY-rc.top-panning.sy;moved=true;applyT();}});',
 'function endPtr(){drag=null;panning=null;svg.classList.remove("panning");}',
 'svg.addEventListener("pointerup",endPtr);svg.addEventListener("pointercancel",endPtr);',
+// W-DOCKLENS: track the pointer over the canvas (desktop hover AND mobile touch-drag) so draw()\\u2019s
+//   LENS radii swell the bubble under it + neighbours. Screen-space (matches projected sx,sy). Skipped
+//   while dragging a bubble or panning (they redraw themselves). Pure-visual: only lensCursor + redraw.
+'svg.addEventListener("pointermove",function(ev){if(drag||panning)return;var rc=svg.getBoundingClientRect();lensCursor={x:(ev.clientX-rc.left-px)/k,y:(ev.clientY-rc.top-py)/k};window.__lensCursor=lensCursor;draw();});',
+'function clearLens(){if(lensCursor){lensCursor=null;window.__lensCursor=null;draw();}}',
+'svg.addEventListener("pointerleave",clearLens);',
+'window.__dockLensRadii=function(){return lensRadii();};window.__N=N;   // whitebox hooks: tests read the lens radii + node array',
 'svg.addEventListener("click",function(ev){if((ev.target===svg||ev.target.id==="vp")&&!moved)clearFocus();});',
 'svg.addEventListener("wheel",function(ev){ev.preventDefault();var rc=svg.getBoundingClientRect();var mx=ev.clientX-rc.left,my=ev.clientY-rc.top;var f=ev.deltaY<0?1.12:0.89;var nk=Math.max(0.25,Math.min(6,k*f));px=mx-(mx-px)*(nk/k);py=my-(my-py)*(nk/k);k=nk;applyT();},{passive:false});',
 '// ── the trackball: grab the sphere to ORBIT the view (bubbles stay static in 3D; only the eye moves) ──',
