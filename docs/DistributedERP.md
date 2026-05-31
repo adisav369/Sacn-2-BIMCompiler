@@ -316,7 +316,7 @@ that carries it, the acceptance witness, and the **honest residual**. (This cons
 | Scenario | Truth / § | Mechanism | Acceptance witness | Honest residual |
 |---|---|---|---|---|
 | Nondeterministic verb creeps in (live FX / clock / random) | T1 / §7 | values generated at edge, **recorded as op inputs**; kernel only reads; UUIDv7 | `replay-hash == live-hash` holds | failure mode = divergence breaks merge → the prime directive is *infrastructure*, not style |
-| Identity collision on merge | T1 / G-IDENTITY | **edge-minted UUID PK** (not numeric seq); identity is an op input | two devices' logs union with **no PK clash** | retires natural-key derivation (cost: small; see `ERP.md §0.20` follow-up) |
+| Identity collision on merge | T1 / G-IDENTITY | **edge-minted UUID PK** (not numeric seq); identity is an op input | two devices' logs union with **no PK clash** | **LANDED in the kernel** — `ERP.md §0.21`, witness `§IDENTITY` (`poc_identity.js`): natural-key `docKey`/`lineKey` retired, replay re-reads recorded ids (`edgeMintCalls=0`) |
 | Schema migration to N offline clients | (shared hard) | compiled-AD **manifest** + forward-only / frozen-effects replay | old ops replay to original effect (frozen) | **stays hard — honest partial, no magic** |
 
 ### F. The irreducible (the floor — Truth 4)
