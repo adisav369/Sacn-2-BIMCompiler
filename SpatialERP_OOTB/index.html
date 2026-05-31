@@ -3844,6 +3844,8 @@
       
         
       
+        
+      
     
     
     
@@ -4072,6 +4074,34 @@
     
   
     Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EnablingTechTimeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enabling-Tech Timeline
   
 
     
@@ -8311,7 +8341,8 @@ and a <code>.db</code> file that fits in a photo attachment.</p>
 <p>Traditional ERP: <code>User → Server → UPDATE table → also INSERT audit_log</code> (audit is an afterthought; undo = manual correction).</p>
 <p>OOTB inverts this: <code>User → commitOp(kernel_ops) → state derived from log</code>. The log IS the truth. Undo = walk backwards. Sync = merge two logs by timestamp. Debug = <code>SELECT * FROM kernel_ops ORDER BY id</code>. One table replaces nine traditional ERP subsystems (§5b).</p>
 <h3 id="115-market-timing">11.5 Market Timing<a class="headerlink" href="#115-market-timing" title="Permanent link">&para;</a></h3>
-<p>Three technologies matured simultaneously (2022-2024): <strong>SQLite WASM</strong> (full relational DB in browser, microsecond queries), <strong>Three.js r150+</strong> (60fps 3D on mobile GPUs, 100K+ objects), and <strong>Web Payment Request API</strong> (browser-native payment). BIM OOTB walked through this window first (126K elements, 155 Playwright specs). Spatial ERP is the second step — same runtime, new data.</p>
+<p>Three technologies matured into the same window: <strong>in-memory SQLite WASM</strong> (sql.js — Emscripten→WASM, <strong>rock-solid since ~2014</strong>; full relational DB in the browser, microsecond queries, the DB we actually ride), <strong>Three.js r150+</strong> (2024 — 60fps 3D on mobile GPUs, 100K+ objects), and <strong>Web Payment Request API</strong> (browser-native payment). BIM OOTB walked through this window first (126K elements, 155 Playwright specs). Spatial ERP is the second step — same runtime, new data.</p>
+<p><strong>First-mover, not early-mover — the distinction is the persistence layer.</strong> Note what we ride and what we <em>don't</em>. Our foundation is <strong>in-memory sql.js</strong> (2014): load file → query in RAM → export the whole file; persistence and sync are the <strong>op-log (<code>kernel_ops</code>)</strong>, with IndexedDB caching the file blob. We do <strong>not</strong> depend on the <em>persistent</em> SQLite-WASM build (official beta late-2022) or its <strong>OPFS multi-tab concurrency</strong> layer — which is genuinely <em>still settling 2023→2027</em> (<code>opfs-sahpool</code>, 2023, has zero multi-tab concurrency; wa-sqlite's <code>OPFSWriteAheadVFS</code>, Apr 2026, is Chrome-121+-only). That layer's immaturity is <strong>not a risk to us — it is the confirmation we are first</strong>: the field that has to wait for OPFS/Memory64/SharedWorkers to mature is the field still standing at the gate, while we walked through on the 2014 in-memory path years earlier. We did not bet on an unproven feature; we routed around it. See <code>ERP.md §0.18(d)</code> for the full concurrency-layer table and why "are we too early?" is answered <em>no</em>.</p>
 <h3 id="116-addressable-market">11.6 Addressable Market<a class="headerlink" href="#116-addressable-market" title="Permanent link">&para;</a></h3>
 <p>The spatial ERP model applies wherever things have coordinates and belong
 to documents:</p>

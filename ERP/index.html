@@ -3707,6 +3707,8 @@
       
         
       
+        
+      
     
     
     
@@ -3935,6 +3937,34 @@
     
   
     Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EnablingTechTimeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enabling-Tech Timeline
   
 
     
@@ -6963,6 +6993,65 @@ needing a new verb</strong> (that is the gravity-backlog path, §18.6 — write 
 (<code>GLJ:CO → Fact_Acct</code>) is asserted, not tested (the static oracle has no posted facts); and the
 settlement cells dispatch the <em>universe</em> in one synthetic event rather than per-document (the count
 is faithful only because partitioning is clean — a per-document dispatch would test isolation).</p>
+<p><strong>(d) Enabling-tech timing — what gave us the edge, and when (so "are we too early?" is answered).</strong>
+The <em>market-timing</em> statement is canonical in <code>SpatialERP_OOTB.md §11.5</code> ("three technologies matured
+2022–2024: SQLite WASM + Three.js r150+ + Web Payment Request API"). This note adds the one axis §11.5
+does <strong>not</strong> cover — the <strong>concurrency-layer</strong> distinction, which is what the "too early?" question is
+actually about. The recurring outside question is whether a browser-native ERP is <em>early</em> against the
+immature SQLite-WASM <strong>multi-tab concurrency</strong> layer. It is not — because that layer is <strong>not our path</strong>. Our
+window opened from three <em>mature</em> capabilities, and we deliberately route around the one still settling:</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Matured</th>
+<th>Role here</th>
+<th>Concurrency exposure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>sql.js</strong> (Emscripten→WASM SQLite, <strong>in-memory</strong>)</td>
+<td>~2014, rock-solid</td>
+<td>the DB we actually ride: load file → query in RAM → export whole file</td>
+<td><strong>none</strong> — single in-memory context, no OPFS access-handle contention</td>
+</tr>
+<tr>
+<td>Official <strong>SQLite WASM</strong> build</td>
+<td>beta late-2022</td>
+<td>reference / option; we do <em>not</em> depend on its persistent VFS</td>
+<td>(would expose us if adopted — see below)</td>
+</tr>
+<tr>
+<td><strong>web-ifc</strong> WASM (browser IFC parse)</td>
+<td>2023+</td>
+<td>drop-IFC onboarding, IFC2x3+IFC4, 122K elements</td>
+<td>n/a</td>
+</tr>
+<tr>
+<td><strong>Three.js</strong> r160 (Dec 2023) → r184 (Apr 2025); <code>BatchedMesh.addInstance</code> since r166</td>
+<td>2024</td>
+<td>the <em>recent</em> enabler — 122K-element buildings / 1M-element cities smooth in a tab</td>
+<td>n/a</td>
+</tr>
+</tbody>
+</table>
+<p>The layer that is genuinely <em>still settling 2023→2027</em> is <strong>persistent OPFS multi-tab concurrency</strong>:
+<code>opfs-sahpool</code> (SQLite 3.43.0, 2023) is fast but has <strong>zero</strong> multi-tab concurrency; <code>OPFSCoopSyncVFS</code>
+allows concurrent connections but single transaction; wa-sqlite's <code>OPFSWriteAheadVFS</code> (Apr 2026, Chrome
+121+ only) is the first to allow reads parallel to a writer. <strong>We touch none of it.</strong> Persistence/sync is
+the <strong>op-log (<code>kernel_ops</code>, a CmRDT — see (c))</strong>, not concurrent OPFS writes; IndexedDB caches the file
+blob (our real ceiling is the ~1GB IDB record cap, already hit + fixed, not access handles). So the
+"too early" framing rests on a false premise: we are <strong>not</strong> perched on the immature concurrency feature
+waiting for Memory64/SharedWorkers — we ride 2014-era in-memory SQLite + a 2024-era 3D pipeline and treat
+concurrency as the <em>fourth</em> thing the op-log buys later for free (per (a)). <strong>Read the right way, that
+immaturity is a first-mover <em>bonus</em>, not a risk:</strong> the layer the field is still waiting on is the layer
+we routed around — so its unsettled state is direct evidence we arrived ahead of the pack, not early
+against an unproven bet (see <code>SpatialERP_OOTB.md §11.5</code>). The only move that <em>would</em>
+expose us to the OPFS timeline is migrating off sql.js to a persistent VFS — a choice to make only when a
+concrete need forces it, at which point the table above is the caveat list. (Verified May 2026 against
+sqlite.org/wasm + powersync.com state-of-persistence; external version/date claims from the DeepSeek
+analysis were largely fabricated and should not be cited.)</p>
 <h3 id="019-p3c-the-long-tail-vertical-ships-matcher-free-the-matcher-composes-in-at-one-seam-2026-05-30-vertical-gate-longtail-pass">§0.19 P3c — the long-tail vertical ships matcher-free; the matcher composes in at one seam (2026-05-30, §VERTICAL + §GATE + §LONGTAIL PASS)<a class="headerlink" href="#019-p3c-the-long-tail-vertical-ships-matcher-free-the-matcher-composes-in-at-one-seam-2026-05-30-vertical-gate-longtail-pass" title="Permanent link">&para;</a></h3>
 <p>P3c turned the §0.18b product-tiering finding into running code and closed the §0.18 per-document
 faithfulness gap. Witnesses: <code>build/erp/{diff_oracle,poc_longtail}.log</code>. Three results:</p>
