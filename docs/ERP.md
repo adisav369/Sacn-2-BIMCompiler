@@ -37,7 +37,7 @@ The secured/distributed thinking and its proofs live in dedicated sub-docs — r
 | **[BOM_ENGINE_SPEC.md](BOM_ENGINE_SPEC.md)** · **[DATA_MODEL.md](DATA_MODEL.md)** | The BOM recipe engine (the verb that compiles a building *and* backflushes a POS sale) + the 5-table bridge. |
 
 **Proofs (spec-first, witness-led; each witness asserts `replay-hash == live-hash` against a browser sql.js binding):**
-- **[prompts/DISTRIBUTED_POC.md](https://github.com/red1oon/BIMCompiler/blob/full/prompts/DISTRIBUTED_POC.md)** — the POC work-order and `# DONE` ledger. Six in-process witnesses pass: W-CHAIN, Merge/G-IDENTITY, W-OWNER/CAS, W-SIGN, W-PERSIST/email-recovery, lease-expiry/value-tiering.
+- **Witnesses.** Six in-process witnesses pass: W-CHAIN, Merge/G-IDENTITY, W-OWNER/CAS, W-SIGN, W-PERSIST/email-recovery, lease-expiry/value-tiering. Each corresponds to one of the scripts listed below; the secured/durable phase frame is in [§0.20](#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet).
 - **[scripts/erp_kernel.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/erp_kernel.js)** — the deterministic kernel; exercised by [poc_kernel.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_kernel.js) and [poc_longtail.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_longtail.js).
 - The §9 witnesses, each doubling as the spec for its production change: [poc_chain.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_chain.js), [poc_distributed.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_distributed.js), [poc_sign.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_sign.js), [poc_persist.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_persist.js), [poc_policy.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_policy.js), [poc_identity.js](https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_identity.js). W-CHAIN is implemented in `bim-ootb/viewer/kernel_ops.js` (`sealChain`/`verifyChain`/`setSigner`, v5).
 
@@ -1802,10 +1802,11 @@ Status, stated without overclaim: the construction-project window (`C_Project`)
 is the worked example, three windows are wired end-to-end, and the remaining
 menu tree is present as metadata but not every cell is handler-backed (the
 housed-vs-active distinction, [§0.11](#011-housed-vs-active--the-full-extent-hidden-but-callable)).
-For proven-vs-parked, see [§0.17](#017-p3b-breadth--the-contained-set-thesis-diff-verified-across-o2cp2pgl-2026-05-29-oracle-suite-56--gravity-pass)
-and the witness ledger ([prompts/DISTRIBUTED_POC.md](https://github.com/red1oon/BIMCompiler/blob/full/prompts/DISTRIBUTED_POC.md)).
-This is not the first SQLite-WASM or local-first system; the prior-art floor is
-in [DistributedERP.md §10](DistributedERP.md#10-comparison-with-related-systems).
+For proven-vs-parked, see [§0.17](#017-p3b-breadth--the-contained-set-thesis-diff-verified-across-o2cp2pgl-2026-05-29-oracle-suite-56--gravity-pass),
+[§0.20](#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet), and the
+witness scripts ([scripts/](https://github.com/red1oon/BIMCompiler/tree/full/scripts) — `poc_*.js`, each
+asserting `replay-hash == live-hash`). This is not the first SQLite-WASM or local-first system; the prior-art
+floor is in [DistributedERP.md §10](DistributedERP.md#10-comparison-with-related-systems).
 
 ---
 
