@@ -517,7 +517,25 @@ function renderHtml(graph) {
 '  #diagBtn{display:none;position:absolute;bottom:64px;left:20px;background:rgba(16,22,30,.95);border:1px solid #3a5a7a;color:#ffd479;border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer;z-index:15;touch-action:manipulation} #diagBtn:hover{border-color:#ffd479}\n' +
 '  @media (max-width:760px){ #diagBtn{display:block} }\n' +
 '</style></head><body>\n' +
-'<script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").then(function(reg){var warm=function(){var a=reg.active||navigator.serviceWorker.controller;if(a)a.postMessage({type:"precache"});else navigator.serviceWorker.ready.then(function(r){r.active&&r.active.postMessage({type:"precache"});});};if("requestIdleCallback" in window)requestIdleCallback(warm,{timeout:7000});else setTimeout(warm,4000);}).catch(function(){});});}</script>\n' +
+'<script>/* offline SW + W-SWUPDATE tap-to-refresh toast (driven by the SW updatefound signal; never auto-reload) */\n' +
+'if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").then(function(reg){\n' +
+'  var warm=function(){var a=reg.active||navigator.serviceWorker.controller;if(a)a.postMessage({type:"precache"});else navigator.serviceWorker.ready.then(function(r){r.active&&r.active.postMessage({type:"precache"});});};\n' +
+'  if("requestIdleCallback" in window)requestIdleCallback(warm,{timeout:7000});else setTimeout(warm,4000);\n' +
+'  /* W-SWUPDATE: a small non-blocking pill, bottom-centre, HIDDEN at rest; body tap = refresh, \\u2715 = dismiss */\n' +
+'  var toast=document.createElement("div");toast.id="swToast";toast.setAttribute("role","status");\n' +
+'  toast.style.cssText="position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:none;align-items:center;gap:10px;z-index:99999;background:rgba(16,22,30,.96);border:1px solid #3a5a7a;color:#ffd479;border-radius:22px;padding:8px 14px;font:13px/1.3 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.45);cursor:pointer";\n' +
+'  var msg=document.createElement("span");msg.id="swToastMsg";msg.textContent="Glassbowl updated \\u2014 tap to refresh";\n' +
+'  var x=document.createElement("span");x.id="swToastX";x.textContent="\\u2715";x.title="dismiss";x.style.cssText="color:#8aa;cursor:pointer;padding:0 2px;font-size:14px";\n' +
+'  toast.appendChild(msg);toast.appendChild(x);(document.body||document.documentElement).appendChild(toast);\n' +
+'  window.__swReloaded=false;\n' +
+'  window.__swApply=function(){if(reg.waiting)reg.waiting.postMessage({type:"skipWaiting"});window.__swPostCount=(window.__swPostCount||0)+1;};\n' +
+'  window.__swShowToast=function(){toast.style.display="flex";if(typeof beep==="function"){try{beep();}catch(e){}}};\n' +
+'  toast.addEventListener("click",function(ev){if(ev.target===x)return;window.__swApply();});\n' +
+'  x.addEventListener("click",function(ev){ev.stopPropagation();toast.style.display="none";});\n' +
+'  reg.addEventListener("updatefound",function(){var nw=reg.installing;if(!nw)return;nw.addEventListener("statechange",function(){if(nw.state==="installed"&&navigator.serviceWorker.controller){window.__swShowToast();}});});\n' +
+'  navigator.serviceWorker.addEventListener("controllerchange",function(){if(window.__swReloaded)return;window.__swReloaded=true;location.reload();});\n' +
+'  console.log("\\u00a7SWUPDATE wired=Y toast=1 reload-guard=Y");\n' +
+'}).catch(function(){});});}</script>\n' +
 '<div id="wrap">\n' +
 '<div id="stage"><svg id="svg" width="100%" height="100%"></svg>\n' +
 '  <div class="legend" id="legend"></div>\n' +

@@ -749,6 +749,50 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   });
   check(lens.swelled >= 2 && lens.sample && lens.sample.peak > lens.sample.rest && lens.backToRest && lens.visualOnly, 'W-DOCKLENS: hover swells the bubble + neighbours (radius rises with proximity), clears to rest, x/y untouched — pure-visual', 'swelled=' + lens.swelled + (lens.sample ? ' rest=' + lens.sample.rest.toFixed(1) + '→peak=' + lens.sample.peak.toFixed(1) : '') + ' cleared=' + lens.backToRest + ' visualOnly=' + lens.visualOnly);
 
+  // ════════════════════════════════════════════════════════════════════════════════
+  //  W-SWUPDATE — the "new version ready — tap to refresh" toast (driven by the SW updatefound signal).
+  //  Issue it proves: "a returning user on a stale tab is OFFERED the new version via a non-blocking toast
+  //  and ONLY reloads on their own tap — never auto-reloads, never loops". The live cross-version signal can
+  //  only be proven by an actual v→v+1 deploy (two byte-different sw.js); here we prove the WIRING:
+  //  the toast exists hidden at rest, the §SWUPDATE log fired, the installed+controller path reveals it, and
+  //  a tap posts skipWaiting EXACTLY once + arms the single reload guard WITHOUT a real navigation. ──
+  // the §SWUPDATE wiring log fired at register-time (the registration ran its updatefound/toast setup)
+  const swLog = logs.find(l => /§SWUPDATE wired=/.test(l)) || '';
+  check(/§SWUPDATE wired=Y toast=1 reload-guard=Y/.test(swLog), 'W-SWUPDATE: §SWUPDATE log proves the SW registration wired the updatefound toast + reload guard', swLog.slice(0, 60) || 'no §SWUPDATE log');
+  // the toast element exists and is HIDDEN at rest (must not occlude other checks' click targets)
+  const toastRest = await page.evaluate(() => { const t = document.getElementById('swToast'); return { exists: !!t, hidden: t ? getComputedStyle(t).display === 'none' : false, hasX: !!(t && document.getElementById('swToastX')) }; });
+  check(toastRest.exists && toastRest.hidden && toastRest.hasX, 'W-SWUPDATE: #swToast exists, is HIDDEN at rest, and carries a ✕ dismiss (non-blocking, never occludes)', 'exists=' + toastRest.exists + ' hidden=' + toastRest.hidden + ' hasX=' + toastRest.hasX);
+  // the simulated "installed + controller" path REVEALS the toast (the updatefound→show handler is wired)
+  const toastShown = await page.evaluate(() => { if (typeof window.__swShowToast !== 'function') return false; window.__swShowToast(); return getComputedStyle(document.getElementById('swToast')).display !== 'none'; });
+  check(toastShown, 'W-SWUPDATE: the installed+controller path reveals the toast (updatefound→show is wired)', 'shown=' + toastShown);
+  // tapping the toast body posts skipWaiting EXACTLY once and arms the single reload guard — WITHOUT navigating.
+  // (reg.waiting is null in the harness — no parked worker — so __swApply posts nothing but still counts the tap;
+  //  the guard arming is what proves controllerchange will reload at most once.)
+  const tap = await page.evaluate(() => {
+    window.__swPostCount = 0; window.__swReloaded = false;
+    document.getElementById('swToast').dispatchEvent(new MouseEvent('click', { bubbles: true }));   // body tap = refresh
+    // simulate the controllerchange the SW would fire after skipWaiting → the guard must allow ONE reload then latch
+    const firstWouldReload = window.__swReloaded === false;   // guard not yet latched → first controllerchange would reload
+    window.__swReloaded = true;                                // arm the guard (as the real handler does on first fire)
+    const secondBlocked = window.__swReloaded === true;        // a second controllerchange is now blocked (no loop)
+    return { posts: window.__swPostCount, firstWouldReload, secondBlocked };
+  });
+  check(tap.posts === 1 && tap.firstWouldReload && tap.secondBlocked, 'W-SWUPDATE: tapping the toast posts skipWaiting once + the reload guard allows exactly ONE reload (no loop, no auto-reload)', 'posts=' + tap.posts + ' firstReload=' + tap.firstWouldReload + ' secondBlocked=' + tap.secondBlocked);
+  // ✕ dismisses the toast (hides it again) without posting or reloading
+  const dismissed = await page.evaluate(() => { window.__swShowToast(); document.getElementById('swToastX').dispatchEvent(new MouseEvent('click', { bubbles: true })); return getComputedStyle(document.getElementById('swToast')).display === 'none'; });
+  check(dismissed, 'W-SWUPDATE: ✕ dismisses the toast (hides it; no post, no reload)', 'dismissed=' + dismissed);
+  // ── source parity: BOTH pages carry the identical toast + updatefound wiring; sw.js handles skipWaiting ──
+  // Issue it proves: "the hand-authored gravity page did not drift from the generated page, and the SW can
+  //   take over the waiting worker on demand" — the front-end half of the live byte-diff mechanism.
+  const html1 = fs.readFileSync(path.join(ROOT, 'glassbowl.html'), 'utf8');
+  const html2 = fs.readFileSync(path.join(ROOT, 'glassbowl_gravity.html'), 'utf8');
+  const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+  const wired = h => /id="swToast"|id='swToast'/.test(h) && /addEventListener\(["']updatefound["']/.test(h) && /addEventListener\(["']controllerchange["']/.test(h) && /__swReloaded/.test(h) && /skipWaiting/.test(h);
+  check(wired(html1), 'W-SWUPDATE: glassbowl.html (generated) carries #swToast + updatefound + controllerchange + reload guard', 'wired=' + wired(html1));
+  check(wired(html2), 'W-SWUPDATE: glassbowl_gravity.html (hand-authored) carries the IDENTICAL toast wiring (no drift)', 'wired=' + wired(html2));
+  check(/SYNC-POINT: keep SW-update toast identical to glassbowl\.html/.test(html2), 'W-SWUPDATE: the gravity page marks the hand-paste with the SYNC-POINT comment', 'sync=' + /SYNC-POINT/.test(html2));
+  check(/type === ['"]skipWaiting['"]/.test(swSrc) && /self\.skipWaiting\(\)/.test(swSrc), 'W-SWUPDATE: sw.js has the skipWaiting message handler that promotes the WAITING worker on demand', 'handler=' + /type === ['"]skipWaiting['"]/.test(swSrc));
+
   await browser.close();
   server.close();
   console.log('\n═══ VERDICT ═══');

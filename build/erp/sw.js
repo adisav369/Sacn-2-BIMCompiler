@@ -28,6 +28,9 @@ self.addEventListener('message', e => {
   if (e.data && e.data.type === 'precache') {
     e.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(ASSETS)).catch(() => {}));
   }
+  // W-SWUPDATE: the page's "tap to refresh" toast posts this so the PARKED (waiting) worker
+  // takes over on demand — then the page's controllerchange handler does a single guarded reload.
+  if (e.data && e.data.type === 'skipWaiting') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {
