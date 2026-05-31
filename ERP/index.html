@@ -2797,6 +2797,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#020-next-phase-the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec-no-code-yet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §0.20 NEXT PHASE — the secured/durable axis (UI POC frozen) (2026-05-31, SPEC — no code yet)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5207,6 +5218,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#020-next-phase-the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec-no-code-yet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §0.20 NEXT PHASE — the secured/durable axis (UI POC frozen) (2026-05-31, SPEC — no code yet)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -7086,6 +7108,106 @@ the matcher <strong>composes IN</strong>: the <em>same</em> cheap status op is e
 pro-gate-cell=(C_Invoice,CO 3-way) composes=Y data-gated=Y</code>. <strong>Open edge:</strong> the capability flag lives in
 memory in the POC; persisting it as a <code>CAPABILITY</code> rule in <code>erp_rules.db</code> (alongside <code>ACCESS</code>/<code>DOCPOLICY</code>)
 is the one-line next step. No <code>bim-ootb</code>, no Docker — T3 relocation still parked.</p>
+<h3 id="020-next-phase-the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec-no-code-yet">§0.20 NEXT PHASE — the secured/durable axis (UI POC frozen) (2026-05-31, SPEC — no code yet)<a class="headerlink" href="#020-next-phase-the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec-no-code-yet" title="Permanent link">&para;</a></h3>
+<p><strong>Pivot.</strong> The UI POC is proven: §0.19 drives the full O2C/P2P/GL chain through the kernel,
+matcher-gated, <code>replay-hash == live-hash</code>. <strong>No further UI work</strong> — the next phase tackles the
+<em>weak axes</em> §0.18(d) named (security, tamper-evidence, durability, multi-user) instead.</p>
+<p><strong>State of the art — has anyone solved these? Yes, and they all solved it the <em>same way</em></strong> (researched
+2026-05-31; sources below). The honest, load-bearing finding:</p>
+<blockquote>
+<p><strong>Every production local-first system anchors trust in a server.</strong> ElectricSQL and PowerSync (JWT
+auth + Postgres Row-Level-Security mirrored into sync rules) and Replicache (server <em>re-runs</em> every
+mutation — the server is the authority, the client an optimistic cache) all answer security + auth +
+durability + multi-user the same way: <strong>the server is the source of truth; the client is an offline
+cache.</strong> Conflict-convergence is a <em>mature, solved</em> category — CRDTs (Automerge 3.0, May 2025, ~10×
+less memory, Rust core; Yjs powering Figma/Linear/Notion). Tamper-evidence is <em>mature crypto</em> —
+hash-chained + Merkle append-only logs (Trillian, Rekor / Certificate Transparency).</p>
+</blockquote>
+<p><strong>What that means for us (and where "first" does and does NOT apply):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Weak axis</th>
+<th>Field's solved answer</th>
+<th>Our move</th>
+<th>First?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Multi-user convergence</strong></td>
+<td>CRDTs (Automerge/Yjs) — but they solve <em>convergence, not business invariants</em></td>
+<td><strong>Keep our semantic op-CRDT</strong> (§0.18c): generic CRDT/LWW would silently violate invariants (double-allocate). We are <em>at frontier</em> here, not behind</td>
+<td>No, but <strong>we're ahead</strong> on invariant-preserving merge</td>
+</tr>
+<tr>
+<td><strong>Tamper-evidence</strong></td>
+<td>hash-chain + Merkle transparency logs (server/CA infra)</td>
+<td><strong>Hash-chain + optionally sign each <code>kernel_ops</code> op</strong> — extend today's replay-hash into a per-op chained hash; verifiable <em>offline</em></td>
+<td><strong>Narrowly yes</strong> — the <em>placement</em> (transparency-log technique inside a browser-resident <em>business</em> log) is the one genuinely distinctive win</td>
+</tr>
+<tr>
+<td><strong>Durability</strong></td>
+<td><code>persist()</code> + treat local as cache + sync-to-server-of-truth</td>
+<td>Finish §16.3: <code>navigator.storage.persist()</code> + op-log export/backup. Proven pattern</td>
+<td>No — adopt it</td>
+</tr>
+<tr>
+<td><strong>Security / auth (multi-user)</strong></td>
+<td>trusted backend: JWT + RLS / server-re-run</td>
+<td>When multi-user is needed, adopt a <strong>thin trust anchor</strong> — §18.7 <em>designated-owner node</em> IS this. Proven, not novel</td>
+<td>No — adopt it</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The architecture — two domains, one async op-log seam (this resolves the tension).</strong> Separate the
+concerns cleanly into <strong>two asynchronous domains that never block each other</strong>, with <code>kernel_ops</code> as the
+boundary between them:</p>
+<ul>
+<li><strong>UI domain (instant, optimistic, offline)</strong> — the proven POC. Every action commits an op locally and the
+  projection updates at <strong>0ms</strong>; the user never waits on the network. Unchanged from today.</li>
+<li><strong>Server domain (trusted, secured, async)</strong> — receives pushed ops, <strong>validates / re-runs / signs</strong> them
+  as the authority (the Replicache pattern: the server re-executes mutations; PowerSync/ElectricSQL mirror
+  RLS into sync), then returns authoritative state. Enforcement, tamper-validation, and multi-user
+  reconciliation live <em>here</em>, off the UI's critical path.</li>
+</ul>
+<p>Because the seam is <strong>asynchronous</strong>, security does <strong>not</strong> cost instant UX — the two domains "work together
+while the UI keeps its instant experience, in a secured universe." This refines §0.18(d): the zero-server
+moat narrows only to <em>"single-user/offline runs with no server at all; secured multi-user adds a trusted
+async authority"</em> — it does <strong>not</strong> trade away the 0ms feel, because the UI domain is never gated on the
+server domain. The op-log is already the right payload for this (push = new ops, pull = authoritative ops);
+the designated-owner node (§18.7) is the server domain's reconcile role.</p>
+<p><strong>Residual honesty.</strong> Server-grade security/tamper-resistance still <strong>cannot</strong> be done purely client-side —
+the <em>secured</em> universe is the server domain doing the validating/signing; user-held keys give offline
+tamper-<em>evidence</em> (W-CHAIN/W-SIGN) but the <em>authority</em> is the trusted node. So we are <strong>not "first to make a
+serverless ERP secure"</strong> (the secured path has a server domain — that's the point). What stays distinctive,
+narrowly: a <strong>cryptographically tamper-evident, offline-verifiable business op-log</strong> + invariant-preserving
+merge + a <strong>clean async two-domain split that preserves 0ms UX</strong> — known techniques in an unusual
+arrangement, consistent with every other claim in this doc.</p>
+<p><strong>"First for BIM <em>and<em> ERP?" — defensible as combination, NOT as technique (researched 2026-05-31).</em><em> The
+</em>pattern<em> (op-log + optimistic UI + async trusted sync) is a </em><em>mature category</em><em> with off-the-shelf
+frameworks — nearest neighbor </em><em>LiveStore</em><em> ("git-inspired syncing via event-sourcing on reactive SQLite",
+conceptually almost identical to <code>kernel_ops</code> at the data layer); also ElectricSQL, Replicache, RxDB. </em><em>No
+"first" on the mechanism.</em><em> But by </em>domain<em>: offline BIM tools (OpenSpace, xeokit, BIMvision) are
+cache-for-</em>viewing<em>, not op-log local-first </em>editing<em> — none found; and no prominent local-first ERP
+</em>product<em> surfaced (SAP/Odoo/iDempiere stay server-authoritative). The </em><em>unification — BIM geometry </em>and<em>
+ERP transactions under ONE op-log (BIM undo == ERP audit, same kernel)</em><em> — turned up </em><em>no prior art</em>*.
+Defensible claim, with the epistemic limit stated: </em></strong>first to our knowledge<em> to unify spatial-BIM and
+transactional-ERP under a single local-first op-log with an instant-UI / async-secured-server split</em><em> —
+</em>placement/combination<em> first, not </em>technique* first. (Cannot prove a negative; absence of search evidence
+≠ proof. LiveStore named so the claim is made knowing the neighbour exists.)</p>
+<p><strong>Phase tasks (spec-first — witness claim precedes code):</strong>
+- <strong>W-CHAIN</strong> — each <code>kernel_ops</code> op stores <code>prev_hash</code>; <code>verifyChain()</code> walks the log and proves
+  <code>tamper detected at op N</code> on any altered payload. <em>Witness:</em> mutate one op's payload → chain breaks at
+  exactly that op; clean log → <code>chain OK len=N</code>.
+- <strong>W-SIGN</strong> <em>(optional, gated)</em> — ops signed with a user/device key; <code>verifyChain()</code> also checks signature.
+  <em>Witness:</em> op signed by key A fails verification under key B.
+- <strong>W-PERSIST</strong> — <code>navigator.storage.persist()</code> requested on first load; log export/restore round-trips.
+  <em>Witness:</em> <code>persisted=true</code> logged; export→wipe→import → <code>replay-hash == pre-export hash</code>.
+- <strong>W-OWNER</strong> <em>(multi-user, later)</em> — designated-owner-node reconcile at document-handoff seams (§18.7).
+  <em>Witness:</em> two peers each allocate the same invoice → owner rejects the second, no money lost.</p>
+<p>UI is frozen at the proven POC; this phase touches only <code>kernel_ops</code> integrity + persistence + (later) the
+trust anchor. <strong>Sources:</strong> <a href="https://powersync.com/">PowerSync</a> · <a href="https://electric-sql.com/blog/2024/11/21/local-first-with-your-existing-api">ElectricSQL — local-first with your API</a> · <a href="https://doc.replicache.dev/reference/server-push">Replicache push/auth</a> · <a href="https://automerge.org/blog/automerge-2/">Automerge 3.0</a> · <a href="https://transparency.dev/">Trillian / transparency.dev</a> · <a href="https://livestore.dev/">LiveStore</a> (nearest-neighbour event-sourced local-first data layer).</p>
 <hr />
 <h2 id="1-idempiere-ad-sqlite-table-mapping">§1. iDempiere AD → SQLite Table Mapping<a class="headerlink" href="#1-idempiere-ad-sqlite-table-mapping" title="Permanent link">&para;</a></h2>
 <h3 id="source-live-postgresql-docker">Source: live PostgreSQL (docker)<a class="headerlink" href="#source-live-postgresql-docker" title="Permanent link">&para;</a></h3>
