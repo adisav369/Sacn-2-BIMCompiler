@@ -173,22 +173,41 @@ per-model:**
 | **The handler families** | the side effects — and the corpus *collapses* (below) | a small closed set |
 | **The oracle** | each `docAction` names its `M*.<action>It()`; the diff-oracle proves the generic handler reproduces it, cell by cell | verify, never port |
 
-**The corpus collapses — this is the part that is usually missed:**
+**The corpus collapses — but by *de-interleaving*, not by being secretly empty.**
+`MOrder.completeIt()` and `MInvoice.completeIt()` genuinely run for pages. They are long
+because each **interleaves four concerns** in one imperative method — and the same blob is
+re-written in `MOrder`, `MInvoice`, `MInOut`, `MPayment`. Separate the four and the pages shrink,
+because three of them are written **once for the whole corpus:**
 
-- **Pure status transitions — zero handler code:** `prepareIt`, `approveIt`, `rejectIt`,
-  `invalidateIt`, `unlockIt`. Half the corpus evaporates *into the table*.
-- **The reversal family collapses to ONE generic handler:** `voidIt` / `reverseCorrectIt`
-  / `reverseAccrualIt` / `reActivateIt` = *"emit the inverse of the document's op-group."*
-  The op-log holds the original ops, so reversal is appending the negation. **In iDempiere
-  these are hand-coded per model and are among the buggiest, most duplicated code in the
-  system; here they are a single op-log operation.** This is the structural gift.
-- **`closeIt`** = set status + clamp the residual. Near-generic.
-- **`completeIt`** is the *only* genuinely heavy, model-specific verb — the derivation
-  fan-out (shipment / invoice / posting / costing). This is the §0.9 named-handler 20%,
-  extracted **and verified per cell** against the oracle (exactly what §0.17 did for O2C/P2P).
+| Concern tangled inside the method | What it is | Where it goes | Written |
+|---|---|---|---|
+| `setDocStatus`/`Processed`/`DocAction`, validate hooks | status bookkeeping (boilerplate in every method) | the transition table | **once** |
+| mandatory fields, credit limit, legal status | guards — predicates (§0.14 GUARD) | rules (data) | **once, shared** |
+| `createShipment`, `createInvoice`, `reserveStock`, `allocate`, `match`, post | generation verbs (§0.14 GENERATE), **shared across models** | named handlers | **once each** |
+| which verbs fire, in what order, under which condition | the per-doc-type **recipe** | data — the `docAction` fan-out descriptor | a short list |
 
-So ~80% of the corpus dissolves into a table plus one inverse handler; the remaining 20% is
-verified, not ported. No magic on the hard part — but the hard part is small and provable.
+What remains genuinely model-specific and intricate — BOM / phantom explode (MOrder), material
+transaction + costing + ASI (MInOut), the posting recipes — is a **small set of named handlers,
+verified per cell against the `M*.*It()` oracle** (§0.17), far smaller than the raw page count
+once boilerplate, guards, and the *duplicated* generation verbs are factored out.
+`MInvoice.completeIt()` is mostly calls to verbs O2C already proved — `match`, `allocate`, post —
+plus balance updates; its irreducible recipe is a handful of lines. `prepareIt` reduces the same
+way: its guards → rules, its `reserveStock` / explode → the same generation verbs as `completeIt`.
+
+The genuinely trivial actions carry **no handler at all** — straight into the table (~3 lines
+each in iDempiere): `approveIt` (`setIsApproved`), `rejectIt`, `unlockIt` (`setProcessing(false)`),
+`invalidateIt` (`setDocStatus(INVALID)`).
+
+And the **reversal family collapses to ONE generic handler:** `voidIt` / `reverseCorrectIt` /
+`reverseAccrualIt` / `reActivateIt` = *"emit the inverse of the document's op-group."* The op-log
+holds the original ops, so reversal is appending the negation — **the per-model, notoriously buggy
+reverse code in iDempiere becomes a single op-log operation.** This is the structural gift.
+(`closeIt` = set status + clamp the residual; near-generic.)
+
+So the reduction is real, but the mechanism is **factor the four concerns apart and de-duplicate
+the shared verbs** — not "the code was empty." The bulk (status, guards, shared verbs, posting) is
+written once for the whole corpus; the per-model remainder is a short recipe plus a few verified
+handlers, `completeIt` / `prepareIt` included.
 
 **Why this is the migration solvent.** Row migration is the easy part everyone already does.
 What makes ERP migration hell — and what *locks* customers into SAP/Odoo — is the **behaviour**:
