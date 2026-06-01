@@ -3673,6 +3673,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#19-performance-model-transaction-cost-vs-idempiere-analytical-multi-user-apples-to-apples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19. Performance Model — Transaction Cost vs iDempiere (analytical, multi-user apples-to-apples)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§19. Performance Model — Transaction Cost vs iDempiere (analytical, multi-user apples-to-apples)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#191-two-latencies-decoupled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.1 Two latencies, decoupled
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#192-extra-operations-this-kernel-performs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.2 Extra operations this kernel performs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#193-overhead-idempiere-carries-that-this-avoids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.3 Overhead iDempiere carries that this avoids
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#194-the-two-cases-order-of-magnitude-illustrative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.4 The two cases (order-of-magnitude, illustrative)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#195-envelope-what-this-model-does-and-does-not-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.5 Envelope — what this model does and does not claim
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6165,6 +6237,78 @@
     <span class="md-ellipsis">
       
         §18.10 The oracle: iDempiere's model classes validate handlers (extract, don't port)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-performance-model-transaction-cost-vs-idempiere-analytical-multi-user-apples-to-apples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19. Performance Model — Transaction Cost vs iDempiere (analytical, multi-user apples-to-apples)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§19. Performance Model — Transaction Cost vs iDempiere (analytical, multi-user apples-to-apples)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#191-two-latencies-decoupled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.1 Two latencies, decoupled
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#192-extra-operations-this-kernel-performs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.2 Extra operations this kernel performs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#193-overhead-idempiere-carries-that-this-avoids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.3 Overhead iDempiere carries that this avoids
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#194-the-two-cases-order-of-magnitude-illustrative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.4 The two cases (order-of-magnitude, illustrative)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#195-envelope-what-this-model-does-and-does-not-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.5 Envelope — what this model does and does not claim
       
     </span>
   </a>
@@ -9170,6 +9314,164 @@ This is EXTRACT-don't-invent applied to behaviour (the §18.6 "hell").</p>
 </ul>
 <hr />
 <p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
+<hr />
+<h2 id="19-performance-model-transaction-cost-vs-idempiere-analytical-multi-user-apples-to-apples">§19. Performance Model — Transaction Cost vs iDempiere (analytical, multi-user apples-to-apples)<a class="headerlink" href="#19-performance-model-transaction-cost-vs-idempiere-analytical-multi-user-apples-to-apples" title="Permanent link">&para;</a></h2>
+<p>This section is an <strong>analytical cost model, not a benchmark.</strong> Where a mechanism is
+proven it cites the witness; the GL case is an explicit projection. The comparison is
+held <strong>apples-to-apples</strong>: iDempiere is multi-user by construction, so it is compared
+against <em>this architecture in its secured/multi-user configuration</em> (§0.20 — local kernel
++ asynchronous facilitator + W-CHAIN/W-SIGN), <strong>not</strong> the bare single-user mode. The
+single-user/offline mode is the lower bound, noted for contrast.</p>
+<h3 id="191-two-latencies-decoupled">§19.1 Two latencies, decoupled<a class="headerlink" href="#191-two-latencies-decoupled" title="Permanent link">&para;</a></h3>
+<p>Traditional three-tier ERP collapses two costs into one synchronous commit; this
+architecture separates them:</p>
+<ul>
+<li><strong>Interactive latency <code>T_i</code></strong> — what the operator waits for: <code>T_compute + T_apply + T_commit</code>.</li>
+<li><strong>Convergence latency <code>T_c</code></strong> — until other users / the supervisor log reflect it:
+  <code>T_order + T_push + T_ingest + T_fanout</code>.</li>
+</ul>
+<p>In iDempiere <code>T_i ≈ T_c</code> — the WAL-synced commit <em>is</em> the point of multi-user visibility.
+Here <code>T_i</code> is local (in-RAM, ~0 ms perceived) and <code>T_c</code> is asynchronous (the facilitator
+orders + persists + fans out). The multi-user tax is paid in both systems: iDempiere pays
+it <strong>synchronously, inside <code>T_i</code></strong>; this architecture pays it <strong>asynchronously, inside <code>T_c</code></strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Cost term</th>
+<th>iDempiere (multi-user server)</th>
+<th>Here (secured multi-user)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>client ⇄ server network</td>
+<td>per action, inside <code>T_i</code></td>
+<td><strong>0</strong> in <code>T_i</code>; the push is in <code>T_c</code></td>
+</tr>
+<tr>
+<td>DB statement round-trip</td>
+<td>JDBC ⇄ PostgreSQL, inside <code>T_i</code></td>
+<td><strong>0</strong> — sql.js runs in-process</td>
+</tr>
+<tr>
+<td>isolation</td>
+<td>MVCC + row locks, synchronous</td>
+<td>deterministic replay; cross-writer invariants at one CAS seam (<code>DistributedERP.md §5</code>)</td>
+</tr>
+<tr>
+<td>durable commit</td>
+<td>WAL fsync, synchronous</td>
+<td>op-log append; durability achieved on relay to the facilitator (<code>T_c</code>)</td>
+</tr>
+<tr>
+<td>total ordering</td>
+<td>implicit in the single authoritative DB</td>
+<td>the facilitator assigns it, asynchronously</td>
+</tr>
+</tbody>
+</table>
+<p>The guarantees are <strong>not identical</strong>: iDempiere gives synchronous serializability for every
+op; this gives asynchronous convergence + deterministic replay, with synchronous
+enforcement reserved for the single online CAS op-class (oversell / double-claim). That
+trade is the substance of the comparison, not a footnote.</p>
+<h3 id="192-extra-operations-this-kernel-performs">§19.2 Extra operations this kernel performs<a class="headerlink" href="#192-extra-operations-this-kernel-performs" title="Permanent link">&para;</a></h3>
+<p>The audit / replay / sync substrate is not free. Per state change the kernel does work
+iDempiere does not:</p>
+<table>
+<thead>
+<tr>
+<th>Extra op</th>
+<th>iDempiere default</th>
+<th>Here</th>
+<th>Cost / when it bites</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rich op: before/after + lineage GUIDs</td>
+<td><code>AD_ChangeLog</code> optional, changed-columns only</td>
+<td><strong>always</strong>, full snapshot (§0.6)</td>
+<td>memory + CPU per op; scales with batch rows × row width — the main batch tax</td>
+</tr>
+<tr>
+<td>Hash-chain per op (W-CHAIN)</td>
+<td>none</td>
+<td>SHA over each op</td>
+<td>~µs each (native); O(n) over a batch — negligible per op</td>
+</tr>
+<tr>
+<td>Signature (W-SIGN)</td>
+<td>DB session auth</td>
+<td>optional asymmetric sign</td>
+<td>ms-scale → <strong>sealed at chain-segment boundaries, not per op</strong>; per-op signing would dominate a batch</td>
+</tr>
+<tr>
+<td>Identity mint + record (G-IDENTITY §0.21)</td>
+<td>server DB sequence (a round-trip)</td>
+<td>UUID minted + recorded locally</td>
+<td>trades a sequence round-trip for a few bytes — net win</td>
+</tr>
+<tr>
+<td>Settlement re-derivation</td>
+<td>follows the stored FK (<code>M_InOutLine_ID</code>/<code>C_OrderLine_ID</code>)</td>
+<td>matcher reconstructs pairs from partner + product + qty (partitioned join + greedy first-fit, §0.17)</td>
+<td><strong>genuinely more CPU than an FK-follow</strong> — the one place this does <em>more</em> work than iDempiere; buys FK-absent robustness</td>
+</tr>
+<tr>
+<td>Replay + hash verify</td>
+<td>trusts DB state</td>
+<td>rebuilds the projection from the log, hash-compares</td>
+<td>O(log), on demand, off the hot path</td>
+</tr>
+</tbody>
+</table>
+<h3 id="193-overhead-idempiere-carries-that-this-avoids">§19.3 Overhead iDempiere carries that this avoids<a class="headerlink" href="#193-overhead-idempiere-carries-that-this-avoids" title="Permanent link">&para;</a></h3>
+<p>The reciprocal: iDempiere's hot path includes MVCC version rows, WAL fsync, per-statement
+parse/plan over JDBC, OSGi event dispatch, <code>ModelValidator</code> reflection, ZK component-tree
+round-trips, and sequence round-trips. The net trade is <strong>infrastructural overhead removed
+from the hot path</strong> (network, MVCC, WAL, JVM/OSGi) <strong>for semantic overhead added</strong>
+(snapshot, hash, optional sign, occasional re-derivation) — mostly small per-op and partly
+deferrable.</p>
+<h3 id="194-the-two-cases-order-of-magnitude-illustrative">§19.4 The two cases (order-of-magnitude, illustrative)<a class="headerlink" href="#194-the-two-cases-order-of-magnitude-illustrative" title="Permanent link">&para;</a></h3>
+<p><strong>POS Order Complete</strong> (proven path: 7 ops, <code>replay-hash == live-hash</code>, §0.19).</p>
+<ul>
+<li><em>iDempiere (multi-user):</em> one network round-trip + dozens of JDBC statements (shipment,
+  invoice, allocation, <code>Fact_Acct</code>, status, sequence) + MVCC/WAL commit → interactive
+  latency on the order of 10²–10³ ms; multi-user visibility at the same synchronous commit.</li>
+<li><em>Here (secured multi-user):</em> <code>T_i</code> on the order of 10⁰–10¹ ms (local 7-op apply + 7
+  rich/hashed ops; signature sealed per segment, not per op); <code>T_c</code> = async push (~KB) +
+  facilitator append/order + fan-out, typically sub-second in the background.</li>
+<li><em>Apples-to-apples:</em> both reach multi-user visibility in well under a second, but the
+  operator's wait stays ~1–3 orders lower here because the multi-user tax sits in <code>T_c</code>,
+  not <code>T_i</code>.</li>
+</ul>
+<p><strong>10,000-line GL batch</strong> (projection — the <code>Fact_Acct</code> posting cell is <strong>not yet
+implemented or verified</strong>, §0.17).</p>
+<ul>
+<li><em>iDempiere:</em> iterative posting, on the order of 10⁴–10⁵ INSERTs including double-entry
+  facts + index/MVCC → tens of seconds to minutes; visible on commit.</li>
+<li><em>Here (projected):</em> ~10⁴ ops applied in one in-RAM transaction (sub-second to seconds) +
+  ~10⁴ before/after snapshots (the real memory tax) + ~10⁴ hashes (tens of ms native) + one
+  segment-sealed signature (not 10⁴ signs); relay payload on the order of a few MB pushed
+  asynchronously; facilitator ingest is O(n) <strong>append</strong>, not re-posting.</li>
+<li><em>Apples-to-apples:</em> structurally ~1–2 orders faster to local completion, and the
+  supervisor ingests by appending rather than re-executing — conditioned on (a) GL posting
+  being built, (b) the snapshot + log-persistence tail, (c) running off the main thread
+  (Web Worker).</li>
+</ul>
+<h3 id="195-envelope-what-this-model-does-and-does-not-claim">§19.5 Envelope — what this model does and does not claim<a class="headerlink" href="#195-envelope-what-this-model-does-and-does-not-claim" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Analytical, not benchmarked.</strong> The sync/integrity mechanics are POC-witnessed
+  (<code>poc_chain</code> / <code>poc_sign</code> / <code>poc_distributed</code> / <code>poc_persist</code>; W-CHAIN in
+  <code>kernel_ops.js</code> v5), <strong>not</strong> a deployed N-terminal multi-site benchmark.</li>
+<li><strong>GL is a projection</strong> — the posting cell is dataless / untested (§0.17).</li>
+<li><strong>Async oversight is not a real-time gate.</strong> Cross-writer enforcement that must block in
+  real time is the single online CAS op-class (<code>DistributedERP.md §5</code>); everything else
+  converges eventually.</li>
+<li><strong>The advantage is architectural, not algorithmic:</strong> identical document logic, executed
+  in-process against in-memory SQLite + an append-only signed op-log, with the multi-user
+  tax deferred to an asynchronous facilitator instead of paid synchronously per transaction.</li>
+</ul>
 
 
 
