@@ -11,9 +11,9 @@
    '#needHelpWrap:hover{border-color:#56d6e0}#needHelpWrap input{accent-color:#56d6e0;cursor:pointer}' +
    '.help-q{position:fixed;z-index:69;width:20px;height:20px;border-radius:50%;background:#1668a8;color:#fff;font:700 13px system-ui;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.5);border:1px solid #7fd6e0;transition:transform .1s}' +
    '.help-q:hover{transform:scale(1.18);background:#1f86d0}' +
-   '#helpCard{position:fixed;z-index:71;width:min(380px,92vw);background:#0f1a22;border:1px solid #2f4654;border-radius:12px;padding:14px 16px;color:#dbe9ee;font:13.5px/1.5 system-ui;box-shadow:0 8px 30px rgba(0,0,0,.6);display:none}' +
-   '#helpCard.open{display:block}#helpCard .hcnum{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#6f93a2}' +
-   '#helpCard .hctitle{font-weight:600;font-size:17px;margin:2px 0 8px;color:#eaf6fa}#helpCard .hcbody p{margin:0 0 8px}' +
+   '#helpCard{position:fixed;z-index:71;width:min(280px,84vw);background:#0f1a22;border:1px solid #2f4654;border-radius:11px;padding:11px 13px;color:#dbe9ee;font:13px/1.45 system-ui;box-shadow:0 6px 22px rgba(0,0,0,.55);display:none}' +
+   '#helpCard.open{display:block}#helpCard .hcnum{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#6f93a2}' +
+   '#helpCard .hctitle{font-weight:600;font-size:15px;margin:2px 0 4px;color:#eaf6fa}#helpCard .hctip{margin:0 0 8px;color:#bcd2da}' +
    '#helpCard figure{margin:8px 0;border:1px solid #294150;border-radius:8px;overflow:hidden}#helpCard figure img{display:block;width:100%}' +
    '#helpCard figure figcaption{font-size:11px;color:#8fb3c0;padding:5px 8px;background:#0b141b}' +
    '#helpCard .figph{border:1px dashed #3a5a6a;border-radius:8px;padding:14px;color:#7f9aa8;font-style:italic;font-size:12.5px;text-align:center;background:#0d1820;margin:8px 0}' +
@@ -79,7 +79,7 @@
     card.innerHTML = '<span class=hcx title=close>✕</span>' +
       '<div class=hcnum>Help ' + (cur + 1) + ' / ' + STEPS.length + ' · ' + (s.op || '') + '</div>' +
       '<div class=hctitle>' + s.title + '</div>' +
-      '<div class=hcbody>' + renderPara(s) + '</div>' +
+      '<div class=hctip>' + (s.tip || '') + '</div>' +
       '<div class=hcnav><a class=hcmore href="' + readmeUrl(s.readmeAnchor) + '" target=_blank rel=noopener>Read more →</a>' +
       '<span class=hcgrow></span>' +
       '<button class=hcb id=hcPrev ' + (cur === 0 ? 'disabled' : '') + '>◀</button>' +
