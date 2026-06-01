@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * test_kernel_identity.js — A1 / G-IDENTITY-LIVE: exercises the REAL bim-ootb/viewer/kernel_ops.js
  *   (not a copy) to confirm op_uuid identity is wired in. Spec: docs/ERP.md §0.21 (D1–D4) +

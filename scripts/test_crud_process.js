@@ -1,3 +1,5 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 // Implementing CRUD_OVERLAY.md §Process — Witness: W-CRUD-PROCESS
 // Proves/disproves: (1) the `process` verb derives docstatus CO when every docAction.requires col is
 // present, IP (in-progress, unsatisfied condition) when one is empty; (2) c_allocationline is Process

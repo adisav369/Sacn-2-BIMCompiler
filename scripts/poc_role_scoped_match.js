@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_role_scoped_match.js — close the two remaining gaps on the GENERIC matcher:
  *   (1) AMBIGUITY  — >1 candidate line per partition (the real Detail⋈Detail hard case);

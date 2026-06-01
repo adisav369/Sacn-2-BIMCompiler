@@ -4,7 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 // walk.js — Walk Mode (GPS blue dot, step detection, wall X-ray)
+var _walkDir; // §S278: cached — reused per step (lazy-init)
 function setupWalk(A) {
+  _walkDir = new THREE.Vector3();
   // Walk Mode compass/tilt state
   A.walkCompassReadings = [];
   A.walkLockedHeading = null;
@@ -185,6 +187,7 @@ function setupWalk(A) {
     // walkModeActive + controls.enabled already set at line 59-60 (early lock)
     A.walkGpsFollowCam = false;
     document.getElementById('walk-mode-btn').classList.add('active');
+    var _pw = document.getElementById('pill-walk'); if (_pw) _pw.style.background = '#0d47a1';
     A.cacheStoreyLevels();
     // Drive-Thru replaces shake-to-walk — no startStepDetection()
     A.startDriveThru();
@@ -340,6 +343,7 @@ function setupWalk(A) {
     const snagRow = document.getElementById('snag-btn-row');
     if (snagRow) snagRow.style.display = 'none';
     document.getElementById('walk-mode-btn').classList.remove('active');
+    var _pw = document.getElementById('pill-walk'); if (_pw) _pw.style.background = '';
     // Fly back to building overview so OrbitControls has a sensible target
     if (A.activeBuilding && A.flyTo) A.flyTo(A.activeBuilding);
     A.status.textContent = typeof _TRL!=='undefined'&&_TRL.ui_walk_stopped||'Walk Mode stopped.';
@@ -452,7 +456,7 @@ function setupWalk(A) {
   };
 
   A.advanceWalkStep = function() {
-    const dir = new THREE.Vector3();
+    var dir = _walkDir;
     A.camera.getWorldDirection(dir);
     // Keep full direction including Y — tilt phone up to climb, down to descend
     dir.normalize();

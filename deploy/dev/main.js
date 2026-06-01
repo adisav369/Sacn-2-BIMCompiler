@@ -5,7 +5,7 @@
  */
 // main.js — initViewer() orchestrator: creates APP, calls each module's setup, starts render loop
 // DEV version — adds setupNlp (S211 voice command / NLP query)
-console.log('§MAIN_JS v23 loaded — S277b WebGL-only + cinematic effects');
+console.log('§MAIN_JS v34 loaded — S280c revert ≤5→===1, remove consolidation block');
 async function initViewer() {
   const APP = window.APP = {};
 
@@ -32,11 +32,11 @@ async function initViewer() {
       }
       // Load sub-modules in dependency order, then the bootstrap
       var modules = [
-        'navigate_find.js?v=9',
+        'navigate_find.js?v=13',
         'navigate_grid.js?v=1',
         'navigate_path.js?v=1',
         'navigate_engine.js?v=1',
-        'navigate_controls.js?v=1',
+        'navigate_controls.js?v=2',
         'navigate.js?v=10'
       ];
       function loadNext(i) {
@@ -587,6 +587,8 @@ async function initViewer() {
         _needsRender = false;
       }
     } else {
+      // §S280c: Desktop renders unconditionally — same as smooth R184 era.
+      // Render gate removed: was S280b scope drift (perf change in UI session).
       if (APP._composer && APP._composerEnabled) APP._composer.render();
       else APP.renderer.render(APP.scene, APP.camera);
     }

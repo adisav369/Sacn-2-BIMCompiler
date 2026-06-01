@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_identity.js — W-IDENTITY-LIVE: G-IDENTITY wired into the REAL kernel (ERP.md §0.21).
  *   Spec: docs/ERP.md §0.21 (D1–D4); DistributedERP.md §7 (identity is an input, never computed).

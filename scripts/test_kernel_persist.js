@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * test_kernel_persist.js — A4 / W-PERSIST-LIVE: exercises bim-ootb/viewer/erp_persist.js (+ the real
  *   erp_signer.js for the signed-snapshot hook) to confirm the live durable-local + recovery behaviour.

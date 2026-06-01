@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * test_kernel_sign.js — A2 / W-SIGN-LIVE: exercises the REAL bim-ootb/viewer/kernel_ops.js +
  *   bim-ootb/viewer/erp_signer.js to confirm the edge signer turns the live W-CHAIN from

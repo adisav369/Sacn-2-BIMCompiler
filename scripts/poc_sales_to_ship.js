@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_sales_to_ship.js — "tackle the hard parts, POC the gaps away first".
  *   Spec: docs/ERP.md §18 (BOM+settlement), §0.5 (decision tables), §0.9-0.10 (engine),

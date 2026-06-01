@@ -610,12 +610,8 @@ async function setupScene(A) {
   A._recording = false;
   A._mediaRecorder = null;
   A._recordChunks = [];
-  // Show record button on desktop only
-  var _recBtn = document.getElementById('pill-record');
-  if (_recBtn && !window._isMobile && typeof MediaRecorder !== 'undefined') {
-    _recBtn.style.display = '';
-    console.log('§RECORD_READY MediaRecorder available');
-  }
+  // §S280: Record removed from pill — accessible via Help palette (R shortcut)
+  console.log('§RECORD_READY MediaRecorder=' + (typeof MediaRecorder !== 'undefined'));
   window.toggleRecord = function() {
     if (A._recording) {
       // Stop recording
@@ -845,9 +841,10 @@ async function setupScene(A) {
       }
       if (typeof A.toggleMeasure === 'function') A.toggleMeasure();
     },
-    '-':  function() { if (typeof window.toggleAllPanels === 'function') window.toggleAllPanels(); },
-    '+':  function() { if (typeof window.toggleAllPanels === 'function') window.toggleAllPanels(); },
-    '=':  function() { if (typeof window.toggleAllPanels === 'function') window.toggleAllPanels(); }
+    // §S280: -/+/= panel toggle removed — [] button replaces (single=F11, double=toggle panels)
+    'r':  function() { if (typeof toggleRecord === 'function') toggleRecord(); },
+    'e':  function() { if (typeof toggleDocPill === 'function') toggleDocPill(); },
+    '/':  function() { if (A.quickShare) A.quickShare(); }
   };
 
   function _dispatchSeq(seq) {
@@ -917,7 +914,7 @@ async function setupScene(A) {
     { seq: 'L',  name: 'Fly Tour',        icon: _ic('<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>') },
     { seq: 'S',  name: 'Screenshot',      icon: _ic('<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>') },
     { seq: '4',  name: '4D / 5D',         icon: _ic('<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>') },
-    { seq: 'Alt+Z', name: 'X-Ray',       icon: _ic('<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/>') },
+    { seq: 'X',  name: 'X-Ray',           icon: _ic('<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/>'), action: function() { if (typeof toggleXray === 'function') toggleXray(); } },
     { seq: 'I',  name: 'Issues',          icon: _ic('<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>'), children: [
       { name: 'Snag photo + annotation', icon: '<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>' },
       { name: 'Fly to clash deep-link', icon: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>' },
@@ -933,7 +930,9 @@ async function setupScene(A) {
       { name: 'Phase slider', icon: '<path d="M2 12h20"/><circle cx="12" cy="12" r="2"/>' },
       { name: 'Share ?tm=play link', icon: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>' }
     ] },
-    { seq: '',   name: 'Share',           icon: _ic('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>'), action: function() { if (A.quickShare) A.quickShare(); } },
+    { seq: 'R',  name: 'Record',          icon: _ic('<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.934a.5.5 0 0 0-.777-.416L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/>') },
+    { seq: 'E',  name: 'Red Pill',        icon: _ic('<rect x="8" y="2" width="8" height="20" rx="4"/><line x1="8" y1="12" x2="16" y2="12"/><circle cx="12" cy="7" r="1.5" fill="currentColor"/>') },
+    { seq: '/',  name: 'Share',           icon: _ic('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>'), action: function() { if (A.quickShare) A.quickShare(); } },
     { seq: '',   name: 'Home',            icon: _ic('<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'), action: function() { location.href='../index.html'; } },
     { seq: 'F1', name: 'Help',            icon: _ic('<circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/>') }
   ];
@@ -1161,6 +1160,7 @@ async function setupScene(A) {
   window._focusPanel = _focusPanel;
   window._blurPanel = _blurPanel;
   window._panels = _panels;
+  window._focusStack = _focusStack; // §S280: exposed for [] double-tap
 
   // ── Keyboard handler ──────────────────────────────────────────
   // ORIGINAL shortcuts preserved. Sequence engine + panel focus added on top.
@@ -1171,12 +1171,24 @@ async function setupScene(A) {
     if (document.getElementById('cmd-palette')) { console.log('§KBD_ROUTE palette active, pass-through key=' + e.key); return; }
 
     // Always-on modifier shortcuts (unchanged from original)
-    if (e.altKey && e.key === 'z') { e.preventDefault(); console.log('§KBD_ROUTE alt+z → xray'); A.toggleXray(); return; }
+    // §S280: Alt+Z X-Ray removed — too costly, OutlinePass replaces it
     if (e.key === 'F1') { e.preventDefault(); console.log('§KBD_ROUTE F1 → help'); showCommandPalette(); return; }
     if (e.key === 'F11') { e.preventDefault(); console.log('§KBD_ROUTE F11 → fullscreen'); A.toggleFullscreen(); return; }
 
     var noMod = !e.ctrlKey && !e.altKey && !e.metaKey;
     var notInput = e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA';
+
+    // §S280: Backspace = undo, \ = redo (kernel_ops)
+    if (noMod && notInput && e.key === 'Backspace') {
+      e.preventDefault();
+      if (window._doSceneUndo) window._doSceneUndo();
+      return;
+    }
+    if (noMod && notInput && e.key === '\\') {
+      e.preventDefault();
+      if (window._doSceneRedo) window._doSceneRedo();
+      return;
+    }
 
     // Tab — cycle panel focus (§2)
     if (e.key === 'Tab' && notInput) {
@@ -1241,8 +1253,30 @@ async function setupScene(A) {
     // ? — command palette
     if (e.key === '?') { e.preventDefault(); console.log('§KBD_ROUTE ? → palette'); showCommandPalette(); return; }
 
-    // Esc with no panel focused — no-op
-    if (e.key === 'Escape') { console.log('§KBD_ROUTE esc no panel → no-op'); return; }
+    // §S280: Esc universal — close pill, then close any visible panel
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      // Close pill if open
+      if (document.getElementById('mobile-pill') && document.getElementById('mobile-pill').style.display !== 'none') {
+        if (typeof window.toggleMobilePill === 'function') window.toggleMobilePill();
+        console.log('§KBD_ESC → close pill');
+        return;
+      }
+      // Close last visible dynamic panel (find, clash, issues, etc.)
+      var _dynPanels = document.querySelectorAll('#find-panel, #issues-panel, .glass-panel, #cmd-palette');
+      for (var _di = _dynPanels.length - 1; _di >= 0; _di--) {
+        var _dp = _dynPanels[_di];
+        if (_dp.style.display !== 'none' && _dp.offsetWidth > 0) {
+          var closeBtn = _dp.querySelector('.bim-panel-close, .panel-toggle, [id$="-close"]');
+          if (closeBtn) closeBtn.click();
+          else _dp.style.display = 'none';
+          console.log('§KBD_ESC → close ' + (_dp.id || 'panel'));
+          return;
+        }
+      }
+      console.log('§KBD_ESC no-op (nothing to close)');
+      return;
+    }
 
     // Key sequence engine
     clearTimeout(_seqTimer);
@@ -1254,6 +1288,7 @@ async function setupScene(A) {
     console.log('§KBD_SEQ_ENGINE input=' + e.key + ' prevSeq="' + prevSeq + '" seq="' + _seq + '" exact=' + hasExact + ' prefix=' + hasLonger);
 
     if (hasExact && !hasLonger) {
+      e.preventDefault(); // §S280d: block keypress so char doesn't enter focused input (e.g. 'f' → Find)
       console.log('§KBD_SEQ_FIRE seq=' + _seq + ' (immediate, no longer prefix)');
       _dispatchSeq(_seq);
       _seq = '';
@@ -1281,4 +1316,57 @@ async function setupScene(A) {
     _seq = '';
     _showSeqHint('');
   });
+
+  // §S280: Undo/Redo — shared by keyboard + buttons
+  var _undoBtn = document.getElementById('undo-btn');
+  var _redoBtn = document.getElementById('redo-btn');
+
+  function _updateUrButtons() {
+    if (!A.db || !window.KernelOps) return;
+    // Check if undo is available
+    var hasUndo = false, hasRedo = false;
+    try {
+      var u = A.db.exec('SELECT id FROM kernel_ops WHERE undone = 0 ORDER BY id DESC LIMIT 1');
+      hasUndo = u.length > 0 && u[0].values.length > 0;
+      var r = A.db.exec('SELECT id FROM kernel_ops WHERE undone = 1 ORDER BY id ASC LIMIT 1');
+      hasRedo = r.length > 0 && r[0].values.length > 0;
+    } catch(e) {}
+    if (_undoBtn) { _undoBtn.classList.toggle('active-undo', hasUndo); }
+    if (_redoBtn) { _redoBtn.classList.toggle('active-redo', hasRedo); }
+  }
+
+  window._doSceneUndo = function() {
+    if (!window.KernelOps || !A.db) { A.status.textContent = 'No ops to undo'; return; }
+    var op = KernelOps.undoOp(A.db);
+    if (op) {
+      A.status.textContent = 'Undo: ' + op.op_type;
+      console.log('§UNDO type=' + op.op_type + ' id=' + op.id);
+    } else {
+      A.status.textContent = 'Nothing to undo';
+    }
+    _updateUrButtons();
+  };
+  window._doSceneRedo = function() {
+    if (!window.KernelOps || !A.db) { A.status.textContent = 'No ops to redo'; return; }
+    var op = KernelOps.redoOp(A.db);
+    if (op) {
+      A.status.textContent = 'Redo: ' + op.op_type;
+      console.log('§REDO type=' + op.op_type + ' id=' + op.id);
+    } else {
+      A.status.textContent = 'Nothing to redo';
+    }
+    _updateUrButtons();
+  };
+
+  // Update button state when any kernel_op is committed
+  var _origCommitOp = window.KernelOps ? KernelOps.commitOp : null;
+  if (_origCommitOp) {
+    KernelOps.commitOp = function() {
+      var result = _origCommitOp.apply(this, arguments);
+      _updateUrButtons();
+      return result;
+    };
+  }
+  // Initial state
+  setTimeout(_updateUrButtons, 2000);
 }

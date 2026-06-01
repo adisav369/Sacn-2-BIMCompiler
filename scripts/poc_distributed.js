@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_distributed.js — Merge/G-IDENTITY (#2) + W-OWNER/CAS (#3) acceptance
  *   (prompts/DISTRIBUTED_POC.md; DistributedERP.md §9-C/D/E, §4 guard set).

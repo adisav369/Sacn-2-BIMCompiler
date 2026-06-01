@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_wire.js — TASK 1 acceptance: the compile→engine WIRE (docs/ERP.md §0.14-0.15,
  *   prompts/ERP_RUNTIME_ENGINE.md T1). Re-runs the Sales→Ship POC with EVERY engine opt

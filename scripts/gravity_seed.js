@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * gravity_seed.js — TASK 3: the kernel-gravity analytics seed (P4 preview).
  *   Spec: prompts/ERP_KERNEL_BUILD.md §P3b Task 3 + §P4, docs/ERP.md §14 (op-log as

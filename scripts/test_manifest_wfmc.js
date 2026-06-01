@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * test_manifest_wfmc.js — ⚠ DO NOT REMOVE — Scope guard
  * Scope: the P2 gate (prompts/ERP_KERNEL_BUILD.md §P2). Verifies the COMPILED

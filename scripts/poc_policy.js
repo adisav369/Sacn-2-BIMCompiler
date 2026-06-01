@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_policy.js — lease-expiry + value-tiering acceptance
  *   (prompts/DISTRIBUTED_POC.md #6; DistributedERP.md §9-C/D, §4 G-LEASE-EXPIRY, §5.3).

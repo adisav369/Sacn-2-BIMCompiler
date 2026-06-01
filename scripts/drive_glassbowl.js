@@ -1,3 +1,5 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 // Localhost drive of glassbowl.html (READSHOWME D3 + CRUD_OVERLAY §Process) — puppeteer over the
 // real browser. §-log first: captures the page console, writes build/erp/glassbowl_drive.log; READ it.
 // Proves (or disproves): page boots (pageerror=0), BOTH overlays mount, NeedHelp? → help card + badges,

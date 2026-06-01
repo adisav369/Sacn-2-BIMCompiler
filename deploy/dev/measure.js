@@ -1,3 +1,5 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 // measure.js — Measurement tool (two-point distance, area, clash detection)
 // S246 v1 — Clash Snag: snap viewport, annotate, share deep-link
 function setupMeasure(A) {
@@ -107,6 +109,16 @@ function setupMeasure(A) {
     function _startRtree() {
       if (A._clashRtreeReady || A._clashRtreeBuilding) return;
       try {
+        // §S280: Check if R-tree already exists in DB (pre-built by extractor)
+        var existing = A.db.exec("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='elements_rtree'");
+        if (existing.length && existing[0].values[0][0] > 0) {
+          var cnt = A.db.exec("SELECT COUNT(*) FROM elements_rtree");
+          if (cnt.length && cnt[0].values[0][0] > 0) {
+            A._clashRtreeReady = true;
+            console.log('§CLASH_RTREE reuse existing rows=' + cnt[0].values[0][0]);
+            return;
+          }
+        }
         A.db.run("DROP TABLE IF EXISTS elements_rtree");
         A.db.run("CREATE VIRTUAL TABLE elements_rtree USING rtree(id, minX, maxX, minY, maxY, minZ, maxZ)");
         A._clashRtreeBuilding = true;
@@ -154,12 +166,8 @@ function setupMeasure(A) {
     setTimeout(_nextIndex, 5);
   };
 
-  // §S260b: Build R-tree eagerly once A.db has element_transforms (meta.db loaded)
-  // Uses setTimeout batches so it yields to geo.db download in parallel
-  setTimeout(function _waitForDb() {
-    if (A.db) { A._ensureClashIndexes(); }
-    else { setTimeout(_waitForDb, 500); }
-  }, 1000);
+  // §S280: R-tree deferred to first clash open (was eager on load — too heavy for 48K+ buildings)
+  // _ensureClashIndexes() is called by _clashWhereParts() and openClashPanel() on demand.
 
   // Build the shared WHERE clause parts (also ensures indexes)
   A._clashWhereParts = function(rules) {

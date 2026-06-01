@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_kernel.js — TASK 2 acceptance: the OP-LOG KERNEL (prompts/ERP_RUNTIME_ENGINE.md T2,
  *   ERP_KERNEL_BUILD §P3/P3b). Worked fixture T_ORDER_SHIPMENT_ALLOCATION + violation guard

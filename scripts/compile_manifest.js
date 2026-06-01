@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * compile_manifest.js — Implementing prompts/ERP_KERNEL_MONSTERS.md §4
  *   Witness: ad_seed.db (compile-time input) → manifest.json (runtime payload)

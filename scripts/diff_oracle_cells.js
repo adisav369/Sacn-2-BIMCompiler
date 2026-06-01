@@ -1,3 +1,5 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 'use strict';
 /**
  * diff_oracle_cells.js — the HOT-CELL registry the diff-oracle harness iterates.

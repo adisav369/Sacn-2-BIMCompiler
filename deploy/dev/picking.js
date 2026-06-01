@@ -34,7 +34,12 @@ function _restoreIsolation(A) {
   }
 }
 
+// §S278: Cached temp objects — reused per pick to avoid GC pressure (lazy-init, THREE may not be loaded yet)
+var _pickV1, _pickV2, _pickV3, _pickQ1, _pickM4;
+
 function setupPicking(A) {
+  _pickV1 = new THREE.Vector3(); _pickV2 = new THREE.Vector3(); _pickV3 = new THREE.Vector3();
+  _pickQ1 = new THREE.Quaternion(); _pickM4 = new THREE.Matrix4();
   // Walk/Wall state (hoisted before first use in pointerdown/animate)
   A.walkMode = false;
   A.walkModeActive = false;
@@ -177,6 +182,8 @@ function setupPicking(A) {
       if (A.handleMeasureClick(e)) return;
     }
     if (e.shiftKey || e.button !== 0) return;
+    // §S278: Clash view active — no picking at all (no yellow bbox, no isolation)
+    if (A._clashRevealActive) return;
 
     A.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     A.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -234,6 +241,7 @@ function setupPicking(A) {
     for (var hi = 0; hi < hits.length; hi++) {
       var h = hits[hi];
       if (h.object.userData && h.object.userData._isOutline) continue;
+      if (h.object.userData && h.object.userData._isClashViz) continue;
       if (h.object.material && h.object.material.opacity < 0.3) continue;
       if (h.object.userData && h.object.userData.isBboxPlaceholder) continue;
       validHits.push(h);
@@ -405,7 +413,7 @@ function setupPicking(A) {
 
     // Wall X-Ray in Walk Mode
     if (A.walkModeActive) {
-      const faceNormal = hit.face ? hit.face.normal.clone() : new THREE.Vector3(1, 0, 0);
+      const faceNormal = hit.face ? _pickV3.copy(hit.face.normal) : _pickV3.set(1, 0, 0);
       if (A.handleWallXray(hit.object, hit.point, faceNormal)) return;
       A.restoreWallXray();
     }
@@ -421,8 +429,8 @@ function setupPicking(A) {
 
     // Highlight: compute bbox position + size per mesh type
     let hlSizeX, hlSizeY, hlSizeZ;
-    const hlPos = new THREE.Vector3();
-    const hlQuat = new THREE.Quaternion();
+    const hlPos = _pickV1;
+    const hlQuat = _pickQ1.set(0, 0, 0, 1);
 
     if (hit.object.userData.isMerged && guid) {
       // S250 BUG-1: merged mesh geometry bbox covers entire group — use per-element DB data
@@ -475,19 +483,17 @@ function setupPicking(A) {
       // Individual Mesh or InstancedMesh: geometry bbox is per-element — correct
       hit.object.geometry.computeBoundingBox();
       const bb = hit.object.geometry.boundingBox;
-      const localCenter = new THREE.Vector3(); bb.getCenter(localCenter);
-      const size = new THREE.Vector3(); bb.getSize(size);
-      hlSizeX = size.x; hlSizeY = size.y; hlSizeZ = size.z;
+      bb.getCenter(_pickV2);
+      bb.getSize(_pickV3);
+      hlSizeX = _pickV3.x; hlSizeY = _pickV3.y; hlSizeZ = _pickV3.z;
 
       if (hit.object.isInstancedMesh && hit.instanceId !== undefined) {
-        const _im = new THREE.Matrix4();
-        hit.object.getMatrixAt(hit.instanceId, _im);
-        hlPos.copy(localCenter.clone().applyMatrix4(_im));
-        const _ip = new THREE.Vector3(), _iq = new THREE.Quaternion(), _is = new THREE.Vector3();
-        _im.decompose(_ip, _iq, _is);
-        hlQuat.copy(_iq);
+        hit.object.getMatrixAt(hit.instanceId, _pickM4);
+        hlPos.copy(_pickV2.applyMatrix4(_pickM4));
+        _pickM4.decompose(_pickV2, _pickQ1, _pickV3);
+        // hlQuat already === _pickQ1
       } else {
-        hlPos.copy(hit.object.localToWorld(localCenter));
+        hlPos.copy(hit.object.localToWorld(_pickV2));
         hlQuat.copy(hit.object.quaternion);
       }
 
@@ -597,6 +603,7 @@ function setupPicking(A) {
       if (window._pickHighlight) {
         if (window._pickHighlight.parent) window._pickHighlight.parent.remove(window._pickHighlight);
         window._pickHighlight.geometry.dispose();
+        window._pickHighlight.material.dispose();
         window._pickHighlight = null;
       }
       // DB bbox highlight (same as picking)

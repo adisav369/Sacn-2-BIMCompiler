@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * test_bom_theory.js — ⚠ DO NOT REMOVE — Scope guard
  * Scope: empirically test the BOM-unification theory against the WHOLE iDempiere

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * erp_runtime_probe.js — "rush and see what breaks" vertical slice.
  *   Spec: docs/ERP.md §0.10 (the runtime rule evaluator / "abstract engine").

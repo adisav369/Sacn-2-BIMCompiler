@@ -1,3 +1,5 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 // tools.js — X-Ray, wireframe, section cut, screenshot, fullscreen, theme, 4D/5D export
 function setupTools(A) {
   // §S260c: Ground Y calculation — shared by shadow + night mode
@@ -75,70 +77,55 @@ function setupTools(A) {
     if (A.markDirty) A.markDirty();
   };
 
-  // X-Ray
+  // X-Ray — transparent blending on all materials
   // §S271b: Optimized — update unique materials via _matCache, disable sortObjects during X-Ray.
-  // Old approach iterated all meshes (120K) and set mat.needsUpdate on each = GPU stall + per-frame sort.
   A.xrayOn = false;
   A.toggleXray = function() {
     A.xrayOn = !A.xrayOn;
-    const btn = document.getElementById('xray-btn');
-    btn.style.background = A.xrayOn ? '#4fc3f7' : '#444';
-    btn.style.color = A.xrayOn ? '#000' : '#fff';
-
-    // §S271b: Update unique materials only (via _matCache) — O(unique mats) not O(all meshes)
-    // No scene.traverse — _matCache has all streaming materials, ground/helpers are negligible.
-    var updated = 0;
-    var seen = new Set();
-    var mats = [];
-    if (A._matCache) {
-      for (var k in A._matCache) {
-        var m = A._matCache[k];
-        if (m && !seen.has(m)) { seen.add(m); mats.push(m); }
-      }
-    }
-    // Ground material
-    if (A.ground && A.ground.material && !seen.has(A.ground.material)) {
-      mats.push(A.ground.material);
-    }
-
-    // §S276b: Batch material updates across frames to avoid GPU shader recompile stutter.
-    // Set properties immediately (cheap), but stagger needsUpdate in batches via rAF.
-    var BATCH = Math.ceil(mats.length / 3);
-    for (var i = 0; i < mats.length; i++) {
-      var mat = mats[i];
-      if (A.xrayOn) {
-        if (mat.userData.origOpacity === undefined) mat.userData.origOpacity = mat.opacity;
-        if (mat.userData.origTransparent === undefined) mat.userData.origTransparent = mat.transparent;
-        if (mat.userData.origSide === undefined) mat.userData.origSide = mat.side;
-        mat.transparent = true;
-        mat.opacity = 0.15;
-        mat.side = THREE.DoubleSide;
-      } else {
-        if (mat.userData.origOpacity !== undefined) {
-          mat.opacity = mat.userData.origOpacity;
-          mat.transparent = mat.userData.origTransparent;
-          mat.side = mat.userData.origSide;
-          delete mat.userData.origOpacity;
-          delete mat.userData.origTransparent;
-          delete mat.userData.origSide;
+    // Walk through unique materials in _matCache (set by streaming.js)
+    var cache = A._matCache || {};
+    var keys = Object.keys(cache);
+    if (keys.length) {
+      for (var i = 0; i < keys.length; i++) {
+        var mat = cache[keys[i]];
+        if (!mat) continue;
+        if (A.xrayOn) {
+          mat._origTransparent = mat.transparent;
+          mat._origOpacity = mat.opacity;
+          mat._origSide = mat.side;
+          mat.transparent = true;
+          mat.opacity = 0.3;
+          mat.side = THREE.DoubleSide;
+        } else {
+          mat.transparent = mat._origTransparent !== undefined ? mat._origTransparent : false;
+          mat.opacity = mat._origOpacity !== undefined ? mat._origOpacity : 1;
+          mat.side = mat._origSide !== undefined ? mat._origSide : THREE.FrontSide;
         }
+        mat.needsUpdate = true;
       }
-      updated++;
     }
-    // Stagger needsUpdate across 3 frames
-    function _batchNeedsUpdate(start) {
-      var end = Math.min(start + BATCH, mats.length);
-      for (var j = start; j < end; j++) mats[j].needsUpdate = true;
-      if (end < mats.length) requestAnimationFrame(function() { _batchNeedsUpdate(end); });
+    // Fallback: scene traversal for meshes without _matCache
+    if (!keys.length && A.scene) {
+      A.scene.traverse(function(obj) {
+        if (!obj.isMesh || !obj.material) return;
+        var m = obj.material;
+        if (A.xrayOn) {
+          m._origTransparent = m.transparent;
+          m._origOpacity = m.opacity;
+          m._origSide = m.side;
+          m.transparent = true; m.opacity = 0.3; m.side = THREE.DoubleSide;
+        } else {
+          m.transparent = m._origTransparent !== undefined ? m._origTransparent : false;
+          m.opacity = m._origOpacity !== undefined ? m._origOpacity : 1;
+          m.side = m._origSide !== undefined ? m._origSide : THREE.FrontSide;
+        }
+        m.needsUpdate = true;
+      });
     }
-    _batchNeedsUpdate(0);
-
-    // §S271b: Disable transparent sort during X-Ray — uniform opacity doesn't need back-to-front order.
-    // Saves O(n log n) sort per frame on 122K elements.
-    A.renderer.sortObjects = !A.xrayOn;
-
-    console.log(`[S200] §XRAY ${A.xrayOn ? 'ON' : 'OFF'} materials=${updated} sortObjects=${A.renderer.sortObjects} batch=${BATCH}`);
+    if (A.renderer) A.renderer.sortObjects = !A.xrayOn;
     if (A.markDirty) A.markDirty();
+    A.status.textContent = A.xrayOn ? 'X-Ray ON' : 'X-Ray OFF';
+    console.log('§XRAY on=' + A.xrayOn + ' mats=' + (keys.length || 'scene'));
   };
 
   // Section Cut
@@ -811,7 +798,11 @@ function setupTools(A) {
         document.getElementById('sl-exposure-val').textContent = A._nightSaved.exposure.toFixed(1);
       }
       // Remove point lights
-      A._nightLights.forEach(function(l) { A.scene.remove(l); l.dispose(); });
+      A._nightLights.forEach(function(l) {
+        A.scene.remove(l);
+        if (l.shadow && l.shadow.map) { l.shadow.map.dispose(); l.shadow.map = null; }
+        l.dispose();
+      });
       A._nightLights = [];
       A._nightFixturePositions = null;
       // Unhook
@@ -856,7 +847,11 @@ function setupTools(A) {
       needed = sorted.slice(0, NIGHT_MAX_LIGHTS);
     }
     // Remove old lights
-    A._nightLights.forEach(function(l) { A.scene.remove(l); l.dispose(); });
+    A._nightLights.forEach(function(l) {
+      A.scene.remove(l);
+      if (l.shadow && l.shadow.map) { l.shadow.map.dispose(); l.shadow.map = null; }
+      l.dispose();
+    });
     A._nightLights = [];
     // §S277d: Fixed intensity at fixture positions — no camera-distance fade
     needed.forEach(function(f) {

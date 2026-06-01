@@ -247,6 +247,8 @@ function setupImport(A) {
     var allElements = [], allGeometries = [], allTransforms = [];
     var allDiscs = {}, allStoreys = new Set();
     var totalElements = 0;
+    // 4D_CAPTURE_AND_FALLBACK.md T1 — accumulate native IFC 4D across merged files (W-CAPTURE)
+    var allSchedules = [], allTasks = [], allTaskSequences = [], allTaskElements = [];
 
     for (var fi = 0; fi < files.length; fi++) {
       var file = files[fi];
@@ -265,6 +267,11 @@ function setupImport(A) {
         allElements = allElements.concat(result.elements);
         allGeometries = allGeometries.concat(result.geometries);
         allTransforms = allTransforms.concat(result.transforms);
+        // 4D_CAPTURE_AND_FALLBACK.md T1 — carry 4D arrays through merge (W-CAPTURE)
+        if (result.schedules) allSchedules = allSchedules.concat(result.schedules);
+        if (result.tasks) allTasks = allTasks.concat(result.tasks);
+        if (result.taskSequences) allTaskSequences = allTaskSequences.concat(result.taskSequences);
+        if (result.taskElements) allTaskElements = allTaskElements.concat(result.taskElements);
         totalElements += result.meta.elementCount;
         for (var d in result.meta.disciplines) {
           allDiscs[d] = (allDiscs[d] || 0) + result.meta.disciplines[d];
@@ -299,6 +306,11 @@ function setupImport(A) {
         elements: allElements,
         geometries: allGeometries,
         transforms: allTransforms,
+        // 4D_CAPTURE_AND_FALLBACK.md T1 — merged native IFC 4D (W-CAPTURE)
+        schedules: allSchedules,
+        tasks: allTasks,
+        taskSequences: allTaskSequences,
+        taskElements: allTaskElements,
       };
       var dbs = buildImportDBs(SQL, mergedData);
 

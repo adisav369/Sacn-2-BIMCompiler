@@ -1,9 +1,69 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 // help_overlay.js — ReadMe/ShowMe HELP overlay (READSHOWME_DYNAMIC_SPEC.md — D3).
 // A separated behavior layer (unobtrusive JS / Stimulus-style data-hooks / AOP cross-cutting concern):
 // it attaches to glassbowl's bubbles BY KEY, reads the keyed _TRL-style store help_ops.json, and never
 // edits the renderer. Opt-in (NeedHelp?), dismissible, dynamic (badges + steps generated from the store).
 // Reuses page globals: setTrace/setFocus/openDossierTab + N/idx/project/px/py/k/radius + helpJive/navJive/showmeJive.
 (function () {
+  // ════════════════════════════════════════════════════════════════════════
+  // PURE COACH CORE — no DOM. The guide's WHOLE vocabulary as data, domain-free
+  // and key-addressed (READSHOWME_DYNAMIC_SPEC.md §guide-vocabulary). Exported for
+  // the headless §-witness (W-HELP-COACH). INVARIANT: asserts NOTHING (§Invariant).
+  // ════════════════════════════════════════════════════════════════════════
+
+  // coachPlan — PURE: the ordered key-addressed intents ShowMe drives for a step,
+  // and the assert count (ALWAYS 0 — the guide narrates, the data speaks).
+  //  reveal: every step brings its element into view.
+  //  kind:'process' steps ALSO pulse the Process affordance (reveal-only, never
+  //  auto-fired) and highlight the live status bar. No posting logic, no branching.
+  function coachPlan(step) {
+    step = step || {};
+    var drove = ['reveal'];
+    if (step.kind === 'process') { drove.push('pulse'); drove.push('highlight:statusbar'); }
+    return { drove: drove, asserts: 0, key: step.key || null, target: step.target || null };
+  }
+
+  // legalNext — the only keys "on path" from a step: itself + the next step in order.
+  function legalNext(curStep, steps) {
+    var keys = {};
+    if (!curStep) return keys;
+    keys[curStep.key] = 1;
+    var i = steps ? steps.indexOf(curStep) : -1;
+    if (i >= 0 && steps[i + 1]) keys[steps[i + 1].key] = 1;
+    return keys;
+  }
+
+  // isVeer — PURE (§veer): an action key is a veer iff it is neither the current step
+  // nor its legal Next. A veer SUSPENDS (no kill, no timeline tag) — see suspend().
+  function isVeer(curStep, steps, actionKey) {
+    if (!curStep || actionKey == null) return false;
+    return !legalNext(curStep, steps)[actionKey];
+  }
+
+  // nextGate — PURE (§Next-gated-on-success): after a Process gesture on a live draft, decide whether
+  // Next may proceed. Reads ONLY the live docstatus the page reported + the step's expected success
+  // status (default 'CO'). Three outcomes, all read the same dumb way — compares live vs expected, never
+  // asks WHY (that is the Process layer's logic):
+  //   CO (== expect) → advance (Next proceeds, timeline tag fires)
+  //   IP             → hold   (re-highlight, NO advance, NO tag) — legitimate business non-completion
+  //   exception      → errorReport (NO advance, NO tag) — hand to the single ErrorReport class
+  //   none / other   → hold   (not yet processed, or an unexpected status; never advance on a non-success)
+  // The read-mode (no-gesture) bypass is the CALLER's concern (§Edit-mode gate), not this pure decision.
+  function nextGate(liveStatus, expect) {
+    expect = expect || 'CO';
+    if (liveStatus === 'exception') return { advanced: false, gate: 'exception', action: 'errorReport' };
+    if (liveStatus === expect)      return { advanced: true,  gate: liveStatus, action: 'advance' };
+    if (liveStatus === 'IP')        return { advanced: false, gate: 'IP', action: 'hold' };
+    return { advanced: false, gate: liveStatus || 'none', action: 'hold' };
+  }
+
+  var COACH = { coachPlan: coachPlan, legalNext: legalNext, isVeer: isVeer, nextGate: nextGate };
+
+  // node (headless witness): export the pure core and stop — no DOM to attach.
+  if (typeof module !== 'undefined' && module.exports) { module.exports = COACH; return; }
+  if (typeof document === 'undefined') return;
+
   // ── injected CSS (self-contained module) ──
   var css = document.createElement('style');
   css.textContent =
@@ -27,6 +87,7 @@
   document.head.appendChild(css);
 
   var HELP = null, STEPS = [], cur = -1, on = false, raf = 0, badges = [], dragged = false;
+  var suspended = false, resumeIdx = -1;
   var README_BASE = 'https://red1oon.github.io/BIMCompiler/';
 
   var wrap = document.createElement('label'); wrap.id = 'needHelpWrap';
@@ -49,7 +110,31 @@
     });
   }
 
+  // ── key-addressed intent bus (governance: neither overlay imports the other; UI_OVERLAY_GOVERNANCE.md).
+  // The guide EMITS intents; the CRUD overlay (which owns the Process ▶ ring) reacts to them by KEY.
+  function emit(verb, detail) {
+    detail = detail || {}; detail.verb = verb;
+    try { window.dispatchEvent(new CustomEvent('overlay:guide', { detail: detail })); } catch (e) {}
+  }
+
+  // highlightStatusBar — point at the live #docStatusBar and READ what it says; assert NOTHING
+  // (§Invariant: the guide quotes the bar verbatim, never claims "it worked"). Returns the live text.
+  function highlightStatusBar() {
+    var bar = document.getElementById('docStatusBar');
+    var live = bar ? (bar.textContent || '').replace(/\s+/g, ' ').trim() : '';
+    if (bar) { bar.classList.add('pulse'); setTimeout(function () { bar.classList.remove('pulse'); }, 2200); }
+    if (card.classList.contains('open') && !card.querySelector('.hcstatus')) {
+      var note = document.createElement('div'); note.className = 'hctip hcstatus';
+      note.textContent = 'Note the status' + (live ? ' — it reads: “' + live + '”.' : '.');
+      var nav = card.querySelector('.hcnav');
+      if (nav) card.insertBefore(note, nav); else card.appendChild(note);
+    }
+    return live;
+  }
+
   // ShowMe — type-aware drive. Bubbles here; field/list/tab dispatch is the erp.html extension point (req 11).
+  // A kind:'process' step ALSO drives the coach vocabulary (READSHOWME §guide-vocabulary): reveal+pulse the
+  // Process affordance (key-addressed, never auto-fired) and highlight the live status bar — asserts NOTHING.
   function showMe(step) {
     if (typeof showmeJive === 'function') showmeJive();
     if (window.setTrace) window.setTrace(true);
@@ -57,6 +142,12 @@
     if (window.setFocus) window.setFocus(step.target);
     if (window.openDossierTab && step.tab) window.openDossierTab(step.target, step.tab);
     positionCard();
+    if (step.kind === 'process') {
+      var plan = COACH.coachPlan(step);
+      emit('pulse', { kind: 'process', key: step.key });   // reveal-only; CRUD overlay fans out + pulses ▶
+      var live = highlightStatusBar();
+      console.log('§HELP coach key=' + step.key + ' drove=[' + plan.drove.join(',') + '] asserts=' + plan.asserts + ' barRead=' + JSON.stringify(live));
+    }
     console.log('§SHOWME op=' + step.op + ' key=' + step.key + ' drove=[setTrace,setFocus:' + step.target + (step.tab ? ',tab:' + step.tab : '') + '] invented=0');
   }
 
@@ -190,7 +281,7 @@
   function loop() { if (!on) { raf = 0; return; } positionBadges(); if (card.classList.contains('open')) positionCard(); raf = requestAnimationFrame(loop); }
 
   function enable() {
-    on = true;
+    on = true; suspended = false; resumeIdx = -1;
     function go() { buildSteps(); buildBadges(); if (!raf) raf = requestAnimationFrame(loop); open(0); console.log('§HELP mode=on steps=' + STEPS.length + ' badges=' + badges.length); }
     if (HELP) { go(); return; }
     fetch('help_ops.json').then(function (r) { return r.json(); }).then(function (j) { HELP = j; go(); })
@@ -199,7 +290,31 @@
   function disable() { on = false; if (raf) { cancelAnimationFrame(raf); raf = 0; } clearBadges(); close(); console.log('§HELP mode=off'); }
   ck.addEventListener('change', function () { if (ck.checked) enable(); else disable(); });
 
+  // ── veer (§veer): an off-path action on the shared bus SUSPENDS the guide — it does NOT kill Help.
+  // NeedHelp? stays ON (badges live); no §VIEWLOG / timeline tag (a veer is not a Next); the step number
+  // is preserved for Resume. If the veered-to element has its own ReadMe step, meet them where they landed.
+  function suspend(actionKey) {
+    if (suspended) return;
+    suspended = true; resumeIdx = cur;
+    console.log('§HELP veer→suspend needhelp=' + (on ? 'on' : 'off') + ' tag=unchanged actionKey=' + actionKey);
+    var j = -1; for (var i = 0; i < STEPS.length; i++) { if (STEPS[i].key === actionKey) { j = i; break; } }
+    if (j >= 0) goTo(j, false);   // surface the veered-to card; nav=false → no navJive → no timeline tag
+  }
+  function resume() {
+    if (!suspended) return;
+    suspended = false;
+    if (resumeIdx >= 0) goTo(resumeIdx, false);
+    console.log('§HELP resume idx=' + resumeIdx);
+  }
+  // listen for CRUD verb gestures on the bus; off-path → suspend. Same-step / legal-Next gestures pass.
+  window.addEventListener('overlay:action', function (ev) {
+    if (!on) return;
+    var key = ev && ev.detail && ev.detail.key; var s = STEPS[cur];
+    if (s && COACH.isVeer(s, STEPS, key)) suspend(key);
+  });
+
   setupDrag();
-  window.__help = { enable: enable, disable: disable, goTo: goTo, steps: function () { return STEPS; } };
+  window.__help = { enable: enable, disable: disable, goTo: goTo, suspend: suspend, resume: resume,
+                    suspended: function () { return suspended; }, steps: function () { return STEPS; } };
   console.log('§HELP layer mounted (NeedHelp? ready)');
 })();

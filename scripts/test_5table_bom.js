@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * test_5table_bom.js — ⚠ DO NOT REMOVE — Scope guard
  * Scope: the (c) Bridge GATE (docs/ERP.md §0). Does the 5-table runtime, reached

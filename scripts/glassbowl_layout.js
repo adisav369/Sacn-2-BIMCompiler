@@ -1,3 +1,5 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 // glassbowl_layout.js — the ONE source of truth for bubble positioning across BOTH glassbowl pages.
 //   Spec: prompts/GLASSBOWL_LAYOUT.md (W-LAYOUT / W-NUDGE / W-DOCKLENS).
 //

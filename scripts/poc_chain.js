@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_chain.js — W-CHAIN acceptance (prompts/DISTRIBUTED_POC.md #1; DistributedERP.md §9-B).
  *   Proves: a per-op hash chain over kernel_ops makes the log tamper-EVIDENT — verifyChain()

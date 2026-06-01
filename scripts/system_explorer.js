@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * system_explorer.js — GLASSBOWL generator (docs/GLASSBOWL.md, witness W-GLASSBOWL).
  *   The engine as DATA: it renders ITSELF. Every node/edge/annotation is EXTRACTED from

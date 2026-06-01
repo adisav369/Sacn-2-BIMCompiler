@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_persist.js — W-PERSIST + email-recovery acceptance
  *   (prompts/DISTRIBUTED_POC.md #5; DistributedERP.md §9-A, §5.2b).

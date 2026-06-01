@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * migrate_pg_to_sqlite.js — ERP Step 0: raw PG→SQLite migration.
  *   Spec: docs/ERP.md §0.10 + prompts/ERP_RAW_MIGRATION.md (TASK Step 0).

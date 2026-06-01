@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * compile_rules.js — ERP Step 1: the Rule Compiler.
  *   Spec: prompts/ERP_RAW_MIGRATION.md (TASK Step 1) + docs/ERP.md §0.9–0.10.

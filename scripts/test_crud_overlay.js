@@ -1,3 +1,5 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 // ⚠ DO NOT REMOVE — Scope guard
 // Scope: headless §-witness for the CRUD overlay layer (prompts/CRUD_OVERLAY.md — E1/E2 dry-run).
 //   Proves, against the REAL crud_ops.json store + the REAL glassbowl_data.db row, that:

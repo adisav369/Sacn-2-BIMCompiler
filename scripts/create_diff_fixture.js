@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 // create_diff_fixture.js — S225 Create a realistic diff test fixture
 // Produces a single combined DB (metadata + geometry) for v0 and v1
 // v1 = revised SampleHouse: 2 removed, 3 changed, 2 added

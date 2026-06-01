@@ -1,3 +1,5 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 'use strict';
 /**
  * erp_runtime.js — the HOST LAYER that makes the abstract engine DATA-DRIVEN.

@@ -1,3 +1,5 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 // crud_overlay.js — CRUD "ring of fire" overlay (prompts/CRUD_OVERLAY.md — E2 dry-run).
 // A SECOND peer overlay on the same keyed-hook mechanism as help_overlay.js (UI_OVERLAY_GOVERNANCE.md):
 // it attaches to glassbowl's bubbles BY KEY, reads the keyed crud_ops.json store, renders the Edit-mode
@@ -267,9 +269,16 @@
   function scheduleClose() { clearTimeout(closeT); closeT = setTimeout(closeRing, 160); }
   function closeRing() { if (!ring.classList.contains('open')) { ringKey = null; return; } ring.classList.remove('open'); ringKey = null; ring.innerHTML = ''; }
 
+  // ── key-addressed intent bus (governance: neither overlay imports the other) ──
+  // Announce every verb gesture BY KEY so the Help guide can detect an off-path veer (§veer).
+  function emitAction(verb, key) {
+    try { global.dispatchEvent(new CustomEvent('overlay:action', { detail: { verb: verb, key: key } })); } catch (e) {}
+  }
+
   // ── verb dispatch (kind-aware) ──────────────────────────────────────────────
   function onVerb(verb, key) {
     closeRing();
+    emitAction(verb, key);
     var e = entryFor(key); if (!e) return;
     if (verb === 'view') { if (window.openDossier) window.openDossier(key); console.log('§CRUD view key=' + key + ' drove=[openDossier]'); return; }
     if (verb === 'delete') { openDeleteConfirm(e); return; }
@@ -433,6 +442,8 @@
       '#crudRing .crud-fab.new{background:#16493a;color:#bff0dd}#crudRing .crud-fab.view{background:#13202b;color:#9fdfe8}' +
       '#crudRing .crud-fab.edit{background:#3a3416;color:#f0e6bf}#crudRing .crud-fab.del{background:#4a1d1a;color:#f0c3bf}' +
       '#crudRing .crud-fab.proc{background:#16395a;color:#bfe0f0}' +
+      '#crudRing .crud-fab.proc.pulse{animation:fabPulse 1.2s ease-in-out 2}' +
+      '@keyframes fabPulse{0%,100%{box-shadow:0 2px 8px rgba(0,0,0,.55)}50%{box-shadow:0 0 0 4px #56d6e0,0 2px 8px rgba(0,0,0,.55)}}' +
       '.crud-hot{position:fixed;z-index:68;transform:translate(-50%,-50%);border-radius:50%;pointer-events:auto;cursor:pointer;display:none;border:2px solid transparent;transition:border-color .15s}' +
       '.crud-hot:hover{border-color:rgba(224,102,192,.55)}' +
       '#crudForm{position:fixed;z-index:74;left:50%;top:12%;transform:translateX(-50%);width:min(420px,94vw);background:#15101a;border:1px solid #4a2f44;border-radius:12px;padding:14px 16px;color:#ecdcea;font:13.5px/1.5 system-ui;box-shadow:0 10px 40px rgba(0,0,0,.65);display:none}' +
@@ -456,6 +467,27 @@
     document.head.appendChild(css);
   }
 
-  global.__crud = { enable: enable, disable: disable, openRing: openRing, core: CORE, store: function () { return STORE; }, setStatus: setDocStatus, statusBar: function () { return statusBar; } };
+  // pulseProc — REVEAL+PULSE the Process ▶ for a keyed doc on the guide's request. Reveal only:
+  // it opens the ring and pulses the ▶ fab so the user can SEE it; it NEVER fires Process (the user's
+  // gesture does that — READSHOWME §guide-vocabulary "pulse … never auto-fire").
+  function pulseProc(key) {
+    if (!on) { console.log('§CRUD pulse key=' + key + ' skipped (edit-mode off)'); return; }
+    if (typeof idx === 'undefined' || idx[key] == null) { console.log('§CRUD pulse key=' + key + ' skipped (no bubble)'); return; }
+    openRing(key);
+    var fab = ring.querySelector('.crud-fab.proc');
+    if (fab && !fab.classList.contains('dis')) {
+      fab.classList.add('pulse'); setTimeout(function () { fab.classList.remove('pulse'); }, 2400);
+      console.log('§CRUD pulse key=' + key + ' proc revealed (no auto-fire)');
+    } else {
+      console.log('§CRUD pulse key=' + key + ' proc N/A (no process verb)');
+    }
+  }
+  // react to the guide's key-addressed intents (no import — the bus is the seam).
+  global.addEventListener('overlay:guide', function (ev) {
+    var d = ev && ev.detail; if (!d) return;
+    if (d.verb === 'pulse' && d.kind === 'process' && d.key) pulseProc(d.key);
+  });
+
+  global.__crud = { enable: enable, disable: disable, openRing: openRing, core: CORE, store: function () { return STORE; }, setStatus: setDocStatus, statusBar: function () { return statusBar; }, pulseProc: pulseProc };
   console.log('§CRUD layer mounted (Edit-mode ready)');
 })(typeof window !== 'undefined' ? window : this);

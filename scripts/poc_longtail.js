@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_longtail.js — P3c Task 2 + Task 3 (prompts/ERP_LONGTAIL_VERTICAL.md).
  *   Spec: docs/ERP.md §0.18b (product tiering — the long tail IS the cheap path), §0.11 (active-

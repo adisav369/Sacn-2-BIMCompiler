@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * test_bridge.js — ⚠ DO NOT REMOVE — Scope guard
  * Scope: the PB gate (prompts/ERP_KERNEL_BUILD.md §PB, docs/ERP.md §0/§0.1).

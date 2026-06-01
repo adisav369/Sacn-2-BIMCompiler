@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * test_kernel_owner.js — A3 / W-OWNER + CAS-LIVE: exercises the REAL bim-ootb/viewer/kernel_ops.js
  *   (op-log, with A1 op_uuid) + bim-ootb/viewer/erp_replay.js (guarded replay) to confirm the

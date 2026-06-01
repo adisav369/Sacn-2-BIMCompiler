@@ -366,149 +366,9 @@ function setupPanels(A) {
   window.makeListKeyNav = makeListKeyNav;
 
   // Wire ListKeyNav to storey + DISC panels after populate
-  var _storeyNav = null, _discNav = null;
+  // §S280: _storeyNav/_discNav removed — storey/disc now in Find outliner
   A._wireListKeyNav = function() {
-    // S265 Phase 4: storey/disc now inside HUD accordion sections
-    var storeyPanel = document.getElementById('hud-storey-section');
-    var discPanel = document.getElementById('hud-disc-section');
-
-    if (storeyPanel && !_storeyNav) {
-      _storeyNav = makeListKeyNav(
-        function() { return Array.from(document.querySelectorAll('#storey-body button')); },
-        function(indices) {
-          var btns = Array.from(document.querySelectorAll('#storey-body button'));
-          // Multi-select: show all selected storeys, hide the rest
-          if (indices.length >= 1) {
-            // Extract storey names from button onclick
-            var selectedStoreys = [];
-            indices.forEach(function(i) {
-              if (!btns[i]) { console.log('§STOREY_TOGGLE btn[' + i + '] missing, total=' + btns.length); return; }
-              var m = btns[i].onclick ? btns[i].onclick.toString().match(/filterStorey\('(.+?)'\)/) : null;
-              if (m) selectedStoreys.push(m[1]);
-              else selectedStoreys.push(null); // "All Storeys" button
-            });
-            console.log('§STOREY_TOGGLE indices=[' + indices.join(',') + '] storeys=[' + selectedStoreys.join(',') + ']');
-            // If "All Storeys" is in selection, show all
-            if (selectedStoreys.indexOf(null) >= 0) {
-              console.log('§STOREY_TOGGLE → all (null in selection)');
-              A.filterStorey(null);
-            } else if (selectedStoreys.length === 1) {
-              console.log('§STOREY_TOGGLE → single: ' + selectedStoreys[0]);
-              A.filterStorey(selectedStoreys[0]);
-              if (window.KernelOps && A.db) KernelOps.commitOp(A.db, 'VIEW_FILTER', {type:'storey',storeys:selectedStoreys});
-            } else {
-              // Multi-storey: show meshes matching any selected storey
-              A.activeStoreyFilter = selectedStoreys;
-              A.collectMeshes(function(o) { return o.isMesh && o.userData.storey !== undefined; }).forEach(function(obj) {
-                obj.visible = selectedStoreys.indexOf(obj.userData.storey) >= 0;
-              });
-              A.collectMeshes(function(o) { return o.isInstancedMesh; }).forEach(function(mesh) {
-                A.filterInstancedMesh(mesh, function(meta) {
-                  return selectedStoreys.indexOf(meta.storey) >= 0;
-                });
-              });
-              // §S260: BatchedMesh multi-storey filter
-              A.collectMeshes(function(o) { return o.isBatchedMesh; }).forEach(function(mesh) {
-                A.filterBatchedMesh(mesh, function(meta) {
-                  return selectedStoreys.indexOf(meta.storey) >= 0;
-                });
-              });
-              // Highlight selected buttons
-              btns.forEach(function(btn, j) { btn.className = indices.indexOf(j) >= 0 ? 'active' : ''; });
-              console.log('§STOREY_MULTI storeys=' + selectedStoreys.join(','));
-              if (window.KernelOps && A.db) KernelOps.commitOp(A.db, 'VIEW_FILTER', {type:'storey',storeys:selectedStoreys});
-              if (A.markDirty) A.markDirty();
-            }
-          }
-        },
-        function(idx) {
-          var btns = Array.from(document.querySelectorAll('#storey-body button'));
-          if (btns[idx]) btns[idx].click();
-        }
-      );
-      if (typeof _registerPanel === 'function') _registerPanel('storey', storeyPanel, _storeyNav);
-      // §S260c: Intercept Shift+click on storey buttons for accumulating multi-select.
-      // Shift+click = toggle individual storeys (accumulate). Without this, inline
-      // onclick="filterStorey('...')" fires directly, replacing the selection.
-      var stBody = document.getElementById('storey-body');
-      if (stBody && !stBody._s260cWired) {
-        stBody._s260cWired = true;
-        stBody.addEventListener('click', function(e) {
-          var btn = e.target.closest('button');
-          if (!btn) return;
-          if (!e.shiftKey && !e.ctrlKey && !e.metaKey) return;
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          var btns = Array.from(stBody.querySelectorAll('button'));
-          var idx = btns.indexOf(btn);
-          if (idx < 0) return;
-          // Accumulate: treat Shift as Ctrl (toggle individual item)
-          _storeyNav.onClick(idx, { shiftKey: false, ctrlKey: true, metaKey: false });
-          console.log('§STOREY_SHIFT_CLICK idx=' + idx + ' accumulate selected=' + _storeyNav.getSelected().join(','));
-        }, true);
-      }
-      console.log('§LISTNAV_WIRE panel=storey');
-    }
-
-    if (discPanel && !_discNav) {
-      _discNav = makeListKeyNav(
-        function() { return Array.from(document.querySelectorAll('#disc-body button')); },
-        function(indices) {
-          var btns = Array.from(document.querySelectorAll('#disc-body button'));
-          // Multi-select: toggle each selected disc
-          if (indices.length >= 1) {
-            // Get all disc names
-            var allDiscs = [];
-            btns.forEach(function(btn) {
-              var m = btn.onclick ? btn.onclick.toString().match(/toggleDisc\('(.+?)'\)/) : null;
-              if (m) allDiscs.push(m[1]);
-            });
-            // Show only selected, hide rest
-            var selectedDiscs = [];
-            indices.forEach(function(i) {
-              if (allDiscs[i]) selectedDiscs.push(allDiscs[i]);
-            });
-            // Reset all hidden, then hide non-selected
-            A.hiddenDiscs = new Set();
-            allDiscs.forEach(function(d) {
-              if (selectedDiscs.indexOf(d) < 0) A.hiddenDiscs.add(d);
-            });
-            // Apply visibility
-            A.collectMeshes(function(o) { return o.isMesh && o.userData.disc; }).forEach(function(obj) {
-              var discVisible = !A.hiddenDiscs.has(obj.userData.disc);
-              var storeyVisible = A.activeStoreyFilter === null ||
-                (Array.isArray(A.activeStoreyFilter) ? A.activeStoreyFilter.indexOf(obj.userData.storey) >= 0 : obj.userData.storey === A.activeStoreyFilter);
-              obj.visible = discVisible && storeyVisible;
-            });
-            A.collectMeshes(function(o) { return o.isInstancedMesh; }).forEach(function(mesh) {
-              A.filterInstancedMesh(mesh, function(meta) {
-                return !A.hiddenDiscs.has(meta.disc) &&
-                  (A.activeStoreyFilter === null ||
-                   (Array.isArray(A.activeStoreyFilter) ? A.activeStoreyFilter.indexOf(meta.storey) >= 0 : meta.storey === A.activeStoreyFilter));
-              });
-            });
-            // §S260: BatchedMesh multi-disc filter
-            A.collectMeshes(function(o) { return o.isBatchedMesh; }).forEach(function(mesh) {
-              A.filterBatchedMesh(mesh, function(meta) {
-                return !A.hiddenDiscs.has(meta.disc) &&
-                  (A.activeStoreyFilter === null ||
-                   (Array.isArray(A.activeStoreyFilter) ? A.activeStoreyFilter.indexOf(meta.storey) >= 0 : meta.storey === A.activeStoreyFilter));
-              });
-            });
-            btns.forEach(function(btn, j) { btn.className = indices.indexOf(j) >= 0 ? 'active' : ''; });
-            console.log('§DISC_MULTI selected=' + selectedDiscs.join(',') + ' hidden=' + A.hiddenDiscs.size);
-            if (window.KernelOps && A.db) KernelOps.commitOp(A.db, 'VIEW_FILTER', {type:'disc',discs:selectedDiscs});
-            if (A.markDirty) A.markDirty();
-          }
-        },
-        function(idx) {
-          var btns = Array.from(document.querySelectorAll('#disc-body button'));
-          if (btns[idx]) btns[idx].click();
-        }
-      );
-      if (typeof _registerPanel === 'function') _registerPanel('disc', discPanel, _discNav);
-      console.log('§LISTNAV_WIRE panel=disc');
-    }
+    // §S280: Old storey/disc HUD panels removed — now in Find outliner (navigate_find.js)
 
     // Toolbar — horizontal, ←→ traversal, Space/Enter clicks
     var toolbox = document.getElementById('search-box');
@@ -562,30 +422,8 @@ function setupPanels(A) {
   A.activeStoreyFilter = null;
   A.storeyMeshGroups = {};
 
-  A.populateStoreys = function(building) {
-    if (!A.db || !building) return;
-    const rows = A.dbQuery(`
-      SELECT DISTINCT storey FROM elements_meta
-      WHERE building = ? AND storey IS NOT NULL
-      ORDER BY storey
-    `, [building]);
-    const section = document.getElementById('hud-storey-section');
-    const body = document.getElementById('storey-body');
-    if (!rows.length) { if (section) section.style.display = 'none'; return; }
-
-    const storeys = rows.map(r => r[0]);
-    body.innerHTML = `<button class="${A.activeStoreyFilter === null ? 'active' : ''}"
-      onclick="filterStorey(null);resetHudAutoCollapse()" style="margin-top:4px">${typeof _TRL!=='undefined'&&_TRL.ui_all_storeys||'All Storeys'}</button>` +
-      storeys.map(s => `<button class="${A.activeStoreyFilter === s ? 'active' : ''}"
-        onclick="filterStorey('${s}');resetHudAutoCollapse()">${s}</button>`).join('');
-    if (section) section.style.display = 'block';
-
-    // Start with storey body collapsed inside HUD accordion
-    setTimeout(() => { if (body) body.classList.add('collapsed'); }, 100);
-    // S251: Wire ListKeyNav after buttons are populated
-    if (A._wireListKeyNav) A._wireListKeyNav();
-    console.log('§HUD_STOREY populated storeys=' + storeys.length);
-  };
+  // §S280: HUD removed — storey/disc now in Find outliner
+  A.populateStoreys = function() {};
 
   A.filterStorey = function(storey) {
     A.activeStoreyFilter = storey;
@@ -601,10 +439,6 @@ function setupPanels(A) {
     A.collectMeshes(o => o.isBatchedMesh).forEach(mesh => {
       A.filterBatchedMesh(mesh, meta => storey === null || meta.storey === storey);
     });
-    document.querySelectorAll('#storey-body button').forEach(btn => {
-      const btnStorey = btn.onclick.toString().match(/filterStorey\('(.+?)'\)/)?.[1] || null;
-      btn.className = (btnStorey === storey || (storey === null && !btn.onclick.toString().includes("'"))) ? 'active' : '';
-    });
     console.log(`[S200] §STOREY_FILTER ${storey || 'ALL'}`);
     if (A.markDirty) A.markDirty();
   };
@@ -612,32 +446,7 @@ function setupPanels(A) {
   // Discipline toggle
   A.hiddenDiscs = new Set();
 
-  A.populateDiscs = function(building) {
-    if (!A.db || !building) return;
-    const rows = A.dbQuery(`
-      SELECT discipline, COUNT(*) FROM elements_meta
-      WHERE building = ? AND discipline IS NOT NULL
-      GROUP BY discipline ORDER BY COUNT(*) DESC
-    `, [building]);
-    const section = document.getElementById('hud-disc-section');
-    const body = document.getElementById('disc-body');
-    if (!rows.length) { if (section) section.style.display = 'none'; return; }
-
-    body.innerHTML = rows.map(([d, cnt]) => {
-      const hex = '#' + (A.DISC_COLORS[d] || A.DEFAULT_COLOR).toString(16).padStart(6, '0');
-      const on = !A.hiddenDiscs.has(d);
-      return `<button class="${on ? 'active' : ''}" onclick="toggleDisc('${d}');resetHudAutoCollapse()" style="margin-top:2px">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${hex};margin-right:4px"></span>
-        ${d} <span style="color:#888;font-size:10px">${cnt.toLocaleString()}</span></button>`;
-    }).join('');
-    if (section) section.style.display = 'block';
-
-    // Start with disc body collapsed inside HUD accordion
-    setTimeout(() => { if (body) body.classList.add('collapsed'); }, 100);
-    // S251: Wire ListKeyNav after buttons are populated
-    if (A._wireListKeyNav) A._wireListKeyNav();
-    console.log('§HUD_DISC populated disciplines=' + rows.length);
-  };
+  A.populateDiscs = function() {};
 
   A.toggleDisc = function(disc) {
     if (A.hiddenDiscs.has(disc)) {
@@ -645,29 +454,40 @@ function setupPanels(A) {
     } else {
       A.hiddenDiscs.add(disc);
     }
-    // S239: Regular meshes — show/hide by disc + storey
+    A._applyDiscVisibility();
+  };
+
+  // §S280d: Show only this discipline (null = show all). Counterpart to filterStorey.
+  A.filterDisc = function(disc) {
+    A.hiddenDiscs.clear();
+    if (disc !== null) {
+      // Build hiddenDiscs from scene — hide everything except target disc
+      A.collectMeshes(o => o.isMesh && o.userData.disc).forEach(obj => {
+        if (obj.userData.disc !== disc) A.hiddenDiscs.add(obj.userData.disc);
+      });
+    }
+    A._applyDiscVisibility();
+    console.log('[S200] §DISC_FILTER ' + (disc || 'ALL'));
+  };
+
+  // §S280d: shared traversal for disc + storey combined visibility
+  A._applyDiscVisibility = function() {
     A.collectMeshes(o => o.isMesh && o.userData.disc).forEach(obj => {
       const discVisible = !A.hiddenDiscs.has(obj.userData.disc);
       const storeyVisible = A.activeStoreyFilter === null || obj.userData.storey === A.activeStoreyFilter;
       obj.visible = discVisible && storeyVisible;
     });
-    // S232/S239: InstancedMesh — per-instance disc+storey filter
     A.collectMeshes(o => o.isInstancedMesh).forEach(mesh => {
       A.filterInstancedMesh(mesh, meta => {
         return !A.hiddenDiscs.has(meta.disc) &&
           (A.activeStoreyFilter === null || meta.storey === A.activeStoreyFilter);
       });
     });
-    // §S260: BatchedMesh — per-element disc+storey filter
     A.collectMeshes(o => o.isBatchedMesh).forEach(mesh => {
       A.filterBatchedMesh(mesh, meta => {
         return !A.hiddenDiscs.has(meta.disc) &&
           (A.activeStoreyFilter === null || meta.storey === A.activeStoreyFilter);
       });
-    });
-    document.querySelectorAll('#disc-body button').forEach(btn => {
-      const m = btn.onclick.toString().match(/toggleDisc\('(.+?)'\)/);
-      if (m) btn.className = A.hiddenDiscs.has(m[1]) ? '' : 'active';
     });
     if (A.markDirty) A.markDirty();
   };
@@ -699,14 +519,17 @@ function setupPanels(A) {
     }
   };
 
-  // Search filter
-  const searchInput = document.getElementById('search');
-  searchInput.addEventListener('input', () => {
-    const q = searchInput.value.trim().toLowerCase();
-    for (const card of A.allBuildingCards) {
-      card.el.style.display = (!q || card.name.includes(q)) ? '' : 'none';
-    }
-  });
+  // §S280: Search filter — guard against missing #search (overflow removed)
+  var searchInput = document.getElementById('search');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      var q = searchInput.value.trim().toLowerCase();
+      for (var ci = 0; ci < (A.allBuildingCards || []).length; ci++) {
+        var card = A.allBuildingCards[ci];
+        card.el.style.display = (!q || card.name.includes(q)) ? '' : 'none';
+      }
+    });
+  }
 
   // HUD
   A.updateHUD = function() {
@@ -952,49 +775,250 @@ function setupPanels(A) {
     }
   };
 
-  // Panel toggle (S250 §5 — hides ALL UI chrome for clean screenshots)
-  // S265 Phase 4: HUD auto-collapse on mobile (5s after last interaction)
-  var _hudAutoCollapseTimer = null;
-  window.resetHudAutoCollapse = function() {
-    if (_hudAutoCollapseTimer) clearTimeout(_hudAutoCollapseTimer);
-    if (!window._isMobile) return; // desktop: no auto-collapse
-    _hudAutoCollapseTimer = setTimeout(function() {
-      var hudBody = document.getElementById('hud-body');
-      if (hudBody && !hudBody.classList.contains('collapsed')) {
-        hudBody.classList.add('collapsed');
-        console.log('§HUD_AUTOCOLLAPSE 5s idle');
-      }
-    }, 5000);
-  };
+  // §S280: HUD removed — no-op stubs
+  window.resetHudAutoCollapse = function() {};
 
   // S265 Phase 4: storey-panel/disc-panel removed (now inside HUD accordion)
   var panelIds = ['hud','search-box','icon-pill','info-panel',
-                  'status','grid-overlay-panel','dev-banner',
-                  'section-slider-panel','undo-redo-btns'];
+                  'status-bar-wrap','grid-overlay-panel','dev-banner',
+                  'section-slider-panel'];
   var panelsHidden = false;
+  // §S280: toggleAllPanels = old +/- behavior, now triggered by double-tap []
   window.toggleAllPanels = function() {
     panelsHidden = !panelsHidden;
     panelIds.forEach(function(pid) {
-      // S251: keep status bar visible when matrix is open (for report progress)
-      if (pid === 'status' && panelsHidden && A._clashMatrixDiv) return;
+      if (pid === 'status-bar-wrap' && panelsHidden && A._clashMatrixDiv) return;
       var el = document.getElementById(pid);
       if (el) el.classList.toggle('swipe-hidden', panelsHidden);
     });
-    // Also catch dynamically created panels (grid, issues, clash, find, nlp, etc.)
-    // Abstract: hide everything with position:fixed that is NOT the canvas or the toggle button itself
     var extras = document.querySelectorAll('.glass-panel, #issues-panel, #find-panel, #nlp-bar, #nlp-chips, #nav-hud');
     extras.forEach(function(el) { el.classList.toggle('swipe-hidden', panelsHidden); });
-    // S251: (-) closes info card + clash list, but matrix survives
     if (panelsHidden) {
       if (A._infoCardDiv) { A._infoCardDiv.remove(); A._infoCardDiv = null; }
       if (A._clashListDiv) { A._clashListDiv.remove(); A._clashListDiv = null; }
-      // Remove from measureLabels too
       if (A.measureLabels) A.measureLabels = A.measureLabels.filter(function(m) { return m.div === A._clashMatrixDiv; });
     }
-    var btn = document.getElementById('panel-toggle-btn');
-    if (btn) btn.textContent = panelsHidden ? '+' : '−';
     console.log('§PANEL_TOGGLE panelsHidden=' + panelsHidden);
   };
+
+  // §S280: [] button — single tap = fullscreen (F11), double tap = close all except latest
+  var _focusOnlyHidden = []; // stash panels hidden by double-tap, for restore
+  window.focusOnlyLatest = function() {
+    if (_focusOnlyHidden.length) {
+      // Restore — show everything we hid
+      _focusOnlyHidden.forEach(function(el) { el.classList.remove('swipe-hidden'); });
+      console.log('§MINMAX_DBL restore count=' + _focusOnlyHidden.length);
+      _focusOnlyHidden = [];
+      return;
+    }
+    // Find the latest visible panel (last in focus stack or currently focused)
+    var latestId = null;
+    if (window._panels) {
+      // Use focus stack — last entry is the most recent
+      var stack = window._focusStack || [];
+      for (var si = stack.length - 1; si >= 0; si--) {
+        for (var pi = 0; pi < window._panels.length; pi++) {
+          if (window._panels[pi].id === stack[si] && window._panels[pi].el.style.display !== 'none') {
+            latestId = stack[si]; break;
+          }
+        }
+        if (latestId) break;
+      }
+    }
+    // Hide all panels + HUD except the latest
+    _focusOnlyHidden = [];
+    panelIds.forEach(function(pid) {
+      var el = document.getElementById(pid);
+      if (!el) return;
+      // Don't hide if this is the latest panel's container
+      if (latestId && el.querySelector && el.contains(document.getElementById(latestId))) return;
+      if (el.style.display === 'none' || el.classList.contains('swipe-hidden')) return;
+      el.classList.add('swipe-hidden');
+      _focusOnlyHidden.push(el);
+    });
+    var extras = document.querySelectorAll('.glass-panel, #issues-panel, #find-panel, #nlp-bar, #nlp-chips, #nav-hud');
+    extras.forEach(function(el) {
+      if (el.style.display === 'none' || el.classList.contains('swipe-hidden')) return;
+      // Check if this is the latest panel
+      if (latestId && el.id === latestId) return;
+      el.classList.add('swipe-hidden');
+      _focusOnlyHidden.push(el);
+    });
+    console.log('§MINMAX_DBL focus-only latest=' + (latestId || 'none') + ' hidden=' + _focusOnlyHidden.length);
+  };
+
+  (function() {
+    var mmBtn = document.getElementById('minmax-btn');
+    if (!mmBtn) return;
+    var _tapTimer = 0;
+    var _DBL_MS = 300;
+    mmBtn.addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      if (_tapTimer) {
+        // Double tap — cancel pending fullscreen, focus on latest panel only
+        clearTimeout(_tapTimer);
+        _tapTimer = 0;
+        window.focusOnlyLatest();
+      } else {
+        // First tap — wait for possible second
+        _tapTimer = setTimeout(function() {
+          _tapTimer = 0;
+          // Single tap — fullscreen
+          if (typeof A.toggleFullscreen === 'function') A.toggleFullscreen();
+          else if (document.fullscreenElement) document.exitFullscreen();
+          else document.documentElement.requestFullscreen();
+          console.log('§MINMAX single-tap → fullscreen');
+        }, _DBL_MS);
+      }
+    });
+  })();
+
+  // §S280: Mobile + Desktop — ESC cascades close, panels stack normally
+
+  // §S280: Scrollable pill — ⋯ trigger, full-height, native scroll (both platforms)
+  (function() {
+    var pill = document.getElementById('mobile-pill');
+    var trigger = document.getElementById('mobile-trigger');
+    if (!pill || !trigger) return;
+
+    // Icon actions — sorted by last-used (most recent at bottom, nearest to thumb)
+    var _LS_KEY = 'bim_mobile_pill_order';
+    var _actions = [
+      { id: 'redpill',   icon: '<rect x="8" y="2" width="8" height="20" rx="4"/><line x1="8" y1="12" x2="16" y2="12"/><circle cx="12" cy="7" r="1.5" fill="currentColor"/>', fn: function() { if (typeof toggleDocMode === 'function') toggleDocMode(); else if (A._enterRedPill) A._enterRedPill(); } },
+      { id: 'find',      icon: '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>', fn: function() { if (A.openFindPanel) A.openFindPanel(''); } },
+      { id: 'help',      icon: '<circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/>', fn: function() { if (typeof showCommandPalette === 'function') showCommandPalette(); } },
+      { id: 'walk',      icon: '<ellipse cx="15" cy="5" rx="3" ry="4"/><ellipse cx="15" cy="11" rx="2" ry="1.5"/><ellipse cx="9" cy="13" rx="3" ry="4"/><ellipse cx="9" cy="19" rx="2" ry="1.5"/>', fn: function() { if (typeof toggleWalkMode === 'function') toggleWalkMode(); } },
+      { id: 'share',     icon: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>', fn: function() { if (A.quickShare) A.quickShare(); } },
+      { id: 'measure',   icon: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>', fn: function() { if (typeof A.toggleMeasure === 'function') A.toggleMeasure(); } },
+      { id: 'xray',      icon: '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="1"/><path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"/>', fn: function() { if (typeof toggleXray === 'function') toggleXray(); } },
+      { id: 'tm',        icon: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>', fn: function() { if (typeof toggleTimeMachine === 'function') toggleTimeMachine(); } },
+      { id: 'section',   icon: '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>', fn: function() { if (A.toggleSection) A.toggleSection(); } },
+      { id: 'screenshot', icon: '<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>', fn: function() { if (A.screenshot) A.screenshot(); } },
+      { id: 'night',     icon: '<path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>', fn: function() { if (typeof toggleNightMode === 'function') toggleNightMode(); } },
+      { id: 'palette',   icon: '<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>', fn: function() { if (typeof toggleSunglass === 'function') toggleSunglass(); } },
+      { id: 'shadow',    icon: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>', fn: function() { if (typeof toggleShadow === 'function') toggleShadow(); } },
+      { id: 'fly',       icon: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>', fn: function() { if (typeof toggleFlyAround === 'function') toggleFlyAround(); } },
+      { id: 'report',    icon: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>', fn: function() { if (A.export4D5D) A.export4D5D(); } },
+      { id: 'home',      icon: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', fn: function() { location.href = '../index.html'; } }
+    ];
+
+    // Default order: redpill at top (scroll away), home nearest ⋯ trigger (bottom)
+    // Usefulness: frequent tools near bottom (thumb reach), rare at top
+    var _defaultOrder = ['redpill','report','fly','shadow','night','screenshot','palette','tm','section','xray','share','measure','walk','help','find','home'];
+
+    function _getOrder() {
+      try {
+        var saved = localStorage.getItem(_LS_KEY);
+        if (saved) return JSON.parse(saved);
+      } catch(e) {}
+      return _defaultOrder.slice();
+    }
+    function _bumpAction(id) {
+      var order = _getOrder();
+      var idx = order.indexOf(id);
+      if (idx >= 0) order.splice(idx, 1);
+      order.push(id); // most recent = bottom
+      try { localStorage.setItem(_LS_KEY, JSON.stringify(order)); } catch(e) {}
+      return order;
+    }
+
+    function _buildPill() {
+      pill.innerHTML = '';
+      var order = _getOrder();
+      var sorted = _actions.slice().sort(function(a, b) {
+        var ai = order.indexOf(a.id), bi = order.indexOf(b.id);
+        if (ai < 0) ai = -1;
+        if (bi < 0) bi = -1;
+        return ai - bi;
+      });
+      sorted.forEach(function(act) {
+        var btn = document.createElement('button');
+        btn.title = act.id;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + act.icon + '</svg>';
+        btn.addEventListener('pointerup', function(e) {
+          e.stopPropagation();
+          _bumpAction(act.id);
+          act.fn();
+          _closePill();
+          console.log('§PILL action=' + act.id);
+        });
+        pill.appendChild(btn);
+      });
+    }
+
+    // Build once at startup
+    _buildPill();
+
+    var _pillOpen = false;
+    function _closePill() {
+      pill.style.display = 'none';
+      _pillOpen = false;
+    }
+    window.toggleMobilePill = function() {
+      _pillOpen = !_pillOpen;
+      pill.style.display = _pillOpen ? 'block' : 'none';
+      console.log('§PILL open=' + _pillOpen);
+    };
+    // Close on tap outside
+    document.addEventListener('pointerdown', function(e) {
+      if (_pillOpen && !pill.contains(e.target) && e.target !== trigger) _closePill();
+    });
+
+    // §S280: Undo via kernel_ops
+    var _redoBtn = null;
+    function _doUndo() {
+      if (!window.KernelOps || !A.db) { A.status.textContent = 'No ops to undo'; return; }
+      var op = KernelOps.undoOp(A.db);
+      if (!op) { A.status.textContent = 'Nothing to undo'; return; }
+      A.status.textContent = 'Undo: ' + op.op_type;
+      // Replay scene from clean state
+      if (op.op_type === 'VIEW_FILTER' || op.op_type === 'ELEMENT_PICK') {
+        // Replay all non-undone VIEW_FILTER ops to restore visibility
+        var vfOps = KernelOps.replayOps(A.db, 'VIEW_FILTER');
+        if (vfOps.length === 0 && A._resetAllVisibility) A._resetAllVisibility();
+        else if (A._applyViewFilter) A._applyViewFilter(vfOps[vfOps.length - 1].parameters);
+      }
+      // Show redo button in pill
+      if (!_redoBtn) {
+        _redoBtn = document.createElement('button');
+        _redoBtn.title = 'redo';
+        _redoBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 0 0-3-6.36A8.97 8.97 0 0 0 12 4c-5 0-9 4-9 9s4 9 9 9a9 9 0 0 0 7.74-4.41"/></svg>';
+        _redoBtn.style.color = '#4fc3f7';
+        _redoBtn.addEventListener('pointerup', function(e) {
+          e.stopPropagation();
+          _doRedo();
+        });
+      }
+      // Insert redo after undo in the pill scroll
+      var undoBtn = scroll.querySelector('[title="undo"]');
+      if (undoBtn && !_redoBtn.parentNode) {
+        undoBtn.parentNode.insertBefore(_redoBtn, undoBtn.nextSibling);
+      }
+      console.log('§MOBILE_UNDO type=' + op.op_type + ' id=' + op.id);
+    }
+    function _doRedo() {
+      if (!window.KernelOps || !A.db) return;
+      var op = KernelOps.redoOp(A.db);
+      if (!op) {
+        A.status.textContent = 'Nothing to redo';
+        if (_redoBtn && _redoBtn.parentNode) _redoBtn.parentNode.removeChild(_redoBtn);
+        return;
+      }
+      A.status.textContent = 'Redo: ' + op.op_type;
+      // Re-apply the op
+      if (op.op_type === 'VIEW_FILTER' && A._applyViewFilter) {
+        A._applyViewFilter(op.parameters);
+      }
+      // Check if more redos available
+      var nextRedo = A.db.exec('SELECT id FROM kernel_ops WHERE undone = 1 ORDER BY id ASC LIMIT 1');
+      if (!nextRedo.length || !nextRedo[0].values.length) {
+        if (_redoBtn && _redoBtn.parentNode) _redoBtn.parentNode.removeChild(_redoBtn);
+      }
+      console.log('§MOBILE_REDO type=' + op.op_type + ' id=' + op.id);
+    }
+
+    console.log('§MOBILE_BAR_READY actions=' + _actions.length);
+  })();
 
   // Register static panels immediately (don't wait for building to load)
   // §S267: Lazy-fetch BOM.db for OOTB fleet buildings (verb expansion)

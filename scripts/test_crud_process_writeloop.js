@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 // Implementing CRUD_OVERLAY.md §Process — Witness: W-CRUD-WRITELOOP
 // Proves the CRUD Process verb's ACTUAL write loop on REAL kernel code (this is the loop the E2 overlay
 // dry-runs; here it is exercised for real, end to end):

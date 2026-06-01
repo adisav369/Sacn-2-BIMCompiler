@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * poc_sign.js — W-SIGN acceptance (prompts/DISTRIBUTED_POC.md #4; DistributedERP.md §9-B, §5.2).
  *   Proves the step from tamper-EVIDENT (W-CHAIN) to un-FORGEABLE:

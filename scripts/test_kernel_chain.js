@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * test_kernel_chain.js — exercises the REAL bim-ootb/viewer/kernel_ops.js (not a copy) to confirm
  *   the wired W-CHAIN seal/verify works under crypto.subtle (same algorithm proven in poc_chain.js).

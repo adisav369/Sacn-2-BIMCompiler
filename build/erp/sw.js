@@ -1,3 +1,5 @@
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /* Glassbowl offline service worker — precache the two engine-as-data pages + Glassbowl's
    sql.js + bundle so they work with no network. Scoped to /BIMCompiler/; passes every
    other request straight through, so the rest of the docs site is unaffected.

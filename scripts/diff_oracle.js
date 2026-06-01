@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+// SPDX-License-Identifier: MIT
 /**
  * diff_oracle.js — the DIFF-ORACLE HARNESS (prompts/ERP_KERNEL_BUILD.md §P3b Task 1).
  *   Spec: docs/ERP.md §18.10 (the oracle: extract don't port), §0.12 (the oracle needs
