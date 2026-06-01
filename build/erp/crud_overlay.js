@@ -130,16 +130,42 @@
     if (verb === 'process') {                              // DocAction — runs the doc state machine, not a row write
       var r = docActionOutcome(entry, values) || { action: 'CO', from: 'DR', to: 'IP', outcome: 'in-progress', unmet: [] };
       base.op_type = 'DOC_ACTION'; base.id = ctx.id == null ? null : ctx.id;
-      base.action = r.action; base.from = r.from; base.to = r.to; base.outcome = r.outcome; base.unmet = r.unmet;
+      base.action = r.action; base.from = ctx.from || r.from; base.to = r.to; base.outcome = r.outcome; base.unmet = r.unmet;
+      base.oracle = (entry.docAction && entry.docAction.oracle) || null;
       return base;
     }
     throw new Error('buildOp: unknown verb ' + verb);
   }
 
+  // ── GP3 signed-write seam (READSHOWME §… / GUIDE_SHOWME_PROCESS GP3 — DECIDED: sidecar log, read-the-tip).
+  // kernelParamsFor — map an overlay DOC_ACTION op to the production kernel's SET_STATUS params. The
+  // COMMITTED op is the REAL write (commitOp→sealChain→verifyChain); read-the-tip later returns `to`.
+  function kernelParamsFor(op) {
+    if (!op || op.op_type !== 'DOC_ACTION') return null;
+    return { table: op.table, id: op.id, action: op.action, from: op.from, to: op.to, oracle: op.oracle || null };
+  }
+
+  // readTip — read-the-tip docstatus for (table,id) from the signed op-log: the latest NON-undone
+  // SET_STATUS op's `to`, or null if none (caller treats null as the descriptor default, e.g. DR).
+  // glassbowl_data.db stays the IMMUTABLE baseline; this sidecar log is the only mutable truth. Filters
+  // in JS (no json_extract dependency) so it runs on any sql.js build.
+  function readTip(db, table, id) {
+    try {
+      var r = db.exec("SELECT parameters FROM kernel_ops WHERE op_type='SET_STATUS' AND undone=0 ORDER BY id DESC");
+      if (!r.length || !r[0].values.length) return null;
+      var rows = r[0].values;
+      for (var i = 0; i < rows.length; i++) {
+        var p = JSON.parse(rows[i][0]);
+        if (p && p.table === table && String(p.id) === String(id)) return p.to || null;
+      }
+      return null;
+    } catch (e) { return null; }
+  }
+
   var CORE = {
     entriesOf: entriesOf, verbEnabled: verbEnabled, defaultsFor: defaultsFor,
     validateField: validateField, validate: validate, cleanVals: cleanVals, buildOp: buildOp,
-    docActionOutcome: docActionOutcome
+    docActionOutcome: docActionOutcome, kernelParamsFor: kernelParamsFor, readTip: readTip
   };
 
   // node (headless witness): export the core and stop — no DOM to attach.
@@ -287,13 +313,16 @@
   }
 
   // doProcess — DocAction (Process): runs the document state machine, NOT a row write. Reads the
-  // lit/first row's values, derives the outcome (CO success | IP unsatisfied) deterministically via
-  // CORE, logs the dry-run op, paints #docStatusBar. E3 swaps in real completeIt() + kernel MATCH.
+  // lit/first row's values, READS-THE-TIP for the current docstatus (`from`, from the signed sidecar log,
+  // else the descriptor default), derives the outcome (CO success | IP unsatisfied) via CORE, then commits
+  // it as a REAL signed op (GP3). glassbowl_data.db is never mutated — the op-log is the only truth.
   function doProcess(e) {
     getRecord(e.key, function (rec) {
-      var vals = assignVals(e, rec);
-      var op = CORE.buildOp('process', e, vals, rec, { id: recId(e.key, rec) });
-      applyOp(op, e);
+      var vals = assignVals(e, rec), id = recId(e.key, rec);
+      withSidecar(function (db) {
+        var from = (db ? CORE.readTip(db, e.key, id) : null) || (e.docAction && e.docAction.from) || 'DR';
+        applyOp(CORE.buildOp('process', e, vals, rec, { id: id, from: from }), e);
+      });
     });
   }
 
@@ -383,7 +412,94 @@
   }
   function closeForm() { form.className = ''; form.innerHTML = ''; }
 
-  // ── applyOp — E2 DRY-RUN seam. E3 swaps this body for commitOp/sealChain/verifyChain + re-fold. ──
+  // ════════════════════════════════════════════════════════════════════════
+  // GP3 SIGNED-WRITE SEAM — the deployed Process ▶ becomes a REAL signed write (W-CRUD-WRITELOOP-OVERLAY).
+  // DECIDED (GUIDE_SHOWME_PROCESS GP3): sidecar log + read-the-tip. Ops commit to a SEPARATE in-memory
+  // kernel_ops DB persisted under its OWN IndexedDB key; glassbowl_data.db stays the IMMUTABLE baseline.
+  // The signed kernel is the production W-CHAIN one (kernel_ops.js → window.KernelOps), loaded as a peer
+  // <script>. If it (or sql.js) is absent we fall back to the E2 dry-run — never a silent failure.
+  // ════════════════════════════════════════════════════════════════════════
+  var SIDE = null, SIDE_PENDING = false, SIDE_CBS = [];
+  var SIDE_DBNAME = 'glassbowl_kernel_ops', SIDE_STORE = 'log', SIDE_KEY = 'kernel_ops.db';
+  function kernel() { return (typeof global.KernelOps !== 'undefined') ? global.KernelOps : null; }
+  function _flushSideCbs(arg) { var cbs = SIDE_CBS; SIDE_CBS = []; SIDE_PENDING = false; cbs.forEach(function (f) { try { f(arg); } catch (e) {} }); }
+
+  // _sideIdb — open the DEDICATED sidecar object store (NEVER glassbowl_data.db's cache key).
+  function _sideIdb(cb) {
+    try {
+      var req = global.indexedDB.open(SIDE_DBNAME, 1);
+      req.onupgradeneeded = function () { req.result.createObjectStore(SIDE_STORE); };
+      req.onsuccess = function () { cb(req.result); };
+      req.onerror = function () { cb(null); };
+    } catch (e) { cb(null); }
+  }
+  function _sidePersist() {
+    if (!SIDE) return;
+    try {
+      var buf = SIDE.export().buffer;   // the sidecar is TINY (the log only) — whole-export is cheap + 1GB-safe
+      _sideIdb(function (db) {
+        if (!db) return;
+        try {
+          db.transaction(SIDE_STORE, 'readwrite').objectStore(SIDE_STORE).put(buf, SIDE_KEY);
+          console.log('§CRUD sidecar persisted size=' + (buf.byteLength / 1024).toFixed(1) + 'KB key=' + SIDE_KEY);
+        } catch (e) {}
+      });
+    } catch (e) {}
+  }
+  // withSidecar — lazily build/hydrate the sidecar log DB (a separate sql.js Database), ensure the kernel
+  // table, then run cb(SIDE). cb(null) if sql.js/kernel unavailable (caller falls back to dry-run).
+  function withSidecar(cb) {
+    if (SIDE) { cb(SIDE); return; }
+    SIDE_CBS.push(cb);
+    if (SIDE_PENDING) return;
+    var K = kernel();
+    if (typeof global.initSqlJs !== 'function' || !K) { _flushSideCbs(null); return; }
+    SIDE_PENDING = true;
+    global.initSqlJs({ locateFile: function (f) { return 'sqljs/' + f; } }).then(function (SQL) {
+      _sideIdb(function (db) {
+        function build(buf) {
+          try { SIDE = buf ? new SQL.Database(new Uint8Array(buf)) : new SQL.Database(); }
+          catch (e) { SIDE = new SQL.Database(); }
+          K.ensureTable(SIDE);
+          _flushSideCbs(SIDE);
+        }
+        if (!db) { build(null); return; }
+        try {
+          var g = db.transaction(SIDE_STORE, 'readonly').objectStore(SIDE_STORE).get(SIDE_KEY);
+          g.onsuccess = function () { build(g.result || null); };
+          g.onerror = function () { build(null); };
+        } catch (e) { build(null); }
+      });
+    }).catch(function () { _flushSideCbs(null); });
+  }
+
+  // dryProcess — the E2 fallback (kernel/sql.js absent): log the op, paint the bar, mark dry-run.
+  function dryProcess(op) {
+    console.log('§CRUD process key=' + op.key + ' action=' + op.action + ' from=' + op.from + ' to=' + op.to + ' (dry) op=DOC_ACTION outcome=' + op.outcome + (op.unmet && op.unmet.length ? ' unmet=' + op.unmet.join(',') : ''));
+    setDocStatus(op.key, op.to, op.outcome, op.unmet);
+    toast('PROCESS ' + fname(op.key) + ' → ' + op.to + (op.outcome === 'in-progress' ? ' (In Progress — unmet condition)' : ' (Completed)') + ' — dry-run');
+  }
+  // commitProcess — the REAL signed write loop (W-CHAIN): commitOp → sealChain → verifyChain → persist
+  // sidecar → paint #docStatusBar from the COMMITTED `to`. The op-log is the truth; reversible.
+  function commitProcess(op) {
+    var K = kernel();
+    withSidecar(function (db) {
+      if (!db || !K) { console.log('§CRUD process key=' + op.key + ' kernel/sql.js absent → DRY fallback'); dryProcess(op); return; }
+      try {
+        var id = K.commitOp(db, 'SET_STATUS', CORE.kernelParamsFor(op));
+        Promise.resolve(K.sealChain(db)).then(function () { return K.verifyChain(db); }).then(function (v) {
+          _sidePersist();
+          var row = db.exec('SELECT op_uuid FROM kernel_ops WHERE id=' + id);
+          var uuid = (row.length && row[0].values.length) ? row[0].values[0][0] : null;
+          console.log('§CRUD process committed key=' + op.key + ' op_uuid=' + (uuid || 'null') + ' to=' + op.to + ' verifyChain=' + (v && v.ok ? 'ok' : 'FAIL'));
+          setDocStatus(op.key, op.to, op.outcome, op.unmet);
+          toast('PROCESS ' + fname(op.key) + ' → ' + op.to + (op.outcome === 'in-progress' ? ' (In Progress)' : ' (Completed)') + ' — signed' + (v && v.ok ? '' : ' (verify FAIL!)'));
+        }).catch(function (er) { console.warn('§CRUD process seal/verify error', er && er.message); dryProcess(op); });
+      } catch (er) { console.warn('§CRUD process commit error', er && er.message); dryProcess(op); }
+    });
+  }
+
+  // ── applyOp — E2 dry path for CRUD verbs; DOC_ACTION now takes the GP3 signed-write seam. ──
   function applyOp(op, e) {
     if (op.op_type === 'CRUD_CREATE')
       console.log('§CRUD create key=' + op.key + ' (dry) op=CRUD_CREATE fields=' + JSON.stringify(op.fields) + ' ownerGated=' + (op.ownerGated ? 'Y' : 'N') + ' cas=' + (op.cas || '-'));
@@ -391,12 +507,7 @@
       console.log('§CRUD update key=' + op.key + ' field=' + Object.keys(op.changes).join(',') + ' (dry) op=CRUD_UPDATE changes=' + JSON.stringify(op.changes));
     else if (op.op_type === 'CRUD_DELETE')
       console.log('§CRUD delete key=' + op.key + ' tombstone=Y reversible=Y (dry) op=CRUD_DELETE id=' + op.id);
-    else if (op.op_type === 'DOC_ACTION') {
-      console.log('§CRUD process key=' + op.key + ' action=' + op.action + ' from=' + op.from + ' to=' + op.to + ' (dry) op=DOC_ACTION outcome=' + op.outcome + (op.unmet && op.unmet.length ? ' unmet=' + op.unmet.join(',') : ''));
-      setDocStatus(op.key, op.to, op.outcome, op.unmet);
-      toast('PROCESS ' + fname(op.key) + ' → ' + op.to + (op.outcome === 'in-progress' ? ' (In Progress — unmet condition)' : ' (Completed)') + ' — dry-run');
-      return;
-    }
+    else if (op.op_type === 'DOC_ACTION') { commitProcess(op); return; }   // GP3: real signed write (sidecar)
     toast(op.verb.toUpperCase() + ' ' + fname(op.key) + ' — dry-run logged (E3 will sign + apply)');
   }
 
@@ -488,6 +599,19 @@
     if (d.verb === 'pulse' && d.kind === 'process' && d.key) pulseProc(d.key);
   });
 
-  global.__crud = { enable: enable, disable: disable, openRing: openRing, core: CORE, store: function () { return STORE; }, setStatus: setDocStatus, statusBar: function () { return statusBar; }, pulseProc: pulseProc };
+  // history — the signed op-log as the truth (GP3): every committed Process op, newest first. The op-log
+  // is reversible (kernel undoOp); a full History view UI is the next increment. Returns [] until a write.
+  function history() {
+    if (!SIDE) return [];
+    try {
+      var r = SIDE.exec("SELECT id,op_uuid,timestamp,op_type,parameters,undone FROM kernel_ops WHERE op_type='SET_STATUS' ORDER BY id DESC");
+      if (!r.length) return [];
+      return r[0].values.map(function (v) { return { id: v[0], op_uuid: v[1], ts: v[2], op_type: v[3], params: JSON.parse(v[4]), undone: !!v[5] }; });
+    } catch (e) { return []; }
+  }
+  global.__crud = { enable: enable, disable: disable, openRing: openRing, core: CORE, store: function () { return STORE; },
+                    setStatus: setDocStatus, statusBar: function () { return statusBar; }, pulseProc: pulseProc,
+                    kernelDb: function () { return SIDE; }, withSidecar: withSidecar,
+                    readTip: function (table, id) { return SIDE ? CORE.readTip(SIDE, table, id) : null; }, history: history };
   console.log('§CRUD layer mounted (Edit-mode ready)');
 })(typeof window !== 'undefined' ? window : this);

@@ -236,8 +236,45 @@
     card.querySelector('#hcShow').addEventListener('click', function () { showMe(s); });
     var pv = card.querySelector('#hcPrev'), nx = card.querySelector('#hcNext');
     if (pv) pv.addEventListener('click', function () { goTo(cur - 1, true); });
-    if (nx) nx.addEventListener('click', function () { goTo(cur + 1, true); });
+    if (nx) nx.addEventListener('click', function () { tryNext(); });
     positionCard();
+  }
+
+  // ── Next gated on SUCCESS (READSHOWME §Next-gated-on-success) ────────────────
+  // editModeOn — read the live Edit-mode toggle (#crudModeCk) BY ID — same statusbar-kind DOM addressing
+  // the guide already uses for #docStatusBar; no import of the CRUD overlay (governance preserved).
+  function editModeOn() { var c = document.getElementById('crudModeCk'); return !!(c && c.checked); }
+  // readBarStatus — the live docstatus the page reported, read off #docStatusBar's class (s-XX). '' if none.
+  function readBarStatus() {
+    var bar = document.getElementById('docStatusBar');
+    if (!bar || !/\bshow\b/.test(bar.className)) return '';
+    var m = bar.className.match(/\bs-([A-Za-z]+)/);
+    return m ? m[1] : '';
+  }
+  // errorReportStep — Process threw: halt with ONE canned step and call the SINGLE ErrorReport class if the
+  // page exposes it. The guide does NOT re-implement error handling (READSHOWME §error-path) — the callable
+  // ErrorReport factor-out (error_reporter.js → bim-ootb/viewer/erp/) is the flagged precondition for E3.
+  function errorReportStep() {
+    var note = card.querySelector('.hcstatus');
+    if (!note && card.classList.contains('open')) {
+      note = document.createElement('div'); note.className = 'hctip hcstatus';
+      var nav = card.querySelector('.hcnav'); if (nav) card.insertBefore(note, nav); else card.appendChild(note);
+    }
+    if (note) note.textContent = 'Process raised an error — ErrorReport ready. Submit.';
+    try { if (typeof window.reportBug === 'function') window.reportBug(); } catch (e) {}
+  }
+  // tryNext — the Next gesture (await/acknowledge). On a live process step it is GATED on the real status
+  // bar: advance only on CO; IP/none → re-highlight + HOLD (no advance, no tag); exception → ErrorReport.
+  // In read/trace mode (Edit-mode OFF) there is no gesture and no gate — Next is a free acknowledgment.
+  function tryNext() {
+    var s = STEPS[cur];
+    if (s && s.kind === 'process' && editModeOn()) {
+      var live = readBarStatus() || 'none';
+      var g = COACH.nextGate(live, s.expect || 'CO');
+      console.log('§HELP next gate docstatus=' + g.gate + ' advanced=' + (g.advanced ? 'Y' : 'N'));
+      if (!g.advanced) { if (g.action === 'errorReport') errorReportStep(); else highlightStatusBar(); return; }
+    }
+    goTo(cur + 1, true);
   }
 
   function goTo(i, nav) {

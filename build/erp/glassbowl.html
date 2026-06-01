@@ -170,7 +170,7 @@ if("serviceWorker" in navigator){addEventListener("load",function(){navigator.se
   <div id="qrcam"><div class="qrh"><b>Scan a record&rsquo;s QR</b><span class="qrx" id="qrx" title="close">&#10005;</span></div><video id="qrvid" playsinline muted></video><div id="qrstatus"></div></div>
   <div id="ball" title="drag to orbit \u2014 arrange the view like a BIM model"><div id="balldot"></div></div>
   <div id="about"></div>
-  <div id="dossier"><div class="dh"><b id="dossierTitle">Dossier</b> <span class="dpill" id="dossierPill"></span><span class="dx" id="dossierX" title="close">\u2715</span></div>
+  <div id="dossier"><div class="dh"><b id="dossierTitle">Dossier</b> <span class="dpill" id="dossierPill"></span><span class="dx" id="dossierX" title="close">x</span></div>
     <div class="dtabs" id="dossierTabs"></div><div class="dbody" id="dossierBody"></div></div>
   <div id="blurb"></div>
   <div id="comet"></div>
@@ -850,6 +850,8 @@ if(!window.__restored&&isMobile())setPanelCollapsed(true);else syncPanelUI(docum
 </script>
 <!-- ReadMe/ShowMe HELP overlay — separated behavior layer, keyed to bubbles (READSHOWME_DYNAMIC_SPEC.md D3) -->
 <script src="help_overlay.js"></script>
-<!-- CRUD ring-of-fire + Process/DocAction overlay — peer behavior layer, keyed to bubbles (CRUD_OVERLAY.md E2, dry-run) -->
+<!-- production signed kernel (W-CHAIN/W-SIGN) — one source, copied from bim-ootb/viewer/kernel_ops.js. GP3: Process ▶ commits real signed SET_STATUS ops to a sidecar log. -->
+<script src="kernel_ops.js"></script>
+<!-- CRUD ring-of-fire + Process/DocAction overlay — peer behavior layer, keyed to bubbles. GP3: Process ▶ = REAL signed write (sidecar log, read-the-tip). -->
 <script src="crud_overlay.js"></script>
 </body></html>
