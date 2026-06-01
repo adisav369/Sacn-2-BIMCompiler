@@ -2508,6 +2508,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Why two years of extracting PO.java was the wrong target">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#so-are-we-free-of-pojava" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        So — are we free of PO.java?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3925,6 +3942,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Why two years of extracting PO.java was the wrong target">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#so-are-we-free-of-pojava" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        So — are we free of PO.java?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4091,6 +4125,26 @@ extracting the engine, and extract what the engine operates on</strong>:</p>
 </ul>
 <p>The bloat was not ported. It was <strong>deleted by being re-based.</strong> That is why the shift
 worked from the outside when extraction failed from the inside.</p>
+<h3 id="so-are-we-free-of-pojava">So — are we free of <code>PO.java</code>?<a class="headerlink" href="#so-are-we-free-of-pojava" title="Permanent link">&para;</a></h3>
+<p>Two senses, and they differ. <strong>From <em>running</em> it: yes, completely.</strong> Nothing in the browser
+instantiates or extends <code>PO.java</code>; each of its jobs is re-based onto data or the log — generic
+save → <code>apply(op)</code> + the 5-table fold (no <code>UPDATE</code>-in-place exists at all); change-tracking →
+<code>kernel_ops</code> before/after + lineage; <code>beforeSave</code>/mandatory validation → rules-as-data
+(<code>AD_Val_Rule</code>); <code>get_ID</code> → edge-minted UUID recorded as input (§0.21); model-validator firing →
+the named-handler registry; <code>trx</code> → the op-group, the document-event as the atomic unit (§18.8).
+Witnessed: replay reproduces the O2C/P2P oracle to the cent with <strong>zero iDempiere code executing.</strong></p>
+<p>The freedom came <strong>by never extracting it.</strong> Carrying <code>PO.java</code> somewhere lighter never converges
+— you drag its whole gravity well. But <code>PO.java</code>'s defining property, <em>generic and
+metadata-driven</em>, is precisely what makes it deletable: anything fully driven by metadata is
+replaceable by <em>reading the metadata and folding the log</em>. iDempiere could not take that step
+because that core was welded to the JVM / OSGi / <code>trx</code> / side-effects; remove the weld and
+<code>PO.java</code> has nothing left to do.</p>
+<p><strong>From what its subclasses <em>knew</em>: deliberately not — and that is correct.</strong> The <code>M*.*It()</code>
+methods remain the <strong>oracle</strong> we verify against, per cell, so "extract" never slides into "guess."
+The day that consultation ends is the day every cell is extracted and verified — the §0.17 breadth
+campaign, in flight (O2C/P2P done; GL still dataless; the DocAction corpus being abstracted now).
+Free of <em>running</em> it; finishing the extraction of what it taught the models is the campaign, not a
+new idea.</p>
 <h2 id="why-it-is-a-grail-others-cannot-reach">Why it is a grail others cannot reach<a class="headerlink" href="#why-it-is-a-grail-others-cannot-reach" title="Permanent link">&para;</a></h2>
 <p>Three conditions have to hold <strong>at the same time</strong>. Almost no system has all three —
 which is exactly why this remained a quest rather than a checkbox:</p>
