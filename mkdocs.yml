@@ -129,6 +129,7 @@ nav:
       - "Every Record Has a Place": SpatialERP_OOTB.md
       - "Construction ERP POC": SpatialERP_POC.md
       - "AD-in-Browser (iDempiere)": ERP.md
+      - "ReadMe / ShowMe Help (POC)": ReadMeShowMe.md
       - "ERP Forward Roadmap": ERP_Roadmap.md
 
   # ─── Roadmap & Papers ─────────────────────────────────
