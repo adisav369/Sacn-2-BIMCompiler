@@ -2585,6 +2585,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#addendum-the-ui-views-as-fast-pocs-roadmap-2026-06-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addendum — the UI views as fast POCs (roadmap, 2026-06-01)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3996,6 +4007,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#addendum-the-ui-views-as-fast-pocs-roadmap-2026-06-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addendum — the UI views as fast POCs (roadmap, 2026-06-01)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4154,6 +4176,48 @@ projection globals <code>N/idx/project/px/py/k/radius</code> for anchored toolti
 <li><strong>D5 — Deploy (Glassbowl-way, EXPLICIT GO):</strong> copy <code>build/erp/{glassbowl.html,glassbowl_data.db,sqljs/}</code>
   → <code>docs/</code>, commit <code>full</code>, <code>mkdocs gh-deploy --force</code>. Retire <code>TourERP.html</code> (folded into glassbowl.html).</li>
 </ul>
+<hr />
+<h2 id="addendum-the-ui-views-as-fast-pocs-roadmap-2026-06-01">Addendum — the UI views as fast POCs (roadmap, 2026-06-01)<a class="headerlink" href="#addendum-the-ui-views-as-fast-pocs-roadmap-2026-06-01" title="Permanent link">&para;</a></h2>
+<p>This help-tour is the <strong>third UI POC</strong> over the same extracted engine, after Glassbowl (the
+engine <em>mapped</em>) and Glassbowl Gravity (the engine <em>weighed</em>). Each is a thin, read-only,
+0-hand-authored projection generated from data, and each answers exactly one scenario a tail
+user brings:</p>
+<table>
+<thead>
+<tr>
+<th>View</th>
+<th>The scenario it answers</th>
+<th>Spec</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Glassbowl</strong></td>
+<td>"What is the structure?" — the engine mapped</td>
+<td><code>docs/GLASSBOWL_DOSSIER.md</code></td>
+</tr>
+<tr>
+<td><strong>Glassbowl Gravity</strong></td>
+<td>"Where does value / risk pool?" — the engine weighed</td>
+<td><code>docs/GLASSBOWL_DOSSIER.md §2-viz</code></td>
+</tr>
+<tr>
+<td><strong>ReadMe / ShowMe</strong></td>
+<td>"Where is it, and do it for me?" — the engine guided</td>
+<td>this doc</td>
+</tr>
+</tbody>
+</table>
+<p>The point is <strong>not</strong> that there are exactly three screens. It is that the views are <em>cheap to
+stand up</em> — same <code>createElementNS</code> SVG, same keyed-overlay governance
+(<code>UI_OVERLAY_GOVERNANCE.md</code>), generated from the already-extracted model rather than new app
+code — so that <strong>whatever scenario a given tail entails, a matching view can be built the same
+way</strong>. None of these is the final product surface; they are example responses to specific tail
+scenarios.</p>
+<p><strong>Roadmap:</strong> extend the extracted model (more AD doc types, the GL posting cell, localisation /
+compliance rows), and give each new tail scenario its own thin POC view — read-only first,
+editable once the write-loop (T3) lands (<code>crud_overlay.js</code>: E2 dry-run → E3 signed kernel).
+Stated in full at <code>docs/ERP.md §20</code> (Addendum — prototype status and the role of the UI views).</p>
 
 
 

@@ -2470,6 +2470,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#this-document-section-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        This document — section map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#underlying-structure-for-readers-familiar-with-idempiere" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3757,6 +3768,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-addendum-prototype-status-and-the-role-of-the-ui-views-2026-06-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §20. Addendum — prototype status and the role of the UI views (2026-06-01)
+      
+    </span>
+  </a>
   
 </li>
       
@@ -5112,6 +5134,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#this-document-section-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        This document — section map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#underlying-structure-for-readers-familiar-with-idempiere" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6402,6 +6435,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#20-addendum-prototype-status-and-the-role-of-the-ui-views-2026-06-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §20. Addendum — prototype status and the role of the UI views (2026-06-01)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6479,6 +6523,70 @@ prior-art comparison in <a href="../DistributedERP/#10-comparison-with-related-s
 - <strong><a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/erp_kernel.js">scripts/erp_kernel.js</a></strong> — the deterministic kernel; exercised by <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_kernel.js">poc_kernel.js</a> and <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_longtail.js">poc_longtail.js</a>.
 - The §9 witnesses, each doubling as the spec for its production change: <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_chain.js">poc_chain.js</a>, <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_distributed.js">poc_distributed.js</a>, <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_sign.js">poc_sign.js</a>, <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_persist.js">poc_persist.js</a>, <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_policy.js">poc_policy.js</a>, <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_identity.js">poc_identity.js</a>. W-CHAIN is implemented in <code>bim-ootb/viewer/kernel_ops.js</code> (<code>sealChain</code>/<code>verifyChain</code>/<code>setSigner</code>, v5).</p>
 <p>See <a href="#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet">§0.20</a> for the phase frame (witnesses W-CHAIN/W-SIGN/W-PERSIST/W-OWNER) and <a href="#021-g-identity-wired-into-the-kernel--identity-is-an-input-never-computed-2026-06-01-spec--identity">§0.21</a> for the landed G-IDENTITY change.</p>
+<hr />
+<h2 id="this-document-section-map">This document — section map<a class="headerlink" href="#this-document-section-map" title="Permanent link">&para;</a></h2>
+<p>This is a long working document. It is layered from <em>why</em> → <em>what</em> → <em>how</em> → <em>limits</em>.
+Read top-to-bottom for the argument, or jump by the band you need:</p>
+<table>
+<thead>
+<tr>
+<th>Band</th>
+<th>Sections</th>
+<th>What it answers</th>
+<th>Read this if you want…</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Orientation</strong></td>
+<td>Overview · Companion documents · <a href="#underlying-structure-for-readers-familiar-with-idempiere">Underlying structure</a> · <a href="#views-seeing-the-underlying-model">Views</a></td>
+<td>What this is and why it's more than a port</td>
+<td>the one-sentence thesis and the proven-vs-parked line</td>
+</tr>
+<tr>
+<td><strong>The model</strong></td>
+<td><a href="#0-storage-model-decision-2026-05-29-chosen-path-c-the-bridge">§0</a> and its subsections §0.1–§0.21</td>
+<td>The storage decision (the 5-table bridge), the rules engine, the op-log, the two spines, the diff-verified verticals, the long-tail seam, identity</td>
+<td>the heart of the design — how a thousand tables become five and an engine becomes data</td>
+</tr>
+<tr>
+<td><strong>The build</strong></td>
+<td>§1–§9</td>
+<td>Concrete pipeline: AD→SQLite mapping, PostgreSQL export, the parser, the card-first renderer, HTML-native UI, the construction bridge, analytics, the channel, the landing page, the phases</td>
+<td>to reproduce or extend the toolchain</td>
+</tr>
+<tr>
+<td><strong>Scope &amp; architecture</strong></td>
+<td>§10–§17</td>
+<td>Honest scope/status, the three-layer split, the 5-table foundation, the compiled manifest, kernel gravity, the known monsters, schema coverage, the architecture summary</td>
+<td>the boundaries and the risk register</td>
+</tr>
+<tr>
+<td><strong>The unified model</strong></td>
+<td>§18</td>
+<td>BOM + WfMC on one log; document-as-event; the oracle that validates handlers</td>
+<td>the theoretical spine that ties it together</td>
+</tr>
+<tr>
+<td><strong>Performance</strong></td>
+<td>§19</td>
+<td>Transaction cost vs iDempiere — analytical, apples-to-apples; the side-by-side win/trade/extra table</td>
+<td>where it wins, where it trades, and the extra it pays</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><a href="#20-addendum-prototype-status-and-the-role-of-the-ui-views-2026-06-01">§20 Addendum</a></td>
+<td>Prototype status; the three UI views as fast POCs; the roadmap</td>
+<td>a plain statement of how finished this is</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>§0 has 21 subsections</strong> because it is where the design was actually derived,
+dated and witnessed in sequence. It reads as a worklog: each <code>§0.N</code> records one
+decision and the witness that closed it. Skim the headers first; descend only into
+the ones you need.</p>
+</blockquote>
 <hr />
 <h2 id="underlying-structure-for-readers-familiar-with-idempiere">Underlying structure (for readers familiar with iDempiere)<a class="headerlink" href="#underlying-structure-for-readers-familiar-with-idempiere" title="Permanent link">&para;</a></h2>
 <blockquote>
@@ -9662,6 +9770,43 @@ multi-user durability/visibility/enforcement for asynchronous convergence (re-ad
 re-derivation) to get the audit/replay/sync substrate "for free" downstream. The only row where
 it does genuinely <em>more compute</em> than iDempiere is settlement matching — and that buys
 FK-absent robustness.</p>
+<hr />
+<h2 id="20-addendum-prototype-status-and-the-role-of-the-ui-views-2026-06-01">§20. Addendum — prototype status and the role of the UI views (2026-06-01)<a class="headerlink" href="#20-addendum-prototype-status-and-the-role-of-the-ui-views-2026-06-01" title="Permanent link">&para;</a></h2>
+<p><strong>What this is: a working prototype, not a finished product.</strong> The witnessed parts — the
+5-table collapse (§5TBL), the O2C/P2P verticals reproducing the GardenWorld oracle
+(§0.17–§0.19), the kernel + deterministic replay (§0.16), the read-only Glassbowl views
+(§Views), and W-CHAIN live in <code>kernel_ops.js</code> — demonstrate the architecture end-to-end on a
+<em>contained</em> data set. They are not a deployment covering an organisation's full document set,
+and the write-loop (T3) is still parked.</p>
+<p><strong>The premise it rests on — absorbing iDempiere's inherent model.</strong> iDempiere's Application
+Dictionary already encodes the inherent model of an ERP: the windows, tabs, fields, references,
+validation rules, document types, and the lifecycle each document follows. Most of what any
+given user needs is therefore already <em>described</em> there — it is the engine <em>around</em> the AD that
+this project re-bases as data (the §thesis). The claim is not that this prototype reimplements
+every business concern; it is that <strong>once it absorbs more of the AD's inherent model</strong> — more
+doc types, more reference/validation rules, the GL posting cell (§0.17), and localisation /
+compliance rows — the same extract-only mechanism that reproduced O2C/P2P extends to those
+concerns <strong>without new hand-written engine code</strong>. The breadth comes from absorbing the
+dictionary, not from writing features. That is what makes "addresses most of the users'
+concerns" a structural goal rather than a backlog.</p>
+<p><strong>The three UI views are fast POCs, not the product surface.</strong> Glassbowl (the engine <em>mapped</em>,
+View 1), Glassbowl Gravity (the engine <em>weighed</em>, View 2), and the ReadMe/ShowMe help-tour (the
+engine <em>guided</em> — <code>docs/ReadMeShowMe.md</code>, added today) are each a quick, read-only response to
+<strong>one scenario a tail user might bring</strong>: <em>"show me the structure" · "show me where value and
+risk pool" · "show me where the control is, and do it for me."</em> They are deliberately cheap to
+stand up — the same <code>createElementNS</code> SVG, the same keyed-overlay governance
+(<code>UI_OVERLAY_GOVERNANCE.md</code>), 0 hand-authored, generated from the extracted data — precisely so
+that <strong>whatever scenario a given tail entails, a matching view can be built the same way</strong>: a
+thin projection of the already-extracted model, not a new application.</p>
+<p><strong>Roadmap (addendum).</strong> Stated as intent; each item ships spec-first, witness-led, on the
+existing extract-only discipline. Mirrored in the UI doc's addendum (<code>docs/ReadMeShowMe.md</code>).
+- <strong>Absorb more AD model</strong> — doc types beyond O2C/P2P, reference/validation rules, the GL
+  posting cell (§0.17), and localisation / compliance rows (the long tail's real first need).
+- <strong>Land the write-loop (T3)</strong> — the greyed CRUD ring and the History undo-preview become the
+  signed kernel write (<code>crud_overlay.js</code>: E2 dry-run → E3 signed kernel, <code>commitOp</code>/<code>sealChain</code>).
+- <strong>A thin POC view per tail scenario</strong> — each new need (a particular trade, a compliance
+  regime, an operator's daily flow) gets its own read-only view over the extracted model first,
+  editable once T3 lands. The roadmap is <em>extend the model + project a view</em>, not <em>build N apps</em>.</p>
 
 
 
