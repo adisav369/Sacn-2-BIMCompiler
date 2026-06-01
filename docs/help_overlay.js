@@ -22,10 +22,11 @@
    '#helpCard button.hcb{background:#16252f;color:#cfe8ee;border:1px solid #2f4654;border-radius:8px;padding:6px 12px;font:13px system-ui;cursor:pointer}' +
    '#helpCard button.hcb:hover:not(:disabled){border-color:#56d6e0}#helpCard button.hcb:disabled{opacity:.35;cursor:default}' +
    '#helpCard button.hcshow{background:#16493a;border-color:#2f6d5a;color:#bff0dd}#helpCard button.hcshow:hover{border-color:#56d6e0}' +
-   '#helpCard .hcgrow{flex:1}#helpCard .hcx{position:absolute;right:10px;top:8px;color:#6f93a2;cursor:pointer}';
+   '#helpCard .hcgrow{flex:1}#helpCard .hcx{position:absolute;right:10px;top:8px;color:#6f93a2;cursor:pointer}' +
+   '#helpCard{cursor:grab}#helpCard.dragging{cursor:grabbing;user-select:none}#helpCard button,#helpCard a,#helpCard .hcx{cursor:pointer}';
   document.head.appendChild(css);
 
-  var HELP = null, STEPS = [], cur = -1, on = false, raf = 0, badges = [];
+  var HELP = null, STEPS = [], cur = -1, on = false, raf = 0, badges = [], dragged = false;
   var README_BASE = 'https://red1oon.github.io/BIMCompiler/';
 
   var wrap = document.createElement('label'); wrap.id = 'needHelpWrap';
@@ -59,19 +60,74 @@
     console.log('§SHOWME op=' + step.op + ' key=' + step.key + ' drove=[setTrace,setFocus:' + step.target + (step.tab ? ',tab:' + step.tab : '') + '] invented=0');
   }
 
-  // anchor the card near the step's bubble (reuses the page projection); overview/no-target → centered.
-  function positionCard() {
-    var s = STEPS[cur]; if (!s) return; var ok = false;
+  // screen point {x,y,r} for a bubble key (reuses page projection), or null if off/unknown.
+  function screenPt(target) {
     try {
-      if (s.target && typeof N !== 'undefined' && typeof idx !== 'undefined' && idx[s.target] != null && typeof project === 'function') {
-        var n = N[idx[s.target]]; project(n); var r = (typeof radius === 'function' ? radius(n) : 14);
-        var x = px + n.sx * k, y = py + (n.sy + r) * k, cw = card.offsetWidth || 340, chh = card.offsetHeight || 220;
-        card.style.left = Math.max(8, Math.min(window.innerWidth - cw - 8, x + 24)) + 'px';
-        card.style.top = Math.max(8, Math.min(window.innerHeight - chh - 8, y - chh / 2)) + 'px';
-        card.style.transform = 'none'; ok = true;
+      if (target && typeof N !== 'undefined' && typeof idx !== 'undefined' && idx[target] != null && typeof project === 'function') {
+        var n = N[idx[target]]; project(n); var kk = (typeof k === 'number' ? k : 1);
+        var r = (typeof radius === 'function' ? radius(n) : 14);
+        return { x: px + n.sx * kk, y: py + n.sy * kk, r: Math.max(12, r * kk) };
       }
     } catch (e) {}
-    if (!ok) { card.style.left = '50%'; card.style.top = '14%'; card.style.transform = 'translateX(-50%)'; }
+    return null;
+  }
+  // all chain bubbles the card must NOT obscure (every step's target on screen).
+  function chainPts() { var a = []; STEPS.forEach(function (s) { var p = screenPt(s.target); if (p) a.push(p); }); return a; }
+  // count how many chain bubbles a card rect (L,T,w,h) would cover (expanded by each bubble's radius).
+  function overlapScore(L, T, w, h, pts) {
+    var n = 0;
+    for (var i = 0; i < pts.length; i++) { var p = pts[i]; if (p.x >= L - p.r && p.x <= L + w + p.r && p.y >= T - p.r && p.y <= T + h + p.r) n++; }
+    return n;
+  }
+
+  // anchor the card near the step's bubble but STEER CLEAR of the lit chain (req: don't obscure the
+  // bubbles in the chain). Tries right/left/below/above the target, picks the placement covering the
+  // fewest chain bubbles. Once the user drags it (dragged=true) we leave it parked where they put it.
+  function positionCard() {
+    if (dragged) return;                                  // user moved it to a clearer spot — respect it
+    var s = STEPS[cur]; if (!s) return;
+    var cw = card.offsetWidth || 300, chh = card.offsetHeight || 200;
+    var tgt = screenPt(s.target);
+    if (!tgt) { card.style.left = '50%'; card.style.top = '14%'; card.style.transform = 'translateX(-50%)'; return; }
+    var pts = chainPts(), g = 24;
+    var cands = [
+      { L: tgt.x + tgt.r + g,           T: tgt.y - chh / 2 },           // right (preferred)
+      { L: tgt.x - tgt.r - g - cw,      T: tgt.y - chh / 2 },           // left
+      { L: tgt.x - cw / 2,              T: tgt.y + tgt.r + g },         // below
+      { L: tgt.x - cw / 2,              T: tgt.y - tgt.r - g - chh }    // above
+    ];
+    var best = null, bestScore = Infinity;
+    cands.forEach(function (c) {
+      var L = Math.max(8, Math.min(window.innerWidth - cw - 8, c.L));
+      var T = Math.max(8, Math.min(window.innerHeight - chh - 8, c.T));
+      var sc = overlapScore(L, T, cw, chh, pts);          // earlier candidates win ties (strict <)
+      if (sc < bestScore) { bestScore = sc; best = { L: L, T: T }; }
+    });
+    card.style.transform = 'none';
+    card.style.left = best.L + 'px';
+    card.style.top = best.T + 'px';
+  }
+
+  // draggable (req: user can move the card to a clearer spot). Capture-after-move so a click on the
+  // card body doesn't jitter; drags starting on a button/link/✕ are ignored (those keep their action).
+  function setupDrag() {
+    var sx = 0, sy = 0, ox = 0, oy = 0, down = false, moving = false;
+    card.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest && ev.target.closest('button, a, .hcx')) return;
+      down = true; moving = false; sx = ev.clientX; sy = ev.clientY;
+      var rc = card.getBoundingClientRect(); ox = rc.left; oy = rc.top;
+    });
+    window.addEventListener('pointermove', function (ev) {
+      if (!down) return;
+      var dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (!moving) { if (Math.abs(dx) + Math.abs(dy) < 4) return; moving = true; dragged = true; card.style.transform = 'none'; card.classList.add('dragging'); }
+      card.style.left = Math.max(8, Math.min(window.innerWidth - card.offsetWidth - 8, ox + dx)) + 'px';
+      card.style.top = Math.max(8, Math.min(window.innerHeight - card.offsetHeight - 8, oy + dy)) + 'px';
+    });
+    window.addEventListener('pointerup', function () {
+      if (down && moving) console.log('§HELP card dragged spot=(' + card.style.left + ',' + card.style.top + ')');
+      down = false; moving = false; card.classList.remove('dragging');
+    });
   }
 
   function renderCard() {
@@ -101,7 +157,7 @@
     console.log('§READSHOWME step=' + i + ' key=' + STEPS[i].key + ' target=' + (STEPS[i].target || '-') + ' para=' + STEPS[i].readmeAnchor);
   }
   function open(i) { if (typeof helpJive === 'function') helpJive(); goTo(i == null ? 0 : i, false); }
-  function close() { card.classList.remove('open'); }
+  function close() { card.classList.remove('open'); dragged = false; }   // reopening re-anchors to the chain
 
   function buildSteps() {
     STEPS = Object.keys(HELP).filter(function (k) { return k !== '__meta'; })
@@ -143,6 +199,7 @@
   function disable() { on = false; if (raf) { cancelAnimationFrame(raf); raf = 0; } clearBadges(); close(); console.log('§HELP mode=off'); }
   ck.addEventListener('change', function () { if (ck.checked) enable(); else disable(); });
 
+  setupDrag();
   window.__help = { enable: enable, disable: disable, goTo: goTo, steps: function () { return STEPS; } };
   console.log('§HELP layer mounted (NeedHelp? ready)');
 })();
