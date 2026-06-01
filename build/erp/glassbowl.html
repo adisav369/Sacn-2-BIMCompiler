@@ -594,7 +594,7 @@ function opCountFor(id){var n=N[idx[id]];if(n&&n.cells&&n.cells.length){var s=n.
 function openDossier(id){if(idx[id]==null)return;dossierJive();dossierId=id;dossierRendered={};DTITLE.textContent=fname(id);DPILL.textContent=id;DOSS.classList.add("open");
  DTABS.innerHTML="";["Data","Rules","Columns","History"].forEach(function(name,i){var b=document.createElement("button");b.className="dtab"+(name===dossierTab?" active":"");b.textContent=name;b.addEventListener("click",function(){selectTab(name,b);});DTABS.appendChild(b);});
  var _ti=["Data","Rules","Columns","History"].indexOf(dossierTab);if(_ti<0)_ti=0;selectTab(dossierTab,DTABS.children[_ti]);}
-function selectTab(name,btn){dossierTab=name;Array.prototype.forEach.call(DTABS.children,function(b){b.classList.toggle("active",b===btn);});DBODY.innerHTML="";renderTab(name);}
+function selectTab(name,btn){dossierTab=name;if(typeof tabJive==="function")tabJive();Array.prototype.forEach.call(DTABS.children,function(b){b.classList.toggle("active",b===btn);});DBODY.innerHTML="";renderTab(name);}
 function renderTab(name){var id=dossierId,n=N[idx[id]],doss=(n&&n.dossier)||{columns:[],ruleCount:0,rules:[]};
  if(name==="Data")return renderDataTab(id);
  if(name==="Rules")return renderRulesTab(doss);
@@ -675,10 +675,19 @@ function beep(freq,dur,type,vol){if(AUDIO.muted||!AUDIO.ctx)return;try{var t=AUD
 function sweep(f0,f1,dur,vol){if(AUDIO.muted||!AUDIO.ctx)return;try{var t=AUDIO.ctx.currentTime,o=AUDIO.ctx.createOscillator(),g=AUDIO.ctx.createGain();o.type="sawtooth";o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol||0.03,t+0.02);g.gain.exponentialRampToValueAtTime(0.0006,t+dur);o.connect(g);g.connect(AUDIO.ctx.destination);o.start(t);o.stop(t+dur+0.02);AUDIO.n++;window.__audioScheduled=AUDIO.n;}catch(e){}}
 // pick tone keyed to the bubble\u2019s spine colour (settlement tenser/higher, reference lower) \u2014 sound from data.
 function pickJive(n){if(!n)return beep(660,0.07,"sine",0.04);var f=n.settlement?740:(n.kind==="master"?392:(n.gravity>0?587:494));beep(f,0.07,"sine",0.04);}
-function barJive(){sweep(220,520,0.18,0.03);}
-function dismissJive(){beep(247,0.1,"sine",0.04);}
-function dossierJive(){beep(880,0.05,"square",0.03);}
-function thunkJive(){beep(120,0.16,"sine",0.05);}
+// motif: stagger N notes for a pluck or rising/falling phrase — distinct clip per action (W-AUDIO).
+function motif(freqs,dur,type,vol,gap){freqs.forEach(function(f,i){(function(k,ff){setTimeout(function(){beep(ff,dur||0.09,type||"sine",vol||0.04);},k*(gap||55));})(i,f);});}
+function barJive(){motif([392,587],0.08,"sine",0.035,50);}          // open bar: two-note rising pop
+function dismissJive(){motif([330,233],0.09,"sine",0.04,55);}       // dismiss: two-note falling
+function dossierJive(){motif([660,880,990],0.05,"triangle",0.03,40);} // open dossier: bright pluck triad
+function thunkJive(){beep(120,0.16,"sine",0.05);}                   // "not carried": dull thud
+// extra cues so each action sounds different (tour + UI toggles previously silent)
+function navJive(dir){beep(dir<0?392:523,0.05,"square",0.03);}      // tour Back(low)/Next(high) tick
+function helpJive(){motif([523,784],0.07,"sine",0.035,60);}         // help/ReadMe open: soft inquisitive rise
+function showmeJive(){sweep(330,740,0.16,0.035);setTimeout(function(){beep(880,0.08,"triangle",0.04);},120);} // ShowMe: confident "go"
+function toggleJive(on){beep(on?587:392,0.045,"sawtooth",0.025);}   // legend spine on/off click
+function tabJive(){beep(700,0.035,"square",0.022);}                 // dossier tab switch: subtle tick
+window.__jives={navJive:navJive,helpJive:helpJive,showmeJive:showmeJive,toggleJive:toggleJive,tabJive:tabJive};
 // trace = a rising arpeggio, ONE note per real (non-empty) hop in the chain (pitch rises per hop) \u2014 chain length IS the data.
 function traceJive(){if(AUDIO.muted||!AUDIO.ctx)return;var ch=curChain||[];var lit=ch.filter(function(c){return c.id!=null;}).length||5;for(var i=0;i<lit;i++){(function(k){setTimeout(function(){beep(330*Math.pow(1.155,k),0.15,"triangle",0.04);},k*95);})(i);}}
 ["pointerdown","keydown","touchstart"].forEach(function(ev){window.addEventListener(ev,audioUnlock);});
@@ -822,17 +831,23 @@ window.addEventListener("pagehide",save);window.addEventListener("beforeunload",
 // ── WIRING: hook the comet onto the existing trace, and record VIEW snapshots on meaningful changes.
 //   Done by WRAPPING (not editing) the existing functions \u2014 additive, existing behavior preserved. ──
 (function(){var _setTrace=setTrace,_applyChain=applyChain,_setFocus=setFocus,_setOrbit=setOrbit,_openDossier=openDossier;
+ // orbit fires every frame during a drag; record the view only once the scene comes to REST (trailing debounce)
+ // so a single orbit gesture is ONE §VIEWLOG entry, not one per micro-move. Discrete actions stay immediate.
+ var _vlTimer=0;function recordViewSoon(){if(_vlTimer)clearTimeout(_vlTimer);_vlTimer=setTimeout(function(){_vlTimer=0;recordView();},350);}
  setTrace=window.setTrace=function(on){_setTrace(on);if(on)startComet();else stopComet();recordView();};
  applyChain=window.applyChain=function(ch){_applyChain(ch);if(traceMode)startComet();recordView();};
  setFocus=window.setFocus=function(id){_setFocus(id);recordView();};
- setOrbit=window.setOrbit=function(y,p){_setOrbit(y,p);recordView();};
+ setOrbit=window.setOrbit=function(y,p){_setOrbit(y,p);recordViewSoon();};   // §VIEWLOG only when orbit settles
  openDossier=window.openDossier=function(id){_openDossier(id);recordView();};
 })();
 // also record a view when a legend spine toggle flips (the onchange handlers call draw()).
-Array.prototype.forEach.call(document.querySelectorAll("#legend input[type=checkbox]"),function(cb){cb.addEventListener("change",function(){if(typeof recordView==="function")recordView();});});
+Array.prototype.forEach.call(document.querySelectorAll("#legend input[type=checkbox]"),function(cb){cb.addEventListener("change",function(){if(typeof toggleJive==="function")toggleJive(this.checked);if(typeof recordView==="function")recordView();});});
 loadState();applyT();draw();
 if(typeof recordView==="function")recordView();   // log the opening view as the first entry
 // mobile-first: on a fresh load (no restored scene) start with the panel COLLAPSED \u2014 the graph gets the small
 //   screen and the yellow #phandle invites a tap to slide it open. A restored scene keeps the user\u2019s last state.
 if(!window.__restored&&isMobile())setPanelCollapsed(true);else syncPanelUI(document.getElementById("wrap").classList.contains("collapsed"));
-</script></body></html>
+</script>
+<!-- ReadMe/ShowMe HELP overlay — separated behavior layer, keyed to bubbles (READSHOWME_DYNAMIC_SPEC.md D3) -->
+<script src="help_overlay.js"></script>
+</body></html>
