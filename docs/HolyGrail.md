@@ -157,6 +157,62 @@ E3/E4. So the checkpoint verdict, stated plainly: **the seam to the grail is now
 witnessed as data; the current is not yet flowing through it.** A rung climbed, honestly
 logged — which is the difference between building and day-dreaming.
 
+## Abstracting the DocAction corpus — and why it is the migration solvent
+
+The grail edits *rules*; the most valuable rules govern a document's *lifecycle* — *when may
+this complete, and what does completion do.* So the engine must express the whole iDempiere
+**DocAction** corpus (≈13 actions — `DR/PR/CO/AP/RJ/CL/RC/RA/VO/RE/IN/XL/PO` — over ≈13
+statuses) as **data**, not code, without re-bloating into per-model logic. It does, because
+`DocumentEngine` is *already shared code in iDempiere, not per-model* — the tell that a state
+machine is hiding inside a switch. It abstracts into three layers, and **only one is
+per-model:**
+
+| Layer | What it is | Cost |
+|---|---|---|
+| **The transition table** | `(DocStatus × DocAction) → {legal?, nextStatus, guard, handler}` — one generic, sparse decision table (§0.5) | extracted **once**, model-agnostic |
+| **The handler families** | the side effects — and the corpus *collapses* (below) | a small closed set |
+| **The oracle** | each `docAction` names its `M*.<action>It()`; the diff-oracle proves the generic handler reproduces it, cell by cell | verify, never port |
+
+**The corpus collapses — this is the part that is usually missed:**
+
+- **Pure status transitions — zero handler code:** `prepareIt`, `approveIt`, `rejectIt`,
+  `invalidateIt`, `unlockIt`. Half the corpus evaporates *into the table*.
+- **The reversal family collapses to ONE generic handler:** `voidIt` / `reverseCorrectIt`
+  / `reverseAccrualIt` / `reActivateIt` = *"emit the inverse of the document's op-group."*
+  The op-log holds the original ops, so reversal is appending the negation. **In iDempiere
+  these are hand-coded per model and are among the buggiest, most duplicated code in the
+  system; here they are a single op-log operation.** This is the structural gift.
+- **`closeIt`** = set status + clamp the residual. Near-generic.
+- **`completeIt`** is the *only* genuinely heavy, model-specific verb — the derivation
+  fan-out (shipment / invoice / posting / costing). This is the §0.9 named-handler 20%,
+  extracted **and verified per cell** against the oracle (exactly what §0.17 did for O2C/P2P).
+
+So ~80% of the corpus dissolves into a table plus one inverse handler; the remaining 20% is
+verified, not ported. No magic on the hard part — but the hard part is small and provable.
+
+**Why this is the migration solvent.** Row migration is the easy part everyone already does.
+What makes ERP migration hell — and what *locks* customers into SAP/Odoo — is the **behaviour**:
+the lifecycle, the posting rules, the approvals. Nobody migrates behaviour because it is *code
+in the source system*. The moment behaviour is **data** (a transition table + named handlers
+verified against an oracle), migrating behaviour becomes migrating data. Every ERP's document
+lifecycle is the same shape — a state machine over documents descended from double-entry
+(1494). Onboarding a foreign instance becomes an **adapter** mapping *their* `(status, action,
+transition)` onto *this* generic table, and their schema onto the 5-table bridge; the engine
+never changes, only adapter rows. And because the target is an op-log, the migration is itself
+**replayable, auditable, reversible** — the same reversal-family handler that voids a document
+can unwind a bad import. You do not migrate *into* a new schema; you **fold the old system's
+facts into the universal one.**
+
+**The honest boundary.** "Eat *any* instance" is earned **one diff-oracle at a time.**
+iDempiere is tractable because its DocAction is known and GardenWorld is the oracle. Odoo is
+open and its state machine is extractable (oracle buildable). SAP is the asymptote — closed
+ABAP plus decades of customer Z-code where the real behaviour hides; the honest claim there is
+"the standard flows + extractable config, with Z-customisations per engagement." The method is
+proven by the *first* clean abstraction — iDempiere's DocAction, the one being built now — and
+the rest is campaign, in sequence (iDempiere → Odoo → SAP standard → SAP custom), each gated by
+its own oracle. Migration removes the barrier to leaving; the grail (editable rules, live)
+supplies the reason to land. Both halves, or the solvent has nothing to pour into.
+
 ## A closing note, to the version of me from two years ago
 
 The two years spent proving the *imperative* extraction does not converge were not
