@@ -102,8 +102,10 @@ PostgreSQL/OSGi/server); it is that the engine is now **inspectable as data**, s
 can do the things a code-engine structurally resists: surface *everything about one
 entity in one place*; ship *dormant and self-activating*; **draw its own map** of
 where value and risk pool; and — the parked endgame — let you **edit a rule and watch
-the affected records flip on that map** (the diff-oracle in the browser, §2d-3). That
+the affected records flip on that map** (the diff-oracle in the browser, §2d-3).[^grail] That
 last step turns the map of the engine into the *console you run the engine from*.
+
+[^grail]: **The elusive Holy Grail this project is after.** See [HolyGrail.md](HolyGrail.md) — the author's account (as ADempiere's founding leader) of why editable-rules-live was structurally out of reach inside a code-engine ERP, and why this paradigm reaches it.
 
 ### Verification discipline (extract-only)
 The same principle the AD embodies — declare rather than hand-write — is applied here
