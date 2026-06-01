@@ -3740,6 +3740,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#196-side-by-side-summary-where-this-wins-and-the-extra-it-requires" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.6 Side-by-side summary — where this wins, and the extra it requires
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -6309,6 +6320,17 @@
     <span class="md-ellipsis">
       
         §19.5 Envelope — what this model does and does not claim
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#196-side-by-side-summary-where-this-wins-and-the-extra-it-requires" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §19.6 Side-by-side summary — where this wins, and the extra it requires
       
     </span>
   </a>
@@ -9472,6 +9494,114 @@ implemented or verified</strong>, §0.17).</p>
   in-process against in-memory SQLite + an append-only signed op-log, with the multi-user
   tax deferred to an asynchronous facilitator instead of paid synchronously per transaction.</li>
 </ul>
+<h3 id="196-side-by-side-summary-where-this-wins-and-the-extra-it-requires">§19.6 Side-by-side summary — where this wins, and the extra it requires<a class="headerlink" href="#196-side-by-side-summary-where-this-wins-and-the-extra-it-requires" title="Permanent link">&para;</a></h3>
+<p>Order-of-magnitude, analytical (see §19.5 envelope). "Better" is stated honestly —
+some rows favour iDempiere, some are a deliberate trade. The last column is the <strong>extra
+work this architecture must do</strong> to reach the stated position (the cost of the win).</p>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>iDempiere (multi-user server)</th>
+<th>This architecture</th>
+<th>Better?</th>
+<th>Extra needed here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Operator-perceived latency</strong> (POS complete)</td>
+<td>network + dozens of JDBC stmts + WAL commit (~10²–10³ ms)</td>
+<td>local in-RAM apply of the 7-op group (~10⁰–10¹ ms)</td>
+<td><strong>This</strong> (~1–3 orders)</td>
+<td>none — it is the default path</td>
+</tr>
+<tr>
+<td><strong>Bulk throughput</strong> (10k GL batch)</td>
+<td>iterative posting, ~10⁴–10⁵ INSERTs (tens of s – min)</td>
+<td>one in-RAM transaction (sub-s – s)</td>
+<td><strong>This</strong> (~1–2 orders), <em>projected</em></td>
+<td>build the GL <code>Fact_Acct</code> cell (§0.17); run off-thread (Web Worker); absorb snapshot/log tail</td>
+</tr>
+<tr>
+<td><strong>Multi-user visibility</strong></td>
+<td>synchronous at commit</td>
+<td>asynchronous convergence</td>
+<td><strong>Trade</strong> — synchronous vs eventual</td>
+<td>async facilitator (order + persist + fan-out)</td>
+</tr>
+<tr>
+<td><strong>Durability</strong></td>
+<td>WAL fsync, synchronous, on-box</td>
+<td>op-log relayed to facilitator / cloud / mailbox replica</td>
+<td><strong>Trade</strong> — synchronous vs eventual</td>
+<td>W-PERSIST + relay; until relayed, the local copy is volatile</td>
+</tr>
+<tr>
+<td><strong>Cross-writer enforcement</strong> (oversell / double-claim)</td>
+<td>locks / MVCC on every op, synchronous</td>
+<td>one online set-if-unset CAS op-class</td>
+<td><strong>Trade</strong> — broad vs narrow-but-sufficient</td>
+<td>the single synchronous CAS op (<code>DistributedERP.md §5</code>)</td>
+</tr>
+<tr>
+<td><strong>Audit trail</strong></td>
+<td><code>AD_ChangeLog</code>, optional, changed-columns only</td>
+<td><code>kernel_ops</code> rich op (before/after + lineage), always on</td>
+<td><strong>This</strong></td>
+<td>rich-op memory/write per change</td>
+</tr>
+<tr>
+<td><strong>Tamper-evidence</strong></td>
+<td>none by default</td>
+<td>hash-chain (W-CHAIN) + optional signature (W-SIGN)</td>
+<td><strong>This</strong></td>
+<td>hash per op; signature sealed per chain-segment</td>
+</tr>
+<tr>
+<td><strong>Replay / undo / time-machine</strong></td>
+<td>none — the DB is only current state</td>
+<td>deterministic replay; frozen effects</td>
+<td><strong>This</strong> (structural)</td>
+<td>determinism sandbox (no <code>Date.now</code>/<code>Math.random</code>); identity-as-input (§0.21)</td>
+</tr>
+<tr>
+<td><strong>Analytics</strong></td>
+<td>bolt-on warehouse / ETL</td>
+<td>the op-log <em>is</em> the analytical store (§0.6)</td>
+<td><strong>This</strong></td>
+<td>a rich op-log + the gravity fold (§14)</td>
+</tr>
+<tr>
+<td><strong>Settlement matching</strong></td>
+<td>follows the stored FK</td>
+<td>re-derives pairs from partner + product + qty (§0.17)</td>
+<td><strong>iDempiere</strong> cheaper; <strong>This</strong> more robust (works FK-absent)</td>
+<td>extra matcher compute (partitioned join + greedy)</td>
+</tr>
+<tr>
+<td><strong>Identity / sequence</strong></td>
+<td>server DB sequence (a round-trip)</td>
+<td>edge-minted UUID, recorded (§0.21)</td>
+<td><strong>This</strong> (no round-trip)</td>
+<td>record <code>op_uuid</code> + <code>seq</code> per op</td>
+</tr>
+<tr>
+<td><strong>Infrastructure footprint</strong></td>
+<td>JVM + OSGi + PostgreSQL + app server</td>
+<td>single HTML + sql.js, no server</td>
+<td><strong>This</strong></td>
+<td>for multi-user, one thin <strong>async</strong> facilitator (not a compute authority)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Reading it in one line:</strong> this architecture wins decisively on <strong>interactive latency, footprint,
+audit, tamper-evidence, replay, and analytics</strong>; it deliberately <strong>trades</strong> synchronous
+multi-user durability/visibility/enforcement for asynchronous convergence (re-added by the
+§0.20 facilitator), and pays a small <strong>extra</strong> per-op cost (rich snapshot + hash, occasionally
+re-derivation) to get the audit/replay/sync substrate "for free" downstream. The only row where
+it does genuinely <em>more compute</em> than iDempiere is settlement matching — and that buys
+FK-absent robustness.</p>
 
 
 
