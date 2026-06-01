@@ -4543,6 +4543,19 @@ b/f</em>; atomicity is <em>one op-group</em>; concurrency is <em>physics + one C
 facilitator</em> that only orders and relays (<a href="../DistributedERP/">DistributedERP.md</a> §6), never an
 authority. The hard parts are not unsolved — they are <strong>re-expressed as accounting</strong>, the one part of an
 ERP that was always going to stay. It has been thought through; the ledger is enough.</p>
+<p><strong>Witnesses — these are runs, not arguments (dated, headless, replay-deterministic).</strong> The three hard parts
+above are exercised on the actual editing-layer op shape in <code>scripts/poc_showstopper.js</code> (<code>§SHOW PASS</code>): the
+document-event op-group folds all-or-none (a torn op is rejected whole), the period-close checkpoint re-folds
+the cold archive to the signed balances <em>to the cent</em> with the tamper caught at the exact op, and the single
+CAS holds across the checkpoint boundary. The "mechanical, bounded by the checkpoint" claim is then <em>measured</em>
+in <code>scripts/poc_volume.js</code> (<code>§VOL PASS</code>): bootstrap from the last checkpoint stays flat as total history grows
+100× while a full replay grows with it — the working set is bounded by the period, not the log; the binding
+constraint is the per-op hash (append and verify), which sets the close cadence, not a wall. And the durability
+path — the inbox as the recoverable signed log — is stress-tested in <code>scripts/poc_email_dr.js</code> (<code>§EMAIL-DR
+PASS</code>): the data recovers unconditionally from any reachable valid snapshot, but the key does not live in the
+inbox — without an anchor the encrypted snapshots are undecryptable, and the three anchors that close that gap
+(own k-of-n channels, corporate escrow, platform passkey) each add a named, non-zero trust. The regress
+terminates for the <em>fact</em> unconditionally; for the <em>key</em>, only at a chosen anchor — and naming it is the floor.</p>
 <h2 id="a-closing-note-to-the-version-of-me-from-two-years-ago">A closing note, to the version of me from two years ago<a class="headerlink" href="#a-closing-note-to-the-version-of-me-from-two-years-ago" title="Permanent link">&para;</a></h2>
 <p>The two years spent proving the <em>imperative</em> extraction does not converge were not
 wasted — they are the evidence that the <em>declarative-extract</em> path is the one that does.
