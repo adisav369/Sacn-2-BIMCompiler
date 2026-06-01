@@ -140,3 +140,30 @@ projection globals `N/idx/project/px/py/k/radius` for anchored tooltips (verifie
 - **D4 — Playwright wiring + visual.** pill→badge→card→ShowMe drives the trace/tab; serve + eyeball.
 - **D5 — Deploy (Glassbowl-way, EXPLICIT GO):** copy `build/erp/{glassbowl.html,glassbowl_data.db,sqljs/}`
   → `docs/`, commit `full`, `mkdocs gh-deploy --force`. Retire `TourERP.html` (folded into glassbowl.html).
+
+---
+
+## Addendum — the UI views as fast POCs (roadmap, 2026-06-01)
+
+This help-tour is the **third UI POC** over the same extracted engine, after Glassbowl (the
+engine *mapped*) and Glassbowl Gravity (the engine *weighed*). Each is a thin, read-only,
+0-hand-authored projection generated from data, and each answers exactly one scenario a tail
+user brings:
+
+| View | The scenario it answers | Spec |
+|---|---|---|
+| **Glassbowl** | "What is the structure?" — the engine mapped | `docs/GLASSBOWL_DOSSIER.md` |
+| **Glassbowl Gravity** | "Where does value / risk pool?" — the engine weighed | `docs/GLASSBOWL_DOSSIER.md §2-viz` |
+| **ReadMe / ShowMe** | "Where is it, and do it for me?" — the engine guided | this doc |
+
+The point is **not** that there are exactly three screens. It is that the views are *cheap to
+stand up* — same `createElementNS` SVG, same keyed-overlay governance
+(`UI_OVERLAY_GOVERNANCE.md`), generated from the already-extracted model rather than new app
+code — so that **whatever scenario a given tail entails, a matching view can be built the same
+way**. None of these is the final product surface; they are example responses to specific tail
+scenarios.
+
+**Roadmap:** extend the extracted model (more AD doc types, the GL posting cell, localisation /
+compliance rows), and give each new tail scenario its own thin POC view — read-only first,
+editable once the write-loop (T3) lands (`crud_overlay.js`: E2 dry-run → E3 signed kernel).
+Stated in full at `docs/ERP.md §20` (Addendum — prototype status and the role of the UI views).

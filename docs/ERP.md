@@ -45,6 +45,28 @@ See [§0.20](#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-s
 
 ---
 
+## This document — section map
+
+This is a long working document. It is layered from *why* → *what* → *how* → *limits*.
+Read top-to-bottom for the argument, or jump by the band you need:
+
+| Band | Sections | What it answers | Read this if you want… |
+|---|---|---|---|
+| **Orientation** | Overview · Companion documents · [Underlying structure](#underlying-structure-for-readers-familiar-with-idempiere) · [Views](#views-seeing-the-underlying-model) | What this is and why it's more than a port | the one-sentence thesis and the proven-vs-parked line |
+| **The model** | [§0](#0-storage-model-decision-2026-05-29-chosen-path-c-the-bridge) and its subsections §0.1–§0.21 | The storage decision (the 5-table bridge), the rules engine, the op-log, the two spines, the diff-verified verticals, the long-tail seam, identity | the heart of the design — how a thousand tables become five and an engine becomes data |
+| **The build** | §1–§9 | Concrete pipeline: AD→SQLite mapping, PostgreSQL export, the parser, the card-first renderer, HTML-native UI, the construction bridge, analytics, the channel, the landing page, the phases | to reproduce or extend the toolchain |
+| **Scope & architecture** | §10–§17 | Honest scope/status, the three-layer split, the 5-table foundation, the compiled manifest, kernel gravity, the known monsters, schema coverage, the architecture summary | the boundaries and the risk register |
+| **The unified model** | §18 | BOM + WfMC on one log; document-as-event; the oracle that validates handlers | the theoretical spine that ties it together |
+| **Performance** | §19 | Transaction cost vs iDempiere — analytical, apples-to-apples; the side-by-side win/trade/extra table | where it wins, where it trades, and the extra it pays |
+| **Status** | [§20 Addendum](#20-addendum-prototype-status-and-the-role-of-the-ui-views-2026-06-01) | Prototype status; the three UI views as fast POCs; the roadmap | a plain statement of how finished this is |
+
+> **§0 has 21 subsections** because it is where the design was actually derived,
+> dated and witnessed in sequence. It reads as a worklog: each `§0.N` records one
+> decision and the witness that closed it. Skim the headers first; descend only into
+> the ones you need.
+
+---
+
 ## Underlying structure (for readers familiar with iDempiere)
 
 > For readers from an iDempiere background, the premise is already familiar. The AD
@@ -2571,3 +2593,46 @@ multi-user durability/visibility/enforcement for asynchronous convergence (re-ad
 re-derivation) to get the audit/replay/sync substrate "for free" downstream. The only row where
 it does genuinely *more compute* than iDempiere is settlement matching — and that buys
 FK-absent robustness.
+
+---
+
+## §20. Addendum — prototype status and the role of the UI views (2026-06-01)
+
+**What this is: a working prototype, not a finished product.** The witnessed parts — the
+5-table collapse (§5TBL), the O2C/P2P verticals reproducing the GardenWorld oracle
+(§0.17–§0.19), the kernel + deterministic replay (§0.16), the read-only Glassbowl views
+(§Views), and W-CHAIN live in `kernel_ops.js` — demonstrate the architecture end-to-end on a
+*contained* data set. They are not a deployment covering an organisation's full document set,
+and the write-loop (T3) is still parked.
+
+**The premise it rests on — absorbing iDempiere's inherent model.** iDempiere's Application
+Dictionary already encodes the inherent model of an ERP: the windows, tabs, fields, references,
+validation rules, document types, and the lifecycle each document follows. Most of what any
+given user needs is therefore already *described* there — it is the engine *around* the AD that
+this project re-bases as data (the §thesis). The claim is not that this prototype reimplements
+every business concern; it is that **once it absorbs more of the AD's inherent model** — more
+doc types, more reference/validation rules, the GL posting cell (§0.17), and localisation /
+compliance rows — the same extract-only mechanism that reproduced O2C/P2P extends to those
+concerns **without new hand-written engine code**. The breadth comes from absorbing the
+dictionary, not from writing features. That is what makes "addresses most of the users'
+concerns" a structural goal rather than a backlog.
+
+**The three UI views are fast POCs, not the product surface.** Glassbowl (the engine *mapped*,
+View 1), Glassbowl Gravity (the engine *weighed*, View 2), and the ReadMe/ShowMe help-tour (the
+engine *guided* — `docs/ReadMeShowMe.md`, added today) are each a quick, read-only response to
+**one scenario a tail user might bring**: *"show me the structure" · "show me where value and
+risk pool" · "show me where the control is, and do it for me."* They are deliberately cheap to
+stand up — the same `createElementNS` SVG, the same keyed-overlay governance
+(`UI_OVERLAY_GOVERNANCE.md`), 0 hand-authored, generated from the extracted data — precisely so
+that **whatever scenario a given tail entails, a matching view can be built the same way**: a
+thin projection of the already-extracted model, not a new application.
+
+**Roadmap (addendum).** Stated as intent; each item ships spec-first, witness-led, on the
+existing extract-only discipline. Mirrored in the UI doc's addendum (`docs/ReadMeShowMe.md`).
+- **Absorb more AD model** — doc types beyond O2C/P2P, reference/validation rules, the GL
+  posting cell (§0.17), and localisation / compliance rows (the long tail's real first need).
+- **Land the write-loop (T3)** — the greyed CRUD ring and the History undo-preview become the
+  signed kernel write (`crud_overlay.js`: E2 dry-run → E3 signed kernel, `commitOp`/`sealChain`).
+- **A thin POC view per tail scenario** — each new need (a particular trade, a compliance
+  regime, an operator's daily flow) gets its own read-only view over the extracted model first,
+  editable once T3 lands. The roadmap is *extend the model + project a view*, not *build N apps*.
