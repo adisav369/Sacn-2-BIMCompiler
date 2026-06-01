@@ -474,7 +474,7 @@ var drag=null,panning=null,moved=false;
 function startDragNode(ev,node){ev.stopPropagation();project(node);var w=world(ev);drag={node:node,sx0:node.sx,sy0:node.sy,w0x:w.x,w0y:w.y,az:(node.z||0)};moved=false;try{svg.setPointerCapture(ev.pointerId);}catch(e){}}
 svg.addEventListener("pointerdown",function(ev){if(drag)return;var rc=svg.getBoundingClientRect();panning={sx:ev.clientX-rc.left-px,sy:ev.clientY-rc.top-py};moved=false;svg.classList.add("panning");try{svg.setPointerCapture(ev.pointerId);}catch(e){}});
 svg.addEventListener("pointermove",function(ev){if(drag){var w=world(ev);var p=unproject(drag.sx0+(w.x-drag.w0x),drag.sy0+(w.y-drag.w0y),drag.az);if(p){drag.node.x=p.x;drag.node.y=p.y;}moved=true;draw();}else if(panning){var rc=svg.getBoundingClientRect();px=ev.clientX-rc.left-panning.sx;py=ev.clientY-rc.top-panning.sy;moved=true;applyT();}});
-function endPtr(){drag=null;panning=null;svg.classList.remove("panning");}
+function endPtr(){var nodeDrag=!!drag&&moved;drag=null;panning=null;svg.classList.remove("panning");if(nodeDrag){vlHint="arranged a bubble";if(typeof recordView==="function")recordView();}}
 svg.addEventListener("pointerup",endPtr);svg.addEventListener("pointercancel",endPtr);
 svg.addEventListener("pointermove",function(ev){if(drag||panning)return;var rc=svg.getBoundingClientRect();lensCursor={x:(ev.clientX-rc.left-px)/k,y:(ev.clientY-rc.top-py)/k};window.__lensCursor=lensCursor;draw();});
 function clearLens(){if(lensCursor){lensCursor=null;window.__lensCursor=null;draw();}}
@@ -761,10 +761,10 @@ window.startComet=startComet;window.stopComet=stopComet;
 //   DOT per recorded view; click/drag to scrub\u2192restore. DOUBLE-TAP the bar \u2192 it blooms into a
 //   labelled preview row (viewLabel); double-tap again collapses. Restoring is PURE-READ \u2014 no new
 //   localStorage/db writes, never mutates kernel_ops. Soft audio tick on scrub. Replay-safe. ──
-var SCRUB=document.getElementById("scrub"),viewHist=[],viewIdx=-1,vlRestoring=false,vlBloom=false;
-function captureView(){return {focus:focusId,trace:traceMode,seed:(traceMode&&curChain&&curChain[0]?curChain[0].id:null),dossier:dossierId,yaw:Math.round(yaw*100)/100,pitch:Math.round(pitch*100)/100,show:{containment:!!show.containment,derivation:!!show.derivation,settlement:!!show.settlement,reference:!!show.reference}};}
-function viewLabel(v){if(v.trace)return "trace"+(v.seed!=null?" #"+v.seed:"");if(v.dossier)return "dossier "+fname(v.dossier);if(v.focus)return "focus "+fname(v.focus);var off=["containment","derivation","settlement","reference"].filter(function(kk){return !v.show[kk];});if(off.length)return "filter \u2212"+off.length;if(Math.abs(v.yaw)>0.05||Math.abs(v.pitch)>0.05)return "orbit";return "overview";}
-function recordView(){if(vlRestoring)return;var v=captureView();if(viewIdx>=0&&JSON.stringify(viewHist[viewIdx])===JSON.stringify(v))return;viewHist=viewHist.slice(0,viewIdx+1);viewHist.push(v);viewIdx=viewHist.length-1;renderScrub();console.log("\u00a7VIEWLOG idx="+viewIdx+" total="+viewHist.length+" label="+viewLabel(v));}
+var SCRUB=document.getElementById("scrub"),viewHist=[],viewIdx=-1,vlRestoring=false,vlBloom=false,vlHint=null;
+function captureView(){return {focus:focusId,trace:traceMode,seed:(traceMode&&curChain&&curChain[0]?curChain[0].id:null),dossier:dossierId,yaw:Math.round(yaw*100)/100,pitch:Math.round(pitch*100)/100,show:{containment:!!show.containment,derivation:!!show.derivation,settlement:!!show.settlement,reference:!!show.reference},pos:N.map(function(nn){return [Math.round(nn.x),Math.round(nn.y)];})};}
+function viewLabel(v){if(v.hint)return v.hint;if(v.trace)return "trace"+(v.seed!=null?" #"+v.seed:"");if(v.dossier)return "dossier "+fname(v.dossier);if(v.focus)return "focus "+fname(v.focus);var off=["containment","derivation","settlement","reference"].filter(function(kk){return !v.show[kk];});if(off.length)return "filter \u2212"+off.length;if(Math.abs(v.yaw)>0.05||Math.abs(v.pitch)>0.05)return "orbit";return "overview";}
+function recordView(){if(vlRestoring)return;var v=captureView();v.hint=vlHint;vlHint=null;if(viewIdx>=0&&JSON.stringify(viewHist[viewIdx])===JSON.stringify(v))return;viewHist=viewHist.slice(0,viewIdx+1);viewHist.push(v);viewIdx=viewHist.length-1;renderScrub();console.log("\u00a7VIEWLOG idx="+viewIdx+" total="+viewHist.length+" label="+viewLabel(v));}
 window.recordView=recordView;window.__viewHist=viewHist;
 // restore a captured view (PURE-READ): re-apply focus/trace/spine-toggles/orbit. No persistence writes.
 function applyView(v){vlRestoring=true;try{
@@ -772,7 +772,7 @@ function applyView(v){vlRestoring=true;try{
  if(v.trace){if(v.seed!=null&&GDB){applyChain(walkBundle(GDB,v.seed));}setTrace(true);}else if(traceMode){setTrace(false);}
  focusId=v.focus||null;
  if(v.dossier){if(dossierId!==v.dossier)openDossier(v.dossier);}else if(dossierId){DOSS.classList.remove("open");dossierId=null;}
- yaw=v.yaw||0;pitch=v.pitch||0;window.__yaw=yaw;window.__pitch=pitch;updateBall();draw();
+ if(v.pos&&v.pos.length===N.length)N.forEach(function(nn,i){nn.x=v.pos[i][0];nn.y=v.pos[i][1];});yaw=v.yaw||0;pitch=v.pitch||0;window.__yaw=yaw;window.__pitch=pitch;updateBall();draw();
 }catch(e){}vlRestoring=false;scrubJive();renderScrub();}
 window.applyView=applyView;
 function scrubTo(i){if(i<0||i>=viewHist.length||i===viewIdx)return;viewIdx=i;applyView(viewHist[i]);}
