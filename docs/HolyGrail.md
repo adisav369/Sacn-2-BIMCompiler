@@ -123,6 +123,40 @@ live; op-logged, signed, reversible. That witness is the whole paradigm shift ma
 visible in a single gesture — and the architecture it needs (engine-as-data + a
 JavaScript host + the signed op-log) is **already standing under it.**
 
+## Roadmap check — the write-seam, as of 2026-06-01
+
+The grail is the *last rung of the write-loop*, not a separate project. Here is the
+ladder from today's read-only surface to the live rule-edit, and where each rung stands —
+this section is meant to be updated as a checkpoint each time a rung is climbed.
+
+| Rung | What it is | State |
+|---|---|---|
+| **R0** | Rules extracted to data, diff-verified (`erp_rules.db`, 746 records) | **done — witnessed** |
+| **R1** | The engine renders itself from that data, read-only (Glassbowl) | **done — live** |
+| **E2** | The write *seam* — CRUD ring + the document state machine (**Process / DocAction**) modelled as keyed data, **dry-run** | **done — witnessed (this checkpoint)** |
+| **E3** | The seam goes live — `apply` → `commitOp`/`sealChain`, `verifyChain` after each; projection re-folds; acceptance oracle (rebuilt #80001 == traced #80001) | next |
+| **E4** | Owner-gate + CAS invoked on the write path (the Phase-A guards surfaced) | pending |
+| **§RULE-EDIT** | **The grail** — edit a *rule* row; watch *K* records re-fold live, signed + reversible | the last rung |
+
+**What just landed, and why it matters to the grail.** The CRUD + **Process (DocAction)**
+overlay (E2) is now mounted in tandem with the Help guide as an independent peer layer —
+witnessed `§CRUD-PROC pass=27 fail=0`, plus the earlier CRUD validation/dry-run witnesses,
+all still dry-run. The **Process** piece is the part that matters here: it models the
+document's *state machine* — `completeIt()`, the legality of `DR→CO`, the IP-on-unmet
+outcome — as **data** (`docAction` descriptors naming the real `M*.completeIt()` oracles),
+not code. That widens the grail's surface from *field-validation rules* to *lifecycle
+rules*: the most valuable rule a user edits is usually "**when may this complete, and what
+does completion do**" — and that is now keyed data the same edit loop can reach. The grail
+is no longer only "edit a minimum amount"; it is "edit when an invoice may post."
+
+**The honest gap is unchanged.** E2 is still **dry-run** — it logs the op it *would* run.
+The load-bearing step is **E3**: the signed write plus the acceptance oracle that proves a
+re-built document matches the traced one. Until E3 is green, the seam is a faithful *model*
+of the engine, not the live engine; and the grail rung (`§RULE-EDIT`) sits one step past
+E3/E4. So the checkpoint verdict, stated plainly: **the seam to the grail is now built and
+witnessed as data; the current is not yet flowing through it.** A rung climbed, honestly
+logged — which is the difference between building and day-dreaming.
+
 ## A closing note, to the version of me from two years ago
 
 The two years spent proving the *imperative* extraction does not converge were not
