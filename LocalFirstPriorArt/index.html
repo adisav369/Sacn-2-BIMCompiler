@@ -3971,7 +3971,7 @@ PowerSync, and ElectricSQL at once.</p>
 <li><strong>Documented weakness:</strong> the docs state the server <em>"is not necessarily expected to compute the same
   result"</em> as the client → on rebase, <strong>optimistic changes can be overwritten</strong> (flicker / lost work);
   mutators must be re-execution-safe (run ≥3×); conflict logic is <strong>hand-coded per mutator</strong>; <strong>no
-  offline-only mode</strong> — a backend is mandatory.</li>
+  zero-server mode</strong> — a backend of authority is mandatory (offline operation works, but a server remains the source of truth).</li>
 <li><strong>Our workaround:</strong> determinism removes the divergence — our verbs compute the <em>same</em> effect on both
   sides, so there is <strong>no "server disagrees → overwrite"</strong> case and <strong>no per-mutator conflict code</strong>. And
   we <em>do</em> have a true offline-only mode (single-user, zero server) that Replicache structurally cannot.</li>
@@ -3983,7 +3983,7 @@ PowerSync, and ElectricSQL at once.</p>
 <li><strong>Documented weakness:</strong> this is an explicit <em>retreat</em> — the blog admits bidirectional sync's
   "conflict resolution / consistency / operational complexity" is "fundamentally difficult," so they
   <strong>sidestepped writes entirely.</strong> Result: <strong>two disjoint paths</strong> (sync for reads, your API for writes),
-  no unified model; requires Postgres + SUPERUSER, shadow tables, triggers, high memory.</li>
+  no unified model — reads sync from Postgres via logical replication, while writes live outside the sync engine in your own API.</li>
 <li><strong>Our workaround:</strong> the op-log is <strong>symmetric</strong> — the ops you <em>push</em> are the same ops that drive <em>reads</em>
   (one model, the log). We never need a separate write API, and there's no Postgres coupling (sql.js <em>is</em>
   the store).</li>
@@ -3993,9 +3993,9 @@ PowerSync, and ElectricSQL at once.</p>
 <li><strong>How:</strong> Postgres→SQLite via logical replication; op-history kept in the <strong>PowerSync Service</strong> (not your
   DB); <strong>writes routed through your own backend</strong> so you apply business logic / authz / validation; causal
   consistency.</li>
-<li><strong>Documented weakness:</strong> requires the PowerSync Service <strong>plus</strong> your backend; you must <strong>implement the
-  write-side business logic and conflict resolution yourself</strong> — i.e. <strong>the same rules twice</strong> (client
-  optimistic + server authoritative), a known source of drift.</li>
+<li><strong>Trade-off (by design):</strong> the backend is the write authority (default last-write-wins), so write-side
+  business logic and conflict policy live <strong>server-side</strong> — the client writes optimistically to local SQLite
+  but is not the authority. Symmetric, offline-authoritative write logic is out of scope.</li>
 <li><strong>Our workaround:</strong> the "business logic on the write path" <em>is</em> our deterministic kernel — <strong>authored
   once, run on both sides.</strong> No double-implementation, no client/server rule drift (the thing PowerSync
   makes you maintain by hand).</li>
@@ -4090,7 +4090,7 @@ PowerSync, and ElectricSQL at once.</p>
 <a href="https://electric.ax/blog/2024/11/21/local-first-with-your-existing-api">ElectricSQL — local-first with your existing API</a> ·
 <a href="https://powersync.com/blog/electricsql-vs-powersync">PowerSync vs ElectricSQL</a> ·
 <a href="https://livestore.dev/">LiveStore</a> ·
-<a href="https://mattweidner.com/2023/09/26/crdt-survey-4.html">CRDT survey (Weidner)</a> · <a href="https://automerge.org/blog/automerge-2/">Automerge 3.0</a>.</p>
+<a href="https://mattweidner.com/2023/09/26/crdt-survey-4.html">CRDT survey (Weidner)</a> · <a href="https://automerge.org/">Automerge</a>.</p>
 
 
 

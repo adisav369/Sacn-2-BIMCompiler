@@ -4029,7 +4029,7 @@ Where a date could not be independently confirmed this session it is marked <em>
 <td>[FeatureComparison.md §vs IFC.js]</td>
 </tr>
 <tr>
-<td><strong>2022-11-04</strong></td>
+<td><strong>2022-11</strong></td>
 <td>SQLite <strong>3.40.0</strong> — first <em>official</em> WASM build + OPFS VFS</td>
 <td>SQLite team ships browser WASM; OPFS sync-access-handle VFS (concurrent connections, single transaction)</td>
 <td><strong>NEUTRAL</strong> — reference/option only. We do <strong>not</strong> depend on the persistent build; our persistence is the op-log + in-memory sql.js</td>
@@ -4149,7 +4149,7 @@ genuinely depend on</strong> — the binding constraint — and measure from <em
 <li><strong>The binding constraint is rendering at <em>our headline scale</em></strong> (122K-element buildings,
   1M-element cities, smooth in a tab). That capability rests on <strong><code>BatchedMesh.addInstance</code>,
   required since three.js r166 (2 Jul 2024)</strong> — <code>ROADMAP.md L97</code>: <em>"required since r166, added
-  at 3 call sites in streaming.js."</em> <strong>Before r166 the primitive did not exist.</strong></li>
+  at 3 call sites in streaming.js."</em> <strong>The per-instance batching path we depend on did not exist before r166</strong> (the <code>BatchedMesh</code> class itself landed earlier, in r159; r166 added the <code>addInstance</code> API our streaming uses).</li>
 </ul>
 <blockquote>
 <p><strong>Compass.</strong> Had BIM OOTB attempted its headline scale in <strong>2022</strong>, the batching primitive

@@ -4888,19 +4888,19 @@ system's approach, its documented limitation, and the corresponding difference h
 <tr>
 <td><a href="https://doc.replicache.dev/">Replicache</a></td>
 <td>server re-runs mutations as the authority</td>
-<td>the server may not compute the same result, so optimistic state can be overwritten; conflict logic is per-mutator; no offline-only mode</td>
+<td>the server may not compute the same result, so optimistic state can be overwritten; conflict logic is per-mutator; no zero-server mode (a backend of authority is required)</td>
 <td>determinism removes the divergence case; offline-only operation is supported</td>
 </tr>
 <tr>
 <td><a href="https://electric-sql.com/">ElectricSQL</a></td>
 <td>read-path sync; writes go through the application's own API</td>
-<td>bidirectional sync documented as "fundamentally difficult"; two disjoint paths; requires Postgres with SUPERUSER</td>
+<td>bidirectional sync documented as "fundamentally difficult"; reads sync from Postgres, writes go through a separate API — two disjoint paths, no unified write model</td>
 <td>the op-log is symmetric — push-ops are the read-ops; one model, no Postgres coupling</td>
 </tr>
 <tr>
 <td><a href="https://powersync.com/">PowerSync</a></td>
 <td>Postgres→SQLite; writes routed through the backend</td>
-<td>write-side logic and conflict resolution are implemented twice (client and server)</td>
+<td>the backend is the write authority (default last-write-wins); write-side business logic and conflict policy live server-side, not symmetric or offline-authoritative</td>
 <td>the deterministic kernel is the write path, authored once and run on both sides</td>
 </tr>
 <tr>
