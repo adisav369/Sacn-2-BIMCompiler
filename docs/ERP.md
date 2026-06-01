@@ -2440,3 +2440,105 @@ This is EXTRACT-don't-invent applied to behaviour (the §18.6 "hell").
 ---
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
+
+---
+
+## §19. Performance Model — Transaction Cost vs iDempiere (analytical, multi-user apples-to-apples)
+
+This section is an **analytical cost model, not a benchmark.** Where a mechanism is
+proven it cites the witness; the GL case is an explicit projection. The comparison is
+held **apples-to-apples**: iDempiere is multi-user by construction, so it is compared
+against *this architecture in its secured/multi-user configuration* (§0.20 — local kernel
++ asynchronous facilitator + W-CHAIN/W-SIGN), **not** the bare single-user mode. The
+single-user/offline mode is the lower bound, noted for contrast.
+
+### §19.1 Two latencies, decoupled
+
+Traditional three-tier ERP collapses two costs into one synchronous commit; this
+architecture separates them:
+
+- **Interactive latency `T_i`** — what the operator waits for: `T_compute + T_apply + T_commit`.
+- **Convergence latency `T_c`** — until other users / the supervisor log reflect it:
+  `T_order + T_push + T_ingest + T_fanout`.
+
+In iDempiere `T_i ≈ T_c` — the WAL-synced commit *is* the point of multi-user visibility.
+Here `T_i` is local (in-RAM, ~0 ms perceived) and `T_c` is asynchronous (the facilitator
+orders + persists + fans out). The multi-user tax is paid in both systems: iDempiere pays
+it **synchronously, inside `T_i`**; this architecture pays it **asynchronously, inside `T_c`**.
+
+| Cost term | iDempiere (multi-user server) | Here (secured multi-user) |
+|---|---|---|
+| client ⇄ server network | per action, inside `T_i` | **0** in `T_i`; the push is in `T_c` |
+| DB statement round-trip | JDBC ⇄ PostgreSQL, inside `T_i` | **0** — sql.js runs in-process |
+| isolation | MVCC + row locks, synchronous | deterministic replay; cross-writer invariants at one CAS seam (`DistributedERP.md §5`) |
+| durable commit | WAL fsync, synchronous | op-log append; durability achieved on relay to the facilitator (`T_c`) |
+| total ordering | implicit in the single authoritative DB | the facilitator assigns it, asynchronously |
+
+The guarantees are **not identical**: iDempiere gives synchronous serializability for every
+op; this gives asynchronous convergence + deterministic replay, with synchronous
+enforcement reserved for the single online CAS op-class (oversell / double-claim). That
+trade is the substance of the comparison, not a footnote.
+
+### §19.2 Extra operations this kernel performs
+
+The audit / replay / sync substrate is not free. Per state change the kernel does work
+iDempiere does not:
+
+| Extra op | iDempiere default | Here | Cost / when it bites |
+|---|---|---|---|
+| Rich op: before/after + lineage GUIDs | `AD_ChangeLog` optional, changed-columns only | **always**, full snapshot (§0.6) | memory + CPU per op; scales with batch rows × row width — the main batch tax |
+| Hash-chain per op (W-CHAIN) | none | SHA over each op | ~µs each (native); O(n) over a batch — negligible per op |
+| Signature (W-SIGN) | DB session auth | optional asymmetric sign | ms-scale → **sealed at chain-segment boundaries, not per op**; per-op signing would dominate a batch |
+| Identity mint + record (G-IDENTITY §0.21) | server DB sequence (a round-trip) | UUID minted + recorded locally | trades a sequence round-trip for a few bytes — net win |
+| Settlement re-derivation | follows the stored FK (`M_InOutLine_ID`/`C_OrderLine_ID`) | matcher reconstructs pairs from partner + product + qty (partitioned join + greedy first-fit, §0.17) | **genuinely more CPU than an FK-follow** — the one place this does *more* work than iDempiere; buys FK-absent robustness |
+| Replay + hash verify | trusts DB state | rebuilds the projection from the log, hash-compares | O(log), on demand, off the hot path |
+
+### §19.3 Overhead iDempiere carries that this avoids
+
+The reciprocal: iDempiere's hot path includes MVCC version rows, WAL fsync, per-statement
+parse/plan over JDBC, OSGi event dispatch, `ModelValidator` reflection, ZK component-tree
+round-trips, and sequence round-trips. The net trade is **infrastructural overhead removed
+from the hot path** (network, MVCC, WAL, JVM/OSGi) **for semantic overhead added**
+(snapshot, hash, optional sign, occasional re-derivation) — mostly small per-op and partly
+deferrable.
+
+### §19.4 The two cases (order-of-magnitude, illustrative)
+
+**POS Order Complete** (proven path: 7 ops, `replay-hash == live-hash`, §0.19).
+
+- *iDempiere (multi-user):* one network round-trip + dozens of JDBC statements (shipment,
+  invoice, allocation, `Fact_Acct`, status, sequence) + MVCC/WAL commit → interactive
+  latency on the order of 10²–10³ ms; multi-user visibility at the same synchronous commit.
+- *Here (secured multi-user):* `T_i` on the order of 10⁰–10¹ ms (local 7-op apply + 7
+  rich/hashed ops; signature sealed per segment, not per op); `T_c` = async push (~KB) +
+  facilitator append/order + fan-out, typically sub-second in the background.
+- *Apples-to-apples:* both reach multi-user visibility in well under a second, but the
+  operator's wait stays ~1–3 orders lower here because the multi-user tax sits in `T_c`,
+  not `T_i`.
+
+**10,000-line GL batch** (projection — the `Fact_Acct` posting cell is **not yet
+implemented or verified**, §0.17).
+
+- *iDempiere:* iterative posting, on the order of 10⁴–10⁵ INSERTs including double-entry
+  facts + index/MVCC → tens of seconds to minutes; visible on commit.
+- *Here (projected):* ~10⁴ ops applied in one in-RAM transaction (sub-second to seconds) +
+  ~10⁴ before/after snapshots (the real memory tax) + ~10⁴ hashes (tens of ms native) + one
+  segment-sealed signature (not 10⁴ signs); relay payload on the order of a few MB pushed
+  asynchronously; facilitator ingest is O(n) **append**, not re-posting.
+- *Apples-to-apples:* structurally ~1–2 orders faster to local completion, and the
+  supervisor ingests by appending rather than re-executing — conditioned on (a) GL posting
+  being built, (b) the snapshot + log-persistence tail, (c) running off the main thread
+  (Web Worker).
+
+### §19.5 Envelope — what this model does and does not claim
+
+- **Analytical, not benchmarked.** The sync/integrity mechanics are POC-witnessed
+  (`poc_chain` / `poc_sign` / `poc_distributed` / `poc_persist`; W-CHAIN in
+  `kernel_ops.js` v5), **not** a deployed N-terminal multi-site benchmark.
+- **GL is a projection** — the posting cell is dataless / untested (§0.17).
+- **Async oversight is not a real-time gate.** Cross-writer enforcement that must block in
+  real time is the single online CAS op-class (`DistributedERP.md §5`); everything else
+  converges eventually.
+- **The advantage is architectural, not algorithmic:** identical document logic, executed
+  in-process against in-memory SQLite + an append-only signed op-log, with the multi-user
+  tax deferred to an asynchronous facilitator instead of paid synchronously per transaction.
