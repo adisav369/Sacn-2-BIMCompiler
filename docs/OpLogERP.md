@@ -1,7 +1,7 @@
 # An ERP Engine as a Deterministic Fold over a Signed Operation Log
 
 <div class="bim-banner" markdown>
-<b>Technical abstract.</b> An accounting kernel whose state is a deterministic fold over an append-only, signed operation log — serverless, in the browser, over SQLite. A companion to the <a href="BIMERPPaper/">BIM-ERP Paper</a>.
+<b>Technical abstract.</b> An accounting kernel whose state is a deterministic fold over an append-only, signed operation log — serverless, in the browser, over SQLite. A companion to the [BIM-ERP](ERP.md) work.
 </div>
 
 **Redhuan D. Oon**
