@@ -256,6 +256,77 @@ the rest is campaign, in sequence (iDempiere → Odoo → SAP standard → SAP c
 its own oracle. Migration removes the barrier to leaving; the grail (editable rules, live)
 supplies the reason to land. Both halves, or the solvent has nothing to pour into.
 
+## The hard parts, worked through — why the showstoppers aren't
+
+Three forward challenges look like showstoppers until you model them as the ledger already does.
+None requires the OLTP server, the lock manager, or the always-on coordinator a classic ERP carries.
+
+### 1. Compacting the signed log — *balance brought forward*
+
+The op-log is hash-chained for tamper-evidence — each entry carries the fingerprint of the one
+before it, so any later alteration is caught. After years it is millions of entries: too large for a
+tab, too slow to replay from the start. You cannot simply delete the old ones — the chain would snap
+and the old history could no longer be proven intact.
+
+The resolution is the **period close.** At close, write one **signed checkpoint** carrying (a) the
+closing balances and (b) the fingerprint of the chain head, signed by the controller. That checkpoint
+becomes a new genesis: the next period chains off it; the closed period's entries are **archived
+(cold), not deleted**; the live tab carries only the open period + the last checkpoint. Tamper-evidence
+survives — re-add the archived entries and they must fold to the signed balance, to the cent, or fraud
+is proven. This is **balance brought forward**: total the books, carry the opening balance, box the
+journals in the archive. iDempiere already does the accounting half; we add only the signature and the
+fingerprint. The hash-chain checkpoint and the accountant's year-end close are the *same ritual* — the
+domain solved this 500 years ago. *(Optional reinforcements: a Merkle root keeps per-transaction
+provability of a closed period in 32 bytes; emailing the checkpoint fingerprint to yourself binds even
+the signer.)*
+
+### 2. Atomicity — the document *is* the atomic unit
+
+Atomicity — all of a document's effects, or none — needs no transaction manager here, because there is
+no multi-row `UPDATE` to half-complete. A document-event is **one op-group** (§18.8), appended to the
+log as a unit; state is the *fold* over it. The group folds in completely or not at all, and a torn
+write fails its own hash. Atomicity is **structural** — the same dissolve-don't-coordinate move that
+removed contention: delete the multi-write transaction, keep the single atomic append.
+
+### 3. OLTP — physics is the lock, the ledger is the witness
+
+Classic OLTP spends its effort on **isolation**: row locks / MVCC so concurrent writers do not clobber
+shared state. The DistributedERP doctrine ([DistributedERP.md](DistributedERP.md) §1–§6) shows that
+shared state is mostly a modelling artifact:
+
+- **Atomicity** — solved above (the op-group).
+- **Consistency** — the deterministic kernel + guards (period control included) enforce invariants on
+  apply and on replay.
+- **Isolation** — *physics partitions the writers.* A till owns its sales, a van owns its load, a
+  box-in-hand owns itself — two writers cannot touch the same aggregate because the **atoms have a
+  location** (§2). The one genuinely shared thing — the last unit, a global entitlement — is the single
+  **CAS op-class** (§5): one set-if-unset, not a lock manager.
+- **Durability** — asynchronous: the local append is instant; durability lands when the log is relayed
+  (W-PERSIST). The one honest trade (§19.6) — synchronous durability for async convergence.
+
+Per terminal this *wins*: in-RAM apply of the op-group, no network per transaction (~1–3 orders faster
+than networked JDBC, §19). What remains is mechanical, not theoretical — maintain the read-projection
+incrementally at high append rates, bounded by the period checkpoint so the working set stays small.
+
+**And the deepest case — stock — is where the ledger earns its keep.** You do *not* lock the world to
+prevent an oversell; in a partition you cannot, and every system that claims to is secretly
+record-and-consequence ([DistributedERP.md](DistributedERP.md) §0, truth 4). Instead: **the physical
+count is the truth; the ledger is the running expectation; reconciliation surfaces the difference.** The
+scan *is* the op — you cannot scan a unit that is not physically there — so a physical unit cannot be
+double-committed. The ledger's job is not to *prevent* the discrepancy but to **tell you the stock is
+off** so you reconcile: POS → BOM backflush → replenishment → physical reconciliation. *Physics is the
+truth; the ledger is the witness that the books drifted.*
+
+### What it leaves you — keep just the ledger
+
+Strip the machinery a classic ERP needs for these — the transaction manager, the lock/MVCC layer, the
+always-on OLTP server, the sync coordinator — and **what remains is the ledger**: a signed, append-only
+op-log; its fold (the balances); and reconciliation against the physical world. Compaction is *balance
+b/f*; atomicity is *one op-group*; concurrency is *physics + one CAS*; multi-site is a *dumb async
+facilitator* that only orders and relays ([DistributedERP.md](DistributedERP.md) §6), never an
+authority. The hard parts are not unsolved — they are **re-expressed as accounting**, the one part of an
+ERP that was always going to stay. It has been thought through; the ledger is enough.
+
 ## A closing note, to the version of me from two years ago
 
 The two years spent proving the *imperative* extraction does not converge were not
