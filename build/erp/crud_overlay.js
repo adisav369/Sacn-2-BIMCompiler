@@ -182,7 +182,8 @@
     { verb: 'view',   glyph: '👁', cls: 'view', title: 'View data' },
     { verb: 'update', glyph: '✎',  cls: 'edit', title: 'Edit' },
     { verb: 'delete', glyph: '–',  cls: 'del',  title: 'Delete' },
-    { verb: 'process', glyph: '▶', cls: 'proc', title: 'Process (DocAction)' }
+    { verb: 'process', glyph: '▶', cls: 'proc', title: 'Process (DocAction)' },
+    { verb: 'report',  glyph: '▤', cls: 'rpt',  title: 'Report (receipt)' }   // read face — always on (CRUD_P_R_REPORT.md R1)
   ];
   var RING_R = 50, FAB = 30, ARC0 = -68, ARC1 = 68;   // semicircle fan on the bubble's right
 
@@ -270,7 +271,7 @@
     ringKey = key; ring.innerHTML = '';
     var enabledVerbs = (e.verbs || []);
     ICONS.forEach(function (ic, i) {
-      var enabled = (ic.verb === 'view') || CORE.verbEnabled(e, ic.verb);
+      var enabled = (ic.verb === 'view' || ic.verb === 'report') || CORE.verbEnabled(e, ic.verb);  // read verbs are free
       var fab = document.createElement('button');
       fab.className = 'crud-fab ' + ic.cls + (enabled ? '' : ' dis');
       fab.textContent = ic.glyph;
@@ -312,6 +313,10 @@
     emitAction(verb, key);
     var e = entryFor(key); if (!e) return;
     if (verb === 'view') { if (window.openDossier) window.openDossier(key); console.log('§CRUD view key=' + key + ' drove=[openDossier]'); return; }
+    if (verb === 'report') {                               // read face — hand off to report_overlay via the bus (no import; CRUD_P_R_REPORT.md R1)
+      try { global.dispatchEvent(new CustomEvent('overlay:report', { detail: { key: key } })); } catch (er) {}
+      console.log('§CRUD report key=' + key + ' drove=[overlay:report]'); return;
+    }
     if (verb === 'delete') { openDeleteConfirm(e); return; }
     if (verb === 'process') { doProcess(e); return; }
     openForm(verb, e);                     // create | update
@@ -557,7 +562,7 @@
       '#crudRing .crud-fab.dis{cursor:not-allowed;filter:grayscale(1);border-style:dashed}' +
       '#crudRing .crud-fab.new{background:#16493a;color:#bff0dd}#crudRing .crud-fab.view{background:#13202b;color:#9fdfe8}' +
       '#crudRing .crud-fab.edit{background:#3a3416;color:#f0e6bf}#crudRing .crud-fab.del{background:#4a1d1a;color:#f0c3bf}' +
-      '#crudRing .crud-fab.proc{background:#16395a;color:#bfe0f0}' +
+      '#crudRing .crud-fab.proc{background:#16395a;color:#bfe0f0}#crudRing .crud-fab.rpt{background:#1a2b3a;color:#9fdfe8}' +
       '#crudRing .crud-fab.proc.pulse{animation:fabPulse 1.2s ease-in-out 2}' +
       '@keyframes fabPulse{0%,100%{box-shadow:0 2px 8px rgba(0,0,0,.55)}50%{box-shadow:0 0 0 4px #56d6e0,0 2px 8px rgba(0,0,0,.55)}}' +
       '.crud-hot{position:fixed;z-index:68;transform:translate(-50%,-50%);border-radius:50%;pointer-events:auto;cursor:pointer;display:none;border:2px solid transparent;transition:border-color .15s}' +

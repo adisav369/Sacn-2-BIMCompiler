@@ -1,0 +1,119 @@
+# CRUD‑P‑R — the Report verb (spec)
+
+Implements `prompts/CRUD_P_R_REPORT.md`. Spec‑first record of the **verified data reality** this
+session, the **witness definitions**, and the **honest reshape of R2** forced by that data. Every number
+below is a fold over real rows in `build/erp/{glassbowl_data.db,ad_full.db}` — none asserted.
+
+Read‑order context: `docs/ERP.md §0.17/§0.19` (contained‑set, diff‑oracle) · `prompts/CRUD_OVERLAY.md`
+(the ring + Process seam) · `build/erp/crud_overlay.js` (the ring, the pure CORE pattern this mirrors).
+
+---
+
+## 0. The verb — Report as a read fold
+
+The CRUD‑P ring writes (`Process` = signed `SET_STATUS`). Report is the **read face** of the same
+op‑log: a report is just a fold. Two folds, both **PURE READ** (no T3 write‑gate; ships on the proven
+falsifier foundation):
+
+- **R1 Receipt** — folds **one document** (`c_order`+`c_orderline`, etc.) from the bundle.
+- **R2 Financial Report** — folds **the journal** (Trial Balance / P&L) from posted GL facts.
+- **R3 Definition‑as‑data** — R1/R2 layout comes from AD rows (`ad_printformat*` / `PA_Report*`),
+  not a hardcoded template.
+
+Report is read‑only ⇒ in the ring it is **always enabled** (like `view`); it needs no `verbs[]` entry in
+`crud_ops.json` and writes nothing. The receipt panel + ring icon live in a peer module `report_overlay.js`
+(sibling to `help_overlay.js` / `crud_overlay.js`), decoupled via the existing key‑addressed intent bus.
+
+---
+
+## 1. Verified data reality (2026‑06‑02 — extract, never invent)
+
+### 1.1 R1 source — present and clean (`glassbowl_data.db`)
+`c_order` (8 rows), `c_orderline` (with `linenetamt`), `c_bpartner`, `m_product`, `c_invoice(line)`,
+`c_payment`, `c_allocation*`, `m_inout(line)`. A **Receipt folds today**. Witness targets:
+
+| doc | id | lines | Σ linenetamt | grandtotal | tax (grand−Σ) |
+|-----|----|-------|--------------|-----------|---------------|
+| `c_order` #80001 | 101 | 1 | 95.00 | 100.70 | 5.70 |
+| `c_order` #800000 | 104 | 6 | 3657.50 | 3657.50 | 0.00 |
+
+The header/line relationship is the **iDempiere convention** (`c_order`→`c_orderline` on `c_order_id`,
+`c_invoice`→`c_invoiceline`, `m_inout`→`m_inoutline`) — *derivable*, not a per‑document invention. So the
+fold is one generic routine, not O2C‑specific code.
+
+### 1.2 R2 source — **the prompt's assumption does not hold for this extract** ⚠
+The prompt (`CRUD_P_R_REPORT.md` §R2, §"What exists") expects GardenWorld's **posted facts** in
+`fact_acct` to bundle whole. **Verified in `ad_full.db`:**
+
+| table | rows | note |
+|-------|------|------|
+| `fact_acct` | **0** | the posting journal is **empty** in this extract — nothing to fold |
+| `gl_journalline` | **4** | real posted GL, **balanced** Dr 185.00 = Cr 185.00, diff 0.00 |
+| `gl_journal` | 2 | the two journals those 4 lines belong to |
+| `c_validcombination` | 157 | account combinations (the account dimension) |
+| `c_elementvalue` | 379 | the chart of accounts (account names/values) |
+
+A Trial Balance "to the cent from `fact_acct`" is **impossible without inventing facts** here — forbidden
+(prime directive). **Reshape (honest, non‑invent):**
+
+- **R2a (shippable now):** fold the Trial Balance from the **real `gl_journalline` rows** (4 lines,
+  `amtacctdr`/`amtacctcr`, joined to `c_elementvalue` for account names). It proves the *balanced‑to‑the‑
+  cent* discipline on **real posted rows** — small, but real. Witness reports `rows=4 source=gl_journalline`.
+- **R2b (un‑parked 2026‑06‑02 — real source identified):** the full GardenWorld P&L over `fact_acct` is
+  **extractable from the live Docker Postgres** (the GardenWorld instance). Next R2 session: pull the real
+  `fact_acct` rows (+ the `c_elementvalue`/`c_period`/`c_acctschema` they reference) from Postgres into
+  `glassbowl_data.db` — the same non‑invent move as the 11 lifecycle tables (`docs/ERP.md §0.12`), now for
+  the posted journal. Until extracted, R2a (`gl_journalline`) is the real‑rows fallback. Phase 3's
+  `Process→Fact_Acct` fan‑out (`BIM_ERP_FOLD.md`) later lets a freshly Processed order hit the same P&L.
+
+This reshape is recorded here so the prompt's R2 line is read against the data, not the assumption.
+
+### 1.3 R3 source — present (`ad_full.db`)
+`ad_printformat` (124 Check, 126 Remittance, 100 Order_Header template, 102 Invoice_Header template, …) +
+`ad_printformatitem` (per‑format item rows: `name`/`printname`/`seqno`/`isprinted`). `PA_Report` (100
+Balance Sheet, 101 Income Statement, 102 Cash Flows) + `pa_reportline`/`pa_reportcolumn` linesets. Layout
+**is data**. (Caveat to handle in R3: the Order_Header template's `seqno` are all 0 — order falls back to
+row order; name that, don't silently reorder.)
+
+---
+
+## 2. Tasks & witnesses (each names the issue it proves; nothing deploys without GO)
+
+### R1 — Receipt  ·  `report_overlay.js` + `scripts/test_report_overlay.js`
+Fold the focused document; render header + lines + subtotal/tax/total. Non‑bundle tables → honest
+"not carried", never a fabricated number. Non‑financial documents (`m_inout` — qty, no amount) →
+`financial=false`, subtotal/tax shown as "n/a (non‑financial document)".
+
+> **§REPORT‑RECEIPT** `doc=C_Order#101 lines=1 subtotal=95.00 tax=5.70 total=100.70 folds-from=bundle handAuthored=0`
+>
+> Proof obligation: the rendered totals **equal an independent re‑fold of the raw rows** — the witness
+> recomputes `subtotal=Σlinenetamt`, `tax=grand−subtotal` straight from sqlite and asserts equality with
+> `CORE.foldReceipt(...)`. `handAuthored=0` ⇒ no literal amount appears in the layout code.
+
+### R2 — Trial Balance  (R2a now; R2b parked) — *next session, after R1 lands*
+Bundle the 4 real `gl_journalline` rows (+ the `c_elementvalue` names they reference) into
+`glassbowl_data.db`. Fold a Trial Balance.
+
+> **§REPORT‑FIN** `trial-balance Dr=185.00 Cr=185.00 balanced=Y maxDiff=0c folds-from=gl_journalline rows=4`
+>
+> Folded balances reconcile to the `gl_journalline` sums **to the cent**. The UI names R2b: "P&L over
+> `fact_acct` — 0 posted facts in this extract; awaits a posted dump / Phase‑3 posting."
+
+### R3 — Definition‑as‑data — *after R2*
+Render R1/R2 through the AD definition rows (`ad_printformat`/`item` for the Receipt, `PA_Report`
+structure for the Financial Report). Layout is DATA.
+
+> **§REPORT‑DEF** `receipt=ad_printformat#100 fin=PA_Report#101 handAuthoredLayout=0`
+
+---
+
+## 3. Honest gap (named, not hidden)
+`Process` today writes only `docstatus`, not journal facts (`CRUD_OVERLAY.md §Process`, GP3 sidecar). So
+R2 reflects **pre‑posted GardenWorld facts** ("the books as loaded") — and in THIS extract those facts are
+empty, so R2a folds the only real posted rows (`gl_journalline`). Wiring `Process→Fact_Acct` so a freshly
+Processed order hits the P&L is **Phase‑3‑adjacent** (`BIM_ERP_FOLD.md`), not this phase.
+
+## 4. Discipline
+§‑log under `build/erp/`; READ before concluding. Pre‑flight cite this spec. HANDS‑OFF the live
+write‑loop files except to ADD the read‑only Report verb to the ring. Deploy = Glassbowl‑way, bump sw
+`CACHE_VERSION`, **EXPLICIT GO**, fetch‑back‑verify.
