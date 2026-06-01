@@ -2572,6 +2572,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-hard-parts-worked-through-why-the-showstoppers-arent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hard parts, worked through — why the showstoppers aren't
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The hard parts, worked through — why the showstoppers aren&#39;t">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-compacting-the-signed-log-balance-brought-forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Compacting the signed log — balance brought forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-atomicity-the-document-is-the-atomic-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Atomicity — the document is the atomic unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-oltp-physics-is-the-lock-the-ledger-is-the-witness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. OLTP — physics is the lock, the ledger is the witness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-it-leaves-you-keep-just-the-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it leaves you — keep just the ledger
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a-closing-note-to-the-version-of-me-from-two-years-ago" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4006,6 +4067,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-hard-parts-worked-through-why-the-showstoppers-arent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hard parts, worked through — why the showstoppers aren't
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The hard parts, worked through — why the showstoppers aren&#39;t">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-compacting-the-signed-log-balance-brought-forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Compacting the signed log — balance brought forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-atomicity-the-document-is-the-atomic-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Atomicity — the document is the atomic unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-oltp-physics-is-the-lock-the-ledger-is-the-witness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. OLTP — physics is the lock, the ledger is the witness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-it-leaves-you-keep-just-the-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it leaves you — keep just the ledger
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a-closing-note-to-the-version-of-me-from-two-years-ago" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4362,6 +4484,65 @@ proven by the <em>first</em> clean abstraction — iDempiere's DocAction, the on
 the rest is campaign, in sequence (iDempiere → Odoo → SAP standard → SAP custom), each gated by
 its own oracle. Migration removes the barrier to leaving; the grail (editable rules, live)
 supplies the reason to land. Both halves, or the solvent has nothing to pour into.</p>
+<h2 id="the-hard-parts-worked-through-why-the-showstoppers-arent">The hard parts, worked through — why the showstoppers aren't<a class="headerlink" href="#the-hard-parts-worked-through-why-the-showstoppers-arent" title="Permanent link">&para;</a></h2>
+<p>Three forward challenges look like showstoppers until you model them as the ledger already does.
+None requires the OLTP server, the lock manager, or the always-on coordinator a classic ERP carries.</p>
+<h3 id="1-compacting-the-signed-log-balance-brought-forward">1. Compacting the signed log — <em>balance brought forward</em><a class="headerlink" href="#1-compacting-the-signed-log-balance-brought-forward" title="Permanent link">&para;</a></h3>
+<p>The op-log is hash-chained for tamper-evidence — each entry carries the fingerprint of the one
+before it, so any later alteration is caught. After years it is millions of entries: too large for a
+tab, too slow to replay from the start. You cannot simply delete the old ones — the chain would snap
+and the old history could no longer be proven intact.</p>
+<p>The resolution is the <strong>period close.</strong> At close, write one <strong>signed checkpoint</strong> carrying (a) the
+closing balances and (b) the fingerprint of the chain head, signed by the controller. That checkpoint
+becomes a new genesis: the next period chains off it; the closed period's entries are <strong>archived
+(cold), not deleted</strong>; the live tab carries only the open period + the last checkpoint. Tamper-evidence
+survives — re-add the archived entries and they must fold to the signed balance, to the cent, or fraud
+is proven. This is <strong>balance brought forward</strong>: total the books, carry the opening balance, box the
+journals in the archive. iDempiere already does the accounting half; we add only the signature and the
+fingerprint. The hash-chain checkpoint and the accountant's year-end close are the <em>same ritual</em> — the
+domain solved this 500 years ago. <em>(Optional reinforcements: a Merkle root keeps per-transaction
+provability of a closed period in 32 bytes; emailing the checkpoint fingerprint to yourself binds even
+the signer.)</em></p>
+<h3 id="2-atomicity-the-document-is-the-atomic-unit">2. Atomicity — the document <em>is</em> the atomic unit<a class="headerlink" href="#2-atomicity-the-document-is-the-atomic-unit" title="Permanent link">&para;</a></h3>
+<p>Atomicity — all of a document's effects, or none — needs no transaction manager here, because there is
+no multi-row <code>UPDATE</code> to half-complete. A document-event is <strong>one op-group</strong> (§18.8), appended to the
+log as a unit; state is the <em>fold</em> over it. The group folds in completely or not at all, and a torn
+write fails its own hash. Atomicity is <strong>structural</strong> — the same dissolve-don't-coordinate move that
+removed contention: delete the multi-write transaction, keep the single atomic append.</p>
+<h3 id="3-oltp-physics-is-the-lock-the-ledger-is-the-witness">3. OLTP — physics is the lock, the ledger is the witness<a class="headerlink" href="#3-oltp-physics-is-the-lock-the-ledger-is-the-witness" title="Permanent link">&para;</a></h3>
+<p>Classic OLTP spends its effort on <strong>isolation</strong>: row locks / MVCC so concurrent writers do not clobber
+shared state. The DistributedERP doctrine (<a href="../DistributedERP/">DistributedERP.md</a> §1–§6) shows that
+shared state is mostly a modelling artifact:</p>
+<ul>
+<li><strong>Atomicity</strong> — solved above (the op-group).</li>
+<li><strong>Consistency</strong> — the deterministic kernel + guards (period control included) enforce invariants on
+  apply and on replay.</li>
+<li><strong>Isolation</strong> — <em>physics partitions the writers.</em> A till owns its sales, a van owns its load, a
+  box-in-hand owns itself — two writers cannot touch the same aggregate because the <strong>atoms have a
+  location</strong> (§2). The one genuinely shared thing — the last unit, a global entitlement — is the single
+  <strong>CAS op-class</strong> (§5): one set-if-unset, not a lock manager.</li>
+<li><strong>Durability</strong> — asynchronous: the local append is instant; durability lands when the log is relayed
+  (W-PERSIST). The one honest trade (§19.6) — synchronous durability for async convergence.</li>
+</ul>
+<p>Per terminal this <em>wins</em>: in-RAM apply of the op-group, no network per transaction (~1–3 orders faster
+than networked JDBC, §19). What remains is mechanical, not theoretical — maintain the read-projection
+incrementally at high append rates, bounded by the period checkpoint so the working set stays small.</p>
+<p><strong>And the deepest case — stock — is where the ledger earns its keep.</strong> You do <em>not</em> lock the world to
+prevent an oversell; in a partition you cannot, and every system that claims to is secretly
+record-and-consequence (<a href="../DistributedERP/">DistributedERP.md</a> §0, truth 4). Instead: <strong>the physical
+count is the truth; the ledger is the running expectation; reconciliation surfaces the difference.</strong> The
+scan <em>is</em> the op — you cannot scan a unit that is not physically there — so a physical unit cannot be
+double-committed. The ledger's job is not to <em>prevent</em> the discrepancy but to <strong>tell you the stock is
+off</strong> so you reconcile: POS → BOM backflush → replenishment → physical reconciliation. <em>Physics is the
+truth; the ledger is the witness that the books drifted.</em></p>
+<h3 id="what-it-leaves-you-keep-just-the-ledger">What it leaves you — keep just the ledger<a class="headerlink" href="#what-it-leaves-you-keep-just-the-ledger" title="Permanent link">&para;</a></h3>
+<p>Strip the machinery a classic ERP needs for these — the transaction manager, the lock/MVCC layer, the
+always-on OLTP server, the sync coordinator — and <strong>what remains is the ledger</strong>: a signed, append-only
+op-log; its fold (the balances); and reconciliation against the physical world. Compaction is <em>balance
+b/f</em>; atomicity is <em>one op-group</em>; concurrency is <em>physics + one CAS</em>; multi-site is a <em>dumb async
+facilitator</em> that only orders and relays (<a href="../DistributedERP/">DistributedERP.md</a> §6), never an
+authority. The hard parts are not unsolved — they are <strong>re-expressed as accounting</strong>, the one part of an
+ERP that was always going to stay. It has been thought through; the ledger is enough.</p>
 <h2 id="a-closing-note-to-the-version-of-me-from-two-years-ago">A closing note, to the version of me from two years ago<a class="headerlink" href="#a-closing-note-to-the-version-of-me-from-two-years-ago" title="Permanent link">&para;</a></h2>
 <p>The two years spent proving the <em>imperative</em> extraction does not converge were not
 wasted — they are the evidence that the <em>declarative-extract</em> path is the one that does.
