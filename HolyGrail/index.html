@@ -2533,6 +2533,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#roadmap-check-the-write-seam-as-of-2026-06-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roadmap check — the write-seam, as of 2026-06-01
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a-closing-note-to-the-version-of-me-from-two-years-ago" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3928,6 +3939,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#roadmap-check-the-write-seam-as-of-2026-06-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roadmap check — the write-seam, as of 2026-06-01
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a-closing-note-to-the-version-of-me-from-two-years-ago" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4087,6 +4109,68 @@ witness that closes it:</p>
 live; op-logged, signed, reversible. That witness is the whole paradigm shift made
 visible in a single gesture — and the architecture it needs (engine-as-data + a
 JavaScript host + the signed op-log) is <strong>already standing under it.</strong></p>
+<h2 id="roadmap-check-the-write-seam-as-of-2026-06-01">Roadmap check — the write-seam, as of 2026-06-01<a class="headerlink" href="#roadmap-check-the-write-seam-as-of-2026-06-01" title="Permanent link">&para;</a></h2>
+<p>The grail is the <em>last rung of the write-loop</em>, not a separate project. Here is the
+ladder from today's read-only surface to the live rule-edit, and where each rung stands —
+this section is meant to be updated as a checkpoint each time a rung is climbed.</p>
+<table>
+<thead>
+<tr>
+<th>Rung</th>
+<th>What it is</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>R0</strong></td>
+<td>Rules extracted to data, diff-verified (<code>erp_rules.db</code>, 746 records)</td>
+<td><strong>done — witnessed</strong></td>
+</tr>
+<tr>
+<td><strong>R1</strong></td>
+<td>The engine renders itself from that data, read-only (Glassbowl)</td>
+<td><strong>done — live</strong></td>
+</tr>
+<tr>
+<td><strong>E2</strong></td>
+<td>The write <em>seam</em> — CRUD ring + the document state machine (<strong>Process / DocAction</strong>) modelled as keyed data, <strong>dry-run</strong></td>
+<td><strong>done — witnessed (this checkpoint)</strong></td>
+</tr>
+<tr>
+<td><strong>E3</strong></td>
+<td>The seam goes live — <code>apply</code> → <code>commitOp</code>/<code>sealChain</code>, <code>verifyChain</code> after each; projection re-folds; acceptance oracle (rebuilt #80001 == traced #80001)</td>
+<td>next</td>
+</tr>
+<tr>
+<td><strong>E4</strong></td>
+<td>Owner-gate + CAS invoked on the write path (the Phase-A guards surfaced)</td>
+<td>pending</td>
+</tr>
+<tr>
+<td><strong>§RULE-EDIT</strong></td>
+<td><strong>The grail</strong> — edit a <em>rule</em> row; watch <em>K</em> records re-fold live, signed + reversible</td>
+<td>the last rung</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What just landed, and why it matters to the grail.</strong> The CRUD + <strong>Process (DocAction)</strong>
+overlay (E2) is now mounted in tandem with the Help guide as an independent peer layer —
+witnessed <code>§CRUD-PROC pass=27 fail=0</code>, plus the earlier CRUD validation/dry-run witnesses,
+all still dry-run. The <strong>Process</strong> piece is the part that matters here: it models the
+document's <em>state machine</em> — <code>completeIt()</code>, the legality of <code>DR→CO</code>, the IP-on-unmet
+outcome — as <strong>data</strong> (<code>docAction</code> descriptors naming the real <code>M*.completeIt()</code> oracles),
+not code. That widens the grail's surface from <em>field-validation rules</em> to <em>lifecycle
+rules</em>: the most valuable rule a user edits is usually "<strong>when may this complete, and what
+does completion do</strong>" — and that is now keyed data the same edit loop can reach. The grail
+is no longer only "edit a minimum amount"; it is "edit when an invoice may post."</p>
+<p><strong>The honest gap is unchanged.</strong> E2 is still <strong>dry-run</strong> — it logs the op it <em>would</em> run.
+The load-bearing step is <strong>E3</strong>: the signed write plus the acceptance oracle that proves a
+re-built document matches the traced one. Until E3 is green, the seam is a faithful <em>model</em>
+of the engine, not the live engine; and the grail rung (<code>§RULE-EDIT</code>) sits one step past
+E3/E4. So the checkpoint verdict, stated plainly: <strong>the seam to the grail is now built and
+witnessed as data; the current is not yet flowing through it.</strong> A rung climbed, honestly
+logged — which is the difference between building and day-dreaming.</p>
 <h2 id="a-closing-note-to-the-version-of-me-from-two-years-ago">A closing note, to the version of me from two years ago<a class="headerlink" href="#a-closing-note-to-the-version-of-me-from-two-years-ago" title="Permanent link">&para;</a></h2>
 <p>The two years spent proving the <em>imperative</em> extraction does not converge were not
 wasted — they are the evidence that the <em>declarative-extract</em> path is the one that does.

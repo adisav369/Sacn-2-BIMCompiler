@@ -2,11 +2,15 @@
    sql.js + bundle so they work with no network. Scoped to /BIMCompiler/; passes every
    other request straight through, so the rest of the docs site is unaffected.
    Bump CACHE_VERSION on any change to glassbowl.html / glassbowl_gravity.html / the bundle. */
-const CACHE_VERSION = 'glassbowl-offline-v4';
+const CACHE_VERSION = 'glassbowl-offline-v5';
 const ASSETS = [
   'glassbowl.html',
   'glassbowl_gravity.html',
   'glassbowl_data.db',
+  'help_overlay.js',
+  'crud_overlay.js',
+  'help_ops.json',
+  'crud_ops.json',
   'sqljs/sql-wasm.js',
   'sqljs/sql-wasm.wasm'
 ];
@@ -37,7 +41,7 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
   const mine = url.pathname.includes('/sqljs/') ||
-    /\/(glassbowl|glassbowl_gravity|glassbowl_data)/.test(url.pathname);
+    /\/(glassbowl|glassbowl_gravity|glassbowl_data|help_overlay|crud_overlay|help_ops|crud_ops)/.test(url.pathname);
   if (!mine) return; // not ours → let the network/site handle it normally
   // cache-first (offline-capable), then fill the cache on first network hit
   e.respondWith(
