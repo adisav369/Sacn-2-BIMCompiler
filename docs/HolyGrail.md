@@ -341,6 +341,20 @@ inbox — without an anchor the encrypted snapshots are undecryptable, and the t
 (own k-of-n channels, corporate escrow, platform passkey) each add a named, non-zero trust. The regress
 terminates for the *fact* unconditionally; for the *key*, only at a chosen anchor — and naming it is the floor.
 
+**Performance, measured (not asserted).** `scripts/poc_volume_ceiling.js` pushes the log/fold layer to 20M
+ops with no wall and a linear curve (~437 bytes/op); `scripts/poc_volume_sqljs.js` re-measures on the actual
+browser stack (sql.js + `crypto.subtle`), where a per-op append is ≈15 µs, bound by the async hash, not by
+SQLite, and the fold (a SQL `GROUP BY` over a bounded chart of accounts) stays sub-frame. Against a legacy
+central database the gap is set by *where the work happens*: `scripts/poc_legacy_ab.js` shows that **on one
+box** Postgres ≈ local SQLite (both ~1 ms, fsync-bound) — so the ~100× there is honestly the async-durability
+trade (§19.6), not server-removal. `scripts/poc_remote_pos.js` shows the **remote** case, where it matters: a
+POS sale's cashier-perceived latency is RTT-bound for a central DB (tens to hundreds of ms, and the till
+*cannot sell when the link is down*) versus a local apply plus an asynchronous relay to HQ — RTT-independent
+and offline-capable; a 10k-document batch-plus-charts runs locally with no network and no per-chart round-trip
+(~12× over a fair server-side batch at cross-region latency). Every legacy figure is raw SQL, excluding the
+ORM/OSGi/JDBC layers that only make it slower — a floor, not a ceiling. The one honest cost throughout is the
+same async-durability trade; the gains are server-removal and locality, named, not rounded up.
+
 ## A closing note, to the version of me from two years ago
 
 The two years spent proving the *imperative* extraction does not converge were not
