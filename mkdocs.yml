@@ -143,6 +143,7 @@ nav:
       - Vibe Programming: VibeProgramming.md
       - Strategic Positioning: StrategicIndustryPositioning.md
       - BIM-ERP Paper: BIMERPPaper.md
+      - "Op-Log ERP Engine (Abstract)": OpLogERP.md
       - Spatial Compilation Paper: SPATIAL_COMPILATION_PAPER.md
       - Enabling-Tech Timeline: EnablingTechTimeline.md
       - Local-First Prior Art: LocalFirstPriorArt.md
