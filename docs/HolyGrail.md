@@ -355,6 +355,19 @@ and offline-capable; a 10k-document batch-plus-charts runs locally with no netwo
 ORM/OSGi/JDBC layers that only make it slower — a floor, not a ceiling. The one honest cost throughout is the
 same async-durability trade; the gains are server-removal and locality, named, not rounded up.
 
+**Where this sits among the fast-SQLite systems — and the claim I will *not* make.** Embedded SQLite at scale
+is not new: Expensify's Bedrock, Cloudflare's D1, Turso/libSQL all run it in production. On a single box, with
+durability matched, an in-process engine is roughly 3× a networked one on writes — and that advantage *inverts*
+under heavy concurrency, a benchmark a fair critic will (and should) cite. So I do not claim a faster engine.
+The real difference is the **write path**: every one of those peers keeps strong consistency by escalating each
+write to a central primary over the network. This design does not — a write applies locally and the signed
+op-group is relayed asynchronously, with a single compare-and-set for the one genuinely shared resource. That
+is a different *consistency model*, not a faster engine; its cost is eventual convergence, and its dividends are
+the two things a round-trip-to-a-primary architecture cannot give a till: it keeps selling when the network is
+down, and there is no write-contention to lose under concurrency, because each terminal is the single writer of
+its own partition. The speed argument is modest and conditional; the architecture argument — offline,
+single-writer, signed — is the one that holds.
+
 ## A closing note, to the version of me from two years ago
 
 The two years spent proving the *imperative* extraction does not converge were not
