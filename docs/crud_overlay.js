@@ -176,7 +176,7 @@
   // DOM OVERLAY — Edit-mode toggle + animated semicircle ring + form (browser).
   // ════════════════════════════════════════════════════════════════════════
   injectCss();
-  var STORE = null, on = false, raf = 0, hots = [], ring = null, ringKey = null, closeT = 0, form = null;
+  var STORE = null, on = false, raf = 0, hots = [], ring = null, ringKey = null, form = null;
   var ICONS = [
     { verb: 'create', glyph: '＋', cls: 'new',  title: 'New' },
     { verb: 'view',   glyph: '👁', cls: 'view', title: 'View data' },
@@ -191,8 +191,15 @@
   wrap.innerHTML = '<input type="checkbox" id="crudModeCk"><span>✎ Edit mode</span>';
   document.body.appendChild(wrap);
   ring = document.createElement('div'); ring.id = 'crudRing'; document.body.appendChild(ring);
-  ring.addEventListener('pointerenter', function () { clearTimeout(closeT); });
-  ring.addEventListener('pointerleave', scheduleClose);
+  // STICKY ring (R, 2026-06-01): once revealed, the ring of fire STAYS — the small fabs must not vanish
+  // while the user reaches for them (and the Guide's pulse-reveal must persist too). It is dismissed ONLY by
+  // an EXPLICIT act: picking a verb (onVerb→closeRing), opening another bubble's ring (openRing replaces),
+  // or a pointerdown OUTSIDE the ring + hotzones. No hover-leave auto-close.
+  document.addEventListener('pointerdown', function (ev) {
+    if (!ring.classList.contains('open')) return;
+    if (ev.target && ev.target.closest && (ev.target.closest('#crudRing') || ev.target.closest('.crud-hot'))) return;
+    closeRing();
+  });
   form = document.createElement('div'); form.id = 'crudForm'; document.body.appendChild(form);
   // #docStatusBar — the statusbar element-kind TARGET the Help guide highlights ("note the status").
   // Reflects the lit / last-processed document's docstatus; hidden until a Process runs (CRUD_OVERLAY.md §Process).
@@ -233,9 +240,8 @@
     CORE.entriesOf(STORE).forEach(function (e) {
       if (typeof idx === 'undefined' || idx[e.key] == null) return;     // entry points at an absent bubble — skip (drift caught by witness)
       var h = document.createElement('div'); h.className = 'crud-hot'; h.setAttribute('data-key', e.key);
-      h.addEventListener('pointerenter', function () { clearTimeout(closeT); openRing(e.key); });
-      h.addEventListener('pointerleave', scheduleClose);
-      h.addEventListener('click', function () { openRing(e.key); });        // touch fallback
+      h.addEventListener('pointerenter', function () { openRing(e.key); });   // reveal on hover…
+      h.addEventListener('click', function () { openRing(e.key); });          // …or tap (mobile). Ring is STICKY — no leave-close.
       document.body.appendChild(h); hots.push({ el: h, key: e.key });
     });
   }
@@ -292,7 +298,6 @@
     if (!p) { closeRing(); return; }
     ring.style.left = (p.x + p.r * 0.55) + 'px'; ring.style.top = p.y + 'px';
   }
-  function scheduleClose() { clearTimeout(closeT); closeT = setTimeout(closeRing, 160); }
   function closeRing() { if (!ring.classList.contains('open')) { ringKey = null; return; } ring.classList.remove('open'); ringKey = null; ring.innerHTML = ''; }
 
   // ── key-addressed intent bus (governance: neither overlay imports the other) ──
