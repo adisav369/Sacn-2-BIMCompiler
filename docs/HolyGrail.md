@@ -327,6 +327,20 @@ facilitator* that only orders and relays ([DistributedERP.md](DistributedERP.md)
 authority. The hard parts are not unsolved — they are **re-expressed as accounting**, the one part of an
 ERP that was always going to stay. It has been thought through; the ledger is enough.
 
+**Witnesses — these are runs, not arguments (dated, headless, replay-deterministic).** The three hard parts
+above are exercised on the actual editing-layer op shape in `scripts/poc_showstopper.js` (`§SHOW PASS`): the
+document-event op-group folds all-or-none (a torn op is rejected whole), the period-close checkpoint re-folds
+the cold archive to the signed balances *to the cent* with the tamper caught at the exact op, and the single
+CAS holds across the checkpoint boundary. The "mechanical, bounded by the checkpoint" claim is then *measured*
+in `scripts/poc_volume.js` (`§VOL PASS`): bootstrap from the last checkpoint stays flat as total history grows
+100× while a full replay grows with it — the working set is bounded by the period, not the log; the binding
+constraint is the per-op hash (append and verify), which sets the close cadence, not a wall. And the durability
+path — the inbox as the recoverable signed log — is stress-tested in `scripts/poc_email_dr.js` (`§EMAIL-DR
+PASS`): the data recovers unconditionally from any reachable valid snapshot, but the key does not live in the
+inbox — without an anchor the encrypted snapshots are undecryptable, and the three anchors that close that gap
+(own k-of-n channels, corporate escrow, platform passkey) each add a named, non-zero trust. The regress
+terminates for the *fact* unconditionally; for the *key*, only at a chosen anchor — and naming it is the floor.
+
 ## A closing note, to the version of me from two years ago
 
 The two years spent proving the *imperative* extraction does not converge were not
