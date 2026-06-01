@@ -2542,3 +2542,32 @@ implemented or verified**, §0.17).
 - **The advantage is architectural, not algorithmic:** identical document logic, executed
   in-process against in-memory SQLite + an append-only signed op-log, with the multi-user
   tax deferred to an asynchronous facilitator instead of paid synchronously per transaction.
+
+### §19.6 Side-by-side summary — where this wins, and the extra it requires
+
+Order-of-magnitude, analytical (see §19.5 envelope). "Better" is stated honestly —
+some rows favour iDempiere, some are a deliberate trade. The last column is the **extra
+work this architecture must do** to reach the stated position (the cost of the win).
+
+| Dimension | iDempiere (multi-user server) | This architecture | Better? | Extra needed here |
+|---|---|---|---|---|
+| **Operator-perceived latency** (POS complete) | network + dozens of JDBC stmts + WAL commit (~10²–10³ ms) | local in-RAM apply of the 7-op group (~10⁰–10¹ ms) | **This** (~1–3 orders) | none — it is the default path |
+| **Bulk throughput** (10k GL batch) | iterative posting, ~10⁴–10⁵ INSERTs (tens of s – min) | one in-RAM transaction (sub-s – s) | **This** (~1–2 orders), *projected* | build the GL `Fact_Acct` cell (§0.17); run off-thread (Web Worker); absorb snapshot/log tail |
+| **Multi-user visibility** | synchronous at commit | asynchronous convergence | **Trade** — synchronous vs eventual | async facilitator (order + persist + fan-out) |
+| **Durability** | WAL fsync, synchronous, on-box | op-log relayed to facilitator / cloud / mailbox replica | **Trade** — synchronous vs eventual | W-PERSIST + relay; until relayed, the local copy is volatile |
+| **Cross-writer enforcement** (oversell / double-claim) | locks / MVCC on every op, synchronous | one online set-if-unset CAS op-class | **Trade** — broad vs narrow-but-sufficient | the single synchronous CAS op (`DistributedERP.md §5`) |
+| **Audit trail** | `AD_ChangeLog`, optional, changed-columns only | `kernel_ops` rich op (before/after + lineage), always on | **This** | rich-op memory/write per change |
+| **Tamper-evidence** | none by default | hash-chain (W-CHAIN) + optional signature (W-SIGN) | **This** | hash per op; signature sealed per chain-segment |
+| **Replay / undo / time-machine** | none — the DB is only current state | deterministic replay; frozen effects | **This** (structural) | determinism sandbox (no `Date.now`/`Math.random`); identity-as-input (§0.21) |
+| **Analytics** | bolt-on warehouse / ETL | the op-log *is* the analytical store (§0.6) | **This** | a rich op-log + the gravity fold (§14) |
+| **Settlement matching** | follows the stored FK | re-derives pairs from partner + product + qty (§0.17) | **iDempiere** cheaper; **This** more robust (works FK-absent) | extra matcher compute (partitioned join + greedy) |
+| **Identity / sequence** | server DB sequence (a round-trip) | edge-minted UUID, recorded (§0.21) | **This** (no round-trip) | record `op_uuid` + `seq` per op |
+| **Infrastructure footprint** | JVM + OSGi + PostgreSQL + app server | single HTML + sql.js, no server | **This** | for multi-user, one thin **async** facilitator (not a compute authority) |
+
+**Reading it in one line:** this architecture wins decisively on **interactive latency, footprint,
+audit, tamper-evidence, replay, and analytics**; it deliberately **trades** synchronous
+multi-user durability/visibility/enforcement for asynchronous convergence (re-added by the
+§0.20 facilitator), and pays a small **extra** per-op cost (rich snapshot + hash, occasionally
+re-derivation) to get the audit/replay/sync substrate "for free" downstream. The only row where
+it does genuinely *more compute* than iDempiere is settlement matching — and that buys
+FK-absent robustness.
