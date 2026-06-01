@@ -76,6 +76,30 @@ extracting the engine, and extract what the engine operates on**:
 The bloat was not ported. It was **deleted by being re-based.** That is why the shift
 worked from the outside when extraction failed from the inside.
 
+### So — are we free of `PO.java`?
+
+Two senses, and they differ. **From *running* it: yes, completely.** Nothing in the browser
+instantiates or extends `PO.java`; each of its jobs is re-based onto data or the log — generic
+save → `apply(op)` + the 5-table fold (no `UPDATE`-in-place exists at all); change-tracking →
+`kernel_ops` before/after + lineage; `beforeSave`/mandatory validation → rules-as-data
+(`AD_Val_Rule`); `get_ID` → edge-minted UUID recorded as input (§0.21); model-validator firing →
+the named-handler registry; `trx` → the op-group, the document-event as the atomic unit (§18.8).
+Witnessed: replay reproduces the O2C/P2P oracle to the cent with **zero iDempiere code executing.**
+
+The freedom came **by never extracting it.** Carrying `PO.java` somewhere lighter never converges
+— you drag its whole gravity well. But `PO.java`'s defining property, *generic and
+metadata-driven*, is precisely what makes it deletable: anything fully driven by metadata is
+replaceable by *reading the metadata and folding the log*. iDempiere could not take that step
+because that core was welded to the JVM / OSGi / `trx` / side-effects; remove the weld and
+`PO.java` has nothing left to do.
+
+**From what its subclasses *knew*: deliberately not — and that is correct.** The `M*.*It()`
+methods remain the **oracle** we verify against, per cell, so "extract" never slides into "guess."
+The day that consultation ends is the day every cell is extracted and verified — the §0.17 breadth
+campaign, in flight (O2C/P2P done; GL still dataless; the DocAction corpus being abstracted now).
+Free of *running* it; finishing the extraction of what it taught the models is the campaign, not a
+new idea.
+
 ## Why it is a grail others cannot reach
 
 Three conditions have to hold **at the same time**. Almost no system has all three —
