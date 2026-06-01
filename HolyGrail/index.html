@@ -4556,6 +4556,19 @@ PASS</code>): the data recovers unconditionally from any reachable valid snapsho
 inbox — without an anchor the encrypted snapshots are undecryptable, and the three anchors that close that gap
 (own k-of-n channels, corporate escrow, platform passkey) each add a named, non-zero trust. The regress
 terminates for the <em>fact</em> unconditionally; for the <em>key</em>, only at a chosen anchor — and naming it is the floor.</p>
+<p><strong>Performance, measured (not asserted).</strong> <code>scripts/poc_volume_ceiling.js</code> pushes the log/fold layer to 20M
+ops with no wall and a linear curve (~437 bytes/op); <code>scripts/poc_volume_sqljs.js</code> re-measures on the actual
+browser stack (sql.js + <code>crypto.subtle</code>), where a per-op append is ≈15 µs, bound by the async hash, not by
+SQLite, and the fold (a SQL <code>GROUP BY</code> over a bounded chart of accounts) stays sub-frame. Against a legacy
+central database the gap is set by <em>where the work happens</em>: <code>scripts/poc_legacy_ab.js</code> shows that <strong>on one
+box</strong> Postgres ≈ local SQLite (both ~1 ms, fsync-bound) — so the ~100× there is honestly the async-durability
+trade (§19.6), not server-removal. <code>scripts/poc_remote_pos.js</code> shows the <strong>remote</strong> case, where it matters: a
+POS sale's cashier-perceived latency is RTT-bound for a central DB (tens to hundreds of ms, and the till
+<em>cannot sell when the link is down</em>) versus a local apply plus an asynchronous relay to HQ — RTT-independent
+and offline-capable; a 10k-document batch-plus-charts runs locally with no network and no per-chart round-trip
+(~12× over a fair server-side batch at cross-region latency). Every legacy figure is raw SQL, excluding the
+ORM/OSGi/JDBC layers that only make it slower — a floor, not a ceiling. The one honest cost throughout is the
+same async-durability trade; the gains are server-removal and locality, named, not rounded up.</p>
 <h2 id="a-closing-note-to-the-version-of-me-from-two-years-ago">A closing note, to the version of me from two years ago<a class="headerlink" href="#a-closing-note-to-the-version-of-me-from-two-years-ago" title="Permanent link">&para;</a></h2>
 <p>The two years spent proving the <em>imperative</em> extraction does not converge were not
 wasted — they are the evidence that the <em>declarative-extract</em> path is the one that does.
