@@ -1,11 +1,11 @@
 # Order to Cash — ReadMe (Help steps)
 
-> The step-by-step help for the Order-to-Cash flow. Each step matches a bubble on the [Glassbowl explorer](glassbowl.html); in the explorer, tick **NeedHelp?** and press **ShowMe** on a step to be taken to it. One real order — Sales Order **#80001** ($100.70) — traced end to end from the actual data.
+> Step-by-step help for the Order-to-Cash flow. The **numbered bubble** beside each step is the same one you see on the [Glassbowl explorer](glassbowl.html): tick **NeedHelp?**, click a numbered `?` bubble, then **ShowMe** to be taken to it. One real order — Sales Order **#80001** ($100.70) — traced end to end from the actual data.
 
 
 <a id="o2c"></a>
 
-## Order to Cash
+## <span style="display:inline-block;min-width:1.55em;height:1.55em;line-height:1.55em;text-align:center;border-radius:50%;background:#1668a8;color:#fff;font-size:.72em;font-weight:700;margin-right:.45em;vertical-align:middle;border:1px solid #7fd6e0">▶</span> Order to Cash
 
 ![Figure 1.0 — the whole lit O2C chain on the map](figs/o2c_0_o2c.png)
 
@@ -20,7 +20,7 @@
 
 <a id="c_order"></a>
 
-## Order
+## <span style="display:inline-block;min-width:1.55em;height:1.55em;line-height:1.55em;text-align:center;border-radius:50%;background:#1668a8;color:#fff;font-size:.72em;font-weight:700;margin-right:.45em;vertical-align:middle;border:1px solid #7fd6e0">1</span> Order
 
 ![Figure 1.1 — the Order bubble focused, Data tab showing #80001](figs/o2c_1_c_order.png)
 
@@ -35,7 +35,7 @@
 
 <a id="m_inout"></a>
 
-## Shipment
+## <span style="display:inline-block;min-width:1.55em;height:1.55em;line-height:1.55em;text-align:center;border-radius:50%;background:#1668a8;color:#fff;font-size:.72em;font-weight:700;margin-right:.45em;vertical-align:middle;border:1px solid #7fd6e0">2</span> Shipment
 
 ![Figure 1.2 — the Shipment bubble focused, Data tab](figs/o2c_2_m_inout.png)
 
@@ -50,7 +50,7 @@
 
 <a id="c_invoice"></a>
 
-## Invoice
+## <span style="display:inline-block;min-width:1.55em;height:1.55em;line-height:1.55em;text-align:center;border-radius:50%;background:#1668a8;color:#fff;font-size:.72em;font-weight:700;margin-right:.45em;vertical-align:middle;border:1px solid #7fd6e0">3</span> Invoice
 
 ![Figure 1.3 — the Invoice bubble focused, Data tab showing $100.70](figs/o2c_3_c_invoice.png)
 
@@ -65,7 +65,7 @@
 
 <a id="c_payment"></a>
 
-## Payment
+## <span style="display:inline-block;min-width:1.55em;height:1.55em;line-height:1.55em;text-align:center;border-radius:50%;background:#1668a8;color:#fff;font-size:.72em;font-weight:700;margin-right:.45em;vertical-align:middle;border:1px solid #7fd6e0">4</span> Payment
 
 ![Figure 1.4 — the Payment bubble focused, Data tab](figs/o2c_4_c_payment.png)
 
@@ -80,7 +80,7 @@
 
 <a id="c_allocationline"></a>
 
-## Reconciled (Allocation)
+## <span style="display:inline-block;min-width:1.55em;height:1.55em;line-height:1.55em;text-align:center;border-radius:50%;background:#1668a8;color:#fff;font-size:.72em;font-weight:700;margin-right:.45em;vertical-align:middle;border:1px solid #7fd6e0">5</span> Reconciled (Allocation)
 
 ![Figure 1.5 — the Allocation bubble focused, Data tab showing $98.50](figs/o2c_5_c_allocationline.png)
 

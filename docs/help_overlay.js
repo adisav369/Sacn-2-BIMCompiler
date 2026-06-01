@@ -112,8 +112,8 @@
     clearBadges();
     STEPS.forEach(function (s, i) {
       if (!s.target || typeof idx === 'undefined' || idx[s.target] == null) return;
-      var q = document.createElement('div'); q.className = 'help-q'; q.textContent = '?';
-      q.title = 'What is ' + s.title + '?'; q.setAttribute('data-i', i);
+      var q = document.createElement('div'); q.className = 'help-q'; q.textContent = String(s.ordinal);
+      q.title = 'Help ' + s.ordinal + ': ' + s.title; q.setAttribute('data-i', i);
       q.addEventListener('click', function (ev) { ev.stopPropagation(); open(i); });
       document.body.appendChild(q); badges.push({ el: q, step: s });
     });

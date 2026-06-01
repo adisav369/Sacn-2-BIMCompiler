@@ -133,7 +133,7 @@
   #scrub .scrubdot{width:9px;height:9px;min-width:9px;border-radius:50%;background:#3a4a5a;cursor:pointer;transition:background .2s,box-shadow .2s} #scrub .scrubdot:hover{background:#5a6b7a}
   #scrub .scrubdot.on{background:#ffd479;box-shadow:0 0 8px #ffd479}
   /* bloomed (double-tapped) state: each view becomes a labelled chip */
-  #scrub.bloom .scrubline{border-radius:11px;gap:6px;flex-wrap:wrap;max-width:74vw}
+  #scrub.bloom .scrubline{border-radius:11px;gap:6px;flex-wrap:nowrap;overflow-x:auto;max-width:74vw}
   #scrub.bloom .scrubdot{width:auto;height:auto;min-width:0;border-radius:7px;padding:3px 9px;font-size:11px;color:#8aa;background:#19222c;border:1px solid #2b3744;white-space:nowrap}
   #scrub.bloom .scrubdot.on{color:#ffd479;background:#1d2937;border-color:#ffd479;box-shadow:none}
   /* Feature 3 W-DIAG: the mobile-only diagonal-arrange button \u2014 sibling to Untangle, hidden on desktop. */
