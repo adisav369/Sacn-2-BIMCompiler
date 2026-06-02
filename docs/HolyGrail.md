@@ -256,6 +256,18 @@ the rest is campaign, in sequence (iDempiere → Odoo → SAP standard → SAP c
 its own oracle. Migration removes the barrier to leaving; the grail (editable rules, live)
 supplies the reason to land. Both halves, or the solvent has nothing to pour into.
 
+**Odoo — second abstraction, WITNESSED (2026-06-03, `§ODOO-FOLD PASS`).** Odoo 17 demo was stood up,
+one full sell-side O2C chain (SO `S00023` → delivery → invoice → GL post → payment → reconcile) was
+driven to completion via RPC and frozen as a static oracle (`build/erp/odoo_oracle.{json,db}`, §0.12).
+A *pure* adapter (`scripts/odoo_adapter.js` — the Odoo↔iDempiere data dictionary, no business logic)
+folded that chain through the **existing** kernel verbs: `newVerbs=[]`, all 5 hops mapped, effects
+reproduce Odoo to the cent, replay exact (`scripts/poc_odoo_fold.js`, log `build/erp/odoo_fold.log`).
+The solvent dissolved a *second* ERP with nothing invented — the strongest evidence yet that the
+verb set is general, not iDempiere-local. **Honest bound (named, not hidden):** this is ONE sell-side
+chain. Account *determination* (which GL account) came from Odoo as host data — the POST verb owns only
+ΣDR==ΣCR (§13.1), it does not re-derive Odoo's account logic. Full payment used FK-directed `ALLOCATE`;
+the 3-way `MATCH` (buy-side PO↔receipt↔bill) and partial reconciliation are the next chain to fold.
+
 ## The hard parts, worked through — why the showstoppers aren't
 
 Three forward challenges look like showstoppers until you model them as the ledger already does.

@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "so": "S00023",
+    "so_id": 23,
+    "picking": [
+      "WH/OUT/00010"
+    ],
+    "invoice": "INV/2026/00005",
+    "invoice_id": 25,
+    "payment": [],
+    "reconcile_amount": 5002.5,
+    "payment_state": "paid",
+    "source": "odoodemo (Odoo 17), driven via RPC to completion, STATIC export \u2014 no live Odoo at replay (ERP.md \u00a70.12)"
+  },
+  "sale_order": {
+    "name": "S00023",
+    "state": "sale",
+    "amount_untaxed": 4350.0,
+    "amount_tax": 652.5,
+    "amount_total": 5002.5
+  },
+  "sale_order_lines": [
+    {
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "pid": 31,
+      "qty": 10.0,
+      "qty_delivered": 10.0,
+      "qty_invoiced": 10.0,
+      "price_unit": 295.0,
+      "subtotal": 2950.0,
+      "total": 3392.5
+    },
+    {
+      "product": "[E-COM11] Cabinet with Doors",
+      "pid": 21,
+      "qty": 10.0,
+      "qty_delivered": 10.0,
+      "qty_invoiced": 10.0,
+      "price_unit": 140.0,
+      "subtotal": 1400.0,
+      "total": 1610.0
+    }
+  ],
+  "delivery_moves": [
+    {
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "pid": 31,
+      "qty": 6.0,
+      "state": "done"
+    },
+    {
+      "product": "[E-COM11] Cabinet with Doors",
+      "pid": 21,
+      "qty": 10.0,
+      "state": "done"
+    },
+    {
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "pid": 31,
+      "qty": 4.0,
+      "state": "done"
+    }
+  ],
+  "invoice": {
+    "name": "INV/2026/00005",
+    "state": "posted",
+    "move_type": "out_invoice",
+    "amount_untaxed": 4350.0,
+    "amount_tax": 652.5,
+    "amount_total": 5002.5,
+    "amount_residual": 0.0,
+    "payment_state": "paid",
+    "invoice_origin": "S00023"
+  },
+  "invoice_gl_lines": [
+    {
+      "name": "[FURN_6666] Acoustic Bloc Screens",
+      "account": "400000 Product Sales",
+      "debit": 0.0,
+      "credit": 2950.0,
+      "balance": -2950.0,
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "qty": 10.0,
+      "subtotal": 2950.0,
+      "is_tax": false,
+      "display_type": "product"
+    },
+    {
+      "name": "[E-COM11] Cabinet with Doors",
+      "account": "400000 Product Sales",
+      "debit": 0.0,
+      "credit": 1400.0,
+      "balance": -1400.0,
+      "product": "[E-COM11] Cabinet with Doors",
+      "qty": 10.0,
+      "subtotal": 1400.0,
+      "is_tax": false,
+      "display_type": "product"
+    },
+    {
+      "name": "15%",
+      "account": "251000 Tax Received",
+      "debit": 0.0,
+      "credit": 652.5,
+      "balance": -652.5,
+      "product": null,
+      "qty": 0.0,
+      "subtotal": 0.0,
+      "is_tax": true,
+      "display_type": "tax"
+    },
+    {
+      "name": "INV/2026/00005",
+      "account": "121000 Account Receivable",
+      "debit": 5002.5,
+      "credit": 0.0,
+      "balance": 5002.5,
+      "product": null,
+      "qty": 0.0,
+      "subtotal": 0.0,
+      "is_tax": false,
+      "display_type": "payment_term"
+    }
+  ],
+  "payment": []
+}

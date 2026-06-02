@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "po": "P00013",
+    "po_id": 13,
+    "partner_id": 14,
+    "receipt": [
+      "WH/IN/00009"
+    ],
+    "bill": "BILL/2026/06/0004",
+    "bill_id": 29,
+    "scenario": "F8 \u2014 received 12, billed 8 (bill != receipt)",
+    "source": "odoodemo (Odoo 17) purchase, STATIC export (\u00a70.12)"
+  },
+  "po_lines": [
+    {
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "pid": 31,
+      "ordered": 12.0,
+      "received": 12.0,
+      "invoiced": 8.0,
+      "subtotal": 1200.0
+    }
+  ],
+  "receipt_moves": [
+    {
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "pid": 31,
+      "qty": 12.0
+    }
+  ],
+  "bill": {
+    "name": "BILL/2026/06/0004",
+    "amount_untaxed": 800.0,
+    "amount_tax": 120.0,
+    "amount_total": 920.0
+  },
+  "bill_gl_lines": [
+    {
+      "account": "600000 Expenses",
+      "debit": 800.0,
+      "credit": 0.0,
+      "is_tax": false,
+      "product": "[FURN_6666] Acoustic Bloc Screens"
+    },
+    {
+      "account": "131000 Tax Paid",
+      "debit": 120.0,
+      "credit": 0.0,
+      "is_tax": true,
+      "product": null
+    },
+    {
+      "account": "211000 Account Payable",
+      "debit": 0.0,
+      "credit": 920.0,
+      "is_tax": false,
+      "product": null
+    }
+  ]
+}

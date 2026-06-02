@@ -226,6 +226,12 @@ function legalTransition(wfmc, fromStatus, action) {
 var _handlers = {};
 function register(docType, action, fn) { _handlers[docType + ':' + action] = fn; }
 function getHandler(docType, action) { return _handlers[docType + ':' + action] || null; }
+// read-only reflection over the registry (ENGINE_CONTRACT §1 verbs(ctx)) — no new engine logic,
+// just enumerates what register() already recorded. Optional docType filter.
+function handlers(docType) {
+  return Object.keys(_handlers).map(function (k) { var p = k.indexOf(':'); return { docType: k.slice(0, p), action: k.slice(p + 1) }; })
+    .filter(function (h) { return docType == null || h.docType === docType; });
+}
 
 // ── Kernel.dispatch — the §18.6 ladder with the violation guard ─────────────
 // cellCtx = { wfmc, guards[], query(sql)->rows (READ-ONLY data), actor, baseTs }
@@ -266,6 +272,6 @@ function dispatch(db, cellCtx, doc) {
 module.exports = {
   initProjection: initProjection, query: query, projectionHash: projectionHash,
   apply: apply, replay: replay, legalTransition: legalTransition,
-  register: register, getHandler: getHandler, dispatch: dispatch,
+  register: register, getHandler: getHandler, handlers: handlers, dispatch: dispatch,
   PROJECTION_TABLES: PROJECTION_TABLES, _stats: _stats
 };

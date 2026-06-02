@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "po": "P00012",
+    "po_id": 12,
+    "partner": "Azure Interior",
+    "partner_id": 14,
+    "receipt": [
+      "WH/IN/00007"
+    ],
+    "bill": "BILL/2026/06/0003",
+    "bill_id": 28,
+    "scenario": "PARTIAL \u2014 ordered 20, received 12 (backorder 8), billed 12",
+    "source": "odoodemo (Odoo 17) purchase, partial-receipt, STATIC export (\u00a70.12)"
+  },
+  "po_lines": [
+    {
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "pid": 31,
+      "ordered": 20.0,
+      "received": 12.0,
+      "invoiced": 12.0,
+      "subtotal": 2000.0
+    }
+  ],
+  "receipt_moves": [
+    {
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "pid": 31,
+      "qty": 12.0,
+      "picking": "WH/IN/00007"
+    }
+  ],
+  "bill": {
+    "name": "BILL/2026/06/0003",
+    "amount_untaxed": 1200.0,
+    "amount_tax": 180.0,
+    "amount_total": 1380.0
+  },
+  "bill_gl_lines": [
+    {
+      "account": "600000 Expenses",
+      "debit": 1200.0,
+      "credit": 0.0,
+      "is_tax": false,
+      "product": "[FURN_6666] Acoustic Bloc Screens"
+    },
+    {
+      "account": "131000 Tax Paid",
+      "debit": 180.0,
+      "credit": 0.0,
+      "is_tax": true,
+      "product": null
+    },
+    {
+      "account": "211000 Account Payable",
+      "debit": 0.0,
+      "credit": 1380.0,
+      "is_tax": false,
+      "product": null
+    }
+  ]
+}

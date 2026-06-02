@@ -479,9 +479,12 @@ is specified here so the gate is enforced in the engine, never in the panel.
 **The call (an `ENGINE_CONTRACT.md read` with role ctx):**
 
 ```
-readPostings(recordRef, ctx) -> { visible, posted, lines[], balanced, reason }
+readPostings(recordRef, ctx) -> { visible, posted, lines[], balanced, source, coverage, note, reason }
   recordRef = { doc_type | ad_table_id, record_id }
   ctx       = IdmpSession.buildContext(...) → uses ctx.role.id (+ ctx.client.id, ctx.org.id)
+  source    = 'fact_acct' | 'oplog' | 'none'   — WHERE the fold came from
+  coverage  = 'complete' | 'partial' | 'absent' — how much of the posted history is present
+  note      = a human hint when coverage<complete (e.g. "install local data for full posted history")
 ```
 
 **The gate (engine-resolved, not UI-trusted).** `idmp_session` folds user→role→client→org but does NOT
@@ -503,15 +506,66 @@ ctx.role.id` (verified values: GardenWorld Admin=Y, GardenWorld User=N).
 client/org→rows, role.isshowacct→accounting visibility) — a record outside the role's orgs returns
 `{ visible:false, reason:'out-of-scope' }`, never rows.
 
+**Data availability — graceful degrade, separation from the import lane (the contract's stub-not-guess
+rule).** The full posted history lives in the operator's real `Fact_Acct`, which arrives via a SEPARATE
+local-import session (S1). The panel must NOT hard-block on it; the engine reports what it HAS and the UI
+reflects it honestly. `source`/`coverage` carry this, so the renderer never needs to know the import lane:
+
+- `Fact_Acct` imported (§13.6 cent-gated) → `source:'fact_acct', coverage:'complete'` — the real, full fold.
+- `Fact_Acct` absent but `POST` ops exist (resident, e.g. posted this session) → `source:'oplog',
+  coverage:'partial', note:'showing op-log postings — run local install for the full posted history'`. The
+  panel **renders what it has** and shows the note. *(Your "continue with what data there is" mode.)*
+- nothing posted and no `Fact_Acct` → `source:'none', coverage:'absent', posted:false,
+  note:'install local data first to see Accts Posted'`. The panel shows the honest status, not an error.
+  *(Your "install local first" mode.)*
+
+This is what lets **S3 ship before S1/S2** (CRUD-P + Receipt + the Accts-Posted *shell*); when real data
+lands, the same tab lights up with `coverage:'complete'` — no panel change. Honest by construction: the UI
+never invents a posting, and never hides that the history is partial.
+
 **Witnesses.**
-- `§POSTED-READ record=<doc>#<id> role=<id> isshowacct=Y posted=Y rows=N balanced=Y` — accounting role
-  sees the balanced fold.
+- `§POSTED-READ record=<doc>#<id> role=<id> isshowacct=Y posted=Y rows=N balanced=Y source=<src> coverage=<cov>`
+  — accounting role sees the balanced fold, labelled by source/coverage.
 - `§POSTED-GATE role=<GardenWorld User> isshowacct=N → visible=N reason=role-not-accounting rows=0` — a
   non-accounting role is refused at the engine, zero rows leaked.
+- `§POSTED-COVERAGE source=none coverage=absent note=install-local-first` (and the `partial`/`complete`
+  variants) — the degrade states are explicit, never a silent empty or a fabricated total.
 
 **Lane.** Engine provides `readPostings` (headless, gate + fold, `scripts/`); the renderer renders the
 Posted tab (shown iff `visible`), the gear→DocAction, and the editable form — renderer/login lane, rebased
 onto the `erp/` folder home, EXPLICIT-GO. The gate and fold are the engine's; the UI only reflects them.
+
+### §13.7a Built — resolved against `ad_seed.db` (build session 2026-06-03)
+
+`readPostings(recordRef, ctx, dbs)` lives in `scripts/erp_postings.js`; witness `scripts/poc_postings.js`
+(`build/erp/poc_postings.log`). `dbs = { ad, proj, fact }` — `ad` carries `ad_role`/`c_validcombination`/
+`c_elementvalue` (the seed); `proj` is the `erp_kernel` projection (POST ops + `journal`); `fact` is the
+`fact_acct` bundle. The exact §13.7 shape is returned: `{visible, posted, lines[], balanced, source,
+coverage, note, reason}`.
+
+- **Gate (engine-resolved):** `SELECT isshowacct FROM ad_role WHERE ad_role_id = ctx.role.id` on `dbs.ad`
+  (verified: Admin `102`=Y, User `103`=N). `isshowacct ≠ 'Y'` → `{visible:false, reason:'role-not-accounting'}`,
+  **no `lines`**, zero rows. Org scope: `recordRef.ad_org_id ∉ ctx.allowOrgs` → `{visible:false,
+  reason:'out-of-scope'}` (mirror `ENGINE_CONTRACT` WIRE-4).
+- **Fold:** the record's `POST` op's `journal` rows (`source='DOC:'+table+'#'+id`); each `account_id`
+  (a `C_ValidCombination` id) joined `c_validcombination → C_ElementValue` for `{value, name}` (verified:
+  `234→518 "12110 Accounts Receivable - Trade"`). `balanced = ΣamtacctDR == ΣamtacctCR` to the cent.
+- **Degrade ladder (honest, non-invent):** real record-keyed `Fact_Acct` cent-equal to the fold →
+  `source:'fact_acct', coverage:'complete'`; `POST` op only → `source:'oplog', coverage:'partial'`; nothing
+  → `source:'none', coverage:'absent'`.
+
+**⚠ Coverage bound — `complete` is NOT reachable on the bundled data, by design.** The shipped `fact_acct`
+(`extract_fact_acct.sh`, `glassbowl_data.db`) is a **TOTALS** extract — it has **no `ad_table_id`/`record_id`**,
+so no record maps to it; every real record folds to `partial` (posted this session) or `absent`. Per-record
+`complete` needs the §13.6 **re-extract WITH the record-ref columns** — NOT done this session (the prompt's
+"do not do speculatively"). The `complete` *branch* is exercised in the witness by a clearly-labelled
+**shape fixture** (`fact=fixture realdata=N`) carrying `(ad_table_id, record_id)`, plus an **off-by-1c
+discrimination** check proving the cent-gate falls back to `partial` on mismatch — never a tautology, never
+presented as GardenWorld fact.
+
+- **Witnesses:** `§POSTED-READ record=C_Invoice#103 role=102 isshowacct=Y posted=Y rows=3 balanced=Y
+  source=oplog coverage=partial`; `§POSTED-GATE role=103 isshowacct=N → visible=N reason=role-not-accounting
+  rows=0`; `§POSTED-COVERAGE` for `absent` / `partial` / `complete`(fixture) + the off-by-1c reject.
 
 ---
 

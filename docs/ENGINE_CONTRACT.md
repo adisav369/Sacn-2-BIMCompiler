@@ -115,6 +115,36 @@ streamed-on-touch. The streaming pipeline stays engine-side (the `separation_of_
 - **C2** — `manifest(ctx)` as the gravity fold; `read` returns stubs for unresident tables. I5/I6.
 - **C3** — static scans proving I1/I2 (renderer touches only §1; engine has no UI terms).
 
+## §6.1 C0 — built (build session 2026-06-03, `scripts/erp_seam.js` + `scripts/poc_seam.js`)
+
+C0 is a thin engine-side module (`makeSeam({proj, ad, fact, manifestPath, wfmc})`) exposing the five §1
+calls over the EXISTING proven fns — **no new engine logic**. The surface, each mapped to its backing fn:
+
+| Call | Backing fn (verified) | Returns |
+|---|---|---|
+| `read(query, ctx)` | `erp_kernel.query` + org-scope filter (mirror `poc_wire` WIRE-4) | rows scoped to `ctx.allowOrgs`; out-of-scope → **empty** |
+| `dispatch(intent, ctx)` | role-gate + owner-gate → `erp_kernel.dispatch`/`apply` | `{ok, op_uuid, before, after}` or `{rejected, why}` |
+| `manifest(ctx)` | loads the D2 `build/erp/shards/manifest.json` (`build_shard_manifest.js`) | `{tables[], shards[]}` |
+| `verbs(ctx)` | `erp_kernel.handlers` registry reflection, capability-filtered | `[{action, label}]` |
+| `verify(ctx)` | `erp_kernel.replay` ×2 (the §1 "**replay hash**" check) | `{chainOk, len, tip}` |
+
+- **`verify` = replay-determinism**, per §1's own wording ("check the chain / **replay hash**"): seal-free,
+  node-pure, no schema fork. `kernel_ops.js verifyChain` is the browser-side counterpart over the *sealed*
+  `kernel_ops` schema (`id`/`prev_hash`/`op_hash`/`sig`); the engine projection uses `erp_kernel`'s op-log
+  schema, so the node seam proves trust by replay equality (same intent → same op → identical rebuild).
+- **Gates engine-side** (I3/owner): role capability via `ctx.role.actions` (mirror `poc_wire.mayRun`);
+  owner-gate via the op-log — a mutation whose `ctx.actor` ≠ the doc's recorded owning actor is
+  `{rejected, why:'owner-gate'}` (G-SINGLE-WRITER). The UI cannot bypass either.
+- **Witnesses** (`build/erp/poc_seam.log`): `§SEAM surface=read,dispatch,manifest,verbs,verify` (enumerated);
+  `§SEAM dispatch replay rebuildA==rebuildB agree=Y` (I4); `§SEAM read role=… rows-in-scope=N out-of-scope=0`
+  (I3); `§SEAM gate owner-gate rejected=Y` / `role-no-grant rejected=Y`.
+
+**⚠ JOINT re-freeze flag (do NOT resolve solo, ENGINE_CONTRACT §0/§4 firewall).** §1 names the manifest
+facet `gravityRank`; the built D2 manifest (`build_shard_manifest.js`) emits `menuGroup` (+ `resident`,
+`contentHash`). `manifest(ctx)` returns the menuGroup shape verbatim. The `gravityRank`↔`menuGroup` name
+reconciliation is a **joint** decision with the RECORD-PANEL (host) lane — recorded here, not edited into
+§1. `§SEAM-FROZEN` is left for that co-ratification.
+
 ## §7 Guardrails
 
 1. **The seam is the only coupling.** No second backchannel between UI and engine.
