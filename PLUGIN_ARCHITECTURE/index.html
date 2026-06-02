@@ -1,0 +1,5058 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../IDEMPIERE_2/">
+      
+      
+        <link rel="next" href="../ENGINE_CONTRACT/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Plugin Architecture (metadata-first) - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#plugin-architecture-metadata-first-no-new-skill-host-absorbs-the-glue" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Plugin Architecture (metadata-first)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../4D5DAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  BIM5D
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../LAST_MILE_PROBLEM/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Last Mile
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../RED_PILL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Enterprise/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../SpatialERP_OOTB/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Spatial ERP
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FeatureComparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Feature Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AboutMore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About BIM OOTB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ShipYard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond Buildings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM5D
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    BIM5D
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4D5DAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4D/5D Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House (125K)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Last Mile
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9 Gates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIMEyes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (77 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RED_PILL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Red Pill — Design From Grammar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOM_AS_CONTEXT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM-as-Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOM_ENGINE_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Engine Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Modeller_OOTB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browser as Modeller
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_Browser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB (Browser)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CLASH_DETECTION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clash Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SQLite3D_Schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SQLite3D Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PLUGIN_SDK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MOBILE_DEPLOY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mobile & Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output DB (G4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6D/7D/Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../STANDARDS_COMPLIANCE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Standards Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REPORTING_ENGINE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporting Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PDF_TERRAIN/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDF Terrain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_2D_Guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_LAYOUT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FORGE_SUITE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forge Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial ERP
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spatial ERP
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SpatialERP_OOTB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Every Record Has a Place
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SpatialERP_POC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction ERP POC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD-in-Browser (iDempiere)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IDEMPIERE_2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    iDempiere 2.0 — the Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Architecture (metadata-first)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Architecture (metadata-first)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-the-governing-principle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §0 The governing principle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-gap-restated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1 The gap, restated
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-prior-art-has-anyone-solved-this" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2 Prior art — has anyone solved this?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-two-tier-extension-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3 The two-tier extension model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#35-the-minimal-manifest-the-accounting-genome-what-an-erp-actually-needs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.5 The minimal manifest — the accounting genome (what an ERP actually needs)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§3.5 The minimal manifest — the accounting genome (what an ERP actually needs)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#351-account-role-resolution-grammar-grounded-in-ad_seeddb-non-invent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.5.1 Account-role resolution grammar (grounded in ad_seed.db, non-invent)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-authoring-surface-popular-methods-only-no-new-skill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4 Authoring surface — popular methods only, no new skill
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-glue-what-the-host-absorbs-so-the-plugin-doesnt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5 The glue — what the host absorbs (so the plugin doesn't)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-loose-coupling-the-op-log-as-the-bus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6 Loose coupling = the op-log as the bus
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-isolation-security-the-open-gap-and-the-modern-answer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §7 Isolation &amp; security — the open gap, and the modern answer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-versioning-where-the-complexity-relocates-it-does-not-vanish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §8 Versioning — where the complexity relocates (it does not vanish)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-boundaries-what-this-doc-does-not-cover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §9 Boundaries — what this doc does NOT cover
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-witnesses-log-first-the-only-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §10 Witnesses (§-log first; the only evidence)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-build-order-each-names-its-witness-nothing-builds-without-go" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §11 Build order (each names its witness; NOTHING builds without GO)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-guardrails-doctrine-not-preference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12 Guardrails (doctrine, not preference)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-prototype-readiness-the-first-test-plugin-against-the-real-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13 Prototype readiness — the first test plugin against the real platform
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§13 Prototype readiness — the first test plugin against the real platform">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#130-what-already-exists-verified-file-cited" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.0 What already exists (verified, file-cited)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#131-the-single-gap-for-a-posting-plugin-named-not-hidden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.1 The single gap for a posting plugin (named, not hidden)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#132-two-prototype-tracks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.2 Two prototype tracks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#133-the-worked-test-plugin-track-b-sales-invoice-post" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.3 The worked test plugin (Track B) — "Sales Invoice → Post"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#134-acceptance-witnesses-the-prototype-is-done-when-these-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.4 Acceptance witnesses (the prototype is "done" when these log)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ENGINE_CONTRACT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engine ↔ UI Contract (the seam)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HolyGrail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Holy Grail (editable rules, live)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ReadMeShowMe/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReadMe / ShowMe Help (POC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HelpO2C/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    O2C Help Steps (ReadMe)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_Roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Forward Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VibeProgramming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vibe Programming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OpLogERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Op-Log ERP Engine (Abstract)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EnablingTechTimeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enabling-Tech Timeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LocalFirstPriorArt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local-First Prior Art
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DistributedERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HospitalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hospital (HA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RevitAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Revit MEP (RM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House (125K)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StressTest_1M/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1M Stress Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_HTML_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Plans Viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RouteTemplate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Find and Navigate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RTreeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    City-Scale RTree
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Localization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-the-governing-principle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §0 The governing principle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-gap-restated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1 The gap, restated
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-prior-art-has-anyone-solved-this" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2 Prior art — has anyone solved this?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-two-tier-extension-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3 The two-tier extension model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#35-the-minimal-manifest-the-accounting-genome-what-an-erp-actually-needs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.5 The minimal manifest — the accounting genome (what an ERP actually needs)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§3.5 The minimal manifest — the accounting genome (what an ERP actually needs)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#351-account-role-resolution-grammar-grounded-in-ad_seeddb-non-invent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.5.1 Account-role resolution grammar (grounded in ad_seed.db, non-invent)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-authoring-surface-popular-methods-only-no-new-skill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4 Authoring surface — popular methods only, no new skill
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-glue-what-the-host-absorbs-so-the-plugin-doesnt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5 The glue — what the host absorbs (so the plugin doesn't)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-loose-coupling-the-op-log-as-the-bus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6 Loose coupling = the op-log as the bus
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-isolation-security-the-open-gap-and-the-modern-answer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §7 Isolation &amp; security — the open gap, and the modern answer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-versioning-where-the-complexity-relocates-it-does-not-vanish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §8 Versioning — where the complexity relocates (it does not vanish)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-boundaries-what-this-doc-does-not-cover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §9 Boundaries — what this doc does NOT cover
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-witnesses-log-first-the-only-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §10 Witnesses (§-log first; the only evidence)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-build-order-each-names-its-witness-nothing-builds-without-go" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §11 Build order (each names its witness; NOTHING builds without GO)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-guardrails-doctrine-not-preference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12 Guardrails (doctrine, not preference)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-prototype-readiness-the-first-test-plugin-against-the-real-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13 Prototype readiness — the first test plugin against the real platform
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§13 Prototype readiness — the first test plugin against the real platform">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#130-what-already-exists-verified-file-cited" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.0 What already exists (verified, file-cited)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#131-the-single-gap-for-a-posting-plugin-named-not-hidden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.1 The single gap for a posting plugin (named, not hidden)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#132-two-prototype-tracks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.2 Two prototype tracks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#133-the-worked-test-plugin-track-b-sales-invoice-post" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.3 The worked test plugin (Track B) — "Sales Invoice → Post"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#134-acceptance-witnesses-the-prototype-is-done-when-these-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.4 Acceptance witnesses (the prototype is "done" when these log)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<!--
+BIM OOTB / ERP OOTB — iDempiere 2.0: the plugin / extension architecture.
+Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+SPDX-License-Identifier: MIT
+-->
+
+<h1 id="plugin-architecture-metadata-first-no-new-skill-host-absorbs-the-glue">Plugin Architecture — metadata-first, no new skill, host absorbs the glue<a class="headerlink" href="#plugin-architecture-metadata-first-no-new-skill-host-absorbs-the-glue" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Status: DRAFT / SPEC, internal working concept, far-off, grail-gated.</strong> Nothing is built.
+Spec-first; non-invent (extensions are DATA, not hardwired code); witness-led; <strong>EXPLICIT GO before
+any build or deploy.</strong> This doc owns the <strong>extension/plugin</strong> layer of the engine. It defers the
+<em>model</em> to <a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a> and all <em>rendering</em> to
+<a href="../IDEMPIERE_RENDERER_SPEC/">IDEMPIERE_RENDERER_SPEC.md</a>.</p>
+<p>Read first: <a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a> (the thin core: 5-table bridge + verbs + signed op-log) ·
+<a href="../PILL_MANIFEST_SPEC/">PILL_MANIFEST_SPEC.md</a> (the live registry-as-data precedent) ·
+<code>bim-ootb/viewer/pill_builder.js</code> (S281 registry — the working shape to reuse) ·
+<a href="../ERP/">ERP.md §0.14</a> (the closed verb set) · <a href="../DistributedERP/">DistributedERP.md</a> (op-log doctrine).</p>
+</blockquote>
+<hr />
+<h2 id="0-the-governing-principle">§0 The governing principle<a class="headerlink" href="#0-the-governing-principle" title="Permanent link">&para;</a></h2>
+<p>A plugin author should write <strong>the least possible definition, in a format they already know, and get
+everything else for free.</strong> The framework — not the plugin — carries lifecycle, wiring, persistence,
+undo, signing, and UI mounting. Stated as three rules:</p>
+<ol>
+<li><strong>Metadata-first.</strong> The default extension is <em>data</em> (rows / JSON), not code. Code is the exception,
+   reserved for genuinely new computation.</li>
+<li><strong>No new skill.</strong> Authoring uses <strong>popular, already-known methods</strong> — JSON, SQL rows, a plain JS
+   function — never a bespoke DSL, annotation language, build tool, or framework a person must learn
+   first. The host language (JS) <em>is</em> the extension language (<a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a> §core).</li>
+<li><strong>The glue is the product.</strong> Everything hard about "managing plugins" (loading, isolation,
+   coupling, ordering, persistence, undo/redo, audit, version skew) is absorbed by the host. A plugin
+   declares <em>what</em> it contributes; the host decides <em>how</em> it runs.</li>
+</ol>
+<p>This is the deliberate inverse of OSGi: OSGi makes the <em>plugin</em> carry the modularity machinery
+(manifests, Import/Export-Package, bundle lifecycle, classloaders). Here the <em>host</em> carries it, so the
+plugin shrinks to a contribution.</p>
+<h2 id="1-the-gap-restated">§1 The gap, restated<a class="headerlink" href="#1-the-gap-restated" title="Permanent link">&para;</a></h2>
+<p>OSGi exists to give Java four things the language lacked: (a) module boundaries, (b) a service
+registry for interface-decoupling, (c) dynamic lifecycle, (d) versioned dependency isolation
+(<a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a> §from-SAP/OSGi lineage). The <em>need</em> — extend without forking core,
+loosely coupled, add/remove without rebuilding the world — is permanent. OSGi is one heavyweight,
+Java-specific answer, and a famously painful one.</p>
+<p>Two of OSGi's four reasons do not exist for us:
+- <strong>Module system:</strong> JS has one (ES Modules + dynamic <code>import()</code>). The #1 reason OSGi was invented is moot.
+- <strong>Behaviour-as-data:</strong> iDempiere needed OSGi partly because its AD was <em>incomplete</em> — real logic leaked
+  into Java callouts/processes/model-validators, and <em>that code</em> is what needed an OSGi plugin
+  mechanism. Push more behaviour into data and most "plugins" stop being code at all.</p>
+<p>So the residual problem is small: a way to register the ~10% that must be code, and couple it loosely.</p>
+<h2 id="2-prior-art-has-anyone-solved-this">§2 Prior art — has anyone solved this?<a class="headerlink" href="#2-prior-art-has-anyone-solved-this" title="Permanent link">&para;</a></h2>
+<p>Yes — the <strong>metadata-minimal-plugin + host-glue</strong> model is well established and commercially proven.
+The pieces are solved; only the <em>synthesis with our op-log core</em> is new. We adopt patterns, not code
+(clean-room, <a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a> §Guardrails).</p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>What it proves</th>
+<th>What we take</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>VS Code extensions</strong></td>
+<td><code>package.json</code> <code>contributes</code> is <em>pure metadata</em> (commands, menus, views, settings); declarative <strong>contribution points</strong>; lazy <strong>activation events</strong>. The host owns every registry.</td>
+<td>The contribution-point shape; lazy activation; "manifest, not framework."</td>
+</tr>
+<tr>
+<td><strong>Eclipse extension points / <code>plugin.xml</code></strong></td>
+<td>The ancestor of the above — a <strong>declarative layer on top of OSGi</strong> (Equinox, which <em>is</em> iDempiere's runtime). Proves you can have metadata extension without exposing OSGi to the author.</td>
+<td>Confirms the declarative layer is the part that matters; OSGi underneath was the avoidable cost.</td>
+</tr>
+<tr>
+<td><strong>Salesforce / ServiceNow</strong></td>
+<td>Enterprise-scale "clicks not code": objects, fields, flows as <strong>metadata</strong>; Apex only for residual logic.</td>
+<td>Proof that behaviour-as-metadata + minimal code scales to real ERP breadth.</td>
+</tr>
+<tr>
+<td><strong>Directus / Strapi</strong> (headless, DB-backed)</td>
+<td><strong>Introspect a SQL schema → generate the admin + API.</strong> The database is the source of truth; an extension is a row or a small hook.</td>
+<td>Most direct precedent given we are SQLite-centric — schema/data <em>is</em> the plugin surface.</td>
+</tr>
+<tr>
+<td><strong>WordPress hooks / filters</strong></td>
+<td>A lightweight <strong>event-bus</strong> plugin model: register a callback on a named hook. Massive ecosystem, minimal definition.</td>
+<td>The event-bus coupling shape (our op-log is the typed, signed version).</td>
+</tr>
+<tr>
+<td><strong>pytest / <code>pluggy</code>, Datasette plugins</strong></td>
+<td><strong>Hook-specs</strong>: tiny plugins, host does the work; Datasette is SQLite-centric like us.</td>
+<td>The "small plugin, host-driven" contract; hookspec = our extension-point registry.</td>
+</tr>
+<tr>
+<td><strong>ERPNext / Frappe DocType</strong></td>
+<td>Everything is metadata (<a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a> §from-ERPNext).</td>
+<td>Validates the dictionary/descriptor approach end-to-end.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What is NOT yet solved (our contribution, honestly bounded):</strong> the <em>combination</em> of
+metadata-minimal plugins <strong>+ the op-log as the coupling bus + signed deterministic replay + SQLite-WASM
+local-first</strong>. Each ingredient is proven; nobody (that we can cite) ships all four together. The claim
+is the <em>synthesis</em>, never "we invented metadata plugins" — see §10 witnesses.</p>
+<h2 id="3-the-two-tier-extension-model">§3 The two-tier extension model<a class="headerlink" href="#3-the-two-tier-extension-model" title="Permanent link">&para;</a></h2>
+<ul>
+<li>
+<p><strong>Tier 1 — Data overlays (~90%).</strong> A new document type, field, validation, screen, menu item, report,
+  rule, or chart is <strong>rows / JSON entries</strong>, folded by the existing engine. No code, no module, no
+  lifecycle. This is where iDempiere needed <em>both</em> the AD <em>and</em> OSGi; we need only the data layer,
+  because the engine is data-driven enough that there is nothing to make code-pluggable. Precedent
+  already live: <a href="../PILL_MANIFEST_SPEC/">PILL_MANIFEST_SPEC.md</a> (pills + the whole AD_Menu are data),
+  the compiled AD manifest, <code>erp_rules.db</code>.</p>
+</li>
+<li>
+<p><strong>Tier 2 — Code plugins (~10%).</strong> Genuinely new verbs/primitives, external integrations (payment,
+  IFC/format parsers, an API), or a custom renderer. These ship as <strong>ES modules</strong> that <em>register</em>
+  against named extension points and communicate <strong>only through the op-log / kernel — never by calling
+  each other directly</strong> (§6). Tier 2 is the residue, deliberately kept thin.</p>
+</li>
+</ul>
+<p>The single rule across both: a Tier-2 plugin that could have been a Tier-1 overlay is a design failure.
+Pressure is always toward data.</p>
+<h2 id="35-the-minimal-manifest-the-accounting-genome-what-an-erp-actually-needs">§3.5 The minimal manifest — the accounting genome (what an ERP actually needs)<a class="headerlink" href="#35-the-minimal-manifest-the-accounting-genome-what-an-erp-actually-needs" title="Permanent link">&para;</a></h2>
+<p>This is the floor of "as little as possible." An ERP does <strong>not</strong> need a plugin's code, screens, or
+workflow. To fold a new thing into the system, it needs only two declarations — and they can live at
+<strong>a URL</strong> the host fetches (the manifest <em>is</em> the plugin; the URL is just its locator — the same
+URL-as-genome idea as <a href="../AnyAppMaker/">AnyAppMaker.md</a>):</p>
+<ol>
+<li>
+<p><strong>The charge model — <code>DR/CR → Account ID</code>.</strong> The posting rule: "when this event happens, debit
+   account X, credit account Y." This is the irreducible thing that makes something an <em>ERP</em>
+   transaction rather than a note. It is exactly iDempiere's posting model (a document → <code>Fact_Acct</code>
+   lines via the accounting schema), reduced to its essence: a balanced pair of journal entries keyed
+   to account ids. In 2.0 terms it is a verb that emits <strong><code>journal</code></strong> lines — nothing more.</p>
+</li>
+<li>
+<p><strong>The master-data bindings.</strong> Which masters the thing references and resolves accounts <em>through</em> —
+   <code>C_BPartner</code> (receivable/payable account), <code>M_Product</code> / product category (revenue/COGS/inventory
+   account), <code>C_Charge</code> (its own account), <code>C_UOM</code>, the chart of accounts. Master data is <em>where the
+   Account IDs come from</em>: the partner/product/charge carry the account assignments, the event picks
+   the pair. So "and other master data models" is not extra — it is half of the charge model, because
+   without the masters there is no Account ID to post to.</p>
+</li>
+</ol>
+<p>So the <strong>whole</strong> minimal manifest is, conceptually:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://.../my-thing.manifest.json&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;masters&quot;</span><span class="p">:</span><span class="w">  </span><span class="p">[</span><span class="s2">&quot;C_BPartner&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;M_Product&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;C_Charge&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;charge&quot;</span><span class="p">:</span><span class="w">   </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;event&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;complete&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;dr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{Product.RevenueAcct}&quot;</span><span class="p">,</span><span class="w">   </span><span class="nt">&quot;cr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{BPartner.ReceivableAcct}&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;event&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pay&quot;</span><span class="p">,</span><span class="w">      </span><span class="nt">&quot;dr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{Bank.InTransitAcct}&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;cr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{BPartner.ReceivableAcct}&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>That is the entire definition an author must supply for a new posting document type. The host glue (§5)
+provides everything else: it resolves <code>{…}</code> against the bound masters, emits the balanced <code>journal</code>
+ops, signs them, folds the GL, and renders the views — none of which the author writes. The accounts
+<em>balance check</em> (ΣDR = ΣCR) is enforced by the fold, not the plugin. <strong>Charge model + master bindings =
+the accounting genome; the rest is glue.</strong> Anything beyond these two is either a Tier-1 overlay (UI,
+menu, report — data) or the rare Tier-2 code verb (genuinely new computation, §3).</p>
+<h3 id="351-account-role-resolution-grammar-grounded-in-ad_seeddb-non-invent">§3.5.1 Account-role resolution grammar (grounded in <code>ad_seed.db</code>, non-invent)<a class="headerlink" href="#351-account-role-resolution-grammar-grounded-in-ad_seeddb-non-invent" title="Permanent link">&para;</a></h3>
+<p>The <code>{Master.Role}</code> tokens are <strong>not</strong> invented — each resolves to a real account column already present
+in <code>ad_seed.db</code> (the iDempiere accounting masters), and falls back to <code>c_acctschema_default</code> exactly as
+iDempiere's posting layer does. An "Account ID" is a <code>C_ElementValue_ID</code> (the chart of accounts:
+379 rows, e.g. <code>421 = Sideline Revenue</code>, <code>234 = Receivable</code>). Resolution is keyed by
+<code>(master_id, c_acctschema_id)</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Token</th>
+<th>Source table (verified)</th>
+<th>Column</th>
+<th>Fallback (<code>c_acctschema_default</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{BPartner.Receivable}</code></td>
+<td><code>c_bp_customer_acct</code></td>
+<td><code>c_receivable_acct</code></td>
+<td><code>c_receivable_acct</code></td>
+</tr>
+<tr>
+<td><code>{BPartner.Prepayment}</code></td>
+<td><code>c_bp_customer_acct</code></td>
+<td><code>c_prepayment_acct</code></td>
+<td><code>c_prepayment_acct</code></td>
+</tr>
+<tr>
+<td><code>{BPartner.Liability}</code></td>
+<td><code>c_bp_group_acct</code> (vendor side)</td>
+<td><code>v_liability_acct</code></td>
+<td><code>v_liability_acct</code></td>
+</tr>
+<tr>
+<td><code>{Product.Revenue}</code></td>
+<td><code>m_product_category_acct</code> (via product→category)</td>
+<td><code>p_revenue_acct</code></td>
+<td><code>p_revenue_acct</code></td>
+</tr>
+<tr>
+<td><code>{Product.COGS}</code></td>
+<td><code>m_product_category_acct</code></td>
+<td><code>p_cogs_acct</code></td>
+<td><code>p_cogs_acct</code></td>
+</tr>
+<tr>
+<td><code>{Product.Asset}</code></td>
+<td><code>m_product_category_acct</code></td>
+<td><code>p_asset_acct</code></td>
+<td><code>p_asset_acct</code></td>
+</tr>
+<tr>
+<td><code>{Charge.Expense}</code></td>
+<td><code>c_charge_acct</code></td>
+<td><code>ch_expense_acct</code></td>
+<td><code>ch_expense_acct</code></td>
+</tr>
+<tr>
+<td><code>{Charge.Revenue}</code></td>
+<td><code>c_charge_acct</code></td>
+<td><code>ch_revenue_acct</code></td>
+<td><code>ch_revenue_acct</code></td>
+</tr>
+<tr>
+<td><code>{Bank.InTransit}</code></td>
+<td><code>c_acctschema_default</code></td>
+<td>—</td>
+<td><code>b_intransit_acct</code></td>
+</tr>
+<tr>
+<td><code>{Tax.Due}</code></td>
+<td><code>c_tax_acct</code></td>
+<td>(per tax)</td>
+<td><code>t_due_acct</code></td>
+</tr>
+</tbody>
+</table>
+<p>The resolver is <strong>host glue</strong>, written once: <code>token → (table, column)</code> lookup by <code>(master_id,
+acctschema)</code>, else the schema default. The manifest author writes only the token; they never touch a
+column name or a join. This table <em>is</em> the account half of the Odoo↔iDempiere data dictionary
+(<a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a> §pivot) — here in its iDempiere-native form, every row witnessed
+against <code>ad_seed.db</code>.</p>
+<h2 id="4-authoring-surface-popular-methods-only-no-new-skill">§4 Authoring surface — popular methods only, no new skill<a class="headerlink" href="#4-authoring-surface-popular-methods-only-no-new-skill" title="Permanent link">&para;</a></h2>
+<p>The contract: a plugin author touches <strong>at most one of three familiar things</strong>, and nothing else.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Author writes</th>
+<th>Format (already-known)</th>
+<th>Author does NOT write</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — overlay</td>
+<td>a manifest row / object</td>
+<td><strong>JSON</strong> (the <code>pill_builder.js</code> <code>actions[]</code> shape; or AD-style descriptor rows)</td>
+<td>no build, no lifecycle, no SQL DDL</td>
+</tr>
+<tr>
+<td>1 — data</td>
+<td>rows</td>
+<td><strong>SQL <code>INSERT</code> / a CSV / a spreadsheet import</strong> into the bridge tables</td>
+<td>no schema design (the 5-table bridge is fixed)</td>
+</tr>
+<tr>
+<td>2 — code</td>
+<td>one function</td>
+<td><strong>a plain JS function</strong> <code>(ctx, op) =&gt; op[]</code> registered at an extension point</td>
+<td>no classloader, no manifest headers, no module wiring, no DI container</td>
+</tr>
+</tbody>
+</table>
+<p>Concretely, the <strong>whole</strong> of a Tier-1 overlay is a JSON object of the existing pill shape
+(<code>{ id, name, key, icon, fn, panel?, hold? }</code>, <a href="../PILL_MANIFEST_SPEC/">PILL_MANIFEST_SPEC.md</a> §0) — no
+new fields invented. The <strong>whole</strong> of a Tier-2 plugin is a named function that takes context + an op
+and returns op-group(s); registration is one line against a named point. There is no <code>.csproj</code>, no
+<code>MANIFEST.MF</code>, no <code>plugin.xml</code>, no annotation processor, no codegen step. If an author has to <em>learn
+something to start</em>, we have failed rule §0.2.</p>
+<h2 id="5-the-glue-what-the-host-absorbs-so-the-plugin-doesnt">§5 The glue — what the host absorbs (so the plugin doesn't)<a class="headerlink" href="#5-the-glue-what-the-host-absorbs-so-the-plugin-doesnt" title="Permanent link">&para;</a></h2>
+<p>Everything below is provided by the framework once, for every plugin, so no plugin reimplements it:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>OSGi makes the plugin handle it</th>
+<th>Here the host handles it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Loading / lifecycle</strong></td>
+<td>bundle activator, start/stop</td>
+<td>dynamic <code>import()</code> + register/unregister; activation on first use (VS Code-style)</td>
+</tr>
+<tr>
+<td><strong>Persistence</strong></td>
+<td>the plugin manages its store</td>
+<td>all effects are <strong>ops appended to the signed log</strong>; state is the fold (<a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a>)</td>
+</tr>
+<tr>
+<td><strong>Undo / redo / audit</strong></td>
+<td>bespoke per plugin</td>
+<td>free — reversal = appending the inverse op-group (W-CHAIN); audit = the log</td>
+</tr>
+<tr>
+<td><strong>Coupling / wiring</strong></td>
+<td>service registry, interface contracts</td>
+<td>the <strong>op-log bus</strong> (§6) + the extension-point registry (data)</td>
+</tr>
+<tr>
+<td><strong>Ordering / determinism</strong></td>
+<td>manual</td>
+<td>deterministic replay; ops carry recorded inputs, no <code>Date.now()</code>/<code>Math.random()</code></td>
+</tr>
+<tr>
+<td><strong>Signing / tamper-evidence</strong></td>
+<td>not provided</td>
+<td>every op hash-chained (W-SIGN) by the host, not the plugin</td>
+</tr>
+<tr>
+<td><strong>UI mounting</strong></td>
+<td>the plugin draws</td>
+<td>the renderer mounts contributions (<a href="../IDEMPIERE_RENDERER_SPEC/">IDEMPIERE_RENDERER_SPEC.md</a>)</td>
+</tr>
+<tr>
+<td><strong>Isolation</strong></td>
+<td>classloaders</td>
+<td>extension-host boundary (§7)</td>
+</tr>
+</tbody>
+</table>
+<p>The plugin declares a contribution and (Tier 2) emits ops. The host does the rest. That asymmetry —
+<strong>fat host, thin plugin</strong> — is the entire design.</p>
+<h2 id="6-loose-coupling-the-op-log-as-the-bus">§6 Loose coupling = the op-log as the bus<a class="headerlink" href="#6-loose-coupling-the-op-log-as-the-bus" title="Permanent link">&para;</a></h2>
+<p>This is how we get OSGi's service-registry decoupling without a service registry. Tier-2 plugins do
+<strong>not</strong> hold references to one another and do <strong>not</strong> call each other's functions. They:</p>
+<ul>
+<li><strong>read</strong> the fold (the current projection of the log), and</li>
+<li><strong>emit</strong> ops into the kernel, which appends them to the signed log.</li>
+</ul>
+<p>Two plugins interact only by one emitting an op the other consumes on replay. They are decoupled <em>by
+construction</em> — the contract between them is the <strong>op vocabulary</strong> (<a href="../ERP/">ERP.md §0.14</a>), not an
+interface either imports. This is the WordPress-hook / event-sourcing pattern, with the bus being
+<em>signed, replayable, and typed</em>. A plugin can be added or removed and the log still replays; a removed
+plugin's past ops remain valid history.</p>
+<p>Consequence: the closed verb set is the <em>real</em> extension API. Adding a Tier-2 plugin that needs a new
+op = proposing a new verb, which is a <strong>named, reviewed addition to the alphabet</strong> — exactly the
+<code>newVerbs=[…]</code> discipline from the Odoo fold. The bus stays small on purpose.</p>
+<h2 id="7-isolation-security-the-open-gap-and-the-modern-answer">§7 Isolation &amp; security — the open gap, and the modern answer<a class="headerlink" href="#7-isolation-security-the-open-gap-and-the-modern-answer" title="Permanent link">&para;</a></h2>
+<p>This is the honest weak point and where prior art <em>does</em> give a solution.</p>
+<p><strong>The gap:</strong> a browser plugin runs JS in the page context; a misbehaving or hostile Tier-2 plugin can
+touch globals or exfiltrate. OSGi/Java gives classloader isolation + a permissions model; we have none
+by default. The signed chain protects <em>data</em> integrity, <strong>not</strong> <em>code</em> sandboxing.</p>
+<p><strong>The solved answer (adopt, don't reinvent):</strong> VS Code runs extensions in a <strong>separate Extension Host</strong>
+— a Node child process on desktop, a <strong>Web Worker</strong> on the web — talking to the UI over a typed RPC /
+message boundary; extensions cannot touch the DOM or the renderer directly. The browser-native
+equivalent for us:</p>
+<ul>
+<li>Tier-2 plugins run in a <strong>Web Worker</strong> (or sandboxed iframe), never the main context.</li>
+<li>The only thing crossing the boundary is <strong>ops</strong> (structured-clone messages) — which is already our
+  coupling model (§6), so isolation and coupling collapse into <em>one</em> mechanism.</li>
+<li>A <strong>capability manifest</strong> (which extension points / which op verbs a plugin may emit) gates what it
+  can do — the metadata-permissions model, Salesforce-style, not a Java SecurityManager.</li>
+</ul>
+<p>Honest status: untrusted third-party Tier-2 plugins need the Worker boundary + capability gating
+<em>before</em> any marketplace (<a href="../AnyAppMaker/">AnyAppMaker.md</a>). Tier-1 data overlays carry no code and so
+carry no code-execution risk — only validation-of-data risk, handled by the same rule engine.</p>
+<h2 id="8-versioning-where-the-complexity-relocates-it-does-not-vanish">§8 Versioning — where the complexity relocates (it does not vanish)<a class="headerlink" href="#8-versioning-where-the-complexity-relocates-it-does-not-vanish" title="Permanent link">&para;</a></h2>
+<p>OSGi's hard part was package versioning. Ours becomes <strong>versioning the op/verb vocabulary</strong> — the schema
+of the bus (§6). This is the real, irreducible maintenance cost and must be owned explicitly:</p>
+<ul>
+<li>The verb set and the bridge shape are a <strong>published contract</strong> with a version.</li>
+<li>Tier-1 overlays declare the manifest/descriptor schema version they target; the host migrates old
+  overlays forward (data migration = a fold transform, the same machinery as the ERP migration).</li>
+<li>A removed/renamed verb is a breaking change → covered by replay against an oracle before release.</li>
+</ul>
+<p>We trade OSGi's bundle-version hell for one well-scoped artifact: the verb vocabulary. Smaller surface,
+but not free — discipline lives here.</p>
+<h2 id="9-boundaries-what-this-doc-does-not-cover">§9 Boundaries — what this doc does NOT cover<a class="headerlink" href="#9-boundaries-what-this-doc-does-not-cover" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Rendering of contributions</strong> → <a href="../IDEMPIERE_RENDERER_SPEC/">IDEMPIERE_RENDERER_SPEC.md</a>.</li>
+<li><strong>The model / verb set / fold</strong> → <a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a>, <a href="../ERP/">ERP.md</a>.</li>
+<li><strong>The live editable-rules write-loop</strong> (rule-as-data edited at runtime) → grail, gated E3/E4
+  (<a href="../HolyGrail/">HolyGrail.md</a>).</li>
+<li><strong>A third-party marketplace / distribution / trust signing</strong> → <a href="../AnyAppMaker/">AnyAppMaker.md</a>;
+  this doc only states the §7 prerequisites.</li>
+</ul>
+<h2 id="10-witnesses-log-first-the-only-evidence">§10 Witnesses (§-log first; the only evidence)<a class="headerlink" href="#10-witnesses-log-first-the-only-evidence" title="Permanent link">&para;</a></h2>
+<p>No claim ships without a <code>§</code>-logged proof. Spec-first names them now:</p>
+<ul>
+<li><code>§PLUGIN-OVERLAY tier=1 source=manifest.json handAuthoredCode=0 mounted=N</code> — a new affordance added as
+  data only, zero new bar/host code (the S281 contract, <a href="../PILL_MANIFEST_SPEC/">PILL_MANIFEST_SPEC.md</a>).</li>
+<li><code>§PLUGIN-CODE tier=2 verb=&lt;name&gt; newVerb=Y|N coupling=oplog directCalls=0</code> — a code plugin touches the
+  bus only; <code>directCalls=0</code> proves the no-direct-reference rule (§6).</li>
+<li><code>§PLUGIN-REPLAY pluginAdded then removed → replay rebuildA==rebuildB agree=Y</code> — add/remove leaves the
+  log replayable (determinism, §5).</li>
+<li><code>§PLUGIN-ISOLATION tier=2 context=worker domTouch=0 caps=[…]</code> — code runs off the main context, only
+  declared capabilities used (§7).</li>
+<li><code>§PLUGIN-MINIMAL author wrote: lines=N files=1 newSkill=none</code> — the headline: the <em>authoring cost</em> of a
+  representative plugin, proving §0 (compare blast radius vs an iDempiere OSGi bundle / an Odoo module).</li>
+</ul>
+<h2 id="11-build-order-each-names-its-witness-nothing-builds-without-go">§11 Build order (each names its witness; NOTHING builds without GO)<a class="headerlink" href="#11-build-order-each-names-its-witness-nothing-builds-without-go" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>P0</strong> — formalize the Tier-1 overlay contract on the existing <code>pill_builder.js</code> shape; one new
+  overlay added as pure JSON. <code>§PLUGIN-OVERLAY</code>, <code>§PLUGIN-MINIMAL</code>.</li>
+<li><strong>P1</strong> — Tier-2 extension-point registry (data + a small dispatcher); one code plugin emitting ops via
+  the kernel, zero direct calls. <code>§PLUGIN-CODE</code>, <code>§PLUGIN-REPLAY</code>.</li>
+<li><strong>P2</strong> — Web Worker extension-host boundary + capability manifest for Tier-2. <code>§PLUGIN-ISOLATION</code>.</li>
+<li><strong>P3</strong> — verb-vocabulary versioning + an overlay-schema migration fold (§8).</li>
+<li>(marketplace / third-party trust → deferred to <a href="../AnyAppMaker/">AnyAppMaker.md</a>, grail-gated.)</li>
+</ul>
+<h2 id="12-guardrails-doctrine-not-preference">§12 Guardrails (doctrine, not preference)<a class="headerlink" href="#12-guardrails-doctrine-not-preference" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Fat host, thin plugin.</strong> Every concern a plugin would otherwise carry moves to the host. A plugin
+   that must learn a framework to start violates §0.2.</li>
+<li><strong>Data over code.</strong> Tier 2 is the exception; anything expressible as a Tier-1 overlay must be one.</li>
+<li><strong>Couple only through the op-log.</strong> No plugin-to-plugin direct references (§6). The bus is the API.</li>
+<li><strong>Popular methods only.</strong> JSON / SQL rows / a plain JS function — no bespoke DSL, no new build step.</li>
+<li><strong>Clean-room.</strong> Adopt the <em>patterns</em> of VS Code / Directus / pluggy (§2); never copy their source.</li>
+<li><strong>Witness everything.</strong> No "it's pluggable / it's isolated / it's minimal" claim without the matching
+   <code>§</code> line (§10).</li>
+</ol>
+<h2 id="13-prototype-readiness-the-first-test-plugin-against-the-real-platform">§13 Prototype readiness — the first test plugin against the real platform<a class="headerlink" href="#13-prototype-readiness-the-first-test-plugin-against-the-real-platform" title="Permanent link">&para;</a></h2>
+<p>This section makes the spec buildable. It states what the platform already provides, the single gap a
+<em>posting</em> plugin needs, and a concrete first plugin — all grounded in <code>bim-ootb/viewer/</code> and <code>ad_seed.db</code>
+(verified 2026-06-02). <strong>Nothing here is built; EXPLICIT GO required (§0).</strong></p>
+<h3 id="130-what-already-exists-verified-file-cited">§13.0 What already exists (verified, file-cited)<a class="headerlink" href="#130-what-already-exists-verified-file-cited" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Where</th>
+<th>Status for prototyping</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Op-log (rich ops + verbs)</td>
+<td><code>kernel_ops.js:9-22</code>; verbs <code>CREATE_DOCUMENT/SET_STATUS/CREATE_LINE/ALLOCATE/MATCH</code> (<code>erp_kernel.js:72-80</code>)</td>
+<td>ready</td>
+</tr>
+<tr>
+<td>Signed hash-chain</td>
+<td><code>erp_signer.js</code> (ECDSA P-256), <code>kernel_ops.js sealChain</code> (<code>prev_hash\|canonical→op_hash→sig</code>)</td>
+<td>ready</td>
+</tr>
+<tr>
+<td>Deterministic fold</td>
+<td><code>erp_kernel.js replay()/applyOne()</code> → 5-table projection</td>
+<td>ready</td>
+</tr>
+<tr>
+<td><strong>Tier-1 extension point</strong></td>
+<td><code>pills.json</code> (declarative) → <code>erp_pills.js:75</code> <code>fetch('pills.json')</code> → <code>pill_builder.js actions[]</code></td>
+<td><strong>ready — a Tier-1 plugin needs zero engine change</strong></td>
+</tr>
+<tr>
+<td>Master data access</td>
+<td><code>ad_data.js readRecords()</code> (SQL or bridge)</td>
+<td>ready</td>
+</tr>
+<tr>
+<td><strong>Account masters</strong></td>
+<td><code>ad_seed.db</code>: <code>C_ElementValue</code> (379), <code>c_bp_customer_acct</code> (36), <code>m_product_category_acct</code> (28), <code>c_charge_acct</code> (6), <code>c_acctschema_default</code> (2), <code>C_AcctSchema</code> (2)</td>
+<td><strong>ready — the Account IDs the charge model resolves to all exist</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="131-the-single-gap-for-a-posting-plugin-named-not-hidden">§13.1 The single gap for a <em>posting</em> plugin (named, not hidden)<a class="headerlink" href="#131-the-single-gap-for-a-posting-plugin-named-not-hidden" title="Permanent link">&para;</a></h3>
+<p>The engine's <code>journal</code> projection today is a <strong>settlement edge</strong>, not double-entry:
+<code>journal(id, batch_id, journal_id, source, metadata)</code> (<code>erp_kernel.js:40</code>) — <strong>no DR/CR, no account_id.</strong>
+iDempiere's real shape exists only in the seed's <code>gl_journalline</code> (<code>account_id, amtacctdr, amtacctcr,
+c_validcombination_id, …</code>), which the engine does not yet write. So a posting plugin requires <strong>one
+bounded host change</strong> (glue, not plugin):</p>
+<ol>
+<li><strong>Extend the <code>journal</code> projection</strong> with <code>account_id, amtacctdr, amtacctcr</code> (mirror <code>gl_journalline</code>).</li>
+<li><strong>Add a <code>POST</code> verb</strong> to the kernel that takes a document + a charge rule, runs the §3.5.1 resolver
+   against the bound masters, and emits <strong>balanced</strong> journal lines (ΣDR = ΣCR), signed + replayable like
+   every other op.</li>
+<li><strong>Reuse</strong> the §3.5.1 resolver as host glue (no per-plugin account logic).</li>
+</ol>
+<p>This is the honest prerequisite: until it lands, a <em>posting</em> plugin cannot be witnessed — only a Tier-1
+overlay can. The gap is small and the resolution data is fully present; nothing is invented.</p>
+<h3 id="132-two-prototype-tracks">§13.2 Two prototype tracks<a class="headerlink" href="#132-two-prototype-tracks" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Track A — Tier-1 overlay, provable today, zero engine change.</strong> Add one pill as a pure <code>pills.json</code>
+  row (e.g. a new report/affordance) and witness that the bar grows with <code>handAuthoredCode=0</code>. This
+  proves the metadata-plugin claim (§0, §10 <code>§PLUGIN-OVERLAY</code> + <code>§PLUGIN-MINIMAL</code>) on the <em>current</em>
+  platform with no risk.</li>
+<li><strong>Track B — Tier-2 posting plugin, after §13.1.</strong> The accounting-genome plugin (§3.5) — the real test
+  of the thesis. Worked example below.</li>
+</ul>
+<h3 id="133-the-worked-test-plugin-track-b-sales-invoice-post">§13.3 The worked test plugin (Track B) — "Sales Invoice → Post"<a class="headerlink" href="#133-the-worked-test-plugin-track-b-sales-invoice-post" title="Permanent link">&para;</a></h3>
+<p>A real document type using real seed masters. The author writes only this manifest:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;post.salesinvoice&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;doc_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;C_Invoice&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acctschema&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">101</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;masters&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;C_BPartner&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;M_Product&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;charge&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;event&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;complete&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;dr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;acct&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{BPartner.Receivable}&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;amt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;doc.GrandTotal&quot;</span><span class="w"> </span><span class="p">}],</span>
+<span class="w">      </span><span class="nt">&quot;cr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;acct&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{Product.Revenue}&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;amt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;line.LineNetAmt&quot;</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Host glue does the rest: resolves <code>{BPartner.Receivable}</code> → <code>c_bp_customer_acct.c_receivable_acct</code>
+(e.g. C_ElementValue <code>234</code>) and <code>{Product.Revenue}</code> → <code>m_product_category_acct.p_revenue_acct</code> (e.g.
+<code>229</code>) for the invoice's partner/product, emits the balanced <code>journal</code> lines via the <code>POST</code> verb, signs
+them, folds the trial balance. The author never wrote a column name, a join, a signing call, or a
+balance check. (Tax/rounding deferred — first cut posts net; <code>{Tax.Due}</code> is a later charge row.)</p>
+<h3 id="134-acceptance-witnesses-the-prototype-is-done-when-these-log">§13.4 Acceptance witnesses (the prototype is "done" when these log)<a class="headerlink" href="#134-acceptance-witnesses-the-prototype-is-done-when-these-log" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>§PLUGIN-OVERLAY tier=1 source=pills.json handAuthoredCode=0 pills=N+1</code> — Track A.</li>
+<li><code>§PLUGIN-MINIMAL author wrote: lines=N files=1 newSkill=none</code> — the authoring-cost headline.</li>
+<li><code>§PLUGIN-POST doc=C_Invoice#&lt;id&gt; dr=[234:amt] cr=[229:amt] balanced=Y (ΣDR=ΣCR)</code> — Track B posts,
+  balances, accounts resolved from real masters.</li>
+<li><code>§PLUGIN-CODE tier=2 verb=POST coupling=oplog directCalls=0</code> — posts only through the op-log bus (§6).</li>
+<li><code>§PLUGIN-REPLAY pluginAdded → replay rebuildA==rebuildB agree=Y</code> — deterministic after the plugin.</li>
+</ul>
+<p>When §13.1 + Track A + Track B log the above against <code>ad_seed.db</code>, the manifest spec is proven on the
+real platform and the architecture moves from spec to demonstrated.</p>
+<hr />
+<p><em>Status: DRAFT v0.1, 2026-06-02 — extension/plugin layer of the iDempiere 2.0 lineage. Nothing built;
+EXPLICIT GO required before any code or deploy. Siblings: IDEMPIERE_2.md (model) · IDEMPIERE_RENDERER_SPEC.md
+(UI) · PILL_MANIFEST_SPEC.md (the live registry-as-data precedent). Prior art in §2 is cited as pattern,
+never source. The synthesis claim (metadata plugins + op-log bus + signed replay + SQLite-WASM
+local-first) is bounded as novel only where §2 shows no single prior system combines all four.</em></p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/red1oon/bim-ootb" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/red1oon/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
