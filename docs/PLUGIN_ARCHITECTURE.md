@@ -372,6 +372,147 @@ balance check. (Tax/rounding deferred — first cut posts net; `{Tax.Due}` is a 
 When §13.1 + Track A + Track B log the above against `ad_seed.db`, the manifest spec is proven on the
 real platform and the architecture moves from spec to demonstrated.
 
+### §13.5 Resolved against `ad_seed.db` (build session 2026-06-02)
+
+The §13.3 worked example, pinned to verified seed rows. The headless POC lives in `scripts/` only
+(`poc_post.js` + `post_resolver.js`); no viewer wiring (separate, GO-gated session).
+
+**Document picked.** `C_Invoice#103` (DocumentNo `200002`, `IsSOTrx=Y`, `C_BPartner_ID=117`,
+`GrandTotal=161.12`, acctschema **101**), 3 lines, ΣLineNetAmt `152.00`, tax `9.12` (`c_invoicetax`).
+
+**Tax is not deferred — superseding §13.3's "post net first" hedge.** Every sales invoice in this seed
+carries tax (gap 2.85–12.95; no zero-tax invoice exists), so a net-only entry would either fail the
+ΣDR=ΣCR invariant or post the receivable below the document's real GrandTotal. The honest balanced entry
+is the three-line one, with `{Tax.Due}` resolved from `c_tax_acct`:
+
+```
+DR  {BPartner.Receivable}  234   161.12   ← doc.GrandTotal
+CR  {Product.Revenue}      229   152.00   ← Σ line.LineNetAmt
+CR  {Tax.Due}              255     9.12   ← Σ c_invoicetax.TaxAmt
+                          ΣDR 161.12 = ΣCR 161.12
+```
+
+**Resolver bindings (verified, non-invent — each token → real column → real account):**
+
+| Token | Source column (key) | Value | Underlying `C_ElementValue` |
+|---|---|---|---|
+| `{BPartner.Receivable}` | `c_bp_customer_acct.c_receivable_acct` `(c_bpartner_id=117, c_acctschema_id=101)` | `234` | 518 `12110 Accounts Receivable - Trade` |
+| `{Product.Revenue}` | `m_product_category_acct.p_revenue_acct` (via `m_product`→`m_product_category`, `c_acctschema_id=101`) | `229` | — |
+| `{Tax.Due}` | `c_tax_acct.t_due_acct` `(c_tax_id=105, c_acctschema_id=101)` | `255` | 596 `21610 Tax due` |
+
+Resolver returns the master **column value verbatim** (`234`/`229`/`255` — `C_ValidCombination` ids,
+mirroring `gl_journalline`); `§PLUGIN-RESOLVE` additionally logs the underlying `C_ElementValue` for
+traceability. Fallback key when a `(master, acctschema)` pair is absent: `c_acctschema_default`. Absent
+value → report `absent`, never synthesized.
+
+**Engine glue (§13.1).** `journal` projection gains `account_id, amtacctdr, amtacctcr` (NULL-default —
+existing `ALLOCATE` writers unaffected; all replay equality is relational, not hash-literal). New `POST`
+verb (`edgeMint`/`applyOne` cases) receives the **already-resolved, already-balanced** lines, asserts
+ΣDR=ΣCR before emit, writes one `journal` row per line, and is replayable like every other op. No
+per-plugin account logic in the verb; the doc-type specifics stay in the manifest.
+
+### §13.6 Fact_Acct-gated manifest compilation — rolling POST out to all postable doc-types
+
+§13.5 proved the mechanism on ONE doc-type (`ARI`, Sales Invoice). The remaining postable models each
+carry their own posting rule, and those rules are **not in the master tables** — they are encoded in
+iDempiere's `Doc_*` posting classes (`Doc_Invoice`, `Doc_Payment`, `Doc_InOut`, …). The masters supply
+*which account*; the `Doc_*` code supplies the DR/CR *structure* (which roles debit, which credit, which
+amount). Re-authoring that structure from reading the Java would be invention — and invention is the one
+thing the platform forbids. This section states how each model's manifest is **compiled and verified
+against iDempiere's own output**, never guessed.
+
+**The oracle: `Fact_Acct`.** iDempiere already executed every posting rule and recorded the realized
+result in `Fact_Acct` — `(ad_table_id, record_id, account_id, amtacctdr, amtacctcr, c_acctschema_id, …)`
+per posted document. That table *is* the rules made data. It is the ground truth a manifest must reproduce.
+(`Fact_Acct` is empty in the curated `ad_seed.db`; the real GardenWorld rows are extracted from the
+operator's Postgres — the `Fact_Acct` import is the migrate-agent / R2 lane, `scripts/extract_fact_acct.sh`.)
+
+**The compile-and-gate loop, per doc-type:**
+
+1. **Extract** the doc-type's real `Fact_Acct` rows (the oracle), keyed by `(ad_table_id, record_id)`.
+2. **Author** a small charge manifest — the DR/CR role structure only (~5–10 lines, like §13.5).
+3. **Discover tokens, don't guess them.** Group the oracle's lines by `account_id` and trace each back to
+   the master column that holds it (the account-master tables carry the same ids `Fact_Acct` posted).
+   The set of `{Master.Role}` tokens a doc-type needs is *read off* the oracle, then added to the resolver.
+4. **POST and diff to the cent.** Run the `POST` verb over the real documents; compare the emitted `journal`
+   lines against `Fact_Acct` per `(account_id, DR/CR)` (`scripts/diff_oracle.js`). **Accept the manifest
+   iff the fold equals the oracle exactly.** A mismatch means the manifest or a token is wrong — fix and
+   re-gate; never adjust the oracle.
+
+A manifest is thus a **falsifiable restatement** of a rule iDempiere already ran, accepted only when it
+reproduces that rule's posted facts. No `Doc_*` port, no invented account, no "trust me."
+
+**Scope — postable is a subset of DocBaseType.** The seed's ~30 `DocBaseType`s are not all postable:
+orders (`SOO/POO/DOO/MQO`) carry no `Fact_Acct` in iDempiere and are excluded. The postable set is
+invoices (`ARI/ARC/API/APC`), receipts/payments (`ARR/APP`), allocations, inventory moves
+(`MMS/MMR/MMI/MMM`), and journals (`GLJ/GLD`). Each is one oracle-gated manifest; the `POST` verb and
+resolver from §13.5 are reused unchanged — only manifests (data) and any newly-discovered tokens are added.
+
+**Honest bound.** This proves **structural fidelity to the operator's posted history**, not a
+from-scratch GAAP engine. Rules with no oracle coverage (a doc-type never posted in their data) cannot be
+gated and are reported `uncovered`, never assumed. Edge behaviour (tax rounding, currency revaluation,
+landed-cost, inter-org) surfaces as a visible cent-level mismatch to resolve — it is not hidden by the fold.
+
+**Witnesses.**
+- `§PLUGIN-ORACLE doc=<DocBaseType> docs=N foldRows=R oracleRows=R agree=Y (Σ|fold−Fact_Acct|=0c)` — the
+  doc-type's manifest reproduces real `Fact_Acct` to the cent across all sampled documents.
+- `§PLUGIN-TOKENS doc=<DocBaseType> discovered=[{Master.Role}…] source=Fact_Acct.account_id` — tokens read
+  off the oracle, not authored.
+- `§PLUGIN-COVERAGE postable=K gated=G uncovered=[…]` — honest accounting of which postable types have an
+  oracle to gate against and which do not.
+
+**Dependencies / lane.** Needs the real `Fact_Acct` import (migrate-agent / R2 lane) and reuses the
+existing `diff_oracle.js` / `extract_fact_acct.sh` machinery. Engine-lane build, headless `scripts/`; a
+SEPARATE, EXPLICIT-GO session after the `Fact_Acct` extract lands. Spec only here.
+
+### §13.7 "Accts Posted" — the role-gated read-fold (the engine seam for the record panel)
+
+The renderer's record panel (now that login is merged — PR #87, `erp/idmp_session.js`) wants three
+affordances on a document: **edit the record**, a **DocAction** control (the gear), and — *only for an
+accounting role* — **see the postings** ("Accts Posted"). The first two are renderer work over verbs that
+already exist (`SET_STATUS` = DocAction, the write path = `dispatch`). The third is an **engine seam** and
+is specified here so the gate is enforced in the engine, never in the panel.
+
+**Posted-status is derived, not a column.** In the op-log model a record is *posted* iff a `POST` op
+(§13.5) exists for it. The panel never reads a `Posted` boolean; it asks the engine for the fold.
+
+**The call (an `ENGINE_CONTRACT.md read` with role ctx):**
+
+```
+readPostings(recordRef, ctx) -> { visible, posted, lines[], balanced, reason }
+  recordRef = { doc_type | ad_table_id, record_id }
+  ctx       = IdmpSession.buildContext(...) → uses ctx.role.id (+ ctx.client.id, ctx.org.id)
+```
+
+**The gate (engine-resolved, not UI-trusted).** `idmp_session` folds user→role→client→org but does NOT
+carry `isshowacct`; the engine resolves it itself: `SELECT isshowacct FROM AD_Role WHERE AD_Role_ID =
+ctx.role.id` (verified values: GardenWorld Admin=Y, GardenWorld User=N).
+
+- `isshowacct ≠ 'Y'` → return `{ visible:false, reason:'role-not-accounting' }` — **no `lines`**. Access
+  enforced in the engine (an empty/forbidden result, never the data — same rule as `ENGINE_CONTRACT`
+  WIRE-4 reads scoped to org access). The panel hides the Posted tab; it cannot leak the rows by mistake.
+- `isshowacct = 'Y'` →
+  - not posted (no `POST` op for the record) → `{ visible:true, posted:false }` — the panel shows "not
+    posted"; if the doc is completable, the gear's DocAction can post it (`SET_STATUS`→ the §13.5 `POST`).
+  - posted → `{ visible:true, posted:true, lines:[{account_id, value, name, amtacctdr, amtacctcr}],
+    balanced:true }` — the balanced journal fold of the record's `POST` op, each account joined to its
+    `C_ElementValue` (value/name) for display. Once §13.6 lands, the same fold is cent-gated against the
+    operator's real `Fact_Acct`.
+
+**Org/client scope.** Postings are filtered by `ctx`'s org access (one filter model: role→menu,
+client/org→rows, role.isshowacct→accounting visibility) — a record outside the role's orgs returns
+`{ visible:false, reason:'out-of-scope' }`, never rows.
+
+**Witnesses.**
+- `§POSTED-READ record=<doc>#<id> role=<id> isshowacct=Y posted=Y rows=N balanced=Y` — accounting role
+  sees the balanced fold.
+- `§POSTED-GATE role=<GardenWorld User> isshowacct=N → visible=N reason=role-not-accounting rows=0` — a
+  non-accounting role is refused at the engine, zero rows leaked.
+
+**Lane.** Engine provides `readPostings` (headless, gate + fold, `scripts/`); the renderer renders the
+Posted tab (shown iff `visible`), the gear→DocAction, and the editable form — renderer/login lane, rebased
+onto the `erp/` folder home, EXPLICIT-GO. The gate and fold are the engine's; the UI only reflects them.
+
 ---
 
 *Status: DRAFT v0.1, 2026-06-02 — extension/plugin layer of the iDempiere 2.0 lineage. Nothing built;

@@ -37,7 +37,9 @@ var PROJECTION_SQL =
   'CREATE TABLE IF NOT EXISTS document_lines (id TEXT PRIMARY KEY, document_id TEXT, source_line_id TEXT, line_no INTEGER, match_type TEXT, metadata TEXT DEFAULT \'{}\');' +
   'CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, parent_id TEXT, type TEXT, metadata TEXT DEFAULT \'{}\');' +
   'CREATE TABLE IF NOT EXISTS containers (id TEXT PRIMARY KEY, parent_id TEXT, type TEXT, metadata TEXT DEFAULT \'{}\');' +
-  'CREATE TABLE IF NOT EXISTS journal (id TEXT PRIMARY KEY, batch_id TEXT, journal_id TEXT, source TEXT, metadata TEXT DEFAULT \'{}\');' +
+  // §13.1: journal extended from settlement-edge to double-entry — account_id/amtacctdr/amtacctcr
+  // mirror gl_journalline. NULL/0 defaults keep ALLOCATE (5-col insert) backward-compatible.
+  'CREATE TABLE IF NOT EXISTS journal (id TEXT PRIMARY KEY, batch_id TEXT, journal_id TEXT, source TEXT, account_id TEXT, amtacctdr REAL DEFAULT 0, amtacctcr REAL DEFAULT 0, metadata TEXT DEFAULT \'{}\');' +
   'CREATE TABLE IF NOT EXISTS kernel_ops (op_uuid TEXT PRIMARY KEY, timestamp INTEGER, op_type TEXT, parameters TEXT, input_guids TEXT, output_guid TEXT, undone INTEGER DEFAULT 0, user_tag TEXT DEFAULT \'local\');';
 var PROJECTION_TABLES = ['documents', 'document_lines', 'items', 'containers', 'journal'];
 
@@ -76,6 +78,7 @@ function edgeMint(op) {
     case 'CREATE_LINE':     return 'LINE:' + op.table + '@from' + (op.source_line_id != null ? op.source_line_id : 'NA');
     case 'ALLOCATE':        return 'ALLOC:' + op.payment_id + ':' + (op.invoice_id != null ? 'inv' + op.invoice_id : 'ord' + op.order_id);
     case 'MATCH':           return 'MATCH:' + op.table + '@' + op.source_line_id + ':' + op.counterpart_line_id;
+    case 'POST':            return 'POST:' + op.table + '#' + op.id;                 // the journal batch id
     default: throw new Error('edgeMint: unknown op_type ' + op.op_type);
   }
 }
@@ -129,6 +132,26 @@ function applyOne(db, op, state) {
     db.run('INSERT OR REPLACE INTO document_lines (id, document_id, source_line_id, match_type, metadata) VALUES (?,?,?,?,?)',
       [guid, 'DOC:' + op.table, String(op.source_line_id), op.match_type || op.table, JSON.stringify(mmeta)]);
     return { output_guid: guid, input_guids: [String(op.source_line_id), String(op.counterpart_line_id)], before: null, after: guid };
+  }
+  if (op.op_type === 'POST') {
+    // §13.1 POST verb — receives ALREADY-RESOLVED, ALREADY-BALANCED lines (the §3.5.1 resolver is host
+    // glue; no account logic here). The verb owns the double-entry INVARIANT: ΣamtacctDR == ΣamtacctCR,
+    // checked to the cent BEFORE any write. One journal row per line; ids derive from the batch guid so
+    // replay reproduces the same rows byte-for-byte. INSERT OR REPLACE = idempotent on replay.
+    var lines = op.lines || [];
+    var sdr = 0, scr = 0;
+    lines.forEach(function (l) { sdr += Number(l.amtacctdr || 0); scr += Number(l.amtacctcr || 0); });
+    if (Math.round(sdr * 100) !== Math.round(scr * 100)) {
+      throw new Error('POST unbalanced ΣDR=' + sdr.toFixed(2) + ' ΣCR=' + scr.toFixed(2) + ' (' + op.table + '#' + op.id + ')');
+    }
+    var src = 'DOC:' + op.table + '#' + op.id;
+    lines.forEach(function (l, i) {
+      db.run('INSERT OR REPLACE INTO journal (id, batch_id, journal_id, source, account_id, amtacctdr, amtacctcr, metadata) VALUES (?,?,?,?,?,?,?,?)',
+        [guid + ':' + i, 'BATCH@' + guid, 'JRN@' + guid, src, String(l.account_id),
+         Number(l.amtacctdr || 0), Number(l.amtacctcr || 0),
+         JSON.stringify({ role: l.role || null, source_col: l.source_col || null, acctschema: op.acctschema != null ? op.acctschema : null })]);
+    });
+    return { output_guid: guid, input_guids: [src], before: null, after: guid };
   }
   throw new Error('unknown op_type ' + op.op_type);
 }
