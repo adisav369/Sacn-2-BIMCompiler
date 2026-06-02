@@ -1,8 +1,8 @@
-/**
- * BIM OOTB / ERP OOTB — iDempiere 2.0: the engine-as-data model synthesis.
- * Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
- * SPDX-License-Identifier: MIT
- */
+<!--
+BIM OOTB / ERP OOTB — iDempiere 2.0: the engine-as-data model synthesis.
+Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
+SPDX-License-Identifier: MIT
+-->
 
 # iDempiere 2.0 — the model, learning from the best
 

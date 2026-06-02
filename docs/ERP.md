@@ -35,6 +35,7 @@ The secured/distributed thinking and its proofs live in dedicated sub-docs — r
 | **[EnablingTechTimeline.md](EnablingTechTimeline.md)** | The cited technology timeline — what made this possible when; the two compasses. |
 | **[SpatialERP_OOTB.md](SpatialERP_OOTB.md)** | Spatial ERP — the browser-only ERP replacing iDempiereOOTB; §11.5 inventory/movement model. |
 | **[BOM_ENGINE_SPEC.md](BOM_ENGINE_SPEC.md)** · **[DATA_MODEL.md](DATA_MODEL.md)** | The BOM recipe engine (the verb that compiles a building *and* backflushes a POS sale) + the 5-table bridge. |
+| **[IDEMPIERE_2.md](IDEMPIERE_2.md)** · **[PLUGIN_ARCHITECTURE.md](PLUGIN_ARCHITECTURE.md)** · **[ENGINE_CONTRACT.md](ENGINE_CONTRACT.md)** | iDempiere 2.0 — the engine-as-data **model**, the **metadata-first plugin/manifest** (charge-model DR/CR→Acct + masters; no new skill to author), and the **engine↔UI seam** (`read`/`dispatch`/`manifest`/`verbs`/`verify` + role context — where owner/role-of-client is enforced). |
 
 **Proofs (spec-first, witness-led; each witness asserts `replay-hash == live-hash` against a browser sql.js binding):**
 - **Witnesses.** Six in-process witnesses pass: W-CHAIN, Merge/G-IDENTITY, W-OWNER/CAS, W-SIGN, W-PERSIST/email-recovery, lease-expiry/value-tiering. Each corresponds to one of the scripts listed below; the secured/durable phase frame is in [§0.20](#020-next-phase--the-secureddurable-axis-ui-poc-frozen-2026-05-31-spec--no-code-yet).
