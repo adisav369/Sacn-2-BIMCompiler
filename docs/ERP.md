@@ -615,6 +615,85 @@ table → the §0.5 matcher; handler → the named fn (returns ops). The kernel 
 each cell; it never cares which form a rule took. The compiler SEEDS `erp_rules.db` with
 the presets; the Settings editor edits them; every edit is a `kernel_ops` op (§0.6).
 
+### §0.10a Master-data first-mile — the migrate ShowMe (master/metadata only)
+
+*Spec for `prompts/MIGRATE_SHOWME_OVERLAY.md` — the THINNEST adoption step: take an
+iDempiere operator from "my data is locked in a Docker Postgres" to "my master data is
+in my browser." A LATER ShowMe handles plugin **logic**, transactions, posting, and the
+cent-perfect oracle-gate (§0.17). This section is master/metadata only.*
+
+**Honest 2-part flow (never a browser→Postgres pipe).** A browser cannot open TCP to
+Postgres:5432. So there are two touches:
+- **The agent (local):** `scripts/migrate_pg_to_sqlite.js` (NOT forked) run by the
+  operator with their own creds. It reads their PG and writes a master/metadata-only
+  SQLite + a progress file.
+- **The overlay (browser, `bim-ootb/viewer/`):** reuses the existing ShowMe/help layer
+  (`docs/ReadMeShowMe.md`, `docs/HelpO2C.md`). It *guides* the user to the agent and
+  *reflects* the agent's progress file. "Watch it stream in" = the overlay mirrors the
+  agent's per-table log, not a live socket.
+
+**Scope — DECIDED 2026-06-02 (widens the prompt's literal "allowlist / no plugins").**
+The operator confirmed the line is **logic, not data**: take ALL AD metadata + masters,
+*including custom/plugin-added metadata tables* (they are AD-defined, transaction-free);
+defer only plugin **Java logic** (which was never in PG — §0.10 "Java is NOT migrated").
+Concretely:
+- **TAKE** (all clients, whole tables, no row filter): the headline master allowlist
+  PLUS the full AD metadata corpus, custom dictionary tables included.
+- **EXCLUDE**: operational data only — the **`docstatus` document tables** (82 in
+  GardenWorld), their transaction **line/fact children**, accounting postings
+  (`fact_acct*`), and runtime **logs/temp** (`ad_changelog`, `ad_session`, `ad_pinstance*`,
+  `ad_wf_process/activity/eventaudit`, `t_*`). The agent computes this denylist by RULE
+  (docstatus query + name patterns) and **logs the resolved exclusion set** for review
+  (Log Mandate) — non-invent: the docstatus set is queried, the patterns are named
+  iDempiere schema objects, no values are synthesized.
+
+**Two-tier streaming (clean demo + completeness).**
+- **Headline masters** (streamed visibly, one `§` line each — the overlay's "watch them
+  land"): `C_BPartner`, `C_BP_Group`, `M_Product`, `M_Product_Category`, `C_UOM`,
+  `C_ElementValue` (chart of accounts), `C_Charge`, `C_Tax`, `C_Currency`. Verified live
+  in GardenWorld: 18 / 3 / 55 / 14 / 15 / 379 / 3 / 6 / 175 rows.
+- **The rest of the metadata corpus**: taken into the resident DB, summarized in the log
+  as `+N metadata tables` (not streamed line-by-line).
+
+**Client discovery + auto-seek + confirm (the connect step).** The agent enumerates
+`AD_Client` (id, name, and whether the client holds master rows) and emits it as JSON the
+overlay renders as a picklist. iDempiere seeds **0 = System** (shared dictionary masters:
+currencies/UOM/countries live here) and **11 = GardenWorld** (the demo tenant). Behaviour:
+- If a **3rd (real tenant) client** exists, the agent **auto-selects** it — but the
+  overlay **requires the user to confirm** before the run.
+- If only 0/11 exist (the demo box), auto-select 11.
+- Migration takes the master/metadata tables **whole** (all clients' rows) regardless of
+  the selection — discovery is *informational* (which tenant am I looking at), not a row
+  filter; masters across all clients are all AD metadata and safe.
+
+**Instance identity (re-import must not clobber).** Each run is a local **instance** keyed
+off the source `ad_client_id`. A local registry (`build/erp/instances.json`) records every
+import `{instance_id, source_host, source_db, source_client_id, client_name, rows}`. On a
+run whose `(source, client_id)` was already imported, the agent assigns the **next free
+integer** as a LOCAL instance marker (re-importing GardenWorld `11` → `12` → `13` …) and
+namespaces the output DB by it (`ad_masters_<instance>.db`) so repeated imports coexist
+rather than overwrite. The marker is a **local counter only** — the migrated rows keep
+their source `ad_client_id` untouched (no FK rewrite); the marker lives in the registry and
+in `_migration_meta`. First import of client `11` → instance `11`; the next → `12`.
+
+**Post-migration ReadMe (share/serve OUT — step 5, guidance over existing infra).** Reuse
+the existing ReadMe layer + `share.js`/QR + the S284 self-contained-HTML (embed-db) path +
+the off-grid `sw.js`. Two user stories, no new infra: **(a) send the file → identical DB
+for anyone** — verifiable, not hoped: deterministic replay → same projection hash, signed
+chain → tamper-evident (`verify`); **(b) put it online → it's served** from any static host
+(GitHub Pages / OCI bucket), no backend.
+
+**Witnesses (§-log first).**
+- `§MIGRATE-CLIENTS found=[0:System,11:GardenWorld] real=[11] auto=11 confirm-required=Y`
+  — discovery enumerates the PG clients and auto-seeks the real tenant.
+- `§MIGRATE-AGENT source=<host/db> instance=<n> masters=[…] tables=N rows=R metadata=+M
+  docs-skipped=Y plugins-logic-skipped=Y` — agent pulled ONLY master/metadata (documents,
+  transactions, postings, logs excluded; plugin LOGIC deferred).
+- `§MIGRATE stream table=C_BPartner rows=18 … table=C_ElementValue rows=379` — headline
+  masters land per table (counts match the live PG).
+- `§MIGRATE-INSTANCE source-client=11 reimport=Y instance=12` — re-import gets a fresh
+  instance marker, prior import preserved.
+
 ### §0.11 Housed vs active — the full extent, hidden but callable
 
 This resolves the apparent tension with §0.3 (narrow scope). **Two distinct things:**

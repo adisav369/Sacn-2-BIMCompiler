@@ -45,6 +45,49 @@ var ONLY = (process.env.ERP_TABLES || '').split(',').map(function (s) {
 }).filter(Boolean);
 var MAXBUF = 512 * 1024 * 1024; // 512MB — largest table is ~11MB, ample headroom.
 
+// ── §0.10a master-data first-mile (prompts/MIGRATE_SHOWME_OVERLAY.md) ─────────
+// Modes layered onto the SAME script (do NOT fork — CLAUDE.md / spec §0.10a):
+//   --list-clients / ERP_LIST_CLIENTS=1 : enumerate AD_Client as JSON for the overlay,
+//                                          auto-seek the real tenant, then exit.
+//   --masters     / ERP_MASTERS=1       : migrate master/metadata tables only (exclude
+//                                          documents/transactions/postings/logs), stream
+//                                          headline masters per-table, instance-namespaced.
+var argv = process.argv.slice(2);
+var LIST_CLIENTS = !!process.env.ERP_LIST_CLIENTS || argv.indexOf('--list-clients') >= 0;
+var MASTERS = !!process.env.ERP_MASTERS || argv.indexOf('--masters') >= 0;
+// Optional explicit target tenant; otherwise auto-seeked from AD_Client (§0.10a).
+var TARGET_CLIENT = process.env.ERP_CLIENT ? +process.env.ERP_CLIENT : null;
+var INSTANCES = path.join(__dirname, '..', 'build', 'erp', 'instances.json');
+
+// Headline master allowlist — streamed visibly one §-line each ("watch them land").
+// Canonical AD casing for display; matched case-insensitively against PG table_name.
+// Row counts verified live in GardenWorld 2026-06-02 (§0.10a) — NOT hardcoded here.
+var HEADLINE = ['C_BPartner', 'C_BP_Group', 'M_Product', 'M_Product_Category', 'C_UOM',
+  'C_ElementValue', 'C_Charge', 'C_Tax', 'C_Currency'];
+var HEADLINE_LC = {}; HEADLINE.forEach(function (n) { HEADLINE_LC[n.toLowerCase()] = n; });
+
+// Master/metadata scope = ALL base tables MINUS operational data. Excluded by RULE
+// (logged for review, never silently dropped — §0.10a / Log Mandate):
+//   (1) document tables  — have a `docstatus` column (queried, not guessed);
+//   (2) their line children — name ends 'line' AND stem is a (1) table;
+//   (3) postings — fact_acct*;
+//   (4) inventory/cost transactions + runtime logs/temp — named below.
+// Plugin *logic* (Java) is deferred (§0.10 "Java is NOT migrated"); plugin *metadata*
+// tables are KEPT (they are AD metadata, transaction-free) per the 2026-06-02 decision.
+var DENY_EXACT = ['m_transaction', 'm_storage', 'm_storageonhand', 'm_costdetail',
+  'm_cost', 'm_costhistory', 'ad_changelog', 'ad_session', 'ad_accesslog',
+  'ad_pinstance', 'ad_pinstance_para', 'ad_pinstance_log', 'ad_wf_process',
+  'ad_wf_processdata', 'ad_wf_activity', 'ad_wf_activityresult', 'ad_wf_eventaudit',
+  'ad_recentitem', 'ad_issue', 'ad_ldapaccess'];
+function isDenied(tn, docSet) {
+  if (DENY_EXACT.indexOf(tn) >= 0) return true;          // (4)
+  if (tn.indexOf('fact_acct') === 0) return true;        // (3)
+  if (tn.indexOf('t_') === 0) return true;               // temp report tables
+  if (docSet[tn]) return true;                           // (1) documents
+  if (/line$/.test(tn) && docSet[tn.replace(/line$/, '')]) return true; // (2) doc lines
+  return false;
+}
+
 // ── PG helpers ──────────────────────────────────────────────────────────────
 // Metadata query: tuples-only, unaligned, tab field separator.
 function pgMeta(sql) {
@@ -97,8 +140,85 @@ function affinity(t) {
 }
 function q(id) { return '"' + String(id).replace(/"/g, '""') + '"'; }
 
+// ── §0.10a Client discovery + auto-seek ──────────────────────────────────────
+// Enumerate AD_Client (id, name, whether it holds master rows). System=0 and the
+// GardenWorld seed=11 are well-known; a REAL tenant is any other client id.
+function getClients() {
+  var rows = pgMeta(
+    "SELECT c.ad_client_id, c.name, c.isactive, " +
+    "(SELECT count(*) FROM " + q(SCHEMA) + ".c_bpartner b WHERE b.ad_client_id=c.ad_client_id) " +
+    "FROM " + q(SCHEMA) + ".ad_client c ORDER BY c.ad_client_id");
+  return rows.map(function (r) {
+    return { id: +r[0], name: r[1], active: r[2] === 'Y',   // iDempiere IsActive = char(Y/N)
+      hasMasters: (+r[3]) > 0, bpartners: +r[3] };
+  });
+}
+// Auto-seek the tenant to label the instance: prefer a client that is NOT System(0)
+// and NOT the GardenWorld seed(11); else fall back to 11 (the demo). Returns its id.
+function autoSeek(clients) {
+  var real = clients.filter(function (c) { return c.id !== 0 && c.id !== 11; });
+  if (real.length === 1) return real[0].id;          // exactly one real tenant
+  if (real.length > 1) return real[0].id;            // overlay will confirm among many
+  var gw = clients.filter(function (c) { return c.id === 11; });
+  if (gw.length) return 11;                          // demo box: only System+GardenWorld
+  var nonSys = clients.filter(function (c) { return c.id !== 0; });
+  return nonSys.length ? nonSys[0].id : 0;
+}
+
+// ── §0.10a Instance registry (re-import must not clobber) ────────────────────
+// Local counter only — migrated rows keep their source ad_client_id (no FK rewrite).
+// First import of client 11 -> instance 11; a later re-import -> next free integer (12…).
+function readRegistry() {
+  try { return JSON.parse(fs.readFileSync(INSTANCES, 'utf8')); } catch (e) { return []; }
+}
+function nextInstance(reg, srcKey, targetClient) {
+  var used = {}; reg.forEach(function (r) { used[r.instance] = true; });
+  var reimport = reg.some(function (r) {
+    return r.source === srcKey && r.source_client_id === targetClient;
+  });
+  var m = targetClient;
+  while (used[m]) m++;                               // next free integer >= client id
+  return { instance: m, reimport: reimport };
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────
 function main() {
+  var srcKey = 'pg:' + DB + '/' + SCHEMA;
+
+  // ── §0.10a mode: list clients for the overlay, auto-seek, exit ──────────────
+  if (LIST_CLIENTS) {
+    var clients = getClients();
+    var seek = autoSeek(clients);
+    // JSON the overlay renders as a picklist (stdout, machine-readable).
+    console.log(JSON.stringify({ source: srcKey, clients: clients,
+      auto: seek, confirmRequired: true }));
+    var real = clients.filter(function (c) { return c.id !== 0; })
+      .map(function (c) { return c.id + ':' + c.name; });
+    console.log('§MIGRATE-CLIENTS found=[' +
+      clients.map(function (c) { return c.id + ':' + c.name; }).join(',') +
+      '] real=[' + real.join(',') + '] auto=' + seek + ' confirm-required=Y');
+    return;
+  }
+
+  // ── §0.10a masters mode: resolve target client + instance + output path ─────
+  var docSet = null, instance = null, reimport = false, targetClient = null,
+    clientName = '', headlineRows = {}, restTables = 0, restRows = 0, excluded = [];
+  if (MASTERS) {
+    var cl = getClients();
+    targetClient = TARGET_CLIENT != null ? TARGET_CLIENT : autoSeek(cl);
+    var tc = cl.filter(function (c) { return c.id === targetClient; })[0];
+    clientName = tc ? tc.name : ('client' + targetClient);
+    var inst = nextInstance(readRegistry(), srcKey, targetClient);
+    instance = inst.instance; reimport = inst.reimport;
+    // Namespace output by instance so re-imports coexist (registry confirmed scheme).
+    if (!process.env.ERP_OUT) {
+      OUT = path.join(__dirname, '..', 'build', 'erp', 'ad_masters_' + instance + '.db');
+    }
+    console.log('§MIGRATE-AGENT mode=masters source=' + srcKey + ' target-client=' +
+      targetClient + ':' + clientName + ' instance=' + instance +
+      (reimport ? ' (re-import)' : ' (first)') + ' out=' + OUT);
+  }
+
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   if (fs.existsSync(OUT)) fs.unlinkSync(OUT);
   var sqlite = new Database(OUT);
@@ -111,6 +231,22 @@ function main() {
     "WHERE table_schema='" + SCHEMA + "' AND table_type='BASE TABLE' " +
     "ORDER BY table_name").map(function (r) { return r[0]; });
   if (ONLY.length) tables = tables.filter(function (t) { return ONLY.indexOf(t) >= 0; });
+
+  // §0.10a: in masters mode, drop operational data by RULE (logged below).
+  if (MASTERS) {
+    docSet = {};
+    pgMeta("SELECT DISTINCT table_name FROM information_schema.columns " +
+      "WHERE table_schema='" + SCHEMA + "' AND column_name='docstatus'")
+      .forEach(function (r) { docSet[r[0]] = true; });
+    var kept = [];
+    tables.forEach(function (t) {
+      if (isDenied(t, docSet)) excluded.push(t); else kept.push(t);
+    });
+    tables = kept;
+    console.log('§MIGRATE-AGENT masters-scope kept=' + kept.length +
+      ' excluded=' + excluded.length + ' (docstatus=' + Object.keys(docSet).length +
+      ' + lines/postings/logs/temp)');
+  }
 
   // 2) All columns for those tables, in ordinal order, with data_type.
   var colRows = pgMeta(
@@ -177,6 +313,15 @@ function main() {
     tx();
     totalRows += n;
     doneTables++;
+
+    // §0.10a: stream headline masters one §-line each (overlay reflects this);
+    // summarize the rest of the metadata corpus.
+    if (MASTERS) {
+      if (HEADLINE_LC[tn]) {
+        headlineRows[HEADLINE_LC[tn]] = n;
+        console.log('§MIGRATE stream table=' + HEADLINE_LC[tn] + ' rows=' + n);
+      } else { restTables++; restRows += n; }
+    }
   });
 
   // 3) Flagged subset — explicit, loud.
@@ -190,7 +335,7 @@ function main() {
   // Views: SNAPSHOT definitions (deferred translation). Only when migrating full set.
   var viewCount = 0, viewSnap = 0;
   sqlite.exec('CREATE TABLE _pg_views (view_name TEXT, definition TEXT)');
-  if (!ONLY.length) {
+  if (!ONLY.length && !MASTERS) {
     var views = pgMeta("SELECT table_name FROM information_schema.views " +
       "WHERE table_schema='" + SCHEMA + "' ORDER BY table_name")
       .map(function (r) { return r[0]; });
@@ -218,11 +363,18 @@ function main() {
   ['flagged_triggers', String(trgCount) + ' (skipped)'],
   ['flagged_views', String(viewCount) + ' (snapshot=' + viewSnap + ', deferred)']
   ].forEach(function (kv) { meta.run(kv[0], kv[1]); });
+  if (MASTERS) {
+    [['mode', 'masters'], ['instance', String(instance)],
+    ['target_client', targetClient + ':' + clientName],
+    ['headline_tables', String(Object.keys(headlineRows).length)],
+    ['metadata_tables', String(restTables)], ['excluded_operational', String(excluded.length)]
+    ].forEach(function (kv) { meta.run(kv[0], kv[1]); });
+  }
 
   // 5) Rule/policy corpus accounting — read BACK from the migrated SQLite (proves
   //    the §1-stripped layer survived raw). Guarded: only when the full set ran.
   var ruleLine = '';
-  if (!ONLY.length) {
+  if (!ONLY.length && !MASTERS) {
     function cnt(sql) { try { return sqlite.prepare(sql).get().c; } catch (e) { return 'NA'; } }
     var nRule = cnt('SELECT count(*) c FROM ad_rule');
     var nVal = cnt('SELECT count(*) c FROM ad_val_rule');
@@ -245,6 +397,29 @@ function main() {
   console.log('§MIGRATE tables=' + doneTables + ' rows=' + totalRows +
     ' blobTables=' + blobTables);
   if (ruleLine) console.log(ruleLine);
+
+  // §0.10a masters-mode acceptance: persist the instance, emit the witnesses.
+  if (MASTERS) {
+    var reg = readRegistry();
+    reg.push({ instance: instance, source: srcKey, source_client_id: targetClient,
+      client_name: clientName, reimport: reimport, out: path.basename(OUT),
+      tables: doneTables, rows: totalRows, when: new Date().toISOString() });
+    fs.writeFileSync(INSTANCES, JSON.stringify(reg, null, 2));
+
+    var head = HEADLINE.filter(function (h) { return headlineRows[h] != null; })
+      .map(function (h) { return h + '=' + headlineRows[h]; });
+    var docCount = docSet ? Object.keys(docSet).length : 0;
+    console.log('§MIGRATE-AGENT source=' + srcKey + ' instance=' + instance +
+      ' masters=[' + head.join(',') + '] tables=' + doneTables + ' rows=' + totalRows +
+      ' metadata=+' + restTables + ' docs-skipped=Y(' + docCount + ') plugins-logic-skipped=Y');
+    console.log('§MIGRATE-INSTANCE source-client=' + targetClient + ' reimport=' +
+      (reimport ? 'Y' : 'N') + ' instance=' + instance);
+    // Operational tables excluded — listed for review (Log Mandate, never silent).
+    console.log('§MIGRATE-AGENT excluded-operational n=' + excluded.length + ' [' +
+      excluded.slice(0, 40).join(',') + (excluded.length > 40 ? ',…' : '') + ']');
+    return;
+  }
+
   console.log('§MIGRATE flagged sequences=' + seqCount + ' (dropped) functions=' +
     fnCount + ' (skipped) triggers=' + trgCount + ' (skipped) views=' + viewCount +
     ' (snapshot=' + viewSnap + ', deferred)');

@@ -86,6 +86,7 @@ site/
 # ERP raw migration artifacts (regenerable from PG via scripts/migrate_pg_to_sqlite.js)
 /build/erp/*.db
 /build/erp/*.log
+/build/erp/instances.json
 
 # Deploy — per-building DB pairs (large binaries, built by pipeline)
 deploy/buildings/
