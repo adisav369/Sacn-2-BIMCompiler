@@ -47,7 +47,7 @@ The prompt (`CRUD_P_R_REPORT.md` §R2, §"What exists") expects GardenWorld's **
 
 | table | rows | note |
 |-------|------|------|
-| `fact_acct` | **0** | the posting journal is **empty** in this extract — nothing to fold |
+| `fact_acct` | **0** | empty in THIS extract — but it was taken from Docker `idempiere`. The posted journal lives in **`idempiere_test`** (see §1.2.1) |
 | `gl_journalline` | **4** | real posted GL, **balanced** Dr 185.00 = Cr 185.00, diff 0.00 |
 | `gl_journal` | 2 | the two journals those 4 lines belong to |
 | `c_validcombination` | 157 | account combinations (the account dimension) |
@@ -59,12 +59,26 @@ A Trial Balance "to the cent from `fact_acct`" is **impossible without inventing
 - **R2a (shippable now):** fold the Trial Balance from the **real `gl_journalline` rows** (4 lines,
   `amtacctdr`/`amtacctcr`, joined to `c_elementvalue` for account names). It proves the *balanced‑to‑the‑
   cent* discipline on **real posted rows** — small, but real. Witness reports `rows=4 source=gl_journalline`.
-- **R2b (un‑parked 2026‑06‑02 — real source identified):** the full GardenWorld P&L over `fact_acct` is
-  **extractable from the live Docker Postgres** (the GardenWorld instance). Next R2 session: pull the real
-  `fact_acct` rows (+ the `c_elementvalue`/`c_period`/`c_acctschema` they reference) from Postgres into
-  `glassbowl_data.db` — the same non‑invent move as the 11 lifecycle tables (`docs/ERP.md §0.12`), now for
-  the posted journal. Until extracted, R2a (`gl_journalline`) is the real‑rows fallback. Phase 3's
-  `Process→Fact_Acct` fan‑out (`BIM_ERP_FOLD.md`) later lets a freshly Processed order hit the same P&L.
+- **R2b (un‑parked + VERIFIED 2026‑06‑02):** the full GardenWorld P&L over `fact_acct` IS available — see
+  §1.2.1. Pull the real rows from Docker Postgres `idempiere_test` into `glassbowl_data.db` — the same
+  non‑invent move as the 11 lifecycle tables (`docs/ERP.md §0.12`), now for the posted journal. R2a
+  (`gl_journalline`, 4 rows) is no longer needed as the primary source; keep it only as an offline fallback.
+  Phase 3's `Process→Fact_Acct` fan‑out (`BIM_ERP_FOLD.md`) later lets a freshly Processed order hit the
+  same P&L.
+
+### 1.2.1 R2 real source — VERIFIED present in Docker `idempiere_test` (2026‑06‑02)
+Container `postgres` (`postgres:15`, port 5432), user `adempiere`. **Two databases:** `idempiere` (the
+one `ad_full.db` was extracted from — `fact_acct`=0) and **`idempiere_test`** which holds the posted
+GardenWorld journal:
+
+| check | value |
+|-------|-------|
+| `adempiere.fact_acct` rows | **300** (all `postingtype='A'` Actual, `ad_client_id=11` GardenWorld) |
+| balance | **Σ amtacctdr 46574.97 = Σ amtacctcr 46574.97**, diff **0.00** → a real balanced trial balance |
+| dimensions | 7 `c_period_id`, 21 `account_id`; joins to `c_elementvalue` (value+name, e.g. 11100 Checking Account) |
+
+So the Trial Balance / P&L folds to the cent from real rows — R2 is a clean extract‑then‑fold, not blocked.
+Extract `fact_acct` + the `c_elementvalue` (chart of accounts) + `c_period`/`c_acctschema` it references.
 
 This reshape is recorded here so the prompt's R2 line is read against the data, not the assumption.
 
