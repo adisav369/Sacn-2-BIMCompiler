@@ -57,6 +57,9 @@
   - **NEXT:** **Review pass** (prompts/idempiereUI.md §Review pass) — verify the fold vs Docker PG AD (`postgres:15` :5432, DBs idempiere/idempiere_test) + idempiere.html chrome vs `/home/red1/idempiere-dev-setup` `org.adempiere.ui` (clean-room). Then I2 (ledger Report folds), I3 (AD_Menu long-press drawer), I4 (renderer registry + Odoo/ERPNext/Glassbowl slots). Help/ShowMe deferred until UI confirmed. Architectural NEXT (`docs/IDEMPIERE_2.md` §pivot): make idempiere.html descriptor-driven (AD = first descriptor) so renderer #2 (Odoo) reuses the engine.
   - **PROCESS LESSON ([[feedback_gh_deploy_base]]):** read `bim-ootb/GH_DEPLOY.md` + branch off origin/main BEFORE coding viewer changes (this session started on `docs/fair-readme` — wrong base; recovered by cherry-picking the sw delta onto main since PR #82 already had the feature).
 
+## Lens family — phone ∥ desktop, one engine (2026-06-03, SPEC hardened + 2 witnesses; UNFROZEN)
+- Specs `prompts/MOBILE_CHAT_LENS.md` + `docs/DESKTOP_LENS_SPEC.md` (Odoo pain→antidote→witness, web-sourced); roadmap `docs/CONCURRENT_LANES_ROADMAP.md` (backend serving ∥ frontend lens, seam=ENGINE_CONTRACT 5-calls + DataSource). Witnesses `build/erp/poc_chat.log` (op-log→thread) + `build/erp/poc_kanban.log` (Kanban=doc_status; SEND==DRAG==VERB). Freeze gate = live-Odoo diff-oracle. Memory [[project_lens_family]].
+
 ## Engine POST plugin — §13.1 closed, accounting genome PROVEN (2026-06-02)
 
 **Headless POC DONE+PASS (engine lane, no UI/deploy).** `prompts/ENGINE_POST_PROTOTYPE.md` → spec `docs/PLUGIN_ARCHITECTURE.md §13.5`. A new posting doc-type is a MANIFEST, not code.
