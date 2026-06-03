@@ -1,0 +1,34 @@
+{
+  "__template": true,
+  "__README": "EXPECTED SHAPE for build/erp/sap_oracle.json — fill EVERY value from a REAL static export of one completed STANDARD SAP SD order-to-cash + FI chain (no Z-modifications). NON-INVENT (prompts/SAP_FOLD_POC.md): do NOT fabricate a single row. Absent value -> 'absent in dataset'. Copy this file to sap_oracle.json, replace the empty arrays with real rows, and remove __template. Field names are the HYPOTHESIS in scripts/sap_adapter.js SCHEMA_MAP — VERIFY them against the actual export; correct both here and in the adapter if the dump differs.",
+  "meta": {
+    "order": "<VBAK.VBELN, e.g. 0000004969>",
+    "delivery": "<LIKP.VBELN>",
+    "billing": "<VBRK.VBELN>",
+    "partner": "<VBAK.KUNNR sold-to>",
+    "currency": "<VBAK.WAERK, e.g. EUR>",
+    "billing_total": "<VBRK.NETWR + MWSBK = the FI debit total, to the cent>",
+    "clearing_amount": "<BSEG/BSAD cleared amount via AUGBL; partial clearing = amount < billing_total>",
+    "clearing_doc": "<BSEG.AUGBL clearing document number>",
+    "gl_source": "<ACDOCA (S/4HANA) | BSEG (ECC) — whichever the export carries>",
+    "source": "<provenance: which SAP system/IDES/trial, when exported; STATIC, no live SAP at replay (ERP.md §0.12)>"
+  },
+  "order_items": [
+    { "__example": "VBAP", "VBELN": "", "POSNR": "", "MATNR": "", "KWMENG": 0, "NETWR": 0 }
+  ],
+  "delivery_items": [
+    { "__example": "LIPS", "VBELN": "", "POSNR": "", "MATNR": "", "LFIMG": 0, "VGBEL": "", "VGPOS": "" }
+  ],
+  "billing_items": [
+    { "__example": "VBRP", "VBELN": "", "POSNR": "", "MATNR": "", "FKIMG": 0, "NETWR": 0, "VGBEL": "" }
+  ],
+  "acdoca_lines": [
+    { "__example": "ACDOCA (S/4) — preferred; the Universal-Journal fold, the strong claim", "RBUKRS": "", "BELNR": "", "GJAHR": "", "DOCLN": "", "RACCT": "", "DRCRK": "S|H", "HSL": 0, "RLDNR": "0L", "AWREF": "", "role": "REV|TAX|AR" }
+  ],
+  "bseg_lines": [
+    { "__example": "BSEG (ECC) — used only if acdoca_lines is empty", "BUKRS": "", "BELNR": "", "GJAHR": "", "BUZEI": "", "HKONT": "", "SHKZG": "S|H", "DMBTR": 0, "AUGBL": "", "role": "REV|TAX|AR" }
+  ],
+  "doc_flow": [
+    { "__example": "VBFA — the derivation spine; drives the EVENT ORDER (predecessor->successor)", "VBELV": "", "POSNV": "", "VBELN": "", "POSNN": "", "VBTYP_N": "", "RFMNG": 0 }
+  ]
+}

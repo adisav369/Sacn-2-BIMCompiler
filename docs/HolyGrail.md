@@ -302,7 +302,16 @@ accounts" — `newVerbs=[]`.
 bill≠receipt, partial payment, and account derivation — across all six verbs, `newVerbs=[]` throughout, with
 exactly one engine change in the whole campaign (the f8 partial-quantity matcher). The remaining items
 (multi-currency, anglo-saxon COGS) are optional claim-raisers, not blockers.
-**Next abstraction: SAP, in its own session against a real source — never against an invented oracle.**
+**Next abstraction: SAP — the asymptote.** The *allowed half* is prepared (2026-06-03): a clean-room,
+blind schema/state-map HYPOTHESIS (`scripts/sap_adapter.js`) mapping the standard SD+FI chain (VBAK/VBAP →
+LIKP/LIPS → VBRK/VBRP → BKPF/BSEG|**ACDOCA** → BSEG clearing, with **VBFA** as the explicit derivation
+spine) onto the same six verbs, plus a runner (`scripts/poc_sap_fold.js`) gated to `§SAP-ORACLE unavailable`
+until a real export exists. The hypothesis is sharp precisely because S/4HANA's own redesign converged on
+our shape — one append-style journal (ACDOCA) + an explicit document-flow graph (VBFA). What is *not* done,
+and cannot be without violating non-invent, is the fold itself: that needs a real IDES/S/4HANA oracle, in
+its own session, **never against an invented oracle.** The honest claim stays "standard flows + extractable
+config; Z-customisations per engagement" — and the value of the SAP run is finding *which* Z-behaviour does
+not fold, not a foregone PASS.
 
 ## The hard parts, worked through — why the showstoppers aren't
 
