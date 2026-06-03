@@ -107,11 +107,12 @@ function genAD(erpSpec) {
     ad_table: [], ad_column: [], ad_window: [], ad_tab: [], ad_field: [], ad_menu: [], ad_treenodemm: [],
   };
   const counts = { tables: 0, columns: 0, windows: 0, tabs: 0, fields: 0, menu: 0, untyped: 0, inferred: 0, skipped: 0, nested: 0 };
-  const TREE = base + 1, ROOT_MENU = base + 60000;
+  const TREE = 10, ROOT_MENU = base + 60000;     // renderer (ad_parser.js getMenuTree) hardcodes AD_Tree_ID=10
   rows.ad_menu.push([ROOT_MENU, erp, 'Generated from ' + erp + ' dictionary', 'Y', null, null]);
   rows.ad_treenodemm.push([TREE, ROOT_MENU, 0, 0]); counts.menu++;
 
   let tableSeq = 0, winSeq = 0, tabSeq = 0, leafSeq = 0, ci = 0, gi = 0, treeSeq = 10;
+  const windowIds = [];                          // collected for AD_Window_Access (login menu-scope)
   const cleanOf = n => n.replace(/^\/DMO\//, '').replace(/[^A-Za-z0-9_]/g, '_');
   const labelOf = (n, e) => e.note ? (e.note[0].toUpperCase() + e.note.slice(1)) : cleanOf(n);
   const emitTable = (name, entry, WINDOW) => {
@@ -122,8 +123,10 @@ function genAD(erpSpec) {
   const emitColsFields = (entry, TABLE, TAB) => {
     expandColumns(entry).forEach((c, i) => {
       const COL = base + 500000 + ci, FIELD = base + 600000 + ci; ci++;
-      rows.ad_column.push([COL, TABLE, c.name, c.label, REF[c.ref], c.len, c.mandatory ? 'Y' : 'N', c.key ? 'Y' : 'N', c.identifier ? 'Y' : 'N']);
-      rows.ad_field.push([FIELD, TAB, COL, c.label, i * 10 + 10, 'Y', c.mandatory ? 'Y' : 'N']);
+      // ad_column: id, table, columnname, name, ref, len, mandatory, key, identifier, defaultvalue
+      rows.ad_column.push([COL, TABLE, c.name, c.label, REF[c.ref], c.len, c.mandatory ? 'Y' : 'N', c.key ? 'Y' : 'N', c.identifier ? 'Y' : 'N', '']);
+      // ad_field: id, tab, column, name, description, seqno, isdisplayed, displaylogic, mandatory, isreadonly, defaultvalue
+      rows.ad_field.push([FIELD, TAB, COL, c.label, '', i * 10 + 10, 'Y', '', c.mandatory ? 'Y' : 'N', 'N', '']);
       counts.columns++; counts.fields++;
       if (c.untyped) counts.untyped++;
       if (c.inferred) counts.inferred++;
@@ -148,8 +151,10 @@ function genAD(erpSpec) {
       if (entry._parent && liveNames.has(entry._parent)) continue;       // a child → pass 2
       const WINDOW = base + 200000 + (winSeq++), TAB = base + 300000 + (tabSeq++), LEAF = base + 400000 + (leafSeq++);
       const TABLE = emitTable(t, entry, WINDOW);
-      rows.ad_window.push([WINDOW, labelOf(t, entry), entry.doc_type || '', 'M']); counts.windows++;
-      rows.ad_tab.push([TAB, WINDOW, labelOf(t, entry), TABLE, 0, 10]); counts.tabs++;
+      // ad_window: id, name, description, help, windowtype
+      rows.ad_window.push([WINDOW, labelOf(t, entry), entry.doc_type || '', '', 'M']); counts.windows++; windowIds.push(WINDOW);
+      // ad_tab: id, window, name, description, help, table, tablevel, seqno, issinglerow, isreadonly, where, orderby
+      rows.ad_tab.push([TAB, WINDOW, labelOf(t, entry), '', '', TABLE, 0, 10, 'Y', 'N', '', '']); counts.tabs++;
       rows.ad_menu.push([LEAF, labelOf(t, entry), cleanOf(t), 'N', 'W', WINDOW]);
       rows.ad_treenodemm.push([TREE, LEAF, GROUP_MENU, menuLeafSeq]); menuLeafSeq += 10; counts.menu++;
       emitColsFields(entry, TABLE, TAB);
@@ -161,11 +166,22 @@ function genAD(erpSpec) {
       const pw = winByTable[entry._parent];
       const TAB = base + 300000 + (tabSeq++);
       const TABLE = emitTable(t, entry, pw.WINDOW);
-      rows.ad_tab.push([TAB, pw.WINDOW, labelOf(t, entry), TABLE, 1, pw.tabSeqNo]); pw.tabSeqNo += 10; counts.tabs++; counts.nested++;
+      // nested line tab: TabLevel 1, multi-row grid (issinglerow 'N')
+      rows.ad_tab.push([TAB, pw.WINDOW, labelOf(t, entry), '', '', TABLE, 1, pw.tabSeqNo, 'N', 'N', '', '']); pw.tabSeqNo += 10; counts.tabs++; counts.nested++;
       emitColsFields(entry, TABLE, TAB);
     }
     gi++;
   }
+  // session tables — minimal login so the EXISTING idmp_session flow works (ZERO renderer change):
+  // one System user → one admin role → org 0 (*) → AD_Window_Access over EVERY generated window.
+  const SYS_USER = 100, ADMIN_ROLE = 102;
+  rows.ad_client = [[0, 'System']];
+  rows.ad_org = [[0, '*']];
+  rows.ad_user = [[SYS_USER, erp + ' Installer']];
+  rows.ad_role = [[ADMIN_ROLE, erp + ' Admin']];
+  rows.ad_user_roles = [[SYS_USER, ADMIN_ROLE]];
+  rows.ad_role_orgaccess = [[ADMIN_ROLE, 0]];
+  rows.ad_window_access = windowIds.map(w => [w, ADMIN_ROLE]);
   return { rows, counts };
 }
 
@@ -179,23 +195,37 @@ function writeSeed(outPath, rows) {
     CREATE TABLE ad_reference (ad_reference_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, name TEXT, description TEXT, validationtype TEXT);
     CREATE TABLE ad_ref_list (ad_ref_list_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, ad_reference_id INT, value TEXT, name TEXT);
     CREATE TABLE ad_table (ad_table_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, name TEXT, description TEXT, tablename TEXT, ad_window_id INT);
-    CREATE TABLE ad_column (ad_column_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, ad_table_id INT, columnname TEXT, name TEXT, ad_reference_id INT, fieldlength INT, ismandatory TEXT, iskey TEXT, isidentifier TEXT);
-    CREATE TABLE ad_window (ad_window_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, name TEXT, description TEXT, windowtype TEXT);
-    CREATE TABLE ad_tab (ad_tab_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, ad_window_id INT, name TEXT, ad_table_id INT, tablevel INT, seqno INT);
-    CREATE TABLE ad_field (ad_field_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, ad_tab_id INT, ad_column_id INT, name TEXT, seqno INT, isdisplayed TEXT, ismandatory TEXT);
+    CREATE TABLE ad_column (ad_column_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, ad_table_id INT, columnname TEXT, name TEXT, ad_reference_id INT, fieldlength INT, ismandatory TEXT, iskey TEXT, isidentifier TEXT, defaultvalue TEXT);
+    CREATE TABLE ad_window (ad_window_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, name TEXT, description TEXT, help TEXT, windowtype TEXT);
+    CREATE TABLE ad_tab (ad_tab_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, ad_window_id INT, name TEXT, description TEXT, help TEXT, ad_table_id INT, tablevel INT, seqno INT, issinglerow TEXT, isreadonly TEXT, whereclause TEXT, orderbyclause TEXT);
+    CREATE TABLE ad_field (ad_field_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, ad_tab_id INT, ad_column_id INT, name TEXT, description TEXT, seqno INT, isdisplayed TEXT, displaylogic TEXT, ismandatory TEXT, isreadonly TEXT, defaultvalue TEXT);
     CREATE TABLE ad_menu (ad_menu_id INTEGER PRIMARY KEY, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT, name TEXT, description TEXT, issummary TEXT, action TEXT, ad_window_id INT);
     CREATE TABLE ad_treenodemm (ad_tree_id INT, node_id INT, parent_id INT, seqno INT, ad_client_id INT, ad_org_id INT, isactive TEXT, created TEXT, createdby INT, updated TEXT, updatedby INT);
+    CREATE TABLE ad_client (ad_client_id INTEGER PRIMARY KEY, isactive TEXT, name TEXT);
+    CREATE TABLE ad_org (ad_org_id INTEGER PRIMARY KEY, isactive TEXT, name TEXT);
+    CREATE TABLE ad_user (ad_user_id INTEGER PRIMARY KEY, ad_client_id INT, isactive TEXT, name TEXT);
+    CREATE TABLE ad_role (ad_role_id INTEGER PRIMARY KEY, ad_client_id INT, isactive TEXT, name TEXT);
+    CREATE TABLE ad_user_roles (ad_user_id INT, ad_role_id INT, isactive TEXT);
+    CREATE TABLE ad_role_orgaccess (ad_role_id INT, ad_org_id INT, isactive TEXT);
+    CREATE TABLE ad_window_access (ad_window_id INT, ad_role_id INT, isactive TEXT);
   `);
   const ins = {
     ad_reference: db.prepare(`INSERT INTO ad_reference (ad_reference_id,ad_client_id,ad_org_id,isactive,created,createdby,updated,updatedby,name,validationtype) VALUES (?,${AUDIT},?,?)`),
     ad_ref_list: db.prepare(`INSERT INTO ad_ref_list VALUES (?,${AUDIT},?,?,?)`),
     ad_table: db.prepare(`INSERT INTO ad_table VALUES (?,${AUDIT},?,?,?,?)`),
-    ad_column: db.prepare(`INSERT INTO ad_column VALUES (?,${AUDIT},?,?,?,?,?,?,?,?)`),
-    ad_window: db.prepare(`INSERT INTO ad_window VALUES (?,${AUDIT},?,?,?)`),
-    ad_tab: db.prepare(`INSERT INTO ad_tab VALUES (?,${AUDIT},?,?,?,?,?)`),
-    ad_field: db.prepare(`INSERT INTO ad_field VALUES (?,${AUDIT},?,?,?,?,?,?)`),
+    ad_column: db.prepare(`INSERT INTO ad_column VALUES (?,${AUDIT},?,?,?,?,?,?,?,?,?)`),
+    ad_window: db.prepare(`INSERT INTO ad_window VALUES (?,${AUDIT},?,?,?,?)`),
+    ad_tab: db.prepare(`INSERT INTO ad_tab VALUES (?,${AUDIT},?,?,?,?,?,?,?,?,?,?,?)`),
+    ad_field: db.prepare(`INSERT INTO ad_field VALUES (?,${AUDIT},?,?,?,?,?,?,?,?,?,?)`),
     ad_menu: db.prepare(`INSERT INTO ad_menu VALUES (?,${AUDIT},?,?,?,?,?)`),
     ad_treenodemm: db.prepare(`INSERT INTO ad_treenodemm VALUES (?,?,?,?,0,0,'Y','${FIXED_TS}',${SYS},'${FIXED_TS}',${SYS})`),
+    ad_client: db.prepare(`INSERT INTO ad_client VALUES (?,'Y',?)`),
+    ad_org: db.prepare(`INSERT INTO ad_org VALUES (?,'Y',?)`),
+    ad_user: db.prepare(`INSERT INTO ad_user VALUES (?,0,'Y',?)`),
+    ad_role: db.prepare(`INSERT INTO ad_role VALUES (?,0,'Y',?)`),
+    ad_user_roles: db.prepare(`INSERT INTO ad_user_roles VALUES (?,?,'Y')`),
+    ad_role_orgaccess: db.prepare(`INSERT INTO ad_role_orgaccess VALUES (?,?,'Y')`),
+    ad_window_access: db.prepare(`INSERT INTO ad_window_access VALUES (?,?,'Y')`),
   };
   const tx = db.transaction(() => {
     for (const t of Object.keys(ins)) for (const r of rows[t]) ins[t].run(...r);
