@@ -18,6 +18,8 @@ function ok(cond, msg) { if (!cond) { fails++; console.log('  ✗ FAIL: ' + msg)
 function q(sql) { var out = cp.execSync('sqlite3 -json "' + DB + '" "' + sql.replace(/"/g, '\\"') + '"', { encoding: 'utf8' }).trim(); return out ? JSON.parse(out) : []; }
 function q1(sql) { var r = q(sql); return r.length ? r[0] : null; }
 function n2(n) { return Number(n).toFixed(2); }
+// CORE money fields are now exact 2dp STRINGS (§I-L BigDecimal fold) — compare to the cent, not by ===/round2.
+function cents(x) { return x == null ? 0 : Math.round(Number(x) * 100); }
 
 console.log('=== §REPORT-FIN witness — ' + new Date().toISOString() + ' ===\n');
 
@@ -37,8 +39,8 @@ ok(tb.balanced && tb.maxDiffCents === 0, 'ΣDr (' + n2(tb.totalDr) + ') == ΣCr 
 console.log('\n[ISSUE R2.2] folded totals == independent SUM over fact_acct (no asserted number)');
 var indep = q1('SELECT ROUND(SUM(amtacctdr),2) dr, ROUND(SUM(amtacctcr),2) cr, COUNT(*) n FROM fact_acct');
 console.log('§REPORT-FIN-RECON foldedDr=' + n2(tb.totalDr) + ' sqliteDr=' + n2(indep.dr) + ' foldedCr=' + n2(tb.totalCr) + ' sqliteCr=' + n2(indep.cr) + ' rows=' + indep.n);
-ok(CORE.round2(tb.totalDr) === CORE.round2(indep.dr), 'folded ΣDr == independent SQLite SUM(amtacctdr)');
-ok(CORE.round2(tb.totalCr) === CORE.round2(indep.cr), 'folded ΣCr == independent SQLite SUM(amtacctcr)');
+ok(cents(tb.totalDr) === cents(indep.dr), 'folded ΣDr == independent SQLite SUM(amtacctdr)');
+ok(cents(tb.totalCr) === cents(indep.cr), 'folded ΣCr == independent SQLite SUM(amtacctcr)');
 
 // ── ISSUE R2.3: account meta is truth-bound — accounts resolve to the chart of accounts, not "#id" ──
 console.log('\n[ISSUE R2.3] account lines carry chart-of-accounts names (truth-bound)');
@@ -52,7 +54,7 @@ console.log('\n[ISSUE R2.4] P&L folds from the same fact_acct (revenue − expen
 var pnl = CORE.foldPnL(facts, accounts);
 console.log('§REPORT-FIN pnl revenue=' + n2(pnl.revenue) + ' expense=' + n2(pnl.expense) + ' netIncome=' + n2(pnl.netIncome) + ' accounts=' + pnl.lines.length + ' folds-from=' + pnl.foldsFrom);
 ok(pnl.lines.length > 0, 'P&L folded at least one revenue/expense account (' + pnl.lines.length + ')');
-ok(CORE.round2(pnl.netIncome) === CORE.round2(pnl.revenue - pnl.expense), 'netIncome == revenue − expense (cent-exact)');
+ok(cents(pnl.netIncome) === (cents(pnl.revenue) - cents(pnl.expense)), 'netIncome == revenue − expense (cent-exact)');
 
 console.log('\n=== RESULT: ' + (fails === 0 ? 'ALL PASS' : fails + ' FAIL') + ' ===');
 process.exit(fails === 0 ? 0 : 1);

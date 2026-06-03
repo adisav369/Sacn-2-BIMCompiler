@@ -560,3 +560,74 @@ fold unit layered on top.
   publish mirror — tracked source = `build/erp/`. NOT yet OCI-deployed to bim-ootb-live (separate EXPLICIT-GO).
 - **DONE this session (final):** I-K (kernel+UI) ✅ · I-J (guard) ✅ · BigDecimal enforced ✅ · localhost-tested ✅
   · benchmark ✅ · branched+PR ✅. Resume: `prompts/ENGINE_WRITE_PATH_NEXT.md`.
+
+---
+
+## §I-L SPEC — Money-fold BigDecimal audit (NEXT item 7; read-side folds)
+<!-- // Implementing ENGINE_FULL_ERP_ISSUES.md §I-L — Witness: W-MONEY-FOLD (feedback_numbers_via_bigdecimal) -->
+<!-- Sources (non-invent — every divergence below is MEASURED, not asserted; probe logged before the fix):
+       · the offending fold  → build/erp/report_overlay.js round2()/raw-Number reduce (:34/:54/:75/:82-83/:98-102)
+       · the exact oracle    → build/erp/bigdecimal.js (== java.math.BigDecimal, proven 446/446)
+       · scope decision      → erp_postings.js already integer-cent (cents()=Math.round(n*100), exact ≤2^53c) -->
+
+### The gap (MEASURED, not assumed — /tmp probe 2026-06-04)
+`report_overlay.js` is PURE READ (no kernel write, nothing hashed) so this is a **correctness** issue, not a
+replay-determinism one — but a financial *report* that doesn't match iDempiere/Postgres to the cent is wrong on
+its own terms. Its folds (`foldReceipt`/`foldTrialBalance`/`foldPnL`) accumulate with raw `Number` `+`/`reduce`
+and round with `round2(n)=Math.round((n+EPSILON)*100)/100`. Empirically this matches golden ONLY for
+**positive, sub-$9e13, clean-2dp** data. It DIVERGES from `java.math.BigDecimal` on the values double-entry is
+built from:
+- **Negative half-cents** — `Math.round` rounds .5 toward **+∞**; Java `HALF_UP` rounds **away-from-zero**.
+  `-1.005 → round2 -1.00` vs exact `-1.01`. Hits every `dr−cr` balance, P&L `net`, tax-as-remainder, credit/refund.
+- **Balance masking** — a TB line with a 3rd-decimal credit: balance should be `-0.01`, `round2` says `0.00` →
+  a real imbalance is hidden (the worst failure for a trial balance whose whole job is to prove ΣDr==ΣCr).
+- **Magnitude > 2^53 cents (~$9e13)** — float drops cents on large totals (`…999.99 + 0.02 → …000.00` vs `.01`).
+- (NOT a divergence — reported honestly: sub-cent *dust* accumulation `100000×0.001` stayed exact; `round2`'s
+  +EPSILON rescues small positives. Don't over-claim "round2 is broken" — it's broken for SIGNED + LARGE.)
+
+### The fix (additive, read-side, no API break)
+Route every monetary accumulation in the three CORE folds through `BigDecimal`: source raw row values via
+`bd(v)=BigDecimal.of(String(v))` (String so a non-integer float never enters `of(Number)`, which throws by
+contract), accumulate exact, `.setScale(2, HALF_UP)` at the single money leaf (`money2`). `balanced` becomes
+an **exact** `diff.isZero()` (no float compare). Money leaf is carried as an **exact 2dp STRING** (not Number)
+so the value is exact even past 2^53 cents; `render()` formats it via `Number(x).toFixed(2)` unchanged.
+`round2` stays only for non-money use (qty/price display).
+
+### Scope (swept)
+- **CONVERT:** `report_overlay.js` `foldReceipt` (subtotal/tax/total), `foldTrialBalance` (dr/cr/balance/totals/
+  balanced), `foldPnL` (net/revenue/expense/netIncome). Mirror `build/erp/`→`site/` (mirror was STALE — site
+  lacked TB+PnL; re-synced).
+- **LEAVE (audited exact):** `erp_postings.js` accumulates **integer cents** (`cents()`→`Math.round(n*100)`,
+  `dr===cr`) — exact ≤2^53c; the only residual is `cents()`'s own per-value boundary, noted not fixed (its inputs
+  are 2dp op-log amounts). Kernel `Number()` = counts/IDs. `crud_overlay.js:87` `Number(val)` = field-input
+  capture (flagged residual: a money field typed in the New form enters the op as a Number — write-path item,
+  not this read-side audit).
+
+### Witness — `scripts/poc_money_fold.js` (W-MONEY-FOLD)
+Names the issue it proves: *raw-Number+round2 financial folds diverge from java.math.BigDecimal on signed/large
+money; the BigDecimal folds reproduce golden exactly.* For each MEASURED vector above: (1) the inlined OLD raw
+fold DIVERGES from golden (proves the bug was real, non-invent), (2) the LIVE BigDecimal fold == golden string,
+(3) `foldTrialBalance.balanced` is exact (no spurious balance). Golden = independent BigDecimal string math
+(the proven oracle). `§MONEY-FOLD PASS`.
+
+### # DISCUSSION LOG — 2026-06-04 — §I-L money-fold audit
+- **Probed first (non-invent):** found `round2` is faithful for small positives (its +EPSILON rescues the
+  classic 1.005/2.675 cases) — so the honest gap is **signed + large**, not "round2 is broken." Witness vectors
+  are the measured divergences only.
+- **erp_postings left as-is:** integer-cent strategy is already exact for its purpose; converting it would be
+  churn without a witnessed divergence. Documented, not touched.
+
+### 2026-06-04 — §I-L LANDED (read-side money folds → BigDecimal; witnessed)
+- **DONE:** `build/erp/report_overlay.js` `foldReceipt`/`foldTrialBalance`/`foldPnL` now accumulate in
+  `BigDecimal` off the RAW rows, carry the money leaf as an exact 2dp STRING, and report `balanced` via exact
+  `isZero`. Mirror `site/report_overlay.js` re-synced (was STALE — lacked TB+PnL; now md5-identical).
+- **Witness `scripts/poc_money_fold.js` → `§MONEY-FOLD PASS` (11/11):** the inlined OLD raw-Number+round2 fold
+  DIVERGES from java.math.BigDecimal on signed sub-cent (S: TB balance 0.00 vs −0.01, receipt tax, P&L net) and
+  magnitude >2^53c (M: …000.00 vs …000.01); the LIVE folds == proven golden; `balanced` exact (B). Divergences
+  MEASURED (probe logged), never invented; one S-vector was corrected after the witness caught its float noise
+  rounded correctly by luck (vector fixed, assertion never).
+- **Regression:** `scripts/test_report_overlay.js` + `scripts/test_report_fin.js` updated to the exact-STRING
+  contract (cent-exact compare, no `round2`-on-string) → both ALL PASS. Values unchanged (same TB Dr=Cr=46574.97
+  balanced=Y, receipt 95.00/3657.50). Logs in `build/erp/poc_money_fold.log` + `test_report_*.log`.
+- **Residual (flagged, not this lane):** `crud_overlay.js:87` `Number(val)` coerces a New-form money field into
+  the op as a JS Number — write-path input capture, routes to the write lane, not this read-side fold.

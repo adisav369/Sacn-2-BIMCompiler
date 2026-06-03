@@ -35,6 +35,30 @@ did go to gh-pages PR #94/#97; everything after is localhost). Built + §-witnes
 4. **Attach** (no blob path) · real **posting** beyond sales-invoice class (§13.6 record-keyed `fact_acct`) · **client→shard** select on read.
 5. **Odoo depth:** the landing dashboard → a real interactive Kanban dashboard (pillar 1); kanban drag→dispatch as a default view (needs write path, gated by #1).
 
+### OUTSTANDING — dictated / parked backlog (surfaced from memory 2026-06-04; memory now only LINKS here)
+These were dictated across sessions and were sitting in memory (or nowhere). Moved here so they are on ONE
+visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
+listed for visibility and route to their own prompt/lane.
+- **[ERP-UI] Remove the two redundant buttons at the TOP of `erp.html`** (user-confirmed page = `bim-ootb/erp/erp.html`,
+  the card-first AD UI — NOT idempiere.html). The top is `#breadcrumb` (rendered by `ad_ui.js`) + the pill rail
+  (`erp_pills.js`/`pills.json`); no literal top `<button>` in the HTML, so the two are JS-rendered — read
+  `ad_ui.js` breadcrumb render through to find them. **Still need: WHICH TWO** (non-invent). Same family as item
+  **F** (remove stale icons). Source memory: `project_erp_remove_two_top_buttons`.
+  - **idempiere.html top bar = ALREADY DONE (not part of this task):** the 🔴 Red-Pill 3-state hides the classic
+    `#idmp-toolbar` in expanded/clean (witness `§REDPILL state=… barHidden=Y`, localStorage-persisted,
+    idempiere.html:63/1296/1322). Different page, different (toggle) solution — leave it.
+- **[ERP-UI] Mobile UI wiring** — after the button removal, verify/repair the mobile top bar layout (the user
+  flagged the mobile version explicitly). Mobile = `ad_ui.js .acc` accordion + pill controls ([[feedback_mobile_events]]).
+- **[ERP-UI] Share icon in the pill** — one Share control that captures AND restores full context. (`project_share_sheet`)
+- **[ERP-UI] `idempiere.html` descriptor-driven** — AD as first descriptor, not hardcoded (renderer #2 reuse). (`project_idempiere_renderer`)
+- **[ERP-UI] Glassbowl Process button** — deployed dry-run, NOT wired to kernel (GP1–GP4, `GUIDE_SHOWME_PROCESS.md`). (`project_glassbowl`)
+- **[BIM-viewer → own lane] 2D saved cards GF/L1 can't be deleted** (reappear on panel reopen — localStorage/kernel bug). (`project_2d_regression`)
+- **[BIM-viewer → own lane] Time Machine Gantt** (`boq_charts.html`) not wired to `kernel_ops`. (`project_time_machine`)
+- **[BIM-viewer → own lane] Grid UX debt** — 8 §-tags to verify + merge the two save systems into one. (`project_grid_ux_debt`)
+- **[BIM-viewer → own lane] 4D capture** — widened DDL + `§GANTT_SOURCE` branch + coverage badge. (`project_4d_capture`)
+- **[BIM-viewer → own lane] Ground+Sky** — live cloud layer (C1) not done. (`project_ground_sky`)
+- **[BIM-viewer → own lane] Settings JSON editor** — Phase 2 editable schedule parked. (`project_settings_json_editor`)
+
 ## 1. DONE + FROZEN — consume, do NOT rebuild
 - **Engine seam (C0):** `bim-compiler/scripts/erp_seam.js` `makeSeam→{read,dispatch,manifest,verbs,verify}`; `dispatch(intent,ctx)`
   gates role+owner engine-side; `verify→{chainOk,len,tip}`. `poc_seam.js` ALL PASS. Browser UMD `window.ERP` published by the

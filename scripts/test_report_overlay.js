@@ -18,6 +18,8 @@ function ok(cond, msg) { if (!cond) { fails++; console.log('  ✗ FAIL: ' + msg)
 function q(sql) { var out = cp.execSync('sqlite3 -json "' + DB + '" "' + sql.replace(/"/g, '\\"') + '"', { encoding: 'utf8' }).trim(); return out ? JSON.parse(out) : []; }
 function q1(sql) { var r = q(sql); return r.length ? r[0] : null; }
 function fmtN(n) { return n == null ? 'n/a' : Number(n).toFixed(2); }
+// CORE money fields are now exact 2dp STRINGS (§I-L BigDecimal fold) — compare to the cent, not by ===/round2.
+function cents(x) { return x == null ? 0 : Math.round(Number(x) * 100); }
 
 console.log('=== §REPORT witness — ' + new Date().toISOString() + ' ===\n');
 
@@ -42,7 +44,7 @@ console.log('[ISSUE R1.1] fold == independent re-fold (no hand-authored amount)'
   var indepSub = CORE.round2(indep.sub);
   console.log('§REPORT-RECEIPT doc=' + key + '#' + id + ' lines=' + rec.lines.length + ' subtotal=' + fmtN(rec.subtotal) + ' tax=' + fmtN(rec.tax) + ' total=' + fmtN(rec.total) + ' folds-from=bundle handAuthored=0');
   ok(rec.lines.length === indep.n, key + '#' + id + ' line count folded (' + rec.lines.length + ') == rows in bundle (' + indep.n + ')');
-  ok(rec.subtotal === indepSub, key + '#' + id + ' folded subtotal ' + fmtN(rec.subtotal) + ' == independent SUM(linenetamt) ' + fmtN(indepSub));
+  ok(cents(rec.subtotal) === cents(indepSub), key + '#' + id + ' folded subtotal ' + fmtN(rec.subtotal) + ' == independent SUM(linenetamt) ' + fmtN(indepSub));
 });
 console.log('');
 
@@ -51,9 +53,9 @@ console.log('[ISSUE R1.2] tax = total − subtotal reconciles to header.grandtot
 [['c_order', 101], ['c_order', 104]].forEach(function (t) {
   var key = t[0], id = t[1], rec = foldDoc(key, id).rec;
   var grand = q1('SELECT grandtotal FROM ' + key + ' WHERE ' + key + '_id=' + id).grandtotal;
-  var diffC = Math.round((rec.total - (rec.subtotal + (rec.tax || 0))) * 100);
+  var diffC = cents(rec.total) - (cents(rec.subtotal) + cents(rec.tax));
   console.log('§REPORT-RECEIPT-RECON doc=' + key + '#' + id + ' subtotal=' + fmtN(rec.subtotal) + ' tax=' + fmtN(rec.tax) + ' total=' + fmtN(rec.total) + ' header.grandtotal=' + fmtN(grand) + ' maxDiff=' + diffC + 'c');
-  ok(CORE.round2(rec.total) === CORE.round2(grand), key + '#' + id + ' folded total == header.grandtotal');
+  ok(cents(rec.total) === cents(grand), key + '#' + id + ' folded total == header.grandtotal');
   ok(diffC === 0, key + '#' + id + ' subtotal + tax == total to the cent (diff=' + diffC + 'c)');
 });
 console.log('');

@@ -31,7 +31,22 @@
   };
 
   function num(v) { return (v == null || v === '') ? null : Number(v); }
-  function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+  function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }  // non-money use only (qty/price display)
+
+  // ── exact money (feedback_numbers_via_bigdecimal · ENGINE_FULL_ERP_ISSUES.md §I-L) ──────────────
+  // Every monetary accumulation in the folds below goes through BigDecimal (== java.math.BigDecimal, proven),
+  // NOT raw Number+round2. raw round2 = Math.round (rounds .5 toward +inf) diverges from Java HALF_UP
+  // (away-from-zero) on negative half-cents, masks TB imbalances, and drops cents past 2^53c — all MEASURED.
+  // Source values arrive from SQLite as Number|string; route through String so BigDecimal.of never sees a
+  // non-integer float (it throws by contract). money2() is the single DISPLAY leaf (re-enters Number; this is
+  // a PURE-READ fold, nothing here is hashed). BigDecimal is loaded before this file in glassbowl.html; under
+  // node the witness requires it.
+  var BD = (typeof BigDecimal !== 'undefined') ? BigDecimal
+         : (typeof require === 'function' ? require('./bigdecimal.js') : null);
+  function bd(v) { return (v == null || v === '') ? BD.ZERO : BD.of(String(v)); }       // null/'' → exact 0
+  // money2 — the single money LEAF: exact 2dp HALF_UP, carried as a STRING so no value re-enters Number even
+  // past 2^53 cents (render formats via Number(x).toFixed(2), which is fine on a 2dp string). Never lossy.
+  function money2(b) { return b == null ? null : b.setScale(2, BD.RoundingMode.HALF_UP).toString(); }
 
   // foldReceipt — fold ONE document's receipt from its raw header row + raw line rows.
   // PURE: takes rows in, returns the folded receipt out. subtotal = Σ line amount; tax = total − subtotal
@@ -51,9 +66,12 @@
         amount: fin ? num(r[map.amount]) : null
       };
     });
-    var subtotal = fin ? round2(outLines.reduce(function (s, l) { return s + (l.amount || 0); }, 0)) : null;
-    var total = map.total ? num(header[map.total]) : null;
-    var tax = (subtotal != null && total != null) ? round2(total - subtotal) : null;
+    // EXACT: subtotal = Σ line amount, tax = total − subtotal — all BigDecimal off the RAW rows (never the
+    // display Number), one money2 leaf each. tax-as-remainder is exactly where negative half-cents bite.
+    var subtotalB = fin ? (lines || []).reduce(function (acc, r) { return acc.add(bd(r[map.amount])); }, BD.ZERO) : null;
+    var totalB = map.total ? bd(header[map.total]) : null;
+    var taxB = (subtotalB != null && totalB != null) ? totalB.subtract(subtotalB) : null;
+    var subtotal = money2(subtotalB), total = (totalB != null ? money2(totalB) : null), tax = money2(taxB);
     return {
       key: map.key, id: header[map.pk], docno: header.documentno,
       date: (map.date && header[map.date] != null) ? String(header[map.date]).slice(0, 10) : null,
@@ -64,7 +82,54 @@
     };
   }
 
-  var CORE = { REPORT_MAP: REPORT_MAP, foldReceipt: foldReceipt, round2: round2 };
+  // foldTrialBalance — fold the posted journal into a Trial Balance (R2). PURE: group fact_acct rows by
+  // account, sum Dr/Cr, join account meta (value/name/type from c_elementvalue). The proof is that ΣDr==ΣCr
+  // to the cent — a structural property of double-entry, re-derived here, never asserted. accounts = {id:{value,name,accounttype}}.
+  function foldTrialBalance(factRows, accounts) {
+    accounts = accounts || {};
+    var by = {};
+    (factRows || []).forEach(function (r) {
+      var a = r.account_id; if (!by[a]) by[a] = { account_id: a, dr: BD.ZERO, cr: BD.ZERO };
+      by[a].dr = by[a].dr.add(bd(r.amtacctdr)); by[a].cr = by[a].cr.add(bd(r.amtacctcr));   // EXACT
+    });
+    var totDrB = BD.ZERO, totCrB = BD.ZERO;
+    var lines = Object.keys(by).map(function (a) {
+      var b = by[a], m = accounts[a] || {};
+      totDrB = totDrB.add(b.dr); totCrB = totCrB.add(b.cr);
+      return { account_id: +a, value: m.value != null ? m.value : ('#' + a), name: m.name != null ? m.name : null,
+               type: m.accounttype != null ? m.accounttype : null,
+               dr: money2(b.dr), cr: money2(b.cr), balance: money2(b.dr.subtract(b.cr)) };  // balance: signed → HALF_UP exact
+    }).sort(function (x, y) { return String(x.value).localeCompare(String(y.value)); });
+    // balanced is EXACT (isZero), never a float compare — a 3rd-decimal credit can no longer mask an imbalance.
+    var diffB = totDrB.subtract(totCrB);
+    var diffC = Number(diffB.multiply(bd('100')).setScale(0, BD.RoundingMode.HALF_UP).toString());
+    return { lines: lines, totalDr: money2(totDrB), totalCr: money2(totCrB), balanced: diffB.isZero(),
+             maxDiffCents: diffC, rows: (factRows || []).length, foldsFrom: 'fact_acct' };
+  }
+
+  // foldPnL — fold the P&L from the same journal: revenue accounts (type R, natural credit) and expense
+  // accounts (type E, natural debit). netIncome = revenue − expense. Asset/Liability/Equity (A/L/O) excluded.
+  function foldPnL(factRows, accounts) {
+    accounts = accounts || {};
+    var by = {};
+    (factRows || []).forEach(function (r) {
+      var m = accounts[r.account_id] || {}, t = m.accounttype;
+      if (t !== 'R' && t !== 'E') return;
+      var a = r.account_id; if (!by[a]) by[a] = { account_id: a, type: t, value: m.value, name: m.name, net: BD.ZERO };
+      // net is a SIGNED fold (cr−dr for revenue, dr−cr for expense) — exactly the half-cent trap. EXACT.
+      by[a].net = (t === 'R') ? by[a].net.add(bd(r.amtacctcr)).subtract(bd(r.amtacctdr))
+                              : by[a].net.add(bd(r.amtacctdr)).subtract(bd(r.amtacctcr));
+    });
+    var revenueB = BD.ZERO, expenseB = BD.ZERO;
+    var lines = Object.keys(by).map(function (a) {
+      var b = by[a]; if (b.type === 'R') revenueB = revenueB.add(b.net); else expenseB = expenseB.add(b.net);
+      return { account_id: b.account_id, type: b.type, value: b.value, name: b.name, net: money2(b.net) };
+    }).sort(function (x, y) { return String(x.value).localeCompare(String(y.value)); });
+    return { lines: lines, revenue: money2(revenueB), expense: money2(expenseB),
+             netIncome: money2(revenueB.subtract(expenseB)), foldsFrom: 'fact_acct' };
+  }
+
+  var CORE = { REPORT_MAP: REPORT_MAP, foldReceipt: foldReceipt, foldTrialBalance: foldTrialBalance, foldPnL: foldPnL, round2: round2 };
   if (typeof module !== 'undefined' && module.exports) { module.exports = CORE; return; }
   if (typeof document === 'undefined') return;
 
