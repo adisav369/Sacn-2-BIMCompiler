@@ -113,6 +113,45 @@ PowerSync, and ElectricSQL at once.
 - Secured multi-user **needs a trust anchor** — every system above has a server; ours is the async
   **server domain** (§0.20), reached only when single-user/offline no longer suffices.
 
+---
+
+## The other axis — SQLite-WASM *at scale* (storage/engine, not sync) — added 2026-06-03
+
+The systems above are **sync** frameworks. A separate question: who runs a **large relational app fully in
+SQLite-WASM**, and what does it cost? The canonical production example is **Notion** — and its architecture is
+*our doctrine, shipped at scale.*
+
+- **Notion** (the existence proof): SQLite→WASM in a **Web Worker** (UI thread unburdened), a **SharedWorker**
+  routing every tab's queries to one active tab's worker, on the **OPFS SAHPool VFS**. **Postgres stays the
+  canonical source of truth** (logical replication + WAL → the browser SQLite is a disposable **projection**).
+  ([Notion blog](https://www.notion.com/blog/how-we-sped-up-notion-in-the-browser-with-wasm-sqlite),
+  [HN](https://news.ycombinator.com/item?id=40949489)) — this validates [DistributedERP](DistributedERP.md)'s
+  *"the operator's install is the system of record; the browser is a projection"* ([ENGINE_FULL_ERP_ISSUES.md](../prompts/ENGINE_FULL_ERP_ISSUES.md) §I-A).
+  Notion chose **server-of-record + local projection**, NOT local-first-authoritative.
+
+The hard constraints (each maps to one of our engine issues):
+
+| SQLite-WASM finding | Source | Maps to |
+|---|---|---|
+| **~2 GB DB cap** (up from 512 MB) | [sqlite.org/wasm persistence](https://sqlite.org/wasm/doc/trunk/persistence.md) | I-A storage cap is hard-bounded → gravity-sharding ([DistributedERP §13](DistributedERP.md)) not optional at full-AD scale |
+| **OPFS = one read/write txn at a time** | [PowerSync state-of-persistence](https://powersync.com/blog/sqlite-persistence-on-the-web) | **single-writer holds at the *storage* layer too** — reinforces G-SINGLE-WRITER / I-E from below |
+| **Multi-MB JS strings = measurable WASM-bridge cost** | [sqlite.org/wasm](https://sqlite.org/wasm/doc/trunk/persistence.md) | **exactly I-D** (projection 52→336 KB re-export) — keep state *in* SQLite, don't marshal big strings out |
+| **SAHPool VFS = 3–4× I/O; 8–16 MB page cache = big win** | [PowerSync](https://powersync.com/blog/sqlite-persistence-on-the-web) | free wins for the engine-perf lane (Agent E) *before* any algorithmic change |
+| **Needs SharedArrayBuffer + COOP/COEP headers; Safari <17 out** | [sqlite.org/wasm persistence](https://sqlite.org/wasm/doc/trunk/persistence.md) | a deploy gate (OCI/GH-pages must send the headers) |
+
+**Why SQLite, not DuckDB-WASM or PGlite.** [DuckDB-WASM](https://motherduck.com/blog/duckdb-wasm-in-browser/) is
+OLAP (TB via Parquet range-requests) — wrong shape for transactional ERP. [PGlite](https://pglite.dev/) (full
+Postgres-in-WASM) is tempting for *server-side* logic in-browser, but iDempiere's business logic is **Java, not
+PL/pgSQL**, so it does not shortcut the callout port — and it is heavier than we need. SQLite-WASM (relational +
+R-tree + small footprint) is the right tier; the prior art confirms it.
+
+**Sources (storage axis):** [Notion WASM SQLite](https://www.notion.com/blog/how-we-sped-up-notion-in-the-browser-with-wasm-sqlite) ·
+[SQLite WASM persistence](https://sqlite.org/wasm/doc/trunk/persistence.md) ·
+[PowerSync — SQLite persistence on the web](https://powersync.com/blog/sqlite-persistence-on-the-web) ·
+[DuckDB-WASM](https://motherduck.com/blog/duckdb-wasm-in-browser/) · [PGlite](https://pglite.dev/).
+
+---
+
 **Sources:** [RxDB — downsides of offline-first](https://rxdb.info/downsides-of-offline-first.html) ·
 [Replicache — how it works](https://doc.replicache.dev/concepts/how-it-works) ·
 [ElectricSQL — local-first with your existing API](https://electric.ax/blog/2024/11/21/local-first-with-your-existing-api) ·

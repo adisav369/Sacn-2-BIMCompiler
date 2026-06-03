@@ -850,6 +850,8 @@ if(!window.__restored&&isMobile())setPanelCollapsed(true);else syncPanelUI(docum
 </script>
 <!-- ReadMe/ShowMe HELP overlay — separated behavior layer, keyed to bubbles (READSHOWME_DYNAMIC_SPEC.md D3) -->
 <script src="help_overlay.js"></script>
+<!-- BigDecimal — exact decimal arithmetic for ALL money/qty math (== java.math.BigDecimal, proven; feedback_numbers_via_bigdecimal). MUST load before any money-math consumer. -->
+<script src="bigdecimal.js"></script>
 <!-- production signed kernel (W-CHAIN/W-SIGN) — one source, copied from bim-ootb/viewer/kernel_ops.js. GP3: Process ▶ commits real signed SET_STATUS ops to a sidecar log. -->
 <script src="kernel_ops.js"></script>
 <!-- CRUD ring-of-fire + Process/DocAction overlay — peer behavior layer, keyed to bubbles. GP3: Process ▶ = REAL signed write (sidecar log, read-the-tip). -->

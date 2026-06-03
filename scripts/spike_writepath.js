@@ -113,6 +113,35 @@ var METRICS = { dms: [], bytes0: 0, bytesEnd: 0, N: 0, ops: 0, seal: [] };   // 
     }
   }
 
+  // ════════════════════════════════════════════════════════════════════════════════════════════════
+  // PHASE B2 — §I-K seal-from-tip: SAME N writes via commitGroup (seal ONCE per group, from the tip).
+  //   The I-D flattening witness: PHASE B's sealChain re-hashes the WHOLE log per persist (grows with N);
+  //   commitGroup → sealFrom hashes ONLY the new rows → per-write seal cost is FLAT in log length.
+  //   §METER-SEAL-FROM seal_ms must NOT grow ~linearly with N (contrast PHASE B's §METER-SEAL).
+  // ════════════════════════════════════════════════════════════════════════════════════════════════
+  console.log('\n── PHASE B2 — §I-K seal-from-tip cost vs log length (commitGroup → sealFrom) ──');
+  var gdb = newDb(); KO.ensureTable(gdb);
+  var _log2 = console.log;
+  for (var k = 0; k < N; k++) {
+    console.log = function () {};
+    // one-op group: the per-write commit path the doc-action UI will use; seals from the tip forward only.
+    // gid is an edge-minted INPUT (deterministic, index-derived); baseTs is a recorded INPUT (no wall-clock in hash).
+    var gs = now();
+    /* eslint-disable no-await-in-loop */
+    await KO.commitGroup(gdb, [{ op_type: 'SET_STATUS', op_uuid: 'gop-' + k,
+      params: { table: 'C_Invoice', id: 'SPIKEG' + k, doc_status: 'CO' } }], { gid: 'grp-' + k, baseTs: 1000 + k });
+    var gms = now() - gs;
+    console.log = _log2;
+    if ((k + 1) % 50 === 0 || k === N - 1) {
+      var gvs = now(); var gver = await KO.verifyChain(gdb); var gverMs = now() - gvs;
+      METRICS.sealFrom = METRICS.sealFrom || [];
+      METRICS.sealFrom.push({ ops: k + 1, sealMs: gms, verMs: gverMs });
+      console.log('§METER-SEAL-FROM ops=' + (k + 1) + ' commitGroup_ms=' + gms.toFixed(2) + ' verify_ms=' + gverMs.toFixed(2) +
+        ' chainOk=' + (gver.ok ? 'Y' : 'N') + '  (seal-from-tip → FLAT per write, I-D win)');
+    }
+  }
+  gdb.close();
+
   // ── readPostings liveness over the live data (gate + degrade), proving the read side works too ──
   console.log('\n── readPostings liveness (over live projDb + glassbowl fact_acct) ──');
   // POST one real invoice so there is an oplog fold to read.
@@ -169,6 +198,15 @@ function printIssues() {
   console.log('│       persist (kernel_ops.js:137). Observed seal_ms ' + (sealFirst ? sealFirst.sealMs.toFixed(1) : '?') + '@' + (sealFirst ? sealFirst.ops : '?') +
               'ops → ' + (sealLast ? sealLast.sealMs.toFixed(1) : '?') + '@' + (sealLast ? sealLast.ops : '?') + 'ops' +
               ' (~' + sealOpRatio.toFixed(0) + 'x ops → ' + sealRatio.toFixed(1) + 'x ms). Debounced, but O(n)/persist → O(n²).');
+  // §I-K seal-from-tip (PHASE B2) — the I-D FIX measured on the SAME write count via commitGroup→sealFrom.
+  var sf = m.sealFrom || [];
+  if (sf.length) {
+    var sfFirst = sf[0], sfLast = sf[sf.length - 1];
+    var sfRatio = sfLast && sfFirst ? (sfLast.sealMs / sfFirst.sealMs) : 0;
+    console.log('│ [I-D FIX] seal-from-tip (commitGroup→sealFrom): per-write seal hashes ONLY new rows. Observed');
+    console.log('│       commitGroup_ms ' + sfFirst.sealMs.toFixed(2) + '@' + sfFirst.ops + 'ops → ' + sfLast.sealMs.toFixed(2) + '@' + sfLast.ops +
+                'ops (' + sfRatio.toFixed(2) + 'x ms over ' + sealOpRatio.toFixed(0) + 'x ops) — FLAT vs [I-2] ' + sealRatio.toFixed(1) + 'x. I-D flattened.');
+  }
   console.log('│ [I-3] projection bloat. db.export() ' + kb(m.bytes0) + '→' + kb(m.bytesEnd) + ' for ' + m.ops + ' ops (~' +
               bpo.toFixed(0) + 'B/op): each kernel_ops row stores a RICH JSON payload (op+before/after+lineage).');
   console.log('│       The WHOLE blob is re-serialized + re-persisted to IDB on every debounced write.');

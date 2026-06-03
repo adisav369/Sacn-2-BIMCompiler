@@ -136,6 +136,26 @@ each. Consequences:
   separate write-adapter, and round-trips are **verified with named loss**, not lossless — the five
   structural divergences (`build/erp/odoo_fold.log`) bound it. A migration bridge, not a transparent sync.
 
+## The validation stack — iDempiere's 4 tiers, mapped to our layers (extract, don't invent)
+
+iDempiere already separated business-rule enforcement into a **4-tier stack** orchestrated by
+`ModelValidationEngine` (`docValidate` → `factsValidate` → OSGi event). This is the *template* for our layer
+map — it tells us which of the "284 callouts/rules" belongs in which layer, so the port is a **triage, not one
+flat bucket**. (Sources: iDempiere [ModelValidator](https://wiki.idempiere.org/en/Developing_Plug-Ins_-_ModelValidator)
++ [ModelValidationEngine javadoc](https://jenkins-artifacts.idempiere.org/javadoc12/org/compiere/model/ModelValidationEngine.html).
+Clean-room: learn the tier boundaries, extract the rule *effects* from the AD, never copy their Java.)
+
+| iDempiere tier | What it does | **Our layer** ([ENGINE_CONTRACT](ENGINE_CONTRACT.md) / [UI_OVERLAY_GOVERNANCE](../prompts/UI_OVERLAY_GOVERNANCE.md)) |
+|---|---|---|
+| **Callout** (`CalloutEngine`, field-level, 6-param) | UI field-change reactions (pick BPartner → fill address/price list) | **UI Validation concern-overlay** — keyed per field, in front of the seam. The *only* tier that is a UI overlay |
+| **ModelValidator.modelChange** (row: new/change/delete) | row invariants on save | **kernel verb guard, behind the seam** (a `write(ctx,ops)` precondition) |
+| **ModelValidator.docValidate** (doc actions: prepare/complete/void) | document-state-machine rules | **op-group atomicity + DocAction** (WfMC-on-op-log, `ERP_KERNEL_BUILD`) |
+| **FactsValidator.factsValidate(`AcctSchema`, facts[], PO)** + `ACCT_FACTS_VALIDATE` | validate accounting facts **per acct-schema** before posting | **posting-fold layer** — confirms `C_AcctSchema` is a first-class posting input (one doc posts per schema) |
+
+**Consequence (the planning lever):** the callout-port backlog ([ENGINE_FULL_ERP_ISSUES.md](../prompts/ENGINE_FULL_ERP_ISSUES.md)
+§I-C) is **sorted by this tier first** — only the field-level `CalloutEngine` rules land in the UI overlay; the
+other three tiers are engine concerns owned by the engine/posting lanes, not a single "callout" session.
+
 ## Boundaries — what this doc does NOT cover
 
 - **UI / rendering** → [IDEMPIERE_RENDERER_SPEC.md](IDEMPIERE_RENDERER_SPEC.md) (other session).

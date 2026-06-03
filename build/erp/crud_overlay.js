@@ -145,6 +145,22 @@
     return { table: op.table, id: op.id, action: op.action, from: op.from, to: op.to, oracle: op.oracle || null };
   }
 
+  // ── §I-K Phase 3 (UI/docValidate tier) — Implementing ENGINE_FULL_ERP_ISSUES.md §I-K — Witness: W-OPGROUP-UI
+  // buildDocActionGroup — PURE (no DOM): turn ONE overlay DOC_ACTION op into the group of kernel ops the
+  // live write path commits ATOMICALLY via KernelOps.commitGroup. Returns the commitGroup op-shape array
+  // ({op_type, op_uuid, params}) so commitGroup folds them all-or-none, sealed ONCE from the tip (I-D win).
+  // Today the honest set is exactly ONE op: the SET_STATUS status transition we actually have extracted.
+  function buildDocActionGroup(op) {
+    if (!op || op.op_type !== 'DOC_ACTION') return null;
+    var statusOp = { op_type: 'SET_STATUS', op_uuid: op.op_uuid || null, params: kernelParamsFor(op) };
+
+    // §I-K consequence set — DELEGATED (install-side: I-C procedural callouts + I-G §13.6 postings).
+    // NON-INVENT: do not synthesize SHIP/INVOICE/Dr-AR/Cr-Rev here. When the install/re-extract provides
+    // the extracted ops for this docAction, push them into `groupOps` below; commitGroup already folds them all-or-none.
+    var groupOps = [ statusOp ];   // today: the status transition only (honest); extensible to N.
+    return groupOps;
+  }
+
   // readTip — read-the-tip docstatus for (table,id) from the signed op-log: the latest NON-undone
   // SET_STATUS op's `to`, or null if none (caller treats null as the descriptor default, e.g. DR).
   // glassbowl_data.db stays the IMMUTABLE baseline; this sidecar log is the only mutable truth. Filters
@@ -165,7 +181,8 @@
   var CORE = {
     entriesOf: entriesOf, verbEnabled: verbEnabled, defaultsFor: defaultsFor,
     validateField: validateField, validate: validate, cleanVals: cleanVals, buildOp: buildOp,
-    docActionOutcome: docActionOutcome, kernelParamsFor: kernelParamsFor, readTip: readTip
+    docActionOutcome: docActionOutcome, kernelParamsFor: kernelParamsFor, readTip: readTip,
+    buildDocActionGroup: buildDocActionGroup
   };
 
   // node (headless witness): export the core and stop — no DOM to attach.
@@ -489,22 +506,29 @@
     setDocStatus(op.key, op.to, op.outcome, op.unmet);
     toast('PROCESS ' + fname(op.key) + ' → ' + op.to + (op.outcome === 'in-progress' ? ' (In Progress — unmet condition)' : ' (Completed)') + ' — dry-run');
   }
-  // commitProcess — the REAL signed write loop (W-CHAIN): commitOp → sealChain → verifyChain → persist
-  // sidecar → paint #docStatusBar from the COMMITTED `to`. The op-log is the truth; reversible.
+  // commitProcess — the REAL signed write loop (W-CHAIN), now via §I-K commitGroup (Phase 3, UI tier):
+  // buildDocActionGroup → commitGroup(db, groupOps, {gid}) → verifyChain → persist sidecar → paint
+  // #docStatusBar from the COMMITTED `to`. commitGroup folds the ops all-or-none and SEALS ONCE from the
+  // tip (the I-D win — not a whole-log reseal). Today the group is just [statusOp]; it is atomic-READY for
+  // the future consequence ops (delegated — see buildDocActionGroup). The op-log is the truth; reversible.
   function commitProcess(op) {
     var K = kernel();
     withSidecar(function (db) {
-      if (!db || !K) { console.log('§CRUD process key=' + op.key + ' kernel/sql.js absent → DRY fallback'); dryProcess(op); return; }
+      if (!db || !K || typeof K.commitGroup !== 'function') { console.log('§CRUD process key=' + op.key + ' kernel/sql.js/commitGroup absent → DRY fallback'); dryProcess(op); return; }
       try {
-        var id = K.commitOp(db, 'SET_STATUS', CORE.kernelParamsFor(op));
-        Promise.resolve(K.sealChain(db)).then(function () { return K.verifyChain(db); }).then(function (v) {
-          _sidePersist();
-          var row = db.exec('SELECT op_uuid FROM kernel_ops WHERE id=' + id);
-          var uuid = (row.length && row[0].values.length) ? row[0].values[0][0] : null;
-          console.log('§CRUD process committed key=' + op.key + ' op_uuid=' + (uuid || 'null') + ' to=' + op.to + ' verifyChain=' + (v && v.ok ? 'ok' : 'FAIL'));
-          setDocStatus(op.key, op.to, op.outcome, op.unmet);
-          toast('PROCESS ' + fname(op.key) + ' → ' + op.to + (op.outcome === 'in-progress' ? ' (In Progress)' : ' (Completed)') + ' — signed' + (v && v.ok ? '' : ' (verify FAIL!)'));
-        }).catch(function (er) { console.warn('§CRUD process seal/verify error', er && er.message); dryProcess(op); });
+        var groupOps = CORE.buildDocActionGroup(op);   // PURE: today [statusOp]; extensible to N (all-or-none)
+        Promise.resolve(K.commitGroup(db, groupOps, {})).then(function (res) {
+          if (!res || res.committed !== true) { console.warn('§CRUD process commitGroup not-committed reason=' + (res && res.reason || '?')); dryProcess(op); return; }
+          return Promise.resolve(K.verifyChain(db)).then(function (v) {
+            _sidePersist();
+            var lastId = res.ids[res.ids.length - 1];
+            var row = db.exec('SELECT op_uuid FROM kernel_ops WHERE id=' + lastId);
+            var uuid = (row.length && row[0].values.length) ? row[0].values[0][0] : null;
+            console.log('§CRUD process committed key=' + op.key + ' viaGroup=Y gid=' + res.gid + ' ops=' + res.ids.length + ' sealed=' + res.sealed + ' op_uuid=' + (uuid || 'null') + ' to=' + op.to + ' verifyChain=' + (v && v.ok ? 'ok' : 'FAIL'));
+            setDocStatus(op.key, op.to, op.outcome, op.unmet);
+            toast('PROCESS ' + fname(op.key) + ' → ' + op.to + (op.outcome === 'in-progress' ? ' (In Progress)' : ' (Completed)') + ' — signed' + (v && v.ok ? '' : ' (verify FAIL!)'));
+          });
+        }).catch(function (er) { console.warn('§CRUD process commitGroup/verify error', er && er.message); dryProcess(op); });
       } catch (er) { console.warn('§CRUD process commit error', er && er.message); dryProcess(op); }
     });
   }
