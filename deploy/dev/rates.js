@@ -378,6 +378,74 @@ var LOCALE_RATE_MAP = {
   'bl_BD': 'pwd2024_bd'
 };
 
+// ============================================================================
+// SEQUENCE + LABOUR RULES JSON LOADER (externalised "default steps")
+// SETTINGS_JSON_EDITOR.md §BACKLOG — sequence_rules.json
+// The hardcoded SEQUENCE_RULES / LABOR_RATES / SEQUENCE_DEFAULT objects ABOVE
+// remain the in-file SYNC default so window.* globals are populated immediately
+// at script load (time_machine.js / variation_order.js read them synchronously).
+// This OPTIONALLY overrides them once rates/sequence_rules.json (+ any user
+// localStorage override under json_sequence_rules) is fetched. Globals are
+// NEVER left undefined: a failed fetch keeps the hardcoded defaults.
+// id = sequence_rules · file = rates/sequence_rules.json · key = json_sequence_rules
+// ============================================================================
+
+/**
+ * Load sequence + labour rules from rates/sequence_rules.json, deep-merged with
+ * any user override in localStorage[json_sequence_rules]. Overrides the global
+ * SEQUENCE_RULES / SEQUENCE_DEFAULT / LABOR_RATES objects IN PLACE (keeps the
+ * same object identity so existing references stay valid). On any failure the
+ * hardcoded fallback already in place is retained.
+ * @returns {Promise<boolean>} true if the JSON was applied, false on fallback.
+ */
+function loadSequenceRules() {
+  return fetch('rates/sequence_rules.json').then(function(resp) {
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    return resp.json();
+  }).then(function(json) {
+    // Layer any user override (Settings JSON editor persists here) on top.
+    var src = 'json';
+    try {
+      var ov = localStorage.getItem('json_sequence_rules');
+      if (ov) {
+        var ovj = JSON.parse(ov);
+        ['SEQUENCE_RULES', 'SEQUENCE_DEFAULT', 'LABOR_RATES'].forEach(function(k) {
+          if (ovj && ovj[k] && typeof ovj[k] === 'object') {
+            json[k] = (k === 'SEQUENCE_DEFAULT') ? ovj[k]
+                    : Object.assign({}, json[k], ovj[k]);
+          }
+        });
+        src = 'json+override';
+      }
+    } catch (e) { /* ignore bad override, keep shipped JSON */ }
+
+    // Apply IN PLACE so existing window.SEQUENCE_RULES references stay valid.
+    if (json.SEQUENCE_RULES && typeof json.SEQUENCE_RULES === 'object') {
+      for (var sk in json.SEQUENCE_RULES) SEQUENCE_RULES[sk] = json.SEQUENCE_RULES[sk];
+    }
+    if (json.LABOR_RATES && typeof json.LABOR_RATES === 'object') {
+      for (var lk in json.LABOR_RATES) LABOR_RATES[lk] = json.LABOR_RATES[lk];
+    }
+    if (json.SEQUENCE_DEFAULT && typeof json.SEQUENCE_DEFAULT === 'object') {
+      SEQUENCE_DEFAULT = json.SEQUENCE_DEFAULT;
+      if (typeof window !== 'undefined') window.SEQUENCE_DEFAULT = SEQUENCE_DEFAULT;
+    }
+    console.log('§RATES_JSON loaded=' + src + ' rules=' + Object.keys(SEQUENCE_RULES).length
+      + ' labor=' + Object.keys(LABOR_RATES).length);
+    return true;
+  }).catch(function(err) {
+    console.warn('§RATES_JSON loaded=fallback rules=' + Object.keys(SEQUENCE_RULES).length
+      + ' error=' + err.message + ' — using hardcoded sequence/labour rules');
+    return false;
+  });
+}
+
+// Kick off the override fetch immediately. The hardcoded objects above already
+// populate the globals synchronously, so consumers are never blocked on this.
+if (typeof window !== 'undefined' && typeof fetch === 'function') {
+  loadSequenceRules();
+}
+
 /**
  * Auto-load rate template from URL param or active locale.
  * Priority: ?rates= param > locale-based mapping > cidb2024_my fallback

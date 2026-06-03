@@ -127,7 +127,59 @@ R2 reflects **pre‑posted GardenWorld facts** ("the books as loaded") — and i
 empty, so R2a folds the only real posted rows (`gl_journalline`). Wiring `Process→Fact_Acct` so a freshly
 Processed order hits the P&L is **Phase‑3‑adjacent** (`BIM_ERP_FOLD.md`), not this phase.
 
-## 4. Discipline
+## 4. After the receipt — the output lifecycle ("then what?", named 2026‑06‑04)
+
+**The forgotten thread, now named.** Today the receipt is a **view‑only fold**: `report_overlay.js render()`
+paints the table and the ONLY action is the close ✕ (`build/erp/report_overlay.js:192/216/221`). There is no
+print, share, save, email, or persistence — the flow stops at "read it, close it." This section specifies what
+happens *after*, and the key is that there are **TWO separate concerns** that must not be merged (they are not
+the same step — conflating them is the muddle):
+
+### 4.1 OUTPUT / DELIVERY — what the human does WITH the receipt (edge/OS intents, server‑free)
+The receipt content already exists (the §R1 fold); "after" is rendering/dispatching it. The doctrine already
+names these — they were **named but never wired**:
+- **Print / Share / Save‑PDF** — `docs/SocialPlatformLens.md:64` ("invoice / receipt → PDF + **OS share
+  sheet** → share to anyone, print"). The browser mechanism is edge‑native, no server: `window.print()`
+  (print / Save‑as‑PDF) and `navigator.share({files:[…]})` (OS share sheet on mobile), with a Blob download
+  as the desktop fallback. NON‑INVENT: the printed/shared artifact IS the same folded receipt — output adds a
+  render+dispatch surface, never new data.
+- **Email / channel deliver** — `docs/GuaranteedChannels.md §1` (email = the "dumb async post office"; the
+  user's own cloud carries the whole signed log as a file). Delivering a receipt = attach the fold (or its
+  signed op) to the guaranteed channel. The `fold↔email` adapter is named there; owner currently unassigned.
+- **Tasks (spec‑first; each NAMES its witness; nothing deploys without GO):**
+  - **R4 — receipt actions:** add Print / Share / Save‑PDF to the receipt panel. Witness `§RPT‑OUT`: the panel
+    exposes the three actions; `navigator.share`/`window.print` are invoked with the folded receipt; the
+    desktop Blob‑download fallback fires when `navigator.share` is absent. UI overlay only — **HANDS‑OFF the
+    write loop**, same rule as §R1.
+  - **R5 — channel deliver (later):** dispatch the signed receipt op via the guaranteed channel
+    (`GuaranteedChannels`/`SocialPlatformLens`). Witness `§RPT‑SEND`: a delivered receipt is idempotent +
+    UUID‑keyed (the fold tolerates the channel — duplicates/out‑of‑order safe). Couples to the email‑adapter owner.
+- **Honest residual:** the folded receipt is **RAM‑only** today (it lives in the panel; lost on close/reload).
+  Persisting it is log‑first — the receipt is a *projection* of the op‑log, so re‑fold it on demand from the op,
+  do NOT store the projection (`[[project_erp_write_path_spine]]`). The print/PDF *layout* is R3's
+  `ad_printformat`‑driven rendering (parked, §2 R3).
+
+### 4.2 CONSEQUENCE / POSTING — what the LEDGER does after Complete (NOT the same as 4.1)
+A document *action* (Complete) has consequences beyond a receipt:
+`Complete = DOC_ACTION + SHIP + INVOICE + Dr‑AR + Cr‑Rev`, all‑or‑none (`prompts/ENGINE_FULL_ERP_ISSUES.md §I‑K`).
+**Current honest reality:** `commitProcess` → `buildDocActionGroup(op)` commits **ONLY** the `SET_STATUS` op
+(`build/erp/crud_overlay.js:153‑160`) — the status flip, atomic‑READY, but the consequence/posting ops are a
+clearly‑marked **DELEGATED extension point** (NON‑INVENT: the browser never fabricates ship/invoice/postings).
+So **"Completed" in the UI ≠ the books moved** until the consequence ops arrive.
+- **Where they come from:** the install / §13.6 re‑extract — `docs/PLUGIN_ARCHITECTURE.md §13.5` proved the ARI
+  sales‑invoice posting genome; **§13.6** rolls it to all postable doc‑types. This is the **Agent‑P / install‑
+  oracle lane** (`ENGINE_FULL_ERP_ISSUES.md §2.1`), NOT a browser‑POC blocker — and it is exactly why a freshly
+  Processed order's P&L stays empty (§3 above, `BIM_ERP_FOLD.md`).
+- **No new browser task here** — this subsection exists to NAME the dependency so "print the receipt" (4.1,
+  browser/edge) is never confused with "post the document" (4.2, install/ledger). That conflation was the gap.
+
+### 4.3 Still‑open lifecycle threads (named so they are not forgotten)
+`DR→IP→CO` is implemented; **CL (Close) / Void / Reverse / archive** are not specified. Multi‑doc *chaining*
+(an order's Complete auto‑creating a shipment → an invoice) is named only as the §I‑K example, with no manifest.
+These route to the DocAction / Agent‑P lanes; tracked here as the receipt's upstream/downstream, not built in
+this phase.
+
+## 5. Discipline
 §‑log under `build/erp/`; READ before concluding. Pre‑flight cite this spec. HANDS‑OFF the live
 write‑loop files except to ADD the read‑only Report verb to the ring. Deploy = Glassbowl‑way, bump sw
 `CACHE_VERSION`, **EXPLICIT GO**, fetch‑back‑verify.

@@ -367,7 +367,12 @@ async function save5D() {
   if (diffResult && diffDb) {
     const VO_CFG = { addFactor: 1.0, removeFactor: 0.3, changeFactor: 1.3, overheadPct: 0.10, markupPct: 0.15, disruptionPct: 0.05 };
     function voRate(cls) { var r = RATES[cls]; return (r && r.rate) ? r.rate : 500; }
+    // SETTINGS_JSON_EDITOR.md §BACKLOG — read the JSON-backed rules from rates.js
+    // (getPhase/getProductivity consult SEQUENCE_RULES/LABOR_RATES, now sourced
+    // from rates/sequence_rules.json + user overrides). Inline map is the
+    // last-resort fallback only if rates.js is somehow not loaded.
     function voPhase(cls) {
+      if (typeof getPhase === 'function') return getPhase(cls);
       const P = { IfcFooting:'Substructure', IfcPile:'Substructure', IfcColumn:'Superstructure', IfcBeam:'Superstructure', IfcSlab:'Superstructure',
         IfcWall:'Architecture', IfcWallStandardCase:'Architecture', IfcDoor:'Architecture', IfcWindow:'Architecture', IfcRoof:'Architecture',
         IfcDuct:'MEP Rough-in', IfcPipe:'MEP Rough-in', IfcCableCarrier:'MEP Rough-in', IfcLightFixture:'MEP Final', IfcOutlet:'MEP Final',
@@ -375,6 +380,7 @@ async function save5D() {
       return P[cls] || 'Architecture';
     }
     function voProd(cls) {
+      if (typeof getProductivity === 'function') return getProductivity(cls);
       const P = { IfcColumn:6, IfcBeam:8, IfcSlab:35, IfcWall:12, IfcDoor:5, IfcWindow:5, IfcDuct:18, IfcPipe:25, IfcLightFixture:20 };
       return P[cls] || 10;
     }
