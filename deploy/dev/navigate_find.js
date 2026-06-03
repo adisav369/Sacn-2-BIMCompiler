@@ -142,9 +142,9 @@
       '<select id="find-type" style="display:none"><option value="">' + _t('ui_find_all_types', 'All types') + '</option></select>',
       '<select id="find-storey" style="display:none"><option value="">' + _t('ui_all_storeys', 'All Storeys') + '</option></select>',
       // §S280: Outliner — Storey/Disc toggle + tree
-      '<div id="find-outliner-bar" style="display:flex;justify-content:center;padding:4px 10px;border-bottom:1px solid rgba(255,255,255,0.06)">',
-      '  <button id="find-mode-toggle" style="padding:6px 16px;font-size:12px;font-weight:700;border:1px solid rgba(79,195,247,0.4);border-radius:6px;background:rgba(79,195,247,0.2);color:#4fc3f7;cursor:pointer;letter-spacing:0.5px;min-width:120px">Storey</button>',
-      '</div>',
+      // §RevitParity Task 3 (W-AXIS): the toggle IS the lens — one data-gated axis row.
+      // Storey/Discipline always; Room/Material/Phase pills appear only when their data is present.
+      '<div id="find-outliner-bar" style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.06)"></div>',
       '<div id="find-tree" style="max-height:200px;overflow-y:auto;scrollbar-width:thin;display:none"></div>',
       // Legacy accordion rows — hidden, kept for backward compat
       '<div class="find-acc-row" id="find-storey-row" style="display:none">',
@@ -156,6 +156,11 @@
       '  <div class="find-acc-body" id="find-type-body"></div>',
       '</div>',
       '<div id="find-count"></div>',
+      // §RevitParity A1 (W-FILTER-ISOLATE): isolate the current drill (type/storey/name) — hide the rest
+      '<div id="find-isolate-bar" style="display:none;align-items:center;gap:6px;padding:4px 10px;border-bottom:1px solid rgba(255,255,255,0.06)">',
+      '  <button id="find-isolate-btn" style="flex:1;padding:5px 8px;font-size:11px;border:1px solid rgba(79,195,247,0.4);border-radius:6px;background:rgba(79,195,247,0.15);color:#4fc3f7;cursor:pointer">🔍 ' + _t('ui_find_isolate', 'Isolate') + '</button>',
+      '  <button id="find-showall-btn" style="display:none;flex:1;padding:5px 8px;font-size:11px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:rgba(255,255,255,0.08);color:#ccc;cursor:pointer">' + _t('ui_find_showall', 'Show all') + '</button>',
+      '</div>',
       // S275: Selected item summary + inline navigate button
       '<div id="find-selected"><span id="find-selected-text"></span><button class="find-nav-inline" id="find-navigate-btn" title="Navigate">\u25B6</button></div>',
       '<div id="find-results"></div>',
@@ -184,6 +189,10 @@
     var elChips = document.getElementById('find-chips');
     var elMicBtn = document.getElementById('find-mic-btn');
     var elSelected = document.getElementById('find-selected');
+    // §RevitParity A1: isolate controls
+    var elIsoBar = document.getElementById('find-isolate-bar');
+    var elIsoBtn = document.getElementById('find-isolate-btn');
+    var elShowAllBtn = document.getElementById('find-showall-btn');
 
     // ── S275: Accordion row logic ──
     var elStoreyRow = document.getElementById('find-storey-row');
@@ -199,13 +208,16 @@
       row.classList.toggle('expanded');
     }
 
-    // §S280: Outliner tree — Storey/Disc toggle
+    // §S280 / §RP-T3: Outliner — the toggle IS the lens. One data-gated axis ROW
+    // (Storey · Discipline · Room · Material · Phase). Selecting an axis lists its groups
+    // in the tree; tapping a group isolates (unify engine). Optional axes appear only when
+    // their data is present (W-LENS-PROBE non-invent guarantee).
     var elTree = document.getElementById('find-tree');
-    var elModeToggle = document.getElementById('find-mode-toggle');
-    var _treeMode = 'storey'; // 'storey' or 'disc'
-    var _treeRevealed = false; // §S280d: tree hidden until mode toggle pressed
+    var elAxisBar = document.getElementById('find-outliner-bar');
+    var _treeMode = 'storey'; // 'storey' | 'disc' | 'room' | 'material' | 'phase'
+    var _treeRevealed = false; // tree hidden until an axis is tapped
 
-    // §S280: Audio thump — short click on mode toggle (lightweight, no file load)
+    // §S280: Audio thump — short click on axis change (lightweight, no file load)
     var _audioCtx = null;
     function _thump() {
       try {
@@ -222,21 +234,136 @@
     }
 
     function _setTreeMode(mode) {
+      // §RP Task A: leaving the Room axis tears down room boxes + restores opacity.
+      if (_treeMode === 'room') _roomLensReset();
+      // §PHASE_LENS/§MAT_SELECT: leaving Phase/Material tears down element highlight.
+      if (_treeMode === 'phase' || _treeMode === 'material') _highlightLensReset();
       _treeMode = mode;
-      if (elModeToggle) elModeToggle.textContent = mode === 'storey' ? 'Storey' : 'Discipline';
-      // §S280d: Restore full scene visibility on toggle — reset both filters
+      // Restore full scene visibility on axis change — clear all filters (unify engine)
       if (A.filterStorey) A.filterStorey(null);
       if (A.filterDisc) A.filterDisc(null);
+      if (A.filterByGuids) A.filterByGuids(null);
+      var _ib = document.getElementById('find-isolate-bar');
+      if (_ib) _ib.style.display = 'none';
       _thump();
-      // §S280d: Reveal tree on first toggle press
-      if (!_treeRevealed && elTree) { elTree.style.display = ''; _treeRevealed = true; }
+      _renderAxes(); // re-highlight the active pill
+      if (elTree) { elTree.style.display = ''; _treeRevealed = true; }
       buildTree();
       console.log('§FIND_MODE_TOGGLE mode=' + mode);
     }
-    if (elModeToggle) elModeToggle.addEventListener('pointerup', function(e) {
-      e.stopPropagation();
-      _setTreeMode(_treeMode === 'storey' ? 'disc' : 'storey');
-    });
+
+    // ══ §RP-T3: Axis pills — Room/Material/Phase fold INTO the toggle, data-gated ══
+    // Engine: UNIFY — every axis group isolates via filterByGuids (W-LENS-ISOLATE).
+    // An optional axis appears ONLY when its query returns rows (W-LENS-PROBE).
+    // §RP Task A: a room has VOLUME data when spatial_structure carries center_*/size_*
+    // columns AND at least one IfcSpace row is populated. _roomHasVol is cached per-open
+    // so _buildRoomTree / _setTreeMode can branch (volume highlight vs contents-isolate
+    // fallback) without re-probing. Degrades to false on any error / missing columns.
+    var _roomHasVol = false;
+    function _probeLenses() {
+      var bld = A.activeBuilding || '';
+      var room = false, material = false, phase = false;
+      _roomHasVol = false;
+      try {
+        var hasSS = A.db.exec("SELECT 1 FROM sqlite_master WHERE type='table' AND name='spatial_structure'");
+        var hasRel = A.db.exec("SELECT 1 FROM sqlite_master WHERE type='table' AND name='rel_contained_in_space'");
+        if (hasSS.length) {
+          // Room axis available if EITHER contents-rels exist (fallback isolate) OR
+          // bbox volumes are present (the new highlight+x-ray path).
+          if (hasRel.length) {
+            var rc = A.db.exec("SELECT COUNT(*) FROM rel_contained_in_space");
+            room = !!(rc.length && rc[0].values[0][0] > 0);
+          }
+          try {
+            var ssCols = A.db.exec("PRAGMA table_info(spatial_structure)");
+            var colNames = (ssCols.length ? ssCols[0].values : []).map(function(r) { return r[1]; });
+            if (colNames.indexOf('center_x') >= 0 && colNames.indexOf('size_x') >= 0) {
+              var vc = A.db.exec("SELECT COUNT(*) FROM spatial_structure" +
+                " WHERE type='IfcSpace' AND center_x IS NOT NULL AND size_x IS NOT NULL");
+              _roomHasVol = !!(vc.length && vc[0].values[0][0] > 0);
+              if (_roomHasVol) room = true; // volume alone enables the Room axis
+            }
+          } catch(e) { /* _roomHasVol stays false */ }
+        }
+      } catch(e) { /* room stays false */ }
+      try {
+        var mc = A.db.exec("SELECT COUNT(*) FROM elements_meta WHERE material_name IS NOT NULL" +
+          (bld ? " AND building = ?" : ""), bld ? [bld] : []);
+        material = !!(mc.length && mc[0].values[0][0] > 0);
+      } catch(e) { /* material stays false */ }
+      // §RP Task B: Phase axis = Time Machine's REAL generator (window.tmGenerateTimeline,
+      // i.e. time_machine.js injectGantt). Available when elements exist AND either the
+      // generator is loaded OR a timeline (kernel_ops ELEMENT_PLACE rows) already exists.
+      // The timeline itself is generated lazily on first Phase select.
+      try {
+        var ec = A.db.exec("SELECT COUNT(*) FROM elements_meta" +
+          (bld ? " WHERE building = ?" : ""), bld ? [bld] : []);
+        var hasElems = !!(ec.length && ec[0].values[0][0] > 0);
+        var genReady = (typeof window.tmGenerateTimeline === 'function');
+        var opsExist = false;
+        try {
+          var oc = A.db.exec("SELECT COUNT(*) FROM kernel_ops WHERE undone=0 AND op_type='ELEMENT_PLACE'");
+          opsExist = !!(oc.length && oc[0].values[0][0] > 0);
+        } catch(e) { /* kernel_ops table may not exist yet */ }
+        phase = hasElems && (genReady || opsExist);
+      } catch(e) { /* phase stays false */ }
+      console.log('[RP-T3] §LENS_PROBE room=' + room + ' roomVol=' + _roomHasVol + ' material=' + material + ' phase=' + phase);
+      return { room: room, material: material, phase: phase };
+    }
+
+    // Storey + Discipline always; Room/Material/Phase only when their data is present.
+    function _axes() {
+      var present = _probeLenses();
+      var ax = [{ key: 'storey', label: _t('ui_axis_storey', 'Storey') },
+                { key: 'disc', label: _t('ui_axis_disc', 'Discipline') }];
+      if (present.room) ax.push({ key: 'room', label: _t('ui_lens_room', 'Room') });
+      if (present.material) ax.push({ key: 'material', label: _t('ui_lens_material', 'Material') });
+      if (present.phase) ax.push({ key: 'phase', label: _t('ui_lens_phase', 'Phase') });
+      return ax;
+    }
+
+    function _renderAxes() {
+      if (!elAxisBar) return;
+      elAxisBar.innerHTML = '';
+      if (!A.db) return;
+      var ax = _axes();
+      ax.forEach(function(a) {
+        var on = (a.key === _treeMode);
+        var pill = document.createElement('button');
+        pill.id = 'find-axis-' + a.key;
+        pill.setAttribute('data-axis', a.key);
+        pill.textContent = a.label;
+        pill.style.cssText = 'padding:5px 12px;font-size:11px;font-weight:700;border-radius:6px;cursor:pointer;' +
+          'white-space:nowrap;border:1px solid rgba(79,195,247,' + (on ? '0.7' : '0.3') + ');' +
+          'background:rgba(79,195,247,' + (on ? '0.28' : '0.10') + ');color:' + (on ? '#fff' : '#4fc3f7') + ';';
+        pill.addEventListener('pointerup', function(e) { e.stopPropagation(); _setTreeMode(a.key); });
+        elAxisBar.appendChild(pill);
+      });
+      console.log('[RP-T3] §LENS_AXES count=' + ax.length + ' axes=' + ax.map(function(a){ return a.key; }).join(','));
+    }
+
+    function _isolateLensGroup(lens, g) {
+      if (!A.db || !A.filterByGuids) return;
+      if (A.filterStorey) A.filterStorey(null);
+      if (A.filterDisc) A.filterDisc(null);
+      var set = new Set();
+      try {
+        if (lens === 'room') {
+          A.dbQuery("SELECT element_guid FROM rel_contained_in_space WHERE space_guid = ?", [g.key])
+            .forEach(function(r) { set.add(r[0]); });
+        } else if (lens === 'material') {
+          A.dbQuery("SELECT guid FROM elements_meta WHERE material_name = ?", [g.key])
+            .forEach(function(r) { set.add(r[0]); });
+        }
+      } catch(e) { console.warn('[RP-T3] §LENS_ISOLATE_ERR', e.message); }
+      if (!set.size) { console.log('[RP-A1] §FILTER_ISOLATE_EMPTY lens=' + lens + ' group="' + g.label + '"'); return; }
+      _emitIsolate(set, lens + '="' + g.label + '"');
+      if (elIsoBar) {
+        elIsoBar.style.display = 'flex';
+        if (elIsoBtn) elIsoBtn.style.display = 'none';
+        if (elShowAllBtn) elShowAllBtn.style.display = '';
+      }
+    }
 
     function buildTree() {
       if (!elTree || !A.db) return;
@@ -245,8 +372,340 @@
       elTree.innerHTML = '';
       try {
         if (_treeMode === 'storey') _buildStoreyTree(bld, filter);
-        else _buildDiscTree(bld, filter);
+        else if (_treeMode === 'disc') _buildDiscTree(bld, filter);
+        else if (_treeMode === 'room') _buildRoomTree();
+        else if (_treeMode === 'material') _buildMaterialTree();
+        else if (_treeMode === 'phase') _buildPhaseTree();
       } catch(e) { console.warn('§FIND_TREE error', e); }
+    }
+
+    // ══ §RP Task A: Room volume lens — highlight room boxes, x-ray the rest ══
+    // Revit-like: the Room axis ghosts the whole model (existing X-Ray) and draws a
+    // translucent cyan box at each IfcSpace bbox (center+size from spatial_structure).
+    // Tapping a room brightens THAT box, keeps the rest dim. "Show all" removes the
+    // boxes + restores opacity. We do NOT inject IfcSpace meshes into the geometry
+    // stream — that produced the cube blob-format trap before. Boxes are plain
+    // THREE.Mesh added to A.scene, disposed on reset.
+    var _roomBoxes = [];      // { guid, name, mesh, center:{x,y,z} }
+    var _roomXrayWasOff = false;
+
+    // §PHASE_LENS / §MAT_SELECT: Phase + Material axes are HIGHLIGHT lenses (same
+    // pattern as Room) — x-ray (dim) the whole model, then outline the selected
+    // guid set's scene meshes. This REPLACES the prior isolate/hide. We track our
+    // own x-ray flag so teardown only restores opacity if WE turned x-ray on.
+    var _hlXrayWasOff = false;   // true → this lens turned X-Ray on
+
+    // Tear down the element-highlight lens: clear outline + restore opacity.
+    function _highlightLensReset() {
+      if (A.setOutline) A.setOutline([]);
+      if (A.xrayOn && _hlXrayWasOff && A.toggleXray) A.toggleXray(); // restore opacity
+      _hlXrayWasOff = false;
+      if (A.markDirty) A.markDirty();
+    }
+
+    // Highlight a guid set: x-ray the rest (dim) + outline the set's scene meshes.
+    // Reuses the SAME primitives the Room lens uses (A.toggleXray + A.setOutline).
+    // Returns the matched mesh count. Batched geometry → the batch mesh carrying
+    // the set is outlined (setOutline operates per scene object).
+    function _highlightGuids(set) {
+      if (A.setOutline) A.setOutline([]);
+      if (!A.scene) return 0;
+      // X-ray the whole model so the rest reads dim behind the highlight.
+      if (!A.xrayOn && A.toggleXray) { A.toggleXray(); _hlXrayWasOff = true; }
+      // Collect the scene objects carrying any guid in the set. Geometry is mostly
+      // BatchedMesh (1 mesh = many element slots) — OutlinePass outlines whole objects,
+      // so if ANY slot's guid is in the set we outline that batch mesh. Per-mesh and
+      // instanced meshes resolve their guid via userData.guid / A.guidMap.
+      var meshes = [];
+      A.scene.traverse(function(obj) {
+        if (!obj.visible) return;
+        // Batched mesh: any slot guid in the set → include the mesh.
+        if (obj.isBatchedMesh && A._batchMeta && A._batchMeta[obj.id]) {
+          var bm = A._batchMeta[obj.id];
+          for (var i = 0; i < bm.length; i++) {
+            if (bm[i] && bm[i].guid != null && set.has(bm[i].guid)) { meshes.push(obj); break; }
+          }
+          return;
+        }
+        var g = (obj.userData && obj.userData.guid);
+        if (g == null && A.guidMap) g = A.guidMap[obj.id];
+        if (g != null && set.has(g)) meshes.push(obj);
+      });
+      if (A.setOutline && meshes.length) A.setOutline(meshes, 0x4fc3f7);
+      if (A.markDirty) A.markDirty();
+      return meshes.length;
+    }
+
+    function _clearRoomBoxes() {
+      _roomBoxes.forEach(function(rb) {
+        if (rb.mesh) {
+          if (rb.mesh.parent) rb.mesh.parent.remove(rb.mesh);
+          if (rb.mesh.geometry) rb.mesh.geometry.dispose();
+          if (rb.mesh.material) rb.mesh.material.dispose();
+        }
+      });
+      _roomBoxes = [];
+    }
+
+    // Remove boxes, restore opacity (turn X-Ray off if WE turned it on), drop outline.
+    function _roomLensReset() {
+      _clearRoomBoxes();
+      if (A.setOutline) A.setOutline([]);
+      if (A.xrayOn && _roomXrayWasOff && A.toggleXray) A.toggleXray(); // restore opacity
+      _roomXrayWasOff = false;
+      if (A.markDirty) A.markDirty();
+    }
+
+    // Draw the 21 translucent room boxes + x-ray everything else.
+    function _roomLensOn() {
+      _clearRoomBoxes();
+      if (!A.scene || typeof THREE === 'undefined' || !A.ifc2three) {
+        console.log('[RP-TA] §ROOM_LENS_ERR scene/THREE/ifc2three missing');
+        return;
+      }
+      var rows = [];
+      try {
+        rows = A.dbQuery("SELECT guid, name, center_x, center_y, center_z, size_x, size_y, size_z" +
+          " FROM spatial_structure WHERE type='IfcSpace'" +
+          " AND center_x IS NOT NULL AND size_x IS NOT NULL ORDER BY name");
+      } catch(e) { console.log('[RP-TA] §ROOM_LENS_ERR ' + e.message); return; }
+      rows.forEach(function(r) {
+        var c = A.ifc2three(r[2], r[3], r[4]); // IFC center → Three world
+        // ifc2three maps axes (X→X, Z→Y-up, Y→-Z); box dimensions follow the same
+        // axis remap: size_x→X, size_z→Y, size_y→Z. Floor 0.05 so a thin slab is visible.
+        var sx = Math.max(r[5] || 0.05, 0.05);
+        var sy = Math.max(r[7] || 0.05, 0.05); // IFC Z (height) → Three Y
+        var sz = Math.max(r[6] || 0.05, 0.05); // IFC Y → Three Z
+        var geo = new THREE.BoxGeometry(sx, sy, sz);
+        var mat = new THREE.MeshBasicMaterial({
+          color: 0x4fc3f7, transparent: true, opacity: 0.25,
+          depthWrite: false, side: THREE.DoubleSide
+        });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(c.x, c.y, c.z);
+        mesh.renderOrder = 998;
+        mesh.userData._roomBox = true;
+        A.scene.add(mesh);
+        _roomBoxes.push({ guid: r[0], name: r[1] || '(unnamed)', mesh: mesh, center: c });
+      });
+      // X-ray the real model so rooms read through ghosted walls (reuse tools.js path).
+      if (!A.xrayOn && A.toggleXray) { A.toggleXray(); _roomXrayWasOff = true; }
+      if (A.markDirty) A.markDirty();
+      console.log('[RP-TA] §ROOM_LENS rooms=' + _roomBoxes.length + ' xray=' + (A.xrayOn ? 'on' : 'off'));
+    }
+
+    // Tap a room: brighten its box, dim the others, keep x-ray. Outline + fly handled
+    // lightly via setOutline on the chosen box mesh.
+    function _roomSelect(guid) {
+      var sel = null;
+      _roomBoxes.forEach(function(rb) {
+        var on = (rb.guid === guid);
+        if (on) sel = rb;
+        if (rb.mesh && rb.mesh.material) {
+          rb.mesh.material.opacity = on ? 0.5 : 0.12;
+          rb.mesh.material.color.set(on ? 0x7fe0ff : 0x4fc3f7);
+          rb.mesh.material.needsUpdate = true;
+        }
+      });
+      if (sel && A.setOutline) A.setOutline([sel.mesh], 0x4fc3f7);
+      if (A.markDirty) A.markDirty();
+      if (sel) {
+        console.log('[RP-TA] §ROOM_SELECT room="' + sel.name + '" box=(' +
+          sel.center.x.toFixed(2) + ',' + sel.center.y.toFixed(2) + ',' + sel.center.z.toFixed(2) + ')');
+      }
+    }
+
+    // §RP-T3 axis builders — list the groups for Room / Material / Phase; tap → isolate (unify).
+    function _buildRoomTree() {
+      // §RP Task A: when volume data is present, the Room axis is a HIGHLIGHT lens
+      // (rooms glow, model x-rayed) — NOT a contents isolate. Tapping focuses a room.
+      if (_roomHasVol) {
+        _roomLensOn();
+        // "Show all" affordance reuses the isolate bar's reset button.
+        if (elIsoBar) {
+          elIsoBar.style.display = 'flex';
+          if (elIsoBtn) elIsoBtn.style.display = 'none';
+          if (elShowAllBtn) elShowAllBtn.style.display = '';
+        }
+        var rooms = [];
+        try {
+          rooms = A.dbQuery("SELECT guid, name FROM spatial_structure" +
+            " WHERE type='IfcSpace' AND center_x IS NOT NULL ORDER BY name")
+            .map(function(r) { return { key: r[0], label: r[1] || '(unnamed)' }; });
+        } catch(e) { console.warn('[RP-TA] §ROOM_TREE_ERR', e.message); }
+        rooms.forEach(function(g) {
+          elTree.appendChild(_treeNode(g.label, '', 0, { onTap: function() { _roomSelect(g.key); } }));
+        });
+        console.log('[RP-T3] §LENS_GROUPS lens=room mode=volume groups=' + rooms.length);
+        return;
+      }
+      // Fallback (DB without bbox columns): contents-isolate, the prior behaviour.
+      var groups = [];
+      try {
+        groups = A.dbQuery("SELECT ss.guid, ss.name, COUNT(rc.element_guid) FROM spatial_structure ss" +
+          " LEFT JOIN rel_contained_in_space rc ON rc.space_guid = ss.guid" +
+          " WHERE ss.type='IfcSpace' GROUP BY ss.guid, ss.name ORDER BY ss.name")
+          .map(function(r) { return { key: r[0], label: r[1] || '(unnamed)', count: r[2] }; });
+      } catch(e) { console.warn('[RP-T3] §ROOM_TREE_ERR', e.message); }
+      groups.forEach(function(g) {
+        elTree.appendChild(_treeNode(g.label, g.count, 0, { onTap: function() { _isolateLensGroup('room', g); } }));
+      });
+      console.log('[RP-T3] §LENS_GROUPS lens=room mode=contents groups=' + groups.length);
+    }
+
+    // §MAT_SELECT: Material axis is now a HIGHLIGHT lens (parity with Room/Phase) —
+    // tap a material → outline its elements + x-ray (dim) the rest, tree stays.
+    function _buildMaterialTree() {
+      var groups = [];
+      try {
+        groups = A.dbQuery("SELECT material_name, COUNT(*) FROM elements_meta" +
+          " WHERE material_name IS NOT NULL GROUP BY material_name ORDER BY 2 DESC")
+          .map(function(r) { return { key: r[0], label: r[0], count: r[1] }; });
+      } catch(e) { console.warn('[RP-T3] §MAT_TREE_ERR', e.message); }
+      groups.forEach(function(g) {
+        elTree.appendChild(_treeNode(g.label, g.count, 0, { onTap: function() { _materialSelect(g); } }));
+      });
+      console.log('[RP-T3] §LENS_GROUPS lens=material groups=' + groups.length);
+    }
+
+    function _materialSelect(g) {
+      if (A.filterStorey) A.filterStorey(null);
+      if (A.filterDisc) A.filterDisc(null);
+      if (A.filterByGuids) A.filterByGuids(null); // never isolate — highlight only
+      var set = new Set();
+      try {
+        A.dbQuery("SELECT guid FROM elements_meta WHERE material_name = ?", [g.key])
+          .forEach(function(r) { set.add(r[0]); });
+      } catch(e) { console.warn('[RP-T3] §MAT_SELECT_ERR', e.message); }
+      if (!set.size) { console.log('[RP-T3] §MAT_SELECT material="' + g.label + '" elems=0 xray=off'); return; }
+      var matched = _highlightGuids(set);
+      // "Show all" affordance (shared isolate bar) tears the highlight down.
+      if (elIsoBar) {
+        elIsoBar.style.display = 'flex';
+        if (elIsoBtn) elIsoBtn.style.display = 'none';
+        if (elShowAllBtn) elShowAllBtn.style.display = '';
+      }
+      console.log('[RP-T3] §MAT_SELECT material="' + g.label + '" elems=' + set.size +
+        ' meshes=' + matched + ' xray=' + (A.xrayOn ? 'on' : 'off'));
+    }
+
+    // ══ §RP Task B: Phase axis = Time Machine's REAL timeline generator ══
+    // Source of truth = window.tmGenerateTimeline() (time_machine.js injectGantt).
+    // That generator writes one ELEMENT_PLACE row per element into kernel_ops:
+    //   timestamp  = install order (construction sequence, bottom-up Z bands)
+    //   output_guid = the element guid
+    //   parameters = JSON {phase, cls, name, storey, resource, _end_ts}
+    // We trigger it lazily ONCE (cached), then read kernel_ops ORDER BY timestamp,
+    // grouping output_guid by parameters.phase. Phase ORDER follows TM's timeline:
+    // the timestamp of each phase's FIRST element (construction order, not alpha).
+    // On tap → HIGHLIGHT that phase's elements + X-RAY the rest (no isolate/hide).
+    var _phaseCache = null;  // { order:[name...], byPhase:{ name:{guids:Set,count,firstTs} } }
+    var _tmGenTried = false; // ran tmGenerateTimeline once
+
+    // Read the generated kernel_ops, bucket guids by phase in TM's timeline order.
+    function _readKernelOps() {
+      var rows = [];
+      try {
+        // ELEMENT_PLACE rows carry the per-element phase; timestamp = TM install order.
+        rows = A.dbQuery("SELECT output_guid, parameters, timestamp FROM kernel_ops" +
+          " WHERE undone = 0 AND op_type = 'ELEMENT_PLACE' ORDER BY timestamp");
+      } catch(e) {
+        console.log('[RP-TB] §PHASE_LENS gen=real source=kernel_ops status="read error: ' + e.message + '" phases=0');
+        return null;
+      }
+      if (!rows.length) return null;
+      var byPhase = {};
+      rows.forEach(function(r) {
+        var guid = r[0], ts = r[2];
+        var ph = 'Architecture';
+        try { var p = JSON.parse(r[1]); if (p && p.phase) ph = p.phase; } catch(e) {}
+        if (!byPhase[ph]) byPhase[ph] = { guids: new Set(), count: 0, firstTs: ts };
+        if (guid != null) { byPhase[ph].guids.add(guid); byPhase[ph].count++; }
+        if (ts < byPhase[ph].firstTs) byPhase[ph].firstTs = ts;
+      });
+      // Order phases by TM's timeline (first-element timestamp = construction order).
+      var order = Object.keys(byPhase).sort(function(a, b) {
+        return byPhase[a].firstTs - byPhase[b].firstTs || (a < b ? -1 : 1);
+      });
+      _phaseCache = { order: order, byPhase: byPhase };
+      return _phaseCache;
+    }
+
+    // Lazily run the REAL generator ONCE, then read kernel_ops. Falls back gracefully.
+    function _generatePhases() {
+      if (_phaseCache) return _phaseCache;
+      // (1) kernel_ops may already exist (TM opened earlier) — try reading first.
+      var pc = _readKernelOps();
+      if (pc) return pc;
+      // (2) Trigger the real generator once.
+      if (!_tmGenTried) {
+        _tmGenTried = true;
+        if (typeof window.tmGenerateTimeline !== 'function') {
+          console.log('[RP-TB] §PHASE_LENS gen=real source=kernel_ops status="tmGenerateTimeline absent (time_machine.js not loaded)" phases=0');
+          return null;
+        }
+        var ok = false;
+        try { ok = window.tmGenerateTimeline(); }
+        catch(e) { console.log('[RP-TB] §PHASE_LENS gen=real source=kernel_ops status="generator threw: ' + e.message + '" phases=0'); return null; }
+        if (!ok) {
+          console.log('[RP-TB] §PHASE_LENS gen=real source=kernel_ops status="generator returned false (no elements)" phases=0');
+          return null;
+        }
+        pc = _readKernelOps();
+        if (pc) return pc;
+      }
+      console.log('[RP-TB] §PHASE_LENS gen=real source=kernel_ops status="kernel_ops empty after generate" phases=0');
+      return null;
+    }
+
+    function _buildPhaseTree() {
+      if (_phaseCache) { _renderPhaseList(_phaseCache, 'cached'); return; }
+      var hint = document.createElement('div');
+      hint.style.cssText = 'padding:10px;font-size:11px;color:#4fc3f7';
+      hint.textContent = _t('ui_phase_generating', 'Timeline generating…');
+      elTree.appendChild(hint);
+      // Defer a tick so the hint paints before the (synchronous) generator runs.
+      setTimeout(function() {
+        if (_treeMode !== 'phase') return; // user switched axis meanwhile
+        var pc = _generatePhases();
+        elTree.innerHTML = '';
+        if (!pc) {
+          var msg = document.createElement('div');
+          msg.style.cssText = 'padding:10px;font-size:11px;color:#888';
+          msg.textContent = _t('ui_phase_unavailable', 'Timeline unavailable (generator not loaded).');
+          elTree.appendChild(msg);
+          return;
+        }
+        _renderPhaseList(pc, 'fresh');
+      }, 0);
+    }
+
+    function _renderPhaseList(pc, status) {
+      elTree.innerHTML = '';
+      pc.order.forEach(function(name) {
+        var b = pc.byPhase[name];
+        elTree.appendChild(_treeNode(name, b.count, 0, { onTap: function() { _phaseSelect(name); } }));
+      });
+      console.log('[RP-TB] §PHASE_LENS gen=real source=kernel_ops phases=' + pc.order.length + ' status=' + status);
+    }
+
+    // Tap a phase → HIGHLIGHT its elements + X-RAY (dim) the rest. Never isolate.
+    function _phaseSelect(name) {
+      var pc = _phaseCache;
+      if (!pc || !pc.byPhase[name]) return;
+      if (A.filterStorey) A.filterStorey(null);
+      if (A.filterDisc) A.filterDisc(null);
+      if (A.filterByGuids) A.filterByGuids(null); // never isolate — highlight only
+      var set = pc.byPhase[name].guids;
+      if (!set || !set.size) { console.log('[RP-TB] §PHASE_SELECT phase="' + name + '" elems=0 xray=off'); return; }
+      var matched = _highlightGuids(set);
+      if (elIsoBar) {
+        elIsoBar.style.display = 'flex';
+        if (elIsoBtn) elIsoBtn.style.display = 'none';
+        if (elShowAllBtn) elShowAllBtn.style.display = '';
+      }
+      console.log('[RP-TB] §PHASE_SELECT phase="' + name + '" elems=' + set.size +
+        ' meshes=' + matched + ' xray=' + (A.xrayOn ? 'on' : 'off'));
     }
 
     function _treeNode(label, count, level, opts) {
@@ -269,7 +728,8 @@
       text.textContent = label;
       var badge = document.createElement('span');
       badge.style.cssText = 'font-size:' + (isParent ? '10px' : '9px') + ';color:' + (isParent ? '#4fc3f7' : '#666') + ';flex-shrink:0;font-weight:400';
-      badge.textContent = '(' + count + ')';
+      // count === '' (e.g. Room volume lens rows have no contents tally) → no badge
+      badge.textContent = (count === '' || count == null) ? '' : ('(' + count + ')');
       row.appendChild(arrow);
       row.appendChild(text);
       row.appendChild(badge);
@@ -384,7 +844,8 @@
               if (types.length) {
                 types[0].values.forEach(function(tp) {
                   container.appendChild(_treeNode(friendlyClass(tp[0]), tp[1], 1, {
-                    onTap: function() { elStorey.value = storey; elType.value = tp[0]; runSearch(); }
+                    // §W-LEAF-ISOLATE: tap a Type leaf → isolate that storey's type, hide the rest
+                    onTap: function() { isolateLeaf({ storey: storey, type: tp[0] }, 'storey="' + storey + '",type="' + tp[0] + '"'); }
                   }));
                 });
               }
@@ -427,7 +888,8 @@
             if (types.length) {
               types[0].values.forEach(function(tp) {
                 container.appendChild(_treeNode(friendlyClass(tp[0]), tp[1], 1, {
-                  onTap: function() { elType.value = tp[0]; elStorey.value = ''; runSearch(); }
+                  // §W-LEAF-ISOLATE: tap a Type leaf → isolate that discipline's type, hide the rest
+                  onTap: function() { isolateLeaf({ disc: disc, type: tp[0] }, 'disc="' + disc + '",type="' + tp[0] + '"'); }
                 }));
               });
             }
@@ -568,11 +1030,16 @@
       panel.classList.remove('results-expanded');
       [elStoreyRow, elTypeRow].forEach(function(r) { r.classList.remove('expanded'); });
       clearHighlight();
+      // §RevitParity A1: clear any prior isolate + hide its bar on fresh open
+      if (A.filterByGuids) A.filterByGuids(null);
+      if (elIsoBar) elIsoBar.style.display = 'none';
       // Set search term and open
       panel.style.display = 'block';
       elName.value = searchTerm || '';
       // §S281: Defer item queries — only build tree (fast GROUP BY) on open.
       // populateDropdowns + runSearch only when user clicks a type/storey or types a search.
+      _phaseCache = null; // §RP Task B: fresh timeline per open (building may have changed)
+      _renderAxes(); // §RP-T3: data-gated axis pills (Storey·Discipline·Room·Material·Phase)
       buildTree();
       buildChips();
       if (searchTerm) { _handleInput(searchTerm, true); }
@@ -591,6 +1058,10 @@
       // §S280d: Restore full scene — clear storey + disc filters
       if (A.filterStorey) A.filterStorey(null);
       if (A.filterDisc) A.filterDisc(null);
+      if (A.filterByGuids) A.filterByGuids(null); // §RevitParity A1: clear isolate
+      if (typeof _roomLensReset === 'function') _roomLensReset(); // §RP Task A: drop room boxes + x-ray
+      if (typeof _highlightLensReset === 'function') _highlightLensReset(); // §PHASE_LENS/§MAT_SELECT: drop element highlight + x-ray
+      if (elIsoBar) elIsoBar.style.display = 'none';
       // §S280d: Reset tree visibility for next open
       _treeRevealed = false;
       if (elTree) elTree.style.display = 'none';
@@ -814,8 +1285,117 @@
         elCount.textContent = typeof _TRL!=='undefined'&&_TRL.ui_find_no_matches||'0 matches';
         renderSuggestions(suggestions, name);
       }
+      updateIsolateBar();
       console.log('[S233] §NAV_FIND_SEARCH query="' + name + '" results=' + nav.results.length);
     }
+
+    // ── §RevitParity A1: Isolate the current drill — hide everything except the matched set ──
+    // Builds the full GUID set for the active filter (type/storey/name — NOT capped at the
+    // 50-row result LIMIT) and hands it to A.filterByGuids. Mutually exclusive with the
+    // storey/disc filters, which are cleared first so one mechanism governs visibility.
+    // opts (optional) overrides the drill scope: {type, storey, disc, name}. Omitted →
+    // read the current select/search values (search-bar isolate). disc is tree-only
+    // (no select binding) so a Discipline→Type leaf can isolate exactly its branch.
+    function _isolateGuidSet(opts) {
+      opts = opts || {};
+      var set = new Set();
+      if (!A.db) return set;
+      var bld = A.activeBuilding || '';
+      var type = 'type' in opts ? opts.type : elType.value;
+      var storey = 'storey' in opts ? opts.storey : elStorey.value;
+      var disc = opts.disc || '';
+      var name = 'name' in opts ? opts.name : elName.value.trim();
+      var sql = 'SELECT m.guid FROM elements_meta m WHERE 1=1';
+      var params = [];
+      if (bld) { sql += ' AND m.building = ?'; params.push(bld); }
+      if (type) { sql += ' AND m.ifc_class = ?'; params.push(type); }
+      if (storey) { sql += ' AND m.storey = ?'; params.push(storey); }
+      if (disc) { sql += ' AND m.discipline = ?'; params.push(disc); }
+      if (name) { sql += ' AND (LOWER(m.element_name) LIKE LOWER(?) OR LOWER(m.ifc_class) LIKE LOWER(?))'; params.push('%' + name + '%', '%' + name + '%'); }
+      try {
+        var rows = A.db.exec(sql, params);
+        if (rows.length) rows[0].values.forEach(function(r) { set.add(r[0]); });
+      } catch(e) { console.warn('[RP-A1] §FILTER_ISOLATE_ERR', e.message); }
+      return set;
+    }
+
+    // Hand the isolate set to the viewer + emit the W-FILTER-ISOLATE witness.
+    // by = human-readable description of the drill, for the §FILTER line.
+    function _emitIsolate(set, by) {
+      A.filterByGuids(set);
+      // Witness W-FILTER-ISOLATE / W-LEAF-ISOLATE: visible/hidden/total reconcile to building count
+      var bld = A.activeBuilding || '';
+      var total = 0;
+      try {
+        var tr = A.db.exec('SELECT COUNT(*) FROM elements_meta' + (bld ? ' WHERE building = ?' : ''), bld ? [bld] : []);
+        if (tr.length) total = tr[0].values[0][0];
+      } catch(e) { /* total stays 0 */ }
+      console.log('[RP-A1] §FILTER visible=' + set.size + ' hidden=' + Math.max(0, total - set.size) +
+        ' total=' + total + ' by=' + by);
+    }
+
+    function applyIsolate() {
+      if (!A.db || !A.filterByGuids) return;
+      if (A.filterStorey) A.filterStorey(null);
+      if (A.filterDisc) A.filterDisc(null);
+      var set = _isolateGuidSet();
+      if (!set.size) { console.log('[RP-A1] §FILTER_ISOLATE_EMPTY'); return; }
+      _emitIsolate(set, '{type:"' + elType.value + '",storey:"' + elStorey.value + '",name:"' + elName.value.trim() + '"}');
+      updateIsolateBar();
+    }
+
+    // §RevitParity W-LEAF-ISOLATE: a Type leaf tap (1) refreshes the items list to that
+    // drill AND (2) isolates the 3D to the exact branch (storey+type or disc+type), so
+    // set.size equals the leaf's badge count. Show-all/close/toggle clear it.
+    function isolateLeaf(opts, by) {
+      if (!A.db || !A.filterByGuids) return;
+      // (1) Reflect the drill in the hidden selects + refresh the result list so the
+      //     items listing updates on the tap (disc has no select → list is by type).
+      elStorey.value = ('storey' in opts) ? (opts.storey || '') : '';
+      elType.value = opts.type || '';
+      runSearch();
+      // (2) Isolate the 3D to the exact branch scope (incl. discipline, which the list ignores).
+      if (A.filterStorey) A.filterStorey(null);
+      if (A.filterDisc) A.filterDisc(null);
+      var set = _isolateGuidSet(opts);
+      if (!set.size) { console.log('[RP-A1] §FILTER_ISOLATE_EMPTY by=' + by); return; }
+      _emitIsolate(set, by);
+      // Surface the reset affordance: bar visible, only "Show all" (we are isolating).
+      if (elIsoBar) {
+        elIsoBar.style.display = 'flex';
+        if (elIsoBtn) elIsoBtn.style.display = 'none';
+        if (elShowAllBtn) elShowAllBtn.style.display = '';
+      }
+    }
+
+    function clearIsolate() {
+      if (A.filterByGuids) A.filterByGuids(null);
+      // §RP Task A: "Show all" also clears the room volume lens (boxes + x-ray).
+      if (_roomBoxes.length || _roomXrayWasOff) _roomLensReset();
+      // §PHASE_LENS/§MAT_SELECT: "Show all" also clears the element highlight lens.
+      if (_hlXrayWasOff || (A._outlinePass && A._outlinePass.enabled)) _highlightLensReset();
+      if (elIsoBar) elIsoBar.style.display = 'none';
+      updateIsolateBar();
+      console.log('[RP-A1] §FILTER_RESET');
+    }
+
+    function updateIsolateBar() {
+      if (!elIsoBar) return;
+      var hasFilter = !!(elType.value || elStorey.value || elName.value.trim());
+      var hasResults = nav.results.length > 0;
+      console.log('[RP-A1] §FILTER_BAR hasFilter=' + hasFilter + ' hasResults=' + hasResults +
+        ' type="' + elType.value + '" storey="' + elStorey.value + '" name="' + elName.value.trim() + '" n=' + nav.results.length);
+      if (hasFilter && hasResults) {
+        elIsoBar.style.display = 'flex';
+        var isolating = !!A.activeGuidFilter;
+        if (elIsoBtn) elIsoBtn.style.display = isolating ? 'none' : '';
+        if (elShowAllBtn) elShowAllBtn.style.display = isolating ? '' : 'none';
+      } else {
+        elIsoBar.style.display = 'none';
+      }
+    }
+    if (elIsoBtn) elIsoBtn.addEventListener('pointerup', function(e) { e.stopPropagation(); applyIsolate(); });
+    if (elShowAllBtn) elShowAllBtn.addEventListener('pointerup', function(e) { e.stopPropagation(); clearIsolate(); });
 
     // ── Nearest-match suggestions when search returns 0 ──
     function findSuggestions(bld, name) {
