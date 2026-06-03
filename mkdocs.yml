@@ -151,6 +151,7 @@ nav:
       - Enabling-Tech Timeline: EnablingTechTimeline.md
       - Local-First Prior Art: LocalFirstPriorArt.md
       - Distributed ERP (Contention Map): DistributedERP.md
+      - "Depreciation Perf (server→serverless witness)": DepreciationPerf.md
 
   # ─── Proven buildings ─────────────────────────────────
   - Buildings:

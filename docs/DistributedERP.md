@@ -79,6 +79,11 @@ transactions what git did to source code:** the log is the truth, the host is di
 and signable. The one thing git lacks that we add — *invariant enforcement* (no double-spend) — is the
 owner-gate + the single CAS op-class. Everything else, git already proves is possible.
 
+**Measured witness:** [DepreciationPerf.md](DepreciationPerf.md) puts numbers on this mapping with a real
+iDempiere batch (40-year asset depreciation): where the server's ~20 min actually goes (per-row `saveEx` =
+~1M round-trips, not the maths), a four-tier comparison, and the honest counter-hype — *most* of the speed is
+a server-side SQL rewrite; SQLite-WASM's real edge is **no server + local reads**, not raw throughput.
+
 The rest is these truths meeting concrete scenarios — the normal multi-POS day (§3), the adversarial edges
 (§9), and how it compares to related systems (§10).
 
@@ -153,6 +158,14 @@ In every normal flow the pattern is identical: **append a signed op where you ph
 computes the number; reconcile at business cadence.** Nobody writes a shared scalar; nothing blocks on the
 network; the post office only sequences and relays. The edges in §9 are exactly the residue this leaves —
 bounded, named, and ledger-backed.
+
+> **Worked examples — [the Lens Family](LensFamily.md).** This doctrine made concrete, extracted from my iDempiere
+> Unicenta POS + plugins and ported to browser lenses over the one model: [POS](POSLens.md) (in-person sale) ·
+> [WMS / Logistics / Robots](WMSLens.md) (movement) · [Social Platform](SocialPlatformLens.md) (on-the-move) ·
+> [Credit Ledger](CreditLedgerLens.md) (receivables) · [Workforce](WorkforceLens.md) (attendance/tasks) ·
+> [Guaranteed Channels](GuaranteedChannels.md) (transport/payment pipes). Hub: **[LensFamily](LensFamily.md)**.
+> One source act, the rest a fold, no central control — a business run from a phone. The smallest complete proofs of
+> the doctrine above.
 
 ---
 
