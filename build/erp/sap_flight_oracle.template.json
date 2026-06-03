@@ -1,0 +1,20 @@
+{
+  "__template": true,
+  "__README": "EXPECTED SHAPE for build/erp/sap_flight_oracle.json — fill from a REAL export of SAP's official Flight Reference Scenario (github.com/SAP-samples/abap-platform-refscen-flight, /DMO/ travel-booking model). Deploy the scenario to an ABAP system (ABAP Platform developer-edition Docker image, or a BTP ABAP Environment trial), run the data generator, then export ONE travel + its bookings + supplements from /DMO/TRAVEL, /DMO/BOOKING, /DMO/BOOKING_SUPPLEMENT. NON-INVENT (prompts/SAP_FOLD_POC.md): do NOT fabricate rows. Copy to sap_flight_oracle.json, fill from the real export, remove __template. SCOPE: this witnesses ONLY the document-lifecycle verbs (CREATE_DOCUMENT/CREATE_LINE/SET_STATUS) + the price-aggregation invariant — the flight model has NO FI, so POST/ALLOCATE/MATCH are NOT exercised here. Field names are the HYPOTHESIS in sap_adapter.SCHEMA_MAP_FLIGHT — verify against the export.",
+  "meta": {
+    "travel_id": "<\/DMO\/TRAVEL.travel_id>",
+    "agency_id": "<agency_id>",
+    "customer_id": "<customer_id>",
+    "currency": "<currency_code, e.g. EUR>",
+    "booking_fee": "<\/DMO\/TRAVEL.booking_fee>",
+    "total_price": "<\/DMO\/TRAVEL.total_price = booking_fee + Σ flight_price + Σ supplement price — the aggregation invariant>",
+    "overall_status": "<O open | A accepted | X cancelled — VERIFY codes>",
+    "source": "<provenance: which ABAP system, generator run, export date; STATIC, no live SAP at replay (ERP.md §0.12)>"
+  },
+  "bookings": [
+    { "__example": "/DMO/BOOKING", "travel_id": "", "booking_id": "", "customer_id": "", "carrier_id": "", "connection_id": "", "flight_date": "", "flight_price": 0, "currency_code": "", "booking_status": "N|B|X" }
+  ],
+  "supplements": [
+    { "__example": "/DMO/BOOKING_SUPPLEMENT", "travel_id": "", "booking_id": "", "booking_supplement_id": "", "supplement_id": "", "price": 0, "currency_code": "" }
+  ]
+}

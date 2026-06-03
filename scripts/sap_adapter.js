@@ -135,8 +135,52 @@ var PLANNED_WITNESSES = [
   '§SAP-FINDINGS …  ← every divergence NAMED, standard (in scope) vs Z/config (out of scope)'
 ];
 
+// ── (C) SECOND SOURCE — SAP's OFFICIAL Flight Reference Scenario (a REAL, license-free oracle) ────
+// github.com/SAP-samples/abap-platform-refscen-flight (SAP-maintained, Apache-2.0). The /DMO/ travel-
+// booking RAP model is real SAP demo data populated by a deterministic-ish data generator (the legacy
+// SAPBC_DATA_GENERATOR / managed /DMO/CL_FLIGHT_DATA_GENERATOR). It UNBLOCKS the IDES-licence problem for
+// the DOCUMENT-LIFECYCLE half of the fold — but it is HONESTLY PARTIAL: the flight model has NO financial
+// accounting (no GL, no double-entry, no billing/clearing). So it exercises ONLY three of the six verbs:
+//   CREATE_DOCUMENT (Travel) · CREATE_LINE (Booking, + nested Booking-Supplement) · SET_STATUS (status machine)
+// plus the price-AGGREGATION invariant (Travel.total_price == booking_fee + Σ flight_price + Σ supplement).
+// It does NOT exercise POST / ALLOCATE / MATCH or the ACDOCA-as-fold claim — those still need an SD+FI source
+// (S/4HANA Best-Practices appliance, GBI teaching dataset, or a real IDES export). State that every time.
+// Field names below are the data-model HYPOTHESIS — VERIFY against the real /DMO/ export.
+var SCHEMA_MAP_FLIGHT = {
+  '/DMO/TRAVEL':          { bridge: 'documents',      doc_type: 'C_Order',     note: 'travel = the document/aggregate root', key_fields: ['travel_id', 'agency_id', 'customer_id', 'begin_date', 'end_date', 'booking_fee', 'total_price', 'currency_code', 'overall_status'] },
+  '/DMO/BOOKING':         { bridge: 'document_lines', doc_type: 'C_OrderLine',  qty: 'one', note: 'booking = a line on the travel; amount = flight_price', key_fields: ['travel_id', 'booking_id', 'customer_id', 'carrier_id', 'connection_id', 'flight_date', 'flight_price', 'currency_code', 'booking_status'] },
+  '/DMO/BOOKING_SUPPLEMENT': { bridge: 'document_lines', doc_type: 'C_OrderLine', note: 'supplement = a NESTED line under a booking (BOM recursion)', key_fields: ['travel_id', 'booking_id', 'booking_supplement_id', 'supplement_id', 'price', 'currency_code'] }
+};
+// status machine (HYPOTHESIS — verify the codes on the export): overall O(open)/A(accepted)/X(cancelled);
+// booking N(new)/B(booked)/X(cancelled).
+var STATE_MAP_FLIGHT = [
+  { sap: 'travel overall_status O→A', verb: 'SET_STATUS',      cell: 'C_Order:CO', note: 'accept travel = status flip' },
+  { sap: 'travel created (rows exist)', verb: 'CREATE_DOCUMENT', cell: 'C_Order:CO', note: '+ CREATE_LINE per booking (+ nested supplement)' }
+];
+// the document-lifecycle subset this scenario CAN witness (no FI verbs — stated, not hidden).
+function buildFlightEvents(oracle) {
+  var travelId = oracle.meta.travel_id;
+  var bookingLines = (oracle.bookings || []).map(function (b, i) {
+    return { op_type: 'CREATE_LINE', table: 'C_OrderLine', source_line_id: String(b.booking_id), line_no: i + 1, m_product_id: b.connection_id, amount: b.flight_price, currency: b.currency_code };
+  });
+  var supplLines = (oracle.supplements || []).map(function (s, i) {
+    return { op_type: 'CREATE_LINE', table: 'C_OrderLine', source_line_id: String(s.booking_id) + '-' + String(s.booking_supplement_id), line_no: 1000 + i, m_product_id: s.supplement_id, amount: s.price, currency: s.currency_code };
+  });
+  return {
+    wfmc: WFMC,
+    fold_scope: 'document-lifecycle ONLY (CREATE_DOCUMENT/CREATE_LINE/SET_STATUS) — NO POST/ALLOCATE/MATCH (flight model has no FI)',
+    events: [
+      { name: 'create travel', d: { docType: 'C_Order', action: 'CO', status: 'DR' },
+        ops: [{ op_type: 'CREATE_DOCUMENT', table: 'C_Order', source_id: travelId, doc_status: 'CO' }].concat(bookingLines).concat(supplLines) },
+      { name: 'accept travel', d: { docType: 'C_Order', action: 'CO', status: 'DR' },
+        ops: [{ op_type: 'SET_STATUS', table: 'C_Order', id: travelId, doc_status: 'CO' }] }
+    ]
+  };
+}
+
 module.exports = {
   KNOWN_VERBS: KNOWN_VERBS, SCHEMA_MAP: SCHEMA_MAP, STATE_MAP: STATE_MAP, WFMC: WFMC,
   NAMED_DIVERGENCES: NAMED_DIVERGENCES, normalizeGLLine: normalizeGLLine, buildSapEvents: buildSapEvents,
-  PLANNED_WITNESSES: PLANNED_WITNESSES
+  PLANNED_WITNESSES: PLANNED_WITNESSES,
+  SCHEMA_MAP_FLIGHT: SCHEMA_MAP_FLIGHT, STATE_MAP_FLIGHT: STATE_MAP_FLIGHT, buildFlightEvents: buildFlightEvents
 };
