@@ -3,7 +3,8 @@
 /* precision_cam.js — Precision Camera
    👁 toolbar button opens mini-panel with:
      🪶 Fine (toggle slow controls) — Caps Lock shortcut on desktop
-     🎯 Reset (re-anchor orbit center so zoom resets) */
+     🔭 Reset (re-anchor orbit center so zoom resets)
+     🏺 Pivot (toggle — live re-center orbit pivot on the scene centre as you drag) */
 
 (function() {
   'use strict';
@@ -44,6 +45,81 @@
   }
 
   function toggleFine() { _fine ? fineOff() : fineOn(); }
+
+  // PRECISION_PIVOT.md — Auto-Pivot: re-anchor orbit target to the scene centre on drag-end.
+  // Same mechanism as resetOrbit (move controls.target + update), but target lands on the
+  // surface at screen-centre (raycast NDC 0,0) instead of a fixed 10 units ahead.
+  var _pivot = false, _onEnd = null;
+
+  function recenterPivot() {
+    if (!A() || !A().controls) return;
+    var c = A().controls;
+    var cam = c.object;
+    var scene = A().scene;
+    var mode = null;
+
+    var hitR = -1;
+    if (scene) {
+      var ray = new THREE.Raycaster();
+      var hit = null;
+      // Radiate outward from screen-centre so the NEAREST surface to the centre wins.
+      // A single dead-centre ray misses anything not exactly under the crosshair —
+      // sample concentric rings (centre first) and stop at the first ring that hits.
+      var samples = [[0, 0]];
+      var rings = [0.06, 0.12, 0.18];  // NDC radii ≈ small capture area around centre
+      for (var ri = 0; ri < rings.length; ri++) {
+        for (var a = 0; a < 8; a++) {
+          var ang = a * Math.PI / 4;
+          samples.push([Math.cos(ang) * rings[ri], Math.sin(ang) * rings[ri], rings[ri]]);
+        }
+      }
+      for (var s = 0; s < samples.length && !hit; s++) {
+        ray.setFromCamera(new THREE.Vector2(samples[s][0], samples[s][1]), cam);
+        var hh = ray.intersectObjects(scene.children, true);
+        if (hh.length) { hit = hh[0]; hitR = samples[s][2] || 0; }
+      }
+      if (hit) { c.target.copy(hit.point); mode = 'mesh'; }
+      else {
+        var box = new THREE.Box3().setFromObject(scene);
+        if (!box.isEmpty()) { box.getCenter(c.target); mode = 'bbox'; }
+      }
+    }
+    if (!mode) {  // empty view → fall back to Reset's point-ahead so it never throws
+      var dir = new THREE.Vector3();
+      cam.getWorldDirection(dir);
+      c.target.copy(cam.position).addScaledVector(dir, 10);
+      mode = 'ahead';
+    }
+    c.update();  // moves pivot only; camera offset preserved → no view jump
+    if (A().markDirty) A().markDirty();
+    console.log('§pivot recenter target=(' + c.target.x.toFixed(2) + ',' +
+      c.target.y.toFixed(2) + ',' + c.target.z.toFixed(2) + ') hit=' + mode +
+      (mode === 'mesh' ? ' r=' + hitR.toFixed(2) : ''));
+  }
+
+  function pivotOn() {
+    if (_pivot) return;
+    if (!A() || !A().controls) return;
+    _pivot = true;
+    _onEnd = function() { if (_pivot) recenterPivot(); };
+    A().controls.addEventListener('end', _onEnd);
+    var pb = document.getElementById('prec-pivot-btn');
+    if (pb) pb.style.background = '#1a6b8a';
+    recenterPivot();  // anchor immediately
+    console.log('§pivot ON');
+  }
+
+  function pivotOff() {
+    if (!_pivot) return;
+    _pivot = false;
+    if (A() && A().controls && _onEnd) A().controls.removeEventListener('end', _onEnd);
+    _onEnd = null;
+    var pb = document.getElementById('prec-pivot-btn');
+    if (pb) pb.style.background = 'rgba(255,255,255,0.1)';
+    console.log('§pivot OFF');
+  }
+
+  function togglePivot() { _pivot ? pivotOff() : pivotOn(); }
 
   // Reset = camera stays, re-plant orbit target 10 units ahead
   // As if you just started navigating from this spot
@@ -112,7 +188,8 @@
 
     _panel.innerHTML =
       '<button id="prec-fine-btn" style="' + btnCss + '">🪶 <span style="font-size:11px">Fine</span></button>' +
-      '<button id="prec-reset-btn" style="' + btnCss + '">🎯 <span style="font-size:11px">Reset</span></button>';
+      '<button id="prec-reset-btn" style="' + btnCss + '">🔭 <span style="font-size:11px">Reset</span></button>' +
+      '<button id="prec-pivot-btn" style="' + btnCss + '">🏺 <span style="font-size:11px">Pivot</span></button>';
     document.body.appendChild(_panel);
 
     // Button handlers
@@ -122,9 +199,13 @@
     document.getElementById('prec-reset-btn').addEventListener('pointerup', function(e) {
       e.stopPropagation(); resetOrbit();
     });
+    document.getElementById('prec-pivot-btn').addEventListener('pointerup', function(e) {
+      e.stopPropagation(); togglePivot();
+    });
 
     // If fine is active, reflect in panel button
     if (_fine) document.getElementById('prec-fine-btn').style.background = '#1a6b8a';
+    if (_pivot) document.getElementById('prec-pivot-btn').style.background = '#1a6b8a';
 
     // S265: Precision Camera button — Lucide focus icon, matches overflow grid style
     var toolbar = document.querySelector('#search-body > div');
@@ -152,4 +233,5 @@
 
   window.togglePrecisionCam = toggleFine;
   window.resetCamOrbit = resetOrbit;
+  window.toggleCamPivot = togglePivot;
 })();
