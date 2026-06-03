@@ -34,8 +34,20 @@ var KNOWN_VERBS = ['CREATE_DOCUMENT', 'CREATE_LINE', 'SET_STATUS', 'ALLOCATE', '
 // every foreign ERP folds into). "key_fields" = the SAP columns we expect to read — VERIFY against the dump.
 var SCHEMA_MAP = {
   // ── SD: sales order → delivery → billing ──
-  'VBAK': { bridge: 'documents',      doc_type: 'C_Order',     issotrx: 'Y', note: 'sales order header',  key_fields: ['VBELN', 'KUNNR', 'NETWR', 'WAERK', 'VBTYP'] },
-  'VBAP': { bridge: 'document_lines', doc_type: 'C_OrderLine',               note: 'sales order item',    key_fields: ['VBELN', 'POSNR', 'MATNR', 'KWMENG', 'NETWR'] },
+  // VBAK/VBAP carry typed columns[] (AD_GEN_FROM_DICTIONARY_SPEC §1 example) — the rest stay key_fields,
+  // which the gen_ad expander renders as String + counts as untyped (visible debt, not silent).
+  'VBAK': { bridge: 'documents',      doc_type: 'C_Order',     issotrx: 'Y', note: 'sales order header',  key_fields: ['VBELN', 'KUNNR', 'NETWR', 'WAERK', 'VBTYP'],
+            columns: [ { name:'VBELN', ref:'String', len:10, key:true, identifier:true, label:'Sales Document' },
+                       { name:'KUNNR', ref:'TableDir', len:10, label:'Sold-To' },
+                       { name:'NETWR', ref:'Amount', len:0, label:'Net Value' },
+                       { name:'WAERK', ref:'String', len:5, label:'Currency' },
+                       { name:'VBTYP', ref:'List', len:1, label:'Doc Category' } ] },
+  'VBAP': { bridge: 'document_lines', doc_type: 'C_OrderLine',               note: 'sales order item',    key_fields: ['VBELN', 'POSNR', 'MATNR', 'KWMENG', 'NETWR'],
+            columns: [ { name:'VBELN', ref:'TableDir', len:10, key:true, label:'Sales Document' },
+                       { name:'POSNR', ref:'Integer', len:6, identifier:true, label:'Item' },
+                       { name:'MATNR', ref:'TableDir', len:18, label:'Material' },
+                       { name:'KWMENG', ref:'Quantity', len:0, label:'Order Quantity' },
+                       { name:'NETWR', ref:'Amount', len:0, label:'Net Value' } ] },
   'LIKP': { bridge: 'documents',      doc_type: 'M_InOut',                   note: 'delivery header',     key_fields: ['VBELN', 'KUNNR', 'VBTYP'] },
   'LIPS': { bridge: 'document_lines', doc_type: 'M_InOutLine', qty: 'movementqty', note: 'delivery item (goods issue)', key_fields: ['VBELN', 'POSNR', 'MATNR', 'LFIMG', 'VGBEL', 'VGPOS'] },
   'VBRK': { bridge: 'documents',      doc_type: 'C_Invoice',   issotrx: 'Y', note: 'billing header',      key_fields: ['VBELN', 'KUNRG', 'NETWR', 'MWSBK', 'WAERK', 'VBTYP'] },
@@ -147,9 +159,35 @@ var PLANNED_WITNESSES = [
 // (S/4HANA Best-Practices appliance, GBI teaching dataset, or a real IDES export). State that every time.
 // Field names below are the data-model HYPOTHESIS — VERIFY against the real /DMO/ export.
 var SCHEMA_MAP_FLIGHT = {
-  '/DMO/TRAVEL':          { bridge: 'documents',      doc_type: 'C_Order',     note: 'travel = the document/aggregate root', key_fields: ['travel_id', 'agency_id', 'customer_id', 'begin_date', 'end_date', 'booking_fee', 'total_price', 'currency_code', 'overall_status'] },
-  '/DMO/BOOKING':         { bridge: 'document_lines', doc_type: 'C_OrderLine',  qty: 'one', note: 'booking = a line on the travel; amount = flight_price', key_fields: ['travel_id', 'booking_id', 'customer_id', 'carrier_id', 'connection_id', 'flight_date', 'flight_price', 'currency_code', 'booking_status'] },
-  '/DMO/BOOKING_SUPPLEMENT': { bridge: 'document_lines', doc_type: 'C_OrderLine', note: 'supplement = a NESTED line under a booking (BOM recursion)', key_fields: ['travel_id', 'booking_id', 'booking_supplement_id', 'supplement_id', 'price', 'currency_code'] }
+  // Flight carries typed columns[] — the /DMO/ model is PUBLIC (Apache-2.0 refscen-flight), so the types
+  // are documented fact, not a guess. These exercise gen_ad's typed path end-to-end (untyped=0 for Flight).
+  '/DMO/TRAVEL':          { bridge: 'documents',      doc_type: 'C_Order',     note: 'travel = the document/aggregate root', key_fields: ['travel_id', 'agency_id', 'customer_id', 'begin_date', 'end_date', 'booking_fee', 'total_price', 'currency_code', 'overall_status'],
+            columns: [ { name:'travel_id', ref:'Integer', len:8, key:true, identifier:true, label:'Travel' },
+                       { name:'agency_id', ref:'TableDir', len:8, label:'Agency' },
+                       { name:'customer_id', ref:'TableDir', len:8, label:'Customer' },
+                       { name:'begin_date', ref:'Date', len:7, label:'Begin Date' },
+                       { name:'end_date', ref:'Date', len:7, label:'End Date' },
+                       { name:'booking_fee', ref:'Amount', len:0, label:'Booking Fee' },
+                       { name:'total_price', ref:'Amount', len:0, label:'Total Price' },
+                       { name:'currency_code', ref:'String', len:5, label:'Currency' },
+                       { name:'overall_status', ref:'List', len:1, label:'Status' } ] },
+  '/DMO/BOOKING':         { bridge: 'document_lines', doc_type: 'C_OrderLine',  qty: 'one', note: 'booking = a line on the travel; amount = flight_price', key_fields: ['travel_id', 'booking_id', 'customer_id', 'carrier_id', 'connection_id', 'flight_date', 'flight_price', 'currency_code', 'booking_status'],
+            columns: [ { name:'travel_id', ref:'TableDir', len:8, key:true, label:'Travel' },
+                       { name:'booking_id', ref:'Integer', len:6, identifier:true, label:'Booking' },
+                       { name:'customer_id', ref:'TableDir', len:8, label:'Customer' },
+                       { name:'carrier_id', ref:'String', len:3, label:'Airline' },
+                       { name:'connection_id', ref:'String', len:4, label:'Flight Number' },
+                       { name:'flight_date', ref:'Date', len:7, label:'Flight Date' },
+                       { name:'flight_price', ref:'Amount', len:0, label:'Flight Price' },
+                       { name:'currency_code', ref:'String', len:5, label:'Currency' },
+                       { name:'booking_status', ref:'List', len:1, label:'Status' } ] },
+  '/DMO/BOOKING_SUPPLEMENT': { bridge: 'document_lines', doc_type: 'C_OrderLine', note: 'supplement = a NESTED line under a booking (BOM recursion)', key_fields: ['travel_id', 'booking_id', 'booking_supplement_id', 'supplement_id', 'price', 'currency_code'],
+            columns: [ { name:'travel_id', ref:'TableDir', len:8, key:true, label:'Travel' },
+                       { name:'booking_id', ref:'Integer', len:6, key:true, label:'Booking' },
+                       { name:'booking_supplement_id', ref:'Integer', len:6, identifier:true, label:'Supplement' },
+                       { name:'supplement_id', ref:'String', len:10, label:'Product' },
+                       { name:'price', ref:'Amount', len:0, label:'Price' },
+                       { name:'currency_code', ref:'String', len:5, label:'Currency' } ] }
 };
 // status machine (HYPOTHESIS — verify the codes on the export): overall O(open)/A(accepted)/X(cancelled);
 // booking N(new)/B(booked)/X(cancelled).

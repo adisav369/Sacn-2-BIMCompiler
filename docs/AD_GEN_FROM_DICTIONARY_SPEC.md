@@ -129,6 +129,12 @@ offline-HTML/signing pipeline is its own later spec section in `ERPMaker.md`.
   render as plain editors. Named as the next increment.
 - **One renderer (#1 iDempiere).** Odoo/ERPNext/Glassbowl slots reuse the SAME generated AD later (renderer-neutral).
 
+> **Installer reconciliation:** this spec is **piece 1 of 3 — STRUCTURE**. Piece 2 = DATA (the master
+> extractor, `prompts/MIGRATE_SHOWME_OVERLAY.md §NEXT` — iDempiere live, Odoo planned). Piece 3 = EMIT
+> (`docs/ERPMaker.md` — sign the generated AD + folded data into an offline HTML app, gated on §5 here).
+> SAP rides STRUCTURE alone (renders with empty grids, no oracle); the install pill (`LENS_FAMILY.md` N4)
+> is the door to both. See `MIGRATE_SHOWME_OVERLAY.md §INSTALLER — the THREE pieces`.
+
 ## §8 Acceptance / Definition of Done
 
 `genAD(SCHEMA_MAP)` is a pure, deterministic function; the loader produces a separate `sap_ad_seed`; `idempiere.html`
@@ -145,3 +151,58 @@ the installer emit step is unblocked. Update `PROGRESS.md` + `docs/ERPMaker.md` 
 4. **T4 — render proof:** point `idempiere.html` at the seed; whitebox §-log the fold counts; Playwright wiring
    check (tree renders, a window opens). `§AD-RENDER`. NO value-verification Playwright (use §-logs).
 5. **T5 — docs:** PROGRESS + ERPMaker (installer unblocked once §5 green). Hand off the emit/sign step as next spec.
+
+## §10 Generic providers — deduce Table/Column from ANY source (not just hand adapters)
+
+`genAD` consumes a **normalized dictionary** (`table → {doc_type?, columns:[{name, ref, len, key, identifier,
+label, untyped?, inferred?}]}`), NOT an adapter. The hand-written `SCHEMA_MAP` is just ONE producer. A
+**provider** is anything that emits that shape, so the same generator serves any source — the AnyAppMaker/
+ERPMaker generalization. Build order (user, 2026-06-03): **DB introspect first, Excel next.**
+
+- **`providerFromSqlite(dbPath)` — DETERMINISTIC, zero invention.** `PRAGMA table_info` → column name +
+  declared SQL type + PK; `PRAGMA foreign_key_list` → FK columns. Type is mapped, not guessed:
+  `int*→Integer · numeric/decimal/money/real→Amount (Quantity if the name says qty) · date/time→Date ·
+  bool→Yes-No · char/text→String · declared FK→Table Direct`. The DB DECLARES the type → `inferred=false`.
+  An unknown declared type → String + `untyped=true` (counted). PG = the same provider after the existing
+  `migrate_pg_to_sqlite.js` step (PG→SQLite→introspect). **This also fills the Odoo `columns=0` gap** by
+  introspecting a migrated Odoo dump.
+- **`providerFromExcel(xlsxPath)` — HEURISTIC, visible.** sheet→table, header row→columns, **sample the
+  column's values** to infer the type. Inference is NOT silent: every deduced type is `inferred=true`, and
+  anything ambiguous falls to String + `untyped=true`. Needs the `xlsx` dep (present).
+
+### §10a Non-invent for inference — the type is deduced, so the deduction is AUDITABLE
+DB introspection is deterministic and needs no trust. Excel/heuristic inference does — so it is **never
+silently asserted**: the inferred type, the sample it was based on, and the confidence are logged, and
+low-confidence columns are counted in `untyped`/`inferred`, exactly like the adapter `untyped=K` debt.
+
+### §10b ErrorReport — trap rubbish even when the import SUCCEEDS (user, 2026-06-03)
+An importer fed external data WILL meet rubbish (headerless sheets, all-null columns, duplicate column
+names, un-deducible types, zero-column tables, encoding junk). The import should **still go through** —
+but it must **trap and REPORT** what it found, so the user and the operator know what was questionable.
+Adapt the single **`ErrorReport`** concept (the `error_reporter.js` factor-out flagged in `help_overlay.js`)
+into a reusable node class `scripts/error_report.js`:
+- Three severities: **`error`** (could not import this table/column — named, skipped, never faked),
+  **`warn`** (imported but degraded — e.g. fell back to String), **`rubbish`** (a data-quality smell the
+  user should see — duplicate header, mixed-type column, all-blank column, suspicious encoding).
+- Every finding carries `{severity, code, where (table.column), detail}`; the report prints a §-witness
+  summary and writes a structured artifact (`build/erp/ad_gen_report.json`) so it is reviewable, not lost.
+- **Witnesses:**
+  - `§AD-GEN source=db:<path>|xlsx:<path> tables=N columns=N inferred=K untyped=J handAuthored=0`
+  - `§AD-GEN-REPORT errors=E warns=W rubbish=R clean=<Y|N> artifact=build/erp/ad_gen_report.json` — the
+    import went through AND every detected smell is surfaced (the §error-path discipline, importer-side).
+  - per-finding: `§AD-GEN-RUBBISH code=<dup-header|all-null|mixed-type|no-header|undeducible> where=<t.c> detail=…`
+
+### §10c Positive role identification — id the IDENTIFIER, the AMOUNTS, the KEY
+Type-deduction says *how a column displays*; role-classification says *what a column MEANS*. A pass over the
+built dictionary positively tags the semantic roles the AD model + downstream care about:
+- **identifier** (the human-readable record label shown in references — AD `IsIdentifier`): pick by name
+  priority `name → *name → documentno → value → code → description`, else the first text non-key column.
+  Replaces the weak positional guess. Populates a slot the AD already has.
+- **amount(s)**: columns whose ref is `Amount` AND name matches `grandtotal|total|net|amount|price` — the
+  headline figures (totals/reporting/the master extractor). Recorded per table.
+- **key**: PK is deterministic; when a table has NO PK, positively pick `<table>_id` / `*_id` as the key.
+
+**Non-invent:** PK and declared FK are certain; identifier/amount/no-PK-key are NAME heuristics, so each is
+flagged (`inferred`) and logged — `§AD-GEN-ROLE table=<t> identifier=<col> amounts=[…] key=<col>` — and a
+no-PK key is also a `rubbish` finding (the user should know the key was guessed). The classifier enriches
+the dictionary map; it never fabricates a column.
