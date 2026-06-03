@@ -545,3 +545,18 @@ fold unit layered on top.
   fsync floor — don't over-read the per-commit number.
 - **DONE this session:** I-K (kernel+UI) ✅ · I-J (guard) ✅ · localhost-tested ✅ · benchmark ✅. **Browser-side
   write-path TOP work complete.** NEXT: `prompts/ENGINE_WRITE_PATH_NEXT.md`.
+
+### 2026-06-03 — BigDecimal ENFORCED + DEPLOYED to branch (PR #8)
+- **BigDecimal enforced (feedback_numbers_via_bigdecimal):** `bigdecimal.js` (exact decimal == java.math.BigDecimal,
+  proven) is now LOADED in `glassbowl.html` (site/ + build/erp/) BEFORE the kernel — it was present in the repo
+  but NOT loaded. The I-J conversion math (`scripts/poc_rate_input.js convCents`) now uses
+  `BigDecimal.multiply().setScale(0,HALF_UP)`, never raw float (also sharpens C3: divergence is the RATE, not
+  float noise). Verified in real Chromium: `window.BigDecimal` present, `10000×0.92=9200` exact, no page errors.
+  Kernel `Number(...)` calls are counts/IDs (not money) → correctly left. **Follow-up:** audit broader money
+  folds (erp_postings, reports) for raw-Number math — queued in ENGINE_WRITE_PATH_NEXT.md.
+- **DEPLOYED to branch (NOT merged — CICD's job):** branch `feat/erp-write-path-ik-ij`, **PR #8 → `full`**
+  (https://github.com/red1oon/BIMCompiler/pull/8). 11 files (build/erp kernel+crud+glassbowl, scripts witnesses,
+  this doc, docs/IDEMPIERE_2 + LocalFirstPriorArt). Pre-commit compile gate passed. `site/` is the gitignored
+  publish mirror — tracked source = `build/erp/`. NOT yet OCI-deployed to bim-ootb-live (separate EXPLICIT-GO).
+- **DONE this session (final):** I-K (kernel+UI) ✅ · I-J (guard) ✅ · BigDecimal enforced ✅ · localhost-tested ✅
+  · benchmark ✅ · branched+PR ✅. Resume: `prompts/ENGINE_WRITE_PATH_NEXT.md`.
