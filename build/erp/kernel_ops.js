@@ -46,6 +46,16 @@
       try { db.run("ALTER TABLE kernel_ops ADD COLUMN sig TEXT"); }      catch (ignore) {}
       // §I-K (W-OPGROUP): group-id column on pre-existing DBs (idempotent, additive)
       try { db.run("ALTER TABLE kernel_ops ADD COLUMN gid TEXT"); }      catch (ignore) {}
+      // §I-D (W-CHECKPOINT): the period-close signed checkpoint table (additive — never touches kernel_ops
+      // or _canonical, so the existing chain stays byte-identical). ERP.md §18.9 + HolyGrail.md §1.
+      //   at_op_id      — the sealed tip op id at close (the anchor)
+      //   head_hash     — the op_hash AT at_op_id = the chain head carried forward (the open period's prev)
+      //   balances      — optional JSON closing balances ("balance brought forward", §18.9 checkpoint_at_N)
+      //   balances_digest — sha256(canonical(balances)) ('' if none) — bound into the signature
+      //   sig           — edge signature over (head_hash | at_op_id | balances_digest); NULL if no signer
+      db.run('CREATE TABLE IF NOT EXISTS kernel_checkpoints (' +
+             '  id INTEGER PRIMARY KEY, at_op_id INTEGER NOT NULL, head_hash TEXT NOT NULL,' +
+             '  balances TEXT, balances_digest TEXT, sig TEXT, timestamp INTEGER NOT NULL)');
       db.__kernelOpsTableCreated = true;
     } catch (e) {
       console.log('§KERNEL_OP ensureTable ERROR: ' + e.message);
@@ -343,14 +353,91 @@
              sealed: sealRes.sealed, committed: true, group_hash: groupHash };
   }
 
+  // Implementing ENGINE_FULL_ERP_ISSUES.md §I-D — Witness: W-CHECKPOINT
+  // The period-close signed checkpoint (ERP.md §18.9 "aggregates are checkpointed projections" + HolyGrail.md
+  // §1 "balance brought forward"). At close we record ONE signed anchor: (a) the chain-head fingerprint and
+  // (b) the closing balances handed in by the caller. The next period chains off it; verify/fold start FROM
+  // the checkpoint, so cost is bounded by the OPEN period, not the whole log (the I-D residual win).
+  //
+  // _canonicalBalances — stable serialisation of the closing balances (sorted keys) so the digest is
+  // deterministic regardless of object key order. '' when no balances are carried.
+  function _canonicalBalances(balances) {
+    if (balances == null) return '';
+    if (typeof balances === 'string') return balances;
+    if (typeof balances !== 'object') return JSON.stringify(balances);
+    return '{' + Object.keys(balances).sort().map(function (k) {
+      return JSON.stringify(k) + ':' + JSON.stringify(balances[k]);
+    }).join(',') + '}';
+  }
+
+  // latestCheckpoint — the highest-id checkpoint, or null. Pure read; the anchor a bounded verify/fold starts from.
+  function latestCheckpoint(db) {
+    ensureTable(db);
+    var r = db.exec('SELECT id, at_op_id, head_hash, balances, balances_digest, sig, timestamp FROM kernel_checkpoints ORDER BY id DESC LIMIT 1');
+    if (!r.length || !r[0].values.length) return null;
+    var v = r[0].values[0];
+    return { id: v[0], at_op_id: v[1], head_hash: v[2], balances: v[3], balances_digest: v[4], sig: v[5], timestamp: v[6] };
+  }
+
+  // closePeriod — write one signed checkpoint at the current sealed tip. NON-INVENT: `balances` are the
+  // caller's folded numbers (the report/ledger lane supplies them); the kernel NEVER computes or fabricates
+  // balances — it only ANCHORS + SIGNS what it is handed. The signed payload is (head_hash | at_op_id |
+  // balances_digest), so tampering EITHER the head OR the carried balances breaks the signature.
+  // Signature: closePeriod(db, {balances?, asOf?}) -> { checkpointId, atOpId, headHash, balancesDigest, sig, signed, ts }
+  async function closePeriod(db, opts) {
+    ensureTable(db);
+    opts = opts || {};
+    var tip = _lastSealedTip(db);   // { id, hash } of the highest already-sealed row (the close anchor)
+    var balancesStr = opts.balances != null ? (typeof opts.balances === 'string' ? opts.balances : JSON.stringify(opts.balances)) : null;
+    var canon = _canonicalBalances(opts.balances);
+    var balancesDigest = canon === '' ? '' : await _sha256(canon);
+    var payload = tip.hash + '|' + tip.id + '|' + balancesDigest;   // the SIGNED anchor (head + carried balances)
+    var sig = null, signed = false;
+    if (_signer) { try { sig = await _signer.sign(payload); signed = true; } catch (e) { sig = null; signed = false; } }
+    var ts = (typeof opts.asOf === 'number') ? opts.asOf : Date.now();   // row metadata only — NOT in the signed payload (keeps the anchor deterministic)
+    db.run('INSERT INTO kernel_checkpoints (at_op_id, head_hash, balances, balances_digest, sig, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
+           [tip.id, tip.hash, balancesStr, balancesDigest, sig, ts]);
+    var idR = db.exec('SELECT last_insert_rowid()');
+    var checkpointId = idR[0].values[0][0];
+    console.log('§KRN_CHECKPOINT closed checkpointId=' + checkpointId + ' atOpId=' + tip.id + ' head=' + tip.hash.slice(0, 12) +
+                '… balDigest=' + (balancesDigest ? balancesDigest.slice(0, 12) + '…' : '(none)') + ' signed=' + signed);
+    return { checkpointId: checkpointId, atOpId: tip.id, headHash: tip.hash, balancesDigest: balancesDigest, sig: sig, signed: signed, ts: ts };
+  }
+
   // verifyChain — walk the ordered log, recompute each op_hash, check the prev_hash link, and (if a
   // signer is set) the signature. Returns {ok, len, tip} or {ok:false, brokeAt, why} — proving
   // "tamper at op N" exactly as scripts/poc_chain.js does.
-  async function verifyChain(db) {
+  //
+  // §I-D (W-CHECKPOINT): opts.fromCheckpoint (opt-in) bounds the walk to the OPEN period — it loads the
+  // latest signed checkpoint, VERIFIES its signature (a forged/missing anchor ⇒ reject before trusting any
+  // op), then walks ONLY ops with id > at_op_id starting from prev = head_hash. The default call (no opts)
+  // is byte-identical to before — a full walk from GENESIS (the cold-archive audit path; the stated trade is
+  // that bounded TRUSTS the signed anchor and does not re-walk the archive). No checkpoint ⇒ honest fallback
+  // to a full walk from genesis.
+  async function verifyChain(db, opts) {
+    opts = opts || {};
+    var startId = 0, prevStart = GENESIS, ckId = null, fromCheckpoint = false;
+    if (opts.fromCheckpoint) {
+      var ck = latestCheckpoint(db);
+      if (ck) {
+        // verify the signed anchor itself BEFORE trusting it (only meaningful when a signer is installed).
+        if (_signer) {
+          var payload = ck.head_hash + '|' + ck.at_op_id + '|' + (ck.balances_digest || '');
+          var anchorOk = false;
+          try { anchorOk = await _signer.verify(payload, ck.sig); } catch (e) { anchorOk = false; }
+          if (!anchorOk) {
+            console.log('§KRN_CHAIN checkpoint signature FAIL checkpointId=' + ck.id + ' (forged/altered anchor — rejected before trusting any op)');
+            return { ok: false, brokeAt: ck.at_op_id, why: 'checkpoint signature', checkpointId: ck.id, fromCheckpoint: true };
+          }
+        }
+        startId = ck.at_op_id; prevStart = ck.head_hash; ckId = ck.id; fromCheckpoint = true;
+      }
+      // ck == null → leave startId=0/prevStart=GENESIS: a full walk from genesis (honest no-checkpoint fallback).
+    }
     ensureTable(db);
-    var r = db.exec('SELECT id,timestamp,op_type,parameters,input_guids,output_guid,prev_hash,op_hash,sig,gid FROM kernel_ops ORDER BY id');
-    if (!r.length) return { ok: true, len: 0, tip: GENESIS };
-    var rows = r[0].values, prev = GENESIS;
+    var r = db.exec('SELECT id,timestamp,op_type,parameters,input_guids,output_guid,prev_hash,op_hash,sig,gid FROM kernel_ops WHERE id > ' + startId + ' ORDER BY id');
+    if (!r.length) return { ok: true, len: 0, tip: prevStart, fromCheckpoint: fromCheckpoint, checkpointId: ckId, scannedFrom: startId };
+    var rows = r[0].values, prev = prevStart;
     for (var i = 0; i < rows.length; i++) {
       var op = { id: rows[i][0], timestamp: rows[i][1], op_type: rows[i][2],
                  parameters: rows[i][3], input_guids: rows[i][4], output_guid: rows[i][5] };
@@ -373,15 +460,16 @@
           var gFirst = db.exec('SELECT MIN(id) FROM kernel_ops WHERE gid = ' + JSON.stringify(gid));
           var brokeAt = (gFirst.length && gFirst[0].values.length) ? gFirst[0].values[0][0] : op.id;
           console.log('§KRN_CHAIN group-torn gid=' + gid + ' failAt id=' + op.id + ' why=' + fail + ' brokeAt(group)=' + brokeAt);
-          return { ok: false, brokeAt: brokeAt, why: 'group torn', gid: gid, opFail: fail, failAt: op.id };
+          return { ok: false, brokeAt: brokeAt, why: 'group torn', gid: gid, opFail: fail, failAt: op.id,
+                   fromCheckpoint: fromCheckpoint, checkpointId: ckId, scannedFrom: startId };
         }
         console.log('§KRN_CHAIN verify ' + fail + ' at id=' + op.id);
-        return { ok: false, brokeAt: op.id, why: fail };
+        return { ok: false, brokeAt: op.id, why: fail, fromCheckpoint: fromCheckpoint, checkpointId: ckId, scannedFrom: startId };
       }
       prev = storedHash;
     }
-    console.log('§KRN_CHAIN verify OK len=' + rows.length + ' tip=' + prev.slice(0, 12) + '…');
-    return { ok: true, len: rows.length, tip: prev };
+    console.log('§KRN_CHAIN verify OK len=' + rows.length + ' tip=' + prev.slice(0, 12) + '…' + (fromCheckpoint ? ' (bounded from checkpoint ' + ckId + ', scannedFrom op ' + startId + ')' : ''));
+    return { ok: true, len: rows.length, tip: prev, fromCheckpoint: fromCheckpoint, checkpointId: ckId, scannedFrom: startId };
   }
 
   /**
@@ -526,10 +614,12 @@
     sealChain:    sealChain,     // W-CHAIN: (re)seal the WHOLE log's hash chain (async, post-compaction)
     sealFrom:     sealFrom,      // §I-K (W-OPGROUP): incremental seal-from-tip (the I-D flattening)
     commitGroup:  commitGroup,   // §I-K (W-OPGROUP): N ops, ONE group hash, all-or-none, sealed once (async)
-    verifyChain:  verifyChain,   // W-CHAIN/W-SIGN: prove tamper-evidence (async)
+    verifyChain:  verifyChain,   // W-CHAIN/W-SIGN: prove tamper-evidence (async); opts.fromCheckpoint = bounded
+    closePeriod:  closePeriod,   // §I-D (W-CHECKPOINT): write a signed period-close checkpoint (async)
+    latestCheckpoint: latestCheckpoint,  // §I-D (W-CHECKPOINT): the latest signed anchor (pure read)
     setSigner:    setSigner,     // W-SIGN: install an edge signer (opt-in)
     assertRateAsInput: assertRateAsInput  // §I-J (W-RATE-INPUT): currency-determinism guard (pure, rate-as-op-input)
   };
 
-  console.log('§KERNEL_OPS_LOADED v8 (W-CHAIN/W-SIGN/G-IDENTITY/W-OPGROUP/W-RATE-INPUT)');
+  console.log('§KERNEL_OPS_LOADED v9 (W-CHAIN/W-SIGN/G-IDENTITY/W-OPGROUP/W-RATE-INPUT/W-CHECKPOINT)');
 })();

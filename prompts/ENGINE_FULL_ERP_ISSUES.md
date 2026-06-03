@@ -631,3 +631,109 @@ fold DIVERGES from golden (proves the bug was real, non-invent), (2) the LIVE Bi
   balanced=Y, receipt 95.00/3657.50). Logs in `build/erp/poc_money_fold.log` + `test_report_*.log`.
 - **Residual (flagged, not this lane):** `crud_overlay.js:87` `Number(val)` coerces a New-form money field into
   the op as a JS Number — write-path input capture, routes to the write lane, not this read-side fold.
+
+---
+
+## §I-D-CKPT SPEC — period-close signed checkpoint in the LIVE kernel (I-D residual; verify/fold bound)
+<!-- // Implementing ENGINE_FULL_ERP_ISSUES.md §I-D — Witness: W-CHECKPOINT -->
+<!-- Sources (non-invent — every rule below is EXTRACTED, not fabricated):
+       · the precise rule   → ERP.md §18.9 "aggregates are checkpointed projections": state = checkpoint_at_N + Σ(since N)
+       · the ritual         → HolyGrail.md §1 "balance brought forward": at close write ONE signed checkpoint carrying
+                              (a) closing balances + (b) the chain-head fingerprint, signed by the controller; it becomes
+                              a new genesis; the closed period is archived (cold), not deleted; re-add the archive and it
+                              MUST fold to the signed balance to the cent or fraud is proven.
+       · the concept proof  → poc_volume.js §VOL-BOOTSTRAP (fold-from-checkpoint FLAT) + poc_showstopper.js S3 §SHOW-CKPT
+                              (signed checkpoint verifies under controller key; archive reconciles to the cent) — BUT both
+                              on FREE-STANDING primitives, NOT the live kernel.
+       · the live gap       → site/kernel_ops.js verifyChain :349 SELECTs the WHOLE log ORDER BY id and re-hashes EVERY
+                              row from GENESIS, every call (verify_ms 10→17 @1000, on-demand). NO checkpoint primitive
+                              exists in the kernel (grep checkpoint build/erp/kernel_ops.js → 0 hits). -->
+
+### The gap this closes (MEASURED, not assumed)
+The checkpoint *concept* is proven (poc_volume §VOL-BOOTSTRAP flat; poc_showstopper S3 §SHOW-CKPT signs+reconciles)
+— but **only on free-standing fixtures**. The **live kernel** `verifyChain` (and any cold fold built on it) walks
+from `GENESIS` over the **entire** `kernel_ops` log on every call → cost ∝ **total history**, not ∝ the open
+period. A real ERP appends thousands of ops/day; the on-demand "is the chain trusted?" check grows without bound.
+ERP.md §18.9 + HolyGrail §1 give the fix verbatim: at period close, record ONE **signed checkpoint** (head
+fingerprint + closing balances); the next period chains off it; verify/fold start FROM the checkpoint, so cost is
+bounded by the **open period**, flat across periods.
+
+### The fix (additive, kernel-only, opt-in — zero behaviour change to existing callers)
+1. **`kernel_checkpoints` table** (idempotent `CREATE TABLE IF NOT EXISTS`; never touches `kernel_ops` or
+   `_canonical`, so the existing chain stays byte-identical and all 5 guardrail witnesses stay GREEN):
+   `id` · `at_op_id` (the sealed tip op id at close) · `head_hash` (the op_hash AT `at_op_id` = the chain head
+   carried forward = the open period's starting `prev`) · `balances` (optional JSON closing balances — "balance
+   brought forward", the §18.9 `checkpoint_at_N`) · `balances_digest` (sha256 of canonical balances, '' if none) ·
+   `sig` (edge signature over the checkpoint payload, NULL if no signer) · `timestamp`.
+2. **`closePeriod(db, {balances?, asOf?, gid?})`** — read the current sealed tip via `_lastSealedTip`; the signed
+   payload = `head_hash | at_op_id | balances_digest` (so a tampered head OR tampered balances breaks the sig).
+   Sign with the installed `_signer` if present (HolyGrail "signed by the controller"); else W-CHAIN-only anchor.
+   Insert one checkpoint row. NON-INVENT: balances are the caller's folded numbers (the report/ledger lane
+   supplies them) — the kernel NEVER computes or fabricates balances; it only anchors+signs what it is handed.
+   Returns `{ checkpointId, atOpId, headHash, balancesDigest, sig, signed }`.
+3. **`verifyChain(db, opts)`** — **opt-in** `opts.fromCheckpoint:true`: load the latest checkpoint, verify its
+   signature (if a signer is set — a forged/missing sig ⇒ reject before walking), set `prev = checkpoint.head_hash`
+   and walk ONLY ops with `id > at_op_id`. The **default call (no opts) is byte-identical to today** — full walk
+   from GENESIS (the cold-archive audit path; backward compatible). Returns the same shape + `fromCheckpoint:true`,
+   `checkpointId`, `scannedFrom`.
+4. **`latestCheckpoint(db)`** — helper returning the highest-id checkpoint or null.
+
+### Bound semantics + the HONEST trade
+- **The win:** bounded `verifyChain` cost ∝ **open-period length**, FLAT as total history grows; full verify ∝
+  total history. MEASURED in the witness across K periods (the I-D residual closed for verify).
+- **The trade (stated, not hidden):** bounded verify TRUSTS the signed checkpoint anchor — it does NOT re-walk the
+  cold archive. That is the *point* (§18.9 cache the log can regenerate), made safe by the **signature** over the
+  head. The cold archive is re-proven only by a FULL verify (or archive re-fold to the signed balance, HolyGrail
+  §1 "to the cent or fraud is proven"). Both paths stay available; bounded is the hot path, full is the audit path.
+- **No deletion:** `closePeriod` records the anchor; it does NOT delete/archive the cold rows (freeing the tab is a
+  separate persistence/compaction concern — `compact()`'s lane). The bound is on verify COST (start the walk at the
+  checkpoint), achieved without losing data. Honest residual: tab-size reduction (cold eviction) is future work.
+
+### Witness — `scripts/poc_checkpoint.js` (W-CHECKPOINT), names the issue it proves
+*Issue: the LIVE kernel re-verifies the whole log every call (∝ total history); a signed period-close checkpoint
+must bound verify to the open period (flat across periods) WITHOUT losing tamper-evidence.* On the real
+`build/erp/kernel_ops.js` (sql.js, ECDSA signer from poc_sign):
+- **C1 BOUND (the I-D win, MEASURED):** commit K periods of P ops each; full `verifyChain` ms GROWS with total
+  history; `verifyChain({fromCheckpoint})` ms stays FLAT (∝ P) across all K. FALSIFIER: not-flat ⇒ fail.
+- **C2 OPEN-PERIOD TAMPER still caught:** tamper an op in the open period → bounded verify reports `ok=false`
+  `brokeAt` = exact op (group-torn rule preserved).
+- **C3 ARCHIVE RE-FOLD reconciles (HolyGrail §1):** full verify over the whole log == the signed checkpoint head;
+  tamper a COLD (pre-checkpoint) op → full verify catches it AND head ≠ signed head ⇒ fraud proven.
+- **C4 FORGED CHECKPOINT rejected:** alter the checkpoint head/balances/sig → bounded verify rejects the anchor
+  (signature fails) before trusting it.
+- **C5 DETERMINISM:** rebuild the same scenario twice → byte-identical checkpoint head + balances_digest.
+- **C6 NON-REGRESSION:** default `verifyChain(db)` (no opts) byte-identical to pre-change (the 5 guardrail
+  witnesses re-run GREEN). `§CHECKPOINT PASS`. (9 verdict checks: C0, C1-bound, C1-sanity, C2, C3-anchor,
+  C3-cold, C4, C5, C6.)
+
+### 2026-06-04 — §I-D-CKPT LANDED (period-close signed checkpoint in the live kernel; witnessed)
+- **DONE (build/erp/kernel_ops.js v9, additive only):** new `kernel_checkpoints` table (idempotent CREATE,
+  never touches `kernel_ops`/`_canonical`) + `closePeriod(db,{balances})` (signs the anchor
+  `head_hash|at_op_id|balances_digest` with the installed edge signer) + `latestCheckpoint(db)` + `verifyChain`
+  gains **opt-in** `opts.fromCheckpoint` (loads the latest checkpoint, VERIFIES its signature, then walks ONLY
+  ops `id > at_op_id` from `prev = head_hash`). Default `verifyChain(db)` is **unchanged** (full walk from
+  GENESIS). Exports + version bumped v8→v9 (`W-CHECKPOINT`).
+- **Witness `scripts/poc_checkpoint.js` → `§CHECKPOINT PASS` (9/9 checks green):** on the REAL kernel (sql.js + ECDSA
+  P-256 controller). **MEASURED I-D win** (`§CHECKPOINT-BOUND`, K=4 periods × P=120 docs): full verify
+  `24.1→44.8→72.7→93.0 ms` (GROWS ∝ total history) vs bounded `25.4→24.9→23.2→23.2 ms` (FLAT ∝ open period),
+  4.0× speedup at period 4. C2 open-period tamper still caught at the exact op (group head, `why=group torn`);
+  C3 signed head == sealed op_hash at close + cold-archive tamper proven by FULL verify while bounded trusts
+  the signed anchor (**the stated trade**, honest); C4 forged anchor rejected (`why=checkpoint signature`); C5
+  deterministic head+digest across rebuilds (ECDSA sig varies by design, not compared); C6 default path
+  unchanged. Log: `build/erp/poc_checkpoint.log`.
+- **NON-REGRESSION:** all 5 guardrail witnesses re-run GREEN (poc_opgroup/poc_crud_group/poc_rate_input/
+  poc_chain/poc_kernel) — the change is purely additive.
+- **HONEST RESIDUALS (named, not hidden):** (a) the bound is on verify COST (start the walk at the checkpoint);
+  `closePeriod` does NOT delete/evict the cold rows — tab-size reduction stays `compact()`-lane future work.
+  (b) the **balances fold** (replay/projection) is bounded in poc_volume already; this lane bounds the kernel's
+  **verify** specifically — a checkpoint-anchored kernel *replay* bound is a follow-on. (c) bounded verify TRUSTS
+  the signed anchor (does not re-walk the archive) — safe only because the anchor is signed (C4); the cold
+  archive is re-proven only by FULL verify / archive re-fold (C3).
+- **⚠ MIRROR DRIFT FOUND (pre-existing, NOT caused here; flagged for the deploy lane):** `build/erp` kernel is
+  v9 but the env mirrors are stale — `site/kernel_ops.js`=**v6**, `docs/kernel_ops.js`=**v6**,
+  `deploy/dev/kernel_ops.js`=**v4** (contradicts the handoff's "site v8 byte-identical mirror" claim — site is
+  not v8 on disk). Each env's other files (crud_overlay/glassbowl.html) sit at their own drift, so a lone-kernel
+  sync would make an untested mixed state. Mirror reconciliation = a full per-env publish, GO-gated (deploy
+  flow publishes from `deploy/dev/`; localhost serves `site/`). **NOT synced in this no-deploy engine task.**
+- **NOT committed / NOT deployed** — working-tree only (`build/erp/kernel_ops.js` + new `scripts/poc_checkpoint.js`
+  + this doc). EXPLICIT GO pending for OCI; commit/PR at the user's call (PR #8 branch).
