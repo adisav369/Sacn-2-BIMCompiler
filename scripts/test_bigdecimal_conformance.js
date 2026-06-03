@@ -5,7 +5,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const BigDecimal = require('../site/bigdecimal.js');
+const BigDecimal = require('../build/erp/bigdecimal.js');  // tracked source (site/ is the gitignored serving mirror)
 
 const file = path.join(__dirname, 'golden_bigdecimal.jsonl');
 const lines = fs.readFileSync(file, 'utf8').trim().split('\n');
