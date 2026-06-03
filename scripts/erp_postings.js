@@ -125,4 +125,7 @@ function readPostings(recordRef, ctx, dbs) {
            note: 'showing op-log postings — run local install for the full posted history', reason: null };
 }
 
-module.exports = { readPostings: readPostings, factHasRecordKey: factHasRecordKey, centMap: centMap, mapsEqual: mapsEqual };
+var _api = { readPostings: readPostings, factHasRecordKey: factHasRecordKey, centMap: centMap, mapsEqual: mapsEqual };
+// UMD tail — node tests + browser live host (window.ERPPostings).
+if (typeof module !== 'undefined' && module.exports) { module.exports = _api; }
+if (typeof window !== 'undefined') { window.ERPPostings = _api; }

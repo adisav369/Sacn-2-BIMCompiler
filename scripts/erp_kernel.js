@@ -269,9 +269,13 @@ function dispatch(db, cellCtx, doc) {
   return { ok: true, to: to, ops: ops, applied: res.applied, committed: res.committed, ids: res.ids };
 }
 
-module.exports = {
+var _api = {
   initProjection: initProjection, query: query, projectionHash: projectionHash,
   apply: apply, replay: replay, legalTransition: legalTransition,
   register: register, getHandler: getHandler, handlers: handlers, dispatch: dispatch,
   PROJECTION_TABLES: PROJECTION_TABLES, _stats: _stats
 };
+// UMD tail — node (tests/pocs) AND browser (window.ERPKernel for the live host). Same proven engine,
+// no fork: db.run/db.exec are already sql.js-compatible (this kernel was written to run on sql.js).
+if (typeof module !== 'undefined' && module.exports) { module.exports = _api; }
+if (typeof window !== 'undefined') { window.ERPKernel = _api; }

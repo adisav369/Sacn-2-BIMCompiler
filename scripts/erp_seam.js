@@ -22,8 +22,11 @@
  *   newDb           // () -> fresh empty sql.js db (verify replays into it)
  * }
  */
-var fs = require('fs');
-var K = require('./erp_kernel');
+// node: require fs + the kernel. browser: fs is absent (manifest() then needs cfg.manifestObj) and the
+// kernel arrives as window.ERPKernel. Guarded so a browser <script> load doesn't throw on require.
+var fs = (typeof require !== 'undefined') ? require('fs') : null;
+var K = (typeof require !== 'undefined') ? require('./erp_kernel')
+        : (typeof window !== 'undefined' ? window.ERPKernel : null);
 
 function projQ(db, sql, params) { return K.query(db, sql, params || []); }
 
@@ -90,7 +93,8 @@ function makeSeam(cfg) {
 
   // ── manifest(ctx) — the D2 gravity-ranked shard manifest (engine-side policy; UI only fetches) ──
   function manifest(ctx) {
-    var m = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    // browser passes the parsed manifest as cfg.manifestObj (no fs); node reads the file.
+    var m = cfg.manifestObj || JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     // NB: facet name is `menuGroup` here vs §1's `gravityRank` — JOINT re-freeze flag (ENGINE_CONTRACT §6.1).
     return { version: m.version, axis: m.axis, shards: m.shards, tables: m.tables };
   }
@@ -125,4 +129,6 @@ function makeSeam(cfg) {
   return { read: read, dispatch: dispatch, manifest: manifest, verbs: verbs, verify: verify, surface: surface };
 }
 
-module.exports = { makeSeam: makeSeam };
+// UMD tail — node tests + browser live host (window.ERPSeam).
+if (typeof module !== 'undefined' && module.exports) { module.exports = { makeSeam: makeSeam }; }
+if (typeof window !== 'undefined') { window.ERPSeam = { makeSeam: makeSeam }; }
