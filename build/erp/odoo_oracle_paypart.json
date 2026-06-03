@@ -1,0 +1,89 @@
+{
+  "meta": {
+    "scenario": "sell-side O2C with PARTIAL payment (f2): pay 3000.0 of invoice total, residual carried",
+    "so": "S00027",
+    "so_id": 27,
+    "invoice": "INV/2026/00007",
+    "invoice_id": 33,
+    "partner_id": 11,
+    "payment": "PBNK1/2026/00003",
+    "payment_amount": 3000.0,
+    "reconcile_amount": 3000.0,
+    "amount_total": 5002.5,
+    "amount_residual": 2002.5,
+    "payment_state": "partial",
+    "source": "odoodemo (Odoo 17), driven via RPC to a PARTIAL-payment state, STATIC export \u2014 no live Odoo at replay (ERP.md \u00a70.12)"
+  },
+  "sale_order_lines": [
+    {
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "pid": 31,
+      "qty": 10.0,
+      "qty_delivered": 10.0,
+      "qty_invoiced": 10.0,
+      "price_unit": 295.0,
+      "subtotal": 2950.0,
+      "total": 3392.5
+    },
+    {
+      "product": "[E-COM11] Cabinet with Doors",
+      "pid": 21,
+      "qty": 10.0,
+      "qty_delivered": 10.0,
+      "qty_invoiced": 10.0,
+      "price_unit": 140.0,
+      "subtotal": 1400.0,
+      "total": 1610.0
+    }
+  ],
+  "invoice_gl_lines": [
+    {
+      "name": "[FURN_6666] Acoustic Bloc Screens",
+      "account": "400000 Product Sales",
+      "debit": 0.0,
+      "credit": 2950.0,
+      "balance": -2950.0,
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "qty": 10.0,
+      "subtotal": 2950.0,
+      "is_tax": false,
+      "display_type": "product"
+    },
+    {
+      "name": "[E-COM11] Cabinet with Doors",
+      "account": "400000 Product Sales",
+      "debit": 0.0,
+      "credit": 1400.0,
+      "balance": -1400.0,
+      "product": "[E-COM11] Cabinet with Doors",
+      "qty": 10.0,
+      "subtotal": 1400.0,
+      "is_tax": false,
+      "display_type": "product"
+    },
+    {
+      "name": "15%",
+      "account": "251000 Tax Received",
+      "debit": 0.0,
+      "credit": 652.5,
+      "balance": -652.5,
+      "product": null,
+      "qty": 0.0,
+      "subtotal": 0.0,
+      "is_tax": true,
+      "display_type": "tax"
+    },
+    {
+      "name": "INV/2026/00007",
+      "account": "121000 Account Receivable",
+      "debit": 5002.5,
+      "credit": 0.0,
+      "balance": 5002.5,
+      "product": null,
+      "qty": 0.0,
+      "subtotal": 0.0,
+      "is_tax": false,
+      "display_type": "payment_term"
+    }
+  ]
+}

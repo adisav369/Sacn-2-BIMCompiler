@@ -20,8 +20,10 @@
  * and NOT adapter-shaped (data). The migration-solvent thesis holds at the VERB level; the matcher's
  * IMPLEMENTATION is incomplete for bill≠receipt. Report exactly that — do not hide it, do not overclaim.
  *
- * Static oracle build/erp/odoo_oracle_p2p_f8.json (§0.12). The engine is NOT edited (guardrail); the
- * partial-match is shown in the runner as the characterised, pending engine extension. Run:
+ * Static oracle build/erp/odoo_oracle_p2p_f8.json (§0.12). RESOLVED (Stage 1, 2026-06-03): the fix
+ * landed in erp_engine.match as opt-in partial-quantity matching (opts.partial=true). This runner now
+ * EXERCISES the engine's partial mode (the local characterisation is gone) — flipping BOUNDED→PASS while
+ * the SHIPPED exact-qty path still returns 0 pairs (the bound, kept as the contrast witness). Run:
  *   node scripts/poc_odoo_fold_f8.js 2>&1 | tee -a build/erp/odoo_fold.log
  */
 'use strict';
@@ -35,25 +37,6 @@ var ORACLE = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'build', 'erp
 var fails = 0;
 function verdict(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? '🟢' : '🔴') + ' ' + label + (detail ? ' — ' + detail : '')); }
 function n2(x) { return Number(x).toFixed(2); }
-
-// the CHARACTERISED engine extension (lives here, not in erp_engine.js — the engine stays unedited).
-// partial-quantity greedy first-fit: pair on key+partition, matched = min(qtyL, qtyR), carry remainders.
-function partialMatch(leftRows, rightRows, opts) {
-  var pairs = [], rem = [];
-  rightRows.forEach(function (R, i) { R.__k = i; rem[i] = R[opts.qtyR]; });
-  leftRows.forEach(function (L) {
-    var lq = L[opts.qtyL];
-    rightRows.forEach(function (R) {
-      if (lq <= 1e-9) return;
-      if (opts.keyOf(L) !== opts.keyOf(R) || opts.partition(L) !== opts.partition(R)) return;
-      if (rem[R.__k] <= 1e-9) return;
-      var m = Math.min(lq, rem[R.__k]);
-      pairs.push({ l: L[opts.idL], r: R[opts.idR], qty: m });
-      lq -= m; rem[R.__k] -= m;
-    });
-  });
-  return pairs;
-}
 
 (async function () {
   var SQL = await initSqlJs();
@@ -92,12 +75,12 @@ function partialMatch(leftRows, rightRows, opts) {
   var S = built.matchSets;
   var mOpts = { idL: 'id', idR: 'id', qtyL: 'qty', qtyR: 'qty', keyOf: function (r) { return r.pid; }, partition: function (r) { return r.bp; } };
 
-  console.log('\n── the bound: SHIPPED exact-qty matcher vs the NEEDED partial-qty matcher ──');
-  // (1) the shipped matcher CANNOT reconcile bill≠receipt — the bound, confirmed
+  console.log('\n── the bound was real, the fix has LANDED: exact-qty path vs the engine partial mode ──');
+  // (1) the exact-qty path STILL cannot reconcile bill≠receipt — the bound, kept as contrast
   var exact = E.match(S.receiptLines, S.billLines, mOpts);
-  verdict(exact.length === 0, 'SHIPPED erp_engine.match CANNOT reconcile receipt(' + received + ')↔bill(' + billed + ') — exact-qty only (THE BOUND)', 'exact-pairs=' + exact.length + ' (|12−8|>tol → no pair)');
-  // (2) the characterised fix DOES reconcile — partial-qty, remainder carried
-  var part = partialMatch(S.receiptLines, S.billLines, mOpts);
+  verdict(exact.length === 0, 'exact-qty erp_engine.match (default) CANNOT reconcile receipt(' + received + ')↔bill(' + billed + ') — the original BOUND, unchanged', 'exact-pairs=' + exact.length + ' (|12−8|>tol → no pair)');
+  // (2) the LANDED engine fix DOES reconcile — opts.partial=true, min-qty + remainder carried
+  var part = E.match(S.receiptLines, S.billLines, Object.assign({}, mOpts, { partial: true }));
   var matchedQty = part.reduce(function (s, p) { return s + p.qty; }, 0);
   var openToBill = received - billed;
   verdict(part.length === 1 && matchedQty === billed && (matchedQty + openToBill === received), 'NEEDED partial-qty matcher reconciles: matched ' + matchedQty + ' + open-to-bill ' + openToBill + ' == received ' + received, 'pairs=' + part.length + ' matchedQty=' + matchedQty);
@@ -114,18 +97,18 @@ function partialMatch(leftRows, rightRows, opts) {
 
   E.match = realMatch;
 
-  var characterised = exact.length === 0 && part.length === 1 && matchedQty === billed && fails === 0;
   console.log('');
+  console.log('§MATCH-PARTIAL pairs=' + part.length + ' matchedQty=' + matchedQty + ' remainder(open-to-bill)=' + openToBill + ' (received=' + received + '=matched+remainder) via erp_engine.match opts.partial=true');
   console.log('§ODOO-FOLD-F8 scenario=received:' + received + '/billed:' + billed + '/open-to-bill:' + openToBill);
-  console.log('§ODOO-FOLD-F8 shipped-matcher-pairs=' + exact.length + ' (CANNOT) → needed-partial-matcher-pairs=' + part.length + ' matchedQty=' + matchedQty + ' (RECONCILES)');
+  console.log('§ODOO-FOLD-F8 exact-qty-pairs=' + exact.length + ' (CANNOT, default path) → partial-qty-pairs=' + part.length + ' matchedQty=' + matchedQty + ' (RECONCILES, opts.partial=true)');
   console.log('§ODOO-FOLD-F8 verbs used=[' + used.join(',') + '] newVerbs=[' + newVerbs.join(',') + ']  ← thesis holds at the VERB level');
-  console.log('§ODOO-FINDINGS-F8 BOUND=partial-QUANTITY-matching-needed(erp_engine.match is exact-qty greedy; bill≠receipt needs pair-min(qty)+carry-remainder) ' +
-              'CLASS=new-matcher-BEHAVIOUR(code in erp_engine.match, ~15 lines as characterised here) NOT-a-new-verb(MATCH carries the partial qty) NOT-adapter-shaped(not data/config) ' +
-              'SCOPE=common-real-case(over/under-billing, disputed/damaged goods) — the first genuine Odoo finding that is engine work, not free');
+  console.log('§ODOO-FINDINGS-F8 RESOLVED=partial-QUANTITY-matching-landed(erp_engine.match opts.partial=true: pair-min(qty)+carry-remainder; exact-qty fast path preserved) ' +
+              'CLASS=new-matcher-BEHAVIOUR(code in erp_engine.match) NOT-a-new-verb(MATCH carries the partial qty) NOT-adapter-shaped(not data/config) ' +
+              'SCOPE=common-real-case(over/under-billing, disputed/damaged goods) — the one genuine Odoo engine finding, now closed');
 
   db.close();
   console.log('\n═══ VERDICT ═══');
   console.log('§ODOO-FOLD-F8 ' + (fails ? 'FAIL — ' + fails + ' checks red' :
-    'BOUNDED (finding confirmed + fix characterised) — bill≠receipt is the first Odoo case the SHIPPED matcher cannot fold; it needs partial-QUANTITY matching (new matcher behaviour, ~15 lines, NOT a new verb — newVerbs=[]). Effects/GL still reproduce Odoo; the fix reconciles to the unit. Honest scope: thesis holds at the verb level, matcher implementation is the named gap.'));
+    'PASS (was BOUNDED, fix landed) — bill≠receipt now folds: erp_engine.match opts.partial=true pairs min(qty) and carries the remainder, reconciling to the unit (matched ' + matchedQty + ' + open-to-bill ' + openToBill + ' == received ' + received + '). Still the SAME MATCH verb — newVerbs=[]. The exact-qty default path is unchanged (the original bound kept as contrast). Migration-solvent thesis holds for Odoo bill≠receipt.'));
   process.exit(fails ? 1 : 0);
 })();

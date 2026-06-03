@@ -62,7 +62,18 @@ function evalGuard(query, rule, ctx) {
 //   allowOrgs       : Set of orgs the role may see; null/absent = all    optional
 //   order           : 'FIFO'|'LIFO' over `dateOf`, or a comparator(a,b)  optional
 //   dateOf(row)     : the date used by FIFO/LIFO                         optional
+//   partial         : false (default) = exact-qty greedy, returns [[idL,idR],…];
+//                     true = partial-QUANTITY matching, returns [{l,r,qty},…]   optional
 // }
+//
+// PARTIAL-QUANTITY matching (opts.partial=true) — Implementing docs/ERP.md §0.17/§0.19
+//   (settlement re-derivation; bill≠receipt) — Witness: §MATCH-PARTIAL / §ODOO-FOLD-F8.
+//   The exact-qty fast path pairs L↔R only when |qtyL−qtyR|≤tol, so receipt(12) vs
+//   bill(8) yields NO pair (finding f8, poc_odoo_fold_f8.js). Partial mode pairs
+//   min(remainingL, remainingR) and CARRIES the remainder, so over/under-billing and
+//   disputed/damaged-goods reconcile to the unit — still emitting the SAME MATCH verb
+//   (newVerbs=[]; the bound was matcher BEHAVIOUR, not a new verb). A row may pair more
+//   than once (until its remainder drains); partition/key/access/FIFO-LIFO all preserved.
 function match(leftRows, rightRows, opts) {
   var keyOf = opts.keyOf || function (r) { return r.m_product_id; };
   var orgOf = opts.orgOf || function () { return null; };
@@ -86,10 +97,33 @@ function match(leftRows, rightRows, opts) {
     R.__k = i; var p = opts.partition(R);
     (byPart[p] = byPart[p] || []).push(R);
   });
-  var used = {}, pairs = [];
   // process left rows in policy order too (stable, deterministic).
   var lefts = leftRows.filter(visible);
   if (cmp) lefts = lefts.slice().sort(cmp);
+
+  // ── PARTIAL-QUANTITY mode: pair min(qty), carry the remainder (§0.17/§0.19, f8) ──
+  if (opts.partial) {
+    var rem = {}; // remaining unmatched qty per right row, keyed by __k
+    rightRows.forEach(function (R) { if (visible(R)) rem[R.__k] = R[opts.qtyR]; });
+    var partPairs = [];
+    lefts.forEach(function (L) {
+      var lq = L[opts.qtyL];
+      var cands = (byPart[opts.partition(L)] || []).filter(function (R) {
+        return keyOf(L) === keyOf(R) && rem[R.__k] > tol;
+      });
+      if (cmp && cands.length > 1) cands = cands.slice().sort(cmp);
+      cands.forEach(function (R) {
+        if (lq <= tol || rem[R.__k] <= tol) return;
+        var m = Math.min(lq, rem[R.__k]);
+        partPairs.push({ l: L[opts.idL], r: R[opts.idR], qty: m });
+        lq -= m; rem[R.__k] -= m;
+      });
+    });
+    return partPairs;
+  }
+
+  // ── EXACT-QTY mode (default, unchanged): greedy first-fit, one R per L ──
+  var used = {}, pairs = [];
   lefts.forEach(function (L) {
     var cands = (byPart[opts.partition(L)] || []).filter(function (R) {
       return !used[R.__k] && keyOf(L) === keyOf(R) && Math.abs(L[opts.qtyL] - R[opts.qtyR]) <= tol;

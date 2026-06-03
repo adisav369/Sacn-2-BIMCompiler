@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "scenario": "f1 account DETERMINATION: derive GL accounts from extracted Odoo config, diff vs posted",
+    "invoice": "INV/2026/00007",
+    "invoice_id": 33,
+    "partner_id": 11,
+    "amount_untaxed": 4350.0,
+    "amount_tax": 652.5,
+    "amount_total": 5002.5,
+    "tax_rate": 15.0,
+    "source": "odoodemo (Odoo 17) account-determination CONFIG, STATIC export \u2014 no live Odoo at replay (\u00a70.12)"
+  },
+  "sale_order_lines": [
+    {
+      "product": "[FURN_6666] Acoustic Bloc Screens",
+      "pid": 31,
+      "qty": 10.0,
+      "qty_delivered": 10.0,
+      "qty_invoiced": 10.0,
+      "price_unit": 295.0,
+      "subtotal": 2950.0,
+      "total": 3392.5
+    },
+    {
+      "product": "[E-COM11] Cabinet with Doors",
+      "pid": 21,
+      "qty": 10.0,
+      "qty_delivered": 10.0,
+      "qty_invoiced": 10.0,
+      "price_unit": 140.0,
+      "subtotal": 1400.0,
+      "total": 1610.0
+    }
+  ],
+  "account_config": {
+    "product_income": {
+      "31": {
+        "tmpl_income": null,
+        "categ_income": "400000 Product Sales"
+      },
+      "21": {
+        "tmpl_income": null,
+        "categ_income": "400000 Product Sales"
+      }
+    },
+    "tax_account": "251000 Tax Received",
+    "tax_rate": 15.0,
+    "partner_receivable": "121000 Account Receivable"
+  },
+  "posted_truth": {
+    "income": "400000 Product Sales",
+    "tax": "251000 Tax Received",
+    "receivable": "121000 Account Receivable"
+  }
+}

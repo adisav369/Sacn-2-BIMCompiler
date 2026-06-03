@@ -265,8 +265,44 @@ reproduce Odoo to the cent, replay exact (`scripts/poc_odoo_fold.js`, log `build
 The solvent dissolved a *second* ERP with nothing invented — the strongest evidence yet that the
 verb set is general, not iDempiere-local. **Honest bound (named, not hidden):** this is ONE sell-side
 chain. Account *determination* (which GL account) came from Odoo as host data — the POST verb owns only
-ΣDR==ΣCR (§13.1), it does not re-derive Odoo's account logic. Full payment used FK-directed `ALLOCATE`;
-the 3-way `MATCH` (buy-side PO↔receipt↔bill) and partial reconciliation are the next chain to fold.
+ΣDR==ΣCR (§13.1), it does not re-derive Odoo's account logic. Full payment used FK-directed `ALLOCATE`.
+
+**Buy-side + partials, WITNESSED (2026-06-03).** The campaign then folded three more Odoo chains, all
+`newVerbs=[]`: the full 3-way `MATCH` (PO `P00011` → receipt → bill → post → reconcile, `§ODOO-FOLD-3WAY
+PASS` — the 6th verb now exercised, all six fold Odoo); the f7 partial-receipt (PO `P00012` ordered 20 /
+received 12 / billed 12, `§ODOO-FOLD-PARTIAL PASS` — decomposes into an exact-match settlement leg + an
+FK-directed open remainder, §0.17); and **f8 bill≠receipt** (PO `P00013` received 12, billed 8) — the one
+case that found a real engine gap. The SHIPPED exact-qty matcher pairs only when `|qtyL−qtyR|≤tol`, so it
+could not reconcile bill≠receipt. **That gap is now closed (`§ODOO-FOLD-F8 PASS`):** `erp_engine.match`
+gained opt-in **partial-QUANTITY matching** (`opts.partial=true` — pair `min(qty)`, carry the remainder),
+reconciling to the unit (matched 8 + open-to-bill 4 == received 12) still via the SAME `MATCH` verb. The
+honest classification held through the fix: it was new matcher **behaviour** (code), NOT a new verb
+(`newVerbs=[]`) and NOT adapter-shaped (data) — and the exact-qty fast path stayed untouched, no regression.
+
+**Partial PAYMENT, WITNESSED (2026-06-03, `§ODOO-FOLD-PAYPART PASS`).** The last Odoo bound the sell-side
+fold named was full-vs-partial *reconciliation*. A fresh chain was driven to a partial-payment state (SO
+`S00027` → invoice 5002.50 → register a payment of **3000**), leaving Odoo's computed residual **2002.50**,
+`payment_state='partial'`, frozen as a static oracle. The fold reproduces it with the **same `ALLOCATE`
+verb at the smaller amount** — residual = total − allocated, to the cent — `newVerbs=[]` **and no engine
+change**. Partial payment is the cleanest result of the campaign: it was *free*. (Contrast f8, which cost
+~15 lines of matcher behaviour: the difference is that a partial *payment* is one allocation at a smaller
+amount, whereas a partial *quantity match* is a genuinely different pairing.)
+
+**Account determination, DERIVED (2026-06-03, `§ODOO-FOLD-ACCTDERIV PASS`).** The one bound named at every
+step above was that the folds took Odoo's *resolved* GL accounts as host data — "reproduces given accounts."
+That bound is now closed. Odoo's determination CONFIG was extracted (product income = template account →
+category fallback; tax = the tax's repartition account; receivable = the partner property) and a resolver
+DERIVES the accounts from that config alone — reproducing Odoo's actual posting to the account (400000
+Sales / 251000 Tax / 121000 AR), the derived double-entry balancing to the cent. It stays **host glue, not
+engine** (POST still owns only ΣDR==ΣCR), and the determination logic was learned clean-room from the config
+*structure*, never Odoo's source. The claim is raised from "reproduces *given* accounts" to "**derives** the
+accounts" — `newVerbs=[]`.
+
+**Odoo, in sum:** six folds with nothing invented — sell-side O2C, buy-side 3-way, partial receipt,
+bill≠receipt, partial payment, and account derivation — across all six verbs, `newVerbs=[]` throughout, with
+exactly one engine change in the whole campaign (the f8 partial-quantity matcher). The remaining items
+(multi-currency, anglo-saxon COGS) are optional claim-raisers, not blockers.
+**Next abstraction: SAP, in its own session against a real source — never against an invented oracle.**
 
 ## The hard parts, worked through — why the showstoppers aren't
 

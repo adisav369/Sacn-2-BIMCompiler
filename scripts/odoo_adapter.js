@@ -87,6 +87,72 @@ function buildEvents(oracle) {
   };
 }
 
+// ── sell-side PARTIAL PAYMENT (f2) — the SAME chain, with a PARTIAL ALLOCATE ──────
+// Stage 2 (prompts/MIGRATION_CAMPAIGN_RESUME.md): the sell-side O2C is already folded; the ONLY new
+// thing is reconciliation that does NOT clear the invoice. Odoo registered a payment of
+// meta.reconcile_amount < amount_total, leaving meta.amount_residual open (payment_state='partial').
+// The fold reuses the EXISTING ALLOCATE verb with the smaller amount — the residual is total−allocated,
+// reproduced to the cent. NOT a new verb, NOT even new behaviour (ALLOCATE already carries an amount):
+// partial payment is the cleanest f2 result — newVerbs=[] AND no engine change. Delivery is full here,
+// so shipLines derive from qty_delivered (this oracle freezes the partial-PAYMENT slice, not the moves).
+function buildPayPartEvents(oracle) {
+  var soId = oracle.meta.so_id, invId = oracle.meta.invoice_id;
+  var shipLines = oracle.sale_order_lines.map(function (l, i) {
+    return { op_type: 'CREATE_LINE', table: 'M_InOutLine', source_line_id: String(l.pid), line_no: i + 1, m_product_id: l.pid, movementqty: l.qty_delivered };
+  });
+  var invLines = oracle.sale_order_lines.map(function (l, i) {
+    return { op_type: 'CREATE_LINE', table: 'C_InvoiceLine', source_line_id: String(l.pid), line_no: i + 1, m_product_id: l.pid, qtyinvoiced: l.qty_invoiced, linenetamt: l.subtotal };
+  });
+  var postLines = oracle.invoice_gl_lines.map(function (a) {
+    return { account_id: a.account, amtacctdr: a.debit, amtacctcr: a.credit, role: (a.is_tax ? 'TAX' : (a.debit > 0 ? 'AR' : 'REV')) };
+  });
+  return {
+    wfmc: WFMC,
+    events: [
+      { name: 'confirm SO', d: { docType: 'C_Order', action: 'CO', status: 'DR' },
+        ops: [ { op_type: 'SET_STATUS', table: 'C_Order', id: soId, doc_status: 'CO' } ] },
+      { name: 'deliver', d: { docType: 'M_InOut', action: 'CO', status: 'DR' },
+        ops: [ { op_type: 'CREATE_DOCUMENT', table: 'M_InOut', source_id: soId, doc_status: 'CO' } ].concat(shipLines) },
+      { name: 'invoice', d: { docType: 'C_Invoice', action: 'CO', status: 'DR' },
+        ops: [ { op_type: 'CREATE_DOCUMENT', table: 'C_Invoice', source_id: soId, doc_status: 'CO' } ].concat(invLines) },
+      { name: 'post GL', d: { docType: 'C_Invoice', action: 'POST', status: 'CO' },
+        ops: [ { op_type: 'POST', table: 'C_Invoice', id: invId, lines: postLines, acctschema: 1 } ] },
+      // PARTIAL reconcile: the SAME ALLOCATE verb, amount = the partial payment (< invoice total)
+      { name: 'partial pay', d: { docType: 'C_AllocationHdr', action: 'CO', status: 'DR' },
+        ops: [ { op_type: 'ALLOCATE', payment_id: 'pay' + invId, invoice_id: invId, amount: oracle.meta.reconcile_amount } ] }
+    ]
+  };
+}
+
+// ── f1: DERIVE the GL accounts from extracted Odoo determination CONFIG (host glue, §13.1) ─────
+// The standing honest bound was: the sell-side fold took Odoo's RESOLVED accounts as host data. This
+// resolver DERIVES them from config — Odoo's standard determination model, learned clean-room (read the
+// config, not the source): product income = product-template account ELSE product-category account; tax =
+// the tax's repartition 'tax' account; receivable = the partner's property. It is host GLUE, not engine:
+// POST still owns ONLY ΣDR==ΣCR (§13.1). Raises f1 from "reproduces GIVEN accounts" → "DERIVES the accounts";
+// newVerbs=[] (POST only). buildDerivedPost assembles the BALANCED double-entry from the SO subtotals +
+// the config tax rate, posting each line to its DERIVED account.
+function resolveAccounts(cfg) {
+  function incomeFor(pid) { var p = cfg.product_income[String(pid)] || {}; return p.tmpl_income || p.categ_income; }  // Odoo fallback chain
+  return { incomeFor: incomeFor, tax: cfg.tax_account, receivable: cfg.partner_receivable };
+}
+function buildDerivedPost(oracle) {
+  var cfg = oracle.account_config, R = resolveAccounts(cfg);
+  var lines = oracle.sale_order_lines.map(function (l) {
+    return { account_id: R.incomeFor(l.pid), amtacctdr: 0, amtacctcr: l.subtotal, role: 'REV' };   // revenue credit, derived income acct
+  });
+  var untaxed = oracle.sale_order_lines.reduce(function (s, l) { return s + l.subtotal; }, 0);
+  var tax = Math.round(untaxed * cfg.tax_rate) / 100;     // untaxed * rate/100, cent-rounded
+  var total = untaxed + tax;
+  lines.push({ account_id: R.tax, amtacctdr: 0, amtacctcr: tax, role: 'TAX' });
+  lines.push({ account_id: R.receivable, amtacctdr: total, amtacctcr: 0, role: 'AR' });             // receivable debit, derived AR acct
+  return {
+    wfmc: WFMC, resolved: R, untaxed: untaxed, tax: tax, total: total, postLines: lines,
+    event: { name: 'post GL (derived accts)', d: { docType: 'C_Invoice', action: 'POST', status: 'CO' },
+             ops: [ { op_type: 'POST', table: 'C_Invoice', id: oracle.meta.invoice_id, lines: lines, acctschema: 1 } ] }
+  };
+}
+
 // ── buy-side (P2P) — exercises the 3-way MATCH verb the sell-side chain does not ──
 // Same pure-mapping discipline. Returns the 4 non-match events + the raw line sets the runner
 // feeds to the EXISTING matcher (erp_engine.match); the matcher emits the MATCH ops (poc_longtail
@@ -122,4 +188,4 @@ function buildBuyEvents(oracle) {
   };
 }
 
-module.exports = { SCHEMA_MAP: SCHEMA_MAP, STATE_MAP: STATE_MAP, WFMC: WFMC, KNOWN_VERBS: KNOWN_VERBS, buildEvents: buildEvents, buildBuyEvents: buildBuyEvents };
+module.exports = { SCHEMA_MAP: SCHEMA_MAP, STATE_MAP: STATE_MAP, WFMC: WFMC, KNOWN_VERBS: KNOWN_VERBS, buildEvents: buildEvents, buildBuyEvents: buildBuyEvents, buildPayPartEvents: buildPayPartEvents, resolveAccounts: resolveAccounts, buildDerivedPost: buildDerivedPost };
