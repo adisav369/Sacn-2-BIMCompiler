@@ -2733,6 +2733,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#010a-master-data-first-mile-the-migrate-showme-mastermetadata-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §0.10a Master-data first-mile — the migrate ShowMe (master/metadata only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#011-housed-vs-active-the-full-extent-hidden-but-callable" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4033,6 +4044,8 @@
       
         
       
+        
+      
     
     
     
@@ -4373,6 +4386,34 @@
     
   
     Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf (server→serverless witness)
   
 
     
@@ -5532,6 +5573,17 @@
     <span class="md-ellipsis">
       
         §0.10 Building it — raw migration first, then the Rule Compiler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#010a-master-data-first-mile-the-migrate-showme-mastermetadata-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §0.10a Master-data first-mile — the migrate ShowMe (master/metadata only)
       
     </span>
   </a>
@@ -7332,6 +7384,76 @@ dispatches by <code>form</code>: SQL → run in sql.js; expression → determini
 table → the §0.5 matcher; handler → the named fn (returns ops). The kernel calls it at
 each cell; it never cares which form a rule took. The compiler SEEDS <code>erp_rules.db</code> with
 the presets; the Settings editor edits them; every edit is a <code>kernel_ops</code> op (§0.6).</p>
+<h3 id="010a-master-data-first-mile-the-migrate-showme-mastermetadata-only">§0.10a Master-data first-mile — the migrate ShowMe (master/metadata only)<a class="headerlink" href="#010a-master-data-first-mile-the-migrate-showme-mastermetadata-only" title="Permanent link">&para;</a></h3>
+<p><em>Spec for <code>prompts/MIGRATE_SHOWME_OVERLAY.md</code> — the THINNEST adoption step: take an
+iDempiere operator from "my data is locked in a Docker Postgres" to "my master data is
+in my browser." A LATER ShowMe handles plugin </em><em>logic</em><em>, transactions, posting, and the
+cent-perfect oracle-gate (§0.17). This section is master/metadata only.</em></p>
+<p><strong>Honest 2-part flow (never a browser→Postgres pipe).</strong> A browser cannot open TCP to
+Postgres:5432. So there are two touches:
+- <strong>The agent (local):</strong> <code>scripts/migrate_pg_to_sqlite.js</code> (NOT forked) run by the
+  operator with their own creds. It reads their PG and writes a master/metadata-only
+  SQLite + a progress file.
+- <strong>The overlay (browser, <code>bim-ootb/viewer/</code>):</strong> reuses the existing ShowMe/help layer
+  (<code>docs/ReadMeShowMe.md</code>, <code>docs/HelpO2C.md</code>). It <em>guides</em> the user to the agent and
+  <em>reflects</em> the agent's progress file. "Watch it stream in" = the overlay mirrors the
+  agent's per-table log, not a live socket.</p>
+<p><strong>Scope — DECIDED 2026-06-02 (widens the prompt's literal "allowlist / no plugins").</strong>
+The operator confirmed the line is <strong>logic, not data</strong>: take ALL AD metadata + masters,
+<em>including custom/plugin-added metadata tables</em> (they are AD-defined, transaction-free);
+defer only plugin <strong>Java logic</strong> (which was never in PG — §0.10 "Java is NOT migrated").
+Concretely:
+- <strong>TAKE</strong> (all clients, whole tables, no row filter): the headline master allowlist
+  PLUS the full AD metadata corpus, custom dictionary tables included.
+- <strong>EXCLUDE</strong>: operational data only — the <strong><code>docstatus</code> document tables</strong> (82 in
+  GardenWorld), their transaction <strong>line/fact children</strong>, accounting postings
+  (<code>fact_acct*</code>), and runtime <strong>logs/temp</strong> (<code>ad_changelog</code>, <code>ad_session</code>, <code>ad_pinstance*</code>,
+  <code>ad_wf_process/activity/eventaudit</code>, <code>t_*</code>). The agent computes this denylist by RULE
+  (docstatus query + name patterns) and <strong>logs the resolved exclusion set</strong> for review
+  (Log Mandate) — non-invent: the docstatus set is queried, the patterns are named
+  iDempiere schema objects, no values are synthesized.</p>
+<p><strong>Two-tier streaming (clean demo + completeness).</strong>
+- <strong>Headline masters</strong> (streamed visibly, one <code>§</code> line each — the overlay's "watch them
+  land"): <code>C_BPartner</code>, <code>C_BP_Group</code>, <code>M_Product</code>, <code>M_Product_Category</code>, <code>C_UOM</code>,
+  <code>C_ElementValue</code> (chart of accounts), <code>C_Charge</code>, <code>C_Tax</code>, <code>C_Currency</code>. Verified live
+  in GardenWorld: 18 / 3 / 55 / 14 / 15 / 379 / 3 / 6 / 175 rows.
+- <strong>The rest of the metadata corpus</strong>: taken into the resident DB, summarized in the log
+  as <code>+N metadata tables</code> (not streamed line-by-line).</p>
+<p><strong>Client discovery + auto-seek + confirm (the connect step).</strong> The agent enumerates
+<code>AD_Client</code> (id, name, and whether the client holds master rows) and emits it as JSON the
+overlay renders as a picklist. iDempiere seeds <strong>0 = System</strong> (shared dictionary masters:
+currencies/UOM/countries live here) and <strong>11 = GardenWorld</strong> (the demo tenant). Behaviour:
+- If a <strong>3rd (real tenant) client</strong> exists, the agent <strong>auto-selects</strong> it — but the
+  overlay <strong>requires the user to confirm</strong> before the run.
+- If only 0/11 exist (the demo box), auto-select 11.
+- Migration takes the master/metadata tables <strong>whole</strong> (all clients' rows) regardless of
+  the selection — discovery is <em>informational</em> (which tenant am I looking at), not a row
+  filter; masters across all clients are all AD metadata and safe.</p>
+<p><strong>Instance identity (re-import must not clobber).</strong> Each run is a local <strong>instance</strong> keyed
+off the source <code>ad_client_id</code>. A local registry (<code>build/erp/instances.json</code>) records every
+import <code>{instance_id, source_host, source_db, source_client_id, client_name, rows}</code>. On a
+run whose <code>(source, client_id)</code> was already imported, the agent assigns the <strong>next free
+integer</strong> as a LOCAL instance marker (re-importing GardenWorld <code>11</code> → <code>12</code> → <code>13</code> …) and
+namespaces the output DB by it (<code>ad_masters_&lt;instance&gt;.db</code>) so repeated imports coexist
+rather than overwrite. The marker is a <strong>local counter only</strong> — the migrated rows keep
+their source <code>ad_client_id</code> untouched (no FK rewrite); the marker lives in the registry and
+in <code>_migration_meta</code>. First import of client <code>11</code> → instance <code>11</code>; the next → <code>12</code>.</p>
+<p><strong>Post-migration ReadMe (share/serve OUT — step 5, guidance over existing infra).</strong> Reuse
+the existing ReadMe layer + <code>share.js</code>/QR + the S284 self-contained-HTML (embed-db) path +
+the off-grid <code>sw.js</code>. Two user stories, no new infra: <strong>(a) send the file → identical DB
+for anyone</strong> — verifiable, not hoped: deterministic replay → same projection hash, signed
+chain → tamper-evident (<code>verify</code>); <strong>(b) put it online → it's served</strong> from any static host
+(GitHub Pages / OCI bucket), no backend.</p>
+<p><strong>Witnesses (§-log first).</strong>
+- <code>§MIGRATE-CLIENTS found=[0:System,11:GardenWorld] real=[11] auto=11 confirm-required=Y</code>
+  — discovery enumerates the PG clients and auto-seeks the real tenant.
+- <code>§MIGRATE-AGENT source=&lt;host/db&gt; instance=&lt;n&gt; masters=[…] tables=N rows=R metadata=+M
+  docs-skipped=Y plugins-logic-skipped=Y</code> — agent pulled ONLY master/metadata (documents,
+  transactions, postings, logs excluded; plugin LOGIC deferred).
+- <code>§MIGRATE stream table=C_BPartner rows=18 … table=C_ElementValue rows=379</code> — headline
+  masters land per table (counts match the live PG).
+- <code>§MIGRATE-INSTANCE source-client=11 reimport=Y instance=12</code> — re-import gets a fresh
+  instance marker, prior import preserved.</p>
 <h3 id="011-housed-vs-active-the-full-extent-hidden-but-callable">§0.11 Housed vs active — the full extent, hidden but callable<a class="headerlink" href="#011-housed-vs-active-the-full-extent-hidden-but-callable" title="Permanent link">&para;</a></h3>
 <p>This resolves the apparent tension with §0.3 (narrow scope). <strong>Two distinct things:</strong>
 - <strong>PRODUCT scope (active, §0.3)</strong> — what is <em>built, preset, handler-backed, and shown

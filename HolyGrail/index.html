@@ -2864,6 +2864,8 @@
       
         
       
+        
+      
     
     
     
@@ -3204,6 +3206,34 @@
     
   
     Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf (server→serverless witness)
   
 
     
@@ -4604,6 +4634,58 @@ proven by the <em>first</em> clean abstraction — iDempiere's DocAction, the on
 the rest is campaign, in sequence (iDempiere → Odoo → SAP standard → SAP custom), each gated by
 its own oracle. Migration removes the barrier to leaving; the grail (editable rules, live)
 supplies the reason to land. Both halves, or the solvent has nothing to pour into.</p>
+<p><strong>Odoo — second abstraction, WITNESSED (2026-06-03, <code>§ODOO-FOLD PASS</code>).</strong> Odoo 17 demo was stood up,
+one full sell-side O2C chain (SO <code>S00023</code> → delivery → invoice → GL post → payment → reconcile) was
+driven to completion via RPC and frozen as a static oracle (<code>build/erp/odoo_oracle.{json,db}</code>, §0.12).
+A <em>pure</em> adapter (<code>scripts/odoo_adapter.js</code> — the Odoo↔iDempiere data dictionary, no business logic)
+folded that chain through the <strong>existing</strong> kernel verbs: <code>newVerbs=[]</code>, all 5 hops mapped, effects
+reproduce Odoo to the cent, replay exact (<code>scripts/poc_odoo_fold.js</code>, log <code>build/erp/odoo_fold.log</code>).
+The solvent dissolved a <em>second</em> ERP with nothing invented — the strongest evidence yet that the
+verb set is general, not iDempiere-local. <strong>Honest bound (named, not hidden):</strong> this is ONE sell-side
+chain. Account <em>determination</em> (which GL account) came from Odoo as host data — the POST verb owns only
+ΣDR==ΣCR (§13.1), it does not re-derive Odoo's account logic. Full payment used FK-directed <code>ALLOCATE</code>.</p>
+<p><strong>Buy-side + partials, WITNESSED (2026-06-03).</strong> The campaign then folded three more Odoo chains, all
+<code>newVerbs=[]</code>: the full 3-way <code>MATCH</code> (PO <code>P00011</code> → receipt → bill → post → reconcile, <code>§ODOO-FOLD-3WAY
+PASS</code> — the 6th verb now exercised, all six fold Odoo); the f7 partial-receipt (PO <code>P00012</code> ordered 20 /
+received 12 / billed 12, <code>§ODOO-FOLD-PARTIAL PASS</code> — decomposes into an exact-match settlement leg + an
+FK-directed open remainder, §0.17); and <strong>f8 bill≠receipt</strong> (PO <code>P00013</code> received 12, billed 8) — the one
+case that found a real engine gap. The SHIPPED exact-qty matcher pairs only when <code>|qtyL−qtyR|≤tol</code>, so it
+could not reconcile bill≠receipt. <strong>That gap is now closed (<code>§ODOO-FOLD-F8 PASS</code>):</strong> <code>erp_engine.match</code>
+gained opt-in <strong>partial-QUANTITY matching</strong> (<code>opts.partial=true</code> — pair <code>min(qty)</code>, carry the remainder),
+reconciling to the unit (matched 8 + open-to-bill 4 == received 12) still via the SAME <code>MATCH</code> verb. The
+honest classification held through the fix: it was new matcher <strong>behaviour</strong> (code), NOT a new verb
+(<code>newVerbs=[]</code>) and NOT adapter-shaped (data) — and the exact-qty fast path stayed untouched, no regression.</p>
+<p><strong>Partial PAYMENT, WITNESSED (2026-06-03, <code>§ODOO-FOLD-PAYPART PASS</code>).</strong> The last Odoo bound the sell-side
+fold named was full-vs-partial <em>reconciliation</em>. A fresh chain was driven to a partial-payment state (SO
+<code>S00027</code> → invoice 5002.50 → register a payment of <strong>3000</strong>), leaving Odoo's computed residual <strong>2002.50</strong>,
+<code>payment_state='partial'</code>, frozen as a static oracle. The fold reproduces it with the <strong>same <code>ALLOCATE</code>
+verb at the smaller amount</strong> — residual = total − allocated, to the cent — <code>newVerbs=[]</code> <strong>and no engine
+change</strong>. Partial payment is the cleanest result of the campaign: it was <em>free</em>. (Contrast f8, which cost
+~15 lines of matcher behaviour: the difference is that a partial <em>payment</em> is one allocation at a smaller
+amount, whereas a partial <em>quantity match</em> is a genuinely different pairing.)</p>
+<p><strong>Account determination, DERIVED (2026-06-03, <code>§ODOO-FOLD-ACCTDERIV PASS</code>).</strong> The one bound named at every
+step above was that the folds took Odoo's <em>resolved</em> GL accounts as host data — "reproduces given accounts."
+That bound is now closed. Odoo's determination CONFIG was extracted (product income = template account →
+category fallback; tax = the tax's repartition account; receivable = the partner property) and a resolver
+DERIVES the accounts from that config alone — reproducing Odoo's actual posting to the account (400000
+Sales / 251000 Tax / 121000 AR), the derived double-entry balancing to the cent. It stays <strong>host glue, not
+engine</strong> (POST still owns only ΣDR==ΣCR), and the determination logic was learned clean-room from the config
+<em>structure</em>, never Odoo's source. The claim is raised from "reproduces <em>given</em> accounts" to "<strong>derives</strong> the
+accounts" — <code>newVerbs=[]</code>.</p>
+<p><strong>Odoo, in sum:</strong> six folds with nothing invented — sell-side O2C, buy-side 3-way, partial receipt,
+bill≠receipt, partial payment, and account derivation — across all six verbs, <code>newVerbs=[]</code> throughout, with
+exactly one engine change in the whole campaign (the f8 partial-quantity matcher). The remaining items
+(multi-currency, anglo-saxon COGS) are optional claim-raisers, not blockers.
+<strong>Next abstraction: SAP — the asymptote.</strong> The <em>allowed half</em> is prepared (2026-06-03): a clean-room,
+blind schema/state-map HYPOTHESIS (<code>scripts/sap_adapter.js</code>) mapping the standard SD+FI chain (VBAK/VBAP →
+LIKP/LIPS → VBRK/VBRP → BKPF/BSEG|<strong>ACDOCA</strong> → BSEG clearing, with <strong>VBFA</strong> as the explicit derivation
+spine) onto the same six verbs, plus a runner (<code>scripts/poc_sap_fold.js</code>) gated to <code>§SAP-ORACLE unavailable</code>
+until a real export exists. The hypothesis is sharp precisely because S/4HANA's own redesign converged on
+our shape — one append-style journal (ACDOCA) + an explicit document-flow graph (VBFA). What is <em>not</em> done,
+and cannot be without violating non-invent, is the fold itself: that needs a real IDES/S/4HANA oracle, in
+its own session, <strong>never against an invented oracle.</strong> The honest claim stays "standard flows + extractable
+config; Z-customisations per engagement" — and the value of the SAP run is finding <em>which</em> Z-behaviour does
+not fold, not a foregone PASS.</p>
 <h2 id="the-hard-parts-worked-through-why-the-showstoppers-arent">The hard parts, worked through — why the showstoppers aren't<a class="headerlink" href="#the-hard-parts-worked-through-why-the-showstoppers-arent" title="Permanent link">&para;</a></h2>
 <p>Three forward challenges look like showstoppers until you model them as the ledger already does.
 None requires the OLTP server, the lock manager, or the always-on coordinator a classic ERP carries.</p>

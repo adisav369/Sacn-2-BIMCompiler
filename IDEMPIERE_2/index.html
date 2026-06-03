@@ -2600,6 +2600,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-validation-stack-idempieres-4-tiers-mapped-to-our-layers-extract-dont-invent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The validation stack — iDempiere's 4 tiers, mapped to our layers (extract, don't invent)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#boundaries-what-this-doc-does-not-cover" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2813,6 +2824,8 @@
   
     
     
+      
+        
       
         
       
@@ -3176,6 +3189,34 @@
     
   
     Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf (server→serverless witness)
   
 
     
@@ -4181,6 +4222,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-validation-stack-idempieres-4-tiers-mapped-to-our-layers-extract-dont-invent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The validation stack — iDempiere's 4 tiers, mapped to our layers (extract, don't invent)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#boundaries-what-this-doc-does-not-cover" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4373,6 +4425,47 @@ each. Consequences:</p>
   separate write-adapter, and round-trips are <strong>verified with named loss</strong>, not lossless — the five
   structural divergences (<code>build/erp/odoo_fold.log</code>) bound it. A migration bridge, not a transparent sync.</li>
 </ul>
+<h2 id="the-validation-stack-idempieres-4-tiers-mapped-to-our-layers-extract-dont-invent">The validation stack — iDempiere's 4 tiers, mapped to our layers (extract, don't invent)<a class="headerlink" href="#the-validation-stack-idempieres-4-tiers-mapped-to-our-layers-extract-dont-invent" title="Permanent link">&para;</a></h2>
+<p>iDempiere already separated business-rule enforcement into a <strong>4-tier stack</strong> orchestrated by
+<code>ModelValidationEngine</code> (<code>docValidate</code> → <code>factsValidate</code> → OSGi event). This is the <em>template</em> for our layer
+map — it tells us which of the "284 callouts/rules" belongs in which layer, so the port is a <strong>triage, not one
+flat bucket</strong>. (Sources: iDempiere <a href="https://wiki.idempiere.org/en/Developing_Plug-Ins_-_ModelValidator">ModelValidator</a>
++ <a href="https://jenkins-artifacts.idempiere.org/javadoc12/org/compiere/model/ModelValidationEngine.html">ModelValidationEngine javadoc</a>.
+Clean-room: learn the tier boundaries, extract the rule <em>effects</em> from the AD, never copy their Java.)</p>
+<table>
+<thead>
+<tr>
+<th>iDempiere tier</th>
+<th>What it does</th>
+<th><strong>Our layer</strong> (<a href="../ENGINE_CONTRACT/">ENGINE_CONTRACT</a> / <a href="../prompts/UI_OVERLAY_GOVERNANCE.md">UI_OVERLAY_GOVERNANCE</a>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Callout</strong> (<code>CalloutEngine</code>, field-level, 6-param)</td>
+<td>UI field-change reactions (pick BPartner → fill address/price list)</td>
+<td><strong>UI Validation concern-overlay</strong> — keyed per field, in front of the seam. The <em>only</em> tier that is a UI overlay</td>
+</tr>
+<tr>
+<td><strong>ModelValidator.modelChange</strong> (row: new/change/delete)</td>
+<td>row invariants on save</td>
+<td><strong>kernel verb guard, behind the seam</strong> (a <code>write(ctx,ops)</code> precondition)</td>
+</tr>
+<tr>
+<td><strong>ModelValidator.docValidate</strong> (doc actions: prepare/complete/void)</td>
+<td>document-state-machine rules</td>
+<td><strong>op-group atomicity + DocAction</strong> (WfMC-on-op-log, <code>ERP_KERNEL_BUILD</code>)</td>
+</tr>
+<tr>
+<td><strong>FactsValidator.factsValidate(<code>AcctSchema</code>, facts[], PO)</strong> + <code>ACCT_FACTS_VALIDATE</code></td>
+<td>validate accounting facts <strong>per acct-schema</strong> before posting</td>
+<td><strong>posting-fold layer</strong> — confirms <code>C_AcctSchema</code> is a first-class posting input (one doc posts per schema)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Consequence (the planning lever):</strong> the callout-port backlog (<a href="../prompts/ENGINE_FULL_ERP_ISSUES.md">ENGINE_FULL_ERP_ISSUES.md</a>
+§I-C) is <strong>sorted by this tier first</strong> — only the field-level <code>CalloutEngine</code> rules land in the UI overlay; the
+other three tiers are engine concerns owned by the engine/posting lanes, not a single "callout" session.</p>
 <h2 id="boundaries-what-this-doc-does-not-cover">Boundaries — what this doc does NOT cover<a class="headerlink" href="#boundaries-what-this-doc-does-not-cover" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>UI / rendering</strong> → <a href="../IDEMPIERE_RENDERER_SPEC/">IDEMPIERE_RENDERER_SPEC.md</a> (other session).</li>

@@ -2617,6 +2617,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#61-c0-built-build-session-2026-06-03-scriptserp_seamjs-scriptspoc_seamjs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6.1 C0 — built (build session 2026-06-03, scripts/erp_seam.js + scripts/poc_seam.js)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#7-guardrails" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2763,6 +2774,8 @@
   
     
     
+      
+        
       
         
       
@@ -3126,6 +3139,34 @@
     
   
     Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf (server→serverless witness)
   
 
     
@@ -4092,6 +4133,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#61-c0-built-build-session-2026-06-03-scriptserp_seamjs-scriptspoc_seamjs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6.1 C0 — built (build session 2026-06-03, scripts/erp_seam.js + scripts/poc_seam.js)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#7-guardrails" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4312,6 +4364,62 @@ streamed-on-touch. The streaming pipeline stays engine-side (the <code>separatio
 <li><strong>C2</strong> — <code>manifest(ctx)</code> as the gravity fold; <code>read</code> returns stubs for unresident tables. I5/I6.</li>
 <li><strong>C3</strong> — static scans proving I1/I2 (renderer touches only §1; engine has no UI terms).</li>
 </ul>
+<h2 id="61-c0-built-build-session-2026-06-03-scriptserp_seamjs-scriptspoc_seamjs">§6.1 C0 — built (build session 2026-06-03, <code>scripts/erp_seam.js</code> + <code>scripts/poc_seam.js</code>)<a class="headerlink" href="#61-c0-built-build-session-2026-06-03-scriptserp_seamjs-scriptspoc_seamjs" title="Permanent link">&para;</a></h2>
+<p>C0 is a thin engine-side module (<code>makeSeam({proj, ad, fact, manifestPath, wfmc})</code>) exposing the five §1
+calls over the EXISTING proven fns — <strong>no new engine logic</strong>. The surface, each mapped to its backing fn:</p>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Backing fn (verified)</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>read(query, ctx)</code></td>
+<td><code>erp_kernel.query</code> + org-scope filter (mirror <code>poc_wire</code> WIRE-4)</td>
+<td>rows scoped to <code>ctx.allowOrgs</code>; out-of-scope → <strong>empty</strong></td>
+</tr>
+<tr>
+<td><code>dispatch(intent, ctx)</code></td>
+<td>role-gate + owner-gate → <code>erp_kernel.dispatch</code>/<code>apply</code></td>
+<td><code>{ok, op_uuid, before, after}</code> or <code>{rejected, why}</code></td>
+</tr>
+<tr>
+<td><code>manifest(ctx)</code></td>
+<td>loads the D2 <code>build/erp/shards/manifest.json</code> (<code>build_shard_manifest.js</code>)</td>
+<td><code>{tables[], shards[]}</code></td>
+</tr>
+<tr>
+<td><code>verbs(ctx)</code></td>
+<td><code>erp_kernel.handlers</code> registry reflection, capability-filtered</td>
+<td><code>[{action, label}]</code></td>
+</tr>
+<tr>
+<td><code>verify(ctx)</code></td>
+<td><code>erp_kernel.replay</code> ×2 (the §1 "<strong>replay hash</strong>" check)</td>
+<td><code>{chainOk, len, tip}</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong><code>verify</code> = replay-determinism</strong>, per §1's own wording ("check the chain / <strong>replay hash</strong>"): seal-free,
+  node-pure, no schema fork. <code>kernel_ops.js verifyChain</code> is the browser-side counterpart over the <em>sealed</em>
+  <code>kernel_ops</code> schema (<code>id</code>/<code>prev_hash</code>/<code>op_hash</code>/<code>sig</code>); the engine projection uses <code>erp_kernel</code>'s op-log
+  schema, so the node seam proves trust by replay equality (same intent → same op → identical rebuild).</li>
+<li><strong>Gates engine-side</strong> (I3/owner): role capability via <code>ctx.role.actions</code> (mirror <code>poc_wire.mayRun</code>);
+  owner-gate via the op-log — a mutation whose <code>ctx.actor</code> ≠ the doc's recorded owning actor is
+  <code>{rejected, why:'owner-gate'}</code> (G-SINGLE-WRITER). The UI cannot bypass either.</li>
+<li><strong>Witnesses</strong> (<code>build/erp/poc_seam.log</code>): <code>§SEAM surface=read,dispatch,manifest,verbs,verify</code> (enumerated);
+  <code>§SEAM dispatch replay rebuildA==rebuildB agree=Y</code> (I4); <code>§SEAM read role=… rows-in-scope=N out-of-scope=0</code>
+  (I3); <code>§SEAM gate owner-gate rejected=Y</code> / <code>role-no-grant rejected=Y</code>.</li>
+</ul>
+<p><strong>⚠ JOINT re-freeze flag (do NOT resolve solo, ENGINE_CONTRACT §0/§4 firewall).</strong> §1 names the manifest
+facet <code>gravityRank</code>; the built D2 manifest (<code>build_shard_manifest.js</code>) emits <code>menuGroup</code> (+ <code>resident</code>,
+<code>contentHash</code>). <code>manifest(ctx)</code> returns the menuGroup shape verbatim. The <code>gravityRank</code>↔<code>menuGroup</code> name
+reconciliation is a <strong>joint</strong> decision with the RECORD-PANEL (host) lane — recorded here, not edited into
+§1. <code>§SEAM-FROZEN</code> is left for that co-ratification.</p>
 <h2 id="7-guardrails">§7 Guardrails<a class="headerlink" href="#7-guardrails" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>The seam is the only coupling.</strong> No second backchannel between UI and engine.</li>

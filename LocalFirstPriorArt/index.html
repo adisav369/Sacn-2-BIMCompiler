@@ -2648,6 +2648,8 @@
       
         
       
+        
+      
     
     
     
@@ -3119,6 +3121,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#the-other-axis-sqlite-wasm-at-scale-storageengine-not-sync-added-2026-06-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The other axis — SQLite-WASM at scale (storage/engine, not sync) — added 2026-06-03
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3143,6 +3156,34 @@
     
   
     Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf (server→serverless witness)
   
 
     
@@ -4136,6 +4177,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#the-other-axis-sqlite-wasm-at-scale-storageengine-not-sync-added-2026-06-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The other axis — SQLite-WASM at scale (storage/engine, not sync) — added 2026-06-03
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4295,6 +4347,67 @@ PowerSync, and ElectricSQL at once.</p>
 - Tamper-evidence is <em>nobody's</em> default → our distinctive add: hash-chain/sign the log (W-CHAIN/W-SIGN).
 - Secured multi-user <strong>needs a trust anchor</strong> — every system above has a server; ours is the async
   <strong>server domain</strong> (§0.20), reached only when single-user/offline no longer suffices.</p>
+<hr />
+<h2 id="the-other-axis-sqlite-wasm-at-scale-storageengine-not-sync-added-2026-06-03">The other axis — SQLite-WASM <em>at scale</em> (storage/engine, not sync) — added 2026-06-03<a class="headerlink" href="#the-other-axis-sqlite-wasm-at-scale-storageengine-not-sync-added-2026-06-03" title="Permanent link">&para;</a></h2>
+<p>The systems above are <strong>sync</strong> frameworks. A separate question: who runs a <strong>large relational app fully in
+SQLite-WASM</strong>, and what does it cost? The canonical production example is <strong>Notion</strong> — and its architecture is
+<em>our doctrine, shipped at scale.</em></p>
+<ul>
+<li><strong>Notion</strong> (the existence proof): SQLite→WASM in a <strong>Web Worker</strong> (UI thread unburdened), a <strong>SharedWorker</strong>
+  routing every tab's queries to one active tab's worker, on the <strong>OPFS SAHPool VFS</strong>. <strong>Postgres stays the
+  canonical source of truth</strong> (logical replication + WAL → the browser SQLite is a disposable <strong>projection</strong>).
+  (<a href="https://www.notion.com/blog/how-we-sped-up-notion-in-the-browser-with-wasm-sqlite">Notion blog</a>,
+  <a href="https://news.ycombinator.com/item?id=40949489">HN</a>) — this validates <a href="../DistributedERP/">DistributedERP</a>'s
+  <em>"the operator's install is the system of record; the browser is a projection"</em> (<a href="../prompts/ENGINE_FULL_ERP_ISSUES.md">ENGINE_FULL_ERP_ISSUES.md</a> §I-A).
+  Notion chose <strong>server-of-record + local projection</strong>, NOT local-first-authoritative.</li>
+</ul>
+<p>The hard constraints (each maps to one of our engine issues):</p>
+<table>
+<thead>
+<tr>
+<th>SQLite-WASM finding</th>
+<th>Source</th>
+<th>Maps to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>~2 GB DB cap</strong> (up from 512 MB)</td>
+<td><a href="https://sqlite.org/wasm/doc/trunk/persistence.md">sqlite.org/wasm persistence</a></td>
+<td>I-A storage cap is hard-bounded → gravity-sharding (<a href="../DistributedERP/">DistributedERP §13</a>) not optional at full-AD scale</td>
+</tr>
+<tr>
+<td><strong>OPFS = one read/write txn at a time</strong></td>
+<td><a href="https://powersync.com/blog/sqlite-persistence-on-the-web">PowerSync state-of-persistence</a></td>
+<td><strong>single-writer holds at the <em>storage</em> layer too</strong> — reinforces G-SINGLE-WRITER / I-E from below</td>
+</tr>
+<tr>
+<td><strong>Multi-MB JS strings = measurable WASM-bridge cost</strong></td>
+<td><a href="https://sqlite.org/wasm/doc/trunk/persistence.md">sqlite.org/wasm</a></td>
+<td><strong>exactly I-D</strong> (projection 52→336 KB re-export) — keep state <em>in</em> SQLite, don't marshal big strings out</td>
+</tr>
+<tr>
+<td><strong>SAHPool VFS = 3–4× I/O; 8–16 MB page cache = big win</strong></td>
+<td><a href="https://powersync.com/blog/sqlite-persistence-on-the-web">PowerSync</a></td>
+<td>free wins for the engine-perf lane (Agent E) <em>before</em> any algorithmic change</td>
+</tr>
+<tr>
+<td><strong>Needs SharedArrayBuffer + COOP/COEP headers; Safari &lt;17 out</strong></td>
+<td><a href="https://sqlite.org/wasm/doc/trunk/persistence.md">sqlite.org/wasm persistence</a></td>
+<td>a deploy gate (OCI/GH-pages must send the headers)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why SQLite, not DuckDB-WASM or PGlite.</strong> <a href="https://motherduck.com/blog/duckdb-wasm-in-browser/">DuckDB-WASM</a> is
+OLAP (TB via Parquet range-requests) — wrong shape for transactional ERP. <a href="https://pglite.dev/">PGlite</a> (full
+Postgres-in-WASM) is tempting for <em>server-side</em> logic in-browser, but iDempiere's business logic is <strong>Java, not
+PL/pgSQL</strong>, so it does not shortcut the callout port — and it is heavier than we need. SQLite-WASM (relational +
+R-tree + small footprint) is the right tier; the prior art confirms it.</p>
+<p><strong>Sources (storage axis):</strong> <a href="https://www.notion.com/blog/how-we-sped-up-notion-in-the-browser-with-wasm-sqlite">Notion WASM SQLite</a> ·
+<a href="https://sqlite.org/wasm/doc/trunk/persistence.md">SQLite WASM persistence</a> ·
+<a href="https://powersync.com/blog/sqlite-persistence-on-the-web">PowerSync — SQLite persistence on the web</a> ·
+<a href="https://motherduck.com/blog/duckdb-wasm-in-browser/">DuckDB-WASM</a> · <a href="https://pglite.dev/">PGlite</a>.</p>
+<hr />
 <p><strong>Sources:</strong> <a href="https://rxdb.info/downsides-of-offline-first.html">RxDB — downsides of offline-first</a> ·
 <a href="https://doc.replicache.dev/concepts/how-it-works">Replicache — how it works</a> ·
 <a href="https://electric.ax/blog/2024/11/21/local-first-with-your-existing-api">ElectricSQL — local-first with your existing API</a> ·

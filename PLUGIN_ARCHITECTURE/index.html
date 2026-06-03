@@ -2749,6 +2749,50 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#135-resolved-against-ad_seeddb-build-session-2026-06-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.5 Resolved against ad_seed.db (build session 2026-06-02)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#136-fact_acct-gated-manifest-compilation-rolling-post-out-to-all-postable-doc-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.6 Fact_Acct-gated manifest compilation — rolling POST out to all postable doc-types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#137-accts-posted-the-role-gated-read-fold-the-engine-seam-for-the-record-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.7 "Accts Posted" — the role-gated read-fold (the engine seam for the record panel)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#137a-built-resolved-against-ad_seeddb-build-session-2026-06-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.7a Built — resolved against ad_seed.db (build session 2026-06-03)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2918,6 +2962,8 @@
   
     
     
+      
+        
       
         
       
@@ -3281,6 +3327,34 @@
     
   
     Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf (server→serverless witness)
   
 
     
@@ -4407,6 +4481,50 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#135-resolved-against-ad_seeddb-build-session-2026-06-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.5 Resolved against ad_seed.db (build session 2026-06-02)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#136-fact_acct-gated-manifest-compilation-rolling-post-out-to-all-postable-doc-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.6 Fact_Acct-gated manifest compilation — rolling POST out to all postable doc-types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#137-accts-posted-the-role-gated-read-fold-the-engine-seam-for-the-record-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.7 "Accts Posted" — the role-gated read-fold (the engine seam for the record panel)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#137a-built-resolved-against-ad_seeddb-build-session-2026-06-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §13.7a Built — resolved against ad_seed.db (build session 2026-06-03)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4956,6 +5074,197 @@ balance check. (Tax/rounding deferred — first cut posts net; <code>{Tax.Due}</
 </ul>
 <p>When §13.1 + Track A + Track B log the above against <code>ad_seed.db</code>, the manifest spec is proven on the
 real platform and the architecture moves from spec to demonstrated.</p>
+<h3 id="135-resolved-against-ad_seeddb-build-session-2026-06-02">§13.5 Resolved against <code>ad_seed.db</code> (build session 2026-06-02)<a class="headerlink" href="#135-resolved-against-ad_seeddb-build-session-2026-06-02" title="Permanent link">&para;</a></h3>
+<p>The §13.3 worked example, pinned to verified seed rows. The headless POC lives in <code>scripts/</code> only
+(<code>poc_post.js</code> + <code>post_resolver.js</code>); no viewer wiring (separate, GO-gated session).</p>
+<p><strong>Document picked.</strong> <code>C_Invoice#103</code> (DocumentNo <code>200002</code>, <code>IsSOTrx=Y</code>, <code>C_BPartner_ID=117</code>,
+<code>GrandTotal=161.12</code>, acctschema <strong>101</strong>), 3 lines, ΣLineNetAmt <code>152.00</code>, tax <code>9.12</code> (<code>c_invoicetax</code>).</p>
+<p><strong>Tax is not deferred — superseding §13.3's "post net first" hedge.</strong> Every sales invoice in this seed
+carries tax (gap 2.85–12.95; no zero-tax invoice exists), so a net-only entry would either fail the
+ΣDR=ΣCR invariant or post the receivable below the document's real GrandTotal. The honest balanced entry
+is the three-line one, with <code>{Tax.Due}</code> resolved from <code>c_tax_acct</code>:</p>
+<div class="highlight"><pre><span></span><code>DR  {BPartner.Receivable}  234   161.12   ← doc.GrandTotal
+CR  {Product.Revenue}      229   152.00   ← Σ line.LineNetAmt
+CR  {Tax.Due}              255     9.12   ← Σ c_invoicetax.TaxAmt
+                          ΣDR 161.12 = ΣCR 161.12
+</code></pre></div>
+<p><strong>Resolver bindings (verified, non-invent — each token → real column → real account):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Token</th>
+<th>Source column (key)</th>
+<th>Value</th>
+<th>Underlying <code>C_ElementValue</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{BPartner.Receivable}</code></td>
+<td><code>c_bp_customer_acct.c_receivable_acct</code> <code>(c_bpartner_id=117, c_acctschema_id=101)</code></td>
+<td><code>234</code></td>
+<td>518 <code>12110 Accounts Receivable - Trade</code></td>
+</tr>
+<tr>
+<td><code>{Product.Revenue}</code></td>
+<td><code>m_product_category_acct.p_revenue_acct</code> (via <code>m_product</code>→<code>m_product_category</code>, <code>c_acctschema_id=101</code>)</td>
+<td><code>229</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>{Tax.Due}</code></td>
+<td><code>c_tax_acct.t_due_acct</code> <code>(c_tax_id=105, c_acctschema_id=101)</code></td>
+<td><code>255</code></td>
+<td>596 <code>21610 Tax due</code></td>
+</tr>
+</tbody>
+</table>
+<p>Resolver returns the master <strong>column value verbatim</strong> (<code>234</code>/<code>229</code>/<code>255</code> — <code>C_ValidCombination</code> ids,
+mirroring <code>gl_journalline</code>); <code>§PLUGIN-RESOLVE</code> additionally logs the underlying <code>C_ElementValue</code> for
+traceability. Fallback key when a <code>(master, acctschema)</code> pair is absent: <code>c_acctschema_default</code>. Absent
+value → report <code>absent</code>, never synthesized.</p>
+<p><strong>Engine glue (§13.1).</strong> <code>journal</code> projection gains <code>account_id, amtacctdr, amtacctcr</code> (NULL-default —
+existing <code>ALLOCATE</code> writers unaffected; all replay equality is relational, not hash-literal). New <code>POST</code>
+verb (<code>edgeMint</code>/<code>applyOne</code> cases) receives the <strong>already-resolved, already-balanced</strong> lines, asserts
+ΣDR=ΣCR before emit, writes one <code>journal</code> row per line, and is replayable like every other op. No
+per-plugin account logic in the verb; the doc-type specifics stay in the manifest.</p>
+<h3 id="136-fact_acct-gated-manifest-compilation-rolling-post-out-to-all-postable-doc-types">§13.6 Fact_Acct-gated manifest compilation — rolling POST out to all postable doc-types<a class="headerlink" href="#136-fact_acct-gated-manifest-compilation-rolling-post-out-to-all-postable-doc-types" title="Permanent link">&para;</a></h3>
+<p>§13.5 proved the mechanism on ONE doc-type (<code>ARI</code>, Sales Invoice). The remaining postable models each
+carry their own posting rule, and those rules are <strong>not in the master tables</strong> — they are encoded in
+iDempiere's <code>Doc_*</code> posting classes (<code>Doc_Invoice</code>, <code>Doc_Payment</code>, <code>Doc_InOut</code>, …). The masters supply
+<em>which account</em>; the <code>Doc_*</code> code supplies the DR/CR <em>structure</em> (which roles debit, which credit, which
+amount). Re-authoring that structure from reading the Java would be invention — and invention is the one
+thing the platform forbids. This section states how each model's manifest is <strong>compiled and verified
+against iDempiere's own output</strong>, never guessed.</p>
+<p><strong>The oracle: <code>Fact_Acct</code>.</strong> iDempiere already executed every posting rule and recorded the realized
+result in <code>Fact_Acct</code> — <code>(ad_table_id, record_id, account_id, amtacctdr, amtacctcr, c_acctschema_id, …)</code>
+per posted document. That table <em>is</em> the rules made data. It is the ground truth a manifest must reproduce.
+(<code>Fact_Acct</code> is empty in the curated <code>ad_seed.db</code>; the real GardenWorld rows are extracted from the
+operator's Postgres — the <code>Fact_Acct</code> import is the migrate-agent / R2 lane, <code>scripts/extract_fact_acct.sh</code>.)</p>
+<p><strong>The compile-and-gate loop, per doc-type:</strong></p>
+<ol>
+<li><strong>Extract</strong> the doc-type's real <code>Fact_Acct</code> rows (the oracle), keyed by <code>(ad_table_id, record_id)</code>.</li>
+<li><strong>Author</strong> a small charge manifest — the DR/CR role structure only (~5–10 lines, like §13.5).</li>
+<li><strong>Discover tokens, don't guess them.</strong> Group the oracle's lines by <code>account_id</code> and trace each back to
+   the master column that holds it (the account-master tables carry the same ids <code>Fact_Acct</code> posted).
+   The set of <code>{Master.Role}</code> tokens a doc-type needs is <em>read off</em> the oracle, then added to the resolver.</li>
+<li><strong>POST and diff to the cent.</strong> Run the <code>POST</code> verb over the real documents; compare the emitted <code>journal</code>
+   lines against <code>Fact_Acct</code> per <code>(account_id, DR/CR)</code> (<code>scripts/diff_oracle.js</code>). <strong>Accept the manifest
+   iff the fold equals the oracle exactly.</strong> A mismatch means the manifest or a token is wrong — fix and
+   re-gate; never adjust the oracle.</li>
+</ol>
+<p>A manifest is thus a <strong>falsifiable restatement</strong> of a rule iDempiere already ran, accepted only when it
+reproduces that rule's posted facts. No <code>Doc_*</code> port, no invented account, no "trust me."</p>
+<p><strong>Scope — postable is a subset of DocBaseType.</strong> The seed's ~30 <code>DocBaseType</code>s are not all postable:
+orders (<code>SOO/POO/DOO/MQO</code>) carry no <code>Fact_Acct</code> in iDempiere and are excluded. The postable set is
+invoices (<code>ARI/ARC/API/APC</code>), receipts/payments (<code>ARR/APP</code>), allocations, inventory moves
+(<code>MMS/MMR/MMI/MMM</code>), and journals (<code>GLJ/GLD</code>). Each is one oracle-gated manifest; the <code>POST</code> verb and
+resolver from §13.5 are reused unchanged — only manifests (data) and any newly-discovered tokens are added.</p>
+<p><strong>Honest bound.</strong> This proves <strong>structural fidelity to the operator's posted history</strong>, not a
+from-scratch GAAP engine. Rules with no oracle coverage (a doc-type never posted in their data) cannot be
+gated and are reported <code>uncovered</code>, never assumed. Edge behaviour (tax rounding, currency revaluation,
+landed-cost, inter-org) surfaces as a visible cent-level mismatch to resolve — it is not hidden by the fold.</p>
+<p><strong>Witnesses.</strong>
+- <code>§PLUGIN-ORACLE doc=&lt;DocBaseType&gt; docs=N foldRows=R oracleRows=R agree=Y (Σ|fold−Fact_Acct|=0c)</code> — the
+  doc-type's manifest reproduces real <code>Fact_Acct</code> to the cent across all sampled documents.
+- <code>§PLUGIN-TOKENS doc=&lt;DocBaseType&gt; discovered=[{Master.Role}…] source=Fact_Acct.account_id</code> — tokens read
+  off the oracle, not authored.
+- <code>§PLUGIN-COVERAGE postable=K gated=G uncovered=[…]</code> — honest accounting of which postable types have an
+  oracle to gate against and which do not.</p>
+<p><strong>Dependencies / lane.</strong> Needs the real <code>Fact_Acct</code> import (migrate-agent / R2 lane) and reuses the
+existing <code>diff_oracle.js</code> / <code>extract_fact_acct.sh</code> machinery. Engine-lane build, headless <code>scripts/</code>; a
+SEPARATE, EXPLICIT-GO session after the <code>Fact_Acct</code> extract lands. Spec only here.</p>
+<h3 id="137-accts-posted-the-role-gated-read-fold-the-engine-seam-for-the-record-panel">§13.7 "Accts Posted" — the role-gated read-fold (the engine seam for the record panel)<a class="headerlink" href="#137-accts-posted-the-role-gated-read-fold-the-engine-seam-for-the-record-panel" title="Permanent link">&para;</a></h3>
+<p>The renderer's record panel (now that login is merged — PR #87, <code>erp/idmp_session.js</code>) wants three
+affordances on a document: <strong>edit the record</strong>, a <strong>DocAction</strong> control (the gear), and — <em>only for an
+accounting role</em> — <strong>see the postings</strong> ("Accts Posted"). The first two are renderer work over verbs that
+already exist (<code>SET_STATUS</code> = DocAction, the write path = <code>dispatch</code>). The third is an <strong>engine seam</strong> and
+is specified here so the gate is enforced in the engine, never in the panel.</p>
+<p><strong>Posted-status is derived, not a column.</strong> In the op-log model a record is <em>posted</em> iff a <code>POST</code> op
+(§13.5) exists for it. The panel never reads a <code>Posted</code> boolean; it asks the engine for the fold.</p>
+<p><strong>The call (an <code>ENGINE_CONTRACT.md read</code> with role ctx):</strong></p>
+<div class="highlight"><pre><span></span><code>readPostings(recordRef, ctx) -&gt; { visible, posted, lines[], balanced, source, coverage, note, reason }
+  recordRef = { doc_type | ad_table_id, record_id }
+  ctx       = IdmpSession.buildContext(...) → uses ctx.role.id (+ ctx.client.id, ctx.org.id)
+  source    = &#39;fact_acct&#39; | &#39;oplog&#39; | &#39;none&#39;   — WHERE the fold came from
+  coverage  = &#39;complete&#39; | &#39;partial&#39; | &#39;absent&#39; — how much of the posted history is present
+  note      = a human hint when coverage&lt;complete (e.g. &quot;install local data for full posted history&quot;)
+</code></pre></div>
+<p><strong>The gate (engine-resolved, not UI-trusted).</strong> <code>idmp_session</code> folds user→role→client→org but does NOT
+carry <code>isshowacct</code>; the engine resolves it itself: <code>SELECT isshowacct FROM AD_Role WHERE AD_Role_ID =
+ctx.role.id</code> (verified values: GardenWorld Admin=Y, GardenWorld User=N).</p>
+<ul>
+<li><code>isshowacct ≠ 'Y'</code> → return <code>{ visible:false, reason:'role-not-accounting' }</code> — <strong>no <code>lines</code></strong>. Access
+  enforced in the engine (an empty/forbidden result, never the data — same rule as <code>ENGINE_CONTRACT</code>
+  WIRE-4 reads scoped to org access). The panel hides the Posted tab; it cannot leak the rows by mistake.</li>
+<li><code>isshowacct = 'Y'</code> →</li>
+<li>not posted (no <code>POST</code> op for the record) → <code>{ visible:true, posted:false }</code> — the panel shows "not
+    posted"; if the doc is completable, the gear's DocAction can post it (<code>SET_STATUS</code>→ the §13.5 <code>POST</code>).</li>
+<li>posted → <code>{ visible:true, posted:true, lines:[{account_id, value, name, amtacctdr, amtacctcr}],
+    balanced:true }</code> — the balanced journal fold of the record's <code>POST</code> op, each account joined to its
+    <code>C_ElementValue</code> (value/name) for display. Once §13.6 lands, the same fold is cent-gated against the
+    operator's real <code>Fact_Acct</code>.</li>
+</ul>
+<p><strong>Org/client scope.</strong> Postings are filtered by <code>ctx</code>'s org access (one filter model: role→menu,
+client/org→rows, role.isshowacct→accounting visibility) — a record outside the role's orgs returns
+<code>{ visible:false, reason:'out-of-scope' }</code>, never rows.</p>
+<p><strong>Data availability — graceful degrade, separation from the import lane (the contract's stub-not-guess
+rule).</strong> The full posted history lives in the operator's real <code>Fact_Acct</code>, which arrives via a SEPARATE
+local-import session (S1). The panel must NOT hard-block on it; the engine reports what it HAS and the UI
+reflects it honestly. <code>source</code>/<code>coverage</code> carry this, so the renderer never needs to know the import lane:</p>
+<ul>
+<li><code>Fact_Acct</code> imported (§13.6 cent-gated) → <code>source:'fact_acct', coverage:'complete'</code> — the real, full fold.</li>
+<li><code>Fact_Acct</code> absent but <code>POST</code> ops exist (resident, e.g. posted this session) → <code>source:'oplog',
+  coverage:'partial', note:'showing op-log postings — run local install for the full posted history'</code>. The
+  panel <strong>renders what it has</strong> and shows the note. <em>(Your "continue with what data there is" mode.)</em></li>
+<li>nothing posted and no <code>Fact_Acct</code> → <code>source:'none', coverage:'absent', posted:false,
+  note:'install local data first to see Accts Posted'</code>. The panel shows the honest status, not an error.
+  <em>(Your "install local first" mode.)</em></li>
+</ul>
+<p>This is what lets <strong>S3 ship before S1/S2</strong> (CRUD-P + Receipt + the Accts-Posted <em>shell</em>); when real data
+lands, the same tab lights up with <code>coverage:'complete'</code> — no panel change. Honest by construction: the UI
+never invents a posting, and never hides that the history is partial.</p>
+<p><strong>Witnesses.</strong>
+- <code>§POSTED-READ record=&lt;doc&gt;#&lt;id&gt; role=&lt;id&gt; isshowacct=Y posted=Y rows=N balanced=Y source=&lt;src&gt; coverage=&lt;cov&gt;</code>
+  — accounting role sees the balanced fold, labelled by source/coverage.
+- <code>§POSTED-GATE role=&lt;GardenWorld User&gt; isshowacct=N → visible=N reason=role-not-accounting rows=0</code> — a
+  non-accounting role is refused at the engine, zero rows leaked.
+- <code>§POSTED-COVERAGE source=none coverage=absent note=install-local-first</code> (and the <code>partial</code>/<code>complete</code>
+  variants) — the degrade states are explicit, never a silent empty or a fabricated total.</p>
+<p><strong>Lane.</strong> Engine provides <code>readPostings</code> (headless, gate + fold, <code>scripts/</code>); the renderer renders the
+Posted tab (shown iff <code>visible</code>), the gear→DocAction, and the editable form — renderer/login lane, rebased
+onto the <code>erp/</code> folder home, EXPLICIT-GO. The gate and fold are the engine's; the UI only reflects them.</p>
+<h3 id="137a-built-resolved-against-ad_seeddb-build-session-2026-06-03">§13.7a Built — resolved against <code>ad_seed.db</code> (build session 2026-06-03)<a class="headerlink" href="#137a-built-resolved-against-ad_seeddb-build-session-2026-06-03" title="Permanent link">&para;</a></h3>
+<p><code>readPostings(recordRef, ctx, dbs)</code> lives in <code>scripts/erp_postings.js</code>; witness <code>scripts/poc_postings.js</code>
+(<code>build/erp/poc_postings.log</code>). <code>dbs = { ad, proj, fact }</code> — <code>ad</code> carries <code>ad_role</code>/<code>c_validcombination</code>/
+<code>c_elementvalue</code> (the seed); <code>proj</code> is the <code>erp_kernel</code> projection (POST ops + <code>journal</code>); <code>fact</code> is the
+<code>fact_acct</code> bundle. The exact §13.7 shape is returned: <code>{visible, posted, lines[], balanced, source,
+coverage, note, reason}</code>.</p>
+<ul>
+<li><strong>Gate (engine-resolved):</strong> <code>SELECT isshowacct FROM ad_role WHERE ad_role_id = ctx.role.id</code> on <code>dbs.ad</code>
+  (verified: Admin <code>102</code>=Y, User <code>103</code>=N). <code>isshowacct ≠ 'Y'</code> → <code>{visible:false, reason:'role-not-accounting'}</code>,
+  <strong>no <code>lines</code></strong>, zero rows. Org scope: <code>recordRef.ad_org_id ∉ ctx.allowOrgs</code> → <code>{visible:false,
+  reason:'out-of-scope'}</code> (mirror <code>ENGINE_CONTRACT</code> WIRE-4).</li>
+<li><strong>Fold:</strong> the record's <code>POST</code> op's <code>journal</code> rows (<code>source='DOC:'+table+'#'+id</code>); each <code>account_id</code>
+  (a <code>C_ValidCombination</code> id) joined <code>c_validcombination → C_ElementValue</code> for <code>{value, name}</code> (verified:
+  <code>234→518 "12110 Accounts Receivable - Trade"</code>). <code>balanced = ΣamtacctDR == ΣamtacctCR</code> to the cent.</li>
+<li><strong>Degrade ladder (honest, non-invent):</strong> real record-keyed <code>Fact_Acct</code> cent-equal to the fold →
+  <code>source:'fact_acct', coverage:'complete'</code>; <code>POST</code> op only → <code>source:'oplog', coverage:'partial'</code>; nothing
+  → <code>source:'none', coverage:'absent'</code>.</li>
+</ul>
+<p><strong>⚠ Coverage bound — <code>complete</code> is NOT reachable on the bundled data, by design.</strong> The shipped <code>fact_acct</code>
+(<code>extract_fact_acct.sh</code>, <code>glassbowl_data.db</code>) is a <strong>TOTALS</strong> extract — it has <strong>no <code>ad_table_id</code>/<code>record_id</code></strong>,
+so no record maps to it; every real record folds to <code>partial</code> (posted this session) or <code>absent</code>. Per-record
+<code>complete</code> needs the §13.6 <strong>re-extract WITH the record-ref columns</strong> — NOT done this session (the prompt's
+"do not do speculatively"). The <code>complete</code> <em>branch</em> is exercised in the witness by a clearly-labelled
+<strong>shape fixture</strong> (<code>fact=fixture realdata=N</code>) carrying <code>(ad_table_id, record_id)</code>, plus an <strong>off-by-1c
+discrimination</strong> check proving the cent-gate falls back to <code>partial</code> on mismatch — never a tautology, never
+presented as GardenWorld fact.</p>
+<ul>
+<li><strong>Witnesses:</strong> <code>§POSTED-READ record=C_Invoice#103 role=102 isshowacct=Y posted=Y rows=3 balanced=Y
+  source=oplog coverage=partial</code>; <code>§POSTED-GATE role=103 isshowacct=N → visible=N reason=role-not-accounting
+  rows=0</code>; <code>§POSTED-COVERAGE</code> for <code>absent</code> / <code>partial</code> / <code>complete</code>(fixture) + the off-by-1c reject.</li>
+</ul>
 <hr />
 <p><em>Status: DRAFT v0.1, 2026-06-02 — extension/plugin layer of the iDempiere 2.0 lineage. Nothing built;
 EXPLICIT GO required before any code or deploy. Siblings: IDEMPIERE_2.md (model) · IDEMPIERE_RENDERER_SPEC.md

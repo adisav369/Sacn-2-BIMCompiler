@@ -16,7 +16,7 @@
         <link rel="prev" href="../LocalFirstPriorArt/">
       
       
-        <link rel="next" href="../SampleHouseAnalysis/">
+        <link rel="next" href="../DepreciationPerf/">
       
       
         
@@ -2648,6 +2648,8 @@
       
         
       
+        
+      
     
     
     
@@ -3306,6 +3308,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf (server→serverless witness)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4588,6 +4618,10 @@ Git is a serverless-<em>of-record</em> distributed system millions use daily. <s
 transactions what git did to source code:</strong> the log is the truth, the host is disposable, history is chained
 and signable. The one thing git lacks that we add — <em>invariant enforcement</em> (no double-spend) — is the
 owner-gate + the single CAS op-class. Everything else, git already proves is possible.</p>
+<p><strong>Measured witness:</strong> <a href="../DepreciationPerf/">DepreciationPerf.md</a> puts numbers on this mapping with a real
+iDempiere batch (40-year asset depreciation): where the server's ~20 min actually goes (per-row <code>saveEx</code> =
+~1M round-trips, not the maths), a four-tier comparison, and the honest counter-hype — <em>most</em> of the speed is
+a server-side SQL rewrite; SQLite-WASM's real edge is <strong>no server + local reads</strong>, not raw throughput.</p>
 <p>The rest is these truths meeting concrete scenarios — the normal multi-POS day (§3), the adversarial edges
 (§9), and how it compares to related systems (§10).</p>
 <hr />
@@ -4668,6 +4702,15 @@ don't hold); settlement at end-of-day reconciles the van.</p>
 computes the number; reconcile at business cadence.</strong> Nobody writes a shared scalar; nothing blocks on the
 network; the post office only sequences and relays. The edges in §9 are exactly the residue this leaves —
 bounded, named, and ledger-backed.</p>
+<blockquote>
+<p><strong>Worked examples — <a href="../LensFamily/">the Lens Family</a>.</strong> This doctrine made concrete, extracted from my iDempiere
+Unicenta POS + plugins and ported to browser lenses over the one model: <a href="../POSLens/">POS</a> (in-person sale) ·
+<a href="../WMSLens/">WMS / Logistics / Robots</a> (movement) · <a href="../SocialPlatformLens/">Social Platform</a> (on-the-move) ·
+<a href="../CreditLedgerLens/">Credit Ledger</a> (receivables) · <a href="../WorkforceLens/">Workforce</a> (attendance/tasks) ·
+<a href="../GuaranteedChannels/">Guaranteed Channels</a> (transport/payment pipes). Hub: <strong><a href="../LensFamily/">LensFamily</a></strong>.
+One source act, the rest a fold, no central control — a business run from a phone. The smallest complete proofs of
+the doctrine above.</p>
+</blockquote>
 <hr />
 <h2 id="4-the-fundamental-guard-set">4. The fundamental guard set<a class="headerlink" href="#4-the-fundamental-guard-set" title="Permanent link">&para;</a></h2>
 <p>Invariants the system enforces so contention is structurally impossible for the common case:</p>

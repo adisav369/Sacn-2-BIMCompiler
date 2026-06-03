@@ -2640,6 +2640,8 @@
       
         
       
+        
+      
     
     
     
@@ -2980,6 +2982,34 @@
     
   
     Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf (server→serverless witness)
   
 
     
@@ -3910,6 +3940,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="§3b The full original session experience — login → Role/Client/Org → scoped menu+data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#3b1-build-contract-this-session-bounded-non-invent-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3b.1 Build contract (this session — bounded, non-invent decisions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4139,6 +4186,31 @@ FK and the data-streaming tier select (<code>docs/IDEMPIERE_DATA_STREAMING_SPEC.
 </blockquote>
 <p>This is a build item (a new I-task — login/session ahead of or alongside I2), specced here so the <strong>whole
 original experience</strong> is captured, not just menu→window→drill.</p>
+<h3 id="3b1-build-contract-this-session-bounded-non-invent-decisions">§3b.1 Build contract (this session — bounded, non-invent decisions)<a class="headerlink" href="#3b1-build-contract-this-session-bounded-non-invent-decisions" title="Permanent link">&para;</a></h3>
+<p>The fold logic lives in a shared, side-effect-free module <code>bim-ootb/viewer/idmp_session.js</code>
+(<code>window.IdmpSession</code>) so the headless witness and <code>idempiere.html</code> make the <strong>same</strong> calls over the
+<strong>same</strong> <code>ad_seed.db</code> — no hand-authored identity. Pure functions, each <code>§</code>-logged:</p>
+<ul>
+<li><code>listUsers(db)</code> → the 8 <code>AD_User</code> rows, each flagged <code>hasRoles</code> (an <code>AD_User_Roles</code> row exists). Seed
+  reality NAMED, not papered over: only <strong>SuperUser(100) · GardenAdmin(101) · GardenUser(102) ·
+  WebService(50001)</strong> have roles; <strong>System(10) · Joe Sales(103) · Carl Boss(104) · Henry Seed(105)</strong> have
+  none → rendered, disabled, labelled "(no roles)". A role-less user cannot proceed (faithful to iDempiere).</li>
+<li><code>rolesForUser(db, userId)</code> → <code>AD_User_Roles</code> ⨝ <code>AD_Role</code> for the user (the Role dropdown).</li>
+<li><code>clientFor(db, roleId)</code> → <code>AD_Role.AD_Client_ID</code> → <code>AD_Client</code> (a role fixes its client; here always
+  GardenWorld 11 — client 0/System is metadata-only).</li>
+<li><code>orgsForRole(db, roleId)</code> → <code>AD_Role_OrgAccess</code> ⨝ <code>AD_Org</code>. Org <strong>0 = "*" (All accessible)</strong> is offered
+  when present (it is, for Admin role 102) and means "no org narrowing"; any other org narrows data to it.</li>
+<li><code>accessibleWindows(db, roleId)</code> → <code>Set</code> of <code>AD_Window_ID</code> from <code>AD_Window_Access</code> (<code>IsActive='Y'</code>).
+  Verified scope difference: Admin(102)=294 / User(103)=163 of 332 W-windows in the menu.</li>
+<li><code>scopeMenu(roots, winSet)</code> → prune <strong><code>action='W'</code> leaves</strong> whose <code>windowId ∉ winSet</code>, then prune summary
+  folders left with zero visible descendants. Returns <code>{ tree, visible, total }</code>.</li>
+</ul>
+<p><strong>Bounded scope (what this build does NOT do — named, [[feedback_listen_first]]):</strong> only <code>W</code> (window)
+leaves are access-scoped; <code>P/R/F/X/I/T</code> leaves stay visible (their <code>AD_Process_Access</code>/<code>AD_Form_Access</code>
+tables exist in the seed but scoping them is out of scope here — the spec's witness counts windows). Data
+scope = append <code>AD_Client_ID IN (0,&lt;client&gt;)</code> and, when a specific org is chosen, <code>AD_Org_ID IN (0,&lt;org&gt;)</code>
+to each tab read <strong>only when the column exists</strong> on that table — the same clause layer as master-detail's
+parent-FK filter. No writes; "login" is identity/context <strong>selection</strong>, never auth ([[feedback_no_hype]]).</p>
 <h2 id="4-out-of-scope-this-session-named-not-silently-dropped">§4 Out of scope this session (named, not silently dropped)<a class="headerlink" href="#4-out-of-scope-this-session-named-not-silently-dropped" title="Permanent link">&para;</a></h2>
 <ul>
 <li>CRUD writes (New/Save/Delete) — the buttons render disabled; writes arrive with CRUD-P (<code>edit</code>/<code>process</code>).</li>
