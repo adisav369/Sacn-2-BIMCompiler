@@ -131,3 +131,93 @@ Processed order hits the P&L is **Phase‑3‑adjacent** (`BIM_ERP_FOLD.md`), no
 §‑log under `build/erp/`; READ before concluding. Pre‑flight cite this spec. HANDS‑OFF the live
 write‑loop files except to ADD the read‑only Report verb to the ring. Deploy = Glassbowl‑way, bump sw
 `CACHE_VERSION`, **EXPLICIT GO**, fetch‑back‑verify.
+
+---
+
+## 5. R4 — after‑the‑receipt OUTPUT (delivery channel)  ·  `§RPT-OUT`  *(DONE, deployed sw v9)*
+The receipt panel was view‑only (✕ close). R4 adds **Print / Share / Save** — edge‑only, server‑free —
+each serialising the SAME folded `rec` (no re‑query, no invented value): `Print` = print‑iframe of
+`receiptHtml(rec)`; `Share` = `navigator.share({files:[html]})` → `share({text})` → clipboard; `Save` =
+`Blob('text/html')` → `receipt_<doc>.html` download. Witness `build/erp/poc_rpt_out.js` → **§RPT-OUT-R4
+PASS**. The delivery channel is *incidental*; the load‑bearing artifact is what R5 now makes verifiable.
+
+---
+
+## 6. R5 — the signed, self‑verifying receipt  ·  `§RPT-SEND`
+
+### 6.0 Why (doctrine)
+`HolyGrail.md` condition (3): *"the op‑log makes editing safe — signed, replayable, reversible,
+tamper‑evident."* R5 is the FIRST time that property **leaves the app** and becomes consumer‑visible: the
+delivered receipt carries (or references) the **signed op‑log chain** so the recipient can **replay it and
+verify the chain hash with no server and no trust in the sender** (`ERP.md §0.18` frozen/replayable; the
+W‑CHAIN/W‑SIGN witnesses `scripts/poc_chain.js`/`scripts/poc_sign.js`; `kernel_ops.js` `sealChain`/
+`verifyChain`/`setSigner`). Because verification is a pure READ‑side replay, R5 **ships ahead of E3** (the
+live write path is still dry‑run) — intended.
+
+### 6.1 The honesty boundary (non‑invent — DO NOT cross)
+The receipt attests **"the recorded, signed op‑chain"** — it MUST NOT claim "the books moved / posted".
+Per `§I‑K`/`§13.6`: **Completed ≠ posted**; GL posting is delegated install‑side. The receipt copy is
+precise about what it signs — *the recorded op‑chain, tamper‑evident* — and never over‑claims a GL effect.
+Verify‑panel copy: *"This receipt carries its signed op‑chain. Verify replays the chain locally and checks
+the tamper‑evident hash + signature — it attests the recorded ops, NOT that the books were posted (GL
+posting is delegated install‑side)."* If a value cannot be extracted, absence is shown honestly.
+
+### 6.2 Payload shape — `.erpreceipt.json` embedded in the self‑contained HTML
+The signed receipt = the folded `rec` (R1) **+** the signed op‑chain. One canonical JSON object, embedded
+verbatim in a `<script type="application/erp-receipt+json">` block inside the delivered HTML (so the file
+is BOTH human‑viewable AND machine‑verifiable; a `.erpreceipt.json` sidecar is the same object standalone):
+
+```
+{ "v": 1, "kind": "erp-signed-receipt",
+  "rec":   { …foldReceipt output: key, docno, lines[], subtotal, tax, total, financial… },
+  "chain": { "alg": "SHA-256", "sigAlg": "ECDSA-P256",
+             "genesis": "<64×0>",
+             "pubKey": "<issuer SPKI hex | null if unsigned (W-CHAIN-only)>",
+             "tip":    "<op_hash of the last op>",
+             "ops": [ { "id","timestamp","op_type","parameters","input_guids","output_guid",
+                        "prev_hash","op_hash","sig" }, … ] },
+  "attests": "the recorded, signed op-chain (tamper-evident) — NOT a GL posting" }
+```
+
+`canonical(op)` is the **production form** (`kernel_ops.js _canonical`):
+`id|timestamp|op_type|parameters|input_guids|output_guid`, and `op_hash = SHA‑256(prev_hash | canonical)`,
+`sig` attests over `op_hash` (not in the hash → chain stays byte‑identical across devices). The receipt
+reuses the engine's chain — **it does NOT fork a verb**: in‑browser it pulls the already‑sealed rows from
+`kernel_ops` (`prev_hash`/`op_hash`/`sig` columns) via the same canonical; the witness reuses the same
+canonical + the `poc_sign` ECDSA primitives.
+
+### 6.3 Verify procedure (independent, server‑free)
+A **Verify** affordance in the receipt panel (and a self‑contained re‑verify when the HTML is re‑opened)
+replays the embedded chain with **no original DB and no network**:
+1. walk `ops` in order, `prev = genesis`;
+2. for each op: assert `op.prev_hash === prev`; recompute `h = SHA‑256(prev | canonical(op))`; assert
+   `h === op.op_hash`; if `pubKey` present assert `verify(op_hash, sig, pubKey)`; `prev = h`;
+3. `chainOk = all assertions hold`; `tip = prev`; assert `tip === chain.tip`.
+Any altered byte/amount in `rec` or in any op's mutating field flips `op_hash` (or breaks a `prev_hash`
+link / signature) at exactly that op → **`chainOk=false`**. This is the whole point: the payload **catches
+tampering** offline.
+
+> **Receipt↔chain binding.** `rec` is the human face; the **chain is the truth**. So a meaningful receipt
+> binds at least one op whose `parameters` carry the document the `rec` folds (e.g. a `SET_STATUS`/
+> `CREATE_DOCUMENT` for `c_order#<docno>`). Tampering the *displayed* `rec` total while leaving the chain
+> intact is shown as a **mismatch** (`recBoundOk=false`) — the verifier re‑derives the bound field from the
+> signed op and compares; it never trusts the rendered number.
+
+### 6.4 Witness — `build/erp/poc_rpt_send.js` (node, sql.js + real kernel_ops canonical + poc_sign ECDSA)
+Each line names its issue; `§`‑log first (`node build/erp/poc_rpt_send.js 2>&1 | tee build/erp/poc_rpt_send.log`):
+- **§RPT-SEND-PAYLOAD** — the built receipt payload carries the signed chain: `ops>0`, every op has
+  `op_hash`+`sig`, `pubKey` present, `tip` present.
+- **§RPT-SEND-VERIFY** — an INDEPENDENT verifier (fresh, no original db) replays the embedded chain →
+  `chainOk=true`, `tip` matches `chain.tip`.
+- **§RPT-SEND-TAMPER** — flip ONE byte/amount in the payload (an op's `parameters` AND the matching
+  displayed `rec` amount) → verify **FAILS** at exactly the tampered op (`chainOk=false brokeAt=N`).
+- **§RPT-SEND-SELFCONTAINED** — the payload verifies from the serialized JSON/HTML ALONE (parsed back,
+  no kernel, no original db, no network).
+- **§RPT-SEND-MONEY** — `rec` amounts fold via BigDecimal exact (subtotal/tax/total == golden), and the
+  attested string names the op‑chain, not a GL posting (honesty boundary asserted in the witness).
+- **§RPT-SEND PASS** — all green, 0 fails.
+
+### 6.5 Deploy
+Glassbowl‑way, **worktree‑isolated off `full`** (never the dirty shared tree). Bump glassbowl sw
+`CACHE_VERSION` **v9→v10** (+ `?v=`), `mkdocs gh-deploy` to BIMCompiler gh‑pages, fetch‑back‑verify the
+live URL. Sync proven `build/erp/report_overlay.js` to `docs/` (per `feedback_erp_source_of_truth`).
