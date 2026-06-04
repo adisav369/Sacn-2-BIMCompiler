@@ -4042,6 +4042,100 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#5-r4-afterthereceipt-output-delivery-channel-rpt-out-done-deployed-sw-v9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. R4 — after‑the‑receipt OUTPUT (delivery channel) · §RPT-OUT (DONE, deployed sw v9)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-r5-the-signed-selfverifying-receipt-rpt-send" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. R5 — the signed, self‑verifying receipt · §RPT-SEND
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. R5 — the signed, self‑verifying receipt · §RPT-SEND">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#60-why-doctrine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.0 Why (doctrine)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#61-the-honesty-boundary-noninvent-do-not-cross" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 The honesty boundary (non‑invent — DO NOT cross)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-payload-shape-erpreceiptjson-embedded-in-the-selfcontained-html" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Payload shape — .erpreceipt.json embedded in the self‑contained HTML
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-verify-procedure-independent-serverfree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Verify procedure (independent, server‑free)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-witness-builderppoc_rpt_sendjs-node-sqljs-real-kernel_ops-canonical-poc_sign-ecdsa" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Witness — build/erp/poc_rpt_send.js (node, sql.js + real kernel_ops canonical + poc_sign ECDSA)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Deploy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4243,6 +4337,84 @@ Processed order hits the P&amp;L is <strong>Phase‑3‑adjacent</strong> (<code
 <p>§‑log under <code>build/erp/</code>; READ before concluding. Pre‑flight cite this spec. HANDS‑OFF the live
 write‑loop files except to ADD the read‑only Report verb to the ring. Deploy = Glassbowl‑way, bump sw
 <code>CACHE_VERSION</code>, <strong>EXPLICIT GO</strong>, fetch‑back‑verify.</p>
+<hr />
+<h2 id="5-r4-afterthereceipt-output-delivery-channel-rpt-out-done-deployed-sw-v9">5. R4 — after‑the‑receipt OUTPUT (delivery channel)  ·  <code>§RPT-OUT</code>  <em>(DONE, deployed sw v9)</em><a class="headerlink" href="#5-r4-afterthereceipt-output-delivery-channel-rpt-out-done-deployed-sw-v9" title="Permanent link">&para;</a></h2>
+<p>The receipt panel was view‑only (✕ close). R4 adds <strong>Print / Share / Save</strong> — edge‑only, server‑free —
+each serialising the SAME folded <code>rec</code> (no re‑query, no invented value): <code>Print</code> = print‑iframe of
+<code>receiptHtml(rec)</code>; <code>Share</code> = <code>navigator.share({files:[html]})</code> → <code>share({text})</code> → clipboard; <code>Save</code> =
+<code>Blob('text/html')</code> → <code>receipt_&lt;doc&gt;.html</code> download. Witness <code>build/erp/poc_rpt_out.js</code> → <strong>§RPT-OUT-R4
+PASS</strong>. The delivery channel is <em>incidental</em>; the load‑bearing artifact is what R5 now makes verifiable.</p>
+<hr />
+<h2 id="6-r5-the-signed-selfverifying-receipt-rpt-send">6. R5 — the signed, self‑verifying receipt  ·  <code>§RPT-SEND</code><a class="headerlink" href="#6-r5-the-signed-selfverifying-receipt-rpt-send" title="Permanent link">&para;</a></h2>
+<h3 id="60-why-doctrine">6.0 Why (doctrine)<a class="headerlink" href="#60-why-doctrine" title="Permanent link">&para;</a></h3>
+<p><code>HolyGrail.md</code> condition (3): <em>"the op‑log makes editing safe — signed, replayable, reversible,
+tamper‑evident."</em> R5 is the FIRST time that property <strong>leaves the app</strong> and becomes consumer‑visible: the
+delivered receipt carries (or references) the <strong>signed op‑log chain</strong> so the recipient can <strong>replay it and
+verify the chain hash with no server and no trust in the sender</strong> (<code>ERP.md §0.18</code> frozen/replayable; the
+W‑CHAIN/W‑SIGN witnesses <code>scripts/poc_chain.js</code>/<code>scripts/poc_sign.js</code>; <code>kernel_ops.js</code> <code>sealChain</code>/
+<code>verifyChain</code>/<code>setSigner</code>). Because verification is a pure READ‑side replay, R5 <strong>ships ahead of E3</strong> (the
+live write path is still dry‑run) — intended.</p>
+<h3 id="61-the-honesty-boundary-noninvent-do-not-cross">6.1 The honesty boundary (non‑invent — DO NOT cross)<a class="headerlink" href="#61-the-honesty-boundary-noninvent-do-not-cross" title="Permanent link">&para;</a></h3>
+<p>The receipt attests <strong>"the recorded, signed op‑chain"</strong> — it MUST NOT claim "the books moved / posted".
+Per <code>§I‑K</code>/<code>§13.6</code>: <strong>Completed ≠ posted</strong>; GL posting is delegated install‑side. The receipt copy is
+precise about what it signs — <em>the recorded op‑chain, tamper‑evident</em> — and never over‑claims a GL effect.
+Verify‑panel copy: <em>"This receipt carries its signed op‑chain. Verify replays the chain locally and checks
+the tamper‑evident hash + signature — it attests the recorded ops, NOT that the books were posted (GL
+posting is delegated install‑side)."</em> If a value cannot be extracted, absence is shown honestly.</p>
+<h3 id="62-payload-shape-erpreceiptjson-embedded-in-the-selfcontained-html">6.2 Payload shape — <code>.erpreceipt.json</code> embedded in the self‑contained HTML<a class="headerlink" href="#62-payload-shape-erpreceiptjson-embedded-in-the-selfcontained-html" title="Permanent link">&para;</a></h3>
+<p>The signed receipt = the folded <code>rec</code> (R1) <strong>+</strong> the signed op‑chain. One canonical JSON object, embedded
+verbatim in a <code>&lt;script type="application/erp-receipt+json"&gt;</code> block inside the delivered HTML (so the file
+is BOTH human‑viewable AND machine‑verifiable; a <code>.erpreceipt.json</code> sidecar is the same object standalone):</p>
+<div class="highlight"><pre><span></span><code>{ &quot;v&quot;: 1, &quot;kind&quot;: &quot;erp-signed-receipt&quot;,
+  &quot;rec&quot;:   { …foldReceipt output: key, docno, lines[], subtotal, tax, total, financial… },
+  &quot;chain&quot;: { &quot;alg&quot;: &quot;SHA-256&quot;, &quot;sigAlg&quot;: &quot;ECDSA-P256&quot;,
+             &quot;genesis&quot;: &quot;&lt;64×0&gt;&quot;,
+             &quot;pubKey&quot;: &quot;&lt;issuer SPKI hex | null if unsigned (W-CHAIN-only)&gt;&quot;,
+             &quot;tip&quot;:    &quot;&lt;op_hash of the last op&gt;&quot;,
+             &quot;ops&quot;: [ { &quot;id&quot;,&quot;timestamp&quot;,&quot;op_type&quot;,&quot;parameters&quot;,&quot;input_guids&quot;,&quot;output_guid&quot;,
+                        &quot;prev_hash&quot;,&quot;op_hash&quot;,&quot;sig&quot; }, … ] },
+  &quot;attests&quot;: &quot;the recorded, signed op-chain (tamper-evident) — NOT a GL posting&quot; }
+</code></pre></div>
+<p><code>canonical(op)</code> is the <strong>production form</strong> (<code>kernel_ops.js _canonical</code>):
+<code>id|timestamp|op_type|parameters|input_guids|output_guid</code>, and <code>op_hash = SHA‑256(prev_hash | canonical)</code>,
+<code>sig</code> attests over <code>op_hash</code> (not in the hash → chain stays byte‑identical across devices). The receipt
+reuses the engine's chain — <strong>it does NOT fork a verb</strong>: in‑browser it pulls the already‑sealed rows from
+<code>kernel_ops</code> (<code>prev_hash</code>/<code>op_hash</code>/<code>sig</code> columns) via the same canonical; the witness reuses the same
+canonical + the <code>poc_sign</code> ECDSA primitives.</p>
+<h3 id="63-verify-procedure-independent-serverfree">6.3 Verify procedure (independent, server‑free)<a class="headerlink" href="#63-verify-procedure-independent-serverfree" title="Permanent link">&para;</a></h3>
+<p>A <strong>Verify</strong> affordance in the receipt panel (and a self‑contained re‑verify when the HTML is re‑opened)
+replays the embedded chain with <strong>no original DB and no network</strong>:
+1. walk <code>ops</code> in order, <code>prev = genesis</code>;
+2. for each op: assert <code>op.prev_hash === prev</code>; recompute <code>h = SHA‑256(prev | canonical(op))</code>; assert
+   <code>h === op.op_hash</code>; if <code>pubKey</code> present assert <code>verify(op_hash, sig, pubKey)</code>; <code>prev = h</code>;
+3. <code>chainOk = all assertions hold</code>; <code>tip = prev</code>; assert <code>tip === chain.tip</code>.
+Any altered byte/amount in <code>rec</code> or in any op's mutating field flips <code>op_hash</code> (or breaks a <code>prev_hash</code>
+link / signature) at exactly that op → <strong><code>chainOk=false</code></strong>. This is the whole point: the payload <strong>catches
+tampering</strong> offline.</p>
+<blockquote>
+<p><strong>Receipt↔chain binding.</strong> <code>rec</code> is the human face; the <strong>chain is the truth</strong>. So a meaningful receipt
+binds at least one op whose <code>parameters</code> carry the document the <code>rec</code> folds (e.g. a <code>SET_STATUS</code>/
+<code>CREATE_DOCUMENT</code> for <code>c_order#&lt;docno&gt;</code>). Tampering the <em>displayed</em> <code>rec</code> total while leaving the chain
+intact is shown as a <strong>mismatch</strong> (<code>recBoundOk=false</code>) — the verifier re‑derives the bound field from the
+signed op and compares; it never trusts the rendered number.</p>
+</blockquote>
+<h3 id="64-witness-builderppoc_rpt_sendjs-node-sqljs-real-kernel_ops-canonical-poc_sign-ecdsa">6.4 Witness — <code>build/erp/poc_rpt_send.js</code> (node, sql.js + real kernel_ops canonical + poc_sign ECDSA)<a class="headerlink" href="#64-witness-builderppoc_rpt_sendjs-node-sqljs-real-kernel_ops-canonical-poc_sign-ecdsa" title="Permanent link">&para;</a></h3>
+<p>Each line names its issue; <code>§</code>‑log first (<code>node build/erp/poc_rpt_send.js 2&gt;&amp;1 | tee build/erp/poc_rpt_send.log</code>):
+- <strong>§RPT-SEND-PAYLOAD</strong> — the built receipt payload carries the signed chain: <code>ops&gt;0</code>, every op has
+  <code>op_hash</code>+<code>sig</code>, <code>pubKey</code> present, <code>tip</code> present.
+- <strong>§RPT-SEND-VERIFY</strong> — an INDEPENDENT verifier (fresh, no original db) replays the embedded chain →
+  <code>chainOk=true</code>, <code>tip</code> matches <code>chain.tip</code>.
+- <strong>§RPT-SEND-TAMPER</strong> — flip ONE byte/amount in the payload (an op's <code>parameters</code> AND the matching
+  displayed <code>rec</code> amount) → verify <strong>FAILS</strong> at exactly the tampered op (<code>chainOk=false brokeAt=N</code>).
+- <strong>§RPT-SEND-SELFCONTAINED</strong> — the payload verifies from the serialized JSON/HTML ALONE (parsed back,
+  no kernel, no original db, no network).
+- <strong>§RPT-SEND-MONEY</strong> — <code>rec</code> amounts fold via BigDecimal exact (subtotal/tax/total == golden), and the
+  attested string names the op‑chain, not a GL posting (honesty boundary asserted in the witness).
+- <strong>§RPT-SEND PASS</strong> — all green, 0 fails.</p>
+<h3 id="65-deploy">6.5 Deploy<a class="headerlink" href="#65-deploy" title="Permanent link">&para;</a></h3>
+<p>Glassbowl‑way, <strong>worktree‑isolated off <code>full</code></strong> (never the dirty shared tree). Bump glassbowl sw
+<code>CACHE_VERSION</code> <strong>v9→v10</strong> (+ <code>?v=</code>), <code>mkdocs gh-deploy</code> to BIMCompiler gh‑pages, fetch‑back‑verify the
+live URL. Sync proven <code>build/erp/report_overlay.js</code> to <code>docs/</code> (per <code>feedback_erp_source_of_truth</code>).</p>
 
 
 
