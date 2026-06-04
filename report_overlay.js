@@ -31,7 +31,22 @@
   };
 
   function num(v) { return (v == null || v === '') ? null : Number(v); }
-  function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+  function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }  // non-money use only (qty/price display)
+
+  // ── exact money (feedback_numbers_via_bigdecimal · ENGINE_FULL_ERP_ISSUES.md §I-L) ──────────────
+  // Every monetary accumulation in the folds below goes through BigDecimal (== java.math.BigDecimal, proven),
+  // NOT raw Number+round2. raw round2 = Math.round (rounds .5 toward +inf) diverges from Java HALF_UP
+  // (away-from-zero) on negative half-cents, masks TB imbalances, and drops cents past 2^53c — all MEASURED.
+  // Source values arrive from SQLite as Number|string; route through String so BigDecimal.of never sees a
+  // non-integer float (it throws by contract). money2() is the single DISPLAY leaf (re-enters Number; this is
+  // a PURE-READ fold, nothing here is hashed). BigDecimal is loaded before this file in glassbowl.html; under
+  // node the witness requires it.
+  var BD = (typeof BigDecimal !== 'undefined') ? BigDecimal
+         : (typeof require === 'function' ? require('./bigdecimal.js') : null);
+  function bd(v) { return (v == null || v === '') ? BD.ZERO : BD.of(String(v)); }       // null/'' → exact 0
+  // money2 — the single money LEAF: exact 2dp HALF_UP, carried as a STRING so no value re-enters Number even
+  // past 2^53 cents (render formats via Number(x).toFixed(2), which is fine on a 2dp string). Never lossy.
+  function money2(b) { return b == null ? null : b.setScale(2, BD.RoundingMode.HALF_UP).toString(); }
 
   // foldReceipt — fold ONE document's receipt from its raw header row + raw line rows.
   // PURE: takes rows in, returns the folded receipt out. subtotal = Σ line amount; tax = total − subtotal
@@ -51,9 +66,12 @@
         amount: fin ? num(r[map.amount]) : null
       };
     });
-    var subtotal = fin ? round2(outLines.reduce(function (s, l) { return s + (l.amount || 0); }, 0)) : null;
-    var total = map.total ? num(header[map.total]) : null;
-    var tax = (subtotal != null && total != null) ? round2(total - subtotal) : null;
+    // EXACT: subtotal = Σ line amount, tax = total − subtotal — all BigDecimal off the RAW rows (never the
+    // display Number), one money2 leaf each. tax-as-remainder is exactly where negative half-cents bite.
+    var subtotalB = fin ? (lines || []).reduce(function (acc, r) { return acc.add(bd(r[map.amount])); }, BD.ZERO) : null;
+    var totalB = map.total ? bd(header[map.total]) : null;
+    var taxB = (subtotalB != null && totalB != null) ? totalB.subtract(subtotalB) : null;
+    var subtotal = money2(subtotalB), total = (totalB != null ? money2(totalB) : null), tax = money2(taxB);
     return {
       key: map.key, id: header[map.pk], docno: header.documentno,
       date: (map.date && header[map.date] != null) ? String(header[map.date]).slice(0, 10) : null,
@@ -64,7 +82,54 @@
     };
   }
 
-  var CORE = { REPORT_MAP: REPORT_MAP, foldReceipt: foldReceipt, round2: round2 };
+  // foldTrialBalance — fold the posted journal into a Trial Balance (R2). PURE: group fact_acct rows by
+  // account, sum Dr/Cr, join account meta (value/name/type from c_elementvalue). The proof is that ΣDr==ΣCr
+  // to the cent — a structural property of double-entry, re-derived here, never asserted. accounts = {id:{value,name,accounttype}}.
+  function foldTrialBalance(factRows, accounts) {
+    accounts = accounts || {};
+    var by = {};
+    (factRows || []).forEach(function (r) {
+      var a = r.account_id; if (!by[a]) by[a] = { account_id: a, dr: BD.ZERO, cr: BD.ZERO };
+      by[a].dr = by[a].dr.add(bd(r.amtacctdr)); by[a].cr = by[a].cr.add(bd(r.amtacctcr));   // EXACT
+    });
+    var totDrB = BD.ZERO, totCrB = BD.ZERO;
+    var lines = Object.keys(by).map(function (a) {
+      var b = by[a], m = accounts[a] || {};
+      totDrB = totDrB.add(b.dr); totCrB = totCrB.add(b.cr);
+      return { account_id: +a, value: m.value != null ? m.value : ('#' + a), name: m.name != null ? m.name : null,
+               type: m.accounttype != null ? m.accounttype : null,
+               dr: money2(b.dr), cr: money2(b.cr), balance: money2(b.dr.subtract(b.cr)) };  // balance: signed → HALF_UP exact
+    }).sort(function (x, y) { return String(x.value).localeCompare(String(y.value)); });
+    // balanced is EXACT (isZero), never a float compare — a 3rd-decimal credit can no longer mask an imbalance.
+    var diffB = totDrB.subtract(totCrB);
+    var diffC = Number(diffB.multiply(bd('100')).setScale(0, BD.RoundingMode.HALF_UP).toString());
+    return { lines: lines, totalDr: money2(totDrB), totalCr: money2(totCrB), balanced: diffB.isZero(),
+             maxDiffCents: diffC, rows: (factRows || []).length, foldsFrom: 'fact_acct' };
+  }
+
+  // foldPnL — fold the P&L from the same journal: revenue accounts (type R, natural credit) and expense
+  // accounts (type E, natural debit). netIncome = revenue − expense. Asset/Liability/Equity (A/L/O) excluded.
+  function foldPnL(factRows, accounts) {
+    accounts = accounts || {};
+    var by = {};
+    (factRows || []).forEach(function (r) {
+      var m = accounts[r.account_id] || {}, t = m.accounttype;
+      if (t !== 'R' && t !== 'E') return;
+      var a = r.account_id; if (!by[a]) by[a] = { account_id: a, type: t, value: m.value, name: m.name, net: BD.ZERO };
+      // net is a SIGNED fold (cr−dr for revenue, dr−cr for expense) — exactly the half-cent trap. EXACT.
+      by[a].net = (t === 'R') ? by[a].net.add(bd(r.amtacctcr)).subtract(bd(r.amtacctdr))
+                              : by[a].net.add(bd(r.amtacctdr)).subtract(bd(r.amtacctcr));
+    });
+    var revenueB = BD.ZERO, expenseB = BD.ZERO;
+    var lines = Object.keys(by).map(function (a) {
+      var b = by[a]; if (b.type === 'R') revenueB = revenueB.add(b.net); else expenseB = expenseB.add(b.net);
+      return { account_id: b.account_id, type: b.type, value: b.value, name: b.name, net: money2(b.net) };
+    }).sort(function (x, y) { return String(x.value).localeCompare(String(y.value)); });
+    return { lines: lines, revenue: money2(revenueB), expense: money2(expenseB),
+             netIncome: money2(revenueB.subtract(expenseB)), foldsFrom: 'fact_acct' };
+  }
+
+  var CORE = { REPORT_MAP: REPORT_MAP, foldReceipt: foldReceipt, foldTrialBalance: foldTrialBalance, foldPnL: foldPnL, round2: round2 };
   if (typeof module !== 'undefined' && module.exports) { module.exports = CORE; return; }
   if (typeof document === 'undefined') return;
 
@@ -122,9 +187,86 @@
   function fmtN(n) { return n == null ? 'n/a' : Number(n).toFixed(2); }
   function money(n) { return n == null ? '<span class=rpna>n/a</span>' : Number(n).toFixed(2); }
 
+  // ── R4 after-the-receipt output — Print / Share / Save, edge-only, server-free (§RPT-OUT, CRUD_P_R_REPORT_SPEC).
+  // All three serialize the ALREADY-FOLDED rec (no re-query, no invented value); the receipt is the same fold.
+  function receiptText(rec) {
+    var fin = rec.financial, L = [];
+    L.push('Receipt — ' + fname(rec.key) + ' #' + (rec.docno == null ? rec.id : rec.docno));
+    if (rec.partner) L.push('Partner: ' + rec.partner);
+    if (rec.date) L.push('Date: ' + rec.date);
+    L.push('');
+    rec.lines.forEach(function (l) {
+      L.push('  ' + l.line + '. ' + l.name + '   qty ' + (l.qty == null ? '-' : l.qty) +
+        (fin ? ('  @ ' + (l.price == null ? '-' : Number(l.price).toFixed(2)) +
+          '  = ' + (l.amount == null ? 'n/a' : Number(l.amount).toFixed(2))) : ''));
+    });
+    if (!rec.lines.length) L.push('  (no lines carried in the bundle)');
+    L.push('');
+    if (fin) {
+      L.push('Subtotal: ' + (rec.subtotal == null ? 'n/a' : Number(rec.subtotal).toFixed(2)));
+      L.push('Tax:      ' + (rec.tax == null ? 'n/a' : Number(rec.tax).toFixed(2)));
+      L.push('Total:    ' + (rec.total == null ? 'n/a' : Number(rec.total).toFixed(2)));
+    } else { L.push('non-financial document — qty only, no money columns carried'); }
+    L.push('');
+    L.push('folded from the bundle — every amount is a re-sum of the rows, no value is hand-authored');
+    return L.join('\n');
+  }
+  function receiptHtml(rec) {
+    return '<!doctype html><meta charset=utf-8><title>Receipt ' +
+      esc(rec.docno == null ? rec.id : rec.docno) + '</title>' +
+      '<style>body{font:13px/1.5 system-ui;margin:24px;color:#111}h1{font-size:16px}' +
+      'table{border-collapse:collapse;width:100%;margin:8px 0}th,td{border-bottom:1px solid #ccc;padding:4px 6px;text-align:left}' +
+      '.r{text-align:right;font-variant-numeric:tabular-nums}.foot{color:#666;font-style:italic;font-size:11px;margin-top:10px}</style>' +
+      '<pre style="font:13px/1.5 ui-monospace,monospace">' + esc(receiptText(rec)) + '</pre>';
+  }
+  function _filename(rec) { return 'receipt_' + String(fname(rec.key)).replace(/\W+/g, '_') + '_' + (rec.docno == null ? rec.id : rec.docno) + '.html'; }
+
+  function _wireOut(rec) {
+    var bar = panel.querySelector('.rpact'); if (!bar) return;
+    bar.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]'); if (!b) return;
+      var a = b.dataset.a;
+      if (a === 'print') {
+        var ifr = document.createElement('iframe');
+        ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+        document.body.appendChild(ifr);
+        var d = ifr.contentWindow.document; d.open(); d.write(receiptHtml(rec)); d.close();
+        ifr.contentWindow.focus(); ifr.contentWindow.print();
+        setTimeout(function () { ifr.remove(); }, 1000);
+        console.log('§RPT-OUT print key=' + rec.key + ' doc=' + (rec.docno == null ? rec.id : rec.docno));
+      } else if (a === 'share') {
+        var txt = receiptText(rec), fn = _filename(rec);
+        try {
+          if (navigator.canShare && typeof File !== 'undefined') {
+            var file = new File([receiptHtml(rec)], fn, { type: 'text/html' });
+            if (navigator.canShare({ files: [file] })) {
+              navigator.share({ files: [file], title: 'Receipt', text: txt }).catch(function () {});
+              console.log('§RPT-OUT share=files key=' + rec.key); return;
+            }
+          }
+          if (navigator.share) { navigator.share({ title: 'Receipt', text: txt }).catch(function () {}); console.log('§RPT-OUT share=text key=' + rec.key); }
+          else if (navigator.clipboard) { navigator.clipboard.writeText(txt); console.log('§RPT-OUT share=clipboard key=' + rec.key); }
+          else { console.log('§RPT-OUT share=unsupported key=' + rec.key); }
+        } catch (e) { console.warn('§RPT-OUT share error', e && e.message); }
+      } else if (a === 'save') {
+        var blob = new Blob([receiptHtml(rec)], { type: 'text/html' });
+        var url = URL.createObjectURL(blob), aEl = document.createElement('a');
+        aEl.href = url; aEl.download = _filename(rec); document.body.appendChild(aEl); aEl.click();
+        setTimeout(function () { aEl.remove(); URL.revokeObjectURL(url); }, 500);
+        console.log('§RPT-OUT save=blob file=' + _filename(rec));
+      }
+    });
+  }
+
+  function _outBar() {
+    return '<div class=rpact><button class=rpb data-a=print title="Print receipt">Print</button>' +
+      '<button class=rpb data-a=share title="Share receipt">Share</button>' +
+      '<button class=rpb data-a=save title="Save as HTML">Save</button></div>';
+  }
+
   function render(rec) {
     var fin = rec.financial;
-    var h = '<span class=rpx title=close>✕</span>' +
+    var h = '<span class=rpx title=close>✕</span>' + _outBar() +
       '<div class=rph><span class=rpglyph>▤</span> Receipt — ' + esc(fname(rec.key)) + ' #' + esc(rec.docno == null ? rec.id : rec.docno) + '</div>' +
       '<div class=rpmeta>' + (rec.partner ? '<div><b>Partner</b> ' + esc(rec.partner) + '</div>' : '') +
         (rec.date ? '<div><b>Date</b> ' + esc(rec.date) + '</div>' : '') + '</div>' +
@@ -146,6 +288,7 @@
     h += '<div class=rpfoot>folded from the bundle — every amount is a re-sum of the rows, no value is hand-authored</div>';
     panel.innerHTML = h; panel.className = 'open';
     panel.querySelector('.rpx').addEventListener('click', close);
+    _wireOut(rec);   // R4 — Print / Share / Save
   }
   function renderUnsupported(key) {
     panel.innerHTML = '<span class=rpx title=close>✕</span><div class=rph><span class=rpglyph>▤</span> Receipt — ' + esc(fname(key)) + '</div>' +
@@ -169,6 +312,10 @@
         'font:13px/1.5 system-ui;box-shadow:0 10px 40px rgba(0,0,0,.65);display:none}' +
       '#reportPanel.open{display:block}' +
       '#reportPanel .rpx{position:absolute;right:11px;top:9px;color:#a07f99;cursor:pointer}' +
+      '#reportPanel .rpact{position:absolute;right:30px;top:8px;display:flex;gap:5px}' +
+      '#reportPanel .rpb{background:#241a23;border:1px solid #4a2f44;color:#ecdcea;border-radius:7px;' +
+        'font:11px/1 system-ui;padding:5px 9px;cursor:pointer}' +
+      '#reportPanel .rpb:hover{background:#33232f;color:#fbeaf7}' +
       '#reportPanel .rph{font-weight:600;font-size:15.5px;margin:0 22px 10px 0;color:#fbeaf7}' +
       '#reportPanel .rpglyph{color:#9fdfe8}' +
       '#reportPanel .rpmeta{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#c4a8c0;margin:0 0 10px}' +
@@ -186,6 +333,8 @@
     document.head.appendChild(css);
   }
 
-  global.__report = { show: show, core: CORE, panel: function () { return panel; }, close: close };
+  global.__report = { show: show, core: CORE, panel: function () { return panel; }, close: close,
+    // §DEBUG — whitebox accessors for the R4 output witness (render a folded rec, inspect serializers)
+    _test: { render: render, receiptText: receiptText, receiptHtml: receiptHtml } };
   console.log('§REPORT layer mounted (read face — ▤ Report)');
 })(typeof window !== 'undefined' ? window : this);

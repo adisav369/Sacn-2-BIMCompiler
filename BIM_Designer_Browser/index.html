@@ -5330,7 +5330,6 @@
 
 <h1 id="bim-designer-browser-edition">BIM Designer — Browser Edition<a class="headerlink" href="#bim-designer-browser-edition" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>DEPRECATED (2026-05-21):</strong> This document describes the viewer-only browser edition. The <strong>design</strong> capability — grid extraction, constrained drag, 4D replay, MEP route walking, Rosetta Stone calibration, Git-like branching — is now specified in <strong><a href="../NEW_FROM_REFERENCE/">New From Reference</a></strong>. This document remains as reference for the viewer/streaming layer that the designer builds upon.</p>
 <p><strong>Foundation:</strong> <a href="../BIM_Designer/">BIM_Designer.md</a> · <a href="../RTreeGuide/">RTreeGuide.md</a> · <a href="../MANIFESTO/">MANIFESTO.md</a> · <a href="../4D5DAnalysis/">4D5DAnalysis.md</a> · <a href="../CLASH_DETECTION/">Clash Detection</a></p>
 </blockquote>
 <div class="bim-banner">
@@ -6079,7 +6078,7 @@ Above 50K, implement shred-on-distance (same as Bonsai Direct Stream).</p>
 <h2 id="6-quick-start">6. Quick Start<a class="headerlink" href="#6-quick-start" title="Permanent link">&para;</a></h2>
 <h3 id="60-live-demo-zero-install">6.0 Live Demo — Zero Install<a class="headerlink" href="#60-live-demo-zero-install" title="Permanent link">&para;</a></h3>
 <p>Open in any browser (desktop or mobile). See also: <a href="../MOBILE_DEPLOY/">Mobile &amp; Cloud Deployment</a> for OCI setup, APK packaging, and offline strategy.</p>
-<p><a href="https://red1oon.github.io/bim-ootb/"><strong>BIM OOTB — 33 buildings, 1M elements</strong></a></p>
+<p><a href="https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html"><strong>BIM OOTB — 37 buildings, 1M elements</strong></a></p>
 <p>Click any building → downloads its DB (1-60MB) → streams geometry in your browser.
 Cached in IndexedDB — second visit is instant. Explore all 30 archetypes to unlock the full city (786 buildings).</p>
 <p>Works on desktop and mobile. No install, no account, no server.</p>
@@ -6427,7 +6426,7 @@ scripts/extract_building.sh<span class="w"> </span>T0_Hospital<span class="w"> <
 <li>[x] Trackpad + mouse orbit/pan/zoom</li>
 <li>[x] HUD with building name, streaming progress</li>
 <li>[x] Per-building DB extraction (<code>scripts/extract_per_building.py</code>) — all 30 archetypes</li>
-<li>[x] OCI bucket setup + public URL (GitHub Pages: red1oon.github.io/bim-ootb/)</li>
+<li>[x] OCI bucket setup + public URL (ap-kulai-2, bim-ootb-live)</li>
 <li>[x] IndexedDB cache (download once, instant revisit)</li>
 <li>[x] City mode (city_index.db, 786 bboxes, click-to-stream)</li>
 <li>[x] "Complete the City" gamification (progress bar, LAUNCH CITY button)</li>
@@ -6445,13 +6444,13 @@ scripts/extract_building.sh<span class="w"> </span>T0_Hospital<span class="w"> <
 <ol>
 <li><strong>No build step.</strong> 16 plain JS modules, local-first dependencies (<code>lib/</code>, CDN fallback). No npm, no webpack, no React.</li>
 <li><strong>sql.js over REST.</strong> The browser IS the database client. No API layer to maintain.</li>
-<li><strong>Three.js r160 ESM.</strong> BatchedMesh, local <code>lib/</code> with CDN fallback.</li>
+<li><strong>Three.js r128 (stable).</strong> Not latest — proven, small, well-documented.</li>
 <li><strong>BufferGeometry from BLOBs.</strong> Same pipeline as Blender's <code>from_pydata()</code>. Vertex swap: IFC (x,y,z) → Three.js (x,z,-y).</li>
 <li><strong>IndexedDB cache.</strong> Per-building DB cached on first visit. Second visit = instant.</li>
 <li><strong>Plugin architecture.</strong> Each module follows <code>function setup*(APP)</code> pattern. Same pattern for core and community plugins.</li>
 </ol>
 <h3 id="82-test-suite">8.2 Test Suite<a class="headerlink" href="#82-test-suite" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>node<span class="w"> </span>deploy/dev/test_all.js<span class="w">    </span><span class="c1"># 30 test suites, must be 100%</span>
+<div class="highlight"><pre><span></span><code>node<span class="w"> </span>deploy/dev/test_all.js<span class="w">    </span><span class="c1"># 149 tests, must be 100%</span>
 </code></pre></div>
 <p>Covers: JS syntax, module wiring, button→function mapping, z-index hierarchy, OCI live + content match, URL integrity (greedy regex proof), DB chart data verification, button wiring audit. See <a href="../PLUGIN_SDK/#2-plugin-structure">§10 full breakdown</a> for details.</p>
 <hr />
@@ -6508,7 +6507,7 @@ last-write-wins on the compile endpoint (same as a CI pipeline). CRDT/OT is futu
 spec'd in §4.6.</p>
 <h3 id="98-the-nd-analytics-4d-8d-are-speculative">9.8 "The nD analytics (4D-8D) are speculative."<a class="headerlink" href="#98-the-nd-analytics-4d-8d-are-speculative" title="Permanent link">&para;</a></h3>
 <p>The nD engine is <strong>working code</strong> — <code>scripts/nD_engine.py</code>, proven at 1,063,563 elements
-across 33 buildings + 1M-element sandbox city. 5 dimensions in 8.7 seconds.
+across 37 buildings + 1M-element sandbox city. 5 dimensions in 8.7 seconds.
 Excel export (township-level BOQ with 30 archetype sheets) already ships.
 See <a href="../4D5DAnalysis/">4D5DAnalysis.md</a> for full results, test witnesses, and fleet report.</p>
 <p>The browser port is ~800 lines of SQL queries + arithmetic + JSON template parsing.
@@ -6523,7 +6522,7 @@ This is not speculative; it's a straightforward port of proven code.</p>
 <li><strong><a href="../deploy/OCI_UPLOAD.md">OCI Deployment</a></strong> — bucket layout, upload commands, cost</li>
 </ul>
 <h3 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Test (must pass all suites before deploy)</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Test (must be 149/149 before deploy)</span>
 node<span class="w"> </span>deploy/dev/test_all.js
 
 <span class="c1"># Local dev server</span>
@@ -6531,7 +6530,7 @@ node<span class="w"> </span>deploy/dev/test_all.js
 <span class="c1"># → http://localhost:8080/landing.html</span>
 
 <span class="c1"># Deploy to OCI (both buckets)</span>
-oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>bim-ootb-live<span class="w"> </span>--file<span class="w"> </span>deploy/dev/tools.js<span class="w"> </span>--name<span class="w"> </span>viewer/tools.js<span class="w"> </span>--content-type<span class="w"> </span>application/javascript<span class="w"> </span>--force
+oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>bim-ootb-live<span class="w"> </span>--file<span class="w"> </span>deploy/dev/tools.js<span class="w"> </span>--name<span class="w"> </span>sandbox/tools.js<span class="w"> </span>--content-type<span class="w"> </span>application/javascript<span class="w"> </span>--force
 oci<span class="w"> </span>os<span class="w"> </span>object<span class="w"> </span>put<span class="w"> </span>--bucket-name<span class="w"> </span>bim-ootb<span class="w"> </span>--file<span class="w"> </span>deploy/dev/tools.js<span class="w"> </span>--name<span class="w"> </span>tools.js<span class="w"> </span>--content-type<span class="w"> </span>application/javascript<span class="w"> </span>--force
 </code></pre></div>
 <h3 id="console-log-tags">Console Log Tags<a class="headerlink" href="#console-log-tags" title="Permanent link">&para;</a></h3>

@@ -1544,10 +1544,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#61-next-full-bom-cascade" class="md-nav__link">
+  <a href="#gantt-stepper-next-button" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.1 Next = Full BOM Cascade
+        Gantt Stepper (Next Button)
       
     </span>
   </a>
@@ -1555,43 +1555,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#62-rs-navigation-click-to-create-grid-lines" class="md-nav__link">
+  <a href="#grid-drag-recompose" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.2 RS Navigation — Click to Create Grid Lines
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#63-zone-lighting-cascade-colors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6.3 Zone Lighting + Cascade Colors
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#64-drag-bom-cascade-with-validation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6.4 Drag = BOM Cascade with Validation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#65-2d-toggle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6.5 2D Toggle
+        Grid Drag → Recompose
       
     </span>
   </a>
@@ -4628,10 +4595,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#61-next-full-bom-cascade" class="md-nav__link">
+  <a href="#gantt-stepper-next-button" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.1 Next = Full BOM Cascade
+        Gantt Stepper (Next Button)
       
     </span>
   </a>
@@ -4639,43 +4606,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#62-rs-navigation-click-to-create-grid-lines" class="md-nav__link">
+  <a href="#grid-drag-recompose" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.2 RS Navigation — Click to Create Grid Lines
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#63-zone-lighting-cascade-colors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6.3 Zone Lighting + Cascade Colors
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#64-drag-bom-cascade-with-validation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6.4 Drag = BOM Cascade with Validation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#65-2d-toggle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6.5 2D Toggle
+        Grid Drag → Recompose
       
     </span>
   </a>
@@ -5305,7 +5239,7 @@ bbox_z  →  bboxY (IFC height → Three Y)
 <tr>
 <td>2</td>
 <td>Grid <code>#</code></td>
-<td>Toggle 2D grid visibility (show/hide all RS-created lines)</td>
+<td>Toggle 2D grid + lengths + bubbles (all-or-nothing)</td>
 </tr>
 <tr>
 <td>3</td>
@@ -5315,7 +5249,7 @@ bbox_z  →  bboxY (IFC height → Three Y)
 <tr>
 <td>4</td>
 <td>Next <code>›</code></td>
-<td>Full BOM cascade — materialize entire building</td>
+<td>Advance one construction phase (STR → ARC → MEP)</td>
 </tr>
 <tr>
 <td>5</td>
@@ -5332,105 +5266,26 @@ bbox_z  →  bboxY (IFC height → Three Y)
 <td>UBBL</td>
 <td>Compliance check (planned)</td>
 </tr>
-<tr>
-<td>8</td>
-<td>Scissors</td>
-<td>Section cut — same tool used by RS wall-click</td>
-</tr>
 </tbody>
 </table>
-<h3 id="61-next-full-bom-cascade">6.1 Next = Full BOM Cascade<a class="headerlink" href="#61-next-full-bom-cascade" title="Permanent link">&para;</a></h3>
-<p>Single press materializes the entire BOM tree — all levels, all children, complete building. No level-by-level stepping (that was a development scaffold, retained as Shift+Next for debugging).</p>
-<p>The BOM is a recipe. Next runs the recipe. If the output is wrong, the recipe is wrong.</p>
-<ul>
-<li><code>materializeBomLevel()</code> called recursively from root → full tree</li>
-<li>§BOM_NEXT logs full tree with element count</li>
-<li>If cascade error: status bar shows <code>"BOM cascade error — see F12 logs"</code></li>
-<li><strong>No fallback.</strong> If it breaks, fix the data. Hardened, no mercy.</li>
-<li>Envelope completeness: roof covering, walls, floor slab — all outer elements present</li>
-</ul>
-<h3 id="62-rs-navigation-click-to-create-grid-lines">6.2 RS Navigation — Click to Create Grid Lines<a class="headerlink" href="#62-rs-navigation-click-to-create-grid-lines" title="Permanent link">&para;</a></h3>
-<p>No automatic grid lines. Grid lines emerge from user interaction via Rosetta Stone (RS). Every line has RS provenance from creation — never heuristic.</p>
-<table>
-<thead>
-<tr>
-<th>Click target</th>
-<th>What happens</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Floor slab</strong></td>
-<td>Horizontal grid line at that floor's Y plane. The floor defines the axis.</td>
-</tr>
-<tr>
-<td><strong>Wall</strong></td>
-<td>Vertical grid line at nearest inner wall + <strong>section cut</strong> at that plane. Cut exposes internals for deeper picks.</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Section cut = RS navigation.</strong> The Scissors tool from the main pill performs the same operation. Clicking a wall is a shortcut — the cut happens automatically because you can't pick interior elements through exterior walls.</p>
-<p><strong>Interaction cycle:</strong></p>
-<div class="highlight"><pre><span></span><code>State A: No focus
-  → click element → grid line appears, co-linear elements highlight
-
-State B: Focused on line (draggable)
-  → drag → BOM cascade recompose (continuous, validated)
-  → click same line → release focus → back to State A
-  → click different element → release current, create new line (shortcut)
-
-State A: line persists (visible, passive), focus released
-</code></pre></div>
-<h3 id="63-zone-lighting-cascade-colors">6.3 Zone Lighting + Cascade Colors<a class="headerlink" href="#63-zone-lighting-cascade-colors" title="Permanent link">&para;</a></h3>
-<p>When RS focuses a grid line, the affected zone lights up — everything from the drag line to the opposite boundary. Elements behind the drag line stay unlit. The user sees exactly what WILL change before dragging.</p>
-<table>
-<thead>
-<tr>
-<th>Color</th>
-<th>Meaning</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Yellow</strong></td>
-<td>Will reposition (element moves, keeps size)</td>
-</tr>
-<tr>
-<td><strong>Green</strong></td>
-<td>Original extent within element (pre-drag boundary)</td>
-</tr>
-<tr>
-<td><strong>Blue</strong></td>
-<td>New area being created (extension beyond pre-drag)</td>
-</tr>
-<tr>
-<td><strong>Orange</strong></td>
-<td>Area being removed (shrink direction)</td>
-</tr>
-<tr>
-<td><strong>Red</strong></td>
-<td>Clash zone (two elements overlapping — informational, does not block drag)</td>
-</tr>
-<tr>
-<td><strong>Unlit</strong></td>
-<td>Not affected by this drag</td>
-</tr>
-</tbody>
-</table>
-<p>Green/blue (or green/orange) boundaries are split within a single mesh via vertex coloring. The split plane is the pre-drag position, frozen during the interaction. The user always sees where original ends and new begins.</p>
-<p>Full color spec: BOM_ENGINE_SPEC.md §22.</p>
-<h3 id="64-drag-bom-cascade-with-validation">6.4 Drag = BOM Cascade with Validation<a class="headerlink" href="#64-drag-bom-cascade-with-validation" title="Permanent link">&para;</a></h3>
+<h3 id="gantt-stepper-next-button">Gantt Stepper (Next Button)<a class="headerlink" href="#gantt-stepper-next-button" title="Permanent link">&para;</a></h3>
+<p>Each press reveals one construction phase, discipline by discipline:</p>
 <ol>
-<li>Drag RS line → BOM walks parent chain → each child recomposes per its <code>m_bom_line</code> rules</li>
-<li><code>fill_mode</code> drives behavior: SPAN stretches, FIXED repositions, SLOPE preserves angle</li>
-<li>Split colors show green (original) / blue (new) / orange (removed) in real-time</li>
-<li>TC-1 (adjacency) and TC-2 (coverage) validate continuously during drag</li>
-<li>If invariant breaks → line turns red, refuses to move further, status bar says WHY</li>
-<li>Red clash highlighting is allowed — user may intend to fix overlap later</li>
-<li>On release: colors clear, <code>GRID_MOVE</code> logged to <code>kernel_ops</code></li>
+<li><strong>STR</strong> — columns, beams, footings (structural grid emerges)</li>
+<li><strong>ARC</strong> — walls, slabs, doors, windows (architectural infill)</li>
+<li><strong>MEP</strong> — pipes, ducts, terminals (services)</li>
 </ol>
-<h3 id="65-2d-toggle">6.5 2D Toggle<a class="headerlink" href="#65-2d-toggle" title="Permanent link">&para;</a></h3>
-<p>The Grid <code>#</code> button toggles visibility of all RS-created grid lines. No grid creation logic — pure show/hide. Lines exist because RS created them (with provenance). The toggle is a display preference, not a mode switch.</p>
+<p>Grid starts as a 2-line envelope at step zero. Grid lines are added by user action only — double-click an element (wall/column) or Rosetta drag. Auto-grid was disabled (v17.9B) to prevent flooding with 200+ lines on large buildings.</p>
+<h3 id="grid-drag-recompose">Grid Drag → Recompose<a class="headerlink" href="#grid-drag-recompose" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Click a grid line → highlight + attach info in status bar</li>
+<li>Drag → <code>GridState.getDeltas()</code> → incremental delta (BUG-1 fix)</li>
+<li><code>GridRecompose.applyDrag()</code> → engine <code>dragGrid(gridId, incrementalDelta)</code> → commands</li>
+<li>Commands applied to meshes (TRANSLATE/SCALE/ROOF_VERTICES/ROOF_LIFT)</li>
+<li>BOM L1 recompose fires (debounced 16ms) if BOM nodes configured</li>
+<li>Lengths and bays update in HUD</li>
+<li><code>GRID_MOVE</code> logged to <code>kernel_ops</code></li>
+</ol>
 <hr />
 <h2 id="7-the-bom-recipe-not-scatter">7. The BOM — Recipe, Not Scatter<a class="headerlink" href="#7-the-bom-recipe-not-scatter" title="Permanent link">&para;</a></h2>
 <p>A BOM is a recipe: one parent, N children, each with a quantity. Each child can itself be a BOM — building → floor → room → furniture → leaf, recursively.</p>

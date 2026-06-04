@@ -2600,17 +2600,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-validation-stack-idempieres-4-tiers-mapped-to-our-layers-extract-dont-invent" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The validation stack — iDempiere's 4 tiers, mapped to our layers (extract, don't invent)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#boundaries-what-this-doc-does-not-cover" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4222,17 +4211,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-validation-stack-idempieres-4-tiers-mapped-to-our-layers-extract-dont-invent" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The validation stack — iDempiere's 4 tiers, mapped to our layers (extract, don't invent)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#boundaries-what-this-doc-does-not-cover" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4287,7 +4265,7 @@ is an <em>internal</em> name for a lineage, not a shipped product name (see §Gu
 This doc owns the <strong>model / engine</strong> layer. The <strong>UI / renderer</strong> layer is owned by
 <a href="../IDEMPIERE_RENDERER_SPEC/">IDEMPIERE_RENDERER_SPEC.md</a> — this doc defers all rendering to it.
 Grounding: <a href="../HolyGrail/">HolyGrail.md</a> · <a href="../ERP/">ERP.md</a> · <a href="../DistributedERP/">DistributedERP.md</a> ·
-<a href="../ERPMaker/">ERPMaker.md</a> · <a href="../AnyAppMaker/">AnyAppMaker.md</a>.</p>
+<a href="../ERPMaker/">ERPMaker.md</a> · <a href="AnyAppMaker.md">AnyAppMaker.md</a>.</p>
 </blockquote>
 <h2 id="what-it-is-and-what-it-is-not">What it is — and what it is NOT<a class="headerlink" href="#what-it-is-and-what-it-is-not" title="Permanent link">&para;</a></h2>
 <p>iDempiere 2.0 is <strong>what iDempiere reached for and could not get to from inside Java</strong>: the engine
@@ -4350,7 +4328,7 @@ into 1.0's bloat — the exact thing it exists to delete.</p>
 <li><strong>A closed verb set</strong> (<code>GUARD</code> / <code>GENERATE</code> / <code>MATCH</code>, <code>completeOrder</code> / <code>createShipment</code> /
   <code>createInvoice</code> / <code>allocate</code> / <code>post</code> …, <a href="../ERP/">ERP.md §0.14</a>) — behaviour as data over a
   trusted alphabet, not arbitrary code. This is also what makes AI authoring and the marketplace
-  sandboxable (<a href="../AnyAppMaker/">AnyAppMaker.md</a>).</li>
+  sandboxable (<a href="AnyAppMaker.md">AnyAppMaker.md</a>).</li>
 <li><strong>The signed hash-chain</strong> (W-CHAIN / W-SIGN) — tamper-evident, replayable, reversible (reversal =
   appending the inverse op-group), period-close = balance-brought-forward checkpoint.</li>
 <li><strong>Rules as data</strong> (<a href="../ERP/">ERP.md §0.5, §0.10</a>) — per-cell decision tables, not Rete/DSL; the
@@ -4370,7 +4348,7 @@ absorbed, never code.</p>
 <li><strong>Analytic accounting</strong> (cost/profit dimensions orthogonal to the chart of accounts) → a genuinely
   general idea: journal lines carry orthogonal <em>dimension tags</em>; reporting folds by any dimension.
   Absorb as a general tagging primitive on <code>journal</code>.</li>
-<li><strong>App modularity / "install an app"</strong> → the OOTB <strong>bundle / genome</strong> model (<a href="../AnyAppMaker/">AnyAppMaker.md</a>).</li>
+<li><strong>App modularity / "install an app"</strong> → the OOTB <strong>bundle / genome</strong> model (<a href="AnyAppMaker.md">AnyAppMaker.md</a>).</li>
 <li><strong>Studio-style low-code customization</strong> → in 2.0 this IS the grail (edit rules live), not a bolt-on.</li>
 </ul>
 <h3 id="from-erpnext-frappe">From ERPNext / Frappe<a class="headerlink" href="#from-erpnext-frappe" title="Permanent link">&para;</a></h3>
@@ -4425,47 +4403,6 @@ each. Consequences:</p>
   separate write-adapter, and round-trips are <strong>verified with named loss</strong>, not lossless — the five
   structural divergences (<code>build/erp/odoo_fold.log</code>) bound it. A migration bridge, not a transparent sync.</li>
 </ul>
-<h2 id="the-validation-stack-idempieres-4-tiers-mapped-to-our-layers-extract-dont-invent">The validation stack — iDempiere's 4 tiers, mapped to our layers (extract, don't invent)<a class="headerlink" href="#the-validation-stack-idempieres-4-tiers-mapped-to-our-layers-extract-dont-invent" title="Permanent link">&para;</a></h2>
-<p>iDempiere already separated business-rule enforcement into a <strong>4-tier stack</strong> orchestrated by
-<code>ModelValidationEngine</code> (<code>docValidate</code> → <code>factsValidate</code> → OSGi event). This is the <em>template</em> for our layer
-map — it tells us which of the "284 callouts/rules" belongs in which layer, so the port is a <strong>triage, not one
-flat bucket</strong>. (Sources: iDempiere <a href="https://wiki.idempiere.org/en/Developing_Plug-Ins_-_ModelValidator">ModelValidator</a>
-+ <a href="https://jenkins-artifacts.idempiere.org/javadoc12/org/compiere/model/ModelValidationEngine.html">ModelValidationEngine javadoc</a>.
-Clean-room: learn the tier boundaries, extract the rule <em>effects</em> from the AD, never copy their Java.)</p>
-<table>
-<thead>
-<tr>
-<th>iDempiere tier</th>
-<th>What it does</th>
-<th><strong>Our layer</strong> (<a href="../ENGINE_CONTRACT/">ENGINE_CONTRACT</a> / <a href="../prompts/UI_OVERLAY_GOVERNANCE.md">UI_OVERLAY_GOVERNANCE</a>)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Callout</strong> (<code>CalloutEngine</code>, field-level, 6-param)</td>
-<td>UI field-change reactions (pick BPartner → fill address/price list)</td>
-<td><strong>UI Validation concern-overlay</strong> — keyed per field, in front of the seam. The <em>only</em> tier that is a UI overlay</td>
-</tr>
-<tr>
-<td><strong>ModelValidator.modelChange</strong> (row: new/change/delete)</td>
-<td>row invariants on save</td>
-<td><strong>kernel verb guard, behind the seam</strong> (a <code>write(ctx,ops)</code> precondition)</td>
-</tr>
-<tr>
-<td><strong>ModelValidator.docValidate</strong> (doc actions: prepare/complete/void)</td>
-<td>document-state-machine rules</td>
-<td><strong>op-group atomicity + DocAction</strong> (WfMC-on-op-log, <code>ERP_KERNEL_BUILD</code>)</td>
-</tr>
-<tr>
-<td><strong>FactsValidator.factsValidate(<code>AcctSchema</code>, facts[], PO)</strong> + <code>ACCT_FACTS_VALIDATE</code></td>
-<td>validate accounting facts <strong>per acct-schema</strong> before posting</td>
-<td><strong>posting-fold layer</strong> — confirms <code>C_AcctSchema</code> is a first-class posting input (one doc posts per schema)</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Consequence (the planning lever):</strong> the callout-port backlog (<a href="../prompts/ENGINE_FULL_ERP_ISSUES.md">ENGINE_FULL_ERP_ISSUES.md</a>
-§I-C) is <strong>sorted by this tier first</strong> — only the field-level <code>CalloutEngine</code> rules land in the UI overlay; the
-other three tiers are engine concerns owned by the engine/posting lanes, not a single "callout" session.</p>
 <h2 id="boundaries-what-this-doc-does-not-cover">Boundaries — what this doc does NOT cover<a class="headerlink" href="#boundaries-what-this-doc-does-not-cover" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>UI / rendering</strong> → <a href="../IDEMPIERE_RENDERER_SPEC/">IDEMPIERE_RENDERER_SPEC.md</a> (other session).</li>
