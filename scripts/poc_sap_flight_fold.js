@@ -74,13 +74,16 @@ async function runFold(ORACLE) {
   console.log('── FIRST LIVE FLIGHT FOLD — VERIFY every value vs the /DMO/ export ──');
   console.log('    source: ' + (ORACLE.meta.source || '(unspecified)') + '\n    scope: ' + built.fold_scope + '\n');
 
-  built.events.forEach(function (ev) { K.register(ev.d.docType, ev.d.action, function () { return ev.ops; }); });
   var db = new SQL.Database(); K.initProjection(db);
   var qfn = function (s, p) { return K.query(db, s, p); };
 
   var usedVerbs = {}, mappedHops = 0;
   built.events.forEach(function (ev, i) {
     ev.ops.forEach(function (o) { usedVerbs[o.op_type] = 1; });
+    // register THIS event's ops immediately before dispatching it — the flight model maps both events to the
+    // same cell (C_Order:CO), so a single up-front register would let event 2 clobber event 1's ops (and the
+    // reused op object would re-mint a duplicate op_uuid → UNIQUE constraint). Per-event register is collision-free.
+    K.register(ev.d.docType, ev.d.action, function () { return ev.ops; });
     var d = K.dispatch(db, { wfmc: built.wfmc, guards: [], query: qfn, actor: 'sap-flight:migrate', baseTs: 9000 + i * 100 }, ev.d);
     verdict(d.ok, 'event ' + (i + 1) + ' (' + ev.name + ') committed', d.ok ? 'ops=' + d.applied : d.stage + ':' + d.reason);
     if (d.ok) mappedHops++;

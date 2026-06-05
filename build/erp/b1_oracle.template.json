@@ -1,0 +1,24 @@
+{
+  "__template": true,
+  "__README": "EXPECTED SHAPE for build/erp/b1_oracle.json — fill from a REAL SAP Business One Service-Layer (OData) or DI-API export of ONE completed A/R cycle: a Sales Order (ORDR/RDR1) → Delivery (ODLN/DLN1) → A/R Invoice (OINV/INV1) → its auto-posted Journal Entry (OJDT/JDT1) [+ optional Incoming Payment ORCT]. NON-INVENT (prompts/SAP_FOLD_POC.md doctrine): do NOT fabricate rows. Field names are the HYPOTHESIS in scripts/b1_adapter.js SCHEMA_MAP — VERIFY against the export. Copy to b1_oracle.json, fill, remove __template. JDT1 carries literal Debit + Credit numeric columns (one side 0).",
+  "meta": {
+    "order": "<ORDR.DocNum>",
+    "delivery": "<ODLN.DocNum>",
+    "invoice": "<OINV.DocNum>",
+    "customer": "<OCRD.CardCode / CardName>",
+    "currency": "<OINV.DocCur, e.g. USD>",
+    "invoice_total": "<OINV.DocTotal = net + VatSum>",
+    "payment_amount": "<ORCT.DocTotal cleared, or omit if open>",
+    "trans_id": "<OINV.TransId = OJDT.TransId (the journal link)>",
+    "source": "<provenance: which B1 company DB / SL endpoint, export date; STATIC, no live B1 at replay (ERP.md §0.12)>"
+  },
+  "invoice_lines": [
+    { "__example": "INV1", "ItemCode": "", "Quantity": 0, "LineTotal": 0 }
+  ],
+  "delivery_lines": [
+    { "__example": "DLN1", "ItemCode": "", "Quantity": 0 }
+  ],
+  "journal_lines": [
+    { "__example": "JDT1 — explicit Debit/Credit columns", "Account": "", "ShortName": "", "Debit": 0, "Credit": 0, "role": "AR|REV|TAX" }
+  ]
+}
