@@ -129,86 +129,7 @@
              netIncome: money2(revenueB.subtract(expenseB)), foldsFrom: 'fact_acct' };
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  // R5 — the SIGNED, SELF-VERIFYING receipt (§RPT-SEND · CRUD_P_R_REPORT_SPEC §6).
-  // The receipt stops being view-only HTML: it carries the SIGNED OP-LOG CHAIN so a recipient can
-  // REPLAY it and verify the chain hash (chainOk) with no server and no trust in the sender. This is
-  // HolyGrail condition (3) made consumer-visible — the op-log's tamper-evidence LEAVES the app.
-  //
-  // NON-INVENT / HONESTY BOUNDARY (SPEC §6.1, §I-K/§13.6): the payload attests "the recorded, signed
-  // op-chain (tamper-evident)" — NEVER "the books posted". Completed ≠ posted; GL posting is delegated
-  // install-side. The `attests` field and the verify-panel copy say exactly that, no GL over-claim.
-  //
-  // NO FORKED VERB: canonicalOp is the PRODUCTION kernel_ops `_canonical` form, verbatim
-  //   (id|timestamp|op_type|parameters|input_guids|output_guid); op_hash = SHA-256(prev_hash|canonical);
-  //   sig attests OVER op_hash (not in the hash → chain byte-identical across devices). The browser pulls
-  //   ALREADY-SEALED rows from kernel_ops (sealChain/setSigner did the work); the witness reuses the same
-  //   canonical + the poc_sign ECDSA primitives. Hashing/verify are INJECTED (host = node crypto OR
-  //   browser crypto.subtle) so this CORE stays pure and runs in both — exactly the _signer pattern.
-  var GENESIS = '0'.repeat(64);
-  // canonicalOp — MUST equal kernel_ops.js _canonical byte-for-byte (the chain the live engine sealed).
-  function canonicalOp(op) {
-    return op.id + '|' + op.timestamp + '|' + op.op_type + '|' +
-           (op.parameters || '') + '|' + (op.input_guids || '') + '|' + (op.output_guid || '');
-  }
-
-  // buildSignedReceipt — assemble the §RPT-SEND payload: the folded rec + the signed op-chain.
-  // signedOps = the already-sealed kernel_ops rows (id/timestamp/op_type/parameters/input_guids/
-  // output_guid/prev_hash/op_hash/sig), pubKeyHex = the issuer SPKI hex (null ⇒ W-CHAIN-only). PURE:
-  // copies rows, never re-hashes/re-signs (the engine owns that). tip = last op_hash.
-  function buildSignedReceipt(rec, signedOps, pubKeyHex) {
-    var ops = (signedOps || []).map(function (o) {
-      return { id: o.id, timestamp: o.timestamp, op_type: o.op_type, parameters: o.parameters,
-               input_guids: o.input_guids != null ? o.input_guids : null,
-               output_guid: o.output_guid != null ? o.output_guid : null,
-               prev_hash: o.prev_hash, op_hash: o.op_hash, sig: o.sig != null ? o.sig : null };
-    });
-    return { v: 1, kind: 'erp-signed-receipt', rec: rec,
-      chain: { alg: 'SHA-256', sigAlg: 'ECDSA-P256', genesis: GENESIS,
-               pubKey: pubKeyHex != null ? pubKeyHex : null,
-               tip: ops.length ? ops[ops.length - 1].op_hash : GENESIS, ops: ops },
-      attests: 'the recorded, signed op-chain (tamper-evident) — NOT a GL posting' };
-  }
-
-  // verifySignedReceipt — INDEPENDENT, server-free replay of the embedded chain (SPEC §6.3). Re-walks
-  // the ops, recomputes each op_hash from (prev|canonical), checks the prev_hash link, and (if pubKey
-  // present) the signature — exactly as kernel_ops.verifyChain / poc_chain / poc_sign. Returns
-  // {chainOk, tip, len, brokeAt?, why?, tipMatches, recBoundOk}. host = { sha256(str)->hex,
-  // verifySig(hashHex,sigHex,pubKeyHex)->bool } injected by the caller (node crypto / browser subtle).
-  // ASYNC because crypto.subtle is async; node crypto is wrapped to a resolved Promise by the host.
-  async function verifySignedReceipt(payload, host) {
-    if (!payload || payload.kind !== 'erp-signed-receipt' || !payload.chain)
-      return { chainOk: false, why: 'not-a-signed-receipt', tip: GENESIS, len: 0 };
-    var ch = payload.chain, ops = ch.ops || [], prev = ch.genesis || GENESIS, pub = ch.pubKey || null;
-    for (var i = 0; i < ops.length; i++) {
-      var op = ops[i];
-      if (op.prev_hash !== prev) return { chainOk: false, brokeAt: op.id, why: 'prev_hash link', tip: prev, len: i };
-      var h = await host.sha256(prev + '|' + canonicalOp(op));
-      if (h !== op.op_hash) return { chainOk: false, brokeAt: op.id, why: 'payload altered', tip: prev, len: i };
-      if (pub) {
-        var sigOk = await host.verifySig(op.op_hash, op.sig, pub);
-        if (!sigOk) return { chainOk: false, brokeAt: op.id, why: 'signature', tip: prev, len: i };
-      }
-      prev = h;
-    }
-    var tipMatches = (prev === (ch.tip || GENESIS));
-    // recBoundOk — the rec is the HUMAN face; the chain is the TRUTH. Re-derive the bound doc id from the
-    // signed ops (a CREATE_DOCUMENT/SET_STATUS whose parameters carry the doc the rec folds) and compare
-    // the DISPLAYED docno — never trust the rendered number. Best-effort: only asserts when a bound op
-    // exists; absence is honest (recBound=null), not a fabricated pass.
-    var recBound = null;
-    if (payload.rec && payload.rec.docno != null) {
-      var want = String(payload.rec.docno);
-      var bound = ops.some(function (o) { return (o.parameters || '').indexOf(want) >= 0; });
-      recBound = bound;
-    }
-    return { chainOk: true, tip: prev, len: ops.length, tipMatches: tipMatches,
-             recBoundOk: recBound, attests: payload.attests };
-  }
-
-  var CORE = { REPORT_MAP: REPORT_MAP, foldReceipt: foldReceipt, foldTrialBalance: foldTrialBalance, foldPnL: foldPnL, round2: round2,
-    // R5 §RPT-SEND — signed/self-verifying receipt (pure, host-injected crypto; reused by DOM + witness).
-    GENESIS: GENESIS, canonicalOp: canonicalOp, buildSignedReceipt: buildSignedReceipt, verifySignedReceipt: verifySignedReceipt };
+  var CORE = { REPORT_MAP: REPORT_MAP, foldReceipt: foldReceipt, foldTrialBalance: foldTrialBalance, foldPnL: foldPnL, round2: round2 };
   if (typeof module !== 'undefined' && module.exports) { module.exports = CORE; return; }
   if (typeof document === 'undefined') return;
 
@@ -300,130 +221,12 @@
   }
   function _filename(rec) { return 'receipt_' + String(fname(rec.key)).replace(/\W+/g, '_') + '_' + (rec.docno == null ? rec.id : rec.docno) + '.html'; }
 
-  // ── R5 §RPT-SEND — the SIGNED, self-verifying receipt (CRUD_P_R_REPORT_SPEC §6) ───────────────
-  // Browser crypto host injected into CORE.verifySignedReceipt: sha256 via crypto.subtle, ECDSA-P256
-  // verify by importing the embedded SPKI pubKey hex. No fork — same canonical/verify as kernel_ops.
-  function _hex2buf(h) { var a = new Uint8Array(h.length / 2); for (var i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a.buffer; }
-  function _buf2hex(b) { return Array.from(new Uint8Array(b)).map(function (x) { return x.toString(16).padStart(2, '0'); }).join(''); }
-  function _browserHost() {
-    return {
-      sha256: function (str) {
-        return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(_buf2hex);
-      },
-      verifySig: function (hashHex, sigHex, pubHex) {
-        if (!sigHex || !pubHex) return Promise.resolve(false);
-        return crypto.subtle.importKey('spki', _hex2buf(pubHex), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'])
-          .then(function (key) { return crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, _hex2buf(sigHex), new TextEncoder().encode(hashHex)); })
-          .catch(function () { return false; });
-      }
-    };
-  }
-
-  // _pullSignedOps — read the ALREADY-SEALED rows from the signed sidecar op-log (crud_overlay owns it;
-  // the documented seam is window.__crud.withSidecar — NO direct coupling, NO re-seal here). Returns the
-  // ops carrying prev_hash/op_hash/sig. pubKey: the sidecar is W-CHAIN-only today (no setSigner → sig=null,
-  // pubKey=null) — HONEST: still tamper-evident via the hash chain; if a signer is ever set, sig/pubKey
-  // flow through unchanged. cb(payload|null).
-  function _pullSignedOps(rec, cb) {
-    if (!global.__crud || typeof global.__crud.withSidecar !== 'function') { cb(null); return; }
-    global.__crud.withSidecar(function (db) {
-      if (!db) { cb(null); return; }
-      try {
-        var res = db.exec('SELECT id,timestamp,op_type,parameters,input_guids,output_guid,prev_hash,op_hash,sig FROM kernel_ops WHERE op_hash IS NOT NULL ORDER BY id');
-        var ops = rowsOf(res);
-        if (!ops.length) { cb(null); return; }
-        var pub = (typeof global.__erpPubKeyHex === 'string') ? global.__erpPubKeyHex : null;  // set iff a signer was installed
-        cb(CORE.buildSignedReceipt(rec, ops, pub));
-      } catch (e) { console.warn('§RPT-SEND pull error', e && e.message); cb(null); }
-    });
-  }
-
-  // signedReceiptHtml — the SELF-CONTAINED deliverable: the human receipt + the signed chain embedded as
-  // JSON + an INLINE re-verifier so opening the file re-checks chainOk with NO server / NO original db.
-  function signedReceiptHtml(payload) {
-    var json = JSON.stringify(payload);
-    var safe = json.replace(/</g, '\\u003c');   // never let payload break out of the <script> block
-    return '<!doctype html><meta charset=utf-8><title>Signed Receipt ' + esc(payload.rec.docno == null ? payload.rec.id : payload.rec.docno) + '</title>' +
-      '<style>body{font:13px/1.5 system-ui;margin:24px;color:#111}#vf{padding:8px 12px;border-radius:8px;margin:10px 0;font-weight:600}' +
-      '.ok{background:#e6f7ec;color:#0a6b2e;border:1px solid #0a6b2e}.bad{background:#fdecec;color:#a11;border:1px solid #a11}' +
-      '.foot{color:#666;font-style:italic;font-size:11px;margin-top:10px}pre{font:13px/1.5 ui-monospace,monospace}</style>' +
-      '<h2>Signed receipt — ' + esc(fname(payload.rec.key)) + ' #' + esc(payload.rec.docno == null ? payload.rec.id : payload.rec.docno) + '</h2>' +
-      '<div id=vf>Verifying the signed op-chain…</div>' +
-      '<pre>' + esc(receiptText(payload.rec)) + '</pre>' +
-      '<div class=foot>This receipt carries its signed op-chain. Verify replays the chain locally and checks the ' +
-      'tamper-evident hash' + (payload.chain.pubKey ? ' + signature' : '') + ' — it attests the RECORDED ops, ' +
-      'NOT that the books were posted (GL posting is delegated install-side).</div>' +
-      '<script type="application/erp-receipt+json" id=erpReceipt>' + safe + '</' + 'script>' +
-      '<script>(' + _selfVerifierSrc() + ')();</' + 'script>';
-  }
-  // _selfVerifierSrc — the inline verifier shipped INSIDE the receipt HTML. Self-contained: re-implements
-  // the SAME canonical + hash/sig check (no external load), parses the embedded JSON, paints chainOk.
-  function _selfVerifierSrc() {
-    return "async function(){function cn(o){return o.id+'|'+o.timestamp+'|'+o.op_type+'|'+(o.parameters||'')+'|'+(o.input_guids||'')+'|'+(o.output_guid||'');}" +
-      "function h2b(h){var a=new Uint8Array(h.length/2);for(var i=0;i<a.length;i++)a[i]=parseInt(h.substr(i*2,2),16);return a.buffer;}" +
-      "function b2h(b){return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,'0');}).join('');}" +
-      "async function sha(s){return b2h(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));}" +
-      "var el=document.getElementById('vf');var P;try{P=JSON.parse(document.getElementById('erpReceipt').textContent);}catch(e){el.className='bad';el.textContent='Cannot read embedded receipt.';return;}" +
-      "var ch=P.chain,ops=ch.ops||[],prev=ch.genesis,pub=ch.pubKey,key=null;" +
-      "if(pub){try{key=await crypto.subtle.importKey('spki',h2b(pub),{name:'ECDSA',namedCurve:'P-256'},false,['verify']);}catch(e){}}" +
-      "for(var i=0;i<ops.length;i++){var op=ops[i];if(op.prev_hash!==prev){el.className='bad';el.textContent='TAMPERED — chain link broken at op '+op.id;return;}" +
-      "var hh=await sha(prev+'|'+cn(op));if(hh!==op.op_hash){el.className='bad';el.textContent='TAMPERED — op '+op.id+' altered (hash mismatch).';return;}" +
-      "if(key){var sv=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,h2b(op.sig),new TextEncoder().encode(op.op_hash));if(!sv){el.className='bad';el.textContent='TAMPERED — bad signature at op '+op.id+'.';return;}}prev=hh;}" +
-      "var tipOk=prev===ch.tip;el.className=tipOk?'ok':'bad';el.textContent=(tipOk?'\\u2713 VERIFIED':'TIP MISMATCH')+' — '+ops.length+' ops, chain'+(pub?'+signature':'')+' intact, tip '+prev.slice(0,12)+'\\u2026 ('+P.attests+').';}";
-  }
-
-  // _verifyInPanel — the in-app Verify affordance: pull the signed payload, replay it via CORE
-  // (the INDEPENDENT verifier), paint chainOk/tip honestly. §RPT-SEND-VERIFY.
-  function _verifyInPanel(rec) {
-    var slot = panel.querySelector('.rpvf'); if (!slot) return;
-    slot.textContent = 'Verifying signed op-chain…'; slot.className = 'rpvf';
-    _pullSignedOps(rec, function (payload) {
-      if (!payload) { slot.className = 'rpvf rpna'; slot.textContent = 'No signed op-chain yet for this document — Process it first to record + sign an op (then the receipt is verifiable).'; console.log('§RPT-SEND verify key=' + rec.key + ' no-chain'); return; }
-      CORE.verifySignedReceipt(payload, _browserHost()).then(function (v) {
-        if (v.chainOk && v.tipMatches) { slot.className = 'rpvf rpok'; slot.textContent = '✓ Verified — ' + payload.chain.ops.length + ' ops, chain' + (payload.chain.pubKey ? '+signature' : '') + ' intact, tip ' + String(v.tip).slice(0, 12) + '… (attests the recorded op-chain, not a GL posting).'; }
-        else { slot.className = 'rpvf rpbad'; slot.textContent = 'TAMPERED — ' + (v.why || 'mismatch') + (v.brokeAt != null ? ' at op ' + v.brokeAt : ''); }
-        console.log('§RPT-SEND verify key=' + rec.key + ' chainOk=' + v.chainOk + ' tipMatches=' + v.tipMatches + ' tip=' + String(v.tip).slice(0, 12) + ' ops=' + payload.chain.ops.length + ' signed=' + (payload.chain.pubKey ? 'Y' : 'N(W-CHAIN-only)') + ' recBoundOk=' + v.recBoundOk + (v.why ? ' why=' + v.why : ''));
-      });
-    });
-  }
-  // _sendSigned — Share/Save the SIGNED receipt (the signed HTML), not the view-only one. §RPT-SEND.
-  function _sendSigned(rec, mode) {
-    _pullSignedOps(rec, function (payload) {
-      if (!payload) { console.log('§RPT-SEND ' + mode + ' key=' + rec.key + ' no-chain → fell back to unsigned receipt'); var html0 = receiptHtml(rec); _deliver(html0, _filename(rec), receiptText(rec), mode, false); return; }
-      var html = signedReceiptHtml(payload), fn = _filename(rec).replace(/\.html$/, '.signed.html');
-      var txt = receiptText(rec) + '\n\n[signed op-chain attached — ' + payload.chain.ops.length + ' ops, tip ' + String(payload.chain.tip).slice(0, 12) + '…; open the file to re-verify offline]';
-      _deliver(html, fn, txt, mode, true);
-      console.log('§RPT-SEND ' + mode + ' key=' + rec.key + ' signed=Y ops=' + payload.chain.ops.length + ' tip=' + String(payload.chain.tip).slice(0, 12) + ' file=' + fn);
-    });
-  }
-  function _deliver(html, fn, txt, mode, signed) {
-    if (mode === 'save') {
-      var blob = new Blob([html], { type: 'text/html' }), url = URL.createObjectURL(blob), aEl = document.createElement('a');
-      aEl.href = url; aEl.download = fn; document.body.appendChild(aEl); aEl.click();
-      setTimeout(function () { aEl.remove(); URL.revokeObjectURL(url); }, 500);
-      console.log('§RPT-OUT save=blob signed=' + (signed ? 'Y' : 'N') + ' file=' + fn);
-    } else {  // share
-      try {
-        if (navigator.canShare && typeof File !== 'undefined') {
-          var file = new File([html], fn, { type: 'text/html' });
-          if (navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: 'Signed Receipt', text: txt }).catch(function () {}); console.log('§RPT-OUT share=files signed=' + (signed ? 'Y' : 'N') + ' key=' + fn); return; }
-        }
-        if (navigator.share) { navigator.share({ title: 'Signed Receipt', text: txt }).catch(function () {}); console.log('§RPT-OUT share=text signed=' + (signed ? 'Y' : 'N')); }
-        else if (navigator.clipboard) { navigator.clipboard.writeText(txt); console.log('§RPT-OUT share=clipboard signed=' + (signed ? 'Y' : 'N')); }
-        else { console.log('§RPT-OUT share=unsupported'); }
-      } catch (e) { console.warn('§RPT-OUT share error', e && e.message); }
-    }
-  }
-
   function _wireOut(rec) {
     var bar = panel.querySelector('.rpact'); if (!bar) return;
     bar.addEventListener('click', function (ev) {
       var b = ev.target.closest('button[data-a]'); if (!b) return;
       var a = b.dataset.a;
-      if (a === 'verify') { _verifyInPanel(rec); return; }        // R5: replay + verify the signed op-chain
-      if (a === 'share')  { _sendSigned(rec, 'share'); return; }  // R5: deliver the SIGNED receipt
-      if (a === 'save')   { _sendSigned(rec, 'save'); return; }   // R5: deliver the SIGNED receipt
-      if (a === 'print') {                                        // R4: local print of the receipt (view-only)
+      if (a === 'print') {
         var ifr = document.createElement('iframe');
         ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
         document.body.appendChild(ifr);
@@ -431,15 +234,34 @@
         ifr.contentWindow.focus(); ifr.contentWindow.print();
         setTimeout(function () { ifr.remove(); }, 1000);
         console.log('§RPT-OUT print key=' + rec.key + ' doc=' + (rec.docno == null ? rec.id : rec.docno));
+      } else if (a === 'share') {
+        var txt = receiptText(rec), fn = _filename(rec);
+        try {
+          if (navigator.canShare && typeof File !== 'undefined') {
+            var file = new File([receiptHtml(rec)], fn, { type: 'text/html' });
+            if (navigator.canShare({ files: [file] })) {
+              navigator.share({ files: [file], title: 'Receipt', text: txt }).catch(function () {});
+              console.log('§RPT-OUT share=files key=' + rec.key); return;
+            }
+          }
+          if (navigator.share) { navigator.share({ title: 'Receipt', text: txt }).catch(function () {}); console.log('§RPT-OUT share=text key=' + rec.key); }
+          else if (navigator.clipboard) { navigator.clipboard.writeText(txt); console.log('§RPT-OUT share=clipboard key=' + rec.key); }
+          else { console.log('§RPT-OUT share=unsupported key=' + rec.key); }
+        } catch (e) { console.warn('§RPT-OUT share error', e && e.message); }
+      } else if (a === 'save') {
+        var blob = new Blob([receiptHtml(rec)], { type: 'text/html' });
+        var url = URL.createObjectURL(blob), aEl = document.createElement('a');
+        aEl.href = url; aEl.download = _filename(rec); document.body.appendChild(aEl); aEl.click();
+        setTimeout(function () { aEl.remove(); URL.revokeObjectURL(url); }, 500);
+        console.log('§RPT-OUT save=blob file=' + _filename(rec));
       }
     });
   }
 
   function _outBar() {
-    return '<div class=rpact><button class=rpb data-a=verify title="Replay + verify the signed op-chain">Verify</button>' +
-      '<button class=rpb data-a=print title="Print receipt">Print</button>' +
-      '<button class=rpb data-a=share title="Share signed receipt">Share</button>' +
-      '<button class=rpb data-a=save title="Save signed, self-verifying receipt">Save</button></div>';
+    return '<div class=rpact><button class=rpb data-a=print title="Print receipt">Print</button>' +
+      '<button class=rpb data-a=share title="Share receipt">Share</button>' +
+      '<button class=rpb data-a=save title="Save as HTML">Save</button></div>';
   }
 
   function render(rec) {
@@ -464,10 +286,9 @@
       h += '<div class=rptot rpnafin><div class=rpna>non-financial document — qty only, no money columns carried</div></div>';
     }
     h += '<div class=rpfoot>folded from the bundle — every amount is a re-sum of the rows, no value is hand-authored</div>';
-    h += '<div class="rpvf rpidle">Verify replays this document’s signed op-chain locally (no server) — it attests the recorded ops, not a GL posting.</div>';
     panel.innerHTML = h; panel.className = 'open';
     panel.querySelector('.rpx').addEventListener('click', close);
-    _wireOut(rec);   // R4 Print + R5 Verify / signed Share / signed Save
+    _wireOut(rec);   // R4 — Print / Share / Save
   }
   function renderUnsupported(key) {
     panel.innerHTML = '<span class=rpx title=close>✕</span><div class=rph><span class=rpglyph>▤</span> Receipt — ' + esc(fname(key)) + '</div>' +
@@ -508,18 +329,12 @@
       '#reportPanel .rptot>div>span:first-child{color:#c4a8c0}' +
       '#reportPanel .rpgrand{border-top:1px solid #3a2b38;margin-top:3px;padding-top:5px;font-weight:600;color:#bff0dd}' +
       '#reportPanel .rpna{color:#8a6f86;font-style:italic}' +
-      '#reportPanel .rpfoot{margin-top:11px;font-size:11px;color:#8a6f86;font-style:italic;line-height:1.4}' +
-      '#reportPanel .rpvf{margin-top:10px;font-size:11.5px;line-height:1.45;border-radius:8px;padding:7px 9px}' +
-      '#reportPanel .rpvf.rpidle{color:#8a6f86;font-style:italic;background:transparent;padding:7px 0}' +
-      '#reportPanel .rpvf.rpok{background:#10301f;border:1px solid #1f7a47;color:#bff0dd;font-style:normal}' +
-      '#reportPanel .rpvf.rpbad{background:#3a1414;border:1px solid #8a2a2a;color:#ffb4b4;font-style:normal;font-weight:600}';
+      '#reportPanel .rpfoot{margin-top:11px;font-size:11px;color:#8a6f86;font-style:italic;line-height:1.4}';
     document.head.appendChild(css);
   }
 
   global.__report = { show: show, core: CORE, panel: function () { return panel; }, close: close,
-    // §DEBUG — whitebox accessors for the R4/R5 witnesses (render a fold; build/verify/serialize the signed receipt)
-    _test: { render: render, receiptText: receiptText, receiptHtml: receiptHtml,
-             signedReceiptHtml: signedReceiptHtml, browserHost: _browserHost,
-             buildSignedReceipt: CORE.buildSignedReceipt, verifySignedReceipt: CORE.verifySignedReceipt } };
+    // §DEBUG — whitebox accessors for the R4 output witness (render a folded rec, inspect serializers)
+    _test: { render: render, receiptText: receiptText, receiptHtml: receiptHtml } };
   console.log('§REPORT layer mounted (read face — ▤ Report)');
 })(typeof window !== 'undefined' ? window : this);
