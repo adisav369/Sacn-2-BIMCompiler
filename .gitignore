@@ -117,3 +117,6 @@ schedules/
 2D_Layout/input/*.pdf
 2D_Layout/python/*.db
 2D_Layout/reference_samples/
+
+# local-only measurements/notes (never commit)
+internal/

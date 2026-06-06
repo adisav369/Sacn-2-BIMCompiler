@@ -34,30 +34,192 @@ did go to gh-pages PR #94/#97; everything after is localhost). Built + §-witnes
 3. **Streaming T1/T2** ("the rest of the data") NOT wired — non-seed tables show "not in seed". `docs/DATA_ACQUISITION_ORCHESTRATION.md §8` (the unified login→client→tier→lens flow, written this arc).
 4. **Attach** (no blob path) · real **posting** beyond sales-invoice class (§13.6 record-keyed `fact_acct`) · **client→shard** select on read.
 5. **Odoo depth:** the landing dashboard → a real interactive Kanban dashboard (pillar 1); kanban drag→dispatch as a default view (needs write path, gated by #1).
+   - **✅ kanban drag→dispatch WIRED + DEPLOYED LIVE (§KANBAN-WRITE-RESULT PASS, 2026-06-04, bim-ootb PR #115, sw v569).**
+     The board chrome/drag-resolution were already done; the gap was that `dispatch`/`ctx` were null (TODO STEP-0) → snap-back.
+     `kanban_lens.html` now boots `window.ERP` (the seam) like `spike_writepath.html`: per-row fold (real doc cards) +
+     role-gated ctx + all wfmc stages as columns. A legal drag commits a **signed SET_STATUS** (chainOk=Y, card moves);
+     illegal drag snaps back. Witness `tests/poc_kanban_write.js` (C_Invoice#109 CO→VO).
+   - **✅ gap #2 DURABILITY DONE + LIVE (§KANBAN-PERSIST-RESULT PASS, bim-ootb PR #117, sw v570):** `kanban_lens.html`
+     persists the projection op-log to IDB (key `kanban_proj`) after each ok dispatch (onResult export+idbPut — the seam's
+     erp_kernel path bypasses KernelOps.commitOp so APP.DB_URL alone won't fire) and restores it on boot; `foldDocStatus`
+     overlays the projection `documents` tip (read-the-tip). A drag now survives a full reload (C_Invoice#109 CO→VO comes
+     back in VO, tipOverlaid=1). Witness `tests/poc_kanban_persist.js`.
+   - **✅ gap (c) MAIN-RENDERER DONE + LIVE (§IDMP-KANBAN-RESULT PASS, bim-ootb PR #119, sw v571):** idempiere.html's
+     Kanban pill now mounts the REAL draggable `KanbanLens` board over the open window's records (per-row docstatus fold,
+     op-log tip overlay) and a drag commits a signed `SET_STATUS` via `window.ERP` built from the login `_session`.
+     Factored the host into **`kanban_host.js`** (`window.KanbanHost.{publish,tip,persist}`) so the lens + idempiere share
+     ONE write path. Witness `tests/poc_idmp_kanban.js`: login → Invoice window 167 → Kanban → board 11 cols/4 C_Invoice
+     cards → drag C_Invoice#100 CO→VO (chainOk=Y). Honest read-only fallback if engine absent.
+   - **✅ (a) LAUNCH-FROM-GRAPH UX DONE + LIVE (bim-ootb PR #120, sw v572):** the Graph pill and Kanban pill are two
+     lenses of the SAME doc-status data, so the Graph view now carries a **🗂 View as Kanban** button (launch the
+     interactive board in one tap from the graph icon after login) and the board carries **📊 View as Graph** back.
+     User-directed UX call (made it, didn't hand back). Verified visually (`tests/see_idmp_flow.js` + switch_2_kanban.png).
+   - **STILL OPEN (parallels, not blocking):** chat lens `send`→dispatch (same TODO(STEP-0), now trivial via
+     `kanban_host`) · making the board the literal *default landing* (bigger entry-view change) · R5 receipt channel-deliver.
 
 ### OUTSTANDING — dictated / parked backlog (surfaced from memory 2026-06-04; memory now only LINKS here)
+**WORK-TO-ZERO (CLAUDE.md contract):** this is THE list. Each session works it top-to-bottom to zero — do the
+item, witness it, then prefix it `✅ DONE (witness)`. Never re-park, never re-ask what the code answers. If an
+item needs a user fact you can't extract, prefix it `⛔ BLOCKED: <one question>` and move on. Don't stop until
+every line is `✅` or `⛔` (or the user interrupts).
 These were dictated across sessions and were sitting in memory (or nowhere). Moved here so they are on ONE
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
-- **[ERP-UI] Remove the two redundant buttons at the TOP of `erp.html`** (user-confirmed page = `bim-ootb/erp/erp.html`,
-  the card-first AD UI — NOT idempiere.html). The top is `#breadcrumb` (rendered by `ad_ui.js`) + the pill rail
-  (`erp_pills.js`/`pills.json`); no literal top `<button>` in the HTML, so the two are JS-rendered — read
-  `ad_ui.js` breadcrumb render through to find them. **Still need: WHICH TWO** (non-invent). Same family as item
-  **F** (remove stale icons). Source memory: `project_erp_remove_two_top_buttons`.
+
+> **▶▶ SESSION HANDOFF 2026-06-06 (close-out) — NEXT SESSION START HERE to close the loop:**
+> This session shipped LIVE: `§MOBILE-VIEW` record-list cards (PR#157, v586) + `§MOBILE-LANDING` portrait menu-drawer
+> (PR#159, v587); committed the B1 adapter (bim-compiler `c5ba835e`); and TRIAGED+SPEC'd the ERP chrome work with
+> both gates DECIDED (PRs #160/#161 merged). Also measured the bloat thesis on the live docker PG: 143 MB Postgres →
+> **43 MB SQLite (3.3×)** — see `internal/BLOAT_MEASUREMENT.md` + [[reference_bloat_reduction]].
+> **CONTINUE THE CHECKLIST (work-to-zero):** the top open ERP-UI item is the iDempiere chrome below — gates are
+> decided, so EXECUTE `prompts/ERP_BOTTOM_BAR_AND_LIFECYCLE.md` **§A → §C → §B** (start §A: registry + ⋯, delete the
+> hand-rolled `#idmp-pillrail`). Whitebox §-log on localhost (NOT forced-viewport Playwright — [[feedback_whitebox_not_playwright]]),
+> worktree off `origin/main` → PR → sw bump. Then keep going down §OUTSTANDING until every line is ✅/⛔.
+- **▶ NEXT [ERP-UI] iDempiere chrome — ONE pill registry + cross-tab history scrubber + Install/Migrate lifecycle.**
+  Spec'd & triaged 2026-06-06 → `prompts/ERP_BOTTOM_BAR_AND_LIFECYCLE.md` (bim-ootb, PR #160). Execute §A→§B→§C in
+  order: **§A** retire the hand-rolled `#idmp-pillrail`; render the bottom/side bar from the SAME registry as
+  erp.html/BIM (`pills.json`+`erp_pills.js`+`PillBuilder`, incl. the ⋯ collapse). **§B** bottom history scrubber
+  that works across the iDempiere window tabs (Glassbowl `#scrub` bloom + `universal_history` read-only restore,
+  per `prompts/HISTORY_SCRUB_FIX.md`). **§C** Install/Migrate lifecycle — triage: they WRONGLY persist in-client
+  today; target = prominent pre-client-selection, context-aware once a client is entered (pairs with
+  MIGRATE P3 switcher). GATE before §A: reuse `pills.json` or a sibling `pills_idmp.json`? (ask user — action sets differ.)
+- **✅ DONE + LIVE (§MOBILE-LANDING, bim-ootb PR #159, sw v587, 2026-06-06) [ERP-UI] Mobile main-page (portrait).**
+  Post-login the phone landed on an empty desktop canvas ("Select a menu item") with the menu hidden behind the ☰
+  burger. Now `@media≤760px` AUTO-OPENS the existing menu drawer on the empty landing (and on returning to it after
+  closing the last window) + a tap-to-close dim backdrop; closes on menu-item/backdrop tap; desktop unchanged.
+  Witness (localhost, iPhone emulation, whitebox — NOT forced-viewport): `§MOBILE-LANDING drawer=open
+  reason=empty-landing innerW=390` · menuOpen=Y backdropShown=Y treeRows=547 · backdrop-tap→close · 0 pageErrors.
+  Live-verified `erp/sw.js`=v587. (Landscape already worked; this is the portrait upgrade the user asked for.)
+- **✅ DONE + LIVE (§MOBILE-VIEW PASS, bim-ootb PR #157, sw v586, 2026-06-06) [ERP-UI] Mobile card record-list.**
+  At `@media(max-width:760px)` `buildGrid()` now renders the record list as `.idmp-cards` `.acc` cards (one record =
+  stacked label:value, reusing the existing `.acc/.hd/.bd` idiom + `_displayFields/fmt/recVal` — NON-INVENT) INSTEAD
+  of the `<table>`; the desktop `<table class="idmp-grid">` path is UNCHANGED (still shown ≥761px); the `#idmp-pillrail`
+  re-docks to a BOTTOM bar so it stops covering rows. Witness `erp/tests/poc_mobile_cards.js` → `§MOBILE-VIEW cards=35
+  tableHidden@≤760=Y cardsShown@≤760=Y pillRail=bottom@≤760:Y desktopTable=Y` (0 pageErrors @390px AND @1280px) +
+  before/after/desktop screenshots. Built in an isolated worktree off fresh `origin/main`; merged; Pages built `fd690d0`;
+  live-verified: `erp/sw.js`=v586, live `idempiere.html` carries `idmp-cards`. `erp/sw.js` v585→v586 (no new runtime asset).
+  - *(superseded original task note)* The record LIST used to render as a DESKTOP multi-column data-grid squeezed onto the
+  phone (witnessed 2026-06-06 at 390px: side-scrolling spreadsheet, Name column off-screen, pill rail overlaps rows;
+  `§MOBILE-ERP horizOverflow=N` only meant it scrolled IN-container — NOT that it was mobile). Spec = "Mobile cards (reuse `ad_ui .acc`)".
+  **⚠ DO NOT OVERWRITE the done work:** (1) `§MOBILE-GRIDFIT` (bim-ootb PR#125 — `#idmp-main{min-width:0}` so the grid
+  scrolls inside `#idmp-content`; the `@media(max-width:760px)` drawer menu); (2) the `.acc` accordion COMPONENT already
+  exists in `ad_ui.js` (table-overlay, full styling + open/close, lines ~551–566 & ~1159) — REUSE it, don't rebuild;
+  (3) Accts-Posted lens already has a mobile `mountAccordion` precedent (`§POSTED-MOBILE`, `prompts/ACCTS_POSTED_PANEL.md`).
+  **BUILD:** at `@media ≤760px` render the record list as `.acc` cards (one record = stacked label:value) INSTEAD of the
+  `<table>`; single-column forms; horizontally-scrollable tabs; dock the pill rail as a bottom bar so it stops covering
+  records. Keep DESKTOP exactly as-is (the grid is correct there). Witness `tests/poc_mobile_cards.js` →
+  `§MOBILE-VIEW cards=N table-hidden@≤760=Y desktop=table` + before/after 390px screenshots; 390px pass BEFORE deploy.
+  Ship via a bim-ootb worktree off **fresh origin/main** (sw bump; `idempiere.html`/`ad_ui.js`).
+- **SESSION STATE 2026-06-06 (migration arc, this session):** **P0 ✅** Migrate▸Odoo staged box + self-sufficient
+  `odoo_agent.zip` bundle (bim-ootb PR#154 merged, sw v584). **P2 ✅** INSTALL persists the merged tenant — Odoo
+  **Client 12 now `resident=Y`** (survives reload, no `?shard=`; bim-ootb PR#156 merged, sw v585; witnesses
+  `tests/poc_client12_resident.js §C12-RESIDENT resident=Y` + `tests/poc_odoo_records_show.js §ODOO-RECORDS showable=Y`).
+  **SAP target decided = B1 (Business One), NOT S/4** (SMB market fit; `OJDT/JDT1` clean double-entry; Service-Layer HTTP
+  extraction = same agent as Odoo). **B1 adapter built + folds** (mock): `scripts/b1_adapter.js` + `scripts/poc_b1_fold.js`
+  + `build/erp/b1_oracle.template.json` → adapter+runner NON-INVENT gated (`§B1-FOLD BLOCKED` until a real Service-Layer
+  export; folds clean on a mock) — **COMMITTED 2026-06-06 `c5ba835e`** on `feat/revit-plus-lens`, with the
+  `poc_sap_flight_fold.js` per-event-register clobber bug-fix folded in.
+  Real B1/SAP folds stay gated on a real export (non-invent). iDempiere import already exists (`migrate_pg_to_sqlite.js`/
+  `migrate_agent.js`, spec'd 2026-06-02) — GW pull is its default. See `prompts/MIGRATE_INSTALL_TENANT.md` (P0/P2 done,
+  P1-iDempiere & P3-switcher open) + [[project_migrate_erp_picker]].
+- **✅ DONE (§PILL-REGISTRY PASS, 2026-06-04) [ERP-UI] Remove the two redundant buttons at the TOP of `erp.html`.**
+  THE TWO (user-confirmed) = the **🫧 Glassbowl + ✦ Gravity** companion links rendered OUTSIDE the pill rail in the
+  graph-view HUD (`ad_ui.js` `gbHud`, top-right) — they DUPLICATED the glassbowl/gravity pills in the rail. Principle
+  the user set: **no controls outside the pill; use the BIM-OOTB registry concept** (`pills.json` + `erp_pills.js`).
+  Fix (all in the pill, none outside): removed `gbHud` (`§AD_UI gbHud-removed`); the non-duplicate 📖 Read (ERP-doc)
+  link moved INTO the registry as `id=erpdoc` (doc glyph, nav). Also folded in the other free-floating controls found:
+  the **System/GardenWorld** client switcher (`ad_ui.js` showMenu — redundant w/ swipe `_switchClient`+toast, removed)
+  and the bottom-left **⛓ Verify-ledger** button → registry `id=verify` (checkList glyph copied verbatim from
+  `viewer/panels.js`, fn=`window.ErpVerifyLedger`). Witness: real-browser `tests/poc_pill_registry.js` →
+  `§PILL-REGISTRY PASS` (pill-verify+pill-erpdoc mounted, floating button gone, 0 System/GW buttons, 0 HUD links,
+  0 icon-miss, 0 pageerror, 16 pills handAuthored=0) + screenshot `tests/pill_registry.png`.
+  **DEPLOYED LIVE 2026-06-04** (user POC standing-GO): bim-ootb PR #113 squash-merged to main (CI green),
+  Pages built `96d65b31`, SW v567 + `?v=23`. Live-smoke on the real URL: 16 pills, verify+erpdoc, 0 floating,
+  0 HUD, 0 pageerr (`tests/live_smoke.png`).
+  - **✅ DONE + DEPLOYED LIVE (§AD_UI hud-dedup, bim-ootb PR #134, 2026-06-05) — outside-pill HUD icons removed.** User
+    dictated the consolidation ("remove them, Pill has it already") = the go-ahead this item was gated on. Removed the graph
+    HUD's 🔍 search-overlay + ⛶ globe maximize (`ad_ui.js` searchBtn deleted; fsBtn kept DEFINED for `_resizeGraph`'s
+    auto-maximize but no longer appended). Both already in the pill rail (`erp_pills.js` find→search, maximize→fullscreen).
+    sw.js v578→v579. Live-verified on real URL: searchBtn count=0, witness `§AD_UI hud-dedup removed=[maximize,search]` present.
   - **idempiere.html top bar = ALREADY DONE (not part of this task):** the 🔴 Red-Pill 3-state hides the classic
-    `#idmp-toolbar` in expanded/clean (witness `§REDPILL state=… barHidden=Y`, localStorage-persisted,
-    idempiere.html:63/1296/1322). Different page, different (toggle) solution — leave it.
-- **[ERP-UI] Mobile UI wiring** — after the button removal, verify/repair the mobile top bar layout (the user
-  flagged the mobile version explicitly). Mobile = `ad_ui.js .acc` accordion + pill controls ([[feedback_mobile_events]]).
-- **[ERP-UI] Share icon in the pill** — one Share control that captures AND restores full context. (`project_share_sheet`)
-- **[ERP-UI] `idempiere.html` descriptor-driven** — AD as first descriptor, not hardcoded (renderer #2 reuse). (`project_idempiere_renderer`)
-- **[ERP-UI] Glassbowl Process button** — deployed dry-run, NOT wired to kernel (GP1–GP4, `GUIDE_SHOWME_PROCESS.md`). (`project_glassbowl`)
+    `#idmp-toolbar` in expanded/clean (witness `§REDPILL state=… barHidden=Y`, idempiere.html:63/1296/1322). Leave it.
+- **✅ DONE + DEPLOYED LIVE (§MOBILE-GRIDFIT PASS, bim-ootb PR #125, 2026-06-05) [ERP-UI] Mobile UI.** Earlier the
+  `§MOB-TOPBAR-RESULT PASS` was a NARROW over-claim (breadcrumb + pill rail only; never measured content). Re-check
+  at 390px exposed the real gap: `#idmp-main` was **2145px** wide (the AD grid never constrained to the viewport) so
+  `body{overflow:hidden}` clipped the right grid columns + the header role/home/help buttons — unreachable on touch.
+  FIX: `#idmp-main { min-width:0 }` → the grid scrolls INSIDE `#idmp-content` (overflow:auto), not by pushing the
+  page; `@media(max-width:760px)` hides the duplicate header breadcrumb (`#idmp-ctx`) so the buttons fit. Witness
+  `tests/poc_mobile_gridfit.js` → **§MOBILE-GRIDFIT PASS** (docSW 2145→390, no page overflow, grid scrolls
+  in-container, switch/home/help on-screen, 0 pageerror; picker+heatmap still green, no desktop regression). sw v575.
+  **Lesson logged:** new UI must get a 390px pass BEFORE deploy; a passing witness only proves what it measured.
+  ([[feedback_mobile_events]] · [[feedback_log_not_visual_proof]] · [[feedback_whitebox_before_deploy]])
+- **✅ DONE (§SHARE-ROUNDTRIP PASS, 2026-06-04) [ERP-UI] Share icon in the pill** — captures AND restores full
+  context. The pill copied a bare href (recipient landed on the home globe); now `ADUI.buildShareUrl()` emits the
+  SAME deep-link params erp.html restores on load (`?client=&window=&record=` — capture mirrors restore, non-invent).
+  `share` fn → `navigator.share`(mobile)/clipboard(desktop). Fixed a latent restore TIMING bug (deep-link ran before
+  hydrate → moved into `_waitAndHydrate`). Spec `bim-ootb/erp/docs/ERP_SHARE_SPEC.md`. Witness
+  `tests/poc_share_roundtrip.js`: sender opens window 123 → `?client=gardenworld&window=123` → fresh load restores
+  same window (screen=window), 0 pageerr + `share_restore.png` (record-level wired via navToRecord; seed metadata-only
+  so unwitnessed — honest). **DEPLOYED LIVE**: bim-ootb PR #114 squash-merged (CI green), Pages `4c4a20e`, SW v568 +
+  `?v=24`, fetch-back-verified. (`project_share_sheet`)
+- **⛔ BLOCKED: start renderer #2 (Odoo) now? [ERP-UI] `idempiere.html` descriptor-driven** — AD as first descriptor,
+  not hardcoded (renderer #2 reuse). **Recorded decision** (`project_idempiere_renderer` / `docs/IDEMPIERE_2.md`
+  §pivot): *"I1 calls ADParser directly; build the descriptor seam WHEN renderer #2 starts."* Renderer #2 hasn't
+  started, so doing it now = speculative one-consumer abstraction the decision pre-empts. Unblocks the moment a 2nd
+  renderer (Odoo/ERPNext) is greenlit — that's the trigger, a roadmap call only the user owns. (`project_idempiere_renderer`)
+- **✅ DONE (already wired + LIVE; verified 2026-06-04) [ERP-UI] Glassbowl Process button** — the "dry-run, NOT wired"
+  state was STALE. GP1·GP2·GP3 + E2E landed 2026-06-01 (commit `c5dbbfc2`, glassbowl sw v7): `crud_overlay.js`
+  `applyOp` DOC_ACTION → `commitProcess(op)` = REAL signed write (`buildDocActionGroup`→`KernelOps.commitGroup`,
+  sidecar log / read-the-tip), dry-run only as a no-kernel FALLBACK. CRUD create/update/delete stay dry-run (T3-gated,
+  separate). Witnesses (memory): W-HELP-COACH 21 · W-HELP-NEXTGATE 11 · W-CRUD-WRITELOOP-OVERLAY 12 ·
+  W-GUIDE-PROCESS-E2E 14. **Verified live now:** `curl BIMCompiler/crud_overlay.js` → GP3 real-write + commit fns
+  present. Remaining is GP4 (ProcessBatch/Gravity — 3rd overlay consumer) + History-view UI + error_reporter
+  factor-out = ENHANCEMENTS, not the stated dry-run gap. (`project_glassbowl`)
+- **✅ R4 DONE + DEPLOYED LIVE (§RPT-OUT-R4 PASS, 2026-06-04) [ERP-UI] After-the-receipt output** — the receipt panel
+  (`report_overlay.js`, glassbowl) was view-only (✕ only). **R4** adds Print / Share / Save — edge-only, server-free,
+  each serializing the SAME folded rec (no re-query, non-invent): Print=print-iframe of `receiptHtml(rec)`;
+  Share=`navigator.share({files:[html]})`→`share({text})`→clipboard; Save=`Blob`→`receipt_<doc>.html` download.
+  `§RPT-OUT` per action. Witness `build/erp/poc_rpt_out.js` → 3 buttons, genuine fold (foldReceipt c_order
+  150/12/162 BigDecimal), Save download fires, Share called, Print iframe (+`rpt_out.png`). **DEPLOYED**: bim-compiler
+  `full` (compile gate ✓) + `mkdocs gh-deploy` to BIMCompiler gh-pages (worktree-isolated off `full`, NOT the dirty
+  shared tree), glassbowl **sw v8→v9**, fetch-back-verified live. **R5 (channel-deliver signed receipt, `§RPT-SEND`)
+  still open.** NOTE separate concern: "Completed" ≠ books moved — posting set delegated install-side (§I-K/§13.6),
+  `commitProcess` flips status only. (`project_glassbowl` · `project_share_sheet`)
+  - **✅ R5 DONE + DEPLOYED LIVE (§RPT-SEND PASS, 2026-06-05) — the signed, self-verifying receipt.** Share/Save
+    now deliver a SIGNED receipt (`.erpreceipt.json` embedded in self-contained HTML) carrying the op-chain
+    (canonical `id|ts|op_type|parameters|input_guids|output_guid`, `op_hash=SHA-256(prev|canonical)`, sig over
+    op_hash) + an inline self-verifier + a Verify affordance — the recipient replays + checks the chain with NO
+    server. Witness `build/erp/poc_rpt_send.js` → **§RPT-SEND PASS**: payload signed, verify chainOk, money==golden
+    (BigDecimal), and **tamper-evidence proven** (flip an op param → FAILS at that op; flip a sig byte → FAILS;
+    forge the displayed total → `recBoundOk=false`); verifies from JSON AND embedded-HTML alone. HONESTY: attests
+    "the recorded, signed op-chain (tamper-evident) — NOT a GL posting" (§I-K/§13.6). Built worktree-isolated off
+    `full` (the real R4 baseline; shared dirty tree untouched). **DEPLOYED**: mkdocs gh-deploy → BIMCompiler
+    gh-pages, glassbowl **sw v9→v10**, fetch-back byte-identical (report_overlay.js 39543 B). Source on
+    `origin/feat/r5-rpt-send` (off `full`) — PR it to `full` when ready. (`project_glassbowl`)
+- **✅ DONE + DEPLOYED LIVE (§ERP-PICKER PASS + §HEATMAP PASS, 2026-06-04) [ERP-UI/engine] Install + Migrate = the
+  pick-your-ERP dialog.** Stubs replaced by `bim-ootb/erp/erp_picker.js` (`window.ErpPicker.open({mode})`), wired to
+  BOTH pills. Lists all 5 (iDempiere · Odoo · SAP · Oracle · MS Dynamics) always; **live-detects Odoo** (`:8069`
+  no-cors liveness only — never reads data cross-origin), highlights detected, greys coming, defaults + asks
+  *"migrate your <X>?"*. Routes: iDempiere→`MigrateShowMe` · Odoo→delegate-to-install fold · others→honest "coming".
+  **Odoo real fold:** `scripts/odoo_agent.js` (install-side, live-pulls odoodemo SO S00023 → `odoo_chain.json`) → the
+  browser RE-FOLDS each hop through `window.ERPKernel` + the carried wfmc (`§ODOO-MIGRATE-BROWSER mapped=5/5 newVerbs=[]
+  glDr==glCr chainOk=Y`). Witness `tests/poc_erp_picker.js` → **§ERP-PICKER PASS** (allFive, Odoo detected, route=odoo,
+  0 pageerr). **DEPLOYED**: bim-ootb PR #123 squash-merged (CI green), SW v573 + erp_picker.js precached.
+  **Also DONE — heat-map fallback** when a window has no docstatus pivot: `_bestPivot()` picks a lookup column
+  (FK/list/yesno or `*_ID`), Kanban renders a heat map (tiles ∝ real counts) instead of an empty board. Witness
+  `tests/poc_heatmap.js` → **§HEATMAP PASS** (win=140 Product→`by=M_Product_Category_ID` 13 cells; win=167
+  C_Invoice→board). **DEPLOYED**: bim-ootb PR #124 squash-merged (CI green), SW v574. (`project_migrate_erp_picker`)
+  - **REMAINING (own lanes, not blocking):** commit `scripts/poc_odoo_fold_live.js`+`scripts/odoo_agent.js` on the
+    bim-compiler **engine lane** (still on dirty `feat/revit-plus-lens`); SAP/Oracle/Dynamics adapters when greenlit.
 - **[BIM-viewer → own lane] 2D saved cards GF/L1 can't be deleted** (reappear on panel reopen — localStorage/kernel bug). (`project_2d_regression`)
 - **[BIM-viewer → own lane] Time Machine Gantt** (`boq_charts.html`) not wired to `kernel_ops`. (`project_time_machine`)
 - **[BIM-viewer → own lane] Grid UX debt** — 8 §-tags to verify + merge the two save systems into one. (`project_grid_ux_debt`)
 - **[BIM-viewer → own lane] 4D capture** — widened DDL + `§GANTT_SOURCE` branch + coverage badge. (`project_4d_capture`)
 - **[BIM-viewer → own lane] Ground+Sky** — live cloud layer (C1) not done. (`project_ground_sky`)
 - **[BIM-viewer → own lane] Settings JSON editor** — Phase 2 editable schedule parked. (`project_settings_json_editor`)
+- **[BIM-viewer → own lane · NOT vital, noted for future revisit] Pill-registry drift — latest icons hand-roll DOM instead of going through the registry.** The S281/S282 registry (`_actions` in `viewer/panels.js` + `ICONS` table + `PillBuilder`/`pill_builder.js`) is the single source for toolbar icons. Two recent areas skip it:
+  - **Find-panel axis pills + lenses** (`viewer/navigate_find.js`, commit `743ac35`): `_renderAxes` (~:366) builds `<button>`s with hardcoded inline `cssText`; `_micSvg`/`_searchSvg` (~:132) re-declare SVGs the `ICONS` table already owns (`_searchSvg` ≡ `ICONS.search`). In-panel controls being local DOM is fine; the fix-worthy drift is the duplicated SVGs (fold into `ICONS`, add a `mic` entry) and the inline styling (lift to a CSS class — today `corporate.json` theming can't reach them).
+  - **Precision/Reset/Pivot cluster** (`viewer/precision_cam.js`, the "feather · reset · pivot" row): a full PARALLEL implementation — `precision-btn` self-injected into the toolbar (~:259-271) + `prec-reset-chip`/`prec-pivot-chip` built in `revealPrecisionReset` (~:300-336), all raw DOM + inline `cssText`. The registry carries duplicate stubs (`precision` in-pill; `cam-reset`/`cam-pivot` `pill:false` — the `pill:false` exists only to stop a 2nd copy painting). Feather + reset SVGs are duplicated across `panels.js` and `precision_cam.js`. Possible double feather (`precision-btn` vs `pill-precision`) — verify visually. Clean target: delete the self-built DOM, let the registry render all three via the standard `_revealChip` (`pill_builder.js:116`), move SVGs into `ICONS`. (`project_s281_pill_registry` · `project_precision_pivot`)
 
 ## 1. DONE + FROZEN — consume, do NOT rebuild
 - **Engine seam (C0):** `bim-compiler/scripts/erp_seam.js` `makeSeam→{read,dispatch,manifest,verbs,verify}`; `dispatch(intent,ctx)`
