@@ -75,14 +75,25 @@ listed for visibility and route to their own prompt/lane.
 > decided, so EXECUTE `prompts/ERP_BOTTOM_BAR_AND_LIFECYCLE.md` **§A → §C → §B** (start §A: registry + ⋯, delete the
 > hand-rolled `#idmp-pillrail`). Whitebox §-log on localhost (NOT forced-viewport Playwright — [[feedback_whitebox_not_playwright]]),
 > worktree off `origin/main` → PR → sw bump. Then keep going down §OUTSTANDING until every line is ✅/⛔.
-- **▶ NEXT [ERP-UI] iDempiere chrome — ONE pill registry + cross-tab history scrubber + Install/Migrate lifecycle.**
-  Spec'd & triaged 2026-06-06 → `prompts/ERP_BOTTOM_BAR_AND_LIFECYCLE.md` (bim-ootb, PR #160). Execute §A→§B→§C in
-  order: **§A** retire the hand-rolled `#idmp-pillrail`; render the bottom/side bar from the SAME registry as
-  erp.html/BIM (`pills.json`+`erp_pills.js`+`PillBuilder`, incl. the ⋯ collapse). **§B** bottom history scrubber
-  that works across the iDempiere window tabs (Glassbowl `#scrub` bloom + `universal_history` read-only restore,
-  per `prompts/HISTORY_SCRUB_FIX.md`). **§C** Install/Migrate lifecycle — triage: they WRONGLY persist in-client
-  today; target = prominent pre-client-selection, context-aware once a client is entered (pairs with
-  MIGRATE P3 switcher). GATE before §A: reuse `pills.json` or a sibling `pills_idmp.json`? (ask user — action sets differ.)
+- **🟡 BUILT + WITNESSED (localhost), HELD FOR DEPLOY-GO [ERP-UI] iDempiere chrome — pill registry + lifecycle + scrubber.**
+  All three sections IMPLEMENTED + whitebox §-witnessed on localhost (NOT yet deployed — user said "do not deploy yet").
+  Committed on bim-ootb branch `feat/idmp-pill-registry` (3 commits, off fresh `origin/main`); sw v587→v590.
+  - **§A DONE** — iDempiere bottom/side bar now renders from the SHARED registry (sibling `erp/pills_idmp.json` [GATE-1]
+    + new `idmp_pills.js` binding fn BY ID to `window.IdmpPillActions` + `PillBuilder`, incl. ⋯ collapse); icons.js
+    +barChart/layout/save/pipe (verbatim from panels.js); hand-rolled `#idmp-pillrail` DELETED. Witness
+    `erp/tests/poc_idmp_pills.js` → `§IDMP-PILLS source=registry pills=6 handAuthored=0 overflow=⋯` · handRoll gone ·
+    iconMiss=none · 0 pageErr · desktop right-strip + mobile bottom-row dock.
+  - **§C DONE** — Install/Migrate context-aware lifecycle [GATE-2: HIDE in-client]: shown only pre-client (login/tenant
+    picker), hidden once a client is committed. Witness `erp/tests/poc_idmp_lifecycle.js` →
+    `§IDMP-LIFECYCLE stage=pre-client install=Y migrate=Y` → login → `stage=in-client install=context migrate=context`
+    (posted/graph/kanban/rule kept both stages) · 0 pageErr.
+  - **§B DONE** — cross-tab history scrubber (Glassbowl `#scrub` pattern) in `idmp_history.js`: records {window/tab/record}
+    moments across `#idmp-wintabs`; double-tap blooms labelled chips (real fields); dot click = READ-ONLY restore (never
+    mutates op-log). Determinism: monotonic seq + performance.now() only. Witness `erp/tests/poc_idmp_history.js` →
+    4 moments incl. true cross-tab (2 tabs) + `push=record:'Tree GardenWorld ElementValue (...)'` · bloom · restore
+    readOnly=Y · kernelMutations=0 · 0 pageErr.
+  - **NEXT = deploy-go**: on user GO → push `feat/idmp-pill-registry` → PR off `origin/main` → CI → squash-merge →
+    verify sw v590 live. (Spec `prompts/ERP_BOTTOM_BAR_AND_LIFECYCLE.md`, bim-ootb.)
 - **✅ DONE + LIVE (§MOBILE-LANDING, bim-ootb PR #159, sw v587, 2026-06-06) [ERP-UI] Mobile main-page (portrait).**
   Post-login the phone landed on an empty desktop canvas ("Select a menu item") with the menu hidden behind the ☰
   burger. Now `@media≤760px` AUTO-OPENS the existing menu drawer on the empty landing (and on returning to it after
