@@ -58,6 +58,36 @@ def parse_vertices_blob(blob):
 # IFC helpers (only imported when needed)
 # ---------------------------------------------------------------------------
 
+# Revit exports its reference PLANES (Ceiling, Top-of-Steel, etc.) as IfcBuildingStorey, so MEP/STR
+# elements land on "Level 2 Ceiling" / "Level 2 TOS" instead of the real "Level 2" — polluting the
+# spatial tree with junk sibling storeys (Hospital: ~26% of elements). Normalize to the base level.
+# Deterministic: strip a known reference-plane suffix; otherwise return the name unchanged. Extend the
+# list from evidence (SELECT DISTINCT storey ...), never guess a level that isn't in the data.
+# Reference-plane qualifiers appear as a SUFFIX ("Level 2 Ceiling") OR a PREFIX ("Ceiling Level 01",
+# seen in Terminal) OR bare ("Ceiling"). Strip in any position; a bare qualifier → "Unknown" (no level).
+REF_LEVEL_TOKENS = ("Ceiling", "TOS", "T.O.S.", "Top of Steel", "Soffit")
+
+
+def normalize_storey(name):
+    """Map a Revit reference-plane storey name to its base building level. Idempotent."""
+    if not name:
+        return name
+    s = str(name).strip()
+    changed = True
+    while changed:
+        changed = False
+        low = s.lower()
+        for tok in REF_LEVEL_TOKENS:
+            t = tok.lower()
+            if low == t:
+                s = ""; changed = True; break
+            if low.endswith(" " + t):
+                s = s[:-(len(t) + 1)].strip(); changed = True; break
+            if low.startswith(t + " "):
+                s = s[len(t) + 1:].strip(); changed = True; break
+    return s if s else "Unknown"
+
+
 def get_storey_for_element(element):
     """Walk IFC containment to find spatial segment name.
 
@@ -73,11 +103,11 @@ def get_storey_for_element(element):
         for rel in element.ContainedInStructure:
             container = rel.RelatingStructure
             if any(container.is_a(t) for t in SPATIAL_CONTAINERS):
-                return container.Name
+                return normalize_storey(container.Name)
             if hasattr(container, "Decomposes"):
                 for dec in container.Decomposes:
                     if any(dec.RelatingObject.is_a(t) for t in SPATIAL_CONTAINERS):
-                        return dec.RelatingObject.Name
+                        return normalize_storey(dec.RelatingObject.Name)
     except (AttributeError, TypeError):
         pass
     return "Unknown"
@@ -349,7 +379,27 @@ DISCIPLINE_MAP = _loaded[1] if _loaded else {
 }
 
 
-def infer_discipline(ifc_class):
+# §FLOWTERM-REFINE: IfcFlowTerminal is the ABSTRACT supertype that IFC2x3/generic exporters emit
+# for sprinklers, light fixtures, air diffusers AND sanitary fixtures alike — the flat
+# "IfcFlowTerminal → MEP" rule then dumps ALL of them into MEP, so e.g. sprinklers never appear under
+# the FP discipline in the Find panel (user). When the class is this catch-all, disambiguate by the
+# element's NAME keyword to the discipline the specific subtype would have carried. Deterministic
+# keyword match — no invention; unmatched terminals keep the MEP default.
+_FLOWTERM_NAME_DISC = (
+    (("sprinkler", "fire suppression", "fire protection", "firefight"), "FP"),
+    (("light", "luminaire", "lamp", "downlight", "spotlight"),          "ELEC"),
+    (("receptacle", "socket", "outlet", "switch", "panelboard", "panel board"), "ELEC"),
+    (("diffuser", "grille", "register", "air terminal", "supply air", "return air", "exhaust"), "ACMV"),
+    (("lavatory", "water closet", "urinal", "sink", "basin", "shower",
+      "toilet", "wc", "sanitary", "bidet", "faucet", "tap"),           "MEP"),
+)
+
+def infer_discipline(ifc_class, name=None):
+    if ifc_class == "IfcFlowTerminal" and name:
+        low = name.lower()
+        for keys, disc in _FLOWTERM_NAME_DISC:
+            if any(k in low for k in keys):
+                return disc
     return DISCIPLINE_MAP.get(ifc_class, "ARC")
 
 
@@ -568,7 +618,7 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude, guid_prefix=
                 guid = f"{guid_prefix}_{elem.GlobalId}" if guid_prefix else elem.GlobalId
                 name = getattr(elem, "Name", None)
                 storey = get_storey_for_element(elem)
-                discipline = infer_discipline(cls)
+                discipline = infer_discipline(cls, name)  # §FLOWTERM-REFINE: name disambiguates IfcFlowTerminal
                 elem_type = None
                 try:
                     for rel in elem.IsDefinedBy:
@@ -795,7 +845,7 @@ def extract_from_db_to_reference(src_path, conn, classes, exclude, disciplines):
         for row in src.execute("SELECT DISTINCT building FROM spatial_structure WHERE building IS NOT NULL"):
             buildings.add(row[0])
         for row in src.execute("SELECT DISTINCT storey FROM spatial_structure WHERE storey IS NOT NULL AND storey != ''"):
-            storeys.add(row[0])
+            storeys.add(normalize_storey(row[0]))  # fold Revit reference planes into base level
         bld_guid = "BUILDING_0"
         for b in buildings:
             conn.execute(
@@ -808,7 +858,7 @@ def extract_from_db_to_reference(src_path, conn, classes, exclude, disciplines):
                 "VALUES (?, 'IfcBuildingStorey', ?, ?)", (s_guid, s, bld_guid))
         # Build storey map from flat table
         for guid, storey in src.execute("SELECT guid, storey FROM spatial_structure WHERE storey IS NOT NULL AND storey != ''"):
-            storey_map[guid] = storey
+            storey_map[guid] = normalize_storey(storey)
     conn.commit()
 
     # Copy elements with filters
@@ -841,6 +891,7 @@ def extract_from_db_to_reference(src_path, conn, classes, exclude, disciplines):
         # Resolve storey from spatial_structure if NULL
         if not storey or storey == "":
             storey = storey_map.get(guid)
+        storey = normalize_storey(storey)  # fold Revit reference planes (Ceiling/TOS) into base level
 
         eid = next_id; next_id += 1
         conn.execute(

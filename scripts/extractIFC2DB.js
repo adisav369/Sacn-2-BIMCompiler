@@ -80,7 +80,24 @@ function properClassName(typeCode) {
   return CLASS_NAME_MAP[upper] || ('Ifc' + typeCode.substring(3).charAt(0).toUpperCase() + typeCode.substring(4).toLowerCase());
 }
 
-function classifyDisc(ifcClass) { return DISC_MAP[ifcClass] || 'ARC'; }
+// §FLOWTERM-REFINE: IfcFlowTerminal is the abstract supertype generic/IFC2x3 exporters emit for
+// sprinklers, lights, diffusers AND sanitary fixtures — the flat "IfcFlowTerminal → MEP" rule buries
+// them all in MEP (sprinklers never show under FP). Disambiguate the catch-all by element-name
+// keyword to the discipline the specific subtype would carry. Deterministic; unmatched → MEP.
+const FLOWTERM_NAME_DISC = [
+  [['sprinkler','fire suppression','fire protection','firefight'], 'FP'],
+  [['light','luminaire','lamp','downlight','spotlight'], 'ELEC'],
+  [['receptacle','socket','outlet','switch','panelboard','panel board'], 'ELEC'],
+  [['diffuser','grille','register','air terminal','supply air','return air','exhaust'], 'ACMV'],
+  [['lavatory','water closet','urinal','sink','basin','shower','toilet','wc','sanitary','bidet','faucet','tap'], 'PLB'],
+];
+function classifyDisc(ifcClass, name) {
+  if (ifcClass === 'IfcFlowTerminal' && name) {
+    const low = String(name).toLowerCase();
+    for (const [keys, disc] of FLOWTERM_NAME_DISC) if (keys.some(k => low.includes(k))) return disc;
+  }
+  return DISC_MAP[ifcClass] || 'ARC';
+}
 
 // ── FNV-1a hash (same as import_worker.js) ──
 function fnvHash(buf) {
@@ -283,7 +300,7 @@ async function main() {
           ifcClass,
           name: el.Name ? el.Name.value : ifcClass + '_' + id,
           storey: elementToStorey[id] || 'Unknown',
-          discipline: discOverride || classifyDisc(ifcClass),
+          discipline: discOverride || classifyDisc(ifcClass, el.Name ? el.Name.value : ''),  // §FLOWTERM-REFINE
           material: '',
           _bboxX: null, _bboxY: null, _bboxZ: null,
         });

@@ -23,6 +23,11 @@ MAX_AREA_ABS = 150.0  # m^2 — drop exterior-leak blobs (a real room is rarely 
 MAX_AREA_FRAC = 0.92  # also drop anything ~the whole storey plan
 SEAL = 2            # dilate walls this many cells (×RES) to close hairline corner/door gaps
 WALL_LIKE = ("IfcWall%", "IfcDoor%", "IfcCurtainWall%", "IfcColumn%", "IfcWindow%")
+# §STAIR-EXCLUDE: a stairwell is a wall-enclosed pocket, so the flood-fill flags it as a "room".
+# It is circulation, NOT a room. Reject any compiled pocket that a stair footprint substantially
+# overlaps. IfcStair% LIKE also covers IfcStairFlight. (User: "staircase is also marked as room".)
+STAIR_LIKE = ("IfcStair%", "IfcRamp%")
+STAIR_OVERLAP_REJECT = 0.35   # drop a pocket if a stair footprint covers ≥35% of its area
 # §APPROX: these rooms are COMPILED from wall enclosure (flood-fill), NOT extracted IfcSpace.
 # Validated ~5/21 recall on ground-truth Duplex → treat as APPROXIMATE. Labelled '≈' + COMPILED.
 
@@ -37,7 +42,32 @@ def storey_walls(c):
         by.setdefault(st or "Unknown", []).append((cx, cy, cz, bx, by_, bz))
     return by
 
-def flood_rooms(walls):
+def storey_stairs(c):
+    """Per-storey stair/ramp footprints (cx,cy,bx,by) — circulation cores to exclude from rooms."""
+    cond = " OR ".join("m.ifc_class LIKE ?" for _ in STAIR_LIKE)
+    rows = c.execute(
+        f"SELECT m.storey, t.center_x,t.center_y, t.bbox_x,t.bbox_y "
+        f"FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
+        f"WHERE ({cond}) AND t.center_x IS NOT NULL", STAIR_LIKE).fetchall()
+    by = {}
+    for st, cx, cy, bx, by_ in rows:
+        by.setdefault(st or "Unknown", []).append((cx, cy, bx, by_))
+    return by
+
+def _stair_overlap_frac(rx0, ry0, rx1, ry1, stairs):
+    """Largest fraction of room rect [rx0,ry0,rx1,ry1] covered by any single stair footprint."""
+    room_area = max(1e-6, (rx1 - rx0) * (ry1 - ry0))
+    best = 0.0
+    for scx, scy, sbx, sby in stairs:
+        sx0, sx1 = scx - sbx / 2, scx + sbx / 2
+        sy0, sy1 = scy - sby / 2, scy + sby / 2
+        ox = max(0.0, min(rx1, sx1) - max(rx0, sx0))
+        oy = max(0.0, min(ry1, sy1) - max(ry0, sy0))
+        best = max(best, (ox * oy) / room_area)
+    return best
+
+def flood_rooms(walls, stairs=None):
+    stairs = stairs or []
     xs0 = min(w[0] - w[3] / 2 for w in walls); xs1 = max(w[0] + w[3] / 2 for w in walls)
     ys0 = min(w[1] - w[4] / 2 for w in walls); ys1 = max(w[1] + w[4] / 2 for w in walls)
     pad = RES * 2
@@ -101,6 +131,11 @@ def flood_rooms(walls):
             if area < MIN_AREA or area > MAX_AREA_ABS or area > plan_area * MAX_AREA_FRAC: continue
             wx0 = xs0 + mni * RES; wx1 = xs0 + (mxi + 1) * RES
             wy0 = ys0 + mnj * RES; wy1 = ys0 + (mxj + 1) * RES
+            # §STAIR-EXCLUDE: a stair/ramp footprint covering this pocket → it's a circulation
+            # shaft, not a room. Drop it (the lens was showing staircases as rooms).
+            sf = _stair_overlap_frac(wx0, wy0, wx1, wy1, stairs)
+            if sf >= STAIR_OVERLAP_REJECT:
+                print(f"    skip stair-shaft pocket area={round(area)} stair_overlap={sf:.0%}"); continue
             rooms.append({
                 "cx": (wx0 + wx1) / 2, "cy": (wy0 + wy1) / 2, "cz": cz,
                 "sx": wx1 - wx0, "sy": wy1 - wy0, "sz": max(bz, 2.0), "area": area})
@@ -119,12 +154,17 @@ def main():
     except Exception:
         pass
     by = storey_walls(c)
+    stairs_by = storey_stairs(c)
+    # §STAIR-EXCLUDE: stair storey is often 'Unknown'/unassigned in the extract, and a stair is a
+    # CONTINUOUS vertical shaft anyway — so test every room pocket against the UNION of all stair
+    # footprints by XY (not per-storey). A staircase at an XY is circulation on whatever floor it cuts.
+    all_stairs = [s for lst in stairs_by.values() for s in lst]
     total = 0; allrooms = []; st_z = {}
     for st in sorted(by):
         ws = by[st]
         if len(ws) < 3:
             print(f"  storey {st!r}: walls={len(ws)} (too few — skip)"); continue
-        rooms = flood_rooms(ws)
+        rooms = flood_rooms(ws, all_stairs)
         total += len(rooms)
         st_z[st] = sum(w[2] for w in ws) / len(ws)  # storey z = mean wall centre-z
         print(f"  storey {st!r}: walls={len(ws)} → rooms={len(rooms)}  areas={[round(r['area']) for r in rooms]}")
