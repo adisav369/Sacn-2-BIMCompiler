@@ -23,7 +23,7 @@
     
     
       
-        <title>ERPMaker - BIM Intent Compiler</title>
+        <title>Revit Parity — The Long Tail the Big Tools Over-Serve - BIM Intent Compiler</title>
       
     
     
@@ -83,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#erpmaker-the-adoption-grail" class="md-skip">
+        <a href="#revit-parity-the-long-tail-the-big-tools-over-serve" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ERPMaker
+              Revit Parity — The Long Tail the Big Tools Over-Serve
             
           </span>
         </div>
@@ -3899,98 +3899,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-problem-it-attacks-the-first-mile-not-the-engine" class="md-nav__link">
+  <a href="#0-the-two-categories-of-analysis-and-why-the-line-matters" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The problem it attacks — the first mile, not the engine
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why-narrow-beats-any-app-the-rail-already-exists-here" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why narrow beats "any app" — the rail already exists here
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-three-inputs-are-extraction-not-invention" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The three inputs are extraction, not invention
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The pipeline
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why-this-is-the-wedge-against-idempiere-odoo-erpnext" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why this is the wedge against iDempiere / Odoo / ERPNext
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#migration-targets-the-initial-two" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Migration targets — the initial two
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#relation-to-the-holy-grail-the-other-half-not-a-higher-one" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Relation to the Holy Grail — the other half, not a higher one
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#honest-boundaries" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Honest boundaries
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-witness-that-would-prove-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The witness that would prove it
+        0. The Two Categories of "Analysis" — and Why the Line Matters
       
     </span>
   </a>
@@ -4017,155 +3929,280 @@
   
 
 
-<p>/*<em>
- * BIM OOTB / ERP OOTB — ERPMaker: zero-install ERP from your own data.
- * Copyright (c) 2025-2026 Redhuan D. Oon <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a>
- * SPDX-License-Identifier: MIT
- </em>/</p>
-<h1 id="erpmaker-the-adoption-grail">ERPMaker — the adoption grail<a class="headerlink" href="#erpmaker-the-adoption-grail" title="Permanent link">&para;</a></h1>
+<h1 id="revit-parity-the-long-tail-the-big-tools-over-serve">Revit Parity — The Long Tail the Big Tools Over-Serve<a class="headerlink" href="#revit-parity-the-long-tail-the-big-tools-over-serve" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Status: SPEC, focused, the feasible first term of <a href="../AnyAppMaker/">AnyAppMaker.md</a>.</strong>
-Read AnyAppMaker for the horizon; this is the bounded product that is buildable now,
-because the rail it needs already exists for ERP.</p>
+<p><strong>Foundation:</strong> <a href="../BIM_Designer_Browser/">BIM_Designer_Browser.md</a> | <a href="../CLASH_DETECTION/">CLASH_DETECTION.md</a> | <a href="../SQLite3D_Schema/">SQLite3D_Schema.md</a> | <a href="../DocValidate/">DocValidate.md</a> | <a href="../ASSEMBLY_BUILDER_SRS/">ASSEMBLY_BUILDER_SRS.md</a></p>
 </blockquote>
-<h2 id="the-problem-it-attacks-the-first-mile-not-the-engine">The problem it attacks — the first mile, not the engine<a class="headerlink" href="#the-problem-it-attacks-the-first-mile-not-the-engine" title="Permanent link">&para;</a></h2>
-<p>No one abandons iDempiere, Odoo, or ERPNext because business rules are not live-editable.
-They abandon them at the <strong>install</strong>: PostgreSQL, Java/OSGi or Frappe/bench, Docker,
-dependency hell, a server to provision, a consultant to engage. <em>Time-to-first-running-
-screen</em> is days to weeks. That is where the mass market dies, and it is a different wall
-from the one <a href="../HolyGrail/">HolyGrail.md</a> addresses.</p>
-<p>ERPMaker removes that wall: <strong>choose an industry, give your Excel, scan your business
-card — get a running ERP, seeded with your own data, as one offline HTML file, in
-minutes, with no server.</strong></p>
-<h2 id="why-narrow-beats-any-app-the-rail-already-exists-here">Why narrow beats "any app" — the rail already exists here<a class="headerlink" href="#why-narrow-beats-any-app-the-rail-already-exists-here" title="Permanent link">&para;</a></h2>
-<p>The property that makes AI authoring safe is a <strong>closed verb set + a diff-oracle</strong>
-(<a href="../ERP/">ERP.md §0.5, §0.14, §0.17</a>). For ERP those are <em>witnessed today</em>: the verbs
-(O2C / P2P / GL — GUARD, GENERATE, MATCH, allocate, post …) are proven against the
-GardenWorld oracle, and the genome (the ERP-OOTB bundle) exists. For an arbitrary app
-they do not yet exist. So ERPMaker is the <strong>feasible subset</strong> where the doctrine is
-already proven — the first clean abstraction, productized.</p>
-<h2 id="the-three-inputs-are-extraction-not-invention">The three inputs are extraction, not invention<a class="headerlink" href="#the-three-inputs-are-extraction-not-invention" title="Permanent link">&para;</a></h2>
-<p>Consistent with the PRIME RULE — the user does not <em>describe</em> their business, they <em>show</em>
-it, and we <strong>fold</strong> what they show into the universal 5-table bridge.</p>
-<table>
-<thead>
-<tr>
-<th>Input</th>
-<th>What it seeds</th>
-<th>Mechanism</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Industry</strong></td>
-<td>which genome to fork</td>
-<td>selects a pre-witnessed bundle (retail / F&amp;B / services)</td>
-</tr>
-<tr>
-<td><strong>Excel</strong></td>
-<td>products, customers, price list, opening balances — <strong>and the schema, and the acceptance oracle</strong></td>
-<td>migration-as-fold (<a href="../HolyGrail/">HolyGrail.md</a>, <em>the migration solvent</em>)</td>
-</tr>
-<tr>
-<td><strong>B-card scan</strong></td>
-<td>the org / legal-entity master</td>
-<td>reuses the existing scan path (W-QR-INPUT)</td>
-</tr>
-</tbody>
-</table>
-<p><strong>The Excel is the test suite.</strong> Their own historical totals become the witnesses: <em>"your
-invoice #1023 totals $452.10 — the generated app must reproduce it to the cent."</em> This
-dissolves the <em>safe-but-wrong</em> risk (a conforming but financially-wrong app), because the
-generated ERP is verified against the operator's real books, not imagined samples. The
-migration corpus and the acceptance oracle are the same artifact.</p>
-<h2 id="the-pipeline">The pipeline<a class="headerlink" href="#the-pipeline" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>industry → fork genome
-Excel    → ingest → map (AI-assisted: their columns → dictionary fields)
-B-card   → scan → org master
-              ↓
-         fold facts into the 5-table bridge (op-log)
-              ↓
-         oracle-gate against the operator&#39;s own historical totals (§0.17)
-              ↓
-         birth: package to offline HTML (S284), signed (W-SIGN)
-</code></pre></div>
-<p>The column-mapping step is the ontology gap surfaced as a spreadsheet — AI-assisted,
-error-prone, and <strong>round-trip-checked</strong>: the folded data must reproduce the Excel's own
-totals, or the mapping is wrong. Failures return to the user as plain questions in their
-own vocabulary ("is this column the unit price or the line total?"), never as traces.</p>
-<h2 id="why-this-is-the-wedge-against-idempiere-odoo-erpnext">Why this is the wedge against iDempiere / Odoo / ERPNext<a class="headerlink" href="#why-this-is-the-wedge-against-idempiere-odoo-erpnext" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Install → zero.</strong> A browser tab, then a downloadable HTML; no Postgres, no Docker, no
-  server, no consultant.</li>
-<li><strong>Demo data → your data.</strong> Not GardenWorld; their own products and balances on first
-  open.</li>
-<li><strong>The cardinal property survives.</strong> Offline, signed, auditable, no runtime dependency
-  on the platform (<a href="../DistributedERP/">DistributedERP.md</a> §0, §6). The platform supplies
-  the genome and the maker once (MIT, forkable); after that the operator owns the app.</li>
-</ul>
-<h2 id="migration-targets-the-initial-two">Migration targets — the initial two<a class="headerlink" href="#migration-targets-the-initial-two" title="Permanent link">&para;</a></h2>
-<p>Source adapters are earned per engine, against a <em>real</em> instance, one diff-oracle at a
-time. Two are named; their state is asymmetric and must not be overstated.</p>
-<table>
-<thead>
-<tr>
-<th>Target</th>
-<th>State</th>
-<th>Evidence / gate</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>iDempiere</strong></td>
-<td><strong>migrator built + witnessed</strong></td>
-<td><code>scripts/migrate_pg_to_sqlite.js</code> (raw PG→SQLite, byte-identical round-trip) + <code>scripts/compile_rules.js</code> (→ <code>erp_rules.db</code>) + <code>scripts/diff_oracle.js</code> (vs GardenWorld oracle) + <code>scripts/verify_migration.js</code> (acceptance gate). Outputs <code>build/erp/ad_full.db</code> (925 tbl), <code>erp_rules.db</code>. Source: Docker <code>postgres</code>/<code>idempiere</code>. For ERPMaker this is <em>wiring</em>, not building.</td>
-</tr>
-<tr>
-<td><strong>Odoo</strong></td>
-<td><strong>fold WITNESSED (2026-06-03) — <code>§ODOO-FOLD PASS</code>, <code>newVerbs=[]</code></strong></td>
-<td>Odoo 17 (<code>odoodemo</code>) stood up; one sell-side O2C chain (SO <code>S00023</code> → delivery → invoice → GL post → payment → reconcile) driven via RPC to completion, frozen as a static oracle (<code>build/erp/odoo_oracle.{json,db}</code>, §0.12). A pure adapter (<code>scripts/odoo_adapter.js</code>) folded it through the <strong>existing</strong> verbs: all 5 hops mapped, effects reproduce Odoo to the cent, replay exact (<code>scripts/poc_odoo_fold.js</code>, log <code>build/erp/odoo_fold.log</code>). Falsifier survived: nothing invented. <strong>Bound (named):</strong> ONE sell-side chain; account-determination is host data (POST owns only ΣDR==ΣCR, §13.1); 3-way <code>MATCH</code> + partial reconcile are the next fold. Migrator now unblocked.</td>
-</tr>
-</tbody>
-</table>
-<p>The ordering is the doctrine's, not a preference: <strong>source → falsifier → migrator →
-oracle</strong>, never migrator-first. iDempiere is the proven first abstraction; Odoo is the
-next campaign term and does not begin until a real instance exists to extract and the
-fold is witnessed.</p>
-<h2 id="relation-to-the-holy-grail-the-other-half-not-a-higher-one">Relation to the Holy Grail — the other half, not a higher one<a class="headerlink" href="#relation-to-the-holy-grail-the-other-half-not-a-higher-one" title="Permanent link">&para;</a></h2>
-<p><a href="../HolyGrail/">HolyGrail.md</a> closes with: <em>"Migration removes the barrier to leaving; the
-grail (editable rules, live) supplies the reason to land. Both halves, or the solvent has
-nothing to pour into."</em> ERPMaker <strong>is the barrier-remover, productized</strong> — the adoption
-half of the same grail, co-equal with the editable-rules capability half, and the better
-<em>first</em> product because adoption-failure is the mass-market killer. It is downstream of
-the engine-as-data work (it needs the verbs, the fold, the offline womb), so it is not
-"higher" technically; it is the half that gets anyone onto the engine at all.</p>
-<h2 id="honest-boundaries">Honest boundaries<a class="headerlink" href="#honest-boundaries" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Excel is messy.</strong> Multi-tab, merged cells, free-text, no normalization. The
-  ingest/mapping is real, bounded work — its correctness is the round-trip check, not a
-  guarantee.</li>
-<li><strong>One genome per industry, pre-witnessed.</strong> Launch quality = how many industry genomes
-  are proven against an oracle. Start with one or two you can witness, not a dropdown of
-  twenty — the §0.17 breadth campaign, applied to verticals.</li>
-<li><strong>Migration scope earned one oracle at a time.</strong> iDempiere is tractable (known
-  DocAction + GardenWorld oracle); other sources are a campaign in sequence, same as the
-  HolyGrail migration boundary.</li>
-<li><strong>Read/seed can ship before live rule-edit.</strong> ERPMaker delivers a <em>seeded, running,
-  verified</em> ERP without waiting for the E3/E4 live-edit loop; the editable-rules grail
-  lands on top of it later.</li>
-</ul>
-<h2 id="the-witness-that-would-prove-it">The witness that would prove it<a class="headerlink" href="#the-witness-that-would-prove-it" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>§ERPMAKER  industry=retail  ingest=&lt;real_smb.xlsx rows=N&gt;
-           fold→bridge  oracle: FY invoices reproduced to the cent  pass=K fail=0
-           birth=BIM-ERP-OOTB.html  opens_on=file://  signed=Y
-</code></pre></div>
-<p>Spec-first: this witness is named before code. No claim of "minutes to a running ERP"
-until a real SMB spreadsheet folds and reproduces its own books, to the cent, in a
-file:// HTML.</p>
+<div class="bim-banner">
+<p><b>We do not out-solve EnergyPlus. We serve the 80% of small buildings that never ran it.</b> The sophisticated tools Revit/Navisworks/IES gate behind seat licenses and analytical models are, for the long tail, a SQL query or a graph walk over data we already compiled. Every number traces to the model or to a <em>cited</em> coefficient table — never invented.</p>
+</div>
+<p><strong>Version:</strong> 0.1 (2026-06-03) — SPEC, not yet implemented
+<strong>Status:</strong> DRAFT — witness claims defined, no code yet
+<strong>Prime Directive binding:</strong> Every analytical output is either (a) extracted from the model, (b) a geometric/graph fact computed from the model, or (c) a first-order calc whose every coefficient is a <strong>cited lookup</strong> flagged as a default. There is no fourth category. A number with no source is a bug, not a feature.</p>
 <hr />
-<p><em>Grounding: <a href="../HolyGrail/">HolyGrail.md</a> (migration solvent) · <a href="../ERP/">ERP.md</a> §0.5 ·
-§0.10 · §0.14 · §0.17 · <a href="../DistributedERP/">DistributedERP.md</a> §0 · §6 · S284 · W-SIGN /
-W-QR-INPUT. Horizon: <a href="../AnyAppMaker/">AnyAppMaker.md</a>.</em></p>
+<h2 id="0-the-two-categories-of-analysis-and-why-the-line-matters">0. The Two Categories of "Analysis" — and Why the Line Matters<a class="headerlink" href="#0-the-two-categories-of-analysis-and-why-the-line-matters" title="Permanent link">&para;</a></h2>
+<p>Revit's sophisticated toolset splits cleanly once you ask <em>where the number comes from</em>:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Examples</th>
+<th>What it needs</th>
+<th>Our stance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Geometric / topological</strong></td>
+<td>clash, sun-hours, egress distance, MEP downstream trace, area takeoff</td>
+<td>geometry + a graph/index we already hold</td>
+<td><strong>Own it.</strong> No solver, nothing to invent, can't be wrong.</td>
+</tr>
+<tr>
+<td><strong>Solver-class</strong></td>
+<td>full energy model, FEA, hydraulic flow</td>
+<td>validated physics engine (EnergyPlus, Robot) + properties we drop on extraction</td>
+<td><strong>Don't originate.</strong> Export to the validated engine.</td>
+</tr>
+<tr>
+<td><strong>Long-tail first-order</strong></td>
+<td>degree-day heat loss, span/depth check, fixture-unit demand</td>
+<td>rule-of-thumb formula + <strong>cited</strong> coefficient table</td>
+<td><strong>Own it — citation-bound.</strong> The number a junior engineer does by hand from a code table.</td>
+</tr>
+</tbody>
+</table>
+<p>The big tools serve the complex 20% and price for it. The long tail — houses, shops, small commercial — never opens EnergyPlus; the <em>answer they need</em> is a first-order number from a published table. That number is deterministic and citable, so it is <strong>inside</strong> the Prime Directive, not a violation of it. The keystone already exists: <a href="../ASSEMBLY_BUILDER_SRS/">ASSEMBLY_BUILDER_SRS.md</a> computes <strong>U-values</strong> from a cited material library (17 witnesses). Every long-tail calc below follows that same pattern — <em>cited coefficient keyed by material/type, flagged when defaulted.</em></p>
+<p><strong>The no-invent guardrail (applies to every §B calc):</strong> any coefficient not present in the model is fetched from a named, versioned table (e.g. <code>coeff_thermal.json</code>, sourced from MS1525 / ASHRAE / Eurocode) and the output row carries a <code>source</code> field: either <code>model</code> (extracted) or <code>default:&lt;table&gt;:&lt;row&gt;</code> (assumed). The UI renders defaulted values in amber. A calc that cannot cite its coefficient <strong>refuses to run</strong> and logs <code>§REFUSE</code>.</p>
+<hr />
+<h1 id="part-a-view-tools-geometric-ship-ready">Part A — View Tools (geometric, ship-ready)<a class="headerlink" href="#part-a-view-tools-geometric-ship-ready" title="Permanent link">&para;</a></h1>
+<h2 id="a1-find-as-filter-isolate-ghost-color-deferred">A1. Find-as-Filter — Isolate (Ghost / Color deferred)<a class="headerlink" href="#a1-find-as-filter-isolate-ghost-color-deferred" title="Permanent link">&para;</a></h2>
+<p><strong>Status:</strong> Isolate SHIPPED + witnessed (2026-06-04). Ghost + Color <strong>deferred</strong> — see note below.</p>
+<p><strong>Witness W-FILTER-ISOLATE (PROVEN):</strong> Drilling Find to a type and choosing <em>Isolate</em> leaves exactly the matched GUIDs visible; the complement is hidden. Proven by <code>§FILTER visible=&lt;n&gt; hidden=&lt;m&gt; total=&lt;n+m&gt;</code> where n = match count. Verified headless against live Duplex: <code>§FILTER visible=427 hidden=695 total=1122</code> (IfcFlowSegment) + <code>§FILTER_RESET</code> on Show all. Spec: <code>deploy/dev/tests/specs/40-find-isolate.spec.js</code>.</p>
+<p><strong>Witness W-LEAF-ISOLATE (2026-06-04):</strong> Tapping a <strong>Type leaf</strong> in the outliner tree (Storey→Type
+or Discipline→Type) <em>isolates</em> that leaf directly — no search, no result list. The leaf builds its
+own GUID set scoped exactly to its branch (<code>building [+ storey] [+ discipline] AND ifc_class</code>), so
+the isolated count equals the leaf's own badge count. Proven by the same <code>§FILTER visible=&lt;n&gt;
+hidden=&lt;m&gt; total=&lt;n+m&gt;</code> line, where n equals the tapped leaf's count. <em>Show all</em>, panel close, and
+mode-toggle all clear it (already wired via <code>filterByGuids(null)</code>). This replaces the leaf's prior
+<code>runSearch()</code> behavior (strip-not-add: a tree leaf is a direct view-state, not a search seed).</p>
+<p><strong>DROP-IFC import parity (scope note, user 2026-06-04):</strong> Find-as-filter (search isolate + leaf
+isolate) must work identically for buildings brought in via the in-browser <strong>DROP IFC import</strong>
+(<code>deploy/dev/import.js</code> <code>A.importIFC</code> → <code>import_worker.js</code> web-ifc → sql.js), not only pre-extracted
+served DBs. This is already true: both paths populate <code>elements_meta</code>, and the isolate engine only
+queries <code>elements_meta</code> + <code>filterByGuids</code>. <strong>Caveat for the data-gated lenses (§A2 / Task 3):</strong> the
+importer is the SECOND producer of the lens data, alongside the Python pipeline. <code>import_worker.js</code>
+today extracts <strong>no</strong> <code>spatial_structure</code> / <code>rel_contained_in_space</code> / material associations (verified
+2026-06-04 — it only maps <code>IfcSpace</code>→discipline and excludes it from render). So a DROP-imported
+building will correctly show <strong>no Room/Material lens</strong> until <code>import_worker.js</code> carries those tables —
+the same non-invent gate as the served DBs, just in the JS extractor instead of the Python one.</p>
+<p><strong>Witness W-FILTER-GHOST (DEFERRED):</strong> <em>Ghost the rest</em> sets the complement to xray opacity 0.3 and keeps matches at full opacity. Proven by <code>§FILTER ghosted=&lt;m&gt; opaque=&lt;n&gt;</code>.</p>
+<p><strong>Witness W-FILTER-COLOR (DEFERRED):</strong> <em>Color-by-category</em> assigns each distinct value of the drilled field one palette color; element count per color sums to total. Proven by <code>§FILTER colors=&lt;k&gt; sum=&lt;total&gt;</code>.</p>
+<blockquote>
+<p><strong>Scope decision (2026-06-04):</strong> Ghost and Color are <strong>dropped from active scope.</strong> Isolate
+already delivers the original ask ("focus on a group by hiding the rest"). Ghost (keep spatial
+context by x-raying the rest) and Color (all-groups-at-once, color-coded overview) are genuine
+Revit view-states but secondary, and they are the expensive ones — per-element opacity/color on
+shared-material <strong>batched &amp; instanced</strong> meshes (the <code>filter*</code> helpers only do per-element
+<em>visibility</em>, not appearance). Revisit only on a concrete need: Ghost when you want MEP visible
+<em>inside</em> the building shell; Color when you want a discipline/type overview in one glance.</p>
+</blockquote>
+<p>This is the <strong>rule-based filter engine folded into Find</strong> — not a new tool (strip, don't add). It is Revit's <em>Isolate Element / Hide Unrelated</em> temporary-view state and its <em>Filters</em> dialog, both reached through search instead of a modal.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Revit</th>
+<th>BIM OOTB Find-as-Filter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Entry</td>
+<td>Separate Filters dialog, separate Isolate command</td>
+<td>One Find panel — search <em>is</em> the filter</td>
+</tr>
+<tr>
+<td>Scope</td>
+<td>Per-view, trapped in .rvt</td>
+<td>The query — shareable as a deep-link URL</td>
+</tr>
+<tr>
+<td>Rule</td>
+<td>Pick parameter from dropdown</td>
+<td><code>WHERE class=? / material_name=? / storey=? / discipline=?</code></td>
+</tr>
+<tr>
+<td>Color-fill</td>
+<td>Filter override per view</td>
+<td>One palette color per distinct field value, live</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Inputs (all verified present):</strong> Find already drills by class/name/storey/discipline (<code>navigate_find.js:541</code>) and highlights selection. X-ray already caches unique materials and drops to 0.3 opacity (<code>tools.js:82</code>). Color comes from <code>elements_meta.material_rgba</code> or an assigned palette.</p>
+<p><strong>Approach (as built):</strong> <code>A.filterByGuids(set|null)</code> in <code>panels.js</code> — a generic isolate-by-GUID
+primitive mirroring <code>filterStorey</code>, working across regular/instanced/batched meshes (every element
+carries <code>userData.guid</code> / <code>meta.guid</code>). The Find panel gains an <strong>Isolate / Show all</strong> bar
+(<code>navigate_find.js</code>) that builds the full GUID set for the current drill (type/storey/name — not
+capped at the 50-row result LIMIT) and hands it to <code>filterByGuids</code>; resets on open/close/mode-toggle.
+Mutually exclusive with the storey/disc filters (cleared first). <em>Deferred:</em> URL-hash persistence
+for share-by-link.</p>
+<hr />
+<h2 id="a1b-lens-axes-the-toggle-is-the-lens-room-material-phase">A1b. Lens Axes — the toggle IS the lens (Room / Material / Phase)<a class="headerlink" href="#a1b-lens-axes-the-toggle-is-the-lens-room-material-phase" title="Permanent link">&para;</a></h2>
+<p><strong>Status:</strong> SHIPPED to the <code>deploy/dev</code> backup (2026-06-04) — render-tested, specs green (40: 4/4, 41: 3/3). NOT yet ported to <code>bim-ootb/viewer</code> / deployed.</p>
+<p>The Storey/Discipline toggle became a <strong>data-gated axis row</strong> (<code>_renderAxes()</code> → <code>#find-outliner-bar</code>): <strong>Storey · Discipline · Room · Material · Phase</strong>. Optional axes appear only when their data is present (<code>_probeLenses()</code> — the non-invent guarantee, <code>§LENS_PROBE</code>). Selecting an axis lists its groups in the tree (each with a SQL-COUNT badge); engine = <strong>UNIFY</strong> (everything via <code>filterByGuids</code> / highlight+xray).</p>
+<ul>
+<li><strong>Room</strong> (W-ROOM-LENS): highlights each IfcSpace as a translucent <strong>volume box</strong> (from per-space bbox <code>center_*</code>/<code>size_*</code>, <code>scripts/extract_room_bbox.py</code>) + <strong>x-rays the rest</strong> (<code>A.toggleXray</code>); tap a room → brighten it. <code>§ROOM_LENS rooms=21 xray=on</code>, <code>§ROOM_SELECT</code>. (Room <em>mesh</em> not in served DB — boxes used; the IFC has the geometry, future upgrade.)</li>
+<li><strong>Material</strong> (W-MAT): groups <code>material_name</code>; tap → highlight + x-ray. Rich where extracted (Terminal 43747/48428, Schependomlaan 2838/3284; Duplex sparse 98/1122; SampleCastle/Hospital/Clinic = 0). <code>§MAT_SELECT</code>.</li>
+<li><strong>Phase</strong> (W-PHASE-LAZY): lazily runs the <strong>real</strong> Time Machine generator (<code>window.tmGenerateTimeline</code> → <code>injectGantt</code> → <code>kernel_ops</code>) once, cached; groups by <code>kernel_ops.parameters.phase</code> in construction order; tap → highlight + x-ray. <code>§PHASE_LENS gen=real source=kernel_ops phases=6</code>, <code>§PHASE_SELECT</code>.</li>
+</ul>
+<p><strong>Caveat:</strong> on BatchedMesh geometry the bright outline is batch-level (x-ray dim is per-element); element-precise outline is future work. <strong>Rates:</strong> <code>SEQUENCE_RULES</code>/<code>LABOR_RATES</code> externalised to <code>rates/sequence_rules.json</code> (rates.js loads it, hardcoded fallback). <strong>Next:</strong> register that JSON in the Settings editor (bim-ootb only); strip <code>rate_per_day</code> money out of it into the locale cost packs; then cost/qty-in-Find in USD (<code>rsmeans2024_us.json</code>).</p>
+<h2 id="a2-rooms-spaces-color-fill-plans-area-schedule">A2. Rooms / Spaces / Color-Fill Plans + Area Schedule<a class="headerlink" href="#a2-rooms-spaces-color-fill-plans-area-schedule" title="Permanent link">&para;</a></h2>
+<p><strong>Witness W-ROOM-POLY:</strong> Each enclosed space on a storey yields one closed polygon; polygon area matches the <code>room_areas</code> view value within 2%. Proven by <code>§ROOM space=&lt;guid&gt; poly_area=&lt;a&gt; view_area=&lt;b&gt; delta=&lt;pct&gt;</code>.</p>
+<p><strong>Witness W-ROOM-FILL:</strong> Color-fill assigns one color per space-type; the legend lists every type with its total area. Proven by <code>§ROOM types=&lt;k&gt; total_area=&lt;sum&gt;</code>.</p>
+<p>This is our <strong>biggest genuine gap vs Revit</strong> — rooms/areas/color-fill is core FM and area-based costing, and today it is docs-only.</p>
+<p><strong>Inputs — corrected 2026-06-04:</strong> The extractor (<code>tools/extract.py</code>) <strong>already captures spaces</strong>:
+<code>IfcSpace</code> → <code>spatial_structure</code> table (extract.py:510), element→space containment →
+<code>rel_contained_in_space</code> (extract.py:598). The gap is <strong>NOT extractor capability</strong> — it is that
+<strong>every currently-served <code>*_extracted.db</code> was built without these tables</strong> (verified: Duplex, Clinic,
+Hospital, Terminal, Schependomlaan, WBDG_Office, + OCI Duplex all report "no such table:
+spatial_structure"). So step 1 is <strong>re-extract</strong> (or fix the pipeline step that drops the tables)
+so <code>spatial_structure</code> + <code>rel_contained_in_space</code> survive into the served DB — assuming the source
+IFC actually contains <code>IfcSpace</code> (the standard Duplex sample does). Then the viewer reads them.
+Wall/door/window <strong>contours</strong> per storey are already extracted by <code>grid_overlay.js</code> /
+<code>grid_contours.js</code>. <strong>Still missing even after re-extract:</strong> closed room <em>polygons</em> —
+<code>IfcRelSpaceBoundary</code> is dropped; polygons must be derived from contours (below).</p>
+<p><strong>Prerequisite for room <em>isolate</em> (cheap):</strong> once <code>rel_contained_in_space</code> is present, isolating a
+room's <em>contents</em> is the existing <code>A.filterByGuids</code> fed a GUID set from
+<code>SELECT guid FROM rel_contained_in_space WHERE space_guid=?</code> — no new viewer engine. This is the
+smallest room win and reuses A1 directly.</p>
+<p><strong>Approach:</strong> Derive the polygon from contours we already have — close the wall-contour loop per space band (the section-cut Z already used by grid overlay). No new extraction required; this is a geometry-closure step over existing contour data. Once polygons exist: color-fill is canvas fill per <code>space_type</code>; area schedule is <code>GROUP BY space_type</code> over polygon areas. Feeds 5D area-costing directly.</p>
+<p><strong>Beats Revit by:</strong> the color-fill plan is a shareable URL, recomputes live on section-cut change, and the area schedule is diffable across revisions (Revit's is trapped in the .rvt).</p>
+<hr />
+<h1 id="part-b-long-tail-analysis-citation-bound">Part B — Long-Tail Analysis (citation-bound)<a class="headerlink" href="#part-b-long-tail-analysis-citation-bound" title="Permanent link">&para;</a></h1>
+<h2 id="b1-solar-sun-hours-shadow-study-pure-geometric-zero-coefficients">B1. Solar / Sun-Hours / Shadow Study <em>(pure geometric — zero coefficients)</em><a class="headerlink" href="#b1-solar-sun-hours-shadow-study-pure-geometric-zero-coefficients" title="Permanent link">&para;</a></h2>
+<p><strong>Witness W-SOLAR-HOURS:</strong> For a chosen date, hours of direct sun on a selected façade equals the count of sun-positions (stepped at 15-min intervals sunrise→sunset) whose ray reaches the façade un-occluded. Proven by <code>§SOLAR face=&lt;guid&gt; date=&lt;d&gt; hours=&lt;h&gt; steps_lit=&lt;n&gt;/&lt;total&gt;</code>.</p>
+<p>This is the <em>cheapest</em> leapfrog: it needs <strong>no coefficient table at all</strong> — it is pure ray geometry, so it cannot violate non-invent.</p>
+<p><strong>Inputs (all verified):</strong> <code>site_context.latitude/longitude/elevation</code> + <code>true_north_angle</code> (georeferencing extracted, <code>federation_preprocessor.py</code>). Sun position is the standard solar-position algorithm from lat/long + date/time. Occlusion uses the same shadow-map / ray machinery already in <code>tools.js</code> shadow mode and the Time Machine sun cycle.</p>
+<p><strong>Approach:</strong> Step the sun across the day; for each step, cast against scene geometry (reuse shadow infrastructure); tally lit steps per selected surface. Output: hours-of-sun number + a heatmap on façades. Revit gates this behind Insight; for us it's a render loop we already run.</p>
+<hr />
+<h2 id="b2-mep-connectivity-trace-pure-graph-walk-zero-coefficients">B2. MEP Connectivity Trace <em>(pure graph walk — zero coefficients)</em><a class="headerlink" href="#b2-mep-connectivity-trace-pure-graph-walk-zero-coefficients" title="Permanent link">&para;</a></h2>
+<p><strong>Witness W-MEP-TRACE:</strong> From a selected node, <em>downstream</em> returns exactly the set reachable by directed edges; an open system (<code>is_connected=0</code>) reports the disconnection point. Proven by <code>§MEPTRACE start=&lt;node&gt; downstream=&lt;n&gt; terminals=&lt;t&gt; open=&lt;bool&gt;</code>.</p>
+<p>This is the <strong>honest MEP analysis</strong> — topology, not flow. No fluid physics, no invented number.</p>
+<p><strong>Inputs (all verified):</strong> <code>system_nodes</code>, <code>system_edges</code> (directed pipe/duct/wire graph), and <code>mep_systems.is_connected / is_complete / node_count / edge_count</code> flags — all already written by <code>MEPWriter.java</code>. <strong>Not available:</strong> port semantics (<code>IfcDistributionPort</code>) and sizing, so flow/pressure is explicitly out of scope (→ B5 export).</p>
+<p><strong>Approach:</strong> BFS/DFS over <code>system_edges</code> from the picked node. Highlight the reachable subgraph in 3D. "What's downstream of this valve," "is this run complete," "which terminals does this riser feed" — all graph queries. Revit needs the full systems model; we answer from topology we already store.</p>
+<hr />
+<h2 id="b3-code-check-egress-travel-distance-geometric-threshold-from-cited-code-table">B3. Code-Check — Egress Travel Distance <em>(geometric, threshold from cited code table)</em><a class="headerlink" href="#b3-code-check-egress-travel-distance-geometric-threshold-from-cited-code-table" title="Permanent link">&para;</a></h2>
+<p><strong>Witness W-EGRESS:</strong> For each occupiable space, the A* path length to the nearest exit is computed; spaces exceeding the jurisdiction limit are flagged. Proven by <code>§EGRESS space=&lt;guid&gt; dist=&lt;m&gt; limit=&lt;m&gt; source=&lt;code:row&gt; pass=&lt;bool&gt;</code>.</p>
+<p>This is Solibri territory (a separate £k tool) — and we already compute the hard part.</p>
+<p><strong>Inputs (all verified):</strong> <code>navigate_grid.js</code> A<em> pathfinding over the 2D grid (Sections B/B3/B4) and <code>navigate_path.js</code> multi-storey composition already exist. The </em><em>limit</em>* is the only external number — fetched from the jurisdiction pack (the <a href="../DocValidate/">DocValidate.md</a> <code>AD_Val_Rule</code> + 9-country jurisdiction packs already define this rule infrastructure).</p>
+<p><strong>Approach:</strong> Run the existing A<em> from each space centroid to the nearest exit door; compare against the cited code limit (e.g. MS1184 / IBC travel-distance). The path </em>length<em> is geometric (can't be wrong); the </em>limit* carries <code>source=code:&lt;row&gt;</code> and is never hardcoded. Builds directly on <code>DocValidate.md</code> — this is a new rule in an existing engine, not a new engine.</p>
+<hr />
+<h2 id="b4-long-tail-energy-degree-day-heat-loss-first-order-fully-cited">B4. Long-Tail Energy — Degree-Day Heat Loss <em>(first-order, fully cited)</em><a class="headerlink" href="#b4-long-tail-energy-degree-day-heat-loss-first-order-fully-cited" title="Permanent link">&para;</a></h2>
+<p><strong>Witness W-HEATLOSS:</strong> Building steady-state heat-loss rate = Σ(U·A·ΔT) over envelope surfaces + ventilation term; every U comes from the model or a cited default. Proven by <code>§HEATLOSS total_W=&lt;x&gt; envelope_W=&lt;e&gt; vent_W=&lt;v&gt; defaulted=&lt;n&gt;/&lt;surfaces&gt;</code> and per-surface <code>§HEATLOSS-U guid=&lt;g&gt; U=&lt;u&gt; A=&lt;a&gt; source=&lt;model|default:coeff_thermal:row&gt;</code>.</p>
+<p><strong>This is the keystone of the long-tail thesis</strong> and it reuses machinery we already shipped.</p>
+<p><strong>Inputs:</strong>
+- <strong>U-values:</strong> <a href="../ASSEMBLY_BUILDER_SRS/">ASSEMBLY_BUILDER_SRS.md</a> <strong>already computes U from layered assemblies</strong> using a cited conductivity library (its 17 witnesses). Where the model lacks layers, fall back to a typical-construction U keyed by <code>material_name</code>/class from <code>coeff_thermal.json</code> — flagged <code>default</code>.
+- <strong>Areas (A):</strong> envelope surface areas from <code>simple_qto</code> / bbox geometry (verified).
+- <strong>ΔT:</strong> design temperature difference from climate data keyed by <code>site_context.latitude/longitude</code> (cited climate table).</p>
+<p><strong>Approach:</strong> Sum U·A over external surfaces, add a ventilation/infiltration term (air-changes default cited by building type), multiply by ΔT. Output a heating-demand estimate + the dominant-loss breakdown ("62% through glazing"). <strong>Refuses and logs <code>§REFUSE</code> if it cannot cite a U for a surface.</strong> Defaulted surfaces render amber so the user sees exactly which numbers are assumed vs extracted.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Revit + Insight / IES</th>
+<th>BIM OOTB long-tail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Setup</td>
+<td>Thermal zones, schedules, weather file, cloud credits</td>
+<td>Open the model — U-values already computed</td>
+</tr>
+<tr>
+<td>Audience</td>
+<td>The complex 20% with an energy consultant</td>
+<td>The 80% that never modeled energy at all</td>
+</tr>
+<tr>
+<td>Output trust</td>
+<td>Black-box solver</td>
+<td>Every U tagged <code>model</code> or <code>default:&lt;source&gt;</code>, amber when assumed</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Explicit non-goal:</strong> this is <strong>not</strong> an EnergyPlus replacement and the UI says so. Hourly heat-balance, HVAC sizing, comfort → B5 export.</p>
+<hr />
+<h2 id="b5-export-to-validated-engines-be-the-substrate-not-the-solver">B5. Export to Validated Engines — Be the Substrate, Not the Solver<a class="headerlink" href="#b5-export-to-validated-engines-be-the-substrate-not-the-solver" title="Permanent link">&para;</a></h2>
+<p><strong>Witness W-EXPORT-GBXML:</strong> Exported gbXML re-imports into a reference energy tool with surface count and total floor area matching the model within 1%. Proven by <code>§EXPORT format=gbxml surfaces=&lt;n&gt; floor_area=&lt;a&gt;</code>.</p>
+<p>For anything solver-class (full energy, FEA, hydraulics), we <strong>hand off</strong> rather than originate. The right move per the Prime Directive: re-extract the real property sets (today <code>element_properties</code> is <strong>2 hardcoded rows</strong> — FireRating, Reference; arbitrary Psets are dropped), then write gbXML / IFC for EnergyPlus, Robot, etc. Best-in-class front-end + clean, traceable hand-off beats a half-trusted in-browser solver that would, by definition, invent numbers.</p>
+<p><strong>Prerequisite (its own spec):</strong> <em>Pset Harvest</em> — turn the 2-row <code>element_properties</code> table into a full IfcPropertySet / IfcElementQuantity extraction. This is the single highest-leverage extraction upgrade; it feeds B4 (real U-values), B5 (export), and 5D costing.</p>
+<hr />
+<h2 id="c-implementation-order-one-bounded-task-each">C. Implementation Order (one bounded task each)<a class="headerlink" href="#c-implementation-order-one-bounded-task-each" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Feature</th>
+<th>Why first</th>
+<th>Reuses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>A1 Find-as-Filter</strong></td>
+<td>Smallest, highest-frequency, foundation for color-fill</td>
+<td><code>tools.js</code> xray, <code>navigate_find.js</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>B2 MEP Trace</strong></td>
+<td>Pure graph walk, zero coefficients, data fully present</td>
+<td><code>system_edges</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>B1 Solar Hours</strong></td>
+<td>Pure geometry, zero coefficients, reuses shadow infra</td>
+<td>shadow maps, <code>site_context</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>A2 Room Color-Fill</strong></td>
+<td>Closes the real Revit gap; unlocks 5D area cost</td>
+<td><code>grid_contours.js</code>, <code>room_areas</code> view</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>B3 Egress Code-Check</strong></td>
+<td>New rule in existing engine</td>
+<td><code>navigate_grid.js</code> A*, <code>DocValidate.md</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Pset Harvest</strong></td>
+<td>Unblocks B4 real U-values + B5 export</td>
+<td>extractor</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>B4 Heat Loss</strong></td>
+<td>Keystone long-tail calc</td>
+<td>ASSEMBLY_BUILDER U-values, <code>coeff_thermal.json</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>B5 gbXML Export</strong></td>
+<td>Substrate hand-off</td>
+<td>Pset Harvest</td>
+</tr>
+</tbody>
+</table>
+<p>Each row becomes a coder prompt with a <code># ⚠ DO NOT REMOVE</code> preamble citing its witness above. No implementation precedes its witness claim.</p>
+<hr />
+<p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
 
 

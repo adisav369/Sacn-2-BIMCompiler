@@ -3280,6 +3280,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="11. What infrastructure is actually required">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-the-disposable-host-paradigm-what-it-actually-costs-to-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 The Disposable-Host paradigm — what it actually costs to run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4452,6 +4469,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="11. What infrastructure is actually required">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-the-disposable-host-paradigm-what-it-actually-costs-to-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 The Disposable-Host paradigm — what it actually costs to run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4703,11 +4737,11 @@ computes the number; reconcile at business cadence.</strong> Nobody writes a sha
 network; the post office only sequences and relays. The edges in §9 are exactly the residue this leaves —
 bounded, named, and ledger-backed.</p>
 <blockquote>
-<p><strong>Worked examples — <a href="LensFamily.md">the Lens Family</a>.</strong> This doctrine made concrete, extracted from my iDempiere
-Unicenta POS + plugins and ported to browser lenses over the one model: <a href="POSLens.md">POS</a> (in-person sale) ·
-<a href="WMSLens.md">WMS / Logistics / Robots</a> (movement) · <a href="SocialPlatformLens.md">Social Platform</a> (on-the-move) ·
-<a href="CreditLedgerLens.md">Credit Ledger</a> (receivables) · <a href="WorkforceLens.md">Workforce</a> (attendance/tasks) ·
-<a href="GuaranteedChannels.md">Guaranteed Channels</a> (transport/payment pipes). Hub: <strong><a href="LensFamily.md">LensFamily</a></strong>.
+<p><strong>Worked examples — <a href="../LensFamily/">the Lens Family</a>.</strong> This doctrine made concrete, extracted from my iDempiere
+Unicenta POS + plugins and ported to browser lenses over the one model: <a href="../POSLens/">POS</a> (in-person sale) ·
+<a href="../WMSLens/">WMS / Logistics / Robots</a> (movement) · <a href="../SocialPlatformLens/">Social Platform</a> (on-the-move) ·
+<a href="../CreditLedgerLens/">Credit Ledger</a> (receivables) · <a href="../WorkforceLens/">Workforce</a> (attendance/tasks) ·
+<a href="../GuaranteedChannels/">Guaranteed Channels</a> (transport/payment pipes). Hub: <strong><a href="../LensFamily/">LensFamily</a></strong>.
 One source act, the rest a fold, no central control — a business run from a phone. The smallest complete proofs of
 the doctrine above.</p>
 </blockquote>
@@ -5218,6 +5252,42 @@ analysis) · <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/e
 + <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_longtail.js">poc_longtail.js</a>
 (<code>replay-hash == live-hash</code>, browser binding) · <a href="../SpatialERP_OOTB/">SpatialERP_OOTB.md §11.5</a> ·
 iDempiere <code>M_Transaction</code> / <code>M_StorageOnHand</code> / <code>M_StorageReservation</code> / <code>M_Movement</code>.</p>
+<h3 id="111-the-disposable-host-paradigm-what-it-actually-costs-to-run">11.1 The Disposable-Host paradigm — what it actually costs to run<a class="headerlink" href="#111-the-disposable-host-paradigm-what-it-actually-costs-to-run" title="Permanent link">&para;</a></h3>
+<p>A standard corporate ERP install is <strong>three always-on tiers, per tenant, 24/7</strong>: an application
+server (ZK/OSGi/JVM), a database server (Postgres), and the surrounding cache/load-balancer/standby. That
+fleet is the dominant hosting line item, and it runs whether anyone is clicking or not.</p>
+<p>This architecture deletes that tier rather than renting it more cheaply. The compute moves <em>into the
+client</em> — the deterministic kernel over SQLite-WASM (§7, §0) — so the server side reduces to two things,
+both of which the doc has already shown are <em>disposable</em> (reconstructible from the signed logs, §6/§11):</p>
+<ol>
+<li><strong>Static object storage</strong> for the signed log snapshot — a CDN/bucket object. Near-zero marginal cost,
+   scales for free, no process to keep alive. <em>(Witnessed live: the same signed snapshot served
+   interchangeably from GitHub raw, an OCI bucket, and localhost — <code>build/erp/replica_poc.html</code>,
+   <code>scripts/test_kernel_replica.js</code>; any reachable host replays to an identical, controller-signed chain
+   tip, so the host is genuinely interchangeable.)</em></li>
+<li><strong>A thin "dumb post office" relay</strong> (§6) — order + persist + relay only, no business logic — run
+   <em>intermittently</em>, not 24/7, and itself reconstructible from the logs. <em>(Witnessed:
+   <code>build/erp/erp_relay_server.js</code>, <code>scripts/test_kernel_relay.js</code> — idempotent ingest, convergence over
+   HTTP, durable restart.)</em></li>
+</ol>
+<p><strong>Where the saving comes from — stated so a reader can check it, not asserted.</strong> The reduction is bounded
+by <em>how much of a given bill is the always-on app+DB compute tier</em> — usually the majority. Eliminating it
+leaves static storage plus an intermittent relay, so an <strong>order-of-magnitude (up to ~90%) cut is an
+architectural claim about removing that tier</strong>, not a measured invoice — quote it as such. It is largest
+for the <strong>~90% single-writer workload</strong> (§1), which needs <strong>no server at all</strong> (one device, offline-first);
+it shrinks for the <strong>~10%</strong> that needs the relay and the <em>one</em> customer-global CAS touch (§5). What remains
+to pay: cheap static hosting, the intermittent relay, and that sub-second CAS for high-value global ops.</p>
+<p><strong>The interactive-speed half is a separate axis — don't conflate them.</strong> Near-instant UI comes from two
+real removals: no per-interaction network round-trip (the kernel answers locally) and no server-rendered
+widget tree (HTML-native UI replaces the ZK round-trip "click tax", <a href="../ERP/#4b-html-native-ui--replacing-zk-patterns">ERP.md §4b</a>).
+<strong>Honest caveat (carried from §19.6 / the measured A-B):</strong> our ~100× local throughput figure is <em>almost
+entirely the asynchronous-durability trade</em> (instant local append vs synchronous fsync/commit), <strong>not</strong>
+server-removal — server-removal only wins over a <em>network</em>. So: the <strong>cost</strong> win is the disposed compute
+tier; the <strong>latency</strong> win is local compute + no click tax; the <strong>throughput</strong> number is the durability
+trade. Three distinct claims, kept distinct.</p>
+<p><strong>Trade priced in, not hidden:</strong> durability is <em>asynchronous</em> (Truth 2) — a write is durable when the log
+reaches a replica, not at keystroke. That is the one honest cost of having no always-on server of record,
+and the signed log + multi-replica publish (§5.2b, and the 3-host replica above) is how it is made safe.</p>
 <hr />
 <h2 id="12-relationship-to-blockchain-and-to-general-purpose-sync">12. Relationship to blockchain and to general-purpose sync<a class="headerlink" href="#12-relationship-to-blockchain-and-to-general-purpose-sync" title="Permanent link">&para;</a></h2>
 <p><strong>Blockchain: shared data structure, different problem.</strong> This design uses blockchain's data structure — a

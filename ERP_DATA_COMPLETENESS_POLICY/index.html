@@ -23,7 +23,7 @@
     
     
       
-        <title>ERPMaker - BIM Intent Compiler</title>
+        <title>ERP Data Completeness Policy — "no dangling, no invention" - BIM Intent Compiler</title>
       
     
     
@@ -83,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#erpmaker-the-adoption-grail" class="md-skip">
+        <a href="#erp-data-completeness-policy-no-dangling-no-invention" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ERPMaker
+              ERP Data Completeness Policy — "no dangling, no invention"
             
           </span>
         </div>
@@ -3899,10 +3899,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-problem-it-attacks-the-first-mile-not-the-engine" class="md-nav__link">
+  <a href="#1-the-invariant-one-sentence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The problem it attacks — the first mile, not the engine
+        §1 The invariant (one sentence)
       
     </span>
   </a>
@@ -3910,10 +3910,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-narrow-beats-any-app-the-rail-already-exists-here" class="md-nav__link">
+  <a href="#2-relationship-to-bim-streaming-dlod-the-mental-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why narrow beats "any app" — the rail already exists here
+        §2 Relationship to BIM streaming / DLOD (the mental model)
       
     </span>
   </a>
@@ -3921,10 +3921,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-three-inputs-are-extraction-not-invention" class="md-nav__link">
+  <a href="#3-the-three-layers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The three inputs are extraction, not invention
+        §3 The three layers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§3 The three layers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#layer-1-build-time-closure-complete-shards-the-new-piece" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 1 — build-time: closure-complete shards (the new piece)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layer-2-run-time-datasource-tier-escalation-already-specced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 2 — run-time: DataSource tier escalation (already specced)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layer-3-the-floor-labeled-not-loaded-never-a-fake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 3 — the floor: labeled "not-loaded", never a fake
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-what-this-guarantees-and-what-it-honestly-does-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4 What this guarantees (and what it honestly does not)
       
     </span>
   </a>
@@ -3932,10 +3982,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-pipeline" class="md-nav__link">
+  <a href="#5-build-order-witness-led-hold-deploy-for-go-branch-off-originmain" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The pipeline
+        §5 Build order (witness-led; HOLD deploy for GO; branch off origin/main)
       
     </span>
   </a>
@@ -3943,54 +3993,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-this-is-the-wedge-against-idempiere-odoo-erpnext" class="md-nav__link">
+  <a href="#6-discipline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why this is the wedge against iDempiere / Odoo / ERPNext
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#migration-targets-the-initial-two" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Migration targets — the initial two
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#relation-to-the-holy-grail-the-other-half-not-a-higher-one" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Relation to the Holy Grail — the other half, not a higher one
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#honest-boundaries" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Honest boundaries
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-witness-that-would-prove-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The witness that would prove it
+        §6 Discipline
       
     </span>
   </a>
@@ -4017,155 +4023,137 @@
   
 
 
-<p>/*<em>
- * BIM OOTB / ERP OOTB — ERPMaker: zero-install ERP from your own data.
- * Copyright (c) 2025-2026 Redhuan D. Oon <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a>
- * SPDX-License-Identifier: MIT
- </em>/</p>
-<h1 id="erpmaker-the-adoption-grail">ERPMaker — the adoption grail<a class="headerlink" href="#erpmaker-the-adoption-grail" title="Permanent link">&para;</a></h1>
+<h1 id="erp-data-completeness-policy-no-dangling-no-invention">ERP Data Completeness Policy — "no dangling, no invention"<a class="headerlink" href="#erp-data-completeness-policy-no-dangling-no-invention" title="Permanent link">&para;</a></h1>
+<p>How the iDempiere renderer (<code>docs/IDEMPIERE_RENDERER_SPEC.md</code>) guarantees it never renders a missing or
+invented value, while still being <strong>instant</strong> and <strong>offline-first</strong>. This is the <em>correctness</em> layer above
+the <em>fetch</em> mechanism specced in <code>docs/IDEMPIERE_DATA_STREAMING_SPEC.md</code> (T0/T1/T2 + <code>DataSource</code>). That doc
+says <strong>how</strong> rows arrive; this one states <strong>the invariant they must satisfy</strong> and <strong>how it is proven</strong>.</p>
+<p>Spec-first; witness-led; §-log first; non-invent (every row a real fold from <code>ad_full.db</code> / the PG source,
+never synthesized — [[feedback_logs_only]], [[feedback_no_hype]]). EXPLICIT GO before any deploy.</p>
+<h2 id="1-the-invariant-one-sentence">§1 The invariant (one sentence)<a class="headerlink" href="#1-the-invariant-one-sentence" title="Permanent link">&para;</a></h2>
 <blockquote>
-<p><strong>Status: SPEC, focused, the feasible first term of <a href="../AnyAppMaker/">AnyAppMaker.md</a>.</strong>
-Read AnyAppMaker for the horizon; this is the bounded product that is buildable now,
-because the rail it needs already exists for ERP.</p>
+<p><strong>Every reference the renderer follows resolves to a real row, escalates a tier to fetch it, or renders a
+labeled "not-loaded" state — never a dangling FK, never an invented value.</strong></p>
 </blockquote>
-<h2 id="the-problem-it-attacks-the-first-mile-not-the-engine">The problem it attacks — the first mile, not the engine<a class="headerlink" href="#the-problem-it-attacks-the-first-mile-not-the-engine" title="Permanent link">&para;</a></h2>
-<p>No one abandons iDempiere, Odoo, or ERPNext because business rules are not live-editable.
-They abandon them at the <strong>install</strong>: PostgreSQL, Java/OSGi or Frappe/bench, Docker,
-dependency hell, a server to provision, a consultant to engage. <em>Time-to-first-running-
-screen</em> is days to weeks. That is where the mass market dies, and it is a different wall
-from the one <a href="../HolyGrail/">HolyGrail.md</a> addresses.</p>
-<p>ERPMaker removes that wall: <strong>choose an industry, give your Excel, scan your business
-card — get a running ERP, seeded with your own data, as one offline HTML file, in
-minutes, with no server.</strong></p>
-<h2 id="why-narrow-beats-any-app-the-rail-already-exists-here">Why narrow beats "any app" — the rail already exists here<a class="headerlink" href="#why-narrow-beats-any-app-the-rail-already-exists-here" title="Permanent link">&para;</a></h2>
-<p>The property that makes AI authoring safe is a <strong>closed verb set + a diff-oracle</strong>
-(<a href="../ERP/">ERP.md §0.5, §0.14, §0.17</a>). For ERP those are <em>witnessed today</em>: the verbs
-(O2C / P2P / GL — GUARD, GENERATE, MATCH, allocate, post …) are proven against the
-GardenWorld oracle, and the genome (the ERP-OOTB bundle) exists. For an arbitrary app
-they do not yet exist. So ERPMaker is the <strong>feasible subset</strong> where the doctrine is
-already proven — the first clean abstraction, productized.</p>
-<h2 id="the-three-inputs-are-extraction-not-invention">The three inputs are extraction, not invention<a class="headerlink" href="#the-three-inputs-are-extraction-not-invention" title="Permanent link">&para;</a></h2>
-<p>Consistent with the PRIME RULE — the user does not <em>describe</em> their business, they <em>show</em>
-it, and we <strong>fold</strong> what they show into the universal 5-table bridge.</p>
+<p>"References the renderer follows" is a finite, enumerable set (not "all of <code>ad_full.db</code>"):
+1. <strong>Login graph</strong> — <code>AD_User → AD_User_Roles → AD_Role → AD_Client</code> and <code>AD_Role → AD_Role_OrgAccess →
+   AD_Org</code> and <code>AD_Role → AD_Window_Access → AD_Window</code>.
+2. <strong>Menu graph</strong> — <code>AD_Menu (Tree 10) → AD_Window</code> for every active <code>W</code> leaf.
+3. <strong>Window graph</strong> — <code>AD_Window → AD_Tab → AD_Field → AD_Column</code>, and each tab's <code>AD_Table → physical
+   table</code>.
+4. <strong>FK display</strong> — for each <em>displayed</em> field of reference type <code>tableDirect|table|search</code>, the lookup
+   target row used by <code>ADData.resolveFK</code>.</p>
+<p>The invariant is asserted <strong>only</strong> over these paths. The other ~900 tables in <code>ad_full.db</code> are not
+"missing" — they are simply <em>not yet reached</em>; they arrive by tier escalation when a path touches them.</p>
+<h2 id="2-relationship-to-bim-streaming-dlod-the-mental-model">§2 Relationship to BIM streaming / DLOD (the mental model)<a class="headerlink" href="#2-relationship-to-bim-streaming-dlod-the-mental-model" title="Permanent link">&para;</a></h2>
+<p>The renderer's load policy is the <strong>city click-to-stream</strong> branch of BIM streaming
+([[project_s285_city]], [[project_s262_dlod]]), <strong>plus a correctness constraint geometry does not have.</strong></p>
 <table>
 <thead>
 <tr>
-<th>Input</th>
-<th>What it seeds</th>
-<th>Mechanism</th>
+<th>BIM streaming</th>
+<th>ERP data</th>
+<th>same?</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Industry</strong></td>
-<td>which genome to fork</td>
-<td>selects a pre-witnessed bundle (retail / F&amp;B / services)</td>
+<td><code>city_index.db</code> 786 bboxes — shape of all, geometry on click</td>
+<td>AD <strong>dictionary</strong> — shape of all windows, rows on open</td>
+<td>✅ coarse scaffold complete, payload lazy</td>
 </tr>
 <tr>
-<td><strong>Excel</strong></td>
-<td>products, customers, price list, opening balances — <strong>and the schema, and the acceptance oracle</strong></td>
-<td>migration-as-fold (<a href="../HolyGrail/">HolyGrail.md</a>, <em>the migration solvent</em>)</td>
+<td>click building → stream its <code>geo.db</code></td>
+<td>open window → range-fetch its table</td>
+<td>✅ click-to-stream seam (the window-open trigger)</td>
 </tr>
 <tr>
-<td><strong>B-card scan</strong></td>
-<td>the org / legal-entity master</td>
-<td>reuses the existing scan path (W-QR-INPUT)</td>
+<td>precache / range-stream / downloaded-building-DB</td>
+<td>T0 precache / T1 httpvfs range / T2 module shard</td>
+<td>✅ same three tiers</td>
+</tr>
+<tr>
+<td>aggregate/merged far mesh (BatchedMesh)</td>
+<td>aggregate fold (P&amp;L total) = coarse LOD; drill = fine</td>
+<td>✅ aggregate-as-coarse-LOD</td>
+</tr>
+<tr>
+<td>continuous <strong>distance</strong> → LOD ramp, hysteresis, decimation</td>
+<td>discrete navigation (on a window or not, parent→child)</td>
+<td>❌ no continuous metric — click-to-stream, not distance-DLOD</td>
+</tr>
+<tr>
+<td>missing far detail = <em>blurry</em> (graceful)</td>
+<td>missing referenced row = <em>wrong</em> (not blurry)</td>
+<td>❌ <strong>closure required</strong> — see §1</td>
+</tr>
+<tr>
+<td>coarse proxy = decimated mesh</td>
+<td>"low LOD" = labeled <strong>not-loaded</strong> card, never a proxy</td>
+<td>❌ no invented stand-in</td>
 </tr>
 </tbody>
 </table>
-<p><strong>The Excel is the test suite.</strong> Their own historical totals become the witnesses: <em>"your
-invoice #1023 totals $452.10 — the generated app must reproduce it to the cent."</em> This
-dissolves the <em>safe-but-wrong</em> risk (a conforming but financially-wrong app), because the
-generated ERP is verified against the operator's real books, not imagined samples. The
-migration corpus and the acceptance oracle are the same artifact.</p>
-<h2 id="the-pipeline">The pipeline<a class="headerlink" href="#the-pipeline" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>industry → fork genome
-Excel    → ingest → map (AI-assisted: their columns → dictionary fields)
-B-card   → scan → org master
-              ↓
-         fold facts into the 5-table bridge (op-log)
-              ↓
-         oracle-gate against the operator&#39;s own historical totals (§0.17)
-              ↓
-         birth: package to offline HTML (S284), signed (W-SIGN)
-</code></pre></div>
-<p>The column-mapping step is the ontology gap surfaced as a spreadsheet — AI-assisted,
-error-prone, and <strong>round-trip-checked</strong>: the folded data must reproduce the Excel's own
-totals, or the mapping is wrong. Failures return to the user as plain questions in their
-own vocabulary ("is this column the unit price or the line total?"), never as traces.</p>
-<h2 id="why-this-is-the-wedge-against-idempiere-odoo-erpnext">Why this is the wedge against iDempiere / Odoo / ERPNext<a class="headerlink" href="#why-this-is-the-wedge-against-idempiere-odoo-erpnext" title="Permanent link">&para;</a></h2>
+<p>Takeaway: reuse the <strong>streaming mechanics</strong> wholesale (tiers, <code>DataSource</code>, click-to-stream, cache/LRU).
+Add the one thing geometry is free of — <strong>referential closure</strong> — because a wrong FK is a <em>defect</em>, not a
+fidelity drop. DLOD can approximate; ERP must resolve-or-label.</p>
+<h2 id="3-the-three-layers">§3 The three layers<a class="headerlink" href="#3-the-three-layers" title="Permanent link">&para;</a></h2>
+<h3 id="layer-1-build-time-closure-complete-shards-the-new-piece">Layer 1 — build-time: closure-complete shards (the new piece)<a class="headerlink" href="#layer-1-build-time-closure-complete-shards-the-new-piece" title="Permanent link">&para;</a></h3>
+<p>A shard (the precached <code>ad_seed.db</code>, or any T2 module <code>.db</code>) is <strong>valid iff referentially closed</strong> over the
+§1 paths it claims to serve: every FK its rows hold resolves <em>inside the shard</em>, or to a documented
+sentinel. Known sentinels (non-invent, named — not gaps):
+- <strong><code>AD_Org_ID = 0</code> = "*" (All)</strong> — no <code>AD_Org</code> row by iDempiere convention; the renderer already renders
+  it as <code>*</code> ([[project_idempiere_renderer]] §3b.1).
+- <strong><code>AD_Client_ID = 0</code> = "System"</strong> — the metadata tenant.</p>
+<p>Shards are produced by a <strong>closure generator</strong> (<code>scripts/build_erp_shard.*</code>): seed a root set, then take the
+transitive closure over the AD graph (login closure ∪ dictionary closure ∪ requested module-data closure,
+where a module's table pulls its FK-referenced master tables so <code>resolveFK</code> never dangles). This is what
+makes "get the System role over" structural rather than hand-patched: seed <code>System</code> the user and the login
+closure pulls <code>AD_Role 0 → AD_Client 0 → AD_Role_OrgAccess → AD_Window_Access</code> automatically.</p>
+<blockquote>
+<p><strong>Witness §SHARD-CLOSURE</strong> <code>shard=&lt;f&gt; login=0 menu=0 window=0 fk=0 sentinels=[org0,client0] dangling=0</code>
+— the integrity audit (<code>scripts/erp_shard_integrity.sh</code>) asserts <strong>0 dangling</strong> on every §1 path. A shard
+that fails is not shippable. Separately it <strong>reports</strong> (does not assert) data coverage —
+<code>tablesPresent=&lt;p&gt;/&lt;t&gt;</code> — because absent business tables are the T1/T2 fill surface, not a closure defect.</p>
+</blockquote>
+<h3 id="layer-2-run-time-datasource-tier-escalation-already-specced">Layer 2 — run-time: <code>DataSource</code> tier escalation (already specced)<a class="headerlink" href="#layer-2-run-time-datasource-tier-escalation-already-specced" title="Permanent link">&para;</a></h3>
+<p>Every read / <code>resolveFK</code> goes through <code>DataSource</code> (<code>docs/IDEMPIERE_DATA_STREAMING_SPEC.md §3</code>): <strong>T0</strong> closed
+seed → <strong>T1</strong> httpvfs range over hosted <code>ad_full.db</code> → <strong>T2</strong> module shard → labeled not-loaded. The miss of
+a §1 reference <strong>triggers</strong> an escalation; it never returns wrong data. <code>§STREAM-SRC tier=T0|T1|T2</code> names the
+serving tier on every window-open (no silent path). This doc adds the rule: <em>a tier may only be skipped to a
+lower one, and the floor is a labeled state — never a fabricated row.</em></p>
+<h3 id="layer-3-the-floor-labeled-not-loaded-never-a-fake">Layer 3 — the floor: labeled "not-loaded", never a fake<a class="headerlink" href="#layer-3-the-floor-labeled-not-loaded-never-a-fake" title="Permanent link">&para;</a></h3>
+<p>When all tiers miss (offline, table never fetched), render the existing honest card ("table not in this
+seed / not loaded") — already implemented in <code>idempiere.html</code> <code>renderActiveTab</code>. This is the ERP equivalent
+of a not-yet-streamed building showing its bbox, not a fake mesh. The card must state <em>why</em> (offline + not
+cached) so it reads as "not loaded", not "no data".</p>
+<h2 id="4-what-this-guarantees-and-what-it-honestly-does-not">§4 What this guarantees (and what it honestly does not)<a class="headerlink" href="#4-what-this-guarantees-and-what-it-honestly-does-not" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Install → zero.</strong> A browser tab, then a downloadable HTML; no Postgres, no Docker, no
-  server, no consultant.</li>
-<li><strong>Demo data → your data.</strong> Not GardenWorld; their own products and balances on first
-  open.</li>
-<li><strong>The cardinal property survives.</strong> Offline, signed, auditable, no runtime dependency
-  on the platform (<a href="../DistributedERP/">DistributedERP.md</a> §0, §6). The platform supplies
-  the genome and the maker once (MIT, forkable); after that the operator owns the app.</li>
+<li><strong>Guaranteed:</strong> within any shipped (closed) shard, the renderer never follows a dangling FK and never
+  invents a value — provable, per-shard, by <code>§SHARD-CLOSURE dangling=0</code>.</li>
+<li><strong>Guaranteed:</strong> any reference outside the offline core resolves online via T1 range, or via a fetched T2
+  shard offline — <code>§STREAM-SRC</code> proves which.</li>
+<li><strong>NOT guaranteed (named, not hidden):</strong> <em>full offline completeness</em>. That equals shipping all ~925 tables
+  (= <code>ad_full.db</code>, 45 MB) which kills <em>instant</em> and blows the IDB ~1 GB cap ([[project_import_idb_limit]]).
+  The offline core is the <strong>closed dictionary + login + chosen modules</strong>; the long tail is online-or-fetched.
+  The boundary is explicit and provable — that is the whole point. "Instant" wins; completeness is tiered.</li>
 </ul>
-<h2 id="migration-targets-the-initial-two">Migration targets — the initial two<a class="headerlink" href="#migration-targets-the-initial-two" title="Permanent link">&para;</a></h2>
-<p>Source adapters are earned per engine, against a <em>real</em> instance, one diff-oracle at a
-time. Two are named; their state is asymmetric and must not be overstated.</p>
-<table>
-<thead>
-<tr>
-<th>Target</th>
-<th>State</th>
-<th>Evidence / gate</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>iDempiere</strong></td>
-<td><strong>migrator built + witnessed</strong></td>
-<td><code>scripts/migrate_pg_to_sqlite.js</code> (raw PG→SQLite, byte-identical round-trip) + <code>scripts/compile_rules.js</code> (→ <code>erp_rules.db</code>) + <code>scripts/diff_oracle.js</code> (vs GardenWorld oracle) + <code>scripts/verify_migration.js</code> (acceptance gate). Outputs <code>build/erp/ad_full.db</code> (925 tbl), <code>erp_rules.db</code>. Source: Docker <code>postgres</code>/<code>idempiere</code>. For ERPMaker this is <em>wiring</em>, not building.</td>
-</tr>
-<tr>
-<td><strong>Odoo</strong></td>
-<td><strong>fold WITNESSED (2026-06-03) — <code>§ODOO-FOLD PASS</code>, <code>newVerbs=[]</code></strong></td>
-<td>Odoo 17 (<code>odoodemo</code>) stood up; one sell-side O2C chain (SO <code>S00023</code> → delivery → invoice → GL post → payment → reconcile) driven via RPC to completion, frozen as a static oracle (<code>build/erp/odoo_oracle.{json,db}</code>, §0.12). A pure adapter (<code>scripts/odoo_adapter.js</code>) folded it through the <strong>existing</strong> verbs: all 5 hops mapped, effects reproduce Odoo to the cent, replay exact (<code>scripts/poc_odoo_fold.js</code>, log <code>build/erp/odoo_fold.log</code>). Falsifier survived: nothing invented. <strong>Bound (named):</strong> ONE sell-side chain; account-determination is host data (POST owns only ΣDR==ΣCR, §13.1); 3-way <code>MATCH</code> + partial reconcile are the next fold. Migrator now unblocked.</td>
-</tr>
-</tbody>
-</table>
-<p>The ordering is the doctrine's, not a preference: <strong>source → falsifier → migrator →
-oracle</strong>, never migrator-first. iDempiere is the proven first abstraction; Odoo is the
-next campaign term and does not begin until a real instance exists to extract and the
-fold is witnessed.</p>
-<h2 id="relation-to-the-holy-grail-the-other-half-not-a-higher-one">Relation to the Holy Grail — the other half, not a higher one<a class="headerlink" href="#relation-to-the-holy-grail-the-other-half-not-a-higher-one" title="Permanent link">&para;</a></h2>
-<p><a href="../HolyGrail/">HolyGrail.md</a> closes with: <em>"Migration removes the barrier to leaving; the
-grail (editable rules, live) supplies the reason to land. Both halves, or the solvent has
-nothing to pour into."</em> ERPMaker <strong>is the barrier-remover, productized</strong> — the adoption
-half of the same grail, co-equal with the editable-rules capability half, and the better
-<em>first</em> product because adoption-failure is the mass-market killer. It is downstream of
-the engine-as-data work (it needs the verbs, the fold, the offline womb), so it is not
-"higher" technically; it is the half that gets anyone onto the engine at all.</p>
-<h2 id="honest-boundaries">Honest boundaries<a class="headerlink" href="#honest-boundaries" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Excel is messy.</strong> Multi-tab, merged cells, free-text, no normalization. The
-  ingest/mapping is real, bounded work — its correctness is the round-trip check, not a
-  guarantee.</li>
-<li><strong>One genome per industry, pre-witnessed.</strong> Launch quality = how many industry genomes
-  are proven against an oracle. Start with one or two you can witness, not a dropdown of
-  twenty — the §0.17 breadth campaign, applied to verticals.</li>
-<li><strong>Migration scope earned one oracle at a time.</strong> iDempiere is tractable (known
-  DocAction + GardenWorld oracle); other sources are a campaign in sequence, same as the
-  HolyGrail migration boundary.</li>
-<li><strong>Read/seed can ship before live rule-edit.</strong> ERPMaker delivers a <em>seeded, running,
-  verified</em> ERP without waiting for the E3/E4 live-edit loop; the editable-rules grail
-  lands on top of it later.</li>
-</ul>
-<h2 id="the-witness-that-would-prove-it">The witness that would prove it<a class="headerlink" href="#the-witness-that-would-prove-it" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>§ERPMAKER  industry=retail  ingest=&lt;real_smb.xlsx rows=N&gt;
-           fold→bridge  oracle: FY invoices reproduced to the cent  pass=K fail=0
-           birth=BIM-ERP-OOTB.html  opens_on=file://  signed=Y
-</code></pre></div>
-<p>Spec-first: this witness is named before code. No claim of "minutes to a running ERP"
-until a real SMB spreadsheet folds and reproduces its own books, to the cent, in a
-file:// HTML.</p>
-<hr />
-<p><em>Grounding: <a href="../HolyGrail/">HolyGrail.md</a> (migration solvent) · <a href="../ERP/">ERP.md</a> §0.5 ·
-§0.10 · §0.14 · §0.17 · <a href="../DistributedERP/">DistributedERP.md</a> §0 · §6 · S284 · W-SIGN /
-W-QR-INPUT. Horizon: <a href="../AnyAppMaker/">AnyAppMaker.md</a>.</em></p>
+<h2 id="5-build-order-witness-led-hold-deploy-for-go-branch-off-originmain">§5 Build order (witness-led; HOLD deploy for GO; branch off origin/main)<a class="headerlink" href="#5-build-order-witness-led-hold-deploy-for-go-branch-off-originmain" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>This policy</strong> (done) + <strong><code>§SHARD-CLOSURE</code> integrity audit</strong> (<code>scripts/erp_shard_integrity.sh</code>,
+   read-only) — measures the current seed's closure + coverage. Baseline first, [[feedback_logs_only]].</li>
+<li><strong>Closure generator</strong> (<code>scripts/build_erp_shard.*</code>) — regenerate <code>ad_seed.db</code> as the proven-closed login
+   ∪ dictionary set (System login falls out; the 82 access→window dangles resolved or pruned). Mutates the
+   seed → spec'd here, executed on GO. Re-run the audit → <code>dangling=0</code>.</li>
+<li><strong><code>DataSource</code> + tiers</strong> — per <code>IDEMPIERE_DATA_STREAMING_SPEC.md</code> P1–P4 (range proof → wire → cache →
+   shards). The module shards (T2) are produced by the SAME closure generator (axis = AD menu-group).</li>
+</ol>
+<h2 id="6-discipline">§6 Discipline<a class="headerlink" href="#6-discipline" title="Permanent link">&para;</a></h2>
+<p>Closure is a <em>build-time gate</em>, not a runtime hope: a shard ships only with <code>§SHARD-CLOSURE dangling=0</code>. No
+invented rows at any tier; the floor is a labeled state ([[feedback_no_hype]], [[feedback_logs_only]]).
+Range/shard only, never a full-DB download ([[feedback_no_fallback_download]]). §-log under the renderer's
+tests dir; READ before concluding. Branch off <code>origin/main</code> ([[feedback_gh_deploy_base]]); EXPLICIT GO
+before any deploy.</p>
 
 
 

@@ -3073,10 +3073,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-livestore-nearest-neighbour-event-sourced-sqlite-materialised" class="md-nav__link">
+  <a href="#4-livestore-nearest-neighbour-on-the-data-layer-event-sourced-sqlite-materialised" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. LiveStore — nearest neighbour (event-sourced, SQLite-materialised)
+        4. LiveStore — nearest neighbour on the data layer (event-sourced, SQLite-materialised)
       
     </span>
   </a>
@@ -3088,6 +3088,28 @@
     <span class="md-ellipsis">
       
         5. CRDTs (Automerge 3.0 / Yjs) — guaranteed convergence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-sqlsync-carl-sverre-deterministic-reducer-git-style-rebase-our-true-nearest-neighbour-on-the-lever" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. SQLSync (Carl Sverre) — deterministic reducer + git-style rebase (our true nearest neighbour on the lever)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-cr-sqlite-vulcan-vlcnio-row-level-crdt-decentralized-no-sequencer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. cr-sqlite / Vulcan (vlcn.io) — row-level CRDT, decentralized, no sequencer
       
     </span>
   </a>
@@ -3115,6 +3137,17 @@
     <span class="md-ellipsis">
       
         Summary — where we genuinely win, and where we just share the pain
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-other-axis-sqlite-wasm-at-scale-storageengine-not-sync-added-2026-06-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The other axis — SQLite-WASM at scale (storage/engine, not sync) — added 2026-06-03
       
     </span>
   </a>
@@ -4118,10 +4151,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-livestore-nearest-neighbour-event-sourced-sqlite-materialised" class="md-nav__link">
+  <a href="#4-livestore-nearest-neighbour-on-the-data-layer-event-sourced-sqlite-materialised" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. LiveStore — nearest neighbour (event-sourced, SQLite-materialised)
+        4. LiveStore — nearest neighbour on the data layer (event-sourced, SQLite-materialised)
       
     </span>
   </a>
@@ -4133,6 +4166,28 @@
     <span class="md-ellipsis">
       
         5. CRDTs (Automerge 3.0 / Yjs) — guaranteed convergence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-sqlsync-carl-sverre-deterministic-reducer-git-style-rebase-our-true-nearest-neighbour-on-the-lever" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. SQLSync (Carl Sverre) — deterministic reducer + git-style rebase (our true nearest neighbour on the lever)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-cr-sqlite-vulcan-vlcnio-row-level-crdt-decentralized-no-sequencer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. cr-sqlite / Vulcan (vlcn.io) — row-level CRDT, decentralized, no sequencer
       
     </span>
   </a>
@@ -4160,6 +4215,17 @@
     <span class="md-ellipsis">
       
         Summary — where we genuinely win, and where we just share the pain
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-other-axis-sqlite-wasm-at-scale-storageengine-not-sync-added-2026-06-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The other axis — SQLite-WASM at scale (storage/engine, not sync) — added 2026-06-03
       
     </span>
   </a>
@@ -4240,15 +4306,18 @@ PowerSync, and ElectricSQL at once.</p>
   once, run on both sides.</strong> No double-implementation, no client/server rule drift (the thing PowerSync
   makes you maintain by hand).</li>
 </ul>
-<h3 id="4-livestore-nearest-neighbour-event-sourced-sqlite-materialised">4. LiveStore — nearest neighbour (event-sourced, SQLite-materialised)<a class="headerlink" href="#4-livestore-nearest-neighbour-event-sourced-sqlite-materialised" title="Permanent link">&para;</a></h3>
+<h3 id="4-livestore-nearest-neighbour-on-the-data-layer-event-sourced-sqlite-materialised">4. LiveStore — nearest neighbour <em>on the data layer</em> (event-sourced, SQLite-materialised)<a class="headerlink" href="#4-livestore-nearest-neighbour-on-the-data-layer-event-sourced-sqlite-materialised" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>How:</strong> events in an eventlog → <strong>materialised into reactive client SQLite</strong> via materialisers;
   git-inspired sync; pluggable sync backend (Cloudflare / Electric / S2).</li>
 <li><strong>Documented weakness:</strong> <strong>BETA (v0.4)</strong>; requires a sync-provider backend (no hosted service);
   <em>"doesn't sync with existing databases," "doesn't scale for unbounded data," "no P2P,"</em> and explicitly
   <strong>"not batteries-included — no built-in auth or file uploads."</strong></li>
-<li><strong>Our position (not a workaround — an honest delta):</strong> conceptually almost identical at the data layer,
-  so we claim <strong>no technique novelty</strong>. Differentiators are <em>application-level</em>: we span <strong>BIM geometry +
+<li><strong>Our position (not a workaround — an honest delta):</strong> LiveStore is our nearest neighbour <strong>on the data
+  layer</strong> (event → reactive SQLite materialisation), the way SQLSync (§6) is our nearest neighbour <strong>on the
+  determinism lever</strong> (one reducer both sides) — together they show we hold <strong>no technique novelty</strong> on either
+  axis in isolation. Conceptually almost identical at the data layer. Differentiators are <em>application-level</em>:
+  we span <strong>BIM geometry +
   ERP</strong> under one log, ship a real <strong>domain reduction</strong> (iDempiere AD → 5 tables + verbs), and are
   <strong>batteries-included</strong> (AD-derived rules/validation). LiveStore is infrastructure; we are an application
   on the same idea. Its "no auth / doesn't scale unbounded" gaps confirm these are <strong>industry-wide</strong>, not
@@ -4266,6 +4335,44 @@ PowerSync, and ElectricSQL at once.</p>
   "server-authoritative sequencing for invariants" the literature prescribes. We do <strong>not</strong> put money-
   touching invariants under generic LWW (which silently loses an allocation). So the #1 CRDT weakness is
   sidestepped by design, not patched.</li>
+</ul>
+<h3 id="6-sqlsync-carl-sverre-deterministic-reducer-git-style-rebase-our-true-nearest-neighbour-on-the-lever">6. SQLSync (Carl Sverre) — deterministic reducer + git-style rebase (our true nearest neighbour on the lever)<a class="headerlink" href="#6-sqlsync-carl-sverre-deterministic-reducer-git-style-rebase-our-true-nearest-neighbour-on-the-lever" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>How:</strong> mutations are ops; a <strong>reducer compiled to WASM runs identically on client and server</strong>; on
+  reconnect the client <strong>rewinds → applies the server-ordered log → replays pending local ops</strong> (a git-style
+  rebase). The server is the sequencer/authority that assigns the canonical op order.</li>
+<li><strong>Documented weakness:</strong> the reducer is <strong>Rust compiled to WASM</strong> (custom build, opaque to inspection);
+  a <strong>server of authority is mandatory</strong> (it owns the sequence — no zero-server total order); the SQLite is a
+  replica driven by the reducer, so you don't query/extend it with arbitrary SQL the way a native store allows.</li>
+<li><strong>Our position (validation, not a workaround):</strong> SQLSync's <em>"same reducer both sides → server result ==
+  client result by construction"</em> <strong>is our determinism lever, already shipped by someone else</strong> — it is a
+  closer neighbour than LiveStore (§4) for the <em>one-kernel-both-sides</em> claim, and it tempers any
+  "first to our knowledge" framing of that lever specifically. Our deltas: kernel verbs are <strong>plain JS over
+  real sql.js</strong> (full joins/FK, runs server-side as-is, no WASM toolchain) and we add <strong>W-CHAIN/W-SIGN</strong>
+  (SQLSync has no tamper-evidence). <strong>What we lack that SQLSync has:</strong> the <strong>multi-writer total order</strong> — we
+  order by local <code>id</code> rowid (two devices both emit id 1,2,3 with diverging chains and no merge path in
+  <code>kernel_ops.js</code>). <strong>Borrow:</strong> adopt SQLSync's rebase loop <em>as</em> our §0.20 owner-seam protocol — the server
+  assigns the sequence, the client rebases pending ops on top. We are already set up for it: <code>sealChain()</code> is a
+  <strong>full recompute</strong>, so after a rebase re-orders ops under the server's sequence we simply re-seal and the
+  hash chain stays valid. This gives multi-writer ordering <strong>without</strong> a row-level CRDT and <strong>preserves
+  invariant rejection</strong> (the server reducer can refuse an op) — the thing cr-sqlite (§7) structurally cannot.</li>
+</ul>
+<h3 id="7-cr-sqlite-vulcan-vlcnio-row-level-crdt-decentralized-no-sequencer">7. cr-sqlite / Vulcan (vlcn.io) — row-level CRDT, decentralized, no sequencer<a class="headerlink" href="#7-cr-sqlite-vulcan-vlcnio-row-level-crdt-decentralized-no-sequencer" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>How:</strong> a C extension compiled to WASM turns ordinary tables into <strong>CRRs</strong> (conflict-free replicated
+  relations) — per-row/per-column causal merge keyed on a <code>site_id</code> + a logical clock (<code>crsql_db_version</code>).
+  Two offline writers merge automatically with <strong>no central referee</strong>.</li>
+<li><strong>Documented weakness:</strong> it is <strong>state/LWW-flavoured per column</strong> — it carries <strong>no intent</strong>, so it inherits
+  the core CRDT limit (§5): it <strong>cannot enforce business invariants</strong> (it will converge to a consistent but
+  <em>wrong</em> number — e.g. silently allow a double-allocation of the same pallet); no built-in access control;
+  tombstone/GC overhead.</li>
+<li><strong>Our workaround / fit:</strong> for <strong>money-touching ops, cr-sqlite is the wrong tool</strong> — same reason we rejected
+  generic LWW (§5, §0.18c): we keep <code>documents</code>/<code>journal</code> invariants at the deterministic kernel + owner seam,
+  not under automatic row-merge. <strong>But its primitive is the right one for the <em>other half</em> of our unified log:</strong>
+  <strong>BIM geometry edits are commutative-ish and LWW-safe</strong> (a moved grid line has no double-spend invariant), so
+  a <strong>two-tier merge</strong> — cr-sqlite-style <code>site_id</code>+clock auto-merge for <em>geometry</em> ops, owner-seam serialization
+  for <em>money</em> ops — fits our BIM+ERP-under-one-log unification cleanly. This is the concrete decentralized-multi-
+  writer path we currently lack, applied <strong>only where it's safe</strong>. Never route <code>Fact_Acct</code> through it.</li>
 </ul>
 <hr />
 <h2 id="cross-cutting-weaknesses-rxdbs-downsides-list-ours-vs-theirs">Cross-cutting weaknesses (RxDB's "downsides" list) — ours vs theirs<a class="headerlink" href="#cross-cutting-weaknesses-rxdbs-downsides-list-ours-vs-theirs" title="Permanent link">&para;</a></h2>
@@ -4325,11 +4432,85 @@ PowerSync, and ElectricSQL at once.</p>
 - Tamper-evidence is <em>nobody's</em> default → our distinctive add: hash-chain/sign the log (W-CHAIN/W-SIGN).
 - Secured multi-user <strong>needs a trust anchor</strong> — every system above has a server; ours is the async
   <strong>server domain</strong> (§0.20), reached only when single-user/offline no longer suffices.</p>
+<p><strong>Concrete borrows for the §0.20 phase (from §6/§7, the two systems we hadn't logged):</strong>
+1. <strong>Multi-writer ordering = SQLSync's rebase loop</strong> (§6) — server assigns canonical sequence, client
+   rewinds → applies server log → replays pending local ops. We currently order by local <code>id</code> only; this fills
+   the deferred owner-seam total order <strong>and keeps invariant rejection</strong> (server reducer refuses bad ops).
+   Cheap for us because <code>sealChain()</code> already full-recomputes — rebase, then re-seal.
+2. <strong>Two-tier merge = cr-sqlite primitive <em>only</em> for geometry</strong> (§7) — <code>site_id</code>+logical-clock auto-merge for
+   BIM/geometry ops (LWW-safe, no invariant); owner-seam serialization for money ops. Decentralized multi-writer
+   exactly where it's safe, never on <code>journal</code>/<code>Fact_Acct</code>.
+3. <strong>Incremental storage = OPFS</strong> (PowerSync/Notion, storage axis below) — replace <code>kernel_ops.js</code>'s
+   whole-DB <code>db.export()</code>→IndexedDB blob (O(db size) per debounce, the I-D cost) with OPFS SAHPool incremental
+   writes. Free perf win, independent of any sync work.</p>
+<hr />
+<h2 id="the-other-axis-sqlite-wasm-at-scale-storageengine-not-sync-added-2026-06-03">The other axis — SQLite-WASM <em>at scale</em> (storage/engine, not sync) — added 2026-06-03<a class="headerlink" href="#the-other-axis-sqlite-wasm-at-scale-storageengine-not-sync-added-2026-06-03" title="Permanent link">&para;</a></h2>
+<p>The systems above are <strong>sync</strong> frameworks. A separate question: who runs a <strong>large relational app fully in
+SQLite-WASM</strong>, and what does it cost? The canonical production example is <strong>Notion</strong> — and its architecture is
+<em>our doctrine, shipped at scale.</em></p>
+<ul>
+<li><strong>Notion</strong> (the existence proof): SQLite→WASM in a <strong>Web Worker</strong> (UI thread unburdened), a <strong>SharedWorker</strong>
+  routing every tab's queries to one active tab's worker, on the <strong>OPFS SAHPool VFS</strong>. <strong>Postgres stays the
+  canonical source of truth</strong> (logical replication + WAL → the browser SQLite is a disposable <strong>projection</strong>).
+  (<a href="https://www.notion.com/blog/how-we-sped-up-notion-in-the-browser-with-wasm-sqlite">Notion blog</a>,
+  <a href="https://news.ycombinator.com/item?id=40949489">HN</a>) — this validates <a href="../DistributedERP/">DistributedERP</a>'s
+  <em>"the operator's install is the system of record; the browser is a projection"</em> (<a href="../prompts/ENGINE_FULL_ERP_ISSUES.md">ENGINE_FULL_ERP_ISSUES.md</a> §I-A).
+  Notion chose <strong>server-of-record + local projection</strong>, NOT local-first-authoritative.</li>
+</ul>
+<p>The hard constraints (each maps to one of our engine issues):</p>
+<table>
+<thead>
+<tr>
+<th>SQLite-WASM finding</th>
+<th>Source</th>
+<th>Maps to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>~2 GB DB cap</strong> (up from 512 MB)</td>
+<td><a href="https://sqlite.org/wasm/doc/trunk/persistence.md">sqlite.org/wasm persistence</a></td>
+<td>I-A storage cap is hard-bounded → gravity-sharding (<a href="../DistributedERP/">DistributedERP §13</a>) not optional at full-AD scale</td>
+</tr>
+<tr>
+<td><strong>OPFS = one read/write txn at a time</strong></td>
+<td><a href="https://powersync.com/blog/sqlite-persistence-on-the-web">PowerSync state-of-persistence</a></td>
+<td><strong>single-writer holds at the <em>storage</em> layer too</strong> — reinforces G-SINGLE-WRITER / I-E from below</td>
+</tr>
+<tr>
+<td><strong>Multi-MB JS strings = measurable WASM-bridge cost</strong></td>
+<td><a href="https://sqlite.org/wasm/doc/trunk/persistence.md">sqlite.org/wasm</a></td>
+<td><strong>exactly I-D</strong> (projection 52→336 KB re-export) — keep state <em>in</em> SQLite, don't marshal big strings out</td>
+</tr>
+<tr>
+<td><strong>SAHPool VFS = 3–4× I/O; 8–16 MB page cache = big win</strong></td>
+<td><a href="https://powersync.com/blog/sqlite-persistence-on-the-web">PowerSync</a></td>
+<td>free wins for the engine-perf lane (Agent E) <em>before</em> any algorithmic change</td>
+</tr>
+<tr>
+<td><strong>Needs SharedArrayBuffer + COOP/COEP headers; Safari &lt;17 out</strong></td>
+<td><a href="https://sqlite.org/wasm/doc/trunk/persistence.md">sqlite.org/wasm persistence</a></td>
+<td>a deploy gate (OCI/GH-pages must send the headers)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why SQLite, not DuckDB-WASM or PGlite.</strong> <a href="https://motherduck.com/blog/duckdb-wasm-in-browser/">DuckDB-WASM</a> is
+OLAP (TB via Parquet range-requests) — wrong shape for transactional ERP. <a href="https://pglite.dev/">PGlite</a> (full
+Postgres-in-WASM) is tempting for <em>server-side</em> logic in-browser, but iDempiere's business logic is <strong>Java, not
+PL/pgSQL</strong>, so it does not shortcut the callout port — and it is heavier than we need. SQLite-WASM (relational +
+R-tree + small footprint) is the right tier; the prior art confirms it.</p>
+<p><strong>Sources (storage axis):</strong> <a href="https://www.notion.com/blog/how-we-sped-up-notion-in-the-browser-with-wasm-sqlite">Notion WASM SQLite</a> ·
+<a href="https://sqlite.org/wasm/doc/trunk/persistence.md">SQLite WASM persistence</a> ·
+<a href="https://powersync.com/blog/sqlite-persistence-on-the-web">PowerSync — SQLite persistence on the web</a> ·
+<a href="https://motherduck.com/blog/duckdb-wasm-in-browser/">DuckDB-WASM</a> · <a href="https://pglite.dev/">PGlite</a>.</p>
+<hr />
 <p><strong>Sources:</strong> <a href="https://rxdb.info/downsides-of-offline-first.html">RxDB — downsides of offline-first</a> ·
 <a href="https://doc.replicache.dev/concepts/how-it-works">Replicache — how it works</a> ·
 <a href="https://electric.ax/blog/2024/11/21/local-first-with-your-existing-api">ElectricSQL — local-first with your existing API</a> ·
 <a href="https://powersync.com/blog/electricsql-vs-powersync">PowerSync vs ElectricSQL</a> ·
 <a href="https://livestore.dev/">LiveStore</a> ·
+<a href="https://github.com/orbitinghail/sqlsync">SQLSync</a> ·
+<a href="https://github.com/vlcn-io/cr-sqlite">cr-sqlite (vlcn.io)</a> ·
 <a href="https://mattweidner.com/2023/09/26/crdt-survey-4.html">CRDT survey (Weidner)</a> · <a href="https://automerge.org/">Automerge</a>.</p>
 
 

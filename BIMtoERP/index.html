@@ -23,7 +23,7 @@
     
     
       
-        <title>ERPMaker - BIM Intent Compiler</title>
+        <title>BIM → ERP Bridge — Blueprint - BIM Intent Compiler</title>
       
     
     
@@ -83,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#erpmaker-the-adoption-grail" class="md-skip">
+        <a href="#bim-erp-bridge-blueprint" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ERPMaker
+              BIM → ERP Bridge — Blueprint
             
           </span>
         </div>
@@ -3899,10 +3899,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-problem-it-attacks-the-first-mile-not-the-engine" class="md-nav__link">
+  <a href="#0-the-join-the-one-fact-everything-hangs-on" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The problem it attacks — the first mile, not the engine
+        §0 — THE JOIN (the one fact everything hangs on)
       
     </span>
   </a>
@@ -3910,10 +3910,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-narrow-beats-any-app-the-rail-already-exists-here" class="md-nav__link">
+  <a href="#a-read-side-check-erp-on-a-selected-element-data-gated" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why narrow beats "any app" — the rail already exists here
+        §A — READ side: "Check ERP" on a selected element (data-gated)
       
     </span>
   </a>
@@ -3921,10 +3921,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-three-inputs-are-extraction-not-invention" class="md-nav__link">
+  <a href="#b-write-side-construction-erp-clean-export-another-export-icon-child" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The three inputs are extraction, not invention
+        §B — WRITE side: "Construction → ERP" clean export (another Export-icon child)
       
     </span>
   </a>
@@ -3932,10 +3932,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-pipeline" class="md-nav__link">
+  <a href="#c-ui-surface-the-export-chooser-one-reusable-component" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The pipeline
+        §C — UI surface: the Export chooser (one reusable component)
       
     </span>
   </a>
@@ -3943,10 +3943,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-this-is-the-wedge-against-idempiere-odoo-erpnext" class="md-nav__link">
+  <a href="#d-what-this-is-not-scope-fences" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why this is the wedge against iDempiere / Odoo / ERPNext
+        §D — What this is NOT (scope fences)
       
     </span>
   </a>
@@ -3954,43 +3954,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#migration-targets-the-initial-two" class="md-nav__link">
+  <a href="#e-build-order-paper-code-when-go" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Migration targets — the initial two
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#relation-to-the-holy-grail-the-other-half-not-a-higher-one" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Relation to the Holy Grail — the other half, not a higher one
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#honest-boundaries" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Honest boundaries
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-witness-that-would-prove-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The witness that would prove it
+        §E — Build order (paper → code, when GO)
       
     </span>
   </a>
@@ -4017,155 +3984,133 @@
   
 
 
-<p>/*<em>
- * BIM OOTB / ERP OOTB — ERPMaker: zero-install ERP from your own data.
- * Copyright (c) 2025-2026 Redhuan D. Oon <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a>
- * SPDX-License-Identifier: MIT
- </em>/</p>
-<h1 id="erpmaker-the-adoption-grail">ERPMaker — the adoption grail<a class="headerlink" href="#erpmaker-the-adoption-grail" title="Permanent link">&para;</a></h1>
+<h1 id="bim-erp-bridge-blueprint">BIM → ERP Bridge — Blueprint<a class="headerlink" href="#bim-erp-bridge-blueprint" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Status: SPEC, focused, the feasible first term of <a href="../AnyAppMaker/">AnyAppMaker.md</a>.</strong>
-Read AnyAppMaker for the horizon; this is the bounded product that is buildable now,
-because the rail it needs already exists for ERP.</p>
+<p><strong>Status:</strong> PAPER spec (no code yet). Umbrella for the element↔ERP link.
+<strong>Prime alignment:</strong> EXTRACT OR COMPILE ONLY. The bridge <em>reads</em> what extraction
+produced and <em>writes</em> only what it can trace to an element. Never invent a product,
+a price, a quantity, or an asset. Money/qty math via <code>site/bigdecimal.js</code> only
+(see <code>memory feedback_numbers_via_bigdecimal</code>).
+<strong>Three Concerns (BOM PRINCIPLE) stay split:</strong> WHAT = <code>M_Product</code>/<code>M_Product_Category</code>;
+HOW = UOM + price + BOM rules; WHERE = the ERP.db (<code>build/erp/ad_*.db</code>).</p>
 </blockquote>
-<h2 id="the-problem-it-attacks-the-first-mile-not-the-engine">The problem it attacks — the first mile, not the engine<a class="headerlink" href="#the-problem-it-attacks-the-first-mile-not-the-engine" title="Permanent link">&para;</a></h2>
-<p>No one abandons iDempiere, Odoo, or ERPNext because business rules are not live-editable.
-They abandon them at the <strong>install</strong>: PostgreSQL, Java/OSGi or Frappe/bench, Docker,
-dependency hell, a server to provision, a consultant to engage. <em>Time-to-first-running-
-screen</em> is days to weeks. That is where the mass market dies, and it is a different wall
-from the one <a href="../HolyGrail/">HolyGrail.md</a> addresses.</p>
-<p>ERPMaker removes that wall: <strong>choose an industry, give your Excel, scan your business
-card — get a running ERP, seeded with your own data, as one offline HTML file, in
-minutes, with no server.</strong></p>
-<h2 id="why-narrow-beats-any-app-the-rail-already-exists-here">Why narrow beats "any app" — the rail already exists here<a class="headerlink" href="#why-narrow-beats-any-app-the-rail-already-exists-here" title="Permanent link">&para;</a></h2>
-<p>The property that makes AI authoring safe is a <strong>closed verb set + a diff-oracle</strong>
-(<a href="../ERP/">ERP.md §0.5, §0.14, §0.17</a>). For ERP those are <em>witnessed today</em>: the verbs
-(O2C / P2P / GL — GUARD, GENERATE, MATCH, allocate, post …) are proven against the
-GardenWorld oracle, and the genome (the ERP-OOTB bundle) exists. For an arbitrary app
-they do not yet exist. So ERPMaker is the <strong>feasible subset</strong> where the doctrine is
-already proven — the first clean abstraction, productized.</p>
-<h2 id="the-three-inputs-are-extraction-not-invention">The three inputs are extraction, not invention<a class="headerlink" href="#the-three-inputs-are-extraction-not-invention" title="Permanent link">&para;</a></h2>
-<p>Consistent with the PRIME RULE — the user does not <em>describe</em> their business, they <em>show</em>
-it, and we <strong>fold</strong> what they show into the universal 5-table bridge.</p>
-<table>
-<thead>
-<tr>
-<th>Input</th>
-<th>What it seeds</th>
-<th>Mechanism</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Industry</strong></td>
-<td>which genome to fork</td>
-<td>selects a pre-witnessed bundle (retail / F&amp;B / services)</td>
-</tr>
-<tr>
-<td><strong>Excel</strong></td>
-<td>products, customers, price list, opening balances — <strong>and the schema, and the acceptance oracle</strong></td>
-<td>migration-as-fold (<a href="../HolyGrail/">HolyGrail.md</a>, <em>the migration solvent</em>)</td>
-</tr>
-<tr>
-<td><strong>B-card scan</strong></td>
-<td>the org / legal-entity master</td>
-<td>reuses the existing scan path (W-QR-INPUT)</td>
-</tr>
-</tbody>
-</table>
-<p><strong>The Excel is the test suite.</strong> Their own historical totals become the witnesses: <em>"your
-invoice #1023 totals $452.10 — the generated app must reproduce it to the cent."</em> This
-dissolves the <em>safe-but-wrong</em> risk (a conforming but financially-wrong app), because the
-generated ERP is verified against the operator's real books, not imagined samples. The
-migration corpus and the acceptance oracle are the same artifact.</p>
-<h2 id="the-pipeline">The pipeline<a class="headerlink" href="#the-pipeline" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>industry → fork genome
-Excel    → ingest → map (AI-assisted: their columns → dictionary fields)
-B-card   → scan → org master
-              ↓
-         fold facts into the 5-table bridge (op-log)
-              ↓
-         oracle-gate against the operator&#39;s own historical totals (§0.17)
-              ↓
-         birth: package to offline HTML (S284), signed (W-SIGN)
-</code></pre></div>
-<p>The column-mapping step is the ontology gap surfaced as a spreadsheet — AI-assisted,
-error-prone, and <strong>round-trip-checked</strong>: the folded data must reproduce the Excel's own
-totals, or the mapping is wrong. Failures return to the user as plain questions in their
-own vocabulary ("is this column the unit price or the line total?"), never as traces.</p>
-<h2 id="why-this-is-the-wedge-against-idempiere-odoo-erpnext">Why this is the wedge against iDempiere / Odoo / ERPNext<a class="headerlink" href="#why-this-is-the-wedge-against-idempiere-odoo-erpnext" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Install → zero.</strong> A browser tab, then a downloadable HTML; no Postgres, no Docker, no
-  server, no consultant.</li>
-<li><strong>Demo data → your data.</strong> Not GardenWorld; their own products and balances on first
-  open.</li>
-<li><strong>The cardinal property survives.</strong> Offline, signed, auditable, no runtime dependency
-  on the platform (<a href="../DistributedERP/">DistributedERP.md</a> §0, §6). The platform supplies
-  the genome and the maker once (MIT, forkable); after that the operator owns the app.</li>
-</ul>
-<h2 id="migration-targets-the-initial-two">Migration targets — the initial two<a class="headerlink" href="#migration-targets-the-initial-two" title="Permanent link">&para;</a></h2>
-<p>Source adapters are earned per engine, against a <em>real</em> instance, one diff-oracle at a
-time. Two are named; their state is asymmetric and must not be overstated.</p>
-<table>
-<thead>
-<tr>
-<th>Target</th>
-<th>State</th>
-<th>Evidence / gate</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>iDempiere</strong></td>
-<td><strong>migrator built + witnessed</strong></td>
-<td><code>scripts/migrate_pg_to_sqlite.js</code> (raw PG→SQLite, byte-identical round-trip) + <code>scripts/compile_rules.js</code> (→ <code>erp_rules.db</code>) + <code>scripts/diff_oracle.js</code> (vs GardenWorld oracle) + <code>scripts/verify_migration.js</code> (acceptance gate). Outputs <code>build/erp/ad_full.db</code> (925 tbl), <code>erp_rules.db</code>. Source: Docker <code>postgres</code>/<code>idempiere</code>. For ERPMaker this is <em>wiring</em>, not building.</td>
-</tr>
-<tr>
-<td><strong>Odoo</strong></td>
-<td><strong>fold WITNESSED (2026-06-03) — <code>§ODOO-FOLD PASS</code>, <code>newVerbs=[]</code></strong></td>
-<td>Odoo 17 (<code>odoodemo</code>) stood up; one sell-side O2C chain (SO <code>S00023</code> → delivery → invoice → GL post → payment → reconcile) driven via RPC to completion, frozen as a static oracle (<code>build/erp/odoo_oracle.{json,db}</code>, §0.12). A pure adapter (<code>scripts/odoo_adapter.js</code>) folded it through the <strong>existing</strong> verbs: all 5 hops mapped, effects reproduce Odoo to the cent, replay exact (<code>scripts/poc_odoo_fold.js</code>, log <code>build/erp/odoo_fold.log</code>). Falsifier survived: nothing invented. <strong>Bound (named):</strong> ONE sell-side chain; account-determination is host data (POST owns only ΣDR==ΣCR, §13.1); 3-way <code>MATCH</code> + partial reconcile are the next fold. Migrator now unblocked.</td>
-</tr>
-</tbody>
-</table>
-<p>The ordering is the doctrine's, not a preference: <strong>source → falsifier → migrator →
-oracle</strong>, never migrator-first. iDempiere is the proven first abstraction; Odoo is the
-next campaign term and does not begin until a real instance exists to extract and the
-fold is witnessed.</p>
-<h2 id="relation-to-the-holy-grail-the-other-half-not-a-higher-one">Relation to the Holy Grail — the other half, not a higher one<a class="headerlink" href="#relation-to-the-holy-grail-the-other-half-not-a-higher-one" title="Permanent link">&para;</a></h2>
-<p><a href="../HolyGrail/">HolyGrail.md</a> closes with: <em>"Migration removes the barrier to leaving; the
-grail (editable rules, live) supplies the reason to land. Both halves, or the solvent has
-nothing to pour into."</em> ERPMaker <strong>is the barrier-remover, productized</strong> — the adoption
-half of the same grail, co-equal with the editable-rules capability half, and the better
-<em>first</em> product because adoption-failure is the mass-market killer. It is downstream of
-the engine-as-data work (it needs the verbs, the fold, the offline womb), so it is not
-"higher" technically; it is the half that gets anyone onto the engine at all.</p>
-<h2 id="honest-boundaries">Honest boundaries<a class="headerlink" href="#honest-boundaries" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Excel is messy.</strong> Multi-tab, merged cells, free-text, no normalization. The
-  ingest/mapping is real, bounded work — its correctness is the round-trip check, not a
-  guarantee.</li>
-<li><strong>One genome per industry, pre-witnessed.</strong> Launch quality = how many industry genomes
-  are proven against an oracle. Start with one or two you can witness, not a dropdown of
-  twenty — the §0.17 breadth campaign, applied to verticals.</li>
-<li><strong>Migration scope earned one oracle at a time.</strong> iDempiere is tractable (known
-  DocAction + GardenWorld oracle); other sources are a campaign in sequence, same as the
-  HolyGrail migration boundary.</li>
-<li><strong>Read/seed can ship before live rule-edit.</strong> ERPMaker delivers a <em>seeded, running,
-  verified</em> ERP without waiting for the E3/E4 live-edit loop; the editable-rules grail
-  lands on top of it later.</li>
-</ul>
-<h2 id="the-witness-that-would-prove-it">The witness that would prove it<a class="headerlink" href="#the-witness-that-would-prove-it" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>§ERPMAKER  industry=retail  ingest=&lt;real_smb.xlsx rows=N&gt;
-           fold→bridge  oracle: FY invoices reproduced to the cent  pass=K fail=0
-           birth=BIM-ERP-OOTB.html  opens_on=file://  signed=Y
-</code></pre></div>
-<p>Spec-first: this witness is named before code. No claim of "minutes to a running ERP"
-until a real SMB spreadsheet folds and reproduces its own books, to the cent, in a
-file:// HTML.</p>
+<p>Executable lane: <code>prompts/BIM_TO_ERP.md</code>. Related interop: <code>prompts/BCF_INTEROP.md</code>
+(BCF rides the same Export icon). ERP engine source-of-truth: <code>build/erp/</code> (see <code>docs/ERP.md</code>).</p>
 <hr />
-<p><em>Grounding: <a href="../HolyGrail/">HolyGrail.md</a> (migration solvent) · <a href="../ERP/">ERP.md</a> §0.5 ·
-§0.10 · §0.14 · §0.17 · <a href="../DistributedERP/">DistributedERP.md</a> §0 · §6 · S284 · W-SIGN /
-W-QR-INPUT. Horizon: <a href="../AnyAppMaker/">AnyAppMaker.md</a>.</em></p>
+<h2 id="0-the-join-the-one-fact-everything-hangs-on">§0 — THE JOIN (the one fact everything hangs on)<a class="headerlink" href="#0-the-join-the-one-fact-everything-hangs-on" title="Permanent link">&para;</a></h2>
+<p>The bridge key is the <strong>IFC GUID</strong> already carried as <code>elements_meta.guid</code> in every served
+building DB. On the ERP side it must land on a <strong>single, deterministic column</strong> so read
+and write agree. Candidate (CONFIRM in <code>build/erp/ad_*.db</code>):</p>
+<ul>
+<li><code>A_Asset.SerNo</code> (or a dedicated <code>IFC_GUID</code> column / <code>M_AttributeSetInstance</code>) holds the
+  element GUID → one physical occurrence = one asset row.</li>
+<li><code>M_Product.Value</code> = the element's <strong>Type/classification</strong> (e.g. IfcDoor family-type, or a
+  Uniclass/OmniClass code if present) → one product = N occurrences of that type.</li>
+</ul>
+<p>So: <strong>Type → <code>M_Product</code></strong> (the recipe), <strong>occurrence(GUID) → <code>A_Asset</code></strong> (the instance).
+That is exactly the BOM PRINCIPLE — one parent product, N child assets.</p>
+<blockquote>
+<p><strong>OPEN-1 (confirm before build):</strong> which column carries the GUID on <code>A_Asset</code>?
+<strong>OPEN-2:</strong> is the warehouse table <code>M_StorageOnHand</code> (newer iDempiere) or <code>M_Storage</code>
+(grep found <code>M_Storage</code> in the seed)? Pick the one the canonical ERP.db actually has.
+<strong>OPEN-3:</strong> which <code>build/erp/ad_*.db</code> is the canonical ERP.db the viewer reads/writes?</p>
+</blockquote>
+<hr />
+<h2 id="a-read-side-check-erp-on-a-selected-element-data-gated">§A — READ side: "Check ERP" on a selected element (data-gated)<a class="headerlink" href="#a-read-side-check-erp-on-a-selected-element-data-gated" title="Permanent link">&para;</a></h2>
+<p><strong>Scenario.</strong> User selects an element (single-select is cleaner than right-click — reuse the
+existing <code>picking.js</code> → info panel path). The info-panel box shows its properties. If — and
+only if — there is a <strong>real linked record or a cost in the OpLog</strong> for that GUID, a small
+<strong>"Check ERP"</strong> chip <em>lights up</em> on the panel. Plain element with nothing behind it → no chip.
+This is the non-invent gate, identical in spirit to the lens probe (<code>W-LENS-PROBE</code> in
+<code>docs/RevitParity.md</code>): an affordance appears only when its query returns rows.</p>
+<p><strong>Probe (what lights the chip).</strong> At select time, run the cheap checks:
+1. Does the OpLog (<code>kernel_ops</code>) / 5D path hold a computed cost for this GUID? AND/OR
+2. Does an <code>A_Asset</code> (by GUID) or a matching <code>M_Product</code> (by Type→Value) exist in ERP.db?
+If either is true → chip on, else chip stays hidden.</p>
+<p><strong>Drawer (what the chip opens).</strong> Tapping the chip slides a drawer (side or bottom — match the
+existing panel/drawer style) showing the element's ERP facts, all <em>read</em> from ERP.db + OpLog:
+- <code>M_Product</code> (Value, Name, Category, <code>C_UOM</code>)
+- price from the active <code>M_PriceList</code> → <code>M_ProductPrice.PriceStd</code> (BigDecimal)
+- <code>A_Asset</code> row(s) for this GUID (asset value, serial/GUID)
+- on-hand qty (<code>M_StorageOnHand</code>/<code>M_Storage</code>) by UOM
+- (later) linked documents — POs, maintenance — if the schema carries them</p>
+<p><strong>Witnesses.</strong>
+- <code>W-ERP-PROBE</code>: <code>§ERP_PROBE guid=&lt;g&gt; cost=&lt;bool&gt; product=&lt;bool&gt; asset=&lt;bool&gt;</code> — chip
+  visibility == (cost || product || asset). NO chip when all three false (the non-invent proof).
+- <code>W-ERP-DRAWER</code>: <code>§ERP_DRAWER guid=&lt;g&gt; product=&lt;Value&gt; price=&lt;BigDecimal&gt; uom=&lt;EA|M|M2|M3&gt; asset=&lt;n&gt;</code>
+  — every field traces to a row; price folds exact == golden.</p>
+<hr />
+<h2 id="b-write-side-construction-erp-clean-export-another-export-icon-child">§B — WRITE side: "Construction → ERP" clean export (another Export-icon child)<a class="headerlink" href="#b-write-side-construction-erp-clean-export-another-export-icon-child" title="Permanent link">&para;</a></h2>
+<p><strong>Scenario.</strong> From a selected element (or all elements of a Type), "clean export" pushes the
+construction reality into ERP.db, creating only what's missing. Per element/Type:</p>
+<ol>
+<li><strong>Resolve UOM.</strong> From the element's QTO: count→<code>EA</code>, length→<code>M</code>, area→<code>M2</code>, volume→<code>M3</code>
+   (map to the real <code>C_UOM</code> rows). Skip any element with no resolvable UOM qty — non-invent.</li>
+<li><strong>Find-or-create <code>M_Product</code>.</strong> Look up by <code>Value</code> = Type/classification. If absent, INSERT
+   <code>M_Product</code> (Value, Name, <code>M_Product_Category_ID</code>, <code>C_UOM_ID</code>). Deterministic Value derivation
+   (no random IDs) so re-export is idempotent.</li>
+<li><strong>Price → <code>M_ProductPrice</code>.</strong> Upsert into the active <code>M_PriceList</code>/version:
+   <code>PriceStd</code> = 5D pack rate × (unit) folded via <code>site/bigdecimal.js</code>
+   (rates from <code>rates/*.json</code> — locale pack, currency-tagged; never the unlabeled
+   <code>A.MATERIAL_COSTS</code> fallback). Currency follows the pack's <code>meta.currency</code>.</li>
+<li><strong>Occurrence → <code>A_Asset</code>.</strong> Find-or-create one <code>A_Asset</code> per element GUID
+   (link column per §0/OPEN-1). Asset value = qty × PriceStd (BigDecimal).</li>
+<li><strong>On-hand → <code>M_StorageOnHand</code>/<code>M_Storage</code>.</strong> Set <code>QtyOnHand</code> by UOM at the chosen
+   locator/warehouse (CONFIRM OPEN-2/locator).</li>
+</ol>
+<p><strong>Idempotent + traceable.</strong> Re-running export must not duplicate: find-or-create keyed on
+<code>Value</code>/GUID. Every created row carries the GUID or Value that produced it. Nothing is written
+that isn't extracted from the model.</p>
+<p><strong>Witnesses.</strong>
+- <code>W-ERP-EXPORT</code>: <code>§ERP_EXPORT type=&lt;T&gt; products=+&lt;np&gt; prices=+&lt;npr&gt; assets=+&lt;na&gt; onhand=+&lt;ns&gt; uom=&lt;...&gt;</code>
+  — counts == elements processed; second run reports <code>+0</code> (idempotent).
+- <code>W-ERP-FOLD</code>: total exported asset value folds exact == sum(qty×PriceStd) golden (BigDecimal).</p>
+<hr />
+<h2 id="c-ui-surface-the-export-chooser-one-reusable-component">§C — UI surface: the Export chooser (one reusable component)<a class="headerlink" href="#c-ui-surface-the-export-chooser-one-reusable-component" title="Permanent link">&para;</a></h2>
+<p>The Export pill (<code>report</code> in panels.js — <code>barChart</code>, already <code>ui_tt_export</code>) opens a <strong>small
+chooser box</strong>, not a one-shot. The chooser presents the model/data outputs as <strong>multi-select</strong>:</p>
+<div class="highlight"><pre><span></span><code>   Export ▸  ┌─────────────────────────┐
+             │ Model/Data              │
+             │ ☐ IFC   ☐ BCF           │
+             │ ☐ DB    ☐ ERP           │
+             │ Reports                 │
+             │ ☐ 4D  ☐ 5D ☐ DXF ☐ Excel│
+             │ ───────────────  [All]  │
+             │            [ Export ]   │
+             └─────────────────────────┘
+</code></pre></div>
+<ul>
+<li><strong>IFC</strong> = <code>ifc_export_worker.js</code> (the model out). <strong>BCF</strong> = <code>prompts/BCF_INTEROP.md</code> (issues +
+  viewpoints). <strong>DB</strong> = the served building SQLite (<code>*_extracted.db</code>) as-is. <strong>ERP</strong> = the §B push.</li>
+<li><strong>Two sections, one chooser:</strong> <em>Model/Data</em> (IFC·BCF·DB·ERP) + <em>Reports</em> (4D·5D·DXF·Excel).</li>
+<li><strong>Multi-select + [All]</strong> — tick several across both sections (or All) → one bundle/zip in a single
+  action. KISS: tiles are checkboxes; "All" ticks every tile; one Export button fires the selected <code>fn</code>s.</li>
+<li>"Check ERP" (§A) is NOT in this chooser — it lives on the element info-panel (per-selection read).</li>
+<li>Registry-native: build the chooser once, drive it from the action <code>fn</code> (route via fn, never a DOM
+  <code>.click()</code> — the <code>=</code> lesson). No new top-level keys (no-clutter rule).</li>
+</ul>
+<p><strong>Reuse — the same chooser serves "Share / Drop IFC" later.</strong> Share and the planned Drop-IFC flow
+ask the same question ("which artifact(s)?"), so the chooser is a <strong>shared component</strong>, not bolted
+into Export alone. Build it format-agnostic (a list of <code>{id, label, fn}</code> selectables + an All) so
+Share can mount it with the same or a subset of tiles. Tracked as a follow-on, not this lane's gate.</p>
+<hr />
+<h2 id="d-what-this-is-not-scope-fences">§D — What this is NOT (scope fences)<a class="headerlink" href="#d-what-this-is-not-scope-fences" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Not a live ERP sync / two-way daemon — it is a deterministic push + read against ERP.db.</li>
+<li>Not invented financials — price only from the 5D rates pack, qty only from QTO, BigDecimal only.</li>
+<li>Not a new geometry path — pure data join over <code>elements_meta.guid</code>.</li>
+<li>gbXML/COBie are siblings, not part of this lane (COBie reuses §B's product/asset rows later).</li>
+</ul>
+<hr />
+<h2 id="e-build-order-paper-code-when-go">§E — Build order (paper → code, when GO)<a class="headerlink" href="#e-build-order-paper-code-when-go" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Confirm OPEN-1/2/3 against the canonical <code>build/erp/ad_*.db</code> (one query each).</li>
+<li>§A probe + chip (read-only, lowest risk, proves the join).</li>
+<li>§A drawer.</li>
+<li>§B export (find-or-create, idempotent) behind the Export icon.</li>
+<li>§C Export-parent consolidation + BCF child.
+Each step lands with its witness <code>§</code>-line before the next. Whitebox first; Playwright only drives.</li>
+</ol>
 
 
 

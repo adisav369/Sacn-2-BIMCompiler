@@ -23,7 +23,7 @@
     
     
       
-        <title>ERPMaker - BIM Intent Compiler</title>
+        <title>Pill Manifest & Menu Drawer — spec (erp.html) - BIM Intent Compiler</title>
       
     
     
@@ -83,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#erpmaker-the-adoption-grail" class="md-skip">
+        <a href="#pill-manifest-menu-drawer-spec-erphtml" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ERPMaker
+              Pill Manifest &amp; Menu Drawer — spec (erp.html)
             
           </span>
         </div>
@@ -3899,10 +3899,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-problem-it-attacks-the-first-mile-not-the-engine" class="md-nav__link">
+  <a href="#0-registry-parity-noninvent-the-governing-rule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The problem it attacks — the first mile, not the engine
+        §0 Registry parity — non‑invent (the governing rule)
       
     </span>
   </a>
@@ -3910,10 +3910,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-narrow-beats-any-app-the-rail-already-exists-here" class="md-nav__link">
+  <a href="#1-organization-two-tiers-the-bim-model-small-bar-everything-a-longpress-away" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why narrow beats "any app" — the rail already exists here
+        §1 Organization — two tiers (the BIM model: small bar, everything a long‑press away)
       
     </span>
   </a>
@@ -3921,10 +3921,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-three-inputs-are-extraction-not-invention" class="md-nav__link">
+  <a href="#2-primary-pill-manifest-tier-1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The three inputs are extraction, not invention
+        §2 Primary pill manifest (Tier 1)
       
     </span>
   </a>
@@ -3932,10 +3932,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-pipeline" class="md-nav__link">
+  <a href="#3-the-side-drawer-idempiere-ad_menu-definitionasdata" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The pipeline
+        §3 The side drawer = iDempiere AD_Menu (definition‑as‑data)
       
     </span>
   </a>
@@ -3943,10 +3943,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-this-is-the-wedge-against-idempiere-odoo-erpnext" class="md-nav__link">
+  <a href="#4-data-prerequisites-noninvent-extracts-into-the-erp-data" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why this is the wedge against iDempiere / Odoo / ERPNext
+        §4 Data prerequisites (non‑invent extracts into the ERP data)
       
     </span>
   </a>
@@ -3954,10 +3954,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#migration-targets-the-initial-two" class="md-nav__link">
+  <a href="#5-witnesses-headless-log-first-playwright-wiring-only" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Migration targets — the initial two
+        §5 Witnesses (headless §‑log first; Playwright wiring only)
       
     </span>
   </a>
@@ -3965,10 +3965,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#relation-to-the-holy-grail-the-other-half-not-a-higher-one" class="md-nav__link">
+  <a href="#6-build-order-each-names-its-witness-nothing-builds-without-go" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Relation to the Holy Grail — the other half, not a higher one
+        §6 Build order (each names its witness; NOTHING builds without GO)
       
     </span>
   </a>
@@ -3976,21 +3976,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#honest-boundaries" class="md-nav__link">
+  <a href="#7-discipline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Honest boundaries
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-witness-that-would-prove-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The witness that would prove it
+        §7 Discipline
       
     </span>
   </a>
@@ -4017,155 +4006,243 @@
   
 
 
-<p>/*<em>
- * BIM OOTB / ERP OOTB — ERPMaker: zero-install ERP from your own data.
- * Copyright (c) 2025-2026 Redhuan D. Oon <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a>
- * SPDX-License-Identifier: MIT
- </em>/</p>
-<h1 id="erpmaker-the-adoption-grail">ERPMaker — the adoption grail<a class="headerlink" href="#erpmaker-the-adoption-grail" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>Status: SPEC, focused, the feasible first term of <a href="../AnyAppMaker/">AnyAppMaker.md</a>.</strong>
-Read AnyAppMaker for the horizon; this is the bounded product that is buildable now,
-because the rail it needs already exists for ERP.</p>
-</blockquote>
-<h2 id="the-problem-it-attacks-the-first-mile-not-the-engine">The problem it attacks — the first mile, not the engine<a class="headerlink" href="#the-problem-it-attacks-the-first-mile-not-the-engine" title="Permanent link">&para;</a></h2>
-<p>No one abandons iDempiere, Odoo, or ERPNext because business rules are not live-editable.
-They abandon them at the <strong>install</strong>: PostgreSQL, Java/OSGi or Frappe/bench, Docker,
-dependency hell, a server to provision, a consultant to engage. <em>Time-to-first-running-
-screen</em> is days to weeks. That is where the mass market dies, and it is a different wall
-from the one <a href="../HolyGrail/">HolyGrail.md</a> addresses.</p>
-<p>ERPMaker removes that wall: <strong>choose an industry, give your Excel, scan your business
-card — get a running ERP, seeded with your own data, as one offline HTML file, in
-minutes, with no server.</strong></p>
-<h2 id="why-narrow-beats-any-app-the-rail-already-exists-here">Why narrow beats "any app" — the rail already exists here<a class="headerlink" href="#why-narrow-beats-any-app-the-rail-already-exists-here" title="Permanent link">&para;</a></h2>
-<p>The property that makes AI authoring safe is a <strong>closed verb set + a diff-oracle</strong>
-(<a href="../ERP/">ERP.md §0.5, §0.14, §0.17</a>). For ERP those are <em>witnessed today</em>: the verbs
-(O2C / P2P / GL — GUARD, GENERATE, MATCH, allocate, post …) are proven against the
-GardenWorld oracle, and the genome (the ERP-OOTB bundle) exists. For an arbitrary app
-they do not yet exist. So ERPMaker is the <strong>feasible subset</strong> where the doctrine is
-already proven — the first clean abstraction, productized.</p>
-<h2 id="the-three-inputs-are-extraction-not-invention">The three inputs are extraction, not invention<a class="headerlink" href="#the-three-inputs-are-extraction-not-invention" title="Permanent link">&para;</a></h2>
-<p>Consistent with the PRIME RULE — the user does not <em>describe</em> their business, they <em>show</em>
-it, and we <strong>fold</strong> what they show into the universal 5-table bridge.</p>
-<table>
-<thead>
-<tr>
-<th>Input</th>
-<th>What it seeds</th>
-<th>Mechanism</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Industry</strong></td>
-<td>which genome to fork</td>
-<td>selects a pre-witnessed bundle (retail / F&amp;B / services)</td>
-</tr>
-<tr>
-<td><strong>Excel</strong></td>
-<td>products, customers, price list, opening balances — <strong>and the schema, and the acceptance oracle</strong></td>
-<td>migration-as-fold (<a href="../HolyGrail/">HolyGrail.md</a>, <em>the migration solvent</em>)</td>
-</tr>
-<tr>
-<td><strong>B-card scan</strong></td>
-<td>the org / legal-entity master</td>
-<td>reuses the existing scan path (W-QR-INPUT)</td>
-</tr>
-</tbody>
-</table>
-<p><strong>The Excel is the test suite.</strong> Their own historical totals become the witnesses: <em>"your
-invoice #1023 totals $452.10 — the generated app must reproduce it to the cent."</em> This
-dissolves the <em>safe-but-wrong</em> risk (a conforming but financially-wrong app), because the
-generated ERP is verified against the operator's real books, not imagined samples. The
-migration corpus and the acceptance oracle are the same artifact.</p>
-<h2 id="the-pipeline">The pipeline<a class="headerlink" href="#the-pipeline" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>industry → fork genome
-Excel    → ingest → map (AI-assisted: their columns → dictionary fields)
-B-card   → scan → org master
-              ↓
-         fold facts into the 5-table bridge (op-log)
-              ↓
-         oracle-gate against the operator&#39;s own historical totals (§0.17)
-              ↓
-         birth: package to offline HTML (S284), signed (W-SIGN)
-</code></pre></div>
-<p>The column-mapping step is the ontology gap surfaced as a spreadsheet — AI-assisted,
-error-prone, and <strong>round-trip-checked</strong>: the folded data must reproduce the Excel's own
-totals, or the mapping is wrong. Failures return to the user as plain questions in their
-own vocabulary ("is this column the unit price or the line total?"), never as traces.</p>
-<h2 id="why-this-is-the-wedge-against-idempiere-odoo-erpnext">Why this is the wedge against iDempiere / Odoo / ERPNext<a class="headerlink" href="#why-this-is-the-wedge-against-idempiere-odoo-erpnext" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Install → zero.</strong> A browser tab, then a downloadable HTML; no Postgres, no Docker, no
-  server, no consultant.</li>
-<li><strong>Demo data → your data.</strong> Not GardenWorld; their own products and balances on first
-  open.</li>
-<li><strong>The cardinal property survives.</strong> Offline, signed, auditable, no runtime dependency
-  on the platform (<a href="../DistributedERP/">DistributedERP.md</a> §0, §6). The platform supplies
-  the genome and the maker once (MIT, forkable); after that the operator owns the app.</li>
-</ul>
-<h2 id="migration-targets-the-initial-two">Migration targets — the initial two<a class="headerlink" href="#migration-targets-the-initial-two" title="Permanent link">&para;</a></h2>
-<p>Source adapters are earned per engine, against a <em>real</em> instance, one diff-oracle at a
-time. Two are named; their state is asymmetric and must not be overstated.</p>
-<table>
-<thead>
-<tr>
-<th>Target</th>
-<th>State</th>
-<th>Evidence / gate</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>iDempiere</strong></td>
-<td><strong>migrator built + witnessed</strong></td>
-<td><code>scripts/migrate_pg_to_sqlite.js</code> (raw PG→SQLite, byte-identical round-trip) + <code>scripts/compile_rules.js</code> (→ <code>erp_rules.db</code>) + <code>scripts/diff_oracle.js</code> (vs GardenWorld oracle) + <code>scripts/verify_migration.js</code> (acceptance gate). Outputs <code>build/erp/ad_full.db</code> (925 tbl), <code>erp_rules.db</code>. Source: Docker <code>postgres</code>/<code>idempiere</code>. For ERPMaker this is <em>wiring</em>, not building.</td>
-</tr>
-<tr>
-<td><strong>Odoo</strong></td>
-<td><strong>fold WITNESSED (2026-06-03) — <code>§ODOO-FOLD PASS</code>, <code>newVerbs=[]</code></strong></td>
-<td>Odoo 17 (<code>odoodemo</code>) stood up; one sell-side O2C chain (SO <code>S00023</code> → delivery → invoice → GL post → payment → reconcile) driven via RPC to completion, frozen as a static oracle (<code>build/erp/odoo_oracle.{json,db}</code>, §0.12). A pure adapter (<code>scripts/odoo_adapter.js</code>) folded it through the <strong>existing</strong> verbs: all 5 hops mapped, effects reproduce Odoo to the cent, replay exact (<code>scripts/poc_odoo_fold.js</code>, log <code>build/erp/odoo_fold.log</code>). Falsifier survived: nothing invented. <strong>Bound (named):</strong> ONE sell-side chain; account-determination is host data (POST owns only ΣDR==ΣCR, §13.1); 3-way <code>MATCH</code> + partial reconcile are the next fold. Migrator now unblocked.</td>
-</tr>
-</tbody>
-</table>
-<p>The ordering is the doctrine's, not a preference: <strong>source → falsifier → migrator →
-oracle</strong>, never migrator-first. iDempiere is the proven first abstraction; Odoo is the
-next campaign term and does not begin until a real instance exists to extract and the
-fold is witnessed.</p>
-<h2 id="relation-to-the-holy-grail-the-other-half-not-a-higher-one">Relation to the Holy Grail — the other half, not a higher one<a class="headerlink" href="#relation-to-the-holy-grail-the-other-half-not-a-higher-one" title="Permanent link">&para;</a></h2>
-<p><a href="../HolyGrail/">HolyGrail.md</a> closes with: <em>"Migration removes the barrier to leaving; the
-grail (editable rules, live) supplies the reason to land. Both halves, or the solvent has
-nothing to pour into."</em> ERPMaker <strong>is the barrier-remover, productized</strong> — the adoption
-half of the same grail, co-equal with the editable-rules capability half, and the better
-<em>first</em> product because adoption-failure is the mass-market killer. It is downstream of
-the engine-as-data work (it needs the verbs, the fold, the offline womb), so it is not
-"higher" technically; it is the half that gets anyone onto the engine at all.</p>
-<h2 id="honest-boundaries">Honest boundaries<a class="headerlink" href="#honest-boundaries" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Excel is messy.</strong> Multi-tab, merged cells, free-text, no normalization. The
-  ingest/mapping is real, bounded work — its correctness is the round-trip check, not a
-  guarantee.</li>
-<li><strong>One genome per industry, pre-witnessed.</strong> Launch quality = how many industry genomes
-  are proven against an oracle. Start with one or two you can witness, not a dropdown of
-  twenty — the §0.17 breadth campaign, applied to verticals.</li>
-<li><strong>Migration scope earned one oracle at a time.</strong> iDempiere is tractable (known
-  DocAction + GardenWorld oracle); other sources are a campaign in sequence, same as the
-  HolyGrail migration boundary.</li>
-<li><strong>Read/seed can ship before live rule-edit.</strong> ERPMaker delivers a <em>seeded, running,
-  verified</em> ERP without waiting for the E3/E4 live-edit loop; the editable-rules grail
-  lands on top of it later.</li>
-</ul>
-<h2 id="the-witness-that-would-prove-it">The witness that would prove it<a class="headerlink" href="#the-witness-that-would-prove-it" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>§ERPMAKER  industry=retail  ingest=&lt;real_smb.xlsx rows=N&gt;
-           fold→bridge  oracle: FY invoices reproduced to the cent  pass=K fail=0
-           birth=BIM-ERP-OOTB.html  opens_on=file://  signed=Y
-</code></pre></div>
-<p>Spec-first: this witness is named before code. No claim of "minutes to a running ERP"
-until a real SMB spreadsheet folds and reproduces its own books, to the cent, in a
-file:// HTML.</p>
+<h1 id="pill-manifest-menu-drawer-spec-erphtml">Pill Manifest &amp; Menu Drawer — spec (erp.html)<a class="headerlink" href="#pill-manifest-menu-drawer-spec-erphtml" title="Permanent link">&para;</a></h1>
+<p>A single BIM‑style pill bar as the <strong>unifying affordance surface</strong> for the browser ERP: every loose
+screen control, every surface launcher, and the whole iDempiere menu reachable from one place. Home is
+<strong><code>erp.html</code></strong> (in <code>bim-ootb/viewer/</code>) — it loads <code>ad_graph.js</code>+<code>ad_ui.js</code> off <code>ad_seed.db</code>, has no pill
+bar yet, and sits in the <strong>same repo as <code>pill_builder.js</code></strong> (S281), so pills are native: no vendoring,
+no glassbowl↔gravity sync‑point.</p>
+<p>Spec‑first; non‑invent (pills + menu are DATA, not hardwired); witness‑led; <strong>EXPLICIT GO before build/deploy</strong>.
+This document is the manifest only — nothing is built yet.</p>
+<p>Read first: <code>bim-ootb/viewer/pill_builder.js</code> (the registry — the pill shape below is its <code>actions[]</code> shape),
+<code>prompts/PILLS_TO_GLASSBOWL.md</code> (P0–P3), <code>docs/CRUD_P_R_REPORT_SPEC.md</code> (the Report fold it surfaces).</p>
 <hr />
-<p><em>Grounding: <a href="../HolyGrail/">HolyGrail.md</a> (migration solvent) · <a href="../ERP/">ERP.md</a> §0.5 ·
-§0.10 · §0.14 · §0.17 · <a href="../DistributedERP/">DistributedERP.md</a> §0 · §6 · S284 · W-SIGN /
-W-QR-INPUT. Horizon: <a href="../AnyAppMaker/">AnyAppMaker.md</a>.</em></p>
+<h2 id="0-registry-parity-noninvent-the-governing-rule">§0 Registry parity — non‑invent (the governing rule)<a class="headerlink" href="#0-registry-parity-noninvent-the-governing-rule" title="Permanent link">&para;</a></h2>
+<p>"Ensure the registry we use is the SAME, to avoid inventing." Concretely:</p>
+<ol>
+<li><strong>Same engine.</strong> Use <code>pill_builder.js</code> as‑is (it lives in <code>bim-ootb/viewer/</code>). No second pill framework.</li>
+<li><strong>Same pill shape.</strong> <code>{ id, name, key, icon, fn, isActive?, panel?, hold? }</code> — no new fields.</li>
+<li><strong>Same icon vocabulary.</strong> Icons come from the existing <code>I.&lt;name&gt;.svg</code> set (<code>I.clock</code>, <code>I.share</code>,
+   <code>I.search</code>, <code>I.home</code>, <code>I.clipboard</code>, <code>I.eye</code>, <code>I.palette</code>, …). <strong>No hand‑drawn SVGs</strong> for anything the
+   set already covers; a genuinely‑missing glyph is an <em>add to the icon set</em>, named + reviewed, not inlined.</li>
+<li><strong>Reuse real ids/handlers for shared pills.</strong> Verified canonical BIM actions to REUSE verbatim
+   (id · name · key · icon): <code>tm</code>·Time Machine·t·<code>I.clock</code> (toggles the bottom timeline) · <code>share</code>·Share·/·<code>I.share</code>
+   · <code>find</code>·Find/Navigate·f·<code>I.search</code> · <code>help</code>·Help·F1 · <code>settings</code>·Settings·= · <code>home</code>·Home·<code>I.home</code> ·
+   <code>redpill</code>·Doc Mode·, · plus <code>night</code>/<code>palette</code>/<code>shadow</code>/<code>fly</code>/<code>section</code>/<code>xray</code>/<code>measure</code>/<code>background</code>.</li>
+<li><strong>New ERP pills are ADDED rows, never redefinitions.</strong> <code>edit</code>, <code>process</code>, <code>graphs</code>, <code>glassbowl</code>, <code>gravity</code>
+   have no BIM equivalent → new manifest rows (same shape, icons from the set).</li>
+<li><strong>⚠ <code>report</code> id collision — DECISION NEEDED.</strong> BIM's <code>report</code> pill already means <strong>"4D / 5D"</strong> (key <code>4</code>).
+   The ERP financial Report (Receipt/Trial Balance/P&amp;L) is a different thing. Options, no silent redefine:
+   (a) erp.html owns its own <code>pills.json</code>, so <code>report</code> there = ERP report (surface‑scoped meaning); or
+   (b) give the ERP financial pill a distinct id (e.g. <code>ledger</code>, <code>I.clipboard.svg</code>) to stay unambiguous when
+   surfaces converge. <strong>Recommend (b)</strong> — keeps one global meaning per id. Flagged for the user.</li>
+</ol>
+<hr />
+<h2 id="1-organization-two-tiers-the-bim-model-small-bar-everything-a-longpress-away">§1 Organization — two tiers (the BIM model: small bar, everything a long‑press away)<a class="headerlink" href="#1-organization-two-tiers-the-bim-model-small-bar-everything-a-longpress-away" title="Permanent link">&para;</a></h2>
+<p><code>pill_builder.js</code> already gives: a scrollable vertical pill column (3 visible, scroll to reveal), per‑pill
+<code>isActive</code> highlight, and a <strong>long‑press (<code>hold</code>, 450ms)</strong> secondary. We use that hold for a <strong>side drawer</strong>.</p>
+<ul>
+<li><strong>Tier 1 — primary pills (the bar):</strong> a <em>curated, frequent</em> set — the verbs + surface launchers below.
+  Bounded (~12), thumb‑reachable, persisted order (<code>pill_builder</code> localStorage config).</li>
+<li><strong>Tier 2 — long‑press → side drawer:</strong> opens a categorized drawer rendered FROM DATA. The drawer is the
+  reach‑everything layer so the bar stays small:</li>
+<li><strong>Menu (☰ / Home) long‑press → the iDempiere AD_Menu tree</strong> — the 14 standard groups → their
+    windows/reports/processes (§3). This is "iDempiere standard menu gives the important items," rendered
+    as definition‑as‑data, never a hand‑typed list.</li>
+<li><strong>Report long‑press → the Reports drawer</strong> — the 99 <code>action='R'</code> menu items (filtered AD_Menu).</li>
+<li><strong>Graphs long‑press → the Charts drawer</strong> — <code>ad_charts.js getPrebuilt()</code> chart list.</li>
+<li><strong>Tap</strong> = the pill's primary action; <strong>long‑press</strong> = its drawer. Same gesture grammar everywhere.</li>
+</ul>
+<p>Rationale: 850 menu items (454 W / 122 P / 99 R / 41 X / 22 F) cannot live in a bar. The bar curates;
+the drawer = the AD_Menu, so coverage is total without clutter.</p>
+<hr />
+<h2 id="2-primary-pill-manifest-tier-1">§2 Primary pill manifest (Tier 1)<a class="headerlink" href="#2-primary-pill-manifest-tier-1" title="Permanent link">&para;</a></h2>
+<p>Shape per <code>pill_builder.js actions[]</code>: <code>{ id, name, key, icon|img, fn, isActive?, panel?, hold?, platform?, order }</code>.
+The manifest itself is DATA (<code>pills.json</code>) — a new affordance = a new row, not new bar code (the S281 contract).
+★ = explicitly named by the user.</p>
+<table>
+<thead>
+<tr>
+<th>order</th>
+<th>id</th>
+<th>icon</th>
+<th>name</th>
+<th>tap (<code>fn</code>)</th>
+<th>long‑press (<code>hold</code> → drawer)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>home</code></td>
+<td>⌂</td>
+<td>Home</td>
+<td>focus the AD canvas</td>
+<td><strong>AD_Menu tree</strong> (§3)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>settings</code></td>
+<td>⚙</td>
+<td>Settings</td>
+<td>settings JSON editor</td>
+<td>—</td>
+</tr>
+<tr>
+<td>3</td>
+<td>★ <code>report</code></td>
+<td>▤</td>
+<td>Report</td>
+<td>Receipt · Trial Balance · P&amp;L (folds <code>fact_acct</code>)</td>
+<td><strong>Reports drawer</strong> (99 <code>R</code>)</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>graphs</code></td>
+<td>▦</td>
+<td>Graphs</td>
+<td><code>ad_charts</code> overlay</td>
+<td><strong>Charts drawer</strong> (<code>getPrebuilt</code>)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>★ <code>edit</code></td>
+<td>✎</td>
+<td>Editable</td>
+<td>CRUD ring (create/update/delete, signed)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>process</code></td>
+<td>▶</td>
+<td>Process</td>
+<td>DocAction DR→CO (signed)</td>
+<td>(legal actions for docstatus)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>find</code></td>
+<td>🔍</td>
+<td>Find</td>
+<td>search records / accounts</td>
+<td>—</td>
+</tr>
+<tr>
+<td>8</td>
+<td>★ <code>share</code></td>
+<td>⤴</td>
+<td>Share</td>
+<td>deep‑link current record/trace/report</td>
+<td>—</td>
+</tr>
+<tr>
+<td>9</td>
+<td>★ <code>glassbowl</code></td>
+<td>◉</td>
+<td>Glassbowl</td>
+<td>→ glassbowl.html</td>
+<td>—</td>
+</tr>
+<tr>
+<td>10</td>
+<td>★ <code>gravity</code></td>
+<td>🜨</td>
+<td>Gravity</td>
+<td>→ glassbowl_gravity.html</td>
+<td>—</td>
+</tr>
+<tr>
+<td>11</td>
+<td>★ <code>help</code></td>
+<td>?</td>
+<td>Need Help</td>
+<td>NeedHelp? / ShowMe overlay</td>
+<td>—</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>about</code></td>
+<td>ⓘ</td>
+<td>About</td>
+<td>about box</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Glassbowl‑local view controls</strong> (<code>trace</code>/<code>untangle</code>/<code>diagonal</code>/<code>qr</code>/<code>reset</code>/<code>mute</code>/<code>panel</code>) stay registered
+pills <strong>on glassbowl.html</strong> (its own <code>pills.json</code>), not on erp.html — they are scene controls, not ERP verbs.
+One registry source, per‑surface manifest (same one‑source / per‑surface discipline as the overlays).</p>
+<hr />
+<h2 id="3-the-side-drawer-idempiere-ad_menu-definitionasdata">§3 The side drawer = iDempiere AD_Menu (definition‑as‑data)<a class="headerlink" href="#3-the-side-drawer-idempiere-ad_menu-definitionasdata" title="Permanent link">&para;</a></h2>
+<p>The drawer is NOT a hand‑authored list — it renders the real menu rows, so it IS iDempiere's menu:</p>
+<ul>
+<li><strong>Source (verified, Docker <code>idempiere_test</code>, client 0):</strong> <code>ad_menu</code> (name, action, AD_Window/Process/
+  Form/Workflow id) + <code>ad_treenodemm</code> (parent_id, node_id, seqno) for the <code>treetype='MM'</code> tree.</li>
+<li><strong>14 standard top‑level groups (verified order):</strong> System Admin · Application Dictionary · Partner
+  Relations · Quote‑to‑Invoice (Sales) · Requisition‑to‑Invoice (Purchasing) · Returns · Open Items
+  (Financial Movements and Aging) · Material Management and Pricing · Project Management · Performance
+  Analysis and Accounting · Assets · Manufacturing · Human Resource and Payroll · Maintenance Request.</li>
+<li><strong>Render:</strong> an accordion of the 14 groups → children by <code>seqno</code>; each leaf carries its <code>action</code>
+  (W/R/P/F/X) and target id. A leaf tap routes by action: <code>W</code>→open the AD window (existing <code>ad_ui</code>),
+  <code>R</code>→Report drawer / fold, <code>P</code>→Process, <code>F</code>→form. <code>action='R'</code> filtered = the <strong>Reports drawer</strong>.</li>
+<li><strong>Project Management</strong> group is the Phase‑3 hook (where the BIM Project Order lands).</li>
+<li>The menu rows are extracted into the ERP data alongside <code>fact_acct</code> (§4) — non‑invent, the canonical menu.</li>
+</ul>
+<hr />
+<h2 id="4-data-prerequisites-noninvent-extracts-into-the-erp-data">§4 Data prerequisites (non‑invent extracts into the ERP data)<a class="headerlink" href="#4-data-prerequisites-noninvent-extracts-into-the-erp-data" title="Permanent link">&para;</a></h2>
+<p>The Report pill + the drawer need rows that <code>ad_seed.db</code> lacks today. Extract them the same way as the
+glassbowl bundle journal (<code>scripts/extract_fact_acct.sh</code>, retargeted to the ERP data / a sidecar):</p>
+<table>
+<thead>
+<tr>
+<th>need</th>
+<th>tables</th>
+<th>for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>financial fold</td>
+<td><code>fact_acct</code> (client 11, 300 rows, <strong>balanced 46 574.97</strong>) + <code>c_elementvalue</code> (chart of accounts)</td>
+<td>Report: Trial Balance / P&amp;L</td>
+</tr>
+<tr>
+<td>receipt fold</td>
+<td>already in <code>ad_seed.db</code> (the O2C documents)</td>
+<td>Report: Receipt</td>
+</tr>
+<tr>
+<td>menu drawer</td>
+<td><code>ad_menu</code> + <code>ad_treenodemm</code> (client 0, <code>MM</code> tree)</td>
+<td>the AD_Menu side drawer</td>
+</tr>
+</tbody>
+</table>
+<p>Source‑of‑truth note: client‑11 <code>fact_acct</code> lives in Docker <code>idempiere_test</code> (the <code>idempiere</code> DB shows 0
+posted) — recorded in <code>docs/CRUD_P_R_REPORT_SPEC.md §1.2.1</code>.</p>
+<hr />
+<h2 id="5-witnesses-headless-log-first-playwright-wiring-only">§5 Witnesses (headless §‑log first; Playwright wiring only)<a class="headerlink" href="#5-witnesses-headless-log-first-playwright-wiring-only" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>§PILL-MANIFEST page=erp pills=12 source=pills.json handAuthoredButtons=0</code> — bar is registry‑driven.</li>
+<li><code>§PILL-DRAWER menu groups=14 leaves=N source=ad_menu handAuthored=0</code> — the drawer folds the real menu.</li>
+<li><code>§PILL-REPORT tap=report receipt=ok trial-balance=balanced pnl=ok</code> — the Report pill surfaces the proven folds.</li>
+<li><code>§PILL-HOLD pill=home → drawer=ad_menu opened=Y</code> and <code>§PILL-HOLD pill=report → drawer=reports leaves=99</code>.</li>
+<li><code>§PILL-NAV glassbowl→glassbowl.html gravity→glassbowl_gravity.html</code> — surface launchers route.</li>
+</ul>
+<h2 id="6-build-order-each-names-its-witness-nothing-builds-without-go">§6 Build order (each names its witness; NOTHING builds without GO)<a class="headerlink" href="#6-build-order-each-names-its-witness-nothing-builds-without-go" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>M0</strong> — <code>pills.json</code> manifest (Tier‑1 rows) + mount <code>pill_builder.js</code> on erp.html. Witness <code>§PILL-MANIFEST</code>.</li>
+<li><strong>M1</strong> — extract <code>fact_acct</code>+<code>c_elementvalue</code>+<code>ad_menu</code>+<code>ad_treenodemm</code> into the ERP data (§4).</li>
+<li><strong>M2</strong> — Report pill: render Receipt + Trial Balance + P&amp;L (reuse the proven <code>report_overlay</code> folds). <code>§PILL-REPORT</code>.</li>
+<li><strong>M3</strong> — long‑press side drawer = AD_Menu (definition‑as‑data, §3). <code>§PILL-DRAWER</code> / <code>§PILL-HOLD</code>.</li>
+<li><strong>M4</strong> — surface launchers (Glassbowl/Gravity) + Graphs (<code>ad_charts</code>). <code>§PILL-NAV</code>.</li>
+<li><strong>M5</strong> — glassbowl.html keeps its own <code>pills.json</code> for the scene controls (one registry, per‑surface manifest).</li>
+</ul>
+<h2 id="7-discipline">§7 Discipline<a class="headerlink" href="#7-discipline" title="Permanent link">&para;</a></h2>
+<p>ERP code edited in <code>bim-ootb/viewer/</code> directly (never whole‑file copied from bim‑compiler). Pills + menu are
+DATA. §‑log under the build dir; READ before concluding. EXPLICIT GO before any build or deploy; bump the sw
+CACHE_VERSION on deploy; fetch‑back‑verify.</p>
 
 
 

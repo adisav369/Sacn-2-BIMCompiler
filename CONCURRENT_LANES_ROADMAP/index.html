@@ -3966,6 +3966,11 @@ by two lens POCs that needed no backend and no overlay wiring at all.</p>
 <p><strong>Key correction (vs my earlier 2-lane draft):</strong> "frontend" is NOT one lane — it is the <strong>host</strong> (chrome
 that tags+exposes+mounts) PLUS N <strong>overlay-aspect</strong> lanes that attach by key. A lens is a <em>host</em>; CRUD /
 Report / Tour / chart are <em>overlays</em> that ride EVERY host unchanged ("reskin = new chrome + same overlay").</p>
+<p><strong>Operational cap — keep concurrent lanes to THREE (no 4th; it gets hard to track).</strong> Governance allows N
+lane <em>kinds</em> / overlay-aspects architecturally, but only <strong>three SESSIONS run at once</strong>: the two others +
+the lens family (lane 3). Overlay-aspects beyond what's already running <strong>sequence within their owning
+lane</strong>, not as a new concurrent session. A lane's AGENTS are intra-lane WORKERS (worktree-isolated, editing
+ONLY that lane's files) — launching agents does NOT create a lane.</p>
 <h2 id="2-step-0-freeze-both-seams-the-only-joint-step-then-part-ways">§2 STEP 0 — freeze BOTH seams (the only joint step; then part ways)<a class="headerlink" href="#2-step-0-freeze-both-seams-the-only-joint-step-then-part-ways" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Backend↔frontend seam</strong> (ENGINE_CONTRACT §1–2): the 5 calls <code>read</code>/<code>dispatch</code>/<code>manifest</code>/<code>verbs</code>/

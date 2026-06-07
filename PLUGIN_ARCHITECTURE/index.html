@@ -4564,7 +4564,7 @@ any build or deploy.</strong> This doc owns the <strong>extension/plugin</strong
 <em>model</em> to <a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a> and all <em>rendering</em> to
 <a href="../IDEMPIERE_RENDERER_SPEC/">IDEMPIERE_RENDERER_SPEC.md</a>.</p>
 <p>Read first: <a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a> (the thin core: 5-table bridge + verbs + signed op-log) ·
-<a href="PILL_MANIFEST_SPEC.md">PILL_MANIFEST_SPEC.md</a> (the live registry-as-data precedent) ·
+<a href="../PILL_MANIFEST_SPEC/">PILL_MANIFEST_SPEC.md</a> (the live registry-as-data precedent) ·
 <code>bim-ootb/viewer/pill_builder.js</code> (S281 registry — the working shape to reuse) ·
 <a href="../ERP/">ERP.md §0.14</a> (the closed verb set) · <a href="../DistributedERP/">DistributedERP.md</a> (op-log doctrine).</p>
 </blockquote>
@@ -4659,7 +4659,7 @@ is the <em>synthesis</em>, never "we invented metadata plugins" — see §10 wit
   rule, or chart is <strong>rows / JSON entries</strong>, folded by the existing engine. No code, no module, no
   lifecycle. This is where iDempiere needed <em>both</em> the AD <em>and</em> OSGi; we need only the data layer,
   because the engine is data-driven enough that there is nothing to make code-pluggable. Precedent
-  already live: <a href="PILL_MANIFEST_SPEC.md">PILL_MANIFEST_SPEC.md</a> (pills + the whole AD_Menu are data),
+  already live: <a href="../PILL_MANIFEST_SPEC/">PILL_MANIFEST_SPEC.md</a> (pills + the whole AD_Menu are data),
   the compiled AD manifest, <code>erp_rules.db</code>.</p>
 </li>
 <li>
@@ -4675,7 +4675,7 @@ Pressure is always toward data.</p>
 <p>This is the floor of "as little as possible." An ERP does <strong>not</strong> need a plugin's code, screens, or
 workflow. To fold a new thing into the system, it needs only two declarations — and they can live at
 <strong>a URL</strong> the host fetches (the manifest <em>is</em> the plugin; the URL is just its locator — the same
-URL-as-genome idea as <a href="AnyAppMaker.md">AnyAppMaker.md</a>):</p>
+URL-as-genome idea as <a href="../AnyAppMaker/">AnyAppMaker.md</a>):</p>
 <ol>
 <li>
 <p><strong>The charge model — <code>DR/CR → Account ID</code>.</strong> The posting rule: "when this event happens, debit
@@ -4825,7 +4825,7 @@ against <code>ad_seed.db</code>.</p>
 </tbody>
 </table>
 <p>Concretely, the <strong>whole</strong> of a Tier-1 overlay is a JSON object of the existing pill shape
-(<code>{ id, name, key, icon, fn, panel?, hold? }</code>, <a href="PILL_MANIFEST_SPEC.md">PILL_MANIFEST_SPEC.md</a> §0) — no
+(<code>{ id, name, key, icon, fn, panel?, hold? }</code>, <a href="../PILL_MANIFEST_SPEC/">PILL_MANIFEST_SPEC.md</a> §0) — no
 new fields invented. The <strong>whole</strong> of a Tier-2 plugin is a named function that takes context + an op
 and returns op-group(s); registration is one line against a named point. There is no <code>.csproj</code>, no
 <code>MANIFEST.MF</code>, no <code>plugin.xml</code>, no annotation processor, no codegen step. If an author has to <em>learn
@@ -4917,7 +4917,7 @@ equivalent for us:</p>
   can do — the metadata-permissions model, Salesforce-style, not a Java SecurityManager.</li>
 </ul>
 <p>Honest status: untrusted third-party Tier-2 plugins need the Worker boundary + capability gating
-<em>before</em> any marketplace (<a href="AnyAppMaker.md">AnyAppMaker.md</a>). Tier-1 data overlays carry no code and so
+<em>before</em> any marketplace (<a href="../AnyAppMaker/">AnyAppMaker.md</a>). Tier-1 data overlays carry no code and so
 carry no code-execution risk — only validation-of-data risk, handled by the same rule engine.</p>
 <h2 id="8-versioning-where-the-complexity-relocates-it-does-not-vanish">§8 Versioning — where the complexity relocates (it does not vanish)<a class="headerlink" href="#8-versioning-where-the-complexity-relocates-it-does-not-vanish" title="Permanent link">&para;</a></h2>
 <p>OSGi's hard part was package versioning. Ours becomes <strong>versioning the op/verb vocabulary</strong> — the schema
@@ -4936,14 +4936,14 @@ but not free — discipline lives here.</p>
 <li><strong>The model / verb set / fold</strong> → <a href="../IDEMPIERE_2/">IDEMPIERE_2.md</a>, <a href="../ERP/">ERP.md</a>.</li>
 <li><strong>The live editable-rules write-loop</strong> (rule-as-data edited at runtime) → grail, gated E3/E4
   (<a href="../HolyGrail/">HolyGrail.md</a>).</li>
-<li><strong>A third-party marketplace / distribution / trust signing</strong> → <a href="AnyAppMaker.md">AnyAppMaker.md</a>;
+<li><strong>A third-party marketplace / distribution / trust signing</strong> → <a href="../AnyAppMaker/">AnyAppMaker.md</a>;
   this doc only states the §7 prerequisites.</li>
 </ul>
 <h2 id="10-witnesses-log-first-the-only-evidence">§10 Witnesses (§-log first; the only evidence)<a class="headerlink" href="#10-witnesses-log-first-the-only-evidence" title="Permanent link">&para;</a></h2>
 <p>No claim ships without a <code>§</code>-logged proof. Spec-first names them now:</p>
 <ul>
 <li><code>§PLUGIN-OVERLAY tier=1 source=manifest.json handAuthoredCode=0 mounted=N</code> — a new affordance added as
-  data only, zero new bar/host code (the S281 contract, <a href="PILL_MANIFEST_SPEC.md">PILL_MANIFEST_SPEC.md</a>).</li>
+  data only, zero new bar/host code (the S281 contract, <a href="../PILL_MANIFEST_SPEC/">PILL_MANIFEST_SPEC.md</a>).</li>
 <li><code>§PLUGIN-CODE tier=2 verb=&lt;name&gt; newVerb=Y|N coupling=oplog directCalls=0</code> — a code plugin touches the
   bus only; <code>directCalls=0</code> proves the no-direct-reference rule (§6).</li>
 <li><code>§PLUGIN-REPLAY pluginAdded then removed → replay rebuildA==rebuildB agree=Y</code> — add/remove leaves the
@@ -4961,7 +4961,7 @@ but not free — discipline lives here.</p>
   the kernel, zero direct calls. <code>§PLUGIN-CODE</code>, <code>§PLUGIN-REPLAY</code>.</li>
 <li><strong>P2</strong> — Web Worker extension-host boundary + capability manifest for Tier-2. <code>§PLUGIN-ISOLATION</code>.</li>
 <li><strong>P3</strong> — verb-vocabulary versioning + an overlay-schema migration fold (§8).</li>
-<li>(marketplace / third-party trust → deferred to <a href="AnyAppMaker.md">AnyAppMaker.md</a>, grail-gated.)</li>
+<li>(marketplace / third-party trust → deferred to <a href="../AnyAppMaker/">AnyAppMaker.md</a>, grail-gated.)</li>
 </ul>
 <h2 id="12-guardrails-doctrine-not-preference">§12 Guardrails (doctrine, not preference)<a class="headerlink" href="#12-guardrails-doctrine-not-preference" title="Permanent link">&para;</a></h2>
 <ol>
