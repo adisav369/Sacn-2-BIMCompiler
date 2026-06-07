@@ -1,0 +1,52 @@
+{
+  "schema": "erp-replica/v1",
+  "len": 5,
+  "tip": "59f5de305a080cf0960e97e28a42aafd92257d0f816a1cc282fe25128f7d9bdd",
+  "ops": [
+    {
+      "seq": 1,
+      "op_uuid": "1562631b-1f28-4fcc-85ce-a69ee79010ef",
+      "timestamp": 1780793761309,
+      "op_type": "CREATE",
+      "parameters": "{\"actor\":\"A\",\"target\":\"ORD-1001\",\"doc_type\":\"C_Order\",\"amount\":1200}",
+      "input_guids": null,
+      "output_guid": null
+    },
+    {
+      "seq": 2,
+      "op_uuid": "44c93668-26c5-4c50-8d62-6cdab9633b0d",
+      "timestamp": 1780793761311,
+      "op_type": "COMPLETE",
+      "parameters": "{\"actor\":\"A\",\"target\":\"ORD-1001\"}",
+      "input_guids": null,
+      "output_guid": null
+    },
+    {
+      "seq": 3,
+      "op_uuid": "4001c107-2f3d-459b-a013-91bef3412e16",
+      "timestamp": 1780793761312,
+      "op_type": "CREATE",
+      "parameters": "{\"actor\":\"A\",\"target\":\"INV-1001\",\"doc_type\":\"C_Invoice\",\"amount\":1200}",
+      "input_guids": null,
+      "output_guid": null
+    },
+    {
+      "seq": 4,
+      "op_uuid": "e4f99a78-aba8-4f7b-b7d7-380416a41361",
+      "timestamp": 1780793761312,
+      "op_type": "ALLOCATE",
+      "parameters": "{\"actor\":\"A\",\"target\":\"INV-1001\"}",
+      "input_guids": null,
+      "output_guid": null
+    },
+    {
+      "seq": 5,
+      "op_uuid": "c6ba5e71-1cd2-487b-a90b-9c014ae1208b",
+      "timestamp": 1780793761312,
+      "op_type": "PAY",
+      "parameters": "{\"actor\":\"A\",\"target\":\"INV-1001\",\"amount\":1200}",
+      "input_guids": null,
+      "output_guid": null
+    }
+  ]
+}
