@@ -66,6 +66,39 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶▶▶ SESSION HANDOFF 2026-06-07 — THE BIG ERP PUSH (continue here; supersedes the 06/06b blocks below) ▶▶▶**
+> **THESIS driving this arc (user, repeated):** iDempiere = effortless, FRICTIONLESS, model-AGNOSTIC absorption —
+> it folds ANY source's model and the chrome renders it with ZERO per-model code. Every UI add must honour that
+> (dictionary-driven, NON-INVENT) AND delight the long-tail / lower-literacy user (colourful, status-at-a-glance,
+> consistent L&F, common HMI — don't overthink). [[feedback_pill_icon_consistency]] · [[project_kanban_marvel]].
+>
+> **SHIPPED LIVE this arc (GH Pages, erp sw → v597; all whitebox-witnessed, all verified live):**
+> - **Rule pill client-scoping** (PR #171, RULE_EDIT_SPEC §11) — folds over the logged-in client (`window.__idmpClient`),
+>   honest tenant label + honest-disable; killed the hardcoded `AD_Client_ID=12`. `§RULE-CLIENT-SCOPE PASS`.
+> - **iDempiere chrome §A–§D** (PR #170) — pill registry (retired hand-rolled rail) · Install/Migrate pre-client lifecycle ·
+>   cross-tab history scrubber · RED PILL "just-the-pill" ⟷ classic toggle. Spec `erp/docs/ERP_BOTTOM_BAR_AND_LIFECYCLE.md`.
+> - **Kanban "Odoo-marvel" cards + shared Graph/Kanban status palette** (PR #177, `erp/docs/KANBAN_MARVEL_SPEC.md`) —
+>   dictionary-driven avatar/title/amount/date (zero per-model code), semantic status colours on cards AND graph bars
+>   (consistent L&F). `§KANBAN-MARVEL-RESULT PASS`. Group-by deferred (honest: columns ARE the wfmc group-by/drop-targets).
+> - **Mobile ⋯ pill fixes** — reopen-on-retap (PR #176; tap landed on inner `<svg>`) + FLAT horizontal kebab on all
+>   surfaces (vs Android's vertical ⋮) + mobile dock ⋯ anchored right-edge so it doesn't re-center (PR #182). `§PILL-*-RESULT PASS`.
+>
+> **NEXT — work top-to-bottom (WORK-TO-ZERO):**
+> 1. **✅ DONE + LIVE — ⏱ erp.html init-bubble INSTANT** (sw v599, PRs #188+#192, 2026-06-07; details in the DONE block
+>    at line ~143). Navigation SWR + one-shot controllerchange reload backstop; warm bubblePaint 883ms→46ms.
+> 2. **More "marvel" optics where they pay** — continue making lenses visual/colourful/consistent for the long tail
+>    (the user's explicit direction); keep one shared status palette (`window.KanbanLens.statusColor/...`), NON-INVENT.
+> 3. **⛔ Renderer #2 (Odoo) descriptor-driven** — still blocked on the user's go/no-go (see the ⛔ item below).
+> 4. Then keep going down §OUTSTANDING to zero.
+>
+> **OPERATING NOTES (this arc, proven):** deploy = isolated worktree off FRESH `origin/main` → erp-only diff → whitebox
+> `§`-witness (corroborate `§…RESULT PASS` with raw DOM, not the line alone) → PR → CI → squash-merge → bump `erp/sw.js`
+> CACHE_VERSION + touched `?v=` → VERIFY live on Pages. The **viewer/history lane is concurrently active** (PRs #172–#178+,
+> worktrees `/tmp/wt-h*`) — all viewer-only/orthogonal to `erp/`; `sw.js` is the conflict magnet → on conflict take the
+> HIGHER version + keep ALL changelogs. An auto-resyncing merge poll (merge `origin/main` → re-witness → push) lands erp
+> PRs through the churn. Symlink `~/bim-ootb/tests/node_modules` into the worktree `tests/`. Clean up your worktrees/branches
+> at end ("leave no stale"); do NOT touch the viewer lane's `/tmp/wt-*` or the shared `~/bim-ootb` tree.
+>
 > **▶▶ SESSION HANDOFF 2026-06-06 (close-out) — NEXT SESSION START HERE to close the loop:**
 > This session shipped LIVE: `§MOBILE-VIEW` record-list cards (PR#157, v586) + `§MOBILE-LANDING` portrait menu-drawer
 > (PR#159, v587); committed the B1 adapter (bim-compiler `c5ba835e`); and TRIAGED+SPEC'd the ERP chrome work with
@@ -75,9 +108,66 @@ listed for visibility and route to their own prompt/lane.
 > decided, so EXECUTE `prompts/ERP_BOTTOM_BAR_AND_LIFECYCLE.md` **§A → §C → §B** (start §A: registry + ⋯, delete the
 > hand-rolled `#idmp-pillrail`). Whitebox §-log on localhost (NOT forced-viewport Playwright — [[feedback_whitebox_not_playwright]]),
 > worktree off `origin/main` → PR → sw bump. Then keep going down §OUTSTANDING until every line is ✅/⛔.
-- **🟡 BUILT + WITNESSED (localhost), HELD FOR DEPLOY-GO [ERP-UI] iDempiere chrome — pill registry + lifecycle + scrubber.**
-  All three sections IMPLEMENTED + whitebox §-witnessed on localhost (NOT yet deployed — user said "do not deploy yet").
-  Committed on bim-ootb branch `feat/idmp-pill-registry` (3 commits, off fresh `origin/main`); sw v587→v590.
+> **▶▶ SESSION HANDOFF 2026-06-06b — iDempiere chrome §A–§D DONE, on PR #170 (HELD). NEW SESSION START HERE:**
+> - **State:** bim-ootb branch `feat/idmp-pill-registry` pushed → **PR #170 (HELD — do NOT merge until user says "deploy")**,
+>   off fresh origin/main, ZERO conflicts (only touches `erp/*` + spec; origin's recent commits are all `viewer/*`).
+>   Worktree `/tmp/idmp-chrome`. erp sw **v592**. **12/12 gated witnesses PASS** (whitebox §-log on localhost).
+> - **Done §A–§D** (spec `prompts/ERP_BOTTOM_BAR_AND_LIFECYCLE.md`, all 4 sections written): §A bar from shared registry
+>   (sibling `pills_idmp.json`+`idmp_pills.js`+PillBuilder, hand-roll `#idmp-pillrail` deleted, `icons.js`+4 verbatim glyphs);
+>   §C Install/Migrate pre-client-only (GATE-2); §B cross-tab history scrubber (Glassbowl `#scrub`, dots-only, read-only restore,
+>   0 op-log mutations); §D **RED PILL** — "just the pill" (our design, DEFAULT) ⟷ classic iDempiere L&F, key `,` (=BIM Doc Mode),
+>   persistent dock (`PillBuilder opts.persistent`), arrow-key record nav.
+> - **Deploy = merge PR #170** ONLY on user "deploy" go → then verify erp sw v592 + `idempiere.html` live on Pages.
+> - **▶▶ DEPLOYED 2026-06-06 (user said "deploy") — BOTH held PRs MERGED + LIVE-VERIFIED on GH Pages (erp sw v593):**
+>   - **PR #171 (rule client-scope) ✅ LIVE** — `64fc284`. Merged first (auto-merge once CI green).
+>   - **PR #170 (chrome §A–§D) ✅ LIVE** — `91ebcfd` (sw v592→**v593** after merge-resolution). The merge collided on the
+>     concurrent viewer lane (#172/#173 landed mid-deploy, all viewer-only/orthogonal). Resolved per CLAUDE.md: `sw.js` →
+>     higher version (v593, kept both changelogs); `idempiere.html` → kept #170's registry script tags + #171's
+>     `rule_fold.js?v=2`+`__idmpClient`. Re-synced past #172/#173 (clean erp merge each time), re-ran ALL 6 erp witnesses
+>     PASS on the merged tree (§A pills / §B history / §C lifecycle / §D redpill / poc_rule_edit / poc_rule_client_scope),
+>     auto-merged. Also updated `poc_rule_client_scope.js` to drive the NEW registry chrome (`#pill-rule` pointerup, open
+>     `#idmp-pill` dock). Live-verified: sw v593, `rule_fold.js?v=2`, registry tags, `__idmpClient`, 0 hardcoded-Odoo.
+> - **Open items:** (1) ✅ **DONE + LIVE (PR #171, `64fc284`)** — **Odoo-tenant bug** in `erp/rule_fold.js` (hardcoded
+>   `AD_Client_ID=12` → Rule pill lied `tenant=Odoo(12) FAIL no-population` on any non-Odoo login). FIXED: fold over the live
+>   login client (`window.__idmpClient`, set in `idempiere.html applySession`), honest tenant label + honest-disable on
+>   no-population (`§RULE-DISABLE`). Spec `erp/docs/RULE_EDIT_SPEC.md §11`. Whitebox `§RULE-CLIENT-SCOPE PASS` (Odoo regression
+>   PASS N=35 + GardenWorld(11) pop=114 + maycomplete honest-disabled); `poc_rule_edit.js` still PASS. (2) Kanban "Odoo marvel"
+>   graphic polish (avatars/color tags/group-by) — visual only, backlog, **NOT started — needs design direction** (which
+>   avatars / color-tag scheme / group-by field; subjective optics, don't invent — ask the user).
+> - **▶▶ NEXT SESSION TOP ITEM (user-dictated 2026-06-07): erp.html init-bubble must be INSTANT — `prompts/ERP_INIT_BUBBLE_INSTANT.md`.**
+>   The Phase-1 init bubble (initbubble.json constellation, claimed <300ms) lags ~1s; the 12.7MB ad_seed.db must not block
+>   first paint ("sharding that was promised"). MEASURE §BENCH first (head script-wall? SW network-first on .json? Phase-2
+>   stealing the paint? bubble size?), then decouple → witness `§INIT-INSTANT-RESULT PASS` (bubblePaint ≤300ms cold+warm,
+>   db starts AFTER bubble). Then continue §OUTSTANDING.
+>   **✅ DONE + LIVE on GH Pages (sw v599, PRs #188 + #192, 2026-06-07).** MEASURED first: on localhost the bubble already
+>   paints 120ms cold / 42ms warm with `dbStartsAfterBubble=Y` — the sharding promise was STRUCTURALLY KEPT (12.7MB db off
+>   the paint path, Phase-1 scripts precached/cache-first). The residual ~1s = SW serving the navigation
+>   (`erp.html`/`idempiere.html`) **network-first** → every load awaited a network round-trip for the HTML even fully cached.
+>   FIX-1 = navigation **stale-while-revalidate** (`erp/sw.js`: `networkFirst`→`staleWhileRevalidate`). Witness
+>   `erp/tests/poc_init_instant.js` (injects 800ms nav latency so localhost discriminates): warm bubblePaint **883ms→46ms**.
+>   FIX-2 (deploy-freshness backstop) = a one-shot `controllerchange→location.reload()` in both pages — because SWR alone
+>   regressed deploy freshness to TWO reloads (old SW serves the nav before the new one activates); witness
+>   `erp/tests/poc_init_deploy_fresh.js` proved **TWO→ONE reload** convergence. Regression `poc_mobile_cards` PASS.
+>   Live-verified: sw v599 active, backstop in served erp.html+idempiere.html, boot 0 pageErrors, db deferred(network 12.4MB).
+>   **⚠ ORPHAN-TRAP HIT (the CLAUDE.md squash+late-push):** #188 auto-merged on its FIRST CI run (SWR only) BEFORE the
+>   backstop was pushed → backstop orphaned on the dead branch. Fixed forward via #192 off FRESH origin/main (cherry-picked
+>   the orphan, bumped v598→v599). LESSON: a feature with a required follow-up commit → either ONE commit, or disable
+>   auto-merge until the last commit is pushed. Don't push to a branch that may auto-merge mid-stream.
+> - **✅ DONE + LIVE 2026-06-07 [ERP-UI] Kanban "Odoo-marvel" cards + shared Graph/Kanban status palette (PR #177, sw v596→…);
+>   mobile ⋯ pill-reopen fix (PR #176); flat ⋯ kebab all surfaces + mobile dock ⋯ anchor (PR #182, sw v597).** See
+>   [[project_kanban_marvel]]. Kanban "group-by" deferred (honest: columns ARE the wfmc group-by/drop-targets). Open papercut
+>   CLEARED: the collapsed ⋯ no longer re-centers (anchored right-edge, `§PILL-TRIGGER-RESULT PASS dx=0`).
+> - **Standing principles (this arc):** [[feedback_pill_icon_consistency]] — OUR surface = clean Lucide line icons only
+>   (icons.js, verbatim panels.js); no unicode/ad-hoc glyphs; reuse pill-registry + settings-editor; common HMI, don't overthink.
+>   Tests: whitebox §-log first (NOT forced-viewport Playwright); `§…RESULT PASS` alone can lie — corroborate w/ raw-DOM +
+>   baseline diff. Run gated tests by symlinking `~/bim-ootb/tests/node_modules` into the worktree `tests/`.
+> - **Shared-tree reconcile** (`~/bim-ootb/prompts/SHARED_TREE_RECONCILE.md`): my row CLAIMED (work safe on PR #170, ~/bim-ootb
+>   reset is lossless for me). Do NOT run the `reset --hard`/`git clean` until the ERP + Sidecar sessions also claim. The shared
+>   tree's dirty `erp/*` files are NOT mine.
+
+- **✅ DONE + DEPLOYED LIVE (bim-ootb PR #170 `91ebcfd`, erp sw v593, 2026-06-06) [ERP-UI] iDempiere chrome — pill registry + lifecycle + scrubber + red pill (§A–§D).**
+  All four sections live-verified on GH Pages; merged after resolving the concurrent viewer-lane churn (#172/#173, orthogonal). Shipped alongside the rule client-scope fix (PR #171 `64fc284`). See the DEPLOYED handoff block at §OUTSTANDING top.
+  (history) Built + whitebox §-witnessed on localhost first; was held for deploy-go. bim-ootb branch `feat/idmp-pill-registry`; sw v587→v590→v593.
   - **§A DONE** — iDempiere bottom/side bar now renders from the SHARED registry (sibling `erp/pills_idmp.json` [GATE-1]
     + new `idmp_pills.js` binding fn BY ID to `window.IdmpPillActions` + `PillBuilder`, incl. ⋯ collapse); icons.js
     +barChart/layout/save/pipe (verbatim from panels.js); hand-rolled `#idmp-pillrail` DELETED. Witness
