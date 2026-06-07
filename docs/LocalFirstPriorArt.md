@@ -56,14 +56,17 @@ PowerSync, and ElectricSQL at once.
   once, run on both sides.** No double-implementation, no client/server rule drift (the thing PowerSync
   makes you maintain by hand).
 
-### 4. LiveStore — nearest neighbour (event-sourced, SQLite-materialised)
+### 4. LiveStore — nearest neighbour *on the data layer* (event-sourced, SQLite-materialised)
 - **How:** events in an eventlog → **materialised into reactive client SQLite** via materialisers;
   git-inspired sync; pluggable sync backend (Cloudflare / Electric / S2).
 - **Documented weakness:** **BETA (v0.4)**; requires a sync-provider backend (no hosted service);
   *"doesn't sync with existing databases," "doesn't scale for unbounded data," "no P2P,"* and explicitly
   **"not batteries-included — no built-in auth or file uploads."**
-- **Our position (not a workaround — an honest delta):** conceptually almost identical at the data layer,
-  so we claim **no technique novelty**. Differentiators are *application-level*: we span **BIM geometry +
+- **Our position (not a workaround — an honest delta):** LiveStore is our nearest neighbour **on the data
+  layer** (event → reactive SQLite materialisation), the way SQLSync (§6) is our nearest neighbour **on the
+  determinism lever** (one reducer both sides) — together they show we hold **no technique novelty** on either
+  axis in isolation. Conceptually almost identical at the data layer. Differentiators are *application-level*:
+  we span **BIM geometry +
   ERP** under one log, ship a real **domain reduction** (iDempiere AD → 5 tables + verbs), and are
   **batteries-included** (AD-derived rules/validation). LiveStore is infrastructure; we are an application
   on the same idea. Its "no auth / doesn't scale unbounded" gaps confirm these are **industry-wide**, not
@@ -80,6 +83,42 @@ PowerSync, and ElectricSQL at once.
   "server-authoritative sequencing for invariants" the literature prescribes. We do **not** put money-
   touching invariants under generic LWW (which silently loses an allocation). So the #1 CRDT weakness is
   sidestepped by design, not patched.
+
+### 6. SQLSync (Carl Sverre) — deterministic reducer + git-style rebase (our true nearest neighbour on the lever)
+- **How:** mutations are ops; a **reducer compiled to WASM runs identically on client and server**; on
+  reconnect the client **rewinds → applies the server-ordered log → replays pending local ops** (a git-style
+  rebase). The server is the sequencer/authority that assigns the canonical op order.
+- **Documented weakness:** the reducer is **Rust compiled to WASM** (custom build, opaque to inspection);
+  a **server of authority is mandatory** (it owns the sequence — no zero-server total order); the SQLite is a
+  replica driven by the reducer, so you don't query/extend it with arbitrary SQL the way a native store allows.
+- **Our position (validation, not a workaround):** SQLSync's *"same reducer both sides → server result ==
+  client result by construction"* **is our determinism lever, already shipped by someone else** — it is a
+  closer neighbour than LiveStore (§4) for the *one-kernel-both-sides* claim, and it tempers any
+  "first to our knowledge" framing of that lever specifically. Our deltas: kernel verbs are **plain JS over
+  real sql.js** (full joins/FK, runs server-side as-is, no WASM toolchain) and we add **W-CHAIN/W-SIGN**
+  (SQLSync has no tamper-evidence). **What we lack that SQLSync has:** the **multi-writer total order** — we
+  order by local `id` rowid (two devices both emit id 1,2,3 with diverging chains and no merge path in
+  `kernel_ops.js`). **Borrow:** adopt SQLSync's rebase loop *as* our §0.20 owner-seam protocol — the server
+  assigns the sequence, the client rebases pending ops on top. We are already set up for it: `sealChain()` is a
+  **full recompute**, so after a rebase re-orders ops under the server's sequence we simply re-seal and the
+  hash chain stays valid. This gives multi-writer ordering **without** a row-level CRDT and **preserves
+  invariant rejection** (the server reducer can refuse an op) — the thing cr-sqlite (§7) structurally cannot.
+
+### 7. cr-sqlite / Vulcan (vlcn.io) — row-level CRDT, decentralized, no sequencer
+- **How:** a C extension compiled to WASM turns ordinary tables into **CRRs** (conflict-free replicated
+  relations) — per-row/per-column causal merge keyed on a `site_id` + a logical clock (`crsql_db_version`).
+  Two offline writers merge automatically with **no central referee**.
+- **Documented weakness:** it is **state/LWW-flavoured per column** — it carries **no intent**, so it inherits
+  the core CRDT limit (§5): it **cannot enforce business invariants** (it will converge to a consistent but
+  *wrong* number — e.g. silently allow a double-allocation of the same pallet); no built-in access control;
+  tombstone/GC overhead.
+- **Our workaround / fit:** for **money-touching ops, cr-sqlite is the wrong tool** — same reason we rejected
+  generic LWW (§5, §0.18c): we keep `documents`/`journal` invariants at the deterministic kernel + owner seam,
+  not under automatic row-merge. **But its primitive is the right one for the *other half* of our unified log:**
+  **BIM geometry edits are commutative-ish and LWW-safe** (a moved grid line has no double-spend invariant), so
+  a **two-tier merge** — cr-sqlite-style `site_id`+clock auto-merge for *geometry* ops, owner-seam serialization
+  for *money* ops — fits our BIM+ERP-under-one-log unification cleanly. This is the concrete decentralized-multi-
+  writer path we currently lack, applied **only where it's safe**. Never route `Fact_Acct` through it.
 
 ---
 
@@ -112,6 +151,18 @@ PowerSync, and ElectricSQL at once.
 - Tamper-evidence is *nobody's* default → our distinctive add: hash-chain/sign the log (W-CHAIN/W-SIGN).
 - Secured multi-user **needs a trust anchor** — every system above has a server; ours is the async
   **server domain** (§0.20), reached only when single-user/offline no longer suffices.
+
+**Concrete borrows for the §0.20 phase (from §6/§7, the two systems we hadn't logged):**
+1. **Multi-writer ordering = SQLSync's rebase loop** (§6) — server assigns canonical sequence, client
+   rewinds → applies server log → replays pending local ops. We currently order by local `id` only; this fills
+   the deferred owner-seam total order **and keeps invariant rejection** (server reducer refuses bad ops).
+   Cheap for us because `sealChain()` already full-recomputes — rebase, then re-seal.
+2. **Two-tier merge = cr-sqlite primitive *only* for geometry** (§7) — `site_id`+logical-clock auto-merge for
+   BIM/geometry ops (LWW-safe, no invariant); owner-seam serialization for money ops. Decentralized multi-writer
+   exactly where it's safe, never on `journal`/`Fact_Acct`.
+3. **Incremental storage = OPFS** (PowerSync/Notion, storage axis below) — replace `kernel_ops.js`'s
+   whole-DB `db.export()`→IndexedDB blob (O(db size) per debounce, the I-D cost) with OPFS SAHPool incremental
+   writes. Free perf win, independent of any sync work.
 
 ---
 
@@ -157,4 +208,6 @@ R-tree + small footprint) is the right tier; the prior art confirms it.
 [ElectricSQL — local-first with your existing API](https://electric.ax/blog/2024/11/21/local-first-with-your-existing-api) ·
 [PowerSync vs ElectricSQL](https://powersync.com/blog/electricsql-vs-powersync) ·
 [LiveStore](https://livestore.dev/) ·
+[SQLSync](https://github.com/orbitinghail/sqlsync) ·
+[cr-sqlite (vlcn.io)](https://github.com/vlcn-io/cr-sqlite) ·
 [CRDT survey (Weidner)](https://mattweidner.com/2023/09/26/crdt-survey-4.html) · [Automerge](https://automerge.org/).

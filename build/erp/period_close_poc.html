@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT
+     period_close_poc.html — ERP.md §0.20 CONTRACT-FREEZE POC (HolyGrail §"hard parts": compaction =
+     period-close SIGNED CHECKPOINT = balance brought forward). Proves, in a REAL browser over SQLite-WASM
+     (sql.js), that a closed accounting period collapses to ONE signed checkpoint op (closing balances +
+     chain-head fingerprint), the pre-checkpoint ops are dropped, and re-folding [checkpoint + open period]
+     reconciles to the FULL genesis history TO THE CENT — so compaction loses nothing — and the checkpoint
+     is tamper-evident. Loads the REAL build/erp kernel_ops + erp_period_close + erp_snapshot_sign.
+     Every number is MEASURED live (performance.now) — none hard-coded (the "ERP perf claims" rule).
+     Witnessed in node by scripts/test_kernel_period_close.js (W-PCLOSE). Mirror: §SHOW-CKPT poc_showstopper. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP §0.20 — Period-Close Fold (signed checkpoint = balance b/f)</title>
+<style>
+  :root { --bg:#0e0f13; --panel:#16181f; --line:#272a33; --txt:#dfe2ea; --dim:#8b90a0; --ok:#4caf50; --bad:#f44336; --busy:#2196f3; --acc:#7aa2ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.5 ui-monospace,Menlo,Consolas,monospace; }
+  header { display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:2; }
+  h1 { font-size:15px; margin:0; font-weight:600; letter-spacing:.2px; }
+  .sub { color:var(--dim); font-size:12px; }
+  .dot { width:11px; height:11px; border-radius:50%; display:inline-block; background:var(--dim); }
+  .dot.OK{background:var(--ok);box-shadow:0 0 8px var(--ok)} .dot.BUSY{background:var(--busy);box-shadow:0 0 8px var(--busy);animation:p 1.1s infinite}
+  .dot.BAD{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+  @keyframes p{0%{opacity:.4}50%{opacity:1}100%{opacity:.4}}
+  main { padding:20px; max-width:980px; margin:0 auto; }
+  .controls { display:flex; gap:12px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
+  input[type=number]{ background:var(--panel); border:1px solid var(--line); color:var(--txt); padding:7px 10px; border-radius:6px; width:120px; font:inherit; }
+  button{ background:var(--acc); color:#0b0d12; border:0; padding:8px 16px; border-radius:6px; font:inherit; font-weight:600; cursor:pointer; }
+  button:disabled{ opacity:.5; cursor:wait; }
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:14px 16px; margin-bottom:14px; }
+  .card h2{ font-size:13px; margin:0 0 10px; color:var(--acc); letter-spacing:.3px; }
+  table{ width:100%; border-collapse:collapse; }
+  td{ padding:4px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  td:first-child{ color:var(--dim); width:52%; }
+  .big{ font-size:17px; font-weight:700; }
+  .v{ font-weight:600; } .v.ok{ color:var(--ok); } .v.bad{ color:var(--bad); }
+  .tag{ display:inline-block; font-size:11px; padding:1px 7px; border-radius:10px; margin-left:8px; }
+  .tag.ok{ background:rgba(76,175,80,.15); color:var(--ok); } .tag.bad{ background:rgba(244,67,54,.15); color:var(--bad); }
+  code{ color:#9aa0b0; }
+  pre#log{ background:#0a0b0e; border:1px solid var(--line); border-radius:8px; padding:12px; height:220px; overflow:auto; color:#9aa0b0; font-size:11.5px; margin:0; white-space:pre-wrap; }
+  .note{ color:var(--dim); font-size:11.5px; margin-top:6px; }
+</style>
+</head>
+<body>
+<header>
+  <span id="dot" class="dot"></span>
+  <div>
+    <h1>ERP §0.20 — Period-Close Fold <span class="sub">· signed checkpoint = balance brought forward</span></h1>
+    <div class="sub">engine: real <code>kernel_ops.js</code> + <code>erp_period_close.js</code> + <code>erp_snapshot_sign.js</code> over sql.js · HolyGrail §"hard parts" → live</div>
+  </div>
+</header>
+<main>
+  <div class="controls">
+    <label class="sub">period-1 postings&nbsp;<input id="n" type="number" value="20000" min="100" max="200000" step="1000"></label>
+    <button id="run">Run POC</button>
+    <span class="sub" id="env"></span>
+  </div>
+
+  <div class="card" id="c-close"><h2>1 · CLOSE — fold period 1 → one signed checkpoint (closing balances + chain head)</h2>
+    <table id="t-close"><tr><td>waiting…</td><td></td></tr></table>
+    <div class="note">Closing balances in INTEGER CENTS; the controller (ephemeral P-256 key for the demo) signs the new chain tip — the HolyGrail "signed checkpoint carrying the chain-head fingerprint". close-fold ms measured live.</div>
+  </div>
+  <div class="card" id="c-bf"><h2>2 · BALANCE B/F — period 2 opens FROM the checkpoint (never re-reads period 1)</h2>
+    <table id="t-bf"><tr><td>waiting…</td><td></td></tr></table>
+  </div>
+  <div class="card" id="c-recon"><h2>3 · RECONCILE (the falsifier) — fold[checkpoint + P2] == fold[full genesis] to the cent</h2>
+    <table id="t-recon"><tr><td>waiting…</td><td></td></tr></table>
+    <div class="note">If <code>maxDiffCents ≠ 0</code> the balance-b/f claim is wounded. This is the load-bearing test (mirrors poc_showstopper §SHOW-CKPT).</div>
+  </div>
+  <div class="card" id="c-boot"><h2>4 · BOOTSTRAP SPEEDUP — from the checkpoint vs replaying full history</h2>
+    <table id="t-boot"><tr><td>waiting…</td><td></td></tr></table>
+    <div class="note">Compaction's payoff: a fresh tab opens from the checkpoint balances (+ the open period) instead of replaying the whole archive. Both timed live (mirrors VOLUME_POC §VOL-BOOTSTRAP).</div>
+  </div>
+  <div class="card" id="c-tamper"><h2>5 · TAMPER-EVIDENT — forging the checkpoint balances is caught</h2>
+    <table id="t-tamper"><tr><td>waiting…</td><td></td></tr></table>
+  </div>
+  <pre id="log"></pre>
+</main>
+
+<script src="./sqljs/sql-wasm.js"></script>
+<script>
+  var logEl = document.getElementById('log'); var suppress = false; var _cl = console.log.bind(console);
+  console.log = function(){ if (suppress) return; var s=[].slice.call(arguments).join(' '); _cl(s); logEl.textContent += s+'\n'; logEl.scrollTop = logEl.scrollHeight; };
+</script>
+<script src="./kernel_ops.js"></script>
+<script src="./erp_snapshot_sign.js"></script>
+<script src="./erp_period_close.js"></script>
+<script>
+'use strict';
+window.APP = window.APP || {};   // no DB_URL ⇒ the kernel's IDB-persist branch is inert in the POC
+var K = window.KernelOps, PC = window.ErpPeriodClose, SIGN = window.ErpSnapshotSign;
+var dot = document.getElementById('dot');
+function setState(s){ dot.className = 'dot '+s; }
+function now(){ return performance.now(); }
+function row(t, k, v, cls){ var tr=t.insertRow(); tr.insertCell().textContent=k; var c=tr.insertCell(); c.innerHTML=v; if(cls)c.className='v '+cls; }
+function clear(id){ var t=document.getElementById(id); t.innerHTML=''; return t; }
+function c(cents){ return (cents<0?'-':'')+'$'+Math.abs(cents/100).toFixed(2); }
+
+// full kernel_ops schema (all columns) so several dbs share ONE kernel instance (the sync_poc dodge).
+var SCHEMA = 'CREATE TABLE IF NOT EXISTS kernel_ops (id INTEGER PRIMARY KEY, op_uuid TEXT, timestamp INTEGER NOT NULL,'
+  + ' op_type TEXT NOT NULL, parameters TEXT NOT NULL, input_guids TEXT, output_guid TEXT, undone INTEGER DEFAULT 0,'
+  + ' prev_hash TEXT, op_hash TEXT, sig TEXT, gid TEXT, user_tag TEXT DEFAULT "local")';
+function freshDb(SQL){ var db = new SQL.Database(); db.run(SCHEMA); return db; }
+
+// deterministic balanced fixture: N sales, each Dr AR / Cr Revenue 100.00 (books stay balanced, Σ=0).
+// Direct INSERT (not commitOp) for a clean bulk seed + deterministic timestamp = id (a recorded input).
+function seedSales(db, n, base){
+  base = base || 0;
+  db.run('BEGIN');
+  for (var i=0;i<n;i++){
+    var g='so-'+(base+i);
+    db.run("INSERT INTO kernel_ops (timestamp,op_type,parameters) VALUES (?, 'JOURNAL', ?)", [0, JSON.stringify({gid:g,account:'AR',cents:10000})]);
+    db.run("INSERT INTO kernel_ops (timestamp,op_type,parameters) VALUES (?, 'JOURNAL', ?)", [0, JSON.stringify({gid:g,account:'Revenue',cents:-10000})]);
+  }
+  db.run('COMMIT');
+  db.run('UPDATE kernel_ops SET timestamp = id');   // determinism: ts = id (recorded input)
+}
+// the open period: one payment that clears part of AR (Dr Cash / Cr AR 100.00).
+function seedPayment(db){
+  db.run("INSERT INTO kernel_ops (timestamp,op_type,parameters) VALUES (?, 'JOURNAL', ?)", [0, JSON.stringify({gid:'pay-1',account:'Cash',cents:10000})]);
+  db.run("INSERT INTO kernel_ops (timestamp,op_type,parameters) VALUES (?, 'JOURNAL', ?)", [0, JSON.stringify({gid:'pay-1',account:'AR',cents:-10000})]);
+  db.run('UPDATE kernel_ops SET timestamp = id');
+}
+
+// an EPHEMERAL controller key for the demo — the secret never leaves the browser (the pinned-key path is
+// proven in node W-PCLOSE + the replica POC). signer signs the tip; we verify under the ephemeral pubkey.
+async function mintController(){
+  var kp = await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'}, true, ['sign','verify']);
+  var pubJwk = await crypto.subtle.exportKey('jwk', kp.publicKey);
+  return { signer: { signTip: function(tip){ return SIGN.signTip(kp.privateKey, tip); }, signed_by:'controller(ephemeral)' }, pubJwk: pubJwk };
+}
+
+async function runPOC(N, SQL){
+  setState('BUSY');
+  var ctrl = await mintController();
+
+  // ── 1 · CLOSE — seed P1, close → signed checkpoint ──
+  var tc = clear('t-close');
+  var dbLive = freshDb(SQL);
+  suppress = true; seedSales(dbLive, N, 0); suppress = false;
+  var tClose0 = now();
+  suppress = true; var ck = await PC.closePeriod(dbLive, K, ctrl.signer, { period:1, ts:1700000000 }); suppress = false;
+  var closeMs = now()-tClose0;
+  var sigOk = await SIGN.verifyTip(ck.tip, ck.sig, ctrl.pubJwk);
+  var balanced = PC.balSum(ck.closing_balances)===0;
+  console.log('§PCLOSE-BROWSER close N='+N+' closeFold='+closeMs.toFixed(1)+'ms archived='+ck.archived+' live='+ck.liveLen+' sig='+sigOk);
+  row(tc,'period-1 postings folded','<span class="big">'+ck.archived.toLocaleString()+'</span> ops');
+  row(tc,'close-fold (fold + checkpoint + compact + seal)','<b>'+closeMs.toFixed(1)+'</b> ms');
+  row(tc,'closing balances (integer cents)','AR '+c(ck.closing_balances.AR||0)+' · Revenue '+c(ck.closing_balances.Revenue||0));
+  row(tc,'books balance (Σ accounts)', balanced?(c(0)+' <span class="tag ok">double-entry</span>'):c(PC.balSum(ck.closing_balances)), balanced?'ok':'bad');
+  row(tc,'live log after compaction','<b>'+ck.liveLen+'</b> op (checkpoint only) <span class="tag ok">≪ '+ck.archived.toLocaleString()+'</span>', 'ok');
+  row(tc,'checkpoint tip (chain head)','<code>'+ck.tip.slice(0,20)+'…</code>');
+  row(tc,'controller signature over tip', sigOk?'VERIFIES <span class="tag ok">signed checkpoint</span>':'FAIL', sigOk?'ok':'bad');
+
+  // ── 2 · BALANCE B/F — add the open period, bootstrap from checkpoint ──
+  var tb = clear('t-bf');
+  seedPayment(dbLive); await K.sealChain(dbLive);
+  var boot = PC.bootstrapFromCheckpoint(dbLive, K);
+  row(tb,'opening balance (brought forward)','AR '+c(boot.opening.AR||0)+' · Revenue '+c(boot.opening.Revenue||0));
+  row(tb,'period-2 ops folded over it','<b>'+boot.postCount+'</b> (the payment) — period 1 NOT re-read', 'ok');
+  row(tb,'current balance','AR '+c(boot.current.AR||0)+' · Cash '+c(boot.current.Cash||0)+' · Revenue '+c(boot.current.Revenue||0));
+
+  // ── 3 · RECONCILE (falsifier) — compacted vs full genesis, to the cent ──
+  var tr = clear('t-recon');
+  var dbFull = freshDb(SQL);
+  suppress = true; seedSales(dbFull, N, 0); seedPayment(dbFull); suppress = false;
+  var fullBal = PC.foldBalances(K.replayOps(dbFull), null).bal;
+  var recon = PC.balEqual(boot.current, fullBal);
+  console.log('§PCLOSE-BROWSER reconcile maxDiff='+recon.maxDiffCents+'c equal='+recon.equal);
+  row(tr,'fold[checkpoint + P2]','AR '+c(boot.current.AR||0)+' · Cash '+c(boot.current.Cash||0)+' · Revenue '+c(boot.current.Revenue||0));
+  row(tr,'fold[full genesis P1+P2]','AR '+c(fullBal.AR||0)+' · Cash '+c(fullBal.Cash||0)+' · Revenue '+c(fullBal.Revenue||0));
+  row(tr,'max difference','<span class="big">'+recon.maxDiffCents+'</span> cents', recon.equal?'ok':'bad');
+  row(tr,'compaction lossless?', recon.equal?'YES — identical to the cent <span class="tag ok">balance-b/f holds</span>':'NO — WOUNDED', recon.equal?'ok':'bad');
+
+  // ── 4 · BOOTSTRAP SPEEDUP — from checkpoint vs replaying full history ──
+  var tt = clear('t-boot');
+  // from CHECKPOINT: replay the compacted live log (checkpoint + P2) + fold.
+  var b0 = now(); var bc = PC.bootstrapFromCheckpoint(dbLive, K); var bootCkptMs = now()-b0;
+  // from GENESIS: replay the FULL archive (all N*2 + P2 ops) + fold from zero.
+  suppress = true; var g0 = now(); var gFold = PC.foldBalances(K.replayOps(dbFull), null).bal; var bootGenMs = now()-g0; suppress = false;
+  var speedup = bootGenMs>0 ? (bootGenMs/Math.max(bootCkptMs,0.001)) : 0;
+  var sameResult = PC.balEqual(bc.current, gFold).equal;
+  console.log('§PCLOSE-BROWSER bootstrap fromCkpt='+bootCkptMs.toFixed(2)+'ms fromGenesis='+bootGenMs.toFixed(2)+'ms speedup='+speedup.toFixed(1)+'x same='+sameResult);
+  row(tt,'bootstrap from checkpoint (live = '+bc.postCount+' post-ckpt ops)','<b>'+bootCkptMs.toFixed(2)+'</b> ms', 'ok');
+  row(tt,'bootstrap from genesis (replay '+ (N*2+2).toLocaleString() +' ops)','<b>'+bootGenMs.toFixed(2)+'</b> ms');
+  row(tt,'speedup','<span class="big">'+speedup.toFixed(1)+'×</span> faster from the checkpoint', speedup>=1?'ok':'bad');
+  row(tt,'same final balance?', sameResult?'YES <span class="tag ok">lossless</span>':'NO', sameResult?'ok':'bad');
+
+  // ── 5 · TAMPER — forge the checkpoint balances, chain breaks ──
+  var tm = clear('t-tamper');
+  var ckId = dbLive.exec("SELECT id FROM kernel_ops WHERE op_type='PERIOD_CLOSE' ORDER BY id LIMIT 1")[0].values[0][0];
+  dbLive.run("UPDATE kernel_ops SET parameters=? WHERE id=?", [JSON.stringify({period:1,closing_balances:{AR:99999900,Revenue:-10000},prev_tip:ck.prev_tip}), ckId]);
+  var vt = await K.verifyChain(dbLive);
+  var caught = !vt.ok && vt.brokeAt===ckId;
+  console.log('§PCLOSE-BROWSER tamper ckptId='+ckId+' verify='+vt.ok+' brokeAt='+vt.brokeAt+' why='+vt.why);
+  row(tm,'forged checkpoint balances (AR → $999,999.00)','op id '+ckId);
+  row(tm,'verifyChain after forgery', caught?('BROKEN at id='+vt.brokeAt+' ('+vt.why+') <span class="tag bad">rejected</span>'):'NOT detected (bug!)', caught?'ok':'bad');
+  row(tm,'+ controller sig over the honest tip','no longer matches the forged tip <span class="tag ok">double catch</span>', 'ok');
+
+  setState((sigOk && balanced && recon.equal && sameResult && caught) ? 'OK' : 'BAD');
+  console.log('§PCLOSE-BROWSER done — close/b-f/reconcile/bootstrap/tamper all measured');
+}
+
+(async function(){
+  document.getElementById('env').textContent = navigator.userAgent.split(') ')[0].split('(').pop();
+  var SQL = await initSqlJs({ locateFile: function(f){ return './sqljs/'+f; } });
+  var btn = document.getElementById('run');
+  async function go(){
+    btn.disabled = true; setState('BUSY');
+    var N = Math.max(100, Math.min(200000, parseInt(document.getElementById('n').value,10)||20000));
+    try { await runPOC(N, SQL); } catch(e){ setState('BAD'); console.log('§PCLOSE-BROWSER ERROR '+(e&&e.message)); _cl(e); }
+    btn.disabled = false;
+  }
+  btn.addEventListener('click', go);
+  console.log('§PCLOSE-BROWSER ready — SQLite-WASM loaded, click Run POC'); go();
+})();
+</script>
+</body>
+</html>

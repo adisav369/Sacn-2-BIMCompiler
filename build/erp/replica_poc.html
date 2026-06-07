@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT
+     replica_poc.html — ERP.md §0.20 / W-PERSIST: ONE canonical op-log snapshot served from THREE
+     interchangeable hosts (GH raw · OCI · here). The client reads each, replays through the REAL
+     kernel, and verifies the replayed chain tip == the host's advertised tip. All reachable hosts
+     converge to the SAME tip ⇒ the host is disposable; the LOG is the source of truth.
+     Hosts STORE+SERVE the blob (writes = owner re-publishes: oci put / git push / local write).
+     Witnessed in node by scripts/test_kernel_replica.js. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ERP §0.20 — 3-host replica (GH · OCI · here)</title>
+<style>
+  body{margin:0;background:#0e0f13;color:#dfe2ea;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace}
+  header{padding:14px 20px;border-bottom:1px solid #272a33}h1{font-size:15px;margin:0}.sub{color:#8b90a0;font-size:12px}
+  main{padding:20px;max-width:960px;margin:0 auto}
+  .hosts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+  .host{background:#16181f;border:1px solid #272a33;border-radius:9px;padding:14px}
+  .host h2{font-size:13px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+  .d{width:10px;height:10px;border-radius:50%;background:#8b90a0;display:inline-block}.d.up{background:#4caf50;box-shadow:0 0 8px #4caf50}.d.down{background:#f44336;box-shadow:0 0 8px #f44336}
+  .host table{width:100%;border-collapse:collapse}.host td{padding:3px 4px;border-bottom:1px solid #21242c;font-size:12px}.host td:first-child{color:#8b90a0}
+  .verdict{background:#16181f;border:1px solid #272a33;border-radius:9px;padding:14px 16px;margin-bottom:14px;font-size:15px}
+  .ok{color:#4caf50}.bad{color:#f44336}.tag{font-size:11px;padding:1px 7px;border-radius:10px;margin-left:8px}.tag.ok{background:rgba(76,175,80,.15);color:#4caf50}
+  pre#log{background:#0a0b0e;border:1px solid #272a33;border-radius:8px;padding:12px;height:190px;overflow:auto;color:#9aa0b0;font-size:11.5px;white-space:pre-wrap}
+  code{color:#7aa2ff}
+</style></head><body>
+<header><h1>ERP §0.20 — one log, three hosts</h1>
+<div class="sub">GH raw · OCI bucket · here — each replays to the same chain tip (host-disposable; the log is truth)</div></header>
+<main>
+  <div class="hosts">
+    <div class="host" id="h-GH"><h2><span class="d" id="d-GH"></span>GH <span class="sub">raw.githubusercontent</span></h2><table id="t-GH"></table></div>
+    <div class="host" id="h-OCI"><h2><span class="d" id="d-OCI"></span>OCI <span class="sub">bim-ootb-dev</span></h2><table id="t-OCI"></table></div>
+    <div class="host" id="h-HERE"><h2><span class="d" id="d-HERE"></span>here <span class="sub">this origin</span></h2><table id="t-HERE"></table></div>
+  </div>
+  <div class="verdict" id="verdict">replaying…</div>
+  <pre id="log"></pre>
+</main>
+<script src="./sqljs/sql-wasm.js"></script>
+<script>var logEl=document.getElementById('log');var _cl=console.log.bind(console);console.log=function(){var s=[].slice.call(arguments).join(' ');_cl(s);logEl.textContent+=s+'\n';logEl.scrollTop=logEl.scrollHeight};</script>
+<script src="./kernel_ops.js"></script>
+<script src="./erp_snapshot_sign.js"></script>
+<script src="./erp_replica_client.js"></script>
+<script>
+'use strict';
+window.APP=window.APP||{};
+var K=window.KernelOps, RC=window.ErpReplicaClient, SQL;
+var HOSTS=[
+  {name:'GH',  key:'GH',  base:'https://raw.githubusercontent.com/red1oon/BIMCompiler/mock/relay-snapshot'},
+  {name:'OCI', key:'OCI', base:'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/sandbox/erp'},
+  {name:'here',key:'HERE',base:'.'}
+];
+function row(t,k,v,c){var r=t.insertRow();r.insertCell().textContent=k;var cell=r.insertCell();cell.innerHTML=v;if(c)cell.className=c;}
+function setDot(key,up){document.getElementById('d-'+key).className='d '+(up?'up':'down');}
+async function run(){
+  var client=RC.createReplicaClient(HOSTS);
+  var all=await client.fetchAll();
+  var tips=[];
+  for(var i=0;i<all.length;i++){
+    var e=all[i], key=HOSTS[i].key, t=document.getElementById('t-'+key); t.innerHTML='';
+    if(!e.ok){ setDot(key,false); row(t,'status','<span class="bad">unreachable</span>'); row(t,'why',e.err); console.log('§REPLICAPOC '+e.host+' DOWN '+e.err); continue; }
+    setDot(key,true);
+    var db=new SQL.Database();
+    var v=await client.replayAndVerify(db,K,e.snapshot);
+    row(t,'reachable','<span class="ok">yes</span>');
+    row(t,'advertised tip','<code>'+(v.advertisedTip||'').slice(0,14)+'…</code>');
+    row(t,'computed tip','<code>'+(v.computedTip||'').slice(0,14)+'…</code>');
+    row(t,'ops replayed', v.len);
+    row(t,'integrity', v.matchesAdvertised?'<span class="ok">verified</span>':'<span class="bad">TAMPERED</span>', v.matchesAdvertised?'ok':'bad');
+    row(t,'signature (W-SIGN)', v.sigValid===true?'<span class="ok">valid</span> <span class="tag ok">controller</span>':(v.sigValid===false?'<span class="bad">FORGED</span>':'unsigned'), v.sigValid===false?'bad':'ok');
+    tips.push({key:key, tip:v.computedTip, ok:v.ok});
+  }
+  var up=tips.length, agree=up>0 && tips.every(function(x){return x.ok && x.tip===tips[0].tip;});
+  var vEl=document.getElementById('verdict');
+  vEl.innerHTML = agree
+    ? '<span class="ok">CONVERGED</span> — '+up+' host(s) reachable, all replay to the same tip <code>'+(tips[0].tip||'').slice(0,14)+'…</code> <span class="tag ok">host-disposable</span>'
+    : '<span class="bad">DIVERGED / no hosts</span> — reachable='+up;
+  console.log('§REPLICAPOC done reachable='+up+' converged='+agree+' tip='+((tips[0]||{}).tip||'').slice(0,12));
+}
+(async function(){ SQL=await initSqlJs({locateFile:function(f){return './sqljs/'+f;}}); console.log('§REPLICAPOC ready'); run(); })();
+</script></body></html>

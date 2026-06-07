@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT
+     sync_poc.html — ERP.md §0.20 POC. Proves, in a REAL browser over SQLite-WASM (sql.js), that the
+     op-log ERP engine runs at high throughput WITH data integrity. Loads the REAL build/erp kernel +
+     erp_sequencer + erp_sync_fsm. Every number below is measured live (performance.now) — none hard-
+     coded (honours the "ERP perf claims" rule: measure, never assert). Witnessed in node by
+     scripts/test_kernel_rebase.js + scripts/test_kernel_sync.js. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP §0.20 — SQLite-WASM op-log POC (perf + integrity)</title>
+<style>
+  :root { --bg:#0e0f13; --panel:#16181f; --line:#272a33; --txt:#dfe2ea; --dim:#8b90a0; --ok:#4caf50; --bad:#f44336; --busy:#2196f3; --acc:#7aa2ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.5 ui-monospace,Menlo,Consolas,monospace; }
+  header { display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); }
+  h1 { font-size:15px; margin:0; font-weight:600; letter-spacing:.2px; }
+  .sub { color:var(--dim); font-size:12px; }
+  .dot { width:11px; height:11px; border-radius:50%; display:inline-block; background:var(--dim); }
+  .dot.OFFLINE{background:#ff9800;box-shadow:0 0 8px #ff9800} .dot.IN_SYNC{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .dot.SYNC_ERROR{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+  .dot.HANDSHAKING,.dot.VERIFYING_SCHEMA,.dot.REPLAYING_LOGS{background:var(--busy);box-shadow:0 0 8px var(--busy);animation:p 1.1s infinite}
+  @keyframes p{0%{opacity:.4}50%{opacity:1}100%{opacity:.4}}
+  main { padding:20px; max-width:980px; margin:0 auto; }
+  .controls { display:flex; gap:12px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
+  input[type=number]{ background:var(--panel); border:1px solid var(--line); color:var(--txt); padding:7px 10px; border-radius:6px; width:110px; font:inherit; }
+  button{ background:var(--acc); color:#0b0d12; border:0; padding:8px 16px; border-radius:6px; font:inherit; font-weight:600; cursor:pointer; }
+  button:disabled{ opacity:.5; cursor:wait; }
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:14px 16px; margin-bottom:14px; }
+  .card h2{ font-size:13px; margin:0 0 10px; color:var(--acc); letter-spacing:.3px; }
+  table{ width:100%; border-collapse:collapse; }
+  td{ padding:4px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  td:first-child{ color:var(--dim); width:46%; }
+  .big{ font-size:17px; font-weight:700; }
+  .v{ font-weight:600; } .v.ok{ color:var(--ok); } .v.bad{ color:var(--bad); }
+  .tag{ display:inline-block; font-size:11px; padding:1px 7px; border-radius:10px; margin-left:8px; }
+  .tag.ok{ background:rgba(76,175,80,.15); color:var(--ok); } .tag.bad{ background:rgba(244,67,54,.15); color:var(--bad); }
+  pre#log{ background:#0a0b0e; border:1px solid var(--line); border-radius:8px; padding:12px; height:230px; overflow:auto; color:#9aa0b0; font-size:11.5px; margin:0; white-space:pre-wrap; }
+  .note{ color:var(--dim); font-size:11.5px; margin-top:6px; }
+</style>
+</head>
+<body>
+<header>
+  <span id="dot" class="dot OFFLINE"></span>
+  <div>
+    <h1>ERP §0.20 — op-log on SQLite-WASM <span class="sub">· perf + integrity POC</span></h1>
+    <div class="sub">FSM state: <b id="state">OFFLINE</b> · engine: real <code>kernel_ops.js</code> + <code>erp_sequencer.js</code> + <code>erp_sync_fsm.js</code> over sql.js</div>
+  </div>
+</header>
+<main>
+  <div class="controls">
+    <label class="sub">events&nbsp;<input id="n" type="number" value="5000" min="100" max="100000" step="500"></label>
+    <button id="run">Run POC</button>
+    <span class="sub" id="env"></span>
+  </div>
+
+  <div class="card" id="c-perf"><h2>1 · THROUGHPUT — ERP lifecycle events into SQLite-WASM</h2>
+    <table id="t-perf"><tr><td>waiting…</td><td></td></tr></table>
+    <div class="note">Naive = one <code>commitOp</code> per event + one full <code>sealChain</code>. Batch = one <code>commitGroup</code> (N ops staged off the tip, sealed once — the §I-K path). Both numbers measured live.</div>
+  </div>
+  <div class="card" id="c-integ"><h2>2 · DATA INTEGRITY — tamper-evident hash chain (W-CHAIN)</h2>
+    <table id="t-integ"><tr><td>waiting…</td><td></td></tr></table>
+  </div>
+  <div class="card" id="c-conv"><h2>3 · CONVERGENCE — two devices, one sequencer → identical tip</h2>
+    <table id="t-conv"><tr><td>waiting…</td><td></td></tr></table>
+    <div class="note">SQLSync-style rebase (LocalFirstPriorArt.md §6): rewind → apply server order → replay pending → re-seal. Determinism ⇒ same merged log ⇒ same chain tip.</div>
+  </div>
+  <div class="card" id="c-inv"><h2>4 · INVARIANT — concurrent double-allocate is rejected</h2>
+    <table id="t-inv"><tr><td>waiting…</td><td></td></tr></table>
+    <div class="note">The dumb sequencer orders only; the deterministic reducer enforces "one owner per target" on replay. No money lost — the CRDT-LWW failure mode this architecture is built to avoid.</div>
+  </div>
+  <pre id="log"></pre>
+</main>
+
+<script src="./sqljs/sql-wasm.js"></script>
+<script>
+  // capture §-logs to the on-page pane (and keep the console). A suppress flag silences per-op kernel
+  // spam during measured bulk loops so we time engine work, not console I/O.
+  var logEl = document.getElementById('log'); var suppress = false; var _cl = console.log.bind(console);
+  console.log = function(){ if (suppress) return; var s=[].slice.call(arguments).join(' '); _cl(s); logEl.textContent += s+'\n'; logEl.scrollTop = logEl.scrollHeight; };
+</script>
+<script src="./kernel_ops.js"></script>
+<script src="./erp_sequencer.js"></script>
+<script src="./erp_sync_fsm.js"></script>
+<script>
+'use strict';
+window.APP = window.APP || {};                 // no DB_URL ⇒ kernel's persist branch is inert in the POC
+var K = window.KernelOps, SEQ = window.ErpSequencer, FSM = window.ErpSyncFSM;
+var dot = document.getElementById('dot'), stateEl = document.getElementById('state');
+function setState(s){ dot.className = 'dot '+s; stateEl.textContent = s; }
+
+// full kernel_ops schema (all columns) — run on each fresh db so we don't depend on the module-level
+// _tableCreated flag (which only lets ONE db be auto-initialised per page load).
+var SCHEMA = 'CREATE TABLE IF NOT EXISTS kernel_ops (id INTEGER PRIMARY KEY, op_uuid TEXT, timestamp INTEGER NOT NULL,'
+  + ' op_type TEXT NOT NULL, parameters TEXT NOT NULL, input_guids TEXT, output_guid TEXT, undone INTEGER DEFAULT 0,'
+  + ' prev_hash TEXT, op_hash TEXT, sig TEXT, gid TEXT, user_tag TEXT DEFAULT "local")';
+function freshDb(SQL){ var db = new SQL.Database(); db.run(SCHEMA); K.ensureTable(db); return db; }
+function now(){ return performance.now(); }
+function row(t, k, v, cls){ var tr=t.insertRow(); tr.insertCell().textContent=k; var c=tr.insertCell(); c.innerHTML=v; if(cls)c.className='v '+cls; }
+function clear(id){ var t=document.getElementById(id); t.innerHTML=''; return t; }
+
+async function runPOC(N, SQL){
+  // ───────── 1 · THROUGHPUT ─────────
+  var tp = clear('t-perf');
+  // naive: per-op commit, then one full seal
+  var dbN = freshDb(SQL);
+  suppress = true;
+  var a0 = now(); for (var i=0;i<N;i++){ K.commitOp(dbN,(i%2?'COMPLETE':'CREATE'),{actor:'P',target:'ORD-'+i,amount:i}); } var aCommit = now()-a0;
+  var a1 = now(); await K.sealChain(dbN); var aSeal = now()-a1; suppress = false;
+  var naiveTotal = aCommit+aSeal, naiveOps = Math.round(N/(naiveTotal/1000));
+  console.log('§POC naive N='+N+' commit='+aCommit.toFixed(0)+'ms seal='+aSeal.toFixed(0)+'ms');
+
+  // batch: one commitGroup (stage off tip, seal once)
+  var dbB = freshDb(SQL);
+  var groupOps = []; for (var j=0;j<N;j++){ groupOps.push({op_type:(j%2?'COMPLETE':'CREATE'),params:{actor:'P',target:'ORD-'+j,amount:j}}); }
+  suppress = true; var b0 = now(); var g = await K.commitGroup(dbB, groupOps, {baseTs:1700000000000}); var bTotal = now()-b0; suppress = false;
+  var batchOps = Math.round(N/(bTotal/1000));
+  console.log('§POC batch N='+N+' commitGroup='+bTotal.toFixed(0)+'ms committed='+(g&&g.committed));
+  var speedup = (naiveTotal/bTotal);
+
+  row(tp,'events committed','<span class="big">'+N.toLocaleString()+'</span>');
+  row(tp,'naive — commit','<b>'+aCommit.toFixed(0)+'</b> ms');
+  row(tp,'naive — full sealChain','<b>'+aSeal.toFixed(0)+'</b> ms');
+  row(tp,'naive — throughput','<span class="big">'+naiveOps.toLocaleString()+'</span> ops/s');
+  row(tp,'batch — commitGroup (commit+seal)','<b>'+bTotal.toFixed(0)+'</b> ms');
+  row(tp,'batch — throughput','<span class="big">'+batchOps.toLocaleString()+'</span> ops/s', 'ok');
+  row(tp,'batch speedup vs naive','<b>'+speedup.toFixed(1)+'×</b>', speedup>=1?'ok':'bad');
+
+  // ───────── 2 · DATA INTEGRITY ─────────
+  // Tamper-test the NAIVE db (per-op sealed) — there each op has its own hash link, so detection
+  // localises to the EXACT op. (The batch commitGroup path seals one group hash per §I-K, so it
+  // detects any tampering but reports it at group granularity — also shown below.)
+  var ti = clear('t-integ');
+  var v0 = now(); var v = await K.verifyChain(dbN); var vMs = now()-v0;
+  row(ti,'verifyChain over '+N.toLocaleString()+' ops (per-op chain)','<b>'+vMs.toFixed(0)+'</b> ms');
+  row(ti,'chain valid?', v.ok?('OK — len='+v.len+' <span class="tag ok">tamper-evident</span>'):'FAIL', v.ok?'ok':'bad');
+  row(ti,'chain tip', '<code>'+(v.tip||'').slice(0,16)+'…</code>');
+  var mid = Math.max(2, Math.floor(N/2));
+  dbN.run('UPDATE kernel_ops SET parameters=? WHERE id=?', ['{"actor":"EVE","tampered":true}', mid]);
+  var vt = await K.verifyChain(dbN);
+  row(ti,'after tampering op id='+mid, vt.ok?'NOT detected (bug!)':('DETECTED at id='+vt.brokeAt+' ('+vt.why+') <span class="tag bad">rejected</span>'), vt.ok?'bad':'ok');
+  var heal = (!vt.ok && vt.brokeAt===mid);
+  row(ti,'detection exact?', heal?'yes — broke at the tampered op <span class="tag ok">localised</span>':'no', heal?'ok':'bad');
+  // also confirm the batch group seal is tamper-evident (at group granularity)
+  dbB.run('UPDATE kernel_ops SET parameters=? WHERE id=?', ['{"actor":"EVE","tampered":true}', mid]);
+  var vg = await K.verifyChain(dbB);
+  row(ti,'batch group seal vs tamper', vg.ok?'NOT detected (bug!)':('DETECTED ('+vg.why+') <span class="tag ok">rejected</span>'), vg.ok?'bad':'ok');
+
+  // ───────── 3 · CONVERGENCE ─────────
+  var tc = clear('t-conv');
+  var seq = SEQ.createSequencer();
+  var dA = freshDb(SQL), dB = freshDb(SQL);
+  K.commitOp(dB,'CREATE',{actor:'B',target:'ORD-B'}); await K.sealChain(dB); await FSM.rebase(dB,K,seq);   // B first
+  K.commitOp(dA,'CREATE',{actor:'A',target:'ORD-A'}); K.commitOp(dA,'COMPLETE',{actor:'A',target:'ORD-A'});
+  await K.sealChain(dA); await FSM.rebase(dA,K,seq);     // A rebases onto B's head (pending appended)
+  await FSM.rebase(dB,K,seq);                            // B pulls A's ops → converge
+  var cA = await K.verifyChain(dA), cB = await K.verifyChain(dB);
+  var converged = cA.ok && cB.ok && cA.tip===cB.tip;
+  row(tc,'device A tip','<code>'+(cA.tip||'').slice(0,16)+'…</code> (len '+cA.len+')');
+  row(tc,'device B tip','<code>'+(cB.tip||'').slice(0,16)+'…</code> (len '+cB.len+')');
+  row(tc,'tips identical?', converged?'YES — converged by construction <span class="tag ok">deterministic</span>':'NO', converged?'ok':'bad');
+
+  // ───────── 4 · INVARIANT ─────────
+  var tv = clear('t-inv');
+  var seqI = SEQ.createSequencer();
+  var dX = freshDb(SQL), dY = freshDb(SQL);
+  K.commitOp(dX,'CREATE',{actor:'X',target:'INV-9'}); K.commitOp(dX,'ALLOCATE',{actor:'X',target:'INV-9'});
+  await K.sealChain(dX); await FSM.rebase(dX,K,seqI);
+  K.commitOp(dY,'ALLOCATE',{actor:'Y',target:'INV-9'});       // concurrent 2nd allocator
+  await K.sealChain(dY); await FSM.rebase(dY,K,seqI);
+  var canon = seqI.snapshot(), owner=Object.create(null), rejected=0;
+  canon.forEach(function(op){ if(op.op_type!=='ALLOCATE')return; var p=JSON.parse(op.parameters); if(owner[p.target]){rejected++;return;} owner[p.target]=op.op_uuid; });
+  var oneOwner = Object.keys(owner).length===1 && rejected===1;
+  row(tv,'ALLOCATE ops in canonical log','2 (X then Y)');
+  row(tv,'owners of INV-9 after reducer', Object.keys(owner).length, oneOwner?'ok':'bad');
+  row(tv,'second allocate', rejected===1?'REJECTED — no double-allocation <span class="tag ok">invariant held</span>':'accepted (bug!)', rejected===1?'ok':'bad');
+
+  setState(FSM.STATES.IN_SYNC);
+  console.log('§POC done — perf+integrity+convergence+invariant all measured');
+}
+
+(async function(){
+  document.getElementById('env').textContent = navigator.userAgent.split(') ')[0].split('(').pop();
+  var SQL = await initSqlJs({ locateFile: function(f){ return './sqljs/'+f; } });
+  var btn = document.getElementById('run');
+  async function go(){
+    btn.disabled = true; setState('HANDSHAKING');
+    var N = Math.max(100, Math.min(100000, parseInt(document.getElementById('n').value,10)||5000));
+    try { await runPOC(N, SQL); } catch(e){ setState('SYNC_ERROR'); console.log('§POC ERROR '+(e&&e.message)); _cl(e); }
+    btn.disabled = false;
+  }
+  btn.addEventListener('click', go);
+  setState('OFFLINE'); console.log('§POC ready — SQLite-WASM loaded, click Run POC');
+  go();   // auto-run once on load
+})();
+</script>
+</body>
+</html>

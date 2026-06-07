@@ -435,6 +435,47 @@ analysis) · [scripts/erp_kernel.js](https://github.com/red1oon/BIMCompiler/blob
 (`replay-hash == live-hash`, browser binding) · [SpatialERP_OOTB.md §11.5](SpatialERP_OOTB.md) ·
 iDempiere `M_Transaction` / `M_StorageOnHand` / `M_StorageReservation` / `M_Movement`.
 
+### 11.1 The Disposable-Host paradigm — what it actually costs to run
+
+A standard corporate ERP install is **three always-on tiers, per tenant, 24/7**: an application
+server (ZK/OSGi/JVM), a database server (Postgres), and the surrounding cache/load-balancer/standby. That
+fleet is the dominant hosting line item, and it runs whether anyone is clicking or not.
+
+This architecture deletes that tier rather than renting it more cheaply. The compute moves *into the
+client* — the deterministic kernel over SQLite-WASM (§7, §0) — so the server side reduces to two things,
+both of which the doc has already shown are *disposable* (reconstructible from the signed logs, §6/§11):
+
+1. **Static object storage** for the signed log snapshot — a CDN/bucket object. Near-zero marginal cost,
+   scales for free, no process to keep alive. *(Witnessed live: the same signed snapshot served
+   interchangeably from GitHub raw, an OCI bucket, and localhost — `build/erp/replica_poc.html`,
+   `scripts/test_kernel_replica.js`; any reachable host replays to an identical, controller-signed chain
+   tip, so the host is genuinely interchangeable.)*
+2. **A thin "dumb post office" relay** (§6) — order + persist + relay only, no business logic — run
+   *intermittently*, not 24/7, and itself reconstructible from the logs. *(Witnessed:
+   `build/erp/erp_relay_server.js`, `scripts/test_kernel_relay.js` — idempotent ingest, convergence over
+   HTTP, durable restart.)*
+
+**Where the saving comes from — stated so a reader can check it, not asserted.** The reduction is bounded
+by *how much of a given bill is the always-on app+DB compute tier* — usually the majority. Eliminating it
+leaves static storage plus an intermittent relay, so an **order-of-magnitude (up to ~90%) cut is an
+architectural claim about removing that tier**, not a measured invoice — quote it as such. It is largest
+for the **~90% single-writer workload** (§1), which needs **no server at all** (one device, offline-first);
+it shrinks for the **~10%** that needs the relay and the *one* customer-global CAS touch (§5). What remains
+to pay: cheap static hosting, the intermittent relay, and that sub-second CAS for high-value global ops.
+
+**The interactive-speed half is a separate axis — don't conflate them.** Near-instant UI comes from two
+real removals: no per-interaction network round-trip (the kernel answers locally) and no server-rendered
+widget tree (HTML-native UI replaces the ZK round-trip "click tax", [ERP.md §4b](ERP.md#4b-html-native-ui-replacing-zk-patterns)).
+**Honest caveat (carried from §19.6 / the measured A-B):** our ~100× local throughput figure is *almost
+entirely the asynchronous-durability trade* (instant local append vs synchronous fsync/commit), **not**
+server-removal — server-removal only wins over a *network*. So: the **cost** win is the disposed compute
+tier; the **latency** win is local compute + no click tax; the **throughput** number is the durability
+trade. Three distinct claims, kept distinct.
+
+**Trade priced in, not hidden:** durability is *asynchronous* (Truth 2) — a write is durable when the log
+reaches a replica, not at keystroke. That is the one honest cost of having no always-on server of record,
+and the signed log + multi-replica publish (§5.2b, and the 3-host replica above) is how it is made safe.
+
 ---
 
 ## 12. Relationship to blockchain and to general-purpose sync

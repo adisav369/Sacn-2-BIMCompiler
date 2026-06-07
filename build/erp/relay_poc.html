@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT
+     relay_poc.html — ERP.md §0.20: two "devices" (two SQLite-WASM DBs) syncing through the REAL HTTP
+     relay (build/erp/erp_relay_server.js) via erp_relay_client.js + FSM.rebase. Proves cross-context
+     convergence over the network from a browser. Relay URL via ?relay=... (default localhost:8200).
+     Witnessed in node by scripts/test_kernel_relay.js. NOTE: a relay must be RUNNING and reachable;
+     a static host (OCI bucket) cannot BE the relay — it can only serve this client page. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ERP §0.20 — HTTP relay sync POC</title>
+<style>
+  body{margin:0;background:#0e0f13;color:#dfe2ea;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace}
+  header{padding:14px 20px;border-bottom:1px solid #272a33}
+  h1{font-size:15px;margin:0}.sub{color:#8b90a0;font-size:12px}
+  main{padding:20px;max-width:840px;margin:0 auto}
+  .card{background:#16181f;border:1px solid #272a33;border-radius:9px;padding:14px 16px;margin-bottom:14px}
+  .card h2{font-size:13px;margin:0 0 10px;color:#7aa2ff}
+  table{width:100%;border-collapse:collapse}td{padding:4px 8px;border-bottom:1px solid #272a33}td:first-child{color:#8b90a0;width:46%}
+  .v{font-weight:600}.ok{color:#4caf50}.bad{color:#f44336}
+  .tag{font-size:11px;padding:1px 7px;border-radius:10px;margin-left:8px}.tag.ok{background:rgba(76,175,80,.15);color:#4caf50}.tag.bad{background:rgba(244,67,54,.15);color:#f44336}
+  input{background:#16181f;border:1px solid #272a33;color:#dfe2ea;padding:7px 10px;border-radius:6px;width:280px;font:inherit}
+  button{background:#7aa2ff;color:#0b0d12;border:0;padding:8px 16px;border-radius:6px;font:inherit;font-weight:600;cursor:pointer;margin-left:8px}
+  pre#log{background:#0a0b0e;border:1px solid #272a33;border-radius:8px;padding:12px;height:200px;overflow:auto;color:#9aa0b0;font-size:11.5px;white-space:pre-wrap}
+</style></head><body>
+<header><h1>ERP §0.20 — two devices sync through the HTTP relay</h1>
+<div class="sub">dumb facilitator (order only) + deterministic kernel (effects) → convergence over the network</div></header>
+<main>
+  <div class="card"><h2>relay</h2>
+    <label class="sub">URL <input id="url" value=""></label><button id="run">Sync</button>
+    <table id="t-relay"><tr><td>status</td><td id="status">idle</td></tr></table>
+  </div>
+  <div class="card"><h2>convergence</h2><table id="t-conv"><tr><td>waiting…</td><td></td></tr></table></div>
+  <pre id="log"></pre>
+</main>
+<script src="./sqljs/sql-wasm.js"></script>
+<script>var logEl=document.getElementById('log');var _cl=console.log.bind(console);console.log=function(){var s=[].slice.call(arguments).join(' ');_cl(s);logEl.textContent+=s+'\n';logEl.scrollTop=logEl.scrollHeight};</script>
+<script src="./kernel_ops.js"></script>
+<script src="./erp_sync_fsm.js"></script>
+<script src="./erp_relay_client.js"></script>
+<script>
+'use strict';
+window.APP=window.APP||{};
+var K=window.KernelOps,FSM=window.ErpSyncFSM,RC=window.ErpRelayClient;
+var SCHEMA='CREATE TABLE IF NOT EXISTS kernel_ops (id INTEGER PRIMARY KEY, op_uuid TEXT, timestamp INTEGER NOT NULL, op_type TEXT NOT NULL, parameters TEXT NOT NULL, input_guids TEXT, output_guid TEXT, undone INTEGER DEFAULT 0, prev_hash TEXT, op_hash TEXT, sig TEXT, gid TEXT, user_tag TEXT DEFAULT "local")';
+function freshDb(SQL){var db=new SQL.Database();db.run(SCHEMA);K.ensureTable(db);return db;}
+function row(t,k,v,c){var r=t.insertRow();r.insertCell().textContent=k;var cell=r.insertCell();cell.innerHTML=v;if(c)cell.className='v '+c;}
+function clear(id){var t=document.getElementById(id);t.innerHTML='';return t;}
+var SQL;
+async function sync(){
+  var url=document.getElementById('url').value.trim();
+  var st=document.getElementById('status');
+  var client=RC.createRelayClient(url);
+  try{ var h=await client.health(); st.innerHTML='reachable, head='+h.head+' <span class="tag ok">CORS ok</span>'; st.className=''; }
+  catch(e){ st.innerHTML='UNREACHABLE — '+(e&&e.message)+' <span class="tag bad">relay down / CORS / mixed-content</span>'; console.log('§RELAYPOC health FAIL '+(e&&e.message)); return; }
+  var tc=clear('t-conv');
+  var dA=freshDb(SQL),dB=freshDb(SQL);
+  K.commitOp(dB,'CREATE',{actor:'B',target:'ORD-B'});await K.sealChain(dB);await FSM.rebase(dB,K,client);
+  K.commitOp(dA,'CREATE',{actor:'A',target:'ORD-A'});K.commitOp(dA,'COMPLETE',{actor:'A',target:'ORD-A'});await K.sealChain(dA);await FSM.rebase(dA,K,client);
+  await FSM.rebase(dB,K,client);
+  var cA=await K.verifyChain(dA),cB=await K.verifyChain(dB);
+  var conv=cA.ok&&cB.ok&&cA.tip===cB.tip;
+  row(tc,'device A tip','<code>'+(cA.tip||'').slice(0,16)+'…</code> (len '+cA.len+')');
+  row(tc,'device B tip','<code>'+(cB.tip||'').slice(0,16)+'…</code> (len '+cB.len+')');
+  row(tc,'converged over HTTP?',conv?'YES <span class="tag ok">identical tip</span>':'NO',conv?'ok':'bad');
+  console.log('§RELAYPOC done converged='+conv+' tip='+(cA.tip||'').slice(0,12));
+}
+(async function(){
+  document.getElementById('url').value=new URLSearchParams(location.search).get('relay')||'http://localhost:8200';
+  SQL=await initSqlJs({locateFile:function(f){return './sqljs/'+f;}});
+  document.getElementById('run').addEventListener('click',sync);
+  console.log('§RELAYPOC ready');
+  sync();
+})();
+</script></body></html>

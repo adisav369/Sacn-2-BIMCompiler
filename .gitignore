@@ -120,3 +120,4 @@ schedules/
 
 # local-only measurements/notes (never commit)
 internal/
+build/erp/.demo_controller_key.json
