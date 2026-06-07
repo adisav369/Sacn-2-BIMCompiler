@@ -5279,7 +5279,7 @@ it shrinks for the <strong>~10%</strong> that needs the relay and the <em>one</e
 to pay: cheap static hosting, the intermittent relay, and that sub-second CAS for high-value global ops.</p>
 <p><strong>The interactive-speed half is a separate axis — don't conflate them.</strong> Near-instant UI comes from two
 real removals: no per-interaction network round-trip (the kernel answers locally) and no server-rendered
-widget tree (HTML-native UI replaces the ZK round-trip "click tax", <a href="../ERP/#4b-html-native-ui--replacing-zk-patterns">ERP.md §4b</a>).
+widget tree (HTML-native UI replaces the ZK round-trip "click tax", <a href="../ERP/#4b-html-native-ui-replacing-zk-patterns">ERP.md §4b</a>).
 <strong>Honest caveat (carried from §19.6 / the measured A-B):</strong> our ~100× local throughput figure is <em>almost
 entirely the asynchronous-durability trade</em> (instant local append vs synchronous fsync/commit), <strong>not</strong>
 server-removal — server-removal only wins over a <em>network</em>. So: the <strong>cost</strong> win is the disposed compute
