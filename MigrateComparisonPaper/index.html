@@ -4478,6 +4478,18 @@
 .hl23 td:nth-child(2){background:rgba(124,179,66,.08)!important}
 .hl23 td:nth-child(3){font-weight:800;color:#ef8e00;border-left:2px solid rgba(255,160,0,.4)}
 [data-md-color-scheme="slate"] .hl23 td:nth-child(3){color:#ffb74d}
+/* highlight the win column when it is column 2 (3-col "what a server used to do") */
+.hl-2 thead th:nth-child(2){color:#7cb342}
+.hl-2 td:nth-child(2){background:rgba(124,179,66,.08)!important;border-left:2px solid rgba(124,179,66,.35)}
+/* deleted-server fan-out — one dead node redistributes to four owners-of-nothing */
+.fan{margin:18px 0;text-align:center}
+.fan .dead{display:inline-block;border:3px dashed rgba(211,47,47,.7);background:rgba(239,83,80,.10);color:#ef5350;font-weight:800;font-size:13px;padding:9px 18px;border-radius:10px;line-height:1.25;letter-spacing:.3px}
+.fan .dead small{display:block;font-weight:700;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;opacity:.85;margin-top:1px}
+.fan .redist{font-size:9.5px;text-transform:uppercase;letter-spacing:1.5px;opacity:.5;font-weight:800;margin:9px 0 2px}
+.fan .spokes{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:11px;margin-top:6px}
+.fan .spoke{border:1px solid rgba(128,128,128,.25);border-top:3px solid var(--sc);background:rgba(128,128,128,.04);border-radius:9px;padding:10px 12px;line-height:1.3;text-align:center}
+.fan .spoke b{color:var(--sc);display:block;font-size:12.5px;font-weight:800}
+.fan .spoke small{display:block;opacity:.7;font-weight:400;font-size:11px;margin-top:3px}
 /* "At a glance" stat cards — whole card is a link */
 .glance-card{flex:1 1 150px;border-radius:12px;padding:10px 8px;text-align:center;text-decoration:none;color:inherit;display:block;transition:transform .12s ease,box-shadow .12s ease}
 .glance-card:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
@@ -4496,9 +4508,10 @@
 </style>
 
 <div style="max-width:760px;margin:24px auto 8px;padding:30px 40px;background:#263238;border-left:4px solid #ff9800;text-align:center;border-radius:4px" markdown="0">
-<span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The ERP Server Is Obsolete</span>
+<span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The Server Is Obsolete</span>
+<br><span style="font-size:0.8em;font-style:italic;color:#b0bec5;letter-spacing:.4px;display:inline-block;margin-top:8px">proven on the hardest case there is — a full, transactional ERP</span>
 <br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">built from ideas already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
-<br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block">first assembled for ERP by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">Redhuan D. Oon</b></span>
+<br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block">first assembled by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">Redhuan D. Oon</b></span>
 </div>
 
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0" markdown="0">
@@ -4729,14 +4742,19 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <hr />
 <h2 id="no-server">But where's the server? — what replaced each job<a class="headerlink" href="#no-server" title="Permanent link">&para;</a></h2>
 <p><em>If you deleted the server, who does its work?</em> "Serverless" doesn't mean no machine ever talks to another — it means <strong>no server of record, no machine that owns the truth.</strong> Every job the server did still happens; each moved onto the <strong>signed log</strong>, the <strong>kernel on each client</strong>, the <strong>user's own channel</strong>, or a <strong>dumb facilitator that owns nothing</strong>.</p>
-<pre class="mermaid"><code>flowchart LR
-  S["&lt;b&gt;✗ SERVER OF RECORD&lt;br/&gt;deleted&lt;/b&gt;"]:::dead
-  S --&gt; L["the signed op-log&lt;br/&gt;holds truth · merges · reconciles"]
-  S --&gt; K["the kernel on each client&lt;br/&gt;runs every verb · validates · mints IDs"]
-  S --&gt; X["signatures + hash-chain&lt;br/&gt;authenticate · catch tampering"]
-  S --&gt; C["user's channel + dumb facilitator&lt;br/&gt;durability · sequencing · relay"]
-  classDef dead fill:#fdf3d8,stroke:#d32f2f,color:#7a1f1f,font-weight:bold,stroke-width:3px,stroke-dasharray:6 4;</code></pre>
+<div class="fan" markdown="0">
+  <div class="dead">✗ server of record<small>deleted</small></div>
+  <div class="redist">▾ &nbsp; the work redistributes to four things that own nothing &nbsp; ▾</div>
+  <div class="spokes">
+    <div class="spoke" style="--sc:#7cb342"><b>the signed op-log</b><small>holds truth · merges · reconciles</small></div>
+    <div class="spoke" style="--sc:#42a5f5"><b>the kernel on each client</b><small>runs every verb · validates · mints IDs</small></div>
+    <div class="spoke" style="--sc:#ab47bc"><b>signatures + hash-chain</b><small>authenticate · catch tampering</small></div>
+    <div class="spoke" style="--sc:#ff7043"><b>user’s channel + dumb facilitator</b><small>durability · sequencing · relay</small></div>
+  </div>
+</div>
+
 <p><em>The server's jobs don't vanish — they redistribute to four things that own nothing.</em> Each line below is proven by a POC in <code>scripts/</code> <sup id="fnref:poc"><a class="footnote-ref" href="#fn:poc">18</a></sup>:</p>
+<div class="dtbl hl-2">
 <table>
 <thead>
 <tr>
@@ -4803,6 +4821,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </tr>
 </tbody>
 </table>
+</div>
 <p><strong>The analogy: git.</strong> No central machine owns your code history — every clone has it all, verifies it, rebuilds from it; GitHub is a <em>convenience</em>, not the truth. <strong>We do to ERP transactions what git did to source code:</strong> the log is the truth, the host disposable, history chained and signed. The one thing git lacks, we add — <em>invariant enforcement</em> (no double-spend), via the owner-gate + a single compare-and-set op-class. Full doctrine + the hard multi-writer cases (shared stock, credit limits, client version skew): <a href="../DistributedERP/">DistributedERP.md</a> §0, §9.</p>
 <hr />
 <h2 id="vitals-by-theme">Vitals — by theme<a class="headerlink" href="#vitals-by-theme" title="Permanent link">&para;</a></h2>
