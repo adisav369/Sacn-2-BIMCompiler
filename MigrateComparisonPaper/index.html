@@ -4458,7 +4458,7 @@
 <td><strong>Double-entry ledger</strong> (codified 1494)</td>
 <td><strong>Luca Pacioli</strong></td>
 <td>the books are a <em>fold</em> of postings; Σdebit ≡ Σcredit</td>
-<td>our journal is a fold — ΣDr ≡ ΣCr (<code>poc_postings.js</code>)</td>
+<td>our journal is a fold — ΣDr ≡ ΣCr (<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_postings.js"><code>poc_postings.js</code></a>)</td>
 </tr>
 <tr>
 <td><strong>The log is the truth</strong> (git, 2005)</td>
@@ -4482,7 +4482,7 @@
 <td><strong>Hash trees + public-key signatures</strong></td>
 <td><strong>Merkle · Diffie–Hellman · RSA</strong></td>
 <td>a fact can carry its own integrity <em>and</em> authenticity anywhere</td>
-<td>ECDSA-P256 signed ops; tamper caught on replay (<code>poc_sign.js</code>, <code>poc_chain.js</code>)</td>
+<td>ECDSA-P256 signed ops; tamper caught on replay (<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_sign.js"><code>poc_sign.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_chain.js"><code>poc_chain.js</code></a>)</td>
 </tr>
 <tr>
 <td><strong>SQLite, embeddable</strong></td>
@@ -4609,52 +4609,52 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <tr>
 <td>Hold the authoritative state</td>
 <td>the <strong>signed op-log</strong>; state = its deterministic <em>fold</em>, recomputable by anyone</td>
-<td><code>poc_distributed.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a></td>
 </tr>
 <tr>
 <td>Mint internal record IDs</td>
 <td><strong>edge-minted UUID</strong> — unique, no coordination (legal gapless <code>DocumentNo</code> deferred to a facilitator-assigned sequence)</td>
-<td><code>poc_distributed.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a></td>
 </tr>
 <tr>
 <td>Run / validate business logic</td>
 <td>the <strong>deterministic kernel on every client</strong> — same verbs both sides, no server re-run</td>
-<td><code>poc_kernel.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_kernel.js"><code>poc_kernel.js</code></a></td>
 </tr>
 <tr>
 <td>Merge concurrent edits</td>
 <td><strong>union the signed logs → total-order → replay</strong> → identical state everywhere</td>
-<td><code>poc_distributed.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a></td>
 </tr>
 <tr>
 <td>Prevent double-write</td>
 <td><strong>owner-gate</strong> + <strong>compare-and-set</strong> on the one shared op-class, enforced on replay</td>
-<td><code>poc_distributed.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a></td>
 </tr>
 <tr>
 <td>Detect tampering</td>
 <td>the log <strong>hash-chains itself</strong>; <code>verifyChain()</code> finds the altered op</td>
-<td><code>poc_chain.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_chain.js"><code>poc_chain.js</code></a></td>
 </tr>
 <tr>
 <td>Authenticate / authorise</td>
 <td><strong>edge ECDSA-P256 signature</strong> — wrong key fails anywhere; a holder can present, never forge</td>
-<td><code>poc_sign.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_sign.js"><code>poc_sign.js</code></a></td>
 </tr>
 <tr>
 <td>Durably store / back up</td>
 <td>the <strong>user's own channel</strong> (email/social) + export; the local copy is disposable</td>
-<td><code>poc_persist.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_persist.js"><code>poc_persist.js</code></a></td>
 </tr>
 <tr>
 <td>Sequence multi-party order</td>
 <td>a <strong>dumb facilitator</strong> — accept · order · persist · relay — itself rebuildable from the signed logs</td>
-<td><code>poc_remote_pos.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_remote_pos.js"><code>poc_remote_pos.js</code></a></td>
 </tr>
 <tr>
 <td>Reconcile discrepancies</td>
 <td>the <strong>double-entry ledger</strong> (since 1494) — the balance is a fold here too</td>
-<td><code>poc_postings.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_postings.js"><code>poc_postings.js</code></a></td>
 </tr>
 <tr>
 <td>Be always-on</td>
@@ -4790,8 +4790,8 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <h2 id="method-honesty">Method &amp; honesty<a class="headerlink" href="#method-honesty" title="Permanent link">&para;</a></h2>
 <p><strong>What is measured (real, on this box / browser):</strong>
 - Period-close fold, balance-b/f, reconcile-to-0c, tamper/forgery rejection, determinism — on the
-  <strong>real kernel</strong> (<code>scripts/test_kernel_period_close.js</code>) and against <strong>real double-entry POST ops</strong>
-  (<code>scripts/test_integ_postings_reconcile.js</code>).
+  <strong>real kernel</strong> (<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/test_kernel_period_close.js"><code>scripts/test_kernel_period_close.js</code></a>) and against <strong>real double-entry POST ops</strong>
+  (<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/test_integ_postings_reconcile.js"><code>scripts/test_integ_postings_reconcile.js</code></a>).
 - Browser-measured 40k-op close-fold timing, bootstrap 53× speedup, reconcile maxDiff=0
   (<code>build/erp/period_close_drive.log</code>, an in-browser drive).
 - Storage primitive sql.js-vs-Postgres (<code>build/erp/bench_oplog_pg.log</code>), batch throughput
@@ -5108,7 +5108,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <p>Architectural property of a server-of-record ERP — no comparable single measured number in this repo; stated as structure, not benchmarked. Honest-caveat doctrine: <code>feedback_erp_perf_claims</code>.&#160;<a class="footnote-backref" href="#fnref:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref23:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref24:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref25:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref26:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref27:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref28:arch" title="Jump back to footnote 13 in the text">&#8617;</a></p>
 </li>
 <li id="fn:poc">
-<p>The server→serverless mapping + per-line proofs: <code>docs/DistributedERP.md</code> §0 ("From server to serverless — what moved where"). POCs live in <code>scripts/poc_*.js</code> (<code>poc_distributed.js</code>, <code>poc_kernel.js</code>, <code>poc_chain.js</code>, <code>poc_sign.js</code>, <code>poc_persist.js</code>, <code>poc_remote_pos.js</code>, <code>poc_postings.js</code>); witnessed logs under <code>build/erp/</code>.&#160;<a class="footnote-backref" href="#fnref:poc" title="Jump back to footnote 14 in the text">&#8617;</a></p>
+<p>The server→serverless mapping + per-line proofs: <code>docs/DistributedERP.md</code> §0 ("From server to serverless — what moved where"). POCs live in <code>scripts/poc_*.js</code> (<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_kernel.js"><code>poc_kernel.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_chain.js"><code>poc_chain.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_sign.js"><code>poc_sign.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_persist.js"><code>poc_persist.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_remote_pos.js"><code>poc_remote_pos.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_postings.js"><code>poc_postings.js</code></a>); witnessed logs under <code>build/erp/</code>.&#160;<a class="footnote-backref" href="#fnref:poc" title="Jump back to footnote 14 in the text">&#8617;</a></p>
 </li>
 <li id="fn:reduce">
 <p>The ≈925-table → 5-relation reduction: <code>docs/DistributedERP.md</code> §"domain reduction" ("iDempiere AD (925 tables, <code>M*</code> classes) → 5 tables + deterministic verbs") + <code>docs/OpLogERP.md</code> ("≈925 tables reduce to five relations plus verbs") + <code>docs/ERP.md</code> §12 (the 5 core tables) + <code>docs/FeatureComparison.md</code> ("5 core tables: containers, items, documents, document_lines, journal").&#160;<a class="footnote-backref" href="#fnref:reduce" title="Jump back to footnote 15 in the text">&#8617;</a></p>
