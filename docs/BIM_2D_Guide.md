@@ -42,6 +42,14 @@
 > `no patterns/no anchors` warning). NOTE: the `ROUTE → RouteWalker.walk` wiring itself is the
 > `RED_PILL.md` **B3** task (was a straight-line stub) — confirm it's live before relying.
 > (`BOM_ENGINE_SPEC.md` §strategy=ROUTE · `G4_SRS.md` valConn/bomConn · `DISC_VALIDATION_DB_SRS.md` §6.12.3)
+>
+> **Persistence interaction (2026-06-08, sw v626 / PR #202):** the kernel-op IndexedDB persistence
+> fix is *orthogonal* to the above — it only snapshots the building `_extracted.db` (whole-DB
+> `export()`, deletes nothing; touches no BOM/ERP/`mep_rw` table). Complementary effect: RouteWalker
+> emits its MEP as `kernel_ops ELEMENT_PLACE`, which now **survives reload** (previously lost — the
+> persist path was dead). ⚠ Reasoned + scope-verified, **not witnessed end-to-end**: the combined
+> *grid-edit → RouteWalker → persist → reload* round-trip has not been run on a route-defined
+> building (none loaded had `mep_rw.db` data). Prove it on such a building before relying.
 
 ---
 
