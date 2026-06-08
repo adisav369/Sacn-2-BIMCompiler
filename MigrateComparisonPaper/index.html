@@ -720,34 +720,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="How it differs — the architecture">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#legacy-erp-server-of-record" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Legacy ERP — server of record
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ours-the-browser-is-the-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ours — the browser is the server
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4284,34 +4256,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="How it differs — the architecture">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#legacy-erp-server-of-record" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Legacy ERP — server of record
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ours-the-browser-is-the-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ours — the browser is the server
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4477,15 +4421,63 @@
 <style>
 /* drop the MkDocs auto-injected nav-title H1 — the banner below IS the title */
 .md-typeset h1{display:none}
-/* side-by-side architecture comparison */
-.mc-cmp{display:flex;gap:18px;flex-wrap:wrap;margin:20px 0 8px;align-items:stretch}
-.mc-cmp .col{flex:1 1 320px;border-radius:10px;padding:2px 16px 14px}
-.mc-cmp .col h4{margin:14px 0 2px;font-size:12px;letter-spacing:.8px;text-transform:uppercase;border:0}
-.mc-cmp .leg{background:rgba(239,83,80,.07);border:1px solid rgba(239,83,80,.40)}
-.mc-cmp .leg h4{color:#ef5350}
-.mc-cmp .our{background:rgba(124,179,66,.08);border:1px solid rgba(124,179,66,.45)}
-.mc-cmp .our h4{color:#7cb342}
-.mc-cmp .mermaid{text-align:center}
+/* side-by-side architecture A/B — network divide is the star */
+.arch{display:flex;gap:16px;flex-wrap:wrap;margin:20px 0 6px;align-items:stretch}
+.arch .col{flex:1 1 320px;border-radius:12px;border:1px solid;display:flex;flex-direction:column;overflow:hidden}
+.arch .leg{border-color:rgba(239,83,80,.45);background:rgba(239,83,80,.05)}
+.arch .our{border-color:rgba(124,179,66,.5);background:rgba(124,179,66,.06)}
+.arch .hd{padding:9px 13px;font-size:11.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid rgba(128,128,128,.18)}
+.arch .leg .hd{color:#ef5350}
+.arch .our .hd{color:#7cb342}
+.arch .badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.2px;white-space:nowrap}
+.arch .leg .badge{background:rgba(239,83,80,.16);color:#ef5350;border:1px solid rgba(239,83,80,.4)}
+.arch .our .badge{background:rgba(124,179,66,.18);color:#7cb342;border:1px solid rgba(124,179,66,.45)}
+.arch .zone{padding:12px 13px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.arch .local{min-height:172px}
+.arch .remote{background:rgba(128,128,128,.05);justify-content:center;min-height:96px}
+.arch .znote{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;opacity:.5;font-weight:800;align-self:flex-start}
+.arch .node{font-size:12.5px;line-height:1.32;text-align:center;border-radius:8px;padding:6px 11px;border:1px solid;width:100%;max-width:240px}
+.arch .leg .node{border-color:rgba(239,83,80,.35);background:rgba(239,83,80,.07)}
+.arch .our .node{border-color:rgba(124,179,66,.4);background:rgba(124,179,66,.09)}
+.arch .node.truth{font-weight:800;border-width:2px}
+.arch .node small{display:block;opacity:.7;font-weight:400;font-size:11px;margin-top:1px}
+.arch .arr{font-size:13px;line-height:.5;opacity:.5}
+.arch .leg .arr{color:#ef5350}.arch .our .arr{color:#7cb342}
+.arch .net{padding:6px 13px;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:2px;text-transform:uppercase;border-top:2px dashed;border-bottom:2px dashed}
+.arch .leg .net{color:#ef5350;border-color:rgba(239,83,80,.6);background:rgba(239,83,80,.11)}
+.arch .our .net{color:#9e9e9e;border-color:rgba(128,128,128,.4);background:rgba(128,128,128,.06)}
+.arch .cross{display:flex;justify-content:center;gap:16px;margin-top:3px;font-size:12px;letter-spacing:.3px}
+.arch .leg .cross b{color:#ef5350}
+.arch .our .cross b{color:#bdbdbd;font-weight:600}
+/* Kill-points comparison table — color the three lanes, accent the verdict */
+.killtable table{border-collapse:separate;border-spacing:0;width:100%;display:table;margin:14px 0}
+.killtable td,.killtable th{border:0;padding:9px 12px;vertical-align:top;font-size:12.5px;line-height:1.42}
+.killtable thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid rgba(128,128,128,.25);font-weight:800}
+.killtable thead th:nth-child(2){color:#ef5350}
+.killtable thead th:nth-child(3){color:#7cb342}
+.killtable thead th:nth-child(4){color:#ffa000}
+.killtable tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+.killtable td:nth-child(1){font-weight:700}
+.killtable td:nth-child(2){color:#c62828;background:rgba(239,83,80,.06)}
+.killtable td:nth-child(3){background:rgba(124,179,66,.07)}
+.killtable td:nth-child(4){font-weight:800;color:#ef8e00;border-left:2px solid rgba(255,160,0,.4)}
+[data-md-color-scheme="slate"] .killtable td:nth-child(2){color:#ef9a9a}
+[data-md-color-scheme="slate"] .killtable td:nth-child(4){color:#ffb74d}
+/* shared data-table polish — used across the vitals / DR / conversion tables */
+.dtbl table{border-collapse:separate;border-spacing:0;width:100%;display:table;margin:14px 0;font-size:12.5px}
+.dtbl td,.dtbl th{border:0;padding:8px 11px;vertical-align:top;line-height:1.42}
+.dtbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;border-bottom:2px solid rgba(128,128,128,.25)}
+.dtbl tbody tr:nth-child(even) td{background:rgba(128,128,128,.04)}
+.dtbl td:first-child{font-weight:700}
+/* highlight the winning "Ours" column when it is the last column */
+.hl-last thead th:last-child{color:#7cb342}
+.hl-last td:last-child{background:rgba(124,179,66,.08)!important;border-left:2px solid rgba(124,179,66,.35)}
+/* DR backup table: col 2 = ours (green) · col 3 = ratio (amber) */
+.hl23 thead th:nth-child(2){color:#7cb342}
+.hl23 thead th:nth-child(3){color:#ffa000}
+.hl23 td:nth-child(2){background:rgba(124,179,66,.08)!important}
+.hl23 td:nth-child(3){font-weight:800;color:#ef8e00;border-left:2px solid rgba(255,160,0,.4)}
+[data-md-color-scheme="slate"] .hl23 td:nth-child(3){color:#ffb74d}
 /* "At a glance" stat cards — whole card is a link */
 .glance-card{flex:1 1 150px;border-radius:12px;padding:10px 8px;text-align:center;text-decoration:none;color:inherit;display:block;transition:transform .12s ease,box-shadow .12s ease}
 .glance-card:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
@@ -4506,6 +4498,7 @@
 <div style="max-width:760px;margin:24px auto 8px;padding:30px 40px;background:#263238;border-left:4px solid #ff9800;text-align:center;border-radius:4px" markdown="0">
 <span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The ERP Server Is Obsolete</span>
 <br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">built from ideas already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
+<br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block">first assembled for ERP by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">Redhuan D. Oon</b></span>
 </div>
 
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0" markdown="0">
@@ -4620,6 +4613,7 @@
 <p><strong>The shocker, in one line:</strong> there is <strong>no server of record.</strong> The browser holds the kernel; a signed,
 hash-chained log holds the truth; the host (if any) is a disposable relay. Every row below follows from that.</p>
 </blockquote>
+<div class="killtable">
 <table>
 <thead>
 <tr>
@@ -4632,7 +4626,7 @@ hash-chained log holds the truth; the host (if any) is a disposable relay. Every
 <tbody>
 <tr>
 <td><strong>The server of record</strong></td>
-<td>a machine that <em>owns the truth</em> — JVM + Postgres + 3.7 GB build <sup id="fnref:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td>a machine that <em>owns the truth</em> — JVM + Postgres + 3.7 GB build <sup id="fnref2:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
 <td><strong>✗ none</strong> — the browser runs the kernel; the signed log is the truth <sup id="fnref:own"><a class="footnote-ref" href="#fn:own">16</a></sup></td>
 <td><strong>the whole tier is deleted</strong></td>
 </tr>
@@ -4656,8 +4650,8 @@ hash-chained log holds the truth; the host (if any) is a disposable relay. Every
 </tr>
 <tr>
 <td><strong>Runtime code</strong></td>
-<td>1,427,147 Java LOC / 4,465 files <sup id="fnref2:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
-<td><strong>16,068 JS LOC / 39 files</strong> (flows folded so far) <sup id="fnref3:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td>1,427,147 Java LOC / 4,465 files <sup id="fnref3:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td><strong>16,068 JS LOC / 39 files</strong> (flows folded so far) <sup id="fnref4:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
 <td>≈89× — <em>built-so-far; full-port forecast <a href="#realistic-conversion-estimate-loc">below</a></em></td>
 </tr>
 <tr>
@@ -4668,8 +4662,8 @@ hash-chained log holds the truth; the host (if any) is a disposable relay. Every
 </tr>
 <tr>
 <td><strong>Seed DB</strong></td>
-<td>45.2 MB dump <sup id="fnref4:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
-<td><strong>12.7 MB</strong> self-describing AD <sup id="fnref5:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td>45.2 MB dump <sup id="fnref5:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td><strong>12.7 MB</strong> self-describing AD <sup id="fnref6:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
 <td>≈3.5×</td>
 </tr>
 <tr>
@@ -4686,26 +4680,48 @@ hash-chained log holds the truth; the host (if any) is a disposable relay. Every
 </tr>
 </tbody>
 </table>
+</div>
 <h2 id="how-it-differs-the-architecture">How it differs — the architecture<a class="headerlink" href="#how-it-differs-the-architecture" title="Permanent link">&para;</a></h2>
-<div class="mc-cmp">
-<div class="col leg">
-<h4 id="legacy-erp-server-of-record">Legacy ERP — server of record<a class="headerlink" href="#legacy-erp-server-of-record" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>flowchart TB
-  U1([user gesture]) --&gt;|HTTP| AS[app server]
-  AS --&gt;|SQL| DB[(database&lt;br/&gt;owns the truth)]
-  DB --&gt; P[posting / validation]
-  P -.-&gt;|rendered row| U1</code></pre>
+<div class="arch" markdown="0">
+
+  <div class="col leg">
+    <div class="hd"><span>Legacy · server of record</span><span class="badge">≥1 round-trip / gesture</span></div>
+    <div class="zone local">
+      <div class="znote">browser · thin client</div>
+      <div class="node">user gesture</div>
+      <div class="arr">▼</div>
+      <div class="node">renders only the row it’s sent back</div>
+    </div>
+    <div class="net">— network —<div class="cross"><b>▼ request</b><b>▲ rendered row</b></div></div>
+    <div class="zone remote">
+      <div class="znote">server of record · owns the truth</div>
+      <div class="node">app server</div>
+      <div class="arr">▼</div>
+      <div class="node truth">database<small>owns the truth</small></div>
+      <div class="arr">▼</div>
+      <div class="node">posting / validation</div>
+    </div>
+  </div>
+
+  <div class="col our">
+    <div class="hd"><span>Ours · the browser is the server</span><span class="badge">0 round-trips · read/fold</span></div>
+    <div class="zone local">
+      <div class="znote">browser · local &amp; complete</div>
+      <div class="node">user gesture → op</div>
+      <div class="arr">▼</div>
+      <div class="node truth">local WASM kernel<small>commit · hash-chain · sign — the log is the truth</small></div>
+      <div class="arr">▼</div>
+      <div class="node">replay / fold <small>SQLite-WASM, in-memory → paint · 0 network</small></div>
+    </div>
+    <div class="net">— network · crossed only later —<div class="cross"><b>⇣ async · disposable</b></div></div>
+    <div class="zone remote">
+      <div class="znote">owns nothing</div>
+      <div class="node">dumb facilitator<small>disposable host</small></div>
+    </div>
+  </div>
+
 </div>
-<div class="col our">
-<h4 id="ours-the-browser-is-the-server">Ours — the browser is the server<a class="headerlink" href="#ours-the-browser-is-the-server" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>flowchart TB
-  U2([user gesture]) --&gt; OP[op]
-  OP --&gt; K[local WASM kernel&lt;br/&gt;commit · hash-chain · sign]
-  K --&gt; F[replay / fold&lt;br/&gt;SQLite-WASM, in-memory]
-  F --&gt; PT[paint · 0 network]
-  K -.-&gt;|later, async| H[(dumb facilitator —&lt;br/&gt;disposable host)]</code></pre>
-</div>
-</div>
+
 <p><strong>Legacy:</strong> every read &amp; write is a network round-trip; the DB owns the truth; period close is a server batch
 job with a down-window. <strong>Ours:</strong> state = a deterministic fold of the signed op-log — <strong>0 network on the
 read/fold path</strong>; the host is disposable (Git-like), the log is the truth; period close is a <em>signed checkpoint</em>.
@@ -4792,6 +4808,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <h2 id="vitals-by-theme">Vitals — by theme<a class="headerlink" href="#vitals-by-theme" title="Permanent link">&para;</a></h2>
 <p>Three tables, not one wall. Columns are <strong>architecture</strong>, not a feature scorecard; numbers measured on <em>this</em> box / browser unless marked. <strong>"n/a — architectural"</strong> = the legacy stack has no comparable number because the property is structural (it always needs a server).</p>
 <h3 id="speed">A · Speed &amp; latency<a class="headerlink" href="#speed" title="Permanent link">&para;</a></h3>
+<div class="dtbl hl-last">
 <table>
 <thead>
 <tr>
@@ -4808,7 +4825,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <td>server batch job + down-window (per-row <code>saveEx</code> ≈ ~1M round-trips on a 40-yr depreciation run) <sup id="fnref2:dep"><a class="footnote-ref" href="#fn:dep">8</a></sup></td>
 <td>server batch job <sup id="fnref4:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
 <td>server batch job <sup id="fnref5:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>signed checkpoint = balance b/f</strong> (the compaction step — accrual/FX/depreciation postings are themselves folds), no down-window; 40k-op close-fold ≈ <strong>2.68 s</strong>, archived 40000→live 1, reconcile <strong>maxDiff=0c</strong> <sup id="fnref:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup><sup id="fnref2:drive"><a class="footnote-ref" href="#fn:drive">2</a></sup></td>
+<td><strong>signed checkpoint = balance b/f</strong> (the compaction step — accrual/FX/depreciation postings are themselves folds), no down-window; 40k-op close-fold ≈ <strong>2.68 s</strong>, archived 40000→live 1, reconcile <strong>maxDiff=0c</strong> <sup id="fnref2:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup><sup id="fnref2:drive"><a class="footnote-ref" href="#fn:drive">2</a></sup></td>
 </tr>
 <tr>
 <td><strong>Server round-trip</strong> (read/fold)</td>
@@ -4847,10 +4864,12 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </tr>
 </tbody>
 </table>
+</div>
 <blockquote>
 <p><strong>Where we actually beat them: the network.</strong> The storage-primitive row above is <em>on-box</em>, where durable Postgres wins per-op — and we say so. But an ERP is never on-box: every interaction crosses a network to the server of record, which pays a round-trip <strong>per interaction</strong> (RTT-bound — and it <strong>blocks when offline</strong>). Our kernel answers locally (~0.01 ms/op) and relays asynchronously — <strong>0 round-trips on the read/fold path.</strong> That is the whole win: not faster storage, <strong>no network on the hot path.</strong> A remote-POS drive puts numbers on it — locals measured, network leg modelled, legacy excludes iDempiere ORM/OSGi so it's a <em>floor</em> <sup id="fnref:rpos"><a class="footnote-ref" href="#fn:rpos">7</a></sup>: per sale, legacy is RTT-bound — <strong>~256–674× at 0.5 ms LAN, ~8,500–50,000× at 50 ms cross-region</strong> — while ours stays flat at local speed. The iDempiere 40-year depreciation run shows where that cost really sits: per-row <code>saveEx</code> ≈ <strong>~1M round-trips</strong> <sup id="fnref:dep"><a class="footnote-ref" href="#fn:dep">8</a></sup>.</p>
 </blockquote>
 <h3 id="b-footprint-bloat">B · Footprint &amp; bloat<a class="headerlink" href="#b-footprint-bloat" title="Permanent link">&para;</a></h3>
+<div class="dtbl hl-last">
 <table>
 <thead>
 <tr>
@@ -4864,17 +4883,17 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <tbody>
 <tr>
 <td><strong>DB seed</strong></td>
-<td><code>Adempiere_pg.dmp</code> <strong>45.2 MB</strong> <sup id="fnref6:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td><code>Adempiere_pg.dmp</code> <strong>45.2 MB</strong> <sup id="fnref7:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
 <td>n/a — diff schema <sup id="fnref20:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
 <td>n/a <sup id="fnref21:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><code>erp/ad_seed.db</code> <strong>12.7 MB</strong> (≈<strong>3.5× smaller</strong>); the 12.7 MB IS the self-describing AD <sup id="fnref7:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td><code>erp/ad_seed.db</code> <strong>12.7 MB</strong> (≈<strong>3.5× smaller</strong>); the 12.7 MB IS the self-describing AD <sup id="fnref8:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
 </tr>
 <tr>
 <td><strong>Runtime LOC</strong></td>
-<td><strong>1,427,147 Java LOC</strong> / 4,465 files + JVM + Postgres + 3.7 GB build <sup id="fnref8:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td><strong>1,427,147 Java LOC</strong> / 4,465 files + JVM + Postgres + 3.7 GB build <sup id="fnref9:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
 <td>n/a — diff codebase <sup id="fnref22:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
 <td>n/a <sup id="fnref23:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>16,068 JS LOC</strong> / 39 files / 884 KB, static + SQLite-WASM, offline (≈<strong>89× fewer</strong>, zero server/JVM/DB) <sup id="fnref9:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td><strong>16,068 JS LOC</strong> / 39 files / 884 KB, static + SQLite-WASM, offline (≈<strong>89× fewer</strong>, zero server/JVM/DB) <sup id="fnref10:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
 </tr>
 <tr>
 <td><strong>Live DB → SQLite</strong></td>
@@ -4885,7 +4904,9 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </tr>
 </tbody>
 </table>
+</div>
 <h3 id="c-migration-ownership">C · Migration &amp; ownership<a class="headerlink" href="#c-migration-ownership" title="Permanent link">&para;</a></h3>
+<div class="dtbl hl-last">
 <table>
 <thead>
 <tr>
@@ -4909,14 +4930,16 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <td>server DB owns the record <sup id="fnref26:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
 <td>server DB owns the record <sup id="fnref27:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
 <td>server DB owns the record <sup id="fnref28:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>user-owned signed op-log</strong>; host disposable (Git analogy); tamper caught by <code>verifyChain()</code>, forgery by ECDSA-P256 sig <sup id="fnref3:own"><a class="footnote-ref" href="#fn:own">16</a></sup><sup id="fnref2:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup></td>
+<td><strong>user-owned signed op-log</strong>; host disposable (Git analogy); tamper caught by <code>verifyChain()</code>, forgery by ECDSA-P256 sig <sup id="fnref3:own"><a class="footnote-ref" href="#fn:own">16</a></sup><sup id="fnref3:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup></td>
 </tr>
 </tbody>
 </table>
+</div>
 <hr />
 <h2 id="dr-tco">Disaster recovery &amp; TCO — apple-to-apple (a range, not one number)<a class="headerlink" href="#dr-tco" title="Permanent link">&para;</a></h2>
 <p>The fair comparison holds the <strong>durability guarantee constant</strong> — <em>restore to any of the last 50 days · RPO ≤ 24 h · survive primary loss</em> — and asks only: <strong>what does it cost to meet it</strong>, amortised over a year of 50-branch ops? Unit costs are <strong>measured</strong> on the real kernel (314 B/op uncompacted snapshot; fold, restore-to-arbitrary-op, and per-branch additivity all witnessed); the year-level figures are <strong>derived</strong> over modelled constants for the traditional side (no Postgres on the bench), each chosen <strong>conservative for us</strong> — <code>230 B/row</code> and <code>5 rows/op</code> are <em>low</em> versus Postgres+index and real iDempiere, so the real gap is wider, not narrower (constants named in GAPS #7 below). <sup id="fnref:tco"><a class="footnote-ref" href="#fn:tco">3</a></sup></p>
 <p><strong>Durable storage to meet the 50-day SLA</strong> (Retail, 1k sales/branch/day, one durable copy each):</p>
+<div class="dtbl hl23">
 <table>
 <thead>
 <tr>
@@ -4941,8 +4964,10 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </tr>
 </tbody>
 </table>
+</div>
 <p>Incremental backup barely shrinks the gap — the <strong>weekly fulls dominate.</strong> Only the storage-minimal scheme reaches ~30×, and <em>its</em> restore is replay-heavy. The structural reason: a snapshot scheme must periodically re-store the <strong>whole database</strong>; the op-log <strong>never stores a base image</strong> (the deltas <em>are</em> the system). And the advantage <strong>grows with business age</strong> — their fulls grow yearly while the op-log's 50-day window stays constant (<code>§VOL</code>).</p>
 <p><strong>Per-device storage — does every device carry the whole log? No.</strong></p>
+<div class="dtbl">
 <table>
 <thead>
 <tr>
@@ -4973,6 +4998,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </tr>
 </tbody>
 </table>
+</div>
 <p><strong>Recovery and the honest trades</strong> — all witnessed <sup id="fnref:blackout"><a class="footnote-ref" href="#fn:blackout">4</a></sup><sup id="fnref2:tco"><a class="footnote-ref" href="#fn:tco">3</a></sup>:</p>
 <ul>
 <li><strong>Total relay loss, no backup</strong> rebuilds consolidated state from the branches' <em>own</em> slices — <code>§BLACKOUT-RESUME</code>: 50 branches, a fresh empty relay, an <strong>identical signed tip</strong>, books to the cent, idempotent re-push. The only loss is a bounded, ledger-reconciled CAS-arbitration sliver (the one shared op-class, §5); <code>§ORDER-HONEST</code> shows disjoint folds commute but cross-branch CAS order is <em>not</em> reconstructible from signed logs alone (honest correction to "total order is reconstructible").</li>
@@ -5005,6 +5031,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <p><strong>Exhaustive coverage map → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>.</strong> Every rule/process surface in <em>both</em> homes (Java code + the AD as data) enumerated, each count from a real <code>ad_full.db</code> query: <strong>0 covered / 12 partial / 28 gap</strong> of 40 surfaces. The buckets below are now measured, not asserted — and the matrix names what's a static demo slice vs. an absent pillar (no logic-expression evaluator, no security layer, no SvrProcess/workflow runner).</p>
 </blockquote>
 <p>Splitting all 1,427,147 Java LOC by fate <sup id="fnref:split"><a class="footnote-ref" href="#fn:split">20</a></sup>:</p>
+<div class="dtbl">
 <table>
 <thead>
 <tr>
@@ -5035,8 +5062,10 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </tr>
 </tbody>
 </table>
+</div>
 <p><strong>Read it:</strong> ~86% is UI, boilerplate, or server plumbing the browser deletes outright. Even the irreducible 14% is ceremony-heavy — in the <code>M*</code> models a third is blank/comment/signatures and most of the rest is generic accessor/lifecycle code the dictionary already handles; the <em>behavioural</em> logic (state transitions, posting math, tax rounding) is a minority.</p>
 <p>Folding that behavioural core into declarative verbs compresses ~5–8× (no Java/OSGi ceremony, no per-field getters) — though <strong>costing and MRP fold least cleanly</strong> (stateful cost rollups, landed cost), pulling toward the conservative end:</p>
+<div class="dtbl hl-last">
 <table>
 <thead>
 <tr>
@@ -5071,6 +5100,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </tr>
 </tbody>
 </table>
+</div>
 <p><strong>Realistic full parity ≈ 35–56K JS LOC (~43K mid) ≈ ~30× overall</strong> (range 25–41×) — vs 89× for the flows folded so far. The fold ratio is the one estimated input (GAPS #6); every LOC count is measured.</p>
 <details class="note">
 <summary>Full breakdown by iDempiere module (org.adempiere.base, org.adempiere.ui.zk, …) — expand</summary>
@@ -5319,7 +5349,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <p><code>build/erp/sap_fold.log</code> — <code>§SAP-FOLD NOT-RUN</code> / <code>BLOCKED — awaiting a REAL SAP oracle. No fold claimed.</code> (S/4HANA).&#160;<a class="footnote-backref" href="#fnref:sap" title="Jump back to footnote 15 in the text">&#8617;</a></p>
 </li>
 <li id="fn:own">
-<p><code>docs/DistributedERP.md</code> §0 lines 74–80 (the Git analogy — log is truth, host disposable) + the signed-checkpoint/tamper proofs in <sup id="fnref3:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup>.&#160;<a class="footnote-backref" href="#fnref:own" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:own" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:own" title="Jump back to footnote 16 in the text">&#8617;</a></p>
+<p><code>docs/DistributedERP.md</code> §0 lines 74–80 (the Git analogy — log is truth, host disposable) + the signed-checkpoint/tamper proofs in <sup id="fnref:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup>.&#160;<a class="footnote-backref" href="#fnref:own" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:own" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:own" title="Jump back to footnote 16 in the text">&#8617;</a></p>
 </li>
 <li id="fn:arch">
 <p>Architectural property of a server-of-record ERP — no comparable single measured number in this repo; stated as structure, not benchmarked. Honest-caveat doctrine: <code>feedback_erp_perf_claims</code>.&#160;<a class="footnote-backref" href="#fnref:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref23:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref24:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref25:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref26:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref27:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref28:arch" title="Jump back to footnote 17 in the text">&#8617;</a></p>
@@ -5331,7 +5361,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <p>The ≈925-table → 5-relation reduction: <code>docs/DistributedERP.md</code> §"domain reduction" ("iDempiere AD (925 tables, <code>M*</code> classes) → 5 tables + deterministic verbs") + <code>docs/OpLogERP.md</code> ("≈925 tables reduce to five relations plus verbs") + <code>docs/ERP.md</code> §12 (the 5 core tables) + <code>docs/FeatureComparison.md</code> ("5 core tables: containers, items, documents, document_lines, journal").&#160;<a class="footnote-backref" href="#fnref:reduce" title="Jump back to footnote 19 in the text">&#8617;</a></p>
 </li>
 <li id="fn:split">
-<p>iDempiere swept 2026-06-08 via <code>find … -exec cat {} + | wc -l</code> over <code>~/idempiere-dev-setup/idempiere</code> (4,465 files, 1,427,147 LOC; same tree as <sup id="fnref10:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup>). Key buckets: generated <code>X_*</code>=345,490, <code>I_*</code>=227,100; ZK web UI=189,786; tests=78,389; base <code>M*</code> models=198,679; <code>Doc_*</code> posting=12,789; acct engine=21,443; tree-wide <code>process/</code>=69,782; costing=22,056; payment=7,359; tax=2,507; matching=1,959; allocation=1,472; callouts=10,340; validators=3,336; plus server-side HTML lib 43,816, print/report+Jasper ~21K, import/migration ~25K, webservices/server/installer/JDBC/OSGi. Disjoint buckets sum to 1,427,147. The 5–8× fold ratio and the ceremony fraction of <code>M*</code> are estimates (GAPS #6), not measured.&#160;<a class="footnote-backref" href="#fnref:split" title="Jump back to footnote 20 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:split" title="Jump back to footnote 20 in the text">&#8617;</a></p>
+<p>iDempiere swept 2026-06-08 via <code>find … -exec cat {} + | wc -l</code> over <code>~/idempiere-dev-setup/idempiere</code> (4,465 files, 1,427,147 LOC; same tree as <sup id="fnref:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup>). Key buckets: generated <code>X_*</code>=345,490, <code>I_*</code>=227,100; ZK web UI=189,786; tests=78,389; base <code>M*</code> models=198,679; <code>Doc_*</code> posting=12,789; acct engine=21,443; tree-wide <code>process/</code>=69,782; costing=22,056; payment=7,359; tax=2,507; matching=1,959; allocation=1,472; callouts=10,340; validators=3,336; plus server-side HTML lib 43,816, print/report+Jasper ~21K, import/migration ~25K, webservices/server/installer/JDBC/OSGi. Disjoint buckets sum to 1,427,147. The 5–8× fold ratio and the ceremony fraction of <code>M*</code> are estimates (GAPS #6), not measured.&#160;<a class="footnote-backref" href="#fnref:split" title="Jump back to footnote 20 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:split" title="Jump back to footnote 20 in the text">&#8617;</a></p>
 </li>
 </ol>
 </div>
