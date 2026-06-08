@@ -1,5 +1,7 @@
 # Distributed ERP — Contention Map & Guards
 
+> **New here?** The one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** — has the "where's the server?" mapping at a glance. This page is the full doctrine + adversarial edges.
+
 **Thesis.** The "hard distributed-systems problem" in ERP is **mostly a modelling artifact.** Model the
 domain as it physically is — goods have a *location*, work has an *owner*, money moves at the *cadence of
 atoms* — and contention dissolves for ~90% of usage, collapses to a daily pipeline for ~10%, and reduces to
@@ -252,9 +254,17 @@ replay).*
 
 The post office wears a second hat for the entitlement op-class: a **sub-second matchmaker** for the online
 CAS (a compare-and-set register over an opaque token — still facilitation, not business logic). That is the
-*only* always-fast online need; everything else is daily. **Even the post office is disposable:** because
-every op is signed + hash-chained, the total order is reconstructible from the collected signed logs
-(`prev_hash` encodes order) — lose the broker and the union of clients'/emails' logs rebuilds it.
+*only* always-fast online need; everything else is daily. **Even the post office is disposable — with one
+named caveat.** Because every op is signed + hash-chained, the *net result* is reproducible from the collected
+signed logs: the disjoint per-branch folds **commute**, so re-collecting the union in any order replays to
+identical books (witnessed `maxDiff=0c` across a 50-branch blackout rebuilt from the edges alone —
+`scripts/poc_blackout_resume.js` `§ORDER-HONEST`). What is **not** reconstructible from the signed logs alone
+is the **cross-branch CAS arbitration order** for the one contended op-class: a rebuild from the edges can pick
+a different winner than the lost real-time arbitration (`§CAS-SLIVER`). That sliver is bounded and routed to
+the ledger (loser → receivable), never silently corrupted. When minimising it matters, the contended CAS is
+committed to a **quorum** of owns-nothing replicas *before* ack, so the live decision survives broker loss
+within a **measured quorum-RTT window** (independent of fleet size — `scripts/poc_quorum_cas.js`
+`§INTERSECTION-NO-SPLIT` / `§WINDOW-NUMBER`).
 
 ### 6.1 The centralized-ID problem, in one place
 
@@ -322,7 +332,7 @@ that carries it, the acceptance witness, and the **honest residual**. (This cons
 |---|---|---|---|---|
 | Browser eviction (Safari ~7-day) | T3 / W-PERSIST | self-securing log + email durability; `navigator.storage.persist()` requested on first load | `persisted=true`; export→wipe→import → `replay-hash == pre-export hash` | shared browser limitation — mitigated, not eliminated |
 | Lost phone / local copy | T3 | recover from latest **signed email snapshot** → replay to identical state | new PWA reads latest email → count restored | email-account loss is a risk the user **already** carries; we inherit it, never manufacture a new one |
-| Lost sequencer / post office | T1 + T3 | total order reconstructible from collected signed ops (`prev_hash` encodes order) | rebuild order from union of signed logs → same hash | the logs must be gathered; a *convenience* is lost, not the truth |
+| Lost sequencer / post office | T1 + T3 | **net books** reproducible — disjoint folds commute; rebuild from the union of signed logs → identical balances | 50-branch blackout rebuilt from edges → `maxDiff=0c`, identical tip (`poc_blackout_resume.js` `§ORDER-HONEST`) | the **cross-branch CAS order** is the one thing *not* reconstructible from logs alone (`§CAS-SLIVER`) — bounded, routed to the ledger; minimised live to a quorum-RTT window (`poc_quorum_cas.js`) |
 
 ### B. Forgery & authenticity
 | Scenario | Truth / § | Mechanism | Acceptance witness | Honest residual |

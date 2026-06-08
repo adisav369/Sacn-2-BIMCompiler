@@ -6,6 +6,8 @@
 
 # The Holy Grail — Editable Business Rules, Live
 
+> **See also:** the one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** (legacy ERP vs the WASM event-sourced browser); the *back-up-the-recipe* §below is linked from its backup figure.
+
 > *A first-person note from the author. The technical claims below are grounded in the
 > dated, witnessed sections of [ERP.md](ERP.md); this page is the reasoning that ties
 > them to a quest I have carried for a long time.*
@@ -119,6 +121,11 @@ editable-at-runtime without the JVM / OSGi / workbench that constitute the bloat
 has a rule engine but no op-log safety and no engine-as-data. For them this is a *stuck*
 problem; here it is a **structural property**. The bloat that prevents them is precisely
 the bloat this project removed.
+
+> **How *every* ERP's logic enters** (the generalize / decision-data / caged-plugin question, and why a
+> Drools-*like* affordance is kept but the Drools *engine* is not) → the six-layer **logic-admission model** in
+> [IDEMPIERE_2.md](IDEMPIERE_2.md#the-logic-admission-model--how-all-of-odooerpnextsap-logic-enters). The grail is
+> that model's L1/L2/L5 made *live*.
 
 ## The honest status — half-claimed, one mile left
 
@@ -336,6 +343,24 @@ fingerprint. The hash-chain checkpoint and the accountant's year-end close are t
 domain solved this 500 years ago. *(Optional reinforcements: a Merkle root keeps per-transaction
 provability of a closed period in 32 bytes; emailing the checkpoint fingerprint to yourself binds even
 the signer.)*
+
+#### Back up the recipe, not the result — 1 TB → ≈500 MB {#backup-recipe}
+
+The persisted artifact is the signed op-log, never the materialised database: balances, postings
+(`Fact_Acct`) and every derived table are a deterministic *fold* of the log, recomputed on load — never
+stored. Period-close compaction keeps only the open period live (`scripts/poc_volume.js` `§VOL PASS` —
+bootstrap stays flat as history grows 100×). So a transaction-heavy **1 TB ERP backs up as ≈500 MB**: you
+carry the journals, not the ledger they fold to.
+
+*Two honest caveats on "replay reconstructs everything."* **(1) What replay reproduces exactly is the net
+result:** the disjoint per-branch folds **commute**, so the union of signed logs re-folds to identical balances
+in any order (witnessed `maxDiff=0c` — `scripts/poc_blackout_resume.js` `§ORDER-HONEST`). The one thing *not*
+reconstructible from the logs alone is the **cross-branch CAS arbitration order** for a contended op-class — a
+bounded sliver routed to the ledger, minimised live to a measured quorum-RTT window
+(`scripts/poc_quorum_cas.js`). **(2) The ≈500 MB is the *full-replica* figure** (a facilitator or the owner's
+own channel); an **edge device carries far less** — its own slice + the shared state it touches (≈13 MB resident,
+not the whole chain — see [MigrateComparisonPaper](MigrateComparisonPaper.md) DR/TCO). "Every device = 500 MB" is
+**No** for edge roles.
 
 ### 2. Atomicity — the document *is* the atomic unit
 
