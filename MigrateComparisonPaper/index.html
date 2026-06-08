@@ -4514,6 +4514,9 @@
 .gitmap .gm-add b{color:#ef8e00}
 [data-md-color-scheme="slate"] .gitmap .gm-add b{color:#ffb74d}
 @media (max-width:520px){.gitmap .gm-h,.gitmap .row{grid-template-columns:1fr}.gitmap .eq{display:none}.gitmap .gm-h .l,.gitmap .row .l{text-align:left}.gitmap .row .r{border-top:1px dashed rgba(124,179,66,.3)}}
+.gitline{margin:14px 0;padding:11px 16px;border-left:4px solid #7cb342;background:rgba(124,179,66,.08);border-radius:0 8px 8px 0;font-size:13px;line-height:1.5}
+.gitline b{color:#7cb342;letter-spacing:.3px}
+.gitline a{color:#7cb342;font-weight:700;text-decoration:none;border-bottom:1px dotted #7cb342;white-space:nowrap}
 /* "At a glance" stat cards — whole card is a link */
 .glance-card{flex:1 1 150px;border-radius:12px;padding:10px 8px;text-align:center;text-decoration:none;color:inherit;display:block;transition:transform .12s ease,box-shadow .12s ease}
 .glance-card:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
@@ -4636,6 +4639,9 @@
 <h2 id="thesis">Thesis<a class="headerlink" href="#thesis" title="Permanent link">&para;</a></h2>
 <p>A classic ERP is a <strong>server of record</strong>: every read, write and posting is a round-trip to a machine that <em>owns the truth</em>. We keep the accounting and the document flow but <strong>delete that server</strong>. The truth becomes a <em>signed, hash-chained op-log</em>; the live numbers are a deterministic <strong>fold</strong> of it, replayed by a SQLite-WASM kernel <strong>in the browser</strong>. The host turns disposable (a Git remote); the user owns the log; period-end <strong>compaction</strong> is a <em>signed checkpoint</em> carrying balances forward — not a batch job with a down-window (the close <em>postings</em> are themselves folds, still being built).</p>
 <p>A claim about <strong>substrate and delivery</strong>, not features — the legacy stacks have vastly more. What we show: the <em>architecture</em> folds the same transactions with <strong>zero network on the read/fold path</strong> — proven by folding a <strong>live Odoo</strong>, <strong>iDempiere's own flows</strong> (it's the AD we render), and a <strong>SAP Business One</strong> flow (mock export) into the same six verbs. S/4HANA is still pending a real oracle.</p>
+<div class="gitline">
+<p><strong>ERP as git</strong> — what git did to source code, we do to transactions: the log is the truth, every client folds the whole history, and the host is a <em>disposable remote</em>. The one thing git lacks — invariant enforcement (no double-spend) — we add. <a href="#erp-as-git">See the full git ∷ ours parallel ↓</a></p>
+</div>
 <hr />
 <h2 id="what-a-fold-is-the-chess-scoresheet">What a <em>fold</em> is — the chess scoresheet<a class="headerlink" href="#what-a-fold-is-the-chess-scoresheet" title="Permanent link">&para;</a></h2>
 <p>You don't store the chessboard — you store the <strong>move list</strong>, and replay it. The position is a deterministic <em>fold</em> of those moves: lose the board, keep the sheet, rebuild it exactly; anyone who replays the same moves reaches the same position. Our ERP is identical — the <strong>signed op-log is the move list, the live balances are the board.</strong> A fold, never a stored snapshot.</p>
@@ -4801,6 +4807,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
   </div>
 </div>
 
+<p><span id="erp-as-git"></span></p>
 <p><strong>The analogy: git.</strong> No central machine owns your code history — every clone has it all, verifies it, rebuilds from it; GitHub is a <em>convenience</em>, not the truth. <strong>We do to transactions what git did to source code</strong> — the same shape, line for line:</p>
 <div class="gitmap" markdown="0">
   <div class="gm-h"><div class="l">git · source code</div><div class="eq">≅</div><div class="r">ours · ERP transactions</div></div>
