@@ -338,9 +338,11 @@ that carries it, the acceptance witness, and the **honest residual**. (This cons
 | Scenario | Truth / § | Mechanism | Acceptance witness | Honest residual |
 |---|---|---|---|---|
 | **False email / URL / data** | T3 / W-SIGN | container untrusted **by design**; only signed content verifies | forged body fails signature under issuer key → rejected | none beyond key custody (below) |
-| Signing-key theft / custody | T3 | the **one irreducible anchor**; secure-enclave + rotation | — | irreducible — true for *every* system (steal a server's key too) |
+| Signing-key **theft** / custody | T3 | the **one irreducible anchor**; secure-enclave | — | key *theft* is irreducible — true for *every* system (steal a server's key too) |
+| Key **rotation / revoke / offboarding** | T3 / W-ROTATE | a signed `ROTATE` (counter-signed by the **outgoing** key) installs a new key at seq S + a key-epoch map → history verifies under the key valid **at its seq**, no re-signing the past; `REVOKE` kills a key's **future**, keeps its **past** | rotate → past still valid under the old key, post-rotation old-key op rejected, revoked key loses future not past ([poc_rotate.js](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_rotate.js) §ROTATE-OP/§HISTORY-VALID/§FUTURE-GATED/§REVOKE) | key lifecycle no longer hand-waved — witnessed; key *theft* itself stays the floor above |
 | Bearer token forwarded | §5 / T3 | bind-on-first-open for personal credit; bearer is fine for promo/view | forwarded credit fails device-bind check | promo forwarding is *desirable* (viral coupon) |
 | Tampered local log | W-CHAIN | hash-chain; `verifyChain()` detects tamper at op N | alter op N → chain breaks **at exactly N**; clean → `chain OK len=N` | detection, **not** prevention — by design (the floor) |
+| **Relay equivocation** (hands client A `[a,b]`, client B `[b,a]` over one seq window) | T1 / §6 | clients sign their **observed period-tip** + gossip it; mismatched signed tips = equivocation **attributable** to the relay (a client signs only what it saw — unforgeable) | divergent signed tips detected + attributed; an honest relay → identical tips, no false positive ([poc_equivocation.js](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_equivocation.js) §DETECT/§ATTRIBUTABLE) | silent **without** tip-gossip (§FALSIFIER); the post office is no longer *assumed* honest — equivocation is caught. Real-time-cadence detection is tier-2 |
 
 ### C. Freshness / double-spend (the one real-time op-class, §5)
 | Scenario | Truth / § | Mechanism | Acceptance witness | Honest residual |
@@ -371,6 +373,11 @@ that carries it, the acceptance witness, and the **honest residual**. (This cons
 | Insider fraud (the **key-holder** lies) | T4 / §8 | double-entry + physical reconciliation; the hash-chain makes it *more* auditable | the lie must be told consistently across **all** books → caught at count | not crypto's job — accounting's |
 | Cloned / printed barcode (scan without the box) | T4 | caught at van settlement + accounting | — | shrinkage/fraud, *not* a distributed problem |
 | The unsolvable residual (CAP partition; offline witness) | T4 | **record + consequence + price-in** | — | **not solvable** — we reduced the *cost of the non-solution* |
+
+### G. Privacy / right-to-erasure
+| Scenario | Truth / § | Mechanism | Acceptance witness | Honest residual |
+|---|---|---|---|---|
+| Right-to-erasure on an immutable signed log (GDPR/CCPA) | T3 / W-ERASE | PII rides in a **per-subject encrypted envelope**; erase = destroy the subject key (**crypto-shred**). Non-PII (account/cents) stays in the clear and folds normally | drop the key → PII irrecoverable, yet the chain still verifies, the tip is identical, and books are byte-identical (`maxDiff=0c`) ([poc_erase.js](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_erase.js) §ERASE/§BOOKS-INTACT) | **tombstone the identity, keep the accounting fact** — the honest GDPR posture, not faux-deletion (the event provably happened; the person is unidentifiable). §FALSIFIER: cleartext PII can only be "erased" by rewriting the chain |
 
 ---
 
