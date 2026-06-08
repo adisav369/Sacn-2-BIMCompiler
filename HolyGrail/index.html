@@ -2913,6 +2913,8 @@
       
         
       
+        
+      
     
     
     
@@ -3253,6 +3255,34 @@
     
   
     Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_COVERAGE_MATRIX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Coverage Matrix (have we covered all bases?)
   
 
     
@@ -4782,6 +4812,15 @@ the signer.)</em></p>
 stored. Period-close compaction keeps only the open period live (<code>scripts/poc_volume.js</code> <code>§VOL PASS</code> —
 bootstrap stays flat as history grows 100×). So a transaction-heavy <strong>1 TB ERP backs up as ≈500 MB</strong>: you
 carry the journals, not the ledger they fold to.</p>
+<p><em>Two honest caveats on "replay reconstructs everything."</em> <strong>(1) What replay reproduces exactly is the net
+result:</strong> the disjoint per-branch folds <strong>commute</strong>, so the union of signed logs re-folds to identical balances
+in any order (witnessed <code>maxDiff=0c</code> — <code>scripts/poc_blackout_resume.js</code> <code>§ORDER-HONEST</code>). The one thing <em>not</em>
+reconstructible from the logs alone is the <strong>cross-branch CAS arbitration order</strong> for a contended op-class — a
+bounded sliver routed to the ledger, minimised live to a measured quorum-RTT window
+(<code>scripts/poc_quorum_cas.js</code>). <strong>(2) The ≈500 MB is the <em>full-replica</em> figure</strong> (a facilitator or the owner's
+own channel); an <strong>edge device carries far less</strong> — its own slice + the shared state it touches (≈13 MB resident,
+not the whole chain — see <a href="../MigrateComparisonPaper/">MigrateComparisonPaper</a> DR/TCO). "Every device = 500 MB" is
+<strong>No</strong> for edge roles.</p>
 <h3 id="2-atomicity-the-document-is-the-atomic-unit">2. Atomicity — the document <em>is</em> the atomic unit<a class="headerlink" href="#2-atomicity-the-document-is-the-atomic-unit" title="Permanent link">&para;</a></h3>
 <p>Atomicity — all of a document's effects, or none — needs no transaction manager here, because there is
 no multi-row <code>UPDATE</code> to half-complete. A document-event is <strong>one op-group</strong> (§18.8), appended to the

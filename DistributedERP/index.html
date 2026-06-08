@@ -16,7 +16,7 @@
         <link rel="prev" href="../LocalFirstPriorArt/">
       
       
-        <link rel="next" href="../DepreciationPerf/">
+        <link rel="next" href="../ERP_COVERAGE_MATRIX/">
       
       
         
@@ -2680,6 +2680,8 @@
       
         
       
+        
+      
     
     
     
@@ -3355,6 +3357,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_COVERAGE_MATRIX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Coverage Matrix (have we covered all bases?)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4904,9 +4934,17 @@ replay).</em></p>
 </table>
 <p>The post office wears a second hat for the entitlement op-class: a <strong>sub-second matchmaker</strong> for the online
 CAS (a compare-and-set register over an opaque token — still facilitation, not business logic). That is the
-<em>only</em> always-fast online need; everything else is daily. <strong>Even the post office is disposable:</strong> because
-every op is signed + hash-chained, the total order is reconstructible from the collected signed logs
-(<code>prev_hash</code> encodes order) — lose the broker and the union of clients'/emails' logs rebuilds it.</p>
+<em>only</em> always-fast online need; everything else is daily. <strong>Even the post office is disposable — with one
+named caveat.</strong> Because every op is signed + hash-chained, the <em>net result</em> is reproducible from the collected
+signed logs: the disjoint per-branch folds <strong>commute</strong>, so re-collecting the union in any order replays to
+identical books (witnessed <code>maxDiff=0c</code> across a 50-branch blackout rebuilt from the edges alone —
+<code>scripts/poc_blackout_resume.js</code> <code>§ORDER-HONEST</code>). What is <strong>not</strong> reconstructible from the signed logs alone
+is the <strong>cross-branch CAS arbitration order</strong> for the one contended op-class: a rebuild from the edges can pick
+a different winner than the lost real-time arbitration (<code>§CAS-SLIVER</code>). That sliver is bounded and routed to
+the ledger (loser → receivable), never silently corrupted. When minimising it matters, the contended CAS is
+committed to a <strong>quorum</strong> of owns-nothing replicas <em>before</em> ack, so the live decision survives broker loss
+within a <strong>measured quorum-RTT window</strong> (independent of fleet size — <code>scripts/poc_quorum_cas.js</code>
+<code>§INTERSECTION-NO-SPLIT</code> / <code>§WINDOW-NUMBER</code>).</p>
 <h3 id="61-the-centralized-id-problem-in-one-place">6.1 The centralized-ID problem, in one place<a class="headerlink" href="#61-the-centralized-id-problem-in-one-place" title="Permanent link">&para;</a></h3>
 <p>Classic ERP centralises identity allocation: a single sequence service (<code>AD_Sequence</code>) hands out primary
 keys and gapless document numbers, which forces an always-available coordinator. That requirement is split
@@ -4985,9 +5023,9 @@ that carries it, the acceptance witness, and the <strong>honest residual</strong
 <tr>
 <td>Lost sequencer / post office</td>
 <td>T1 + T3</td>
-<td>total order reconstructible from collected signed ops (<code>prev_hash</code> encodes order)</td>
-<td>rebuild order from union of signed logs → same hash</td>
-<td>the logs must be gathered; a <em>convenience</em> is lost, not the truth</td>
+<td><strong>net books</strong> reproducible — disjoint folds commute; rebuild from the union of signed logs → identical balances</td>
+<td>50-branch blackout rebuilt from edges → <code>maxDiff=0c</code>, identical tip (<code>poc_blackout_resume.js</code> <code>§ORDER-HONEST</code>)</td>
+<td>the <strong>cross-branch CAS order</strong> is the one thing <em>not</em> reconstructible from logs alone (<code>§CAS-SLIVER</code>) — bounded, routed to the ledger; minimised live to a quorum-RTT window (<code>poc_quorum_cas.js</code>)</td>
 </tr>
 </tbody>
 </table>
