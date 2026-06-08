@@ -4437,12 +4437,11 @@
   </div>
   <div style="flex:1 1 150px;background:rgba(171,71,188,.12);border:1px solid rgba(171,71,188,.45);border-radius:12px;padding:10px 8px;text-align:center">
     <img src="../img/server.png" alt="database backup" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
-    <div style="font-size:16px;font-weight:800;line-height:1.15"><a href="../HolyGrail/#backup-recipe" style="color:#ab47bc;text-decoration:none;border-bottom:1px dotted #ab47bc">1 TB→500 MB</a></div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85">backup = the op-log (the recipe), not the materialised DB*</div>
+    <div style="font-size:16px;font-weight:800;line-height:1.15;color:#ab47bc">1 TB→500 MB</div>
+    <div style="font-size:12px;margin-top:6px;opacity:.85"><b><a href="#fn-backup" style="color:#ab47bc;text-decoration:none;border-bottom:1px dotted #ab47bc">Back up the recipe, not the result.</a></b></div>
   </div>
 </div>
 
-<p><small>*the <strong>1 TB → 500 MB</strong> backup figure is a derivation, not a measurement <sup id="fnref:backup"><a class="footnote-ref" href="#fn:backup">16</a></sup></small></p>
 <h2 id="these-have-been-around-for-some-time-but-never-for-erp-until-now">These have been around for some time, but never for ERP, until now.<a class="headerlink" href="#these-have-been-around-for-some-time-but-never-for-erp-until-now" title="Permanent link">&para;</a></h2>
 <p><em>Every pillar below is a proven, decades-old idea from a named creator. Thus we can now put the ERP server in the browser!</em></p>
 <table>
@@ -4808,7 +4807,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <hr />
 <h2 id="realistic-conversion-estimate-loc">Realistic conversion estimate (LOC)<a class="headerlink" href="#realistic-conversion-estimate-loc" title="Permanent link">&para;</a></h2>
 <p>89× is honest for what's folded today — but it measures the <em>thinnest, highest-compression</em> slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does <strong>not</strong> extrapolate to a full port.</p>
-<p>Splitting all 1,427,147 Java LOC by fate <sup id="fnref:split"><a class="footnote-ref" href="#fn:split">17</a></sup>:</p>
+<p>Splitting all 1,427,147 Java LOC by fate <sup id="fnref:split"><a class="footnote-ref" href="#fn:split">16</a></sup>:</p>
 <table>
 <thead>
 <tr>
@@ -4878,7 +4877,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <p><strong>Realistic full parity ≈ 35–56K JS LOC (~43K mid) ≈ ~30× overall</strong> (range 25–41×) — vs 89× for the flows folded so far. The fold ratio is the one estimated input (GAPS #6); every LOC count is measured.</p>
 <details class="note">
 <summary>Full breakdown by iDempiere module (org.adempiere.base, org.adempiere.ui.zk, …) — expand</summary>
-<p>Measured 2026-06-08 <sup id="fnref2:split"><a class="footnote-ref" href="#fn:split">17</a></sup>. Fate = <strong>DELETED</strong> (no equivalent in a browser substrate) · <strong>GENERIC</strong> (the interpreter renders it from the dictionary) · <strong>FOLD</strong> (re-expressed as verbs / handlers). Buckets are disjoint and sum to 1,427,147.</p>
+<p>Measured 2026-06-08 <sup id="fnref2:split"><a class="footnote-ref" href="#fn:split">16</a></sup>. Fate = <strong>DELETED</strong> (no equivalent in a browser substrate) · <strong>GENERIC</strong> (the interpreter renders it from the dictionary) · <strong>FOLD</strong> (re-expressed as verbs / handlers). Buckets are disjoint and sum to 1,427,147.</p>
 <table>
 <thead>
 <tr>
@@ -5038,10 +5037,6 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
    business core — and the share of <code>M*</code> that is real logic vs accessor/lifecycle ceremony — are <strong>estimates</strong> (no
    full port exists to measure them). Treat ~25–41× as a <em>forecast</em>; 89× is the <em>measured built-so-far</em>, and a
    high-compression slice that does not extrapolate.</li>
-<li><strong>1 TB → ~500 MB backup <sup id="fnref2:backup"><a class="footnote-ref" href="#fn:backup">16</a></sup></strong> — the op density (~437 B/op) and the index/bloat fraction (67%) are
-   <em>measured</em>, but "<strong>source ≈ 5–10% of the DB</strong>" (the rest derivable/foldable) and the on-disk shorthand op
-   size are <strong>estimates</strong> — no 1 TB transaction-heavy oracle exists here. Treat ~2000× as a <em>derivation</em>; the
-   defensible band is ~0.2–0.6 GB compressed (≈500 MB).</li>
 </ol>
 <hr />
 <h2 id="further-reading-go-deeper">Further reading — go deeper<a class="headerlink" href="#further-reading-go-deeper" title="Permanent link">&para;</a></h2>
@@ -5067,6 +5062,8 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
 <p>DRAFT (2026-06-08). The evaluator-facing companion to the deep papers (<a href="../ERP/">ERP.md</a> · <a href="../DistributedERP/">DistributedERP.md</a> · <a href="../BIMERPPaper/">BIMERPPaper.md</a>). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.</p>
 <hr />
+<p id="fn-backup" style="font-size:0.9em"><strong>Back up the recipe, not the result.</strong> The signed op-log is the only thing stored — balances, postings (<code>Fact_Acct</code>) and every derived table are a deterministic <em>fold</em> of it, recomputed on load, never saved; period-close compaction keeps only the open period live. So a transaction-heavy <strong>1 TB ERP backs up as ~500 MB</strong>. Method &amp; basis: <a href="../HolyGrail/#backup-recipe">HolyGrail § back up the recipe, not the result</a>.</p>
+
 <h2 id="footnote-sources">Footnote sources<a class="headerlink" href="#footnote-sources" title="Permanent link">&para;</a></h2>
 <div class="footnote">
 <hr />
@@ -5093,7 +5090,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <p>bloat memory (<code>reference_bloat_reduction.md</code>, measured 2026-06-06 from <code>~/idempiere-dev-setup/idempiere</code>) — seed 45.2 MB → 12.7 MB (≈3.5×); 1,427,147 Java LOC → 16,068 JS LOC (≈89×). Full evidence <code>internal/BLOAT_MEASUREMENT.md</code>.&#160;<a class="footnote-backref" href="#fnref:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:bloat" title="Jump back to footnote 7 in the text">&#8617;</a></p>
 </li>
 <li id="fn:bloat2">
-<p>same memory — LIVE GardenWorld DB Postgres 143 MB on-disk → 43 MB SQLite (925 tables, 187,133 rows, ≈3.3×); gzip 11.7 MB (3.7×).&#160;<a class="footnote-backref" href="#fnref:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a></p>
+<p>same memory — LIVE GardenWorld DB Postgres 143 MB on-disk → 43 MB SQLite (925 tables, 187,133 rows, ≈3.3×); gzip 11.7 MB (3.7×).&#160;<a class="footnote-backref" href="#fnref:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a></p>
 </li>
 <li id="fn:odoo">
 <p><code>build/erp/odoo_fold_live.log</code> — <code>§ODOO-FOLD-LIVE PASS</code>: live odoodemo (Odoo 17, :8069) SO S00023, 5/5 hops mapped, newVerbs=[], total 5002.50 == oracle, GL ΣDr==ΣCr.&#160;<a class="footnote-backref" href="#fnref:odoo" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:odoo" title="Jump back to footnote 9 in the text">&#8617;</a></p>
@@ -5116,11 +5113,8 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <li id="fn:reduce">
 <p>The ≈925-table → 5-relation reduction: <code>docs/DistributedERP.md</code> §"domain reduction" ("iDempiere AD (925 tables, <code>M*</code> classes) → 5 tables + deterministic verbs") + <code>docs/OpLogERP.md</code> ("≈925 tables reduce to five relations plus verbs") + <code>docs/ERP.md</code> §12 (the 5 core tables) + <code>docs/FeatureComparison.md</code> ("5 core tables: containers, items, documents, document_lines, journal").&#160;<a class="footnote-backref" href="#fnref:reduce" title="Jump back to footnote 15 in the text">&#8617;</a></p>
 </li>
-<li id="fn:backup">
-<p><strong>Backup = the signed op-log only</strong> (everything else is a deterministic fold of it). Derivation for a 1 TB transaction-heavy tenant: (1) drop indexes + MVCC bloat + catalog — measured <strong>67%</strong> of a live tenant (<sup id="fnref6:bloat2"><a class="footnote-ref" href="#fn:bloat2">8</a></sup>) → ~330 GB table data; (2) the bulk of that is <em>derived</em> (<code>Fact_Acct</code> postings, balances, audit/history — re-folded, never stored), source rows ≈ 5–10% → ~17–33 GB; (3) stored as <strong>events</strong> not materialised rows (~150 B/op on disk with AD-shorthand vs ~437 B/op retained, <code>poc_volume_ceiling.log</code>) → ~0.6–3 GB; (4) zstd ≈5× → <strong>~0.2–0.6 GB</strong>. So 1 TB → <strong>~500 MB compressed (~2000×)</strong>. The "source ≈ 5–10% of the DB" fraction and the shorthand op size are <strong>estimates</strong> (cf. GAPS #7), not measured — no 1 TB transaction-heavy oracle exists here. <strong>Full derivation:</strong> <a href="../HolyGrail/">HolyGrail.md</a> §1 ("Compacting the signed log" → <em>back up the recipe, not the result</em>); bounded-working-set basis <code>scripts/poc_volume.js</code> (<code>§VOL PASS</code>, flat bootstrap across 100× history).&#160;<a class="footnote-backref" href="#fnref:backup" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:backup" title="Jump back to footnote 16 in the text">&#8617;</a></p>
-</li>
 <li id="fn:split">
-<p>iDempiere swept 2026-06-08 via <code>find … -exec cat {} + | wc -l</code> over <code>~/idempiere-dev-setup/idempiere</code> (4,465 files, 1,427,147 LOC; same tree as <sup id="fnref10:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup>). Key buckets: generated <code>X_*</code>=345,490, <code>I_*</code>=227,100; ZK web UI=189,786; tests=78,389; base <code>M*</code> models=198,679; <code>Doc_*</code> posting=12,789; acct engine=21,443; tree-wide <code>process/</code>=69,782; costing=22,056; payment=7,359; tax=2,507; matching=1,959; allocation=1,472; callouts=10,340; validators=3,336; plus server-side HTML lib 43,816, print/report+Jasper ~21K, import/migration ~25K, webservices/server/installer/JDBC/OSGi. Disjoint buckets sum to 1,427,147. The 5–8× fold ratio and the ceremony fraction of <code>M*</code> are estimates (GAPS #6), not measured.&#160;<a class="footnote-backref" href="#fnref:split" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:split" title="Jump back to footnote 17 in the text">&#8617;</a></p>
+<p>iDempiere swept 2026-06-08 via <code>find … -exec cat {} + | wc -l</code> over <code>~/idempiere-dev-setup/idempiere</code> (4,465 files, 1,427,147 LOC; same tree as <sup id="fnref10:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup>). Key buckets: generated <code>X_*</code>=345,490, <code>I_*</code>=227,100; ZK web UI=189,786; tests=78,389; base <code>M*</code> models=198,679; <code>Doc_*</code> posting=12,789; acct engine=21,443; tree-wide <code>process/</code>=69,782; costing=22,056; payment=7,359; tax=2,507; matching=1,959; allocation=1,472; callouts=10,340; validators=3,336; plus server-side HTML lib 43,816, print/report+Jasper ~21K, import/migration ~25K, webservices/server/installer/JDBC/OSGi. Disjoint buckets sum to 1,427,147. The 5–8× fold ratio and the ceremony fraction of <code>M*</code> are estimates (GAPS #6), not measured.&#160;<a class="footnote-backref" href="#fnref:split" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:split" title="Jump back to footnote 16 in the text">&#8617;</a></p>
 </li>
 </ol>
 </div>

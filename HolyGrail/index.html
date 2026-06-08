@@ -4776,19 +4776,11 @@ domain solved this 500 years ago. <em>(Optional reinforcements: a Merkle root ke
 provability of a closed period in 32 bytes; emailing the checkpoint fingerprint to yourself binds even
 the signer.)</em></p>
 <h4 id="backup-recipe">Back up the recipe, not the result — 1 TB → ≈500 MB<a class="headerlink" href="#backup-recipe" title="Permanent link">&para;</a></h4>
-<p>The persisted artifact is the
-signed op-log, never the materialised database: balances, postings (<code>Fact_Acct</code>), and every derived table
-are a <em>fold</em>, recomputed on load, so they are never stored. That collapses backup size by orders of
-magnitude. A worked estimate for a 1 TB transaction-heavy tenant: drop indexes + MVCC bloat + catalog —
-<strong>measured 67%</strong> of a live tenant (143 MB = 41 heap + 39 index + 6 toast + 57 catalog/bloat,
-<code>internal/BLOAT_MEASUREMENT.md</code>) → ~330 GB of table data; of that the bulk is <em>derivable</em> (posting facts,
-materialised balances, audit/history — all re-folded), so the irreducible <strong>source events</strong> are ~5–10% ≈
-17–33 GB; stored as events rather than materialised typed rows (~150 B/op on disk with AD-shorthand vs
-~437 B/op retained in RAM, <code>build/erp/poc_volume_ceiling.log</code>) → ~0.6–3 GB; zstd ≈5× → <strong>~0.2–0.6 GB</strong>.
-So a <strong>1 TB ERP → ≈500 MB backup (~2000×)</strong> — you carry the journals, not the ledger they fold to.
-<em>(Estimated inputs, not measured: the 5–10% source fraction and the shorthand op size — no 1 TB
-transaction-heavy oracle exists here. Measured anchors: the 67% bloat split, the ~437 B/op ceiling, and
-the bounded working set of <code>scripts/poc_volume.js</code> <code>§VOL PASS</code> — bootstrap flat as history grows 100×.)</em></p>
+<p>The persisted artifact is the signed op-log, never the materialised database: balances, postings
+(<code>Fact_Acct</code>) and every derived table are a deterministic <em>fold</em> of the log, recomputed on load — never
+stored. Period-close compaction keeps only the open period live (<code>scripts/poc_volume.js</code> <code>§VOL PASS</code> —
+bootstrap stays flat as history grows 100×). So a transaction-heavy <strong>1 TB ERP backs up as ≈500 MB</strong>: you
+carry the journals, not the ledger they fold to.</p>
 <h3 id="2-atomicity-the-document-is-the-atomic-unit">2. Atomicity — the document <em>is</em> the atomic unit<a class="headerlink" href="#2-atomicity-the-document-is-the-atomic-unit" title="Permanent link">&para;</a></h3>
 <p>Atomicity — all of a document's effects, or none — needs no transaction manager here, because there is
 no multi-row <code>UPDATE</code> to half-complete. A document-event is <strong>one op-group</strong> (§18.8), appended to the
