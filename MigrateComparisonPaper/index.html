@@ -4976,6 +4976,9 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <hr />
 <h2 id="realistic-conversion-estimate-loc">Realistic conversion estimate (LOC)<a class="headerlink" href="#realistic-conversion-estimate-loc" title="Permanent link">&para;</a></h2>
 <p>89× is honest for what's folded today — but it measures the <em>thinnest, highest-compression</em> slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does <strong>not</strong> extrapolate to a full port.</p>
+<blockquote>
+<p><strong>Exhaustive coverage map → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>.</strong> Every rule/process surface in <em>both</em> homes (Java code + the AD as data) enumerated, each count from a real <code>ad_full.db</code> query: <strong>0 covered / 12 partial / 28 gap</strong> of 40 surfaces. The buckets below are now measured, not asserted — and the matrix names what's a static demo slice vs. an absent pillar (no logic-expression evaluator, no security layer, no SvrProcess/workflow runner).</p>
+</blockquote>
 <p>Splitting all 1,427,147 Java LOC by fate <sup id="fnref:split"><a class="footnote-ref" href="#fn:split">20</a></sup>:</p>
 <table>
 <thead>

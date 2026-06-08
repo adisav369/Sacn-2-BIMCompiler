@@ -4605,6 +4605,9 @@ Clean-room: learn the tier boundaries, extract the rule <em>effects</em> from th
 §I-C) is <strong>sorted by this tier first</strong> — only the field-level <code>CalloutEngine</code> rules land in the UI overlay; the
 other three tiers are engine concerns owned by the engine/posting lanes, not a single "callout" session.</p>
 <h2 id="the-logic-admission-model-how-all-of-odooerpnextsap-logic-enters">The logic-admission model — how ALL of Odoo/ERPNext/SAP logic enters<a class="headerlink" href="#the-logic-admission-model-how-all-of-odooerpnextsap-logic-enters" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>What's actually admitted today → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a></strong> — this model's surfaces enumerated against the live engine: 0 covered / 12 partial / 28 gap of 40. The static-data layers (lists, mandatory/updateable flags) are partially in; the logic-expression layer (DisplayLogic/ReadOnlyLogic/MandatoryLogic) and the security layer have <strong>no evaluator at all</strong> yet.</p>
+</blockquote>
 <p>The question "can we house <em>every</em> ERP's logic?" has a wrong framing: <em>generalize</em> <strong>vs</strong> <em>Drools-style DIY</em> <strong>vs</strong>
 <em>variants + config</em>. They are not alternatives — ERP logic <strong>stratifies into six layers</strong>, and each layer has its
 own <em>admission rule</em>. The layers get progressively harder to reduce to data; the art is knowing which is which so
