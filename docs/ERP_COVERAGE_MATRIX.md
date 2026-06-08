@@ -16,9 +16,9 @@ traces to a query or a `find … | wc -l`. Counts are a snapshot; re-run the cit
 
 | verdict | count | meaning |
 |---|---|---|
-| ✅ COVERED | **0** | no surface is fully interpreted from the AD |
-| 🟡 PARTIAL | **12** | the *static* slice works for the ~5–7 demo tables in `crud_ops.json` (hand-authored, not AD-extracted) |
-| ⛔ GAP | **28** | the behavioural / logic-expression / security surfaces are not interpreted at all |
+| ✅ COVERED | **0** | no surface is fully interpreted *end-to-end into the live render*  |
+| 🟡 PARTIAL | **19** | static demo slice **+ the AD logic-expression evaluator** (`ad_evaluator.js`, W-LOGIC-EVAL): the 7 Display/ReadOnly/MandatoryLogic surfaces now parse 100% (3044/3044 boolean rows) and evaluate correctly; wired into `crud_overlay.validateField`/`effectiveFlags` (headless-proven). Residual: live DOM show/hide/disable render-wiring (and tab-level GridTab render) not yet driven by it. |
+| ⛔ GAP | **21** | the remaining behavioural / security surfaces are not interpreted at all |
 
 **The honest answer:** *no — not all the bases are covered.* The engine demonstrates the **fold model** on a thin slice —
 the `CO` DocAction transition, the double-entry posting fold, and a fixed receipt/TB/P&L report set — for a handful of
@@ -31,8 +31,12 @@ delivery/definition, not behavioural parity — most behaviour is **named-and-de
 > `crud_ops.json` (5 tables — c_order, m_inout, c_invoice, c_payment, c_allocationline; ~23 fields) whose keys
 > *mirror* the AD shape (`readonly=!IsUpdateable`, `required=IsMandatory`, …) but are **authored, not read from the AD
 > DB**. No code path reads `AD_Column.Callout`, `AD_Val_Rule.Code`, `AD_Rule.Script`, `DisplayLogic`, `AccessLevel`,
-> or any `*_Access` table at runtime, and **there is no logic-expression evaluator** (`grep -ilE 'new Function|eval\(|jsr|
-> groovy|nashorn|displaylogic|accesslevel|entitytype|whereclause'` over all 17 `build/erp/*.js` → 0 functional hits).
+> or any `*_Access` table at runtime. **UPDATE (W-LOGIC-EVAL):** there is now a logic-expression evaluator —
+> `build/erp/ad_evaluator.js` (recursive-descent port of iDempiere `SimpleBoolean.g4` + `EvaluationVisitor`) — wired
+> into `crud_overlay.js:effectiveFlags`/`validateField` via `window.AdEvaluator`. It reads `displaylogic`/`readonlylogic`/
+> `mandatorylogic` and evaluates them against (record, context). Witness `scripts/poc_logic_eval.js` → `build/erp/poc_logic_eval.log`
+> (`§LOGIC_COVERAGE evaluated=3044 of 3044 boolean-logic rows 100.00%`; §FALSIFIER verdict flips DR→CO). The other named
+> surfaces (Callout/Val_Rule/Rule/AccessLevel/`*_Access`) remain unread.
 
 ## A · Rules/processes defined in CODE (Java)
 
@@ -58,19 +62,19 @@ delivery/definition, not behavioural parity — most behaviour is **named-and-de
 | **AD_ModelValidator** | **3** (Libero MFG, Fixed Assets, Product Price) | `ModelValidationEngine` | **absent** | ⛔ GAP |
 | **AD_Column · Callout** | **284** | `CalloutEngine.java` (338) | **absent** (comment "DELEGATED install-side" only) | ⛔ GAP |
 | **AD_Column · DefaultValue** | **5647** | `MColumn`/`GridField.getDefault` | `defaultsFor()` — literal/`today`/`auto` only (19 entries); **SQL & `@var@` defaults absent** | 🟡 PARTIAL |
-| **AD_Column · ReadOnlyLogic** | **289** | `Evaluator.java` (197) | **absent** — flat `f.readonly` bool only, no expr eval | ⛔ GAP |
-| **AD_Column · MandatoryLogic** | **29** | `Evaluator.java` | **absent** — flat `f.required` bool only | ⛔ GAP |
+| **AD_Column · ReadOnlyLogic** | **289** | `Evaluator.java` (197) | **`ad_evaluator.js`+`crud_overlay.effectiveFlags`** — all 289 (129 distinct) parse + evaluate; flat `f.readonly` is now fallback (W-LOGIC-EVAL §LOGIC_COVERAGE). Residual: live input-disable render-wiring | 🟡 PARTIAL |
+| **AD_Column · MandatoryLogic** | **29** | `Evaluator.java` | **`ad_evaluator.js`+`effectiveFlags`** — all 29 (28 distinct) parse+evaluate; drives `required` (flat `f.required` fallback). Residual: render * marker (W-LOGIC-EVAL) | 🟡 PARTIAL |
 | **AD_Column · ValueFormat** (`vformat`) | **1** (negligible) | `DisplayType.java` | **absent** | ⛔ GAP |
 | **AD_Column · IsUpdateable=N** | **14705** | `MColumn`/`GridField.setValue` | `validateField` blocks change via `readonly=!IsUpdateable` — **bool modeled, ~22 authored fields only** | 🟡 PARTIAL |
 | **AD_Column · IsMandatory=Y** | **12577** | `GridField.isMandatory` | `validateField` 'required' via `required=IsMandatory` — **~22 fields only** | 🟡 PARTIAL |
-| **AD_Field · DisplayLogic** | **2588** | `GridField.isDisplayed` + Evaluator | **absent** — fields never show/hide by context | ⛔ GAP |
-| **AD_Field · ReadOnlyLogic** | **52** | Evaluator | **absent** | ⛔ GAP |
-| **AD_Field · MandatoryLogic** | **14** | Evaluator | **absent** | ⛔ GAP |
+| **AD_Field · DisplayLogic** | **2588** | `GridField.isDisplayed` + Evaluator | **`ad_evaluator.js`** — all 2588 (776 distinct) parse+evaluate; `effectiveFlags.visible` computed; validateField skips hidden. Residual: live DOM show/hide not yet wired (W-LOGIC-EVAL) | 🟡 PARTIAL |
+| **AD_Field · ReadOnlyLogic** | **52** | Evaluator | **`ad_evaluator.js`+`effectiveFlags`** — all 52 (42 distinct) parse+evaluate (W-LOGIC-EVAL). Residual: render-wiring | 🟡 PARTIAL |
+| **AD_Field · MandatoryLogic** | **14** | Evaluator | **`ad_evaluator.js`+`effectiveFlags`** — all 14 (8 distinct) parse+evaluate (W-LOGIC-EVAL). Residual: render-wiring | 🟡 PARTIAL |
 | **AD_Field · DefaultValue** | **34** | `GridField.getDefault` | partial via `defaultsFor` (descriptor, not field-override) | 🟡 PARTIAL |
 | **AD_Tab · WhereClause** | **85** | `GridTab.java` (3735) | **absent** — tab filter not applied | ⛔ GAP |
 | **AD_Tab · OrderByClause** | **173** | `GridTab` | **absent** — engine uses ordinal sort | ⛔ GAP |
-| **AD_Tab · ReadOnlyLogic** | **42** | `GridTab` + Evaluator | **absent** | ⛔ GAP |
-| **AD_Tab · DisplayLogic** | **35** | `GridTab` + Evaluator | **absent** | ⛔ GAP |
+| **AD_Tab · ReadOnlyLogic** | **42** | `GridTab` + Evaluator | **`ad_evaluator.js`** — all 42 (4 distinct) parse+evaluate (W-LOGIC-EVAL §LOGIC_COVERAGE). Residual: tab-level GridTab render not wired | 🟡 PARTIAL |
+| **AD_Tab · DisplayLogic** | **35** | `GridTab` + Evaluator | **`ad_evaluator.js`** — all 35 (25 distinct) parse+evaluate (W-LOGIC-EVAL). Residual: tab-level GridTab render not wired | 🟡 PARTIAL |
 | **AD_Tab · IsInsertRecord=N** | **320** | `GridTab.isInsertRecord` | `verbs[]` gates create but **not AD-derived** | 🟡 PARTIAL |
 | **AD_Reference** (header) | **606** (D=52, L=311, T=243) | `DisplayType`/`MLookup` | `f.type` tags drive validateField — **hand-set, not from AD_Reference** | 🟡 PARTIAL |
 | **AD_Ref_List** (list valid.) | **1545** | `MLookup`/`Lookup` | `validateField` 'list' checks `store.__meta[f.ref]` — **~7 lists vs 1545** | 🟡 PARTIAL |
@@ -90,7 +94,7 @@ The gaps rank by **AD surface size × behavioural weight**. Each names the *smal
 (per `docs/TestArchitecture.md` — a log line, not a Playwright test). For the ⛔ rows the `grep`-empty result *is* the
 disproof: the line can never fire today.
 
-1. **Logic-expression evaluator** (the single highest-leverage gap — unblocks 7 rows: Display/ReadOnly/Mandatory Logic on Column+Field+Tab, ~3,000 AD expressions). Witness: `§LOGIC_EVAL attr=readonly expr="@DocStatus@!DR" ctx={...} result=true`. No `Evaluator` equivalent exists → line cannot be produced.
+1. **Logic-expression evaluator** — ✅ **BUILT (W-LOGIC-EVAL).** `build/erp/ad_evaluator.js` (port of iDempiere `SimpleBoolean.g4` + `EvaluationVisitor`) + `crud_overlay.effectiveFlags` wiring. Unblocks 7 rows (now 🟡): `§LOGIC_COVERAGE evaluated=3044 of 3044 boolean-logic rows (100.00%)` + 5 `@SQL=` rows named-deferred (separate `parseSQLLogic` surface); §FALSIFIER readonly flips rw→ro on `@Processed@` N→Y and display flips hide→show on `@DocStatus@!DR` DR→CO; 25 operator-class samples pass. Witness: `scripts/poc_logic_eval.js` → `build/erp/poc_logic_eval.log`. **Residual to ✅:** live DOM render-wiring (show/hide/disable) + tab-level GridTab render.
 2. **Security layer** (Role/AccessLevel/4×_Access/EntityType — ~4,200 AD rows, the compliance story). Witness: `§ACCESS_DENY window=Order role=GardenUser` under a restricted role. No role/access symbol in any `build/erp/*.js`.
 3. **SvrProcess runner** (476 AD_Process / 54k LOC). Witness: `§PROC run classname=<X> rows_affected=<n>`. No runner exists.
 4. **Workflow engine** (58 wf / 262 nodes). Witness: `§WF node=<id> action=C next=<id> activity=created`. 0 grep hits.

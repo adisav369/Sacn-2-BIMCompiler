@@ -37,15 +37,46 @@
     return v;
   }
 
+  // ── W-LOGIC-EVAL wiring (Implementing ERP_COVERAGE_MATRIX.md §DisplayLogic/§ReadOnlyLogic/§MandatoryLogic).
+  // effectiveFlags — a field's LIVE {visible,readonly,required} from its AD logic strings, evaluated against
+  // (record, context) by ad_evaluator.js (window.AdEvaluator / node global). When a field carries no logic
+  // string for a given attr, fall back EXACTLY to the flat boolean (f.readonly / f.required; visible=true).
+  // AD logic keys (lowercase, as in ad_full.db): displaylogic / readonlylogic / mandatorylogic.
+  function adEval() { return (typeof window !== 'undefined' && window.AdEvaluator) ? window.AdEvaluator
+                           : (typeof AdEvaluator !== 'undefined' ? AdEvaluator : null); }
+  function effectiveFlags(f, record, context) {
+    var E = adEval();
+    var dl = f.displaylogic, rl = f.readonlylogic, ml = f.mandatorylogic;
+    var visible = true, readonly = !!f.readonly, required = !!f.required, logicHit = [];
+    if (E) {
+      try {
+        if (dl != null && String(dl).trim() !== '') { visible  = E.evaluate(dl, record || {}, context || {}); logicHit.push('display'); }
+        if (rl != null && String(rl).trim() !== '') { readonly = E.evaluate(rl, record || {}, context || {}); logicHit.push('readonly'); }
+        if (ml != null && String(ml).trim() !== '') { required = E.evaluate(ml, record || {}, context || {}); logicHit.push('mandatory'); }
+      } catch (e) { /* parse error → keep flat fallback for that attr (non-invent: never guess a verdict) */ }
+    }
+    if (logicHit.length && typeof console !== 'undefined') {
+      logicHit.forEach(function (a) {
+        var expr = a === 'display' ? dl : a === 'readonly' ? rl : ml;
+        var res = a === 'display' ? visible : a === 'readonly' ? readonly : required;
+        console.log('§LOGIC_EVAL attr=' + a + ' col=' + (f.col || '?') + ' expr="' + expr + '" ctx=' + JSON.stringify(context || {}) + ' result=' + res);
+      });
+    }
+    return { visible: visible, readonly: readonly, required: required };
+  }
+
   // validateField — the per-field check (AD: IsUpdateable, IsMandatory, AD_Reference, AD_Val_Rule).
   // Returns a reason string on FAIL, else null. `orig` (current value) lets readonly detect a change.
-  function validateField(store, f, val, orig) {
-    if (f.readonly) {
+  // record/context (optional, last) drive the AD logic-expression evaluator; absent → flat-bool behaviour (back-compat).
+  function validateField(store, f, val, orig, record, context) {
+    var eff = effectiveFlags(f, record, context);
+    if (!eff.visible) return null;                        // hidden by DisplayLogic → not validated (GridField parity)
+    if (eff.readonly) {
       if (orig !== undefined && orig !== null && String(val) !== String(orig)) return 'readonly';
       return null;
     }
     var empty = (val == null || String(val).trim() === '');
-    if (f.required && empty) return 'required';
+    if (eff.required && empty) return 'required';
     if (empty) return null;                              // optional + empty = fine
     var V = f.validation || {};
     switch (f.type) {
@@ -72,10 +103,12 @@
   }
 
   // validate — run every field; collect {col, why}. The "checks before saving" layer, BEFORE apply().
-  function validate(store, entry, values, originals) {
+  function validate(store, entry, values, originals, context) {
     var errors = [];
+    // record = the row under edit (values merged over originals) — what the AD logic evaluates against.
+    var record = {}; var k; if (originals) for (k in originals) record[k] = originals[k]; if (values) for (k in values) record[k] = values[k];
     (entry.fields || []).forEach(function (f) {
-      var why = validateField(store, f, values[f.col], originals ? originals[f.col] : undefined);
+      var why = validateField(store, f, values[f.col], originals ? originals[f.col] : undefined, record, context || {});
       if (why) errors.push({ col: f.col, why: why });
     });
     return { ok: errors.length === 0, errors: errors };
@@ -180,7 +213,7 @@
 
   var CORE = {
     entriesOf: entriesOf, verbEnabled: verbEnabled, defaultsFor: defaultsFor,
-    validateField: validateField, validate: validate, cleanVals: cleanVals, buildOp: buildOp,
+    validateField: validateField, validate: validate, effectiveFlags: effectiveFlags, cleanVals: cleanVals, buildOp: buildOp,
     docActionOutcome: docActionOutcome, kernelParamsFor: kernelParamsFor, readTip: readTip,
     buildDocActionGroup: buildDocActionGroup
   };
