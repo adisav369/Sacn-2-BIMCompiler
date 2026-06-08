@@ -1,0 +1,5220 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../FeatureComparison/">
+      
+      
+        <link rel="next" href="../AboutMore/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Migrate & Compare (ERP) - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#these-have-been-around-for-some-time-but-never-for-erp-until-now" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Migrate & Compare (ERP)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../4D5DAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  BIM5D
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../LAST_MILE_PROBLEM/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Last Mile
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../RED_PILL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Enterprise/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SpatialERP_OOTB/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Spatial ERP
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FeatureComparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Feature Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrate & Compare (ERP)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrate & Compare (ERP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#these-have-been-around-for-some-time-but-never-for-erp-until-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        These have been around for some time, but never for ERP, until now.
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#thesis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thesis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-kill-points-what-the-architecture-actually-deletes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The kill points — what the architecture actually deletes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-differs-the-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it differs — the architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How it differs — the architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#legacy-erp-server-of-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legacy ERP — server of record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ours-the-browser-is-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ours — the browser is the server
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#no-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        But where's the server? — what replaced each job
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vitals-by-theme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vitals — by theme
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Vitals — by theme">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#speed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A · Speed &amp; latency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-footprint-bloat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B · Footprint &amp; bloat
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-migration-ownership" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C · Migration &amp; ownership
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#method-honesty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method &amp; honesty
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#realistic-conversion-estimate-loc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Realistic conversion estimate (LOC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gaps-vitals-lacking-a-measured-source-do-not-claim-a-number" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GAPS (vitals lacking a measured source — do not claim a number)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#further-reading-go-deeper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Further reading — go deeper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#footnote-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Footnote sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AboutMore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About BIM OOTB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ShipYard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond Buildings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM5D
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    BIM5D
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4D5DAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4D/5D Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House (125K)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Last Mile
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9 Gates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIMEyes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (77 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RED_PILL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Red Pill — Design From Grammar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOM_AS_CONTEXT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM-as-Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOM_ENGINE_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Engine Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Modeller_OOTB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browser as Modeller
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_Browser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB (Browser)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CLASH_DETECTION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clash Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SQLite3D_Schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SQLite3D Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PLUGIN_SDK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MOBILE_DEPLOY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mobile & Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output DB (G4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6D/7D/Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../STANDARDS_COMPLIANCE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Standards Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REPORTING_ENGINE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporting Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PDF_TERRAIN/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDF Terrain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_2D_Guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_LAYOUT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FORGE_SUITE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forge Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial ERP
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spatial ERP
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SpatialERP_OOTB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Every Record Has a Place
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SpatialERP_POC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction ERP POC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD-in-Browser (iDempiere)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IDEMPIERE_2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    iDempiere 2.0 — the Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PLUGIN_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Architecture (metadata-first)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ENGINE_CONTRACT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engine ↔ UI Contract (the seam)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HolyGrail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Holy Grail (editable rules, live)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ReadMeShowMe/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReadMe / ShowMe Help (POC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HelpO2C/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    O2C Help Steps (ReadMe)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_Roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Forward Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VibeProgramming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vibe Programming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OpLogERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Op-Log ERP Engine (Abstract)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EnablingTechTimeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enabling-Tech Timeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LocalFirstPriorArt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local-First Prior Art
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DistributedERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf (server→serverless witness)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HospitalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hospital (HA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RevitAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Revit MEP (RM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House (125K)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StressTest_1M/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1M Stress Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_HTML_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Plans Viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RouteTemplate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Find and Navigate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RTreeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    City-Scale RTree
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Localization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#these-have-been-around-for-some-time-but-never-for-erp-until-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        These have been around for some time, but never for ERP, until now.
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#thesis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thesis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-kill-points-what-the-architecture-actually-deletes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The kill points — what the architecture actually deletes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-differs-the-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it differs — the architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How it differs — the architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#legacy-erp-server-of-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legacy ERP — server of record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ours-the-browser-is-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ours — the browser is the server
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#no-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        But where's the server? — what replaced each job
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vitals-by-theme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vitals — by theme
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Vitals — by theme">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#speed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A · Speed &amp; latency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-footprint-bloat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B · Footprint &amp; bloat
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-migration-ownership" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C · Migration &amp; ownership
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#method-honesty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method &amp; honesty
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#realistic-conversion-estimate-loc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Realistic conversion estimate (LOC)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gaps-vitals-lacking-a-measured-source-do-not-claim-a-number" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GAPS (vitals lacking a measured source — do not claim a number)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#further-reading-go-deeper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Further reading — go deeper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#footnote-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Footnote sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Migrate & Compare (ERP)</h1>
+
+<style>
+/* drop the MkDocs auto-injected nav-title H1 — the banner below IS the title */
+.md-typeset h1{display:none}
+/* side-by-side architecture comparison */
+.mc-cmp{display:flex;gap:18px;flex-wrap:wrap;margin:20px 0 8px;align-items:stretch}
+.mc-cmp .col{flex:1 1 320px;border-radius:10px;padding:2px 16px 14px}
+.mc-cmp .col h4{margin:14px 0 2px;font-size:12px;letter-spacing:.8px;text-transform:uppercase;border:0}
+.mc-cmp .leg{background:rgba(239,83,80,.07);border:1px solid rgba(239,83,80,.40)}
+.mc-cmp .leg h4{color:#ef5350}
+.mc-cmp .our{background:rgba(124,179,66,.08);border:1px solid rgba(124,179,66,.45)}
+.mc-cmp .our h4{color:#7cb342}
+.mc-cmp .mermaid{text-align:center}
+</style>
+
+<div style="max-width:760px;margin:24px auto 8px;padding:30px 40px;background:#263238;border-left:4px solid #ff9800;text-align:center;border-radius:4px" markdown="0">
+<span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The ERP Server Is Obsolete</span>
+<br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">built from ideas already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
+</div>
+
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0" markdown="0">
+  <div style="flex:1 1 150px;background:rgba(124,179,66,.12);border:1px solid rgba(124,179,66,.45);border-radius:12px;padding:10px 8px;text-align:center">
+    <img src="../img/down.png" alt="zero downtime" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
+    <div style="font-size:19px;font-weight:800;line-height:1.1"><a href="#no-server" style="color:#7cb342;text-decoration:none;border-bottom:1px dotted #7cb342">0</a></div>
+    <div style="font-size:12px;margin-top:6px;opacity:.85">network round-trips on the read / fold path</div>
+  </div>
+  <div style="flex:1 1 150px;background:rgba(255,112,67,.12);border:1px solid rgba(255,112,67,.45);border-radius:12px;padding:10px 8px;text-align:center">
+    <img src="../img/StopWatch.png" alt="speed" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
+    <div style="font-size:19px;font-weight:800;line-height:1.1"><a href="#speed" style="color:#ff7043;text-decoration:none;border-bottom:1px dotted #ff7043">~53×</a></div>
+    <div style="font-size:12px;margin-top:6px;opacity:.85">faster bootstrap from a signed checkpoint vs genesis replay</div>
+  </div>
+  <div style="flex:1 1 150px;background:rgba(66,165,245,.12);border:1px solid rgba(66,165,245,.45);border-radius:12px;padding:10px 8px;text-align:center">
+    <img src="../img/StackPapers.png" alt="code bloat" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
+    <div style="font-size:19px;font-weight:800;line-height:1.1"><a href="#realistic-conversion-estimate-loc" style="color:#42a5f5;text-decoration:none;border-bottom:1px dotted #42a5f5">≈89×</a></div>
+    <div style="font-size:12px;margin-top:6px;opacity:.85">fewer runtime LOC — 16,068 vs 1,427,147 <i>(flows built so far)</i></div>
+  </div>
+  <div style="flex:1 1 150px;background:rgba(171,71,188,.12);border:1px solid rgba(171,71,188,.45);border-radius:12px;padding:10px 8px;text-align:center">
+    <img src="../img/server.png" alt="database backup" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
+    <div style="font-size:16px;font-weight:800;line-height:1.15"><a href="../HolyGrail/#backup-recipe" style="color:#ab47bc;text-decoration:none;border-bottom:1px dotted #ab47bc">1 TB→500 MB</a></div>
+    <div style="font-size:12px;margin-top:6px;opacity:.85">backup = the op-log (the recipe), not the materialised DB*</div>
+  </div>
+</div>
+
+<p><small>*the <strong>1 TB → 500 MB</strong> backup figure is a derivation, not a measurement <sup id="fnref:backup"><a class="footnote-ref" href="#fn:backup">16</a></sup></small></p>
+<h2 id="these-have-been-around-for-some-time-but-never-for-erp-until-now">These have been around for some time, but never for ERP, until now.<a class="headerlink" href="#these-have-been-around-for-some-time-but-never-for-erp-until-now" title="Permanent link">&para;</a></h2>
+<p><em>Every pillar below is a proven, decades-old idea from a named creator. Thus we can now put the ERP server in the browser!</em></p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Created By</th>
+<th>What they proved</th>
+<th>Where we use it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Double-entry ledger</strong> (codified 1494)</td>
+<td><strong>Luca Pacioli</strong></td>
+<td>the books are a <em>fold</em> of postings; Σdebit ≡ Σcredit</td>
+<td>our journal is a fold — ΣDr ≡ ΣCr (<code>poc_postings.js</code>)</td>
+</tr>
+<tr>
+<td><strong>The log is the truth</strong> (git, 2005)</td>
+<td><strong>Linus Torvalds</strong></td>
+<td>hash-chained, signable history no central machine owns; host disposable</td>
+<td>the signed op-log + <code>verifyChain()</code>; "the host is a Git remote"</td>
+</tr>
+<tr>
+<td><strong>Event sourcing / replay</strong> (2005)</td>
+<td><strong>Martin Fowler · Greg Young</strong></td>
+<td>state = deterministic <em>replay</em> of an append-only log</td>
+<td>the kernel folds the log (<a href="../OpLogERP/">OpLogERP.md</a>)</td>
+</tr>
+<tr>
+<td><strong>The active data dictionary</strong></td>
+<td><strong>Jörg Janke</strong> — Compiere → iDempiere</td>
+<td>an app can describe <em>itself</em> as data — tables, windows, rules</td>
+<td>the 925-table AD rides as <strong>data</strong>, folded through 5 relations + verbs</td>
+</tr>
+<tr>
+<td><strong>Hash trees + public-key signatures</strong></td>
+<td><strong>Merkle · Diffie–Hellman · RSA</strong></td>
+<td>a fact can carry its own integrity <em>and</em> authenticity anywhere</td>
+<td>ECDSA-P256 signed ops; tamper caught on replay (<code>poc_sign.js</code>, <code>poc_chain.js</code>)</td>
+</tr>
+<tr>
+<td><strong>SQLite, embeddable</strong></td>
+<td><strong>D. Richard Hipp</strong></td>
+<td>a full SQL engine with <em>no server</em> — and now WASM</td>
+<td>folds the log locally, inside the browser tab</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="thesis">Thesis<a class="headerlink" href="#thesis" title="Permanent link">&para;</a></h2>
+<p>A classic ERP is a <strong>server of record</strong>: every read, write and posting is a round-trip to a machine that <em>owns the truth</em>. We keep the accounting and the document flow but <strong>delete that server</strong>. The truth becomes a <em>signed, hash-chained op-log</em>; the live numbers are a deterministic <strong>fold</strong> of it, replayed by a SQLite-WASM kernel <strong>in the browser</strong>. The host turns disposable (a Git remote); the user owns the log; period-end <strong>compaction</strong> is a <em>signed checkpoint</em> carrying balances forward — not a batch job with a down-window (the close <em>postings</em> are themselves folds, still being built).</p>
+<p>A claim about <strong>substrate and delivery</strong>, not features — the legacy stacks have vastly more. What we show: the <em>architecture</em> folds the same transactions with <strong>zero network on the read/fold path</strong> — proven by folding a <strong>live Odoo</strong>, <strong>iDempiere's own flows</strong> (it's the AD we render), and a <strong>SAP Business One</strong> flow (mock export) into the same six verbs. S/4HANA is still pending a real oracle.</p>
+<hr />
+<h2 id="the-kill-points-what-the-architecture-actually-deletes">The kill points — what the architecture actually deletes<a class="headerlink" href="#the-kill-points-what-the-architecture-actually-deletes" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>The shocker, in one line:</strong> there is <strong>no server of record.</strong> The browser holds the kernel; a signed,
+hash-chained log holds the truth; the host (if any) is a disposable relay. Every row below follows from that.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>What changes</th>
+<th>Legacy ERP</th>
+<th>Our WASM event-source</th>
+<th>The cut</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The server of record</strong></td>
+<td>a machine that <em>owns the truth</em> — JVM + Postgres + 3.7 GB build <sup id="fnref:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup></td>
+<td><strong>✗ none</strong> — the browser runs the kernel; the signed log is the truth <sup id="fnref:own"><a class="footnote-ref" href="#fn:own">12</a></sup></td>
+<td><strong>the whole tier is deleted</strong></td>
+</tr>
+<tr>
+<td><strong>Read / fold round-trips</strong></td>
+<td>1 network hop per interaction <sup id="fnref:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><strong>0</strong> — the kernel answers locally <sup id="fnref:noround"><a class="footnote-ref" href="#fn:noround">3</a></sup></td>
+<td>network off the hot path</td>
+</tr>
+<tr>
+<td><strong>Ownership / trust</strong></td>
+<td>the server DB owns your record <sup id="fnref2:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><strong>you own a signed op-log</strong>; the host is disposable <sup id="fnref2:own"><a class="footnote-ref" href="#fn:own">12</a></sup></td>
+<td>trust model inverted</td>
+</tr>
+<tr>
+<td><strong>Document schema</strong></td>
+<td>≈925 AD tables, each a hand-written model class <sup id="fnref:bloat2"><a class="footnote-ref" href="#fn:bloat2">8</a></sup></td>
+<td><strong>5 core relations</strong> (containers · items · documents · document_lines · journal) + verbs — the rest of the AD rides as <strong>data</strong> <sup id="fnref:reduce"><a class="footnote-ref" href="#fn:reduce">15</a></sup></td>
+<td>hardcoded schema, <em>not</em> ERP scope (the AD is unchanged — it's the seed)</td>
+</tr>
+<tr>
+<td><strong>Runtime code</strong></td>
+<td>1,427,147 Java LOC / 4,465 files <sup id="fnref2:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup></td>
+<td><strong>16,068 JS LOC / 39 files</strong> (flows folded so far) <sup id="fnref3:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup></td>
+<td>≈89× — <em>built-so-far; full-port forecast <a href="#realistic-conversion-estimate-loc">below</a></em></td>
+</tr>
+<tr>
+<td><strong>Bootstrap</strong> (open the books)</td>
+<td>re-query the server <sup id="fnref3:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><strong>signed checkpoint</strong> — 0.90 ms vs 47.70 ms genesis <sup id="fnref:drive"><a class="footnote-ref" href="#fn:drive">2</a></sup></td>
+<td>≈53×</td>
+</tr>
+<tr>
+<td><strong>Seed DB</strong></td>
+<td>45.2 MB dump <sup id="fnref4:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup></td>
+<td><strong>12.7 MB</strong> self-describing AD <sup id="fnref5:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup></td>
+<td>≈3.5×</td>
+</tr>
+<tr>
+<td><strong>Live DB → SQLite</strong></td>
+<td>143 MB Postgres <sup id="fnref2:bloat2"><a class="footnote-ref" href="#fn:bloat2">8</a></sup></td>
+<td><strong>43 MB</strong> SQLite (gzip 11.7 MB) <sup id="fnref3:bloat2"><a class="footnote-ref" href="#fn:bloat2">8</a></sup></td>
+<td>≈3.3×</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-it-differs-the-architecture">How it differs — the architecture<a class="headerlink" href="#how-it-differs-the-architecture" title="Permanent link">&para;</a></h2>
+<div class="mc-cmp">
+<div class="col leg">
+<h4 id="legacy-erp-server-of-record">Legacy ERP — server of record<a class="headerlink" href="#legacy-erp-server-of-record" title="Permanent link">&para;</a></h4>
+<pre class="mermaid"><code>flowchart TB
+  U1([user gesture]) --&gt;|HTTP| AS[app server]
+  AS --&gt;|SQL| DB[(database&lt;br/&gt;owns the truth)]
+  DB --&gt; P[posting / validation]
+  P -.-&gt;|rendered row| U1</code></pre>
+</div>
+<div class="col our">
+<h4 id="ours-the-browser-is-the-server">Ours — the browser is the server<a class="headerlink" href="#ours-the-browser-is-the-server" title="Permanent link">&para;</a></h4>
+<pre class="mermaid"><code>flowchart TB
+  U2([user gesture]) --&gt; OP[op]
+  OP --&gt; K[local WASM kernel&lt;br/&gt;commit · hash-chain · sign]
+  K --&gt; F[replay / fold&lt;br/&gt;SQLite-WASM, in-memory]
+  F --&gt; PT[paint · 0 network]
+  K -.-&gt;|later, async| H[(dumb facilitator —&lt;br/&gt;disposable host)]</code></pre>
+</div>
+</div>
+<p><strong>Legacy:</strong> every read &amp; write is a network round-trip; the DB owns the truth; period close is a server batch
+job with a down-window. <strong>Ours:</strong> state = a deterministic fold of the signed op-log — <strong>0 network on the
+read/fold path</strong>; the host is disposable (Git-like), the log is the truth; period close is a <em>signed checkpoint</em>.
+Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverless table) + §10 (lines 467–468).</p>
+<hr />
+<h2 id="no-server">But where's the server? — what replaced each job<a class="headerlink" href="#no-server" title="Permanent link">&para;</a></h2>
+<p><em>If you deleted the server, who does its work?</em> "Serverless" doesn't mean no machine ever talks to another — it means <strong>no server of record, no machine that owns the truth.</strong> Every job the server did still happens; each moved onto the <strong>signed log</strong>, the <strong>kernel on each client</strong>, the <strong>user's own channel</strong>, or a <strong>dumb facilitator that owns nothing</strong>.</p>
+<pre class="mermaid"><code>flowchart LR
+  S["&lt;b&gt;✗ SERVER OF RECORD&lt;br/&gt;deleted&lt;/b&gt;"]:::dead
+  S --&gt; L["the signed op-log&lt;br/&gt;holds truth · merges · reconciles"]
+  S --&gt; K["the kernel on each client&lt;br/&gt;runs every verb · validates · mints IDs"]
+  S --&gt; X["signatures + hash-chain&lt;br/&gt;authenticate · catch tampering"]
+  S --&gt; C["user's channel + dumb facilitator&lt;br/&gt;durability · sequencing · relay"]
+  classDef dead fill:#fdf3d8,stroke:#d32f2f,color:#7a1f1f,font-weight:bold,stroke-width:3px,stroke-dasharray:6 4;</code></pre>
+<p><em>The server's jobs don't vanish — they redistribute to four things that own nothing.</em> Each line below is proven by a POC in <code>scripts/</code> <sup id="fnref:poc"><a class="footnote-ref" href="#fn:poc">14</a></sup>:</p>
+<table>
+<thead>
+<tr>
+<th>What a server used to do</th>
+<th>Now done — without a server of record</th>
+<th>Proven in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hold the authoritative state</td>
+<td>the <strong>signed op-log</strong>; state = its deterministic <em>fold</em>, recomputable by anyone</td>
+<td><code>poc_distributed.js</code></td>
+</tr>
+<tr>
+<td>Mint internal record IDs</td>
+<td><strong>edge-minted UUID</strong> — unique, no coordination (legal gapless <code>DocumentNo</code> deferred to a facilitator-assigned sequence)</td>
+<td><code>poc_distributed.js</code></td>
+</tr>
+<tr>
+<td>Run / validate business logic</td>
+<td>the <strong>deterministic kernel on every client</strong> — same verbs both sides, no server re-run</td>
+<td><code>poc_kernel.js</code></td>
+</tr>
+<tr>
+<td>Merge concurrent edits</td>
+<td><strong>union the signed logs → total-order → replay</strong> → identical state everywhere</td>
+<td><code>poc_distributed.js</code></td>
+</tr>
+<tr>
+<td>Prevent double-write</td>
+<td><strong>owner-gate</strong> + <strong>compare-and-set</strong> on the one shared op-class, enforced on replay</td>
+<td><code>poc_distributed.js</code></td>
+</tr>
+<tr>
+<td>Detect tampering</td>
+<td>the log <strong>hash-chains itself</strong>; <code>verifyChain()</code> finds the altered op</td>
+<td><code>poc_chain.js</code></td>
+</tr>
+<tr>
+<td>Authenticate / authorise</td>
+<td><strong>edge ECDSA-P256 signature</strong> — wrong key fails anywhere; a holder can present, never forge</td>
+<td><code>poc_sign.js</code></td>
+</tr>
+<tr>
+<td>Durably store / back up</td>
+<td>the <strong>user's own channel</strong> (email/social) + export; the local copy is disposable</td>
+<td><code>poc_persist.js</code></td>
+</tr>
+<tr>
+<td>Sequence multi-party order</td>
+<td>a <strong>dumb facilitator</strong> — accept · order · persist · relay — itself rebuildable from the signed logs</td>
+<td><code>poc_remote_pos.js</code></td>
+</tr>
+<tr>
+<td>Reconcile discrepancies</td>
+<td>the <strong>double-entry ledger</strong> (since 1494) — the balance is a fold here too</td>
+<td><code>poc_postings.js</code></td>
+</tr>
+<tr>
+<td>Be always-on</td>
+<td><strong>nothing</strong> — work offline; sync at business-time</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The analogy: git.</strong> No central machine owns your code history — every clone has it all, verifies it, rebuilds from it; GitHub is a <em>convenience</em>, not the truth. <strong>We do to ERP transactions what git did to source code:</strong> the log is the truth, the host disposable, history chained and signed. The one thing git lacks, we add — <em>invariant enforcement</em> (no double-spend), via the owner-gate + a single compare-and-set op-class. Full doctrine + the hard multi-writer cases (shared stock, credit limits, client version skew): <a href="../DistributedERP/">DistributedERP.md</a> §0, §9.</p>
+<hr />
+<h2 id="vitals-by-theme">Vitals — by theme<a class="headerlink" href="#vitals-by-theme" title="Permanent link">&para;</a></h2>
+<p>Three tables, not one wall. Columns are <strong>architecture</strong>, not a feature scorecard; numbers measured on <em>this</em> box / browser unless marked. <strong>"n/a — architectural"</strong> = the legacy stack has no comparable number because the property is structural (it always needs a server).</p>
+<h3 id="speed">A · Speed &amp; latency<a class="headerlink" href="#speed" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Vital</th>
+<th>iDempiere</th>
+<th>Odoo</th>
+<th>SAP</th>
+<th>Our WASM event-source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Period-end carry-forward</strong></td>
+<td>server batch job + down-window (per-row <code>saveEx</code> ≈ ~1M round-trips on a 40-yr depreciation run) [^dep]</td>
+<td>server batch job <sup id="fnref4:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>server batch job <sup id="fnref5:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><strong>signed checkpoint = balance b/f</strong> (the compaction step — accrual/FX/depreciation postings are themselves folds), no down-window; 40k-op close-fold ≈ <strong>2.68 s</strong>, archived 40000→live 1, reconcile <strong>maxDiff=0c</strong> <sup id="fnref:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup><sup id="fnref2:drive"><a class="footnote-ref" href="#fn:drive">2</a></sup></td>
+</tr>
+<tr>
+<td><strong>Server round-trip</strong> (read/fold)</td>
+<td>round-trip per interaction <sup id="fnref6:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>round-trip per interaction <sup id="fnref7:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>round-trip per interaction <sup id="fnref8:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><strong>0 — the kernel answers locally</strong> <sup id="fnref2:noround"><a class="footnote-ref" href="#fn:noround">3</a></sup></td>
+</tr>
+<tr>
+<td><strong>Bootstrap</strong> (open the books)</td>
+<td>re-query the server <sup id="fnref9:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>re-query the server <sup id="fnref10:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>re-query the server <sup id="fnref11:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><strong>~53× faster from checkpoint</strong> — 0.90 ms vs 47.70 ms genesis replay, same result <sup id="fnref3:drive"><a class="footnote-ref" href="#fn:drive">2</a></sup></td>
+</tr>
+<tr>
+<td><strong>Commit throughput</strong> (5000 ops)</td>
+<td>n/a — architectural <sup id="fnref12:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>n/a <sup id="fnref13:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>n/a <sup id="fnref14:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>batch <code>commitGroup</code> <strong>~22,492 ops/s = 2.4× naive</strong> <sup id="fnref:sync"><a class="footnote-ref" href="#fn:sync">5</a></sup></td>
+</tr>
+<tr>
+<td><strong>Fold/append ceiling</strong></td>
+<td>n/a — architectural <sup id="fnref15:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>n/a <sup id="fnref16:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>n/a <sup id="fnref17:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><strong>linear to 20,000,000 ops</strong> (~437 B/op; fold ~40M ops/s hot) <sup id="fnref:ceiling"><a class="footnote-ref" href="#fn:ceiling">6</a></sup></td>
+</tr>
+<tr>
+<td><strong>Storage primitive</strong> (1000 ops, 1 commit)</td>
+<td>Postgres WAL+fsync <strong>5.24 ms</strong> (0.0052 ms/op) <sup id="fnref:bench"><a class="footnote-ref" href="#fn:bench">4</a></sup></td>
+<td>(same engine) <sup id="fnref18:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>n/a <sup id="fnref19:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>sql.js +sha256 chain <strong>208.45 ms</strong> — slower per-op, buys <strong>no server</strong>; Postgres durability/concurrency DEFERRED to the install <sup id="fnref2:bench"><a class="footnote-ref" href="#fn:bench">4</a></sup></td>
+</tr>
+</tbody>
+</table>
+<h3 id="b-footprint-bloat">B · Footprint &amp; bloat<a class="headerlink" href="#b-footprint-bloat" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Vital</th>
+<th>iDempiere</th>
+<th>Odoo</th>
+<th>SAP</th>
+<th>Our WASM event-source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>DB seed</strong></td>
+<td><code>Adempiere_pg.dmp</code> <strong>45.2 MB</strong> <sup id="fnref6:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup></td>
+<td>n/a — diff schema <sup id="fnref20:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>n/a <sup id="fnref21:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><code>erp/ad_seed.db</code> <strong>12.7 MB</strong> (≈<strong>3.5× smaller</strong>); the 12.7 MB IS the self-describing AD <sup id="fnref7:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup></td>
+</tr>
+<tr>
+<td><strong>Runtime LOC</strong></td>
+<td><strong>1,427,147 Java LOC</strong> / 4,465 files + JVM + Postgres + 3.7 GB build <sup id="fnref8:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup></td>
+<td>n/a — diff codebase <sup id="fnref22:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>n/a <sup id="fnref23:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><strong>16,068 JS LOC</strong> / 39 files / 884 KB, static + SQLite-WASM, offline (≈<strong>89× fewer</strong>, zero server/JVM/DB) <sup id="fnref9:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup></td>
+</tr>
+<tr>
+<td><strong>Live DB → SQLite</strong></td>
+<td>Postgres <strong>143 MB</strong> on-disk (GardenWorld) <sup id="fnref4:bloat2"><a class="footnote-ref" href="#fn:bloat2">8</a></sup></td>
+<td>n/a <sup id="fnref24:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>n/a <sup id="fnref25:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><strong>43 MB SQLite</strong> (925 tables, 187,133 rows ≈ <strong>3.3×</strong>); gzip 11.7 MB (3.7×) <sup id="fnref5:bloat2"><a class="footnote-ref" href="#fn:bloat2">8</a></sup></td>
+</tr>
+</tbody>
+</table>
+<h3 id="c-migration-ownership">C · Migration &amp; ownership<a class="headerlink" href="#c-migration-ownership" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Vital</th>
+<th>iDempiere</th>
+<th>Odoo</th>
+<th>SAP</th>
+<th>Our WASM event-source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Migration fold</strong> (does the legacy flow fold into our verbs?)</td>
+<td><strong>native</strong> — it renders this AD; handlers diffed cell-by-cell vs an iDempiere oracle (<code>diff_oracle.log</code>; one GL cell needs live docker)</td>
+<td><strong>PROVEN vs LIVE Odoo 17</strong> — SO S00023, 5/5 hops, newVerbs=[], GL ΣDr==ΣCr 5002.50 <sup id="fnref:odoo"><a class="footnote-ref" href="#fn:odoo">9</a></sup></td>
+<td><strong>B1 PROVEN vs a MOCK export</strong> (5/5, journal 770.00); <strong>S/4HANA NOT-RUN — gated on a real oracle</strong> <sup id="fnref:b1"><a class="footnote-ref" href="#fn:b1">10</a></sup><sup id="fnref:sap"><a class="footnote-ref" href="#fn:sap">11</a></sup></td>
+<td>every hop maps to <code>CREATE_DOCUMENT / CREATE_LINE / SET_STATUS / POST / ALLOCATE</code> <sup id="fnref2:odoo"><a class="footnote-ref" href="#fn:odoo">9</a></sup><sup id="fnref2:b1"><a class="footnote-ref" href="#fn:b1">10</a></sup></td>
+</tr>
+<tr>
+<td><strong>Data ownership / durability</strong></td>
+<td>server DB owns the record <sup id="fnref26:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>server DB owns the record <sup id="fnref27:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td>server DB owns the record <sup id="fnref28:arch"><a class="footnote-ref" href="#fn:arch">13</a></sup></td>
+<td><strong>user-owned signed op-log</strong>; host disposable (Git analogy); tamper caught by <code>verifyChain()</code>, forgery by ECDSA-P256 sig <sup id="fnref3:own"><a class="footnote-ref" href="#fn:own">12</a></sup><sup id="fnref2:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="method-honesty">Method &amp; honesty<a class="headerlink" href="#method-honesty" title="Permanent link">&para;</a></h2>
+<p><strong>What is measured (real, on this box / browser):</strong>
+- Period-close fold, balance-b/f, reconcile-to-0c, tamper/forgery rejection, determinism — on the
+  <strong>real kernel</strong> (<code>scripts/test_kernel_period_close.js</code>) and against <strong>real double-entry POST ops</strong>
+  (<code>scripts/test_integ_postings_reconcile.js</code>).
+- Browser-measured 40k-op close-fold timing, bootstrap 53× speedup, reconcile maxDiff=0
+  (<code>build/erp/period_close_drive.log</code>, an in-browser drive).
+- Storage primitive sql.js-vs-Postgres (<code>build/erp/bench_oplog_pg.log</code>), batch throughput
+  (<code>build/erp/sync_poc_smoke.log</code>), volume ceiling to 20M ops (<code>build/erp/poc_volume_ceiling.log</code>).
+- Bloat figures <code>du</code>/<code>wc</code>/sqlite-measured 2026-06-06 (<code>internal/BLOAT_MEASUREMENT.md</code>, summarised in
+  the bloat memory).
+- The Odoo fold is against a <strong>running Odoo 17</strong> instance (<code>build/erp/odoo_fold_live.log</code>,
+  <code>§ODOO-FOLD-LIVE PASS</code>).</p>
+<p><strong>What is architectural (a property, not a number):</strong>
+- "0 round-trip" — <em>structural</em> (no server of record on the read/fold path), not a benchmark. Honest counter: server-removal only wins over a network; on-box, durable Postgres is <em>faster</em> per-op (it buys durability + concurrency we defer).
+- Most ERP cells are <em>n/a — architectural</em>: the legacy stack exposes no comparable single number (throughput ceiling, batch-vs-naive) — server-bound by design.</p>
+<p><strong>NOT feature parity — plainly.</strong> iDempiere, Odoo and SAP have <em>vastly</em> more features, localisations and integrations. The 16K LOC renders the dictionary and folds the paths built so far (order-to-cash, journal/posting, signed rule-edit, period-close) — it does <strong>not</strong> re-implement the full transactional server. The win is <strong>delivery/definition</strong>: the AD-interpreter is lean because the AD is self-describing, and the whole server/build stack is gone. Each transactional verb still has to be folded deterministically. See <code>feedback_erp_perf_claims</code>.</p>
+<hr />
+<h2 id="realistic-conversion-estimate-loc">Realistic conversion estimate (LOC)<a class="headerlink" href="#realistic-conversion-estimate-loc" title="Permanent link">&para;</a></h2>
+<p>89× is honest for what's folded today — but it measures the <em>thinnest, highest-compression</em> slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does <strong>not</strong> extrapolate to a full port.</p>
+<p>Splitting all 1,427,147 Java LOC by fate <sup id="fnref:split"><a class="footnote-ref" href="#fn:split">17</a></sup>:</p>
+<table>
+<thead>
+<tr>
+<th>Fate</th>
+<th>~LOC</th>
+<th>Share</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Deleted outright</strong></td>
+<td>~490K</td>
+<td>34%</td>
+<td>ZK web UI (190K), tests (78K), server-side HTML lib (44K), print/report + Jasper (38K), import/migration (25K), webservices, app-server daemon, installer, JDBC drivers, OSGi/HTTP plumbing</td>
+</tr>
+<tr>
+<td><strong>Generic-replaced</strong> by the interpreter</td>
+<td>~735K</td>
+<td>52%</td>
+<td>generated models <code>X_*</code>/<code>I_*</code> (573K) + PO / dictionary / runtime core (<code>Env</code>, <code>DB</code>, <code>GridField</code>, util… ~162K) — a new table is <em>data</em>, not code</td>
+</tr>
+<tr>
+<td><strong>Irreducible — must be folded</strong></td>
+<td>~200K</td>
+<td>14%</td>
+<td><code>M*</code> model logic, <code>Doc_*</code> posting, the acct / costing / tax / payment / allocation / matching engines, callouts, validators, document <code>process/</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Read it:</strong> ~86% is UI, boilerplate, or server plumbing the browser deletes outright. Even the irreducible 14% is ceremony-heavy — in the <code>M*</code> models a third is blank/comment/signatures and most of the rest is generic accessor/lifecycle code the dictionary already handles; the <em>behavioural</em> logic (state transitions, posting math, tax rounding) is a minority.</p>
+<p>Folding that behavioural core into declarative verbs compresses ~5–8× (no Java/OSGi ceremony, no per-field getters) — though <strong>costing and MRP fold least cleanly</strong> (stateful cost rollups, landed cost), pulling toward the conservative end:</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>irreducible folded</th>
+<th>÷ ratio</th>
+<th>full JS (+ engine 16,068)</th>
+<th>overall</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Optimistic</td>
+<td>150K</td>
+<td>8×</td>
+<td><strong>~35K</strong></td>
+<td>~41×</td>
+</tr>
+<tr>
+<td>Mid</td>
+<td>175K</td>
+<td>6.5×</td>
+<td><strong>~43K</strong></td>
+<td>~33×</td>
+</tr>
+<tr>
+<td>Conservative</td>
+<td>200K</td>
+<td>5×</td>
+<td><strong>~56K</strong></td>
+<td>~25×</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Realistic full parity ≈ 35–56K JS LOC (~43K mid) ≈ ~30× overall</strong> (range 25–41×) — vs 89× for the flows folded so far. The fold ratio is the one estimated input (GAPS #6); every LOC count is measured.</p>
+<details class="note">
+<summary>Full breakdown by iDempiere module (org.adempiere.base, org.adempiere.ui.zk, …) — expand</summary>
+<p>Measured 2026-06-08 <sup id="fnref2:split"><a class="footnote-ref" href="#fn:split">17</a></sup>. Fate = <strong>DELETED</strong> (no equivalent in a browser substrate) · <strong>GENERIC</strong> (the interpreter renders it from the dictionary) · <strong>FOLD</strong> (re-expressed as verbs / handlers). Buckets are disjoint and sum to 1,427,147.</p>
+<table>
+<thead>
+<tr>
+<th>iDempiere module / package</th>
+<th style="text-align: right;">LOC</th>
+<th>Fate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>org.adempiere.base</strong></td>
+<td style="text-align: right;"><strong>959,659</strong></td>
+<td><em>mixed — split below</em></td>
+</tr>
+<tr>
+<td>&nbsp;&nbsp;<code>X_*</code> generated models</td>
+<td style="text-align: right;">345,490</td>
+<td>GENERIC</td>
+</tr>
+<tr>
+<td>&nbsp;&nbsp;<code>I_*</code> interfaces</td>
+<td style="text-align: right;">227,100</td>
+<td>GENERIC</td>
+</tr>
+<tr>
+<td>&nbsp;&nbsp;<code>M*</code> business models</td>
+<td style="text-align: right;">198,679</td>
+<td>FOLD (behavioural subset)</td>
+</tr>
+<tr>
+<td>&nbsp;&nbsp;<code>Doc_*</code> posting</td>
+<td style="text-align: right;">12,789</td>
+<td>FOLD</td>
+</tr>
+<tr>
+<td>&nbsp;&nbsp;acct · wf · process engines</td>
+<td style="text-align: right;">28,686</td>
+<td>FOLD</td>
+</tr>
+<tr>
+<td>&nbsp;&nbsp;PO · GridField · Env · DB · util · OSGi core</td>
+<td style="text-align: right;">116,302</td>
+<td>GENERIC</td>
+</tr>
+<tr>
+<td>&nbsp;&nbsp;print · report · impexp · db-conn</td>
+<td style="text-align: right;">30,613</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.adempiere.ui.zk</strong> — ZK web client</td>
+<td style="text-align: right;">189,786</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.idempiere.test</strong></td>
+<td style="text-align: right;">78,389</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.apache.ecs</strong> — server-side HTML lib</td>
+<td style="text-align: right;">43,816</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.adempiere.ui</strong> — shared UI base</td>
+<td style="text-align: right;">18,349</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.adempiere.pipo</strong> + .handlers — 2-way migration</td>
+<td style="text-align: right;">16,713</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.idempiere.webservices</strong> — SOAP/REST</td>
+<td style="text-align: right;">11,572</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.adempiere.server</strong> — scheduler / daemon</td>
+<td style="text-align: right;">11,285</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.adempiere.install</strong> — installer</td>
+<td style="text-align: right;">10,366</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.adempiere.base.callout</strong></td>
+<td style="text-align: right;">8,997</td>
+<td>FOLD</td>
+</tr>
+<tr>
+<td><strong>org.compiere.db.{oracle,postgresql}.provider</strong> — JDBC</td>
+<td style="text-align: right;">7,185</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.adempiere.replication[.server]</strong></td>
+<td style="text-align: right;">3,410</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.adempiere.report.jasper</strong></td>
+<td style="text-align: right;">3,354</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.idempiere.printformat.editor</strong></td>
+<td style="text-align: right;">2,752</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td><strong>org.adempiere.eclipse.equinox.http.servlet</strong> — OSGi HTTP</td>
+<td style="text-align: right;">2,677</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td>tablepartition · hazelcast · keikai · felix.webconsole · sso.oidc · plugin.utils · payment.processor · event.test</td>
+<td style="text-align: right;">5,144</td>
+<td>DELETED</td>
+</tr>
+<tr>
+<td>… + ~40 smaller modules (UI widgets, adapters, gateways)</td>
+<td style="text-align: right;">53,693</td>
+<td>mostly DELETED</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td style="text-align: right;"><strong>1,427,147</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</details>
+<hr />
+<h2 id="gaps-vitals-lacking-a-measured-source-do-not-claim-a-number">GAPS (vitals lacking a measured source — do not claim a number)<a class="headerlink" href="#gaps-vitals-lacking-a-measured-source-do-not-claim-a-number" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>SAP S/4HANA fold</strong> — BLOCKED. <code>build/erp/sap_fold.log</code> says <code>§SAP-FOLD NOT-RUN (skeleton ready;
+   gated on oracle access)</code>. No real SAP O2C+FI export has been folded; only <strong>SAP Business One (B1)
+   against a hand-authored MOCK</strong> has (<code>build/erp/b1_fold.log</code>). The "SAP" column is therefore
+   <em>partly mock, partly not-run</em> — never present S/4HANA as proven.</li>
+<li><strong>Odoo / SAP server-side period-close timing &amp; down-window</strong> — no measured number; marked
+   <em>architectural</em>. We have our own 2.68 s/40k-op figure but no head-to-head legacy batch-close time.</li>
+<li><strong>Odoo / SAP server round-trip latency (ms)</strong> — not measured here. The closest real datum is the
+   iDempiere depreciation run (<code>DepreciationPerf.md</code>: per-row <code>saveEx</code> ≈ ~1M round-trips), and the
+   <code>feedback_erp_perf_claims</code> matrix (REMOTE per-txn 2–5 orders, RTT-bound) — both iDempiere-flavoured,
+   not Odoo/SAP. Cite as illustrative, not as an Odoo/SAP measurement.</li>
+<li><strong>Postgres per-op floor vs our per-op</strong> is a <em>primitive-only</em> comparison (no callouts/posting/JVM on
+   either side) — <code>bench_oplog_pg.log</code> states this explicitly; do not extrapolate to whole-document cost.</li>
+<li><strong>Live-DB → SQLite (143 MB → 43 MB)</strong> was measured on a static dump + repo (Docker Postgres was NOT
+   running at measure time) — see the bloat memory caveat.</li>
+<li><strong>Full-conversion LOC (~43K / ~30×)</strong> — the per-bucket LOC are <em>measured</em> (<code>find</code>/<code>wc</code> on
+   <code>~/idempiere-dev-setup/idempiere</code>, 2026-06-08), but the <strong>5–8× fold-compression ratio</strong> on the irreducible
+   business core — and the share of <code>M*</code> that is real logic vs accessor/lifecycle ceremony — are <strong>estimates</strong> (no
+   full port exists to measure them). Treat ~25–41× as a <em>forecast</em>; 89× is the <em>measured built-so-far</em>, and a
+   high-compression slice that does not extrapolate.</li>
+<li><strong>1 TB → ~500 MB backup <sup id="fnref2:backup"><a class="footnote-ref" href="#fn:backup">16</a></sup></strong> — the op density (~437 B/op) and the index/bloat fraction (67%) are
+   <em>measured</em>, but "<strong>source ≈ 5–10% of the DB</strong>" (the rest derivable/foldable) and the on-disk shorthand op
+   size are <strong>estimates</strong> — no 1 TB transaction-heavy oracle exists here. Treat ~2000× as a <em>derivation</em>; the
+   defensible band is ~0.2–0.6 GB compressed (≈500 MB).</li>
+</ol>
+<hr />
+<h2 id="further-reading-go-deeper">Further reading — go deeper<a class="headerlink" href="#further-reading-go-deeper" title="Permanent link">&para;</a></h2>
+<p>The on-ramp ends here. To see <em>how</em> each claim is built:</p>
+<ul>
+<li><strong><a href="../ERP/">ERP.md</a></strong> — the <strong>"AD-in-a-browser" blueprint</strong>: how the iDempiere Application Dictionary is
+  folded from SQLite and rendered as a live client, the six verbs (<code>CREATE_DOCUMENT / CREATE_LINE /
+  SET_STATUS / POST / ALLOCATE / MATCH</code>) every document flow reduces to, and the full engine reference.
+  <em>Start here if you want the whole architecture.</em></li>
+<li><strong><a href="../HolyGrail/">HolyGrail.md</a></strong> — the <strong>end-state vision and its "hard parts"</strong>: multi-site sync, durability
+  on disposable hosts, and compaction = the period-close <em>signed checkpoint = balance b/f</em> you just saw.
+  <em>Read this for where the whole effort is converging and why these were the hard problems.</em></li>
+<li><strong><a href="../OpLogERP/">OpLogERP.md</a></strong> — the <strong>event-sourcing model in one page</strong>: why the authoritative state is a
+  <em>signed, hash-chained op-log</em> and the current numbers are a deterministic <strong>fold</strong> of it — not a row in a
+  server DB. <em>The shortest explanation of "the log is the truth."</em></li>
+<li><strong><a href="../DistributedERP/">DistributedERP.md</a></strong> — the <strong>serverless / secured doctrine + adversarial contention map</strong>:
+  the server→serverless table behind the "0 round-trip" claim, the Git-remote "host is disposable" analogy,
+  and the honest counter-arguments. <em>Read this for the distributed-systems reasoning and the proof scripts.</em></li>
+<li><strong><a href="../BIMERPPaper/">BIMERPPaper.md</a></strong> — the <strong>"why / provenance" piece</strong> (Redhuan Oon, 30 years of ERP):
+  the motivation, the lineage from iDempiere/Adempiere/Compiere, and what problem this is really solving.</li>
+</ul>
+<hr />
+<h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
+<p>DRAFT (2026-06-08). The evaluator-facing companion to the deep papers (<a href="../ERP/">ERP.md</a> · <a href="../DistributedERP/">DistributedERP.md</a> · <a href="../BIMERPPaper/">BIMERPPaper.md</a>). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.</p>
+<hr />
+<h2 id="footnote-sources">Footnote sources<a class="headerlink" href="#footnote-sources" title="Permanent link">&para;</a></h2>
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:pclose">
+<p><code>build/erp/test_kernel_period_close.log</code> — <code>§PCLOSE-FOLD</code> archived=15→live=1, <code>§PCLOSE-RECONCILE … maxDiff=0c</code>, tamper/forgery/determinism all PASS on the real kernel.&#160;<a class="footnote-backref" href="#fnref:pclose" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:pclose" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:pclose" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn:drive">
+<p><code>build/erp/period_close_drive.log</code> — in-browser drive: <code>close N=20000 closeFold=2681.8ms archived=40000 live=1</code>; <code>bootstrap fromCkpt=0.90ms fromGenesis=47.70ms speedup=53.0x same=true</code>; <code>reconcile maxDiff=0c</code>.&#160;<a class="footnote-backref" href="#fnref:drive" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:drive" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:drive" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+<li id="fn:noround">
+<p><code>docs/DistributedERP.md</code> §0 (server→serverless table, lines 53–85) + §10 lines 467–468 ("no per-interaction network round-trip (the kernel answers locally)").&#160;<a class="footnote-backref" href="#fnref:noround" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:noround" title="Jump back to footnote 3 in the text">&#8617;</a></p>
+</li>
+<li id="fn:bench">
+<p><code>build/erp/bench_oplog_pg.log</code> — N=1000 ops, one atomic commit: sql.js 208.45 ms (0.2084 ms/op, incl. sha256 chain); Postgres durable WAL+fsync 5.24 ms (0.0052 ms/op). Explicitly "NOT a head-to-head".&#160;<a class="footnote-backref" href="#fnref:bench" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bench" title="Jump back to footnote 4 in the text">&#8617;</a></p>
+</li>
+<li id="fn:sync">
+<p><code>build/erp/sync_poc_smoke.log</code> — 5,000 events: naive 9,390 ops/s; batch commitGroup 22,492 ops/s = 2.4× (corroborated <code>sync_poc_prod_smoke.log</code>).&#160;<a class="footnote-backref" href="#fnref:sync" title="Jump back to footnote 5 in the text">&#8617;</a></p>
+</li>
+<li id="fn:ceiling">
+<p><code>build/erp/poc_volume_ceiling.log</code> — append/fold stay LINEAR; largestFit=20,000,000 ops, ~437 B/op retained; fold ~40.8M ops/s hot at 5M.&#160;<a class="footnote-backref" href="#fnref:ceiling" title="Jump back to footnote 6 in the text">&#8617;</a></p>
+</li>
+<li id="fn:bloat">
+<p>bloat memory (<code>reference_bloat_reduction.md</code>, measured 2026-06-06 from <code>~/idempiere-dev-setup/idempiere</code>) — seed 45.2 MB → 12.7 MB (≈3.5×); 1,427,147 Java LOC → 16,068 JS LOC (≈89×). Full evidence <code>internal/BLOAT_MEASUREMENT.md</code>.&#160;<a class="footnote-backref" href="#fnref:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:bloat" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:bloat" title="Jump back to footnote 7 in the text">&#8617;</a></p>
+</li>
+<li id="fn:bloat2">
+<p>same memory — LIVE GardenWorld DB Postgres 143 MB on-disk → 43 MB SQLite (925 tables, 187,133 rows, ≈3.3×); gzip 11.7 MB (3.7×).&#160;<a class="footnote-backref" href="#fnref:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:bloat2" title="Jump back to footnote 8 in the text">&#8617;</a></p>
+</li>
+<li id="fn:odoo">
+<p><code>build/erp/odoo_fold_live.log</code> — <code>§ODOO-FOLD-LIVE PASS</code>: live odoodemo (Odoo 17, :8069) SO S00023, 5/5 hops mapped, newVerbs=[], total 5002.50 == oracle, GL ΣDr==ΣCr.&#160;<a class="footnote-backref" href="#fnref:odoo" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:odoo" title="Jump back to footnote 9 in the text">&#8617;</a></p>
+</li>
+<li id="fn:b1">
+<p><code>build/erp/b1_fold.log</code> — <code>§B1-FOLD PASS</code>: SAP Business One O2C + OJDT/JDT1, 5/5 hops, journal 770.00==770.00. Source = a hand-authored MOCK Service-Layer shape (user-authorized 2026-06-05), NOT a real export.&#160;<a class="footnote-backref" href="#fnref:b1" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:b1" title="Jump back to footnote 10 in the text">&#8617;</a></p>
+</li>
+<li id="fn:sap">
+<p><code>build/erp/sap_fold.log</code> — <code>§SAP-FOLD NOT-RUN</code> / <code>BLOCKED — awaiting a REAL SAP oracle. No fold claimed.</code> (S/4HANA).&#160;<a class="footnote-backref" href="#fnref:sap" title="Jump back to footnote 11 in the text">&#8617;</a></p>
+</li>
+<li id="fn:own">
+<p><code>docs/DistributedERP.md</code> §0 lines 74–80 (the Git analogy — log is truth, host disposable) + the signed-checkpoint/tamper proofs in <sup id="fnref3:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup>.&#160;<a class="footnote-backref" href="#fnref:own" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:own" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:own" title="Jump back to footnote 12 in the text">&#8617;</a></p>
+</li>
+<li id="fn:arch">
+<p>Architectural property of a server-of-record ERP — no comparable single measured number in this repo; stated as structure, not benchmarked. Honest-caveat doctrine: <code>feedback_erp_perf_claims</code>.&#160;<a class="footnote-backref" href="#fnref:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref23:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref24:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref25:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref26:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref27:arch" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref28:arch" title="Jump back to footnote 13 in the text">&#8617;</a></p>
+</li>
+<li id="fn:poc">
+<p>The server→serverless mapping + per-line proofs: <code>docs/DistributedERP.md</code> §0 ("From server to serverless — what moved where"). POCs live in <code>scripts/poc_*.js</code> (<code>poc_distributed.js</code>, <code>poc_kernel.js</code>, <code>poc_chain.js</code>, <code>poc_sign.js</code>, <code>poc_persist.js</code>, <code>poc_remote_pos.js</code>, <code>poc_postings.js</code>); witnessed logs under <code>build/erp/</code>.&#160;<a class="footnote-backref" href="#fnref:poc" title="Jump back to footnote 14 in the text">&#8617;</a></p>
+</li>
+<li id="fn:reduce">
+<p>The ≈925-table → 5-relation reduction: <code>docs/DistributedERP.md</code> §"domain reduction" ("iDempiere AD (925 tables, <code>M*</code> classes) → 5 tables + deterministic verbs") + <code>docs/OpLogERP.md</code> ("≈925 tables reduce to five relations plus verbs") + <code>docs/ERP.md</code> §12 (the 5 core tables) + <code>docs/FeatureComparison.md</code> ("5 core tables: containers, items, documents, document_lines, journal").&#160;<a class="footnote-backref" href="#fnref:reduce" title="Jump back to footnote 15 in the text">&#8617;</a></p>
+</li>
+<li id="fn:backup">
+<p><strong>Backup = the signed op-log only</strong> (everything else is a deterministic fold of it). Derivation for a 1 TB transaction-heavy tenant: (1) drop indexes + MVCC bloat + catalog — measured <strong>67%</strong> of a live tenant (<sup id="fnref6:bloat2"><a class="footnote-ref" href="#fn:bloat2">8</a></sup>) → ~330 GB table data; (2) the bulk of that is <em>derived</em> (<code>Fact_Acct</code> postings, balances, audit/history — re-folded, never stored), source rows ≈ 5–10% → ~17–33 GB; (3) stored as <strong>events</strong> not materialised rows (~150 B/op on disk with AD-shorthand vs ~437 B/op retained, <code>poc_volume_ceiling.log</code>) → ~0.6–3 GB; (4) zstd ≈5× → <strong>~0.2–0.6 GB</strong>. So 1 TB → <strong>~500 MB compressed (~2000×)</strong>. The "source ≈ 5–10% of the DB" fraction and the shorthand op size are <strong>estimates</strong> (cf. GAPS #7), not measured — no 1 TB transaction-heavy oracle exists here. <strong>Full derivation:</strong> <a href="../HolyGrail/">HolyGrail.md</a> §1 ("Compacting the signed log" → <em>back up the recipe, not the result</em>); bounded-working-set basis <code>scripts/poc_volume.js</code> (<code>§VOL PASS</code>, flat bootstrap across 100× history).&#160;<a class="footnote-backref" href="#fnref:backup" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:backup" title="Jump back to footnote 16 in the text">&#8617;</a></p>
+</li>
+<li id="fn:split">
+<p>iDempiere swept 2026-06-08 via <code>find … -exec cat {} + | wc -l</code> over <code>~/idempiere-dev-setup/idempiere</code> (4,465 files, 1,427,147 LOC; same tree as <sup id="fnref10:bloat"><a class="footnote-ref" href="#fn:bloat">7</a></sup>). Key buckets: generated <code>X_*</code>=345,490, <code>I_*</code>=227,100; ZK web UI=189,786; tests=78,389; base <code>M*</code> models=198,679; <code>Doc_*</code> posting=12,789; acct engine=21,443; tree-wide <code>process/</code>=69,782; costing=22,056; payment=7,359; tax=2,507; matching=1,959; allocation=1,472; callouts=10,340; validators=3,336; plus server-side HTML lib 43,816, print/report+Jasper ~21K, import/migration ~25K, webservices/server/installer/JDBC/OSGi. Disjoint buckets sum to 1,427,147. The 5–8× fold ratio and the ceremony fraction of <code>M*</code> are estimates (GAPS #6), not measured.&#160;<a class="footnote-backref" href="#fnref:split" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:split" title="Jump back to footnote 17 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/red1oon/bim-ootb" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/red1oon/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
