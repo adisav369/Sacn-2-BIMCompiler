@@ -17,8 +17,8 @@ traces to a query or a `find … | wc -l`. Counts are a snapshot; re-run the cit
 | verdict | count | meaning |
 |---|---|---|
 | ✅ COVERED | **0** | no surface is fully interpreted *end-to-end into the live render*  |
-| 🟡 PARTIAL | **19** | static demo slice **+ the AD logic-expression evaluator** (`ad_evaluator.js`, W-LOGIC-EVAL): the 7 Display/ReadOnly/MandatoryLogic surfaces now parse 100% (3044/3044 boolean rows) and evaluate correctly; wired into `crud_overlay.validateField`/`effectiveFlags` (headless-proven). Residual: live DOM show/hide/disable render-wiring (and tab-level GridTab render) not yet driven by it. |
-| ⛔ GAP | **21** | the remaining behavioural / security surfaces are not interpreted at all |
+| 🟡 PARTIAL | **25** | static demo slice **+ the AD logic-expression evaluator** (`ad_evaluator.js`, W-LOGIC-EVAL): the 7 Display/ReadOnly/MandatoryLogic surfaces now parse 100% (3044/3044 boolean rows) and evaluate correctly; wired into `crud_overlay.validateField`/`effectiveFlags` (headless-proven). **+ the AD role/access gate** (`ad_access.js`, W-ACCESS): the 6 security surfaces (Role/AccessLevel/Window/Process/Form_Access/EntityType) now interpret 1303 window + 1309 process + 145 form grants + 6 accesslevels across all 5 roles headless (`build/erp/poc_access.log`). Residual: live DOM show/hide/disable render-wiring (and tab-level GridTab render) not yet driven by either; access gate not wired into live window/process render. |
+| ⛔ GAP | **15** | the remaining behavioural surfaces are not interpreted at all (the 2 empty *_Access tables count here as n/a-in-seed) |
 
 **The honest answer:** *no — not all the bases are covered.* The engine demonstrates the **fold model** on a thin slice —
 the `CO` DocAction transition, the double-entry posting fold, and a fixed receipt/TB/P&L report set — for a handful of
@@ -35,8 +35,11 @@ delivery/definition, not behavioural parity — most behaviour is **named-and-de
 > `build/erp/ad_evaluator.js` (recursive-descent port of iDempiere `SimpleBoolean.g4` + `EvaluationVisitor`) — wired
 > into `crud_overlay.js:effectiveFlags`/`validateField` via `window.AdEvaluator`. It reads `displaylogic`/`readonlylogic`/
 > `mandatorylogic` and evaluates them against (record, context). Witness `scripts/poc_logic_eval.js` → `build/erp/poc_logic_eval.log`
-> (`§LOGIC_COVERAGE evaluated=3044 of 3044 boolean-logic rows 100.00%`; §FALSIFIER verdict flips DR→CO). The other named
-> surfaces (Callout/Val_Rule/Rule/AccessLevel/`*_Access`) remain unread.
+> (`§LOGIC_COVERAGE evaluated=3044 of 3044 boolean-logic rows 100.00%`; §FALSIFIER verdict flips DR→CO). **UPDATE (W-ACCESS):**
+> the security surfaces are now read too — `build/erp/ad_access.js` (port of `MRole.getWindowAccess`/`getProcessAccess`/
+> `getFormAccess` + `canView`) interprets `ad_window_access`/`ad_process_access`/`ad_form_access`/`ad_table.accesslevel`/
+> `ad_entitytype` from the AD; witness `scripts/poc_access.js` → `build/erp/poc_access.log`. The remaining named
+> surfaces (Callout/Val_Rule/Rule) remain unread.
 
 ## A · Rules/processes defined in CODE (Java)
 
@@ -79,14 +82,14 @@ delivery/definition, not behavioural parity — most behaviour is **named-and-de
 | **AD_Reference** (header) | **606** (D=52, L=311, T=243) | `DisplayType`/`MLookup` | `f.type` tags drive validateField — **hand-set, not from AD_Reference** | 🟡 PARTIAL |
 | **AD_Ref_List** (list valid.) | **1545** | `MLookup`/`Lookup` | `validateField` 'list' checks `store.__meta[f.ref]` — **~7 lists vs 1545** | 🟡 PARTIAL |
 | **AD_Ref_Table** (table valid.) | **243** | `MLookup` (1337) | **absent** — 'fk' checks `isFinite(Number)` only, no FK-membership query | ⛔ GAP |
-| **AD_EntityType** | **12** | `MEntityType` | **absent** — dictionary/customization scope unenforced | ⛔ GAP |
-| **AccessLevel** (AD_Table) | **1076** (org/client/system bits) | `MRole`/`MTable` | **absent** | ⛔ GAP |
-| **AD_Role** | **5** | `MRole.java` (3533) | **absent** (only a "role-gated" comment) | ⛔ GAP |
-| **AD_Window_Access** | **1303** | `MRole.getWindowAccess` | **absent** | ⛔ GAP |
-| **AD_Process_Access** | **1309** | `MRole.getProcessAccess` | **absent** | ⛔ GAP |
-| **AD_Form_Access** | **145** | `MRole.getFormAccess` | **absent** | ⛔ GAP |
-| **AD_Column_Access** | **0** (table empty) | `MRole.getColumnAccess` | **absent** (n/a in seed) | ⛔ GAP |
-| **AD_Record_Access** | **0** (table empty) | `MRole.getRecordAccess` | **absent** (n/a in seed) | ⛔ GAP |
+| **AD_EntityType** | **12** | `MEntityType` | **`ad_access.js:RoleContext.entityTypeAllowed`** — all 12 active entitytypes loaded into the role scope (W-ACCESS §ACCESS_COVERAGE entitytypes=12). Residual: scope not enforced at live dictionary-object render | 🟡 PARTIAL |
+| **AccessLevel** (AD_Table) | **1076** (org/client/system bits) | `MRole`/`MTable` | **`ad_access.js:canView`+`gateRecord`** — faithful port of `MRole.canView:2422-2465`; all 6 distinct accesslevels (1076 ad_table rows) interpreted for both roles, 0 err; System-only (4) denied to userLevel '  O' (W-ACCESS §ACCESS_DENY). Residual: not wired into live record read | 🟡 PARTIAL |
+| **AD_Role** | **5** | `MRole.java` (3533) | **`ad_access.js:buildRole`** — all 5 roles built from `ad_role` (userLevel/orgs/clients/isaccessallorgs) + their grant maps (W-ACCESS §ACCESS_COVERAGE roles=5). Residual: no live session-role selection | 🟡 PARTIAL |
+| **AD_Window_Access** | **1303** | `MRole.getWindowAccess` | **`ad_access.js:gateWindow`** (port of `MRole.getWindowAccess:1610-1693`) — all 1303 active grant rows interpreted (no-row=DENY, IsReadWrite=rw); §ACCESS_OK + §ACCESS_DENY (no-grant) + §FALSIFIER proven (W-ACCESS). Residual: not wired into live menu/window render | 🟡 PARTIAL |
+| **AD_Process_Access** | **1309** | `MRole.getProcessAccess` | **`ad_access.js:gateProcess`** (port of `MRole.getProcessAccess:1701-1789`) — all 1309 active grant rows interpreted; §ACCESS_OK proven (W-ACCESS). Residual: not wired into live process launch | 🟡 PARTIAL |
+| **AD_Form_Access** | **145** | `MRole.getFormAccess` | **`ad_access.js:gateForm`** (port of `MRole.getFormAccess:1888-1972`) — all 145 active grant rows interpreted (W-ACCESS §ACCESS_COVERAGE forms_gated=145). Residual: no live form render to gate | 🟡 PARTIAL |
+| **AD_Column_Access** | **0** (table empty) | `MRole.getColumnAccess` | **n/a in seed** — table empty (0 rows); gate has no column-grant data to interpret | ⛔ GAP |
+| **AD_Record_Access** | **0** (table empty) | `MRole.getRecordAccess` | **n/a in seed** — table empty (0 rows); record-org/client scope is covered separately via `gateRecord` | ⛔ GAP |
 
 ## Ranked GAP list (smallest witness that proves/disproves coverage — §-log first)
 
@@ -95,7 +98,7 @@ The gaps rank by **AD surface size × behavioural weight**. Each names the *smal
 disproof: the line can never fire today.
 
 1. **Logic-expression evaluator** — ✅ **BUILT (W-LOGIC-EVAL).** `build/erp/ad_evaluator.js` (port of iDempiere `SimpleBoolean.g4` + `EvaluationVisitor`) + `crud_overlay.effectiveFlags` wiring. Unblocks 7 rows (now 🟡): `§LOGIC_COVERAGE evaluated=3044 of 3044 boolean-logic rows (100.00%)` + 5 `@SQL=` rows named-deferred (separate `parseSQLLogic` surface); §FALSIFIER readonly flips rw→ro on `@Processed@` N→Y and display flips hide→show on `@DocStatus@!DR` DR→CO; 25 operator-class samples pass. Witness: `scripts/poc_logic_eval.js` → `build/erp/poc_logic_eval.log`. **Residual to ✅:** live DOM render-wiring (show/hide/disable) + tab-level GridTab render.
-2. **Security layer** (Role/AccessLevel/4×_Access/EntityType — ~4,200 AD rows, the compliance story). Witness: `§ACCESS_DENY window=Order role=GardenUser` under a restricted role. No role/access symbol in any `build/erp/*.js`.
+2. **Security layer** — ✅ **BUILT (W-ACCESS).** `build/erp/ad_access.js` (port of iDempiere `MRole.getWindowAccess`/`getProcessAccess`/`getFormAccess` + `canView` AccessLevel-SCO semantics) interprets the real grant rows: §ACCESS_COVERAGE roles=5 windows_gated=1303 processes_gated=1309 forms_gated=145 accesslevels=6(1076 rows) entitytypes=12 errors=0; §ACCESS_DENY proven for a no-grant window (GardenWorld User vs Admin), a wrong-org record (org 12 ∉ User's {11,50000,50001,50007}), and a System-only record (no 'S' in userLevel '  O'); §FALSIFIER shows gate-OFF would let User SEE the no-grant window → gate is load-bearing. Witness: `scripts/poc_access.js` → `build/erp/poc_access.log`. **Residual to ✅:** wire the gate into live menu/window/process render + session-role selection; AD_Column_Access/AD_Record_Access are empty in this seed (n/a).
 3. **SvrProcess runner** (476 AD_Process / 54k LOC). Witness: `§PROC run classname=<X> rows_affected=<n>`. No runner exists.
 4. **Workflow engine** (58 wf / 262 nodes). Witness: `§WF node=<id> action=C next=<id> activity=created`. 0 grep hits.
 5. **DocAction FSM beyond CO** (14 actions × 12 statuses). Witness: `§DOCTYPE_FSM {from,to,action,legalActions:<from C_DocType>}` — today `legalActions=undefined`, `to ∈ {CO,IP}`.
@@ -112,8 +115,9 @@ disproof: the line can never fire today.
 The real AD counts sharpen `MigrateComparisonPaper §"Realistic conversion estimate"`: the irreducible buckets are now
 **enumerated, not asserted** — process **54,377 LOC** (476 AD_Process, 337 with a classname), Doc_* posting **12,789 LOC**
 (20 doc types), callouts **10,340 LOC** (284 cols / 148 classes), workflow **7,366 LOC** (58 wf), validators **1,165 LOC**
-(3 registered), plus a **~3,000-row logic-expression** surface and a **~4,200-row security** surface that have **no engine
-home at all**. Folded today: the `CO` transition, the double-entry posting fold, a fixed report set — for ~5–7 demo tables.
+(3 registered). The **~3,000-row logic-expression** surface (W-LOGIC-EVAL) and the **~4,200-row security** surface
+(W-ACCESS) now have an engine home (`ad_evaluator.js` / `ad_access.js`, headless-proven; live render-wiring is the
+residual). Folded today: the `CO` transition, the double-entry posting fold, a fixed report set — for ~5–7 demo tables.
 This is the precise content behind "89× → ~30×": the 89× is delivery/definition; behavioural parity is a long, *named* tail.
 
 ## Provenance / caveats
