@@ -4490,6 +4490,30 @@
 .fan .spoke{border:1px solid rgba(128,128,128,.25);border-top:3px solid var(--sc);background:rgba(128,128,128,.04);border-radius:9px;padding:10px 12px;line-height:1.3;text-align:center}
 .fan .spoke b{color:var(--sc);display:block;font-size:12.5px;font-weight:800}
 .fan .spoke small{display:block;opacity:.7;font-weight:400;font-size:11px;margin-top:3px}
+.fan .spoke .jobs{list-style:none;margin:9px 0 0;padding:9px 0 0;border-top:1px solid rgba(128,128,128,.2);text-align:left}
+.fan .spoke .jobs li{font-size:11.5px;line-height:1.34;margin:0 0 8px;padding-left:13px;position:relative;font-weight:400}
+.fan .spoke .jobs li:last-child{margin-bottom:0}
+.fan .spoke .jobs li::before{content:"";position:absolute;left:0;top:6px;width:5px;height:5px;border-radius:50%;background:var(--sc);opacity:.75}
+.fan .spoke .jobs b{font-weight:700}
+.fan .spoke .jobs a{font-size:10.5px;font-weight:700;color:var(--sc);text-decoration:none;border-bottom:1px dotted var(--sc);white-space:nowrap}
+.fan .spoke .jobs .off{opacity:.5;font-style:italic}
+/* git ∷ ours parallel — same shape, one addition */
+.gitmap{margin:16px 0;border:1px solid rgba(124,179,66,.4);border-radius:12px;overflow:hidden}
+.gitmap .gm-h,.gitmap .row{display:grid;grid-template-columns:1fr 34px 1fr;align-items:center}
+.gitmap .gm-h{background:rgba(128,128,128,.06);border-bottom:1px solid rgba(128,128,128,.18);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.gitmap .gm-h>div{padding:9px 13px}
+.gitmap .gm-h .l{color:#78909c;text-align:right}
+.gitmap .gm-h .r{color:#7cb342}
+.gitmap .row{font-size:12.5px;line-height:1.35;border-top:1px solid rgba(128,128,128,.1)}
+.gitmap .row>div{padding:8px 13px}
+.gitmap .row .l{text-align:right;opacity:.72}
+.gitmap .eq{text-align:center;color:#7cb342;font-size:14px;padding:0!important}
+.gitmap .row .eq{opacity:.3;font-size:12px}
+.gitmap .row .r{background:rgba(124,179,66,.06);font-weight:600}
+.gitmap .gm-add{padding:9px 14px;background:rgba(255,160,0,.12);border-top:2px solid rgba(255,160,0,.4);font-size:12px;line-height:1.4;text-align:center}
+.gitmap .gm-add b{color:#ef8e00}
+[data-md-color-scheme="slate"] .gitmap .gm-add b{color:#ffb74d}
+@media (max-width:520px){.gitmap .gm-h,.gitmap .row{grid-template-columns:1fr}.gitmap .eq{display:none}.gitmap .gm-h .l,.gitmap .row .l{text-align:left}.gitmap .row .r{border-top:1px dashed rgba(124,179,66,.3)}}
 /* "At a glance" stat cards — whole card is a link */
 .glance-card{flex:1 1 150px;border-radius:12px;padding:10px 8px;text-align:center;text-decoration:none;color:inherit;display:block;transition:transform .12s ease,box-shadow .12s ease}
 .glance-card:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
@@ -4742,87 +4766,52 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <hr />
 <h2 id="no-server">But where's the server? — what replaced each job<a class="headerlink" href="#no-server" title="Permanent link">&para;</a></h2>
 <p><em>If you deleted the server, who does its work?</em> "Serverless" doesn't mean no machine ever talks to another — it means <strong>no server of record, no machine that owns the truth.</strong> Every job the server did still happens; each moved onto the <strong>signed log</strong>, the <strong>kernel on each client</strong>, the <strong>user's own channel</strong>, or a <strong>dumb facilitator that owns nothing</strong>.</p>
+<p><em>Every job the server did still happens — it just moves to one of four owners that own nothing, each proven by a POC in</em> <code>scripts/</code><sup id="fnref:poc"><a class="footnote-ref" href="#fn:poc">18</a></sup>:</p>
 <div class="fan" markdown="0">
   <div class="dead">✗ server of record<small>deleted</small></div>
-  <div class="redist">▾ &nbsp; the work redistributes to four things that own nothing &nbsp; ▾</div>
+  <div class="redist">▾ &nbsp; every job redistributes to four things that own nothing &nbsp; ▾</div>
   <div class="spokes">
-    <div class="spoke" style="--sc:#7cb342"><b>the signed op-log</b><small>holds truth · merges · reconciles</small></div>
-    <div class="spoke" style="--sc:#42a5f5"><b>the kernel on each client</b><small>runs every verb · validates · mints IDs</small></div>
-    <div class="spoke" style="--sc:#ab47bc"><b>signatures + hash-chain</b><small>authenticate · catch tampering</small></div>
-    <div class="spoke" style="--sc:#ff7043"><b>user’s channel + dumb facilitator</b><small>durability · sequencing · relay</small></div>
+    <div class="spoke" style="--sc:#7cb342"><b>the signed op-log</b><small>holds truth · merges · reconciles</small>
+      <ul class="jobs">
+        <li><b>Hold the authoritative state</b> — state = its deterministic fold, recomputable by anyone <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js">poc_distributed.js</a></li>
+        <li><b>Merge concurrent edits</b> — union the signed logs → total-order → replay <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js">poc_distributed.js</a></li>
+        <li><b>Reconcile discrepancies</b> — the double-entry ledger (1494); the balance is a fold too <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_postings.js">poc_postings.js</a></li>
+      </ul>
+    </div>
+    <div class="spoke" style="--sc:#42a5f5"><b>the kernel on each client</b><small>runs every verb · validates · mints IDs</small>
+      <ul class="jobs">
+        <li><b>Run / validate business logic</b> — same verbs both sides, no server re-run <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_kernel.js">poc_kernel.js</a></li>
+        <li><b>Mint record IDs</b> — edge-minted UUID, no coordination <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js">poc_distributed.js</a></li>
+        <li><b>Prevent double-write</b> — owner-gate + compare-and-set on the one shared op-class <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js">poc_distributed.js</a></li>
+      </ul>
+    </div>
+    <div class="spoke" style="--sc:#ab47bc"><b>signatures + hash-chain</b><small>authenticate · catch tampering</small>
+      <ul class="jobs">
+        <li><b>Detect tampering</b> — the log hash-chains itself; <code>verifyChain()</code> finds the altered op <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_chain.js">poc_chain.js</a></li>
+        <li><b>Authenticate / authorise</b> — edge ECDSA-P256 signature; a holder can present, never forge <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_sign.js">poc_sign.js</a></li>
+      </ul>
+    </div>
+    <div class="spoke" style="--sc:#ff7043"><b>user’s channel + dumb facilitator</b><small>durability · sequencing · relay</small>
+      <ul class="jobs">
+        <li><b>Durably store / back up</b> — the user’s own channel + export; the local copy is disposable <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_persist.js">poc_persist.js</a></li>
+        <li><b>Sequence multi-party order</b> — a dumb facilitator: accept · order · persist · relay <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_remote_pos.js">poc_remote_pos.js</a></li>
+        <li><b>Be always-on</b> — <span class="off">nothing — work offline, sync at business-time</span></li>
+      </ul>
+    </div>
   </div>
 </div>
 
-<p><em>The server's jobs don't vanish — they redistribute to four things that own nothing.</em> Each line below is proven by a POC in <code>scripts/</code> <sup id="fnref:poc"><a class="footnote-ref" href="#fn:poc">18</a></sup>:</p>
-<div class="dtbl hl-2">
-<table>
-<thead>
-<tr>
-<th>What a server used to do</th>
-<th>Now done — without a server of record</th>
-<th>Proven in</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Hold the authoritative state</td>
-<td>the <strong>signed op-log</strong>; state = its deterministic <em>fold</em>, recomputable by anyone</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a></td>
-</tr>
-<tr>
-<td>Mint internal record IDs</td>
-<td><strong>edge-minted UUID</strong> — unique, no coordination (legal gapless <code>DocumentNo</code> deferred to a facilitator-assigned sequence)</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a></td>
-</tr>
-<tr>
-<td>Run / validate business logic</td>
-<td>the <strong>deterministic kernel on every client</strong> — same verbs both sides, no server re-run</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_kernel.js"><code>poc_kernel.js</code></a></td>
-</tr>
-<tr>
-<td>Merge concurrent edits</td>
-<td><strong>union the signed logs → total-order → replay</strong> → identical state everywhere</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a></td>
-</tr>
-<tr>
-<td>Prevent double-write</td>
-<td><strong>owner-gate</strong> + <strong>compare-and-set</strong> on the one shared op-class, enforced on replay</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a></td>
-</tr>
-<tr>
-<td>Detect tampering</td>
-<td>the log <strong>hash-chains itself</strong>; <code>verifyChain()</code> finds the altered op</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_chain.js"><code>poc_chain.js</code></a></td>
-</tr>
-<tr>
-<td>Authenticate / authorise</td>
-<td><strong>edge ECDSA-P256 signature</strong> — wrong key fails anywhere; a holder can present, never forge</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_sign.js"><code>poc_sign.js</code></a></td>
-</tr>
-<tr>
-<td>Durably store / back up</td>
-<td>the <strong>user's own channel</strong> (email/social) + export; the local copy is disposable</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_persist.js"><code>poc_persist.js</code></a></td>
-</tr>
-<tr>
-<td>Sequence multi-party order</td>
-<td>a <strong>dumb facilitator</strong> — accept · order · persist · relay — itself rebuildable from the signed logs</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_remote_pos.js"><code>poc_remote_pos.js</code></a></td>
-</tr>
-<tr>
-<td>Reconcile discrepancies</td>
-<td>the <strong>double-entry ledger</strong> (since 1494) — the balance is a fold here too</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_postings.js"><code>poc_postings.js</code></a></td>
-</tr>
-<tr>
-<td>Be always-on</td>
-<td><strong>nothing</strong> — work offline; sync at business-time</td>
-<td>—</td>
-</tr>
-</tbody>
-</table>
+<p><strong>The analogy: git.</strong> No central machine owns your code history — every clone has it all, verifies it, rebuilds from it; GitHub is a <em>convenience</em>, not the truth. <strong>We do to transactions what git did to source code</strong> — the same shape, line for line:</p>
+<div class="gitmap" markdown="0">
+  <div class="gm-h"><div class="l">git · source code</div><div class="eq">≅</div><div class="r">ours · ERP transactions</div></div>
+  <div class="row"><div class="l">hash-chained, signed commit history</div><div class="eq">≅</div><div class="r">hash-chained, signed op-log</div></div>
+  <div class="row"><div class="l">every clone holds the whole history</div><div class="eq">≅</div><div class="r">every client folds the whole log</div></div>
+  <div class="row"><div class="l">verifies it · rebuilds from it</div><div class="eq">≅</div><div class="r"><code>verifyChain()</code> · folds the live state</div></div>
+  <div class="row"><div class="l">GitHub = a convenience, not the truth</div><div class="eq">≅</div><div class="r">the host = a disposable relay, not the truth</div></div>
+  <div class="gm-add"><b>+ the one thing git lacks, we add:</b> invariant enforcement — no double-spend — via the owner-gate + a single compare-and-set op-class</div>
 </div>
-<p><strong>The analogy: git.</strong> No central machine owns your code history — every clone has it all, verifies it, rebuilds from it; GitHub is a <em>convenience</em>, not the truth. <strong>We do to ERP transactions what git did to source code:</strong> the log is the truth, the host disposable, history chained and signed. The one thing git lacks, we add — <em>invariant enforcement</em> (no double-spend), via the owner-gate + a single compare-and-set op-class. Full doctrine + the hard multi-writer cases (shared stock, credit limits, client version skew): <a href="../DistributedERP/">DistributedERP.md</a> §0, §9.</p>
+
+<p>Full doctrine + the hard multi-writer cases (shared stock, credit limits, client version skew): <a href="../DistributedERP/">DistributedERP.md</a> §0, §9.</p>
 <hr />
 <h2 id="vitals-by-theme">Vitals — by theme<a class="headerlink" href="#vitals-by-theme" title="Permanent link">&para;</a></h2>
 <p>Three tables, not one wall. Columns are <strong>architecture</strong>, not a feature scorecard; numbers measured on <em>this</em> box / browser unless marked. <strong>"n/a — architectural"</strong> = the legacy stack has no comparable number because the property is structural (it always needs a server).</p>
