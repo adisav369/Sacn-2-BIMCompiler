@@ -18,6 +18,33 @@
 
 ---
 
+## Prerequisites — what a building DB needs before 2D grid EDIT
+
+> **Recall pin (do not re-discover this):** *basic* 2D (the storey-aware cut, GF/L1 floor
+> plans, grid-line detection, long-press grid **drag**, and the spatial-BOQ cost panel) works
+> on a plain `{PREFIX}_extracted.db` alone — it only needs `elements_meta` (with `storey`),
+> `element_transforms`, and `component_geometries`. Verified: Duplex and SampleCastle render
+> grids + contours with **no** MEP/route tables present.
+>
+> **Full grid EDIT** — the MEP re-route on a discipline switch and BOM-scoped recompose — needs
+> three more pieces *defined for that building*, or it silently emits nothing:
+>
+> | Concern | Artifact (DB · table) | Used by | Absent ⇒ |
+> |---------|----------------------|---------|----------|
+> | **BOM** (the recipe) | `{PREFIX}_BOM.db` · `m_bom` / `m_bom_line` | BOM recompose on edit | no recompose; baked in by the compile / SC-BOM-seed |
+> | **ERP validation** | `ERP.db` · `AD_Val_Rule` (read-only `valConn`) | clearance / spacing / priority constraints (`G4_SRS.md`) | edits unconstrained |
+> | **Route-walking routine** | `mep_rw.db` · `ad_mep_pattern` (CW/SP topology) + `ad_mep_anchor` (per `building_type`) | `RouteWalker.walk()` (`route_walker.js` / `routewalker.js`) | `§RW_WALK no patterns…/no anchors…` → **0 MEP segments placed** |
+>
+> So: **a building must be a "known building"** in `mep_rw.db` (its `building_type` has patterns +
+> anchors) and carry its `m_bom` + `AD_Val_Rule` before grid-edit MEP/BOM behaviour is real.
+> Without them the plan still *draws* and grid lines still *drag* — but a DISC switch produces no
+> fresh route. Diagnose presence with the `§RW_WALK building=… cw=… sp=…` log (or its
+> `no patterns/no anchors` warning). NOTE: the `ROUTE → RouteWalker.walk` wiring itself is the
+> `RED_PILL.md` **B3** task (was a straight-line stub) — confirm it's live before relying.
+> (`BOM_ENGINE_SPEC.md` §strategy=ROUTE · `G4_SRS.md` valConn/bomConn · `DISC_VALIDATION_DB_SRS.md` §6.12.3)
+
+---
+
 ## Keyboard & Interaction Cheat Sheet
 
 | Key / Gesture | Action |
