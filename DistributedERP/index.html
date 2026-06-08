@@ -3287,6 +3287,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#g-privacy-right-to-erasure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G. Privacy / right-to-erasure
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4504,6 +4515,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#g-privacy-right-to-erasure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G. Privacy / right-to-erasure
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5049,11 +5071,18 @@ that carries it, the acceptance witness, and the <strong>honest residual</strong
 <td>none beyond key custody (below)</td>
 </tr>
 <tr>
-<td>Signing-key theft / custody</td>
+<td>Signing-key <strong>theft</strong> / custody</td>
 <td>T3</td>
-<td>the <strong>one irreducible anchor</strong>; secure-enclave + rotation</td>
+<td>the <strong>one irreducible anchor</strong>; secure-enclave</td>
 <td>—</td>
-<td>irreducible — true for <em>every</em> system (steal a server's key too)</td>
+<td>key <em>theft</em> is irreducible — true for <em>every</em> system (steal a server's key too)</td>
+</tr>
+<tr>
+<td>Key <strong>rotation / revoke / offboarding</strong></td>
+<td>T3 / W-ROTATE</td>
+<td>a signed <code>ROTATE</code> (counter-signed by the <strong>outgoing</strong> key) installs a new key at seq S + a key-epoch map → history verifies under the key valid <strong>at its seq</strong>, no re-signing the past; <code>REVOKE</code> kills a key's <strong>future</strong>, keeps its <strong>past</strong></td>
+<td>rotate → past still valid under the old key, post-rotation old-key op rejected, revoked key loses future not past (<a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_rotate.js">poc_rotate.js</a> §ROTATE-OP/§HISTORY-VALID/§FUTURE-GATED/§REVOKE)</td>
+<td>key lifecycle no longer hand-waved — witnessed; key <em>theft</em> itself stays the floor above</td>
 </tr>
 <tr>
 <td>Bearer token forwarded</td>
@@ -5068,6 +5097,13 @@ that carries it, the acceptance witness, and the <strong>honest residual</strong
 <td>hash-chain; <code>verifyChain()</code> detects tamper at op N</td>
 <td>alter op N → chain breaks <strong>at exactly N</strong>; clean → <code>chain OK len=N</code></td>
 <td>detection, <strong>not</strong> prevention — by design (the floor)</td>
+</tr>
+<tr>
+<td><strong>Relay equivocation</strong> (hands client A <code>[a,b]</code>, client B <code>[b,a]</code> over one seq window)</td>
+<td>T1 / §6</td>
+<td>clients sign their <strong>observed period-tip</strong> + gossip it; mismatched signed tips = equivocation <strong>attributable</strong> to the relay (a client signs only what it saw — unforgeable)</td>
+<td>divergent signed tips detected + attributed; an honest relay → identical tips, no false positive (<a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_equivocation.js">poc_equivocation.js</a> §DETECT/§ATTRIBUTABLE)</td>
+<td>silent <strong>without</strong> tip-gossip (§FALSIFIER); the post office is no longer <em>assumed</em> honest — equivocation is caught. Real-time-cadence detection is tier-2</td>
 </tr>
 </tbody>
 </table>
@@ -5222,6 +5258,27 @@ that carries it, the acceptance witness, and the <strong>honest residual</strong
 <td><strong>record + consequence + price-in</strong></td>
 <td>—</td>
 <td><strong>not solvable</strong> — we reduced the <em>cost of the non-solution</em></td>
+</tr>
+</tbody>
+</table>
+<h3 id="g-privacy-right-to-erasure">G. Privacy / right-to-erasure<a class="headerlink" href="#g-privacy-right-to-erasure" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Truth / §</th>
+<th>Mechanism</th>
+<th>Acceptance witness</th>
+<th>Honest residual</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Right-to-erasure on an immutable signed log (GDPR/CCPA)</td>
+<td>T3 / W-ERASE</td>
+<td>PII rides in a <strong>per-subject encrypted envelope</strong>; erase = destroy the subject key (<strong>crypto-shred</strong>). Non-PII (account/cents) stays in the clear and folds normally</td>
+<td>drop the key → PII irrecoverable, yet the chain still verifies, the tip is identical, and books are byte-identical (<code>maxDiff=0c</code>) (<a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_erase.js">poc_erase.js</a> §ERASE/§BOOKS-INTACT)</td>
+<td><strong>tombstone the identity, keep the accounting fact</strong> — the honest GDPR posture, not faux-deletion (the event provably happened; the person is unidentifiable). §FALSIFIER: cleartext PII can only be "erased" by rewriting the chain</td>
 </tr>
 </tbody>
 </table>

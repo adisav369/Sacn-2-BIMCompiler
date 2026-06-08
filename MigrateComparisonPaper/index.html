@@ -4486,6 +4486,21 @@
 .mc-cmp .our{background:rgba(124,179,66,.08);border:1px solid rgba(124,179,66,.45)}
 .mc-cmp .our h4{color:#7cb342}
 .mc-cmp .mermaid{text-align:center}
+/* "At a glance" stat cards — whole card is a link */
+.glance-card{flex:1 1 150px;border-radius:12px;padding:10px 8px;text-align:center;text-decoration:none;color:inherit;display:block;transition:transform .12s ease,box-shadow .12s ease}
+.glance-card:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+/* "Proven ideas" pillar cards — one per row of the old table */
+.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:18px 0}
+.pillar{border:1px solid var(--pc);border-radius:12px;background:var(--pcbg);display:flex;flex-direction:column;overflow:hidden}
+.pillar .bd{padding:14px 16px 6px}
+.pillar svg{width:28px;height:28px;color:var(--pc);margin-bottom:8px;display:block}
+.pillar .title{font-size:15px;font-weight:800;line-height:1.2}
+.pillar .by{font-size:12px;color:var(--pc);font-weight:700;margin:3px 0 9px}
+.pillar .proved{font-size:13px;line-height:1.45;opacity:.85}
+.pillar .use{margin-top:auto;padding:9px 16px;border-top:1px solid var(--pc);background:var(--pcft);font-size:12.5px;line-height:1.45}
+.pillar .use b{color:var(--pc)}
+.pillar .use a{color:var(--pc);font-weight:700;text-decoration:none;border-bottom:1px dotted var(--pc)}
+.pillar .use code{font-size:11px}
 </style>
 
 <div style="max-width:760px;margin:24px auto 8px;padding:30px 40px;background:#263238;border-left:4px solid #ff9800;text-align:center;border-radius:4px" markdown="0">
@@ -4494,83 +4509,99 @@
 </div>
 
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0" markdown="0">
-  <div style="flex:1 1 150px;background:rgba(255,160,0,.12);border:1px solid rgba(255,160,0,.5);border-radius:12px;padding:10px 8px;text-align:center">
-    <img src="../img/money.png" alt="cost savings" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
-    <div style="font-size:19px;font-weight:800;line-height:1.1"><a href="#dr-tco" style="color:#ffa000;text-decoration:none;border-bottom:1px dotted #ffa000">≥30×</a></div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85">at least 30× less disaster-recovery storage at equal guarantee — the always-on server tier deleted (<b>TCO</b>)</div>
-  </div>
-  <div style="flex:1 1 150px;background:rgba(124,179,66,.12);border:1px solid rgba(124,179,66,.45);border-radius:12px;padding:10px 8px;text-align:center">
-    <img src="../img/down.png" alt="zero downtime" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
-    <div style="font-size:19px;font-weight:800;line-height:1.1"><a href="#no-server" style="color:#7cb342;text-decoration:none;border-bottom:1px dotted #7cb342">0</a></div>
+  <a class="glance-card" href="#dr-tco" style="background:rgba(255,160,0,.12);border:1px solid rgba(255,160,0,.5)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="cost savings" role="img" style="width:100%;height:72px;color:#ffa000;display:block;margin:0 auto 6px"><path d="M11 17h3v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3a3.16 3.16 0 0 0 2-2h1a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-1a5 5 0 0 0-2-4V3a4 4 0 0 0-3.2 1.6l-.3.4H11a6 6 0 0 0-6 6v1a5 5 0 0 0 2 4v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1z"/><path d="M16 10h.01"/><path d="M2 8v1a2 2 0 0 0 2 2h1"/></svg>
+    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#ffa000">≥30×</div>
+    <div style="font-size:12px;margin-top:6px;opacity:.85">less disaster-recovery storage at equal guarantee (<b>TCO</b>)</div>
+  </a>
+  <a class="glance-card" href="#no-server" style="background:rgba(124,179,66,.12);border:1px solid rgba(124,179,66,.45)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="zero network round-trips" role="img" style="width:100%;height:72px;color:#7cb342;display:block;margin:0 auto 6px"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></svg>
+    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#7cb342">0</div>
     <div style="font-size:12px;margin-top:6px;opacity:.85">network round-trips on the read / fold path</div>
-  </div>
-  <div style="flex:1 1 150px;background:rgba(255,112,67,.12);border:1px solid rgba(255,112,67,.45);border-radius:12px;padding:10px 8px;text-align:center">
-    <img src="../img/StopWatch.png" alt="speed" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
-    <div style="font-size:19px;font-weight:800;line-height:1.1"><a href="#speed" style="color:#ff7043;text-decoration:none;border-bottom:1px dotted #ff7043">~53×</a></div>
+  </a>
+  <a class="glance-card" href="#speed" style="background:rgba(255,112,67,.12);border:1px solid rgba(255,112,67,.45)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="speed" role="img" style="width:100%;height:72px;color:#ff7043;display:block;margin:0 auto 6px"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#ff7043">~53×</div>
     <div style="font-size:12px;margin-top:6px;opacity:.85">faster bootstrap from a signed checkpoint vs genesis replay</div>
-  </div>
-  <div style="flex:1 1 150px;background:rgba(66,165,245,.12);border:1px solid rgba(66,165,245,.45);border-radius:12px;padding:10px 8px;text-align:center">
-    <img src="../img/StackPapers.png" alt="code bloat" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
-    <div style="font-size:19px;font-weight:800;line-height:1.1"><a href="#realistic-conversion-estimate-loc" style="color:#42a5f5;text-decoration:none;border-bottom:1px dotted #42a5f5">≈30×</a></div>
+  </a>
+  <a class="glance-card" href="#realistic-conversion-estimate-loc" style="background:rgba(66,165,245,.12);border:1px solid rgba(66,165,245,.45)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="code bloat" role="img" style="width:100%;height:72px;color:#42a5f5;display:block;margin:0 auto 6px"><path d="M11 21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1"/><path d="M16 16a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1"/><path d="M21 6a2 2 0 0 0-.586-1.414l-2-2A2 2 0 0 0 17 2h-3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1z"/></svg>
+    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#42a5f5">≈30×</div>
     <div style="font-size:12px;margin-top:6px;opacity:.85">less code at full iDempiere parity — <i>≈89× delivered today</i></div>
-  </div>
-  <div style="flex:1 1 150px;background:rgba(171,71,188,.12);border:1px solid rgba(171,71,188,.45);border-radius:12px;padding:10px 8px;text-align:center">
-    <img src="../img/server.png" alt="database backup" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
-    <div style="font-size:16px;font-weight:800;line-height:1.15;color:#ab47bc">1 TB→500 MB</div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85"><b><a href="#fn-backup" style="color:#ab47bc;text-decoration:none;border-bottom:1px dotted #ab47bc">Back up the recipe, not the result.</a></b></div>
-  </div>
+  </a>
+  <a class="glance-card" href="#fn-backup" style="background:rgba(171,71,188,.12);border:1px solid rgba(171,71,188,.45)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="database backup" role="img" style="width:100%;height:72px;color:#ab47bc;display:block;margin:0 auto 6px"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#ab47bc">1 TB→500 MB</div>
+    <div style="font-size:12px;margin-top:6px;opacity:.85"><b>Back up the recipe, not the result.</b></div>
+  </a>
 </div>
 
 <h2 id="these-have-been-around-for-some-time-but-never-for-erp-until-now">These have been around for some time, but never for ERP, until now.<a class="headerlink" href="#these-have-been-around-for-some-time-but-never-for-erp-until-now" title="Permanent link">&para;</a></h2>
 <p><em>Every pillar below is a proven, decades-old idea from a named creator. Thus we can now put the ERP server in the browser!</em></p>
-<table>
-<thead>
-<tr>
-<th>Concept</th>
-<th>Created By</th>
-<th>What they proved</th>
-<th>Where we use it</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Double-entry ledger</strong> (codified 1494)</td>
-<td><strong>Luca Pacioli</strong></td>
-<td>the books are a <em>fold</em> of postings; Σdebit ≡ Σcredit</td>
-<td>our journal is a fold — ΣDr ≡ ΣCr (<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_postings.js"><code>poc_postings.js</code></a>)</td>
-</tr>
-<tr>
-<td><strong>The log is the truth</strong> (git, 2005)</td>
-<td><strong>Linus Torvalds</strong></td>
-<td>hash-chained, signable history no central machine owns; host disposable</td>
-<td>the signed op-log + <code>verifyChain()</code>; "the host is a Git remote"</td>
-</tr>
-<tr>
-<td><strong>Event sourcing / replay</strong> (2005)</td>
-<td><strong>Martin Fowler · Greg Young</strong></td>
-<td>state = deterministic <em>replay</em> of an append-only log</td>
-<td>the kernel folds the log (<a href="../OpLogERP/">OpLogERP.md</a>)</td>
-</tr>
-<tr>
-<td><strong>The active data dictionary</strong></td>
-<td><strong>Jörg Janke</strong> — Compiere → iDempiere</td>
-<td>an app can describe <em>itself</em> as data — tables, windows, rules</td>
-<td>the 925-table AD rides as <strong>data</strong>, folded through 5 relations + verbs</td>
-</tr>
-<tr>
-<td><strong>Hash trees + public-key signatures</strong></td>
-<td><strong>Merkle · Diffie–Hellman · RSA</strong></td>
-<td>a fact can carry its own integrity <em>and</em> authenticity anywhere</td>
-<td>ECDSA-P256 signed ops; tamper caught on replay (<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_sign.js"><code>poc_sign.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_chain.js"><code>poc_chain.js</code></a>)</td>
-</tr>
-<tr>
-<td><strong>SQLite, embeddable</strong></td>
-<td><strong>D. Richard Hipp</strong></td>
-<td>a full SQL engine with <em>no server</em> — and now WASM</td>
-<td>folds the log locally, inside the browser tab</td>
-</tr>
-</tbody>
-</table>
+<div class="pillars" markdown="0">
+
+  <div class="pillar" style="--pc:#ffa000;--pcbg:rgba(255,160,0,.07);--pcft:rgba(255,160,0,.16)">
+    <div class="bd">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/></svg>
+      <div class="title">Double-entry ledger</div>
+      <div class="by">Luca Pacioli · codified 1494</div>
+      <div class="proved">The books are a <i>fold</i> of postings — Σdebit ≡ Σcredit.</div>
+    </div>
+    <div class="use">▸ Our journal is a fold — ΣDr ≡ ΣCr <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_postings.js"><code>poc_postings.js</code></a></div>
+  </div>
+
+  <div class="pillar" style="--pc:#7cb342;--pcbg:rgba(124,179,66,.08);--pcft:rgba(124,179,66,.16)">
+    <div class="bd">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6a9 9 0 0 0-9 9V3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/></svg>
+      <div class="title">The log is the truth</div>
+      <div class="by">Linus Torvalds · git, 2005</div>
+      <div class="proved">Hash-chained, signable history no central machine owns; the host is disposable.</div>
+    </div>
+    <div class="use">▸ The signed op-log + <code>verifyChain()</code> — “the host is a Git remote.”</div>
+  </div>
+
+  <div class="pillar" style="--pc:#ff7043;--pcbg:rgba(255,112,67,.08);--pcft:rgba(255,112,67,.16)">
+    <div class="bd">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+      <div class="title">Event sourcing / replay</div>
+      <div class="by">Martin Fowler · Greg Young · 2005</div>
+      <div class="proved">State = deterministic <i>replay</i> of an append-only log.</div>
+    </div>
+    <div class="use">▸ The kernel folds the log <a href="OpLogERP.md"><code>OpLogERP.md</code></a></div>
+  </div>
+
+  <div class="pillar" style="--pc:#42a5f5;--pcbg:rgba(66,165,245,.08);--pcft:rgba(66,165,245,.16)">
+    <div class="bd">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v8l3-3 3 3V2"/><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg>
+      <div class="title">The active data dictionary</div>
+      <div class="by">Jörg Janke · Compiere → iDempiere</div>
+      <div class="proved">An app can describe <i>itself</i> as data — tables, windows, rules.</div>
+    </div>
+    <div class="use">▸ The 925-table AD rides as <b>data</b>, folded through 5 relations + verbs.</div>
+  </div>
+
+  <div class="pillar" style="--pc:#ab47bc;--pcbg:rgba(171,71,188,.09);--pcft:rgba(171,71,188,.17)">
+    <div class="bd">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+      <div class="title">Hash trees + public-key signatures</div>
+      <div class="by">Merkle · Diffie–Hellman · RSA</div>
+      <div class="proved">A fact can carry its own integrity <i>and</i> authenticity anywhere.</div>
+    </div>
+    <div class="use">▸ ECDSA-P256 signed ops; tamper caught on replay <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_sign.js"><code>poc_sign.js</code></a> · <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_chain.js"><code>poc_chain.js</code></a></div>
+  </div>
+
+  <div class="pillar" style="--pc:#26a69a;--pcbg:rgba(38,166,154,.09);--pcft:rgba(38,166,154,.17)">
+    <div class="bd">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg>
+      <div class="title">SQLite, embeddable</div>
+      <div class="by">D. Richard Hipp</div>
+      <div class="proved">A full SQL engine with <i>no server</i> — and now WASM.</div>
+    </div>
+    <div class="use">▸ Folds the log locally, inside the browser tab.</div>
+  </div>
+
+</div>
+
 <hr />
 <h2 id="thesis">Thesis<a class="headerlink" href="#thesis" title="Permanent link">&para;</a></h2>
 <p>A classic ERP is a <strong>server of record</strong>: every read, write and posting is a round-trip to a machine that <em>owns the truth</em>. We keep the accounting and the document flow but <strong>delete that server</strong>. The truth becomes a <em>signed, hash-chained op-log</em>; the live numbers are a deterministic <strong>fold</strong> of it, replayed by a SQLite-WASM kernel <strong>in the browser</strong>. The host turns disposable (a Git remote); the user owns the log; period-end <strong>compaction</strong> is a <em>signed checkpoint</em> carrying balances forward — not a batch job with a down-window (the close <em>postings</em> are themselves folds, still being built).</p>
