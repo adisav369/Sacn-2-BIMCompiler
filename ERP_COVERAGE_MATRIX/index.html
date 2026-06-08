@@ -4192,17 +4192,17 @@ traces to a query or a <code>find … | wc -l</code>. Counts are a snapshot; re-
 <tr>
 <td>✅ COVERED</td>
 <td><strong>0</strong></td>
-<td>no surface is fully interpreted from the AD</td>
+<td>no surface is fully interpreted <em>end-to-end into the live render</em></td>
 </tr>
 <tr>
 <td>🟡 PARTIAL</td>
-<td><strong>12</strong></td>
-<td>the <em>static</em> slice works for the ~5–7 demo tables in <code>crud_ops.json</code> (hand-authored, not AD-extracted)</td>
+<td><strong>26</strong></td>
+<td>static demo slice <strong>+ the AD logic-expression evaluator</strong> (<code>ad_evaluator.js</code>, W-LOGIC-EVAL): the 7 Display/ReadOnly/MandatoryLogic surfaces now parse 100% (3044/3044 boolean rows) and evaluate correctly; wired into <code>crud_overlay.validateField</code>/<code>effectiveFlags</code> (headless-proven). <strong>+ the AD role/access gate</strong> (<code>ad_access.js</code>, W-ACCESS): the 6 security surfaces (Role/AccessLevel/Window/Process/Form_Access/EntityType) now interpret 1303 window + 1309 process + 145 form grants + 6 accesslevels across all 5 roles headless (<code>build/erp/poc_access.log</code>). <strong>+ the AD_Process dispatch spine</strong> (<code>ad_process.js</code>, W-PROC): SvrProcess (§A) + AD_Process (§B) move ⛔→🟡 — <code>classname</code>→handler-registry→prepare/validate-params→doIt, 5 handlers registered, 22/476 procs dispatched (report procs fold via <code>report_overlay</code>), 454 named-deferred (<code>build/erp/poc_proc.log</code>). Residual: live DOM show/hide/disable render-wiring (and tab-level GridTab render); access gate not wired into live window/process render; the 454-proc SvrProcess corpus stays unported (mechanism, not corpus).</td>
 </tr>
 <tr>
 <td>⛔ GAP</td>
-<td><strong>28</strong></td>
-<td>the behavioural / logic-expression / security surfaces are not interpreted at all</td>
+<td><strong>14</strong></td>
+<td>the remaining behavioural surfaces are not interpreted at all (the 2 empty *_Access tables count here as n/a-in-seed)</td>
 </tr>
 </tbody>
 </table>
@@ -4217,8 +4217,20 @@ delivery/definition, not behavioural parity — most behaviour is <strong>named-
 <code>crud_ops.json</code> (5 tables — c_order, m_inout, c_invoice, c_payment, c_allocationline; ~23 fields) whose keys
 <em>mirror</em> the AD shape (<code>readonly=!IsUpdateable</code>, <code>required=IsMandatory</code>, …) but are <strong>authored, not read from the AD
 DB</strong>. No code path reads <code>AD_Column.Callout</code>, <code>AD_Val_Rule.Code</code>, <code>AD_Rule.Script</code>, <code>DisplayLogic</code>, <code>AccessLevel</code>,
-or any <code>*_Access</code> table at runtime, and <strong>there is no logic-expression evaluator</strong> (<code>grep -ilE 'new Function|eval\(|jsr|
-groovy|nashorn|displaylogic|accesslevel|entitytype|whereclause'</code> over all 17 <code>build/erp/*.js</code> → 0 functional hits).</p>
+or any <code>*_Access</code> table at runtime. <strong>UPDATE (W-LOGIC-EVAL):</strong> there is now a logic-expression evaluator —
+<code>build/erp/ad_evaluator.js</code> (recursive-descent port of iDempiere <code>SimpleBoolean.g4</code> + <code>EvaluationVisitor</code>) — wired
+into <code>crud_overlay.js:effectiveFlags</code>/<code>validateField</code> via <code>window.AdEvaluator</code>. It reads <code>displaylogic</code>/<code>readonlylogic</code>/
+<code>mandatorylogic</code> and evaluates them against (record, context). Witness <code>scripts/poc_logic_eval.js</code> → <code>build/erp/poc_logic_eval.log</code>
+(<code>§LOGIC_COVERAGE evaluated=3044 of 3044 boolean-logic rows 100.00%</code>; §FALSIFIER verdict flips DR→CO). <strong>UPDATE (W-ACCESS):</strong>
+the security surfaces are now read too — <code>build/erp/ad_access.js</code> (port of <code>MRole.getWindowAccess</code>/<code>getProcessAccess</code>/
+<code>getFormAccess</code> + <code>canView</code>) interprets <code>ad_window_access</code>/<code>ad_process_access</code>/<code>ad_form_access</code>/<code>ad_table.accesslevel</code>/
+<code>ad_entitytype</code> from the AD; witness <code>scripts/poc_access.js</code> → <code>build/erp/poc_access.log</code>. <strong>UPDATE (W-PROC):</strong>
+there is now an AD_Process dispatch spine — <code>build/erp/ad_process.js</code> (port of <code>ProcessUtil.startJavaProcess:156-205</code>
++ <code>SvrProcess.startProcess:132-232</code>/<code>prepare</code>/<code>doIt</code> + <code>ProcessInfo</code>) reads <code>ad_process</code>/<code>ad_process_para</code>, resolves
+<code>classname</code> against a JS handler registry (report procs resolve to <code>report_overlay</code>'s folds), validates the supplied
+params against the para rows, runs the handler; an unregistered classname returns an explicit absent-handler (not a
+silent no-op). 5 handlers / 22 of 476 dispatched / 454 named-deferred. Witness <code>scripts/poc_proc.js</code> →
+<code>build/erp/poc_proc.log</code>. The remaining named surfaces (Callout/Val_Rule/Rule) remain unread.</p>
 </blockquote>
 <h2 id="a-rulesprocesses-defined-in-code-java">A · Rules/processes defined in CODE (Java)<a class="headerlink" href="#a-rulesprocesses-defined-in-code-java" title="Permanent link">&para;</a></h2>
 <table>
@@ -4250,8 +4262,8 @@ groovy|nashorn|displaylogic|accesslevel|entitytype|whereclause'</code> over all 
 <td><strong>SvrProcess</strong> (<code>org.compiere.process.*</code> / <code>org.idempiere.process.*</code>)</td>
 <td>see §B AD_Process (476)</td>
 <td>220 files / <strong>54,377 LOC</strong> (198 + 22)</td>
-<td><strong>absent</strong> — no classname dispatch / process runner (<code>grep runProcess|executeProcess|svrprocess</code> → CSS hits only)</td>
-<td>⛔ GAP</td>
+<td><strong>dispatch spine BUILT</strong> (<code>ad_process.js:dispatch</code>, W-PROC) — classname→registry→prepare/validate→doIt, 5 handlers, 22/476 dispatched, 454 named-deferred (the corpus itself stays unported). Was "absent"; now the <em>mechanism</em> exists, not the 54k-LOC corpus</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>Workflow engine</strong> (<code>org.compiere.wf</code> / <code>MWF*</code>)</td>
@@ -4306,7 +4318,7 @@ groovy|nashorn|displaylogic|accesslevel|entitytype|whereclause'</code> over all 
 <td><strong>AD_Process</strong> (+ Para / Classname / report)</td>
 <td><strong>476</strong> (Classname≠null <strong>337</strong>, IsReport=Y <strong>119</strong>); AD_Process_Para <strong>1208</strong></td>
 <td>the §A 54k-LOC home</td>
-<td><code>report_overlay.js</code> fixed <code>REPORT_MAP</code> folds receipt/TB/P&amp;L for a hand-listed set; <strong>no AD_Process row/para/classname read or run</strong></td>
+<td><strong>dispatch spine BUILT (<code>ad_process.js</code>, W-PROC):</strong> reads <code>ad_process</code>+<code>ad_process_para</code>, resolves <code>classname</code>→a JS handler registry, validates params against the para rows (prepare→doIt, port of <code>ProcessUtil.startJavaProcess:156-205</code>/<code>SvrProcess.startProcess:132-232</code>), runs + logs. <strong>5 classnames registered, 22 of 476 dispatched</strong> (report procs 110/116 → <code>report_overlay.foldReceipt</code>; 310→<code>foldTrialBalance</code>; 175/233 doc-actions); the remaining <strong>454 are named-deferred</strong> (54k-LOC SvrProcess corpus, intentionally not ported). §PROC run / §PROC_PARAM_VALIDATE (missing-mandatory rejected) / §FALSIFIER (unregistered classname → explicit absent-handler, not silent) — <code>build/erp/poc_proc.log</code>. Residual to ✅: corpus completeness + live process-launch wiring</td>
 <td>🟡 PARTIAL</td>
 </tr>
 <tr>
@@ -4355,15 +4367,15 @@ groovy|nashorn|displaylogic|accesslevel|entitytype|whereclause'</code> over all 
 <td><strong>AD_Column · ReadOnlyLogic</strong></td>
 <td><strong>289</strong></td>
 <td><code>Evaluator.java</code> (197)</td>
-<td><strong>absent</strong> — flat <code>f.readonly</code> bool only, no expr eval</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_evaluator.js</code>+<code>crud_overlay.effectiveFlags</code></strong> — all 289 (129 distinct) parse + evaluate; flat <code>f.readonly</code> is now fallback (W-LOGIC-EVAL §LOGIC_COVERAGE). Residual: live input-disable render-wiring</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Column · MandatoryLogic</strong></td>
 <td><strong>29</strong></td>
 <td><code>Evaluator.java</code></td>
-<td><strong>absent</strong> — flat <code>f.required</code> bool only</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_evaluator.js</code>+<code>effectiveFlags</code></strong> — all 29 (28 distinct) parse+evaluate; drives <code>required</code> (flat <code>f.required</code> fallback). Residual: render * marker (W-LOGIC-EVAL)</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Column · ValueFormat</strong> (<code>vformat</code>)</td>
@@ -4390,22 +4402,22 @@ groovy|nashorn|displaylogic|accesslevel|entitytype|whereclause'</code> over all 
 <td><strong>AD_Field · DisplayLogic</strong></td>
 <td><strong>2588</strong></td>
 <td><code>GridField.isDisplayed</code> + Evaluator</td>
-<td><strong>absent</strong> — fields never show/hide by context</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_evaluator.js</code></strong> — all 2588 (776 distinct) parse+evaluate; <code>effectiveFlags.visible</code> computed; validateField skips hidden. Residual: live DOM show/hide not yet wired (W-LOGIC-EVAL)</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Field · ReadOnlyLogic</strong></td>
 <td><strong>52</strong></td>
 <td>Evaluator</td>
-<td><strong>absent</strong></td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_evaluator.js</code>+<code>effectiveFlags</code></strong> — all 52 (42 distinct) parse+evaluate (W-LOGIC-EVAL). Residual: render-wiring</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Field · MandatoryLogic</strong></td>
 <td><strong>14</strong></td>
 <td>Evaluator</td>
-<td><strong>absent</strong></td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_evaluator.js</code>+<code>effectiveFlags</code></strong> — all 14 (8 distinct) parse+evaluate (W-LOGIC-EVAL). Residual: render-wiring</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Field · DefaultValue</strong></td>
@@ -4432,15 +4444,15 @@ groovy|nashorn|displaylogic|accesslevel|entitytype|whereclause'</code> over all 
 <td><strong>AD_Tab · ReadOnlyLogic</strong></td>
 <td><strong>42</strong></td>
 <td><code>GridTab</code> + Evaluator</td>
-<td><strong>absent</strong></td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_evaluator.js</code></strong> — all 42 (4 distinct) parse+evaluate (W-LOGIC-EVAL §LOGIC_COVERAGE). Residual: tab-level GridTab render not wired</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Tab · DisplayLogic</strong></td>
 <td><strong>35</strong></td>
 <td><code>GridTab</code> + Evaluator</td>
-<td><strong>absent</strong></td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_evaluator.js</code></strong> — all 35 (25 distinct) parse+evaluate (W-LOGIC-EVAL). Residual: tab-level GridTab render not wired</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Tab · IsInsertRecord=N</strong></td>
@@ -4474,56 +4486,56 @@ groovy|nashorn|displaylogic|accesslevel|entitytype|whereclause'</code> over all 
 <td><strong>AD_EntityType</strong></td>
 <td><strong>12</strong></td>
 <td><code>MEntityType</code></td>
-<td><strong>absent</strong> — dictionary/customization scope unenforced</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_access.js:RoleContext.entityTypeAllowed</code></strong> — all 12 active entitytypes loaded into the role scope (W-ACCESS §ACCESS_COVERAGE entitytypes=12). Residual: scope not enforced at live dictionary-object render</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AccessLevel</strong> (AD_Table)</td>
 <td><strong>1076</strong> (org/client/system bits)</td>
 <td><code>MRole</code>/<code>MTable</code></td>
-<td><strong>absent</strong></td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_access.js:canView</code>+<code>gateRecord</code></strong> — faithful port of <code>MRole.canView:2422-2465</code>; all 6 distinct accesslevels (1076 ad_table rows) interpreted for both roles, 0 err; System-only (4) denied to userLevel '  O' (W-ACCESS §ACCESS_DENY). Residual: not wired into live record read</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Role</strong></td>
 <td><strong>5</strong></td>
 <td><code>MRole.java</code> (3533)</td>
-<td><strong>absent</strong> (only a "role-gated" comment)</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_access.js:buildRole</code></strong> — all 5 roles built from <code>ad_role</code> (userLevel/orgs/clients/isaccessallorgs) + their grant maps (W-ACCESS §ACCESS_COVERAGE roles=5). Residual: no live session-role selection</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Window_Access</strong></td>
 <td><strong>1303</strong></td>
 <td><code>MRole.getWindowAccess</code></td>
-<td><strong>absent</strong></td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_access.js:gateWindow</code></strong> (port of <code>MRole.getWindowAccess:1610-1693</code>) — all 1303 active grant rows interpreted (no-row=DENY, IsReadWrite=rw); §ACCESS_OK + §ACCESS_DENY (no-grant) + §FALSIFIER proven (W-ACCESS). Residual: not wired into live menu/window render</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Process_Access</strong></td>
 <td><strong>1309</strong></td>
 <td><code>MRole.getProcessAccess</code></td>
-<td><strong>absent</strong></td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_access.js:gateProcess</code></strong> (port of <code>MRole.getProcessAccess:1701-1789</code>) — all 1309 active grant rows interpreted; §ACCESS_OK proven (W-ACCESS). Residual: not wired into live process launch</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Form_Access</strong></td>
 <td><strong>145</strong></td>
 <td><code>MRole.getFormAccess</code></td>
-<td><strong>absent</strong></td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_access.js:gateForm</code></strong> (port of <code>MRole.getFormAccess:1888-1972</code>) — all 145 active grant rows interpreted (W-ACCESS §ACCESS_COVERAGE forms_gated=145). Residual: no live form render to gate</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Column_Access</strong></td>
 <td><strong>0</strong> (table empty)</td>
 <td><code>MRole.getColumnAccess</code></td>
-<td><strong>absent</strong> (n/a in seed)</td>
+<td><strong>n/a in seed</strong> — table empty (0 rows); gate has no column-grant data to interpret</td>
 <td>⛔ GAP</td>
 </tr>
 <tr>
 <td><strong>AD_Record_Access</strong></td>
 <td><strong>0</strong> (table empty)</td>
 <td><code>MRole.getRecordAccess</code></td>
-<td><strong>absent</strong> (n/a in seed)</td>
+<td><strong>n/a in seed</strong> — table empty (0 rows); record-org/client scope is covered separately via <code>gateRecord</code></td>
 <td>⛔ GAP</td>
 </tr>
 </tbody>
@@ -4533,9 +4545,9 @@ groovy|nashorn|displaylogic|accesslevel|entitytype|whereclause'</code> over all 
 (per <code>docs/TestArchitecture.md</code> — a log line, not a Playwright test). For the ⛔ rows the <code>grep</code>-empty result <em>is</em> the
 disproof: the line can never fire today.</p>
 <ol>
-<li><strong>Logic-expression evaluator</strong> (the single highest-leverage gap — unblocks 7 rows: Display/ReadOnly/Mandatory Logic on Column+Field+Tab, ~3,000 AD expressions). Witness: <code>§LOGIC_EVAL attr=readonly expr="@DocStatus@!DR" ctx={...} result=true</code>. No <code>Evaluator</code> equivalent exists → line cannot be produced.</li>
-<li><strong>Security layer</strong> (Role/AccessLevel/4×_Access/EntityType — ~4,200 AD rows, the compliance story). Witness: <code>§ACCESS_DENY window=Order role=GardenUser</code> under a restricted role. No role/access symbol in any <code>build/erp/*.js</code>.</li>
-<li><strong>SvrProcess runner</strong> (476 AD_Process / 54k LOC). Witness: <code>§PROC run classname=&lt;X&gt; rows_affected=&lt;n&gt;</code>. No runner exists.</li>
+<li><strong>Logic-expression evaluator</strong> — ✅ <strong>BUILT (W-LOGIC-EVAL).</strong> <code>build/erp/ad_evaluator.js</code> (port of iDempiere <code>SimpleBoolean.g4</code> + <code>EvaluationVisitor</code>) + <code>crud_overlay.effectiveFlags</code> wiring. Unblocks 7 rows (now 🟡): <code>§LOGIC_COVERAGE evaluated=3044 of 3044 boolean-logic rows (100.00%)</code> + 5 <code>@SQL=</code> rows named-deferred (separate <code>parseSQLLogic</code> surface); §FALSIFIER readonly flips rw→ro on <code>@Processed@</code> N→Y and display flips hide→show on <code>@DocStatus@!DR</code> DR→CO; 25 operator-class samples pass. Witness: <code>scripts/poc_logic_eval.js</code> → <code>build/erp/poc_logic_eval.log</code>. <strong>Residual to ✅:</strong> live DOM render-wiring (show/hide/disable) + tab-level GridTab render.</li>
+<li><strong>Security layer</strong> — ✅ <strong>BUILT (W-ACCESS).</strong> <code>build/erp/ad_access.js</code> (port of iDempiere <code>MRole.getWindowAccess</code>/<code>getProcessAccess</code>/<code>getFormAccess</code> + <code>canView</code> AccessLevel-SCO semantics) interprets the real grant rows: §ACCESS_COVERAGE roles=5 windows_gated=1303 processes_gated=1309 forms_gated=145 accesslevels=6(1076 rows) entitytypes=12 errors=0; §ACCESS_DENY proven for a no-grant window (GardenWorld User vs Admin), a wrong-org record (org 12 ∉ User's {11,50000,50001,50007}), and a System-only record (no 'S' in userLevel '  O'); §FALSIFIER shows gate-OFF would let User SEE the no-grant window → gate is load-bearing. Witness: <code>scripts/poc_access.js</code> → <code>build/erp/poc_access.log</code>. <strong>Residual to ✅:</strong> wire the gate into live menu/window/process render + session-role selection; AD_Column_Access/AD_Record_Access are empty in this seed (n/a).</li>
+<li><strong>SvrProcess runner</strong> — ✅ <strong>DISPATCH SPINE BUILT (W-PROC).</strong> <code>build/erp/ad_process.js</code> (port of iDempiere <code>ProcessUtil.startJavaProcess:156-205</code> + <code>SvrProcess.startProcess:132-232</code>→<code>process()</code>→<code>prepare()</code>→<code>doIt()</code> + <code>ProcessInfo.getClassName:535</code>/<code>getParameter:717</code>) reads <code>ad_process</code>+<code>ad_process_para</code>, resolves <code>classname</code>→a JS handler registry, validates supplied params against the para rows, runs + logs: <code>§PROC_COVERAGE registered=5 dispatched=22 of 476 AD_Process (classname≠null 337) absent=454 parseErrors=0</code>. Real dispatches proven — Order Print (110)→<code>report:c_order</code>→<code>report_overlay.foldReceipt</code> (1 line, total 50.35), Invoice Print (116)→<code>report:c_invoice</code>, Resubmit Posting (175, <code>org.compiere.process.FactAcctReset</code>)→doc-action handler. <code>§PROC_PARAM_VALIDATE</code> rejects TrialBalance (310) when the mandatory <code>PostingType</code> is dropped (dispatched=false before doIt, not a silent run). <code>§FALSIFIER</code> — <code>org.compiere.report.FinBalance</code> (203, real classname, no handler) → explicit "Failed to create new process instance" absent-handler (a silent no-op would dispatch=true) → classname→handler resolution is load-bearing. Witness: <code>scripts/poc_proc.js</code> → <code>build/erp/poc_proc.log</code>. <strong>Residual to ✅:</strong> the 454 named-deferred classnames are the 54k-LOC SvrProcess corpus (intentionally not ported — the deliverable is the mechanism, not the corpus) + live process-launch render-wiring.</li>
 <li><strong>Workflow engine</strong> (58 wf / 262 nodes). Witness: <code>§WF node=&lt;id&gt; action=C next=&lt;id&gt; activity=created</code>. 0 grep hits.</li>
 <li><strong>DocAction FSM beyond CO</strong> (14 actions × 12 statuses). Witness: <code>§DOCTYPE_FSM {from,to,action,legalActions:&lt;from C_DocType&gt;}</code> — today <code>legalActions=undefined</code>, <code>to ∈ {CO,IP}</code>.</li>
 <li><strong>Callout dispatch</strong> (284 cols / 148 classes). Witness: <code>§CALLOUT fired col=c_bpartner_id derived={M_PriceList_ID,...}</code> on a BPartner change.</li>
@@ -4550,8 +4562,9 @@ disproof: the line can never fire today.</p>
 <p>The real AD counts sharpen <code>MigrateComparisonPaper §"Realistic conversion estimate"</code>: the irreducible buckets are now
 <strong>enumerated, not asserted</strong> — process <strong>54,377 LOC</strong> (476 AD_Process, 337 with a classname), Doc_<em> posting </em><em>12,789 LOC</em><em>
 (20 doc types), callouts </em><em>10,340 LOC</em><em> (284 cols / 148 classes), workflow </em><em>7,366 LOC</em><em> (58 wf), validators </em><em>1,165 LOC</em><em>
-(3 registered), plus a </em><em>~3,000-row logic-expression</em><em> surface and a </em><em>~4,200-row security</em><em> surface that have </em><em>no engine
-home at all</em><em>. Folded today: the <code>CO</code> transition, the double-entry posting fold, a fixed report set — for ~5–7 demo tables.
+(3 registered). The </em><em>~3,000-row logic-expression</em><em> surface (W-LOGIC-EVAL) and the </em><em>~4,200-row security</em><em> surface
+(W-ACCESS) now have an engine home (<code>ad_evaluator.js</code> / <code>ad_access.js</code>, headless-proven; live render-wiring is the
+residual). Folded today: the <code>CO</code> transition, the double-entry posting fold, a fixed report set — for ~5–7 demo tables.
 This is the precise content behind "89× → ~30×": the 89× is delivery/definition; behavioural parity is a long, </em>named* tail.</p>
 <h2 id="provenance-caveats">Provenance / caveats<a class="headerlink" href="#provenance-caveats" title="Permanent link">&para;</a></h2>
 <ul>

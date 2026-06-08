@@ -4496,8 +4496,8 @@
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0" markdown="0">
   <div style="flex:1 1 150px;background:rgba(255,160,0,.12);border:1px solid rgba(255,160,0,.5);border-radius:12px;padding:10px 8px;text-align:center">
     <img src="../img/money.png" alt="cost savings" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
-    <div style="font-size:19px;font-weight:800;line-height:1.1"><a href="#dr-tco" style="color:#ffa000;text-decoration:none;border-bottom:1px dotted #ffa000">≈30–244×</a></div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85">less disaster-recovery storage at equal guarantee — the always-on server tier deleted (<b>TCO</b>)</div>
+    <div style="font-size:19px;font-weight:800;line-height:1.1"><a href="#dr-tco" style="color:#ffa000;text-decoration:none;border-bottom:1px dotted #ffa000">≥30×</a></div>
+    <div style="font-size:12px;margin-top:6px;opacity:.85">at least 30× less disaster-recovery storage at equal guarantee — the always-on server tier deleted (<b>TCO</b>)</div>
   </div>
   <div style="flex:1 1 150px;background:rgba(124,179,66,.12);border:1px solid rgba(124,179,66,.45);border-radius:12px;padding:10px 8px;text-align:center">
     <img src="../img/down.png" alt="zero downtime" style="width:100%;height:86px;object-fit:contain;display:block;margin:0 auto 6px">
@@ -4651,7 +4651,7 @@ hash-chained log holds the truth; the host (if any) is a disposable relay. Every
 <td><strong>Backup / DR</strong></td>
 <td>backup rotation, 30–50 copies = many× the state; restore = down-window <sup id="fnref3:tco"><a class="footnote-ref" href="#fn:tco">3</a></sup></td>
 <td><strong>the recipe is the backup</strong> — one signed log ×3 replicas, restore = replay, unbounded restore points <sup id="fnref4:tco"><a class="footnote-ref" href="#fn:tco">3</a></sup><sup id="fnref2:blackout"><a class="footnote-ref" href="#fn:blackout">4</a></sup></td>
-<td>≈30–244× less DR storage (strategy-dependent); <strong>0 branch downtime</strong></td>
+<td>at least 30× less DR storage (strategy-dependent); <strong>0 branch downtime</strong></td>
 </tr>
 </tbody>
 </table>
@@ -4896,12 +4896,6 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>daily full × 50</td>
-<td>1,049 GB</td>
-<td>0.78 GB</td>
-<td>1,338×</td>
-</tr>
 <tr>
 <td>weekly full + daily incremental (standard DBA)</td>
 <td>192 GB</td>
@@ -5255,7 +5249,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <p><code>build/erp/period_close_drive.log</code> — in-browser drive: <code>close N=20000 closeFold=2681.8ms archived=40000 live=1</code>; <code>bootstrap fromCkpt=0.90ms fromGenesis=47.70ms speedup=53.0x same=true</code>; <code>reconcile maxDiff=0c</code>.&#160;<a class="footnote-backref" href="#fnref:drive" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:drive" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:drive" title="Jump back to footnote 2 in the text">&#8617;</a></p>
 </li>
 <li id="fn:tco">
-<p><code>build/erp/poc_tco_skeptic.log</code> — <code>W-TCO-HARDENED</code> (<code>scripts/poc_tco_skeptic.js</code>): measured 314 B/op snapshot + fold/restore; three backup strategies (Retail) daily-full 1,338× / weekly-incremental <strong>244×</strong> / minimal 30×; per-branch-fold additivity <code>maxDiff=0c</code>; billable-resource inventory (&gt;10× cheaper excl. licence + labour); double-sale trade bounded to the ≤0.1% shared op-class, value-tiered. Model constants per GAPS #7 (conservative for us).&#160;<a class="footnote-backref" href="#fnref:tco" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:tco" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:tco" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:tco" title="Jump back to footnote 3 in the text">&#8617;</a></p>
+<p><code>build/erp/poc_tco_skeptic.log</code> — <code>W-TCO-HARDENED</code> (<code>scripts/poc_tco_skeptic.js</code>): measured 314 B/op snapshot + fold/restore; two backup strategies (Retail) weekly-incremental <strong>244×</strong> / minimal 30×; per-branch-fold additivity <code>maxDiff=0c</code>; billable-resource inventory (&gt;10× cheaper excl. licence + labour); double-sale trade bounded to the ≤0.1% shared op-class, value-tiered. Model constants per GAPS #7 (conservative for us).&#160;<a class="footnote-backref" href="#fnref:tco" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:tco" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:tco" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:tco" title="Jump back to footnote 3 in the text">&#8617;</a></p>
 </li>
 <li id="fn:blackout">
 <p><code>build/erp/poc_blackout_resume.log</code> — <code>W-BLACKOUT</code> (<code>scripts/poc_blackout_resume.js</code>): 50 branches, total blackout + relay drive lost (no backup), rebuilt from each branch's own slice to an <strong>identical signed tip</strong>, books <code>maxDiff=0c</code>, idempotent re-push (<code>acc=0</code>); the CAS-arbitration sliver is named + ledger-routed; <code>§ORDER-HONEST</code> — disjoint folds commute, cross-branch CAS order is not reconstructible from signed logs alone.&#160;<a class="footnote-backref" href="#fnref:blackout" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:blackout" title="Jump back to footnote 4 in the text">&#8617;</a></p>

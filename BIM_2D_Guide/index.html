@@ -2136,6 +2136,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#prerequisites-what-a-building-db-needs-before-2d-grid-edit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites — what a building DB needs before 2D grid EDIT
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#keyboard-interaction-cheat-sheet" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4155,6 +4166,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#prerequisites-what-a-building-db-needs-before-2d-grid-edit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites — what a building DB needs before 2D grid EDIT
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#keyboard-interaction-cheat-sheet" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4306,6 +4328,61 @@
 <li>Long-press a grid line (~0.4s), drag it — the cost panel appears</li>
 <li>Press <strong>Ctrl+Z</strong> to undo. Reload the page — grid stays where you dragged it.</li>
 </ol>
+<hr />
+<h2 id="prerequisites-what-a-building-db-needs-before-2d-grid-edit">Prerequisites — what a building DB needs before 2D grid EDIT<a class="headerlink" href="#prerequisites-what-a-building-db-needs-before-2d-grid-edit" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>Recall pin (do not re-discover this):</strong> <em>basic</em> 2D (the storey-aware cut, GF/L1 floor
+plans, grid-line detection, long-press grid <strong>drag</strong>, and the spatial-BOQ cost panel) works
+on a plain <code>{PREFIX}_extracted.db</code> alone — it only needs <code>elements_meta</code> (with <code>storey</code>),
+<code>element_transforms</code>, and <code>component_geometries</code>. Verified: Duplex and SampleCastle render
+grids + contours with <strong>no</strong> MEP/route tables present.</p>
+<p><strong>Full grid EDIT</strong> — the MEP re-route on a discipline switch and BOM-scoped recompose — needs
+three more pieces <em>defined for that building</em>, or it silently emits nothing:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Artifact (DB · table)</th>
+<th>Used by</th>
+<th>Absent ⇒</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>BOM</strong> (the recipe)</td>
+<td><code>{PREFIX}_BOM.db</code> · <code>m_bom</code> / <code>m_bom_line</code></td>
+<td>BOM recompose on edit</td>
+<td>no recompose; baked in by the compile / SC-BOM-seed</td>
+</tr>
+<tr>
+<td><strong>ERP validation</strong></td>
+<td><code>ERP.db</code> · <code>AD_Val_Rule</code> (read-only <code>valConn</code>)</td>
+<td>clearance / spacing / priority constraints (<code>G4_SRS.md</code>)</td>
+<td>edits unconstrained</td>
+</tr>
+<tr>
+<td><strong>Route-walking routine</strong></td>
+<td><code>mep_rw.db</code> · <code>ad_mep_pattern</code> (CW/SP topology) + <code>ad_mep_anchor</code> (per <code>building_type</code>)</td>
+<td><code>RouteWalker.walk()</code> (<code>route_walker.js</code> / <code>routewalker.js</code>)</td>
+<td><code>§RW_WALK no patterns…/no anchors…</code> → <strong>0 MEP segments placed</strong></td>
+</tr>
+</tbody>
+</table>
+<p>So: <strong>a building must be a "known building"</strong> in <code>mep_rw.db</code> (its <code>building_type</code> has patterns +
+anchors) and carry its <code>m_bom</code> + <code>AD_Val_Rule</code> before grid-edit MEP/BOM behaviour is real.
+Without them the plan still <em>draws</em> and grid lines still <em>drag</em> — but a DISC switch produces no
+fresh route. Diagnose presence with the <code>§RW_WALK building=… cw=… sp=…</code> log (or its
+<code>no patterns/no anchors</code> warning). NOTE: the <code>ROUTE → RouteWalker.walk</code> wiring itself is the
+<code>RED_PILL.md</code> <strong>B3</strong> task (was a straight-line stub) — confirm it's live before relying.
+(<code>BOM_ENGINE_SPEC.md</code> §strategy=ROUTE · <code>G4_SRS.md</code> valConn/bomConn · <code>DISC_VALIDATION_DB_SRS.md</code> §6.12.3)</p>
+<p><strong>Persistence interaction (2026-06-08, sw v626 / PR #202):</strong> the kernel-op IndexedDB persistence
+fix is <em>orthogonal</em> to the above — it only snapshots the building <code>_extracted.db</code> (whole-DB
+<code>export()</code>, deletes nothing; touches no BOM/ERP/<code>mep_rw</code> table). Complementary effect: RouteWalker
+emits its MEP as <code>kernel_ops ELEMENT_PLACE</code>, which now <strong>survives reload</strong> (previously lost — the
+persist path was dead). ⚠ Reasoned + scope-verified, <strong>not witnessed end-to-end</strong>: the combined
+<em>grid-edit → RouteWalker → persist → reload</em> round-trip has not been run on a route-defined
+building (none loaded had <code>mep_rw.db</code> data). Prove it on such a building before relying.</p>
+</blockquote>
 <hr />
 <h2 id="keyboard-interaction-cheat-sheet">Keyboard &amp; Interaction Cheat Sheet<a class="headerlink" href="#keyboard-interaction-cheat-sheet" title="Permanent link">&para;</a></h2>
 <table>
