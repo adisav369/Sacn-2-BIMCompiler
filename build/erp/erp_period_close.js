@@ -21,12 +21,20 @@
   var REOPEN_TYPE = 'PERIOD_REOPEN';
 
   // ── the accounting fold (deterministic, integer cents) ──────────────────────────────────────────
-  // A balance-bearing op (a journal posting) carries BOTH a string `account` and an integer `cents`.
-  // bal[account] += cents. Document ops (orders/ships/invoices) carry no cents → skipped. Checkpoint /
-  // reopen ops are control ops, never postings. `opening` is the balance brought forward (default empty).
+  // TWO posting shapes fold here, both deterministic in integer cents; document ops (orders/ships/
+  // invoices) carry neither → skipped; CKPT/REOPEN are control ops, never postings. `opening` is the
+  // balance brought forward (default empty). The closing balance of an account = net cents.
+  //   (1) SYNTHETIC (poc_showstopper / test_kernel_period_close): `{account:string, cents:int}`.
+  //   (2) REAL — the LIVE app's §13.1 POST verb (~/bim-ootb/erp/erp_kernel.js applyOne): double-entry
+  //       `{lines:[{account_id, amtacctdr, amtacctcr}]}`, ΣDR==ΣCR. Per-account b/f = Σ(DR)−Σ(CR) cents.
+  //       Implementing prompts/ERP_SUBSTRATE_INTEGRATION.md §INTEG-POSTINGS-RECONCILE — Witness:
+  //       W-POSTINGS-RECONCILE. Additive: the synthetic path is byte-identical when no `lines` present.
   function _isPosting(p) {
     return p && typeof p.account === 'string' && typeof p.cents === 'number' && (p.cents | 0) === p.cents;
   }
+  // cents() mirrors ~/bim-ootb/erp/erp_postings.js exactly (the app's own DR/CR→cents) for an identical
+  // fold; amounts are 2-dp Fact_Acct values so Math.round is deterministic (no Number drift at 2 places).
+  function _cents(n) { return Math.round(Number(n || 0) * 100); }
   function foldBalances(ops, opening) {
     var bal = {}, a;
     if (opening) { for (a in opening) if (Object.prototype.hasOwnProperty.call(opening, a)) bal[a] = opening[a]; }
@@ -34,7 +42,15 @@
       if (op.op_type === CKPT_TYPE || op.op_type === REOPEN_TYPE) return;   // control ops, not postings
       var p = op.parameters;                                                // replayOps already JSON-parses
       if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { return; } }
-      if (!_isPosting(p)) return;
+      if (!p) return;
+      if (Array.isArray(p.lines)) {                                         // (2) real double-entry POST op
+        p.lines.forEach(function (l) {
+          var acct = String(l.account_id);
+          bal[acct] = (bal[acct] || 0) + _cents(l.amtacctdr) - _cents(l.amtacctcr);
+        });
+        return;
+      }
+      if (!_isPosting(p)) return;                                           // (1) synthetic posting
       bal[p.account] = (bal[p.account] || 0) + p.cents;
     });
     return { bal: bal };
