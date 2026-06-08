@@ -690,6 +690,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-a-fold-is-the-chess-scoresheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a fold is — the chess scoresheet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-kill-points-what-the-architecture-actually-deletes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4202,6 +4213,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-a-fold-is-the-chess-scoresheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a fold is — the chess scoresheet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-kill-points-what-the-architecture-actually-deletes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4496,6 +4518,14 @@
 <h2 id="thesis">Thesis<a class="headerlink" href="#thesis" title="Permanent link">&para;</a></h2>
 <p>A classic ERP is a <strong>server of record</strong>: every read, write and posting is a round-trip to a machine that <em>owns the truth</em>. We keep the accounting and the document flow but <strong>delete that server</strong>. The truth becomes a <em>signed, hash-chained op-log</em>; the live numbers are a deterministic <strong>fold</strong> of it, replayed by a SQLite-WASM kernel <strong>in the browser</strong>. The host turns disposable (a Git remote); the user owns the log; period-end <strong>compaction</strong> is a <em>signed checkpoint</em> carrying balances forward — not a batch job with a down-window (the close <em>postings</em> are themselves folds, still being built).</p>
 <p>A claim about <strong>substrate and delivery</strong>, not features — the legacy stacks have vastly more. What we show: the <em>architecture</em> folds the same transactions with <strong>zero network on the read/fold path</strong> — proven by folding a <strong>live Odoo</strong>, <strong>iDempiere's own flows</strong> (it's the AD we render), and a <strong>SAP Business One</strong> flow (mock export) into the same six verbs. S/4HANA is still pending a real oracle.</p>
+<hr />
+<h2 id="what-a-fold-is-the-chess-scoresheet">What a <em>fold</em> is — the chess scoresheet<a class="headerlink" href="#what-a-fold-is-the-chess-scoresheet" title="Permanent link">&para;</a></h2>
+<p>You don't store the chessboard — you store the <strong>move list</strong>, and replay it. The position is a deterministic <em>fold</em> of those moves: lose the board, keep the sheet, rebuild it exactly; anyone who replays the same moves reaches the same position. Our ERP is identical — the <strong>signed op-log is the move list, the live balances are the board.</strong> A fold, never a stored snapshot.</p>
+<figure style="text-align:center;margin:18px 0">
+  <img src="../img/chessfolding.jpg" alt="A chess scoresheet folds back into the board position" style="max-width:460px;width:100%;border-radius:8px">
+  <figcaption style="font-size:0.85em;opacity:.8;margin-top:6px">The scoresheet (the log) folds back into the position (the state) — lose the board, keep the sheet, rebuild it exactly.</figcaption>
+</figure>
+
 <hr />
 <h2 id="the-kill-points-what-the-architecture-actually-deletes">The kill points — what the architecture actually deletes<a class="headerlink" href="#the-kill-points-what-the-architecture-actually-deletes" title="Permanent link">&para;</a></h2>
 <blockquote>
