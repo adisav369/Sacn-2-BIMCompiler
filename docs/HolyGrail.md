@@ -190,6 +190,8 @@ logged — which is the difference between building and day-dreaming.
 
 ## Abstracting the DocAction corpus — and why it is the migration solvent
 
+> **How much of the corpus is folded today → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md):** of the 14 DocActions × 52 C_DocTypes, the engine interprets **only `CO`** (Complete) — the other 13 actions and the per-doctype FSM are a ⛔ gap. The de-interleaved transition table is also the storage opcode table (`poc_oc_bytes.js` `§OPCODE-TABLE`).
+
 The grail edits *rules*; the most valuable rules govern a document's *lifecycle* — *when may
 this complete, and what does completion do.* So the engine must express the whole iDempiere
 **DocAction** corpus (≈13 actions — `DR/PR/CO/AP/RJ/CL/RC/RA/VO/RE/IN/XL/PO` — over ≈13

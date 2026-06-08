@@ -1,5 +1,10 @@
 # ERP Rules & Processes — Coverage Matrix ("have we covered all the bases?")
 
+**Companion to:** [Migrate & Compare (ERP)](MigrateComparisonPaper.md) (the §estimate buckets, now measured) ·
+[The Holy Grail](HolyGrail.md#abstracting-the-docaction-corpus--and-why-it-is-the-migration-solvent) (the DocAction
+corpus) · [iDempiere logic-admission model](IDEMPIERE_2.md#the-logic-admission-model--how-all-of-odooerpnextsap-logic-enters)
+(the six layers this audit scores). This page is the exhaustive enumeration those three reference.
+
 **Prompt:** `prompts/ERP_RULES_AND_PROCESSES.md` (§M-1 of `prompts/SERVERLESS_HARDENING_RESUME.md`).
 **Method:** every surface enumerated in *both* homes — CODE (`~/idempiere-dev-setup/idempiere`, a live checkout) and
 AD DATA (`build/erp/ad_full.db`, 927 tables, snapshot **2026-05-29**) — and mapped to our browser engine

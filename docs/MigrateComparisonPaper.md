@@ -259,6 +259,8 @@ Incremental backup barely shrinks the gap — the **weekly fulls dominate.** Onl
 
 89× is honest for what's folded today — but it measures the *thinnest, highest-compression* slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does **not** extrapolate to a full port.
 
+> **Exhaustive coverage map → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md).** Every rule/process surface in *both* homes (Java code + the AD as data) enumerated, each count from a real `ad_full.db` query: **0 covered / 12 partial / 28 gap** of 40 surfaces. The buckets below are now measured, not asserted — and the matrix names what's a static demo slice vs. an absent pillar (no logic-expression evaluator, no security layer, no SvrProcess/workflow runner).
+
 Splitting all 1,427,147 Java LOC by fate [^split]:
 
 | Fate | ~LOC | Share | What |
