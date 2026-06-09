@@ -2844,6 +2844,8 @@
       
         
       
+        
+      
     
     
     
@@ -3212,6 +3214,34 @@
     
   
     ERP Coverage Matrix (have we covered all bases?)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_MODEL_ARCHETYPE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Model Archetype (MOrder + deltas = the denominator)
   
 
     
@@ -4414,8 +4444,8 @@ details.fold .fbd{padding:6px 16px 14px}
   </a>
   <a class="glance-card" href="#realistic-conversion-estimate-loc" style="background:rgba(66,165,245,.12);border:1px solid rgba(66,165,245,.45)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="code bloat" role="img" style="width:100%;height:72px;color:#42a5f5;display:block;margin:0 auto 6px"><path d="M11 21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1"/><path d="M16 16a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1"/><path d="M21 6a2 2 0 0 0-.586-1.414l-2-2A2 2 0 0 0 17 2h-3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1z"/></svg>
-    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#42a5f5">≈30×</div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85">less code at full iDempiere parity — <i>≈89× delivered today</i></div>
+    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#42a5f5">≈25×</div>
+    <div style="font-size:12px;margin-top:6px;opacity:.85">less code at full iDempiere parity <i>(conservative)</i> — <i>≈76× engine-shell delivered today</i></div>
   </a>
   <a class="glance-card" href="#dr-tco" style="background:rgba(171,71,188,.12);border:1px solid rgba(171,71,188,.45)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="database backup" role="img" style="width:100%;height:72px;color:#ab47bc;display:block;margin:0 auto 6px"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
@@ -4549,8 +4579,8 @@ hash-chained log holds the truth; the host (if any) is a disposable relay. Every
 <tr>
 <td><strong>Runtime code</strong></td>
 <td>1,427,147 Java LOC / 4,465 files <sup id="fnref3:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
-<td><strong>16,068 JS LOC / 39 files</strong> (flows folded so far) <sup id="fnref4:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
-<td>≈89× — <em>built-so-far; full-port forecast <a href="#realistic-conversion-estimate-loc">below</a></em></td>
+<td><strong>18,614 JS LOC / 60 files</strong> (the engine shell + flows folded so far) <sup id="fnref4:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td>≈76× built-so-far · <strong>~25× at conservative full parity</strong> <a href="#realistic-conversion-estimate-loc">below</a></td>
 </tr>
 <tr>
 <td><strong>Bootstrap</strong> (open the books)</td>
@@ -4765,7 +4795,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <td><strong>1,427,147 Java LOC</strong> / 4,465 files + JVM + Postgres + 3.7 GB build <sup id="fnref9:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
 <td>n/a — diff codebase <sup id="fnref22:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
 <td>n/a <sup id="fnref23:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>16,068 JS LOC</strong> / 39 files / 884 KB, static + SQLite-WASM, offline (≈<strong>89× fewer</strong>, zero server/JVM/DB) <sup id="fnref10:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td><strong>18,614 JS LOC</strong> / 60 files, static + SQLite-WASM, offline (≈<strong>76× fewer</strong> built-so-far; <strong>~25× at conservative full parity</strong>, zero server/JVM/DB) <sup id="fnref10:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
 </tr>
 <tr>
 <td><strong>Live DB → SQLite</strong></td>
@@ -4902,16 +4932,16 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <p><strong>What is architectural (a property, not a number):</strong>
 - "0 round-trip" — <em>structural</em> (no server of record on the read/fold path), not a benchmark. Honest counter: server-removal only wins over a network; on-box, durable Postgres is <em>faster</em> per-op (it buys durability + concurrency we defer).
 - Most ERP cells are <em>n/a — architectural</em>: the legacy stack exposes no comparable single number (throughput ceiling, batch-vs-naive) — server-bound by design.</p>
-<p><strong>NOT feature parity — plainly.</strong> iDempiere, Odoo and SAP have <em>vastly</em> more features, localisations and integrations. The 16K LOC renders the dictionary and folds the paths built so far (order-to-cash, journal/posting, signed rule-edit, period-close) — it does <strong>not</strong> re-implement the full transactional server. The win is <strong>delivery/definition</strong>: the AD-interpreter is lean because the AD is self-describing, and the whole server/build stack is gone. Each transactional verb still has to be folded deterministically. See <code>feedback_erp_perf_claims</code>.</p>
+<p><strong>NOT feature parity — plainly.</strong> iDempiere, Odoo and SAP have <em>vastly</em> more features, localisations and integrations. The 18.6K LOC renders the dictionary and folds the paths built so far (order-to-cash, journal/posting, signed rule-edit, period-close) — it does <strong>not</strong> re-implement the full transactional server. <strong>Only ~0.2% of the M-class business logic is ported</strong> (the <code>M*.java</code> model logic = 104,940 code-LOC; we've folded ~205) — the engine is the <em>host</em>, the M-class logic is the work still ahead. The win is <strong>delivery/definition</strong>: the AD-interpreter is lean because the AD is self-describing, and the whole server/build stack is gone. Each transactional verb still has to be folded deterministically. See <code>feedback_erp_perf_claims</code>.</p>
 </div>
 </details>
 <details class="fold">
-<summary>Realistic conversion estimate (LOC) <span class="hint">89× built-so-far · ~30× full-port forecast</span></summary>
+<summary>Realistic conversion estimate (LOC) <span class="hint">76× engine-shell built-so-far · ~25× conservative full parity</span></summary>
 <div class="fbd">
 <p><span id="realistic-conversion-estimate-loc"></span></p>
-<p>89× is honest for what's folded today — but it measures the <em>thinnest, highest-compression</em> slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does <strong>not</strong> extrapolate to a full port.</p>
+<p>76× is honest for the engine <strong>shell</strong> folded today — but it measures the <em>thinnest, highest-compression</em> slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does <strong>not</strong> extrapolate to a full port: only <strong>~0.2% of the <code>M*</code> business logic (104,940 code-LOC) is actually ported</strong>. <strong>We headline the <em>conservative</em> ~25× to avoid overclaiming.</strong></p>
 <blockquote>
-<p><strong>Exhaustive coverage map → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>.</strong> Every rule/process surface in <em>both</em> homes (Java code + the AD as data) enumerated, each count from a real <code>ad_full.db</code> query: <strong>0 covered / 12 partial / 28 gap</strong> of 40 surfaces. The buckets below are now measured, not asserted — and the matrix names what's a static demo slice vs. an absent pillar (no logic-expression evaluator, no security layer, no SvrProcess/workflow runner).</p>
+<p><strong>Exhaustive coverage map → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>.</strong> Every rule/process surface in <em>both</em> homes (Java code + the AD as data) enumerated, each count from a real <code>ad_full.db</code> query: <strong>0 covered / 37 partial / 3 gap</strong> of 40 surfaces (the interpreter-coverage ladder, now closed for every seed-data surface) <strong>+ a second <em>equivalence</em> axis where exactly 1 surface is oracle-diffed to real iDempiere so far</strong> (<a href="../ERP_MODEL_ARCHETYPE/">ERP_MODEL_ARCHETYPE.md</a> is the M-class denominator: MOrder archetype + ~25 deltas). The buckets below are measured, not asserted.</p>
 </blockquote>
 <p>Splitting all 1,427,147 Java LOC by fate <sup id="fnref:split"><a class="footnote-ref" href="#fn:split">20</a></sup>:</p>
 <div class="dtbl">
@@ -4955,7 +4985,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <th>Scenario</th>
 <th>irreducible folded</th>
 <th>÷ ratio</th>
-<th>full JS (+ engine 16,068)</th>
+<th>full JS (+ engine 18,614)</th>
 <th>overall</th>
 </tr>
 </thead>
@@ -4964,27 +4994,27 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <td>Optimistic</td>
 <td>150K</td>
 <td>8×</td>
-<td><strong>~35K</strong></td>
-<td>~41×</td>
+<td><strong>~37K</strong></td>
+<td>~38×</td>
 </tr>
 <tr>
 <td>Mid</td>
 <td>175K</td>
 <td>6.5×</td>
-<td><strong>~43K</strong></td>
-<td>~33×</td>
+<td><strong>~46K</strong></td>
+<td>~31×</td>
 </tr>
 <tr>
-<td>Conservative</td>
+<td><strong>Conservative (headline)</strong></td>
 <td>200K</td>
-<td>5×</td>
+<td>~5×</td>
 <td><strong>~56K</strong></td>
-<td>~25×</td>
+<td><strong>~25×</strong></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong>Realistic full parity ≈ 35–56K JS LOC (~43K mid) ≈ ~30× overall</strong> (range 25–41×) — vs 89× for the flows folded so far. The fold ratio is the one estimated input (GAPS #6); every LOC count is measured.</p>
+<p><strong>Realistic full parity — we headline the <em>conservative</em> ≈ 56K JS LOC ≈ ~25×</strong> (mid ~46K/~31×, optimistic ~37K/~38×) — vs 76× for the engine shell folded so far. Leading with the conservative bound is the point: it does not overclaim. The fold ratio is the one estimated input (GAPS #6); every LOC count is measured (incl. the M-class denominator — <code>M*.java</code> 104,940 code-LOC, ~0.2% folded).</p>
 <details class="note">
 <summary>Full breakdown by iDempiere module (org.adempiere.base, org.adempiere.ui.zk, …) — expand</summary>
 <p>Measured 2026-06-08 <sup id="fnref2:split"><a class="footnote-ref" href="#fn:split">20</a></sup>. Fate = <strong>DELETED</strong> (no equivalent in a browser substrate) · <strong>GENERIC</strong> (the interpreter renders it from the dictionary) · <strong>FOLD</strong> (re-expressed as verbs / handlers). Buckets are disjoint and sum to 1,427,147.</p>
@@ -5148,8 +5178,8 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <li><strong>Full-conversion LOC (~43K / ~30×)</strong> — the per-bucket LOC are <em>measured</em> (<code>find</code>/<code>wc</code> on
    <code>~/idempiere-dev-setup/idempiere</code>, 2026-06-08), but the <strong>5–8× fold-compression ratio</strong> on the irreducible
    business core — and the share of <code>M*</code> that is real logic vs accessor/lifecycle ceremony — are <strong>estimates</strong> (no
-   full port exists to measure them). Treat ~25–41× as a <em>forecast</em>; 89× is the <em>measured built-so-far</em>, and a
-   high-compression slice that does not extrapolate.</li>
+   full port exists to measure them). Headline the <strong>conservative ~25×</strong> forecast (range ~25–38×); 76× is the
+   <em>measured built-so-far</em> engine shell, a high-compression slice (~0.2% of the M-class logic) that does not extrapolate.</li>
 <li><strong>DR / TCO model constants</strong> — the unit costs (314 B/op snapshot; fold, restore-to-op, per-branch additivity)
    are <strong>measured</strong>; the year-level storage/compute/bill figures are <strong>derived</strong> over modelled constants for the
    traditional side (no Postgres on the bench): <code>DB_BYTES_PER_ROW=230</code> (SQLite, no index — Postgres+index ≈ 1.5–3×
@@ -5226,7 +5256,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <p><code>build/erp/poc_volume_ceiling.log</code> — append/fold stay LINEAR; largestFit=20,000,000 ops, ~437 B/op retained; fold ~40.8M ops/s hot at 5M.&#160;<a class="footnote-backref" href="#fnref:ceiling" title="Jump back to footnote 10 in the text">&#8617;</a></p>
 </li>
 <li id="fn:bloat">
-<p>bloat memory (<code>reference_bloat_reduction.md</code>, measured 2026-06-06 from <code>~/idempiere-dev-setup/idempiere</code>) — seed 45.2 MB → 12.7 MB (≈3.5×); 1,427,147 Java LOC → 16,068 JS LOC (≈89×). Full evidence <code>internal/BLOAT_MEASUREMENT.md</code>.&#160;<a class="footnote-backref" href="#fnref:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:bloat" title="Jump back to footnote 11 in the text">&#8617;</a></p>
+<p>bloat memory (<code>reference_bloat_reduction.md</code>, measured 2026-06-06 from <code>~/idempiere-dev-setup/idempiere</code>) — seed 45.2 MB → 12.7 MB (≈3.5×); 1,427,147 Java LOC → 18,614 JS LOC engine shell (≈76× built-so-far; ~25× at conservative full parity, ~56K JS). Full evidence <code>internal/BLOAT_MEASUREMENT.md</code>.&#160;<a class="footnote-backref" href="#fnref:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:bloat" title="Jump back to footnote 11 in the text">&#8617;</a></p>
 </li>
 <li id="fn:bloat2">
 <p>same memory — LIVE GardenWorld DB Postgres 143 MB on-disk → 43 MB SQLite (925 tables, 187,133 rows, ≈3.3×); gzip 11.7 MB (3.7×).&#160;<a class="footnote-backref" href="#fnref:bloat2" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat2" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat2" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat2" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat2" title="Jump back to footnote 12 in the text">&#8617;</a></p>

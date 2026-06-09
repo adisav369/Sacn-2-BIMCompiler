@@ -16,7 +16,7 @@
         <link rel="prev" href="../DistributedERP/">
       
       
-        <link rel="next" href="../DepreciationPerf/">
+        <link rel="next" href="../ERP_MODEL_ARCHETYPE/">
       
       
         
@@ -2682,6 +2682,8 @@
       
         
       
+        
+      
     
     
     
@@ -3113,6 +3115,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Headline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#second-axis-equivalence-oracle-diffed-not-just-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Second axis — EQUIVALENCE (oracle-diffed), not just coverage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3174,6 +3193,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_MODEL_ARCHETYPE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Model Archetype (MOrder + deltas = the denominator)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4091,6 +4138,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Headline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#second-axis-equivalence-oracle-diffed-not-just-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Second axis — EQUIVALENCE (oracle-diffed), not just coverage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4196,21 +4260,47 @@ traces to a query or a <code>find … | wc -l</code>. Counts are a snapshot; re-
 </tr>
 <tr>
 <td>🟡 PARTIAL</td>
-<td><strong>26</strong></td>
-<td>static demo slice <strong>+ the AD logic-expression evaluator</strong> (<code>ad_evaluator.js</code>, W-LOGIC-EVAL): the 7 Display/ReadOnly/MandatoryLogic surfaces now parse 100% (3044/3044 boolean rows) and evaluate correctly; wired into <code>crud_overlay.validateField</code>/<code>effectiveFlags</code> (headless-proven). <strong>+ the AD role/access gate</strong> (<code>ad_access.js</code>, W-ACCESS): the 6 security surfaces (Role/AccessLevel/Window/Process/Form_Access/EntityType) now interpret 1303 window + 1309 process + 145 form grants + 6 accesslevels across all 5 roles headless (<code>build/erp/poc_access.log</code>). <strong>+ the AD_Process dispatch spine</strong> (<code>ad_process.js</code>, W-PROC): SvrProcess (§A) + AD_Process (§B) move ⛔→🟡 — <code>classname</code>→handler-registry→prepare/validate-params→doIt, 5 handlers registered, 22/476 procs dispatched (report procs fold via <code>report_overlay</code>), 454 named-deferred (<code>build/erp/poc_proc.log</code>). Residual: live DOM show/hide/disable render-wiring (and tab-level GridTab render); access gate not wired into live window/process render; the 454-proc SvrProcess corpus stays unported (mechanism, not corpus).</td>
+<td><strong>37</strong></td>
+<td>static demo slice <strong>+ the AD logic-expression evaluator</strong> (<code>ad_evaluator.js</code>, W-LOGIC-EVAL): the 7 Display/ReadOnly/MandatoryLogic surfaces now parse 100% (3044/3044 boolean rows) and evaluate correctly; wired into <code>crud_overlay.validateField</code>/<code>effectiveFlags</code> (headless-proven). <strong>+ the AD role/access gate</strong> (<code>ad_access.js</code>, W-ACCESS): the 6 security surfaces (Role/AccessLevel/Window/Process/Form_Access/EntityType) now interpret 1303 window + 1309 process + 145 form grants + 6 accesslevels across all 5 roles headless (<code>build/erp/poc_access.log</code>). <strong>+ the AD_Process dispatch spine</strong> (<code>ad_process.js</code>, W-PROC): SvrProcess (§A) + AD_Process (§B) move ⛔→🟡 — <code>classname</code>→handler-registry→prepare/validate-params→doIt, 5 handlers registered, 22/476 procs dispatched (report procs fold via <code>report_overlay</code>), 454 named-deferred (<code>build/erp/poc_proc.log</code>). Residual: live DOM show/hide/disable render-wiring (and tab-level GridTab render); access gate not wired into live window/process render; the 454-proc SvrProcess corpus stays unported (mechanism, not corpus). <strong>+ the AD_Val_Rule SQL-where interpreter</strong> (<code>ad_valrule.js</code>, W-VALRULE): the 332 <code>AD_Val_Rule</code> rows (114 static + 213 token = 327 interpretable) now substitute <code>@token@</code> from context and apply the where-clause as a real filter (<code>build/erp/poc_valrule.log</code>); the 4 <code>AD_Rule</code> are SQL ruletype-Q Fact_Reconciliation rules (not Groovy), n/a-in-seed. <strong>+ the AD_Column.Callout dispatch spine</strong> (<code>ad_callout.js</code>, W-CALLOUT): the 284 callout cols now resolve <code>class.method</code>→a JS registry and fire on field change → DERIVED sibling values (6 real line-callout atoms / 18 cols dispatched / 139 named-deferred; <code>build/erp/poc_callout.log</code>). <strong>+ the model-validator timing-hook engine</strong> (<code>ad_modelval.js</code>, W-MODELVAL): BEFORE/AFTER × NEW/SAVE/COMPLETE validators dispatch around a record/doc action (first error aborts), real invariants ported (qty&gt;0, order-has-lines), <code>build/erp/poc_modelval.log</code>.</td>
 </tr>
 <tr>
 <td>⛔ GAP</td>
-<td><strong>14</strong></td>
-<td>the remaining behavioural surfaces are not interpreted at all (the 2 empty *_Access tables count here as n/a-in-seed)</td>
+<td><strong>3</strong></td>
+<td>all 3 remaining ⛔ are <strong>n/a-in-seed</strong> (no data to interpret): <strong>AD_Rule</strong> (4 SQL <code>Fact_Reconciliation</code> rules — ruletype Q, <em>not</em> Groovy; target <code>fact_acct</code>/<code>fact_reconciliation</code> empty + Postgres-only SQL) + the <strong>2 empty <code>*_Access</code></strong> tables (0 rows). <strong>Every interpretable behavioural surface with seed data is now 🟡</strong> — zero real interpreter gaps remain.</td>
 </tr>
 </tbody>
 </table>
+<h3 id="second-axis-equivalence-oracle-diffed-not-just-coverage">Second axis — EQUIVALENCE (oracle-diffed), not just coverage<a class="headerlink" href="#second-axis-equivalence-oracle-diffed-not-just-coverage" title="Permanent link">&para;</a></h3>
+<p>The verdicts above are <strong>coverage</strong> — does the engine <em>interpret</em> the surface? A second, harder axis is
+<strong>equivalence</strong> — does the engine's output <em>== real iDempiere's output</em>? Tracked in <code>prompts/HARDEN_MATRIX.md</code>,
+anchored on <a href="../ERP_MODEL_ARCHETYPE/">ERP_MODEL_ARCHETYPE.md</a> (MOrder archetype + ~25 document deltas = the real
+denominator, not 496 classes / 735k LOC).</p>
+<table>
+<thead>
+<tr>
+<th>equivalence</th>
+<th>status (2026-06-09)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>Trial-balance / posting-read</strong> — <code>test_report_fin.js</code> folds the <strong>real GardenWorld <code>fact_acct</code></strong> (300 rows, client 11, captured from the Docker Postgres via <code>extract_fact_acct.sh</code>) → <code>ΣDr==ΣCr=46574.97</code>, <strong><code>maxDiff=0c</code></strong> vs the source. Our reporting reproduces iDempiere's posted journal to the cent.</td>
+</tr>
+<tr>
+<td>⬜ <strong>not-yet-diffed</strong></td>
+<td><strong>Per-document GL <em>derivation</em></strong> — does <code>post_resolver</code> produce iDempiere's <em>exact lines</em> for a given document? Today only <em>balance</em> is asserted (<code>poc_post_derive.js</code>), not per-line equivalence; needs the oracle re-captured WITH <code>record_id</code>/<code>ad_table_id</code> tagging. <strong>All declarative + document-event surfaces</strong> (logic / access / valrule / callout / modelval / FSM) — interpreted, never diffed against <code>GridField</code> / <code>MRole</code> / <code>MValRule</code> / <code>Doc_*</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The honest read: coverage 37🟡 ≠ equivalence.</strong> Exactly ONE surface (TB-read) is oracle-equivalent today; the
+rest is interpreted-but-undiffed. The equivalence campaign is <code>prompts/HARDEN_MATRIX.md</code> (H-1 MOrder → equivalence,
+then the delta table).</p>
 <p><strong>The honest answer:</strong> <em>no — not all the bases are covered.</em> The engine demonstrates the <strong>fold model</strong> on a thin slice —
 the <code>CO</code> DocAction transition, the double-entry posting fold, and a fixed receipt/TB/P&amp;L report set — for a handful of
 demo documents. The <strong>irreducible behavioural surface</strong> named in <code>MigrateComparisonPaper §estimate</code>
 (process 54k LOC · workflow 7k · callouts 10k · validators · the logic-expression evaluator · the entire security layer)
-is enumerated below and is overwhelmingly ⛔. This is what makes the <em>89× → ~30×</em> story precise: the 89× counts
+is enumerated below and is overwhelmingly ⛔. This is what makes the <em>76× shell → ~25× conservative full parity</em> story precise: the 76× counts
 delivery/definition, not behavioural parity — most behaviour is <strong>named-and-deferred</strong>, not folded.</p>
 <blockquote>
 <p><strong>Engine architecture fact (sets the ceiling):</strong> all engine field-logic is descriptor-driven from a <em>hand-authored</em>
@@ -4230,7 +4320,16 @@ there is now an AD_Process dispatch spine — <code>build/erp/ad_process.js</cod
 <code>classname</code> against a JS handler registry (report procs resolve to <code>report_overlay</code>'s folds), validates the supplied
 params against the para rows, runs the handler; an unregistered classname returns an explicit absent-handler (not a
 silent no-op). 5 handlers / 22 of 476 dispatched / 454 named-deferred. Witness <code>scripts/poc_proc.js</code> →
-<code>build/erp/poc_proc.log</code>. The remaining named surfaces (Callout/Val_Rule/Rule) remain unread.</p>
+<code>build/erp/poc_proc.log</code>. <strong>UPDATE (W-POST-DERIVE):</strong> per-document GL derivation is read too —
+<code>scripts/post_resolver.js</code> resolves manifest tokens <code>{Master.Role}</code> to real GL accounts from the <code>*_acct</code>
+master columns (override→<code>c_acctschema_default</code> fallback, never synthesized); a real C_Invoice folds to
+balanced Fact_Acct lines on canonical <code>ad_full.db</code> (<code>scripts/poc_post_derive.js</code> → <code>build/erp/poc_post_derive.log</code>;
+1 of 20 Doc_<em> doc-types, 19 named-deferred). </em><em>UPDATE (W-VALRULE):</em><em> <code>AD_Val_Rule</code> is now read too —
+<code>build/erp/ad_valrule.js</code> reads <code>ad_val_rule.code</code>, substitutes <code>@token@</code> from context, and applies the
+where-clause as a real filter (327 of 332 interpretable; <code>build/erp/poc_valrule.log</code>). </em><em>UPDATE (W-CALLOUT):</em><em>
+<code>AD_Column.Callout</code> is now dispatched too — <code>build/erp/ad_callout.js</code> resolves each <code>class.method</code> against a
+JS registry and fires on the field change → derived sibling values (6 real line-callout atoms; <code>build/erp/poc_callout.log</code>).
+The 4 <code>AD_Rule</code> are SQL <code>Fact_Reconciliation</code> rules (ruletype Q, </em><em>not</em>* Groovy) over empty <code>fact_acct</code>/<code>fact_reconciliation</code> (Postgres-only SQL) — n/a-in-seed.</p>
 </blockquote>
 <h2 id="a-rulesprocesses-defined-in-code-java">A · Rules/processes defined in CODE (Java)<a class="headerlink" href="#a-rulesprocesses-defined-in-code-java" title="Permanent link">&para;</a></h2>
 <table>
@@ -4255,7 +4354,7 @@ silent no-op). 5 handlers / 22 of 476 dispatched / 454 named-deferred. Witness <
 <td><strong>Posting</strong> (<code>Doc_*.java</code> GL fold + <code>org.compiere.acct</code>)</td>
 <td>n/a (Java; see §B acct-config)</td>
 <td>20 <code>Doc_*.java</code> (<strong>12,789 LOC</strong>) + Doc/Fact/FactLine/DocLine in <code>org/compiere/acct</code> (<strong>21,443 LOC</strong> total, 35 files)</td>
-<td><code>erp_period_close.js:foldBalances</code> (DR−CR cents/account) + <code>erp_postings.js:readPostings</code> — sums <strong>pre-folded</strong> journal/oplog lines; <strong>no per-document GL derivation</strong> (the 20 Doc_* debit/credit rules)</td>
+<td><strong>per-document GL derivation EXISTS</strong> (<code>post_resolver.js</code> §3.5.1 + the §13 Sales-Invoice manifest, W-POST-DERIVE) — re-proven on canonical <code>ad_full.db</code>: a real C_Invoice (id 100) derives DR <code>{BPartner.Receivable}</code>=GrandTotal / CR <code>{Product.Revenue}</code>=LineNet / CR <code>{Tax.Due}</code>=TaxAmt → balanced (<code>§POST_DERIVE id=100 lines=3 ΣDR=ΣCR=50.35 bal=0</code>); accounts RESOLVED from real master columns (override→<code>c_acctschema_default</code>), never synthesized; §FALSIFIER drop-tax-CR → ΣDR≠ΣCR. <code>erp_period_close.foldBalances</code>/<code>erp_postings.readPostings</code> then sum the DERIVED lines. <strong>1 of 20 Doc_* doc-types derived, 19 named-deferred</strong> (a manifest each; resolver generalizes). Was "no derivation / pre-folded only" — corrected. <code>build/erp/poc_post_derive.log</code></td>
 <td>🟡 PARTIAL</td>
 </tr>
 <tr>
@@ -4269,28 +4368,28 @@ silent no-op). 5 handlers / 22 of 476 dispatched / 454 named-deferred. Witness <
 <td><strong>Workflow engine</strong> (<code>org.compiere.wf</code> / <code>MWF*</code>)</td>
 <td>see §B AD_Workflow (58)</td>
 <td>19 files / <strong>7,366 LOC</strong></td>
-<td><strong>absent</strong> — no node-walk / activity / approval routing (<code>grep wf_node|MWFActivity|nextNode|approval</code> → 0)</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_workflow.js:walk</code> (W-WF)</strong> — reads <code>ad_workflow</code>/<code>ad_wf_node</code>/<code>ad_wf_nodenext</code>, walks the node graph from the start node, creates a WF_Activity per node, routes to the next (std-user-next by seqno or an explicit approval decision). <code>§WF node=50000 next=50002 activity=created</code> (full walk 50000&gt;50002&gt;50001); split node 200033 routes std→200034 vs approval→200036; §FALSIFIER off-graph route falls back. Mechanism + 1 walked workflow; the 58-wf corpus named-deferred. <code>build/erp/poc_wf.log</code></td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>Callouts</strong> (<code>Callout*.java</code> / <code>org.adempiere.base.callout</code>)</td>
-<td>284 cols carry a Callout, 148 distinct classes</td>
+<td>284 cols carry a Callout, 148 distinct callout-strings (145 distinct <code>class.method</code> atoms)</td>
 <td>56 files / <strong>10,340 LOC</strong> (+ pkg 10 files / 1,012)</td>
-<td><code>crud_overlay.js:validateField</code> — static type/min/max/regex/list shape only, descriptor-driven; <strong>no callout class dispatched</strong></td>
+<td><strong>dispatch spine BUILT</strong> (<code>ad_callout.js:dispatch</code>, W-CALLOUT) — classname→registry→derived-value map, 6 real atoms ported / 18 cols dispatched / 139 named-deferred (the 10k-LOC corpus stays unported). <code>crud_overlay.js:validateField</code> still does the static type/min/max/regex/list shape. Was "no callout class dispatched"; now the <em>mechanism</em> exists</td>
 <td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>Model Validators</strong> (<code>*ModelValidator</code> + <code>ModelValidationEngine</code>)</td>
 <td><code>AD_ModelValidator</code> = 3</td>
 <td>5 files / 1,165 LOC + <code>ModelValidationEngine.java</code> <strong>1,048 LOC</strong></td>
-<td><strong>absent</strong> — no before/after-doc timing-hook engine; only a single DOC_ACTION→SET_STATUS op</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_modelval.js:fireHooks</code> (W-MODELVAL)</strong> — timing-hook engine over 11 modeled timings (BEFORE/AFTER × NEW/SAVE/DELETE + PREPARE/COMPLETE/VOID), faithful port of <code>fireModelChange</code>/<code>fireDocValidate</code> (first non-null error aborts). 4 real hooks ported (qty&gt;0, order-has-lines, total≥0); <code>§MODELVAL_HOOK timing=BEFORE_COMPLETE table=C_Order fired=2 ok=true</code>; §FALSIFIER 0-line order BLOCKED before complete. Was "single SET_STATUS op"; now a real timing engine. <code>build/erp/poc_modelval.log</code></td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>Per-model invariants</strong> (<code>beforeSave</code>/<code>afterSave</code> on M*)</td>
 <td>n/a (Java overrides)</td>
 <td>213 <code>beforeSave</code> / 109 <code>afterSave</code> method defs across M*.java</td>
-<td><code>crud_overlay.js:validate</code> — generic field checks only; <strong>no model-specific cross-field invariants / derived totals</strong></td>
+<td><code>crud_overlay.js:validate</code> (generic field checks) <strong>+ <code>ad_modelval.js</code> timing hooks (W-MODELVAL)</strong> — model-specific invariants now dispatch at BEFORE/AFTER timings (MOrderLine.qtyPositive, MOrder.hasLines/totalNonNegative ported; the 322 Java overrides are the named-deferred remainder)</td>
 <td>🟡 PARTIAL</td>
 </tr>
 </tbody>
@@ -4311,8 +4410,8 @@ silent no-op). 5 handlers / 22 of 476 dispatched / 454 named-deferred. Witness <
 <td><strong>C_DocType FSM</strong></td>
 <td>C_DocType=<strong>52</strong>; DocAction list=<strong>14</strong> (AD_Reference 135); DocStatus list=<strong>12</strong> (131)</td>
 <td><code>DocumentEngine.java</code> (action→method off C_DocType)</td>
-<td><code>crud_overlay.js</code> reaches <strong>2 of 12</strong> statuses (CO, IP); no per-C_DocType legal-action set / transition table</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_docfsm.js</code> (W-DOCFSM)</strong> — port of <code>DocumentEngine.getValidActions</code>/<code>processIt</code>: <code>legalActions(db,doctypeId,status)</code> (per-C_DocType, reads the real row) + <code>transition(action,status)→toStatus</code>. Reaches <strong>11 of 12</strong> statuses (was 2: CO,IP); a Completed order dispatches the full reversal family <code>{CL,RC,RA,RE,VO,PO}</code> (<code>CO--RC--&gt;RE</code>, <code>CO--RE--&gt;IP</code>, …); §FALSIFIER Prepare-from-Completed + Complete-from-Closed REJECTED. <code>build/erp/poc_docfsm.log</code>. Residual: finer doctype-conditioned gating + live action-launch</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Process</strong> (+ Para / Classname / report)</td>
@@ -4325,36 +4424,36 @@ silent no-op). 5 handlers / 22 of 476 dispatched / 454 named-deferred. Witness <
 <td><strong>AD_Workflow</strong> (/ WF_Node / NodeNext / Responsible)</td>
 <td>AD_Workflow <strong>58</strong>, WF_Node <strong>262</strong>, NodeNext <strong>207</strong>, Responsible <strong>2</strong></td>
 <td><code>org.compiere.wf</code> (§A)</td>
-<td><strong>absent</strong> — no JS reads any AD_WF_* table</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_workflow.js</code> (W-WF)</strong> — <code>§WF_COVERAGE workflows=58 nodes=262 nexts=207</code>; <code>walk(db,wfId)</code> reads the AD_WF_* graph, walks node→next from the start node, creates an activity per node, routes splits (std-user-next / approval decision). 1 workflow walked, corpus named-deferred. <code>build/erp/poc_wf.log</code></td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
-<td><strong>AD_Rule</strong> (JSR-223 scripts)</td>
-<td><strong>4</strong> (all RuleType Q / SQL-accounting)</td>
-<td>rule engine (Java)</td>
-<td><strong>absent</strong> — no JSR-223/<code>new Function</code>/eval interpreter anywhere</td>
-<td>⛔ GAP</td>
+<td><strong>AD_Rule</strong> (SQL reconciliation rules)</td>
+<td><strong>4</strong> — all <strong>RuleType Q = SQL</strong> (NOT script/Groovy): AR/AP Trade · Bank-in-Transit · Payment Clearing · Not-Invoiced-Receipts</td>
+<td><code>Fact_Reconciliation</code> auto-grouping</td>
+<td><strong>n/a-in-seed</strong> — target <code>fact_acct</code>/<code>fact_reconciliation</code> are <strong>0 rows</strong> in this DB + the SQL is <strong>Postgres-specific</strong> (<code>least()</code>, not SQLite); a niche GL-reconciliation surface, not a behavioural gap. (The earlier "JSR-223 Groovy / no JS interpreter" label was WRONG — verified <code>ruletype='Q'</code>.)</td>
+<td>⛔ GAP (n/a)</td>
 </tr>
 <tr>
 <td><strong>AD_Val_Rule</strong> (SQL validation)</td>
 <td><strong>332</strong> (all Type S / SQL)</td>
 <td><code>MValRule</code> / lookup</td>
-<td><strong>absent</strong> — <code>valRule</code> strings in crud_ops.json are static labels only</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_valrule.js:evalValRule</code> (W-VALRULE)</strong> — reads <code>ad_val_rule.code</code>, substitutes <code>@Field@</code>/<code>@#Global@</code> tokens, applies the where-clause as a real filter (MValRule semantics): 332 classified = <strong>114 static + 213 token = 327 interpretable</strong>, 4 unsafe-subselect + 1 empty explicit-deferred; <code>§VALRULE id=143 sql="IsSOTrx='Y'" rows=4</code> · <code>id=211 @AD_Table_ID@→318 rows=6</code>; §FALSIFIER paid invoice 100 EXCLUDED by the NotPaid filter. <code>build/erp/poc_valrule.log</code>. Residual: live lookup/list render-wiring</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_ModelValidator</strong></td>
 <td><strong>3</strong> (Libero MFG, Fixed Assets, Product Price)</td>
 <td><code>ModelValidationEngine</code></td>
-<td><strong>absent</strong></td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_modelval.js</code> (W-MODELVAL)</strong> — the 3 registered classes are read from <code>ad_modelvalidator</code> (Java bodies named-deferred); the timing-hook <em>engine</em> dispatches BEFORE/AFTER validators around a record/doc action (<code>build/erp/poc_modelval.log</code>). Residual: the 3 Java validator bodies + live action wiring</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Column · Callout</strong></td>
 <td><strong>284</strong></td>
 <td><code>CalloutEngine.java</code> (338)</td>
-<td><strong>absent</strong> (comment "DELEGATED install-side" only)</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_callout.js:dispatch</code> (W-CALLOUT)</strong> — reads <code>ad_column.callout</code> (the <code>;</code>-separated <code>class.method</code> list), resolves each against a JS handler registry, fires on the field change → DERIVED sibling values. 6 real line-callout atoms ported (CalloutOrder/CalloutInvoice <code>.amt</code>/<code>.qty</code>/<code>.product</code>), 18 cols dispatched, 139 atoms named-deferred; <code>§CALLOUT col=M_Product_ID derived={PriceActual:21.59,PriceList:22.73,LineNetAmt:215.90}</code> == stored row; §FALSIFIER unregistered <code>CalloutOrder.charge</code> → explicit absent-handler. <code>build/erp/poc_callout.log</code>. Residual: live field-change render-wiring</td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Column · DefaultValue</strong></td>
@@ -4381,8 +4480,8 @@ silent no-op). 5 handlers / 22 of 476 dispatched / 454 named-deferred. Witness <
 <td><strong>AD_Column · ValueFormat</strong> (<code>vformat</code>)</td>
 <td><strong>1</strong> (negligible)</td>
 <td><code>DisplayType.java</code></td>
-<td><strong>absent</strong></td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_reference.js:applyVFormat</code> (W-REFERENCE)</strong> — per-char VFormat mask (0/9/L/l/A/a/c/_) validate+transform; <code>§VFORMAT mask=L in=a→A</code>, §FALSIFIER digit fails <code>L</code>, <code>00LL</code> validates 2-digit+2-upper. <code>build/erp/poc_reference.log</code></td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Column · IsUpdateable=N</strong></td>
@@ -4430,15 +4529,15 @@ silent no-op). 5 handlers / 22 of 476 dispatched / 454 named-deferred. Witness <
 <td><strong>AD_Tab · WhereClause</strong></td>
 <td><strong>85</strong></td>
 <td><code>GridTab.java</code> (3735)</td>
-<td><strong>absent</strong> — tab filter not applied</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_tabquery.js:applyWhere</code> (W-TABQUERY)</strong> — <code>ad_tab.whereclause</code> (token-substituted) applied as the row filter: <code>§TAB_FILTER tab=186 where="C_Order.IsSOTrx='Y'" rows=4</code>; §FALSIFIER PO order 104 excluded from the SO tab. <code>build/erp/poc_tabquery.log</code></td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Tab · OrderByClause</strong></td>
 <td><strong>173</strong></td>
 <td><code>GridTab</code></td>
-<td><strong>absent</strong> — engine uses ordinal sort</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_tabquery.js:orderedKeys</code> (W-TABQUERY)</strong> — <code>ad_tab.orderbyclause</code> applied as the sort: <code>§TAB_ORDER orderBy="M_Product.Value" rows=55</code> rows come out sorted ascending. <code>build/erp/poc_tabquery.log</code></td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_Tab · ReadOnlyLogic</strong></td>
@@ -4479,8 +4578,8 @@ silent no-op). 5 handlers / 22 of 476 dispatched / 454 named-deferred. Witness <
 <td><strong>AD_Ref_Table</strong> (table valid.)</td>
 <td><strong>243</strong></td>
 <td><code>MLookup</code> (1337)</td>
-<td><strong>absent</strong> — 'fk' checks <code>isFinite(Number)</code> only, no FK-membership query</td>
-<td>⛔ GAP</td>
+<td><strong><code>ad_reference.js:fkExists</code> (W-REFERENCE)</strong> — resolves the reference's FK table+key (<code>ad_ref_table</code>→<code>ad_table</code>/<code>ad_column</code>) and runs the real membership query: <code>§FK_CHECK table=ad_reference id=1 exists=true</code>; §FALSIFIER id=999999 → exists=false reject (not <code>isFinite</code> only). <code>build/erp/poc_reference.log</code></td>
+<td>🟡 PARTIAL</td>
 </tr>
 <tr>
 <td><strong>AD_EntityType</strong></td>
@@ -4548,14 +4647,14 @@ disproof: the line can never fire today.</p>
 <li><strong>Logic-expression evaluator</strong> — ✅ <strong>BUILT (W-LOGIC-EVAL).</strong> <code>build/erp/ad_evaluator.js</code> (port of iDempiere <code>SimpleBoolean.g4</code> + <code>EvaluationVisitor</code>) + <code>crud_overlay.effectiveFlags</code> wiring. Unblocks 7 rows (now 🟡): <code>§LOGIC_COVERAGE evaluated=3044 of 3044 boolean-logic rows (100.00%)</code> + 5 <code>@SQL=</code> rows named-deferred (separate <code>parseSQLLogic</code> surface); §FALSIFIER readonly flips rw→ro on <code>@Processed@</code> N→Y and display flips hide→show on <code>@DocStatus@!DR</code> DR→CO; 25 operator-class samples pass. Witness: <code>scripts/poc_logic_eval.js</code> → <code>build/erp/poc_logic_eval.log</code>. <strong>Residual to ✅:</strong> live DOM render-wiring (show/hide/disable) + tab-level GridTab render.</li>
 <li><strong>Security layer</strong> — ✅ <strong>BUILT (W-ACCESS).</strong> <code>build/erp/ad_access.js</code> (port of iDempiere <code>MRole.getWindowAccess</code>/<code>getProcessAccess</code>/<code>getFormAccess</code> + <code>canView</code> AccessLevel-SCO semantics) interprets the real grant rows: §ACCESS_COVERAGE roles=5 windows_gated=1303 processes_gated=1309 forms_gated=145 accesslevels=6(1076 rows) entitytypes=12 errors=0; §ACCESS_DENY proven for a no-grant window (GardenWorld User vs Admin), a wrong-org record (org 12 ∉ User's {11,50000,50001,50007}), and a System-only record (no 'S' in userLevel '  O'); §FALSIFIER shows gate-OFF would let User SEE the no-grant window → gate is load-bearing. Witness: <code>scripts/poc_access.js</code> → <code>build/erp/poc_access.log</code>. <strong>Residual to ✅:</strong> wire the gate into live menu/window/process render + session-role selection; AD_Column_Access/AD_Record_Access are empty in this seed (n/a).</li>
 <li><strong>SvrProcess runner</strong> — ✅ <strong>DISPATCH SPINE BUILT (W-PROC).</strong> <code>build/erp/ad_process.js</code> (port of iDempiere <code>ProcessUtil.startJavaProcess:156-205</code> + <code>SvrProcess.startProcess:132-232</code>→<code>process()</code>→<code>prepare()</code>→<code>doIt()</code> + <code>ProcessInfo.getClassName:535</code>/<code>getParameter:717</code>) reads <code>ad_process</code>+<code>ad_process_para</code>, resolves <code>classname</code>→a JS handler registry, validates supplied params against the para rows, runs + logs: <code>§PROC_COVERAGE registered=5 dispatched=22 of 476 AD_Process (classname≠null 337) absent=454 parseErrors=0</code>. Real dispatches proven — Order Print (110)→<code>report:c_order</code>→<code>report_overlay.foldReceipt</code> (1 line, total 50.35), Invoice Print (116)→<code>report:c_invoice</code>, Resubmit Posting (175, <code>org.compiere.process.FactAcctReset</code>)→doc-action handler. <code>§PROC_PARAM_VALIDATE</code> rejects TrialBalance (310) when the mandatory <code>PostingType</code> is dropped (dispatched=false before doIt, not a silent run). <code>§FALSIFIER</code> — <code>org.compiere.report.FinBalance</code> (203, real classname, no handler) → explicit "Failed to create new process instance" absent-handler (a silent no-op would dispatch=true) → classname→handler resolution is load-bearing. Witness: <code>scripts/poc_proc.js</code> → <code>build/erp/poc_proc.log</code>. <strong>Residual to ✅:</strong> the 454 named-deferred classnames are the 54k-LOC SvrProcess corpus (intentionally not ported — the deliverable is the mechanism, not the corpus) + live process-launch render-wiring.</li>
-<li><strong>Workflow engine</strong> (58 wf / 262 nodes). Witness: <code>§WF node=&lt;id&gt; action=C next=&lt;id&gt; activity=created</code>. 0 grep hits.</li>
-<li><strong>DocAction FSM beyond CO</strong> (14 actions × 12 statuses). Witness: <code>§DOCTYPE_FSM {from,to,action,legalActions:&lt;from C_DocType&gt;}</code> — today <code>legalActions=undefined</code>, <code>to ∈ {CO,IP}</code>.</li>
-<li><strong>Callout dispatch</strong> (284 cols / 148 classes). Witness: <code>§CALLOUT fired col=c_bpartner_id derived={M_PriceList_ID,...}</code> on a BPartner change.</li>
-<li><strong>AD_Val_Rule SQL</strong> (332) &amp; <strong>AD_Rule</strong> (4). Witness: <code>§VALRULE_EVAL id=&lt;n&gt; sql="..." rows=N</code>. No SQL/script interpreter.</li>
-<li><strong>Per-document GL derivation</strong> (the 20 Doc_*). Witness: <code>§POSTINGS source=fact_acct coverage=complete ΣDR=.. ΣCR=.. bal=0</code> against a record-keyed Fact_Acct extract — today <code>coverage=partial</code> (pre-folded lines only).</li>
-<li><strong>Model-validator timing hooks</strong> (BEFORE/AFTER COMPLETE). Witness: <code>§MODELVAL_HOOK timing=BEFORE_COMPLETE table=C_Order fired=1</code> — today <code>groupOps.len=1</code> (SET_STATUS only).</li>
-<li><strong>FK table validation</strong> (AD_Ref_Table, 243). Witness: <code>§FK_CHECK table=c_bpartner id=999 exists=false reject</code>.</li>
-<li><strong>AD_Tab WhereClause/OrderBy</strong> (85/173). Witness: <code>§TAB_FILTER where="IsActive='Y'" rows=N</code>.</li>
+<li><strong>Workflow engine</strong> (58 wf / 262 nodes) — ✅ <strong>BUILT (W-WF).</strong> <code>build/erp/ad_workflow.js</code> reads <code>ad_workflow</code>/<code>ad_wf_node</code>/<code>ad_wf_nodenext</code>, walks the node graph from the start node, creates a WF_Activity per node, routes the next: <code>§WF node=50000 action=F next=50002 activity=created</code> (full walk 50000&gt;50002&gt;50001 terminates); split node 200033 routes std→200034 (seqno 10) vs explicit approval→200036; <code>§FALSIFIER</code> leaf terminates (no invented edge) + off-graph route falls back to std-next. Witness <code>scripts/poc_wf.js</code> → <code>build/erp/poc_wf.log</code>. <strong>Residual to ✅:</strong> the 58-wf corpus + transition-condition eval + live activity persistence/wiring.</li>
+<li><strong>DocAction FSM beyond CO</strong> (14 actions × 12 statuses) — ✅ <strong>BUILT (W-DOCFSM).</strong> <code>build/erp/ad_docfsm.js</code> ports <code>DocumentEngine.getValidActions</code>/<code>processIt</code>: <code>§DOCTYPE_FSM_COVERAGE doctypes=52 actions=14 statuses=12 reachableAsTarget=11</code> (was 2: CO,IP); per-C_DocType <code>legalActions</code> (reads the real <code>c_doctype</code> row) + a transition table dispatch the full reversal family — <code>§DOCTYPE_FSM from=CO action=RC to=RE</code>, <code>CO--RE--&gt;IP</code>, <code>CO--CL--&gt;CL</code>, <code>CO--VO--&gt;VO</code>; <code>§FALSIFIER</code> Prepare-from-Completed + Complete-from-Closed REJECTED, a Closed doc offers no actions. Witness <code>scripts/poc_docfsm.js</code> → <code>build/erp/poc_docfsm.log</code>. <strong>Residual to ✅:</strong> finer doctype-conditioned action gating + live action-launch wiring.</li>
+<li><strong>Callout dispatch</strong> (284 cols / 148 callout-strings) — ✅ <strong>SPINE BUILT (W-CALLOUT).</strong> <code>build/erp/ad_callout.js</code> reads <code>ad_column.callout</code>, resolves each <code>class.method</code> against a JS registry, fires on the field change → derived sibling values: <code>§CALLOUT_COVERAGE cols=284 registered=6 colsDispatched=18</code>; <code>§CALLOUT col=QtyEntered fired=[CalloutOrder.qty,CalloutOrder.amt] derived={QtyOrdered:10,LineNetAmt:215.90}</code> and <code>col=M_Product_ID derived={PriceActual:21.59,PriceList:22.73,LineNetAmt:215.90}</code> (both == the stored row); <code>§FALSIFIER</code> unregistered <code>CalloutOrder.charge</code> → fired=0/absent-named, corrupted qty → derived≠stored. Witness <code>scripts/poc_callout.js</code> → <code>build/erp/poc_callout.log</code>. <strong>Residual to ✅:</strong> the 139 named-deferred atoms (10k-LOC corpus) + live field-change render-wiring.</li>
+<li><strong>AD_Val_Rule SQL</strong> (332) — ✅ <strong>BUILT (W-VALRULE).</strong> <code>build/erp/ad_valrule.js</code> reads <code>ad_val_rule.code</code>, substitutes <code>@token@</code> from context, applies the where-clause as a real filter on canonical <code>ad_full.db</code>: <code>§VALRULE_COVERAGE total=332 static=114 token=213</code> (327 interpretable, 5 explicit-deferred); <code>§VALRULE id=143 sql="IsSOTrx='Y'" rows=4</code> · <code>id=211 @AD_Table_ID@→318 rows=6</code>; <code>§FALSIFIER</code> paid invoice 100 EXCLUDED by the NotPaid filter (member=false), unpaid 109 survives. Witness <code>scripts/poc_valrule.js</code> → <code>build/erp/poc_valrule.log</code>. <strong>AD_Rule</strong> (4 SQL ruletype-Q <code>Fact_Reconciliation</code> rules — <em>not</em> Groovy) = n/a-in-seed (target fact tables empty + Postgres SQL). <strong>Residual to ✅:</strong> live lookup/list render-wiring.</li>
+<li><strong>Per-document GL derivation</strong> (the 20 Doc_<em>) — ✅ </em><em>MECHANISM BUILT (W-POST-DERIVE).</em><em> Was mis-stated as "pre-folded only": derivation already exists as the §13 metadata-posting plugin (<code>scripts/post_resolver.js</code> + the Sales-Invoice manifest), re-proven on canonical <code>ad_full.db</code> — <code>§POST_DERIVE doc=C_Invoice id=100 lines=3 ΣDR=ΣCR=50.35 bal=0</code> (DR Receivable 518 / CR Revenue 758 / CR Tax-Due 596, every account resolved from real master columns, override→<code>c_acctschema_default</code>); <code>§FALSIFIER</code> drop-tax-CR → <code>ΣDR≠ΣCR</code> (derivation load-bearing). Coverage </em><em>1 of 20 Doc_</em> derived, 19 named-deferred<strong> (mechanism not corpus — each is a manifest the resolver already generalizes). Witness <code>scripts/poc_post_derive.js</code> → <code>build/erp/poc_post_derive.log</code> (+ the prior <code>scripts/poc_post.js</code>, replay-exact, op-log-coupled). </strong>Residual to ✅:** the other 19 doc-type manifests + live posting-launch wiring (parked UI bridge).</li>
+<li><strong>Model-validator timing hooks</strong> (BEFORE/AFTER COMPLETE) — ✅ <strong>BUILT (W-MODELVAL).</strong> <code>build/erp/ad_modelval.js</code> dispatches registered validators across 11 timings (faithful <code>fireModelChange</code>/<code>fireDocValidate</code> — first error aborts): <code>§MODELVAL_HOOK timing=BEFORE_COMPLETE table=C_Order fired=2 ok=true</code>; <code>§FALSIFIER</code> qty≤0 line BLOCKED before save, 0-line order BLOCKED before complete (reaches the COMPLETE timing — was <code>groupOps.len=1</code> SET_STATUS only); un-hooked (table,timing) → explicit no-op. 3 <code>AD_ModelValidator</code> Java bodies + 322 <code>beforeSave/afterSave</code> overrides named-deferred. Witness <code>scripts/poc_modelval.js</code> → <code>build/erp/poc_modelval.log</code>. <strong>Residual to ✅:</strong> live doc-action wiring.</li>
+<li><strong>FK table validation</strong> (AD_Ref_Table, 243) — ✅ <strong>BUILT (W-REFERENCE).</strong> <code>build/erp/ad_reference.js:fkExists</code> resolves the reference's FK table+key and runs the membership query: <code>§FK_CHECK table=ad_reference id=1 exists=true</code>, <code>§FALSIFIER id=999999 exists=false reject</code>. + <code>applyVFormat</code> for the 1 <code>AD_Column.ValueFormat</code> mask. Witness <code>scripts/poc_reference.js</code> → <code>build/erp/poc_reference.log</code>.</li>
+<li><strong>AD_Tab WhereClause/OrderBy</strong> (85/173) — ✅ <strong>BUILT (W-TABQUERY).</strong> <code>build/erp/ad_tabquery.js</code>: <code>applyWhere</code> runs <code>ad_tab.whereclause</code> as the row filter (<code>§TAB_FILTER tab=186 where="C_Order.IsSOTrx='Y'" rows=4</code>, §FALSIFIER PO excluded from SO tab); <code>orderedKeys</code> runs <code>ad_tab.orderbyclause</code> as the sort (<code>§TAB_ORDER orderBy="M_Product.Value"</code> rows sorted). Witness <code>scripts/poc_tabquery.js</code> → <code>build/erp/poc_tabquery.log</code>.</li>
 <li><strong>SQL/@var@ defaults</strong> (subset of 5647). Witness: <code>§DEFAULT col=dateordered val=&lt;resolved-from-@#Date@&gt;</code>.</li>
 </ol>
 <h2 id="feed-back-to-the-conversion-estimate">Feed back to the conversion estimate<a class="headerlink" href="#feed-back-to-the-conversion-estimate" title="Permanent link">&para;</a></h2>
@@ -4565,7 +4664,7 @@ disproof: the line can never fire today.</p>
 (3 registered). The </em><em>~3,000-row logic-expression</em><em> surface (W-LOGIC-EVAL) and the </em><em>~4,200-row security</em><em> surface
 (W-ACCESS) now have an engine home (<code>ad_evaluator.js</code> / <code>ad_access.js</code>, headless-proven; live render-wiring is the
 residual). Folded today: the <code>CO</code> transition, the double-entry posting fold, a fixed report set — for ~5–7 demo tables.
-This is the precise content behind "89× → ~30×": the 89× is delivery/definition; behavioural parity is a long, </em>named* tail.</p>
+This is the precise content behind "76× shell → ~25× conservative full parity": the 76× is delivery/definition (the 18,614-LOC engine shell, ~0.2% of the M-class logic folded); behavioural parity is a long, </em>named* tail — see <a href="../ERP_MODEL_ARCHETYPE/">ERP_MODEL_ARCHETYPE.md</a>.</p>
 <h2 id="provenance-caveats">Provenance / caveats<a class="headerlink" href="#provenance-caveats" title="Permanent link">&para;</a></h2>
 <ul>
 <li>All §B numbers from <code>build/erp/ad_full.db</code> (927 tables) — table names are <strong>lowercase</strong> there (<code>ad_column</code>, not <code>AD_Column</code>).</li>
