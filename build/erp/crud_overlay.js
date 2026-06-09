@@ -399,15 +399,36 @@
     var title = (verb === 'create' ? '＋ New ' : '✎ Edit ') + fname(e.key);
     var h = '<span class=cfx title=close>✕</span><div class=cfh>' + title + '</div><div class=cfbody>';
     (e.fields || []).forEach(function (f) {
-      h += '<label class=cfrow><span class=cfl>' + esc(f.label || f.col) + (f.required ? ' <i class=req>*</i>' : '') + '</span>' + fieldInput(f, vals[f.col]) + '<span class="cfe" data-col="' + f.col + '"></span></label>';
+      h += '<label class=cfrow data-row="' + f.col + '"><span class=cfl>' + esc(f.label || f.col) + ' <i class=req data-req="' + f.col + '" style="display:none">*</i></span>' + fieldInput(f, vals[f.col]) + '<span class="cfe" data-col="' + f.col + '"></span></label>';
     });
     h += '</div><div class=cfnav><span class=cfnote>dry-run — logs the op it would apply (E3 wires the signed kernel)</span><span class=cfgrow></span>' +
          '<button class=cfb id=cfCancel>Cancel</button><button class="cfb cfsave" id=cfSave>' + (verb === 'create' ? 'Create' : 'Save') + '</button></div>';
     form.innerHTML = h; form.className = 'open';
     populateRefs(e);
+    applyAdLogic(e);                                            // §AD-LOGIC-LIVE — initial show/hide/enable/require off the AD
+    var body = form.querySelector('.cfbody');                   // …and re-apply on every edit so the form REACTS like iDempiere
+    if (body) { body.addEventListener('input', function () { applyAdLogic(e); }); body.addEventListener('change', function () { applyAdLogic(e); }); }
     form.querySelector('.cfx').addEventListener('click', closeForm);
     form.querySelector('#cfCancel').addEventListener('click', closeForm);
     form.querySelector('#cfSave').addEventListener('click', function () { saveForm(verb, e, orig, id); });
+  }
+  // applyAdLogic — drive the live DOM from each field's AD logic (DisplayLogic/ReadOnlyLogic/MandatoryLogic) via
+  // CORE.effectiveFlags (→ window.AdEvaluator). The record AND context = the form's own current field values, so
+  // same-record @Col@ references resolve. visible=false→hide the row · readonly=true→disable · required=true→mark.
+  function applyAdLogic(e) {
+    var rec = gatherVals(e), ctx = rec, flips = 0, withLogic = 0;
+    (e.fields || []).forEach(function (f) {
+      var hasLogic = [f.displaylogic, f.readonlylogic, f.mandatorylogic].some(function (s) { return s != null && String(s).trim() !== ''; });
+      if (hasLogic) withLogic++;
+      var eff = CORE.effectiveFlags(f, rec, ctx);
+      var row = form.querySelector('.cfrow[data-row="' + f.col + '"]'); if (!row) return;
+      var wasHidden = row.style.display === 'none';
+      row.style.display = eff.visible ? '' : 'none';
+      if (hasLogic && wasHidden !== !eff.visible) flips++;
+      var input = row.querySelector('[data-col="' + f.col + '"]'); if (input) input.disabled = !!eff.readonly;
+      var mark = row.querySelector('[data-req="' + f.col + '"]'); if (mark) mark.style.display = eff.required ? '' : 'none';
+    });
+    console.log('§AD-LOGIC-LIVE key=' + e.key + ' fields=' + (e.fields || []).length + ' withLogic=' + withLogic + ' visibilityFlips=' + flips + ' applied=DOM');
   }
   function fieldInput(f, val) {
     var v = (val == null ? '' : val), ro = f.readonly ? ' disabled' : '';
