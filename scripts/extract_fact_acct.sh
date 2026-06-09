@@ -139,6 +139,17 @@ PG "SELECT m_transaction_id, m_product_id, m_locator_id, m_attributesetinstance_
 sqlite3 "$DB" "DROP TABLE IF EXISTS m_transaction; CREATE TABLE m_transaction(m_transaction_id INT, m_product_id INT, m_locator_id INT, m_attributesetinstance_id INT, movementtype TEXT, movementqty REAL, m_inoutline_id INT, m_inventoryline_id INT, m_movementline_id INT, m_productionline_id INT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/m_transaction.csv m_transaction"
 
+echo "== capture replenishment config (Δ-B replenishment PO — ReplenishReport, FOLD_MODEL_LOGIC.md §F-2 task #3) =="
+# ReplenishReport.QtyToOrder formula (lines 294-327): per (product,warehouse) with ReplenishType<>'0',
+#   available = QtyOnHand - QtyReserved + QtyOrdered  (reserved/ordered = M_StorageReservation IsSOTrx Y/N)
+#   type '1' (reorder-below-min): order Level_Max-available  IFF available<=Level_Min, else 0
+#   type '2' (maintain-max):      order Level_Max-available  always
+#   then drop rows with QtyToOrder<1. The fold derives QtyOnHand by folding m_transaction (the §F-2 #2 spine)
+#   per product WITHIN the warehouse's locators (m_locator→warehouse map — loc 102 is a DIFFERENT warehouse).
+cap m_replenish          "m_product_id,m_warehouse_id,replenishtype,level_min,level_max"  "m_product_id INT,m_warehouse_id INT,replenishtype TEXT,level_min REAL,level_max REAL"
+cap m_storagereservation "m_product_id,m_warehouse_id,round(qty,2),issotrx"               "m_product_id INT,m_warehouse_id INT,qty REAL,issotrx TEXT"
+cap m_locator            "m_locator_id,m_warehouse_id"                                     "m_locator_id INT,m_warehouse_id INT"
+
 echo "== verify =="
 sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' docs='||count(DISTINCT ad_table_id||'/'||record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_elementvalue rows='||count(*) FROM c_elementvalue;"
@@ -155,3 +166,4 @@ sqlite3 "$DB" "SELECT '§EXTRACT alloc-oracle fact_acct(735) rows='||count(*)||'
 sqlite3 "$DB" "SELECT '§EXTRACT c_acctschema taxcorrectiontype(101)='||taxcorrectiontype FROM c_acctschema WHERE c_acctschema_id=101;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_bp_group_acct='||count(*)||' c_cashbook_acct='||(SELECT count(*) FROM c_cashbook_acct)||' c_cashline='||(SELECT count(*) FROM c_cashline) FROM c_bp_group_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT m_transaction rows='||count(*)||' (p,l,asi)-cells='||count(DISTINCT m_product_id||'/'||m_locator_id||'/'||m_attributesetinstance_id)||' Σsigned='||round(sum(movementqty),2)||' types='||(SELECT group_concat(DISTINCT movementtype) FROM m_transaction) FROM m_transaction;"
+sqlite3 "$DB" "SELECT '§EXTRACT m_replenish='||count(*)||' active(type<>0)='||sum(CASE WHEN replenishtype<>'0' THEN 1 ELSE 0 END)||' m_locator='||(SELECT count(*) FROM m_locator)||' reservations='||(SELECT count(*) FROM m_storagereservation) FROM m_replenish;"
