@@ -31,7 +31,7 @@ So the migratable denominator is **1 document archetype (fully captured) + ~25 d
 |---|---|---|---|
 | **Metadata (I/O)** | `C_Order`/`C_OrderLine` columns: type/reference/default/readonly/mandatory/display logic | `ad_evaluator` + `ad_access` + `ad_reference` + `ad_valrule` | 🟡 surface-interpreted on real AD rows; **not oracle-diffed** |
 | **`beforeSave` invariants** | PriceList_ID · M_Warehouse_ID · DateOrdered · C_DocTypeTarget_ID · BPartner id/location · credit-status | `ad_modelval` BEFORE_SAVE timing | 🟡 mechanism built; `hasLines`/`total≥0` ported; **the pricelist/credit/warehouse derivations = the delta** |
-| **`DocAction` lifecycle** | `prepareIt` · `completeIt` · `reopenIt` (+ the inherited void/close/reverseCorrect/reverseAccrual/reActivate set) over `DocumentEngine`/WfMC | `ad_process` + DocAction dispatch | ✅ **`completeIt` oracle-equivalent** — the full Order→Ship→Invoice fan-out chain folds `maxDiff=0c` (W-FOLD-COMPLETE); standalone `completeIt(C_Invoice)`+MatchInv folded (W-FOLD-INVOICE). **Residual:** the void/reverse transition set = the delta |
+| **`DocAction` lifecycle** | `prepareIt` · `completeIt` · `reopenIt` (+ the inherited void/close/reverseCorrect/reverseAccrual/reActivate set) over `DocumentEngine`/WfMC | `ad_process` + DocAction dispatch | ✅ **`completeIt` oracle-equivalent** — the full Order→Ship→Invoice fan-out chain folds `maxDiff=0c` (W-FOLD-COMPLETE); standalone `completeIt(C_Invoice)`+MatchInv folded (W-FOLD-INVOICE); the **void/reverseCorrect** set is now oracle-anchored — engine reversal + real `fact_acct` nets to zero, FSM CO→RE (W-FOLD-REVERSE). **Residual:** reverseAccrual booked-date (no `c_period` in seed) |
 | **Posting (GL derivation)** | `Doc_Order.java` debit/credit derivation from the lines + acct-config | `post_resolver` / `poc_post_derive` | ✅ **oracle-diffed**: `Doc_Invoice`(318) **sales AND purchase** (W-FOLD-AP-INVOICE: CR V_Liability / DR InventoryClearing, 4/4)/`Doc_InOut`(319)/`Doc_Payment`(335)/`Doc_AllocationHdr`(735, incl. tax-correction) all `maxDiff=0c` vs real `fact_acct`. **Residual:** `Doc_Order` commitment note · allocation schema-200000 = a delta |
 | **Callouts** | qty/price/bpartner field-change derivations | `ad_callout` dispatch (mechanism, W-CALLOUT) | 🟡 spine built; **the bound callout classes = the delta** |
 
@@ -70,17 +70,18 @@ line table and poster.
 | **MStorageOnHand / MTransaction** | W-FOLD-QTYONHAND | on-hand = Σ(sign×qty) == `m_storageonhand` (20/20 cells) + sign rule (28/28) |
 | **MMovement** (inter-org transfer) | W-FOLD-MOVEMENT | cost transfer + Intercompany Due-To/From == `fact_acct(323)`; cost via schema costing-method → cost element |
 | **ReplenishReport → PO** | W-FOLD-REPLENISH | QtyToOrder (movement-folded on-hand) == iDempiere formula (8/8); PO via `buildDoc` |
+| **Reversal family** (reverseCorrect / void) | W-FOLD-REVERSE | engine reversal (swap Dr↔Cr) **+ real `fact_acct` NETS TO ZERO** per account (6/6 C_Payment+C_Invoice); FSM CO→RE; ORACLE-ANCHORED (transform of real posting) |
 | **MProduction backflush** | W-FOLD-BACKFLUSH | recursive BOM explosion == path-enumeration (recipe-equivalent; `m_production`=0 in seed) |
 
-**Score: 10 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent** — and they are the deepest deltas
+**Score: 11 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent** — and they are the deepest deltas
 (the whole Money family — sales AND purchase invoice posting, allocation in BOTH accounting schemas, the MatchInv
 clearing loop — + the inventory loop incl. the inter-org MMovement cost transfer). **Logic-folded is no longer
 ~0.2%**: the trade-doc loop (order→ship→invoice→**match-posting**→pay→allocate) and the inventory loop
 (movement→on-hand→replenish-PO) both fold end-to-end to their iDempiere oracle, on **both** the sales and purchase
 sides of `Doc_Invoice` and across the base (USD) **and** foreign-currency (EUR) acctschema — and the PO
 match→clearing loop folds in full incl. the avg-cost IPV split (on-hand-proportioned, riding the qty spine).
-**Unfolded tail:** **GL_Journal** (`fact_acct` 224 — lines post directly, near-tautological) · the void/reverse
-DocAction set (no reversed doc in seed) · `MInventory` physical-count + `MProduction` GL (no seed movements) · the
+**Unfolded tail:** **GL_Journal** (`fact_acct` 224 — lines post directly, near-tautological) · `MInventory`
+physical-count + `MProduction` GL (no seed movements) · the
 Fixed-Assets + GL/Project families · the declarative surfaces (still surface-interpreted, not oracle-diffed).
 
 ## What this changes for the backend arc

@@ -219,6 +219,25 @@ function qtyOnHand(events, opts) {
   return out;
 }
 
+// ── GENERATE: reverseCorrect / reverseAccrual — the DocAction reversal family ─────────────────────
+// Implementing ERP_MODEL_ARCHETYPE.md §Reversal (Doc.reverseCorrectIt / reverseAccrualIt) — Witness: W-FOLD-REVERSE.
+// iDempiere's reverseCorrect emits a posting that ANNIHILATES the original document's posting: every Dr leg
+// becomes a Cr and vice-versa, on the SAME accounts at the SAME amounts (MFactReversal: Fact.reverse swaps the
+// FactLine sides). reverseAccrual is the identical negation booked in the NEXT period — the reversal DATE is
+// the ONLY delta (the host supplies it; reverseCorrect keeps the original dateacct). PURE: the host passes the
+// document's FORWARD posting (re-derived from source via post_resolver) — this verb NEVER reads the books, so
+// "reversal annihilates the real fact_acct" is a genuine test of the rule, not a copy of the oracle. `facts`
+// are integer-cents lines [{account, dr, cr}]; returns the swapped lines, carrying the reversal date.
+function reversePosting(facts, opts) {
+  opts = opts || {};
+  return facts.map(function (f) {
+    var date = opts.mode === 'accrual'
+      ? (opts.reversalDate != null ? opts.reversalDate : null)            // next-period date (host-supplied)
+      : (f.dateacct != null ? f.dateacct : (opts.dateacct != null ? opts.dateacct : null)); // correct = same date
+    return { account: f.account, dr: f.cr || 0, cr: f.dr || 0, dateacct: date };
+  });
+}
+
 // ── The cell handler: decision-table over policy flags -> verb ops ───────────
 // completeOrder = state op + (flag-gated) verb fan-out. The flags are DATA
 // (erp_rules DOCPOLICY), the verbs are the small registry above.
@@ -250,5 +269,6 @@ function completeInvoice(invoice, lines, policy) {
 module.exports = {
   resolveCtx: resolveCtx, dialectShim: dialectShim, evalGuard: evalGuard,
   match: match, buildDoc: buildDoc, DOC_SPECS: DOC_SPECS, explodeBOM: explodeBOM,
-  movementSign: movementSign, qtyOnHand: qtyOnHand, VERBS: VERBS, completeOrder: completeOrder, completeInvoice: completeInvoice
+  movementSign: movementSign, qtyOnHand: qtyOnHand, reversePosting: reversePosting,
+  VERBS: VERBS, completeOrder: completeOrder, completeInvoice: completeInvoice
 };
