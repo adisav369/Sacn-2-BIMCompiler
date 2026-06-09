@@ -629,6 +629,77 @@ DRAFT (2026-06-08). The evaluator-facing companion to the deep papers ([ERP.md](
 </div>
 </details>
 
+<details class="fold" markdown="1"><summary>Worked example — <code>MOrder.completeIt()</code> folded onto the op-log <span class="hint">~250 Java LOC → ~50 JS · primitives shipped, orchestration is the H-1 fold</span></summary>
+<div class="fbd" markdown="1">
+
+This is the *irreducible — must be folded* row made concrete: one real `M*` document action, re-expressed on the
+deterministic kernel. The **primitives are shipped** (linked below); the **orchestration that wires them is the fold
+itself** — the `MOrder.completeIt()` body — which is the bulk of the [HARDEN_MATRIX H-1](ERP_MODEL_ARCHETYPE.md) work,
+mostly still to-do. Block-for-block against `org.compiere.model.MOrder.completeIt()`:
+
+```js
+// MOrder.completeIt() folded onto the signed op-log. Java: MOrder.completeIt (~250 LOC, getX/setX/saveEx/SQL).
+// Every effect is an OP appended to the log; status & books are a FOLD of those ops. Commits WHOLE or NONE.
+async function completeIt(db, order) {
+  const lines = getLines(db, order);                                   // C_OrderLine rows — DATA (the X_ layer)
+  const entry = descriptorFor('c_order');                             // crud_ops.json field descriptor — DATA
+
+  // [Java] "Just prepare" / re-check → CO iff prereqs met, else InProgress
+  const out = CrudOverlay.docActionOutcome(entry, order);            // {action,from,to,outcome,unmet}
+  if (out.to !== 'CO') return { status: out.to, unmet: out.unmet };
+
+  // [Java] fireDocValidate(TIMING_BEFORE_COMPLETE) — real MOrder.hasLines / total≥0, first error aborts
+  let v = AdModelVal.fireHooks('BEFORE_COMPLETE', { table: 'C_Order', record: order, lineCount: lines.length });
+  if (!v.ok) return { status: 'IN', blocked: v.blocked, msg: v.error };
+
+  // [Java] implicit approval
+  if (order.IsApproved !== 'Y') order.IsApproved = 'Y';
+
+  // [Java] CO must be legal for this C_DocType at this status, then DR/IP → CO
+  if (!AdDocFsm.legalActions(db, order.C_DocType_ID, order.DocStatus).includes('CO'))
+    return { status: 'IN', msg: 'CO not legal from ' + order.DocStatus };
+  const toStatus = AdDocFsm.transition('CO', order.DocStatus);       // → 'CO'
+
+  // [Java] createCounterDoc / createShipment / createInvoice — the archetype RECURSES (buildDoc = the same verb)
+  const childOps = [];
+  // TODO (H-1): if (autoGenerateInOut(dt, order))   childOps.push(...(await buildDoc(db,'M_InOut', order,lines,true)).ops);
+  // TODO (H-1): if (autoGenerateInvoice(dt, order)) childOps.push(...(await buildDoc(db,'C_Invoice',order,lines)).ops);
+
+  // [Java] posting (Doc_Order at post time): derive DR/CR; accounts resolved from AD acct-config (DATA); ΣDR==ΣCR
+  const acct = acctSchema(db, order.AD_Client_ID);
+  const post = postRecipe('C_Order', order, lines).map(l => ({
+    account_id: post_resolver.resolve(db, l.token, order.id, acct),   // account-token → real account
+    amtacctdr:  l.dr || 0, amtacctcr: l.cr || 0 }));
+
+  // [Java] setDocStatus(Completed) + the implicit Postgres txn → ONE signed, hash-chained op-group
+  const action = CrudOverlay.buildOp('process', entry, { ...order, DocStatus: toStatus }, order, { id: order.id });
+  const group  = CrudOverlay.buildDocActionGroup(action);            // [DOC_ACTION, …]
+  group.push({ op_type: 'POST', parameters: { id: order.id, lines: post } }, ...childOps);
+  const res = await KernelOps.commitGroup(db, group, { baseTs: order.ts });   // all-or-none
+  if (!res.committed) return { status: 'IN', msg: 'torn group: ' + res.reason };
+
+  // [Java] fireDocValidate(TIMING_AFTER_COMPLETE)
+  v = AdModelVal.fireHooks('AFTER_COMPLETE', { table: 'C_Order', record: order, lineCount: lines.length });
+  if (!v.ok) return { status: 'IN', msg: v.error };
+
+  return { status: 'CO', gid: res.gid, tip: res.tip };               // Completed, signed, replayable
+}
+```
+
+**Shipped primitives it stands on** (real source — feat/erp-substrate-phase012):
+- `KernelOps.commitGroup` — atomic all-or-none, hash-chained, signed op-group → [build/erp/kernel_ops.js](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/kernel_ops.js)
+- `AdModelVal.fireHooks` — BEFORE/AFTER_COMPLETE validators (port of `fireDocValidate`) → [build/erp/ad_modelval.js](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/ad_modelval.js)
+- `AdDocFsm.legalActions` / `transition` — the legal-action FSM (port of `DocumentEngine`) → [build/erp/ad_docfsm.js](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/ad_docfsm.js)
+- `post_resolver.resolve` — account-token → real account from AD acct-config → [scripts/post_resolver.js](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/post_resolver.js)
+- `CrudOverlay.docActionOutcome` / `buildOp` / `buildDocActionGroup` — prepare outcome + op-group staging → [build/erp/crud_overlay.js](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/crud_overlay.js)
+
+**Still the fold-TODO** (named, not built — the H-1 work): `buildDoc('M_InOut'/'C_Invoice', …)` auto-ship/auto-invoice recursion, `createCounterDoc` (intercompany), reservation edge cases, landed cost. Tracked in `prompts/HARDEN_MATRIX.md`.
+
+**Three things it makes concrete:** (1) **~50 JS vs ~250 Java** — the `getX/setX/saveEx`/SQL/try-catch ceremony drops; only the decisions survive. (2) **"MOrder + deltas" is right here** — `createShipment`/`createInvoice` are `buildDoc('M_InOut'/'C_Invoice')`, the *same* archetype verb recursing one level down; MInOut's only real delta is `reserveStock`+locator. (3) **Both folds in one function** — the body is *code* (Fold B: Java→compact verbs); what it *emits* is *ops* = *data*; `DocStatus` and the trial balance are *Fold A* over that data.
+
+</div>
+</details>
+
 ---
 
 ## Footnote sources
