@@ -71,11 +71,22 @@ cap() { # cap <table> <select-cols> <create-def>  — INT-typed keys to match th
   sqlite3 "$DB" ".mode csv" ".import /tmp/$t.csv $t"
 }
 cap c_bp_customer_acct      "c_bpartner_id,c_acctschema_id,c_receivable_acct"      "c_bpartner_id INT,c_acctschema_id INT,c_receivable_acct INT"
-cap m_product_category_acct "m_product_category_id,c_acctschema_id,p_revenue_acct" "m_product_category_id INT,c_acctschema_id INT,p_revenue_acct INT"
+cap m_product_category_acct "m_product_category_id,c_acctschema_id,p_revenue_acct,p_cogs_acct,p_asset_acct" "m_product_category_id INT,c_acctschema_id INT,p_revenue_acct INT,p_cogs_acct INT,p_asset_acct INT"
 cap c_tax_acct              "c_tax_id,c_acctschema_id,t_due_acct"                  "c_tax_id INT,c_acctschema_id INT,t_due_acct INT"
 cap c_validcombination      "c_validcombination_id,account_id"                    "c_validcombination_id INT,account_id INT"
 cap c_acctschema_default    "c_acctschema_id"                                     "c_acctschema_id INT"
 cap c_invoicetax            "c_invoice_id,c_tax_id,taxamt"                         "c_invoice_id INT,c_tax_id INT,taxamt REAL"
+
+echo "== capture inventory + cost oracle (F-1 shipment posting Doc_InOut + StorageOnHand spine, prompts/FOLD_MODEL_LOGIC.md §F-1 1b-ii / step-2) =="
+# Doc_InOut posts DR {Product.Cogs} / CR {Product.Asset} at the product's current cost. The accounts
+# come from m_product_category_acct (p_cogs_acct/p_asset_acct, just added above); the AMOUNT = movementqty
+# × m_cost.currentcostprice. m_storageonhand.qtyonhand is the on-hand oracle the StorageOnHand fold diffs.
+cap m_cost          "m_product_id,c_acctschema_id,m_costtype_id,m_costelement_id,currentcostprice,cumulatedamt,cumulatedqty" "m_product_id INT,c_acctschema_id INT,m_costtype_id INT,m_costelement_id INT,currentcostprice REAL,cumulatedamt REAL,cumulatedqty REAL"
+cap m_storageonhand "m_product_id,m_locator_id,m_attributesetinstance_id,qtyonhand"                                          "m_product_id INT,m_locator_id INT,m_attributesetinstance_id INT,qtyonhand REAL"
+# m_costdetail = the cost-at-movement record. Doc_InOut posts a shipment line's COGS/Inventory at THIS
+# amount (current m_cost has drifted — posting-time vs current, same class as the invoice amt-drift). The
+# shipment posting amount = Σ|amt| per (m_inoutline_id, c_acctschema_id); accounts still come from the master.
+cap m_costdetail    "m_costdetail_id,c_acctschema_id,m_product_id,m_inoutline_id,amt,qty"                                    "m_costdetail_id INT,c_acctschema_id INT,m_product_id INT,m_inoutline_id INT,amt REAL,qty REAL"
 
 echo "== verify =="
 sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' docs='||count(DISTINCT ad_table_id||'/'||record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
@@ -83,3 +94,7 @@ sqlite3 "$DB" "SELECT '§EXTRACT c_elementvalue rows='||count(*) FROM c_elementv
 for t in ad_window_access ad_process_access ad_form_access ad_workflow_access ad_task_access ad_document_action_access; do
   sqlite3 "$DB" "SELECT '§EXTRACT $t rows='||count(*) FROM $t;"
 done
+sqlite3 "$DB" "SELECT '§EXTRACT m_product_category_acct cogs/asset non-null='||sum(CASE WHEN p_cogs_acct IS NOT NULL THEN 1 ELSE 0 END)||'/'||sum(CASE WHEN p_asset_acct IS NOT NULL THEN 1 ELSE 0 END)||' of '||count(*) FROM m_product_category_acct;"
+sqlite3 "$DB" "SELECT '§EXTRACT m_cost rows='||count(*)||' nonzero-cost='||sum(CASE WHEN currentcostprice>0 THEN 1 ELSE 0 END) FROM m_cost;"
+sqlite3 "$DB" "SELECT '§EXTRACT m_storageonhand rows='||count(*)||' products='||count(DISTINCT m_product_id)||' Σqtyonhand='||round(sum(qtyonhand),2) FROM m_storageonhand;"
+sqlite3 "$DB" "SELECT '§EXTRACT m_costdetail rows='||count(*)||' shipment-lines='||count(DISTINCT CASE WHEN m_inoutline_id IS NOT NULL THEN m_inoutline_id END) FROM m_costdetail;"

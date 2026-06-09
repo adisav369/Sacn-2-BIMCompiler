@@ -139,16 +139,33 @@ function match(leftRows, rightRows, opts) {
 
 // ── GENERATE: derivation verbs (a BOM derivation = order→child document) ─────
 // Verbs return ops[]; the kernel applies + commitOps them (handlers never write).
-function createShipment(order, lines) {
-  var ops = [{ op_type: 'CREATE_DOCUMENT', table: 'M_InOut', source_id: order.c_order_id, movementtype: order.issotrx === 'Y' ? 'C-' : 'V+' }];
-  lines.forEach(function (l) { ops.push({ op_type: 'CREATE_LINE', table: 'M_InOutLine', source_line_id: l.c_orderline_id, m_product_id: l.m_product_id, movementqty: l.qtyordered }); });
+//
+// Implementing ERP_MODEL_ARCHETYPE.md §MOrder — Witness: W-FOLD-BUILDDOC.
+// buildDoc is the ARCHETYPE create-verb: stage CREATE_DOCUMENT + CREATE_LINE for a
+// child doc, TABLE-PARAMETERISED. This is the single recursion createShipment /
+// createInvoice / replenishment-PO all instantiate (FOLD-not-FORK: the two verbs below
+// are now spec rows, NOT separate code). A `spec` carries the doc/line tables, the
+// parent id field, the per-line source id field, and the qty field MAP (target←source).
+//   spec = { docTable, lineTable, parentId, lineParentId, qtyTo, qtyFrom, header?(parent) }
+function buildDoc(spec, parent, lines) {
+  var doc = { op_type: 'CREATE_DOCUMENT', table: spec.docTable, source_id: parent[spec.parentId] };
+  var hdr = spec.header ? spec.header(parent) : null;
+  if (hdr) for (var k in hdr) doc[k] = hdr[k];
+  var ops = [doc];
+  lines.forEach(function (l) {
+    var line = { op_type: 'CREATE_LINE', table: spec.lineTable, source_line_id: l[spec.lineParentId], m_product_id: l.m_product_id };
+    line[spec.qtyTo] = l[spec.qtyFrom];
+    ops.push(line);
+  });
   return ops;
 }
-function createInvoice(order, lines) {
-  var ops = [{ op_type: 'CREATE_DOCUMENT', table: 'C_Invoice', source_id: order.c_order_id, issotrx: order.issotrx }];
-  lines.forEach(function (l) { ops.push({ op_type: 'CREATE_LINE', table: 'C_InvoiceLine', source_line_id: l.c_orderline_id, m_product_id: l.m_product_id, qtyinvoiced: l.qtyordered }); });
-  return ops;
-}
+// The shipped trade verbs, now expressed as buildDoc specs (identical ops out).
+var DOC_SPECS = {
+  createShipment: { docTable: 'M_InOut', lineTable: 'M_InOutLine', parentId: 'c_order_id', lineParentId: 'c_orderline_id', qtyTo: 'movementqty', qtyFrom: 'qtyordered', header: function (o) { return { movementtype: o.issotrx === 'Y' ? 'C-' : 'V+' }; } },
+  createInvoice: { docTable: 'C_Invoice', lineTable: 'C_InvoiceLine', parentId: 'c_order_id', lineParentId: 'c_orderline_id', qtyTo: 'qtyinvoiced', qtyFrom: 'qtyordered', header: function (o) { return { issotrx: o.issotrx }; } }
+};
+function createShipment(order, lines) { return buildDoc(DOC_SPECS.createShipment, order, lines); }
+function createInvoice(order, lines) { return buildDoc(DOC_SPECS.createInvoice, order, lines); }
 var VERBS = { createShipment: createShipment, createInvoice: createInvoice };
 
 // ── The cell handler: decision-table over policy flags -> verb ops ───────────
@@ -163,5 +180,5 @@ function completeOrder(order, lines, policy) {
 
 module.exports = {
   resolveCtx: resolveCtx, dialectShim: dialectShim, evalGuard: evalGuard,
-  match: match, VERBS: VERBS, completeOrder: completeOrder
+  match: match, buildDoc: buildDoc, DOC_SPECS: DOC_SPECS, VERBS: VERBS, completeOrder: completeOrder
 };

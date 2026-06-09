@@ -19,6 +19,8 @@
 var TOKENS = {
   '{BPartner.Receivable}': { table: 'c_bp_customer_acct',      col: 'c_receivable_acct', keyCol: 'c_bpartner_id' },
   '{Product.Revenue}':     { table: 'm_product_category_acct', col: 'p_revenue_acct',    keyCol: 'm_product_category_id', via: 'product->category' },
+  '{Product.Cogs}':        { table: 'm_product_category_acct', col: 'p_cogs_acct',       keyCol: 'm_product_category_id', via: 'product->category' },
+  '{Product.Asset}':       { table: 'm_product_category_acct', col: 'p_asset_acct',      keyCol: 'm_product_category_id', via: 'product->category' },
   '{Tax.Due}':             { table: 'c_tax_acct',               col: 't_due_acct',        keyCol: 'c_tax_id' }
 };
 
