@@ -16,7 +16,7 @@
         <link rel="prev" href="../FeatureComparison/">
       
       
-        <link rel="next" href="../AboutMore/">
+        <link rel="next" href="../FoldEngineQuality/">
       
       
         
@@ -520,6 +520,8 @@
       
         
       
+        
+      
     
     
     
@@ -773,6 +775,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roadmap — where migration leads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#footnote-sources" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -787,6 +800,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FoldEngineQuality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Code Quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4262,6 +4303,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roadmap — where migration leads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#footnote-sources" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5191,6 +5243,22 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </ol>
 </div>
 </details>
+<h2 id="roadmap">Roadmap — where migration leads<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h2>
+<p>Migration is the on-ramp, not the destination. <strong>Once migration from both iDempiere <em>and</em> Odoo is
+stable on the signed op-log</strong>, the kernel folds forward into two new op-log-native apps — the same
+ledger, no new server:</p>
+<ol>
+<li><strong>uniCenta POS</strong> — a browser rebuild of the POS, driven by <strong>replenishment</strong>: the point-of-sale
+   lifecycle expressed as folds over the same ledger (the backflush + on-hand spine witnessed in
+   <a href="../FoldEngineQuality/"><code>FoldEngineQuality.md</code></a> is the groundwork).</li>
+<li><strong>Warehouse mobile walk</strong> — a phone-first pick / put-away <em>"walk the aisles"</em> app over the same
+   tenant, riding the same on-hand fold.</li>
+</ol>
+<p>These are the two ERP objectives stated in the <a href="https://github.com/red1oon/bim-ootb#roadmap">bim-ootb README</a>;
+both are <strong>downstream of the migration this paper measures</strong> — they become possible precisely because the
+kernel is the same fold whether it is migrating an existing ERP or running a new app on it. (The wider
+roadmap also carries one BIM objective — a 2D grid <em>editor</em> — and one shared objective — a single
+parallel op|view history timeline across the BIM building and the ERP context.)</p>
 <details class="fold">
 <summary>Further reading — go deeper <span class="hint">the deep papers behind each claim</span></summary>
 <div class="fbd">
@@ -5281,6 +5349,7 @@ mostly still to-do. Block-for-block against <code>org.compiere.model.MOrder.comp
 - <code>post_resolver.resolve</code> — account-token → real account from AD acct-config → <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/post_resolver.js">scripts/post_resolver.js</a>
 - <code>CrudOverlay.docActionOutcome</code> / <code>buildOp</code> / <code>buildDocActionGroup</code> — prepare outcome + op-group staging → <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/crud_overlay.js">build/erp/crud_overlay.js</a></p>
 <p><strong>Still the fold-TODO</strong> (named, not built — the H-1 work): <code>buildDoc('M_InOut'/'C_Invoice', …)</code> auto-ship/auto-invoice recursion, <code>createCounterDoc</code> (intercompany), reservation edge cases, landed cost. Tracked in <code>prompts/HARDEN_MATRIX.md</code>.</p>
+<p><strong>Code quality — independent scorecard:</strong> for a reviewer's read of <em>how well</em> these fold/oracle-equivalence scripts are built (separation, determinism, non-invention, adversarial falsifiers, the per-script PASS scoreboard, and the honest risks), see <a href="../FoldEngineQuality/"><strong><code>FoldEngineQuality.md</code></strong></a> — 10 of 11 witnesses green, 1 in progress.</p>
 <p><strong>Three things it makes concrete:</strong> (1) <strong>~50 JS vs ~250 Java</strong> — the <code>getX/setX/saveEx</code>/SQL/try-catch ceremony drops; only the decisions survive. (2) <strong>"MOrder + deltas" is right here</strong> — <code>createShipment</code>/<code>createInvoice</code> are <code>buildDoc('M_InOut'/'C_Invoice')</code>, the <em>same</em> archetype verb recursing one level down; MInOut's only real delta is <code>reserveStock</code>+locator. (3) <strong>Both folds in one function</strong> — the body is <em>code</em> (Fold B: Java→compact verbs); what it <em>emits</em> is <em>ops</em> = <em>data</em>; <code>DocStatus</code> and the trial balance are <em>Fold A</em> over that data.</p>
 </div>
 </details>

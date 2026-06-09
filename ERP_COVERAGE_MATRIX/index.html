@@ -518,6 +518,8 @@
       
         
       
+        
+      
     
     
     
@@ -615,6 +617,34 @@
     
   
     Migrate & Compare (ERP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FoldEngineQuality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Code Quality
   
 
     
@@ -4288,14 +4318,70 @@ denominator, not 496 classes / 735k LOC).</p>
 <td><strong>Trial-balance / posting-read</strong> — <code>test_report_fin.js</code> folds the <strong>real GardenWorld <code>fact_acct</code></strong> (300 rows, client 11, captured from the Docker Postgres via <code>extract_fact_acct.sh</code>) → <code>ΣDr==ΣCr=46574.97</code>, <strong><code>maxDiff=0c</code></strong> vs the source. Our reporting reproduces iDempiere's posted journal to the cent.</td>
 </tr>
 <tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>Per-document GL <em>derivation</em> (H-1 keystone, W-POST-HARDEN)</strong> — <code>poc_post_harden.js</code> now diffs <code>post_resolver</code>'s DERIVED lines against the oracle <code>fact_acct</code> re-captured WITH <code>ad_table_id</code>/<code>record_id</code>/<code>line_id</code> granularity (schema 101, the 8 C_Invoice docs). Result: <strong>4/4 sales invoices resolve iDempiere's EXACT posting accounts</strong> (518/758/596), <strong>3/4 oracle-equivalent to the cent</strong> (<code>diff=0c</code>), <strong>0 derivation-gaps</strong>; the 4th (doc 109) is a <strong>named post-posting amount-drift</strong> (line 127 posted 254.00, source later edited to 215.90 on 2004-01-04 — <code>fact_acct</code>=posting-time, source=edited, so current-source derivation legitimately can't reproduce the historical journal). §FALSIFIER (revenue→receivable) = <code>maxDiff=5035c</code>. <code>build/erp/poc_post_harden.log</code>. <strong>Residual:</strong> schema-200000 (EUR) + purchase-invoice manifest deferred (same fold, different token set).</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong><code>completeIt(C_Order)</code> full posting chain (F-1 keystone, W-FOLD-COMPLETE)</strong> — <code>poc_fold_complete.js</code> folds MOrder.completeIt onto the op-log (ONE signed op-group: SET_STATUS CO + config-gated Ship/Invoice fan-out via <code>buildDoc</code>) and diffs the <strong>Order→Ship→Invoice</strong> journal: fan-out lines == oracle <code>m_inoutline</code>/<code>c_invoiceline</code>; invoice posting == <code>fact_acct(318)</code> (3/4 cent + 1 named post-posting drift); shipment COGS/Inventory == <code>fact_acct(319)</code> (amount from <code>m_costdetail</code>, accounts from master); <code>DocStatus=CO</code>; <strong><code>maxDiff=0c</code></strong>; §FALSIFIER load-bearing. <code>build/erp/poc_fold_complete.log</code>.</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>Doc_Payment receipt (F-2 MPayment, W-FOLD-PAYMENT)</strong> — <code>poc_money_post.js</code>: DR {Bank.InTransit}/CR {Bank.UnallocatedCash} = payamt; <strong>2/2 == <code>fact_acct(335)</code> <code>maxDiff=0c</code></strong>; §FALSIFIER drops DR → diff≠0. <code>build/erp/poc_money_post.log</code>.</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>Doc_AllocationHdr incl. VAT tax-correction (the Money DEEP half, W-FOLD-ALLOC)</strong> — <code>poc_alloc_post.js</code>: per SO-invoice line DR {Payment.UnallocatedCash}|{CashBook.CashTransfer} + DR {BPGroup.PayDiscount} + DR {BPGroup.WriteOff} / CR {BPartner.Receivable}, <strong>then the proportional tax-correction sub-cents</strong> (<code>round(tax/total×{disc,wo})</code> per invoice header fact line — alloc 101 = 0.11/0.02). <strong>2/2 == <code>fact_acct(735)</code> <code>maxDiff=0c</code></strong> (7-posting + 2-posting docs); §FALSIFIER-A drop tax-correction → <code>maxDiff=13c</code>, §FALSIFIER-B truncate≠HALF_UP (10c≠11c). This folds the §FOLD-DEFERRED named by W-FOLD-PAYMENT. <code>build/erp/poc_alloc_post.log</code>. <strong>Residual:</strong> schema-200000 (foreign-ccy) — now folded (W-FOLD-ALLOC-FX, next row).</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>Foreign-currency Doc_AllocationHdr — the 2nd acctschema (W-FOLD-ALLOC-FX)</strong> — <code>poc_alloc_fx.js</code> folds the SAME line manifest into schema 200000 (EUR, ccy 102; source USD 100) with the two schema-deltas: (a) each fact leg's accounted amount = <code>round(AmtSource × multiplyRate, 2 HALF_UP)</code> — rate read from <code>c_conversion_rate</code> (default Spot, valid on dateacct: 0.85 on 2002-02-22), multiplied in <strong>BigInt</strong> off the exact TEXT-preserved decimal so HALF_UP can't float-drift; (b) <code>TaxCorrectionType='N'</code> → no VAT sub-cents — then <code>Fact.balanceAccounting</code> posts ONE CurrencyBalancing line (<code>c_acctschema_gl.currencybalancing_acct</code> → 724) absorbing the per-doc accounted imbalance (alloc 101 = 0.01 CR). <strong>2/2 == <code>fact_acct(735)</code> schema 200000, maxDiff=0c</strong>. §FALSIFIER-A drop the balancing line (1c), §FALSIFIER-B the date-invalid 0.80064 rate (8373c≠7886c). Closes the §DEFERRED named by W-FOLD-ALLOC. <code>build/erp/poc_alloc_fx.log</code>.</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>StorageOnHand QTY spine (the inventory fold, W-FOLD-QTYONHAND)</strong> — <code>erp_engine.qtyOnHand</code>/<code>movementSign</code> reconstruct on-hand = <code>Σ(sign(MovementType)×|qty|)</code> from the real movement ledger <code>m_transaction</code> (28 events) and diff TWO independent iDempiere oracles: <strong>(a)</strong> the sign rule reproduces every stored signed <code>movementqty</code> (28/28); <strong>(b)</strong> the per-cell accumulation == <code>m_storageonhand.qtyonhand</code> (<strong>20/20 cells, maxDiff=0</strong>) — separate code paths (<code>MTransaction.create</code> vs <code>MStorageOnHand.add</code>), so it proves no movement dropped/double-counted. Source-decomposed (receipt +401 / shipment −15 / internal-movement 0); §FALSIFIER-A flip-polarity, §FALSIFIER-B drop-movement both fire. The spine the backflush DECREMENT + replenishment trigger ride. <code>build/erp/poc_qtyonhand.log</code>.</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>Inter-org M_Movement posting (W-FOLD-MOVEMENT)</strong> — <code>poc_movement.js</code> folds Doc_Movement for a cross-org transfer (locator 101/org 11 → 102/org 12): <code>amt = round(qty × cost, 2)</code>, DR/CR <code>{Product.Asset}</code> (to/from-org inventory) + DR <code>{Schema.IntercompanyDueFrom}</code> / CR <code>{Schema.IntercompanyDueTo}</code> (the intercompany bridge). <strong>Cost selection (non-invent):</strong> <code>c_acctschema.costingmethod</code> ('A'=Average) → the <code>m_costelement</code> with matching <code>costingmethod</code> (103 Average PO) → <code>m_cost.currentcostprice</code> (product 123 = 51.45 → 4×51.45 = 205.80). <strong>1/1 == <code>fact_acct(323)</code> schema 101, maxDiff=0c</strong>. §FALSIFIER-A swap Intercompany Due-To/From (20580c), §FALSIFIER-B use the Material/Standard cost element not the schema Average (10980c). The cost-selection rule is the same one <strong>M_MatchInv</strong> (472) needs. <code>build/erp/poc_movement.log</code>. <strong>Residual:</strong> schema-200000 (same fold, EUR cost) + same-org movement (no intercompany leg) absent in seed.</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>M_MatchInv posting — the matched-clearing loop (W-FOLD-MATCHINV)</strong> — <code>poc_matchinv.js</code> folds Doc_MatchInv: DR <code>{BPGroup.NotInvoicedReceipts}</code> = round(matchQty × PO price) / CR <code>{Product.InventoryClearing}</code> = round(matchQty × invoice price) — multiplied at full price precision then rounded (price 2.975 × 30 = 89.25, not 89.40). <strong>18/18 == <code>fact_acct(472)</code> schema 101, maxDiff=0c</strong>, including the 1 variance match (doc 100, PO 30 / invoice 20 → IPV 100): the avg-cost split rides the qty spine — <code>onHandAtMatch = Σ m_transaction.movementqty up to the match date</code> (product 130 = 7 of matchQty 10) → <code>round(IPV × min(onHand,qty)/qty)</code> = 70 <code>{Product.Asset}</code> / 30 <code>{Product.AverageCostVariance}</code>. §FALSIFIER-A swap NIR↔InventoryClearing (36000c), §FALSIFIER-B all-IPV→Asset ignoring the on-hand cap (3000c). <code>build/erp/poc_matchinv.log</code>. Completes the PO match→clearing loop in full — the deepest item that had been the named NEXT.</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>Standalone <code>completeIt(C_Invoice)</code> doc-action (W-FOLD-INVOICE)</strong> — <code>erp_engine.completeInvoice</code> emits <code>[SET_STATUS C_Invoice CO]</code> for every invoice (8/8) + the PO-side MatchInv fan-out gated on <code>!IsSOTrx &amp;&amp; line.M_InOutLine_ID&lt;&gt;0</code> — <strong>the emitted M_MatchInv set == real <code>m_matchinv</code> per (invoiceline,inoutline) tuple, 18/18 junctions across PO invoices 102/104/105/106</strong> (one CREATE_LINE op per junction, newVerbs=0). Completed SALES invoices fold to <code>fact_acct(318)</code> maxDiff=0 (3/4; doc 109 = named post-posting drift). §FALSIFIER-A corrupt-junction, §FALSIFIER-B SO-emits-no-MatchInv. <code>build/erp/poc_invoice_complete.log</code>. <strong>Residual:</strong> PO-invoice GL value-derivation (V_Liability token set) — now folded (W-FOLD-AP-INVOICE, next row).</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>Vendor <code>Doc_Invoice</code> GL derivation — the purchase manifest (W-FOLD-AP-INVOICE)</strong> — <code>poc_invoice_post_ap.js</code> derives the AP-invoice GL via NEW <code>post_resolver</code> tokens <code>{Vendor.V_Liability}</code> (per-vendor <code>c_bp_vendor_acct</code>, mirrors customer receivable) + <code>{Product.InventoryClearing}</code> (matched-receipt item lines → 51400, via product→category, mirrors <code>{Product.Revenue}</code>) + <code>{Tax.Credit}</code> (input VAT, zero in seed). <strong>4/4 vendor invoices (102/104/105/106) == <code>fact_acct(318)</code> per (account,side), <code>maxDiff=0c</code></strong>, resolving iDempiere's EXACT accounts (CR 419/749 vendor payable / DR 780 Inventory Clearing). §FALSIFIER-A misderive clearing→liability (20000c), §FALSIFIER-B flip Dr/Cr sides (20000c). <code>build/erp/poc_invoice_post_ap.log</code>. This completes the PO-invoice GL half that W-FOLD-INVOICE named-deferred — <code>Doc_Invoice</code> now folds on <strong>both</strong> sales and purchase sides. <strong>Residual:</strong> charge-line + service-product expense DR absent in seed (all 4 lines are matched item receipts); schema-200000 deferred.</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>Δ-B replenishment PO (ReplenishReport, W-FOLD-REPLENISH)</strong> — the engine derives on-hand by FOLDING <code>m_transaction</code> (rides the qty spine, never reads <code>m_storageonhand</code>) per product within the warehouse's locators, applies the exact ReplenishReport <code>QtyToOrder</code> formula (type-1 reorder-below-min / type-2 maintain-max), and emits the PO through the EXISTING <code>erp_engine.buildDoc</code> archetype (<strong>newVerbs=0</strong>). <strong>8/8 products == iDempiere's own formula-SQL over <code>m_storageonhand</code>, maxDiff=0</strong> (a different execution path + on-hand source). PO op-group = 1 CREATE_DOCUMENT(C_Order,PO) + 8 CREATE_LINE. §FALSIFIER-A max↔min (20), §FALSIFIER-B type-1-always-order (16≠8). <code>build/erp/poc_replenish.log</code>.</td>
+</tr>
+<tr>
+<td>🟡 <strong>recipe-equivalent</strong></td>
+<td><strong>Δ-A recursive BOM backflush (W-FOLD-BACKFLUSH)</strong> — <code>erp_engine.explodeBOM</code> on the real nested recipe (Patio Chair ×30 → Screw×480…) == independent path-enumeration oracle; multi-path accumulation invariant; flat §FALSIFIER fires. (No <code>fact_acct</code> oracle — <code>m_production</code>=0 in seed; oracle = recipe explosion.) <code>build/erp/poc_backflush.log</code>.</td>
+</tr>
+<tr>
 <td>⬜ <strong>not-yet-diffed</strong></td>
-<td><strong>Per-document GL <em>derivation</em></strong> — does <code>post_resolver</code> produce iDempiere's <em>exact lines</em> for a given document? Today only <em>balance</em> is asserted (<code>poc_post_derive.js</code>), not per-line equivalence; needs the oracle re-captured WITH <code>record_id</code>/<code>ad_table_id</code> tagging. <strong>All declarative + document-event surfaces</strong> (logic / access / valrule / callout / modelval / FSM) — interpreted, never diffed against <code>GridField</code> / <code>MRole</code> / <code>MValRule</code> / <code>Doc_*</code>.</td>
+<td><strong>All declarative + document-event surfaces</strong> (logic / access / valrule / callout / modelval / FSM) — interpreted, never diffed against <code>GridField</code> / <code>MRole</code> / <code>MValRule</code> / <code>Doc_*</code> (the access oracle — 6 <code>*_Access</code> tables, 5093 grants — is now captured into <code>glassbowl_data.db</code>, diff harness pending per H-3).</td>
 </tr>
 </tbody>
 </table>
-<p><strong>The honest read: coverage 37🟡 ≠ equivalence.</strong> Exactly ONE surface (TB-read) is oracle-equivalent today; the
-rest is interpreted-but-undiffed. The equivalence campaign is <code>prompts/HARDEN_MATRIX.md</code> (H-1 MOrder → equivalence,
-then the delta table).</p>
+<p><strong>The honest read: coverage 37🟡 ≠ equivalence.</strong> TWELVE surfaces are now oracle-equivalent to the unit/cent
+(TB-read · per-document GL derivation H-1 · <code>completeIt</code> Order→Ship→Invoice chain · Doc_Payment · Doc_AllocationHdr
+incl. tax-correction · StorageOnHand qty · ReplenishReport PO · standalone <code>completeIt(C_Invoice)</code>+MatchInv ·
+vendor <code>Doc_Invoice</code> purchase manifest · foreign-currency Doc_AllocationHdr · inter-org M_Movement · M_MatchInv
+posting), plus the backflush recipe-equivalent; the declarative surfaces remain interpreted-but-undiffed. The inventory loop
+folds end-to-end (movements → on-hand → replenishment PO) and the trade-doc loop folds order→ship→invoice→match→
+pay→allocate — every step diffed to its iDempiere oracle. The equivalence campaign is <code>prompts/HARDEN_MATRIX.md</code> (H-1 ✅ → H-2 the 25-delta document
+family, in progress: MPayment + MAllocationHdr + the MStorageOnHand qty-spine folded → H-3 the declarative engines).
+<strong>Logic-folded % off ~0.2%:</strong> the Money delta (payment + allocation incl. the tax-correction sub-cents) AND the
+inventory qty spine — both among the deepest of the 25 — are now CLOSED; the GL value-half (Doc_InOut/Doc_Invoice)
+and the qty-half (MTransaction→MStorageOnHand) of the trade cycle both fold to their iDempiere oracle.</p>
 <p><strong>The honest answer:</strong> <em>no — not all the bases are covered.</em> The engine demonstrates the <strong>fold model</strong> on a thin slice —
 the <code>CO</code> DocAction transition, the double-entry posting fold, and a fixed receipt/TB/P&amp;L report set — for a handful of
 demo documents. The <strong>irreducible behavioural surface</strong> named in <code>MigrateComparisonPaper §estimate</code>
