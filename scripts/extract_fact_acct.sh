@@ -121,7 +121,9 @@ PG "SELECT c_allocationline_id, c_allocationhdr_id, c_invoice_id, c_payment_id, 
 sqlite3 "$DB" "DROP TABLE IF EXISTS c_allocationline; CREATE TABLE c_allocationline(c_allocationline_id INT, c_allocationhdr_id INT, c_invoice_id INT, c_payment_id INT, c_cashline_id INT, c_bpartner_id INT, amount REAL, discountamt REAL, writeoffamt REAL);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_allocationline.csv c_allocationline"
 # acct-config the allocation resolver needs (the discount/writeoff/cash-transfer accounts + the tax-correction policy):
-cap c_acctschema      "c_acctschema_id,c_currency_id,taxcorrectiontype,ispostifclearingequal"          "c_acctschema_id INT,c_currency_id INT,taxcorrectiontype TEXT,ispostifclearingequal TEXT"
+# costingmethod + m_costtype_id added ADDITIVELY for M_Movement cost selection (the schema's costing method picks
+# the m_costelement, which keys m_cost.currentcostprice). NON-INVENT: real columns.
+cap c_acctschema      "c_acctschema_id,c_currency_id,taxcorrectiontype,ispostifclearingequal,costingmethod,m_costtype_id"  "c_acctschema_id INT,c_currency_id INT,taxcorrectiontype TEXT,ispostifclearingequal TEXT,costingmethod TEXT,m_costtype_id INT"
 # v_liability_acct + notinvoicedreceipts_acct added ADDITIVELY for the AP-invoice (purchase) manifest:
 #   Doc_Invoice !IsSOTrx posts CR {BPGroup.V_Liability}=GrandTotal / DR {BPGroup.NotInvoicedReceipts}=linenet
 #   (matched receipt lines). Both are BP-group accounts (vary by vendor's C_BP_Group). NON-INVENT: real columns.
@@ -138,9 +140,24 @@ PG "SELECT c_currency_id, c_currency_id_to, c_conversiontype_id, multiplyrate, v
 # multiplyrate kept as TEXT to preserve the exact PG NUMERIC decimal (REAL would float-drift the HALF_UP rounding).
 sqlite3 "$DB" "DROP TABLE IF EXISTS c_conversion_rate; CREATE TABLE c_conversion_rate(c_currency_id INT, c_currency_id_to INT, c_conversiontype_id INT, multiplyrate TEXT, validfrom TEXT, validto TEXT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_conversion_rate.csv c_conversion_rate"
-cap c_acctschema_gl   "c_acctschema_id,currencybalancing_acct"  "c_acctschema_id INT,currencybalancing_acct INT"
+# intercompany due-to/from added ADDITIVELY for the inter-org M_Movement posting (schema-level GL accounts).
+cap c_acctschema_gl   "c_acctschema_id,currencybalancing_acct,intercompanydueto_acct,intercompanyduefrom_acct"  "c_acctschema_id INT,currencybalancing_acct INT,intercompanydueto_acct INT,intercompanyduefrom_acct INT"
 # c_allocationhdr has NO C_ConversionType_ID → always the default Spot type; capture isdefault so the fold derives it.
 cap c_conversiontype  "c_conversiontype_id,isdefault"           "c_conversiontype_id INT,isdefault TEXT"
+# m_costelement.costingmethod maps the schema's costing method to the cost element that keys m_cost (Movement cost).
+cap m_costelement     "m_costelement_id,costingmethod,costelementtype"  "m_costelement_id INT,costingmethod TEXT,costelementtype TEXT"
+
+echo "== capture the inter-org M_Movement (FOLD_MODEL_LOGIC.md REMAINING-TAIL — M_Movement posting, fact_acct 323) =="
+# Doc_Movement posts at the product's current cost (schema costing method → cost element → m_cost.currentcostprice).
+# Inter-org (from-locator org ≠ to-locator org): DR/CR Product Asset (inventory in/out) + DR IntercompanyDueFrom /
+# CR IntercompanyDueTo, each = round(movementqty × cost, 2). NON-INVENT: real lines + real cost + real config.
+PG "SELECT m_movement_id, ad_org_id, docstatus FROM adempiere.m_movement WHERE ad_client_id=11 ORDER BY m_movement_id;" > /tmp/m_movement.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_movement; CREATE TABLE m_movement(m_movement_id INT, ad_org_id INT, docstatus TEXT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/m_movement.csv m_movement"
+PG "SELECT m_movementline_id, m_movement_id, m_product_id, round(movementqty,2), m_locator_id, m_locatorto_id FROM adempiere.m_movementline WHERE ad_client_id=11 ORDER BY m_movementline_id;" > /tmp/m_movementline.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_movementline; CREATE TABLE m_movementline(m_movementline_id INT, m_movement_id INT, m_product_id INT, movementqty REAL, m_locator_id INT, m_locatorto_id INT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/m_movementline.csv m_movementline"
+cap m_warehouse       "m_warehouse_id,ad_org_id"                "m_warehouse_id INT,ad_org_id INT"
 
 echo "== capture the inventory MOVEMENT LEDGER (m_transaction — StorageOnHand qty spine, FOLD_MODEL_LOGIC.md §F-2 task #2) =="
 # m_transaction is iDempiere's immutable per-movement ledger; MStorageOnHand.qtyonhand is maintained in lockstep

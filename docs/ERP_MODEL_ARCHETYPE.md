@@ -67,16 +67,19 @@ line table and poster.
 | **MAllocationHdr** (headerless, deep half) | W-FOLD-ALLOC | DR cash/disc/wo / CR receivable **+ VAT tax-correction sub-cents** == `fact_acct(735)` |
 | **MAllocationHdr FX** (2nd schema, EUR) | W-FOLD-ALLOC-FX | per-leg currency conversion (0.85 HALF_UP) + CurrencyBalancing line == `fact_acct(735)` schema-200000 |
 | **MStorageOnHand / MTransaction** | W-FOLD-QTYONHAND | on-hand = Σ(sign×qty) == `m_storageonhand` (20/20 cells) + sign rule (28/28) |
+| **MMovement** (inter-org transfer) | W-FOLD-MOVEMENT | cost transfer + Intercompany Due-To/From == `fact_acct(323)`; cost via schema costing-method → cost element |
 | **ReplenishReport → PO** | W-FOLD-REPLENISH | QtyToOrder (movement-folded on-hand) == iDempiere formula (8/8); PO via `buildDoc` |
 | **MProduction backflush** | W-FOLD-BACKFLUSH | recursive BOM explosion == path-enumeration (recipe-equivalent; `m_production`=0 in seed) |
 
-**Score: 8 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent** — and they are the deepest deltas
+**Score: 9 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent** — and they are the deepest deltas
 (the whole Money family — sales AND purchase invoice posting, allocation in BOTH accounting schemas — + the
-inventory loop). **Logic-folded is no longer ~0.2%**: the trade-doc loop (order→ship→invoice→match→pay→allocate)
-and the inventory loop (movement→on-hand→replenish-PO) both fold end-to-end to their iDempiere oracle, on **both**
-the sales and purchase sides of `Doc_Invoice` and across the base (USD) **and** foreign-currency (EUR) acctschema.
-**Unfolded tail (named):** the void/reverse DocAction set (no reversed doc in seed) · `Doc_Order`
-commitment-note posting · `MInventory` physical-count + `MProduction` GL (no seed movements) · the Fixed-Assets +
+inventory loop incl. the inter-org MMovement cost transfer). **Logic-folded is no longer ~0.2%**: the trade-doc
+loop (order→ship→invoice→match→pay→allocate) and the inventory loop (movement→on-hand→replenish-PO) both fold
+end-to-end to their iDempiere oracle, on **both** the sales and purchase sides of `Doc_Invoice` and across the base
+(USD) **and** foreign-currency (EUR) acctschema. **Unfolded tail:** **M_MatchInv** (`fact_acct` 472, 18 docs — the
+average-costing IPV reconciliation, the deepest remaining delta; cost-selection rule now proven by W-FOLD-MOVEMENT)
+· **GL_Journal** (`fact_acct` 224 — lines post directly, near-tautological) · the void/reverse DocAction set (no
+reversed doc in seed) · `MInventory` physical-count + `MProduction` GL (no seed movements) · the Fixed-Assets +
 GL/Project families · the declarative surfaces (still surface-interpreted, not oracle-diffed).
 
 ## What this changes for the backend arc
