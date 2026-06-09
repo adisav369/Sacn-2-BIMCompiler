@@ -71,8 +71,12 @@ cap() { # cap <table> <select-cols> <create-def>  — INT-typed keys to match th
   sqlite3 "$DB" ".mode csv" ".import /tmp/$t.csv $t"
 }
 cap c_bp_customer_acct      "c_bpartner_id,c_acctschema_id,c_receivable_acct"      "c_bpartner_id INT,c_acctschema_id INT,c_receivable_acct INT"
-cap m_product_category_acct "m_product_category_id,c_acctschema_id,p_revenue_acct,p_cogs_acct,p_asset_acct" "m_product_category_id INT,c_acctschema_id INT,p_revenue_acct INT,p_cogs_acct INT,p_asset_acct INT"
-cap c_tax_acct              "c_tax_id,c_acctschema_id,t_due_acct"                  "c_tax_id INT,c_acctschema_id INT,t_due_acct INT"
+# c_bp_vendor_acct.v_liability_acct = the AP-invoice payable (per-vendor, mirrors customer receivable). ADDITIVE.
+cap c_bp_vendor_acct        "c_bpartner_id,c_acctschema_id,v_liability_acct"       "c_bpartner_id INT,c_acctschema_id INT,v_liability_acct INT"
+# p_inventoryclearing_acct = the matched AP-invoice line DR (51400 Inventory Clearing, via product->category). ADDITIVE.
+cap m_product_category_acct "m_product_category_id,c_acctschema_id,p_revenue_acct,p_cogs_acct,p_asset_acct,p_inventoryclearing_acct" "m_product_category_id INT,c_acctschema_id INT,p_revenue_acct INT,p_cogs_acct INT,p_asset_acct INT,p_inventoryclearing_acct INT"
+# t_credit_acct = input-VAT (AP tax DR), mirrors t_due_acct (output VAT). ADDITIVE.
+cap c_tax_acct              "c_tax_id,c_acctschema_id,t_due_acct,t_credit_acct"    "c_tax_id INT,c_acctschema_id INT,t_due_acct INT,t_credit_acct INT"
 cap c_validcombination      "c_validcombination_id,account_id"                    "c_validcombination_id INT,account_id INT"
 cap c_acctschema_default    "c_acctschema_id"                                     "c_acctschema_id INT"
 cap c_invoicetax            "c_invoice_id,c_tax_id,taxamt"                         "c_invoice_id INT,c_tax_id INT,taxamt REAL"
@@ -118,7 +122,10 @@ sqlite3 "$DB" "DROP TABLE IF EXISTS c_allocationline; CREATE TABLE c_allocationl
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_allocationline.csv c_allocationline"
 # acct-config the allocation resolver needs (the discount/writeoff/cash-transfer accounts + the tax-correction policy):
 cap c_acctschema      "c_acctschema_id,c_currency_id,taxcorrectiontype,ispostifclearingequal"          "c_acctschema_id INT,c_currency_id INT,taxcorrectiontype TEXT,ispostifclearingequal TEXT"
-cap c_bp_group_acct   "c_bp_group_id,c_acctschema_id,paydiscount_exp_acct,writeoff_acct"                "c_bp_group_id INT,c_acctschema_id INT,paydiscount_exp_acct INT,writeoff_acct INT"
+# v_liability_acct + notinvoicedreceipts_acct added ADDITIVELY for the AP-invoice (purchase) manifest:
+#   Doc_Invoice !IsSOTrx posts CR {BPGroup.V_Liability}=GrandTotal / DR {BPGroup.NotInvoicedReceipts}=linenet
+#   (matched receipt lines). Both are BP-group accounts (vary by vendor's C_BP_Group). NON-INVENT: real columns.
+cap c_bp_group_acct   "c_bp_group_id,c_acctschema_id,paydiscount_exp_acct,writeoff_acct,v_liability_acct,notinvoicedreceipts_acct"  "c_bp_group_id INT,c_acctschema_id INT,paydiscount_exp_acct INT,writeoff_acct INT,v_liability_acct INT,notinvoicedreceipts_acct INT"
 cap c_cashbook_acct   "c_cashbook_id,c_acctschema_id,cb_cashtransfer_acct,cb_asset_acct,cb_receipt_acct" "c_cashbook_id INT,c_acctschema_id INT,cb_cashtransfer_acct INT,cb_asset_acct INT,cb_receipt_acct INT"
 # bpartner->group hop (discount/writeoff acct is keyed by BP group) + cashline->cashbook hop (cash-transfer acct).
 cap c_bpartner        "c_bpartner_id,c_bp_group_id"                                                     "c_bpartner_id INT,c_bp_group_id INT"

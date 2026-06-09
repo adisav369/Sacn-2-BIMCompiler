@@ -32,7 +32,7 @@ So the migratable denominator is **1 document archetype (fully captured) + ~25 d
 | **Metadata (I/O)** | `C_Order`/`C_OrderLine` columns: type/reference/default/readonly/mandatory/display logic | `ad_evaluator` + `ad_access` + `ad_reference` + `ad_valrule` | 🟡 surface-interpreted on real AD rows; **not oracle-diffed** |
 | **`beforeSave` invariants** | PriceList_ID · M_Warehouse_ID · DateOrdered · C_DocTypeTarget_ID · BPartner id/location · credit-status | `ad_modelval` BEFORE_SAVE timing | 🟡 mechanism built; `hasLines`/`total≥0` ported; **the pricelist/credit/warehouse derivations = the delta** |
 | **`DocAction` lifecycle** | `prepareIt` · `completeIt` · `reopenIt` (+ the inherited void/close/reverseCorrect/reverseAccrual/reActivate set) over `DocumentEngine`/WfMC | `ad_process` + DocAction dispatch | ✅ **`completeIt` oracle-equivalent** — the full Order→Ship→Invoice fan-out chain folds `maxDiff=0c` (W-FOLD-COMPLETE); standalone `completeIt(C_Invoice)`+MatchInv folded (W-FOLD-INVOICE). **Residual:** the void/reverse transition set = the delta |
-| **Posting (GL derivation)** | `Doc_Order.java` debit/credit derivation from the lines + acct-config | `post_resolver` / `poc_post_derive` | ✅ **oracle-diffed**: `Doc_Invoice`(318)/`Doc_InOut`(319)/`Doc_Payment`(335)/`Doc_AllocationHdr`(735, incl. tax-correction) all `maxDiff=0c` vs real `fact_acct`. **Residual:** PO-invoice (V_Liability) + `Doc_Order` commitment note = a delta |
+| **Posting (GL derivation)** | `Doc_Order.java` debit/credit derivation from the lines + acct-config | `post_resolver` / `poc_post_derive` | ✅ **oracle-diffed**: `Doc_Invoice`(318) **sales AND purchase** (W-FOLD-AP-INVOICE: CR V_Liability / DR InventoryClearing, 4/4)/`Doc_InOut`(319)/`Doc_Payment`(335)/`Doc_AllocationHdr`(735, incl. tax-correction) all `maxDiff=0c` vs real `fact_acct`. **Residual:** `Doc_Order` commitment note · allocation schema-200000 = a delta |
 | **Callouts** | qty/price/bpartner field-change derivations | `ad_callout` dispatch (mechanism, W-CALLOUT) | 🟡 spine built; **the bound callout classes = the delta** |
 
 **"Got MOrder" means: this table fully GREEN to behavioural equivalence** — every cell oracle-diffed against a
@@ -62,19 +62,21 @@ line table and poster.
 |---|---|---|
 | **MOrder.completeIt chain** | W-FOLD-COMPLETE | Order→Ship→Invoice fan-out == `m_inoutline`/`c_invoiceline` + `fact_acct(318/319)` |
 | **MInvoice + MatchInv** | W-FOLD-INVOICE | `completeIt(C_Invoice)` CO + 18/18 `m_matchinv` junctions (per tuple); sales GL == `fact_acct(318)` |
+| **MInvoice AP posting** (purchase manifest) | W-FOLD-AP-INVOICE | vendor `Doc_Invoice` CR `{Vendor.V_Liability}` / DR `{Product.InventoryClearing}` per line == `fact_acct(318)` (4/4 `maxDiff=0c`) |
 | **MPayment** (allocation engine, simple half) | W-FOLD-PAYMENT | Doc_Payment receipt == `fact_acct(335)` |
 | **MAllocationHdr** (headerless, deep half) | W-FOLD-ALLOC | DR cash/disc/wo / CR receivable **+ VAT tax-correction sub-cents** == `fact_acct(735)` |
 | **MStorageOnHand / MTransaction** | W-FOLD-QTYONHAND | on-hand = Σ(sign×qty) == `m_storageonhand` (20/20 cells) + sign rule (28/28) |
 | **ReplenishReport → PO** | W-FOLD-REPLENISH | QtyToOrder (movement-folded on-hand) == iDempiere formula (8/8); PO via `buildDoc` |
 | **MProduction backflush** | W-FOLD-BACKFLUSH | recursive BOM explosion == path-enumeration (recipe-equivalent; `m_production`=0 in seed) |
 
-**Score: 6 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent** — and they are the deepest deltas
-(the whole Money family + the inventory loop). **Logic-folded is no longer ~0.2%**: the trade-doc loop
-(order→ship→invoice→match→pay→allocate) and the inventory loop (movement→on-hand→replenish-PO) both fold
-end-to-end to their iDempiere oracle. **Unfolded tail (named):** the void/reverse DocAction set · `Doc_Order`
-commitment-note posting · PO-invoice GL (V_Liability token set) · `MInventory` physical-count + `MProduction` GL
-(no seed movements) · the Fixed-Assets + GL/Project families · the declarative surfaces (still surface-interpreted,
-not oracle-diffed).
+**Score: 7 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent** — and they are the deepest deltas
+(the whole Money family — sales AND purchase invoice posting — + the inventory loop). **Logic-folded is no longer
+~0.2%**: the trade-doc loop (order→ship→invoice→match→pay→allocate) and the inventory loop
+(movement→on-hand→replenish-PO) both fold end-to-end to their iDempiere oracle, on **both** the sales and purchase
+sides of `Doc_Invoice`. **Unfolded tail (named):** the void/reverse DocAction set · `Doc_Order`
+commitment-note posting · `MInventory` physical-count + `MProduction` GL (no seed movements) · allocation
+schema-200000 (foreign-ccy Realized-G/L) · the Fixed-Assets + GL/Project families · the declarative surfaces
+(still surface-interpreted, not oracle-diffed).
 
 ## What this changes for the backend arc
 

@@ -22,6 +22,11 @@ var TOKENS = {
   '{Product.Cogs}':        { table: 'm_product_category_acct', col: 'p_cogs_acct',       keyCol: 'm_product_category_id', via: 'product->category' },
   '{Product.Asset}':       { table: 'm_product_category_acct', col: 'p_asset_acct',      keyCol: 'm_product_category_id', via: 'product->category' },
   '{Tax.Due}':             { table: 'c_tax_acct',               col: 't_due_acct',        keyCol: 'c_tax_id' },
+  // AP-invoice (purchase) manifest: vendor payable (per-vendor, mirrors customer receivable) + matched-receipt
+  // inventory-clearing DR (via product->category, mirrors {Product.Revenue}) + input-VAT credit.
+  '{Vendor.V_Liability}':  { table: 'c_bp_vendor_acct',         col: 'v_liability_acct',  keyCol: 'c_bpartner_id' },
+  '{Product.InventoryClearing}': { table: 'm_product_category_acct', col: 'p_inventoryclearing_acct', keyCol: 'm_product_category_id', via: 'product->category' },
+  '{Tax.Credit}':          { table: 'c_tax_acct',               col: 't_credit_acct',     keyCol: 'c_tax_id' },
   '{Bank.InTransit}':      { table: 'c_bankaccount_acct',       col: 'b_intransit_acct',  keyCol: 'c_bankaccount_id' },
   '{Bank.UnallocatedCash}':{ table: 'c_bankaccount_acct',       col: 'b_unallocatedcash_acct', keyCol: 'c_bankaccount_id' },
   // Doc_AllocationHdr deps: discount/write-off are keyed by the BPartner's GROUP; cash-transfer by the cash book.
