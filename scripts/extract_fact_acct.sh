@@ -101,6 +101,31 @@ sqlite3 "$DB" ".mode csv" ".import /tmp/m_product_bom.csv m_product_bom"
 # include m_product_category_id — post_resolver hops product->category for {Product.*}; must not be dropped.
 cap m_product "m_product_id,name,isbom,m_product_category_id" "m_product_id INT, name TEXT, isbom TEXT, m_product_category_id INT"
 
+echo "== capture allocation oracle (Doc_AllocationHdr posting — Money DEEP half, fact_acct ad_table_id 735) =="
+# Doc_AllocationHdr (SO-invoice branch) posts per line:
+#   DR {Payment.UnallocatedCash}|{CashBook.CashTransfer} = amount · DR {BPGroup.PayDiscount} = discountamt ·
+#   DR {BPGroup.WriteOff} = writeoffamt · CR {BPartner.Receivable} = amount+discount+writeoff;
+#   then (C_AcctSchema.TaxCorrectionType!='N') a VAT tax-correction PER invoice tax line:
+#     amount = round(tax/total * (discount|writeoff), 2) — DR {Tax.Due}/CR {discount|writeoff acct}.
+#   The tax base (total + per-tax amounts) is READ from the invoice's OWN posted fact_acct(318) header lines
+#   (line_id NULL) — already captured above, so the correction is a fold of real postings, not invented.
+# NON-INVENT: every account RESOLVED from a real config column; amounts from real c_allocationline.
+PG "SELECT c_allocationhdr_id, docstatus, c_doctype_id, dateacct FROM adempiere.c_allocationhdr WHERE ad_client_id=11 ORDER BY c_allocationhdr_id;" > /tmp/c_allocationhdr.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_allocationhdr; CREATE TABLE c_allocationhdr(c_allocationhdr_id INT, docstatus TEXT, c_doctype_id INT, dateacct TEXT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/c_allocationhdr.csv c_allocationhdr"
+PG "SELECT c_allocationline_id, c_allocationhdr_id, c_invoice_id, c_payment_id, c_cashline_id, c_bpartner_id, round(amount,2), round(discountamt,2), round(writeoffamt,2) FROM adempiere.c_allocationline WHERE ad_client_id=11 ORDER BY c_allocationline_id;" > /tmp/c_allocationline.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_allocationline; CREATE TABLE c_allocationline(c_allocationline_id INT, c_allocationhdr_id INT, c_invoice_id INT, c_payment_id INT, c_cashline_id INT, c_bpartner_id INT, amount REAL, discountamt REAL, writeoffamt REAL);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/c_allocationline.csv c_allocationline"
+# acct-config the allocation resolver needs (the discount/writeoff/cash-transfer accounts + the tax-correction policy):
+cap c_acctschema      "c_acctschema_id,c_currency_id,taxcorrectiontype,ispostifclearingequal"          "c_acctschema_id INT,c_currency_id INT,taxcorrectiontype TEXT,ispostifclearingequal TEXT"
+cap c_bp_group_acct   "c_bp_group_id,c_acctschema_id,paydiscount_exp_acct,writeoff_acct"                "c_bp_group_id INT,c_acctschema_id INT,paydiscount_exp_acct INT,writeoff_acct INT"
+cap c_cashbook_acct   "c_cashbook_id,c_acctschema_id,cb_cashtransfer_acct,cb_asset_acct,cb_receipt_acct" "c_cashbook_id INT,c_acctschema_id INT,cb_cashtransfer_acct INT,cb_asset_acct INT,cb_receipt_acct INT"
+# bpartner->group hop (discount/writeoff acct is keyed by BP group) + cashline->cashbook hop (cash-transfer acct).
+cap c_bpartner        "c_bpartner_id,c_bp_group_id"                                                     "c_bpartner_id INT,c_bp_group_id INT"
+PG "SELECT cl.c_cashline_id, c.c_cashbook_id FROM adempiere.c_cashline cl JOIN adempiere.c_cash c ON c.c_cash_id=cl.c_cash_id WHERE cl.ad_client_id=11 ORDER BY cl.c_cashline_id;" > /tmp/c_cashline.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_cashline; CREATE TABLE c_cashline(c_cashline_id INT, c_cashbook_id INT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/c_cashline.csv c_cashline"
+
 echo "== verify =="
 sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' docs='||count(DISTINCT ad_table_id||'/'||record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_elementvalue rows='||count(*) FROM c_elementvalue;"
@@ -112,3 +137,7 @@ sqlite3 "$DB" "SELECT '§EXTRACT m_cost rows='||count(*)||' nonzero-cost='||sum(
 sqlite3 "$DB" "SELECT '§EXTRACT m_storageonhand rows='||count(*)||' products='||count(DISTINCT m_product_id)||' Σqtyonhand='||round(sum(qtyonhand),2) FROM m_storageonhand;"
 sqlite3 "$DB" "SELECT '§EXTRACT m_costdetail rows='||count(*)||' shipment-lines='||count(DISTINCT CASE WHEN m_inoutline_id IS NOT NULL THEN m_inoutline_id END) FROM m_costdetail;"
 sqlite3 "$DB" "SELECT '§EXTRACT m_product_bom rows='||count(*)||' parents='||count(DISTINCT parent_id)||' nested-parents='||(SELECT count(DISTINCT parent_id) FROM m_product_bom WHERE comp_id IN (SELECT DISTINCT parent_id FROM m_product_bom)) FROM m_product_bom;"
+sqlite3 "$DB" "SELECT '§EXTRACT c_allocationhdr='||count(*)||' lines='||(SELECT count(*) FROM c_allocationline)||' withDisc/WO='||(SELECT count(*) FROM c_allocationline WHERE discountamt<>0 OR writeoffamt<>0) FROM c_allocationhdr;"
+sqlite3 "$DB" "SELECT '§EXTRACT alloc-oracle fact_acct(735) rows='||count(*)||' docs='||count(DISTINCT record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2) FROM fact_acct WHERE ad_table_id=735;"
+sqlite3 "$DB" "SELECT '§EXTRACT c_acctschema taxcorrectiontype(101)='||taxcorrectiontype FROM c_acctschema WHERE c_acctschema_id=101;"
+sqlite3 "$DB" "SELECT '§EXTRACT c_bp_group_acct='||count(*)||' c_cashbook_acct='||(SELECT count(*) FROM c_cashbook_acct)||' c_cashline='||(SELECT count(*) FROM c_cashline) FROM c_bp_group_acct;"

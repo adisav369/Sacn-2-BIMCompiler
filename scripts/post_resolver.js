@@ -23,7 +23,11 @@ var TOKENS = {
   '{Product.Asset}':       { table: 'm_product_category_acct', col: 'p_asset_acct',      keyCol: 'm_product_category_id', via: 'product->category' },
   '{Tax.Due}':             { table: 'c_tax_acct',               col: 't_due_acct',        keyCol: 'c_tax_id' },
   '{Bank.InTransit}':      { table: 'c_bankaccount_acct',       col: 'b_intransit_acct',  keyCol: 'c_bankaccount_id' },
-  '{Bank.UnallocatedCash}':{ table: 'c_bankaccount_acct',       col: 'b_unallocatedcash_acct', keyCol: 'c_bankaccount_id' }
+  '{Bank.UnallocatedCash}':{ table: 'c_bankaccount_acct',       col: 'b_unallocatedcash_acct', keyCol: 'c_bankaccount_id' },
+  // Doc_AllocationHdr deps: discount/write-off are keyed by the BPartner's GROUP; cash-transfer by the cash book.
+  '{BPGroup.PayDiscount}': { table: 'c_bp_group_acct',          col: 'paydiscount_exp_acct', keyCol: 'c_bp_group_id', via: 'bpartner->group' },
+  '{BPGroup.WriteOff}':    { table: 'c_bp_group_acct',          col: 'writeoff_acct',        keyCol: 'c_bp_group_id', via: 'bpartner->group' },
+  '{CashBook.CashTransfer}':{ table: 'c_cashbook_acct',         col: 'cb_cashtransfer_acct', keyCol: 'c_cashbook_id' }
 };
 
 function one(db, sql, params) { var r = db.prepare(sql).get(params || {}); return r || null; }
@@ -55,6 +59,10 @@ function resolve(db, token, masterId, acctschema) {
     var p = one(db, 'SELECT m_product_category_id AS cat FROM m_product WHERE m_product_id=@id', { id: masterId });
     if (!p) return { token: token, master_id: masterId, acct: null, source_col: spec.table + '.' + spec.col, element: null, fallback: false, absent: 'product ' + masterId };
     lookupId = p.cat;
+  } else if (spec.via === 'bpartner->group') {
+    var bp = one(db, 'SELECT c_bp_group_id AS grp FROM c_bpartner WHERE c_bpartner_id=@id', { id: masterId });
+    if (!bp) return { token: token, master_id: masterId, acct: null, source_col: spec.table + '.' + spec.col, element: null, fallback: false, absent: 'bpartner ' + masterId };
+    lookupId = bp.grp;
   }
 
   var sql = 'SELECT ' + spec.col + ' AS acct FROM ' + spec.table + ' WHERE ' + keyCol + '=@k AND c_acctschema_id=@s';
