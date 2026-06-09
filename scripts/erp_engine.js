@@ -168,6 +168,28 @@ function createShipment(order, lines) { return buildDoc(DOC_SPECS.createShipment
 function createInvoice(order, lines) { return buildDoc(DOC_SPECS.createInvoice, order, lines); }
 var VERBS = { createShipment: createShipment, createInvoice: createInvoice };
 
+// ── GENERATE: recursive BOM explosion — backflush = deterministic replay of the BOM ─────────────
+// Implementing docs/POSLens.md §6 (AutoBOMOrder backflush) — Witness: W-FOLD-BACKFLUSH.
+// The SAME recursive verb that compiles a building, run at point of sale: ring a finished good →
+// fold down the recipe → consume leaf components. bomOf(productId) -> [{comp_id, qtybom}] is
+// HOST-INJECTED (keeps the engine pure, per the separation contract). A product is a BOM iff
+// bomOf returns lines; otherwise it is a LEAF and is consumed. Returns leaf consumption
+// { comp_id: qty }, summed over every root→leaf path × the root qty. Cycle-guarded.
+function explodeBOM(bomOf, productId, qty, _seen) {
+  var lines = bomOf(productId);
+  if (!lines || !lines.length) return null;                 // leaf — the caller consumes it
+  if (_seen && _seen[productId]) throw new Error('BOM cycle at product ' + productId);
+  var seen = Object.assign({}, _seen || {}); seen[productId] = 1;
+  var out = {};
+  lines.forEach(function (l) {
+    var childQty = qty * l.qtybom;
+    var sub = explodeBOM(bomOf, l.comp_id, childQty, seen);
+    if (sub === null) { out[l.comp_id] = (out[l.comp_id] || 0) + childQty; }   // l is a leaf component
+    else { Object.keys(sub).forEach(function (p) { out[p] = (out[p] || 0) + sub[p]; }); } // l is a sub-BOM
+  });
+  return out;
+}
+
 // ── The cell handler: decision-table over policy flags -> verb ops ───────────
 // completeOrder = state op + (flag-gated) verb fan-out. The flags are DATA
 // (erp_rules DOCPOLICY), the verbs are the small registry above.
@@ -180,5 +202,5 @@ function completeOrder(order, lines, policy) {
 
 module.exports = {
   resolveCtx: resolveCtx, dialectShim: dialectShim, evalGuard: evalGuard,
-  match: match, buildDoc: buildDoc, DOC_SPECS: DOC_SPECS, VERBS: VERBS, completeOrder: completeOrder
+  match: match, buildDoc: buildDoc, DOC_SPECS: DOC_SPECS, explodeBOM: explodeBOM, VERBS: VERBS, completeOrder: completeOrder
 };

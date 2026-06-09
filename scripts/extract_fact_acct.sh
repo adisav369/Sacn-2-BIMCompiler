@@ -90,6 +90,17 @@ cap m_storageonhand "m_product_id,m_locator_id,m_attributesetinstance_id,qtyonha
 # shipment posting amount = Σ|amt| per (m_inoutline_id, c_acctschema_id); accounts still come from the master.
 cap m_costdetail    "m_costdetail_id,c_acctschema_id,m_product_id,m_inoutline_id,amt,qty"                                    "m_costdetail_id INT,c_acctschema_id INT,m_product_id INT,m_inoutline_id INT,amt REAL,qty REAL"
 
+echo "== capture BOM recipes (backflush arm Δ-A — AutoBOMOrder recursive explosion oracle) =="
+# Denormalised recipe: (parent product, component product, qty). A product IS a BOM iff it has rows here
+# (parent_id=it) — presence of lines drives the recursion, no isbom flag needed. NON-INVENT: the real recipe.
+PG "SELECT b.m_product_id, l.m_product_id, l.qtybom
+    FROM adempiere.pp_product_bom b JOIN adempiere.pp_product_bomline l ON l.pp_product_bom_id=b.pp_product_bom_id
+    WHERE b.ad_client_id=11 ORDER BY b.m_product_id, l.m_product_id;" > /tmp/m_product_bom.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_product_bom; CREATE TABLE m_product_bom(parent_id INT, comp_id INT, qtybom REAL);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/m_product_bom.csv m_product_bom"
+# include m_product_category_id — post_resolver hops product->category for {Product.*}; must not be dropped.
+cap m_product "m_product_id,name,isbom,m_product_category_id" "m_product_id INT, name TEXT, isbom TEXT, m_product_category_id INT"
+
 echo "== verify =="
 sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' docs='||count(DISTINCT ad_table_id||'/'||record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_elementvalue rows='||count(*) FROM c_elementvalue;"
@@ -100,3 +111,4 @@ sqlite3 "$DB" "SELECT '§EXTRACT m_product_category_acct cogs/asset non-null='||
 sqlite3 "$DB" "SELECT '§EXTRACT m_cost rows='||count(*)||' nonzero-cost='||sum(CASE WHEN currentcostprice>0 THEN 1 ELSE 0 END) FROM m_cost;"
 sqlite3 "$DB" "SELECT '§EXTRACT m_storageonhand rows='||count(*)||' products='||count(DISTINCT m_product_id)||' Σqtyonhand='||round(sum(qtyonhand),2) FROM m_storageonhand;"
 sqlite3 "$DB" "SELECT '§EXTRACT m_costdetail rows='||count(*)||' shipment-lines='||count(DISTINCT CASE WHEN m_inoutline_id IS NOT NULL THEN m_inoutline_id END) FROM m_costdetail;"
+sqlite3 "$DB" "SELECT '§EXTRACT m_product_bom rows='||count(*)||' parents='||count(DISTINCT parent_id)||' nested-parents='||(SELECT count(DISTINCT parent_id) FROM m_product_bom WHERE comp_id IN (SELECT DISTINCT parent_id FROM m_product_bom)) FROM m_product_bom;"
