@@ -186,10 +186,16 @@ cap m_locator            "m_locator_id,m_warehouse_id"                          
 echo "== capture M_MatchInv oracle (MInvoice.completeIt PO-side delta — invoice-line ⋈ receipt-line junction) =="
 # One M_MatchInv per vendor-invoice line that references a material receipt; the fold's completeInvoice emits
 # exactly this set. Oracle = the real junctions (with the invoice they belong to, via c_invoiceline).
-PG "SELECT mi.m_matchinv_id, mi.c_invoiceline_id, mi.m_inoutline_id, mi.m_product_id, round(mi.qty,2), il.c_invoice_id
+# po_price (c_orderline.priceactual via the receipt's order line) + inv_price (c_invoiceline.priceactual) added
+# ADDITIVELY for the M_MatchInv POSTING fold: DR NotInvoicedReceipts = matchqty×po_price / CR InventoryClearing =
+# matchqty×inv_price; their difference is the Invoice Price Variance (avg-cost split). NON-INVENT: real priceactual.
+PG "SELECT mi.m_matchinv_id, mi.c_invoiceline_id, mi.m_inoutline_id, mi.m_product_id, round(mi.qty,2), il.c_invoice_id,
+       round(ol.priceactual,4), round(il.priceactual,4)
     FROM adempiere.m_matchinv mi JOIN adempiere.c_invoiceline il ON il.c_invoiceline_id=mi.c_invoiceline_id
+    JOIN adempiere.m_inoutline iol ON iol.m_inoutline_id=mi.m_inoutline_id
+    LEFT JOIN adempiere.c_orderline ol ON ol.c_orderline_id=iol.c_orderline_id
     WHERE mi.ad_client_id=11 ORDER BY mi.m_matchinv_id;" > /tmp/m_matchinv.csv
-sqlite3 "$DB" "DROP TABLE IF EXISTS m_matchinv; CREATE TABLE m_matchinv(m_matchinv_id INT, c_invoiceline_id INT, m_inoutline_id INT, m_product_id INT, qty REAL, c_invoice_id INT);"
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_matchinv; CREATE TABLE m_matchinv(m_matchinv_id INT, c_invoiceline_id INT, m_inoutline_id INT, m_product_id INT, qty REAL, c_invoice_id INT, po_price REAL, inv_price REAL);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/m_matchinv.csv m_matchinv"
 # NOTE: c_invoiceline is NOT re-captured here — the full table (incl. c_invoiceline_id/m_inoutline_id/qtyinvoiced
 # that completeInvoice reads) is already present from the base seed; a narrow re-cap would drop columns siblings need.

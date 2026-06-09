@@ -32,6 +32,8 @@ var TOKENS = {
   // Doc_AllocationHdr deps: discount/write-off are keyed by the BPartner's GROUP; cash-transfer by the cash book.
   '{BPGroup.PayDiscount}': { table: 'c_bp_group_acct',          col: 'paydiscount_exp_acct', keyCol: 'c_bp_group_id', via: 'bpartner->group' },
   '{BPGroup.WriteOff}':    { table: 'c_bp_group_acct',          col: 'writeoff_acct',        keyCol: 'c_bp_group_id', via: 'bpartner->group' },
+  // M_MatchInv posting: Not-Invoiced-Receipts is the vendor BP-group clearing account (matches receipt NIR booking).
+  '{BPGroup.NotInvoicedReceipts}': { table: 'c_bp_group_acct',   col: 'notinvoicedreceipts_acct', keyCol: 'c_bp_group_id', via: 'bpartner->group' },
   '{CashBook.CashTransfer}':{ table: 'c_cashbook_acct',         col: 'cb_cashtransfer_acct', keyCol: 'c_cashbook_id' }
 };
 
