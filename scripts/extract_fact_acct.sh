@@ -132,6 +132,15 @@ cap c_bpartner        "c_bpartner_id,c_bp_group_id"                             
 PG "SELECT cl.c_cashline_id, c.c_cashbook_id FROM adempiere.c_cashline cl JOIN adempiere.c_cash c ON c.c_cash_id=cl.c_cash_id WHERE cl.ad_client_id=11 ORDER BY cl.c_cashline_id;" > /tmp/c_cashline.csv
 sqlite3 "$DB" "DROP TABLE IF EXISTS c_cashline; CREATE TABLE c_cashline(c_cashline_id INT, c_cashbook_id INT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_cashline.csv c_cashline"
+# FX allocation (schema-200000 EUR): the Spot conversion rate (multiplyrate, USD 100 -> EUR 102, type 114 IsDefault)
+# + the CurrencyBalancing account that absorbs the per-doc rounding imbalance. ADDITIVE (H-1 balance preserved).
+PG "SELECT c_currency_id, c_currency_id_to, c_conversiontype_id, multiplyrate, validfrom, validto FROM adempiere.c_conversion_rate WHERE ad_client_id IN (0,11) ORDER BY c_currency_id, c_currency_id_to, validfrom;" > /tmp/c_conversion_rate.csv
+# multiplyrate kept as TEXT to preserve the exact PG NUMERIC decimal (REAL would float-drift the HALF_UP rounding).
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_conversion_rate; CREATE TABLE c_conversion_rate(c_currency_id INT, c_currency_id_to INT, c_conversiontype_id INT, multiplyrate TEXT, validfrom TEXT, validto TEXT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/c_conversion_rate.csv c_conversion_rate"
+cap c_acctschema_gl   "c_acctschema_id,currencybalancing_acct"  "c_acctschema_id INT,currencybalancing_acct INT"
+# c_allocationhdr has NO C_ConversionType_ID → always the default Spot type; capture isdefault so the fold derives it.
+cap c_conversiontype  "c_conversiontype_id,isdefault"           "c_conversiontype_id INT,isdefault TEXT"
 
 echo "== capture the inventory MOVEMENT LEDGER (m_transaction — StorageOnHand qty spine, FOLD_MODEL_LOGIC.md §F-2 task #2) =="
 # m_transaction is iDempiere's immutable per-movement ledger; MStorageOnHand.qtyonhand is maintained in lockstep
