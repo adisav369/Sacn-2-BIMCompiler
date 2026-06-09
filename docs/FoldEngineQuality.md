@@ -128,15 +128,17 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 | [`poc_invoice_complete.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_invoice_complete.js) | 146 | Standalone `completeIt(C_Invoice)` | ✅ | ✅ | 🟢 PASS |
 | [`poc_invoice_post_ap.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_invoice_post_ap.js) | 133 | Vendor (purchase) invoice GL | ✅ | ✅ | 🟢 PASS |
 | [`poc_alloc_fx.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_alloc_fx.js) | 169 | Foreign-currency allocation | ✅ | ✅ | 🟢 PASS |
-| [`poc_movement.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_movement.js) | 138 | Inter-org `M_Movement` + intercompany | ✅ | ✅ | 🟢 PASS |
+| [`poc_movement.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_movement.js) | 139 | Inter-org `M_Movement` + intercompany | ✅ | ✅ | 🟢 PASS |
+| [`poc_movement_fx.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_movement_fx.js) | 143 | `M_Movement` EUR schema-200000 (per-schema cost) | 2 | ✅ | 🟢 PASS |
 | [`poc_matchinv.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_matchinv.js) | 147 | `M_MatchInv` posting + avg-cost IPV split (18/18) | 2 | ✅ | 🟢 PASS |
+| [`poc_matchinv_fx.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_matchinv_fx.js) | 173 | `M_MatchInv` EUR schema-200000 (per-leg FX, 18/18) | 2 | ✅ | 🟢 PASS |
 | [`poc_post_harden.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_post_harden.js) | 138 | Per-document GL derivation (H-1 keystone) | ✅ | ✅ | 🟢 PASS |
 | [`poc_reverse.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_reverse.js) | 204 | `reverseCorrect`/void — oracle-anchored negation | 2 | ✅ | 🟢 PASS |
 | [`poc_gljournal.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_gljournal.js) | 128 | Manual `GL_Journal` + inter-org balancing | 2 | ✅ | 🟢 PASS |
 | [`poc_production.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_production.js) | 132 | `MProduction` movement (rule-consistent †) | 2 | ✅ | 🟢 PASS |
 | [`poc_inventory.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_inventory.js) | 144 | `MInventory` physical count (rule-consistent †) | 2 | ✅ | 🟢 PASS |
 
-**All 16 witnesses PASS green.** Of these, **14 diff against the real iDempiere `fact_acct` to the cent**
+**All 18 witnesses PASS green.** Of these, **16 diff against the real iDempiere `fact_acct` to the cent**
 (*oracle-equivalent*); `poc_backflush` is *recipe-equivalent* (engine vs. an independent path-enumeration —
 no production GL in the seed); **† `poc_production` / `poc_inventory` are *rule-consistent*** — they enact a
 document GardenWorld never posted (no seed oracle to diff), so they verify against the ALREADY-PROVEN qty/cost
@@ -219,11 +221,11 @@ the missing account.*
 ## 7 · Methodology — how to reproduce this scorecard
 
 ```bash
-# all 16 witnesses, from the repo root — every one exits 0:
+# all 18 witnesses, from the repo root — every one exits 0:
 for f in poc_fold_complete poc_money_post poc_backflush poc_alloc_post \
          poc_qtyonhand poc_replenish poc_invoice_complete poc_invoice_post_ap \
-         poc_alloc_fx poc_movement poc_matchinv poc_post_harden \
-         poc_reverse poc_gljournal poc_production poc_inventory; do
+         poc_alloc_fx poc_movement poc_movement_fx poc_matchinv poc_matchinv_fx \
+         poc_post_harden poc_reverse poc_gljournal poc_production poc_inventory; do
   node scripts/$f.js >/dev/null 2>&1 && echo "🟢 $f" || echo "🔴 $f"
 done
 ```

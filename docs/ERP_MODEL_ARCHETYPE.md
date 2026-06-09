@@ -64,11 +64,13 @@ line table and poster.
 | **MInvoice + MatchInv** | W-FOLD-INVOICE | `completeIt(C_Invoice)` CO + 18/18 `m_matchinv` junctions (per tuple); sales GL == `fact_acct(318)` |
 | **MInvoice AP posting** (purchase manifest) | W-FOLD-AP-INVOICE | vendor `Doc_Invoice` CR `{Vendor.V_Liability}` / DR `{Product.InventoryClearing}` per line == `fact_acct(318)` (4/4 `maxDiff=0c`) |
 | **MMatchInv posting** (clearing loop + IPV) | W-FOLD-MATCHINV | DR `{BPGroup.NotInvoicedReceipts}` / CR `{Product.InventoryClearing}` + avg-cost IPV split (on-hand-proportioned) == `fact_acct(472)` (**18/18** `maxDiff=0c`) |
+| **MMatchInv FX** (2nd schema, EUR) | W-FOLD-MATCHINV-FX | same USD manifest, per-leg conversion (0.85 HALF_UP, BigInt) == `fact_acct(472)` schema-200000 (**18/18** `maxDiff=0c`) |
 | **MPayment** (allocation engine, simple half) | W-FOLD-PAYMENT | Doc_Payment receipt == `fact_acct(335)` |
 | **MAllocationHdr** (headerless, deep half) | W-FOLD-ALLOC | DR cash/disc/wo / CR receivable **+ VAT tax-correction sub-cents** == `fact_acct(735)` |
 | **MAllocationHdr FX** (2nd schema, EUR) | W-FOLD-ALLOC-FX | per-leg currency conversion (0.85 HALF_UP) + CurrencyBalancing line == `fact_acct(735)` schema-200000 |
 | **MStorageOnHand / MTransaction** | W-FOLD-QTYONHAND | on-hand = Σ(sign×qty) == `m_storageonhand` (20/20 cells) + sign rule (28/28) |
 | **MMovement** (inter-org transfer) | W-FOLD-MOVEMENT | cost transfer + Intercompany Due-To/From == `fact_acct(323)`; cost via schema costing-method → cost element |
+| **MMovement FX** (2nd schema, EUR) | W-FOLD-MOVEMENT-FX | same fold at the per-schema EUR cost (43.7325, full-precision line rounding) == `fact_acct(323)` schema-200000 (1/1 `maxDiff=0c`) |
 | **ReplenishReport → PO** | W-FOLD-REPLENISH | QtyToOrder (movement-folded on-hand) == iDempiere formula (8/8); PO via `buildDoc` |
 | **Reversal family** (reverseCorrect / void) | W-FOLD-REVERSE | engine reversal (swap Dr↔Cr) **+ real `fact_acct` NETS TO ZERO** per account (6/6 C_Payment+C_Invoice); FSM CO→RE; ORACLE-ANCHORED (transform of real posting) |
 | **GL_Journal** (manual + inter-org) | W-FOLD-GLJOURNAL | direct lines (amtacct=amtsource×rate) + per-org Intercompany Due-To/From balancing == `fact_acct(224)` (2/2, both schemas) |
@@ -76,9 +78,9 @@ line table and poster.
 | **MProduction movement** | W-FOLD-PRODUCTION | enacted P+/P- ledger folds through the qty spine (finished +Q / leaf −used); rule-consistent, GL named-deferred (component cost absent) |
 | **MInventory count** | W-FOLD-INVENTORY | enacted I± folds on-hand→counted + GL `\|adjQty\|×cost` balances; rule-consistent, offset acct named-deferred |
 
-**Score: 12 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)** — and they are the deepest deltas
+**Score: 14 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)** — and they are the deepest deltas
 (the whole Money family — sales AND purchase invoice posting, allocation in BOTH accounting schemas, the MatchInv
-clearing loop — + the inventory loop incl. the inter-org MMovement cost transfer). **Logic-folded is no longer
+clearing loop **in both schemas** — + the inventory loop incl. the inter-org MMovement cost transfer **in both schemas**). **Logic-folded is no longer
 ~0.2%**: the trade-doc loop (order→ship→invoice→**match-posting**→pay→allocate) and the inventory loop
 (movement→on-hand→replenish-PO) both fold end-to-end to their iDempiere oracle, on **both** the sales and purchase
 sides of `Doc_Invoice` and across the base (USD) **and** foreign-currency (EUR) acctschema — and the PO

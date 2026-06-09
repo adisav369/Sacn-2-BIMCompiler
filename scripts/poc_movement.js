@@ -46,12 +46,16 @@ var gl = db.prepare('SELECT intercompanydueto_acct,intercompanyduefrom_acct FROM
 var DUE_TO = (function () { var r = R.elementOf(db, gl.intercompanydueto_acct); return r ? r.id : null; })();
 var DUE_FROM = (function () { var r = R.elementOf(db, gl.intercompanyduefrom_acct); return r ? r.id : null; })();
 
-// cost selection: schema costing method → cost element (matching costingmethod) → m_cost.currentcostprice (cents).
+// cost selection: schema costing method → cost element (matching costingmethod) → m_cost.currentcostprice.
+//   Carry the cost at FULL (4-decimal) precision as milli-cents (cost × 10000) — do NOT round to cents before
+//   multiplying by qty. iDempiere rounds the LINE amount, not the per-unit cost: schema-200000 cost 43.7325 × 4 =
+//   174.93, not round(43.73) × 4 = 174.92 (the same rule W-FOLD-MATCHINV proved for the 2.975 price). Schema 101's
+//   51.45 is exactly 2dp so round-first and full-precision agree (20580c) — schema 200000 exposes the 1c bug.
 function costElementId() { var e = db.prepare('SELECT m_costelement_id FROM m_costelement WHERE costingmethod=?').get(sch.costingmethod); return e ? e.m_costelement_id : null; }
-function costCentsOf(productId, costElem) {
+function costMilliOf(productId, costElem) {
   var c = db.prepare('SELECT currentcostprice FROM m_cost WHERE m_product_id=? AND c_acctschema_id=? AND m_costtype_id=? AND m_costelement_id=?')
     .get(sid(productId), SCHEMA, sch.m_costtype_id, costElem);
-  return c ? cents(c.currentcostprice) : null;
+  return c ? Math.round(Number(c.currentcostprice) * 10000) : null;   // milli-cents: cost × 10000
 }
 function orgOfLocator(locId) {
   var r = db.prepare('SELECT w.ad_org_id AS org FROM m_locator l JOIN m_warehouse w ON w.m_warehouse_id=l.m_warehouse_id WHERE l.m_locator_id=?').get(sid(locId));
@@ -68,9 +72,9 @@ function deriveMovement(movId, opt) {
   var ce = opt.costElem != null ? opt.costElem : costElementId();
 
   lines.forEach(function (ln) {
-    var costCents = costCentsOf(ln.m_product_id, ce);
-    if (costCents == null) { absent.push('m_cost product=' + ln.m_product_id + ' elem=' + ce); return; }
-    var amt = Math.round(Number(ln.movementqty) * costCents);     // round(qty × cost) in cents
+    var costMilli = costMilliOf(ln.m_product_id, ce);
+    if (costMilli == null) { absent.push('m_cost product=' + ln.m_product_id + ' elem=' + ce); return; }
+    var amt = Math.round(Number(ln.movementqty) * costMilli / 100); // round(qty × cost) in cents, full precision
     var asset = nat(R.resolve(db, '{Product.Asset}', sid(ln.m_product_id), SCHEMA));
     var fromOrg = orgOfLocator(ln.m_locator_id), toOrg = orgOfLocator(ln.m_locatorto_id);
     // TO-org inventory in / FROM-org inventory out (same natural asset acct → nets, but both legs posted)
@@ -128,9 +132,10 @@ verdict(equiv === docs.length && docs.length > 0, equiv + '/' + docs.length + ' 
   console.log('§FALSIFIER-B doc=' + id + ' mutation=wrong-cost-element maxDiff=' + md + 'c (must be >0)');
 })();
 
-console.log('\n§MOVE_NOTE schema 200000 = same fold, schema-200000 cost (43.7325) — named-residual. Same-org movement ' +
-  '(no intercompany leg) absent in seed. The cost-selection rule (schema costing method → cost element → m_cost) is ' +
-  'the SAME rule M_MatchInv (fact_acct 472) needs for its IPV/cost-adjustment split.');
+console.log('\n§MOVE_NOTE schema 200000 = same fold at the schema-200000 EUR cost (43.7325) — now PROVEN oracle-equivalent ' +
+  'in poc_movement_fx.js (W-FOLD-MOVEMENT-FX), no longer named-residual; the full-precision cost rounding above is what ' +
+  'makes it fold to the cent. Same-org movement (no intercompany leg) absent in seed. The cost-selection rule (schema ' +
+  'costing method → cost element → m_cost) is the SAME rule M_MatchInv (fact_acct 472) needs for its IPV split.');
 
 console.log('\n' + (fails === 0 ? '🟢 W-FOLD-MOVEMENT PASS' : '🔴 W-FOLD-MOVEMENT FAIL (' + fails + ')') +
   ' — inter-org M_Movement posting (cost transfer + intercompany bridge) oracle-equivalent to the cent.');
