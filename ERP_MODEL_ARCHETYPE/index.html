@@ -4348,6 +4348,11 @@ line table and poster.</p>
 <td>DR <code>{BPGroup.NotInvoicedReceipts}</code> / CR <code>{Product.InventoryClearing}</code> + avg-cost IPV split (on-hand-proportioned) == <code>fact_acct(472)</code> (<strong>18/18</strong> <code>maxDiff=0c</code>)</td>
 </tr>
 <tr>
+<td><strong>MMatchInv FX</strong> (2nd schema, EUR)</td>
+<td>W-FOLD-MATCHINV-FX</td>
+<td>same USD manifest, per-leg conversion (0.85 HALF_UP, BigInt) == <code>fact_acct(472)</code> schema-200000 (<strong>18/18</strong> <code>maxDiff=0c</code>)</td>
+</tr>
+<tr>
 <td><strong>MPayment</strong> (allocation engine, simple half)</td>
 <td>W-FOLD-PAYMENT</td>
 <td>Doc_Payment receipt == <code>fact_acct(335)</code></td>
@@ -4371,6 +4376,11 @@ line table and poster.</p>
 <td><strong>MMovement</strong> (inter-org transfer)</td>
 <td>W-FOLD-MOVEMENT</td>
 <td>cost transfer + Intercompany Due-To/From == <code>fact_acct(323)</code>; cost via schema costing-method → cost element</td>
+</tr>
+<tr>
+<td><strong>MMovement FX</strong> (2nd schema, EUR)</td>
+<td>W-FOLD-MOVEMENT-FX</td>
+<td>same fold at the per-schema EUR cost (43.7325, full-precision line rounding) == <code>fact_acct(323)</code> schema-200000 (1/1 <code>maxDiff=0c</code>)</td>
 </tr>
 <tr>
 <td><strong>ReplenishReport → PO</strong></td>
@@ -4404,9 +4414,9 @@ line table and poster.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Score: 12 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)</strong> — and they are the deepest deltas
+<p><strong>Score: 14 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)</strong> — and they are the deepest deltas
 (the whole Money family — sales AND purchase invoice posting, allocation in BOTH accounting schemas, the MatchInv
-clearing loop — + the inventory loop incl. the inter-org MMovement cost transfer). <strong>Logic-folded is no longer
+clearing loop <strong>in both schemas</strong> — + the inventory loop incl. the inter-org MMovement cost transfer <strong>in both schemas</strong>). <strong>Logic-folded is no longer
 ~0.2%</strong>: the trade-doc loop (order→ship→invoice→<strong>match-posting</strong>→pay→allocate) and the inventory loop
 (movement→on-hand→replenish-PO) both fold end-to-end to their iDempiere oracle, on <strong>both</strong> the sales and purchase
 sides of <code>Doc_Invoice</code> and across the base (USD) <strong>and</strong> foreign-currency (EUR) acctschema — and the PO

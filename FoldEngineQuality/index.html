@@ -4453,9 +4453,17 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 </tr>
 <tr>
 <td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_movement.js"><code>poc_movement.js</code></a></td>
-<td style="text-align: right;">138</td>
+<td style="text-align: right;">139</td>
 <td>Inter-org <code>M_Movement</code> + intercompany</td>
 <td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>🟢 PASS</td>
+</tr>
+<tr>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_movement_fx.js"><code>poc_movement_fx.js</code></a></td>
+<td style="text-align: right;">143</td>
+<td><code>M_Movement</code> EUR schema-200000 (per-schema cost)</td>
+<td style="text-align: center;">2</td>
 <td style="text-align: center;">✅</td>
 <td>🟢 PASS</td>
 </tr>
@@ -4463,6 +4471,14 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_matchinv.js"><code>poc_matchinv.js</code></a></td>
 <td style="text-align: right;">147</td>
 <td><code>M_MatchInv</code> posting + avg-cost IPV split (18/18)</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">✅</td>
+<td>🟢 PASS</td>
+</tr>
+<tr>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_matchinv_fx.js"><code>poc_matchinv_fx.js</code></a></td>
+<td style="text-align: right;">173</td>
+<td><code>M_MatchInv</code> EUR schema-200000 (per-leg FX, 18/18)</td>
 <td style="text-align: center;">2</td>
 <td style="text-align: center;">✅</td>
 <td>🟢 PASS</td>
@@ -4509,7 +4525,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 </tr>
 </tbody>
 </table>
-<p><strong>All 16 witnesses PASS green.</strong> Of these, <strong>14 diff against the real iDempiere <code>fact_acct</code> to the cent</strong>
+<p><strong>All 18 witnesses PASS green.</strong> Of these, <strong>16 diff against the real iDempiere <code>fact_acct</code> to the cent</strong>
 (<em>oracle-equivalent</em>); <code>poc_backflush</code> is <em>recipe-equivalent</em> (engine vs. an independent path-enumeration —
 no production GL in the seed); <strong>† <code>poc_production</code> / <code>poc_inventory</code> are <em>rule-consistent</em></strong> — they enact a
 document GardenWorld never posted (no seed oracle to diff), so they verify against the ALREADY-PROVEN qty/cost
@@ -4616,11 +4632,11 @@ variance), both <code>§FALSIFIER</code> and <code>§FALSIFIER-IPV</code> firing
 the missing account.</em></p>
 <hr />
 <h2 id="7-methodology-how-to-reproduce-this-scorecard">7 · Methodology — how to reproduce this scorecard<a class="headerlink" href="#7-methodology-how-to-reproduce-this-scorecard" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># all 16 witnesses, from the repo root — every one exits 0:</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># all 18 witnesses, from the repo root — every one exits 0:</span>
 <span class="k">for</span><span class="w"> </span>f<span class="w"> </span><span class="k">in</span><span class="w"> </span>poc_fold_complete<span class="w"> </span>poc_money_post<span class="w"> </span>poc_backflush<span class="w"> </span>poc_alloc_post<span class="w"> </span><span class="se">\</span>
 <span class="w">         </span>poc_qtyonhand<span class="w"> </span>poc_replenish<span class="w"> </span>poc_invoice_complete<span class="w"> </span>poc_invoice_post_ap<span class="w"> </span><span class="se">\</span>
-<span class="w">         </span>poc_alloc_fx<span class="w"> </span>poc_movement<span class="w"> </span>poc_matchinv<span class="w"> </span>poc_post_harden<span class="w"> </span><span class="se">\</span>
-<span class="w">         </span>poc_reverse<span class="w"> </span>poc_gljournal<span class="w"> </span>poc_production<span class="w"> </span>poc_inventory<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">         </span>poc_alloc_fx<span class="w"> </span>poc_movement<span class="w"> </span>poc_movement_fx<span class="w"> </span>poc_matchinv<span class="w"> </span>poc_matchinv_fx<span class="w"> </span><span class="se">\</span>
+<span class="w">         </span>poc_post_harden<span class="w"> </span>poc_reverse<span class="w"> </span>poc_gljournal<span class="w"> </span>poc_production<span class="w"> </span>poc_inventory<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">  </span>node<span class="w"> </span>scripts/<span class="nv">$f</span>.js<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;🟢 </span><span class="nv">$f</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;🔴 </span><span class="nv">$f</span><span class="s2">&quot;</span>
 <span class="k">done</span>
 </code></pre></div>
