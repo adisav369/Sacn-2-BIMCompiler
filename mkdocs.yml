@@ -38,7 +38,11 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
@@ -47,6 +51,9 @@ markdown_extensions:
 
 extra_css:
   - stylesheets/custom.css
+
+extra_javascript:
+  - javascripts/fold-footnotes.js
 
 extra:
   analytics:
@@ -64,6 +71,7 @@ nav:
   - Start Here:
       - Home: index.md
       - Feature Comparison: FeatureComparison.md
+      - "Migrate & Compare (ERP)": MigrateComparisonPaper.md
       - About BIM OOTB: AboutMore.md
       - The ERP World View: MANIFESTO.md
       - Beyond Buildings: ShipYard.md
@@ -151,6 +159,8 @@ nav:
       - Enabling-Tech Timeline: EnablingTechTimeline.md
       - Local-First Prior Art: LocalFirstPriorArt.md
       - Distributed ERP (Contention Map): DistributedERP.md
+      - "ERP Coverage Matrix (have we covered all bases?)": ERP_COVERAGE_MATRIX.md
+      - "ERP Model Archetype (MOrder + deltas = the denominator)": ERP_MODEL_ARCHETYPE.md
       - "Depreciation Perf (server→serverless witness)": DepreciationPerf.md
 
   # ─── Proven buildings ─────────────────────────────────
