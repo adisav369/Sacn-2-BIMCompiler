@@ -126,6 +126,19 @@ PG "SELECT cl.c_cashline_id, c.c_cashbook_id FROM adempiere.c_cashline cl JOIN a
 sqlite3 "$DB" "DROP TABLE IF EXISTS c_cashline; CREATE TABLE c_cashline(c_cashline_id INT, c_cashbook_id INT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_cashline.csv c_cashline"
 
+echo "== capture the inventory MOVEMENT LEDGER (m_transaction — StorageOnHand qty spine, FOLD_MODEL_LOGIC.md §F-2 task #2) =="
+# m_transaction is iDempiere's immutable per-movement ledger; MStorageOnHand.qtyonhand is maintained in lockstep
+# by a SEPARATE code path. The fold reconstructs on-hand = Σ (MovementType-sign × |movementqty|) per
+# (product,locator,asi) and diffs BOTH against the stored signed movementqty (sign rule) AND m_storageonhand
+# (accumulation). The source-line ref columns (m_inoutline_id/m_inventoryline_id/m_movementline_id/
+# m_productionline_id — exactly one set) attribute each movement to receipt/shipment/inventory/movement/production.
+# NON-INVENT: the real ledger, verbatim (movementqty stored signed; we ALSO recompute the sign to prove the rule).
+PG "SELECT m_transaction_id, m_product_id, m_locator_id, m_attributesetinstance_id, movementtype, round(movementqty,2),
+           coalesce(m_inoutline_id,0), coalesce(m_inventoryline_id,0), coalesce(m_movementline_id,0), coalesce(m_productionline_id,0)
+    FROM adempiere.m_transaction WHERE ad_client_id=11 ORDER BY m_transaction_id;" > /tmp/m_transaction.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_transaction; CREATE TABLE m_transaction(m_transaction_id INT, m_product_id INT, m_locator_id INT, m_attributesetinstance_id INT, movementtype TEXT, movementqty REAL, m_inoutline_id INT, m_inventoryline_id INT, m_movementline_id INT, m_productionline_id INT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/m_transaction.csv m_transaction"
+
 echo "== verify =="
 sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' docs='||count(DISTINCT ad_table_id||'/'||record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_elementvalue rows='||count(*) FROM c_elementvalue;"
@@ -141,3 +154,4 @@ sqlite3 "$DB" "SELECT '§EXTRACT c_allocationhdr='||count(*)||' lines='||(SELECT
 sqlite3 "$DB" "SELECT '§EXTRACT alloc-oracle fact_acct(735) rows='||count(*)||' docs='||count(DISTINCT record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2) FROM fact_acct WHERE ad_table_id=735;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_acctschema taxcorrectiontype(101)='||taxcorrectiontype FROM c_acctschema WHERE c_acctschema_id=101;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_bp_group_acct='||count(*)||' c_cashbook_acct='||(SELECT count(*) FROM c_cashbook_acct)||' c_cashline='||(SELECT count(*) FROM c_cashline) FROM c_bp_group_acct;"
+sqlite3 "$DB" "SELECT '§EXTRACT m_transaction rows='||count(*)||' (p,l,asi)-cells='||count(DISTINCT m_product_id||'/'||m_locator_id||'/'||m_attributesetinstance_id)||' Σsigned='||round(sum(movementqty),2)||' types='||(SELECT group_concat(DISTINCT movementtype) FROM m_transaction) FROM m_transaction;"

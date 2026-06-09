@@ -190,6 +190,35 @@ function explodeBOM(bomOf, productId, qty, _seen) {
   return out;
 }
 
+// ── GENERATE: the StorageOnHand qty spine — net on-hand = Σ signed movement ──────────────────────
+// Implementing ERP_MODEL_ARCHETYPE.md §MStorageOnHand / §MTransaction — Witness: W-FOLD-QTYONHAND.
+// iDempiere stores inventory qty NOWHERE as a master field — it is a FOLD of every MTransaction, and
+// MStorageOnHand.qtyonhand is maintained in lockstep. The genuine engine logic is the SIGN CONVENTION:
+// a MovementType code carries its polarity in its TRAILING CHAR ('+'=in, '-'=out), so receipt V+ adds and
+// shipment C- subtracts the SAME positive line qty. movementSign extracts that; qtyOnHand reconstructs the
+// signed contribution from (movementtype, |qty|) — NOT by trusting a pre-signed column — and accumulates
+// per partition (product,locator,asi). This is the spine the backflush DECREMENT and replenishment trigger
+// ride. Pure: the host injects the event rows; no DB, no clock.
+function movementSign(movementtype) {
+  var c = String(movementtype || '').slice(-1);
+  if (c === '+') return 1;
+  if (c === '-') return -1;
+  throw new Error('unknown MovementType polarity: ' + movementtype);
+}
+// events: [{...}]; opts.keyOf(e)->partition key, opts.typeOf(e)->movementtype, opts.absQtyOf(e)->|qty|.
+// Returns { key: netQty }. signedOf(e) (optional) lets the caller also collect the per-event signed value
+// for an independent sign-rule check.
+function qtyOnHand(events, opts) {
+  var keyOf = opts.keyOf, typeOf = opts.typeOf, absQtyOf = opts.absQtyOf;
+  var out = {};
+  events.forEach(function (e) {
+    var signed = movementSign(typeOf(e)) * Math.abs(absQtyOf(e));
+    var k = keyOf(e);
+    out[k] = (out[k] || 0) + signed;
+  });
+  return out;
+}
+
 // ── The cell handler: decision-table over policy flags -> verb ops ───────────
 // completeOrder = state op + (flag-gated) verb fan-out. The flags are DATA
 // (erp_rules DOCPOLICY), the verbs are the small registry above.
@@ -202,5 +231,6 @@ function completeOrder(order, lines, policy) {
 
 module.exports = {
   resolveCtx: resolveCtx, dialectShim: dialectShim, evalGuard: evalGuard,
-  match: match, buildDoc: buildDoc, DOC_SPECS: DOC_SPECS, explodeBOM: explodeBOM, VERBS: VERBS, completeOrder: completeOrder
+  match: match, buildDoc: buildDoc, DOC_SPECS: DOC_SPECS, explodeBOM: explodeBOM,
+  movementSign: movementSign, qtyOnHand: qtyOnHand, VERBS: VERBS, completeOrder: completeOrder
 };
