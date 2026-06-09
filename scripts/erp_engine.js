@@ -229,8 +229,26 @@ function completeOrder(order, lines, policy) {
   return ops;
 }
 
+// completeInvoice — the standalone (direct) C_Invoice doc-action. Same shape as completeOrder: ONE state op
+// + a config-gated fan-out. Implementing ERP_MODEL_ARCHETYPE.md §MInvoice — Witness: W-FOLD-INVOICE.
+// The PO-side delta (MInvoice.completeIt:matchInv, line ~2075): for each vendor-invoice line that references a
+// material receipt (`!IsSOTrx && M_InOutLine_ID<>0`) create ONE M_MatchInv junction (invoice-line ⋈ receipt-line
+// @ qtyinvoiced). M_MatchInv is a single junction record (NOT a header+lines document), so it rides the existing
+// CREATE_LINE kernel op — no buildDoc (which would wrongly emit a doc+line pair), no new engine verb. A sales
+// invoice, or a direct PO invoice with no receipt link, emits the bare SET_STATUS CO; the GL posting itself is
+// the already-proven Doc_Invoice fold (post_resolver), not re-derived by the doc-action.
+function completeInvoice(invoice, lines, policy) {
+  var ops = [{ op_type: 'SET_STATUS', table: 'C_Invoice', id: invoice.c_invoice_id, doc_status: 'CO' }];
+  if (invoice.issotrx === 'N') {
+    (lines || []).forEach(function (l) {
+      if (l.m_inoutline_id) ops.push({ op_type: 'CREATE_LINE', table: 'M_MatchInv', c_invoiceline_id: l.c_invoiceline_id, m_inoutline_id: l.m_inoutline_id, m_product_id: l.m_product_id, qty: l.qtyinvoiced });
+    });
+  }
+  return ops;
+}
+
 module.exports = {
   resolveCtx: resolveCtx, dialectShim: dialectShim, evalGuard: evalGuard,
   match: match, buildDoc: buildDoc, DOC_SPECS: DOC_SPECS, explodeBOM: explodeBOM,
-  movementSign: movementSign, qtyOnHand: qtyOnHand, VERBS: VERBS, completeOrder: completeOrder
+  movementSign: movementSign, qtyOnHand: qtyOnHand, VERBS: VERBS, completeOrder: completeOrder, completeInvoice: completeInvoice
 };

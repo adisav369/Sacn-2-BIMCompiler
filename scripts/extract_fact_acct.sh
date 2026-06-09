@@ -150,6 +150,17 @@ cap m_replenish          "m_product_id,m_warehouse_id,replenishtype,level_min,le
 cap m_storagereservation "m_product_id,m_warehouse_id,round(qty,2),issotrx"               "m_product_id INT,m_warehouse_id INT,qty REAL,issotrx TEXT"
 cap m_locator            "m_locator_id,m_warehouse_id"                                     "m_locator_id INT,m_warehouse_id INT"
 
+echo "== capture M_MatchInv oracle (MInvoice.completeIt PO-side delta — invoice-line ⋈ receipt-line junction) =="
+# One M_MatchInv per vendor-invoice line that references a material receipt; the fold's completeInvoice emits
+# exactly this set. Oracle = the real junctions (with the invoice they belong to, via c_invoiceline).
+PG "SELECT mi.m_matchinv_id, mi.c_invoiceline_id, mi.m_inoutline_id, mi.m_product_id, round(mi.qty,2), il.c_invoice_id
+    FROM adempiere.m_matchinv mi JOIN adempiere.c_invoiceline il ON il.c_invoiceline_id=mi.c_invoiceline_id
+    WHERE mi.ad_client_id=11 ORDER BY mi.m_matchinv_id;" > /tmp/m_matchinv.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_matchinv; CREATE TABLE m_matchinv(m_matchinv_id INT, c_invoiceline_id INT, m_inoutline_id INT, m_product_id INT, qty REAL, c_invoice_id INT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/m_matchinv.csv m_matchinv"
+# NOTE: c_invoiceline is NOT re-captured here — the full table (incl. c_invoiceline_id/m_inoutline_id/qtyinvoiced
+# that completeInvoice reads) is already present from the base seed; a narrow re-cap would drop columns siblings need.
+
 echo "== verify =="
 sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' docs='||count(DISTINCT ad_table_id||'/'||record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_elementvalue rows='||count(*) FROM c_elementvalue;"
@@ -167,3 +178,4 @@ sqlite3 "$DB" "SELECT '§EXTRACT c_acctschema taxcorrectiontype(101)='||taxcorre
 sqlite3 "$DB" "SELECT '§EXTRACT c_bp_group_acct='||count(*)||' c_cashbook_acct='||(SELECT count(*) FROM c_cashbook_acct)||' c_cashline='||(SELECT count(*) FROM c_cashline) FROM c_bp_group_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT m_transaction rows='||count(*)||' (p,l,asi)-cells='||count(DISTINCT m_product_id||'/'||m_locator_id||'/'||m_attributesetinstance_id)||' Σsigned='||round(sum(movementqty),2)||' types='||(SELECT group_concat(DISTINCT movementtype) FROM m_transaction) FROM m_transaction;"
 sqlite3 "$DB" "SELECT '§EXTRACT m_replenish='||count(*)||' active(type<>0)='||sum(CASE WHEN replenishtype<>'0' THEN 1 ELSE 0 END)||' m_locator='||(SELECT count(*) FROM m_locator)||' reservations='||(SELECT count(*) FROM m_storagereservation) FROM m_replenish;"
+sqlite3 "$DB" "SELECT '§EXTRACT m_matchinv rows='||count(*)||' PO-invoices='||count(DISTINCT c_invoice_id) FROM m_matchinv;"
