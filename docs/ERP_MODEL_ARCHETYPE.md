@@ -71,20 +71,20 @@ line table and poster.
 | **MMovement** (inter-org transfer) | W-FOLD-MOVEMENT | cost transfer + Intercompany Due-To/From == `fact_acct(323)`; cost via schema costing-method → cost element |
 | **ReplenishReport → PO** | W-FOLD-REPLENISH | QtyToOrder (movement-folded on-hand) == iDempiere formula (8/8); PO via `buildDoc` |
 | **Reversal family** (reverseCorrect / void) | W-FOLD-REVERSE | engine reversal (swap Dr↔Cr) **+ real `fact_acct` NETS TO ZERO** per account (6/6 C_Payment+C_Invoice); FSM CO→RE; ORACLE-ANCHORED (transform of real posting) |
+| **GL_Journal** (manual + inter-org) | W-FOLD-GLJOURNAL | direct lines (amtacct=amtsource×rate) + per-org Intercompany Due-To/From balancing == `fact_acct(224)` (2/2, both schemas) |
 | **MProduction backflush** | W-FOLD-BACKFLUSH | recursive BOM explosion == path-enumeration (recipe-equivalent; `m_production`=0 in seed) |
 | **MProduction movement** | W-FOLD-PRODUCTION | enacted P+/P- ledger folds through the qty spine (finished +Q / leaf −used); rule-consistent, GL named-deferred (component cost absent) |
 | **MInventory count** | W-FOLD-INVENTORY | enacted I± folds on-hand→counted + GL `\|adjQty\|×cost` balances; rule-consistent, offset acct named-deferred |
 
-**Score: 11 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)** — and they are the deepest deltas
+**Score: 12 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)** — and they are the deepest deltas
 (the whole Money family — sales AND purchase invoice posting, allocation in BOTH accounting schemas, the MatchInv
 clearing loop — + the inventory loop incl. the inter-org MMovement cost transfer). **Logic-folded is no longer
 ~0.2%**: the trade-doc loop (order→ship→invoice→**match-posting**→pay→allocate) and the inventory loop
 (movement→on-hand→replenish-PO) both fold end-to-end to their iDempiere oracle, on **both** the sales and purchase
 sides of `Doc_Invoice` and across the base (USD) **and** foreign-currency (EUR) acctschema — and the PO
 match→clearing loop folds in full incl. the avg-cost IPV split (on-hand-proportioned, riding the qty spine).
-**Unfolded tail:** **GL_Journal** (`fact_acct` 224 — lines post directly, near-tautological) · `MInventory` +
-`MProduction` **cost-valued GL** (movement folds proven W-FOLD-INVENTORY/PRODUCTION; component-cost + offset-account
-DATA absent in seed → GL named-deferred, not faked) · the
+**Unfolded tail:** `MInventory` + `MProduction` **cost-valued GL** (movement folds proven
+W-FOLD-INVENTORY/PRODUCTION; component-cost + offset-account DATA absent in seed → GL named-deferred, not faked) · the
 Fixed-Assets + GL/Project families · the declarative surfaces (still surface-interpreted, not oracle-diffed).
 
 ## What this changes for the backend arc

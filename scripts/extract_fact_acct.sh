@@ -202,6 +202,27 @@ sqlite3 "$DB" ".mode csv" ".import /tmp/m_matchinv.csv m_matchinv"
 # NOTE: c_invoiceline is NOT re-captured here — the full table (incl. c_invoiceline_id/m_inoutline_id/qtyinvoiced
 # that completeInvoice reads) is already present from the base seed; a narrow re-cap would drop columns siblings need.
 
+echo "== capture GL_Journal source (Doc_GLJournal posting — manual journal incl. inter-org balancing, fact_acct 224) =="
+# A GL journal's lines post DIRECTLY as fact lines: amtacct = round(amtsource × currencyrate, 2) (the journal is
+# entered in the schema's own currency here, so rate=1). The non-trivial half is Fact.balanceAccounting: GardenWorld's
+# journal 100 is INTER-ORG (DR Checking@org11 / CR Checking@org12, same natural account 508 via different
+# C_ValidCombinations) so each org is balanced by an Intercompany Due-To/From line — the SAME schema-GL accounts +
+# rule proven in W-FOLD-MOVEMENT (c_acctschema_gl.intercompanydueto/duefrom_acct → 600/741). We carry the line's
+# C_ValidCombination ORG (the fact line's ad_org_id) so the fold can balance per org. NON-INVENT: real journal rows.
+PG "SELECT gl_journal_id, c_acctschema_id, c_currency_id, c_conversiontype_id, dateacct::date, postingtype, docstatus
+    FROM adempiere.gl_journal WHERE ad_client_id=11 ORDER BY gl_journal_id;" > /tmp/gl_journal.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS gl_journal; CREATE TABLE gl_journal(gl_journal_id INT, c_acctschema_id INT, c_currency_id INT, c_conversiontype_id INT, dateacct TEXT, postingtype TEXT, docstatus TEXT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/gl_journal.csv gl_journal"
+# currencyrate kept as TEXT (exact decimal, like multiplyrate); account_id + ad_org_id come from the line's
+# C_ValidCombination (the posted fact dimension), falling back to the line's own columns if no combination.
+PG "SELECT jl.gl_journalline_id, jl.gl_journal_id, jl.line, coalesce(vc.account_id, jl.account_id),
+       coalesce(vc.ad_org_id, jl.ad_org_id), jl.currencyrate,
+       round(jl.amtsourcedr,2), round(jl.amtsourcecr,2), round(jl.amtacctdr,2), round(jl.amtacctcr,2)
+    FROM adempiere.gl_journalline jl LEFT JOIN adempiere.c_validcombination vc ON vc.c_validcombination_id=jl.c_validcombination_id
+    WHERE jl.ad_client_id=11 ORDER BY jl.gl_journal_id, jl.line;" > /tmp/gl_journalline.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS gl_journalline; CREATE TABLE gl_journalline(gl_journalline_id INT, gl_journal_id INT, line INT, account_id INT, ad_org_id INT, currencyrate TEXT, amtsourcedr REAL, amtsourcecr REAL, amtacctdr REAL, amtacctcr REAL);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/gl_journalline.csv gl_journalline"
+
 echo "== verify =="
 sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' docs='||count(DISTINCT ad_table_id||'/'||record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_elementvalue rows='||count(*) FROM c_elementvalue;"
@@ -220,3 +241,4 @@ sqlite3 "$DB" "SELECT '§EXTRACT c_bp_group_acct='||count(*)||' c_cashbook_acct=
 sqlite3 "$DB" "SELECT '§EXTRACT m_transaction rows='||count(*)||' (p,l,asi)-cells='||count(DISTINCT m_product_id||'/'||m_locator_id||'/'||m_attributesetinstance_id)||' Σsigned='||round(sum(movementqty),2)||' types='||(SELECT group_concat(DISTINCT movementtype) FROM m_transaction) FROM m_transaction;"
 sqlite3 "$DB" "SELECT '§EXTRACT m_replenish='||count(*)||' active(type<>0)='||sum(CASE WHEN replenishtype<>'0' THEN 1 ELSE 0 END)||' m_locator='||(SELECT count(*) FROM m_locator)||' reservations='||(SELECT count(*) FROM m_storagereservation) FROM m_replenish;"
 sqlite3 "$DB" "SELECT '§EXTRACT m_matchinv rows='||count(*)||' PO-invoices='||count(DISTINCT c_invoice_id) FROM m_matchinv;"
+sqlite3 "$DB" "SELECT '§EXTRACT gl_journal='||count(*)||' lines='||(SELECT count(*) FROM gl_journalline)||' orgs='||(SELECT count(DISTINCT ad_org_id) FROM gl_journalline)||' fact_acct(224)='||(SELECT count(*) FROM fact_acct WHERE ad_table_id=224) FROM gl_journal;"
