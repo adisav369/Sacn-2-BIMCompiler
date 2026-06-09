@@ -26,6 +26,7 @@ var TOKENS = {
   // inventory-clearing DR (via product->category, mirrors {Product.Revenue}) + input-VAT credit.
   '{Vendor.V_Liability}':  { table: 'c_bp_vendor_acct',         col: 'v_liability_acct',  keyCol: 'c_bpartner_id' },
   '{Product.InventoryClearing}': { table: 'm_product_category_acct', col: 'p_inventoryclearing_acct', keyCol: 'm_product_category_id', via: 'product->category' },
+  '{Product.AverageCostVariance}': { table: 'm_product_category_acct', col: 'p_averagecostvariance_acct', keyCol: 'm_product_category_id', via: 'product->category' },
   '{Tax.Credit}':          { table: 'c_tax_acct',               col: 't_credit_acct',     keyCol: 'c_tax_id' },
   '{Bank.InTransit}':      { table: 'c_bankaccount_acct',       col: 'b_intransit_acct',  keyCol: 'c_bankaccount_id' },
   '{Bank.UnallocatedCash}':{ table: 'c_bankaccount_acct',       col: 'b_unallocatedcash_acct', keyCol: 'c_bankaccount_id' },

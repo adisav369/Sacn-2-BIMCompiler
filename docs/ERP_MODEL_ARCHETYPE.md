@@ -63,7 +63,7 @@ line table and poster.
 | **MOrder.completeIt chain** | W-FOLD-COMPLETE | Order→Ship→Invoice fan-out == `m_inoutline`/`c_invoiceline` + `fact_acct(318/319)` |
 | **MInvoice + MatchInv** | W-FOLD-INVOICE | `completeIt(C_Invoice)` CO + 18/18 `m_matchinv` junctions (per tuple); sales GL == `fact_acct(318)` |
 | **MInvoice AP posting** (purchase manifest) | W-FOLD-AP-INVOICE | vendor `Doc_Invoice` CR `{Vendor.V_Liability}` / DR `{Product.InventoryClearing}` per line == `fact_acct(318)` (4/4 `maxDiff=0c`) |
-| **MMatchInv posting** (clearing loop) | W-FOLD-MATCHINV | DR `{BPGroup.NotInvoicedReceipts}` / CR `{Product.InventoryClearing}` == `fact_acct(472)` (17/18 `maxDiff=0c`; 1 avg-cost IPV split named) |
+| **MMatchInv posting** (clearing loop + IPV) | W-FOLD-MATCHINV | DR `{BPGroup.NotInvoicedReceipts}` / CR `{Product.InventoryClearing}` + avg-cost IPV split (on-hand-proportioned) == `fact_acct(472)` (**18/18** `maxDiff=0c`) |
 | **MPayment** (allocation engine, simple half) | W-FOLD-PAYMENT | Doc_Payment receipt == `fact_acct(335)` |
 | **MAllocationHdr** (headerless, deep half) | W-FOLD-ALLOC | DR cash/disc/wo / CR receivable **+ VAT tax-correction sub-cents** == `fact_acct(735)` |
 | **MAllocationHdr FX** (2nd schema, EUR) | W-FOLD-ALLOC-FX | per-leg currency conversion (0.85 HALF_UP) + CurrencyBalancing line == `fact_acct(735)` schema-200000 |
@@ -77,11 +77,11 @@ line table and poster.
 clearing loop — + the inventory loop incl. the inter-org MMovement cost transfer). **Logic-folded is no longer
 ~0.2%**: the trade-doc loop (order→ship→invoice→**match-posting**→pay→allocate) and the inventory loop
 (movement→on-hand→replenish-PO) both fold end-to-end to their iDempiere oracle, on **both** the sales and purchase
-sides of `Doc_Invoice` and across the base (USD) **and** foreign-currency (EUR) acctschema. **Unfolded tail:** the
-M_MatchInv **avg-cost IPV split** (1 of 18 matches — the 70/30 ProductAsset/AverageCostVariance allocation needs
-the match-time on-hand; the NIR/Clearing legs ARE folded) · **GL_Journal** (`fact_acct` 224 — lines post directly,
-near-tautological) · the void/reverse DocAction set (no reversed doc in seed) · `MInventory` physical-count +
-`MProduction` GL (no seed movements) · the Fixed-Assets + GL/Project families · the declarative surfaces.
+sides of `Doc_Invoice` and across the base (USD) **and** foreign-currency (EUR) acctschema — and the PO
+match→clearing loop folds in full incl. the avg-cost IPV split (on-hand-proportioned, riding the qty spine).
+**Unfolded tail:** **GL_Journal** (`fact_acct` 224 — lines post directly, near-tautological) · the void/reverse
+DocAction set (no reversed doc in seed) · `MInventory` physical-count + `MProduction` GL (no seed movements) · the
+Fixed-Assets + GL/Project families · the declarative surfaces (still surface-interpreted, not oracle-diffed).
 
 ## What this changes for the backend arc
 

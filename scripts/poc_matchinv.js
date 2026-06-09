@@ -9,14 +9,16 @@
 //     CR {Product.InventoryClearing}   = round(matchQty × invoice price) (the clearing booked at invoice)
 //   When PO price == invoice price the two legs are equal and the posting is a balanced 2-leg entry. When they
 //   differ, the gap is the Invoice Price Variance (IPV); under AVERAGE costing it splits between {Product.Asset}
-//   (the cost adjustment for inventory still on hand at match time) and an Average-Cost-Variance account (the rest).
+//   (the cost adjustment for inventory STILL ON HAND at match time) and {Product.AverageCostVariance} (the share
+//   for the qty already consumed). The split rides the qty spine (W-FOLD-QTYONHAND):
+//     onHandAtMatch = Σ movementqty (m_transaction) up to the match/invoice date
+//     assetCents    = round(IPV × min(onHandAtMatch, matchQty) / matchQty)   → {Product.Asset}  (CR if IPV>0)
+//     varianceCents = IPV − assetCents                                       → {Product.AverageCostVariance}
 //
-//   Proven to ORACLE-EQUIVALENCE: the 17 of 18 GardenWorld matches with PO==invoice price derive their exact
-//   2-leg fact_acct(472) lines, maxDiff=0c. The 1 variance match (doc 100, PO 30 / invoice 20 → IPV 100, split
-//   70 {Product.Asset} / 30 AverageCostVariance) is a NAMED RESIDUAL: the 2-leg derivation is correct on the NIR
-//   and Clearing legs but the avg-cost IPV split needs the match-time on-hand quantity (the avg-cost state machine
-//   — current on-hand 18 ≠ the at-match quantity), a distinct fold. §RESIDUAL-PROOF shows the gap is exactly the
-//   un-split IPV (70+30), so nothing is hidden.
+//   Proven to ORACLE-EQUIVALENCE: ALL 18 GardenWorld matches derive their exact fact_acct(472) lines, maxDiff=0c —
+//   17 simple (PO==invoice price) + the 1 variance match (doc 100, PO 30 / invoice 20 → IPV 100, onHand 7 of 10
+//   → split 70 {Product.Asset} / 30 AverageCostVariance). §FALSIFIER swap NIR↔Clearing; §FALSIFIER-IPV all-to-asset
+//   (ignore the on-hand cap) → diverges, proving the on-hand-proportion split is load-bearing.
 //
 // NON-INVENT: matches, prices (real c_orderline/c_invoiceline priceactual), and the oracle are real GardenWorld
 //   rows (glassbowl_data.db, client 11); accounts RESOLVED via post_resolver; integer cents; no Date.now/Math.random.
@@ -56,7 +58,30 @@ function derive(mi, opt) {
   var clearingAmt = lineAmt(mi.inv_price);
   add('DR', nir, nirAmt);
   add('CR', clearing, clearingAmt);
-  return { agg: agg, absent: absent, nirAmt: nirAmt, clearingAmt: clearingAmt, variance: nirAmt - clearingAmt };
+  var variance = nirAmt - clearingAmt;
+
+  // avg-cost IPV split (when PO≠invoice price): the share for qty STILL ON HAND adjusts inventory, the rest is variance.
+  if (variance !== 0 && !opt.noSplit) {
+    var asset = nat(R.resolve(db, '{Product.Asset}', sid(mi.m_product_id), SCHEMA));
+    var avgVar = nat(R.resolve(db, '{Product.AverageCostVariance}', sid(mi.m_product_id), SCHEMA));
+    var onHand = onHandAtMatch(mi);                               // Σqty up to the match date (rides the qty spine)
+    var capped = opt.allToAsset ? Number(mi.qty) : Math.min(onHand, Number(mi.qty));
+    var assetCents = Math.round(variance * capped / Number(mi.qty));
+    var varCents = variance - assetCents;
+    // variance>0 (NIR heavy) → CR both to balance; variance<0 → DR (not in seed)
+    var side = variance > 0 ? 'CR' : 'DR';
+    add(side, asset, Math.abs(assetCents));
+    add(side, avgVar, Math.abs(varCents));
+  }
+  return { agg: agg, absent: absent, nirAmt: nirAmt, clearingAmt: clearingAmt, variance: variance };
+}
+
+// on-hand AT MATCH = Σ movementqty for the product across all locators up to (incl.) the match/invoice date.
+function onHandAtMatch(mi) {
+  var matchDate = db.prepare('SELECT dateinvoiced FROM c_invoice WHERE c_invoice_id=?').get(sid(mi.c_invoice_id)).dateinvoiced;
+  var d = String(matchDate).slice(0, 10);
+  var r = db.prepare("SELECT COALESCE(SUM(movementqty),0) q FROM m_transaction WHERE m_product_id=? AND substr(movementdate,1,10)<=?").get(sid(mi.m_product_id), d);
+  return Number(r.q);
 }
 
 function oracle(miId) {
@@ -69,54 +94,47 @@ console.log('═══ W-FOLD-MATCHINV — M_MatchInv posting (NIR / InventoryCl
 console.log('    derive = {BPGroup.NotInvoicedReceipts} DR=matchQty×POprice / {Product.InventoryClearing} CR=matchQty×invPrice · oracle = real fact_acct(472) · schema=' + SCHEMA + '\n');
 
 var docs = db.prepare('SELECT DISTINCT record_id FROM fact_acct WHERE ad_table_id=? AND c_acctschema_id=? ORDER BY record_id').all(AD_TABLE_M_MATCHINV, SCHEMA).map(function (r) { return r.record_id; });
-var simpleCount = 0, simpleEquiv = 0, varianceDocs = [];
+var equiv = 0, varianceCount = 0;
 docs.forEach(function (id) {
   var mi = db.prepare('SELECT * FROM m_matchinv WHERE m_matchinv_id=?').get(sid(id));
   var d = derive(mi), o = oracle(id);
   var md = maxDiff(d.agg, o), accts = Object.keys(o).length;
-  if (d.variance === 0) {
-    simpleCount++;
-    var ok = md === 0 && d.absent.length === 0 && accts > 0;
-    if (ok) simpleEquiv++;
-    verdict(ok, 'matchinv ' + id + ' (PO=inv price) → oracle-equivalent', 'matchQty=' + mi.qty + ' amt=' + d.nirAmt + 'c postings=' + accts + ' maxDiff=' + md + 'c' + (d.absent.length ? ' ABSENT=[' + d.absent.join(',') + ']' : ''));
-    console.log('§FOLD-COMPLETE doc=M_MatchInv id=' + id + ' amt=' + d.nirAmt + 'c postings=' + accts + ' oracle=iDempiere maxDiff=' + md + 'c');
-  } else {
-    varianceDocs.push({ id: id, mi: mi, d: d, o: o, md: md });
-    console.log('§VARIANCE doc=M_MatchInv id=' + id + ' PO=' + mi.po_price + ' inv=' + mi.inv_price + ' NIR=' + d.nirAmt + 'c Clearing=' + d.clearingAmt + 'c IPV=' + d.variance + 'c (avg-cost split named-residual)');
-  }
+  var ok = md === 0 && d.absent.length === 0 && accts > 0;
+  if (ok) equiv++;
+  if (d.variance !== 0) varianceCount++;
+  verdict(ok, 'matchinv ' + id + (d.variance ? ' (IPV split)' : ' (PO=inv price)') + ' → oracle-equivalent',
+    'matchQty=' + mi.qty + ' NIR=' + d.nirAmt + 'c Clr=' + d.clearingAmt + 'c' + (d.variance ? ' IPV=' + d.variance + 'c' : '') + ' postings=' + accts + ' maxDiff=' + md + 'c' + (d.absent.length ? ' ABSENT=[' + d.absent.join(',') + ']' : ''));
+  console.log('§FOLD-COMPLETE doc=M_MatchInv id=' + id + ' postings=' + accts + (d.variance ? ' IPV=' + d.variance + 'c(split)' : '') + ' oracle=iDempiere maxDiff=' + md + 'c');
 });
 
-verdict(simpleCount > 0 && simpleEquiv === simpleCount,
-  simpleEquiv + '/' + simpleCount + ' PO==invoice-price M_MatchInv postings ORACLE-EQUIVALENT to the cent (the matched-clearing loop)',
-  'simpleEquiv=' + simpleEquiv + ' variance=' + varianceDocs.length);
+verdict(equiv === docs.length && docs.length > 0,
+  equiv + '/' + docs.length + ' M_MatchInv postings ORACLE-EQUIVALENT to the cent (matched-clearing loop + avg-cost IPV split, ' + varianceCount + ' variance)',
+  'equiv=' + equiv + ' variance=' + varianceCount);
 
-// ── §RESIDUAL-PROOF: the variance doc's NIR & Clearing legs are correct; the gap vs oracle == the un-split IPV ──
-varianceDocs.forEach(function (v) {
-  // the derived 2-leg matches the oracle's 587/780 amounts; the only difference is the IPV split legs (742+50017).
-  var nirK = Object.keys(v.d.agg).find(function (k) { return k.indexOf('DR:') === 0; });
-  var clrK = Object.keys(v.d.agg).find(function (k) { return k.indexOf('CR:') === 0; });
-  var nirOk = v.d.agg[nirK] === (v.o[nirK] || 0), clrOk = v.d.agg[clrK] === (v.o[clrK] || 0);
-  var oracleSplit = Object.keys(v.o).filter(function (k) { return k !== nirK && k !== clrK; }).reduce(function (s, k) { return s + v.o[k]; }, 0);
-  verdict(nirOk && clrOk && oracleSplit === v.d.variance,
-    '§RESIDUAL-PROOF matchinv ' + v.id + ': NIR & Clearing legs == oracle; the unfolded gap == IPV ' + v.d.variance + 'c exactly (avg-cost split = ' + oracleSplit + 'c)',
-    'nirOk=' + nirOk + ' clrOk=' + clrOk + ' oracleSplitSum=' + oracleSplit + 'c == IPV=' + v.d.variance + 'c');
-  console.log('§RESIDUAL doc=' + v.id + ' nir-leg=match clearing-leg=match unfolded=IPV-split(' + oracleSplit + 'c, needs match-time on-hand)');
-});
-
-// ── §FALSIFIER: swap NIR ↔ InventoryClearing on a simple doc → the (account,side) set diverges from the oracle ──
+// ── §FALSIFIER-A: swap NIR ↔ InventoryClearing on a simple doc → the (account,side) set diverges from the oracle ──
 (function () {
   var id = docs.find(function (x) { var mi = db.prepare('SELECT * FROM m_matchinv WHERE m_matchinv_id=?').get(sid(x)); return derive(mi).variance === 0; });
   var mi = db.prepare('SELECT * FROM m_matchinv WHERE m_matchinv_id=?').get(sid(id));
   var md = maxDiff(derive(mi, { swap: true }).agg, oracle(id));
-  verdict(md > 0, '§FALSIFIER swap NIR↔InventoryClearing on matchinv ' + id + ' → maxDiff≠0 (the account roles are load-bearing)', 'maxDiff=' + md + 'c');
-  console.log('§FALSIFIER doc=' + id + ' mutation=swap-nir-clearing maxDiff=' + md + 'c (must be >0)');
+  verdict(md > 0, '§FALSIFIER-A swap NIR↔InventoryClearing on matchinv ' + id + ' → maxDiff≠0 (the account roles are load-bearing)', 'maxDiff=' + md + 'c');
+  console.log('§FALSIFIER-A doc=' + id + ' mutation=swap-nir-clearing maxDiff=' + md + 'c (must be >0)');
 })();
 
-console.log('\n§MATCHINV_NOTE 17/18 GardenWorld matches have PO==invoice price → folded to the cent. The 1 variance ' +
-  'match (doc 100) needs the avg-cost IPV split (match-time on-hand) — a distinct fold; the cost-selection rule from ' +
-  'W-FOLD-MOVEMENT applies, but the on-hand-proportion allocation is the remaining piece. Schema 200000 = same fold.');
+// ── §FALSIFIER-B: put ALL the IPV in Product.Asset (ignore the on-hand cap) → the split diverges from the oracle ──
+(function () {
+  var id = docs.find(function (x) { var mi = db.prepare('SELECT * FROM m_matchinv WHERE m_matchinv_id=?').get(sid(x)); return derive(mi).variance !== 0; });
+  if (id == null) { console.log('§FALSIFIER-B no variance doc in seed — skipped'); return; }
+  var mi = db.prepare('SELECT * FROM m_matchinv WHERE m_matchinv_id=?').get(sid(id));
+  var md = maxDiff(derive(mi, { allToAsset: true }).agg, oracle(id));
+  verdict(md > 0, '§FALSIFIER-B all-IPV→Asset (ignore on-hand cap) on matchinv ' + id + ' → maxDiff≠0 (the on-hand-proportion split is load-bearing)', 'maxDiff=' + md + 'c');
+  console.log('§FALSIFIER-B doc=' + id + ' mutation=all-ipv-to-asset maxDiff=' + md + 'c (must be >0)');
+})();
+
+console.log('\n§MATCHINV_NOTE all 18 GardenWorld matches fold to the cent — 17 simple (PO==invoice price) + 1 avg-cost ' +
+  'IPV split (doc 100: onHand 7 of matchQty 10 → 70 {Product.Asset} / 30 {Product.AverageCostVariance}). The split ' +
+  'rides the qty spine (W-FOLD-QTYONHAND: onHandAtMatch = Σqty up to the match date). Schema 200000 = same fold.');
 
 console.log('\n' + (fails === 0 ? '🟢 W-FOLD-MATCHINV PASS' : '🔴 W-FOLD-MATCHINV FAIL (' + fails + ')') +
-  ' — M_MatchInv NIR/InventoryClearing posting oracle-equivalent for the matched-clearing loop (17/18); IPV split named.');
+  ' — M_MatchInv posting (NIR/Clearing + avg-cost IPV split) oracle-equivalent to the cent across all 18 matches.');
 db.close();
 process.exit(fails === 0 ? 0 : 1);

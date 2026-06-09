@@ -74,7 +74,8 @@ cap c_bp_customer_acct      "c_bpartner_id,c_acctschema_id,c_receivable_acct"   
 # c_bp_vendor_acct.v_liability_acct = the AP-invoice payable (per-vendor, mirrors customer receivable). ADDITIVE.
 cap c_bp_vendor_acct        "c_bpartner_id,c_acctschema_id,v_liability_acct"       "c_bpartner_id INT,c_acctschema_id INT,v_liability_acct INT"
 # p_inventoryclearing_acct = the matched AP-invoice line DR (51400 Inventory Clearing, via product->category). ADDITIVE.
-cap m_product_category_acct "m_product_category_id,c_acctschema_id,p_revenue_acct,p_cogs_acct,p_asset_acct,p_inventoryclearing_acct" "m_product_category_id INT,c_acctschema_id INT,p_revenue_acct INT,p_cogs_acct INT,p_asset_acct INT,p_inventoryclearing_acct INT"
+# p_averagecostvariance_acct added ADDITIVELY for the M_MatchInv avg-cost IPV split (variance share for qty NOT on hand).
+cap m_product_category_acct "m_product_category_id,c_acctschema_id,p_revenue_acct,p_cogs_acct,p_asset_acct,p_inventoryclearing_acct,p_averagecostvariance_acct" "m_product_category_id INT,c_acctschema_id INT,p_revenue_acct INT,p_cogs_acct INT,p_asset_acct INT,p_inventoryclearing_acct INT,p_averagecostvariance_acct INT"
 # t_credit_acct = input-VAT (AP tax DR), mirrors t_due_acct (output VAT). ADDITIVE.
 cap c_tax_acct              "c_tax_id,c_acctschema_id,t_due_acct,t_credit_acct"    "c_tax_id INT,c_acctschema_id INT,t_due_acct INT,t_credit_acct INT"
 cap c_validcombination      "c_validcombination_id,account_id"                    "c_validcombination_id INT,account_id INT"
@@ -166,10 +167,11 @@ echo "== capture the inventory MOVEMENT LEDGER (m_transaction — StorageOnHand 
 # (accumulation). The source-line ref columns (m_inoutline_id/m_inventoryline_id/m_movementline_id/
 # m_productionline_id — exactly one set) attribute each movement to receipt/shipment/inventory/movement/production.
 # NON-INVENT: the real ledger, verbatim (movementqty stored signed; we ALSO recompute the sign to prove the rule).
+# movementdate added ADDITIVELY for the M_MatchInv avg-cost split — on-hand AT MATCH = Σqty up to the match date.
 PG "SELECT m_transaction_id, m_product_id, m_locator_id, m_attributesetinstance_id, movementtype, round(movementqty,2),
-           coalesce(m_inoutline_id,0), coalesce(m_inventoryline_id,0), coalesce(m_movementline_id,0), coalesce(m_productionline_id,0)
+           coalesce(m_inoutline_id,0), coalesce(m_inventoryline_id,0), coalesce(m_movementline_id,0), coalesce(m_productionline_id,0), movementdate::date
     FROM adempiere.m_transaction WHERE ad_client_id=11 ORDER BY m_transaction_id;" > /tmp/m_transaction.csv
-sqlite3 "$DB" "DROP TABLE IF EXISTS m_transaction; CREATE TABLE m_transaction(m_transaction_id INT, m_product_id INT, m_locator_id INT, m_attributesetinstance_id INT, movementtype TEXT, movementqty REAL, m_inoutline_id INT, m_inventoryline_id INT, m_movementline_id INT, m_productionline_id INT);"
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_transaction; CREATE TABLE m_transaction(m_transaction_id INT, m_product_id INT, m_locator_id INT, m_attributesetinstance_id INT, movementtype TEXT, movementqty REAL, m_inoutline_id INT, m_inventoryline_id INT, m_movementline_id INT, m_productionline_id INT, movementdate TEXT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/m_transaction.csv m_transaction"
 
 echo "== capture replenishment config (Δ-B replenishment PO — ReplenishReport, FOLD_MODEL_LOGIC.md §F-2 task #3) =="
