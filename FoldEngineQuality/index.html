@@ -4284,33 +4284,33 @@ is absent — exactly the failure mode visible in the one in-progress script).</
 <hr />
 <h2 id="2-the-architecture-being-judged">2 · The architecture being judged<a class="headerlink" href="#2-the-architecture-being-judged" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
-    subgraph PURE["erp_engine.js · PURE (no DB, no clock, no DOM)"]
+    subgraph PURE["erp_engine.js — PURE: no DB, no clock, no DOM"]
         G["evalGuard — predicate rules"]
-        M["match — generic Detail⋈Detail&lt;br/&gt;(3-way match / alloc / costing)"]
+        M["match — generic Detail-join-Detail&lt;br/&gt;3-way match / alloc / costing"]
         B["buildDoc — archetype create-verb&lt;br/&gt;createShipment · createInvoice · PO"]
         X["explodeBOM — recursive backflush"]
         Q["qtyOnHand + movementSign — inventory spine"]
         C["completeOrder / completeInvoice — doc-action"]
     end
 
-    subgraph GLUE["post_resolver.js · HOST GLUE"]
-        R["resolve(token → real account)&lt;br/&gt;reads ONLY real AD acct-config columns"]
+    subgraph GLUE["post_resolver.js — HOST GLUE"]
+        R["resolve token to real account&lt;br/&gt;reads ONLY real AD acct-config columns"]
     end
 
-    subgraph WIT["poc_*.js · WITNESSES (better-sqlite3)"]
-        D["derive() — fold the source"]
-        O["oracle() — read real fact_acct"]
-        F["§FALSIFIER — corrupt input, prove diff blows up"]
+    subgraph WIT["poc scripts — WITNESSES via better-sqlite3"]
+        D["derive — fold the source"]
+        O["oracle — read real fact_acct"]
+        F["FALSIFIER — corrupt input, prove diff blows up"]
     end
 
     DB[("glassbowl_data.db&lt;br/&gt;real GardenWorld rows&lt;br/&gt;client 11")]
 
-    PURE --&gt;|ops[]| WIT
-    GLUE --&gt;|account ids| WIT
+    PURE --&gt;|"ops"| WIT
+    GLUE --&gt;|"account ids"| WIT
     DB --&gt; GLUE
     DB --&gt; WIT
-    D --&gt;|maxDiff in integer cents| O
-    O --&gt;|"== 0c ?"| V{{"🟢 oracle-equivalent&lt;br/&gt;🔴 fail"}}
+    D --&gt;|"maxDiff in integer cents"| O
+    O --&gt;|"equal to 0c ?"| V{{"oracle-equivalent or fail"}}
     F --&gt; V</code></pre>
 <p><strong>Why this shape is good.</strong> The logic that <em>would have been</em> spread across hundreds of Java
 <code>MDocument</code> subclasses is collected into <strong>one pure module</strong> (<code>erp_engine.js</code>, 254 LOC). It imports

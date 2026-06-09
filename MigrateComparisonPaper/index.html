@@ -5265,18 +5265,12 @@ parallel op|view history timeline across the BIM building and the ERP context.)<
 </div>
 </details>
 <details class="fold">
-<summary>Status <span class="hint">draft state &amp; provenance</span></summary>
-<div class="fbd">
-<p>DRAFT (2026-06-08). The evaluator-facing companion to the deep papers (<a href="../ERP/">ERP.md</a> · <a href="../DistributedERP/">DistributedERP.md</a> · <a href="../BIMERPPaper/">BIMERPPaper.md</a>). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.</p>
-</div>
-</details>
-<details class="fold">
-<summary>Worked example — <code>MOrder.completeIt()</code> folded onto the op-log <span class="hint">~250 Java LOC → ~50 JS · primitives shipped, orchestration is the H-1 fold</span></summary>
+<summary>Worked example — New <code>MOrder.completeIt()</code> version</summary>
 <div class="fbd">
 <p>This is the <em>irreducible — must be folded</em> row made concrete: one real <code>M*</code> document action, re-expressed on the
 deterministic kernel. The <strong>primitives are shipped</strong> (linked below); the <strong>orchestration that wires them is the fold
 itself</strong> — the <code>MOrder.completeIt()</code> body — which is the bulk of the <a href="../ERP_MODEL_ARCHETYPE/">HARDEN_MATRIX H-1</a> work,
-mostly still to-do. Block-for-block against <code>org.compiere.model.MOrder.completeIt()</code>:</p>
+mostly still to-do. <em>The fold/oracle-equivalence scripts that back this are graded in the</em> <strong><a href="../FoldEngineQuality/">Fold-Engine code-quality scorecard</a></strong>. Block-for-block against <code>org.compiere.model.MOrder.completeIt()</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// MOrder.completeIt() folded onto the signed op-log. Java: MOrder.completeIt (~250 LOC, getX/setX/saveEx/SQL).</span>
 <span class="c1">// Every effect is an OP appended to the log; status &amp; books are a FOLD of those ops. Commits WHOLE or NONE.</span>
 <span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">completeIt</span><span class="p">(</span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -5333,6 +5327,12 @@ mostly still to-do. Block-for-block against <code>org.compiere.model.MOrder.comp
 <p><strong>Still the fold-TODO</strong> (named, not built — the H-1 work): <code>buildDoc('M_InOut'/'C_Invoice', …)</code> auto-ship/auto-invoice recursion, <code>createCounterDoc</code> (intercompany), reservation edge cases, landed cost. Tracked in <code>prompts/HARDEN_MATRIX.md</code>.</p>
 <p><strong>Code quality — independent scorecard:</strong> for a reviewer's read of <em>how well</em> these fold/oracle-equivalence scripts are built (separation, determinism, non-invention, adversarial falsifiers, the per-script PASS scoreboard, and the honest risks), see <a href="../FoldEngineQuality/"><strong><code>FoldEngineQuality.md</code></strong></a> — 10 of 11 witnesses green, 1 in progress.</p>
 <p><strong>Three things it makes concrete:</strong> (1) <strong>~50 JS vs ~250 Java</strong> — the <code>getX/setX/saveEx</code>/SQL/try-catch ceremony drops; only the decisions survive. (2) <strong>"MOrder + deltas" is right here</strong> — <code>createShipment</code>/<code>createInvoice</code> are <code>buildDoc('M_InOut'/'C_Invoice')</code>, the <em>same</em> archetype verb recursing one level down; MInOut's only real delta is <code>reserveStock</code>+locator. (3) <strong>Both folds in one function</strong> — the body is <em>code</em> (Fold B: Java→compact verbs); what it <em>emits</em> is <em>ops</em> = <em>data</em>; <code>DocStatus</code> and the trial balance are <em>Fold A</em> over that data.</p>
+</div>
+</details>
+<details class="fold">
+<summary>Status <span class="hint">draft state &amp; provenance</span></summary>
+<div class="fbd">
+<p>DRAFT (2026-06-08). The evaluator-facing companion to the deep papers (<a href="../ERP/">ERP.md</a> · <a href="../DistributedERP/">DistributedERP.md</a> · <a href="../BIMERPPaper/">BIMERPPaper.md</a>). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.</p>
 </div>
 </details>
 <hr />
