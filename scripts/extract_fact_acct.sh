@@ -76,6 +76,8 @@ cap c_tax_acct              "c_tax_id,c_acctschema_id,t_due_acct"               
 cap c_validcombination      "c_validcombination_id,account_id"                    "c_validcombination_id INT,account_id INT"
 cap c_acctschema_default    "c_acctschema_id"                                     "c_acctschema_id INT"
 cap c_invoicetax            "c_invoice_id,c_tax_id,taxamt"                         "c_invoice_id INT,c_tax_id INT,taxamt REAL"
+# Bank account acct-config: Doc_Payment posts a receipt DR {Bank.InTransit} / CR {Bank.UnallocatedCash} at payamt.
+cap c_bankaccount_acct      "c_bankaccount_id,c_acctschema_id,b_intransit_acct,b_unallocatedcash_acct,b_paymentselect_acct,b_asset_acct" "c_bankaccount_id INT,c_acctschema_id INT,b_intransit_acct INT,b_unallocatedcash_acct INT,b_paymentselect_acct INT,b_asset_acct INT"
 
 echo "== capture inventory + cost oracle (F-1 shipment posting Doc_InOut + StorageOnHand spine, prompts/FOLD_MODEL_LOGIC.md §F-1 1b-ii / step-2) =="
 # Doc_InOut posts DR {Product.Cogs} / CR {Product.Asset} at the product's current cost. The accounts

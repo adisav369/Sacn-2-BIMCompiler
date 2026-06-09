@@ -21,7 +21,9 @@ var TOKENS = {
   '{Product.Revenue}':     { table: 'm_product_category_acct', col: 'p_revenue_acct',    keyCol: 'm_product_category_id', via: 'product->category' },
   '{Product.Cogs}':        { table: 'm_product_category_acct', col: 'p_cogs_acct',       keyCol: 'm_product_category_id', via: 'product->category' },
   '{Product.Asset}':       { table: 'm_product_category_acct', col: 'p_asset_acct',      keyCol: 'm_product_category_id', via: 'product->category' },
-  '{Tax.Due}':             { table: 'c_tax_acct',               col: 't_due_acct',        keyCol: 'c_tax_id' }
+  '{Tax.Due}':             { table: 'c_tax_acct',               col: 't_due_acct',        keyCol: 'c_tax_id' },
+  '{Bank.InTransit}':      { table: 'c_bankaccount_acct',       col: 'b_intransit_acct',  keyCol: 'c_bankaccount_id' },
+  '{Bank.UnallocatedCash}':{ table: 'c_bankaccount_acct',       col: 'b_unallocatedcash_acct', keyCol: 'c_bankaccount_id' }
 };
 
 function one(db, sql, params) { var r = db.prepare(sql).get(params || {}); return r || null; }
