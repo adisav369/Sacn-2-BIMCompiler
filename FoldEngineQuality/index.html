@@ -757,10 +757,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-in-progress-stub-poc_matchinvjs" class="md-nav__link">
+  <a href="#6-recently-closed-poc_matchinvjs-was-the-one-in-progress-stub" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6 · In-progress (stub) — poc_matchinv.js
+        6 · Recently closed — poc_matchinv.js (was the one in-progress stub)
       
     </span>
   </a>
@@ -4209,10 +4209,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-in-progress-stub-poc_matchinvjs" class="md-nav__link">
+  <a href="#6-recently-closed-poc_matchinvjs-was-the-one-in-progress-stub" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6 · In-progress (stub) — poc_matchinv.js
+        6 · Recently closed — poc_matchinv.js (was the one in-progress stub)
       
     </span>
   </a>
@@ -4272,46 +4272,73 @@ Oracle equivalence (vs real)    9.0   ██████████████
 Spec ↔ code ↔ witness tracing   9.5   ███████████████████░
 DRY / fold-not-fork reuse       9.0   ██████████████████░░
 Readability / maintainability   6.5   █████████████░░░░░░░
-Robustness to data gaps         6.0   ████████████░░░░░░░░
+Robustness to data gaps         7.0   ██████████████░░░░░░
 ─────────────────────────────────────────────────────────────────────
-OVERALL                         8.7   █████████████████░░░   STRONG
+OVERALL                         8.8   █████████████████░░░   STRONG
 </code></pre></div>
 <p><strong>One-line verdict:</strong> <em>Research-grade, evidence-first code with unusually high proof discipline.</em>
 The design (a pure engine + host-injected data + adversarial witnesses diffed to a real iDempiere
 ledger) is excellent. The two soft spots are <strong>readability</strong> (very dense one-liners) and
-<strong>robustness</strong> (a hard dependency on one captured database, with no graceful handling when a column
-is absent — exactly the failure mode visible in the one in-progress script).</p>
+<strong>robustness</strong> (a hard dependency on one captured database; the resolver still throws rather than
+degrades when a column is genuinely absent — though the one case where that bit, <code>poc_matchinv</code>, is
+now closed by re-capturing the fixture, so the risk is latent rather than active).</p>
 <hr />
 <h2 id="2-the-architecture-being-judged">2 · The architecture being judged<a class="headerlink" href="#2-the-architecture-being-judged" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>flowchart LR
-    subgraph PURE["erp_engine.js — PURE: no DB, no clock, no DOM"]
-        G["evalGuard — predicate rules"]
-        M["match — generic Detail-join-Detail&lt;br/&gt;3-way match / alloc / costing"]
-        B["buildDoc — archetype create-verb&lt;br/&gt;createShipment · createInvoice · PO"]
-        X["explodeBOM — recursive backflush"]
-        Q["qtyOnHand + movementSign — inventory spine"]
-        C["completeOrder / completeInvoice — doc-action"]
+<pre class="mermaid"><code>flowchart TB
+    DB[("glassbowl_data.db — real GardenWorld rows, client 11")]
+
+    subgraph PURE["1 · erp_engine.js — PURE core: no DB, no clock, no DOM"]
+        direction LR
+        G["evalGuard&lt;br/&gt;predicate rules"]
+        M["match&lt;br/&gt;generic Detail-join-Detail&lt;br/&gt;3-way · alloc · costing"]
+        B["buildDoc&lt;br/&gt;archetype create-verb&lt;br/&gt;shipment · invoice · PO"]
+        X["explodeBOM&lt;br/&gt;recursive backflush"]
+        Q["qtyOnHand + movementSign&lt;br/&gt;inventory spine"]
+        C["completeOrder / completeInvoice&lt;br/&gt;doc-action"]
     end
 
-    subgraph GLUE["post_resolver.js — HOST GLUE"]
-        R["resolve token to real account&lt;br/&gt;reads ONLY real AD acct-config columns"]
+    subgraph GLUE["2 · post_resolver.js — HOST GLUE"]
+        direction LR
+        R["resolve token to real account — reads ONLY real AD acct-config columns, never invents"]
     end
 
-    subgraph WIT["poc scripts — WITNESSES via better-sqlite3"]
-        D["derive — fold the source"]
-        O["oracle — read real fact_acct"]
-        F["FALSIFIER — corrupt input, prove diff blows up"]
+    subgraph WIT["3 · poc scripts — WITNESSES via better-sqlite3"]
+        direction LR
+        D["derive&lt;br/&gt;fold the source rows"]
+        O["oracle&lt;br/&gt;read real fact_acct"]
+        F["FALSIFIER&lt;br/&gt;corrupt input →&lt;br/&gt;diff must blow up"]
     end
 
-    DB[("glassbowl_data.db&lt;br/&gt;real GardenWorld rows&lt;br/&gt;client 11")]
+    V{{"VERDICT — oracle-equivalent or fail"}}
 
-    PURE --&gt;|"ops"| WIT
+    DB --&gt;|"master rows"| GLUE
+    DB --&gt;|"source + oracle rows"| WIT
+    PURE --&gt;|"ops[ ]"| WIT
     GLUE --&gt;|"account ids"| WIT
-    DB --&gt; GLUE
-    DB --&gt; WIT
     D --&gt;|"maxDiff in integer cents"| O
-    O --&gt;|"equal to 0c ?"| V{{"oracle-equivalent or fail"}}
+    O --&gt;|"equal to 0c ?"| V
     F --&gt; V</code></pre>
+<p><strong>Every numbered box is real code</strong> (branch <code>feat/erp-substrate-phase012</code>) — links per box below (the Mermaid boxes themselves aren't clickable under Material's strict render, so the source links live here):</p>
+<ul>
+<li><strong>1 · <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/erp_engine.js"><code>erp_engine.js</code></a></strong> — the pure core:
+  <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/erp_engine.js#L39"><code>evalGuard</code></a> ·
+  <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/erp_engine.js#L77"><code>match</code></a> ·
+  <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/erp_engine.js#L150"><code>buildDoc</code></a> ·
+  <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/erp_engine.js#L178"><code>explodeBOM</code></a> ·
+  <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/erp_engine.js#L211"><code>qtyOnHand</code></a> ·
+  <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/erp_engine.js#L225"><code>completeOrder</code></a></li>
+<li><strong>2 · <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/post_resolver.js"><code>post_resolver.js</code></a></strong> — the host glue (<a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/post_resolver.js#L60"><code>resolve</code></a>: token → real account)</li>
+<li><strong>3 · <a href="https://github.com/red1oon/BIMCompiler/tree/feat/erp-substrate-phase012/scripts">full <code>scripts/poc_*.js</code> witness suite</a></strong> — per-file links in §3</li>
+</ul>
+<p><strong>The iDempiere originals each verb folds</strong> (upstream <code>release-12</code>) —
+<code>completeOrder</code>/<code>completeInvoice</code> ← <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/model/MOrder.java"><code>MOrder</code></a> / <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/model/MInvoice.java"><code>MInvoice</code></a><code>.completeIt()</code> ·
+<code>buildDoc</code> ← <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/model/MInOut.java"><code>MInOut</code></a> + <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/model/MMovement.java"><code>MMovement</code></a> ·
+<code>match</code> ← <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/model/MMatchInv.java"><code>MMatchInv</code></a> + <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/model/MAllocationHdr.java"><code>MAllocationHdr</code></a> ·
+<code>explodeBOM</code> ← <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/eevolution/model/MPPProductBOM.java"><code>MPPProductBOM</code></a> ·
+<code>qtyOnHand</code> ← <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/model/MStorageOnHand.java"><code>MStorageOnHand</code></a> + <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/model/MTransaction.java"><code>MTransaction</code></a> ·
+<code>evalGuard</code> ← <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/model/MValRule.java"><code>MValRule</code></a> ·
+posting/oracle ← <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/acct/Doc_Invoice.java"><code>Doc_Invoice</code></a> · <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/acct/Doc_InOut.java"><code>Doc_InOut</code></a> · <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/acct/Doc_Payment.java"><code>Doc_Payment</code></a> · <a href="https://github.com/idempiere/idempiere/blob/release-12/org.adempiere.base/src/org/compiere/acct/Doc_AllocationHdr.java"><code>Doc_AllocationHdr</code></a>.
+<em>These are the classes the fold replaces — the engine reproduces their posted output (<code>fact_acct</code>) to the cent, not their code.</em></p>
 <p><strong>Why this shape is good.</strong> The logic that <em>would have been</em> spread across hundreds of Java
 <code>MDocument</code> subclasses is collected into <strong>one pure module</strong> (<code>erp_engine.js</code>, 254 LOC). It imports
 no database — the host injects a <code>query(sql)→rows</code> / <code>bomOf(id)→lines</code> function — so the <em>identical</em>
@@ -4336,7 +4363,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 </thead>
 <tbody>
 <tr>
-<td><code>erp_engine.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/erp_engine.js"><code>erp_engine.js</code></a></td>
 <td style="text-align: right;">254</td>
 <td>Pure engine (shared core)</td>
 <td style="text-align: center;">—</td>
@@ -4344,7 +4371,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>library — exercised by all below</td>
 </tr>
 <tr>
-<td><code>post_resolver.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/post_resolver.js"><code>post_resolver.js</code></a></td>
 <td style="text-align: right;">98</td>
 <td>Host glue: token→real account</td>
 <td style="text-align: center;">—</td>
@@ -4352,7 +4379,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>library</td>
 </tr>
 <tr>
-<td><code>poc_fold_complete.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_fold_complete.js"><code>poc_fold_complete.js</code></a></td>
 <td style="text-align: right;">181</td>
 <td><strong>Keystone</strong> — <code>completeIt(C_Order)</code> full chain</td>
 <td style="text-align: center;">1</td>
@@ -4360,7 +4387,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>🟢 PASS</td>
 </tr>
 <tr>
-<td><code>poc_money_post.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_money_post.js"><code>poc_money_post.js</code></a></td>
 <td style="text-align: right;">94</td>
 <td><code>Doc_Payment</code> receipt posting</td>
 <td style="text-align: center;">✅</td>
@@ -4368,7 +4395,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>🟢 PASS</td>
 </tr>
 <tr>
-<td><code>poc_backflush.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_backflush.js"><code>poc_backflush.js</code></a></td>
 <td style="text-align: right;">102</td>
 <td>Recursive BOM backflush (AutoBOMOrder)</td>
 <td style="text-align: center;">✅</td>
@@ -4376,7 +4403,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>🟢 PASS</td>
 </tr>
 <tr>
-<td><code>poc_alloc_post.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_alloc_post.js"><code>poc_alloc_post.js</code></a></td>
 <td style="text-align: right;">182</td>
 <td><code>Doc_AllocationHdr</code> + VAT tax-correction</td>
 <td style="text-align: center;">✅</td>
@@ -4384,7 +4411,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>🟢 PASS</td>
 </tr>
 <tr>
-<td><code>poc_qtyonhand.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_qtyonhand.js"><code>poc_qtyonhand.js</code></a></td>
 <td style="text-align: right;">113</td>
 <td>Inventory spine <code>Σ sign×|qty|</code></td>
 <td style="text-align: center;">2</td>
@@ -4392,7 +4419,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>🟢 PASS</td>
 </tr>
 <tr>
-<td><code>poc_replenish.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_replenish.js"><code>poc_replenish.js</code></a></td>
 <td style="text-align: right;">148</td>
 <td>Replenishment PO (rides qty spine)</td>
 <td style="text-align: center;">✅</td>
@@ -4400,7 +4427,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>🟢 PASS</td>
 </tr>
 <tr>
-<td><code>poc_invoice_complete.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_invoice_complete.js"><code>poc_invoice_complete.js</code></a></td>
 <td style="text-align: right;">146</td>
 <td>Standalone <code>completeIt(C_Invoice)</code></td>
 <td style="text-align: center;">✅</td>
@@ -4408,7 +4435,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>🟢 PASS</td>
 </tr>
 <tr>
-<td><code>poc_invoice_post_ap.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_invoice_post_ap.js"><code>poc_invoice_post_ap.js</code></a></td>
 <td style="text-align: right;">133</td>
 <td>Vendor (purchase) invoice GL</td>
 <td style="text-align: center;">✅</td>
@@ -4416,7 +4443,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>🟢 PASS</td>
 </tr>
 <tr>
-<td><code>poc_alloc_fx.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_alloc_fx.js"><code>poc_alloc_fx.js</code></a></td>
 <td style="text-align: right;">169</td>
 <td>Foreign-currency allocation</td>
 <td style="text-align: center;">✅</td>
@@ -4424,7 +4451,7 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>🟢 PASS</td>
 </tr>
 <tr>
-<td><code>poc_movement.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_movement.js"><code>poc_movement.js</code></a></td>
 <td style="text-align: right;">138</td>
 <td>Inter-org <code>M_Movement</code> + intercompany</td>
 <td style="text-align: center;">✅</td>
@@ -4432,16 +4459,16 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <td>🟢 PASS</td>
 </tr>
 <tr>
-<td><code>poc_matchinv.js</code></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/poc_matchinv.js"><code>poc_matchinv.js</code></a></td>
 <td style="text-align: right;">147</td>
-<td><code>M_MatchInv</code> posting (17/18)</td>
+<td><code>M_MatchInv</code> posting + avg-cost IPV split (18/18)</td>
+<td style="text-align: center;">2</td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;">✅</td>
-<td>🟧 <strong>IN PROGRESS</strong></td>
+<td>🟢 PASS</td>
 </tr>
 </tbody>
 </table>
-<p><strong>10 of 11 witnesses PASS green; 1 in progress.</strong> See §6 for the stub.</p>
+<p><strong>All 11 witnesses PASS green</strong> (the last in-progress one, <code>poc_matchinv</code>, closed at commit <code>34dc5433</code> — 18/18 oracle-equivalent; see §6).</p>
 <hr />
 <h2 id="4-what-the-code-does-right-the-load-bearing-strengths">4 · What the code does <em>right</em> (the load-bearing strengths)<a class="headerlink" href="#4-what-the-code-does-right-the-load-bearing-strengths" title="Permanent link">&para;</a></h2>
 <ol>
@@ -4505,8 +4532,8 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 </tr>
 <tr>
 <td>R2</td>
-<td><strong>Brittle to schema gaps.</strong> <code>post_resolver</code> issues <code>SELECT &lt;col&gt;</code> for a hard-coded column; if the captured DB lacks it, the script <strong>throws</strong> instead of degrading.</td>
-<td><code>poc_matchinv.js</code> aborts with <code>no such column: p_averagecostvariance_acct</code>.</td>
+<td><strong>Brittle to schema gaps (now latent).</strong> <code>post_resolver</code> issues <code>SELECT &lt;col&gt;</code> for a hard-coded column; if the captured DB lacks it, the script <strong>throws</strong> instead of degrading.</td>
+<td><code>poc_matchinv.js</code> <em>used to</em> abort with <code>no such column: p_averagecostvariance_acct</code>; <strong>resolved</strong> at commit <code>34dc5433</code> by re-capturing the fixture with that column + adding the token — but the throw-not-degrade pattern remains for any future missing column.</td>
 <td>Guard token columns against <code>PRAGMA table_info</code> and report <code>absent</code> (the resolver already has an <code>absent</code> channel — wire missing columns into it).</td>
 </tr>
 <tr>
@@ -4526,24 +4553,28 @@ make the diff blow up when an input is corrupted. “Cents” = uses integer-cen
 <p>None of these touch <em>correctness</em> of the green witnesses — they are <strong>maintainability and breadth</strong>
 concerns, which is the right category of risk for research-grade proof code.</p>
 <hr />
-<h2 id="6-in-progress-stub-poc_matchinvjs">6 · In-progress (stub) — <code>poc_matchinv.js</code><a class="headerlink" href="#6-in-progress-stub-poc_matchinvjs" title="Permanent link">&para;</a></h2>
-<p><strong>Status:</strong> 🟧 17 / 18 oracle-equivalent (commit <code>b4e678fb</code>). Not yet green.</p>
-<p><strong>Why:</strong> the M_MatchInv posting needs the average-cost-variance clearing account, but the captured
-fixture's <code>m_product_category_acct</code> does not carry <code>p_averagecostvariance_acct</code>, so <code>post_resolver</code>
-throws on the 18th case rather than reporting it absent (risk <strong>R2</strong> above, in the wild).</p>
-<p><strong>Roadmap / spec:</strong> <code>prompts/HARDEN_MATRIX.md</code> (§H-2 delta walk) and <code>FOLD_MODEL_LOGIC.md §F-2</code>.
-Unblocks with the <code>extract_fact_acct.sh</code> GL re-capture (§5 R3) <strong>plus</strong> the resolver-guard fix.
-The other 17 cases already diff to <code>maxDiff=0c</code>, so this is a <strong>fixture + one guard</strong>, not a logic
-gap. Listed here as a stub so the scoreboard stays honest.</p>
+<h2 id="6-recently-closed-poc_matchinvjs-was-the-one-in-progress-stub">6 · Recently closed — <code>poc_matchinv.js</code> (was the one in-progress stub)<a class="headerlink" href="#6-recently-closed-poc_matchinvjs-was-the-one-in-progress-stub" title="Permanent link">&para;</a></h2>
+<p><strong>Status:</strong> 🟢 <strong>18 / 18 oracle-equivalent</strong> (commit <code>34dc5433</code>). Green — no longer a stub.</p>
+<p><strong>What it took:</strong> the M_MatchInv posting needed the average-cost-variance clearing account. Earlier
+(commit <code>b4e678fb</code>, 17/18) the captured fixture's <code>m_product_category_acct</code> did not carry
+<code>p_averagecostvariance_acct</code>, so <code>post_resolver</code> threw on the 18th case. The close (per
+<code>prompts/HARDEN_MATRIX.md §H-2</code> / <code>FOLD_MODEL_LOGIC.md §F-2</code>) re-captured the fixture with that column
+(<code>extract_fact_acct.sh</code>), added the <code>{Product.AverageCostVariance}</code> resolver token, and implemented
+the <strong>avg-cost IPV split</strong> — when PO price ≠ invoice price, the variance splits between
+<code>{Product.Asset}</code> for qty still on hand at match time and <code>{Product.AverageCostVariance}</code> for the
+rest. 17 equal-price matches + 1 variance match (doc 100: IPV 100, 7 of 10 on hand → 70 asset / 30
+variance), both <code>§FALSIFIER</code> and <code>§FALSIFIER-IPV</code> firing.</p>
+<p><em>Kept as a worked record because it shows the methodology resolving its own honestly-named gap — the
+17/18 stub became 18/18 by re-capturing real data and adding one declarative token, not by inventing
+the missing account.</em></p>
 <hr />
 <h2 id="7-methodology-how-to-reproduce-this-scorecard">7 · Methodology — how to reproduce this scorecard<a class="headerlink" href="#7-methodology-how-to-reproduce-this-scorecard" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># every green witness, from the repo root:</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># all 11 witnesses, from the repo root — every one exits 0:</span>
 <span class="k">for</span><span class="w"> </span>f<span class="w"> </span><span class="k">in</span><span class="w"> </span>poc_fold_complete<span class="w"> </span>poc_money_post<span class="w"> </span>poc_backflush<span class="w"> </span>poc_alloc_post<span class="w"> </span><span class="se">\</span>
 <span class="w">         </span>poc_qtyonhand<span class="w"> </span>poc_replenish<span class="w"> </span>poc_invoice_complete<span class="w"> </span>poc_invoice_post_ap<span class="w"> </span><span class="se">\</span>
-<span class="w">         </span>poc_alloc_fx<span class="w"> </span>poc_movement<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">         </span>poc_alloc_fx<span class="w"> </span>poc_movement<span class="w"> </span>poc_matchinv<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">  </span>node<span class="w"> </span>scripts/<span class="nv">$f</span>.js<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;🟢 </span><span class="nv">$f</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;🔴 </span><span class="nv">$f</span><span class="s2">&quot;</span>
 <span class="k">done</span>
-node<span class="w"> </span>scripts/poc_matchinv.js<span class="w">   </span><span class="c1"># 🟧 in progress — 17/18</span>
 </code></pre></div>
 <p>Each script also <code>tee</code>s a witness log under <code>build/erp/poc_*.log</code>; read the log, not the exit code
 alone (project Log Mandate). Falsifier lines are tagged <code>§FALSIFIER</code> and equivalence lines
