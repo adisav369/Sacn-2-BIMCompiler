@@ -4250,7 +4250,7 @@ a <em>delta</em>, not novel code. This page maps that — so "the rest is more o
 <td><strong><code>DocAction</code> lifecycle</strong></td>
 <td><code>prepareIt</code> · <code>completeIt</code> · <code>reopenIt</code> (+ the inherited void/close/reverseCorrect/reverseAccrual/reActivate set) over <code>DocumentEngine</code>/WfMC</td>
 <td><code>ad_process</code> + DocAction dispatch</td>
-<td>✅ <strong><code>completeIt</code> oracle-equivalent</strong> — the full Order→Ship→Invoice fan-out chain folds <code>maxDiff=0c</code> (W-FOLD-COMPLETE); standalone <code>completeIt(C_Invoice)</code>+MatchInv folded (W-FOLD-INVOICE). <strong>Residual:</strong> the void/reverse transition set = the delta</td>
+<td>✅ <strong><code>completeIt</code> oracle-equivalent</strong> — the full Order→Ship→Invoice fan-out chain folds <code>maxDiff=0c</code> (W-FOLD-COMPLETE); standalone <code>completeIt(C_Invoice)</code>+MatchInv folded (W-FOLD-INVOICE); the <strong>void/reverseCorrect</strong> set is now oracle-anchored — engine reversal + real <code>fact_acct</code> nets to zero, FSM CO→RE (W-FOLD-REVERSE). <strong>Residual:</strong> reverseAccrual booked-date (no <code>c_period</code> in seed)</td>
 </tr>
 <tr>
 <td><strong>Posting (GL derivation)</strong></td>
@@ -4378,21 +4378,41 @@ line table and poster.</p>
 <td>QtyToOrder (movement-folded on-hand) == iDempiere formula (8/8); PO via <code>buildDoc</code></td>
 </tr>
 <tr>
+<td><strong>Reversal family</strong> (reverseCorrect / void)</td>
+<td>W-FOLD-REVERSE</td>
+<td>engine reversal (swap Dr↔Cr) <strong>+ real <code>fact_acct</code> NETS TO ZERO</strong> per account (6/6 C_Payment+C_Invoice); FSM CO→RE; ORACLE-ANCHORED (transform of real posting)</td>
+</tr>
+<tr>
+<td><strong>GL_Journal</strong> (manual + inter-org)</td>
+<td>W-FOLD-GLJOURNAL</td>
+<td>direct lines (amtacct=amtsource×rate) + per-org Intercompany Due-To/From balancing == <code>fact_acct(224)</code> (2/2, both schemas)</td>
+</tr>
+<tr>
 <td><strong>MProduction backflush</strong></td>
 <td>W-FOLD-BACKFLUSH</td>
 <td>recursive BOM explosion == path-enumeration (recipe-equivalent; <code>m_production</code>=0 in seed)</td>
 </tr>
+<tr>
+<td><strong>MProduction movement</strong></td>
+<td>W-FOLD-PRODUCTION</td>
+<td>enacted P+/P- ledger folds through the qty spine (finished +Q / leaf −used); rule-consistent, GL named-deferred (component cost absent)</td>
+</tr>
+<tr>
+<td><strong>MInventory count</strong></td>
+<td>W-FOLD-INVENTORY</td>
+<td>enacted I± folds on-hand→counted + GL <code>\|adjQty\|×cost</code> balances; rule-consistent, offset acct named-deferred</td>
+</tr>
 </tbody>
 </table>
-<p><strong>Score: 10 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent</strong> — and they are the deepest deltas
+<p><strong>Score: 12 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)</strong> — and they are the deepest deltas
 (the whole Money family — sales AND purchase invoice posting, allocation in BOTH accounting schemas, the MatchInv
 clearing loop — + the inventory loop incl. the inter-org MMovement cost transfer). <strong>Logic-folded is no longer
 ~0.2%</strong>: the trade-doc loop (order→ship→invoice→<strong>match-posting</strong>→pay→allocate) and the inventory loop
 (movement→on-hand→replenish-PO) both fold end-to-end to their iDempiere oracle, on <strong>both</strong> the sales and purchase
 sides of <code>Doc_Invoice</code> and across the base (USD) <strong>and</strong> foreign-currency (EUR) acctschema — and the PO
 match→clearing loop folds in full incl. the avg-cost IPV split (on-hand-proportioned, riding the qty spine).
-<strong>Unfolded tail:</strong> <strong>GL_Journal</strong> (<code>fact_acct</code> 224 — lines post directly, near-tautological) · the void/reverse
-DocAction set (no reversed doc in seed) · <code>MInventory</code> physical-count + <code>MProduction</code> GL (no seed movements) · the
+<strong>Unfolded tail:</strong> <code>MInventory</code> + <code>MProduction</code> <strong>cost-valued GL</strong> (movement folds proven
+W-FOLD-INVENTORY/PRODUCTION; component-cost + offset-account DATA absent in seed → GL named-deferred, not faked) · the
 Fixed-Assets + GL/Project families · the declarative surfaces (still surface-interpreted, not oracle-diffed).</p>
 <h2 id="what-this-changes-for-the-backend-arc">What this changes for the backend arc<a class="headerlink" href="#what-this-changes-for-the-backend-arc" title="Permanent link">&para;</a></h2>
 <ol>

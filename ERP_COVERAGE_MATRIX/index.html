@@ -4362,8 +4362,24 @@ denominator, not 496 classes / 735k LOC).</p>
 <td><strong>Δ-B replenishment PO (ReplenishReport, W-FOLD-REPLENISH)</strong> — the engine derives on-hand by FOLDING <code>m_transaction</code> (rides the qty spine, never reads <code>m_storageonhand</code>) per product within the warehouse's locators, applies the exact ReplenishReport <code>QtyToOrder</code> formula (type-1 reorder-below-min / type-2 maintain-max), and emits the PO through the EXISTING <code>erp_engine.buildDoc</code> archetype (<strong>newVerbs=0</strong>). <strong>8/8 products == iDempiere's own formula-SQL over <code>m_storageonhand</code>, maxDiff=0</strong> (a different execution path + on-hand source). PO op-group = 1 CREATE_DOCUMENT(C_Order,PO) + 8 CREATE_LINE. §FALSIFIER-A max↔min (20), §FALSIFIER-B type-1-always-order (16≠8). <code>build/erp/poc_replenish.log</code>.</td>
 </tr>
 <tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>Manual GL_Journal posting incl. inter-org balancing (W-FOLD-GLJOURNAL)</strong> — <code>poc_gljournal.js</code> folds Doc_GLJournal: each line posts directly (amtacct = <code>round(amtsource × currencyrate, 2)</code>, derived not copied — reproduces the stored amtacct), THEN the load-bearing half — GardenWorld's journal is INTER-ORG (DR Checking@org11 / CR Checking@org12, same natural account 508 via different C_ValidCombinations), so <code>Fact.balanceAccounting</code> adds per-org Intercompany Due-To(600)/Due-From(741) lines via the SAME <code>c_acctschema_gl</code> rule proven in W-FOLD-MOVEMENT (net&gt;0 → CR Due-To / net&lt;0 → DR Due-From). <strong>2/2 journals == <code>fact_acct(224)</code> maxDiff=0c across BOTH acctschemas</strong> (101 USD + 200000 EUR). §FALSIFIER-A swap Due-To/From (10000c), §FALSIFIER-B drop per-org balancing → single-org (10000c) — proves it is NOT the near-tautological direct-post. <code>build/erp/poc_gljournal.log</code>. <strong>Residual:</strong> foreign-RATE journal (rate≠1) converts identically to W-FOLD-ALLOC-FX (degenerate rate=1 in seed).</td>
+</tr>
+<tr>
+<td>✅ <strong>oracle-equivalent</strong></td>
+<td><strong>reverseCorrect / void DocAction family — ORACLE-ANCHORED (W-FOLD-REVERSE)</strong> — <code>poc_reverse.js</code> ENACTS the reversal our seed never posted: it re-derives each completed doc's FORWARD posting from source (the proven <code>post_resolver</code> paths), re-confirms it == the REAL <code>fact_acct</code> (anchor holds), feeds it to NEW pure verb <code>erp_engine.reversePosting</code> (swap Dr↔Cr, never reads the books), and proves the engine's reversal <strong>summed with the real original NETS TO ZERO in every account</strong> — iDempiere's <code>reverseCorrect</code> contract (books return to pre-document state). <strong>6/6 docs (C_Payment 100/101 + vendor C_Invoice 102/104/105/106) annihilate to the cent</strong> (residual=0c, swapDiff=0c); FSM <strong>CO→RE</strong> asserted (pure <code>ad_docfsm.transition</code> RC/RA→RE, VO→VO). <code>reverseAccrual</code> posting == <code>reverseCorrect</code> (only the booked date differs — date-shift named-deferred: no <code>c_period</code> in this extract). The transform is iDempiere's, the anchor is real client-11 data — non-tautological. §FALSIFIER-A same-sign (no swap) → doc DOUBLES (19700c), §FALSIFIER-B wrong reversal account (9850c). Enacted in a SANDBOX copy; the read-only anchor stays CO. <code>build/erp/poc_reverse.log</code>.</td>
+</tr>
+<tr>
 <td>🟡 <strong>recipe-equivalent</strong></td>
 <td><strong>Δ-A recursive BOM backflush (W-FOLD-BACKFLUSH)</strong> — <code>erp_engine.explodeBOM</code> on the real nested recipe (Patio Chair ×30 → Screw×480…) == independent path-enumeration oracle; multi-path accumulation invariant; flat §FALSIFIER fires. (No <code>fact_acct</code> oracle — <code>m_production</code>=0 in seed; oracle = recipe explosion.) <code>build/erp/poc_backflush.log</code>.</td>
+</tr>
+<tr>
+<td>🟡 <strong>rule-consistent</strong></td>
+<td><strong>MProduction movement fold (W-FOLD-PRODUCTION)</strong> — <code>poc_production.js</code> ENACTS a production GardenWorld never posted (m_production=0, NO oracle): <code>explodeBOM</code> → synthesize the P+ (finished +Q) / P- (each leaf −used) MTransaction ledger → it folds through the PROVEN qty spine (<code>movementSign</code>/<code>qtyOnHand</code>) to finished +Q / leaf −used (Patio Chair ×30 → +30 / 6 leaves incl. 480 screws). <strong>Closes the StorageOnHand DECREMENT that W-FOLD-BACKFLUSH + W-FOLD-QTYONHAND named-deferred.</strong> §FALSIFIER-A flip a P-→P+ (leaf goes +used), §FALSIFIER-B flat explosion (6→4 leaves, misses sub-assemblies). <strong>GL named-deferred</strong> (leaf-component <code>m_cost</code> absent in seed → component-cost CR can't be valued without inventing; the cost <em>rule</em> is proven, the <em>data</em> is absent). Tier = rule-consistent, NOT "== iDempiere". <code>build/erp/poc_production.log</code>.</td>
+</tr>
+<tr>
+<td>🟡 <strong>rule-consistent</strong></td>
+<td><strong>MInventory physical-count fold (W-FOLD-INVENTORY)</strong> — <code>poc_inventory.js</code> ENACTS a count (no I± in seed, NO oracle): book on-hand = FOLD of real <code>m_transaction</code> (== <code>m_storageonhand</code>) → I+/I- picked by sign(counted−book) → folding the adjustment through the qty spine lands on-hand == counted (6/6 products, gain+loss), and the GL adjustment value = <code>|adjQty| × cost</code> via the PROVEN cost-selection rule (Oak Tree +3 × 51.45 = 154.35) and BALANCES. <strong>Closes the MInventory I± rider qtyonhand named-deferred.</strong> §FALSIFIER-A wrong polarity (on-hand ≠ counted), §FALSIFIER-B Material cost element (24.00 ≠ Average 51.45). <strong>GL offset account named-deferred</strong> (Inventory-Gain/Loss <code>ACCTTYPE_InvDifferences</code> has no extractable column; the leg value + balance are proven). Tier = rule-consistent, NOT "== iDempiere". <code>build/erp/poc_inventory.log</code>.</td>
 </tr>
 <tr>
 <td>⬜ <strong>not-yet-diffed</strong></td>
@@ -4371,11 +4387,11 @@ denominator, not 496 classes / 735k LOC).</p>
 </tr>
 </tbody>
 </table>
-<p><strong>The honest read: coverage 37🟡 ≠ equivalence.</strong> TWELVE surfaces are now oracle-equivalent to the unit/cent
+<p><strong>The honest read: coverage 37🟡 ≠ equivalence.</strong> FOURTEEN surfaces are now oracle-equivalent to the unit/cent
 (TB-read · per-document GL derivation H-1 · <code>completeIt</code> Order→Ship→Invoice chain · Doc_Payment · Doc_AllocationHdr
 incl. tax-correction · StorageOnHand qty · ReplenishReport PO · standalone <code>completeIt(C_Invoice)</code>+MatchInv ·
 vendor <code>Doc_Invoice</code> purchase manifest · foreign-currency Doc_AllocationHdr · inter-org M_Movement · M_MatchInv
-posting), plus the backflush recipe-equivalent; the declarative surfaces remain interpreted-but-undiffed. The inventory loop
+posting · reverseCorrect/void anchored-negation · inter-org GL_Journal), plus THREE rule-consistent (backflush recipe + MProduction movement + MInventory count — enacted, no seed oracle, verified against the proven qty/cost rules + balance + falsifier); the declarative surfaces remain interpreted-but-undiffed. The inventory loop
 folds end-to-end (movements → on-hand → replenishment PO) and the trade-doc loop folds order→ship→invoice→match→
 pay→allocate — every step diffed to its iDempiere oracle. The equivalence campaign is <code>prompts/HARDEN_MATRIX.md</code> (H-1 ✅ → H-2 the 25-delta document
 family, in progress: MPayment + MAllocationHdr + the MStorageOnHand qty-spine folded → H-3 the declarative engines).
