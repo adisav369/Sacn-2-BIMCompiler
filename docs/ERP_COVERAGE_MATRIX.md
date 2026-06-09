@@ -20,6 +20,22 @@ traces to a query or a `find … | wc -l`. Counts are a snapshot; re-run the cit
 | 🟡 PARTIAL | **37** | static demo slice **+ the AD logic-expression evaluator** (`ad_evaluator.js`, W-LOGIC-EVAL): the 7 Display/ReadOnly/MandatoryLogic surfaces now parse 100% (3044/3044 boolean rows) and evaluate correctly; wired into `crud_overlay.validateField`/`effectiveFlags` (headless-proven). **+ the AD role/access gate** (`ad_access.js`, W-ACCESS): the 6 security surfaces (Role/AccessLevel/Window/Process/Form_Access/EntityType) now interpret 1303 window + 1309 process + 145 form grants + 6 accesslevels across all 5 roles headless (`build/erp/poc_access.log`). **+ the AD_Process dispatch spine** (`ad_process.js`, W-PROC): SvrProcess (§A) + AD_Process (§B) move ⛔→🟡 — `classname`→handler-registry→prepare/validate-params→doIt, 5 handlers registered, 22/476 procs dispatched (report procs fold via `report_overlay`), 454 named-deferred (`build/erp/poc_proc.log`). Residual: live DOM show/hide/disable render-wiring (and tab-level GridTab render); access gate not wired into live window/process render; the 454-proc SvrProcess corpus stays unported (mechanism, not corpus). **+ the AD_Val_Rule SQL-where interpreter** (`ad_valrule.js`, W-VALRULE): the 332 `AD_Val_Rule` rows (114 static + 213 token = 327 interpretable) now substitute `@token@` from context and apply the where-clause as a real filter (`build/erp/poc_valrule.log`); the 4 `AD_Rule` are SQL ruletype-Q Fact_Reconciliation rules (not Groovy), n/a-in-seed. **+ the AD_Column.Callout dispatch spine** (`ad_callout.js`, W-CALLOUT): the 284 callout cols now resolve `class.method`→a JS registry and fire on field change → DERIVED sibling values (6 real line-callout atoms / 18 cols dispatched / 139 named-deferred; `build/erp/poc_callout.log`). **+ the model-validator timing-hook engine** (`ad_modelval.js`, W-MODELVAL): BEFORE/AFTER × NEW/SAVE/COMPLETE validators dispatch around a record/doc action (first error aborts), real invariants ported (qty>0, order-has-lines), `build/erp/poc_modelval.log`. |
 | ⛔ GAP | **3** | all 3 remaining ⛔ are **n/a-in-seed** (no data to interpret): **AD_Rule** (4 SQL `Fact_Reconciliation` rules — ruletype Q, *not* Groovy; target `fact_acct`/`fact_reconciliation` empty + Postgres-only SQL) + the **2 empty `*_Access`** tables (0 rows). **Every interpretable behavioural surface with seed data is now 🟡** — zero real interpreter gaps remain. |
 
+### Second axis — EQUIVALENCE (oracle-diffed), not just coverage
+
+The verdicts above are **coverage** — does the engine *interpret* the surface? A second, harder axis is
+**equivalence** — does the engine's output *== real iDempiere's output*? Tracked in `prompts/HARDEN_MATRIX.md`,
+anchored on [ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md) (MOrder archetype + ~25 document deltas = the real
+denominator, not 496 classes / 735k LOC).
+
+| equivalence | status (2026-06-09) |
+|---|---|
+| ✅ **oracle-equivalent** | **Trial-balance / posting-read** — `test_report_fin.js` folds the **real GardenWorld `fact_acct`** (300 rows, client 11, captured from the Docker Postgres via `extract_fact_acct.sh`) → `ΣDr==ΣCr=46574.97`, **`maxDiff=0c`** vs the source. Our reporting reproduces iDempiere's posted journal to the cent. |
+| ⬜ **not-yet-diffed** | **Per-document GL *derivation*** — does `post_resolver` produce iDempiere's *exact lines* for a given document? Today only *balance* is asserted (`poc_post_derive.js`), not per-line equivalence; needs the oracle re-captured WITH `record_id`/`ad_table_id` tagging. **All declarative + document-event surfaces** (logic / access / valrule / callout / modelval / FSM) — interpreted, never diffed against `GridField` / `MRole` / `MValRule` / `Doc_*`. |
+
+**The honest read: coverage 37🟡 ≠ equivalence.** Exactly ONE surface (TB-read) is oracle-equivalent today; the
+rest is interpreted-but-undiffed. The equivalence campaign is `prompts/HARDEN_MATRIX.md` (H-1 MOrder → equivalence,
+then the delta table).
+
 **The honest answer:** *no — not all the bases are covered.* The engine demonstrates the **fold model** on a thin slice —
 the `CO` DocAction transition, the double-entry posting fold, and a fixed receipt/TB/P&L report set — for a handful of
 demo documents. The **irreducible behavioural surface** named in `MigrateComparisonPaper §estimate`

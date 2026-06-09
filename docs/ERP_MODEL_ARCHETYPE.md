@@ -62,7 +62,8 @@ line table and poster.
    delta table + a near-empty master-data tail.** Replaces "322 named-deferred overrides" (an unquantified IOU)
    with a finite, walkable list.
 2. **The metric must split: *surface-interpreted* vs *oracle-equivalent*.** Today the matrix is 37🟡 = surfaces
-   *touched*. None is oracle-diffed against a running iDempiere. The archetype proof = make the MOrder table above
+   *touched*. **Exactly one is oracle-diffed** — the trial-balance read (`test_report_fin.js` reproduces the real
+   GardenWorld `fact_acct`, 300 rows, `maxDiff=0c`); everything else is touched-but-undiffed. The archetype proof = make the MOrder table above
    GREEN by **differential test** (the same discipline the Odoo/SAP fold POCs already use — extend it to the model
    layer), then each family row is a delta-diff, not a port.
 3. **Sequence:** nail `MOrder` (events + full DocAction set + `Doc_Order` posting) to oracle-equivalence → then
