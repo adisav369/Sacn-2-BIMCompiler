@@ -325,7 +325,7 @@ Source: `docs/DistributedERP.md` §0 (lines 53–85, server→serverless table) 
 
 *If you deleted the server, who does its work?* "Serverless" doesn't mean no machine ever talks to another — it means **no server of record, no machine that owns the truth.** Every job the server did still happens; each moved onto the **signed log**, the **kernel on each client**, the **user's own channel**, or a **dumb facilitator that owns nothing**.
 
-*Every job the server did still happens — it just moves to one of four owners that own nothing, each proven by a POC in* `scripts/`[^poc]. *For an independent read of how well those proof scripts are built — separation, determinism, non-invention, adversarial falsifiers, and a per-script PASS scoreboard — see the* **[Fold-Engine code-quality scorecard](FoldEngineQuality.md)** *(all 11 witnesses green).*
+*Every job the server did still happens — it just moves to one of four owners that own nothing, each proven by a POC in* `scripts/`[^poc]. *For an independent read of how well those proof scripts are built — separation, determinism, non-invention, adversarial falsifiers, and a per-script PASS scoreboard — see the* **[Fold-Engine code-quality scorecard](FoldEngineQuality.md)** *(all 16 witnesses green).*
 
 <div class="fan" markdown="0">
   <div class="dead">✗ server of record<small>deleted</small></div>
@@ -709,7 +709,7 @@ async function completeIt(db, order) {
 
 **Still the fold-TODO** (named, not built — the H-1 work): `buildDoc('M_InOut'/'C_Invoice', …)` auto-ship/auto-invoice recursion, `createCounterDoc` (intercompany), reservation edge cases, landed cost. Tracked in `prompts/HARDEN_MATRIX.md`.
 
-**Code quality — independent scorecard:** for a reviewer's read of *how well* these fold/oracle-equivalence scripts are built (separation, determinism, non-invention, adversarial falsifiers, the per-script PASS scoreboard, and the honest risks), see [**`FoldEngineQuality.md`**](FoldEngineQuality.md) — all 11 witnesses green.
+**Code quality — independent scorecard:** for a reviewer's read of *how well* these fold/oracle-equivalence scripts are built (separation, determinism, non-invention, adversarial falsifiers, the per-script PASS scoreboard, and the honest risks), see [**`FoldEngineQuality.md`**](FoldEngineQuality.md) — all 16 witnesses green.
 
 **Three things it makes concrete:** (1) **~50 JS vs ~250 Java** — the `getX/setX/saveEx`/SQL/try-catch ceremony drops; only the decisions survive. (2) **"MOrder + deltas" is right here** — `createShipment`/`createInvoice` are `buildDoc('M_InOut'/'C_Invoice')`, the *same* archetype verb recursing one level down; MInOut's only real delta is `reserveStock`+locator. (3) **Both folds in one function** — the body is *code* (Fold B: Java→compact verbs); what it *emits* is *ops* = *data*; `DocStatus` and the trial balance are *Fold A* over that data.
 
