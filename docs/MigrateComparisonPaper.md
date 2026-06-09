@@ -127,7 +127,7 @@ details.fold .fbd{padding:6px 16px 14px}
 <div style="max-width:760px;margin:24px auto 8px;padding:30px 40px;background:#263238;border-left:4px solid #ff9800;text-align:center;border-radius:4px" markdown="0">
 <span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The Server Is Obsolete</span>
 <br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">built from ideas already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
-<br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block">Now assembled by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">Redhuan D. Oon (red1)</b></span>
+<br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="color:inherit;text-decoration:underline;text-underline-offset:3px">Now assembled by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">Redhuan D. Oon (red1)</b></a></span>
 </div>
 
  
@@ -325,7 +325,7 @@ Source: `docs/DistributedERP.md` §0 (lines 53–85, server→serverless table) 
 
 *If you deleted the server, who does its work?* "Serverless" doesn't mean no machine ever talks to another — it means **no server of record, no machine that owns the truth.** Every job the server did still happens; each moved onto the **signed log**, the **kernel on each client**, the **user's own channel**, or a **dumb facilitator that owns nothing**.
 
-*Every job the server did still happens — it just moves to one of four owners that own nothing, each proven by a POC in* `scripts/`[^poc]:
+*Every job the server did still happens — it just moves to one of four owners that own nothing, each proven by a POC in* `scripts/`[^poc]. *For an independent read of how well those proof scripts are built — separation, determinism, non-invention, adversarial falsifiers, and a per-script PASS scoreboard — see the* **[Fold-Engine code-quality scorecard](FoldEngineQuality.md)** *(all 11 witnesses green).*
 
 <div class="fan" markdown="0">
   <div class="dead">✗ server of record<small>deleted</small></div>
@@ -498,7 +498,7 @@ Incremental backup barely shrinks the gap — the **weekly fulls dominate.** Onl
 
 76× is honest for the engine **shell** folded today — but it measures the *thinnest, highest-compression* slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does **not** extrapolate to a full port: only **~0.2% of the `M*` business logic (104,940 code-LOC) is actually ported**. **We headline the *conservative* ~25× to avoid overclaiming.**
 
-> **Exhaustive coverage map → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md).** Every rule/process surface in *both* homes (Java code + the AD as data) enumerated, each count from a real `ad_full.db` query: **0 covered / 37 partial / 3 gap** of 40 surfaces (the interpreter-coverage ladder, now closed for every seed-data surface) **+ a second *equivalence* axis where exactly 1 surface is oracle-diffed to real iDempiere so far** ([ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md) is the M-class denominator: MOrder archetype + ~25 deltas). The buckets below are measured, not asserted.
+> **Exhaustive coverage map → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md).** Every rule/process surface in *both* homes (Java code + the AD as data) enumerated, each count from a real `ad_full.db` query: **0 covered / 37 partial / 3 gap** of 40 surfaces (the interpreter-coverage ladder, now closed for every seed-data surface) **+ a second *equivalence* axis: 14 surfaces now fold to real GardenWorld `fact_acct` to the cent (`maxDiff=0c`)** — the whole order→ship→invoice→match→pay→allocate trade loop, the movement→on-hand→replenish inventory loop, inter-org `M_Movement` + `GL_Journal`, and the `reverseCorrect`/void family — **plus 3 rule-consistent** (enacted docs with no seed oracle: BOM backflush, `MProduction`, `MInventory` — verified against the proven qty/cost rules + balance + falsifier). ([ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md) is the M-class denominator: MOrder archetype + ~25 deltas — **the deepest deltas now fold `maxDiff=0c`**.) The buckets below are measured, not asserted.
 
 Splitting all 1,427,147 Java LOC by fate [^split]:
 
@@ -597,6 +597,28 @@ Folding that behavioural core into declarative verbs compresses ~5–8× (no Jav
 </div>
 </details>
 
+<details class="fold" markdown="1"><summary>Roadmap — where migration leads <span class="hint">the two ERP objectives migration unlocks</span></summary>
+<div class="fbd" markdown="1">
+
+Migration is the on-ramp, not the destination. **Once migration from both iDempiere *and* Odoo is
+stable on the signed op-log**, the kernel folds forward into two new op-log-native apps — the same
+ledger, no new server:
+
+1. **uniCenta POS** — a browser rebuild of the POS, driven by **replenishment**: the point-of-sale
+   lifecycle expressed as folds over the same ledger (the backflush + on-hand spine witnessed in
+   [`FoldEngineQuality.md`](FoldEngineQuality.md) is the groundwork).
+2. **Warehouse mobile walk** — a phone-first pick / put-away *"walk the aisles"* app over the same
+   tenant, riding the same on-hand fold.
+
+These are the two ERP objectives stated in the [bim-ootb README](https://github.com/red1oon/bim-ootb#roadmap);
+both are **downstream of the migration this paper measures** — they become possible precisely because the
+kernel is the same fold whether it is migrating an existing ERP or running a new app on it. (The wider
+roadmap also carries one BIM objective — a 2D grid *editor* — and one shared objective — a single
+parallel op|view history timeline across the BIM building and the ERP context.)
+
+</div>
+</details>
+
 <details class="fold" markdown="1"><summary>Further reading — go deeper <span class="hint">the deep papers behind each claim</span></summary>
 <div class="fbd" markdown="1">
 
@@ -621,21 +643,13 @@ The on-ramp ends here. To see *how* each claim is built:
 </div>
 </details>
 
-<details class="fold" markdown="1"><summary>Status <span class="hint">draft state &amp; provenance</span></summary>
-<div class="fbd" markdown="1">
-
-DRAFT (2026-06-08). The evaluator-facing companion to the deep papers ([ERP.md](ERP.md) · [DistributedERP.md](DistributedERP.md) · [BIMERPPaper.md](BIMERPPaper.md)). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.
-
-</div>
-</details>
-
-<details class="fold" markdown="1"><summary>Worked example — <code>MOrder.completeIt()</code> folded onto the op-log <span class="hint">~250 Java LOC → ~50 JS · primitives shipped, orchestration is the H-1 fold</span></summary>
+<details class="fold" markdown="1"><summary>Worked example — New <code>MOrder.completeIt()</code> version</summary>
 <div class="fbd" markdown="1">
 
 This is the *irreducible — must be folded* row made concrete: one real `M*` document action, re-expressed on the
 deterministic kernel. The **primitives are shipped** (linked below); the **orchestration that wires them is the fold
 itself** — the `MOrder.completeIt()` body — which is the bulk of the [HARDEN_MATRIX H-1](ERP_MODEL_ARCHETYPE.md) work,
-mostly still to-do. Block-for-block against `org.compiere.model.MOrder.completeIt()`:
+mostly still to-do. *The fold/oracle-equivalence scripts that back this are graded in the* **[Fold-Engine code-quality scorecard](FoldEngineQuality.md)**. Block-for-block against `org.compiere.model.MOrder.completeIt()`:
 
 ```js
 // MOrder.completeIt() folded onto the signed op-log. Java: MOrder.completeIt (~250 LOC, getX/setX/saveEx/SQL).
@@ -695,7 +709,17 @@ async function completeIt(db, order) {
 
 **Still the fold-TODO** (named, not built — the H-1 work): `buildDoc('M_InOut'/'C_Invoice', …)` auto-ship/auto-invoice recursion, `createCounterDoc` (intercompany), reservation edge cases, landed cost. Tracked in `prompts/HARDEN_MATRIX.md`.
 
+**Code quality — independent scorecard:** for a reviewer's read of *how well* these fold/oracle-equivalence scripts are built (separation, determinism, non-invention, adversarial falsifiers, the per-script PASS scoreboard, and the honest risks), see [**`FoldEngineQuality.md`**](FoldEngineQuality.md) — all 11 witnesses green.
+
 **Three things it makes concrete:** (1) **~50 JS vs ~250 Java** — the `getX/setX/saveEx`/SQL/try-catch ceremony drops; only the decisions survive. (2) **"MOrder + deltas" is right here** — `createShipment`/`createInvoice` are `buildDoc('M_InOut'/'C_Invoice')`, the *same* archetype verb recursing one level down; MInOut's only real delta is `reserveStock`+locator. (3) **Both folds in one function** — the body is *code* (Fold B: Java→compact verbs); what it *emits* is *ops* = *data*; `DocStatus` and the trial balance are *Fold A* over that data.
+
+</div>
+</details>
+
+<details class="fold" markdown="1"><summary>Status <span class="hint">draft state &amp; provenance</span></summary>
+<div class="fbd" markdown="1">
+
+DRAFT (2026-06-08). The evaluator-facing companion to the deep papers ([ERP.md](ERP.md) · [DistributedERP.md](DistributedERP.md) · [BIMERPPaper.md](BIMERPPaper.md)). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.
 
 </div>
 </details>
