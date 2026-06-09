@@ -30,11 +30,12 @@ denominator, not 496 classes / 735k LOC).
 | equivalence | status (2026-06-09) |
 |---|---|
 | ✅ **oracle-equivalent** | **Trial-balance / posting-read** — `test_report_fin.js` folds the **real GardenWorld `fact_acct`** (300 rows, client 11, captured from the Docker Postgres via `extract_fact_acct.sh`) → `ΣDr==ΣCr=46574.97`, **`maxDiff=0c`** vs the source. Our reporting reproduces iDempiere's posted journal to the cent. |
-| ⬜ **not-yet-diffed** | **Per-document GL *derivation*** — does `post_resolver` produce iDempiere's *exact lines* for a given document? Today only *balance* is asserted (`poc_post_derive.js`), not per-line equivalence; needs the oracle re-captured WITH `record_id`/`ad_table_id` tagging. **All declarative + document-event surfaces** (logic / access / valrule / callout / modelval / FSM) — interpreted, never diffed against `GridField` / `MRole` / `MValRule` / `Doc_*`. |
+| ✅ **oracle-equivalent** | **Per-document GL *derivation* (H-1 keystone, W-POST-HARDEN)** — `poc_post_harden.js` now diffs `post_resolver`'s DERIVED lines against the oracle `fact_acct` re-captured WITH `ad_table_id`/`record_id`/`line_id` granularity (schema 101, the 8 C_Invoice docs). Result: **4/4 sales invoices resolve iDempiere's EXACT posting accounts** (518/758/596), **3/4 oracle-equivalent to the cent** (`diff=0c`), **0 derivation-gaps**; the 4th (doc 109) is a **named post-posting amount-drift** (line 127 posted 254.00, source later edited to 215.90 on 2004-01-04 — `fact_acct`=posting-time, source=edited, so current-source derivation legitimately can't reproduce the historical journal). §FALSIFIER (revenue→receivable) = `maxDiff=5035c`. `build/erp/poc_post_harden.log`. **Residual:** schema-200000 (EUR) + purchase-invoice manifest deferred (same fold, different token set). |
+| ⬜ **not-yet-diffed** | **All declarative + document-event surfaces** (logic / access / valrule / callout / modelval / FSM) — interpreted, never diffed against `GridField` / `MRole` / `MValRule` / `Doc_*` (the access oracle — 6 `*_Access` tables, 5093 grants — is now captured into `glassbowl_data.db`, diff harness pending per H-3). |
 
-**The honest read: coverage 37🟡 ≠ equivalence.** Exactly ONE surface (TB-read) is oracle-equivalent today; the
-rest is interpreted-but-undiffed. The equivalence campaign is `prompts/HARDEN_MATRIX.md` (H-1 MOrder → equivalence,
-then the delta table).
+**The honest read: coverage 37🟡 ≠ equivalence.** TWO surfaces are now oracle-equivalent (TB-read + per-document GL
+derivation, H-1); the rest is interpreted-but-undiffed. The equivalence campaign is `prompts/HARDEN_MATRIX.md`
+(H-1 ✅ done → H-2 the 25-delta document family → H-3 the declarative engines).
 
 **The honest answer:** *no — not all the bases are covered.* The engine demonstrates the **fold model** on a thin slice —
 the `CO` DocAction transition, the double-entry posting fold, and a fixed receipt/TB/P&L report set — for a handful of

@@ -2,33 +2,84 @@
 # Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
 # SPDX-License-Identifier: MIT
 # ⚠ DO NOT REMOVE — Scope guard
-# Scope: R2 source extract (prompts/CRUD_P_R_REPORT.md §R2, docs/CRUD_P_R_REPORT_SPEC.md §1.2.1).
-#   Pull GardenWorld's REAL posted journal (fact_acct, client 11) + the chart of accounts (c_elementvalue,
-#   client 0+11) from the Docker Postgres iDempiere into the glassbowl bundle. Non-invent: a straight copy
-#   of executed facts, the same move as the 11 lifecycle tables. Deterministic + re-runnable.
+# Scope: R2 source extract (prompts/CRUD_P_R_REPORT.md §R2, docs/CRUD_P_R_REPORT_SPEC.md §1.2.1) +
+#   HARDEN_MATRIX H-1 oracle capture. Pull GardenWorld's REAL posted journal WITH per-document
+#   granularity (ad_table_id, record_id, line_id) so post_resolver's derived lines can be diffed
+#   PER DOCUMENT, not just on the aggregate balance — and the REAL *_Access grants so the access
+#   surface can be oracle-diffed. Non-invent: a straight copy of executed facts. Deterministic + re-runnable.
 #   Source DB note: client-11 fact_acct lives in `idempiere_test` (the `idempiere` DB shows 0 posted).
+#   fact_reconciliation is 0 rows in the oracle (a process OUTPUT table) — captured as schema-only; the
+#   4 AD_Rule (ruletype Q) SQLs run in-Postgres to produce their own oracle (separate step, PG dialect).
 # Run:  bash scripts/extract_fact_acct.sh   (then: node scripts/test_report_fin.js — must balance 46574.97)
 set -euo pipefail
 CONTAINER=postgres
 PGDB=idempiere_test
 PGUSER=adempiere
 DB=build/erp/glassbowl_data.db
+PG() { docker exec "$CONTAINER" psql -U "$PGUSER" -d "$PGDB" -At --csv -c "$1"; }
 
-echo "== extract fact_acct (client 11) + c_elementvalue (client 0,11) from $CONTAINER:$PGDB =="
-docker exec "$CONTAINER" psql -U "$PGUSER" -d "$PGDB" -At --csv -c "
-  SELECT fact_acct_id, ad_client_id, ad_org_id, c_acctschema_id, account_id, c_period_id, postingtype,
-         round(amtacctdr,2), round(amtacctcr,2)
+echo "== extract fact_acct (client 11, GRANULAR) + c_elementvalue (client 0,11) from $CONTAINER:$PGDB =="
+PG "
+  SELECT fact_acct_id, ad_client_id, ad_org_id, c_acctschema_id, account_id, c_period_id,
+         ad_table_id, record_id, line_id, gl_category_id, c_tax_id, postingtype, c_currency_id,
+         round(amtsourcedr,2), round(amtsourcecr,2), round(amtacctdr,2), round(amtacctcr,2),
+         round(qty,2), m_product_id, c_bpartner_id, replace(coalesce(description,''),chr(10),' ')
   FROM adempiere.fact_acct WHERE ad_client_id=11 ORDER BY fact_acct_id;" > /tmp/fact_acct.csv
-docker exec "$CONTAINER" psql -U "$PGUSER" -d "$PGDB" -At --csv -c "
+PG "
   SELECT c_elementvalue_id, ad_client_id, value, name, accounttype, issummary
   FROM adempiere.c_elementvalue WHERE ad_client_id IN (0,11) ORDER BY c_elementvalue_id;" > /tmp/c_elementvalue.csv
 
-echo "== load into $DB (drop+recreate; -t suppressed the header, so NO --skip) =="
-sqlite3 "$DB" "DROP TABLE IF EXISTS fact_acct; CREATE TABLE fact_acct(fact_acct_id INT, ad_client_id INT, ad_org_id INT, c_acctschema_id INT, account_id INT, c_period_id INT, postingtype TEXT, amtacctdr REAL, amtacctcr REAL);"
+echo "== load fact_acct + c_elementvalue into $DB (drop+recreate; -t suppressed the header, so NO --skip) =="
+sqlite3 "$DB" "DROP TABLE IF EXISTS fact_acct; CREATE TABLE fact_acct(
+  fact_acct_id INT, ad_client_id INT, ad_org_id INT, c_acctschema_id INT, account_id INT, c_period_id INT,
+  ad_table_id INT, record_id INT, line_id INT, gl_category_id INT, c_tax_id INT, postingtype TEXT,
+  c_currency_id INT, amtsourcedr REAL, amtsourcecr REAL, amtacctdr REAL, amtacctcr REAL,
+  qty REAL, m_product_id INT, c_bpartner_id INT, description TEXT);"
 sqlite3 "$DB" "DROP TABLE IF EXISTS c_elementvalue; CREATE TABLE c_elementvalue(c_elementvalue_id INT, ad_client_id INT, value TEXT, name TEXT, accounttype TEXT, issummary TEXT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/fact_acct.csv fact_acct"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_elementvalue.csv c_elementvalue"
 
-echo "== verify balanced to the cent (must match PG: Dr=Cr=46574.97) =="
-sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
+echo "== capture the REAL *_Access grants (the access-surface oracle) =="
+# Uniform grant tables: <pk>, ad_role_id, ad_client_id, ad_org_id, isactive, isreadwrite
+for spec in \
+  "ad_window_access:ad_window_id" \
+  "ad_process_access:ad_process_id" \
+  "ad_form_access:ad_form_id" \
+  "ad_workflow_access:ad_workflow_id" \
+  "ad_task_access:ad_task_id"; do
+  t="${spec%%:*}"; pk="${spec##*:}"
+  PG "SELECT $pk, ad_role_id, ad_client_id, ad_org_id, isactive, isreadwrite
+      FROM adempiere.$t WHERE ad_client_id IN (0,11) ORDER BY ad_role_id, $pk;" > "/tmp/$t.csv"
+  sqlite3 "$DB" "DROP TABLE IF EXISTS $t; CREATE TABLE $t($pk INT, ad_role_id INT, ad_client_id INT, ad_org_id INT, isactive TEXT, isreadwrite TEXT);"
+  sqlite3 "$DB" ".mode csv" ".import /tmp/$t.csv $t"
+done
+# Doc-action access has a distinct shape (doctype + action ref) — capture faithfully
+PG "SELECT c_doctype_id, ad_ref_list_id, ad_role_id, ad_client_id, ad_org_id, isactive
+    FROM adempiere.ad_document_action_access WHERE ad_client_id IN (0,11) ORDER BY ad_role_id, c_doctype_id, ad_ref_list_id;" > /tmp/ad_document_action_access.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS ad_document_action_access; CREATE TABLE ad_document_action_access(c_doctype_id INT, ad_ref_list_id INT, ad_role_id INT, ad_client_id INT, ad_org_id INT, isactive TEXT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/ad_document_action_access.csv ad_document_action_access"
+
+echo "== capture the acct-config + invoice tax (post_resolver deps, for H-1 per-document oracle diff) =="
+# Each is a straight copy of real config from idempiere_test (client 0+11). post_resolver reads these to
+# resolve {Master.Role} tokens → the SAME natural account iDempiere posted; the diff then proves equivalence.
+cap() { # cap <table> <select-cols> <create-def>  — INT-typed keys to match the integer-stored source
+  #   tables (c_invoice/m_product et al), so the whole resolve join-path is one storage class.
+  local t="$1" cols="$2" def="$3"
+  PG "SELECT $cols FROM adempiere.$t WHERE ad_client_id IN (0,11);" > "/tmp/$t.csv"
+  sqlite3 "$DB" "DROP TABLE IF EXISTS $t;"
+  sqlite3 "$DB" "CREATE TABLE $t($def);"
+  sqlite3 "$DB" ".mode csv" ".import /tmp/$t.csv $t"
+}
+cap c_bp_customer_acct      "c_bpartner_id,c_acctschema_id,c_receivable_acct"      "c_bpartner_id INT,c_acctschema_id INT,c_receivable_acct INT"
+cap m_product_category_acct "m_product_category_id,c_acctschema_id,p_revenue_acct" "m_product_category_id INT,c_acctschema_id INT,p_revenue_acct INT"
+cap c_tax_acct              "c_tax_id,c_acctschema_id,t_due_acct"                  "c_tax_id INT,c_acctschema_id INT,t_due_acct INT"
+cap c_validcombination      "c_validcombination_id,account_id"                    "c_validcombination_id INT,account_id INT"
+cap c_acctschema_default    "c_acctschema_id"                                     "c_acctschema_id INT"
+cap c_invoicetax            "c_invoice_id,c_tax_id,taxamt"                         "c_invoice_id INT,c_tax_id INT,taxamt REAL"
+
+echo "== verify =="
+sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' docs='||count(DISTINCT ad_table_id||'/'||record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_elementvalue rows='||count(*) FROM c_elementvalue;"
+for t in ad_window_access ad_process_access ad_form_access ad_workflow_access ad_task_access ad_document_action_access; do
+  sqlite3 "$DB" "SELECT '§EXTRACT $t rows='||count(*) FROM $t;"
+done
