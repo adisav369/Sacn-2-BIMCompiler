@@ -40,7 +40,7 @@ then the delta table).
 the `CO` DocAction transition, the double-entry posting fold, and a fixed receipt/TB/P&L report set — for a handful of
 demo documents. The **irreducible behavioural surface** named in `MigrateComparisonPaper §estimate`
 (process 54k LOC · workflow 7k · callouts 10k · validators · the logic-expression evaluator · the entire security layer)
-is enumerated below and is overwhelmingly ⛔. This is what makes the *89× → ~30×* story precise: the 89× counts
+is enumerated below and is overwhelmingly ⛔. This is what makes the *76× shell → ~25× conservative full parity* story precise: the 76× counts
 delivery/definition, not behavioural parity — most behaviour is **named-and-deferred**, not folded.
 
 > **Engine architecture fact (sets the ceiling):** all engine field-logic is descriptor-driven from a *hand-authored*
@@ -148,7 +148,7 @@ The real AD counts sharpen `MigrateComparisonPaper §"Realistic conversion estim
 (3 registered). The **~3,000-row logic-expression** surface (W-LOGIC-EVAL) and the **~4,200-row security** surface
 (W-ACCESS) now have an engine home (`ad_evaluator.js` / `ad_access.js`, headless-proven; live render-wiring is the
 residual). Folded today: the `CO` transition, the double-entry posting fold, a fixed report set — for ~5–7 demo tables.
-This is the precise content behind "89× → ~30×": the 89× is delivery/definition; behavioural parity is a long, *named* tail.
+This is the precise content behind "76× shell → ~25× conservative full parity": the 76× is delivery/definition (the 18,614-LOC engine shell, ~0.2% of the M-class logic folded); behavioural parity is a long, *named* tail — see [ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md).
 
 ## Provenance / caveats
 
