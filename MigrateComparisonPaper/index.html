@@ -800,6 +800,73 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="GAP ANALYSIS — iDempiere | Odoo | OOTB, and where the migrate gap is">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gap-in-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        In code — the same gap, two ways
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="In code — the same gap, two ways">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#idempiere-mordercompleteit-java-250-loc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iDempiere · MOrder.completeIt() — Java, ~250 LOC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ootb-completeit-fold-js-50-loc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OOTB · completeIt fold — JS, ~50 LOC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idempiere-agingdoit-fills-the-t_aging-scratch-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iDempiere · Aging.doIt() → fills the T_Aging scratch table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ootb-foldaging-proposed-12-loc-not-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OOTB · foldAging — PROPOSED, ~12 LOC (not built)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4345,6 +4412,73 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="GAP ANALYSIS — iDempiere | Odoo | OOTB, and where the migrate gap is">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gap-in-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        In code — the same gap, two ways
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="In code — the same gap, two ways">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#idempiere-mordercompleteit-java-250-loc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iDempiere · MOrder.completeIt() — Java, ~250 LOC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ootb-completeit-fold-js-50-loc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OOTB · completeIt fold — JS, ~50 LOC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idempiere-agingdoit-fills-the-t_aging-scratch-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iDempiere · Aging.doIt() → fills the T_Aging scratch table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ootb-foldaging-proposed-12-loc-not-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OOTB · foldAging — PROPOSED, ~12 LOC (not built)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4384,6 +4518,7 @@
 /* drop the MkDocs auto-injected nav-title H1 — the banner below IS the title */
 .md-typeset h1{display:none}
 /* side-by-side architecture A/B — network divide is the star */
+.sxs{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0}.sxs>div{flex:1 1 330px;min-width:270px;overflow:auto}.sxs h5{margin:0 0 4px;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;opacity:.7}
 .arch{display:flex;gap:16px;flex-wrap:wrap;margin:20px 0 6px;align-items:stretch}
 .arch .col{flex:1 1 320px;border-radius:12px;border:1px solid;display:flex;flex-direction:column;overflow:hidden}
 .arch .leg{border-color:rgba(239,83,80,.45);background:rgba(239,83,80,.05)}
@@ -4640,56 +4775,56 @@ hash-chained log holds the truth; the host (if any) is a disposable relay. Every
 <tbody>
 <tr>
 <td><strong>The server of record</strong></td>
-<td>a machine that <em>owns the truth</em> — JVM + Postgres + 3.7 GB build <sup id="fnref2:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
-<td><strong>✗ none</strong> — the browser runs the kernel; the signed log is the truth <sup id="fnref:own"><a class="footnote-ref" href="#fn:own">16</a></sup></td>
+<td>a machine that <em>owns the truth</em> — JVM + Postgres + 3.7 GB build <sup id="fnref2:bloat"><a class="footnote-ref" href="#fn:bloat">12</a></sup></td>
+<td><strong>✗ none</strong> — the browser runs the kernel; the signed log is the truth <sup id="fnref:own"><a class="footnote-ref" href="#fn:own">17</a></sup></td>
 <td><strong>the whole tier is deleted</strong></td>
 </tr>
 <tr>
 <td><strong>Read / fold round-trips</strong></td>
-<td>1 network hop per interaction <sup id="fnref:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>0</strong> — the kernel answers locally <sup id="fnref:noround"><a class="footnote-ref" href="#fn:noround">5</a></sup></td>
+<td>1 network hop per interaction <sup id="fnref:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><strong>0</strong> — the kernel answers locally <sup id="fnref:noround"><a class="footnote-ref" href="#fn:noround">6</a></sup></td>
 <td>network off the hot path</td>
 </tr>
 <tr>
 <td><strong>Ownership / trust</strong></td>
-<td>the server DB owns your record <sup id="fnref2:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>you own a signed op-log</strong>; the host is disposable <sup id="fnref2:own"><a class="footnote-ref" href="#fn:own">16</a></sup></td>
+<td>the server DB owns your record <sup id="fnref2:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><strong>you own a signed op-log</strong>; the host is disposable <sup id="fnref2:own"><a class="footnote-ref" href="#fn:own">17</a></sup></td>
 <td>trust model inverted</td>
 </tr>
 <tr>
 <td><strong>Document schema</strong></td>
-<td>≈925 AD tables, each a hand-written model class <sup id="fnref:bloat2"><a class="footnote-ref" href="#fn:bloat2">12</a></sup></td>
-<td><strong>5 core relations</strong> (containers · items · documents · document_lines · journal) + verbs — the rest of the AD rides as <strong>data</strong> <sup id="fnref:reduce"><a class="footnote-ref" href="#fn:reduce">19</a></sup></td>
+<td>≈925 AD tables, each a hand-written model class <sup id="fnref:bloat2"><a class="footnote-ref" href="#fn:bloat2">13</a></sup></td>
+<td><strong>5 core relations</strong> (containers · items · documents · document_lines · journal) + verbs — the rest of the AD rides as <strong>data</strong> <sup id="fnref:reduce"><a class="footnote-ref" href="#fn:reduce">20</a></sup></td>
 <td>hardcoded schema, <em>not</em> ERP scope (the AD is unchanged — it's the seed)</td>
 </tr>
 <tr>
 <td><strong>Runtime code</strong></td>
-<td>1,427,147 Java LOC / 4,465 files <sup id="fnref3:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
-<td><strong>18,614 JS LOC / 60 files</strong> (the engine shell + flows folded so far) <sup id="fnref4:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td>1,427,147 Java LOC / 4,465 files <sup id="fnref3:bloat"><a class="footnote-ref" href="#fn:bloat">12</a></sup></td>
+<td><strong>18,614 JS LOC / 60 files</strong> (the engine shell + flows folded so far) <sup id="fnref4:bloat"><a class="footnote-ref" href="#fn:bloat">12</a></sup></td>
 <td>≈76× built-so-far · <strong>~25× at conservative full parity</strong> <a href="#realistic-conversion-estimate-loc">below</a></td>
 </tr>
 <tr>
 <td><strong>Bootstrap</strong> (open the books)</td>
-<td>re-query the server <sup id="fnref3:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>signed checkpoint</strong> — 0.90 ms vs 47.70 ms genesis <sup id="fnref:drive"><a class="footnote-ref" href="#fn:drive">2</a></sup></td>
+<td>re-query the server <sup id="fnref3:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><strong>signed checkpoint</strong> — 0.90 ms vs 47.70 ms genesis <sup id="fnref:drive"><a class="footnote-ref" href="#fn:drive">3</a></sup></td>
 <td>≈53×</td>
 </tr>
 <tr>
 <td><strong>Seed DB</strong></td>
-<td>45.2 MB dump <sup id="fnref5:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
-<td><strong>12.7 MB</strong> self-describing AD <sup id="fnref6:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td>45.2 MB dump <sup id="fnref5:bloat"><a class="footnote-ref" href="#fn:bloat">12</a></sup></td>
+<td><strong>12.7 MB</strong> self-describing AD <sup id="fnref6:bloat"><a class="footnote-ref" href="#fn:bloat">12</a></sup></td>
 <td>≈3.5×</td>
 </tr>
 <tr>
 <td><strong>Live DB → SQLite</strong></td>
-<td>143 MB Postgres <sup id="fnref2:bloat2"><a class="footnote-ref" href="#fn:bloat2">12</a></sup></td>
-<td><strong>43 MB</strong> SQLite (gzip 11.7 MB) <sup id="fnref3:bloat2"><a class="footnote-ref" href="#fn:bloat2">12</a></sup></td>
+<td>143 MB Postgres <sup id="fnref2:bloat2"><a class="footnote-ref" href="#fn:bloat2">13</a></sup></td>
+<td><strong>43 MB</strong> SQLite (gzip 11.7 MB) <sup id="fnref3:bloat2"><a class="footnote-ref" href="#fn:bloat2">13</a></sup></td>
 <td>≈3.3×</td>
 </tr>
 <tr>
 <td><strong>Backup / DR</strong></td>
-<td>backup rotation, 30–50 copies = many× the state; restore = down-window <sup id="fnref3:tco"><a class="footnote-ref" href="#fn:tco">3</a></sup></td>
-<td><strong>the recipe is the backup</strong> — one signed log ×3 replicas, restore = replay, unbounded restore points <sup id="fnref4:tco"><a class="footnote-ref" href="#fn:tco">3</a></sup><sup id="fnref2:blackout"><a class="footnote-ref" href="#fn:blackout">4</a></sup></td>
+<td>backup rotation, 30–50 copies = many× the state; restore = down-window <sup id="fnref3:tco"><a class="footnote-ref" href="#fn:tco">4</a></sup></td>
+<td><strong>the recipe is the backup</strong> — one signed log ×3 replicas, restore = replay, unbounded restore points <sup id="fnref4:tco"><a class="footnote-ref" href="#fn:tco">4</a></sup><sup id="fnref2:blackout"><a class="footnote-ref" href="#fn:blackout">5</a></sup></td>
 <td>at least 30× less DR storage (strategy-dependent); <strong>0 branch downtime</strong></td>
 </tr>
 <tr>
@@ -4772,7 +4907,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <hr />
 <h2 id="no-server">But where's the server? — what replaced each job<a class="headerlink" href="#no-server" title="Permanent link">&para;</a></h2>
 <p><em>If you deleted the server, who does its work?</em> "Serverless" doesn't mean no machine ever talks to another — it means <strong>no server of record, no machine that owns the truth.</strong> Every job the server did still happens; each moved onto the <strong>signed log</strong>, the <strong>kernel on each client</strong>, the <strong>user's own channel</strong>, or a <strong>dumb facilitator that owns nothing</strong>.</p>
-<p><em>Every job the server did still happens — it just moves to one of four owners that own nothing, each proven by a POC in</em> <code>scripts/</code><sup id="fnref:poc"><a class="footnote-ref" href="#fn:poc">18</a></sup>. <em>For an independent read of how well those proof scripts are built — separation, determinism, non-invention, adversarial falsifiers, and a per-script PASS scoreboard — see the</em> <strong><a href="../FoldEngineQuality/">Fold-Engine code-quality scorecard</a></strong> <em>(all 18 witnesses green).</em></p>
+<p><em>Every job the server did still happens — it just moves to one of four owners that own nothing, each proven by a POC in</em> <code>scripts/</code><sup id="fnref:poc"><a class="footnote-ref" href="#fn:poc">19</a></sup>. <em>For an independent read of how well those proof scripts are built — separation, determinism, non-invention, adversarial falsifiers, and a per-script PASS scoreboard — see the</em> <strong><a href="../FoldEngineQuality/">Fold-Engine code-quality scorecard</a></strong> <em>(all 18 witnesses green).</em></p>
 <div class="fan" markdown="0">
   <div class="dead">✗ server of record<small>deleted</small></div>
   <div class="redist">▾ &nbsp; every job redistributes to four things that own nothing &nbsp; ▾</div>
@@ -4839,51 +4974,51 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <tbody>
 <tr>
 <td><strong>Period-end carry-forward</strong></td>
-<td>server batch job + down-window (per-row <code>saveEx</code> ≈ ~1M round-trips on a 40-yr depreciation run) <sup id="fnref2:dep"><a class="footnote-ref" href="#fn:dep">8</a></sup></td>
-<td>server batch job <sup id="fnref4:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>server batch job <sup id="fnref5:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>signed checkpoint = balance b/f</strong> (the compaction step — accrual/FX/depreciation postings are themselves folds), no down-window; 40k-op close-fold ≈ <strong>2.68 s</strong>, archived 40000→live 1, reconcile <strong>maxDiff=0c</strong> <sup id="fnref2:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup><sup id="fnref2:drive"><a class="footnote-ref" href="#fn:drive">2</a></sup></td>
+<td>server batch job + down-window (per-row <code>saveEx</code> ≈ ~1M round-trips on a 40-yr depreciation run) <sup id="fnref2:dep"><a class="footnote-ref" href="#fn:dep">9</a></sup></td>
+<td>server batch job <sup id="fnref4:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>server batch job <sup id="fnref5:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><strong>signed checkpoint = balance b/f</strong> (the compaction step — accrual/FX/depreciation postings are themselves folds), no down-window; 40k-op close-fold ≈ <strong>2.68 s</strong>, archived 40000→live 1, reconcile <strong>maxDiff=0c</strong> <sup id="fnref2:pclose"><a class="footnote-ref" href="#fn:pclose">2</a></sup><sup id="fnref2:drive"><a class="footnote-ref" href="#fn:drive">3</a></sup></td>
 </tr>
 <tr>
 <td><strong>Server round-trip</strong> (read/fold)</td>
-<td>round-trip per interaction <sup id="fnref6:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>round-trip per interaction <sup id="fnref7:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>round-trip per interaction <sup id="fnref8:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>0 — the kernel answers locally</strong> <sup id="fnref2:noround"><a class="footnote-ref" href="#fn:noround">5</a></sup></td>
+<td>round-trip per interaction <sup id="fnref6:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>round-trip per interaction <sup id="fnref7:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>round-trip per interaction <sup id="fnref8:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><strong>0 — the kernel answers locally</strong> <sup id="fnref2:noround"><a class="footnote-ref" href="#fn:noround">6</a></sup></td>
 </tr>
 <tr>
 <td><strong>Bootstrap</strong> (open the books)</td>
-<td>re-query the server <sup id="fnref9:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>re-query the server <sup id="fnref10:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>re-query the server <sup id="fnref11:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>~53× faster from checkpoint</strong> — 0.90 ms vs 47.70 ms genesis replay, same result <sup id="fnref3:drive"><a class="footnote-ref" href="#fn:drive">2</a></sup></td>
+<td>re-query the server <sup id="fnref9:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>re-query the server <sup id="fnref10:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>re-query the server <sup id="fnref11:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><strong>~53× faster from checkpoint</strong> — 0.90 ms vs 47.70 ms genesis replay, same result <sup id="fnref3:drive"><a class="footnote-ref" href="#fn:drive">3</a></sup></td>
 </tr>
 <tr>
 <td><strong>Commit throughput</strong> (5000 ops)</td>
-<td>n/a — architectural <sup id="fnref12:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>n/a <sup id="fnref13:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>n/a <sup id="fnref14:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>batch <code>commitGroup</code> <strong>~22,492 ops/s = 2.4× naive</strong> <sup id="fnref:sync"><a class="footnote-ref" href="#fn:sync">9</a></sup></td>
+<td>n/a — architectural <sup id="fnref12:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>n/a <sup id="fnref13:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>n/a <sup id="fnref14:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>batch <code>commitGroup</code> <strong>~22,492 ops/s = 2.4× naive</strong> <sup id="fnref:sync"><a class="footnote-ref" href="#fn:sync">10</a></sup></td>
 </tr>
 <tr>
 <td><strong>Fold/append ceiling</strong></td>
-<td>n/a — architectural <sup id="fnref15:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>n/a <sup id="fnref16:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>n/a <sup id="fnref17:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>linear to 20,000,000 ops</strong> (~437 B/op; fold ~40M ops/s hot) <sup id="fnref:ceiling"><a class="footnote-ref" href="#fn:ceiling">10</a></sup></td>
+<td>n/a — architectural <sup id="fnref15:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>n/a <sup id="fnref16:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>n/a <sup id="fnref17:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><strong>linear to 20,000,000 ops</strong> (~437 B/op; fold ~40M ops/s hot) <sup id="fnref:ceiling"><a class="footnote-ref" href="#fn:ceiling">11</a></sup></td>
 </tr>
 <tr>
 <td><strong>Storage primitive</strong> (1000 ops, 1 commit)</td>
-<td>Postgres WAL+fsync <strong>5.24 ms</strong> (0.0052 ms/op) <sup id="fnref:bench"><a class="footnote-ref" href="#fn:bench">6</a></sup></td>
-<td>(same engine) <sup id="fnref18:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>n/a <sup id="fnref19:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>sql.js +sha256 chain <strong>208.45 ms</strong> — slower per-op, buys <strong>no server</strong>; Postgres durability/concurrency DEFERRED to the install <sup id="fnref2:bench"><a class="footnote-ref" href="#fn:bench">6</a></sup></td>
+<td>Postgres WAL+fsync <strong>5.24 ms</strong> (0.0052 ms/op) <sup id="fnref:bench"><a class="footnote-ref" href="#fn:bench">7</a></sup></td>
+<td>(same engine) <sup id="fnref18:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>n/a <sup id="fnref19:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>sql.js +sha256 chain <strong>208.45 ms</strong> — slower per-op, buys <strong>no server</strong>; Postgres durability/concurrency DEFERRED to the install <sup id="fnref2:bench"><a class="footnote-ref" href="#fn:bench">7</a></sup></td>
 </tr>
 </tbody>
 </table>
 </div>
 <blockquote>
-<p><strong>Where we actually beat them: the network.</strong> The storage-primitive row above is <em>on-box</em>, where durable Postgres wins per-op — and we say so. But an ERP is never on-box: every interaction crosses a network to the server of record, which pays a round-trip <strong>per interaction</strong> (RTT-bound — and it <strong>blocks when offline</strong>). Our kernel answers locally (~0.01 ms/op) and relays asynchronously — <strong>0 round-trips on the read/fold path.</strong> That is the whole win: not faster storage, <strong>no network on the hot path.</strong> A remote-POS drive puts numbers on it — locals measured, network leg modelled, legacy excludes iDempiere ORM/OSGi so it's a <em>floor</em> <sup id="fnref:rpos"><a class="footnote-ref" href="#fn:rpos">7</a></sup>: per sale, legacy is RTT-bound — <strong>~256–674× at 0.5 ms LAN, ~8,500–50,000× at 50 ms cross-region</strong> — while ours stays flat at local speed. The iDempiere 40-year depreciation run shows where that cost really sits: per-row <code>saveEx</code> ≈ <strong>~1M round-trips</strong> <sup id="fnref:dep"><a class="footnote-ref" href="#fn:dep">8</a></sup>.</p>
+<p><strong>Where we actually beat them: the network.</strong> The storage-primitive row above is <em>on-box</em>, where durable Postgres wins per-op — and we say so. But an ERP is never on-box: every interaction crosses a network to the server of record, which pays a round-trip <strong>per interaction</strong> (RTT-bound — and it <strong>blocks when offline</strong>). Our kernel answers locally (~0.01 ms/op) and relays asynchronously — <strong>0 round-trips on the read/fold path.</strong> That is the whole win: not faster storage, <strong>no network on the hot path.</strong> A remote-POS drive puts numbers on it — locals measured, network leg modelled, legacy excludes iDempiere ORM/OSGi so it's a <em>floor</em> <sup id="fnref:rpos"><a class="footnote-ref" href="#fn:rpos">8</a></sup>: per sale, legacy is RTT-bound — <strong>~256–674× at 0.5 ms LAN, ~8,500–50,000× at 50 ms cross-region</strong> — while ours stays flat at local speed. The iDempiere 40-year depreciation run shows where that cost really sits: per-row <code>saveEx</code> ≈ <strong>~1M round-trips</strong> <sup id="fnref:dep"><a class="footnote-ref" href="#fn:dep">9</a></sup>.</p>
 </blockquote>
 <h3 id="b-footprint-bloat">B · Footprint &amp; bloat<a class="headerlink" href="#b-footprint-bloat" title="Permanent link">&para;</a></h3>
 <div class="dtbl hl-last">
@@ -4900,24 +5035,24 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <tbody>
 <tr>
 <td><strong>DB seed</strong></td>
-<td><code>Adempiere_pg.dmp</code> <strong>45.2 MB</strong> <sup id="fnref7:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
-<td>n/a — diff schema <sup id="fnref20:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>n/a <sup id="fnref21:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><code>erp/ad_seed.db</code> <strong>12.7 MB</strong> (≈<strong>3.5× smaller</strong>); the 12.7 MB IS the self-describing AD <sup id="fnref8:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td><code>Adempiere_pg.dmp</code> <strong>45.2 MB</strong> <sup id="fnref7:bloat"><a class="footnote-ref" href="#fn:bloat">12</a></sup></td>
+<td>n/a — diff schema <sup id="fnref20:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>n/a <sup id="fnref21:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><code>erp/ad_seed.db</code> <strong>12.7 MB</strong> (≈<strong>3.5× smaller</strong>); the 12.7 MB IS the self-describing AD <sup id="fnref8:bloat"><a class="footnote-ref" href="#fn:bloat">12</a></sup></td>
 </tr>
 <tr>
 <td><strong>Runtime LOC</strong></td>
-<td><strong>1,427,147 Java LOC</strong> / 4,465 files + JVM + Postgres + 3.7 GB build <sup id="fnref9:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
-<td>n/a — diff codebase <sup id="fnref22:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>n/a <sup id="fnref23:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>18,614 JS LOC</strong> / 60 files, static + SQLite-WASM, offline (≈<strong>76× fewer</strong> built-so-far; <strong>~25× at conservative full parity</strong>, zero server/JVM/DB) <sup id="fnref10:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup></td>
+<td><strong>1,427,147 Java LOC</strong> / 4,465 files + JVM + Postgres + 3.7 GB build <sup id="fnref9:bloat"><a class="footnote-ref" href="#fn:bloat">12</a></sup></td>
+<td>n/a — diff codebase <sup id="fnref22:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>n/a <sup id="fnref23:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><strong>18,614 JS LOC</strong> / 60 files, static + SQLite-WASM, offline (≈<strong>76× fewer</strong> built-so-far; <strong>~25× at conservative full parity</strong>, zero server/JVM/DB) <sup id="fnref10:bloat"><a class="footnote-ref" href="#fn:bloat">12</a></sup></td>
 </tr>
 <tr>
 <td><strong>Live DB → SQLite</strong></td>
-<td>Postgres <strong>143 MB</strong> on-disk (GardenWorld) <sup id="fnref4:bloat2"><a class="footnote-ref" href="#fn:bloat2">12</a></sup></td>
-<td>n/a <sup id="fnref24:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>n/a <sup id="fnref25:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>43 MB SQLite</strong> (925 tables, 187,133 rows ≈ <strong>3.3×</strong>); gzip 11.7 MB (3.7×) <sup id="fnref5:bloat2"><a class="footnote-ref" href="#fn:bloat2">12</a></sup></td>
+<td>Postgres <strong>143 MB</strong> on-disk (GardenWorld) <sup id="fnref4:bloat2"><a class="footnote-ref" href="#fn:bloat2">13</a></sup></td>
+<td>n/a <sup id="fnref24:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>n/a <sup id="fnref25:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><strong>43 MB SQLite</strong> (925 tables, 187,133 rows ≈ <strong>3.3×</strong>); gzip 11.7 MB (3.7×) <sup id="fnref5:bloat2"><a class="footnote-ref" href="#fn:bloat2">13</a></sup></td>
 </tr>
 </tbody>
 </table>
@@ -4938,16 +5073,16 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <tr>
 <td><strong>Migration fold</strong> (does the legacy flow fold into our verbs?)</td>
 <td><strong>native</strong> — it renders this AD; handlers diffed cell-by-cell vs an iDempiere oracle (<code>diff_oracle.log</code>; one GL cell needs live docker)</td>
-<td><strong>PROVEN vs LIVE Odoo 17</strong> — SO S00023, 5/5 hops, newVerbs=[], GL ΣDr==ΣCr 5002.50 <sup id="fnref:odoo"><a class="footnote-ref" href="#fn:odoo">13</a></sup></td>
-<td><strong>B1 PROVEN vs a MOCK export</strong> (5/5, journal 770.00); <strong>S/4HANA NOT-RUN — gated on a real oracle</strong> <sup id="fnref:b1"><a class="footnote-ref" href="#fn:b1">14</a></sup><sup id="fnref:sap"><a class="footnote-ref" href="#fn:sap">15</a></sup></td>
-<td>every hop maps to <code>CREATE_DOCUMENT / CREATE_LINE / SET_STATUS / POST / ALLOCATE</code> <sup id="fnref2:odoo"><a class="footnote-ref" href="#fn:odoo">13</a></sup><sup id="fnref2:b1"><a class="footnote-ref" href="#fn:b1">14</a></sup></td>
+<td><strong>PROVEN vs LIVE Odoo 17</strong> — SO S00023, 5/5 hops, newVerbs=[], GL ΣDr==ΣCr 5002.50 <sup id="fnref:odoo"><a class="footnote-ref" href="#fn:odoo">14</a></sup></td>
+<td><strong>B1 PROVEN vs a MOCK export</strong> (5/5, journal 770.00); <strong>S/4HANA NOT-RUN — gated on a real oracle</strong> <sup id="fnref:b1"><a class="footnote-ref" href="#fn:b1">15</a></sup><sup id="fnref:sap"><a class="footnote-ref" href="#fn:sap">16</a></sup></td>
+<td>every hop maps to <code>CREATE_DOCUMENT / CREATE_LINE / SET_STATUS / POST / ALLOCATE</code> <sup id="fnref2:odoo"><a class="footnote-ref" href="#fn:odoo">14</a></sup><sup id="fnref2:b1"><a class="footnote-ref" href="#fn:b1">15</a></sup></td>
 </tr>
 <tr>
 <td><strong>Data ownership / durability</strong></td>
-<td>server DB owns the record <sup id="fnref26:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>server DB owns the record <sup id="fnref27:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td>server DB owns the record <sup id="fnref28:arch"><a class="footnote-ref" href="#fn:arch">17</a></sup></td>
-<td><strong>user-owned signed op-log</strong>; host disposable (Git analogy); tamper caught by <code>verifyChain()</code>, forgery by ECDSA-P256 sig <sup id="fnref3:own"><a class="footnote-ref" href="#fn:own">16</a></sup><sup id="fnref3:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup></td>
+<td>server DB owns the record <sup id="fnref26:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>server DB owns the record <sup id="fnref27:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td>server DB owns the record <sup id="fnref28:arch"><a class="footnote-ref" href="#fn:arch">18</a></sup></td>
+<td><strong>user-owned signed op-log</strong>; host disposable (Git analogy); tamper caught by <code>verifyChain()</code>, forgery by ECDSA-P256 sig <sup id="fnref3:own"><a class="footnote-ref" href="#fn:own">17</a></sup><sup id="fnref3:pclose"><a class="footnote-ref" href="#fn:pclose">2</a></sup></td>
 </tr>
 </tbody>
 </table>
@@ -4958,7 +5093,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <summary>Disaster recovery &amp; TCO <span class="hint">apple-to-apple — a range, not one number</span></summary>
 <div class="fbd">
 <p><span id="dr-tco"></span></p>
-<p>The fair comparison holds the <strong>durability guarantee constant</strong> — <em>restore to any of the last 50 days · RPO ≤ 24 h · survive primary loss</em> — and asks only: <strong>what does it cost to meet it</strong>, amortised over a year of 50-branch ops? Unit costs are <strong>measured</strong> on the real kernel (314 B/op uncompacted snapshot; fold, restore-to-arbitrary-op, and per-branch additivity all witnessed); the year-level figures are <strong>derived</strong> over modelled constants for the traditional side (no Postgres on the bench), each chosen <strong>conservative for us</strong> — <code>230 B/row</code> and <code>5 rows/op</code> are <em>low</em> versus Postgres+index and real iDempiere, so the real gap is wider, not narrower (constants named in GAPS #7 below). <sup id="fnref:tco"><a class="footnote-ref" href="#fn:tco">3</a></sup></p>
+<p>The fair comparison holds the <strong>durability guarantee constant</strong> — <em>restore to any of the last 50 days · RPO ≤ 24 h · survive primary loss</em> — and asks only: <strong>what does it cost to meet it</strong>, amortised over a year of 50-branch ops? Unit costs are <strong>measured</strong> on the real kernel (314 B/op uncompacted snapshot; fold, restore-to-arbitrary-op, and per-branch additivity all witnessed); the year-level figures are <strong>derived</strong> over modelled constants for the traditional side (no Postgres on the bench), each chosen <strong>conservative for us</strong> — <code>230 B/row</code> and <code>5 rows/op</code> are <em>low</em> versus Postgres+index and real iDempiere, so the real gap is wider, not narrower (constants named in GAPS #7 below). <sup id="fnref:tco"><a class="footnote-ref" href="#fn:tco">4</a></sup></p>
 <p><strong>Durable storage to meet the 50-day SLA</strong> (Retail, 1k sales/branch/day, one durable copy each):</p>
 <div class="dtbl hl23">
 <table>
@@ -5020,7 +5155,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </tbody>
 </table>
 </div>
-<p><strong>Recovery and the honest trades</strong> — all witnessed <sup id="fnref:blackout"><a class="footnote-ref" href="#fn:blackout">4</a></sup><sup id="fnref2:tco"><a class="footnote-ref" href="#fn:tco">3</a></sup>:</p>
+<p><strong>Recovery and the honest trades</strong> — all witnessed <sup id="fnref:blackout"><a class="footnote-ref" href="#fn:blackout">5</a></sup><sup id="fnref2:tco"><a class="footnote-ref" href="#fn:tco">4</a></sup>:</p>
 <ul>
 <li><strong>Total relay loss, no backup</strong> rebuilds consolidated state from the branches' <em>own</em> slices — <code>§BLACKOUT-RESUME</code>: 50 branches, a fresh empty relay, an <strong>identical signed tip</strong>, books to the cent, idempotent re-push. The only loss is a bounded, ledger-reconciled CAS-arbitration sliver (the one shared op-class, §5); <code>§ORDER-HONEST</code> shows disjoint folds commute but cross-branch CAS order is <em>not</em> reconstructible from signed logs alone (honest correction to "total order is reconstructible").</li>
 <li><strong>Consolidated restore is additive</strong> — per-branch folds combine (<code>maxDiff=0c</code>), so 12.5M ops at 5k/branch/day restore in <strong>~0.5 s 50-way-parallel</strong>; only the contended op-class needs merge logic.</li>
@@ -5087,7 +5222,7 @@ relations</em><em>, and the fold is </em><em>already witnessed</em><em> — so t
 <th>Capability</th>
 <th>iDempiere (GardenWorld)</th>
 <th>Odoo (<code>odoodemo</code>, live)</th>
-<th>OOTB — ours</th>
+<th>OOTB — ours (✓ = proven<sup id="fnref:folds"><a class="footnote-ref" href="#fn:folds">1</a></sup>)</th>
 <th>Migrate GAP</th>
 </tr>
 </thead>
@@ -5124,14 +5259,14 @@ relations</em><em>, and the fold is </em><em>already witnessed</em><em> — so t
 <td>Sales O2C (order→ship→invoice)</td>
 <td><code>C_Order</code> chain</td>
 <td><strong>27</strong> SO (22 conf)</td>
-<td><strong>fold PROVEN</strong> — W-FOLD-COMPLETE <code>maxDiff=0c</code></td>
+<td>✓ — W-FOLD-COMPLETE <code>maxDiff=0c</code></td>
 <td><strong>1 of 27 pulled</strong> · EXTRACTION (loop the proven fold)</td>
 </tr>
 <tr>
 <td>Purchase P2P (PO→receipt→bill→match)</td>
 <td><code>C_Order</code> PO + <code>M_MatchInv</code></td>
 <td><strong>13</strong> PO / <strong>6</strong> bills</td>
-<td><strong>fold PROVEN</strong> — W-FOLD-AP-INVOICE/MATCHINV; adapter <code>buildBuyEvents</code> written</td>
+<td>✓ — W-FOLD-AP-INVOICE/MATCHINV; adapter <code>buildBuyEvents</code> written</td>
 <td><strong>0 pulled — adapter unused</strong> · EXTRACTION</td>
 </tr>
 <tr>
@@ -5145,42 +5280,42 @@ relations</em><em>, and the fold is </em><em>already witnessed</em><em> — so t
 <td>Customer invoices (AR)</td>
 <td><code>C_Invoice</code> SO</td>
 <td><strong>7</strong> posted</td>
-<td><strong>fold PROVEN</strong> <code>maxDiff=0c</code></td>
+<td>✓ <code>maxDiff=0c</code></td>
 <td><strong>1 of 7 pulled</strong> · EXTRACTION</td>
 </tr>
 <tr>
 <td>Vendor bills (AP)</td>
 <td><code>C_Invoice</code> PO</td>
 <td><strong>6</strong> (5 posted)</td>
-<td><strong>fold PROVEN</strong> — W-FOLD-AP-INVOICE</td>
+<td>✓ — W-FOLD-AP-INVOICE</td>
 <td><strong>0 pulled</strong> · EXTRACTION</td>
 </tr>
 <tr>
 <td>Credit notes / reverse-void</td>
 <td><code>reverseCorrect</code>/void</td>
 <td><strong>7</strong> refunds</td>
-<td><strong>fold PROVEN</strong> — W-FOLD-REVERSE</td>
+<td>✓ — W-FOLD-REVERSE</td>
 <td>docs not pulled · EXTRACTION</td>
 </tr>
 <tr>
 <td>Payments + reconciliation</td>
 <td><code>C_Payment</code>/<code>C_AllocationHdr</code></td>
 <td><strong>3</strong> pay · 1+3 reconcile</td>
-<td><strong>fold PROVEN</strong> — W-FOLD-PAYMENT/ALLOC</td>
+<td>✓ — W-FOLD-PAYMENT/ALLOC</td>
 <td><strong>synthesised, not real</strong> — 3 real pay/reconcile not pulled · EXTRACTION</td>
 </tr>
 <tr>
 <td>Manual GL journals</td>
 <td><code>GL_Journal</code></td>
 <td><strong>13</strong> entries</td>
-<td><strong>fold PROVEN</strong> — W-FOLD-GLJOURNAL (inter-org)</td>
+<td>✓ — W-FOLD-GLJOURNAL (inter-org)</td>
 <td><strong>0 pulled</strong> · EXTRACTION</td>
 </tr>
 <tr>
 <td>Financial statements BS/P&amp;L/CF</td>
 <td><code>PA_Report</code>→<code>T_Report</code> (15-table <code>T_*</code> tier)</td>
 <td><strong>3</strong> account.report (BS/P&amp;L code-side v17)</td>
-<td><strong>fold PROVEN</strong> BS+IS <code>maxDiff=0c</code> — W-PA-REPORT (iDempiere-side)</td>
+<td>✓ BS+IS <code>maxDiff=0c</code> — W-PA-REPORT (iDempiere-side)</td>
 <td>Odoo report defs unmapped · <strong>FOLD</strong></td>
 </tr>
 <tr>
@@ -5230,6 +5365,90 @@ analytic, server-action interpretation). So "welcome Odoo users" is mostly an <s
 <p>Every migrated row must trace to a real Odoo record (NON-INVENT) — the survey counts above are both the <strong>extraction
 targets</strong> and the <strong>§-witness oracles</strong> (<code>records pulled == live search_count</code>). Capability-coverage detail (per AD
 surface, with witnesses) → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>; the <code>T_*</code> reporting-tier subset → <a href="#temp-tables">§ temp-tables</a>.</p>
+<h3 id="gap-in-code">In code — the same gap, two ways<a class="headerlink" href="#gap-in-code" title="Permanent link">&para;</a></h3>
+<p><em>The </em><em>proven</em><em> row and the </em><em>gap</em><em> row, made concrete. Summarised side-by-side; click </em><em>Read more</em><em> for the fuller
+source + links. Note the LOC compression — the <code>getX/setX/saveEx</code>/SQL/try-catch ceremony drops; only the decisions survive.</em></p>
+<details class="fold">
+<summary>① <code>MOrder.completeIt()</code> — iDempiere ⟷ our fold &nbsp;<span class="hint">~250 Java LOC → ~50 JS · ✓ W-FOLD-COMPLETE 0c</span></summary>
+<div class="fbd">
+<div class="sxs">
+<div>
+<h5 id="idempiere-mordercompleteit-java-250-loc">iDempiere · <code>MOrder.completeIt()</code> — Java, ~250 LOC<a class="headerlink" href="#idempiere-mordercompleteit-java-250-loc" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m_justPrepared</span><span class="p">)</span><span class="w"> </span><span class="n">prepareIt</span><span class="p">();</span><span class="w">                  </span><span class="c1">// re-check → InProgress unless ready</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">fireDocValidate</span><span class="p">(</span><span class="n">BEFORE_COMPLETE</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w">      </span><span class="c1">// model validators (first error aborts)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">STATUS_Invalid</span><span class="p">;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">isApproved</span><span class="p">())</span><span class="w"> </span><span class="n">approveIt</span><span class="p">();</span><span class="w">                    </span><span class="c1">// implicit approval</span>
+<span class="n">createCounterDoc</span><span class="p">();</span><span class="w">                                </span><span class="c1">// intercompany</span>
+<span class="n">shipment</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createShipment</span><span class="p">(</span><span class="n">dt</span><span class="p">,</span><span class="w"> </span><span class="n">getDateOrdered</span><span class="p">());</span><span class="w">   </span><span class="c1">// auto-generate the delivery</span>
+<span class="n">invoice</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">createInvoice</span><span class="p">(</span><span class="n">dt</span><span class="p">,</span><span class="w"> </span><span class="n">shipment</span><span class="p">,</span><span class="w"> </span><span class="err">…</span><span class="p">);</span><span class="w">         </span><span class="c1">// auto-generate the invoice</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">fireDocValidate</span><span class="p">(</span><span class="n">AFTER_COMPLETE</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">STATUS_Invalid</span><span class="p">;</span>
+<span class="n">setProcessed</span><span class="p">(</span><span class="kc">true</span><span class="p">);</span><span class="w"> </span><span class="n">setDocAction</span><span class="p">(</span><span class="n">Close</span><span class="p">);</span>
+<span class="k">return</span><span class="w"> </span><span class="n">STATUS_Completed</span><span class="p">;</span><span class="w">        </span><span class="c1">// Doc_Order posts fact_acct later, at post time</span>
+</code></pre></div>
+</div>
+<div>
+<h5 id="ootb-completeit-fold-js-50-loc">OOTB · <code>completeIt</code> fold — JS, ~50 LOC<a class="headerlink" href="#ootb-completeit-fold-js-50-loc" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">CrudOverlay</span><span class="p">.</span><span class="nx">docActionOutcome</span><span class="p">(</span><span class="nx">entry</span><span class="p">,</span><span class="nx">order</span><span class="p">).</span><span class="nx">to</span><span class="o">!==</span><span class="s1">&#39;CO&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="nx">status</span><span class="p">};</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">AdModelVal</span><span class="p">.</span><span class="nx">fireHooks</span><span class="p">(</span><span class="s1">&#39;BEFORE_COMPLETE&#39;</span><span class="p">,{</span><span class="err">…</span><span class="p">}).</span><span class="nx">ok</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="nx">blocked</span><span class="p">};</span><span class="w">   </span><span class="c1">// same validators</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">childOps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">...</span><span class="nx">buildDoc</span><span class="p">(</span><span class="s1">&#39;M_InOut&#39;</span><span class="p">,</span><span class="err">…</span><span class="p">),</span><span class="w">                            </span><span class="c1">// ship + invoice =</span>
+<span class="w">                   </span><span class="p">...</span><span class="nx">buildDoc</span><span class="p">(</span><span class="s1">&#39;C_Invoice&#39;</span><span class="p">,</span><span class="err">…</span><span class="p">)</span><span class="w"> </span><span class="p">];</span><span class="w">                       </span><span class="c1">//   the SAME verb, recursed</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">post</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="nx">postRecipe</span><span class="p">(</span><span class="s1">&#39;C_Order&#39;</span><span class="p">,</span><span class="nx">order</span><span class="p">,</span><span class="nx">lines</span><span class="p">)</span><span class="err">…</span><span class="p">;</span><span class="w">                      </span><span class="c1">// DR/CR derived, ΣDR==ΣCR</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">group</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="nx">DOC_ACTION_CO</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="nx">op</span><span class="o">:</span><span class="s1">&#39;POST&#39;</span><span class="p">,</span><span class="nx">post</span><span class="p">},</span><span class="w"> </span><span class="p">...</span><span class="nx">childOps</span><span class="p">];</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">KernelOps</span><span class="p">.</span><span class="nx">commitGroup</span><span class="p">(</span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">group</span><span class="p">);</span><span class="w">   </span><span class="c1">// ONE signed, hash-chained op-group · all-or-none</span>
+</code></pre></div>
+</div>
+</div>
+<p><code>createShipment</code>/<code>createInvoice</code> become <strong><code>buildDoc(…)</code> recursion</strong> (the MOrder archetype one level down), and the books
+are a <strong>FOLD of the emitted ops</strong>, not in-place <code>saveEx()</code>.</p>
+<details>
+<summary>Read more — shipped primitives + full listing</summary>
+<div>
+<p><strong>Shipped primitives</strong> (GitHub, <code>feat/erp-substrate-phase012</code>): <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/kernel_ops.js"><code>kernel_ops.js</code></a> · <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/ad_modelval.js"><code>ad_modelval.js</code></a> · <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/ad_docfsm.js"><code>ad_docfsm.js</code></a> · <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/post_resolver.js"><code>post_resolver.js</code></a> · <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/crud_overlay.js"><code>crud_overlay.js</code></a>. <strong>Full block-for-block JS listing</strong> → the <em>Worked example</em> fold near the page foot. <strong>Still fold-TODO (H-1):</strong> auto-ship/auto-invoice recursion, <code>createCounterDoc</code>, landed cost — <code>prompts/HARDEN_MATRIX.md</code>. Witness <strong>W-FOLD-COMPLETE</strong> <code>maxDiff=0c</code>.<sup id="fnref2:folds"><a class="footnote-ref" href="#fn:folds">1</a></sup></p>
+</div>
+</details>
+</div>
+</details>
+<details class="fold">
+<summary>② <code>T_Aging</code> report setup — iDempiere ⟷ our proposed fold &nbsp;<span class="hint">FOLD GAP · not built · 0 temp rows</span></summary>
+<div class="fbd">
+<div class="sxs">
+<div>
+<h5 id="idempiere-agingdoit-fills-the-t_aging-scratch-table">iDempiere · <code>Aging.doIt()</code> → fills the <code>T_Aging</code> scratch table<a class="headerlink" href="#idempiere-agingdoit-fills-the-t_aging-scratch-table" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><span class="n">sql</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;SELECT … oi.DueDate, oi.DaysDue, GrandTotal, OpenAmt FROM &lt;open invoices&gt;&quot;</span><span class="p">;</span>
+<span class="n">rs</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">DB</span><span class="p">.</span><span class="na">prepareStatement</span><span class="p">(</span><span class="n">sql</span><span class="p">).</span><span class="na">executeQuery</span><span class="p">();</span><span class="w">     </span><span class="c1">// one pass over open items</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">rs</span><span class="p">.</span><span class="na">next</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bpKeyChanged</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">aging</span><span class="p">.</span><span class="na">saveEx</span><span class="p">();</span><span class="w">                                 </span><span class="c1">// ← INSERT a T_Aging ROW (scratch)</span>
+<span class="w">    </span><span class="n">aging</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MAging</span><span class="p">(</span><span class="err">…</span><span class="p">,</span><span class="w"> </span><span class="n">DueDate</span><span class="p">,</span><span class="w"> </span><span class="n">IsSOTrx</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="n">aging</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="n">DueDate</span><span class="p">,</span><span class="w"> </span><span class="n">DaysDue</span><span class="p">,</span><span class="w"> </span><span class="n">GrandTotal</span><span class="p">,</span><span class="w"> </span><span class="n">OpenAmt</span><span class="p">);</span><span class="w"> </span><span class="c1">// bucket the open amount</span>
+<span class="p">}</span>
+<span class="n">aging</span><span class="p">.</span><span class="na">saveEx</span><span class="p">();</span><span class="w">                                     </span><span class="c1">// final T_Aging row written</span>
+<span class="c1">// MAging.add(): daysDue&lt;=0→Due0 · &gt;=-7→Due0_7 · [-31,-60]→Due31_60 · &lt;=-91→Due91_Plus …</span>
+</code></pre></div>
+</div>
+<div>
+<h5 id="ootb-foldaging-proposed-12-loc-not-built">OOTB · <code>foldAging</code> — PROPOSED, ~12 LOC (not built)<a class="headerlink" href="#ootb-foldaging-proposed-12-loc-not-built" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code><span class="c1">// PROPOSED · NOT BUILT — the T_Aging FOLD gap. Folds OPEN ITEMS, not the GL. 0 temp rows.</span>
+<span class="kd">function</span><span class="w"> </span><span class="nx">foldAging</span><span class="p">(</span><span class="nx">openItems</span><span class="p">,</span><span class="w"> </span><span class="nx">asOf</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span><span class="w">                                   </span><span class="c1">// bpId → {Due0,Due0_7,Due31_60,…} cents</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">it</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="nx">openItems</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">                     </span><span class="c1">// host-injected open C_Invoice rows</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">daysDue</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">days</span><span class="p">(</span><span class="nx">asOf</span><span class="p">,</span><span class="w"> </span><span class="nx">it</span><span class="p">.</span><span class="nx">dueDate</span><span class="p">);</span><span class="w">          </span><span class="c1">// SAME DaysDue as Aging.java</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">out</span><span class="p">[</span><span class="nx">it</span><span class="p">.</span><span class="nx">bpId</span><span class="p">]</span><span class="w"> </span><span class="o">??=</span><span class="w"> </span><span class="nx">zeroBuckets</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">daysDue</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w">                 </span><span class="nx">add</span><span class="p">(</span><span class="nx">b</span><span class="p">,</span><span class="s1">&#39;Due0&#39;</span><span class="p">,</span><span class="w">     </span><span class="nx">it</span><span class="p">.</span><span class="nx">openAmt</span><span class="p">);</span><span class="w">  </span><span class="c1">// SAME boundaries</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">daysDue</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="o">-</span><span class="mf">7</span><span class="p">)</span><span class="w">                </span><span class="nx">add</span><span class="p">(</span><span class="nx">b</span><span class="p">,</span><span class="s1">&#39;Due0_7&#39;</span><span class="p">,</span><span class="w">   </span><span class="nx">it</span><span class="p">.</span><span class="nx">openAmt</span><span class="p">);</span><span class="w">  </span><span class="c1">//   as MAging.add()</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">daysDue</span><span class="o">&lt;=-</span><span class="mf">31</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">daysDue</span><span class="o">&gt;=-</span><span class="mf">60</span><span class="p">)</span><span class="w"> </span><span class="nx">add</span><span class="p">(</span><span class="nx">b</span><span class="p">,</span><span class="s1">&#39;Due31_60&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">it</span><span class="p">.</span><span class="nx">openAmt</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">out</span><span class="p">;</span><span class="w">                                        </span><span class="c1">// in-memory — no T_Aging; the temp tier is gone</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p><strong>Honest status — the <code>T_Aging</code> <em>gap</em> row made concrete.</strong> <code>foldAging</code> is the <em>candidate</em> fold (mirrors <code>MAging.add()</code>'s
+exact bucket boundaries), <strong>not a shipped witness.</strong> It needs the open-item extraction (Odoo stores no aging — it's an
+on-the-fly wizard; iDempiere derives it from <code>C_Invoice</code> open amounts). Tracked: matrix <strong>GAP item 13</strong> · <a href="#temp-tables">§ temp-tables</a>.</p>
+</div>
+</details>
 <details class="fold">
 <summary>Realistic conversion estimate (LOC) <span class="hint">76× engine-shell built-so-far · ~25× conservative full parity</span></summary>
 <div class="fbd">
@@ -5238,7 +5457,7 @@ surface, with witnesses) → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matr
 <blockquote>
 <p><strong>Exhaustive coverage map → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>.</strong> Every rule/process surface in <em>both</em> homes (Java code + the AD as data) enumerated, each count from a real <code>ad_full.db</code> query: <strong>0 covered / 37 partial / 3 gap</strong> of 40 surfaces (the interpreter-coverage ladder, now closed for every seed-data surface) <strong>+ a second <em>equivalence</em> axis: 20 surfaces now match the real iDempiere oracle</strong> — <strong>16 fold real GardenWorld <code>fact_acct</code>/qty postings to the cent (<code>maxDiff=0c</code>)</strong> (the whole order→ship→invoice→match→pay→allocate trade loop, the movement→on-hand→replenish inventory loop, inter-org <code>M_Movement</code> + <code>GL_Journal</code>, the <code>reverseCorrect</code>/void family, all in <strong>both</strong> accounting schemas USD + EUR), <strong>+ 4 declarative engines diffed against the <em>live</em> iDempiere Postgres to <code>diff=0</code></strong> (AD_Val_Rule SQL-where membership, AD_Ref_Table FK resolution+membership, MRole window/process/form access, AD_Column.Callout derivation) — <strong>plus 3 rule-consistent</strong> (enacted docs with no seed oracle: BOM backflush, <code>MProduction</code>, <code>MInventory</code> — verified against the proven qty/cost rules + balance + falsifier). Each carries a load-bearing §FALSIFIER. (<a href="../ERP_MODEL_ARCHETYPE/">ERP_MODEL_ARCHETYPE.md</a> is the M-class denominator: MOrder archetype + ~25 deltas — <strong>the deepest deltas now fold <code>maxDiff=0c</code></strong>.) The buckets below are measured, not asserted.</p>
 </blockquote>
-<p>Splitting all 1,427,147 Java LOC by fate <sup id="fnref:split"><a class="footnote-ref" href="#fn:split">20</a></sup>:</p>
+<p>Splitting all 1,427,147 Java LOC by fate <sup id="fnref:split"><a class="footnote-ref" href="#fn:split">21</a></sup>:</p>
 <div class="dtbl">
 <table>
 <thead>
@@ -5313,7 +5532,7 @@ surface, with witnesses) → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matr
 <p><strong>Realistic full parity — we headline the <em>conservative</em> ≈ 56K JS LOC ≈ ~25×</strong> (mid ~46K/~31×, optimistic ~37K/~38×) — vs 76× for the engine shell folded so far. Leading with the conservative bound is the point: it does not overclaim. The fold ratio is the one estimated input (GAPS #6); every LOC count is measured (incl. the M-class denominator — <code>M*.java</code> 104,940 code-LOC, ~0.2% folded).</p>
 <details class="note">
 <summary>Full breakdown by iDempiere module (org.adempiere.base, org.adempiere.ui.zk, …) — expand</summary>
-<p>Measured 2026-06-08 <sup id="fnref2:split"><a class="footnote-ref" href="#fn:split">20</a></sup>. Fate = <strong>DELETED</strong> (no equivalent in a browser substrate) · <strong>GENERIC</strong> (the interpreter renders it from the dictionary) · <strong>FOLD</strong> (re-expressed as verbs / handlers). Buckets are disjoint and sum to 1,427,147.</p>
+<p>Measured 2026-06-08 <sup id="fnref2:split"><a class="footnote-ref" href="#fn:split">21</a></sup>. Fate = <strong>DELETED</strong> (no equivalent in a browser substrate) · <strong>GENERIC</strong> (the interpreter renders it from the dictionary) · <strong>FOLD</strong> (re-expressed as verbs / handlers). Buckets are disjoint and sum to 1,427,147.</p>
 <table>
 <thead>
 <tr>
@@ -5618,65 +5837,68 @@ mostly still to-do. <em>The fold/oracle-equivalence scripts that back this are g
 <div class="footnote">
 <hr />
 <ol>
+<li id="fn:folds">
+<p><strong>✓ = oracle-equivalent fold, witnessed <code>maxDiff=0c</code></strong> against real GardenWorld data (the 16 green fold witnesses + 4 declarative diffs). Engine + witnesses on branch <code>feat/erp-substrate-phase012</code>: <a href="https://github.com/red1oon/BIMCompiler/tree/feat/erp-substrate-phase012/scripts"><code>scripts/</code> (poc_fold_*.js · poc_pa_report.js)</a> + <a href="https://github.com/red1oon/BIMCompiler/tree/feat/erp-substrate-phase012/build/erp"><code>build/erp/</code></a>; each carries a load-bearing §FALSIFIER and is graded in <a href="../FoldEngineQuality/">FoldEngineQuality.md</a>. "adapter written/unused", "spec'd", and "not built" mean exactly that — code present but not wired, design only, or absent.&#160;<a class="footnote-backref" href="#fnref:folds" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:folds" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
 <li id="fn:pclose">
-<p><code>build/erp/test_kernel_period_close.log</code> — <code>§PCLOSE-FOLD</code> archived=15→live=1, <code>§PCLOSE-RECONCILE … maxDiff=0c</code>, tamper/forgery/determinism all PASS on the real kernel.&#160;<a class="footnote-backref" href="#fnref:pclose" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:pclose" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:pclose" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+<p><code>build/erp/test_kernel_period_close.log</code> — <code>§PCLOSE-FOLD</code> archived=15→live=1, <code>§PCLOSE-RECONCILE … maxDiff=0c</code>, tamper/forgery/determinism all PASS on the real kernel.&#160;<a class="footnote-backref" href="#fnref:pclose" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:pclose" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:pclose" title="Jump back to footnote 2 in the text">&#8617;</a></p>
 </li>
 <li id="fn:drive">
-<p><code>build/erp/period_close_drive.log</code> — in-browser drive: <code>close N=20000 closeFold=2681.8ms archived=40000 live=1</code>; <code>bootstrap fromCkpt=0.90ms fromGenesis=47.70ms speedup=53.0x same=true</code>; <code>reconcile maxDiff=0c</code>.&#160;<a class="footnote-backref" href="#fnref:drive" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:drive" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:drive" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+<p><code>build/erp/period_close_drive.log</code> — in-browser drive: <code>close N=20000 closeFold=2681.8ms archived=40000 live=1</code>; <code>bootstrap fromCkpt=0.90ms fromGenesis=47.70ms speedup=53.0x same=true</code>; <code>reconcile maxDiff=0c</code>.&#160;<a class="footnote-backref" href="#fnref:drive" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:drive" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:drive" title="Jump back to footnote 3 in the text">&#8617;</a></p>
 </li>
 <li id="fn:tco">
-<p><code>build/erp/poc_tco_skeptic.log</code> — <code>W-TCO-HARDENED</code> (<code>scripts/poc_tco_skeptic.js</code>): measured 314 B/op snapshot + fold/restore; two backup strategies (Retail) weekly-incremental <strong>244×</strong> / minimal 30×; per-branch-fold additivity <code>maxDiff=0c</code>; billable-resource inventory (&gt;10× cheaper excl. licence + labour); double-sale trade bounded to the ≤0.1% shared op-class, value-tiered. Model constants per GAPS #7 (conservative for us).&#160;<a class="footnote-backref" href="#fnref:tco" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:tco" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:tco" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:tco" title="Jump back to footnote 3 in the text">&#8617;</a></p>
+<p><code>build/erp/poc_tco_skeptic.log</code> — <code>W-TCO-HARDENED</code> (<code>scripts/poc_tco_skeptic.js</code>): measured 314 B/op snapshot + fold/restore; two backup strategies (Retail) weekly-incremental <strong>244×</strong> / minimal 30×; per-branch-fold additivity <code>maxDiff=0c</code>; billable-resource inventory (&gt;10× cheaper excl. licence + labour); double-sale trade bounded to the ≤0.1% shared op-class, value-tiered. Model constants per GAPS #7 (conservative for us).&#160;<a class="footnote-backref" href="#fnref:tco" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:tco" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:tco" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:tco" title="Jump back to footnote 4 in the text">&#8617;</a></p>
 </li>
 <li id="fn:blackout">
-<p><code>build/erp/poc_blackout_resume.log</code> — <code>W-BLACKOUT</code> (<code>scripts/poc_blackout_resume.js</code>): 50 branches, total blackout + relay drive lost (no backup), rebuilt from each branch's own slice to an <strong>identical signed tip</strong>, books <code>maxDiff=0c</code>, idempotent re-push (<code>acc=0</code>); the CAS-arbitration sliver is named + ledger-routed; <code>§ORDER-HONEST</code> — disjoint folds commute, cross-branch CAS order is not reconstructible from signed logs alone.&#160;<a class="footnote-backref" href="#fnref:blackout" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:blackout" title="Jump back to footnote 4 in the text">&#8617;</a></p>
+<p><code>build/erp/poc_blackout_resume.log</code> — <code>W-BLACKOUT</code> (<code>scripts/poc_blackout_resume.js</code>): 50 branches, total blackout + relay drive lost (no backup), rebuilt from each branch's own slice to an <strong>identical signed tip</strong>, books <code>maxDiff=0c</code>, idempotent re-push (<code>acc=0</code>); the CAS-arbitration sliver is named + ledger-routed; <code>§ORDER-HONEST</code> — disjoint folds commute, cross-branch CAS order is not reconstructible from signed logs alone.&#160;<a class="footnote-backref" href="#fnref:blackout" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:blackout" title="Jump back to footnote 5 in the text">&#8617;</a></p>
 </li>
 <li id="fn:noround">
-<p><code>docs/DistributedERP.md</code> §0 (server→serverless table, lines 53–85) + §10 lines 467–468 ("no per-interaction network round-trip (the kernel answers locally)").&#160;<a class="footnote-backref" href="#fnref:noround" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:noround" title="Jump back to footnote 5 in the text">&#8617;</a></p>
+<p><code>docs/DistributedERP.md</code> §0 (server→serverless table, lines 53–85) + §10 lines 467–468 ("no per-interaction network round-trip (the kernel answers locally)").&#160;<a class="footnote-backref" href="#fnref:noround" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:noround" title="Jump back to footnote 6 in the text">&#8617;</a></p>
 </li>
 <li id="fn:bench">
-<p><code>build/erp/bench_oplog_pg.log</code> — N=1000 ops, one atomic commit: sql.js 208.45 ms (0.2084 ms/op, incl. sha256 chain); Postgres durable WAL+fsync 5.24 ms (0.0052 ms/op). Explicitly "NOT a head-to-head".&#160;<a class="footnote-backref" href="#fnref:bench" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bench" title="Jump back to footnote 6 in the text">&#8617;</a></p>
+<p><code>build/erp/bench_oplog_pg.log</code> — N=1000 ops, one atomic commit: sql.js 208.45 ms (0.2084 ms/op, incl. sha256 chain); Postgres durable WAL+fsync 5.24 ms (0.0052 ms/op). Explicitly "NOT a head-to-head".&#160;<a class="footnote-backref" href="#fnref:bench" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bench" title="Jump back to footnote 7 in the text">&#8617;</a></p>
 </li>
 <li id="fn:rpos">
-<p><code>build/erp/poc_remote_pos.log</code> — <code>§RPOS</code>: local op-group fold <strong>0.01 ms/sale</strong> (167,219 sales/s). Networked legacy per sale = RTT + measured Postgres per-doc; <strong>locals MEASURED, the network leg is a transparent model</strong>, and legacy EXCLUDES iDempiere ORM/OSGi so it is a <em>floor</em>: LAN 0.5 ms → 256–674×, metro 10 ms → 1,844–10,205×, cross-region 50 ms → 8,533–50,338×, intercontinental 150 ms → 25,255–150,669×.&#160;<a class="footnote-backref" href="#fnref:rpos" title="Jump back to footnote 7 in the text">&#8617;</a></p>
+<p><code>build/erp/poc_remote_pos.log</code> — <code>§RPOS</code>: local op-group fold <strong>0.01 ms/sale</strong> (167,219 sales/s). Networked legacy per sale = RTT + measured Postgres per-doc; <strong>locals MEASURED, the network leg is a transparent model</strong>, and legacy EXCLUDES iDempiere ORM/OSGi so it is a <em>floor</em>: LAN 0.5 ms → 256–674×, metro 10 ms → 1,844–10,205×, cross-region 50 ms → 8,533–50,338×, intercontinental 150 ms → 25,255–150,669×.&#160;<a class="footnote-backref" href="#fnref:rpos" title="Jump back to footnote 8 in the text">&#8617;</a></p>
 </li>
 <li id="fn:dep">
-<p><code>docs/DepreciationPerf.md</code> — iDempiere 40-year asset depreciation: per-row <code>saveEx</code> through the PO layer ≈ ~2 DB round-trips × ~480 periods/asset ≈ ~960/asset → a base of thousands of assets ≈ <strong>~1M round-trips</strong> (recalled ~20 min). The cost is the round-trips, not the maths.&#160;<a class="footnote-backref" href="#fnref:dep" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:dep" title="Jump back to footnote 8 in the text">&#8617;</a></p>
+<p><code>docs/DepreciationPerf.md</code> — iDempiere 40-year asset depreciation: per-row <code>saveEx</code> through the PO layer ≈ ~2 DB round-trips × ~480 periods/asset ≈ ~960/asset → a base of thousands of assets ≈ <strong>~1M round-trips</strong> (recalled ~20 min). The cost is the round-trips, not the maths.&#160;<a class="footnote-backref" href="#fnref:dep" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:dep" title="Jump back to footnote 9 in the text">&#8617;</a></p>
 </li>
 <li id="fn:sync">
-<p><code>build/erp/sync_poc_smoke.log</code> — 5,000 events: naive 9,390 ops/s; batch commitGroup 22,492 ops/s = 2.4× (corroborated <code>sync_poc_prod_smoke.log</code>).&#160;<a class="footnote-backref" href="#fnref:sync" title="Jump back to footnote 9 in the text">&#8617;</a></p>
+<p><code>build/erp/sync_poc_smoke.log</code> — 5,000 events: naive 9,390 ops/s; batch commitGroup 22,492 ops/s = 2.4× (corroborated <code>sync_poc_prod_smoke.log</code>).&#160;<a class="footnote-backref" href="#fnref:sync" title="Jump back to footnote 10 in the text">&#8617;</a></p>
 </li>
 <li id="fn:ceiling">
-<p><code>build/erp/poc_volume_ceiling.log</code> — append/fold stay LINEAR; largestFit=20,000,000 ops, ~437 B/op retained; fold ~40.8M ops/s hot at 5M.&#160;<a class="footnote-backref" href="#fnref:ceiling" title="Jump back to footnote 10 in the text">&#8617;</a></p>
+<p><code>build/erp/poc_volume_ceiling.log</code> — append/fold stay LINEAR; largestFit=20,000,000 ops, ~437 B/op retained; fold ~40.8M ops/s hot at 5M.&#160;<a class="footnote-backref" href="#fnref:ceiling" title="Jump back to footnote 11 in the text">&#8617;</a></p>
 </li>
 <li id="fn:bloat">
-<p>bloat memory (<code>reference_bloat_reduction.md</code>, measured 2026-06-06 from <code>~/idempiere-dev-setup/idempiere</code>) — seed 45.2 MB → 12.7 MB (≈3.5×); 1,427,147 Java LOC → 18,614 JS LOC engine shell (≈76× built-so-far; ~25× at conservative full parity, ~56K JS). Full evidence <code>internal/BLOAT_MEASUREMENT.md</code>.&#160;<a class="footnote-backref" href="#fnref:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:bloat" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:bloat" title="Jump back to footnote 11 in the text">&#8617;</a></p>
+<p>bloat memory (<code>reference_bloat_reduction.md</code>, measured 2026-06-06 from <code>~/idempiere-dev-setup/idempiere</code>) — seed 45.2 MB → 12.7 MB (≈3.5×); 1,427,147 Java LOC → 18,614 JS LOC engine shell (≈76× built-so-far; ~25× at conservative full parity, ~56K JS). Full evidence <code>internal/BLOAT_MEASUREMENT.md</code>.&#160;<a class="footnote-backref" href="#fnref:bloat" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:bloat" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:bloat" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:bloat" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:bloat" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:bloat" title="Jump back to footnote 12 in the text">&#8617;</a></p>
 </li>
 <li id="fn:bloat2">
-<p>same memory — LIVE GardenWorld DB Postgres 143 MB on-disk → 43 MB SQLite (925 tables, 187,133 rows, ≈3.3×); gzip 11.7 MB (3.7×).&#160;<a class="footnote-backref" href="#fnref:bloat2" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat2" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat2" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat2" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat2" title="Jump back to footnote 12 in the text">&#8617;</a></p>
+<p>same memory — LIVE GardenWorld DB Postgres 143 MB on-disk → 43 MB SQLite (925 tables, 187,133 rows, ≈3.3×); gzip 11.7 MB (3.7×).&#160;<a class="footnote-backref" href="#fnref:bloat2" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:bloat2" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:bloat2" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:bloat2" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:bloat2" title="Jump back to footnote 13 in the text">&#8617;</a></p>
 </li>
 <li id="fn:odoo">
-<p><code>build/erp/odoo_fold_live.log</code> — <code>§ODOO-FOLD-LIVE PASS</code>: live odoodemo (Odoo 17, :8069) SO S00023, 5/5 hops mapped, newVerbs=[], total 5002.50 == oracle, GL ΣDr==ΣCr.&#160;<a class="footnote-backref" href="#fnref:odoo" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:odoo" title="Jump back to footnote 13 in the text">&#8617;</a></p>
+<p><code>build/erp/odoo_fold_live.log</code> — <code>§ODOO-FOLD-LIVE PASS</code>: live odoodemo (Odoo 17, :8069) SO S00023, 5/5 hops mapped, newVerbs=[], total 5002.50 == oracle, GL ΣDr==ΣCr.&#160;<a class="footnote-backref" href="#fnref:odoo" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:odoo" title="Jump back to footnote 14 in the text">&#8617;</a></p>
 </li>
 <li id="fn:b1">
-<p><code>build/erp/b1_fold.log</code> — <code>§B1-FOLD PASS</code>: SAP Business One O2C + OJDT/JDT1, 5/5 hops, journal 770.00==770.00. Source = a hand-authored MOCK Service-Layer shape (user-authorized 2026-06-05), NOT a real export.&#160;<a class="footnote-backref" href="#fnref:b1" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:b1" title="Jump back to footnote 14 in the text">&#8617;</a></p>
+<p><code>build/erp/b1_fold.log</code> — <code>§B1-FOLD PASS</code>: SAP Business One O2C + OJDT/JDT1, 5/5 hops, journal 770.00==770.00. Source = a hand-authored MOCK Service-Layer shape (user-authorized 2026-06-05), NOT a real export.&#160;<a class="footnote-backref" href="#fnref:b1" title="Jump back to footnote 15 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:b1" title="Jump back to footnote 15 in the text">&#8617;</a></p>
 </li>
 <li id="fn:sap">
-<p><code>build/erp/sap_fold.log</code> — <code>§SAP-FOLD NOT-RUN</code> / <code>BLOCKED — awaiting a REAL SAP oracle. No fold claimed.</code> (S/4HANA).&#160;<a class="footnote-backref" href="#fnref:sap" title="Jump back to footnote 15 in the text">&#8617;</a></p>
+<p><code>build/erp/sap_fold.log</code> — <code>§SAP-FOLD NOT-RUN</code> / <code>BLOCKED — awaiting a REAL SAP oracle. No fold claimed.</code> (S/4HANA).&#160;<a class="footnote-backref" href="#fnref:sap" title="Jump back to footnote 16 in the text">&#8617;</a></p>
 </li>
 <li id="fn:own">
-<p><code>docs/DistributedERP.md</code> §0 lines 74–80 (the Git analogy — log is truth, host disposable) + the signed-checkpoint/tamper proofs in <sup id="fnref:pclose"><a class="footnote-ref" href="#fn:pclose">1</a></sup>.&#160;<a class="footnote-backref" href="#fnref:own" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:own" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:own" title="Jump back to footnote 16 in the text">&#8617;</a></p>
+<p><code>docs/DistributedERP.md</code> §0 lines 74–80 (the Git analogy — log is truth, host disposable) + the signed-checkpoint/tamper proofs in <sup id="fnref:pclose"><a class="footnote-ref" href="#fn:pclose">2</a></sup>.&#160;<a class="footnote-backref" href="#fnref:own" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:own" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:own" title="Jump back to footnote 17 in the text">&#8617;</a></p>
 </li>
 <li id="fn:arch">
-<p>Architectural property of a server-of-record ERP — no comparable single measured number in this repo; stated as structure, not benchmarked. Honest-caveat doctrine: <code>feedback_erp_perf_claims</code>.&#160;<a class="footnote-backref" href="#fnref:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref23:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref24:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref25:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref26:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref27:arch" title="Jump back to footnote 17 in the text">&#8617;</a><a class="footnote-backref" href="#fnref28:arch" title="Jump back to footnote 17 in the text">&#8617;</a></p>
+<p>Architectural property of a server-of-record ERP — no comparable single measured number in this repo; stated as structure, not benchmarked. Honest-caveat doctrine: <code>feedback_erp_perf_claims</code>.&#160;<a class="footnote-backref" href="#fnref:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref23:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref24:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref25:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref26:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref27:arch" title="Jump back to footnote 18 in the text">&#8617;</a><a class="footnote-backref" href="#fnref28:arch" title="Jump back to footnote 18 in the text">&#8617;</a></p>
 </li>
 <li id="fn:poc">
-<p>The server→serverless mapping + per-line proofs: <code>docs/DistributedERP.md</code> §0 ("From server to serverless — what moved where"). POCs live in <code>scripts/poc_*.js</code> (<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_kernel.js"><code>poc_kernel.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_chain.js"><code>poc_chain.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_sign.js"><code>poc_sign.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_persist.js"><code>poc_persist.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_remote_pos.js"><code>poc_remote_pos.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_postings.js"><code>poc_postings.js</code></a>); witnessed logs under <code>build/erp/</code>.&#160;<a class="footnote-backref" href="#fnref:poc" title="Jump back to footnote 18 in the text">&#8617;</a></p>
+<p>The server→serverless mapping + per-line proofs: <code>docs/DistributedERP.md</code> §0 ("From server to serverless — what moved where"). POCs live in <code>scripts/poc_*.js</code> (<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_distributed.js"><code>poc_distributed.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_kernel.js"><code>poc_kernel.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_chain.js"><code>poc_chain.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_sign.js"><code>poc_sign.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_persist.js"><code>poc_persist.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_remote_pos.js"><code>poc_remote_pos.js</code></a>, <a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/poc_postings.js"><code>poc_postings.js</code></a>); witnessed logs under <code>build/erp/</code>.&#160;<a class="footnote-backref" href="#fnref:poc" title="Jump back to footnote 19 in the text">&#8617;</a></p>
 </li>
 <li id="fn:reduce">
-<p>The ≈925-table → 5-relation reduction: <code>docs/DistributedERP.md</code> §"domain reduction" ("iDempiere AD (925 tables, <code>M*</code> classes) → 5 tables + deterministic verbs") + <code>docs/OpLogERP.md</code> ("≈925 tables reduce to five relations plus verbs") + <code>docs/ERP.md</code> §12 (the 5 core tables) + <code>docs/FeatureComparison.md</code> ("5 core tables: containers, items, documents, document_lines, journal").&#160;<a class="footnote-backref" href="#fnref:reduce" title="Jump back to footnote 19 in the text">&#8617;</a></p>
+<p>The ≈925-table → 5-relation reduction: <code>docs/DistributedERP.md</code> §"domain reduction" ("iDempiere AD (925 tables, <code>M*</code> classes) → 5 tables + deterministic verbs") + <code>docs/OpLogERP.md</code> ("≈925 tables reduce to five relations plus verbs") + <code>docs/ERP.md</code> §12 (the 5 core tables) + <code>docs/FeatureComparison.md</code> ("5 core tables: containers, items, documents, document_lines, journal").&#160;<a class="footnote-backref" href="#fnref:reduce" title="Jump back to footnote 20 in the text">&#8617;</a></p>
 </li>
 <li id="fn:split">
-<p>iDempiere swept 2026-06-08 via <code>find … -exec cat {} + | wc -l</code> over <code>~/idempiere-dev-setup/idempiere</code> (4,465 files, 1,427,147 LOC; same tree as <sup id="fnref:bloat"><a class="footnote-ref" href="#fn:bloat">11</a></sup>). Key buckets: generated <code>X_*</code>=345,490, <code>I_*</code>=227,100; ZK web UI=189,786; tests=78,389; base <code>M*</code> models=198,679; <code>Doc_*</code> posting=12,789; acct engine=21,443; tree-wide <code>process/</code>=69,782; costing=22,056; payment=7,359; tax=2,507; matching=1,959; allocation=1,472; callouts=10,340; validators=3,336; plus server-side HTML lib 43,816, print/report+Jasper ~21K, import/migration ~25K, webservices/server/installer/JDBC/OSGi. Disjoint buckets sum to 1,427,147. The 5–8× fold ratio and the ceremony fraction of <code>M*</code> are estimates (GAPS #6), not measured.&#160;<a class="footnote-backref" href="#fnref:split" title="Jump back to footnote 20 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:split" title="Jump back to footnote 20 in the text">&#8617;</a></p>
+<p>iDempiere swept 2026-06-08 via <code>find … -exec cat {} + | wc -l</code> over <code>~/idempiere-dev-setup/idempiere</code> (4,465 files, 1,427,147 LOC; same tree as <sup id="fnref:bloat"><a class="footnote-ref" href="#fn:bloat">12</a></sup>). Key buckets: generated <code>X_*</code>=345,490, <code>I_*</code>=227,100; ZK web UI=189,786; tests=78,389; base <code>M*</code> models=198,679; <code>Doc_*</code> posting=12,789; acct engine=21,443; tree-wide <code>process/</code>=69,782; costing=22,056; payment=7,359; tax=2,507; matching=1,959; allocation=1,472; callouts=10,340; validators=3,336; plus server-side HTML lib 43,816, print/report+Jasper ~21K, import/migration ~25K, webservices/server/installer/JDBC/OSGi. Disjoint buckets sum to 1,427,147. The 5–8× fold ratio and the ceremony fraction of <code>M*</code> are estimates (GAPS #6), not measured.&#160;<a class="footnote-backref" href="#fnref:split" title="Jump back to footnote 21 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:split" title="Jump back to footnote 21 in the text">&#8617;</a></p>
 </li>
 </ol>
 </div>
