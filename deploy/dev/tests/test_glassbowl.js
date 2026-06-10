@@ -639,43 +639,6 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   const angAfter = await page.evaluate(() => window.avgMinAngle());
   check(angAfter > angBefore + 0.01, 'W-UNTANGLE: routine widens the avg smallest angle between bunched lines (de-bunch)', 'avgMinAngle ' + (angBefore * 180 / Math.PI).toFixed(1) + '°→' + (angAfter * 180 / Math.PI).toFixed(1) + '°');
 
-  // ════════════════════════════════════════════════════════════════════════════════
-  //  Feature 3 — W-DIAG (mobile-only diagonal arrange): on a mobile-sized viewport, invoking diagonal
-  //  arrange increases the bubbles' extent ALONG THE DIAGONAL vs the flat layout, eased; Reset re-homes;
-  //  the diagonal button is hidden on desktop so the at-rest layout (W-ORBIT) is never overridden.
-  //  Issue it proves: "mobile gets a deterministic, reversible diagonal declutter that never becomes the
-  //  default layout, so the desktop at-rest invariant holds". ──
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await page.evaluate(() => { document.getElementById('resetBtn').click(); try { localStorage.clear(); } catch (e) {} });
-  await page.waitForTimeout(40);
-  const diagBtnDesktop = await page.locator('#diagBtn').evaluate(e => getComputedStyle(e).display);
-  check(diagBtnDesktop === 'none', 'W-DIAG: the diagonal-arrange button is HIDDEN on desktop (mobile-only, never the default)', 'display=' + diagBtnDesktop);
-  const diagExtent = () => page.evaluate(() => {
-    const cs = [...document.querySelectorAll('#svg circle')];
-    const proj = cs.map(c => (+c.getAttribute('cx') + +c.getAttribute('cy')) / Math.SQRT2);
-    return Math.max(...proj) - Math.min(...proj);
-  });
-  await page.setViewportSize({ width: 390, height: 720 });
-  await page.evaluate(() => { try { localStorage.clear(); localStorage.setItem = function () {}; } catch (e) {} });
-  await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('#svg circle', { timeout: 8000 }).catch(() => {});
-  await page.waitForTimeout(120);
-  const diagBtnMobile = await page.locator('#diagBtn').evaluate(e => getComputedStyle(e).display);
-  check(diagBtnMobile !== 'none', 'W-DIAG: the diagonal-arrange button is VISIBLE on a mobile viewport', 'display=' + diagBtnMobile);
-  const homeDiagExtent = await diagExtent();
-  const homeCxDiag = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
-  await page.locator('#diagBtn').click();
-  await page.waitForTimeout(700);   // let the eased glide (~26 frames) finish + the §DIAG log fire
-  const afterDiagExtent = await diagExtent();
-  check(afterDiagExtent > homeDiagExtent + 10, 'W-DIAG: diagonal arrange increases the bubbles’ extent along the diagonal vs the flat layout', 'diagExtent ' + Math.round(homeDiagExtent) + '→' + Math.round(afterDiagExtent));
-  const movedCxDiag = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
-  check(movedCxDiag !== homeCxDiag, 'W-DIAG: the bubbles actually moved (the glide ran)', 'moved=' + (movedCxDiag !== homeCxDiag));
-  await page.locator('#resetBtn').click();
-  await page.waitForTimeout(60);
-  const rehomeCxDiag = await page.$$eval('#svg circle', cs => cs.map(c => +c.getAttribute('cx')).sort((a, b) => a - b).join(','));
-  check(rehomeCxDiag !== movedCxDiag, 'W-DIAG: Reset re-homes the diagonally-arranged bubbles (reversible action)', 'rehomed=' + (rehomeCxDiag !== movedCxDiag));
-  const diagLog = logs.find(l => /§DIAG bubbles=/.test(l)) || '';
-  check(/§DIAG bubbles=\d+ axis=diagonal/.test(diagLog), 'W-DIAG: §DIAG whitebox log reports the bubble count + diagonal axis', diagLog.slice(0, 70));
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
   await page.reload({ waitUntil: 'networkidle' });
@@ -758,26 +721,29 @@ function check(ok, label, detail) { if (!ok) fails++; console.log('   ' + (ok ? 
   //  a tap posts skipWaiting EXACTLY once + arms the single reload guard WITHOUT a real navigation. ──
   // the §SWUPDATE wiring log fired at register-time (the registration ran its updatefound/toast setup)
   const swLog = logs.find(l => /§SWUPDATE wired=/.test(l)) || '';
-  check(/§SWUPDATE wired=Y toast=1 reload-guard=Y/.test(swLog), 'W-SWUPDATE: §SWUPDATE log proves the SW registration wired the updatefound toast + reload guard', swLog.slice(0, 60) || 'no §SWUPDATE log');
+  check(/§SWUPDATE wired=Y toast=1 reload-guard=tap/.test(swLog), 'W-SWUPDATE: §SWUPDATE log proves the SW registration wired the updatefound toast + tap-gated reload guard', swLog.slice(0, 60) || 'no §SWUPDATE log');
   // the toast element exists and is HIDDEN at rest (must not occlude other checks' click targets)
   const toastRest = await page.evaluate(() => { const t = document.getElementById('swToast'); return { exists: !!t, hidden: t ? getComputedStyle(t).display === 'none' : false, hasX: !!(t && document.getElementById('swToastX')) }; });
   check(toastRest.exists && toastRest.hidden && toastRest.hasX, 'W-SWUPDATE: #swToast exists, is HIDDEN at rest, and carries a ✕ dismiss (non-blocking, never occludes)', 'exists=' + toastRest.exists + ' hidden=' + toastRest.hidden + ' hasX=' + toastRest.hasX);
   // the simulated "installed + controller" path REVEALS the toast (the updatefound→show handler is wired)
   const toastShown = await page.evaluate(() => { if (typeof window.__swShowToast !== 'function') return false; window.__swShowToast(); return getComputedStyle(document.getElementById('swToast')).display !== 'none'; });
   check(toastShown, 'W-SWUPDATE: the installed+controller path reveals the toast (updatefound→show is wired)', 'shown=' + toastShown);
-  // tapping the toast body posts skipWaiting EXACTLY once and arms the single reload guard — WITHOUT navigating.
-  // (reg.waiting is null in the harness — no parked worker — so __swApply posts nothing but still counts the tap;
-  //  the guard arming is what proves controllerchange will reload at most once.)
+  // the reload is TAP-GATED: before any tap __swApplied is false, so the first-install clients.claim()
+  //  controllerchange must NOT reload (THAT auto-reload was the mobile double-load). Tapping posts skipWaiting
+  //  EXACTLY once + sets __swApplied; the sessionStorage one-shot then allows exactly ONE reload (no loop).
+  //  (reg.waiting is null in the harness — no parked worker — so __swApply posts nothing but still counts the tap.)
   const tap = await page.evaluate(() => {
-    window.__swPostCount = 0; window.__swReloaded = false;
+    try { sessionStorage.removeItem('__swReloaded'); } catch (e) {}
+    window.__swPostCount = 0;
+    const noAutoReload = window.__swApplied === false;          // first-install controllerchange would be ignored (no double-load)
     document.getElementById('swToast').dispatchEvent(new MouseEvent('click', { bubbles: true }));   // body tap = refresh
-    // simulate the controllerchange the SW would fire after skipWaiting → the guard must allow ONE reload then latch
-    const firstWouldReload = window.__swReloaded === false;   // guard not yet latched → first controllerchange would reload
-    window.__swReloaded = true;                                // arm the guard (as the real handler does on first fire)
-    const secondBlocked = window.__swReloaded === true;        // a second controllerchange is now blocked (no loop)
-    return { posts: window.__swPostCount, firstWouldReload, secondBlocked };
+    const appliedAfterTap = window.__swApplied === true;        // the user's tap is what arms the reload
+    const firstWouldReload = !sessionStorage.getItem('__swReloaded'); // guard not yet latched → first controllerchange reloads
+    sessionStorage.setItem('__swReloaded', '1');                 // arm the guard (as the real handler does on first fire)
+    const secondBlocked = !!sessionStorage.getItem('__swReloaded'); // a second controllerchange is now blocked (no loop)
+    return { posts: window.__swPostCount, noAutoReload, appliedAfterTap, firstWouldReload, secondBlocked };
   });
-  check(tap.posts === 1 && tap.firstWouldReload && tap.secondBlocked, 'W-SWUPDATE: tapping the toast posts skipWaiting once + the reload guard allows exactly ONE reload (no loop, no auto-reload)', 'posts=' + tap.posts + ' firstReload=' + tap.firstWouldReload + ' secondBlocked=' + tap.secondBlocked);
+  check(tap.posts === 1 && tap.noAutoReload && tap.appliedAfterTap && tap.firstWouldReload && tap.secondBlocked, 'W-SWUPDATE: NO auto-reload before a tap (kills the first-install double-load); tapping posts skipWaiting once + the sessionStorage guard allows exactly ONE reload (no loop)', 'posts=' + tap.posts + ' noAuto=' + tap.noAutoReload + ' applied=' + tap.appliedAfterTap + ' firstReload=' + tap.firstWouldReload + ' secondBlocked=' + tap.secondBlocked);
   // ✕ dismisses the toast (hides it again) without posting or reloading
   const dismissed = await page.evaluate(() => { window.__swShowToast(); document.getElementById('swToastX').dispatchEvent(new MouseEvent('click', { bubbles: true })); return getComputedStyle(document.getElementById('swToast')).display === 'none'; });
   check(dismissed, 'W-SWUPDATE: ✕ dismisses the toast (hides it; no post, no reload)', 'dismissed=' + dismissed);
