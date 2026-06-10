@@ -792,6 +792,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#gap-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GAP ANALYSIS — iDempiere | Odoo | OOTB, and where the migrate gap is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#footnote-sources" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4326,6 +4337,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#gap-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GAP ANALYSIS — iDempiere | Odoo | OOTB, and where the migrate gap is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#footnote-sources" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5033,6 +5055,161 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <p><strong>NOT feature parity — plainly.</strong> iDempiere, Odoo and SAP have <em>vastly</em> more features, localisations and integrations. The 18.6K LOC renders the dictionary and folds the paths built so far (the order→ship→invoice→match→pay→allocate trade loop, inventory movement→on-hand→replenish, GL posting incl. inter-org + FX + <code>reverseCorrect</code>/void, signed rule-edit, period-close — <strong>20 surfaces now oracle-equivalent to real iDempiere</strong>) — it does <strong>not</strong> re-implement the full transactional server. <strong>Only ~0.2% of the M-class business logic is ported</strong> (the <code>M*.java</code> model logic = 104,940 code-LOC; we've folded ~205) — the engine is the <em>host</em>, the M-class logic is the work still ahead. The win is <strong>delivery/definition</strong>: the AD-interpreter is lean because the AD is self-describing, and the whole server/build stack is gone. Each transactional verb still has to be folded deterministically. See <code>feedback_erp_perf_claims</code>.</p>
 </div>
 </details>
+<h2 id="gap-analysis">GAP ANALYSIS — iDempiere | Odoo | OOTB, and where the migrate gap is<a class="headerlink" href="#gap-analysis" title="Permanent link">&para;</a></h2>
+<p><em>One place to see what each source ERP holds, what our engine folds, and — for a </em><em>real</em><em> Odoo instance — exactly what
+the migrate pulls today vs. what's left. The axis is </em><em>capability</em><em>, not table-by-table (the three schemas don't align).
+The </em><em>Odoo column is real <code>search_count</code></em><em> from the live <code>odoodemo</code> (Odoo 17) instance our agent folds (<code>build/erp/
+odoo_survey.json</code>); iDempiere = the seeded GardenWorld client; OOTB = our 18.6K-LOC engine. The gap splits two ways:
+</em><em>EXTRACTION</em><em> = data the migrate could pull but doesn't yet · </em><em>FOLD</em><em> = a capability the engine can't compute even if pulled.</em></p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>iDempiere (GardenWorld)</th>
+<th>Odoo (<code>odoodemo</code>, live)</th>
+<th>OOTB — ours</th>
+<th>Migrate GAP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Partners / customers</td>
+<td><code>C_BPartner</code></td>
+<td><strong>38</strong> (4 cust)</td>
+<td>master (fold n/a)</td>
+<td>38 not pulled · <strong>EXTRACTION</strong></td>
+</tr>
+<tr>
+<td>Products + cat + UoM</td>
+<td><code>M_Product</code></td>
+<td><strong>30/35</strong> · 9 cat · 28 uom</td>
+<td>inline refs only</td>
+<td>not pulled as master · <strong>EXTRACTION</strong></td>
+</tr>
+<tr>
+<td>Chart of accounts</td>
+<td><code>C_ElementValue</code> (tree)</td>
+<td><strong>47</strong> accounts</td>
+<td><code>foldStatement</code> expands COA tree</td>
+<td>47 not pulled (takes inline resolved strings) · <strong>EXTRACTION</strong></td>
+</tr>
+<tr>
+<td>Journals / taxes / terms</td>
+<td><code>GL_Journal</code>/<code>C_Tax</code></td>
+<td>8 / 2 / 11</td>
+<td>tax rides inline</td>
+<td>not pulled as master · <strong>EXTRACTION</strong></td>
+</tr>
+<tr>
+<td>Sales O2C (order→ship→invoice)</td>
+<td><code>C_Order</code> chain</td>
+<td><strong>27</strong> SO (22 conf)</td>
+<td><strong>fold PROVEN</strong> — W-FOLD-COMPLETE <code>maxDiff=0c</code></td>
+<td><strong>1 of 27 pulled</strong> · EXTRACTION (loop the proven fold)</td>
+</tr>
+<tr>
+<td>Purchase P2P (PO→receipt→bill→match)</td>
+<td><code>C_Order</code> PO + <code>M_MatchInv</code></td>
+<td><strong>13</strong> PO / <strong>6</strong> bills</td>
+<td><strong>fold PROVEN</strong> — W-FOLD-AP-INVOICE/MATCHINV; adapter <code>buildBuyEvents</code> written</td>
+<td><strong>0 pulled — adapter unused</strong> · EXTRACTION</td>
+</tr>
+<tr>
+<td>Inventory moves + on-hand</td>
+<td><code>M_InOut</code>/<code>M_Movement</code></td>
+<td>31 pick · 59 move · <strong>43</strong> quant · 13 valuation</td>
+<td>movement fold PROVEN; cost-valued GL deferred</td>
+<td>quants/moves not pulled · EXTRACTION <strong>+</strong> cost-GL FOLD</td>
+</tr>
+<tr>
+<td>Customer invoices (AR)</td>
+<td><code>C_Invoice</code> SO</td>
+<td><strong>7</strong> posted</td>
+<td><strong>fold PROVEN</strong> <code>maxDiff=0c</code></td>
+<td><strong>1 of 7 pulled</strong> · EXTRACTION</td>
+</tr>
+<tr>
+<td>Vendor bills (AP)</td>
+<td><code>C_Invoice</code> PO</td>
+<td><strong>6</strong> (5 posted)</td>
+<td><strong>fold PROVEN</strong> — W-FOLD-AP-INVOICE</td>
+<td><strong>0 pulled</strong> · EXTRACTION</td>
+</tr>
+<tr>
+<td>Credit notes / reverse-void</td>
+<td><code>reverseCorrect</code>/void</td>
+<td><strong>7</strong> refunds</td>
+<td><strong>fold PROVEN</strong> — W-FOLD-REVERSE</td>
+<td>docs not pulled · EXTRACTION</td>
+</tr>
+<tr>
+<td>Payments + reconciliation</td>
+<td><code>C_Payment</code>/<code>C_AllocationHdr</code></td>
+<td><strong>3</strong> pay · 1+3 reconcile</td>
+<td><strong>fold PROVEN</strong> — W-FOLD-PAYMENT/ALLOC</td>
+<td><strong>synthesised, not real</strong> — 3 real pay/reconcile not pulled · EXTRACTION</td>
+</tr>
+<tr>
+<td>Manual GL journals</td>
+<td><code>GL_Journal</code></td>
+<td><strong>13</strong> entries</td>
+<td><strong>fold PROVEN</strong> — W-FOLD-GLJOURNAL (inter-org)</td>
+<td><strong>0 pulled</strong> · EXTRACTION</td>
+</tr>
+<tr>
+<td>Financial statements BS/P&amp;L/CF</td>
+<td><code>PA_Report</code>→<code>T_Report</code> (15-table <code>T_*</code> tier)</td>
+<td><strong>3</strong> account.report (BS/P&amp;L code-side v17)</td>
+<td><strong>fold PROVEN</strong> BS+IS <code>maxDiff=0c</code> — W-PA-REPORT (iDempiere-side)</td>
+<td>Odoo report defs unmapped · <strong>FOLD</strong></td>
+</tr>
+<tr>
+<td>AR/AP Aging</td>
+<td><code>Aging</code>→<code>T_Aging</code></td>
+<td>on-the-fly wizard (no stored rows)</td>
+<td>not built</td>
+<td>distinct fold (open-items+date buckets) · <strong>FOLD</strong></td>
+</tr>
+<tr>
+<td>Document print / layout</td>
+<td><code>AD_PrintFormat</code> (<code>'P'</code> grids-in-grids)</td>
+<td><strong>41</strong> QWeb defs</td>
+<td><code>foldReceipt</code> (W-PROC); <code>foldPrint</code> spec'd</td>
+<td>0 print formats mapped · <strong>FOLD</strong></td>
+</tr>
+<tr>
+<td>Workflow / automation</td>
+<td><code>AD_Workflow</code></td>
+<td>64 server actions · 18 cron</td>
+<td><code>ad_workflow.js</code> walk (W-WF)</td>
+<td>no server-action interpreter · <strong>FOLD</strong></td>
+</tr>
+<tr>
+<td>Analytic / cost centres</td>
+<td>acct dims / <code>C_Project</code></td>
+<td><strong>19</strong> analytic accts</td>
+<td>not built</td>
+<td>no analytic fold · <strong>FOLD</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>The honest headline:</strong> against a real Odoo, <strong>migrate today pulls 1 of 27 sale orders (one O2C chain, S00023) and
+zero master data.</strong> The gap to "in full" is everything else — but it splits sharply: <strong>most is pure EXTRACTION</strong> (the
+engine <em>already folds</em> O2C, P2P/match, GL-journal, reverse/void — all green witnesses; the data simply isn't pulled
+yet), and a <strong>smaller residue is FOLD capability</strong> (cost-valued inventory GL, financial-report + print-format mapping,
+analytic, server-action interpretation). So "welcome Odoo users" is mostly an <strong>extraction sprint, not new engine work.</strong></p>
+<p><strong>Tackle-later list (prioritised, to pull Odoo data in full)</strong> — tracked in <code>prompts/MIGRATE_INSTALL_TENANT.md §RESUME</code>
++ machine-readable <code>build/erp/odoo_survey.json</code>:
+1. <strong>Master-data pass (P0)</strong> — partners 38 · products 30/35 + cat 9 + UoM 28 · COA 47 · journals 8 · taxes 2 · terms 11 · companies 2. Pure <code>search_read</code> dumps; every document dangles without it.
+2. <strong>Loop all 22 confirmed SOs</strong> (today 1/27) — fold path already proven.
+3. <strong>Wire the existing buy-side adapter</strong> → 6 POs + 6 vendor bills + 3-way match (code written, unused).
+4. <strong>Pull real payments + reconciles</strong> (3 + 1/3) instead of the synthetic ALLOCATE.
+5. <strong>Manual journals (13) + credit notes (7)</strong> → the already-proven GL-journal / reverse-void folds.
+6. <strong>Inventory state</strong> — on-hand quants 43 + valuation 13 as opening balances (cost-valued GL is itself a fold gap).
+7. <strong>Fold gaps (defer)</strong> — financial-report defs (3) + QWeb print (41) + aging + server actions (64): mapping/interpreter work, not extraction.</p>
+<p>Every migrated row must trace to a real Odoo record (NON-INVENT) — the survey counts above are both the <strong>extraction
+targets</strong> and the <strong>§-witness oracles</strong> (<code>records pulled == live search_count</code>). Capability-coverage detail (per AD
+surface, with witnesses) → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>; the <code>T_*</code> reporting-tier subset → <a href="#temp-tables">§ temp-tables</a>.</p>
 <details class="fold">
 <summary>Realistic conversion estimate (LOC) <span class="hint">76× engine-shell built-so-far · ~25× conservative full parity</span></summary>
 <div class="fbd">
