@@ -5061,6 +5061,26 @@ the migrate pulls today vs. what's left. The axis is </em><em>capability</em><em
 The </em><em>Odoo column is real <code>search_count</code></em><em> from the live <code>odoodemo</code> (Odoo 17) instance our agent folds (<code>build/erp/
 odoo_survey.json</code>); iDempiere = the seeded GardenWorld client; OOTB = our 18.6K-LOC engine. The gap splits two ways:
 </em><em>EXTRACTION</em><em> = data the migrate could pull but doesn't yet · </em><em>FOLD</em><em> = a capability the engine can't compute even if pulled.</em></p>
+<p><strong>The shape first</strong> — how a real Odoo's data threads, collapses onto our 5 core relations, and folds (read this before
+the table; counts are live <code>odoodemo</code>):</p>
+<div class="highlight"><pre><span></span><code>ODOO  odoodemo · live (real counts)   →  5 core relations  →  fold (proven)      captured today
+───────────────────────────────────     ────────────────     ───────────────    ──────────────
+MASTER  partner ×38 · product ×30/35     containers · items   (master —          ░ 0 pulled
+        cat ×9 · uom ×28 · account ×47                         no fold needed)     ◄ the P0 gap
+        journal ×8 · tax ×2 · terms ×11
+
+DOCS    sale.order ×27 (lines ×56)       documents +          completeIt  →      ▓ 1 of 27
+        purchase.order ×13               document_lines       W-FOLD-COMPLETE     (S00023 chain)
+        stock.picking ×31                (O2C / P2P spine)    fact_acct  0c ✓     ░ 26 + all 13 PO
+        account.move ×34
+
+JRNL    account.move.line ×99            journal              posting  →         ▓ ~4 of 99
+        payment ×3 · reconcile 1+3                            GL  ΣDr==ΣCr ✓      ░ the rest
+
+  ▓ pulled &amp; folded (engine proven)     ░ EXTRACTION gap — pull the data; the fold already exists
+</code></pre></div>
+<p><em>Read it left-to-right: the source's many models thread through </em><em>a few document types</em><em>, those collapse onto </em><em>5
+relations</em><em>, and the fold is </em><em>already witnessed</em><em> — so the gap (mostly ░) is "pull the rest," not "build the engine."</em></p>
 <table>
 <thead>
 <tr>
