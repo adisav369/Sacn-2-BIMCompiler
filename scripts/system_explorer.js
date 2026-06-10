@@ -273,7 +273,7 @@ var LIFECYCLE = ['c_order', 'c_orderline', 'm_inout', 'm_inoutline', 'c_invoice'
   //   overlays; no new graph data, so the FK-graph counts are untouched). Witnesses W-SWIPE-PICKER/W-AUDIO/W-QR-INPUT.
   var swipeOk = /id="recpick"/.test(htmlOut) && /buildRecPick/.test(htmlOut);
   var audioOk = /AudioContext/.test(htmlOut) && /id="muteBtn"/.test(htmlOut) && /function beep/.test(htmlOut);
-  var qrOk = /BarcodeDetector/.test(htmlOut) && /id="qrbtn"/.test(htmlOut) && /function qrLookup/.test(htmlOut);
+  var qrOk = /BarcodeDetector/.test(htmlOut) && /id="qrvid"/.test(htmlOut) && /function qrLookup/.test(htmlOut);  /* §GB-PILLS: QR is now a pill (Scan-QR button retired); camera #qrvid still proves the feature */
   console.log('   §SWIPE-PICKER wired=' + (swipeOk ? 'Y' : 'N') + ' (swipe record list at the trackball, augments the typed search)');
   console.log('   §AUDIO wired=' + (audioOk ? 'Y' : 'N') + ' (WebAudio synth + persisted mute toggle, 0 audio assets)');
   console.log('   §QR-INPUT wired=' + (qrOk ? 'Y' : 'N') + ' (BarcodeDetector scan->trace, honest unsupported fallback, read-only slice)');
@@ -536,13 +536,14 @@ function renderHtml(graph) {
 '  navigator.serviceWorker.addEventListener("controllerchange",function(){if(!window.__swApplied)return;if(sessionStorage.getItem("__swReloaded"))return;sessionStorage.setItem("__swReloaded","1");location.reload();});\n' +
 '  console.log("\\u00a7SWUPDATE wired=Y toast=1 reload-guard=tap");\n' +
 '}).catch(function(){});});}</script>\n' +
+'<div id="conceptWM" aria-hidden="true" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:6;font:800 13vw/1 system-ui,-apple-system,sans-serif;letter-spacing:.06em;color:#cfe8ee;opacity:.045;text-transform:uppercase;user-select:none;transform:rotate(-18deg);white-space:nowrap;">Concept UI</div>\n' +
 '<div id="wrap">\n' +
 '<div id="stage"><svg id="svg" width="100%" height="100%"></svg>\n' +
 '  <div class="legend" id="legend"></div>\n' +
 '  <div class="cold" id="coldbox"></div>\n' +
-'  <div class="ctl"><button id="traceBtn">▸ Trace a record</button><button id="untangleBtn" title="spread bunched lines apart \\u2014 angular declutter (bubbles stay movable)">&#10022; Untangle</button><button id="muteBtn" title="mute / unmute the interface sounds">&#128266;</button><button id="resetBtn">⤢ Reset view</button><button id="panelToggle" title="hide / show the info panel">⟩</button></div>\n' +
+'  <!-- §GB-PILLS: the loose .ctl bar (trace/untangle/mute/reset/panel) folds into the shared \\u22ef pill registry (glassbowl_pills.js + pills_glassbowl.json). No controls outside the pill. -->\n' +
 '  <div id="strip"></div>\n' +
-'  <div id="recwrap"><input id="recsearch" list="reclist" placeholder="search a record &mdash; e.g. 80001" autocomplete="off"><datalist id="reclist"></datalist><button id="qrbtn" title="scan a record&rsquo;s QR &mdash; no typing">&#9635; Scan QR</button></div>\n' +
+'  <div id="recwrap"><input id="recsearch" list="reclist" placeholder="search a record &mdash; e.g. 80001" autocomplete="off"><datalist id="reclist"></datalist></div>\n' +
 '  <div id="recpick"></div>\n' +
 '  <div id="qrcam"><div class="qrh"><b>Scan a record&rsquo;s QR</b><span class="qrx" id="qrx" title="close">&#10005;</span></div><video id="qrvid" playsinline muted></video><div id="qrstatus"></div></div>\n' +
 '  <div id="ball" title="drag to orbit \\u2014 arrange the view like a BIM model"><div id="balldot"></div></div>\n' +
@@ -555,13 +556,43 @@ function renderHtml(graph) {
 '  <div id="phandle" title="show / hide the info panel">&#10217;</div>\n' +
 '</div>\n' +
 '<div id="pgrip" title="drag to resize the panel"></div>\n' +
-'<div id="panel"><h1>Glassbowl <span id="aboutBtn" class="appx" title="how to read this">ⓘ</span></h1><div class="sub">a live map of how your documents connect &amp; flow — built from the system itself. Click a bubble.</div>\n' +
+'<div id="panel"><h1>Glassbowl</h1><div class="sub">a live map of how your documents connect &amp; flow — built from the system itself. Click a bubble.</div>\n' +
 '  <div id="summary"><div class="k">the links on this map</div><div id="spines"></div>\n' +
 '  <div class="k">what the system runs</div><div id="cellcount"></div></div>\n' +
 '  <div class="rhdr" id="recentHdr" style="display:none">recent items &mdash; like iDempiere&rsquo;s, but spatial &amp; glanceable. the engine keeps every step (op-log). tap to minimise &middot; swipe or &times; to dismiss</div>\n' +
 '  <div id="stack"></div>\n' +
 '</div></div>\n' +
-'<script>\nvar G=' + data + ';\n' + LAYOUT_JS + '\n' + VIEWER_JS + '\n</script></body></html>';
+'<script>\nvar G=' + data + ';\n' + LAYOUT_JS + '\n' + VIEWER_JS + '\n</script>\n' +
+// §GB-PILLS — shared ⋯ pill registry: icons.js (glyph DATA) + pill_builder.js (renderer, as-is) + glassbowl_pills.js
+// (binds fn BY ID to window.GlassbowlPillActions) + pills_glassbowl.json (manifest). Replaces the hand-rolled .ctl bar.
+'<script src="icons.js?v=3"></script>\n' +
+'<script src="pill_builder.js?v=3"></script>\n' +
+'<script src="glassbowl_pills.js?v=1"></script>\n' +
+'<script>(function(){' +
+'function _ck(id){var c=document.getElementById(id);if(c){c.checked=!c.checked;c.dispatchEvent(new Event("change"));}return c;}' +
+'function _ckOn(id){var c=document.getElementById(id);return !!(c&&c.checked);}' +
+'function mount(){if(!window.GlassbowlPills){return;}' +
+'window.GlassbowlPillActions={' +
+'home:function(){console.log("\\u00a7GB-HOME \\u2192 erp.html");location.href="erp.html";},' +
+'trace:function(){if(window.gbTrace)window.gbTrace();},' +
+'untangle:function(){if(window.untangle)window.untangle();},' +
+'reset:function(){if(window.gbReset)window.gbReset();},' +
+'mute:function(){if(window.toggleMute)window.toggleMute();},' +
+'panel:function(){if(window.togglePanel)window.togglePanel();},' +
+'edit:function(){_ck("crudModeCk");},' +
+'qr:function(){if(window.gbQR)window.gbQR();else if(window.qrOpen)window.qrOpen();},' +
+'showme:function(){_ck("needHelpCk");},' +
+'about:function(){if(window.gbAbout)window.gbAbout();}};' +
+'window.GlassbowlPillActive={' +
+'trace:function(){return !!(window.gbTraceOn&&window.gbTraceOn());},' +
+'mute:function(){return !!(window.gbMuteOn&&window.gbMuteOn());},' +
+'panel:function(){var w=document.getElementById("wrap");return !!(w&&!w.classList.contains("collapsed"));},' +
+'edit:function(){return _ckOn("crudModeCk");},' +
+'showme:function(){return _ckOn("needHelpCk");},' +
+'about:function(){var a=document.getElementById("about");return !!(a&&a.classList.contains("open"));}};' +
+'window.GlassbowlPills.mount({manifest:"pills_glassbowl.json?v=1",storageKey:"glassbowl_pill_config",tag:"\\u00a7GB-PILLS"});}' +
+'if(document.readyState!=="loading")mount();else window.addEventListener("load",mount);})();</script>\n' +
+'</body></html>';
 }
 
 var VIEWER_JS = [
@@ -679,15 +710,15 @@ var VIEWER_JS = [
 'ball.addEventListener("pointermove",function(ev){if(!orbiting)return;setOrbit(orbiting.y0+(ev.clientX-orbiting.x)*0.012,orbiting.p0+(ev.clientY-orbiting.y)*0.012);});',
 'function endOrbit(){orbiting=null;}ball.addEventListener("pointerup",endOrbit);ball.addEventListener("pointercancel",endOrbit);',
 'window.setOrbit=setOrbit;updateBall();',
-'document.getElementById("resetBtn").addEventListener("click",function(){px=0;py=0;k=1;yaw=0;pitch=0;focusId=null;window.__yaw=0;window.__pitch=0;N.forEach(function(n){n.x=n.hx;n.y=n.hy;});updateBall();applyT();draw();});',
-'document.getElementById("untangleBtn").addEventListener("click",function(){untangle();});',
+'window.gbReset=function(){px=0;py=0;k=1;yaw=0;pitch=0;focusId=null;window.__yaw=0;window.__pitch=0;N.forEach(function(n){n.x=n.hx;n.y=n.hy;});updateBall();applyT();draw();};/* \\u00a7GB-PILLS reset (was loose resetBtn) */',
+'/* \\u00a7GB-PILLS untangle is window.untangle (loose untangleBtn retired) */',
 '// collapse the right info panel \\u2192 the graph takes the full canvas (positions are absolute, no re-layout needed).',
 '// driven by BOTH the toolbar \\u27e9 button AND the mobile-friendly yellow #phandle at the panel border.',
 'function isMobile(){try{return window.matchMedia("(max-width:760px)").matches||window.innerWidth<760;}catch(e){return window.innerWidth<760;}}',
 'function syncPanelUI(c){var pt=document.getElementById("panelToggle");if(pt){pt.textContent=c?"\\u27e8":"\\u27e9";pt.title=(c?"show":"hide")+" the info panel";}var ph=document.getElementById("phandle");if(ph){ph.innerHTML=c?"&#10216;":"&#10217;";ph.title=(c?"show":"hide")+" the info panel";}}',
 'function setPanelCollapsed(c){document.getElementById("wrap").classList.toggle("collapsed",c);syncPanelUI(c);}',
 'function togglePanel(){setPanelCollapsed(!document.getElementById("wrap").classList.contains("collapsed"));}',
-'document.getElementById("panelToggle").addEventListener("click",togglePanel);',
+'/* \\u00a7GB-PILLS panel toggle is window.togglePanel (loose panelToggle retired; #phandle edge-grip kept) */',
 '(function(){var ph=document.getElementById("phandle");if(ph)ph.addEventListener("click",function(ev){ev.stopPropagation();togglePanel();});})();',
 'window.togglePanel=togglePanel;window.setPanelCollapsed=setPanelCollapsed;',
 '// drag the gripper to RESIZE the info panel (width \\u2192 a CSS var, clamped). Composes with collapse.',
@@ -747,7 +778,7 @@ var VIEWER_JS = [
 '// ── About panel (aimed at a business / ERP user) ──',
 'var ABOUT=\'<h2>What am I looking at?</h2><p>A live map of how your business documents connect and flow \\u2014 orders, shipments, invoices, payments \\u2014 drawn automatically from the system itself.</p><h3>The bubbles</h3><p>Each bubble is something your business tracks. <span class=em>Bigger means used more.</span> Click a bubble to see what it links to and what the system does there. Drag bubbles to tidy them up, scroll to zoom, drag the empty background to move around.</p><h3>The coloured links</h3><p><span class=sw style="background:#4caf7d"></span><span class=em>Sales flow</span> \\u2014 an order becomes a shipment, then an invoice, then a payment. This is most of your day.</p><p><span class=sw style="background:#e2574c"></span><span class=em>Matching &amp; reconciliation</span> \\u2014 checking that what was ordered, received, billed and paid all agree. The careful part a bookkeeper double-checks.</p><p><span class=sw style="background:#6aa9ff"></span><span class=em>Document &amp; its lines</span> \\u2014 an invoice and the products listed on it.</p><p><span class=sw style="background:#5a6b7a"></span><span class=em>Reference data</span> \\u2014 links to your lists of products, customers and suppliers.</p><h3>Why it matters</h3><p>The green flow is the easy everyday path. The red links are where money is reconciled \\u2014 where mistakes cost you. The map shows at a glance where the real work concentrates.</p><h3>\\u201cNot switched on yet\\u201d</h3><p>The full platform is already here, most of it dormant. Features light up the moment you use them \\u2014 nothing to install or configure up front.</p>\';',
 'document.getElementById("about").innerHTML=\'<span class="aboutx" id="aboutX" title="close">\\u2715</span>\'+ABOUT;',
-'document.getElementById("aboutBtn").addEventListener("click",function(){document.getElementById("about").classList.toggle("open");});',
+'window.gbAbout=function(){document.getElementById("about").classList.toggle("open");};/* \\u00a7GB-PILLS about (was loose aboutBtn) */',
 '(function(){var ax=document.getElementById("aboutX");if(ax)ax.addEventListener("click",function(){document.getElementById("about").classList.remove("open");});})();',
 '// ── Phase 2a: LINEAGE TRACE (GLASSBOWL_DOSSIER \\u00a72a, W-LIFECYCLE) — light a real record\\u2019s whole life ──',
 'var LIN=G.lineage||null,traceMode=false,litN={},xchecked=false,GDB=null,recMap={},curChain=(LIN?LIN.chain:[]);',
@@ -757,8 +788,8 @@ var VIEWER_JS = [
 'function fmtAmt(a){return a==null?"":" <span class=amt>("+Number(a).toFixed(2)+")</span>";}',
 'function buildStrip(){var s=document.getElementById("strip");if(!curChain.length){s.innerHTML="<span class=pill>no record traced</span>";return;}var h="<span class=ttl>this record\\u2019s life:</span>";curChain.forEach(function(c,i){if(i)h+=\'<span class=arr>\\u25b8</span>\';var who=c.id==null?"\\u2014":(c.documentno!=null?"#"+c.documentno:"#"+c.id);h+=\'<span class=step data-t="\'+c.table+\'"><b>\'+(c.friendly||c.table)+\'</b> \'+who+fmtAmt(c.amount)+\'</span>\';});h+=\'<span class=xx id=stripX title="exit trace">\\u2715</span>\';s.innerHTML=h;Array.prototype.forEach.call(s.querySelectorAll(".step"),function(elm){elm.addEventListener("click",function(){pick(elm.getAttribute("data-t"));});});document.getElementById("stripX").addEventListener("click",function(){setTrace(false);});}',
 'function applyChain(ch){curChain=ch;rebuildLit();buildStrip();draw();}',
-'function setTrace(on){if(on)focusId=null;traceMode=on;document.getElementById("strip").classList.toggle("open",on);var rw=document.getElementById("recwrap");if(rw)rw.classList.toggle("open",on);var rp=document.getElementById("recpick");if(rp)rp.classList.toggle("open",on);if(!on)qrClose();document.getElementById("traceBtn").classList.toggle("active",on);if(on){if(!curChain.length&&LIN)curChain=LIN.chain;rebuildLit();buildStrip();traceJive();}draw();if(on)ensureXcheck();}',
-'document.getElementById("traceBtn").addEventListener("click",function(){setTrace(!traceMode);});',
+'function setTrace(on){if(on)focusId=null;traceMode=on;document.getElementById("strip").classList.toggle("open",on);var rw=document.getElementById("recwrap");if(rw)rw.classList.toggle("open",on);var rp=document.getElementById("recpick");if(rp)rp.classList.toggle("open",on);if(!on)qrClose();var _tb=document.getElementById("traceBtn");if(_tb)_tb.classList.toggle("active",on);if(on){if(!curChain.length&&LIN)curChain=LIN.chain;rebuildLit();buildStrip();traceJive();}draw();if(on)ensureXcheck();}',
+'window.gbTrace=function(){setTrace(!traceMode);};window.gbTraceOn=function(){return traceMode;};/* \\u00a7GB-PILLS trace (was loose traceBtn) */',
 '// load the sql.js bundle ONCE, retain it (GDB) for the xcheck AND the record search.',
 'function withBundle(cb){if(GDB){cb(GDB);return;}try{var sc=document.createElement("script");sc.src="sqljs/sql-wasm.js";sc.onload=function(){if(!window.initSqlJs){xcDone("skip=no-initSqlJs");return;}window.initSqlJs({locateFile:function(f){return "sqljs/"+f;}}).then(function(SQL){return fetch("glassbowl_data.db").then(function(r){return r.arrayBuffer();}).then(function(buf){GDB=new SQL.Database(new Uint8Array(buf));cb(GDB);});}).catch(function(e){xcDone("error="+e.message);});};sc.onerror=function(){xcDone("skip=no-sqljs-asset");};document.head.appendChild(sc);}catch(e){xcDone("error="+e.message);}}',
 '// walk the bundle for ANY seed order, using the declarative LIN.steps (dep=seed|prior table) — extract.',
@@ -876,7 +907,7 @@ var VIEWER_JS = [
 'function applyMuteLabel(){if(muteBtn){muteBtn.textContent=AUDIO.muted?"\\ud83d\\udd07":"\\ud83d\\udd0a";muteBtn.classList.toggle("active",AUDIO.muted);}}',
 'function toggleMute(){AUDIO.muted=!AUDIO.muted;applyMuteLabel();if(!AUDIO.muted){audioUnlock();beep(523,0.06,"sine",0.04);}save();}',
 'if(muteBtn)muteBtn.addEventListener("click",function(ev){ev.stopPropagation();toggleMute();});',
-'applyMuteLabel();window.toggleMute=toggleMute;',
+'applyMuteLabel();window.toggleMute=toggleMute;window.gbMuteOn=function(){return !!(AUDIO&&AUDIO.muted);};',
 '// ── Task 6 (GLASSBOWL_DOSSIER \\u00a72bcd, W-QR-INPUT): scan a QR carrying a record id/documentno \\u2192 trace/open',
 '//    that record. Native BarcodeDetector + getUserMedia, ZERO external libs; honest \\u201cnot supported\\u201d fallback;',
 '//    the stream is stopped when the panel closes. READ-ONLY slice (scan\\u2192trace); scan-to-FILL-an-edit-value is T3. ──',
@@ -894,7 +925,7 @@ var VIEWER_JS = [
 ' if(!qrSupported()){qrStatus(\'<span class=qbad>QR scan not supported on this browser.</span><br><span class=pill>use the swipe list or the search box instead \\u2014 same record, no camera needed.</span>\');console.log("\\u00a7QR-INPUT open supported=N (honest fallback shown)");return;}',
 ' qrStatus("requesting the camera\\u2026");try{QR.detector=new window.BarcodeDetector({formats:["qr_code"]});}catch(e){QR.detector=null;}',
 ' navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}).then(function(stream){QR.stream=stream;QVID.srcObject=stream;QVID.play&&QVID.play();QCAM.classList.add("live");qrStatus("point the camera at a record\\u2019s QR\\u2026");QR.scanning=true;console.log("\\u00a7QR-INPUT open supported=Y scanning=Y");QR.raf=requestAnimationFrame(qrTick);}).catch(function(err){qrStatus(\'<span class=qbad>camera unavailable \\u2014 \'+esc(err&&err.name||"denied")+\'.</span><br><span class=pill>permission needed; the swipe list works without it.</span>\');console.log("\\u00a7QR-INPUT open supported=Y camera=denied");});}',
-'(function(){var qb=document.getElementById("qrbtn"),qx=document.getElementById("qrx");if(qb)qb.addEventListener("click",function(ev){ev.stopPropagation();audioUnlock();dossierJive();qrOpen();});if(qx)qx.addEventListener("click",function(ev){ev.stopPropagation();qrClose();});})();',
+'(function(){window.gbQR=function(){audioUnlock();dossierJive();qrOpen();};var qb=document.getElementById("qrbtn"),qx=document.getElementById("qrx");if(qb)qb.addEventListener("click",function(ev){ev.stopPropagation();window.gbQR();});if(qx)qx.addEventListener("click",function(ev){ev.stopPropagation();qrClose();});})();',
 'window.qrOpen=qrOpen;',
 'console.log("\\u00a7QR-INPUT supported="+(qrSupported()?"Y":"N"));',
 '// ════════════════════════════════════════════════════════════════════════════════',
