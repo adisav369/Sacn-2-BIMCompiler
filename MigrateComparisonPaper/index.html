@@ -4963,7 +4963,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <strong><code>maxDiff=0c</code> is <em>exact</em>, not "close enough" — the money-math holy war, settled.</strong></p>
 <p>The reflex objection to <em>any</em> ERP outside the JVM is decimal arithmetic: Java has <code>BigDecimal</code>, Python has <code>decimal.Decimal</code>, <strong>JavaScript has neither</strong> — its <code>Number</code> is an IEEE-754 binary float, so <code>0.1 + 0.2 ≠ 0.3</code> and a naïve port <em>will</em> drift cents.</p>
 <p>We never touch float for money. Quantities and amounts accumulate as <strong>integer cents / centi-units</strong>, and the only non-integer steps (FX conversion, proportional tax) multiply in <strong><code>BigInt</code> off the rate's exact decimal preserved as TEXT</strong>, rounded with an explicit <code>HALF_UP</code> — the same rule iDempiere's <code>BigDecimal.setScale(2, HALF_UP)</code> applies. That decimal kernel is <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/bigdecimal.js"><code>build/erp/bigdecimal.js</code></a> — loaded by the live browser app and the financial-report overlay, and unit-proven <strong>bit-equal to Java <code>BigDecimal</code></strong> (<code>poc_money_fold.js</code>); the FX/match folds (<code>poc_alloc_fx</code>, <code>poc_matchinv</code>, <code>poc_matchinv_fx</code>) apply the <em>same</em> <code>BigInt</code> HALF_UP discipline inline.</p>
-<p>So the <code>maxDiff=0c</code> above is a <em>true zero</em> across 20 surfaces and <strong>both</strong> currency schemas — the half-cent FX residual that <em>does</em> arise (alloc 101 = 1c) is posted to a real <code>CurrencyBalancing</code> account, not swallowed by rounding noise. The lesson of the holy war: <strong>the discipline ports, the language doesn't matter</strong> — exact decimal money is a 200-line library, not a reason to keep the server.</p>
+<p>So the <code>maxDiff=0c</code> above is a <em>true zero</em> across 20 surfaces and <strong>both</strong> currency schemas — the half-cent FX residual that <em>does</em> arise (alloc 101 = 1c) is posted to a real <code>CurrencyBalancing</code> account, not swallowed by rounding noise. The lesson of the holy war: <strong>the discipline ports, the language doesn't matter</strong> — exact decimal money is a ~140-line library, not a reason to keep the server.</p>
 <p><strong>What is architectural (a property, not a number):</strong>
 - "0 round-trip" — <em>structural</em> (no server of record on the read/fold path), not a benchmark. Honest counter: server-removal only wins over a network; on-box, durable Postgres is <em>faster</em> per-op (it buys durability + concurrency we defer).
 - Most ERP cells are <em>n/a — architectural</em>: the legacy stack exposes no comparable single number (throughput ceiling, batch-vs-naive) — server-bound by design.</p>
@@ -5012,6 +5012,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </table>
 </div>
 <p><strong>Read it:</strong> ~86% is UI, boilerplate, or server plumbing the browser deletes outright. Even the irreducible 14% is ceremony-heavy — in the <code>M*</code> models a third is blank/comment/signatures and most of the rest is generic accessor/lifecycle code the dictionary already handles; the <em>behavioural</em> logic (state transitions, posting math, tax rounding) is a minority.</p>
+<p><strong>And the irreducible 14% is not one up-front lump.</strong> A large slice of it is the <strong>SvrProcess corpus</strong> — <code>org.compiere.process.*</code>, ~54K LOC across <strong>476</strong> <code>AD_Process</code> reports/procedures. We do <strong>not</strong> port that corpus to reach parity; we built and proved the <strong>dispatch <em>mechanism</em></strong> (<code>ad_process.js</code>, W-PROC: <code>classname</code>→handler-registry→<code>prepare</code>/validate-params→<code>doIt</code>, a port of <code>ProcessUtil.startJavaProcess</code> + <code>SvrProcess.startProcess</code>) and fold individual procs <strong>on demand</strong> — when a customer actually invokes that report or routine, gated on need + an oracle, never as a sequencing prerequisite. <strong>22 of 476 dispatch today</strong> (the report procs fold straight through <code>report_overlay</code>); the remaining <strong>454 are named-deferred, not blocking</strong> — <em>the deliverable is the mechanism, not the corpus</em> (<a href="../ERP_COVERAGE_MATRIX/">coverage matrix §A/§B</a>). So ~54K of the ~200K "must-fold" bucket amortises over real demand rather than gating the conversion estimate.</p>
 <p>Folding that behavioural core into declarative verbs compresses ~5–8× (no Java/OSGi ceremony, no per-field getters) — though <strong>costing and MRP fold least cleanly</strong> (stateful cost rollups, landed cost), pulling toward the conservative end:</p>
 <div class="dtbl hl-last">
 <table>
@@ -5223,6 +5224,18 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
    <strong>public list prices (~Jan-2026, volatile)</strong> and <strong>excludes DB licence + DBA labour</strong>. The ratios use the
    <strong>uncompacted</strong> 314 B/op (no shorthand) — the compression ladder (~90 B/op) widens them ~3.5×. Witness:
    <code>build/erp/poc_tco_skeptic.log</code>.</li>
+<li><strong>Financial Reporting — <code>PA_Report</code> statements + <code>AD_PrintFormat</code> (ONGOING).</strong> What is <strong>proven</strong> is the
+   <em>base case</em>: the Trial Balance is a fold of the real <code>fact_acct</code> that balances to the cent (<code>ΣDr=ΣCr=46574.97</code>,
+   <code>maxDiff=0c</code>, <code>test_report_fin.js</code> §REPORT-FIN), and <code>foldPnL</code> exists in <code>report_overlay.js</code>. What is <strong>not yet
+   folded or oracle-diffed</strong> is the standard iDempiere <strong>metadata-driven</strong> report layer: the user-defined Financial
+   Reports (<code>PA_Report</code> — the seed's 3 real statements <em>Balance Sheet / Income Statement / Cash Flows</em>, <strong>113</strong>
+   <code>PA_ReportLine</code> · <strong>17</strong> <code>PA_ReportColumn</code> · <strong>93</strong> <code>PA_ReportSource</code>) and the print/layout interpreter
+   (<code>AD_PrintFormat</code>, <strong>93</strong> formats / <strong>2,780</strong> items). Today's statements are <em>hardcoded</em> folds, not driven from
+   the <code>PA_*</code> metadata; <code>foldPnL</code> carries <strong>no <code>fact_acct</code>-anchored witness</strong> yet. The oracle exists (the same rows
+   live in <code>idempiere_test</code>, and a real Financial-Report run is diffable), so this is a <strong>fold-vs-independent-product</strong>
+   target, not a tautology — but <strong>do not claim reporting parity</strong> until <code>W-PA-REPORT</code> / <code>W-PRINTFORMAT</code> land
+   <code>maxDiff=0c</code>. The Jasper / <code>ReportEngine</code> stack (~38K LOC) stays <em>deleted</em> — reports render as a browser fold of
+   the journal, not a server print pipeline. Plan: <a href="../ReportingFold/"><code>ReportingFold.md</code></a>.</li>
 </ol>
 </div>
 </details>
