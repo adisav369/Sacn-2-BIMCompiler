@@ -536,7 +536,7 @@ function renderHtml(graph) {
 '  navigator.serviceWorker.addEventListener("controllerchange",function(){if(!window.__swApplied)return;if(sessionStorage.getItem("__swReloaded"))return;sessionStorage.setItem("__swReloaded","1");location.reload();});\n' +
 '  console.log("\\u00a7SWUPDATE wired=Y toast=1 reload-guard=tap");\n' +
 '}).catch(function(){});});}</script>\n' +
-'<div id="conceptWM" aria-hidden="true" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:6;font:800 13vw/1 system-ui,-apple-system,sans-serif;letter-spacing:.06em;color:#cfe8ee;opacity:.045;text-transform:uppercase;user-select:none;transform:rotate(-18deg);white-space:nowrap;">Concept UI</div>\n' +
+'<div id="conceptWM" aria-hidden="true" style="position:fixed;inset:0;pointer-events:none;z-index:6;background-image:url(\'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22300%22%20height%3D%22160%22%3E%3Ctext%20x%3D%226%22%20y%3D%22100%22%20transform%3D%22rotate(-28%20150%2080)%22%20font-family%3D%22system-ui%2C-apple-system%2Csans-serif%22%20font-size%3D%2230%22%20font-weight%3D%22800%22%20letter-spacing%3D%222%22%20fill%3D%22%23cfe8ee%22%20fill-opacity%3D%220.03%22%3ECONCEPT%20UI%3C%2Ftext%3E%3C%2Fsvg%3E\');background-repeat:repeat;"></div>\n' +
 '<div id="wrap">\n' +
 '<div id="stage"><svg id="svg" width="100%" height="100%"></svg>\n' +
 '  <div class="legend" id="legend"></div>\n' +
