@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 // ⚠ DO NOT REMOVE — Scope guard
 // SCOPE: W-PA-REPORT-BROWSER — prove the BROWSER path of report_overlay.statement() works: fold pa_report 100
-//   (Balance Sheet) + 101 (Income Statement) reading EVERY input from the SERVED BUNDLE glassbowl_data.db ALONE
+//   (Balance Sheet) + 101 (Income Statement) + 102 (Statement of Cash Flows) reading EVERY input from the
+//   SERVED BUNDLE glassbowl_data.db ALONE
 //   (pa_*, c_period/c_year, ad_treenode, c_elementvalue.accountsign, fact_acct — all loaded by
 //   scripts/extract_pa_report.sh), and diff cent-exact vs the INDEPENDENT live idempiere_test oracle. This
 //   replicates report_overlay.js statementInputs() verbatim, so a green run == the bundle carries what the app
@@ -98,14 +99,18 @@ ok(r100.maxDiff === 0, 'Balance Sheet (100) maxDiff=' + r100.maxDiff + 'c over '
 console.log('\n[ISSUE] in-app foldStatement(101 Income Statement) from the bundle == oracle, cent-exact');
 var r101 = runReport(101);
 ok(r101.maxDiff === 0, 'Income Statement (101) maxDiff=' + r101.maxDiff + 'c over ' + r101.cellCount + ' cells');
+console.log('\n[ISSUE] in-app foldStatement(102 Statement of Cash Flows) from the bundle == oracle, cent-exact');
+var r102 = runReport(102);
+ok(r102.maxDiff === 0, 'Statement of Cash Flows (102) maxDiff=' + r102.maxDiff + 'c over ' + r102.cellCount + ' cells');
 
 // NON-VACUITY: maxDiff=0c over an ALL-ZERO statement proves nothing (0==0). Each statement must carry real activity.
 console.log('\n[ISSUE] statements are NON-vacuous (real nonzero cells, not a 0==0 tie)');
 function nonzeroCells(r) { var n = 0; r.lines.forEach(function (l) { r.cols.forEach(function (c) { if (cents(r.folded.cells[l.pa_reportline_id][c.pa_reportcolumn_id]) !== 0) n++; }); }); return n; }
-var nz100 = nonzeroCells(r100), nz101 = nonzeroCells(r101);
-console.log('§PA-BROWSER-NONVACUOUS BS-nonzero-cells=' + nz100 + ' IS-nonzero-cells=' + nz101);
+var nz100 = nonzeroCells(r100), nz101 = nonzeroCells(r101), nz102 = nonzeroCells(r102);
+console.log('§PA-BROWSER-NONVACUOUS BS-nonzero-cells=' + nz100 + ' IS-nonzero-cells=' + nz101 + ' CF-nonzero-cells=' + nz102);
 ok(nz100 > 0, 'Balance Sheet is NON-vacuous (' + nz100 + ' nonzero cells)');
 ok(nz101 > 0, 'Income Statement is NON-vacuous (' + nz101 + ' nonzero cells)');
+ok(nz102 > 0, 'Statement of Cash Flows is NON-vacuous (' + nz102 + ' nonzero cells)');
 
 // CALC-COLUMN cross-check: an INDEPENDENT reimplementation of iDempiere doCalculations (A/S/R) — computed from the
 // oracle-verified segment cells — diffed vs the engine's calc-column cells. Calc cols are excluded from the oracle

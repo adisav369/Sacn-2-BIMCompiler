@@ -591,19 +591,25 @@ A **fold deletes this tier.** Because state is a deterministic reduce over the j
 when it is only fetching?"* is: legacy does (scratch rows); the fold does **not** — a fetch is a projection of existing
 truth, materialised only in memory and discarded.
 
-**Proven — not asserted (the discipline of this paper):** `foldStatement` reproduces iDempiere's `FinReport` for the
-**Balance Sheet** and **Income Statement** to the cent — `maxDiff = 0c`, witness **`W-PA-REPORT`**
+**Proven — not asserted (the discipline of this paper):** `foldStatement` reproduces iDempiere's `FinReport` for
+**all three seed statements** to the cent — **Balance Sheet, Income Statement and Statement of Cash Flows**,
+`maxDiff = 0c` (108 + 148 + 140 segment cells), witness **`W-PA-REPORT`**
 (`scripts/poc_pa_report.js` → `build/erp/poc_pa_report.log`), diffed against an independent live `idempiere_test`
 re-derivation — by replacing `T_Report` with an in-memory `cells` matrix. **No `T_Report`, no temp rows**, identical
-totals.
+totals. And the *document* half: `foldPrint` reproduces the `PrintData` master-detail row tree + break subtotals for
+the real **Invoice Header → Invoice LineTax** format across **all 8 seed invoices**, `maxDiff = 0c` against live base
+tables **and the stored `c_invoice.grandtotal` that real iDempiere wrote** — witness **`W-PRINTFORMAT`**
+(`scripts/poc_printformat.js` → `build/erp/poc_printformat.log`), three load-bearing falsifiers.
 
 **Generalises to (candidate — each pending its OWN witness, claimed only as it lands):** the same materialize-then-read
 pattern underlies every other member of the family, so Aging (`T_Aging`), Inventory Value, Cash Flow, Trial Balance and
 the rest are *structurally* the same fold — a pure aggregation that needs no scratch table. They are **not yet built or
 diffed**; this paper claims the deletion **only for the two financial statements above.** Aging in particular folds over
 *open items* + a due-date-bucketing function (not the GL), so it is a distinct verb on distinct seed data — named here,
-not claimed. This narrows **GAP #8**: reporting parity is now *witnessed* for BS + IS; `foldPrint` (document layout) and
-the remaining `T_*` family stay open.
+not claimed. This narrows **GAP #8 to its tail**: reporting parity is now *witnessed* for all 3 financial statements
+**and** the master-detail document print (`foldPrint`, W-PRINTFORMAT); what stays open is the remaining `T_*` family
+(Aging, Inventory Value, …), the unexercised `PrintDataGroup` functions (group-by/count/avg — implemented, no seed
+format uses them) and pixel layout (a stated non-goal — DOM is the render).
 
 
 
@@ -960,11 +966,13 @@ Folding that behavioural core into declarative verbs compresses ~5–8× (no Jav
    Reports (`PA_Report` — the seed's 3 real statements *Balance Sheet / Income Statement / Cash Flows*, **113**
    `PA_ReportLine` · **17** `PA_ReportColumn` · **93** `PA_ReportSource`) and the print/layout interpreter
    (`AD_PrintFormat`, **93** formats / **2,780** items). Today's statements are *hardcoded* folds, not driven from
-   the `PA_*` metadata; `foldPnL` carries **no `fact_acct`-anchored witness** yet. The oracle exists (the same rows
-   live in `idempiere_test`, and a real Financial-Report run is diffable), so this is a **fold-vs-independent-product**
-   target, not a tautology — but **do not claim reporting parity** until `W-PA-REPORT` / `W-PRINTFORMAT` land
-   `maxDiff=0c`. The Jasper / `ReportEngine` stack (~38K LOC) stays *deleted* — reports render as a browser fold of
-   the journal, not a server print pipeline. Plan: [`ReportingFold.md`](ReportingFold.md).
+   the `PA_*` metadata. **STATUS 2026-06-11: both witnesses LANDED `maxDiff=0c`** — `W-PA-REPORT` (BS+IS+**CF**,
+   `PA_Report`-metadata-driven, in-app bundle-alone path proven) and `W-PRINTFORMAT` (`foldPrint`, the real Invoice
+   master-detail tree, 8/8 invoices vs live base tables + the stored grandtotal) — both the strong
+   **fold-vs-independent-product** class, not a tautology. The Jasper / `ReportEngine` stack (~38K LOC) stays
+   *deleted* — reports render as a browser fold of the journal, not a server print pipeline. The gap's REMAINDER:
+   the other 13 `T_*` scratch-table folds (each pending its own witness), unexercised group-by/count/avg break
+   functions, pixel layout (non-goal). Spec + verdicts: [`ReportingFold.md`](ReportingFold.md).
 
 </div>
 </details>
