@@ -711,6 +711,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The kill points — what the architecture actually deletes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#temp-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The temp-table tier — reports that write data just to read it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4228,6 +4245,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The kill points — what the architecture actually deletes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#temp-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The temp-table tier — reports that write data just to read it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4636,9 +4670,38 @@ hash-chained log holds the truth; the host (if any) is a disposable relay. Every
 <td><strong>the recipe is the backup</strong> — one signed log ×3 replicas, restore = replay, unbounded restore points <sup id="fnref4:tco"><a class="footnote-ref" href="#fn:tco">3</a></sup><sup id="fnref2:blackout"><a class="footnote-ref" href="#fn:blackout">4</a></sup></td>
 <td>at least 30× less DR storage (strategy-dependent); <strong>0 branch downtime</strong></td>
 </tr>
+<tr>
+<td><strong>Report scratch tables</strong></td>
+<td>reports <code>INSERT</code> ~15 <code>T_*</code> temp tables to read them back (<code>T_Report</code>, <code>T_InventoryValue</code>, <code>T_Aging</code>…)</td>
+<td><strong>in-memory fold, 0 temp rows</strong> — <code>foldStatement</code> proven <code>maxDiff=0c</code> (BS + IS); rest of family pending per-report witness</td>
+<td>the <em>materialize-then-read</em> tier deleted (proven for financial statements) <a href="#temp-tables">below</a></td>
+</tr>
 </tbody>
 </table>
 </div>
+<h3 id="temp-tables">The temp-table tier — reports that write data just to read it<a class="headerlink" href="#temp-tables" title="Permanent link">&para;</a></h3>
+<p>Legacy ERP reporting <strong>creates data in order to read it.</strong> A financial report does not query the journal directly — a
+process first <code>INSERT</code>s aggregated rows into a per-run <em>temp table</em>, then the print format reads that table back.
+iDempiere ships a whole family of these scratch tables — <strong>~15</strong> across the codebase: <code>T_Report</code> (financial statements,
+57 refs), <code>T_InventoryValue</code> (53), <code>T_CashFlow</code> (22), <code>T_TrialBalance</code> (12), <code>T_ReportStatement</code> (12), <code>T_InvoiceGL</code>
+(11), <strong><code>T_Aging</code></strong> (10 — AR/AP aging), <code>T_Reconciliation</code> (9), <code>T_BankRegister</code> (8)… <em>(counts: <code>grep -roE "T_[A-Z]\w+"
+org.compiere --include=*.java</code> over the iDempiere source.)</em></p>
+<p>A <strong>fold deletes this tier.</strong> Because state is a deterministic reduce over the journal, the report computes its cells
+<strong>in memory</strong> and paints them — <strong>zero temp rows written.</strong> So the answer to <em>"does a report engine create more data
+when it is only fetching?"</em> is: legacy does (scratch rows); the fold does <strong>not</strong> — a fetch is a projection of existing
+truth, materialised only in memory and discarded.</p>
+<p><strong>Proven — not asserted (the discipline of this paper):</strong> <code>foldStatement</code> reproduces iDempiere's <code>FinReport</code> for the
+<strong>Balance Sheet</strong> and <strong>Income Statement</strong> to the cent — <code>maxDiff = 0c</code>, witness <strong><code>W-PA-REPORT</code></strong>
+(<code>scripts/poc_pa_report.js</code> → <code>build/erp/poc_pa_report.log</code>), diffed against an independent live <code>idempiere_test</code>
+re-derivation — by replacing <code>T_Report</code> with an in-memory <code>cells</code> matrix. <strong>No <code>T_Report</code>, no temp rows</strong>, identical
+totals.</p>
+<p><strong>Generalises to (candidate — each pending its OWN witness, claimed only as it lands):</strong> the same materialize-then-read
+pattern underlies every other member of the family, so Aging (<code>T_Aging</code>), Inventory Value, Cash Flow, Trial Balance and
+the rest are <em>structurally</em> the same fold — a pure aggregation that needs no scratch table. They are <strong>not yet built or
+diffed</strong>; this paper claims the deletion <strong>only for the two financial statements above.</strong> Aging in particular folds over
+<em>open items</em> + a due-date-bucketing function (not the GL), so it is a distinct verb on distinct seed data — named here,
+not claimed. This narrows <strong>GAP #8</strong>: reporting parity is now <em>witnessed</em> for BS + IS; <code>foldPrint</code> (document layout) and
+the remaining <code>T_*</code> family stay open.</p>
 <h2 id="how-it-differs-the-architecture">How it differs — the architecture<a class="headerlink" href="#how-it-differs-the-architecture" title="Permanent link">&para;</a></h2>
 <div class="arch" markdown="0">
 
