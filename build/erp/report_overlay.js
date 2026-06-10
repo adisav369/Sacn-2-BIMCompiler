@@ -305,6 +305,10 @@
   // ════════════════════════════════════════════════════════════════════════
   injectCss();
   var panel = document.createElement('div'); panel.id = 'reportPanel'; document.body.appendChild(panel);
+  // iDempiere-style MENU launcher pill (mirrors help_overlay's own-pill precedent) — reach reports the AD_Menu way.
+  var menuPill = document.createElement('div'); menuPill.id = 'reportMenuPill'; menuPill.innerHTML = '<span class=rpglyph>▤</span> Reports';
+  document.body.appendChild(menuPill);
+  menuPill.addEventListener('click', function () { openMenu(); });
 
   // ── bundle helpers (truth-bound: read real rows, never invent) ──────────────
   function hasCol(db, t, c) {
@@ -522,6 +526,54 @@
     panel.innerHTML = h; panel.className = 'open'; wirePicker();
   }
 
+  // ════════════════════════════════════════════════════════════════════════
+  // iDempiere AD_Menu launcher — follow iDempiere's menu to reach the reports.
+  // Path (AD_Tree 10 "Menu"): Performance Analysis and Accounting (278) → Financial Reporting (280) →
+  // Financial Report (281, a Window over table PA_Report). The 3 PA_Reports are the WINDOW RECORDS; selecting
+  // one runs the fold (== iDempiere's "Create Report" process on that PA_Report). Tree + names are READ from
+  // the bundle's ad_menu/ad_treenodemm (extract_pa_report.sh) — not invented; matches live AD_Menu (W-PA-MENU).
+  // ════════════════════════════════════════════════════════════════════════
+  var MENU_TREE = 10, MENU_REPORTING_NODE = 280, MENU_PAA_NODE = 278;   // Financial Reporting / its parent
+  function menuModel(db) {
+    if (!hasTable(db, 'ad_menu') || !hasTable(db, 'ad_treenodemm')) return null;
+    var menu = {}; rowsOf(db.exec('SELECT ad_menu_id, name, action, issummary, isactive FROM ad_menu')).forEach(function (m) { menu[m.ad_menu_id] = m; });
+    var kids = {}; rowsOf(db.exec('SELECT node_id, parent_id, seqno FROM ad_treenodemm WHERE ad_tree_id=' + MENU_TREE)).forEach(function (n) { (kids[n.parent_id] = kids[n.parent_id] || []).push(n); });
+    Object.keys(kids).forEach(function (p) { kids[p].sort(function (a, b) { return (a.seqno || 0) - (b.seqno || 0); }); });
+    var tbl = {}; if (hasTable(db, 'ad_menu_table')) rowsOf(db.exec('SELECT ad_menu_id, tablename FROM ad_menu_table')).forEach(function (r) { tbl[r.ad_menu_id] = r.tablename; });
+    return { menu: menu, kids: kids, tbl: tbl };
+  }
+  // openMenu — render the iDempiere Financial Reporting branch; the PA_Report-backed node lists the report records.
+  function openMenu() {
+    if (typeof withBundle !== 'function') { console.warn('§REPORT no bundle'); return; }
+    withBundle(function (db) {
+      try {
+        var mm = menuModel(db);
+        if (!mm || !mm.kids[MENU_REPORTING_NODE]) {                          // no menu in bundle -> fall back to the flat picker
+          if (statementList(db).length) { statement(statementList(db)[0].id); } else { renderUnsupported(db, 'ad_menu'); }
+          console.log('§MENU no ad_menu in bundle — fell back to statement picker'); return;
+        }
+        var crumb = [MENU_PAA_NODE, MENU_REPORTING_NODE].map(function (id) { return mm.menu[id] ? mm.menu[id].name : id; }).join(' › ');
+        var reachable = 0;
+        var h = '<span class=rpx title=close>✕</span><div class=rph><span class=rpglyph>▤</span> Menu</div>' +
+          '<div class=rpcrumb>' + esc(crumb) + '</div><div class=rpmenu>';
+        (mm.kids[MENU_REPORTING_NODE] || []).forEach(function (n) {
+          var m = mm.menu[n.node_id]; if (!m || m.isactive === 'N') return;
+          var actionable = mm.tbl[n.node_id] === 'PA_Report';                 // the Financial Report window opens PA_Report
+          h += '<div class="rpmi' + (actionable ? ' on' : ' off') + '"' + (actionable ? '' : ' title="iDempiere menu item — this build folds: Financial Report (PA_Report)"') + '>' +
+            '<span class=rpmact>' + esc(m.action || '') + '</span>' + esc(m.name) + '</div>';
+          if (actionable) {
+            statementList(db).forEach(function (r) { reachable++; h += '<div class=rpmrep data-report="' + r.id + '">' + esc(r.name) + '</div>'; });
+          }
+        });
+        h += '</div><div class=rpfoot>iDempiere AD_Menu (tree 10): ' + esc(crumb) + ' → Financial Report → PA_Report; selecting a report runs the fold (= "Create Report").</div>';
+        panel.innerHTML = h; panel.className = 'open';
+        panel.querySelector('.rpx').addEventListener('click', close);
+        panel.querySelectorAll('.rpmrep').forEach(function (el) { el.addEventListener('click', function () { statement(el.getAttribute('data-report') | 0); }); });
+        console.log('§MENU opened "' + crumb + '" reports-reachable=' + reachable + ' (data-driven from ad_menu/ad_treenodemm)');
+      } catch (er) { console.warn('§MENU error', er && er.message); }
+    });
+  }
+
   function renderUnsupported(db, key) {
     panel.innerHTML = '<span class=rpx title=close>✕</span><div class=rph><span class=rpglyph>▤</span> Receipt — ' + esc(fname(key)) + '</div>' +
       pickerHtml(db, null) +
@@ -565,10 +617,23 @@
       '#reportPanel .rptab{font:11.5px/1 system-ui;color:#c4a8c0;background:#1c1422;border:1px solid #3a2b38;border-radius:7px;padding:4px 8px;cursor:pointer}' +
       '#reportPanel .rptab:hover{border-color:#6a4a62;color:#fbeaf7}' +
       '#reportPanel .rptab.on{background:#3a2440;border-color:#9fdfe8;color:#bff0dd}' +
-      '#reportPanel .rpcalc td{font-weight:600;color:#fbeaf7;border-top:1px solid #2a1f29}';
+      '#reportPanel .rpcalc td{font-weight:600;color:#fbeaf7;border-top:1px solid #2a1f29}' +
+      '#reportMenuPill{position:fixed;z-index:70;left:14px;top:10px;display:flex;align-items:center;gap:6px;' +
+        'background:#120d16;border:1px solid #4a2f44;border-radius:16px;padding:5px 12px;font:13px system-ui;' +
+        'color:#ecdcea;cursor:pointer;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.4)}' +
+      '#reportMenuPill:hover{border-color:#9fdfe8;color:#fbeaf7}' +
+      '#reportMenuPill .rpglyph{color:#9fdfe8}' +
+      '#reportPanel .rpcrumb{font-size:11px;color:#8a6f86;margin:0 0 9px;padding-bottom:8px;border-bottom:1px solid #2a1f29}' +
+      '#reportPanel .rpmenu{display:flex;flex-direction:column;gap:2px}' +
+      '#reportPanel .rpmi{display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:7px;font-size:12.5px}' +
+      '#reportPanel .rpmi.on{color:#fbeaf7;font-weight:600}' +
+      '#reportPanel .rpmi.off{color:#7a6076}' +
+      '#reportPanel .rpmact{font:10px/1 ui-monospace,monospace;color:#8a6f86;border:1px solid #3a2b38;border-radius:4px;padding:2px 4px;min-width:13px;text-align:center}' +
+      '#reportPanel .rpmrep{margin-left:26px;padding:5px 8px;border-radius:7px;font-size:12.5px;color:#c4a8c0;cursor:pointer;border:1px solid transparent}' +
+      '#reportPanel .rpmrep:hover{background:#3a2440;border-color:#9fdfe8;color:#bff0dd}';
     document.head.appendChild(css);
   }
 
-  global.__report = { show: show, statement: statement, core: CORE, panel: function () { return panel; }, close: close };
+  global.__report = { show: show, statement: statement, menu: openMenu, core: CORE, panel: function () { return panel; }, close: close };
   console.log('§REPORT layer mounted (read face — ▤ Report)');
 })(typeof window !== 'undefined' ? window : this);

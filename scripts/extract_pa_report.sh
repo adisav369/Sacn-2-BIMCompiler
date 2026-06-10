@@ -54,6 +54,28 @@ imp c_year "c_year_id INT, c_calendar_id INT"
 PG "SELECT ad_tree_id, node_id, parent_id FROM adempiere.ad_treenode WHERE ad_tree_id=$TREE ORDER BY node_id;" > /tmp/ad_treenode.csv
 imp ad_treenode "ad_tree_id INT, node_id INT, parent_id INT"
 
+echo "== extract the AD_Menu reporting branch (so the app launches reports the iDempiere way) =="
+# iDempiere menu: Performance Analysis and Accounting (278) -> Financial Reporting (280) -> Financial Report (281,
+# a Window over table PA_Report). The 3 PA_Reports are the records in that window, run via the FinReport process.
+# We carry the whole client-0 menu + the MM tree (small) so the branch is DATA-DRIVEN, and a menu->table map so the
+# app knows which menu node opens PA_Report. NON-INVENT: a straight copy of AD_Menu / AD_TreeNodeMM / AD_Tab.
+PG "SELECT ad_menu_id, name, action, COALESCE(ad_window_id,0), COALESCE(ad_process_id,0), issummary, isactive
+    FROM adempiere.ad_menu WHERE ad_client_id=0 ORDER BY ad_menu_id;" > /tmp/ad_menu.csv
+imp ad_menu "ad_menu_id INT, name TEXT, action TEXT, ad_window_id INT, ad_process_id INT, issummary TEXT, isactive TEXT"
+
+PG "SELECT ad_tree_id, node_id, parent_id, seqno FROM adempiere.ad_treenodemm WHERE ad_tree_id=10 ORDER BY parent_id, seqno;" > /tmp/ad_treenodemm.csv
+imp ad_treenodemm "ad_tree_id INT, node_id INT, parent_id INT, seqno INT"
+
+# menu->base-table for Window menus: ad_window -> tablevel-0 ad_tab -> ad_table (lowest seqno tab). Lets the app
+# resolve 'Financial Report' (281) to PA_Report without hardcoding the window id.
+PG "SELECT m.ad_menu_id, t.tablename
+    FROM adempiere.ad_menu m
+    JOIN adempiere.ad_tab tb ON tb.ad_window_id=m.ad_window_id AND tb.tablevel=0 AND tb.isactive='Y'
+       AND tb.seqno=(SELECT MIN(tb2.seqno) FROM adempiere.ad_tab tb2 WHERE tb2.ad_window_id=m.ad_window_id AND tb2.tablevel=0 AND tb2.isactive='Y')
+    JOIN adempiere.ad_table t ON t.ad_table_id=tb.ad_table_id
+    WHERE m.action='W' AND m.ad_window_id IS NOT NULL AND m.ad_client_id=0;" > /tmp/ad_menu_table.csv
+imp ad_menu_table "ad_menu_id INT, tablename TEXT"
+
 echo "== backfill c_elementvalue.accountsign (the fold's natural-sign rule) =="
 # extract_fact_acct.sh recreates c_elementvalue WITHOUT accountsign; add it only if absent, then populate by id.
 if ! sqlite3 "$DB" "PRAGMA table_info(c_elementvalue);" | grep -qi 'accountsign'; then
@@ -69,3 +91,5 @@ sqlite3 "$DB" "SELECT '§PA-EXTRACT pa_report='||count(*) FROM pa_report;"
 sqlite3 "$DB" "SELECT '§PA-EXTRACT pa_reportline='||count(*)||' pa_reportcolumn='||(SELECT count(*) FROM pa_reportcolumn)||' pa_reportsource='||(SELECT count(*) FROM pa_reportsource) FROM pa_reportline;"
 sqlite3 "$DB" "SELECT '§PA-EXTRACT c_period='||count(*)||' c_year='||(SELECT count(*) FROM c_year)||' ad_treenode='||(SELECT count(*) FROM ad_treenode) FROM c_period;"
 sqlite3 "$DB" "SELECT '§PA-EXTRACT c_elementvalue accountsign_N='||sum(CASE WHEN accountsign='N' THEN 1 ELSE 0 END)||' of '||count(*) FROM c_elementvalue;"
+sqlite3 "$DB" "SELECT '§PA-EXTRACT ad_menu='||count(*)||' ad_treenodemm='||(SELECT count(*) FROM ad_treenodemm)||' menu->table='||(SELECT count(*) FROM ad_menu_table) FROM ad_menu;"
+sqlite3 "$DB" "SELECT '§PA-EXTRACT FinancialReport-menu='||ad_menu_id||' \"'||name||'\" action='||action||' opens='||(SELECT tablename FROM ad_menu_table t WHERE t.ad_menu_id=m.ad_menu_id) FROM ad_menu m WHERE ad_menu_id=281;"
