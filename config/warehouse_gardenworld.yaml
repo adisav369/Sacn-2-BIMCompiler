@@ -1,0 +1,74 @@
+# ⚠ DO NOT REMOVE — warehouse_gardenworld.yaml
+# Scope: docs/SPATIAL_PICKING_SPEC.md §S-1 — the GardenWorld warehouse recipe.
+# EXTRACTED topology: every bin below names a REAL m_locator row
+# (build/erp/ad_seed_fullwidth.db: 11 m_locator rows / 11 m_warehouse rows —
+# M_Locator.X/Y/Z are TEXT labels, NOT coordinates, so positions are COMPILED
+# by scripts/compile_warehouse.js via the existing BOM recursion + TILE/ROUTE
+# verbs, never read from the ERP and never invented here).
+# Read the compile log after every run (build/erp/poc_wh_compile.log).
+#
+# Topology source (EXTRACT): each m_warehouse owns exactly ONE m_locator in
+# GardenWorld (demo aisle scale, spec §4) → each warehouse = one RACK, its
+# locator = one BIN. Aisle grouping mirrors the warehouse names themselves
+# (HQ* / goods pairs / Store*) — a layout decision, not a data claim.
+# Walk order (§S-2 ROUTE order) = document order: aisle by aisle, rack by rack.
+
+site: GardenWorld
+seed_db: build/erp/ad_seed_fullwidth.db
+
+aisles:
+  - id: AISLE_A
+    name: HQ Lane
+    racks:
+      - id: RACK_HQ
+        warehouse: HQ              # m_warehouse 103 "HQ Warehouse"
+        bins:
+          - { locator_value: "Default HQ Locator", m_locator_id: 101 }
+      - id: RACK_HQT
+        warehouse: HQT             # m_warehouse 50000 "HQ Transit"
+        bins:
+          - { locator_value: "HQ Transit", m_locator_id: 50000 }
+
+  - id: AISLE_B
+    name: Goods Lane
+    racks:
+      - id: RACK_FURNITURE
+        warehouse: Furniture       # m_warehouse 50001
+        bins:
+          - { locator_value: "Furniture", m_locator_id: 50004 }
+      - id: RACK_FURNITURE_T
+        warehouse: FurnitureT      # m_warehouse 50008
+        bins:
+          - { locator_value: "Furniture Transit", m_locator_id: 50008 }
+      - id: RACK_FERTILIZER
+        warehouse: Fertilizer      # m_warehouse 50002
+        bins:
+          - { locator_value: "Fertilizer", m_locator_id: 50001 }
+      - id: RACK_FERTILIZER_T
+        warehouse: FertilizerT     # m_warehouse 50007
+        bins:
+          - { locator_value: "Fertilizer Transit", m_locator_id: 50007 }
+
+  - id: AISLE_C
+    name: Store Lane
+    racks:
+      - id: RACK_STORE_CENTRAL
+        warehouse: Store Central   # m_warehouse 104
+        bins:
+          - { locator_value: "Default Store Locator", m_locator_id: 102 }
+      - id: RACK_STORE_NORTH
+        warehouse: Store North     # m_warehouse 50003
+        bins:
+          - { locator_value: "Store North", m_locator_id: 50002 }
+      - id: RACK_STORE_SOUTH
+        warehouse: Store South     # m_warehouse 50004
+        bins:
+          - { locator_value: "Store South", m_locator_id: 50003 }
+      - id: RACK_STORE_EAST
+        warehouse: Store East      # m_warehouse 50005
+        bins:
+          - { locator_value: "Store East", m_locator_id: 50005 }
+      - id: RACK_STORE_WEST
+        warehouse: Store West      # m_warehouse 50006
+        bins:
+          - { locator_value: "Store West", m_locator_id: 50006 }
