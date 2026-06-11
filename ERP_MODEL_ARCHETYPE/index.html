@@ -4238,36 +4238,43 @@ a <em>delta</em>, not novel code. This page maps that — so "the rest is more o
 <td><strong>Metadata (I/O)</strong></td>
 <td><code>C_Order</code>/<code>C_OrderLine</code> columns: type/reference/default/readonly/mandatory/display logic</td>
 <td><code>ad_evaluator</code> + <code>ad_access</code> + <code>ad_reference</code> + <code>ad_valrule</code></td>
-<td>🟡 surface-interpreted on real AD rows; <strong>not oracle-diffed</strong></td>
+<td>✅ <strong>oracle-equivalent for the 3 SQL-grounded engines</strong> (H-3: W-VALRULE-HARDEN 10/10 · W-REFERENCE-HARDEN 12/12 · W-ACCESS-HARDEN 15/15 — membership/verdict == live Postgres, diff=0). <strong>Residual:</strong> <code>ad_evaluator</code> display-logic verdict (live-render, parked UI bridge)</td>
 </tr>
 <tr>
 <td><strong><code>beforeSave</code> invariants</strong></td>
 <td>PriceList_ID · M_Warehouse_ID · DateOrdered · C_DocTypeTarget_ID · BPartner id/location · credit-status</td>
 <td><code>ad_modelval</code> BEFORE_SAVE timing</td>
-<td>🟡 mechanism built; <code>hasLines</code>/<code>total≥0</code> ported; <strong>the pricelist/credit/warehouse derivations = the delta</strong></td>
+<td>✅ <strong>oracle-equivalent (W-MORDER-SAVE)</strong> — <code>MOrder.java:1183-1396</code> as 11 cited hooks: 8/8 stored orders accept w/ 0 contradictions; Bill/Currency defaults re-derive stored 8/8; pricelist/term/doctype defaults = the Java query (EXPLICIT picks named); foreign location CLEARED (:1243); 4 reject paths fire (client=0 · warehouse+ctx-fallback · prepay+cash conjunctive · CannotChangePl). <strong>Residual:</strong> :1361 pricelist-version date twin (no <code>m_pricelist_version</code> in capture); credit-status lives at prepareIt (lifecycle row)</td>
 </tr>
 <tr>
 <td><strong><code>DocAction</code> lifecycle</strong></td>
 <td><code>prepareIt</code> · <code>completeIt</code> · <code>reopenIt</code> (+ the inherited void/close/reverseCorrect/reverseAccrual/reActivate set) over <code>DocumentEngine</code>/WfMC</td>
-<td><code>ad_process</code> + DocAction dispatch</td>
-<td>✅ <strong><code>completeIt</code> oracle-equivalent</strong> — the full Order→Ship→Invoice fan-out chain folds <code>maxDiff=0c</code> (W-FOLD-COMPLETE); standalone <code>completeIt(C_Invoice)</code>+MatchInv folded (W-FOLD-INVOICE); the <strong>void/reverseCorrect</strong> set is now oracle-anchored — engine reversal + real <code>fact_acct</code> nets to zero, FSM CO→RE (W-FOLD-REVERSE). <strong>Residual:</strong> reverseAccrual booked-date (no <code>c_period</code> in seed)</td>
+<td><code>ad_process</code> + DocAction dispatch + <code>ad_docfsm.legalActionsOrder/transitionOrder</code></td>
+<td>✅ <strong><code>completeIt</code> oracle-equivalent</strong> (W-FOLD-COMPLETE chain · W-FOLD-INVOICE standalone) + <strong>void/reverseCorrect oracle-anchored</strong> (W-FOLD-REVERSE nets-to-zero, CO→RE) + <strong>the FULL action FSM oracle-equivalent (W-MORDER-FSM)</strong> — legal sets + outcomes == the runtime-PARSED <code>DocumentEngine.getValidActions:1008-1090</code>/action methods + MOrder deltas (prepay CO→WP; <strong>RA not implemented on orders</strong> :3042; completed orders offer CL/VO/(RE) only — the per-table narrowing), 23+12 fixtures + 8/8 stored replays diff=0. <strong>Residual:</strong> reverseAccrual booked-date n/a (RA unreachable on MOrder — proven, not deferred)</td>
 </tr>
 <tr>
 <td><strong>Posting (GL derivation)</strong></td>
 <td><code>Doc_Order.java</code> debit/credit derivation from the lines + acct-config</td>
 <td><code>post_resolver</code> / <code>poc_post_derive</code></td>
-<td>✅ <strong>oracle-diffed</strong>: <code>Doc_Invoice</code>(318) <strong>sales AND purchase</strong> (W-FOLD-AP-INVOICE: CR V_Liability / DR InventoryClearing, 4/4)/<code>Doc_InOut</code>(319)/<code>Doc_Payment</code>(335)/<code>Doc_AllocationHdr</code>(735, incl. tax-correction) all <code>maxDiff=0c</code> vs real <code>fact_acct</code>. <strong>Residual:</strong> <code>Doc_Order</code> commitment note · allocation schema-200000 = a delta</td>
+<td>✅ <strong>oracle-diffed</strong>: <code>Doc_Invoice</code>(318) <strong>sales AND purchase</strong> (W-FOLD-AP-INVOICE: CR V_Liability / DR InventoryClearing, 4/4)/<code>Doc_InOut</code>(319)/<code>Doc_Payment</code>(335)/<code>Doc_AllocationHdr</code>(735, incl. tax-correction) all <code>maxDiff=0c</code> vs real <code>fact_acct</code> + <strong>per-document LINE granularity closed (W-MORDER-POST)</strong>: <code>Doc_Order</code> proper = the oracle's ZERO set gated by real <code>commitmenttype='N'</code> (falsifier flips the gate) and the whole order chain — incl. <strong>receipts DR Asset / CR NotInvoicedReceipts @ qty×PO-price</strong> — diffs per (record, line_id, account, side), 7/8 <code>diff=0c</code> (1 named drift). <strong>Residual:</strong> commitment-ON posting unreachable in seed (offset accts uncaptured, named) · allocation schema-200000 = a delta (folded, see matrix)</td>
 </tr>
 <tr>
 <td><strong>Callouts</strong></td>
 <td>qty/price/bpartner field-change derivations</td>
 <td><code>ad_callout</code> dispatch (mechanism, W-CALLOUT)</td>
-<td>🟡 spine built; <strong>the bound callout classes = the delta</strong></td>
+<td>✅ <strong>oracle-equivalent (W-CALLOUT-HARDEN, H-3)</strong> — <code>CalloutOrder.product</code> price derive 27/27 + <code>CalloutOrder.amt</code> 26/27 == live Postgres stored (1 named price-drift residual, the doc-109 pattern). <strong>Residual:</strong> the 139 unbound callout atoms (corpus, named)</td>
 </tr>
 </tbody>
 </table>
 <p><strong>"Got MOrder" means: this table fully GREEN to behavioural equivalence</strong> — every cell oracle-diffed against a
 running iDempiere, not merely surface-interpreted. That is the one archetype proof the backend arc should target.</p>
+<p><strong>✅ REACHED (2026-06-11, the H-1 Fable lane — <code>prompts/FABLE5_MORDER_EQUIVALENCE.md</code>).</strong> All five rows are
+GREEN by diff: metadata via the H-3 SQL-grounded engines, beforeSave via W-MORDER-SAVE, the full DocAction FSM
+via W-MORDER-FSM (oracle parsed from the checkout at runtime), posting via W-MORDER-POST at per-fact-LINE
+granularity over the W-FACTACCT-DOC row-faithful capture, callouts via W-CALLOUT-HARDEN. Named residuals (not
+gaps): <code>ad_evaluator</code> display-logic render verdict (UI bridge) · commitment-ON posting + pricelist-version date
+gate (data absent in seed) · the 139 unbound callout atoms (corpus). The reusable oracle-diff TEMPLATE for H-2:
+<strong>stored-state oracle + runtime source-parse + live-PG row-diff + a load-bearing §FALSIFIER per surface.</strong></p>
 <h2 id="the-document-family-the-25-isomorphs-each-a-measured-delta-from-morder">The document family — the ~25 isomorphs, each a measured delta from MOrder<a class="headerlink" href="#the-document-family-the-25-isomorphs-each-a-measured-delta-from-morder" title="Permanent link">&para;</a></h2>
 <p>Every class below has <code>completeIt</code> (the document shape). The delta from MOrder is its <strong>line table</strong>, its
 <strong>DocAction specifics</strong>, and its <strong>posting deriver</strong> (the 20 <code>Doc_*</code> in <code>org.compiere.acct</code>). Grouped by family:</p>
@@ -4317,6 +4324,29 @@ running iDempiere, not merely surface-interpreted. That is the one archetype pro
 locator, <code>MPayment</code> allocation, <code>MProduction</code> BOM explosion, <code>MInventory</code> physical count, <code>MAllocationHdr</code>
 (headerless). These ~5 carry genuinely document-specific logic; the rest are the trade pattern with a different
 line table and poster.</p>
+<p><strong>✅ H-2 CONFIRMED-BY-DIFF (2026-06-11, the Fable H-2 lane — <code>prompts/FABLE5_H2_DELTAS.md</code>).</strong> The deep
+deltas are now WALKED, not assumed: <code>MInOut</code> (save W-MINOUT-SAVE + FSM W-MINOUT-FSM, 9 stored docs),
+<code>MInvoice</code> (W-MINVOICE-SAVE/-FSM, 8 docs), <code>MPayment</code> (W-MPAYMENT-SAVE/-FSM, 2 docs — the whole seed,
+stated), <code>MMovement</code>+<code>MInventory</code>+<code>MProduction</code> FSM (W-MINVENTORY-FAMILY-FSM; Movement's 1 doc replayed,
+Inventory/Production = source-parse only, no-seed ⛔ stated). Each = the H-1 template verbatim: stored-state
+oracle + gate-aware RUNTIME parse of <code>DocumentEngine.getValidActions</code>/the class's action methods + a
+load-bearing §FALSIFIER. The MEASURED family fact the walk surfaced: the per-table Completed blocks carry
+<strong>three distinct gate nestings</strong> — InOut/Movement/Inventory/Production (RC ⊂ periodOpen∧backDate),
+Invoice (RE and RC both ⊂ the periodOpen frame), Payment (RC ⊂ periodOpen only) — and <code>reActivateIt</code> is
+implemented ONLY on Invoice/Payment; <code>voidIt</code> on any processed family doc delegates to the reversal pair and
+lands <code>RE</code> (DocumentEngine:616-618 preserves it). Posting for all walked classes was ALREADY oracle-folded
+(table below) — cited, not redone.</p>
+<p><strong>✅ ISOMORPH TAIL CONFIRMED-BY-DIFF (2026-06-11 — <code>prompts/H2_ISOMORPH_TAIL.md</code>).</strong> The remaining family
+rows are now walked with the SAME two witnesses: <code>MJournal</code>+<code>MJournalBatch</code> (W-MJOURNAL-FSM/-SAVE — the
+shared Journal block, a fourth/fifth nesting: RC⊂periodOpen, RE⊂periodOpen∧canReact; journal voids ONLY
+DR/IN, batch NEVER), <code>MAllocationHdr</code> (W-MALLOCHDR-FSM/-SAVE — no RE arm; beforeSave = ONE IsActive guard,
+K=1 stated), <code>MCash</code> (W-MCASH-FSM/-SAVE — CO→VO only, and <code>reverseIt</code> sets Reversed ITSELF so <strong>Void lands
+RE even from DRAFT</strong>; org←cashbook + ending-balance derives, stmtdiff == Σ real cashlines), <code>MBankStatement</code>
+(W-MBANKSTMT-FSM/-SAVE — periodOpen frames BOTH RE and VO; the beginning-balance derive is STATE-DEPENDENT,
+diffed against the captured master), and the <strong>11-class generic-block tail</strong> (W-GENERIC-TAIL-FSM/-SAVE —
+<code>MRMA</code>/<code>MRequisition</code>/<code>MTimeExpense</code> replayed; <code>MBankTransfer</code>/<code>MDepositBatch</code>/<code>MProjectIssue</code>/the 5
+Fixed-Assets classes source-parse-only, 0-seed ⛔ stated; MTimeExpense's beforeSave ABSENCE itself proven).
+<strong>No DocAction table in the family table below remains unwalked.</strong></p>
 <p><strong>Oracle-folded so far (the deepest deltas first, each <code>§FOLD-COMPLETE … maxDiff=0c</code> vs real GardenWorld):</strong></p>
 <table>
 <thead>
@@ -4412,9 +4442,54 @@ line table and poster.</p>
 <td>W-FOLD-INVENTORY</td>
 <td>enacted I± folds on-hand→counted + GL <code>\|adjQty\|×cost</code> balances; rule-consistent, offset acct named-deferred</td>
 </tr>
+<tr>
+<td><strong>MInOut save + FSM</strong> (H-2.1)</td>
+<td>W-MINOUT-SAVE / W-MINOUT-FSM</td>
+<td>beforeSave 5-hook port == 9 stored docs (movement-type/delivery-rule MUST; salesrep = measured source-evolution drift) + per-table FSM == gate-aware runtime parse (154 fixtures; RC ⊂ periodOpen∧backDate, RE not implemented, VO@CO→RE)</td>
+</tr>
+<tr>
+<td><strong>MInvoice save + FSM</strong> (H-2.2)</td>
+<td>W-MINVOICE-SAVE / W-MINVOICE-FSM</td>
+<td>beforeSave 8-hook port == 8 stored docs (setBPartner so/po flavors, ARI|API target, EUR currency-rate gate via captured ad_clientinfo) + the NESTED periodOpen gate frame (145 fixtures; RE implemented→IP)</td>
+</tr>
+<tr>
+<td><strong>MPayment save + FSM</strong> (H-2.3)</td>
+<td>W-MPAYMENT-SAVE / W-MPAYMENT-FSM</td>
+<td>beforeSave 10-hook port == 2 stored docs (K=2 honest; CASH_AS_PAYMENT sysconfig gate, org←bank-account, BP==invoice's BP) + the third gate nesting (101 fixtures; RC ⊂ periodOpen only)</td>
+</tr>
+<tr>
+<td><strong>Inventory-family FSM</strong> (H-2.4)</td>
+<td>W-MINVENTORY-FAMILY-FSM</td>
+<td>Movement+Inventory share one source block; Production same shape (161 fixtures); Movement's 1 doc replayed + doctype-default derive; Inventory/Production stored-replay ⛔ no-seed (stated)</td>
+</tr>
+<tr>
+<td><strong>GL Journal family save + FSM</strong> (isomorph tail)</td>
+<td>W-MJOURNAL-SAVE / W-MJOURNAL-FSM</td>
+<td>8+3-hook port == 2 journals + 1 batch (period 155/category 108/schema 101/convtype 114 MUST; ParentComplete reject on the REAL processed batch) + the shared Journal block (207 fixtures; RC⊂periodOpen, RE⊂periodOpen∧canReact; journal voids ONLY DR/IN, batch never)</td>
+</tr>
+<tr>
+<td><strong>MAllocationHdr save + FSM</strong> (isomorph tail)</td>
+<td>W-MALLOCHDR-SAVE / W-MALLOCHDR-FSM</td>
+<td>the ONE IsActive guard (K=1 stated) == 2 stored docs + the Allocation block (100 fixtures; RC⊂periodOpen, RA, NO RE arm; VO@CO→RE delegation)</td>
+</tr>
+<tr>
+<td><strong>MCash save + FSM</strong> (isomorph tail)</td>
+<td>W-MCASH-SAVE / W-MCASH-FSM</td>
+<td>org←cashbook + ending=beginning+stmtdiff (==Σ real cashlines) == 3 stored docs + the smallest block (34 fixtures; CO→VO only — and reverseIt sets Reversed itself → <strong>VO lands RE even from DR</strong>)</td>
+</tr>
+<tr>
+<td><strong>MBankStatement save + FSM</strong> (isomorph tail)</td>
+<td>W-MBANKSTMT-SAVE / W-MBANKSTMT-FSM</td>
+<td>CMB-doctype + balance derives == 2 stored docs (the beginning-balance derive STATE-DEPENDENT, diffed vs the captured master) + the fourth nesting (99 fixtures; periodOpen frames BOTH RE and VO; RC/RA never)</td>
+</tr>
+<tr>
+<td><strong>Generic-block tail FSM + save</strong> (isomorph tail)</td>
+<td>W-GENERIC-TAIL-FSM / W-GENERIC-TAIL-SAVE</td>
+<td>11 classes == the generic fall-through (333 fixtures; CO→[CL] only); RMA/Requisition/TimeExpense replayed + their beforeSave ports (shipment derives MUST; pricelist FALLBACK arm; the MTimeExpense ABSENCE proven); 8 zero-seed classes source-parse ⛔ stated</td>
+</tr>
 </tbody>
 </table>
-<p><strong>Score: 14 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)</strong> — and they are the deepest deltas
+<p><strong>Score: 14 of the ~40 oracle-targets cent/unit-equivalent + 17 MODEL-LAYER surfaces (H-1 MOrder save/FSM/post/capture + H-2 the deep-family save/FSM walk + the ISOMORPH TAIL's 10 → ledger total FORTY-ONE oracle-equivalent rows in <a href="../ERP_COVERAGE_MATRIX/">ERP_COVERAGE_MATRIX.md</a>) + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)</strong> — and they are the deepest deltas
 (the whole Money family — sales AND purchase invoice posting, allocation in BOTH accounting schemas, the MatchInv
 clearing loop <strong>in both schemas</strong> — + the inventory loop incl. the inter-org MMovement cost transfer <strong>in both schemas</strong>). <strong>Logic-folded is no longer
 ~0.2%</strong>: the trade-doc loop (order→ship→invoice→<strong>match-posting</strong>→pay→allocate) and the inventory loop
@@ -4422,8 +4497,10 @@ clearing loop <strong>in both schemas</strong> — + the inventory loop incl. th
 sides of <code>Doc_Invoice</code> and across the base (USD) <strong>and</strong> foreign-currency (EUR) acctschema — and the PO
 match→clearing loop folds in full incl. the avg-cost IPV split (on-hand-proportioned, riding the qty spine).
 <strong>Unfolded tail:</strong> <code>MInventory</code> + <code>MProduction</code> <strong>cost-valued GL</strong> (movement folds proven
-W-FOLD-INVENTORY/PRODUCTION; component-cost + offset-account DATA absent in seed → GL named-deferred, not faked) · the
-Fixed-Assets + GL/Project families · the declarative surfaces (still surface-interpreted, not oracle-diffed).</p>
+W-FOLD-INVENTORY/PRODUCTION; component-cost + offset-account DATA absent in seed → GL named-deferred, not faked) ·
+the Fixed-Assets + GL/Project families' <strong>save/FSM are now walked (isomorph tail)</strong> — what remains there is the
+POSTING of the classes with no seed documents (Cash/BankStatement/RMA/Requisition/TimeExpense/FA <code>Doc_*</code> posters,
+0 <code>fact_acct</code> rows to diff) · the declarative surfaces (still surface-interpreted, not oracle-diffed).</p>
 <h2 id="what-this-changes-for-the-backend-arc">What this changes for the backend arc<a class="headerlink" href="#what-this-changes-for-the-backend-arc" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>The honest denominator is small.</strong> Not 496 classes / 735k LOC — it is <strong><code>MOrder</code> to equivalence + a 25-row

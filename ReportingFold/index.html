@@ -4102,6 +4102,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#4b-foldstatement-as-built-mirror-of-the-authoritative-header-block-in-builderpreport_overlayjs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4b · foldStatement — as built (mirror of the authoritative header block in build/erp/report_overlay.js)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4c-foldprint-as-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4c · foldPrint — as built
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#5-build-order-after-acceptance" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4134,7 +4156,9 @@
 
 <h1 id="reporting-as-a-fold-standard-idempiere-pa_report-ad_printformat-no-jasper">Reporting as a Fold — standard iDempiere <code>PA_Report</code> + <code>AD_PrintFormat</code>, no Jasper<a class="headerlink" href="#reporting-as-a-fold-standard-idempiere-pa_report-ad_printformat-no-jasper" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Spec status:</strong> DRAFT (spec-first; no code until the witnesses below are named and the design is accepted).
+<p><strong>Spec status:</strong> EXECUTED — both witnesses GREEN (2026-06-10/11): <strong>W-PA-REPORT</strong> <code>maxDiff=0c</code> for all 3 statements
+(BS 108 + IS 148 + <strong>CF 140</strong> segment cells, engine + bundle-alone paths) and <strong>W-PRINTFORMAT</strong> <code>maxDiff=0c</code>
+(8/8 seed invoices, 48 cells, 3 falsifiers). See §3 for the §-log lines, §4b/§4c for the as-built notes.
 <strong>Branch:</strong> <code>feat/erp-substrate-phase012</code> · 2026-06-10.
 <strong>Thesis:</strong> a report is a <strong>deterministic fold of the journal</strong>, defined by <strong>standard iDempiere metadata</strong> the engine already carries as data — interpreted on-the-fly in the browser. The Java <code>ReportEngine</code> + Jasper stack (~38K LOC) stays deleted; nothing is reimplemented, the existing AD definitions are <em>interpreted</em>, exactly as the engine already interprets <code>AD_Window</code>/<code>AD_Column</code>/<code>AD_Val_Rule</code>.</p>
 </blockquote>
@@ -4217,6 +4241,7 @@ No DB, no clock, no DOM in the verb; integer-cents via <code>bigdecimal.js</code
 <th>Proves</th>
 <th>Oracle</th>
 <th>Falsifier</th>
+<th>Verdict</th>
 </tr>
 </thead>
 <tbody>
@@ -4225,12 +4250,14 @@ No DB, no clock, no DOM in the verb; integer-cents via <code>bigdecimal.js</code
 <td><code>foldStatement</code> reproduces iDempiere's Financial Report for <code>pa_report</code> 100/101/102 over real <code>fact_acct</code> to the cent</td>
 <td>live <code>idempiere_test</code> Financial-Report run (or its stored line totals) — an <strong>independent product</strong>, like <code>fact_acct</code></td>
 <td>drop one <code>PA_ReportSource</code> → that line's cell diverges (<code>diff≠0</code>); flip a calc operator → statement diverges</td>
+<td><strong>✅ GREEN</strong> — <code>§PA-REPORT report=100 maxDiff=0c</code> (108 cells) · <code>101 maxDiff=0c</code> (148) · <code>102 maxDiff=0c</code> (140, <code>§PA-REPORT-NONVACUOUS CF-nonzero-cells=21</code>); <code>§PA-REPORT-FALSIFIER dropped leaf=508 → 148.35→0.35</code> fires. Bundle-alone twin <code>poc_statement_browser.js</code>: same 3 reports <code>maxDiff=0c</code> + calc-col cross-check. Logs: <code>build/erp/poc_pa_report.log</code> / <code>poc_statement_browser.log</code></td>
 </tr>
 <tr>
 <td><strong><code>W-PRINTFORMAT</code></strong> (<code>poc_printformat.js</code>)</td>
 <td><code>foldPrint</code> reproduces iDempiere's <code>PrintData</code> <strong>data tree + break subtotals</strong> for a real Master-Detail format (e.g. <code>Invoice Header → Invoice LineTax</code>) to the cent — <strong>NOT pixels</strong></td>
 <td>the <code>PrintData</code> master/detail row tree + <code>IsSummarized</code>/<code>IsCounted</code> break totals, independently re-runnable from <code>idempiere_test</code> (an independent product)</td>
 <td>drop a <code>'P'</code> child → detail section missing; mis-sum a break → subtotal diverges; flatten recursion → multi-level rows lost</td>
+<td><strong>✅ GREEN</strong> — <code>§PRINTFORMAT invoices=8 diffedCells=48 maxDiff=0c</code> (format 120→<code>'P'</code>→121, bundle-alone inputs; oracle = live base tables <strong>+ the stored <code>c_invoice.grandtotal</code> real iDempiere wrote</strong>); falsifiers A (drop <code>'P'</code> → children=0), B (+1c → Σ diverges 1c), C (drop link → whole-view leak) ALL fire. Log: <code>build/erp/poc_printformat.log</code></td>
 </tr>
 </tbody>
 </table>
@@ -4241,13 +4268,57 @@ No DB, no clock, no DOM in the verb; integer-cents via <code>bigdecimal.js</code
 - <strong><code>PA_Report</code> (Financial Report, W-216)</strong> — 🟡 until <code>W-PA-REPORT</code> lands, then the statement fold joins the oracle-equivalent axis (it's a <em>fold vs independent product</em>, the strong class — not config read-back).
 - <strong><code>AD_PrintFormat</code></strong> — 🟡 (document print folds via W-PROC today; the generic interpreter is the abstraction).</p>
 <p>The matrix's existing "Trial-balance / posting-read ✅ oracle-equivalent" row (<code>test_report_fin.js</code>, <code>ΣDr=ΣCr=46574.97</code>) is the <strong>already-proven base case</strong> of <code>foldStatement</code> — <code>W-PA-REPORT</code> promotes it from hardcoded to <code>PA_Report</code>-driven.</p>
+<h2 id="4b-foldstatement-as-built-mirror-of-the-authoritative-header-block-in-builderpreport_overlayjs">4b · <code>foldStatement</code> — as built (mirror of the authoritative header block in <code>build/erp/report_overlay.js</code>)<a class="headerlink" href="#4b-foldstatement-as-built-mirror-of-the-authoritative-header-block-in-builderpreport_overlayjs" title="Permanent link">&para;</a></h2>
+<p>The normative spec lives as the cited header comment above <code>foldStatement</code> in <code>build/erp/report_overlay.js</code> (it was
+written there while this doc was edit-blocked; the engine header remains authoritative). Key semantics, mirrored:</p>
+<ul>
+<li><strong>Three passes, one integer-cents fold, HALF_UP only at output:</strong> (1) S-lines × segment columns = Σ <code>amtExpr</code> over
+  scoped facts; (2) C-lines in SeqNo order (<code>A</code>/<code>S</code>/<code>R</code>-range-by-SeqNo/<code>P</code>, == <code>FinReport.doCalculations</code>);
+  (3) calc COLUMNS — <code>R</code> = <strong>inclusive column-position range sum</strong> (== <code>doCalculations:992-997</code>), not first-operand.</li>
+<li><strong>AmountType B/S/C/D/Q/R</strong> == <code>MReportColumn.getSelectClause</code> verbatim; natural sign via <code>acctBalance</code> semantics
+  (<code>accountsign='N'</code> → A/E debit-natural else credit-natural); a LINE's <code>paamounttype</code> overrides the column's.</li>
+<li><strong>Sources are tree-SUMMARY nodes</strong> — each <code>pa_reportsource</code> account expands down the EV tree (<code>ad_treenode</code> 101)
+  to non-summary leaves (== <code>MReportTree.getWhereClause</code>) or totals silently wrong.</li>
+<li><strong>Period windows</strong> resolved host-side to <code>c_period_id</code> sets (<code>'P'</code>/<code>'Y'</code>/<code>'T'</code> == <code>FinReportPeriod</code>); the bundle's
+  <code>fact_acct</code> has no <code>dateacct</code> — bridged losslessly via the 360-period calendar. Report period = latest posted
+  period of the MOST-ACTIVE fiscal year (the data-driven stand-in for the mandatory C_Period parameter; the naive
+  "latest fact period" folded the IS all-zero — the vacuity bug class the witness now guards with NON-VACUITY asserts).</li>
+<li><strong>Named-deferred (confirmed unused in live 100/101/102):</strong> period type 'N', line-level period/posting overrides,
+  <code>IsAllowOppositeSign</code>, <code>Factor</code>/RoundFactor, <code>GL_Budget_ID</code> filter, <code>IsPrinted</code> deletion + blank-line render.</li>
+<li><strong>Honest scope:</strong> oracle-equivalent on segment columns × S-lines (BS+IS+CF, both metadata paths); calc lines/cols
+  compose from verified cells per the correct operators + an independent calc-column cross-check in the witness.</li>
+</ul>
+<h2 id="4c-foldprint-as-built">4c · <code>foldPrint</code> — as built<a class="headerlink" href="#4c-foldprint-as-built" title="Permanent link">&para;</a></h2>
+<p>One recursive pure verb (<code>build/erp/report_overlay.js</code>, cited <code>// Implementing ReportingFold.md §1</code>) replaces
+<code>DataEngine</code>+<code>PrintDataGroup</code>; <code>LayoutEngine</code>/Jasper is replaced by <code>renderPrint</code> DOM. As-built notes:</p>
+<ul>
+<li><strong>Inputs are all data:</strong> <code>ad_printformat</code> + <code>ad_printformatitem</code> + the <strong>materialized print views</strong>
+  (<code>c_invoice_header_v</code>/<code>c_invoice_linetax_v</code>) extracted by <code>scripts/extract_printformat.sh</code> — the view SQL is
+  evaluated <strong>by Postgres at extract time</strong>, never reimplemented (non-invent). <code>rowsOf(format, link)</code> is host-injected.</li>
+<li><strong>Semantics</strong> (== <code>DataEngine</code>/<code>PrintDataGroup</code>): sort = <code>isorderby</code> items by <code>sortno</code>; fields = printed non-<code>'P'</code>
+  items in SeqNo order; <code>'P'</code> = recursion per master row via the item's <code>columnname</code> link (N levels free); breaks =
+  <code>isgroupby</code> partition + <code>issummarized</code> Σ (BigDecimal) / <code>iscounted</code> non-null count / <code>isaveraged</code> Σ/n HALF_UP —
+  per group and grand, ONE pass, no SQL-vs-Java split-brain; <code>ispagebreak</code> = a manifest marker.</li>
+<li><strong>The strong anchor:</strong> for the seed's invoice tree (lines + the view's <code>999998</code> separator + <code>999999</code> tax rows),
+  the <code>IsSummarized(LineNetAmt)</code> grand break <strong>== <code>c_invoice.grandtotal</code></strong> — a stored total written by real
+  iDempiere (<code>MInvoice</code>), to the cent, all 8 invoices.</li>
+<li><strong>Exercised vs implemented:</strong> the seed format exercises sort + <code>'P'</code> + <code>IsSummarized</code>; <code>IsGroupBy</code>/<code>IsCounted</code>/
+  <code>IsAveraged</code> are implemented per <code>PrintDataGroup</code> but not yet exercised by a seed format — honestly noted, not claimed.</li>
+<li><strong>Browser wiring:</strong> receipt panel gains a data-gated "⎙ iDempiere format" button (format resolved from
+  <code>ad_printformat</code> by tablename, never hardcoded; <code>§PRINT</code> log); menu leaf <strong>Trial Balance (502, action='R')</strong> is now
+  actionable via the proven <code>foldTrialBalance</code> (<code>§TB</code> log); <strong>Statement of Accounts (350) stays dimmed</strong> —
+  no oracle-anchored fold yet (named-deferred). Intents: <code>overlay:print</code>, <code>global.__report.print/trialBalance</code>.</li>
+</ul>
 <hr />
 <h2 id="5-build-order-after-acceptance">5 · Build order (after acceptance)<a class="headerlink" href="#5-build-order-after-acceptance" title="Permanent link">&para;</a></h2>
 <ol>
-<li><code>foldStatement(PA_Report)</code> — the financial-statement half, highest value (Balance Sheet / P&amp;L first; Cash Flows uses the same engine with cash-flow source mapping).</li>
-<li><code>W-PA-REPORT</code> against <code>idempiere_test</code> → <code>maxDiff=0c</code>.</li>
-<li><code>foldPrint(AD_PrintFormat)</code> — the document/report layout half; <code>W-PRINTFORMAT</code>.</li>
-<li>Wire both into the browser report overlay (render the manifest); matrix surfaces flip 🟡→ as witnessed.</li>
+<li>✅ <code>foldStatement(PA_Report)</code> — the financial-statement half (BS + IS + <strong>Cash Flows</strong>, same engine).</li>
+<li>✅ <code>W-PA-REPORT</code> against <code>idempiere_test</code> → <code>maxDiff=0c</code> for all 3 statements (+ bundle-alone twin).</li>
+<li>✅ <code>foldPrint(AD_PrintFormat)</code> — the document/report layout half; <code>W-PRINTFORMAT</code> <code>maxDiff=0c</code>, 3 falsifiers.</li>
+<li>✅ Wire both into the browser report overlay (statement picker + AD_Menu launcher + <code>renderPrint</code> + Trial-Balance
+   leaf); matrix rows updated to the witnessed state (🟡 ceiling holds — ✅ needs the live-UI bridge, parked).
+   Residual: live in-browser <strong>visual</strong> confirm runs in the bim-ootb Playwright suite (no headless browser here);
+   Statement of Accounts (350) named-deferred; the other 13 <code>T_*</code> members each await their own witness.</li>
 </ol>
 <p><em>Reporting becomes one more fold over the op-log: lose the report, keep the journal + the <code>PA_Report</code> definition, refold it exactly — server-less, Jasper-free, definition-as-data.</em></p>
 
