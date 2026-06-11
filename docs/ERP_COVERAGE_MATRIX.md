@@ -208,9 +208,10 @@ This is the precise content behind "76× shell → ~25× conservative full parit
 ## Provenance / caveats
 
 - All §B numbers from `build/erp/ad_full.db` (927 tables) — table names are **lowercase** there (`ad_column`, not `AD_Column`).
-- The shipping seed `~/bim-ootb/erp/ad_seed.db` (378 tables) is a **UI-metadata subset**: it has no `Callout` column and no
-  `ad_rule`/`ad_val_rule`/`ad_modelvalidator` tables — so `ad_full.db` is the sole authoritative source for those surfaces.
-  Where both carry a surface (C_DocType FSM 52/14/12, acct-config) they agree.
+- The shipping seed `~/bim-ootb/erp/ad_seed.db` is **FULL-WIDTH since 2026-06-11** (380 tables — the 378 + `ad_process`/`ad_process_para`;
+  every table carries ALL columns incl. `AD_Column.Callout`; `prompts/IDMP_FULLWIDTH_SEED.md`, bim-ootb PR #265, sw v648, IDB key v14).
+  Still absent from the seed: `ad_rule`/`ad_val_rule`/`ad_modelvalidator` *tables* — `ad_full.db` stays the authoritative source for those
+  three surfaces. Where both carry a surface (C_DocType FSM 52/14/12, acct-config) they agree.
 - `AD_Process` has **no `AD_Rule_ID` column** (report linkage is `jasperreport`/`ad_reportview_id`, 98 rows) — the prompt's
   "AD_Rule process link" does not exist as a column; counted the real columns instead.
 - `AD_Column_Access`/`AD_Record_Access` exist but are **empty** in this DB (0 rows) — counted as 0; no engine code regardless.

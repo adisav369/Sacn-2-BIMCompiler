@@ -6,6 +6,8 @@
 
 # ERP OOTB — iDempiere Application Dictionary in a Browser
 
+> **New here?** Start with the one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** — legacy ERP vs the WASM event-sourced browser, at a glance. This page is the full blueprint.
+
 ## Overview
 
 iDempiere's Application Dictionary (AD) is a metadata-driven UI framework:
@@ -492,9 +494,11 @@ the parameterisable part becomes an editable decision table (§0.5), the computa
 part a named handler (§0.4), and the binding is *already in AD* so we compile it as the
 cell→handler wiring.
 
-**Concrete extraction gap (TODO for P3b):** our current `ad_seed.db` **stripped
-`Callout`** (the §1 column-subset) and never exported `AD_ModelValidator`. Re-export
-both from the source PostgreSQL (docker, §1). Compiled, the Callout/Validator strings
+**Concrete extraction gap — CLOSED for Callout (2026-06-11):** `ad_seed.db` is now
+**FULL-WIDTH** (`prompts/IDMP_FULLWIDTH_SEED.md`, bim-ootb PR #265 — every exported
+table carries ALL columns, so `AD_Column.Callout` ships in the browser seed);
+`AD_ModelValidator` remains un-exported (the declarative validator engine
+`ad_modelval.js` is proven against `ad_full.db`). Compiled, the Callout/Validator strings
 are simultaneously **(a)** the cell→handler wiring, **(b)** the P3b backlog (*where
 logic exists* — cross-referenced with op-log gravity §0.6 for *where it matters*), and
 **(c)** the §18.10 oracle pointers (*which Java to port*). What survived the strip and
@@ -2167,7 +2171,9 @@ invariants plus 200 others that single-user browser ERP doesn't need.
 
 ### §16.1 Current coverage of iDempiere schema
 
-ad_seed.db contains roughly a third of iDempiere's table definitions.
+ad_seed.db contains 380 of iDempiere's 927 table definitions (~41%) — and since 2026-06-11 it is
+**full-width**: every exported table carries all of its columns (`prompts/IDMP_FULLWIDTH_SEED.md`,
+bim-ootb PR #265; the old hand-picked column slice is retired).
 
 | Category | Missing | Examples |
 |---|---|---|

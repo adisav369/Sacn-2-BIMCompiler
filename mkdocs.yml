@@ -72,6 +72,7 @@ nav:
       - Home: index.md
       - Feature Comparison: FeatureComparison.md
       - "Migrate & Compare (ERP)": MigrateComparisonPaper.md
+      - "Fold-Engine Code Quality": FoldEngineQuality.md
       - About BIM OOTB: AboutMore.md
       - The ERP World View: MANIFESTO.md
       - Beyond Buildings: ShipYard.md
@@ -161,6 +162,8 @@ nav:
       - Distributed ERP (Contention Map): DistributedERP.md
       - "ERP Coverage Matrix (have we covered all bases?)": ERP_COVERAGE_MATRIX.md
       - "ERP Model Archetype (MOrder + deltas = the denominator)": ERP_MODEL_ARCHETYPE.md
+      - "POS Addon Spec (the 2012 Unicenta loop, as folds)": POS_ADDON_SPEC.md
+      - "Spatial Picking Spec (warehouse walk + QR)": SPATIAL_PICKING_SPEC.md
       - "Depreciation Perf (server→serverless witness)": DepreciationPerf.md
 
   # ─── Proven buildings ─────────────────────────────────
