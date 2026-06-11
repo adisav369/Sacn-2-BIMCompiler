@@ -1,11 +1,15 @@
-# ⚠ DO NOT REMOVE — Scope guard / SESSION CARD: WH db → GH Pages + WH pill + POS pill + deep-link share
-# Scope: FOUR dictated items (user, 2026-06-12 — POC-demo polish, WORK-TO-ZERO applies):
+# ⚠ DO NOT REMOVE — Scope guard / SESSION CARD: WH db → GH Pages + WH pill + POS pill + deep-link share + home nav
+# Scope: FIVE dictated items (user, 2026-06-12 — POC-demo polish, WORK-TO-ZERO applies):
 #   1. Serve warehouse_gardenworld.db from GH Pages → SHORT shareable URL (currently long OCI URL).
 #   2. Warehouse pill on idempiere.html pill bar (second door beside the POS cart).
 #   3. POS pill deploy — feat/pos-lens is BUILT+WITNESSED but ⛔ HELD; this session = the GO.
 #   4. Both POS and WH have deep links for sharing; maintain the share icon in idempiere.html
 #      (header-level share = current window/record link; POS share = ?lens=pos deep link;
 #       WH share = viewer short URL). All via the existing navigator.share/clipboard pattern.
+#   5. Home navigation chain — each sub-surface has a ⌂ home icon back to its parent:
+#        erp.html ← idempiere.html (⌂ #idmp-home-btn ALREADY EXISTS — do not touch)
+#        idempiere.html ← POS overlay (⌂ inside the POS panel header closes overlay)
+#        idempiere.html ← WH viewer tab (⌂ in viewer HUD via ?home= param)
 # READ THE LOG after every run (exit ≠ evidence). ALL poc_* via `bash build/erp/run_witness.sh scripts/poc_X.js`
 #   from /home/red1/bim-compiler. EXTRACT don't invent. Witness-led: claim first, then implement.
 # HOUSE RULES (each has bitten before):
@@ -48,6 +52,17 @@
 - POS share = `navigator.share({ url: idempiere.html?lens=pos })` or clipboard fallback.
 - WH share = `navigator.share({ url: viewer/viewer.html?db=../buildings/warehouse_gardenworld.db })`.
 - All three use the SAME one-liner pattern. No new abstraction.
+
+### Home navigation chain (verified 2026-06-12)
+- `idempiere.html #idmp-home-btn` (⌂) → `erp.html` — ALREADY EXISTS (idempiere.html line 299 / 1434).
+  DO NOT TOUCH — it works.
+- POS overlay → no home button yet. The overlay is opened via `cfg.overlay('POS — name', wrap)`
+  inside idempiere.html. "Home" from the POS = close the overlay (return to idempiere AD main).
+  Implementation: add a `⌂` button to the POS overlay's wrap header (inside pos_lens.js `open()`).
+- WH viewer tab → no home button yet. Viewer opens in `_blank`; `ICONS.home` exists in panels.js
+  (line 31, verbatim Lucide). Add `?home=../erp/idempiere.html` to the WH pill's `window.open` URL;
+  viewer reads `_params.get('home')` from config.js and renders a small back button in the HUD.
+  Repo path: `viewer/config.js` (reads params) + `viewer/main.js` or `viewer/panels.js` (renders btn).
 
 ### Icon for warehouse pill
 - `box` is already in `erp/icons.js` (copied from panels.js — the Lucide `package` 3D-cube glyph).
@@ -179,13 +194,64 @@ in the console is the whitebox proof (read it in the browser DevTools after a ma
 
 ---
 
-## STEP 5 — deploy train (serial, standard)
+## STEP 5 — home navigation (⌂ in POS overlay + ⌂ in WH viewer)
+
+### 5a. POS overlay home button
+Inside `pos_lens.js` `open()`, the overlay `wrap` div is built before calling `cfg.overlay(title, wrap)`.
+Add a home button to the top of `wrap`:
+```js
+var homeBtn = document.createElement('button');
+homeBtn.title = 'Back to iDempiere';
+homeBtn.innerHTML = _svg('home');   // ICONS.home is already in erp/icons.js
+homeBtn.style.cssText = 'position:absolute;top:8px;right:42px;background:none;border:none;' +
+  'color:#7fd6e0;cursor:pointer;padding:4px;opacity:.7';
+homeBtn.addEventListener('pointerup', function () { cfg.close && cfg.close(); });
+wrap.style.position = 'relative';
+wrap.insertBefore(homeBtn, wrap.firstChild);
+```
+(Read pos_lens.js `open()` first to confirm how `cfg.overlay` / `cfg.close` are exposed; adjust
+ if the overlay API uses a different close method — e.g. the overlay element's own close button.)
+No separate witness needed — `§POS-HOME` console.log in the handler; verify by tapping in the browser.
+
+### 5b. WH viewer home button (via ?home= param)
+**WH pill URL** — change the `window.open` call to include the home param:
+```js
+// in idmp_pills.js IdmpPillActions.warehouse:
+var homeUrl = encodeURIComponent(location.origin +
+  location.pathname.replace(/[^/]*$/, '') + 'idempiere.html');
+var url = '../viewer/viewer.html?db=../buildings/warehouse_gardenworld.db&home=' + homeUrl;
+window.open(url, '_blank');
+```
+
+**viewer/config.js** — read the param (add after the existing `A.RECORD_ID` line):
+```js
+A.HOME_URL = _params.get('home') || null;
+```
+
+**viewer/main.js or panels.js** — render the button once the viewer is ready (after the HUD mounts).
+`ICONS.home` is already in panels.js line 31, so use `A.icon('home', {...})`:
+```js
+if (A.HOME_URL) {
+  var homeBtn = A.icon('home', { size: 22, title: 'Back to iDempiere',
+    onClick: function () { location.href = A.HOME_URL; }
+  });
+  homeBtn.style.cssText = 'position:fixed;top:10px;left:10px;z-index:900;' +
+    'background:rgba(0,0,0,0.45);border-radius:8px;padding:5px;cursor:pointer';
+  document.body.appendChild(homeBtn);
+  console.log('§WH-HOME rendered href=' + A.HOME_URL);
+}
+```
+(Read main.js + panels.js first to find the correct post-HUD-mount hook and confirm `A.icon` signature.)
+Witness line `§WH-HOME rendered href=...` appears in the console — read it in the browser DevTools.
+
+---
+
+## STEP 7 — deploy train (serial, standard)
 
 1. Rebase off fresh `origin/main` inside the worktree.
 2. Bump `erp/sw.js` CACHE_VERSION (next integer). Also bump `?v=` query on any new/changed `.js` files
-   in idempiere.html `<script>` tags. Add `buildings/warehouse_gardenworld.db` to PRECACHE_ASSETS ONLY
-   if it is ≤ 500 KB AND the sw caches it as an app-shell asset — check the existing pattern first;
-   if it is data-fetched (not precached), skip.
+   in idempiere.html `<script>` tags. `buildings/warehouse_gardenworld.db` is DATA — do NOT precache it
+   in sw.js (data-fetched only; precaching it would bloat the install payload).
 3. Re-run W-WH-PILL + W-POS-LIVE on the bumped tree → both exit 0, READ logs.
 4. `git add` the touched files; commit; `gh pr create`; `gh pr merge --auto --squash`.
 5. Orphan check: `git show origin/main:erp/sw.js` (CACHE_VERSION visible) + `git show origin/main:buildings/warehouse_gardenworld.db` (exists, ~61 KB).
@@ -193,7 +259,7 @@ in the console is the whitebox proof (read it in the browser DevTools after a ma
 
 ---
 
-## STEP 6 — one canonical copy + bookkeeping
+## STEP 8 — one canonical copy + bookkeeping
 
 - After W-WH-GH passes LIVE: delete the OCI object `buildings/warehouse_gardenworld.db` from the
   COMMON bucket. Verify the old OCI URL now 404s; the new short URL still passes.
@@ -211,6 +277,9 @@ in the console is the whitebox proof (read it in the browser DevTools after a ma
 - W-POS-LIVE exit 0 (POS pill present after cherry-pick) ✅
 - `?lens=pos` lands on POS surface post-login (browser smoke) ✅
 - `§IDMP-SHARE` visible in console on header share tap ✅
+- `§POS-HOME` in console when ⌂ tapped in POS overlay (browser smoke) ✅
+- `§WH-HOME rendered href=…` in console when viewer opens with ?home= (browser smoke) ✅
+- idempiere.html `#idmp-home-btn → erp.html` unchanged and still works ✅
 - OCI duplicate deleted, old URL 404s ✅
 - lane-master + poc_wh_live_pages.js + ERPUserGuide updated ✅
 
