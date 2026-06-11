@@ -2,7 +2,7 @@
 # Scope: FIVE dictated items (user, 2026-06-12 — POC-demo polish, WORK-TO-ZERO applies):
 #   1. Serve warehouse_gardenworld.db from GH Pages → SHORT shareable URL (currently long OCI URL).
 #   2. Warehouse pill on idempiere.html pill bar (second door beside the POS cart).
-#   3. POS pill deploy — feat/pos-lens is BUILT+WITNESSED but ⛔ HELD; this session = the GO.
+#   3. POS pill verify — feat/pos-lens MERGED as PR #269 (sw v652, 2026-06-12); verify on origin/main only.
 #   4. Both POS and WH have deep links for sharing; maintain the share icon in idempiere.html
 #      (header-level share = current window/record link; POS share = ?lens=pos deep link;
 #       WH share = viewer short URL). All via the existing navigator.share/clipboard pattern.
@@ -20,8 +20,7 @@
 #   - Pills: Lucide line icons from erp/icons.js ONLY (no unicode glyphs); reuse the pill-registry
 #     pattern the existing pills use (pills_idmp.json + idmp_pills.js + idempiere.html binding).
 #   - Pages CI minifies sw.js — live-verify greps must be quote-agnostic (`CACHE_VERSION="vNNN"`).
-#   - POS pill source is feat/pos-lens (bim-ootb 0dc3752) — cherry-pick or merge its diff, do NOT
-#     re-implement (it is already built + witnessed: W-POS-RING/W-POS-WR/W-POS-BACKFLUSH/W-POS-REPLENISH).
+#   - POS pill: feat/pos-lens MERGED as PR #269 (sw v652, 2026-06-12) — already on origin/main.
 
 ---
 
@@ -35,12 +34,11 @@
   (config.js resolves `?db=` verbatim via fetch; `../buildings/` from viewer/ = repo root buildings/)
 - Viewer pill gate already wired for warehouse (DATA-GATED on locator-GUID bins, `§WH PILL gate=on`).
 
-### POS pill (feat/pos-lens — BUILT, HELD)
-- Branch: `feat/pos-lens` commit 0dc3752 in bim-ootb.
-- Adds: `erp/pos_lens.js` + `erp/pos_core.js` (UMD) + `pos` entry in pills_idmp.json +
-  binding in idmp_pills.js + `openPosFor` in idempiere.html + `<script src="pos_lens.js?v=1">`.
-- Witnesses green: W-POS-RING · W-POS-WR · W-POS-BACKFLUSH · W-POS-REPLENISH (headless, bim-compiler)
-  + W-POS-LIVE (bim-ootb, poc_pos_live.js). DO NOT re-implement — cherry-pick or merge the diff.
+### POS pill (feat/pos-lens — MERGED as PR #269, sw v652, 2026-06-12)
+- Already on `origin/main`. Files present: `erp/pos_lens.js` · `erp/pos_core.js` · `pos` entry in
+  pills_idmp.json · binding in idmp_pills.js · `openPosFor` in idempiere.html.
+- Witnesses green: W-POS-RING · W-POS-WR · W-POS-BACKFLUSH · W-POS-REPLENISH + W-POS-LIVE.
+- STEP 3 = verify presence on origin/main only. No cherry-pick.
 - POS deep link param: `?lens=pos` — post-login, open the POS overlay automatically (see §STEP 3).
 
 ### Share icon (existing pattern — extend, don't fork)
@@ -125,17 +123,16 @@ Run `bash build/erp/run_witness.sh scripts/poc_wh_pill.js` + READ the log.
 
 ---
 
-## STEP 3 — POS pill deploy (cherry-pick feat/pos-lens diff) + ?lens=pos deep link
+## STEP 3 — POS pill verify (feat/pos-lens ALREADY MERGED as PR #269, sw v652)
 
-### 3a. Merge/cherry-pick
-From the worktree, merge the diff from feat/pos-lens. The files added are:
-- `erp/pos_lens.js` (the lens UI — dumb terminal, EXTRACT don't rewrite)
-- `erp/pos_core.js` (engine glue UMD — already in bim-compiler/build/erp/pos_core.js)
-- Pills manifest entry `pos` (shopping-cart icon, `showWhen: pos-station`)
-- `idmp_pills.js` binding for `pos` + `posShare`
-- `idempiere.html`: `<script src="pos_lens.js?v=1">` + `openPosFor` binding
-
-Do NOT re-implement. If cherry-pick conflicts, resolve by keeping feat/pos-lens's version of those files.
+### 3a. Verify — no cherry-pick needed
+`feat/pos-lens` merged to `origin/main` as PR #269 (sw v652) earlier on 2026-06-12.
+The worktree is off fresh `origin/main` so the POS pill is already present. Just confirm:
+```
+grep -c "pos_lens" /tmp/wt-wh-pill/erp/idempiere.html   # expect ≥ 1
+grep '"id": "pos"' /tmp/wt-wh-pill/erp/pills_idmp.json  # expect a match
+```
+If either check fails, origin/main is behind — `git fetch origin && git reset --hard origin/main`.
 
 ### 3b. ?lens=pos deep link
 idempiere.html already resolves `?window=<id>` and `?record=<pk>` post-login via `_pendingWid`/`_pendingRid`.
@@ -157,7 +154,7 @@ posShare: function () {
 ```
 
 ### Witness W-POS-LIVE (re-run, not re-write):
-`bash build/erp/run_witness.sh scripts/poc_pos_live.js` — must still exit 0 after the cherry-pick.
+`bash build/erp/run_witness.sh scripts/poc_pos_live.js` — must exit 0 on origin/main (already merged).
 READ the log. Also verify `?lens=pos` opens the POS surface in a local browser smoke test.
 
 ---
@@ -274,7 +271,7 @@ Witness line `§WH-HOME rendered href=...` appears in the console — read it in
 ## DONE WHEN
 - W-WH-GH §-lines read from log (short URL serves live) ✅
 - W-WH-PILL exit 0 (warehouse pill present, opens viewer) ✅
-- W-POS-LIVE exit 0 (POS pill present after cherry-pick) ✅
+- W-POS-LIVE exit 0 (POS pill on origin/main, PR #269 merged) ✅
 - `?lens=pos` lands on POS surface post-login (browser smoke) ✅
 - `§IDMP-SHARE` visible in console on header share tap ✅
 - `§POS-HOME` in console when ⌂ tapped in POS overlay (browser smoke) ✅
