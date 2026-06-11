@@ -3381,6 +3381,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#6-extension-arc-proven-rails-downhill-from-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Extension arc (proven rails — downhill from here)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Extension arc (proven rails — downhill from here)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s-7-packing-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-7 Packing order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-8-special-handling-overlays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-8 Special handling overlays
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-9-autonomous-agent-forklift-robot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-9 Autonomous agent (forklift / robot)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-10-ar-overlay-via-walk-sitecam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-10 AR overlay via Walk + SiteCam
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-a-real-ifc-survey-adds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a real IFC survey adds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4450,6 +4522,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#6-extension-arc-proven-rails-downhill-from-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Extension arc (proven rails — downhill from here)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Extension arc (proven rails — downhill from here)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s-7-packing-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-7 Packing order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-8-special-handling-overlays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-8 Special handling overlays
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-9-autonomous-agent-forklift-robot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-9 Autonomous agent (forklift / robot)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-10-ar-overlay-via-walk-sitecam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-10 AR overlay via Walk + SiteCam
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-a-real-ifc-survey-adds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a real IFC survey adds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4682,6 +4826,56 @@ its <strong><code>m_locator_id</code> as the element GUID</strong> (the BIMtoERP
 <p>Each §S is ✅ (witness + on-screen verify on a phone-sized viewport + deploy) or ⛔ with the one
 blocking fact. The demo: compile the GardenWorld warehouse, draft a 3-line movement, walk it on a
 phone, scan three printed QRs, and watch <code>qtyOnHand</code> + the ERP window agree to the unit.</p>
+<hr />
+<h2 id="6-extension-arc-proven-rails-downhill-from-here">6. Extension arc (proven rails — downhill from here)<a class="headerlink" href="#6-extension-arc-proven-rails-downhill-from-here" title="Permanent link">&para;</a></h2>
+<p>The §S-1..§S-5 proof establishes the moat: spatial model + signed op-log + same ledger as the
+financial fold, zero-install browser. Everything below extends that without re-inventing the rails.</p>
+<h3 id="s-7-packing-order">§S-7 Packing order<a class="headerlink" href="#s-7-packing-order" title="Permanent link">&para;</a></h3>
+<p>Route verb variant: <code>packRoute(lines, products)</code> sorts the walk by pack priority instead of aisle
+sequence — heaviest/bulkiest first, fragile last, same locator-bin targeting.
+Pack priority derives from <code>m_product</code> attributes already in the seed (weight, <code>m_product_category</code>
+flags, or a <code>packing_order</code> attribute injected at compile time).
+The strip UI, scan gate, and op-group are identical to §S-3..§S-5 — only the sort key changes.
+<strong>Architecture cost: one new pure verb. No new screen, no new kernel path.</strong></p>
+<h3 id="s-8-special-handling-overlays">§S-8 Special handling overlays<a class="headerlink" href="#s-8-special-handling-overlays" title="Permanent link">&para;</a></h3>
+<p>The <code>ANNOTATE</code> verb (§S-3 long-press skip trail) already writes exception annotations to the op-log.
+Extend it inward: before the scan prompt, read hazmat / fragile / two-person flags from the current
+step's <code>m_product</code> row and render a visual overlay on the bin — a flashing colour, an icon badge, a
+text chip ("Fragile — two-person lift").
+The depth model (ghost/rack/bin bright) is already the animation system; the overlay is a new
+material pass on the bin mesh driven by product metadata, not new UI scaffolding.
+<strong>Architecture cost: metadata read + one material variant. Same fly-to, same scan gate.</strong></p>
+<h3 id="s-9-autonomous-agent-forklift-robot">§S-9 Autonomous agent (forklift / robot)<a class="headerlink" href="#s-9-autonomous-agent-forklift-robot" title="Permanent link">&para;</a></h3>
+<p>The route verb already outputs the walk sequence as pure data. The QR-scan callback is one
+implementation of "confirm this bin" — replace it with any other signal:
+- RFID reader → <code>onTagRead(locatorId)</code> instead of <code>onScanResult(locatorId)</code>
+- Robot position API → poll <code>robot.currentLocator()</code> and auto-confirm when reached
+- Conveyor sensor → event stream</p>
+<p>The <code>commitGroup</code> call, the op-log entry, and the ledger reconciliation are unchanged.
+The virtual walk highlight (fly-to + bright bin) becomes a live mirror of the physical agent's
+position — the same rAF loop, just driven by telemetry instead of a human tap.
+<strong>Architecture cost: swap the scan callback. Everything downstream is untouched.</strong>
+The hardware integration contract (positioning system, comms protocol) is always custom — that is
+the real work. The ERP side is already done.</p>
+<h3 id="s-10-ar-overlay-via-walk-sitecam">§S-10 AR overlay via Walk + SiteCam<a class="headerlink" href="#s-10-ar-overlay-via-walk-sitecam" title="Permanent link">&para;</a></h3>
+<p>The viewer already ships <code>sitecam.js</code> — the device camera feed composited under the 3D scene.
+The Walk lens (§S-3) runs inside the same viewer. Combining them:
+1. Open the warehouse db in the viewer with the SiteCam layer active
+2. The virtual bins overlay on the live camera feed, aligned to the compiled spatial topology
+3. The Walk pill drives the same fly-to + highlight — the highlight appears on the physical aisle
+   as an AR overlay rather than on a dark background</p>
+<p>No new architecture: <code>sitecam.js</code> + <code>wh_walk.js</code> + the existing <code>A.HOME_URL</code> nav chain already in
+production (sw v654). The alignment accuracy is topology-based (compiled locator positions), not
+sensor-fused — sufficient for guided picking, honest about the gap.
+<strong>Architecture cost: wire SiteCam layer active when <code>?mode=ar</code> param is present. One init flag.</strong>
+<em>WebXR sensor-fused AR = future footnote when device APIs mature and a real IFC building survey
+provides metric coordinates.</em></p>
+<h3 id="what-a-real-ifc-survey-adds">What a real IFC survey adds<a class="headerlink" href="#what-a-real-ifc-survey-adds" title="Permanent link">&para;</a></h3>
+<p>The current model is a compiled schematic (§S-1 honest gap — X/Y/Z are text labels, not metric
+coordinates). A real warehouse survey via phone LiDAR → IFC → the existing compiler pipeline
+produces a metric db — <code>warehouse_real.db</code> loads into the viewer unchanged. The walk, AR overlay,
+robot path, and packing route all inherit metric precision automatically. This is a content
+production problem, not an architecture problem; the code path is identical.</p>
 
 
 
