@@ -56,7 +56,11 @@ OFF=$((CL*100000))
 FAMILIES="c_order_id:c_order c_orderline_id:c_orderline c_invoice_id:c_invoice c_invoiceline_id:c_invoiceline \
 c_bpartner_id:c_bpartner m_product_id:m_product m_product_category_id:m_product_category c_tax_id:c_tax \
 c_validcombination_id:c_validcombination c_elementvalue_id:c_elementvalue \
-ad_org_id:ad_org ad_role_id:ad_role ad_user_id:ad_user"
+ad_org_id:ad_org ad_role_id:ad_role ad_user_id:ad_user fact_acct_id:fact_acct"
+# fact_acct_id ADDED 2026-06-12 (MIGRATE_POSTING_CONFIG.md iDempiere half): the default seed now
+# CARRIES fact_acct (TrialBalance residual lit), so an un-banded shard fact_acct_id PK would collide
+# with the seed's GardenWorld fact rows → INSERT OR IGNORE silently drops the tenant ledger — the
+# EXACT #5-install bug class, one table later. Same uniform band, all rows client-$CL (asserted).
 TBLS=$(sqlite3 "$DB" "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\_%' ESCAPE '\\';")
 # 1: capture EVERY family's tenant id-list BEFORE any update (sequencing: a family already offset must
 #    never feed another family's list — account_id/vc specials read these lists too).

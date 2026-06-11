@@ -95,4 +95,8 @@ function resolve(db, token, masterId, acctschema) {
   };
 }
 
-module.exports = { resolve: resolve, elementOf: elementOf, TOKENS: TOKENS };
+var _api = { resolve: resolve, elementOf: elementOf, TOKENS: TOKENS };
+// UMD tail — node (require) + browser live host (window.PostResolver). Additive: same exports, used by
+// doc_poster / erp_preview in the browser. Logic UNCHANGED (FOLD witnesses re-run green).
+if (typeof module !== 'undefined' && module.exports) { module.exports = _api; }
+if (typeof window !== 'undefined') { window.PostResolver = _api; }

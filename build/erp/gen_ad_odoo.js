@@ -61,15 +61,35 @@ function nextFreeClient(db) { var r = exec(db, 'SELECT COALESCE(MAX(AD_Client_ID
   //   partner receivable property · product-category income/expense properties · the sale tax + its GL account
   //   (read off the posted invoice AML, the most non-invent source) · the invoice lines (subtotals) + tax amount.
   var partner = (await ex('res.partner', 'read', [[so.partner_id[0]]], { fields: ['id', 'name', 'property_account_receivable_id'] }))[0];
-  var ocats = await ex('product.category', 'search_read', [[]], { fields: ['id', 'name', 'property_account_income_categ_id', 'property_account_expense_categ_id'] });
+  // category properties (Odoo 17: company-dependent, stored in ir_property, ORM-resolved): income/expense +
+  //   the stock VALUATION account (stock_account module) — the honest {Product.Asset} source (verified live:
+  //   ir_property 'property_stock_valuation_account_id' → account.account,2 '110100 Stock Valuation').
+  var ocats = await ex('product.category', 'search_read', [[]], { fields: ['id', 'name', 'property_account_income_categ_id', 'property_account_expense_categ_id', 'property_stock_valuation_account_id'] });
   var saleTax = (await ex('account.tax', 'search_read', [[['type_tax_use', '=', 'sale']]], { fields: ['id', 'name', 'amount'] }))[0];
+  // the tax GL account from the tax's OWN config — account.tax.repartition.line (document_type=invoice,
+  //   repartition_type=tax).account_id (verified live: account_tax_repartition_line → account.account,19 '251000').
+  var taxRep = saleTax ? (await ex('account.tax.repartition.line', 'search_read',
+    [[['tax_id', '=', saleTax.id], ['document_type', '=', 'invoice'], ['repartition_type', '=', 'tax']]],
+    { fields: ['account_id'] }))[0] : null;
+  // COMPANY DEFAULTS (the c_acctschema_default source): the res_id-NULL ir_property rows ARE Odoo's company-level
+  //   account defaults (verified live: 7 rows, company_id=1). Read them raw + resolve their account.account refs.
+  var DEF_PROPS = ['property_account_receivable_id', 'property_account_payable_id', 'property_account_income_categ_id',
+    'property_account_expense_categ_id', 'property_stock_valuation_account_id'];
+  var defProps = await ex('ir.property', 'search_read', [[['res_id', '=', false], ['name', 'in', DEF_PROPS]]],
+    { fields: ['name', 'value_reference', 'company_id'] });
+  var defAcctIds = defProps.map(function (p) { return Number(String(p.value_reference || '').split(',')[1]); }).filter(function (n) { return n > 0; });
+  var defAccts = defAcctIds.length ? await ex('account.account', 'read', [defAcctIds], { fields: ['id', 'code', 'name'] }) : [];
+  var defAcctById = {}; defAccts.forEach(function (a) { defAcctById[a.id] = [a.id, a.code + ' ' + a.name]; });   // → acctVC pair
+  var companyDefault = {}; defProps.forEach(function (p) { var aid = Number(String(p.value_reference || '').split(',')[1]); if (defAcctById[aid]) companyDefault[p.name] = defAcctById[aid]; });
   // the posted invoice's GL lines = the ORACLE (and the source of the tax account + invoice-line subtotals).
   var aml = inv ? await ex('account.move.line', 'search_read', [[['move_id', '=', inv.id]]], { fields: ['account_id', 'debit', 'credit', 'display_type', 'product_id', 'tax_line_id'] }) : [];
   var invLines = inv ? await ex('account.move.line', 'search_read', [[['move_id', '=', inv.id], ['display_type', '=', 'product']]], { fields: ['product_id', 'price_subtotal'] }) : [];
-  var taxAcct = aml.filter(function (l) { return l.display_type === 'tax'; })[0];        // the tax GL account (251000)
+  var taxAcct = aml.filter(function (l) { return l.display_type === 'tax'; })[0];        // AML cross-check (251000)
   L('   acctcfg: receivable=' + (partner.property_account_receivable_id && partner.property_account_receivable_id[1]) +
     ' incomeCat=' + (ocats[0] && ocats[0].property_account_income_categ_id && ocats[0].property_account_income_categ_id[1]) +
-    ' tax=' + (saleTax && saleTax.name) + ' taxAcct=' + (taxAcct && taxAcct.account_id[1]) + ' amlLines=' + aml.length);
+    ' valuationCat=' + (ocats[0] && ocats[0].property_stock_valuation_account_id && ocats[0].property_stock_valuation_account_id[1]) +
+    ' tax=' + (saleTax && saleTax.name) + ' taxRepAcct=' + (taxRep && taxRep.account_id && taxRep.account_id[1]) +
+    ' taxAmlAcct=' + (taxAcct && taxAcct.account_id[1]) + ' companyDefaults=' + Object.keys(companyDefault).length + ' amlLines=' + aml.length);
   // L1 lifecycle rule population — ALL sale orders (real amount_total + state), gated by "may Complete iff total ≤ T".
   var orders = await ex('sale.order', 'search_read', [[]], { fields: ['id', 'name', 'state', 'date_order', 'amount_total', 'amount_untaxed', 'partner_id'], order: 'amount_total desc', limit: 200 });
   L('   live: products=' + prods.length + ' SO=' + so.name + ' lines=' + sol.length + ' invoice=' + (inv && inv.name) + ' orders=' + orders.length);
@@ -197,17 +217,34 @@ function nextFreeClient(db) { var r = exec(db, 'SELECT COALESCE(MAX(AD_Client_ID
     if (!vcSeen[vc]) { ins('c_validcombination', stamp7({ c_validcombination_id: vc, account_id: evId }, CL, 0)); vcSeen[vc] = 1; }
     return vc;
   }
-  ins('c_acctschema_default', stamp7({ c_acctschema_id: SCHEMA }, CL, 0));
-  // product-category revenue/cogs — category income/expense properties (one row per migrated category).
+  // c_acctschema_default = the COMPANY DEFAULTS (the res_id-NULL ir_property rows pulled in §1b), mapped onto
+  //   the iDempiere default columns. EXTRACT: every value is a real ir_property→account_account ref; absent
+  //   Odoo defaults stay NULL (honest). post_resolver reads only c_acctschema_id off this row today — the
+  //   acct columns are PROVENANCE (the migrated company defaults travel with the tenant).
+  // sale tax + its GL account — PREFER the tax's own repartition-line config (account.tax.repartition.line
+  //   .account_id, the real config column); the posted-invoice tax AML is the observational fallback.
+  var TAXID = DOC + 1, taxAcctPair = (taxRep && taxRep.account_id) || (taxAcct && taxAcct.account_id) || null;
+  var dueVC = taxAcctPair ? acctVC(taxAcctPair) : null;
+  L('   taxAcct source=' + (taxRep && taxRep.account_id ? 'account.tax.repartition.line.account_id' : (taxAcct ? 'posted AML (fallback)' : 'NONE')));
+  ins('c_acctschema_default', stamp7({ c_acctschema_id: SCHEMA,
+    c_receivable_acct: acctVC(companyDefault.property_account_receivable_id),
+    v_liability_acct: acctVC(companyDefault.property_account_payable_id),
+    p_revenue_acct: acctVC(companyDefault.property_account_income_categ_id),
+    p_expense_acct: acctVC(companyDefault.property_account_expense_categ_id),
+    p_cogs_acct: acctVC(companyDefault.property_account_expense_categ_id),
+    p_asset_acct: acctVC(companyDefault.property_stock_valuation_account_id),
+    t_due_acct: dueVC, t_credit_acct: dueVC }, CL, 0));
+  // product-category revenue/cogs/asset — category income/expense/STOCK-VALUATION properties (one row per
+  //   migrated category). p_asset = property_stock_valuation_account_id (stock_account); if an Odoo category
+  //   genuinely lacks it the column stays NULL — never synthesized from another account.
   var ncfg = 0;
   ocats.forEach(function (oc) {
     var leaf = String(oc.name || 'Odoo').split('/').pop().trim(); var cid = catId[leaf]; if (cid == null) return;
     var revVC = acctVC(oc.property_account_income_categ_id), cogsVC = acctVC(oc.property_account_expense_categ_id);
-    ins('m_product_category_acct', stamp7({ m_product_category_id: cid, c_acctschema_id: SCHEMA, p_revenue_acct: revVC, p_cogs_acct: cogsVC, p_asset_acct: cogsVC }, CL, 0));
+    var assetVC = acctVC(oc.property_stock_valuation_account_id);
+    ins('m_product_category_acct', stamp7({ m_product_category_id: cid, c_acctschema_id: SCHEMA, p_revenue_acct: revVC, p_cogs_acct: cogsVC, p_asset_acct: assetVC }, CL, 0));
     ncfg++;
   });
-  // sale tax + its GL account (read off the posted invoice's tax AML line: 251000 Tax Received).
-  var TAXID = DOC + 1, dueVC = taxAcct ? acctVC(taxAcct.account_id) : null;
   ins('c_tax', stamp7({ c_tax_id: TAXID, name: (saleTax && saleTax.name) || 'Tax', rate: (saleTax && saleTax.amount) || 0, issummary: 'N' }, CL, 0));
   if (dueVC) ins('c_tax_acct', stamp7({ c_tax_id: TAXID, c_acctschema_id: SCHEMA, t_due_acct: dueVC, t_credit_acct: dueVC }, CL, 0));
 
