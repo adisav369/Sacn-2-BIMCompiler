@@ -3438,6 +3438,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#s-11-bin-share-deep-link-walk-to-snag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-11 Bin share deep link (Walk-to-Snag)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-a-real-ifc-survey-adds" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4579,6 +4590,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#s-11-bin-share-deep-link-walk-to-snag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-11 Bin share deep link (Walk-to-Snag)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-a-real-ifc-survey-adds" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4870,6 +4892,27 @@ sensor-fused — sufficient for guided picking, honest about the gap.
 <strong>Architecture cost: wire SiteCam layer active when <code>?mode=ar</code> param is present. One init flag.</strong>
 <em>WebXR sensor-fused AR = future footnote when device APIs mature and a real IFC building survey
 provides metric coordinates.</em></p>
+<h3 id="s-11-bin-share-deep-link-walk-to-snag">§S-11 Bin share deep link (Walk-to-Snag)<a class="headerlink" href="#s-11-bin-share-deep-link-walk-to-snag" title="Permanent link">&para;</a></h3>
+<p><strong>Ask:</strong> can a warehouse worker share "look at this bin" with a colleague the same way the BIM
+viewer shares a picked element or a clash deep link?</p>
+<p><strong>How it works (build on existing rails):</strong></p>
+<p><code>share.js</code> already captures <code>?pick=&lt;guid&gt;</code> for element picks and <code>?cam=</code>/<code>?tgt=</code> for camera;
+on load the viewer restores the pick highlight and flies the camera. The WH Walk equivalent is
+<code>?wh_locator=&lt;m_locator_id&gt;</code> — the bin's locator ID (which IS its element GUID in the compiled
+db, §S-1 stamp).</p>
+<ol>
+<li><strong>Share (in the Walk strip):</strong> add a share icon button to the strip; on tap build
+   <code>viewer.html?db=../buildings/warehouse_gardenworld.db&amp;wh_locator=&lt;current step locator id&gt;</code>
+   and call <code>navigator.share</code> / clipboard fallback. Log <code>§WH-STEP-SHARE locator=&lt;id&gt;</code>.</li>
+<li><strong>Receive (viewer load):</strong> <code>config.js</code> reads <code>A.WH_LOCATOR = _params.get('wh_locator') || null</code>.
+   <code>wh_walk.js</code> gate poll: if <code>A.WH_LOCATOR</code> is set after gate=on, call <code>focusStep</code> for that
+   locator in <strong>view-only mode</strong> (no draft <code>M_Movement</code> created — just fly-to + bright highlight +
+   ghost rest). Log <code>§WH-SNAG locator=&lt;id&gt; view=only</code>.</li>
+<li><strong>No login required</strong> for the recipient — it is the viewer URL, the same zero-install surface
+   as any building share. The bin highlight works off the compiled db geometry alone.</li>
+</ol>
+<p><strong>Architecture cost:</strong> <code>config.js</code> +1 param read · <code>wh_walk.js</code> +view-only branch on gate+param ·
+strip +share button. Same <code>focusStep</code>, same depth model. No new kernel path, no auth gate.</p>
 <h3 id="what-a-real-ifc-survey-adds">What a real IFC survey adds<a class="headerlink" href="#what-a-real-ifc-survey-adds" title="Permanent link">&para;</a></h3>
 <p>The current model is a compiled schematic (§S-1 honest gap — X/Y/Z are text labels, not metric
 coordinates). A real warehouse survey via phone LiDAR → IFC → the existing compiler pipeline
