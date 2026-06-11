@@ -2992,6 +2992,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3388,6 +3392,62 @@
     
   
     ERP Model Archetype (MOrder + deltas = the denominator)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../POS_ADDON_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    POS Addon Spec (the 2012 Unicenta loop, as folds)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_PICKING_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Picking Spec (warehouse walk + QR)
   
 
     
@@ -5040,7 +5100,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
   <div class="hook">POS and a warehouse-walk app. Same ledger, no new server.</div>
   <div class="teaser">Migration is the on-ramp, not the destination. Once it’s stable on the signed op-log, the kernel folds forward into two new op-log-native apps.
     <input type="checkbox" id="m-roadmap" class="moretoggle">
-    <span class="rest">Migration is the on-ramp, not the destination. Once migration from both iDempiere <i>and</i> Odoo is stable on the signed op-log, the kernel folds forward into two new op-log-native apps on the same ledger, no new server. (1) <b>uniCenta POS</b> — a browser rebuild of the POS driven by replenishment, the point-of-sale lifecycle expressed as folds over the same ledger (the backflush + on-hand spine is already witnessed). (2) A phone-first <b>warehouse pick / put-away walk</b> over the same tenant, riding the same on-hand fold. Both are the two ERP objectives in the bim-ootb README, possible precisely because the kernel is the same fold whether migrating an existing ERP or running a new app on it. <a class="serious" href="#v-roadmap">Serious read</a></span>
+    <span class="rest">Migration is the on-ramp, not the destination. Once migration from both iDempiere <i>and</i> Odoo is stable on the signed op-log, the kernel folds forward into two new op-log-native apps on the same ledger, no new server. (1) <b>uniCenta POS</b> — a browser rebuild of the POS driven by replenishment, the point-of-sale lifecycle expressed as folds over the same ledger (the backflush + on-hand spine is already witnessed) — <b>now spec'd</b>: <a href="../POS_ADDON_SPEC/">POS Addon Spec</a>. (2) A phone-first <b>warehouse pick / put-away walk</b> over the same tenant, riding the same on-hand fold — <b>now spec'd</b>: <a href="../SPATIAL_PICKING_SPEC/">Spatial Picking Spec</a>. Both are the two ERP objectives in the bim-ootb README, possible precisely because the kernel is the same fold whether migrating an existing ERP or running a new app on it. <a class="serious" href="#v-roadmap">Serious read</a></span>
     <label for="m-roadmap" class="morelnk"></label>
   </div>
 </div>
@@ -5638,7 +5698,7 @@ while iDempiere derives it from <code>C_Invoice</code> open amounts). Tracked: m
 <p><span id="realistic-conversion-estimate-loc"></span></p>
 <p>76× is honest for the engine <strong>shell</strong> folded today — but it measures the <em>thinnest, highest-compression</em> slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does <strong>not</strong> extrapolate to a full port: only <strong>~0.2% of the <code>M*</code> business logic (104,940 code-LOC) is actually ported</strong>. <strong>We headline the <em>conservative</em> ~25× to avoid overclaiming.</strong></p>
 <blockquote>
-<p><strong>Exhaustive coverage map → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>.</strong> Every rule/process surface in <em>both</em> homes (Java code + the AD as data) enumerated, each count from a real <code>ad_full.db</code> query: <strong>0 covered / 39 partial / 3 gap</strong> of 42 surfaces (the interpreter-coverage ladder, now closed for every seed-data surface) <strong>+ a second <em>equivalence</em> axis: 41 surfaces now match the real iDempiere oracle</strong> — <strong>16 fold real GardenWorld <code>fact_acct</code>/qty postings to the cent (<code>maxDiff=0c</code>)</strong> (the whole order→ship→invoice→match→pay→allocate trade loop, the movement→on-hand→replenish inventory loop, inter-org <code>M_Movement</code> + <code>GL_Journal</code>, the <code>reverseCorrect</code>/void family, all in <strong>both</strong> accounting schemas USD + EUR), <strong>+ 4 declarative engines diffed against the <em>live</em> iDempiere Postgres to <code>diff=0</code></strong> (AD_Val_Rule SQL-where membership, AD_Ref_Table FK resolution+membership, MRole window/process/form access, AD_Column.Callout derivation), <strong>+ 21 model-layer surfaces — the <code>beforeSave</code> + DocAction-FSM walk of <em>every</em> document class</strong> (capture-fidelity row-diff, <code>Doc_Order</code> at fact-line granularity, then save+FSM for the MOrder archetype, the deep family MInOut/MInvoice/MPayment/inventory, and the full isomorph tail GL Journal/Allocation/Cash/BankStatement + the 11-class generic-block tail — legal-action sets diffed against a gate-aware <strong>runtime parse of <code>DocumentEngine.java</code></strong>, saves replayed against the stored seed rows; zero-seed classes source-parse-only, honestly ⛔ on stored-replay) — <strong>plus 3 rule-consistent</strong> (enacted docs with no seed oracle: BOM backflush, <code>MProduction</code>, <code>MInventory</code> — verified against the proven qty/cost rules + balance + falsifier). Each carries a load-bearing §FALSIFIER. (<a href="../ERP_MODEL_ARCHETYPE/">ERP_MODEL_ARCHETYPE.md</a> is the M-class denominator: MOrder archetype + ~25 deltas — <strong>the deepest deltas now fold <code>maxDiff=0c</code>, and no DocAction table remains unwalked</strong>.) The buckets below are measured, not asserted.</p>
+<p><strong>Exhaustive coverage map → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>.</strong> Every rule/process surface in <em>both</em> homes (Java code + the AD as data) enumerated, each count from a real <code>ad_full.db</code> query: <strong>6 covered / 33 partial / 3 gap</strong> of 42 surfaces (the interpreter-coverage ladder, closed for every seed-data surface; the first six flipped to <em>covered</em> 2026-06-11 when the live UI itself became the witness — role-scoped menus, FSM-gated doc-action buttons, AD DisplayLogic on the live form, process/form grant pruning: the <code>W-AD-*-LIVE</code> family) <strong>+ a second <em>equivalence</em> axis: 41 surfaces now match the real iDempiere oracle</strong> — <strong>16 fold real GardenWorld <code>fact_acct</code>/qty postings to the cent (<code>maxDiff=0c</code>)</strong> (the whole order→ship→invoice→match→pay→allocate trade loop, the movement→on-hand→replenish inventory loop, inter-org <code>M_Movement</code> + <code>GL_Journal</code>, the <code>reverseCorrect</code>/void family, all in <strong>both</strong> accounting schemas USD + EUR), <strong>+ 4 declarative engines diffed against the <em>live</em> iDempiere Postgres to <code>diff=0</code></strong> (AD_Val_Rule SQL-where membership, AD_Ref_Table FK resolution+membership, MRole window/process/form access, AD_Column.Callout derivation), <strong>+ 21 model-layer surfaces — the <code>beforeSave</code> + DocAction-FSM walk of <em>every</em> document class</strong> (capture-fidelity row-diff, <code>Doc_Order</code> at fact-line granularity, then save+FSM for the MOrder archetype, the deep family MInOut/MInvoice/MPayment/inventory, and the full isomorph tail GL Journal/Allocation/Cash/BankStatement + the 11-class generic-block tail — legal-action sets diffed against a gate-aware <strong>runtime parse of <code>DocumentEngine.java</code></strong>, saves replayed against the stored seed rows; zero-seed classes source-parse-only, honestly ⛔ on stored-replay) — <strong>plus 3 rule-consistent</strong> (enacted docs with no seed oracle: BOM backflush, <code>MProduction</code>, <code>MInventory</code> — verified against the proven qty/cost rules + balance + falsifier). Each carries a load-bearing §FALSIFIER. (<a href="../ERP_MODEL_ARCHETYPE/">ERP_MODEL_ARCHETYPE.md</a> is the M-class denominator: MOrder archetype + ~25 deltas — <strong>the deepest deltas now fold <code>maxDiff=0c</code>, and no DocAction table remains unwalked</strong>.) The buckets below are measured, not asserted.</p>
 </blockquote>
 <p>Splitting all 1,427,147 Java LOC by fate <sup id="fnref:split"><a class="footnote-ref" href="#fn:split">21</a></sup>:</p>
 <div class="dtbl">
@@ -5910,9 +5970,14 @@ ledger, no new server:</p>
 <ol>
 <li><strong>uniCenta POS</strong> — a browser rebuild of the POS, driven by <strong>replenishment</strong>: the point-of-sale
    lifecycle expressed as folds over the same ledger (the backflush + on-hand spine witnessed in
-   <a href="../FoldEngineQuality/"><code>FoldEngineQuality.md</code></a> is the groundwork).</li>
+   <a href="../FoldEngineQuality/"><code>FoldEngineQuality.md</code></a> is the groundwork). <strong>Spec'd →
+   <a href="../POS_ADDON_SPEC/">POS Addon Spec</a></strong> — the 2012 Unicenta/AutoBOMOrder loop with the middleware
+   deleted: ring → WR order → backflush → replenish-PO, all on witnessed verbs; doctrine in
+   <a href="../POSLens/">The POS Lens</a>.</li>
 <li><strong>Warehouse mobile walk</strong> — a phone-first pick / put-away <em>"walk the aisles"</em> app over the same
-   tenant, riding the same on-hand fold.</li>
+   tenant, riding the same on-hand fold. <strong>Spec'd → <a href="../SPATIAL_PICKING_SPEC/">Spatial Picking Spec</a></strong> —
+   the warehouse compiled as a BIM-like model (the same BOM recursion that compiles a building),
+   fly-to + lens to the next bin, QR scan as the one clean act, every pick a signed op.</li>
 </ol>
 <p>These are the two ERP objectives stated in the <a href="https://github.com/red1oon/bim-ootb#roadmap">bim-ootb README</a>;
 both are <strong>downstream of the migration this paper measures</strong> — they become possible precisely because the

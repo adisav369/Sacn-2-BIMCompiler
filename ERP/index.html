@@ -4110,6 +4110,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -4506,6 +4510,62 @@
     
   
     ERP Model Archetype (MOrder + deltas = the denominator)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../POS_ADDON_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    POS Addon Spec (the 2012 Unicenta loop, as folds)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_PICKING_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Picking Spec (warehouse walk + QR)
   
 
     
@@ -7398,9 +7458,11 @@ cell, DocEvent = a <code>(DocType, status, action)</code> cell. <strong>We make 
 the parameterisable part becomes an editable decision table (§0.5), the computational
 part a named handler (§0.4), and the binding is <em>already in AD</em> so we compile it as the
 cell→handler wiring.</p>
-<p><strong>Concrete extraction gap (TODO for P3b):</strong> our current <code>ad_seed.db</code> <strong>stripped
-<code>Callout</code></strong> (the §1 column-subset) and never exported <code>AD_ModelValidator</code>. Re-export
-both from the source PostgreSQL (docker, §1). Compiled, the Callout/Validator strings
+<p><strong>Concrete extraction gap — CLOSED for Callout (2026-06-11):</strong> <code>ad_seed.db</code> is now
+<strong>FULL-WIDTH</strong> (<code>prompts/IDMP_FULLWIDTH_SEED.md</code>, bim-ootb PR #265 — every exported
+table carries ALL columns, so <code>AD_Column.Callout</code> ships in the browser seed);
+<code>AD_ModelValidator</code> remains un-exported (the declarative validator engine
+<code>ad_modelval.js</code> is proven against <code>ad_full.db</code>). Compiled, the Callout/Validator strings
 are simultaneously <strong>(a)</strong> the cell→handler wiring, <strong>(b)</strong> the P3b backlog (<em>where
 logic exists</em> — cross-referenced with op-log gravity §0.6 for <em>where it matters</em>), and
 <strong>(c)</strong> the §18.10 oracle pointers (<em>which Java to port</em>). What survived the strip and
@@ -9419,7 +9481,9 @@ invariants plus 200 others that single-user browser ERP doesn't need.</p>
 <hr />
 <h2 id="16-database-coverage-and-storage-economics">§16. Database Coverage and Storage Economics<a class="headerlink" href="#16-database-coverage-and-storage-economics" title="Permanent link">&para;</a></h2>
 <h3 id="161-current-coverage-of-idempiere-schema">§16.1 Current coverage of iDempiere schema<a class="headerlink" href="#161-current-coverage-of-idempiere-schema" title="Permanent link">&para;</a></h3>
-<p>ad_seed.db contains roughly a third of iDempiere's table definitions.</p>
+<p>ad_seed.db contains 380 of iDempiere's 927 table definitions (~41%) — and since 2026-06-11 it is
+<strong>full-width</strong>: every exported table carries all of its columns (<code>prompts/IDMP_FULLWIDTH_SEED.md</code>,
+bim-ootb PR #265; the old hand-picked column slice is retired).</p>
 <table>
 <thead>
 <tr>

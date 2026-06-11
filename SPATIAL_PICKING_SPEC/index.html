@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../HospitalAnalysis/">
+        <link rel="prev" href="../POS_ADDON_SPEC/">
       
       
-        <link rel="next" href="../InfrastructureAnalysis/">
+        <link rel="next" href="../DepreciationPerf/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Revit MEP (RM) - BIM Intent Compiler</title>
+        <title>Spatial Picking Spec (warehouse walk + QR) - BIM Intent Compiler</title>
       
     
     
@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#revit-mep-rm-analysis" class="md-skip">
+        <a href="#spatial-picking-spec-warehouse-pick-put-away-as-a-mobile-walk-through-the-model" class="md-skip">
           Skip to content
         </a>
       
@@ -121,7 +121,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Revit MEP (RM)
+              Spatial Picking Spec (warehouse walk + QR)
             
           </span>
         </div>
@@ -386,10 +386,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../ROADMAP/" class="md-tabs__link">
           
   
@@ -408,12 +410,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../SampleHouseAnalysis/" class="md-tabs__link">
           
   
@@ -2679,8 +2679,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -2720,19 +2722,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
             
   
   
@@ -2750,7 +2755,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3157,10 +3162,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../SPATIAL_PICKING_SPEC/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Picking Spec (warehouse walk + QR)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3176,6 +3208,153 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-idea" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The idea
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-substrate-inventory-what-already-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Substrate inventory — what already exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The spec
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. The spec">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s-1-the-warehouse-model-compile-it-dont-survey-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-1 The warehouse model — compile it, don't survey it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-2-the-pick-list-route" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-2 The pick list → route
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-3-the-walk-viewer-ux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-3 The walk — viewer UX
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-4-scan-the-one-clean-act" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-4 Scan = the one clean act
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-5-completion-the-books" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-5 Completion + the books
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-6-put-away-cycle-count-same-walk-different-verbs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-6 Put-away + cycle-count (same walk, different verbs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-honest-gaps-named" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Honest gaps (named)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-done-when" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Done-when
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3220,10 +3399,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -3253,22 +3430,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
             
   
   
@@ -3286,7 +3460,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3469,37 +3643,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Revit MEP (RM)
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../RevitAnalysis/" class="md-nav__link">
         
   
   
@@ -3515,70 +3662,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#source-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source Files
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#guid-collision-risk" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GUID Collision Risk
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#current-state" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Current State
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next Steps
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -4181,10 +4264,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#source-files" class="md-nav__link">
+  <a href="#1-the-idea" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Source Files
+        1. The idea
       
     </span>
   </a>
@@ -4192,10 +4275,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#guid-collision-risk" class="md-nav__link">
+  <a href="#2-substrate-inventory-what-already-exists" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GUID Collision Risk
+        2. Substrate inventory — what already exists
       
     </span>
   </a>
@@ -4203,10 +4286,93 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#current-state" class="md-nav__link">
+  <a href="#3-the-spec" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Current State
+        3. The spec
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. The spec">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s-1-the-warehouse-model-compile-it-dont-survey-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-1 The warehouse model — compile it, don't survey it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-2-the-pick-list-route" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-2 The pick list → route
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-3-the-walk-viewer-ux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-3 The walk — viewer UX
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-4-scan-the-one-clean-act" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-4 Scan = the one clean act
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-5-completion-the-books" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-5 Completion + the books
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-6-put-away-cycle-count-same-walk-different-verbs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-6 Put-away + cycle-count (same walk, different verbs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-honest-gaps-named" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Honest gaps (named)
       
     </span>
   </a>
@@ -4214,10 +4380,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
+  <a href="#5-done-when" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next Steps
+        5. Done-when
       
     </span>
   </a>
@@ -4244,33 +4410,218 @@
   
 
 
-<h1 id="revit-mep-rm-analysis">Revit MEP (RM) — Analysis<a class="headerlink" href="#revit-mep-rm-analysis" title="Permanent link">&para;</a></h1>
-<p><strong>Prefix:</strong> RM | <strong>Building type:</strong> HospitalAuckland | <strong>Schema:</strong> IFC4</p>
-<h2 id="source-files">Source Files<a class="headerlink" href="#source-files" title="Permanent link">&para;</a></h2>
-<p>Three discipline IFCs in <code>DAGCompiler/lib/input/IFC/UNMERGED/</code>:
-- <code>Ifc4_Revit_ARC.ifc</code> — Architectural
-- <code>Ifc4_Revit_STR.ifc</code> — Structural
-- <code>Ifc4_HospitalAuckland.ifc</code> — MEP</p>
-<p><strong>Merged:</strong> <code>DAGCompiler/lib/input/IFC/Ifc4_Revit_Federated.ifc</code> (S144, 13.7 MB, 126K entities)
-Merged via <code>tools/federation_preprocessor.py</code> (IfcPatch MergeProjects, GUID-preserving).</p>
-<h2 id="guid-collision-risk">GUID Collision Risk<a class="headerlink" href="#guid-collision-risk" title="Permanent link">&para;</a></h2>
-<p>Revit discipline exports may have overlapping GUIDs across files (same issue as Hospital, S136).
-Extraction must use <code>--guid-prefix</code> per discipline to avoid silent dedup.
-See commit <code>7c9be97a</code> — <code>extract.py --guid-prefix DISC --append</code>.</p>
-<h2 id="current-state">Current State<a class="headerlink" href="#current-state" title="Permanent link">&para;</a></h2>
+<h1 id="spatial-picking-spec-warehouse-pick-put-away-as-a-mobile-walk-through-the-model">Spatial Picking Spec — warehouse pick / put-away as a mobile walk through the model<a class="headerlink" href="#spatial-picking-spec-warehouse-pick-put-away-as-a-mobile-walk-through-the-model" title="Permanent link">&para;</a></h1>
+<p><em>Spec for the second op-log-native addon: a phone-first </em><em>"walk the aisles"</em><em> app — the warehouse
+rendered as a BIM-like 3D model, the pick route drawn through it, each bin confirmed by a </em><em>QR scan</em><em>,
+every pick/put-away a </em><em>signed op</em><em> on the same tenant ledger the ERP folds. Roadmap home: item 2 of
+the <a href="../MigrateComparisonPaper/#v-roadmap">Migrate &amp; Compare paper's roadmap</a>. Sibling addon:
+<a href="../POS_ADDON_SPEC/">POS Addon Spec</a> (same rails, different room).</em></p>
+<blockquote>
+<p><strong>Status: SPEC.</strong> §2 lists what is already proven; everything else is the build. The same
+addon contract applies as the POS spec §1: pills + dictionary + process handlers + kernel ops,
+<strong>no new engine, no addon-private persistence</strong>.</p>
+</blockquote>
+<hr />
+<h2 id="1-the-idea">1. The idea<a class="headerlink" href="#1-the-idea" title="Permanent link">&para;</a></h2>
+<p>A picker doesn't think in table rows; they think in <em>places</em>. This project already renders places —
+buildings stream from a SQLite db into Three.js with fly-to, lens highlighting, and tap-picking on
+mobile. And the ERP already knows warehouse places — <code>M_Locator</code> per <code>M_Warehouse</code>, on-hand per
+locator. The addon joins the two:</p>
+<div class="highlight"><pre><span></span><code>pick list (M_Movement / M_InOut lines)             the ERP truth
+  → route over locators                            ordered walk (aisle/rack/bin)
+  → 3D walk: fly-to + highlight the NEXT bin       the BIM viewer verbs
+  → at the bin: scan its QR                        BarcodeDetector (proven)
+  → scan == expected locator? confirm qty          one tap / qty stepper
+  → signed op group: the movement line enacted     kernel commitGroup
+  → on-hand falls/rises via the qtyOnHand fold     same spine as POS backflush
+</code></pre></div>
+<p>Put-away is the same walk with the sign reversed (receipt → destination locator).</p>
+<h2 id="2-substrate-inventory-what-already-exists">2. Substrate inventory — what already exists<a class="headerlink" href="#2-substrate-inventory-what-already-exists" title="Permanent link">&para;</a></h2>
+<p><strong>ERP side</strong> (full-width <code>ad_seed.db</code> + the proven engine):</p>
+<table>
+<thead>
+<tr>
+<th>Asset</th>
+<th>Evidence</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>M_Locator</code> 11 rows, <code>M_Warehouse</code>, <code>m_storageonhand</code> 20 rows</td>
+<td>seed (PR #265)</td>
+<td>⚠ <code>X/Y/Z</code> are <strong>TEXT labels</strong> ("Store North"), <em>not</em> coordinates — see §S-1</td>
+</tr>
+<tr>
+<td><code>M_Movement</code>(323) / <code>M_InOut</code>(319) FSM walked</td>
+<td><code>ad_docfsm.js</code> (W-MOVEMENT/W-MINOUT FSM)</td>
+<td>inout block: no VO on completed; movement lines carry <code>m_locator_id</code> → <code>m_locatorto_id</code></td>
+</tr>
+<tr>
+<td><code>movementSign</code> / <code>qtyOnHand</code> fold</td>
+<td><code>scripts/erp_engine.js</code> (W-FOLD-QTYONHAND)</td>
+<td>on-hand = fold of movements; locator→warehouse map is load-bearing (proven in W-FOLD-REPLENISH)</td>
+</tr>
+<tr>
+<td>signed op groups</td>
+<td><code>kernel_ops.commitGroup</code> (W-OPGROUP, verifyChain)</td>
+<td>all-or-none, idempotent gid, hash-chained</td>
+</tr>
+<tr>
+<td>element↔ERP linkage pattern</td>
+<td><a href="../BIMtoERP/">BIMtoERP.md</a> §A/§B (W-ERP-PROBE/EXPORT/FOLD)</td>
+<td>GUID-keyed, data-gated chips, idempotent export</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Viewer side</strong> (bim-ootb/viewer):</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Where</th>
+<th>Reuse</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>camera fly-to + pivot</td>
+<td><code>streaming.js</code> <code>A.flyTo</code>, precision-pivot lane</td>
+<td>fly the picker to the next bin</td>
+</tr>
+<tr>
+<td>highlight / ghost depth model</td>
+<td><code>navigate_find.js</code> (<code>_highlightGuids</code>, room lens, Alt+X ghost)</td>
+<td>rest-of-warehouse ghosted 0.1, current rack solid, target bin bright (the FIND_LENS depth model verbatim)</td>
+</tr>
+<tr>
+<td>mobile tap/long-press picking</td>
+<td><code>picking.js</code> (pointer guards, pinch-guard)</td>
+<td>tap a bin = same raycaster path</td>
+</tr>
+<tr>
+<td><strong>QR scanning — production code</strong></td>
+<td><code>scripts/system_explorer.js:910-930</code> (W-QR-INPUT, glassbowl)</td>
+<td><code>BarcodeDetector</code> + <code>getUserMedia({facingMode:environment})</code>, rAF loop, honest unsupported-fallback — lift the pattern as a shared module</td>
+</tr>
+<tr>
+<td>camera/GPS/share precedents</td>
+<td>sitecam.js (4D capture), share sheet</td>
+<td>permission UX, fallback idioms</td>
+</tr>
+<tr>
+<td>mobile pill idioms</td>
+<td><code>pill_builder.js</code> registry, Lucide-only</td>
+<td>the addon's dock</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Compiler side</strong> (the warehouse <em>model</em>):</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Where</th>
+<th>Reuse</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>recursive BOM compilation (building→floor→room→furniture)</td>
+<td><a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a>, W-BOM-ENGINE / W-BUFFER</td>
+<td>warehouse→aisle→rack→bin is the SAME recursion, one level deeper named differently</td>
+</tr>
+<tr>
+<td>verb formulas TILE / ROUTE / CLUSTER</td>
+<td>BOM engine</td>
+<td>TILE bins along a shelf; ROUTE is literally the picker path primitive</td>
+</tr>
+<tr>
+<td>geometry from library meshes (AABB primitives)</td>
+<td>component_library.db</td>
+<td>racks/bins are boxes — the cheapest possible geometry; no IFC needed</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-the-spec">3. The spec<a class="headerlink" href="#3-the-spec" title="Permanent link">&para;</a></h2>
+<h3 id="s-1-the-warehouse-model-compile-it-dont-survey-it">§S-1 The warehouse model — compile it, don't survey it<a class="headerlink" href="#s-1-the-warehouse-model-compile-it-dont-survey-it" title="Permanent link">&para;</a></h3>
+<p><code>M_Locator.X/Y/Z</code> are text labels, so <strong>positions are compiled, not read</strong>: a small
+<code>warehouse.yaml</code> recipe (EXTRACT: one line per aisle/rack/bin naming its <code>M_Locator.Value</code>)
+compiles via the existing BOM recursion into a <code>warehouse.db</code> the viewer streams like any
+building — aisles as rooms, racks as furniture, bins as TILEd children, each mesh stamped with
+its <strong><code>m_locator_id</code> as the element GUID</strong> (the BIMtoERP linkage key, reversed: here the ERP id
+<em>is</em> the GUID).</p>
 <ul>
-<li><code>classify_rm.yaml</code> exists (5 storeys: L1, L2, L3, Roof, Unknown)</li>
-<li><code>RM_extracted.db</code> — empty (extraction never ran on federated IFC)</li>
-<li><code>RM_BOM.db</code> — empty</li>
-<li>Pipeline: 4/7 PASS (fails on empty extraction)</li>
+<li>Witness <strong>W-WH-COMPILE</strong>: <code>§WH bins=&lt;n&gt; == m_locator rows mapped</code> + W-BUFFER space contract
+  holds (bins fit racks fit aisles). §FALSIFIER: a recipe bin naming a locator absent from
+  <code>m_locator</code> must fail the compile (no invented bins).</li>
+<li>Render gate applies (no-cubes rule): distinct-vertex check before serving.</li>
+<li>Out of scope v1: scale drawings/real CAD import. The recipe is honest about being schematic —
+  topology + walk order matter, millimetres don't.</li>
 </ul>
-<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
-<ol>
-<li>Run extraction on <code>Ifc4_Revit_Federated.ifc</code> with GUID prefixing</li>
-<li>Verify storey mapping in YAML matches IFC storeys</li>
-<li>Run full pipeline to get GEO proof output</li>
-</ol>
-<p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
+<h3 id="s-2-the-pick-list-route">§S-2 The pick list → route<a class="headerlink" href="#s-2-the-pick-list-route" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Source docs: drafted <code>M_Movement</code> (transfer/pick) or <code>M_InOut</code> (receipt → put-away). Lines
+  carry product, qty, from/to locator — already in the dictionary, already FSM-walked.</li>
+<li>Route = ORDER BY the walk sequence (aisle/rack/bin from the recipe tree — the ROUTE verb's
+  order), not by line number. Pure function: <code>route(lines, tree) → [step]</code>.</li>
+<li>Witness <strong>W-WH-ROUTE</strong>: same lines + same tree ⇒ same route (deterministic); steps cover ALL
+  lines exactly once. §FALSIFIER: a line whose locator is off-model must surface as an explicit
+  "unroutable" step, never silently dropped.</li>
+</ul>
+<h3 id="s-3-the-walk-viewer-ux">§S-3 The walk — viewer UX<a class="headerlink" href="#s-3-the-walk-viewer-ux" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Mobile-first surface (a pill on the warehouse model's viewer page): the FIND-lens depth model
+  drives focus — everything ghosted, the current rack solid, the <strong>target bin bright + camera
+  flown to it</strong>; a strip shows step i/N, product, qty.</li>
+<li>Tap the lit bin (or the strip) → the scan screen. Long-press = skip-with-reason (logged as an
+  op annotation, the exception trail).</li>
+<li>Witness <strong>W-WH-WALK</strong>: <code>§WH step=3/12 locator=50003 fly=done lit=1</code> §-lines per step;
+  falsifier: tapping a NON-target bin must not advance the step.</li>
+</ul>
+<h3 id="s-4-scan-the-one-clean-act">§S-4 Scan = the one clean act<a class="headerlink" href="#s-4-scan-the-one-clean-act" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Each bin carries a printed QR encoding its <code>m_locator_id</code> (+ a tenant salt). The app reuses
+  the W-QR-INPUT pattern (BarcodeDetector; honest fallback = type the locator code — the
+  same non-invent act, lower tech).</li>
+<li>Scan match → qty confirm (default = line qty, stepper for short-pick) → <strong>one signed op
+  group</strong> enacting the line: movement enacted (M± on the qty spine), short-pick = qty delta with
+  the remainder left open on the doc. This is POSLens §1 verbatim: collapse input to a single
+  authentic act at the place itself; everything downstream is a fold.</li>
+<li>Witness <strong>W-WH-SCAN</strong>: scan of the WRONG bin refuses (<code>§WH scan=50004 expected=50003 REFUSED</code>);
+  right bin commits a group whose replay moves <code>qtyOnHand</code> by exactly the confirmed qty;
+  verifyChain ok. §FALSIFIER: hand-typed locator code goes through the same refuse/commit gate.</li>
+</ul>
+<h3 id="s-5-completion-the-books">§S-5 Completion + the books<a class="headerlink" href="#s-5-completion-the-books" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Last step → doc Complete via <code>ad_docfsm.dispatchFor</code> (323/319 walked sets); postings via the
+  frozen <code>derivePostings</code> where the doc posts; on-hand now folds to the new truth — the SAME
+  numbers the ERP, the POS replenishment, and the Posting-Preview see, because it is one ledger.</li>
+<li>Witness <strong>W-WH-COMPLETE</strong>: after the walk, <code>qtyOnHand</code> fold == per-locator expected deltas for
+  every touched (product, locator); doc status CO; TB unchanged-or-balanced per doc class.</li>
+</ul>
+<h3 id="s-6-put-away-cycle-count-same-walk-different-verbs">§S-6 Put-away + cycle-count (same walk, different verbs)<a class="headerlink" href="#s-6-put-away-cycle-count-same-walk-different-verbs" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Put-away: receipt lines route to destination locators (sign +). Cycle-count: the walk visits
+  bins and the act is "count what you see" → <code>M_Inventory</code> lines (the W-FOLD lane already folds
+  MInventory I± rule-consistently). Named for v2; the §S-1..§S-5 rails are identical.</li>
+</ul>
+<h2 id="4-honest-gaps-named">4. Honest gaps (named)<a class="headerlink" href="#4-honest-gaps-named" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>No coordinates in the ERP</strong> — the model is a compiled schematic (§S-1); claiming "BIM-accurate
+  warehouse" would be invention. It is a <em>navigable topology with boxes</em>, which is what picking needs.</li>
+<li><strong>BarcodeDetector support varies</strong> (no Safari/iOS guarantee) — the typed-code fallback is part of
+  the spec, not an afterthought; no third-party QR wasm in v1.</li>
+<li><strong>GardenWorld scale</strong>: 11 locators / 20 on-hand rows = demo aisle. Real tenants bring rows via the
+  install lifecycle.</li>
+<li><strong>Reservation semantics</strong> (<code>m_storagereservation</code>) are read by the replenish fold but not yet
+  enacted by picks — short-pick → reservation release is v2.</li>
+<li><strong>Offline walk</strong> rides the same sync-FSM story as POS §P-5 — out of v1 scope, never re-invent.</li>
+</ul>
+<h2 id="5-done-when">5. Done-when<a class="headerlink" href="#5-done-when" title="Permanent link">&para;</a></h2>
+<p>Each §S is ✅ (witness + on-screen verify on a phone-sized viewport + deploy) or ⛔ with the one
+blocking fact. The demo: compile the GardenWorld warehouse, draft a 3-line movement, walk it on a
+phone, scan three printed QRs, and watch <code>qtyOnHand</code> + the ERP window agree to the unit.</p>
 
 
 
