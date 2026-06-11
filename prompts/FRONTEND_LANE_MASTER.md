@@ -66,6 +66,34 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶▶▶ SESSION HANDOFF 2026-06-12 — MULTI-LANE WAVE 2 (POS train · spatial §S-2..§S-5 · HARDEN B-1, `prompts/MULTI_LANE_LAUNCH.md # DONE — 2026-06-12 wave 2`) ▶▶▶**
+> **✅ ALL THREE LANES DONE + DEPLOYED (serial train, zero orphaned squashes — #138/#265 trap did not fire either time):**
+> - **✅ LANE 1 — POS lens §P-1..§P-4 DEPLOYED (bim-ootb PR #269, sw v651→v652, LIVE-VERIFIED on Pages).** The held
+>   `feat/pos-lens` GO taken: precache pos_lens/pos_core/erp_engine + ?v= bumps (icons v3, idmp_pills v11); W-POS-LIVE
+>   re-run on the bumped tree exit 0 — `§POS-LIVE open station=100 tiles=16 priced=16 handAuthored=0` ·
+>   `§POS-SALE … newVerbs=[] chainOk=Y ops=12 sealed=12` · `§POS-DOC order=910001 completeIt ok` ·
+>   `§POS-LIVE-REPLENISH suggestions=8`. Squash d8d3adf5 orphan-checked; Pages serves v652 (CI-minified — use
+>   quote-agnostic greps). **Matrix "POS lens" addon row LIVE; pends the live to-the-cent ring** (posting-config
+>   data-gate, `prompts/MIGRATE_POSTING_CONFIG.md`). Ledger: `prompts/POS_LENS_SESSION.md ## DEPLOY DONE`.
+> - **✅ LANE 2 — Spatial picking §S-2..§S-5 BUILT + DEPLOYED (bim-ootb PR #270, viewer sw v642→v643, LIVE-VERIFIED).**
+>   Route = `m_bom_line.ordinal` walk order (`§W-WH-ROUTE PASS`: deterministic, permutation-invariant, each-line-once,
+>   off-model→unroutable-never-dropped; draft via buildDoc `newVerbs=[]`); walk lens on the phone viewport
+>   (`§W-WH-LIVE PASS`, 25 verdicts 🟢: data-gated pill on/off falsifier, wrong-bin scan REFUSED, short-pick,
+>   long-press skip→ANNOTATE, `§WH COMPLETE … dispatchFor(323) foldKeys=4 diffs=0 chainOk=Y`). DB
+>   `warehouse_gardenworld.db` → OCI COMMON bucket (md5-verified; OCI_UPLOAD.md §RULES followed over the card's
+>   dev-bucket line — conflict flagged); LIVE Pages probe `§W-WH-LIVE-PAGES PASS` (no cubes, `§WH PILL gate=on` on
+>   the COMMON-bucket deep-link). Matrix addon rows §S-2..§S-5 ✅ LIVE. Residuals: camera QR unverified on a physical
+>   phone · offline walk = §P-5 sync-FSM v2 · manifest.json landing card = ⛔ BLOCKED: card-vs-deep-link-only is a
+>   user product choice (deep-link proven live either way).
+> - **✅ LANE 3 — HARDEN B-1 logic-evaluator oracle-diff (bim-compiler a77827cc, no deploy).** `ad_evaluator` ==
+>   the REAL compiled iDempiere SimpleBooleanParser+EvaluationVisitor (headless via `scripts/logic_oracle/
+>   LogicOracle.java`) over 2751 live-PG record-grounded fixtures: `§HARDEN surface=ad_evaluator fixtures=2751
+>   diff=0 … oracle_errors=0`; md5 expr-sets ours==PG; falsifier flips both sides. **Equivalence ledger 41→42**;
+>   matrix ⬜ now = ad_workflow ONLY (B-2 entrance, no seed ad_wf_activity). Honest skips named: 3 @SQL= · 542
+>   window/login-context · 32 no-pk · 236 zero-row. `build/erp/poc_logic_harden.log` exit 0.
+> - **NEXT SESSIONS (queued):** 1. MIGRATE_POSTING_CONFIG (one data-gate lights POS + Posting-Preview + §S-5 rings).
+>   2. B-2 workflow oracle or B-4 Track B substrate (`prompts/ERP_EXECUTION_ROADMAP.md`). 3. Phase C UI wiring (C-1..C-4).
+>
 > **▶▶▶ SESSION HANDOFF 2026-06-11b — MULTI-LANE LAUNCH (3 parallel lanes + serialized deploy train, `prompts/MULTI_LANE_LAUNCH.md`) ▶▶▶**
 > **✅ ALL THREE LANES DONE + DEPLOYED (deploy train serial, zero orphaned squashes):**
 > - **✅ LANE A — B-5/C-5 live process dispatch (bim-ootb PR #267, sw v650, LIVE-VERIFIED on Pages).** Menu P/R leaf +
@@ -458,7 +486,8 @@ listed for visibility and route to their own prompt/lane.
 > **THE DESTINATION REACHED (2026-06-11):** the write-path rails this section built now carry their first
 > addon — the **POS lens** (`docs/POS_ADDON_SPEC.md` §P-1..§P-4, `prompts/POS_LENS_SESSION.md # DONE`):
 > ring → ONE signed group (order+ship+invoice+backflush, WR from the dictionary) → replenishment fold.
-> W-POS-* ×4 headless + W-POS-LIVE green; newVerbs=[]; deploy awaiting explicit GO.
+> W-POS-* ×4 headless + W-POS-LIVE green; newVerbs=[]; **DEPLOYED 2026-06-12 (PR #269 sw v652, Pages
+> live-verified — `prompts/POS_LENS_SESSION.md ## DEPLOY DONE`)**.
 **Chosen first (user):** fold A+B1+F into ONE bim-ootb deploy PR off `origin/main`. Engine-lane order for the write path: C → D → B2.
 
 | ID | Item | Files (edit-only) | Witness | Depends on | Parallel? |

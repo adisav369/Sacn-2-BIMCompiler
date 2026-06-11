@@ -18,7 +18,19 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
-## POS lens addon — §P-1..§P-4 BUILT + WITNESSED, deploy HELD for GO (2026-06-11, `prompts/POS_LENS_SESSION.md # DONE`)
+## Multi-lane WAVE 2 banked (2026-06-12, `prompts/MULTI_LANE_LAUNCH.md # DONE — 2026-06-12 wave 2`)
+- **Done:** POS lens DEPLOYED (bim-ootb #269 sw v652, W-POS-LIVE re-run on the bumped tree, `§POS-SALE … newVerbs=[]
+  chainOk=Y ops=12 sealed=12`) · spatial picking §S-2..§S-5 BUILT+DEPLOYED (bim-ootb #270 viewer sw v643;
+  `§W-WH-ROUTE PASS` + `§W-WH-LIVE PASS` 25🟢 phone viewport + `§W-WH-LIVE-PAGES PASS` on the COMMON-bucket db;
+  `§WH COMPLETE … foldKeys=4 diffs=0 chainOk=Y`) · HARDEN B-1 logic-evaluator oracle-diff (`§HARDEN
+  surface=ad_evaluator fixtures=2751 diff=0 oracle=iDempiere-PG`, W-LOGIC-HARDEN, bim-compiler a77827cc).
+- **Witness delta:** +4 new green (W-LOGIC-HARDEN · W-WH-ROUTE · W-WH-LIVE [walk+scan+complete] · W-WH-LIVE-PAGES);
+  **equivalence ledger 41 → 42 oracle-equivalent** (matrix ⬜ = ad_workflow only); coverage 7✅/32🟡/3⛔ unchanged.
+- **Next:** MIGRATE_POSTING_CONFIG (one data-gate lights POS + Posting-Preview + §S-5 to-the-cent rings) ·
+  B-2 workflow oracle / B-4 substrate (`prompts/ERP_EXECUTION_ROADMAP.md`) · Phase C UI wiring (C-1..C-4) ·
+  ⛔ BLOCKED (user choice): warehouse_gardenworld.db landing card in COMMON manifest.json vs deep-link-only.
+
+## POS lens addon — §P-1..§P-4 DEPLOYED LIVE 2026-06-12 (built 2026-06-11; `prompts/POS_LENS_SESSION.md # DONE + ## DEPLOY DONE`)
 - **Engine:** `build/erp/pos_core.js` — pure fold glue over the existing verbs (buildDoc/completeOrder/
   completeInvoice/explodeBOM/qtyOnHand), **newVerbs=[] witnessed**. 4 headless witnesses green
   (`scripts/poc_pos_{ring,wr,backflush,replenish}.js` → `build/erp/poc_pos_*.log`, all exit 0):
@@ -28,8 +40,9 @@
 - **Lens:** bim-ootb branch `feat/pos-lens` (worktree, NOT deployed) — `pos_lens.js` dumb terminal +
   `pos` pill (showWhen:pos-station data-gate) on idempiere.html riding `window.ERP.opDb`+commitGroup.
   **W-POS-LIVE green** (`poc_pos_live.js`): gated pill, signed group chainOk=Y live, replenish panel.
-- **Next:** deploy on explicit GO (sw v652 train) · matrix "POS lens" row pends a LIVE to-the-cent ring
-  (needs posting-config seed, `prompts/MIGRATE_POSTING_CONFIG.md`) · §P-5 multi-station named-deferred.
+- **Deployed 2026-06-12:** PR #269, sw v651→v652, squash d8d3adf5 orphan-checked, Pages live-verified.
+  Matrix addon row LIVE; pends the to-the-cent ring (posting-config seed, `prompts/MIGRATE_POSTING_CONFIG.md`) ·
+  §P-5 multi-station named-deferred.
 
 ## ERP backend-gap arc (2026-06-09, `feat/erp-substrate-phase012`) — `prompts/ERP_BACKEND_GAP.md`
 - **§0 SEPARATION DESIGN SPEC ✅** `docs/ERP_BACKEND_SEPARATION.md` — 3-layer invariant (DECLARATION/INTERPRETATION/LOG-FOLD), per-concern (A-1…A-6) source-slice + module boundary + compose-seam + anti-coupling rule; two risk seams pinned (posting↔workflow, callout↔valrule).
