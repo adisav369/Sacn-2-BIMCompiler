@@ -1,7 +1,7 @@
 // W-AD-ACCESS-LIVE (§2) — prove the iDempiere menu is role-scoped by REAL ad_window_access grants:
 // different roles see different visible-window counts via SES.accessibleWindows + SES.scopeMenu.
 const { chromium } = require(process.env.HOME + '/bim-ootb/tests/node_modules/playwright');
-const http=require('http'),fs=require('fs'),path=require('path');const ROOT=path.join(process.env.HOME,'bim-ootb','erp');
+const http=require('http'),fs=require('fs'),path=require('path');const ROOT=process.env.ERP_ROOT||path.join(process.env.HOME,'bim-ootb','erp');
 const MIME={'.html':'text/html','.js':'text/javascript','.json':'application/json','.db':'application/octet-stream','.wasm':'application/wasm','.css':'text/css'};
 const server=http.createServer((q,r)=>{let p=decodeURIComponent(q.url.split('?')[0]);if(p==='/')p='/idempiere.html';fs.readFile(path.join(ROOT,p),(e,b)=>{if(e){r.writeHead(404);r.end('404');return;}r.writeHead(200,{'Content-Type':MIME[path.extname(p)]||'application/octet-stream'});r.end(b);});});
 (async()=>{

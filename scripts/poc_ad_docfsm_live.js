@@ -2,7 +2,7 @@
 // buttons GATED by the proven DocAction FSM (ad_docfsm.js): only the legal actions for THIS record render,
 // dispatch transitions the status chip per transitionFor, and an ILLEGAL action's button must NOT render
 // (falsifiers: completed M_InOut has NO Void; a Closed order offers NO actions).
-// periodOpen = REAL c_period+c_periodcontrol probe (MPeriod.isOpen port) — all 3 doc periods verified 'O'.
+// periodOpen = REAL c_period+c_periodcontrol probe (MPeriod.isOpen port) — all 5 doc periods verified 'O'.
 // Run: ERP_ROOT=/tmp/wt-uibridge/erp node scripts/poc_ad_docfsm_live.js   (default ROOT=~/bim-ootb/erp)
 const { chromium } = require(process.env.HOME + '/bim-ootb/tests/node_modules/playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -15,19 +15,23 @@ const server = http.createServer((q, r) => {
     r.writeHead(200, { 'Content-Type': MIME[path.extname(p)] || 'application/octet-stream' }); r.end(b);
   });
 });
-// CASES — windows/records verified in ad_seed.db (2026-06-11); expect = exact legal-button set,
-// absent = actions whose button MUST NOT render (the falsifier arm).
-// SEED-GAP (named): M_InOut is form-unreachable here — ALL 4 M_InOut windows (169/184/53097/53098)
-// filter on M_InOut.MovementType, a column ABSENT from this seed slice → 0 rows scoped. Its FSM is
-// oracle-proven headless (W-MINOUT-FSM); the live no-VO-on-completed falsifier runs on C_Invoice
-// instead (its Completed block also legally excludes VO). canReact=false everywhere: seed c_doctype
-// lacks iscanbereactivated → conservative no-RE (§-named seed-gap, never an extra button).
+// CASES — RE-DERIVED from the FULL-WIDTH ad_seed.db (IDMP_FULLWIDTH_SEED §3, 2026-06-11) by sqlite
+// query, never by guess (build/erp/seed_case_derive.log): record DocStatus + doctype + REAL
+// c_doctype.IsCanBeReactivated + period status per docbasetype (all 5 doc periods 'O', §PERIOD lines).
+// The v13-slice seed-gaps DISSOLVE here: (a) c_doctype now carries iscanbereactivated/docsubtypeso →
+// completed docs whose doctype canReact=Y legally offer RE (Order 100 doctype 135 'POS Order',
+// GL_Journal 115 'GL Journal', Payment 119 'AR Receipt' — all Y); the no-RE falsifier moves to
+// C_Invoice 100 (doctype 117 'AR Invoice Indirect' canReact=N). (b) M_InOut.MovementType present →
+// window 169 'Shipment' (WhereClause MovementType IN ('C-')) scopes records 100/101/103/108 — the
+// card's ORIGINAL no-VO-on-completed-InOut falsifier COMES HOME (record 100, MMS canReact=N: no RE either).
+// expect = legal buttons that MUST render; absent = buttons that MUST NOT (the falsifier arm).
 const CASES = [
-  { name: 'C_Order CO',   url: 'window=143&record=100',    expect: ['CL', 'VO'], absent: ['CO', 'PR', 'RC', 'RA'], click: 'VO', to: 'VO' },
+  { name: 'C_Order CO (canReact)', url: 'window=143&record=100', expect: ['CL', 'VO', 'RE'], absent: ['CO', 'PR', 'RC', 'RA'], click: 'VO', to: 'VO' },
   { name: 'C_Order CL',   url: 'window=143&record=102',    expect: [], absent: ['CL', 'VO', 'CO', 'RE'] },           // Closed doc → NO actions
-  { name: 'C_Invoice CO', url: 'window=167&record=100',    expect: ['CL', 'RC', 'RA'], absent: ['VO'] },             // no VO on completed Invoice!
-  { name: 'GL_Journal CO', url: 'window=200005&record=100', expect: ['CL', 'RC', 'RA'], absent: ['VO'], click: 'RC', to: 'RE' },
-  { name: 'C_Payment CO', url: 'window=195&record=100',    expect: ['CL', 'RC', 'RA'], absent: ['VO'] }
+  { name: 'C_Invoice CO (no-RE)', url: 'window=167&record=100', expect: ['CL', 'RC', 'RA'], absent: ['VO', 'RE'] },  // ARI canReact=N: no VO, no RE
+  { name: 'M_InOut CO',   url: 'window=169&record=100',    expect: ['CL', 'RC', 'RA'], absent: ['VO', 'RE'] },       // RESTORED: no VO on completed InOut!
+  { name: 'GL_Journal CO (canReact)', url: 'window=200005&record=100', expect: ['CL', 'RC', 'RE', 'RA'], absent: ['VO'], click: 'RC', to: 'RE' },
+  { name: 'C_Payment CO (canReact)', url: 'window=195&record=100', expect: ['CL', 'RC', 'RE', 'RA'], absent: ['VO'] }
 ];
 (async () => {
   await new Promise(r => server.listen(0, r)); const port = server.address().port;
