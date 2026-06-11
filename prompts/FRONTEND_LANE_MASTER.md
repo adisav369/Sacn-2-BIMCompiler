@@ -66,6 +66,33 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶▶▶ SESSION HANDOFF 2026-06-11b — MULTI-LANE LAUNCH (3 parallel lanes + serialized deploy train, `prompts/MULTI_LANE_LAUNCH.md`) ▶▶▶**
+> **✅ ALL THREE LANES DONE + DEPLOYED (deploy train serial, zero orphaned squashes):**
+> - **✅ LANE A — B-5/C-5 live process dispatch (bim-ootb PR #267, sw v650, LIVE-VERIFIED on Pages).** Menu P/R leaf +
+>   procSet-gated `?process=` deep link → `AdProcess.dispatch` via the _b3 shim; param dialog from real `ad_process_para`
+>   (prepare-gate `§PROC_PARAM_VALIDATE` rejects on-screen); unregistered classname → honest absent-handler card (333
+>   falsifier); B-4 pruning intact (`§IDMP-SESSION` 116/159). W-AD-PROC-LIVE exit 0 + docfsm/displaylogic/menu-prf
+>   regressions green. **Matrix: AD_Process 🟡→✅ → 7✅/32🟡/3⛔.** Residuals: `fact_acct` not in seed (TrialBalance
+>   honest-empty, seed-regen item) · handler registry = 5 classnames (454 SvrProcess named-deferred, unchanged).
+> - **✅ LANE B — docstatus-select bug, the silent CO→DR flip (bim-ootb PR #268, sw v651, LIVE-VERIFIED).** Root cause:
+>   populateRefs never marked the current value selected (gatherVals read DR off a CO order → phantom diff) AND explicit
+>   status edits rode CRUD_UPDATE column writes invisible to readTip. Fix = PURE CORE seams (v646 precedent):
+>   `CORE.listOptions` (current selected, absent value PREPENDED never flipped) + `CORE.splitStatusChange` (no-op diff
+>   suppressed; explicit change → DOC_ACTION SET_STATUS, requires-gated like Process ▶). W-CRUD-DOCSTATUS D1–D8 PASS +
+>   poc_crud_persist/poc_crud_group green. Also VERIFIED (not redone): the card's date-widget + signed-persist items
+>   shipped v646. **POS write-path gate verdict: GREEN in substance** — one caveat: lane-master D/E's LITERAL
+>   `§WRITE`/`§REFOLD` strings exist nowhere; equivalent evidence = `§SEAM-LIVE` + `…verifyChain=ok`. If POS insists on
+>   the verbatim lines, add a thin witness over the existing seam — no rail is missing.
+> - **✅ LANE C — SPATIAL_PICKING §S-1 GardenWorld warehouse compiled (bim-compiler a828258e, NO deploy).**
+>   `config/warehouse_gardenworld.yaml` (11 m_locator rows EXTRACTED, X/Y/Z confirmed TEXT labels) → existing BOM
+>   recursion (bom_walker + verb_expand TILE/ROUTE) → `build/erp/warehouse_gardenworld.db` (61,440 B, regenerable);
+>   bin guid == m_locator_id. W-WH-COMPILE 11/11 bijection + BUFFER sum-invariant + ghost-locator falsifier + no-cubes
+>   render gate (6/6 distinct vertex blobs) + local viewer smoke (`§WH_SMOKE_BINS` 11 bins streamed). §S-2 route rides
+>   `m_bom_line.ordinal` (walk_seq already in the db) + drafted M_Movement/M_InOut locator pairs.
+> - **NEXT SESSIONS (queued, not this card):** 1. POS build — `prompts/POS_LENS_SESSION.md` (gate GREEN per Lane B).
+>   2. Spatial §S-2..§S-5 (rides warehouse_gardenworld.db). 3. HARDEN_MATRIX ladder. Deploy-train lesson held: one PR
+>   in flight, squash verified via `git show origin/main:` both times — the #138/#265 orphan trap did NOT re-fire.
+>
 > **▶▶▶ SESSION HANDOFF 2026-06-11 — CONVENTION AUDIT + ROADMAP WRITE + NINJA EXCEL EVAL ▶▶▶**
 > **✅ ALL THREE DONE 2026-06-11 (same session that shipped the UI bridge lane, bim-ootb #264 sw v647 / matrix 6✅):**
 > - **✅ TASK 1 DONE (audit; flag-only as ordered).** 15-module sweep vs ERP_BACKEND_SEPARATION + ENGINE_CONTRACT:
