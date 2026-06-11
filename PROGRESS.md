@@ -26,8 +26,10 @@
   surface=ad_evaluator fixtures=2751 diff=0 oracle=iDempiere-PG`, W-LOGIC-HARDEN, bim-compiler a77827cc).
 - **Witness delta:** +4 new green (W-LOGIC-HARDEN · W-WH-ROUTE · W-WH-LIVE [walk+scan+complete] · W-WH-LIVE-PAGES);
   **equivalence ledger 41 → 42 oracle-equivalent** (matrix ⬜ = ad_workflow only); coverage 7✅/32🟡/3⛔ unchanged.
-- **Next:** B-2 workflow oracle / B-4 substrate (`prompts/ERP_EXECUTION_ROADMAP.md`) · Phase C UI wiring (C-1..C-4) ·
-  warehouse entry icon = user-ANSWERED YES, Sonnet session runs `prompts/WAREHOUSE_GH_LINK_PILL.md`.
+- **Next = WAVE 3 (cards written):** paste `use a workflow — proceed with prompts/MULTI_LANE_WAVE3.md` —
+  Lane A `FABLE5_WORKFLOW_ORACLE.md` (B-2, ledger 42→43, ⬜=none; entrance pre-verified: live PG real traces
+  11/13/13) · Lane B `POS_FULL_LOOP.md` (CRUD + void + replenish ENACTED to closure). Warehouse card LANDED
+  (Sonnet, bim-ootb #272 sw v654: WH pill + deep links; db in-repo short URL). Then B-3/B-4 + Phase C.
 
 ## MIGRATE_POSTING_CONFIG shipped (2026-06-12b, card → # DONE; bim-ootb PR #271 sw v653, IDB ad_seed_v15)
 - **Done:** default seed + Client 13 (iDempiere) + Client 12 (Odoo) all carry resolvable posting config —
