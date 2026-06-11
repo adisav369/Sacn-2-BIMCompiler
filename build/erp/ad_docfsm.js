@@ -139,13 +139,70 @@
   // isBackDateTrxAllowed. The ReActivate gate reads the REAL c_doctype.iscanbereactivated
   // (canReactivateThisDocType:1523). Un-walked tables throw — the isomorph tail adds them deliberately,
   // never silently inherits the generic union (the exact error the per-table narrowing exists to kill).
+  // Optional per-table fields (H2_ISOMORPH_TAIL — defaults preserve the six walked tables exactly):
+  //   block: which Completed-narrowing arm applies ('inout'|'invoice'|'payment'|'journal'|'alloc'|'cash'|
+  //          'bankstmt'); absent = the movement-style arm for the original six, generic-only for the tail.
+  //   vo:    per-fromStatus void OUTCOME map (parsed from the class's voidIt); absent = the H-2 default
+  //          (unprocessed→VO, processed→RE reversal delegation).
+  //   rc/ra: false when the class's reverseCorrectIt/reverseAccrualIt can never return true; absent = true.
   var DOC_FAMILY = {
-    319: { name: 'M_InOut',     reActivate: false },  // MInOut.reActivateIt:2970-2989 always false
-    318: { name: 'C_Invoice',   reActivate: true  },  // MInvoice.reActivateIt:2866+ implemented (gated)
-    335: { name: 'C_Payment',   reActivate: true  },  // MPayment.reActivateIt:2901+ implemented (gated)
-    323: { name: 'M_Movement',  reActivate: false },  // MMovement.reActivateIt:1071-1085 always false
-    321: { name: 'M_Inventory', reActivate: false },  // MInventory.reActivateIt:1200-1214 always false
-    325: { name: 'M_Production',reActivate: false }   // MProduction.reActivateIt:1021-1033 always false
+    319: { name: 'M_InOut',     reActivate: false, block: 'inout'   },  // MInOut.reActivateIt:2970-2989 always false
+    318: { name: 'C_Invoice',   reActivate: true,  block: 'invoice' },  // MInvoice.reActivateIt:2866+ implemented (gated)
+    335: { name: 'C_Payment',   reActivate: true,  block: 'payment' },  // MPayment.reActivateIt:2901+ implemented (gated)
+    323: { name: 'M_Movement',  reActivate: false, block: 'inout'   },  // MMovement.reActivateIt:1071-1085 always false
+    321: { name: 'M_Inventory', reActivate: false, block: 'inout'   },  // MInventory.reActivateIt:1200-1214 always false
+    325: { name: 'M_Production',reActivate: false, block: 'inout'   },  // MProduction.reActivateIt:1021-1033 always false
+    // ── the isomorph tail (prompts/H2_ISOMORPH_TAIL.md) — every flag PARSED from the class source ──────
+    224: { name: 'GL_Journal',      reActivate: true,  block: 'journal',  vo: { DR: 'VO', IN: 'VO' } },
+        // MJournal.voidIt:704-742 voids ONLY Drafted/Invalid (else false); RC:782-806/RA:858-882 delegate
+        // to reverseCorrectIt/reverseAccrualIt(batch)→true→RE; reActivateIt:932-963 period+doctype gated
+    225: { name: 'GL_JournalBatch', reActivate: true,  block: 'journal',  vo: {} },
+        // MJournalBatch.voidIt:540-553 ALWAYS false; RC:617-690/RA:703-778 reverse member journals→RE;
+        // reActivateIt:788-811 re-activates member journals → true
+    735: { name: 'C_AllocationHdr', reActivate: false, block: 'alloc' },
+        // MAllocationHdr.voidIt:567-630 = the H-2 default (unprocessed→VO, CO→reverse delegation→RE);
+        // RC:670-691/RA:694-715 reverseIt→RE; reActivateIt:718-732 always false
+    407: { name: 'C_Cash',          reActivate: true,  block: 'cash',     ra: false,
+           vo: { DR: 'RE', IP: 'RE', IN: 'RE', AP: 'RE', NA: 'RE', CO: 'RE', WP: 'RE', WC: 'RE' } },
+        // MCash.voidIt:594-611 → reverseIt:712-767 sets DOCSTATUS_Reversed ITSELF from any non-terminal
+        // status → DocumentEngine.voidIt preserves RE (:603); RC:727-748 reverseIt→RE; RA:753-770 always
+        // false; reActivateIt:774-791 delegates to RC (true) — engine lands IP (:704-707)
+    392: { name: 'C_BankStatement', reActivate: true,  block: 'bankstmt', rc: false, ra: false,
+           vo: { DR: 'VO', IP: 'VO', IN: 'VO', AP: 'VO', NA: 'VO', CO: 'VO' } },
+        // MBankStatement.voidIt:506-602 voids unprocessed AND completed (period-gated :679), never sets
+        // RE; RC:629-645/RA:650-666 always false; reActivateIt:670-696 period+doctype gated → true
+    661: { name: 'M_RMA',           reActivate: false, rc: false, ra: false,
+           vo: { DR: 'VO', IP: 'VO', IN: 'VO', AP: 'VO', NA: 'VO', CO: 'VO' } },
+        // generic-only (no getValidActions block); MRMA.voidIt:681-754 → VO (live-shipment data gate
+        // :686-690, named); RC:760/RA:781/RE:802 always false
+    702: { name: 'M_Requisition',   reActivate: false, rc: false, ra: false,
+           vo: { DR: 'VO', IP: 'VO', IN: 'VO', AP: 'VO', NA: 'VO', CO: 'VO' } },
+        // generic-only; MRequisition.voidIt:401-418 delegates closeIt→true→VO; RC:480/RA:501 always
+        // false; reActivateIt:522-539 delegates RC(false) — never true
+    486: { name: 'S_TimeExpense',   reActivate: false, rc: false, ra: false,
+           vo: { DR: 'VO', IP: 'VO', IN: 'VO', AP: 'VO', NA: 'VO', CO: 'VO' } },
+        // generic-only; MTimeExpense.voidIt:433-451 delegates closeIt→true→VO; RC:480/RA:502/RE:524 false
+    // 0-seed classes (FSM source-parse only — stored-replay honestly n/a, H2_ISOMORPH_TAIL table):
+    200246: { name: 'C_BankTransfer', reActivate: false, rc: false, ra: false,
+              vo: { DR: 'VO', IP: 'VO', IN: 'VO', AP: 'VO', NA: 'VO', CO: 'VO' } },
+        // MBankTransfer.voidIt:315-337 voids child payments→true→VO; RC:356-374/RA:379-397 reverse child
+        // payments yet RETURN FALSE (the parsed quirk); reActivateIt:402-415 always false
+    200056: { name: 'C_DepositBatch', reActivate: true, rc: false, ra: false,
+              vo: { DR: 'VO', IP: 'VO', IN: 'VO', AP: 'VO', NA: 'VO', CO: 'VO' } },
+        // MDepositBatch.voidIt:203-257 terminal-reject + bank-statement-line gate → VO; RC:552/RA:558
+        // stubs return false; reActivateIt:564-598 gated → true
+    623: { name: 'M_ProjectIssue', reActivate: false },
+        // MProjectIssue delegates to DocActionDelegate (:377-417) and REGISTERS Reverse_Correct/Accrual
+        // callables (doReverse, :126-127) → RC/RA→RE and void = the H-2 default delegation (delegate
+        // voidIt: unprocessed→VO, processed→accrual-probe→reverse); reActivateIt:420 overridden false
+    // Fixed-Assets 0-seed family (a_* doc tables empty; depreciation batch = DepreciationPerf lane):
+    53137: { name: 'A_Asset_Addition', reActivate: true, rc: false, ra: false,
+             vo: { DR: 'VO', IP: 'VO', IN: 'VO', AP: 'VO', NA: 'VO', CO: 'VO' } },
+        // MAssetAddition.voidIt:803+ → VO (never sets RE); reActivateIt:934+ implemented; RC/RA false
+    53127: { name: 'A_Asset_Disposed',     reActivate: false, rc: false, ra: false, vo: {} },  // all action stubs false (parsed)
+    53275: { name: 'A_Asset_Reval',        reActivate: false, rc: false, ra: false, vo: {} },  // all action stubs false (parsed)
+    53128: { name: 'A_Asset_Transfer',     reActivate: false, rc: false, ra: false, vo: {} },  // all action stubs false (parsed)
+    53121: { name: 'A_Depreciation_Entry', reActivate: false, rc: false, ra: false, vo: {} }   // all action stubs false (parsed)
   };
   function legalActionsFor(db, adTableId, rec) {
     if (Number(adTableId) === 259) return legalActionsOrder(db, rec);   // the H-1 port, untouched
@@ -163,17 +220,29 @@
       var dt = rec.doctypeId ? db.prepare('SELECT iscanbereactivated FROM c_doctype WHERE c_doctype_id=?').get(Number(rec.doctypeId)) : null;
       var canReact = !!(dt && dt.iscanbereactivated === 'Y');
       var po = !!rec.periodOpen, bd = !!rec.isBackDateTrxAllowed;
-      var t = Number(adTableId);
-      if (t === 319 || t === 323 || t === 321 || t === 325) {           // InOut :1096-1106 · Movement+Inventory :1200-1213 · Production :1233-1244
+      var blk = fam.block;
+      if (blk === 'inout') {                                            // InOut :1096-1106 · Movement+Inventory :1200-1213 · Production :1233-1244
         if (po && bd) a.push('RC');
         a.push('RA');
-      } else if (t === 318) {                                           // Invoice :1108-1125
+      } else if (blk === 'invoice') {                                   // Invoice :1108-1125
         if (po) { if (canReact) a.push('RE'); if (bd) a.push('RC'); }
         a.push('RA');
-      } else if (t === 335) {                                           // Payment :1127-1141
+      } else if (blk === 'payment') {                                   // Payment :1127-1141
         if (po) { a.push('RC'); if (canReact) a.push('RE'); }
         a.push('RA');
+      } else if (blk === 'journal') {                                   // Journal+Batch :1143-1157 (shared block)
+        if (po) { a.push('RC'); if (canReact) a.push('RE'); }
+        a.push('RA');
+      } else if (blk === 'alloc') {                                     // Allocation :1159-1172 (no RE arm)
+        if (po) a.push('RC');
+        a.push('RA');
+      } else if (blk === 'cash') {                                      // Cash :1174-1183 (CO→Void ONLY)
+        a.push('VO');
+      } else if (blk === 'bankstmt') {                                  // BankStatement :1185-1198 (periodOpen frames BOTH)
+        if (po) { if (canReact) a.push('RE'); a.push('VO'); }
       }
+      // no block (M_RMA / M_Requisition / S_TimeExpense / the 0-seed tail) = generic-only:
+      // getValidActions falls through, completed docs offer just the :1050-1053 Close.
     }
     return a;
   }
@@ -194,11 +263,14 @@
     if (action === 'PO') return fromStatus;
     if (action === 'RE') return fam.reActivate ? 'IP' : null;
     if (action === 'VO') {
+      if (fam.vo) return Object.prototype.hasOwnProperty.call(fam.vo, fromStatus) ? fam.vo[fromStatus] : null;
       if ('DR,IP,IN,AP,NA'.indexOf(fromStatus) >= 0) return 'VO';       // not-processed branch
       if (fromStatus === 'CO' || fromStatus === 'WP' || fromStatus === 'WC') return 'RE';  // reversal delegation
       return null;                                                      // CL/RE/VO: "Document Closed"
     }
-    var GENERIC = { XL: 'DR', IN: 'IN', AP: 'AP', RJ: 'NA', CL: 'CL', RC: 'RE', RA: 'RE' };
+    if (action === 'RC') return fam.rc === false ? null : 'RE';         // class reverseCorrectIt never true → unreachable
+    if (action === 'RA') return fam.ra === false ? null : 'RE';         // class reverseAccrualIt never true → unreachable
+    var GENERIC = { XL: 'DR', IN: 'IN', AP: 'AP', RJ: 'NA', CL: 'CL' };
     return Object.prototype.hasOwnProperty.call(GENERIC, action) ? GENERIC[action] : null;
   }
 
@@ -209,7 +281,11 @@
     var to = transitionFor(adTableId, action, rec.docStatus);
     if (to == null) {
       var fam = DOC_FAMILY[Number(adTableId)];
-      return { ok: false, reason: action === 'RE' ? 'not-implemented(' + fam.name + '.reActivateIt returns false)' : 'no-transition', from: rec.docStatus, action: action };
+      var why = action === 'RE' ? 'not-implemented(' + fam.name + '.reActivateIt returns false)'
+        : ((action === 'RC' && fam.rc === false) || (action === 'RA' && fam.ra === false))
+          ? 'not-implemented(' + fam.name + '.reverse' + (action === 'RC' ? 'Correct' : 'Accrual') + 'It returns false)'
+          : 'no-transition';
+      return { ok: false, reason: why, from: rec.docStatus, action: action };
     }
     return { ok: true, from: rec.docStatus, action: action, to: to, legalActions: legal };
   }

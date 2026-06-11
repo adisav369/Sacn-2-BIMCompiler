@@ -75,8 +75,19 @@ load-bearing §FALSIFIER. The MEASURED family fact the walk surfaced: the per-ta
 Invoice (RE and RC both ⊂ the periodOpen frame), Payment (RC ⊂ periodOpen only) — and `reActivateIt` is
 implemented ONLY on Invoice/Payment; `voidIt` on any processed family doc delegates to the reversal pair and
 lands `RE` (DocumentEngine:616-618 preserves it). Posting for all walked classes was ALREADY oracle-folded
-(table below) — cited, not redone. The remaining family rows are the trade-pattern isomorphs:
-`prompts/H2_ISOMORPH_TAIL.md` specs them for cheap-model replication.
+(table below) — cited, not redone.
+
+**✅ ISOMORPH TAIL CONFIRMED-BY-DIFF (2026-06-11 — `prompts/H2_ISOMORPH_TAIL.md`).** The remaining family
+rows are now walked with the SAME two witnesses: `MJournal`+`MJournalBatch` (W-MJOURNAL-FSM/-SAVE — the
+shared Journal block, a fourth/fifth nesting: RC⊂periodOpen, RE⊂periodOpen∧canReact; journal voids ONLY
+DR/IN, batch NEVER), `MAllocationHdr` (W-MALLOCHDR-FSM/-SAVE — no RE arm; beforeSave = ONE IsActive guard,
+K=1 stated), `MCash` (W-MCASH-FSM/-SAVE — CO→VO only, and `reverseIt` sets Reversed ITSELF so **Void lands
+RE even from DRAFT**; org←cashbook + ending-balance derives, stmtdiff == Σ real cashlines), `MBankStatement`
+(W-MBANKSTMT-FSM/-SAVE — periodOpen frames BOTH RE and VO; the beginning-balance derive is STATE-DEPENDENT,
+diffed against the captured master), and the **11-class generic-block tail** (W-GENERIC-TAIL-FSM/-SAVE —
+`MRMA`/`MRequisition`/`MTimeExpense` replayed; `MBankTransfer`/`MDepositBatch`/`MProjectIssue`/the 5
+Fixed-Assets classes source-parse-only, 0-seed ⛔ stated; MTimeExpense's beforeSave ABSENCE itself proven).
+**No DocAction table in the family table below remains unwalked.**
 
 **Oracle-folded so far (the deepest deltas first, each `§FOLD-COMPLETE … maxDiff=0c` vs real GardenWorld):**
 
@@ -103,8 +114,13 @@ lands `RE` (DocumentEngine:616-618 preserves it). Posting for all walked classes
 | **MInvoice save + FSM** (H-2.2) | W-MINVOICE-SAVE / W-MINVOICE-FSM | beforeSave 8-hook port == 8 stored docs (setBPartner so/po flavors, ARI\|API target, EUR currency-rate gate via captured ad_clientinfo) + the NESTED periodOpen gate frame (145 fixtures; RE implemented→IP) |
 | **MPayment save + FSM** (H-2.3) | W-MPAYMENT-SAVE / W-MPAYMENT-FSM | beforeSave 10-hook port == 2 stored docs (K=2 honest; CASH_AS_PAYMENT sysconfig gate, org←bank-account, BP==invoice's BP) + the third gate nesting (101 fixtures; RC ⊂ periodOpen only) |
 | **Inventory-family FSM** (H-2.4) | W-MINVENTORY-FAMILY-FSM | Movement+Inventory share one source block; Production same shape (161 fixtures); Movement's 1 doc replayed + doctype-default derive; Inventory/Production stored-replay ⛔ no-seed (stated) |
+| **GL Journal family save + FSM** (isomorph tail) | W-MJOURNAL-SAVE / W-MJOURNAL-FSM | 8+3-hook port == 2 journals + 1 batch (period 155/category 108/schema 101/convtype 114 MUST; ParentComplete reject on the REAL processed batch) + the shared Journal block (207 fixtures; RC⊂periodOpen, RE⊂periodOpen∧canReact; journal voids ONLY DR/IN, batch never) |
+| **MAllocationHdr save + FSM** (isomorph tail) | W-MALLOCHDR-SAVE / W-MALLOCHDR-FSM | the ONE IsActive guard (K=1 stated) == 2 stored docs + the Allocation block (100 fixtures; RC⊂periodOpen, RA, NO RE arm; VO@CO→RE delegation) |
+| **MCash save + FSM** (isomorph tail) | W-MCASH-SAVE / W-MCASH-FSM | org←cashbook + ending=beginning+stmtdiff (==Σ real cashlines) == 3 stored docs + the smallest block (34 fixtures; CO→VO only — and reverseIt sets Reversed itself → **VO lands RE even from DR**) |
+| **MBankStatement save + FSM** (isomorph tail) | W-MBANKSTMT-SAVE / W-MBANKSTMT-FSM | CMB-doctype + balance derives == 2 stored docs (the beginning-balance derive STATE-DEPENDENT, diffed vs the captured master) + the fourth nesting (99 fixtures; periodOpen frames BOTH RE and VO; RC/RA never) |
+| **Generic-block tail FSM + save** (isomorph tail) | W-GENERIC-TAIL-FSM / W-GENERIC-TAIL-SAVE | 11 classes == the generic fall-through (333 fixtures; CO→[CL] only); RMA/Requisition/TimeExpense replayed + their beforeSave ports (shipment derives MUST; pricelist FALLBACK arm; the MTimeExpense ABSENCE proven); 8 zero-seed classes source-parse ⛔ stated |
 
-**Score: 14 of the ~40 oracle-targets cent/unit-equivalent + 7 MODEL-LAYER surfaces (H-1 MOrder save/FSM/post/capture + H-2 the deep-family save/FSM walk → ledger total THIRTY-ONE oracle-equivalent rows in [ERP_COVERAGE_MATRIX.md](ERP_COVERAGE_MATRIX.md)) + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)** — and they are the deepest deltas
+**Score: 14 of the ~40 oracle-targets cent/unit-equivalent + 17 MODEL-LAYER surfaces (H-1 MOrder save/FSM/post/capture + H-2 the deep-family save/FSM walk + the ISOMORPH TAIL's 10 → ledger total FORTY-ONE oracle-equivalent rows in [ERP_COVERAGE_MATRIX.md](ERP_COVERAGE_MATRIX.md)) + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)** — and they are the deepest deltas
 (the whole Money family — sales AND purchase invoice posting, allocation in BOTH accounting schemas, the MatchInv
 clearing loop **in both schemas** — + the inventory loop incl. the inter-org MMovement cost transfer **in both schemas**). **Logic-folded is no longer
 ~0.2%**: the trade-doc loop (order→ship→invoice→**match-posting**→pay→allocate) and the inventory loop
@@ -112,8 +128,10 @@ clearing loop **in both schemas** — + the inventory loop incl. the inter-org M
 sides of `Doc_Invoice` and across the base (USD) **and** foreign-currency (EUR) acctschema — and the PO
 match→clearing loop folds in full incl. the avg-cost IPV split (on-hand-proportioned, riding the qty spine).
 **Unfolded tail:** `MInventory` + `MProduction` **cost-valued GL** (movement folds proven
-W-FOLD-INVENTORY/PRODUCTION; component-cost + offset-account DATA absent in seed → GL named-deferred, not faked) · the
-Fixed-Assets + GL/Project families · the declarative surfaces (still surface-interpreted, not oracle-diffed).
+W-FOLD-INVENTORY/PRODUCTION; component-cost + offset-account DATA absent in seed → GL named-deferred, not faked) ·
+the Fixed-Assets + GL/Project families' **save/FSM are now walked (isomorph tail)** — what remains there is the
+POSTING of the classes with no seed documents (Cash/BankStatement/RMA/Requisition/TimeExpense/FA `Doc_*` posters,
+0 `fact_acct` rows to diff) · the declarative surfaces (still surface-interpreted, not oracle-diffed).
 
 ## What this changes for the backend arc
 

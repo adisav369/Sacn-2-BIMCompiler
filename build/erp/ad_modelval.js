@@ -410,6 +410,244 @@
     return H.length;
   }
 
+  // ── H2_ISOMORPH_TAIL beforeSave ports (prompts/H2_ISOMORPH_TAIL.md) — ADDITIVE, one installer per
+  // class, every hook citing its Java lines; same derived/warnings seam as the H-1/H-2 installers. ──────
+
+  // shared cent-exact add (REAL columns; the balances are 2dp money columns)
+  function addMoney(a, b) { return (Math.round(Number(a || 0) * 100) + Math.round(Number(b || 0) * 100)) / 100; }
+  // shared standard-period lookup (MPeriod.getC_Period_ID: the client-calendar period containing the date)
+  function periodOf(db, date) {
+    if (date == null || date === '') return null;
+    var d = String(date).slice(0, 10);
+    return db.prepare("SELECT c_period_id FROM c_period WHERE periodtype='S' AND date(?)>=date(startdate) AND date(?)<=date(enddate) ORDER BY c_period_id").get(d, d);
+  }
+
+  // installMJournalSaveHooks(db) — faithful port of MJournal.beforeSave (MJournal.java:298-380).
+  function installMJournalSaveHooks(db) {
+    function d(info) { return (info.derived = info.derived || {}); }
+    function chg(info, col) { return !!(info.recordOld && info.record && String(info.recordOld[col]) !== String(info.record[col])); }
+    var H = [
+      ['MJournal.parentNotProcessed', function (ctx, info) { // :300-306 new journal in a Processed batch → reject
+        var r = info.record;
+        if (info.recordOld || !(Number(r.gl_journalbatch_id) > 0)) return null;
+        var b = db.prepare('SELECT processed FROM gl_journalbatch WHERE gl_journalbatch_id=?').get(Number(r.gl_journalbatch_id));
+        return (b && b.processed === 'Y') ? 'ParentComplete GL_JournalBatch_ID' : null;
+      }],
+      ['MJournal.dateDocDefault', function (ctx, info) {     // :308-315 DateDoc ← DateAcct (the today-arm needs the clock — named)
+        var r = info.record;
+        if ((r.datedoc == null || r.datedoc === '') && r.dateacct != null && r.dateacct !== '') d(info).datedoc = r.dateacct;
+        return null;
+      }],
+      ['MJournal.dateAcctDefault', function (ctx, info) {    // :316-321 DateAcct ← DateDoc
+        var r = info.record;
+        if (r.dateacct == null || r.dateacct === '') d(info).dateacct = r.datedoc;
+        return null;
+      }],
+      ['MJournal.periodValidate', function (ctx, info) {     // :322-338 PeriodNotFound reject + standard-period reassign
+        var r = info.record;
+        if (r.processed === 'Y') return null;
+        var da = (info.derived && info.derived.dateacct) != null ? info.derived.dateacct : r.dateacct;
+        var p = periodOf(db, da);
+        if (!p) return 'PeriodNotFound: ' + da;
+        if (Number(p.c_period_id) !== Number(r.c_period_id)) {  // :333-337 reassign ONLY off a standard period
+          var cur = db.prepare('SELECT periodtype FROM c_period WHERE c_period_id=?').get(Number(r.c_period_id));
+          if (!cur || cur.periodtype === 'S') d(info).c_period_id = Number(p.c_period_id);
+        }
+        return null;
+      }],
+      ['MJournal.glCategoryDefault', function (ctx, info) {  // :340-342 GL_Category ← doctype's
+        var r = info.record;
+        if (Number(r.gl_category_id) > 0 || !(Number(r.c_doctype_id) > 0)) return null;
+        var dt = db.prepare('SELECT gl_category_id FROM c_doctype WHERE c_doctype_id=?').get(Number(r.c_doctype_id));
+        if (dt && Number(dt.gl_category_id) > 0) d(info).gl_category_id = Number(dt.gl_category_id);
+        return null;
+      }],
+      ['MJournal.acctSchemaDefault', function (ctx, info) {  // :343-345 C_AcctSchema ← client's primary
+        var r = info.record;
+        if (Number(r.c_acctschema_id) > 0) return null;
+        var ci = db.prepare('SELECT c_acctschema1_id FROM ad_clientinfo WHERE ad_client_id=?').get(Number(r.ad_client_id));
+        if (ci) d(info).c_acctschema_id = Number(ci.c_acctschema1_id);
+        return null;
+      }],
+      ['MJournal.conversionTypeDefault', function (ctx, info) {  // :346-348 ∘ MConversionType.getDefault — IsDefault row
+        var r = info.record;
+        if (Number(r.c_conversiontype_id) > 0) return null;
+        var ct = db.prepare("SELECT c_conversiontype_id FROM c_conversiontype WHERE isdefault='Y' ORDER BY c_conversiontype_id").get();
+        if (ct) d(info).c_conversiontype_id = Number(ct.c_conversiontype_id);
+        return null;
+      }],
+      ['MJournal.processedDocFrozen', function (ctx, info) { // :350-370 IDEMPIERE-63 doctype/date frozen once ProcessedOn
+        if (!info.recordOld || !(Number(info.recordOld.processedon) > 0)) return null;
+        var prev = db.prepare('SELECT isoverwriteseqoncomplete,isoverwritedateoncomplete FROM c_doctype WHERE c_doctype_id=?').get(Number(info.recordOld.c_doctype_id));
+        if (chg(info, 'c_doctype_id') && prev && prev.isoverwriteseqoncomplete === 'Y') return 'CannotChangeProcessedDocType';
+        if (chg(info, 'datedoc') && prev && prev.isoverwritedateoncomplete === 'Y') return 'CannotChangeProcessedDate';
+        return null;
+      }]
+      // :372-379 DateAcct propagation to lines = write-path (UPDATE GL_JournalLine) — named residual.
+    ];
+    H.forEach(function (h) { registerValidator('GL_Journal', 'BEFORE_SAVE', h[0], h[1]); });
+    return H.length;
+  }
+
+  // installMJournalBatchSaveHooks(db) — faithful port of MJournalBatch.beforeSave (MJournalBatch.java:946-978):
+  // the SAME date-default + period-validate spine as the journal, nothing else (batch = header-of-headers).
+  function installMJournalBatchSaveHooks(db) {
+    function d(info) { return (info.derived = info.derived || {}); }
+    var H = [
+      ['MJournalBatch.dateDocDefault', function (ctx, info) {   // :948-955 DateDoc ← DateAcct (today-arm named)
+        var r = info.record;
+        if ((r.datedoc == null || r.datedoc === '') && r.dateacct != null && r.dateacct !== '') d(info).datedoc = r.dateacct;
+        return null;
+      }],
+      ['MJournalBatch.dateAcctDefault', function (ctx, info) {  // :956-961 DateAcct ← DateDoc
+        var r = info.record;
+        if (r.dateacct == null || r.dateacct === '') d(info).dateacct = r.datedoc;
+        return null;
+      }],
+      ['MJournalBatch.periodValidate', function (ctx, info) {   // :962-977 PeriodNotFound + standard-period reassign
+        var r = info.record;
+        if (r.processed === 'Y') return null;
+        var da = (info.derived && info.derived.dateacct) != null ? info.derived.dateacct : r.dateacct;
+        var p = periodOf(db, da);
+        if (!p) return 'PeriodNotFound: ' + da;
+        if (Number(p.c_period_id) !== Number(r.c_period_id)) {
+          var cur = db.prepare('SELECT periodtype FROM c_period WHERE c_period_id=?').get(Number(r.c_period_id));
+          if (!cur || cur.periodtype === 'S') d(info).c_period_id = Number(p.c_period_id);
+        }
+        return null;
+      }]
+    ];
+    H.forEach(function (h) { registerValidator('GL_JournalBatch', 'BEFORE_SAVE', h[0], h[1]); });
+    return H.length;
+  }
+
+  // installMAllocationHdrSaveHooks(db) — faithful port of MAllocationHdr.beforeSave (MAllocationHdr.java:305-313).
+  // K=1 IS the whole override: the IsActive re-activation guard. STATED, not padded.
+  function installMAllocationHdrSaveHooks(db) {
+    function chg(info, col) { return !!(info.recordOld && info.record && String(info.recordOld[col]) !== String(info.record[col])); }
+    var H = [
+      ['MAllocationHdr.noReactivate', function (ctx, info) {  // :307-312 deactivated allocation cannot be re-activated
+        if (info.recordOld && chg(info, 'isactive') && info.record.isactive === 'Y') return 'Cannot Re-Activate deactivated Allocations';
+        return null;
+      }]
+    ];
+    H.forEach(function (h) { registerValidator('C_AllocationHdr', 'BEFORE_SAVE', h[0], h[1]); });
+    return H.length;
+  }
+
+  // installMCashSaveHooks(db) — faithful port of MCash.beforeSave (MCash.java:321-331).
+  function installMCashSaveHooks(db) {
+    function d(info) { return (info.derived = info.derived || {}); }
+    var H = [
+      ['MCash.orgFromCashbook', function (ctx, info) {       // :323-328 AD_Org ← cashbook's; 0 → reject @AD_Org_ID@
+        var r = info.record;
+        var cb = db.prepare('SELECT ad_org_id FROM c_cashbook WHERE c_cashbook_id=?').get(Number(r.c_cashbook_id));
+        var org = cb ? Number(cb.ad_org_id) : 0;
+        if (org === 0) return 'AD_Org_ID mandatory (cashbook org is 0)';
+        if (org !== Number(r.ad_org_id)) d(info).ad_org_id = org;
+        return null;
+      }],
+      ['MCash.endingBalance', function (ctx, info) {         // :330 EndingBalance = Beginning + StatementDifference
+        var r = info.record;
+        var end = addMoney(r.beginningbalance, r.statementdifference);
+        if (end !== Number(r.endingbalance)) d(info).endingbalance = end;
+        return null;
+      }]
+    ];
+    H.forEach(function (h) { registerValidator('C_Cash', 'BEFORE_SAVE', h[0], h[1]); });
+    return H.length;
+  }
+
+  // installMBankStatementSaveHooks(db) — faithful port of MBankStatement.beforeSave (MBankStatement.java:258-272).
+  function installMBankStatementSaveHooks(db) {
+    function d(info) { return (info.derived = info.derived || {}); }
+    var H = [
+      ['MBankStatement.docTypeDefault', function (ctx, info) {  // :260-262 ∘ MDocType.getDocType(CMB)
+        var r = info.record;
+        if (Number(r.c_doctype_id) > 0) return null;
+        var dt = db.prepare("SELECT c_doctype_id FROM c_doctype WHERE docbasetype='CMB' AND isactive='Y' ORDER BY isdefault DESC, c_doctype_id").get();
+        if (dt) d(info).c_doctype_id = Number(dt.c_doctype_id);
+        return null;
+      }],
+      ['MBankStatement.beginningBalance', function (ctx, info) {  // :264-269 ← bank account CurrentBalance (unprocessed + zero)
+        var r = info.record;
+        if (r.processed === 'Y' || Number(r.beginningbalance) !== 0) return null;
+        var ba = db.prepare('SELECT currentbalance FROM c_bankaccount WHERE c_bankaccount_id=?').get(Number(r.c_bankaccount_id));
+        if (ba && Number(ba.currentbalance) !== 0) d(info).beginningbalance = Number(ba.currentbalance);
+        return null;
+      }],
+      ['MBankStatement.endingBalance', function (ctx, info) {  // :271 Ending = Beginning(+derived) + StatementDifference
+        var r = info.record;
+        var beg = (info.derived && info.derived.beginningbalance != null) ? info.derived.beginningbalance : r.beginningbalance;
+        var end = addMoney(beg, r.statementdifference);
+        if (end !== Number(r.endingbalance)) d(info).endingbalance = end;
+        return null;
+      }]
+    ];
+    H.forEach(function (h) { registerValidator('C_BankStatement', 'BEFORE_SAVE', h[0], h[1]); });
+    return H.length;
+  }
+
+  // installMRMASaveHooks(db) — faithful port of MRMA.beforeSave (MRMA.java:256-297). The shipment
+  // (m_rma.inout_id → m_inout, captured FULL) is the derive source for BP/currency/salesrep.
+  function installMRMASaveHooks(db) {
+    function d(info) { return (info.derived = info.derived || {}); }
+    function shipment(r) { return Number(r.inout_id) > 0 ? db.prepare('SELECT c_bpartner_id,c_order_id,c_invoice_id,issotrx,salesrep_id FROM m_inout WHERE m_inout_id=?').get(Number(r.inout_id)) : null; }
+    var H = [
+      ['MRMA.orderCleared', function (ctx, info) {           // :258-259 a NEW RMA never carries C_Order_ID
+        if (!info.recordOld && Number(info.record.c_order_id) !== 0) d(info).c_order_id = 0;
+        return null;
+      }],
+      ['MRMA.bpFromShipment', function (ctx, info) {         // :262-266 BP ← shipment's
+        var r = info.record, io = shipment(r);
+        if (!(Number(r.c_bpartner_id) > 0) && io && Number(io.c_bpartner_id) > 0) d(info).c_bpartner_id = Number(io.c_bpartner_id);
+        return null;
+      }],
+      ['MRMA.currencyFromShipment', function (ctx, info) {   // :268-283 currency ← order else invoice (through the shipment)
+        var r = info.record, io = shipment(r);
+        if (Number(r.c_currency_id) > 0 || !io) return null;
+        if (Number(io.c_order_id) > 0) {
+          var o = db.prepare('SELECT c_currency_id FROM c_order WHERE c_order_id=?').get(Number(io.c_order_id));
+          if (o) d(info).c_currency_id = Number(o.c_currency_id);
+        } else if (Number(io.c_invoice_id) > 0) {
+          var inv = db.prepare('SELECT c_currency_id FROM c_invoice WHERE c_invoice_id=?').get(Number(io.c_invoice_id));
+          if (inv) d(info).c_currency_id = Number(inv.c_currency_id);
+        }
+        return null;
+      }],
+      ['MRMA.soTrxMatchesShipment', function (ctx, info) {   // :285-290 RMA.IsSOTrx must equal InOut.IsSOTrx → reject
+        var r = info.record, io = shipment(r);
+        return (io && io.issotrx !== r.issotrx) ? 'RMA.IsSOTrx <> InOut.IsSOTrx' : null;
+      }],
+      ['MRMA.salesRepFromShipment', function (ctx, info) {   // :292-295 SalesRep ← shipment's (when set there)
+        var r = info.record, io = shipment(r);
+        if (!(Number(r.salesrep_id) > 0) && io && Number(io.salesrep_id) > 0) d(info).salesrep_id = Number(io.salesrep_id);
+        return null;
+      }]
+    ];
+    H.forEach(function (h) { registerValidator('M_RMA', 'BEFORE_SAVE', h[0], h[1]); });
+    return H.length;
+  }
+
+  // installMRequisitionSaveHooks(db) — faithful port of MRequisition.beforeSave (MRequisition.java:198-203
+  // ∘ MPriceList.getDefault:111-140: IsDefault='Y' + IsSOPriceList=N first, FALLBACK to the SO default).
+  // K=1 IS the whole override. (MTimeExpense has NO beforeSave override — no installer exists, stated.)
+  function installMRequisitionSaveHooks(db) {
+    function d(info) { return (info.derived = info.derived || {}); }
+    var H = [
+      ['MRequisition.priceListDefault', function (ctx, info) {
+        var r = info.record;
+        if (Number(r.m_pricelist_id) > 0) return null;
+        var pl = db.prepare("SELECT m_pricelist_id FROM m_pricelist WHERE isdefault='Y' AND issopricelist='N' AND isactive='Y' ORDER BY m_pricelist_id").get()
+              || db.prepare("SELECT m_pricelist_id FROM m_pricelist WHERE isdefault='Y' AND issopricelist='Y' AND isactive='Y' ORDER BY m_pricelist_id").get();
+        if (pl) d(info).m_pricelist_id = Number(pl.m_pricelist_id);
+        return null;
+      }]
+    ];
+    H.forEach(function (h) { registerValidator('M_Requisition', 'BEFORE_SAVE', h[0], h[1]); });
+    return H.length;
+  }
+
   // fireHooks(timing, info, ctx) — run every validator registered for (info.table, timing) IN ORDER; the
   // FIRST non-null error aborts (the iDempiere fireModelChange/fireDocValidate semantics). Returns
   // { timing, table, fired, ok, blocked?, error? }.
@@ -438,7 +676,11 @@
     readValidators: readValidators, installDefaultHooks: installDefaultHooks,
     installMOrderSaveHooks: installMOrderSaveHooks, fireHooks: fireHooks, hooksFor: hooksFor,
     installMInOutSaveHooks: installMInOutSaveHooks, installMInvoiceSaveHooks: installMInvoiceSaveHooks,
-    installMPaymentSaveHooks: installMPaymentSaveHooks, installMMovementSaveHooks: installMMovementSaveHooks
+    installMPaymentSaveHooks: installMPaymentSaveHooks, installMMovementSaveHooks: installMMovementSaveHooks,
+    installMJournalSaveHooks: installMJournalSaveHooks, installMJournalBatchSaveHooks: installMJournalBatchSaveHooks,
+    installMAllocationHdrSaveHooks: installMAllocationHdrSaveHooks, installMCashSaveHooks: installMCashSaveHooks,
+    installMBankStatementSaveHooks: installMBankStatementSaveHooks, installMRMASaveHooks: installMRMASaveHooks,
+    installMRequisitionSaveHooks: installMRequisitionSaveHooks
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;   // node witness
   if (typeof window !== 'undefined') window.AdModelVal = API;                   // browser

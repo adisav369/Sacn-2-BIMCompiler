@@ -115,8 +115,13 @@ echo "== capture allocation oracle (Doc_AllocationHdr posting — Money DEEP hal
 #   The tax base (total + per-tax amounts) is READ from the invoice's OWN posted fact_acct(318) header lines
 #   (line_id NULL) — already captured above, so the correction is a fold of real postings, not invented.
 # NON-INVENT: every account RESOLVED from a real config column; amounts from real c_allocationline.
-PG "SELECT c_allocationhdr_id, docstatus, c_doctype_id, dateacct FROM adempiere.c_allocationhdr WHERE ad_client_id=11 ORDER BY c_allocationhdr_id;" > /tmp/c_allocationhdr.csv
-sqlite3 "$DB" "DROP TABLE IF EXISTS c_allocationhdr; CREATE TABLE c_allocationhdr(c_allocationhdr_id INT, docstatus TEXT, c_doctype_id INT, dateacct TEXT);"
+# doc/header columns (documentno..datetrx) added ADDITIVELY for the H2_ISOMORPH_TAIL MAllocationHdr
+# stored-replay (beforeSave IsActive guard MAllocationHdr.java:305-313 + FSM seed replay).
+PG "SELECT c_allocationhdr_id, docstatus, c_doctype_id, dateacct,
+       documentno, docaction, processing, processed, ad_org_id, ad_client_id, isactive, datetrx::date
+    FROM adempiere.c_allocationhdr WHERE ad_client_id=11 ORDER BY c_allocationhdr_id;" > /tmp/c_allocationhdr.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_allocationhdr; CREATE TABLE c_allocationhdr(c_allocationhdr_id INT, docstatus TEXT, c_doctype_id INT, dateacct TEXT,
+  documentno TEXT, docaction TEXT, processing TEXT, processed TEXT, ad_org_id INT, ad_client_id INT, isactive TEXT, datetrx TEXT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_allocationhdr.csv c_allocationhdr"
 PG "SELECT c_allocationline_id, c_allocationhdr_id, c_invoice_id, c_payment_id, c_cashline_id, c_bpartner_id, round(amount,2), round(discountamt,2), round(writeoffamt,2) FROM adempiere.c_allocationline WHERE ad_client_id=11 ORDER BY c_allocationline_id;" > /tmp/c_allocationline.csv
 sqlite3 "$DB" "DROP TABLE IF EXISTS c_allocationline; CREATE TABLE c_allocationline(c_allocationline_id INT, c_allocationhdr_id INT, c_invoice_id INT, c_payment_id INT, c_cashline_id INT, c_bpartner_id INT, amount REAL, discountamt REAL, writeoffamt REAL);"
@@ -135,8 +140,10 @@ cap c_cashbook_acct   "c_cashbook_id,c_acctschema_id,cb_cashtransfer_acct,cb_ass
 # paymentrule + so/po term + so/po pricelist added ADDITIVELY for MInvoice.setBPartner defaults (H-2.2,
 # MInvoice.java:631-673: location==0 → BP location + term/pricelist/rule flavored by IsSOTrx). NON-INVENT: real columns.
 cap c_bpartner        "c_bpartner_id,c_bp_group_id,paymentrule,c_paymentterm_id,po_paymentterm_id,m_pricelist_id,po_pricelist_id"  "c_bpartner_id INT,c_bp_group_id INT,paymentrule TEXT,c_paymentterm_id INT,po_paymentterm_id INT,m_pricelist_id INT,po_pricelist_id INT"
-PG "SELECT cl.c_cashline_id, c.c_cashbook_id FROM adempiere.c_cashline cl JOIN adempiere.c_cash c ON c.c_cash_id=cl.c_cash_id WHERE cl.ad_client_id=11 ORDER BY cl.c_cashline_id;" > /tmp/c_cashline.csv
-sqlite3 "$DB" "DROP TABLE IF EXISTS c_cashline; CREATE TABLE c_cashline(c_cashline_id INT, c_cashbook_id INT);"
+# c_cash_id + amount added ADDITIVELY for the H2_ISOMORPH_TAIL MCash save witness (StatementDifference
+# = Σ line amounts — the stored stmtdiff's own source, MCash.java:330 ∘ getStatementDifference).
+PG "SELECT cl.c_cashline_id, c.c_cashbook_id, cl.c_cash_id, round(cl.amount,2) FROM adempiere.c_cashline cl JOIN adempiere.c_cash c ON c.c_cash_id=cl.c_cash_id WHERE cl.ad_client_id=11 ORDER BY cl.c_cashline_id;" > /tmp/c_cashline.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_cashline; CREATE TABLE c_cashline(c_cashline_id INT, c_cashbook_id INT, c_cash_id INT, amount REAL);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_cashline.csv c_cashline"
 # FX allocation (schema-200000 EUR): the Spot conversion rate (multiplyrate, USD 100 -> EUR 102, type 114 IsDefault)
 # + the CurrencyBalancing account that absorbs the per-doc rounding imbalance. ADDITIVE (H-1 balance preserved).
@@ -215,9 +222,16 @@ echo "== capture GL_Journal source (Doc_GLJournal posting — manual journal inc
 # C_ValidCombinations) so each org is balanced by an Intercompany Due-To/From line — the SAME schema-GL accounts +
 # rule proven in W-FOLD-MOVEMENT (c_acctschema_gl.intercompanydueto/duefrom_acct → 600/741). We carry the line's
 # C_ValidCombination ORG (the fact line's ad_org_id) so the fold can balance per org. NON-INVENT: real journal rows.
-PG "SELECT gl_journal_id, c_acctschema_id, c_currency_id, c_conversiontype_id, dateacct::date, postingtype, docstatus
+# doc/header columns (documentno..description) added ADDITIVELY for the H2_ISOMORPH_TAIL MJournal
+# stored-replay (beforeSave period/category/schema derives MJournal.java:298-380 + FSM seed replay).
+PG "SELECT gl_journal_id, c_acctschema_id, c_currency_id, c_conversiontype_id, dateacct::date, postingtype, docstatus,
+       documentno, docaction, processing, processed, c_doctype_id, gl_journalbatch_id, datedoc::date,
+       c_period_id, gl_category_id, ad_org_id, ad_client_id, replace(coalesce(description,''),chr(10),' '),
+       coalesce(processedon,0)
     FROM adempiere.gl_journal WHERE ad_client_id=11 ORDER BY gl_journal_id;" > /tmp/gl_journal.csv
-sqlite3 "$DB" "DROP TABLE IF EXISTS gl_journal; CREATE TABLE gl_journal(gl_journal_id INT, c_acctschema_id INT, c_currency_id INT, c_conversiontype_id INT, dateacct TEXT, postingtype TEXT, docstatus TEXT);"
+sqlite3 "$DB" "DROP TABLE IF EXISTS gl_journal; CREATE TABLE gl_journal(gl_journal_id INT, c_acctschema_id INT, c_currency_id INT, c_conversiontype_id INT, dateacct TEXT, postingtype TEXT, docstatus TEXT,
+  documentno TEXT, docaction TEXT, processing TEXT, processed TEXT, c_doctype_id INT, gl_journalbatch_id INT, datedoc TEXT,
+  c_period_id INT, gl_category_id INT, ad_org_id INT, ad_client_id INT, description TEXT, processedon REAL);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/gl_journal.csv gl_journal"
 # currencyrate kept as TEXT (exact decimal, like multiplyrate); account_id + ad_org_id come from the line's
 # C_ValidCombination (the posted fact dimension), falling back to the line's own columns if no combination.
@@ -239,7 +253,9 @@ cap m_pricelist         "m_pricelist_id,name,issopricelist,isdefault,isactive,c_
 # iscanbereactivated gates ACTION_ReActivate per doctype (DocumentEngine.canReactivateThisDocType:1523). ADDITIVE.
 # ad_org_id + isdefault added ADDITIVELY for H-2.2/H-2.4 doctype defaults (MInvoice.setC_DocTypeTarget_ID:804-810
 # ORDER BY IsDefault DESC, AD_Org_ID DESC · MDocType.getOfDocBaseType:68-77 ORDER BY IsDefault DESC, C_DocType_ID).
-cap c_doctype           "c_doctype_id,name,docbasetype,docsubtypeso,issotrx,isactive,iscanbereactivated,ad_org_id,isdefault"  "c_doctype_id INT,name TEXT,docbasetype TEXT,docsubtypeso TEXT,issotrx TEXT,isactive TEXT,iscanbereactivated TEXT,ad_org_id INT,isdefault TEXT"
+# gl_category_id + the two overwrite-on-complete flags added ADDITIVELY for H2_ISOMORPH_TAIL
+# MJournal.beforeSave (GL_Category derive :340-342 · processed-doc frozen doctype/date :350-370).
+cap c_doctype           "c_doctype_id,name,docbasetype,docsubtypeso,issotrx,isactive,iscanbereactivated,ad_org_id,isdefault,gl_category_id,isoverwriteseqoncomplete,isoverwritedateoncomplete"  "c_doctype_id INT,name TEXT,docbasetype TEXT,docsubtypeso TEXT,issotrx TEXT,isactive TEXT,iscanbereactivated TEXT,ad_org_id INT,isdefault TEXT,gl_category_id INT,isoverwriteseqoncomplete TEXT,isoverwritedateoncomplete TEXT"
 cap c_paymentterm       "c_paymentterm_id,name,isdefault,isactive"                             "c_paymentterm_id INT,name TEXT,isdefault TEXT,isactive TEXT"
 # isbillto/ispayfrom/isshipto added ADDITIVELY for MInvoice.setBPartner location pick (H-2.2, MInvoice.java:659-671).
 cap c_bpartner_location "c_bpartner_location_id,c_bpartner_id,isactive,isbillto,ispayfrom,isshipto"  "c_bpartner_location_id INT,c_bpartner_id INT,isactive TEXT,isbillto TEXT,ispayfrom TEXT,isshipto TEXT"
@@ -254,13 +270,63 @@ echo "== capture H-2 deep-delta beforeSave config (prompts/FABLE5_H2_DELTAS.md �
 # + bank-account-mandatory gate (:689-701). ad_clientinfo: MInvoice currency-rate gate reads the PRIMARY schema
 # (MInvoice.java:1259-1261 MClientInfo.C_AcctSchema1_ID). ad_sysconfig CASH_AS_PAYMENT: MPayment.isCashbookTrx
 # (:237-239) consults it (Java default true). NON-INVENT: straight copies of the real config rows.
-cap c_bankaccount "c_bankaccount_id,ad_org_id,isactive"  "c_bankaccount_id INT,ad_org_id INT,isactive TEXT"
+# currentbalance added ADDITIVELY for H2_ISOMORPH_TAIL MBankStatement.beforeSave (BeginningBalance ←
+# ba.CurrentBalance when unprocessed+zero, MBankStatement.java:264-269). NON-INVENT: real column.
+cap c_bankaccount "c_bankaccount_id,ad_org_id,isactive,round(currentbalance,2)"  "c_bankaccount_id INT,ad_org_id INT,isactive TEXT,currentbalance REAL"
 cap ad_clientinfo "ad_client_id,c_acctschema1_id"        "ad_client_id INT,c_acctschema1_id INT"
 PG "SELECT name, value, ad_client_id FROM adempiere.ad_sysconfig WHERE name='CASH_AS_PAYMENT' ORDER BY ad_client_id;" > /tmp/ad_sysconfig.csv
 sqlite3 "$DB" "DROP TABLE IF EXISTS ad_sysconfig; CREATE TABLE ad_sysconfig(name TEXT, value TEXT, ad_client_id INT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/ad_sysconfig.csv ad_sysconfig"
 
+echo "== capture H2_ISOMORPH_TAIL document headers (prompts/H2_ISOMORPH_TAIL.md — the trade-pattern tail) =="
+# The remaining DocAction document families' stored headers + the masters their beforeSave hooks read.
+# NON-INVENT: straight copies of the real client-11 rows; every column feeds a cited hook or the FSM replay.
+# gl_journalbatch: MJournalBatch date/period derives (MJournalBatch.java:946-977) + FSM replay (batch=header-of-headers).
+PG "SELECT gl_journalbatch_id, documentno, docstatus, docaction, processing, processed, c_doctype_id,
+       ad_org_id, ad_client_id, c_period_id, datedoc::date, dateacct::date, round(controlamt,2)
+    FROM adempiere.gl_journalbatch WHERE ad_client_id=11 ORDER BY gl_journalbatch_id;" > /tmp/gl_journalbatch.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS gl_journalbatch; CREATE TABLE gl_journalbatch(gl_journalbatch_id INT, documentno TEXT, docstatus TEXT, docaction TEXT, processing TEXT, processed TEXT, c_doctype_id INT, ad_org_id INT, ad_client_id INT, c_period_id INT, datedoc TEXT, dateacct TEXT, controlamt REAL);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/gl_journalbatch.csv gl_journalbatch"
+# c_cash: MCash.beforeSave org-from-cashbook + EndingBalance derive (MCash.java:321-331) + the CO→VO-only FSM block.
+PG "SELECT c_cash_id, name, docstatus, docaction, processing, processed, c_cashbook_id, ad_org_id, ad_client_id,
+       round(beginningbalance,2), round(endingbalance,2), round(statementdifference,2), dateacct::date
+    FROM adempiere.c_cash WHERE ad_client_id=11 ORDER BY c_cash_id;" > /tmp/c_cash.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_cash; CREATE TABLE c_cash(c_cash_id INT, name TEXT, docstatus TEXT, docaction TEXT, processing TEXT, processed TEXT, c_cashbook_id INT, ad_org_id INT, ad_client_id INT, beginningbalance REAL, endingbalance REAL, statementdifference REAL, dateacct TEXT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/c_cash.csv c_cash"
+# c_cashbook: the org MCash.beforeSave copies (getCashBook().getAD_Org_ID(), :323).
+cap c_cashbook "c_cashbook_id,ad_org_id"  "c_cashbook_id INT,ad_org_id INT"
+# c_bankstatement(+lines): MBankStatement.beforeSave doctype/beginning/ending derives (:258-272) + the RE/VO FSM block.
+PG "SELECT c_bankstatement_id, name, docstatus, docaction, processing, processed, c_doctype_id, c_bankaccount_id,
+       ad_org_id, ad_client_id, round(beginningbalance,2), round(endingbalance,2), round(statementdifference,2), dateacct::date
+    FROM adempiere.c_bankstatement WHERE ad_client_id=11 ORDER BY c_bankstatement_id;" > /tmp/c_bankstatement.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_bankstatement; CREATE TABLE c_bankstatement(c_bankstatement_id INT, name TEXT, docstatus TEXT, docaction TEXT, processing TEXT, processed TEXT, c_doctype_id INT, c_bankaccount_id INT, ad_org_id INT, ad_client_id INT, beginningbalance REAL, endingbalance REAL, statementdifference REAL, dateacct TEXT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/c_bankstatement.csv c_bankstatement"
+PG "SELECT c_bankstatementline_id, c_bankstatement_id, round(stmtamt,2), c_payment_id
+    FROM adempiere.c_bankstatementline WHERE ad_client_id=11 ORDER BY c_bankstatementline_id;" > /tmp/c_bankstatementline.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_bankstatementline; CREATE TABLE c_bankstatementline(c_bankstatementline_id INT, c_bankstatement_id INT, stmtamt REAL, c_payment_id INT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/c_bankstatementline.csv c_bankstatementline"
+# m_rma: MRMA.beforeSave shipment-derives (BP/currency/IsSOTrx-match/SalesRep, MRMA.java:256-297); m_inout already captured FULL.
+PG "SELECT m_rma_id, documentno, docstatus, docaction, processing, processed, c_doctype_id, inout_id,
+       c_bpartner_id, c_currency_id, issotrx, coalesce(salesrep_id,0), coalesce(c_order_id,0), round(amt,2), ad_org_id, ad_client_id
+    FROM adempiere.m_rma WHERE ad_client_id=11 ORDER BY m_rma_id;" > /tmp/m_rma.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_rma; CREATE TABLE m_rma(m_rma_id INT, documentno TEXT, docstatus TEXT, docaction TEXT, processing TEXT, processed TEXT, c_doctype_id INT, inout_id INT, c_bpartner_id INT, c_currency_id INT, issotrx TEXT, salesrep_id INT, c_order_id INT, amt REAL, ad_org_id INT, ad_client_id INT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/m_rma.csv m_rma"
+# m_requisition: MRequisition.beforeSave price-list default (:198-203 ∘ MPriceList.getDefault:111-140).
+PG "SELECT m_requisition_id, documentno, docstatus, docaction, processing, processed, m_pricelist_id,
+       m_warehouse_id, ad_org_id, ad_client_id, datedoc::date
+    FROM adempiere.m_requisition WHERE ad_client_id=11 ORDER BY m_requisition_id;" > /tmp/m_requisition.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_requisition; CREATE TABLE m_requisition(m_requisition_id INT, documentno TEXT, docstatus TEXT, docaction TEXT, processing TEXT, processed TEXT, m_pricelist_id INT, m_warehouse_id INT, ad_org_id INT, ad_client_id INT, datedoc TEXT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/m_requisition.csv m_requisition"
+# s_timeexpense: NO beforeSave override in MTimeExpense.java — header captured for the FSM replay only.
+PG "SELECT s_timeexpense_id, documentno, docstatus, docaction, processing, processed, m_pricelist_id,
+       m_warehouse_id, ad_org_id, ad_client_id
+    FROM adempiere.s_timeexpense WHERE ad_client_id=11 ORDER BY s_timeexpense_id;" > /tmp/s_timeexpense.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS s_timeexpense; CREATE TABLE s_timeexpense(s_timeexpense_id INT, documentno TEXT, docstatus TEXT, docaction TEXT, processing TEXT, processed TEXT, m_pricelist_id INT, m_warehouse_id INT, ad_org_id INT, ad_client_id INT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/s_timeexpense.csv s_timeexpense"
+
 echo "== verify =="
+sqlite3 "$DB" "SELECT '§EXTRACT tail gl_journalbatch='||(SELECT count(*) FROM gl_journalbatch)||' c_cash='||(SELECT count(*) FROM c_cash)||' c_cashbook='||(SELECT count(*) FROM c_cashbook)||' c_bankstatement='||(SELECT count(*) FROM c_bankstatement)||' c_bankstatementline='||(SELECT count(*) FROM c_bankstatementline)||' m_rma='||(SELECT count(*) FROM m_rma)||' m_requisition='||(SELECT count(*) FROM m_requisition)||' s_timeexpense='||(SELECT count(*) FROM s_timeexpense);"
+sqlite3 "$DB" "SELECT '§EXTRACT tail-widened gl_journal(doc-cols)='||(SELECT count(*) FROM gl_journal WHERE documentno IS NOT NULL)||' c_allocationhdr(doc-cols)='||(SELECT count(*) FROM c_allocationhdr WHERE documentno IS NOT NULL)||' c_cashline(amount)='||(SELECT count(*) FROM c_cashline WHERE amount IS NOT NULL)||' c_bankaccount(balance)='||(SELECT count(*) FROM c_bankaccount WHERE currentbalance IS NOT NULL)||' c_doctype(glcat)='||(SELECT count(*) FROM c_doctype WHERE gl_category_id IS NOT NULL);"
 sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' docs='||count(DISTINCT ad_table_id||'/'||record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_elementvalue rows='||count(*) FROM c_elementvalue;"
 for t in ad_window_access ad_process_access ad_form_access ad_workflow_access ad_task_access ad_document_action_access; do
