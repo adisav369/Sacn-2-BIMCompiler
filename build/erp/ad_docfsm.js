@@ -82,6 +82,138 @@
     return { ok: true, doctype: la.doctype, docBaseType: la.docBaseType, from: fromStatus, action: action, to: to, legalActions: la.actions };
   }
 
+  // ── MOrder-specific FSM (H-1.4, ADDITIVE) ────────────────────────────────────────────────────────────
+  // legalActionsOrder(db, rec) — faithful port of DocumentEngine.getValidActions:1008-1090 for C_Order:
+  // the GENERIC status block (:1018-1060) + the Order block (:1065-1090). Narrower than the generic
+  // STATUS_ACTIONS above (which is the whole-engine union): completed ORDERS offer Close/Void(+ReActivate
+  // when the doctype allows) — Reverse-Correct/-Accrual are NOT offered (order reversal rides INSIDE voidIt,
+  // MOrder.java:3016; reverseAccrualIt is not implemented for orders, MOrder.java:3023-3042 returns false).
+  // rec = { docStatus, isSOTrx ('Y'/'N'), doctypeId, processing ('Y' when locked) }. Reads ONLY layer-1 (db).
+  function legalActionsOrder(db, rec) {
+    var a = [];
+    if (rec.processing === 'Y') a.push('XL');                       // :1019-1026 locked → Unlock
+    var s = rec.docStatus;
+    if (s === 'NA') a.push('PR', 'VO');                             // :1029-1033
+    else if (s === 'DR' || s === 'IP' || s === 'IN') a.push('CO', 'PR', 'VO');   // :1035-1042
+    else if (s === 'AP') a.push('CO', 'VO');                        // :1044-1048
+    else if (s === 'CO') a.push('CL');                              // :1050-1053 generic
+    else if (s === 'WP' || s === 'WC') a.push('VO', 'PR');          // :1055-1060
+    // the Order block (:1065-1090)
+    var dt = rec.doctypeId ? db.prepare('SELECT docsubtypeso,iscanbereactivated FROM c_doctype WHERE c_doctype_id=?').get(Number(rec.doctypeId)) : null;
+    if (s === 'CO') {
+      a.push('VO');                                                 // :1080
+      if (dt && dt.iscanbereactivated === 'Y') a.push('RE');        // :1082-1083 canReactivateThisDocType
+    } else if (s === 'WP') {
+      a.push('RE', 'CL');                                           // :1085-1089
+    }
+    return a;
+  }
+
+  // transitionOrder(action, fromStatus, opts) — the RESULTING status for C_Order, per DocumentEngine's
+  // action methods (:436-714 — each sets m_status after document success) with the MOrder deltas:
+  //   CO → 'CO' normally; 'WP' for a Prepay doctype (MOrder.completeIt:2145); 'IP' when DocAction was a
+  //        bare Prepare (:2117 just-prepare). PR → 'IP' (MOrder.prepareIt:1705).
+  //   RC → voidIt internally (MOrder.reverseCorrectIt:3016) → engine status 'RE' (DocumentEngine:648-663).
+  //   RA → null: MOrder.reverseAccrualIt is NOT implemented (always false, :3023-3042) — never succeeds.
+  // opts = { docSubTypeSO } for the prepay split. Pure; doctype-conditioned via opts only.
+  var ORDER_OUTCOME = { XL: 'DR', IN: 'IN', PR: 'IP', AP: 'AP', RJ: 'NA', VO: 'VO', CL: 'CL', RC: 'RE', RA: null, RE: 'IP', PO: null };
+  function transitionOrder(action, fromStatus, opts) {
+    if (action === 'CO') return (opts && opts.docSubTypeSO === 'PR') ? 'WP' : 'CO';
+    if (action === 'PO') return fromStatus;                          // postIt leaves status unchanged (:574-590)
+    return Object.prototype.hasOwnProperty.call(ORDER_OUTCOME, action) ? ORDER_OUTCOME[action] : null;
+  }
+
+  // dispatchOrder(db, rec, action, opts) — gate by the ORDER legal set, then transition (the A-5 seam shape).
+  function dispatchOrder(db, rec, action, opts) {
+    var legal = legalActionsOrder(db, rec);
+    if (legal.indexOf(action) < 0) return { ok: false, reason: 'illegal-action', from: rec.docStatus, action: action, legalActions: legal };
+    var to = transitionOrder(action, rec.docStatus, opts);
+    if (to == null) return { ok: false, reason: action === 'RA' ? 'not-implemented(MOrder.reverseAccrualIt:3042)' : 'no-transition', from: rec.docStatus, action: action };
+    return { ok: true, from: rec.docStatus, action: action, to: to, legalActions: legal };
+  }
+
+  // ── Document-family FSM, table-keyed (H-2, ADDITIVE — prompts/FABLE5_H2_DELTAS.md) ──────────────────
+  // legalActionsFor(db, adTableId, rec) — generalizes legalActionsOrder to the walked DEEP-delta tables:
+  // the GENERIC status block (DocumentEngine.getValidActions:1016-1062) + the per-table narrowing block.
+  // rec adds the two caller-context gates the Java signature passes in (:1009-1010): periodOpen,
+  // isBackDateTrxAllowed. The ReActivate gate reads the REAL c_doctype.iscanbereactivated
+  // (canReactivateThisDocType:1523). Un-walked tables throw — the isomorph tail adds them deliberately,
+  // never silently inherits the generic union (the exact error the per-table narrowing exists to kill).
+  var DOC_FAMILY = {
+    319: { name: 'M_InOut',     reActivate: false },  // MInOut.reActivateIt:2970-2989 always false
+    318: { name: 'C_Invoice',   reActivate: true  },  // MInvoice.reActivateIt:2866+ implemented (gated)
+    335: { name: 'C_Payment',   reActivate: true  },  // MPayment.reActivateIt:2901+ implemented (gated)
+    323: { name: 'M_Movement',  reActivate: false },  // MMovement.reActivateIt:1071-1085 always false
+    321: { name: 'M_Inventory', reActivate: false },  // MInventory.reActivateIt:1200-1214 always false
+    325: { name: 'M_Production',reActivate: false }   // MProduction.reActivateIt:1021-1033 always false
+  };
+  function legalActionsFor(db, adTableId, rec) {
+    if (Number(adTableId) === 259) return legalActionsOrder(db, rec);   // the H-1 port, untouched
+    var fam = DOC_FAMILY[Number(adTableId)];
+    if (!fam) throw new Error('legalActionsFor: ad_table_id ' + adTableId + ' not walked (H-2 family only — add via the isomorph tail, never default to the generic union)');
+    var a = [];
+    if (rec.processing === 'Y') a.push('XL');                           // :1019-1026 locked → Unlock
+    var s = rec.docStatus;
+    if (s === 'NA') a.push('PR', 'VO');                                 // :1029-1033
+    else if (s === 'DR' || s === 'IP' || s === 'IN') a.push('CO', 'PR', 'VO');  // :1035-1042
+    else if (s === 'AP') a.push('CO', 'VO');                            // :1044-1048
+    else if (s === 'CO') a.push('CL');                                  // :1050-1053 generic
+    else if (s === 'WP' || s === 'WC') a.push('VO', 'PR');              // :1055-1060
+    if (s === 'CO') {                                                   // the per-table Completed block
+      var dt = rec.doctypeId ? db.prepare('SELECT iscanbereactivated FROM c_doctype WHERE c_doctype_id=?').get(Number(rec.doctypeId)) : null;
+      var canReact = !!(dt && dt.iscanbereactivated === 'Y');
+      var po = !!rec.periodOpen, bd = !!rec.isBackDateTrxAllowed;
+      var t = Number(adTableId);
+      if (t === 319 || t === 323 || t === 321 || t === 325) {           // InOut :1096-1106 · Movement+Inventory :1200-1213 · Production :1233-1244
+        if (po && bd) a.push('RC');
+        a.push('RA');
+      } else if (t === 318) {                                           // Invoice :1108-1125
+        if (po) { if (canReact) a.push('RE'); if (bd) a.push('RC'); }
+        a.push('RA');
+      } else if (t === 335) {                                           // Payment :1127-1141
+        if (po) { a.push('RC'); if (canReact) a.push('RE'); }
+        a.push('RA');
+      }
+    }
+    return a;
+  }
+
+  // transitionFor(adTableId, action, fromStatus) — the RESULTING status per the class's action methods:
+  //   PR → IP / CO → CO (every walked class's prepareIt/completeIt success return — MInOut.java:1614/2596,
+  //   MInvoice.java:1814/2347, MPayment.java:2006/2153, MMovement.java:365/697, MInventory.java:449/739,
+  //   MProduction.java:634/222). VO from an UNPROCESSED status (DR/IP/IN/AP/NA) → VO; VO from CO DELEGATES
+  //   to reverseCorrectIt (period open + back-date allowed) or reverseAccrualIt — both set DOCSTATUS_Reversed,
+  //   and DocumentEngine.voidIt PRESERVES it (:616-618 "if (!getDocStatus().equals(STATUS_Reversed))") → RE.
+  //   RC/RA → RE (implemented in all six). RE → IP where the class implements reActivateIt (Invoice/Payment),
+  //   null where the body always returns false (InOut/Movement/Inventory/Production). PO → unchanged.
+  function transitionFor(adTableId, action, fromStatus) {
+    var fam = DOC_FAMILY[Number(adTableId)];
+    if (!fam) return null;
+    if (action === 'CO') return 'CO';
+    if (action === 'PR') return 'IP';
+    if (action === 'PO') return fromStatus;
+    if (action === 'RE') return fam.reActivate ? 'IP' : null;
+    if (action === 'VO') {
+      if ('DR,IP,IN,AP,NA'.indexOf(fromStatus) >= 0) return 'VO';       // not-processed branch
+      if (fromStatus === 'CO' || fromStatus === 'WP' || fromStatus === 'WC') return 'RE';  // reversal delegation
+      return null;                                                      // CL/RE/VO: "Document Closed"
+    }
+    var GENERIC = { XL: 'DR', IN: 'IN', AP: 'AP', RJ: 'NA', CL: 'CL', RC: 'RE', RA: 'RE' };
+    return Object.prototype.hasOwnProperty.call(GENERIC, action) ? GENERIC[action] : null;
+  }
+
+  // dispatchFor(db, adTableId, rec, action) — gate by the per-table legal set, then transition (A-5 seam).
+  function dispatchFor(db, adTableId, rec, action) {
+    var legal = legalActionsFor(db, adTableId, rec);
+    if (legal.indexOf(action) < 0) return { ok: false, reason: 'illegal-action', from: rec.docStatus, action: action, legalActions: legal };
+    var to = transitionFor(adTableId, action, rec.docStatus);
+    if (to == null) {
+      var fam = DOC_FAMILY[Number(adTableId)];
+      return { ok: false, reason: action === 'RE' ? 'not-implemented(' + fam.name + '.reActivateIt returns false)' : 'no-transition', from: rec.docStatus, action: action };
+    }
+    return { ok: true, from: rec.docStatus, action: action, to: to, legalActions: legal };
+  }
+
   // reachableStatuses() — every status reachable as a transition TARGET (the FSM's range; vs the engine's 2).
   function reachableStatuses() {
     var s = {}; Object.keys(TRANSITION).forEach(function (a) { var m = TRANSITION[a]; Object.keys(m).forEach(function (f) { s[m[f]] = 1; }); });
@@ -90,7 +222,9 @@
 
   var API = {
     STATUS_ACTIONS: STATUS_ACTIONS, TRANSITION: TRANSITION, readDocType: readDocType,
-    legalActions: legalActions, transition: transition, dispatch: dispatch, reachableStatuses: reachableStatuses
+    legalActions: legalActions, transition: transition, dispatch: dispatch, reachableStatuses: reachableStatuses,
+    legalActionsOrder: legalActionsOrder, transitionOrder: transitionOrder, dispatchOrder: dispatchOrder,
+    DOC_FAMILY: DOC_FAMILY, legalActionsFor: legalActionsFor, transitionFor: transitionFor, dispatchFor: dispatchFor
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;   // node witness
   if (typeof window !== 'undefined') window.AdDocFsm = API;                     // browser

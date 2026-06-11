@@ -29,14 +29,22 @@ So the migratable denominator is **1 document archetype (fully captured) + ~25 d
 
 | MOrder surface | Real content (from MOrder.java) | Engine hook | Equivalence status |
 |---|---|---|---|
-| **Metadata (I/O)** | `C_Order`/`C_OrderLine` columns: type/reference/default/readonly/mandatory/display logic | `ad_evaluator` + `ad_access` + `ad_reference` + `ad_valrule` | 🟡 surface-interpreted on real AD rows; **not oracle-diffed** |
-| **`beforeSave` invariants** | PriceList_ID · M_Warehouse_ID · DateOrdered · C_DocTypeTarget_ID · BPartner id/location · credit-status | `ad_modelval` BEFORE_SAVE timing | 🟡 mechanism built; `hasLines`/`total≥0` ported; **the pricelist/credit/warehouse derivations = the delta** |
-| **`DocAction` lifecycle** | `prepareIt` · `completeIt` · `reopenIt` (+ the inherited void/close/reverseCorrect/reverseAccrual/reActivate set) over `DocumentEngine`/WfMC | `ad_process` + DocAction dispatch | ✅ **`completeIt` oracle-equivalent** — the full Order→Ship→Invoice fan-out chain folds `maxDiff=0c` (W-FOLD-COMPLETE); standalone `completeIt(C_Invoice)`+MatchInv folded (W-FOLD-INVOICE); the **void/reverseCorrect** set is now oracle-anchored — engine reversal + real `fact_acct` nets to zero, FSM CO→RE (W-FOLD-REVERSE). **Residual:** reverseAccrual booked-date (no `c_period` in seed) |
-| **Posting (GL derivation)** | `Doc_Order.java` debit/credit derivation from the lines + acct-config | `post_resolver` / `poc_post_derive` | ✅ **oracle-diffed**: `Doc_Invoice`(318) **sales AND purchase** (W-FOLD-AP-INVOICE: CR V_Liability / DR InventoryClearing, 4/4)/`Doc_InOut`(319)/`Doc_Payment`(335)/`Doc_AllocationHdr`(735, incl. tax-correction) all `maxDiff=0c` vs real `fact_acct`. **Residual:** `Doc_Order` commitment note · allocation schema-200000 = a delta |
-| **Callouts** | qty/price/bpartner field-change derivations | `ad_callout` dispatch (mechanism, W-CALLOUT) | 🟡 spine built; **the bound callout classes = the delta** |
+| **Metadata (I/O)** | `C_Order`/`C_OrderLine` columns: type/reference/default/readonly/mandatory/display logic | `ad_evaluator` + `ad_access` + `ad_reference` + `ad_valrule` | ✅ **oracle-equivalent for the 3 SQL-grounded engines** (H-3: W-VALRULE-HARDEN 10/10 · W-REFERENCE-HARDEN 12/12 · W-ACCESS-HARDEN 15/15 — membership/verdict == live Postgres, diff=0). **Residual:** `ad_evaluator` display-logic verdict (live-render, parked UI bridge) |
+| **`beforeSave` invariants** | PriceList_ID · M_Warehouse_ID · DateOrdered · C_DocTypeTarget_ID · BPartner id/location · credit-status | `ad_modelval` BEFORE_SAVE timing | ✅ **oracle-equivalent (W-MORDER-SAVE)** — `MOrder.java:1183-1396` as 11 cited hooks: 8/8 stored orders accept w/ 0 contradictions; Bill/Currency defaults re-derive stored 8/8; pricelist/term/doctype defaults = the Java query (EXPLICIT picks named); foreign location CLEARED (:1243); 4 reject paths fire (client=0 · warehouse+ctx-fallback · prepay+cash conjunctive · CannotChangePl). **Residual:** :1361 pricelist-version date twin (no `m_pricelist_version` in capture); credit-status lives at prepareIt (lifecycle row) |
+| **`DocAction` lifecycle** | `prepareIt` · `completeIt` · `reopenIt` (+ the inherited void/close/reverseCorrect/reverseAccrual/reActivate set) over `DocumentEngine`/WfMC | `ad_process` + DocAction dispatch + `ad_docfsm.legalActionsOrder/transitionOrder` | ✅ **`completeIt` oracle-equivalent** (W-FOLD-COMPLETE chain · W-FOLD-INVOICE standalone) + **void/reverseCorrect oracle-anchored** (W-FOLD-REVERSE nets-to-zero, CO→RE) + **the FULL action FSM oracle-equivalent (W-MORDER-FSM)** — legal sets + outcomes == the runtime-PARSED `DocumentEngine.getValidActions:1008-1090`/action methods + MOrder deltas (prepay CO→WP; **RA not implemented on orders** :3042; completed orders offer CL/VO/(RE) only — the per-table narrowing), 23+12 fixtures + 8/8 stored replays diff=0. **Residual:** reverseAccrual booked-date n/a (RA unreachable on MOrder — proven, not deferred) |
+| **Posting (GL derivation)** | `Doc_Order.java` debit/credit derivation from the lines + acct-config | `post_resolver` / `poc_post_derive` | ✅ **oracle-diffed**: `Doc_Invoice`(318) **sales AND purchase** (W-FOLD-AP-INVOICE: CR V_Liability / DR InventoryClearing, 4/4)/`Doc_InOut`(319)/`Doc_Payment`(335)/`Doc_AllocationHdr`(735, incl. tax-correction) all `maxDiff=0c` vs real `fact_acct` + **per-document LINE granularity closed (W-MORDER-POST)**: `Doc_Order` proper = the oracle's ZERO set gated by real `commitmenttype='N'` (falsifier flips the gate) and the whole order chain — incl. **receipts DR Asset / CR NotInvoicedReceipts @ qty×PO-price** — diffs per (record, line_id, account, side), 7/8 `diff=0c` (1 named drift). **Residual:** commitment-ON posting unreachable in seed (offset accts uncaptured, named) · allocation schema-200000 = a delta (folded, see matrix) |
+| **Callouts** | qty/price/bpartner field-change derivations | `ad_callout` dispatch (mechanism, W-CALLOUT) | ✅ **oracle-equivalent (W-CALLOUT-HARDEN, H-3)** — `CalloutOrder.product` price derive 27/27 + `CalloutOrder.amt` 26/27 == live Postgres stored (1 named price-drift residual, the doc-109 pattern). **Residual:** the 139 unbound callout atoms (corpus, named) |
 
 **"Got MOrder" means: this table fully GREEN to behavioural equivalence** — every cell oracle-diffed against a
 running iDempiere, not merely surface-interpreted. That is the one archetype proof the backend arc should target.
+
+**✅ REACHED (2026-06-11, the H-1 Fable lane — `prompts/FABLE5_MORDER_EQUIVALENCE.md`).** All five rows are
+GREEN by diff: metadata via the H-3 SQL-grounded engines, beforeSave via W-MORDER-SAVE, the full DocAction FSM
+via W-MORDER-FSM (oracle parsed from the checkout at runtime), posting via W-MORDER-POST at per-fact-LINE
+granularity over the W-FACTACCT-DOC row-faithful capture, callouts via W-CALLOUT-HARDEN. Named residuals (not
+gaps): `ad_evaluator` display-logic render verdict (UI bridge) · commitment-ON posting + pricelist-version date
+gate (data absent in seed) · the 139 unbound callout atoms (corpus). The reusable oracle-diff TEMPLATE for H-2:
+**stored-state oracle + runtime source-parse + live-PG row-diff + a load-bearing §FALSIFIER per surface.**
 
 ## The document family — the ~25 isomorphs, each a measured delta from MOrder
 
@@ -55,6 +63,20 @@ Every class below has `completeIt` (the document shape). The delta from MOrder i
 locator, `MPayment` allocation, `MProduction` BOM explosion, `MInventory` physical count, `MAllocationHdr`
 (headerless). These ~5 carry genuinely document-specific logic; the rest are the trade pattern with a different
 line table and poster.
+
+**✅ H-2 CONFIRMED-BY-DIFF (2026-06-11, the Fable H-2 lane — `prompts/FABLE5_H2_DELTAS.md`).** The deep
+deltas are now WALKED, not assumed: `MInOut` (save W-MINOUT-SAVE + FSM W-MINOUT-FSM, 9 stored docs),
+`MInvoice` (W-MINVOICE-SAVE/-FSM, 8 docs), `MPayment` (W-MPAYMENT-SAVE/-FSM, 2 docs — the whole seed,
+stated), `MMovement`+`MInventory`+`MProduction` FSM (W-MINVENTORY-FAMILY-FSM; Movement's 1 doc replayed,
+Inventory/Production = source-parse only, no-seed ⛔ stated). Each = the H-1 template verbatim: stored-state
+oracle + gate-aware RUNTIME parse of `DocumentEngine.getValidActions`/the class's action methods + a
+load-bearing §FALSIFIER. The MEASURED family fact the walk surfaced: the per-table Completed blocks carry
+**three distinct gate nestings** — InOut/Movement/Inventory/Production (RC ⊂ periodOpen∧backDate),
+Invoice (RE and RC both ⊂ the periodOpen frame), Payment (RC ⊂ periodOpen only) — and `reActivateIt` is
+implemented ONLY on Invoice/Payment; `voidIt` on any processed family doc delegates to the reversal pair and
+lands `RE` (DocumentEngine:616-618 preserves it). Posting for all walked classes was ALREADY oracle-folded
+(table below) — cited, not redone. The remaining family rows are the trade-pattern isomorphs:
+`prompts/H2_ISOMORPH_TAIL.md` specs them for cheap-model replication.
 
 **Oracle-folded so far (the deepest deltas first, each `§FOLD-COMPLETE … maxDiff=0c` vs real GardenWorld):**
 
@@ -77,8 +99,12 @@ line table and poster.
 | **MProduction backflush** | W-FOLD-BACKFLUSH | recursive BOM explosion == path-enumeration (recipe-equivalent; `m_production`=0 in seed) |
 | **MProduction movement** | W-FOLD-PRODUCTION | enacted P+/P- ledger folds through the qty spine (finished +Q / leaf −used); rule-consistent, GL named-deferred (component cost absent) |
 | **MInventory count** | W-FOLD-INVENTORY | enacted I± folds on-hand→counted + GL `\|adjQty\|×cost` balances; rule-consistent, offset acct named-deferred |
+| **MInOut save + FSM** (H-2.1) | W-MINOUT-SAVE / W-MINOUT-FSM | beforeSave 5-hook port == 9 stored docs (movement-type/delivery-rule MUST; salesrep = measured source-evolution drift) + per-table FSM == gate-aware runtime parse (154 fixtures; RC ⊂ periodOpen∧backDate, RE not implemented, VO@CO→RE) |
+| **MInvoice save + FSM** (H-2.2) | W-MINVOICE-SAVE / W-MINVOICE-FSM | beforeSave 8-hook port == 8 stored docs (setBPartner so/po flavors, ARI\|API target, EUR currency-rate gate via captured ad_clientinfo) + the NESTED periodOpen gate frame (145 fixtures; RE implemented→IP) |
+| **MPayment save + FSM** (H-2.3) | W-MPAYMENT-SAVE / W-MPAYMENT-FSM | beforeSave 10-hook port == 2 stored docs (K=2 honest; CASH_AS_PAYMENT sysconfig gate, org←bank-account, BP==invoice's BP) + the third gate nesting (101 fixtures; RC ⊂ periodOpen only) |
+| **Inventory-family FSM** (H-2.4) | W-MINVENTORY-FAMILY-FSM | Movement+Inventory share one source block; Production same shape (161 fixtures); Movement's 1 doc replayed + doctype-default derive; Inventory/Production stored-replay ⛔ no-seed (stated) |
 
-**Score: 14 of the ~40 oracle-targets cent/unit-equivalent + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)** — and they are the deepest deltas
+**Score: 14 of the ~40 oracle-targets cent/unit-equivalent + 7 MODEL-LAYER surfaces (H-1 MOrder save/FSM/post/capture + H-2 the deep-family save/FSM walk → ledger total THIRTY-ONE oracle-equivalent rows in [ERP_COVERAGE_MATRIX.md](ERP_COVERAGE_MATRIX.md)) + 1 recipe-equivalent + 2 rule-consistent (enacted, no seed oracle)** — and they are the deepest deltas
 (the whole Money family — sales AND purchase invoice posting, allocation in BOTH accounting schemas, the MatchInv
 clearing loop **in both schemas** — + the inventory loop incl. the inter-org MMovement cost transfer **in both schemas**). **Logic-folded is no longer
 ~0.2%**: the trade-doc loop (order→ship→invoice→**match-posting**→pay→allocate) and the inventory loop

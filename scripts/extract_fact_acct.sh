@@ -124,14 +124,17 @@ sqlite3 "$DB" ".mode csv" ".import /tmp/c_allocationline.csv c_allocationline"
 # acct-config the allocation resolver needs (the discount/writeoff/cash-transfer accounts + the tax-correction policy):
 # costingmethod + m_costtype_id added ADDITIVELY for M_Movement cost selection (the schema's costing method picks
 # the m_costelement, which keys m_cost.currentcostprice). NON-INVENT: real columns.
-cap c_acctschema      "c_acctschema_id,c_currency_id,taxcorrectiontype,ispostifclearingequal,costingmethod,m_costtype_id"  "c_acctschema_id INT,c_currency_id INT,taxcorrectiontype TEXT,ispostifclearingequal TEXT,costingmethod TEXT,m_costtype_id INT"
+# commitmenttype added ADDITIVELY for H-1.2 (Doc_Order gate: isCreatePO/SOCommitment — MAcctSchema.java:635/649).
+cap c_acctschema      "c_acctschema_id,c_currency_id,taxcorrectiontype,ispostifclearingequal,costingmethod,m_costtype_id,commitmenttype"  "c_acctschema_id INT,c_currency_id INT,taxcorrectiontype TEXT,ispostifclearingequal TEXT,costingmethod TEXT,m_costtype_id INT,commitmenttype TEXT"
 # v_liability_acct + notinvoicedreceipts_acct added ADDITIVELY for the AP-invoice (purchase) manifest:
 #   Doc_Invoice !IsSOTrx posts CR {BPGroup.V_Liability}=GrandTotal / DR {BPGroup.NotInvoicedReceipts}=linenet
 #   (matched receipt lines). Both are BP-group accounts (vary by vendor's C_BP_Group). NON-INVENT: real columns.
 cap c_bp_group_acct   "c_bp_group_id,c_acctschema_id,paydiscount_exp_acct,writeoff_acct,v_liability_acct,notinvoicedreceipts_acct"  "c_bp_group_id INT,c_acctschema_id INT,paydiscount_exp_acct INT,writeoff_acct INT,v_liability_acct INT,notinvoicedreceipts_acct INT"
 cap c_cashbook_acct   "c_cashbook_id,c_acctschema_id,cb_cashtransfer_acct,cb_asset_acct,cb_receipt_acct" "c_cashbook_id INT,c_acctschema_id INT,cb_cashtransfer_acct INT,cb_asset_acct INT,cb_receipt_acct INT"
 # bpartner->group hop (discount/writeoff acct is keyed by BP group) + cashline->cashbook hop (cash-transfer acct).
-cap c_bpartner        "c_bpartner_id,c_bp_group_id"                                                     "c_bpartner_id INT,c_bp_group_id INT"
+# paymentrule + so/po term + so/po pricelist added ADDITIVELY for MInvoice.setBPartner defaults (H-2.2,
+# MInvoice.java:631-673: location==0 → BP location + term/pricelist/rule flavored by IsSOTrx). NON-INVENT: real columns.
+cap c_bpartner        "c_bpartner_id,c_bp_group_id,paymentrule,c_paymentterm_id,po_paymentterm_id,m_pricelist_id,po_pricelist_id"  "c_bpartner_id INT,c_bp_group_id INT,paymentrule TEXT,c_paymentterm_id INT,po_paymentterm_id INT,m_pricelist_id INT,po_pricelist_id INT"
 PG "SELECT cl.c_cashline_id, c.c_cashbook_id FROM adempiere.c_cashline cl JOIN adempiere.c_cash c ON c.c_cash_id=cl.c_cash_id WHERE cl.ad_client_id=11 ORDER BY cl.c_cashline_id;" > /tmp/c_cashline.csv
 sqlite3 "$DB" "DROP TABLE IF EXISTS c_cashline; CREATE TABLE c_cashline(c_cashline_id INT, c_cashbook_id INT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_cashline.csv c_cashline"
@@ -152,13 +155,16 @@ echo "== capture the inter-org M_Movement (FOLD_MODEL_LOGIC.md REMAINING-TAIL �
 # Doc_Movement posts at the product's current cost (schema costing method → cost element → m_cost.currentcostprice).
 # Inter-org (from-locator org ≠ to-locator org): DR/CR Product Asset (inventory in/out) + DR IntercompanyDueFrom /
 # CR IntercompanyDueTo, each = round(movementqty × cost, 2). NON-INVENT: real lines + real cost + real config.
-PG "SELECT m_movement_id, ad_org_id, docstatus FROM adempiere.m_movement WHERE ad_client_id=11 ORDER BY m_movement_id;" > /tmp/m_movement.csv
-sqlite3 "$DB" "DROP TABLE IF EXISTS m_movement; CREATE TABLE m_movement(m_movement_id INT, ad_org_id INT, docstatus TEXT);"
+# documentno/docaction/c_doctype_id/processing/movementdate added ADDITIVELY for the H-2.4 MMovement
+# stored-replay (beforeSave doctype default MMovement.java:212-222 + FSM seed replay). NON-INVENT: real columns.
+PG "SELECT m_movement_id, ad_org_id, docstatus, documentno, docaction, c_doctype_id, processing, movementdate::date FROM adempiere.m_movement WHERE ad_client_id=11 ORDER BY m_movement_id;" > /tmp/m_movement.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_movement; CREATE TABLE m_movement(m_movement_id INT, ad_org_id INT, docstatus TEXT, documentno TEXT, docaction TEXT, c_doctype_id INT, processing TEXT, movementdate TEXT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/m_movement.csv m_movement"
 PG "SELECT m_movementline_id, m_movement_id, m_product_id, round(movementqty,2), m_locator_id, m_locatorto_id FROM adempiere.m_movementline WHERE ad_client_id=11 ORDER BY m_movementline_id;" > /tmp/m_movementline.csv
 sqlite3 "$DB" "DROP TABLE IF EXISTS m_movementline; CREATE TABLE m_movementline(m_movementline_id INT, m_movement_id INT, m_product_id INT, movementqty REAL, m_locator_id INT, m_locatorto_id INT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/m_movementline.csv m_movementline"
-cap m_warehouse       "m_warehouse_id,ad_org_id"                "m_warehouse_id INT,ad_org_id INT"
+# isdisallownegativeinv added ADDITIVELY for MInOut.beforeSave deliveryRule derive (H-2.1, MInOut.java:1320-1324).
+cap m_warehouse       "m_warehouse_id,ad_org_id,isdisallownegativeinv"  "m_warehouse_id INT,ad_org_id INT,isdisallownegativeinv TEXT"
 
 echo "== capture the inventory MOVEMENT LEDGER (m_transaction — StorageOnHand qty spine, FOLD_MODEL_LOGIC.md §F-2 task #2) =="
 # m_transaction is iDempiere's immutable per-movement ledger; MStorageOnHand.qtyonhand is maintained in lockstep
@@ -223,6 +229,37 @@ PG "SELECT jl.gl_journalline_id, jl.gl_journal_id, jl.line, coalesce(vc.account_
 sqlite3 "$DB" "DROP TABLE IF EXISTS gl_journalline; CREATE TABLE gl_journalline(gl_journalline_id INT, gl_journal_id INT, line INT, account_id INT, ad_org_id INT, currencyrate TEXT, amtsourcedr REAL, amtsourcecr REAL, amtacctdr REAL, amtacctcr REAL);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/gl_journalline.csv gl_journalline"
 
+echo "== capture MOrder.beforeSave + DocAction-FSM master config (FABLE5_MORDER_EQUIVALENCE.md §H-1.3/§H-1.4) =="
+# MOrder.beforeSave derives defaults FROM these masters (MOrder.java:1183-1396): default price list
+# (IsSOPriceList matching IsSOTrx, ORDER BY IsDefault DESC, :1282), currency from the price list (:1292),
+# default payment term (IsDefault='Y', :1315), BP-location/user consistency (:1236-1267), prepay+cash
+# reject via DocType.DocSubTypeSO (:1373). c_doctype also keys the H-1.4 FSM (legalActions per doctype).
+# NON-INVENT: straight copies of the real config rows the stored c_order values were derived from.
+cap m_pricelist         "m_pricelist_id,name,issopricelist,isdefault,isactive,c_currency_id"  "m_pricelist_id INT,name TEXT,issopricelist TEXT,isdefault TEXT,isactive TEXT,c_currency_id INT"
+# iscanbereactivated gates ACTION_ReActivate per doctype (DocumentEngine.canReactivateThisDocType:1523). ADDITIVE.
+# ad_org_id + isdefault added ADDITIVELY for H-2.2/H-2.4 doctype defaults (MInvoice.setC_DocTypeTarget_ID:804-810
+# ORDER BY IsDefault DESC, AD_Org_ID DESC · MDocType.getOfDocBaseType:68-77 ORDER BY IsDefault DESC, C_DocType_ID).
+cap c_doctype           "c_doctype_id,name,docbasetype,docsubtypeso,issotrx,isactive,iscanbereactivated,ad_org_id,isdefault"  "c_doctype_id INT,name TEXT,docbasetype TEXT,docsubtypeso TEXT,issotrx TEXT,isactive TEXT,iscanbereactivated TEXT,ad_org_id INT,isdefault TEXT"
+cap c_paymentterm       "c_paymentterm_id,name,isdefault,isactive"                             "c_paymentterm_id INT,name TEXT,isdefault TEXT,isactive TEXT"
+# isbillto/ispayfrom/isshipto added ADDITIVELY for MInvoice.setBPartner location pick (H-2.2, MInvoice.java:659-671).
+cap c_bpartner_location "c_bpartner_location_id,c_bpartner_id,isactive,isbillto,ispayfrom,isshipto"  "c_bpartner_location_id INT,c_bpartner_id INT,isactive TEXT,isbillto TEXT,ispayfrom TEXT,isshipto TEXT"
+cap ad_user             "ad_user_id,c_bpartner_id,isactive"                                    "ad_user_id INT,c_bpartner_id INT,isactive TEXT"
+# DocAction (135) + DocStatus (131) vocabularies — the FSM's action/status domain (AD data, not code).
+PG "SELECT ad_ref_list_id, ad_reference_id, value, name FROM adempiere.ad_ref_list WHERE ad_reference_id IN (131,135) ORDER BY ad_reference_id, value;" > /tmp/ad_ref_list.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS ad_ref_list; CREATE TABLE ad_ref_list(ad_ref_list_id INT, ad_reference_id INT, value TEXT, name TEXT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/ad_ref_list.csv ad_ref_list"
+
+echo "== capture H-2 deep-delta beforeSave config (prompts/FABLE5_H2_DELTAS.md — MInOut/MInvoice/MPayment) =="
+# c_bankaccount: MPayment.beforeSave org-derive (MPayment.java:780-787 — ba.AD_Org_ID!=0 → payment org follows)
+# + bank-account-mandatory gate (:689-701). ad_clientinfo: MInvoice currency-rate gate reads the PRIMARY schema
+# (MInvoice.java:1259-1261 MClientInfo.C_AcctSchema1_ID). ad_sysconfig CASH_AS_PAYMENT: MPayment.isCashbookTrx
+# (:237-239) consults it (Java default true). NON-INVENT: straight copies of the real config rows.
+cap c_bankaccount "c_bankaccount_id,ad_org_id,isactive"  "c_bankaccount_id INT,ad_org_id INT,isactive TEXT"
+cap ad_clientinfo "ad_client_id,c_acctschema1_id"        "ad_client_id INT,c_acctschema1_id INT"
+PG "SELECT name, value, ad_client_id FROM adempiere.ad_sysconfig WHERE name='CASH_AS_PAYMENT' ORDER BY ad_client_id;" > /tmp/ad_sysconfig.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS ad_sysconfig; CREATE TABLE ad_sysconfig(name TEXT, value TEXT, ad_client_id INT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/ad_sysconfig.csv ad_sysconfig"
+
 echo "== verify =="
 sqlite3 "$DB" "SELECT '§EXTRACT fact_acct rows='||count(*)||' docs='||count(DISTINCT ad_table_id||'/'||record_id)||' Dr='||round(sum(amtacctdr),2)||' Cr='||round(sum(amtacctcr),2)||' diff='||round(sum(amtacctdr-amtacctcr),2) FROM fact_acct;"
 sqlite3 "$DB" "SELECT '§EXTRACT c_elementvalue rows='||count(*) FROM c_elementvalue;"
@@ -242,3 +279,6 @@ sqlite3 "$DB" "SELECT '§EXTRACT m_transaction rows='||count(*)||' (p,l,asi)-cel
 sqlite3 "$DB" "SELECT '§EXTRACT m_replenish='||count(*)||' active(type<>0)='||sum(CASE WHEN replenishtype<>'0' THEN 1 ELSE 0 END)||' m_locator='||(SELECT count(*) FROM m_locator)||' reservations='||(SELECT count(*) FROM m_storagereservation) FROM m_replenish;"
 sqlite3 "$DB" "SELECT '§EXTRACT m_matchinv rows='||count(*)||' PO-invoices='||count(DISTINCT c_invoice_id) FROM m_matchinv;"
 sqlite3 "$DB" "SELECT '§EXTRACT gl_journal='||count(*)||' lines='||(SELECT count(*) FROM gl_journalline)||' orgs='||(SELECT count(DISTINCT ad_org_id) FROM gl_journalline)||' fact_acct(224)='||(SELECT count(*) FROM fact_acct WHERE ad_table_id=224) FROM gl_journal;"
+sqlite3 "$DB" "SELECT '§EXTRACT c_acctschema commitmenttype(101/200000)='||group_concat(commitmenttype) FROM c_acctschema ORDER BY c_acctschema_id;"
+sqlite3 "$DB" "SELECT '§EXTRACT m_pricelist='||count(*)||' c_doctype='||(SELECT count(*) FROM c_doctype)||' c_paymentterm='||(SELECT count(*) FROM c_paymentterm)||' c_bpartner_location='||(SELECT count(*) FROM c_bpartner_location)||' ad_user='||(SELECT count(*) FROM ad_user)||' ad_ref_list(131,135)='||(SELECT count(*) FROM ad_ref_list) FROM m_pricelist;"
+sqlite3 "$DB" "SELECT '§EXTRACT c_bankaccount='||count(*)||' ad_clientinfo='||(SELECT count(*) FROM ad_clientinfo)||' ad_sysconfig(CASH_AS_PAYMENT)='||(SELECT count(*) FROM ad_sysconfig)||' m_movement(doc-cols)='||(SELECT count(*) FROM m_movement WHERE c_doctype_id IS NOT NULL) FROM c_bankaccount;"

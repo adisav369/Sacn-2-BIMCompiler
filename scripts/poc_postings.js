@@ -125,12 +125,14 @@ var MANIFEST = {
     'off-by-1c fact → gate DISCRIMINATES, falls back to coverage=partial (not a tautology)', 'source=' + pd.source + ' cov=' + pd.coverage);
   console.log('§POSTED-COVERAGE off-by-1c fact → source=' + pd.source + ' coverage=' + pd.coverage + ' (cent-gate rejects mismatch)');
 
-  // ── honesty check — the REAL bundled fact_acct has NO record key → complete unreachable on it ──
+  // ── honesty check — the §13.6 re-extract LANDED (H-1 W-FACTACCT-DOC): the bundled fact_acct now
+  // carries ad_table_id/record_id on every row (proven row-identical to live PG) → per-record
+  // complete IS reachable on real data. The original totals-only expectation awaited exactly this.
   var gb = new Database(GLASSBOWL, { readonly: true });
   var gbFactQ = function (sql, p) { return gb.prepare(sql).all(p || []); };
   var realHasKey = P.factHasRecordKey(gbFactQ);
-  verdict(realHasKey === false, 'bundled fact_acct is TOTALS (no ad_table_id/record_id) → per-record complete needs §13.6 re-extract', 'factHasRecordKey=' + realHasKey);
-  console.log('§POSTED-COVERAGE bundled-fact recordKeyed=' + (realHasKey ? 'Y' : 'N') + ' → real-data complete=UNREACHABLE (await §13.6 re-extract)');
+  verdict(realHasKey === true, 'bundled fact_acct is RECORD-KEYED (ad_table_id/record_id — the §13.6 re-extract, W-FACTACCT-DOC) → per-record complete reachable on real data', 'factHasRecordKey=' + realHasKey);
+  console.log('§POSTED-COVERAGE bundled-fact recordKeyed=' + (realHasKey ? 'Y' : 'N') + ' → real-data complete=REACHABLE (§13.6 re-extract landed, W-FACTACCT-DOC)');
   gb.close();
 
   ad.close(); projDb.close();
