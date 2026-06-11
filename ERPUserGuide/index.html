@@ -2611,13 +2611,63 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#9-warehouse-walk-s-1-compiled-s-2s-5-in-progress" class="md-nav__link">
+  <a href="#9-warehouse-walk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        9. Warehouse Walk (§S-1 compiled — §S-2..S-5 in progress)
+        9. Warehouse Walk
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="9. Warehouse Walk">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-you-see" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What you see
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#warehouse-walk-pill-inside-the-viewer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Warehouse Walk pill (inside the viewer)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#share" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Share
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3956,6 +4006,8 @@
       
         
       
+        
+      
     
     
     
@@ -4043,7 +4095,35 @@
   <span class="md-ellipsis">
     
   
-    User Guide
+    User Guide (start here)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM User Guide
   
 
     
@@ -4071,7 +4151,7 @@
   <span class="md-ellipsis">
     
   
-    BIM Designer Guide
+    BIM Designer Guide (deprecated)
   
 
     
@@ -4548,13 +4628,63 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#9-warehouse-walk-s-1-compiled-s-2s-5-in-progress" class="md-nav__link">
+  <a href="#9-warehouse-walk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        9. Warehouse Walk (§S-1 compiled — §S-2..S-5 in progress)
+        9. Warehouse Walk
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="9. Warehouse Walk">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-you-see" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What you see
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#warehouse-walk-pill-inside-the-viewer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Warehouse Walk pill (inside the viewer)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#share" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Share
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4653,6 +4783,9 @@
 <h1 id="idempiere-browser-erp-user-guide">iDempiere Browser ERP — User Guide<a class="headerlink" href="#idempiere-browser-erp-user-guide" title="Permanent link">&para;</a></h1>
 <p><em>The browser kernel renders the full iDempiere Application Dictionary from SQLite — no Java, no server,
 no install. This guide walks from first load to POS sale to financial report.</em></p>
+<blockquote>
+<p><strong>New here?</strong> Start at the <a href="../USER_GUIDE/">BIM OOTB User Guide</a> for the full picture.</p>
+</blockquote>
 <p><img alt="The landing page — &quot;The Server Is Obsolete&quot; — explains the concept before you open the app" src="../figs/glassbowl_landing.png" /></p>
 <blockquote>
 <p><strong>Where to read the full concept:</strong> the landing page links to
@@ -4882,15 +5015,81 @@ The suggestion list shows at the bottom of the cart panel.</p>
 <p>The <strong>⎙ Print</strong> button on an invoice form opens a single-page print view generated from the real
 <code>AD_PrintFormat</code> metadata — not a template, a fold of the dictionary's print format rows.</p>
 <hr />
-<h2 id="9-warehouse-walk-s-1-compiled-s-2s-5-in-progress">9. Warehouse Walk (§S-1 compiled — §S-2..S-5 in progress)<a class="headerlink" href="#9-warehouse-walk-s-1-compiled-s-2s-5-in-progress" title="Permanent link">&para;</a></h2>
-<p>The warehouse app compiles the GardenWorld warehouse as a BIM-like spatial model
-(<code>warehouse_gardenworld.db</code>, 61 KB — 11 bins == <code>m_locator</code>). Current status:</p>
-<ul>
-<li><strong>§S-1</strong> ✅ — warehouse compiled; bins map to real <code>m_locator_id</code> values; render gate green.</li>
-<li><strong>§S-2</strong> 🟡 — route verb (<code>wh_route.js</code>) built; sorts pick lines by the spatial walk sequence
-  (<code>m_bom_line.ordinal</code>); <code>poc_wh_route.js</code> witness pending deploy.</li>
-<li><strong>§S-3..S-5</strong> ⛔ — walk UI (phone-first fly-to + lens), QR scan, signed put-away op.</li>
-</ul>
+<h2 id="9-warehouse-walk">9. Warehouse Walk<a class="headerlink" href="#9-warehouse-walk" title="Permanent link">&para;</a></h2>
+<p>The <strong>Warehouse</strong> pill (box icon ◫) on the iDempiere bottom bar opens the GardenWorld warehouse
+as a live 3D spatial model — a new tab pointing at the short GH Pages URL
+(<code>viewer/viewer.html?db=../buildings/warehouse_gardenworld.db</code>). No login required for the viewer;
+the ⌂ home button in the top-left flies you back to iDempiere.</p>
+<h3 id="what-you-see">What you see<a class="headerlink" href="#what-you-see" title="Permanent link">&para;</a></h3>
+<p>The warehouse is compiled from real <code>m_locator</code> records — 11 bins arranged in two rows on a
+flat floor, each bin's position derived from the GardenWorld ERP inventory schema (not hand-drawn).
+26 elements total: 11 bin boxes (IfcBuildingElementProxy, each GUID == <code>m_locator_id</code>) + ground slab.</p>
+<p><img alt="Warehouse overview — 11 bins on the GardenWorld floor, top-down isometric" src="../figs/wh_overview.png" /></p>
+<p><strong>Controls (same as the BIM viewer):</strong>
+- <strong>Orbit</strong> — click-drag or one-finger drag
+- <strong>Zoom</strong> — scroll wheel or pinch
+- <strong>Pan</strong> — middle-drag or two-finger drag
+- <strong>Reset</strong> — double-tap / double-click</p>
+<h3 id="warehouse-walk-pill-inside-the-viewer">Warehouse Walk pill (inside the viewer)<a class="headerlink" href="#warehouse-walk-pill-inside-the-viewer" title="Permanent link">&para;</a></h3>
+<p>The <strong>Walk</strong> pill (📦 bottom bar) appears only when the loaded db has locator-GUID bins — the §S-1
+compile stamps both <code>m_bom_line</code> BIN rows and the element GUIDs with real <code>m_locator_id</code> values.
+Any other building → the pill stays off the bar.</p>
+<p><strong>Walk flow:</strong></p>
+<ol>
+<li><strong>Open</strong> — tap the Walk pill. The engine builds a draft <code>M_Movement</code> pick list from
+   replenishment needs (<code>qtyOnHand</code> fold vs <code>m_replenish.level_min</code>).</li>
+<li><strong>Fly</strong> — the camera flies to the first bin; the target bin is highlighted bright blue; the rack
+   group is shown as a solid overlay; all other geometry is ghosted (x-ray dim 0.1).</li>
+<li><strong>Scan</strong> — tap <strong>Scan bin</strong> to:</li>
+<li>Use the device camera (<code>BarcodeDetector</code> / <code>getUserMedia</code>) to scan the bin's QR label, or</li>
+<li>Type the locator ID in the fallback field.
+   Wrong bin is refused ("wrong bin, expected …"). Correct bin moves to the next step.</li>
+<li><strong>Complete</strong> — after all bins the strip shows <strong>Walk complete ✓</strong>. A single signed
+   <code>M_Movement CO</code> is committed through <code>KernelOps.commitGroup</code>; <code>qtyOnHand</code> is folded from the
+   op-log (no direct DB write).</li>
+</ol>
+<p><img alt="Walk complete on mobile — M_Movement CO, on-hand folded (4 bins, all match)" src="../figs/wh_walk_complete.png" /></p>
+<h3 id="implementation-status">Implementation status<a class="headerlink" href="#implementation-status" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Status</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>§S-1</strong> ✅</td>
+<td>Compiled</td>
+<td>Bins map to real <code>m_locator_id</code>; render gate green (61 KB db, GH Pages)</td>
+</tr>
+<tr>
+<td><strong>§S-2</strong> ✅</td>
+<td>Route verb</td>
+<td><code>wh_route.js</code> sorts pick lines by spatial walk sequence (<code>m_bom_line.ordinal</code>)</td>
+</tr>
+<tr>
+<td><strong>§S-3</strong> ✅</td>
+<td>Walk UI</td>
+<td>Phone-first fly-to strip; depth model (ghost/rack/bin); step strip + camera easing</td>
+</tr>
+<tr>
+<td><strong>§S-4</strong> ✅</td>
+<td>QR scan</td>
+<td><code>BarcodeDetector</code> + typed fallback; wrong-bin refusal gate</td>
+</tr>
+<tr>
+<td><strong>§S-5</strong> ✅</td>
+<td>Signed op</td>
+<td><code>M_Movement CO</code> via <code>KernelOps.commitGroup</code>; on-hand folded from op-log</td>
+</tr>
+</tbody>
+</table>
+<h3 id="share">Share<a class="headerlink" href="#share" title="Permanent link">&para;</a></h3>
+<p>Tap the <strong>⌂ share</strong> route from the Warehouse pill action or the viewer share button to copy
+the short GH Pages URL for this walk session. The URL is self-contained — opening it on a phone
+immediately lands on the spatial model ready for the walk.</p>
 <hr />
 <h2 id="10-clearing-cache-resetting-demo-data">10. Clearing Cache / Resetting Demo Data<a class="headerlink" href="#10-clearing-cache-resetting-demo-data" title="Permanent link">&para;</a></h2>
 <p>The app state lives in <strong>IndexedDB</strong> (key <code>bim_erp_db</code>, version 14). To reset to a clean demo:</p>
