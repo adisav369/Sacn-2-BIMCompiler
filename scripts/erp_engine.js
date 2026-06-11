@@ -16,6 +16,13 @@
  * Everything dispatches by `form`.
  */
 'use strict';
+// UMD (docs/ERP_BACKEND_SEPARATION audit (c): the browser copy is a UMD of THIS file, no silent fork) —
+// node: module.exports (unchanged) · browser: window.ERPEngine (the POS lens consumes it, POS_ADDON_SPEC §P-2).
+(function (root, factory) {
+  var api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (root) root.ERPEngine = api;
+})(typeof window !== 'undefined' ? window : null, function () {
 
 // ── Gap closers (the two breakages the probe found) ──────────────────────────
 // @ctx@ substitution: iDempiere injects record/global context into rule SQL.
@@ -266,9 +273,10 @@ function completeInvoice(invoice, lines, policy) {
   return ops;
 }
 
-module.exports = {
+return {
   resolveCtx: resolveCtx, dialectShim: dialectShim, evalGuard: evalGuard,
   match: match, buildDoc: buildDoc, DOC_SPECS: DOC_SPECS, explodeBOM: explodeBOM,
   movementSign: movementSign, qtyOnHand: qtyOnHand, reversePosting: reversePosting,
   VERBS: VERBS, completeOrder: completeOrder, completeInvoice: completeInvoice
 };
+});

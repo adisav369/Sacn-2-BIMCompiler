@@ -455,6 +455,10 @@ listed for visibility and route to their own prompt/lane.
   richest — regenerated WITH session tables) · `sampleerp_ad_seed.db`(Excel 4/20). `idempiere.html?seed=` loader wired (UNCOMMITTED, bim-ootb).
 
 ## 2. THE WORK — bounded, agent-assignable items (next session sequences + fans these out)
+> **THE DESTINATION REACHED (2026-06-11):** the write-path rails this section built now carry their first
+> addon — the **POS lens** (`docs/POS_ADDON_SPEC.md` §P-1..§P-4, `prompts/POS_LENS_SESSION.md # DONE`):
+> ring → ONE signed group (order+ship+invoice+backflush, WR from the dictionary) → replenishment fold.
+> W-POS-* ×4 headless + W-POS-LIVE green; newVerbs=[]; deploy awaiting explicit GO.
 **Chosen first (user):** fold A+B1+F into ONE bim-ootb deploy PR off `origin/main`. Engine-lane order for the write path: C → D → B2.
 
 | ID | Item | Files (edit-only) | Witness | Depends on | Parallel? |

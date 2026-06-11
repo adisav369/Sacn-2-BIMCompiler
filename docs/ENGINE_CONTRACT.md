@@ -47,6 +47,16 @@ The UI makes only these calls. Each carries a **context** (§2) that the engine 
 That is the whole boundary. `read` serves both master data and the fold (both are just rows from the
 engine's point of view); `dispatch` is the sole mutation path; the other three are read-only metadata.
 
+> **First addon over this contract — the POS lens (2026-06-11, [POS_ADDON_SPEC](POS_ADDON_SPEC.md)).**
+> `pos_lens.js` is a pure consumer: tiles/prices via the seed reads, Complete = ONE signed group through
+> `kernel_ops.commitGroup` on the page's published op log (`window.ERP.opDb`), sealed + chain-verified by
+> the same `seal`/`chainVerify` the Kanban write path rides. The group is COMPOSED of existing verbs only —
+> `buildDoc` (order) · `completeOrder` (SET_STATUS CO + `createShipment`/`createInvoice` fan-out, policy
+> DERIVED from `C_DocType.docsubtypeso='WR'`) · `explodeBOM` (backflush CONSUME leaves, 'P-' polarity) ·
+> `completeInvoice` · `qtyOnHand` (replenishment fold) — **newVerbs=[] witnessed** (W-POS-RING / W-POS-WR /
+> W-POS-BACKFLUSH / W-POS-REPLENISH headless + W-POS-LIVE wiring). The addon needed no fifth thing
+> (no own persistence, no forked engine) — the FOLD-not-FORK gate held.
+
 ## §2 The context — identity, role, scope (carried on every call)
 
 `ctx` is what makes "owner/role of client" an engine concern, enforced once, here:

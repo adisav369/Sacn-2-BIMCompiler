@@ -7,8 +7,15 @@ BOM **backflush** and **replenishment** — the same loop RED1 shipped in the 20
 deleted. Doctrine: [The POS Lens](POSLens.md). Roadmap home: item 1 of the
 [Migrate & Compare paper's roadmap](MigrateComparisonPaper.md#v-roadmap).*
 
-> **Status: SPEC.** Nothing here is built beyond what §2 lists as proven. Build sessions take
-> `prompts/POS_LENS_SESSION.md` (the gated work-order) with this document as the addon contract.
+> **Status: §P-1..§P-4 BUILT + WITNESSED (2026-06-11, `prompts/POS_LENS_SESSION.md` `# DONE`).**
+> Engine side: `build/erp/pos_core.js` (pure fold glue over the existing verbs, newVerbs=[]) —
+> W-POS-RING · W-POS-WR · W-POS-BACKFLUSH · W-POS-REPLENISH all green (`build/erp/poc_pos_*.log`).
+> Lens side: `erp/pos_lens.js` + the `pos` pill (showWhen:pos-station) on idempiere.html —
+> W-POS-LIVE green on localhost (bim-ootb branch `feat/pos-lens`, deploy awaiting explicit GO).
+> §P-5 multi-station stays out of scope (named below). The matrix "POS lens" row stays PENDING:
+> §5's bar is a LIVE ring folded to the cent — the to-the-cent leg is proven headless on the
+> acct-linked db (W-POS-WR), but the live ad_seed.db lacks posting linkage (the same data-gate as
+> Posting-Preview; lighting it = `prompts/MIGRATE_POSTING_CONFIG.md`).
 > Clean-room rule: Unicenta is defunct and the plugin code private — behaviour is spec'd from the
 > public wiki + RED1's own design; **no code is copied**.
 

@@ -18,6 +18,19 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
+## POS lens addon — §P-1..§P-4 BUILT + WITNESSED, deploy HELD for GO (2026-06-11, `prompts/POS_LENS_SESSION.md # DONE`)
+- **Engine:** `build/erp/pos_core.js` — pure fold glue over the existing verbs (buildDoc/completeOrder/
+  completeInvoice/explodeBOM/qtyOnHand), **newVerbs=[] witnessed**. 4 headless witnesses green
+  (`scripts/poc_pos_{ring,wr,backflush,replenish}.js` → `build/erp/poc_pos_*.log`, all exit 0):
+  16/16 dictionary tiles to-the-cent · ONE signed 12-op group (tamper tears it) · WR fan-out from
+  `docsubtypeso` · backflush == explodeBOM == path-enumeration · replenish fold == iDempiere formula,
+  incl. THE TAIL (consumed component crosses its own min). `scripts/erp_engine.js` UMD-wrapped (audit (c)).
+- **Lens:** bim-ootb branch `feat/pos-lens` (worktree, NOT deployed) — `pos_lens.js` dumb terminal +
+  `pos` pill (showWhen:pos-station data-gate) on idempiere.html riding `window.ERP.opDb`+commitGroup.
+  **W-POS-LIVE green** (`poc_pos_live.js`): gated pill, signed group chainOk=Y live, replenish panel.
+- **Next:** deploy on explicit GO (sw v652 train) · matrix "POS lens" row pends a LIVE to-the-cent ring
+  (needs posting-config seed, `prompts/MIGRATE_POSTING_CONFIG.md`) · §P-5 multi-station named-deferred.
+
 ## ERP backend-gap arc (2026-06-09, `feat/erp-substrate-phase012`) — `prompts/ERP_BACKEND_GAP.md`
 - **§0 SEPARATION DESIGN SPEC ✅** `docs/ERP_BACKEND_SEPARATION.md` — 3-layer invariant (DECLARATION/INTERPRETATION/LOG-FOLD), per-concern (A-1…A-6) source-slice + module boundary + compose-seam + anti-coupling rule; two risk seams pinned (posting↔workflow, callout↔valrule).
 - **A-1 Posting GL derivation ✅ (re-verdict, NOT greenfield)** — derivation already existed (§13 plugin: `scripts/post_resolver.js` + `poc_post.js`). Re-proven on canonical `ad_full.db`: `scripts/poc_post_derive.js`→`build/erp/poc_post_derive.log` `§POST_DERIVE doc=C_Invoice id=100 lines=3 ΣDR=ΣCR=50.35 bal=0` (+ §FALSIFIER). Matrix Posting row + GAP #8 corrected (pre-fold→derived); **1 of 20 Doc_* derived, 19 named-deferred**. Count unchanged (Posting was already 🟡 — this fixed misleading prose).

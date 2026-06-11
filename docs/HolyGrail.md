@@ -191,6 +191,11 @@ logged — which is the difference between building and day-dreaming.
 ## Abstracting the DocAction corpus — and why it is the migration solvent
 
 > **How much of the corpus is folded today → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md):** of the 14 DocActions × 52 C_DocTypes, the engine interprets **only `CO`** (Complete) — the other 13 actions and the per-doctype FSM are a ⛔ gap. The de-interleaved transition table is also the storage opcode table (`poc_oc_bytes.js` `§OPCODE-TABLE`).
+>
+> **2026-06-11 — the recipe runs LIVE at a point of sale:** the POS addon ([POS_ADDON_SPEC](POS_ADDON_SPEC.md))
+> dispatches the `WR` (on-the-fly shipment+invoice) DocAction recipe as ONE signed op group on `idempiere.html` —
+> order→CO + ship + invoice + BOM backflush + replenishment fold, all existing verbs (W-POS-WR: replay-equal to
+> the engine's own specs; tamper breaks `verifyChain`; the invoice posting == real `fact_acct(318)` to the cent).
 
 The grail edits *rules*; the most valuable rules govern a document's *lifecycle* — *when may
 this complete, and what does completion do.* So the engine must express the whole iDempiere
