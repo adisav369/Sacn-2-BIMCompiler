@@ -12,6 +12,13 @@
 //      baseline, == iDempiere formula headless).
 //   5. HONESTY — Complete with an EMPTY cart or NO partner refuses (no silent commit; seed
 //      c_pos.BPartnerCashTrx is NULL → explicit choice required).
+//   6. §POS-CENT (MIGRATE_POSTING_CONFIG matrix flip) — the rung sale's DERIVED POSTING balances to the
+//      cent on the NEW DEFAULT seed: fold the SIGNED group's C_Order+C_OrderLine ops into the loaded
+//      ad_seed.db (read-the-tip materialization, in-memory only), run the FOLD-frozen
+//      window.DocPoster.derivePostings (R=window.PostResolver, db=window.ERPPreview.facade) →
+//      coverage=complete (posting config resolves BP 112 receivable + every rung product's revenue),
+//      Dr==Cr, integer-cent equality vs the sealed cart total (maxDiff=0c). Proves the cent ring lights
+//      on the DEFAULT db — no ?db= override. EXTRACTED from the poc_pos_wr.js cent-check; zero new verbs.
 // Run: ERP_ROOT=/tmp/wt-poslens/erp node scripts/poc_pos_live.js  (default ROOT=~/bim-ootb/erp)
 const { chromium } = require(process.env.HOME + '/bim-ootb/tests/node_modules/playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -84,7 +91,46 @@ const server = http.createServer((q, r) => {
   const replRows = await pg.$eval('.pos-replenish', e => e.textContent);
   if (!replRows.includes('order')) fail('suggestion rows not rendered on-screen');
 
-  console.log('\n' + (pass ? '🟢 W-POS-LIVE PASS — the POS lens rides the rails live: gated pill, 16 dictionary tiles, one signed group (chainOk=Y, newVerbs=[]), live replenishment fold, refusals honest.'
+  // ── 6. §POS-CENT — the rung sale's derived posting balances to the cent on the DEFAULT seed ──
+  console.log('— 5. §POS-CENT: derive posting for the completed live order (frozen DocPoster on the default seed)');
+  const cent = await pg.evaluate(() => {
+    try {
+      if (!window.DocPoster || !window.PostResolver || !window.ERPPreview) return { err: 'posting engine not loaded (DocPoster/PostResolver/ERPPreview)' };
+      // EXTRACT the completed order from the SIGNED group — the sidecar op-log is the truth
+      const od = window.ERP.opDb;
+      const r = od.exec('SELECT op_type, parameters FROM kernel_ops ORDER BY id');
+      const ops = ((r[0] && r[0].values) || []).map(v => Object.assign({ op_type: v[0] }, JSON.parse(v[1])));
+      const docOp = ops.filter(o => o.op_type === 'CREATE_DOCUMENT' && o.table === 'C_Order').pop();
+      if (!docOp) return { err: 'no CREATE_DOCUMENT C_Order in the signed sidecar' };
+      const lineOps = ops.filter(o => o.op_type === 'CREATE_LINE' && o.table === 'C_OrderLine' && Math.floor(o.source_line_id / 100) === docOp.c_order_id);
+      if (!lineOps.length) return { err: 'no C_OrderLine ops for order ' + docOp.c_order_id };
+      // FOLD the signed ops into the loaded seed (in-memory tip materialization; sealed master amounts only)
+      const db = window.__idmpDb;
+      const totalCents = lineOps.reduce((s, l) => s + Math.round(l.linenetamt * 100), 0);
+      db.run('INSERT INTO C_Order (C_Order_ID, AD_Client_ID, C_BPartner_ID, C_DocType_ID, M_Warehouse_ID, IsSOTrx, GrandTotal, DocStatus) VALUES (?,?,?,?,?,?,?,?)',
+        [docOp.c_order_id, 11, docOp.c_bpartner_id, docOp.c_doctype_id, docOp.m_warehouse_id, 'Y', totalCents / 100, 'CO']);
+      lineOps.forEach(l => db.run('INSERT INTO C_OrderLine (C_OrderLine_ID, C_Order_ID, M_Product_ID, QtyOrdered, PriceActual, LineNetAmt) VALUES (?,?,?,?,?,?)',
+        [l.source_line_id, docOp.c_order_id, l.m_product_id, l.qtyordered, l.priceactual, l.linenetamt]));
+      // the FROZEN derivation, exactly the Posting-Preview path (facade + PostResolver injected)
+      const fdb = window.ERPPreview.facade(db);
+      const schema = fdb.prepare('SELECT c_acctschema_id s FROM c_acctschema LIMIT 1').get().s;
+      const d = window.DocPoster.derivePostings(fdb, { table: 'C_Order', id: docOp.c_order_id }, schema, window.PostResolver);
+      const coverage = d.absent.length ? ('partial(' + d.absent.join(',') + ')') : 'complete';
+      const maxDiff = Math.max(Math.abs(d.sumDr - d.sumCr), Math.abs(d.sumDr - totalCents));
+      return { orderId: docOp.c_order_id, basis: d.basis, coverage, balanced: d.balanced, sumDr: d.sumDr, sumCr: d.sumCr, totalCents, maxDiff, accounts: d.lines.length };
+    } catch (e) { return { err: String(e) }; }
+  });
+  if (cent.err) fail('§POS-CENT probe failed: ' + cent.err);
+  else {
+    console.log('  §POS-CENT live db=ad_seed.db order=' + cent.orderId + ' basis=' + cent.basis + ' accounts=' + cent.accounts +
+      ' coverage=' + cent.coverage + ' balanced=' + (cent.balanced ? 'Y' : 'N') +
+      ' Dr=' + (cent.sumDr / 100).toFixed(2) + ' Cr=' + (cent.sumCr / 100).toFixed(2) +
+      ' cartCents=' + cent.totalCents + ' maxDiff=' + cent.maxDiff + 'c');
+    if (cent.coverage !== 'complete') fail('§POS-CENT coverage not complete (posting config did not resolve): ' + cent.coverage);
+    if (!cent.balanced || cent.maxDiff !== 0) fail('§POS-CENT not balanced to the cent: Dr=' + cent.sumDr + ' Cr=' + cent.sumCr + ' cart=' + cent.totalCents);
+  }
+
+  console.log('\n' + (pass ? '🟢 W-POS-LIVE PASS — the POS lens rides the rails live: gated pill, 16 dictionary tiles, one signed group (chainOk=Y, newVerbs=[]), live replenishment fold, §POS-CENT derived posting balanced to the cent on the DEFAULT seed, refusals honest.'
     : '🔴 W-POS-LIVE FAIL'));
   await br.close(); server.close();
   process.exit(pass ? 0 : 1);

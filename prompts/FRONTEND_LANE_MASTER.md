@@ -66,6 +66,36 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶▶▶ SESSION HANDOFF 2026-06-12b — POSTING CONFIG SHIPPED (`prompts/MIGRATE_POSTING_CONFIG.md` → # DONE; 2 parallel lanes + serial train, bim-ootb PR #271 sw v653, IDB ad_seed_v15) ▶▶▶**
+> - **✅ SEED + CLIENT 13 (iDempiere):** `export_ad.sh` now pulls `fact_acct` (client 11 from `idempiere_test`, 300 rows
+>   TB 46574.97 — doc-id sets verified identical across both PG dbs); the six acct-config tables were ALREADY in the
+>   manifest (the card's "pulls NONE" premise was a wrapper-grep artifact). REAL BUG found+fixed: `gen_ad_idmp.sh`
+>   lacked `fact_acct_id` in the re-band FAMILIES → un-banded tenant ledger PK-collided with the seed's rows →
+>   `INSERT OR IGNORE` silently dropped it (the #5-install bug class, one table later) — `§REBAND fact_acct.fact_acct_id
+>   +1300000 rows=300`. `§MIGRATE-POSTCFG client=11|13 tokens_resolved=3/3 coverage=complete balanced=Y` ·
+>   `oracle=fact_acct(318) maxDiff=0c` · §FALSIFIER load-bearing (W-MIGRATE-POSTCFG, `poc_migrate_postcfg_idmp.log`).
+> - **✅ CLIENT 12 (Odoo):** `gen_ad_odoo.js` §5d honesty fixes — `{Product.Asset}` from
+>   `property_stock_valuation_account_id` (was a COPY of expense = the one invented token, now real) · tax acct from
+>   `account_tax_repartition_line.account_id` · `c_acctschema_default` carries the company defaults (`ir_property
+>   res_id NULL`; odoodemo = Odoo 17, properties live in ir_property, zero per-record overrides). `§MIGRATE-POSTCFG
+>   client=12 tokens_resolved=5/5 coverage=complete balanced=Y` · `§FRAME-FIT … oracle=live odoodemo maxDiff=0c
+>   verdict=ORACLE-EQUIVALENT` (`poc_migrate_postcfg_odoo.log`). Lane files committed bim-compiler 0986251b.
+> - **✅ DEPLOY TRAIN (PR #271, squash 81dd2b3, sw v652→v653, IDB ad_seed_v14→v15 on idempiere.html ×5 + erp.html ×2;
+>   glassbowl carries no ad_seed refs):** ships regenerated `erp/ad_seed.db` (26,144,768 B) + `13-idempiere.db` +
+>   `12-odoo.db`; orphan-checked via ls-tree sizes; live: sw v653 + `§LIVE-POSTCFG … fact_acct rows=300 ΣDR=ΣCR=46574.97
+>   TB-balanced=Y → PASS` on the live page. **TWO FLIPS LIT LIVE:** `§POS-CENT live db=ad_seed.db order=910001
+>   coverage=complete balanced=Y Dr=137.75 Cr=137.75 cartCents=13775 maxDiff=0c` (the POS matrix row's pending bar —
+>   CLOSED) · `§AD-PROC-LIVE proc=310 name="Trial Balance" … ok=Y rows=21` (the fact_acct honest-empty residual —
+>   CLOSED; `poc_ad_process_live.js` seed-gap assertion updated to the new truth, the one sanctioned witness edit).
+>   Regressions green: W-AD-DOCFSM-LIVE · W-POS-LIVE (+ new §POS-CENT step) · W-MIGRATE-POSTCFG re-run on the worktree.
+> - **Residuals:** Posting-Preview/Accts-Posted now have resolvable config on the DEFAULT db (was `?db=preview_demo.db`
+>   data-gated) — on-screen visual confirm pending (log≠visual proof) · station-wh-104 replenish honesty unchanged.
+> - **▶ Warehouse entry icon = ANSWERED 2026-06-12: user says YES** — landing icon/card like the POS cart (POC demo);
+>   executing in its OWN Sonnet session via `prompts/WAREHOUSE_GH_LINK_PILL.md` (user expanded it to 5 items). ⚠ THAT
+>   CARD'S ITEM 3 IS STALE: `feat/pos-lens` is NOT held — it MERGED as PR #269 (sw v652) earlier today; the Sonnet
+>   session must skip the cherry-pick and just verify the pos pill on origin/main. Short deep link target:
+>   `viewer/viewer.html?db=../buildings/warehouse_gardenworld.db` once the db lands in-repo; OCI URL until then.
+>
 > **▶▶▶ SESSION HANDOFF 2026-06-12 — MULTI-LANE WAVE 2 (POS train · spatial §S-2..§S-5 · HARDEN B-1, `prompts/MULTI_LANE_LAUNCH.md # DONE — 2026-06-12 wave 2`) ▶▶▶**
 > **✅ ALL THREE LANES DONE + DEPLOYED (serial train, zero orphaned squashes — #138/#265 trap did not fire either time):**
 > - **✅ LANE 1 — POS lens §P-1..§P-4 DEPLOYED (bim-ootb PR #269, sw v651→v652, LIVE-VERIFIED on Pages).** The held
@@ -73,7 +103,7 @@ listed for visibility and route to their own prompt/lane.
 >   re-run on the bumped tree exit 0 — `§POS-LIVE open station=100 tiles=16 priced=16 handAuthored=0` ·
 >   `§POS-SALE … newVerbs=[] chainOk=Y ops=12 sealed=12` · `§POS-DOC order=910001 completeIt ok` ·
 >   `§POS-LIVE-REPLENISH suggestions=8`. Squash d8d3adf5 orphan-checked; Pages serves v652 (CI-minified — use
->   quote-agnostic greps). **Matrix "POS lens" addon row LIVE; pends the live to-the-cent ring** (posting-config
+>   quote-agnostic greps). **Matrix "POS lens" addon row LIVE; pends the live to-the-cent ring → CLOSED in 06-12b above (§POS-CENT maxDiff=0c)** (posting-config
 >   data-gate, `prompts/MIGRATE_POSTING_CONFIG.md`). Ledger: `prompts/POS_LENS_SESSION.md ## DEPLOY DONE`.
 > - **✅ LANE 2 — Spatial picking §S-2..§S-5 BUILT + DEPLOYED (bim-ootb PR #270, viewer sw v642→v643, LIVE-VERIFIED).**
 >   Route = `m_bom_line.ordinal` walk order (`§W-WH-ROUTE PASS`: deterministic, permutation-invariant, each-line-once,
@@ -83,8 +113,8 @@ listed for visibility and route to their own prompt/lane.
 >   `warehouse_gardenworld.db` → OCI COMMON bucket (md5-verified; OCI_UPLOAD.md §RULES followed over the card's
 >   dev-bucket line — conflict flagged); LIVE Pages probe `§W-WH-LIVE-PAGES PASS` (no cubes, `§WH PILL gate=on` on
 >   the COMMON-bucket deep-link). Matrix addon rows §S-2..§S-5 ✅ LIVE. Residuals: camera QR unverified on a physical
->   phone · offline walk = §P-5 sync-FSM v2 · manifest.json landing card = ⛔ BLOCKED: card-vs-deep-link-only is a
->   user product choice (deep-link proven live either way).
+>   phone · offline walk = §P-5 sync-FSM v2 · manifest.json landing card = ⛔→ANSWERED, see 06-12b block above
+>   (user says YES, Sonnet session executes `prompts/WAREHOUSE_GH_LINK_PILL.md`).
 > - **✅ LANE 3 — HARDEN B-1 logic-evaluator oracle-diff (bim-compiler a77827cc, no deploy).** `ad_evaluator` ==
 >   the REAL compiled iDempiere SimpleBooleanParser+EvaluationVisitor (headless via `scripts/logic_oracle/
 >   LogicOracle.java`) over 2751 live-PG record-grounded fixtures: `§HARDEN surface=ad_evaluator fixtures=2751

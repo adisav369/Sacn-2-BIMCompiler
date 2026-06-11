@@ -5,8 +5,9 @@
 //      dispatches directly + renders real rows (rows = count(c_doctype) = 52, a seed fact not a guess).
 //   2. Param dialog (leaf 502 'Trial Balance' → proc 310, 15 ad_process_para fields, 2 mandatory): Run with
 //      C_AcctSchema_ID EMPTY is REJECTED by the spine's prepare gate (§PROC_PARAM_VALIDATE, NO dispatch);
-//      fill 101 (real c_acctschema row) → dispatches via report_overlay.foldTrialBalance — fact_acct is NOT
-//      carried in ad_seed.db so the statement folds HONEST-EMPTY (rows=0, §-named seed scope).
+//      fill 101 (real c_acctschema row) → dispatches via report_overlay.foldTrialBalance — fact_acct IS
+//      now carried in ad_seed.db (MIGRATE_POSTING_CONFIG, 300 rows TB 46574.97) so TB folds REAL ROWS (>0).
+//      [assertion updated 2026-06-12: the old honest-empty seed-gap (`no such table: fact_acct`) is CLOSED.]
 //   3. REGISTERED REPORT proc renders rows: ?process=110 deep link (Order Print → report:c_order →
 //      foldReceipt over real c_order/c_orderline) — receipt table rows > 0.
 //   4. FALSIFIER: leaf 543 'Order Detail' (proc 333, BLANK classname, not in registry) must show the honest
@@ -68,8 +69,11 @@ const server = http.createServer((q, r) => {
   await pg.waitForSelector('.idmp-procresult', { timeout: 8000 }).catch(() => fail('no result card for proc 310'));
   const l310 = logs.find(t => t.startsWith('§AD-PROC-LIVE proc=310'));
   if (!l310 || !l310.includes('classname=org.compiere.report.TrialBalance') || !l310.includes('dispatched=Y ok=Y')) fail('proc 310 did not dispatch ok: ' + l310);
+  // seed-gap CLOSED (MIGRATE_POSTING_CONFIG): fact_acct(300) ships on ad_seed.db → TB must fold REAL rows
+  const tbRows = l310 ? Number((l310.match(/rows=(\d+)/) || [0, 0])[1]) : 0;
+  if (tbRows <= 0) fail('TrialBalance folded 0 rows — fact_acct posting-config seed missing (gap was CLOSED, must stay closed)');
   const gap = await pg.$eval('.idmp-procresult .gap', e => e.textContent).catch(() => '');
-  if (!gap.includes('fact_acct')) fail('honest-empty TB did not name the fact_acct seed gap');
+  if (gap.includes('fact_acct')) fail('result card still names the fact_acct seed gap despite rows=' + tbRows);
 
   // ── 3. registered REPORT proc renders rows (deep link, procSet-gated) ──
   console.log('— 3. Order Print (proc 110, report:c_order) via ?process=110 deep link');

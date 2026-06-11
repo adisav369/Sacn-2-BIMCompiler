@@ -26,9 +26,19 @@
   surface=ad_evaluator fixtures=2751 diff=0 oracle=iDempiere-PG`, W-LOGIC-HARDEN, bim-compiler a77827cc).
 - **Witness delta:** +4 new green (W-LOGIC-HARDEN · W-WH-ROUTE · W-WH-LIVE [walk+scan+complete] · W-WH-LIVE-PAGES);
   **equivalence ledger 41 → 42 oracle-equivalent** (matrix ⬜ = ad_workflow only); coverage 7✅/32🟡/3⛔ unchanged.
-- **Next:** MIGRATE_POSTING_CONFIG (one data-gate lights POS + Posting-Preview + §S-5 to-the-cent rings) ·
-  B-2 workflow oracle / B-4 substrate (`prompts/ERP_EXECUTION_ROADMAP.md`) · Phase C UI wiring (C-1..C-4) ·
-  ⛔ BLOCKED (user choice): warehouse_gardenworld.db landing card in COMMON manifest.json vs deep-link-only.
+- **Next:** B-2 workflow oracle / B-4 substrate (`prompts/ERP_EXECUTION_ROADMAP.md`) · Phase C UI wiring (C-1..C-4) ·
+  warehouse entry icon = user-ANSWERED YES, Sonnet session runs `prompts/WAREHOUSE_GH_LINK_PILL.md`.
+
+## MIGRATE_POSTING_CONFIG shipped (2026-06-12b, card → # DONE; bim-ootb PR #271 sw v653, IDB ad_seed_v15)
+- **Done:** default seed + Client 13 (iDempiere) + Client 12 (Odoo) all carry resolvable posting config —
+  `§MIGRATE-POSTCFG client=11|13 tokens=3/3 coverage=complete oracle=fact_acct(318) maxDiff=0c` ·
+  `client=12 tokens=5/5` + `§FRAME-FIT oracle=live odoodemo maxDiff=0c ORACLE-EQUIVALENT` · seed ships
+  `fact_acct` (300 rows, TB 46574.97) · `gen_ad_idmp.sh` fact_acct_id re-band bug found+fixed (silent
+  tenant-ledger drop). LIVE flips: `§POS-CENT … Dr=Cr=137.75 maxDiff=0c` (POS matrix row FULLY lit) ·
+  TrialBalance(310) live `rows=21` (honest-empty residual closed). bim-compiler 0986251b + bank commit.
+- **Witness delta:** +2 green (W-MIGRATE-POSTCFG idmp+odoo) + §POS-CENT step in W-POS-LIVE; regressions
+  W-AD-DOCFSM-LIVE / W-AD-PROC-LIVE (seed-gap assertion updated to new truth) / W-POS-LIVE all green.
+- **Residual:** Posting-Preview/Accts-Posted now resolvable on the DEFAULT db — on-screen visual confirm pending.
 
 ## POS lens addon — §P-1..§P-4 DEPLOYED LIVE 2026-06-12 (built 2026-06-11; `prompts/POS_LENS_SESSION.md # DONE + ## DEPLOY DONE`)
 - **Engine:** `build/erp/pos_core.js` — pure fold glue over the existing verbs (buildDoc/completeOrder/
