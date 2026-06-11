@@ -447,7 +447,7 @@ Full doctrine + the hard multi-writer cases (shared stock, credit limits, client
   <div class="hook">POS and a warehouse-walk app. Same ledger, no new server.</div>
   <div class="teaser">Migration is the on-ramp, not the destination. Once it’s stable on the signed op-log, the kernel folds forward into two new op-log-native apps.
     <input type="checkbox" id="m-roadmap" class="moretoggle">
-    <span class="rest">Migration is the on-ramp, not the destination. Once migration from both iDempiere <i>and</i> Odoo is stable on the signed op-log, the kernel folds forward into two new op-log-native apps on the same ledger, no new server. (1) <b>uniCenta POS</b> — a browser rebuild of the POS driven by replenishment, the point-of-sale lifecycle expressed as folds over the same ledger (the backflush + on-hand spine is already witnessed) — <b>now spec'd</b>: <a href="../POS_ADDON_SPEC/">POS Addon Spec</a>. (2) A phone-first <b>warehouse pick / put-away walk</b> over the same tenant, riding the same on-hand fold — <b>now spec'd</b>: <a href="../SPATIAL_PICKING_SPEC/">Spatial Picking Spec</a>. Both are the two ERP objectives in the bim-ootb README, possible precisely because the kernel is the same fold whether migrating an existing ERP or running a new app on it. <a class="serious" href="#v-roadmap">Serious read</a></span>
+    <span class="rest">Migration is the on-ramp, not the destination. Once migration from both iDempiere <i>and</i> Odoo is stable on the signed op-log, the kernel folds forward into two new op-log-native apps on the same ledger, no new server. (1) <b>uniCenta POS</b> — a browser rebuild of the POS driven by replenishment, the point-of-sale lifecycle expressed as folds over the same ledger (the backflush + on-hand spine is already witnessed) — <b>now spec'd</b>: <a href="../POS_ADDON_SPEC/">POS Addon Spec</a> · <a href="../ERPUserGuide/">User Guide</a>. (2) A phone-first <b>warehouse pick / put-away walk</b> over the same tenant, riding the same on-hand fold — <b>now spec'd</b>: <a href="../SPATIAL_PICKING_SPEC/">Spatial Picking Spec</a>. Both are the two ERP objectives in the bim-ootb README, possible precisely because the kernel is the same fold whether migrating an existing ERP or running a new app on it. <a class="serious" href="#v-roadmap">Serious read</a></span>
     <label for="m-roadmap" class="morelnk"></label>
   </div>
 </div>
@@ -991,7 +991,7 @@ ledger, no new server:
    [`FoldEngineQuality.md`](FoldEngineQuality.md) is the groundwork). **Spec'd →
    [POS Addon Spec](POS_ADDON_SPEC.md)** — the 2012 Unicenta/AutoBOMOrder loop with the middleware
    deleted: ring → WR order → backflush → replenish-PO, all on witnessed verbs; doctrine in
-   [The POS Lens](POSLens.md).
+   [The POS Lens](POSLens.md). **User guide → [ERP User Guide](ERPUserGuide.md).**
 2. **Warehouse mobile walk** — a phone-first pick / put-away *"walk the aisles"* app over the same
    tenant, riding the same on-hand fold. **Spec'd → [Spatial Picking Spec](SPATIAL_PICKING_SPEC.md)** —
    the warehouse compiled as a BIM-like model (the same BOM recursion that compiles a building),

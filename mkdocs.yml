@@ -188,6 +188,7 @@ nav:
       - 2D Plans Viewer: 2D_HTML_GUIDE.md
       - Find and Navigate: RouteTemplate.md
       - City-Scale RTree: RTreeGuide.md
+      - ERP User Guide: ERPUserGuide.md
       - Back Office Guide: BackOfficeUserGuide.md
       - IFC Onboarding: IFC_ONBOARDING_RUNBOOK.md
       - Systems Installer: SYSTEMS_INSTALLER_GUIDE.md

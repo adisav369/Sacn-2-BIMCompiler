@@ -11,6 +11,7 @@ Single-page entry point. All active docs by tier.
 | [4D5DAnalysis.md](4D5DAnalysis.md) | **4D/5D from extracted DB in 2 seconds.** LTU: 224 tasks + RM 67M costed. Industry value tiers, bankable finance model path |
 | [LTUAHouseAnalysis.md](LTUAHouseAnalysis.md) | **Largest reference building.** 125,997 elements, 8 disciplines, 232MB DB. Smooth in Bonsai |
 | [Enterprise.md](Enterprise.md) | FederatedModel Enterprise Platform: nD dimensions (4D-8D), Preview Mode, competitive comparison |
+| [RevitParity.md](RevitParity.md) | **The long tail the big tools over-serve.** Witness-claim-first specs: Find-as-filter, room color-fill, solar hours, MEP trace, egress code-check, cited-coefficient heat loss, gbXML export. Geometric/graph = own it; solver-class = export |
 
 ## T0 Governing — Read First
 
@@ -77,6 +78,7 @@ Single-page entry point. All active docs by tier.
 | Doc | What |
 |-----|------|
 | [BIM_Designer_UserGuide.md](BIM_Designer_UserGuide.md) | BIM Designer GUI user guide |
+| [ERPUserGuide.md](ERPUserGuide.md) | iDempiere browser ERP — login → install → POS → reporting |
 | [BackOfficeUserGuide.md](BackOfficeUserGuide.md) | BackOffice user guide |
 | [USER_GUIDE.md](USER_GUIDE.md) | General user guide |
 | [SYSTEMS_INSTALLER_GUIDE.md](SYSTEMS_INSTALLER_GUIDE.md) | Full platform setup for sysadmins and developers |
