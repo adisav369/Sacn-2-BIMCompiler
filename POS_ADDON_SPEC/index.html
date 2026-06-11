@@ -368,7 +368,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../SpatialERP_OOTB/" class="md-tabs__link">
+        <a href="../ERPUserGuide/" class="md-tabs__link">
           
   
   
@@ -2343,6 +2343,8 @@
       
         
       
+        
+      
     
     
     
@@ -2387,6 +2389,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERPUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ▶ Try it — iDempiere User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -4396,8 +4426,15 @@ BOM </em><em>backflush</em><em> and </em><em>replenishment</em><em> — the same
 deleted. Doctrine: <a href="../POSLens/">The POS Lens</a>. Roadmap home: item 1 of the
 <a href="../MigrateComparisonPaper/#v-roadmap">Migrate &amp; Compare paper's roadmap</a>.</em></p>
 <blockquote>
-<p><strong>Status: SPEC.</strong> Nothing here is built beyond what §2 lists as proven. Build sessions take
-<code>prompts/POS_LENS_SESSION.md</code> (the gated work-order) with this document as the addon contract.
+<p><strong>Status: §P-1..§P-4 BUILT + WITNESSED (2026-06-11, <code>prompts/POS_LENS_SESSION.md</code> <code># DONE</code>).</strong>
+Engine side: <code>build/erp/pos_core.js</code> (pure fold glue over the existing verbs, newVerbs=[]) —
+W-POS-RING · W-POS-WR · W-POS-BACKFLUSH · W-POS-REPLENISH all green (<code>build/erp/poc_pos_*.log</code>).
+Lens side: <code>erp/pos_lens.js</code> + the <code>pos</code> pill (showWhen:pos-station) on idempiere.html —
+W-POS-LIVE green on localhost (bim-ootb branch <code>feat/pos-lens</code>, deploy awaiting explicit GO).
+§P-5 multi-station stays out of scope (named below). The matrix "POS lens" row stays PENDING:
+§5's bar is a LIVE ring folded to the cent — the to-the-cent leg is proven headless on the
+acct-linked db (W-POS-WR), but the live ad_seed.db lacks posting linkage (the same data-gate as
+Posting-Preview; lighting it = <code>prompts/MIGRATE_POSTING_CONFIG.md</code>).
 Clean-room rule: Unicenta is defunct and the plugin code private — behaviour is spec'd from the
 public wiki + RED1's own design; <strong>no code is copied</strong>.</p>
 </blockquote>

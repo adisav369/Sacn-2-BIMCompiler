@@ -370,7 +370,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../SpatialERP_OOTB/" class="md-tabs__link">
+        <a href="../ERPUserGuide/" class="md-tabs__link">
           
   
   
@@ -2345,6 +2345,8 @@
       
         
       
+        
+      
     
     
     
@@ -2392,6 +2394,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERPUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ▶ Try it — iDempiere User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -4428,6 +4458,17 @@ op-log, the seam has rotted — that is the failure this doc exists to prevent.<
 </table>
 <p>That is the whole boundary. <code>read</code> serves both master data and the fold (both are just rows from the
 engine's point of view); <code>dispatch</code> is the sole mutation path; the other three are read-only metadata.</p>
+<blockquote>
+<p><strong>First addon over this contract — the POS lens (2026-06-11, <a href="../POS_ADDON_SPEC/">POS_ADDON_SPEC</a>).</strong>
+<code>pos_lens.js</code> is a pure consumer: tiles/prices via the seed reads, Complete = ONE signed group through
+<code>kernel_ops.commitGroup</code> on the page's published op log (<code>window.ERP.opDb</code>), sealed + chain-verified by
+the same <code>seal</code>/<code>chainVerify</code> the Kanban write path rides. The group is COMPOSED of existing verbs only —
+<code>buildDoc</code> (order) · <code>completeOrder</code> (SET_STATUS CO + <code>createShipment</code>/<code>createInvoice</code> fan-out, policy
+DERIVED from <code>C_DocType.docsubtypeso='WR'</code>) · <code>explodeBOM</code> (backflush CONSUME leaves, 'P-' polarity) ·
+<code>completeInvoice</code> · <code>qtyOnHand</code> (replenishment fold) — <strong>newVerbs=[] witnessed</strong> (W-POS-RING / W-POS-WR /
+W-POS-BACKFLUSH / W-POS-REPLENISH headless + W-POS-LIVE wiring). The addon needed no fifth thing
+(no own persistence, no forked engine) — the FOLD-not-FORK gate held.</p>
+</blockquote>
 <h2 id="2-the-context-identity-role-scope-carried-on-every-call">§2 The context — identity, role, scope (carried on every call)<a class="headerlink" href="#2-the-context-identity-role-scope-carried-on-every-call" title="Permanent link">&para;</a></h2>
 <p><code>ctx</code> is what makes "owner/role of client" an engine concern, enforced once, here:</p>
 <div class="highlight"><pre><span></span><code>ctx = {

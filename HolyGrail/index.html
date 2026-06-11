@@ -370,7 +370,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../SpatialERP_OOTB/" class="md-tabs__link">
+        <a href="../ERPUserGuide/" class="md-tabs__link">
           
   
   
@@ -2345,6 +2345,8 @@
       
         
       
+        
+      
     
     
     
@@ -2392,6 +2394,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERPUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ▶ Try it — iDempiere User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -4743,6 +4773,10 @@ logged — which is the difference between building and day-dreaming.</p>
 <h2 id="abstracting-the-docaction-corpus-and-why-it-is-the-migration-solvent">Abstracting the DocAction corpus — and why it is the migration solvent<a class="headerlink" href="#abstracting-the-docaction-corpus-and-why-it-is-the-migration-solvent" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>How much of the corpus is folded today → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>:</strong> of the 14 DocActions × 52 C_DocTypes, the engine interprets <strong>only <code>CO</code></strong> (Complete) — the other 13 actions and the per-doctype FSM are a ⛔ gap. The de-interleaved transition table is also the storage opcode table (<code>poc_oc_bytes.js</code> <code>§OPCODE-TABLE</code>).</p>
+<p><strong>2026-06-11 — the recipe runs LIVE at a point of sale:</strong> the POS addon (<a href="../POS_ADDON_SPEC/">POS_ADDON_SPEC</a>)
+dispatches the <code>WR</code> (on-the-fly shipment+invoice) DocAction recipe as ONE signed op group on <code>idempiere.html</code> —
+order→CO + ship + invoice + BOM backflush + replenishment fold, all existing verbs (W-POS-WR: replay-equal to
+the engine's own specs; tamper breaks <code>verifyChain</code>; the invoice posting == real <code>fact_acct(318)</code> to the cent).</p>
 </blockquote>
 <p>The grail edits <em>rules</em>; the most valuable rules govern a document's <em>lifecycle</em> — <em>when may
 this complete, and what does completion do.</em> So the engine must express the whole iDempiere
