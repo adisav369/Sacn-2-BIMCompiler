@@ -66,6 +66,89 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶▶▶ SESSION HANDOFF 2026-06-11 — CONVENTION AUDIT + ROADMAP WRITE + NINJA EXCEL EVAL ▶▶▶**
+> **✅ ALL THREE DONE 2026-06-11 (same session that shipped the UI bridge lane, bim-ootb #264 sw v647 / matrix 6✅):**
+> - **✅ TASK 1 DONE (audit; flag-only as ordered).** 15-module sweep vs ERP_BACKEND_SEPARATION + ENGINE_CONTRACT:
+>   zero Date.now/Math.random in op paths, zero layer-2 cross-coupling, zero kernel/localStorage/fetch reach-throughs,
+>   every witness names its issue. **⚠ DRIFT (2 real, NOT fixed):** (1) `bim-ootb/erp/report_overlay.js` is a STALE
+>   FORK (256 vs 908 lines — lacks the whole 527117eb reporting lane: foldStatement/foldPrint/menu surfaces); matches
+>   the known "bim-ootb visual confirm" residual but is now a real source↔browser divergence → fix = sync from
+>   build/erp/ + sw bump + visual confirm. (2) `build/erp/ad_callout.js:25` `round2` uses raw float `Math.round` for
+>   LineNetAmt money math — violates [Numbers via BigDecimal] (negative half-cents diverge from Java HALF_UP; the
+>   header claims integer-cent). 3 list corrections: ad_statements/ad_printformat don't exist (both live INSIDE
+>   report_overlay.js); fold_model_logic is a prompt, code = scripts/erp_engine.js+post_resolver.js.
+> - **✅ TASK 2 DONE.** `prompts/ERP_EXECUTION_ROADMAP.md` written (<100 lines): §DONE tally (41 oracle-eq ·
+>   6✅/33🟡/3⛔ · UI bridge live) → §PHASE B hardening (B-1 logic-evaluator oracle-diff vs live PG · B-2 workflow
+>   ⛔-unless-trace · B-3 0-seed posting oracles · B-4 Track B §H-7..§H-11) → §PHASE C UI wiring (C-1 RO/Mandatory
+>   DOM → C-2 tab Where/OrderBy live → C-3 valrule+callout fields → C-4 AccessLevel record-gate → C-5 ⛔ B-5 seed →
+>   C-6 docstatus-select bug) → §DEFERRED. Fable-5 keystone cards named as SPENT, not duplicated.
+> - **✅ TASK 3 DONE (eval only — NO code; awaits user go/no-go).** NinjaExcel FITS the pill registry: pill id
+>   `ninja`, label "Excel Report (Ninja)", EXISTING `grid` glyph, order 4.5, opens an `_overlay` panel via the
+>   RuleFold contract (`NinjaExcel.open({db, SQL, status, mount})`). Touch-list = 1 manifest row + ~5-line action
+>   binding + NEW `ninja_excel.js` panel (THE whole cost: the Java engine is 866 LOC of stubs — port needed, plus a
+>   vendored .xlsx reader or CSV-first v1). Keep OFF the AD menu (separate paradigm, never feeds the matrix).
+>   Three §9 design forks still undecided (confirm-each-binding · read-only vs op-log write-back · raw-SQL vs
+>   foldStatement coupling) — **⛔ next step needs the user's go + fork picks.**
+>
+> **CONTEXT — just-concluded lanes to read first (holistic picture before auditing):**
+> - `prompts/HARDEN_MATRIX.md` — equivalence arc resume card (the hardening discipline + MOrder archetype).
+> - `prompts/ERP_BACKEND_GAP.md` — Track A DONE (all 7 interpreter modules built + witnessed).
+> - `docs/ERP_COVERAGE_MATRIX.md` — live scoreboard: 0✅/39🟡/3⛔; headline tells the story.
+> - `project_erp_reporting_lane` memory + commits 527117eb / 9744255d — the last two shipped lanes
+>   (Reporting: foldStatement+foldPrint oracle-equivalent; A-GRAIL: fold-back via KernelOps).
+> These are the SOURCE of TRUTH for what was built. Read them before drawing any conclusions.
+>
+> **TASK 1 — Convention & code-source audit (read-only; flag drift, do NOT fix)**
+> Evaluate how well the shipped engine modules follow the established conventions:
+> - Read `docs/ERP_BACKEND_SEPARATION.md` (3-layer invariant + seams) and `docs/ENGINE_CONTRACT.md §1/§2/§6.1`.
+> - For each module in `build/erp/` (ad_valrule, ad_callout, ad_modelval, ad_docfsm, ad_workflow,
+>   ad_tabquery, ad_reference, ad_statements, ad_printformat, post_resolver, fold_model_logic, ad_evaluator,
+>   ad_access, ad_process, report_overlay), check:
+>   (a) consumes `window.ERP` seam only — never reaches past it?
+>   (b) pure/headless — no `Date.now`/`Math.random` in op paths?
+>   (c) browser copy is a UMD of `bim-compiler/scripts/` — no silent forks?
+>   (d) each witness names a real issue (CLAUDE.md "Tests expose issues")?
+> - Output: a bulleted `⚠ DRIFT:` list (file:line) for any violation found. If zero drift, say so explicitly.
+> - Do NOT fix anything. Flag only. Use `bash build/erp/run_witness.sh` (NOT tee) if re-running any witness.
+>
+> **TASK 2 — Write `prompts/ERP_EXECUTION_ROADMAP.md` (Sonnet-ready execution card; no code)**
+> `docs/ERP_COVERAGE_MATRIX.md` is a status LEDGER. The goal is a NEW prompt card a fresh Sonnet session can
+> open and execute with zero ambiguity — same format as `prompts/HARDEN_MATRIX.md` (scope guard + READ FIRST
+> list + numbered phases, each with entrance criterion, exact files to touch, and a named witness as exit gate).
+> Synthesise from (read all before writing):
+>   - `docs/ERP_COVERAGE_MATRIX.md` — 0✅/39🟡/3⛔ ledger; §headline + §equivalence table tell the story.
+>   - `prompts/HARDEN_MATRIX.md` — equivalence arc: H-1 MOrder (keystone, 14 oracle-eq) → H-2 25-delta table
+>     (MInOut/MPayment/MProduction/MInventory/MAllocationHdr) → H-3 declarative spot-diff. Scoreboard: 14/~40.
+>   - `prompts/ERP_BACKEND_GAP.md` — Track A DONE (7 interpreter modules); Track B §H-7..§H-11 still open.
+>   - Recent shipped lanes: commits 527117eb (Reporting: foldStatement+foldPrint) + 9744255d (A-GRAIL fold-back).
+>   - `docs/ReportingFold.md` if it exists — reporting boundary (DATA tree, not pixel).
+> **Model-lane split (decided 2026-06-11):** the H-1 MOrder→equivalence keystone is carved out as a dedicated
+> **Fable 5 lane** — `prompts/FABLE5_MORDER_EQUIVALENCE.md` (already written). It is the one phase worth the premium
+> model (deepest reasoning, 1M context holds MOrder.java + ad_full.db + fixtures). The roadmap's Phase B must NAME
+> that card as the Fable 5 lane and sequence everything else (H-2 delta walk, H-3 declarative spot-diff, UI wiring)
+> as Sonnet/Opus work. Do NOT duplicate H-1 detail into the roadmap — point to the card.
+> Structure the card as:
+>   - `# ⚠ DO NOT REMOVE` scope + "read the log after every run"
+>   - **§ DONE** — single-line tally of what's already proven (oracle-eq count, last commit, witnesses).
+>   - **§ PHASE B — next hardening target** — numbered steps, each: READ X → BUILD Y → WITNESS `W-NAME`
+>     (exit = `bash build/erp/run_witness.sh scripts/poc_Y.js` exit 0 + oracle maxDiff=0c).
+>   - **§ PHASE C — UI wiring (🟡→✅)** — what needs a live render to flip from partial to covered; entrance
+>     criterion = Phase B complete; each step names the module + the existing lens it wires into.
+>   - **§ DEFERRED** — items explicitly out of scope with one-line reason (e.g. 454 SvrProcess corpus, T_* folds).
+> Rules: no invented scope; every step traces to a source doc or existing witness; keep under 100 lines total.
+>
+> **TASK 3 — NinjaExcel as main menu feature (eval/design only; no code)**
+> Evaluate whether NinjaExcel (`internal/NinjaExcelAdaptation.md`, [[project_ninja_excel]]) fits as a
+> named entry in the iDempiere main menu:
+> - Read `internal/NinjaExcelAdaptation.md` for scope and design.
+> - Assess: does it fit the pill-registry pattern (`erp/pills_idmp.json` + `idmp_pills.js`)?
+>   What is the minimal integration surface (a new pill → NinjaExcel panel lens)?
+> - Propose ONE concrete approach: pill label + icon (from `icons.js`) + what it opens.
+> - Do NOT implement until user says go.
+>
+> **OPERATING NOTES:** localhost verify first → single-shot deploy ([[feedback_run_witness]]).
+> After all three tasks, continue §OUTSTANDING items below in order.
+>
 > **▶▶▶ SESSION HANDOFF 2026-06-07 — THE BIG ERP PUSH (continue here; supersedes the 06/06b blocks below) ▶▶▶**
 > **THESIS driving this arc (user, repeated):** iDempiere = effortless, FRICTIONLESS, model-AGNOSTIC absorption —
 > it folds ANY source's model and the chrome renders it with ZERO per-model code. Every UI add must honour that
