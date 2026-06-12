@@ -165,19 +165,19 @@ details.fold .fbd{padding:6px 16px 14px}
   </a>
   <a class="glance-card" href="#realistic-conversion-estimate-loc" style="background:rgba(66,165,245,.12);border:1px solid rgba(66,165,245,.45)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="code bloat" role="img" style="width:100%;height:72px;color:#42a5f5;display:block;margin:0 auto 6px"><path d="M11 21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1"/><path d="M16 16a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1"/><path d="M21 6a2 2 0 0 0-.586-1.414l-2-2A2 2 0 0 0 17 2h-3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1z"/></svg>
-    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#42a5f5">≈25×</div>
-    <div style="font-size:12px;margin-top:6px;opacity:.85">less code at full iDempiere parity <i>(conservative)</i> — <i>≈76× engine-shell delivered today</i></div>
+    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#42a5f5">≈21×</div>
+    <div style="font-size:12px;margin-top:6px;opacity:.85">less code at full iDempiere parity <i>(conservative)</i> — <i>≈51× engine-shell delivered today</i></div>
   </a>
   <a class="glance-card" href="#dr-tco" style="background:rgba(171,71,188,.12);border:1px solid rgba(171,71,188,.45)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="database backup" role="img" style="width:100%;height:72px;color:#ab47bc;display:block;margin:0 auto 6px"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
-    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#ab47bc">1 TB→500 MB</div>
+    <div style="font-size:19px;font-weight:800;line-height:1.1;color:#ab47bc">192 GB→0.78 GB</div>
     <div style="font-size:12px;margin-top:6px;opacity:.85"><b>Back up the recipe, not the result.</b></div>
   </a>
 </div>
  
 ## These have been around for some time, but never for ERP and BIM — now we can put both servers in the same browser!
 
-*But ERP is tough, so.*
+*But ERP is tough — an aircraft carrier is about to go into a bathtub. It has to take all six of these, interlocked:*
 
 <div class="pillars" markdown="0">
 
@@ -281,12 +281,12 @@ You don't store the chessboard — you store the **move list**, and replay it. T
 | **Read / fold round-trips** | 1 network hop per interaction [^arch] | **0** — the kernel answers locally [^noround] | network off the hot path |
 | **Ownership / trust** | the server DB owns your record [^arch] | **you own a signed op-log**; the host is disposable [^own] | trust model inverted |
 | **Document schema** | ≈925 AD tables, each a hand-written model class [^bloat2] | **5 core relations** (containers · items · documents · document_lines · journal) + verbs — the rest of the AD rides as **data** [^reduce] | hardcoded schema, *not* ERP scope (the AD is unchanged — it's the seed) |
-| **Runtime code** | 1,427,147 Java LOC / 4,465 files [^bloat] | **18,614 JS LOC / 60 files** (the engine shell + flows folded so far) [^bloat] | ≈76× built-so-far · **~25× at conservative full parity** [below](#realistic-conversion-estimate-loc) |
+| **Runtime code** | 1,427,147 Java LOC / 4,465 files [^bloat] | **28,184 JS LOC / 132 files** (the engine shell + flows folded so far) [^bloat] | ≈51× built-so-far · **~21× at conservative full parity** [below](#realistic-conversion-estimate-loc) |
 | **Bootstrap** (open the books) | re-query the server [^arch] | **signed checkpoint** — 0.90 ms vs 47.70 ms genesis [^drive] | ≈53× |
-| **Seed DB** | 45.2 MB dump [^bloat] | **12.7 MB** self-describing AD [^bloat] | ≈3.5× |
+| **Seed DB** | 45.2 MB dump [^bloat] | **26.1 MB** full-width self-describing AD (was 12.7 MB sliced — completeness chosen over ratio) [^bloat] | ≈1.7× |
 | **Live DB → SQLite** | 143 MB Postgres [^bloat2] | **43 MB** SQLite (gzip 11.7 MB) [^bloat2] | ≈3.3× |
 | **Backup / DR** | backup rotation, 30–50 copies = many× the state; restore = down-window [^tco] | **the recipe is the backup** — one signed log ×3 replicas, restore = replay, unbounded restore points [^tco][^blackout] | at least 30× less DR storage (strategy-dependent); **0 branch downtime** |
-| **Report scratch tables** | reports `INSERT` ~15 `T_*` temp tables to read them back (`T_Report`, `T_InventoryValue`, `T_Aging`…) | **in-memory fold, 0 temp rows** — `foldStatement` proven `maxDiff=0c` (BS + IS); rest of family pending per-report witness | the *materialize-then-read* tier deleted (proven for financial statements) [below](#temp-tables) |
+| **Report scratch tables** | reports `INSERT` ~15 `T_*` temp tables to read them back (`T_Report`, `T_InventoryValue`, `T_Aging`…) | **in-memory fold, 0 temp rows** — `foldStatement` proven `maxDiff=0c` (BS + IS + CF) + the invoice `PrintData` tree (`foldPrint`, 8/8); 13 remaining `T_*` folds pending per-report witness | the *materialize-then-read* tier deleted (proven for all 3 financial statements + document print) [below](#temp-tables) |
 
 </div>
 
@@ -400,7 +400,7 @@ Full doctrine + the hard multi-writer cases (shared stock, credit limits, client
   <div class="hook">Zero round-trips on the read path. Up to ~50,000× faster cross-region.</div>
   <div class="teaser">An ERP normally crosses the network for every gesture. The kernel answers locally and relays later — so the real win isn’t faster storage, it’s no network on the hot path.
     <input type="checkbox" id="m-vitals" class="moretoggle">
-    <span class="rest">On-box, durable Postgres beats us per-op (5.24 ms vs 208 ms for 1,000 ops) — and we say so. But an ERP is never on-box: every interaction crosses the network to the server of record, RTT-bound, and blocks when offline. Our kernel answers locally (~0.01 ms/op) and relays async, so per sale the legacy round-trip costs <b>256–674×</b> at 0.5 ms LAN and <b>~8,500–50,000×</b> cross-region, while ours stays flat. Bootstrap from a signed checkpoint is <b>~53×</b> faster than genesis replay (0.90 ms vs 47.70 ms); batched commit hits <b>~22,500 ops/s</b>; the fold stays linear to <b>20M ops</b>. On footprint: a 12.7 MB seed (3.5× smaller) and 18,614 JS LOC against 1,427,147 Java. The win isn’t faster storage — it’s <b>zero network on the hot path.</b> <a class="serious" href="#v-vitals">Serious read</a></span>
+    <span class="rest">On-box, durable Postgres beats us per-op (5.24 ms vs 208 ms for 1,000 ops) — and we say so. But an ERP is never on-box: every interaction crosses the network to the server of record, RTT-bound, and blocks when offline. Our kernel answers locally (~0.01 ms/op) and relays async, so per sale the legacy round-trip costs <b>256–674×</b> at 0.5 ms LAN and <b>~8,500–50,000×</b> cross-region, while ours stays flat. Bootstrap from a signed checkpoint is <b>~53×</b> faster than genesis replay (0.90 ms vs 47.70 ms); batched commit hits <b>~22,500 ops/s</b>; the fold stays linear to <b>20M ops</b>. On footprint: a 26.1 MB full-width seed (1.7× smaller than the 45.2 MB dump) and 28,184 JS LOC against 1,427,147 Java. The win isn’t faster storage — it’s <b>zero network on the hot path.</b> <a class="serious" href="#v-vitals">Serious read</a></span>
     <label for="m-vitals" class="morelnk"></label>
   </div>
 </div>
@@ -416,10 +416,10 @@ Full doctrine + the hard multi-writer cases (shared stock, credit limits, client
 </div>
 
 <div class="blurb" markdown="0">
-  <div class="hook">Matched against the iDempiere oracle on 41 surfaces. Only ~1% ported — not feature parity.</div>
+  <div class="hook">Matched against the iDempiere oracle on 43 surfaces. Only ~1% ported — not feature parity.</div>
   <div class="teaser">Every fold is diffed against real iDempiere output (<code>maxDiff=0c</code>), each carrying a load-bearing falsifier; money is exact decimal, not float.
     <input type="checkbox" id="m-method" class="moretoggle">
-    <span class="rest">The engine’s output is diffed against real iDempiere output, not asserted — <b>41 surfaces</b> oracle-equivalent: <b>16 cent/unit-exact folds</b> (<code>maxDiff=0c</code> — the whole order→ship→invoice→match→pay→allocate trade loop, inventory movement→on-hand→replenish, inter-org GL + FX, and reverse/void, in <b>both</b> USD and EUR schemas), <b>4 declarative engines</b> diffed against live iDempiere Postgres to diff=0, and <b>21 model-layer surfaces</b> — the <code>beforeSave</code> + DocAction-FSM walk of <i>every</i> document class (MOrder archetype → the deep family → the full isomorph tail; legal-action sets and transitions diffed against a runtime parse of the actual <code>DocumentEngine.java</code>, saves replayed against the stored seed rows). Each witness carries a load-bearing <b>§FALSIFIER</b> — corrupt the rule and the diff <i>must</i> go non-zero — so a pass can’t be a tautology. Money never touches float: amounts accumulate as integer cents, the only non-integer steps multiply in <code>BigInt</code> off the exact-decimal rate, rounded HALF_UP — bit-equal to Java <code>BigDecimal</code>. But this is plainly <b>not feature parity</b>: only ~1% of the M-class logic is ported. The win is delivery/definition — the AD is self-describing, the whole server/build stack is gone. <a class="serious" href="#v-method">Serious read</a></span>
+    <span class="rest">The engine’s output is diffed against real iDempiere output, not asserted — <b>43 surfaces</b> oracle-equivalent: <b>16 cent/unit-exact folds</b> (<code>maxDiff=0c</code> — the whole order→ship→invoice→match→pay→allocate trade loop, inventory movement→on-hand→replenish, inter-org GL + FX, and reverse/void, in <b>both</b> USD and EUR schemas), <b>6 declarative engines</b> diffed against the live iDempiere Postgres / its compiled classes to diff=0 (the last one — the workflow state engine — fell 2026-06-12 to 11 real traces; <b>no declarative surface remains undiffed</b>), and <b>21 model-layer surfaces</b> — the <code>beforeSave</code> + DocAction-FSM walk of <i>every</i> document class (MOrder archetype → the deep family → the full isomorph tail; legal-action sets and transitions diffed against a runtime parse of the actual <code>DocumentEngine.java</code>, saves replayed against the stored seed rows). Each witness carries a load-bearing <b>§FALSIFIER</b> — corrupt the rule and the diff <i>must</i> go non-zero — so a pass can’t be a tautology. Money never touches float: amounts accumulate as integer cents, the only non-integer steps multiply in <code>BigInt</code> off the exact-decimal rate, rounded HALF_UP — bit-equal to Java <code>BigDecimal</code>. But this is plainly <b>not feature parity</b>: only ~1% of the M-class logic is ported. The win is delivery/definition — the AD is self-describing, the whole server/build stack is gone. <a class="serious" href="#v-method">Serious read</a></span>
     <label for="m-method" class="morelnk"></label>
   </div>
 </div>
@@ -429,7 +429,7 @@ Full doctrine + the hard multi-writer cases (shared stock, credit limits, client
   <div class="hook">Legacy writes data just to read it. The fold writes zero temp rows.</div>
   <div class="teaser">iDempiere ships ~15 <code>T_*</code> scratch tables — a report <code>INSERT</code>s rows into a temp table, then reads them back. A fold computes the cells in memory and discards them.
     <input type="checkbox" id="m-scratch" class="moretoggle">
-    <span class="rest">iDempiere reporting creates data in order to read it: a process <code>INSERT</code>s aggregated rows into a per-run temp table, then the print format reads them back. There are ~15 such scratch tables — <code>T_Report</code> (57 refs), <code>T_InventoryValue</code> (53), <code>T_CashFlow</code> (22), <code>T_TrialBalance</code>, <code>T_Aging</code>… A fold deletes the whole tier: because state is a deterministic reduce over the journal, the report computes its cells in memory and paints them — <b>zero temp rows.</b> Proven, not asserted: <code>foldStatement</code> reproduces the Balance Sheet and Income Statement to the cent (<b>W-PA-REPORT</b>, <code>maxDiff=0c</code>) by replacing <code>T_Report</code> with an in-memory matrix. The rest of the family is structurally the same fold — named here, each pending its own witness. <a class="serious" href="#v-scratch">Serious read</a></span>
+    <span class="rest">iDempiere reporting creates data in order to read it: a process <code>INSERT</code>s aggregated rows into a per-run temp table, then the print format reads them back. There are ~15 such scratch tables — <code>T_Report</code> (57 refs), <code>T_InventoryValue</code> (53), <code>T_CashFlow</code> (22), <code>T_TrialBalance</code>, <code>T_Aging</code>… A fold deletes the whole tier: because state is a deterministic reduce over the journal, the report computes its cells in memory and paints them — <b>zero temp rows.</b> Proven, not asserted: <code>foldStatement</code> reproduces all three seed statements — Balance Sheet, Income Statement, Cash Flow — to the cent (<b>W-PA-REPORT</b>, <code>maxDiff=0c</code>) by replacing <code>T_Report</code> with an in-memory matrix, and <code>foldPrint</code> reproduces the real Invoice print tree across all 8 seed invoices (<b>W-PRINTFORMAT</b>). The remaining 13 <code>T_*</code> scratch folds are structurally the same — named here, each pending its own witness. <a class="serious" href="#v-scratch">Serious read</a></span>
     <label for="m-scratch" class="morelnk"></label>
   </div>
 </div>
@@ -444,10 +444,10 @@ Full doctrine + the hard multi-writer cases (shared stock, credit limits, client
 </div>
 
 <div class="blurb" markdown="0">
-  <div class="hook">POS and a warehouse-walk app. Same ledger, no new server.</div>
-  <div class="teaser">Migration is the on-ramp, not the destination. Once it’s stable on the signed op-log, the kernel folds forward into two new op-log-native apps.
+  <div class="hook">POS and a warehouse-walk app. Same ledger, no new server — both LIVE.</div>
+  <div class="teaser">Migration is the on-ramp, not the destination. The kernel has already folded forward into two op-log-native apps — both shipped and running on the same ledger.
     <input type="checkbox" id="m-roadmap" class="moretoggle">
-    <span class="rest">Migration is the on-ramp, not the destination. Once migration from both iDempiere <i>and</i> Odoo is stable on the signed op-log, the kernel folds forward into two new op-log-native apps on the same ledger, no new server. (1) <b>uniCenta POS</b> — a browser rebuild of the POS driven by replenishment, the point-of-sale lifecycle expressed as folds over the same ledger (the backflush + on-hand spine is already witnessed) — <b>now spec'd</b>: <a href="../POS_ADDON_SPEC/">POS Addon Spec</a> · <a href="../ERPUserGuide/">User Guide</a>. (2) A phone-first <b>warehouse pick / put-away walk</b> over the same tenant, riding the same on-hand fold — <b>now spec'd</b>: <a href="../SPATIAL_PICKING_SPEC/">Spatial Picking Spec</a>. Both are the two ERP objectives in the bim-ootb README, possible precisely because the kernel is the same fold whether migrating an existing ERP or running a new app on it. <a class="serious" href="#v-roadmap">Serious read</a></span>
+    <span class="rest">Migration is the on-ramp, not the destination — and the two downstream apps are <b>no longer roadmap: both run LIVE today</b> on the same ledger, no new server. (1) <b>uniCenta POS reborn</b> — ring → ONE signed group (order + shipment + invoice, all-or-none) → BOM backflush → replenishment <i>enacted to closure</i> (suggestion → PO → receipt → on-hand rises → suggestion clears); the live ring folds to the cent (<code>§POS-CENT maxDiff=0c</code>) and void/reverse nets postings to 0c with on-hand restored — <a href="../POS_ADDON_SPEC/">POS Addon Spec</a> · <a href="../ERPUserGuide/">User Guide</a>. (2) A phone-first <b>warehouse pick walk</b> — the warehouse compiled as a BIM-like model, fly-to the bin, QR scan as the one clean act, every pick a signed op; on-hand and the ERP window agree to the unit (W-WH-LIVE) — <a href="../SPATIAL_PICKING_SPEC/">Spatial Picking Spec</a>. Both are the two ERP objectives in the bim-ootb README, delivered precisely because the kernel is the same fold whether migrating an existing ERP or running a new app on it. <a class="serious" href="#v-roadmap">Serious read</a></span>
     <label for="m-roadmap" class="morelnk"></label>
   </div>
 </div>
@@ -524,8 +524,8 @@ Three tables, not one wall. Columns are **architecture**, not a feature scorecar
 
 | Vital | iDempiere | Odoo | SAP | Our WASM event-source |
 |---|---|---|---|---|
-| **DB seed** | `Adempiere_pg.dmp` **45.2 MB** [^bloat] | n/a — diff schema [^arch] | n/a [^arch] | `erp/ad_seed.db` **12.7 MB** (≈**3.5× smaller**); the 12.7 MB IS the self-describing AD [^bloat] |
-| **Runtime LOC** | **1,427,147 Java LOC** / 4,465 files + JVM + Postgres + 3.7 GB build [^bloat] | n/a — diff codebase [^arch] | n/a [^arch] | **18,614 JS LOC** / 60 files, static + SQLite-WASM, offline (≈**76× fewer** built-so-far; **~25× at conservative full parity**, zero server/JVM/DB) [^bloat] |
+| **DB seed** | `Adempiere_pg.dmp` **45.2 MB** [^bloat] | n/a — diff schema [^arch] | n/a [^arch] | `erp/ad_seed.db` **26.1 MB** (≈**1.7× smaller**, full-width — the earlier 12.7 MB column-slice was 3.5× but left windows unreachable; completeness won); the 26.1 MB IS the self-describing AD [^bloat] |
+| **Runtime LOC** | **1,427,147 Java LOC** / 4,465 files + JVM + Postgres + 3.7 GB build [^bloat] | n/a — diff codebase [^arch] | n/a [^arch] | **28,184 JS LOC** / 132 files, static + SQLite-WASM, offline (≈**51× fewer** built-so-far; **~21× at conservative full parity**, zero server/JVM/DB) [^bloat] |
 | **Live DB → SQLite** | Postgres **143 MB** on-disk (GardenWorld) [^bloat2] | n/a [^arch] | n/a [^arch] | **43 MB SQLite** (925 tables, 187,133 rows ≈ **3.3×**); gzip 11.7 MB (3.7×) [^bloat2] |
 
 </div>
@@ -559,7 +559,7 @@ Three tables, not one wall. Columns are **architecture**, not a feature scorecar
   the bloat memory).
 - The Odoo fold is against a **running Odoo 17** instance (`build/erp/odoo_fold_live.log`,
   `§ODOO-FOLD-LIVE PASS`).
-- **Engine output == real iDempiere output — 41 surfaces oracle-diffed, not asserted** ([`ERP_COVERAGE_MATRIX.md`](ERP_COVERAGE_MATRIX.md) §Equivalence, [`FoldEngineQuality.md`](FoldEngineQuality.md)): **16 fold real GardenWorld `fact_acct`/qty postings to the cent** (`maxDiff=0c` — the order→ship→invoice→match→pay→allocate trade loop + the movement→on-hand→replenish inventory loop + inter-org `M_Movement`/`GL_Journal` + `reverseCorrect`/void, in **both** USD & EUR accounting schemas), **4 declarative engines diff the *live* iDempiere Postgres to `diff=0`** (`AD_Val_Rule` SQL-where membership, `AD_Ref_Table` FK resolution+membership over the 26,519-row `ad_column` set, `MRole` access maps, `AD_Column.Callout` derivation), and **21 model-layer surfaces walk `beforeSave` + the DocAction FSM of *every* document class to oracle-equivalence** (legal-action sets and transitions diffed against a gate-aware **runtime parse of the actual `DocumentEngine.java`/`M*.java` checkout**, saves replayed against the stored seed rows — MOrder archetype → MInOut/MInvoice/MPayment/inventory family → GL Journal/Allocation/Cash/BankStatement + the 11-class generic tail; the 8 zero-seed classes source-parse-only, honestly ⛔ on stored-replay). Each witness carries a **load-bearing §FALSIFIER** (corrupt the rule → the diff *must* go non-zero), so a passing diff isn't a tautology. **3 more** are *rule-consistent* (enacted docs GardenWorld never posted — BOM backflush, `MProduction`, `MInventory` — checked against the already-proven qty/cost rules + balance + falsifier, explicitly **not** claimed `== iDempiere`).
+- **Engine output == real iDempiere output — 43 surfaces oracle-diffed, not asserted** ([`ERP_COVERAGE_MATRIX.md`](ERP_COVERAGE_MATRIX.md) §Equivalence, [`FoldEngineQuality.md`](FoldEngineQuality.md)): **16 fold real GardenWorld `fact_acct`/qty postings to the cent** (`maxDiff=0c` — the order→ship→invoice→match→pay→allocate trade loop + the movement→on-hand→replenish inventory loop + inter-org `M_Movement`/`GL_Journal` + `reverseCorrect`/void, in **both** USD & EUR accounting schemas), **6 declarative engines diff the *live* iDempiere Postgres / its compiled classes to `diff=0`** (`AD_Val_Rule` SQL-where membership, `AD_Ref_Table` FK resolution+membership over the 26,519-row `ad_column` set, `MRole` access maps, `AD_Column.Callout` derivation, the logic-expression evaluator — 2,751 dictionary expressions == the real compiled `Evaluator`, **W-LOGIC-HARDEN** — and the `AD_Workflow` node-walk + state engine — replayed against **11 REAL workflow traces** the live PG carries + the compiled `StateEngine` mutators, **W-WF-HARDEN**; **no declarative surface remains undiffed**), and **21 model-layer surfaces walk `beforeSave` + the DocAction FSM of *every* document class to oracle-equivalence** (legal-action sets and transitions diffed against a gate-aware **runtime parse of the actual `DocumentEngine.java`/`M*.java` checkout**, saves replayed against the stored seed rows — MOrder archetype → MInOut/MInvoice/MPayment/inventory family → GL Journal/Allocation/Cash/BankStatement + the 11-class generic tail; the 8 zero-seed classes source-parse-only, honestly ⛔ on stored-replay). Each witness carries a **load-bearing §FALSIFIER** (corrupt the rule → the diff *must* go non-zero), so a passing diff isn't a tautology. **3 more** are *rule-consistent* (enacted docs GardenWorld never posted — BOM backflush, `MProduction`, `MInventory` — checked against the already-proven qty/cost rules + balance + falsifier, explicitly **not** claimed `== iDempiere`).
 **`maxDiff=0c` is *exact*, not "close enough" — the money-math holy war, settled.**
 
 The reflex objection to *any* ERP outside the JVM is decimal arithmetic: Java has `BigDecimal`, Python has `decimal.Decimal`, **JavaScript has neither** — its `Number` is an IEEE-754 binary float, so `0.1 + 0.2 ≠ 0.3` and a naïve port *will* drift cents.
@@ -572,7 +572,7 @@ So the `maxDiff=0c` above is a *true zero* across the 16 cent/unit-exact fold su
 - "0 round-trip" — *structural* (no server of record on the read/fold path), not a benchmark. Honest counter: server-removal only wins over a network; on-box, durable Postgres is *faster* per-op (it buys durability + concurrency we defer).
 - Most ERP cells are *n/a — architectural*: the legacy stack exposes no comparable single number (throughput ceiling, batch-vs-naive) — server-bound by design.
 
-**NOT feature parity — plainly.** iDempiere, Odoo and SAP have *vastly* more features, localisations and integrations. The 18.6K LOC renders the dictionary and folds the paths built so far (the order→ship→invoice→match→pay→allocate trade loop, inventory movement→on-hand→replenish, GL posting incl. inter-org + FX + `reverseCorrect`/void, signed rule-edit, period-close, **and the `beforeSave`+DocAction-FSM model layer of every document class** — **41 surfaces now oracle-equivalent to real iDempiere**) — it does **not** re-implement the full transactional server. **Only ~1% of the M-class business logic is ported** (the `M*.java` model logic = 104,940 code-LOC; ~205 LOC of transactional verbs folded + ≈830 LOC of cited `beforeSave` regions ported as hooks across 16 document classes) — the engine is the *host*, the M-class logic is the work still ahead. The win is **delivery/definition**: the AD-interpreter is lean because the AD is self-describing, and the whole server/build stack is gone. Each transactional verb still has to be folded deterministically. See `feedback_erp_perf_claims`.
+**NOT feature parity — plainly.** iDempiere, Odoo and SAP have *vastly* more features, localisations and integrations. The ~28K LOC renders the dictionary and folds the paths built so far (the order→ship→invoice→match→pay→allocate trade loop, inventory movement→on-hand→replenish, GL posting incl. inter-org + FX + `reverseCorrect`/void, signed rule-edit, period-close, **and the `beforeSave`+DocAction-FSM model layer of every document class** — **43 surfaces now oracle-equivalent to real iDempiere**) — it does **not** re-implement the full transactional server. **Only ~1% of the M-class business logic is ported** (the `M*.java` model logic = 104,940 code-LOC; ~205 LOC of transactional verbs folded + ≈830 LOC of cited `beforeSave` regions ported as hooks across 16 document classes) — the engine is the *host*, the M-class logic is the work still ahead. The win is **delivery/definition**: the AD-interpreter is lean because the AD is self-describing, and the whole server/build stack is gone. Each transactional verb still has to be folded deterministically. See `feedback_erp_perf_claims`.
 
 
 
@@ -604,7 +604,7 @@ tables **and the stored `c_invoice.grandtotal` that real iDempiere wrote** — w
 **Generalises to (candidate — each pending its OWN witness, claimed only as it lands):** the same materialize-then-read
 pattern underlies every other member of the family, so Aging (`T_Aging`), Inventory Value, Cash Flow, Trial Balance and
 the rest are *structurally* the same fold — a pure aggregation that needs no scratch table. They are **not yet built or
-diffed**; this paper claims the deletion **only for the two financial statements above.** Aging in particular folds over
+diffed**; this paper claims the deletion **only for the three financial statements and the document print above.** Aging in particular folds over
 *open items* + a due-date-bucketing function (not the GL), so it is a distinct verb on distinct seed data — named here,
 not claimed. This narrows **GAP #8 to its tail**: reporting parity is now *witnessed* for all 3 financial statements
 **and** the master-detail document print (`foldPrint`, W-PRINTFORMAT); what stays open is the remaining `T_*` family
@@ -660,7 +660,7 @@ the fold is already witnessed. The gap (mostly ░) is therefore remaining data 
 
 *Axis = **capability**, not table-by-table (the three schemas don't align). The **Odoo column is real `search_count`**
 from the live `odoodemo` (Odoo 17) instance our agent folds (`build/erp/odoo_survey.json`); iDempiere = the seeded
-GardenWorld client; OOTB = our 18.6K-LOC engine. **EXTRACTION** = data the migrate could pull but doesn't yet ·
+GardenWorld client; OOTB = our ~28K-LOC engine. **EXTRACTION** = data the migrate could pull but doesn't yet ·
 **FOLD** = a capability the engine can't compute even if pulled.*
 
 | Capability | iDempiere (GardenWorld) | Odoo (`odoodemo`, live) | OOTB — ours (✓ = proven[^folds]) | Migrate GAP |
@@ -677,10 +677,10 @@ GardenWorld client; OOTB = our 18.6K-LOC engine. **EXTRACTION** = data the migra
 | Credit notes / reverse-void | `reverseCorrect`/void | **7** refunds | ✓ — W-FOLD-REVERSE | docs not pulled · EXTRACTION |
 | Payments + reconciliation | `C_Payment`/`C_AllocationHdr` | **3** pay · 1+3 reconcile | ✓ — W-FOLD-PAYMENT/ALLOC | **synthesised, not real** — 3 real pay/reconcile not pulled · EXTRACTION |
 | Manual GL journals | `GL_Journal` | **13** entries | ✓ — W-FOLD-GLJOURNAL (inter-org) | **0 pulled** · EXTRACTION |
-| Financial statements BS/P&L/CF | `PA_Report`→`T_Report` (15-table `T_*` tier) | **3** account.report (BS/P&L code-side v17) | ✓ BS+IS `maxDiff=0c` — W-PA-REPORT (iDempiere-side) | Odoo report defs unmapped · **FOLD** |
+| Financial statements BS/P&L/CF | `PA_Report`→`T_Report` (15-table `T_*` tier) | **3** account.report (BS/P&L code-side v17) | ✓ BS+IS+CF `maxDiff=0c` — W-PA-REPORT (iDempiere-side) | Odoo report defs unmapped · **FOLD** |
 | AR/AP Aging | `Aging`→`T_Aging` | on-the-fly wizard (no stored rows) | not built | distinct fold (open-items+date buckets) · **FOLD** |
-| Document print / layout | `AD_PrintFormat` (`'P'` grids-in-grids) | **41** QWeb defs | `foldReceipt` (W-PROC); `foldPrint` spec'd | 0 print formats mapped · **FOLD** |
-| Workflow / automation | `AD_Workflow` | 64 server actions · 18 cron | `ad_workflow.js` walk (W-WF) | no server-action interpreter · **FOLD** |
+| Document print / layout | `AD_PrintFormat` (`'P'` grids-in-grids) | **41** QWeb defs | `foldReceipt` (W-PROC); ✓ `foldPrint` `maxDiff=0c` — W-PRINTFORMAT (8/8 invoices, iDempiere-side) | Odoo QWeb defs unmapped · **FOLD** |
+| Workflow / automation | `AD_Workflow` | 64 server actions · 18 cron | ✓ `ad_workflow.js` walk + replay — W-WF-HARDEN (11 real traces diff=0, iDempiere-side) | no Odoo server-action interpreter · **FOLD** |
 | Analytic / cost centres | acct dims / `C_Project` | **19** analytic accts | not built | no analytic fold · **FOLD** |
 
 **Prioritised extraction backlog (to pull the full Odoo dataset)** — tracked in `prompts/MIGRATE_INSTALL_TENANT.md §RESUME`
@@ -860,9 +860,9 @@ while iDempiere derives it from `C_Invoice` open amounts). Tracked: matrix **GAP
 <div class="fbd" markdown="1">
 <span id="realistic-conversion-estimate-loc"></span>
 
-76× is honest for the engine **shell** folded today — but it measures the *thinnest, highest-compression* slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does **not** extrapolate to a full port: only **~0.2% of the `M*` business logic (104,940 code-LOC) is actually ported**. **We headline the *conservative* ~25× to avoid overclaiming.**
+51× is honest for the engine **shell** folded today (28,184 JS LOC, re-measured 2026-06-12 — down from 76× as real coverage grew, exactly as a non-overclaim should move) — but it measures the *thinnest, highest-compression* slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does **not** extrapolate to a full port: only **~1% of the `M*` business logic (104,940 code-LOC) is actually ported**. **We headline the *conservative* ~21× to avoid overclaiming.**
 
-> **Exhaustive coverage map → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md).** Every rule/process surface in *both* homes (Java code + the AD as data) enumerated, each count from a real `ad_full.db` query: **6 covered / 33 partial / 3 gap** of 42 surfaces (the interpreter-coverage ladder, closed for every seed-data surface; the first six flipped to *covered* 2026-06-11 when the live UI itself became the witness — role-scoped menus, FSM-gated doc-action buttons, AD DisplayLogic on the live form, process/form grant pruning: the `W-AD-*-LIVE` family) **+ a second *equivalence* axis: 41 surfaces now match the real iDempiere oracle** — **16 fold real GardenWorld `fact_acct`/qty postings to the cent (`maxDiff=0c`)** (the whole order→ship→invoice→match→pay→allocate trade loop, the movement→on-hand→replenish inventory loop, inter-org `M_Movement` + `GL_Journal`, the `reverseCorrect`/void family, all in **both** accounting schemas USD + EUR), **+ 4 declarative engines diffed against the *live* iDempiere Postgres to `diff=0`** (AD_Val_Rule SQL-where membership, AD_Ref_Table FK resolution+membership, MRole window/process/form access, AD_Column.Callout derivation), **+ 21 model-layer surfaces — the `beforeSave` + DocAction-FSM walk of *every* document class** (capture-fidelity row-diff, `Doc_Order` at fact-line granularity, then save+FSM for the MOrder archetype, the deep family MInOut/MInvoice/MPayment/inventory, and the full isomorph tail GL Journal/Allocation/Cash/BankStatement + the 11-class generic-block tail — legal-action sets diffed against a gate-aware **runtime parse of `DocumentEngine.java`**, saves replayed against the stored seed rows; zero-seed classes source-parse-only, honestly ⛔ on stored-replay) — **plus 3 rule-consistent** (enacted docs with no seed oracle: BOM backflush, `MProduction`, `MInventory` — verified against the proven qty/cost rules + balance + falsifier). Each carries a load-bearing §FALSIFIER. ([ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md) is the M-class denominator: MOrder archetype + ~25 deltas — **the deepest deltas now fold `maxDiff=0c`, and no DocAction table remains unwalked**.) The buckets below are measured, not asserted.
+> **Exhaustive coverage map → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md).** Every rule/process surface in *both* homes (Java code + the AD as data) enumerated, each count from a real `ad_full.db` query: **6 covered / 33 partial / 3 gap** of 42 surfaces (the interpreter-coverage ladder, closed for every seed-data surface; the first six flipped to *covered* 2026-06-11 when the live UI itself became the witness — role-scoped menus, FSM-gated doc-action buttons, AD DisplayLogic on the live form, process/form grant pruning: the `W-AD-*-LIVE` family) **+ a second *equivalence* axis: 43 surfaces now match the real iDempiere oracle** — **16 fold real GardenWorld `fact_acct`/qty postings to the cent (`maxDiff=0c`)** (the whole order→ship→invoice→match→pay→allocate trade loop, the movement→on-hand→replenish inventory loop, inter-org `M_Movement` + `GL_Journal`, the `reverseCorrect`/void family, all in **both** accounting schemas USD + EUR), **+ 6 declarative engines diffed against the *live* iDempiere Postgres / its compiled classes to `diff=0`** (AD_Val_Rule SQL-where membership, AD_Ref_Table FK resolution+membership, MRole window/process/form access, AD_Column.Callout derivation, the logic-expression evaluator — 2,751 fixtures, W-LOGIC-HARDEN — and the AD_Workflow state engine — 11 real PG traces, W-WF-HARDEN; no ⬜ remains), **+ 21 model-layer surfaces — the `beforeSave` + DocAction-FSM walk of *every* document class** (capture-fidelity row-diff, `Doc_Order` at fact-line granularity, then save+FSM for the MOrder archetype, the deep family MInOut/MInvoice/MPayment/inventory, and the full isomorph tail GL Journal/Allocation/Cash/BankStatement + the 11-class generic-block tail — legal-action sets diffed against a gate-aware **runtime parse of `DocumentEngine.java`**, saves replayed against the stored seed rows; zero-seed classes source-parse-only, honestly ⛔ on stored-replay) — **plus 3 rule-consistent** (enacted docs with no seed oracle: BOM backflush, `MProduction`, `MInventory` — verified against the proven qty/cost rules + balance + falsifier). Each carries a load-bearing §FALSIFIER. ([ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md) is the M-class denominator: MOrder archetype + ~25 deltas — **the deepest deltas now fold `maxDiff=0c`, and no DocAction table remains unwalked**.) The buckets below are measured, not asserted.
 
 Splitting all 1,427,147 Java LOC by fate [^split]:
 
@@ -884,15 +884,15 @@ Folding that behavioural core into declarative verbs compresses ~5–8× (no Jav
 
 <div class="dtbl hl-last" markdown="1">
 
-| Scenario | irreducible folded | ÷ ratio | full JS (+ engine 18,614) | overall |
+| Scenario | irreducible folded | ÷ ratio | full JS (+ engine 28,184) | overall |
 |---|---|---|---|---|
-| Optimistic | 150K | 8× | **~37K** | ~38× |
-| Mid | 175K | 6.5× | **~46K** | ~31× |
-| **Conservative (headline)** | 200K | ~5× | **~56K** | **~25×** |
+| Optimistic | 150K | 8× | **~47K** | ~30× |
+| Mid | 175K | 6.5× | **~55K** | ~26× |
+| **Conservative (headline)** | 200K | ~5× | **~68K** | **~21×** |
 
 </div>
 
-**Realistic full parity — we headline the *conservative* ≈ 56K JS LOC ≈ ~25×** (mid ~46K/~31×, optimistic ~37K/~38×) — vs 76× for the engine shell folded so far. Leading with the conservative bound is the point: it does not overclaim. The fold ratio is the one estimated input (GAPS #6); every LOC count is measured (incl. the M-class denominator — `M*.java` 104,940 code-LOC, ~1% folded/ported: ~205 LOC of transactional verbs + ≈830 LOC of cited `beforeSave` regions).
+**Realistic full parity — we headline the *conservative* ≈ 68K JS LOC ≈ ~21×** (mid ~55K/~26×, optimistic ~47K/~30×) — vs ~51× for the engine shell folded so far. Leading with the conservative bound is the point: it does not overclaim. The fold ratio is the one estimated input (GAPS #6); every LOC count is measured (incl. the M-class denominator — `M*.java` 104,940 code-LOC, ~1% folded/ported: ~205 LOC of transactional verbs + ≈830 LOC of cited `beforeSave` regions).
 
 ??? note "Full breakdown by iDempiere module (org.adempiere.base, org.adempiere.ui.zk, …) — expand"
 
@@ -946,11 +946,11 @@ Folding that behavioural core into declarative verbs compresses ~5–8× (no Jav
    either side) — `bench_oplog_pg.log` states this explicitly; do not extrapolate to whole-document cost.
 5. **Live-DB → SQLite (143 MB → 43 MB)** was measured on a static dump + repo (Docker Postgres was NOT
    running at measure time) — see the bloat memory caveat.
-6. **Full-conversion LOC (~43K / ~30×)** — the per-bucket LOC are *measured* (`find`/`wc` on
+6. **Full-conversion LOC (~68K / ~21×)** — the per-bucket LOC are *measured* (`find`/`wc` on
    `~/idempiere-dev-setup/idempiere`, 2026-06-08), but the **5–8× fold-compression ratio** on the irreducible
    business core — and the share of `M*` that is real logic vs accessor/lifecycle ceremony — are **estimates** (no
-   full port exists to measure them). Headline the **conservative ~25×** forecast (range ~25–38×); 76× is the
-   *measured built-so-far* engine shell, a high-compression slice (~1% of the M-class logic) that does not extrapolate.
+   full port exists to measure them). Headline the **conservative ~21×** forecast (range ~21–30×); ~51× is the
+   *measured built-so-far* engine shell (28,184 LOC, 2026-06-12), a high-compression slice (~1% of the M-class logic) that does not extrapolate.
 7. **DR / TCO model constants** — the unit costs (314 B/op snapshot; fold, restore-to-op, per-branch additivity)
    are **measured**; the year-level storage/compute/bill figures are **derived** over modelled constants for the
    traditional side (no Postgres on the bench): `DB_BYTES_PER_ROW=230` (SQLite, no index — Postgres+index ≈ 1.5–3×
@@ -959,20 +959,18 @@ Folding that behavioural core into declarative verbs compresses ~5–8× (no Jav
    **public list prices (~Jan-2026, volatile)** and **excludes DB licence + DBA labour**. The ratios use the
    **uncompacted** 314 B/op (no shorthand) — the compression ladder (~90 B/op) widens them ~3.5×. Witness:
    `build/erp/poc_tco_skeptic.log`.
-8. **Financial Reporting — `PA_Report` statements + `AD_PrintFormat` (ONGOING).** What is **proven** is the
-   *base case*: the Trial Balance is a fold of the real `fact_acct` that balances to the cent (`ΣDr=ΣCr=46574.97`,
-   `maxDiff=0c`, `test_report_fin.js` §REPORT-FIN), and `foldPnL` exists in `report_overlay.js`. What is **not yet
-   folded or oracle-diffed** is the standard iDempiere **metadata-driven** report layer: the user-defined Financial
-   Reports (`PA_Report` — the seed's 3 real statements *Balance Sheet / Income Statement / Cash Flows*, **113**
-   `PA_ReportLine` · **17** `PA_ReportColumn` · **93** `PA_ReportSource`) and the print/layout interpreter
-   (`AD_PrintFormat`, **93** formats / **2,780** items). Today's statements are *hardcoded* folds, not driven from
-   the `PA_*` metadata. **STATUS 2026-06-11: both witnesses LANDED `maxDiff=0c`** — `W-PA-REPORT` (BS+IS+**CF**,
-   `PA_Report`-metadata-driven, in-app bundle-alone path proven) and `W-PRINTFORMAT` (`foldPrint`, the real Invoice
-   master-detail tree, 8/8 invoices vs live base tables + the stored grandtotal) — both the strong
-   **fold-vs-independent-product** class, not a tautology. The Jasper / `ReportEngine` stack (~38K LOC) stays
-   *deleted* — reports render as a browser fold of the journal, not a server print pipeline. The gap's REMAINDER:
-   the other 13 `T_*` scratch-table folds (each pending its own witness), unexercised group-by/count/avg break
-   functions, pixel layout (non-goal). Spec + verdicts: [`ReportingFold.md`](ReportingFold.md).
+8. **Financial Reporting — `PA_Report` statements + `AD_PrintFormat` (witnessed core, named tail).** The
+   metadata-driven report layer is **LANDED `maxDiff=0c` (2026-06-11)**: `W-PA-REPORT` folds the seed's 3 real
+   user-defined Financial Reports — *Balance Sheet / Income Statement / Cash Flows* (**113** `PA_ReportLine` ·
+   **17** `PA_ReportColumn` · **93** `PA_ReportSource`) — driven from the `PA_*` metadata itself, not hardcoded,
+   proven on the in-app bundle-alone path; and `W-PRINTFORMAT` (`foldPrint`) reproduces the real Invoice
+   master-detail `PrintData` tree, 8/8 seed invoices vs live base tables + the stored grandtotal real iDempiere
+   wrote. Both are the strong **fold-vs-independent-product** class, not a tautology (the Trial-Balance base case
+   `ΣDr=ΣCr=46574.97`, `test_report_fin.js` §REPORT-FIN, came first). The Jasper / `ReportEngine` stack (~38K LOC)
+   stays *deleted* — reports render as a browser fold of the journal, not a server print pipeline. The honest
+   REMAINDER: the other 13 `T_*` scratch-table folds (each pending its own witness), unexercised
+   group-by/count/avg break functions (implemented, no seed format uses them), pixel layout (non-goal — DOM is
+   the render). Spec + verdicts: [`ReportingFold.md`](ReportingFold.md).
 
 </div>
 </details>
@@ -982,23 +980,23 @@ Folding that behavioural core into declarative verbs compresses ~5–8× (no Jav
 ### Roadmap — serious read {#v-roadmap}
 
 
-Migration is the on-ramp, not the destination. **Once migration from both iDempiere *and* Odoo is
-stable on the signed op-log**, the kernel folds forward into two new op-log-native apps — the same
-ledger, no new server:
+Migration is the on-ramp, not the destination. The kernel folds forward into new op-log-native apps —
+the same ledger, no new server. **Both shipped 2026-06 and run LIVE on GitHub Pages:**
 
-1. **uniCenta POS** — a browser rebuild of the POS, driven by **replenishment**: the point-of-sale
-   lifecycle expressed as folds over the same ledger (the backflush + on-hand spine witnessed in
-   [`FoldEngineQuality.md`](FoldEngineQuality.md) is the groundwork). **Spec'd →
-   [POS Addon Spec](POS_ADDON_SPEC.md)** — the 2012 Unicenta/AutoBOMOrder loop with the middleware
-   deleted: ring → WR order → backflush → replenish-PO, all on witnessed verbs; doctrine in
-   [The POS Lens](POSLens.md). **User guide → [ERP User Guide](ERPUserGuide.md).**
-2. **Warehouse mobile walk** — a phone-first pick / put-away *"walk the aisles"* app over the same
-   tenant, riding the same on-hand fold. **Spec'd → [Spatial Picking Spec](SPATIAL_PICKING_SPEC.md)** —
-   the warehouse compiled as a BIM-like model (the same BOM recursion that compiles a building),
-   fly-to + lens to the next bin, QR scan as the one clean act, every pick a signed op.
+1. **uniCenta POS reborn — LIVE → [POS Addon Spec](POS_ADDON_SPEC.md)** — the 2012 Unicenta/AutoBOMOrder
+   loop with the middleware deleted, now witnessed end-to-end on the live app: ring → ONE signed group
+   (WR order + shipment + invoice, all-or-none, hash-chained) → BOM backflush → **replenishment enacted
+   to closure** (suggestion → PO to a real seed vendor → receipt → on-hand rises to the unit → the
+   suggestion clears, `newVerbs=[]`); the live ring posts **to the cent** (`§POS-CENT maxDiff=0c`) and
+   **void/reverse** nets postings to 0c with on-hand restored. Doctrine in [The POS Lens](POSLens.md);
+   **user guide → [ERP User Guide](ERPUserGuide.md).**
+2. **Warehouse mobile walk — LIVE → [Spatial Picking Spec](SPATIAL_PICKING_SPEC.md)** — a phone-first
+   pick *"walk the aisles"* app over the same tenant: the warehouse compiled as a BIM-like model (the
+   same BOM recursion that compiles a building), fly-to + lens to the next bin, QR scan as the one
+   clean act, every pick a signed op; `qtyOnHand` and the ERP window agree **to the unit** (W-WH-LIVE).
 
 These are the two ERP objectives stated in the [bim-ootb README](https://github.com/red1oon/bim-ootb#roadmap);
-both are **downstream of the migration this paper measures** — they become possible precisely because the
+both **landed downstream of the migration this paper measures** — possible precisely because the
 kernel is the same fold whether it is migrating an existing ERP or running a new app on it. (The wider
 roadmap also carries one BIM objective — a 2D grid *editor* — and one shared objective — a single
 parallel op|view history timeline across the BIM building and the ERP context.)
@@ -1055,7 +1053,7 @@ DRAFT (2026-06-08). The evaluator-facing companion to the deep papers ([ERP.md](
 [^dep]: `docs/DepreciationPerf.md` — iDempiere 40-year asset depreciation: per-row `saveEx` through the PO layer ≈ ~2 DB round-trips × ~480 periods/asset ≈ ~960/asset → a base of thousands of assets ≈ **~1M round-trips** (recalled ~20 min). The cost is the round-trips, not the maths.
 [^sync]: `build/erp/sync_poc_smoke.log` — 5,000 events: naive 9,390 ops/s; batch commitGroup 22,492 ops/s = 2.4× (corroborated `sync_poc_prod_smoke.log`).
 [^ceiling]: `build/erp/poc_volume_ceiling.log` — append/fold stay LINEAR; largestFit=20,000,000 ops, ~437 B/op retained; fold ~40.8M ops/s hot at 5M.
-[^bloat]: bloat memory (`reference_bloat_reduction.md`, measured 2026-06-06 from `~/idempiere-dev-setup/idempiere`) — seed 45.2 MB → 12.7 MB (≈3.5×); 1,427,147 Java LOC → 18,614 JS LOC engine shell (≈76× built-so-far; ~25× at conservative full parity, ~56K JS). Full evidence `internal/BLOAT_MEASUREMENT.md`.
+[^bloat]: bloat memory (`reference_bloat_reduction.md`, Java side measured 2026-06-06 from `~/idempiere-dev-setup/idempiere`; JS side re-measured 2026-06-12 as the dedup union of `build/erp` + `origin/main:erp` non-lib non-min JS) — seed 45.2 MB → 26.1 MB full-width (≈1.7×; the earlier 12.7 MB/3.5× column-slice left windows unreachable — completeness won, bim-ootb #265); 1,427,147 Java LOC → 28,184 JS LOC / 132 files engine shell (≈51× built-so-far — was 76× at 18,614/60, the ratio falls as real coverage grows; ~21× at conservative full parity, ~68K JS). Full evidence `internal/BLOAT_MEASUREMENT.md`.
 [^bloat2]: same memory — LIVE GardenWorld DB Postgres 143 MB on-disk → 43 MB SQLite (925 tables, 187,133 rows, ≈3.3×); gzip 11.7 MB (3.7×).
 [^odoo]: `build/erp/odoo_fold_live.log` — `§ODOO-FOLD-LIVE PASS`: live odoodemo (Odoo 17, :8069) SO S00023, 5/5 hops mapped, newVerbs=[], total 5002.50 == oracle, GL ΣDr==ΣCr.
 [^b1]: `build/erp/b1_fold.log` — `§B1-FOLD PASS`: SAP Business One O2C + OJDT/JDT1, 5/5 hops, journal 770.00==770.00. Source = a hand-authored MOCK Service-Layer shape (user-authorized 2026-06-05), NOT a real export.
