@@ -66,6 +66,26 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶▶▶ SESSION HANDOFF 2026-06-12g — POS KILLER DEMO ✅ SHIPPED LIVE (`prompts/POS_KILLER_DEMO.md` + `prompts/POS_ENGINE_LANE.md` → # DONE; two Fable/Sonnet sessions + Opus deploy, bim-ootb PR #276 sw v656) ▶▶▶**
+> - **✅ ENGINE (Fable-5 session, bim-compiler 9857aefc):** E-1 W-POS-REGISTER (`buildRegisterGroup` — signed
+>   M_Product+price+poskey+AD_Image group, dict-defaulted, det-PKs, falsifiers no-barcode/over-cap/dup) · E-2
+>   W-POS-EDIT · E-3 W-IMG-FOLDER + W-IMG-SYNC (`img_store.js` IDB folder + copy job) · E-4 W-POS-HOLD (park=DR,
+>   recall completes the HELD order, 1 C_Order) · **E-5 W-WH-CONFIRM** (unblocked — `inout_confirm.js`, doctype-148
+>   pick-confirm, on-hand moves at confirm; oracle MInOutConfirm.java line-cited; split refused honestly).
+> - **✅ UI (Sonnet session → Opus deploy, bim-ootb PR #276 squash 97b8832, sw v656):** U-1 album image cards
+>   (`§POS-ALBUM cards=16 placeholders=16`, +Lucide `image` glyph to icons.js) · U-2 floating draggable payment
+>   panel replacing the fixed sheet (`§POS-FLOAT`, own z-layer, position persisted) · U-3 Import pill snap+scan+price
+>   → tile (`§POS-FIRSTSELL`) · U-4 DEMO payment QR (`§POS-PAYQR amount==GrandTotal demo=Y`) · U-5 screenshots
+>   shown+OK'd before the train.
+> - **✅ TRAIN:** sw v655→v656, precache+load `img_store.js`, ?v= pos_core 2/pos_lens 2/icons 4; W-POS-LIVE re-run on
+>   the bumped tree PASS (`§POS-CENT maxDiff=0c`, witness updated for the new surface, banked a68bbbee); regressions
+>   crud/void/replenish_loop green; orphan-checked (origin/main carries it all) + Pages live-verified v656 + behavior probe.
+> - **§P-11 payable-QR ⛔ → RESOLVED for the demo** via the explicit DEMO/SAMPLE-labeled generic QR (no branded EMVCo
+>   rails); real-DuitNow static-QR-upload variant stays the next increment.
+> - **▶ NEXT (named, not opened):** §S-12 ERP info chips on WH pick → §S-13b stock-color pill → §S-13a Find Products
+>   facet (read-only folds, data-gated like the Walk pill — the WH-context arc) · POS returns-with-restock UI · §P-5
+>   multi-station · receipt-URL buyer copy · EOD email · batch Import spine (Excel/social, the §P-9 import half).
+>
 > **▶▶▶ DICTATED 2026-06-12f — POS DIY-UX + WH-context arc SPLIT INTO TWO LANES (Fable5 review of the UI session's specs — `docs/POS_ADDON_SPEC.md §3b/§P-6..§P-13` + `docs/SPATIAL_PICKING_SPEC.md §S-2/§S-12/§S-13` + resume card `prompts/POS_LENS_SESSION.md`) ▶▶▶**
 > - **Specs REVIEWED + revised to fit (Fable5, this block's writer):** POS_ADDON_SPEC status block synced to v655
 >   reality (#269/#271/#274; void DONE, cent ring lit) · §P-12 + SPATIAL §S-2 gained the **open-docs honesty note**

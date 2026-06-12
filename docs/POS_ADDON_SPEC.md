@@ -157,6 +157,17 @@ No step is new machinery. The *sequence* is the addon.
 
 ## 3b. DIY single-user UX — the mobile checkout (user direction 2026-06-12)
 
+> **Status 2026-06-12 — the KILLER DEMO is LIVE (bim-ootb PR #276, sw v656).** The DIY mobile UX shipped:
+> §P-6/§P-7 layout (now the §LAYOUT floating-panel revision, `prompts/POS_KILLER_DEMO.md`) · §P-8 scan · §P-9
+> register (`buildRegisterGroup`, W-POS-REGISTER) · §P-10 edit (W-POS-EDIT) · §P-11 receipt + a generic **DEMO/SAMPLE**
+> payment QR (the payable-QR ⛔ user-fact sidestepped by the explicit DEMO label; real static-DuitNow upload = next
+> increment) · §P-13 hold/recall (W-POS-HOLD). Album = image cards (photo→thumb→Lucide placeholder glyph); payment =
+> a draggable floating panel on its own z-layer (the fixed-bottom-sheet of §P-6 is SUPERSEDED — it moved with the
+> album scroll layer, the named bug). Snap→scan→price→tile→sell→receipt runs end-to-end on a phone in under a minute,
+> signed (`§POS-FIRSTSELL`). E-5 §P-12 confirmation fold also landed (`inout_confirm.js`, W-WH-CONFIRM — doctype 148
+> pick-confirm, on-hand at confirm). Engine bank bim-compiler 9857aefc; the live-witness W-POS-LIVE drives the new
+> surface. Image full-res sync = `img_store.js` IDB folder + out-of-band copy job (W-IMG-FOLDER/SYNC).
+
 *All of §P-6..§P-11 below is the lens's PRESENTATION + input layer. Hard rule the user repeated
 three times: **never disturb the underlying engine or flow** — every price is still `POSCore.ringLine`,
 every sale is still ONE `kernel_ops.commitGroup`, every product write rides the SAME signed write-path
