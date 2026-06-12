@@ -154,7 +154,7 @@ live; op-logged, signed, reversible. That witness is the whole paradigm shift ma
 visible in a single gesture — and the architecture it needs (engine-as-data + a
 JavaScript host + the signed op-log) is **already standing under it.**
 
-## Roadmap check — the write-seam, as of 2026-06-01
+## Roadmap check — the write-seam, as of 2026-06-13
 
 The grail is the *last rung of the write-loop*, not a separate project. Here is the
 ladder from today's read-only surface to the live rule-edit, and where each rung stands —
@@ -187,6 +187,18 @@ of the engine, not the live engine; and the grail rung (`§RULE-EDIT`) sits one 
 E3/E4. So the checkpoint verdict, stated plainly: **the seam to the grail is now built and
 witnessed as data; the current is not yet flowing through it.** A rung climbed, honestly
 logged — which is the difference between building and day-dreaming.
+
+**2026-06-13 checkpoint — R0 extended to phrase authoring.** The POS deliver-later variant
+(W-POS-DELIVERLATER) and the NinjaExcel reporting engine (W-NINJA, W-NINJA-RULE) have landed.
+The grail-relevant piece is **W-NINJA-RULE**: a phrase-to-SQL compiler that resolves human
+phrases ("COUNT of Invoices, completed, is Sales Transaction, from …") to SQL candidates using
+*only* vocabulary extracted from the AD dictionary — `ad_table` / `ad_column` / `ad_ref_list`
+— zero LLM, zero hardcoded strings. The browser pill (W-NINJA-RULE-UI) runs the same
+compile → sample-falsify → human-picks-tie loop live. This extends **R0** from "rules
+extracted to data and diff-verified" into "rules authorable from human phrases in the browser,
+using the AD as vocabulary" — the write side of the same foundation the grail requires. The
+gap to E3/§RULE-EDIT is unchanged; the authoring story for the rules you will eventually
+edit is now demonstrated.
 
 ## Abstracting the DocAction corpus — and why it is the migration solvent
 
