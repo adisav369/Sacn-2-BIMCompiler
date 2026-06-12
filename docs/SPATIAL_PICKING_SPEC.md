@@ -114,7 +114,19 @@ its **`m_locator_id` as the element GUID** (the BIMtoERP linkage key, reversed: 
 
 #### §S-2b The walk-side selector (`prompts/WH_POS_PICK_LANE.md`, design 2026-06-13)
 
+**STATUS 2026-06-13 — ✅ LIVE (bim-ootb PR #283, erp sw v663 / viewer sw v648).** The whole loop
+is witnessed end-to-end on the served pages — **W-WH-POS-PICK-LIVE PASS**: a deliver-later sale made
+on the live POS (`§POS-DELIVERLATER … persisted=Y`) is offered in the live walk
+(`§WH SRC pos-docs=1 [910032(oplog)]`), short-picked (`§WH PICK-COMPLETE inout=910032 CO
+via=completeShipmentOps(120) picked=2/3 diffs=0 chainOk=Y`), and written back so the reload selector
+empties (`§WH SRC pos-docs=0`). W-WH-LIVE + W-POS-LIVE regressions byte-honest. **One live-only bug
+fixed in the train:** `wh_walk.js` opened the IDB cache at version 1 (below `scene.js`'s version 2
+`openCacheDB`) → `VersionError` → the sidecar was never read; all three open sites now route through a
+shared `_openCacheDB()` (the same `kernel_ops.js §KRN_PERSIST_FIX` idiom). Headless could not catch it
+(in-memory sql.js, no scene.js IDB).
+
 The "finish the sale → go pick it" fold, walk side. Witness **W-WH-POS-PICK** (headless) +
+**W-WH-POS-PICK-LIVE** (`scripts/poc_wh_pos_pick_live.js`) +
 live §-logs (`§WH SRC pos-docs=N`, `§WH PICK-COMPLETE inout=… CO picked=…`).
 
 - **The honest source seam (EXTRACTED, not assumed):** the walk reads the STATIC `../erp/ad_seed.db`

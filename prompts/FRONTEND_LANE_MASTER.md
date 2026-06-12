@@ -66,13 +66,16 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
-> **▶ 2026-06-13 — WH×POS PICK LANE: BUILT + HEADLESS ✅ · LIVE-VERIFY + TRAIN HANDED TO A SONNET
-> SESSION (user 2026-06-13 "need not test — note in prompt for Sonnet session to test"):**
-> W-1 door + W-2 selector (sidecar fold + write-back) + W-3 completion CODED on bim-ootb branch
-> **`feat/wh-pos-pick`** (worktree /tmp/wt-poswalk, erp sw v661 / viewer sw v648 staged);
-> **W-WH-POS-PICK headless PASS** (14 verdicts) + W-WH-ROUTE regression PASS; spec =
-> SPATIAL_PICKING_SPEC **§S-2b**. Sonnet session: run `prompts/WH_POS_PICK_LANE.md # DONE` §SONNET-TEST
-> (3 live witnesses) then merge the ONE train. Original dictation (2026-06-12i) kept below for scope:
+> **▶ 2026-06-13 — WH×POS PICK LANE: ✅ DONE + LIVE (bim-ootb PR #283 MERGED, erp sw v663 / viewer sw v648).**
+> Sonnet session ran §SONNET-TEST: **W-WH-POS-PICK-LIVE PASS** (full loop — live deliver-later sale →
+> walk offers `pos-docs=1` → short-pick `CO picked=2/3 diffs=0` → write-back empties the selector) +
+> W-WH-LIVE + W-POS-LIVE regressions byte-honest. **One live-only bug fixed in the train:** `wh_walk.js`
+> opened the IDB cache at version 1 (below scene.js's v2 `openCacheDB`) → VersionError → sidecar never
+> read; fixed via a shared `_openCacheDB()` (kernel_ops §KRN_PERSIST_FIX idiom). Also declared
+> `POSCore`/`InOutConfirm` in `eslint.globals.json` (no-undef gate). Synced origin (#282 NinjaExcel) →
+> erp sw v661→v663. Spec status flipped: SPATIAL_PICKING_SPEC **§S-2b ✅ LIVE**. Original dictation kept below for scope:
+> W-1 door + W-2 selector (sidecar fold + write-back) + W-3 completion (built by Fable5; spec §S-2b).
+> Original dictation (2026-06-12i):
 > W-1 POS deliver-later door (dictionary-gated) · W-2 draftPick selector (the witnessed query; the
 > static-seed vs IDB-sidecar seam folded honestly) · W-3 pick-complete via completeShipmentOps + the
 > 148 confirm gate · W-4 witnesses + ONE train.

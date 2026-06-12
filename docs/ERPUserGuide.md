@@ -328,6 +328,19 @@ Any other building → the pill stays off the bar.
 | **§S-3** ✅ | Walk UI | Phone-first fly-to strip; depth model (ghost/rack/bin); step strip + camera easing |
 | **§S-4** ✅ | QR scan | `BarcodeDetector` + typed fallback; wrong-bin refusal gate |
 | **§S-5** ✅ | Signed op | `M_Movement CO` via `KernelOps.commitGroup`; on-hand folded from op-log |
+| **§S-2b** ✅ LIVE | POS→pick loop | Sell **deliver-later** at the POS → the walk offers that open shipment → pick it to completion (on-hand moves at the pick). bim-ootb PR #283, W-WH-POS-PICK-LIVE. See §7 → *Deliver later*. |
+
+### Deliver later → pick at the warehouse (§S-2b)
+
+The POS and the Warehouse Walk are **one ledger, two lenses**. When you ring a sale and choose
+**Deliver later · pick at warehouse** (the payment panel's option beside Tender — shown only when the
+tenant has a deliver-later sale doctype, seed `132`), the order completes (`C_Order → CO`) but the
+shipment is born **`DR`** (not yet picked). That open shipment then appears as a **route source in the
+Warehouse Walk** on the next open: walk to the bin, scan/confirm, and the shipment completes by the
+**picked** quantity — on-hand moves *at the pick*, not at the sale. Short-picks leave the remainder open
+on the document. Once picked, the walk writes the completion back to the shared ledger so the selector
+never re-offers a picked shipment. The whole loop is witnessed live end-to-end (**W-WH-POS-PICK-LIVE**,
+PR #283). A "with-pick QA confirm" doctype (148) routes completion through the warehouse-confirm gate first.
 
 ### Share
 
