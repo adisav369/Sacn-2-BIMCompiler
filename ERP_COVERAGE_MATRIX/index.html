@@ -4688,6 +4688,36 @@ and the qty-half (MTransaction→MStorageOnHand) of the trade cycle both fold to
 <td><code>§POS-LOOP suggest qty=11 product=124 (Elm Tree)</code> · <code>§POS-LOOP vendor=114 (Tree Farm Inc.) pricepo=30 newVerbs=[]</code> · <code>§POS-LOOP po=CO dispatch=DR→CO ok=true</code> · <code>§POS-LOOP receipt=CO dispatch=DR→CO ok=true</code> · <code>§POS-LOOP onhand +11@locator=101 product=124 before=9 after=20</code> · <code>§POS-LOOP suggestions: gone product=124 available=20 min=10 cleared=Y</code> · §FALSIFIER-A receipt-no-po lines=0 · §FALSIFIER-B short-receive clears when available&gt;min (po-remainder=6 noted). Vendor from real m_product_po, no invented rows. Post-merge: W-POS-LIVE re-run <code>§POS-CENT Dr=137.75 Cr=137.75 maxDiff=0c newVerbs=[]</code> all 5 stages green. <code>build/erp/poc_pos_replenish_loop.log</code> exit 0.</td>
 </tr>
 <tr>
+<td><strong>POS lens §P-9 register</strong> (killer demo, POS_ENGINE_LANE E-1)</td>
+<td>✅ LIVE (engine W-POS-REGISTER; live Import pill bim-ootb PR #276 sw v656)</td>
+<td><code>build/erp/poc_pos_register.log</code> exit 0: ONE signed group of 4 CRUD_CREATE ops (M_Product+M_ProductPrice+AD_Image+C_POSKey), chainOk=Y, defaults EXTRACTED (<code>§POS-REG defaults src=dictionary cat=108 uom=100 tax=107 client=11 org=0 … entitytype=U nextseqno=180</code>); the new tile RINGS at the keyed price through the UNCHANGED §P-2 path. Falsifiers: no-barcode · over-cap (40002B&gt;32768B) · price-not-keyed · duplicate barcode = PROPOSE-MERGE (named decision: §P-8 scan needs barcode→ONE product; upc uniqueness NOT enforced in real iDempiere).</td>
+</tr>
+<tr>
+<td><strong>POS lens §P-10 edit</strong> (E-2)</td>
+<td>✅ headless-green (W-POS-EDIT)</td>
+<td><code>build/erp/poc_pos_edit.log</code> 13🟢/0🔴: price 1.00→2.50 = ONE CRUD_UPDATE carrying exactly pricestd/pricelist/pricelimit {old,new}; the NEXT ring reads 2.50 through unchanged ringLine; name edit = M_Product.name + c_poskey.name; photo swap on the EXISTING AD_Image row under the ≤32KB cap. Falsifiers: no-change edit emits ZERO ops (#268 no-op suppression) · unknown product refused · chainOk=Y.</td>
+</tr>
+<tr>
+<td><strong>POS lens §P-13 hold/recall</strong> (E-4)</td>
+<td>✅ headless-green (W-POS-HOLD)</td>
+<td><code>build/erp/poc_pos_hold.log</code> 12🟢/0🔴: buildSaleGroup split into buildOrderOps + completionOps halves (replay-equality by CONSTRUCTION; 7 sibling witnesses re-run green). Park = the order half alone (real DR C_Order, lists in Sales-Order-window + Kanban queries — same ledger row, NOT a private store) · recall reloads exact lines to the cent (109.25==109.25) · complete = the completion half on the EXISTING order. Falsifiers: exactly ONE C_Order (1 CREATE op in the whole log) · CO-recall refused.</td>
+</tr>
+<tr>
+<td><strong>POS lens §P-12 confirmation fold</strong> (E-5)</td>
+<td>🟡 RULE-CONSISTENT (W-WH-CONFIRM — like MProduction/MInventory: verbatim-source oracle, no seed fact-cycle to diff; G-3 PG-drive ⛔ see below)</td>
+<td><code>build/erp/poc_wh_confirm.log</code> 21🟢/0🔴: <code>build/erp/inout_confirm.js</code>, oracle = real iDempiere Java line-cited (MInOut.prepareIt:1551 spawn · completeIt:1648 gate→IP · pendingCustomerConfirmations:2203 XC-never-blocks · MInOutConfirm.completeIt:394-480 · createDifferenceDoc:604-669 · beforeSave:202 diff=target−confirmed−scrapped); anchored on the seed's OWN confirm rows. PROVEN: doctype 148 IsPickQAConfirm=Y spawns PC from the DICTIONARY row · InOut waits IP · ON-HAND MOVES AT CONFIRM-COMPLETE by the PICKED qty · SO-side short pick → NO difference doc, MovementQty REDUCED · scrap → M_Inventory diff doc · PO-side linked diff → AP credit memo. <strong>⛔ G-3 oracle-upgrade parked (one fact):</strong> <code>Adempiere.startup(false)</code> cannot run headless — SecureEngine init NPEs on <code>BaseActivator.getBundleContext()</code>==null (Service locator needs a live OSGi BundleContext; the JUnit plugin tests run under tycho/PDE). The rollback-safe drive is WRITTEN+COMPILED (<code>scripts/logic_oracle/ConfirmOracle.java</code>) — runs the moment an OSGi runtime hosts it.</td>
+</tr>
+<tr>
+<td><strong>POS images folder + copy job</strong> (E-3 + G-2)</td>
+<td>✅ LIVE (W-IMG-FOLDER/W-IMG-SYNC headless; W-IMG-LIVE on the live page, bim-ootb PR #277 sw v657)</td>
+<td><code>build/erp/poc_img_{folder,sync}.log</code>: <code>img_store.js</code> UMD — content-addressed put/get/has, resolveImage tiers full→thumb→none, syncFromLog = the out-of-band COPY JOB (idempotent, missing keys REPORTED; transport NAMED explicit-export-import). <strong>G-2 closed the live fork</strong> (<code>poc_img_live.log</code> exit 0): imageKey = <code>'sha256:'+hex(SubtleCrypto digest)</code> of the decoded bytes (the content-length stub removed), <code>§IMG-LIVE folder=idb put=Y get=Y tier=full key=sha256:…</code> on idempiere.html, tier walk <code>full→thumb→none</code>, §FALSIFIER tampered blob under a sha256 key DETECTED (<code>§IMG-TAMPER detected=Y tier=thumb</code> — resolveImage re-hashes before full-tier renders).</td>
+</tr>
+<tr>
+<td><strong>POS §P-12/§S-2 deliver-later sale</strong> (G-1, the seam gap)</td>
+<td>✅ headless-green (W-POS-DELIVERLATER, bim-compiler 5bc4b389)</td>
+<td><code>build/erp/poc_pos_deliverlater.log</code> exit 0: policy DERIVED from the doctype 132 row (SO/N/N; WR refuses → buildSaleGroup), ONE signed group = C_Order→CO + shipment via the SAME buildDoc spec born DR (NO SET_STATUS M_InOut; dictionary ship-link 132→120), invoice timing NAMED from extracted C_Order.InvoiceRule='I'; on-hand UNMOVED after the sale; the DR doc SURFACES in the §S-2 selector (<code>docstatus IN ('DR','IP')</code>, POS-generated) then empties after the pick; scan-commit moves on-hand by the PICKED qty (short-pick 2→1: moved 2, asked 3); confirm-demanding doctype (148) REFUSES → inout_confirm gate. Falsifiers: WR sale zero-open-docs (W-POS-WR byte-unchanged) · double-complete refused · cents maxDiff=0c. <em>(Walk-side §S-2 selector wiring = next wave.)</em></td>
+</tr>
+<tr>
 <td><strong>Spatial §S-1 warehouse model</strong></td>
 <td>✅ compiled (regression green 2026-06-12)</td>
 <td>W-WH-COMPILE 11/11 bins == m_locator + W-WH-SMOKE no-cubes (<code>§WH_SMOKE_BINS bins=11 guid==m_locator_id</code>); db <code>buildings/warehouse_gardenworld.db</code> uploaded to the OCI COMMON bucket (HEAD 200, 61440 B, md5-verified).</td>

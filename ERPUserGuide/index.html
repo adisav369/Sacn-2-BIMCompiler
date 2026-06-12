@@ -2551,10 +2551,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#pos-screen-layout" class="md-nav__link">
+  <a href="#pos-screen-layout-the-killer-demo-surface-sw-v656" class="md-nav__link">
     <span class="md-ellipsis">
       
-        POS screen layout
+        POS screen layout (the killer-demo surface, sw v656)
       
     </span>
   </a>
@@ -2566,6 +2566,28 @@
     <span class="md-ellipsis">
       
         Making a sale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register-a-new-product-at-the-till-the-import-pill-p-9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Register a new product at the till — the Import pill (§P-9)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hold-recall-p-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hold / recall (§P-13)
       
     </span>
   </a>
@@ -4568,10 +4590,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#pos-screen-layout" class="md-nav__link">
+  <a href="#pos-screen-layout-the-killer-demo-surface-sw-v656" class="md-nav__link">
     <span class="md-ellipsis">
       
-        POS screen layout
+        POS screen layout (the killer-demo surface, sw v656)
       
     </span>
   </a>
@@ -4583,6 +4605,28 @@
     <span class="md-ellipsis">
       
         Making a sale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register-a-new-product-at-the-till-the-import-pill-p-9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Register a new product at the till — the Import pill (§P-9)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hold-recall-p-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hold / recall (§P-13)
       
     </span>
   </a>
@@ -4940,20 +4984,42 @@ No traditional row-update happens; the current state is the fold of all ops on t
 <h2 id="7-pos-point-of-sale">7. POS — Point of Sale<a class="headerlink" href="#7-pos-point-of-sale" title="Permanent link">&para;</a></h2>
 <p><strong>Prerequisite:</strong> log in as <strong>GardenUser</strong> (the POS station <code>c_pos_id=1</code> is scoped to that role).
 Tap the <strong>POS</strong> pill in the bottom bar (it appears only when the loaded db has a <code>c_pos</code> station).</p>
-<h3 id="pos-screen-layout">POS screen layout<a class="headerlink" href="#pos-screen-layout" title="Permanent link">&para;</a></h3>
+<h3 id="pos-screen-layout-the-killer-demo-surface-sw-v656">POS screen layout (the killer-demo surface, sw v656)<a class="headerlink" href="#pos-screen-layout-the-killer-demo-surface-sw-v656" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Left panel</strong> — product grid from <code>c_poskey → m_product</code> (the sealed keylayout). Every product
-  shows its master price from the station's pricelist — you ring the master, not a manual price.</li>
-<li><strong>Right panel</strong> — the current cart: partner, line prices, running total.</li>
+<li><strong>Album cards</strong> — the product grid is a photo album (<code>.pos-card</code>, <code>§POS-ALBUM cards=16</code>): each card
+  from <code>c_poskey → m_product</code> (the sealed keylayout) shows its photo (full-res from the device images
+  folder → ledger thumbnail → placeholder glyph, honestly tiered) and its master price from the
+  station's pricelist — you ring the master, not a manual price.</li>
+<li><strong>Floating payment panel</strong> — the cart pill summons a floating panel on its own layer
+  (<code>#pos-float-panel</code>): tender, walk-in partner picker, receipt, replenishment suggestions. The album
+  keeps scrolling underneath; payment never squeezes the grid.</li>
 </ul>
 <p><img alt="POS — Garden User · Store: product grid left, live cart right, replenishment suggestions below" src="../figs/pos_live.png" /></p>
 <h3 id="making-a-sale">Making a sale<a class="headerlink" href="#making-a-sale" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Tap a product tile → it is added to the cart at the sealed price.</li>
+<li>Tap a product card → it is added to the cart at the sealed price.</li>
 <li>Tap again to increment qty, or edit qty in the line.</li>
 <li>Review <strong>Total</strong> (BigDecimal fold of line amounts, never a posted figure yet).</li>
-<li>Tap <strong>Tendered cash — Complete</strong> to commit the sale.</li>
+<li>Summon the payment panel (cart pill), pick the walk-in partner, tap <strong>Tendered cash — Complete</strong>
+   (<code>§POS-SALE … newVerbs=[] chainOk=Y</code> — and the receipt card shows <code>signed=Y</code>).</li>
 </ol>
+<p>A <strong>DEMO payment QR</strong> renders in the panel (clearly watermarked DEMO — a display of the tender
+amount, not a payment rail; no provider is wired, nothing is charged).</p>
+<h3 id="register-a-new-product-at-the-till-the-import-pill-p-9">Register a new product at the till — the Import pill (§P-9)<a class="headerlink" href="#register-a-new-product-at-the-till-the-import-pill-p-9" title="Permanent link">&para;</a></h3>
+<p>The <strong>Import</strong> pill opens the snap+scan+price flow: photograph the item (camera, downscaled to a
+≤32KB ledger thumbnail; the full-res photo goes to the device images folder under a
+<code>sha256:</code> content address — <code>§POS-IMGKEY</code>), scan or type its barcode, key the price. <strong>Register</strong>
+commits ONE signed group of 4 CRUD_CREATE ops — M_Product, M_ProductPrice (station pricelist),
+AD_Image, C_POSKey — every default EXTRACTED from the dictionary and the station's own rows
+(<code>§POS-IMPORT registered productId=… gid=…</code>). The new card appears in the album and rings
+immediately through the unchanged sale path. A duplicate barcode is refused and the existing
+product handed back (propose-merge). Editing name/price/photo later rides the same signed path,
+changed columns only (<code>W-POS-EDIT</code>).</p>
+<h3 id="hold-recall-p-13">Hold / recall (§P-13)<a class="headerlink" href="#hold-recall-p-13" title="Permanent link">&para;</a></h3>
+<p><strong>Hold</strong> parks the in-progress cart as a real <code>DR</code> C_Order — the same ledger row the Sales Order
+window and Kanban read, not a private store (<code>§POS-HOLD park order=… listed window=Y kanban=Y</code>).
+<strong>Recall</strong> is a plain query of the held orders; completing a recalled sale completes THE held
+order (never a duplicate — exactly one C_Order exists, witnessed).</p>
 <p>The "Complete" creates ONE signed op-group:</p>
 <div class="highlight"><pre><span></span><code>CREATE_DOCUMENT  C_Order  (the POS sale order)
 CREATE_LINE      C_OrderLine  (one per cart line)

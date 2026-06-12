@@ -4501,10 +4501,14 @@ be as dumb as it always should have been.</p>
 <li><strong>Proven and real:</strong> the iDempiere Unicenta POS plugin (deployed, documented, in production use historically),
   and the Distributed ERP doctrine it illustrates (the falsifier POCs in <code>scripts/poc_*.js</code>). The arithmetic in
   this document — backflush, shrinkage, the fold — is the iDempiere logic I worked in and noticed.</li>
-<li><strong>Specified, not yet built:</strong> the browser POS <em>lens</em> itself. It is a lens over the frozen engine seam
-  (<code>window.ERP</code>), gated on the front-end foundation's write-path; the work-order and its <code>§POS-*</code> witnesses are in
-  <code>prompts/POS_LENS_SESSION.md</code>. No claim here that the lens ships today — only that the concept is sound and the
-  parts exist.</li>
+<li>~~<strong>Specified, not yet built:</strong> the browser POS <em>lens</em> itself.~~ <strong>SUPERSEDED — the lens is LIVE.</strong>
+  Shipped on idempiere.html: §P-1..§P-4 sale loop bim-ootb PR #269 (sw v652) with the to-the-cent posting ring
+  closed on the default seed PR #271 (v653, <code>§POS-CENT maxDiff=0c</code>); the full CRUD/void/replenish loop PR #274
+  (v655); the DIY killer demo — album cards, floating payment panel, Import pill (snap+scan+price → §P-9
+  register), DEMO payment QR, §P-13 hold/recall — PR #276 (v656); sha256 content-addressed photos + tamper-gated
+  read path PR #277 (v657). Engine ledger: <code>docs/ERP_COVERAGE_MATRIX.md</code> third-axis POS rows (W-POS-* witnesses).
+  The deliver-later sale (§P-12 seam: shipment born DR, the pick moves on-hand) is engine-green
+  (W-POS-DELIVERLATER); its walk-side §S-2 selector wiring is the open tail.</li>
 </ul>
 <p>The promise, stated plainly: <strong>one incorruptible source act, and the rest is a fold — so the system cannot output
 garbage because it cannot ingest it, and it needs no central authority because there is nothing left to police.</strong></p>
