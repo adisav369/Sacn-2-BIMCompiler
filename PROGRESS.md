@@ -39,6 +39,19 @@
   POSLens.md §11 supersede note · ERPUserGuide §7 killer-demo surfaces. Paper diff = proposed to user
   (MIGRATE_PAPER_REVISE rule), edit pending approval.
 
+## WH×POS pick lane BUILT, live-verify → Sonnet (2026-06-13, `prompts/WH_POS_PICK_LANE.md # DONE`)
+- **Done:** spec `SPATIAL_PICKING_SPEC.md §S-2b` (the REAL seam: ERP op log persists to IDB
+  `bim_ootb_cache/dbs/idmp_kanban_proj`, Kanban-only until now → W-1 door persists at sale; walk
+  completion WRITES BACK, same gids, no double-pick door) · `wh_route.js openPosDocsFromOps` PURE
+  sidecar fold · **W-WH-POS-PICK headless PASS 14 verdicts** (`§WH PICK-COMPLETE inout=910002 CO
+  picked=2/3 foldDiffs=0` direct + `inout=930002 CO via=confirm-gate` 148; WR self-filters;
+  W-WH-ROUTE regression green; bim-compiler 98a2ad3b) · bim-ootb branch **`feat/wh-pos-pick`**
+  (d55b976 pushed, NOT merged: door pos_lens?v=5 + persist seam + pos_core SYNC (was BEHIND, no
+  §P-12 half!) + NEW erp/inout_confirm.js + wh_walk?v=3 selector/chooser/completePos; sw v661/v648).
+- **Next (user 2026-06-13: "need not test — note for Sonnet"):** Sonnet session runs the card's
+  §SONNET-TEST (poc_wh_pos_pick_live + W-WH-LIVE + W-POS-LIVE regressions on /tmp/wt-poswalk) then
+  merges the ONE train + banks (spec LIVE flip, user-guide §7/§9 cross-link, lane-master ✅).
+
 ## Multi-lane WAVE 3 banked (2026-06-12e, `prompts/MULTI_LANE_WAVE3.md` → # DONE)
 - **Done:** Lane A B-2 workflow oracle (W-WF-HARDEN: `§HARDEN surface=ad_workflow fixtures=11 diff=0
   oracle=iDempiere-PG-trace` — 11 REAL traces from live `idempiere_test`, defs `§HARDEN-SRC kind=wf setdiff=0`,
