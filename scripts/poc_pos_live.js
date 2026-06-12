@@ -53,42 +53,51 @@ const server = http.createServer((q, r) => {
     if (dock && trig && getComputedStyle(dock).display === 'none') trig.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
     document.getElementById('pill-pos').dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
   });
-  await pg.waitForSelector('.pos-tile', { timeout: 15000 }).catch(() => fail('lens never mounted (no .pos-tile)'));
+  // U-1 (POS_KILLER_DEMO §LAYOUT.1): tiles are now image CARDS (.pos-card), not .pos-tile buttons.
+  await pg.waitForSelector('.pos-card', { timeout: 15000 }).catch(() => fail('lens never mounted (no .pos-card)'));
   const open = logs.find(t => t.startsWith('§POS-LIVE open'));
   if (!open || !/tiles=16/.test(open)) fail('lens open line wrong: ' + open);
-  const tiles = await pg.$$eval('.pos-tile', ts => ts.length);
+  const tiles = await pg.$$eval('.pos-card', ts => ts.length);
   if (tiles !== 16) fail('expected 16 dictionary tiles, got ' + tiles);
+  // §POS-ALBUM (U-1): every photoless seed tile falls back to the Lucide image placeholder glyph
+  const album = logs.find(t => t.startsWith('§POS-ALBUM'));
+  if (!album || !/cards=16/.test(album) || !/placeholders=16/.test(album)) fail('album line wrong: ' + album);
+
+  // U-2 (§LAYOUT.2): payment/tender lives in a FLOATING panel summoned by the cart pill (pointerup), on its own
+  // z-layer — not in the album scroll flow. Summon it once; tender/BP are inside it (#pos-float-tender/#pos-float-bp).
+  await pg.evaluate(() => document.getElementById('pos-pill-payment').dispatchEvent(new PointerEvent('pointerup', { bubbles: true })));
+  await pg.waitForSelector('#pos-float-panel.open', { timeout: 8000 }).catch(() => fail('float panel never opened on cart pill'));
 
   // ── 5a. honesty first: Complete with EMPTY cart must refuse (no §POS-SALE) ──
   console.log('— 2. empty-cart Complete refuses');
-  await pg.click('.pos-complete');
+  await pg.click('#pos-float-tender');
   await pg.waitForTimeout(300);
   if (logs.find(t => t.startsWith('§POS-SALE'))) fail('empty cart committed a sale');
 
-  // ── 3. ring 2 tiles → pick BP 112 → Complete = ONE signed group ──
-  console.log('— 3. ring 2 tiles, BP=112(Standard), Complete → signed group');
-  await pg.click('.pos-tile[data-pid="124"]');       // Elm Tree, 57.00 (the W-POS-RING product)
-  await pg.click('.pos-tile[data-pid="124"]');       // ×2 — same line, qty folds
-  const t2 = await pg.$$eval('.pos-tile', ts => ts[0].getAttribute('data-pid'));
-  await pg.click(`.pos-tile[data-pid="${t2}"]`);     // a second product line
+  // ── 3. ring 2 cards → pick BP 112 → Complete = ONE signed group ──
+  console.log('— 3. ring 2 cards, BP=112(Standard), Complete → signed group');
+  await pg.click('.pos-card[data-pid="124"]');       // Elm Tree, 57.00 (the W-POS-RING product)
+  await pg.click('.pos-card[data-pid="124"]');       // ×2 — same line, qty folds
+  const t2 = await pg.$$eval('.pos-card', ts => ts[0].getAttribute('data-pid'));
+  await pg.click(`.pos-card[data-pid="${t2}"]`);     // a second product line
   // 5b: Complete with NO partner picked must refuse (seed c_pos.BPartnerCashTrx is NULL)
-  await pg.click('.pos-complete'); await pg.waitForTimeout(300);
+  await pg.click('#pos-float-tender'); await pg.waitForTimeout(300);
   if (logs.find(t => t.startsWith('§POS-SALE'))) fail('sale committed without a partner');
-  await pg.selectOption('.pos-bp', '112');           // Standard — the GardenWorld walk-in
-  await pg.click('.pos-complete');
-  await pg.waitForFunction(() => document.querySelector('.pos-receipt') && document.querySelector('.pos-receipt').textContent.includes('✓'), null, { timeout: 15000 })
+  await pg.selectOption('#pos-float-bp', '112');     // Standard — the GardenWorld walk-in
+  await pg.click('#pos-float-tender');
+  await pg.waitForFunction(() => { const e = document.getElementById('pos-float-receipt'); return e && e.textContent.includes('✓'); }, null, { timeout: 15000 })
     .catch(() => fail('receipt never rendered'));
   const sale = logs.find(t => t.startsWith('§POS-SALE'));
   if (!sale || !sale.includes('newVerbs=[]') || !sale.includes('chainOk=Y')) fail('sale line wrong: ' + sale);
   if (!logs.find(t => t.startsWith('§POS-DOC order='))) fail('no §POS-DOC completeIt line');
-  const rc = await pg.$eval('.pos-receipt', e => e.textContent);
+  const rc = await pg.$eval('#pos-float-receipt', e => e.textContent);
   if (!rc.includes('signed=Y')) fail('receipt not signed: ' + rc);
 
   // ── 4. the replenishment fold renders live ──
   console.log('— 4. replenishment suggestions fold live');
   const repl = logs.filter(t => t.startsWith('§POS-LIVE-REPLENISH')).pop();
   if (!repl || !/suggestions=8/.test(repl)) fail('replenish fold wrong (want the 8-product W-POS-REPLENISH baseline): ' + repl);
-  const replRows = await pg.$eval('.pos-replenish', e => e.textContent);
+  const replRows = await pg.$eval('#pos-float-replenish', e => e.textContent);
   if (!replRows.includes('order')) fail('suggestion rows not rendered on-screen');
 
   // ── 6. §POS-CENT — the rung sale's derived posting balances to the cent on the DEFAULT seed ──
