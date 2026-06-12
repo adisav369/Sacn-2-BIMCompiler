@@ -175,9 +175,9 @@ details.fold .fbd{padding:6px 16px 14px}
   </a>
 </div>
  
-## These have been around for some time, but never for ERP and BIM — now we can put both servers in the same browser!
+## But ERP is tough — an aircraft carrier is about to go into a bathtub
 
-*But ERP is tough — an aircraft carrier is about to go into a bathtub. It has to take all six of these, interlocked:*
+*These have been around for some time, but never for ERP and BIM — now we can put both servers in the same browser! It has to take all six of these, interlocked:*
 
 <div class="pillars" markdown="0">
 
