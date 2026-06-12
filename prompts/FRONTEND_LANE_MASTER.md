@@ -66,13 +66,16 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
-> **▶ DICTATED 2026-06-12i — WH×POS PICK LANE (§S-2 selector, the "finish the sale → go pick it" loop):**
-> build card **`prompts/WH_POS_PICK_LANE.md`** (paste-to-start inside). Engine half ✅ banked (G-1
-> W-POS-DELIVERLATER); walk half = W-1 POS deliver-later door (dictionary-gated) · W-2 draftPick
-> selector (open POS-generated M_InOut, the witnessed query; ⚠ the static-seed vs IDB-sidecar seam
-> is named in the card — fold honestly, never fake the source) · W-3 pick-complete via
-> completeShipmentOps + the 148 confirm gate · W-4 witnesses + ONE train. Spec STATUS block:
-> docs/SPATIAL_PICKING_SPEC.md §S-2.
+> **▶ 2026-06-13 — WH×POS PICK LANE: BUILT + HEADLESS ✅ · LIVE-VERIFY + TRAIN HANDED TO A SONNET
+> SESSION (user 2026-06-13 "need not test — note in prompt for Sonnet session to test"):**
+> W-1 door + W-2 selector (sidecar fold + write-back) + W-3 completion CODED on bim-ootb branch
+> **`feat/wh-pos-pick`** (worktree /tmp/wt-poswalk, erp sw v661 / viewer sw v648 staged);
+> **W-WH-POS-PICK headless PASS** (14 verdicts) + W-WH-ROUTE regression PASS; spec =
+> SPATIAL_PICKING_SPEC **§S-2b**. Sonnet session: run `prompts/WH_POS_PICK_LANE.md # DONE` §SONNET-TEST
+> (3 live witnesses) then merge the ONE train. Original dictation (2026-06-12i) kept below for scope:
+> W-1 POS deliver-later door (dictionary-gated) · W-2 draftPick selector (the witnessed query; the
+> static-seed vs IDB-sidecar seam folded honestly) · W-3 pick-complete via completeShipmentOps + the
+> 148 confirm gate · W-4 witnesses + ONE train.
 >
 > **▶▶▶ SESSION HANDOFF 2026-06-12h — USER LIVE-TEST FIXES (bim-ootb PR #280, erp sw v659 / viewer sw v647) ▶▶▶**
 > - **✅ POS float panel dispose-with-cart** (`§POS-FLOAT dispose=cart-empty`, pos_lens?v=4): sale completes /

@@ -107,11 +107,62 @@ its **`m_locator_id` as the element GUID** (the BIMtoERP linkage key, reversed: 
   `pos_core.completeShipmentOps` (scan-commit completes the DR shipment by the PICKED qty;
   doctype-148 `IsPickQAConfirm` REFUSES → the `inout_confirm.js` W-WH-CONFIRM gate). The selector
   query itself is witnessed against a folded ledger (`§S-2 selector open-pos-docs=[… DR]`, empties
-  after the pick). The WALK-SIDE half — this section's `draftPick` source extension — is the open
-  item: build card **`prompts/WH_POS_PICK_LANE.md`**. Access-path hardening rode bim-ootb #280
+  after the pick). Access-path hardening rode bim-ootb #280
   (viewer sw v647): PWA-resume dead-link self-heal (`§PWA_RESUME_CLEAR` → landing) and
   W-WH-LIVE-PAGES retargeted to the in-repo GH Pages db (OCI duplicate retired); the walk engine
   itself is byte-unchanged (W-WH-LIVE regression green).
+
+#### §S-2b The walk-side selector (`prompts/WH_POS_PICK_LANE.md`, design 2026-06-13)
+
+The "finish the sale → go pick it" fold, walk side. Witness **W-WH-POS-PICK** (headless) +
+live §-logs (`§WH SRC pos-docs=N`, `§WH PICK-COMPLETE inout=… CO picked=…`).
+
+- **The honest source seam (EXTRACTED, not assumed):** the walk reads the STATIC `../erp/ad_seed.db`
+  (`wh_walk.js ensureDeps`), but a live POS sale exists only as SIGNED OPS in the ERP page's op log
+  (`window.ERP.opDb` = the KanbanHost projection DB), persisted to IndexedDB
+  **`bim_ootb_cache` / store `dbs` / key `idmp_kanban_proj`** (`kanban_host.js` IDB/STORE +
+  `idempiere.html _KPROJ`). Today ONLY Kanban dispatch persists (`KanbanHost.persist` after each ok
+  drag); a POS commit stays in page memory (`kernel_ops._persistToIdb` is a no-op on ERP pages —
+  no `APP.DB_URL`). Therefore the **deliver-later door must persist the op log at sale time**
+  (host passes `persist` = `KanbanHost.persist(opDb, _KPROJ)` into `PosLens.open`) — otherwise the
+  walk page cannot see the sale and any selector hit would be fake.
+- **The selector = seed SQL + sidecar fold, merged:** (a) the witnessed SQL over the static seed
+  (`SELECT … FROM m_inout io JOIN c_order o … WHERE io.docstatus IN ('DR','IP') AND o.c_pos_id IS
+  NOT NULL`, poc_pos_deliverlater.js) — the seeded-fixture path; (b) a PURE op-log fold
+  `openPosDocsFromOps(opRows)` (new verb-shaped helper in `build/erp/wh_route.js`, the §S-2 module;
+  the viewer copy stays a UMD of it): C_Order `CREATE_DOCUMENT` with `c_pos_id` ⇒ POS order;
+  M_InOut `CREATE_DOCUMENT` whose `source_id` is such an order ⇒ its shipment; following
+  `CREATE_LINE M_InOutLine` ops in the SAME gid are its lines (buildDoc emits no line→doc id — gid
+  adjacency IS the link, extracted from the op shape); latest `SET_STATUS M_InOut` per id folds the
+  status; open = born-DR with no CO/RE. The WR cash-and-carry sale self-filters (its `SET_STATUS
+  M_InOut CO` is in-group — W-POS-WR). Cross-device sourcing stays the §P-5 relay/sync story —
+  OUT OF SCOPE here, named.
+- **Bin resolution (shipment lines carry NO locator):** the pick bin per line = the
+  `m_storageonhand` row holding the product (ORDER BY qtyonhand DESC, m_locator_id — deterministic),
+  the same EXTRACT source the replenish draft rides. No storage row → the route's explicit
+  `unroutable` step (never dropped, never invented).
+- **Per-step act on a shipment route = ANNOTATE only:** scan-confirm commits ONE signed
+  `ANNOTATE … note:'PICK_CONFIRM'` group (the §S-3 exception-trail shape) — NO movement op, because
+  the oracle puts the storage update AT completion (MInOut.completeIt storage below the gate;
+  W-POS-DELIVERLATER "on-hand moves at the pick-COMPLETE"). The M± per-step enact stays the
+  M_Movement route's shape only.
+- **Completion branches by the SHIPMENT doctype row (dictionary, not code):** plain (seed 120) →
+  `POSCore.completeShipmentOps(inout, lines, dt, {pickedQtyOf})` = UPDATE_LINE short-picks +
+  SET_STATUS CO, ONE group. Confirm-demanding (148 IsPickQAConfirm / 147 IsShipConfirm) → it
+  REFUSES `confirm-gated` → `inout_confirm.createConfirmationOps` (spawn) →
+  `completeConfirmOps` (confirmedqty = the walked PICKED qty) → `completeInOutGate` re-check →
+  the bare `SET_STATUS M_InOut CO` (the below-the-gate act, W-WH-CONFIRM sequence verbatim).
+  On-hand fold then moves by PICKED qty (C-, per product). Falsifiers: double-complete refused
+  (FSM not-open) · non-target tap holds the step (existing) · WR sales NEVER appear in the selector.
+- **Route-source choice UI:** both sources non-empty (replenish draft is always draftable + open
+  POS docs exist) → minimal chooser; otherwise walk the single source directly (no decision trees).
+- **Completion WRITE-BACK (one ledger, not a private log):** the walk's completion groups (and the
+  confirm groups on the gated path) are RE-COMMITTED into the sidecar blob under the SAME
+  deterministic gids (commitGroup gid-idempotency makes the write-back replay-safe) and the blob is
+  persisted back to the same IDB key — otherwise the shipment stays DR in the shared ledger and the
+  selector would re-offer an already-picked doc on the next open (a double-pick door). Seed-source
+  docs have no live ledger blob → write-back skips with a named log line (walk-local completion,
+  honest). Same-device demo only; concurrent ERP-page writes racing the blob = the §P-5 sync story.
 
 ### §S-3 The walk — viewer UX
 
