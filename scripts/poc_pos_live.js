@@ -93,6 +93,14 @@ const server = http.createServer((q, r) => {
   const rc = await pg.$eval('#pos-float-receipt', e => e.textContent);
   if (!rc.includes('signed=Y')) fail('receipt not signed: ' + rc);
 
+  // ── 3b. dispose-with-cart (user live-test 2026-06-12): sale completed → cart=[] → panel closes ──
+  const disposed = await pg.evaluate(() => !document.getElementById('pos-float-panel').classList.contains('open'));
+  if (!disposed) fail('float panel still open after the sale (dispose-with-cart)');
+  if (!logs.find(t => t.startsWith('§POS-FLOAT dispose=cart-empty'))) fail('no §POS-FLOAT dispose line');
+  // the cart pill re-summons it (dismiss ≠ lost state)
+  await pg.evaluate(() => document.getElementById('pos-pill-payment').dispatchEvent(new PointerEvent('pointerup', { bubbles: true })));
+  await pg.waitForSelector('#pos-float-panel.open', { timeout: 8000 }).catch(() => fail('panel did not re-summon after dispose'));
+
   // ── 4. the replenishment fold renders live ──
   console.log('— 4. replenishment suggestions fold live');
   const repl = logs.filter(t => t.startsWith('§POS-LIVE-REPLENISH')).pop();

@@ -1,8 +1,10 @@
-// poc_wh_live_pages.js — LIVE Pages verify for sw v643 spatial-walk train (PR #270).
-// Proves: the LIVE GH Pages viewer + the OCI COMMON-bucket warehouse db deep-link renders
+// poc_wh_live_pages.js — LIVE Pages verify for the spatial-walk deep-link (PR #270; db moved IN-REPO
+// by PR #272 and the OCI duplicate DELETED 2026-06-12c — this witness now pins the GH Pages URL,
+// the SAME relative path the shipped WH pill uses).
+// Proves: the LIVE GH Pages viewer + the in-repo warehouse db deep-link renders
 // (no §BBOX_KEEP / §BLOB_MISS = no-cubes gate) and the data-gated §WH PILL lights gate=on.
 var puppeteer = require('puppeteer');
-var DB = 'https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb/o/buildings/warehouse_gardenworld.db';
+var DB = '../buildings/warehouse_gardenworld.db';
 var URL = 'https://red1oon.github.io/bim-ootb/viewer/viewer.html?db=' + encodeURIComponent(DB);
 (async function () {
   var browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-dev-shm-usage'] });
