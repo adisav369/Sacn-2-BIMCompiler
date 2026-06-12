@@ -2630,6 +2630,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="8. Financial Reporting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#excel-report-your-workbook-is-the-report-ninjaexcel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Excel Report — your workbook is the report (NinjaExcel)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4669,6 +4686,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="8. Financial Reporting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#excel-report-your-workbook-is-the-report-ninjaexcel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Excel Report — your workbook is the report (NinjaExcel)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5080,6 +5114,77 @@ The suggestion list shows at the bottom of the cart panel.</p>
 </table>
 <p>The <strong>⎙ Print</strong> button on an invoice form opens a single-page print view generated from the real
 <code>AD_PrintFormat</code> metadata — not a template, a fold of the dictionary's print format rows.</p>
+<h3 id="excel-report-your-workbook-is-the-report-ninjaexcel">Excel Report — your workbook is the report (NinjaExcel)<a class="headerlink" href="#excel-report-your-workbook-is-the-report-ninjaexcel" title="Permanent link">&para;</a></h3>
+<p>Tap the <strong>Excel Report</strong> pill (grid icon ▦) on the iDempiere bottom bar. This lens turns any Excel
+workbook into a live report over the open tenant — Excel stays the designer (layout, formatting,
+subtotals, charts: zero learning curve, it <em>is</em> Excel); the lens is only the <strong>binder</strong> that fills
+the data cells from the database. No Jasper, no print-format authoring, no server.</p>
+<p>One workbook, three sheets:</p>
+<table>
+<thead>
+<tr>
+<th>Sheet</th>
+<th>Role</th>
+<th>Who writes it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>BACKUP</strong></td>
+<td>a <em>filled sample</em> of the finished report — design-by-example</td>
+<td>you (keep a real filled copy)</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>the layout with <code>@field_row_col@</code> holes where data goes, plus <code>#1/#2</code> parameter cells</td>
+<td>scaffolded for you</td>
+</tr>
+<tr>
+<td><strong>Process</strong></td>
+<td>one row per data cell: <code>SELECT / TABLE / JOIN / WHERE / ADDRESS</code> — plain SQL in cells</td>
+<td>scaffolded, <strong>you finish it</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The flow:</p>
+<ol>
+<li><strong>Try the sample first</strong> — the lens links a <code>ninja_sample.xlsx</code> (GardenWorld invoice summary),
+   runnable as-is: drop it back in and it fills from the open tenant.</li>
+<li><strong>MAKE</strong> — drop a workbook holding only your filled <strong>BACKUP</strong> sheet. The lens detects the data
+   grid by shape, proposes a SELECT for each cell from its column label, and hands back a scaffold.
+   A proposal is not an answer — open the <strong>Process</strong> sheet in Excel and finish the <code>TABLE</code>/<code>WHERE</code>
+   columns (this is where your SQL skill goes; everything else is already placed).</li>
+<li><strong>RUN</strong> — drop the finished workbook. Every Process row is folded over the loaded tenant db,
+   values land in their addressed cells, and you download the filled workbook. Your own <code>=SUM(...)</code>
+   subtotals are never computed by the engine — Excel recalculates them when you open the file.</li>
+</ol>
+<p><strong>Verify-by-example</strong> is the honesty gate: if the BACKUP sample travels with the workbook, every
+folded value is compared against the sample <strong>to the cent</strong> — a wrong binding shows red, not
+plausible. An incomplete workbook (empty <code>TABLE</code>, a <code>#2</code> parameter with no value, a data hole no
+Process row addresses) is <strong>refused before running</strong> with the exact list of what's missing — never
+silently skipped.</p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅ LIVE (sw v659)</td>
+<td>sample runs 9 cells <code>maxDiff=0c</code> against the seed; works on any installed/migrated tenant (one SQL dialect — SQLite)</td>
+</tr>
+<tr>
+<td>Engine-gated</td>
+<td>RULE tier (business phrases like <code>SUM GrandTotal of Invoices, completed</code> compiled from the AD dictionary — no SQL) is built and witnessed headless, not yet surfaced in the lens</td>
+</tr>
+<tr>
+<td>Phase 2</td>
+<td>bidirectional cells (<code>&lt;</code> direction: an edited cell appends a signed op) — designed, not built</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="9-warehouse-walk">9. Warehouse Walk<a class="headerlink" href="#9-warehouse-walk" title="Permanent link">&para;</a></h2>
 <p>The <strong>Warehouse</strong> pill (box icon ◫) on the iDempiere bottom bar opens the GardenWorld warehouse
