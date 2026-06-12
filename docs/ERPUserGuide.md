@@ -37,18 +37,33 @@ if a window is absent for your role, that is correct, not a bug.
 
 ---
 
-## 2. Install / Migrate
+## 2. Install / Migrate (pick-your-ERP)
 
-**Install** and **Migrate** are both reached through the **⋯ pill** (bottom-right, "more" menu):
+**Install** and **Migrate** both open the same pick-your-ERP dialog (reached from the **⋯ pill** or
+the pre-login Install/Migrate pills). It lists five sources, detects what is running on your machine,
+and routes honestly — nothing is ever faked:
 
-- **Install** — loads the bundled `ad_seed.db` into browser IndexedDB (IDB). This is the full-width
-  GardenWorld tenant (bim-ootb PR #265, IDB key v14). It runs once; subsequent loads read from IDB.
-- **Migrate from Odoo** — paste / upload an Odoo export; the kernel folds it into the op-log format
-  and seeds a new tenant alongside the existing one.
-- **Migrate from iDempiere** — same flow for an iDempiere export (the `gen_ad_idmp.js` path; PKs are
-  re-banded so they never collide with the Odoo import).
+| Source | Migrate (extract YOUR data) | Install (resident demo tenant) |
+|---|---|---|
+| **Odoo** | live delegate agent: download `odoo_agent.zip`, run it natively next to your Odoo, drop the `odoo_chain.json` it writes — the browser re-folds and verifies it | **Client 12** — live-extracted from odoodemo, books diffed to the cent |
+| **iDempiere** | ShowMe + `migrate_agent.js` against your own Postgres (credentials never leave your machine) | **Client 13** — real PG-agent extraction, PKs re-banded |
+| **SAP** | coming (no agent yet) | **Client 14 "SAP Flights"** — PoC: the documented **SFLIGHT** flight-booking reference model (carriers → Business Partners, connections → Products) |
+| **Oracle** | coming | **Client 15 "Oracle Scott"** — PoC: the canonical **EMP/DEPT (SCOTT)** schema (departments → BP Groups, employees → Business Partners) |
+| **MS Dynamics** | coming | **Client 16 "Dynamics Cronus"** — PoC: the Business Central **CRONUS** demo company (items → Products, customers → Business Partners) |
 
-After install the page reloads with the full menu. No URL change needed — the seed is in IDB.
+The three PoC tenants carry each vendor's *documented public demo model* — reference data labeled as
+such in the dialog, proving the master-table mapping; a delegate agent (like Odoo's) is the production
+path for real extractions.
+
+**What Install leaves behind:** the tenant is merged into the resident seed in browser IndexedDB — it
+survives a plain reload, re-install is a guarded no-op, and the install itself appears as a dot on the
+**W** world-history timeline.
+
+**Choosing a tenant at login:** the login card shows a "Select a tenant" step **only when two or more
+login-able tenants exist**. On a fresh seed there is only GardenWorld, so the step auto-skips — if you
+can't choose more clients, you haven't installed any yet. After installs the list fills (System,
+GardenWorld, and every installed tenant). Each tenant is entered through its **own Admin user**
+(e.g. *SAP Flights Admin*); the System user belongs to the System(0) client only.
 
 ---
 
