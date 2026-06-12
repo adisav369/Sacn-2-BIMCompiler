@@ -5,6 +5,30 @@
 
 **NEVER TOUCH PRODUCTION.** `deploy/live/` is the production snapshot — do not edit directly. All dev work goes to `deploy/dev/` ONLY. Read `deploy/OCI_UPLOAD.md` §RULES before any OCI upload.
 
+## WORK-TO-ZERO (the backlog contract — enforced every session)
+There is ONE standing backlog: `prompts/FRONTEND_LANE_MASTER.md §OUTSTANDING`. A dictated item, once given,
+**STICKS until ✅ DONE or ⛔ BLOCKED — it is never re-parked, never re-asked if the answer is in the code.**
+- After the session's explicit task (or immediately if none is given), **work §OUTSTANDING top-to-bottom to zero**:
+  take the top open item → spec → implement → witness/§-log → mark it `✅ DONE (witness)` in the list → next item.
+- **Do NOT stop and report "it's parked."** Keep going through the list. The default is *continue*, not *hand back*.
+- **Stop only when:** (a) the user interrupts (their call, any time), or (b) an item genuinely needs a user
+  fact/decision you cannot EXTRACT — then mark it `⛔ BLOCKED: <the one question>` and **move to the next item**
+  (never loop on it, never silently drop it).
+- **Session end** = every item is `✅` or `⛔`. Report only the ✅ list + the ⛔ questions. If the list isn't zero
+  and you weren't interrupted, you stopped too early — that is the failure this rule exists to kill.
+- Shared working tree: editing `~/bim-ootb/` is now **BLOCKED by a PreToolUse hook** (verified 2026-06-06) —
+  work in a `/tmp/wt-*` worktree, never the shared checkout. See `~/.claude/hooks/block-shared-tree.sh`.
+- **Concurrent branches (N-terminal workflow):** with multiple terminals, `main` advances under you.
+  - A PR showing **`BEHIND`/`DIRTY` is *sync*, NOT a redo** — `git fetch origin && git merge origin/main`,
+    re-run witnesses, push. Your commits are preserved (you layer main's in).
+  - Let **auto-merge** keep it current (`gh pr merge <n> --auto --squash`; the github-actions bot also enables it)
+    — but **verify it actually landed**: a squash-merge + a late push *orphans* the new commit (observed PR #138,
+    2026-06-05). After a branch is squash-merged, start the follow-up off **fresh `origin/main`** — never re-use it
+    (its history collides with the squash → `DIRTY`).
+  - **`sw.js` is the conflict magnet** (every deploy bumps `CACHE_VERSION` + `PRECACHE_ASSETS`). On conflict: KEEP
+    BOTH precache additions, take the HIGHER `CACHE_VERSION`. Never resolve by dropping the other session's hunk.
+  - The worktree isolates working-dir + checked-out branch, **NOT** line-level merge conflicts on shared files.
+
 ## BOM PRINCIPLE
 A BOM is a recipe: one parent, N children, each with a quantity. Each child can itself be a BOM — building → floor → room → furniture → leaf, recursively. Each level is atomic and self-contained. **Three Concerns never merge:** WHAT (Orders, Categories, Products), HOW (BOMs, AttributeSets, Validation), WHERE (output.db for 4D–8D downstream).
 
@@ -12,6 +36,8 @@ A BOM is a recipe: one parent, N children, each with a quantity. Each child can 
 ERP / secured-distributed / serverless work → **`docs/ERP.md`** is the overarching blueprint; its Companion-docs map fans out to `docs/DistributedERP.md` (the doctrine + edge suite) + the `scripts/poc_*.js` witnesses. Read it first for ERP-side sessions.
 
 ## Session Startup
+0. Before reading `~/bim-ootb` as canon: `git -C ~/bim-ootb fetch origin && git -C ~/bim-ootb merge --ff-only origin/main`
+   (clean tree only). A 21-commit-stale checkout made a review report SHIPPED code as missing (2026-06-12).
 1. User states activity category (BOM/geometry | schema/ERP | IFC/extraction | SRS/spec | pipeline/debug) → read only matching [category] feedback files from MEMORY.md
 2. Read PROGRESS.md §Current State (gate table, what's next)
 3. Read `docs/WorkOrderGuide.md` §Invention Boundary + §Step 5-6 (pipeline flow)

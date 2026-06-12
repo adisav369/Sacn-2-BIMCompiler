@@ -66,6 +66,20 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶▶▶ SESSION HANDOFF 2026-06-12g2 — POS GAP-CLOSE LANE DRAINED (`prompts/POS_GAP_CLOSE.md` → # DONE) ▶▶▶**
+> - **G-1 ✅ W-POS-DELIVERLATER** (bim-compiler 5bc4b389) — THE SEAM GAP closed: doctype-132 sale = order CO +
+>   M_InOut born DR (policy from the dictionary row, invoice timing named from InvoiceRule='I'); the §S-2
+>   selector (`docstatus IN ('DR','IP')`, POS-generated) surfaces it; `completeShipmentOps` scan-commit moves
+>   on-hand by the PICKED qty, confirm-demanding doctypes (148) refuse → inout_confirm gate. WR regression
+>   byte-unchanged. **UNBLOCKS the §S-2 selector / fulfillment-walk wave** (walk-side wiring still to build).
+> - **G-2 ✅ W-IMG-LIVE** (bim-ootb PR #277 sw v657) — sha256 imageKey ships (stub removed), tamper-gated read
+>   path (`§IMG-TAMPER detected=Y`), live IDB folder proven on idempiere.html. W-POS-LIVE re-run PASS.
+> - **G-3 ⛔ BLOCKED (one fact):** headless `Adempiere.startup` NPEs on OSGi BundleContext (SecureEngine
+>   Service locator) — the 148 PG-drive needs an OSGi runtime. `ConfirmOracle.java` written+compiled, rollback-
+>   safe, ready (35b8e96f). Ledger stays 43; W-WH-CONFIRM stays rule-consistent.
+> - **G-4 ✅:** matrix +6 POS third-axis rows · POSLens §11 supersede · ERPUserGuide §7 killer-demo surfaces ·
+>   PROGRESS block. Paper hook/roadmap diff PROPOSED to user (await approve → edit + `mkdocs gh-deploy`).
+>
 > **▶▶▶ SESSION HANDOFF 2026-06-12g — POS KILLER DEMO ✅ SHIPPED LIVE (`prompts/POS_KILLER_DEMO.md` + `prompts/POS_ENGINE_LANE.md` → # DONE; two Fable/Sonnet sessions + Opus deploy, bim-ootb PR #276 sw v656) ▶▶▶**
 > - **✅ ENGINE (Fable-5 session, bim-compiler 9857aefc):** E-1 W-POS-REGISTER (`buildRegisterGroup` — signed
 >   M_Product+price+poskey+AD_Image group, dict-defaulted, det-PKs, falsifiers no-barcode/over-cap/dup) · E-2

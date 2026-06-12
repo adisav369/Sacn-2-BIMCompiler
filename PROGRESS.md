@@ -18,6 +18,22 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
+## POS gap-close banked (2026-06-12g2, `prompts/POS_GAP_CLOSE.md` → # DONE)
+- **G-1 ✅ W-POS-DELIVERLATER** (bim-compiler 5bc4b389): doctype-132 deliver-later sale — policy from the
+  dictionary row (SO/N/N), order CO + shipment born DR (same buildDoc spec, no SET_STATUS), invoice timing
+  named from extracted InvoiceRule='I'; §S-2 selector surfaces it; pick moves on-hand by PICKED qty;
+  falsifiers WR-zero-open-docs (6 sibling logs byte-unchanged) · double-complete · cents 0c.
+- **G-2 ✅ W-IMG-LIVE** (bim-ootb PR #277 sw v657, Pages-verified): pos_lens imageKey content-length stub →
+  `sha256:`+SubtleCrypto digest; img_store.resolveImage digestOf verification (tamper → §IMG-TAMPER, thumb
+  renders); live IDB put/get round-trip + tier walk proven on idempiere.html; W-POS-LIVE regression PASS.
+- **G-3 ⛔ PARKED (one fact):** `Adempiere.startup(false)` dies headless — SecureEngine NPEs on
+  `BaseActivator.getBundleContext()`==null (OSGi-only Service locator). Rollback-safe doctype-148 drive
+  WRITTEN+COMPILED (`scripts/logic_oracle/ConfirmOracle.java`, 35b8e96f) — runs when an OSGi runtime hosts it.
+  W-WH-CONFIRM stays rule-consistent; ledger stays 43.
+- **G-4 ✅ banked:** matrix third-axis +6 POS rows (register/edit/hold/confirm/images/deliver-later) ·
+  POSLens.md §11 supersede note · ERPUserGuide §7 killer-demo surfaces. Paper diff = proposed to user
+  (MIGRATE_PAPER_REVISE rule), edit pending approval.
+
 ## Multi-lane WAVE 3 banked (2026-06-12e, `prompts/MULTI_LANE_WAVE3.md` → # DONE)
 - **Done:** Lane A B-2 workflow oracle (W-WF-HARDEN: `§HARDEN surface=ad_workflow fixtures=11 diff=0
   oracle=iDempiere-PG-trace` — 11 REAL traces from live `idempiere_test`, defs `§HARDEN-SRC kind=wf setdiff=0`,

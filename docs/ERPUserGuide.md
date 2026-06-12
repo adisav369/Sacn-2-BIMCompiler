@@ -3,6 +3,8 @@
 *The browser kernel renders the full iDempiere Application Dictionary from SQLite — no Java, no server,
 no install. This guide walks from first load to POS sale to financial report.*
 
+> **New here?** Start at the [BIM OOTB User Guide](USER_GUIDE.md) for the full picture.
+
 ![The landing page — "The Server Is Obsolete" — explains the concept before you open the app](figs/glassbowl_landing.png)
 
 > **Where to read the full concept:** the landing page links to
@@ -120,20 +122,47 @@ No traditional row-update happens; the current state is the fold of all ops on t
 **Prerequisite:** log in as **GardenUser** (the POS station `c_pos_id=1` is scoped to that role).
 Tap the **POS** pill in the bottom bar (it appears only when the loaded db has a `c_pos` station).
 
-### POS screen layout
+### POS screen layout (the killer-demo surface, sw v656)
 
-- **Left panel** — product grid from `c_poskey → m_product` (the sealed keylayout). Every product
-  shows its master price from the station's pricelist — you ring the master, not a manual price.
-- **Right panel** — the current cart: partner, line prices, running total.
+- **Album cards** — the product grid is a photo album (`.pos-card`, `§POS-ALBUM cards=16`): each card
+  from `c_poskey → m_product` (the sealed keylayout) shows its photo (full-res from the device images
+  folder → ledger thumbnail → placeholder glyph, honestly tiered) and its master price from the
+  station's pricelist — you ring the master, not a manual price.
+- **Floating payment panel** — the cart pill summons a floating panel on its own layer
+  (`#pos-float-panel`): tender, walk-in partner picker, receipt, replenishment suggestions. The album
+  keeps scrolling underneath; payment never squeezes the grid.
 
 ![POS — Garden User · Store: product grid left, live cart right, replenishment suggestions below](figs/pos_live.png)
 
 ### Making a sale
 
-1. Tap a product tile → it is added to the cart at the sealed price.
+1. Tap a product card → it is added to the cart at the sealed price.
 2. Tap again to increment qty, or edit qty in the line.
 3. Review **Total** (BigDecimal fold of line amounts, never a posted figure yet).
-4. Tap **Tendered cash — Complete** to commit the sale.
+4. Summon the payment panel (cart pill), pick the walk-in partner, tap **Tendered cash — Complete**
+   (`§POS-SALE … newVerbs=[] chainOk=Y` — and the receipt card shows `signed=Y`).
+
+A **DEMO payment QR** renders in the panel (clearly watermarked DEMO — a display of the tender
+amount, not a payment rail; no provider is wired, nothing is charged).
+
+### Register a new product at the till — the Import pill (§P-9)
+
+The **Import** pill opens the snap+scan+price flow: photograph the item (camera, downscaled to a
+≤32KB ledger thumbnail; the full-res photo goes to the device images folder under a
+`sha256:` content address — `§POS-IMGKEY`), scan or type its barcode, key the price. **Register**
+commits ONE signed group of 4 CRUD_CREATE ops — M_Product, M_ProductPrice (station pricelist),
+AD_Image, C_POSKey — every default EXTRACTED from the dictionary and the station's own rows
+(`§POS-IMPORT registered productId=… gid=…`). The new card appears in the album and rings
+immediately through the unchanged sale path. A duplicate barcode is refused and the existing
+product handed back (propose-merge). Editing name/price/photo later rides the same signed path,
+changed columns only (`W-POS-EDIT`).
+
+### Hold / recall (§P-13)
+
+**Hold** parks the in-progress cart as a real `DR` C_Order — the same ledger row the Sales Order
+window and Kanban read, not a private store (`§POS-HOLD park order=… listed window=Y kanban=Y`).
+**Recall** is a plain query of the held orders; completing a recalled sale completes THE held
+order (never a duplicate — exactly one C_Order exists, witnessed).
 
 The "Complete" creates ONE signed op-group:
 
@@ -180,15 +209,64 @@ The **⎙ Print** button on an invoice form opens a single-page print view gener
 
 ---
 
-## 9. Warehouse Walk (§S-1 compiled — §S-2..S-5 in progress)
+## 9. Warehouse Walk
 
-The warehouse app compiles the GardenWorld warehouse as a BIM-like spatial model
-(`warehouse_gardenworld.db`, 61 KB — 11 bins == `m_locator`). Current status:
+The **Warehouse** pill (box icon ◫) on the iDempiere bottom bar opens the GardenWorld warehouse
+as a live 3D spatial model — a new tab pointing at the short GH Pages URL
+(`viewer/viewer.html?db=../buildings/warehouse_gardenworld.db`). No login required for the viewer;
+the ⌂ home button in the top-left flies you back to iDempiere.
 
-- **§S-1** ✅ — warehouse compiled; bins map to real `m_locator_id` values; render gate green.
-- **§S-2** 🟡 — route verb (`wh_route.js`) built; sorts pick lines by the spatial walk sequence
-  (`m_bom_line.ordinal`); `poc_wh_route.js` witness pending deploy.
-- **§S-3..S-5** ⛔ — walk UI (phone-first fly-to + lens), QR scan, signed put-away op.
+### What you see
+
+The warehouse is compiled from real `m_locator` records — 11 bins arranged in two rows on a
+flat floor, each bin's position derived from the GardenWorld ERP inventory schema (not hand-drawn).
+26 elements total: 11 bin boxes (IfcBuildingElementProxy, each GUID == `m_locator_id`) + ground slab.
+
+![Warehouse overview — 11 bins on the GardenWorld floor, top-down isometric](figs/wh_overview.png)
+
+**Controls (same as the BIM viewer):**
+- **Orbit** — click-drag or one-finger drag
+- **Zoom** — scroll wheel or pinch
+- **Pan** — middle-drag or two-finger drag
+- **Reset** — double-tap / double-click
+
+### Warehouse Walk pill (inside the viewer)
+
+The **Walk** pill (📦 bottom bar) appears only when the loaded db has locator-GUID bins — the §S-1
+compile stamps both `m_bom_line` BIN rows and the element GUIDs with real `m_locator_id` values.
+Any other building → the pill stays off the bar.
+
+**Walk flow:**
+
+1. **Open** — tap the Walk pill. The engine builds a draft `M_Movement` pick list from
+   replenishment needs (`qtyOnHand` fold vs `m_replenish.level_min`).
+2. **Fly** — the camera flies to the first bin; the target bin is highlighted bright blue; the rack
+   group is shown as a solid overlay; all other geometry is ghosted (x-ray dim 0.1).
+3. **Scan** — tap **Scan bin** to:
+   - Use the device camera (`BarcodeDetector` / `getUserMedia`) to scan the bin's QR label, or
+   - Type the locator ID in the fallback field.
+   Wrong bin is refused ("wrong bin, expected …"). Correct bin moves to the next step.
+4. **Complete** — after all bins the strip shows **Walk complete ✓**. A single signed
+   `M_Movement CO` is committed through `KernelOps.commitGroup`; `qtyOnHand` is folded from the
+   op-log (no direct DB write).
+
+![Walk complete on mobile — M_Movement CO, on-hand folded (4 bins, all match)](figs/wh_walk_complete.png)
+
+### Implementation status
+
+| Step | Status | What |
+|---|---|---|
+| **§S-1** ✅ | Compiled | Bins map to real `m_locator_id`; render gate green (61 KB db, GH Pages) |
+| **§S-2** ✅ | Route verb | `wh_route.js` sorts pick lines by spatial walk sequence (`m_bom_line.ordinal`) |
+| **§S-3** ✅ | Walk UI | Phone-first fly-to strip; depth model (ghost/rack/bin); step strip + camera easing |
+| **§S-4** ✅ | QR scan | `BarcodeDetector` + typed fallback; wrong-bin refusal gate |
+| **§S-5** ✅ | Signed op | `M_Movement CO` via `KernelOps.commitGroup`; on-hand folded from op-log |
+
+### Share
+
+Tap the **⌂ share** route from the Warehouse pill action or the viewer share button to copy
+the short GH Pages URL for this walk session. The URL is self-contained — opening it on a phone
+immediately lands on the spatial model ready for the walk.
 
 ---
 
