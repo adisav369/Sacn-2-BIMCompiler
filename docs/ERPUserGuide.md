@@ -265,7 +265,7 @@ silently skipped.
 | Status | Notes |
 |---|---|
 | ✅ LIVE (sw v659) | sample runs 9 cells `maxDiff=0c` against the seed; works on any installed/migrated tenant (one SQL dialect — SQLite) |
-| Engine-gated | RULE tier (business phrases like `SUM GrandTotal of Invoices, completed` compiled from the AD dictionary — no SQL) is built and witnessed headless, not yet surfaced in the lens |
+| ✅ LIVE (sw v662) | RULE tier — the lens's **"Or describe a data point"** box: type a business phrase (`SUM GrandTotal of Invoices, completed, from 2002-01-01 to 2003-12-31`), it compiles to SQL from the tenant's own dictionary; the sample falsifies wrong candidates to the cent; a tie is yours to pick (radio), then **Apply & run** writes the row and re-verifies the whole workbook |
 | Phase 2 | bidirectional cells (`<` direction: an edited cell appends a signed op) — designed, not built |
 
 ---

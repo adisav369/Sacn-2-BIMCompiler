@@ -27,8 +27,11 @@
   function esc(v) { return String(v).replace(/'/g, "''"); }
 
   // ── loadDict(query) — read the vocabulary the substrate declares ────────────────────────────────────
+  // Every selected column carries an explicit lowercase ALIAS: SQLite reports bare-column result keys
+  // in the DECLARED case (ad_full=lowercase, ad_seed=MixedCase) but reports aliases verbatim — without
+  // them the dict reads `undefined` on a mixed-case seed (the make_ninja_fixture.js trap, same fix).
   function loadDict(query) {
-    var tables = query('SELECT ad_table_id, tablename, name, isview FROM ad_table', []);
+    var tables = query('SELECT ad_table_id AS ad_table_id, tablename AS tablename, name AS name, isview AS isview FROM ad_table', []);
     var byTableName = {}, byName = {};
     tables.forEach(function (t) {
       byTableName[norm(t.tablename)] = t;
@@ -55,10 +58,11 @@
         return r || null;
       },
       columns: function (tableId) {
-        return query('SELECT columnname, name, ad_reference_id, ad_reference_value_id FROM ad_column WHERE ad_table_id = ?', [tableId]);
+        return query('SELECT columnname AS columnname, name AS name, ad_reference_id AS ad_reference_id, ' +
+                     'ad_reference_value_id AS ad_reference_value_id FROM ad_column WHERE ad_table_id = ?', [tableId]);
       },
       refList: function (refId) {
-        return query('SELECT value, name FROM ad_ref_list WHERE ad_reference_id = ?', [refId]);
+        return query('SELECT value AS value, name AS name FROM ad_ref_list WHERE ad_reference_id = ?', [refId]);
       }
     };
   }
