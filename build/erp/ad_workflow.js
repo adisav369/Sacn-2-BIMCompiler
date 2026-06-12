@@ -28,8 +28,11 @@
     return db.prepare('SELECT ad_wf_node_id,name,action,docaction FROM ad_wf_node WHERE ad_wf_node_id=?').get(nodeId);
   }
   // ordered transitions out of a node (lowest seqno = the std-user-next).
+  // Ordering + active filter = MWFNode.loadNext (MWFNode.java:264-271: ORDER BY SeqNo, active rows only).
   function nodeNexts(db, nodeId) {
-    return db.prepare('SELECT ad_wf_next_id AS next,seqno,transitioncode FROM ad_wf_nodenext WHERE ad_wf_node_id=? ORDER BY seqno').all(nodeId);
+    return db.prepare(
+      "SELECT ad_wf_nodenext_id AS id, ad_wf_next_id AS next, seqno, transitioncode, isstduserworkflow AS stduser " +
+      "FROM ad_wf_nodenext WHERE ad_wf_node_id=? AND isactive='Y' ORDER BY seqno").all(nodeId);
   }
 
   // nextNode(db, nodeId, ctx) — routing. An explicit approval decision (ctx.route[nodeId]) wins; otherwise the
@@ -63,6 +66,87 @@
     return { workflow: wf.id, name: wf.name, startNode: wf.startNode, path: path, activities: activities, steps: steps, completed: cur == null };
   }
 
+  // ════ W-WF-HARDEN replay arm (ERP_EXECUTION_ROADMAP.md §PHASE B B-2 — Witness: W-WF-HARDEN) ════
+  // Faithful state-walk, EXTRACTED from org.compiere.wf + org.compiere.process.StateEngine:
+  //   MWFNodeNext.isValidFor:213-260 (std-user doc gate + empty-conditions rule) ·
+  //   MWFProcess.startNext:402-445 (ordered transitions, first valid, XOR split) ·
+  //   MWFProcess.checkCloseActivities:332-389 (process state aggregation) ·
+  //   MWFActivity.run:938-973 (ON→OR→ done?CC:OS) + performWork:1072-1398 (Z/D done, W/X/C wait) +
+  //   updateEventAudit:354-376 (closed→'PX' else 'SC') · MWFActivity.run:948-952 (missing node → CA).
+  // Node actions NOT exercised by any captured trace (P/R/F/X/C…) and conditioned transitions throw
+  // LOUDLY — named skips in the witness, never a silent walk-past.
+
+  // MWFNodeNext.isValidFor:224-230 — doc statuses that close the std-user transition.
+  var STDUSER_CLOSED_STATUS = { CO: 1, WC: 1, WP: 1, VO: 1, CL: 1, RE: 1 };
+  // std-user gate: docaction must be Complete ('CO') and docstatus not closed (isValidFor:215-243).
+  function stdUserGateOpen(doc) {
+    if (!doc || doc.DocAction !== 'CO') return false;
+    return !STDUSER_CLOSED_STATUS[doc.DocStatus];
+  }
+  function transitionConditionCount(db, nodenextId) {
+    try { return db.prepare("SELECT COUNT(*) AS n FROM ad_wf_nextcondition WHERE ad_wf_nodenext_id=? AND isactive='Y'").get(nodenextId).n; }
+    catch (e) { return 0; }                                // seed without the table = no conditions
+  }
+
+  // replay(db, wfId, docCtx, opts) — the oracle-diffable walk. docCtx = { DocStatus, DocAction } of the
+  // document AT WORKFLOW START (or null for non-DocAction tables); opts.fsm = ad_docfsm.transition for
+  // threading docstatus through DocumentAction nodes (DocumentEngine semantics, W-DOCFSM).
+  // Returns { path, activities:[{node,name,action,state,eventType}], transitions, gates, stateHops,
+  //           processState, doc, abort }.
+  function replay(db, wfId, docCtx, opts) {
+    opts = opts || {}; var cap = opts.maxSteps || 100;
+    var wf = readWorkflow(db, wfId);
+    var doc = docCtx ? { DocStatus: docCtx.DocStatus, DocAction: docCtx.DocAction } : null;
+    var path = [], activities = [], transitions = [], gates = [], stateHops = [];
+    var cur = wf.startNode, steps = 0, suspended = false, abort = null;
+    function hop(act, to) { stateHops.push({ from: act.state, to: to }); act.state = to; }
+    while (cur != null && steps < cap) {
+      steps++;
+      var node = readNode(db, cur);
+      var act = { node: cur, state: 'ON' };                // StateEngine.STATE_NotStarted
+      hop(act, 'OR');                                      // MWFActivity.run:946 setWFState(Running)
+      path.push(cur); activities.push(act);
+      if (!node) {                                         // run:948-952 Node not found → Aborted, LOUD
+        hop(act, 'CA'); act.eventType = 'PX';
+        abort = 'node-missing:' + cur;
+        break;
+      }
+      act.name = node.name; act.action = node.action;
+      // ── performWork (only the actions the captured corpus exercises are modeled; rest THROW) ──
+      var done;
+      if (node.action === 'Z') done = true;                // WaitSleep, waittime 0 (:1081-1091)
+      else if (node.action === 'D') {                      // DocumentAction (:1095-1153)
+        if (opts.fsm && doc && doc.DocStatus != null && node.docaction && node.docaction !== '--') {
+          var to = opts.fsm(node.docaction, doc.DocStatus);
+          if (to == null) { hop(act, 'CA'); act.eventType = 'PX'; abort = 'docaction-illegal:' + node.docaction + '@' + doc.DocStatus; break; }
+          doc.DocStatus = to;                              // thread the doc through the walk
+        }
+        done = true;
+      }
+      else if (node.action === 'W' || node.action === 'X' || node.action === 'C') done = false; // user wait (:1302-1398)
+      else throw new Error('replay: node action "' + node.action + '" not exercised by any captured trace — named skip, refusing to invent semantics');
+      hop(act, done ? 'CC' : 'OS');                        // run:973
+      act.eventType = (act.state === 'CC') ? 'PX' : 'SC';  // updateEventAudit:361-368
+      if (!done) { suspended = true; break; }              // process waits on the user activity
+      // ── startNext:402-445 — ordered transitions, FIRST valid (all corpus nodes split=XOR) ──
+      var nexts = nodeNexts(db, cur), chosen = null;
+      for (var i = 0; i < nexts.length; i++) {
+        var nn = nexts[i];
+        if (transitionConditionCount(db, nn.id) > 0)
+          throw new Error('replay: conditioned transition nodenext=' + nn.id + ' — MWFNextCondition evaluator not modeled (named skip)');
+        var valid = (nn.stduser === 'Y') ? stdUserGateOpen(doc) : true;  // isValidFor: no conditions → true
+        if (nn.stduser === 'Y') gates.push({ nodenext: nn.id, from: cur, to: nn.next, DocStatus: doc ? doc.DocStatus : null, DocAction: doc ? doc.DocAction : null, verdict: valid ? 'T' : 'F' });
+        if (valid) { chosen = nn; break; }                 // XOR: only the first valid (startNext:436-437)
+      }
+      transitions.push({ from: cur, to: chosen ? chosen.next : null });
+      cur = chosen ? chosen.next : null;
+    }
+    // ── process terminal state — checkCloseActivities:332-389 ──
+    var processState = abort ? 'CA' : (suspended ? 'OS' : 'CC');
+    return { workflow: wf.id, name: wf.name, path: path, activities: activities, transitions: transitions,
+             gates: gates, stateHops: stateHops, processState: processState, doc: doc, abort: abort };
+  }
+
   function coverageScan(db) {
     return {
       workflows: db.prepare('SELECT COUNT(*) AS n FROM ad_workflow').get().n,
@@ -73,7 +157,8 @@
 
   var API = {
     readWorkflow: readWorkflow, readNode: readNode, nodeNexts: nodeNexts,
-    nextNode: nextNode, walk: walk, coverageScan: coverageScan
+    nextNode: nextNode, walk: walk, coverageScan: coverageScan,
+    stdUserGateOpen: stdUserGateOpen, replay: replay
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;   // node witness
   if (typeof window !== 'undefined') window.AdWorkflow = API;                   // browser

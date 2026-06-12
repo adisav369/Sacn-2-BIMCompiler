@@ -1,0 +1,292 @@
+{
+ "capturedFrom": "postgres/idempiere_test",
+ "capturedAt": "2026-06-12",
+ "note": "REAL iDempiere workflow traces (GardenWorld) — oracle for W-WF-HARDEN. Never edit by hand.",
+ "defaults": {
+  "C_Order": {
+   "DocAction": "CO",
+   "DocStatus": "DR"
+  }
+ },
+ "c_order_200002": {
+  "docstatus": "CO",
+  "docaction": "CL",
+  "processed": "Y"
+ },
+ "processes": [
+  {
+   "id": 50000,
+   "wf": 131,
+   "table": 291,
+   "record": 50000,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50001,
+   "wf": 131,
+   "table": 291,
+   "record": 50001,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50002,
+   "wf": 131,
+   "table": 291,
+   "record": 50002,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50003,
+   "wf": 131,
+   "table": 291,
+   "record": 50003,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50004,
+   "wf": 131,
+   "table": 291,
+   "record": 50004,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50005,
+   "wf": 131,
+   "table": 291,
+   "record": 50005,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50007,
+   "wf": 131,
+   "table": 291,
+   "record": 50007,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50008,
+   "wf": 131,
+   "table": 291,
+   "record": 50008,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50009,
+   "wf": 131,
+   "table": 291,
+   "record": 50009,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 200004,
+   "wf": 116,
+   "table": 259,
+   "record": 200002,
+   "wfstate": "CC",
+   "processed": "Y"
+  },
+  {
+   "id": 200006,
+   "wf": 131,
+   "table": 291,
+   "record": 200000,
+   "wfstate": "OS",
+   "processed": "N"
+  }
+ ],
+ "activities": [
+  {
+   "id": 50000,
+   "proc": 50000,
+   "node": 244,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50001,
+   "proc": 50001,
+   "node": 244,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50002,
+   "proc": 50002,
+   "node": 244,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50003,
+   "proc": 50003,
+   "node": 244,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50004,
+   "proc": 50004,
+   "node": 244,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50005,
+   "proc": 50005,
+   "node": 244,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50007,
+   "proc": 50007,
+   "node": 244,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50008,
+   "proc": 50008,
+   "node": 244,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 50009,
+   "proc": 50009,
+   "node": 244,
+   "wfstate": "OS",
+   "processed": "N"
+  },
+  {
+   "id": 200012,
+   "proc": 200004,
+   "node": 183,
+   "wfstate": "CC",
+   "processed": "Y"
+  },
+  {
+   "id": 200013,
+   "proc": 200004,
+   "node": 185,
+   "wfstate": "CC",
+   "processed": "Y"
+  },
+  {
+   "id": 200014,
+   "proc": 200004,
+   "node": 186,
+   "wfstate": "CC",
+   "processed": "Y"
+  },
+  {
+   "id": 200018,
+   "proc": 200006,
+   "node": 244,
+   "wfstate": "OS",
+   "processed": "N"
+  }
+ ],
+ "eventaudits": [
+  {
+   "id": 50000,
+   "proc": 50000,
+   "node": 244,
+   "eventtype": "SC",
+   "wfstate": "OS"
+  },
+  {
+   "id": 50001,
+   "proc": 50001,
+   "node": 244,
+   "eventtype": "SC",
+   "wfstate": "OS"
+  },
+  {
+   "id": 50002,
+   "proc": 50002,
+   "node": 244,
+   "eventtype": "SC",
+   "wfstate": "OS"
+  },
+  {
+   "id": 50003,
+   "proc": 50003,
+   "node": 244,
+   "eventtype": "SC",
+   "wfstate": "OS"
+  },
+  {
+   "id": 50004,
+   "proc": 50004,
+   "node": 244,
+   "eventtype": "SC",
+   "wfstate": "OS"
+  },
+  {
+   "id": 50005,
+   "proc": 50005,
+   "node": 244,
+   "eventtype": "SC",
+   "wfstate": "OS"
+  },
+  {
+   "id": 50007,
+   "proc": 50007,
+   "node": 244,
+   "eventtype": "SC",
+   "wfstate": "OS"
+  },
+  {
+   "id": 50008,
+   "proc": 50008,
+   "node": 244,
+   "eventtype": "SC",
+   "wfstate": "OS"
+  },
+  {
+   "id": 50009,
+   "proc": 50009,
+   "node": 244,
+   "eventtype": "SC",
+   "wfstate": "OS"
+  },
+  {
+   "id": 200012,
+   "proc": 200004,
+   "node": 183,
+   "eventtype": "PX",
+   "wfstate": "CC"
+  },
+  {
+   "id": 200013,
+   "proc": 200004,
+   "node": 185,
+   "eventtype": "PX",
+   "wfstate": "CC"
+  },
+  {
+   "id": 200014,
+   "proc": 200004,
+   "node": 186,
+   "eventtype": "PX",
+   "wfstate": "CC"
+  },
+  {
+   "id": 200018,
+   "proc": 200006,
+   "node": 244,
+   "eventtype": "SC",
+   "wfstate": "OS"
+  }
+ ]
+}
