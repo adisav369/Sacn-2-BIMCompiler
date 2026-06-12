@@ -2695,6 +2695,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#deliver-later-pick-at-the-warehouse-s-2b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deliver later → pick at the warehouse (§S-2b)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#share" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2779,6 +2790,56 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-testing-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Testing &amp; Verification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Testing &amp; Verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verify-ledger-checklist-icon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify Ledger (checkList icon)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doc-cycle-validator-check-tick-icon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Doc Cycle Validator (check / tick icon)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-distinction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The distinction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4751,6 +4812,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#deliver-later-pick-at-the-warehouse-s-2b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deliver later → pick at the warehouse (§S-2b)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#share" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4835,6 +4907,56 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-testing-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Testing &amp; Verification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Testing &amp; Verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verify-ledger-checklist-icon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify Ledger (checkList icon)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doc-cycle-validator-check-tick-icon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Doc Cycle Validator (check / tick icon)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-distinction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The distinction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5223,8 +5345,8 @@ silently skipped.</p>
 <td>sample runs 9 cells <code>maxDiff=0c</code> against the seed; works on any installed/migrated tenant (one SQL dialect — SQLite)</td>
 </tr>
 <tr>
-<td>Engine-gated</td>
-<td>RULE tier (business phrases like <code>SUM GrandTotal of Invoices, completed</code> compiled from the AD dictionary — no SQL) is built and witnessed headless, not yet surfaced in the lens</td>
+<td>✅ LIVE (sw v662)</td>
+<td>RULE tier — the lens's <strong>"Or describe a data point"</strong> box: type a business phrase (<code>SUM GrandTotal of Invoices, completed, from 2002-01-01 to 2003-12-31</code>), it compiles to SQL from the tenant's own dictionary; the sample falsifies wrong candidates to the cent; a tie is yours to pick (radio), then <strong>Apply &amp; run</strong> writes the row and re-verifies the whole workbook</td>
 </tr>
 <tr>
 <td>Phase 2</td>
@@ -5309,8 +5431,23 @@ Any other building → the pill stays off the bar.</p>
 <td>Signed op</td>
 <td><code>M_Movement CO</code> via <code>KernelOps.commitGroup</code>; on-hand folded from op-log</td>
 </tr>
+<tr>
+<td><strong>§S-2b</strong> ✅ LIVE</td>
+<td>POS→pick loop</td>
+<td>Sell <strong>deliver-later</strong> at the POS → the walk offers that open shipment → pick it to completion (on-hand moves at the pick). bim-ootb PR #283, W-WH-POS-PICK-LIVE. See §7 → <em>Deliver later</em>.</td>
+</tr>
 </tbody>
 </table>
+<h3 id="deliver-later-pick-at-the-warehouse-s-2b">Deliver later → pick at the warehouse (§S-2b)<a class="headerlink" href="#deliver-later-pick-at-the-warehouse-s-2b" title="Permanent link">&para;</a></h3>
+<p>The POS and the Warehouse Walk are <strong>one ledger, two lenses</strong>. When you ring a sale and choose
+<strong>Deliver later · pick at warehouse</strong> (the payment panel's option beside Tender — shown only when the
+tenant has a deliver-later sale doctype, seed <code>132</code>), the order completes (<code>C_Order → CO</code>) but the
+shipment is born <strong><code>DR</code></strong> (not yet picked). That open shipment then appears as a <strong>route source in the
+Warehouse Walk</strong> on the next open: walk to the bin, scan/confirm, and the shipment completes by the
+<strong>picked</strong> quantity — on-hand moves <em>at the pick</em>, not at the sale. Short-picks leave the remainder open
+on the document. Once picked, the walk writes the completion back to the shared ledger so the selector
+never re-offers a picked shipment. The whole loop is witnessed live end-to-end (<strong>W-WH-POS-PICK-LIVE</strong>,
+PR #283). A "with-pick QA confirm" doctype (148) routes completion through the warehouse-confirm gate first.</p>
 <h3 id="share">Share<a class="headerlink" href="#share" title="Permanent link">&para;</a></h3>
 <p>Tap the <strong>⌂ share</strong> route from the Warehouse pill action or the viewer share button to copy
 the short GH Pages URL for this walk session. The URL is self-contained — opening it on a phone
@@ -5444,6 +5581,86 @@ History (W pill)
   ← / →        Step back/forward one op
   Long-press W Open Z+bomb drawer (undo / fold-back)
 </code></pre></div>
+<hr />
+<h2 id="13-testing-verification">13. Testing &amp; Verification<a class="headerlink" href="#13-testing-verification" title="Permanent link">&para;</a></h2>
+<p>Two pills in the bottom bar prove the system works. Show them during demos — they signal a serious,
+verifiable foundation, not a mock.</p>
+<h3 id="verify-ledger-checklist-icon">Verify Ledger (<code>checkList</code> icon)<a class="headerlink" href="#verify-ledger-checklist-icon" title="Permanent link">&para;</a></h3>
+<p>Reads your <strong>live</strong> op-log from IndexedDB and walks the SHA-256 hash chain sealing every operation.
+Opens a <strong>card</strong> showing one summary row: <code>✓ N ops — chain intact</code> or <code>✗ Tamper at op N — &lt;reason&gt;</code>.
+Tap the pill again to dismiss. Hover tooltip: <em>"Verify Ledger — hash-chain tamper check on your live op-log"</em>.</p>
+<p>Use it after running real transactions (sales, document completions). On a fresh seed with 0
+transactions it reports "0 ops" — that is correct, not a failure.</p>
+<p><strong>What it proves:</strong> nobody modified, deleted, or injected rows in the audit trail. Each op's hash
+depends on the previous one; any change breaks the chain at that exact point.</p>
+<h3 id="doc-cycle-validator-check-tick-icon">Doc Cycle Validator (<code>check</code> / tick icon)<a class="headerlink" href="#doc-cycle-validator-check-tick-icon" title="Permanent link">&para;</a></h3>
+<p>Bootstraps a <strong>fresh in-memory SQLite database</strong> on the spot, runs 13 engine unit-tests, and shows a
+✓ / ✗ row per check. The footer turns green <strong>"✓ 13 / 13 PASS — doc cycle proven in-browser"</strong> when
+all pass. Tap again to dismiss. Hover tooltip: <em>"Doc Cycle — 13 engine tests (always green)"</em>.</p>
+<p>Both testing pills share the same card chrome — same glass panel, same tick/cross row style.</p>
+<p>Use it any time — it never touches your real data and needs no network. Always green; deterministic.</p>
+<p><strong>What it proves (the 13 checks):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FSM legal-action sets</td>
+<td>DR/CO/VO each return the correct legal action list</td>
+</tr>
+<tr>
+<td>Strict transitions</td>
+<td>CO-from-Closed, PR-from-Completed, CO-from-Voided all throw <code>DocStateError</code></td>
+</tr>
+<tr>
+<td>Forward progression</td>
+<td><code>PR</code> advances <code>DR → IP</code> correctly</td>
+</tr>
+<tr>
+<td>Atomic ERP + BIM sync</td>
+<td>Completing a receipt writes both <code>fact_acct</code> (DR Inventory + CR AP) and <code>bim_element_status</code> under one SAVEPOINT</td>
+</tr>
+<tr>
+<td>SAVEPOINT rollback</td>
+<td>A document with no lines triggers rollback: 0 <code>fact_acct</code> rows, <code>docstatus</code> reverted to <code>DR</code></td>
+</tr>
+<tr>
+<td>Falsifier</td>
+<td><code>CO → CO</code> is rejected as <code>DocStateError</code>, not silently passed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-distinction">The distinction<a class="headerlink" href="#the-distinction" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Verify Ledger</th>
+<th>Doc Cycle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Input</td>
+<td>Your live op-log (real user transactions)</td>
+<td>Fresh in-memory seed (no user data)</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Data integrity — was anything tampered?</td>
+<td>Engine correctness — does the logic work?</td>
+</tr>
+<tr>
+<td>Always green?</td>
+<td>Only after real transactions</td>
+<td>Yes — same result every run</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <p><em>For architecture details see <a href="../ERP/">ERP.md</a>. For the coverage evidence see
 <a href="../ERP_COVERAGE_MATRIX/">ERP_COVERAGE_MATRIX.md</a>. For the migration story see

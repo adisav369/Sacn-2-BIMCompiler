@@ -4940,7 +4940,18 @@ its <strong><code>m_locator_id</code> as the element GUID</strong> (the BIMtoERP
   itself is byte-unchanged (W-WH-LIVE regression green).</li>
 </ul>
 <h4 id="s-2b-the-walk-side-selector-promptswh_pos_pick_lanemd-design-2026-06-13">§S-2b The walk-side selector (<code>prompts/WH_POS_PICK_LANE.md</code>, design 2026-06-13)<a class="headerlink" href="#s-2b-the-walk-side-selector-promptswh_pos_pick_lanemd-design-2026-06-13" title="Permanent link">&para;</a></h4>
+<p><strong>STATUS 2026-06-13 — ✅ LIVE (bim-ootb PR #283, erp sw v663 / viewer sw v648).</strong> The whole loop
+is witnessed end-to-end on the served pages — <strong>W-WH-POS-PICK-LIVE PASS</strong>: a deliver-later sale made
+on the live POS (<code>§POS-DELIVERLATER … persisted=Y</code>) is offered in the live walk
+(<code>§WH SRC pos-docs=1 [910032(oplog)]</code>), short-picked (<code>§WH PICK-COMPLETE inout=910032 CO
+via=completeShipmentOps(120) picked=2/3 diffs=0 chainOk=Y</code>), and written back so the reload selector
+empties (<code>§WH SRC pos-docs=0</code>). W-WH-LIVE + W-POS-LIVE regressions byte-honest. <strong>One live-only bug
+fixed in the train:</strong> <code>wh_walk.js</code> opened the IDB cache at version 1 (below <code>scene.js</code>'s version 2
+<code>openCacheDB</code>) → <code>VersionError</code> → the sidecar was never read; all three open sites now route through a
+shared <code>_openCacheDB()</code> (the same <code>kernel_ops.js §KRN_PERSIST_FIX</code> idiom). Headless could not catch it
+(in-memory sql.js, no scene.js IDB).</p>
 <p>The "finish the sale → go pick it" fold, walk side. Witness <strong>W-WH-POS-PICK</strong> (headless) +
+<strong>W-WH-POS-PICK-LIVE</strong> (<code>scripts/poc_wh_pos_pick_live.js</code>) +
 live §-logs (<code>§WH SRC pos-docs=N</code>, <code>§WH PICK-COMPLETE inout=… CO picked=…</code>).</p>
 <ul>
 <li><strong>The honest source seam (EXTRACTED, not assumed):</strong> the walk reads the STATIC <code>../erp/ad_seed.db</code>
@@ -4982,6 +4993,13 @@ live §-logs (<code>§WH SRC pos-docs=N</code>, <code>§WH PICK-COMPLETE inout=�
   (FSM not-open) · non-target tap holds the step (existing) · WR sales NEVER appear in the selector.</li>
 <li><strong>Route-source choice UI:</strong> both sources non-empty (replenish draft is always draftable + open
   POS docs exist) → minimal chooser; otherwise walk the single source directly (no decision trees).</li>
+<li><strong>Completion WRITE-BACK (one ledger, not a private log):</strong> the walk's completion groups (and the
+  confirm groups on the gated path) are RE-COMMITTED into the sidecar blob under the SAME
+  deterministic gids (commitGroup gid-idempotency makes the write-back replay-safe) and the blob is
+  persisted back to the same IDB key — otherwise the shipment stays DR in the shared ledger and the
+  selector would re-offer an already-picked doc on the next open (a double-pick door). Seed-source
+  docs have no live ledger blob → write-back skips with a named log line (walk-local completion,
+  honest). Same-device demo only; concurrent ERP-page writes racing the blob = the §P-5 sync story.</li>
 </ul>
 <h3 id="s-3-the-walk-viewer-ux">§S-3 The walk — viewer UX<a class="headerlink" href="#s-3-the-walk-viewer-ux" title="Permanent link">&para;</a></h3>
 <ul>

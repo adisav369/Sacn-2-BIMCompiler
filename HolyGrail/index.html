@@ -2730,10 +2730,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#roadmap-check-the-write-seam-as-of-2026-06-01" class="md-nav__link">
+  <a href="#roadmap-check-the-write-seam-as-of-2026-06-13" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Roadmap check — the write-seam, as of 2026-06-01
+        Roadmap check — the write-seam, as of 2026-06-13
       
     </span>
   </a>
@@ -4452,10 +4452,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#roadmap-check-the-write-seam-as-of-2026-06-01" class="md-nav__link">
+  <a href="#roadmap-check-the-write-seam-as-of-2026-06-13" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Roadmap check — the write-seam, as of 2026-06-01
+        Roadmap check — the write-seam, as of 2026-06-13
       
     </span>
   </a>
@@ -4738,7 +4738,7 @@ witness that closes it:</p>
 live; op-logged, signed, reversible. That witness is the whole paradigm shift made
 visible in a single gesture — and the architecture it needs (engine-as-data + a
 JavaScript host + the signed op-log) is <strong>already standing under it.</strong></p>
-<h2 id="roadmap-check-the-write-seam-as-of-2026-06-01">Roadmap check — the write-seam, as of 2026-06-01<a class="headerlink" href="#roadmap-check-the-write-seam-as-of-2026-06-01" title="Permanent link">&para;</a></h2>
+<h2 id="roadmap-check-the-write-seam-as-of-2026-06-13">Roadmap check — the write-seam, as of 2026-06-13<a class="headerlink" href="#roadmap-check-the-write-seam-as-of-2026-06-13" title="Permanent link">&para;</a></h2>
 <p>The grail is the <em>last rung of the write-loop</em>, not a separate project. Here is the
 ladder from today's read-only surface to the live rule-edit, and where each rung stands —
 this section is meant to be updated as a checkpoint each time a rung is climbed.</p>
@@ -4800,6 +4800,17 @@ of the engine, not the live engine; and the grail rung (<code>§RULE-EDIT</code>
 E3/E4. So the checkpoint verdict, stated plainly: <strong>the seam to the grail is now built and
 witnessed as data; the current is not yet flowing through it.</strong> A rung climbed, honestly
 logged — which is the difference between building and day-dreaming.</p>
+<p><strong>2026-06-13 checkpoint — R0 extended to phrase authoring.</strong> The POS deliver-later variant
+(W-POS-DELIVERLATER) and the NinjaExcel reporting engine (W-NINJA, W-NINJA-RULE) have landed.
+The grail-relevant piece is <strong>W-NINJA-RULE</strong>: a phrase-to-SQL compiler that resolves human
+phrases ("COUNT of Invoices, completed, is Sales Transaction, from …") to SQL candidates using
+<em>only</em> vocabulary extracted from the AD dictionary — <code>ad_table</code> / <code>ad_column</code> / <code>ad_ref_list</code>
+— zero LLM, zero hardcoded strings. The browser pill (W-NINJA-RULE-UI) runs the same
+compile → sample-falsify → human-picks-tie loop live. This extends <strong>R0</strong> from "rules
+extracted to data and diff-verified" into "rules authorable from human phrases in the browser,
+using the AD as vocabulary" — the write side of the same foundation the grail requires. The
+gap to E3/§RULE-EDIT is unchanged; the authoring story for the rules you will eventually
+edit is now demonstrated.</p>
 <h2 id="abstracting-the-docaction-corpus-and-why-it-is-the-migration-solvent">Abstracting the DocAction corpus — and why it is the migration solvent<a class="headerlink" href="#abstracting-the-docaction-corpus-and-why-it-is-the-migration-solvent" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>How much of the corpus is folded today → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>:</strong> of the 14 DocActions × 52 C_DocTypes, the engine interprets <strong>only <code>CO</code></strong> (Complete) — the other 13 actions and the per-doctype FSM are a ⛔ gap. The de-interleaved transition table is also the storage opcode table (<code>poc_oc_bytes.js</code> <code>§OPCODE-TABLE</code>).</p>
