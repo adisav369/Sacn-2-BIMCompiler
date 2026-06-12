@@ -101,6 +101,17 @@ its **`m_locator_id` as the element GUID** (the BIMtoERP linkage key, reversed: 
   The pickable sale is the **deliver-later shape** (plain `SOO` — seed doctype `132 Standard Order` —
   shipment stays DR; the walk's §S-4 scan-commit is what completes it and moves on-hand). That sale
   variant is engine glue, built engine-side first; see `POS_ADDON_SPEC.md §P-12` engine note.
+  **STATUS 2026-06-12 — the ENGINE half is ✅ DONE (POS_GAP_CLOSE §G-1, W-POS-DELIVERLATER,
+  bim-compiler 5bc4b389):** `pos_core.buildDeliverLaterGroup` (order CO + `M_InOut` born DR, policy
+  verbatim from the doctype-132 row, invoice timing named from `InvoiceRule`) +
+  `pos_core.completeShipmentOps` (scan-commit completes the DR shipment by the PICKED qty;
+  doctype-148 `IsPickQAConfirm` REFUSES → the `inout_confirm.js` W-WH-CONFIRM gate). The selector
+  query itself is witnessed against a folded ledger (`§S-2 selector open-pos-docs=[… DR]`, empties
+  after the pick). The WALK-SIDE half — this section's `draftPick` source extension — is the open
+  item: build card **`prompts/WH_POS_PICK_LANE.md`**. Access-path hardening rode bim-ootb #280
+  (viewer sw v647): PWA-resume dead-link self-heal (`§PWA_RESUME_CLEAR` → landing) and
+  W-WH-LIVE-PAGES retargeted to the in-repo GH Pages db (OCI duplicate retired); the walk engine
+  itself is byte-unchanged (W-WH-LIVE regression green).
 
 ### §S-3 The walk — viewer UX
 

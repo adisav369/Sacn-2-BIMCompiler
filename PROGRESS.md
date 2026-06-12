@@ -30,6 +30,11 @@
   `BaseActivator.getBundleContext()`==null (OSGi-only Service locator). Rollback-safe doctype-148 drive
   WRITTEN+COMPILED (`scripts/logic_oracle/ConfirmOracle.java`, 35b8e96f) — runs when an OSGi runtime hosts it.
   W-WH-CONFIRM stays rule-consistent; ledger stays 43.
+- **06-12h/i tail:** user live-test fixes shipped (bim-ootb #280: POS panel dispose-with-cart §POS-FLOAT ·
+  viewer PWA-resume dead-link self-heal §PWA_RESUME_CLEAR, erp sw v660/viewer v647, Pages-verified) ·
+  ERPUserGuide §7/§9 + NinjaExcel §8 deployed (mkdocs build OK after the prior GH-side failure) ·
+  NEXT LANE CARD: `prompts/WH_POS_PICK_LANE.md` (§S-2 selector — the sell→pick loop; spec STATUS in
+  SPATIAL_PICKING_SPEC §S-2).
 - **G-4 ✅ banked:** matrix third-axis +6 POS rows (register/edit/hold/confirm/images/deliver-later) ·
   POSLens.md §11 supersede note · ERPUserGuide §7 killer-demo surfaces. Paper diff = proposed to user
   (MIGRATE_PAPER_REVISE rule), edit pending approval.

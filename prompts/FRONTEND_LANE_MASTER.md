@@ -66,6 +66,14 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶ DICTATED 2026-06-12i — WH×POS PICK LANE (§S-2 selector, the "finish the sale → go pick it" loop):**
+> build card **`prompts/WH_POS_PICK_LANE.md`** (paste-to-start inside). Engine half ✅ banked (G-1
+> W-POS-DELIVERLATER); walk half = W-1 POS deliver-later door (dictionary-gated) · W-2 draftPick
+> selector (open POS-generated M_InOut, the witnessed query; ⚠ the static-seed vs IDB-sidecar seam
+> is named in the card — fold honestly, never fake the source) · W-3 pick-complete via
+> completeShipmentOps + the 148 confirm gate · W-4 witnesses + ONE train. Spec STATUS block:
+> docs/SPATIAL_PICKING_SPEC.md §S-2.
+>
 > **▶▶▶ SESSION HANDOFF 2026-06-12h — USER LIVE-TEST FIXES (bim-ootb PR #280, erp sw v659 / viewer sw v647) ▶▶▶**
 > - **✅ POS float panel dispose-with-cart** (`§POS-FLOAT dispose=cart-empty`, pos_lens?v=4): sale completes /
 >   last line removed → panel dismisses itself; cart pill re-summons; ✕+swipe-down had landed v658 (#278).
