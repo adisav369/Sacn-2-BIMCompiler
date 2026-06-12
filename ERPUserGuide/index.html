@@ -2551,10 +2551,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#pos-screen-layout-the-killer-demo-surface-sw-v656" class="md-nav__link">
+  <a href="#pos-screen-layout-the-killer-demo-surface-sw-v656-panel-lifecycle-v658v660" class="md-nav__link">
     <span class="md-ellipsis">
       
-        POS screen layout (the killer-demo surface, sw v656)
+        POS screen layout (the killer-demo surface, sw v656 → panel lifecycle v658–v660)
       
     </span>
   </a>
@@ -4607,10 +4607,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#pos-screen-layout-the-killer-demo-surface-sw-v656" class="md-nav__link">
+  <a href="#pos-screen-layout-the-killer-demo-surface-sw-v656-panel-lifecycle-v658v660" class="md-nav__link">
     <span class="md-ellipsis">
       
-        POS screen layout (the killer-demo surface, sw v656)
+        POS screen layout (the killer-demo surface, sw v656 → panel lifecycle v658–v660)
       
     </span>
   </a>
@@ -5018,7 +5018,7 @@ No traditional row-update happens; the current state is the fold of all ops on t
 <h2 id="7-pos-point-of-sale">7. POS — Point of Sale<a class="headerlink" href="#7-pos-point-of-sale" title="Permanent link">&para;</a></h2>
 <p><strong>Prerequisite:</strong> log in as <strong>GardenUser</strong> (the POS station <code>c_pos_id=1</code> is scoped to that role).
 Tap the <strong>POS</strong> pill in the bottom bar (it appears only when the loaded db has a <code>c_pos</code> station).</p>
-<h3 id="pos-screen-layout-the-killer-demo-surface-sw-v656">POS screen layout (the killer-demo surface, sw v656)<a class="headerlink" href="#pos-screen-layout-the-killer-demo-surface-sw-v656" title="Permanent link">&para;</a></h3>
+<h3 id="pos-screen-layout-the-killer-demo-surface-sw-v656-panel-lifecycle-v658v660">POS screen layout (the killer-demo surface, sw v656 → panel lifecycle v658–v660)<a class="headerlink" href="#pos-screen-layout-the-killer-demo-surface-sw-v656-panel-lifecycle-v658v660" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Album cards</strong> — the product grid is a photo album (<code>.pos-card</code>, <code>§POS-ALBUM cards=16</code>): each card
   from <code>c_poskey → m_product</code> (the sealed keylayout) shows its photo (full-res from the device images
@@ -5027,6 +5027,11 @@ Tap the <strong>POS</strong> pill in the bottom bar (it appears only when the lo
 <li><strong>Floating payment panel</strong> — the cart pill summons a floating panel on its own layer
   (<code>#pos-float-panel</code>): tender, walk-in partner picker, receipt, replenishment suggestions. The album
   keeps scrolling underneath; payment never squeezes the grid.</li>
+<li><strong>Panel lifecycle</strong> — drag it by the header; dismiss it with the <strong>✕</strong> button or a <strong>swipe-down</strong>
+  on the header; and it <strong>follows the cart</strong>: when the cart empties — sale completed, or the last
+  line removed — the panel dismisses itself (<code>§POS-FLOAT dispose=cart-empty</code>). The cart pill
+  re-summons it anytime. Dismissing is pure UI: it never touches the cart contents or a committed
+  sale (the sale is sealed atomically at Complete, before the panel ever moves).</li>
 </ul>
 <p><img alt="POS — Garden User · Store: product grid left, live cart right, replenishment suggestions below" src="../figs/pos_live.png" /></p>
 <h3 id="making-a-sale">Making a sale<a class="headerlink" href="#making-a-sale" title="Permanent link">&para;</a></h3>
@@ -5036,6 +5041,8 @@ Tap the <strong>POS</strong> pill in the bottom bar (it appears only when the lo
 <li>Review <strong>Total</strong> (BigDecimal fold of line amounts, never a posted figure yet).</li>
 <li>Summon the payment panel (cart pill), pick the walk-in partner, tap <strong>Tendered cash — Complete</strong>
    (<code>§POS-SALE … newVerbs=[] chainOk=Y</code> — and the receipt card shows <code>signed=Y</code>).</li>
+<li>The receipt opens in its own overlay (re-openable via the <strong>receipt pill</strong>) and the payment
+   panel dismisses itself — the sale is already closed: one signed op-group, nothing left pending.</li>
 </ol>
 <p>A <strong>DEMO payment QR</strong> renders in the panel (clearly watermarked DEMO — a display of the tender
 amount, not a payment rail; no provider is wired, nothing is charged).</p>
@@ -5191,6 +5198,13 @@ silently skipped.</p>
 as a live 3D spatial model — a new tab pointing at the short GH Pages URL
 (<code>viewer/viewer.html?db=../buildings/warehouse_gardenworld.db</code>). No login required for the viewer;
 the ⌂ home button in the top-left flies you back to iDempiere.</p>
+<blockquote>
+<p><strong>The warehouse db lives in the repo</strong> (GH Pages <code>buildings/</code> — the old OCI bucket copy was
+retired). If your device ever opened the walk through the old OCI link, a bare viewer open used
+to resume that dead URL and show <em>"Failed to fetch …"</em>; since viewer sw <strong>v647</strong> it self-heals:
+the stale resume key is cleared and the viewer returns to the landing page once
+(<code>§PWA_RESUME_CLEAR</code>). Opening through the Warehouse pill always works directly.</p>
+</blockquote>
 <h3 id="what-you-see">What you see<a class="headerlink" href="#what-you-see" title="Permanent link">&para;</a></h3>
 <p>The warehouse is compiled from real <code>m_locator</code> records — 11 bins arranged in two rows on a
 flat floor, each bin's position derived from the GardenWorld ERP inventory schema (not hand-drawn).
@@ -5309,6 +5323,11 @@ needed if you see an old <code>CACHE_VERSION</code> number in the console.</p>
 <td><strong>T_Aging / T_ReportStatement</strong> folds</td>
 <td>13 <code>T_*</code> temp-table folds not yet built</td>
 <td>Phase B §H-7..§H-11 (future)</td>
+</tr>
+<tr>
+<td><strong>Warehouse viewer: "Failed to fetch …oraclecloud…"</strong> on a bare open</td>
+<td>OCI-era <code>pwa_last_db</code> resumed the retired bucket URL</td>
+<td>Fixed viewer sw v647 — self-heals to the landing (<code>§PWA_RESUME_CLEAR</code>); or clear site data once</td>
 </tr>
 </tbody>
 </table>
