@@ -66,6 +66,19 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶▶▶ SESSION HANDOFF 2026-06-12h — USER LIVE-TEST FIXES (bim-ootb PR #280, erp sw v659 / viewer sw v647) ▶▶▶**
+> - **✅ POS float panel dispose-with-cart** (`§POS-FLOAT dispose=cart-empty`, pos_lens?v=4): sale completes /
+>   last line removed → panel dismisses itself; cart pill re-summons; ✕+swipe-down had landed v658 (#278).
+>   Dismiss never touches the cart or the signed sale (Complete = ONE signed group, unchanged). W-POS-LIVE
+>   extended (dispose + re-summon) PASS.
+> - **✅ "WH does not have the DB" = the PWA-RESUME TRAP**, not the pill: the shipped GH pill URL is healthy
+>   (W-WH-LIVE-PAGES PASS on `../buildings/warehouse_gardenworld.db`); an OCI-era `pwa_last_db` resumed the
+>   DELETED bucket URL on bare opens → viewer bricked. main.js?v=41: clear stale key + ONE redirect to the
+>   landing (`§PWA_RESUME_CLEAR`); explicit ?db= errors stay visible (falsifier). NEW W-PWA-RESUME witness
+>   (scripts/poc_pwa_resume.js) PASS; W-WH-LIVE regression PASS; stale OCI pin in poc_wh_live_pages.js fixed
+>   (bim-compiler 5dfe3da8). NOTE: big-building dbs still ride OCI `_prodBase` (landing); ONLY the warehouse
+>   db is in-repo — bare viewer default `buildings/Duplex_extracted.db` does not exist on Pages (named).
+>
 > **▶▶▶ SESSION HANDOFF 2026-06-12g2 — POS GAP-CLOSE LANE DRAINED (`prompts/POS_GAP_CLOSE.md` → # DONE) ▶▶▶**
 > - **G-1 ✅ W-POS-DELIVERLATER** (bim-compiler 5bc4b389) — THE SEAM GAP closed: doctype-132 sale = order CO +
 >   M_InOut born DR (policy from the dictionary row, invoice timing named from InvoiceRule='I'); the §S-2
