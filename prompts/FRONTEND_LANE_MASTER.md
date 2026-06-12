@@ -66,6 +66,25 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶▶▶ DICTATED 2026-06-12f — POS DIY-UX + WH-context arc SPLIT INTO TWO LANES (Fable5 review of the UI session's specs — `docs/POS_ADDON_SPEC.md §3b/§P-6..§P-13` + `docs/SPATIAL_PICKING_SPEC.md §S-2/§S-12/§S-13` + resume card `prompts/POS_LENS_SESSION.md`) ▶▶▶**
+> - **Specs REVIEWED + revised to fit (Fable5, this block's writer):** POS_ADDON_SPEC status block synced to v655
+>   reality (#269/#271/#274; void DONE, cent ring lit) · §P-12 + SPATIAL §S-2 gained the **open-docs honesty note**
+>   (WR completes M_InOut IN-GROUP → nothing to pick; pickable sale = deliver-later plain-SOO shape, doctype 132,
+>   shipment stays DR — ENGINE builds it) · §P-13 gained recall-completes-the-HELD-order + no-duplicate falsifier ·
+>   §P-9 data-Q (a) **DECIDED on extracted facts**: AD_Image row + capped ≤~32KB `binarydata` thumbnail (origin/main
+>   seed verified; ⚠ shared ~/bim-ootb checkout was STALE — verify seed facts via `git show origin/main:erp/ad_seed.db`)
+>   + §P-9.4 dictionary-defaulted mandatory M_Product cols.
+> - **▶ UI LANE (Sonnet): §P-6 mobile layout → §P-7 pill icons → §P-8 continuous scan → §P-11 receipt (display
+>   half)** per `prompts/POS_LENS_SESSION.md` NEXT block — pure presentation, worktree off fresh origin/main,
+>   screenshots 390×844, witnesses green, branch committed, **NO deploy until the user sees the screenshots**
+>   (UI-iteration rule). Then §S-12 chips → §S-13b stock pill → §S-13a Find facet (read-only folds, same gate).
+> - **▶ ENGINE LANE (Fable5): §P-9/§P-10 signed master-data write groups · §P-12 deliver-later DR-shipment sale
+>   (pos_core spec from the dictionary) + walk's open-docs §S-2 selector engine side · §P-13 hold/recall pos_core
+>   glue (park-DR + complete-the-held-order).** Each = spec'd, witness-named, newVerbs=[].
+> - **⛔ BLOCKED (one user fact): §P-11 payable-QR** — real DuitNow QR = registered-merchant EMVCo payload; a
+>   self-composed amount QR won't parse in bank apps. Proposed: owner snaps their OWN static DuitNow QR once
+>   (stored as an AD_Image like §P-9) + receipt shows it beside the LARGE committed total. Awaiting the user's call.
+>
 > **▶▶▶ SESSION HANDOFF 2026-06-12e — MULTI-LANE WAVE 3 ✅ (`prompts/MULTI_LANE_WAVE3.md` → # DONE; 2 parallel lanes + serial train, bim-ootb PR #274 sw v655) ▶▶▶**
 > - **✅ LANE A — B-2 workflow oracle (Fable 5, `prompts/FABLE5_WORKFLOW_ORACLE.md` → # DONE):** `ad_workflow.js` gained a
 >   `replay` arm diffed against REAL iDempiere workflow traces from the live PG `idempiere_test` (11 ad_wf_process /
