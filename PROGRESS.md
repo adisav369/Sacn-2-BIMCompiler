@@ -18,6 +18,20 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
+## Multi-lane WAVE 3 banked (2026-06-12e, `prompts/MULTI_LANE_WAVE3.md` → # DONE)
+- **Done:** Lane A B-2 workflow oracle (W-WF-HARDEN: `§HARDEN surface=ad_workflow fixtures=11 diff=0
+  oracle=iDempiere-PG-trace` — 11 REAL traces from live `idempiere_test`, defs `§HARDEN-SRC kind=wf setdiff=0`,
+  compiled StateEngine/DocAction arm `§HARDEN-STATE 6/6` + `§HARDEN-GATE diff=0`, 2 falsifiers, 7 §HARDEN-SKIPS;
+  bim-compiler f941f073) · Lane B POS full loop §L-1..§L-3 (W-POS-CRUD `statusOp=none verifyChain=ok` ·
+  W-POS-VOID `postings-net=0c` + `onhand-restored=Y` · W-POS-REPLENISH-LOOP `suggest qty=11` → `po=CO` →
+  `receipt=CO` → `onhand 9→20` → `cleared=Y`, newVerbs=[]; 23ae7807) · train bim-ootb PR #274 sw v655
+  (orphan-checked, Pages v655 + vendorOf/buildReplenishPO live, post-merge `§POS-CENT maxDiff=0c`).
+- **Witness delta:** +4 new green (W-WF-HARDEN · W-POS-CRUD · W-POS-VOID · W-POS-REPLENISH-LOOP);
+  **equivalence ledger 42 → 43 oracle-equivalent, ⬜ = NONE** (the last ⬜ `ad_workflow` closed);
+  coverage 7✅/32🟡/3⛔ unchanged.
+- **Next:** B-3 0-seed posting oracles (own Fable-5 card) · Phase C UI wiring C-1..C-4 · POS next-increments
+  (returns-with-restock / §P-5 multi-station / receipt-URL / EOD email).
+
 ## Multi-lane WAVE 2 banked (2026-06-12, `prompts/MULTI_LANE_LAUNCH.md # DONE — 2026-06-12 wave 2`)
 - **Done:** POS lens DEPLOYED (bim-ootb #269 sw v652, W-POS-LIVE re-run on the bumped tree, `§POS-SALE … newVerbs=[]
   chainOk=Y ops=12 sealed=12`) · spatial picking §S-2..§S-5 BUILT+DEPLOYED (bim-ootb #270 viewer sw v643;

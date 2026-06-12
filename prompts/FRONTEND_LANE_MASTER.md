@@ -66,6 +66,88 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶▶▶ SESSION HANDOFF 2026-06-12e — MULTI-LANE WAVE 3 ✅ (`prompts/MULTI_LANE_WAVE3.md` → # DONE; 2 parallel lanes + serial train, bim-ootb PR #274 sw v655) ▶▶▶**
+> - **✅ LANE A — B-2 workflow oracle (Fable 5, `prompts/FABLE5_WORKFLOW_ORACLE.md` → # DONE):** `ad_workflow.js` gained a
+>   `replay` arm diffed against REAL iDempiere workflow traces from the live PG `idempiere_test` (11 ad_wf_process /
+>   13 ad_wf_activity / 13 ad_wf_eventaudit, captured verbatim → `build/erp/oracle/wf_oracle.json`):
+>   `§HARDEN surface=ad_workflow fixtures=11 diff=0 oracle=iDempiere-PG-trace` · defs md5-set both schemas
+>   `§HARDEN-SRC kind=wf setdiff=0` (58 wf/262 node/207 next/1 cond) · compiled-classes semantics arm
+>   (`scripts/logic_oracle/WorkflowOracle.java`, the B-1 LogicOracle technique): `§HARDEN-STATE … 6/6` +
+>   `§HARDEN-GATE … diff=0` · `§HARDEN-DOC replayed C_Order docstatus=CO == live c_order(200002)` · 2 load-bearing
+>   §FALSIFIERs · 7 `§HARDEN-SKIPS` (claim = 11 real processes diff=0, NOT corpus-wide). **Oracle ledger 42→43,
+>   ⬜=NONE** (matrix + ERP_EXECUTION_ROADMAP + HARDEN_MATRIX updated). Log `build/erp/poc_wf_harden.log`; W-WF
+>   regression intact. Banked bim-compiler f941f073.
+> - **✅ LANE B — POS FULL LOOP §L-1..§L-3 (`prompts/POS_FULL_LOOP.md` → # DONE):** W-POS-CRUD (`§POS-CRUD edit=description
+>   cols=description statusOp=none verifyChain=ok` · listOptions CO-selected · docstatus edit routes DOC_ACTION) ·
+>   W-POS-VOID (`§POS-VOID order=100 CO→VO group ops=2 chainOk=Y` · `postings-net=0c accounts=3` ·
+>   `onhand-restored=Y` · double-VO refused) · W-POS-REPLENISH-LOOP ENACTED (`§POS-LOOP suggest qty=11 product=124`
+>   → vendor 114 Tree Farm from real m_product_po → `po=CO` → `receipt=CO` → `onhand before=9 after=20` →
+>   `suggestions … cleared=Y`; newVerbs=[]; falsifiers receipt-no-po + short-receive). Witnesses banked
+>   bim-compiler 23ae7807; logs `build/erp/poc_pos_{crud,void,replenish_loop}.log`.
+> - **✅ TRAIN:** bim-ootb **PR #274 squash-merged** (CI SUCCESS), **sw v655**, orphan check `origin/main:erp/sw.js =
+>   v655`, Pages live-verify v655 + live `pos_lens.js` carries `vendorOf()`/`buildReplenishPO()` (§L-3 wiring live);
+>   post-merge W-POS-LIVE `§POS-CENT Dr=137.75 Cr=137.75 maxDiff=0c` all 5 stages green. Rebase over #273 clean.
+> - **Residuals (named):** short-receive PO remainder=6 untracked by the suggestion engine (re-fires below min only,
+>   §-named) · §HARDEN-SKIPS actions F/X/P/R/C unexercised (replay THROWS, never invents) + wf115 conditioned
+>   transition untraced · AD_Rule stays ⛔ n/a-in-seed (fact_reconciliation=0 re-verified live).
+> - **▶ NEXT (named sequel, not opened):** B-3 0-seed posting oracles (own Fable-5 card) · Phase C UI wiring C-1..C-4 ·
+>   POS next-increments (returns-with-restock / §P-5 multi-station / receipt-URL / EOD email).
+>
+> **▶▶▶ SESSION HANDOFF 2026-06-12c — WAREHOUSE_GH_LINK_PILL ALL 5 ITEMS ✅ (bim-ootb PR #272 sw v654, `prompts/WAREHOUSE_GH_LINK_PILL.md` → DONE) ▶▶▶**
+> - **✅ ITEM 1 — WH db on GH Pages:** `buildings/warehouse_gardenworld.db` (61,440 B, md5 `520be9be…`) tracked in bim-ootb (`.gitignore` removed `buildings/` dir exclude, added `!buildings/warehouse_gardenworld.db` exception). Short URL: `viewer/viewer.html?db=../buildings/warehouse_gardenworld.db`. OCI duplicate pending delete (STEP 8 — do after LIVE Pages confirm).
+> - **✅ ITEM 2 — Warehouse pill:** `box` icon, order 4.7, added to `pills_idmp.json` (v29) + `IdmpPillActions.warehouse` (opens viewer with `?home=<idempiere.html>`) + `warehouseShare`. W-WH-PILL exit 0: `§WH-PILL opened url=…warehouse_gardenworld.db&home=…` + §FALSIFIER (no pill on wrong surface).
+> - **✅ ITEM 3 — POS pill verify:** PR #269 already on `origin/main`; W-POS-LIVE exit 0 (§POS-CENT `maxDiff=0c`). Added `?lens=pos` deep link (`_pendingLens` → `openPosFor()` post-login) + `posShare` in `IdmpPillActions`.
+> - **✅ ITEM 4 — Share icon in header:** `#idmp-share-btn` with `ICONS.share` SVG; wired to share current `?window=<id>&record=<pk>` URL (§IDMP-SHARE). Added between switch and home buttons.
+> - **✅ ITEM 5 — Home nav chain:** ⌂ in POS overlay (`pos_lens.js` homeBtn removes `#posted-overlay`, logs `§POS-HOME`); ⌂ in WH viewer (`config.js A.HOME_URL = _params.get('home')`, `panels.js §WH-HOME renderer` fixed top-left). `#idmp-home-btn → erp.html` UNTOUCHED.
+> - **Orphan-checked:** `CACHE_VERSION='v654'` + `buildings/warehouse_gardenworld.db` 61440 B + `"warehouse"` in pills_idmp on `origin/main` ✅.
+> - **✅ REMAINING CLOSED (2026-06-12c same session):** W-WH-LIVE-PAGES PASS on OCI URL · OCI duplicate deleted (404 confirmed) · `docs/ERPUserGuide.md §9` updated with full UX guide + screenshots · `docs/SPATIAL_PICKING_SPEC.md §6` extension arc written (§S-7 packing · §S-8 handling overlays · §S-9 robot · §S-10 AR via SiteCam · §S-11 bin-share deep link) · docs deployed `mkdocs gh-deploy`.
+>
+> **▶ DICTATED 2026-06-12d — WH browse-mode ERP context (user live-test finding, spec'd `docs/SPATIAL_PICKING_SPEC.md §S-12 + §S-13`):**
+> User opened warehouse_gardenworld.db, picked "Store Central rack" — info card shows IFC fields ONLY
+> (no M_Locator / on-hand / M_Movement context) and the pill bar is the full 30-action construction
+> profile. Two items, both spec'd with witnesses + falsifiers:
+> **✅ DONE (W-WH-CACHE, bim-ootb PR #273 sw v644, LIVE-verified 2026-06-12) — P0 BUG: Walk poisoned the building's IDB cache.**
+> Fix shipped: `kernel_ops.js?v=4` `§KRN_PERSIST_GUARD` — persist only `APP.db`, guard before the
+> debounce timer; `§KRN_PERSIST_SKIP` logged on foreign-db commits. Witness `scripts/poc_wh_cache.js`:
+> RED on unfixed origin/main (reproduced 16KB clobber + dead reload), 11/11 green on fix, W-WH-LIVE
+> walk regression PASS. Squash orphan-checked + Pages live (`sw v644`, guard fetched live). Original report:
+> `kernel_ops.js _persistToIdb(db)` exports the PASSED db handle but keys the write by `APP.DB_URL` →
+> wh_walk's `commitGroup(W.opDb,…)` (its own in-memory op db) persists a 16KB op-only db OVER the
+> cached building (user log: `§KRN_PERSIST url=../buildings/warehouse_gardenworld.db size=16KB`,
+> was 80KB) → refresh `§CACHE_HIT` serves it → building never loads (no geometry tables, silent
+> death). Fix = one guard: `_persistToIdb` skips (or keys separately) when `db !== APP.db`.
+> Witness W-WH-CACHE: open walk → commit a step → reload → `§DB_LOADED` + `§CENTRES_RESULT rows=1`
+> + cached size unchanged. §FALSIFIER: viewer-op persist (the S243 path) must STILL survive refresh.
+> User unblock documented: delete `bim_ootb_cache/dbs` key via console, reload.
+> 0. **✅ DONE (bim-ootb PR #275 sw v645, W-WH-WALKMODE 13/13 + W-WH-LIVE regression PASS) — WALK-MODE UX:**
+>    (a) walk mode ENGAGES — open hides #mobile-pill BIM chrome, close restores it (§MODE walk-on/off);
+>    (b) MANUAL CONFIRM beside QR — green "✓ I'm at this bin" → confirmHere() feeds expected locator
+>    through the SAME scanInput gate (via=manual), fixes desktop/no-camera dead-end; (c) ⌂ HOME on the
+>    walk strip → A.HOME_URL or ../index.html. Presentation only, engine byte-identical.
+>    RESIDUAL (still open, lower-pri): the 3D-tap-on-lit-bin path (`§PICK no guid for mesh.id=55` —
+>    highlight overlay intercepts raycast) — manual button sidesteps it, but a direct dblclick-lit-bin
+>    affordance (overlay raycast=noop) is still nice-to-have. Witness W-WH-DESKTOP.
+> 1. **§S-12 ERP info drawer on pick** — gate=on + ELEMENT_PICK → data-gated chips (locator Value,
+>    qtyOnHand FOLD per product, open movement lines; rack/aisle = aggregate of child bins from
+>    m_bom_line — the observed pick WAS a rack, first-class case). Reuse wh_walk.js ensureDeps +
+>    BIMtoERP §A drawer pattern. Witness W-WH-INFO.
+> 2. **§S-13 WH context layer — ADDITIVE (user re-directed 2026-06-12: KEEP all BIM goodies —
+>    Find/Fly/Shadow/Night — do NOT strip/profile pills).** Read-only overlays on the GUID↔locator
+>    key, all data-gated like the Walk pill: **13a** Find panel grows a Products facet (product →
+>    bins via qtyOnHand fold → existing fly-to+highlight; W-WH-FIND) · **13b** Stock lens pill
+>    (bins colored by on-hand vs level_min, palette idiom; composes with Night/Shadow; W-WH-STOCK)
+>    · **13c** Movement arrows from→to = v2. Sequence: §S-12 chips → 13b → 13a. Falsifiers: gate=off
+>    → Find tree + pill bar byte-identical.
+>
+> **▶ DICTATED 2026-06-12c — WH bin-share deep link (§S-11, `docs/SPATIAL_PICKING_SPEC.md §S-11`):**
+> Share "look at this bin" from the Walk strip the same way BIM viewer shares a picked element.
+> Spec: `config.js` +`A.WH_LOCATOR = _params.get('wh_locator')` · `wh_walk.js` gate poll → if
+> `A.WH_LOCATOR` set after gate=on → `focusStep` VIEW-ONLY (fly-to + bright bin + ghost rest, no
+> draft `M_Movement`) · strip share button → `navigator.share(?db=…&wh_locator=<locator_id>)` ·
+> log `§WH-SNAG` + `§WH-STEP-SHARE`. No login needed for recipient. Architecture: 3 small changes,
+> same `focusStep`, no new kernel path. Witness: `poc_wh_snag.js` — load with `?wh_locator=X` →
+> `§WH-SNAG locator=X view=only` logged, bin overlay present, no M_Movement drafted.
+>
 > **▶▶▶ SESSION HANDOFF 2026-06-12b — POSTING CONFIG SHIPPED (`prompts/MIGRATE_POSTING_CONFIG.md` → # DONE; 2 parallel lanes + serial train, bim-ootb PR #271 sw v653, IDB ad_seed_v15) ▶▶▶**
 > - **✅ SEED + CLIENT 13 (iDempiere):** `export_ad.sh` now pulls `fact_acct` (client 11 from `idempiere_test`, 300 rows
 >   TB 46574.97 — doc-id sets verified identical across both PG dbs); the six acct-config tables were ALREADY in the
