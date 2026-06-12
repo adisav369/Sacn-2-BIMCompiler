@@ -122,7 +122,7 @@ No traditional row-update happens; the current state is the fold of all ops on t
 **Prerequisite:** log in as **GardenUser** (the POS station `c_pos_id=1` is scoped to that role).
 Tap the **POS** pill in the bottom bar (it appears only when the loaded db has a `c_pos` station).
 
-### POS screen layout (the killer-demo surface, sw v656)
+### POS screen layout (the killer-demo surface, sw v656 → panel lifecycle v658–v660)
 
 - **Album cards** — the product grid is a photo album (`.pos-card`, `§POS-ALBUM cards=16`): each card
   from `c_poskey → m_product` (the sealed keylayout) shows its photo (full-res from the device images
@@ -131,6 +131,11 @@ Tap the **POS** pill in the bottom bar (it appears only when the loaded db has a
 - **Floating payment panel** — the cart pill summons a floating panel on its own layer
   (`#pos-float-panel`): tender, walk-in partner picker, receipt, replenishment suggestions. The album
   keeps scrolling underneath; payment never squeezes the grid.
+- **Panel lifecycle** — drag it by the header; dismiss it with the **✕** button or a **swipe-down**
+  on the header; and it **follows the cart**: when the cart empties — sale completed, or the last
+  line removed — the panel dismisses itself (`§POS-FLOAT dispose=cart-empty`). The cart pill
+  re-summons it anytime. Dismissing is pure UI: it never touches the cart contents or a committed
+  sale (the sale is sealed atomically at Complete, before the panel ever moves).
 
 ![POS — Garden User · Store: product grid left, live cart right, replenishment suggestions below](figs/pos_live.png)
 
@@ -141,6 +146,8 @@ Tap the **POS** pill in the bottom bar (it appears only when the loaded db has a
 3. Review **Total** (BigDecimal fold of line amounts, never a posted figure yet).
 4. Summon the payment panel (cart pill), pick the walk-in partner, tap **Tendered cash — Complete**
    (`§POS-SALE … newVerbs=[] chainOk=Y` — and the receipt card shows `signed=Y`).
+5. The receipt opens in its own overlay (re-openable via the **receipt pill**) and the payment
+   panel dismisses itself — the sale is already closed: one signed op-group, nothing left pending.
 
 A **DEMO payment QR** renders in the panel (clearly watermarked DEMO — a display of the tender
 amount, not a payment rail; no provider is wired, nothing is charged).
@@ -255,6 +262,12 @@ as a live 3D spatial model — a new tab pointing at the short GH Pages URL
 (`viewer/viewer.html?db=../buildings/warehouse_gardenworld.db`). No login required for the viewer;
 the ⌂ home button in the top-left flies you back to iDempiere.
 
+> **The warehouse db lives in the repo** (GH Pages `buildings/` — the old OCI bucket copy was
+> retired). If your device ever opened the walk through the old OCI link, a bare viewer open used
+> to resume that dead URL and show *"Failed to fetch …"*; since viewer sw **v647** it self-heals:
+> the stale resume key is cleared and the viewer returns to the landing page once
+> (`§PWA_RESUME_CLEAR`). Opening through the Warehouse pill always works directly.
+
 ### What you see
 
 The warehouse is compiled from real `m_locator` records — 11 bins arranged in two rows on a
@@ -347,6 +360,7 @@ needed if you see an old `CACHE_VERSION` number in the console.
 | **Posting Preview** empty | Same — acct linkage absent in default seed | Same fix |
 | **POS live ring to the cent** | posting-config needed for the live ring | `MIGRATE_POSTING_CONFIG.md` |
 | **T_Aging / T_ReportStatement** folds | 13 `T_*` temp-table folds not yet built | Phase B §H-7..§H-11 (future) |
+| **Warehouse viewer: "Failed to fetch …oraclecloud…"** on a bare open | OCI-era `pwa_last_db` resumed the retired bucket URL | Fixed viewer sw v647 — self-heals to the landing (`§PWA_RESUME_CLEAR`); or clear site data once |
 
 ### Engine-gated (code exists, not yet wired to live UI)
 
