@@ -207,6 +207,45 @@ Tap **⌂ → Performance Analysis → Financial Report** (or use the Statements
 The **⎙ Print** button on an invoice form opens a single-page print view generated from the real
 `AD_PrintFormat` metadata — not a template, a fold of the dictionary's print format rows.
 
+### Excel Report — your workbook is the report (NinjaExcel)
+
+Tap the **Excel Report** pill (grid icon ▦) on the iDempiere bottom bar. This lens turns any Excel
+workbook into a live report over the open tenant — Excel stays the designer (layout, formatting,
+subtotals, charts: zero learning curve, it *is* Excel); the lens is only the **binder** that fills
+the data cells from the database. No Jasper, no print-format authoring, no server.
+
+One workbook, three sheets:
+
+| Sheet | Role | Who writes it |
+|---|---|---|
+| **BACKUP** | a *filled sample* of the finished report — design-by-example | you (keep a real filled copy) |
+| **Input** | the layout with `@field_row_col@` holes where data goes, plus `#1/#2` parameter cells | scaffolded for you |
+| **Process** | one row per data cell: `SELECT / TABLE / JOIN / WHERE / ADDRESS` — plain SQL in cells | scaffolded, **you finish it** |
+
+The flow:
+
+1. **Try the sample first** — the lens links a `ninja_sample.xlsx` (GardenWorld invoice summary),
+   runnable as-is: drop it back in and it fills from the open tenant.
+2. **MAKE** — drop a workbook holding only your filled **BACKUP** sheet. The lens detects the data
+   grid by shape, proposes a SELECT for each cell from its column label, and hands back a scaffold.
+   A proposal is not an answer — open the **Process** sheet in Excel and finish the `TABLE`/`WHERE`
+   columns (this is where your SQL skill goes; everything else is already placed).
+3. **RUN** — drop the finished workbook. Every Process row is folded over the loaded tenant db,
+   values land in their addressed cells, and you download the filled workbook. Your own `=SUM(...)`
+   subtotals are never computed by the engine — Excel recalculates them when you open the file.
+
+**Verify-by-example** is the honesty gate: if the BACKUP sample travels with the workbook, every
+folded value is compared against the sample **to the cent** — a wrong binding shows red, not
+plausible. An incomplete workbook (empty `TABLE`, a `#2` parameter with no value, a data hole no
+Process row addresses) is **refused before running** with the exact list of what's missing — never
+silently skipped.
+
+| Status | Notes |
+|---|---|
+| ✅ LIVE (sw v659) | sample runs 9 cells `maxDiff=0c` against the seed; works on any installed/migrated tenant (one SQL dialect — SQLite) |
+| Engine-gated | RULE tier (business phrases like `SUM GrandTotal of Invoices, completed` compiled from the AD dictionary — no SQL) is built and witnessed headless, not yet surfaced in the lens |
+| Phase 2 | bidirectional cells (`<` direction: an edited cell appends a signed op) — designed, not built |
+
 ---
 
 ## 9. Warehouse Walk
