@@ -2484,10 +2484,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-install-migrate" class="md-nav__link">
+  <a href="#2-install-migrate-pick-your-erp" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Install / Migrate
+        2. Install / Migrate (pick-your-ERP)
       
     </span>
   </a>
@@ -4540,10 +4540,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-install-migrate" class="md-nav__link">
+  <a href="#2-install-migrate-pick-your-erp" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Install / Migrate
+        2. Install / Migrate (pick-your-ERP)
       
     </span>
   </a>
@@ -4904,17 +4904,57 @@ immediately — no credentials, just pick a role.</p>
 <p>The menu is pruned immediately by real <code>AD_Window_Access</code> / <code>AD_Process_Access</code> grants from the seed —
 if a window is absent for your role, that is correct, not a bug.</p>
 <hr />
-<h2 id="2-install-migrate">2. Install / Migrate<a class="headerlink" href="#2-install-migrate" title="Permanent link">&para;</a></h2>
-<p><strong>Install</strong> and <strong>Migrate</strong> are both reached through the <strong>⋯ pill</strong> (bottom-right, "more" menu):</p>
-<ul>
-<li><strong>Install</strong> — loads the bundled <code>ad_seed.db</code> into browser IndexedDB (IDB). This is the full-width
-  GardenWorld tenant (bim-ootb PR #265, IDB key v14). It runs once; subsequent loads read from IDB.</li>
-<li><strong>Migrate from Odoo</strong> — paste / upload an Odoo export; the kernel folds it into the op-log format
-  and seeds a new tenant alongside the existing one.</li>
-<li><strong>Migrate from iDempiere</strong> — same flow for an iDempiere export (the <code>gen_ad_idmp.js</code> path; PKs are
-  re-banded so they never collide with the Odoo import).</li>
-</ul>
-<p>After install the page reloads with the full menu. No URL change needed — the seed is in IDB.</p>
+<h2 id="2-install-migrate-pick-your-erp">2. Install / Migrate (pick-your-ERP)<a class="headerlink" href="#2-install-migrate-pick-your-erp" title="Permanent link">&para;</a></h2>
+<p><strong>Install</strong> and <strong>Migrate</strong> both open the same pick-your-ERP dialog (reached from the <strong>⋯ pill</strong> or
+the pre-login Install/Migrate pills). It lists five sources, detects what is running on your machine,
+and routes honestly — nothing is ever faked:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Migrate (extract YOUR data)</th>
+<th>Install (resident demo tenant)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Odoo</strong></td>
+<td>live delegate agent: download <code>odoo_agent.zip</code>, run it natively next to your Odoo, drop the <code>odoo_chain.json</code> it writes — the browser re-folds and verifies it</td>
+<td><strong>Client 12</strong> — live-extracted from odoodemo, books diffed to the cent</td>
+</tr>
+<tr>
+<td><strong>iDempiere</strong></td>
+<td>ShowMe + <code>migrate_agent.js</code> against your own Postgres (credentials never leave your machine)</td>
+<td><strong>Client 13</strong> — real PG-agent extraction, PKs re-banded</td>
+</tr>
+<tr>
+<td><strong>SAP</strong></td>
+<td>coming (no agent yet)</td>
+<td><strong>Client 14 "SAP Flights"</strong> — PoC: the documented <strong>SFLIGHT</strong> flight-booking reference model (carriers → Business Partners, connections → Products)</td>
+</tr>
+<tr>
+<td><strong>Oracle</strong></td>
+<td>coming</td>
+<td><strong>Client 15 "Oracle Scott"</strong> — PoC: the canonical <strong>EMP/DEPT (SCOTT)</strong> schema (departments → BP Groups, employees → Business Partners)</td>
+</tr>
+<tr>
+<td><strong>MS Dynamics</strong></td>
+<td>coming</td>
+<td><strong>Client 16 "Dynamics Cronus"</strong> — PoC: the Business Central <strong>CRONUS</strong> demo company (items → Products, customers → Business Partners)</td>
+</tr>
+</tbody>
+</table>
+<p>The three PoC tenants carry each vendor's <em>documented public demo model</em> — reference data labeled as
+such in the dialog, proving the master-table mapping; a delegate agent (like Odoo's) is the production
+path for real extractions.</p>
+<p><strong>What Install leaves behind:</strong> the tenant is merged into the resident seed in browser IndexedDB — it
+survives a plain reload, re-install is a guarded no-op, and the install itself appears as a dot on the
+<strong>W</strong> world-history timeline.</p>
+<p><strong>Choosing a tenant at login:</strong> the login card shows a "Select a tenant" step <strong>only when two or more
+login-able tenants exist</strong>. On a fresh seed there is only GardenWorld, so the step auto-skips — if you
+can't choose more clients, you haven't installed any yet. After installs the list fills (System,
+GardenWorld, and every installed tenant). Each tenant is entered through its <strong>own Admin user</strong>
+(e.g. <em>SAP Flights Admin</em>); the System user belongs to the System(0) client only.</p>
 <hr />
 <h2 id="3-the-bottom-pill-bar-cheat-sheet">3. The Bottom Pill Bar (cheat sheet)<a class="headerlink" href="#3-the-bottom-pill-bar-cheat-sheet" title="Permanent link">&para;</a></h2>
 <p>The pill is the single entry point for every tool. Left-to-right:</p>
