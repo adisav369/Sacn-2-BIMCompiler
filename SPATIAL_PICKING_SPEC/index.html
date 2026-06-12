@@ -3449,6 +3449,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#s-3b-walk-mode-engages-home-shipped-2026-06-12-sw-v645-w-wh-walkmode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-3b Walk mode engages + ⌂ home — ✅ SHIPPED 2026-06-12 (sw v645, W-WH-WALKMODE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-4b-desktop-manual-confirm-shipped-2026-06-12-sw-v645-w-wh-walkmode-was-observed-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-4b Desktop / manual confirm — ✅ SHIPPED 2026-06-12 (sw v645, W-WH-WALKMODE) — was OBSERVED GAP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-12-erp-info-drawer-on-pick-browse-mode-observed-gap-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-12 ERP info drawer on pick (browse mode) — OBSERVED GAP 2026-06-12
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-13-wh-context-layer-additive-never-subtractive-user-direction-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-13 WH context layer — ADDITIVE, never subtractive (user direction 2026-06-12)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-a-real-ifc-survey-adds" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4601,6 +4645,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#s-3b-walk-mode-engages-home-shipped-2026-06-12-sw-v645-w-wh-walkmode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-3b Walk mode engages + ⌂ home — ✅ SHIPPED 2026-06-12 (sw v645, W-WH-WALKMODE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-4b-desktop-manual-confirm-shipped-2026-06-12-sw-v645-w-wh-walkmode-was-observed-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-4b Desktop / manual confirm — ✅ SHIPPED 2026-06-12 (sw v645, W-WH-WALKMODE) — was OBSERVED GAP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-12-erp-info-drawer-on-pick-browse-mode-observed-gap-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-12 ERP info drawer on pick (browse mode) — OBSERVED GAP 2026-06-12
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-13-wh-context-layer-additive-never-subtractive-user-direction-2026-06-12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-13 WH context layer — ADDITIVE, never subtractive (user direction 2026-06-12)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-a-real-ifc-survey-adds" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4794,6 +4882,18 @@ its <strong><code>m_locator_id</code> as the element GUID</strong> (the BIMtoERP
 <li>Witness <strong>W-WH-ROUTE</strong>: same lines + same tree ⇒ same route (deterministic); steps cover ALL
   lines exactly once. §FALSIFIER: a line whose locator is off-model must surface as an explicit
   "unroutable" step, never silently dropped.</li>
+<li><strong>POS handoff (design 2026-06-12, <code>docs/POS_ADDON_SPEC.md §P-12</code>):</strong> a POS sale commits an
+  <code>M_InOut</code> (its shipment) into the same ledger the walk reads. <code>draftPick</code> (<code>wh_walk.js</code>) should gain
+  an option to source the route from <strong>open POS-generated <code>M_InOut</code>/<code>M_Movement</code> docs</strong>, alongside the
+  current replenishment draft. This is the "finish the sale → go pick it" fold — two lenses, one
+  ledger, NO coupling. Additive §S-2 selector, not new machinery. Another device picking the same list
+  = the multi-device version of the same fold.
+  <strong>Open-docs only (engine note, Fable5 review 2026-06-12):</strong> the selector sources
+  <code>docstatus IN ('DR','IP')</code> — the WR cash-and-carry sale completes its <code>M_InOut</code> INSIDE the sale
+  group (W-POS-WR: nothing left to pick, on-hand already moved; routing it would double-move stock).
+  The pickable sale is the <strong>deliver-later shape</strong> (plain <code>SOO</code> — seed doctype <code>132 Standard Order</code> —
+  shipment stays DR; the walk's §S-4 scan-commit is what completes it and moves on-hand). That sale
+  variant is engine glue, built engine-side first; see <code>POS_ADDON_SPEC.md §P-12</code> engine note.</li>
 </ul>
 <h3 id="s-3-the-walk-viewer-ux">§S-3 The walk — viewer UX<a class="headerlink" href="#s-3-the-walk-viewer-ux" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4913,6 +5013,85 @@ db, §S-1 stamp).</p>
 </ol>
 <p><strong>Architecture cost:</strong> <code>config.js</code> +1 param read · <code>wh_walk.js</code> +view-only branch on gate+param ·
 strip +share button. Same <code>focusStep</code>, same depth model. No new kernel path, no auth gate.</p>
+<h3 id="s-3b-walk-mode-engages-home-shipped-2026-06-12-sw-v645-w-wh-walkmode">§S-3b Walk mode engages + ⌂ home — ✅ SHIPPED 2026-06-12 (sw v645, W-WH-WALKMODE)<a class="headerlink" href="#s-3b-walk-mode-engages-home-shipped-2026-06-12-sw-v645-w-wh-walkmode" title="Permanent link">&para;</a></h3>
+<p>User direction: the walk should <em>engage</em> a distinct mode, not sit as a strip over BIM. Built
+(presentation only, engine untouched): <code>open()</code> hides <code>#mobile-pill</code> (the BIM construction chrome),
+<code>close()</code> restores it verbatim — <code>§MODE walk-on/off</code>. A ⌂ home button on the walk strip navigates to
+<code>A.HOME_URL</code> (<code>?home=</code>, e.g. iDempiere) or <code>../index.html</code> (bubbles landing) — single-hop escape,
+because browser-back walks the whole nav stack down to the landing.</p>
+<h3 id="s-4b-desktop-manual-confirm-shipped-2026-06-12-sw-v645-w-wh-walkmode-was-observed-gap">§S-4b Desktop / manual confirm — ✅ SHIPPED 2026-06-12 (sw v645, W-WH-WALKMODE) — was OBSERVED GAP<a class="headerlink" href="#s-4b-desktop-manual-confirm-shipped-2026-06-12-sw-v645-w-wh-walkmode-was-observed-gap" title="Permanent link">&para;</a></h3>
+<p><strong>Observed (desktop F12):</strong> mid-walk (<code>§WH step=1/3 locator=101 fly=done lit=1</code>) a mouse click on
+the LIT bin resolved to a guid-less mesh — <code>§PICK hits=12 chosen=0 … §PICK no guid for mesh.id=55</code>
+(top hit op=0.6 = the highlight overlay) — so the scan screen never opened. The phone-witnessed tap
+path worked (W-WH-LIVE L2); on desktop the bin/rack OVERLAY mesh intercepts the raycast and carries
+no GUID.</p>
+<p><strong>Spec:</strong>
+1. <strong>Overlay must not eat the pick</strong>: the walk's overlay meshes get <code>raycast = noop</code> (or carry the
+   target locator id as GUID so the hit resolves to the bin). Either way a click on the lit bin
+   MUST reach <code>WHWalk.onPick</code>. Witness line: <code>§WH TAP via=overlay|mesh bin=&lt;id&gt;</code>.
+2. <strong>Desktop demo confirm (user-dictated)</strong>: no camera on a desktop — <strong>double-click (or long-press)
+   the lit bin = confirm</strong>, equivalent to a matching scan, qty confirm still shown (the one clean
+   act stays). Single click keeps opening the scan/typed screen. Logged distinctly:
+   <code>§WH scan=&lt;id&gt; via=dblclick MATCH</code> — the op group is IDENTICAL to the QR path (same gate, §S-4).
+   Wrong bin double-clicked → same REFUSE line. This is a DEMO affordance, not a bypass: same
+   refuse/commit gate, same signed group.
+- Witness <strong>W-WH-DESKTOP</strong>: scripted desktop run — click lit bin opens scan; dblclick lit bin
+  commits step; dblclick WRONG bin refused. §FALSIFIER: overlay click must never advance the step
+  without the gate line.</p>
+<h3 id="s-12-erp-info-drawer-on-pick-browse-mode-observed-gap-2026-06-12">§S-12 ERP info drawer on pick (browse mode) — OBSERVED GAP 2026-06-12<a class="headerlink" href="#s-12-erp-info-drawer-on-pick-browse-mode-observed-gap-2026-06-12" title="Permanent link">&para;</a></h3>
+<p><strong>Observed (live test, F12 + screenshot):</strong> with <code>§WH PILL gate=on</code>, tapping a rack
+(<code>§PICK IfcFurnishingElement "Store Central rack"</code>) shows the GENERIC IFC info card only —
+Class/Name/GUID/Storey/Material. No <code>M_Locator</code>, no on-hand, no <code>M_Movement</code> context. The §S-1
+linkage (bin GUID == <code>m_locator_id</code>) exists in the db but is only read <em>inside the Walk lens</em>;
+the browse-mode pick path never touches the ERP side.</p>
+<p><strong>Spec — data-gated ERP chips appended to the info card</strong> (BIMtoERP §A Check-ERP drawer pattern,
+reversed: here the GUID <em>is</em> the ERP id):</p>
+<ul>
+<li>Trigger: <code>ELEMENT_PICK</code> while <code>WHWalk</code> gate=on (same gate, no second probe). Lazy-load the seed
+  via the existing <code>wh_walk.js ensureDeps</code> (ad_seed.db fetch + ERPEngine UMDs — already written,
+  share it, don't duplicate).</li>
+<li><strong>Bin pick</strong> (numeric GUID = <code>m_locator_id</code>): chips show locator <code>Value</code> + warehouse name ·
+  <strong>on-hand per product = the <code>ERPEngine.qtyOnHand</code> fold</strong> (seed + op-log — the §S-5 truth, never
+  a raw <code>m_storageonhand</code> read) · open <code>M_Movement</code>/<code>M_InOut</code> lines touching this locator
+  (from/to) · <code>m_replenish.level_min</code> if present.</li>
+<li><strong>Rack / aisle pick</strong> (non-numeric GUID <code>RACK_*</code>/<code>AISLE_*</code>): aggregate of child bins from the
+  <code>m_bom_line</code> tree — <code>n bins · n products on hand · n open lines</code>; tap a chip → drill to the
+  bin list. (The observed test picked a RACK — this case is first-class, not an edge.)</li>
+<li>Honest-empty: a bin with nothing on hand shows <code>on-hand: —</code> (zero rows), never invented rows.</li>
+<li>Witness <strong>W-WH-INFO</strong>: <code>§WH-INFO guid=&lt;g&gt; locator=&lt;Value&gt; onhand=&lt;n&gt; openlines=&lt;n&gt;</code> per pick.
+  §FALSIFIER 1: gate=off building → ZERO chips added (code inert, generic card byte-identical).
+  §FALSIFIER 2: locator with no movement lines shows <code>openlines=0</code>, not a fabricated list.</li>
+</ul>
+<p><strong>Architecture cost:</strong> one render hook on the pick card + reuse of <code>ensureDeps</code> + two pure
+queries. No new kernel path, no write.</p>
+<h3 id="s-13-wh-context-layer-additive-never-subtractive-user-direction-2026-06-12">§S-13 WH context layer — ADDITIVE, never subtractive (user direction 2026-06-12)<a class="headerlink" href="#s-13-wh-context-layer-additive-never-subtractive-user-direction-2026-06-12" title="Permanent link">&para;</a></h3>
+<p><strong>Direction (user, live test):</strong> the warehouse viewer retaining ALL the BIM goodies — Find panel,
+Fly, Shadow earth, Night, x-ray — is a feature, not a bug. Do NOT strip or profile the pill bar.
+The BIM capabilities are camera/render machinery, orthogonal to ERP context; the WH context is a
+<strong>read-only overlay family on the same GUID↔locator key</strong>, added beside them.</p>
+<p>Everything load-bearing already exists: §S-1 linkage in the db · <code>wh_walk.js ensureDeps</code> (lazy
+seed + engine) · <code>ERPEngine.qtyOnHand</code> fold · the depth/palette highlight machinery · the Walk
+pill's data-gate (non-WH buildings stay byte-identical). What remains is presentation wiring:</p>
+<ul>
+<li><strong>§S-13a Find panel ERP facet</strong> — Find already builds storey/discipline/type trees; when
+  gate=on, add a <strong>Products</strong> branch: product → bins holding it (qtyOnHand fold &gt; 0) → tap =
+  the existing fly-to + highlight (room-lens behavior verbatim). The Find panel BECOMES the
+  spatial stock browser — same UX the user already knows. Witness <strong>W-WH-FIND</strong>:
+  <code>§WH-FIND facet=products rows=&lt;n&gt; bins=&lt;n&gt;</code>; §FALSIFIER: gate=off → no Products branch,
+  Find tree byte-identical.</li>
+<li><strong>§S-13b Stock lens pill</strong> — ONE new data-gated pill (sibling of Walk, same gate): color
+  bins by on-hand level via the palette/SC-coloring idiom (e.g. empty=ghost · low=amber ·
+  ok=green, thresholds from <code>m_replenish.level_min</code> where present). Composes with Night/
+  Shadow/Fly — layers, not modes. Witness <strong>W-WH-STOCK</strong>: <code>§WH-STOCK bins=&lt;n&gt; colored=&lt;n&gt;
+  low=&lt;n&gt;</code>; §FALSIFIER: a bin with no on-hand rows renders ghost, never a colored invention.</li>
+<li><strong>§S-13c Movement lens (v2)</strong> — open <code>M_Movement</code> lines drawn as from→to arrows over the
+  floor (the measure/grid overlay line-drawing idiom); tap arrow → its doc / step into the
+  Walk. Named v2: needs arrow geometry + doc drill, the only piece without a 1:1 existing idiom.</li>
+</ul>
+<p>All three are read-only folds — no new kernel path, no write, no fork of any BIM module.
+Sequencing: §S-12 chips first (its queries feed 13a/13b), then 13b (small), then 13a, 13c v2.</p>
+<p><strong>Architecture cost:</strong> 13a = one facet builder on the existing Find tree · 13b = one pill +
+one material pass · 13c = v2. Zero behavior change for non-WH buildings (same gate).</p>
 <h3 id="what-a-real-ifc-survey-adds">What a real IFC survey adds<a class="headerlink" href="#what-a-real-ifc-survey-adds" title="Permanent link">&para;</a></h3>
 <p>The current model is a compiled schematic (§S-1 honest gap — X/Y/Z are text labels, not metric
 coordinates). A real warehouse survey via phone LiDAR → IFC → the existing compiler pipeline
