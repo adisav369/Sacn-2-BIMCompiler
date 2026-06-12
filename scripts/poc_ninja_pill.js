@@ -14,6 +14,11 @@
 //      §NINJA-PILL make tables=1 dynamic=9.
 //   5. HONESTY — a workbook with a blanked TABLE cell is REFUSED by the gate in the live UI
 //      (§NINJA-PILL gate=REFUSED), never silently skipped.
+//   6. SAMPLE CLICK — the sample link click downloads + INFORMS (toast): local copy first
+//      (§NINJA-PILL sample source=local); with the local asset blocked (route abort) it falls back
+//      to the canonical GH Pages URL (intercepted hermetically — no real network) and the toast
+//      says so (source=gh-pages). ISSUE PROVED: a user without the local copy still gets the
+//      sample, and is told where it came from — never a silent dead link.
 // Run: ERP_ROOT=/tmp/wt-ninja/erp node scripts/poc_ninja_pill.js  (default ROOT=~/bim-ootb/erp)
 const { chromium } = require(process.env.HOME + '/bim-ootb/tests/node_modules/playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -93,7 +98,34 @@ const server = http.createServer((q, r) => {
   if (!(refused.mode === 'run' && refused.ok === false && refused.errors >= 1)) fail('gate refusal wrong: ' + JSON.stringify(refused));
   if (!logs.find(t => /§NINJA-PILL gate=REFUSED/.test(t))) fail('gate=REFUSED line missing');
 
-  console.log(pass ? '\n🟢 W-NINJA-PILL PASS — pill on bar, lens opens, sample RUNs 0c on sql.js, MAKE scaffolds, gate refuses live.'
+  // ── 6. SAMPLE CLICK: download + inform — local first, GH Pages fallback when local is gone ──
+  console.log('— 6. sample link: local hit, then GH-fallback with the local asset blocked');
+  const beforeS = logs.length;
+  await pg.evaluate(() => { document.getElementById('np-sample').click(); });
+  await pg.waitForSelector('#np-toast', { timeout: 5000 }).catch(() => fail('toast never shown on sample click'));
+  await pg.waitForTimeout(300);
+  const sLocal = logs.slice(beforeS).find(t => /§NINJA-PILL sample source=local/.test(t));
+  if (!sLocal) fail('local sample line missing: ' + logs.slice(beforeS).join(' | '));
+  // hermetic "no local copy": stub window.fetch — 404 the local path, map the GH URL to the same
+  // bytes via a cache-busting local fetch (Playwright route can NOT intercept here: the page's
+  // service worker answers ninja_sample.xlsx from its precache before routing ever sees it).
+  const ghSource = await pg.evaluate(async () => {
+    const orig = window.fetch.bind(window);
+    window.fetch = (url, o) => {
+      const u = String(url);
+      if (u === 'ninja_sample.xlsx') return Promise.resolve(new Response(null, { status: 404 }));
+      if (u.startsWith('https://red1oon.github.io/')) return orig('ninja_sample.xlsx?hermetic-gh=1', o);
+      return orig(url, o);
+    };
+    try { return await window.NinjaPill.fetchSample(); } finally { window.fetch = orig; }
+  });
+  if (ghSource !== 'gh-pages') fail('GH fallback wrong source: ' + ghSource);
+  const sGh = logs.find(t => /§NINJA-PILL sample source=gh-pages/.test(t));
+  if (!sGh) fail('gh-pages sample line missing');
+  const toastTxt = await pg.$eval('#np-toast', t => t.textContent).catch(() => '');
+  if (!/GH Pages/.test(toastTxt)) fail('fallback toast does not inform the user: ' + toastTxt);
+
+  console.log(pass ? '\n🟢 W-NINJA-PILL PASS — pill on bar, lens opens, sample RUNs 0c on sql.js, MAKE scaffolds, gate refuses live, sample click informs (local + GH fallback).'
                    : '\n🔴 W-NINJA-PILL FAIL');
   await br.close(); server.close();
   process.exit(pass ? 0 : 1);
