@@ -13,10 +13,6 @@
       
       
       
-        <link rel="prev" href="../ERP_COVERAGE_MATRIX/">
-      
-      
-        <link rel="next" href="../ERP_MODEL_ARCHETYPE/">
       
       
         
@@ -27,7 +23,7 @@
     
     
       
-        <title>Gap-Closure Spec (how a gap becomes oracle-equivalent) - BIM Intent Compiler</title>
+        <title>Access-Frequency Sharding — warm/cold split + on-demand loader (spec) - BIM Intent Compiler</title>
       
     
     
@@ -87,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gap-closure-spec-how-a-coverage-gap-becomes-oracle-equivalent" class="md-skip">
+        <a href="#access-frequency-sharding-warmcold-split-on-demand-loader-spec" class="md-skip">
           Skip to content
         </a>
       
@@ -121,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Gap-Closure Spec (how a gap becomes oracle-equivalent)
+              Access-Frequency Sharding — warm/cold split + on-demand loader (spec)
             
           </span>
         </div>
@@ -386,12 +382,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../ROADMAP/" class="md-tabs__link">
           
   
@@ -2769,10 +2763,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -2814,22 +2806,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
             
   
   
@@ -2847,7 +2836,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3198,37 +3187,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Gap-Closure Spec (how a gap becomes oracle-equivalent)
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../GapClosureSpec/" class="md-nav__link">
         
   
   
@@ -3244,191 +3206,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-prime-law" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Prime law
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-gap-taxonomy-classify-the-gap-before-folding-it-sets-the-achievable-verdict" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Gap taxonomy — classify the gap BEFORE folding (it sets the achievable verdict)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-oracle-protocol-how-maxdiff0c-is-established-by-gap-shape" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Oracle protocol — how maxDiff=0c is established, by gap shape
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-witness-template-one-per-gap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Witness template (one per gap)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-definition-of-done-per-gap" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Definition of Done (per gap)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5a-gap-t_aging-arap-invoice-aging-w-aging-p11-closed-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5a. Gap: T_Aging (AR/AP invoice aging) — W-AGING [P1.1, closed 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5b-gap-t_inventoryvalue-inventory-valuation-w-invvalue-p12-closed-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5b. Gap: T_InventoryValue (inventory valuation) — W-INVVALUE [P1.2, closed 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5c-gap-t_replenish-replenishment-planning-w-replenish-p12-closed-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5c. Gap: T_Replenish (replenishment planning) — W-REPLENISH [P1.2, closed 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5d-gap-t_invoicegl-invoice-not-realized-gainloss-w-invoicegl-p12-closed-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5d. Gap: T_InvoiceGL (Invoice Not-realized Gain/Loss) — W-INVOICEGL [P1.2, closed 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5e-gap-t_distributionrundetail-distribution-planning-w-distrun-p12-closed-2026-06-13-hybrid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5e. Gap: T_DistributionRunDetail (distribution planning) — W-DISTRUN [P1.2, closed 2026-06-13 — hybrid]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5f-gap-t_cashflow-cash-flow-report-w-cashflow-p12-closed-2026-06-13-hybrid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5f. Gap: T_CashFlow (cash-flow report) — W-CASHFLOW [P1.2, closed 2026-06-13 — hybrid]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5g-gap-t_bankregister-bank-register-report-w-bankregister-p12-closed-2026-06-13-thinlast-t_" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5g. Gap: T_BankRegister (bank register report) — W-BANKREGISTER [P1.2, closed 2026-06-13 — thin/last T_*]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5h-gap-cost-valued-inventory-gl-doc_inout-w-fold-inoutgl-p2-item-3-closed-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5h. Gap: cost-valued inventory GL (Doc_InOut) — W-FOLD-INOUTGL [P2 item 3, closed 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5i-gap-analytic-accounting-projectanalytic-fact_acct-data-blocked-p2-item-4-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5i. Gap: analytic accounting ({Project.Analytic} → fact_acct) — DATA-BLOCKED [P2 item 4, 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-constraints-mirror-of-the-lane-card" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Constraints (mirror of the lane card)
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -4452,10 +4229,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-prime-law" class="md-nav__link">
+  <a href="#1-name-mapping-brief-ours" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Prime law
+        1. Name mapping (brief → ours)
       
     </span>
   </a>
@@ -4463,10 +4240,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-gap-taxonomy-classify-the-gap-before-folding-it-sets-the-achievable-verdict" class="md-nav__link">
+  <a href="#2-the-split-rule-non-invent-grounded-in-ad_fulldb" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Gap taxonomy — classify the gap BEFORE folding (it sets the achievable verdict)
+        2. The split rule (non-invent — grounded in ad_full.db)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The split rule (non-invent — grounded in ad_full.db)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reconciliation-1-t_-are-not-cold-shards-carried-from-the-brief" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚠ Reconciliation #1 — T_* are NOT cold shards (carried from the brief)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reconciliation-2-read-whats-shipped" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚠ Reconciliation #2 — read what's shipped
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-sharding_boundariesjson-the-artifact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. sharding_boundaries.json (the artifact)
       
     </span>
   </a>
@@ -4474,10 +4290,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-oracle-protocol-how-maxdiff0c-is-established-by-gap-shape" class="md-nav__link">
+  <a href="#4-builderpshard_loaderjs-the-loader" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Oracle protocol — how maxDiff=0c is established, by gap shape
+        4. build/erp/shard_loader.js (the loader)
       
     </span>
   </a>
@@ -4485,10 +4301,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-witness-template-one-per-gap" class="md-nav__link">
+  <a href="#5-scriptspoc_shardingjs-builderppoc_shardinglog-the-witness" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Witness template (one per gap)
+        5. scripts/poc_sharding.js + build/erp/poc_sharding.log (the witness)
       
     </span>
   </a>
@@ -4496,120 +4312,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-definition-of-done-per-gap" class="md-nav__link">
+  <a href="#6-on-close" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Definition of Done (per gap)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5a-gap-t_aging-arap-invoice-aging-w-aging-p11-closed-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5a. Gap: T_Aging (AR/AP invoice aging) — W-AGING [P1.1, closed 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5b-gap-t_inventoryvalue-inventory-valuation-w-invvalue-p12-closed-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5b. Gap: T_InventoryValue (inventory valuation) — W-INVVALUE [P1.2, closed 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5c-gap-t_replenish-replenishment-planning-w-replenish-p12-closed-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5c. Gap: T_Replenish (replenishment planning) — W-REPLENISH [P1.2, closed 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5d-gap-t_invoicegl-invoice-not-realized-gainloss-w-invoicegl-p12-closed-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5d. Gap: T_InvoiceGL (Invoice Not-realized Gain/Loss) — W-INVOICEGL [P1.2, closed 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5e-gap-t_distributionrundetail-distribution-planning-w-distrun-p12-closed-2026-06-13-hybrid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5e. Gap: T_DistributionRunDetail (distribution planning) — W-DISTRUN [P1.2, closed 2026-06-13 — hybrid]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5f-gap-t_cashflow-cash-flow-report-w-cashflow-p12-closed-2026-06-13-hybrid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5f. Gap: T_CashFlow (cash-flow report) — W-CASHFLOW [P1.2, closed 2026-06-13 — hybrid]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5g-gap-t_bankregister-bank-register-report-w-bankregister-p12-closed-2026-06-13-thinlast-t_" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5g. Gap: T_BankRegister (bank register report) — W-BANKREGISTER [P1.2, closed 2026-06-13 — thin/last T_*]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5h-gap-cost-valued-inventory-gl-doc_inout-w-fold-inoutgl-p2-item-3-closed-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5h. Gap: cost-valued inventory GL (Doc_InOut) — W-FOLD-INOUTGL [P2 item 3, closed 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5i-gap-analytic-accounting-projectanalytic-fact_acct-data-blocked-p2-item-4-2026-06-13" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5i. Gap: analytic accounting ({Project.Analytic} → fact_acct) — DATA-BLOCKED [P2 item 4, 2026-06-13]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-constraints-mirror-of-the-lane-card" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Constraints (mirror of the lane card)
+        6. On close
       
     </span>
   </a>
@@ -4636,265 +4342,134 @@
   
 
 
-<h1 id="gap-closure-spec-how-a-coverage-gap-becomes-oracle-equivalent">Gap-Closure Spec — how a coverage gap becomes oracle-equivalent<a class="headerlink" href="#gap-closure-spec-how-a-coverage-gap-becomes-oracle-equivalent" title="Permanent link">&para;</a></h1>
-<p><strong>Governs:</strong> <code>prompts/GAP_CLOSURE_LANE.md</code> (the operational backlog, repo-local) closing gaps in
-<a href="../ERP_COVERAGE_MATRIX/"><code>ERP_COVERAGE_MATRIX.md</code></a>. <strong>Parent discipline:</strong> <code>prompts/HARDEN_MATRIX.md</code>
-(the equivalence arc) + <a href="../ERP_MODEL_ARCHETYPE/"><code>ERP_MODEL_ARCHETYPE.md</code></a> (the denominator). <strong>Method is PoC-proven</strong>
-— the oracle-diff harness (<code>scripts/poc_*_harden.js</code>, the <code>W-FOLD-*</code> family) already ships green; this lane <em>executes</em>
-it across the remaining gaps. Spec-first: <strong>no witness without a spec section naming the rule it proves.</strong></p>
-<h2 id="1-prime-law">1. Prime law<a class="headerlink" href="#1-prime-law" title="Permanent link">&para;</a></h2>
-<p><strong>A row is ✅ only by an oracle DIFF, never by a claim.</strong> Oracle output is <em>extracted</em> from the live iDempiere
-Postgres or the iDempiere checkout — never hand-authored. Every closure carries a load-bearing <strong>§FALSIFIER</strong>:
-corrupt the rule and the diff <em>must</em> go non-zero, or the test proves nothing (a pass that can't fail is a tautology).</p>
-<h2 id="2-gap-taxonomy-classify-the-gap-before-folding-it-sets-the-achievable-verdict">2. Gap taxonomy — classify the gap BEFORE folding (it sets the achievable verdict)<a class="headerlink" href="#2-gap-taxonomy-classify-the-gap-before-folding-it-sets-the-achievable-verdict" title="Permanent link">&para;</a></h2>
+<h1 id="access-frequency-sharding-warmcold-split-on-demand-loader-spec">Access-Frequency Sharding — warm/cold split + on-demand loader (spec)<a class="headerlink" href="#access-frequency-sharding-warmcold-split-on-demand-loader-spec" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Routed from <code>prompts/ERP_DATA_SHARDING_SESSION.md §QUEUED</code> (2026-06-13), prompted by
+<a href="../FoldEngineConstraints/">Fold-Engine Constraints Analysis</a> (mobile OOM @200 MB · genesis @25 s).
+This is a <strong>finer cut of the already-designed T0/T1/T2 tiers</strong> (<code>IDEMPIERE_DATA_STREAMING_SPEC.md</code>),
+NOT a new system. <strong>DATA + scripts only</strong> — the renderer fold/UI is not edited.</p>
+</blockquote>
+<h2 id="1-name-mapping-brief-ours">1. Name mapping (brief → ours)<a class="headerlink" href="#1-name-mapping-brief-ours" title="Permanent link">&para;</a></h2>
+<p>The brief's L0/L1/L2 map onto the shipped tier model — do not invent new tier names:</p>
 <table>
 <thead>
 <tr>
-<th>Class</th>
-<th>What it is</th>
-<th>Achievable verdict</th>
-<th>Oracle source</th>
+<th>brief</th>
+<th>ours</th>
+<th>source</th>
+<th>when</th>
+<th>budget</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Foldable-now</strong></td>
-<td>logic + seed + oracle all present</td>
-<td>✅ <strong>oracle-equivalent</strong> (<code>maxDiff=0c</code>)</td>
-<td>live PG / captured <code>fact_acct</code></td>
+<td><strong>L0 init-bubble</strong></td>
+<td><strong>T0</strong></td>
+<td><code>ad_seed.db</code> (precached) + <code>initbubble.json</code></td>
+<td>boot, <strong>sync</strong></td>
+<td>&lt;1 s paint</td>
 </tr>
 <tr>
-<td><strong>Data-blocked</strong></td>
-<td>logic known, but seed doesn't exercise it (no oracle to diff)</td>
-<td>🟡 + named-deferred — <strong>not</strong> ✅</td>
-<td>none yet — say so, don't fake it</td>
+<td><strong>L1 warm</strong></td>
+<td><strong>T1</strong></td>
+<td><code>warm_db</code> (open/active docs + masters)</td>
+<td>async after paint → <code>ATTACH</code></td>
+<td>best-effort</td>
 </tr>
 <tr>
-<td><strong>Rule-consistent</strong></td>
-<td>enacted path with no seed oracle (e.g. MProduction GL)</td>
-<td><strong>rule-consistent</strong> (vs proven sub-rules + balance + falsifier) — explicitly <strong>not</strong> <code>== iDempiere</code></td>
-<td>derived sub-rules</td>
-</tr>
-<tr>
-<td><strong>Deleted-by-architecture</strong></td>
-<td>ZK/JDBC/OSGi/app-server tier</td>
-<td>🔵 — <strong>no port</strong>, leaves the denominator</td>
-<td>n/a</td>
-</tr>
-<tr>
-<td><strong>On-demand corpus</strong></td>
-<td>infinite/long-tail (454 SvrProcess)</td>
-<td>mechanism ✅, corpus named-deferred</td>
-<td>per-case when used</td>
+<td><strong>L2 cold</strong></td>
+<td><strong>T2</strong></td>
+<td><code>cold_db</code> (closed/voided/archived)</td>
+<td><strong>on-demand only</strong> → <code>ATTACH</code>, <code>DETACH</code> after idle</td>
+<td>never on boot</td>
 </tr>
 </tbody>
 </table>
-<p>Do not promote a data-blocked or rule-consistent gap to ✅. Honesty about the verdict <em>is</em> the deliverable.</p>
-<h2 id="3-oracle-protocol-how-maxdiff0c-is-established-by-gap-shape">3. Oracle protocol — how <code>maxDiff=0c</code> is established, by gap shape<a class="headerlink" href="#3-oracle-protocol-how-maxdiff0c-is-established-by-gap-shape" title="Permanent link">&para;</a></h2>
+<p>T0 is already shipped (<code>bim-ootb/erp/initbubble.json</code> exists; the dictionary closure is in <code>ad_seed.db</code>).
+This task adds the <strong>access-frequency split</strong> of the data below the dictionary, and the <strong>loader</strong> that
+streams warm async / cold on-demand.</p>
+<h2 id="2-the-split-rule-non-invent-grounded-in-ad_fulldb">2. The split rule (non-invent — grounded in <code>ad_full.db</code>)<a class="headerlink" href="#2-the-split-rule-non-invent-grounded-in-ad_fulldb" title="Permanent link">&para;</a></h2>
+<p>Source of truth = <code>build/erp/ad_full.db</code> (925 tables) + the iDempiere checkout. Every boundary traces to a
+real column/value; nothing synthesized.</p>
 <ul>
-<li><strong>Persisted output</strong> (e.g. <code>fact_acct</code>): diff engine output vs the real stored rows, per (account, record, line, side),
-  cents. The <code>W-FOLD-*</code> template.</li>
-<li><strong>Live declarative</strong> (membership/verdict — val-rule, reference, access, callout, logic): diff engine vs <strong>live PG</strong>
-  via <code>docker exec postgres psql -U adempiere -d idempiere</code> (schema <code>adempiere</code>). The <code>poc_*_harden.js</code> template.</li>
-<li><strong>Transient scratch table</strong> (the <code>T_*</code> reports — <code>T_Aging</code>, <code>T_TrialBalance</code>, …): the table is per-run, <em>not</em> a stored
-  oracle. Two valid oracles, in preference order: <strong>(a)</strong> trigger the real iDempiere process and capture its <code>T_*</code> rows
-  (strongest); <strong>(b)</strong> if (a) is impractical, take iDempiere's <strong>own source view</strong> (e.g. <code>rv_openitem</code>, whose <code>DaysDue</code>
-  iDempiere computes) as the SOURCE, and diff the engine's fold against an <strong>independently-coded SQL bucketer over the
-  same view</strong> — the two-independent-paths pattern of <code>W-FOLD-QTYONHAND</code>. Non-tautological iff the two bucketers are
-  genuinely independent. <strong>Label which oracle was used; (b) is "grounded on iDempiere's source view," not "== T_Aging".</strong></li>
-<li><strong>No oracle in seed</strong>: stop — verdict is rule-consistent or data-blocked (§2), never a synthesized number.</li>
+<li><strong>Dictionary class (<code>ad_*</code>, <code>*_v</code>, <code>*_trl</code>)</strong> → <strong>T0</strong>. The scaffold the renderer always reads; already
+  in <code>ad_seed.db</code>. Not re-sharded here.</li>
+<li><strong>Document tables carrying <code>DocStatus</code></strong> (34 tables, verified by <code>pragma_table_info</code>) split by status:</li>
+<li><strong>warm → T1:</strong> <code>DocStatus NOT IN ('CL','VO')</code> — drafted/in-progress/completed (the live working set).</li>
+<li><strong>cold → T2:</strong> <code>DocStatus IN ('CL','VO')</code> — closed + voided (read rarely, only on history drill).</li>
+<li>Observed values in seed: <code>c_order</code> CO=7/CL=1, <code>c_invoice</code> CO=8. <code>CL</code>=Closed, <code>VO</code>=Voided, <code>CO</code>=Completed,
+    <code>DR</code>=Drafted, <code>IP</code>=In-Process.</li>
+<li><strong>Master tables (no <code>DocStatus</code>)</strong> referenced by the init-bubble (<code>C_BPartner</code>, <code>M_Product</code>,
+  <code>M_Product_Category</code>, <code>M_Warehouse</code>, <code>C_ElementValue</code>, <code>M_ProductPrice</code>, <code>C_BP_Group</code>) → <strong>T1</strong> (small,
+  hot, whole-table). Other reference/master tables stream via the existing T1 range path (out of scope here).</li>
+<li><strong>Genuinely cold, period-bound data → T2:</strong></li>
+<li><strong>period-closed <code>fact_acct</code></strong>: rows whose <code>C_Period_ID</code> has <code>c_periodcontrol.periodstatus IN ('C','P')</code>
+    (<code>C</code>=Closed, <code>P</code>=Permanently closed; <code>O</code>=Open, <code>N</code>=Never-opened are NOT cold). <em>Note:</em> <code>fact_acct</code> is
+    <strong>empty in <code>ad_full.db</code></strong> (postings live in the test/glassbowl DBs) → the rule is declared and exercised
+    against whatever rows are present; absent → reported <code>rows=0</code>, never synthesized.</li>
+<li><strong>archives</strong>: <code>ad_archive</code>, <code>ad_archive_blob</code> (whole).</li>
 </ul>
-<h2 id="4-witness-template-one-per-gap">4. Witness template (one per gap)<a class="headerlink" href="#4-witness-template-one-per-gap" title="Permanent link">&para;</a></h2>
-<ol>
-<li><code>build/erp/&lt;rule&gt;.js</code> — the engine fold (pure verb; INTEGER CENTS / BigInt HALF_UP for money; no <code>Date.now</code>/<code>random</code>).</li>
-<li><code>scripts/poc_fold_&lt;rule&gt;.js</code> — drives the fold, pulls the oracle (live PG or capture), diffs, prints <code>§&lt;RULE&gt; …
-   maxDiff=…</code> and a <code>§FALSIFIER</code> line; run via <code>bash build/erp/run_witness.sh scripts/poc_fold_&lt;rule&gt;.js</code>.</li>
-<li><code>build/erp/poc_&lt;rule&gt;.log</code> — the saved run; <strong>READ it</strong> (exit code ≠ evidence).</li>
-<li><code>docs/ERP_COVERAGE_MATRIX.md</code> — flip the row's verdict only after the log shows <code>maxDiff=0c</code> (or label rule-consistent).</li>
-</ol>
-<h2 id="5-definition-of-done-per-gap">5. Definition of Done (per gap)<a class="headerlink" href="#5-definition-of-done-per-gap" title="Permanent link">&para;</a></h2>
-<p>✅ requires ALL of: spec section · engine fold · <code>poc_fold_&lt;rule&gt;.js</code> · <code>poc_&lt;rule&gt;.log</code> with <code>maxDiff=0c</code> vs a real
-oracle · a §FALSIFIER that fires · the matrix row flipped. Missing any one → it is <strong>not</strong> done; report it as 🟡/⛔ with
-the one blocking fact. Per-gap report: rule · LOC (engine+witness) · diff result · new falsifier · gap-count delta.</p>
-<h2 id="5a-gap-t_aging-arap-invoice-aging-w-aging-p11-closed-2026-06-13">5a. Gap: <code>T_Aging</code> (AR/AP invoice aging) — W-AGING  [P1.1, closed 2026-06-13]<a class="headerlink" href="#5a-gap-t_aging-arap-invoice-aging-w-aging-p11-closed-2026-06-13" title="Permanent link">&para;</a></h2>
-<p><strong>Rule it proves:</strong> <code>build/erp/report_aging.js</code> <code>foldAging()</code> reproduces iDempiere's <code>org.compiere.process.Aging</code>
-+ <code>MAging.add()</code> bucketing — the full ~21-column set (<code>Due0, Due0_7, Due0_30, Due1_7, Due8_30, Due31_60,
-Due31_Plus, Due61_90, Due61_Plus, Due91_Plus, DueAmt</code> + the <code>PastDue*</code> mirror set + <code>InvoicedAmt, OpenAmt</code>),
-grouped per (IsSOTrx, C_BPartner, C_Currency) for the default (non-list-invoices) report.
-<strong>Source (non-invent):</strong> <code>DaysDue</code> is iDempiere's own — read verbatim from <code>rv_openitem</code> (live PG). With
-<code>StatementDate=today</code>, <code>m_statementOffset=0</code>, so <code>DaysDue = rv_openitem.DaysDue</code>. Bucket conditions ported
-verbatim from <code>MAging.java:157-235</code>; bucket amount <code>amt = OpenAmt</code> for every bucket; <code>InvoicedAmt += GrandTotal</code>.
-<strong>Oracle (gap-shape = transient scratch, §3 option b):</strong> grounded on iDempiere's source view <code>rv_openitem</code> —
-diff the JS fold against an <strong>independently-coded SQL <code>CASE</code> bucketer</strong> over the SAME <code>rv_openitem</code>, per group,
-all 21 cells, INTEGER CENTS → <code>maxDiff=0c</code>. Labelled "grounded on <code>rv_openitem</code>," <strong>not</strong> "== <code>T_Aging</code>".
-<strong>§FALSIFIER:</strong> corrupt ONE engine bucket boundary so a real row crosses it (GardenWorld demo invoices are all
-~8200-8900 days overdue, so a literal ±1-day shift cannot move a row — the falsifier shifts a <code>PastDue*_Plus</code>
-threshold to a value the real <code>DaysDue</code> population straddles); the engine-vs-SQL diff must go non-zero.</p>
-<h2 id="5b-gap-t_inventoryvalue-inventory-valuation-w-invvalue-p12-closed-2026-06-13">5b. Gap: <code>T_InventoryValue</code> (inventory valuation) — W-INVVALUE  [P1.2, closed 2026-06-13]<a class="headerlink" href="#5b-gap-t_inventoryvalue-inventory-valuation-w-invvalue-p12-closed-2026-06-13" title="Permanent link">&para;</a></h2>
-<p><strong>Rule it proves:</strong> <code>build/erp/report_inventory_value.js</code> <code>foldInventoryValue()</code> reproduces the COST-VALUATION
-core of <code>org.compiere.process.InventoryValue.doIt()</code> — seed rows from <code>M_Cost</code> (CostingMethod='S',
-CostElementType='M') per active warehouse (sql1); <code>QtyOnHand = SUM(M_StorageOnHand.QtyOnHand)</code> via Locator→
-Warehouse (sql6, ASI=0 path); valuation-date adjustment subtracting <code>M_Transaction</code> after DateValue (sql8);
-<code>DELETE</code> rows with QtyOnHand=0/NULL (sql9); <code>CostStandardAmt = QtyOnHand * CostStandard</code> (dbeux, EXACT product).
-<strong>Scope (honest, bounded):</strong> the inventory-VALUE columns <code>CostStandard, QtyOnHand, CostStandardAmt</code> — the lane's
-named "cost × qtyOnHand". The price columns <code>PricePO/PriceList/PriceStd/PriceLimit</code> (+ <code>*Amt</code>) are PARAMETER-
-driven (sql10 needs a user-chosen <code>M_PriceList_Version_ID</code>; default param=0 → NULL) and are <strong>out of this
-witness</strong> — decoration on the value core, named not folded.
-<strong>Source (non-invent):</strong> every value READ from a real <code>M_Cost</code>/<code>M_StorageOnHand</code>/<code>M_Locator</code>/<code>M_Warehouse</code> row.
-DateValue=today over a historical seed ⇒ 0 future transactions ⇒ adjustment is 0 (verified in-witness, not
-assumed). Money EXACT via BigDecimal (qty×cost is an un-rounded product, matching the SQL UPDATE).
-<strong>Oracle (transient scratch, §3 option b):</strong> <code>T_InventoryValue</code> holds 0 captured rows → oracle = a HAND-WRITTEN
-SQL re-derivation over the SAME base tables (joins + <code>SUM</code> + multiply in Postgres). The engine does the same
-joins/aggregation/multiply in JS — two independent paths (the <code>W-FOLD-QTYONHAND</code> pattern). Labelled "grounded
-on the base tables," <strong>not</strong> "== <code>T_InventoryValue</code>". 20 surviving rows, EXACT (cost, qty, value), <code>maxDiff=0</code>.
-<strong>§FALSIFIER:</strong> perturb ONE surviving product's <code>CostStandard</code> by +1 → <code>CostStandardAmt</code> must shift by exactly
-its <code>QtyOnHand</code> (proven: product 123 wh 103, 480→500, qty=20) → the value diff goes non-zero.</p>
-<h2 id="5c-gap-t_replenish-replenishment-planning-w-replenish-p12-closed-2026-06-13">5c. Gap: <code>T_Replenish</code> (replenishment planning) — W-REPLENISH  [P1.2, closed 2026-06-13]<a class="headerlink" href="#5c-gap-t_replenish-replenishment-planning-w-replenish-p12-closed-2026-06-13" title="Permanent link">&para;</a></h2>
-<p><strong>Rule it proves:</strong> <code>build/erp/report_replenish.js</code> <code>foldReplenish()</code> reproduces the PLANNING core of
-<code>org.compiere.process.ReplenishReport</code> (<code>prepareTable</code> + <code>fillTable</code>) — the in-memory corrections (Level_Max≥
-Level_Min; Order_Min/Pack≥1; IsCurrentVendor sole-vendor/multi-vendor), the two-phase candidate insert (current-
-vendor PO join + the C_BPartner=0 fallback), <code>QtyOnHand</code>/<code>QtyReserved</code>/<code>QtyOrdered</code> rollups, the <code>QtyToOrder</code>
-min/max formula (type'1' reorder-below-min, type'2' maintain-max), Min-order-qty, Pack rounding (<code>MOD</code>), and the
-delete-<code>&lt;1</code>. The document-creation actions (createPO/Requisition/Movements/DO) are the <code>ReplenishmentCreate</code>
-ACTION, not the report — <strong>out of scope</strong>.
-<strong>Source (non-invent):</strong> every value READ from a real <code>M_Replenish</code>/<code>M_Product_PO</code>/<code>M_StorageOnHand</code>/
-<code>M_StorageReservation</code> row. EXACT BigDecimal (<code>MOD</code> via truncating integer-quotient, matching Postgres <code>MOD</code>).
-Source-warehouse + custom-<code>ReplenishmentClass</code> branches are no-ops in this seed (asserted in-witness).
-<strong>Oracle (transient scratch, §3 option b):</strong> <code>T_Replenish</code> holds 0 captured rows → oracle = a HAND-WRITTEN SQL
-CTE re-derivation over the SAME base tables. The engine does the same in JS — two independent paths. The diff is
-taken over the FULL pre-delete candidate set (so the type-1 branch, whose QtyToOrder is legitimately 0 when
-stock is sufficient, is itself oracle-confirmed), then the post-delete survivor set is matched too. 18
-candidates EXACT (<code>{1:10, 2:8}</code>), 8 survivors == the oracle. Labelled "grounded on the base tables," <strong>not</strong> "==
-<code>T_Replenish</code>".
-<strong>§FALSIFIER:</strong> bend ONE surviving product's <code>Level_Max</code> by +1000 → its <code>QtyToOrder</code> must diverge (proven:
-product 127, 5→1005) → the diff goes non-zero.</p>
-<h2 id="5d-gap-t_invoicegl-invoice-not-realized-gainloss-w-invoicegl-p12-closed-2026-06-13">5d. Gap: <code>T_InvoiceGL</code> (Invoice Not-realized Gain/Loss) — W-INVOICEGL  [P1.2, closed 2026-06-13]<a class="headerlink" href="#5d-gap-t_invoicegl-invoice-not-realized-gainloss-w-invoicegl-p12-closed-2026-06-13" title="Permanent link">&para;</a></h2>
-<p><strong>Rule it proves:</strong> <code>build/erp/report_invoice_gl.js</code> <code>foldInvoiceGL()</code> reproduces the REPORT core of
-<code>org.compiere.process.InvoiceNGL.doIt()</code> — the <code>INSERT…SELECT</code> that fills <code>T_InvoiceGL</code> plus the three post-
-<code>UPDATE</code>s. Per open invoice (<code>IsPaid='N'</code>) joined to its <code>Fact_Acct</code> row (<code>AD_Table_ID=318</code>, <code>GrandTotal</code> matching
-<code>AmtSourceDr</code> or <code>AmtSourceCr</code>) on an Asset/Liability account, for ONE acct schema: <code>AmtSourceBalance</code>/<code>AmtAcctBalance</code>,
-the revaluation amounts <code>AmtRevalDr/Cr = currencyConvert(AmtSource…, invCcy, schemaCcy, DateReval, ConvTypeReval)</code>,
-the reval diffs <code>AmtRevalDrDiff/CrDiff = AmtReval… − AmtAcct…</code>, <code>OpenAmt = invoiceOpen()</code>, and <code>Percent</code>
-(<code>100</code> if <code>GrandTotal=OpenAmt</code> else <code>ROUND(OpenAmt*100/GrandTotal,6)</code>) with the <code>Percent≠100</code> proration of the four
-amounts. The <code>createGLJournal()</code> document-creation step (writes <code>MJournal</code>/<code>MJournalLine</code>) is the ACTION, not the
-report — <strong>out of scope</strong> (cf. ReplenishReport's createPO).
-<strong>Source (non-invent):</strong> every value READ from a real <code>Fact_Acct</code>/<code>C_Invoice</code>/<code>C_Conversion_Rate</code>/<code>C_Currency</code> row.
-The currency engine (<code>currencyRate</code> flexible lookup + <code>currencyRound</code> <code>ROUND(amt*rate, StdPrecision)</code> HALF_UP +
-<code>currencyConvert</code>) is reimplemented in JS as a path INDEPENDENT of iDempiere's plpgsql. EMU/Euro fixed-rate branches +
-allocation/credit-memo/payment-schedule corrections of <code>invoiceOpen</code> are NO-OPS in this seed (no currency has
-<code>IsEMUMember='Y'</code>; open invoices carry no active allocations; all <code>Multiplier=1.0</code>) — <strong>asserted in-witness, not
-assumed</strong>.
-<strong>Oracle (live iDempiere, §3 option a):</strong> the ORACLE DB is <code>idempiere_test</code> (<code>fact_acct=300</code>; the default
-<code>idempiere</code> config DB has <code>fact_acct=0</code>). The oracle re-runs the EXACT <code>InvoiceNGL</code> <code>INSERT…SELECT</code> logic in SQL
-using iDempiere's OWN <code>currencyConvert()</code> + <code>invoiceOpen()</code> plpgsql functions + the diff/percent/proration. The engine
-folds the SAME base rows in JS — two independent implementations of the currency math. <code>maxDiff=0c</code> over <strong>108 cells</strong>
-(12 rows × 9 money cols) across both acct schemas; <strong>6 cross-currency rows</strong> make the revaluation actually exercised.
-Labelled "== live iDempiere currency engine".
-<strong>§FALSIFIER:</strong> bend the engine's looked-up conversion rate ×1.1 → <code>AmtRevalDr</code> on a cross-currency row must diverge
-from the live oracle (proven: invoice 103, 136.95→150.65) → the diff goes non-zero.</p>
-<h2 id="5e-gap-t_distributionrundetail-distribution-planning-w-distrun-p12-closed-2026-06-13-hybrid">5e. Gap: <code>T_DistributionRunDetail</code> (distribution planning) — W-DISTRUN  [P1.2, closed 2026-06-13 — hybrid]<a class="headerlink" href="#5e-gap-t_distributionrundetail-distribution-planning-w-distrun-p12-closed-2026-06-13-hybrid" title="Permanent link">&para;</a></h2>
-<p><strong>Rule it proves:</strong> <code>build/erp/report_distribution_run.js</code> <code>foldDistributionRun()</code> reproduces the PLANNING core of
-<code>org.compiere.process.DistributionRun</code> — <code>insertDetails()</code> (the ratio split) + the allocation rounding loop
-(<code>addAllocations</code>/<code>isAllocationEqTotal</code>/<code>adjustAllocation</code> with <code>MDistributionRunDetail.round</code>/<code>getActualAllocation</code>/
-<code>adjustQty</code> + <code>MDistributionRunLine.*</code>). The <code>createOrders()</code>/<code>distributionOrders()</code> document-creation steps are the
-ACTION, not the report — <strong>out of scope</strong> (cf. ReplenishReport's createPO).
-<strong>This is a HYBRID closure — two distinct claims:</strong>
-- <strong>(a) rawSplit <code>= ll.Ratio/l.RatioTotal*rl.TotalQty</code> is ORACLE-EQUIVALENT</strong> — diffed against iDempiere's OWN
-  <code>insertDetails</code> <code>INSERT…SELECT</code> formula run as a <code>SELECT</code> on the live <code>idempiere_test</code>, <code>maxDiff=0</code> over 3 rows
-  (937.5/187.5/375).
-- <strong>(b) the allocation loop is RULE-CONSISTENT only</strong> — it rounds rawSplit to UOM precision then iterates to force
-  <code>Σ ActualAllocation == TotalQty</code> under the <code>MinQty</code> floors (here <code>MinQty=200</code> floors BP117's 187.5→200, forcing the
-  <em>distribute-by-ratio</em> branch → final <strong>929/200/371</strong>). This loop is <strong>procedural with no SQL/function oracle</strong> in the
-  live DB; a true row oracle would require RUNNING the process (app server, unavailable here). So the witness proves the
-  loop's INVARIANTS — sum-exact, MinQty respected, deterministic/replay-stable, distribute-branch exercised — <strong>not</strong> a
-  row diff. Per the Prime Directive ("NEVER hand-author an expected output") this is labelled rule-consistent, <strong>not</strong>
-  oracle-equivalent — distinct from the <code>maxDiff=0c</code> members.
-<strong>Source (non-invent):</strong> every value READ from a real <code>M_DistributionRun(Line)</code>/<code>M_DistributionList(Line)</code>/<code>C_UOM</code> row.
-EXACT BigDecimal; <code>round</code>=<code>setScale(UOMprec, HALF_UP)</code>; distribute <code>diffRatio=ratio*diff/ratioTotal</code> divided at the
-dividend's scale (<code>BigDecimal.divide(div, HALF_UP)</code>), matching the Java source.
-<strong>§FALSIFIER:</strong> bend one list line's <code>Ratio</code> (+25) → its rawSplit must diverge from the live iDempiere formula (proven:
-listLine 50000, 937.5→1071.43) → the oracle-backed diff goes non-zero.</p>
-<h2 id="5f-gap-t_cashflow-cash-flow-report-w-cashflow-p12-closed-2026-06-13-hybrid">5f. Gap: <code>T_CashFlow</code> (cash-flow report) — W-CASHFLOW  [P1.2, closed 2026-06-13 — hybrid]<a class="headerlink" href="#5f-gap-t_cashflow-cash-flow-report-w-cashflow-p12-closed-2026-06-13-hybrid" title="Permanent link">&para;</a></h2>
-<p><strong>Rule it proves:</strong> <code>build/erp/report_cashflow.js</code> reproduces the VALUE cores of <code>org.globalqss.process.CashFlow.doIt()</code>
-— the four <code>CashFlowSource</code> feeds it materializes into <code>T_CashFlow</code>. <code>X_T_CashFlow.save()</code> row-writes are the
-document-creation ACTION, not the report — <strong>out of scope</strong> (cf. ReplenishReport's createPO).
-<strong>This is a HYBRID closure — four distinct verdicts, one per feed:</strong>
-- <strong>(1) <code>InitialBalance</code> ORACLE-EQUIVALENT</strong> — <code>foldInitialBalance</code> = <code>SUM(acctBalance(Account_ID,AmtAcctDr,AmtAcctCr))</code>
-  over <code>Fact_Acct(PostingType='A', DateAcct≤asOf)</code> per posting account == the live iDempiere <code>acctBalance()</code> plpgsql
-  summed in SQL, <code>maxDiff=0c</code> over <strong>21 accounts</strong> (300 fact rows). <code>acctBalance</code> is reimplemented in JS as a path
-  INDEPENDENT of the plpgsql (the natural-sign rule: Asset/Expense→Debit else Credit; Credit-sign flips <code>cr−dr</code>).
-  <strong>Both</strong> sign branches exercised (15 debit-natural A/E + 6 credit-natural L/R accounts) ⇒ the sign rule is load-bearing.
-- <strong>(2) <code>CommitmentsOrders</code> ORACLE-EQUIVALENT</strong> — <code>foldOrderCommitment</code> = <code>open = GrandTotal × (Σ((QtyOrdered−
-  QtyInvoiced)·PriceActual)/TotalLines) − paid</code>, rounded to currency <code>StdPrecision</code>, sign-flipped for a PO ==
-  an INDEPENDENT SQL re-derivation, EXACT (1 driving open order in seed — #106, <code>−2160.00</code>). Thin (one row) but real arithmetic.
-- <strong>(3) <code>ActualDebtInvoices</code> ORACLE-EQUIVALENT (thin)</strong> — <code>foldActual</code> = <code>RV_OpenItem.OpenAmt</code> sign-flipped by <code>IsSOTrx</code>,
-  gated <code>DueDate≤DateTo</code>, == SQL over the same view, EXACT over <strong>7 rows</strong>. A projection + sign flip → near-tautological,
-  WEAK falsifier (the rule still bites: dropping the flip diverges the 4 PO rows).
-- <strong>(4) <code>Plan</code> — verified-EMPTY no-op (data-blocked).</strong> <code>C_CashPlan</code>=0 / <code>C_CashPlanLine</code>=0 in seed ⇒ the Plan feed +
-  the two subtract-from-plan UPDATEs + the delete-overplanned pass are all no-ops → asserted, <strong>NOT folded, NOT synthesized</strong>.
-- <strong>PROC — RULE-CONSISTENT.</strong> The per-order <code>DueDate≤DateTo</code> insertion gate and the <code>MOrderPaySchedule</code> accumulation loop
-  are procedural with no SQL/function oracle (a true row oracle needs an app-server run). Proven by INVARIANTS — every
-  driving order passes the gate; the pay-schedule loop is a verified no-op (<code>IsPayScheduleValid='N'</code> for all driving orders).
-<strong>Source (non-invent):</strong> every value READ from a real <code>Fact_Acct</code>/<code>C_Order</code>/<code>C_OrderLine</code>/<code>C_Payment</code>/<code>RV_OpenItem</code> row.
-ORACLE DB = <code>idempiere_test</code> (<code>fact_acct=300</code>; default <code>idempiere</code> config DB has <code>fact_acct=0</code>). EXACT BigDecimal;
-<code>DateTo</code>/<code>asOf</code> = fixed literal (no <code>Date.now</code>), far-future ⇒ admits the full seed population identically to <code>p_dateFrom=today</code>.
-<strong>§FALSIFIER (three, one per value-feed):</strong> (1) flip the natural-sign rule → 19/21 account balances diverge (e.g. acct 419,
-<code>7802.38 → −7802.38</code>); (2) bend order 106 <code>pending ×1.1</code> → <code>LineTotalAmt −2160.00 → −2376.00</code>; (3) drop the <code>IsSOTrx</code>
-sign flip → 4 PO rows diverge. Each oracle-backed diff goes non-zero.</p>
-<h2 id="5g-gap-t_bankregister-bank-register-report-w-bankregister-p12-closed-2026-06-13-thinlast-t_">5g. Gap: <code>T_BankRegister</code> (bank register report) — W-BANKREGISTER  [P1.2, closed 2026-06-13 — thin/last <code>T_*</code>]<a class="headerlink" href="#5g-gap-t_bankregister-bank-register-report-w-bankregister-p12-closed-2026-06-13-thinlast-t_" title="Permanent link">&para;</a></h2>
-<p><strong>Rule it proves:</strong> <code>build/erp/report_bank_register.js</code> reproduces <code>org.compiere.report.BankRegister</code> —
-<code>createBalanceLine()</code> + <code>createDetailLines()</code>. This is the LAST <code>T_*</code> member and is THIN / near-tautological (the
-recon flagged it): its only real logic is the bank-account CONFIG-CHAIN join that SELECTS the right <code>Fact_Acct</code>
-rows, plus a DISTINCT-vs-SUM multiplicity quirk; <code>Balance = AmtAcctDr − AmtAcctCr</code> merely passes through.
-<strong>Verdict: ORACLE-EQUIVALENT but THIN — load-bearing claim = the JOIN SELECTION, NOT arithmetic.</strong>
-The fold reproduces the literal join <code>Fact_Acct(AD_Table_ID=C_Payment) ⋈ C_Payment(CO/CL) ⋈ C_BankAccount ⋈ C_Bank
-⋈ C_BankAccount_Acct ⋈ C_ValidCombination(vc.id = B_InTransit_Acct OR B_Asset_Acct) ⋈ C_ElementValue ⟕ C_BPartner</code>
-<code>WHERE fa.Account_ID = vc.Account_ID</code>, then <strong>createDetailLines</strong> = <code>SELECT DISTINCT … DateAcct BETWEEN from/to</code>
-and <strong>createBalanceLine</strong> = <code>SUM(Dr), SUM(Cr), SUM(Dr−Cr) … DateAcct &lt; from</code>.
-<strong>The reproduced QUIRK (non-invent):</strong> the <code>baa</code>/<code>vc</code> join MULTIPLIES each fact row (×2 in seed: 4 distinct rows →
-8 join rows); the detail's <code>SELECT DISTINCT</code> collapses the duplicates (→ 4 rows) but the balance line's <code>SUM</code> does
-NOT (→ counts all 8). Both matched against the live SQL — warts and all.
-<strong>Source (non-invent):</strong> every value READ from a real <code>Fact_Acct</code>/<code>C_Payment</code>/<code>C_BankAccount(_Acct)</code>/
-<code>C_ValidCombination</code> row. ORACLE DB = <code>idempiere_test</code>. Detail = 4 DISTINCT rows == live SQL; balance line (date &gt;
-all postings) = <code>Dr 549.46 / Cr 0.0 / Bal 549.46</code> over 8 join rows == live SQL. <strong><code>Cr=0</code> throughout the seed ⇒ the
-<code>Dr−Cr</code> arithmetic is UNTESTED — NAMED, not claimed</strong> (an honest limit of this thin report).
-<strong>§FALSIFIER (load-bearing despite thin arithmetic):</strong> drop the <code>fa.Account_ID = vc.Account_ID</code> bank-account
-selection → the join LEAKS rows (8 → 32, <code>Bal 549.46 → 0.00</code>); engine and SQL agree on the leaked superset, proving
-the config-chain selection is the real load-bearing logic (a <code>Dr−Cr → Dr+Cr</code> falsifier would be vacuous here, <code>Cr=0</code>).
-<strong>With this the <code>T_*</code> tier is DRAINED</strong> — <code>T_1099Extract</code> is the only remainder (0-row seed, n/a).</p>
-<h2 id="5h-gap-cost-valued-inventory-gl-doc_inout-w-fold-inoutgl-p2-item-3-closed-2026-06-13">5h. Gap: cost-valued inventory GL (<code>Doc_InOut</code>) — W-FOLD-INOUTGL  [P2 item 3, closed 2026-06-13]<a class="headerlink" href="#5h-gap-cost-valued-inventory-gl-doc_inout-w-fold-inoutgl-p2-item-3-closed-2026-06-13" title="Permanent link">&para;</a></h2>
-<p><strong>Rule it proves:</strong> <code>build/erp/report_inout_gl.js</code> <code>foldInOutGL()</code> reproduces the value core of
-<code>org.compiere.acct.Doc_InOut</code> for the two movement polarities in the GardenWorld seed, <strong>as a reusable ENGINE
-VERB</strong> (lifting the witness-local <code>deriveShipmentForOrder</code> of W-FOLD-COMPLETE into <code>build/erp/</code>, per
-GAP_CLOSURE_LANE §6 "consume the engine, never fork it"). Accounts RESOLVED through the injected <code>deps.resolve</code>
-(post_resolver — the <code>window.ERP</code> seam), never invented. <strong>BOTH polarities ORACLE-EQUIVALENT — <code>maxDiff=0c</code>:</strong>
-- <strong>C- (Customer Shipment, COGS).</strong> <code>DR {Product.Cogs} / CR {Product.Asset}</code>, amount = the POSTED <code>Σ|M_CostDetail.amt|</code>
-  per line (the cost iDempiere relieved inventory at); a non-costed line has no detail → no COGS posting (matches
-  the oracle). <code>maxDiff=0c</code> vs <code>fact_acct(319)</code> (327.50, accounts 430/742).
-- <strong>V+ (Vendor Receipt).</strong> <code>DR {Product.Asset} / CR {BPGroup.NotInvoicedReceipts}</code>, amount = <code>round(movementqty ×
-  C_OrderLine.PriceActual, 2)</code> per line — the Not-Invoiced-Receipts accrual at the PURCHASE price (the SAME PO-price
-  basis Doc_MatchInv uses for its NIR leg, W-FOLD-MATCHINV). <code>maxDiff=0c</code> vs <code>fact_acct(319)</code> (9209.00, accounts
-  742/587), every line <code>oracle_dr == qty×PriceActual</code> exactly. <em>(The cost-selection rule — current m_cost — was the
-  WRONG basis here: it gives 9161.10, a 47.90 drift; the stored receipts post at PO price, which is exact.)</em>
-<strong>Source (non-invent):</strong> every value READ from a real <code>M_InOutLine</code>/<code>M_CostDetail</code>/<code>C_OrderLine</code> row.
-ORACLE = <code>glassbowl_data.db</code> <code>fact_acct(319)</code> (client 11, schema 101 — iDempiere's own stored postings). Integer cents.
-<strong>§FALSIFIER (three):</strong> (A) drop the C- COGS DR line → C- <code>maxDiff=32750c</code>; (B) bend <code>C_OrderLine.PriceActual</code> →
-V+ <code>maxDiff≠0</code> (the PO-price basis is load-bearing); (C) swap DR/CR accounts → C- <code>maxDiff=32750c</code> (account
-resolution load-bearing).</p>
-<h2 id="5i-gap-analytic-accounting-projectanalytic-fact_acct-data-blocked-p2-item-4-2026-06-13">5i. Gap: analytic accounting (<code>{Project.Analytic}</code> → <code>fact_acct</code>) — DATA-BLOCKED  [P2 item 4, 2026-06-13]<a class="headerlink" href="#5i-gap-analytic-accounting-projectanalytic-fact_acct-data-blocked-p2-item-4-2026-06-13" title="Permanent link">&para;</a></h2>
-<p><strong>Verdict: 🟡 data-blocked, named-deferred (NOT ✅, NOT synthesized).</strong> The analytic-accounting fold would resolve
-a posting's analytic dimensions (<code>C_Project</code>, <code>C_Activity</code>, <code>C_Campaign</code>, <code>User1/User2</code> cost centres) into the
-<code>fact_acct</code> row. But the GardenWorld seed has <strong>NO analytic-tagged postings</strong>: all 300 <code>fact_acct</code> rows in
-<code>idempiere_test</code> carry <code>C_Project_ID=C_Activity_ID=C_Campaign_ID=User1_ID=User2_ID = 0</code> (2 unused <code>c_project</code>
-rows, 0 <code>c_activity</code>, 0 <code>c_projectphase</code>); <code>glassbowl_data.db</code> <code>fact_acct</code> has no <code>c_project_id</code> column at all.
-There is <strong>no oracle to diff against</strong> → per §2 (Data-blocked) and the Prime Directive ("no synthesized oracle"),
-this stays 🟡 until a seed exercises a project-costed document. The token machinery (<code>post_resolver</code>) would extend
-trivially (a <code>{Project.*}</code> token family) once such data exists — the BLOCKER is data, not logic.</p>
-<h2 id="6-constraints-mirror-of-the-lane-card">6. Constraints (mirror of the lane card)<a class="headerlink" href="#6-constraints-mirror-of-the-lane-card" title="Permanent link">&para;</a></h2>
-<p>No porting of architecture-deleted tiers (🔵) · no pre-porting the 454 SvrProcess corpus (on-demand mechanism only) ·
-no synthesized oracles · keep the <code>docs/ERP_BACKEND_SEPARATION.md</code> §0 seams (declaration / interpreter / log-fold never
-merge). The objective is <strong>per-deployment equivalence</strong> — a tenant's <em>used</em> surface folds to the cent — not a 496-class
-sweep. See <a href="../MigrateComparisonPaper/"><code>MigrateComparisonPaper.md</code></a> for the substrate-and-method (not feature-parity) frame.</p>
+<h3 id="reconciliation-1-t_-are-not-cold-shards-carried-from-the-brief">⚠ Reconciliation #1 — <code>T_*</code> are NOT cold shards (carried from the brief)<a class="headerlink" href="#reconciliation-1-t_-are-not-cold-shards-carried-from-the-brief" title="Permanent link">&para;</a></h3>
+<p>The brief listed "<code>T_*</code> reports" as L2/cold. <strong><code>T_*</code> tables are in-memory fold scratch / temp selection
+tables with no persisted rows to shard</strong> (<code>t_report</code>, <code>t_trialbalance</code>, <code>t_aging</code>, <code>t_selection</code>, … 23 of
+them; see the reporting/GAP_CLOSURE lane — <code>foldStatement</code>/<code>foldPrint</code> produce them in-memory, <code>maxDiff=0c</code>).
+They have nothing to ship to T2. The real cold candidates are <strong>closed/voided docs + period-closed
+<code>fact_acct</code> + archives</strong> (above). <code>sharding_boundaries.json</code> reflects this — <code>T_*</code> are explicitly
+<code>tier:"none", reason:"in-memory fold, not persisted"</code>.</p>
+<h3 id="reconciliation-2-read-whats-shipped">⚠ Reconciliation #2 — read what's shipped<a class="headerlink" href="#reconciliation-2-read-whats-shipped" title="Permanent link">&para;</a></h3>
+<p><code>initbubble.json</code> already exists (the L0/T0 layer is done) and serving (T0/T1/T2 + <code>DataSource</code>) is already
+designed — "do NOT re-solve serving". This task adds <strong>only</strong> the access-frequency split + the loader.</p>
+<h2 id="3-sharding_boundariesjson-the-artifact">3. <code>sharding_boundaries.json</code> (the artifact)<a class="headerlink" href="#3-sharding_boundariesjson-the-artifact" title="Permanent link">&para;</a></h2>
+<p>Per-table tier + split predicate. Schema:
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;build/erp/ad_full.db&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;tierMap&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;L0&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;T0&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;L1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;T1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;L2&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;T2&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;rules&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;match&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;tier&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;warmWhere&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;coldWhere&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;tables&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;table&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c_order&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;tier&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;T1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;coldTier&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;T2&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;warmWhere&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DocStatus NOT IN (&#39;CL&#39;,&#39;VO&#39;)&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;coldWhere&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DocStatus IN (&#39;CL&#39;,&#39;VO&#39;)&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+A table with both <code>tier</code> and <code>coldTier</code> is <strong>partitioned</strong>: warm rows go to <code>warm_db</code>, cold rows to
+<code>cold_db</code>, by the two <code>WHERE</code> clauses (mutually exclusive + exhaustive over the table).</p>
+<h2 id="4-builderpshard_loaderjs-the-loader">4. <code>build/erp/shard_loader.js</code> (the loader)<a class="headerlink" href="#4-builderpshard_loaderjs-the-loader" title="Permanent link">&para;</a></h2>
+<p>Engine-agnostic (browser sql.js OR node better-sqlite3) via a small <code>adapter</code> seam — mirrors the
+<code>DataSource</code> rule "the caller must not know where rows come from".</p>
+<p><div class="highlight"><pre><span></span><code>new ShardLoader({ boundaries, adapter, idleMs=300000 })
+  .init()                 // T0 sync: assumes base db (ad_seed) already open; returns paint-ready immediately
+  .loadWarm()             // T1 async: ATTACH warm_db AS warm; resolves when attached
+  .loadCold({onDemand})   // T2: ATTACH cold_db AS cold ONLY if onDemand===true; arms a 5-min idle DETACH timer
+  .read(table, where)     // shard resolver + cross-shard merge IN JS (never loads a full T2 table into memory)
+  .touchCold()            // reset idle timer (any cold read defers DETACH)
+  .tick(nowMs)            // drive the idle-timeout deterministically in the POC (no wall-clock dependency)
+</code></pre></div>
+- <strong>Cross-shard merge in JS:</strong> <code>read()</code> queries each attached shard that owns a partition of the table and
+  concatenates rows in JS — it never <code>SELECT *</code> a whole cold table into memory; it pushes the caller's
+  <code>where</code> down to each shard.
+- <strong><code>DETACH</code> after idle:</strong> <code>loadCold</code> records the load time; <code>tick(now)</code> (or a real timer in the browser)
+  <code>DETACH cold</code> once <code>now - lastColdTouch &gt; idleMs</code>. POC drives <code>tick</code> deterministically.
+- <strong>Falsifier hook:</strong> the loader NEVER attaches cold inside <code>init()</code>/<code>loadWarm()</code>. A cold read requires an
+  explicit <code>loadCold({onDemand:true})</code>; <code>read()</code> of a cold-only table without it returns <code>coldMissing=true</code>
+  (the POC asserts this — see §FALSIFIER).</p>
+<h2 id="5-scriptspoc_shardingjs-builderppoc_shardinglog-the-witness">5. <code>scripts/poc_sharding.js</code> + <code>build/erp/poc_sharding.log</code> (the witness)<a class="headerlink" href="#5-scriptspoc_shardingjs-builderppoc_shardinglog-the-witness" title="Permanent link">&para;</a></h2>
+<p>Mobile-emulated (UA string + 4× CPU throttle simulated by a busy-spin scale factor logged, not faked). Steps:
+1. Build three shard DBs from <code>ad_full.db</code> per <code>sharding_boundaries.json</code>: <code>t0</code> (dictionary+masters subset),
+   <code>warm_db</code>, <code>cold_db</code>. Real rows only.
+2. <code>init()</code> → assert paint uses <strong>T0 only</strong>, <code>§</code> paint-time &lt; 1 s, cold NOT attached.
+3. warm query → <code>loadWarm()</code> auto-fires → <code>§</code> warm attached, rows from warm partition.
+4. cold nav → <code>loadCold({onDemand:true})</code> → <code>§</code> cold attached on demand; <code>tick(now+idleMs+1)</code> → <code>§</code> detached.
+5. cross-shard read of a partitioned table == <code>union(warm,cold)</code> rows → <code>§</code> equal.
+6. <strong>§FALSIFIER:</strong> if cold is ever attached without <code>onDemand</code> (during init/loadWarm), or a cold read
+   succeeds without an explicit <code>loadCold</code> → <strong>FAIL</strong>.</p>
+<p>Witnesses: <code>§SHARD-FREQ paint=&lt;ms&gt; tier=T0 coldAttached=N</code>, <code>§SHARD-FREQ warm attached rows=&lt;n&gt;</code>,
+<code>§SHARD-FREQ cold onDemand attached rows=&lt;n&gt; detachedAfterIdle=Y</code>, <code>§SHARD-FREQ crossShard union==Y</code>,
+<code>§FALSIFIER coldWithoutDemand=&lt;none|FAIL&gt;</code>. OVERALL=PASS only if all hold.</p>
+<h2 id="6-on-close">6. On close<a class="headerlink" href="#6-on-close" title="Permanent link">&para;</a></h2>
+<p>Flip the relevant rows of <code>FoldEngineConstraints.md</code> Phase-4 scorecard (Max DB size / Mobile memory) to
+✅ Implemented (access-frequency split + on-demand loader land the size mitigation). DATA + scripts only;
+renderer untouched; EXPLICIT GO before any deploy.</p>
 
 
 

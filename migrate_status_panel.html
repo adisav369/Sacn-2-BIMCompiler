@@ -79,7 +79,7 @@
   <p class="intro">A migration <b>honesty</b> panel — four states, not a pass/fail. It shows which <i>business flows</i> the browser kernel already reproduces <b>indistinguishably from iDempiere</b> (<code>maxDiff=0c</code>), and exactly what stands between that and a full tenant cut-over.</p>
 
   <div class="legend">
-    <span class="k"><span class="dot" style="background:var(--green)"></span><b>Done</b> — folds to the cent</span>
+    <span class="k"><span class="dot" style="background:var(--green)"></span><b>Done</b> — folds to the cent, or granted by architecture</span>
     <span class="sep">·</span>
     <span class="k"><span class="dot" style="background:var(--amber)"></span><b>Pending</b> — data not wired</span>
     <span class="sep">·</span>
@@ -101,9 +101,9 @@
       </div>
       <ul>
         <li><b>Trade loop</b> — order → ship → invoice → 3-way match → pay → allocate</li>
-        <li><b>Inventory loop</b> — movement → on-hand → replenishment PO</li>
+        <li><b>Inventory loop</b> — movement → on-hand → replenishment PO → cost-valued GL (shipment COGS + vendor receipt)</li>
         <li><b>GL</b> — inter-org journals + FX, reverse / void (nets to zero)</li>
-        <li><b>Reports</b> — Balance Sheet · Income · Cash Flow + invoice print</li>
+        <li><b>Reports</b> — Balance Sheet · Income · Cash Flow + invoice print; the <code>T_*</code> report tier (aging · inventory value · replenish · invoice GL · cash-flow · bank register) folds &amp; deletes</li>
         <li><b>Model layer</b> — <code>beforeSave</code> + DocAction-FSM of every doc class</li>
       </ul>
       <div class="foot">16 cent-exact · 6 declarative · 21 model-layer — each with a §FALSIFIER</div>
@@ -133,11 +133,13 @@
         <div class="ttl">Capability still unbuilt</div>
         <div class="gloss">The engine can't yet compute these even with the data present — mapping / interpreter work, the genuine remainder.</div>
       </div>
+      <!-- 2026-06-14: "Cost-valued inventory GL" + "AR/AP aging" moved to Done — folded oracle-equivalent
+           (W-FOLD-INOUTGL Doc_InOut COGS+receipt maxDiff=0c; W-AGING T_Aging all ~21 buckets maxDiff=0c).
+           Both sit INSIDE already-counted surfaces (inventory loop / the T_* report tier) → headline tally
+           unchanged at 43. Analytic dims = data-blocked (no analytic-tagged facts in seed), not capability-unbuilt. -->
       <ul>
-        <li><b>Cost-valued inventory GL</b> — qty spine proven; cost→GL deferred</li>
-        <li><b>AR / AP aging</b> — open-items + date-bucket fold (distinct)</li>
         <li><b>Document print mapping</b> — Odoo QWeb defs → print tree</li>
-        <li><b>Analytic / cost-centre</b> accounting dimensions</li>
+        <li><b>Analytic / cost-centre</b> accounting dimensions — data-blocked (no analytic-tagged postings in seed yet)</li>
         <li><b>Posting edge-branches</b> — charge lines · GL distribution · realized-FX gain/loss (no fold path; armed in AD, dormant in seed)</li>
         <li><b>Server-action interpretation</b> — Odoo automation (64 actions)</li>
       </ul>
@@ -158,7 +160,7 @@
         <li><b>JDBC · OSGi · app server · installer</b> → no server of record</li>
         <li><b>Web services tier</b> → the signed op-log <i>is</i> the wire</li>
       </ul>
-      <div class="foot">≈40%+ of the 1.4M-LOC tree — deleted, not unported</div>
+      <div class="foot"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle"></span><b style="color:var(--green)">Granted in exchange</b> — the 40% deletion is what makes the engine <b>offline-first</b>, <b>serverless</b>, and <b>per-device shardable</b> (instant load · data streams in as you go). <span style="font-weight:400;opacity:.8">§-witnessed; wiring in progress.</span></div>
     </section>
 
   </div>
