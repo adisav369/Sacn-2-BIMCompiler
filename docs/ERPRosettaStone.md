@@ -12,6 +12,14 @@
 > [Fold-Engine Code Quality](FoldEngineQuality.md) (how the witnesses are graded) ·
 > [Migrate & Compare](MigrateComparisonPaper.md) (the thesis & honesty panel).
 
+> **TL;DR — five reframes.** If you read nothing else:
+>
+> 1. **Stop thinking `PO` + `save()`** → start thinking *append a signed operation to an immutable log.*
+> 2. **Stop thinking generated `X_*` classes** → start thinking *AD data, interpreted at runtime by one engine.*
+> 3. **Stop thinking the database is the truth** → it's a *fast, disposable, queryable view* folded from the log.
+> 4. **Your whole `completeIt()`** is now *one atomic, signed `commitGroup`* — status + posting + child docs, all-or-none.
+> 5. **It's not magic** — event sourcing + CQRS applied to the iDempiere model, proven `maxDiff=0c`, serverless.
+
 ---
 
 ## 1. The one mental shift (read this first)
