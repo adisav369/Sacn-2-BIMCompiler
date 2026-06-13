@@ -16,7 +16,7 @@
         <link rel="prev" href="../DistributedERP/">
       
       
-        <link rel="next" href="../ERP_MODEL_ARCHETYPE/">
+        <link rel="next" href="../GapClosureSpec/">
       
       
         
@@ -2778,6 +2778,8 @@
       
         
       
+        
+      
     
     
     
@@ -3298,6 +3300,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GapClosureSpec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gap-Closure Spec (how a gap becomes oracle-equivalent)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4445,6 +4475,12 @@ AD DATA (<code>build/erp/ad_full.db</code>, 927 tables, snapshot <strong>2026-05
 (<code>build/erp/*.js</code>). Three legs per surface: <strong>AD count</strong> (real <code>sqlite3</code> query, cited) · <strong>code home</strong> (path + <code>wc -l</code>) ·
 <strong>engine handling</strong> (file:fn or <em>absent</em>). Verdict: ✅ COVERED / 🟡 PARTIAL / ⛔ GAP. <strong>No number is invented</strong> — each
 traces to a query or a <code>find … | wc -l</code>. Counts are a snapshot; re-run the cited query to refresh.</p>
+<blockquote>
+<p><strong>Gap-closure governance.</strong> How a ⛔/🟡 row here becomes ✅ is governed by <a href="../GapClosureSpec/"><strong><code>GapClosureSpec.md</code></strong></a>
+(the oracle protocol · §FALSIFIER law · gap taxonomy · Definition-of-Done) and executed via the operational backlog
+<code>prompts/GAP_CLOSURE_LANE.md</code> (prioritized gaps + verified recon, repo-local). A row flips only on a real oracle
+diff (<code>maxDiff=0c</code>), never a claim.</p>
+</blockquote>
 <h2 id="headline">Headline<a class="headerlink" href="#headline" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
