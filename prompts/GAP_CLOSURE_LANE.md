@@ -82,7 +82,7 @@ Rule closed · LOC added (engine + witness) · diff result (`maxDiff=0c` | rule-
 updated gap count (e.g. "⛔ remaining: 12 → 11") + the matrix row flipped in `docs/ERP_COVERAGE_MATRIX.md`.
 
 ## RESUME STATE (where the next session starts)
-**▶ P3 COMPLETE (2026-06-14). P1+P2+P3 ALL CLOSED. NEXT: P4 — Odoo live extraction gaps.**
+**▶ ALL PRIORITIES COMPLETE (2026-06-14). P1+P2+P3+P4 ALL CLOSED.**
 
 **P3.5 ✅ DONE 2026-06-14 (W-PROC-PICKER).** `ad_process.js:pickUsedProcesses` — the on-demand picker:
 `AD_Process ⋈ AD_Process_Access ⋈ AD_WF_Node` returns the actually-used subset. Engine (SQLite ad_full.db)
@@ -100,10 +100,11 @@ balancing line (usecurrencybalancing='Y'). Currency conversion: ROUND(amt×0.85,
 `build/erp/poc_fold_bank_statement.log` exit 0. Matrix Posting row updated (Doc_Bank now folded; all 8
 seeded Doc_* table types are oracle-equivalent or ruled n/a-in-seed).
 
-**P4 — Odoo live extraction (master data + buy-side adapter)** is the remaining open priority.
-  - 38 partners / 30 products / 47 COA / 8 journals / 2 taxes master-data extraction
-  - Loop all confirmed SOs (today 1/N) + buy-side adapter (POs + vendor bills + 3-way match)
-  See GAP_CLOSURE_LANE §PRIORITY ORDER P4.
+**P4 ✅ DONE 2026-06-14.**
+
+**P4.1 ✅ DONE 2026-06-14 (W-P4-MASTERS).** `gen_ad_odoo.js` extended: ALL 38 `res.partner` → C_BPartner · ALL 47 `account.account` → c_elementvalue · purchase tax → c_tax (alongside sale; total=2) · 8 `account.journal` logged (no shard table; architecture boundary = DocTypes). `poc_p4_masters.js` diffs shard vs live `search_count`: C_BPartner=38/38 · c_elementvalue=47/47 · c_tax=2/2 · journal=8 (logged only). S00023 regression: C_Order 1200001 folds `coverage:complete basis=invoice balanced=Y`. §FALSIFIER: 1-partner shard < live → gap detected. `build/erp/poc_p4_masters.log` exit 0. (SO loop already proven: `poc_odoo_full_pull.js` 27/27 orders fold complete.)
+
+**P4.2 ✅ DONE 2026-06-14 (W-P4-BUYSIDE-LIVE).** `poc_p4_buyside_live.js` — live buy-side fold: P00011 chain pulled from RUNNING odoodemo (PO P00011 → WH/IN/00006 receipt → BILL/2026/06/0002 → 3 GL lines), folded through `buildBuyEvents` + `erp_engine.match`: §LIVE-STATIC totals == `odoo_oracle_p2p.json` · §BUY-FOLD 5/5 hops (4 events + match) committed · §MATCH 3-way matcher genuinely invoked (2 calls; receipt↔bill + PO↔bill pairs == nLines=1) · §GL-BALANCE `ΣDR==ΣCR=6596.40 maxDiff=0c` vs live AML · §NEW-VERBS `newVerbs=[]` · §FALSIFIER corrupt partner → 0 pairs. `build/erp/poc_p4_buyside_live.log` exit 0. Upgrades `poc_odoo_fold_3way.js` (static oracle) to live connection.
 
 **P1.1 `T_Aging` ✅ DONE 2026-06-13 (W-AGING).** `build/erp/report_aging.js` `foldAging()` (port of `Aging.doIt`
 + `MAging.add`, all ~21 buckets, integer cents) == an independent SQL CASE bucketer over the live `rv_openitem`,

@@ -93,6 +93,12 @@ function nextFreeClient(db) { var r = exec(db, 'SELECT COALESCE(MAX(AD_Client_ID
   // L1 lifecycle rule population — ALL sale orders (real amount_total + state), gated by "may Complete iff total ≤ T".
   var orders = await ex('sale.order', 'search_read', [[]], { fields: ['id', 'name', 'state', 'date_order', 'amount_total', 'amount_untaxed', 'partner_id'], order: 'amount_total desc', limit: 200 });
   L('   live: products=' + prods.length + ' SO=' + so.name + ' lines=' + sol.length + ' invoice=' + (inv && inv.name) + ' orders=' + orders.length);
+  // ── 1c. P4: FULL master data pull (all 38 partners, 47 COA, both taxes, 8 journals) ──
+  var allResPartners = await ex('res.partner', 'search_read', [[['id', '>', 0]]], { fields: ['id', 'name', 'is_company', 'customer_rank', 'supplier_rank'], order: 'id asc' });
+  var allCOA = await ex('account.account', 'search_read', [[['id', '>', 0]]], { fields: ['id', 'code', 'name'] });
+  var purchaseTax = (await ex('account.tax', 'search_read', [[['type_tax_use', '=', 'purchase']]], { fields: ['id', 'name', 'amount'] }))[0] || null;
+  var allJournals = await ex('account.journal', 'search_read', [[['id', '>', 0]]], { fields: ['id', 'name', 'type', 'code'] });
+  L('§P4-PULL allPartners=' + allResPartners.length + ' allCOA=' + allCOA.length + ' purchaseTax=' + (purchaseTax && purchaseTax.name) + ' journals=' + allJournals.length);
 
   // ── 2. base (framework) + a fresh SHARD db (only the new rows live here) ──
   var SQL = await initSqlJs();
@@ -253,12 +259,25 @@ function nextFreeClient(db) { var r = exec(db, 'SELECT COALESCE(MAX(AD_Client_ID
   //        C_InvoiceTax, when invoiced) · C_OrderTax. invoice id = order id (distinct tables, no collision). ──
   var ST = { draft: 'DR', sent: 'DR', sale: 'IP', done: 'CO', cancel: 'VO' };
   var ordered = orders.slice().sort(function (a, b) { return a.name === so.name ? -1 : b.name === so.name ? 1 : 0; });
-  var bpMap = {}, bpAcctDone = {}, nextBP = DOC + 1, nextOrd = DOC + 1;     // S00023 sorts first → keeps BP+order id DOC+1 (1200001)
+  // ── P4: pre-emit ALL 38 partners (S00023's partner first → ID=DOC+1 preserved); all 47 COA; purchase tax ──
+  var s23pid = so.partner_id[0];
+  var allPartnersOrdered = allResPartners.slice().sort(function (a, b) {
+    return a.id === s23pid ? -1 : b.id === s23pid ? 1 : a.id - b.id;
+  });
+  var bpMap = {}, bpAcctDone = {}, nextBP = DOC + 1, nextOrd = DOC + 1;
+  allPartnersOrdered.forEach(function (p) {
+    bpMap[p.id] = nextBP;
+    ins('C_BPartner', stamp7({ C_BPartner_ID: nextBP, Value: 'ODOO-BP-' + p.id, Name: p.name, IsCustomer: p.customer_rank > 0 ? 'Y' : 'N', IsVendor: p.supplier_rank > 0 ? 'Y' : 'N', IsEmployee: 'N' }, CL, ORG));
+    nextBP++;
+  });
+  allCOA.forEach(function (acct) { acctVC([acct.id, acct.code + ' ' + acct.name]); });  // 47 COA → C_ElementValue + C_ValidCombination (acctVC deduplicates)
+  var PURCHASE_TAX_ID = DOC + 2;
+  if (purchaseTax) { ins('c_tax', stamp7({ c_tax_id: PURCHASE_TAX_ID, name: purchaseTax.name, rate: purchaseTax.amount, issummary: 'N' }, CL, 0)); }
+  L('§P4-EMIT bpartners=' + Object.keys(bpMap).length + ' elementvalues=' + Object.keys(evSeen).length + ' purchaseTax=' + (purchaseTax ? purchaseTax.name : 'n/a') + ' journals=' + allJournals.length + ' (logged; account.journal maps to DocTypes, not a shard entity)');
   var nOrd = 0, nOL = 0, nInv = 0, nIL = 0, withLines = 0, withInv = 0, omin = null, omax = null, ocount = 0;
   ordered.forEach(function (o) {
-    var ppid = o.partner_id && o.partner_id[0], bp;
-    if (ppid) { if (bpMap[ppid] == null) { bp = bpMap[ppid] = nextBP++; ins('C_BPartner', stamp7({ C_BPartner_ID: bp, Value: 'ODOO-BP-' + ppid, Name: o.partner_id[1], IsCustomer: 'Y', IsVendor: 'N', IsEmployee: 'N' }, CL, ORG)); } else bp = bpMap[ppid]; }
-    else { bp = nextBP++; }
+    var ppid = o.partner_id && o.partner_id[0];
+    var bp = ppid ? bpMap[ppid] : (nextBP++);   // pre-emitted above; anonymous orders get a fresh ID
     if (ppid && !bpAcctDone[ppid]) { var rvc = acctVC(rcvBy[ppid]); if (rvc) ins('c_bp_customer_acct', stamp7({ c_bpartner_id: bp, c_acctschema_id: SCHEMA, c_receivable_acct: rvc }, CL, 0)); bpAcctDone[ppid] = 1; }
     var ordId = nextOrd++, ds = ST[o.state] || 'DR';
     ins('C_Order', stamp7({ C_Order_ID: ordId, DocumentNo: o.name, DocStatus: ds, IsSOTrx: 'Y', DateOrdered: String(o.date_order).slice(0, 10), C_BPartner_ID: bp, C_Currency_ID: 100, GrandTotal: o.amount_total, TotalLines: o.amount_untaxed, Description: 'Migrated from odoodemo · state=' + o.state }, CL, ORG)); nOrd++;
@@ -296,10 +315,13 @@ function nextFreeClient(db) { var r = exec(db, 'SELECT COALESCE(MAX(AD_Client_ID
   var out = OUT;
   fs.writeFileSync(out, Buffer.from(shard.export()));
   var pc = exec(shard, 'SELECT COUNT(*) n FROM M_Product WHERE AD_Client_ID=' + CL)[0].values[0][0];
+  var bpc = exec(shard, 'SELECT COUNT(*) n FROM C_BPartner WHERE AD_Client_ID=' + CL)[0].values[0][0];
+  var evc = exec(shard, 'SELECT COUNT(*) n FROM c_elementvalue WHERE AD_Client_ID=' + CL)[0].values[0][0];
+  var txc = exec(shard, 'SELECT COUNT(*) n FROM c_tax WHERE AD_Client_ID=' + CL)[0].values[0][0];
   var uc = exec(shard, 'SELECT COUNT(*) n FROM AD_User WHERE AD_Client_ID=' + CL)[0].values[0][0];
   L('\n§GEN-AD-ODOO wrote ' + path.basename(out) + ' bytes=' + fs.statSync(out).size + ' tables=' + Object.keys(schemaDone).length +
-    ' client=' + CL + ' products=' + pc + ' 7field-audited-rows=' + audited + ' violations=' + violations);
-  var pass = pc === prods.length && uc === 1 && violations === 0;
+    ' client=' + CL + ' products=' + pc + ' bpartners=' + bpc + ' elementvalues=' + evc + ' taxes=' + txc + ' 7field-audited-rows=' + audited + ' violations=' + violations);
+  var pass = pc === prods.length && bpc === allResPartners.length && evc >= allCOA.length && txc >= 2 && violations === 0;
   L('§GEN-AD-ODOO ' + (pass ? 'PASS' : 'FAIL') + ' (demo: idempiere.html?seed=ad_seed.db&shard=' + path.basename(out) + '&client=' + CL + '&login=' + TENANT + ')\n');
   fs.writeFileSync(path.join(__dirname, 'gen_ad_odoo.log'), log.join('\n'));
   process.exit(pass ? 0 : 1);
