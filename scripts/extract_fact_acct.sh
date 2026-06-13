@@ -26,7 +26,7 @@ PG "
          round(qty,2), m_product_id, c_bpartner_id, replace(coalesce(description,''),chr(10),' ')
   FROM adempiere.fact_acct WHERE ad_client_id=11 ORDER BY fact_acct_id;" > /tmp/fact_acct.csv
 PG "
-  SELECT c_elementvalue_id, ad_client_id, value, name, accounttype, issummary
+  SELECT c_elementvalue_id, ad_client_id, value, name, accounttype, issummary, accountsign
   FROM adempiere.c_elementvalue WHERE ad_client_id IN (0,11) ORDER BY c_elementvalue_id;" > /tmp/c_elementvalue.csv
 
 echo "== load fact_acct + c_elementvalue into $DB (drop+recreate; -t suppressed the header, so NO --skip) =="
@@ -35,7 +35,7 @@ sqlite3 "$DB" "DROP TABLE IF EXISTS fact_acct; CREATE TABLE fact_acct(
   ad_table_id INT, record_id INT, line_id INT, gl_category_id INT, c_tax_id INT, postingtype TEXT,
   c_currency_id INT, amtsourcedr REAL, amtsourcecr REAL, amtacctdr REAL, amtacctcr REAL,
   qty REAL, m_product_id INT, c_bpartner_id INT, description TEXT);"
-sqlite3 "$DB" "DROP TABLE IF EXISTS c_elementvalue; CREATE TABLE c_elementvalue(c_elementvalue_id INT, ad_client_id INT, value TEXT, name TEXT, accounttype TEXT, issummary TEXT);"
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_elementvalue; CREATE TABLE c_elementvalue(c_elementvalue_id INT, ad_client_id INT, value TEXT, name TEXT, accounttype TEXT, issummary TEXT, accountsign TEXT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/fact_acct.csv fact_acct"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_elementvalue.csv c_elementvalue"
 
@@ -139,7 +139,7 @@ cap c_cashbook_acct   "c_cashbook_id,c_acctschema_id,cb_cashtransfer_acct,cb_ass
 # bpartner->group hop (discount/writeoff acct is keyed by BP group) + cashline->cashbook hop (cash-transfer acct).
 # paymentrule + so/po term + so/po pricelist added ADDITIVELY for MInvoice.setBPartner defaults (H-2.2,
 # MInvoice.java:631-673: location==0 → BP location + term/pricelist/rule flavored by IsSOTrx). NON-INVENT: real columns.
-cap c_bpartner        "c_bpartner_id,c_bp_group_id,paymentrule,c_paymentterm_id,po_paymentterm_id,m_pricelist_id,po_pricelist_id"  "c_bpartner_id INT,c_bp_group_id INT,paymentrule TEXT,c_paymentterm_id INT,po_paymentterm_id INT,m_pricelist_id INT,po_pricelist_id INT"
+cap c_bpartner        "c_bpartner_id,c_bp_group_id,name,paymentrule,c_paymentterm_id,po_paymentterm_id,m_pricelist_id,po_pricelist_id"  "c_bpartner_id INT,c_bp_group_id INT,name TEXT,paymentrule TEXT,c_paymentterm_id INT,po_paymentterm_id INT,m_pricelist_id INT,po_pricelist_id INT"
 # c_cash_id + amount added ADDITIVELY for the H2_ISOMORPH_TAIL MCash save witness (StatementDifference
 # = Σ line amounts — the stored stmtdiff's own source, MCash.java:330 ∘ getStatementDifference).
 PG "SELECT cl.c_cashline_id, c.c_cashbook_id, cl.c_cash_id, round(cl.amount,2) FROM adempiere.c_cashline cl JOIN adempiere.c_cash c ON c.c_cash_id=cl.c_cash_id WHERE cl.ad_client_id=11 ORDER BY cl.c_cashline_id;" > /tmp/c_cashline.csv
