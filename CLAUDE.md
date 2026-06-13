@@ -80,5 +80,5 @@ Before ending, update PROGRESS.md with:
 - `deploy/live/*` — PRODUCTION snapshot, never edit (see PRIME RULE)
 - `migration/*.sql` — append only, never modify existing migrations
 - `BuildingCompiler.java` — main orchestrator, many dependencies
-- `RosettaStoneGateTest.java` — defines G1-G6 gates, changes break CI
+- `RosettaStoneGateTest.java` — defines G1-G6 gates (compiler-reconstruction truth). NOTE: no CI in this repo runs it — "GREEN before commit" is a LOCAL discipline (Anti-Drift #5), not automation. See `docs/TestArchitecture.md` §Truth Model (2026). The headless smoke subset runs via `.github/workflows/ci.yml` + `scripts/system_is_real.sh`.
 - `X_M_BOM.java` / `X_M_BOMLine.java` — EntityType guards, GodMode bypass

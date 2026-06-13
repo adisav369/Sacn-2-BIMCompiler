@@ -1,0 +1,67 @@
+name: CI — system-is-real smoke gate
+
+# Lane A / A3 — the FIRST CI that performs a "is the system real?" check on every PR + push to master
+# (docs/TestArchitecture.md §Truth Model + §CI). It runs the FAST, headless subset of
+# scripts/system_is_real.sh that survives a runner with no GPU / no OCI / no IFC build.
+#
+# NO SILENT CAPS — the job echoes exactly which regimes it GATES and which it DEFERS:
+#   GATED   : browser local gate (test_all.js) · one ERP witness · Red Pill G8-GOVERNANCE (best-effort)
+#   WARN    : anti-drift audit (audit_specs.js) — surfaced, not gated (pre-existing skip-guard debt)
+#   DEFERRED: compiler RosettaStone G1-G6 (no Java build in fast CI — local-only via run_RosettaStones.sh;
+#             a cached-build CI step is the documented next increment, §CI)
+# Keeps docs.yml / traffic.yml untouched.
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  system-is-real:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout bim-compiler
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install node deps (better-sqlite3 for ERP witnesses)
+        run: npm ci || npm install
+
+      # Best-effort: the Red Pill G8-GOVERNANCE witness lives in bim-ootb. A cross-repo checkout
+      # needs a PAT; without one this step fails softly and the Red Pill regime is DEFERRED (logged
+      # by system_is_real.sh as SKIP), never a silent green.
+      - name: Checkout bim-ootb (Red Pill witness — best-effort)
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: red1oon/bim-ootb
+          path: .bim-ootb
+
+      - name: system_is_real (headless subset)
+        env:
+          CI: '1'                         # compiler step auto-DEFERS (no Java build)
+          BIMOOTB: ${{ github.workspace }}/.bim-ootb
+        run: bash scripts/system_is_real.sh
+
+      - name: Coverage summary (no silent caps)
+        if: always()
+        run: |
+          echo "── CI regime coverage ──"
+          echo "GATED    : browser local gate (test_all.js) · ERP witness · Red Pill (if bim-ootb checked out)"
+          echo "WARN     : audit_specs.js (anti-drift) — surfaced, pre-existing debt, not gated here"
+          echo "DEFERRED : compiler RosettaStone G1-G6 (no Java build in fast CI — run locally via scripts/run_RosettaStones.sh)"
+          echo "Full combined log: build/system_is_real.log"
+
+      - name: Upload combined log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: system_is_real-log
+          path: build/system_is_real.log
+          if-no-files-found: ignore

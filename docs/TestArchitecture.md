@@ -22,6 +22,42 @@
 
 ---
 
+## Truth Model (2026)
+
+The verification regime is **three regimes over three surfaces** — not one gate covering all. Each
+surface is owned by the regime that can actually prove it; conflating them is how 111 ungoverned
+moves once passed unwatched.
+
+| Surface | Truth regime | Fires | Status |
+|---|---|---|---|
+| **Compiler** (BOM → `output.db` reconstruction) | RosettaStone **G1–G6** (count, volume, digest, tamper, provenance, isolation) — `RosettaStoneGateTest.java`, `scripts/run_RosettaStones.sh` | Rarely, **by design** — the static path matured (116/157 PASS, gate code stable since 2026-05) | Mature |
+| **Browser viewer + Red Pill editor** | `§`-log whitebox witnesses (primary) + Playwright (wiring only) + the **G8-GOVERNANCE Red Pill round-trip** (identity + governed-delta — every coordinate change is BOM-explained) | Every PR (bim-ootb CI) + on every governed drag | Live (`docs/RedPillRosetta.md`, W-REDPILL-ROSETTA) |
+| **ERP** (AD-driven app, ledger folds) | `scripts/poc_*.js` → `build/erp/poc_*.log` witnesses via `run_witness.sh`; oracle-equivalence diffs | Per change, headless | Active |
+
+**Why the frontier moved.** RosettaStone proves the compiler's *inverse* path (read a BOM, rebuild,
+assert every element lands at the reference coordinate). That path is stable, so the gates rarely
+need to fire — maturity, not rot. The product is now **browser-first**, and the new capability is the
+*forward* path: grammar → 2D grid → drag → re-modelled building. That output is governed by the
+whitebox witnesses and the **G8-GOVERNANCE** gate (`RedPillRosetta.md` §5) — the dynamic-truth peer
+of G5-PROVENANCE: G5 traces every element to the library; G8 traces every **movement** to a BOM
+relationship. This is an **extension** of the truth model, not a replacement — the Java gates remain
+the static-compiler authority.
+
+**CI reality (corrected).** There is **no CI in this repo (bim-compiler)** that runs the Java gates —
+`.github/workflows/` holds only `docs.yml` (mkdocs) + `traffic.yml` (analytics). So a commit that
+fails G1-COUNT *cannot* "break CI" here; the Anti-Drift rule #5 ("both must be GREEN") is a **local**
+discipline, enforced by the developer, not by automation. (The **bim-ootb** deploy repo *does* gate
+PRs — `fast-checks` + `e2e-tests` are required on `main`.) See [§CI](#ci-system-is-real-gate).
+
+**"Is the system real" entrypoint.** One runner — `scripts/system_is_real.sh` — answers the question
+deterministically by fanning out **one** check per regime, fail-fast, each emitting a one-line
+verdict: (a) one RosettaStone building (G1-COUNT/G2-VOLUME), (b) the browser local gate
+(`deploy/dev/test_all.js` + `audit_specs.js`), (c) one ERP witness (`run_witness.sh`), (d) the Red
+Pill round-trip (`§REDPILL-RS`, checked out from bim-ootb). A2 builds it; A3 wires the headless
+subset into CI. No regime is silently skipped — a step with no input `log()`s "pending", never passes blank.
+
+---
+
 ## Hardening Status
 
 ### CRITICAL Fixes (C1–C13)
@@ -447,6 +483,28 @@ console.log(`§WALK_DOOR picked (${x},${y},${z}) dist=${d}m from ${n} doors`);
 - Round-trip state (needs IndexedDB + visual — use DB-level Node.js tests)
 
 See `reference/residential/PlaywrightAnalysis.md` §Playwright Scope for full boundary.
+
+## CI: system-is-real gate
+
+`.github/workflows/ci.yml` (Lane A / A3) is the first CI that runs a truth-model check on **every PR
++ push to `master`** — the witness discipline finally reaches the default branch, not just the local
+tree. It wraps `scripts/system_is_real.sh` (CI=1) and is **explicit about coverage — no silent caps**:
+
+| Regime | In CI | Why |
+|---|---|---|
+| Browser local gate (`test_all.js`) | **GATED** | node-builtin only, deterministic, headless-safe |
+| ERP witness (`run_witness.sh`) | **GATED** | after `npm ci` (better-sqlite3) |
+| Red Pill **G8-GOVERNANCE** (`§REDPILL-RS`) | **GATED (best-effort)** | witness lives in bim-ootb — cross-repo checkout needs a PAT; without one it DEFERS (logged SKIP), never silent-green |
+| Anti-drift audit (`audit_specs.js`) | **WARN** | surfaced, not gated — pre-existing skip-guard debt (`38-sh-dx-2d-runtime`); it is the hard gate in the Playwright-change workflow, not the smoke |
+| Compiler RosettaStone **G1–G6** | **DEFERRED** | no Java/IFC build in fast CI — run locally via `scripts/run_RosettaStones.sh`; a cached-build CI step is the next increment |
+
+A PR that breaks the browser local gate or an ERP/Red Pill witness goes **RED**; a clean PR goes
+green. The combined log is uploaded as a build artifact (`system_is_real-log`). `docs.yml` (mkdocs)
+and `traffic.yml` (analytics) are untouched. The corrected truth: there **is** now a CI gate — but it
+covers the headless subset above, **not** the Java G1–G6 gates (those stay a local discipline until
+the cached-build step lands). This is the honest version of the old "changes break CI" claim.
+
+---
 
 ### Test Summary
 
