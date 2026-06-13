@@ -825,6 +825,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#9-rdbms-vs-the-fold-engine-and-how-indexing-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. RDBMS vs the fold engine — and how indexing works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. RDBMS vs the fold engine — and how indexing works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#whats-fundamental" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's fundamental
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-you-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How you index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4470,6 +4509,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#9-rdbms-vs-the-fold-engine-and-how-indexing-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. RDBMS vs the fold engine — and how indexing works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. RDBMS vs the fold engine — and how indexing works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#whats-fundamental" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's fundamental
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-you-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How you index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4878,6 +4956,60 @@ views.</p>
 sourcing: the <strong>journal</strong> is the immutable log; the ledger and balance sheet are <em>folds</em> of it. "Journal IS the
 books" (§4) is literally that. The fold engine just generalizes the accounting journal's discipline — never
 erase, only append, derive everything — from the books to the <em>whole</em> ERP.</p>
+<hr />
+<h2 id="9-rdbms-vs-the-fold-engine-and-how-indexing-works">9. RDBMS vs the fold engine — and how indexing works<a class="headerlink" href="#9-rdbms-vs-the-fold-engine-and-how-indexing-works" title="Permanent link">&para;</a></h2>
+<p>A reader steeped in databases will ask two things: <em>isn't this just throwing away the RDBMS? and how does it
+stay fast?</em> Both have clean answers.</p>
+<h3 id="whats-fundamental">What's fundamental<a class="headerlink" href="#whats-fundamental" title="Permanent link">&para;</a></h3>
+<p>Three real differences — and one important <em>non</em>-difference.</p>
+<ol>
+<li><strong>Where truth lives.</strong> An RDBMS: the current-state tables <em>are</em> the truth. Here: the <strong>append-only log is the
+   truth; the tables are derived projections.</strong> Every other difference follows from this one.</li>
+<li><strong>Mutability &amp; time.</strong> <code>UPDATE</code> overwrites in place — last write wins, prior state gone unless you bolt on
+   audit/temporal tables. The log is <strong>append-only</strong>: a correction is a <em>new</em> event, so every past state is
+   reachable and "as-of" queries are free. Time is intrinsic, not bolted on.</li>
+<li><strong>Provenance &amp; authority.</strong> An RDBMS row has no "why" — just a value. A folded row <strong>traces to the signed,
+   hash-chained ops that produced it</strong> — provenance is structural — and no single server <em>owns</em> truth, so the
+   log can be shipped/replicated (the serverless property).</li>
+</ol>
+<p><strong>The non-difference (important):</strong> this still <em>uses</em> an RDBMS — SQLite — for reads. It isn't "RDBMS vs
+not-RDBMS"; it's <strong>"RDBMS as the source of truth" vs "RDBMS demoted to a derived cache under an immutable
+log"</strong> — Kleppmann's <em>turning the database inside out</em>: the log becomes primary, the database becomes a derived
+view. One line: <strong>an RDBMS remembers <em>where</em> things are (places, overwritten); this remembers <em>what happened</em>
+(events, accumulated).</strong></p>
+<h3 id="how-you-index">How you index<a class="headerlink" href="#how-you-index" title="Permanent link">&para;</a></h3>
+<p>The punchline: <strong>the projection <em>is</em> the index.</strong> You never index the log for business queries — you fold the
+log into a projection and index <em>that</em>.</p>
+<ul>
+<li><strong>Business reads hit the projection, not the log.</strong> The 5-table SQLite runtime is a real relational DB, so you
+  index it with <strong>ordinary B-tree indexes</strong> — the whole relational index machinery is reused, on the read side.
+  "How do you index" → exactly like any RDBMS, on the projection.</li>
+<li><strong>The log carries only purpose-built indexes.</strong> In this engine <code>kernel_ops</code> is indexed on <code>op_type</code> and
+  <code>(undone, id)</code> and read <strong>sequentially by <code>id</code></strong> (<code>replayOps</code>); append-only logs are scan-friendly, so you
+  index only the few keys you fold by, not arbitrary predicates.</li>
+<li><strong>A projection is a materialized view per query pattern — which is what an index fundamentally <em>is</em></strong> (a
+  derived structure for fast access), but more general: an RDBMS index is bound to a table's columns; a
+  projection can be an arbitrary reshape (denormalized, pre-aggregated, full-text, a graph), all folded from the
+  one log, all disposable.</li>
+<li><strong>Everything downstream of the log is rebuildable.</strong> Corrupt index → re-fold; new query pattern → fold a <em>new</em>
+  projection; the truth never migrates. In an RDBMS the index is derived but the <em>table</em> is truth; here <strong>both
+  the table and its indexes are derived — only the log is authoritative.</strong></li>
+<li><strong><code>compact()</code> / snapshots bound the cost</strong> so a fold is "snapshot + replay the tail," not re-fold from genesis.</li>
+</ul>
+<p><strong>Honest costs</strong> (not free):</p>
+<ul>
+<li><strong>Write amplification</strong> — every event applies to every projection that cares; you maintain N derived views,
+  the same cost shape as N RDBMS indexes, made explicit.</li>
+<li><strong>No free ad-hoc query on truth</strong> — an RDBMS queries the authoritative tables directly for an <em>unanticipated</em>
+  predicate; here that needs a new projection fold (cheap, not instant). You trade "ad-hoc query the truth" for
+  "query a purpose-built view."</li>
+<li><strong>Per-entity history is a scan today</strong> — the log indexes <code>op_type</code>/<code>undone</code>, not <code>output_guid</code>, so "fold one
+  document's full history" scans rather than seeks. A real, addable gap (index the aggregate id), not a free lunch.</li>
+<li><strong>Eventual consistency</strong> log→projection in the distributed case (the sync FSM owns it); in-process it's synchronous.</li>
+</ul>
+<p>So: <strong>in an RDBMS the table is truth and the index is its servant; here the log is truth and <em>both</em> the table
+and its indexes are disposable servants folded from it.</strong> Indexing didn't go away — it moved to the derived
+layer, where it's relational and ordinary, while the truth stayed a plain append-only log.</p>
 
 
 
