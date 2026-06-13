@@ -814,6 +814,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#8-is-this-just-oo-again-paradigm-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. "Is this just OO again?" — paradigm placement
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4448,6 +4459,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#8-is-this-just-oo-again-paradigm-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. "Is this just OO again?" — paradigm placement
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4819,6 +4841,43 @@ aren't ops.</p>
 iDempiere's <code>M*</code> model — <code>completeIt</code>, <code>Doc_*</code> posting, the DocAction FSM, the AD interpreters — to
 <em>oracle-equivalence</em> (<code>maxDiff=0c</code> vs real iDempiere output), serverless, in a browser. We stood on proven
 ground; the ERP fold is the new work. See the <a href="../ERP_COVERAGE_MATRIX/">Coverage Matrix</a> for the exact tally.</p>
+<hr />
+<h2 id="8-is-this-just-oo-again-paradigm-placement">8. "Is this just OO again?" — paradigm placement<a class="headerlink" href="#8-is-this-just-oo-again-paradigm-placement" title="Permanent link">&para;</a></h2>
+<p>A fair challenge: messaging, encapsulation, one shared construct — isn't that OO rebuilt? The answer turns on
+<em>which</em> OO you mean.</p>
+<p><strong>Textbook (Java/C++) OO — no, it's the opposite.</strong> Classes, inheritance, encapsulated <em>mutable</em> objects: the
+fold engine has none. Data (ops, journal, projection) is separated from behavior (verbs); 496 stateful classes
+collapse to one construct + data. That's the <strong>data-oriented</strong> camp (Hickey: "the database as a value") — a
+deliberate move <em>away</em> from the mutable object graph.</p>
+<p><strong>Kay's original OO — yes, arguably more faithful than Java.</strong> Alan Kay, who coined the term: <em>"OOP to me means
+only messaging, local retention and protection and hiding of state-process, and extreme late-binding of all
+things."</em> The fold engine hits all three — an <strong>op is a message</strong>; state is never reached into (<em>tell, don't
+ask</em> — stronger than <code>getX/setX</code>, which expose state); the "class" is <strong>late-bound from AD data</strong>, not compiled.
+Java is <em>class</em>-oriented; Kay called class/inheritance "the lesser idea." So the op-log drifts <em>back</em> toward
+what OO was for, minus the class explosion. Lineage: <strong>actors / Erlang / Smalltalk</strong>, not Java.</p>
+<p><strong>And it's <em>more abstract</em> than Java can be — because types became data.</strong> In Java, <code>Invoice</code> is a <em>class</em> —
+code, fixed at compile time. Here, <code>Invoice</code> is a <code>doc_type</code> value + AD dictionary rows — <em>data</em>. ~1000 <code>M*</code>
+tables reduce to a <strong>5-table runtime</strong> precisely because the specific types stopped being schema and became
+data over an abstract shape (<a href="../ERP/"><code>ERP.md</code></a> §0: "the schema stops growing with the feature list", 98.4% of
+business edges mappable). Java's type system is a <em>compile-time</em> layer — types are not runtime values;
+iDempiere already pushes toward types-as-data through the AD but still <strong>compiles <code>X_</code> classes</strong>, so it's only
+half-abstract. The fold engine keeps types as data all the way down — strictly more abstract than either.</p>
+<p><strong>The cost, honestly.</strong> Extreme abstraction trades away the compiler's static guarantees: Java <em>checks</em> that
+<code>MOrder.getC_BPartner_ID()</code> exists; a data-driven engine surfaces that error at fold/run time. The fold engine
+pays it back not with a type-checker but with the <strong>witness + §FALSIFIER + oracle-diff discipline</strong> — every
+surface diffed to <code>maxDiff=0c</code> against real iDempiere. Static safety → proven-equivalence safety. (And the 1.6%
+of edges that don't fit the 5 shapes is named, not hidden.)</p>
+<p><strong>The limit — one table.</strong> Push the abstraction all the way and the count goes to <em>one</em>: the event log itself.
+The 5-table runtime isn't the floor — it's a <strong>projection</strong> of <code>kernel_ops</code> (§1). The single source of truth is
+the log; the tables are disposable views folded from it, kept only so reads are fast SQL instead of re-folding
+history per query (in practice: log + snapshots/compaction). So "how many tables" stops being an ontological
+question — it's <strong>one log of facts, plus however many views you find convenient.</strong> At the limit, an ERP is <em>a
+list of what happened + functions that fold it into answers</em>; every table, screen, report, and the books are
+views.</p>
+<p>And this isn't exotic — it's <strong>500 years old.</strong> Double-entry bookkeeping (Pacioli, 1494) is append-only event
+sourcing: the <strong>journal</strong> is the immutable log; the ledger and balance sheet are <em>folds</em> of it. "Journal IS the
+books" (§4) is literally that. The fold engine just generalizes the accounting journal's discipline — never
+erase, only append, derive everything — from the books to the <em>whole</em> ERP.</p>
 
 
 
