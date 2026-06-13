@@ -534,6 +534,8 @@ Incremental backup barely shrinks the gap — the **weekly fulls dominate.** Onl
 - **0 branch downtime trades against a double-sale risk** — but only for stock that is *not* physically partitioned (≤0.1% of ops; located stock can't double-sell — the scan is possession), and it is value-tier-bounded (high-value blocked → 0, low-value → a receivable). Traditional avoids it only by **requiring connectivity** (then the branch stops when the link drops — the very downtime we removed) or by **allowing offline POS** (carrying the same risk).
 - **"0 always-on server-hours" is 0 always-on compute-VM, not 0 cost** — object storage, the CAS touch, and the intermittent relay remain, itemised: storage-priced + pay-per-invocation, no OS / patch / licence. An illustrative annual bill (public list prices, volatile; **excluding** DB licence + DBA labour, which widen it) runs **>10× cheaper**, compute-dominated.
 
+> **What breaks first as this scales?** A quantitative limits analysis — max in-memory DB before OOM, genesis vs checkpoint re-fold time, writer-conflict probability at 50+ devices, OPFS vs IndexedDB, and the mobile ceilings — is worked end-to-end in **[Fold-Engine Constraints Analysis](FoldEngineConstraints.md)**. Short version: single-writer-per-shard is the only *hard* limit; the mobile genesis re-fold (~25 s @ 100M ops) and the ~200 MB mobile memory ceiling bite first, and both are already ~90% handled by the checkpoint design above.
+
 
 ### Vitals — speed, footprint, ownership — serious read {#v-vitals}
 
@@ -649,6 +651,8 @@ format uses them) and pixel layout (a stated non-goal — DOM is the render).
 
 
 ### Gap Analysis — serious read {#v-gap}
+
+> Functional gaps are tracked below; the **operational** limits (what the browser substrate itself can take before it breaks — memory, fold time, device-scale conflict) are quantified separately in the **[Fold-Engine Constraints Analysis](FoldEngineConstraints.md)**.
 
 <span id="gap-analysis"></span>
 
