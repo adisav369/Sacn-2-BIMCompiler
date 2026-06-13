@@ -157,17 +157,19 @@
       <div class="bh">
         <div class="tag">🔴 Pending · fold gap</div>
         <div class="ttl">Capability still unbuilt</div>
-        <div class="gloss">The engine can't yet compute these even with the data present — mapping / interpreter work, the genuine remainder.</div>
+        <div class="gloss">Two kinds — interpreter / mapping work that's <b>scoped but not built</b>, and items <b>blocked on seed data</b>, not on capability.</div>
       </div>
       <!-- 2026-06-14: "Cost-valued inventory GL" + "AR/AP aging" moved to Done — folded oracle-equivalent
            (W-FOLD-INOUTGL Doc_InOut COGS+receipt maxDiff=0c; W-AGING T_Aging all ~21 buckets maxDiff=0c).
            Both sit INSIDE already-counted surfaces (inventory loop / the T_* report tier) → headline tally
-           unchanged at 43. Analytic dims = data-blocked (no analytic-tagged facts in seed), not capability-unbuilt. -->
+           unchanged at 43. Analytic dims = data-blocked (no analytic-tagged facts in seed), not capability-unbuilt.
+           Top two = genuine code gaps, now carded (ODOO_QWEB_PRINT_FOLD / ODOO_SERVER_ACTION_FOLD);
+           bottom two = NOT code gaps (data-blocked / seed-dormant) — no card by design. -->
       <ul>
-        <li><b>Document print mapping</b> — Odoo QWeb defs → print tree</li>
-        <li><b>Analytic / cost-centre</b> accounting dimensions — data-blocked (no analytic-tagged postings in seed yet)</li>
-        <li><b>Posting edge-branches</b> — charge lines · GL distribution · realized-FX gain/loss (no fold path; armed in AD, dormant in seed)</li>
-        <li><b>Server-action interpretation</b> — Odoo automation (64 actions)</li>
+        <li><b>Document print mapping</b> — Odoo QWeb defs → print tree. <span style="opacity:.7">iDempiere side folds to the cent (W-PRINTFORMAT); the Odoo map is scoped, not yet built.</span></li>
+        <li><b>Server-action interpretation</b> — Odoo automation (64 actions). <span style="opacity:.7">Declarative subset interpretable; Python-code actions defer — scoped, not yet built.</span></li>
+        <li><b>Analytic / cost-centre</b> accounting dimensions — <span style="opacity:.7">data-blocked: no analytic-tagged postings in the seed yet.</span></li>
+        <li><b>Posting edge-branches</b> — charge lines · GL distribution · realized-FX gain/loss. <span style="opacity:.7">Armed in AD, dormant in seed — no data to fold over.</span></li>
       </ul>
       <div class="foot">On-demand procs (337 classnames named-deferred) — mechanism + picker built (W-PROC-PICKER), not blocking</div>
     </section>

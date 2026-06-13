@@ -3531,6 +3531,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="§S-9 Autonomous agent (forklift / robot)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s-9a-robot-bridge-stub-wh_robotics_lanemd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-9a Robot bridge stub (WH_ROBOTICS_LANE.md)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-9b-nvidia-cosmos-what-it-is-and-where-it-fits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-9b NVIDIA Cosmos — what it is and where it fits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -4744,6 +4772,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="§S-9 Autonomous agent (forklift / robot)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s-9a-robot-bridge-stub-wh_robotics_lanemd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-9a Robot bridge stub (WH_ROBOTICS_LANE.md)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s-9b-nvidia-cosmos-what-it-is-and-where-it-fits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §S-9b NVIDIA Cosmos — what it is and where it fits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -5175,6 +5231,89 @@ position — the same rAF loop, just driven by telemetry instead of a human tap.
 <strong>Architecture cost: swap the scan callback. Everything downstream is untouched.</strong>
 The hardware integration contract (positioning system, comms protocol) is always custom — that is
 the real work. The ERP side is already done.</p>
+<h4 id="s-9a-robot-bridge-stub-wh_robotics_lanemd">§S-9a Robot bridge stub (WH_ROBOTICS_LANE.md)<a class="headerlink" href="#s-9a-robot-bridge-stub-wh_robotics_lanemd" title="Permanent link">&para;</a></h4>
+<p><code>window.WHWalk.robot</code> is the meet-in-the-middle seam. The ERP side publishes; the robot
+controller subscribes and pushes confirmations back. A session card
+(<code>prompts/WH_ROBOTICS_LANE.md</code>) specifies the implementation lane.</p>
+<p><strong>ERP side exposes (stub, not yet wired):</strong>
+<div class="highlight"><pre><span></span><code><span class="nb">window</span><span class="p">.</span><span class="nx">WHWalk</span><span class="p">.</span><span class="nx">robot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// Read — robot controller polls or subscribes</span>
+<span class="w">  </span><span class="nx">currentStep</span><span class="o">:</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// returns { locatorId, locatorGuid, product, qty, xyz: {x,y,z}|null }</span>
+<span class="w">    </span><span class="c1">// xyz is null until a metric IFC survey provides real coordinates (honest gap)</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nx">stepCount</span><span class="o">:</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">total</span><span class="o">:</span><span class="w"> </span><span class="nx">W</span><span class="p">.</span><span class="nx">steps</span><span class="p">.</span><span class="nx">length</span><span class="p">,</span><span class="w"> </span><span class="nx">done</span><span class="o">:</span><span class="w"> </span><span class="nx">doneCount</span><span class="p">(),</span><span class="w"> </span><span class="nx">remaining</span><span class="o">:</span><span class="w"> </span><span class="err">…</span><span class="w"> </span><span class="p">};</span><span class="w"> </span><span class="p">},</span>
+
+<span class="w">  </span><span class="c1">// Write — robot controller calls on arrival / pick-complete</span>
+<span class="w">  </span><span class="nx">confirm</span><span class="o">:</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="p">(</span><span class="nx">locatorId</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">WHWalk</span><span class="p">.</span><span class="nx">scanInput</span><span class="p">(</span><span class="nx">locatorId</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;robot&#39;</span><span class="p">);</span><span class="w">   </span><span class="c1">// same gate as QR — wrong bin still refuses</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nx">skip</span><span class="o">:</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="p">(</span><span class="nx">reason</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">WHWalk</span><span class="p">.</span><span class="nx">skipStep</span><span class="p">(</span><span class="s1">&#39;robot-skip: &#39;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">reason</span><span class="p">);</span>
+<span class="w">  </span><span class="p">},</span>
+
+<span class="w">  </span><span class="c1">// Optional telemetry — drives the 3D mirror (fly-to replaced by live position)</span>
+<span class="w">  </span><span class="nx">telemetry</span><span class="o">:</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="p">(</span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="p">,</span><span class="w"> </span><span class="nx">z</span><span class="p">,</span><span class="w"> </span><span class="nx">locatorId</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// update robot avatar position in scene; highlight current bin if locatorId matches step target</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></p>
+<p><strong>Robot controller side must provide:</strong>
+- Navigation to an (x,y,z) or a named locator — the walk supplies both
+- A pick-completion event → calls <code>WHWalk.robot.confirm(locatorId)</code>
+- Optionally: streaming position → <code>WHWalk.robot.telemetry(x,y,z,locatorId)</code> for the 3D mirror</p>
+<p><strong><code>?mode=robot</code> URL param (stub):</strong> suppresses the human scan screen and "Confirm bin" button;
+the strip shows robot telemetry instead. Human can still override via <code>confirmHere()</code>.</p>
+<h4 id="s-9b-nvidia-cosmos-what-it-is-and-where-it-fits">§S-9b NVIDIA Cosmos — what it is and where it fits<a class="headerlink" href="#s-9b-nvidia-cosmos-what-it-is-and-where-it-fits" title="Permanent link">&para;</a></h4>
+<p><strong>What Cosmos is</strong> (open source, Apache-2.0, github.com/nvidia-cosmos):
+Cosmos is NVIDIA's world-foundation-model suite for physical AI. Its core capability is
+<em>predicting the future visual state of the world</em> given a current frame and a robot action —
+used to generate synthetic training data at scale without physical hardware.</p>
+<p>Key open models:
+- <code>Cosmos-1.0-Diffusion-7B/14B</code> — video world model (generates realistic robot-POV sequences)
+- <code>Cosmos-1.0-Tokenizer</code> — tokenises video frames to/from a compact latent space
+- <code>Cosmos-1.0-Predict</code> — causal video prediction (frame N+1…N+k from frame N + action)
+- Runs via NVIDIA Isaac Sim / Isaac Lab for physics-backed simulation</p>
+<p><strong>Where it fits in the WH walk:</strong></p>
+<table>
+<thead>
+<tr>
+<th>What we have</th>
+<th>What Cosmos adds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3D compiled warehouse model (GUIDs, locator positions, bin geometry)</td>
+<td>Synthetic camera/sensor data from that model via IsaacSim</td>
+</tr>
+<tr>
+<td>Route sequence (ordered bin steps, §S-2)</td>
+<td>Robot navigation policy trained on that sequence</td>
+</tr>
+<tr>
+<td><code>WHWalk.robot.confirm(id)</code> stub</td>
+<td>Robot calling confirm after physical navigation to the bin</td>
+</tr>
+<tr>
+<td>Schematic coordinates (text labels, not metric)</td>
+<td>Metric once real IFC survey feeds the compiler</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The honest gap:</strong> Cosmos trains <em>policies</em> (what action to take next) and generates <em>synthetic data</em>
+(what the camera would see at each step). It does NOT provide: a physical robot, motor drivers,
+a SLAM positioning system, or the metric IFC survey that makes coordinates real. Those are
+always hardware-specific.</p>
+<p><strong>The cheapest useful experiment:</strong>
+1. Export the compiled warehouse model to USD or glTF (the viewer geometry is already WebGL-renderable)
+2. Load it into Isaac Sim (free) — Cosmos-world-model can then generate camera sequences along bin routes
+3. Use those sequences to train a simple navigation policy (bin A → bin B via Cosmos-Predict)
+4. That policy's output = a <code>locatorId</code> sequence → feeds <code>WHWalk.robot.confirm(id)</code> in the stub</p>
+<p><strong>Meeting halfway:</strong> the robot implementer brings the Isaac Sim setup + trained policy.
+The ERP side supplies: the route sequence, the confirm API, the 3D model export, and the
+ledger reconciliation. Neither side needs to know the other's internals.</p>
+<p>See <code>prompts/WH_ROBOTICS_LANE.md</code> for the implementation card.</p>
 <h3 id="s-10-ar-overlay-via-walk-sitecam">§S-10 AR overlay via Walk + SiteCam<a class="headerlink" href="#s-10-ar-overlay-via-walk-sitecam" title="Permanent link">&para;</a></h3>
 <p>The viewer already ships <code>sitecam.js</code> — the device camera feed composited under the 3D scene.
 The Walk lens (§S-3) runs inside the same viewer. Combining them:
