@@ -520,6 +520,8 @@
       
         
       
+        
+      
     
     
     
@@ -617,6 +619,34 @@
     
   
     Migrate & Compare (ERP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERPRosettaStone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Rosetta Stone (iDempiere → Fold Engine)
   
 
     
@@ -1073,6 +1103,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#truth-model-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Truth Model (2026)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#hardening-status" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1381,6 +1422,23 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ci-system-is-real-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI: system-is-real gate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CI: system-is-real gate">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#test-summary" class="md-nav__link">
@@ -4545,6 +4603,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#truth-model-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Truth Model (2026)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#hardening-status" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4854,6 +4923,23 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ci-system-is-real-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI: system-is-real gate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CI: system-is-real gate">
+      <ul class="md-nav__list">
+        
           <li class="md-nav__item">
   <a href="#test-summary" class="md-nav__link">
     <span class="md-ellipsis">
@@ -4910,6 +4996,60 @@
 <li><strong>No Silent Re-seal.</strong> Every <code>[SEAL]</code> commit must explain WHY the test changed. Review the diff before accepting.</li>
 <li><strong>No <code>System.err</code> for debug.</strong> Use <code>BIMLogger.fine()</code> for rejection messages, constraint violations, and diagnostic output. <code>System.err</code> bypasses log-level filtering and is invisible to the FINE drift checklist. Easy to grep: <code>System\.err</code> in Java source = drift.</li>
 </ol>
+<hr />
+<h2 id="truth-model-2026">Truth Model (2026)<a class="headerlink" href="#truth-model-2026" title="Permanent link">&para;</a></h2>
+<p>The verification regime is <strong>three regimes over three surfaces</strong> — not one gate covering all. Each
+surface is owned by the regime that can actually prove it; conflating them is how 111 ungoverned
+moves once passed unwatched.</p>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Truth regime</th>
+<th>Fires</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Compiler</strong> (BOM → <code>output.db</code> reconstruction)</td>
+<td>RosettaStone <strong>G1–G6</strong> (count, volume, digest, tamper, provenance, isolation) — <code>RosettaStoneGateTest.java</code>, <code>scripts/run_RosettaStones.sh</code></td>
+<td>Rarely, <strong>by design</strong> — the static path matured (116/157 PASS, gate code stable since 2026-05)</td>
+<td>Mature</td>
+</tr>
+<tr>
+<td><strong>Browser viewer + Red Pill editor</strong></td>
+<td><code>§</code>-log whitebox witnesses (primary) + Playwright (wiring only) + the <strong>G8-GOVERNANCE Red Pill round-trip</strong> (identity + governed-delta — every coordinate change is BOM-explained)</td>
+<td>Every PR (bim-ootb CI) + on every governed drag</td>
+<td>Live (<code>docs/RedPillRosetta.md</code>, W-REDPILL-ROSETTA)</td>
+</tr>
+<tr>
+<td><strong>ERP</strong> (AD-driven app, ledger folds)</td>
+<td><code>scripts/poc_*.js</code> → <code>build/erp/poc_*.log</code> witnesses via <code>run_witness.sh</code>; oracle-equivalence diffs</td>
+<td>Per change, headless</td>
+<td>Active</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why the frontier moved.</strong> RosettaStone proves the compiler's <em>inverse</em> path (read a BOM, rebuild,
+assert every element lands at the reference coordinate). That path is stable, so the gates rarely
+need to fire — maturity, not rot. The product is now <strong>browser-first</strong>, and the new capability is the
+<em>forward</em> path: grammar → 2D grid → drag → re-modelled building. That output is governed by the
+whitebox witnesses and the <strong>G8-GOVERNANCE</strong> gate (<code>RedPillRosetta.md</code> §5) — the dynamic-truth peer
+of G5-PROVENANCE: G5 traces every element to the library; G8 traces every <strong>movement</strong> to a BOM
+relationship. This is an <strong>extension</strong> of the truth model, not a replacement — the Java gates remain
+the static-compiler authority.</p>
+<p><strong>CI reality (corrected).</strong> There is <strong>no CI in this repo (bim-compiler)</strong> that runs the Java gates —
+<code>.github/workflows/</code> holds only <code>docs.yml</code> (mkdocs) + <code>traffic.yml</code> (analytics). So a commit that
+fails G1-COUNT <em>cannot</em> "break CI" here; the Anti-Drift rule #5 ("both must be GREEN") is a <strong>local</strong>
+discipline, enforced by the developer, not by automation. (The <strong>bim-ootb</strong> deploy repo <em>does</em> gate
+PRs — <code>fast-checks</code> + <code>e2e-tests</code> are required on <code>main</code>.) See <a href="#ci-system-is-real-gate">§CI</a>.</p>
+<p><strong>"Is the system real" entrypoint.</strong> One runner — <code>scripts/system_is_real.sh</code> — answers the question
+deterministically by fanning out <strong>one</strong> check per regime, fail-fast, each emitting a one-line
+verdict: (a) one RosettaStone building (G1-COUNT/G2-VOLUME), (b) the browser local gate
+(<code>deploy/dev/test_all.js</code> + <code>audit_specs.js</code>), (c) one ERP witness (<code>run_witness.sh</code>), (d) the Red
+Pill round-trip (<code>§REDPILL-RS</code>, checked out from bim-ootb). A2 builds it; A3 wires the headless
+subset into CI. No regime is silently skipped — a step with no input <code>log()</code>s "pending", never passes blank.</p>
 <hr />
 <h2 id="hardening-status">Hardening Status<a class="headerlink" href="#hardening-status" title="Permanent link">&para;</a></h2>
 <h3 id="critical-fixes-c1c13">CRITICAL Fixes (C1–C13)<a class="headerlink" href="#critical-fixes-c1c13" title="Permanent link">&para;</a></h3>
@@ -5981,6 +6121,52 @@ could be silently wrong. The log line IS the test. Example:
 - Mobile UX (simulated viewport ≠ real device)
 - Round-trip state (needs IndexedDB + visual — use DB-level Node.js tests)</p>
 <p>See <code>reference/residential/PlaywrightAnalysis.md</code> §Playwright Scope for full boundary.</p>
+<h2 id="ci-system-is-real-gate">CI: system-is-real gate<a class="headerlink" href="#ci-system-is-real-gate" title="Permanent link">&para;</a></h2>
+<p><code>.github/workflows/ci.yml</code> (Lane A / A3) is the first CI that runs a truth-model check on <strong>every PR
++ push to <code>master</code></strong> — the witness discipline finally reaches the default branch, not just the local
+tree. It wraps <code>scripts/system_is_real.sh</code> (CI=1) and is <strong>explicit about coverage — no silent caps</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Regime</th>
+<th>In CI</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Browser local gate (<code>test_all.js</code>)</td>
+<td><strong>GATED</strong></td>
+<td>node-builtin only, deterministic, headless-safe</td>
+</tr>
+<tr>
+<td>ERP witness (<code>run_witness.sh</code>)</td>
+<td><strong>GATED</strong></td>
+<td>after <code>npm ci</code> (better-sqlite3)</td>
+</tr>
+<tr>
+<td>Red Pill <strong>G8-GOVERNANCE</strong> (<code>§REDPILL-RS</code>)</td>
+<td><strong>GATED (best-effort)</strong></td>
+<td>witness lives in bim-ootb — cross-repo checkout needs a PAT; without one it DEFERS (logged SKIP), never silent-green</td>
+</tr>
+<tr>
+<td>Anti-drift audit (<code>audit_specs.js</code>)</td>
+<td><strong>WARN</strong></td>
+<td>surfaced, not gated — pre-existing skip-guard debt (<code>38-sh-dx-2d-runtime</code>); it is the hard gate in the Playwright-change workflow, not the smoke</td>
+</tr>
+<tr>
+<td>Compiler RosettaStone <strong>G1–G6</strong></td>
+<td><strong>DEFERRED</strong></td>
+<td>no Java/IFC build in fast CI — run locally via <code>scripts/run_RosettaStones.sh</code>; a cached-build CI step is the next increment</td>
+</tr>
+</tbody>
+</table>
+<p>A PR that breaks the browser local gate or an ERP/Red Pill witness goes <strong>RED</strong>; a clean PR goes
+green. The combined log is uploaded as a build artifact (<code>system_is_real-log</code>). <code>docs.yml</code> (mkdocs)
+and <code>traffic.yml</code> (analytics) are untouched. The corrected truth: there <strong>is</strong> now a CI gate — but it
+covers the headless subset above, <strong>not</strong> the Java G1–G6 gates (those stay a local discipline until
+the cached-build step lands). This is the honest version of the old "changes break CI" claim.</p>
+<hr />
 <h3 id="test-summary">Test Summary<a class="headerlink" href="#test-summary" title="Permanent link">&para;</a></h3>
 <table>
 <thead>

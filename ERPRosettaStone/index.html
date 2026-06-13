@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../DemoHouseAnalysis/">
+        <link rel="prev" href="../MigrateComparisonPaper/">
       
       
-        <link rel="next" href="../StressTest_1M/">
+        <link rel="next" href="../FoldEngineQuality/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>LTU A-House (125K) - BIM Intent Compiler</title>
+        <title>ERP Rosetta Stone (iDempiere → Fold Engine) - BIM Intent Compiler</title>
       
     
     
@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ltu-a-house-analysis-ltu_ahouse_ifc" class="md-skip">
+        <a href="#erp-rosetta-stone-idempiere-javaorm-the-fold-engine" class="md-skip">
           Skip to content
         </a>
       
@@ -121,7 +121,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              LTU A-House (125K)
+              ERP Rosetta Stone (iDempiere → Fold Engine)
             
           </span>
         </div>
@@ -232,10 +232,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href=".." class="md-tabs__link">
           
   
@@ -408,12 +410,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../SampleHouseAnalysis/" class="md-tabs__link">
           
   
@@ -499,6 +499,8 @@
       
   
   
+    
+  
   
   
     
@@ -526,16 +528,19 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -557,13 +562,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -636,10 +641,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../ERPRosettaStone/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Rosetta Stone (iDempiere → Fold Engine)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -655,6 +687,137 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-one-mental-shift-read-this-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The one mental shift (read this first)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-rosetta-table-your-idioms-one-to-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The Rosetta table — your idioms, one-to-one
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-worked-example-completeit-line-by-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Worked example — completeIt line-by-line
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Worked example — completeIt line-by-line">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-listing-block-for-block-against-orgcompieremodelmordercompleteit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full listing — block-for-block against org.compiere.model.MOrder.completeIt()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-the-orm-question-there-is-no-x_" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. The ORM question — there is no X_*
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. The ORM question — there is no X_*">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#non-repetition-one-construct-25-deltas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-repetition — one construct + ~25 deltas
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-write-path-in-detail-why-save-became-append" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Write path in detail — why "save" became "append"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-read-path-its-just-sql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Read path — it's just SQL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-prior-art-whats-standard-whats-ours" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Prior art — what's standard, what's ours
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -871,37 +1034,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    LTU A-House (125K)
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
         
   
   
@@ -917,225 +1053,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#building-identity" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Building Identity
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#source-files-discipline-mapping" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source Files → Discipline Mapping
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#element-census-by-discipline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Element Census by Discipline
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mep-quality-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MEP Quality Notes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mep-elements-outside-arc-envelope" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MEP Elements Outside ARC Envelope
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#storey-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Storey Structure
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#camera-view" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Camera / View
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#bonsaiblender-performance-125997-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Bonsai/Blender Performance (125,997 elements)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Bonsai/Blender Performance (125,997 elements)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#browser-performance-s231-instancedmesh-2026-04-27" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Browser Performance — S231 InstancedMesh (2026-04-27)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4d5d-schedule-and-boq" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4D/5D — Schedule and BOQ
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-extract-for-newbies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How to Extract (for newbies)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How to Extract (for newbies)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-0-download-source-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 0 — Download source files
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-1-rename-to-standard-convention-and-copy-to-unmerged" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 1 — Rename to standard convention and copy to UNMERGED
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-extract-per-discipline-with-sub-discipline-overrides" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 2 — Extract per-discipline with sub-discipline overrides
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-verify-coordinate-scale-metres-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3 — Verify coordinate scale (metres check)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-verify-discipline-breakdown" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4 — Verify discipline breakdown
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-scripts-reference-only-do-not-modify-originals" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Scripts (reference only — do not modify originals)
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3526,10 +3443,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -3559,22 +3474,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
             
   
   
@@ -3592,7 +3504,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3859,37 +3771,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    LTU A-House (125K)
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
         
   
   
@@ -3905,225 +3790,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#building-identity" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Building Identity
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#source-files-discipline-mapping" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source Files → Discipline Mapping
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#element-census-by-discipline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Element Census by Discipline
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mep-quality-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MEP Quality Notes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mep-elements-outside-arc-envelope" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MEP Elements Outside ARC Envelope
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#storey-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Storey Structure
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#camera-view" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Camera / View
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#bonsaiblender-performance-125997-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Bonsai/Blender Performance (125,997 elements)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Bonsai/Blender Performance (125,997 elements)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#browser-performance-s231-instancedmesh-2026-04-27" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Browser Performance — S231 InstancedMesh (2026-04-27)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4d5d-schedule-and-boq" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4D/5D — Schedule and BOQ
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-extract-for-newbies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How to Extract (for newbies)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How to Extract (for newbies)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-0-download-source-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 0 — Download source files
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-1-rename-to-standard-convention-and-copy-to-unmerged" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 1 — Rename to standard convention and copy to UNMERGED
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-extract-per-discipline-with-sub-discipline-overrides" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 2 — Extract per-discipline with sub-discipline overrides
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-verify-coordinate-scale-metres-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3 — Verify coordinate scale (metres check)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-verify-discipline-breakdown" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4 — Verify discipline breakdown
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-scripts-reference-only-do-not-modify-originals" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Scripts (reference only — do not modify originals)
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -4672,10 +4338,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#building-identity" class="md-nav__link">
+  <a href="#1-the-one-mental-shift-read-this-first" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Building Identity
+        1. The one mental shift (read this first)
       
     </span>
   </a>
@@ -4683,10 +4349,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#source-files-discipline-mapping" class="md-nav__link">
+  <a href="#2-the-rosetta-table-your-idioms-one-to-one" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Source Files → Discipline Mapping
+        2. The Rosetta table — your idioms, one-to-one
       
     </span>
   </a>
@@ -4694,77 +4360,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#element-census-by-discipline" class="md-nav__link">
+  <a href="#3-worked-example-completeit-line-by-line" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Element Census by Discipline
+        3. Worked example — completeIt line-by-line
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mep-quality-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MEP Quality Notes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mep-elements-outside-arc-envelope" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MEP Elements Outside ARC Envelope
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#storey-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Storey Structure
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#camera-view" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Camera / View
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#bonsaiblender-performance-125997-elements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Bonsai/Blender Performance (125,997 elements)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Bonsai/Blender Performance (125,997 elements)">
+    <nav class="md-nav" aria-label="3. Worked example — completeIt line-by-line">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#browser-performance-s231-instancedmesh-2026-04-27" class="md-nav__link">
+  <a href="#full-listing-block-for-block-against-orgcompieremodelmordercompleteit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Browser Performance — S231 InstancedMesh (2026-04-27)
+        Full listing — block-for-block against org.compiere.model.MOrder.completeIt()
       
     </span>
   </a>
@@ -4777,77 +4388,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4d5d-schedule-and-boq" class="md-nav__link">
+  <a href="#4-the-orm-question-there-is-no-x_" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4D/5D — Schedule and BOQ
+        4. The ORM question — there is no X_*
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-extract-for-newbies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How to Extract (for newbies)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How to Extract (for newbies)">
+    <nav class="md-nav" aria-label="4. The ORM question — there is no X_*">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-0-download-source-files" class="md-nav__link">
+  <a href="#non-repetition-one-construct-25-deltas" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 0 — Download source files
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-1-rename-to-standard-convention-and-copy-to-unmerged" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 1 — Rename to standard convention and copy to UNMERGED
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-extract-per-discipline-with-sub-discipline-overrides" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 2 — Extract per-discipline with sub-discipline overrides
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-verify-coordinate-scale-metres-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3 — Verify coordinate scale (metres check)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-verify-discipline-breakdown" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4 — Verify discipline breakdown
+        Non-repetition — one construct + ~25 deltas
       
     </span>
   </a>
@@ -4860,10 +4416,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#key-scripts-reference-only-do-not-modify-originals" class="md-nav__link">
+  <a href="#5-write-path-in-detail-why-save-became-append" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Key Scripts (reference only — do not modify originals)
+        5. Write path in detail — why "save" became "append"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-read-path-its-just-sql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Read path — it's just SQL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-prior-art-whats-standard-whats-ours" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Prior art — what's standard, what's ours
       
     </span>
   </a>
@@ -4890,542 +4468,357 @@
   
 
 
-<h1 id="ltu-a-house-analysis-ltu_ahouse_ifc">LTU A-House Analysis — LTU_AHouse_*.ifc<a class="headerlink" href="#ltu-a-house-analysis-ltu_ahouse_ifc" title="Permanent link">&para;</a></h1>
+<h1 id="erp-rosetta-stone-idempiere-javaorm-the-fold-engine">ERP Rosetta Stone — iDempiere (Java/ORM) → the Fold Engine<a class="headerlink" href="#erp-rosetta-stone-idempiere-javaorm-the-fold-engine" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../WorkOrderGuide/">WorkOrderGuide</a></p>
+<p><strong>What this is.</strong> A translation table for a legacy iDempiere/Compiere developer. You know
+<code>PO.get/set/save</code>, <code>Query</code>, <code>MOrder.completeIt()</code>, <code>Doc_Order</code>. This page maps each idiom to its
+exact counterpart in the browser <strong>Fold Engine</strong> (<code>build/erp/*.js</code> + the <code>kernel_ops</code> log), so you can
+read the new code against the mental model you already have.</p>
+<p><strong>Not</strong> the BIM <a href="../RedPillRosetta/">Red Pill Rosetta</a> (that one is about pristine-IFC re-model truth).
+This is the <em>ERP dictionary</em>: iDempiere Java ⇄ AD-as-data fold.</p>
+<p><strong>Companions:</strong> <a href="../ERP_COVERAGE_MATRIX/">Coverage Matrix</a> (which surfaces are proven equivalent) ·
+<a href="../FoldEngineQuality/">Fold-Engine Code Quality</a> (how the witnesses are graded) ·
+<a href="../MigrateComparisonPaper/">Migrate &amp; Compare</a> (the thesis &amp; honesty panel).</p>
 </blockquote>
-<p><strong>LTU A-House — Swedish multi-discipline residential (9 source IFC files, 125,997 elements)</strong></p>
-<p><strong>Source:</strong> TIB/duraark archive — <code>LTU_A-House_2014-09-25_ifc.zip</code>
-<strong>Downloaded:</strong> 2026-04-06
-<strong>Extracted:</strong> 2026-04-06 (session S148+)</p>
 <hr />
-<h2 id="building-identity">Building Identity<a class="headerlink" href="#building-identity" title="Permanent link">&para;</a></h2>
+<h2 id="1-the-one-mental-shift-read-this-first">1. The one mental shift (read this first)<a class="headerlink" href="#1-the-one-mental-shift-read-this-first" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Property</th>
-<th>Value</th>
+<th></th>
+<th>iDempiere (today)</th>
+<th>Fold Engine</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Name</td>
-<td>LTU A-House (Luleå University of Technology)</td>
+<td><strong>System of record</strong></td>
+<td>the <strong>database</strong> — rows are the truth, updated in place</td>
+<td>the <strong>op-log</strong> (<code>kernel_ops</code>) — an append-only, signed, hash-chained list of operations</td>
 </tr>
 <tr>
-<td>IFC version</td>
-<td>IFC2x3</td>
+<td><strong>The SQLite tables</strong></td>
+<td><em>are</em> the truth</td>
+<td>are a <strong>projection</strong> — re-materialised by <em>folding</em> the op-log</td>
 </tr>
 <tr>
-<td>Country</td>
-<td>Sweden</td>
+<td><strong>A write</strong></td>
+<td>mutate a <code>PO</code>, <code>save()</code> runs <code>INSERT/UPDATE</code></td>
+<td><strong>emit a signed op</strong>; the fold rewrites the row</td>
 </tr>
 <tr>
-<td>Authoring tool</td>
-<td>Various (Revit MEP + ArchiCAD)</td>
+<td><strong>A read</strong></td>
+<td><code>PO</code>/<code>Query</code> over the live tables</td>
+<td><strong>plain SQL</strong> over the folded projection</td>
 </tr>
 <tr>
-<td>Type</td>
-<td>Residential — multi-storey with full MEP</td>
-</tr>
-<tr>
-<td>Total elements</td>
-<td>125,997</td>
-</tr>
-<tr>
-<td>Disciplines</td>
-<td>ARC, STR, VOID, VENT, HVAC, HEAT, PLB, SAN</td>
-</tr>
-<tr>
-<td>Language</td>
-<td>Swedish (element names, material names)</td>
-</tr>
-<tr>
-<td>Reference DB</td>
-<td><code>DAGCompiler/lib/input/LTU_AHouse_extracted.db</code></td>
-</tr>
-<tr>
-<td>Source IFC dir</td>
-<td><code>DAGCompiler/lib/input/IFC/UNMERGED/LTU_AHouse_*.ifc</code></td>
+<td><strong>The model class</strong></td>
+<td>generated <code>X_*</code> Java per table</td>
+<td><strong>none</strong> — the AD metadata + one interpreter replace it</td>
 </tr>
 </tbody>
 </table>
+<p>So: <strong><code>get()</code> reads the projection. <code>set()+save()</code> becomes "append an op."</strong> The database is no longer
+where truth lives — it is the folded <em>view</em> of the log. This is event sourcing / CQRS (see §7) applied to
+the iDempiere model. Nothing exotic; the novelty is <em>which</em> model gets folded.</p>
 <hr />
-<h2 id="source-files-discipline-mapping">Source Files → Discipline Mapping<a class="headerlink" href="#source-files-discipline-mapping" title="Permanent link">&para;</a></h2>
-<p>The zip contained 9 IFC files with Swedish system names, mapped as follows:</p>
+<h2 id="2-the-rosetta-table-your-idioms-one-to-one">2. The Rosetta table — your idioms, one-to-one<a class="headerlink" href="#2-the-rosetta-table-your-idioms-one-to-one" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Original filename</th>
-<th>Renamed to</th>
-<th>Discipline tag</th>
+<th>Legacy iDempiere Java</th>
+<th>Fold Engine (SQLite/JS)</th>
+<th>Where</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>LTU_A-House_redesign.ifc</td>
-<td>LTU_AHouse_ARC.ifc</td>
-<td>ARC</td>
+<td><code>MOrder o = new MOrder(ctx, id, trx)</code></td>
+<td><code>db.exec('SELECT * FROM c_order WHERE c_order_id=?',[id])[0]</code> — no object wrapper required</td>
+<td>the folded projection</td>
 </tr>
 <tr>
-<td>LTU_A-House_K-modell.ifc</td>
-<td>LTU_AHouse_STR.ifc</td>
-<td>STR</td>
-</tr>
-<tr>
-<td>LTU_A-House_VOIDS.ifc</td>
-<td>LTU_AHouse_VOID.ifc</td>
-<td>VOID</td>
-</tr>
-<tr>
-<td>LTU_A-House_Air.ifc</td>
-<td>LTU_AHouse_AIR.ifc</td>
-<td>VENT</td>
-</tr>
-<tr>
-<td>LTU_A-House_Ducting.ifc</td>
-<td>LTU_AHouse_DUCT.ifc</td>
-<td>VENT</td>
-</tr>
-<tr>
-<td>LTU_A-House_Cooling.ifc</td>
-<td>LTU_AHouse_COOL.ifc</td>
-<td>HVAC</td>
-</tr>
-<tr>
-<td>LTU_A-House_Heating.ifc</td>
-<td>LTU_AHouse_HEAT.ifc</td>
-<td>HEAT</td>
-</tr>
-<tr>
-<td>LTU_A-House_Plumbing.ifc</td>
-<td>LTU_AHouse_PLB.ifc</td>
-<td>PLB</td>
-</tr>
-<tr>
-<td>LTU_A-House_Sanitation.ifc</td>
-<td>LTU_AHouse_SAN.ifc</td>
-<td>SAN</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p><strong>Note:</strong> There is no standalone ARC file in the zip. The <code>redesign</code> file (173MB, largest) is the architectural model.</p>
-</blockquote>
-<hr />
-<h2 id="element-census-by-discipline">Element Census by Discipline<a class="headerlink" href="#element-census-by-discipline" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Discipline</th>
-<th>Count</th>
-<th>Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>VENT</td>
-<td>~24,490</td>
-<td>AIR + DUCT combined — ducts, fittings, diffusers</td>
-</tr>
-<tr>
-<td>HVAC</td>
-<td>~16,570</td>
-<td>Cooling system — pipes, fittings, terminals</td>
-</tr>
-<tr>
-<td>HEAT</td>
-<td>~27,380</td>
-<td>Heating — steel pipes DIN 2394, radiator valves</td>
-</tr>
-<tr>
-<td>PLB</td>
-<td>~?</td>
-<td>Copper pipe, PEX, water supply</td>
-</tr>
-<tr>
-<td>SAN</td>
-<td>~?</td>
-<td>Drainage — PP/HT, ground drain</td>
-</tr>
-<tr>
-<td>ARC</td>
-<td>36,754</td>
-<td>Walls, windows, doors, slabs — Swedish materials</td>
-</tr>
-<tr>
-<td>STR</td>
-<td>5,496</td>
-<td>K-modell structural</td>
-</tr>
-<tr>
-<td>VOID</td>
-<td>~?</td>
-<td>IfcOpeningElement</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p>Exact counts per sub-discipline visible after extraction: <code>sqlite3 LTU_AHouse_extracted.db "SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC;"</code></p>
-</blockquote>
-<hr />
-<h2 id="mep-quality-notes">MEP Quality Notes<a class="headerlink" href="#mep-quality-notes" title="Permanent link">&para;</a></h2>
-<p>All MEP IFC classes are generic (<code>IfcFlowSegment</code>, <code>IfcFlowFitting</code>, <code>IfcFlowTerminal</code>, <code>IfcFlowController</code>).
-Sub-discipline differentiation is <strong>NOT</strong> possible from IFC class alone — all would map to "MEP".
-It IS possible from:
-1. <strong>Source filename</strong> (most reliable — used here via <code>--disc-map</code>)
-2. <strong><code>element_type</code> name</strong> (Swedish product names, covers named terminals/controllers)
-3. <strong>Material name</strong> (Swedish material codes, partial coverage)</p>
-<p>The <code>element_type</code> field carries rich Swedish product names for terminals and controllers
-(e.g. <code>Fagerhult Closs Beta</code> = ELEC light, <code>RADITRIM A-15</code> = HEAT radiator trim,
-<code>Spiro kanaler, Frzinkade</code> = VENT spiral duct, <code>Inomhusavlopp PP/HT</code> = SAN drain).
-Most segments/fittings (bulk pipe/duct runs) have no element_type — source filename is the
-only reliable tag for those.</p>
-<hr />
-<h2 id="mep-elements-outside-arc-envelope">MEP Elements Outside ARC Envelope<a class="headerlink" href="#mep-elements-outside-arc-envelope" title="Permanent link">&para;</a></h2>
-<p>Some MEP elements are positioned beyond the architectural building footprint.
-This is genuine IFC content from the source files, not an extraction error.
-Verified: center coordinates match rtree bboxes (0 mismatches across all outliers).</p>
-<table>
-<thead>
-<tr>
-<th>Discipline</th>
-<th>Inside ARC</th>
-<th>Outside ARC</th>
-<th>%Out</th>
-<th>What</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>ARC</td>
-<td>9,712</td>
-<td>0</td>
-<td>0%</td>
+<td><code>o.getC_BPartner_ID()</code> / <code>o.get_Value("…")</code></td>
+<td><code>row.c_bpartner_id</code> — read the column off the result row</td>
 <td>—</td>
 </tr>
 <tr>
-<td>STR</td>
-<td>6,965</td>
-<td>0</td>
-<td>0%</td>
+<td><code>o.setC_BPartner_ID(123)</code></td>
+<td>stage on the entry, but the durable form is an op: <code>CRUD_UPDATE {table:'C_Order', id, set:{C_BPartner_ID:123}}</code></td>
+<td><code>crud_overlay.js</code></td>
+</tr>
+<tr>
+<td><code>o.save()</code> (validate → beforeSave → INSERT/UPDATE → afterSave)</td>
+<td><code>KernelOps.commitOp(db,'CRUD_UPDATE'\|'CRUD_CREATE', params)</code> → op appended (signed+chained), fold applies it. Field rules (type/readonly/required/default/valrule) gate <strong>before</strong> apply; <code>AdModelVal.fireHooks('BEFORE_SAVE',…)</code> runs the validators</td>
+<td><code>kernel_ops.js</code>, <code>crud_overlay.js</code>, <code>ad_modelval.js</code></td>
+</tr>
+<tr>
+<td><code>new Query(ctx,"C_OrderLine","C_Order_ID=?",trx).list()</code></td>
+<td><code>db.exec('SELECT * FROM c_orderline WHERE c_order_id=?',[id])</code> — you write the SQL</td>
 <td>—</td>
 </tr>
 <tr>
-<td>HEAT</td>
-<td>22,251</td>
-<td>252</td>
-<td>1.1%</td>
-<td>Copper pipe runs, heat exchangers extending south</td>
+<td>TableDir / Search FK lookup (<code>MLookup</code>)</td>
+<td><code>AdReference.readRefTable(refId)</code> → FK table+key; <code>AdReference.fkExists(refId,id)</code> → membership; <code>AdValRule</code> applies the <code>@token@</code> WHERE filter</td>
+<td><code>ad_reference.js</code>, <code>ad_valrule.js</code></td>
 </tr>
 <tr>
-<td>VENT</td>
-<td>20,125</td>
-<td>512</td>
-<td>2.5%</td>
-<td>Duct runs, air terminals south of building</td>
+<td>Field callout (<code>CalloutOrder.product/.amt</code>)</td>
+<td><code>AdCallout</code> dispatch — <code>class.method</code> → JS registry, fires on field change → derived siblings</td>
+<td><code>ad_callout.js</code></td>
 </tr>
 <tr>
-<td>VOID</td>
-<td>1,170</td>
-<td>10</td>
-<td>0.8%</td>
+<td><code>o.processIt(ACTION_Complete)</code> / <code>MOrder.completeIt()</code></td>
+<td>a fold recipe: <code>KernelOps.commitGroup(db, [DOC_ACTION CO, {POST}, …childOps])</code> — one signed op-group, whole-or-none</td>
+<td><code>erp_engine.completeIt</code>, <code>kernel_ops.commitGroup</code></td>
+</tr>
+<tr>
+<td><code>new MInOut(...).save()</code> / <code>new MInvoice(...).save()</code> inside <code>completeIt</code></td>
+<td><code>buildDoc('M_InOut',…)</code> / <code>buildDoc('C_Invoice',…)</code> — <strong>the same parametric verb</strong>, recursed (not a class each)</td>
+<td><code>erp_engine.buildDoc</code></td>
+</tr>
+<tr>
+<td><code>Doc_Order.createFacts(MAcctSchema)</code> (posting)</td>
+<td><code>post_resolver</code> / <code>postRecipe('C_Order',order,lines)</code> → DR/CR derived from AD config, ΣDR==ΣCR</td>
+<td><code>erp_engine.js</code>, <code>post_resolver.js</code></td>
+</tr>
+<tr>
+<td><code>MFactAcct</code> rows</td>
+<td><code>fact_acct</code> rows in the projection, produced by the <code>POST</code> op's fold</td>
 <td>—</td>
 </tr>
 <tr>
-<td>PLB</td>
-<td>29,638</td>
-<td>1,705</td>
-<td>5.4%</td>
-<td>Roof drains (CGVa 100) at outfall locations, external spiral ducts</td>
+<td><code>reverseCorrectIt()</code> / <code>voidIt()</code></td>
+<td><code>reversePosting</code> pure verb (swap Dr↔Cr) inside a <code>DOC_ACTION</code> group; FSM CO→RE</td>
+<td><code>erp_engine.reversePosting</code>, <code>ad_docfsm.js</code></td>
 </tr>
 <tr>
-<td>SAN</td>
-<td>11,840</td>
-<td>838</td>
-<td>6.6%</td>
-<td>Underground drainage (Ljuddmpat Inomhusavlopp), copper service runs</td>
+<td><code>MStorageOnHand</code> current qty</td>
+<td><code>qtyOnHand</code> = <code>Σ(movementSign(type)×|qty|)</code> folded from <code>m_transaction</code></td>
+<td><code>erp_engine.qtyOnHand/movementSign</code></td>
 </tr>
 <tr>
-<td>HVAC</td>
-<td>17,709</td>
-<td>3,270</td>
-<td>15.6%</td>
-<td>Cooling pipe runs (Kopparrr hrda raka SS-EN1057), pipe insulation south of ARC</td>
+<td>Model Validator (<code>ModelValidationEngine</code>)</td>
+<td><code>AdModelVal.fireHooks(timing,…)</code> — BEFORE/AFTER × NEW/SAVE/DELETE + PREPARE/COMPLETE/VOID</td>
+<td><code>ad_modelval.js</code></td>
+</tr>
+<tr>
+<td>DocAction state machine (<code>DocumentEngine</code>)</td>
+<td><code>AdDocFsm.legalActions / transition</code> (data-driven FSM)</td>
+<td><code>ad_docfsm.js</code></td>
 </tr>
 </tbody>
 </table>
-<p>The HVAC outliers cluster at Y=-27 to -58 (south of ARC at Y=-18), spread across Plan 1-3.
-The PLB extreme outliers (X=200+, Y=100+) are roof drain terminals (<code>CGVa 100</code>) and
-air handling units (<code>IQFH-300</code>) modelled at external plant/outfall positions.</p>
-<p>This is typical for Swedish multi-discipline buildings where MEP engineers model the full
-service route including external connections, underground drainage, and detached plant rooms
-beyond the architectural envelope.</p>
-<p>The Java <code>ExtractionPostProcessor</code> flags these automatically in its forensic log
-(&gt;5% outside = <code>INVESTIGATE</code>).</p>
+<p><strong>Real op-types the kernel accepts</strong> (so you can read a log): <code>CRUD_CREATE</code>, <code>CRUD_UPDATE</code>, <code>CRUD_DELETE</code>
+(the <code>PO.save</code> grain) · <code>CREATE_DOCUMENT</code>, <code>CREATE_LINE</code> (<code>buildDoc</code>) · <code>DOC_ACTION</code>, <code>SET_STATUS</code> (doc
+actions) · <code>POST</code> (posting) · <code>CONSUME</code>, <code>ENACT_MOVE</code> (inventory/production).</p>
 <hr />
-<h2 id="storey-structure">Storey Structure<a class="headerlink" href="#storey-structure" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Storey name</th>
-<th>Element count</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Plan 1</td>
-<td>31,010</td>
-</tr>
-<tr>
-<td>Plan 2</td>
-<td>23,642</td>
-</tr>
-<tr>
-<td>Plan 3</td>
-<td>15,683</td>
-</tr>
-<tr>
-<td>Plan 4</td>
-<td>9,347</td>
-</tr>
-<tr>
-<td>Storey 1–3</td>
-<td>~4,060</td>
-</tr>
-<tr>
-<td>TAKPLAN (roof)</td>
-<td>5</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="camera-view">Camera / View<a class="headerlink" href="#camera-view" title="Permanent link">&para;</a></h2>
+<h2 id="3-worked-example-completeit-line-by-line">3. Worked example — <code>completeIt</code> line-by-line<a class="headerlink" href="#3-worked-example-completeit-line-by-line" title="Permanent link">&para;</a></h2>
+<p>Your legacy call:</p>
+<div class="highlight"><pre><span></span><code><span class="n">MOrder</span><span class="w"> </span><span class="n">o</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MOrder</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span><span class="w"> </span><span class="n">C_Order_ID</span><span class="p">,</span><span class="w"> </span><span class="n">trx</span><span class="p">);</span>
+<span class="n">o</span><span class="p">.</span><span class="na">processIt</span><span class="p">(</span><span class="n">DocAction</span><span class="p">.</span><span class="na">ACTION_Complete</span><span class="p">);</span><span class="w">   </span><span class="c1">// MOrder.completeIt(): validators → create MInOut + MInvoice → Doc_Order posts</span>
+<span class="n">o</span><span class="p">.</span><span class="na">save</span><span class="p">();</span>
+</code></pre></div>
+<p>The Fold-Engine equivalent (this is real engine shape — see <code>scripts/poc_fold_complete.js</code>, W-FOLD-COMPLETE):</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">CrudOverlay</span><span class="p">.</span><span class="nx">docActionOutcome</span><span class="p">(</span><span class="nx">entry</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">).</span><span class="nx">to</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="w"> </span><span class="p">};</span><span class="w">       </span><span class="c1">// FSM: is CO legal here?</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">AdModelVal</span><span class="p">.</span><span class="nx">fireHooks</span><span class="p">(</span><span class="s1">&#39;BEFORE_COMPLETE&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">…</span><span class="w"> </span><span class="p">}).</span><span class="nx">ok</span><span class="p">)</span><span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">blocked</span><span class="w"> </span><span class="p">};</span><span class="w">      </span><span class="c1">// the SAME validators</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">childOps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">...</span><span class="nx">buildDoc</span><span class="p">(</span><span class="s1">&#39;M_InOut&#39;</span><span class="p">,</span><span class="w">   </span><span class="err">…</span><span class="p">),</span><span class="w">                                       </span><span class="c1">// ship  ┐ same verb,</span>
+<span class="w">                   </span><span class="p">...</span><span class="nx">buildDoc</span><span class="p">(</span><span class="s1">&#39;C_Invoice&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">…</span><span class="p">)</span><span class="w"> </span><span class="p">];</span><span class="w">                                     </span><span class="c1">// invoice┘ recursed</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">post</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="nx">postRecipe</span><span class="p">(</span><span class="s1">&#39;C_Order&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">,</span><span class="w"> </span><span class="nx">lines</span><span class="p">);</span><span class="w">          </span><span class="c1">// DR/CR derived from AD config, ΣDR==ΣCR</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">group</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">DOC_ACTION</span><span class="o">:</span><span class="s1">&#39;CO&#39;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">op</span><span class="o">:</span><span class="s1">&#39;POST&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">post</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">...</span><span class="nx">childOps</span><span class="w"> </span><span class="p">];</span>
+<span class="k">return</span><span class="w"> </span><span class="nx">KernelOps</span><span class="p">.</span><span class="nx">commitGroup</span><span class="p">(</span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">group</span><span class="p">);</span><span class="w">                    </span><span class="c1">// ONE signed, hash-chained op-group (whole-or-none)</span>
+</code></pre></div>
+<p>What maps to what:</p>
 <ul>
-<li><strong>Centre:</strong> (23.67m, 55.69m, 9.00m)</li>
-<li><strong>View distance:</strong> 410.6m</li>
-<li>Coordinates are in <strong>metres</strong> — ifcopenshell <code>USE_WORLD_COORDS=True</code> converts from
-  native IFC units (mm) to metres during extraction. No post-hoc scaling needed.</li>
+<li><code>o.processIt</code> legality → <code>CrudOverlay.docActionOutcome</code> (the <code>ad_docfsm</code> legal-action set). iDempiere's
+  <code>DocumentEngine.getValidActions</code> parsed at runtime; <strong>proven equivalent</strong> (W-MORDER-FSM).</li>
+<li><code>MOrder.beforeSave</code> / doc validators → <code>AdModelVal.fireHooks</code> — a non-null error <strong>aborts</strong>, same contract
+  as <code>save()</code> returning false (W-MODELVAL, W-MORDER-SAVE: <code>MOrder.java:1183-1396</code> as 11 cited hooks).</li>
+<li><code>new MInOut(...).save()</code> + <code>new MInvoice(...).save()</code> → <code>buildDoc(...)</code> <strong>twice</strong> — one parametric verb, not
+  two model classes. The fan-out lines == real <code>m_inoutline</code> / <code>c_invoiceline</code> (W-FOLD-COMPLETE).</li>
+<li><code>Doc_Order.createFacts</code> → <code>postRecipe</code> — the invoice journal == <code>fact_acct(318)</code> to the cent, <code>maxDiff=0c</code>.</li>
+<li><code>o.save()</code> (one JDBC commit) → <code>commitGroup</code> (one <strong>signed</strong> op-group). Either <em>all</em> of CO+POST+ship+invoice
+  fold, or none — the torn-group gate (W-CHAIN). iDempiere gives you a DB transaction; the Fold Engine gives
+  you a transaction <strong>plus</strong> a tamper-evident, signable, distributable record of <em>what</em> happened.</li>
+</ul>
+<h3 id="full-listing-block-for-block-against-orgcompieremodelmordercompleteit">Full listing — block-for-block against <code>org.compiere.model.MOrder.completeIt()</code><a class="headerlink" href="#full-listing-block-for-block-against-orgcompieremodelmordercompleteit" title="Permanent link">&para;</a></h3>
+<p>Every effect is an op appended to the signed log; status and the books are a <em>fold</em> of those ops. Commits
+whole or none. (This is the listing the <a href="../MigrateComparisonPaper/#gap-in-code">Migrate &amp; Compare paper</a>
+points here for — its home is this dictionary.)</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// MOrder.completeIt() folded onto the signed op-log. Java: MOrder.completeIt (~250 LOC, getX/setX/saveEx/SQL).</span>
+<span class="c1">// Every effect is an OP appended to the log; status &amp; books are a FOLD of those ops. Commits WHOLE or NONE.</span>
+<span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">completeIt</span><span class="p">(</span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">getLines</span><span class="p">(</span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">);</span><span class="w">                                   </span><span class="c1">// C_OrderLine rows — DATA (the X_ layer)</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">entry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">descriptorFor</span><span class="p">(</span><span class="s1">&#39;c_order&#39;</span><span class="p">);</span><span class="w">                             </span><span class="c1">// crud_ops.json field descriptor — DATA</span>
+
+<span class="w">  </span><span class="c1">// [Java] &quot;Just prepare&quot; / re-check → CO iff prereqs met, else InProgress</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">CrudOverlay</span><span class="p">.</span><span class="nx">docActionOutcome</span><span class="p">(</span><span class="nx">entry</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">);</span><span class="w">            </span><span class="c1">// {action,from,to,outcome,unmet}</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">out</span><span class="p">.</span><span class="nx">to</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="nx">out</span><span class="p">.</span><span class="nx">to</span><span class="p">,</span><span class="w"> </span><span class="nx">unmet</span><span class="o">:</span><span class="w"> </span><span class="nx">out</span><span class="p">.</span><span class="nx">unmet</span><span class="w"> </span><span class="p">};</span>
+
+<span class="w">  </span><span class="c1">// [Java] fireDocValidate(TIMING_BEFORE_COMPLETE) — real MOrder.hasLines / total≥0, first error aborts</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="nx">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">AdModelVal</span><span class="p">.</span><span class="nx">fireHooks</span><span class="p">(</span><span class="s1">&#39;BEFORE_COMPLETE&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">table</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;C_Order&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">record</span><span class="o">:</span><span class="w"> </span><span class="nx">order</span><span class="p">,</span><span class="w"> </span><span class="nx">lineCount</span><span class="o">:</span><span class="w"> </span><span class="nx">lines</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="p">});</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">v</span><span class="p">.</span><span class="nx">ok</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;IN&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">blocked</span><span class="o">:</span><span class="w"> </span><span class="nx">v</span><span class="p">.</span><span class="nx">blocked</span><span class="p">,</span><span class="w"> </span><span class="nx">msg</span><span class="o">:</span><span class="w"> </span><span class="nx">v</span><span class="p">.</span><span class="nx">error</span><span class="w"> </span><span class="p">};</span>
+
+<span class="w">  </span><span class="c1">// [Java] implicit approval</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">order</span><span class="p">.</span><span class="nx">IsApproved</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">)</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">IsApproved</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">;</span>
+
+<span class="w">  </span><span class="c1">// [Java] CO must be legal for this C_DocType at this status, then DR/IP → CO</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">AdDocFsm</span><span class="p">.</span><span class="nx">legalActions</span><span class="p">(</span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">C_DocType_ID</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">DocStatus</span><span class="p">).</span><span class="nx">includes</span><span class="p">(</span><span class="s1">&#39;CO&#39;</span><span class="p">))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;IN&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">msg</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;CO not legal from &#39;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">DocStatus</span><span class="w"> </span><span class="p">};</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">toStatus</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">AdDocFsm</span><span class="p">.</span><span class="nx">transition</span><span class="p">(</span><span class="s1">&#39;CO&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">DocStatus</span><span class="p">);</span><span class="w">       </span><span class="c1">// → &#39;CO&#39;</span>
+
+<span class="w">  </span><span class="c1">// [Java] createCounterDoc / createShipment / createInvoice — the archetype RECURSES (buildDoc = the same verb)</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">childOps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[];</span>
+<span class="w">  </span><span class="c1">// TODO (H-1): if (autoGenerateInOut(dt, order))   childOps.push(...(await buildDoc(db,&#39;M_InOut&#39;, order,lines,true)).ops);</span>
+<span class="w">  </span><span class="c1">// TODO (H-1): if (autoGenerateInvoice(dt, order)) childOps.push(...(await buildDoc(db,&#39;C_Invoice&#39;,order,lines)).ops);</span>
+
+<span class="w">  </span><span class="c1">// [Java] posting (Doc_Order at post time): derive DR/CR; accounts resolved from AD acct-config (DATA); ΣDR==ΣCR</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">acct</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">acctSchema</span><span class="p">(</span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">AD_Client_ID</span><span class="p">);</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">post</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">postRecipe</span><span class="p">(</span><span class="s1">&#39;C_Order&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">,</span><span class="w"> </span><span class="nx">lines</span><span class="p">).</span><span class="nx">map</span><span class="p">(</span><span class="nx">l</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">({</span>
+<span class="w">    </span><span class="nx">account_id</span><span class="o">:</span><span class="w"> </span><span class="nx">post_resolver</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">l</span><span class="p">.</span><span class="nx">token</span><span class="p">,</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">acct</span><span class="p">),</span><span class="w">   </span><span class="c1">// account-token → real account</span>
+<span class="w">    </span><span class="nx">amtacctdr</span><span class="o">:</span><span class="w">  </span><span class="nx">l</span><span class="p">.</span><span class="nx">dr</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="nx">amtacctcr</span><span class="o">:</span><span class="w"> </span><span class="nx">l</span><span class="p">.</span><span class="nx">cr</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="p">}));</span>
+
+<span class="w">  </span><span class="c1">// [Java] setDocStatus(Completed) + the implicit Postgres txn → ONE signed, hash-chained op-group</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">action</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">CrudOverlay</span><span class="p">.</span><span class="nx">buildOp</span><span class="p">(</span><span class="s1">&#39;process&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">entry</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="nx">order</span><span class="p">,</span><span class="w"> </span><span class="nx">DocStatus</span><span class="o">:</span><span class="w"> </span><span class="nx">toStatus</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">order</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">id</span><span class="w"> </span><span class="p">});</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">group</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="nx">CrudOverlay</span><span class="p">.</span><span class="nx">buildDocActionGroup</span><span class="p">(</span><span class="nx">action</span><span class="p">);</span><span class="w">            </span><span class="c1">// [DOC_ACTION, …]</span>
+<span class="w">  </span><span class="nx">group</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="w"> </span><span class="nx">op_type</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;POST&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">parameters</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">lines</span><span class="o">:</span><span class="w"> </span><span class="nx">post</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">...</span><span class="nx">childOps</span><span class="p">);</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">res</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">KernelOps</span><span class="p">.</span><span class="nx">commitGroup</span><span class="p">(</span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">group</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">baseTs</span><span class="o">:</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">ts</span><span class="w"> </span><span class="p">});</span><span class="w">   </span><span class="c1">// all-or-none</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">res</span><span class="p">.</span><span class="nx">committed</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;IN&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">msg</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;torn group: &#39;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">res</span><span class="p">.</span><span class="nx">reason</span><span class="w"> </span><span class="p">};</span>
+
+<span class="w">  </span><span class="c1">// [Java] fireDocValidate(TIMING_AFTER_COMPLETE)</span>
+<span class="w">  </span><span class="nx">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">AdModelVal</span><span class="p">.</span><span class="nx">fireHooks</span><span class="p">(</span><span class="s1">&#39;AFTER_COMPLETE&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">table</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;C_Order&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">record</span><span class="o">:</span><span class="w"> </span><span class="nx">order</span><span class="p">,</span><span class="w"> </span><span class="nx">lineCount</span><span class="o">:</span><span class="w"> </span><span class="nx">lines</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="p">});</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">v</span><span class="p">.</span><span class="nx">ok</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;IN&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">msg</span><span class="o">:</span><span class="w"> </span><span class="nx">v</span><span class="p">.</span><span class="nx">error</span><span class="w"> </span><span class="p">};</span>
+
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">gid</span><span class="o">:</span><span class="w"> </span><span class="nx">res</span><span class="p">.</span><span class="nx">gid</span><span class="p">,</span><span class="w"> </span><span class="nx">tip</span><span class="o">:</span><span class="w"> </span><span class="nx">res</span><span class="p">.</span><span class="nx">tip</span><span class="w"> </span><span class="p">};</span><span class="w">               </span><span class="c1">// Completed, signed, replayable</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Shipped primitives it stands on</strong> (real source — <code>feat/erp-substrate-phase012</code>):</p>
+<ul>
+<li><code>KernelOps.commitGroup</code> — atomic all-or-none, hash-chained, signed op-group → <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/kernel_ops.js">build/erp/kernel_ops.js</a></li>
+<li><code>AdModelVal.fireHooks</code> — BEFORE/AFTER_COMPLETE validators (port of <code>fireDocValidate</code>) → <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/ad_modelval.js">build/erp/ad_modelval.js</a></li>
+<li><code>AdDocFsm.legalActions</code> / <code>transition</code> — the legal-action FSM (port of <code>DocumentEngine</code>) → <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/ad_docfsm.js">build/erp/ad_docfsm.js</a></li>
+<li><code>post_resolver.resolve</code> — account-token → real account from AD acct-config → <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/scripts/post_resolver.js">scripts/post_resolver.js</a></li>
+<li><code>CrudOverlay.docActionOutcome</code> / <code>buildOp</code> / <code>buildDocActionGroup</code> — prepare outcome + op-group staging → <a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/crud_overlay.js">build/erp/crud_overlay.js</a></li>
+</ul>
+<p><strong>Still to fold</strong> (named, not built — the H-1 work): <code>buildDoc('M_InOut'/'C_Invoice', …)</code> auto-ship/auto-invoice
+recursion, <code>createCounterDoc</code> (intercompany), reservation edge cases, landed cost. Tracked in
+<code>prompts/HARDEN_MATRIX.md</code>. Witness <strong>W-FOLD-COMPLETE</strong> <code>maxDiff=0c</code>.</p>
+<p><strong>What it demonstrates:</strong> (1) <strong>~50 JS vs ~250 Java</strong> — the getX/setX/saveEx, SQL and try-catch boilerplate
+drops; only the business decisions remain. (2) <strong>"MOrder + deltas" is right here</strong> —
+<code>createShipment</code>/<code>createInvoice</code> are <code>buildDoc('M_InOut'/'C_Invoice')</code>, the <em>same</em> archetype verb recursing one
+level down; MInOut's only real delta is <code>reserveStock</code>+locator. (3) <strong>Both folds in one function</strong> — the body is
+<em>code</em> (Java→compact verbs); what it <em>emits</em> is <em>ops</em> = <em>data</em>; <code>DocStatus</code> and the trial balance are a <em>fold</em>
+over that data.</p>
+<hr />
+<h2 id="4-the-orm-question-there-is-no-x_">4. The ORM question — there is no <code>X_*</code><a class="headerlink" href="#4-the-orm-question-there-is-no-x_" title="Permanent link">&para;</a></h2>
+<p>In iDempiere, <code>X_C_Order</code> is that table's rules <strong>compiled into Java</strong>: typed getters/setters, FK references,
+<code>beforeSave</code>. Change them → regenerate the class → redeploy.</p>
+<p>The Fold Engine keeps those same rules as <strong>AD data</strong> and interprets them with one engine:</p>
+<table>
+<thead>
+<tr>
+<th>What the <code>X_*</code>/<code>M*</code> class carried</th>
+<th>Where it lives now (as data)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>column type / default / readonly / mandatory</td>
+<td><code>ad_column</code> (+ <code>ad_field</code> display) → <code>crud_overlay</code></td>
+</tr>
+<tr>
+<td>FK reference / lookup</td>
+<td><code>ad_reference</code> (<code>readRefTable</code>/<code>fkExists</code>)</td>
+</tr>
+<tr>
+<td>lookup filter (validation rule)</td>
+<td><code>ad_val_rule</code> (<code>ad_valrule</code> token-substitute + WHERE)</td>
+</tr>
+<tr>
+<td>field-change derivation (callout)</td>
+<td><code>ad_callout</code></td>
+</tr>
+<tr>
+<td><code>beforeSave</code>/<code>afterSave</code> invariants</td>
+<td><code>ad_modelval</code> timing hooks</td>
+</tr>
+<tr>
+<td>DocAction state machine</td>
+<td><code>ad_docfsm</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Consequence:</strong> no codegen, no column-sync, no app-server restart. Editing the dictionary is a <em>data</em> edit;
+the renderer re-paints from the rows. (The one cost: a genuinely new field needs a real SQLite column to hold
+its value — still data, still no codegen.) Each of these interpreters is <strong>oracle-diffed to <code>diff=0</code></strong> against
+the live iDempiere Postgres — see the Coverage Matrix <code>W-*-HARDEN</code> rows.</p>
+<h3 id="non-repetition-one-construct-25-deltas">Non-repetition — one construct + ~25 deltas<a class="headerlink" href="#non-repetition-one-construct-25-deltas" title="Permanent link">&para;</a></h3>
+<p>In iDempiere each of ~496 <code>M*</code> classes carries its <em>own</em> <code>completeIt</code>/<code>prepareIt</code>/<code>createFacts</code>, wrapped in
+<code>getX</code>/<code>setX</code>/<code>saveEx</code>/JDBC boilerplate — that boilerplate <em>is</em> the repetition. In the Fold Engine the boilerplate
+is gone (it was ORM plumbing), and the document lifecycle is <strong>one shared construct</strong> — <code>buildDoc</code> / <code>completeIt</code> /
+<code>postRecipe</code> / <code>commitGroup</code> — parametrized by doc type. The fold witnesses prove the reuse: they tag
+<strong><code>newVerbs=0</code></strong> (<code>W-FOLD-INVOICE</code>, <code>W-FOLD-REPLENISH</code>, <code>W-FOLD-MATCHINV</code>, <code>W-FOLD-MOVEMENT</code> each folded a <em>new</em>
+document class <strong>without adding a verb</strong>). <a href="../ERP_MODEL_ARCHETYPE/"><code>ERP_MODEL_ARCHETYPE.md</code></a> puts the number on
+it: <strong>496 <code>M*</code> / 735k LOC collapse to "MOrder archetype + ~25 deltas"</strong>.</p>
+<p><strong>Honest boundary:</strong> not literally zero-per-class. ~25 real deltas remain — <code>MInOut</code> (locator + reserve),
+<code>MPayment</code> (allocation), <code>MMovement</code> (intercompany leg), <code>MProduction</code>/<code>MInventory</code> (BOM explode/consume). But
+those are <em>small parametric branches on the shared verb</em>, not reimplemented classes: the skeleton is shared and
+non-repetitive; the genuine per-class business delta stays, tiny.</p>
+<p>The data shape collapses the same way: ~1000 <code>M*</code> tables map onto a <strong>5-table runtime</strong> — <code>containers</code>,
+<code>items</code>, <code>documents</code>, <code>document_lines</code>, <strong><code>journal</code></strong> + a <code>doc_type</code> discriminator (<a href="../ERP/"><code>ERP.md</code></a> §0,
+witness §5TBL). <strong>Two "journals", don't conflate them:</strong> <code>kernel_ops</code> is the <em>event</em> journal (the signed op-log
+/ audit trail); <strong><code>journal</code></strong> is the <em>accounting</em> journal — the universal books table every doc posts into
+regardless of class, instead of a per-class <code>Doc_X.createFacts</code>. <em>"Journal IS the books — if the journal
+balances, the books are correct; everything else is UI."</em> So the construct lives in <strong>one place</strong>, not 496.</p>
+<hr />
+<h2 id="5-write-path-in-detail-why-save-became-append">5. Write path in detail — why "save" became "append"<a class="headerlink" href="#5-write-path-in-detail-why-save-became-append" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>set field ─▶ CrudOverlay (AD_Column rules) ─▶ AdModelVal BEFORE_* hooks ─▶ commitOp/commitGroup
+                                                                              │
+                              append to kernel_ops (op_uuid, op_type, params) │  ← signed (W-SIGN)
+                              prev_hash / op_hash = SHA-256(prev | op)        │  ← chained (W-CHAIN)
+                                                                              ▼
+                                                          FOLD ─▶ SQLite projection rows
+</code></pre></div>
+<ul>
+<li><strong>Atomic group:</strong> <code>commitGroup</code> wraps N ops in one SQL transaction; an <code>expectedHash</code> mismatch commits
+  <strong>nothing</strong> (torn-group rejection).</li>
+<li><strong>Distribution:</strong> because the log is append-only + signed, an admin's change propagates by <strong>shipping the
+  appended ops</strong> ("mail the log"); another node replays/folds them to the identical state. The op-log <em>is</em> the
+  wire — there is no server of record. <em>(End-to-end AD-distribution demo is an owed witness:
+  <code>W-AD-OPLOG-DISTRIB</code>, see <code>FRONTEND_LANE_MASTER.md §OUTSTANDING</code>.)</em></li>
 </ul>
 <hr />
-<h2 id="bonsaiblender-performance-125997-elements">Bonsai/Blender Performance (125,997 elements)<a class="headerlink" href="#bonsaiblender-performance-125997-elements" title="Permanent link">&para;</a></h2>
-<p>Tested on: 30GB RAM, Intel i5-13500HX (20 cores), Blender/Bonsai</p>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>DB size</td>
-<td>232.7 MB</td>
-</tr>
-<tr>
-<td>Extraction time</td>
-<td>~20 min (9 disciplines)</td>
-</tr>
-<tr>
-<td>Blender RAM</td>
-<td>13.6 GB (44.7% of 30GB)</td>
-</tr>
-<tr>
-<td>3D navigation</td>
-<td>Smooth — no frame drops</td>
-</tr>
-<tr>
-<td>Element selection</td>
-<td>~3 sec</td>
-</tr>
-<tr>
-<td>Hide/unhide discipline</td>
-<td>Responsive</td>
-</tr>
-<tr>
-<td>Crash</td>
-<td>None</td>
-</tr>
-<tr>
-<td>Fan noise</td>
-<td>None — thermal within limits</td>
-</tr>
-</tbody>
-</table>
-<p>All 8 disciplines loaded simultaneously with full tessellated mesh. No LOD,
-no spatial culling — raw scene graph. Competitive with commercial BIM viewers
-(Navisworks, Solibri) at this element count, at zero licence cost.</p>
-<h3 id="browser-performance-s231-instancedmesh-2026-04-27">Browser Performance — S231 InstancedMesh (2026-04-27)<a class="headerlink" href="#browser-performance-s231-instancedmesh-2026-04-27" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Before S231</th>
-<th>After S231</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Draw calls</td>
-<td>122,330</td>
-<td>50,081 (<strong>59% reduction</strong>)</td>
-</tr>
-<tr>
-<td>Stream time (headless)</td>
-<td>n/a</td>
-<td>7.8s</td>
-</tr>
-<tr>
-<td>Instanced groups</td>
-<td>0</td>
-<td>10,835 (83,084 elements batched)</td>
-</tr>
-<tr>
-<td>Single meshes</td>
-<td>122,330</td>
-<td>39,246 (unique shapes)</td>
-</tr>
-</tbody>
-</table>
-<p>Desktop: near instant at 50K draw calls.</p>
-<p><strong>S232 mobile merge (2026-04-27):</strong> Single-instance meshes grouped by storey|disc|rgba
-into merged <code>BufferGeometry</code> (transform baked into vertices). Mobile detection:
-<code>maxTouchPoints &gt; 0 &amp;&amp; screen.width &lt; 1024</code>. Desktop unchanged.</p>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Desktop (S231)</th>
-<th>Mobile (S232)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Draw calls</td>
-<td>50,081</td>
-<td>~2,000 est. (95%+ reduction)</td>
-</tr>
-<tr>
-<td>Pick</td>
-<td>Per-element guid</td>
-<td>InstancedMesh → guid, merged → group info</td>
-</tr>
-<tr>
-<td>Storey/disc filter</td>
-<td>Individual mesh visibility</td>
-<td>Zero-scale matrix per instance + merged group visibility</td>
-</tr>
-</tbody>
-</table>
-<p>LTU remains the stress test — 39K unique shapes merged into ~200 groups on mobile.
-Proven on Clinic (16,070 → 729 draw calls). Storey/disc filter and pick all functional.</p>
-<blockquote>
-<p><strong>Note:</strong> MEP disciplines (PLB, HVAC, SAN, VENT) have elements extending beyond
-the ARC envelope — these are genuine external service runs (roof drains, underground
-drainage, cooling plant connections), not extraction errors. The Java post-processor
-<code>ExtractionPostProcessor</code> flags these automatically in its forensic log.</p>
-</blockquote>
+<h2 id="6-read-path-its-just-sql">6. Read path — it's just SQL<a class="headerlink" href="#6-read-path-its-just-sql" title="Permanent link">&para;</a></h2>
+<p>There is no query DSL to learn. The folded projection is ordinary SQLite, so a legacy <code>Query</code> becomes the SQL
+you already know:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// iDempiere: new Query(ctx,&quot;C_Invoice&quot;,&quot;IsPaid=&#39;N&#39; AND C_BPartner_ID=?&quot;,trx).setParameters(bp).list()</span>
+<span class="nx">db</span><span class="p">.</span><span class="nx">exec</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM c_invoice WHERE ispaid=&#39;N&#39; AND c_bpartner_id=?&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="nx">bp</span><span class="p">]);</span>
+</code></pre></div>
+<p>Lookups resolve through the AD reference layer (§4) rather than <code>MLookup</code>, but the underlying read is the same
+<code>SELECT … WHERE … IN (…)</code>.</p>
+<p><strong><code>Query()</code> has no op equivalent — by design.</strong> A <code>Query</code> is a <em>read</em>, and reads never enter the op-log (the
+CQRS split: <strong>writes → ops, reads → SQL over the projection</strong>). So <code>Query()</code> is just a <code>SELECT</code>; no op, no
+signing, no log entry. The AD-context form (Tab <code>WhereClause</code> + <code>OrderBy</code>) is <code>AdTabQuery</code> — still a <code>SELECT</code>.
+The only reads inside the <em>write</em> path are FK lookups (<code>ad_reference</code>/<code>ad_valrule</code>) that <em>inform</em> an op but
+aren't ops.</p>
 <hr />
-<h2 id="4d5d-schedule-and-boq">4D/5D — Schedule and BOQ<a class="headerlink" href="#4d5d-schedule-and-boq" title="Permanent link">&para;</a></h2>
-<p>Both 4D and 5D work on this building directly from the extracted DB.</p>
-<p><strong>4D Construction Schedule:</strong>
-<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>scripts/schedule_generator.py<span class="w"> </span>DAGCompiler/lib/input/LTU_AHouse_extracted.db
-</code></pre></div>
-Produces <code>construction_schedule</code> table + Excel export with phase distribution chart
-and discipline breakdown. Project name derived from DB filename ("LTU AHouse Construction").
-All phases populated: Substructure → Superstructure → MEP Rough-in → Architecture → MEP Final → Finishes.</p>
-<p><strong>5D BOQ/QTO:</strong>
-<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>scripts/simple_qto_extract.py<span class="w"> </span>DAGCompiler/lib/input/LTU_AHouse_extracted.db
-</code></pre></div>
-Produces <code>simple_qto</code> table: 133 line items, RM 47.4M grand total.
-Excel export with cost breakdown by discipline and cost components chart.</p>
-<p>Both scripts are copies from the Federation addon (<code>schedule/</code> and <code>boq/</code>), adapted for
-our extracted DB schema. See <code>scripts/README_extraction.md</code>
-for full details.</p>
-<hr />
-<h2 id="how-to-extract-for-newbies">How to Extract (for newbies)<a class="headerlink" href="#how-to-extract-for-newbies" title="Permanent link">&para;</a></h2>
-<h3 id="step-0-download-source-files">Step 0 — Download source files<a class="headerlink" href="#step-0-download-source-files" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>wget<span class="w"> </span>-O<span class="w"> </span>/tmp/LTU_AHouse.zip<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;https://tib.eu/data/duraark/BuildingData/03_IFC_E57/LTU_A-House_2014-09-25_ifc.zip&quot;</span>
-unzip<span class="w"> </span>/tmp/LTU_AHouse.zip<span class="w"> </span>-d<span class="w"> </span>/tmp/ltu_extract/
-</code></pre></div>
-<h3 id="step-1-rename-to-standard-convention-and-copy-to-unmerged">Step 1 — Rename to standard convention and copy to UNMERGED<a class="headerlink" href="#step-1-rename-to-standard-convention-and-copy-to-unmerged" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">DEST</span><span class="o">=</span><span class="s2">&quot;DAGCompiler/lib/input/IFC/UNMERGED&quot;</span>
-cp<span class="w"> </span>/tmp/ltu_extract/LTU_A-House_redesign.ifc<span class="w">   </span><span class="s2">&quot;</span><span class="nv">$DEST</span><span class="s2">/LTU_AHouse_ARC.ifc&quot;</span>
-cp<span class="w"> </span>/tmp/ltu_extract/LTU_A-House_K-modell.ifc<span class="w">   </span><span class="s2">&quot;</span><span class="nv">$DEST</span><span class="s2">/LTU_AHouse_STR.ifc&quot;</span>
-cp<span class="w"> </span>/tmp/ltu_extract/LTU_A-House_VOIDS.ifc<span class="w">      </span><span class="s2">&quot;</span><span class="nv">$DEST</span><span class="s2">/LTU_AHouse_VOID.ifc&quot;</span>
-cp<span class="w"> </span>/tmp/ltu_extract/LTU_A-House_Air.ifc<span class="w">        </span><span class="s2">&quot;</span><span class="nv">$DEST</span><span class="s2">/LTU_AHouse_AIR.ifc&quot;</span>
-cp<span class="w"> </span>/tmp/ltu_extract/LTU_A-House_Ducting.ifc<span class="w">    </span><span class="s2">&quot;</span><span class="nv">$DEST</span><span class="s2">/LTU_AHouse_DUCT.ifc&quot;</span>
-cp<span class="w"> </span>/tmp/ltu_extract/LTU_A-House_Cooling.ifc<span class="w">    </span><span class="s2">&quot;</span><span class="nv">$DEST</span><span class="s2">/LTU_AHouse_COOL.ifc&quot;</span>
-cp<span class="w"> </span>/tmp/ltu_extract/LTU_A-House_Heating.ifc<span class="w">    </span><span class="s2">&quot;</span><span class="nv">$DEST</span><span class="s2">/LTU_AHouse_HEAT.ifc&quot;</span>
-cp<span class="w"> </span>/tmp/ltu_extract/LTU_A-House_Plumbing.ifc<span class="w">   </span><span class="s2">&quot;</span><span class="nv">$DEST</span><span class="s2">/LTU_AHouse_PLB.ifc&quot;</span>
-cp<span class="w"> </span>/tmp/ltu_extract/LTU_A-House_Sanitation.ifc<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEST</span><span class="s2">/LTU_AHouse_SAN.ifc&quot;</span>
-</code></pre></div>
-<h3 id="step-2-extract-per-discipline-with-sub-discipline-overrides">Step 2 — Extract per-discipline with sub-discipline overrides<a class="headerlink" href="#step-2-extract-per-discipline-with-sub-discipline-overrides" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># DO NOT use extractIFCtoDB.py directly — the merged IFC does not exist and</span>
-<span class="c1"># individual files are too large (173MB ARC) for reliable merged extraction.</span>
-<span class="c1"># Use the per-discipline script with --disc-map to get proper sub-discipline tags.</span>
-<span class="c1">#</span>
-<span class="c1"># extractIFCtoDB.py is the pristine original — refer to it for learning,</span>
-<span class="c1"># never modify it. The per-discipline script calls it internally.</span>
-
-python3<span class="w"> </span>scripts/extract_merge_disciplines.py<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--ifc-dir<span class="w"> </span>DAGCompiler/lib/input/IFC/UNMERGED<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--pattern<span class="w"> </span><span class="s2">&quot;LTU_AHouse_*.ifc&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--output<span class="w"> </span>DAGCompiler/lib/input/LTU_AHouse_extracted.db<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--disc-map<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="nv">LTU_AHouse_AIR</span><span class="o">=</span>VENT<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="nv">LTU_AHouse_COOL</span><span class="o">=</span>HVAC<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="nv">LTU_AHouse_DUCT</span><span class="o">=</span>VENT<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="nv">LTU_AHouse_HEAT</span><span class="o">=</span>HEAT<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="nv">LTU_AHouse_PLB</span><span class="o">=</span>PLB<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="nv">LTU_AHouse_SAN</span><span class="o">=</span>SAN<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="nv">LTU_AHouse_ARC</span><span class="o">=</span>ARC<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="nv">LTU_AHouse_STR</span><span class="o">=</span>STR<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="nv">LTU_AHouse_VOID</span><span class="o">=</span>VOID
-</code></pre></div>
-<p>Expected runtime: ~20 minutes. Expected output: ~232 MB DB, ~125,997 elements.</p>
-<h3 id="step-3-verify-coordinate-scale-metres-check">Step 3 — Verify coordinate scale (metres check)<a class="headerlink" href="#step-3-verify-coordinate-scale-metres-check" title="Permanent link">&para;</a></h3>
-<p>ifcopenshell <code>USE_WORLD_COORDS=True</code> already returns metres. No post-hoc scaling needed.
-Do NOT apply ×0.001 — that was previously applied in error, causing geometry hell.</p>
-<p><div class="highlight"><pre><span></span><code>sqlite3<span class="w"> </span>DAGCompiler/lib/input/LTU_AHouse_extracted.db<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;SELECT MIN(center_x), MAX(center_x), MIN(center_z), MAX(center_z) FROM element_transforms;&quot;</span>
-</code></pre></div>
-Expected output: ARC/STR in range <strong>−3 to 131</strong> (metres). MEP disciplines extend further
-(PLB to 236m, HEAT to 167m) due to external service runs — this is genuine IFC content.</p>
-<h3 id="step-4-verify-discipline-breakdown">Step 4 — Verify discipline breakdown<a class="headerlink" href="#step-4-verify-discipline-breakdown" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>sqlite3<span class="w"> </span>DAGCompiler/lib/input/LTU_AHouse_extracted.db<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;SELECT discipline, COUNT(*) FROM elements_meta GROUP BY discipline ORDER BY COUNT(*) DESC;&quot;</span>
-</code></pre></div>
-<hr />
-<h2 id="key-scripts-reference-only-do-not-modify-originals">Key Scripts (reference only — do not modify originals)<a class="headerlink" href="#key-scripts-reference-only-do-not-modify-originals" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Script</th>
-<th>Role</th>
-<th>Touch?</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>DAGCompiler/python/extractIFCtoDB.py</code></td>
-<td>Pristine extractor — single IFC → DB</td>
-<td><strong>NEVER</strong></td>
-</tr>
-<tr>
-<td><code>scripts/extract_merge_disciplines.py</code></td>
-<td>Per-discipline wrapper with <code>--disc-map</code></td>
-<td>Yes — safe to extend</td>
-</tr>
-<tr>
-<td><code>scripts/fix_proxy_discipline.py</code></td>
-<td>Post-hoc discipline retag by filename</td>
-<td>Yes</td>
-</tr>
-</tbody>
-</table>
-<p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
+<h2 id="7-prior-art-whats-standard-whats-ours">7. Prior art — what's standard, what's ours<a class="headerlink" href="#7-prior-art-whats-standard-whats-ours" title="Permanent link">&para;</a></h2>
+<p>The substrate is well-trodden; cite it, don't reinvent it:</p>
+<ul>
+<li><strong>Martin Kleppmann — "Turning the Database Inside Out"</strong> (<a href="https://www.youtube.com/watch?v=fU9hR3kiOK0">video</a> ·
+  <a href="https://martin.kleppmann.com/2014/09/18/turning-database-inside-out-at-strange-loop.html">transcript</a>) — the
+  database as a <em>derived view of an append-only log</em>. Our <code>kernel_ops</code> → SQLite projection, exactly.</li>
+<li><strong>Greg Young — CQRS &amp; Event Sourcing</strong> (<a href="https://www.kurrent.io/blog/transcript-of-greg-youngs-talk-at-code-on-the-beach-2014-cqrs-and-event-sourcing">transcript</a>) —
+  append-only, immutable, deterministic replay with an audit log. Our signed op-group + fold.</li>
+<li><strong>Rich Hickey — "The Database as a Value"</strong> (<a href="https://www.infoq.com/presentations/Datomic-Database-Value">video</a>) —
+  <em>accumulate facts, don't update places</em>; query as of any point in time. Our fold-to-any-point + history scrubber.</li>
+<li><strong>Martin Fowler — <a href="https://martinfowler.com/eaaDev/EventSourcing.html">Event Sourcing</a> ·
+  <a href="https://martinfowler.com/bliki/CQRS.html">CQRS</a></strong> — the short written reference.</li>
+</ul>
+<p><strong>What's standard:</strong> event sourcing, CQRS, the immutable log, the projection. <strong>What's ours:</strong> folding
+iDempiere's <code>M*</code> model — <code>completeIt</code>, <code>Doc_*</code> posting, the DocAction FSM, the AD interpreters — to
+<em>oracle-equivalence</em> (<code>maxDiff=0c</code> vs real iDempiere output), serverless, in a browser. We stood on proven
+ground; the ERP fold is the new work. See the <a href="../ERP_COVERAGE_MATRIX/">Coverage Matrix</a> for the exact tally.</p>
 
 
 
