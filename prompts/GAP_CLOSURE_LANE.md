@@ -70,12 +70,148 @@
 - Every ✅ carries: a `poc_fold_<rule>.js` witness, a `poc_<rule>.log` showing `maxDiff=0c` vs the live oracle,
   and a load-bearing **§FALSIFIER** (corrupt the rule → diff≠0). No log line / no falsifier = NOT done.
 - Keep the §0 separation seams (declaration / interpreter / log-fold never merge) — `docs/ERP_BACKEND_SEPARATION.md`.
+- **Consume the NEW framework, never fork it:** every fold is a `build/erp/` engine verb reached through the
+  `window.ERP` seam (browser files are UMD copies of `bim-compiler/scripts`/`build/erp`) — follow the existing
+  reporting-fold pattern (`foldStatement`/`foldPrint`), NOT a standalone lookalike script. A new `report_*.js`/
+  `fold*()` is added to the engine and the witness drives it through the seam; if you find yourself
+  re-implementing logic the engine already has, STOP and consume it. (Migration target = the Fold Engine
+  substrate; a fold that bypasses it is drift, even if its diff=0.)
 
 ## PER-GAP OUTPUT (report after each closure)
 Rule closed · LOC added (engine + witness) · diff result (`maxDiff=0c` | rule-consistent) · new §FALSIFIER ·
 updated gap count (e.g. "⛔ remaining: 12 → 11") + the matrix row flipped in `docs/ERP_COVERAGE_MATRIX.md`.
 
 ## RESUME STATE (where the next session starts)
-Nothing folded yet this lane. **First action: implement `T_Aging` (P1.1) per the recon above + GapClosureSpec.**
-The oracle is confirmed reachable; the algorithm files + full bucket set are named; the harness template is named.
-No discovery is owed before T_Aging — go straight to spec → `report_aging.js` → `poc_fold_aging.js` → log → flip.
+**▶ FIRST ACTION (fresh session, no discovery owed): `T_*` TIER DRAINED + P2.3 CLOSED + P2.4 DATA-BLOCKED (2026-06-13).**
+**START AT P3 — item 5 (the 454-SvrProcess ON-DEMAND mechanism: `AD_Process ⋈ AD_Process_Access ⋈ activity`,
+fold on demand — do NOT pre-port the corpus).** P2 is closed: P2.3 ✅ (W-FOLD-INOUTGL, both M_InOut polarities
+oracle-equivalent), P2.4 🟡 DATA-BLOCKED (analytic accounting — ALL 300 fact_acct rows have zero project/activity/
+campaign/user tagging; no oracle; do NOT synthesize — see GapClosureSpec §5i). **KEY FACTS (do NOT re-derive):**
+(a) V+ vendor receipts post NIR at `round(qty × C_OrderLine.PriceActual)`, NOT the cost-selection rule (current
+m_cost = 9161.10, a 47.90 drift; PO price = 9209.00 exact); (b) analytic dims are absent from the seed entirely.
+**✅ P3 RECON (2026-06-14, do NOT re-derive):** SvrProcess mechanism inputs EXIST in `idempiere_test` —
+`ad_process`=476 (337 carry a `classname` = the corpus), `ad_process_access`=1309, `ad_process_para`=1208 → the
+`AD_Process ⋈ AD_Process_Access ⋈ activity` picker has real data; build the MECHANISM (pick the used ones + fold
+on demand), do NOT pre-port the 337. For **P3.6** (remaining `Doc_*` manifests): the posted doc tables in
+`fact_acct` are 319 M_InOut ✅(W-FOLD-INOUTGL) · 472 M_MatchInv ✅ · 318 C_Invoice ✅ · 735 C_AllocationHdr ✅ ·
+323 M_Movement ✅ · 335 C_Payment ✅ · 224 GL_Journal ✅ · **392 C_BankStatement (13 facts) = the ONE un-folded
+posted doc table** → the concrete P3.6 target (Doc_Bank token manifest + witness vs `fact_acct(392)`).
+Recipe (unchanged): spec § → `build/erp/report_<name>.js` →
+`scripts/poc_fold_<name>.js` → `bash build/erp/run_witness.sh …` → READ the log → flip the matrix row. Copy the
+harness shape from `scripts/poc_fold_replenish.js` or `poc_fold_invoice_gl.js` (PGOPTIONS schema, never inline `SET`;
+independent oracle; BigDecimal-exact diff; a load-bearing falsifier a real value crosses; fact_acct folds use
+`-d idempiere_test`). The 4 folds below are DONE — read them only for the recipe.
+
+**P1.1 `T_Aging` ✅ DONE 2026-06-13 (W-AGING).** `build/erp/report_aging.js` `foldAging()` (port of `Aging.doIt`
++ `MAging.add`, all ~21 buckets, integer cents) == an independent SQL CASE bucketer over the live `rv_openitem`,
+`maxDiff=0c` over 88 cells (4 groups × 22 money cols), DaysDue + DueDate(earliest) also match; §FALSIFIER fires
+(bent `PastDue61_Plus` boundary 61→8718, delta=713897c). Spec §5a added to `docs/GapClosureSpec.md`; matrix
+"PROVEN for 3 members" (was 2). Witness `scripts/poc_fold_aging.js`, log `build/erp/poc_fold_aging.log`.
+- Note: oracle is GapClosureSpec §3 option (b) — "grounded on `rv_openitem`", NOT a triggered-process `T_Aging`
+  capture. The SET-echo gotcha (a `SET search_path;` prefix pollutes psql `-t -A` output with a literal `SET`
+  line) → pass schema via `PGOPTIONS='-c search_path=adempiere'` on `docker exec`, never an inline `SET`.
+
+**P1.2 `T_InventoryValue` ✅ DONE 2026-06-13 (W-INVVALUE).** `build/erp/report_inventory_value.js`
+`foldInventoryValue()` (cost-valuation core of `InventoryValue.doIt`) == an independent SQL re-derivation over
+the base tables (M_Cost ⋈ wh ⋈ clientinfo ⋈ acctschema ⋈ costelement, QtyOnHand=SUM(storage⋈locator),
+amt=qty×cost), EXACT over 20 surviving rows (CostStandard, QtyOnHand, CostStandardAmt). §FALSIFIER fires
+(product 123 cost+1 → amt 480→500, delta=qty=20). Spec §5b; matrix "PROVEN for 4 members". Witness
+`scripts/poc_fold_inventory_value.js`, log `build/erp/poc_fold_inventory_value.log`.
+- Scope note: price columns (PricePO/List/Std/Limit + *Amt) are PARAMETER-driven (need M_PriceList_Version_ID)
+  → named, not folded. DateValue=today ⇒ 0 future txn ⇒ adjustment 0 (verified, not assumed). EXACT BigDecimal
+  product (compareTo, scale-insensitive) — not integer cents, because costs carry up to 6dp.
+
+**P1.2 `T_Replenish` ✅ DONE 2026-06-13 (W-REPLENISH).** `build/erp/report_replenish.js` `foldReplenish()`
+(prepareTable corrections + fillTable planning core of `ReplenishReport.java`) == an independent SQL CTE
+re-derivation, EXACT over 18 candidates (`{1:10, 2:8}`) / 8 survivors (the real T_Replenish). createPO/Requisition/
+Movements/DO are the ReplenishmentCreate ACTION → out of scope. §FALSIFIER fires (product 127 Level_Max+1000 →
+QtyToOrder 5→1005). Spec §5c; matrix "PROVEN for 5 members". Witness `scripts/poc_fold_replenish.js`, log
+`build/erp/poc_fold_replenish.log`.
+- Technique note: diff the FULL pre-delete candidate set (keepZero) so the type-1 branch (QtyToOrder=0 when
+  stock sufficient) is itself oracle-confirmed, THEN match the post-delete survivor set. MOD/pack-rounding via
+  BigDecimal `a.subtract(a.divide(b,0,DOWN).multiply(b))` == Postgres `MOD`.
+
+**P1.4 `T_InvoiceGL` ✅ DONE 2026-06-13 (W-INVOICEGL).** `build/erp/report_invoice_gl.js` `foldInvoiceGL()` (report
+core of `InvoiceNGL.doIt` — the INSERT…SELECT + diff/percent/proration UPDATEs; createGLJournal action out of
+scope) == the live iDempiere currency engine (`idempiere_test`, its OWN plpgsql `currencyConvert`/`invoiceOpen`
+re-run in SQL), `maxDiff=0c` over 88… 108 cells (12 rows × 9 money cols, both acct schemas), 6 cross-currency rows
+exercised. JS independently reimplements currencyRate(flexible)/currencyRound(ROUND HALF_UP)/currencyConvert +
+reval diffs + OpenAmt + Percent proration. §FALSIFIER fires (bend rate ×1.1 → inv 103 AmtRevalDr 136.95→150.65,
+diverged). Spec §5d; matrix "PROVEN for 6 members". Witness `scripts/poc_fold_invoice_gl.js`, log
+`build/erp/poc_fold_invoice_gl.log`.
+- Notes: ORACLE DB = `idempiere_test` (fact_acct=300; default `idempiere` has fact_acct=0). EMU/Euro fixed-rate
+  branches no-op (no currency IsEMUMember='Y'); only ONE active conversion rate per pair (the 2003 rows are
+  isactive='N') ⇒ reval rate == posting rate ⇒ all reval diffs net to 0 in seed — the fold is still proven cell-
+  exact and the falsifier perturbs the JS rate. Proration no-op (all invoices fully open, OpenAmt=GrandTotal).
+  Base `c_invoice` == post-DISTINCT `c_invoice_v` driving set (invoice 109's payment-schedule split collapses).
+
+**P1.5 `T_DistributionRunDetail` ◐ HYBRID 2026-06-13 (W-DISTRUN).** `build/erp/report_distribution_run.js`
+`foldDistributionRun()` (planning core of `DistributionRun` — insertDetails ratio split + the allocation rounding
+loop; createOrders action out of scope). TWO claims: **(a) rawSplit `ll.Ratio/RatioTotal*TotalQty` ORACLE-EQUIVALENT**
+== iDempiere's own insertDetails SQL `maxDiff=0` (937.5/187.5/375 over 3 rows); **(b) integer-allocation loop
+RULE-CONSISTENT only** — sum-exact under MinQty floors (run-line MinQty=200 floors BP117 187.5→200 ⇒ distribute-by-
+ratio branch ⇒ 929/200/371), proven by INVARIANTS (sum==TotalQty, MinQty respected, deterministic, distribute-branch
+binding), NOT a row diff. The loop is procedural with **no SQL/function oracle** — a true row oracle needs a live
+process run (T_DistributionRunDetail is 0-row until DistributionRun executes), so per the Prime Directive it is
+labelled rule-consistent, not oracle-equivalent. §FALSIFIER fires (bend listLine 50000 Ratio+25 → rawQty
+937.5→1071.43). Spec §5e; matrix hybrid ◐. Witness `scripts/poc_fold_distribution_run.js`, log
+`build/erp/poc_fold_distribution_run.log`.
+- `T_1099Extract` = **n/a in seed** (0 C_1099Box, 0 extract rows → no oracle; do NOT synthesize one).
+
+**P1.6 `T_CashFlow` ◐ HYBRID 2026-06-13 (W-CASHFLOW).** `build/erp/report_cashflow.js` (value cores of
+`org.globalqss.process.CashFlow.doIt` — the 4 CashFlowSource feeds; `X_T_CashFlow.save()` action out of scope).
+Verdicts per feed: **(1) InitialBalance ORACLE-EQUIVALENT** — `foldInitialBalance` = `Σ acctBalance(acct,Dr,Cr)` over
+`Fact_Acct(A)` == the live `acctBalance()` plpgsql summed in SQL, `maxDiff=0c` over 21 accounts (both sign branches:
+15 debit-natural A/E + 6 credit-natural L/R); **(2) CommitmentsOrders ORACLE-EQUIVALENT** — `open=GrandTotal×pending
+−paid` rounded to currency prec, sign-flipped for PO, == independent SQL, EXACT (1 driving order #106 = −2160.00);
+**(3) ActualDebtInvoices ORACLE-EQUIVALENT (thin)** — `RV_OpenItem.OpenAmt` IsSOTrx sign-flip == SQL, EXACT over 7 rows
+(projection → weak falsifier); **(4) Plan verified-EMPTY no-op** (cashplan=0/cashplanline=0 → feed + 2 subtract-UPDATEs
++ delete-overplanned all no-ops, asserted not folded); **PROC RULE-CONSISTENT** — due-date insertion gate + pay-schedule
+loop (procedural, no row oracle; invariants: gate passes, pay-schedule a verified no-op IsPayScheduleValid='N').
+§FALSIFIER ×3 fire: flip natural-sign rule → 19/21 accounts diverge (acct 419 7802.38→−7802.38) · bend order pending
+×1.1 → −2160.00→−2376.00 · drop IsSOTrx flip → 4 PO rows. ORACLE DB=`idempiere_test`. Spec §5f; matrix "PROVEN for 6
+members" + 2 HYBRID. Witness `scripts/poc_fold_cashflow.js`, log `build/erp/poc_fold_cashflow.log`.
+
+**P1.7 `T_BankRegister` ✦ THIN 2026-06-13 (W-BANKREGISTER) — last `T_*` member.** `build/erp/report_bank_register.js`
+(port of `org.compiere.report.BankRegister` createBalanceLine + createDetailLines). ORACLE-EQUIVALENT but THIN:
+load-bearing claim = the bank-account CONFIG-CHAIN join SELECTION (`fact_acct(AD_Table_ID=C_Payment) ⋈ C_Payment(CO/CL)
+⋈ C_BankAccount ⋈ C_Bank ⋈ C_BankAccount_Acct ⋈ vc(B_InTransit OR B_Asset) ⋈ ev ⟕ bp WHERE fa.Account_ID=vc.Account_ID`),
+NOT arithmetic. Detail `SELECT DISTINCT`=4 rows == live SQL; balance-line `SUM`=Dr 549.46/Cr 0.0/Bal 549.46 over 8 join
+rows == live SQL (the DISTINCT-detail vs SUM-balance MULTIPLICITY QUIRK reproduced: 4 distinct → 8 join rows). `Cr=0`
+throughout seed ⇒ `Dr−Cr` arithmetic UNTESTED (named, not claimed). §FALSIFIER load-bearing despite thin math: drop
+`fa.Account_ID=vc.Account_ID` → join leaks 8→32 (Bal 549.46→0.00), engine == SQL on the leaked superset. ORACLE DB =
+`idempiere_test`. Spec §5g; matrix "+1 THIN". Witness `scripts/poc_fold_bank_register.js`, log `build/erp/poc_fold_bank_register.log`.
+
+**SESSION TALLY 2026-06-13: 4 full folds (`maxDiff=0c`) — T_Aging (W-AGING) · T_InventoryValue (W-INVVALUE) ·
+T_Replenish (W-REPLENISH) · T_InvoiceGL (W-INVOICEGL) — + 2 HYBRID — T_DistributionRunDetail (W-DISTRUN) ·
+T_CashFlow (W-CASHFLOW, 3 of 4 feeds oracle-equivalent, Plan no-op, proc rule-consistent) — + 1 THIN — T_BankRegister
+(W-BANKREGISTER, join-selection oracle-equiv, arithmetic named). ⇒ THE `T_*` REPORT TIER IS DRAINED (only T_1099Extract
+n/a). NOTE the procedural-loop ceiling: any report whose value comes from an iterative Java loop (not SQL/a function/a
+view) has NO live oracle here → it can only reach rule-consistent without an app-server run.**
+
+**NEXT: P2 — cost-valued inventory GL (item 3). §2 CLASSIFICATION for the closed CashFlow/BankRegister kept below for
+reference (do NOT re-derive):**
+- **`T_CashFlow` recon DONE 2026-06-13 — now CLOSED as P1.6 above; kept for reference:** seed in `idempiere_test` = cashplan=0 /
+  cashplanline=0 (the C_CashPlan SOURCE is EMPTY → that branch is a no-op) · open C_Order (CO/CL)=8 · rv_openitem=7 ·
+  t_cashflow=0 (process never run). So CashFlow is a LARGE multi-source fold: (1) opening balance = `SUM(acctBalance(
+  Account_ID,AmtAcctDr,AmtAcctCr)) FROM Fact_Acct WHERE DateAcct<=…` (iDempiere fn `acctBalance` = SQL oracle) ·
+  (2) open-orders pending = `SUM((QtyOrdered-QtyInvoiced)*PriceActual)/TotalLines` with `paymentTermDueDate()` due
+  dates + partial-payment netting (`SUM(CASE IsReceipt…PayAmt) FROM C_Payment CO/CL`) · (3) RV_OpenItem "actual"
+  source (7 rows) · (4) over-planned DELETE pass. `CashFlow.java` lines: sqlIni 99, sqlPlan 125, sqlOpenOrders 191,
+  sqlActual 309, deletes 359-412. Oracle-backable parts: acctBalance opening + order-pending arithmetic + RV_OpenItem
+  (all have SQL/fn forms); the per-order due-date/netting LOOP is procedural (rule-consistent like W-DISTRUN's loop).
+  Plan it as cashplan(no-op, assert) → opening-balance fold → order-pending fold → openitem fold, each its own §-claim.
+- `T_BankRegister` (`org.compiere.report.BankRegister`) is fact_acct-driven too but flagged **thin/tautological**
+  (a join+projection, weak falsifier) — prefer CashFlow's math-bearing parts first. Both
+  and the default `idempiere` DB has **fact_acct=0** (it's the config DB; GL oracle = `idempiere_test`, 300
+  rows: 8 are C_Payment, 6 `c_bankaccount_acct` config rows present). So the witness must point psql at
+  `idempiere_test` (like `poc_pa_report.js` does) and verify the bank-acct config chain: `fact_acct.Account_ID`
+  = the bank's `B_InTransit_Acct` OR `B_Asset_Acct` (`c_bankaccount_acct` → `c_validcombination` →
+  `c_elementvalue`), joined `fact_acct ⋈ C_Payment(CO/CL) ⋈ C_BankAccount ⋈ C_Bank`.
+- ⚠ BankRegister is **thin fold-math** (a join + projection: Balance line = Σ prior `AmtAcctDr/Cr`; detail
+  lines pass through `AmtAcctDr-AmtAcctCr` per payment). Equivalence is near-tautological (JS-join == SQL-join,
+  no transform) → its falsifier is weak. Prefer the math-bearing remainder first (e.g. `T_InvoiceGL`,
+  `T_DistributionRunDetail`, `T_1099Extract` — check each has a real aggregation/derivation, not just a SELECT).
+- Recipe unchanged: classify §2 (count the driving table FIRST) → spec § → `report_<name>.js` → `poc_fold_<name>.js`
+  → log → matrix flip. Harness shape: **PGOPTIONS schema (never inline `SET`)**; for fact_acct-driven folds use
+  `-d idempiere_test`; independent SQL oracle; BigDecimal-exact diff; a load-bearing falsifier a real value crosses.
