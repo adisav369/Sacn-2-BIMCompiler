@@ -68,6 +68,30 @@
   .band code{background:rgba(128,128,128,.16);padding:1px 5px;border-radius:4px;font-size:.88em}
   .foot{margin-top:auto;padding:10px 17px;background:var(--ft);font-size:11.5px;font-weight:700;color:var(--bc);border-top:1px solid var(--bc)}
 
+  /* ── SERVER → NON-SERVER swap table (blue band) ── */
+  .swap{display:grid;grid-template-columns:1fr 1fr;column-gap:14px;row-gap:8px;
+    padding:12px 17px 14px;border-top:1px solid rgba(128,128,128,.16);font-size:12.5px;line-height:1.4}
+  .swap .sh{font-size:9.5px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;
+    color:var(--dim);padding-bottom:5px;border-bottom:1px solid rgba(128,128,128,.18)}
+  .swap .sl{color:#97a2ad}
+  .swap .sr{color:#dde4ec;position:relative;padding-left:12px}
+  .swap .sr::before{content:"";position:absolute;left:0;top:6px;width:6px;height:1px;background:var(--blue);opacity:.5}
+  .swap .sl b{color:#bcc6d0;font-weight:700}
+  .swap .sr b{color:#fff;font-weight:700}
+  .swap-cap{padding:0 17px 13px;font-size:11.5px;color:var(--dim);line-height:1.5}
+  .swap-cap b{color:var(--blue)}
+  .live-pill{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;
+    color:var(--green);border:1px solid rgba(124,179,66,.45);border-radius:5px;padding:1px 6px;margin-right:7px;
+    vertical-align:middle;white-space:nowrap}
+  .live-pill::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle}
+  .fn{color:var(--blue);font-weight:800}
+  @media (max-width:680px){
+    .swap{grid-template-columns:1fr;row-gap:2px}
+    .swap .sh{display:none}
+    .swap .sl{margin-top:9px}
+    .swap .sr::before{content:"→ ";position:static;width:auto;height:auto;background:none;color:var(--blue);font-weight:700;opacity:1}
+  }
+
   footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--dim)}
   footer a{font-weight:600}
 </style>
@@ -106,9 +130,10 @@
         <li><b>Reports</b> — Balance Sheet · Income · Cash Flow + invoice print; the <code>T_*</code> report tier (aging · inventory value · replenish · invoice GL · cash-flow · bank register) folds &amp; deletes</li>
         <li><b>Model layer</b> — <code>beforeSave</code> + DocAction-FSM of every doc class</li>
         <li><b>SvrProcess on-demand picker</b> — <code>AD_Process ⋈ AD_Process_Access ⋈ AD_WF_Node</code> returns the actually-used subset oracle-equivalent (W-PROC-PICKER, 451 procs); corpus (337 classnames) stays named-deferred by design</li>
-        <li><b>Odoo migration</b> — full catalog extracted: 38/38 partners · 47/47 COA · 2 taxes · 27/27 SOs fold complete (<code>maxDiff=0c</code>); live P2P buy-side fold <code>newVerbs=[]</code> (W-P4-MASTERS · W-P4-BUYSIDE-LIVE)</li>
+        <li><b>Odoo migration</b> — full catalog extracted: 38/38 partners · 47/47 COA · 2 taxes · 27/27 SOs fold complete (<code>maxDiff=0c</code>); live P2P buy-side <code>newVerbs=[]</code> (W-P4-MASTERS+BUYSIDE)</li>
+        <li><b>Other ERP adapters (PoC)</b> — SAP · Oracle · MS Dynamics — tenant stubs live, adapters wired (W-IMPORT-EXPAND · #281); PoC-proven, not full catalog</li>
       </ul>
-      <div class="foot">17 cent-exact · 6 declarative · 21 model-layer · 2 Odoo live — each with a §FALSIFIER</div>
+      <div class="foot">17 cent-exact · 6 declarative · 21 model-layer · 2 Odoo live · 3 other-ERP PoC — each with a §FALSIFIER</div>
     </section>
 
     <!-- ── PENDING (extraction) ───────────────────────────── -->
@@ -151,16 +176,18 @@
       <div class="bh">
         <div class="tag">🔵 N/A · deleted by architecture</div>
         <div class="ttl">No port — leaves the denominator</div>
-        <div class="gloss">Whole tiers the serverless model removes. Not "missing features" — they have <b>no counterpart</b> by design.</div>
+        <div class="gloss">Whole tiers the serverless model deletes — not missing features, <b>no counterpart</b> by design.</div>
       </div>
-      <ul>
-        <li><b>ZK web UI</b> (189,786 LOC) → the browser renderer</li>
-        <li><b>Generated <code>X_*</code> ORM</b> (345,490 LOC) → the AD rides as <i>data</i></li>
-        <li><b>Server-side HTML lib</b> (43,816 LOC) → no server</li>
-        <li><b>JDBC · OSGi · app server · installer</b> → no server of record</li>
-        <li><b>Web services tier</b> → the signed op-log <i>is</i> the wire</li>
-      </ul>
-      <div class="foot"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle"></span><b style="color:var(--green)">Granted in exchange</b> — the 40% deletion is what makes the engine <b>offline-first</b>, <b>serverless</b>, and <b>per-device shardable</b> (instant load · shards on demand) — <span style="font-weight:400;opacity:.8">live today. Finer warm/cold access-frequency tiers + checkpoint-first boot are §-witnessed and proven-ahead, switched on when scale needs them.</span></div>
+      <div class="swap">
+        <div class="sh">What the server did</div><div class="sh">Who does it now</div>
+        <div class="sl"><b>ZK web UI</b> · 190k LOC</div><div class="sr">the browser renders</div>
+        <div class="sl"><b>Generated <code>X_*</code> ORM</b> · 345k LOC</div><div class="sr">AD rides as <i>data</i></div>
+        <div class="sl"><b>Server-side HTML</b> · 44k LOC</div><div class="sr">gone, no server</div>
+        <div class="sl"><b>JDBC · OSGi · app server</b></div><div class="sr">nothing owns the record</div>
+        <div class="sl"><b>Web services tier</b></div><div class="sr">the op-log <i>is</i> the wire&nbsp;<sup class="fn">*</sup></div>
+      </div>
+      <div class="swap-cap"><span class="fn">*</span> <span class="live-pill">Live now</span><b>Share a sale, no server:</b> a deliver-later sale travels device-to-device by your own channel — copy → WhatsApp / email → paste → it replays on the other phone. Working today, not a roadmap item (PR&nbsp;#300).</div>
+      <div class="foot"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle"></span><b style="color:var(--green)">Granted in exchange</b> — deleting 40% is what makes the engine <b>offline-first</b>, <b>serverless</b>, and <b>per-device shardable</b> — <span style="font-weight:400;opacity:.8">live today. Finer warm/cold tiers + checkpoint boot are proven-ahead, switched on when scale needs them.</span></div>
     </section>
 
   </div>
