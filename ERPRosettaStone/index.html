@@ -4923,10 +4923,27 @@ aren't ops.</p>
 <li><strong>Martin Fowler — <a href="https://martinfowler.com/eaaDev/EventSourcing.html">Event Sourcing</a> ·
   <a href="https://martinfowler.com/bliki/CQRS.html">CQRS</a></strong> — the short written reference.</li>
 </ul>
-<p><strong>What's standard:</strong> event sourcing, CQRS, the immutable log, the projection. <strong>What's ours:</strong> folding
-iDempiere's <code>M*</code> model — <code>completeIt</code>, <code>Doc_*</code> posting, the DocAction FSM, the AD interpreters — to
-<em>oracle-equivalence</em> (<code>maxDiff=0c</code> vs real iDempiere output), serverless, in a browser. We stood on proven
-ground; the ERP fold is the new work. See the <a href="../ERP_COVERAGE_MATRIX/">Coverage Matrix</a> for the exact tally.</p>
+<p><strong>Why it's called <em>fold</em>.</strong> Not a local coinage — <code>fold</code> (<code>foldl</code>/<code>foldr</code>/<code>reduce</code>) is the
+functional-programming primitive that collapses a sequence into a value, and event sourcing's canonical
+definition is <em>"current state = a </em><em>left fold</em><em> over the event log"</em> (<code>state = events.fold(initial, apply)</code>).
+The name asserts <strong>purity</strong>: state is a deterministic reduction of the signed ops, no side effects — matching
+the engine's no-<code>Date.now</code>/<code>random</code>, byte-stable replay. Even the <em>name</em> comes from proven ground.</p>
+<p><strong>What's standard:</strong> event sourcing, CQRS, the immutable log, the projection — and the word <em>fold</em> itself.
+<strong>What's ours (the scoped, falsifiable claim):</strong> as far as we can find, this is the first system to fold a
+<strong>complete, real legacy ERP model</strong> — iDempiere's <code>M*</code> corpus + <code>Doc_*</code> posting + the DocAction FSM + the AD
+interpreters, <em>not a greenfield toy domain</em> — to <strong>oracle-equivalence</strong> (<code>maxDiff=0c</code> vs the live system, every
+surface §FALSIFIER-guarded), running <strong>serverless in a browser</strong> (SQLite-WASM kernel, the signed op-log as the
+wire), with the model carried <strong>as data, not code</strong> (no generated ORM). Event sourcing usually proves itself on
+small new domains; the hard, unclaimed thing is doing it <em>against a 735k-LOC incumbent and proving
+bit-equivalence</em>.</p>
+<p>The honest boundary stands — but read it correctly: only ~1% of the M-class logic is ported <strong>as code</strong>
+(≈1,035 of 104,940 LOC of <code>M*.java</code>), and that's a <em>LOC</em> ratio, not a <em>capability</em> one. The other 99% has
+<strong>three fates, not one</strong>: most is <strong>deleted boilerplate</strong> (the <code>getX</code>/<code>setX</code>/<code>saveEx</code>/JDBC machinery — never
+business value), much of the rest <strong>becomes AD data</strong> the interpreters read (validation, defaults, FK lookups,
+the FSM — present and working, just not <em>code</em>), and the genuine remaining business logic is <strong>deferred</strong> —
+folded incrementally as archetype + ~25 deltas — <em>not discarded</em>. The 1% is small because the substrate is
+<strong>more abstract</strong> (§8), not because 99% of capability was thrown away. The claim is about the <strong>substrate and
+the method</strong>, not feature parity. See the <a href="../ERP_COVERAGE_MATRIX/">Coverage Matrix</a> for the exact tally.</p>
 <hr />
 <h2 id="8-is-this-just-oo-again-paradigm-placement">8. "Is this just OO again?" — paradigm placement<a class="headerlink" href="#8-is-this-just-oo-again-paradigm-placement" title="Permanent link">&para;</a></h2>
 <p>A fair challenge: messaging, encapsulation, one shared construct — isn't that OO rebuilt? The answer turns on

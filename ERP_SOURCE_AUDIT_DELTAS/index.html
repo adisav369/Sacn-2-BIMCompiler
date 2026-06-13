@@ -4255,7 +4255,8 @@ branches/invariants the oracle-DIFF suite (30+ <code>poc_*.js</code>, each <code
 <strong>§FALSIFIER</strong> — the test that would catch it. No citation = rejected as invented.</p>
 <p><strong>Oracle status (Session 0).</strong> Docker <code>postgres</code> container UP (7 days); both <code>idempiere</code> and <code>idempiere_test</code>
 GardenWorld DBs live → live-diff is available for any bucket-A surface. No surface stalled on a down oracle.</p>
-<p><strong>Headline (honest).</strong> Of the surfaces hunted, <strong>2 are genuinely NEW diffable edges (bucket A)</strong>; the rest are
+<p><strong>Headline (honest).</strong> Of the surfaces hunted, <strong>2 are genuinely NEW diffable edges (bucket A)</strong> — <strong>A-1 is now
+CLOSED</strong> (W-MORDER-QTYROLLUP, <code>maxDiff=0</code>, 2026-06-13; A-2 remains a stub); the rest are
 already covered (<strong>B</strong>) or armed-but-dormant in this seed (<strong>C</strong>). Per this lane's own falsifier, a small A-count is
 the <em>expected</em> result — it hardens the "indistinguishable from iDempiere" claim rather than weakening it. Findings
 were <strong>not manufactured</strong> to look productive; every C surface is a real iDempiere behaviour with <strong>no seed journal
@@ -4271,7 +4272,7 @@ to diff</strong>, named so it stays ⛔ and never gets synthesized.</p>
 <th>Citation (Java + AD/seed)</th>
 <th>Why our fold would diverge</th>
 <th>Proposed §FALSIFIER</th>
-<th>Matrix row to add</th>
+<th>Status / matrix row</th>
 </tr>
 </thead>
 <tbody>
@@ -4281,7 +4282,7 @@ to diff</strong>, named so it stays ⛔ and never gets synthesized.</p>
 <td><code>MInOut.java:1981/1983</code> <code>oLine.setQtyDelivered(…±Qty)</code> · <code>MInvoice.java:2121</code> <code>ol.setQtyInvoiced(…+Qty)</code> · <code>MOrderLine.java:518-525</code> <code>beforeDelete</code> guards (<code>QtyDelivered≠0</code>/<code>QtyInvoiced≠0</code> block delete). <strong>Seed:</strong> order <strong>106</strong> (<code>documentno=800002</code>, <code>IsSOTrx='N'</code>), lines 121/122/123 = <code>QtyDelivered=30/12/15</code>, <code>QtyInvoiced=0</code> (delivered, never invoiced) — the <strong>only</strong> partial-state order, and a <strong>PO</strong>, so W-FOLD-COMPLETE's <code>IsSOTrx='Y'</code> filter excludes it entirely.</td>
 <td>W-FOLD-COMPLETE checks ship/invoice <em>lines == oracle docs</em>; it does <strong>not</strong> write back the parent order-line running totals, and never sees a deliver-but-don't-invoice order. A fold that regenerates documents independently could land <code>QtyInvoiced≠0</code> on order 106 or mis-sum under interleaved partials.</td>
 <td>Fold order 106's shipment → assert <code>C_OrderLine.QtyDelivered == {30,12,15}</code> and <code>QtyInvoiced == 0</code> == the stored oracle row (cents/units, <code>diff=0</code>). §FALSIFIER-A: over-deliver (Qty&gt;Ordered) must be representable / flagged. §FALSIFIER-B: an invoice fan-out must <em>increment</em> <code>QtyInvoiced</code> by exactly the invoiced qty, not overwrite.</td>
-<td><strong><code>MOrderLine.qty-rollup</code> (deltaFrom=MOrder afterSave)</strong> — Oracle col: ⬜→ target ✅</td>
+<td><strong>✅ RESOLVED 2026-06-13 — W-MORDER-QTYROLLUP</strong> (<code>scripts/poc_partial_fulfill.js</code> → <code>build/erp/poc_partial_fulfill.log</code>, PASS): new pure verb <code>erp_engine.qtyRollup</code> folds the fan-out into <code>UPDATE_FIELD(QtyDelivered/QtyInvoiced)</code>; order 106 = <code>{30,12,15}</code> delivered / <code>0</code> invoiced == stored oracle, <code>maxDiff=0</code>; §FALSIFIER-A force-invoice→30, §FALSIFIER-B +1→1 both fire. Additive verb (completeOrder unchanged; poc_fold_complete/invoice_complete/opgroup regression-green). Auto-wiring into completeOrder = named next step.</td>
 </tr>
 <tr>
 <td><strong>A-2</strong></td>
@@ -4407,13 +4408,11 @@ seed/lane can promote them, and so the "indistinguishable" claim is scoped hones
 </table>
 <hr />
 <h2 id="proposed-follow-up-stubs-optional-not-run-this-lane">Proposed follow-up stubs (optional, NOT run this lane)<a class="headerlink" href="#proposed-follow-up-stubs-optional-not-run-this-lane" title="Permanent link">&para;</a></h2>
-<p>Two NEW witness stubs are sketched for the bucket-A rows, for a follow-up lane to flesh out and run against the
-live <code>idempiere_test</code> oracle. They touch <strong>no</strong> engine file and <strong>no</strong> existing <code>poc_*.js</code>:</p>
 <ul>
-<li><code>build/erp/poc_partial_fulfill.js</code> — A-1: fold order 106's shipment, diff <code>C_OrderLine.QtyDelivered/QtyInvoiced</code>
-  vs the stored oracle row; §FALSIFIER over-deliver + invoice-increment.</li>
-<li><code>build/erp/poc_repost_idempotent.js</code> — A-2: derive a doc's posting through FactAcctReset→repost twice, assert
-  net <code>Fact_Acct</code> unchanged; §FALSIFIER skip-delete → balances double.</li>
+<li><strong>A-1 — BUILT ✅</strong> <code>scripts/poc_partial_fulfill.js</code> (W-MORDER-QTYROLLUP, green; promoted from the stub) + new
+  pure verb <code>erp_engine.qtyRollup</code>. Oracle = stored GardenWorld <code>c_orderline</code> (no live <code>idempiere_test</code> needed).</li>
+<li><strong>A-2 — STUB</strong> <code>build/erp/poc_repost_idempotent.js</code> — derive a doc's posting through FactAcctReset→repost twice,
+  assert net <code>Fact_Acct</code> unchanged; §FALSIFIER skip-delete → balances double. Property test, no new oracle; not yet built.</li>
 </ul>
 <h2 id="falsifier-on-this-lane">Falsifier on this lane<a class="headerlink" href="#falsifier-on-this-lane" title="Permanent link">&para;</a></h2>
 <p>The §FALSIFIER for the card: <em>a finding admitted with no reproducing source citation = invented = rejected.</em> Every
