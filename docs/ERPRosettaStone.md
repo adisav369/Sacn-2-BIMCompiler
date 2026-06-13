@@ -271,3 +271,49 @@ The substrate is well-trodden; cite it, don't reinvent it:
 iDempiere's `M*` model — `completeIt`, `Doc_*` posting, the DocAction FSM, the AD interpreters — to
 *oracle-equivalence* (`maxDiff=0c` vs real iDempiere output), serverless, in a browser. We stood on proven
 ground; the ERP fold is the new work. See the [Coverage Matrix](ERP_COVERAGE_MATRIX.md) for the exact tally.
+
+---
+
+## 8. "Is this just OO again?" — paradigm placement
+
+A fair challenge: messaging, encapsulation, one shared construct — isn't that OO rebuilt? The answer turns on
+*which* OO you mean.
+
+**Textbook (Java/C++) OO — no, it's the opposite.** Classes, inheritance, encapsulated *mutable* objects: the
+fold engine has none. Data (ops, journal, projection) is separated from behavior (verbs); 496 stateful classes
+collapse to one construct + data. That's the **data-oriented** camp (Hickey: "the database as a value") — a
+deliberate move *away* from the mutable object graph.
+
+**Kay's original OO — yes, arguably more faithful than Java.** Alan Kay, who coined the term: *"OOP to me means
+only messaging, local retention and protection and hiding of state-process, and extreme late-binding of all
+things."* The fold engine hits all three — an **op is a message**; state is never reached into (*tell, don't
+ask* — stronger than `getX/setX`, which expose state); the "class" is **late-bound from AD data**, not compiled.
+Java is *class*-oriented; Kay called class/inheritance "the lesser idea." So the op-log drifts *back* toward
+what OO was for, minus the class explosion. Lineage: **actors / Erlang / Smalltalk**, not Java.
+
+**And it's *more abstract* than Java can be — because types became data.** In Java, `Invoice` is a *class* —
+code, fixed at compile time. Here, `Invoice` is a `doc_type` value + AD dictionary rows — *data*. ~1000 `M*`
+tables reduce to a **5-table runtime** precisely because the specific types stopped being schema and became
+data over an abstract shape ([`ERP.md`](ERP.md) §0: "the schema stops growing with the feature list", 98.4% of
+business edges mappable). Java's type system is a *compile-time* layer — types are not runtime values;
+iDempiere already pushes toward types-as-data through the AD but still **compiles `X_` classes**, so it's only
+half-abstract. The fold engine keeps types as data all the way down — strictly more abstract than either.
+
+**The cost, honestly.** Extreme abstraction trades away the compiler's static guarantees: Java *checks* that
+`MOrder.getC_BPartner_ID()` exists; a data-driven engine surfaces that error at fold/run time. The fold engine
+pays it back not with a type-checker but with the **witness + §FALSIFIER + oracle-diff discipline** — every
+surface diffed to `maxDiff=0c` against real iDempiere. Static safety → proven-equivalence safety. (And the 1.6%
+of edges that don't fit the 5 shapes is named, not hidden.)
+
+**The limit — one table.** Push the abstraction all the way and the count goes to *one*: the event log itself.
+The 5-table runtime isn't the floor — it's a **projection** of `kernel_ops` (§1). The single source of truth is
+the log; the tables are disposable views folded from it, kept only so reads are fast SQL instead of re-folding
+history per query (in practice: log + snapshots/compaction). So "how many tables" stops being an ontological
+question — it's **one log of facts, plus however many views you find convenient.** At the limit, an ERP is *a
+list of what happened + functions that fold it into answers*; every table, screen, report, and the books are
+views.
+
+And this isn't exotic — it's **500 years old.** Double-entry bookkeeping (Pacioli, 1494) is append-only event
+sourcing: the **journal** is the immutable log; the ledger and balance sheet are *folds* of it. "Journal IS the
+books" (§4) is literally that. The fold engine just generalizes the accounting journal's discipline — never
+erase, only append, derive everything — from the books to the *whole* ERP.
