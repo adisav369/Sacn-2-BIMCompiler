@@ -26,6 +26,7 @@ Single-page entry point. All active docs by tier.
 |-----|------|
 | [MigrateComparisonPaper.md #status](MigrateComparisonPaper.md#status) | **The migration honesty panel** — 4 states at a glance: 🟢 folds-to-the-cent today · 🟠 extraction gap (fold proven, data unwired) · 🔴 fold gap (capability unbuilt) · 🔵 deleted-by-architecture (ZK/ORM/server — no counterpart). The prominent answer to "what's NOT in the new iDempiere experience?" |
 | [ERPRosettaStone.md](ERPRosettaStone.md) | **iDempiere Java → Fold Engine dictionary** — for the legacy dev: `PO.get/set/save`, `Query`, `MOrder.completeIt()`, `Doc_Order` mapped one-to-one to the op-log + AD-as-data fold. The "how the code works" home so the paper can link out instead of inlining mechanism. |
+| [GapClosureSpec.md](GapClosureSpec.md) | **How a coverage gap becomes oracle-equivalent** — the method that governs `prompts/GAP_CLOSURE_LANE.md`: oracle protocol, §FALSIFIER law, gap taxonomy, per-gap Definition-of-Done. A row flips ⛔/🟡→✅ only on a real `maxDiff=0c` diff. |
 | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) | R1-R30 gap tracking, session checklist — the distance between "it compiles" and "it ships" |
 | [ShipYard.md](ShipYard.md) | **Domain-agnostic treatise:** marine hulls, tunnels, earthworks, industrial plant — same engine, different data |
 | [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix, 35 Rosetta Stones |

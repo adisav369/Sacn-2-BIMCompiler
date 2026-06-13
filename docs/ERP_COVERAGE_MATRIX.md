@@ -1,6 +1,6 @@
 # ERP Rules & Processes — Coverage Matrix ("have we covered all the bases?")
 
-**Companion to:** [Migrate & Compare (ERP)](MigrateComparisonPaper.md) (the §estimate buckets, now measured) ·
+**Companion to:** [Migrate & Compare (ERP)](MigrateComparisonPaper.md) (the §estimate buckets, now measured — its [**4-state status panel**](MigrateComparisonPaper.md#status) is the at-a-glance view of this matrix: 🟢 folds-today · 🟠 extraction · 🔴 fold-gap · 🔵 deleted-by-architecture) ·
 [The Holy Grail](HolyGrail.md#abstracting-the-docaction-corpus--and-why-it-is-the-migration-solvent) (the DocAction
 corpus) · [iDempiere logic-admission model](IDEMPIERE_2.md#the-logic-admission-model--how-all-of-odooerpnextsap-logic-enters)
 (the six layers this audit scores). This page is the exhaustive enumeration those three reference.
@@ -11,6 +11,11 @@ AD DATA (`build/erp/ad_full.db`, 927 tables, snapshot **2026-05-29**) — and ma
 (`build/erp/*.js`). Three legs per surface: **AD count** (real `sqlite3` query, cited) · **code home** (path + `wc -l`) ·
 **engine handling** (file:fn or *absent*). Verdict: ✅ COVERED / 🟡 PARTIAL / ⛔ GAP. **No number is invented** — each
 traces to a query or a `find … | wc -l`. Counts are a snapshot; re-run the cited query to refresh.
+
+> **Gap-closure governance.** How a ⛔/🟡 row here becomes ✅ is governed by [**`GapClosureSpec.md`**](GapClosureSpec.md)
+> (the oracle protocol · §FALSIFIER law · gap taxonomy · Definition-of-Done) and executed via the operational backlog
+> `prompts/GAP_CLOSURE_LANE.md` (prioritized gaps + verified recon, repo-local). A row flips only on a real oracle
+> diff (`maxDiff=0c`), never a claim.
 
 ## Headline
 

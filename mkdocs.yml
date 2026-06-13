@@ -163,6 +163,7 @@ nav:
       - Local-First Prior Art: LocalFirstPriorArt.md
       - Distributed ERP (Contention Map): DistributedERP.md
       - "ERP Coverage Matrix (have we covered all bases?)": ERP_COVERAGE_MATRIX.md
+      - "Gap-Closure Spec (how a gap becomes oracle-equivalent)": GapClosureSpec.md
       - "ERP Model Archetype (MOrder + deltas = the denominator)": ERP_MODEL_ARCHETYPE.md
       - "POS Addon Spec (the 2012 Unicenta loop, as folds)": POS_ADDON_SPEC.md
       - "Spatial Picking Spec (warehouse walk + QR)": SPATIAL_PICKING_SPEC.md
