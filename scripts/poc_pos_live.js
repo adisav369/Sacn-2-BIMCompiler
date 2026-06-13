@@ -84,7 +84,9 @@ const server = http.createServer((q, r) => {
   await pg.click('#pos-float-tender'); await pg.waitForTimeout(300);
   if (logs.find(t => t.startsWith('§POS-SALE'))) fail('sale committed without a partner');
   await pg.selectOption('#pos-float-bp', '112');     // Standard — the GardenWorld walk-in
-  await pg.click('#pos-float-tender');
+  await pg.click('#pos-float-tender');                         // §D-2: opens receipt-preview modal
+  await pg.waitForSelector('#pos-pay-ok', { timeout: 5000 }).catch(() => fail('receipt-preview modal never appeared'));
+  await pg.click('#pos-pay-ok');                               // §D-2: OK = manual pay → Complete
   await pg.waitForFunction(() => { const e = document.getElementById('pos-float-receipt'); return e && e.textContent.includes('✓'); }, null, { timeout: 15000 })
     .catch(() => fail('receipt never rendered'));
   const sale = logs.find(t => t.startsWith('§POS-SALE'));

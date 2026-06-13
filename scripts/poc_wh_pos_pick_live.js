@@ -91,13 +91,20 @@ function sleep(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); 
   verdict(/door=on doctype=132/.test(door), 'P1 door=on doctype=132 (dictionary-gated docsubtypeso=SO)', door);
   await erp.evaluate(function () { document.getElementById('pos-pill-payment').dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
   await erp.waitForSelector('#pos-float-panel.open', { timeout: 10000 });
-  // P2: empty-cart deliver-later refuses
-  await erp.click('#pos-float-deliverlater'); await sleep(400);
+  // P2: empty-cart deliver-later refuses (§D-3: button now lives in the collapsed ⋯ dock — dispatch
+  // the click directly, the engine refusal is what's under test, not the dock reveal gesture)
+  await erp.evaluate(function () {
+    var btn = document.getElementById('pos-float-deliverlater');
+    if (btn) btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  });
+  await sleep(400);
   verdict(!grab(elog, /§POS-DELIVERLATER sale/), 'P2 empty-cart deliver-later REFUSED (no sale line)');
   // P3: WR tender regression (and the walk falsifier seed — this shipment completes IN-group)
   await erp.click('.pos-card[data-pid="124"]');
   await erp.select('#pos-float-bp', '112');
-  await erp.click('#pos-float-tender');
+  await erp.click('#pos-float-tender');                              // §D-2: opens receipt-preview modal
+  await erp.waitForSelector('#pos-pay-ok', { timeout: 5000 }).catch(function () { fails++; console.log('   🔴 P3 receipt-preview modal did not appear'); });
+  await erp.click('#pos-pay-ok');                                    // §D-2: OK = manual pay → Complete
   var wrOk = await waitFor(elog, '§POS-SALE', 20000);
   var wrLine = (grab(elog, /(§POS-SALE.*)/) || ['', ''])[1];
   verdict(wrOk && /newVerbs=\[\]/.test(wrLine) && /chainOk=Y/.test(wrLine), 'P3 W-POS-LIVE regression: Tender sale commits (WR path byte-identical)', wrLine);
@@ -149,7 +156,10 @@ function sleep(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); 
   await wk.goto('http://127.0.0.1:' + PORT + '/viewer/viewer.html?db=../buildings/warehouse_gardenworld.db', { waitUntil: 'domcontentloaded', timeout: 40000 });
   verdict(await waitFor(wlog, '§WH PILL gate=on', 30000), 'walk pill gated ON (warehouse model)', (grab(wlog, /(§WH PILL.*)/) || ['', ''])[1]);
   await waitFor(wlog, '§BBOX_CLEARED', 30000);
+  // §C-1 (UI_UX_LANE Track C): the walk AUTO-ENGAGES once geometry is ready; with POS docs present it
+  // auto-pops the source chooser. Tolerate already-open (never toggle it shut) — only open if it didn't.
   await wk.evaluate(function () {
+    if (window.WHWalk && WHWalk.isOpen && WHWalk.isOpen()) return;
     var b = document.getElementById('pill-whwalk');
     if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
     else if (window.WHWalk) WHWalk.toggle();
@@ -183,6 +193,10 @@ function sleep(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); 
   // W2: draft from the pos doc — bins from m_storageonhand
   verdict(await waitFor(wlog, '§WH DRAFT pos-shipment', 10000), 'W2 draft from the live sale (op log)',
     (grab(wlog, /(§WH DRAFT pos-shipment.*)/) || ['', 'absent'])[1]);
+  // §C-5: switch-source ↺ button is data-gated visible when POS docs exist. Feature-tolerant — a viewer
+  // that predates Track C has no #wh-switch element at all (n/a, not a fail); when present it MUST be visible.
+  var switchState = await wk.evaluate(function () { var b = document.getElementById('wh-switch'); return b ? (b.style.display !== 'none' ? 'shown' : 'hidden') : 'absent'; });
+  verdict(switchState !== 'hidden', '§C-5 ↺ switch-source button visible when posDocs>0 (or n/a on a pre-C5 viewer)', 'state=' + switchState);
   // W3: walk the 2 steps via the manual-confirm gate; step1 SHORT-pick 2→1
   verdict(await waitFor(wlog, 'step=1/2', 20000), 'W3 step 1/2 focused', (grab(wlog, /(§WH step=.*)/) || ['', ''])[1]);
   // click via dispatchEvent — the qty stepper lives in a fixed overlay that Puppeteer's
@@ -223,7 +237,9 @@ function sleep(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); 
   await wk2.goto('http://127.0.0.1:' + PORT + '/viewer/viewer.html?db=../buildings/warehouse_gardenworld.db', { waitUntil: 'domcontentloaded', timeout: 40000 });
   await waitFor(wlog2, '§WH PILL gate=on', 30000);
   await waitFor(wlog2, '§BBOX_CLEARED', 30000);
+  // §C-1: tolerate auto-engaged walk (already open) — reload selector check, pos-docs=0 → no chooser.
   await wk2.evaluate(function () {
+    if (window.WHWalk && WHWalk.isOpen && WHWalk.isOpen()) return;
     var b = document.getElementById('pill-whwalk');
     if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
     else if (window.WHWalk) WHWalk.toggle();

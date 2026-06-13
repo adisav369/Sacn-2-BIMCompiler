@@ -144,28 +144,57 @@ Tap the **POS** pill in the bottom bar (it appears only when the loaded db has a
   folder → ledger thumbnail → placeholder glyph, honestly tiered) and its master price from the
   station's pricelist — you ring the master, not a manual price.
 - **Floating payment panel** — the cart pill summons a floating panel on its own layer
-  (`#pos-float-panel`): tender, walk-in partner picker, receipt, replenishment suggestions. The album
-  keeps scrolling underneath; payment never squeezes the grid.
-- **Panel lifecycle** — drag it by the header; dismiss it with the **✕** button or a **swipe-down**
-  on the header; and it **follows the cart**: when the cart empties — sale completed, or the last
-  line removed — the panel dismisses itself (`§POS-FLOAT dispose=cart-empty`). The cart pill
-  re-summons it anytime. Dismissing is pure UI: it never touches the cart contents or a committed
-  sale (the sale is sealed atomically at Complete, before the panel ever moves).
+  (`#pos-float-panel`); tap the cart pill again to dismiss it (`§POS-FLOAT toggle=`). The album keeps
+  scrolling underneath; payment never squeezes the grid.
+- **Panel lifecycle** — **swipe-down** to dismiss, and it **follows the cart**: when the cart empties
+  — sale completed, or the last line removed — the panel dismisses itself (`§POS-FLOAT
+  dispose=cart-empty`). The cart pill re-summons it anytime. Dismissing is pure UI: it never touches
+  the cart contents or a committed sale (the sale is sealed atomically at Complete, before the panel
+  ever moves).
 
 ![POS — Garden User · Store: product grid left, live cart right, replenishment suggestions below](figs/pos_live.png)
 
+### Payment panel layout (sw v667 — minimalist)
+
+The panel is stripped to the essentials, total as the hero:
+
+- **Edge rims** — a bright **orange** top rim is the **Ordered items** drawer, a bright **green**
+  bottom rim is the **Replenishment** drawer. They are fully textless — **tap a rim to expand** its
+  body; the meaning sits in the `title=` hover and here in the guide. (`§POS-DRAWER-ITEMS` /
+  `§POS-DRAWER-REPL open count`.)
+- **Hero row** — the large centred **total** is flanked by exactly two icons: **scan** (left — opens
+  the barcode overlay to add an item) and **`$` banknote** (right — opens the receipt preview, see
+  below). Nothing else competes with the total.
+- **⋯ dock** (bottom-right, reveal-up, taps-outside close it) — the secondary actions live here:
+  **home**, **import** (register a product), **receipt** (re-open the last receipt, appears after a
+  sale), and **Deliver later** (dictionary-gated — present only when the loaded db has an `SO`
+  doctype).
+
+### The receipt-preview pay flow
+
+Tapping **`$`** does **not** commit — it opens a **receipt preview** (a modal): the cart lines, the
+total, and three actions —
+
+- **QR** — show the DEMO payment QR (clearly watermarked DEMO — a display, not a payment rail; no
+  provider is wired, nothing is charged).
+- **OK** — manual pay → **Complete the sale** (the one signed op-group; `§POS-SALE … chainOk=Y`).
+- **Cancel** — back to the cart, nothing committed.
+
 ### Making a sale
 
-1. Tap a product card → it is added to the cart at the sealed price.
+1. Tap a product card (or **scan** from the hero row) → it is added to the cart at the sealed price.
 2. Tap again to increment qty, or edit qty in the line.
-3. Review **Total** (BigDecimal fold of line amounts, never a posted figure yet).
-4. Summon the payment panel (cart pill), pick the walk-in partner, tap **Tendered cash — Complete**
-   (`§POS-SALE … newVerbs=[] chainOk=Y` — and the receipt card shows `signed=Y`).
-5. The receipt opens in its own overlay (re-openable via the **receipt pill**) and the payment
-   panel dismisses itself — the sale is already closed: one signed op-group, nothing left pending.
+3. Review **Total** — the centred hero figure (BigDecimal fold of line amounts, never a posted figure yet).
+4. Summon the payment panel (cart pill), pick the walk-in partner, tap **`$`** → the **receipt
+   preview** opens → tap **OK** to complete the sale (`§POS-SALE … newVerbs=[] chainOk=Y` — the
+   receipt shows `signed=Y`).
+5. The receipt opens in its own overlay (re-openable via the **receipt** entry in the ⋯ dock) and the
+   payment panel dismisses itself — the sale is already closed: one signed op-group, nothing left pending.
 
-A **DEMO payment QR** renders in the panel (clearly watermarked DEMO — a display of the tender
-amount, not a payment rail; no provider is wired, nothing is charged).
+!!! tip "Barcode scan distance"
+    The scan overlay shows the hint **"Hold steady · 10–15 cm from barcode"** on open.
+    Barcode scanning works best at 10–15 cm from the label. Some Android phones apply macro focus
+    automatically (Chrome-only; Safari degrades silently — typed fallback always works).
 
 ### Register a new product at the till — the Import pill (§P-9)
 
@@ -333,14 +362,16 @@ Any other building → the pill stays off the bar.
 ### Deliver later → pick at the warehouse (§S-2b)
 
 The POS and the Warehouse Walk are **one ledger, two lenses**. When you ring a sale and choose
-**Deliver later · pick at warehouse** (the payment panel's option beside Tender — shown only when the
-tenant has a deliver-later sale doctype, seed `132`), the order completes (`C_Order → CO`) but the
-shipment is born **`DR`** (not yet picked). That open shipment then appears as a **route source in the
-Warehouse Walk** on the next open: walk to the bin, scan/confirm, and the shipment completes by the
-**picked** quantity — on-hand moves *at the pick*, not at the sale. Short-picks leave the remainder open
-on the document. Once picked, the walk writes the completion back to the shared ledger so the selector
-never re-offers a picked shipment. The whole loop is witnessed live end-to-end (**W-WH-POS-PICK-LIVE**,
-PR #283). A "with-pick QA confirm" doctype (148) routes completion through the warehouse-confirm gate first.
+**Deliver later · pick at warehouse** (in the ⋯ dock — shown only when the tenant has a deliver-later
+sale doctype, seed `132`), the order completes (`C_Order → CO`) but the shipment is born **`DR`** (not
+yet picked). As a demo convenience the Warehouse Walk **opens in a new browser tab** straight away
+(`§POS-DELIVERLATER walk-tab=opened`) so you can pick immediately. That open shipment also appears as a
+**route source in the Warehouse Walk** on any open: walk to the bin, scan/confirm, and the shipment
+completes by the **picked** quantity — on-hand moves *at the pick*, not at the sale. Short-picks leave
+the remainder open on the document. Once picked, the walk writes the completion back to the shared
+ledger so the selector never re-offers a picked shipment. The whole loop is witnessed live end-to-end
+(**W-WH-POS-PICK-LIVE**, PR #283). A "with-pick QA confirm" doctype (148) routes completion through the
+warehouse-confirm gate first.
 
 ### Share
 
@@ -439,6 +470,54 @@ History (W pill)
   ← / →        Step back/forward one op
   Long-press W Open Z+bomb drawer (undo / fold-back)
 ```
+
+---
+
+## 13. Testing & Verification
+
+Two pills in the bottom bar prove the system works. Show them during demos — they signal a serious,
+verifiable foundation, not a mock.
+
+### Verify Ledger (`checkList` icon)
+
+Reads your **live** op-log from IndexedDB and walks the SHA-256 hash chain sealing every operation.
+Opens a **card** showing one summary row: `✓ N ops — chain intact` or `✗ Tamper at op N — <reason>`.
+Tap the pill again to dismiss. Hover tooltip: *"Verify Ledger — hash-chain tamper check on your live op-log"*.
+
+Use it after running real transactions (sales, document completions). On a fresh seed with 0
+transactions it reports "0 ops" — that is correct, not a failure.
+
+**What it proves:** nobody modified, deleted, or injected rows in the audit trail. Each op's hash
+depends on the previous one; any change breaks the chain at that exact point.
+
+### Doc Cycle Validator (`check` / tick icon)
+
+Bootstraps a **fresh in-memory SQLite database** on the spot, runs 13 engine unit-tests, and shows a
+✓ / ✗ row per check. The footer turns green **"✓ 13 / 13 PASS — doc cycle proven in-browser"** when
+all pass. Tap again to dismiss. Hover tooltip: *"Doc Cycle — 13 engine tests (always green)"*.
+
+Both testing pills share the same card chrome — same glass panel, same tick/cross row style.
+
+Use it any time — it never touches your real data and needs no network. Always green; deterministic.
+
+**What it proves (the 13 checks):**
+
+| Section | Checks |
+|---|---|
+| FSM legal-action sets | DR/CO/VO each return the correct legal action list |
+| Strict transitions | CO-from-Closed, PR-from-Completed, CO-from-Voided all throw `DocStateError` |
+| Forward progression | `PR` advances `DR → IP` correctly |
+| Atomic ERP + BIM sync | Completing a receipt writes both `fact_acct` (DR Inventory + CR AP) and `bim_element_status` under one SAVEPOINT |
+| SAVEPOINT rollback | A document with no lines triggers rollback: 0 `fact_acct` rows, `docstatus` reverted to `DR` |
+| Falsifier | `CO → CO` is rejected as `DocStateError`, not silently passed |
+
+### The distinction
+
+| | Verify Ledger | Doc Cycle |
+|---|---|---|
+| Input | Your live op-log (real user transactions) | Fresh in-memory seed (no user data) |
+| Tests | Data integrity — was anything tampered? | Engine correctness — does the logic work? |
+| Always green? | Only after real transactions | Yes — same result every run |
 
 ---
 
