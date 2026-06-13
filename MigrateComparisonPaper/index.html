@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#whats-in-the-new-experience-and-what-isnt" class="md-skip">
+        <a href="#but-erp-is-tough-an-aircraft-carrier-is-about-to-go-into-a-bathtub" class="md-skip">
           Skip to content
         </a>
       
@@ -668,17 +668,6 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#whats-in-the-new-experience-and-what-isnt" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What's in the new experience — and what isn't
-      
-    </span>
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#but-erp-is-tough-an-aircraft-carrier-is-about-to-go-into-a-bathtub" class="md-nav__link">
@@ -4434,17 +4423,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#whats-in-the-new-experience-and-what-isnt" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What's in the new experience — and what isn't
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#but-erp-is-tough-an-aircraft-carrier-is-about-to-go-into-a-bathtub" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4859,8 +4837,9 @@ details.fold .fbd{padding:6px 16px 14px}
 </style>
 
 <div style="max-width:760px;margin:24px auto 8px;padding:30px 40px;background:#263238;border-left:4px solid #ff9800;text-align:center;border-radius:4px" markdown="0">
-<span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The Server Is Obsolete</span>
-<br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">built from ideas already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
+<span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The Server Is Dead</span>
+<br><span style="font-size:1.05em;font-weight:600;line-height:1.35;color:#ffcc80;margin-top:12px;display:inline-block">The DB is the log is the kernel — in the browser</span>
+<br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">Already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
 <br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="color:inherit;text-decoration:underline;text-underline-offset:3px">Now assembled by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">Redhuan D. Oon (red1)</b></a></span>
 </div>
 
@@ -4893,80 +4872,21 @@ details.fold .fbd{padding:6px 16px 14px}
 </div>
 
 <p><span id="status"></span></p>
-<h2 id="whats-in-the-new-experience-and-what-isnt">What's in the new experience — and what isn't<a class="headerlink" href="#whats-in-the-new-experience-and-what-isnt" title="Permanent link">&para;</a></h2>
-<div class="statuslead" markdown="0">A migration honesty panel — four states, not a pass/fail. A flow either folds to the cent today (🟢), or its fold is proven and only the data-wiring remains (🟠), or the capability is still unbuilt (🔴), or the legacy code has <b>no counterpart by design</b> and leaves the denominator entirely (🔵). This is a claim about <b>substrate and delivery</b>, not feature parity — only ~1% of iDempiere's M-class logic is ported. The strip shows which <i>business flows</i> the kernel already reproduces <b>indistinguishably from iDempiere</b> (<code>maxDiff=0c</code>) and exactly what stands between that and a full tenant cut-over. Counts trace to the <a href="#gap-analysis">coverage-by-capability table</a> below; deleted-tier LOC to the <a href="#realistic-conversion-estimate-loc">source sweep</a>. &nbsp;<a href="../migrate_status_panel.html">Open as standalone panel&nbsp;↗</a></div>
-
-<div class="status3" markdown="0">
-
-  <div class="band green">
-    <div class="bh">
-      <div class="tag">🟢 In the new experience</div>
-      <div class="ttl">Folds to the cent today</div>
-      <div class="gloss">Oracle-equivalent vs real iDempiere output, <code>maxDiff=0c</code>, both USD + EUR schemas. <b>43 surfaces.</b></div>
-    </div>
-    <ul>
-      <li><b>Trade loop</b> — order → ship → invoice → 3-way match → pay → allocate</li>
-      <li><b>Inventory loop</b> — movement → on-hand → replenishment PO</li>
-      <li><b>GL</b> — inter-org journals + FX, reverse / void (nets to zero)</li>
-      <li><b>Reports</b> — Balance Sheet · Income · Cash Flow + invoice print</li>
-      <li><b>Model layer</b> — <code>beforeSave</code> + DocAction-FSM of every doc class</li>
-    </ul>
-    <div class="foot">16 cent-exact · 6 declarative · 21 model-layer — each with a §FALSIFIER</div>
-  </div>
-
-  <div class="band amberx">
-    <div class="bh">
-      <div class="tag">🟠 Extraction gap</div>
-      <div class="ttl">Fold proven — data not yet wired</div>
-      <div class="gloss">The engine already folds these flows (passing witness each). Mechanical extractor work, <b>not engine development.</b></div>
-    </div>
-    <ul>
-      <li><b>Master data</b> — 38 partners · 30 products · 47 COA · 8 journals · 11 terms</li>
-      <li><b>Sale orders</b> — 26 of 27 (1 chain folded; loop the proven path)</li>
-      <li><b>Purchasing</b> — all 13 POs + vendor bills (buy-side adapter <i>written, unused</i>)</li>
-      <li><b>Money</b> — 3 real payments + reconciles, 13 manual journals, 7 credit notes</li>
-      <li><b>Inventory state</b> — 43 on-hand quants as opening balances</li>
-    </ul>
-    <div class="foot">Backlog → <code>MIGRATE_INSTALL_TENANT.md §RESUME</code></div>
-  </div>
-
-  <div class="band redf">
-    <div class="bh">
-      <div class="tag">🔴 Fold gap</div>
-      <div class="ttl">Capability still unbuilt</div>
-      <div class="gloss">The engine can't yet compute these even with the data present — mapping / interpreter work, the genuine remainder.</div>
-    </div>
-    <ul>
-      <li><b>Cost-valued inventory GL</b> — qty spine proven; cost→GL deferred</li>
-      <li><b>AR / AP aging</b> — open-items + date-bucket fold (distinct)</li>
-      <li><b>Document print mapping</b> — Odoo QWeb defs → print tree</li>
-      <li><b>Analytic / cost-centre</b> accounting dimensions</li>
-      <li><b>Server-action interpretation</b> — Odoo automation (64 actions)</li>
-    </ul>
-    <div class="foot">On-demand procs (454/476) amortise here by design — not blocking</div>
-  </div>
-
-  <div class="band bluen">
-    <div class="bh">
-      <div class="tag">🔵 Not applicable</div>
-      <div class="ttl">Deleted by architecture — no port</div>
-      <div class="gloss">Whole tiers the serverless model removes. Not "missing features" — they have <b>no counterpart</b> by design, so they leave the denominator.</div>
-    </div>
-    <ul>
-      <li><b>ZK web UI</b> (189,786 LOC) → the browser renderer</li>
-      <li><b>Generated <code>X_*</code> ORM</b> (345,490 LOC) → the AD rides as <i>data</i></li>
-      <li><b>Server-side HTML lib</b> (43,816 LOC) → no server</li>
-      <li><b>JDBC · OSGi · app server · installer</b> → no server of record</li>
-      <li><b>Web services tier</b> → the signed op-log <i>is</i> the wire</li>
-    </ul>
-    <div class="foot">≈40%+ of the 1.4M-LOC tree — deleted, not unported</div>
-  </div>
-
-</div>
+<p style="margin:16px 0;font-size:15px"><a href="../migrate_status_panel.html"><b>What is Done and Pending</b> — the four-state migration honesty map &nbsp;🟢🟠🔴🔵&nbsp; ↗</a></p>
 
 <hr />
 <h2 id="but-erp-is-tough-an-aircraft-carrier-is-about-to-go-into-a-bathtub">But ERP is tough — an aircraft carrier is about to go into a bathtub<a class="headerlink" href="#but-erp-is-tough-an-aircraft-carrier-is-about-to-go-into-a-bathtub" title="Permanent link">&para;</a></h2>
-<p><em>These have been around for some time, but never for ERP and BIM — now we can put both servers in the same browser! It has to take all six of these, interlocked:</em></p>
+<details class="fold" markdown="0">
+<summary>The six interlocked things it takes &nbsp;<span style="display:inline-flex;gap:6px;align-items:center;vertical-align:middle">
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#ffa000" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/></svg>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#7cb342" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6a9 9 0 0 0-9 9V3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/></svg>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#ff7043" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#42a5f5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v8l3-3 3 3V2"/><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#ab47bc" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#26a69a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg>
+</span></summary>
+<div class="fbd" markdown="0">
+
 <div class="pillars" markdown="0">
 
   <div class="pillar" style="--pc:#ffa000;--pcbg:rgba(255,160,0,.07);--pcft:rgba(255,160,0,.16)">
@@ -5030,6 +4950,10 @@ details.fold .fbd{padding:6px 16px 14px}
   </div>
 
 </div>
+
+</div>
+
+</details>
 
 <hr />
 <h2 id="thesis-erp-as-git">Thesis — ERP as git<a class="headerlink" href="#thesis-erp-as-git" title="Permanent link">&para;</a></h2>
