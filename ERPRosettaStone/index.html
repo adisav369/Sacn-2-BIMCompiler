@@ -4579,6 +4579,14 @@ This is the <em>ERP dictionary</em>: iDempiere Java ⇄ AD-as-data fold.</p>
 <p><strong>Companions:</strong> <a href="../ERP_COVERAGE_MATRIX/">Coverage Matrix</a> (which surfaces are proven equivalent) ·
 <a href="../FoldEngineQuality/">Fold-Engine Code Quality</a> (how the witnesses are graded) ·
 <a href="../MigrateComparisonPaper/">Migrate &amp; Compare</a> (the thesis &amp; honesty panel).</p>
+<p><strong>TL;DR — five reframes.</strong> If you read nothing else:</p>
+<ol>
+<li><strong>Stop thinking <code>PO</code> + <code>save()</code></strong> → start thinking <em>append a signed operation to an immutable log.</em></li>
+<li><strong>Stop thinking generated <code>X_*</code> classes</strong> → start thinking <em>AD data, interpreted at runtime by one engine.</em></li>
+<li><strong>Stop thinking the database is the truth</strong> → it's a <em>fast, disposable, queryable view</em> folded from the log.</li>
+<li><strong>Your whole <code>completeIt()</code></strong> is now <em>one atomic, signed <code>commitGroup</code></em> — status + posting + child docs, all-or-none.</li>
+<li><strong>It's not magic</strong> — event sourcing + CQRS applied to the iDempiere model, proven <code>maxDiff=0c</code>, serverless.</li>
+</ol>
 </blockquote>
 <hr />
 <h2 id="1-the-one-mental-shift-read-this-first">1. The one mental shift (read this first)<a class="headerlink" href="#1-the-one-mental-shift-read-this-first" title="Permanent link">&para;</a></h2>
