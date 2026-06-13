@@ -85,6 +85,7 @@
     vertical-align:middle;white-space:nowrap}
   .live-pill::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle}
   .fn{color:var(--blue);font-weight:800}
+  .gx{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-left:6px;vertical-align:middle}
   @media (max-width:680px){
     .swap{grid-template-columns:1fr;row-gap:2px}
     .swap .sh{display:none}
@@ -180,14 +181,14 @@
       </div>
       <div class="swap">
         <div class="sh">What the server did</div><div class="sh">Who does it now</div>
-        <div class="sl"><b>ZK web UI</b> · 190k LOC</div><div class="sr">the browser renders</div>
+        <div class="sl"><b>ZK web UI</b> · 190k LOC</div><div class="sr">the browser renders<span class="gx"></span></div>
         <div class="sl"><b>Generated <code>X_*</code> ORM</b> · 345k LOC</div><div class="sr">AD rides as <i>data</i></div>
-        <div class="sl"><b>Server-side HTML</b> · 44k LOC</div><div class="sr">gone, no server</div>
-        <div class="sl"><b>JDBC · OSGi · app server</b></div><div class="sr">nothing owns the record</div>
+        <div class="sl"><b>Server-side HTML</b> · 44k LOC</div><div class="sr">gone, no server<span class="gx"></span></div>
+        <div class="sl"><b>JDBC · OSGi · app server</b></div><div class="sr">nothing owns the record<span class="gx"></span></div>
         <div class="sl"><b>Web services tier</b></div><div class="sr">the op-log <i>is</i> the wire&nbsp;<sup class="fn">*</sup></div>
       </div>
       <div class="swap-cap"><span class="fn">*</span> <span class="live-pill">Live now</span><b>Share a sale, no server:</b> a deliver-later sale travels device-to-device by your own channel — copy → WhatsApp / email → paste → it replays on the other phone. Working today, not a roadmap item (PR&nbsp;#300).</div>
-      <div class="foot"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle"></span><b style="color:var(--green)">Granted in exchange</b> — deleting 40% is what makes the engine <b>offline-first</b>, <b>serverless</b>, and <b>per-device shardable</b> — <span style="font-weight:400;opacity:.8">live today. Finer warm/cold tiers + checkpoint boot are proven-ahead, switched on when scale needs them.</span></div>
+      <div class="foot"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle"></span><b style="color:var(--green)">Granted in exchange</b> — the <span class="gx" style="margin:0 1px;width:7px;height:7px"></span>-marked rows run nothing in their place; deleting 40% is what makes the engine <b>offline-first</b>, <b>serverless</b>, and <b>per-device shardable</b> — <span style="font-weight:400;opacity:.8">live today. Finer warm/cold tiers + checkpoint boot are proven-ahead, switched on when scale needs them.</span></div>
     </section>
 
   </div>
