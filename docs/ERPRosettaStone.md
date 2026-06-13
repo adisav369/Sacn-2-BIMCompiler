@@ -188,6 +188,28 @@ the renderer re-paints from the rows. (The one cost: a genuinely new field needs
 its value — still data, still no codegen.) Each of these interpreters is **oracle-diffed to `diff=0`** against
 the live iDempiere Postgres — see the Coverage Matrix `W-*-HARDEN` rows.
 
+### Non-repetition — one construct + ~25 deltas
+
+In iDempiere each of ~496 `M*` classes carries its *own* `completeIt`/`prepareIt`/`createFacts`, wrapped in
+`getX`/`setX`/`saveEx`/JDBC boilerplate — that boilerplate *is* the repetition. In the Fold Engine the boilerplate
+is gone (it was ORM plumbing), and the document lifecycle is **one shared construct** — `buildDoc` / `completeIt` /
+`postRecipe` / `commitGroup` — parametrized by doc type. The fold witnesses prove the reuse: they tag
+**`newVerbs=0`** (`W-FOLD-INVOICE`, `W-FOLD-REPLENISH`, `W-FOLD-MATCHINV`, `W-FOLD-MOVEMENT` each folded a *new*
+document class **without adding a verb**). [`ERP_MODEL_ARCHETYPE.md`](ERP_MODEL_ARCHETYPE.md) puts the number on
+it: **496 `M*` / 735k LOC collapse to "MOrder archetype + ~25 deltas"**.
+
+**Honest boundary:** not literally zero-per-class. ~25 real deltas remain — `MInOut` (locator + reserve),
+`MPayment` (allocation), `MMovement` (intercompany leg), `MProduction`/`MInventory` (BOM explode/consume). But
+those are *small parametric branches on the shared verb*, not reimplemented classes: the skeleton is shared and
+non-repetitive; the genuine per-class business delta stays, tiny.
+
+The data shape collapses the same way: ~1000 `M*` tables map onto a **5-table runtime** — `containers`,
+`items`, `documents`, `document_lines`, **`journal`** + a `doc_type` discriminator ([`ERP.md`](ERP.md) §0,
+witness §5TBL). **Two "journals", don't conflate them:** `kernel_ops` is the *event* journal (the signed op-log
+/ audit trail); **`journal`** is the *accounting* journal — the universal books table every doc posts into
+regardless of class, instead of a per-class `Doc_X.createFacts`. *"Journal IS the books — if the journal
+balances, the books are correct; everything else is UI."* So the construct lives in **one place**, not 496.
+
 ---
 
 ## 5. Write path in detail — why "save" became "append"
@@ -222,6 +244,12 @@ db.exec("SELECT * FROM c_invoice WHERE ispaid='N' AND c_bpartner_id=?", [bp]);
 
 Lookups resolve through the AD reference layer (§4) rather than `MLookup`, but the underlying read is the same
 `SELECT … WHERE … IN (…)`.
+
+**`Query()` has no op equivalent — by design.** A `Query` is a *read*, and reads never enter the op-log (the
+CQRS split: **writes → ops, reads → SQL over the projection**). So `Query()` is just a `SELECT`; no op, no
+signing, no log entry. The AD-context form (Tab `WhereClause` + `OrderBy`) is `AdTabQuery` — still a `SELECT`.
+The only reads inside the *write* path are FK lookups (`ad_reference`/`ad_valrule`) that *inform* an op but
+aren't ops.
 
 ---
 
