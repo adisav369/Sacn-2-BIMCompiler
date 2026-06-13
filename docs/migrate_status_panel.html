@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>What is Done &amp; Pending — Migration Status Map</title>
+<!-- ============================================================
+     CANONICAL SOURCE — the "What is Done & Pending" migration map.
+     This file is the single source of truth. The MigrateComparison
+     paper links here (it does NOT embed the bands). Edit the four
+     <section class="band"> blocks below to update Done/Pending.
+     ============================================================ -->
+<style>
+  :root{
+    --bg:#12171d; --panel:#1a212a; --ink:#e7edf3; --dim:#94a3b1; --line:#28323d;
+    --green:#7cb342; --amber:#ffa000; --red:#ef5350; --blue:#42a5f5;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+    max-width:1000px;margin:0 auto;padding:40px 22px 64px;
+    background:var(--bg);color:var(--ink);line-height:1.55;
+  }
+  a{color:#8fc3f7}
+  .kicker{font-size:11px;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:var(--green);margin:0 0 8px}
+  h1{font-size:30px;line-height:1.12;font-weight:850;margin:0 0 12px;letter-spacing:.2px}
+  .intro{font-size:15px;color:#cdd6df;max-width:74ch;margin:0 0 6px}
+  .intro b{color:#fff}
+
+  /* how-to-read legend */
+  .legend{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;
+    margin:20px 0 10px;padding:13px 16px;background:var(--panel);
+    border:1px solid var(--line);border-radius:11px;font-size:13px}
+  .legend .k{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+  .legend .dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+  .legend b{font-weight:700}
+  .legend .sep{color:var(--dim);opacity:.5}
+
+  /* claim note */
+  .note{border-left:4px solid var(--green);background:rgba(124,179,66,.07);
+    border-radius:0 9px 9px 0;padding:13px 17px;font-size:13.5px;color:#d4dde6;margin:14px 0 26px;max-width:78ch}
+  .note b{color:var(--green)}
+
+  /* ── the four-state grid ── */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  @media (max-width:680px){.grid{grid-template-columns:1fr}}
+
+  .band{--bc:var(--green);--bg2:rgba(124,179,66,.06);--ft:rgba(124,179,66,.13);
+    border:1px solid var(--line);border-top:4px solid var(--bc);border-radius:13px;
+    background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;
+    transition:transform .12s ease,box-shadow .12s ease}
+  .band:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.28)}
+  .band.green {--bc:var(--green);--bg2:rgba(124,179,66,.06);--ft:rgba(124,179,66,.13)}
+  .band.amber {--bc:var(--amber);--bg2:rgba(255,160,0,.055);--ft:rgba(255,160,0,.12)}
+  .band.red   {--bc:var(--red);  --bg2:rgba(239,83,80,.05); --ft:rgba(239,83,80,.12)}
+  .band.blue  {--bc:var(--blue); --bg2:rgba(66,165,245,.05);--ft:rgba(66,165,245,.12)}
+
+  .bh{padding:15px 17px 11px}
+  .tag{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--bc);display:flex;align-items:center;gap:8px}
+  .ttl{font-size:17px;font-weight:800;line-height:1.2;margin:6px 0 3px}
+  .gloss{font-size:12.5px;color:var(--dim);line-height:1.45}
+  .band ul{list-style:none;margin:0;padding:11px 17px 15px;border-top:1px solid rgba(128,128,128,.16)}
+  .band li{font-size:13px;line-height:1.42;margin:0 0 9px;padding-left:16px;position:relative;color:#dde4ec}
+  .band li:last-child{margin-bottom:0}
+  .band li::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--bc);opacity:.85}
+  .band li b{font-weight:700;color:#fff}
+  .band code{background:rgba(128,128,128,.16);padding:1px 5px;border-radius:4px;font-size:.88em}
+  .foot{margin-top:auto;padding:10px 17px;background:var(--ft);font-size:11.5px;font-weight:700;color:var(--bc);border-top:1px solid var(--bc)}
+
+  footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--dim)}
+  footer a{font-weight:600}
+</style>
+</head>
+<body>
+
+  <p class="kicker">Migration Status Map</p>
+  <h1>What is Done &amp; Pending</h1>
+  <p class="intro">A migration <b>honesty</b> panel — four states, not a pass/fail. It shows which <i>business flows</i> the browser kernel already reproduces <b>indistinguishably from iDempiere</b> (<code>maxDiff=0c</code>), and exactly what stands between that and a full tenant cut-over.</p>
+
+  <div class="legend">
+    <span class="k"><span class="dot" style="background:var(--green)"></span><b>Done</b> — folds to the cent</span>
+    <span class="sep">·</span>
+    <span class="k"><span class="dot" style="background:var(--amber)"></span><b>Pending</b> — data not wired</span>
+    <span class="sep">·</span>
+    <span class="k"><span class="dot" style="background:var(--red)"></span><b>Pending</b> — capability unbuilt</span>
+    <span class="sep">·</span>
+    <span class="k"><span class="dot" style="background:var(--blue)"></span><b>N/A</b> — deleted by design</span>
+  </div>
+
+  <div class="note">This is a claim about <b>substrate and delivery</b>, not feature parity — only ~1% of iDempiere's M-class logic is ported. Counts trace to the coverage-by-capability table in the paper (live Odoo&nbsp;17 <code>search_count</code> + GardenWorld seed); deleted-tier LOC from the iDempiere source sweep.</div>
+
+  <div class="grid">
+
+    <!-- ── DONE ───────────────────────────────────────────── -->
+    <section class="band green">
+      <div class="bh">
+        <div class="tag">🟢 Done · in the new experience</div>
+        <div class="ttl">Folds to the cent today</div>
+        <div class="gloss">Oracle-equivalent vs real iDempiere output, <code>maxDiff=0c</code>, both USD&nbsp;+&nbsp;EUR schemas. <b>43 surfaces.</b></div>
+      </div>
+      <ul>
+        <li><b>Trade loop</b> — order → ship → invoice → 3-way match → pay → allocate</li>
+        <li><b>Inventory loop</b> — movement → on-hand → replenishment PO → cost-valued GL (shipment COGS + vendor receipt)</li>
+        <li><b>GL</b> — inter-org journals + FX, reverse / void (nets to zero)</li>
+        <li><b>Reports</b> — Balance Sheet · Income · Cash Flow + invoice print; the <code>T_*</code> report tier (aging · inventory value · replenish · invoice GL · cash-flow · bank register) folds &amp; deletes</li>
+        <li><b>Model layer</b> — <code>beforeSave</code> + DocAction-FSM of every doc class</li>
+      </ul>
+      <div class="foot">16 cent-exact · 6 declarative · 21 model-layer — each with a §FALSIFIER</div>
+    </section>
+
+    <!-- ── PENDING (extraction) ───────────────────────────── -->
+    <section class="band amber">
+      <div class="bh">
+        <div class="tag">🟠 Pending · extraction gap</div>
+        <div class="ttl">Fold proven — data not yet wired</div>
+        <div class="gloss">The engine already folds these flows (passing witness each). Mechanical extractor work, <b>not engine development.</b></div>
+      </div>
+      <ul>
+        <li><b>Master data</b> — 38 partners · 30 products · 47 COA · 8 journals · 11 terms</li>
+        <li><b>Sale orders</b> — 26 of 27 (1 chain folded; loop the proven path)</li>
+        <li><b>Purchasing</b> — all 13 POs + vendor bills (buy-side adapter <i>written, unused</i>)</li>
+        <li><b>Money</b> — 3 real payments + reconciles, 13 manual journals, 7 credit notes</li>
+        <li><b>Inventory state</b> — 43 on-hand quants as opening balances</li>
+      </ul>
+      <div class="foot">Backlog → MIGRATE_INSTALL_TENANT.md §RESUME</div>
+    </section>
+
+    <!-- ── PENDING (capability) ───────────────────────────── -->
+    <section class="band red">
+      <div class="bh">
+        <div class="tag">🔴 Pending · fold gap</div>
+        <div class="ttl">Capability still unbuilt</div>
+        <div class="gloss">The engine can't yet compute these even with the data present — mapping / interpreter work, the genuine remainder.</div>
+      </div>
+      <!-- 2026-06-14: "Cost-valued inventory GL" + "AR/AP aging" moved to Done — folded oracle-equivalent
+           (W-FOLD-INOUTGL Doc_InOut COGS+receipt maxDiff=0c; W-AGING T_Aging all ~21 buckets maxDiff=0c).
+           Both sit INSIDE already-counted surfaces (inventory loop / the T_* report tier) → headline tally
+           unchanged at 43. Analytic dims = data-blocked (no analytic-tagged facts in seed), not capability-unbuilt. -->
+      <ul>
+        <li><b>Document print mapping</b> — Odoo QWeb defs → print tree</li>
+        <li><b>Analytic / cost-centre</b> accounting dimensions — data-blocked (no analytic-tagged postings in seed yet)</li>
+        <li><b>Posting edge-branches</b> — charge lines · GL distribution · realized-FX gain/loss (no fold path; armed in AD, dormant in seed)</li>
+        <li><b>Server-action interpretation</b> — Odoo automation (64 actions)</li>
+      </ul>
+      <div class="foot">On-demand procs (454/476) amortise here by design — not blocking</div>
+    </section>
+
+    <!-- ── NOT APPLICABLE ─────────────────────────────────── -->
+    <section class="band blue">
+      <div class="bh">
+        <div class="tag">🔵 N/A · deleted by architecture</div>
+        <div class="ttl">No port — leaves the denominator</div>
+        <div class="gloss">Whole tiers the serverless model removes. Not "missing features" — they have <b>no counterpart</b> by design.</div>
+      </div>
+      <ul>
+        <li><b>ZK web UI</b> (189,786 LOC) → the browser renderer</li>
+        <li><b>Generated <code>X_*</code> ORM</b> (345,490 LOC) → the AD rides as <i>data</i></li>
+        <li><b>Server-side HTML lib</b> (43,816 LOC) → no server</li>
+        <li><b>JDBC · OSGi · app server · installer</b> → no server of record</li>
+        <li><b>Web services tier</b> → the signed op-log <i>is</i> the wire</li>
+      </ul>
+      <div class="foot">≈40%+ of the 1.4M-LOC tree — deleted, not unported</div>
+    </section>
+
+  </div>
+
+  <footer>
+    ← Back to <a href="MigrateComparisonPaper/">Migrate &amp; Compare (ERP)</a>
+    &nbsp;·&nbsp; This page is the single source of truth for the Done/Pending map — edit the four <code>&lt;section class="band"&gt;</code> blocks here.
+  </footer>
+
+</body>
+</html>
