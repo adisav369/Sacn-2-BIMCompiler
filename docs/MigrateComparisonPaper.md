@@ -652,6 +652,30 @@ format uses them) and pixel layout (a stated non-goal — DOM is the render).
 
 <span id="gap-analysis"></span>
 
+#### In plain words — start here {#gap-plain}
+
+**The objective.** Not "re-clone all of iDempiere." It is: *the engine works, and each customer's actually-used screens
+run identically to the original — to the cent.* "Finished" is measured **per deployment** (a tenant's live surface),
+not against all 496 of iDempiere's programs. By that measure the hard part is done; the rest is routine and on-demand.
+
+iDempiere is a library of ~496 pre-written programs, one per business document. We did not rewrite them. We built one
+small **engine** that treats every document as *data + one shared recipe*, and records every action in a **signed
+journal** — only ever added to, never erased (the way accountants have worked since 1494). The current state of the
+books is *computed* from that journal on demand; change anything and the journal grows, nothing is overwritten — so it
+is auditable, reversible, serverless, and runs in a browser.
+
+**Is it finished?** Depends what "finished" means. The **engine is proven**: for every flow we have folded, its output
+is *identical to real iDempiere, to the cent.* We have folded the flows a real business uses — order→ship→invoice→pay,
+inventory, GL. The other programs are **not lost**: they are either plumbing we no longer need, rules that have become
+data, or flows we fold **when a customer needs them** — each proven the same way.
+
+**One word, two jobs — the thing outsiders trip on.** "Fold" means two different things. *Fold-to-run* = compute the
+current books from the journal in the browser; automatic, instant, done. *Fold-to-build* = translate one iDempiere
+program's rule into the engine and prove it matches, to the cent; that is human work, and it is what "not yet done"
+refers to. So fetching the whole database gives you the **data, not the logic** — a document type whose recipe has not
+been written yet will not process, even with all its data present. Nothing is lost; the recipe simply has to be written
+and proven. That is development, not a browser refresh. What follows is the technical version of exactly that.
+
 Against a live Odoo 17 instance, the migrate currently pulls **one of 27 sale orders** (a single order-to-cash chain,
 S00023) and **no master data.** Everything else constitutes the gap, which divides into two categories:
 
