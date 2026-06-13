@@ -553,11 +553,21 @@
   }
   function clearHots() { hots.forEach(function (h) { if (h.el.parentNode) h.el.parentNode.removeChild(h.el); }); hots = []; }
 
+  // bubbleXY — where the ring/hotzone anchors for `key`. Glassbowl: the projected bubble center.
+  // HOST-ANCHORED (SO_FULL_CRUD_GAP.md T3 / GAP 3): on a surface with no bubble model (e.g. the iDempiere
+  // renderer — no N/idx/project), the host supplies the anchor via global.__crudHostAnchor(key) → {x,y,r}
+  // (e.g. the focused record's row/edit-button rect). ONE overlay, two anchors — no fork. Returns null when
+  // neither is available (ring/hot self-hides).
   function bubbleXY(key) {
-    if (typeof idx === 'undefined' || idx[key] == null || typeof N === 'undefined') return null;
-    var n = N[idx[key]]; if (!n) return null; project(n);
-    var r = (typeof radius === 'function' ? radius(n) : 14);
-    return { x: px + n.sx * k, y: py + n.sy * k, r: Math.max(13, r * k) };
+    if (typeof idx !== 'undefined' && idx[key] != null && typeof N !== 'undefined') {
+      var n = N[idx[key]]; if (n) { project(n);
+        var r = (typeof radius === 'function' ? radius(n) : 14);
+        return { x: px + n.sx * k, y: py + n.sy * k, r: Math.max(13, r * k) }; }
+    }
+    if (typeof global.__crudHostAnchor === 'function') {
+      try { var a = global.__crudHostAnchor(key); if (a && a.x != null && a.y != null) return { x: a.x, y: a.y, r: a.r || 16 }; } catch (e) {}
+    }
+    return null;
   }
   function positionHots() {
     hots.forEach(function (h) {
@@ -1149,7 +1159,16 @@
   }
 
   // ── page-data helpers (truth-bound Edit pre-fill from the real bundle row) ──
-  function recId(key, rec) { var pk = key + '_id'; return rec && rec[pk] != null ? rec[pk] : null; }
+  // recId — the record's pk value. key+'_id' is the convention; lookup is CASE-INSENSITIVE so it works on
+  // glassbowl rows (lower-case cols) AND the iDempiere renderer's SELECT * rows (original-case cols, e.g.
+  // C_Order_ID) — T3 host-mount (SO_FULL_CRUD_GAP.md GAP 3).
+  function recId(key, rec) {
+    if (!rec) return null;
+    var pk = (key + '_id').toLowerCase();
+    if (rec[pk] != null) return rec[pk];
+    for (var c in rec) if (rec.hasOwnProperty(c) && String(c).toLowerCase() === pk && rec[c] != null) return rec[c];
+    return null;
+  }
   function assignVals(e, rec) { var v = {}; (e.fields || []).forEach(function (f) { v[f.col] = rec && rec[f.col] != null ? rec[f.col] : ''; }); return v; }
   // getRecord — prefer the row in the currently-traced O2C chain (the lit instance), else the first row.
   // The immutable bundle row is the BASELINE; _overlayTip then layers the signed sidecar's read-the-tip
@@ -1157,12 +1176,15 @@
   function getRecord(key, cb) {
     if (typeof withBundle !== 'function') { cb({}); return; }
     var wantId = null;
-    try { if (typeof curChain !== 'undefined' && curChain) { for (var i = 0; i < curChain.length; i++) if (curChain[i].table === key && curChain[i].id != null) wantId = curChain[i].id; } } catch (er) {}
+    try { if (typeof curChain !== 'undefined' && curChain) { for (var i = 0; i < curChain.length; i++) if (String(curChain[i].table).toLowerCase() === String(key).toLowerCase() && curChain[i].id != null) wantId = curChain[i].id; } } catch (er) {}
     withBundle(function (db) {
       try {
         var pk = key + '_id', sql = wantId != null ? 'SELECT * FROM ' + key + ' WHERE ' + pk + '=' + wantId + ' LIMIT 1' : 'SELECT * FROM ' + key + ' ORDER BY ' + pk + ' LIMIT 1';
         var res = db.exec(sql); if (!res.length || !res[0].values.length) { cb({}); return; }
-        var o = {}; res[0].columns.forEach(function (c, i) { o[c] = res[0].values[0][i]; }); _overlayTip(key, o, cb);
+        // expose each column under BOTH its original name and its lower-cased alias — the form (f.col is
+        // lower-case) + recId resolve regardless of the surface's column casing (glassbowl lower vs iDempiere
+        // SELECT * original-case). T3 host-mount (SO_FULL_CRUD_GAP.md GAP 3).
+        var o = {}; res[0].columns.forEach(function (c, i) { var val = res[0].values[0][i]; o[c] = val; var lc = String(c).toLowerCase(); if (lc !== c && o[lc] === undefined) o[lc] = val; }); _overlayTip(key, o, cb);
       } catch (er) { cb({}); }
     });
   }
