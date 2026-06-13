@@ -317,3 +317,64 @@ And this isn't exotic — it's **500 years old.** Double-entry bookkeeping (Paci
 sourcing: the **journal** is the immutable log; the ledger and balance sheet are *folds* of it. "Journal IS the
 books" (§4) is literally that. The fold engine just generalizes the accounting journal's discipline — never
 erase, only append, derive everything — from the books to the *whole* ERP.
+
+---
+
+## 9. RDBMS vs the fold engine — and how indexing works
+
+A reader steeped in databases will ask two things: *isn't this just throwing away the RDBMS? and how does it
+stay fast?* Both have clean answers.
+
+### What's fundamental
+
+Three real differences — and one important *non*-difference.
+
+1. **Where truth lives.** An RDBMS: the current-state tables *are* the truth. Here: the **append-only log is the
+   truth; the tables are derived projections.** Every other difference follows from this one.
+2. **Mutability & time.** `UPDATE` overwrites in place — last write wins, prior state gone unless you bolt on
+   audit/temporal tables. The log is **append-only**: a correction is a *new* event, so every past state is
+   reachable and "as-of" queries are free. Time is intrinsic, not bolted on.
+3. **Provenance & authority.** An RDBMS row has no "why" — just a value. A folded row **traces to the signed,
+   hash-chained ops that produced it** — provenance is structural — and no single server *owns* truth, so the
+   log can be shipped/replicated (the serverless property).
+
+**The non-difference (important):** this still *uses* an RDBMS — SQLite — for reads. It isn't "RDBMS vs
+not-RDBMS"; it's **"RDBMS as the source of truth" vs "RDBMS demoted to a derived cache under an immutable
+log"** — Kleppmann's *turning the database inside out*: the log becomes primary, the database becomes a derived
+view. One line: **an RDBMS remembers *where* things are (places, overwritten); this remembers *what happened*
+(events, accumulated).**
+
+### How you index
+
+The punchline: **the projection *is* the index.** You never index the log for business queries — you fold the
+log into a projection and index *that*.
+
+- **Business reads hit the projection, not the log.** The 5-table SQLite runtime is a real relational DB, so you
+  index it with **ordinary B-tree indexes** — the whole relational index machinery is reused, on the read side.
+  "How do you index" → exactly like any RDBMS, on the projection.
+- **The log carries only purpose-built indexes.** In this engine `kernel_ops` is indexed on `op_type` and
+  `(undone, id)` and read **sequentially by `id`** (`replayOps`); append-only logs are scan-friendly, so you
+  index only the few keys you fold by, not arbitrary predicates.
+- **A projection is a materialized view per query pattern — which is what an index fundamentally *is*** (a
+  derived structure for fast access), but more general: an RDBMS index is bound to a table's columns; a
+  projection can be an arbitrary reshape (denormalized, pre-aggregated, full-text, a graph), all folded from the
+  one log, all disposable.
+- **Everything downstream of the log is rebuildable.** Corrupt index → re-fold; new query pattern → fold a *new*
+  projection; the truth never migrates. In an RDBMS the index is derived but the *table* is truth; here **both
+  the table and its indexes are derived — only the log is authoritative.**
+- **`compact()` / snapshots bound the cost** so a fold is "snapshot + replay the tail," not re-fold from genesis.
+
+**Honest costs** (not free):
+
+- **Write amplification** — every event applies to every projection that cares; you maintain N derived views,
+  the same cost shape as N RDBMS indexes, made explicit.
+- **No free ad-hoc query on truth** — an RDBMS queries the authoritative tables directly for an *unanticipated*
+  predicate; here that needs a new projection fold (cheap, not instant). You trade "ad-hoc query the truth" for
+  "query a purpose-built view."
+- **Per-entity history is a scan today** — the log indexes `op_type`/`undone`, not `output_guid`, so "fold one
+  document's full history" scans rather than seeks. A real, addable gap (index the aggregate id), not a free lunch.
+- **Eventual consistency** log→projection in the distributed case (the sync FSM owns it); in-process it's synchronous.
+
+So: **in an RDBMS the table is truth and the index is its servant; here the log is truth and *both* the table
+and its indexes are disposable servants folded from it.** Indexing didn't go away — it moved to the derived
+layer, where it's relational and ordinary, while the truth stayed a plain append-only log.
