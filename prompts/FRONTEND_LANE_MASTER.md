@@ -66,6 +66,41 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶ PENDING WITNESS (dictated 2026-06-13) — REFLEXIVE AD SELF-EDIT, LIVE.** Prove the loop the
+> migration thesis leans on but hasn't witnessed: edit an `AD_Menu`/`AD_Window`/`AD_Field` row **through
+> the live AD windows in the browser engine** → the menu/form **rebuilds right away**, no reload/codegen/
+> restart. Architecturally supported (AD = data; renderer reads AD live per `W-AD-*-LIVE`; `crud_overlay`
+> already enforces the AD_Column model on edits; kernel op-log is signed + hash-chained, W-CHAIN/W-SIGN).
+> What's UNWITNESSED is the reflexive gesture end-to-end + its **distribution leg** — an admin's dictionary
+> change propagated as an **appended signed op-log** ("mail the append log") and **re-folded on another
+> node**. Two §-tagged witnesses owed: `W-AD-SELFEDIT-LIVE` (edit→instant rebuild) + `W-AD-OPLOG-DISTRIB`
+> (append-log → replay → same dictionary on a 2nd node). Needed before the status panel may show
+> "modify the model live, like iDempiere" as a ✅ rather than an architectural claim.
+
+> **▶ 2026-06-13 — UI/UX LANE (`prompts/UI_UX_LANE.md` → # DONE): ✅ ALL THREE TRACKS SHIPPED, one session.**
+> Presentation only, `newVerbs=[]`, no engine/fold changes; Lucide-only icons; NON-INVENT (ids extracted).
+> - **Track A — Testing Pills** (bim-ootb PR #287 MERGED, erp sw v665): Verify-ledger toast→`#verify-card`
+>   (shares `.erp-test-card` chrome with doc-cycle), tooltips, ERPUserGuide §13. `§VERIFY-CARD ok=… len=…`.
+> - **Track B — POS Compact** (bim-ootb PR #288, erp sw v666): items + replenishment collapsible drawers,
+>   Tender/Deliver-later as Lucide icon buttons (banknote/package), scan close-focus hint + macro focus.
+>   ids/handlers/door-gate kept verbatim. `W-WH-POS-PICK-LIVE` + `W-POS-LIVE` PASS (`§POS-CENT maxDiff=0c`).
+> - **Track C — WH Walk** (bim-ootb PR #289 MERGED, viewer sw v649): auto-engage on WH load (geometry-ready
+>   gated), zoom pull-back, fast-confirm auto-scan, route-list drawer, ↺ switch-source (rotateCcw), audio
+>   earcons (sfx.json rows). `W-WH-LIVE` + `W-WH-POS-PICK-LIVE` PASS; witnesses adapted same train; eslint 0.
+> Stub prompts ERP_TESTING_PILL_UX / POS_PANEL_UX_COMPACT / WH_WALK_UX absorbed into UI_UX_LANE.md.
+>
+> **▶ 2026-06-13 (cont., Opus) — UI/UX LANE live-test follow-ups: ✅ BOTH SHIPPED.**
+> - **Track C live-fixes** (bim-ootb PR #290 MERGED, viewer sw v650, wh_walk.js?v=5): dropped the C-3
+>   auto-scan-reopen (premature "I'm at this bin" — `advance(true)`→`advance()`); zoom now frames the UNION
+>   AABB of REMAINING route bins (`tan(fov/2)·min(aspect,1)` portrait-aware fit, 1.3× margin). `§WH_ZOOM
+>   fit=whole`. W-WH-LIVE + W-WH-POS-PICK-LIVE PASS.
+> - **Track D — POS Minimalist** (bim-ootb PR #293 MERGED, erp sw v668 [synced over #292 v667], pos_lens.js?v=7,
+>   icons.js?v=7 +qrCode): fully-textless orange/green edge-rim drawers; total flanked by scan + `$`; `$` opens
+>   the receipt-preview modal ([QR]·[#pos-pay-ok=Complete]·[Cancel]) — commit moved `#pos-float-tender`→
+>   `#pos-pay-ok`, engine byte-identical; ⋯ dock (home/import/receipt/deliver-later); deliver-later POC opens
+>   WH walk in a new tab. W-POS-LIVE (`§POS-CENT maxDiff=0c`) + W-WH-POS-PICK-LIVE PASS; user-approved on
+>   localhost screenshots. ERPUserGuide §7/§9 + `mkdocs gh-deploy`.
+>
 > **▶ 2026-06-13 — WH×POS PICK LANE: ✅ DONE + LIVE (bim-ootb PR #283 MERGED, erp sw v663 / viewer sw v648).**
 > Sonnet session ran §SONNET-TEST: **W-WH-POS-PICK-LIVE PASS** (full loop — live deliver-later sale →
 > walk offers `pos-docs=1` → short-pick `CO picked=2/3 diffs=0` → write-back empties the selector) +

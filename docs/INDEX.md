@@ -24,6 +24,8 @@ Single-page entry point. All active docs by tier.
 
 | Doc | What |
 |-----|------|
+| [MigrateComparisonPaper.md #status](MigrateComparisonPaper.md#status) | **The migration honesty panel** — 4 states at a glance: 🟢 folds-to-the-cent today · 🟠 extraction gap (fold proven, data unwired) · 🔴 fold gap (capability unbuilt) · 🔵 deleted-by-architecture (ZK/ORM/server — no counterpart). The prominent answer to "what's NOT in the new iDempiere experience?" |
+| [ERPRosettaStone.md](ERPRosettaStone.md) | **iDempiere Java → Fold Engine dictionary** — for the legacy dev: `PO.get/set/save`, `Query`, `MOrder.completeIt()`, `Doc_Order` mapped one-to-one to the op-log + AD-as-data fold. The "how the code works" home so the paper can link out instead of inlining mechanism. |
 | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) | R1-R30 gap tracking, session checklist — the distance between "it compiles" and "it ships" |
 | [ShipYard.md](ShipYard.md) | **Domain-agnostic treatise:** marine hulls, tunnels, earthworks, industrial plant — same engine, different data |
 | [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix, 35 Rosetta Stones |
@@ -77,10 +79,11 @@ Single-page entry point. All active docs by tier.
 
 | Doc | What |
 |-----|------|
-| [BIM_Designer_UserGuide.md](BIM_Designer_UserGuide.md) | BIM Designer GUI user guide |
+| [USER_GUIDE.md](USER_GUIDE.md) | Unified landing — two doors (BIM viewer / ERP) |
+| [BIMUserGuide.md](BIMUserGuide.md) | Browser BIM viewer — quick start, controls, DSL reference, keyboard cheat-sheet |
 | [ERPUserGuide.md](ERPUserGuide.md) | iDempiere browser ERP — login → install → POS → reporting |
 | [BackOfficeUserGuide.md](BackOfficeUserGuide.md) | BackOffice user guide |
-| [USER_GUIDE.md](USER_GUIDE.md) | General user guide |
+| [BIM_Designer_UserGuide.md](BIM_Designer_UserGuide.md) | BIM Designer GUI user guide (deprecated — §15 keyboard ref absorbed into BIMUserGuide) |
 | [SYSTEMS_INSTALLER_GUIDE.md](SYSTEMS_INSTALLER_GUIDE.md) | Full platform setup for sysadmins and developers |
 | [Localization.md](Localization.md) | **Localization:** iDempiere-style `_TRL` locale system — 15 country locales, project-level rate book override, developer guide for new locales |
 

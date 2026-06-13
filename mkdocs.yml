@@ -72,6 +72,7 @@ nav:
       - Home: index.md
       - Feature Comparison: FeatureComparison.md
       - "Migrate & Compare (ERP)": MigrateComparisonPaper.md
+      - "ERP Rosetta Stone (iDempiere → Fold Engine)": ERPRosettaStone.md
       - "Fold-Engine Code Quality": FoldEngineQuality.md
       - About BIM OOTB: AboutMore.md
       - The ERP World View: MANIFESTO.md
@@ -184,8 +185,9 @@ nav:
   # ─── Guides ───────────────────────────────────────────
   - Guides:
       - Getting Started: WorkOrderGuide.md
-      - User Guide: USER_GUIDE.md
-      - BIM Designer Guide: BIM_Designer_UserGuide.md
+      - "User Guide (start here)": USER_GUIDE.md
+      - BIM User Guide: BIMUserGuide.md
+      - "BIM Designer Guide (deprecated)": BIM_Designer_UserGuide.md
       - 2D Plans Viewer: 2D_HTML_GUIDE.md
       - Find and Navigate: RouteTemplate.md
       - City-Scale RTree: RTreeGuide.md

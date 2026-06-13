@@ -137,11 +137,31 @@ details.fold .fbd{padding:6px 16px 14px}
 .blurb .serious{display:inline-block;margin-top:11px;font-size:11.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#ef8e00;text-decoration:none}
 .blurb .serious::after{content:"  ⟶"}
 .blurb .serious:hover{text-decoration:underline}
+/* migration status strip — 4-state honesty panel (green=folds today · amber=extraction · red=fold gap · blue=deleted by architecture) */
+.status3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+.status3 .band{border:1px solid var(--bc);border-top:4px solid var(--bc);border-radius:11px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.status3 .bh{padding:11px 14px 8px}
+.status3 .tag{font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--bc);display:flex;align-items:center;gap:6px}
+.status3 .ttl{font-size:14.5px;font-weight:800;line-height:1.2;margin:4px 0 2px}
+.status3 .gloss{font-size:11.5px;opacity:.72;line-height:1.38}
+.status3 ul{list-style:none;margin:8px 0 0;padding:9px 14px 13px;border-top:1px solid rgba(128,128,128,.18)}
+.status3 li{font-size:12px;line-height:1.34;margin:0 0 7px;padding-left:14px;position:relative}
+.status3 li:last-child{margin-bottom:0}
+.status3 li::before{content:"";position:absolute;left:0;top:6px;width:5px;height:5px;border-radius:50%;background:var(--bc);opacity:.8}
+.status3 li b{font-weight:700}
+.status3 .foot{margin-top:auto;padding:8px 14px;background:var(--ft);font-size:11px;font-weight:700;color:var(--bc);border-top:1px solid var(--bc)}
+.status3 .green{--bc:#7cb342;--bg:rgba(124,179,66,.07);--ft:rgba(124,179,66,.14)}
+.status3 .amberx{--bc:#ffa000;--bg:rgba(255,160,0,.06);--ft:rgba(255,160,0,.13)}
+.status3 .redf{--bc:#ef5350;--bg:rgba(239,83,80,.06);--ft:rgba(239,83,80,.13)}
+.status3 .bluen{--bc:#42a5f5;--bg:rgba(66,165,245,.06);--ft:rgba(66,165,245,.13)}
+.statuslead{border-left:4px solid #7cb342;background:rgba(124,179,66,.07);border-radius:0 8px 8px 0;padding:11px 16px;font-size:13px;margin:10px 0 2px}
+.statuslead b{color:#7cb342}
 </style>
 
 <div style="max-width:760px;margin:24px auto 8px;padding:30px 40px;background:#263238;border-left:4px solid #ff9800;text-align:center;border-radius:4px" markdown="0">
-<span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The Server Is Obsolete</span>
-<br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">built from ideas already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
+<span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The Server Is Dead</span>
+<br><span style="font-size:1.05em;font-weight:600;line-height:1.35;color:#ffcc80;margin-top:12px;display:inline-block">The DB is the log is the kernel — in the browser</span>
+<br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">Already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
 <br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="color:inherit;text-decoration:underline;text-underline-offset:3px">Now assembled by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">Redhuan D. Oon (red1)</b></a></span>
 </div>
 
@@ -175,9 +195,24 @@ details.fold .fbd{padding:6px 16px 14px}
   </a>
 </div>
  
+<span id="status"></span>
+
+<p style="margin:16px 0;font-size:15px"><a href="../migrate_status_panel.html"><b>What is Done and Pending</b> — the four-state migration honesty map &nbsp;🟢🟠🔴🔵&nbsp; ↗</a></p>
+
+---
+
 ## But ERP is tough — an aircraft carrier is about to go into a bathtub
 
-*These have been around for some time, but never for ERP and BIM — now we can put both servers in the same browser! It has to take all six of these, interlocked:*
+<details class="fold" markdown="0">
+<summary>The six interlocked things it takes &nbsp;<span style="display:inline-flex;gap:6px;align-items:center;vertical-align:middle">
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#ffa000" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/></svg>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#7cb342" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6a9 9 0 0 0-9 9V3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/></svg>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#ff7043" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#42a5f5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v8l3-3 3 3V2"/><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#ab47bc" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#26a69a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg>
+</span></summary>
+<div class="fbd" markdown="0">
 
 <div class="pillars" markdown="0">
 
@@ -242,6 +277,10 @@ details.fold .fbd{padding:6px 16px 14px}
   </div>
 
 </div>
+
+</div>
+
+</details>
 
 ---
 
@@ -559,14 +598,8 @@ Three tables, not one wall. Columns are **architecture**, not a feature scorecar
   the bloat memory).
 - The Odoo fold is against a **running Odoo 17** instance (`build/erp/odoo_fold_live.log`,
   `§ODOO-FOLD-LIVE PASS`).
-- **Engine output == real iDempiere output — 43 surfaces oracle-diffed, not asserted** ([`ERP_COVERAGE_MATRIX.md`](ERP_COVERAGE_MATRIX.md) §Equivalence, [`FoldEngineQuality.md`](FoldEngineQuality.md)): **16 fold real GardenWorld `fact_acct`/qty postings to the cent** (`maxDiff=0c` — the order→ship→invoice→match→pay→allocate trade loop + the movement→on-hand→replenish inventory loop + inter-org `M_Movement`/`GL_Journal` + `reverseCorrect`/void, in **both** USD & EUR accounting schemas), **6 declarative engines diff the *live* iDempiere Postgres / its compiled classes to `diff=0`** (`AD_Val_Rule` SQL-where membership, `AD_Ref_Table` FK resolution+membership over the 26,519-row `ad_column` set, `MRole` access maps, `AD_Column.Callout` derivation, the logic-expression evaluator — 2,751 dictionary expressions == the real compiled `Evaluator`, **W-LOGIC-HARDEN** — and the `AD_Workflow` node-walk + state engine — replayed against **11 REAL workflow traces** the live PG carries + the compiled `StateEngine` mutators, **W-WF-HARDEN**; **no declarative surface remains undiffed**), and **21 model-layer surfaces walk `beforeSave` + the DocAction FSM of *every* document class to oracle-equivalence** (legal-action sets and transitions diffed against a gate-aware **runtime parse of the actual `DocumentEngine.java`/`M*.java` checkout**, saves replayed against the stored seed rows — MOrder archetype → MInOut/MInvoice/MPayment/inventory family → GL Journal/Allocation/Cash/BankStatement + the 11-class generic tail; the 8 zero-seed classes source-parse-only, honestly ⛔ on stored-replay). Each witness carries a **load-bearing §FALSIFIER** (corrupt the rule → the diff *must* go non-zero), so a passing diff isn't a tautology. **3 more** are *rule-consistent* (enacted docs GardenWorld never posted — BOM backflush, `MProduction`, `MInventory` — checked against the already-proven qty/cost rules + balance + falsifier, explicitly **not** claimed `== iDempiere`).
-**`maxDiff=0c` is *exact*, not "close enough" — the money-math holy war, settled.**
-
-The reflex objection to *any* ERP outside the JVM is decimal arithmetic: Java has `BigDecimal`, Python has `decimal.Decimal`, **JavaScript has neither** — its `Number` is an IEEE-754 binary float, so `0.1 + 0.2 ≠ 0.3` and a naïve port *will* drift cents.
-
-We never touch float for money. Quantities and amounts accumulate as **integer cents / centi-units**, and the only non-integer steps (FX conversion, proportional tax) multiply in **`BigInt` off the rate's exact decimal preserved as TEXT**, rounded with an explicit `HALF_UP` — the same rule iDempiere's `BigDecimal.setScale(2, HALF_UP)` applies. That decimal kernel is [`build/erp/bigdecimal.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/bigdecimal.js) — loaded by the live browser app and the financial-report overlay, and unit-proven **bit-equal to Java `BigDecimal`** (`poc_money_fold.js`); the FX/match folds (`poc_alloc_fx`, `poc_matchinv`, `poc_matchinv_fx`) apply the *same* `BigInt` HALF_UP discipline inline.
-
-So the `maxDiff=0c` above is a *true zero* across the 16 cent/unit-exact fold surfaces and **both** currency schemas — the half-cent FX residual that *does* arise (alloc 101 = 1c) is posted to a real `CurrencyBalancing` account, not swallowed by rounding noise. The lesson of the holy war: **the discipline ports, the language doesn't matter** — exact decimal money is a ~140-line library, not a reason to keep the server.
+- **Engine output == real iDempiere output — 43 surfaces oracle-diffed, not asserted** (16 cent-exact · 6 declarative · 21 model-layer), **+ 3 rule-consistent**, each carrying a load-bearing **§FALSIFIER** so a passing diff can't be a tautology. Full surface-by-surface enumeration, witnesses, and the live-Postgres diffs → [`ERP_COVERAGE_MATRIX.md`](ERP_COVERAGE_MATRIX.md) §Equivalence + [`FoldEngineQuality.md`](FoldEngineQuality.md). How a `save`/`completeIt`/`Doc_*` posting maps from your iDempiere code → [`ERP Rosetta Stone`](ERPRosettaStone.md).
+**`maxDiff=0c` is *exact*, not "close enough" — the money-math holy war, settled.** Money never touches float: amounts accumulate as **integer cents**, and the only non-integer steps (FX, proportional tax) multiply in **`BigInt` off the exact-decimal rate**, rounded `HALF_UP` — unit-proven **bit-equal to Java `BigDecimal`** ([`build/erp/bigdecimal.js`](https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/bigdecimal.js), `poc_money_fold.js`). The lesson: **the discipline ports, the language doesn't matter** — exact decimal money is a ~140-line library, not a reason to keep the server. (The mechanism — why `set`+`save` becomes an op and how the fold stays exact — is the [ERP Rosetta Stone](ERPRosettaStone.md).)
 
 **What is architectural (a property, not a number):**
 - "0 round-trip" — *structural* (no server of record on the read/fold path), not a benchmark. Honest counter: server-removal only wins over a network; on-box, durable Postgres is *faster* per-op (it buys durability + concurrency we defer).
@@ -864,7 +897,7 @@ while iDempiere derives it from `C_Invoice` open amounts). Tracked: matrix **GAP
 
 51× is honest for the engine **shell** folded today (28,184 JS LOC, re-measured 2026-06-12 — down from 76× as real coverage grew, exactly as a non-overclaim should move) — but it measures the *thinnest, highest-compression* slice (order-to-cash + posting), where iDempiere is mostly generated boilerplate and ZK UI that collapse to ~0. It does **not** extrapolate to a full port: only **~1% of the `M*` business logic (104,940 code-LOC) is actually ported**. **We headline the *conservative* ~21× to avoid overclaiming.**
 
-> **Exhaustive coverage map → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md).** Every rule/process surface in *both* homes (Java code + the AD as data) enumerated, each count from a real `ad_full.db` query: **6 covered / 33 partial / 3 gap** of 42 surfaces (the interpreter-coverage ladder, closed for every seed-data surface; the first six flipped to *covered* 2026-06-11 when the live UI itself became the witness — role-scoped menus, FSM-gated doc-action buttons, AD DisplayLogic on the live form, process/form grant pruning: the `W-AD-*-LIVE` family) **+ a second *equivalence* axis: 43 surfaces now match the real iDempiere oracle** — **16 fold real GardenWorld `fact_acct`/qty postings to the cent (`maxDiff=0c`)** (the whole order→ship→invoice→match→pay→allocate trade loop, the movement→on-hand→replenish inventory loop, inter-org `M_Movement` + `GL_Journal`, the `reverseCorrect`/void family, all in **both** accounting schemas USD + EUR), **+ 6 declarative engines diffed against the *live* iDempiere Postgres / its compiled classes to `diff=0`** (AD_Val_Rule SQL-where membership, AD_Ref_Table FK resolution+membership, MRole window/process/form access, AD_Column.Callout derivation, the logic-expression evaluator — 2,751 fixtures, W-LOGIC-HARDEN — and the AD_Workflow state engine — 11 real PG traces, W-WF-HARDEN; no ⬜ remains), **+ 21 model-layer surfaces — the `beforeSave` + DocAction-FSM walk of *every* document class** (capture-fidelity row-diff, `Doc_Order` at fact-line granularity, then save+FSM for the MOrder archetype, the deep family MInOut/MInvoice/MPayment/inventory, and the full isomorph tail GL Journal/Allocation/Cash/BankStatement + the 11-class generic-block tail — legal-action sets diffed against a gate-aware **runtime parse of `DocumentEngine.java`**, saves replayed against the stored seed rows; zero-seed classes source-parse-only, honestly ⛔ on stored-replay) — **plus 3 rule-consistent** (enacted docs with no seed oracle: BOM backflush, `MProduction`, `MInventory` — verified against the proven qty/cost rules + balance + falsifier). Each carries a load-bearing §FALSIFIER. ([ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md) is the M-class denominator: MOrder archetype + ~25 deltas — **the deepest deltas now fold `maxDiff=0c`, and no DocAction table remains unwalked**.) The buckets below are measured, not asserted.
+> **Exhaustive coverage map → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md).** Two axes, both measured from real `ad_full.db` queries (not asserted): the **interpreter-coverage ladder** — **6 covered / 33 partial / 3 gap** of 42 surfaces (closed for every seed-data surface; the first six flipped to *covered* 2026-06-11 when the live UI itself became the witness — the `W-AD-*-LIVE` family) — and the **equivalence axis** — **43 surfaces match the real iDempiere oracle** (16 cent-exact · 6 declarative diffed to the *live* Postgres · 21 model-layer `beforeSave`+FSM walks) **+ 3 rule-consistent**, each with a load-bearing §FALSIFIER. The surface-by-surface breakdown, witnesses, and M-class denominator live in the matrix + [ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md) (MOrder archetype + ~25 deltas, deepest deltas fold `maxDiff=0c`). The buckets below are measured, not asserted.
 
 Splitting all 1,427,147 Java LOC by fate [^split]:
 
