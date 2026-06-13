@@ -48,12 +48,12 @@
 | Constraint | Calculated limit | Current status | Mitigation | Residual risk |
 |---|---|---|---|---|
 | Max DB size | 200 MB mobile / 500 MB desktop | ✅ (13 MB live, 6× margin) + ✅ **access-freq split implemented** (warm/cold shards keep cold off the live DB; `sharding_boundaries.json` + `build/erp/shard_loader.js`, headless-witnessed `§SHARD-FREQ OVERALL=PASS`) | Size-triggered compaction | **Low** |
-| Genesis fold | 25 s @100M mobile | ⚠️ approaching (no enforced checkpoint-first yet) | Checkpoint-first + worker | **Low** |
+| Genesis fold | 25 s @100M mobile | ✅ **checkpoint-first ENFORCED + genesis off main thread** (`build/erp/bootstrap_path.js` + `genesis_worker.js`: default folds open-period only — work ∝ postOps not totalOps; mobile genesis runs in a Worker or REFUSES, never an inline freeze; `§BOOTSTRAP-PATH OVERALL=PASS`, heartbeat-proven non-blocking, falsifier bites) | Checkpoint-first + worker | **Low** |
 | Checkpoint bootstrap | ~9 ms flat | ✅ within limit | (already strong) | **Low** |
-| Writer conflict | 0.12%/s @50 dev; 5% @~360 dev | ✅ within limit | Quorum-CAS on tagged classes | **Low** |
-| OPFS vs IDB | 44 ms (batched) / 208 ms (IDB) per 1k | ⚠️ IDB-only on GH-Pages (no COOP/COEP) | VFS detect + downgrade | **Med** (hosting-bound) |
+| Writer conflict | 0.12%/s @50 dev; 5% @~360 dev | ✅ within limit + ✅ **CAS scoped by dictionary tag** (`build/erp/op_class_tags.js`: quorum-CAS routed only to tagged stock/credit classes — 0.10% of a 1000-op mix; `§OP-CLASS-TAG OVERALL=PASS`) | Quorum-CAS on tagged classes | **Low** |
+| OPFS vs IDB | 44 ms (batched) / 208 ms (IDB) per 1k | ✅ **VFS detect + IDB fallback implemented** (`build/erp/vfs_detect.js`: OPFS only when API + `crossOriginIsolated`, else IDB; GH-Pages IDB-only named not silent; never silent-downgrades an OPFS-capable origin; `§VFS-DETECT OVERALL=PASS`) | VFS detect + downgrade | **Med** (hosting-bound: GH-Pages stays IDB) |
 | Mobile memory | 200 MB tab ceiling | ✅ **on-demand cold loader implemented** (T2 cold `ATTACH` only on explicit demand, `DETACH` after 5-min idle — cold never resident at boot; `§SHARD-FREQ cold detachedAfterIdle=Y`, falsifier proven able to FAIL). Renderer wiring/deploy deferred (lane firewall). | Size-trigger + persist() + access-freq cold off-heap | **Low** |
-| Offline queue | 37.8 MB/day worst case | ✅ typical / ⚠️ high-rate | Cap + purge + backoff | **Low** |
+| Offline queue | 37.8 MB/day worst case | ✅ typical + ✅ **bounded queue implemented** (`build/erp/offline_queue.js`: cap 50 MB/7 d → force checkpoint + purge folded&relayed, KEEP unrelayed; exp-backoff capped 5 min; `§OFFLINE-QUEUE OVERALL=PASS`, no-data-loss falsifier) | Cap + purge + backoff | **Low** |
 | Single-writer | 1 writer/shard | 🔴 hard (immutable) | None — architectural | **Hard-by-design** |
 
 ## 6. Phase 5 — Monitoring & alerting
