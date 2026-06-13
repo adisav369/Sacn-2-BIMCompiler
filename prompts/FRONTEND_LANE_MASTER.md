@@ -66,6 +66,37 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+- ✅ DONE (witness) **[ERP-UI] Two rogue floating pills in the `idempiere.html` top bar → align to the registry/top-bar.** (logged 2026-06-14, USER-CONFIRMED via live mobile screenshot)
+  THE TWO (live-confirmed, not the burger):
+  1. **"▤ Reports"** = `#reportMenuPill`, `position:fixed; left:14px; top:10px` (`report_overlay.js:487/947`).
+     Added by the **Reporting lane — PR #295** (`07f37de`, sw v669) — it shipped a LOOSE fixed top-left pill
+     instead of a registry pill.
+  2. **"✎ Edit mode"** = `#crudModeWrap`, `position:fixed; right:150px; top:10px` (`crud_overlay.js:330/931`) —
+     from the CRUD overlay; a floating checkbox-label, mismatched with the idempiere top bar.
+  USER DIRECTION for the fix: **(a)** the Edit-mode button must be **synced with the idempiere top-bar style**
+  (live in the header bar consistently, not a loose mismatched float); **(b)** "Reports" belongs in the pill
+  rail / menu, not a fixed float; **(c)** **Red pill stays in the pill rail ONLY** (it already is — don't
+  regress it out). No controls outside the pill/menu/top-bar ([[feedback_pill_icon_consistency]]).
+  FIX: remove the two `position:fixed` controls; surface Reports from the registry (`pills_idmp.json` +
+  `IdmpPillActions.reports` → the same `report_overlay` entry); restyle/relocate Edit-mode into the idempiere
+  header bar (match `#idmp-header` button style) or a pill. Bump erp/sw.js + `?v=`, worktree off origin/main, PR.
+  Verify with a LIVE-driven mobile DOM probe (no `#reportMenuPill`/`#crudModeWrap` floats; Reports reachable;
+  redpill still pill-only). NOTE: local `~/bim-ootb` was 9 commits stale during triage — use origin/main.
+  SEPARATE pre-existing bug (not the user's complaint, fix opportunistically): the ☰ burger is malformed —
+  `<button id="idmp-burger" class="hbtns"><button title="Menu">&#9776;</button></button>` (idempiere.html ~L337,
+  from PR #88) renders as a button-in-a-button; unnest to one `<button id="idmp-burger" class="hbtns" title="Menu">&#9776;</button>`.
+
+> **✅ CLIPBOARD RELAY LANE (2026-06-14, Sonnet) — PR #300 erp sw v672 / viewer sw v653.**
+> W-OPLOG-CLIPBOARD PASS (§CL-SERIAL+§CL-UUID+§CL-DELTA). W-WH-POS-PICK-LIVE + W-WH-LIVE PASS.
+> Card: `prompts/WH_SHIP_LATER_CLIPBOARD.md → # DONE`
+
+> **▶ CLIPBOARD RELAY LANE (dictated 2026-06-14) — POS ship-later → clipboard → WH walk apply.**
+> Cross-device op-log transport with no server: deliver-later sale serialized to base64 blob, copied
+> to clipboard, pasted into WH walk receive box → ops replay into IDB sidecar → selector offers the
+> shipment → pick proceeds. Demo proves the architecture; dumb relay is the upgrade path, same format.
+> Card: `prompts/WH_SHIP_LATER_CLIPBOARD.md` · Witnesses: `§CL-1` sender + `§CL-2` receiver +
+> `W-OPLOG-CLIPBOARD` headless · Regressions: `poc_wh_pos_pick_live.js` + `poc_wh_walk_live.js`.
+
 > **▶ PENDING WITNESS (dictated 2026-06-13) — REFLEXIVE AD SELF-EDIT, LIVE.** Prove the loop the
 > migration thesis leans on but hasn't witnessed: edit an `AD_Menu`/`AD_Window`/`AD_Field` row **through
 > the live AD windows in the browser engine** → the menu/form **rebuilds right away**, no reload/codegen/

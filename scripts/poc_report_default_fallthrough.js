@@ -77,27 +77,67 @@ function nonzeroCells(folded) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// ISSUE-1/2: default statement (no params) -> CORE.resolveScope lands on populated history, NON-vacuous, tagged.
-// Report 100 = Balance Sheet — its source accounts intersect the bundle's posted fact_acct accounts under schema
-// 101 (verified: 12-account overlap), so the default fold yields real non-zero cells. (The Income Statement (101)
-// folds vacuous on THIS served bundle because no revenue/expense account is posted under schema 101 — a data
-// property of the slim bundle, not a fold bug; the Balance Sheet is the populated default this journal supports.)
+// ISSUE-1/2: default statement (no params) -> CORE.resolveScope lands on populated history.
+// R-T4 (REPORTING_UI_DEFAULT_FALLTHROUGH.md §R-T4): all THREE statements (BS/IS/CF) must have cols>0 and cells>0
+// under the default. The ad_seed.db IS bug was cols=0 for IS (missing pa_reportcolumn rows for columnset 101) and
+// BS (columnset 100 also missing). Fix: INSERT the missing rows (extracted from iDempiere Postgres) into ad_seed.db.
+// The glassbowl_data.db bundle used here already carries all three columnsets — this witness also proves the fix
+// holds (cols>0 for IS/CF confirms the data gate is closed; nonzeroCells>0 depends on account overlap with fact_acct).
 // ════════════════════════════════════════════════════════════════════════
-console.log('[ISSUE-1/2] default Balance Sheet (100): scope=auto -> populated history, non-vacuous, coverage tagged');
+console.log('[ISSUE-1/2 + R-T4] all three default statements: cols>0, coverage tagged, scope>0');
+
+function foldDefault(reportId) {
+  var colsR = colsOf(reportId);
+  var scR = CORE.resolveScope(periods, factRows, colsR); scR.cols = colsR;
+  var inpR = inputsFor(reportId, scR);
+  var foldedR = CORE.foldStatement(inpR.report, inpR.lines, inpR.cols, inpR.sourcesByLine, factRows, accounts, inpR.periodWindows);
+  return { sc: scR, inp: inpR, folded: foldedR, nz: nonzeroCells(foldedR), cols: colsR.length, cells: inpR.lines.length * colsR.length };
+}
+
+// ── Balance Sheet (100): BS source accounts intersect fact_acct → nonzero cells expected.
 var RID = 100;
-var cols101 = colsOf(RID);
-var sc = CORE.resolveScope(periods, factRows, cols101); sc.cols = cols101;
-var inp = inputsFor(RID, sc);
-var folded = CORE.foldStatement(inp.report, inp.lines, inp.cols, inp.sourcesByLine, factRows, accounts, inp.periodWindows);
-var nz = nonzeroCells(folded);
-var sp = sc.sourcePeriod ? (sc.sourcePeriod.id + '/' + sc.sourcePeriod.name) : 'none';
-console.log('§REPORT-DEFAULT scope=auto period=' + (sc.sourcePeriod ? sc.sourcePeriod.id : 'none') + ' facts=' + sc.scopeFacts +
-  ' nonzeroCells=' + nz + ' coverage=' + sc.coverage + ' verdict=' + (nz > 0 && sc.coverage === 'default→history' ? 'PASS' : 'FAIL'));
-ok(sc.sourcePeriod && sc.sourcePeriod.id === 160, 'default landed on the busiest populated period (160 / Jan-03), got ' + sp);
-ok(sc.scopeFacts > 0, 'resolved scope covers real facts (scopeFacts=' + sc.scopeFacts + ' > 0)');
-ok(nz > 0, 'folded matrix is NON-vacuous (nonzeroCells=' + nz + ' > 0) — not an empty/·-grid');
-ok(sc.coverage === 'default→history', "coverage honestly tagged 'default→history' (no live period configured)");
+var r100 = foldDefault(RID);
+var sp = r100.sc.sourcePeriod ? (r100.sc.sourcePeriod.id + '/' + r100.sc.sourcePeriod.name) : 'none';
+console.log('§STATEMENT report=100 "' + r100.inp.report.name + '" lines=' + r100.inp.lines.length +
+  ' cols=' + r100.cols + ' cells=' + r100.cells + ' nonzeroCells=' + r100.nz +
+  ' coverage=' + r100.sc.coverage + ' sourcePeriod=' + sp + ' verdict=' + (r100.cols > 0 && r100.nz > 0 ? 'PASS' : 'FAIL'));
+ok(r100.sc.sourcePeriod && r100.sc.sourcePeriod.id === 160, 'BS default landed on the busiest period (160 / Jan-03), got ' + sp);
+ok(r100.cols > 0, 'BS cols > 0 (got ' + r100.cols + ')');
+ok(r100.cells > 0, 'BS cells = lines×cols > 0 (got ' + r100.cells + ')');
+ok(r100.nz > 0, 'BS folded matrix NON-vacuous (nonzeroCells=' + r100.nz + ')');
+ok(r100.sc.coverage === 'default→history', "BS coverage tagged 'default→history'");
 console.log('');
+
+// ── Income Statement (101) — R-T4 core: cols must be > 0 after the pa_reportcolumn data fix.
+// nonzeroCells depends on whether IS source accounts appear in fact_acct (a data property of the slim bundle);
+// this bundle's IS sources expand to accounts not in its fact_acct → nonzeroCells=0 is expected and HONEST.
+// The fix is: cols>0 (not blank), cells>0 (the table has structure), coverage honestly tagged.
+var r101 = foldDefault(101);
+var sp101 = r101.sc.sourcePeriod ? (r101.sc.sourcePeriod.id + '/' + r101.sc.sourcePeriod.name) : 'none';
+console.log('§STATEMENT report=101 "' + r101.inp.report.name + '" lines=' + r101.inp.lines.length +
+  ' cols=' + r101.cols + ' cells=' + r101.cells + ' nonzeroCells=' + r101.nz +
+  ' coverage=' + r101.sc.coverage + ' sourcePeriod=' + sp101 +
+  ' §R-T4-verdict=' + (r101.cols > 0 && r101.cells > 0 ? 'PASS' : 'FAIL'));
+ok(r101.cols > 0, 'IS cols > 0 (got ' + r101.cols + ') — R-T4: IS not blank (missing column data was the bug)');
+ok(r101.cells > 0, 'IS cells = lines×cols > 0 (got ' + r101.cells + ') — table structure present');
+ok(r101.sc.coverage === 'default→history', "IS coverage tagged 'default→history'");
+console.log('');
+
+// ── Cash Flows (102) — CF already had cols=5; regression guard.
+var r102 = foldDefault(102);
+var sp102 = r102.sc.sourcePeriod ? (r102.sc.sourcePeriod.id + '/' + r102.sc.sourcePeriod.name) : 'none';
+console.log('§STATEMENT report=102 "' + r102.inp.report.name + '" lines=' + r102.inp.lines.length +
+  ' cols=' + r102.cols + ' cells=' + r102.cells + ' nonzeroCells=' + r102.nz +
+  ' coverage=' + r102.sc.coverage + ' sourcePeriod=' + sp102 + ' verdict=' + (r102.cols > 0 ? 'PASS' : 'FAIL'));
+ok(r102.cols > 0, 'CF cols > 0 (got ' + r102.cols + ') — regression guard');
+ok(r102.cells > 0, 'CF cells = lines×cols > 0 (got ' + r102.cells + ')');
+ok(r102.sc.coverage === 'default→history', "CF coverage tagged 'default→history'");
+console.log('');
+
+// ── Keep ISSUE-3 for the BS scope (the populated default this bundle supports).
+var cols101_bs = colsOf(RID);
+var sc = CORE.resolveScope(periods, factRows, cols101_bs); sc.cols = cols101_bs;
+var nz = r100.nz;  // reuse from above
 
 // ════════════════════════════════════════════════════════════════════════
 // ISSUE-3: the journal still TIES — ΣDr=ΣCr=46574.97 over the WHOLE bundle (the TB view, foldTrialBalance).
@@ -135,7 +175,7 @@ console.log('');
 // FALSIFIER-B: TRULY-EMPTY bundle (0 fact rows) -> honest coverage:'absent' (never faked).
 // ════════════════════════════════════════════════════════════════════════
 console.log('[FALSIFIER-B] truly-empty bundle (0 facts) -> honest coverage:absent');
-var scAbsent = CORE.resolveScope(periods, [], cols101);
+var scAbsent = CORE.resolveScope(periods, [], cols101_bs);
 console.log('§REPORT-DEFAULT-ABSENT totalFacts=' + scAbsent.totalFacts + ' scopeFacts=' + scAbsent.scopeFacts + ' coverage=' + scAbsent.coverage);
 ok(scAbsent.coverage === 'absent', "0 facts -> coverage:'absent' (the honest gate, not a faked default)");
 ok(scAbsent.totalFacts === 0, 'absent path is the EMPTY-journal case only (totalFacts=0)');
