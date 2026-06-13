@@ -11,7 +11,9 @@
     '  id INTEGER PRIMARY KEY,' +       // local total-order — W-CHAIN seals/verifies in id order
     '  op_uuid TEXT,' +                 // G-IDENTITY (§0.21): edge-minted cross-device id; NOT the PK
     '  timestamp INTEGER NOT NULL,' +
-    '  op_type TEXT NOT NULL,' +
+    '  op_type TEXT NOT NULL,' +       // GRID_MOVE | VIEW_FILTER | … | PLUGIN_INSTALL | PLUGIN_UNINSTALL | PLUGIN_START | PLUGIN_STOP
+    //   PLUGIN_* (W-PLUGIN, prompts/PLUGIN_SYSTEM_LANE.md §Phase B): Fold-Engine bundle lifecycle audit ops.
+    //   parameters = JSON { id, version, manifestUrl }. ADDITIVE — no schema change, op_type is free TEXT.
     '  parameters TEXT NOT NULL,' +
     '  input_guids TEXT,' +
     '  output_guid TEXT,' +
