@@ -275,10 +275,29 @@ The substrate is well-trodden; cite it, don't reinvent it:
 - **Martin Fowler — [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) ·
   [CQRS](https://martinfowler.com/bliki/CQRS.html)** — the short written reference.
 
-**What's standard:** event sourcing, CQRS, the immutable log, the projection. **What's ours:** folding
-iDempiere's `M*` model — `completeIt`, `Doc_*` posting, the DocAction FSM, the AD interpreters — to
-*oracle-equivalence* (`maxDiff=0c` vs real iDempiere output), serverless, in a browser. We stood on proven
-ground; the ERP fold is the new work. See the [Coverage Matrix](ERP_COVERAGE_MATRIX.md) for the exact tally.
+**Why it's called *fold*.** Not a local coinage — `fold` (`foldl`/`foldr`/`reduce`) is the
+functional-programming primitive that collapses a sequence into a value, and event sourcing's canonical
+definition is *"current state = a **left fold** over the event log"* (`state = events.fold(initial, apply)`).
+The name asserts **purity**: state is a deterministic reduction of the signed ops, no side effects — matching
+the engine's no-`Date.now`/`random`, byte-stable replay. Even the *name* comes from proven ground.
+
+**What's standard:** event sourcing, CQRS, the immutable log, the projection — and the word *fold* itself.
+**What's ours (the scoped, falsifiable claim):** as far as we can find, this is the first system to fold a
+**complete, real legacy ERP model** — iDempiere's `M*` corpus + `Doc_*` posting + the DocAction FSM + the AD
+interpreters, *not a greenfield toy domain* — to **oracle-equivalence** (`maxDiff=0c` vs the live system, every
+surface §FALSIFIER-guarded), running **serverless in a browser** (SQLite-WASM kernel, the signed op-log as the
+wire), with the model carried **as data, not code** (no generated ORM). Event sourcing usually proves itself on
+small new domains; the hard, unclaimed thing is doing it *against a 735k-LOC incumbent and proving
+bit-equivalence*.
+
+The honest boundary stands — but read it correctly: only ~1% of the M-class logic is ported **as code**
+(≈1,035 of 104,940 LOC of `M*.java`), and that's a *LOC* ratio, not a *capability* one. The other 99% has
+**three fates, not one**: most is **deleted boilerplate** (the `getX`/`setX`/`saveEx`/JDBC machinery — never
+business value), much of the rest **becomes AD data** the interpreters read (validation, defaults, FK lookups,
+the FSM — present and working, just not *code*), and the genuine remaining business logic is **deferred** —
+folded incrementally as archetype + ~25 deltas — *not discarded*. The 1% is small because the substrate is
+**more abstract** (§8), not because 99% of capability was thrown away. The claim is about the **substrate and
+the method**, not feature parity. See the [Coverage Matrix](ERP_COVERAGE_MATRIX.md) for the exact tally.
 
 ---
 
