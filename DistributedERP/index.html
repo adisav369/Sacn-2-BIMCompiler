@@ -5178,6 +5178,15 @@ pure OOTB (no fat server):</p>
    chain tip by signed <code>seq</code>/<code>prev_hash</code>, not arrival order; send a <strong>full signed snapshot per email</strong> for
    single-email recovery robustness; encrypt-to-user for privacy. "Email receipt" is old — "<strong>inbox as the
    recoverable signed state-log</strong>" is the fresh framing.)</li>
+</ol>
+<p><strong>Witnessed live (2026-06-14, bim-ootb PR #300):</strong> POS "deliver later" serialises the committed
+   op group to a compact base64 blob, copies it to clipboard, and the user pastes it into WhatsApp,
+   email, or SMS. The WH walk user on any device pastes it into the receive box and hits Apply — the
+   ops replay into the IDB sidecar, the pending shipment surfaces in the selector, and the pick walk
+   proceeds. The social channel is the relay. No server, no sync protocol, no polling. The dumb
+   <code>erp_relay_server.js</code> is the upgrade path — same op format, different pipe. Witness:
+   <code>scripts/poc_oplog_clipboard.js</code> (<code>§CL-SERIAL</code> + <code>§CL-UUID</code> idempotency + <code>§CL-DELTA</code>).</p>
+<ol>
 <li><strong>Claim/spend:</strong></li>
 <li><strong>Online (normal POS):</strong> sub-second authority <strong>compare-and-set</strong> (set-if-unset) → first-wins. Same
      weight as a card-payment auth — not a burden. (A plain <code>DateLastUsed</code> <em>read</em> is best-effort only — two

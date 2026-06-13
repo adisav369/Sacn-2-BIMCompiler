@@ -106,8 +106,9 @@
         <li><b>Reports</b> — Balance Sheet · Income · Cash Flow + invoice print; the <code>T_*</code> report tier (aging · inventory value · replenish · invoice GL · cash-flow · bank register) folds &amp; deletes</li>
         <li><b>Model layer</b> — <code>beforeSave</code> + DocAction-FSM of every doc class</li>
         <li><b>SvrProcess on-demand picker</b> — <code>AD_Process ⋈ AD_Process_Access ⋈ AD_WF_Node</code> returns the actually-used subset oracle-equivalent (W-PROC-PICKER, 451 procs); corpus (337 classnames) stays named-deferred by design</li>
+        <li><b>Odoo migration</b> — full catalog extracted: 38/38 partners · 47/47 COA · 2 taxes · 27/27 SOs fold complete (<code>maxDiff=0c</code>); live P2P buy-side fold <code>newVerbs=[]</code> (W-P4-MASTERS · W-P4-BUYSIDE-LIVE)</li>
       </ul>
-      <div class="foot">17 cent-exact · 6 declarative · 21 model-layer — each with a §FALSIFIER</div>
+      <div class="foot">17 cent-exact · 6 declarative · 21 model-layer · 2 Odoo live — each with a §FALSIFIER</div>
     </section>
 
     <!-- ── PENDING (extraction) ───────────────────────────── -->
@@ -118,9 +119,7 @@
         <div class="gloss">The engine already folds these flows (passing witness each). Mechanical extractor work, <b>not engine development.</b></div>
       </div>
       <ul>
-        <li><b>Master data</b> — 38 partners · 30 products · 47 COA · 8 journals · 11 terms</li>
-        <li><b>Sale orders</b> — 26 of 27 (1 chain folded; loop the proven path)</li>
-        <li><b>Purchasing</b> — all 13 POs + vendor bills (buy-side adapter <i>written, unused</i>)</li>
+        <li><b>Purchasing data</b> — remaining PO chains not yet extracted into shard (fold proven live for P00011; gen_ad_odoo.js covers SOs only today)</li>
         <li><b>Money</b> — 3 real payments + reconciles, 13 manual journals, 7 credit notes</li>
         <li><b>Inventory state</b> — 43 on-hand quants as opening balances</li>
       </ul>
@@ -161,7 +160,7 @@
         <li><b>JDBC · OSGi · app server · installer</b> → no server of record</li>
         <li><b>Web services tier</b> → the signed op-log <i>is</i> the wire</li>
       </ul>
-      <div class="foot"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle"></span><b style="color:var(--green)">Granted in exchange</b> — the 40% deletion is what makes the engine <b>offline-first</b>, <b>serverless</b>, and <b>per-device shardable</b> (instant load · data streams in as you go). <span style="font-weight:400;opacity:.8">§-witnessed; wiring in progress.</span></div>
+      <div class="foot"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle"></span><b style="color:var(--green)">Granted in exchange</b> — the 40% deletion is what makes the engine <b>offline-first</b>, <b>serverless</b>, and <b>per-device shardable</b> (instant load · shards on demand) — <span style="font-weight:400;opacity:.8">live today. Finer warm/cold access-frequency tiers + checkpoint-first boot are §-witnessed and proven-ahead, switched on when scale needs them.</span></div>
     </section>
 
   </div>
