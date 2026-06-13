@@ -409,8 +409,72 @@
     };
   }
 
+  // ════════════════════════════════════════════════════════════════════════
+  // resolveScope — the PURE R-T2 default + fall-through (REPORTING_UI_DEFAULT_FALLTHROUGH.md). No DB/DOM/clock.
+  // Picks the default report period DETERMINISTICALLY from the journal and resolves each non-calc column to a
+  // c_period_id window, then GUARDS: if that scope matches 0 fact rows but the bundle DOES have facts, fall through
+  // to the single busiest populated period (reuse the SAME window rule, non-empty source). Empty bundle -> absent.
+  //   periods: [{id,name,sd,ed,yr}] (calendar order) · factRows: [{c_period_id,...}] ·
+  //   cols: [{pa_reportcolumn_id, columntype, paperiodtype, relativeperiod}]
+  //   -> { periodWindows:{colId:Set}, reportIdx, busiestIdx, sourcePeriod:{id,name}|null, coverage, scopeFacts, totalFacts }
+  // coverage: 'live' (a user-chosen period — future) | 'default→history' (our derived default) | 'absent' (no facts).
+  function resolveScope(periods, factRows, cols) {
+    periods = periods || []; factRows = factRows || []; cols = cols || [];
+    var factCnt = {}, totalFacts = 0;
+    factRows.forEach(function (r) { factCnt[r.c_period_id] = (factCnt[r.c_period_id] || 0) + 1; totalFacts++; });
+    var yearFacts = {};
+    periods.forEach(function (p) { if (factCnt[p.id]) yearFacts[p.yr] = (yearFacts[p.yr] || 0) + factCnt[p.id]; });
+    var bestYr = null, bestN = -1;
+    Object.keys(yearFacts).forEach(function (y) { if (yearFacts[y] > bestN) { bestN = yearFacts[y]; bestYr = Number(y); } });
+    var busiestIdx = -1, busiestN = -1;
+    periods.forEach(function (p, i) { var n = factCnt[p.id] || 0; if (n > busiestN) { busiestN = n; busiestIdx = i; } });
+    var reportIdx = -1, repN = -1;
+    periods.forEach(function (p, i) { var n = factCnt[p.id] || 0; if (p.yr === bestYr && n > repN) { repN = n; reportIdx = i; } });
+    if (reportIdx < 0) reportIdx = (busiestIdx >= 0) ? busiestIdx : periods.length - 1;
+    function winFor(idx, paperiodtype, relativeperiod) {
+      var i = idx + (relativeperiod || 0), set = {};
+      if (i < 0 || i >= periods.length) return set;
+      var tgt = periods[i];
+      if (paperiodtype === 'P') set[tgt.id] = 1;
+      else if (paperiodtype === 'Y') periods.forEach(function (p) { if (p.yr === tgt.yr && p.sd <= tgt.ed && p.ed <= tgt.ed) set[p.id] = 1; });
+      else if (paperiodtype === 'T') periods.forEach(function (p) { if (p.ed <= tgt.ed) set[p.id] = 1; });
+      else set[tgt.id] = 1;
+      return set;
+    }
+    function buildWindows(idx, anchor) {
+      var w = {};
+      // anchor=true (the fall-through): every column window collapses to the busiest period itself — drop the column's
+      // own paperiodtype/relativeperiod (which is what steered the scope into an empty period). Goal: show real data.
+      cols.forEach(function (c) {
+        if (c.columntype === 'C') return;
+        w[c.pa_reportcolumn_id] = anchor ? winFor(idx, 'P', 0) : winFor(idx, c.paperiodtype, c.relativeperiod);
+      });
+      return w;
+    }
+    function countFacts(windows) {
+      var union = {}; var any = false;
+      Object.keys(windows).forEach(function (cid) { Object.keys(windows[cid]).forEach(function (id) { union[id] = 1; any = true; }); });
+      if (!any) return factRows.length;                          // no period filter at all -> every fact in scope
+      var n = 0; factRows.forEach(function (r) { if (union[r.c_period_id]) n++; }); return n;
+    }
+    var windows = buildWindows(reportIdx, false), srcIdx = reportIdx, coverage = 'default→history';
+    if (totalFacts === 0) {
+      coverage = 'absent';
+    } else if (countFacts(windows) === 0 && busiestIdx >= 0) {    // empty-scope edge -> history fall-through
+      windows = buildWindows(busiestIdx, true); srcIdx = busiestIdx;
+    }
+    var srcP = (srcIdx >= 0 && periods[srcIdx]) ? periods[srcIdx] : null;
+    // emit Sets (the foldStatement contract) from the plain id maps
+    var periodWindows = {};
+    Object.keys(windows).forEach(function (cid) { var s = new Set(); Object.keys(windows[cid]).forEach(function (id) { s.add(isNaN(+id) ? id : +id); }); periodWindows[cid] = s; });
+    return { periodWindows: periodWindows, reportIdx: reportIdx, busiestIdx: busiestIdx,
+             sourcePeriod: srcP ? { id: srcP.id, name: srcP.name } : null,
+             coverage: coverage, scopeFacts: countFacts(windows), totalFacts: totalFacts };
+  }
+
   var CORE = { REPORT_MAP: REPORT_MAP, foldReceipt: foldReceipt, foldTrialBalance: foldTrialBalance, foldPnL: foldPnL,
-               foldStatement: foldStatement, foldPrint: foldPrint, amtExpr: amtExpr, signedBalance: signedBalance, round2: round2 };
+               foldStatement: foldStatement, foldPrint: foldPrint, resolveScope: resolveScope,
+               amtExpr: amtExpr, signedBalance: signedBalance, round2: round2 };
   if (typeof module !== 'undefined' && module.exports) { module.exports = CORE; return; }
   if (typeof document === 'undefined') return;
 
@@ -496,39 +560,14 @@
     }
     return { EV: EV, leaves: leaves };
   }
-  // calendar period array + the report period. iDempiere's FinReport takes C_Period as a (mandatory) PARAMETER —
-  // there is no engine default. We have no date picker yet, so we DERIVE a meaningful default DETERMINISTICALLY
-  // from the data: the LATEST posted period of the MOST-ACTIVE fiscal year. "Latest fact period" (the naive
-  // choice) is WRONG here — GardenWorld's journal spans 3 fiscal years and its latest period sits in the emptiest
-  // one (8 of 300 rows), which would fold every YTD/Period column to zero (a vacuous Income Statement). Picking the
-  // busiest year's last posted period makes Y/P/T windows actually cover the journal. No clock, no invention.
-  function periodModel(db) {
-    var periods = rowsOf(db.exec(
+  // periodsOf — the calendar's posting periods in date order (the row source for the PURE CORE.resolveScope).
+  // iDempiere's FinReport takes C_Period as a (mandatory) PARAMETER — there is no engine default; we DERIVE one
+  // deterministically (CORE.resolveScope: busiest period of the busiest fiscal year, + a history fall-through). No clock.
+  function periodsOf(db) {
+    return rowsOf(db.exec(
       "SELECT p.c_period_id id, p.name, p.startdate sd, p.enddate ed, p.c_year_id yr FROM c_period p " +
       "JOIN c_year y ON p.c_year_id=y.c_year_id WHERE y.c_calendar_id=" + STMT_CAL +
       " AND p.isactive='Y' AND p.periodtype='S' ORDER BY p.startdate"));
-    var factCnt = {}; rowsOf(db.exec('SELECT c_period_id id, COUNT(*) n FROM fact_acct GROUP BY c_period_id'))
-      .forEach(function (r) { factCnt[r.id] = r.n; });
-    var yearFacts = {};                                                       // facts per fiscal year (over fact-bearing periods)
-    periods.forEach(function (p) { if (factCnt[p.id]) yearFacts[p.yr] = (yearFacts[p.yr] || 0) + factCnt[p.id]; });
-    var bestYr = null, bestN = -1;
-    Object.keys(yearFacts).forEach(function (y) { if (yearFacts[y] > bestN) { bestN = yearFacts[y]; bestYr = Number(y); } });
-    var reportIdx = -1;
-    periods.forEach(function (p, i) { if (p.yr === bestYr && factCnt[p.id]) reportIdx = i; });  // latest posted period in that year
-    if (reportIdx < 0) reportIdx = periods.length - 1;                        // no facts at all -> last calendar period
-    return { periods: periods, reportIdx: reportIdx };
-  }
-  // resolve a column's (paperiodtype, relativeperiod) to a SET of c_period_id (== FinReportPeriod windows).
-  function windowFor(pm, paperiodtype, relativeperiod) {
-    var idx = pm.reportIdx + (relativeperiod || 0);
-    var set = new Set();
-    if (idx < 0 || idx >= pm.periods.length) return set;
-    var tgt = pm.periods[idx];
-    if (paperiodtype === 'P') set.add(tgt.id);
-    else if (paperiodtype === 'Y') pm.periods.forEach(function (p) { if (p.yr === tgt.yr && p.sd <= tgt.ed && p.ed <= tgt.ed) set.add(p.id); });
-    else if (paperiodtype === 'T') pm.periods.forEach(function (p) { if (p.ed <= tgt.ed) set.add(p.id); });
-    else set.add(tgt.id);
-    return set;
   }
   // assemble the foldStatement inputs for one pa_report, reading ONLY the bundle (the browser path).
   function statementInputs(db, reportId) {
@@ -536,18 +575,21 @@
     if (!report) return null;
     var lines = rowsOf(db.exec("SELECT pa_reportline_id, seqno, name, linetype, calculationtype, oper_1_id, oper_2_id, paamounttype, paperiodtype FROM pa_reportline WHERE pa_reportlineset_id=" + report.pa_reportlineset_id + " AND isactive='Y' ORDER BY seqno"));
     var cols = rowsOf(db.exec("SELECT pa_reportcolumn_id, seqno, name, columntype, calculationtype, oper_1_id, oper_2_id, paamounttype, paperiodtype, relativeperiod, postingtype FROM pa_reportcolumn WHERE pa_reportcolumnset_id=" + report.pa_reportcolumnset_id + " AND isactive='Y' ORDER BY seqno"));
-    var ev = evModel(db), pm = periodModel(db);
+    var ev = evModel(db);
     var sourcesByLine = {};
     lines.forEach(function (l) {
       var srcs = rowsOf(db.exec("SELECT c_elementvalue_id ev FROM pa_reportsource WHERE pa_reportline_id=" + l.pa_reportline_id + " AND isactive='Y'"));
       sourcesByLine[l.pa_reportline_id] = srcs.map(function (s) { return { account_ids: ev.leaves(s.ev) }; });
     });
-    var periodWindows = {};
-    cols.forEach(function (c) { if (c.columntype !== 'C') periodWindows[c.pa_reportcolumn_id] = windowFor(pm, c.paperiodtype, c.relativeperiod); });
     var factRows = rowsOf(db.exec('SELECT account_id, amtacctdr, amtacctcr, qty, c_period_id, c_acctschema_id, postingtype FROM fact_acct'));
+    // R-T2 default + history fall-through is the PURE CORE.resolveScope — the browser path and the headless
+    // witness run the SAME code (REPORTING_UI_DEFAULT_FALLTHROUGH.md). No user period yet -> coverage=default→history.
+    var sc = CORE.resolveScope(periodsOf(db), factRows, cols);
     var accounts = {};
     Object.keys(ev.EV).forEach(function (id) { accounts[id] = { accounttype: ev.EV[id].accounttype, accountsign: ev.EV[id].accountsign }; });
-    return { report: report, lines: lines, cols: cols, sourcesByLine: sourcesByLine, factRows: factRows, accounts: accounts, periodWindows: periodWindows };
+    return { report: report, lines: lines, cols: cols, sourcesByLine: sourcesByLine, factRows: factRows, accounts: accounts,
+             periodWindows: sc.periodWindows, coverage: sc.coverage, sourcePeriod: sc.sourcePeriod,
+             scopeFacts: sc.scopeFacts, totalFacts: sc.totalFacts };
   }
 
   // statement — fold + render one pa_report into the panel.
@@ -559,11 +601,16 @@
         var inp = statementInputs(db, reportId);
         if (!inp) { renderUnsupported(db, 'pa_report'); console.log('§STATEMENT report=' + reportId + ' not in bundle'); return; }
         var folded = CORE.foldStatement(inp.report, inp.lines, inp.cols, inp.sourcesByLine, inp.factRows, inp.accounts, inp.periodWindows);
+        folded.coverage = inp.coverage;                          // R-T2: carry the honest source tag into the render
+        folded.sourcePeriod = inp.sourcePeriod;
         renderStatement(db, inp, folded);
         var seg = inp.lines.filter(function (l) { return l.linetype === 'S'; }).length;
+        var sp = inp.sourcePeriod ? (inp.sourcePeriod.id + '/' + inp.sourcePeriod.name) : 'none';
         console.log('§STATEMENT report=' + inp.report.pa_report_id + ' "' + inp.report.name + '" lines=' + inp.lines.length +
           ' (S=' + seg + ') cols=' + inp.cols.length + ' cells=' + (inp.lines.length * inp.cols.length) +
-          ' schema=' + folded.schema + ' foldsFrom=' + folded.foldsFrom + ' — every cell a re-sum of fact_acct, 0 invented');
+          ' schema=' + folded.schema + ' foldsFrom=' + folded.foldsFrom +
+          ' coverage=' + inp.coverage + ' sourcePeriod=' + sp + ' scopeFacts=' + inp.scopeFacts +
+          ' — every cell a re-sum of fact_acct, 0 invented');
       } catch (er) { console.warn('§STATEMENT fold error', er && er.message); }
     });
   }
@@ -642,9 +689,18 @@
   // renderStatement — the (lines × columns) matrix, folded cent-exact from fact_acct.
   function renderStatement(db, inp, folded) {
     var cols = inp.cols, lines = inp.lines;
+    // R-T2 honest banner: when the output is the historical default (no live period configured), say so plainly.
+    // coverage:absent (truly empty journal) shows the honest gate; coverage:live (a real picker, future) shows nothing.
+    var banner = '';
+    if (folded.coverage === 'default→history') {
+      var sp = folded.sourcePeriod ? (' — period ' + esc(folded.sourcePeriod.name) + ')') : ')';
+      banner = '<div class=rpbanner>Showing historical Fact_Acct (2002–2003' + sp + ' — no live period configured.</div>';
+    } else if (folded.coverage === 'absent') {
+      banner = '<div class="rpbanner rpna">No Fact_Acct history in this bundle — nothing to fold (coverage: absent).</div>';
+    }
     var h = '<span class=rpx title=close>✕</span>' +
       '<div class=rph><span class=rpglyph>▤</span> ' + esc(inp.report.name) + '</div>' +
-      pickerHtml(db, inp.report.pa_report_id) +
+      pickerHtml(db, inp.report.pa_report_id) + banner +
       '<table class=rptbl><thead><tr><th></th>' +
         cols.map(function (c) { return '<th class=rpr>' + esc(c.name) + '</th>'; }).join('') + '</tr></thead><tbody>';
     lines.forEach(function (l) {
@@ -870,6 +926,8 @@
       '#reportPanel .rpglyph{color:#9fdfe8}' +
       '#reportPanel .rpmeta{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#c4a8c0;margin:0 0 10px}' +
       '#reportPanel .rpmeta b{color:#8a6f86;font-weight:600;margin-right:4px}' +
+      '#reportPanel .rpbanner{font-size:11px;color:#c9b18a;background:#241a10;border:1px solid #4a3a1f;' +
+        'border-radius:7px;padding:5px 9px;margin:0 0 10px;line-height:1.4}' +
       '#reportPanel .rptbl{width:100%;border-collapse:collapse;font-size:12.5px}' +
       '#reportPanel .rptbl th{text-align:left;color:#8a6f86;font-weight:600;border-bottom:1px solid #3a2b38;padding:3px 6px}' +
       '#reportPanel .rptbl td{padding:3px 6px;border-bottom:1px solid #221826}' +
