@@ -516,6 +516,8 @@
       
         
       
+        
+      
     
     
     
@@ -669,6 +671,34 @@
     
   
     Fold-Engine Code Quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FoldEngineConstraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Constraints
   
 
     
@@ -4715,10 +4745,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-5-materialization" class="md-nav__link">
+  <a href="#phase-5-materialization-done-sw-v653" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 5: Materialization
+        Phase 5: Materialization ✅ DONE (sw v653)
       
     </span>
   </a>
@@ -6639,11 +6669,16 @@
 <li>Elements materialize at current grid positions</li>
 <li>Drag-to-interrupt during replay</li>
 </ul>
-<h3 id="phase-5-materialization">Phase 5: Materialization<a class="headerlink" href="#phase-5-materialization" title="Permanent link">&para;</a></h3>
+<h3 id="phase-5-materialization-done-sw-v653">Phase 5: Materialization ✅ DONE (sw v653)<a class="headerlink" href="#phase-5-materialization-done-sw-v653" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>MATERIALIZE</code> command generates <code>NewIFC.db</code></li>
-<li>Output follows standard schema — entire existing tool chain works on it</li>
-<li>Rosetta Stone verification can compare <code>NewIFC.db</code> against the grammar's predictions</li>
+<li><code>MATERIALIZE</code> generates <code>NewIFC.db</code> — <code>viewer/materialize.js</code> <code>toBuffer(db) = db.export()</code> of the
+  edited in-memory db (B1-persisted <code>element_transforms</code> + replayed <code>kernel_ops</code>). NON-INVENT: no
+  coordinate computed; it serializes what the editor already holds.</li>
+<li>Output follows standard schema <strong>by construction</strong> (the file IS a copy of the reference's tables
+  with mutated rows) — the entire existing tool chain (viewer/clash/ERP) works on it. Stored under
+  the <code>import://</code> scheme <code>streaming.js</code> already resolves → zero streaming change.</li>
+<li>Rosetta Stone verification compares <code>NewIFC.db</code> against the grammar's predictions: W-REDPILL-MATERIALIZE
+  runs the G8-GOVERNANCE identity gate (RedPillRosetta §3 mode 1(b)) on the reopened file — PASS.</li>
 </ul>
 <hr />
 <h2 id="13-what-this-is-not">13. What This Is Not<a class="headerlink" href="#13-what-this-is-not" title="Permanent link">&para;</a></h2>
@@ -6711,9 +6746,9 @@
 <li><strong>Grid drag works in New context</strong> — drags log to <code>kernel_ops</code>, lengths update live</li>
 <li><strong>Toggles work</strong> — grid/lengths/envelope independently toggleable from the New pill toolbar</li>
 <li><strong>Event log is tiny</strong> — a full design session produces &lt; 50 KB of commands</li>
-<li><strong>Materialization round-trips</strong> — <code>NewIFC.db</code> loads in the existing viewer without modification</li>
+<li><strong>Materialization round-trips</strong> — <code>NewIFC.db</code> loads in the existing viewer without modification ✅ DONE (sw v653) — <code>viewer/materialize.js</code> <code>db.export()</code>s the edited db into the <code>import://</code> cache scheme; W-REDPILL-MATERIALIZE M1 (identity round-trip on the real file) + M2 (12 tables, viewer-loadable) PASS</li>
 <li><strong>Share works</strong> — event log encodes in URL hash, receiver sees the same design</li>
-<li><strong>Original untouched</strong> — <code>IFC.db</code> is byte-identical before and after a New session</li>
+<li><strong>Original untouched</strong> — <code>IFC.db</code> is byte-identical before and after a New session ✅ proven by W-REDPILL-MATERIALIZE M4 (fresh disk read digests identical after materialize+edit)</li>
 </ol>
 <hr />
 <h2 id="17-addendum-enhancements-from-collaborative-review-2026-05-21">17. Addendum — Enhancements from Collaborative Review (2026-05-21)<a class="headerlink" href="#17-addendum-enhancements-from-collaborative-review-2026-05-21" title="Permanent link">&para;</a></h2>

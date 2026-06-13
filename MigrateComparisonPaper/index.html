@@ -524,6 +524,8 @@
       
         
       
+        
+      
     
     
     
@@ -972,6 +974,34 @@
     
   
     Fold-Engine Code Quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FoldEngineConstraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Constraints
   
 
     
@@ -5372,6 +5402,9 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 <li><strong>0 branch downtime trades against a double-sale risk</strong> — but only for stock that is <em>not</em> physically partitioned (≤0.1% of ops; located stock can't double-sell — the scan is possession), and it is value-tier-bounded (high-value blocked → 0, low-value → a receivable). Traditional avoids it only by <strong>requiring connectivity</strong> (then the branch stops when the link drops — the very downtime we removed) or by <strong>allowing offline POS</strong> (carrying the same risk).</li>
 <li><strong>"0 always-on server-hours" is 0 always-on compute-VM, not 0 cost</strong> — object storage, the CAS touch, and the intermittent relay remain, itemised: storage-priced + pay-per-invocation, no OS / patch / licence. An illustrative annual bill (public list prices, volatile; <strong>excluding</strong> DB licence + DBA labour, which widen it) runs <strong>&gt;10× cheaper</strong>, compute-dominated.</li>
 </ul>
+<blockquote>
+<p><strong>What breaks first as this scales?</strong> A quantitative limits analysis — max in-memory DB before OOM, genesis vs checkpoint re-fold time, writer-conflict probability at 50+ devices, OPFS vs IndexedDB, and the mobile ceilings — is worked end-to-end in <strong><a href="../FoldEngineConstraints/">Fold-Engine Constraints Analysis</a></strong>. Short version: single-writer-per-shard is the only <em>hard</em> limit; the mobile genesis re-fold (~25 s @ 100M ops) and the ~200 MB mobile memory ceiling bite first, and both are already ~90% handled by the checkpoint design above.</p>
+</blockquote>
 <h3 id="v-vitals">Vitals — speed, footprint, ownership — serious read<a class="headerlink" href="#v-vitals" title="Permanent link">&para;</a></h3>
 <p>Three tables, not one wall. Columns are <strong>architecture</strong>, not a feature scorecard; numbers measured on <em>this</em> box / browser unless marked. <strong>"n/a — architectural"</strong> = the legacy stack has no comparable number because the property is structural (it always needs a server).</p>
 <h3 id="speed">A · Speed &amp; latency<a class="headerlink" href="#speed" title="Permanent link">&para;</a></h3>
@@ -5553,6 +5586,9 @@ the master-detail document print (<code>foldPrint</code>, W-PRINTFORMAT), and te
 (Aging, Inventory Value, …), the unexercised <code>PrintDataGroup</code> functions (group-by/count/avg — implemented, no seed
 format uses them) and pixel layout (a stated non-goal — DOM is the render).</p>
 <h3 id="v-gap">Gap Analysis — serious read<a class="headerlink" href="#v-gap" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Functional gaps are tracked below; the <strong>operational</strong> limits (what the browser substrate itself can take before it breaks — memory, fold time, device-scale conflict) are quantified separately in the <strong><a href="../FoldEngineConstraints/">Fold-Engine Constraints Analysis</a></strong>.</p>
+</blockquote>
 <p><span id="gap-analysis"></span></p>
 <h4 id="gap-plain">In plain words — start here<a class="headerlink" href="#gap-plain" title="Permanent link">&para;</a></h4>
 <p><strong>The objective.</strong> Not "re-clone all of iDempiere." It is: <em>the engine works, and each customer's actually-used screens

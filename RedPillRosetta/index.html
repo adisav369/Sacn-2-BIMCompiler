@@ -516,6 +516,8 @@
       
         
       
+        
+      
     
     
     
@@ -669,6 +671,34 @@
     
   
     Fold-Engine Code Quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FoldEngineConstraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Constraints
   
 
     
@@ -4517,8 +4547,8 @@ are held for approval with the rest of this proposal.)</em></p>
 </tr>
 <tr>
 <td>F9</td>
-<td>Materialization <code>grammar + event_log → NewIFC.db</code> is <strong>roadmap P5, not built</strong></td>
-<td><code>RED_PILL.md:433</code> (§11.5 P5), <code>NEW_FROM_REFERENCE.md</code> §8.3</td>
+<td>~~Materialization <code>grammar + event_log → NewIFC.db</code> is <strong>roadmap P5, not built</strong>~~ <strong>CLOSED (sw v653):</strong> <code>viewer/materialize.js</code> <code>toBuffer(db)=db.export()</code> of the edited in-memory db → <code>NewIFC.db</code>; identity mode 1(b) now runs the gate on the REAL file (W-REDPILL-MATERIALIZE M1 PASS 3504/3504 digest match)</td>
+<td><code>viewer/materialize.js</code>, <code>viewer/tests/poc_redpill_materialize.js</code>; was <code>RED_PILL.md §11.5 P5</code>, <code>NEW_FROM_REFERENCE.md</code> §8.3</td>
 </tr>
 <tr>
 <td>F10</td>
@@ -4586,8 +4616,10 @@ edit. If identity fails, governed-delta results are meaningless.</p>
 2. Capture the materialized element set. Two targets, phased:
    - <strong>(a) in-session</strong> (available now): element AABBs as the editor holds them
      (<code>element_transforms</code> + mesh matrices — see Q5 on the F8 split);
-   - <strong>(b) <code>NewIFC.db</code></strong> (after P5 lands, F9): the materialized file itself — the real
-     round-trip per <code>NEW_FROM_REFERENCE.md</code> §16.5/§16.7.
+   - <strong>(b) <code>NewIFC.db</code></strong> (P5 landed, F9 closed — sw v653): the materialized file itself — the real
+     round-trip per <code>NEW_FROM_REFERENCE.md</code> §16.5/§16.7. <code>viewer/materialize.js</code> <code>db.export()</code>s the
+     edited in-memory db; <code>poc_redpill_materialize.js</code> M1 runs §2's gate maths on the reopened file
+     (PASS 3504/3504, digest match, centroid 0.0mm). Mode 1(a) in-session remains the no-IDB path.
 3. Compare against the reference DB with the reused maths of §2:</p>
 <table>
 <thead>
@@ -4843,10 +4875,10 @@ FAIL", but B1 allows a heuristic fallback "where BOM data genuinely doesn't exis
 Proposal: strict mode (default, <code>ungoverned=0</code> required, fallback elements must be STATIC) vs a
 declared <code>fallback=N</code> budget mode for DBs with incomplete <code>element_ref</code> coverage. Which is the
 shipping default — and is <em>any</em> non-zero fallback ever a PASS?</p>
-<p><strong>Q5 — Identity scope today (F8/F9).</strong> Until P5 materialization exists, identity mode 1(a)
-compares the in-session state. Given F8 (kinematics never persists to DB), should B1 make
-DB-persistence of governed moves a hard requirement <em>before</em> B2 wires the gate (recommended —
-otherwise "actual" is ambiguous), or should the witness read mesh matrices as interim truth?</p>
+<p><strong>Q5 — Identity scope today (F8/F9). RESOLVED.</strong> F8 fixed by B1 (persist-first → <code>element_transforms</code>);
+F9 closed by P5 (<code>viewer/materialize.js</code>, sw v653). Identity mode 1(b) now runs the gate on the real
+exported <code>NewIFC.db</code> (W-REDPILL-MATERIALIZE M1); 1(a) in-session remains the no-IDB/node path. "Actual =
+the persisted DB row" holds end-to-end: the persisted center materializes byte-for-byte into the file.</p>
 <p><strong>Q6 — Delta-mode volume band.</strong> Confirm: predicted-vs-actual volume within the same ±0.1 %
 (G2 reuse), with actual-vs-reference volume intentionally unchecked after an edit (volume change
 is the design intent).</p>
