@@ -825,7 +825,9 @@ if(!window.__restored&&isMobile())setPanelCollapsed(true);else syncPanelUI(docum
 <script src="bigdecimal.js"></script>
 <!-- production signed kernel (W-CHAIN/W-SIGN) — one source, copied from bim-ootb/viewer/kernel_ops.js. GP3: Process ▶ commits real signed SET_STATUS ops to a sidecar log. -->
 <script src="kernel_ops.js"></script>
-<!-- CRUD ring-of-fire + Process/DocAction overlay — peer behavior layer, keyed to bubbles. GP3: Process ▶ = REAL signed write (sidecar log, read-the-tip). -->
+<!-- T1 (SO_FULL_CRUD_GAP.md, W-SO-COMPLETE-UI): the PROVEN engine (UMD of bim-compiler scripts/erp_engine.js — window.ERPEngine, same file idempiere.html loads). crud_overlay.completeFanout extracts the completeIt consequence set (ship+invoice creates) from it. MUST load before crud_overlay. -->
+<script src="erp_engine.js"></script>
+<!-- CRUD ring-of-fire + Process/DocAction overlay — peer behavior layer, keyed to bubbles. GP3: Process ▶ = REAL signed write (sidecar log, read-the-tip). T1: Complete a c_order = the WHOLE document process committed as ONE group. -->
 <script src="crud_overlay.js"></script>
 <!-- Report (read face of the op-log) — peer overlay; the ring's ▤ verb folds a Receipt from the bundle. PURE READ. (CRUD_P_R_REPORT.md R1) -->
 <script src="report_overlay.js"></script>
