@@ -97,16 +97,17 @@
       <div class="bh">
         <div class="tag">🟢 Done · in the new experience</div>
         <div class="ttl">Folds to the cent today</div>
-        <div class="gloss">Oracle-equivalent vs real iDempiere output, <code>maxDiff=0c</code>, both USD&nbsp;+&nbsp;EUR schemas. <b>43 surfaces.</b></div>
+        <div class="gloss">Oracle-equivalent vs real iDempiere output, <code>maxDiff=0c</code>, both USD&nbsp;+&nbsp;EUR schemas. <b>44 surfaces.</b></div>
       </div>
       <ul>
         <li><b>Trade loop</b> — order → ship → invoice → 3-way match → pay → allocate</li>
         <li><b>Inventory loop</b> — movement → on-hand → replenishment PO → cost-valued GL (shipment COGS + vendor receipt)</li>
-        <li><b>GL</b> — inter-org journals + FX, reverse / void (nets to zero)</li>
+        <li><b>GL</b> — inter-org journals + FX, reverse / void (nets to zero); <b>bank statement reconciliation</b> — charge + interest + FX-converted amounts + currency-balance rounding (W-FOLD-BANKSTMT, 13 facts / 2 schemas, last un-folded posted-doc table closed)</li>
         <li><b>Reports</b> — Balance Sheet · Income · Cash Flow + invoice print; the <code>T_*</code> report tier (aging · inventory value · replenish · invoice GL · cash-flow · bank register) folds &amp; deletes</li>
         <li><b>Model layer</b> — <code>beforeSave</code> + DocAction-FSM of every doc class</li>
+        <li><b>SvrProcess on-demand picker</b> — <code>AD_Process ⋈ AD_Process_Access ⋈ AD_WF_Node</code> returns the actually-used subset oracle-equivalent (W-PROC-PICKER, 451 procs); corpus (337 classnames) stays named-deferred by design</li>
       </ul>
-      <div class="foot">16 cent-exact · 6 declarative · 21 model-layer — each with a §FALSIFIER</div>
+      <div class="foot">17 cent-exact · 6 declarative · 21 model-layer — each with a §FALSIFIER</div>
     </section>
 
     <!-- ── PENDING (extraction) ───────────────────────────── -->
@@ -143,7 +144,7 @@
         <li><b>Posting edge-branches</b> — charge lines · GL distribution · realized-FX gain/loss (no fold path; armed in AD, dormant in seed)</li>
         <li><b>Server-action interpretation</b> — Odoo automation (64 actions)</li>
       </ul>
-      <div class="foot">On-demand procs (454/476) amortise here by design — not blocking</div>
+      <div class="foot">On-demand procs (337 classnames named-deferred) — mechanism + picker built (W-PROC-PICKER), not blocking</div>
     </section>
 
     <!-- ── NOT APPLICABLE ─────────────────────────────────── -->
