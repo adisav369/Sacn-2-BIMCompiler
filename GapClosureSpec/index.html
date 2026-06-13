@@ -3316,6 +3316,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#5a-gap-t_aging-arap-invoice-aging-w-aging-p11-closed-2026-06-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5a. Gap: T_Aging (AR/AP invoice aging) — W-AGING [P1.1, closed 2026-06-13]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5b-gap-t_inventoryvalue-inventory-valuation-w-invvalue-p12-closed-2026-06-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5b. Gap: T_InventoryValue (inventory valuation) — W-INVVALUE [P1.2, closed 2026-06-13]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5c-gap-t_replenish-replenishment-planning-w-replenish-p12-closed-2026-06-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5c. Gap: T_Replenish (replenishment planning) — W-REPLENISH [P1.2, closed 2026-06-13]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#6-constraints-mirror-of-the-lane-card" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4408,6 +4441,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#5a-gap-t_aging-arap-invoice-aging-w-aging-p11-closed-2026-06-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5a. Gap: T_Aging (AR/AP invoice aging) — W-AGING [P1.1, closed 2026-06-13]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5b-gap-t_inventoryvalue-inventory-valuation-w-invvalue-p12-closed-2026-06-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5b. Gap: T_InventoryValue (inventory valuation) — W-INVVALUE [P1.2, closed 2026-06-13]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5c-gap-t_replenish-replenishment-planning-w-replenish-p12-closed-2026-06-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5c. Gap: T_Replenish (replenishment planning) — W-REPLENISH [P1.2, closed 2026-06-13]
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#6-constraints-mirror-of-the-lane-card" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4518,6 +4584,58 @@ corrupt the rule and the diff <em>must</em> go non-zero, or the test proves noth
 <p>✅ requires ALL of: spec section · engine fold · <code>poc_fold_&lt;rule&gt;.js</code> · <code>poc_&lt;rule&gt;.log</code> with <code>maxDiff=0c</code> vs a real
 oracle · a §FALSIFIER that fires · the matrix row flipped. Missing any one → it is <strong>not</strong> done; report it as 🟡/⛔ with
 the one blocking fact. Per-gap report: rule · LOC (engine+witness) · diff result · new falsifier · gap-count delta.</p>
+<h2 id="5a-gap-t_aging-arap-invoice-aging-w-aging-p11-closed-2026-06-13">5a. Gap: <code>T_Aging</code> (AR/AP invoice aging) — W-AGING  [P1.1, closed 2026-06-13]<a class="headerlink" href="#5a-gap-t_aging-arap-invoice-aging-w-aging-p11-closed-2026-06-13" title="Permanent link">&para;</a></h2>
+<p><strong>Rule it proves:</strong> <code>build/erp/report_aging.js</code> <code>foldAging()</code> reproduces iDempiere's <code>org.compiere.process.Aging</code>
++ <code>MAging.add()</code> bucketing — the full ~21-column set (<code>Due0, Due0_7, Due0_30, Due1_7, Due8_30, Due31_60,
+Due31_Plus, Due61_90, Due61_Plus, Due91_Plus, DueAmt</code> + the <code>PastDue*</code> mirror set + <code>InvoicedAmt, OpenAmt</code>),
+grouped per (IsSOTrx, C_BPartner, C_Currency) for the default (non-list-invoices) report.
+<strong>Source (non-invent):</strong> <code>DaysDue</code> is iDempiere's own — read verbatim from <code>rv_openitem</code> (live PG). With
+<code>StatementDate=today</code>, <code>m_statementOffset=0</code>, so <code>DaysDue = rv_openitem.DaysDue</code>. Bucket conditions ported
+verbatim from <code>MAging.java:157-235</code>; bucket amount <code>amt = OpenAmt</code> for every bucket; <code>InvoicedAmt += GrandTotal</code>.
+<strong>Oracle (gap-shape = transient scratch, §3 option b):</strong> grounded on iDempiere's source view <code>rv_openitem</code> —
+diff the JS fold against an <strong>independently-coded SQL <code>CASE</code> bucketer</strong> over the SAME <code>rv_openitem</code>, per group,
+all 21 cells, INTEGER CENTS → <code>maxDiff=0c</code>. Labelled "grounded on <code>rv_openitem</code>," <strong>not</strong> "== <code>T_Aging</code>".
+<strong>§FALSIFIER:</strong> corrupt ONE engine bucket boundary so a real row crosses it (GardenWorld demo invoices are all
+~8200-8900 days overdue, so a literal ±1-day shift cannot move a row — the falsifier shifts a <code>PastDue*_Plus</code>
+threshold to a value the real <code>DaysDue</code> population straddles); the engine-vs-SQL diff must go non-zero.</p>
+<h2 id="5b-gap-t_inventoryvalue-inventory-valuation-w-invvalue-p12-closed-2026-06-13">5b. Gap: <code>T_InventoryValue</code> (inventory valuation) — W-INVVALUE  [P1.2, closed 2026-06-13]<a class="headerlink" href="#5b-gap-t_inventoryvalue-inventory-valuation-w-invvalue-p12-closed-2026-06-13" title="Permanent link">&para;</a></h2>
+<p><strong>Rule it proves:</strong> <code>build/erp/report_inventory_value.js</code> <code>foldInventoryValue()</code> reproduces the COST-VALUATION
+core of <code>org.compiere.process.InventoryValue.doIt()</code> — seed rows from <code>M_Cost</code> (CostingMethod='S',
+CostElementType='M') per active warehouse (sql1); <code>QtyOnHand = SUM(M_StorageOnHand.QtyOnHand)</code> via Locator→
+Warehouse (sql6, ASI=0 path); valuation-date adjustment subtracting <code>M_Transaction</code> after DateValue (sql8);
+<code>DELETE</code> rows with QtyOnHand=0/NULL (sql9); <code>CostStandardAmt = QtyOnHand * CostStandard</code> (dbeux, EXACT product).
+<strong>Scope (honest, bounded):</strong> the inventory-VALUE columns <code>CostStandard, QtyOnHand, CostStandardAmt</code> — the lane's
+named "cost × qtyOnHand". The price columns <code>PricePO/PriceList/PriceStd/PriceLimit</code> (+ <code>*Amt</code>) are PARAMETER-
+driven (sql10 needs a user-chosen <code>M_PriceList_Version_ID</code>; default param=0 → NULL) and are <strong>out of this
+witness</strong> — decoration on the value core, named not folded.
+<strong>Source (non-invent):</strong> every value READ from a real <code>M_Cost</code>/<code>M_StorageOnHand</code>/<code>M_Locator</code>/<code>M_Warehouse</code> row.
+DateValue=today over a historical seed ⇒ 0 future transactions ⇒ adjustment is 0 (verified in-witness, not
+assumed). Money EXACT via BigDecimal (qty×cost is an un-rounded product, matching the SQL UPDATE).
+<strong>Oracle (transient scratch, §3 option b):</strong> <code>T_InventoryValue</code> holds 0 captured rows → oracle = a HAND-WRITTEN
+SQL re-derivation over the SAME base tables (joins + <code>SUM</code> + multiply in Postgres). The engine does the same
+joins/aggregation/multiply in JS — two independent paths (the <code>W-FOLD-QTYONHAND</code> pattern). Labelled "grounded
+on the base tables," <strong>not</strong> "== <code>T_InventoryValue</code>". 20 surviving rows, EXACT (cost, qty, value), <code>maxDiff=0</code>.
+<strong>§FALSIFIER:</strong> perturb ONE surviving product's <code>CostStandard</code> by +1 → <code>CostStandardAmt</code> must shift by exactly
+its <code>QtyOnHand</code> (proven: product 123 wh 103, 480→500, qty=20) → the value diff goes non-zero.</p>
+<h2 id="5c-gap-t_replenish-replenishment-planning-w-replenish-p12-closed-2026-06-13">5c. Gap: <code>T_Replenish</code> (replenishment planning) — W-REPLENISH  [P1.2, closed 2026-06-13]<a class="headerlink" href="#5c-gap-t_replenish-replenishment-planning-w-replenish-p12-closed-2026-06-13" title="Permanent link">&para;</a></h2>
+<p><strong>Rule it proves:</strong> <code>build/erp/report_replenish.js</code> <code>foldReplenish()</code> reproduces the PLANNING core of
+<code>org.compiere.process.ReplenishReport</code> (<code>prepareTable</code> + <code>fillTable</code>) — the in-memory corrections (Level_Max≥
+Level_Min; Order_Min/Pack≥1; IsCurrentVendor sole-vendor/multi-vendor), the two-phase candidate insert (current-
+vendor PO join + the C_BPartner=0 fallback), <code>QtyOnHand</code>/<code>QtyReserved</code>/<code>QtyOrdered</code> rollups, the <code>QtyToOrder</code>
+min/max formula (type'1' reorder-below-min, type'2' maintain-max), Min-order-qty, Pack rounding (<code>MOD</code>), and the
+delete-<code>&lt;1</code>. The document-creation actions (createPO/Requisition/Movements/DO) are the <code>ReplenishmentCreate</code>
+ACTION, not the report — <strong>out of scope</strong>.
+<strong>Source (non-invent):</strong> every value READ from a real <code>M_Replenish</code>/<code>M_Product_PO</code>/<code>M_StorageOnHand</code>/
+<code>M_StorageReservation</code> row. EXACT BigDecimal (<code>MOD</code> via truncating integer-quotient, matching Postgres <code>MOD</code>).
+Source-warehouse + custom-<code>ReplenishmentClass</code> branches are no-ops in this seed (asserted in-witness).
+<strong>Oracle (transient scratch, §3 option b):</strong> <code>T_Replenish</code> holds 0 captured rows → oracle = a HAND-WRITTEN SQL
+CTE re-derivation over the SAME base tables. The engine does the same in JS — two independent paths. The diff is
+taken over the FULL pre-delete candidate set (so the type-1 branch, whose QtyToOrder is legitimately 0 when
+stock is sufficient, is itself oracle-confirmed), then the post-delete survivor set is matched too. 18
+candidates EXACT (<code>{1:10, 2:8}</code>), 8 survivors == the oracle. Labelled "grounded on the base tables," <strong>not</strong> "==
+<code>T_Replenish</code>".
+<strong>§FALSIFIER:</strong> bend ONE surviving product's <code>Level_Max</code> by +1000 → its <code>QtyToOrder</code> must diverge (proven:
+product 127, 5→1005) → the diff goes non-zero.</p>
 <h2 id="6-constraints-mirror-of-the-lane-card">6. Constraints (mirror of the lane card)<a class="headerlink" href="#6-constraints-mirror-of-the-lane-card" title="Permanent link">&para;</a></h2>
 <p>No porting of architecture-deleted tiers (🔵) · no pre-porting the 454 SvrProcess corpus (on-demand mechanism only) ·
 no synthesized oracles · keep the <code>docs/ERP_BACKEND_SEPARATION.md</code> §0 seams (declaration / interpreter / log-fold never
