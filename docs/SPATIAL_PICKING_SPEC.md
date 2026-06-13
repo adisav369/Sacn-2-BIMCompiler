@@ -272,6 +272,84 @@ position — the same rAF loop, just driven by telemetry instead of a human tap.
 The hardware integration contract (positioning system, comms protocol) is always custom — that is
 the real work. The ERP side is already done.
 
+#### §S-9a Robot bridge stub (WH_ROBOTICS_LANE.md)
+
+`window.WHWalk.robot` is the meet-in-the-middle seam. The ERP side publishes; the robot
+controller subscribes and pushes confirmations back. A session card
+(`prompts/WH_ROBOTICS_LANE.md`) specifies the implementation lane.
+
+**ERP side exposes (stub, not yet wired):**
+```js
+window.WHWalk.robot = {
+  // Read — robot controller polls or subscribes
+  currentStep: function () {
+    // returns { locatorId, locatorGuid, product, qty, xyz: {x,y,z}|null }
+    // xyz is null until a metric IFC survey provides real coordinates (honest gap)
+  },
+  stepCount: function () { return { total: W.steps.length, done: doneCount(), remaining: … }; },
+
+  // Write — robot controller calls on arrival / pick-complete
+  confirm: function (locatorId) {
+    WHWalk.scanInput(locatorId, 'robot');   // same gate as QR — wrong bin still refuses
+  },
+  skip: function (reason) {
+    WHWalk.skipStep('robot-skip: ' + reason);
+  },
+
+  // Optional telemetry — drives the 3D mirror (fly-to replaced by live position)
+  telemetry: function (x, y, z, locatorId) {
+    // update robot avatar position in scene; highlight current bin if locatorId matches step target
+  }
+};
+```
+
+**Robot controller side must provide:**
+- Navigation to an (x,y,z) or a named locator — the walk supplies both
+- A pick-completion event → calls `WHWalk.robot.confirm(locatorId)`
+- Optionally: streaming position → `WHWalk.robot.telemetry(x,y,z,locatorId)` for the 3D mirror
+
+**`?mode=robot` URL param (stub):** suppresses the human scan screen and "Confirm bin" button;
+the strip shows robot telemetry instead. Human can still override via `confirmHere()`.
+
+#### §S-9b NVIDIA Cosmos — what it is and where it fits
+
+**What Cosmos is** (open source, Apache-2.0, github.com/nvidia-cosmos):
+Cosmos is NVIDIA's world-foundation-model suite for physical AI. Its core capability is
+*predicting the future visual state of the world* given a current frame and a robot action —
+used to generate synthetic training data at scale without physical hardware.
+
+Key open models:
+- `Cosmos-1.0-Diffusion-7B/14B` — video world model (generates realistic robot-POV sequences)
+- `Cosmos-1.0-Tokenizer` — tokenises video frames to/from a compact latent space
+- `Cosmos-1.0-Predict` — causal video prediction (frame N+1…N+k from frame N + action)
+- Runs via NVIDIA Isaac Sim / Isaac Lab for physics-backed simulation
+
+**Where it fits in the WH walk:**
+
+| What we have | What Cosmos adds |
+|---|---|
+| 3D compiled warehouse model (GUIDs, locator positions, bin geometry) | Synthetic camera/sensor data from that model via IsaacSim |
+| Route sequence (ordered bin steps, §S-2) | Robot navigation policy trained on that sequence |
+| `WHWalk.robot.confirm(id)` stub | Robot calling confirm after physical navigation to the bin |
+| Schematic coordinates (text labels, not metric) | Metric once real IFC survey feeds the compiler |
+
+**The honest gap:** Cosmos trains *policies* (what action to take next) and generates *synthetic data*
+(what the camera would see at each step). It does NOT provide: a physical robot, motor drivers,
+a SLAM positioning system, or the metric IFC survey that makes coordinates real. Those are
+always hardware-specific.
+
+**The cheapest useful experiment:**
+1. Export the compiled warehouse model to USD or glTF (the viewer geometry is already WebGL-renderable)
+2. Load it into Isaac Sim (free) — Cosmos-world-model can then generate camera sequences along bin routes
+3. Use those sequences to train a simple navigation policy (bin A → bin B via Cosmos-Predict)
+4. That policy's output = a `locatorId` sequence → feeds `WHWalk.robot.confirm(id)` in the stub
+
+**Meeting halfway:** the robot implementer brings the Isaac Sim setup + trained policy.
+The ERP side supplies: the route sequence, the confirm API, the 3D model export, and the
+ledger reconciliation. Neither side needs to know the other's internals.
+
+See `prompts/WH_ROBOTICS_LANE.md` for the implementation card.
+
 ### §S-10 AR overlay via Walk + SiteCam
 
 The viewer already ships `sitecam.js` — the device camera feed composited under the 3D scene.
