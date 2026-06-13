@@ -82,25 +82,28 @@ Rule closed · LOC added (engine + witness) · diff result (`maxDiff=0c` | rule-
 updated gap count (e.g. "⛔ remaining: 12 → 11") + the matrix row flipped in `docs/ERP_COVERAGE_MATRIX.md`.
 
 ## RESUME STATE (where the next session starts)
-**▶ FIRST ACTION (fresh session, no discovery owed): `T_*` TIER DRAINED + P2.3 CLOSED + P2.4 DATA-BLOCKED (2026-06-13).**
-**START AT P3 — item 5 (the 454-SvrProcess ON-DEMAND mechanism: `AD_Process ⋈ AD_Process_Access ⋈ activity`,
-fold on demand — do NOT pre-port the corpus).** P2 is closed: P2.3 ✅ (W-FOLD-INOUTGL, both M_InOut polarities
-oracle-equivalent), P2.4 🟡 DATA-BLOCKED (analytic accounting — ALL 300 fact_acct rows have zero project/activity/
-campaign/user tagging; no oracle; do NOT synthesize — see GapClosureSpec §5i). **KEY FACTS (do NOT re-derive):**
-(a) V+ vendor receipts post NIR at `round(qty × C_OrderLine.PriceActual)`, NOT the cost-selection rule (current
-m_cost = 9161.10, a 47.90 drift; PO price = 9209.00 exact); (b) analytic dims are absent from the seed entirely.
-**✅ P3 RECON (2026-06-14, do NOT re-derive):** SvrProcess mechanism inputs EXIST in `idempiere_test` —
-`ad_process`=476 (337 carry a `classname` = the corpus), `ad_process_access`=1309, `ad_process_para`=1208 → the
-`AD_Process ⋈ AD_Process_Access ⋈ activity` picker has real data; build the MECHANISM (pick the used ones + fold
-on demand), do NOT pre-port the 337. For **P3.6** (remaining `Doc_*` manifests): the posted doc tables in
-`fact_acct` are 319 M_InOut ✅(W-FOLD-INOUTGL) · 472 M_MatchInv ✅ · 318 C_Invoice ✅ · 735 C_AllocationHdr ✅ ·
-323 M_Movement ✅ · 335 C_Payment ✅ · 224 GL_Journal ✅ · **392 C_BankStatement (13 facts) = the ONE un-folded
-posted doc table** → the concrete P3.6 target (Doc_Bank token manifest + witness vs `fact_acct(392)`).
-Recipe (unchanged): spec § → `build/erp/report_<name>.js` →
-`scripts/poc_fold_<name>.js` → `bash build/erp/run_witness.sh …` → READ the log → flip the matrix row. Copy the
-harness shape from `scripts/poc_fold_replenish.js` or `poc_fold_invoice_gl.js` (PGOPTIONS schema, never inline `SET`;
-independent oracle; BigDecimal-exact diff; a load-bearing falsifier a real value crosses; fact_acct folds use
-`-d idempiere_test`). The 4 folds below are DONE — read them only for the recipe.
+**▶ P3 COMPLETE (2026-06-14). P1+P2+P3 ALL CLOSED. NEXT: P4 — Odoo live extraction gaps.**
+
+**P3.5 ✅ DONE 2026-06-14 (W-PROC-PICKER).** `ad_process.js:pickUsedProcesses` — the on-demand picker:
+`AD_Process ⋈ AD_Process_Access ⋈ AD_WF_Node` returns the actually-used subset. Engine (SQLite ad_full.db)
+== live-oracle (PG idempiere): byAccess=451/451, byWorkflow=9, union=451 (all active processes carry access
+grants in this seed). §FALSIFIER: role=99999 → byAccess=0. Corpus (337 classnames) stays named-deferred.
+`scripts/poc_proc_picker.js` → `build/erp/poc_proc_picker.log` exit 0. Matrix SvrProcess row updated.
+
+**P3.6 ✅ DONE 2026-06-14 (W-FOLD-BANKSTMT).** `build/erp/report_bank_statement.js:foldBankStatement` —
+Doc_BankStatement.createFacts port (CMB doc type). 5 new tokens in `post_resolver.js`: `{Bank.Asset}` ·
+`{Bank.InTransit}` (was already present) · `{Charge.Expense}` · `{Bank.InterestExp}` ·
+`{AcctSchema.CurrencyBalance}`. Oracle: fact_acct(392) record=100, 13 rows, 2 schemas (101 USD / 200000 EUR).
+Both schemas `maxDiff=0c`: schema 101 ΣDR=ΣCR=148.50; schema 200000 ΣDR=ΣCR=126.23 incl. 0.01 DR currency
+balancing line (usecurrencybalancing='Y'). Currency conversion: ROUND(amt×0.85, 2) HALF_UP exact.
+§FALSIFIER: stmtAmt+100 → maxDiff=10000c > 0. `scripts/poc_fold_bank_statement.js` →
+`build/erp/poc_fold_bank_statement.log` exit 0. Matrix Posting row updated (Doc_Bank now folded; all 8
+seeded Doc_* table types are oracle-equivalent or ruled n/a-in-seed).
+
+**P4 — Odoo live extraction (master data + buy-side adapter)** is the remaining open priority.
+  - 38 partners / 30 products / 47 COA / 8 journals / 2 taxes master-data extraction
+  - Loop all confirmed SOs (today 1/N) + buy-side adapter (POs + vendor bills + 3-way match)
+  See GAP_CLOSURE_LANE §PRIORITY ORDER P4.
 
 **P1.1 `T_Aging` ✅ DONE 2026-06-13 (W-AGING).** `build/erp/report_aging.js` `foldAging()` (port of `Aging.doIt`
 + `MAging.add`, all ~21 buckets, integer cents) == an independent SQL CASE bucketer over the live `rv_openitem`,

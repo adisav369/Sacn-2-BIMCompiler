@@ -1,0 +1,32 @@
+── poc_fold_bank_statement (exit 0) ──
+§BANKSTMT-FALSIFIER: bend stmtAmt line 100 by +100 (override first line stmtamt to 198)
+§BANKSTMT-FALSIFIER bentStmtAmt: engine vs oracle maxDiff=10000c (must be > 0)
+  ✓ §FALSIFIER fires: stmtAmt +100 → DR {Bank.Asset} diverges from oracle (engine is load-bearing, not tautological) — maxDiff=10000c
+
+🟢 W-FOLD-BANKSTMT PASS — Doc_BankStatement GL folded oracle-equivalent across 2 schemas (9 oracle groups, maxDiff=0c); §FALSIFIER fires (stmtAmt +100 → maxDiff=10000c > 0)
+ · line20(stmt=50,trx=50,chg=0,int=0)
+§BANKSTMT-SCHEMAS count=2: 101(ccy=100,stdPrec=2,currBal=Y), 200000(ccy=102,stdPrec=2,currBal=Y)
+
+§BANKSTMT-ORACLE fact_acct(392) record=100 groups=9
+§BANKSTMT-ORACLE total fact_acct rows=13 across 2 schemas
+
+  ✓ oracle has real fact_acct rows to diff against — count=13
+§BANKSTMT-ENGINE absent=0 schemas=2
+  ✓ all posting accounts RESOLVED (none invented/absent) — absent=[]
+§BANKSTMT-SCHEMA sid=101 engineKeys=4 oracleGroups=4 engineΣDR=148.50 ΣCR=148.50 maxDiff=0c
+  ✓ schema 101: oracle has postings to diff against
+  ✓ schema 101: engine == oracle EXACT (maxDiff=0c) — ORACLE-EQUIVALENT — maxDiff=0c
+  ✓ schema 101: balanced (ΣDR=ΣCR) — 148.50=148.50
+§BANKSTMT-SCHEMA sid=200000 engineKeys=5 oracleGroups=5 engineΣDR=126.23 ΣCR=126.23 maxDiff=0c
+  ✓ schema 200000: oracle has postings to diff against
+  ✓ schema 200000: engine == oracle EXACT (maxDiff=0c) — ORACLE-EQUIVALENT — maxDiff=0c
+  ✓ schema 200000: balanced (ΣDR=ΣCR) — 126.23=126.23
+
+§BANKSTMT-TOTAL schemas=2 oracleRows=9 grandMaxDiff=0c
+  ✓ ALL schemas: engine == fact_acct(392) EXACT — ORACLE-EQUIVALENT — maxDiff=0c over 9 oracle groups
+
+§BANKSTMT-FALSIFIER: bend stmtAmt line 100 by +100 (override first line stmtamt to 198)
+§BANKSTMT-FALSIFIER bentStmtAmt: engine vs oracle maxDiff=10000c (must be > 0)
+  ✓ §FALSIFIER fires: stmtAmt +100 → DR {Bank.Asset} diverges from oracle (engine is load-bearing, not tautological) — maxDiff=10000c
+
+🟢 W-FOLD-BANKSTMT PASS — Doc_BankStatement GL folded oracle-equivalent across 2 schemas (9 oracle groups, maxDiff=0c); §FALSIFIER fires (stmtAmt +100 → maxDiff=10000c > 0)

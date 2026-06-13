@@ -218,11 +218,57 @@
     };
   }
 
+  // ── pickUsedProcesses — the P3 ON-DEMAND PICKER (GAP_CLOSURE_LANE §P3.5) ─────────────────────────────
+  // Returns the ACTUALLY-USED subset of AD_Process via TWO lenses, unioned:
+  //   byAccess  — AD_Process ⋈ AD_Process_Access (processes granted to at least one active role)
+  //   byWorkflow— AD_Process ⋈ AD_WF_Node        (processes that appear in a workflow node)
+  // This IS the mechanism; the 337-classname corpus is NOT pre-ported.
+  // opts.roles  — array of ad_role_id to narrow the access lens (default: all active roles)
+  // opts.includeWfNodes — false to skip the workflow lens (default: true)
+  // Implements GAP_CLOSURE_LANE.md §P3.5 — Witness: W-PROC-PICKER
+  function pickUsedProcesses(db, opts) {
+    opts = opts || {};
+    var roleClause = '';
+    if (opts.roles && opts.roles.length > 0) {
+      roleClause = ' AND pa.ad_role_id IN (' + opts.roles.map(Number).join(',') + ')';
+    }
+
+    // lens 1: access grants — AD_Process ⋈ AD_Process_Access
+    var byAccess = db.prepare(
+      "SELECT DISTINCT p.ad_process_id, p.value, p.classname, p.isreport " +
+      "FROM ad_process p " +
+      "JOIN ad_process_access pa ON pa.ad_process_id=p.ad_process_id AND pa.isactive='Y' " +
+      "WHERE p.isactive='Y'" + roleClause +
+      " ORDER BY p.ad_process_id"
+    ).all();
+
+    // lens 2: workflow nodes — AD_WF_Node ⋈ AD_Process (processes referenced as node actions)
+    var byWorkflow = [];
+    if (opts.includeWfNodes !== false) {
+      byWorkflow = db.prepare(
+        "SELECT DISTINCT p.ad_process_id, p.value, p.classname, p.isreport " +
+        "FROM ad_process p " +
+        "JOIN ad_wf_node n ON n.ad_process_id=p.ad_process_id AND n.isactive='Y' " +
+        "WHERE p.isactive='Y' ORDER BY p.ad_process_id"
+      ).all();
+    }
+
+    // union by ad_process_id (deterministic sort for oracle diff)
+    var seen = Object.create(null), union = [];
+    byAccess.concat(byWorkflow).forEach(function (r) {
+      if (!seen[r.ad_process_id]) { seen[r.ad_process_id] = true; union.push(r); }
+    });
+    union.sort(function (a, b) { return a.ad_process_id - b.ad_process_id; });
+
+    return { byAccess: byAccess, byWorkflow: byWorkflow, union: union };
+  }
+
   var API = {
     REGISTRY: REGISTRY, registerHandler: registerHandler, hasHandler: hasHandler,
     registeredClassnames: registeredClassnames, installDefaultHandlers: installDefaultHandlers,
     readProcess: readProcess, resolveClassname: resolveClassname,
     validateParams: validateParams, dispatch: dispatch,
+    pickUsedProcesses: pickUsedProcesses,
     refType: refType, typeOk: typeOk, REF_TYPE: REF_TYPE
   };
 
