@@ -1,0 +1,692 @@
+{
+  "version": 1,
+  "generatedBy": "scripts/gen_sharding_boundaries.js",
+  "spec": "docs/ACCESS_FREQUENCY_SHARDING.md",
+  "source": "build/erp/ad_full.db",
+  "tierMap": {
+    "L0": "T0",
+    "L1": "T1",
+    "L2": "T2"
+  },
+  "rules": [
+    {
+      "match": "dictionary (ad_*, *_v, *_trl)",
+      "tier": "T0",
+      "note": "already in ad_seed.db; not re-sharded here"
+    },
+    {
+      "match": "tables with DocStatus",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "note": "warm=open/active, cold=closed/voided"
+    },
+    {
+      "match": "init-bubble masters (no DocStatus)",
+      "tier": "T1",
+      "note": "hot, small, whole-table"
+    },
+    {
+      "match": "fact_acct in closed period",
+      "tier": "T2",
+      "note": "periodstatus C|P"
+    },
+    {
+      "match": "ad_archive*",
+      "tier": "T2",
+      "note": "whole-table cold"
+    },
+    {
+      "match": "T_* temp/fold tables",
+      "tier": "none",
+      "note": "reconciliation #1 — in-memory, not persisted"
+    }
+  ],
+  "dictionaryTablesInT0": 297,
+  "tables": [
+    {
+      "table": "a_asset_addition",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "a_asset_disposed",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "a_asset_reval",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "a_asset_transfer",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "a_depreciation_entry",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_allocationhdr",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 2,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_bankstatement",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 2,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_banktransfer",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_cash",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 3,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_depositbatch",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_invoice",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 8,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_order",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 7,
+        "cold": 1
+      }
+    },
+    {
+      "table": "c_payment",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 2,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_projectissue",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "dd_order",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "gl_journal",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 2,
+        "cold": 0
+      }
+    },
+    {
+      "table": "gl_journalbatch",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 1,
+        "cold": 0
+      }
+    },
+    {
+      "table": "hr_process",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_inout",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 9,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_inoutconfirm",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 1,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_inventory",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 3,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_movement",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 1,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_movementconfirm",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_production",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_requisition",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 1,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_rma",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 1,
+        "cold": 0
+      }
+    },
+    {
+      "table": "mp_maintain",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 3,
+        "cold": 0
+      }
+    },
+    {
+      "table": "mp_ot",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 3,
+        "cold": 0
+      }
+    },
+    {
+      "table": "mp_ot_request",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 3,
+        "cold": 0
+      }
+    },
+    {
+      "table": "pp_cost_collector",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "pp_mrp",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 56,
+        "cold": 0
+      }
+    },
+    {
+      "table": "pp_order",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 2,
+        "cold": 0
+      }
+    },
+    {
+      "table": "pp_order_node",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "s_timeexpense",
+      "tier": "T1",
+      "coldTier": "T2",
+      "warmWhere": "DocStatus NOT IN ('CL','VO')",
+      "coldWhere": "DocStatus IN ('CL','VO')",
+      "reason": "document table — warm=open/active, cold=closed/voided",
+      "rows": {
+        "warm": 1,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_bpartner",
+      "tier": "T1",
+      "coldTier": null,
+      "warmWhere": null,
+      "coldWhere": null,
+      "reason": "init-bubble master — hot, small, whole-table warm",
+      "rows": {
+        "warm": 18,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_product",
+      "tier": "T1",
+      "coldTier": null,
+      "warmWhere": null,
+      "coldWhere": null,
+      "reason": "init-bubble master — hot, small, whole-table warm",
+      "rows": {
+        "warm": 55,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_product_category",
+      "tier": "T1",
+      "coldTier": null,
+      "warmWhere": null,
+      "coldWhere": null,
+      "reason": "init-bubble master — hot, small, whole-table warm",
+      "rows": {
+        "warm": 14,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_warehouse",
+      "tier": "T1",
+      "coldTier": null,
+      "warmWhere": null,
+      "coldWhere": null,
+      "reason": "init-bubble master — hot, small, whole-table warm",
+      "rows": {
+        "warm": 11,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_elementvalue",
+      "tier": "T1",
+      "coldTier": null,
+      "warmWhere": null,
+      "coldWhere": null,
+      "reason": "init-bubble master — hot, small, whole-table warm",
+      "rows": {
+        "warm": 379,
+        "cold": 0
+      }
+    },
+    {
+      "table": "m_productprice",
+      "tier": "T1",
+      "coldTier": null,
+      "warmWhere": null,
+      "coldWhere": null,
+      "reason": "init-bubble master — hot, small, whole-table warm",
+      "rows": {
+        "warm": 114,
+        "cold": 0
+      }
+    },
+    {
+      "table": "c_bp_group",
+      "tier": "T1",
+      "coldTier": null,
+      "warmWhere": null,
+      "coldWhere": null,
+      "reason": "init-bubble master — hot, small, whole-table warm",
+      "rows": {
+        "warm": 3,
+        "cold": 0
+      }
+    },
+    {
+      "table": "fact_acct",
+      "tier": "T2",
+      "coldWhere": "C_Period_ID IN (SELECT C_Period_ID FROM c_periodcontrol WHERE periodstatus IN ('C','P'))",
+      "reason": "period-closed postings (periodstatus C=Closed/P=Permanent); read only on historical drill",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "ad_archive",
+      "tier": "T2",
+      "coldTier": null,
+      "warmWhere": null,
+      "coldWhere": null,
+      "reason": "archive — whole-table cold",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    },
+    {
+      "table": "ad_archive_blob",
+      "tier": "T2",
+      "coldTier": null,
+      "warmWhere": null,
+      "coldWhere": null,
+      "reason": "archive — whole-table cold",
+      "rows": {
+        "warm": 0,
+        "cold": 0
+      }
+    }
+  ],
+  "excluded": [
+    {
+      "table": "t_1099extract",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_aging",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_alter_column",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_bankregister",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_bom_indented",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_bomline",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_cashflow",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_distributionrundetail",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_fact_acct_history",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_inventoryvalue",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_invoicegl",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_moveclient",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_mrp_crp",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_reconciliation",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_replenish",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_report",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_reportstatement",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_selection",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_selection2",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_selection_infowindow",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_spool",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_transaction",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    },
+    {
+      "table": "t_trialbalance",
+      "tier": "none",
+      "reason": "in-memory fold / temp selection — not persisted, nothing to shard"
+    }
+  ]
+}
