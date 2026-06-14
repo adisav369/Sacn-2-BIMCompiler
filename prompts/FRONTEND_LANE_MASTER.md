@@ -90,6 +90,16 @@ listed for visibility and route to their own prompt/lane.
 > W-OPLOG-CLIPBOARD PASS (§CL-SERIAL+§CL-UUID+§CL-DELTA). W-WH-POS-PICK-LIVE + W-WH-LIVE PASS.
 > Card: `prompts/WH_SHIP_LATER_CLIPBOARD.md → # DONE`
 
+> **▶ RED-BAND FOLD-GAP CLOSURE (carded 2026-06-14) — the two genuine Odoo-side code gaps from the
+> 🔴 band of `docs/migrate_status_panel.html`.** (The other two red items are NOT code gaps: analytic
+> dims = data-blocked; posting edge-branches = seed-dormant.) Each card = the Odoo counterpart to an
+> already-proven iDempiere-side fold; extract-first (the Odoo shard carries neither yet, `gen_ad_odoo.js`
+> doesn't pull them). Scoreboard: `docs/ERP_COVERAGE_MATRIX.md` + `prompts/HARDEN_MATRIX.md`.
+> - `prompts/ODOO_QWEB_PRINT_FOLD.md` — Odoo 41 QWeb defs → the print tree `foldPrint` renders
+>   (iDempiere side W-PRINTFORMAT 8/8 `maxDiff=0c`). Witness owed: W-ODOO-QWEB.
+> - `prompts/ODOO_SERVER_ACTION_FOLD.md` — interpret Odoo 64 `ir_act_server` declarative subset
+>   (Python `code` = named-deferred), mirroring `ad_workflow.js` W-WF-HARDEN. Witness owed: W-ODOO-SRVACT.
+
 > **▶ CLIPBOARD RELAY LANE (dictated 2026-06-14) — POS ship-later → clipboard → WH walk apply.**
 > Cross-device op-log transport with no server: deliver-later sale serialized to base64 blob, copied
 > to clipboard, pasted into WH walk receive box → ops replay into IDB sidecar → selector offers the
@@ -714,12 +724,8 @@ listed for visibility and route to their own prompt/lane.
   - **2D saved-card delete durable** (coupled w/ the above — re-enabling persistence would have resurrected it). `loadSavedSections` now treats **localStorage as authoritative** for cards (reconciles DB to it); `saveSectionToDb` clears ls before reload. Witness `tests/probe_2d_delete.js` (delete sticks in-session / reopen / reload / delete-ALL, even with `§W2 flush=true`). The original "only removes DOM" diagnosis was STALE.
   - **Triage of the 28-day-old 2D-regression list (memory `project_2d_regression`):** #2 furniture→slab mispick = **already fixed** (floor view hides 3D, furniture has pickable contours → `§PICK_2D class=IfcFurnishingElement`; witness `tests/probe_2d_furnpick.js`); #3 cards-delete = fixed (above); #1 wall-contour-offset = **⛔ BLOCKED on repro** (affected bldg `Ifc4_SampleHouse` only exists as a reference-rosetta extraction the viewer can't load; on canonical bldgs wall-vs-gridline offset is an INVALID metric — grids are bay lines, not per-wall centerlines); #4 opening-dims = a FEATURE add (conflicts w/ "no new features"); #5 faint door arcs = NOT low-cost (`grid_door_arcs.js:262` `LineBasicMaterial.linewidth` is ignored by WebGL → needs `Line2`/`LineMaterial`); #6 grid bubbles/dim text = likely already-addressed (white bubbles + bold 26px). **SampleCastle 2D verified intact** (storeys 3621/3621 survive the compile/SC-BOM-seed; 19 grid lines, 810 contours render); it is NOT in canonical `bim-ootb/buildings` — load the bim-compiler copy to test.
   - **NEXT low-cost candidates (when someone returns to 2D):** #5 fat door arcs via `Line2` (visual, needs eye); #6 quick visual confirm; #1 needs a viewer-format SampleHouse OR a named off-grid wall.
-- **[BIM-viewer → own lane] Time Machine Gantt** (`boq_charts.html`) not wired to `kernel_ops`. (`project_time_machine`)
-- **[BIM-viewer → own lane] Grid UX debt** — 8 §-tags to verify + merge the two save systems into one. (`project_grid_ux_debt`)
-- **[BIM-viewer → own lane] 4D capture** — widened DDL + `§GANTT_SOURCE` branch + coverage badge. (`project_4d_capture`)
-- **[BIM-viewer → own lane] Ground+Sky** — live cloud layer (C1) not done. (`project_ground_sky`)
-- **[BIM-viewer → own lane] Settings JSON editor** — Phase 2 editable schedule parked. (`project_settings_json_editor`)
-- **[BIM-viewer → own lane · NOT vital, noted for future revisit] Pill-registry drift — latest icons hand-roll DOM instead of going through the registry.** The S281/S282 registry (`_actions` in `viewer/panels.js` + `ICONS` table + `PillBuilder`/`pill_builder.js`) is the single source for toolbar icons. Two recent areas skip it:
+- **[BIM-viewer → STALE 2026-06-14: these predate current bim-ootb viewer; verify before acting] Time Machine Gantt** · Grid UX debt · 4D capture · Ground+Sky · Settings JSON editor
+- **[BIM-viewer → STALE 2026-06-14 · NOT vital] Pill-registry drift — latest icons hand-roll DOM instead of going through the registry.** The S281/S282 registry (`_actions` in `viewer/panels.js` + `ICONS` table + `PillBuilder`/`pill_builder.js`) is the single source for toolbar icons. Two recent areas skip it:
   - **Find-panel axis pills + lenses** (`viewer/navigate_find.js`, commit `743ac35`): `_renderAxes` (~:366) builds `<button>`s with hardcoded inline `cssText`; `_micSvg`/`_searchSvg` (~:132) re-declare SVGs the `ICONS` table already owns (`_searchSvg` ≡ `ICONS.search`). In-panel controls being local DOM is fine; the fix-worthy drift is the duplicated SVGs (fold into `ICONS`, add a `mic` entry) and the inline styling (lift to a CSS class — today `corporate.json` theming can't reach them).
   - **Precision/Reset/Pivot cluster** (`viewer/precision_cam.js`, the "feather · reset · pivot" row): a full PARALLEL implementation — `precision-btn` self-injected into the toolbar (~:259-271) + `prec-reset-chip`/`prec-pivot-chip` built in `revealPrecisionReset` (~:300-336), all raw DOM + inline `cssText`. The registry carries duplicate stubs (`precision` in-pill; `cam-reset`/`cam-pivot` `pill:false` — the `pill:false` exists only to stop a 2nd copy painting). Feather + reset SVGs are duplicated across `panels.js` and `precision_cam.js`. Possible double feather (`precision-btn` vs `pill-precision`) — verify visually. Clean target: delete the self-built DOM, let the registry render all three via the standard `_revealChip` (`pill_builder.js:116`), move SVGs into `ICONS`. (`project_s281_pill_registry` · `project_precision_pivot`)
 
