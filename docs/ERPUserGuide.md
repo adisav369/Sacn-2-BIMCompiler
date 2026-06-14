@@ -76,7 +76,8 @@ The pill is the single entry point for every tool. Left-to-right:
 | ⌂ | `home` | Top-level AD menu (window list, role-pruned) |
 | ⊙ | `toggle` / `settings` | Settings panel (language, theme) |
 | 🔍 | `search` (red circle) | Record find / filter across the current window |
-| ⟳ (ring) | `idmp` / Dictionary | The AD-model dictionary surface — browse AD tables live |
+| 🔴 (ring) | `redpill` | "Just the pill" ⟷ classic iDempiere look — master toggle (key `,`) |
+| 🔌 | `plugin` | Plugin Engine — Install (PackIn) / Create (PackOut) your own models (§9) |
 | **W** | `history` | World history overlay — scrub the op-log timeline (‹ dots ›) |
 | ⋯ | `more` | Install · Migrate · About · Tour · ShowMe help badges |
 
@@ -154,42 +155,40 @@ Tap the **POS** pill in the bottom bar (it appears only when the loaded db has a
 
 ![POS — Garden User · Store: product grid left, live cart right, replenishment suggestions below](figs/pos_live.png)
 
-### Payment panel layout (sw v667 — minimalist)
+### Payment panel layout (sw v680 — top-bar total + single Pay)
 
-The panel is stripped to the essentials, total as the hero:
+The panel is a **draggable** float (`#pos-float-panel`), stripped to the essentials:
 
-- **Edge rims** — a bright **orange** top rim is the **Ordered items** drawer, a bright **green**
-  bottom rim is the **Replenishment** drawer. They are fully textless — **tap a rim to expand** its
-  body; the meaning sits in the `title=` hover and here in the guide. (`§POS-DRAWER-ITEMS` /
-  `§POS-DRAWER-REPL open count`.)
-- **Hero row** — the large centred **total** is flanked by exactly two icons: **scan** (left — opens
-  the barcode overlay to add an item) and **`$` banknote** (right — opens the receipt preview, see
-  below). Nothing else competes with the total.
+- **Top bar — the running total.** The top row shows the **live cart total** (`#pos-top-total`),
+  updating as you ring items. The **cart icon** stays on the left (tap it to summon/dismiss the panel,
+  `§POS-FLOAT toggle=`); the **scan-QR** button sits on the **right** (`#pos-pill-scan` — opens the
+  barcode overlay to add an item).
+- **One Pay icon.** A single **Pay** icon (`#pos-float-tender`, right) **completes the sale directly**
+  — there is no pre-completion preview modal (the earlier orange/green rim drawers + receipt-preview
+  modal are retired). The walk-in partner is **defaulted** (the **Standard** business partner, else
+  first active — `§POS-PARTNER-DEFAULT`), so Pay works out of the box.
+- **Draggable.** Grab the panel header to reposition it (`§POS-FLOAT-DRAG moved=Y`); the album keeps
+  scrolling underneath, payment never squeezes the grid.
 - **⋯ dock** (bottom-right, reveal-up, taps-outside close it) — the secondary actions live here:
-  **home**, **import** (register a product), **receipt** (re-open the last receipt, appears after a
-  sale), and **Deliver later** (dictionary-gated — present only when the loaded db has an `SO`
-  doctype).
-
-### The receipt-preview pay flow
-
-Tapping **`$`** does **not** commit — it opens a **receipt preview** (a modal): the cart lines, the
-total, and three actions —
-
-- **QR** — show the DEMO payment QR (clearly watermarked DEMO — a display, not a payment rail; no
-  provider is wired, nothing is charged).
-- **OK** — manual pay → **Complete the sale** (the one signed op-group; `§POS-SALE … chainOk=Y`).
-- **Cancel** — back to the cart, nothing committed.
+  **home**, **import** (register a product — the `(+)` glyph), **receipt** (re-open the last receipt,
+  appears after a sale), and **Deliver later** (the WH-walk `route` glyph; dictionary-gated — present
+  only when the loaded db has an `SO` doctype — opens the warehouse walk in a new tab).
 
 ### Making a sale
 
-1. Tap a product card (or **scan** from the hero row) → it is added to the cart at the sealed price.
+1. Tap a product card (or **scan** from the top bar) → it is added to the cart at the sealed price.
 2. Tap again to increment qty, or edit qty in the line.
-3. Review **Total** — the centred hero figure (BigDecimal fold of line amounts, never a posted figure yet).
-4. Summon the payment panel (cart pill), pick the walk-in partner, tap **`$`** → the **receipt
-   preview** opens → tap **OK** to complete the sale (`§POS-SALE … newVerbs=[] chainOk=Y` — the
-   receipt shows `signed=Y`).
+3. Review the **running total** in the top bar (BigDecimal fold of line amounts, never a posted figure yet).
+4. Tap **Pay** (`#pos-float-tender`) → the sale **completes directly** into one signed op-group
+   (`§POS-SALE … newVerbs=[] chainOk=Y` — the receipt shows `signed=Y`). No partner prompt — the
+   Standard partner is used unless you pick another.
 5. The receipt opens in its own overlay (re-openable via the **receipt** entry in the ⋯ dock) and the
    payment panel dismisses itself — the sale is already closed: one signed op-group, nothing left pending.
+
+!!! note "Audio earcons"
+    Subtle earcons sound on key POS actions — ring an item, Pay, sale-complete (`§POS-AUDIO`) — via the
+    shared synth engine reading `sfx.json` (data rows, `ui_clicks:false` so there is no per-button
+    spam). They no-op silently if the sound engine is absent.
 
 !!! tip "Barcode scan distance"
     The scan overlay shows the hint **"Hold steady · 10–15 cm from barcode"** on open.
@@ -299,7 +298,104 @@ silently skipped.
 
 ---
 
-## 9. Warehouse Walk
+## 9. Extending the ERP — Ninja mode (a friendlier Red1 Ninja)
+
+This is **Red1 Ninja** — define an entire ERP module in one Excel sheet, no code — brought into the
+browser and made friendlier: no JVM, no 2Pack zip, no server restart; it installs **live**. The
+**Plugin Engine** pill (🔌 plug) is its home. Two faces, which map to iDempiere's PackIn / PackOut
+*in spirit* — but it's more than that: a spreadsheet becomes a running module.
+
+- **Install (≈ PackIn)** — paste a bundle URL → one click → the model is live and navigable.
+- **Create (≈ PackOut)** — turn a model into a shareable, editable artifact: a `.foldbundle`.
+
+> *Ninja mode ports **Red1 Ninja** (Redhuan D. Oon's iDempiere plugin — Excel-defines-the-model) into
+> the browser. The friendlier truth under the PackOut/PackIn analogy.*
+
+A `.foldbundle` is a single ES module that carries **both halves** of a customization — its
+*structure* (windows/tables/columns) and its *behavior* (rules). That is the whole point of the
+format, and what makes it more than 2Pack (see below).
+
+### Create is two-way
+
+**Forward — author from a sheet (✅ live).** Open the pill → **Create** tab → drop an `.xlsx` model
+sheet. The lens previews the AD tables it derives (column chips `name:refType`, master `↳ detail`),
+shows any warnings, and **Emit & Install** stages them into the live tenant — the new window appears
+in the menu immediately. Don't know the grammar? **Download starter template** gives you a filled
+two-table shell to learn from and edit.
+
+**Reverse — export an existing window (🔧 proposed).** Point at a window or menu already in the AD
+and export its definition *back* into the same sheet/bundle, edit it in Excel, and re-emit. This is
+the literal **PackOut**, and it's the more common need — most customizations start as "a window like
+Business Partner, plus three fields," not a blank sheet. *Status: designed, not yet built — the
+`extractModel(db, AD_Window_ID) → model` verb (the clean inverse of the sheet parser).*
+
+### One bundle = structure + behavior
+
+The grammar of the sheet only describes **structure** — tables, columns, reference types,
+master/detail. **Behavior** (a field rule) is plain JS you craft inside the bundle's `activate()`.
+The two halves are joined by exactly **one line**: the column's `AD_Column.Callout` names the JS
+handler the engine should fire on a field change.
+
+The dumb-simplest worked example (`build/erp/fixtures/plugins/asset_status_callout.mjs`) — a
+one-table window whose `Description` becomes `'Ready'` when `IsActive` is On and `'Starting'` when
+Off:
+
+```js
+const HANDLER = 'com.acme.AssetCallout.statusFromActive';   // must match AD_Column.Callout on IsActive
+export async function activate(ctx) {
+  ctx.callout.registerHandler(HANDLER, function (c, info) {
+    var r = info.record || {};
+    var on = (r.IsActive != null ? r.IsActive : r.isactive) === 'Y';
+    return { derived: { Description: on ? 'Ready' : 'Starting' } };   // a callout DERIVES, it does not validate
+  });
+}
+```
+
+A callout *derives* sibling-field values; it never validates (that is a separate rule layer). The
+sample is witnessed end-to-end (**W-ASSET-STATUS**, `scripts/poc_asset_status.js`): the rule fires
+through the real callout spine *because* `AD_Column.Callout` names it, and two falsifiers prove the
+seam is load-bearing in both directions — structure without the JS derives nothing, and the JS
+without that one wiring line never fires.
+
+### Why this replaces 2Pack
+
+2Pack never actually carried behavior. It packaged the dictionary XML plus a *reference*
+(`AD_Column.Callout = "org.compiere.model.CalloutX"`); the real logic lived in a JAR you dropped on
+the classpath and restarted the server for. The honest equivalence:
+
+> **one `.foldbundle`  ≡  2Pack (structure)  +  JAR (behavior)  +  classpath  +  restart**
+
+Four artifacts and a restart fold into one editable ES module that installs live. (Stated precisely:
+this is the *fold-engine's JS callout layer* — not a reimplementation of iDempiere's Java callout
+engine.)
+
+### Model backup ≠ oplog backup
+
+Two different layers, both useful:
+
+| Backup | What it captures | Artifact |
+|---|---|---|
+| **oplog** (the **W** pill / `kernel_ops`) | *what happened to your data* — the event history | replayable op-log |
+| **model** (a `.foldbundle`) | *the definition itself* — structure + its JS rules | one small, git-diffable, editable file |
+
+"Export my live window" produces one file that is simultaneously a **distro artifact**, a **model
+backup**, and a **teaching sample** — versionable in git, not a DB dump or an opaque zip.
+
+| Status | Notes |
+|---|---|
+| ✅ LIVE (sw v670) | **Install (PackIn)** — paste a raw ES-module bundle URL → ACTIVE. PR #297, witness W-PLUGIN |
+| ✅ LIVE (sw v673) | **Create (PackOut, forward)** — drop sheet → preview → Emit & Install through the live writable handle. PR #301, witness §NINJA-DOM-WITNESS (headless-chrome on the real deploy scripts) |
+| ✅ Witnessed | the **behavior sample** fires through `AdCallout` via the `AD_Column.Callout` seam; both falsifiers hold (W-ASSET-STATUS) |
+| 🔧 Proposed | **reverse-export** (`extractModel`) existing window → sheet; and a grammar token so the sheet itself can set `AD_Column.Callout` (today the bundle wires that one line by hand — the mechanism is proven, the live forward-path auto-wiring is the open gap) |
+| ⚠ Caveat | the round-trip is *structural* — the grammar has tokens for table/column/ref-type/master-detail, not for the full behavioral richness of a real iDempiere window. Export reproduces the skeleton faithfully; behavior travels as the JS you craft, not as auto-extracted logic |
+
+> Not to be confused with the **Excel Report** lens (§8) — that's the *reporting* Ninja (a workbook
+> *reads* the tenant). This is the *model-authoring* Ninja (a workbook *defines* the tenant). They
+> share only the spreadsheet-reading code.
+
+---
+
+## 10. Warehouse Walk
 
 The **Warehouse** pill (box icon ◫) on the iDempiere bottom bar opens the GardenWorld warehouse
 as a live 3D spatial model — a new tab pointing at the short GH Pages URL
@@ -381,7 +477,7 @@ immediately lands on the spatial model ready for the walk.
 
 ---
 
-## 10. Clearing Cache / Resetting Demo Data
+## 11. Clearing Cache / Resetting Demo Data
 
 The app state lives in **IndexedDB** (key `bim_erp_db`, version 14). To reset to a clean demo:
 
@@ -409,7 +505,7 @@ needed if you see an old `CACHE_VERSION` number in the console.
 
 ---
 
-## 11. Pending Roadmap — known gaps and on-demand conditions
+## 12. Pending Roadmap — known gaps and on-demand conditions
 
 ### Data-gated (seed doesn't contain these yet)
 
@@ -445,14 +541,15 @@ the remaining work is wiring headless-proven engines into live DOM.
 
 ---
 
-## 12. Pill Quick-Reference (cheat sheet)
+## 13. Pill Quick-Reference (cheat sheet)
 
 ```
 Bottom bar
   ⌂          Home — AD menu tree
   ⊙ / ▣      Settings
   🔍 (red)   Record search / filter
-  ⟳ (teal)   Dictionary (AD model browser)
+  🔴 (ring)  Red pill — "just the pill" ⟷ classic iDempiere look (key ,)
+  🔌         Plugin Engine — Install (PackIn) / Create (PackOut) models
   W          History — world op-log scrubber
   ⋯          More: Install · Migrate · About · Tour · ShowMe
 
@@ -473,7 +570,7 @@ History (W pill)
 
 ---
 
-## 13. Testing & Verification
+## 14. Testing & Verification
 
 Two pills in the bottom bar prove the system works. Show them during demos — they signal a serious,
 verifiable foundation, not a mock.

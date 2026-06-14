@@ -430,3 +430,35 @@ Target after D (user-locked 2026-06-13, payment flow revised):
 - R2-3 / R2-6 / C-R2-3 each name a control by ROLE, not id — confirm the exact element on the live
   surface (reproduce-first). If any target is genuinely ambiguous after reproduction, ask ONE question
   rather than guess (per the user's "no inventing further without asking").
+
+---
+
+## # DONE — FOLLOW-UP ROUND 2 (2026-06-14, Opus — reproduced-first on the live surface, then built)
+
+### C-R2 WH Walk ✅ SHIPPED + MERGED — bim-ootb PR #307 (viewer sw v655; on origin/main, layered to v656 by #296), wh_walk.js?v=7
+Witnesses (bim-compiler, same train): **W-WH-LIVE 37/37 + W-WH-POS-PICK-LIVE 18/18**, `npx eslint viewer/wh_walk.js` exit 0. Presentation-only, engine byte-identical.
+- C-R2-1 tap a route-list row → `focusStep` frames that bin (`§WH_ROUTE_TAP`; rows are real DOM nodes).
+- C-R2-2 big running picked-counter top-left `#wh-pick-counter` (bare count; AMBER→GREEN when all picked; a skip is done-but-not-picked, never green).
+- C-R2-3 `#wh-home` removed from the strip — exit = ✕ only.
+- C-R2-4 strip "Confirm" = `autoConfirmPick` (default qty, no scan overlay, `§WH_AUTOCONFIRM`); the 3D-bin tap still opens scan (QR/typed/short-pick).
+- C-R2-5 walk hides BOTH `#mobile-pill` AND its ⋯ `#mobile-trigger` (hiding only the strip left the ⋯ reachable bottom-right — the live-test bug).
+- C-R2-6 ✕ exits with any partial pick kept (no forced completion); all-resolved still auto-completes.
+- C-R2-7 STRUCTURAL (no code): the POS sale is already CO at deliver-later time, so the walk never blocks payment; a short/skip pick → back-order is the ERP's job (completeShipmentOps moves on-hand by PICKED).
+- C-R2-8 re-open within the same session RESUMES preserved `W.steps`+`W.done`+`W.idx` (`§WH RESUME`); never re-drafts. (In-session resume; cross-reload restore-from-oplog NOT done — deferred.)
+- C-R2-9 minimalist scan window (clean card chrome; same `#wh-*` ids + logic).
+
+### B/D-R2 + R2-AUDIO POS ✅ BUILT + WITNESSED — bim-ootb PR #308 (erp sw v679→**v680** after sw.js conflict-magnet resolve vs the concurrent ERP_AUDIT_CHANGELOG v679; kept BOTH precache adds sfx.json+user_names.js, chained both notes), pos_lens.js?v=9, icons.js?v=10
+**Auto-merge ENABLED, CI running** (gate BLOCKED=checks pending, not a conflict). Witnesses **W-POS-LIVE (§POS-CENT maxDiff=0c) + W-WH-POS-PICK-LIVE** green post-merge; `eslint` exit 0; drag `§POS-FLOAT-DRAG moved=Y`; sfx engine loads on the ERP page (`§SFX_INIT enabled=true sounds=3`, `§POS-AUDIO sfx=played`). Engine/commit path byte-identical.
+- R2-1 top bar shows the live RUNNING TOTAL (`#pos-top-total`) — was the cart icon on a blank bar (cart icon stays, toggles the pay panel).
+- R2-2 scan-QR (`#pos-pill-scan`) on the RIGHT of that top bar.
+- R2-3 rim pay-panel RETIRED (orange/green edge drawers + receipt-preview modal `#pos-pay-modal`/`#pos-pay-ok` gone) → ONE single Pay icon `#pos-float-tender` on the right, completes directly.
+- R2-4 the pay panel is DRAGGABLE by its grab header (ported `_makeDraggable` idiom).
+- R2-5 BUG: reproduced — the old banknote did nothing with no partner (empty-partner gate returned before the modal opened). FIX = partner is DEFAULTED (`§POS-PARTNER-DEFAULT`); **user said default = 'Standard'** (name-match bp 112, else first-active). Single Pay icon now completes out of the box.
+- R2-6 dock glyphs: import → `(+)` plus; deliver-later → `route` (the WH-walk icon, not invented) — still opens the walk in a new tab.
+- R2-AUDIO subtle POS earcons `pos_ring`/`pos_pay`/`pos_complete` via the SAME viewer synth engine loaded on idempiere.html reading NEW `erp/sfx.json` (enabled + `ui_clicks:false` → only the explicit POS earcons, no per-button spam). Rows are DATA in sfx.json (+viewer/sfx.json). Guarded `pos_lens._sfx` no-ops if absent (`§POS-AUDIO`).
+
+### ⬜ RESUME ITEMS (carry to next session)
+1. ✅ **POS PR #308 LANDED** (orphan-check 2026-06-14: `origin/main:erp/sw.js` carries `CACHE_VERSION='v680'` + `pos_lens.js?v=9` + `icons.js?v=10`; `pos-pay-modal`/`pos-pay-ok` = 0 refs — modal retired as shipped. No orphan).
+2. ✅ **ERPUserGuide §7 synced + published** (2026-06-14): replaced the stale "Payment panel layout (sw v667 — minimalist)" + retired the "receipt-preview pay flow" heading → new "top-bar total + single Pay" layout (`#pos-top-total` running total · `#pos-pill-scan` right · single `#pos-float-tender` Pay completes directly · draggable `§POS-FLOAT-DRAG` · Standard-partner default `§POS-PARTNER-DEFAULT` · dock `(+)`/`route` glyphs · R2-AUDIO earcon note). `mkdocs gh-deploy --force` pushed gh-pages `128a0a6f..2cfc26b1`; built `site/ERPUserGuide/index.html` carries new §7, old heading 0 occurrences. → red1oon.github.io/BIMCompiler/.
+3. **R2-AUDIO default-on** is a judgment call I shipped (subtle, ui_clicks off). If the user wants it OFF-by-default or a mute toggle on idempiere.html, flip `erp/sfx.json master.enabled`. Earcon voices (pluck/bell/harp) tunable by ear. ⛔ user-fact (a preference, not extractable).
+4. **Cross-reload WH resume (C-R2-8)** restores in-session only; a full restore-from-oplog across a page reload is deferred. (Feature work, not a UI tune — carry to a WH-walk lane session.)
