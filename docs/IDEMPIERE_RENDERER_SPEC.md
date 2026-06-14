@@ -143,6 +143,33 @@ FK and the data-streaming tier select (`docs/IDEMPIERE_DATA_STREAMING_SPEC.md`).
 This is a build item (a new I-task — login/session ahead of or alongside I2), specced here so the **whole
 original experience** is captured, not just menu→window→drill.
 
+### §3b.1 Build contract (this session — bounded, non-invent decisions)
+
+The fold logic lives in a shared, side-effect-free module `bim-ootb/viewer/idmp_session.js`
+(`window.IdmpSession`) so the headless witness and `idempiere.html` make the **same** calls over the
+**same** `ad_seed.db` — no hand-authored identity. Pure functions, each `§`-logged:
+
+- `listUsers(db)` → the 8 `AD_User` rows, each flagged `hasRoles` (an `AD_User_Roles` row exists). Seed
+  reality NAMED, not papered over: only **SuperUser(100) · GardenAdmin(101) · GardenUser(102) ·
+  WebService(50001)** have roles; **System(10) · Joe Sales(103) · Carl Boss(104) · Henry Seed(105)** have
+  none → rendered, disabled, labelled "(no roles)". A role-less user cannot proceed (faithful to iDempiere).
+- `rolesForUser(db, userId)` → `AD_User_Roles` ⨝ `AD_Role` for the user (the Role dropdown).
+- `clientFor(db, roleId)` → `AD_Role.AD_Client_ID` → `AD_Client` (a role fixes its client; here always
+  GardenWorld 11 — client 0/System is metadata-only).
+- `orgsForRole(db, roleId)` → `AD_Role_OrgAccess` ⨝ `AD_Org`. Org **0 = "*" (All accessible)** is offered
+  when present (it is, for Admin role 102) and means "no org narrowing"; any other org narrows data to it.
+- `accessibleWindows(db, roleId)` → `Set` of `AD_Window_ID` from `AD_Window_Access` (`IsActive='Y'`).
+  Verified scope difference: Admin(102)=294 / User(103)=163 of 332 W-windows in the menu.
+- `scopeMenu(roots, winSet)` → prune **`action='W'` leaves** whose `windowId ∉ winSet`, then prune summary
+  folders left with zero visible descendants. Returns `{ tree, visible, total }`.
+
+**Bounded scope (what this build does NOT do — named, [[feedback_listen_first]]):** only `W` (window)
+leaves are access-scoped; `P/R/F/X/I/T` leaves stay visible (their `AD_Process_Access`/`AD_Form_Access`
+tables exist in the seed but scoping them is out of scope here — the spec's witness counts windows). Data
+scope = append `AD_Client_ID IN (0,<client>)` and, when a specific org is chosen, `AD_Org_ID IN (0,<org>)`
+to each tab read **only when the column exists** on that table — the same clause layer as master-detail's
+parent-FK filter. No writes; "login" is identity/context **selection**, never auth ([[feedback_no_hype]]).
+
 ## §4 Out of scope this session (named, not silently dropped)
 - CRUD writes (New/Save/Delete) — the buttons render disabled; writes arrive with CRUD-P (`edit`/`process`).
 - The `ledger` Report folds (I2), the AD_Menu long-press drawer on erp.html (I3), the renderer
@@ -160,3 +187,22 @@ Edit `bim-ootb/viewer/` directly; never whole-file copy from bim-compiler. **EXP
 deploy** (bump `sw.js` CACHE_VERSION + register `idempiere.html`/`icons.js`/`erp_pills.js` in the SW
 precache; fetch-back-verify). Protect the 153/153 AD-UI baseline — I1 adds modules + CSS, it does not
 rewrite `ad_ui.js`.
+
+## §6 Descriptor seam (renderer #2 — DONE increment 1, 2026-06-14)
+The §pivot decision ("build the descriptor seam WHEN renderer #2 starts") is now executed. `idempiere.html`
+reached into `window.ADParser` / `ADData` / `IdmpSession` at **24 call sites**. `erp/erp_descriptor.js`
+(`window.ErpDescriptor`) abstracts these into a **descriptor = three facets**:
+- `structure`: `init(db)` · `getMenuTree(db)` · `getWindow(db, windowId)` — the dictionary / window shape
+- `data`: `readRecords(db, table, where, orderBy)` · `resolveFK(db, columnName, value)`
+- `session`: `listUsers/listClients/usersForClient/rolesForUser/clientFor/orgsForRole(db, …)` ·
+  `buildContext(db, userId, {roleId, orgId})` · `scopeMenu(roots, winSet, procSet, formSet)` · `deleteClient(db, clientId)`
+
+The return-SHAPES are the contract. `ErpDescriptor.register(name, impl)` / `.use(name)` / `.active`;
+`?erp=<name>` selects before the chrome caches its `ADP/ADD/SES` aliases. **AD is the first descriptor** —
+its facets ARE the AD globals verbatim, so it's behavior-identical (witness asserts facet identity).
+Witness `bim-ootb/erp/tests/poc_descriptor_seam.js` (**W-DESCRIPTOR-SEAM 7/7**). LIVE on GH Pages (erp sw v681→merge).
+
+**NEXT — increment 2:** a 2nd descriptor (`odoo`) registering the SAME-shaped facets over a real Odoo model
+slice (`ir.model`/`ir.ui.menu`/`ir.model.fields` → the Odoo dictionary; rows via the existing odoo fold) so the
+UNCHANGED chrome renders Odoo with zero per-model chrome code — the thesis proof. NON-INVENT: extract the Odoo
+catalog from a real source (odoo_agent introspection), never hand-author model metadata.
