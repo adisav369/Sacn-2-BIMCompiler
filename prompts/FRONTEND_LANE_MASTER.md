@@ -66,6 +66,182 @@ These were dictated across sessions and were sitting in memory (or nowhere). Mov
 visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to THIS list; OTHER-lane items are
 listed for visibility and route to their own prompt/lane.
 
+> **▶ DOC-PANEL / KERNEL-LOG SAVE+AUDIT BAND (dictated 2026-06-14) — 5 items, all ERP-UI, all idempiere.html.**
+> **NEXT-SESSION CARD: `prompts/BLUE_FUTURE_VISUAL_LANE.md`** (item 0 browser/visual legs — engine+3b already shipped, PR #314).
+> Source: live design reflection this session. Spec each before code; §-log first; consume the seam (never fork a verb).
+> Two things are ALREADY WIRED — do NOT rebuild, only confirm in the witness:
+>   • back-dot = read-only view restore (`idmp_history.js` `_go→_histRestore`, `readOnly=Y`) — the chosen model
+>     ("no parallel universe"; downstream docs act in their own time loop, so a past dot is look-only). Keep.
+>   • DocStatus→Kanban is end-to-end (`kanban_lens.js` reads `readTip(SET_STATUS)`; drag == verb, `poc_kanban.log`
+>     "SEND == DRAG == VERB"). Keep.
+> THE ITEMS (do top-to-bottom; each ✅ DONE (witness) / ⛔ BLOCKED):
+>   ▶ ENGINE LEGS SHIPPED (Opus 2026-06-14, headless): item 0 = **W-BLUE-FUTURE 9/9 PASS** (`scripts/poc_blue_future.js`)
+>     · item 3b = **W-FIELD-LINEAGE 6/6 PASS** (`scripts/poc_field_lineage.js`). Kernel `branch_id` col +
+>     `replayOps(db,type,branch)` official-default + `branchOps`/`discardBranch`/`acceptBranchUpTo`
+>     (`kernel_ops.js` v9, branch tag ∉ `_canonical` so ACCEPT is a metadata flip, chain stays valid) +
+>     `CORE.fieldLineage` (`crud_overlay.js`). Regressions GREEN: chain/sign/showstopper/rebase/kanban/ad_selfedit.
+>   ▶ 3b BROWSER LEG SHIPPED + LIVE (Opus 2026-06-14, bim-ootb PR #314, erp sw v685): `lineageHover` ~900ms dwell
+>     blurb over `[data-col]/[data-ad-column]/[data-ad-col]` (crud_overlay.js?v=8) + grid `<td>` data-ad-col
+>     (idempiere.html) + `__crud.fieldLineage`. **W-BLUE-LINEAGE-LIVE 7/7 PASS** (`erp/tests/poc_blue_lineage_live.js`):
+>     both engines load, fieldLineage round-trips on the page sidecar, hover resolves a real cell + reveals the
+>     blurb (§LINEAGE-HOVER), data-ad-col present, 0 pageerrors. → item 3b = ✅ DONE (witness).
+>   ▶ 0 BROWSER LEGS SHIPPED + LIVE (Opus 2026-06-14, bim-ootb PR #317, erp sw v687) → item 0 = ✅ DONE (witness).
+>     NEW `erp/blue_future.js` (window.BlueFuture). Leg1 dot rail + long-press (white anchor: long-press → enter blue,
+>     or discard-all when blue exists w/ CONFIRM; blue dot: long-press → acceptBranchUpTo, tap → zoom). Leg2 PERVASIVE
+>     UNOFFICIAL treatment (SAFETY): blue rim every window incl GL + UNOFFICIAL top banner + @media print watermark +
+>     stampExport prefix. Leg3 zoom blue M_InOut/C_Invoice. Leg4 (SAFETY) crud_overlay.js?v=9 — tipDocs/listTip/readTip/
+>     tipValues/fieldLineage gain optional branch arg + _branchClause; official reads filter branch_id IS NULL (closed
+>     the raw-SELECT leak that bypassed replayOps); readBranch() seam feeds the blue VIEW. Leg5 the EXISTING DocAction
+>     fan-out lands speculative via _commitMeta()→{branch_id} (zero new fan-out code). **W-BLUE-FUTURE-LIVE 15/15 PASS**
+>     (`erp/tests/poc_blue_future_live.js`, 0 pageerrors); regressions W-BLUE-LINEAGE-LIVE 7/7 + CRUD suite green.
+>     HONEST GAP (deferred, not this lane): multi-actor accept = op-vs-op conflict detect; single-user accept is clean.
+> 0. **★ BLUE FUTURE — speculative forward branch (the headliner; subsumes "what-if dry-run").** Dictated
+>    2026-06-14. CONCEPT: the PAST stays immutable/read-only ("no parallel universe" — no rewriting committed
+>    dots, audit-safe); the FUTURE can be a discardable sandbox. **Long-press the last dot → enter blue mode:** new
+>    ops carry a `branch-id` and render BLUE. The user plays — runs `CompleteIt()` etc.; the FULL fan-out (blue
+>    shipment/invoice/GL children) is created in-branch and reachable via iDempiere **drill-through (Zoom)**. Reuse,
+>    do NOT invent: blue layer = the same private/official boundary as draft item 1 scaled to a forward segment —
+>    official `readTip` IGNORES any op with a `branch-id`, so **other docs cannot see or act on blue docs** (the
+>    **blue-rim = "unofficial, do not act"** is the visual of that invariant). PERVASIVE UNOFFICIAL TREATMENT
+>    (HMI + safety, not cosmetic): in blue mode EVERY window carries the blue rim — incl. the GL/posting window —
+>    with an **`UNOFFICIAL` banner on top**, and EVERY print/export carries an **`UNOFFICIAL` watermark** (a blue
+>    invoice PDF must never be mistakable for a real one — this is what makes the accounting-safety guarantee hold
+>    in the physical world, not just the DB). Blue is FULLY functional (real numbers, real fan-out, real GL lines,
+>    real printouts) yet unmistakably provisional on every surface; the signal to the user is **"accept converts
+>    this to official (→ CO)"** — blue is a faithful preview of exactly what the books will say, nothing changes on
+>    accept except the rim drops + watermark goes. "Erase back" = discard branch =
+>    existing `gid` all-or-none `foldBackGroup` (children vanish atomically — never were official). **Accept the
+>    future** = long-click any blue dot (accept-up-to-here, see DEMO BAR below) → strip branch-id, re-sign ops onto
+>    the official tip (= a REBASE, the §0.20 Sync FSM machinery); rims drop, dots normalize, other docs may act.
+>    GESTURE MODEL (refined 2026-06-14 — ONE rule keyed on dot COLOR; the clicked WHITE dot NEVER changes color =
+>    it is the official boundary/pivot): LONG-CLICK a WHITE dot acts on the FUTURE BEYOND it — if no blue yet →
+>    ENTER blue (spawn the next blue dot ahead, clicked stays white as anchor); if blue exists ahead → DISCARD all
+>    blue onward (collapse future back to this boundary). LONG-CLICK a BLUE dot → ACCEPT-UP-TO-HERE (it + everything
+>    behind turn white/permanent; later dots stay blue). No separate enter/discard buttons needed — two color-
+>    determined behaviours. In normal flow ordinary edits APPEND blue dots; you long-click white only to START or
+>    THROW AWAY the future, long-click blue only to PROMOTE it. DISCARD is destructive → CONFIRM ("discard N
+>    speculative changes? can't be undone", [[feedback_destructive_ops]]) so a mis-judged long-click on white can't
+>    reflexively nuke blue → existing `gid`+`undone` foldback sets undone=1 for all branch_id ops atomically;
+>    official tip never saw the blue so nothing official changes, blue children vanish. SAFETY: navigating away does
+>    NOT discard — blue persists like a draft (rim+watermark intact) until EXPLICIT accept/discard; never auto-destroy on leave. ACCOUNTING-SAFE BY CONSTRUCTION: blue CompleteIt never
+>    touches the real GL until accept — this is the correct way to PREVIEW posting consequences. HARD CASE (decision
+>    owed): accept after another actor committed to official → rebase blue ops onto the new tip → conflict; single-
+>    user trivial, multi-actor = the same "record changed underneath" decision as item 1, scaled — surface, never
+>    clobber. WHY UNIQUE: a general live per-user fork of the entire transactional state (full fan-out, drillable,
+>    discardable/acceptable atomically) only falls out when state IS a fold of an append-only log — not a bolt-on
+>    sim. DEMO BAR (dictated 2026-06-14): the blue dot must run the **FULL `CompleteIt()`** — real fan-out via
+>    engine `completeOrder` (`erp_engine.js:273` SET_STATUS + `createShipment` + `createInvoice`), NOT a bare
+>    status flip — plus **Zoom/drill-through into the blue children** (the speculative M_InOut/C_Invoice), so the
+>    demo shows real consequences. ACCEPT GESTURE (refined 2026-06-14): long-click on the FIRST blue dot OR ANY
+>    blue dot along the line → all blue dots from the branch start UP TO AND INCLUDING that dot turn WHITE +
+>    PERMANENT (official); dots after it stay blue (accept-up-to-here, incremental — not just accept-all-at-the-tip).
+>    CONFLICT-MAP (study 2026-06-14): needs additive `branch_id TEXT` col on `kernel_ops` (params is hashed — tag
+>    can't ride there; branch_id stays OUT of `_canonical` so accept re-parents without rehashing payload). 12 read
+>    sites must filter `branch_id IS NULL` for official reads — CRITICAL: `replayOps` (kernel_ops.js:437),
+>    `readTip`/`tipValues`/`listTip` + list/visibility overlays (crud_overlay.js:266/294/719/1229/1356). Reports
+>    read the baseline bundle → immune free; Kanban pure → inherits caller's filter. Discard = reuse `gid`+`undone`
+>    namespaced by branch_id. Accept = REBASE — primitives EXIST + witnessed (`erp_sync_fsm.rebase`,
+>    `erp_sequencer` idempotent-by-uuid, `sealFrom`, `verifyChain`); ONE GAP = op-vs-op conflict detect (two
+>    branches editing same record) — single-user accept clean, multi-actor needs it (decision owed, same as item 1).
+>    Witness: W-BLUE-FUTURE (enter→blue ops invisible to official readTip/replayOps; full CompleteIt fan-out
+>    blue+Zoom-drillable; discard→atomic foldback, tip unchanged; long-click any blue dot→accept-up-to-here:
+>    those ops official+signed, rims/watermark drop, later dots stay blue).
+> THE FIVE:
+> 1. **PRIVATE DRAFT RESTORE-POINT (no official-dot-while-typing).**
+>    ▶ ENGINE LEG SHIPPED (Opus 2026-06-14, headless): **W-DRAFT-RESTORE 14/14 PASS** (`scripts/poc_draft_restore.js`).
+>    `crud_overlay.js` CORE now exports a storage-injectable private draft buffer — `draftPut/draftGet/draftClear/
+>    draftList` (per `(table,id)`, prefix `erpdraft:`, localStorage in-browser / Map-mock headless) + `draftChangedCols/
+>    draftDirty` (the dirty test) + `draftDrift` (record-changed-underneath). Witnessed contract: leaving a DIRTY form
+>    buffers the typing but commits ZERO ops and leaves the official `tipValues` UNCHANGED (1500 never leaks to other
+>    docs); reopen DEFAULTS to the saved tip; the opt-in restore returns the unsaved vals; a validated Save commits
+>    EXACTLY ONE official op + clears the buffer; a CLEAN leave clears any stale pip; tip-moved-underneath flags the
+>    cols (decision-owed surfaced, never clobbered). Engine path proven, no Date.now in path. Regressions GREEN:
+>    field_lineage + blue_future 0 fails. → item 1 ENGINE = ✅ DONE (witness).
+>    OWED (browser leg, GO-gated — defers behind the concurrent BLUE_FUTURE_VISUAL_LANE dot work to avoid an
+>    `idmp_history.js` line-collision): wire `draftPut` into `closeForm`/`beforeunload`, render the **private dirty-pip**
+>    (distinct from committed dots) on the history bar, the opt-in back-pip restore gesture in `openForm`, and the
+>    "record changed underneath" warn via `draftDrift`. Live DOM witness W-DRAFT-RESTORE-LIVE, then sw bump + PR + GO.
+>
+>    ORIGINAL DICTATION (scope kept): Today edits are Save-gated and LOST on nav
+>    (`crud_overlay.js` `saveForm` is the only commit path; `closeForm` clears the DOM; no buffer/beforeunload).
+>    DICTATED MODEL (refined 2026-06-14): **Save is the publish boundary — private→official.** An unsaved edit is
+>    PRIVATE + local and MUST NOT be visible to other docs (they read the committed tip via `readTip`, never a
+>    half-typed buffer); an unsaved doc has no official state for a downstream doc to act on. So leaving the
+>    tab/page does NOT seal an official dot (that would publish invalid/half-finished state as authoritative).
+>    Instead: on leave, refresh a **private draft buffer** (per `(table,id)`, in-mem + localStorage) marked with a
+>    **dirty-pip (NOT a committed dot)**. On RETURN the **default is the last SAVED (official tip)**; a single
+>    **private back-dot/pip lets the user OPT IN to restore their unsaved last-typing** if they wish — otherwise it
+>    never intrudes and never leaks as official. Commit (validated Save) folds draft→the official dot and clears the
+>    buffer; discard drops it. Two distinct marks: official committed dots (shared, validated) vs. the private
+>    "you-were-here, unsaved" pip — never merge them. DECISION OWED: on restore, if the saved tip moved underneath
+>    the draft → (a) keep draft over new tip [single-user default] or (b) "record changed underneath" warn.
+>    Witness: W-DRAFT-RESTORE (leave→draft buffered, NO official dot, tip unchanged for other docs; reopen→lands on
+>    saved tip by default; opt-in back-pip restores unsaved typing; validated Save→single official dot, buffer cleared).
+> 2. **WIRE FULL DOCACTION SET PER AD.**
+>    ▶ ENGINE-BRIDGE LEG SHIPPED (Opus 2026-06-14, headless): **W-DOCACTION-FULL 14/14 PASS**
+>    (`scripts/poc_docaction_full.js`, over canonical `ad_full.db` C_DocType 132). The FSM itself was already
+>    complete + witnessed (`ad_docfsm.js` `legalActions`/`dispatch`, W-DOCFSM) — the GAP was that CORE had NO path
+>    to it: `crud_overlay.js` Process ▶ read the hardcoded `{action:"CO"}` from `crud_ops.json`. Added the seam
+>    `CORE.legalDocActions(fsm,fsmDb,doctypeId,fromStatus)` (returns the FSM legal set: CO→{CL,RC,RA,RE,VO,PO},
+>    DR→{CO,PR,VO,XL}) + extended `docActionOutcome(entry,values,opts)` / `buildOp('process',…,{chosen,fsm,fsmDb,
+>    doctypeId})` to route a chosen action through `AdDocFsm.dispatch`: CO still honours its requires-gate (unmet→IP),
+>    **RC/RA → RE flagged `reversal:true`** (never a silent un-complete to DR/IP on a posted doc), an illegal action
+>    (PR from CO) is reported `outcome:'illegal'` with the legal set echoed (not applied). FSM is injected (decoupled,
+>    opt-in). §FALSIFIER: no-opts → the LEGACY hardcoded-CO path unchanged — 5 process-path regressions GREEN
+>    (crud_docstatus/crud_group/opgroup/pos_crud/crud_persist) + docfsm/field_lineage/blue_future/ad_selfedit 0 fails.
+>    → item 2 ENGINE-BRIDGE = ✅ DONE (witness).
+>    OWED (browser leg, GO-gated — touches `idempiere.html`/Process ring chrome the concurrent BLUE_FUTURE lane edits,
+>    defer to avoid collision): the Process ▶ ring offers the FSM legal set for the lit record's current docstatus
+>    (`CORE.legalDocActions` over the loaded C_DocType + `readTip`), each action dispatches via `buildOp('process',…,
+>    {chosen})`; reversal actions surface a reversing-doc confirm. Live DOM witness W-DOCACTION-FULL-LIVE, sw bump, PR, GO.
+>    ORIGINAL DICTATION: Only CO/Complete is wired in the UI (`crud_ops.json` every doc table =
+>    `{action:"CO"}`), though the FSM DEFINES all 14 (`ad_docfsm.js:24` CO/PR/AP/RJ/VO/CL/RC/RA/RE/PO/IN/WC/XL) and
+>    the reversal family is hardcoded-per-class, NOT AD-driven at runtime. Surface the legal action set per record
+>    **from AD/FSM** (`legalActions`/`STATUS_ACTIONS`), not a hardcoded CO. Witness: W-DOCACTION-FULL (legal set per
+>    status matches FSM; RC/RA post a reversal, never a silent un-complete on a posted doc).
+> 3a. **RECORD-INFO POPUP — record-level last-touch (the easy win).**
+>    ▶ ENGINE LEG SHIPPED (Opus 2026-06-14, headless): **W-RECINFO 9/9 PASS** (`scripts/poc_recinfo.js`).
+>    Added `CORE.recordInfo(sideDb,table,id,branch)` (`crud_overlay.js`) — folds the op-log to
+>    `{created:{actor,ts,opId}, updated:{actor,ts,opId}, count}`. ALWAYS-ON (no AD IsChangeLog gate, unlike
+>    `changeLog`) and record-grain (unlike per-field `fieldLineage`). Witnessed: created = the CREATE op's author;
+>    updated = last-writer-wins; count = total ops; CreatedBy/UpdatedBy MATCH the values `listTip` materializes
+>    into the tip for the same record (driven through the real synthetic-pk create→update path with a `__idmpDb`);
+>    isolation by `(table,id)`; §FALSIFIER null on an unknown record. Branch-aware (official by default). All CORE
+>    regressions GREEN (12 witnesses, 0 fails). → item 3a ENGINE = ✅ DONE (witness).
+>    OWED (browser leg, GO-gated — adds a top-right `(i)` affordance in `idempiere.html`, the file the concurrent
+>    BLUE_FUTURE lane edits; defer to avoid collision): a record-info popup at the r/t (rec/total) icon rendering
+>    `CORE.recordInfo` over the lit record (`fmtKernelTs` for who/when). Live DOM witness W-RECINFO-LIVE, sw bump, PR, GO.
+>    ORIGINAL DICTATION: The immutable log already carries
+>    actor+timestamp+sig per op (`kernel_ops.js`); Created/Updated/CreatedBy/UpdatedBy are materialized
+>    (`crud_overlay.js:303-333`) but NOT surfaced. Add a record-info affordance at the top-right r/t (rec/total)
+>    icon (iDempiere `(i)` convention) reading the log. Witness: W-RECINFO (popup shows record-level who/when from
+>    the op-log, matches materialized cols).
+> 3b. **★ PER-FIELD LINEAGE — hover-pause blurb (the deeper killer; DELETES the AD_ChangeLog subsystem).** Dictated
+>    2026-06-14. NOT the same as 3a: 3a = who last touched the RECORD; 3b = the full value history of ONE FIELD.
+>    Dwell ~1s on any field → a compact read-only blurb anchored to it, reverse-chron `value · who · when` (newest
+>    first), reconstructed as a **filtered fold of the log** `(table, id, column)` → that column's value timeline.
+>    Always-on, zero setup, zero extra writes. THIS KILLS iDempiere's `AD_ChangeLog`: there it needs per-column
+>    enable flags + a write to AD_ChangeLog on every update + a maintained table + a separate Change Log window —
+>    for us it is FREE because the log IS the history. Cap to last N + "full history →" opens the record-info window
+>    (hot field ≠ wall of rows); timestamps from the op-log (deterministic, no `Date.now`). Net: NO AD_ChangeLog
+>    table at all — the log subsumes both grains. Witness: W-FIELD-LINEAGE (hover-pause on a thrice-edited field
+>    reveals all 3 values+actors+ts in order, matches the raw op-log fold; read-only; >N caps to "full history").
+> 4. **GRID MULTI-SELECT + GEAR BATCH PROCESS** (replaces row-ring convention). Grid is single-select only today
+>    (`idempiere.html buildGrid`, `_recIdx` one index, no checkbox col, no batch toolbar). DICTATED: rows
+>    checkbox-selectable → gear hosts batch processing (process/complete/delete N). Ring stays for quick single-row
+>    only (or retire per convention). Witness: W-GRID-BATCH (N rows selected → one gear op fans the DocAction group).
+>    ▶ DEFERRED (Opus 2026-06-14) — BROWSER-LEG ONLY, no engine gap: the batch op fans the EXISTING
+>    `CORE.buildDocActionGroup`/`AdDocFsm.dispatch` over N rows; the whole change is `idempiere.html buildGrid` DOM
+>    (checkbox col + batch toolbar). That is the file the concurrent BLUE_FUTURE_VISUAL_LANE session is editing this
+>    session → editing it now = a guaranteed line-collision (CLAUDE.md: worktree isolates dir, NOT shared-file
+>    conflicts). HELD until the BLUE_FUTURE browser legs land; then: spec → wire over the seam → W-GRID-BATCH live → PR.
+> 5. **PROCESS (+New/Save/Print) IN PILL FOR FORM VIEW.** Red-pill removed the top bar → the form's action toolbar
+>    belongs IN the pill (not a global settings gear). Ring/▶ stays for grid-row quick action; form view gets the
+>    conventional toolbar relocated to the pill ([[feedback_pill_icon_consistency]]). Witness: W-FORM-PILL-ACTIONS.
+>    ▶ DEFERRED (Opus 2026-06-14) — BROWSER-LEG ONLY, no engine gap: pure pill/toolbar relocation in `idempiere.html`
+>    + `pills_idmp.json`. Same collision with the active BLUE_FUTURE session → HELD until its browser legs land.
+> Deploy: erp/sw.js + `?v=` bump, worktree off origin/main, PR, LIVE mobile DOM probe per item. GO before deploy.
+
 - ✅ DONE (witness) **[ERP-UI] Two rogue floating pills in the `idempiere.html` top bar → align to the registry/top-bar.** (logged 2026-06-14, USER-CONFIRMED via live mobile screenshot)
   THE TWO (live-confirmed, not the burger):
   1. **"▤ Reports"** = `#reportMenuPill`, `position:fixed; left:14px; top:10px` (`report_overlay.js:487/947`).
@@ -122,10 +298,29 @@ listed for visibility and route to their own prompt/lane.
 > - ✅ **W-AD-SELFEDIT** (`scripts/poc_ad_selfedit.js`) — engine reflexive rebuild: a signed edit to
 >   `AD_Field.IsDisplayed` (Y→N hide, then N→Y show) re-folds the tab's displayed-field set 26→25→26 via
 >   `crud_overlay.listTip` — "rebuild" = **re-read the dictionary, not recompile**. §FALSIFIER clean read = original.
-> - ⬜ **W-AD-SELFEDIT-LIVE** (browser-gated, still owed) — the LIVE DOM actually repainting the form/menu on the
->   spot in `idempiere.html` (a live-driven DOM probe). The ENGINE half is proven above; the DOM-repaint leg needs
->   the browser. Status panel may claim "modify the model live, like iDempiere" for the engine + distribution; the
->   in-browser instant-repaint stays an architectural claim until W-AD-SELFEDIT-LIVE lands.
+> - ✅ **W-AD-SELFEDIT-LIVE DONE 2026-06-14** (Opus, bim-ootb PR #312 erp sw v683) — the LIVE DOM repaint landed.
+>   A signed `CRUD_UPDATE` on an `AD_Field`/`AD_Window` row rebuilds the form/menu on the spot, no reload. Built
+>   exactly as scoped: `ad_parser.js?v=23` `setTipSource` (AD reads overlay the sidecar edit via
+>   `CrudOverlay.listTip(window.__crud.kernelDb(),…)`); `crud_overlay.js?v=7` emits `overlay:committed`;
+>   `idempiere.html` wires the tip-source + an `overlay:committed` refold (AD_* commit → invalidate
+>   `_openWins[winId]` + re-`openWindow`/`buildMenu`). Live witness (headless chrome on the deploy bundle):
+>   M_MatchInv "Organization" grid column VANISHES on `IsDisplayed Y→N`, returns on `N→Y`; sealed + verifyChain=ok.
+>   **`§W-AD-SELFEDIT-LIVE PASS`.** The status panel's "modify the model live, like iDempiere" is now a witnessed
+>   claim across all three legs (engine + signed distribution + in-browser instant repaint).
+>   **▶ SCOPED 2026-06-14 (Opus, after item 1 ship) — the exact build (3 legs, then localhost-verify → its OWN deploy GO):**
+>   1. **AD reads must overlay the sidecar tip.** Today `ad_parser.getFields/getTabs/getWindow` (and `ad_data.readRecords`)
+>      read RAW from the loaded ad_seed db — a signed dictionary edit lands in the crud overlay's SIDE db
+>      (`window.__crud.kernelDb()`), so a refold won't see it. Route the AD_Field / AD_Tab / AD_Window reads through
+>      `CrudOverlay.listTip(window.__crud.kernelDb(), 'AD_Field'|'AD_Tab'|'AD_Window', '<pk>', baseRows)` (the SAME
+>      verb the engine witness W-AD-SELFEDIT used) so the latest-wins CRUD_UPDATE overlays IsDisplayed/Name/SeqNo.
+>      Inject the side-db handle into ad_parser (new optional arg / host-set hook) — don't fork the verb.
+>   2. **Refold hook.** `openWindow` CACHES the model in `_openWins[windowId]` (idempiere.html:924) — so after an
+>      AD-table commit, invalidate `delete _openWins[winId]` then re-`openWindow(winId)` (re-reads AD → repaint) +
+>      `buildMenu()` for AD_Menu/AD_Window name edits. Detect "edit targets an AD_* dictionary table" at the crud
+>      commit callback and fire the refold.
+>   3. **Witness** (headless-chrome on the deploy bundle, like the item-1 `/tmp/smoke_ninja_export_dom.js` harness):
+>      render a window → signed CRUD_UPDATE AD_Field.IsDisplayed Y→N on a displayed field → refold → assert that
+>      field's DOM row VANISHED (and N→Y brings it back). `§W-AD-SELFEDIT-LIVE PASS`. Then deploy (sw bump + GO).
 
 > **▶ 2026-06-13 — UI/UX LANE (`prompts/UI_UX_LANE.md` → # DONE): ✅ ALL THREE TRACKS SHIPPED, one session.**
 > Presentation only, `newVerbs=[]`, no engine/fold changes; Lucide-only icons; NON-INVENT (ids extracted).
@@ -503,7 +698,13 @@ listed for visibility and route to their own prompt/lane.
 >    at line ~143). Navigation SWR + one-shot controllerchange reload backstop; warm bubblePaint 883ms→46ms.
 > 2. **More "marvel" optics where they pay** — continue making lenses visual/colourful/consistent for the long tail
 >    (the user's explicit direction); keep one shared status palette (`window.KanbanLens.statusColor/...`), NON-INVENT.
-> 3. **⛔ Renderer #2 (Odoo) descriptor-driven** — still blocked on the user's go/no-go (see the ⛔ item below).
+> 3. **✅ DONE + LIVE — Renderer #2 (Odoo) descriptor-driven** (PR #315, erp sw v686, 2026-06-14). Increment 1 = the
+>    descriptor seam (PR #310 v682); increment 2 = `odoo_descriptor.js` — `?erp=odoo` drives the UNCHANGED chrome over an
+>    Odoo model with ZERO per-model render code (idempiere.html +4 lines = one script tag). NON-INVENT: `odoo_agent/
+>    extract_model.js` pulls `odoo_model.json` LIVE from Odoo 17 odoodemo via JSON-RPC. Seam trick: `structure.init(db)`
+>    injects the Odoo slice as real tables into the chrome's sql.js db. Witness W-ODOO-DESCRIPTOR 7/7 + live 4/4 on Pages
+>    + AD regression W-DESCRIPTOR-SEAM 7/7. NEXT seam consumers (one at a time, witnessed): ERPNext / Glassbowl. Card
+>    `prompts/RENDERER2_ODOO.md`; memory [[project_idempiere_renderer]].
 > 4. Then keep going down §OUTSTANDING to zero.
 >
 > **OPERATING NOTES (this arc, proven):** deploy = isolated worktree off FRESH `origin/main` → erp-only diff → whitebox
