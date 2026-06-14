@@ -90,15 +90,19 @@ listed for visibility and route to their own prompt/lane.
 > W-OPLOG-CLIPBOARD PASS (§CL-SERIAL+§CL-UUID+§CL-DELTA). W-WH-POS-PICK-LIVE + W-WH-LIVE PASS.
 > Card: `prompts/WH_SHIP_LATER_CLIPBOARD.md → # DONE`
 
-> **▶ RED-BAND FOLD-GAP CLOSURE (carded 2026-06-14) — the two genuine Odoo-side code gaps from the
-> 🔴 band of `docs/migrate_status_panel.html`.** (The other two red items are NOT code gaps: analytic
-> dims = data-blocked; posting edge-branches = seed-dormant.) Each card = the Odoo counterpart to an
-> already-proven iDempiere-side fold; extract-first (the Odoo shard carries neither yet, `gen_ad_odoo.js`
-> doesn't pull them). Scoreboard: `docs/ERP_COVERAGE_MATRIX.md` + `prompts/HARDEN_MATRIX.md`.
-> - `prompts/ODOO_QWEB_PRINT_FOLD.md` — Odoo 41 QWeb defs → the print tree `foldPrint` renders
->   (iDempiere side W-PRINTFORMAT 8/8 `maxDiff=0c`). Witness owed: W-ODOO-QWEB.
-> - `prompts/ODOO_SERVER_ACTION_FOLD.md` — interpret Odoo 64 `ir_act_server` declarative subset
->   (Python `code` = named-deferred), mirroring `ad_workflow.js` W-WF-HARDEN. Witness owed: W-ODOO-SRVACT.
+> **▶ RED-BAND FOLD-GAP CLOSURE (carded 2026-06-14) — ✅ RE-AUDITED + QWEB DONE (Opus 2026-06-14).**
+> The 🔴 band of `docs/migrate_status_panel.html` re-audited against live odoodemo via
+> `scripts/extract_odoo_extras.js` → `build/erp/odoo_extras.db`. Scoreboard: `docs/ERP_COVERAGE_MATRIX.md`.
+> - ✅ **W-ODOO-QWEB PASS** (`852dea16`) — 41/41 QWeb report defs + arch views extracted; `CORE.foldQWeb`
+>   (`build/erp/report_overlay.js`) folds the invoice line loop to the cent (`price_subtotal=4350.00
+>   maxDiff=0c`, §FALSIFIER load-bearing). Promoted to the 🟢 Done band; consolidated into the one "Odoo
+>   migration" surface bullet (44 surfaces). Witness `scripts/poc_fold_qweb.js`.
+> - ✅ **RECLASSIFIED — server actions are NOT a code gap.** `§SRVACT-CLASSIFY code=64 total=64`: all 64
+>   `ir_act_server` are Python `code` type — there is NO declarative subset in this instance to interpret.
+>   Honestly named-deferred (requires a Python runtime, not a JS fold). Panel red-band item reworded
+>   accordingly; `prompts/ODOO_SERVER_ACTION_FOLD.md` superseded by this finding (no W-ODOO-SRVACT owed —
+>   nothing declarative to witness). The other two red items remain NOT code gaps (analytic = data-blocked;
+>   posting edge-branches = seed-dormant).
 
 > **▶ CLIPBOARD RELAY LANE (dictated 2026-06-14) — POS ship-later → clipboard → WH walk apply.**
 > Cross-device op-log transport with no server: deliver-later sale serialized to base64 blob, copied
@@ -107,16 +111,21 @@ listed for visibility and route to their own prompt/lane.
 > Card: `prompts/WH_SHIP_LATER_CLIPBOARD.md` · Witnesses: `§CL-1` sender + `§CL-2` receiver +
 > `W-OPLOG-CLIPBOARD` headless · Regressions: `poc_wh_pos_pick_live.js` + `poc_wh_walk_live.js`.
 
-> **▶ PENDING WITNESS (dictated 2026-06-13) — REFLEXIVE AD SELF-EDIT, LIVE.** Prove the loop the
-> migration thesis leans on but hasn't witnessed: edit an `AD_Menu`/`AD_Window`/`AD_Field` row **through
-> the live AD windows in the browser engine** → the menu/form **rebuilds right away**, no reload/codegen/
-> restart. Architecturally supported (AD = data; renderer reads AD live per `W-AD-*-LIVE`; `crud_overlay`
-> already enforces the AD_Column model on edits; kernel op-log is signed + hash-chained, W-CHAIN/W-SIGN).
-> What's UNWITNESSED is the reflexive gesture end-to-end + its **distribution leg** — an admin's dictionary
-> change propagated as an **appended signed op-log** ("mail the append log") and **re-folded on another
-> node**. Two §-tagged witnesses owed: `W-AD-SELFEDIT-LIVE` (edit→instant rebuild) + `W-AD-OPLOG-DISTRIB`
-> (append-log → replay → same dictionary on a 2nd node). Needed before the status panel may show
-> "modify the model live, like iDempiere" as a ✅ rather than an architectural claim.
+> **▶ PENDING WITNESS (dictated 2026-06-13) — REFLEXIVE AD SELF-EDIT — ✅ ENGINE LEGS DONE (Opus 2026-06-14).**
+> Prove the loop the migration thesis leans on: edit an `AD_Menu`/`AD_Window`/`AD_Field` row → the menu/form
+> **rebuilds right away**, no reload/codegen/restart; and an admin's change **propagates as a signed append-log**
+> and **re-folds on another node**. Two of the three §-tagged witnesses now PASS headless:
+> - ✅ **W-AD-OPLOG-DISTRIB** (`scripts/poc_ad_oplog_distrib.js`) — node A edits `AD_Window.Name` via a signed
+>   `CRUD_UPDATE` (commitGroup, sealed+chained, verifyChain ok) → serialized to a 280-byte base64 append-log →
+>   replayed on a FRESH copy of the dictionary (node B) → SAME edited name, verifyChain ok both nodes.
+>   §FALSIFIER: node B before replay = original name (op-log load-bearing). The "mail the append log" leg, proven.
+> - ✅ **W-AD-SELFEDIT** (`scripts/poc_ad_selfedit.js`) — engine reflexive rebuild: a signed edit to
+>   `AD_Field.IsDisplayed` (Y→N hide, then N→Y show) re-folds the tab's displayed-field set 26→25→26 via
+>   `crud_overlay.listTip` — "rebuild" = **re-read the dictionary, not recompile**. §FALSIFIER clean read = original.
+> - ⬜ **W-AD-SELFEDIT-LIVE** (browser-gated, still owed) — the LIVE DOM actually repainting the form/menu on the
+>   spot in `idempiere.html` (a live-driven DOM probe). The ENGINE half is proven above; the DOM-repaint leg needs
+>   the browser. Status panel may claim "modify the model live, like iDempiere" for the engine + distribution; the
+>   in-browser instant-repaint stays an architectural claim until W-AD-SELFEDIT-LIVE lands.
 
 > **▶ 2026-06-13 — UI/UX LANE (`prompts/UI_UX_LANE.md` → # DONE): ✅ ALL THREE TRACKS SHIPPED, one session.**
 > Presentation only, `newVerbs=[]`, no engine/fold changes; Lucide-only icons; NON-INVENT (ids extracted).
