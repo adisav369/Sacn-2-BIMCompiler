@@ -157,19 +157,21 @@
       <div class="bh">
         <div class="tag">🔴 Pending · fold gap</div>
         <div class="ttl">Capability still unbuilt</div>
-        <div class="gloss">Two kinds — interpreter / mapping work that's <b>scoped but not built</b>, and items <b>blocked on seed data</b>, not on capability.</div>
+        <div class="gloss">Two kinds — items where <b>the data is in live Odoo but not yet extracted into the seed</b>, and items <b>blocked on seed data</b> (no postings to fold over).</div>
       </div>
       <!-- 2026-06-14: "Cost-valued inventory GL" + "AR/AP aging" moved to Done — folded oracle-equivalent
            (W-FOLD-INOUTGL Doc_InOut COGS+receipt maxDiff=0c; W-AGING T_Aging all ~21 buckets maxDiff=0c).
            Both sit INSIDE already-counted surfaces (inventory loop / the T_* report tier) → headline tally
-           unchanged at 43. Analytic dims = data-blocked (no analytic-tagged facts in seed), not capability-unbuilt.
-           Top two = genuine code gaps, now carded (ODOO_QWEB_PRINT_FOLD / ODOO_SERVER_ACTION_FOLD);
-           bottom two = NOT code gaps (data-blocked / seed-dormant) — no card by design. -->
+           unchanged at 43.
+           2026-06-14 re-audit: queried live odoodemo — ir_act_server=64, ir_ui_view(qweb)=297, ir_act_report_xml=41
+           ALL extractable NOW. account_analytic_line=0 (accounts=19, no postings yet) = data-blocked confirmed.
+           Top two reclassified from "scoped not built" → "seed extraction needed" (data is live in Odoo).
+           SAP/Oracle/Dynamics = PoC stubs, no analytic/print data in those sources. -->
       <ul>
-        <li><b>Document print mapping</b> — Odoo QWeb defs → print tree. <span style="opacity:.7">iDempiere side folds to the cent (W-PRINTFORMAT); the Odoo map is scoped, not yet built.</span></li>
-        <li><b>Server-action interpretation</b> — Odoo automation (64 actions). <span style="opacity:.7">Declarative subset interpretable; Python-code actions defer — scoped, not yet built.</span></li>
-        <li><b>Analytic / cost-centre</b> accounting dimensions — <span style="opacity:.7">data-blocked: no analytic-tagged postings in the seed yet.</span></li>
-        <li><b>Posting edge-branches</b> — charge lines · GL distribution · realized-FX gain/loss. <span style="opacity:.7">Armed in AD, dormant in seed — no data to fold over.</span></li>
+        <li><b>Document print mapping</b> — Odoo QWeb → print tree. <span style="opacity:.7"><b>297 QWeb views + 41 report defs live in Odoo</b> — seed extraction not yet run; iDempiere side folds to the cent (W-PRINTFORMAT).</span></li>
+        <li><b>Server-action interpretation</b> — Odoo automation. <span style="opacity:.7"><b>64 actions live in Odoo</b> — seed extraction not yet run; declarative subset interpretable, Python-code actions named-deferred.</span></li>
+        <li><b>Analytic / cost-centre</b> accounting dimensions — <span style="opacity:.7">data-blocked: 19 analytic accounts exist in Odoo seed but 0 analytic postings — no lines to fold over yet.</span></li>
+        <li><b>Posting edge-branches</b> — charge lines · GL distribution · realized-FX gain/loss. <span style="opacity:.7">Armed in AD, dormant in seed — no data to fold over. SAP/Oracle/Dynamics PoC stubs carry no FI layer.</span></li>
       </ul>
       <div class="foot">On-demand procs (337 classnames named-deferred) — mechanism + picker built (W-PROC-PICKER), not blocking</div>
     </section>
