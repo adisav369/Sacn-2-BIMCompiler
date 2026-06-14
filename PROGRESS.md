@@ -18,6 +18,31 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
+## Ninja Create (PackOut/PackIn) — 2026-06-14
+- ✅ **SHIPPED** Create face on the Plugin Engine pill (bim-ootb PR #301, erp sw v673): drop .xlsx model sheet →
+  preview → Emit & Install through the writable `window.__idmpDb`. Witness `§NINJA-DOM-WITNESS PASS`
+  (headless-chrome on the real deploy scripts). Card `prompts/NINJA_MODE_PILL.md` (done).
+- ✅ **Witnessed** behaviour teaching sample: `build/erp/fixtures/plugins/asset_status_callout.mjs` +
+  `scripts/poc_asset_status.js` → **W-ASSET-STATUS PASS** (callout fires via the `AD_Column.Callout` seam; both
+  falsifiers hold). Doctrine documented `docs/ERPUserGuide.md §9` (one .foldbundle = structure+behaviour ≡ 2Pack+JAR).
+- ✅ **TWO-WAY ENGINE DONE 2026-06-14** (Opus, feat/erp-substrate-phase012): (1) `NinjaStage.extractModel(db,AD_Window_ID)
+  →model` reverse-export — **W-NINJA-EXTRACT** `roundtrip=MATCH` (72285fee) · (2) `Col@class.method` grammar token
+  → `AD_Column.Callout` auto-wire — **W-NINJA-CALLOUT** dispatch fires `derived={Description:'Ready'}` (82320be6) ·
+  (3) structural-only round-trip caveat documented (3b6b590a). ⬜ REMAINING = pill/DOM "Export an existing window" path (+GO).
+
+## Reflexive AD self-edit — engine legs DONE (2026-06-14, Opus)
+- ✅ **W-AD-OPLOG-DISTRIB** (`scripts/poc_ad_oplog_distrib.js`, e3e677cd) — dictionary edit → signed append-log →
+  re-folds to the SAME dictionary on a 2nd node (verifyChain ok both sides; §FALSIFIER load-bearing). "Mail the append log."
+- ✅ **W-AD-SELFEDIT** (`scripts/poc_ad_selfedit.js`) — edit `AD_Field` → form's displayed set re-folds 26→25→26
+  = rebuild is re-read, not recompile.
+- ⬜ **W-AD-SELFEDIT-LIVE** — the live in-browser DOM repaint; browser-gated, still owed.
+
+## Odoo red-band fold-gap — RE-AUDITED (2026-06-14, Opus)
+- ✅ **W-ODOO-QWEB** (`scripts/poc_fold_qweb.js`, 852dea16) — `CORE.foldQWeb` folds Odoo invoice line-loop to the cent
+  (`price_subtotal=4350.00 maxDiff=0c`); 41/41 QWeb defs extracted → `build/erp/odoo_extras.db`.
+- ✅ **Server actions = NOT a code gap** — `§SRVACT-CLASSIFY code=64` all Python, no declarative subset; honestly deferred.
+- Panel re-published: https://red1oon.github.io/BIMCompiler/migrate_status_panel.html (44 surfaces, live-verified).
+
 ## POS gap-close banked (2026-06-12g2, `prompts/POS_GAP_CLOSE.md` → # DONE)
 - **G-1 ✅ W-POS-DELIVERLATER** (bim-compiler 5bc4b389): doctype-132 deliver-later sale — policy from the
   dictionary row (SO/N/N), order CO + shipment born DR (same buildDoc spec, no SET_STATUS), invoice timing
