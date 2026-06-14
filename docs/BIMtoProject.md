@@ -199,3 +199,119 @@ it works for BIM→ERP rollback too. This is *why* the history bar was extracted
 6. §D "Actual" schedule version + split-screen Time Machine (the round-trip).
 Each step lands with its witness `§`-line before the next. Whitebox `§`-log first; Playwright only
 drives/captures. ERP writes go to `build/erp/` ONLY; never touch `deploy/live/`.
+
+The §H lifecycle killers below are **follow-on sub-lanes** off this same plumbing (the GUID join,
+the signed fold, the two templates) — sequence them after §C–§E land.
+
+---
+
+## §H — Lifecycle killers (follow-on sub-lanes, same plumbing)
+
+Five high-value flows BIM users want, each reusing this lane's machinery and **mostly already
+backed by existing code or seed tables** (verified 2026-06-14). EXTRACT-only throughout: every
+amount traces to the rate pack / QTO / a real ERP row; BigDecimal only.
+
+### §H1 — Model-delta → signed Variation Order (highest value-per-effort)
+
+The cost engine **already exists**: `viewer/variation_order.js` (S222) does **FIDIC Clause 12
+valuation + AACE change-order costing + EVM variance**, ADDED ×1.0 / REMOVED ×0.3 / CHANGED ×1.3,
+schedule impact from the 4D productivity. Today it terminates in an **Excel file**. This sub-lane
+folds it into the ledger instead:
+
+- A model revision → **GUID diff** (added/removed/changed elements — the same `elements_meta.guid`
+  join) → `variation_order.js` prices the delta → fold a **signed `C_Order` amendment** (or a
+  `C_Project` variation line) in ERP, painted on the model, recorded in the history dots.
+- The VO is a **reversible signed fold** (`crudFoldBack`) — survives dispute, fully auditable.
+
+**Witness — `W-PROJ-VO`:** `§PROJ_VO rev=<r> added=<n> removed=<n> changed=<n> delta=<bd> co=<id>`
+— delta folds exact == `variation_order.js` golden (BigDecimal); counts == the GUID diff.
+
+### §H2 — Progress claim / payment certificate (the get-paid side)
+
+§C does the **buy** side (Generate-PO). This closes the **cash-in** loop: % complete per
+element/phase (from the §D *Actual* schedule) → certify → fold a **`C_Invoice`/`C_InvoiceLine`
+progress billing** (`C_Project.projinvoicerule` governs it; column present, set the rule value).
+Paint the model by **claimed / certified / disputed**.
+
+**Witness — `W-PROJ-CLAIM`:** `§PROJ_CLAIM phase=<name> pct=<%> claimed=<bd> certified=<bd>
+invoice=<id>` — `claimed` folds exact == `Σ(lineplannedamt × pct)` golden; ties to
+`C_ProjectLine.invoicedamt`.
+
+### §H3 — Owner handover: live as-built asset register + FM work orders (7D)
+
+The seed already carries the **full asset lifecycle**: `a_asset_addition`, `a_asset_delivery`,
+`a_asset_change`, `a_asset_retirement`, `a_asset_info_fin/_ins/_lic/_tax`. On project completion
+(`C_ProjectPhase.iscomplete`), capitalize project lines into `A_Asset` with warranty / serial /
+O&M / insurance (reusing `docs/BIMtoERP.md` §B GUID→`A_Asset`). The owner **taps an element →
+raises a maintenance request** (`R_Request`). Deliverable: a *queryable, live* asset register
+bonded to the 3D model — not a 500-page handover PDF.
+
+**Witness — `W-PROJ-HANDOVER`:** `§PROJ_HANDOVER assets=+<na> warranties=<n> request=<id|->` —
+one `A_Asset` per completed-phase GUID; tap→`R_Request` traces to the element GUID.
+
+### §H4 — 4D lookahead procurement (just-in-time)
+
+"What must I order **this week** to not slip?" The model already holds the dates: 4D need-dates
+(phase `startdate` minus lead time) + supplier lead times → fold `M_Requisition`/`M_RequisitionLine`
+(or POs) with **required-by** dates. Replaces the manual 6-week lookahead.
+
+**Witness — `W-PROJ-LOOKAHEAD`:** `§PROJ_LOOKAHEAD window=<6wk> items=<n> reqs=+<nr>` — every
+requisition's required-by == phase `startdate − leadtime`; no item without a real need-date (non-invent).
+
+### §H5 — Embodied carbon as a parallel ledger (6D / ESG)
+
+You already compute 6D carbon (`templates/6D_carbon.json`). Run it **like cost**: a carbon budget
+on the project, **carbon actual folded per `C_ProjectIssue`** (each delivery posts its embodied
+carbon the way it posts cost). Carbon budget vs actual, painted on the model. Regulatory tailwind;
+almost nobody integrates carbon at the *transaction* layer.
+
+**Witness — `W-PROJ-CARBON`:** `§PROJ_CARBON budget=<tco2e> actual=<tco2e> var=<tco2e>` — actual
+folds exact == `Σ(issued qty × carbon factor)` golden; factors trace to `6D_carbon.json`.
+
+> **Sequencing:** §H1 (VO) first — most reuse, loudest pain point. Then §H2 (claim) to close the
+> cash loop, §H3 (handover) for the owner story, §H4/§H5 as differentiators. Each is a standalone
+> sub-lane with its own witness; none blocks §C–§E.
+
+---
+
+## §I — Reporting: Excel export the way QS/PM users actually want
+
+Every §C/§H output gets an **Excel report** in the standard construction layout — not a raw dump.
+Reuse the existing engines, do **not** write a new Excel writer:
+
+- **ERP-side reports** (claim, VO register, cost/EVM, asset register) → the **`erp/ninja_excel.js`**
+  engine: dictionary-driven, folds SQL over the tenant DB into a workbook **and verifies every total
+  by example to the cent**. This is the right tool because its output is *provably correct*, not just
+  formatted.
+- **Viewer-side quick exports** (BoQ, schedule) → **`viewer/excel.js`** (SheetJS/XLSX) +
+  `export_4d.js`/`export_5d.js`, the same path `variation_order.js` already uses.
+- **Match iDempiere print layouts** where one exists → the **`erp/report_overlay.js` `foldPrint`**
+  PrintFormat fold (already proven: Invoice 8/8, 48 cells, `W-PRINTFORMAT` to the cent).
+
+**The standard report set (the layouts users expect):**
+
+| Report | Grouping | Columns (the conventional shape) |
+|---|---|---|
+| **BoQ** (Bill of Quantities) | by trade / WBS phase | Item · Description · Unit · Qty · Rate · Amount; section subtotals; grand total |
+| **Progress Claim / Payment Certificate** | by phase/line | Contract value · Prev claimed · This claim % · This claim amt · Cumulative · Retention · Net |
+| **Variation Order register** | by VO | VO no. · Description · Added/Removed/Changed · Cost impact · Schedule impact · Status |
+| **Cost / EVM report** | by phase | PV · EV · AC · CV · SV · CPI · SPI |
+| **Schedule** | by phase (seqno) | Phase · Start · End · Duration · % complete · Predecessor |
+| **Asset register (handover)** | by asset | Tag/GUID · Product · Serial · Warranty · Value · Locator |
+
+**Layout conventions (the "usually wants" details):**
+- **Title block** atop each sheet: project name/value, report date, **currency + rate-pack source**
+  (the non-invent traceability — the report says *which* pack/version priced it).
+- Frozen header row; grouped rows with **section subtotals**; bold **totals** row.
+- Number format: thousands separator + 2 dp; currency symbol from the active pack's `meta.currency`.
+- **One workbook, multiple sheets** when a flow spans reports (e.g. a project pack = BoQ + Schedule +
+  Cost on three tabs) — mirrors the §C Export chooser's multi-select bundling.
+- Footer cites the source rows (GUID / `C_*` id) so any cell is traceable back to the model/ledger.
+
+**The hard rule (this project's ethos): verify-by-example to the cent.** A report is not "done"
+because it is formatted — its totals must fold **== the golden** (`ninja_excel.js` already enforces
+this). A pretty workbook with a wrong subtotal is a failed report.
+
+**Witness — `W-PROJ-REPORT`:** `§PROJ_REPORT type=<boq|claim|vo|evm|sched|asset> rows=<n>
+total=<bd> golden=<bd> match=<bool> cur=<CUR> pack=<name>` — `match=true` (total == golden to the
+cent); currency + pack stamped in the title block; every section subtotal sums to the grand total.

@@ -72,6 +72,45 @@ rows; forward → crudFoldForward redo. Committed docs fold through the status F
 setDocStatus), not delete — no special gating. No bespoke ↺ button.
 - **W-PROJ-ROLLBACK:** `§PROJ_ROLLBACK project=<v> dots=<n> foldback=<bool> rows_after=0` — first-dot fold-back leaves zero project rows; re-push restores identical counts (idempotent).
 
+## ── §H FOLLOW-ON SUB-LANES (sequence after C–E; each standalone, none blocks the core) ──
+# All reuse this lane's plumbing (GUID join, signed fold, the two templates). EXTRACT-only, BigDecimal.
+
+## TASK F — Model-delta → signed Variation Order (do FIRST of §H) · Witness W-PROJ-VO
+REUSE viewer/variation_order.js (FIDIC Cl.12 + AACE + EVM; ADDED×1.0/REMOVED×0.3/CHANGED×1.3). Model
+revision → GUID diff → price the delta → fold a SIGNED C_Order amendment (or C_Project variation line),
+painted on model, in the history dots. Reversible via crudFoldBack. Today it only emits Excel — fold to ledger.
+- **W-PROJ-VO:** `§PROJ_VO rev=<r> added=<n> removed=<n> changed=<n> delta=<bd> co=<id>` — delta == variation_order.js golden; counts == GUID diff.
+
+## TASK G — Progress claim / payment certificate (cash-in side) · Witness W-PROJ-CLAIM
+% complete per phase (from §D Actual) → certify → fold C_Invoice/C_InvoiceLine progress billing
+(C_Project.projinvoicerule governs; set the rule value). Paint model claimed/certified/disputed.
+- **W-PROJ-CLAIM:** `§PROJ_CLAIM phase=<name> pct=<%> claimed=<bd> certified=<bd> invoice=<id>` — claimed == Σ(lineplannedamt×pct); ties to C_ProjectLine.invoicedamt.
+
+## TASK H — Handover: live as-built asset register + FM work order (7D) · Witness W-PROJ-HANDOVER
+On C_ProjectPhase.iscomplete, capitalize lines → A_Asset (reuse BIMtoERP §B GUID→A_Asset) with
+warranty/serial/O&M/insurance (a_asset_info_*/a_asset_delivery). Tap element → R_Request maintenance.
+- **W-PROJ-HANDOVER:** `§PROJ_HANDOVER assets=+<na> warranties=<n> request=<id|->` — one A_Asset per completed-phase GUID; R_Request traces to element GUID.
+
+## TASK I — 4D lookahead procurement (just-in-time) · Witness W-PROJ-LOOKAHEAD
+Phase startdate − supplier lead time = need-date → fold M_Requisition/M_RequisitionLine (or PO) with
+required-by. No item without a real need-date.
+- **W-PROJ-LOOKAHEAD:** `§PROJ_LOOKAHEAD window=<6wk> items=<n> reqs=+<nr>` — required-by == startdate−leadtime; non-invent.
+
+## TASK J — Embodied carbon parallel ledger (6D/ESG) · Witness W-PROJ-CARBON
+Carbon budget on project; carbon actual folded per C_ProjectIssue (each delivery posts embodied carbon
+like cost) from templates/6D_carbon.json. Budget vs actual painted on model.
+- **W-PROJ-CARBON:** `§PROJ_CARBON budget=<tco2e> actual=<tco2e> var=<tco2e>` — actual == Σ(issued qty × carbon factor); factors trace to 6D_carbon.json.
+
+## TASK K — Excel reporting (the standard QS/PM layouts) · Witness W-PROJ-REPORT
+REUSE the engines — NO new Excel writer: ERP reports (claim/VO/EVM/asset) → erp/ninja_excel.js
+(dictionary-driven, verify-by-example to the cent); viewer quick exports (BoQ/schedule) →
+viewer/excel.js (SheetJS) + export_4d/5d.js; iDempiere layouts → erp/report_overlay.js foldPrint
+(W-PRINTFORMAT). Report set: BoQ · Progress Claim/Payment Cert · VO register · Cost/EVM · Schedule ·
+Asset register (columns + conventions in docs/BIMtoProject.md §I). Title block stamps currency +
+rate-pack source; section subtotals → grand total; ONE workbook / multiple sheets when bundled.
+HARD RULE: verify-by-example — totals fold == golden to the cent, else the report FAILS.
+- **W-PROJ-REPORT:** `§PROJ_REPORT type=<boq|claim|vo|evm|sched|asset> rows=<n> total=<bd> golden=<bd> match=<bool> cur=<CUR> pack=<name>` — match=true; pack/currency stamped; subtotals sum to total.
+
 ## DEPLOY / TEST
 Localhost only until EXPLICIT GO. Whitebox §-log first; add effect-level specs (not routing-only).
 `node tests/audit_specs.js` must not add violations. Update docs/BIMtoProject.md §status as built.
