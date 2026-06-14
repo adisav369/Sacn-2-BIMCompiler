@@ -82,6 +82,7 @@ nav:
   # ─── BIM5D — the headline ─────────────────────────────
   - BIM5D:
       - 4D/5D Analysis: 4D5DAnalysis.md
+      - "BIM → Project Order (ERP)": BIMtoProject.md
       - LTU A-House (125K): LTUAHouseAnalysis.md
       - Enterprise Platform: Enterprise.md
 

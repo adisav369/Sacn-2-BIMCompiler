@@ -1,0 +1,78 @@
+# ⚠ DO NOT REMOVE — BIM → Project Order: the building (or any Find selection) folds into an
+#   iDempiere C_Project (4D phases/tasks + 5D cost lines) → Generate-PO; round-trips back as an
+#   "Actual" schedule; rollback via the scoped history dots.
+# SCOPE (the verb bridge — sibling to prompts/BIM_TO_ERP.md, the noun bridge):
+#   (A) GATEWAY — the Find panel #find-selected bar gains cost-on-selection + a `> to ERP` button.
+#   (B) MULTI-SELECT — extend §NAV_FIND_002 Set model to type/category leaves.
+#   (C) PUSH — selection scope IS the WBS level: nothing→C_Project, storey/disc→C_ProjectPhase,
+#       type→C_ProjectLine, category→M_Product_Category. 4D=sequence_rules.json, 5D=rate pack.
+#   (D) ROUND-TRIP — C_ProjectIssue delivery → "Actual" schedule version → split-screen Time Machine.
+#   (E) ROLLBACK — mount common/history_bar.js scoped to the C_Project; first-dot = crudFoldBack scrub.
+# STATE (2026-06-14): PAPER ONLY. Spec = docs/BIMtoProject.md (read it first, update as you build).
+#   ad_full.db verified to carry c_project/phase/task/line/issue + c_order. Nothing else built.
+# NON-NEGOTIABLE: EXTRACT/COMPILE ONLY — never invent a phase, date, rate, line, or asset. Phase/seq/
+#   dates from sequence_rules.json (4D), price from the active rate pack (5D), qty from QTO. Money +
+#   qty via site/bigdecimal.js ONLY (== Java BigDecimal, proven). `> to ERP` & `Check ERP` appear on
+#   the Find selected bar; cost shown == cost pushed (same active pack). Push is idempotent (re-run =
+#   +0). Rollback REUSES crudFoldBack — no second history lane, no bespoke ↺. Whitebox §-log FIRST is
+#   the value proof; Playwright only drives/captures. Read the log after every run. Every claim names
+#   a witness. Route buttons through the action fn, not a DOM .click() (the '=' lesson). Three
+#   Concerns stay split (WHAT/HOW/WHERE — BOM PRINCIPLE).
+# READ FIRST: docs/BIMtoProject.md (blueprint) · docs/BIMtoERP.md (noun bridge — M_Product/A_Asset
+#   find-or-create is REUSED) · docs/ERP.md (ERP engine) · build/erp/ (ERP source-of-truth) ·
+#   viewer navigate_find.js (#find-selected bar, §NAV_FIND_002 multi-select) · viewer nlp.js
+#   (calcCost/getRate/RATES — the cost compute to surface) · viewer rates.js + rates/sequence_rules.json
+#   (4D) + rates/<pack>.json (5D) · viewer time_machine.js (injectGantt, _capActive captured-schedule
+#   seam) · common/history_bar.js (configure mountHostId/source/treeKey) · erp crud_overlay.js
+#   (crudFoldBack/crudFoldForward) · memory feedback_numbers_via_bigdecimal · feedback_erp_source_of_truth.
+
+---
+
+## TASK 0 — Confirm canonical ERP.db + templates load (one query/read each) · Witness W-PROJ-SCHEMA
+- Confirm the viewer-side canonical ERP.db (shared with BIM_TO_ERP OPEN-3) carries c_project*, c_order*.
+- Confirm sequence_rules.json loads (Time Machine already uses it) + the active 5D rate pack loads via rates.js.
+- **W-PROJ-SCHEMA:** `§PROJ_SCHEMA db=<file> proj=<bool> order=<bool> seq4d=<n phases> pack5d=<name>` — all named, not guessed.
+
+## TASK A — Cost on the Find selected bar + 5D pack in Settings · Witness W-FIND-COST
+Surface the EXISTING nlp.js cost compute (calcCost/getRate/RATES) onto #find-selected: show qty × rate
+for the current selection in the active pack's currency. Add a 5D rate-pack picker to the Settings JSON
+editor (the 4D sequence_rules.json is already there) — the picked pack drives BOTH the shown cost and the pushed price.
+- **W-FIND-COST:** `§FIND_COST scope=<sel> elements=<n> qty=<q> cost=<bd> cur=<CUR> pack=<name>` — cost folds exact == Σ(qty×rate) golden; pack == active Settings pack.
+
+## TASK B — Leaf multi-select · Witness W-FIND-MULTI
+Extend the §NAV_FIND_002 Set model (`_selStoreys`/`_selDiscs`) to type/category leaves
+(`_selTypes`/`_selCats`). Axis change still clears (unify rule). No new selection engine.
+- **W-FIND-MULTI:** `§FIND_MULTI axis=<a> picked=<ids> elements=<n>` — set == union of ticked leaves; cleared on axis change.
+
+## TASK C — `> to ERP` push: selection → Project Order · Witness W-PROJ-PUSH / W-PROJ-FOLD / W-PROJ-SEQ
+`> to ERP` on #find-selected folds the current selection (nothing = whole building). Idempotent
+find-or-create: header C_Project(value=building) → phases from sequence_rules.json
+(name=phase, seqno=sequence, start/end from labour durations) → tasks by resource → lines per Type
+(plannedqty from QTO, plannedprice from active pack via bigdecimal.js, m_product_id reusing
+BIMtoERP §B find-or-create, m_product_category_id from parent) → roll-up amounts → phases with a
+supplier c_bpartner_id set generateorder → fold C_Order PO (no supplier = plan-only, no PO).
+- **W-PROJ-PUSH:** `§PROJ_PUSH project=<v> phases=+<np> tasks=+<nt> lines=+<nl> order=<co|->` — second run = all +0.
+- **W-PROJ-FOLD:** Σ project plannedamt folds exact == nD 5D golden (BigDecimal).
+- **W-PROJ-SEQ:** `§PROJ_SEQ phase=<name> seqno=<n> start=<d> end=<d>` — name+seqno trace to sequence_rules.json; dates == Time Machine planned dates.
+
+## TASK D — Round-trip: Actual schedule + split-screen Time Machine · Witness W-PROJ-ACTUAL / W-PROJ-ALLOC / W-TM-SPLIT
+Fold C_ProjectIssue.movementdate/movementqty + C_ProjectPhase.enddate/iscomplete into a SECOND
+ELEMENT_PLACE set tagged version=actual (never overwrite planned). Ride Time Machine's captured-schedule
+seam (_capActive / injectGantt) — Actual = a captured schedule sourced from ERP. Allocate issued qty to
+GUIDs by the deterministic rule: light N of M elements of that Type within the issue's phase, ordered by
+seqno. Split-screen: planned | actual on one shared cursor; var_days where actual lags planned.
+- **W-PROJ-ACTUAL:** `§PROJ_ACTUAL phase=<name> planned_end=<d> actual_end=<d> var_days=<n>` — actual dates trace to movementdate/enddate, never estimates.
+- **W-PROJ-ALLOC:** `§PROJ_ALLOC type=<T> issued=<q> lit=<n>/<m> order=seqno` — lit == issued qty (cap M); seqno-deterministic, re-run identical.
+- **W-TM-SPLIT:** planned + actual render under one cursor; var_days == W-PROJ-ACTUAL.
+
+## TASK E — Rollback via scoped history dots (NO new UI) · Witness W-PROJ-ROLLBACK
+Mount common/history_bar.js in the Project Order panel: configure({mountHostId:<panel>, source:'doc',
+treeKey:<C_Project>}) → its own ‹ dots ›. First-dot click → crudFoldBack scrubs the project to zero
+rows; forward → crudFoldForward redo. Committed docs fold through the status FSM (CO→DR via
+setDocStatus), not delete — no special gating. No bespoke ↺ button.
+- **W-PROJ-ROLLBACK:** `§PROJ_ROLLBACK project=<v> dots=<n> foldback=<bool> rows_after=0` — first-dot fold-back leaves zero project rows; re-push restores identical counts (idempotent).
+
+## DEPLOY / TEST
+Localhost only until EXPLICIT GO. Whitebox §-log first; add effect-level specs (not routing-only).
+`node tests/audit_specs.js` must not add violations. Update docs/BIMtoProject.md §status as built.
+ERP writes go to build/erp/ ONLY (source-of-truth); never touch deploy/live/.
