@@ -7,9 +7,9 @@
 #   (presentation only — NO engine/fold changes anywhere in this lane) · Lucide-only icons (pill-icon
 #   consistency) · bim-ootb edits ONLY in /tmp/wt-* off FRESH origin/main · ONE PR per track · sw bump
 #   once per train · orphan-check every squash · sw.js = conflict magnet (keep both hunks, higher version).
-# STATE AT WRITING (post #283): origin/main tip 72c9868 · erp sw v663 · viewer sw v648 ·
-#   pos_lens.js?v=5 (idempiere.html) · wh_walk.js?v=3 · wh_route.js?v=2 · WH×POS pick loop ✅ LIVE
-#   (W-WH-POS-PICK-LIVE, SPATIAL_PICKING_SPEC §S-2b) — this lane styles ON TOP of it, breaks nothing.
+# STATE AT WRITING (post FOLLOW-UP ROUND 2, 2026-06-14): erp sw v684 (#313 Sound-FX pill) · viewer sw v657
+#   (#311 WH cross-reload resume) · pos_lens.js?v=9 · wh_walk.js?v=8 · idmp_pills.js?v=12 · pills_idmp.json?v=31
+#   · icons.js?v=10 · ROUND 2 all ✅ (see §FOLLOW-UP ROUND 3 STATE block + the # DONE blocks below).
 
 ## ⚠ PRE-PINNED FACTS (verified in code 2026-06-13 — do NOT rediscover these wrong)
 1. **Viewer icons live in `viewer/panels.js`** (inline `ICONS` map, `var I = ICONS` ~line 1104).
@@ -500,3 +500,28 @@ DOES fold the op-log at complete():787, stays out of scope — its completion wo
 `§WH RESUME-RELOAD … restored=1` + the picked-counter shows 1 → continue to step 2 → W4 PICK-COMPLETE
 fold `diffs=0` UNCHANGED (proves the restored W.done seals identically). Train: ONE PR (viewer surface),
 `wh_walk.js?v=7→8` + viewer sw bump; `npx eslint viewer/wh_walk.js` exit 0.
+
+---
+
+## ⟳ FOLLOW-UP ROUND 3 — live-test observations (paste-to-start)
+# Paste-to-start: `proceed with prompts/UI_UX_LANE.md §FOLLOW-UP ROUND 3`
+# RULES (unchanged): presentation-only · newVerbs=[] · NON-INVENT (extract ids/rows) · Lucide-only ·
+#   reproduce-first (open the LIVE surface, confirm the complaint, THEN fix) · witness-led (§-log first) ·
+#   bim-ootb edits in /tmp/wt-* off FRESH origin/main · ONE PR per surface · sw bump · orphan-check after squash.
+# Where an item names a control by ROLE not id, CONFIRM against the live surface before coding — never invent.
+
+## STATE AT WRITING (post ROUND 2, 2026-06-14)
+- erp sw v684 (#313 Sound-FX pill) · viewer sw v657 (#311 WH cross-reload resume)
+- pos_lens.js?v=9 · wh_walk.js?v=8 · idmp_pills.js?v=12 · pills_idmp.json?v=31 · icons.js?v=10
+- ROUND 2 all ✅: (1) POS #308 orphan-checked · (2) ERPUserGuide §7 synced + gh-deploy ·
+  (3) Sound-FX speaker pill on idempiere.html (the BIM audio pill; persists via localStorage sfx_on) ·
+  (4) WH cross-reload resume (idmp_whwalk_progress IDB cache, restores W.done for the same sale).
+
+## LIVE-VERIFY FIRST (before dictating ROUND 3 — reproduce on the deployed surface)
+- [ ] POS — Sound-FX speaker pill toggles the earcons (ring/pay/complete); a mute sticks across reload.
+- [ ] POS — top-bar running total updates as items ring; single Pay completes; pay panel drags.
+- [ ] WH walk — pick an item → reload the page → reopen the SAME sale → picked counter restored.
+- [ ] WH walk — tap a route row frames that bin; ✕ exits keeping a partial pick.
+
+## ROUND 3 — dictated observations (verbatim, fill on live-test)
+- (await user)
