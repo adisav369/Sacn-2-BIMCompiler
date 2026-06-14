@@ -4680,7 +4680,15 @@
 
 <h1 id="bim-project-order-blueprint">BIM → Project Order — Blueprint<a class="headerlink" href="#bim-project-order-blueprint" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Status:</strong> PAPER spec (no code yet). Sibling to <code>docs/BIMtoERP.md</code>.
+<p><strong>Status:</strong> Tasks 0, A, C(engine) BUILT &amp; witnessed (2026-06-14, worktree <code>feat/bim-to-project</code>
+commit <code>c208dfa</code>, localhost-only — not yet deployed); §D/§E + §H/§I still PAPER.
+Sibling to <code>docs/BIMtoERP.md</code>.
+<strong>Built so far:</strong> §0/Task 0 substrate confirmed (<code>W-PROJ-SCHEMA</code> — canonical <code>erp/ad_seed.db</code>,
+11 write targets, OPEN-3 resolved) · §A/Task A cost-on-selection + 5D-pack-in-Settings
+(<code>W-FIND-COST</code>) · §C/Task C the fold engine <code>proj_fold.js</code> (<code>W-PROJ-PUSH/FOLD/SEQ</code> — building
+selection → C_Project tree, idempotent, PlannedAmt == 5D golden via BigDecimal, seqno traces to
+sequence_rules; <code>› ERP</code> button wired). Remaining for §C: browser visual-drive + the cross-page
+hand-off so the ERP app reads the folded db (= BIMtoERP §B write-path).
 <strong>The one-line idea:</strong> the <em>whole building</em> (or any selected slice) becomes an
 iDempiere <strong><code>C_Project</code></strong> carrying its <strong>4D schedule</strong> (phases/tasks) and <strong>5D cost</strong>
 (planned BOQ lines), which iDempiere can then <strong>generate a Purchase Order from</strong>.

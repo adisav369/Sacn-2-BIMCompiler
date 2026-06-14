@@ -4341,6 +4341,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#6-descriptor-seam-renderer-2-done-increment-1-2026-06-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6 Descriptor seam (renderer #2 — DONE increment 1, 2026-06-14)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4589,6 +4600,22 @@ Edit <code>bim-ootb/viewer/</code> directly; never whole-file copy from bim-comp
 deploy</strong> (bump <code>sw.js</code> CACHE_VERSION + register <code>idempiere.html</code>/<code>icons.js</code>/<code>erp_pills.js</code> in the SW
 precache; fetch-back-verify). Protect the 153/153 AD-UI baseline — I1 adds modules + CSS, it does not
 rewrite <code>ad_ui.js</code>.</p>
+<h2 id="6-descriptor-seam-renderer-2-done-increment-1-2026-06-14">§6 Descriptor seam (renderer #2 — DONE increment 1, 2026-06-14)<a class="headerlink" href="#6-descriptor-seam-renderer-2-done-increment-1-2026-06-14" title="Permanent link">&para;</a></h2>
+<p>The §pivot decision ("build the descriptor seam WHEN renderer #2 starts") is now executed. <code>idempiere.html</code>
+reached into <code>window.ADParser</code> / <code>ADData</code> / <code>IdmpSession</code> at <strong>24 call sites</strong>. <code>erp/erp_descriptor.js</code>
+(<code>window.ErpDescriptor</code>) abstracts these into a <strong>descriptor = three facets</strong>:
+- <code>structure</code>: <code>init(db)</code> · <code>getMenuTree(db)</code> · <code>getWindow(db, windowId)</code> — the dictionary / window shape
+- <code>data</code>: <code>readRecords(db, table, where, orderBy)</code> · <code>resolveFK(db, columnName, value)</code>
+- <code>session</code>: <code>listUsers/listClients/usersForClient/rolesForUser/clientFor/orgsForRole(db, …)</code> ·
+  <code>buildContext(db, userId, {roleId, orgId})</code> · <code>scopeMenu(roots, winSet, procSet, formSet)</code> · <code>deleteClient(db, clientId)</code></p>
+<p>The return-SHAPES are the contract. <code>ErpDescriptor.register(name, impl)</code> / <code>.use(name)</code> / <code>.active</code>;
+<code>?erp=&lt;name&gt;</code> selects before the chrome caches its <code>ADP/ADD/SES</code> aliases. <strong>AD is the first descriptor</strong> —
+its facets ARE the AD globals verbatim, so it's behavior-identical (witness asserts facet identity).
+Witness <code>bim-ootb/erp/tests/poc_descriptor_seam.js</code> (<strong>W-DESCRIPTOR-SEAM 7/7</strong>). LIVE on GH Pages (erp sw v681→merge).</p>
+<p><strong>NEXT — increment 2:</strong> a 2nd descriptor (<code>odoo</code>) registering the SAME-shaped facets over a real Odoo model
+slice (<code>ir.model</code>/<code>ir.ui.menu</code>/<code>ir.model.fields</code> → the Odoo dictionary; rows via the existing odoo fold) so the
+UNCHANGED chrome renders Odoo with zero per-model chrome code — the thesis proof. NON-INVENT: extract the Odoo
+catalog from a real source (odoo_agent introspection), never hand-author model metadata.</p>
 
 
 
