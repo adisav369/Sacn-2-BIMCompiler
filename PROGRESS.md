@@ -45,7 +45,11 @@
   re-folds to the SAME dictionary on a 2nd node (verifyChain ok both sides; §FALSIFIER load-bearing). "Mail the append log."
 - ✅ **W-AD-SELFEDIT** (`scripts/poc_ad_selfedit.js`) — edit `AD_Field` → form's displayed set re-folds 26→25→26
   = rebuild is re-read, not recompile.
-- ⬜ **W-AD-SELFEDIT-LIVE** — the live in-browser DOM repaint; browser-gated, still owed.
+- ⬜ **W-AD-SELFEDIT-LIVE** — live in-browser DOM repaint; **SCOPED 2026-06-14** (3 legs in
+  `prompts/FRONTEND_LANE_MASTER.md §PENDING WITNESS`): (1) route `ad_parser` AD_Field/AD_Tab/AD_Window reads
+  through `CrudOverlay.listTip(window.__crud.kernelDb(),…)` so a signed dict edit overlays; (2) refold hook —
+  invalidate `_openWins[winId]` + re-`openWindow`/`buildMenu` on an AD-table commit; (3) headless-chrome DOM
+  probe (IsDisplayed Y→N → field row vanishes). Browser + own-deploy-GO gated.
 
 ## Odoo red-band fold-gap — RE-AUDITED (2026-06-14, Opus)
 - ✅ **W-ODOO-QWEB** (`scripts/poc_fold_qweb.js`, 852dea16) — `CORE.foldQWeb` folds Odoo invoice line-loop to the cent
