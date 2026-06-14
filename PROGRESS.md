@@ -45,11 +45,13 @@
   re-folds to the SAME dictionary on a 2nd node (verifyChain ok both sides; §FALSIFIER load-bearing). "Mail the append log."
 - ✅ **W-AD-SELFEDIT** (`scripts/poc_ad_selfedit.js`) — edit `AD_Field` → form's displayed set re-folds 26→25→26
   = rebuild is re-read, not recompile.
-- ⬜ **W-AD-SELFEDIT-LIVE** — live in-browser DOM repaint; **SCOPED 2026-06-14** (3 legs in
-  `prompts/FRONTEND_LANE_MASTER.md §PENDING WITNESS`): (1) route `ad_parser` AD_Field/AD_Tab/AD_Window reads
-  through `CrudOverlay.listTip(window.__crud.kernelDb(),…)` so a signed dict edit overlays; (2) refold hook —
-  invalidate `_openWins[winId]` + re-`openWindow`/`buildMenu` on an AD-table commit; (3) headless-chrome DOM
-  probe (IsDisplayed Y→N → field row vanishes). Browser + own-deploy-GO gated.
+- ✅ **W-AD-SELFEDIT-LIVE SHIPPED 2026-06-14** (bim-ootb PR #312, erp sw v683) — a signed dictionary edit
+  repaints the form on the spot, no reload. 3 legs: `ad_parser.js?v=23` `setTipSource` (AD_Field/AD_Window
+  reads overlay the sidecar edit via `CrudOverlay.listTip(window.__crud.kernelDb(),…)`); `crud_overlay.js?v=7`
+  emits `overlay:committed`; `idempiere.html` wires the tip-source + a refold hook (AD_* commit → invalidate
+  `_openWins` + re-`openWindow`/`buildMenu`). Live witness (headless chrome on the bundle): M_MatchInv
+  "Organization" grid column vanishes on `IsDisplayed Y→N`, returns on `N→Y`; commit sealed+verifyChain=ok.
+  **`§W-AD-SELFEDIT-LIVE PASS`.** Reflexive-AD loop now proven engine + distribution + LIVE DOM.
 
 ## Odoo red-band fold-gap — RE-AUDITED (2026-06-14, Opus)
 - ✅ **W-ODOO-QWEB** (`scripts/poc_fold_qweb.js`, 852dea16) — `CORE.foldQWeb` folds Odoo invoice line-loop to the cent
