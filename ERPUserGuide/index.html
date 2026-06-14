@@ -2652,21 +2652,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#payment-panel-layout-sw-v667-minimalist" class="md-nav__link">
+  <a href="#payment-panel-layout-sw-v680-top-bar-total-single-pay" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Payment panel layout (sw v667 — minimalist)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#the-receipt-preview-pay-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The receipt-preview pay flow
+        Payment panel layout (sw v680 — top-bar total + single Pay)
       
     </span>
   </a>
@@ -4882,21 +4871,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#payment-panel-layout-sw-v667-minimalist" class="md-nav__link">
+  <a href="#payment-panel-layout-sw-v680-top-bar-total-single-pay" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Payment panel layout (sw v667 — minimalist)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#the-receipt-preview-pay-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The receipt-preview pay flow
+        Payment panel layout (sw v680 — top-bar total + single Pay)
       
     </span>
   </a>
@@ -5487,41 +5465,41 @@ Tap the <strong>POS</strong> pill in the bottom bar (it appears only when the lo
   ever moves).</li>
 </ul>
 <p><img alt="POS — Garden User · Store: product grid left, live cart right, replenishment suggestions below" src="../figs/pos_live.png" /></p>
-<h3 id="payment-panel-layout-sw-v667-minimalist">Payment panel layout (sw v667 — minimalist)<a class="headerlink" href="#payment-panel-layout-sw-v667-minimalist" title="Permanent link">&para;</a></h3>
-<p>The panel is stripped to the essentials, total as the hero:</p>
+<h3 id="payment-panel-layout-sw-v680-top-bar-total-single-pay">Payment panel layout (sw v680 — top-bar total + single Pay)<a class="headerlink" href="#payment-panel-layout-sw-v680-top-bar-total-single-pay" title="Permanent link">&para;</a></h3>
+<p>The panel is a <strong>draggable</strong> float (<code>#pos-float-panel</code>), stripped to the essentials:</p>
 <ul>
-<li><strong>Edge rims</strong> — a bright <strong>orange</strong> top rim is the <strong>Ordered items</strong> drawer, a bright <strong>green</strong>
-  bottom rim is the <strong>Replenishment</strong> drawer. They are fully textless — <strong>tap a rim to expand</strong> its
-  body; the meaning sits in the <code>title=</code> hover and here in the guide. (<code>§POS-DRAWER-ITEMS</code> /
-  <code>§POS-DRAWER-REPL open count</code>.)</li>
-<li><strong>Hero row</strong> — the large centred <strong>total</strong> is flanked by exactly two icons: <strong>scan</strong> (left — opens
-  the barcode overlay to add an item) and <strong><code>$</code> banknote</strong> (right — opens the receipt preview, see
-  below). Nothing else competes with the total.</li>
+<li><strong>Top bar — the running total.</strong> The top row shows the <strong>live cart total</strong> (<code>#pos-top-total</code>),
+  updating as you ring items. The <strong>cart icon</strong> stays on the left (tap it to summon/dismiss the panel,
+  <code>§POS-FLOAT toggle=</code>); the <strong>scan-QR</strong> button sits on the <strong>right</strong> (<code>#pos-pill-scan</code> — opens the
+  barcode overlay to add an item).</li>
+<li><strong>One Pay icon.</strong> A single <strong>Pay</strong> icon (<code>#pos-float-tender</code>, right) <strong>completes the sale directly</strong>
+  — there is no pre-completion preview modal (the earlier orange/green rim drawers + receipt-preview
+  modal are retired). The walk-in partner is <strong>defaulted</strong> (the <strong>Standard</strong> business partner, else
+  first active — <code>§POS-PARTNER-DEFAULT</code>), so Pay works out of the box.</li>
+<li><strong>Draggable.</strong> Grab the panel header to reposition it (<code>§POS-FLOAT-DRAG moved=Y</code>); the album keeps
+  scrolling underneath, payment never squeezes the grid.</li>
 <li><strong>⋯ dock</strong> (bottom-right, reveal-up, taps-outside close it) — the secondary actions live here:
-  <strong>home</strong>, <strong>import</strong> (register a product), <strong>receipt</strong> (re-open the last receipt, appears after a
-  sale), and <strong>Deliver later</strong> (dictionary-gated — present only when the loaded db has an <code>SO</code>
-  doctype).</li>
-</ul>
-<h3 id="the-receipt-preview-pay-flow">The receipt-preview pay flow<a class="headerlink" href="#the-receipt-preview-pay-flow" title="Permanent link">&para;</a></h3>
-<p>Tapping <strong><code>$</code></strong> does <strong>not</strong> commit — it opens a <strong>receipt preview</strong> (a modal): the cart lines, the
-total, and three actions —</p>
-<ul>
-<li><strong>QR</strong> — show the DEMO payment QR (clearly watermarked DEMO — a display, not a payment rail; no
-  provider is wired, nothing is charged).</li>
-<li><strong>OK</strong> — manual pay → <strong>Complete the sale</strong> (the one signed op-group; <code>§POS-SALE … chainOk=Y</code>).</li>
-<li><strong>Cancel</strong> — back to the cart, nothing committed.</li>
+  <strong>home</strong>, <strong>import</strong> (register a product — the <code>(+)</code> glyph), <strong>receipt</strong> (re-open the last receipt,
+  appears after a sale), and <strong>Deliver later</strong> (the WH-walk <code>route</code> glyph; dictionary-gated — present
+  only when the loaded db has an <code>SO</code> doctype — opens the warehouse walk in a new tab).</li>
 </ul>
 <h3 id="making-a-sale">Making a sale<a class="headerlink" href="#making-a-sale" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Tap a product card (or <strong>scan</strong> from the hero row) → it is added to the cart at the sealed price.</li>
+<li>Tap a product card (or <strong>scan</strong> from the top bar) → it is added to the cart at the sealed price.</li>
 <li>Tap again to increment qty, or edit qty in the line.</li>
-<li>Review <strong>Total</strong> — the centred hero figure (BigDecimal fold of line amounts, never a posted figure yet).</li>
-<li>Summon the payment panel (cart pill), pick the walk-in partner, tap <strong><code>$</code></strong> → the <strong>receipt
-   preview</strong> opens → tap <strong>OK</strong> to complete the sale (<code>§POS-SALE … newVerbs=[] chainOk=Y</code> — the
-   receipt shows <code>signed=Y</code>).</li>
+<li>Review the <strong>running total</strong> in the top bar (BigDecimal fold of line amounts, never a posted figure yet).</li>
+<li>Tap <strong>Pay</strong> (<code>#pos-float-tender</code>) → the sale <strong>completes directly</strong> into one signed op-group
+   (<code>§POS-SALE … newVerbs=[] chainOk=Y</code> — the receipt shows <code>signed=Y</code>). No partner prompt — the
+   Standard partner is used unless you pick another.</li>
 <li>The receipt opens in its own overlay (re-openable via the <strong>receipt</strong> entry in the ⋯ dock) and the
    payment panel dismisses itself — the sale is already closed: one signed op-group, nothing left pending.</li>
 </ol>
+<div class="admonition note">
+<p class="admonition-title">Audio earcons</p>
+<p>Subtle earcons sound on key POS actions — ring an item, Pay, sale-complete (<code>§POS-AUDIO</code>) — via the
+shared synth engine reading <code>sfx.json</code> (data rows, <code>ui_clicks:false</code> so there is no per-button
+spam). They no-op silently if the sound engine is absent.</p>
+</div>
 <div class="admonition tip">
 <p class="admonition-title">Barcode scan distance</p>
 <p>The scan overlay shows the hint <strong>"Hold steady · 10–15 cm from barcode"</strong> on open.
