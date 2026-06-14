@@ -65,7 +65,11 @@
     ts = ts != null ? ts : 0;
     var bundleName = model.bundleName || 'Ninja';
     var tables = model.tables || [];
-    var counts = { tables: 0, cols: 0, windows: 0, tabs: 0, fields: 0, menus: 0, skipped: 0 };
+    var counts = { tables: 0, cols: 0, windows: 0, tabs: 0, fields: 0, menus: 0, skipped: 0, callouts: 0 };
+
+    // ensure AD_Column.Callout exists (additive — ad_seed.db omits it; ALTER is safe if missing)
+    var hasCalloutCol = db.exec("SELECT name FROM pragma_table_info('AD_Column') WHERE lower(name)='callout'").length > 0;
+    if (!hasCalloutCol) db.run('ALTER TABLE AD_Column ADD COLUMN Callout TEXT');
 
     // ID sub-ranges (each table gets 200 column/field slots)
     var tBase  = NINJA_BASE;
@@ -139,12 +143,14 @@
         var isId  = (col.name === 'Name' || isKey === 'Y') ? 'Y' : 'N';
 
         if (ensure(db, 'AD_Column', 'AD_Column_ID', colId)) {
+          var calloutVal = col.callout ? "'" + q(col.callout) + "'" : 'NULL';
           db.run("INSERT INTO AD_Column (AD_Column_ID, AD_Table_ID, ColumnName, Name, Description," +
-            " AD_Reference_ID, FieldLength, IsMandatory, IsKey, IsIdentifier, IsActive)" +
+            " AD_Reference_ID, FieldLength, IsMandatory, IsKey, IsIdentifier, Callout, IsActive)" +
             " VALUES (" + colId + "," + tableId + ",'" + q(col.name) + "'," +
             "'" + q(col.name.replace(/_/g, ' ')) + "','Ninja col'," +
-            col.refId + "," + fieldLen + ",'N','" + isKey + "','" + isId + "','Y')");
+            col.refId + "," + fieldLen + ",'N','" + isKey + "','" + isId + "'," + calloutVal + ",'Y')");
           counts.cols++;
+          if (col.callout) counts.callouts++;
         } else { counts.skipped++; }
 
         if (ensure(db, 'AD_Field', 'AD_Field_ID', fieldId)) {
