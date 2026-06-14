@@ -1121,6 +1121,8 @@
       
         
       
+        
+      
     
     
     
@@ -1181,6 +1183,34 @@
     
   
     4D/5D Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMtoProject/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM → Project Order (ERP)
   
 
     
@@ -6163,12 +6193,20 @@ the same ledger, no new server. <strong>Both shipped 2026-06 and run LIVE on Git
    pick <em>"walk the aisles"</em> app over the same tenant: the warehouse compiled as a BIM-like model (the
    same BOM recursion that compiles a building), fly-to + lens to the next bin, QR scan as the one
    clean act, every pick a signed op; <code>qtyOnHand</code> and the ERP window agree <strong>to the unit</strong> (W-WH-LIVE).</li>
+<li><strong>BIM → Project Order — PAPER → <a href="../BIMtoProject/">spec</a></strong> — the fold generalizes <em>beyond
+   accounting</em>. Any selection in the BIM Find panel folds into an iDempiere <code>C_Project</code> (4D schedule
+   from <code>sequence_rules.json</code>, 5D cost from the active rate pack) → Generate-PO; delivery
+   (<code>C_ProjectIssue</code>) folds <strong>back</strong> as an <em>"Actual"</em> schedule for a split-screen
+   as-planned-vs-as-built Time Machine; rollback is the <em>same</em> history dots (<code>crudFoldBack</code>), scoped
+   to the project. The same kernel that migrates an ERP now folds a <em>building</em> — <strong>one op-log, one
+   timeline across BIM and ERP.</strong> (Spec only — not yet built, not measured in the vitals above.)</li>
 </ol>
-<p>These are the two ERP objectives stated in the <a href="https://github.com/red1oon/bim-ootb#roadmap">bim-ootb README</a>;
+<p>Items 1–2 are the two ERP objectives stated in the <a href="https://github.com/red1oon/bim-ootb#roadmap">bim-ootb README</a>;
 both <strong>landed downstream of the migration this paper measures</strong> — possible precisely because the
-kernel is the same fold whether it is migrating an existing ERP or running a new app on it. (The wider
-roadmap also carries one BIM objective — a 2D grid <em>editor</em> — and one shared objective — a single
-parallel op|view history timeline across the BIM building and the ERP context.)</p>
+kernel is the same fold whether it is migrating an existing ERP or running a new app on it. Item 3 is
+the <strong>shared BIM↔ERP objective</strong> — a single parallel op|view history timeline across the BIM building
+and the ERP context — now specced. (The wider roadmap also carries one BIM-only objective: a 2D grid
+<em>editor</em>.)</p>
 </div>
 </details>
 <details class="fold">
