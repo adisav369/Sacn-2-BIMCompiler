@@ -55,7 +55,15 @@ Extend the §NAV_FIND_002 Set model (`_selStoreys`/`_selDiscs`) to type/category
 (`_selTypes`/`_selCats`). Axis change still clears (unify rule). No new selection engine.
 - **W-FIND-MULTI:** `§FIND_MULTI axis=<a> picked=<ids> elements=<n>` — set == union of ticked leaves; cleared on axis change.
 
-## TASK C — `> to ERP` push: selection → Project Order · Witness W-PROJ-PUSH / W-PROJ-FOLD / W-PROJ-SEQ
+## TASK C — ✅ ENGINE DONE (W-PROJ-PUSH/FOLD/SEQ + CONTRACT PASS, 2026-06-14) — `> to ERP` push
+# Engine viewer/proj_fold.js foldProjectOrder (dual export) + witness tests/poc_proj_push.js (worktree
+# commit c208dfa): non-destructive in-memory fold of ad_seed.db → 6 phases/9 tasks/16 lines/16 products,
+# 2nd run +0 (idempotent); PlannedAmt 1055478 == 5D golden (BigDecimal == apply5DRates == W-FIND-COST whole);
+# every phase seqno traces to sequence_rules (canonical, fixed building-dependent bug) + monotonic dates.
+# Button "› ERP" on #find-selected → _pushToErp → ProjFold wired (contract-checked); _selectionPriced is
+# the one source for bar cost + push. NAMED GAPS (seed): no M/M2/M3 UOM (→EA), no MYR currency (→USD),
+# C_ProjectIssue absent (Task D). REMAINING: browser visual-drive + cross-page hand-off to ERP app (BIMtoERP §B).
+## TASK C (orig) — `> to ERP` push: selection → Project Order · Witness W-PROJ-PUSH / W-PROJ-FOLD / W-PROJ-SEQ
 `> to ERP` on #find-selected folds the current selection (nothing = whole building). Idempotent
 find-or-create: header C_Project(value=building) → phases from sequence_rules.json
 (name=phase, seqno=sequence, start/end from labour durations) → tasks by resource → lines per Type
