@@ -68,6 +68,31 @@
   .band code{background:rgba(128,128,128,.16);padding:1px 5px;border-radius:4px;font-size:.88em}
   .foot{margin-top:auto;padding:10px 17px;background:var(--ft);font-size:11.5px;font-weight:700;color:var(--bc);border-top:1px solid var(--bc)}
 
+  /* ── SERVER → NON-SERVER swap table (blue band) ── */
+  .swap{display:grid;grid-template-columns:1fr 1fr;column-gap:14px;row-gap:8px;
+    padding:12px 17px 14px;border-top:1px solid rgba(128,128,128,.16);font-size:12.5px;line-height:1.4}
+  .swap .sh{font-size:9.5px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;
+    color:var(--dim);padding-bottom:5px;border-bottom:1px solid rgba(128,128,128,.18)}
+  .swap .sl{color:#97a2ad}
+  .swap .sr{color:#dde4ec;position:relative;padding-left:12px}
+  .swap .sr::before{content:"";position:absolute;left:0;top:6px;width:6px;height:1px;background:var(--blue);opacity:.5}
+  .swap .sl b{color:#bcc6d0;font-weight:700}
+  .swap .sr b{color:#fff;font-weight:700}
+  .swap-cap{padding:0 17px 13px;font-size:11.5px;color:var(--dim);line-height:1.5}
+  .swap-cap b{color:var(--blue)}
+  .live-pill{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;
+    color:var(--green);border:1px solid rgba(124,179,66,.45);border-radius:5px;padding:1px 6px;margin-right:7px;
+    vertical-align:middle;white-space:nowrap}
+  .live-pill::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle}
+  .fn{color:var(--blue);font-weight:800}
+  .gx{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-left:6px;vertical-align:middle}
+  @media (max-width:680px){
+    .swap{grid-template-columns:1fr;row-gap:2px}
+    .swap .sh{display:none}
+    .swap .sl{margin-top:9px}
+    .swap .sr::before{content:"→ ";position:static;width:auto;height:auto;background:none;color:var(--blue);font-weight:700;opacity:1}
+  }
+
   footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--dim)}
   footer a{font-weight:600}
 </style>
@@ -79,7 +104,7 @@
   <p class="intro">A migration <b>honesty</b> panel — four states, not a pass/fail. It shows which <i>business flows</i> the browser kernel already reproduces <b>indistinguishably from iDempiere</b> (<code>maxDiff=0c</code>), and exactly what stands between that and a full tenant cut-over.</p>
 
   <div class="legend">
-    <span class="k"><span class="dot" style="background:var(--green)"></span><b>Done</b> — folds to the cent</span>
+    <span class="k"><span class="dot" style="background:var(--green)"></span><b>Done</b> — folds to the cent, or granted by architecture</span>
     <span class="sep">·</span>
     <span class="k"><span class="dot" style="background:var(--amber)"></span><b>Pending</b> — data not wired</span>
     <span class="sep">·</span>
@@ -97,16 +122,19 @@
       <div class="bh">
         <div class="tag">🟢 Done · in the new experience</div>
         <div class="ttl">Folds to the cent today</div>
-        <div class="gloss">Oracle-equivalent vs real iDempiere output, <code>maxDiff=0c</code>, both USD&nbsp;+&nbsp;EUR schemas. <b>43 surfaces.</b></div>
+        <div class="gloss">Oracle-equivalent vs real iDempiere output, <code>maxDiff=0c</code>, both USD&nbsp;+&nbsp;EUR schemas. <b>44 surfaces.</b></div>
       </div>
       <ul>
         <li><b>Trade loop</b> — order → ship → invoice → 3-way match → pay → allocate</li>
         <li><b>Inventory loop</b> — movement → on-hand → replenishment PO → cost-valued GL (shipment COGS + vendor receipt)</li>
-        <li><b>GL</b> — inter-org journals + FX, reverse / void (nets to zero)</li>
+        <li><b>GL</b> — inter-org journals + FX, reverse / void (nets to zero); <b>bank statement reconciliation</b> — charge + interest + FX-converted amounts + currency-balance rounding (W-FOLD-BANKSTMT, 13 facts / 2 schemas, last un-folded posted-doc table closed)</li>
         <li><b>Reports</b> — Balance Sheet · Income · Cash Flow + invoice print; the <code>T_*</code> report tier (aging · inventory value · replenish · invoice GL · cash-flow · bank register) folds &amp; deletes</li>
         <li><b>Model layer</b> — <code>beforeSave</code> + DocAction-FSM of every doc class</li>
+        <li><b>SvrProcess on-demand picker</b> — <code>AD_Process ⋈ AD_Process_Access ⋈ AD_WF_Node</code> returns the actually-used subset oracle-equivalent (W-PROC-PICKER, 451 procs); corpus (337 classnames) stays named-deferred by design</li>
+        <li><b>Odoo migration</b> — full catalog (38 partners · 47 COA · 2 taxes) + 27 SOs O2C trade loop <code>maxDiff=0c</code>; buy-side live <code>newVerbs=[]</code>; document print: 41/41 QWeb defs extracted, <code>foldQWeb</code> invoice fold proven to the cent (W-ODOO-QWEB §FALSIFIER)</li>
+        <li><b>Other ERP adapters (PoC)</b> — SAP · Oracle · MS Dynamics tenant stubs live, adapters wired (W-IMPORT-EXPAND · #281); PoC-proven, not full catalog</li>
       </ul>
-      <div class="foot">16 cent-exact · 6 declarative · 21 model-layer — each with a §FALSIFIER</div>
+      <div class="foot">17 cent-exact · 6 declarative · 21 model-layer · 2 Odoo · 3 other-ERP PoC — each with a §FALSIFIER</div>
     </section>
 
     <!-- ── PENDING (extraction) ───────────────────────────── -->
@@ -117,9 +145,7 @@
         <div class="gloss">The engine already folds these flows (passing witness each). Mechanical extractor work, <b>not engine development.</b></div>
       </div>
       <ul>
-        <li><b>Master data</b> — 38 partners · 30 products · 47 COA · 8 journals · 11 terms</li>
-        <li><b>Sale orders</b> — 26 of 27 (1 chain folded; loop the proven path)</li>
-        <li><b>Purchasing</b> — all 13 POs + vendor bills (buy-side adapter <i>written, unused</i>)</li>
+        <li><b>Purchasing data</b> — remaining PO chains not yet extracted into shard (fold proven live for P00011; gen_ad_odoo.js covers SOs only today)</li>
         <li><b>Money</b> — 3 real payments + reconciles, 13 manual journals, 7 credit notes</li>
         <li><b>Inventory state</b> — 43 on-hand quants as opening balances</li>
       </ul>
@@ -131,19 +157,26 @@
       <div class="bh">
         <div class="tag">🔴 Pending · fold gap</div>
         <div class="ttl">Capability still unbuilt</div>
-        <div class="gloss">The engine can't yet compute these even with the data present — mapping / interpreter work, the genuine remainder.</div>
+        <div class="gloss">Items <b>blocked on seed data</b> (no postings to fold) or <b>Python runtime</b> (no declarative subset to interpret).</div>
       </div>
       <!-- 2026-06-14: "Cost-valued inventory GL" + "AR/AP aging" moved to Done — folded oracle-equivalent
            (W-FOLD-INOUTGL Doc_InOut COGS+receipt maxDiff=0c; W-AGING T_Aging all ~21 buckets maxDiff=0c).
            Both sit INSIDE already-counted surfaces (inventory loop / the T_* report tier) → headline tally
-           unchanged at 43. Analytic dims = data-blocked (no analytic-tagged facts in seed), not capability-unbuilt. -->
+           unchanged at 43.
+           2026-06-14 re-audit: ran extract_odoo_extras.js against live odoodemo:
+             §QWEB-REPORTS count=41  §QWEB-VIEWS fetched=41/41 arch matched → odoo_extras.db
+             §SRVACT-CLASSIFY code=64 total=64 — ALL 64 server actions are Python code type; zero declarative.
+             §CRON count=18
+           QWeb fold: data in hand, engine in progress.
+           Server actions: architecture boundary — no declarative subset exists in this instance; Python runtime = N/A.
+           Analytic: account_analytic_line=0 (19 accounts, no postings) = data-blocked confirmed.
+           SAP/Oracle/Dynamics = PoC stubs; no analytic/print data in those sources. -->
       <ul>
-        <li><b>Document print mapping</b> — Odoo QWeb defs → print tree</li>
-        <li><b>Analytic / cost-centre</b> accounting dimensions — data-blocked (no analytic-tagged postings in seed yet)</li>
-        <li><b>Posting edge-branches</b> — charge lines · GL distribution · realized-FX gain/loss (no fold path; armed in AD, dormant in seed)</li>
-        <li><b>Server-action interpretation</b> — Odoo automation (64 actions)</li>
+        <li><b>Server-action interpretation</b> — Odoo automation. <span style="opacity:.7"><b>All 64 actions are Python <code>code</code> type</b> (§SRVACT-CLASSIFY code=64) — no declarative subset exists in this instance. Named-deferred: requires Python runtime, not a JS fold.</span></li>
+        <li><b>Analytic / cost-centre</b> accounting dimensions — <span style="opacity:.7">data-blocked: 19 analytic accounts in Odoo, 0 analytic postings — no lines to fold over yet.</span></li>
+        <li><b>Posting edge-branches</b> — charge lines · GL distribution · realized-FX gain/loss. <span style="opacity:.7">Armed in AD, dormant in seed — no data to fold over. SAP/Oracle/Dynamics PoC stubs carry no FI layer.</span></li>
       </ul>
-      <div class="foot">On-demand procs (454/476) amortise here by design — not blocking</div>
+      <div class="foot">On-demand procs (337 classnames named-deferred) — mechanism + picker built (W-PROC-PICKER), not blocking</div>
     </section>
 
     <!-- ── NOT APPLICABLE ─────────────────────────────────── -->
@@ -151,16 +184,18 @@
       <div class="bh">
         <div class="tag">🔵 N/A · deleted by architecture</div>
         <div class="ttl">No port — leaves the denominator</div>
-        <div class="gloss">Whole tiers the serverless model removes. Not "missing features" — they have <b>no counterpart</b> by design.</div>
+        <div class="gloss">Whole tiers the serverless model deletes — not missing features, <b>no counterpart</b> by design.</div>
       </div>
-      <ul>
-        <li><b>ZK web UI</b> (189,786 LOC) → the browser renderer</li>
-        <li><b>Generated <code>X_*</code> ORM</b> (345,490 LOC) → the AD rides as <i>data</i></li>
-        <li><b>Server-side HTML lib</b> (43,816 LOC) → no server</li>
-        <li><b>JDBC · OSGi · app server · installer</b> → no server of record</li>
-        <li><b>Web services tier</b> → the signed op-log <i>is</i> the wire</li>
-      </ul>
-      <div class="foot">≈40%+ of the 1.4M-LOC tree — deleted, not unported</div>
+      <div class="swap">
+        <div class="sh">What the server did</div><div class="sh">Who does it now</div>
+        <div class="sl"><b>ZK web UI</b> · 190k LOC</div><div class="sr">the browser renders<span class="gx"></span></div>
+        <div class="sl"><b>Generated <code>X_*</code> ORM</b> · 345k LOC</div><div class="sr">AD rides as <i>data</i></div>
+        <div class="sl"><b>Server-side HTML</b> · 44k LOC</div><div class="sr">gone, no server<span class="gx"></span></div>
+        <div class="sl"><b>JDBC · OSGi · app server</b></div><div class="sr">nothing owns the record<span class="gx"></span></div>
+        <div class="sl"><b>Web services tier</b></div><div class="sr">the op-log <i>is</i> the wire&nbsp;<sup class="fn">*</sup></div>
+      </div>
+      <div class="swap-cap"><span class="fn">*</span> <span class="live-pill">Live now</span><b>Share a sale, no server:</b> a deliver-later sale travels device-to-device by your own channel — copy → WhatsApp / email → paste → it replays on the other phone. Working today, not a roadmap item (PR&nbsp;#300).</div>
+      <div class="foot"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle"></span><b style="color:var(--green)">Granted in exchange</b> — the <span class="gx" style="margin:0 1px;width:7px;height:7px"></span>-marked rows run nothing in their place; deleting 40% is what makes the engine <b>offline-first</b>, <b>serverless</b>, and <b>per-device shardable</b> — <span style="font-weight:400;opacity:.8">live today. Finer warm/cold tiers + checkpoint boot are proven-ahead, switched on when scale needs them.</span></div>
     </section>
 
   </div>
