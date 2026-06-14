@@ -21,7 +21,15 @@ Documented in `docs/ERPUserGuide.md §9`. The three two-way gaps — engine side
    AD_Window/AD_Table/AD_Tab/AD_Column back → emits the same `model` shape. Witness `scripts/poc_ninja_extract.js`
    round-trips `ninja_starter.xlsx` through stageModels→extractModel: **`§NINJA-EXTRACT roundtrip=MATCH`** for all
    6 user columns (name+refId), master detected via TabLevel>0; §FALSIFIER ghost-window→null. Committed `72285fee`.
-   ⬜ REMAINING (pill/DOM, separate deploy + GO): the Create-tab "Export an existing window" path + workbook serialize.
+
+   **✅ ENGINE+SERIALIZE DONE (W-NINJA-EXPORT) — workbook serialize leg.** `build/erp/ninja_export.js` (pure UMD):
+   `modelToRows(model)` = INVERSE of `parseRomo` (refId→PREFIX# via `REV_PREFIX`, rebuild `ColumnSet`, Master/WF/Kanban
+   cols) → `1_RO_ModelHeader` + `2_RO_ModelMaker` AoA; `modelToWorkbook(model, XLSX)` → SheetJS wb; `exportWindow(db,
+   winId, XLSX)` chains `extractModel`→wb; `exportBlob` → download Blob. Witness `scripts/poc_ninja_export.js`:
+   FULL round-trip **DB → extractModel → modelToWorkbook → XLSX bytes → re-read → parseSheet == original** (starter +
+   HRMIS), `§NINJA-EXPORT roundtrip=MATCH`; §FALSIFIER ghost-window→null Blob. Structural boundary inherited from
+   extractModel (no L#-values / valrules / display logic).
+   ⬜ REMAINING (pill/DOM, separate deploy + GO): the Create-tab "Export an existing window" picker + click→download wiring.
 2. **✅ DONE (W-NINJA-CALLOUT) — Auto-wire `AD_Column.Callout` from the sheet.** Grammar token added:
    `ColName@class.method` (e.g. `Y#IsActive@com.acme.AssetCallout.statusFromActive`). `parseColDef` extracts the
    `@callout` suffix; `buildTable` grafts it onto standard cols; `stageModels` ALTERs `AD_Column ADD COLUMN Callout`
