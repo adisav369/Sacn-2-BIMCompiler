@@ -212,6 +212,11 @@
   // Reads AD_Window/AD_Table/AD_Tab/AD_Column back from db and reconstructs the model shape
   // { bundleName, tables:[{name,master,workflow,kanban,columns}] } that parseSheet produces.
   // PURE read — no mutations. Non-standard columns only (standard cols are re-added by buildTable).
+  //
+  // STRUCTURAL BOUNDARY (NINJA_MODE_LANE.md §3): the round-trip is EXACT for everything stageModels
+  // persists — table/column/refId/master/workflow/callout. It does NOT reconstruct what staging never
+  // writes: L#-list values (parsed by parseColDef but not staged to AD_Ref_List), validation rules
+  // (AD_Val_Rule_ID), or display logic. Those travel as crafted JS / behaviour, not via the grammar.
   var STANDARD_COL_NAMES = ['AD_Client_ID','AD_Org_ID','IsActive','Created','CreatedBy','Updated','UpdatedBy'];
   var WORKFLOW_COL_NAMES  = ['DocStatus','DocAction'];
   var DT_ID = 13, DT_STRING = 10, DT_TABLEDIR = 19, DT_TABLE = 18;

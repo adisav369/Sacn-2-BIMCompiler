@@ -4,9 +4,38 @@
 
 # Ninja Mode — Excel-defines-the-model → emit a `.foldbundle` (browser, no JVM)
 
-**Status:** Phase 0 ✅ + Phase A ✅ + Phase B ✅ + Phase C ✅ + Phase D engine ✅ (pill DOM wiring + deploy ⛔ awaits GO)
-**Depends on:** the plugin system (W-PLUGIN) — already SHIPPED (erp sw v670, bim-ootb PR #297). See `prompts/PLUGIN_SYSTEM_LANE.md` + `build/erp/plugin_registry.js` + `build/erp/plugin_overlay.js`.
+**Status:** Phase 0 ✅ + A ✅ + B ✅ + C ✅ + D engine ✅ + **D pill (Create face) ✅ SHIPPED** (bim-ootb PR #301, erp sw v673).
+**Depends on:** the plugin system (W-PLUGIN) — SHIPPED (erp sw v670, bim-ootb PR #297). See `prompts/PLUGIN_SYSTEM_LANE.md` + `build/erp/plugin_registry.js` + `build/erp/plugin_overlay.js`.
 **Branch:** fresh `origin/master` (bim-compiler) for engine; fresh bim-ootb worktree off `origin/main` for the pill deploy.
+
+---
+
+## ▶▶ TWO-WAY (PackOut/PackIn) gaps — ENGINE ALL ✅ 2026-06-14 (Opus session)
+
+The forward Create face (author-from-sheet → Emit & Install) is LIVE + witnessed; the behaviour sample is
+witnessed (`scripts/poc_asset_status.js` → **W-ASSET-STATUS PASS**, sample `build/erp/fixtures/plugins/asset_status_callout.mjs`).
+Documented in `docs/ERPUserGuide.md §9`. The three two-way gaps — engine side now closed:
+
+1. **✅ DONE (W-NINJA-EXTRACT) — Reverse-export (`extractModel`) — the literal PackOut.** Engine verb
+   `NinjaStage.extractModel(db, AD_Window_ID) → model` (the clean INVERSE of `ninja_model.parseSheet`): reads
+   AD_Window/AD_Table/AD_Tab/AD_Column back → emits the same `model` shape. Witness `scripts/poc_ninja_extract.js`
+   round-trips `ninja_starter.xlsx` through stageModels→extractModel: **`§NINJA-EXTRACT roundtrip=MATCH`** for all
+   6 user columns (name+refId), master detected via TabLevel>0; §FALSIFIER ghost-window→null. Committed `72285fee`.
+   ⬜ REMAINING (pill/DOM, separate deploy + GO): the Create-tab "Export an existing window" path + workbook serialize.
+2. **✅ DONE (W-NINJA-CALLOUT) — Auto-wire `AD_Column.Callout` from the sheet.** Grammar token added:
+   `ColName@class.method` (e.g. `Y#IsActive@com.acme.AssetCallout.statusFromActive`). `parseColDef` extracts the
+   `@callout` suffix; `buildTable` grafts it onto standard cols; `stageModels` ALTERs `AD_Column ADD COLUMN Callout`
+   (additive) + writes it. Witness `scripts/poc_ninja_callout.js`: full chain sheet→parse→stage→`AdCallout.dispatch`
+   fires (**`derived={Description:'Ready'}`**); §FALSIFIER-A col-NULL→no-dispatch; §FALSIFIER-B deactivate→absent=[handler].
+   Committed `82320be6`.
+3. **✅ DONE (documented) — round-trip is STRUCTURAL.** Boundary stated in `extractModel` doc-comment + here: the
+   round-trip is EXACT for everything stageModels persists (table/column/refId/master/workflow/callout). It does NOT
+   carry what staging never writes — `L#`-list values (parsed by `parseColDef` but never staged to `AD_Ref_List`),
+   validation rules (`AD_Val_Rule_ID`), display logic. Those travel as crafted JS. If grammar-side parity for list
+   values matters later, the open forward-path work is: stage `listValues` → `AD_Reference`/`AD_Ref_List`, then read
+   them back in `extractModel`. Named, not silently dropped.
+
+Engine work = fresh `origin/master` (bim-compiler), witness-first. Pill/DOM work = bim-ootb worktree + GO.
 
 ---
 
@@ -155,7 +184,7 @@ No log line = not done.
 - Known deviation logged: HR_Employment.Name (ModelMakerSource has it; 2_RO_ModelMaker omits it)
 - Falsifier (unknown prefix Z# → String + WARN): PASS
 
-### Phase D (engine) ✅ — Create flow witnessed headless · pill DOM wiring + deploy ⛔ awaits GO
+### Phase D ✅ — Create flow witnessed headless · pill DOM wiring + deploy ✅ SHIPPED (PR #301, sw v673)
 `§NINJA-PILL sheet=Ninja_HRMIS tables=18 install=ACTIVE` + `§NINJA-PILL sheet=starter tables=2 install=ACTIVE`
 - `build/erp/ninja_create.js` — the "Create" (author/PackOut) controller: `previewSheet(wb,XLSX)` → derived-model
   preview (table/master/column refType, exactly what stageModels writes) + `emitAndInstall(reg, model)` → install+start.
@@ -164,10 +193,11 @@ No log line = not done.
   a minimal 2-table master→detail (AST_Asset + AST_Maintenance) exercising every grammar token (String/A#/D#/Y#/Q#/T#/_ID/Master).
 - `scripts/poc_ninja_create.js` — whitebox (DOM-free): starter sheet + HRMIS both preview → Emit & Install → windows
   reachable; re-Create idempotency proven (1 bundle, no dupes).
-- **Two-face framing (user, 2026-06-14, the PackOut/PackIn analogy):** the plug pill should offer Install (consume a
-  `.foldbundle` URL — existing flow) AND Create (author from a sheet — this lane). ⛔ The DOM tab in `plugin_overlay.js`
-  + deploy to bim-ootb idempiere.html needs the live page (plug pill not wired in the local checkout) + EXPLICIT GO —
-  visual work, propose-then-ship per feedback_wait_for_permission_ui.
+- **Two-face framing (user, 2026-06-14, the PackOut/PackIn analogy):** the plug pill offers Install (consume a
+  `.foldbundle` URL) AND Create (author from a sheet). ✅ SHIPPED — `plugin_overlay.js?v=2` `( Install )( Create )`
+  tabs, deployed bim-ootb PR #301 (erp sw v673). Witness `§NINJA-DOM-WITNESS PASS` (headless-chrome on real deploy
+  scripts: tab→Create, drop starter→preview 2, Emit→1 ACTIVE, 2 windows written through `window.__idmpDb`).
+  Card `prompts/NINJA_MODE_PILL.md`. **Remaining two-way gaps → see §NEXT SESSION block at top of this file.**
 
 ### Phase C ✅ — `build/erp/ninja_bundle.js` + `scripts/poc_ninja_bundle.js`
 `§NINJA-BUNDLE install id=org.ninja.hrmis state=ACTIVE models=18`
