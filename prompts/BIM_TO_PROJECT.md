@@ -28,12 +28,23 @@
 
 ---
 
-## TASK 0 — Confirm canonical ERP.db + templates load (one query/read each) · Witness W-PROJ-SCHEMA
+## TASK 0 — ✅ DONE (W-PROJ-SCHEMA PASS, 2026-06-14) — Confirm canonical ERP.db + templates load
+# Witness tests/poc_proj_schema.js (worktree feat/bim-to-project, commit d14af06): canonical = erp/ad_seed.db
+# (OPEN-3 resolved), all 11 C_Project/C_Order/M_PriceList write targets present+populated; 4D=6 phases,
+# 5D=CIDB Malaysia 2024/RM. Follow-on logged; C_ProjectIssue ABSENT (blocks Task D — add to seed).
+## TASK 0 (orig) — Confirm canonical ERP.db + templates load (one query/read each) · Witness W-PROJ-SCHEMA
 - Confirm the viewer-side canonical ERP.db (shared with BIM_TO_ERP OPEN-3) carries c_project*, c_order*.
 - Confirm sequence_rules.json loads (Time Machine already uses it) + the active 5D rate pack loads via rates.js.
 - **W-PROJ-SCHEMA:** `§PROJ_SCHEMA db=<file> proj=<bool> order=<bool> seq4d=<n phases> pack5d=<name>` — all named, not guessed.
 
-## TASK A — Cost on the Find selected bar + 5D pack in Settings · Witness W-FIND-COST
+## TASK A — ✅ DONE (W-FIND-COST PASS + CONTRACT PASS, 2026-06-14) — Cost on Find bar + 5D pack in Settings
+# Witness tests/poc_find_cost.js (commit d14af06): selection cost PARTITIONS whole-building exactly
+# (Σstoreys=Σdiscs=Σtypes=whole) + source-contract assert. navigate_find.js _selectionCost/_updateSelCost
+# fold cost over selection GUIDs (every kind), #find-selected-cost span; panels.js "5D Rate Pack" picker
+# (bim_5d_pack, live loadRateTemplate); rates.js initRateTemplate honours bim_5d_pack over locale.
+# Same round(rate×qty) basis as analysis_sidecar; BigDecimal reserved for the push (Task C). NOT deployed
+# (localhost only — needs SW v-bump + merge on GO). Browser visual-drive pending (Playwright not installed here).
+## TASK A (orig) — Cost on the Find selected bar + 5D pack in Settings · Witness W-FIND-COST
 Surface the EXISTING nlp.js cost compute (calcCost/getRate/RATES) onto #find-selected: show qty × rate
 for the current selection in the active pack's currency. Add a 5D rate-pack picker to the Settings JSON
 editor (the 4D sequence_rules.json is already there) — the picked pack drives BOTH the shown cost and the pushed price.

@@ -1,6 +1,11 @@
 # BIM → Project Order — Blueprint
 
-> **Status:** PAPER spec (no code yet). Sibling to `docs/BIMtoERP.md`.
+> **Status:** Task 0 + Task A BUILT & witnessed (2026-06-14, worktree `feat/bim-to-project`
+> commit `d14af06`, localhost-only — not yet deployed); §C–§E + §H/§I still PAPER.
+> Sibling to `docs/BIMtoERP.md`.
+> **Built so far:** §0/Task 0 substrate confirmed (`W-PROJ-SCHEMA` — canonical `erp/ad_seed.db`
+> carries all 11 write targets; OPEN-3 resolved) · §A/Task A cost-on-selection + 5D-pack-in-Settings
+> (`W-FIND-COST` — selection cost partitions the whole-building total exactly + source-contract).
 > **The one-line idea:** the *whole building* (or any selected slice) becomes an
 > iDempiere **`C_Project`** carrying its **4D schedule** (phases/tasks) and **5D cost**
 > (planned BOQ lines), which iDempiere can then **generate a Purchase Order from**.
