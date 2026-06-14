@@ -102,9 +102,7 @@ function sleep(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); 
   // P3: WR tender regression (and the walk falsifier seed — this shipment completes IN-group)
   await erp.click('.pos-card[data-pid="124"]');
   await erp.select('#pos-float-bp', '112');
-  await erp.click('#pos-float-tender');                              // §D-2: opens receipt-preview modal
-  await erp.waitForSelector('#pos-pay-ok', { timeout: 5000 }).catch(function () { fails++; console.log('   🔴 P3 receipt-preview modal did not appear'); });
-  await erp.click('#pos-pay-ok');                                    // §D-2: OK = manual pay → Complete
+  await erp.click('#pos-float-tender');                              // §R2-3/§R2-5: single Pay icon completes directly
   var wrOk = await waitFor(elog, '§POS-SALE', 20000);
   var wrLine = (grab(elog, /(§POS-SALE.*)/) || ['', ''])[1];
   verdict(wrOk && /newVerbs=\[\]/.test(wrLine) && /chainOk=Y/.test(wrLine), 'P3 W-POS-LIVE regression: Tender sale commits (WR path byte-identical)', wrLine);
@@ -213,6 +211,35 @@ function sleep(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); 
   await tapId('wh-qty-ok');
   verdict(await waitFor(wlog, '§WH PICK step=1/2', 10000), 'W3 step 1 confirmed SHORT (2→1, via=manual gate)',
     (grab(wlog, /(§WH PICK step=1\/2.*)/) || ['', ''])[1]);
+
+  // ── §C-R2-8 CROSS-RELOAD RESUME: a mid-walk PAGE RELOAD must restore the step-1 pick from IDB ──
+  // The in-memory W.opDb is wiped on reload; the new idmp_whwalk_progress cache rehydrates W.done.
+  // Proves: pick persisted (§WH PROGRESS-SAVE) → reload → re-pick the still-DR shipment → restored.
+  verdict(await waitFor(wlog, '§WH PROGRESS-SAVE inout=' + inoutId + ' picked=1', 8000),
+    '§C-R2-8 step-1 pick persisted to the resume cache (§WH PROGRESS-SAVE picked=1/2)',
+    (grab(wlog, /(§WH PROGRESS-SAVE.*)/) || ['', 'absent'])[1]);
+  console.log('— §C-R2-8: reload mid-walk — picked state must survive —');
+  await wk.reload({ waitUntil: 'domcontentloaded', timeout: 40000 });
+  wlog.length = 0;                                                   // clean slate: only post-reload lines
+  await waitFor(wlog, '§WH PILL gate=on', 30000);
+  await waitFor(wlog, '§BBOX_CLEARED', 30000);
+  await wk.evaluate(function () {                                    // re-engage (tolerate C-1 auto-engage)
+    if (window.WHWalk && WHWalk.isOpen && WHWalk.isOpen()) return;
+    var b = document.getElementById('pill-whwalk');
+    if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    else if (window.WHWalk) WHWalk.toggle();
+  });
+  await wk.waitForSelector('#wh-src', { timeout: 15000 });           // the still-DR shipment re-offered
+  await wk.evaluate(function () {
+    var btns = document.querySelectorAll('#wh-src button');
+    for (var i = 0; i < btns.length; i++) if (btns[i].textContent.indexOf('POS shipment') >= 0) { btns[i].click(); return; }
+  });
+  var rr = await waitFor(wlog, '§WH RESUME-RELOAD inout=' + inoutId, 15000);
+  var rrLine = (grab(wlog, /(§WH RESUME-RELOAD.*)/) || ['', 'absent'])[1];
+  verdict(rr && /restored=1\/2/.test(rrLine), '§C-R2-8 cross-reload restored the step-1 pick (§WH RESUME-RELOAD restored=1/2)', rrLine);
+  var ctrR = await wk.evaluate(function () { var c = document.getElementById('wh-pick-counter'); return c ? c.textContent : null; });
+  verdict(ctrR === '1', '§C-R2-8 picked-counter shows 1 after the reload (state truly restored)', String(ctrR));
+
   verdict(await waitFor(wlog, 'step=2/2', 15000), 'W3 step 2/2 focused');
   await wk.evaluate(function () { WHWalk.confirmHere(); }); await sleep(400);
   await tapId('wh-qty-ok');

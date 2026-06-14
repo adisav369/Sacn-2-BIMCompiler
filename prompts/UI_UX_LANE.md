@@ -461,4 +461,42 @@ Witnesses (bim-compiler, same train): **W-WH-LIVE 37/37 + W-WH-POS-PICK-LIVE 18/
 1. ✅ **POS PR #308 LANDED** (orphan-check 2026-06-14: `origin/main:erp/sw.js` carries `CACHE_VERSION='v680'` + `pos_lens.js?v=9` + `icons.js?v=10`; `pos-pay-modal`/`pos-pay-ok` = 0 refs — modal retired as shipped. No orphan).
 2. ✅ **ERPUserGuide §7 synced + published** (2026-06-14): replaced the stale "Payment panel layout (sw v667 — minimalist)" + retired the "receipt-preview pay flow" heading → new "top-bar total + single Pay" layout (`#pos-top-total` running total · `#pos-pill-scan` right · single `#pos-float-tender` Pay completes directly · draggable `§POS-FLOAT-DRAG` · Standard-partner default `§POS-PARTNER-DEFAULT` · dock `(+)`/`route` glyphs · R2-AUDIO earcon note). `mkdocs gh-deploy --force` pushed gh-pages `128a0a6f..2cfc26b1`; built `site/ERPUserGuide/index.html` carries new §7, old heading 0 occurrences. → red1oon.github.io/BIMCompiler/.
 3. **R2-AUDIO default-on** is a judgment call I shipped (subtle, ui_clicks off). If the user wants it OFF-by-default or a mute toggle on idempiere.html, flip `erp/sfx.json master.enabled`. Earcon voices (pluck/bell/harp) tunable by ear. ⛔ user-fact (a preference, not extractable).
-4. **Cross-reload WH resume (C-R2-8)** restores in-session only; a full restore-from-oplog across a page reload is deferred. (Feature work, not a UI tune — carry to a WH-walk lane session.)
+4. ✅ **Cross-reload WH resume (C-R2-8)** SHIPPED — bim-ootb PR #311 (wh_walk.js?v=8, viewer sw v657). Spec below.
+   Witness W-WH-POS-PICK-LIVE: step-1 SHORT pick → `§WH PROGRESS-SAVE picked=1/2` → page.reload() →
+   re-pick still-DR shipment → `§WH RESUME-RELOAD restored=1/2` → counter=1 → `PICK-COMPLETE picked=2/3
+   diffs=0 chainOk=Y` (restored W.done seals identically). W-WH-LIVE regression green (movement path
+   unchanged); eslint exit 0. New IDB key `idmp_whwalk_progress` (UI-state cache, NOT the signed blob);
+   pos-inout scope (completePos folds W.done, not the op-log). Auto-merge enabled.
+
+---
+
+## C-R2-8 CROSS-RELOAD RESUME — SPEC (2026-06-14, Opus — spec-first)
+**Issue:** mid-walk picks survive a lens close→reopen (in-session, `§WH RESUME`, W is module-scope) but
+NOT a PAGE RELOAD — `W.opDb` is a fresh in-memory db each load (wh_walk.js:114) and `draftFromPosDoc`
+resets `W.done` to nulls (buildRoute:270); per-step pick annotations are NOT written to the IDB sidecar
+until COMPLETION (`writebackToSidecar`, src='oplog' gated, :741). So reloading mid-sale loses the picks.
+**Root cause proven by code** (no guess): the persisted blob `idmp_kanban_proj` holds the SALE doc (DR),
+re-offered by the chooser on reload, but carries none of the in-progress pick state.
+
+**Scope (NON-INVENT, newVerbs=[], no engine/fold change):** pos-inout SALE walks only (C-R2-8 = "same
+SALE"). `completePos` folds `pickedByLine` from `W.done` (:666) — NOT the op-log — so restoring `W.done`
+is sufficient for a correct sealed completion; no signed-op replay needed (movement-route resume, which
+DOES fold the op-log at complete():787, stays out of scope — its completion would need op replay).
+
+**Design — a SEPARATE lightweight UI-state cache (never mutate the signed kanban blob mid-walk):**
+- New IDB key `idmp_whwalk_progress` in the existing `dbs` store (structured-clone JS object, no SQL):
+  `{ "<m_inout_id>": { picks: { "<lineKey>": {qty,short,skipped,reason} }, idx, ts } }`,
+  `lineKey = String(s.line.line)+'@'+String(s.m_locator_id)` (route-order-independent).
+- `_persistWalkProgress()` — after each confirmQty / skip (pos-inout only): rebuild picks from
+  `W.steps`+`W.done`, put under `String(W.doc.id)`. `§WH PROGRESS-SAVE inout=<id> picked=<n>`.
+- `restoreWalkProgress()` — in `open()` after `buildRoute()` when `W.doc.kind==='pos-inout'`: read the
+  key, match each saved pick to a step by lineKey → set `W.done[i]`; `W.idx`=first undone.
+  `§WH RESUME-RELOAD inout=<id> restored=<n>/<steps>`. No entry → no-op (clean first walk).
+- `_clearWalkProgress(id)` — on completion success: delete the entry (hygiene; the sidecar writeback
+  already removes the doc from the chooser). `§WH PROGRESS-CLEAR inout=<id>`.
+
+**Witness (whitebox §-first):** extend `scripts/poc_wh_pos_pick_live.js` — after W3 (step-1 confirmed),
+`page.reload()` → re-open walk → re-pick the SAME shipment in the chooser → assert
+`§WH RESUME-RELOAD … restored=1` + the picked-counter shows 1 → continue to step 2 → W4 PICK-COMPLETE
+fold `diffs=0` UNCHANGED (proves the restored W.done seals identically). Train: ONE PR (viewer surface),
+`wh_walk.js?v=7→8` + viewer sw bump; `npx eslint viewer/wh_walk.js` exit 0.
