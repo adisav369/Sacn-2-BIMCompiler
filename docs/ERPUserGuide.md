@@ -45,7 +45,7 @@ and routes honestly — nothing is ever faked:
 
 | Source | Migrate (extract YOUR data) | Install (resident demo tenant) |
 |---|---|---|
-| **Odoo** | live delegate agent: download `odoo_agent.zip`, run it natively next to your Odoo, drop the `odoo_chain.json` it writes — the browser re-folds and verifies it | **Client 12** — live-extracted from odoodemo, books diffed to the cent |
+| **Odoo** | live delegate agent: download `odoo_agent.zip`, run it natively next to your Odoo, drop the `odoo_chain.json` it writes — the browser re-folds and verifies it | **Client 12** — the full migrated Odoo catalog (**38 partners · 35 products · 27 sale orders**, `12-odoo.db`), books diffed to the cent |
 | **iDempiere** | ShowMe + `migrate_agent.js` against your own Postgres (credentials never leave your machine) | **Client 13** — real PG-agent extraction, PKs re-banded |
 | **SAP** | coming (no agent yet) | **Client 14 "SAP Flights"** — PoC: the documented **SFLIGHT** flight-booking reference model (carriers → Business Partners, connections → Products) |
 | **Oracle** | coming | **Client 15 "Oracle Scott"** — PoC: the canonical **EMP/DEPT (SCOTT)** schema (departments → BP Groups, employees → Business Partners) |
@@ -59,11 +59,14 @@ path for real extractions.
 survives a plain reload, re-install is a guarded no-op, and the install itself appears as a dot on the
 **W** world-history timeline.
 
-**Choosing a tenant at login:** the login card shows a "Select a tenant" step **only when two or more
-login-able tenants exist**. On a fresh seed there is only GardenWorld, so the step auto-skips — if you
-can't choose more clients, you haven't installed any yet. After installs the list fills (System,
-GardenWorld, and every installed tenant). Each tenant is entered through its **own Admin user**
-(e.g. *SAP Flights Admin*); the System user belongs to the System(0) client only.
+**Choosing a tenant at login — the front door:** the login card opens on a **five-tenant front door**.
+Even on a cold seed it lists **GardenWorld plus five migrated demo tenants** (Odoo · iDempiere · SAP ·
+Oracle · Dynamics), each tagged *demo · ready* or *demo · PoC* (the login step unions the resident
+tenants with the demo manifest). Picking a demo tenant **lazy-installs its shard on the spot** — no
+dialog, no `?shard=`, no server (P0, erp sw v692). Once installed it survives a reload and joins the
+resident list (System, GardenWorld, and every installed tenant). Each tenant is entered through its
+**own Admin user** (e.g. *SAP Flights Admin*); the System user belongs to the System(0) client only.
+(In-tenant test links that skip the picker enter via `?client=garden`.)
 
 ---
 
@@ -82,6 +85,8 @@ The pill is the single entry point for every tool. Left-to-right:
 | ⋯ | `more` | Install · Migrate · About · Tour · ShowMe help badges |
 
 **Tip:** long-press the **W** pill to open the Z+bomb drawer (undo / fold-back to a past state).
+Long-press a history **dot** inside the W overlay to fork a **Blue Future** speculative branch — the
+built-in pre-release test harness (§15).
 
 ---
 
@@ -563,9 +568,11 @@ Help
   ‹ · ›        Step through ShowMe sequence
 
 History (W pill)
-  Click a dot  Jump to that op in the log
-  ← / →        Step back/forward one op
-  Long-press W Open Z+bomb drawer (undo / fold-back)
+  Click a dot         Jump to that op in the log
+  ← / →               Step back/forward one op
+  Long-press W        Open Z+bomb drawer (undo / fold-back)
+  Long-press dot      Enter Blue Future — speculative branch (§15)
+  Long-press blue dot Accept blue branch up to here · Tap blue dot Zoom children
 ```
 
 ---
@@ -615,6 +622,56 @@ Use it any time — it never touches your real data and needs no network. Always
 | Input | Your live op-log (real user transactions) | Fresh in-memory seed (no user data) |
 | Tests | Data integrity — was anything tampered? | Engine correctness — does the logic work? |
 | Always green? | Only after real transactions | Yes — same result every run |
+
+---
+
+## 15. Blue Future — the speculative branch (built-in pre-release test harness)
+
+Blue Future is non-obvious the first time, so read this once. It lets you fork the live ledger
+into an **unofficial** speculative branch, run **real** operations inside it, then either **accept**
+them into the official books or **discard** them atomically — the official books never move until
+you accept. It is the app's built-in **pre-release test harness**: drive a client's whole lifecycle
+in blue, decide go / no-go, accept or discard before go-live.
+
+### Entering it — the gesture
+
+1. Tap the **W** pill to open the world-history overlay (the dot rail).
+2. **Long-press an official (white) history dot.** You enter BLUE.
+
+The whole surface switches to an **unmistakably unofficial** skin so you can never confuse it with
+the real books:
+
+- a **blue rim** on every window (including the GL canvas),
+- an **UNOFFICIAL** banner across the top,
+- and a **print watermark** — anything you print or export from blue is stamped *UNOFFICIAL*.
+
+### What you do inside blue — real, not a mock
+
+Everything you'd do for real, and it *is* real — just on the speculative branch. **CompleteIt** a
+document with its full fan-out (shipment · invoice · the GL postings), create records, run
+processes. Each op is a signed op-log entry carrying a `branch_id`, so it lands on the blue branch
+and **never touches the official tip**. The official chrome filters to `branch_id IS NULL`, so your
+real books read exactly as before while blue is open (the read-site branch filter, sw v687, closed
+the leak where blue rows could surface in official lists).
+
+### Closing the branch — accept or discard
+
+| Gesture | Result |
+|---|---|
+| **Long-press a blue dot** | **Accept up to here** — the branch is rebased into the official books up to that point; what was speculative becomes the record |
+| **Long-press the white anchor dot** (blue open) → confirm | **Discard** — the whole blue branch folds back atomically; the books never moved, so there is nothing to undo |
+| **Tap a blue dot** | **Zoom** into its children (the fan-out that op produced) |
+
+### Why it is the test harness
+
+Because blue runs the *real* engine — the same signed-commit fold, the same GL — a blue run is a
+faithful rehearsal, not a simulation. Take a freshly-migrated client through its entire first cycle
+(orders → ship → invoice → post → reports) in blue, read the consolidated result, then **accept** to
+go live or **discard** to try again. Nothing provisional ever reaches the official ledger.
+
+> Engine: `blue_future.js` (`window.BlueFuture`) over the kernel op-log `branch_id` lane. Witnessed
+> live end-to-end — **W-BLUE-FUTURE-LIVE** (bim-ootb PR #317, erp sw v687); engine **W-BLUE-FUTURE**
+> 9 / 9 headless.
 
 ---
 
