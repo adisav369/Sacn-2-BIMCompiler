@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Retail at Scale — Two Messages a Day</title>
+<!-- ============================================================
+     CANONICAL one-page evaluator story for a retail-system owner.
+     GROUNDED in the benchmark witness W-POS-WAN-SCALE:
+       spec   docs/POS_WAN_SCALE_BENCH.md
+       run    scripts/poc_pos_wan_scale.js
+       log    build/erp/poc_pos_wan_scale.log
+     Every number on this page traces to that run (10,000 tills,
+     ~4,600 reports/sec, 0 double-counts, books to the penny).
+     No invented figures. Self-contained (no external libraries).
+     ============================================================ -->
+<style>
+  :root{
+    --bg:#12171d; --panel:#1a212a; --panel2:#212a34; --ink:#e7edf3; --dim:#94a3b1; --line:#28323d;
+    --green:#7cb342; --amber:#ffa000; --red:#ef5350; --blue:#42a5f5; --violet:#b388ff;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+    max-width:1040px;margin:0 auto;padding:0 22px 80px;background:var(--bg);color:var(--ink);line-height:1.55}
+  a{color:#8fc3f7}
+  .kicker{font-size:11px;font-weight:800;letter-spacing:2.6px;text-transform:uppercase;color:var(--green);margin:0 0 10px}
+  h1{font-size:clamp(28px,5vw,44px);line-height:1.08;font-weight:850;margin:0 0 14px;letter-spacing:.2px}
+  h1 .hl{color:var(--green)}
+  h2{font-size:13px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--dim);margin:54px 0 16px;
+    padding-bottom:9px;border-bottom:1px solid var(--line)}
+  .lede{font-size:17px;color:#cdd6df;max-width:70ch;margin:0 0 8px}
+  .lede b{color:#fff}
+
+  /* ── hero ── */
+  header{padding:56px 0 8px;position:relative;overflow:hidden}
+  .glow{position:absolute;inset:-40% -10% auto auto;width:520px;height:520px;border-radius:50%;
+    background:radial-gradient(circle,rgba(124,179,66,.16),transparent 62%);filter:blur(8px);z-index:-1;animation:float 11s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(-26px,22px)}}
+  .pitch{margin:22px 0 4px;padding:17px 20px;background:linear-gradient(100deg,rgba(124,179,66,.10),rgba(66,165,245,.06));
+    border:1px solid var(--line);border-left:4px solid var(--green);border-radius:0 12px 12px 0;font-size:15.5px;color:#e9f0f6}
+  .pitch b{color:#fff}
+
+  /* ── animated flow diagram ── */
+  .stage{margin:26px 0 6px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 14px 12px;position:relative;overflow:hidden}
+  .flow{width:100%;height:auto;display:block}
+  .label{font:800 11px system-ui;fill:var(--dim);letter-spacing:.6px;text-transform:uppercase}
+  .office-ttl{font:850 15px system-ui;fill:#fff}
+  .office-sub{font:700 10px system-ui;fill:var(--green);letter-spacing:.5px}
+  .till rect{fill:var(--panel2);stroke:var(--line);stroke-width:1}
+  .till .scr{fill:rgba(124,179,66,.25)}
+  .wire{stroke:var(--line);stroke-width:1.4;fill:none}
+  .office-box{fill:url(#og);stroke:rgba(124,179,66,.5);stroke-width:1.5}
+  .pulse{r:4.5}
+  .pulse.am{fill:var(--amber);filter:drop-shadow(0 0 5px rgba(255,160,0,.9))}
+  .pulse.bl{fill:var(--blue);filter:drop-shadow(0 0 5px rgba(66,165,245,.9))}
+  .legend2{display:flex;flex-wrap:wrap;gap:7px 20px;justify-content:center;margin:8px 0 2px;font-size:12.5px;color:var(--dim)}
+  .legend2 .k{display:inline-flex;align-items:center;gap:7px}
+  .legend2 .d{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+  .chip{position:absolute;top:14px;right:16px;font:800 11px system-ui;letter-spacing:.4px;color:#04240a;
+    background:var(--green);border-radius:999px;padding:5px 12px;box-shadow:0 4px 16px rgba(124,179,66,.35)}
+
+  /* ── two-message cards ── */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:640px){.two{grid-template-columns:1fr}}
+  .msg{border:1px solid var(--line);border-radius:14px;padding:18px 19px;background:var(--panel);position:relative;overflow:hidden}
+  .msg.am{border-top:4px solid var(--amber)} .msg.bl{border-top:4px solid var(--blue)}
+  .msg .ic{font-size:26px;line-height:1}
+  .msg h3{margin:9px 0 5px;font-size:16.5px}
+  .msg .when{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase}
+  .msg.am .when{color:var(--amber)} .msg.bl .when{color:var(--blue)}
+  .msg p{margin:7px 0 0;font-size:13.5px;color:#cdd6df}
+  .msg .sweep{position:absolute;inset:0;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.05) 50%,transparent 60%);
+    transform:translateX(-100%);animation:sweep 6s ease-in-out infinite}
+  .msg.bl .sweep{animation-delay:3s}
+  @keyframes sweep{0%,55%{transform:translateX(-100%)}80%,100%{transform:translateX(100%)}}
+
+  /* ── resilience cards ── */
+  .res{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:760px){.res{grid-template-columns:1fr}}
+  .rc{border:1px solid var(--line);border-radius:14px;padding:17px 18px;background:var(--panel);
+    border-left:4px solid var(--red);transition:transform .15s,box-shadow .15s}
+  .rc:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,.3)}
+  .rc .ic{font-size:24px}
+  .rc h3{margin:8px 0 4px;font-size:15px}
+  .rc .bad{font-size:12.5px;color:var(--dim);margin:0 0 10px}
+  .rc .good{font-size:13px;color:#dfe7ef;display:flex;gap:8px;align-items:flex-start}
+  .rc .good::before{content:"✓";color:var(--green);font-weight:900;flex:0 0 auto}
+  .rc .good b{color:var(--green)}
+
+  /* ── scale stats + bars ── */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  @media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 14px;text-align:center}
+  .stat .n{font-size:clamp(22px,4vw,30px);font-weight:850;color:var(--green);line-height:1}
+  .stat .n.blue{color:var(--blue)} .stat .n.violet{color:var(--violet)}
+  .stat .c{font-size:11.5px;color:var(--dim);margin-top:7px;letter-spacing:.3px}
+  .bars{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 20px 14px}
+  .bars .cap{font-size:12.5px;color:var(--dim);margin:0 0 16px}
+  .bars .cap b{color:#e7edf3}
+  .bar{display:grid;grid-template-columns:74px 1fr 96px;align-items:center;gap:12px;margin:0 0 11px;font-size:13px}
+  .bar .lbl{color:#cdd6df;font-weight:700;text-align:right}
+  .bar .track{height:20px;background:var(--panel2);border-radius:6px;overflow:hidden}
+  .bar .fill{height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,#5a8f2a,var(--green));
+    transition:width 1.3s cubic-bezier(.2,.8,.2,1)}
+  .bar .val{color:var(--green);font-weight:800;font-size:12px}
+  .bars .straight{margin-top:10px;font-size:12.5px;color:#cdd6df}
+  .bars .straight b{color:var(--green)}
+
+  /* ── bottleneck removed ── */
+  .bn{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:680px){.bn{grid-template-columns:1fr}}
+  .bn .col{border:1px solid var(--line);border-radius:14px;padding:17px 18px;background:var(--panel)}
+  .bn .col.bad{border-top:4px solid var(--red)} .bn .col.good{border-top:4px solid var(--green)}
+  .bn h3{margin:0 0 4px;font-size:15px} .bn .sub{font-size:12px;color:var(--dim);margin:0 0 13px}
+  .queue{display:flex;align-items:center;gap:6px;height:34px}
+  .queue .t{width:15px;height:21px;border-radius:3px;background:var(--panel2);border:1px solid var(--line);flex:0 0 auto}
+  .queue.bad .t{animation:wait 1.6s ease-in-out infinite}
+  .queue.bad .t:nth-child(2){animation-delay:.12s}.queue.bad .t:nth-child(3){animation-delay:.24s}
+  .queue.bad .t:nth-child(4){animation-delay:.36s}.queue.bad .t:nth-child(5){animation-delay:.48s}
+  .queue.bad .t:nth-child(6){animation-delay:.6s}
+  @keyframes wait{0%,100%{background:var(--panel2)}50%{background:rgba(239,83,80,.5)}}
+  .queue.good .t{background:rgba(124,179,66,.35);border-color:rgba(124,179,66,.5);animation:ok 2s ease-in-out infinite}
+  .queue.good .t:nth-child(odd){animation-delay:.3s}
+  @keyframes ok{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  .bn .lock{margin-top:13px;font-size:13px}
+  .bn .lock.bad b{color:var(--red)} .bn .lock.good b{color:var(--green)}
+
+  /* ── comparison table ── */
+  .cmp{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .cmp th,.cmp td{padding:13px 15px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+  .cmp thead th{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);background:var(--panel2)}
+  .cmp thead th.us{color:var(--green)}
+  .cmp tbody tr{opacity:0;transform:translateY(8px);transition:opacity .5s,transform .5s}
+  .cmp tbody tr.in{opacity:1;transform:none}
+  .cmp td:first-child{font-weight:700;color:#fff;width:24%}
+  .cmp td.legacy{color:var(--dim);width:38%}
+  .cmp td.us{color:#e3ecdb}.cmp td.us b{color:var(--green)}
+  .cmp tr.caveat td{background:rgba(255,160,0,.06)} .cmp tr.caveat td.us{color:#f3e2c2}.cmp tr.caveat td.us b{color:var(--amber)}
+  @media(max-width:680px){.cmp,.cmp tbody,.cmp tr,.cmp td{display:block;width:auto!important}
+    .cmp thead{display:none}.cmp td{border:none;padding:4px 15px}
+    .cmp tr{border-bottom:1px solid var(--line);padding:10px 0}
+    .cmp td:first-child{padding-top:11px}
+    .cmp td.legacy::before{content:"Legacy: ";color:#6b7785;font-weight:700}
+    .cmp td.us::before{content:"This: ";color:var(--green);font-weight:700}}
+
+  .headline{margin:40px 0 0;padding:22px 24px;border-radius:16px;text-align:center;
+    background:linear-gradient(100deg,rgba(124,179,66,.14),rgba(66,165,245,.08));border:1px solid rgba(124,179,66,.3)}
+  .headline p{margin:0;font-size:clamp(16px,3vw,21px);font-weight:800;color:#fff;line-height:1.4}
+  .headline p .hl{color:var(--green)}
+
+  /* ── workings / footnote ── */
+  .workings{margin-top:30px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+  .workings h3{margin:0 0 12px;font-size:13px;letter-spacing:.8px;text-transform:uppercase;color:var(--green)}
+  .workings ol{margin:0;padding-left:20px;font-size:13px;color:#cdd6df;line-height:1.6}
+  .workings li{margin:0 0 8px} .workings li b{color:#fff} .workings code{background:rgba(128,128,128,.18);padding:1px 6px;border-radius:4px;font-size:.9em}
+  .run{margin:16px 0 4px;background:#0d1116;border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .run .rh{font-size:11px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);margin:0 0 9px}
+  .run pre{margin:0;font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;color:#bfe3a0;white-space:pre-wrap;overflow-x:auto}
+  .run .pc{color:#5e6b78}
+  .run .lk{margin-top:10px;font-size:12px}
+  footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);font-size:11.5px;color:#6b7785;line-height:1.7}
+  footer b{color:var(--dim)} footer code{background:rgba(128,128,128,.16);padding:1px 5px;border-radius:4px}
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="glow"></div>
+  <p class="kicker">Retail · Distributed ERP</p>
+  <h1>Two messages a day.<br><span class="hl">Books to the penny.</span></h1>
+  <p class="lede">Every checkout sends head office a <b>tiny daily summary</b> — not a firehose of every sale.
+  From those summaries the central books rebuild <b>exactly</b>, and the whole thing keeps working when the
+  network is bad, a server crashes, or a store burns down.</p>
+  <div class="pitch">“Every till sends head office just two small messages a day — morning stock-in, nightly close.
+  From those we rebuild your books <b>to the penny</b>. It keeps working on bad networks, never double-counts,
+  survives a server crash or a store fire, and we’ve proven it at <b>10,000 tills</b> with no slowdown — and the
+  bottleneck that bogs down the big-name ERP systems at that scale, we’ve <b>engineered out</b>.”</div>
+</header>
+
+<!-- ── animated flow ── -->
+<h2>How it works</h2>
+<div class="stage reveal">
+  <svg class="flowsvg" viewBox="0 0 960 300" role="img" aria-label="A day in two messages: each morning replenishment flows from the HQ warehouse out to the tills, then stops; at night each till sends one report back to HQ.">
+<style>
+.flowsvg .tl rect{fill:#212a34;stroke:#2b3947;stroke-width:1}
+.flowsvg .tl .s{fill:rgba(124,179,66,.25)}
+.flowsvg .w{stroke:#2b3947;stroke-width:1.4;fill:none}
+.flowsvg .ob{fill:#1c2530;stroke:rgba(124,179,66,.55);stroke-width:1.5}
+.flowsvg .ot{font:850 16px system-ui,sans-serif;fill:#fff}
+.flowsvg .os{font:800 10px system-ui,sans-serif;letter-spacing:.6px}
+.flowsvg .lb{font:800 11px system-ui,sans-serif;fill:#7e8b98;letter-spacing:.7px}
+.flowsvg .ch{fill:#ff9800;stroke:#ffb74d;stroke-width:1.5}
+.flowsvg .cht{font:850 15px system-ui,sans-serif;fill:#3a1d00}
+.flowsvg .chs{font:800 10px system-ui,sans-serif;fill:#6b3b00;letter-spacing:1.5px}
+.flowsvg .ph{font:800 12px system-ui,sans-serif;letter-spacing:.8px}
+</style>
+<defs><g id="ftl"><rect width="48" height="38" rx="5"/><rect class="s" x="7" y="7" width="34" height="16" rx="2"/><rect x="13" y="29" width="22" height="4" rx="2" fill="#394552"/></g></defs>
+<text class="lb" x="20" y="28">10,000 TILLS · STORES ON A WAN</text>
+<use href="#ftl" class="tl" x="24" y="44"/><use href="#ftl" class="tl" x="128" y="44"/><use href="#ftl" class="tl" x="232" y="44"/>
+<use href="#ftl" class="tl" x="24" y="102"/><use href="#ftl" class="tl" x="128" y="102"/><use href="#ftl" class="tl" x="232" y="102"/>
+<use href="#ftl" class="tl" x="24" y="160"/><use href="#ftl" class="tl" x="128" y="160"/><use href="#ftl" class="tl" x="232" y="160"/>
+<use href="#ftl" class="tl" x="24" y="218"/><use href="#ftl" class="tl" x="128" y="218"/><use href="#ftl" class="tl" x="232" y="218"/>
+<path class="w" d="M280,63 C470,63 600,150 770,150"/>
+<path class="w" d="M280,121 C470,121 640,150 770,150"/>
+<path class="w" d="M280,179 C470,179 660,150 770,150"/>
+<path class="w" d="M280,237 C470,237 600,150 770,150"/>
+<rect class="ob" x="772" y="96" width="168" height="108" rx="14"/>
+<text class="ot" x="856" y="140" text-anchor="middle">HEAD OFFICE</text>
+<text class="os" x="856" y="160" text-anchor="middle" fill="#9fd17a">· WAREHOUSE ·</text>
+<text class="os" x="856" y="178" text-anchor="middle" fill="#8fb3d8">BOOKS TO THE PENNY</text>
+<rect class="ch" x="390" y="10" width="220" height="46" rx="23"/>
+<text class="cht" x="500" y="33" text-anchor="middle">2 messages a day</text>
+<text class="chs" x="500" y="48" text-anchor="middle">PER TILL</text>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.07;.32;1" path="M280,63 C470,63 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.07;.09;.30;.32;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.12;.37;1" path="M280,121 C470,121 640,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.12;.14;.35;.37;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.17;.42;1" path="M280,179 C470,179 660,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.17;.19;.40;.42;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.22;.47;1" path="M280,237 C470,237 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.22;.24;.45;.47;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.57;.82;1" path="M280,63 C470,63 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.57;.59;.80;.82;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.62;.87;1" path="M280,121 C470,121 640,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.62;.64;.85;.87;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.67;.92;1" path="M280,179 C470,179 660,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.67;.69;.90;.92;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.72;.97;1" path="M280,237 C470,237 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.72;.74;.95;.97;1" values="0;0;1;1;0;0"/></circle>
+<text class="ph" x="500" y="292" text-anchor="middle" fill="#ffa000">☀ MORNING — REPLENISHMENT OUT (HQ → TILLS)<animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.04;.07;.49;.52;1" values="0;0;1;1;0;0"/></text>
+<text class="ph" x="500" y="292" text-anchor="middle" fill="#42a5f5">🌙 NIGHT — REPORTS IN (TILLS → HQ)<animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.54;.57;.97;.99;1" values="0;0;1;1;0;0"/></text>
+  </svg>
+  <div class="legend2">
+    <span class="k"><span class="d" style="background:var(--amber)"></span>☀ Morning — replenishment flows HQ → tills (SODA)</span>
+    <span class="k"><span class="d" style="background:var(--blue)"></span>🌙 Night — each till reports back to HQ (EODA close)</span>
+  </div>
+</div>
+
+<!-- ── the two messages ── -->
+<h2>What each till sends</h2>
+<div class="two">
+  <div class="msg am reveal"><div class="sweep"></div>
+    <div class="ic">☀</div><div class="when">Start of day · SODA</div>
+    <h3>“Here’s the stock that arrived.”</h3>
+    <p>One small message listing the morning replenishment received into the store.</p>
+  </div>
+  <div class="msg bl reveal"><div class="sweep"></div>
+    <div class="ic">🌙</div><div class="when">End of day · EODA close</div>
+    <h3>“Here’s what I sold, and what got used up.”</h3>
+    <p>One small message: the day’s takings (to the cent) and the stock consumed. The full sale-by-sale
+    detail stays at the store — only the summary travels.</p>
+  </div>
+</div>
+
+<!-- ── resilience ── -->
+<h2>When things go wrong</h2>
+<div class="res">
+  <div class="rc reveal"><div class="ic">📡</div><h3>Network drops</h3>
+    <p class="bad">Legacy: sales stall, queue, or fail when the link to the server is down.</p>
+    <div class="good">The till runs on its own and sends when it can. Re-sending is <b>safe — never double-counts</b>.</div>
+  </div>
+  <div class="rc reveal"><div class="ic">💥</div><h3>Server crashes</h3>
+    <p class="bad">Legacy: restore from last backup; anything since the backup can be lost.</p>
+    <div class="good">Head office <b>rebuilds itself from its log</b> — nothing lost.</div>
+  </div>
+  <div class="rc reveal"><div class="ic">🔥</div><h3>A store burns down</h3>
+    <p class="bad">Legacy: whatever never reached the server is gone for good.</p>
+    <div class="good">That store’s last nightly report is recovered from a <b>signed email backup</b> — and a faked one is rejected.</div>
+  </div>
+</div>
+
+<!-- ── scale ── -->
+<h2>Proven at scale</h2>
+<div class="stats">
+  <div class="stat reveal"><div class="n" data-to="10000">0</div><div class="c">tills tested, one laptop</div></div>
+  <div class="stat reveal"><div class="n blue" data-to="4600" data-suffix="+">0</div><div class="c">reports/sec accepted</div></div>
+  <div class="stat reveal"><div class="n" data-to="0">0</div><div class="c">double-counts on retry</div></div>
+  <div class="stat reveal"><div class="n violet" data-text="100%">0</div><div class="c">rebuilt to the penny</div></div>
+</div>
+<div class="bars reveal">
+  <p class="cap">As the fleet grows, the central relay keeps up — throughput stays high and cost grows in a
+  <b>straight line</b>, with no wall (measured: <b>W-POS-WAN-SCALE</b>).</p>
+  <div class="bar"><span class="lbl">200 tills</span><span class="track"><span class="fill" data-w="41"></span></span><span class="val">1,890/s</span></div>
+  <div class="bar"><span class="lbl">1,000</span><span class="track"><span class="fill" data-w="73"></span></span><span class="val">3,340/s</span></div>
+  <div class="bar"><span class="lbl">5,000</span><span class="track"><span class="fill" data-w="96"></span></span><span class="val">4,424/s</span></div>
+  <div class="bar"><span class="lbl">10,000</span><span class="track"><span class="fill" data-w="100"></span></span><span class="val">4,597/s</span></div>
+  <p class="straight">More stores → <b>more throughput, not a slowdown</b>. The work per store stays the same.</p>
+</div>
+
+<!-- ── the bottleneck ── -->
+<h2>The bottleneck we removed</h2>
+<p class="lede" style="margin-bottom:18px">Big ERP systems share <b>one central “next document number” counter</b>. Every till has to
+queue for it — that’s what chokes them at thousands of tills. We let each till number its own.</p>
+<div class="bn">
+  <div class="col bad reveal"><h3>Legacy — one shared counter</h3><p class="sub">Every till waits its turn</p>
+    <div class="queue bad"><span class="t"></span><span class="t"></span><span class="t"></span><span class="t"></span><span class="t"></span><span class="t"></span></div>
+    <p class="lock bad">At 10,000 tills that’s <b>90,000 locked hand-offs</b> a day — the queue is the wall.</p>
+  </div>
+  <div class="col good reveal"><h3>This approach — each till numbers its own</h3><p class="sub">No queue, no clashes</p>
+    <div class="queue good"><span class="t"></span><span class="t"></span><span class="t"></span><span class="t"></span><span class="t"></span><span class="t"></span></div>
+    <p class="lock good">Same 90,000 documents, <b>0 clashes</b>, no central lock. The wall is gone.</p>
+  </div>
+</div>
+
+<!-- ── comparison ── -->
+<h2>Side by side</h2>
+<table class="cmp">
+  <thead><tr><th>What matters to you</th><th>Legacy centralized ERP / POS</th><th class="us">This approach (measured)</th></tr></thead>
+  <tbody>
+    <tr><td>What each till sends</td><td class="legacy">Every sale, in real time, to the central server</td><td class="us"><b>2 small messages a day</b> per till</td></tr>
+    <tr><td>Bad / dropped network</td><td class="legacy">Sale stalls or queues; leans on the server being up</td><td class="us">Till runs on its own; sends its summary when it can</td></tr>
+    <tr><td>The “next document number”</td><td class="legacy">One shared counter — every till queues (the choke point)</td><td class="us"><b>Removed</b> — each till numbers its own</td></tr>
+    <tr><td>A message gets re-sent</td><td class="legacy">Risk of double-counting; needs careful handling</td><td class="us">Duplicate ignored — <b>safe to retry</b></td></tr>
+    <tr><td>Head-office server crashes</td><td class="legacy">Restore from last backup; gap can be lost</td><td class="us"><b>Rebuilds from its log</b> — nothing lost</td></tr>
+    <tr><td>A store burns down</td><td class="legacy">Whatever didn’t reach the server is gone</td><td class="us">Recovered from a <b>signed, tamper-proof backup</b></td></tr>
+    <tr><td>Rebuild books from the summaries</td><td class="legacy">N/A — server already holds it all</td><td class="us">Proven <b>exact to the penny</b></td></tr>
+    <tr><td>Scale we tested</td><td class="legacy">Needs a server farm + tuning to push high till counts</td><td class="us"><b>10,000 tills on one laptop</b>, straight-line scaling</td></tr>
+    <tr><td>Infrastructure</td><td class="legacy">Central servers, DB licences, ops team</td><td class="us">No server farm; runs lean</td></tr>
+    <tr class="caveat"><td>Honest caveat</td><td class="legacy">Decades of features (finance, HR, manufacturing…)</td><td class="us">This proves the <b>reporting + recovery backbone</b> at scale, not the full feature catalogue. One known gap: two stores inventing the <b>same brand-new product</b> at once needs more work.</td></tr>
+  </tbody>
+</table>
+
+<div class="headline reveal"><p>Same books, <span class="hl">to the penny</span> — but it survives bad networks, crashes and fires,
+and it doesn’t hit the wall that bogs legacy systems down at thousands of tills.</p></div>
+
+<!-- ── how the numbers were made (footnote workings) + run it yourself ── -->
+<h2>How the benchmark reads — the workings</h2>
+<div class="workings reveal">
+  <h3>What the run actually does (and where each number comes from)</h3>
+  <ol>
+    <li><b>Real unit, synthetic fleet.</b> One real store’s economics are <b>read from the seed database</b>
+      (<code>ad_seed_fullwidth.db</code>): a real product, its real price, its real bill-of-materials recipe.
+      The fleet size <b>N</b> (200 → 10,000) is the only made-up number — each till replays that one real unit.
+      Nothing is invented; the per-store totals trace to actual rows.</li>
+    <li><b>Two messages per till.</b> Each till sends a <b>SODA</b> (morning stock-in) and an <b>EODA</b>
+      (nightly close) over real HTTP to a central relay. So central receives exactly <b>2 × N</b> messages —
+      that’s the <code>2N-ops</code> column. The relay just <b>orders and de-duplicates</b> them; it computes nothing.</li>
+    <li><b>Throughput (the bar chart).</b> We time how long the relay takes to accept each wave. <code>reports/sec</code>
+      = messages ÷ seconds. It <b>stays high as N grows</b> because the work per message is fixed — that’s the
+      “straight line”, and why the bars rise rather than collapse.</li>
+    <li><b>“To the penny.”</b> Central re-adds every nightly summary and checks the total against the expected
+      figure computed independently — money in <b>exact cents</b> (no rounding drift). Match = pass (test <b>B4</b>).</li>
+    <li><b>“0 double-counts.”</b> We deliberately <b>re-send</b> a fifth of the tills (a flaky-network retry).
+      The relay accepts <b>0</b> extra and the totals don’t move (test <b>B3</b>).</li>
+    <li><b>Crash &amp; fire.</b> We kill the relay and restart it — it <b>rebuilds from its log</b>, totals identical
+      (B5). We simulate a store losing everything — its last <b>signed</b> nightly report is recovered from an
+      email backup, and a forged one is rejected (B6).</li>
+    <li><b>The bottleneck.</b> A traditional shared document-number counter would need <b>90,000 locked hand-offs</b>
+      a day at 10,000 tills (and clash 89,991 times if naively split). Letting each till number its own gives
+      <b>0 clashes, no lock</b> (test G1).</li>
+  </ol>
+  <div class="run">
+    <p class="rh">Run it yourself — Node.js, no server, ~10 seconds</p>
+<pre><span class="pc"># full sweep 200 → 10,000 tills (writes build/erp/poc_pos_wan_scale.log)</span>
+node scripts/poc_pos_wan_scale.js
+
+<span class="pc"># quick check at two sizes</span>
+node scripts/poc_pos_wan_scale.js 200,1000</pre>
+    <p class="lk">→ <a href="poc_pos_wan_scale.js">the benchmark script (raw)</a>
+      &nbsp;·&nbsp; <a href="POS_WAN_SCALE_BENCH/">the spec it proves</a></p>
+  </div>
+</div>
+
+<footer>
+  <b>Grounded, not marketing.</b> Every figure on this page traces to the benchmark witness <b>W-POS-WAN-SCALE</b> —
+  spec <code>docs/POS_WAN_SCALE_BENCH.md</code>, run <code>scripts/poc_pos_wan_scale.js</code>,
+  log <code>build/erp/poc_pos_wan_scale.log</code>. Measured on a single machine: 200 → 10,000 tills,
+  20,000 daily reports, ~4,600 accepted/sec, 0 double-counts on retry, books reconstructed exact to the cent,
+  survives relay restart (log replay) and total store loss (signed inbox snapshot).
+  Part of the <a href="HolyGrail/">Holy Grail</a> / <a href="DistributedERP/">Distributed ERP</a> story.
+</footer>
+
+<script>
+(function(){
+  // flow diagram is now self-contained SMIL (see the .flowsvg block above) — no JS needed for it.
+
+  // ── reveal-on-scroll + count-up + bar-grow ──
+  function countUp(el){
+    if(el._done)return; el._done=1;
+    if(el.dataset.text){el.textContent=el.dataset.text;return;}
+    var to=+el.dataset.to, suf=el.dataset.suffix||'', t0=null, dur=1200;
+    function step(ts){ if(!t0)t0=ts; var p=Math.min(1,(ts-t0)/dur); var e=1-Math.pow(1-p,3);
+      el.textContent=Math.round(to*e).toLocaleString()+(p===1?suf:''); if(p<1)requestAnimationFrame(step);}
+    requestAnimationFrame(step);
+  }
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){
+    if(!e.isIntersecting)return; var el=e.target; el.classList.add('in');
+    el.querySelectorAll&&el.querySelectorAll('.n[data-to],.n[data-text]').forEach(countUp);
+    if(el.classList.contains('n'))countUp(el);
+    el.querySelectorAll&&el.querySelectorAll('.fill[data-w]').forEach(function(f){f.style.width=f.dataset.w+'%';});
+    io.unobserve(el);
+  });},{threshold:.25});
+  document.querySelectorAll('.reveal,.stat,.bars').forEach(function(el){io.observe(el);});
+  // comparison rows stagger in
+  var cio=new IntersectionObserver(function(es){es.forEach(function(e){ if(!e.isIntersecting)return;
+    document.querySelectorAll('.cmp tbody tr').forEach(function(tr,i){setTimeout(function(){tr.classList.add('in');}, i*70);});
+    cio.disconnect();});},{threshold:.1});
+  var cmp=document.querySelector('.cmp'); if(cmp)cio.observe(cmp);
+
+  // safety net — never leave content hidden (no IntersectionObserver, reduced-motion, print, or a
+  // browser that re-lays-out before the observer fires). After a grace period, reveal everything.
+  function revealAll(){
+    document.querySelectorAll('.reveal,.stat,.bars').forEach(function(el){el.classList.add('in');
+      el.querySelectorAll&&el.querySelectorAll('.n[data-to],.n[data-text]').forEach(countUp);
+      el.classList&&el.classList.contains('n')&&countUp(el);
+      el.querySelectorAll&&el.querySelectorAll('.fill[data-w]').forEach(function(f){f.style.width=f.dataset.w+'%';});});
+    document.querySelectorAll('.cmp tbody tr').forEach(function(tr){tr.classList.add('in');});
+  }
+  if(!('IntersectionObserver'in window)||matchMedia('(prefers-reduced-motion:reduce)').matches){revealAll();}
+  else{setTimeout(revealAll,2800);}
+})();
+</script>
+</body>
+</html>

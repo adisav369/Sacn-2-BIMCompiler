@@ -1,12 +1,17 @@
 name: Deploy MkDocs to GitHub Pages
 
+# ⚠ DO NOT REMOVE — landmine history (2026-06-16)
+# This workflow USED to auto-run `mkdocs gh-deploy --force` on every push to master.
+# That was correct when master was the trunk. It is NOT anymore: real doc work lives on
+# long-lived feat/* branches that publish MANUALLY via `mkdocs gh-deploy`, and master is a
+# stale ancestor hundreds of commits behind. A master push therefore force-pushed a THIN
+# site over gh-pages and WIPED live pages (migrate_status_panel.html, glassbowl*.html, …).
+# Fix: (1) no auto-trigger — manual dispatch only; (2) a no-deletion guard that ABORTS if the
+# build would remove any currently-live top-level page. Publishing stays: `mkdocs gh-deploy`
+# from the working branch (the superset), or trigger this workflow by hand on a full checkout.
+
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - 'docs/**'
-      - 'mkdocs.yml'
+  workflow_dispatch: # manual only — never auto-fire from stale master
 
 permissions:
   contents: write
@@ -25,6 +30,27 @@ jobs:
 
       - name: Install dependencies
         run: pip install mkdocs-material pymdown-extensions
+
+      - name: Build site
+        run: mkdocs build --site-dir site
+
+      # No-deletion guard: refuse to publish if this build would REMOVE any page that is
+      # currently live on gh-pages. A thin/stale checkout fails here instead of wiping the site.
+      - name: Guard — no live page may be deleted
+        run: |
+          git fetch origin gh-pages --depth=1 || { echo "no gh-pages yet — first deploy, skipping guard"; exit 0; }
+          missing=0
+          for live in $(git ls-tree -r --name-only origin/gh-pages | grep -E '\.html$'); do
+            if [ ! -f "site/$live" ]; then
+              echo "::error::would DELETE live page: $live"
+              missing=$((missing+1))
+            fi
+          done
+          if [ "$missing" -gt 0 ]; then
+            echo "::error::$missing live page(s) would be removed — refusing to deploy a thinner site. Deploy from the full superset branch."
+            exit 1
+          fi
+          echo "guard OK — no live page removed"
 
       - name: Deploy
         run: mkdocs gh-deploy --force
