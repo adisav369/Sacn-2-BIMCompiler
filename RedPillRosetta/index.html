@@ -3896,7 +3896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../BIMUserGuide.md" class="md-nav__link">
+      <a href="../BIMUserGuide/" class="md-nav__link">
         
   
   
@@ -4386,6 +4386,89 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#7b-b1-implementation-spec-bom-driven-attach-map-persist-first-timeline-unify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7b. B1 implementation spec — BOM-driven attach map + persist-first + timeline unify
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7b. B1 implementation spec — BOM-driven attach map + persist-first + timeline unify">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#7b1-the-replacement-kills-f1f4-f6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7b.1 The replacement (kills F1–F4, F6)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7b2-phase-ordering-uncalibrated-degrade-prompt-b1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7b.2 Phase ordering + uncalibrated degrade (prompt B1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7b3-persist-first-q5-fixes-f8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7b.3 Persist-first (Q5, fixes F8)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7b4-one-op-log-one-playback-kill-the-double" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7b.4 One op-log, one playback (kill the double)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7b5-rides-the-same-hb-session-tree-pr-291-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7b.5 Rides the SAME HB session tree (PR #291 contract)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7b6-witness-poc_redpill_governed_dragjs-w-redpill-governed-drag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7b.6 Witness — poc_redpill_governed_drag.js (W-REDPILL-GOVERNED-DRAG)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#8-open-design-questions-these-gate-b1b2-answers-needed-not-extractable" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4494,8 +4577,8 @@ are held for approval with the rest of this proposal.)</em></p>
 </tr>
 <tr>
 <td>F9</td>
-<td>Materialization <code>grammar + event_log → NewIFC.db</code> is <strong>roadmap P5, not built</strong></td>
-<td><code>RED_PILL.md:433</code> (§11.5 P5), <code>NEW_FROM_REFERENCE.md</code> §8.3</td>
+<td>~~Materialization <code>grammar + event_log → NewIFC.db</code> is <strong>roadmap P5, not built</strong>~~ <strong>CLOSED (sw v653):</strong> <code>viewer/materialize.js</code> <code>toBuffer(db)=db.export()</code> of the edited in-memory db → <code>NewIFC.db</code>; identity mode 1(b) now runs the gate on the REAL file (W-REDPILL-MATERIALIZE M1 PASS 3504/3504 digest match)</td>
+<td><code>viewer/materialize.js</code>, <code>viewer/tests/poc_redpill_materialize.js</code>; was <code>RED_PILL.md §11.5 P5</code>, <code>NEW_FROM_REFERENCE.md</code> §8.3</td>
 </tr>
 <tr>
 <td>F10</td>
@@ -4563,8 +4646,10 @@ edit. If identity fails, governed-delta results are meaningless.</p>
 2. Capture the materialized element set. Two targets, phased:
    - <strong>(a) in-session</strong> (available now): element AABBs as the editor holds them
      (<code>element_transforms</code> + mesh matrices — see Q5 on the F8 split);
-   - <strong>(b) <code>NewIFC.db</code></strong> (after P5 lands, F9): the materialized file itself — the real
-     round-trip per <code>NEW_FROM_REFERENCE.md</code> §16.5/§16.7.
+   - <strong>(b) <code>NewIFC.db</code></strong> (P5 landed, F9 closed — sw v653): the materialized file itself — the real
+     round-trip per <code>NEW_FROM_REFERENCE.md</code> §16.5/§16.7. <code>viewer/materialize.js</code> <code>db.export()</code>s the
+     edited in-memory db; <code>poc_redpill_materialize.js</code> M1 runs §2's gate maths on the reopened file
+     (PASS 3504/3504, digest match, centroid 0.0mm). Mode 1(a) in-session remains the no-IDB path.
 3. Compare against the reference DB with the reused maths of §2:</p>
 <table>
 <thead>
@@ -4737,6 +4822,68 @@ smoke gate (A3) once B2 lands.</p>
   digests); volume = the G2 SQL verbatim in sql.js.</li>
 </ul>
 <hr />
+<h2 id="7b-b1-implementation-spec-bom-driven-attach-map-persist-first-timeline-unify">7b. B1 implementation spec — BOM-driven attach map + persist-first + timeline unify<a class="headerlink" href="#7b-b1-implementation-spec-bom-driven-attach-map-persist-first-timeline-unify" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>Implemented on <code>feat/redpill-b1-bom-attach</code>. The 7 design answers (§8) are LAW here:
+Q1=G8-GOVERNANCE, Q2=1.0mm, Q3=event-log-is-the-reference (= the History op-log),
+Q4=strict ungoverned=0-for-anything-that-MOVED, Q5=persist-first, Q6=±0.1%, Q7=ALL-classes.</p>
+</blockquote>
+<h3 id="7b1-the-replacement-kills-f1f4-f6">7b.1 The replacement (kills F1–F4, F6)<a class="headerlink" href="#7b1-the-replacement-kills-f1f4-f6" title="Permanent link">&para;</a></h3>
+<p>Today <code>grid_recompose.rebuild()</code> builds the attach map via <code>_kinEngine.attachGridToElements()</code>
+(proximity heuristic, F1), then <code>_fireBomRecompose</code> selects parents <em>through</em> that heuristic map
+(<code>getAffectedBranch(_bomNodes, attachMap, gridId)</code>, F4). B1 inverts the source:</p>
+<ul>
+<li><strong><code>bom_tree.buildBomAttachMap(bomNodes, bomGridMgr)</code></strong> (new) — builds <code>gridId → [{guid,bomNodeId,
+  parentId,anchorFace,strategy}]</code> <strong>from the BOM tree itself</strong>: each materialized child carrying an
+  <code>_elementRef</code> (→ guid, <code>bom_tree.js:177</code>) is bound to the grid line(s) its <strong>parent BOM</strong> created
+  (the <code>bomGridMgr</code> grids whose <code>bomNodeId</code> == the parent's id, or — via <code>grid_shared_key</code> — the
+  shared group). BOM data <em>builds</em> the map; proximity never enters. <code>§BOM_ATTACH map built: bom=N
+  fallback=M grids=G</code>.</li>
+<li><strong>Heuristic fallback only where BOM is genuinely absent</strong> — a shown guid with <strong>no</strong> matching
+  <code>_elementRef</code> falls back to the proximity classification, and its count is the <code>fallback=M</code> tally
+  (F2: no silent heuristic creep). A fallback element is allowed to exist but, per Q4, must be
+  <strong>STATIC</strong> — the witness asserts <code>fallback</code> elements did not move.</li>
+<li><strong>On drag</strong>, if the BOM attach map is non-empty, <code>applyDrag</code> fires the <strong>BOM path</strong>
+  (<code>§BOM_RECOMPOSE</code>) driven by the BOM map — <em>not</em> <code>§RECOMPOSE_ENGINE</code>'s heuristic bay-proportional
+  bulk-translate. Every governed child recomposes via the proven <code>BOMNode.recompose</code> algebra
+  (anchor-face edge-follow, SPAN stretch, FIXED stay — <code>bom_node.js</code>). <code>governed=N/N ungoverned=0</code>.</li>
+</ul>
+<h3 id="7b2-phase-ordering-uncalibrated-degrade-prompt-b1">7b.2 Phase ordering + uncalibrated degrade (prompt B1)<a class="headerlink" href="#7b2-phase-ordering-uncalibrated-degrade-prompt-b1" title="Permanent link">&para;</a></h3>
+<p><code>materializeBomLevel</code> (Next) must have run to populate <code>_bomNodes</code> + <code>_bomGridMgr</code> <strong>before</strong> a
+governed drag. If a drag arrives with <code>_bomNodes.length === 0</code> (UNCALIBRATED — user dragged before
+Next), B1 <strong>degrades visibly</strong>: logs <code>§BOM_RECOMPOSE skipped reason=uncalibrated (bomNodes=0)</code> and
+the legacy heuristic <code>§RECOMPOSE_ENGINE</code> path still runs (no break, no governance claim). The gate
+treats an uncalibrated session as "not a governed-delta candidate" — it never silently claims
+<code>governed=</code>.</p>
+<h3 id="7b3-persist-first-q5-fixes-f8">7b.3 Persist-first (Q5, fixes F8)<a class="headerlink" href="#7b3-persist-first-q5-fixes-f8" title="Permanent link">&para;</a></h3>
+<p>The governed recompose mutates mesh matrices (<code>_applyBomDiffCommand</code>). B1 additionally <strong>persists
+each governed move's new center to <code>element_transforms</code></strong> and commits the whole governed set as
+<strong>ONE <code>GRID_MOVE</code> kernel-op group</strong> (one <code>gid</code>) via the existing <code>KernelOps.commitOp</code> →
+<code>universal_history</code> wrapper. "Actual = the persisted DB row" now holds: a read-the-tip query returns
+the moved position. The op <code>params.cascade</code> carries every governed <code>{guid,oldX,oldY,newX,newY}</code> so
+<code>GridDrag.applyReplayedMove</code> (the existing GRID_MOVE fold path, <code>universal_history.js:274-282</code>)
+reverses the WHOLE governed set on a timeline step-back — the SO-Complete-style group fold.</p>
+<h3 id="7b4-one-op-log-one-playback-kill-the-double">7b.4 One op-log, one playback (kill the double)<a class="headerlink" href="#7b4-one-op-log-one-playback-kill-the-double" title="Permanent link">&para;</a></h3>
+<p><code>grid_drag.js</code> keeps a private <code>hist[]</code> compound-undo + Ctrl+Z handler. B1 routes the editor's
+Ctrl+Z/Y through <code>UniversalHistory.undo()/redo()</code> (the shared HB timeline) so the timeline and the
+keyboard drive the <em>same</em> op-log; the private <code>hist[]</code> becomes a redundant shadow and the Ctrl+Z
+keydown no longer calls <code>KernelOps.undoOp</code> directly behind the timeline's back.</p>
+<h3 id="7b5-rides-the-same-hb-session-tree-pr-291-contract">7b.5 Rides the SAME HB session tree (PR #291 contract)<a class="headerlink" href="#7b5-rides-the-same-hb-session-tree-pr-291-contract" title="Permanent link">&para;</a></h3>
+<p>The governed <code>GRID_MOVE</code> commit flows through <code>KernelOps.commitOp</code> → the <code>universal_history</code>
+<code>commitOp</code> wrapper → <code>_recordOp</code> → <code>_ensureAuthoritativeTreeKey()</code> (re-keys via <code>HB.setTreeKey
+(_treeKey())</code>, keyed off <code>_openDbUrl()</code>/<code>A.DB_URL</code>) → <code>HB.push</code>. No new key, no parallel store: the
+governed move lands in the same per-session Z tree re-home recalls (the empty-Z #291 fix is honored
+by construction — B1 adds no keying path of its own). <code>poc_session_recall.js</code> stays green.</p>
+<h3 id="7b6-witness-poc_redpill_governed_dragjs-w-redpill-governed-drag">7b.6 Witness — <code>poc_redpill_governed_drag.js</code> (W-REDPILL-GOVERNED-DRAG)<a class="headerlink" href="#7b6-witness-poc_redpill_governed_dragjs-w-redpill-governed-drag" title="Permanent link">&para;</a></h3>
+<p>Node whitebox over <code>bom_tree.js</code>/<code>bom_node.js</code>/<code>bom_grid.js</code> + a fixture DB (W022 schema; built in
+the witness — the SampleCastle DB is not in this worktree, so the fixture <em>reproduces the F6 class</em>:
+a parent BOM with many <code>_elementRef</code> children that the proximity heuristic would bulk-translate as
+interior). Asserts: BOM attach map governs <strong>all</strong> children (<code>governed=N/N ungoverned=0</code>); the
+proximity-only baseline shows the 111-class regression (most interior) → the BOM map fixes it; the
+move persists to <code>element_transforms</code> (read-the-tip = new position); ONE <code>gid</code> <code>GRID_MOVE</code> op rides
+the HB tree; a timeline fold-back reverses the whole governed set. <code>§BOM_RECOMPOSE</code> fires,
+<code>§RECOMPOSE_ENGINE</code> does not.</p>
+<hr />
 <h2 id="8-open-design-questions-these-gate-b1b2-answers-needed-not-extractable">8. Open design questions — these gate B1/B2 (answers needed, not extractable)<a class="headerlink" href="#8-open-design-questions-these-gate-b1b2-answers-needed-not-extractable" title="Permanent link">&para;</a></h2>
 <p><strong>Q1 — Gate number.</strong> Prompt says <code>G7-GOVERNANCE</code>; <code>G7-COMPOSITION</code> is already taken
 (<code>TheRosettaStoneStrategy.md:117</code>). Rename the new gate <strong>G8-GOVERNANCE</strong> (recommended), or
@@ -4758,10 +4905,10 @@ FAIL", but B1 allows a heuristic fallback "where BOM data genuinely doesn't exis
 Proposal: strict mode (default, <code>ungoverned=0</code> required, fallback elements must be STATIC) vs a
 declared <code>fallback=N</code> budget mode for DBs with incomplete <code>element_ref</code> coverage. Which is the
 shipping default — and is <em>any</em> non-zero fallback ever a PASS?</p>
-<p><strong>Q5 — Identity scope today (F8/F9).</strong> Until P5 materialization exists, identity mode 1(a)
-compares the in-session state. Given F8 (kinematics never persists to DB), should B1 make
-DB-persistence of governed moves a hard requirement <em>before</em> B2 wires the gate (recommended —
-otherwise "actual" is ambiguous), or should the witness read mesh matrices as interim truth?</p>
+<p><strong>Q5 — Identity scope today (F8/F9). RESOLVED.</strong> F8 fixed by B1 (persist-first → <code>element_transforms</code>);
+F9 closed by P5 (<code>viewer/materialize.js</code>, sw v653). Identity mode 1(b) now runs the gate on the real
+exported <code>NewIFC.db</code> (W-REDPILL-MATERIALIZE M1); 1(a) in-session remains the no-IDB/node path. "Actual =
+the persisted DB row" holds end-to-end: the persisted center materializes byte-for-byte into the file.</p>
 <p><strong>Q6 — Delta-mode volume band.</strong> Confirm: predicted-vs-actual volume within the same ±0.1 %
 (G2 reuse), with actual-vs-reference volume intentionally unchecked after an edit (volume change
 is the design intent).</p>

@@ -3005,6 +3005,67 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#15-blue-future-the-speculative-branch-built-in-pre-release-test-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Blue Future — the speculative branch (built-in pre-release test harness)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. Blue Future — the speculative branch (built-in pre-release test harness)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#entering-it-the-gesture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entering it — the gesture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-you-do-inside-blue-real-not-a-mock" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What you do inside blue — real, not a mock
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#closing-the-branch-accept-or-discard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Closing the branch — accept or discard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-it-is-the-test-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it is the test harness
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4408,7 +4469,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../BIMUserGuide.md" class="md-nav__link">
+      <a href="../BIMUserGuide/" class="md-nav__link">
         
   
   
@@ -5224,6 +5285,67 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#15-blue-future-the-speculative-branch-built-in-pre-release-test-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Blue Future — the speculative branch (built-in pre-release test harness)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. Blue Future — the speculative branch (built-in pre-release test harness)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#entering-it-the-gesture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entering it — the gesture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-you-do-inside-blue-real-not-a-mock" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What you do inside blue — real, not a mock
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#closing-the-branch-accept-or-discard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Closing the branch — accept or discard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-it-is-the-test-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it is the test harness
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5306,7 +5428,7 @@ and routes honestly — nothing is ever faked:</p>
 <tr>
 <td><strong>Odoo</strong></td>
 <td>live delegate agent: download <code>odoo_agent.zip</code>, run it natively next to your Odoo, drop the <code>odoo_chain.json</code> it writes — the browser re-folds and verifies it</td>
-<td><strong>Client 12</strong> — live-extracted from odoodemo, books diffed to the cent</td>
+<td><strong>Client 12</strong> — the full migrated Odoo catalog (<strong>38 partners · 35 products · 27 sale orders</strong>, <code>12-odoo.db</code>), books diffed to the cent</td>
 </tr>
 <tr>
 <td><strong>iDempiere</strong></td>
@@ -5336,11 +5458,14 @@ path for real extractions.</p>
 <p><strong>What Install leaves behind:</strong> the tenant is merged into the resident seed in browser IndexedDB — it
 survives a plain reload, re-install is a guarded no-op, and the install itself appears as a dot on the
 <strong>W</strong> world-history timeline.</p>
-<p><strong>Choosing a tenant at login:</strong> the login card shows a "Select a tenant" step <strong>only when two or more
-login-able tenants exist</strong>. On a fresh seed there is only GardenWorld, so the step auto-skips — if you
-can't choose more clients, you haven't installed any yet. After installs the list fills (System,
-GardenWorld, and every installed tenant). Each tenant is entered through its <strong>own Admin user</strong>
-(e.g. <em>SAP Flights Admin</em>); the System user belongs to the System(0) client only.</p>
+<p><strong>Choosing a tenant at login — the front door:</strong> the login card opens on a <strong>five-tenant front door</strong>.
+Even on a cold seed it lists <strong>GardenWorld plus five migrated demo tenants</strong> (Odoo · iDempiere · SAP ·
+Oracle · Dynamics), each tagged <em>demo · ready</em> or <em>demo · PoC</em> (the login step unions the resident
+tenants with the demo manifest). Picking a demo tenant <strong>lazy-installs its shard on the spot</strong> — no
+dialog, no <code>?shard=</code>, no server (P0, erp sw v692). Once installed it survives a reload and joins the
+resident list (System, GardenWorld, and every installed tenant). Each tenant is entered through its
+<strong>own Admin user</strong> (e.g. <em>SAP Flights Admin</em>); the System user belongs to the System(0) client only.
+(In-tenant test links that skip the picker enter via <code>?client=garden</code>.)</p>
 <hr />
 <h2 id="3-the-bottom-pill-bar-cheat-sheet">3. The Bottom Pill Bar (cheat sheet)<a class="headerlink" href="#3-the-bottom-pill-bar-cheat-sheet" title="Permanent link">&para;</a></h2>
 <p>The pill is the single entry point for every tool. Left-to-right:</p>
@@ -5390,7 +5515,9 @@ GardenWorld, and every installed tenant). Each tenant is entered through its <st
 </tr>
 </tbody>
 </table>
-<p><strong>Tip:</strong> long-press the <strong>W</strong> pill to open the Z+bomb drawer (undo / fold-back to a past state).</p>
+<p><strong>Tip:</strong> long-press the <strong>W</strong> pill to open the Z+bomb drawer (undo / fold-back to a past state).
+Long-press a history <strong>dot</strong> inside the W overlay to fork a <strong>Blue Future</strong> speculative branch — the
+built-in pre-release test harness (§15).</p>
 <hr />
 <h2 id="4-navigating-windows">4. Navigating Windows<a class="headerlink" href="#4-navigating-windows" title="Permanent link">&para;</a></h2>
 <ol>
@@ -5789,7 +5916,7 @@ the stale resume key is cleared and the viewer returns to the landing page once
 <p>The warehouse is compiled from real <code>m_locator</code> records — 11 bins arranged in two rows on a
 flat floor, each bin's position derived from the GardenWorld ERP inventory schema (not hand-drawn).
 26 elements total: 11 bin boxes (IfcBuildingElementProxy, each GUID == <code>m_locator_id</code>) + ground slab.</p>
-<p><img alt="Warehouse overview — 11 bins on the GardenWorld floor, top-down isometric" src="figs/wh_overview.png" /></p>
+<p><img alt="Warehouse overview — 11 bins on the GardenWorld floor, top-down isometric" src="../figs/wh_overview.png" /></p>
 <p><strong>Controls (same as the BIM viewer):</strong>
 - <strong>Orbit</strong> — click-drag or one-finger drag
 - <strong>Zoom</strong> — scroll wheel or pinch
@@ -5813,7 +5940,7 @@ Any other building → the pill stays off the bar.</p>
    <code>M_Movement CO</code> is committed through <code>KernelOps.commitGroup</code>; <code>qtyOnHand</code> is folded from the
    op-log (no direct DB write).</li>
 </ol>
-<p><img alt="Walk complete on mobile — M_Movement CO, on-hand folded (4 bins, all match)" src="figs/wh_walk_complete.png" /></p>
+<p><img alt="Walk complete on mobile — M_Movement CO, on-hand folded (4 bins, all match)" src="../figs/wh_walk_complete.png" /></p>
 <h3 id="implementation-status">Implementation status<a class="headerlink" href="#implementation-status" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5998,9 +6125,11 @@ Help
   ‹ · ›        Step through ShowMe sequence
 
 History (W pill)
-  Click a dot  Jump to that op in the log
-  ← / →        Step back/forward one op
-  Long-press W Open Z+bomb drawer (undo / fold-back)
+  Click a dot         Jump to that op in the log
+  ← / →               Step back/forward one op
+  Long-press W        Open Z+bomb drawer (undo / fold-back)
+  Long-press dot      Enter Blue Future — speculative branch (§15)
+  Long-press blue dot Accept blue branch up to here · Tap blue dot Zoom children
 </code></pre></div>
 <hr />
 <h2 id="14-testing-verification">14. Testing &amp; Verification<a class="headerlink" href="#14-testing-verification" title="Permanent link">&para;</a></h2>
@@ -6082,6 +6211,65 @@ all pass. Tap again to dismiss. Hover tooltip: <em>"Doc Cycle — 13 engine test
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="15-blue-future-the-speculative-branch-built-in-pre-release-test-harness">15. Blue Future — the speculative branch (built-in pre-release test harness)<a class="headerlink" href="#15-blue-future-the-speculative-branch-built-in-pre-release-test-harness" title="Permanent link">&para;</a></h2>
+<p>Blue Future is non-obvious the first time, so read this once. It lets you fork the live ledger
+into an <strong>unofficial</strong> speculative branch, run <strong>real</strong> operations inside it, then either <strong>accept</strong>
+them into the official books or <strong>discard</strong> them atomically — the official books never move until
+you accept. It is the app's built-in <strong>pre-release test harness</strong>: drive a client's whole lifecycle
+in blue, decide go / no-go, accept or discard before go-live.</p>
+<h3 id="entering-it-the-gesture">Entering it — the gesture<a class="headerlink" href="#entering-it-the-gesture" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Tap the <strong>W</strong> pill to open the world-history overlay (the dot rail).</li>
+<li><strong>Long-press an official (white) history dot.</strong> You enter BLUE.</li>
+</ol>
+<p>The whole surface switches to an <strong>unmistakably unofficial</strong> skin so you can never confuse it with
+the real books:</p>
+<ul>
+<li>a <strong>blue rim</strong> on every window (including the GL canvas),</li>
+<li>an <strong>UNOFFICIAL</strong> banner across the top,</li>
+<li>and a <strong>print watermark</strong> — anything you print or export from blue is stamped <em>UNOFFICIAL</em>.</li>
+</ul>
+<h3 id="what-you-do-inside-blue-real-not-a-mock">What you do inside blue — real, not a mock<a class="headerlink" href="#what-you-do-inside-blue-real-not-a-mock" title="Permanent link">&para;</a></h3>
+<p>Everything you'd do for real, and it <em>is</em> real — just on the speculative branch. <strong>CompleteIt</strong> a
+document with its full fan-out (shipment · invoice · the GL postings), create records, run
+processes. Each op is a signed op-log entry carrying a <code>branch_id</code>, so it lands on the blue branch
+and <strong>never touches the official tip</strong>. The official chrome filters to <code>branch_id IS NULL</code>, so your
+real books read exactly as before while blue is open (the read-site branch filter, sw v687, closed
+the leak where blue rows could surface in official lists).</p>
+<h3 id="closing-the-branch-accept-or-discard">Closing the branch — accept or discard<a class="headerlink" href="#closing-the-branch-accept-or-discard" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gesture</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Long-press a blue dot</strong></td>
+<td><strong>Accept up to here</strong> — the branch is rebased into the official books up to that point; what was speculative becomes the record</td>
+</tr>
+<tr>
+<td><strong>Long-press the white anchor dot</strong> (blue open) → confirm</td>
+<td><strong>Discard</strong> — the whole blue branch folds back atomically; the books never moved, so there is nothing to undo</td>
+</tr>
+<tr>
+<td><strong>Tap a blue dot</strong></td>
+<td><strong>Zoom</strong> into its children (the fan-out that op produced)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="why-it-is-the-test-harness">Why it is the test harness<a class="headerlink" href="#why-it-is-the-test-harness" title="Permanent link">&para;</a></h3>
+<p>Because blue runs the <em>real</em> engine — the same signed-commit fold, the same GL — a blue run is a
+faithful rehearsal, not a simulation. Take a freshly-migrated client through its entire first cycle
+(orders → ship → invoice → post → reports) in blue, read the consolidated result, then <strong>accept</strong> to
+go live or <strong>discard</strong> to try again. Nothing provisional ever reaches the official ledger.</p>
+<blockquote>
+<p>Engine: <code>blue_future.js</code> (<code>window.BlueFuture</code>) over the kernel op-log <code>branch_id</code> lane. Witnessed
+live end-to-end — <strong>W-BLUE-FUTURE-LIVE</strong> (bim-ootb PR #317, erp sw v687); engine <strong>W-BLUE-FUTURE</strong>
+9 / 9 headless.</p>
+</blockquote>
 <hr />
 <p><em>For architecture details see <a href="../ERP/">ERP.md</a>. For the coverage evidence see
 <a href="../ERP_COVERAGE_MATRIX/">ERP_COVERAGE_MATRIX.md</a>. For the migration story see

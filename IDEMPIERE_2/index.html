@@ -2791,6 +2791,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-logic-admission-model-how-all-of-odooerpnextsap-logic-enters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The logic-admission model — how ALL of Odoo/ERPNext/SAP logic enters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The logic-admission model — how ALL of Odoo/ERPNext/SAP logic enters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-drools-keep-its-idea-drop-its-engine-the-result-is-stronger-than-drools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On Drools — keep its idea, drop its engine (the result is stronger than Drools)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variants-config-vibe-coding-the-l6-tail-caged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variants + config + vibe coding — the L6 tail, caged
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#boundaries-what-this-doc-does-not-cover" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4103,7 +4142,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../BIMUserGuide.md" class="md-nav__link">
+      <a href="../BIMUserGuide/" class="md-nav__link">
         
   
   
@@ -4593,6 +4632,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-logic-admission-model-how-all-of-odooerpnextsap-logic-enters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The logic-admission model — how ALL of Odoo/ERPNext/SAP logic enters
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The logic-admission model — how ALL of Odoo/ERPNext/SAP logic enters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-drools-keep-its-idea-drop-its-engine-the-result-is-stronger-than-drools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On Drools — keep its idea, drop its engine (the result is stronger than Drools)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variants-config-vibe-coding-the-l6-tail-caged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variants + config + vibe coding — the L6 tail, caged
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#boundaries-what-this-doc-does-not-cover" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4647,7 +4725,7 @@ is an <em>internal</em> name for a lineage, not a shipped product name (see §Gu
 This doc owns the <strong>model / engine</strong> layer. The <strong>UI / renderer</strong> layer is owned by
 <a href="../IDEMPIERE_RENDERER_SPEC/">IDEMPIERE_RENDERER_SPEC.md</a> — this doc defers all rendering to it.
 Grounding: <a href="../HolyGrail/">HolyGrail.md</a> · <a href="../ERP/">ERP.md</a> · <a href="../DistributedERP/">DistributedERP.md</a> ·
-<a href="../ERPMaker/">ERPMaker.md</a> · <a href="AnyAppMaker.md">AnyAppMaker.md</a>.</p>
+<a href="../ERPMaker/">ERPMaker.md</a> · <a href="../AnyAppMaker/">AnyAppMaker.md</a>.</p>
 </blockquote>
 <h2 id="what-it-is-and-what-it-is-not">What it is — and what it is NOT<a class="headerlink" href="#what-it-is-and-what-it-is-not" title="Permanent link">&para;</a></h2>
 <p>iDempiere 2.0 is <strong>what iDempiere reached for and could not get to from inside Java</strong>: the engine
@@ -4710,7 +4788,7 @@ into 1.0's bloat — the exact thing it exists to delete.</p>
 <li><strong>A closed verb set</strong> (<code>GUARD</code> / <code>GENERATE</code> / <code>MATCH</code>, <code>completeOrder</code> / <code>createShipment</code> /
   <code>createInvoice</code> / <code>allocate</code> / <code>post</code> …, <a href="../ERP/">ERP.md §0.14</a>) — behaviour as data over a
   trusted alphabet, not arbitrary code. This is also what makes AI authoring and the marketplace
-  sandboxable (<a href="AnyAppMaker.md">AnyAppMaker.md</a>).</li>
+  sandboxable (<a href="../AnyAppMaker/">AnyAppMaker.md</a>).</li>
 <li><strong>The signed hash-chain</strong> (W-CHAIN / W-SIGN) — tamper-evident, replayable, reversible (reversal =
   appending the inverse op-group), period-close = balance-brought-forward checkpoint.</li>
 <li><strong>Rules as data</strong> (<a href="../ERP/">ERP.md §0.5, §0.10</a>) — per-cell decision tables, not Rete/DSL; the
@@ -4730,7 +4808,7 @@ absorbed, never code.</p>
 <li><strong>Analytic accounting</strong> (cost/profit dimensions orthogonal to the chart of accounts) → a genuinely
   general idea: journal lines carry orthogonal <em>dimension tags</em>; reporting folds by any dimension.
   Absorb as a general tagging primitive on <code>journal</code>.</li>
-<li><strong>App modularity / "install an app"</strong> → the OOTB <strong>bundle / genome</strong> model (<a href="AnyAppMaker.md">AnyAppMaker.md</a>).</li>
+<li><strong>App modularity / "install an app"</strong> → the OOTB <strong>bundle / genome</strong> model (<a href="../AnyAppMaker/">AnyAppMaker.md</a>).</li>
 <li><strong>Studio-style low-code customization</strong> → in 2.0 this IS the grail (edit rules live), not a bolt-on.</li>
 </ul>
 <h3 id="from-erpnext-frappe">From ERPNext / Frappe<a class="headerlink" href="#from-erpnext-frappe" title="Permanent link">&para;</a></h3>
@@ -4826,6 +4904,103 @@ Clean-room: learn the tier boundaries, extract the rule <em>effects</em> from th
 <p><strong>Consequence (the planning lever):</strong> the callout-port backlog (<a href="../prompts/ENGINE_FULL_ERP_ISSUES.md">ENGINE_FULL_ERP_ISSUES.md</a>
 §I-C) is <strong>sorted by this tier first</strong> — only the field-level <code>CalloutEngine</code> rules land in the UI overlay; the
 other three tiers are engine concerns owned by the engine/posting lanes, not a single "callout" session.</p>
+<h2 id="the-logic-admission-model-how-all-of-odooerpnextsap-logic-enters">The logic-admission model — how ALL of Odoo/ERPNext/SAP logic enters<a class="headerlink" href="#the-logic-admission-model-how-all-of-odooerpnextsap-logic-enters" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>What's actually admitted today → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a></strong> — this model's surfaces enumerated against the live engine: 0 covered / 12 partial / 28 gap of 40. The static-data layers (lists, mandatory/updateable flags) are partially in; the logic-expression layer (DisplayLogic/ReadOnlyLogic/MandatoryLogic) and the security layer have <strong>no evaluator at all</strong> yet.</p>
+</blockquote>
+<p>The question "can we house <em>every</em> ERP's logic?" has a wrong framing: <em>generalize</em> <strong>vs</strong> <em>Drools-style DIY</em> <strong>vs</strong>
+<em>variants + config</em>. They are not alternatives — ERP logic <strong>stratifies into six layers</strong>, and each layer has its
+own <em>admission rule</em>. The layers get progressively harder to reduce to data; the art is knowing which is which so
+you neither under-generalize (per-ERP cruft) nor over-promise ("everything becomes data").</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What it is</th>
+<th>Admitted as</th>
+<th>Generalizes?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>L0 Structure</strong></td>
+<td>entities / fields</td>
+<td>AD / DocType (metadata)</td>
+<td>✅ solved — ERPNext DocType is the external proof</td>
+</tr>
+<tr>
+<td><strong>L1 Lifecycle</strong></td>
+<td>state machines</td>
+<td>the transition table (data)</td>
+<td>✅ — the gap to <em>promote from engine into AD</em> (every migration squeezes here)</td>
+</tr>
+<tr>
+<td><strong>L2 Guards</strong></td>
+<td>preconditions / validations</td>
+<td>predicates + decision tables (data)</td>
+<td>✅ (§0.14 GUARD)</td>
+</tr>
+<tr>
+<td><strong>L3 Determination</strong></td>
+<td>"which account / price / tax?"</td>
+<td>config lookup tables (data, host glue §13.1)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>L4 Effects</strong></td>
+<td>ship / invoice / allocate / match / post</td>
+<td>the <strong>closed verb set</strong> (§0.14)</td>
+<td>✅ <strong>proven</strong> — Odoo+iDempiere O2C/P2P fold, <code>newVerbs=[]</code> (<code>build/erp/odoo_fold.log</code>)</td>
+</tr>
+<tr>
+<td><strong>L5 Computation</strong></td>
+<td>pricing math, tax, derived fields</td>
+<td>pure expressions (data)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>L6 Algorithms</strong></td>
+<td>MRP, scheduling, SAP condition-technique pricing</td>
+<td><strong>constrained plugin</strong> (variants + config)</td>
+<td>⚠️ the honest tail — genuine code, <em>caged</em></td>
+</tr>
+</tbody>
+</table>
+<p><strong>The one invariant that unifies all three instincts:</strong> <em>logic enters only as </em><em>data</em><em>, or as </em><em>ops in the closed
+verb alphabet</em><em> — never as free code.</em> That single rule is simultaneously what makes the model generalizable
+(L1–L5 are data), DIY-able (you edit the data), AI/vibe-codable (the grammar is closed and therefore verifiable),
+and safe (op-log replay + sandbox). It is the membrane every source ERP's logic must cross.</p>
+<h3 id="on-drools-keep-its-idea-drop-its-engine-the-result-is-stronger-than-drools">On Drools — keep its idea, drop its engine (the result is <em>stronger</em> than Drools)<a class="headerlink" href="#on-drools-keep-its-idea-drop-its-engine-the-result-is-stronger-than-drools" title="Permanent link">&para;</a></h3>
+<p><a href="../HolyGrail/">HolyGrail.md</a> (<a href="../ERP/">ERP.md §0.5/§0.9</a>) already rejected Rete/inference. The clean split:
+- <strong>Drools' good idea — rules as editable data / decision tables</strong> → <strong>yes</strong>, that is L2/L5; expose exactly this.
+- <strong>Drools' engine — stateful forward-chaining inference, unrestricted agenda</strong> → <strong>no</strong>: no op-log (so no
+  replay/undo/audit — <em>"the safety Drools never had"</em>), firing order fights deterministic replay, and unrestricted
+  actions are not sandboxable for a marketplace or for AI authoring.</p>
+<p>Keep the decision-table/expression DIY, drop the inference engine: decision tables + pure expressions over a closed
+verb alphabet, op-logged → <strong>editable live, replayable, reversible, sandboxable</strong>. That is L1/L2/L5 made live — the
+grail (<code>§RULE-EDIT</code>, <a href="../HolyGrail/">HolyGrail.md</a>).</p>
+<h3 id="variants-config-vibe-coding-the-l6-tail-caged">Variants + config + vibe coding — the L6 tail, caged<a class="headerlink" href="#variants-config-vibe-coding-the-l6-tail-caged" title="Permanent link">&para;</a></h3>
+<p>Genuine algorithms (MRP, SAP pricing procedures) cannot be decision-tabled into pure data. There <strong>variants +
+config-pick-which</strong> is the correct shape — <strong>but the plugin may only emit ops in the closed alphabet.</strong> That
+constraint is precisely what Odoo/SAP lack (their algorithms get unrestricted DB access); it is what makes ours
+composable, swappable, and auditable (<a href="../AnyAppMaker/">AnyAppMaker.md</a>). <strong>Vibe coding fits because the grammar is
+closed</strong>: free-code generation is unverifiable; grammar-constrained generation is <strong>diff-oracle-checkable</strong> — replay
+the AI-authored rules against the source's recorded oracle and prove equivalence to the cent.</p>
+<p><strong>The honest bound (don't over-promise):</strong> the claim is NOT "all ERP logic becomes data." It is — <em>all logic is
+admitted through one safe seam (data, or a verb-emitting plugin), so it is composable, swappable, replayable, and
+auditable.</em> L0–L5 (the bulk; proven for the transactional core) generalize to data; <strong>L6 stays code but is caged.</strong>
+That is stronger and more defensible than "everything generalizes," and it is the line that keeps the MIT moat honest.</p>
+<blockquote>
+<p><strong>AD behavioral-gap corollary</strong> (what to metadata-ize next, surfaced 2026-06-05): AD won the <em>entity</em>-metadata
+battle but left the <em>behavioral</em> conventions hardcoded — and behavior is where ERPs differ. Promote these
+conventions into AD data, each as a <em>more general</em> primitive: (1) <strong>lifecycle</strong> — DocStatus/DocAction is a column
+convention, not a declarative per-doctype state machine (L1); (2) <strong>polymorphic reference</strong> — <code>AD_Table_ID +
+Record_ID</code> exists as a 2-column convention (42 columns) but is not a first-class <code>AD_Reference</code> type, unlike
+Odoo <code>many2one_reference</code> / ERPNext Dynamic Link; (3) <strong>reactive computed fields</strong> — only imperative Callouts
+today, no declarative <code>@depends</code>-style dependency graph (L5); (4) <strong>cross-cutting mixins</strong> — no declarable
+chatter/activities/followers/attach-to-anything layer (the op-log already gives audit + document-flow for free);
+(5) <strong>open dimensional tags</strong> on journal lines, generalizing Fact_Acct's <em>fixed-arity</em> accounting dimensions.</p>
+</blockquote>
 <h2 id="boundaries-what-this-doc-does-not-cover">Boundaries — what this doc does NOT cover<a class="headerlink" href="#boundaries-what-this-doc-does-not-cover" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>UI / rendering</strong> → <a href="../IDEMPIERE_RENDERER_SPEC/">IDEMPIERE_RENDERER_SPEC.md</a> (other session).</li>

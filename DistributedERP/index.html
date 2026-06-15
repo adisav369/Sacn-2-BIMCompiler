@@ -4281,7 +4281,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../BIMUserGuide.md" class="md-nav__link">
+      <a href="../BIMUserGuide/" class="md-nav__link">
         
   
   
@@ -4993,6 +4993,7 @@
 <h1 id="distributed-erp-contention-map-guards">Distributed ERP — Contention Map &amp; Guards<a class="headerlink" href="#distributed-erp-contention-map-guards" title="Permanent link">&para;</a></h1>
 <blockquote>
 <p><strong>New here?</strong> The one-page evaluator companion — <strong><a href="../MigrateComparisonPaper/">Migrate &amp; Compare (ERP)</a></strong> — has the "where's the server?" mapping at a glance. This page is the full doctrine + adversarial edges.</p>
+<p><strong>The doctrine, measured:</strong> the contention guards here are benchmarked at fleet scale in <strong><a href="../POS_WAN_SCALE_BENCH/">POS WAN-Scale</a></strong> (<code>W-POS-WAN-SCALE</code>) — and told plainly for a retail owner in the animated <strong><a href="../RetailScaleStory.html">Two messages a day</a></strong> one-pager (10,000 tills, books to the penny).</p>
 </blockquote>
 <p><strong>Thesis.</strong> The "hard distributed-systems problem" in ERP is <strong>mostly a modelling artifact.</strong> Model the
 domain as it physically is — goods have a <em>location</em>, work has an <em>owner</em>, money moves at the <em>cadence of
@@ -5200,11 +5201,11 @@ computes the number; reconcile at business cadence.</strong> Nobody writes a sha
 network; the post office only sequences and relays. The edges in §9 are exactly the residue this leaves —
 bounded, named, and ledger-backed.</p>
 <blockquote>
-<p><strong>Worked examples — <a href="LensFamily.md">the Lens Family</a>.</strong> This doctrine made concrete, extracted from my iDempiere
+<p><strong>Worked examples — <a href="../LensFamily/">the Lens Family</a>.</strong> This doctrine made concrete, extracted from my iDempiere
 Unicenta POS + plugins and ported to browser lenses over the one model: <a href="../POSLens/">POS</a> (in-person sale) ·
-<a href="WMSLens.md">WMS / Logistics / Robots</a> (movement) · <a href="SocialPlatformLens.md">Social Platform</a> (on-the-move) ·
-<a href="CreditLedgerLens.md">Credit Ledger</a> (receivables) · <a href="WorkforceLens.md">Workforce</a> (attendance/tasks) ·
-<a href="GuaranteedChannels.md">Guaranteed Channels</a> (transport/payment pipes). Hub: <strong><a href="LensFamily.md">LensFamily</a></strong>.
+<a href="../WMSLens/">WMS / Logistics / Robots</a> (movement) · <a href="../SocialPlatformLens/">Social Platform</a> (on-the-move) ·
+<a href="../CreditLedgerLens/">Credit Ledger</a> (receivables) · <a href="../WorkforceLens/">Workforce</a> (attendance/tasks) ·
+<a href="../GuaranteedChannels/">Guaranteed Channels</a> (transport/payment pipes). Hub: <strong><a href="../LensFamily/">LensFamily</a></strong>.
 One source act, the rest a fold, no central control — a business run from a phone. The smallest complete proofs of
 the doctrine above.</p>
 </blockquote>
@@ -5286,6 +5287,15 @@ pure OOTB (no fat server):</p>
    chain tip by signed <code>seq</code>/<code>prev_hash</code>, not arrival order; send a <strong>full signed snapshot per email</strong> for
    single-email recovery robustness; encrypt-to-user for privacy. "Email receipt" is old — "<strong>inbox as the
    recoverable signed state-log</strong>" is the fresh framing.)</li>
+</ol>
+<p><strong>Witnessed live (2026-06-14, bim-ootb PR #300):</strong> POS "deliver later" serialises the committed
+   op group to a compact base64 blob, copies it to clipboard, and the user pastes it into WhatsApp,
+   email, or SMS. The WH walk user on any device pastes it into the receive box and hits Apply — the
+   ops replay into the IDB sidecar, the pending shipment surfaces in the selector, and the pick walk
+   proceeds. The social channel is the relay. No server, no sync protocol, no polling. The dumb
+   <code>erp_relay_server.js</code> is the upgrade path — same op format, different pipe. Witness:
+   <code>scripts/poc_oplog_clipboard.js</code> (<code>§CL-SERIAL</code> + <code>§CL-UUID</code> idempotency + <code>§CL-DELTA</code>).</p>
+<ol>
 <li><strong>Claim/spend:</strong></li>
 <li><strong>Online (normal POS):</strong> sub-second authority <strong>compare-and-set</strong> (set-if-unset) → first-wins. Same
      weight as a card-payment auth — not a burden. (A plain <code>DateLastUsed</code> <em>read</em> is best-effort only — two
