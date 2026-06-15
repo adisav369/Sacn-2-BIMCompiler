@@ -183,33 +183,51 @@
 <!-- ── animated flow ── -->
 <h2>How it works</h2>
 <div class="stage reveal">
-  <div class="chip">2 messages / day / till</div>
-  <svg class="flow" viewBox="0 0 960 300" role="img" aria-label="Tills sending two daily messages to head office">
-    <defs>
-      <linearGradient id="og" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#26341c"/><stop offset="1" stop-color="#1c2530"/>
-      </linearGradient>
-      <g id="till"><rect width="48" height="38" rx="5"/><rect class="scr" x="7" y="7" width="34" height="17" rx="2"/>
-        <rect x="13" y="29" width="22" height="4" rx="2" fill="#3a4654"/></g>
-    </defs>
-    <text class="label" x="20" y="22">10,000 tills · stores on a WAN</text>
-    <text class="label" x="792" y="22">Head office</text>
-
-    <!-- till grid -->
-    <g id="tills"></g>
-    <!-- wires + office filled by JS so pulses follow exact paths -->
-    <g id="wires"></g>
-    <g id="pulses"></g>
-
-    <!-- office -->
-    <rect class="office-box" x="772" y="96" width="168" height="108" rx="14"/>
-    <text class="office-ttl" x="856" y="140" text-anchor="middle">HEAD OFFICE</text>
-    <text class="office-sub" x="856" y="160" text-anchor="middle">REBUILDS THE BOOKS</text>
-    <text class="office-sub" x="856" y="176" text-anchor="middle" fill="#8fb3d8">EXACT · TO THE PENNY</text>
+  <svg class="flowsvg" viewBox="0 0 960 300" role="img" aria-label="A day in two messages: each morning replenishment flows from the HQ warehouse out to the tills, then stops; at night each till sends one report back to HQ.">
+<style>
+.flowsvg .tl rect{fill:#212a34;stroke:#2b3947;stroke-width:1}
+.flowsvg .tl .s{fill:rgba(124,179,66,.25)}
+.flowsvg .w{stroke:#2b3947;stroke-width:1.4;fill:none}
+.flowsvg .ob{fill:#1c2530;stroke:rgba(124,179,66,.55);stroke-width:1.5}
+.flowsvg .ot{font:850 16px system-ui,sans-serif;fill:#fff}
+.flowsvg .os{font:800 10px system-ui,sans-serif;letter-spacing:.6px}
+.flowsvg .lb{font:800 11px system-ui,sans-serif;fill:#7e8b98;letter-spacing:.7px}
+.flowsvg .ch{fill:#ff9800;stroke:#ffb74d;stroke-width:1.5}
+.flowsvg .cht{font:850 15px system-ui,sans-serif;fill:#3a1d00}
+.flowsvg .chs{font:800 10px system-ui,sans-serif;fill:#6b3b00;letter-spacing:1.5px}
+.flowsvg .ph{font:800 12px system-ui,sans-serif;letter-spacing:.8px}
+</style>
+<defs><g id="ftl"><rect width="48" height="38" rx="5"/><rect class="s" x="7" y="7" width="34" height="16" rx="2"/><rect x="13" y="29" width="22" height="4" rx="2" fill="#394552"/></g></defs>
+<text class="lb" x="20" y="28">10,000 TILLS · STORES ON A WAN</text>
+<use href="#ftl" class="tl" x="24" y="44"/><use href="#ftl" class="tl" x="128" y="44"/><use href="#ftl" class="tl" x="232" y="44"/>
+<use href="#ftl" class="tl" x="24" y="102"/><use href="#ftl" class="tl" x="128" y="102"/><use href="#ftl" class="tl" x="232" y="102"/>
+<use href="#ftl" class="tl" x="24" y="160"/><use href="#ftl" class="tl" x="128" y="160"/><use href="#ftl" class="tl" x="232" y="160"/>
+<use href="#ftl" class="tl" x="24" y="218"/><use href="#ftl" class="tl" x="128" y="218"/><use href="#ftl" class="tl" x="232" y="218"/>
+<path class="w" d="M280,63 C470,63 600,150 770,150"/>
+<path class="w" d="M280,121 C470,121 640,150 770,150"/>
+<path class="w" d="M280,179 C470,179 660,150 770,150"/>
+<path class="w" d="M280,237 C470,237 600,150 770,150"/>
+<rect class="ob" x="772" y="96" width="168" height="108" rx="14"/>
+<text class="ot" x="856" y="140" text-anchor="middle">HEAD OFFICE</text>
+<text class="os" x="856" y="160" text-anchor="middle" fill="#9fd17a">· WAREHOUSE ·</text>
+<text class="os" x="856" y="178" text-anchor="middle" fill="#8fb3d8">BOOKS TO THE PENNY</text>
+<rect class="ch" x="390" y="10" width="220" height="46" rx="23"/>
+<text class="cht" x="500" y="33" text-anchor="middle">2 messages a day</text>
+<text class="chs" x="500" y="48" text-anchor="middle">PER TILL</text>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.07;.32;1" path="M280,63 C470,63 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.07;.09;.30;.32;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.12;.37;1" path="M280,121 C470,121 640,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.12;.14;.35;.37;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.17;.42;1" path="M280,179 C470,179 660,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.17;.19;.40;.42;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.22;.47;1" path="M280,237 C470,237 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.22;.24;.45;.47;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.57;.82;1" path="M280,63 C470,63 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.57;.59;.80;.82;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.62;.87;1" path="M280,121 C470,121 640,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.62;.64;.85;.87;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.67;.92;1" path="M280,179 C470,179 660,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.67;.69;.90;.92;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.72;.97;1" path="M280,237 C470,237 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.72;.74;.95;.97;1" values="0;0;1;1;0;0"/></circle>
+<text class="ph" x="500" y="292" text-anchor="middle" fill="#ffa000">☀ MORNING — REPLENISHMENT OUT (HQ → TILLS)<animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.04;.07;.49;.52;1" values="0;0;1;1;0;0"/></text>
+<text class="ph" x="500" y="292" text-anchor="middle" fill="#42a5f5">🌙 NIGHT — REPORTS IN (TILLS → HQ)<animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.54;.57;.97;.99;1" values="0;0;1;1;0;0"/></text>
   </svg>
   <div class="legend2">
-    <span class="k"><span class="d" style="background:var(--amber)"></span>☀ Morning — stock that arrived (SODA)</span>
-    <span class="k"><span class="d" style="background:var(--blue)"></span>🌙 Night — what sold &amp; got used (EODA close)</span>
+    <span class="k"><span class="d" style="background:var(--amber)"></span>☀ Morning — replenishment flows HQ → tills (SODA)</span>
+    <span class="k"><span class="d" style="background:var(--blue)"></span>🌙 Night — each till reports back to HQ (EODA close)</span>
   </div>
 </div>
 
@@ -344,51 +362,12 @@ node scripts/poc_pos_wan_scale.js 200,1000</pre>
   log <code>build/erp/poc_pos_wan_scale.log</code>. Measured on a single machine: 200 → 10,000 tills,
   20,000 daily reports, ~4,600 accepted/sec, 0 double-counts on retry, books reconstructed exact to the cent,
   survives relay restart (log replay) and total store loss (signed inbox snapshot).
-  Part of the <a href="HolyGrail.md">Holy Grail</a> / <a href="DistributedERP.md">Distributed ERP</a> story.
+  Part of the <a href="HolyGrail/">Holy Grail</a> / <a href="DistributedERP/">Distributed ERP</a> story.
 </footer>
 
 <script>
 (function(){
-  // ── build the till grid + wires + traveling pulses (paths match the SVG layout) ──
-  var tillsG=document.getElementById('tills'), wiresG=document.getElementById('wires'), pulsesG=document.getElementById('pulses');
-  var SVGNS='http://www.w3.org/2000/svg';
-  var cols=3, rows=4, x0=24, y0=44, dx=104, dy=58, tw=48, th=38;
-  var ox=772, oy=150;                         // office entry point (left-center)
-  var nodes=[];
-  for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){
-    var x=x0+c*dx, y=y0+r*dy;
-    var use=document.createElementNS(SVGNS,'use');
-    use.setAttribute('href','#till'); use.setAttribute('x',x); use.setAttribute('y',y); use.setAttribute('class','till');
-    tillsG.appendChild(use);
-    // only the right-column tills draw a wire to the office (keeps it readable); all emit pulses
-    nodes.push({x:x+tw, y:y+th/2, isEdge:(c===cols-1)});
-  }
-  // converging wires from right-column tills to office
-  nodes.filter(function(n){return n.isEdge;}).forEach(function(n){
-    var p=document.createElementNS(SVGNS,'path');
-    var mx=(n.x+ox)/2;
-    p.setAttribute('d','M'+n.x+','+n.y+' C'+mx+','+n.y+' '+mx+','+oy+' '+ox+','+oy);
-    p.setAttribute('class','wire'); wiresG.appendChild(p);
-  });
-  // pulses: each pulse animates along a cubic from its till to the office, amber then blue
-  function emit(n, cls, delay){
-    var mx=(n.x+ox)/2;
-    var path='M'+n.x+','+n.y+' C'+mx+','+n.y+' '+mx+','+oy+' '+ox+','+oy;
-    var dot=document.createElementNS(SVGNS,'circle');
-    dot.setAttribute('class','pulse '+cls); dot.setAttribute('cx',n.x); dot.setAttribute('cy',n.y);
-    var am=document.createElementNS(SVGNS,'animateMotion');
-    am.setAttribute('dur','2.2s'); am.setAttribute('begin',delay+'s'); am.setAttribute('repeatCount','indefinite');
-    am.setAttribute('path',path); am.setAttribute('keyPoints','0;1'); am.setAttribute('keyTimes','0;1'); am.setAttribute('calcMode','spline');
-    am.setAttribute('keySplines','.4 0 .2 1');
-    var fade=document.createElementNS(SVGNS,'animate');
-    fade.setAttribute('attributeName','opacity'); fade.setAttribute('dur','2.2s'); fade.setAttribute('begin',delay+'s');
-    fade.setAttribute('repeatCount','indefinite'); fade.setAttribute('values','0;1;1;0'); fade.setAttribute('keyTimes','0;.12;.8;1');
-    dot.appendChild(am); dot.appendChild(fade); pulsesG.appendChild(dot);
-  }
-  nodes.forEach(function(n,i){
-    emit(n,'am', (i*0.18)%2.2);              // morning wave (amber)
-    emit(n,'bl', 1.1+(i*0.18)%2.2);          // night wave (blue), offset
-  });
+  // flow diagram is now self-contained SMIL (see the .flowsvg block above) — no JS needed for it.
 
   // ── reveal-on-scroll + count-up + bar-grow ──
   function countUp(el){
