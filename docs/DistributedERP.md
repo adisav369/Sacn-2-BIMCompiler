@@ -592,3 +592,39 @@ neighbours already co-resident **by rank**, not by an explicit closure — provi
 over-fetch counted = 0; an unresolved FK renders a stub (not a value); the resident set's replay-hash equals
 the full-engine replay-hash for every path actually walked. SPEC only — no code yet; T3-adjacent (it serves
 the read-only trace first, edit later).
+
+## 14. Per-node email-DR — each node backs itself up (inbox-as-log)
+
+§9.A proves a store recovers from a signed snapshot after total loss. This **generalizes that to every
+node**: each sovereign log — store, HQ, vendor, and the customer's phone (the BPartner-as-node, §5/§9.G) —
+periodically emails *itself* a signed, encrypt-to-self **snapshot + the deltas since** — a loose, off-device
+retrace path it owns. It is the §6 post-office discipline turned inward: the node's own inbox is its cold
+store. Witnessed in miniature by `poc_email_dr` (Layer A data / Layer B key) and by **W-POS-WAN-SCALE B6**
+(POS total loss → recover the last signed EODA snapshot from the inbox).
+
+**Why the inbox.** Ubiquitous, off-device, append-only, already provider-replicated — no new infrastructure.
+The channel is a **commodity**: export@A → import@B verifies with *no re-trust*, because trust lives in the
+signature, not the container (Truth 3, *secure the fact, not the container*). So backup decentralizes the same
+way the log does — **self-custody, no central backup honeypot**.
+
+**Cadence = checkpoint + deltas.** A periodic signed snapshot (the *latest alone suffices* — the
+provider-purge case) plus the incremental ops between. Recovery = newest valid snapshot, replay the tail.
+Same snapshot → segment → retain housekeeping, with the mailbox as the segment store.
+
+**"Loose" is a feature, and it is integrity-safe.** A hostile or lapsed provider can *withhold or delete*
+(availability) but **cannot forge** (signatures reject it, §9.B) — so a best-effort, eventually-consistent
+inbox suffices. It is also **redundant atop the mesh**: counterparties already hold the overlapping signed
+facts, so each node has *two* retrace paths — its own inbox, and counterparty re-supply. Belt and suspenders.
+
+**The floor (Truth 4 / §9.F).** The inbox recovers the *facts* unconditionally **given the key**; the key is
+the single secret that signs and (by derivation) decrypts. Lose it with no anchor → present-but-undecryptable.
+"Responsible for yourself" therefore means **responsible for the key**, not the data — which is why consumer
+nodes need the recovery anchors `poc_email_dr` enumerates (k-of-n across one's own channels, platform passkey,
+employer escrow). Discipline: email the **log/fold**, never fat blobs (the op-size cap).
+
+Net: each node carries its **own** disaster recovery. The only residues that stay central are the ones
+§5 / §8 / §9.F already name — the contended-balance agreement point, the settlement rail, and the key-trust root.
+
+??? note "Further reading — the fleet-scale proof"
+    - [POS WAN-scale benchmark — spec &amp; witness (W-POS-WAN-SCALE)](POS_WAN_SCALE_BENCH.md) — the fleet-scale proof: 10k tills → central dump relay, minimal SODA/EODA fold, idempotent retry, relay-crash + email-backup DR, partitioned doc-numbering.
+    - [Two messages a day → books to the penny](../RetailScaleStory.html) — the animated, plain-English retail one-pager (bar charts, legacy side-by-side, and the runnable benchmark).
