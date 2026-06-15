@@ -1,0 +1,5328 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../ENGINE_CONTRACT/">
+      
+      
+        <link rel="next" href="../ReadMeShowMe/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>The Holy Grail (editable rules, live) - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-holy-grail-editable-business-rules-live" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              The Holy Grail (editable rules, live)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../4D5DAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  BIM5D
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../LAST_MILE_PROBLEM/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Last Mile
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../RED_PILL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Enterprise/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../ERPUserGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Spatial ERP
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FeatureComparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Feature Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MigrateComparisonPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrate & Compare (ERP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERPRosettaStone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Rosetta Stone (iDempiere → Fold Engine)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FoldEngineQuality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Code Quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FoldEngineConstraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Constraints
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AboutMore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About BIM OOTB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ShipYard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond Buildings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM5D
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    BIM5D
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4D5DAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4D/5D Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMtoProject/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM → Project Order (ERP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House (125K)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Last Mile
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9 Gates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIMEyes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (77 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RED_PILL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Red Pill — Design From Grammar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOM_AS_CONTEXT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM-as-Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOM_ENGINE_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Engine Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Modeller_OOTB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browser as Modeller
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_Browser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB (Browser)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CLASH_DETECTION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clash Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SQLite3D_Schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SQLite3D Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PLUGIN_SDK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MOBILE_DEPLOY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mobile & Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output DB (G4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6D/7D/Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../STANDARDS_COMPLIANCE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Standards Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REPORTING_ENGINE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporting Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PDF_TERRAIN/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDF Terrain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_2D_Guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_LAYOUT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FORGE_SUITE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forge Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial ERP
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spatial ERP
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERPUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ▶ Try it — iDempiere User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SpatialERP_OOTB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Every Record Has a Place
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SpatialERP_POC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction ERP POC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD-in-Browser (iDempiere)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IDEMPIERE_2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    iDempiere 2.0 — the Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PLUGIN_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Architecture (metadata-first)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ENGINE_CONTRACT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engine ↔ UI Contract (the seam)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Holy Grail (editable rules, live)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Holy Grail (editable rules, live)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#who-is-writing-this-and-why-it-is-personal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who is writing this, and why it is personal
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-holy-grail-actually-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Holy Grail actually is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-two-years-of-extracting-pojava-was-the-wrong-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why two years of extracting PO.java was the wrong target
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why two years of extracting PO.java was the wrong target">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#so-are-we-free-of-pojava" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        So — are we free of PO.java?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-is-a-grail-others-cannot-reach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it is a grail others cannot reach
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-honest-status-half-claimed-one-mile-left" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The honest status — half-claimed, one mile left
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#roadmap-check-the-write-seam-as-of-2026-06-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roadmap check — the write-seam, as of 2026-06-13
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#abstracting-the-docaction-corpus-and-why-it-is-the-migration-solvent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Abstracting the DocAction corpus — and why it is the migration solvent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-hard-parts-worked-through-why-the-showstoppers-arent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hard parts, worked through — why the showstoppers aren't
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The hard parts, worked through — why the showstoppers aren&#39;t">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-compacting-the-signed-log-balance-brought-forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Compacting the signed log — balance brought forward
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Compacting the signed log — balance brought forward">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backup-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Back up the recipe, not the result — 1 TB → ≈500 MB
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-atomicity-the-document-is-the-atomic-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Atomicity — the document is the atomic unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-oltp-physics-is-the-lock-the-ledger-is-the-witness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. OLTP — physics is the lock, the ledger is the witness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-it-leaves-you-keep-just-the-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it leaves you — keep just the ledger
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-closing-note-to-the-version-of-me-from-two-years-ago" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A closing note, to the version of me from two years ago
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ReadMeShowMe/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReadMe / ShowMe Help (POC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HelpO2C/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    O2C Help Steps (ReadMe)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_Roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Forward Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VibeProgramming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vibe Programming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OpLogERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Op-Log ERP Engine (Abstract)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EnablingTechTimeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enabling-Tech Timeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LocalFirstPriorArt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local-First Prior Art
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DistributedERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_COVERAGE_MATRIX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Coverage Matrix (have we covered all bases?)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GapClosureSpec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gap-Closure Spec (how a gap becomes oracle-equivalent)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_MODEL_ARCHETYPE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Model Archetype (MOrder + deltas = the denominator)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../POS_ADDON_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    POS Addon Spec (the 2012 Unicenta loop, as folds)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_PICKING_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Picking Spec (warehouse walk + QR)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf (server→serverless witness)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HospitalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hospital (HA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RevitAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Revit MEP (RM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House (125K)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StressTest_1M/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1M Stress Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide (start here)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide (deprecated)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_HTML_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Plans Viewer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RouteTemplate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Find and Navigate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RTreeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    City-Scale RTree
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Localization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#who-is-writing-this-and-why-it-is-personal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who is writing this, and why it is personal
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-holy-grail-actually-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Holy Grail actually is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-two-years-of-extracting-pojava-was-the-wrong-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why two years of extracting PO.java was the wrong target
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why two years of extracting PO.java was the wrong target">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#so-are-we-free-of-pojava" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        So — are we free of PO.java?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-is-a-grail-others-cannot-reach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it is a grail others cannot reach
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-honest-status-half-claimed-one-mile-left" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The honest status — half-claimed, one mile left
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#roadmap-check-the-write-seam-as-of-2026-06-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roadmap check — the write-seam, as of 2026-06-13
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#abstracting-the-docaction-corpus-and-why-it-is-the-migration-solvent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Abstracting the DocAction corpus — and why it is the migration solvent
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-hard-parts-worked-through-why-the-showstoppers-arent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hard parts, worked through — why the showstoppers aren't
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The hard parts, worked through — why the showstoppers aren&#39;t">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-compacting-the-signed-log-balance-brought-forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Compacting the signed log — balance brought forward
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Compacting the signed log — balance brought forward">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backup-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Back up the recipe, not the result — 1 TB → ≈500 MB
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-atomicity-the-document-is-the-atomic-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Atomicity — the document is the atomic unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-oltp-physics-is-the-lock-the-ledger-is-the-witness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. OLTP — physics is the lock, the ledger is the witness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-it-leaves-you-keep-just-the-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it leaves you — keep just the ledger
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-closing-note-to-the-version-of-me-from-two-years-ago" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A closing note, to the version of me from two years ago
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<p>/*<em>
+ * BIM OOTB / ERP OOTB — The Holy Grail: editable business rules, live.
+ * Copyright (c) 2025-2026 Redhuan D. Oon <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a>
+ * SPDX-License-Identifier: MIT
+ </em>/</p>
+<h1 id="the-holy-grail-editable-business-rules-live">The Holy Grail — Editable Business Rules, Live<a class="headerlink" href="#the-holy-grail-editable-business-rules-live" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>See also:</strong> the one-page evaluator companion — <strong><a href="../MigrateComparisonPaper/">Migrate &amp; Compare (ERP)</a></strong> (legacy ERP vs the WASM event-sourced browser); the <em>back-up-the-recipe</em> §below is linked from its backup figure.</p>
+<p><strong>For a retail owner:</strong> the plain-English, animated one-pager — <strong><a href="../RetailScaleStory.html">Two messages a day → books to the penny</a></strong> — proves the same engine at <strong>10,000 tills</strong> (benchmark <code>W-POS-WAN-SCALE</code>, runnable).</p>
+<p><em>A first-person note from the author. The technical claims below are grounded in the
+dated, witnessed sections of <a href="../ERP/">ERP.md</a>; this page is the reasoning that ties
+them to a quest I have carried for a long time.</em></p>
+</blockquote>
+<h2 id="who-is-writing-this-and-why-it-is-personal">Who is writing this, and why it is personal<a class="headerlink" href="#who-is-writing-this-and-why-it-is-personal" title="Permanent link">&para;</a></h2>
+<p>I am Redhuan D. Oon. I was the founding leader of <strong>ADempiere</strong>, and in that role I
+materially ushered in the birth of <strong>iDempiere</strong> — the community, the people, and the
+direction that made it possible. I then left that path to pursue this one.</p>
+<p>I did not leave because the open-source ERP idea was wrong. I left because the thing I
+most wanted from it — <strong>rules you can edit while the system runs, safely, without a
+build</strong> — was structurally out of reach inside the architecture we had built. For two
+years I tried to reach it from the inside: I attempted, with Spring and plain Java, to
+extract even the <em>core</em> of the model — <code>PO.java</code>, <code>Info.java</code> — into something light
+enough to re-host and re-open. It did not converge. This document is the account of why
+it could not, and why a browser-and-PWA paradigm shift reached it from the outside —
+something that genuinely surprised me, the person who had spent the most time failing at
+it the other way.</p>
+<h2 id="what-the-holy-grail-actually-is">What the Holy Grail actually is<a class="headerlink" href="#what-the-holy-grail-actually-is" title="Permanent link">&para;</a></h2>
+<p>Not "an ERP in a browser." That is a means. The grail is one specific capability:</p>
+<blockquote>
+<p><strong>Edit a business rule, and watch the affected records change on the map — live,
+reversibly, with no recompilation and no server.</strong></p>
+</blockquote>
+<p>In this project that is named directly: the <em>parked endgame</em> in
+<a href="../ERP/">ERP.md "Why this is more than a port"</a> — <em>"let you </em><em>edit a rule and watch the
+affected records flip on that map</em><em> (the diff-oracle in the browser, §2d-3)"</em> — and in
+<a href="../GLASSBOWL_DOSSIER/">GLASSBOWL_DOSSIER.md</a> as <em>the final big picture</em>: Glassbowl stops
+being a map of the engine and becomes <strong>the console you run the engine from</strong>.</p>
+<p>It is earmarked precisely, not vaguely:</p>
+<table>
+<thead>
+<tr>
+<th>Earmark</th>
+<th>What it fixes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a href="../ERP/">ERP.md §0.4</a></strong> — <em>Editable business rules, the SystemAdmin role</em></td>
+<td>names this as <strong>the differentiator</strong>, not a feature</td>
+</tr>
+<tr>
+<td><strong><a href="../ERP/">ERP.md §0.5</a></strong> — <em>the rules engine = a per-cell decision table</em></td>
+<td>the shape: a table per <code>(DocType, status, action)</code> cell — <strong>not</strong> Rete / DSL / inference</td>
+</tr>
+<tr>
+<td><strong><a href="../ERP/">ERP.md §0.9</a></strong> — <em>the rule mechanism, JSR-223-native</em></td>
+<td>the host language <strong>is</strong> JavaScript, so the rule language = the runtime language; the scripting-engine abstraction is <em>unnecessary</em></td>
+</tr>
+<tr>
+<td><strong><a href="../ERP/">ERP.md §0.10</a></strong> — <em>the Rule Compiler</em></td>
+<td>the rules are already extracted to data: <code>erp_rules.db</code>, <strong>746 records</strong>, diff-verified</td>
+</tr>
+<tr>
+<td><strong>ERP.md §2d-3 / GLASSBOWL_DOSSIER.md</strong></td>
+<td>the live edit-and-reflow loop — the grail itself</td>
+</tr>
+</tbody>
+</table>
+<h2 id="why-two-years-of-extracting-pojava-was-the-wrong-target">Why two years of extracting <code>PO.java</code> was the wrong target<a class="headerlink" href="#why-two-years-of-extracting-pojava-was-the-wrong-target" title="Permanent link">&para;</a></h2>
+<p>This is the part I most want a future reader — especially one still inside a code-engine
+ERP — to understand, because it cost me the most to learn.</p>
+<p><code>PO.java</code> is <strong>not extractable</strong>, and it never was. Not because it is hard, but because
+it is the <strong>wrong thing to extract</strong>. It is an <em>imperative</em> engine. Pull on it and the
+entire transitive graph follows: the model registry, the OSGi service wiring, the
+transaction manager, the callout chain, the <code>MTable</code>/<code>MColumn</code> reflection. You are
+trying to lift the engine <em>with its whole gravity well attached</em>. Two years is simply
+what that costs — and it does not converge, however much effort you add.</p>
+<p>The paradigm shift is not "do the extraction better in a PWA." It is to <strong>stop
+extracting the engine, and extract what the engine operates on</strong>:</p>
+<ul>
+<li>The Application Dictionary rows and the rule records were <strong>already data</strong> —
+  <code>AD_Rule</code>, <code>AD_Val_Rule</code>. That is iDempiere's own design (<a href="../ERP/">ERP.md §0.9</a>); half
+  the "rules engine" already exists as data. We <em>compile</em> it, we do not reinvent it.</li>
+<li>The <em>remainder</em> — the deterministic part that actually runs a document — is small.
+  Re-hosted as a <strong>~150-line kernel</strong> in the browser's native JavaScript, <code>PO.java</code>'s job
+  (persist + lifecycle) becomes <code>apply(op)</code> plus the op-log fold; <code>Info.java</code>'s job (the
+  windowed UI) becomes the keyed-overlay Application Dictionary (the UI-overlay
+  governance model — every UI concern a keyed layer over a tagged element).</li>
+</ul>
+<p>The bloat was not ported. It was <strong>deleted by being re-based.</strong> That is why the shift
+worked from the outside when extraction failed from the inside.</p>
+<h3 id="so-are-we-free-of-pojava">So — are we free of <code>PO.java</code>?<a class="headerlink" href="#so-are-we-free-of-pojava" title="Permanent link">&para;</a></h3>
+<p>Two senses, and they differ. <strong>From <em>running</em> it: yes, completely.</strong> Nothing in the browser
+instantiates or extends <code>PO.java</code>; each of its jobs is re-based onto data or the log — generic
+save → <code>apply(op)</code> + the 5-table fold (no <code>UPDATE</code>-in-place exists at all); change-tracking →
+<code>kernel_ops</code> before/after + lineage; <code>beforeSave</code>/mandatory validation → rules-as-data
+(<code>AD_Val_Rule</code>); <code>get_ID</code> → edge-minted UUID recorded as input (§0.21); model-validator firing →
+the named-handler registry; <code>trx</code> → the op-group, the document-event as the atomic unit (§18.8).
+Witnessed: replay reproduces the O2C/P2P oracle to the cent with <strong>zero iDempiere code executing.</strong></p>
+<p>The freedom came <strong>by never extracting it.</strong> Carrying <code>PO.java</code> somewhere lighter never converges
+— you drag its whole gravity well. But <code>PO.java</code>'s defining property, <em>generic and
+metadata-driven</em>, is precisely what makes it deletable: anything fully driven by metadata is
+replaceable by <em>reading the metadata and folding the log</em>. iDempiere could not take that step
+because that core was welded to the JVM / OSGi / <code>trx</code> / side-effects; remove the weld and
+<code>PO.java</code> has nothing left to do.</p>
+<p><strong>From what its subclasses <em>knew</em>: deliberately not — and that is correct.</strong> The <code>M*.*It()</code>
+methods remain the <strong>oracle</strong> we verify against, per cell, so "extract" never slides into "guess."
+The day that consultation ends is the day every cell is extracted and verified — the §0.17 breadth
+campaign, in flight (O2C/P2P done; GL still dataless; the DocAction corpus being abstracted now).
+Free of <em>running</em> it; finishing the extraction of what it taught the models is the campaign, not a
+new idea.</p>
+<h2 id="why-it-is-a-grail-others-cannot-reach">Why it is a grail others cannot reach<a class="headerlink" href="#why-it-is-a-grail-others-cannot-reach" title="Permanent link">&para;</a></h2>
+<p>Three conditions have to hold <strong>at the same time</strong>. Almost no system has all three —
+which is exactly why this remained a quest rather than a checkbox:</p>
+<ol>
+<li><strong>The engine is data.</strong> A rule is a <em>row you read</em>, not Java you recompile.</li>
+<li><strong>The host language is the rule language.</strong> Browser JavaScript <em>is</em> the runtime, so
+   editing a rule is editing the running system — no JSR-223, no Drools workbench, no
+   scripting bridge (<a href="../ERP/">ERP.md §0.9</a>).</li>
+<li><strong>The op-log makes editing safe.</strong> Change-as-op, replay, dry-run, undo — <em>the safety
+   Drools never had</em> (<a href="../ERP/">ERP.md §0.4</a>). You can edit a rule and <strong>not corrupt
+   history</strong>, because effects are frozen and replayable (<a href="../ERP/">ERP.md §0.18</a>).</li>
+</ol>
+<p>iDempiere has condition (1) only half-done and lacks (2) and (3): its rules are
+half-data, half-welded into <code>M*</code> Java side effects, so they can never be made <em>fully</em>
+editable-at-runtime without the JVM / OSGi / workbench that constitute the bloat. Drools
+has a rule engine but no op-log safety and no engine-as-data. For them this is a <em>stuck</em>
+problem; here it is a <strong>structural property</strong>. The bloat that prevents them is precisely
+the bloat this project removed.</p>
+<blockquote>
+<p><strong>How <em>every</em> ERP's logic enters</strong> (the generalize / decision-data / caged-plugin question, and why a
+Drools-<em>like</em> affordance is kept but the Drools <em>engine</em> is not) → the six-layer <strong>logic-admission model</strong> in
+<a href="../IDEMPIERE_2/#the-logic-admission-model--how-all-of-odooerpnextsap-logic-enters">IDEMPIERE_2.md</a>. The grail is
+that model's L1/L2/L5 made <em>live</em>.</p>
+</blockquote>
+<h2 id="the-honest-status-half-claimed-one-mile-left">The honest status — half-claimed, one mile left<a class="headerlink" href="#the-honest-status-half-claimed-one-mile-left" title="Permanent link">&para;</a></h2>
+<p>I will not overclaim my own grail. It is <strong>half-reached, and witnessed that far:</strong></p>
+<ul>
+<li><strong>Reached:</strong> the rules are extracted to data — <code>erp_rules.db</code>, <strong>746 records</strong>,
+  <strong>diff-verified</strong> against the GardenWorld oracle (<a href="../ERP/">ERP.md §0.10, §0.17</a>).
+  The engine renders <em>itself</em> from that data (Glassbowl), read-only.</li>
+<li><strong>Remaining:</strong> the <strong>live edit loop</strong> — <em>edit the rule → records reflow on the map</em> —
+  is the write-loop, gated behind T3 (<code>push=live</code>, explicit go). The read-only History
+  undo-preview and the greyed CRUD ring are the honest <em>seam</em> to it, not the step.</li>
+</ul>
+<p>And the seam is now being built. The CRUD / Validation overlay (the "ring-of-fire" edit
+layer, governed by the UI-overlay model) carries the
+<code>AD_Val_Rule</code> model as a keyed, editable layer. Make that validation layer <em>editable and
+re-folding</em> instead of static, and the grail is demonstrable in one gesture. The single
+witness that closes it:</p>
+<div class="highlight"><pre><span></span><code>§RULE-EDIT key=c_invoice rule=non_negative_amt edit=min:0→min:100
+           affected=K records re-fold verify=ok reversible=Y
+</code></pre></div>
+<p>Change one validation row; watch <em>K</em> records change which side of the rule they fall on,
+live; op-logged, signed, reversible. That witness is the whole paradigm shift made
+visible in a single gesture — and the architecture it needs (engine-as-data + a
+JavaScript host + the signed op-log) is <strong>already standing under it.</strong></p>
+<h2 id="roadmap-check-the-write-seam-as-of-2026-06-13">Roadmap check — the write-seam, as of 2026-06-13<a class="headerlink" href="#roadmap-check-the-write-seam-as-of-2026-06-13" title="Permanent link">&para;</a></h2>
+<p>The grail is the <em>last rung of the write-loop</em>, not a separate project. Here is the
+ladder from today's read-only surface to the live rule-edit, and where each rung stands —
+this section is meant to be updated as a checkpoint each time a rung is climbed.</p>
+<table>
+<thead>
+<tr>
+<th>Rung</th>
+<th>What it is</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>R0</strong></td>
+<td>Rules extracted to data, diff-verified (<code>erp_rules.db</code>, 746 records)</td>
+<td><strong>done — witnessed</strong></td>
+</tr>
+<tr>
+<td><strong>R1</strong></td>
+<td>The engine renders itself from that data, read-only (Glassbowl)</td>
+<td><strong>done — live</strong></td>
+</tr>
+<tr>
+<td><strong>E2</strong></td>
+<td>The write <em>seam</em> — CRUD ring + the document state machine (<strong>Process / DocAction</strong>) modelled as keyed data, <strong>dry-run</strong></td>
+<td><strong>done — witnessed (this checkpoint)</strong></td>
+</tr>
+<tr>
+<td><strong>E3</strong></td>
+<td>The seam goes live — <code>apply</code> → <code>commitOp</code>/<code>sealChain</code>, <code>verifyChain</code> after each; projection re-folds; acceptance oracle (rebuilt #80001 == traced #80001)</td>
+<td>next</td>
+</tr>
+<tr>
+<td><strong>E4</strong></td>
+<td>Owner-gate + CAS invoked on the write path (the Phase-A guards surfaced)</td>
+<td>pending</td>
+</tr>
+<tr>
+<td><strong>§RULE-EDIT</strong></td>
+<td><strong>The grail</strong> — edit a <em>rule</em> row; watch <em>K</em> records re-fold live, signed + reversible</td>
+<td>the last rung</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What just landed, and why it matters to the grail.</strong> The CRUD + <strong>Process (DocAction)</strong>
+overlay (E2) is now mounted in tandem with the Help guide as an independent peer layer —
+witnessed <code>§CRUD-PROC pass=27 fail=0</code>, plus the earlier CRUD validation/dry-run witnesses,
+all still dry-run. The <strong>Process</strong> piece is the part that matters here: it models the
+document's <em>state machine</em> — <code>completeIt()</code>, the legality of <code>DR→CO</code>, the IP-on-unmet
+outcome — as <strong>data</strong> (<code>docAction</code> descriptors naming the real <code>M*.completeIt()</code> oracles),
+not code. That widens the grail's surface from <em>field-validation rules</em> to <em>lifecycle
+rules</em>: the most valuable rule a user edits is usually "<strong>when may this complete, and what
+does completion do</strong>" — and that is now keyed data the same edit loop can reach. The grail
+is no longer only "edit a minimum amount"; it is "edit when an invoice may post."</p>
+<p><strong>The honest gap is unchanged.</strong> E2 is still <strong>dry-run</strong> — it logs the op it <em>would</em> run.
+The load-bearing step is <strong>E3</strong>: the signed write plus the acceptance oracle that proves a
+re-built document matches the traced one. Until E3 is green, the seam is a faithful <em>model</em>
+of the engine, not the live engine; and the grail rung (<code>§RULE-EDIT</code>) sits one step past
+E3/E4. So the checkpoint verdict, stated plainly: <strong>the seam to the grail is now built and
+witnessed as data; the current is not yet flowing through it.</strong> A rung climbed, honestly
+logged — which is the difference between building and day-dreaming.</p>
+<p><strong>2026-06-13 checkpoint — R0 extended to phrase authoring.</strong> The POS deliver-later variant
+(W-POS-DELIVERLATER) and the NinjaExcel reporting engine (W-NINJA, W-NINJA-RULE) have landed.
+The grail-relevant piece is <strong>W-NINJA-RULE</strong>: a phrase-to-SQL compiler that resolves human
+phrases ("COUNT of Invoices, completed, is Sales Transaction, from …") to SQL candidates using
+<em>only</em> vocabulary extracted from the AD dictionary — <code>ad_table</code> / <code>ad_column</code> / <code>ad_ref_list</code>
+— zero LLM, zero hardcoded strings. The browser pill (W-NINJA-RULE-UI) runs the same
+compile → sample-falsify → human-picks-tie loop live. This extends <strong>R0</strong> from "rules
+extracted to data and diff-verified" into "rules authorable from human phrases in the browser,
+using the AD as vocabulary" — the write side of the same foundation the grail requires. The
+gap to E3/§RULE-EDIT is unchanged; the authoring story for the rules you will eventually
+edit is now demonstrated.</p>
+<h2 id="abstracting-the-docaction-corpus-and-why-it-is-the-migration-solvent">Abstracting the DocAction corpus — and why it is the migration solvent<a class="headerlink" href="#abstracting-the-docaction-corpus-and-why-it-is-the-migration-solvent" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>How much of the corpus is folded today → <a href="../ERP_COVERAGE_MATRIX/">ERP Coverage Matrix</a>:</strong> of the 14 DocActions × 52 C_DocTypes, the engine interprets <strong>only <code>CO</code></strong> (Complete) — the other 13 actions and the per-doctype FSM are a ⛔ gap. The de-interleaved transition table is also the storage opcode table (<code>poc_oc_bytes.js</code> <code>§OPCODE-TABLE</code>).</p>
+<p><strong>2026-06-11 — the recipe runs LIVE at a point of sale:</strong> the POS addon (<a href="../POS_ADDON_SPEC/">POS_ADDON_SPEC</a>)
+dispatches the <code>WR</code> (on-the-fly shipment+invoice) DocAction recipe as ONE signed op group on <code>idempiere.html</code> —
+order→CO + ship + invoice + BOM backflush + replenishment fold, all existing verbs (W-POS-WR: replay-equal to
+the engine's own specs; tamper breaks <code>verifyChain</code>; the invoice posting == real <code>fact_acct(318)</code> to the cent).</p>
+</blockquote>
+<p>The grail edits <em>rules</em>; the most valuable rules govern a document's <em>lifecycle</em> — <em>when may
+this complete, and what does completion do.</em> So the engine must express the whole iDempiere
+<strong>DocAction</strong> corpus (≈13 actions — <code>DR/PR/CO/AP/RJ/CL/RC/RA/VO/RE/IN/XL/PO</code> — over ≈13
+statuses) as <strong>data</strong>, not code, without re-bloating into per-model logic. It does, because
+<code>DocumentEngine</code> is <em>already shared code in iDempiere, not per-model</em> — the tell that a state
+machine is hiding inside a switch. It abstracts into three layers, and <strong>only one is
+per-model:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What it is</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The transition table</strong></td>
+<td><code>(DocStatus × DocAction) → {legal?, nextStatus, guard, handler}</code> — one generic, sparse decision table (§0.5)</td>
+<td>extracted <strong>once</strong>, model-agnostic</td>
+</tr>
+<tr>
+<td><strong>The handler families</strong></td>
+<td>the side effects — and the corpus <em>collapses</em> (below)</td>
+<td>a small closed set</td>
+</tr>
+<tr>
+<td><strong>The oracle</strong></td>
+<td>each <code>docAction</code> names its <code>M*.&lt;action&gt;It()</code>; the diff-oracle proves the generic handler reproduces it, cell by cell</td>
+<td>verify, never port</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The corpus collapses — but by <em>de-interleaving</em>, not by being secretly empty.</strong>
+<code>MOrder.completeIt()</code> and <code>MInvoice.completeIt()</code> genuinely run for pages. They are long
+because each <strong>interleaves four concerns</strong> in one imperative method — and the same blob is
+re-written in <code>MOrder</code>, <code>MInvoice</code>, <code>MInOut</code>, <code>MPayment</code>. Separate the four and the pages shrink,
+because three of them are written <strong>once for the whole corpus:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Concern tangled inside the method</th>
+<th>What it is</th>
+<th>Where it goes</th>
+<th>Written</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>setDocStatus</code>/<code>Processed</code>/<code>DocAction</code>, validate hooks</td>
+<td>status bookkeeping (boilerplate in every method)</td>
+<td>the transition table</td>
+<td><strong>once</strong></td>
+</tr>
+<tr>
+<td>mandatory fields, credit limit, legal status</td>
+<td>guards — predicates (§0.14 GUARD)</td>
+<td>rules (data)</td>
+<td><strong>once, shared</strong></td>
+</tr>
+<tr>
+<td><code>createShipment</code>, <code>createInvoice</code>, <code>reserveStock</code>, <code>allocate</code>, <code>match</code>, post</td>
+<td>generation verbs (§0.14 GENERATE), <strong>shared across models</strong></td>
+<td>named handlers</td>
+<td><strong>once each</strong></td>
+</tr>
+<tr>
+<td>which verbs fire, in what order, under which condition</td>
+<td>the per-doc-type <strong>recipe</strong></td>
+<td>data — the <code>docAction</code> fan-out descriptor</td>
+<td>a short list</td>
+</tr>
+</tbody>
+</table>
+<p>What remains genuinely model-specific and intricate — BOM / phantom explode (MOrder), material
+transaction + costing + ASI (MInOut), the posting recipes — is a <strong>small set of named handlers,
+verified per cell against the <code>M*.*It()</code> oracle</strong> (§0.17), far smaller than the raw page count
+once boilerplate, guards, and the <em>duplicated</em> generation verbs are factored out.
+<code>MInvoice.completeIt()</code> is mostly calls to verbs O2C already proved — <code>match</code>, <code>allocate</code>, post —
+plus balance updates; its irreducible recipe is a handful of lines. <code>prepareIt</code> reduces the same
+way: its guards → rules, its <code>reserveStock</code> / explode → the same generation verbs as <code>completeIt</code>.</p>
+<p>The genuinely trivial actions carry <strong>no handler at all</strong> — straight into the table (~3 lines
+each in iDempiere): <code>approveIt</code> (<code>setIsApproved</code>), <code>rejectIt</code>, <code>unlockIt</code> (<code>setProcessing(false)</code>),
+<code>invalidateIt</code> (<code>setDocStatus(INVALID)</code>).</p>
+<p>And the <strong>reversal family collapses to ONE generic handler:</strong> <code>voidIt</code> / <code>reverseCorrectIt</code> /
+<code>reverseAccrualIt</code> / <code>reActivateIt</code> = <em>"emit the inverse of the document's op-group."</em> The op-log
+holds the original ops, so reversal is appending the negation — <strong>the per-model, notoriously buggy
+reverse code in iDempiere becomes a single op-log operation.</strong> This is the structural gift.
+(<code>closeIt</code> = set status + clamp the residual; near-generic.)</p>
+<p>So the reduction is real, but the mechanism is <strong>factor the four concerns apart and de-duplicate
+the shared verbs</strong> — not "the code was empty." The bulk (status, guards, shared verbs, posting) is
+written once for the whole corpus; the per-model remainder is a short recipe plus a few verified
+handlers, <code>completeIt</code> / <code>prepareIt</code> included.</p>
+<p><strong>Why this is the migration solvent.</strong> Row migration is the easy part everyone already does.
+What makes ERP migration hell — and what <em>locks</em> customers into SAP/Odoo — is the <strong>behaviour</strong>:
+the lifecycle, the posting rules, the approvals. Nobody migrates behaviour because it is <em>code
+in the source system</em>. The moment behaviour is <strong>data</strong> (a transition table + named handlers
+verified against an oracle), migrating behaviour becomes migrating data. Every ERP's document
+lifecycle is the same shape — a state machine over documents descended from double-entry
+(1494). Onboarding a foreign instance becomes an <strong>adapter</strong> mapping <em>their</em> <code>(status, action,
+transition)</code> onto <em>this</em> generic table, and their schema onto the 5-table bridge; the engine
+never changes, only adapter rows. And because the target is an op-log, the migration is itself
+<strong>replayable, auditable, reversible</strong> — the same reversal-family handler that voids a document
+can unwind a bad import. You do not migrate <em>into</em> a new schema; you <strong>fold the old system's
+facts into the universal one.</strong></p>
+<p><strong>The honest boundary.</strong> "Eat <em>any</em> instance" is earned <strong>one diff-oracle at a time.</strong>
+iDempiere is tractable because its DocAction is known and GardenWorld is the oracle. Odoo is
+open and its state machine is extractable (oracle buildable). SAP is the asymptote — closed
+ABAP plus decades of customer Z-code where the real behaviour hides; the honest claim there is
+"the standard flows + extractable config, with Z-customisations per engagement." The method is
+proven by the <em>first</em> clean abstraction — iDempiere's DocAction, the one being built now — and
+the rest is campaign, in sequence (iDempiere → Odoo → SAP standard → SAP custom), each gated by
+its own oracle. Migration removes the barrier to leaving; the grail (editable rules, live)
+supplies the reason to land. Both halves, or the solvent has nothing to pour into.</p>
+<p><strong>Odoo — second abstraction, WITNESSED (2026-06-03, <code>§ODOO-FOLD PASS</code>).</strong> Odoo 17 demo was stood up,
+one full sell-side O2C chain (SO <code>S00023</code> → delivery → invoice → GL post → payment → reconcile) was
+driven to completion via RPC and frozen as a static oracle (<code>build/erp/odoo_oracle.{json,db}</code>, §0.12).
+A <em>pure</em> adapter (<code>scripts/odoo_adapter.js</code> — the Odoo↔iDempiere data dictionary, no business logic)
+folded that chain through the <strong>existing</strong> kernel verbs: <code>newVerbs=[]</code>, all 5 hops mapped, effects
+reproduce Odoo to the cent, replay exact (<code>scripts/poc_odoo_fold.js</code>, log <code>build/erp/odoo_fold.log</code>).
+The solvent dissolved a <em>second</em> ERP with nothing invented — the strongest evidence yet that the
+verb set is general, not iDempiere-local. <strong>Honest bound (named, not hidden):</strong> this is ONE sell-side
+chain. Account <em>determination</em> (which GL account) came from Odoo as host data — the POST verb owns only
+ΣDR==ΣCR (§13.1), it does not re-derive Odoo's account logic. Full payment used FK-directed <code>ALLOCATE</code>.</p>
+<p><strong>Buy-side + partials, WITNESSED (2026-06-03).</strong> The campaign then folded three more Odoo chains, all
+<code>newVerbs=[]</code>: the full 3-way <code>MATCH</code> (PO <code>P00011</code> → receipt → bill → post → reconcile, <code>§ODOO-FOLD-3WAY
+PASS</code> — the 6th verb now exercised, all six fold Odoo); the f7 partial-receipt (PO <code>P00012</code> ordered 20 /
+received 12 / billed 12, <code>§ODOO-FOLD-PARTIAL PASS</code> — decomposes into an exact-match settlement leg + an
+FK-directed open remainder, §0.17); and <strong>f8 bill≠receipt</strong> (PO <code>P00013</code> received 12, billed 8) — the one
+case that found a real engine gap. The SHIPPED exact-qty matcher pairs only when <code>|qtyL−qtyR|≤tol</code>, so it
+could not reconcile bill≠receipt. <strong>That gap is now closed (<code>§ODOO-FOLD-F8 PASS</code>):</strong> <code>erp_engine.match</code>
+gained opt-in <strong>partial-QUANTITY matching</strong> (<code>opts.partial=true</code> — pair <code>min(qty)</code>, carry the remainder),
+reconciling to the unit (matched 8 + open-to-bill 4 == received 12) still via the SAME <code>MATCH</code> verb. The
+honest classification held through the fix: it was new matcher <strong>behaviour</strong> (code), NOT a new verb
+(<code>newVerbs=[]</code>) and NOT adapter-shaped (data) — and the exact-qty fast path stayed untouched, no regression.</p>
+<p><strong>Partial PAYMENT, WITNESSED (2026-06-03, <code>§ODOO-FOLD-PAYPART PASS</code>).</strong> The last Odoo bound the sell-side
+fold named was full-vs-partial <em>reconciliation</em>. A fresh chain was driven to a partial-payment state (SO
+<code>S00027</code> → invoice 5002.50 → register a payment of <strong>3000</strong>), leaving Odoo's computed residual <strong>2002.50</strong>,
+<code>payment_state='partial'</code>, frozen as a static oracle. The fold reproduces it with the <strong>same <code>ALLOCATE</code>
+verb at the smaller amount</strong> — residual = total − allocated, to the cent — <code>newVerbs=[]</code> <strong>and no engine
+change</strong>. Partial payment is the cleanest result of the campaign: it was <em>free</em>. (Contrast f8, which cost
+~15 lines of matcher behaviour: the difference is that a partial <em>payment</em> is one allocation at a smaller
+amount, whereas a partial <em>quantity match</em> is a genuinely different pairing.)</p>
+<p><strong>Account determination, DERIVED (2026-06-03, <code>§ODOO-FOLD-ACCTDERIV PASS</code>).</strong> The one bound named at every
+step above was that the folds took Odoo's <em>resolved</em> GL accounts as host data — "reproduces given accounts."
+That bound is now closed. Odoo's determination CONFIG was extracted (product income = template account →
+category fallback; tax = the tax's repartition account; receivable = the partner property) and a resolver
+DERIVES the accounts from that config alone — reproducing Odoo's actual posting to the account (400000
+Sales / 251000 Tax / 121000 AR), the derived double-entry balancing to the cent. It stays <strong>host glue, not
+engine</strong> (POST still owns only ΣDR==ΣCR), and the determination logic was learned clean-room from the config
+<em>structure</em>, never Odoo's source. The claim is raised from "reproduces <em>given</em> accounts" to "<strong>derives</strong> the
+accounts" — <code>newVerbs=[]</code>.</p>
+<p><strong>Odoo, in sum:</strong> six folds with nothing invented — sell-side O2C, buy-side 3-way, partial receipt,
+bill≠receipt, partial payment, and account derivation — across all six verbs, <code>newVerbs=[]</code> throughout, with
+exactly one engine change in the whole campaign (the f8 partial-quantity matcher). The remaining items
+(multi-currency, anglo-saxon COGS) are optional claim-raisers, not blockers.
+<strong>Next abstraction: SAP — the asymptote.</strong> The <em>allowed half</em> is prepared (2026-06-03): a clean-room,
+blind schema/state-map HYPOTHESIS (<code>scripts/sap_adapter.js</code>) mapping the standard SD+FI chain (VBAK/VBAP →
+LIKP/LIPS → VBRK/VBRP → BKPF/BSEG|<strong>ACDOCA</strong> → BSEG clearing, with <strong>VBFA</strong> as the explicit derivation
+spine) onto the same six verbs, plus a runner (<code>scripts/poc_sap_fold.js</code>) gated to <code>§SAP-ORACLE unavailable</code>
+until a real export exists. The hypothesis is sharp precisely because S/4HANA's own redesign converged on
+our shape — one append-style journal (ACDOCA) + an explicit document-flow graph (VBFA). What is <em>not</em> done,
+and cannot be without violating non-invent, is the fold itself: that needs a real IDES/S/4HANA oracle, in
+its own session, <strong>never against an invented oracle.</strong> The honest claim stays "standard flows + extractable
+config; Z-customisations per engagement" — and the value of the SAP run is finding <em>which</em> Z-behaviour does
+not fold, not a foregone PASS.</p>
+<h2 id="the-hard-parts-worked-through-why-the-showstoppers-arent">The hard parts, worked through — why the showstoppers aren't<a class="headerlink" href="#the-hard-parts-worked-through-why-the-showstoppers-arent" title="Permanent link">&para;</a></h2>
+<p>Three forward challenges look like showstoppers until you model them as the ledger already does.
+None requires the OLTP server, the lock manager, or the always-on coordinator a classic ERP carries.</p>
+<h3 id="1-compacting-the-signed-log-balance-brought-forward">1. Compacting the signed log — <em>balance brought forward</em><a class="headerlink" href="#1-compacting-the-signed-log-balance-brought-forward" title="Permanent link">&para;</a></h3>
+<p>The op-log is hash-chained for tamper-evidence — each entry carries the fingerprint of the one
+before it, so any later alteration is caught. After years it is millions of entries: too large for a
+tab, too slow to replay from the start. You cannot simply delete the old ones — the chain would snap
+and the old history could no longer be proven intact.</p>
+<p>The resolution is the <strong>period close.</strong> At close, write one <strong>signed checkpoint</strong> carrying (a) the
+closing balances and (b) the fingerprint of the chain head, signed by the controller. That checkpoint
+becomes a new genesis: the next period chains off it; the closed period's entries are <strong>archived
+(cold), not deleted</strong>; the live tab carries only the open period + the last checkpoint. Tamper-evidence
+survives — re-add the archived entries and they must fold to the signed balance, to the cent, or fraud
+is proven. This is <strong>balance brought forward</strong>: total the books, carry the opening balance, box the
+journals in the archive. iDempiere already does the accounting half; we add only the signature and the
+fingerprint. The hash-chain checkpoint and the accountant's year-end close are the <em>same ritual</em> — the
+domain solved this 500 years ago. <em>(Optional reinforcements: a Merkle root keeps per-transaction
+provability of a closed period in 32 bytes; emailing the checkpoint fingerprint to yourself binds even
+the signer.)</em></p>
+<h4 id="backup-recipe">Back up the recipe, not the result — 1 TB → ≈500 MB<a class="headerlink" href="#backup-recipe" title="Permanent link">&para;</a></h4>
+<p>The persisted artifact is the signed op-log, never the materialised database: balances, postings
+(<code>Fact_Acct</code>) and every derived table are a deterministic <em>fold</em> of the log, recomputed on load — never
+stored. Period-close compaction keeps only the open period live (<code>scripts/poc_volume.js</code> <code>§VOL PASS</code> —
+bootstrap stays flat as history grows 100×). So a transaction-heavy <strong>1 TB ERP backs up as ≈500 MB</strong>: you
+carry the journals, not the ledger they fold to.</p>
+<p><em>Two honest caveats on "replay reconstructs everything."</em> <strong>(1) What replay reproduces exactly is the net
+result:</strong> the disjoint per-branch folds <strong>commute</strong>, so the union of signed logs re-folds to identical balances
+in any order (witnessed <code>maxDiff=0c</code> — <code>scripts/poc_blackout_resume.js</code> <code>§ORDER-HONEST</code>). The one thing <em>not</em>
+reconstructible from the logs alone is the <strong>cross-branch CAS arbitration order</strong> for a contended op-class — a
+bounded sliver routed to the ledger, minimised live to a measured quorum-RTT window
+(<code>scripts/poc_quorum_cas.js</code>). <strong>(2) The ≈500 MB is the <em>full-replica</em> figure</strong> (a facilitator or the owner's
+own channel); an <strong>edge device carries far less</strong> — its own slice + the shared state it touches (≈13 MB resident,
+not the whole chain — see <a href="../MigrateComparisonPaper/">MigrateComparisonPaper</a> DR/TCO). "Every device = 500 MB" is
+<strong>No</strong> for edge roles.</p>
+<h3 id="2-atomicity-the-document-is-the-atomic-unit">2. Atomicity — the document <em>is</em> the atomic unit<a class="headerlink" href="#2-atomicity-the-document-is-the-atomic-unit" title="Permanent link">&para;</a></h3>
+<p>Atomicity — all of a document's effects, or none — needs no transaction manager here, because there is
+no multi-row <code>UPDATE</code> to half-complete. A document-event is <strong>one op-group</strong> (§18.8), appended to the
+log as a unit; state is the <em>fold</em> over it. The group folds in completely or not at all, and a torn
+write fails its own hash. Atomicity is <strong>structural</strong> — the same dissolve-don't-coordinate move that
+removed contention: delete the multi-write transaction, keep the single atomic append.</p>
+<h3 id="3-oltp-physics-is-the-lock-the-ledger-is-the-witness">3. OLTP — physics is the lock, the ledger is the witness<a class="headerlink" href="#3-oltp-physics-is-the-lock-the-ledger-is-the-witness" title="Permanent link">&para;</a></h3>
+<p>Classic OLTP spends its effort on <strong>isolation</strong>: row locks / MVCC so concurrent writers do not clobber
+shared state. The DistributedERP doctrine (<a href="../DistributedERP/">DistributedERP.md</a> §1–§6) shows that
+shared state is mostly a modelling artifact:</p>
+<ul>
+<li><strong>Atomicity</strong> — solved above (the op-group).</li>
+<li><strong>Consistency</strong> — the deterministic kernel + guards (period control included) enforce invariants on
+  apply and on replay.</li>
+<li><strong>Isolation</strong> — <em>physics partitions the writers.</em> A till owns its sales, a van owns its load, a
+  box-in-hand owns itself — two writers cannot touch the same aggregate because the <strong>atoms have a
+  location</strong> (§2). The one genuinely shared thing — the last unit, a global entitlement — is the single
+  <strong>CAS op-class</strong> (§5): one set-if-unset, not a lock manager.</li>
+<li><strong>Durability</strong> — asynchronous: the local append is instant; durability lands when the log is relayed
+  (W-PERSIST). The one honest trade (§19.6) — synchronous durability for async convergence.</li>
+</ul>
+<p>Per terminal this <em>wins</em>: in-RAM apply of the op-group, no network per transaction (~1–3 orders faster
+than networked JDBC, §19). What remains is mechanical, not theoretical — maintain the read-projection
+incrementally at high append rates, bounded by the period checkpoint so the working set stays small.</p>
+<p><strong>And the deepest case — stock — is where the ledger earns its keep.</strong> You do <em>not</em> lock the world to
+prevent an oversell; in a partition you cannot, and every system that claims to is secretly
+record-and-consequence (<a href="../DistributedERP/">DistributedERP.md</a> §0, truth 4). Instead: <strong>the physical
+count is the truth; the ledger is the running expectation; reconciliation surfaces the difference.</strong> The
+scan <em>is</em> the op — you cannot scan a unit that is not physically there — so a physical unit cannot be
+double-committed. The ledger's job is not to <em>prevent</em> the discrepancy but to <strong>tell you the stock is
+off</strong> so you reconcile: POS → BOM backflush → replenishment → physical reconciliation. <em>Physics is the
+truth; the ledger is the witness that the books drifted.</em></p>
+<h3 id="what-it-leaves-you-keep-just-the-ledger">What it leaves you — keep just the ledger<a class="headerlink" href="#what-it-leaves-you-keep-just-the-ledger" title="Permanent link">&para;</a></h3>
+<p>Strip the machinery a classic ERP needs for these — the transaction manager, the lock/MVCC layer, the
+always-on OLTP server, the sync coordinator — and <strong>what remains is the ledger</strong>: a signed, append-only
+op-log; its fold (the balances); and reconciliation against the physical world. Compaction is <em>balance
+b/f</em>; atomicity is <em>one op-group</em>; concurrency is <em>physics + one CAS</em>; multi-site is a <em>dumb async
+facilitator</em> that only orders and relays (<a href="../DistributedERP/">DistributedERP.md</a> §6), never an
+authority. The hard parts are not unsolved — they are <strong>re-expressed as accounting</strong>, the one part of an
+ERP that was always going to stay. It has been thought through; the ledger is enough.</p>
+<p><strong>Witnesses — these are runs, not arguments (dated, headless, replay-deterministic).</strong> The three hard parts
+above are exercised on the actual editing-layer op shape in <code>scripts/poc_showstopper.js</code> (<code>§SHOW PASS</code>): the
+document-event op-group folds all-or-none (a torn op is rejected whole), the period-close checkpoint re-folds
+the cold archive to the signed balances <em>to the cent</em> with the tamper caught at the exact op, and the single
+CAS holds across the checkpoint boundary. The "mechanical, bounded by the checkpoint" claim is then <em>measured</em>
+in <code>scripts/poc_volume.js</code> (<code>§VOL PASS</code>): bootstrap from the last checkpoint stays flat as total history grows
+100× while a full replay grows with it — the working set is bounded by the period, not the log; the binding
+constraint is the per-op hash (append and verify), which sets the close cadence, not a wall. And the durability
+path — the inbox as the recoverable signed log — is stress-tested in <code>scripts/poc_email_dr.js</code> (<code>§EMAIL-DR
+PASS</code>): the data recovers unconditionally from any reachable valid snapshot, but the key does not live in the
+inbox — without an anchor the encrypted snapshots are undecryptable, and the three anchors that close that gap
+(own k-of-n channels, corporate escrow, platform passkey) each add a named, non-zero trust. The regress
+terminates for the <em>fact</em> unconditionally; for the <em>key</em>, only at a chosen anchor — and naming it is the floor.</p>
+<p><strong>Performance, measured (not asserted).</strong> <code>scripts/poc_volume_ceiling.js</code> pushes the log/fold layer to 20M
+ops with no wall and a linear curve (~437 bytes/op); <code>scripts/poc_volume_sqljs.js</code> re-measures on the actual
+browser stack (sql.js + <code>crypto.subtle</code>), where a per-op append is ≈15 µs, bound by the async hash, not by
+SQLite, and the fold (a SQL <code>GROUP BY</code> over a bounded chart of accounts) stays sub-frame. Against a legacy
+central database the gap is set by <em>where the work happens</em>: <code>scripts/poc_legacy_ab.js</code> shows that <strong>on one
+box</strong> Postgres ≈ local SQLite (both ~1 ms, fsync-bound) — so the ~100× there is honestly the async-durability
+trade (§19.6), not server-removal. <code>scripts/poc_remote_pos.js</code> shows the <strong>remote</strong> case, where it matters: a
+POS sale's cashier-perceived latency is RTT-bound for a central DB (tens to hundreds of ms, and the till
+<em>cannot sell when the link is down</em>) versus a local apply plus an asynchronous relay to HQ — RTT-independent
+and offline-capable; a 10k-document batch-plus-charts runs locally with no network and no per-chart round-trip
+(~12× over a fair server-side batch at cross-region latency). Every legacy figure is raw SQL, excluding the
+ORM/OSGi/JDBC layers that only make it slower — a floor, not a ceiling. The one honest cost throughout is the
+same async-durability trade; the gains are server-removal and locality, named, not rounded up.</p>
+<p><strong>Where this sits among the fast-SQLite systems — and the claim I will <em>not</em> make.</strong> Embedded SQLite at scale
+is not new: Expensify's Bedrock, Cloudflare's D1, Turso/libSQL all run it in production. On a single box, with
+durability matched, an in-process engine is roughly 3× a networked one on writes — and that advantage <em>inverts</em>
+under heavy concurrency, a benchmark a fair critic will (and should) cite. So I do not claim a faster engine.
+The real difference is the <strong>write path</strong>: every one of those peers keeps strong consistency by escalating each
+write to a central primary over the network. This design does not — a write applies locally and the signed
+op-group is relayed asynchronously, with a single compare-and-set for the one genuinely shared resource. That
+is a different <em>consistency model</em>, not a faster engine; its cost is eventual convergence, and its dividends are
+the two things a round-trip-to-a-primary architecture cannot give a till: it keeps selling when the network is
+down, and there is no write-contention to lose under concurrency, because each terminal is the single writer of
+its own partition. The speed argument is modest and conditional; the architecture argument — offline,
+single-writer, signed — is the one that holds.</p>
+<h2 id="a-closing-note-to-the-version-of-me-from-two-years-ago">A closing note, to the version of me from two years ago<a class="headerlink" href="#a-closing-note-to-the-version-of-me-from-two-years-ago" title="Permanent link">&para;</a></h2>
+<p>The two years spent proving the <em>imperative</em> extraction does not converge were not
+wasted — they are the evidence that the <em>declarative-extract</em> path is the one that does.
+The grail was never going to be reached by carrying the old engine somewhere lighter. It
+is reached by realizing the engine should have been data all along, and that the one
+thing a code-engine structurally cannot give you — a rule you edit while it runs, safely
+— falls out for free the moment it is.</p>
+<hr />
+<p><em>Grounding: <a href="../ERP/">ERP.md</a> §0.4 · §0.5 · §0.9 · §0.10 · §0.17 · §0.18 · §2d-3 ·
+<a href="../GLASSBOWL_DOSSIER/">GLASSBOWL_DOSSIER.md</a> · the §20 prototype addendum. Every claim of
+extraction here is witnessed in a dated log; nothing on this page is asserted that the
+source data does not support.</em></p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/red1oon/bim-ootb" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/red1oon/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/fold-footnotes.js"></script>
+      
+    
+  </body>
+</html>
