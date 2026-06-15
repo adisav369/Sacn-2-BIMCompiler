@@ -28,6 +28,11 @@ There is ONE standing backlog: `prompts/FRONTEND_LANE_MASTER.md §OUTSTANDING`. 
   - **`sw.js` is the conflict magnet** (every deploy bumps `CACHE_VERSION` + `PRECACHE_ASSETS`). On conflict: KEEP
     BOTH precache additions, take the HIGHER `CACHE_VERSION`. Never resolve by dropping the other session's hunk.
   - The worktree isolates working-dir + checked-out branch, **NOT** line-level merge conflicts on shared files.
+- **Docs deploy (READ `prompts/DOCS_DEPLOY_POLICY.md`):** publish docs ONLY via `mkdocs gh-deploy` from your
+  FULL working branch. `docs.yml` is DISARMED (manual-only + a no-deletion guard) after it twice force-wiped
+  live GH-Pages pages from stale `master`. **Do NOT re-arm its master auto-deploy.** `master` was reconciled to
+  the live superset 2026-06-16 (`21f7bbd2`). If a deploy/guard ABORTS: your tree is missing live pages — `git
+  merge origin/master` to become the superset, then re-deploy. Never `--force` a thin tree over `gh-pages`.
 
 ## BOM PRINCIPLE
 A BOM is a recipe: one parent, N children, each with a quantity. Each child can itself be a BOM — building → floor → room → furniture → leaf, recursively. Each level is atomic and self-contained. **Three Concerns never merge:** WHAT (Orders, Categories, Products), HOW (BOMs, AttributeSets, Validation), WHERE (output.db for 4D–8D downstream).
