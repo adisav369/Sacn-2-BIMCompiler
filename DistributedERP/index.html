@@ -3315,6 +3315,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="5. The one real-time op-class — customer-global entitlements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-multi-branch-claim-fraud-the-bearer-artifact-is-the-gate-blackout-proof" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Multi-branch claim fraud — the bearer artifact is the gate (blackout-proof)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3527,6 +3544,17 @@
     <span class="md-ellipsis">
       
         14. Per-node email-DR — each node backs itself up (inbox-as-log)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-physical-custody-the-shipment-as-a-node-chain-of-custody-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Physical custody — the shipment as a node (chain-of-custody log)
       
     </span>
   </a>
@@ -4696,6 +4724,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="5. The one real-time op-class — customer-global entitlements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-multi-branch-claim-fraud-the-bearer-artifact-is-the-gate-blackout-proof" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Multi-branch claim fraud — the bearer artifact is the gate (blackout-proof)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4908,6 +4953,17 @@
     <span class="md-ellipsis">
       
         14. Per-node email-DR — each node backs itself up (inbox-as-log)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-physical-custody-the-shipment-as-a-node-chain-of-custody-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Physical custody — the shipment as a node (chain-of-custody log)
       
     </span>
   </a>
@@ -5245,6 +5301,29 @@ one activation touch) or forwarding = giving away the credit line.</p>
 <p><strong>Scan unification:</strong> QR = URL made physical → scanning a customer's QR at POS reads their entitlement, the
 <em>same gesture</em> as scanning a box. One scan model: goods (SSCC → which unit) and customers (token → who/what
 credit).</p>
+<h3 id="51-multi-branch-claim-fraud-the-bearer-artifact-is-the-gate-blackout-proof">5.1 Multi-branch claim fraud — the bearer artifact is the gate (blackout-proof)<a class="headerlink" href="#51-multi-branch-claim-fraud-the-bearer-artifact-is-the-gate-blackout-proof" title="Permanent link">&para;</a></h3>
+<p><strong>The attempt:</strong> a customer tries to claim a <em>one-per-customer</em> offer (free item, single-use coupon) at
+several branches before the day's reconciliation catches up.</p>
+<p><strong>The common path — defeated locally, offline, with no central check.</strong> One person carries one phone.
+Claiming at branch A welds a merchant-<strong>co-signed <code>CLAIMED</code></strong> op into the phone's hash-chained log (§5.2). The
+offer is a URL whose JS reads that log, so at branch B the artifact itself answers <strong>"ALREADY CLAIMED"</strong> and
+the till refuses. The check lives <strong>in the thing the customer must present</strong> — no authority round-trip — so it
+<strong>holds in a total network blackout.</strong> A server, by contrast, must be <em>absolutely real-time</em> to catch the
+hopper; with the link down it is <strong>blind</strong> (refuse-all or wave-through). On the realistic case this is
+therefore <strong>strictly more secure <em>and</em> simpler than a server: it removed the component that has to be
+perfect</strong> — correctness rides the artifact-in-hand, not the network.</p>
+<p><strong>The only residual — a device self-fork, and it still doesn't beat us.</strong> A sophisticated holder could
+snapshot their device <em>before</em> claiming and restore it <em>after</em>, presenting a stale "unclaimed" log at a second
+offline branch. That is (a) <strong>caught at reconciliation</strong> — two co-signed <code>CLAIMED</code> ops on one single-use
+offer-id is a <strong>provable, attributable</strong> double-claim (§8), not a silent loss; (b) <strong>defeated for value</strong> by
+single-use semantics + identity binding (void / claw back / ban); and (c) <strong>also defeats an offline server</strong>,
+which equally cannot reach a central counter with the link down. So <strong>no real-time prevention is lost relative
+to a server</strong>, and on the common path you are blackout-safe where the server is not.</p>
+<p><strong>Carve-out (refines §5):</strong> a <em>single-use</em> claim therefore <strong>escapes the real-time op-class on the common
+path</strong> — its state rides the bearer artifact, not a central counter. The genuinely real-time-needing case
+shrinks to a <em>divisible</em> balance spent <strong>anonymously + irreversibly + simultaneously offline</strong> — exactly the
+§5(3) <em>high-value → block</em> branch. Tamper-proof, not fraud-proof; and here <strong>tamper-proof-in-hand beats
+real-time-at-a-server.</strong></p>
 <hr />
 <h2 id="6-how-much-central-persistence-a-dumb-async-post-office">6. How much central persistence? — a dumb async post office<a class="headerlink" href="#6-how-much-central-persistence-a-dumb-async-post-office" title="Permanent link">&para;</a></h2>
 <p>Because clients <strong>deterministically replay</strong> the ordered log to identical state, the central thing runs
@@ -5869,6 +5948,27 @@ nodes need the recovery anchors <code>poc_email_dr</code> enumerates (k-of-n acr
 employer escrow). Discipline: email the <strong>log/fold</strong>, never fat blobs (the op-size cap).</p>
 <p>Net: each node carries its <strong>own</strong> disaster recovery. The only residues that stay central are the ones
 §5 / §8 / §9.F already name — the contended-balance agreement point, the settlement rail, and the key-trust root.</p>
+<h2 id="15-physical-custody-the-shipment-as-a-node-chain-of-custody-log">15. Physical custody — the shipment as a node (chain-of-custody log)<a class="headerlink" href="#15-physical-custody-the-shipment-as-a-node-chain-of-custody-log" title="Permanent link">&para;</a></h2>
+<p>Replenishment <em>execution</em> need carry no messages at all: the <strong>shipment is a node</strong> that holds its own signed
+log — a cryptographic waybill. In transit there is nothing on any wire; the truck <strong>is</strong> the message in
+motion. This is the §3 sales append and the §14 DR loop applied to the physical leg — one primitive. Planning
+stays HQ's replenish fold (§5/§6); its output, the <strong>dispatch op</strong>, is <em>also</em> the truck's manifest.</p>
+<p><strong>Every handoff is a co-signed append</strong>, never a one-way write. HQ signs <em>dispatched</em>, the carrier
+counter-signs <em>custody taken</em>; on arrival the carrier signs <em>delivered</em>, the store counter-signs <strong>the count
+it actually received</strong>. A short or damaged delivery is therefore a <strong>signed delta</strong>, not a silent gap — the
+receipt is the store's truth, the dispatch is HQ's, and the diff reconciles.</p>
+<p><strong>Decoupled to operate, linked to audit.</strong> Each layer knows only its own handoff (HQ does not track the
+drive; the store was not pre-notified — goods and manifest arrive together). Yet the logs reference each other
+(receipt ← delivery ← custody ← dispatch), so the <strong>full chain folds on demand</strong>: recall, provenance, and
+"where did the two units go" fall out of replay, though no layer watched the others in real time.</p>
+<p><strong>Status is pulled, not streamed.</strong> "Ask the truck to ping back its last log" is the §6 <code>/snapshot?after=N</code>
+read — no telemetry, no tracking server; the carrier is a queryable, offline-capable node that syncs
+opportunistically (worst case, read the chain from the store on arrival).</p>
+<p><strong>The floor (Truth 4 / §9.F).</strong> The log makes loss <strong>detectable and attributable to the exact hop</strong> (loaded
+100 / took 100 / received 98 → provably in transit) but does <strong>not physically prevent</strong> it: a colluding
+signer's lie is caught at reconciliation, not at signing. <strong>Provable attribution, not a physical guarantee</strong> —
+the same stance as the rest, applied to pallets. Net: replenishment = one dispatch op that rides the truck and
+reconciles on arrival; planning is a fold, execution a moving log, audit a pull.</p>
 <details class="note">
 <summary>Further reading — the fleet-scale proof</summary>
 <ul>

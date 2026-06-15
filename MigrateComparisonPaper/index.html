@@ -4988,13 +4988,30 @@ details.fold .fbd{padding:6px 16px 14px}
 .status3 .bluen{--bc:#42a5f5;--bg:rgba(66,165,245,.06);--ft:rgba(66,165,245,.13)}
 .statuslead{border-left:4px solid #7cb342;background:rgba(124,179,66,.07);border-radius:0 8px 8px 0;padding:11px 16px;font-size:13px;margin:10px 0 2px}
 .statuslead b{color:#7cb342}
+/* DNA click-popover — anchored on the headline's "1% codebase is DNA" phrase */
+.dnapop-wrap{position:relative}
+.dnapop-ck{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.dnapop-bg{display:none}
+.dnapop-ck:checked ~ .dnapop-bg{display:block;position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.45);cursor:default}
+.dnapop-card{display:none}
+.dnapop-ck:checked ~ .dnapop-card{display:block}
+.dnapop-card{position:absolute;left:50%;top:calc(100% + 14px);transform:translateX(-50%);z-index:999;width:min(560px,92vw);text-align:left;background:#1a212a;border:1px solid #2f3a45;border-top:3px solid #ffb74d;border-radius:12px;padding:16px 30px 16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.55);color:#cdd6df;font-size:13px;line-height:1.5;font-weight:400;letter-spacing:normal;text-transform:none}
+.dnapop-card h4{margin:0 0 8px;font-size:14.5px;color:#ffcc80;font-weight:800;letter-spacing:.2px}
+.dnapop-card b{color:#fff;font-weight:700}
+.dnapop-card code{background:rgba(128,128,128,.2);padding:1px 5px;border-radius:4px;font-size:.86em;color:#e7edf3}
+.dnapop-card ul{margin:8px 0 0;padding-left:18px}
+.dnapop-card li{margin:0 0 7px}
+.dnapop-card .src{display:block;margin-top:10px;font-size:11.5px;color:#90a4ae}
+.dnapop-card .src a{color:#8fc3f7}
+.dnapop-x{position:absolute;top:7px;right:12px;color:#90a4ae;font-size:15px;cursor:pointer;font-weight:700;line-height:1}
+.dnapop-trig{cursor:pointer}
 </style>
 
 <div style="max-width:760px;margin:24px auto 8px;padding:30px 40px;background:#263238;border-left:4px solid #ff9800;text-align:center;border-radius:4px" markdown="0">
 <span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The Server Is Dead</span>
 <br><span style="font-size:1.05em;font-weight:600;line-height:1.35;color:#ffcc80;margin-top:12px;display:inline-block">The DB is the log is the kernel — in the browser</span>
 <br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">Already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
-<br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="color:inherit;text-decoration:underline;text-underline-offset:3px">Now assembled by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">Redhuan D. Oon (red1)</b></a></span>
+<br><span class="dnapop-wrap" style="margin-top:16px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="text-decoration:none"><b style="font-size:1.12em;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:linear-gradient(135deg,#aab3b8 0%,#838c92 30%,#c2cace 52%,#7c858b 74%,#a7b0b5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;opacity:.72;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))">Assembled by RED1, </b></a><input type="checkbox" id="dnapop1" class="dnapop-ck"><label for="dnapop1" class="dnapop-trig" title="Why 1% is the DNA"><b style="font-size:1.12em;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:linear-gradient(135deg,#aab3b8 0%,#838c92 30%,#c2cace 52%,#7c858b 74%,#a7b0b5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;opacity:.72;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3));border-bottom:1px dotted rgba(176,190,197,.55)">1% codebase is DNA, the rest — noise</b></label><label for="dnapop1" class="dnapop-bg" title="close"></label><span class="dnapop-card"><label for="dnapop1" class="dnapop-x" title="close">&#10005;</label><h4>Why MOrder is the DNA — what 1% buys you</h4>Examining the <b>MOrder cycle</b> (&#8776;3,287 lines &mdash; ~0.2% of the codebase) gives you the whole organism, because MOrder is the <b>archetype</b>. From that one class you read:<ul><li><b>How it ORMs</b> &mdash; every table is <code>X_&lt;Table&gt;</code> (generated boilerplate) <b>+</b> <code>M&lt;Table&gt;</code> (logic subclass); <code>MOrder extends X_Order</code> &mdash; the idiom for all 925 tables.</li><li><b>The document lifecycle</b> &mdash; <code>DocAction</code> (<code>prepareIt</code> &middot; <code>completeIt</code> &middot; <code>voidIt</code> &hellip;) walked by the <code>DocumentEngine</code> FSM.</li><li><b>The posting idiom</b> &mdash; <code>Doc_Order</code> turns the document into <code>fact_acct</code> lines; every document has a <code>Doc_*</code> poster of the same shape.</li><li><b>How it treats its model</b> &mdash; model-driven: the AD describes it as data; the class enforces <code>beforeSave</code> + binds callouts; the poster derives the GL.</li></ul>Proven, not assumed: the other ~25 document classes are <b>isomorphs of MOrder</b>, each walked as a measured delta and diffed to zero. The ~5 deep exceptions: <code>MInOut</code> in-transit &middot; <code>MPayment</code> allocation &middot; <code>MProduction</code> BOM &middot; <code>MInventory</code> count &middot; <code>MAllocationHdr</code> headerless.<span class="src">Source: <a href="../ERP_MODEL_ARCHETYPE/">ERP_MODEL_ARCHETYPE.md</a></span></span></span>
 </div>
 
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0" markdown="0">
@@ -5030,6 +5047,72 @@ details.fold .fbd{padding:6px 16px 14px}
 
 <hr />
 <h2 id="but-erp-is-tough-an-aircraft-carrier-is-about-to-go-into-a-bathtub">But ERP is tough — an aircraft carrier is about to go into a bathtub<a class="headerlink" href="#but-erp-is-tough-an-aircraft-carrier-is-about-to-go-into-a-bathtub" title="Permanent link">&para;</a></h2>
+<div class="cf" markdown="0">
+<style>
+.cf{margin:14px 0 24px;padding:14px 16px 10px;border:1px solid #2b3947;border-radius:14px;background:linear-gradient(100deg,rgba(124,179,66,.07),rgba(66,165,245,.05))}
+.cf-by{display:block;text-align:center;font-weight:850;font-size:clamp(18px,3.6vw,27px);letter-spacing:.3px;color:#ffcc80!important;text-decoration:none!important;margin:2px 0 4px}
+.cf-by:hover{text-decoration:underline!important;text-underline-offset:3px}
+.cf svg{display:block;width:100%;height:auto;max-height:240px}
+.cf .lbl{font:800 11px system-ui,sans-serif;fill:#7e8b98;letter-spacing:.6px}
+.cf .hq{fill:url(#cfg);stroke:rgba(124,179,66,.5);stroke-width:1.4}
+.cf .hqt{font:850 14px system-ui,sans-serif;fill:#fff}
+.cf .hqs{font:800 9px system-ui,sans-serif;fill:#9fd17a;letter-spacing:.5px}
+.cf .till rect{fill:#212a34;stroke:#2b3947;stroke-width:1}
+.cf .till .scr{fill:rgba(124,179,66,.25)}
+.cf .wire{stroke:#2b3947;stroke-width:1.3;fill:none}
+.cf .chip{fill:#39434f;stroke:rgba(148,163,177,.38);stroke-width:1.2}
+.cf .chipt{font:800 13px system-ui,sans-serif;fill:#e7edf3}
+.cf .chips{font:800 9px system-ui,sans-serif;fill:#aab6c1;letter-spacing:.6px}
+.cf .ph{font:800 11px system-ui,sans-serif;letter-spacing:.7px}
+.cf .foot{text-align:center;font-size:11.5px;color:#8a97a4;margin:6px 0 2px}
+.cf .foot a{color:#9fc3ea}
+</style>
+<a class="cf-by" href="../RetailScaleStory.html" title="The full animated, plain-English one-pager — bar charts, legacy side-by-side, and a benchmark you can run (W-POS-WAN-SCALE).">And the carrier floats at 10,000 tills!</a>
+<svg class="flowsvg" viewBox="0 0 960 300" role="img" aria-label="A day in two messages: each morning replenishment flows from the HQ warehouse out to the tills, then stops; at night each till sends one report back to HQ.">
+<style>
+.flowsvg .tl rect{fill:#212a34;stroke:#2b3947;stroke-width:1}
+.flowsvg .tl .s{fill:rgba(124,179,66,.25)}
+.flowsvg .w{stroke:#2b3947;stroke-width:1.4;fill:none}
+.flowsvg .ob{fill:#1c2530;stroke:rgba(124,179,66,.55);stroke-width:1.5}
+.flowsvg .ot{font:850 16px system-ui,sans-serif;fill:#fff}
+.flowsvg .os{font:800 10px system-ui,sans-serif;letter-spacing:.6px}
+.flowsvg .lb{font:800 11px system-ui,sans-serif;fill:#7e8b98;letter-spacing:.7px}
+.flowsvg .ch{fill:#ff9800;stroke:#ffb74d;stroke-width:1.5}
+.flowsvg .cht{font:850 15px system-ui,sans-serif;fill:#3a1d00}
+.flowsvg .chs{font:800 10px system-ui,sans-serif;fill:#6b3b00;letter-spacing:1.5px}
+.flowsvg .ph{font:800 12px system-ui,sans-serif;letter-spacing:.8px}
+</style>
+<defs><g id="ftl"><rect width="48" height="38" rx="5"/><rect class="s" x="7" y="7" width="34" height="16" rx="2"/><rect x="13" y="29" width="22" height="4" rx="2" fill="#394552"/></g></defs>
+<text class="lb" x="20" y="28">10,000 TILLS · STORES ON A WAN</text>
+<use href="#ftl" class="tl" x="24" y="44"/><use href="#ftl" class="tl" x="128" y="44"/><use href="#ftl" class="tl" x="232" y="44"/>
+<use href="#ftl" class="tl" x="24" y="102"/><use href="#ftl" class="tl" x="128" y="102"/><use href="#ftl" class="tl" x="232" y="102"/>
+<use href="#ftl" class="tl" x="24" y="160"/><use href="#ftl" class="tl" x="128" y="160"/><use href="#ftl" class="tl" x="232" y="160"/>
+<use href="#ftl" class="tl" x="24" y="218"/><use href="#ftl" class="tl" x="128" y="218"/><use href="#ftl" class="tl" x="232" y="218"/>
+<path class="w" d="M280,63 C470,63 600,150 770,150"/>
+<path class="w" d="M280,121 C470,121 640,150 770,150"/>
+<path class="w" d="M280,179 C470,179 660,150 770,150"/>
+<path class="w" d="M280,237 C470,237 600,150 770,150"/>
+<rect class="ob" x="772" y="96" width="168" height="108" rx="14"/>
+<text class="ot" x="856" y="140" text-anchor="middle">HEAD OFFICE</text>
+<text class="os" x="856" y="160" text-anchor="middle" fill="#9fd17a">· WAREHOUSE ·</text>
+<text class="os" x="856" y="178" text-anchor="middle" fill="#8fb3d8">BOOKS TO THE PENNY</text>
+<rect class="ch" x="390" y="10" width="220" height="46" rx="23"/>
+<text class="cht" x="500" y="33" text-anchor="middle">2 messages a day</text>
+<text class="chs" x="500" y="48" text-anchor="middle">PER TILL</text>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.07;.32;1" path="M280,63 C470,63 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.07;.09;.30;.32;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.12;.37;1" path="M280,121 C470,121 640,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.12;.14;.35;.37;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.17;.42;1" path="M280,179 C470,179 660,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.17;.19;.40;.42;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.22;.47;1" path="M280,237 C470,237 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.22;.24;.45;.47;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.57;.82;1" path="M280,63 C470,63 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.57;.59;.80;.82;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.62;.87;1" path="M280,121 C470,121 640,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.62;.64;.85;.87;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.67;.92;1" path="M280,179 C470,179 660,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.67;.69;.90;.92;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.72;.97;1" path="M280,237 C470,237 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.72;.74;.95;.97;1" values="0;0;1;1;0;0"/></circle>
+<text class="ph" x="500" y="292" text-anchor="middle" fill="#ffa000">☀ MORNING — REPLENISHMENT OUT (HQ → TILLS)<animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.04;.07;.49;.52;1" values="0;0;1;1;0;0"/></text>
+<text class="ph" x="500" y="292" text-anchor="middle" fill="#42a5f5">🌙 NIGHT — REPORTS IN (TILLS → HQ)<animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.54;.57;.97;.99;1" values="0;0;1;1;0;0"/></text>
+</svg>
+<div class="foot"><a href="../RetailScaleStory.html">See the full animated one-pager →</a> &nbsp;·&nbsp; proof you can run: <code>W-POS-WAN-SCALE</code></div>
+</div>
+
 <details class="fold" markdown="0">
 <summary>The six interlocked things it takes &nbsp;<span style="display:inline-flex;gap:6px;align-items:center;vertical-align:middle">
 <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#ffa000" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/></svg>
@@ -5321,7 +5404,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </div>
 
 <div class="blurb" markdown="0">
-  <div class="hook">Matched against the iDempiere oracle on 43 surfaces. Only ~1% ported — not feature parity.</div>
+  <div class="hook">Matched against the iDempiere oracle on 43 surfaces — to the cent. 1% is the DNA, the rest is noise — not feature parity, by design.</div>
   <div class="teaser">Every fold is diffed against real iDempiere output (<code>maxDiff=0c</code>), each carrying a load-bearing falsifier; money is exact decimal, not float.
     <input type="checkbox" id="m-method" class="moretoggle">
     <span class="rest">The engine’s output is diffed against real iDempiere output, not asserted — <b>43 surfaces</b> oracle-equivalent: <b>16 cent/unit-exact folds</b> (<code>maxDiff=0c</code> — the whole order→ship→invoice→match→pay→allocate trade loop, inventory movement→on-hand→replenish, inter-org GL + FX, and reverse/void, in <b>both</b> USD and EUR schemas), <b>6 declarative engines</b> diffed against the live iDempiere Postgres / its compiled classes to diff=0 (the last one — the workflow state engine — fell 2026-06-12 to 11 real traces; <b>no declarative surface remains undiffed</b>), and <b>21 model-layer surfaces</b> — the <code>beforeSave</code> + DocAction-FSM walk of <i>every</i> document class (MOrder archetype → the deep family → the full isomorph tail; legal-action sets and transitions diffed against a runtime parse of the actual <code>DocumentEngine.java</code>, saves replayed against the stored seed rows). Each witness carries a load-bearing <b>§FALSIFIER</b> — corrupt the rule and the diff <i>must</i> go non-zero — so a pass can’t be a tautology. Money never touches float: amounts accumulate as integer cents, the only non-integer steps multiply in <code>BigInt</code> off the exact-decimal rate, rounded HALF_UP — bit-equal to Java <code>BigDecimal</code>. But this is plainly <b>not feature parity</b>: only ~1% of the M-class logic is ported. The win is delivery/definition — the AD is self-describing, the whole server/build stack is gone. <a class="serious" href="#v-method">Serious read</a></span>
@@ -5340,19 +5423,19 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 </div>
 
 <div class="blurb" markdown="0">
-  <div class="hook">1 of 27 sale orders pulled — yet the fold already exists. The gap is extraction, not engine.</div>
-  <div class="teaser">Against a live Odoo 17 the migrate pulls one order-to-cash chain and no master data. The engine already folds the flows; the records just aren’t wired into the extractor yet.
+  <div class="hook">A full migrated Odoo client behind one URL — 38 partners · 35 products · 27 orders, no install.</div>
+  <div class="teaser">The resident demo tenant carries the whole Odoo catalog and opens from a single link with no server. Separately, the <i>live</i> extraction agent still pulls one order-to-cash chain — that gap is extractor wiring, not engine.
     <input type="checkbox" id="m-gap" class="moretoggle">
-    <span class="rest">Against a live Odoo 17 the migrate currently pulls <b>1 of 27</b> sale orders (one order-to-cash chain) and <b>no master data</b> — everything else is the gap, in two kinds. The <b>extraction</b> gap is the majority: partners (38), products (30/35), the other 26 orders, the 13 POs, real payments — the engine already folds these flows (each with a passing witness), the records just aren’t wired into the extractor yet. The smaller <b>fold</b> gap is capability the engine can’t yet compute even with data present: cost-valued inventory posting, financial-report and print-format mapping, aging, analytic accounting, server-action interpretation. The coverage-by-capability table, the block-for-block <code>completeIt</code> listing, the full LOC-to-parity estimate (~25× conservative, 76× for the shell built so far), and the open caveats are all below. <a class="serious" href="#v-gap">Serious read</a></span>
+    <span class="rest">The bundled Odoo demo tenant is the <b>full catalog — 38 partners · 35 products · 27 sale orders</b> (<code>build/erp/12-odoo.db</code>), installed lazily when you pick it from a <b>five-tenant front door</b> — no dialog, no <code>?shard=</code>, no server (P0, erp sw v692). Separately, the <b>live JSON-RPC migrate agent</b> against a running Odoo 17 currently pulls <b>1 of 27</b> sale orders (one order-to-cash chain) and <b>no master data</b> — the rest (the other 26 orders, the 13 POs, real payments) is the <b>extraction</b> gap: the engine already folds these flows (each with a passing witness), the records just aren’t wired into the live extractor yet. The smaller <b>fold</b> gap is now narrow — analytic accounting (data-blocked: 0 analytic postings) and Odoo’s server actions (all 64 are Python <code>code</code> type — no declarative subset to interpret). The coverage-by-capability table, the block-for-block <code>completeIt</code> listing, the full LOC-to-parity estimate (~25× conservative, 76× for the shell built so far), and the open caveats are all below. <a class="serious" href="#v-gap">Serious read</a></span>
     <label for="m-gap" class="morelnk"></label>
   </div>
 </div>
 
 <div class="blurb" markdown="0">
-  <div class="hook">Snap-and-sell POS and a warehouse-walk app. Same ledger, no new server — both LIVE.</div>
-  <div class="teaser">Migration is the on-ramp, not the destination. The kernel has already folded forward into two op-log-native apps — both shipped and running on the same ledger.
+  <div class="hook">Snap-and-sell POS, a warehouse-walk app, and a BIM→ERP project push. Same ledger, no new server — all LIVE.</div>
+  <div class="teaser">Migration is the on-ramp, not the destination. The kernel has already folded forward into three op-log-native flows — all shipped and running on the same ledger.
     <input type="checkbox" id="m-roadmap" class="moretoggle">
-    <span class="rest">Migration is the on-ramp, not the destination — and the two downstream apps are <b>no longer roadmap: both run LIVE today</b> on the same ledger, no new server. (1) <b>uniCenta POS reborn</b> — ring → ONE signed group (order + shipment + invoice, all-or-none) → BOM backflush → replenishment <i>enacted to closure</i> (suggestion → PO → receipt → on-hand rises → suggestion clears); the live ring folds to the cent (<code>§POS-CENT maxDiff=0c</code>) and void/reverse nets postings to 0c with on-hand restored — and the till now runs the whole shop: snap + scan + key the price and a new product registers as ONE signed group then sells immediately (<code>§POS-IMPORT</code>); hold/recall parks a real DR order in the same ledger the Sales-Order window reads (no private store); and a "with-pick" shipment doctype gates completion behind the warehouse confirm — on-hand moves at the pick, not the promise (W-WH-CONFIRM, W-POS-DELIVERLATER) — <a href="../POS_ADDON_SPEC/">POS Addon Spec</a> · <a href="../ERPUserGuide/">User Guide</a>. (2) A phone-first <b>warehouse pick walk</b> — the warehouse compiled as a BIM-like model, fly-to the bin, QR scan as the one clean act, every pick a signed op; on-hand and the ERP window agree to the unit (W-WH-LIVE) — <a href="../SPATIAL_PICKING_SPEC/">Spatial Picking Spec</a>. Both are the two ERP objectives in the bim-ootb README, delivered precisely because the kernel is the same fold whether migrating an existing ERP or running a new app on it. <a class="serious" href="#v-roadmap">Serious read</a></span>
+    <span class="rest">Migration is the on-ramp, not the destination — and the downstream flows are <b>no longer roadmap: they run LIVE today</b> on the same ledger, no new server. (1) <b>uniCenta POS reborn</b> — ring → ONE signed group (order + shipment + invoice, all-or-none) → BOM backflush → replenishment <i>enacted to closure</i> (suggestion → PO → receipt → on-hand rises → suggestion clears); the live ring folds to the cent (<code>§POS-CENT maxDiff=0c</code>) and void/reverse nets postings to 0c with on-hand restored — and the till now runs the whole shop: snap + scan + key the price and a new product registers as ONE signed group then sells immediately (<code>§POS-IMPORT</code>); hold/recall parks a real DR order in the same ledger the Sales-Order window reads (no private store); and a "with-pick" shipment doctype gates completion behind the warehouse confirm — on-hand moves at the pick, not the promise (W-WH-CONFIRM, W-POS-DELIVERLATER) — <a href="../POS_ADDON_SPEC/">POS Addon Spec</a> · <a href="../ERPUserGuide/">User Guide</a>. (2) A phone-first <b>warehouse pick walk</b> — the warehouse compiled as a BIM-like model, fly-to the bin, QR scan as the one clean act, every pick a signed op; on-hand and the ERP window agree to the unit (W-WH-LIVE) — <a href="../SPATIAL_PICKING_SPEC/">Spatial Picking Spec</a>. (3) <b>BIM → Project Order</b> — a priced building selection folds into a real iDempiere <code>C_Project</code> tree (phases · tasks · priced lines): on the Duplex, 6 phases · 9 tasks · 16 issued lines whose <code>PlannedAmt</code> folds to the 5D golden <b>to the cent</b> (<code>§PROJ_FOLD plannedAmt==golden</code>, BigDecimal), phase <code>SeqNo</code> tracing to <code>sequence_rules.json</code>, the <code>› ERP</code> button wired live (W-PROJ-FOLD/PUSH/SEQ, PR #316) — <a href="BIMtoProject.md">BIM → Project blueprint</a>. The first two are the two ERP objectives in the bim-ootb README; all three are the same fold, delivered precisely because the kernel is identical whether migrating an existing ERP or running a new app on it. <a class="serious" href="#v-roadmap">Serious read</a></span>
     <label for="m-roadmap" class="morelnk"></label>
   </div>
 </div>
