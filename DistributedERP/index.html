@@ -3522,6 +3522,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#14-per-node-email-dr-each-node-backs-itself-up-inbox-as-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Per-node email-DR — each node backs itself up (inbox-as-log)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4242,7 +4253,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../BIMUserGuide/" class="md-nav__link">
+      <a href="../BIMUserGuide.md" class="md-nav__link">
         
   
   
@@ -4892,6 +4903,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#14-per-node-email-dr-each-node-backs-itself-up-inbox-as-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Per-node email-DR — each node backs itself up (inbox-as-log)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4915,7 +4937,6 @@
 <h1 id="distributed-erp-contention-map-guards">Distributed ERP — Contention Map &amp; Guards<a class="headerlink" href="#distributed-erp-contention-map-guards" title="Permanent link">&para;</a></h1>
 <blockquote>
 <p><strong>New here?</strong> The one-page evaluator companion — <strong><a href="../MigrateComparisonPaper/">Migrate &amp; Compare (ERP)</a></strong> — has the "where's the server?" mapping at a glance. This page is the full doctrine + adversarial edges.</p>
-<p><strong>The doctrine, measured:</strong> the contention guards here are benchmarked at fleet scale in <strong><a href="../POS_WAN_SCALE_BENCH/">POS WAN-Scale</a></strong> (<code>W-POS-WAN-SCALE</code>) — and told plainly for a retail owner in the animated <strong><a href="../RetailScaleStory.html">Two messages a day</a></strong> one-pager (10,000 tills, books to the penny).</p>
 </blockquote>
 <p><strong>Thesis.</strong> The "hard distributed-systems problem" in ERP is <strong>mostly a modelling artifact.</strong> Model the
 domain as it physically is — goods have a <em>location</em>, work has an <em>owner</em>, money moves at the <em>cadence of
@@ -5123,11 +5144,11 @@ computes the number; reconcile at business cadence.</strong> Nobody writes a sha
 network; the post office only sequences and relays. The edges in §9 are exactly the residue this leaves —
 bounded, named, and ledger-backed.</p>
 <blockquote>
-<p><strong>Worked examples — <a href="../LensFamily/">the Lens Family</a>.</strong> This doctrine made concrete, extracted from my iDempiere
+<p><strong>Worked examples — <a href="LensFamily.md">the Lens Family</a>.</strong> This doctrine made concrete, extracted from my iDempiere
 Unicenta POS + plugins and ported to browser lenses over the one model: <a href="../POSLens/">POS</a> (in-person sale) ·
-<a href="../WMSLens/">WMS / Logistics / Robots</a> (movement) · <a href="../SocialPlatformLens/">Social Platform</a> (on-the-move) ·
-<a href="../CreditLedgerLens/">Credit Ledger</a> (receivables) · <a href="../WorkforceLens/">Workforce</a> (attendance/tasks) ·
-<a href="../GuaranteedChannels/">Guaranteed Channels</a> (transport/payment pipes). Hub: <strong><a href="../LensFamily/">LensFamily</a></strong>.
+<a href="WMSLens.md">WMS / Logistics / Robots</a> (movement) · <a href="SocialPlatformLens.md">Social Platform</a> (on-the-move) ·
+<a href="CreditLedgerLens.md">Credit Ledger</a> (receivables) · <a href="WorkforceLens.md">Workforce</a> (attendance/tasks) ·
+<a href="GuaranteedChannels.md">Guaranteed Channels</a> (transport/payment pipes). Hub: <strong><a href="LensFamily.md">LensFamily</a></strong>.
 One source act, the rest a fold, no central control — a business run from a phone. The smallest complete proofs of
 the doctrine above.</p>
 </blockquote>
@@ -5209,15 +5230,6 @@ pure OOTB (no fat server):</p>
    chain tip by signed <code>seq</code>/<code>prev_hash</code>, not arrival order; send a <strong>full signed snapshot per email</strong> for
    single-email recovery robustness; encrypt-to-user for privacy. "Email receipt" is old — "<strong>inbox as the
    recoverable signed state-log</strong>" is the fresh framing.)</li>
-</ol>
-<p><strong>Witnessed live (2026-06-14, bim-ootb PR #300):</strong> POS "deliver later" serialises the committed
-   op group to a compact base64 blob, copies it to clipboard, and the user pastes it into WhatsApp,
-   email, or SMS. The WH walk user on any device pastes it into the receive box and hits Apply — the
-   ops replay into the IDB sidecar, the pending shipment surfaces in the selector, and the pick walk
-   proceeds. The social channel is the relay. No server, no sync protocol, no polling. The dumb
-   <code>erp_relay_server.js</code> is the upgrade path — same op format, different pipe. Witness:
-   <code>scripts/poc_oplog_clipboard.js</code> (<code>§CL-SERIAL</code> + <code>§CL-UUID</code> idempotency + <code>§CL-DELTA</code>).</p>
-<ol>
 <li><strong>Claim/spend:</strong></li>
 <li><strong>Online (normal POS):</strong> sub-second authority <strong>compare-and-set</strong> (set-if-unset) → first-wins. Same
      weight as a card-payment auth — not a burden. (A plain <code>DateLastUsed</code> <em>read</em> is best-effort only — two
@@ -5832,6 +5844,38 @@ neighbours already co-resident <strong>by rank</strong>, not by an explicit clos
 over-fetch counted = 0; an unresolved FK renders a stub (not a value); the resident set's replay-hash equals
 the full-engine replay-hash for every path actually walked. SPEC only — no code yet; T3-adjacent (it serves
 the read-only trace first, edit later).</p>
+<h2 id="14-per-node-email-dr-each-node-backs-itself-up-inbox-as-log">14. Per-node email-DR — each node backs itself up (inbox-as-log)<a class="headerlink" href="#14-per-node-email-dr-each-node-backs-itself-up-inbox-as-log" title="Permanent link">&para;</a></h2>
+<p>§9.A proves a store recovers from a signed snapshot after total loss. This <strong>generalizes that to every
+node</strong>: each sovereign log — store, HQ, vendor, and the customer's phone (the BPartner-as-node, §5/§9.G) —
+periodically emails <em>itself</em> a signed, encrypt-to-self <strong>snapshot + the deltas since</strong> — a loose, off-device
+retrace path it owns. It is the §6 post-office discipline turned inward: the node's own inbox is its cold
+store. Witnessed in miniature by <code>poc_email_dr</code> (Layer A data / Layer B key) and by <strong>W-POS-WAN-SCALE B6</strong>
+(POS total loss → recover the last signed EODA snapshot from the inbox).</p>
+<p><strong>Why the inbox.</strong> Ubiquitous, off-device, append-only, already provider-replicated — no new infrastructure.
+The channel is a <strong>commodity</strong>: export@A → import@B verifies with <em>no re-trust</em>, because trust lives in the
+signature, not the container (Truth 3, <em>secure the fact, not the container</em>). So backup decentralizes the same
+way the log does — <strong>self-custody, no central backup honeypot</strong>.</p>
+<p><strong>Cadence = checkpoint + deltas.</strong> A periodic signed snapshot (the <em>latest alone suffices</em> — the
+provider-purge case) plus the incremental ops between. Recovery = newest valid snapshot, replay the tail.
+Same snapshot → segment → retain housekeeping, with the mailbox as the segment store.</p>
+<p><strong>"Loose" is a feature, and it is integrity-safe.</strong> A hostile or lapsed provider can <em>withhold or delete</em>
+(availability) but <strong>cannot forge</strong> (signatures reject it, §9.B) — so a best-effort, eventually-consistent
+inbox suffices. It is also <strong>redundant atop the mesh</strong>: counterparties already hold the overlapping signed
+facts, so each node has <em>two</em> retrace paths — its own inbox, and counterparty re-supply. Belt and suspenders.</p>
+<p><strong>The floor (Truth 4 / §9.F).</strong> The inbox recovers the <em>facts</em> unconditionally <strong>given the key</strong>; the key is
+the single secret that signs and (by derivation) decrypts. Lose it with no anchor → present-but-undecryptable.
+"Responsible for yourself" therefore means <strong>responsible for the key</strong>, not the data — which is why consumer
+nodes need the recovery anchors <code>poc_email_dr</code> enumerates (k-of-n across one's own channels, platform passkey,
+employer escrow). Discipline: email the <strong>log/fold</strong>, never fat blobs (the op-size cap).</p>
+<p>Net: each node carries its <strong>own</strong> disaster recovery. The only residues that stay central are the ones
+§5 / §8 / §9.F already name — the contended-balance agreement point, the settlement rail, and the key-trust root.</p>
+<details class="note">
+<summary>Further reading — the fleet-scale proof</summary>
+<ul>
+<li><a href="../POS_WAN_SCALE_BENCH/">POS WAN-scale benchmark — spec &amp; witness (W-POS-WAN-SCALE)</a> — the fleet-scale proof: 10k tills → central dump relay, minimal SODA/EODA fold, idempotent retry, relay-crash + email-backup DR, partitioned doc-numbering.</li>
+<li><a href="../RetailScaleStory.html">Two messages a day → books to the penny</a> — the animated, plain-English retail one-pager (bar charts, legacy side-by-side, and the runnable benchmark).</li>
+</ul>
+</details>
 
 
 

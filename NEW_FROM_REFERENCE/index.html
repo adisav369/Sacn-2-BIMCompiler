@@ -3896,7 +3896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../BIMUserGuide/" class="md-nav__link">
+      <a href="../BIMUserGuide.md" class="md-nav__link">
         
   
   
@@ -4775,10 +4775,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-5-materialization-done-sw-v653" class="md-nav__link">
+  <a href="#phase-5-materialization" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 5: Materialization ✅ DONE (sw v653)
+        Phase 5: Materialization
       
     </span>
   </a>
@@ -6699,16 +6699,11 @@
 <li>Elements materialize at current grid positions</li>
 <li>Drag-to-interrupt during replay</li>
 </ul>
-<h3 id="phase-5-materialization-done-sw-v653">Phase 5: Materialization ✅ DONE (sw v653)<a class="headerlink" href="#phase-5-materialization-done-sw-v653" title="Permanent link">&para;</a></h3>
+<h3 id="phase-5-materialization">Phase 5: Materialization<a class="headerlink" href="#phase-5-materialization" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>MATERIALIZE</code> generates <code>NewIFC.db</code> — <code>viewer/materialize.js</code> <code>toBuffer(db) = db.export()</code> of the
-  edited in-memory db (B1-persisted <code>element_transforms</code> + replayed <code>kernel_ops</code>). NON-INVENT: no
-  coordinate computed; it serializes what the editor already holds.</li>
-<li>Output follows standard schema <strong>by construction</strong> (the file IS a copy of the reference's tables
-  with mutated rows) — the entire existing tool chain (viewer/clash/ERP) works on it. Stored under
-  the <code>import://</code> scheme <code>streaming.js</code> already resolves → zero streaming change.</li>
-<li>Rosetta Stone verification compares <code>NewIFC.db</code> against the grammar's predictions: W-REDPILL-MATERIALIZE
-  runs the G8-GOVERNANCE identity gate (RedPillRosetta §3 mode 1(b)) on the reopened file — PASS.</li>
+<li><code>MATERIALIZE</code> command generates <code>NewIFC.db</code></li>
+<li>Output follows standard schema — entire existing tool chain works on it</li>
+<li>Rosetta Stone verification can compare <code>NewIFC.db</code> against the grammar's predictions</li>
 </ul>
 <hr />
 <h2 id="13-what-this-is-not">13. What This Is Not<a class="headerlink" href="#13-what-this-is-not" title="Permanent link">&para;</a></h2>
@@ -6776,9 +6771,9 @@
 <li><strong>Grid drag works in New context</strong> — drags log to <code>kernel_ops</code>, lengths update live</li>
 <li><strong>Toggles work</strong> — grid/lengths/envelope independently toggleable from the New pill toolbar</li>
 <li><strong>Event log is tiny</strong> — a full design session produces &lt; 50 KB of commands</li>
-<li><strong>Materialization round-trips</strong> — <code>NewIFC.db</code> loads in the existing viewer without modification ✅ DONE (sw v653) — <code>viewer/materialize.js</code> <code>db.export()</code>s the edited db into the <code>import://</code> cache scheme; W-REDPILL-MATERIALIZE M1 (identity round-trip on the real file) + M2 (12 tables, viewer-loadable) PASS</li>
+<li><strong>Materialization round-trips</strong> — <code>NewIFC.db</code> loads in the existing viewer without modification</li>
 <li><strong>Share works</strong> — event log encodes in URL hash, receiver sees the same design</li>
-<li><strong>Original untouched</strong> — <code>IFC.db</code> is byte-identical before and after a New session ✅ proven by W-REDPILL-MATERIALIZE M4 (fresh disk read digests identical after materialize+edit)</li>
+<li><strong>Original untouched</strong> — <code>IFC.db</code> is byte-identical before and after a New session</li>
 </ol>
 <hr />
 <h2 id="17-addendum-enhancements-from-collaborative-review-2026-05-21">17. Addendum — Enhancements from Collaborative Review (2026-05-21)<a class="headerlink" href="#17-addendum-enhancements-from-collaborative-review-2026-05-21" title="Permanent link">&para;</a></h2>
@@ -7092,17 +7087,15 @@ print-ready output. User controls grid density via double-click (add) / double-c
   bubbles become dark, dim labels become dark — automatic reverse for print</li>
 </ul>
 <h4 id="i-next-session-priority-order">I. Next Session Priority Order<a class="headerlink" href="#i-next-session-priority-order" title="Permanent link">&para;</a></h4>
-<blockquote>
-<p><strong>Cross-reference (2026-05-24 watchdog):</strong> Items below overlap with RED_PILL.md §11.6 B-tasks (B1–B5) which track the BOM engine wiring. B1 (script tags) done. See §11.6 for current status.</p>
-</blockquote>
 <ol>
 <li>~~<strong>BOM completion jump</strong>~~ — DONE (S267). See §17.10.</li>
-<li>~~<strong>User-initiated grid lines</strong>~~ — DONE (S273). Rosetta drag-to-place + double-click toggle.</li>
+<li><strong>User-initiated grid lines</strong> — remove auto-grid, add tap-to-place from walls.
+   Rosetta templates remain for manual placement.</li>
 <li><strong>Multi-axis opening drag</strong> — requires <code>bom_tree</code> for parent lookup</li>
-<li><strong>Grid edit cascade</strong> — requires <code>bom_tree</code> for child dependency → §11.6 B2</li>
-<li>~~<strong>Z-axis grid lines</strong>~~ — DONE (S270c). Y-axis ceiling drag + ROOF_LIFT cascade.</li>
-<li><strong>GPU throttle</strong> — chunked reveal, 30fps cap → partially addressed by S274 per-slot DLOD</li>
-<li>~~<strong>Save/recall</strong>~~ — DONE (S273). IndexedDB session store + Open/Save in Doc pill.</li>
+<li><strong>Grid edit cascade</strong> — requires <code>bom_tree</code> for child dependency</li>
+<li><strong>Z-axis grid lines</strong> — storey heights</li>
+<li><strong>GPU throttle</strong> — chunked reveal, 30fps cap</li>
+<li><strong>Save/recall</strong> — IndexedDB session store</li>
 <li><strong>Bubble rotation</strong> — already coded, needs visual testing</li>
 </ol>
 <h3 id="1710-s267-bom-walker-javajs-port-bom-driven-phases-2026-05-22">17.10 S267 BOM Walker — Java→JS Port + BOM-Driven Phases (2026-05-22)<a class="headerlink" href="#1710-s267-bom-walker-javajs-port-bom-driven-phases-2026-05-22" title="Permanent link">&para;</a></h3>
