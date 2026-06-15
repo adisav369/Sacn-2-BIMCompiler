@@ -162,15 +162,10 @@ details.fold .fbd{padding:6px 16px 14px}
 <span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The Server Is Dead</span>
 <br><span style="font-size:1.05em;font-weight:600;line-height:1.35;color:#ffcc80;margin-top:12px;display:inline-block">The DB is the log is the kernel — in the browser</span>
 <br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">Already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
-<br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="color:inherit;text-decoration:underline;text-underline-offset:3px">Now assembled by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">Redhuan D. Oon (red1)</b></a></span>
+<br><span style="margin-top:16px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="text-decoration:none"><b style="font-size:1.12em;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:linear-gradient(135deg,#aab3b8 0%,#838c92 30%,#c2cace 52%,#7c858b 74%,#a7b0b5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;opacity:.72;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))">Assembled by RED1, 1% codebase is DNA, the rest — noise</b></a></span>
 </div>
 
  
-
-<div style="max-width:760px;margin:16px auto 6px;text-align:center" markdown="0">
-<a href="#realistic-conversion-estimate-loc" style="text-decoration:none"><span style="font-size:1.55em;font-weight:850;line-height:1.18;color:#eceff1">1% is the DNA. The rest is noise.</span></a>
-<br><span style="font-size:0.95em;color:#90a4ae;line-height:1.45;display:inline-block;margin-top:7px;max-width:610px">We extract iDempiere's Application Dictionary + document logic, fold it to the cent — and delete the ~580k lines of screens, ORM and server plumbing.</span>
-</div>
 
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0" markdown="0">
   <a class="glance-card" href="#dr-tco" style="background:rgba(255,160,0,.12);border:1px solid rgba(255,160,0,.5)">
