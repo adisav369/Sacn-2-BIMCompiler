@@ -162,10 +162,15 @@ details.fold .fbd{padding:6px 16px 14px}
 <span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The Server Is Dead</span>
 <br><span style="font-size:1.05em;font-weight:600;line-height:1.35;color:#ffcc80;margin-top:12px;display:inline-block">The DB is the log is the kernel — in the browser</span>
 <br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">Already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
-<br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="color:inherit;text-decoration:underline;text-underline-offset:3px">Now assembled by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">Redhuan D. Oon (red1)</b></a></span>
+<br><span style="font-size:0.6em;letter-spacing:1.4px;text-transform:uppercase;color:#ffb74d;margin-top:12px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="color:inherit;text-decoration:underline;text-underline-offset:3px">Now extracted by &nbsp;<b style="letter-spacing:2px;color:#ffcc80">RED1</b></a> &nbsp;·&nbsp; <a href="#realistic-conversion-estimate-loc" title="The code: 1% DNA, the rest noise" style="color:inherit;text-decoration:underline;text-underline-offset:3px"><b style="color:#ffcc80">1% DNA, the rest noise</b></a></span>
 </div>
 
  
+
+<div style="max-width:760px;margin:16px auto 6px;text-align:center" markdown="0">
+<a href="#realistic-conversion-estimate-loc" style="text-decoration:none"><span style="font-size:1.55em;font-weight:850;line-height:1.18;color:#eceff1">1% is the DNA. The rest is noise.</span></a>
+<br><span style="font-size:0.95em;color:#90a4ae;line-height:1.45;display:inline-block;margin-top:7px;max-width:610px">We extract iDempiere's Application Dictionary + document logic, fold it to the cent — and delete the ~580k lines of screens, ORM and server plumbing.</span>
+</div>
 
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0" markdown="0">
   <a class="glance-card" href="#dr-tco" style="background:rgba(255,160,0,.12);border:1px solid rgba(255,160,0,.5)">
@@ -202,6 +207,10 @@ details.fold .fbd{padding:6px 16px 14px}
 ---
 
 ## But ERP is tough — an aircraft carrier is about to go into a bathtub
+
+> **And the carrier floats — at 10,000 tills.** The one-page, plain-English proof for a retail owner:
+> **[Two messages a day → books to the penny](RetailScaleStory.html)** — animated, with the bar charts,
+> the legacy side-by-side, and the benchmark you can run yourself (`W-POS-WAN-SCALE`).
 
 <details class="fold" markdown="0">
 <summary>The six interlocked things it takes &nbsp;<span style="display:inline-flex;gap:6px;align-items:center;vertical-align:middle">
@@ -455,7 +464,7 @@ Full doctrine + the hard multi-writer cases (shared stock, credit limits, client
 </div>
 
 <div class="blurb" markdown="0">
-  <div class="hook">Matched against the iDempiere oracle on 43 surfaces. Only ~1% ported — not feature parity.</div>
+  <div class="hook">Matched against the iDempiere oracle on 43 surfaces — to the cent. 1% is the DNA, the rest is noise — not feature parity, by design.</div>
   <div class="teaser">Every fold is diffed against real iDempiere output (<code>maxDiff=0c</code>), each carrying a load-bearing falsifier; money is exact decimal, not float.
     <input type="checkbox" id="m-method" class="moretoggle">
     <span class="rest">The engine’s output is diffed against real iDempiere output, not asserted — <b>43 surfaces</b> oracle-equivalent: <b>16 cent/unit-exact folds</b> (<code>maxDiff=0c</code> — the whole order→ship→invoice→match→pay→allocate trade loop, inventory movement→on-hand→replenish, inter-org GL + FX, and reverse/void, in <b>both</b> USD and EUR schemas), <b>6 declarative engines</b> diffed against the live iDempiere Postgres / its compiled classes to diff=0 (the last one — the workflow state engine — fell 2026-06-12 to 11 real traces; <b>no declarative surface remains undiffed</b>), and <b>21 model-layer surfaces</b> — the <code>beforeSave</code> + DocAction-FSM walk of <i>every</i> document class (MOrder archetype → the deep family → the full isomorph tail; legal-action sets and transitions diffed against a runtime parse of the actual <code>DocumentEngine.java</code>, saves replayed against the stored seed rows). Each witness carries a load-bearing <b>§FALSIFIER</b> — corrupt the rule and the diff <i>must</i> go non-zero — so a pass can’t be a tautology. Money never touches float: amounts accumulate as integer cents, the only non-integer steps multiply in <code>BigInt</code> off the exact-decimal rate, rounded HALF_UP — bit-equal to Java <code>BigDecimal</code>. But this is plainly <b>not feature parity</b>: only ~1% of the M-class logic is ported. The win is delivery/definition — the AD is self-describing, the whole server/build stack is gone. <a class="serious" href="#v-method">Serious read</a></span>
