@@ -1,6 +1,8 @@
 # Distributed ERP — Contention Map & Guards
 
 > **New here?** The one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** — has the "where's the server?" mapping at a glance. This page is the full doctrine + adversarial edges.
+>
+> **The doctrine, measured:** the contention guards here are benchmarked at fleet scale in **[POS WAN-Scale](POS_WAN_SCALE_BENCH.md)** (`W-POS-WAN-SCALE`) — and told plainly for a retail owner in the animated **[Two messages a day](RetailScaleStory.html)** one-pager (10,000 tills, books to the penny).
 
 **Thesis.** The "hard distributed-systems problem" in ERP is **mostly a modelling artifact.** Model the
 domain as it physically is — goods have a *location*, work has an *owner*, money moves at the *cadence of
@@ -217,6 +219,15 @@ pure OOTB (no fat server):
    chain tip by signed `seq`/`prev_hash`, not arrival order; send a **full signed snapshot per email** for
    single-email recovery robustness; encrypt-to-user for privacy. "Email receipt" is old — "**inbox as the
    recoverable signed state-log**" is the fresh framing.)
+
+   **Witnessed live (2026-06-14, bim-ootb PR #300):** POS "deliver later" serialises the committed
+   op group to a compact base64 blob, copies it to clipboard, and the user pastes it into WhatsApp,
+   email, or SMS. The WH walk user on any device pastes it into the receive box and hits Apply — the
+   ops replay into the IDB sidecar, the pending shipment surfaces in the selector, and the pick walk
+   proceeds. The social channel is the relay. No server, no sync protocol, no polling. The dumb
+   `erp_relay_server.js` is the upgrade path — same op format, different pipe. Witness:
+   `scripts/poc_oplog_clipboard.js` (`§CL-SERIAL` + `§CL-UUID` idempotency + `§CL-DELTA`).
+
 3. **Claim/spend:**
    - **Online (normal POS):** sub-second authority **compare-and-set** (set-if-unset) → first-wins. Same
      weight as a card-payment auth — not a burden. (A plain `DateLastUsed` *read* is best-effort only — two
