@@ -7,6 +7,8 @@
 # The Holy Grail — Editable Business Rules, Live
 
 > **See also:** the one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** (legacy ERP vs the WASM event-sourced browser); the *back-up-the-recipe* §below is linked from its backup figure.
+>
+> **For a retail owner:** the plain-English, animated one-pager — **[Two messages a day → books to the penny](../RetailScaleStory.html)** — proves the same engine at **10,000 tills** (benchmark `W-POS-WAN-SCALE`, runnable).
 
 > *A first-person note from the author. The technical claims below are grounded in the
 > dated, witnessed sections of [ERP.md](ERP.md); this page is the reasoning that ties
