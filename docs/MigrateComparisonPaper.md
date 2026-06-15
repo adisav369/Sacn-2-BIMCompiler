@@ -199,13 +199,90 @@ details.fold .fbd{padding:6px 16px 14px}
 
 <p style="margin:16px 0;font-size:15px"><a href="../migrate_status_panel.html"><b>What is Done and Pending</b> — the four-state migration honesty map &nbsp;🟢🟠🔴🔵&nbsp; ↗</a></p>
 
+<details class="fold" markdown="1"><summary>Why MOrder is the DNA — what 1% buys you</summary>
+<div class="fbd" markdown="1">
+
+Examining the **MOrder cycle** (≈3,287 lines — ~0.2% of the codebase) gives you the whole organism, because MOrder is the **archetype**. From that one class you read:
+
+- **How it ORMs** — every table is `X_<Table>` (generated boilerplate: column constants, getters/setters) **+** `M<Table>` (the hand-written logic subclass); `MOrder extends X_Order`. The idiom for all 925 tables.
+- **The document lifecycle** — `DocAction` (`prepareIt` · `completeIt` · `voidIt` …) walked by the `DocumentEngine` FSM. How every document completes.
+- **The posting idiom** — `Doc_Order` turns the document into `fact_acct` lines. Every document has a `Doc_*` poster of the same shape.
+- **How it treats its model** — model-**driven**: the AD describes the table/window/fields as data; the class enforces `beforeSave` invariants + binds callouts; the poster derives the GL.
+
+Proven, not assumed: the other ~25 document classes are **isomorphs of MOrder**, each walked as a measured delta and diffed to zero (the *isomorph tail*). The only document-specific exceptions are ~5 deep deltas — `MInOut` in-transit locator · `MPayment` allocation · `MProduction` BOM explosion · `MInventory` physical count · `MAllocationHdr` (headerless). *Source: [ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md).*
+
+</div>
+</details>
+
 ---
 
 ## But ERP is tough — an aircraft carrier is about to go into a bathtub
 
-> **And the carrier floats — at 10,000 tills.** The one-page, plain-English proof for a retail owner:
-> **[Two messages a day → books to the penny](RetailScaleStory.html)** — animated, with the bar charts,
-> the legacy side-by-side, and the benchmark you can run yourself (`W-POS-WAN-SCALE`).
+<div class="cf" markdown="0">
+<style>
+.cf{margin:14px 0 24px;padding:14px 16px 10px;border:1px solid #2b3947;border-radius:14px;background:linear-gradient(100deg,rgba(124,179,66,.07),rgba(66,165,245,.05))}
+.cf-by{display:block;text-align:center;font-weight:850;font-size:clamp(18px,3.6vw,27px);letter-spacing:.3px;color:#ffcc80!important;text-decoration:none!important;margin:2px 0 4px}
+.cf-by:hover{text-decoration:underline!important;text-underline-offset:3px}
+.cf svg{display:block;width:100%;height:auto;max-height:240px}
+.cf .lbl{font:800 11px system-ui,sans-serif;fill:#7e8b98;letter-spacing:.6px}
+.cf .hq{fill:url(#cfg);stroke:rgba(124,179,66,.5);stroke-width:1.4}
+.cf .hqt{font:850 14px system-ui,sans-serif;fill:#fff}
+.cf .hqs{font:800 9px system-ui,sans-serif;fill:#9fd17a;letter-spacing:.5px}
+.cf .till rect{fill:#212a34;stroke:#2b3947;stroke-width:1}
+.cf .till .scr{fill:rgba(124,179,66,.25)}
+.cf .wire{stroke:#2b3947;stroke-width:1.3;fill:none}
+.cf .chip{fill:#39434f;stroke:rgba(148,163,177,.38);stroke-width:1.2}
+.cf .chipt{font:800 13px system-ui,sans-serif;fill:#e7edf3}
+.cf .chips{font:800 9px system-ui,sans-serif;fill:#aab6c1;letter-spacing:.6px}
+.cf .ph{font:800 11px system-ui,sans-serif;letter-spacing:.7px}
+.cf .foot{text-align:center;font-size:11.5px;color:#8a97a4;margin:6px 0 2px}
+.cf .foot a{color:#9fc3ea}
+</style>
+<a class="cf-by" href="../RetailScaleStory.html" title="The full animated, plain-English one-pager — bar charts, legacy side-by-side, and a benchmark you can run (W-POS-WAN-SCALE).">And the carrier floats at 10,000 tills!</a>
+<svg class="flowsvg" viewBox="0 0 960 300" role="img" aria-label="A day in two messages: each morning replenishment flows from the HQ warehouse out to the tills, then stops; at night each till sends one report back to HQ.">
+<style>
+.flowsvg .tl rect{fill:#212a34;stroke:#2b3947;stroke-width:1}
+.flowsvg .tl .s{fill:rgba(124,179,66,.25)}
+.flowsvg .w{stroke:#2b3947;stroke-width:1.4;fill:none}
+.flowsvg .ob{fill:#1c2530;stroke:rgba(124,179,66,.55);stroke-width:1.5}
+.flowsvg .ot{font:850 16px system-ui,sans-serif;fill:#fff}
+.flowsvg .os{font:800 10px system-ui,sans-serif;letter-spacing:.6px}
+.flowsvg .lb{font:800 11px system-ui,sans-serif;fill:#7e8b98;letter-spacing:.7px}
+.flowsvg .ch{fill:#ff9800;stroke:#ffb74d;stroke-width:1.5}
+.flowsvg .cht{font:850 15px system-ui,sans-serif;fill:#3a1d00}
+.flowsvg .chs{font:800 10px system-ui,sans-serif;fill:#6b3b00;letter-spacing:1.5px}
+.flowsvg .ph{font:800 12px system-ui,sans-serif;letter-spacing:.8px}
+</style>
+<defs><g id="ftl"><rect width="48" height="38" rx="5"/><rect class="s" x="7" y="7" width="34" height="16" rx="2"/><rect x="13" y="29" width="22" height="4" rx="2" fill="#394552"/></g></defs>
+<text class="lb" x="20" y="28">10,000 TILLS · STORES ON A WAN</text>
+<use href="#ftl" class="tl" x="24" y="44"/><use href="#ftl" class="tl" x="128" y="44"/><use href="#ftl" class="tl" x="232" y="44"/>
+<use href="#ftl" class="tl" x="24" y="102"/><use href="#ftl" class="tl" x="128" y="102"/><use href="#ftl" class="tl" x="232" y="102"/>
+<use href="#ftl" class="tl" x="24" y="160"/><use href="#ftl" class="tl" x="128" y="160"/><use href="#ftl" class="tl" x="232" y="160"/>
+<use href="#ftl" class="tl" x="24" y="218"/><use href="#ftl" class="tl" x="128" y="218"/><use href="#ftl" class="tl" x="232" y="218"/>
+<path class="w" d="M280,63 C470,63 600,150 770,150"/>
+<path class="w" d="M280,121 C470,121 640,150 770,150"/>
+<path class="w" d="M280,179 C470,179 660,150 770,150"/>
+<path class="w" d="M280,237 C470,237 600,150 770,150"/>
+<rect class="ob" x="772" y="96" width="168" height="108" rx="14"/>
+<text class="ot" x="856" y="140" text-anchor="middle">HEAD OFFICE</text>
+<text class="os" x="856" y="160" text-anchor="middle" fill="#9fd17a">· WAREHOUSE ·</text>
+<text class="os" x="856" y="178" text-anchor="middle" fill="#8fb3d8">BOOKS TO THE PENNY</text>
+<rect class="ch" x="390" y="10" width="220" height="46" rx="23"/>
+<text class="cht" x="500" y="33" text-anchor="middle">2 messages a day</text>
+<text class="chs" x="500" y="48" text-anchor="middle">PER TILL</text>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.07;.32;1" path="M280,63 C470,63 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.07;.09;.30;.32;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.12;.37;1" path="M280,121 C470,121 640,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.12;.14;.35;.37;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.17;.42;1" path="M280,179 C470,179 660,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.17;.19;.40;.42;1" values="0;0;1;1;0;0"/></circle>
+<circle class="am" r="5" fill="#ffa000" style="filter:drop-shadow(0 0 4px rgba(255,160,0,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;.22;.47;1" path="M280,237 C470,237 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.22;.24;.45;.47;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.57;.82;1" path="M280,63 C470,63 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.57;.59;.80;.82;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.62;.87;1" path="M280,121 C470,121 640,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.62;.64;.85;.87;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.67;.92;1" path="M280,179 C470,179 660,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.67;.69;.90;.92;1" values="0;0;1;1;0;0"/></circle>
+<circle class="bl" r="5" fill="#42a5f5" style="filter:drop-shadow(0 0 4px rgba(66,165,245,.85))"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;.72;.97;1" path="M280,237 C470,237 600,150 770,150"/><animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.72;.74;.95;.97;1" values="0;0;1;1;0;0"/></circle>
+<text class="ph" x="500" y="292" text-anchor="middle" fill="#ffa000">☀ MORNING — REPLENISHMENT OUT (HQ → TILLS)<animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.04;.07;.49;.52;1" values="0;0;1;1;0;0"/></text>
+<text class="ph" x="500" y="292" text-anchor="middle" fill="#42a5f5">🌙 NIGHT — REPORTS IN (TILLS → HQ)<animate attributeName="opacity" dur="7s" repeatCount="indefinite" keyTimes="0;.54;.57;.97;.99;1" values="0;0;1;1;0;0"/></text>
+</svg>
+<div class="foot"><a href="../RetailScaleStory.html">See the full animated one-pager →</a> &nbsp;·&nbsp; proof you can run: <code>W-POS-WAN-SCALE</code></div>
+</div>
 
 <details class="fold" markdown="0">
 <summary>The six interlocked things it takes &nbsp;<span style="display:inline-flex;gap:6px;align-items:center;vertical-align:middle">
