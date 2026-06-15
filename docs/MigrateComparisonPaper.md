@@ -156,13 +156,30 @@ details.fold .fbd{padding:6px 16px 14px}
 .status3 .bluen{--bc:#42a5f5;--bg:rgba(66,165,245,.06);--ft:rgba(66,165,245,.13)}
 .statuslead{border-left:4px solid #7cb342;background:rgba(124,179,66,.07);border-radius:0 8px 8px 0;padding:11px 16px;font-size:13px;margin:10px 0 2px}
 .statuslead b{color:#7cb342}
+/* DNA click-popover — anchored on the headline's "1% codebase is DNA" phrase */
+.dnapop-wrap{position:relative}
+.dnapop-ck{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.dnapop-bg{display:none}
+.dnapop-ck:checked ~ .dnapop-bg{display:block;position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.45);cursor:default}
+.dnapop-card{display:none}
+.dnapop-ck:checked ~ .dnapop-card{display:block}
+.dnapop-card{position:absolute;left:50%;top:calc(100% + 14px);transform:translateX(-50%);z-index:999;width:min(560px,92vw);text-align:left;background:#1a212a;border:1px solid #2f3a45;border-top:3px solid #ffb74d;border-radius:12px;padding:16px 30px 16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.55);color:#cdd6df;font-size:13px;line-height:1.5;font-weight:400;letter-spacing:normal;text-transform:none}
+.dnapop-card h4{margin:0 0 8px;font-size:14.5px;color:#ffcc80;font-weight:800;letter-spacing:.2px}
+.dnapop-card b{color:#fff;font-weight:700}
+.dnapop-card code{background:rgba(128,128,128,.2);padding:1px 5px;border-radius:4px;font-size:.86em;color:#e7edf3}
+.dnapop-card ul{margin:8px 0 0;padding-left:18px}
+.dnapop-card li{margin:0 0 7px}
+.dnapop-card .src{display:block;margin-top:10px;font-size:11.5px;color:#90a4ae}
+.dnapop-card .src a{color:#8fc3f7}
+.dnapop-x{position:absolute;top:7px;right:12px;color:#90a4ae;font-size:15px;cursor:pointer;font-weight:700;line-height:1}
+.dnapop-trig{cursor:pointer}
 </style>
 
 <div style="max-width:760px;margin:24px auto 8px;padding:30px 40px;background:#263238;border-left:4px solid #ff9800;text-align:center;border-radius:4px" markdown="0">
 <span style="font-size:2.4em;font-weight:800;line-height:1.15;color:#eceff1;letter-spacing:0.3px">The Server Is Dead</span>
 <br><span style="font-size:1.05em;font-weight:600;line-height:1.35;color:#ffcc80;margin-top:12px;display:inline-block">The DB is the log is the kernel — in the browser</span>
 <br><span style="font-size:0.8em;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;margin-top:14px;display:inline-block">Already proven by<br><b style="font-size:1.2em;letter-spacing:2.5px;color:#ffffff">Pacioli &nbsp;·&nbsp; Torvalds &nbsp;·&nbsp; Hipp</b></span>
-<br><span style="margin-top:16px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="text-decoration:none"><b style="font-size:1.12em;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:linear-gradient(135deg,#aab3b8 0%,#838c92 30%,#c2cace 52%,#7c858b 74%,#a7b0b5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;opacity:.72;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))">Assembled by RED1, 1% codebase is DNA, the rest — noise</b></a></span>
+<br><span class="dnapop-wrap" style="margin-top:16px;display:inline-block"><a href="https://red1oon.github.io/bim-ootb/" title="Try It Live." style="text-decoration:none"><b style="font-size:1.12em;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:linear-gradient(135deg,#aab3b8 0%,#838c92 30%,#c2cace 52%,#7c858b 74%,#a7b0b5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;opacity:.72;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))">Assembled by RED1, </b></a><input type="checkbox" id="dnapop1" class="dnapop-ck"><label for="dnapop1" class="dnapop-trig" title="Why 1% is the DNA"><b style="font-size:1.12em;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:linear-gradient(135deg,#aab3b8 0%,#838c92 30%,#c2cace 52%,#7c858b 74%,#a7b0b5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;opacity:.72;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3));border-bottom:1px dotted rgba(176,190,197,.55)">1% codebase is DNA, the rest — noise</b></label><label for="dnapop1" class="dnapop-bg" title="close"></label><span class="dnapop-card"><label for="dnapop1" class="dnapop-x" title="close">&#10005;</label><h4>Why MOrder is the DNA — what 1% buys you</h4>Examining the <b>MOrder cycle</b> (&#8776;3,287 lines &mdash; ~0.2% of the codebase) gives you the whole organism, because MOrder is the <b>archetype</b>. From that one class you read:<ul><li><b>How it ORMs</b> &mdash; every table is <code>X_&lt;Table&gt;</code> (generated boilerplate) <b>+</b> <code>M&lt;Table&gt;</code> (logic subclass); <code>MOrder extends X_Order</code> &mdash; the idiom for all 925 tables.</li><li><b>The document lifecycle</b> &mdash; <code>DocAction</code> (<code>prepareIt</code> &middot; <code>completeIt</code> &middot; <code>voidIt</code> &hellip;) walked by the <code>DocumentEngine</code> FSM.</li><li><b>The posting idiom</b> &mdash; <code>Doc_Order</code> turns the document into <code>fact_acct</code> lines; every document has a <code>Doc_*</code> poster of the same shape.</li><li><b>How it treats its model</b> &mdash; model-driven: the AD describes it as data; the class enforces <code>beforeSave</code> + binds callouts; the poster derives the GL.</li></ul>Proven, not assumed: the other ~25 document classes are <b>isomorphs of MOrder</b>, each walked as a measured delta and diffed to zero. The ~5 deep exceptions: <code>MInOut</code> in-transit &middot; <code>MPayment</code> allocation &middot; <code>MProduction</code> BOM &middot; <code>MInventory</code> count &middot; <code>MAllocationHdr</code> headerless.<span class="src">Source: <a href="../ERP_MODEL_ARCHETYPE/">ERP_MODEL_ARCHETYPE.md</a></span></span></span>
 </div>
 
  
@@ -198,21 +215,6 @@ details.fold .fbd{padding:6px 16px 14px}
 <span id="status"></span>
 
 <p style="margin:16px 0;font-size:15px"><a href="../migrate_status_panel.html"><b>What is Done and Pending</b> — the four-state migration honesty map &nbsp;🟢🟠🔴🔵&nbsp; ↗</a></p>
-
-<details class="fold" markdown="1"><summary>Why MOrder is the DNA — what 1% buys you</summary>
-<div class="fbd" markdown="1">
-
-Examining the **MOrder cycle** (≈3,287 lines — ~0.2% of the codebase) gives you the whole organism, because MOrder is the **archetype**. From that one class you read:
-
-- **How it ORMs** — every table is `X_<Table>` (generated boilerplate: column constants, getters/setters) **+** `M<Table>` (the hand-written logic subclass); `MOrder extends X_Order`. The idiom for all 925 tables.
-- **The document lifecycle** — `DocAction` (`prepareIt` · `completeIt` · `voidIt` …) walked by the `DocumentEngine` FSM. How every document completes.
-- **The posting idiom** — `Doc_Order` turns the document into `fact_acct` lines. Every document has a `Doc_*` poster of the same shape.
-- **How it treats its model** — model-**driven**: the AD describes the table/window/fields as data; the class enforces `beforeSave` invariants + binds callouts; the poster derives the GL.
-
-Proven, not assumed: the other ~25 document classes are **isomorphs of MOrder**, each walked as a measured delta and diffed to zero (the *isomorph tail*). The only document-specific exceptions are ~5 deep deltas — `MInOut` in-transit locator · `MPayment` allocation · `MProduction` BOM explosion · `MInventory` physical count · `MAllocationHdr` (headerless). *Source: [ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md).*
-
-</div>
-</details>
 
 ---
 
