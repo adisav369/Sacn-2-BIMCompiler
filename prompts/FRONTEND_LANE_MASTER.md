@@ -67,7 +67,7 @@ visible list, not relied-on memory. Tagged by lane — ERP-UI items belong to TH
 listed for visibility and route to their own prompt/lane.
 
 > **▶ DOC-PANEL / KERNEL-LOG SAVE+AUDIT BAND (dictated 2026-06-14) — 5 items, all ERP-UI, all idempiere.html.**
-> **NEXT-SESSION CARD: `prompts/BLUE_FUTURE_VISUAL_LANE.md`** (item 0 browser/visual legs — engine+3b already shipped, PR #314).
+> **NEXT-SESSION CARD: `prompts/DRAFT_RESTORE_VISUAL_LANE.md`** (item 1 browser leg — engine live via #317; items 0/2/3a/3b ✅ LIVE PRs #314/#317/#320). BLUE_FUTURE (item 0) ✅ DONE PR #317.
 > Source: live design reflection this session. Spec each before code; §-log first; consume the seam (never fork a verb).
 > Two things are ALREADY WIRED — do NOT rebuild, only confirm in the witness:
 >   • back-dot = read-only view restore (`idmp_history.js` `_go→_histRestore`, `readOnly=Y`) — the chosen model
@@ -157,10 +157,14 @@ listed for visibility and route to their own prompt/lane.
 >    EXACTLY ONE official op + clears the buffer; a CLEAN leave clears any stale pip; tip-moved-underneath flags the
 >    cols (decision-owed surfaced, never clobbered). Engine path proven, no Date.now in path. Regressions GREEN:
 >    field_lineage + blue_future 0 fails. → item 1 ENGINE = ✅ DONE (witness).
->    OWED (browser leg, GO-gated — defers behind the concurrent BLUE_FUTURE_VISUAL_LANE dot work to avoid an
->    `idmp_history.js` line-collision): wire `draftPut` into `closeForm`/`beforeunload`, render the **private dirty-pip**
->    (distinct from committed dots) on the history bar, the opt-in back-pip restore gesture in `openForm`, and the
->    "record changed underneath" warn via `draftDrift`. Live DOM witness W-DRAFT-RESTORE-LIVE, then sw bump + PR + GO.
+>    ▶ BROWSER LEG SHIPPED + LIVE (Opus 2026-06-15, bim-ootb PR #322, erp sw v689) → item 1 = ✅ DONE (witness).
+>    crud_overlay.js?v=11: `_formCtx` tracks the open form; closeForm/cancel/nav + beforeunload `_bufferDraft`
+>    (draftPut, dirty-only, ZERO ops, official tip unchanged); committed Save clears (closeForm({saved:true}));
+>    reopen DEFAULTS to saved tip, `_offerDraftRestore` shows the pip, `restoreDraft()` opt-in fill + `draftDrift`
+>    warn (single-user keeps draft, never clobbers); __crud.restoreDraft/bufferDraft seam. idmp_history.js?v=9:
+>    AMBER hollow-ring unsaved-edit pip (distinct from white/gold committed dots; forces bar visible; tap=restore)
+>    via setDraftPip/clearDraftPip. **W-DRAFT-RESTORE-LIVE 10/10 PASS** (`erp/tests/poc_draft_restore_live.js`,
+>    0 pageerrors); regressions recinfo-live 7/7 + blue-future-live 15/15 + blue-lineage-live 7/7 + CRUD suite green.
 >
 >    ORIGINAL DICTATION (scope kept): Today edits are Save-gated and LOST on nav
 >    (`crud_overlay.js` `saveForm` is the only commit path; `closeForm` clears the DOM; no buffer/beforeunload).
@@ -177,7 +181,11 @@ listed for visibility and route to their own prompt/lane.
 >    the draft → (a) keep draft over new tip [single-user default] or (b) "record changed underneath" warn.
 >    Witness: W-DRAFT-RESTORE (leave→draft buffered, NO official dot, tip unchanged for other docs; reopen→lands on
 >    saved tip by default; opt-in back-pip restores unsaved typing; validated Save→single official dot, buffer cleared).
-> 2. **WIRE FULL DOCACTION SET PER AD.**
+> 2. **WIRE FULL DOCACTION SET PER AD.** ✅ DONE + LIVE.
+>    ▶ BROWSER LEG — ALREADY SHIPPED: the form's `buildDocActionBar` (idempiere.html, §AD-DOCFSM-LIVE, W-AD-DOCFSM-LIVE
+>    PASS) renders the FULL FSM legal set per record (legalActionsOrder/For + dispatchOrder/For) incl. the reversal
+>    family — the primary surface already does item 2. The secondary crud Process-ring bridge (CORE.legalDocActions +
+>    docActionOutcome opts) shipped with PR #320 (erp sw v688). → item 2 = ✅ DONE (witness).
 >    ▶ ENGINE-BRIDGE LEG SHIPPED (Opus 2026-06-14, headless): **W-DOCACTION-FULL 14/14 PASS**
 >    (`scripts/poc_docaction_full.js`, over canonical `ad_full.db` C_DocType 132). The FSM itself was already
 >    complete + witnessed (`ad_docfsm.js` `legalActions`/`dispatch`, W-DOCFSM) — the GAP was that CORE had NO path
@@ -199,7 +207,12 @@ listed for visibility and route to their own prompt/lane.
 >    the reversal family is hardcoded-per-class, NOT AD-driven at runtime. Surface the legal action set per record
 >    **from AD/FSM** (`legalActions`/`STATUS_ACTIONS`), not a hardcoded CO. Witness: W-DOCACTION-FULL (legal set per
 >    status matches FSM; RC/RA post a reversal, never a silent un-complete on a posted doc).
-> 3a. **RECORD-INFO POPUP — record-level last-touch (the easy win).**
+> 3a. **RECORD-INFO POPUP — record-level last-touch (the easy win).** ✅ DONE + LIVE (bim-ootb PR #320, erp sw v688).
+>    ▶ BROWSER LEG SHIPPED + LIVE (Opus 2026-06-15, PR #320): idempiere.html "ⓘ" button at the rec/total slot →
+>    _showRecordInfo popup (op-log who/when via fmtTs + the row's own audit cols); __crud.recordInfo seam. Live
+>    witness **W-RECINFO-LIVE 7/7** (erp/tests/poc_recinfo_live.js): __crud.recordInfo present, sidecar round-trip
+>    created=liveAlice/updated=liveBob/count=2, ⓘ opens popup on a real AD_Tree record, §RECINFO-LIVE fires, 0
+>    pageerrors. Regression W-BLUE-LINEAGE-LIVE 7/7. → item 3a = ✅ DONE (witness).
 >    ▶ ENGINE LEG SHIPPED (Opus 2026-06-14, headless): **W-RECINFO 9/9 PASS** (`scripts/poc_recinfo.js`).
 >    Added `CORE.recordInfo(sideDb,table,id,branch)` (`crud_overlay.js`) — folds the op-log to
 >    `{created:{actor,ts,opId}, updated:{actor,ts,opId}, count}`. ALWAYS-ON (no AD IsChangeLog gate, unlike
