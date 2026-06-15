@@ -247,6 +247,30 @@
   </div>
 </div>
 
+<div class="pitch" style="margin-top:18px">
+  <b>It’s not literally only two messages.</b> A sale still does a real-time <b>card approval</b> and a
+  <b>points check</b> at the moment of payment — quick calls straight from the till to your processor. The
+  <b>two daily messages</b> are the reporting + replenishment summary. The point: <b>head office and the
+  network are never on the critical path of a sale.</b>
+</div>
+
+<!-- ── payments / members / phone ── -->
+<h2>Payments, members &amp; the customer’s phone</h2>
+<div class="res">
+  <div class="rc reveal" style="border-left-color:var(--blue)"><div class="ic">💳</div><h3>Card &amp; e-wallet payments</h3>
+    <p class="bad">Legacy: tendered through the central server / broker — another hop that can stall the sale.</p>
+    <div class="good">Go <b>straight from the till to your bank/processor</b>, as they do today — head office is never in the middle. The approval is a <b>signed line on the receipt</b>; at close it <b>auto-reconciles to the bank’s settlement file, to the cent</b>. Lost link → store-and-forward by your processor’s rules.</div>
+  </div>
+  <div class="rc reveal" style="border-left-color:var(--green)"><div class="ic">🎟️</div><h3>Members &amp; bonus points</h3>
+    <p class="bad">Legacy: a central member lookup on every sale — slow when the line is down.</p>
+    <div class="good">Members are known by their <b>phone</b>. Points <b>earned just add up</b> — no central lookup. Points <b>spent are checked against one shared balance</b>, so they can’t be double-spent across two stores. Earn is instant and offline-friendly; only redemption needs the quick shared check.</div>
+  </div>
+  <div class="rc reveal" style="border-left-color:var(--violet)"><div class="ic">📱</div><h3>The customer owns their receipts</h3>
+    <p class="bad">Legacy: you custody all their data — a breach liability and a compliance burden.</p>
+    <div class="good">Each customer’s phone keeps <b>their own signed receipts and points</b> — verifiable <b>proof of purchase</b> for returns/warranty with no “let me look you up”, and <b>far less personal data for you to guard</b>. They back it up to their own cloud; you keep only what the books need.</div>
+  </div>
+</div>
+
 <!-- ── resilience ── -->
 <h2>When things go wrong</h2>
 <div class="res">
@@ -311,6 +335,9 @@ queue for it — that’s what chokes them at thousands of tills. We let each ti
     <tr><td>Rebuild books from the summaries</td><td class="legacy">N/A — server already holds it all</td><td class="us">Proven <b>exact to the penny</b></td></tr>
     <tr><td>Scale we tested</td><td class="legacy">Needs a server farm + tuning to push high till counts</td><td class="us"><b>10,000 tills on one laptop</b>, straight-line scaling</td></tr>
     <tr><td>Infrastructure</td><td class="legacy">Central servers, DB licences, ops team</td><td class="us">No server farm; runs lean</td></tr>
+    <tr><td>Card payments</td><td class="legacy">Routed via the central server / broker</td><td class="us">Till ↔ processor <b>direct</b>; result is a signed receipt line, <b>auto-reconciled to the cent</b></td></tr>
+    <tr><td>Members &amp; points</td><td class="legacy">Central member-DB lookup per sale</td><td class="us">Phone-identified; earn adds up offline, redeem checked against <b>one shared balance</b></td></tr>
+    <tr><td>Customer data</td><td class="legacy">You custody all of it (breach risk)</td><td class="us">Customer’s phone <b>owns its receipts</b>; you hold only what the books need</td></tr>
     <tr class="caveat"><td>Honest caveat</td><td class="legacy">Decades of features (finance, HR, manufacturing…)</td><td class="us">This proves the <b>reporting + recovery backbone</b> at scale, not the full feature catalogue. One known gap: two stores inventing the <b>same brand-new product</b> at once needs more work.</td></tr>
   </tbody>
 </table>
