@@ -568,7 +568,72 @@ onReceive(op =&gt; verifyChain(log.concat(op)) ? apply(op) : drop(op));</code></
       who has lived in the real thing, that honesty is what makes the rest believable.</div>
       <div class="lawline"><b>The first rule and the last rule are the same.</b> State is never written, only folded;
       claims are never asserted, only witnessed. Everything in this book is a consequence of those two sentences.</div>
-      <div class="nav-foot"><a data-to="ch11">← Ch.11</a><span></span></div>
+      <div class="nav-foot"><a data-to="ch11">← Ch.11</a><a data-to="postscript">Postscript · Where this sits →</a></div>
+    </section>
+
+    <section class="chap" id="postscript" data-reg="base">
+      <p class="crumbs">Postscript</p>
+      <h2>Postscript · Where this sits — and what's bleeding</h2>
+      <p>A reader asked the honest question every engineer should ask of a new architecture: <i>what's the real
+      difference from prior work, and am I on the bleeding edge — or just rephrasing event sourcing?</i> A book that lives
+      by the §FALSIFIER owes you the placement, risks included. So here it is, plainly.</p>
+
+      <p><b class="beat">The one real difference.</b> The closest prior work (the
+      <a href="https://clei.org/clei2018/docs/SLISW/182931.pdf">2018 ERP case study</a> in the Introduction) does event
+      sourcing <i>inside a conventional architecture</i>: a server, business rules in application code, and an event
+      store sitting behind a materialized state that becomes the de-facto truth for queries. This engine collapses three
+      things that architecture keeps separate: <b>(1) no store of record</b> — the projection is always a fold, never
+      persisted-as-truth (Ch.1); <b>(2) no server of record</b> — each node folds locally, authority is
+      <code>verifyChain</code>, not a gatekeeper (Ch.11); <b>(3) the rules are in the log</b> — the business logic is the
+      declarative dictionary, folded like the data, and dictionary edits are themselves signed ops in the <i>same</i> log
+      (Ch.9). One line: <b>they event-source the data; we event-source the data <i>and the model</i>, in one signed log,
+      with no server and no store of record.</b></p>
+
+      <p><b class="beat">How bleeding-edge is each part — honestly.</b> Bleeding edge is rarely one new atom; it is a novel
+      <i>composition</i> of known atoms aimed at a problem nobody composed them for. Tiered without flattery:</p>
+      <ul style="font-size:15px;color:#dbe4ec;max-width:74ch;line-height:1.6">
+        <li><b>Established ground (not ours to claim):</b> op-log as source of truth →
+          <a href="https://www.datomic.com/">Datomic</a> (state as a fold over an immutable log, a decade old); signed
+          append-only log → Git, Certificate Transparency, Merkle logs; deterministic replay → the event-sourcing canon
+          (Fowler, Greg Young, Vaughn Vernon).</li>
+        <li><b>Frontier of industry practice (we have company):</b> no-server, local-first, edge-fold with peer-relayed
+          signed ops → <a href="https://www.inkandswitch.com/local-first/">“Local-first software”</a> (Kleppmann et al.),
+          <a href="http://krasserm.github.io/2016/10/19/operation-based-crdt-framework/">operation-based CRDTs</a> (the
+          PO-Log), Automerge / Yjs / ElectricSQL. This is where the field is genuinely moving — and we are in a crowd
+          there, not alone.</li>
+        <li><b>Genuinely distinctive (where the search came up empty):</b> folding a declarative business <i>dictionary —
+          the model itself —</i> as signed ops in the <i>same log as the transactions</i>, so the running app, the rules,
+          and the to-the-cent accounting are all deterministic folds of one signed substrate, validated against a legacy
+          ERP oracle at <code>maxDiff=0c</code>. Model-driven ERP is old (the AD is twenty); event sourcing is old;
+          local-first is current — the <i>intersection</i> is what we couldn't find a precedent for. The nearest neighbor
+          is probably <a href="https://www.unison-lang.org/">Unison</a> (content-addressed code-as-data), but nobody has
+          pointed it at an ERP dictionary.</li>
+      </ul>
+
+      <div class="fromi" style="border-left-color:var(--red);background:linear-gradient(100deg,rgba(239,83,80,.10),rgba(124,179,66,.05))">
+      <b>Why it's “bleeding” — it cuts.</b> If you want to know whether you're on the edge, feel the blade.
+      <b>Coverage is thin</b> — only ~0.2% of the M-class logic is folded, so the claim is <i>architectural</i>, not yet
+      breadth-proven across a whole ERP. <b>Determinism is a fragile contract</b> — any non-determinism (float — fixed
+      with <code>bigdecimal.js</code> — op ordering, a clock, Map iteration order) silently breaks the fold; it is
+      correct-by-discipline, and discipline is fragile. <b>Performance/scale is unproven</b> — folding everything,
+      browser RAM (~300 MB needs sharding; one sql.js tab is a ceiling). <b>Rule/verb evolution at decade scale</b> is
+      untested — we solved version-travels-with-data better than the 2018 paper, but evolving the verb set and the fold
+      logic over years is ahead of us. <b>No central authority</b> means the security/conflict model is ours, and less
+      battle-tested than server + RDBMS + forty years of hardening.</div>
+
+      <p><b class="beat">What to read to place yourself.</b> <a href="https://www.datomic.com/">Datomic</a> (state-as-a-fold,
+      the closest), <a href="https://www.inkandswitch.com/local-first/">Kleppmann's “Local-first software”</a> (the
+      no-server thesis), the <a href="http://krasserm.github.io/2016/10/19/operation-based-crdt-framework/">operation-based
+      CRDT / PO-Log</a> literature (the distribution layer's theory), <a href="https://www.unison-lang.org/">Unison</a>
+      (code-as-data-in-a-log), and Young/Vernon for the base pattern. Read those and you'll see exactly which moves are
+      standing-on-shoulders and which one is ours.</p>
+
+      <div class="lawline"><b>The honest verdict.</b> We did not invent event sourcing, CRDTs, or signed logs — and we
+      don't claim to. The edge is the <b>unification</b> (model + data in one signed, server-less, deterministic fold for
+      an ERP) plus the <b>oracle-to-the-cent discipline</b>. That composition we haven't seen; the blood is that it is
+      proven on a thin slice, so it is a frontier <i>architecture</i> with its breadth still ahead of it.
+      <b>If you can point at prior art for the unification, tell us — we'll cite it.</b></div>
+      <div class="nav-foot"><a data-to="ch12">← Ch.12</a><a data-to="intro">↑ Introduction</a></div>
     </section>
 
   </main>
@@ -596,6 +661,9 @@ const TREE = [
     ["ch10","Ch.10 · The oracle &amp; how to write a witness","base"],
     ["ch11","Ch.11 · The distribution you rely on","base"],
     ["ch12","Ch.12 · The scars &amp; the discipline","base"],
+  ]],
+  ["Postscript", "where this sits", [
+    ["postscript","Postscript · Where this sits — and what's bleeding",""],
   ]],
 ];
 const tree = document.getElementById('tree');
