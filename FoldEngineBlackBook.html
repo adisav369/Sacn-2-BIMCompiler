@@ -75,6 +75,51 @@
   <nav class="tree" id="tree"></nav>
   <main class="doc" id="doc">
 
+    <section class="chap" id="intro" data-reg="base">
+      <p class="crumbs">Front matter</p>
+      <h2>Introduction · How to read this book</h2>
+      <p>Most manuals tell you what the functions do. This one tells you <i>why the engine is shaped the way it is</i> —
+      because in a fold engine the shape <b>is</b> the story. Roughly 28,000 lines here do work a 1.4-million-line server
+      used to do, and the difference isn't cleverness; it's a single idea carried all the way down: <b>state is never
+      written, only folded; claims are never asserted, only witnessed.</b> Every chapter is a consequence of that one
+      sentence. Learn it once and the rest stops being surprising.</p>
+
+      <p><b class="beat">What this is — and isn't.</b> This is the deep manual for the people who <i>extend</i> the
+      engine: write a rule, a callout, a posting, a plugin; edit the dictionary; prove a change is correct. It sits
+      <i>beneath</i> the <a href="ERPRosettaStone/">ERP Rosetta Stone</a> — that's the idiom map (your Java method → our
+      fold); this is the layer under it: how to <i>think</i> in the engine. It is not an API reference (the engine is
+      too small to need one) and not a feature tour. Where it can, it cites; it doesn't repeat.</p>
+
+      <p><b class="beat">Two readers, one book.</b> Every chapter is tagged <span class="tag base">base</span> (start
+      from zero — solid JS and general ERP literacy assumed, no iDempiere needed) or <span class="tag vet">veteran</span>
+      (you carry twenty years of AD / <code>ModelValidator</code> / 2Pack instinct — take the fast-path). And in
+      <i>every</i> chapter there is a <b>From iDempiere →</b> box: a newcomer reads the full prose; a veteran can skim
+      just those boxes across the whole book and get the entire map at speed. Same page, two depths.</p>
+
+      <p><b class="beat">The shape of a chapter.</b> They all run the same six beats, on purpose: <b>the hard problem →
+      the wrong instinct → the fold reasoning → the code → the witness that proves it → the scar.</b> The "wrong
+      instinct" is usually the Java/OSGi reflex, named so you can catch yourself reaching for it. The "scar" is a real
+      episode that cost us once — the slice that hid windows, the cache that re-bought the server — written down so it
+      costs you nothing.</p>
+
+      <p><b class="beat">The one discipline.</b> This project lives by <i>non-invent</i>: every claim traces to a
+      witness, a file, or a §-log. So does this book — no chapter ships without naming the <code>W-…</code> that proves
+      it. If you ever read a paragraph here you can't trace to running code, that's a bug in the book.</p>
+
+      <p><b class="beat">Scope.</b> Only what you <b>touch</b> (rules, callouts, posting, plugins, dictionary edits) and
+      what you must <b>read</b> to touch it safely (the op-log, the verb set, the money library). The kernel internals
+      you never open — the WASM/sql.js plumbing, the signing crypto, the sharding — are deliberately out; where you
+      depend on them, one chapter (Ch.11) tells you what to trust, not how it's built.</p>
+
+      <div class="fromi"><b>Getting around.</b> The tree on the left is the table of contents — click a Part heading to
+      fold it. The search box (top-right, press <code>/</code>) filters the tree to matching topics and highlights every
+      hit in the page; <code>Esc</code> clears it. Read Chapter&nbsp;1 forward, or search for the thing you're stuck on.</div>
+
+      <div class="lawline">If you remember one line from this book, remember the one the whole engine turns on:
+      <b>state is never written, only folded; claims are never asserted, only witnessed.</b></div>
+      <div class="nav-foot"><span></span><a data-to="ch1">Ch.1 · Why a log, not a database →</a></div>
+    </section>
+
     <section class="chap" id="ch1" data-reg="base">
       <p class="crumbs">Part I · What you must read</p>
       <h2>Ch.1 · Why a log, not a database <span class="tag base">base</span></h2>
@@ -470,6 +515,9 @@ onReceive(op =&gt; verifyChain(log.concat(op)) ? apply(op) : drop(op));</code></
 
 <script>
 const TREE = [
+  ["Introduction", "start here", [
+    ["intro","Introduction · How to read this book",""],
+  ]],
   ["Part I · What you must read", "the substrate, enough to trust it", [
     ["ch1","Ch.1 · Why a log, not a database","base"],
     ["ch2","Ch.2 · The fold &amp; the closed verb set","base"],
@@ -504,7 +552,7 @@ TREE.forEach(([title,sub,items])=>{
   ul.className='part-items';
   items.forEach(([id,label,reg])=>{
     const a=document.createElement('a');
-    a.dataset.t=id; a.innerHTML = label + ` <span class="tag ${reg}">${reg==='vet'?'veteran':'base'}</span>`;
+    a.dataset.t=id; a.innerHTML = label + (reg ? ` <span class="tag ${reg}">${reg==='vet'?'veteran':'base'}</span>` : '');
     a.onclick=()=>show(id);
     ul.appendChild(a);
   });
@@ -563,7 +611,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='/' && document.activeElement!==q){e.preventDefault();q.focus();}
   if(e.key==='Escape'){q.value='';q.dispatchEvent(new Event('input'));q.blur();}
 });
-show('ch1');
+show('intro');
 </script>
 </body>
 </html>
