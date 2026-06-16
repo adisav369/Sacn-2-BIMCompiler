@@ -5034,7 +5034,7 @@ and the qty-half (MTransaction→MStorageOnHand) of the trade cycle both fold to
 the <code>CO</code> DocAction transition, the double-entry posting fold, and a fixed receipt/TB/P&amp;L report set — for a handful of
 demo documents. The <strong>irreducible behavioural surface</strong> named in <code>MigrateComparisonPaper §estimate</code>
 (process 54k LOC · workflow 7k · callouts 10k · validators · the logic-expression evaluator · the entire security layer)
-is enumerated below and is overwhelmingly ⛔. This is what makes the <em>76× shell → ~25× conservative full parity</em> story precise: the 76× counts
+is enumerated below and is overwhelmingly ⛔. This is what makes the <em>≈51× shell → ~21× conservative full parity</em> story precise: the 51× counts
 delivery/definition, not behavioural parity — most behaviour is <strong>named-and-deferred</strong>, not folded.</p>
 <blockquote>
 <p><strong>Engine architecture fact (sets the ceiling):</strong> all engine field-logic is descriptor-driven from a <em>hand-authored</em>
@@ -5420,7 +5420,7 @@ disproof: the line can never fire today.</p>
 (3 registered). The </em><em>~3,000-row logic-expression</em><em> surface (W-LOGIC-EVAL) and the </em><em>~4,200-row security</em><em> surface
 (W-ACCESS) now have an engine home (<code>ad_evaluator.js</code> / <code>ad_access.js</code>, headless-proven; live render-wiring is the
 residual). Folded today: the <code>CO</code> transition, the double-entry posting fold, a fixed report set — for ~5–7 demo tables.
-This is the precise content behind "76× shell → ~25× conservative full parity": the 76× is delivery/definition (the 18,614-LOC engine shell, ~0.2% of the M-class logic folded); behavioural parity is a long, </em>named* tail — see <a href="../ERP_MODEL_ARCHETYPE/">ERP_MODEL_ARCHETYPE.md</a>.</p>
+This is the precise content behind "≈51× shell → ~21× conservative full parity": the 51× is delivery/definition (the 28,184-LOC engine shell re-measured 2026-06-12, ~0.2% of the M-class logic folded — the ratio falls from the earlier 76×/18,614 as real coverage grows); behavioural parity is a long, </em>named* tail — see <a href="../ERP_MODEL_ARCHETYPE/">ERP_MODEL_ARCHETYPE.md</a>.</p>
 <h2 id="provenance-caveats">Provenance / caveats<a class="headerlink" href="#provenance-caveats" title="Permanent link">&para;</a></h2>
 <ul>
 <li>All §B numbers from <code>build/erp/ad_full.db</code> (927 tables) — table names are <strong>lowercase</strong> there (<code>ad_column</code>, not <code>AD_Column</code>).</li>
