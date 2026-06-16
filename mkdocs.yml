@@ -72,7 +72,6 @@ nav:
       - Home: index.md
       - Feature Comparison: FeatureComparison.md
       - "Migrate & Compare (ERP)": MigrateComparisonPaper.md
-      - "ERP Rosetta Stone (iDempiere → Fold Engine)": ERPRosettaStone.md
       - "Cross-ERP Rosetta Stone (concept + cost)": ERPConceptRosetta.html
       - "Fold Engine Black Book (dev manual)": FoldEngineBlackBook.html
       - "ACDOCA Fold Plan (SAP headline)": ACDOCA_FOLD_PLAN.md
