@@ -204,6 +204,26 @@
     ongoing cost is the <b>stitch + oracle-diff</b> — exactly the elementary change matrix in §7, read as an equation.
   </div>
 
+  <div class="pitch" style="margin-top:22px;border-left-color:var(--amber);background:linear-gradient(100deg,rgba(255,160,0,.10),rgba(124,179,66,.05))">
+    <b>What the industry actually spends — and why the saving lands here.</b> Public benchmarks agree the recurring cost
+    <b>dwarfs the build</b>: maintenance is <b>70–90% of an on-prem ERP's TCO</b> (50–80% across software broadly; the IEEE
+    Computer Society puts it at <b>60–80% of lifecycle cost</b>), and vendor support/maintenance alone runs
+    <b>15–25% of license — every year</b>. “Development happens once; maintenance continues for the system's life.” This
+    architecture removes the <b>two biggest recurring drivers</b> on the read/fold path — <b>server &amp; license renewal</b>
+    (no server of record) and the <b>recompile-redeploy cost of every change</b> (§7: declarative edits re-fold, no rebuild).
+    So the saving concentrates on the <b>largest</b> TCO bucket — the yearly maintenance line — not the one-time build.
+    <span style="color:var(--dim)">We publish <b>no single “% saved”</b> figure — TCO varies per org and inventing one would
+    betray the non-invent rule; the honest claim is <i>where</i> the saving lands, each clause above traceable to a citation
+    or a witnessed fact (≈89× LOC, zero-server, <code>W-AD-SELFEDIT</code>).</span>
+  </div>
+  <p class="foot">Sources: maintenance share of TCO —
+    <a href="https://www.scnsoft.com/software-development/maintenance-and-support/costs">ScienceSoft</a> ·
+    <a href="https://galorath.com/blog/software-maintenance-costs/">Galorath</a> (IEEE 60–80%); ERP vendor support % of license —
+    <a href="https://www.panorama-consulting.com/how-to-forecast-post-implementation-erp-costs/">Panorama Consulting</a>
+    (18–25%) · <a href="https://www.panorama-consulting.com/cloud-erp-cost/">Panorama — Cloud ERP Cost</a>; build-once vs
+    maintain-forever — <a href="https://idealink.tech/blog/software-development-maintenance-true-cost-equation">Idealink</a>.
+    Figures are third-party industry data; <i>our</i> contribution is the architecture that moves the saving onto that bucket.</p>
+
   <p class="foot" style="margin-top:24px">
     Companions: <a href="ERPRosettaStone/">ERP Rosetta Stone (iDempiere-Java → Fold Engine)</a> — the developer idiom map ·
     <a href="ACDOCA_FOLD_PLAN/">ACDOCA Fold Plan</a> — the SAP headline (the Universal-Journal fold) ·
