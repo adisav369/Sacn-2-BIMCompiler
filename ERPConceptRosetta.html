@@ -224,6 +224,45 @@
     maintain-forever — <a href="https://idealink.tech/blog/software-development-maintenance-true-cost-equation">Idealink</a>.
     Figures are third-party industry data; <i>our</i> contribution is the architecture that moves the saving onto that bucket.</p>
 
+  <h2 id="osgi-frame">9 · For the iDempiere OSGi plugin maintainer</h2>
+  <p class="lede">If you have shipped <code>ModelValidator</code>s, <code>Callout</code>s and custom <code>Doc_*</code> posting as
+  OSGi bundles, most of what you <i>maintain</i> is not business logic — it is <b>OSGi plumbing and upgrade-breakage</b>.
+  That is exactly the recurring cost the table below removes. Read it idiom for idiom: <b>the OSGi tax disappears; the
+  business logic does not.</b></p>
+  <div class="scroll"><table>
+    <tr><th>What you maintain in iDempiere / OSGi today</th><th>Here (Fold Engine) ✅</th></tr>
+    <tr><td class="java"><code>MANIFEST.MF</code> + <code>Import-Package</code>/<code>Export-Package</code> version ranges, <code>bnd</code></td><td><span class="no">none</span> — a plugin is a JS <code>.foldbundle</code> module, no manifest wiring</td></tr>
+    <tr><td class="java">Tycho/Maven build, target platform, p2 repository</td><td><span class="no">none</span> — no compile step, no target platform</td></tr>
+    <tr><td class="java">Declarative Services components, <code>Bundle Activator</code>, <code>IModelValidationEngine.addModelValidator</code></td><td>register a handler in the registry — no DS lifecycle</td></tr>
+    <tr><td class="java">Drop bundle in <code>plugins/</code>, <b>restart the OSGi runtime</b>, resolve wiring</td><td>ship the module — <b>re-fold = re-read, no restart</b></td></tr>
+    <tr><td class="java"><code>ClassNotFoundException</code> / unresolved-bundle / classloader-leak debugging</td><td><span class="no">gone</span> — no classloader graph to resolve</td></tr>
+    <tr><td class="java"><b>Every iDempiere upgrade can break your plugin</b> (Java API drift, package bumps)</td><td>you fold the <i>dictionary</i>, not compile against a moving Java API — the AD is the stable contract</td></tr>
+  </table></div>
+
+  <div class="pitch" style="margin-top:22px">
+    <b>What stays the same — the discipline ports.</b> You still <b>author the genuinely-custom logic</b> (a bespoke rebate,
+    a non-standard posting rule) — it lands as a registered handler / <code>.foldbundle</code> plugin instead of an OSGi DS
+    component (doctrine: <i>foreign imperative code is never auto-imported — it becomes a plugin</i>). <b>Money discipline is
+    identical</b>: your <code>BigDecimal</code> · <code>HALF_UP</code> · integer-cents habits carry 1:1 —
+    <code>bigdecimal.js</code> is proven bit-equal to Java <code>BigDecimal</code>. And you <b>recognise every dictionary
+    point</b>: a <code>ModelValidator</code> hook → <code>AdModelVal</code>/<code>AD_Val_Rule</code>; a <code>Callout</code> →
+    <code>AD_Column.Callout</code> → <code>AdCallout</code>; custom <code>Doc_*</code> posting → <code>post_resolver</code> (config) or a plugin.
+  </div>
+  <div class="pitch" style="margin-top:14px;border-left-color:var(--green)">
+    <b>What you often delete.</b> A large share of real iDempiere plugins are <code>ModelValidator</code>s/<code>Callout</code>s
+    expressing what the AD can hold <b>declaratively</b> — mandatory, read-only, default, validation. Those stop being a bundle
+    at all: they become an <code>AD_Field</code>/<code>AD_Val_Rule</code> edit that re-folds live (witnessed: <code>W-AD-SELFEDIT</code>).
+    The plugin you'd have built <i>and maintained forever</i> no longer exists.
+  </div>
+  <div class="pitch" style="margin-top:14px;border-left-color:var(--amber);background:linear-gradient(100deg,rgba(255,160,0,.10),rgba(124,179,66,.05))">
+    <b>What is new to learn — there is a curve.</b> The <b>op-log model</b> (“git-for-data”): plugin effects are signed ops,
+    and you think in <b>DERIVE / VALIDATE / ACT</b> effects rather than method overrides; provenance is the signed
+    <code>kernel_ops</code> chain, not <code>AD_ChangeLog</code>. Registration is <b>explicit</b>, not OSGi service auto-wiring
+    (the host handler set is pinned). Plugins are <b>JS, not Java</b> — idiom translation for a model/callout/validator dev;
+    a bigger shift if your work was deep ZK UI. Honest caveats: the JS plugin SDK is <b>younger</b> than 20 years of OSGi
+    ecosystem (fewer examples, more edges), and deep ZK customisation does <b>not</b> map 1:1 — that is the “stitch” cost §8 names.
+  </div>
+
   <p class="foot" style="margin-top:24px">
     Companions: <a href="ERPRosettaStone/">ERP Rosetta Stone (iDempiere-Java → Fold Engine)</a> — the developer idiom map ·
     <a href="ACDOCA_FOLD_PLAN/">ACDOCA Fold Plan</a> — the SAP headline (the Universal-Journal fold) ·
