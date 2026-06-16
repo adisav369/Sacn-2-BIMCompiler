@@ -115,6 +115,20 @@
       fold it. The search box (top-right, press <code>/</code>) filters the tree to matching topics and highlights every
       hit in the page; <code>Esc</code> clears it. Read Chapter&nbsp;1 forward, or search for the thing you're stuck on.</div>
 
+      <p style="margin-top:22px"><b class="beat">About this book — what's new here (and what isn't).</b>
+      Op-log programming itself is <i>not</i> new. The append-only log as the source of truth is well-trodden under other
+      names — <b>event sourcing</b>, <b>operation-based CRDTs</b> (the PO-Log), <i>git-for-data</i> — with mature
+      frameworks (<a href="http://krasserm.github.io/2016/10/19/operation-based-crdt-framework/">Eventuate</a>,
+      <a href="https://pekko.apache.org/docs/pekko/current/typed/replicated-eventsourcing.html">Apache&nbsp;Pekko</a>),
+      pattern catalogs (<a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing">Microsoft's
+      Event Sourcing pattern</a>), and even a peer-reviewed
+      <a href="https://www.researchgate.net/publication/334995549_Applying_Event_Sourcing_in_a_ERP_System_A_Case_Study">ERP
+      case study</a>. We stand on that ground, not apart from it. What we <i>have not</i> found is a <b>field manual</b> —
+      a war-story <i>problem → wrong instinct → fold → witness</i> book — that carries op-log programming all the way to a
+      <b>working ERP, oracle-diffed to the cent</b>. That combination, and this manual form, is what's distinctive here.
+      <b>If a book like this already exists, tell us and we'll cite it</b> — that invitation is itself the
+      §FALSIFIER this book lives by.</p>
+
       <div class="lawline">If you remember one line from this book, remember the one the whole engine turns on:
       <b>state is never written, only folded; claims are never asserted, only witnessed.</b></div>
       <div class="nav-foot"><span></span><a data-to="ch1">Ch.1 · Why a log, not a database →</a></div>
