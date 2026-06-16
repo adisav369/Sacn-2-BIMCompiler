@@ -3305,6 +3305,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#cross-erp-scorecard-where-each-tenant-stands-the-sap-column-added-2026-06-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-ERP scorecard — where each tenant stands (the SAP column added 2026-06-16)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#second-axis-equivalence-oracle-diffed-not-just-coverage" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4453,6 +4464,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#cross-erp-scorecard-where-each-tenant-stands-the-sap-column-added-2026-06-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-ERP scorecard — where each tenant stands (the SAP column added 2026-06-16)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#second-axis-equivalence-oracle-diffed-not-just-coverage" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4598,6 +4620,72 @@ diff (<code>maxDiff=0c</code>), never a claim.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="cross-erp-scorecard-where-each-tenant-stands-the-sap-column-added-2026-06-16">Cross-ERP scorecard — where each tenant stands (the SAP column added 2026-06-16)<a class="headerlink" href="#cross-erp-scorecard-where-each-tenant-stands-the-sap-column-added-2026-06-16" title="Permanent link">&para;</a></h3>
+<p>The headline above scores the <strong>iDempiere</strong> surfaces (the canonical model). This scorecard scores the <strong>fold of each
+migrated tenant</strong> on the journey axes — so SAP can be read at a glance against the others. Verdicts:
+<strong>✅ folded to the cent</strong> (oracle-diffed <code>maxDiff=0c</code>) · <strong>🟡 partial</strong> (headless or stub, UI/oracle pending) ·
+<strong>○ reference</strong> (master-mapping install only — public model re-keyed, no doc cycle) · <strong>⛔ pending</strong> (named, not built).
+Honest frame: only <strong>iDempiere + Odoo are doc-complete</strong>; SAP/Oracle/Dynamics are master-mapping PoCs (the campaign ahead).</p>
+<table>
+<thead>
+<tr>
+<th>Capability axis</th>
+<th>iDempiere</th>
+<th>Odoo 17</th>
+<th><strong>SAP S/4 (ACDOCA)</strong></th>
+<th>Oracle EBS</th>
+<th>Dynamics BC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Master data</strong> (BP · Product · CoA)</td>
+<td>✅ canonical</td>
+<td>✅ 38 BP / 35 prod / 47 CoA</td>
+<td><strong>🟡 <code>/DMO/</code> stub</strong> (14 carriers→BP · 10 conn→Product)</td>
+<td>○ SCOTT EMP/DEPT</td>
+<td>○ CRONUS items/customers</td>
+</tr>
+<tr>
+<td><strong>Document lifecycle</strong> (O2C · FSM)</td>
+<td>✅ oracle (W-MORDER-FSM)</td>
+<td>✅ signed Complete (J5, #329)</td>
+<td><strong>🟡 stub</strong> (travel <code>DR→CO</code>; no FI; <code>wfmc</code> block in <code>14-sap-chain.json</code>)</td>
+<td>⛔ pending</td>
+<td>⛔ pending</td>
+</tr>
+<tr>
+<td><strong>Posting / GL</strong> (to the cent)</td>
+<td>✅ <code>fact_acct</code> 0c</td>
+<td>✅ J6 <code>maxDiff=0c</code> (#338)</td>
+<td><strong>⛔ pending</strong> — the headline: fold <strong>ACDOCA</strong>, diff to the cent (<code>ACDOCA_FOLD_PLAN</code> S‑2, <code>§ACDOCA-FOLD</code>)</td>
+<td>⛔ pending</td>
+<td>⛔ pending</td>
+</tr>
+<tr>
+<td><strong>Reporting</strong> (statement · receipt)</td>
+<td>✅ W-PA-REPORT / receipt</td>
+<td>🟡 receipt ✅ · statement needs posted journal</td>
+<td><strong>⛔ pending</strong> (rides the posting fold)</td>
+<td>⛔ pending</td>
+<td>⛔ pending</td>
+</tr>
+<tr>
+<td><strong>Audit by construction</strong> (op-log)</td>
+<td>✅ <code>kernel_ops</code></td>
+<td>✅ folded tenant</td>
+<td><strong>⛔ pending the fold</strong> (free once S‑2 lands — any folded tenant inherits it)</td>
+<td>⛔ pending</td>
+<td>⛔ pending</td>
+</tr>
+</tbody>
+</table>
+<p><strong>SAP, read honestly:</strong> today SAP is a <strong>master-mapping + lifecycle stub</strong> (<code>build/erp/14-sap.db</code> · <code>14-sap-chain.json</code>,
+<code>CREATE_DOCUMENT</code>/<code>SET_STATUS</code> only — <em>no</em> <code>POST</code>/<code>ALLOCATE</code>/<code>MATCH</code>, the flight model has no FI). The marquee leg —
+folding the <strong>Universal Journal (ACDOCA)</strong> to the cent — is <strong>⛔ pending its oracle</strong> (a real posted SAP export; IDES is
+licensed). The plan, sequencing and acceptance bar live in <strong><a href="../ACDOCA_FOLD_PLAN/">ACDOCA Fold Plan</a></strong> (S‑0 oracle →
+S‑2 <code>§ACDOCA-FOLD maxDiff=0c</code>). The model <em>fits</em> unusually well (SAP's own redesign converged on one journal of effects +
+<code>VBFA</code> flow) — what is blocked is <strong>access to a posted oracle</strong>, not the shape. No row above is green-washed.</p>
 <h3 id="second-axis-equivalence-oracle-diffed-not-just-coverage">Second axis — EQUIVALENCE (oracle-diffed), not just coverage<a class="headerlink" href="#second-axis-equivalence-oracle-diffed-not-just-coverage" title="Permanent link">&para;</a></h3>
 <p>The verdicts above are <strong>coverage</strong> — does the engine <em>interpret</em> the surface? A second, harder axis is
 <strong>equivalence</strong> — does the engine's output <em>== real iDempiere's output</em>? Tracked in <code>prompts/HARDEN_MATRIX.md</code>,
