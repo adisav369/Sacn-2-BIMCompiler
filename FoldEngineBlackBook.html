@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<!-- FoldEngineBlackBook.html — the Fold Engine Black Book, HtmlHelp-style viewer (topic tree + search).
+     Scoped to code a dev TOUCHES or must READ. NON-INVENT: every chapter names a real witness/file/§-log. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Fold Engine Black Book</title>
+<style>
+  :root{
+    --bg:#12171d; --panel:#1a212a; --panel2:#212a34; --ink:#e7edf3; --dim:#94a3b1; --line:#28323d;
+    --green:#7cb342; --amber:#ffa000; --red:#ef5350; --blue:#42a5f5; --violet:#b388ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
+    display:flex;flex-direction:column;line-height:1.55}
+  a{color:#8fc3f7;text-decoration:none}
+  header{padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;
+    align-items:center;gap:18px;flex-wrap:wrap}
+  header h1{font-size:16px;font-weight:850;margin:0;letter-spacing:.3px}
+  header h1 .hl{color:var(--green)}
+  .searchbox{margin-left:auto;display:flex;align-items:center;gap:8px}
+  #q{background:#0c1117;border:1px solid var(--line);border-radius:7px;padding:7px 11px;color:var(--ink);
+    font-size:13px;width:260px;outline:none}
+  #q:focus{border-color:var(--blue)}
+  #qinfo{font-size:11.5px;color:var(--dim);min-width:78px}
+  .wrap{flex:1;display:flex;min-height:0}
+  .tree{width:312px;flex:none;overflow:auto;border-right:1px solid var(--line);background:var(--panel);padding:10px 0 40px}
+  .doc{flex:1;overflow:auto;padding:26px 34px 90px;max-width:900px}
+  .part{font-size:10.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);
+    padding:12px 16px 5px;cursor:pointer;user-select:none;display:flex;align-items:center;gap:7px}
+  .part .caret{transition:transform .15s;font-size:9px;color:var(--green)}
+  .part.collapsed .caret{transform:rotate(-90deg)}
+  .part small{font-weight:600;letter-spacing:.2px;text-transform:none;color:#6f7d8c;font-size:10.5px;margin-left:auto}
+  .part-items{overflow:hidden}
+  .part.collapsed + .part-items{display:none}
+  .tree a{display:block;padding:6px 16px 6px 30px;font-size:13px;color:#c4d0db;border-left:2px solid transparent}
+  .tree a:hover{background:var(--panel2)}
+  .tree a.active{background:var(--panel2);border-left-color:var(--green);color:#fff;font-weight:600}
+  .tree a.hide{display:none}
+  .tag{font-size:9.5px;font-weight:800;padding:1px 6px;border-radius:999px;border:1px solid;margin-left:6px;
+    letter-spacing:.3px;vertical-align:middle}
+  .tag.base{color:#cfe9b5;border-color:#3f5a25;background:rgba(124,179,66,.14)}
+  .tag.vet{color:#ffd79a;border-color:#6b552f;background:rgba(255,160,0,.12)}
+  .doc h2{font-size:24px;font-weight:850;margin:0 0 18px;letter-spacing:.2px;line-height:1.15}
+  .beat{color:var(--green);font-weight:800}
+  .chap[data-reg="vet"] .beat{color:var(--amber)}
+  .doc p{margin:0 0 14px;font-size:15.5px;color:#dbe4ec;max-width:74ch}
+  code{background:#0c1117;border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+    font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;color:#bfe0c9}
+  pre{background:#0c1117;border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:0 10px 10px 0;
+    padding:13px 16px;overflow:auto;margin:0 0 16px}
+  pre code{background:none;border:none;padding:0;color:#cdd9e6;font-size:12.5px;white-space:pre}
+  .fromi{margin:4px 0 16px;padding:12px 16px;background:linear-gradient(100deg,rgba(255,160,0,.10),rgba(66,165,245,.05));
+    border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:0 10px 10px 0;font-size:14.5px;color:#eef3f8;max-width:74ch}
+  .fromi b{color:#fff}
+  .crumbs{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);font-weight:800;margin:0 0 8px}
+  .nav-foot{display:flex;justify-content:space-between;margin-top:34px;padding-top:16px;border-top:1px solid var(--line);font-size:13px}
+  mark{background:#ffd54f;color:#1a1200;border-radius:2px;padding:0 1px}
+  .empty{color:var(--dim);font-style:italic}
+  .lawline{margin-top:22px;padding:14px 18px;border:1px solid var(--line);border-left:4px solid var(--green);
+    border-radius:0 10px 10px 0;background:rgba(124,179,66,.07);font-size:14.5px;color:#eaf2e4;max-width:74ch}
+</style>
+</head>
+<body>
+<header>
+  <h1>The Fold Engine <span class="hl">Black Book</span></h1>
+  <div class="searchbox">
+    <input id="q" type="search" placeholder="Search the book…  (/ to focus)" autocomplete="off">
+    <span id="qinfo"></span>
+  </div>
+</header>
+<div class="wrap">
+  <nav class="tree" id="tree"></nav>
+  <main class="doc" id="doc">
+
+    <section class="chap" id="ch1" data-reg="base">
+      <p class="crumbs">Part I · What you must read</p>
+      <h2>Ch.1 · Why a log, not a database <span class="tag base">base</span></h2>
+      <p><b class="beat">The problem.</b> You want a customer's balance. The reflex is the same whether it's twenty
+      years deep or two weeks of a tutorial: open a connection, <code>SELECT SUM(...)</code> from the table that holds
+      The Truth. The table <i>is</i> the system of record; everything else is a visitor that asks it politely.</p>
+      <p><b class="beat">The wrong instinct.</b> Carry that here and you'll hunt for the table that holds the balance
+      and not find it — and assume it's missing. It isn't missing; it was never the design. The moment a mutable table
+      is the source of truth, you've bought a server to guard it (who may write?), a backup story (what was true last
+      Tuesday?), and a sync problem (which of my five sites is right?). Those three are most of what an ERP team
+      maintains. We didn't optimize them — we deleted the thing that causes them.</p>
+      <p><b class="beat">The fold reasoning.</b> The source of truth is an <b>append-only log of signed operations</b>
+      (<code>kernel_ops</code>). Nobody edits the balance; someone <i>appends</i> "order #23 completed, +5002.50",
+      signed. The balance is <b>folded</b> — replayed from the log, deterministically, the same on every node. It has a
+      name you know: <b>git-for-data.</b> A git repo has no "current state" table; it has commits, and your working tree
+      is a fold of them. The op-log is the commits; the grid you see is the working tree. Three costs vanish for free:
+      <i>who can write</i> → the signature (a bad op fails <code>verifyChain</code> everywhere — no server to ask);
+      <i>last Tuesday</i> → replay to Tuesday (history is the substrate, which is why time-travel was cheap);
+      <i>which site</i> → all of them, eventually (no master to be right first).</p>
+      <div class="fromi"><b>From iDempiere →</b> There is no <code>Fact_Acct</code> row you <code>SELECT</code> and trust
+      as final, and no <code>AD_ChangeLog</code> table you read for history — both are <i>projections</i> folded from the
+      op-log here. The one instinct to unlearn is the hunt for the table-of-record; once you stop looking for it,
+      everything else (the AD, the documents, the postings) you'll recognise on sight. The op-log is your
+      <code>AD_ChangeLog</code> promoted from audit trail to source of truth.</div>
+      <p><b class="beat">The code.</b> A fold is not exotic — it is <code>reduce</code> with a verb table:</p>
+      <pre><code>// the shape — not the literal source, but the truth of it
+function fold(ops) {
+  return ops.reduce((state, op) =&gt; verbs[op.verb](state, op), emptyState())
+}</code></pre>
+      <p><code>verbs</code> is the closed set — <code>CREATE_DOCUMENT</code>, <code>SET_STATUS</code>,
+      <code>POST</code>, <code>ALLOCATE</code>, and the rest. Every business event is one of them. There is no
+      <code>verbs.runArbitraryJava</code>. That absence is the doctrine, not an oversight: foreign imperative code never
+      enters the fold — it lives at the edge, as a plugin (Ch.8).</p>
+      <p><b class="beat">The witness.</b> <code>W-AD-OPLOG-DISTRIB</code>: edit an <code>AD_Window</code> on node A,
+      sign the append, ship only the log line to node B, fold the <i>same</i> dictionary there — <code>verifyChain</code>
+      passes. B never saw A's database, only its log, and reached identical state. Bootstrap from a signed checkpoint is
+      ~53× faster than genesis replay (0.90 ms vs 47.70 ms) — a checkpoint is just a fold someone already did and signed.</p>
+      <p><b class="beat">The scar.</b> Early on a cached projection got <i>written to directly</i> instead of appending
+      an op. It worked — until one node's cache disagreed with its own log, and nothing could say which was right,
+      because we'd recreated the exact mutable-truth problem we'd deleted. The fix wasn't a better cache; it was
+      deleting the write path. <b>First rule of the engine: state is never written, only folded. If you're assigning to
+      the projection, stop — you're about to buy back the server.</b></p>
+      <div class="nav-foot"><span></span><a data-to="ch2">Ch.2 · The fold &amp; the closed verb set →</a></div>
+    </section>
+
+    <section class="chap" id="ch2" data-reg="base">
+      <p class="crumbs">Part I · What you must read</p>
+      <h2>Ch.2 · The fold &amp; the closed verb set <span class="tag base">base</span></h2>
+      <p><b class="beat">The problem.</b> You're handed a 26 MB dictionary — tables that describe tables, windows,
+      fields, rules — and told it's an ERP. Where's the application? You can read the dictionary all day and not find
+      the part that <i>runs</i>.</p>
+      <p><b class="beat">The wrong instinct.</b> You assume the dictionary is <b>configuration</b> — a settings file
+      read at startup to decide which fields to show. That's <i>correct in iDempiere</i>: the AD drives a generic ZK UI
+      engine that interprets it at runtime. So you hunt for the engine. Here there isn't one to find — and that's the
+      point.</p>
+      <p><b class="beat">The fold reasoning.</b> The dictionary isn't <i>read as</i> config — it is <b>folded into</b>
+      the app. The AD <b>is</b> the program. <code>ad_parser</code> folds <code>AD_Window</code> / <code>AD_Tab</code> /
+      <code>AD_Field</code> straight into a live window, using the <i>same fold</i> that replays the op-log, just pointed
+      at the dictionary instead of the transaction stream. No ZK tier sits between dictionary and screen — the window
+      <b>is</b> a fold of AD rows, and when a row changes (a signed op), it <b>re-folds</b> (Ch.9). And every event the
+      engine can perform is one of a <b>closed, finite verb set</b> — <code>CREATE_DOCUMENT</code>,
+      <code>CREATE_LINE</code>, <code>SET_STATUS</code>, <code>POST</code>, <code>ALLOCATE</code>, a handful more. No
+      open-ended "run this code" verb. That closure is the load-bearing wall: it's <i>why</i> folding is deterministic,
+      and <i>why</i> migration works — any ERP's flow maps onto these verbs, or it's a plugin (Ch.8).</p>
+      <div class="fromi"><b>From iDempiere →</b> The AD you know <b>is</b> the running program — not config for a
+      separate UI engine. There's no ZK tier to theme, no <code>MWindow</code> to subclass. To change a field's behavior
+      you change the dictionary, not a renderer — because the renderer <i>is</i> the dictionary, folded.</div>
+      <p><b class="beat">The code.</b> One mechanism, two streams:</p>
+      <pre><code>const window = fold(adRowsFor(windowId))   // AD_Window/Tab/Field → live UI
+const doc    = fold(opsFor(documentId))    // CREATE_DOCUMENT/SET_STATUS/POST/… → data</code></pre>
+      <p>The dictionary stream gives you the app, the op stream gives you the data. Learn <code>fold</code> once and
+      you've learned the engine's spine.</p>
+      <p><b class="beat">The witness.</b> The verb set is proven <i>sufficient</i> by migration, not asserted. Folding a
+      real Odoo sales order — order→ship→invoice→pay→allocate, every hop — reported <b><code>newVerbs=[]</code></b>: the
+      flow mapped entirely onto existing verbs, nothing left over, GL balanced (ΣDr==ΣCr) to the cent. A foreign ERP
+      landing on our verb set with no remainder is the evidence the set is closed <i>and</i> complete enough to be the
+      target.</p>
+      <p><b class="beat">The scar.</b> We once shipped a <b>12.7 MB seed</b> by column-slicing the dictionary to brag a
+      bigger ratio. It folded… mostly — then whole windows came up with <b>missing fields</b>, some unreachable, because
+      the fold needs columns the slice threw away, and a fold of an incomplete dictionary fails <b>silently</b>: a
+      plausible window that's quietly wrong. Fix was the <b>full-width 26.1 MB seed</b> (ratio fell 3.5×→1.7×; we took
+      it). <b>Rule: never slice the AD to save bytes — completeness beats ratio.</b> (That's why §10's seed row reads
+      1.7×, not the prettier number.)</p>
+      <div class="nav-foot"><a data-to="ch1">← Ch.1</a><a data-to="ch3">Ch.3 · DERIVE / VALIDATE / ACT →</a></div>
+    </section>
+
+    <section class="chap" id="ch3" data-reg="base">
+      <p class="crumbs">Part I · What you must read</p>
+      <h2>Ch.3 · DERIVE / VALIDATE / ACT <span class="tag base">base</span></h2>
+      <p><b class="beat">The problem.</b> You have a change to make and you want a place to <i>hang</i> the logic.
+      Every framework trains you to look for the hook — the method to override, the event to subscribe to. So your
+      first question here is "where does my code go?" That is the wrong first question.</p>
+      <p><b class="beat">The wrong instinct.</b> You reach for a lifecycle hook — a <code>beforeSave</code>, something
+      to subclass — and pour arbitrary code into it: compute a value, check a condition, change a status, all in one
+      method body. It works in a monolith because the method body can do anything. Here it can't, and you'll fight the
+      engine until you see why.</p>
+      <p><b class="beat">The fold reasoning.</b> Before you write a line, classify the change into exactly one of three
+      effects — because three is all the op-log can carry. <b>DERIVE</b>: compute a value and put it in a field (a
+      default, a callout). No decision, just fill. <b>VALIDATE</b>: judge the proposed state and accept or reject it
+      with a message. A pure predicate — it performs nothing. <b>ACT</b>: perform a verb — change status, post,
+      allocate. The <i>only</i> effect that appends a state-changing op. The automation law is exactly this: every
+      automation is DERIVE (fill), VALIDATE (gate), or ACT (do), classified by its op-log effect. Get the
+      classification right and the engine slot is obvious; get it wrong and nothing fits.</p>
+      <div class="fromi"><b>From iDempiere →</b> Your <code>ModelValidator</code> timing points collapse onto these
+      three. A callout / <code>onchange</code> is a <b>DERIVE</b>. A <code>modelChange</code>/<code>docValidate</code>
+      that throws is a <b>VALIDATE</b>. A <code>DocAction</code>/<code>completeIt</code> is an <b>ACT</b>. The habit to
+      unlearn is doing all three inside one <code>beforeSave</code> — here they are separate effects with separate homes
+      (Ch.5 / Ch.6 / Ch.7).</div>
+      <p><b class="beat">The code.</b> A handler declares its effect; the engine routes it:</p>
+      <pre><code>{ effect:'DERIVE',   on:'C_Order.C_BPartner_ID', run:r =&gt; ({ C_PaymentTerm_ID: bp.paymentTerm }) }
+{ effect:'VALIDATE', on:'C_Order',               run:r =&gt; over ? reject('Credit ceiling exceeded') : ok() }
+{ effect:'ACT',      verb:'SET_STATUS', to:'CO' }   // the only one that appends an op</code></pre>
+      <p><b class="beat">The witness.</b> The engine modules split on exactly this seam — <code>ad_callout.js</code>
+      (DERIVE), <code>ad_modelval.js</code> / <code>ad_valrule.js</code> (VALIDATE), <code>ad_docfsm.js</code> (ACT) —
+      each headless-proven in the coverage matrix. The three-way split isn't a teaching device bolted on after; it's
+      how the code is actually organised.</p>
+      <p><b class="beat">The scar.</b> A "validator" once <i>mutated a field</i> while judging — a hidden ACT inside a
+      VALIDATE. On replay it fired again and double-applied, because VALIDATE is supposed to be pure and replayable and
+      ACT is the only effect allowed to change state. <b>Rule: a validator decides, it never does. If your VALIDATE
+      writes anything, it's a mis-classified ACT — move it.</b></p>
+      <div class="nav-foot"><a data-to="ch2">← Ch.2</a><a data-to="ch4">Ch.4 · Money to the cent →</a></div>
+    </section>
+
+    <section class="chap" id="ch4" data-reg="base">
+      <p class="crumbs">Part I · What you must read</p>
+      <h2>Ch.4 · Money to the cent <span class="tag base">base</span></h2>
+      <p><b class="beat">The problem.</b> An invoice line: 3 × 19.99, 6% tax, converted across two currencies. In JS,
+      <code>0.1 + 0.2 !== 0.3</code>. Money on floating point is wrong, and in accounting "wrong by a cent" is not
+      close — it's the books not balancing.</p>
+      <p><b class="beat">The wrong instinct.</b> Use <code>Number</code> and round at the end. By "the end" the drift
+      is already baked in: every intermediate multiply has shaved or added fractions of a cent, and the final
+      <code>toFixed(2)</code> just hides where.</p>
+      <p><b class="beat">The fold reasoning.</b> Money never touches float. Amounts accumulate as <b>integer cents</b>.
+      The only non-integer steps — FX conversion, proportional tax — multiply in <b><code>BigInt</code> off the
+      exact-decimal rate</b>, rounded <b><code>HALF_UP</code></b>, the same rule Java uses. <code>bigdecimal.js</code> is
+      ~140 lines and you <i>use</i> it; you never roll your own arithmetic. It is not a reason to keep the server — it's
+      a small library, and the discipline is what matters, not the language.</p>
+      <div class="fromi"><b>From iDempiere →</b> Your <code>BigDecimal</code> + <code>setScale(2, HALF_UP)</code>
+      discipline ports 1:1 — same accumulation, same rounding, different language. This is the cleanest "the discipline
+      ports, the language doesn't matter" in the whole book: copy your mental model verbatim.</div>
+      <p><b class="beat">The code.</b> Cents are integers; the exact-rate multiply is the only careful step:</p>
+      <pre><code>let net = 0n;                       // integer cents, BigInt
+for (const l of lines) net += BigInt(l.qty) * BigInt(l.priceCents);
+const fx = mulRate(net, '1.0834');  // bigdecimal.js: BigInt off exact decimal, HALF_UP</code></pre>
+      <p><b class="beat">The witness.</b> <code>poc_money_fold</code> — the fold's money math is unit-proven
+      <b>bit-equal to Java <code>BigDecimal</code></b>; the POS lens diffs to <code>§POS-CENT maxDiff=0c</code>. Not
+      "close enough" — identical, byte for byte, to what iDempiere computes.</p>
+      <p><b class="beat">The scar.</b> An early FX path multiplied with <code>Number</code> and drifted a single cent on
+      a cross-currency invoice. One cent meant ΣDr ≠ ΣCr and the journal would not balance — the document looked fine
+      and the books were broken. The fix wasn't fudge-rounding; it was <code>BigInt</code> off the exact rate.
+      <b>A cent is never a rounding nuisance — it's the ledger telling you the arithmetic is wrong.</b></p>
+      <div class="nav-foot"><a data-to="ch3">← Ch.3</a><a data-to="ch5">Ch.5 · The validator →</a></div>
+    </section>
+
+    <section class="chap" id="ch5" data-reg="vet">
+      <p class="crumbs">Part II · What you touch</p>
+      <h2>Ch.5 · The validator <span class="tag vet">veteran</span></h2>
+      <p><b class="beat">The problem.</b> Enforce a rule: no Sales Order may complete over the customer's credit
+      ceiling. Real customisation — every shop has a dozen of these.</p>
+      <p><b class="beat">The wrong instinct.</b> Write a <code>ModelValidator</code>, override <code>docValidate</code>,
+      throw an exception, package it as an OSGi bundle, build, deploy, restart. You've done it a hundred times.</p>
+      <p><b class="beat">The fold reasoning.</b> This is a <b>VALIDATE</b> effect (Ch.3). If the rule is expressible as a
+      logic expression over the row, it's an <code>AD_Val_Rule</code> — pure data, folded, <i>no code at all</i>. If it
+      needs an imperative comparison, it's a registered handler in <code>ad_modelval.js</code> that returns
+      <code>reject(message)</code>. It only "stays a plugin" (Ch.8) when the logic genuinely reaches beyond the
+      dictionary. Most validators you'd have written are an <code>AD_Val_Rule</code> row you never compile.</p>
+      <div class="fromi"><b>From iDempiere →</b> <code>ModelValidator</code> → <code>AD_Val_Rule</code> /
+      <code>ad_modelval</code>. This is the change we counted in §7 of the cost paper: the same rule that needs a Java
+      bundle there is <b>9 handling checks → 4</b> here, with <b>build+restart 2 → 0</b> — because there is no bundle to
+      build and no server to bounce.</div>
+      <p><b class="beat">The code.</b> Declarative where it can be; a pure predicate when it can't:</p>
+      <pre><code>// declarative — a row, not a class:
+AD_Val_Rule: "(@OpenBalance@ + @GrandTotal@) &lt;= @CreditCeiling@"
+// imperative — still a predicate, performs nothing:
+{ effect:'VALIDATE', on:'C_Order', run:r =&gt;
+    r.openBalance + r.grandTotal &gt; r.creditCeiling ? reject('Credit ceiling exceeded') : ok() }</code></pre>
+      <p><b class="beat">The witness.</b> <code>ad_modelval.js</code> is headless-proven in the coverage matrix; the §7
+      effort count is the witness for the <i>cost</i> side — the rule lands, and it lands cheaper, both measured.</p>
+      <p><b class="beat">The scar.</b> The Ch.3 sin in its natural home: a credit check that also <i>stamped</i> a "on
+      hold" flag while judging. That stamp is an ACT smuggled into a VALIDATE; on replay it re-stamped. <b>A validator
+      returns a verdict, never writes. If you need the hold, that's a separate ACT (Ch.7), fired after the gate
+      passes — not inside it.</b></p>
+      <div class="nav-foot"><a data-to="ch4">← Ch.4</a><a data-to="ch6">Ch.6 · The callout →</a></div>
+    </section>
+
+    <section class="chap" id="ch6" data-reg="vet">
+      <p class="crumbs">Part II · What you touch</p>
+      <h2>Ch.6 · The callout <span class="tag vet">veteran</span></h2>
+      <p><b class="beat">The problem.</b> When the user picks a Business Partner on an order, default the payment term
+      and price list from that partner. The classic on-change derive.</p>
+      <p><b class="beat">The wrong instinct.</b> A Java <code>Callout</code> wired through the ZK form, shipped in a
+      bundle, firing on the field's <code>onchange</code>.</p>
+      <p><b class="beat">The fold reasoning.</b> This is a <b>DERIVE</b> effect (Ch.3). <code>AD_Column.Callout</code>
+      holds the <i>binding</i> — declarative data: which column triggers which derive. The <i>body</i> is a registered
+      handler dispatched by <code>ad_callout.js</code>. The binding is data you can edit; the handler is <b>pinned host
+      glue</b> so the engine's default-handler set doesn't silently grow (that pin is load-bearing — see the scar).</p>
+      <div class="fromi"><b>From iDempiere →</b> <code>Callout</code> → <code>AD_Column.Callout</code> →
+      <code>ad_callout</code>. And the binding is genuinely <i>data</i>: <code>W-NINJA-CALLOUT</code> writes a
+      <code>Col@class.method</code> binding into <code>AD_Column.Callout</code> from the Ninja Excel face — you can
+      author a callout binding without touching code at all.</div>
+      <p><b class="beat">The code.</b> Register the body as host glue; keep the default set pinned:</p>
+      <pre><code>// binding (data): AD_Column.Callout = 'CalloutOrder.bPartner'
+register('CalloutOrder.bPartner', r =&gt; ({           // DERIVE
+  C_PaymentTerm_ID: bp(r).paymentTerm,
+  M_PriceList_ID:   bp(r).priceList,
+}));   // installDefaultHandlers stays pinned at 6 — this is host glue, not a new default</code></pre>
+      <p><b class="beat">The witness.</b> <code>W-CALLOUT</code> (the default-handler count holds at 6) +
+      <code>W-NINJA-CALLOUT</code> (binding written into AD) + the live CREATE leg (#331) where bill + price list
+      default from the BP on a real iDempiere create form.</p>
+      <p><b class="beat">The scar.</b> Registering a callout the wrong way <i>bumped</i> the default-handler count and
+      tripped the <code>W-CALLOUT</code> pin. The engine's handler set is reproducibility's anchor — if it drifts, two
+      nodes fold differently. <b>Rule: new derives register as host glue; the core default set never grows. A moving
+      default set means the fold isn't reproducible.</b></p>
+      <div class="nav-foot"><a data-to="ch5">← Ch.5</a><a data-to="ch7">Ch.7 · Posting rules →</a></div>
+    </section>
+
+    <section class="chap" id="ch7" data-reg="vet">
+      <p class="crumbs">Part II · What you touch</p>
+      <h2>Ch.7 · Posting rules <span class="tag vet">veteran</span></h2>
+      <p><b class="beat">The problem.</b> Completing a Sales Order must post to the General Ledger — debit and credit
+      lines that balance to the cent, against the right accounts.</p>
+      <p><b class="beat">The wrong instinct.</b> Write a <code>Doc_Order</code> Java class extending the posting engine,
+      override <code>createFacts</code>, recompile the server.</p>
+      <p><b class="beat">The fold reasoning.</b> Posting is a <b>fold</b>, not a class. <code>post_resolver.js</code>
+      derives the <code>Fact_Acct</code> lines from the document plus the accounting schema; <code>completeIt</code> is
+      a fold from order to journal. The famous <code>MOrder.completeIt()</code> archetype is ~250 Java LOC; the fold of
+      its posting is ~50 — not because JS is terser, but because the boilerplate (PO/Doc plumbing, session, connection)
+      is gone, leaving only the verbs.</p>
+      <div class="fromi"><b>From iDempiere →</b> <code>Doc_*</code> / <code>Fact_Acct</code> →
+      <code>post_resolver</code>; <code>completeIt</code> → the fold. <code>ERP_MODEL_ARCHETYPE.md</code> names
+      <code>MOrder</code> + ~25 <code>completeIt</code> deltas as the real denominator — the work is enumerated, not waved at.</div>
+      <p><b class="beat">The code.</b> Derive the lines, append one POST op:</p>
+      <pre><code>function post(doc, schema){
+  const facts = post_resolver(doc, schema);   // → balanced Fact_Acct lines
+  assertBalanced(facts);                       // ΣDr === ΣCr, integer cents (Ch.4)
+  return append({ verb:'POST', facts });       // ACT (Ch.3)
+}</code></pre>
+      <p><b class="beat">The witness.</b> The <code>completeIt</code> fold diffs to the real iDempiere oracle
+      (<code>idempiere_test</code>, 300 <code>fact_acct</code> rows) at <code>maxDiff=0c</code> — proven, not asserted.
+      #338 renders that GL to the cent on iDempiere's own invoice window.</p>
+      <p><b class="beat">The scar.</b> On a freshly-migrated tenant, "Accounts Posted" is honestly <b>absent</b> — there
+      are no postings yet — and we render that absence truthfully rather than fabricate a posted state to look complete.
+      <b>An empty journal shown honestly beats an invented one. Non-invent is a UI rule too, not just an engine rule.</b></p>
+      <div class="nav-foot"><a data-to="ch6">← Ch.6</a><a data-to="ch8">Ch.8 · Writing a plugin →</a></div>
+    </section>
+
+    <section class="chap" id="ch8" data-reg="base">
+      <p class="crumbs">Part II · What you touch</p>
+      <h2>Ch.8 · Writing a plugin (.foldbundle) <span class="tag base">base</span></h2>
+      <p><b class="beat">The problem.</b> A genuinely custom rule — a bespoke rebate scheme no dictionary expresses, real
+      imperative logic that is yours and only yours.</p>
+      <p><b class="beat">The wrong instinct.</b> Add a verb to the engine, or fork the fold to special-case it. Now the
+      verb set isn't closed (Ch.2), and every node needs your engine fork to replay your data.</p>
+      <p><b class="beat">The fold reasoning.</b> The doctrine line, and it is absolute: <b>foreign imperative code is
+      never auto-imported into the fold — it lives at the edge, as a plugin</b> (<code>.foldbundle</code>), a registered
+      handler the engine <i>calls</i> but does not absorb. The closed verb set stays closed; your custom logic
+      <i>emits</i> existing verbs and effects, it doesn't add primitives. The engine's
+      <code>installDefaultHandlers</code> set stays pinned (Ch.6); your plugin registers alongside it.</p>
+      <div class="fromi"><b>From iDempiere →</b> An OSGi Declarative-Services component → a <code>.foldbundle</code>
+      module. Gone: <code>MANIFEST.MF</code>, <code>Import-Package</code> ranges, Tycho, the p2 target platform, the
+      bundle-resolve gate, the server restart. You ship a JS module, it registers, you re-fold. Your business logic is
+      the same; everything <i>around</i> it evaporates.</div>
+      <p><b class="beat">The code.</b> A module that exports an effect-tagged handler and a binding:</p>
+      <pre><code>// rebate.foldbundle — registered at the edge, engine untouched
+export default {
+  bind:  'C_OrderLine',
+  effect:'DERIVE',
+  run: line =&gt; ({ RebateAmt: customRebate(line) }),   // emits a value; never mutates state
+};</code></pre>
+      <p><b class="beat">The witness.</b> <code>W-PLUGIN</code> — the plugin system loads a <code>.foldbundle</code> and
+      runs its handler, with the engine's default set provably unchanged.</p>
+      <p><b class="beat">The scar.</b> A plugin once reached into engine internals and wrote the projection directly —
+      the Ch.1 sin, committed at the edge this time. <b>Plugins EMIT — ops and effects — they never mutate state. A
+      plugin that writes the projection is a plugin that breaks replay on every other node.</b> The edge is a place to
+      compute, not a back door to the kernel.</p>
+      <div class="nav-foot"><a data-to="ch7">← Ch.7</a><a data-to="ch9">Ch.9 · Editing the dictionary itself →</a></div>
+    </section>
+
+    <section class="chap" id="ch9" data-reg="vet">
+      <p class="crumbs">Part II · What you touch</p>
+      <h2>Ch.9 · Editing the dictionary itself <span class="tag vet">veteran</span></h2>
+      <p><b class="beat">The problem.</b> Make a field read-only, hide a column, add a field — a change to the
+      <i>dictionary</i>, in production, across five sites.</p>
+      <p><b class="beat">The wrong instinct.</b> Edit the AD, export a 2Pack, apply it to each instance, synchronise the
+      physical column, restart each server. The migration ritual, performed N times, verified N times.</p>
+      <p><b class="beat">The fold reasoning.</b> A dictionary change is a <b>signed op like any other</b> (Ch.1). Edit the
+      <code>AD_Field</code>, sign the append, and the open form <b>re-folds on the spot</b> — field set 26→25→26 —
+      because the window <i>is</i> the dictionary folded (Ch.2). No reload, no recompile. And it propagates by op-log:
+      the signed edit replays to every node, no 2Pack per instance. This is the §7 <b>D-axis</b> — a per-instance
+      migration ×N collapses to one signed append.</p>
+      <div class="fromi"><b>From iDempiere →</b> 2Pack + AD change + synchronise-column + per-instance apply → a
+      <b>single signed op</b>. The AD's twenty-year promise — the dictionary that defines the system — finally kept
+      <i>without</i> a server to apply it. The dictionary editing the dictionary, live.</div>
+      <p><b class="beat">The code.</b> A signed CRUD op on the dictionary; the refold hook repaints the open window:</p>
+      <pre><code>append({ verb:'UPDATE', table:'AD_Field', id, set:{ IsReadOnly:'Y' }, sig });
+// refold hook: invalidate the open window, re-fold from the new AD — no reload</code></pre>
+      <p><b class="beat">The witness.</b> <code>W-AD-SELFEDIT</code> (live: the <code>M_MatchInv</code> column vanishes
+      Y→N, the form repaints, no reload) + <code>W-AD-OPLOG-DISTRIB</code> (the edit folds identically on node B from
+      the log alone).</p>
+      <p><b class="beat">The scar.</b> Two honest edges, named not hidden: editing a CO/CL (completed/closed) order
+      silently no-ops where the FSM <i>should</i> block and warn — a known gap. And the deeper audit: editability must
+      <b>fold from AD</b> (<code>IsUpdateable</code>/<code>IsReadOnly</code>/<code>IsView</code> + role), not a
+      hand-curated allow-list. <b>"General, not custom" — the dictionary governs itself; a hardcoded list is a smell
+      that the fold isn't reading deep enough.</b></p>
+      <div class="nav-foot"><a data-to="ch8">← Ch.8</a><a data-to="ch10">Ch.10 · The oracle &amp; how to write a witness →</a></div>
+    </section>
+
+    <section class="chap" id="ch10" data-reg="base">
+      <p class="crumbs">Part III · Proving it &amp; the rules</p>
+      <h2>Ch.10 · The oracle &amp; how to write a witness <span class="tag base">base</span></h2>
+      <p><b class="beat">The problem.</b> You folded <code>completeIt</code>. How do you <i>know</i> it's right — not
+      just green?</p>
+      <p><b class="beat">The wrong instinct.</b> Write a unit test that asserts the output you expected. It passes — and
+      proves only that you agree with yourself. A tautology in a green checkmark's clothing.</p>
+      <p><b class="beat">The fold reasoning.</b> Correctness here means matching a <i>real iDempiere</i>, not a
+      hand-written expectation. The oracle is a live iDempiere (<code>idempiere_test</code>, <code>fact_acct=300</code>)
+      you diff against to the cent — <code>maxDiff=0c</code>. And every witness carries a <b>§FALSIFIER</b>: a stated
+      condition that, if it held, would prove the claim false. A test that <i>cannot</i> be falsified isn't a test. You
+      write a witness by naming the issue it proves or disproves, running the fold, diffing to the oracle, and
+      <b>reading the §-log</b> — exit code is not evidence.</p>
+      <div class="fromi"><b>From iDempiere →</b> Your JUnit becomes a witness that diffs against the <i>running system</i>,
+      not against your own asserts. The oracle is the same product you're migrating from — so "equivalent" means
+      "identical to the thing you trust", measured, not claimed.</div>
+      <p><b class="beat">The code.</b> Run it, diff it, read the log:</p>
+      <pre><code>bash build/erp/run_witness.sh scripts/poc_completeit.js   # → §-log + diff_oracle.log
+# §FALSIFIER: if any Fact_Acct line differs by ≥1c from idempiere_test, FAIL loud.</code></pre>
+      <p><b class="beat">The witness.</b> The coverage matrix — <b>43 surfaces oracle-diffed</b>, each carrying a
+      load-bearing §FALSIFIER, so a passing diff can't be a tautology. The book you're reading is held to the same bar:
+      every chapter names one.</p>
+      <p><b class="beat">The scar.</b> We shipped a green test that proved nothing — it asserted our own output. That's
+      where the §FALSIFIER habit was born. <b>Every test must name what would make it wrong, or it's theatre. A test you
+      can't fail is a test that tests nothing.</b></p>
+      <div class="nav-foot"><a data-to="ch9">← Ch.9</a><a data-to="ch11">Ch.11 · The distribution you rely on →</a></div>
+    </section>
+
+    <section class="chap" id="ch11" data-reg="base">
+      <p class="crumbs">Part III · Proving it &amp; the rules</p>
+      <h2>Ch.11 · The distribution you rely on <span class="tag base">base</span></h2>
+      <p><b class="beat">The problem.</b> Five devices, no server, all editing — and they must converge without a master.
+      <i>(Scoped: this is what to <b>trust</b>, not how the kernel is built — you rely on this layer, you don't author
+      it.)</i></p>
+      <p><b class="beat">The wrong instinct.</b> Stand up a sync server, or take last-write-wins. The first re-buys the
+      server you deleted in Ch.1; the second silently loses data.</p>
+      <p><b class="beat">The fold reasoning.</b> Every op is <b>signed</b>; <code>verifyChain</code> validates the whole
+      chain on each node; convergence is replay of the merged log; contention resolves by quorum/CAS. Three things you
+      must hold as true: an op without a valid signature is rejected <i>everywhere</i> (authority is in the data, not a
+      gatekeeper); history <i>is</i> the chain (nothing is overwritten, only appended); there is no first-to-be-right.</p>
+      <div class="fromi"><b>From iDempiere →</b> There is no central database to be the authority — the signature + chain
+      is. Your "who can post in this period" rule still exists (FSM + role), but enforcement isn't a server gate, it's a
+      verifiable op. The thing you trusted Postgres to guarantee, the chain now guarantees, off-server.</div>
+      <p><b class="beat">The code.</b> Sign, append, relay; verify on receipt:</p>
+      <pre><code>relay(sign(op));                 // local append + async fan-out
+onReceive(op =&gt; verifyChain(log.concat(op)) ? apply(op) : drop(op));</code></pre>
+      <p><b class="beat">The witness.</b> <code>W-QUORUM-CAS</code> (a contended commit resolves in ~18 ms) plus the
+      DR/TCO edge suite — the distribution behaves under contention, measured, not hoped.</p>
+      <p><b class="beat">The scar.</b> An early relay did last-write-wins and silently dropped a concurrent op. The fix
+      was signed append + chain — <b>nothing overwrites, everything appends</b> — the same Ch.1 rule, now stretched
+      across the wire. The rule that saves you locally is the rule that saves you distributed.</p>
+      <div class="nav-foot"><a data-to="ch10">← Ch.10</a><a data-to="ch12">Ch.12 · The scars &amp; the discipline →</a></div>
+    </section>
+
+    <section class="chap" id="ch12" data-reg="base">
+      <p class="crumbs">Part III · Proving it &amp; the rules</p>
+      <h2>Ch.12 · The scars &amp; the discipline <span class="tag base">base</span></h2>
+      <p><b class="beat">The problem.</b> How does a 28K-LOC engine make honest claims against a 1.4M-LOC, twenty-year
+      incumbent without lying — to its users or to itself?</p>
+      <p><b class="beat">The reasoning — the rules of the house.</b> <b>Non-invent:</b> extract from the dictionary and
+      the live oracle, never guess a value. <b>Witness-or-it-didn't-happen:</b> a claim with no §-log is not done.
+      <b>Every claim wears a §FALSIFIER.</b> And the honesty that costs you the pretty number: the LOC ratio fell
+      89× → 76× → 51× as real coverage grew, and we headline the <i>conservative ~21×</i> at parity — not the early
+      eye-catcher — <i>because</i> the ratio should fall, and saying so out loud is the proof we're not cherry-picking.
+      Only ~0.2% of the M-class logic is folded; delivery ≠ feature parity, stated plainly, every time.</p>
+      <p><b class="beat">The scars, gathered.</b> Each cost us once; written here so it costs you nothing.</p>
+      <ul style="font-size:15px;color:#dbe4ec;max-width:74ch;line-height:1.6">
+        <li>The <b>cache write-path</b> that re-bought the server (Ch.1) → <i>state is never written, only folded.</i></li>
+        <li>The <b>slice-holes</b> that hid windows (Ch.2) → <i>never slice the AD; completeness beats ratio.</i></li>
+        <li>The <b>validator that mutated</b> (Ch.3/5) → <i>a validator decides, never does.</i></li>
+        <li>The <b>callout that moved the pin</b> (Ch.6) → <i>the default handler set never grows.</i></li>
+        <li><b>Accts-Posted honestly absent</b> (Ch.7) → <i>show the empty journal, never the invented one.</i></li>
+        <li><code>sw.js</code> the <b>eternal conflict magnet</b> → <i>take the higher version, keep both precache hunks.</i></li>
+        <li>The <b>docs-deploy landmine</b> that wiped live pages twice → <i>publish only through the no-shrink seatbelt.</i></li>
+      </ul>
+      <div class="fromi"><b>From iDempiere →</b> The humility is the product. We don't claim to <i>be</i> iDempiere — we
+      claim each folded surface is oracle-equivalent to the cent, and we name everything not folded yet. For an engineer
+      who has lived in the real thing, that honesty is what makes the rest believable.</div>
+      <div class="lawline"><b>The first rule and the last rule are the same.</b> State is never written, only folded;
+      claims are never asserted, only witnessed. Everything in this book is a consequence of those two sentences.</div>
+      <div class="nav-foot"><a data-to="ch11">← Ch.11</a><span></span></div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+const TREE = [
+  ["Part I · What you must read", "the substrate, enough to trust it", [
+    ["ch1","Ch.1 · Why a log, not a database","base"],
+    ["ch2","Ch.2 · The fold &amp; the closed verb set","base"],
+    ["ch3","Ch.3 · DERIVE / VALIDATE / ACT","base"],
+    ["ch4","Ch.4 · Money to the cent","base"],
+  ]],
+  ["Part II · What you touch", "the extend surface", [
+    ["ch5","Ch.5 · The validator","vet"],
+    ["ch6","Ch.6 · The callout","vet"],
+    ["ch7","Ch.7 · Posting rules","vet"],
+    ["ch8","Ch.8 · Writing a plugin (.foldbundle)","base"],
+    ["ch9","Ch.9 · Editing the dictionary itself","vet"],
+  ]],
+  ["Part III · Proving it &amp; the rules", "show it, trust it, stay honest", [
+    ["ch10","Ch.10 · The oracle &amp; how to write a witness","base"],
+    ["ch11","Ch.11 · The distribution you rely on","base"],
+    ["ch12","Ch.12 · The scars &amp; the discipline","base"],
+  ]],
+];
+const tree = document.getElementById('tree');
+const doc  = document.getElementById('doc');
+const q    = document.getElementById('q');
+const qinfo= document.getElementById('qinfo');
+let current = 'ch1';
+
+// build tree
+TREE.forEach(([title,sub,items])=>{
+  const h = document.createElement('div');
+  h.className='part';
+  h.innerHTML = `<span class="caret">▼</span><span>${title}</span><small>${sub}</small>`;
+  const ul = document.createElement('div');
+  ul.className='part-items';
+  items.forEach(([id,label,reg])=>{
+    const a=document.createElement('a');
+    a.dataset.t=id; a.innerHTML = label + ` <span class="tag ${reg}">${reg==='vet'?'veteran':'base'}</span>`;
+    a.onclick=()=>show(id);
+    ul.appendChild(a);
+  });
+  h.onclick=()=>h.classList.toggle('collapsed');
+  tree.appendChild(h); tree.appendChild(ul);
+});
+const links = [...tree.querySelectorAll('a')];
+const orig = {};
+[...doc.querySelectorAll('section.chap')].forEach(s=>orig[s.id]=s.innerHTML);
+
+function show(id){
+  const sec=document.getElementById(id);
+  if(!sec){ return; }            // chapter not yet authored in this build
+  current=id;
+  [...doc.querySelectorAll('section.chap')].forEach(s=>s.hidden = s.id!==id);
+  links.forEach(a=>a.classList.toggle('active', a.dataset.t===id));
+  applyHighlight(id);
+  doc.scrollTop=0;
+}
+function esc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function applyHighlight(id){
+  const sec=document.getElementById(id); if(!sec) return;
+  sec.innerHTML = orig[id];
+  wireFoot(sec);
+  const term=q.value.trim(); if(!term) return;
+  const rx=new RegExp('('+esc(term)+')','gi');
+  const w=document.createTreeWalker(sec,NodeFilter.SHOW_TEXT,null);
+  const nodes=[]; while(w.nextNode()) nodes.push(w.currentNode);
+  nodes.forEach(n=>{
+    if(['CODE','PRE','MARK'].includes(n.parentNode.nodeName)) return;
+    if(!rx.test(n.nodeValue)) return;
+    const span=document.createElement('span');
+    span.innerHTML=n.nodeValue.replace(rx,'<mark>$1</mark>');
+    n.parentNode.replaceChild(span,n);
+  });
+}
+function wireFoot(sec){
+  sec.querySelectorAll('[data-to]').forEach(a=>a.onclick=e=>{e.preventDefault();show(a.dataset.to);});
+}
+function plain(html){return html.replace(/<[^>]+>/g,' ').replace(/&[a-z]+;/g,' ').toLowerCase();}
+q.addEventListener('input',()=>{
+  const term=q.value.trim().toLowerCase();
+  let count=0, first=null;
+  links.forEach(a=>{
+    const id=a.dataset.t;
+    const authored = !!orig[id];
+    const hay = (plain(a.innerHTML)+' '+(authored?plain(orig[id]):'')).toLowerCase();
+    const hit = !term || (authored && hay.includes(term));
+    a.classList.toggle('hide', term && !hit);
+    if(term && hit){ count++; if(!first) first=id; }
+  });
+  qinfo.textContent = term ? (count+' topic'+(count===1?'':'s')) : '';
+  if(term && first) show(first); else applyHighlight(current);
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='/' && document.activeElement!==q){e.preventDefault();q.focus();}
+  if(e.key==='Escape'){q.value='';q.dispatchEvent(new Event('input'));q.blur();}
+});
+show('ch1');
+</script>
+</body>
+</html>
