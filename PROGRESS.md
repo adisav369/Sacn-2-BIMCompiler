@@ -59,6 +59,15 @@
 - ✅ **Server actions = NOT a code gap** — `§SRVACT-CLASSIFY code=64` all Python, no declarative subset; honestly deferred.
 - Panel re-published: https://red1oon.github.io/BIMCompiler/migrate_status_panel.html (44 surfaces, live-verified).
 
+## AD_Process FOLD lane — P1 GeneratePO DONE/LIVE (2026-06-17, Opus)
+- ✅ **ProjectGenOrder (AD_Process 164) KIND-2 fold** — bim-ootb PR #352, erp sw v704, ad_process.js?v=2.
+  Handler folds C_Project → C_Order op-group via `erp_engine.buildDoc` (newVerbs=0). Source-corrected: it's a
+  **Sales** order (not PO), Qty=PlannedQty−InvoicedQty, Price=PlannedPrice; getProject gate → honest
+  `project-not-ready` rejection (no fabricated order). **W-PROC-GENPO** (poc_proc_genorder.js, fold==SQL
+  oracle to the cent + falsifier) + **W-PROC-GENPO-LIVE** (poc_genpo_live.js, live picker+honest rejection,
+  0 pageerrors). Seed-limit: no served tenant has a gate-passing project → positive fold proven headless only.
+  NEXT (lane §P2): rank next procs by demand (GenerateShipment kind-2, project-cycle report kind-1).
+
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
 - POS gap-close banked — `prompts/POS_GAP_CLOSE.md # DONE` (2026-06-12g2)
 - WH×POS pick lane BUILT, live-verified — `prompts/WH_POS_PICK_LANE.md # DONE` (2026-06-13)
