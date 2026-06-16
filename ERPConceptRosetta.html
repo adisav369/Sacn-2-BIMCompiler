@@ -184,6 +184,23 @@
     cost equation below, seen from the <i>change</i> side instead of the <i>build</i> side.
   </div>
 
+  <p class="lede" style="margin-top:22px"><b>§7 in numbers — one real change, counted.</b> Not a stopwatch (noisy) and
+  not the whole-codebase LOC ratio — the <b>effort surface</b> of <i>one identical change</i> done both ways:
+  “block completing a Sales Order when it would breach a custom <code>CreditCeiling</code> on the customer” (a real
+  customisation that genuinely needs a Java <code>ModelValidator</code> on the iDempiere side, not config).</p>
+  <div class="scroll"><table>
+    <tr><th>Effort axis (one real change)</th><th>iDempiere — OSGi ◆</th><th>Here — fold ✅</th></tr>
+    <tr><td><b>Lines to touch</b> <span style="color:var(--amber)">*</span></td><td class="java">~50 across 4 files</td><td>~16 across 2 files</td></tr>
+    <tr><td><b>Handling checks</b> (steps that can fail)</td><td class="java"><b>9</b> — import-package · register · AD sync · build · resolve · restart · log-clean · 2× acceptance</td><td><b>4</b> — re-fold reads · handler pinned · 2× acceptance</td></tr>
+    <tr><td><b>Data / DB artifacts</b></td><td class="java"><b>5</b> AD rows + DDL, carried by a <b>2Pack/SQL migration re-applied &amp; verified on every target instance (×N)</b></td><td><b>1</b> declarative slice edit — the slice <i>is</i> the schema; <b>0 migrations</b>: one <b>signed op-log append self-replays to all N nodes</b></td></tr>
+    <tr><td><b>Forced build + restart</b></td><td class="java"><span class="yes">2</span> — compile + server restart</td><td><span class="no">0</span></td></tr>
+  </table></div>
+  <p class="foot"><span style="color:var(--amber)">*</span> <b>Lines is a forecast estimate</b> (each line enumerated in the
+  witness card), <b>pending an actual <code>wc -l</code></b> on a built artifact each side. The other three axes — checks,
+  DB artifacts, build/restart — are <b>structural facts, exact</b>: they are fixed by OSGi (which forces a
+  build→resolve→restart loop and a per-instance migration) versus the fold (which forces neither). The decisive saving is
+  the bottom two rows: <b>build+restart 2 → 0</b>, and a <b>per-instance migration ×N collapsing to one signed op-log append</b>.</p>
+
   <h2 id="cost-equation">8 · The cost equation — what actually scales</h2>
   <p class="lede">A common first reading is that this architecture just <b>moves</b> cost: you save on UI and DB binding,
   then pay it back managing a cryptographic op-log. That is the <b>wrong</b> equation — it confuses a one-time substrate
