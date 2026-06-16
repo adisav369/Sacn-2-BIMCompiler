@@ -262,7 +262,10 @@ function fold(ops) {
       and <i>why</i> migration works — any ERP's flow maps onto these verbs, or it's a plugin (Ch.8).</p>
       <div class="fromi"><b>From iDempiere →</b> The AD you know <b>is</b> the running program — not config for a
       separate UI engine. There's no ZK tier to theme, no <code>MWindow</code> to subclass. To change a field's behavior
-      you change the dictionary, not a renderer — because the renderer <i>is</i> the dictionary, folded.</div>
+      you change the dictionary, not a renderer — because the renderer <i>is</i> the dictionary, folded. And
+      <code>o.processIt(DocAction.ACTION_Complete)</code> — the Java entry that routes the document lifecycle — maps to
+      a fold verb: <code>commitGroup({ DOC_ACTION:'CO', … })</code>. <code>processIt</code> is the call; the verb is what
+      travels in the log.</div>
       <p><b class="beat">The code.</b> One mechanism, two streams:</p>
       <pre><code>const window = fold(adRowsFor(windowId))   // AD_Window/Tab/Field → live UI
 const doc    = fold(opsFor(documentId))    // CREATE_DOCUMENT/SET_STATUS/POST/… → data</code></pre>
@@ -301,7 +304,9 @@ const doc    = fold(opsFor(documentId))    // CREATE_DOCUMENT/SET_STATUS/POST/�
       classification right and the engine slot is obvious; get it wrong and nothing fits.</p>
       <div class="fromi"><b>From iDempiere →</b> Your <code>ModelValidator</code> timing points collapse onto these
       three. A callout / <code>onchange</code> is a <b>DERIVE</b>. A <code>modelChange</code>/<code>docValidate</code>
-      that throws is a <b>VALIDATE</b>. A <code>DocAction</code>/<code>completeIt</code> is an <b>ACT</b>. The habit to
+      that throws is a <b>VALIDATE</b>. A <code>DocAction</code> / <code>o.processIt()</code> / <code>completeIt</code>
+      is an <b>ACT</b> — <code>processIt</code> is Java's routing call into the document lifecycle; <code>completeIt</code>
+      is the model method it dispatches to; here both collapse into one <code>commitGroup</code> verb. The habit to
       unlearn is doing all three inside one <code>beforeSave</code> — here they are separate effects with separate homes
       (Ch.5 / Ch.6 / Ch.7).</div>
       <p><b class="beat">The code.</b> A handler declares its effect; the engine routes it:</p>
@@ -577,7 +582,35 @@ onReceive(op =&gt; verifyChain(log.concat(op)) ? apply(op) : drop(op));</code></
         <li><b>Accts-Posted honestly absent</b> (Ch.7) → <i>show the empty journal, never the invented one.</i></li>
         <li><code>sw.js</code> the <b>eternal conflict magnet</b> → <i>take the higher version, keep both precache hunks.</i></li>
         <li>The <b>docs-deploy landmine</b> that wiped live pages twice → <i>publish only through the no-shrink seatbelt.</i></li>
+        <li>The <b>Process gate</b> — <code>DOC_FAMILY</code> is a ported whitelist, not a pure AD read →
+          <i>detect-from-AD is general; execute is gated to ported families; an un-ported table renders Process honestly absent.</i></li>
       </ul>
+      <div class="fromi"><b>From iDempiere → <code>processIt</code> / <code>DocumentEngine</code>.</b>
+      iDempiere decides "is this a document?" by two checks: the Java model extends <code>DocAction</code>, and its
+      <code>AD_Table</code> carries the document columns (<code>DocStatus</code>, <code>DocAction</code>,
+      <code>Processing</code>, <code>Processed</code>). Then <code>DocumentEngine.getValidActions(docStatus)</code>
+      yields the legal action set for the current status — that is why <code>C_Project</code> (<code>MProject</code>)
+      has no Process button: it is not a <code>DocAction</code> model.<br><br>
+      Our engine reads the same intent from data, in two deliberate layers.
+      <b>(1) The gate</b> — a record is processable iff its table is in <code>AdDocFsm.DOC_FAMILY</code> (the ported
+      whitelist, ~30 tables: <code>C_Order</code>, <code>M_InOut</code>, <code>C_Invoice</code>, <code>C_Payment</code>,
+      <code>GL_Journal</code>, …) <i>and</i> the record carries a non-empty <code>DocStatus</code> value. That
+      <code>DocStatus</code>-value test is the model-agnostic stand-in for "AD_Table has a DocStatus column" — any
+      absorbed model with a <code>DocStatus</code> value lights up the chip automatically.
+      <b>(2) The legal set</b> — <code>AdDocFsm.legalActionsFor</code> is a faithful port of
+      <code>DocumentEngine.getValidActions</code>, reading real <code>C_DocType</code> flags (e.g.
+      <code>iscanbereactivated</code>).<br><br>
+      <b>The load-bearing distinction — and why CRUD differs.</b> Detect-from-AD can be made fully general: any table
+      whose <code>AD_Table</code> carries <code>DocStatus</code>+<code>DocAction</code> columns could light up the
+      chip. Execute cannot be made general: action <i>consequences</i> — <code>completeIt</code>'s fan-out (shipment →
+      invoice → GL), <code>voidIt</code>/<code>reActivateIt</code> semantics — are per-model and must be extracted from
+      the real class, never invented. So <code>legalActionsFor</code> throws for an un-walked table rather than
+      defaulting to the generic union — that throw is the non-invent guard in code. An un-ported document table must
+      render Process as <b>honestly absent or disabled</b>, never with a fabricated transition.<br><br>
+      CRUD can be fully general because field editability lives entirely in the dictionary
+      (<code>AD_Column.IsUpdateable</code>, <code>AD_Tab.IsReadOnly</code>, <code>AD_Table.IsView</code>, role). Process
+      carries business consequences the dictionary does not contain. That is the exact line between S2B (CRUD — folds
+      from AD) and Process (gated to ported families).</div>
       <div class="fromi"><b>From iDempiere →</b> The humility is the product. We don't claim to <i>be</i> iDempiere — we
       claim each folded surface is oracle-equivalent to the cent, and we name everything not folded yet. For an engineer
       who has lived in the real thing, that honesty is what makes the rest believable.</div>
