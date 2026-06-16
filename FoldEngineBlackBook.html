@@ -74,7 +74,7 @@
   #menu-btn{display:none;background:none;border:none;color:var(--ink);font-size:20px;cursor:pointer;
     padding:4px 8px;line-height:1;border-radius:6px}
   #menu-btn:hover{background:var(--panel2)}
-  @media(max-width:720px){
+  @media(max-width:900px){
     #menu-btn{display:block}
     .tree{position:fixed;top:0;left:0;width:280px;height:100%;z-index:200;
       transform:translateX(-100%);transition:transform .22s ease;box-shadow:4px 0 18px rgba(0,0,0,.5)}
@@ -758,8 +758,9 @@ function applyHighlight(id){
   const rx=new RegExp('('+esc(term)+')','gi');
   const w=document.createTreeWalker(sec,NodeFilter.SHOW_TEXT,null);
   const nodes=[]; while(w.nextNode()) nodes.push(w.currentNode);
+  function inBlock(n){let p=n.parentNode;while(p){if(p.nodeName==='PRE'||p.nodeName==='MARK')return true;p=p.parentNode;}return false;}
   nodes.forEach(n=>{
-    if(['CODE','PRE','MARK'].includes(n.parentNode.nodeName)) return;
+    if(inBlock(n)) return;
     if(!rx.test(n.nodeValue)) return;
     const span=document.createElement('span');
     span.innerHTML=n.nodeValue.replace(rx,'<mark>$1</mark>');
