@@ -71,10 +71,24 @@
   details.more .body b{color:#fff}
   .lawline{margin-top:22px;padding:14px 18px;border:1px solid var(--line);border-left:4px solid var(--green);
     border-radius:0 10px 10px 0;background:rgba(124,179,66,.07);font-size:14.5px;color:#eaf2e4;max-width:74ch}
+  #menu-btn{display:none;background:none;border:none;color:var(--ink);font-size:20px;cursor:pointer;
+    padding:4px 8px;line-height:1;border-radius:6px}
+  #menu-btn:hover{background:var(--panel2)}
+  @media(max-width:720px){
+    #menu-btn{display:block}
+    .tree{position:fixed;top:0;left:0;width:280px;height:100%;z-index:200;
+      transform:translateX(-100%);transition:transform .22s ease;box-shadow:4px 0 18px rgba(0,0,0,.5)}
+    body.tree-open .tree{transform:translateX(0)}
+    #tree-backdrop{display:none;position:fixed;inset:0;z-index:199;background:rgba(0,0,0,.55)}
+    body.tree-open #tree-backdrop{display:block}
+    .doc{padding:18px 16px 80px}
+    #q{width:160px}
+  }
 </style>
 </head>
 <body>
 <header>
+  <button id="menu-btn" aria-label="Toggle menu">&#9776;</button>
   <h1>The Fold Engine <span class="hl">Black Book</span></h1>
   <div class="searchbox">
     <input id="q" type="search" placeholder="Search the book…  (/ to focus)" autocomplete="off">
@@ -82,6 +96,7 @@
   </div>
 </header>
 <div class="wrap">
+  <div id="tree-backdrop"></div>
   <nav class="tree" id="tree"></nav>
   <main class="doc" id="doc">
 
@@ -741,6 +756,14 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){q.value='';q.dispatchEvent(new Event('input'));q.blur();}
 });
 show('intro');
+
+// mobile tree toggle
+const menuBtn = document.getElementById('menu-btn');
+const backdrop = document.getElementById('tree-backdrop');
+function closeTree(){ document.body.classList.remove('tree-open'); }
+menuBtn.onclick = ()=>document.body.classList.toggle('tree-open');
+backdrop.onclick = closeTree;
+links.forEach(a=>{ const orig_click = a.onclick; a.onclick = e => { orig_click && orig_click(e); closeTree(); }; });
 </script>
 </body>
 </html>
