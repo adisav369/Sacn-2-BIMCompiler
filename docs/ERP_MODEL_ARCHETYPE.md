@@ -1,7 +1,7 @@
 # ERP Model Archetype — MOrder is the core; the document family is deltas
 
 **Companion to:** [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md) (the surface scoreboard) ·
-[Migrate & Compare](MigrateComparisonPaper.md) (the conversion estimate) ·
+[Migrate & Compare](MigrateComparisonPaper.md) (the conversion estimate — its [4-state status panel](MigrateComparisonPaper.md#status): 🟢 folds-today · 🟠 extraction · 🔴 fold-gap · 🔵 deleted-by-architecture) ·
 [HolyGrail §Abstracting the DocAction corpus](HolyGrail.md) · [ERP Backend Separation](ERP_BACKEND_SEPARATION.md).
 
 **Why this page exists.** The coverage matrix counts ~735,200 LOC across **496 `M*` model classes** (+703 `X_*` AD

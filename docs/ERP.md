@@ -7,6 +7,8 @@
 # ERP OOTB — iDempiere Application Dictionary in a Browser
 
 > **New here?** Start with the one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** — legacy ERP vs the WASM event-sourced browser, at a glance. This page is the full blueprint.
+>
+> **Retail at scale:** the animated one-pager **[Two messages a day → books to the penny](RetailScaleStory.html)** proves this engine at 10,000 tills (benchmark `W-POS-WAN-SCALE`, runnable + footnoted).
 
 ## Overview
 

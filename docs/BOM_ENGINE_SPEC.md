@@ -271,6 +271,36 @@ allocated_height_mm = 3000  ← follows parent Z if parent is SPAN on z
 
 Rules flag violations via `BomRules.checkPlacement()`. The engine never auto-fixes — it reports. The user or a higher-level process decides.
 
+### 3.5 fill_mode = SLOPE (Roof Elements)
+
+Roof slope panels preserve their angle during cascade. They extend horizontally — height is always derived, never set directly.
+
+**Rule:** Extend horizontal span, preserve angle. Slope length and height are computed values.
+
+```
+slope_length = horizontal_span / cos(angle)
+height       = horizontal_span × tan(angle)     ← derived, never a drag target
+```
+
+**Columns:**
+
+| Column | Roof meaning |
+|--------|-------------|
+| `layout_strategy` | `SLOPE` — extend horizontally, preserve angle |
+| `dim_fixed` | Slope angle in degrees (invariant — never changes during cascade) |
+| `anchor_face` | Which edge is fixed: `RIDGE`, `EAVE`, or `ADJACENT_WALL` |
+| `fill_axis` | Horizontal axis the slope extends along |
+
+**Adjacent wall case:** When `anchor_face = ADJACENT_WALL`, no slope exists on that side. The roof grows in the direction away from the wall. Height does not arise at the wall edge — the boundary is a wall, not a peak. Only the free-side slope extends.
+
+**A-frame (ridge) case:** Ridge height is invariant. Both slope panels grow sideways. The eave (bottom edge) extends to meet the new wall position. Angle unchanged.
+
+**Perpendicular extension (along ridge):** The ridge line itself grows. Both slope panels stretch in the ridge direction. No height change, no angle change. Pure horizontal extension.
+
+**Flat top:** If the apex is horizontal (no peak), the horizontal piece extends and slopes grow to match. Same rule: angle invariant, height invariant.
+
+**Cascade color:** Slope panels show as green (original extent) + blue (extension) during drag, because their defining parameter (angle) is invariant. See §22.
+
 ---
 
 ## 4. The Template Method — `recompose(hostAABB)`
@@ -1147,3 +1177,169 @@ Grid drag
 | BOM variant promotion | **Added** — §12.5 | Clone m_bom_line row, entity_type='U', soft-delete original. Undo = reactivate original. |
 | PHANTOM & discipline validation | **Already specified** | PHANTOM in recompose Step 5 (§4). Discipline rules in Phase 4 (§16). |
 | Event-sourced kernel_ops | **Rejected** | Engine is idempotent — computes from current state, not event replay. kernel_ops is append-only log, not state machine. Coupling them defeats the purpose. |
+
+---
+
+## 22. Cascade Visualization — Color Language
+
+When Rosetta Stone (RS) creates a grid line and the user drags it, the BOM cascade recomposes all affected descendants. The visualization uses a color language to show the user exactly what will happen — before, during, and after the drag.
+
+### 22.1 Color Semantics (RS Drag Mode)
+
+| Color | Meaning | Scope | Data source |
+|-------|---------|-------|-------------|
+| **Yellow** | Will reposition (not resize) | Whole element | `fill_mode = FIXED` elements that move but keep size |
+| **Green** | Original extent — what existed before drag | Partial element (up to pre-drag boundary) | Pre-drag vertex positions, frozen at drag start |
+| **Blue** | New area being created (extension) | Partial element (beyond pre-drag boundary) | Vertices past the split plane during outward drag |
+| **Orange** | Area being removed (shrink) | Partial element | Vertices past the new boundary during inward drag |
+| **Red** | Clash zone — two elements now overlapping | Partial element or clash sphere | `clash_rules.json` — see CLASH_DETECTION.md |
+| **Unlit** | Not affected by this drag | Whole element | Not a descendant of any BOM node on the drag side |
+
+**Red (clash) is allowed during drag** — an intentional overlap is a valid design move. The user may plan to remove or readjust the clashing area later. Red indicates the overlap exists; it does not block the drag. Only TC-1 (adjacency) and TC-2 (coverage) failures block the drag (line turns red and refuses to move). Clashes are informational.
+
+### 22.2 Split Coloring
+
+A single mesh can show two colors simultaneously via vertex color attributes on the existing `BufferGeometry`. No extra meshes, no cloning.
+
+**Mechanism:**
+1. At drag start, store pre-drag vertex positions → defines the split plane
+2. During drag, vertices on the original side of the split plane → green vertex color
+3. Vertices beyond the split plane → blue (extension) or orange (shrink)
+4. On drag release, colors clear — mesh shows its final state
+
+The boundary between green/blue (or green/orange) IS the pre-drag state, frozen in place throughout the interaction. The user always sees where original ends and new begins without needing to drag back.
+
+**Applies to all element types:** walls extending (green original + blue new width), floor slabs (green original area + blue new area), roof slopes (green original 10m + blue 2m extension).
+
+### 22.3 fill_mode → Color Mapping
+
+| fill_mode | Pre-drag | During drag (extend) | During drag (shrink) |
+|-----------|----------|---------------------|---------------------|
+| `SPAN` | Unlit | Green (original) + blue (new) | Green (remaining) + orange (removed) |
+| `FILL` | Unlit | Green (original) + blue (new) | Green (remaining) + orange (removed) |
+| `FIXED` | Unlit | Yellow (repositions, never resizes) | Yellow |
+| `SLOPE` | Unlit | Green (original) + blue (extension), angle invariant | Green (remaining) + orange (removed) |
+
+### 22.4 Zone Lighting
+
+When RS selects a grid line, the entire zone from that line to the opposite boundary lights up — because that is the cascade scope. Everything behind the drag line (on the non-drag side) stays unlit.
+
+```
+A          B          C          D
+|          |→ drag    |          |
+|  unlit   |▓▓YELLOW▓▓|▓▓YELLOW▓▓|
+|  Bay 1   |  Bay 2   |  Bay 3   |
+|  back     | side     | side     |
+|  wall     | walls    | walls    |
+|  stays    | + roof   | + roof   |
+|  put      | + floor  | + floor  |
+```
+
+**Unlit elements include BOM siblings.** The back wall (at line A) is a sibling of the dragged wall (at line B) — same parent in the BOM tree. But it is not in the drag context: it's on the non-drag side of the selected line. It stays put, stays unlit. Only elements on the drag-direction side light up: the two adjacent side walls (which stretch), the roof (which extends, angle preserved per §3.5), and the floor slab (which grows).
+
+Within the lit zone, FIXED children (windows, doors, equipment) show as yellow — they reposition but their defining dimensions don't change. The user sees: "the wall stretches, the window follows but keeps its size."
+
+### 22.5 Drag Validation — Red Line Gate
+
+Coherence checks (S270e_COHERENCE_CHECK.md TC-1, TC-2) run continuously during drag:
+
+| Check | Pass | Fail |
+|-------|------|------|
+| TC-1 ADJ: adjacency preserved | Line moves normally | Line turns red, refuses to move further |
+| TC-2 COV: BOM coverage invariant | Line moves normally | Line turns red, refuses to move further |
+
+On failure, the status bar shows WHY: `"Wall A3 exceeds floor boundary — cannot extend further"` or `"Bay 2 coverage 87% — gap between Wall-A and Wall-B"`.
+
+The line refuses to move past the failure point but can be dragged back (undo direction). Not a dead end — a wall.
+
+**Clash (red highlighting) does NOT block the drag.** Clashes are informational — the user may intend to fix the overlap in a subsequent operation. Only structural invariant failures (adjacency, coverage) are hard gates.
+
+### 22.6 Mutual Exclusion with Clash Mode
+
+Cascade colors (this section) and clash review colors (CLASH_DETECTION.md §3) never co-exist. RS drag mode disables clash overlay. Clash mode disables drag colors. The same colors (red, blue, green, orange) carry different meanings in different modes — no ambiguity because the user is in one mode or the other, never both.
+
+### 22.7 Implementation
+
+- Vertex colors via `BufferGeometry.setAttribute('color', ...)` — Three.js r160 native
+- Split plane computed from pre-drag mesh bounds on the drag axis
+- `MeshStandardMaterial.vertexColors = true` during drag, reverted on release
+- No new meshes. No cloning. Existing geometry, new vertex attribute.
+- Measure.js raycasting already proves Three.js geometry awareness on touch
+
+---
+
+## 23. ICascadeParticipant — Movement Contract
+
+When the user clicks a grid line (RS interaction), the engine resolves ONCE which BOM nodes participate in the cascade and HOW each one behaves. The result is a frozen participant list. During drag, the engine iterates this list — no re-querying the BOM tree, no re-classifying per frame.
+
+This separates the "who participates" decision (click time) from the "how they move" execution (drag time).
+
+### 23.1 Contract
+
+```
+ICascadeParticipant {
+    elementRef      : string        // IFC GUID — links to scene mesh
+    bomNodeId       : number        // m_bom_line.m_bom_line_id
+    fillMode        : FillMode      // SPAN | FIXED | FILL | SLOPE
+    anchorFace      : AnchorFace    // LEFT | RIGHT | TOP | BOTTOM | RIDGE | EAVE | ADJACENT_WALL
+    invariant       : number | null // slope angle (SLOPE), null for others
+    preDragBounds   : AABB          // frozen at click time — basis for split coloring
+    cascadeColor    : CascadeColor  // resolved from fillMode → §22.3 mapping
+}
+```
+
+### 23.2 Resolution — Click Time
+
+When RS click creates a grid line:
+
+1. Identify the drag axis and direction from the clicked element's orientation
+2. Walk the BOM tree from root — for each node, test: is it on the drag-direction side of the selected line?
+3. **YES** → create `ICascadeParticipant` from its `m_bom_line` record, freeze `preDragBounds`
+4. **NO** → skip (unlit — not in drag context)
+
+The result: a flat `Array<ICascadeParticipant>` sorted by BOM depth (parents before children). No tree traversal during drag.
+
+**Sibling exclusion:** A BOM sibling on the non-drag side (e.g. back wall when dragging front wall) is excluded even though it shares the same parent. The test is geometric (which side of the line), not structural (parent-child relationship).
+
+### 23.3 Classification Rules
+
+| fillMode | During drag | cascadeColor |
+|----------|------------|-------------|
+| `SPAN` | Element stretches on fill axis | Green/blue split (extend) or green/orange split (shrink) |
+| `FILL` | Element fills available gap | Green/blue or green/orange split |
+| `FIXED` | Element repositions, keeps dimensions | Yellow (whole element) |
+| `SLOPE` | Horizontal span extends, angle preserved, height derived | Green/blue split, invariant = angle |
+
+### 23.4 Drag-Time Execution
+
+Each frame during drag:
+
+```
+for each participant in participants:
+    newBounds = cascade.recompute(participant, dragDelta)
+    applyMeshTransform(participant.elementRef, newBounds)
+    applySplitColor(participant, participant.preDragBounds, newBounds)  // §22.2
+
+adjResult = checkAdjacency(participants)         // TC-1
+covResult = checkCoverage(participants)           // TC-2
+
+if adjResult.FAIL or covResult.FAIL:
+    revertToLastValid()
+    line.color = RED
+    statusBar.show(adjResult.reason || covResult.reason)
+```
+
+### 23.5 Lifecycle
+
+| Event | Action |
+|-------|--------|
+| RS click (grid line created) | Resolve participant list, freeze preDragBounds, light up zone |
+| Drag start | Participant list already resolved — iterate immediately |
+| Each drag frame | Recompute + validate + color per participant |
+| Drag end (release) | Clear split colors, commit final state, log `GRID_MOVE` to kernel_ops |
+| Click line again (release focus) | Discard participant list, clear zone lighting, return to State A |
+| Click different element | Discard current participants, resolve new participant list for new line |
+
+### 23.6 Java Precedent
+
+Maps to `DAGCompiler` contract pattern: interface defined in `com.bim.compiler.contract`, instance taken separately from the tree, operated on independently. The JS implementation is a plain object array (no class hierarchy) — data polymorphism per §1.3.

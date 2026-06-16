@@ -10,10 +10,10 @@
 
 | Asset | Measure |
 |-------|---------|
-| **Browser BIM Designer** | IFC + 6 mesh formats import, guided wizard, IFC export, BOQ charts, mobile site camera, cinematic tours, 15 locales, offline PWA. [BIM_Designer_Browser](BIM_Designer_Browser.md) |
+| **Browser BIM Designer** | IFC + 6 mesh formats import, guided wizard, IFC export, BOQ charts, mobile site camera, cinematic tours, 18 locales, offline PWA. [BIM_Designer_Browser](BIM_Designer_Browser.md) |
 | **Sunglasses (S244)** | Material contrast slider — 10 coloring strategies (warm/cool/earth pastels, storey, discipline, zebra, mono, random, HARD). Shadow study icon planned. [§11 Powerful Scenes](BIM_Designer_Browser.md#11-powerful-scenes) |
 | **Offline PWA (S243)** | Service worker, precache, install prompt, offline/online toast. Works disconnected. |
-| **Single-DB architecture (S242)** | One DB per building, IFC bbox placeholders, instanced IFC export. 22 buildings on OCI. |
+| **Single-DB architecture (S242)** | One DB per building, IFC bbox placeholders, instanced IFC export. 33 buildings on OCI. |
 | **Node.js IFC extractor (S241)** | `scripts/extractIFC2DB.js` — disc from filename, multi-disc merge, variance on "revised" only. [Prompt](../prompts/DropIFCMergeNoVarianceDISC.md) |
 | **Deep refactor (S239)** | helpers.js, 18 traverse→0, 31 db.exec→dbQuery, 4 SQL injection fixes. `deploy/dev/` canonical. |
 | **2D Plans viewer (S236)** | Browser DXF viewer. Canvas2D + dxf-parser. `deploy/dev/2d.html`. [Prompt](../prompts/2D_021_browser_dxf_viewer.md) |
@@ -22,7 +22,7 @@
 | **Drop Zone import (S228)** | IFC, OBJ, STL, DAE, GLB/GLTF, FBX, 3DS — auto-detect up-axis + scale. |
 | **IFC export (S229)** | DB → .ifc download. Pure STEP text builder, 30-test round-trip suite. |
 | **Guided wizard (S229a)** | 6-step classification flow for non-IFC meshes → BIM categories. |
-| **Localisation (S225b)** | 15 locales, rates.js single source. |
+| **Localisation (S225b)** | 18 locales, rates.js single source. |
 | **Cinematic fly tour** | Spline flythrough, adaptive smoothing, x-ray integration. |
 | **Bug reporter** | GitHub + email bug report, HELP FAB, DIY fixes. |
 | **4D Ghost Glass (S240b)** | Gantt→Viewer live sync. ghostglass.js: glass-to-solid construction animation, orange scrub line, Play/Pause/Speed, rotating highlight colours, depthTest:false shine-through. 8-check CTFL audit gate. 212 Playwright tests. [S240 Prompt](../prompts/S240_4d_viewer_sync.md) |
@@ -188,9 +188,9 @@ OSGi plugin embedding the BIM viewer as a native tab in iDempiere's C_Project wi
 
 | Deliverable | Detail |
 |-------------|--------|
-| Oracle Cloud static hosting | 3 buckets live (dev, full, live). 22 buildings deployed |
+| Oracle Cloud static hosting | 3 buckets live (dev, full, live). 33 buildings deployed |
 | Zero-config onboarding | Share URL → open in browser → import IFC → view |
-| Multi-language (S225b) | 15 locales live, flag picker in toolbar |
+| Multi-language (S225b) | 18 locales live, flag picker in toolbar |
 | Multi-jurisdiction rules | UK (AD B/K/M), Singapore (BCA) — data entry only |
 | **Exit criterion** | External users import their own IFC files via URL |
 

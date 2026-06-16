@@ -1,5 +1,7 @@
 # An ERP Engine as a Deterministic Fold over a Signed Operation Log
 
+> **New here?** The one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** — compares this architecture to legacy ERP at a glance. This page is the formal model.
+
 <div class="bim-banner" markdown>
 <b>Technical abstract.</b> An accounting kernel whose state is a deterministic fold over an append-only, signed operation log — serverless, in the browser, over SQLite. A companion to the [BIM-ERP](ERP.md) work.
 </div>

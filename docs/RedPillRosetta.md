@@ -39,7 +39,7 @@ The gate design below is driven by these verified facts, not by the docs' aspira
 | F6 | Live failure this gate must catch (SampleCastle, 2026-05-24): heuristic classified ATTACH=1 SPAN=0 EDGE_R=7 → **8/119 governed, 111 bulk-translated as "interior", structure coherence broke**; `§RECOMPOSE_ENGINE` fired, `§BOM_RECOMPOSE` did not | memory `project_rs_before_drag.md`; log tags at `grid_recompose.js:199` / `:464` |
 | F7 | A second, separate drag cascade exists for clearance classes (furniture/outlets/lights) using `proximity` strategies (`proportional`/`pin_to_wall`/`center_bay`) from `grid_rules.json` | `grid_drag.js:126-209` (`cascadeElements`), `grid_rules.json:42-79` |
 | F8 | **Persistence is split:** the clearance cascade writes `element_transforms` (`grid_drag.js:678-687`); the kinematics/BOM recompose mutates **mesh matrices only — no DB write anywhere** (`db.exec` reads only at `grid_recompose.js:117,126`). A `NewIFC.db` materialized today would not contain kinematic drag deltas | `grid_recompose.js:211-306` (`_applyCommand` family), `:503-570` (`_applyBomDiffCommand`) |
-| F9 | Materialization `grammar + event_log → NewIFC.db` is **roadmap P5, not built** | `RED_PILL.md:433` (§11.5 P5), `NEW_FROM_REFERENCE.md` §8.3 |
+| F9 | ~~Materialization `grammar + event_log → NewIFC.db` is **roadmap P5, not built**~~ **CLOSED (sw v653):** `viewer/materialize.js` `toBuffer(db)=db.export()` of the edited in-memory db → `NewIFC.db`; identity mode 1(b) now runs the gate on the REAL file (W-REDPILL-MATERIALIZE M1 PASS 3504/3504 digest match) | `viewer/materialize.js`, `viewer/tests/poc_redpill_materialize.js`; was `RED_PILL.md §11.5 P5`, `NEW_FROM_REFERENCE.md` §8.3 |
 | F10 | Grid lines carry provenance: detected (`grid_dims.js` clustering, rules in `grid_rules.json` `grid_detection`) or user-calibrated (`GRID_CALIBRATE` kernel_op, gold-line RS mode) | `grid_dims.js:24-37`, `NEW_FROM_REFERENCE.md` §6.5, `RED_PILL.md` §10.1 |
 | F11 | The Java side already proves BOM→coordinates == reference with mm-rounded AABB digests — the browser gate must reuse this maths, not fork it | `SpatialDigest.computeFromBOMTree` `DAGCompiler/.../SpatialDigest.java:368-402` |
 
@@ -77,8 +77,10 @@ edit. If identity fails, governed-delta results are meaningless.
 2. Capture the materialized element set. Two targets, phased:
    - **(a) in-session** (available now): element AABBs as the editor holds them
      (`element_transforms` + mesh matrices — see Q5 on the F8 split);
-   - **(b) `NewIFC.db`** (after P5 lands, F9): the materialized file itself — the real
-     round-trip per `NEW_FROM_REFERENCE.md` §16.5/§16.7.
+   - **(b) `NewIFC.db`** (P5 landed, F9 closed — sw v653): the materialized file itself — the real
+     round-trip per `NEW_FROM_REFERENCE.md` §16.5/§16.7. `viewer/materialize.js` `db.export()`s the
+     edited in-memory db; `poc_redpill_materialize.js` M1 runs §2's gate maths on the reopened file
+     (PASS 3504/3504, digest match, centroid 0.0mm). Mode 1(a) in-session remains the no-IDB path.
 3. Compare against the reference DB with the reused maths of §2:
 
 | Check | Gate semantics | Verdict rule |
@@ -212,6 +214,80 @@ smoke gate (A3) once B2 lands.
 
 ---
 
+## 7b. B1 implementation spec — BOM-driven attach map + persist-first + timeline unify
+
+> Implemented on `feat/redpill-b1-bom-attach`. The 7 design answers (§8) are LAW here:
+> Q1=G8-GOVERNANCE, Q2=1.0mm, Q3=event-log-is-the-reference (= the History op-log),
+> Q4=strict ungoverned=0-for-anything-that-MOVED, Q5=persist-first, Q6=±0.1%, Q7=ALL-classes.
+
+### 7b.1 The replacement (kills F1–F4, F6)
+
+Today `grid_recompose.rebuild()` builds the attach map via `_kinEngine.attachGridToElements()`
+(proximity heuristic, F1), then `_fireBomRecompose` selects parents *through* that heuristic map
+(`getAffectedBranch(_bomNodes, attachMap, gridId)`, F4). B1 inverts the source:
+
+- **`bom_tree.buildBomAttachMap(bomNodes, bomGridMgr)`** (new) — builds `gridId → [{guid,bomNodeId,
+  parentId,anchorFace,strategy}]` **from the BOM tree itself**: each materialized child carrying an
+  `_elementRef` (→ guid, `bom_tree.js:177`) is bound to the grid line(s) its **parent BOM** created
+  (the `bomGridMgr` grids whose `bomNodeId` == the parent's id, or — via `grid_shared_key` — the
+  shared group). BOM data *builds* the map; proximity never enters. `§BOM_ATTACH map built: bom=N
+  fallback=M grids=G`.
+- **Heuristic fallback only where BOM is genuinely absent** — a shown guid with **no** matching
+  `_elementRef` falls back to the proximity classification, and its count is the `fallback=M` tally
+  (F2: no silent heuristic creep). A fallback element is allowed to exist but, per Q4, must be
+  **STATIC** — the witness asserts `fallback` elements did not move.
+- **On drag**, if the BOM attach map is non-empty, `applyDrag` fires the **BOM path**
+  (`§BOM_RECOMPOSE`) driven by the BOM map — *not* `§RECOMPOSE_ENGINE`'s heuristic bay-proportional
+  bulk-translate. Every governed child recomposes via the proven `BOMNode.recompose` algebra
+  (anchor-face edge-follow, SPAN stretch, FIXED stay — `bom_node.js`). `governed=N/N ungoverned=0`.
+
+### 7b.2 Phase ordering + uncalibrated degrade (prompt B1)
+
+`materializeBomLevel` (Next) must have run to populate `_bomNodes` + `_bomGridMgr` **before** a
+governed drag. If a drag arrives with `_bomNodes.length === 0` (UNCALIBRATED — user dragged before
+Next), B1 **degrades visibly**: logs `§BOM_RECOMPOSE skipped reason=uncalibrated (bomNodes=0)` and
+the legacy heuristic `§RECOMPOSE_ENGINE` path still runs (no break, no governance claim). The gate
+treats an uncalibrated session as "not a governed-delta candidate" — it never silently claims
+`governed=`.
+
+### 7b.3 Persist-first (Q5, fixes F8)
+
+The governed recompose mutates mesh matrices (`_applyBomDiffCommand`). B1 additionally **persists
+each governed move's new center to `element_transforms`** and commits the whole governed set as
+**ONE `GRID_MOVE` kernel-op group** (one `gid`) via the existing `KernelOps.commitOp` →
+`universal_history` wrapper. "Actual = the persisted DB row" now holds: a read-the-tip query returns
+the moved position. The op `params.cascade` carries every governed `{guid,oldX,oldY,newX,newY}` so
+`GridDrag.applyReplayedMove` (the existing GRID_MOVE fold path, `universal_history.js:274-282`)
+reverses the WHOLE governed set on a timeline step-back — the SO-Complete-style group fold.
+
+### 7b.4 One op-log, one playback (kill the double)
+
+`grid_drag.js` keeps a private `hist[]` compound-undo + Ctrl+Z handler. B1 routes the editor's
+Ctrl+Z/Y through `UniversalHistory.undo()/redo()` (the shared HB timeline) so the timeline and the
+keyboard drive the *same* op-log; the private `hist[]` becomes a redundant shadow and the Ctrl+Z
+keydown no longer calls `KernelOps.undoOp` directly behind the timeline's back.
+
+### 7b.5 Rides the SAME HB session tree (PR #291 contract)
+
+The governed `GRID_MOVE` commit flows through `KernelOps.commitOp` → the `universal_history`
+`commitOp` wrapper → `_recordOp` → `_ensureAuthoritativeTreeKey()` (re-keys via `HB.setTreeKey
+(_treeKey())`, keyed off `_openDbUrl()`/`A.DB_URL`) → `HB.push`. No new key, no parallel store: the
+governed move lands in the same per-session Z tree re-home recalls (the empty-Z #291 fix is honored
+by construction — B1 adds no keying path of its own). `poc_session_recall.js` stays green.
+
+### 7b.6 Witness — `poc_redpill_governed_drag.js` (W-REDPILL-GOVERNED-DRAG)
+
+Node whitebox over `bom_tree.js`/`bom_node.js`/`bom_grid.js` + a fixture DB (W022 schema; built in
+the witness — the SampleCastle DB is not in this worktree, so the fixture *reproduces the F6 class*:
+a parent BOM with many `_elementRef` children that the proximity heuristic would bulk-translate as
+interior). Asserts: BOM attach map governs **all** children (`governed=N/N ungoverned=0`); the
+proximity-only baseline shows the 111-class regression (most interior) → the BOM map fixes it; the
+move persists to `element_transforms` (read-the-tip = new position); ONE `gid` `GRID_MOVE` op rides
+the HB tree; a timeline fold-back reverses the whole governed set. `§BOM_RECOMPOSE` fires,
+`§RECOMPOSE_ENGINE` does not.
+
+---
+
 ## 8. Open design questions — these gate B1/B2 (answers needed, not extractable)
 
 **Q1 — Gate number.** Prompt says `G7-GOVERNANCE`; `G7-COMPOSITION` is already taken
@@ -238,10 +314,10 @@ Proposal: strict mode (default, `ungoverned=0` required, fallback elements must 
 declared `fallback=N` budget mode for DBs with incomplete `element_ref` coverage. Which is the
 shipping default — and is *any* non-zero fallback ever a PASS?
 
-**Q5 — Identity scope today (F8/F9).** Until P5 materialization exists, identity mode 1(a)
-compares the in-session state. Given F8 (kinematics never persists to DB), should B1 make
-DB-persistence of governed moves a hard requirement *before* B2 wires the gate (recommended —
-otherwise "actual" is ambiguous), or should the witness read mesh matrices as interim truth?
+**Q5 — Identity scope today (F8/F9). RESOLVED.** F8 fixed by B1 (persist-first → `element_transforms`);
+F9 closed by P5 (`viewer/materialize.js`, sw v653). Identity mode 1(b) now runs the gate on the real
+exported `NewIFC.db` (W-REDPILL-MATERIALIZE M1); 1(a) in-session remains the no-IDB/node path. "Actual =
+the persisted DB row" holds end-to-end: the persisted center materializes byte-for-byte into the file.
 
 **Q6 — Delta-mode volume band.** Confirm: predicted-vs-actual volume within the same ±0.1 %
 (G2 reuse), with actual-vs-reference volume intentionally unchecked after an edit (volume change

@@ -35,6 +35,12 @@ by two lens POCs that needed no backend and no overlay wiring at all.
 that tags+exposes+mounts) PLUS N **overlay-aspect** lanes that attach by key. A lens is a *host*; CRUD /
 Report / Tour / chart are *overlays* that ride EVERY host unchanged ("reskin = new chrome + same overlay").
 
+**Operational cap — keep concurrent lanes to THREE (no 4th; it gets hard to track).** Governance allows N
+lane *kinds* / overlay-aspects architecturally, but only **three SESSIONS run at once**: the two others +
+the lens family (lane 3). Overlay-aspects beyond what's already running **sequence within their owning
+lane**, not as a new concurrent session. A lane's AGENTS are intra-lane WORKERS (worktree-isolated, editing
+ONLY that lane's files) — launching agents does NOT create a lane.
+
 ## §2 STEP 0 — freeze BOTH seams (the only joint step; then part ways)
 1. **Backend↔frontend seam** (ENGINE_CONTRACT §1–2): the 5 calls `read`/`dispatch`/`manifest`/`verbs`/
    `verify` + `ctx{actor,pubKey,roleId,allowOrgs}`; reads org-scoped, writes owner/role-gated, engine-side.

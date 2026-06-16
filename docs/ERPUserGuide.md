@@ -37,27 +37,35 @@ if a window is absent for your role, that is correct, not a bug.
 
 ---
 
-## 2. Install / Migrate (pick-your-ERP)
+## 2. Bring your data in — the DIY box (Help → *Run it yourself*)
 
-**Install** and **Migrate** both open the same pick-your-ERP dialog (reached from the **⋯ pill** or
-the pre-login Install/Migrate pills). It lists five sources, detects what is running on your machine,
-and routes honestly — nothing is ever faked:
+Migration is **delegate-to-install**: the browser never connects to your database. The **Help pill**
+opens one **About / Run it yourself (DIY)** box. On the DIY tab you **pick your source ERP → download
+its self-contained agent zip → run the commands its README gives you, in your own terminal → load the
+one file it writes back here**. Your credentials never leave your machine; every value is a recorded
+row (nothing is faked). The README is the single "what to run" — you copy-paste from it, not from the UI.
 
-| Source | Migrate (extract YOUR data) | Install (resident demo tenant) |
+| Source | Agent (extract YOUR data) | Resident demo tenant (login front door) |
 |---|---|---|
-| **Odoo** | live delegate agent: download `odoo_agent.zip`, run it natively next to your Odoo, drop the `odoo_chain.json` it writes — the browser re-folds and verifies it | **Client 12** — the full migrated Odoo catalog (**38 partners · 35 products · 27 sale orders**, `12-odoo.db`), books diffed to the cent |
-| **iDempiere** | ShowMe + `migrate_agent.js` against your own Postgres (credentials never leave your machine) | **Client 13** — real PG-agent extraction, PKs re-banded |
-| **SAP** | coming (no agent yet) | **Client 14 "SAP Flights"** — PoC: the documented **SFLIGHT** flight-booking reference model (carriers → Business Partners, connections → Products) |
-| **Oracle** | coming | **Client 15 "Oracle Scott"** — PoC: the canonical **EMP/DEPT (SCOTT)** schema (departments → BP Groups, employees → Business Partners) |
-| **MS Dynamics** | coming | **Client 16 "Dynamics Cronus"** — PoC: the Business Central **CRONUS** demo company (items → Products, customers → Business Partners) |
+| **Odoo** | `odoo_agent.zip` → `cd odoo_agent && npm install && node agent.js` → writes `odoo_chain.json` (the browser re-folds + verifies it) | **Client 12** — the full migrated Odoo catalog (**38 partners · 35 products · 27 sale orders**, `12-odoo.db`), books diffed to the cent |
+| **iDempiere** | `idempiere_agent.zip` → `cd idempiere_agent && npm install && node migrate_agent.js --masters` → writes `ad_masters.db` | **Client 13** — real PG-agent extraction, PKs re-banded |
+| **SAP** | on the roadmap (greyed "under construction") | **Client 14 "SAP Flights"** — PoC: the documented **SFLIGHT** flight-booking reference model (carriers → Business Partners, connections → Products) |
+| **Oracle** | on the roadmap | **Client 15 "Oracle Scott"** — PoC: the canonical **EMP/DEPT (SCOTT)** schema (departments → BP Groups, employees → Business Partners) |
+| **MS Dynamics** | on the roadmap | **Client 16 "Dynamics Cronus"** — PoC: the Business Central **CRONUS** demo company (items → Products, customers → Business Partners) |
+
+**Point an agent at your own server with environment variables** (defaults shown — every value is real):
+
+- **Odoo** — `ODOO_HOST=localhost ODOO_PORT=8069 ODOO_DB=odoodemo ODOO_LOGIN=admin ODOO_PASSWORD=admin ODOO_SO=S00023 node agent.js`
+- **iDempiere** — `ERP_PG_CONTAINER=postgres ERP_PG_DB=idempiere ERP_PG_USER=adempiere ERP_PG_SCHEMA=adempiere node migrate_agent.js --masters` (also `--list-clients` to enumerate tenants, `ERP_OUT=…` for the output path)
 
 The three PoC tenants carry each vendor's *documented public demo model* — reference data labeled as
-such in the dialog, proving the master-table mapping; a delegate agent (like Odoo's) is the production
-path for real extractions.
+such, proving the master-table mapping; a delegate agent (like Odoo's) is the production path for real
+extractions. The **DIY box also self-hosts the whole app**: one install script downloads BIM OOTB and
+serves the landing on `localhost:8080` — BIM and ERP, your domain, your branding.
 
-**What Install leaves behind:** the tenant is merged into the resident seed in browser IndexedDB — it
-survives a plain reload, re-install is a guarded no-op, and the install itself appears as a dot on the
-**W** world-history timeline.
+**What a resident tenant leaves behind:** it is merged into the seed in browser IndexedDB — it survives
+a plain reload, re-install is a guarded no-op, and the install appears as a dot on the **W**
+world-history timeline.
 
 **Choosing a tenant at login — the front door:** the login card opens on a **five-tenant front door**.
 Even on a cold seed it lists **GardenWorld plus five migrated demo tenants** (Odoo · iDempiere · SAP ·
@@ -67,6 +75,39 @@ dialog, no `?shard=`, no server (P0, erp sw v692). Once installed it survives a 
 resident list (System, GardenWorld, and every installed tenant). Each tenant is entered through its
 **own Admin user** (e.g. *SAP Flights Admin*); the System user belongs to the System(0) client only.
 (In-tenant test links that skip the picker enter via `?client=garden`.)
+
+---
+
+## Spatial BIM → ERP — Find a selection → Project Order  *(LIVE)*
+
+The BIM viewer can fold a priced building selection straight into a real iDempiere **`C_Project`**
+tree — phases, tasks, and priced lines — that this ERP then reads in its standard Project windows. The
+whole building, or any slice you select, becomes work to be done.
+
+**How.** In the viewer's **Find** panel select a scope (whole building, a storey, a discipline, or a
+type). The selected bar shows its indicative 5D cost in the active rate pack. Tap **`› ERP`** to push
+it. The fold (`proj_fold.js`):
+
+| What you selected | becomes |
+|---|---|
+| whole building | a `C_Project` (header, span, planned amount) |
+| storey / discipline | a `C_ProjectPhase` (name + `SeqNo` + dates from the 4D rules) |
+| type | a `C_ProjectLine` (qty × rate, find-or-creating its `M_Product`) |
+| category | the `M_Product_Category` grouping those lines |
+
+Phases, sequence, and dates come from `sequence_rules.json` (the same 4D rules the Time Machine plays);
+price from the active 5D rate pack; quantity from the model's QTO. **Nothing is invented** — amounts
+fold via BigDecimal. A Purchase Order is generated **only** if the phase carries a supplier; otherwise
+it stays a plan-only project (the non-invent gate). The push is **idempotent** (a second push adds zero
+rows) and persists to the same browser origin as this ERP, so the folded project appears in the standard
+**`C_Project` / `C_Order`** windows on the next boot — round-trip complete.
+
+**Witnessed on the Duplex:** 6 phases · 9 tasks · 16 lines, `PlannedAmt` folding to the 5D golden **to
+the cent** (`§PROJ_FOLD plannedAmt==golden`), every phase `SeqNo` tracing to `sequence_rules.json`
+(shipped bim-ootb PR #316). See the **[BIM → Project blueprint](BIMtoProject.md)**.
+
+> A sibling **`› VO`** button (in the model-diff panel) folds a model revision into a signed `C_Order`
+> variation amendment against the same project.
 
 ---
 
@@ -82,7 +123,8 @@ The pill is the single entry point for every tool. Left-to-right:
 | 🔴 (ring) | `redpill` | "Just the pill" ⟷ classic iDempiere look — master toggle (key `,`) |
 | 🔌 | `plugin` | Plugin Engine — Install (PackIn) / Create (PackOut) your own models (§9) |
 | **W** | `history` | World history overlay — scrub the op-log timeline (‹ dots ›) |
-| ⋯ | `more` | Install · Migrate · About · Tour · ShowMe help badges |
+| ❔ | `showme` | **Help** — opens the shared **About / Run it yourself (DIY)** box (§2): the project at a glance + self-host + bring-your-data-in agents |
+| ⋯ | `more` | About · Tour · Read/Compare paper · help badges |
 
 **Tip:** long-press the **W** pill to open the Z+bomb drawer (undo / fold-back to a past state).
 Long-press a history **dot** inside the W overlay to fork a **Blue Future** speculative branch — the

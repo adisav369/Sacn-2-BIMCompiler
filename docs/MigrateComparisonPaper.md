@@ -216,6 +216,8 @@ details.fold .fbd{padding:6px 16px 14px}
 
 <p style="margin:16px 0;font-size:15px"><a href="../migrate_status_panel.html"><b>What is Done and Pending</b> — the four-state migration honesty map &nbsp;🟢🟠🔴🔵&nbsp; ↗</a></p>
 
+<blockquote style="margin:16px 0;font-size:15px"><b>Want to actually use it?</b> See the operating guide — <a href="../ERPUserGuide/"><b>iDempiere Browser ERP — User Guide</b></a> — login, <b>run the agent scripts to bring your own data in</b>, POS, warehouse pick-walk, and the live <b>BIM → Project Order</b> push (a priced building selection folds into a real <code>C_Project</code> tree), end-to-end.</blockquote>
+
 ---
 
 ## But ERP is tough — an aircraft carrier is about to go into a bathtub

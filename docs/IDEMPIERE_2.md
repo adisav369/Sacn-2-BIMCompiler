@@ -156,6 +156,64 @@ Clean-room: learn the tier boundaries, extract the rule *effects* from the AD, n
 §I-C) is **sorted by this tier first** — only the field-level `CalloutEngine` rules land in the UI overlay; the
 other three tiers are engine concerns owned by the engine/posting lanes, not a single "callout" session.
 
+## The logic-admission model — how ALL of Odoo/ERPNext/SAP logic enters
+
+> **What's actually admitted today → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md)** — this model's surfaces enumerated against the live engine: 0 covered / 12 partial / 28 gap of 40. The static-data layers (lists, mandatory/updateable flags) are partially in; the logic-expression layer (DisplayLogic/ReadOnlyLogic/MandatoryLogic) and the security layer have **no evaluator at all** yet.
+
+The question "can we house *every* ERP's logic?" has a wrong framing: *generalize* **vs** *Drools-style DIY* **vs**
+*variants + config*. They are not alternatives — ERP logic **stratifies into six layers**, and each layer has its
+own *admission rule*. The layers get progressively harder to reduce to data; the art is knowing which is which so
+you neither under-generalize (per-ERP cruft) nor over-promise ("everything becomes data").
+
+| Layer | What it is | Admitted as | Generalizes? |
+|---|---|---|---|
+| **L0 Structure** | entities / fields | AD / DocType (metadata) | ✅ solved — ERPNext DocType is the external proof |
+| **L1 Lifecycle** | state machines | the transition table (data) | ✅ — the gap to *promote from engine into AD* (every migration squeezes here) |
+| **L2 Guards** | preconditions / validations | predicates + decision tables (data) | ✅ (§0.14 GUARD) |
+| **L3 Determination** | "which account / price / tax?" | config lookup tables (data, host glue §13.1) | ✅ |
+| **L4 Effects** | ship / invoice / allocate / match / post | the **closed verb set** (§0.14) | ✅ **proven** — Odoo+iDempiere O2C/P2P fold, `newVerbs=[]` (`build/erp/odoo_fold.log`) |
+| **L5 Computation** | pricing math, tax, derived fields | pure expressions (data) | ✅ |
+| **L6 Algorithms** | MRP, scheduling, SAP condition-technique pricing | **constrained plugin** (variants + config) | ⚠️ the honest tail — genuine code, *caged* |
+
+**The one invariant that unifies all three instincts:** *logic enters only as **data**, or as **ops in the closed
+verb alphabet** — never as free code.* That single rule is simultaneously what makes the model generalizable
+(L1–L5 are data), DIY-able (you edit the data), AI/vibe-codable (the grammar is closed and therefore verifiable),
+and safe (op-log replay + sandbox). It is the membrane every source ERP's logic must cross.
+
+### On Drools — keep its idea, drop its engine (the result is *stronger* than Drools)
+[HolyGrail.md](HolyGrail.md) ([ERP.md §0.5/§0.9](ERP.md)) already rejected Rete/inference. The clean split:
+- **Drools' good idea — rules as editable data / decision tables** → **yes**, that is L2/L5; expose exactly this.
+- **Drools' engine — stateful forward-chaining inference, unrestricted agenda** → **no**: no op-log (so no
+  replay/undo/audit — *"the safety Drools never had"*), firing order fights deterministic replay, and unrestricted
+  actions are not sandboxable for a marketplace or for AI authoring.
+
+Keep the decision-table/expression DIY, drop the inference engine: decision tables + pure expressions over a closed
+verb alphabet, op-logged → **editable live, replayable, reversible, sandboxable**. That is L1/L2/L5 made live — the
+grail (`§RULE-EDIT`, [HolyGrail.md](HolyGrail.md)).
+
+### Variants + config + vibe coding — the L6 tail, caged
+Genuine algorithms (MRP, SAP pricing procedures) cannot be decision-tabled into pure data. There **variants +
+config-pick-which** is the correct shape — **but the plugin may only emit ops in the closed alphabet.** That
+constraint is precisely what Odoo/SAP lack (their algorithms get unrestricted DB access); it is what makes ours
+composable, swappable, and auditable ([AnyAppMaker.md](AnyAppMaker.md)). **Vibe coding fits because the grammar is
+closed**: free-code generation is unverifiable; grammar-constrained generation is **diff-oracle-checkable** — replay
+the AI-authored rules against the source's recorded oracle and prove equivalence to the cent.
+
+**The honest bound (don't over-promise):** the claim is NOT "all ERP logic becomes data." It is — *all logic is
+admitted through one safe seam (data, or a verb-emitting plugin), so it is composable, swappable, replayable, and
+auditable.* L0–L5 (the bulk; proven for the transactional core) generalize to data; **L6 stays code but is caged.**
+That is stronger and more defensible than "everything generalizes," and it is the line that keeps the MIT moat honest.
+
+> **AD behavioral-gap corollary** (what to metadata-ize next, surfaced 2026-06-05): AD won the *entity*-metadata
+> battle but left the *behavioral* conventions hardcoded — and behavior is where ERPs differ. Promote these
+> conventions into AD data, each as a *more general* primitive: (1) **lifecycle** — DocStatus/DocAction is a column
+> convention, not a declarative per-doctype state machine (L1); (2) **polymorphic reference** — `AD_Table_ID +
+> Record_ID` exists as a 2-column convention (42 columns) but is not a first-class `AD_Reference` type, unlike
+> Odoo `many2one_reference` / ERPNext Dynamic Link; (3) **reactive computed fields** — only imperative Callouts
+> today, no declarative `@depends`-style dependency graph (L5); (4) **cross-cutting mixins** — no declarable
+> chatter/activities/followers/attach-to-anything layer (the op-log already gives audit + document-flow for free);
+> (5) **open dimensional tags** on journal lines, generalizing Fact_Acct's *fixed-arity* accounting dimensions.
+
 ## Boundaries — what this doc does NOT cover
 
 - **UI / rendering** → [IDEMPIERE_RENDERER_SPEC.md](IDEMPIERE_RENDERER_SPEC.md) (other session).

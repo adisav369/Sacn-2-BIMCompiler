@@ -646,7 +646,7 @@ The **🔗 Share** button (top-left of panel) copies the current viewer URL with
 
 Example:
 ```
-.../sandbox/index.html?db=buildings/Duplex_extracted.db&tm=play
+.../viewer/viewer.html?db=buildings/Duplex_extracted.db&tm=play
 ```
 
 ### Architecture

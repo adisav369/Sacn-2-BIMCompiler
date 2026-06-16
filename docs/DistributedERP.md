@@ -245,6 +245,34 @@ one activation touch) or forwarding = giving away the credit line.
 *same gesture* as scanning a box. One scan model: goods (SSCC → which unit) and customers (token → who/what
 credit).
 
+### 5.1 Multi-branch claim fraud — the bearer artifact is the gate (blackout-proof)
+
+**The attempt:** a customer tries to claim a *one-per-customer* offer (free item, single-use coupon) at
+several branches before the day's reconciliation catches up.
+
+**The common path — defeated locally, offline, with no central check.** One person carries one phone.
+Claiming at branch A welds a merchant-**co-signed `CLAIMED`** op into the phone's hash-chained log (§5.2). The
+offer is a URL whose JS reads that log, so at branch B the artifact itself answers **"ALREADY CLAIMED"** and
+the till refuses. The check lives **in the thing the customer must present** — no authority round-trip — so it
+**holds in a total network blackout.** A server, by contrast, must be *absolutely real-time* to catch the
+hopper; with the link down it is **blind** (refuse-all or wave-through). On the realistic case this is
+therefore **strictly more secure *and* simpler than a server: it removed the component that has to be
+perfect** — correctness rides the artifact-in-hand, not the network.
+
+**The only residual — a device self-fork, and it still doesn't beat us.** A sophisticated holder could
+snapshot their device *before* claiming and restore it *after*, presenting a stale "unclaimed" log at a second
+offline branch. That is (a) **caught at reconciliation** — two co-signed `CLAIMED` ops on one single-use
+offer-id is a **provable, attributable** double-claim (§8), not a silent loss; (b) **defeated for value** by
+single-use semantics + identity binding (void / claw back / ban); and (c) **also defeats an offline server**,
+which equally cannot reach a central counter with the link down. So **no real-time prevention is lost relative
+to a server**, and on the common path you are blackout-safe where the server is not.
+
+**Carve-out (refines §5):** a *single-use* claim therefore **escapes the real-time op-class on the common
+path** — its state rides the bearer artifact, not a central counter. The genuinely real-time-needing case
+shrinks to a *divisible* balance spent **anonymously + irreversibly + simultaneously offline** — exactly the
+§5(3) *high-value → block* branch. Tamper-proof, not fraud-proof; and here **tamper-proof-in-hand beats
+real-time-at-a-server.**
+
 ---
 
 ## 6. How much central persistence? — a dumb async post office
@@ -635,6 +663,33 @@ employer escrow). Discipline: email the **log/fold**, never fat blobs (the op-si
 
 Net: each node carries its **own** disaster recovery. The only residues that stay central are the ones
 §5 / §8 / §9.F already name — the contended-balance agreement point, the settlement rail, and the key-trust root.
+
+## 15. Physical custody — the shipment as a node (chain-of-custody log)
+
+Replenishment *execution* need carry no messages at all: the **shipment is a node** that holds its own signed
+log — a cryptographic waybill. In transit there is nothing on any wire; the truck **is** the message in
+motion. This is the §3 sales append and the §14 DR loop applied to the physical leg — one primitive. Planning
+stays HQ's replenish fold (§5/§6); its output, the **dispatch op**, is *also* the truck's manifest.
+
+**Every handoff is a co-signed append**, never a one-way write. HQ signs *dispatched*, the carrier
+counter-signs *custody taken*; on arrival the carrier signs *delivered*, the store counter-signs **the count
+it actually received**. A short or damaged delivery is therefore a **signed delta**, not a silent gap — the
+receipt is the store's truth, the dispatch is HQ's, and the diff reconciles.
+
+**Decoupled to operate, linked to audit.** Each layer knows only its own handoff (HQ does not track the
+drive; the store was not pre-notified — goods and manifest arrive together). Yet the logs reference each other
+(receipt ← delivery ← custody ← dispatch), so the **full chain folds on demand**: recall, provenance, and
+"where did the two units go" fall out of replay, though no layer watched the others in real time.
+
+**Status is pulled, not streamed.** "Ask the truck to ping back its last log" is the §6 `/snapshot?after=N`
+read — no telemetry, no tracking server; the carrier is a queryable, offline-capable node that syncs
+opportunistically (worst case, read the chain from the store on arrival).
+
+**The floor (Truth 4 / §9.F).** The log makes loss **detectable and attributable to the exact hop** (loaded
+100 / took 100 / received 98 → provably in transit) but does **not physically prevent** it: a colluding
+signer's lie is caught at reconciliation, not at signing. **Provable attribution, not a physical guarantee** —
+the same stance as the rest, applied to pallets. Net: replenishment = one dispatch op that rides the truck and
+reconciles on arrival; planning is a fold, execution a moving log, audit a pull.
 
 ??? note "Further reading — the fleet-scale proof"
     - [POS WAN-scale benchmark — spec &amp; witness (W-POS-WAN-SCALE)](POS_WAN_SCALE_BENCH.md) — the fleet-scale proof: 10k tills → central dump relay, minimal SODA/EODA fold, idempotent retry, relay-crash + email-backup DR, partitioned doc-numbering.

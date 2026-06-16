@@ -1,4 +1,7 @@
 # BIM Designer — Browser Edition
+
+> **DEPRECATED (2026-05-21):** This document describes the viewer-only browser edition. The **design** capability — grid extraction, constrained drag, 4D replay, MEP route walking, Rosetta Stone calibration, Git-like branching — is now specified in **[New From Reference](NEW_FROM_REFERENCE.md)**. This document remains as reference for the viewer/streaming layer that the designer builds upon.
+
 > **Foundation:** [BIM_Designer.md](BIM_Designer.md) · [RTreeGuide.md](RTreeGuide.md) · [MANIFESTO.md](MANIFESTO.md) · [4D5DAnalysis.md](4D5DAnalysis.md) · [Clash Detection](CLASH_DETECTION.md)
 
 <div class="bim-banner" markdown>
@@ -526,7 +529,7 @@ No. They serve different audiences:
 
 Open in any browser (desktop or mobile). See also: [Mobile & Cloud Deployment](MOBILE_DEPLOY.md) for OCI setup, APK packaging, and offline strategy.
 
-[**BIM OOTB — 37 buildings, 1M elements**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-live/o/index.html)
+[**BIM OOTB — 33 buildings, 1M elements**](https://red1oon.github.io/bim-ootb/)
 
 Click any building → downloads its DB (1-60MB) → streams geometry in your browser.
 Cached in IndexedDB — second visit is instant. Explore all 30 archetypes to unlock the full city (786 buildings).
@@ -743,7 +746,7 @@ scripts/extract_building.sh T0_Hospital > deploy/Hospital_extracted.db
 - [x] Trackpad + mouse orbit/pan/zoom
 - [x] HUD with building name, streaming progress
 - [x] Per-building DB extraction (`scripts/extract_per_building.py`) — all 30 archetypes
-- [x] OCI bucket setup + public URL (ap-kulai-2, bim-ootb-live)
+- [x] OCI bucket setup + public URL (GitHub Pages: red1oon.github.io/bim-ootb/)
 - [x] IndexedDB cache (download once, instant revisit)
 - [x] City mode (city_index.db, 786 bboxes, click-to-stream)
 - [x] "Complete the City" gamification (progress bar, LAUNCH CITY button)
@@ -763,7 +766,7 @@ For file structure, call chain, OCI bucket layout, deployment rules, and debug/t
 
 1. **No build step.** 16 plain JS modules, local-first dependencies (`lib/`, CDN fallback). No npm, no webpack, no React.
 2. **sql.js over REST.** The browser IS the database client. No API layer to maintain.
-3. **Three.js r128 (stable).** Not latest — proven, small, well-documented.
+3. **Three.js r160 ESM.** BatchedMesh, local `lib/` with CDN fallback.
 4. **BufferGeometry from BLOBs.** Same pipeline as Blender's `from_pydata()`. Vertex swap: IFC (x,y,z) → Three.js (x,z,-y).
 5. **IndexedDB cache.** Per-building DB cached on first visit. Second visit = instant.
 6. **Plugin architecture.** Each module follows `function setup*(APP)` pattern. Same pattern for core and community plugins.
@@ -771,7 +774,7 @@ For file structure, call chain, OCI bucket layout, deployment rules, and debug/t
 ### 8.2 Test Suite
 
 ```bash
-node deploy/dev/test_all.js    # 149 tests, must be 100%
+node deploy/dev/test_all.js    # 30 test suites, must be 100%
 ```
 
 Covers: JS syntax, module wiring, button→function mapping, z-index hierarchy, OCI live + content match, URL integrity (greedy regex proof), DB chart data verification, button wiring audit. See [§10 full breakdown](PLUGIN_SDK.md#2-plugin-structure) for details.
@@ -850,7 +853,7 @@ spec'd in §4.6.
 ### 9.8 "The nD analytics (4D-8D) are speculative."
 
 The nD engine is **working code** — `scripts/nD_engine.py`, proven at 1,063,563 elements
-across 37 buildings + 1M-element sandbox city. 5 dimensions in 8.7 seconds.
+across 33 buildings + 1M-element sandbox city. 5 dimensions in 8.7 seconds.
 Excel export (township-level BOQ with 30 archetype sheets) already ships.
 See [4D5DAnalysis.md](4D5DAnalysis.md) for full results, test witnesses, and fleet report.
 
@@ -871,7 +874,7 @@ Full technical details have moved to dedicated specs:
 ### Quick Reference
 
 ```bash
-# Test (must be 149/149 before deploy)
+# Test (must pass all suites before deploy)
 node deploy/dev/test_all.js
 
 # Local dev server
@@ -879,7 +882,7 @@ cd deploy && python3 -m http.server 8080
 # → http://localhost:8080/landing.html
 
 # Deploy to OCI (both buckets)
-oci os object put --bucket-name bim-ootb-live --file deploy/dev/tools.js --name sandbox/tools.js --content-type application/javascript --force
+oci os object put --bucket-name bim-ootb-live --file deploy/dev/tools.js --name viewer/tools.js --content-type application/javascript --force
 oci os object put --bucket-name bim-ootb --file deploy/dev/tools.js --name tools.js --content-type application/javascript --force
 ```
 

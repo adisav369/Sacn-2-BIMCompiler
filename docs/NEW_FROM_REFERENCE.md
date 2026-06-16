@@ -493,11 +493,16 @@ The receiver loads the reference building from the catalog, applies the event lo
 - Elements materialize at current grid positions
 - Drag-to-interrupt during replay
 
-### Phase 5: Materialization
+### Phase 5: Materialization ✅ DONE (sw v653)
 
-- `MATERIALIZE` command generates `NewIFC.db`
-- Output follows standard schema — entire existing tool chain works on it
-- Rosetta Stone verification can compare `NewIFC.db` against the grammar's predictions
+- `MATERIALIZE` generates `NewIFC.db` — `viewer/materialize.js` `toBuffer(db) = db.export()` of the
+  edited in-memory db (B1-persisted `element_transforms` + replayed `kernel_ops`). NON-INVENT: no
+  coordinate computed; it serializes what the editor already holds.
+- Output follows standard schema **by construction** (the file IS a copy of the reference's tables
+  with mutated rows) — the entire existing tool chain (viewer/clash/ERP) works on it. Stored under
+  the `import://` scheme `streaming.js` already resolves → zero streaming change.
+- Rosetta Stone verification compares `NewIFC.db` against the grammar's predictions: W-REDPILL-MATERIALIZE
+  runs the G8-GOVERNANCE identity gate (RedPillRosetta §3 mode 1(b)) on the reopened file — PASS.
 
 ---
 
@@ -553,9 +558,9 @@ The "New From Reference" feature is done when:
 2. **Grid drag works in New context** — drags log to `kernel_ops`, lengths update live
 3. **Toggles work** — grid/lengths/envelope independently toggleable from the New pill toolbar
 4. **Event log is tiny** — a full design session produces < 50 KB of commands
-5. **Materialization round-trips** — `NewIFC.db` loads in the existing viewer without modification
+5. **Materialization round-trips** — `NewIFC.db` loads in the existing viewer without modification ✅ DONE (sw v653) — `viewer/materialize.js` `db.export()`s the edited db into the `import://` cache scheme; W-REDPILL-MATERIALIZE M1 (identity round-trip on the real file) + M2 (12 tables, viewer-loadable) PASS
 6. **Share works** — event log encodes in URL hash, receiver sees the same design
-7. **Original untouched** — `IFC.db` is byte-identical before and after a New session
+7. **Original untouched** — `IFC.db` is byte-identical before and after a New session ✅ proven by W-REDPILL-MATERIALIZE M4 (fresh disk read digests identical after materialize+edit)
 
 ---
 
@@ -861,14 +866,15 @@ print-ready output. User controls grid density via double-click (add) / double-c
 
 #### I. Next Session Priority Order
 
+> **Cross-reference (2026-05-24 watchdog):** Items below overlap with RED_PILL.md §11.6 B-tasks (B1–B5) which track the BOM engine wiring. B1 (script tags) done. See §11.6 for current status.
+
 1. ~~**BOM completion jump**~~ — DONE (S267). See §17.10.
-2. **User-initiated grid lines** — remove auto-grid, add tap-to-place from walls.
-   Rosetta templates remain for manual placement.
+2. ~~**User-initiated grid lines**~~ — DONE (S273). Rosetta drag-to-place + double-click toggle.
 3. **Multi-axis opening drag** — requires `bom_tree` for parent lookup
-4. **Grid edit cascade** — requires `bom_tree` for child dependency
-5. **Z-axis grid lines** — storey heights
-6. **GPU throttle** — chunked reveal, 30fps cap
-7. **Save/recall** — IndexedDB session store
+4. **Grid edit cascade** — requires `bom_tree` for child dependency → §11.6 B2
+5. ~~**Z-axis grid lines**~~ — DONE (S270c). Y-axis ceiling drag + ROOF_LIFT cascade.
+6. **GPU throttle** — chunked reveal, 30fps cap → partially addressed by S274 per-slot DLOD
+7. ~~**Save/recall**~~ — DONE (S273). IndexedDB session store + Open/Save in Doc pill.
 8. **Bubble rotation** — already coded, needs visual testing
 
 ### 17.10 S267 BOM Walker — Java→JS Port + BOM-Driven Phases (2026-05-22)
