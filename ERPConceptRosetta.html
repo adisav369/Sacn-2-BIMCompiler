@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<!-- ERPConceptRosetta.html — the CROSS-ERP concept Rosetta Stone.
+     Doctrine artifact (defined ahead of the folding engineers). Theme matched to RetailScaleStory.html
+     (the 10k-tills report) for visual consistency across the headline reports.
+     NON-INVENT: the Canonical + iDempiere columns ARE the model; the Odoo column is FOLD-PROVEN
+     (gen_ad_odoo.js, witnessed maxDiff=0c); the SAP / Oracle / Dynamics columns are REFERENCE mappings
+     (public data models) that a fold has NOT yet witnessed — marked ○ so nothing is overclaimed.
+     Companions: ERPRosettaStone.md (dev idiom map) · ACDOCA_FOLD_PLAN.md (the SAP headline). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cross-ERP Rosetta Stone — every ERP's terms, one canonical fold</title>
+<style>
+  :root{
+    --bg:#12171d; --panel:#1a212a; --panel2:#212a34; --ink:#e7edf3; --dim:#94a3b1; --line:#28323d;
+    --green:#7cb342; --amber:#ffa000; --red:#ef5350; --blue:#42a5f5; --violet:#b388ff;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+    max-width:1160px;margin:0 auto;padding:36px 22px 90px;background:var(--bg);color:var(--ink);line-height:1.55}
+  a{color:#8fc3f7}
+  .kicker{font-size:11px;font-weight:800;letter-spacing:2.6px;text-transform:uppercase;color:var(--green);margin:0 0 10px}
+  h1{font-size:clamp(28px,5vw,42px);line-height:1.1;font-weight:850;margin:0 0 14px;letter-spacing:.2px}
+  h1 .hl{color:var(--green)}
+  h2{font-size:13px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--dim);margin:48px 0 14px;
+    padding-bottom:9px;border-bottom:1px solid var(--line)}
+  .lede{font-size:17px;color:#cdd6df;max-width:74ch;margin:0 0 8px}
+  .lede b{color:#fff}
+  code{background:#0c1117;border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+    font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;color:#bfe0c9}
+  .pitch{margin:22px 0 6px;padding:17px 20px;background:linear-gradient(100deg,rgba(124,179,66,.10),rgba(66,165,245,.06));
+    border:1px solid var(--line);border-left:4px solid var(--green);border-radius:0 12px 12px 0;font-size:15px;color:#e9f0f6}
+  .pitch b{color:#fff}
+  .legend{display:flex;gap:10px 22px;flex-wrap:wrap;margin:16px 0 6px;font-size:12.5px;color:var(--dim);align-items:center}
+  .badge{font-weight:800;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid;letter-spacing:.3px}
+  .b-canon,.b-proven{color:#cfe9b5;border-color:#3f5a25;background:rgba(124,179,66,.14)}
+  .b-ref{color:#ffd79a;border-color:#6b552f;background:rgba(255,160,0,.12)}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#dbe6ef;font-weight:700;position:sticky;top:0}
+  td.canon{color:#a6d977;font-weight:700;white-space:nowrap}
+  td.idmp{color:#cfe0ef;white-space:nowrap}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#b9c6d4}
+  .foot{color:var(--dim);font-size:12.5px;margin-top:12px}
+  .pill{display:inline-block;font-size:10.5px;padding:0 6px;border-radius:10px;border:1px solid var(--line);color:var(--dim);margin-left:6px}
+</style>
+</head>
+<body>
+
+  <p class="kicker">ERP World View · Doctrine</p>
+  <h1>Cross-ERP <span class="hl">Rosetta Stone</span></h1>
+  <p class="lede">Every ERP's vocabulary, mapped to the one canonical model the engine folds into. Read a row across:
+  the <b>same business fact</b>, named five ways, retained faithfully in one AD shape.</p>
+
+  <div class="pitch">
+    <b>The doctrine (defined ahead of the folding engineers).</b> There is <b>one canonical model</b> — iDempiere's
+    Application Dictionary (AD), surfaced in the Fold Engine as the <code>kernel_ops</code> log + its projection. Every
+    other ERP is <b>not a second system</b> — it is <b>data re-keyed into that one model</b>. <code>account.account</code>
+    (Odoo), <code>SKA1</code> (SAP) and <code>GL_CODE_COMBINATIONS</code> (Oracle) all land as one thing:
+    <code>C_ElementValue</code>. Once folded there is no "Odoo logic" or "SAP logic" resident — only the canonical fold +
+    the closed verb set. This table is the dictionary that lets an iDempiere veteran read an Odoo (or SAP) chart and
+    <b>confidently fold a counterpart into the same shape</b>, because they recognise every term in the Canonical column.
+  </div>
+
+  <div class="legend">
+    <span><span class="badge b-canon">◆ CANONICAL</span> the fold target — iDempiere/AD <i>is</i> the model</span>
+    <span><span class="badge b-proven">✅ FOLDED</span> witnessed to the cent (<code>maxDiff=0c</code>)</span>
+    <span><span class="badge b-ref">○ REFERENCE</span> public data-model mapping; fold <b>not yet witnessed</b></span>
+  </div>
+  <p class="foot">Provenance by source column: <b>iDempiere</b> ◆ canonical · <b>Odoo</b> ✅ folded (the O2C/P2P rows
+  shipped in <code>gen_ad_odoo.js</code>, oracle-diffed) · <b>SAP&nbsp;S/4 · Oracle&nbsp;EBS · Dynamics&nbsp;BC</b> ○
+  reference (their standard table/term names are public and accurate; <i>our</i> fold of them is master-mapping only so
+  far — see the <a href="MigrateComparisonPaper/">honesty panel</a>). A cell marked “—” means the concept has no direct
+  named home in that product (often it is imperative code there, not a table).</p>
+
+  <h2>1 · Tenancy, organisation &amp; security</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td>Tenant / company</td><td class="canon">AD_Client</td><td class="idmp">AD_Client</td><td>res.company</td><td class="mono">T001 (BUKRS)</td><td class="mono">GL Ledger / OU</td><td>Company</td></tr>
+    <tr><td>Organisation / unit</td><td class="canon">AD_Org</td><td class="idmp">AD_Org</td><td>(branch / analytic)</td><td class="mono">WERKS · VKORG</td><td class="mono">Inventory Org / OU</td><td>Location / Dimension</td></tr>
+    <tr><td>User</td><td class="canon">AD_User</td><td class="idmp">AD_User</td><td>res.users</td><td class="mono">USR02 (SU01)</td><td class="mono">FND_USER</td><td>User</td></tr>
+    <tr><td>Role / access grant</td><td class="canon">AD_Role + *_Access</td><td class="idmp">AD_Role</td><td>res.groups · ir.model.access</td><td class="mono">PFCG role / auth obj</td><td class="mono">Responsibility</td><td>Permission Set</td></tr>
+    <tr><td>Accounting schema</td><td class="canon">C_AcctSchema</td><td class="idmp">C_AcctSchema</td><td>(company CoA + currency)</td><td class="mono">Ledger 0L / Ctrl Area</td><td class="mono">Set of Books / Ledger</td><td>G/L Setup</td></tr>
+  </table></div>
+
+  <h2>2 · Master data (the WHAT)</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td>Business partner</td><td class="canon">C_BPartner</td><td class="idmp">C_BPartner</td><td>res.partner</td><td class="mono">BUT000 · KNA1 / LFA1</td><td class="mono">HZ_PARTIES / AP_SUPPLIERS</td><td>Customer / Vendor</td></tr>
+    <tr><td>Product / item</td><td class="canon">M_Product</td><td class="idmp">M_Product</td><td>product.product</td><td class="mono">MARA (+MARC/MBEW)</td><td class="mono">MTL_SYSTEM_ITEMS_B</td><td>Item</td></tr>
+    <tr><td>Product category</td><td class="canon">M_Product_Category</td><td class="idmp">M_Product_Category</td><td>product.category</td><td class="mono">MATKL (material group)</td><td class="mono">Item Category</td><td>Item Category</td></tr>
+    <tr><td>Price list</td><td class="canon">M_PriceList(_Version)</td><td class="idmp">M_PriceList</td><td>product.pricelist</td><td class="mono">A004 / VK11 conditions</td><td class="mono">QP price list</td><td>Sales Price</td></tr>
+    <tr><td>Tax</td><td class="canon">C_Tax</td><td class="idmp">C_Tax</td><td>account.tax</td><td class="mono">MWSKZ (FTXP)</td><td class="mono">eBTax</td><td>VAT Posting Setup</td></tr>
+    <tr><td>G/L account (CoA)</td><td class="canon">C_ElementValue</td><td class="idmp">C_ElementValue</td><td>account.account</td><td class="mono">SKA1 / SKB1</td><td class="mono">GL_CODE_COMBINATIONS (seg)</td><td>G/L Account</td></tr>
+    <tr><td>Account combination</td><td class="canon">C_ValidCombination</td><td class="idmp">C_ValidCombination</td><td>(account + analytic)</td><td class="mono">ACDOCA assignment fields</td><td class="mono">GL_CODE_COMBINATIONS</td><td>Dimension combination</td></tr>
+  </table></div>
+
+  <h2>3 · Documents — Order to Cash (sell-side)</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td>Sales order</td><td class="canon">C_Order (SO)</td><td class="idmp">C_Order</td><td>sale.order(.line)</td><td class="mono">VBAK / VBAP</td><td class="mono">OE_ORDER_HEADERS_ALL</td><td>Sales Header / Line</td></tr>
+    <tr><td>Delivery / shipment</td><td class="canon">M_InOut</td><td class="idmp">M_InOut</td><td>stock.picking (out)</td><td class="mono">LIKP / LIPS</td><td class="mono">WSH_DELIVERY</td><td>Posted Sales Shipment</td></tr>
+    <tr><td>Sales invoice</td><td class="canon">C_Invoice (ARI)</td><td class="idmp">C_Invoice</td><td>account.move (out_invoice)</td><td class="mono">VBRK / VBRP</td><td class="mono">RA_CUSTOMER_TRX</td><td>Sales Invoice Header</td></tr>
+    <tr><td>Customer receipt</td><td class="canon">C_Payment</td><td class="idmp">C_Payment</td><td>account.payment</td><td class="mono">BSEG (incoming) / DZ</td><td class="mono">AR_CASH_RECEIPTS_ALL</td><td>Cash Receipt</td></tr>
+  </table></div>
+
+  <h2>4 · Documents — Procure to Pay (buy-side)</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td>Purchase order</td><td class="canon">C_Order (PO)</td><td class="idmp">C_Order</td><td>purchase.order(.line)</td><td class="mono">EKKO / EKPO</td><td class="mono">PO_HEADERS_ALL</td><td>Purchase Header / Line</td></tr>
+    <tr><td>Goods receipt</td><td class="canon">M_InOut (vendor)</td><td class="idmp">M_InOut</td><td>stock.picking (in)</td><td class="mono">MKPF / MSEG (MIGO)</td><td class="mono">RCV_TRANSACTIONS</td><td>Posted Purchase Receipt</td></tr>
+    <tr><td>Vendor invoice</td><td class="canon">C_Invoice (API)</td><td class="idmp">C_Invoice</td><td>account.move (in_invoice)</td><td class="mono">RBKP / RSEG (MIRO)</td><td class="mono">AP_INVOICES_ALL</td><td>Purchase Invoice</td></tr>
+    <tr><td>3-way match</td><td class="canon">M_MatchInv</td><td class="idmp">M_MatchInv</td><td>(reconcile / valuation)</td><td class="mono">GR/IR clearing (WRX)</td><td class="mono">PO–receipt–invoice match</td><td>Item Application</td></tr>
+  </table></div>
+
+  <h2>5 · Accounting &amp; posting (the books)</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td><b>Posted journal</b> (the books)</td><td class="canon">fact_acct / journal</td><td class="idmp">Fact_Acct</td><td>account.move.line</td><td class="mono"><b>ACDOCA</b> (BSEG+BKPF)</td><td class="mono">GL_JE_LINES / XLA_AE_LINES</td><td>G/L Entry</td></tr>
+    <tr><td>Document flow / lineage</td><td class="canon">kernel_ops chain</td><td class="idmp">(doc origin fields)</td><td>(invoice_origin)</td><td class="mono"><b>VBFA</b> (document flow)</td><td class="mono">XLA links</td><td>Navigate / applied entries</td></tr>
+    <tr><td>Trial balance / statement</td><td class="canon">foldStatement / foldTrialBalance</td><td class="idmp">PA_Report</td><td>(financial report)</td><td class="mono">FAGLB03 / Report Painter</td><td class="mono">FSG / FRx</td><td>Account Schedule</td></tr>
+  </table></div>
+
+  <h2>6 · Process, rules &amp; workflow</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td>Document status</td><td class="canon">DocStatus + C_DocType FSM</td><td class="idmp">C_DocType / DocumentEngine</td><td>state field (Python)</td><td class="mono">Status mgmt (BSVZ)</td><td class="mono">Workflow status</td><td>Document Status enum</td></tr>
+    <tr><td>Workflow engine (WfMC)</td><td class="canon">AD_Workflow</td><td class="idmp">AD_Workflow</td><td>automated actions <span class="pill">wkf removed v8</span></td><td class="mono">SAP Business Workflow</td><td class="mono">Oracle Workflow Builder</td><td>Power Automate / approvals</td></tr>
+    <tr><td>Validation rule</td><td class="canon">AdModelVal · AD_Val_Rule</td><td class="idmp">ModelValidator</td><td>@api.constrains (code)</td><td class="mono">BAdI / GGB0 (code)</td><td class="mono">business event (code)</td><td>OnValidate trigger (code)</td></tr>
+    <tr><td>Field derive / callout</td><td class="canon">AdCallout · AD_Column.Callout</td><td class="idmp">Callout</td><td>onchange (code)</td><td class="mono">field exit / PBO (code)</td><td class="mono">defaulting rule</td><td>OnAfterValidate (code)</td></tr>
+    <tr><td>Change log / provenance</td><td class="canon">kernel_ops (signed op-log)</td><td class="idmp">AD_ChangeLog</td><td>mail.tracking.value</td><td class="mono">CDHDR / CDPOS</td><td class="mono">FND audit trail</td><td>Change Log Entry</td></tr>
+  </table></div>
+
+  <div class="pitch" style="margin-top:30px;border-left-color:var(--blue);background:linear-gradient(100deg,rgba(66,165,245,.10),rgba(124,179,66,.05))">
+    <b>How to read the rules rows (§6).</b> Where a cell says “(code)”, that ERP keeps the rule in an <b>imperative
+    method body</b>, not a table. We do <b>not</b> import that code — we fold its <b>op-log effect</b> (DERIVE / VALIDATE /
+    ACT) into the canonical column, and route genuinely-custom logic to a <b>plugin</b>. So the left two columns are always
+    <i>data</i>; the right three are sometimes data (declarative config) and sometimes code (which becomes an effect or a
+    plugin). That asymmetry — declarative on the left, mixed on the right — is the whole migration thesis in one table.
+  </div>
+
+  <p class="foot" style="margin-top:24px">
+    Companions: <a href="ERPRosettaStone/">ERP Rosetta Stone (iDempiere-Java → Fold Engine)</a> — the developer idiom map ·
+    <a href="ACDOCA_FOLD_PLAN/">ACDOCA Fold Plan</a> — the SAP headline (the Universal-Journal fold) ·
+    <a href="ERP_COVERAGE_MATRIX/">Coverage Matrix</a> — which surfaces are proven equivalent ·
+    <a href="MigrateComparisonPaper/">Migrate &amp; Compare</a> — the thesis &amp; honesty panel.
+    &nbsp;·&nbsp; Reference table/term names are public product documentation; their <i>fold</i> into the canonical column
+    is proven only for iDempiere (◆) and Odoo (✅) today — SAP/Oracle/Dynamics (○) are the campaign ahead.
+  </p>
+
+</body>
+</html>

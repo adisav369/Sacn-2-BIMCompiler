@@ -524,6 +524,8 @@
       
         
       
+        
+      
     
     
     
@@ -649,6 +651,34 @@
     
   
     ERP Rosetta Stone (iDempiere → Fold Engine)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACDOCA_FOLD_PLAN/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ACDOCA Fold Plan (SAP headline)
   
 
     
@@ -2574,10 +2604,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-install-migrate-pick-your-erp" class="md-nav__link">
+  <a href="#2-bring-your-data-in-the-diy-box-help-run-it-yourself" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Install / Migrate (pick-your-ERP)
+        2. Bring your data in — the DIY box (Help → Run it yourself)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spatial-bim-erp-find-a-selection-project-order-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spatial BIM → ERP — Find a selection → Project Order (LIVE)
       
     </span>
   </a>
@@ -4854,10 +4895,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-install-migrate-pick-your-erp" class="md-nav__link">
+  <a href="#2-bring-your-data-in-the-diy-box-help-run-it-yourself" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Install / Migrate (pick-your-ERP)
+        2. Bring your data in — the DIY box (Help → Run it yourself)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spatial-bim-erp-find-a-selection-project-order-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spatial BIM → ERP — Find a selection → Project Order (LIVE)
       
     </span>
   </a>
@@ -5412,52 +5464,60 @@ immediately — no credentials, just pick a role.</p>
 <p>The menu is pruned immediately by real <code>AD_Window_Access</code> / <code>AD_Process_Access</code> grants from the seed —
 if a window is absent for your role, that is correct, not a bug.</p>
 <hr />
-<h2 id="2-install-migrate-pick-your-erp">2. Install / Migrate (pick-your-ERP)<a class="headerlink" href="#2-install-migrate-pick-your-erp" title="Permanent link">&para;</a></h2>
-<p><strong>Install</strong> and <strong>Migrate</strong> both open the same pick-your-ERP dialog (reached from the <strong>⋯ pill</strong> or
-the pre-login Install/Migrate pills). It lists five sources, detects what is running on your machine,
-and routes honestly — nothing is ever faked:</p>
+<h2 id="2-bring-your-data-in-the-diy-box-help-run-it-yourself">2. Bring your data in — the DIY box (Help → <em>Run it yourself</em>)<a class="headerlink" href="#2-bring-your-data-in-the-diy-box-help-run-it-yourself" title="Permanent link">&para;</a></h2>
+<p>Migration is <strong>delegate-to-install</strong>: the browser never connects to your database. The <strong>Help pill</strong>
+opens one <strong>About / Run it yourself (DIY)</strong> box. On the DIY tab you <strong>pick your source ERP → download
+its self-contained agent zip → run the commands its README gives you, in your own terminal → load the
+one file it writes back here</strong>. Your credentials never leave your machine; every value is a recorded
+row (nothing is faked). The README is the single "what to run" — you copy-paste from it, not from the UI.</p>
 <table>
 <thead>
 <tr>
 <th>Source</th>
-<th>Migrate (extract YOUR data)</th>
-<th>Install (resident demo tenant)</th>
+<th>Agent (extract YOUR data)</th>
+<th>Resident demo tenant (login front door)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><strong>Odoo</strong></td>
-<td>live delegate agent: download <code>odoo_agent.zip</code>, run it natively next to your Odoo, drop the <code>odoo_chain.json</code> it writes — the browser re-folds and verifies it</td>
+<td><code>odoo_agent.zip</code> → <code>cd odoo_agent &amp;&amp; npm install &amp;&amp; node agent.js</code> → writes <code>odoo_chain.json</code> (the browser re-folds + verifies it)</td>
 <td><strong>Client 12</strong> — the full migrated Odoo catalog (<strong>38 partners · 35 products · 27 sale orders</strong>, <code>12-odoo.db</code>), books diffed to the cent</td>
 </tr>
 <tr>
 <td><strong>iDempiere</strong></td>
-<td>ShowMe + <code>migrate_agent.js</code> against your own Postgres (credentials never leave your machine)</td>
+<td><code>idempiere_agent.zip</code> → <code>cd idempiere_agent &amp;&amp; npm install &amp;&amp; node migrate_agent.js --masters</code> → writes <code>ad_masters.db</code></td>
 <td><strong>Client 13</strong> — real PG-agent extraction, PKs re-banded</td>
 </tr>
 <tr>
 <td><strong>SAP</strong></td>
-<td>coming (no agent yet)</td>
+<td>on the roadmap (greyed "under construction")</td>
 <td><strong>Client 14 "SAP Flights"</strong> — PoC: the documented <strong>SFLIGHT</strong> flight-booking reference model (carriers → Business Partners, connections → Products)</td>
 </tr>
 <tr>
 <td><strong>Oracle</strong></td>
-<td>coming</td>
+<td>on the roadmap</td>
 <td><strong>Client 15 "Oracle Scott"</strong> — PoC: the canonical <strong>EMP/DEPT (SCOTT)</strong> schema (departments → BP Groups, employees → Business Partners)</td>
 </tr>
 <tr>
 <td><strong>MS Dynamics</strong></td>
-<td>coming</td>
+<td>on the roadmap</td>
 <td><strong>Client 16 "Dynamics Cronus"</strong> — PoC: the Business Central <strong>CRONUS</strong> demo company (items → Products, customers → Business Partners)</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Point an agent at your own server with environment variables</strong> (defaults shown — every value is real):</p>
+<ul>
+<li><strong>Odoo</strong> — <code>ODOO_HOST=localhost ODOO_PORT=8069 ODOO_DB=odoodemo ODOO_LOGIN=admin ODOO_PASSWORD=admin ODOO_SO=S00023 node agent.js</code></li>
+<li><strong>iDempiere</strong> — <code>ERP_PG_CONTAINER=postgres ERP_PG_DB=idempiere ERP_PG_USER=adempiere ERP_PG_SCHEMA=adempiere node migrate_agent.js --masters</code> (also <code>--list-clients</code> to enumerate tenants, <code>ERP_OUT=…</code> for the output path)</li>
+</ul>
 <p>The three PoC tenants carry each vendor's <em>documented public demo model</em> — reference data labeled as
-such in the dialog, proving the master-table mapping; a delegate agent (like Odoo's) is the production
-path for real extractions.</p>
-<p><strong>What Install leaves behind:</strong> the tenant is merged into the resident seed in browser IndexedDB — it
-survives a plain reload, re-install is a guarded no-op, and the install itself appears as a dot on the
-<strong>W</strong> world-history timeline.</p>
+such, proving the master-table mapping; a delegate agent (like Odoo's) is the production path for real
+extractions. The <strong>DIY box also self-hosts the whole app</strong>: one install script downloads BIM OOTB and
+serves the landing on <code>localhost:8080</code> — BIM and ERP, your domain, your branding.</p>
+<p><strong>What a resident tenant leaves behind:</strong> it is merged into the seed in browser IndexedDB — it survives
+a plain reload, re-install is a guarded no-op, and the install appears as a dot on the <strong>W</strong>
+world-history timeline.</p>
 <p><strong>Choosing a tenant at login — the front door:</strong> the login card opens on a <strong>five-tenant front door</strong>.
 Even on a cold seed it lists <strong>GardenWorld plus five migrated demo tenants</strong> (Odoo · iDempiere · SAP ·
 Oracle · Dynamics), each tagged <em>demo · ready</em> or <em>demo · PoC</em> (the login step unions the resident
@@ -5466,6 +5526,53 @@ dialog, no <code>?shard=</code>, no server (P0, erp sw v692). Once installed it 
 resident list (System, GardenWorld, and every installed tenant). Each tenant is entered through its
 <strong>own Admin user</strong> (e.g. <em>SAP Flights Admin</em>); the System user belongs to the System(0) client only.
 (In-tenant test links that skip the picker enter via <code>?client=garden</code>.)</p>
+<hr />
+<h2 id="spatial-bim-erp-find-a-selection-project-order-live">Spatial BIM → ERP — Find a selection → Project Order  <em>(LIVE)</em><a class="headerlink" href="#spatial-bim-erp-find-a-selection-project-order-live" title="Permanent link">&para;</a></h2>
+<p>The BIM viewer can fold a priced building selection straight into a real iDempiere <strong><code>C_Project</code></strong>
+tree — phases, tasks, and priced lines — that this ERP then reads in its standard Project windows. The
+whole building, or any slice you select, becomes work to be done.</p>
+<p><strong>How.</strong> In the viewer's <strong>Find</strong> panel select a scope (whole building, a storey, a discipline, or a
+type). The selected bar shows its indicative 5D cost in the active rate pack. Tap <strong><code>› ERP</code></strong> to push
+it. The fold (<code>proj_fold.js</code>):</p>
+<table>
+<thead>
+<tr>
+<th>What you selected</th>
+<th>becomes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>whole building</td>
+<td>a <code>C_Project</code> (header, span, planned amount)</td>
+</tr>
+<tr>
+<td>storey / discipline</td>
+<td>a <code>C_ProjectPhase</code> (name + <code>SeqNo</code> + dates from the 4D rules)</td>
+</tr>
+<tr>
+<td>type</td>
+<td>a <code>C_ProjectLine</code> (qty × rate, find-or-creating its <code>M_Product</code>)</td>
+</tr>
+<tr>
+<td>category</td>
+<td>the <code>M_Product_Category</code> grouping those lines</td>
+</tr>
+</tbody>
+</table>
+<p>Phases, sequence, and dates come from <code>sequence_rules.json</code> (the same 4D rules the Time Machine plays);
+price from the active 5D rate pack; quantity from the model's QTO. <strong>Nothing is invented</strong> — amounts
+fold via BigDecimal. A Purchase Order is generated <strong>only</strong> if the phase carries a supplier; otherwise
+it stays a plan-only project (the non-invent gate). The push is <strong>idempotent</strong> (a second push adds zero
+rows) and persists to the same browser origin as this ERP, so the folded project appears in the standard
+<strong><code>C_Project</code> / <code>C_Order</code></strong> windows on the next boot — round-trip complete.</p>
+<p><strong>Witnessed on the Duplex:</strong> 6 phases · 9 tasks · 16 lines, <code>PlannedAmt</code> folding to the 5D golden <strong>to
+the cent</strong> (<code>§PROJ_FOLD plannedAmt==golden</code>), every phase <code>SeqNo</code> tracing to <code>sequence_rules.json</code>
+(shipped bim-ootb PR #316). See the <strong><a href="../BIMtoProject/">BIM → Project blueprint</a></strong>.</p>
+<blockquote>
+<p>A sibling <strong><code>› VO</code></strong> button (in the model-diff panel) folds a model revision into a signed <code>C_Order</code>
+variation amendment against the same project.</p>
+</blockquote>
 <hr />
 <h2 id="3-the-bottom-pill-bar-cheat-sheet">3. The Bottom Pill Bar (cheat sheet)<a class="headerlink" href="#3-the-bottom-pill-bar-cheat-sheet" title="Permanent link">&para;</a></h2>
 <p>The pill is the single entry point for every tool. Left-to-right:</p>
@@ -5509,9 +5616,14 @@ resident list (System, GardenWorld, and every installed tenant). Each tenant is 
 <td>World history overlay — scrub the op-log timeline (‹ dots ›)</td>
 </tr>
 <tr>
+<td>❔</td>
+<td><code>showme</code></td>
+<td><strong>Help</strong> — opens the shared <strong>About / Run it yourself (DIY)</strong> box (§2): the project at a glance + self-host + bring-your-data-in agents</td>
+</tr>
+<tr>
 <td>⋯</td>
 <td><code>more</code></td>
-<td>Install · Migrate · About · Tour · ShowMe help badges</td>
+<td>About · Tour · Read/Compare paper · help badges</td>
 </tr>
 </tbody>
 </table>
