@@ -146,7 +146,7 @@ and the qty-half (MTransaction→MStorageOnHand) of the trade cycle both fold to
 the `CO` DocAction transition, the double-entry posting fold, and a fixed receipt/TB/P&L report set — for a handful of
 demo documents. The **irreducible behavioural surface** named in `MigrateComparisonPaper §estimate`
 (process 54k LOC · workflow 7k · callouts 10k · validators · the logic-expression evaluator · the entire security layer)
-is enumerated below and is overwhelmingly ⛔. This is what makes the *76× shell → ~25× conservative full parity* story precise: the 76× counts
+is enumerated below and is overwhelmingly ⛔. This is what makes the *≈51× shell → ~21× conservative full parity* story precise: the 51× counts
 delivery/definition, not behavioural parity — most behaviour is **named-and-deferred**, not folded.
 
 > **Engine architecture fact (sets the ceiling):** all engine field-logic is descriptor-driven from a *hand-authored*
@@ -258,7 +258,7 @@ The real AD counts sharpen `MigrateComparisonPaper §"Realistic conversion estim
 (3 registered). The **~3,000-row logic-expression** surface (W-LOGIC-EVAL) and the **~4,200-row security** surface
 (W-ACCESS) now have an engine home (`ad_evaluator.js` / `ad_access.js`, headless-proven; live render-wiring is the
 residual). Folded today: the `CO` transition, the double-entry posting fold, a fixed report set — for ~5–7 demo tables.
-This is the precise content behind "76× shell → ~25× conservative full parity": the 76× is delivery/definition (the 18,614-LOC engine shell, ~0.2% of the M-class logic folded); behavioural parity is a long, *named* tail — see [ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md).
+This is the precise content behind "≈51× shell → ~21× conservative full parity": the 51× is delivery/definition (the 28,184-LOC engine shell re-measured 2026-06-12, ~0.2% of the M-class logic folded — the ratio falls from the earlier 76×/18,614 as real coverage grows); behavioural parity is a long, *named* tail — see [ERP_MODEL_ARCHETYPE.md](ERP_MODEL_ARCHETYPE.md).
 
 ## Provenance / caveats
 
