@@ -8,7 +8,10 @@
 > **Not** the BIM [Red Pill Rosetta](RedPillRosetta.md) (that one is about pristine-IFC re-model truth).
 > This is the *ERP dictionary*: iDempiere Java ⇄ AD-as-data fold.
 >
-> **Companions:** [Coverage Matrix](ERP_COVERAGE_MATRIX.md) (which surfaces are proven equivalent) ·
+> **Companions:** [Cross-ERP Rosetta Stone](../ERPConceptRosetta.html) (the *concept matrix* — every ERP's terms
+> mapped to the one canonical AD fold; this page is iDempiere-only, that one spans Odoo/SAP/Oracle/Dynamics) ·
+> [ACDOCA Fold Plan](ACDOCA_FOLD_PLAN.md) (the SAP headline) ·
+> [Coverage Matrix](ERP_COVERAGE_MATRIX.md) (which surfaces are proven equivalent) ·
 > [Fold-Engine Code Quality](FoldEngineQuality.md) (how the witnesses are graded) ·
 > [Migrate & Compare](MigrateComparisonPaper.md) (the thesis & honesty panel).
 

@@ -73,6 +73,7 @@ nav:
       - Feature Comparison: FeatureComparison.md
       - "Migrate & Compare (ERP)": MigrateComparisonPaper.md
       - "ERP Rosetta Stone (iDempiere → Fold Engine)": ERPRosettaStone.md
+      - "ACDOCA Fold Plan (SAP headline)": ACDOCA_FOLD_PLAN.md
       - "Fold-Engine Code Quality": FoldEngineQuality.md
       - "Fold-Engine Constraints": FoldEngineConstraints.md
       - About BIM OOTB: AboutMore.md
