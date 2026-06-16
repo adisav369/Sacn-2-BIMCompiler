@@ -59,6 +59,16 @@
   .nav-foot{display:flex;justify-content:space-between;margin-top:34px;padding-top:16px;border-top:1px solid var(--line);font-size:13px}
   mark{background:#ffd54f;color:#1a1200;border-radius:2px;padding:0 1px}
   .empty{color:var(--dim);font-style:italic}
+  details.more{margin:6px 0 16px;border:1px solid var(--line);border-left:3px solid var(--violet);
+    border-radius:0 10px 10px 0;background:rgba(179,136,255,.05);max-width:74ch}
+  details.more>summary{cursor:pointer;padding:11px 16px;font-size:13.5px;font-weight:700;color:#cbb6ff;
+    list-style:none;user-select:none}
+  details.more>summary::-webkit-details-marker{display:none}
+  details.more>summary::before{content:"▸ ";color:var(--violet)}
+  details.more[open]>summary::before{content:"▾ "}
+  details.more .body{padding:2px 18px 14px;font-size:14px;color:#dbe4ec}
+  details.more .body p{margin:0 0 10px;font-size:14px;max-width:none}
+  details.more .body b{color:#fff}
   .lawline{margin-top:22px;padding:14px 18px;border:1px solid var(--line);border-left:4px solid var(--green);
     border-radius:0 10px 10px 0;background:rgba(124,179,66,.07);font-size:14.5px;color:#eaf2e4;max-width:74ch}
 </style>
@@ -128,6 +138,43 @@
       <b>working ERP, oracle-diffed to the cent</b>. That combination, and this manual form, is what's distinctive here.
       <b>If a book like this already exists, tell us and we'll cite it</b> — that invitation is itself the
       §FALSIFIER this book lives by.</p>
+
+      <p style="font-size:13.5px;color:var(--dim);max-width:74ch;margin:0 0 4px"><b style="color:#cbb6ff">Closest prior
+      work.</b> The nearest published effort uses event sourcing for ERP <i>traceability</i> — Vasconcellos, Bezerra &amp;
+      Bianchini, <a href="https://clei.org/clei2018/docs/SLISW/182931.pdf">“Applying Event Sourcing in an ERP System: A
+      Case Study”</a> (CLEI 2018). We differ on one load-bearing point: there the business rules live in source code
+      <i>outside</i> the log, so replaying an old event needs the matching code version; here the rule-set is the
+      declarative dictionary, <b>folded and itself signed into the same log</b> — so the rule version travels <i>with</i>
+      the data.</p>
+      <details class="more">
+        <summary>Read more — what that paper found, and how this engine extends it</summary>
+        <div class="body">
+          <p><b>What it is.</b> A single industrial case study of <b>Liera</b>, an ERP a Brazilian logistics company
+          built by replacing an old ERP module-by-module <i>during live operation</i>, under famously complex tax law.
+          It treats event sourcing as a <b>software-architecture practice</b> (paired with Domain-Driven Design and
+          CQRS), <b>not</b> as accounting doctrine — the accounting is just the domain that hurts most when you can't
+          replay history. It names the disease precisely: the <b>“internal state history loss problem”</b> — software
+          overwrites state, so the past becomes unanswerable.</p>
+          <p><b>What it confirms (independently of us).</b> The headline win was <b>“dramatically increased error
+          traceability”</b>: debug-by-replay — mirror the production DB, find the event, erase forward, re-run the user's
+          action. Plus answering past <b>“why”</b> questions (why this tax rate, why this order was denied three times),
+          and an unexpected benefit — non-technical stakeholders could <i>read the event flow</i>. Those are our Ch.1
+          (history is the substrate) and our “the op-log is readable”, reached by another team in 2018.</p>
+          <p><b>Their hardest problem — which we largely solve.</b> Event-version vs code-version drift: to replay an old
+          event you need the rules <i>as they were then</i>, but the rules sit in source code, outside the log. Our
+          engine keeps the rules in the <b>declarative AD</b>, folded, and as signed ops in the same log (Ch.9) — so the
+          rule version is carried by the data, not by a separate code checkout.</p>
+          <p><b>Their drawbacks = our already-built answers.</b> They needed <b>snapshots</b> for replay performance → our
+          signed <b>checkpoints</b> (0.90 ms vs 47.70 ms). Their <b>optimistic concurrency</b> via a SourceId–Version
+          pair → our <code>verifyChain</code> / quorum-CAS (Ch.11). Their <b>DB dilemma</b> (MSSQL native transactions vs
+          MongoDB schema-flexibility; they picked Mongo and worried) → we skip it entirely (SQLite-WASM, no server). They
+          close honestly that ES is still <b>“a niche solution while it matures”</b> — the same humility as our Ch.12.</p>
+          <p><b>The gap we fill.</b> They use event sourcing for traceability <i>inside</i> a conventional architecture —
+          DDD aggregates, a server, a database of record. We make the op-log the <b>only</b> source of truth, fold a
+          <b>declarative dictionary</b> into the running app, and diff the accounting to a real iDempiere oracle <b>to the
+          cent</b>. Predecessor and validation, not duplicate — which is exactly why we cite it.</p>
+        </div>
+      </details>
 
       <div class="lawline">If you remember one line from this book, remember the one the whole engine turns on:
       <b>state is never written, only folded; claims are never asserted, only witnessed.</b></div>
