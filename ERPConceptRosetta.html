@@ -45,6 +45,12 @@
   .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#b9c6d4}
   .foot{color:var(--dim);font-size:12.5px;margin-top:12px}
   .pill{display:inline-block;font-size:10.5px;padding:0 6px;border-radius:10px;border:1px solid var(--line);color:var(--dim);margin-left:6px}
+  td.step{color:#cfe0ef;font-weight:600;white-space:nowrap}
+  .dec{color:var(--green);font-weight:700}
+  .imp{color:var(--amber);font-weight:700}
+  td.java{color:#d7c0c0}
+  .yes{color:var(--red);font-weight:700}
+  .no{color:var(--green);font-weight:700}
 </style>
 </head>
 <body>
@@ -139,6 +145,63 @@
     ACT) into the canonical column, and route genuinely-custom logic to a <b>plugin</b>. So the left two columns are always
     <i>data</i>; the right three are sometimes data (declarative config) and sometimes code (which becomes an effect or a
     plugin). That asymmetry — declarative on the left, mixed on the right — is the whole migration thesis in one table.
+  </div>
+
+  <h2>7 · Cost of change — the elementary case</h2>
+  <p class="lede">The Rosetta rows above show <b>where a fact lives</b>. This section shows <b>what it costs to change one</b>.
+  Start with the most boring change in any ERP: a clerk keeps overwriting an auto-filled field, so the business says
+  <b>“lock the Sales Order <i>Description</i> field — make it read-only.”</b> Read the two columns down.</p>
+
+  <div class="scroll"><table>
+    <tr><th>Step</th><th>iDempiere (Java monolith) ◆</th><th>Fold Engine (AD-declarative) ✅</th></tr>
+    <tr><td class="step">What you edit</td><td class="java"><code>AD_Field.IsReadOnly = 'Y'</code> — one dictionary row</td><td><span class="canon" style="color:#a6d977"><b>the same</b></span> <code>AD_Field.IsReadOnly = 'Y'</code></td></tr>
+    <tr><td class="step">Through what</td><td class="java">running Java server + Postgres + admin login, via the AD window</td><td>edit the row → <b>signed op-log append</b> (<code>kernel_ops</code>)</td></tr>
+    <tr><td class="step">Recompile?</td><td class="java"><span class="no">No</span> — it is AD-driven</td><td><span class="no">No</span> — <b>re-fold = re-read, not recompile</b></td></tr>
+    <tr><td class="step">Takes effect</td><td class="java">reset cache / re-login</td><td><b>on the spot</b> — the form repaints, no reload</td></tr>
+    <tr><td class="step">Reaches other sites</td><td class="java">central DB only</td><td><b>op-log replays to every node</b>, signature verified</td></tr>
+    <tr><td class="step">Server needed</td><td class="java"><span class="yes">yes</span></td><td><span class="no">none</span></td></tr>
+  </table></div>
+  <p class="foot">Witnessed live: <code>W-AD-SELFEDIT</code> — a signed <code>AD_Field</code> edit re-folds the open form
+  on the spot (field count 26→25→26), no reload, no recompile. The honest point: <b>even iDempiere makes this change
+  declarative</b> — that is exactly <i>why</i> the engine borrows its dictionary rather than re-authoring it. The Fold
+  Engine does not win on “is it config”; it wins on <b>no server, no cache reset, and self-propagation by op-log</b>.</p>
+
+  <p class="lede" style="margin-top:22px">Now the gradient. Cost stays near-zero while a change is <span class="dec">declarative</span>,
+  and rises only when the logic is genuinely <span class="imp">imperative</span> — and even then it is bounded to a single plugin.</p>
+  <div class="scroll"><table>
+    <tr><th>Change request</th><th>Nature</th><th>iDempiere cost ◆</th><th>Fold Engine cost ✅</th></tr>
+    <tr><td>Lock a field (read-only / mandatory)</td><td><span class="dec">declarative</span></td><td class="java">edit AD row, reset cache</td><td>edit AD row → op-log → re-fold, <b>no server</b></td></tr>
+    <tr><td>Default payment term from the partner</td><td><span class="dec">declarative binding</span></td><td class="java">set <code>AD_Column.Callout</code></td><td>set <code>AD_Column.Callout</code> → <code>AdCallout</code> dispatch</td></tr>
+    <tr><td>Block an order over credit limit</td><td><span class="dec">declarative rule</span></td><td class="java"><code>AD_Val_Rule</code> config</td><td><code>AD_Val_Rule</code> → <code>AdModelVal</code> fold</td></tr>
+    <tr><td>Bespoke rebate arithmetic</td><td><span class="imp">imperative (custom)</span></td><td class="java">new Java class, recompile, restart</td><td><b>one plugin</b> (<code>.foldbundle</code>), engine untouched</td></tr>
+    <tr><td>Change how an order posts to GL</td><td><span class="imp">imperative (core)</span></td><td class="java">edit <code>MOrder.completeIt()</code>, rebuild + redeploy the monolith</td><td>fold the op-log <b>effect</b> (config + <code>post_resolver</code>), else a plugin</td></tr>
+  </table></div>
+
+  <div class="pitch" style="margin-top:22px">
+    <b>Verdict.</b> A <span class="dec">declarative</span> change is near-zero and <b>self-propagating</b>; an
+    <span class="imp">imperative</span> change is <b>bounded to one plugin</b> — never a monolith rebuild.
+    <b>Cost scales with how imperative the change is, not with the size of the system.</b> This is the same thesis as the
+    cost equation below, seen from the <i>change</i> side instead of the <i>build</i> side.
+  </div>
+
+  <h2>8 · The cost equation — what actually scales</h2>
+  <p class="lede">A common first reading is that this architecture just <b>moves</b> cost: you save on UI and DB binding,
+  then pay it back managing a cryptographic op-log. That is the <b>wrong</b> equation — it confuses a one-time substrate
+  with a recurring tax. The honest accounting:</p>
+  <div class="scroll"><table>
+    <tr><th>Cost component</th><th>Scales with…</th><th>Honest size</th></tr>
+    <tr><td><b>Op-log / integrity substrate</b> (“git-for-data”)</td><td><b>nothing</b> — written once</td><td class="java"><b>fixed</b>. Orthogonal to rule count; it secures <i>whatever</i> the fold produces across nodes. Not a per-rule tax.</td></tr>
+    <tr><td><b>Business-rule complexity</b> (O2C, P2P, GL, FX)</td><td><b>dictionary coverage</b></td><td>cheap because the dictionary is <b>borrowed and already proven</b> by 20 years of iDempiere production — you pay to <i>interpret</i>, not to <i>author</i>.</td></tr>
+    <tr><td><b>UI / dictionary stitch</b></td><td>surfaces exposed</td><td class="java">the real ongoing engineering — surfacing the engine correctly per window.</td></tr>
+    <tr><td><b>Oracle-diffing discipline</b></td><td>claims of equivalence</td><td class="java">the proof the interpretation is faithful — diff to real iDempiere (<code>idempiere_test</code>) to the cent.</td></tr>
+  </table></div>
+  <div class="pitch" style="margin-top:22px;border-left-color:var(--blue);background:linear-gradient(100deg,rgba(66,165,245,.10),rgba(124,179,66,.05))">
+    <b>Why it is compression, not relocation.</b> The whole thesis rests on the dictionary being <b>borrowed and trusted</b>,
+    with the oracle as the proof it was read correctly (measured: ≈89× fewer LOC, zero server). Had we <i>authored</i> our
+    own dictionary, the original “immense cost of custom arithmetic to fold to the cent” would genuinely apply — and the
+    op-log-as-paradox reading would hold. We didn’t: we <b>interpret</b> a proven dictionary and <b>diff to an oracle</b>.
+    So rule cost ∝ <i>dictionary coverage</i> (cheap), the op-log stays a <b>fixed one-time substrate</b>, and the real
+    ongoing cost is the <b>stitch + oracle-diff</b> — exactly the elementary change matrix in §7, read as an equation.
   </div>
 
   <p class="foot" style="margin-top:24px">
