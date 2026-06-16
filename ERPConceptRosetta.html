@@ -197,7 +197,8 @@
   </table></div>
   <div class="pitch" style="margin-top:22px;border-left-color:var(--blue);background:linear-gradient(100deg,rgba(66,165,245,.10),rgba(124,179,66,.05))">
     <b>Why it is compression, not relocation.</b> The whole thesis rests on the dictionary being <b>borrowed and trusted</b>,
-    with the oracle as the proof it was read correctly (measured: ≈89× fewer LOC, zero server). Had we <i>authored</i> our
+    with the oracle as the proof it was read correctly (measured: <b>~51× fewer code lines built so far</b>, ~21× at
+    conservative full parity, zero server — see §10). Had we <i>authored</i> our
     own dictionary, the original “immense cost of custom arithmetic to fold to the cent” would genuinely apply — and the
     op-log-as-paradox reading would hold. We didn’t: we <b>interpret</b> a proven dictionary and <b>diff to an oracle</b>.
     So rule cost ∝ <i>dictionary coverage</i> (cheap), the op-log stays a <b>fixed one-time substrate</b>, and the real
@@ -214,7 +215,7 @@
     So the saving concentrates on the <b>largest</b> TCO bucket — the yearly maintenance line — not the one-time build.
     <span style="color:var(--dim)">We publish <b>no single “% saved”</b> figure — TCO varies per org and inventing one would
     betray the non-invent rule; the honest claim is <i>where</i> the saving lands, each clause above traceable to a citation
-    or a witnessed fact (≈89× LOC, zero-server, <code>W-AD-SELFEDIT</code>).</span>
+    or a witnessed fact (~21–51× less code, zero-server, <code>W-AD-SELFEDIT</code> — §10).</span>
   </div>
   <p class="foot">Sources: maintenance share of TCO —
     <a href="https://www.scnsoft.com/software-development/maintenance-and-support/costs">ScienceSoft</a> ·
@@ -267,6 +268,34 @@
     a bigger shift if your work was deep ZK UI. Honest caveats: the JS plugin SDK is <b>younger</b> than 20 years of OSGi
     ecosystem (fewer examples, more edges), and deep ZK customisation does <b>not</b> map 1:1 — that is the “stitch” cost §8 names.
   </div>
+
+  <h2 id="measured">10 · Measured — both sides counted, on disk and in code</h2>
+  <p class="lede">The sections above argue the <i>shape</i> of the cost. This one is just a tape measure. Every figure below is
+  a real <code>du</code>/<code>wc</code>/sqlite count of <b>iDempiere itself</b> against <b>this engine</b> — same demo
+  tenant (GardenWorld), measured 2026-06-06 / -12, no estimates in the left three columns.</p>
+  <div class="scroll"><table>
+    <tr><th>Layer (measured)</th><th>iDempiere — Java / Postgres ◆</th><th>This — JS / SQLite ✅</th><th>Reduction</th></tr>
+    <tr><td>Definition — the AD seed</td><td class="java"><code>Adempiere_pg.dmp</code> = <b>45.2 MB</b></td><td><code>ad_seed.db</code> = <b>26.1 MB</b> (full-width, no slice-holes)</td><td><b>~1.7×</b></td></tr>
+    <tr><td>A live tenant on disk</td><td class="java">Postgres <b>143 MB</b> (41 heap + 39 idx + 6 TOAST + ~57 bloat)</td><td>SQLite <b>43 MB</b> (925 tables · 187,133 rows) → <b>8.5 MB</b> zstd backup</td><td><b>3.3×</b> (16.8× compressed)</td></tr>
+    <tr><td>Runtime code</td><td class="java"><b>1,427,147</b> Java LOC · 4,465 files · 294 <code>.zul</code> · 60 plugins</td><td><b>28,184</b> JS LOC · 132 files (static + SQLite-WASM)</td><td><b>~51×</b> lines, built so far</td></tr>
+    <tr><td>Stack to run it</td><td class="java">JVM + Postgres + ~3.7 GB build, server-bound</td><td>static files, offline-capable, <b>no server of record</b></td><td><span class="no">server → none</span></td></tr>
+  </table></div>
+
+  <div class="pitch" style="margin-top:22px;border-left-color:var(--red);background:linear-gradient(100deg,rgba(239,83,80,.10),rgba(124,179,66,.05))">
+    <b>The honest caveat — read this before quoting any ratio.</b> These are <b>delivery / definition</b> reductions,
+    <b>not feature parity</b>. The 28K JS <i>renders</i> the dictionary and <i>folds</i> the paths built so far (O2C, the
+    posted journal, signed rule-edit) — it does <b>not</b> re-implement the full transactional Java server. So far only
+    <b>~0.2% of the M-class transactional logic</b> is folded (<code>M*.java</code> ≈ 105K code-LOC). The code ratio
+    <b>falls as real coverage grows</b> (it was 89× → 76× → 51× as more was folded) — so the <b>honest headline is the
+    conservative ~21×</b> projected at full parity (≈68K JS), <b>not</b> the eye-catching early number. What is genuinely
+    removable is the <b>server/build stack</b> and the <b>generic AD-interpretation engine</b> (leaner because the dictionary
+    is self-describing); what is <b>irreducible</b> is each transactional verb, folded deterministically — that is the whole
+    thesis, stated against its own measuring tape.
+  </div>
+  <p class="foot">Source: real measurement, not estimate — <code>internal/BLOAT_MEASUREMENT.md</code> (live docker Postgres
+    → <code>migrate_pg_to_sqlite.js</code>, 2026-06-06) + LOC re-counted 2026-06-12; the model-layer denominator is
+    <code>docs/ERP_MODEL_ARCHETYPE.md</code> (the MOrder archetype + ~25 <code>completeIt</code> deltas). Full coverage
+    accounting: <a href="ERP_COVERAGE_MATRIX/">Coverage Matrix</a>.</p>
 
   <p class="foot" style="margin-top:24px">
     Companions: <a href="ERPRosettaStone/">ERP Rosetta Stone (iDempiere-Java → Fold Engine)</a> — the developer idiom map ·
