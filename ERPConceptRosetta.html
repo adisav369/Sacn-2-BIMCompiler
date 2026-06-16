@@ -147,7 +147,7 @@
     plugin). That asymmetry — declarative on the left, mixed on the right — is the whole migration thesis in one table.
   </div>
 
-  <h2>7 · Cost of change — the elementary case</h2>
+  <h2 id="cost-of-change">7 · Cost of change — the elementary case</h2>
   <p class="lede">The Rosetta rows above show <b>where a fact lives</b>. This section shows <b>what it costs to change one</b>.
   Start with the most boring change in any ERP: a clerk keeps overwriting an auto-filled field, so the business says
   <b>“lock the Sales Order <i>Description</i> field — make it read-only.”</b> Read the two columns down.</p>
@@ -184,7 +184,7 @@
     cost equation below, seen from the <i>change</i> side instead of the <i>build</i> side.
   </div>
 
-  <h2>8 · The cost equation — what actually scales</h2>
+  <h2 id="cost-equation">8 · The cost equation — what actually scales</h2>
   <p class="lede">A common first reading is that this architecture just <b>moves</b> cost: you save on UI and DB binding,
   then pay it back managing a cryptographic op-log. That is the <b>wrong</b> equation — it confuses a one-time substrate
   with a recurring tax. The honest accounting:</p>

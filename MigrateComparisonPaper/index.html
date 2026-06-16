@@ -528,6 +528,8 @@
       
         
       
+        
+      
     
     
     
@@ -948,6 +950,34 @@
     
   
     ERP Rosetta Stone (iDempiere → Fold Engine)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERPConceptRosetta.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-ERP Rosetta Stone (concept + cost)
   
 
     
@@ -5695,7 +5725,7 @@ Source: <code>docs/DistributedERP.md</code> §0 (lines 53–85, server→serverl
 - The Odoo fold is against a <strong>running Odoo 17</strong> instance (<code>build/erp/odoo_fold_live.log</code>,
   <code>§ODOO-FOLD-LIVE PASS</code>).
 - <strong>Engine output == real iDempiere output — 43 surfaces oracle-diffed, not asserted</strong> (16 cent-exact · 6 declarative · 21 model-layer), <strong>+ 3 rule-consistent</strong>, each carrying a load-bearing <strong>§FALSIFIER</strong> so a passing diff can't be a tautology. Full surface-by-surface enumeration, witnesses, and the live-Postgres diffs → <a href="../ERP_COVERAGE_MATRIX/"><code>ERP_COVERAGE_MATRIX.md</code></a> §Equivalence + <a href="../FoldEngineQuality/"><code>FoldEngineQuality.md</code></a>. How a <code>save</code>/<code>completeIt</code>/<code>Doc_*</code> posting maps from your iDempiere code → <a href="../ERPRosettaStone/"><code>ERP Rosetta Stone</code></a>.
-<strong><code>maxDiff=0c</code> is <em>exact</em>, not "close enough" — the money-math holy war, settled.</strong> Money never touches float: amounts accumulate as <strong>integer cents</strong>, and the only non-integer steps (FX, proportional tax) multiply in <strong><code>BigInt</code> off the exact-decimal rate</strong>, rounded <code>HALF_UP</code> — unit-proven <strong>bit-equal to Java <code>BigDecimal</code></strong> (<a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/bigdecimal.js"><code>build/erp/bigdecimal.js</code></a>, <code>poc_money_fold.js</code>). The lesson: <strong>the discipline ports, the language doesn't matter</strong> — exact decimal money is a ~140-line library, not a reason to keep the server. (The mechanism — why <code>set</code>+<code>save</code> becomes an op and how the fold stays exact — is the <a href="../ERPRosettaStone/">ERP Rosetta Stone</a>.)</p>
+<strong><code>maxDiff=0c</code> is <em>exact</em>, not "close enough" — the money-math holy war, settled.</strong> Money never touches float: amounts accumulate as <strong>integer cents</strong>, and the only non-integer steps (FX, proportional tax) multiply in <strong><code>BigInt</code> off the exact-decimal rate</strong>, rounded <code>HALF_UP</code> — unit-proven <strong>bit-equal to Java <code>BigDecimal</code></strong> (<a href="https://github.com/red1oon/BIMCompiler/blob/feat/erp-substrate-phase012/build/erp/bigdecimal.js"><code>build/erp/bigdecimal.js</code></a>, <code>poc_money_fold.js</code>). The lesson: <strong>the discipline ports, the language doesn't matter</strong> — exact decimal money is a ~140-line library, not a reason to keep the server. (The mechanism — why <code>set</code>+<code>save</code> becomes an op and how the fold stays exact — is the <a href="../ERPRosettaStone/">ERP Rosetta Stone</a>.) <strong>What this costs to <em>change</em> — and why the op-log is a fixed substrate, not a per-rule tax</strong> (the elementary "lock a field read-only" change matrix, the imperative-vs-declarative gradient, and the cost equation) → <a href="../ERPConceptRosetta.html#cost-of-change"><code>Cross-ERP Rosetta Stone §7–§8</code></a>.</p>
 <p><strong>What is architectural (a property, not a number):</strong>
 - "0 round-trip" — <em>structural</em> (no server of record on the read/fold path), not a benchmark. Honest counter: server-removal only wins over a network; on-box, durable Postgres is <em>faster</em> per-op (it buys durability + concurrency we defer).
 - Most ERP cells are <em>n/a — architectural</em>: the legacy stack exposes no comparable single number (throughput ceiling, batch-vs-naive) — server-bound by design.</p>
