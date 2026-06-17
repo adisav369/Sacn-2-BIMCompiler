@@ -22,6 +22,32 @@ immediately — no credentials, just pick a role.
 
 ---
 
+## Initial Tenant Setup — born a new client *(LIVE)*
+
+This is iDempiere's **Initial Client Setup**, on our engine. Open **genesis.html**, give the new
+tenant a name, a currency, and an admin user — three inputs — then press **⚡ Birth tenant**.
+
+![Initial Tenant Setup — three inputs birth a complete tenant: 6 signed op-groups, the 311-account default chart, and a test sales invoice that posts to the cent (DR 12110 / CR 41000 / CR 21610). The "Install as resident tenant" button makes it real.](figs/genesis_born.png)
+
+What you get, instantly:
+
+- **A complete, postable tenant** expressed as a *signed op-log* (git-for-a-tenant) — 6 op-groups
+  (identity, calendar, the full **311-account** default chart, acctschema + default-account wiring,
+  doctypes, base masters). No migration import.
+- **Proof before it's permanent** — a test sales invoice is posted through the *same* shipped
+  `doc_poster` + `post_resolver` verbs the live Posting-Preview uses, and the journal matches the
+  iDempiere oracle **to the cent** (DR 12110 Receivable / CR 41000 Revenue / CR 21610 Tax-due, balanced).
+- The whole birth is **replayable, branchable, reversible** — and ECDSA-signed.
+
+Press **⬇ Install as resident tenant** to make it real: the tenant is re-banded into a free client
+slot, merged into the live dictionary (sharing the System AD), its admin role granted the standard
+windows, and persisted. You're dropped at the login switcher — the new tenant is now listed and
+**you log in to it and work** (its windows, its data). It survives a reload.
+
+![The login switcher after install — the born tenant "AcmeCo" (1 user · client 17) is now a resident client right beside GardenWorld and the demos, with zero cross-leak](figs/genesis_resident_switcher.png)
+
+---
+
 ## 1. Login
 
 The login card lists all AD roles in the seed. Pick one and tap it:
