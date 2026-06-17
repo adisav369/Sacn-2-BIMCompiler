@@ -2623,6 +2623,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#initial-tenant-setup-born-a-new-client-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Initial Tenant Setup — born a new client (LIVE)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-login" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4914,6 +4925,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#initial-tenant-setup-born-a-new-client-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Initial Tenant Setup — born a new client (LIVE)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-login" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5466,6 +5488,26 @@ is the operating manual.</p>
 <h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <p>Open <strong>idempiere.html</strong> (or follow the "iDempiere" link from the front door). A login card appears
 immediately — no credentials, just pick a role.</p>
+<hr />
+<h2 id="initial-tenant-setup-born-a-new-client-live">Initial Tenant Setup — born a new client <em>(LIVE)</em><a class="headerlink" href="#initial-tenant-setup-born-a-new-client-live" title="Permanent link">&para;</a></h2>
+<p>This is iDempiere's <strong>Initial Client Setup</strong>, on our engine. Open <strong>genesis.html</strong>, give the new
+tenant a name, a currency, and an admin user — three inputs — then press <strong>⚡ Birth tenant</strong>.</p>
+<p><img alt="Initial Tenant Setup — three inputs birth a complete tenant: 6 signed op-groups, the 311-account default chart, and a test sales invoice that posts to the cent (DR 12110 / CR 41000 / CR 21610). The &quot;Install as resident tenant&quot; button makes it real." src="../figs/genesis_born.png" /></p>
+<p>What you get, instantly:</p>
+<ul>
+<li><strong>A complete, postable tenant</strong> expressed as a <em>signed op-log</em> (git-for-a-tenant) — 6 op-groups
+  (identity, calendar, the full <strong>311-account</strong> default chart, acctschema + default-account wiring,
+  doctypes, base masters). No migration import.</li>
+<li><strong>Proof before it's permanent</strong> — a test sales invoice is posted through the <em>same</em> shipped
+  <code>doc_poster</code> + <code>post_resolver</code> verbs the live Posting-Preview uses, and the journal matches the
+  iDempiere oracle <strong>to the cent</strong> (DR 12110 Receivable / CR 41000 Revenue / CR 21610 Tax-due, balanced).</li>
+<li>The whole birth is <strong>replayable, branchable, reversible</strong> — and ECDSA-signed.</li>
+</ul>
+<p>Press <strong>⬇ Install as resident tenant</strong> to make it real: the tenant is re-banded into a free client
+slot, merged into the live dictionary (sharing the System AD), its admin role granted the standard
+windows, and persisted. You're dropped at the login switcher — the new tenant is now listed and
+<strong>you log in to it and work</strong> (its windows, its data). It survives a reload.</p>
+<p><img alt="The login switcher after install — the born tenant &quot;AcmeCo&quot; (1 user · client 17) is now a resident client right beside GardenWorld and the demos, with zero cross-leak" src="../figs/genesis_resident_switcher.png" /></p>
 <hr />
 <h2 id="1-login">1. Login<a class="headerlink" href="#1-login" title="Permanent link">&para;</a></h2>
 <p>The login card lists all AD roles in the seed. Pick one and tap it:</p>
