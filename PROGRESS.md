@@ -59,14 +59,17 @@
 - ✅ **Server actions = NOT a code gap** — `§SRVACT-CLASSIFY code=64` all Python, no declarative subset; honestly deferred.
 - Panel re-published: https://red1oon.github.io/BIMCompiler/migrate_status_panel.html (44 surfaces, live-verified).
 
-## AD_Process FOLD lane — P1 GeneratePO DONE/LIVE (2026-06-17, Opus)
-- ✅ **ProjectGenOrder (AD_Process 164) KIND-2 fold** — bim-ootb PR #352, erp sw v704, ad_process.js?v=2.
-  Handler folds C_Project → C_Order op-group via `erp_engine.buildDoc` (newVerbs=0). Source-corrected: it's a
-  **Sales** order (not PO), Qty=PlannedQty−InvoicedQty, Price=PlannedPrice; getProject gate → honest
-  `project-not-ready` rejection (no fabricated order). **W-PROC-GENPO** (poc_proc_genorder.js, fold==SQL
-  oracle to the cent + falsifier) + **W-PROC-GENPO-LIVE** (poc_genpo_live.js, live picker+honest rejection,
-  0 pageerrors). Seed-limit: no served tenant has a gate-passing project → positive fold proven headless only.
-  NEXT (lane §P2): rank next procs by demand (GenerateShipment kind-2, project-cycle report kind-1).
+## AD_Process FOLD lane — P1 GeneratePO + P2-leg1 GenShipment DONE/LIVE (2026-06-17, Opus)
+- ✅ **P1 ProjectGenOrder (AD_Process 164) KIND-2 fold** — bim-ootb PR #352, erp sw v704, ad_process.js?v=2.
+  Folds C_Project → C_Order via `erp_engine.buildDoc` (newVerbs=0). Source-corrected: **Sales** order (not PO),
+  Qty=PlannedQty−InvoicedQty; getProject gate → honest `project-not-ready` rejection. **W-PROC-GENPO** +
+  **W-PROC-GENPO-LIVE** (poc_proc_genorder.js / poc_genpo_live.js, both EXIT 0).
+- ✅ **P2-leg1 InOutGenerate (AD_Process 118) KIND-2 fold** — bim-ootb PR #355, sw v706, ad_process.js?v=3.
+  Folds a CO Sales Order → M_InOut shipment via the createShipment archetype (newVerbs=0). Source-extracted:
+  toDeliver=QtyOrdered−QtyDelivered; DeliveryRule 'A'→min(toDeliver,onHand) (Availability cap), others
+  named-deferred; gate CO+SO. **W-PROC-SHIP** (fold==independent re-derivation, cap load-bearing, falsifier) +
+  **W-PROC-SHIP-LIVE** (poc_proc_inout.js / poc_genship_live.js, both EXIT 0). Demand audit: 451 used procs =
+  148 KIND-1 / 16 KIND-2 / 287 KIND-3. NEXT: C_Invoice_Generate (119, KIND-2 order→invoice), report procs.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
 - POS gap-close banked — `prompts/POS_GAP_CLOSE.md # DONE` (2026-06-12g2)
