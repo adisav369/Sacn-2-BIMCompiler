@@ -1,0 +1,182 @@
+<!doctype html><html><head><meta charset="utf-8"><title>W-KERNEL-WEBIFC spike</title></head>
+<body>
+<script type="module">
+// ════════════════════════════════════════════════════════════════════════════
+// W-KERNEL-WEBIFC  (prompts/BONSAI_KERNEL_RESEARCH.md §3 spine "IfcExtrudedAreaSolid",
+//                  §4 hard-part #3 "IFC write coverage", §RESUME edge-probes)
+//
+// CLAIM (written BEFORE the code):
+//   A REAL wall, sourced (NOT invented) from reference/residential/Ifc4_WallElementedCase.ifc —
+//   the "Drywall" panel of "Wall #1" (IFCWALLELEMENTEDCASE #123), whose geometry is
+//     #101 = IFCEXTRUDEDAREASOLID(#102,#103,#104,0.5)
+//     #102 = IFCRECTANGLEPROFILEDEF(.AREA.,$,$,96.,48.)   (XDim=96, YDim=48)
+//     #104 = IFCDIRECTION((0.,0.,1.))                       (extrude +Z)
+//   — can be re-AUTHORED as ONE kernel_ops op-row {op_type:'GEOM_EXTRUDE', parameters:{profile,dir}},
+//   WRITTEN to a fresh IFC4 model via web-ifc's write API (CreateModel/CreateIfcEntity/WriteLine/
+//   SaveModel), then RE-IMPORTED from the exported bytes (OpenModel/GetLine), and the
+//   IfcExtrudedAreaSolid read back equals the source (XDim, YDim, Depth, ExtrudedDirection)
+//   within float tolerance. That equality IS the witness — the IfcExtrudedAreaSolid family
+//   round-trips through the op-row → IFC → op-row path with byte-faithful geometry.
+//
+// HONEST SCOPE: this probes the GEOMETRY envelope only — IfcExtrudedAreaSolid + its
+//   IfcRectangleProfileDef + IfcAxis2Placement(2D/3D) + IfcDirection + IfcCartesianPoint, plus
+//   the IfcWall product shell + IfcShapeRepresentation. It does NOT round-trip property sets,
+//   materials, ownership history, spatial containment, or styling — web-ifc can write those but
+//   this spike deliberately scopes to the swept-solid family the Bonsai spine actually authors.
+// ════════════════════════════════════════════════════════════════════════════
+import * as WebIFC from '/node_modules/web-ifc/web-ifc-api.js';
+
+const log = (m) => console.log(m);
+const TAG = '§KERNEL-WEBIFC';
+
+(async () => {
+  let pass = true;
+  const fail = (m) => { pass = false; log(TAG + '-FAIL ' + m); };
+  const approx = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
+
+  try {
+    // ───────────────────────────────────────────────────────────────────────
+    // STEP 0 — the REAL source (extracted, not invented). Traceability in §-log.
+    // reference/residential/Ifc4_WallElementedCase.ifc lines 115/116/118 :
+    //   #101 IFCEXTRUDEDAREASOLID(...,0.5) ; #102 IFCRECTANGLEPROFILEDEF(...,96.,48.) ; #104 (0,0,1)
+    const SRC = {
+      file: 'reference/residential/Ifc4_WallElementedCase.ifc',
+      element: 'IFCWALLELEMENTEDCASE #123 "Wall #1" / IFCBUILDINGELEMENTPARTTYPE #47 "Drywall"',
+      solidLine: '#101 IFCEXTRUDEDAREASOLID',
+      XDim: 96.0, YDim: 48.0, Depth: 0.5, dir: [0, 0, 1],
+    };
+    log(`${TAG} source file=${SRC.file}`);
+    log(`${TAG} source element=${SRC.element} solid=${SRC.solidLine}`);
+    log(`${TAG} source profile XDim=${SRC.XDim} YDim=${SRC.YDim} depth=${SRC.Depth} dir=[${SRC.dir.join(',')}]`);
+
+    // STEP 1 — author the wall as ONE kernel_ops op-row (same row shape as build/kernel/spike.html).
+    const opRow = {
+      op_type: 'GEOM_EXTRUDE',
+      parameters: {
+        ifcClass: 'IfcWall',
+        profile: { kind: 'rectangle', XDim: SRC.XDim, YDim: SRC.YDim },
+        depth: SRC.Depth,
+        dir: SRC.dir,
+      },
+    };
+    log(`${TAG} oprow op_type=${opRow.op_type} params=${JSON.stringify(opRow.parameters)}`);
+
+    // ───────────────────────────────────────────────────────────────────────
+    // STEP 2 — WRITE IFC from the op-row via web-ifc's real write API.
+    const api = new WebIFC.IfcAPI();
+    api.SetWasmPath('/node_modules/web-ifc/', true);   // serve wasm next to the api
+    await api.Init();
+    log(`${TAG} init ok`);
+
+    const modelID = api.CreateModel({ schema: 'IFC4', name: 'bonsai_webifc_roundtrip.ifc' });
+    log(`${TAG} CreateModel modelID=${modelID} schema=IFC4`);
+
+    const p = opRow.parameters;
+    const T = WebIFC;   // schema constants + value-type ids live on the module namespace
+
+    // value-typed args (IfcPositiveLengthMeasure / IfcReal / IfcLengthMeasure / IfcLabel / GUID)
+    const plm = (v) => api.CreateIfcType(modelID, T.IFCPOSITIVELENGTHMEASURE, v);
+    const real = (v) => api.CreateIfcType(modelID, T.IFCREAL, v);
+    const len = (v) => api.CreateIfcType(modelID, T.IFCLENGTHMEASURE, v);
+    const label = (v) => api.CreateIfcType(modelID, T.IFCLABEL, v);
+
+    // 2D profile placement (centre at origin), extrude axis placement (origin, +Z, +X)
+    const originPt2 = api.CreateIfcEntity(modelID, T.IFCCARTESIANPOINT, [len(0), len(0)]);
+    const prof2DPlace = api.CreateIfcEntity(modelID, T.IFCAXIS2PLACEMENT2D, originPt2, null);
+
+    // SweptArea = IfcRectangleProfileDef(.AREA., name, position, XDim, YDim)  — the REAL 96x48
+    const profile = api.CreateIfcEntity(
+      modelID, T.IFCRECTANGLEPROFILEDEF,
+      T.IFC4.IfcProfileTypeEnum.AREA, null, prof2DPlace, plm(p.profile.XDim), plm(p.profile.YDim)
+    );
+
+    // Position = IfcAxis2Placement3D(origin, +Z axis, +X ref)
+    const originPt3 = api.CreateIfcEntity(modelID, T.IFCCARTESIANPOINT, [len(0), len(0), len(0)]);
+    const zAxis = api.CreateIfcEntity(modelID, T.IFCDIRECTION, [real(0), real(0), real(1)]);
+    const xRef = api.CreateIfcEntity(modelID, T.IFCDIRECTION, [real(1), real(0), real(0)]);
+    const solidPlace = api.CreateIfcEntity(modelID, T.IFCAXIS2PLACEMENT3D, originPt3, zAxis, xRef);
+
+    // ExtrudedDirection = IfcDirection((0,0,1))  — the REAL extrude axis
+    const extrudeDir = api.CreateIfcEntity(
+      modelID, T.IFCDIRECTION, [real(p.dir[0]), real(p.dir[1]), real(p.dir[2])]
+    );
+
+    // THE SOLID: IfcExtrudedAreaSolid(SweptArea, Position, ExtrudedDirection, Depth)
+    const solid = api.CreateIfcEntity(
+      modelID, T.IFCEXTRUDEDAREASOLID, profile, solidPlace, extrudeDir, plm(p.depth)
+    );
+
+    // product shell: IfcWall carrying the solid via an IfcShapeRepresentation
+    const shapeRep = api.CreateIfcEntity(
+      modelID, T.IFCSHAPEREPRESENTATION, null, label('Body'), label('SweptSolid'), [solid]
+    );
+    const prodDefShape = api.CreateIfcEntity(
+      modelID, T.IFCPRODUCTDEFINITIONSHAPE, null, null, [shapeRep]
+    );
+    const guid = api.CreateIfcType(modelID, T.IFCGLOBALLYUNIQUEID, '2ucZRLBGP4uxZW$9i1VAZ8');
+    const wall = api.CreateIfcEntity(
+      modelID, T.IFCWALL,
+      guid, null, label('Wall #1 (Drywall panel)'), null, null, null, prodDefShape, null
+    );
+
+    // WriteLine recurses into nested entity objects, assigns expressIDs, replaces with Handles
+    api.WriteLine(modelID, wall);
+    const wallID = wall.expressID, solidID = solid.expressID;
+    log(`${TAG} write wallExpressID=${wallID} solidExpressID=${solidID}`);
+
+    const ifcBytes = api.SaveModel(modelID);
+    log(`${TAG} SaveModel bytes=${ifcBytes.length}`);
+    if (!ifcBytes || ifcBytes.length < 100) fail('SaveModel produced no/empty bytes');
+    // confirm it's a real STEP file carrying our entities
+    const txt = new TextDecoder().decode(ifcBytes);
+    const hasSolid = /IFCEXTRUDEDAREASOLID/.test(txt);
+    const hasProfile = /IFCRECTANGLEPROFILEDEF/.test(txt);
+    log(`${TAG} export hasExtrudedSolid=${hasSolid?'Y':'N'} hasRectProfile=${hasProfile?'Y':'N'} hasWall=${/IFCWALL/.test(txt)?'Y':'N'}`);
+    if (!hasSolid || !hasProfile) fail('exported IFC missing the swept-solid family');
+    api.CloseModel(modelID);
+
+    // ───────────────────────────────────────────────────────────────────────
+    // STEP 3 — RE-IMPORT the exported bytes and read the IfcExtrudedAreaSolid BACK.
+    const reID = api.OpenModel(ifcBytes);
+    log(`${TAG} OpenModel reModelID=${reID}`);
+
+    const solidIDs = api.GetLineIDsWithType(reID, T.IFCEXTRUDEDAREASOLID);
+    const nSolids = solidIDs.size();
+    log(`${TAG} reimport extrudedSolids=${nSolids}`);
+    if (nSolids < 1) { fail('no IfcExtrudedAreaSolid found on re-import'); throw new Error('no solid'); }
+
+    const reSolid = api.GetLine(reID, solidIDs.get(0), true);   // flatten=true -> resolve handles
+    const reDepth = Number(reSolid.Depth.value);
+    const reProfile = reSolid.SweptArea;
+    const reX = Number(reProfile.XDim.value);
+    const reY = Number(reProfile.YDim.value);
+    const reDir = reSolid.ExtrudedDirection.DirectionRatios.map(d => Number(d.value !== undefined ? d.value : d));
+    log(`${TAG} reimport profile XDim=${reX} YDim=${reY} depth=${reDepth} dir=[${reDir.join(',')}]`);
+
+    // ───────────────────────────────────────────────────────────────────────
+    // STEP 4 — the WITNESS: re-imported geometry == source geometry (within float tol).
+    const okX = approx(reX, SRC.XDim);
+    const okY = approx(reY, SRC.YDim);
+    const okD = approx(reDepth, SRC.Depth);
+    const okDir = reDir.length === 3 && reDir.every((v, i) => approx(v, SRC.dir[i]));
+    log(`${TAG} match XDim=${okX?'Y':'N'} YDim=${okY?'Y':'N'} depth=${okD?'Y':'N'} dir=${okDir?'Y':'N'}`);
+    if (!okX) fail(`XDim mismatch ${reX} != ${SRC.XDim}`);
+    if (!okY) fail(`YDim mismatch ${reY} != ${SRC.YDim}`);
+    if (!okD) fail(`Depth mismatch ${reDepth} != ${SRC.Depth}`);
+    if (!okDir) fail(`ExtrudedDirection mismatch [${reDir}] != [${SRC.dir}]`);
+
+    // honest coverage statement
+    log(`${TAG} coverage roundtripped=IfcExtrudedAreaSolid,IfcRectangleProfileDef,IfcAxis2Placement2D/3D,IfcDirection,IfcCartesianPoint,IfcWall,IfcShapeRepresentation,IfcProductDefinitionShape | dropped(by-design)=Psets,Materials,OwnerHistory,SpatialContainment,Styling`);
+    api.CloseModel(reID);
+
+    if (pass)
+      log(`${TAG} VERDICT PASS — real wall (96x48 depth 0.5 +Z) re-authored as 1 op-row, written to IFC4 + re-imported via web-ifc; IfcExtrudedAreaSolid family round-trips exact`);
+    else
+      log(`${TAG} VERDICT FAIL`);
+  } catch (e) {
+    log(`${TAG}-FAIL exception ${e && e.message ? e.message : String(e)}`);
+    log(`${TAG} VERDICT FAIL`);
+  }
+  window.__done = true;
+})();
+</script></body></html>

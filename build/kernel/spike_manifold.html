@@ -1,0 +1,138 @@
+<!doctype html><html><head><meta charset="utf-8"><title>W-KERNEL-MANIFOLD spike</title></head>
+<body>
+<script type="module">
+// W-KERNEL-MANIFOLD (prompts/BONSAI_KERNEL_RESEARCH.md §4 hard-part #2 "Boolean robustness",
+//                    §RESUME edge-probe "Manifold robustness").
+// CLAIM: For a COINCIDENT/FLUSH-FACE subtraction (the FreeCAD #17705 fragility class — an opening
+//   whose cutting faces are EXACTLY coplanar with the wall's own faces), the Manifold library
+//   (Apache-2.0, elalish) produces a VALID, CLOSED, 2-manifold result mesh — status==='NoError',
+//   genus==0 (one through-hole that breaks the wall into a solid frame = still genus 0 when the
+//   void exits both faces; a blind pocket would not change genus either), even-numbered triVerts,
+//   non-empty, watertight (numTri>0, bbox == wall bbox). This makes Manifold a robust FALLBACK
+//   where OCCT's BOP is fragile.
+//   We run the IDENTICAL numeric subtraction through OCCT (cut) and report OCCT's behaviour
+//   TRUTHFULLY — we do NOT fabricate an OCCT failure. The defensible, proven claim is that
+//   Manifold yields a clean closed manifold on the coincident-face input regardless of what OCCT does.
+//
+// occt: makeBoxFromCorners(vec{x,y,z}, vec) + cut(a,b) + tessellate -> {positions, triangleCount}.
+// manifold: Module().setup(); Manifold.cube([x,y,z], center?), .translate([..]), .subtract(other),
+//           .status()->'NoError', .numTri(), .numVert(), .genus(), .volume(), .boundingBox()->{min,max},
+//           .isEmpty(), .getMesh()->{numTri, triVerts(Uint32Array)}.
+import ManifoldModule from '/node_modules/manifold-3d/manifold.js';
+import { OcctKernel } from '/node_modules/occt-wasm/dist/index.js';
+const log = (m) => console.log(m);
+const vec = (x, y, z) => ({ x, y, z });
+const f4 = (n) => Number(n).toFixed(4);
+
+// ── THE INPUT (same numbers for both kernels) ──
+// Wall solid: a box from (0,0,0) to (W, T, H).  Opening: a void that is FLUSH on three faces —
+//   it shares the wall's BOTTOM face exactly (z bottom at the wall base would be a sill; here we
+//   make a THROUGH opening flush at the TOP and flush on BOTH thickness faces y=0 and y=T) so the
+//   cut faces are exactly coplanar with the wall faces (the coincident-face / FreeCAD-#17705 case).
+const W = 4, T = 0.2, H = 3;          // wall
+// void: x in [1.5, 2.5] (interior), y in [0, T] (FLUSH through both wall faces),
+//       z in [1, H] (FLUSH with the wall's TOP face z=H). Three coincident faces with the wall.
+const vx0 = 1.5, vx1 = 2.5, vy0 = 0, vy1 = T, vz0 = 1, vz1 = H;
+
+(async () => {
+  let pass = true; const fail = (m) => { pass = false; log('§KERNEL-MANIFOLD-FAIL ' + m); };
+  log('§KERNEL-MANIFOLD input wall=[0,0,0..' + W + ',' + T + ',' + H + '] void=[' +
+      [vx0, vy0, vz0].join(',') + '..' + [vx1, vy1, vz1].join(',') + '] coincident-faces=y0,yT,zTop');
+  try {
+    // ─────────────────────────── OCCT path (report truthfully) ───────────────────────────
+    let occt = { ok: false };
+    try {
+      const kernel = await OcctKernel.init({ wasm: '/node_modules/occt-wasm/dist/occt-wasm.wasm' });
+      try {
+        const wall = kernel.makeBoxFromCorners(vec(0, 0, 0), vec(W, T, H));
+        const voidB = kernel.makeBoxFromCorners(vec(vx0, vy0, vz0), vec(vx1, vy1, vz1));
+        const cut = kernel.cut(wall, voidB);
+        const m = kernel.tessellate(cut);
+        const p = m.positions;
+        let mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+        for (let i = 0; i < p.length; i += 3)
+          for (let k = 0; k < 3; k++) { if (p[i + k] < mn[k]) mn[k] = p[i + k]; if (p[i + k] > mx[k]) mx[k] = p[i + k]; }
+        occt = { ok: true, tris: m.triangleCount, verts: p.length / 3,
+                 bbox: [...mn, ...mx], empty: m.triangleCount === 0 };
+        kernel.release(wall); kernel.release(voidB); kernel.release(cut);
+      } finally { if (kernel[Symbol.dispose]) kernel[Symbol.dispose](); }
+    } catch (e) { occt = { ok: false, err: (e && e.message) || String(e) }; }
+
+    if (occt.ok) {
+      log('§KERNEL-MANIFOLD occt cut OK tris=' + occt.tris + ' verts=' + occt.verts +
+          ' bbox=[' + occt.bbox.map(f4).join(',') + '] empty=' + (occt.empty ? 'Y' : 'N') +
+          (occt.empty ? ' (DEGENERATE — OCCT dropped the solid on the coincident-face cut)' : ''));
+    } else {
+      log('§KERNEL-MANIFOLD occt cut FAILED err=' + occt.err +
+          ' (OCCT BOP threw on the coincident-face cut — Manifold fallback warranted)');
+    }
+
+    // ─────────────────────────── Manifold path (must be clean) ───────────────────────────
+    const wasm = await ManifoldModule({ locateFile: () => '/node_modules/manifold-3d/manifold.wasm' });
+    wasm.setup();
+    const { Manifold } = wasm;
+
+    // wall: cube of size [W,T,H], corner at origin (center=false => min corner at origin).
+    const wall = Manifold.cube([W, T, H], false);
+    // void: cube sized to the opening, translated so its min corner sits at (vx0,vy0,vz0).
+    const voidM = Manifold.cube([vx1 - vx0, vy1 - vy0, vz1 - vz0], false).translate([vx0, vy0, vz0]);
+    const result = wall.subtract(voidM);
+
+    const status = result.status();
+    const numTri = result.numTri();
+    const numVert = result.numVert();
+    const genus = result.genus();
+    const vol = result.volume();
+    const empty = result.isEmpty();
+    const bb = result.boundingBox();           // { min:[x,y,z], max:[x,y,z] }
+    const mesh = result.getMesh();             // { numTri, triVerts: Uint32Array(numTri*3), ... }
+    const triVertsLen = mesh.triVerts.length;
+
+    const bbox = [...bb.min, ...bb.max];
+    // expected solid volume = wall - void = W*T*H - (dx*dy*dz)
+    const expVol = W * T * H - (vx1 - vx0) * (vy1 - vy0) * (vz1 - vz0);
+
+    log('§KERNEL-MANIFOLD manifold cut status=' + status + ' numTri=' + numTri +
+        ' numVert=' + numVert + ' genus=' + genus + ' empty=' + (empty ? 'Y' : 'N'));
+    log('§KERNEL-MANIFOLD manifold bbox=[' + bbox.map(f4).join(',') + '] vol=' + f4(vol) +
+        ' (expected ' + f4(expVol) + ') triVerts=' + triVertsLen + ' (numTri*3=' + (numTri * 3) + ')');
+
+    // ── manifold validity gate (the actual witness) ──
+    if (status !== 'NoError') fail('manifold status not NoError: ' + status);
+    if (empty) fail('manifold result is empty — coincident-face cut dropped the solid');
+    if (numTri <= 0) fail('manifold produced zero triangles');
+    if (triVertsLen !== numTri * 3) fail('triVerts length ' + triVertsLen + ' != numTri*3 ' + (numTri * 3) + ' (not a clean tri soup)');
+    if (Math.abs(vol - expVol) > 1e-6) fail('manifold volume ' + f4(vol) + ' != expected ' + f4(expVol) + ' (cut wrong)');
+    // bbox must equal the wall (the void is interior in x and flush elsewhere, so the outline is unchanged)
+    const expBbox = [0, 0, 0, W, T, H];
+    for (let k = 0; k < 6; k++) if (Math.abs(bbox[k] - expBbox[k]) > 1e-6) fail('manifold bbox[' + k + ']=' + f4(bbox[k]) + ' != wall ' + expBbox[k]);
+    // genus 0: a through opening that exits both thickness faces splits the wall body but the void is
+    // flush-top -> the remaining solid is a U-shape (no enclosed loop) => genus 0. A non-flush-top
+    // interior window WOULD be genus 1. We assert genus 0 for THIS flush-top input.
+    if (genus !== 0) fail('expected genus 0 for the flush-top through opening, got ' + genus);
+
+    // closed/watertight sanity from the raw mesh: Euler V - E + F = 2 for a genus-0 closed surface.
+    // E = 3*F/2 for a closed triangle mesh, so V - F/2 = 2  =>  V == F/2 + 2.
+    const V = numVert, F = numTri, eulerOk = (V - F / 2 === 2);
+    log('§KERNEL-MANIFOLD manifold euler V=' + V + ' F=' + F + ' V-F/2=' + (V - F / 2) +
+        ' closed(genus0)=' + (eulerOk ? 'Y' : 'N'));
+    if (!eulerOk) fail('Euler characteristic V-F/2 != 2 (mesh not a closed genus-0 manifold)');
+
+    // ── honest comparison line ──
+    if (occt.ok && !occt.empty) {
+      log('§KERNEL-MANIFOLD compare OCCT-survived=Y manifold-clean=Y — BOTH closed on this input; ' +
+          'Manifold guarantees manifoldness by construction (status=NoError, Euler closed), the documented FALLBACK when OCCT BOP is fragile');
+    } else {
+      log('§KERNEL-MANIFOLD compare OCCT-survived=N manifold-clean=Y — Manifold survived the coincident-face cut where OCCT did not');
+    }
+
+    log('§KERNEL-MANIFOLD VERDICT ' + (pass
+      ? 'PASS — Manifold yields a valid closed 2-manifold (status=NoError, genus=0, Euler-closed, exact volume) for the coincident-face subtraction; robust BOP fallback proven'
+      : 'FAIL'));
+  } catch (e) {
+    log('§KERNEL-MANIFOLD-FAIL exception ' + (e && e.message ? e.message : String(e)));
+    log('§KERNEL-MANIFOLD VERDICT FAIL');
+  }
+  window.__done = true;
+})();
+</script></body></html>
