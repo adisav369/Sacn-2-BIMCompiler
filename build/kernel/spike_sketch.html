@@ -1,0 +1,53 @@
+<!doctype html><html><head><meta charset="utf-8"><title>W-SKETCH-SOLVE spike</title></head>
+<body><script type="module">
+// W-SKETCH-SOLVE (prompts/BONSAI_KERNEL_RESEARCH.md §5b Item 2 front / planegcs edge probe)
+// CLAIM: the FreeCAD constraint solver (planegcs, LGPL) runs in-browser, converges a constrained
+// sketch, and its SOLVED dimension drives a real occt solid through the general profile path
+// (makeLineEdge -> makeWire -> makeFace -> extrude). This is the "sketch" front of authoring.
+import { make_gcs_wrapper } from '/node_modules/@salusoft89/planegcs/dist/index.js';
+import { OcctKernel } from '/node_modules/occt-wasm/dist/index.js';
+const log = (m) => console.log(m);
+const vec = (x,y,z) => ({ x, y, z });
+
+(async () => {
+  let pass = true; const fail = (m) => { pass=false; log('§SKETCH-FAIL ' + m); };
+  try {
+    // 1. SOLVE a constrained sketch: p0 fixed at origin, p1 free; constrain |p0 p1| = 4.
+    //    p1 starts at (3,1) (distance ~3.16) — the solver must move it onto the distance-4 locus.
+    const gcs = await make_gcs_wrapper('/node_modules/@salusoft89/planegcs/dist/planegcs_dist/planegcs.wasm');
+    gcs.push_primitive({ id: 'p0', type: 'point', x: 0, y: 0, fixed: true });
+    gcs.push_primitive({ id: 'p1', type: 'point', x: 3, y: 1, fixed: false });
+    gcs.push_primitive({ id: 'c1', type: 'p2p_distance', p1_id: 'p0', p2_id: 'p1', distance: 4 });
+    const status = gcs.solve();
+    gcs.apply_solution();
+    const sp = gcs.sketch_index.get_sketch_point('p1');
+    const solvedW = Math.hypot(sp.x, sp.y);
+    log('§SKETCH solve status=' + status + ' p1=(' + sp.x.toFixed(4) + ',' + sp.y.toFixed(4) + ') solvedDist=' + solvedW.toFixed(4));
+    if (Math.abs(solvedW - 4) > 1e-3) fail('solver did not satisfy distance=4 (got ' + solvedW.toFixed(4) + ')');
+
+    // 2. DRIVE geometry: use the solved width to build a profile FACE from 4 edges, then extrude.
+    using kernel = await OcctKernel.init({ wasm: '/node_modules/occt-wasm/dist/occt-wasm.wasm' });
+    const W = solvedW, T = 0.2, H = 3;
+    const c = [ vec(0,0,0), vec(W,0,0), vec(W,T,0), vec(0,T,0) ];
+    const edges = [ kernel.makeLineEdge(c[0],c[1]), kernel.makeLineEdge(c[1],c[2]),
+                    kernel.makeLineEdge(c[2],c[3]), kernel.makeLineEdge(c[3],c[0]) ];
+    const wire = kernel.makeWire(edges);
+    const face = kernel.makeFace(wire);
+    const solid = kernel.extrude(face, 0, 0, H);
+    const mesh = kernel.tessellate(solid);
+    const p = mesh.positions; let mnx=Infinity,mxx=-Infinity;
+    for (let i=0;i<p.length;i+=3){ if(p[i]<mnx)mnx=p[i]; if(p[i]>mxx)mxx=p[i]; }
+    const xExtent = mxx - mnx;
+    edges.forEach(e=>kernel.release(e)); kernel.release(wire); kernel.release(face); kernel.release(solid);
+    log('§SKETCH geom tris=' + mesh.triangleCount + ' xExtent=' + xExtent.toFixed(4) + ' (== solvedW ' + W.toFixed(4) + ')');
+    if (mesh.triangleCount <= 0) fail('solver profile produced empty solid (wire/face path failed)');
+    if (Math.abs(xExtent - W) > 1e-2) fail('extruded solid width != solved dimension');
+
+    log('§SKETCH VERDICT ' + (pass ? 'PASS — constraint solver converges; solved dimension drives a real occt solid' : 'FAIL'));
+  } catch (e) {
+    log('§SKETCH-FAIL exception ' + (e && e.message ? e.message : String(e)));
+    log('§SKETCH VERDICT FAIL');
+  }
+  window.__done = true;
+})();
+</script></body></html>
