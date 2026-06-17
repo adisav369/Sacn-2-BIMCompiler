@@ -1,0 +1,72 @@
+<!doctype html><html><head><meta charset="utf-8"><title>W-KERNEL-RENDER spike</title></head>
+<body><canvas id="c" width="256" height="256"></canvas>
+<script type="module">
+// W-KERNEL-RENDER (prompts/BONSAI_KERNEL_RESEARCH.md §5b Item 1c)
+// CLAIM: the occt-wasm tessellated mesh renders through three.js — positions/indices map to a
+// BufferGeometry whose bbox matches the kernel's, and the solid actually DRAWS pixels (not just wiring).
+import * as THREE from '/deploy/dev/lib/three.module.min.js';
+import { OcctKernel } from '/node_modules/occt-wasm/dist/index.js';
+const log = (m) => console.log(m);
+const vec = (a) => ({ x:a[0], y:a[1], z:a[2] });
+
+(async () => {
+  let pass = true; const fail = (m) => { pass=false; log('§KERNEL-RENDER-FAIL ' + m); };
+  try {
+    using kernel = await OcctKernel.init({ wasm: '/node_modules/occt-wasm/dist/occt-wasm.wasm' });
+    // build the OPENING (cut wall) so the rendered solid is the non-trivial boolean result
+    const r = kernel.makeRectangle(4, 0.2);
+    const wall = kernel.extrude(r, 0, 0, 3); kernel.release(r);
+    const void_ = kernel.makeBoxFromCorners(vec([1,-1,1]), vec([2,1,2]));
+    const solid = kernel.cut(wall, void_); kernel.release(wall); kernel.release(void_);
+    const mesh = kernel.tessellate(solid);
+    const kbb = kernel.boundingBox ? kernel.boundingBox(solid) : null;
+    kernel.release(solid);
+    log('§KERNEL-RENDER mesh tris=' + mesh.triangleCount + ' posLen=' + mesh.positions.length + ' idxLen=' + (mesh.indices?mesh.indices.length:0));
+    if (mesh.positions.length === 0) fail('empty mesh positions');
+
+    // occt mesh -> three.js BufferGeometry
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
+    if (mesh.normals && mesh.normals.length) geo.setAttribute('normal', new THREE.BufferAttribute(mesh.normals, 3));
+    if (mesh.indices && mesh.indices.length) geo.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+    geo.computeBoundingBox();
+    const bb = geo.boundingBox;
+    const attrCount = geo.getAttribute('position').count;
+    log('§KERNEL-RENDER attrs positionCount=' + attrCount + ' indexCount=' + (geo.index?geo.index.count:0));
+    if (attrCount !== mesh.positions.length / 3) fail('position attr count != mesh verts');
+
+    // geometry bbox must match the kernel solid extents (wall 4 x 0.2 x 3)
+    const r3 = (n) => Math.round(n*1e3)/1e3;
+    const gbb = [r3(bb.min.x),r3(bb.min.y),r3(bb.min.z),r3(bb.max.x),r3(bb.max.y),r3(bb.max.z)].join(',');
+    log('§KERNEL-RENDER geoBbox=[' + gbb + ']' + (kbb ? ' kernelBbox=[' + [r3(kbb.min.x),r3(kbb.min.y),r3(kbb.min.z),r3(kbb.max.x),r3(kbb.max.y),r3(kbb.max.z)].join(',') + ']' : ''));
+    const okExtent = Math.abs(bb.max.x-bb.min.x - 4) < 0.01 && Math.abs(bb.max.y-bb.min.y - 0.2) < 0.01 && Math.abs(bb.max.z-bb.min.z - 3) < 0.01;
+    if (!okExtent) fail('geometry bbox extents != expected wall 4x0.2x3');
+
+    // render it (MeshBasic = unlit, so "did it draw" doesn't depend on lights)
+    const canvas = document.getElementById('c');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, preserveDrawingBuffer:true });
+    renderer.setClearColor(0x000000, 1);
+    const scene = new THREE.Scene();
+    scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x33dd55 })));
+    const cam = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    const c = bb.getCenter(new THREE.Vector3());
+    cam.position.set(c.x + 8, c.y + 6, c.z + 8); cam.lookAt(c);
+    renderer.render(scene, cam);
+
+    // read pixels back: count lit (non-black) pixels => the solid actually rasterised
+    const gl = renderer.getContext();
+    const px = new Uint8Array(256 * 256 * 4);
+    gl.readPixels(0, 0, 256, 256, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    let lit = 0; for (let i = 0; i < px.length; i += 4) { if (px[i] + px[i+1] + px[i+2] > 40) lit++; }
+    const litPct = (100 * lit / (256*256)).toFixed(1);
+    log('§KERNEL-RENDER litPixels=' + lit + ' (' + litPct + '% of frame)');
+    if (lit < 200) fail('frame essentially empty (litPixels=' + lit + ') — geometry did not draw');
+
+    log('§KERNEL-RENDER VERDICT ' + (pass ? 'PASS — occt mesh renders through three.js; bbox matches; solid drew' : 'FAIL'));
+  } catch (e) {
+    log('§KERNEL-RENDER-FAIL exception ' + (e && e.message ? e.message : String(e)));
+    log('§KERNEL-RENDER VERDICT FAIL');
+  }
+  window.__done = true;
+})();
+</script></body></html>
