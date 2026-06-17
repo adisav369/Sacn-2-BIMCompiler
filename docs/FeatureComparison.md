@@ -1,6 +1,8 @@
 # BIM OOTB — Technical Feature Paper
 
 > **For the ERP side**, see the one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** — legacy ERP vs the WASM event-sourced browser.
+>
+> **Authoring / prior-art record:** **[Event-Sourced Geometry as a Fold over a Signed Operation Log](ModellerKernelFold.md)** — the dated disclosure of geometry-as-replay over the same signed log that carries the ERP records, with a cross-system comparison.
 
 ## What It Is
 

@@ -71,6 +71,7 @@ nav:
   - Start Here:
       - Home: index.md
       - Feature Comparison: FeatureComparison.md
+      - "Prior Art — Geometry as Signed-Log Fold": ModellerKernelFold.md
       - "Migrate & Compare (ERP)": MigrateComparisonPaper.md
       - "Cross-ERP Rosetta Stone (concept + cost)": ERPConceptRosetta.html
       - "Fold Engine Black Book (dev manual)": FoldEngineBlackBook.html
