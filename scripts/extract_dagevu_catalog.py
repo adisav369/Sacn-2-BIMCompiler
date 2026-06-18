@@ -37,21 +37,25 @@ def build_mesh_index():
     ct = {r[0]: r[1] for r in c.execute('SELECT id, ifc_class FROM component_types')}
     defs = defaultdict(list)
     for r in c.execute('SELECT type_id, geometry_hash, local_min_x, local_max_x, local_min_y, local_max_y, '
-                        'local_min_z, local_max_z FROM component_definitions'):
+                        'local_min_z, local_max_z, face_count FROM component_definitions'):
         ic = ct.get(r[0])
         if not ic:
             continue
         vol = (r[3] - r[2]) * (r[5] - r[4]) * (r[7] - r[6])
-        defs[ic].append((r[1], abs(vol)))
+        defs[ic].append((r[1], abs(vol), r[8] or 0))      # (geometry_hash, |volume|, face_count)
     return c, defs
 
 
 def match_hash(defs, ifc, w, d, h):
+    # nearest-by-volume, but PREFER a DETAILED mesh — a degenerate 12-tri box only when no richer candidate
+    # exists for this ifc_class (else a Bed/Door/Roof would match a box that merely happens to be nearest-sized).
     cand = defs.get(ifc)
     if not cand:
         return None
     vol = (w or 0.1) * (d or 0.1) * (h or 0.1)
-    return min(cand, key=lambda x: abs(x[1] - vol))[0]
+    detailed = [x for x in cand if x[2] > 12]
+    pool = detailed if detailed else cand
+    return min(pool, key=lambda x: abs(x[1] - vol))[0]
 
 
 def main():
