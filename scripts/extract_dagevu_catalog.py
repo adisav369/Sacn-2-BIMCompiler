@@ -5,7 +5,7 @@
 # no httpvfs) — LOD-200 box proxies come from M_Product w/d/h dims; real meshes (component_library.db) are a
 # later range-load enhancement. User decree: "extract only good practical ones — furniture sets, wall-openings,
 # structure (roof/walls/slab) — a good filter system + a cheat sheet of commonly popular sets."
-import sqlite3, json, sys, os, base64
+import sqlite3, json, sys, os, base64, math
 from collections import defaultdict
 
 BOM = os.path.join(os.path.dirname(__file__), '..', 'library', 'archive', 'BOM.db')
@@ -94,12 +94,87 @@ def main():
         out_groups.append({'key': g['key'], 'label': g['label'], 'categories': gcats})
 
     cheat = [pid for pid in CHEAT if pid in by_id]   # only ship cheat picks that survived the filter
+
+    # ── ASSEMBLIES (recursive BOM-INSERT, W-BOM-ASSEMBLY). m_bom = the 59 assemblies with children (BUILDING/
+    # FLOOR/ROOM/SET); m_bom_line = the children. A child whose product_id ALSO matches a bom_id is a NESTED
+    # assembly (recurse); otherwise it's a leaf product. NON-INVENT: offsets dx/dy/dz (meters) + rotation_rule
+    # are read verbatim. rotation_rule numeric = RADIANS → degrees; symbolic (FACE_*/EW/NS/PARALLEL_TO_WALL) is
+    # host-relative and not derivable at drop-time → applied as 0° with the label retained (honest).
+    def parse_rot(rule):
+        if rule is None:
+            return 0.0, None
+        s = str(rule).strip()
+        try:
+            return round(float(s) * 180.0 / math.pi, 2), None   # numeric = radians → degrees
+        except ValueError:
+            return 0.0, s                                        # symbolic → 0°, keep label
+
+    bom_meta = {r[0]: r for r in b.execute(
+        'SELECT bom_id, COALESCE(bom_name, bom_id), bom_type, bom_category, '
+        'aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM m_bom')}
+    bom_ids = set(bom_meta)
+    lines_by_bom = defaultdict(list)
+    for r in b.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule '
+                       'FROM m_bom_line WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
+        lines_by_bom[r[0]].append(r)
+
+    assemblies, leaf_refs = [], set()
+    for bid, rows in lines_by_bom.items():
+        meta = bom_meta.get(bid)
+        if not meta:
+            continue
+        children = []
+        for (_, ref, role, seq, dx, dy, dz, rrule) in rows:
+            if not ref:
+                continue
+            isbom = ref in bom_ids
+            rotDeg, rotRule = parse_rot(rrule)
+            ch = {'ref': ref, 'role': role, 'seq': seq or 0, 'dx': round(dx or 0, 4),
+                  'dy': round(dy or 0, 4), 'dz': round(dz or 0, 4), 'rotDeg': rotDeg, 'isBom': isbom}
+            if rotRule:
+                ch['rotRule'] = rotRule                          # symbolic rule retained for honesty
+            children.append(ch)
+            if not isbom:
+                leaf_refs.add(ref)
+        if not children:
+            continue
+        assemblies.append({'id': bid, 'name': meta[1], 'level': meta[2], 'category': meta[3],
+                           'w': round((meta[4] or 0) / 1000.0, 3), 'd': round((meta[5] or 0) / 1000.0, 3),
+                           'h': round((meta[6] or 0) / 1000.0, 3), 'children': children})
+
+    # CLOSE the leaf set: every leaf product an assembly places must resolve in the catalog (get/meshArrays),
+    # even if it isn't in a browse category. Add the missing ones tagged asmOnly (+ nearest real mesh).
+    added = 0
+    for pid in sorted(leaf_refs):
+        if pid in by_id:
+            continue
+        row = b.execute('SELECT product_id, COALESCE(Name, product_id), ifc_class, width, depth, height, '
+                        'M_Product_Category_ID FROM M_Product WHERE product_id=?', (pid,)).fetchone()
+        if not row:
+            continue                                             # leaf with no product row → unrenderable, skip
+        _, name, ifc, w, d, h, cat = row
+        w, d, h = (w or 0), (d or 0), (h or 0)
+        dimless = max(w, d, h) < MIN_DIM
+        if dimless:                                              # dimless leaf → small proxy (the REAL gh mesh,
+            w = d = h = 0.25                                     # if matched, is what actually renders)
+        rifc = ifc or catifc.get(cat) or 'IfcBuildingElementProxy'
+        disp = name if name and name != pid else pid.replace('_', ' ').title()
+        gh = match_hash(defs, rifc, w, d, h)
+        p = {'id': pid, 'name': disp, 'group': 'asm', 'cat': cat or 'ASM', 'catLabel': catname.get(cat, 'Assembly part'),
+             'ifc_class': rifc, 'w': round(w, 4), 'd': round(d, 4), 'h': round(h, 4), 'asmOnly': True}
+        if dimless:
+            p['dimless'] = True
+        if gh:
+            p['gh'] = gh
+        products.append(p); by_id[pid] = p; added += 1
+
     catalog = {
-        'source': 'library/archive/BOM.db (M_Product_Category + M_Product)',
+        'source': 'library/archive/BOM.db (M_Product_Category + M_Product + m_bom/m_bom_line)',
         'note': 'LOD-200 box proxies from w/d/h dims; real meshes via component_library.db range-load (later).',
         'groups': out_groups,
         'products': products,
         'cheatsheet': cheat,
+        'assemblies': assemblies,
     }
     with open(OUT, 'w') as f:
         json.dump(catalog, f, separators=(',', ':'))
@@ -126,6 +201,11 @@ def main():
         print('  [%s] %s: %s' % (g['key'], g['label'],
               ', '.join('%s(%d)' % (c['label'], c['count']) for c in g['categories'])))
     print('  cheat-sheet: %s' % ', '.join(by_id[p]['name'] for p in cheat))
+    lvl = defaultdict(int)
+    for a in assemblies:
+        lvl[a['level']] += 1
+    print('§DAGEVU-ASSEMBLY assemblies=%d (%s) leafProductsAdded=%d totalProducts=%d' % (
+        len(assemblies), ', '.join('%s:%d' % (k, lvl[k]) for k in sorted(lvl)), added, len(products)))
     print('§DAGEVU-GEOM out=%s geoms=%d rawBytes=%d (~%.2f MB)' % (GEOM_OUT, len(geoms), gbytes, gbytes / 1e6))
 
 
