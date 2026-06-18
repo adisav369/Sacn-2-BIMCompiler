@@ -114,7 +114,8 @@ def main():
         'aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM m_bom')}
     bom_ids = set(bom_meta)
     lines_by_bom = defaultdict(list)
-    for r in b.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule '
+    for r in b.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
+                       'allocated_width_mm, min_space_mm '
                        'FROM m_bom_line WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
         lines_by_bom[r[0]].append(r)
 
@@ -124,13 +125,14 @@ def main():
         if not meta:
             continue
         children = []
-        for (_, ref, role, seq, dx, dy, dz, rrule) in rows:
+        for (_, ref, role, seq, dx, dy, dz, rrule, aw_mm, ms_mm) in rows:
             if not ref:
                 continue
             isbom = ref in bom_ids
             rotDeg, rotRule = parse_rot(rrule)
             ch = {'ref': ref, 'role': role, 'seq': seq or 0, 'dx': round(dx or 0, 4),
-                  'dy': round(dy or 0, 4), 'dz': round(dz or 0, 4), 'rotDeg': rotDeg, 'isBom': isbom}
+                  'dy': round(dy or 0, 4), 'dz': round(dz or 0, 4), 'rotDeg': rotDeg, 'isBom': isbom,
+                  '_aw': (aw_mm or 0) / 1000.0, '_ms': (ms_mm or 0) / 1000.0}   # transient: alloc width + min space (m)
             if rotRule:
                 ch['rotRule'] = rotRule                          # symbolic rule retained for honesty
             children.append(ch)
@@ -138,9 +140,38 @@ def main():
                 leaf_refs.add(ref)
         if not children:
             continue
-        assemblies.append({'id': bid, 'name': meta[1], 'level': meta[2], 'category': meta[3],
-                           'w': round((meta[4] or 0) / 1000.0, 3), 'd': round((meta[5] or 0) / 1000.0, 3),
-                           'h': round((meta[6] or 0) / 1000.0, 3), 'children': children})
+        asm = {'id': bid, 'name': meta[1], 'level': meta[2], 'category': meta[3],
+               'w': round((meta[4] or 0) / 1000.0, 3), 'd': round((meta[5] or 0) / 1000.0, 3),
+               'h': round((meta[6] or 0) / 1000.0, 3), 'children': children}
+
+        # ── LINEAR LAYOUT (ported from PhantomLayout.placeNext + BOMTierResolver.resolveWithGPD/resolveFloatChildren):
+        # the Java engine picks explicit dx/dy when ANY child carries an offset (hasOffsets branch); otherwise it
+        # GPD-WALKS the children along a host axis — anchor advances by each child's extent, centre = anchor+half.
+        # archive/BOM.db is 100% FLOAT+LINEAR, so a set with all-zero offsets (e.g. DUPLEX_BATHROOM_SET) must be
+        # spread, not stacked. Room-aware fixture placement needs a room envelope a bare drop lacks; this is the
+        # faithful room-independent walk along local +X. NON-INVENT: extents are allocated_width_mm (fallback the
+        # product/sub-assembly width) read from the data.
+        def _extent(ch):
+            if ch['isBom']:
+                m = bom_meta.get(ch['ref'])
+                return (m[4] or 0) / 1000.0 if m else 0.5         # nested → its aabb width
+            if ch['_aw'] > 0.01:
+                return ch['_aw']                                  # allocated slot width
+            p = by_id.get(ch['ref'])
+            return (p['w'] if p and p.get('w') else 0.5)          # else the product's own width
+
+        has_offsets = any(abs(ch['dx']) > 0.001 or abs(ch['dy']) > 0.001 for ch in children)
+        if not has_offsets and len(children) > 1:
+            cursor = 0.0
+            for ch in children:
+                ext = _extent(ch)
+                ch['dx'] = round(cursor + ext / 2.0, 4)           # centre at anchor + half-extent (Java cx=anchor+halfW)
+                ch['dy'] = 0.0
+                cursor += ext + ch['_ms']                         # advance anchor by extent (+ min gap)
+            asm['autoLayout'] = 'LINEAR'
+        for ch in children:                                       # drop transient layout inputs from the shipped JSON
+            ch.pop('_aw', None); ch.pop('_ms', None)
+        assemblies.append(asm)
 
     # CLOSE the leaf set: every leaf product an assembly places must resolve in the catalog (get/meshArrays),
     # even if it isn't in a browse category. Add the missing ones tagged asmOnly (+ nearest real mesh).
