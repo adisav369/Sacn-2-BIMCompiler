@@ -5,7 +5,7 @@
 # no httpvfs) — LOD-200 box proxies come from M_Product w/d/h dims; real meshes (component_library.db) are a
 # later range-load enhancement. User decree: "extract only good practical ones — furniture sets, wall-openings,
 # structure (roof/walls/slab) — a good filter system + a cheat sheet of commonly popular sets."
-import sqlite3, json, sys, os, base64, math
+import sqlite3, json, sys, os, base64, math, re
 from collections import defaultdict
 
 BOM = os.path.join(os.path.dirname(__file__), '..', 'library', 'archive', 'BOM.db')
@@ -30,25 +30,53 @@ CHEAT = ['DOOR_D1', 'DOOR_D1_DOUBLE', 'WINDOW_CASEMENT_819', 'SKYLIGHT_1180',
          'Bed_King', 'Bed_Queen', 'Dining_Table_With_Chairs', 'Base_Cabinet', 'Desk', 'Coffee_Table']
 
 
-# ── Real-mesh match: index component_library.db component_definitions by ifc_class with bbox VOLUME + the
-# geometry_hash, so each curated product picks the nearest-sized REAL extracted part (LOD-300/400 mesh).
+# ── Geometry resolution — REPLICATES the authoritative Java chain (the "Java was working perfectly" rule).
+# The Java resolves furniture/fixture geometry via ComponentLibrary.getByName(namePattern)
+# (DAGCompiler/src/main/java/com/bim/compiler/library/ComponentLibrary.java:38-88):
+#     SELECT ... FROM component_definitions WHERE name LIKE '%'||pattern||'%'
+#     ORDER BY CASE WHEN name=pattern THEN 0 ELSE 1 END,                       -- EXACT name first
+#              (local_max_x-local_min_x)*(local_max_y-local_min_y) DESC        -- else LARGEST XY footprint
+#     LIMIT 1
+# i.e. exact-name match wins; otherwise the biggest-footprint substring match. This is THE resolver — it
+# returns the correctly-named real part with its real bounds, NOT a nearest-volume same-class box. We index
+# (name → row) once; get_by_name runs the identical ranking in Python. (match_hash, the old nearest-volume
+# heuristic, is retained ONLY as a structural-product last resort where no usable name exists.)
 def build_mesh_index():
     c = sqlite3.connect(LIB)
     ct = {r[0]: r[1] for r in c.execute('SELECT id, ifc_class FROM component_types')}
     defs = defaultdict(list)
-    for r in c.execute('SELECT type_id, geometry_hash, local_min_x, local_max_x, local_min_y, local_max_y, '
-                        'local_min_z, local_max_z, face_count FROM component_definitions'):
+    by_name = []                                          # [(name, gh, xy_footprint, ifc, w, d, h)]
+    for r in c.execute('SELECT type_id, name, geometry_hash, local_min_x, local_max_x, local_min_y, '
+                        'local_max_y, local_min_z, local_max_z, face_count FROM component_definitions'):
         ic = ct.get(r[0])
         if not ic:
             continue
-        vol = (r[3] - r[2]) * (r[5] - r[4]) * (r[7] - r[6])
-        defs[ic].append((r[1], abs(vol), r[8] or 0))      # (geometry_hash, |volume|, face_count)
-    return c, defs
+        ex = (r[4] - r[3]); ey = (r[6] - r[5]); ez = (r[8] - r[7])
+        defs[ic].append((r[2], abs(ex * ey * ez), r[9] or 0))   # (geometry_hash, |volume|, face_count)
+        if r[1]:
+            by_name.append((r[1], r[2], ex * ey, ic, round(ex, 4), round(ey, 4), round(ez, 4)))
+    return c, defs, by_name
+
+
+def get_by_name(by_name, pattern):
+    """Port of Java ComponentLibrary.getByName (ComponentLibrary.java:38-88): WHERE name LIKE '%pattern%'
+    ORDER BY (exact-name-first, then largest XY footprint), LIMIT 1. Returns
+    (name, geometry_hash, ifc_class, w, d, h) or None. NON-INVENT: pure DB match on the pattern."""
+    if not pattern:
+        return None
+    pl = pattern.lower()
+    best = None  # (rank0_exact, -xy_footprint) → smallest tuple wins
+    for name, gh, xy, ic, w, d, h in by_name:
+        if pl in name.lower():
+            key = (0 if name == pattern else 1, -xy)
+            if best is None or key < best[0]:
+                best = (key, (name, gh, ic, w, d, h))
+    return best[1] if best else None
 
 
 def match_hash(defs, ifc, w, d, h):
-    # nearest-by-volume, but PREFER a DETAILED mesh — a degenerate 12-tri box only when no richer candidate
-    # exists for this ifc_class (else a Bed/Door/Roof would match a box that merely happens to be nearest-sized).
+    # LAST-RESORT nearest-by-volume for structural products with no usable name pattern. Prefer a DETAILED
+    # mesh — a degenerate 12-tri box only when no richer candidate exists for this ifc_class.
     cand = defs.get(ifc)
     if not cand:
         return None
@@ -58,9 +86,52 @@ def match_hash(defs, ifc, w, d, h):
     return min(pool, key=lambda x: abs(x[1] - vol))[0]
 
 
+# ── normalizeRole port (FurnitureWorker.java:100-117) → a canonical getByName PATTERN per BOM role. The Java
+# normalizeRole switch remaps role tokens (TABLE→DINING_TABLE, CHAIR_*→DINING_CHAIR, DESK→WORKSTATION_DESK …);
+# here we map each role to the human-readable library name that getByName resolves to a real, correctly-named,
+# correctly-sized component_definitions part (every entry VERIFIED to resolve against component_library.db,
+# see the §-audit in MODELLER_BOM_CATALOG_SPEC.md). archive/BOM.db's furniture sets put the real intent in
+# `role` (the child_product_id is a bare IFC-class placeholder, child_name_pattern is NULL), so role → name is
+# the only non-invent bridge to the generic 220MB library. Unmapped roles (generic FURNITURE, MEP/structural
+# terminals with no concrete catalog part) fall through to an honest role-named box proxy.
+ROLE_NAME = {
+    # Dining / living furniture
+    'TABLE': 'Dining_Table', 'DINING_TABLE': 'Dining_Table',
+    'CHAIR': 'Dining_Chair', 'CHAIR_A': 'Dining_Chair', 'CHAIR_B': 'Dining_Chair', 'CHAIR_C': 'Dining_Chair',
+    'CHAIR_D': 'Dining_Chair', 'CHAIR_E': 'Dining_Chair', 'CHAIR_F': 'Dining_Chair',
+    'VISITOR_CHAIR_A': 'Dining_Chair', 'VISITOR_CHAIR_B': 'Dining_Chair',
+    'USER_CHAIR': 'Dining_Chair', 'GUEST_SEAT': 'Dining_Chair', 'LOUNGE_CHAIR': 'Dining_Chair',
+    'COFFEE_TABLE': 'Coffee_Table', 'SIDE_TABLE': 'Side_Table', 'SIDE_TABLE_A': 'Side_Table',
+    'SIDE_TABLE_B': 'Side_Table', 'SIDE_TABLE_L': 'Side_Table', 'SIDE_TABLE_R': 'Side_Table',
+    'SOFA': 'Sofa', 'SOFA_B': 'Sofa', 'PIANO': 'Piano', 'BED': 'Bed_King', 'WARDROBE': 'Wardrobe',
+    # Workstation
+    'DESK': 'Desk',
+    # Kitchen / bath cabinetry
+    'BASE_CABINET': 'Base_Cabinet', 'UPPER_CABINET': 'Upper_Cabinet', 'VANITY': 'Vanity_Cabinet',
+    'VANITY_A': 'Vanity_Cabinet', 'VANITY_B': 'Vanity_Cabinet', 'COUNTER': 'Counter_Top',
+    'TALL_CABINET': 'Tall_Cabinet',
+    # Sanitary / fixtures — these DO resolve to real library parts (IfcFlowTerminal class) with sensible dims
+    'TOILET': 'Toilet', 'FIXTURE': 'Toilet', 'SINK': 'Sink_Island', 'HAND_BIDET': 'Bidet', 'BIDET': 'Bidet',
+    'FLOOR_TRAP': 'Floor_Trap',
+    # MEP terminals with a clean library name
+    'LIGHT': 'Light_Pendant', 'SPRINKLER': 'Sprinkler', 'SPRINKLER_HEAD': 'Sprinkler', 'HEAD': 'Sprinkler',
+}
+
+
 def main():
     b = sqlite3.connect(BOM)
-    libc, defs = build_mesh_index()
+    libc, defs, by_name = build_mesh_index()
+
+    def resolve_geom(pattern, ifc, w, d, h):
+        """Java-faithful geometry resolution: getByName(pattern) FIRST (exact-name → largest-XF substring),
+        falling back to nearest-volume match_hash ONLY if the name doesn't resolve. Returns
+        (gh, name, rw, rd, rh) where name/dims come from the matched real part when name-resolved, else
+        (gh-or-None, None, None, None, None). NON-INVENT: pattern and dims are read from the data."""
+        hit = get_by_name(by_name, pattern) if pattern else None
+        if hit:
+            return hit[1], hit[0], hit[3], hit[4], hit[5]      # (gh, name, w, d, h)
+        return match_hash(defs, ifc, w, d, h), None, None, None, None
+
     catname = {r[0]: r[1] for r in b.execute('SELECT M_Product_Category_ID, Name FROM M_Product_Category')}
     catifc = {r[0]: r[1] for r in b.execute('SELECT M_Product_Category_ID, IFC_Class FROM M_Product_Category')}
 
@@ -81,7 +152,10 @@ def main():
                 # friendly display name from product_id when Name is null
                 disp = name if name and name != pid else pid.replace('_', ' ').title()
                 rifc = ifc or catifc.get(cat) or 'IfcBuildingElementProxy'
-                gh = match_hash(defs, rifc, w, d, h)        # nearest real extracted mesh for this product
+                # Java-faithful: the archive product_id IS the human-readable getByName pattern (Bed_King,
+                # Dining_Chair, …) → exact/substring match on component_definitions.name. Fall back to
+                # nearest-volume only when the id doesn't name a real part (some structural ids don't).
+                gh, _rn, _rw, _rd, _rh = resolve_geom(pid, rifc, w, d, h)
                 p = {'id': pid, 'name': disp, 'group': g['key'], 'cat': cat,
                      'catLabel': catname.get(cat, cat), 'ifc_class': rifc,
                      'w': round(w, 4), 'd': round(d, 4), 'h': round(h, 4)}
@@ -115,20 +189,71 @@ def main():
     bom_ids = set(bom_meta)
     lines_by_bom = defaultdict(list)
     for r in b.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
-                       'allocated_width_mm, min_space_mm '
+                       'allocated_width_mm, min_space_mm, component_type '
                        'FROM m_bom_line WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
         lines_by_bom[r[0]].append(r)
 
+    # ── Role-aware placeholder resolution — REPLICATES the Java geometry chain (BOMTierResolver →
+    # PlacedFurniture(role,namePattern) → FurnitureWorker.normalizeRole → ComponentLibrary.getByName).
+    # archive/BOM.db's furniture/MEP sets use a BARE IFC-CLASS as child_product_id (a placeholder); both its
+    # child_name_pattern column AND the per-prefix XX_BOM.db's are 100% NULL (verified), so the ONLY identity
+    # the data carries is `role` (TOILET/BED/CHAIR_A…). The Java's namePattern is likewise role-derived
+    # (normalizeRole, FurnitureWorker.java:100), then getByName(namePattern) resolves the real part. We do the
+    # SAME: ROLE_NAME[role] → get_by_name → the correctly-named, correctly-sized real component_definitions
+    # part. Each DISTINCT role → a DISTINCT synthetic product (no collapse of a set's children to one mesh).
+    # NON-INVENT: role is read from the data; ROLE_NAME patterns are verified getByName hits; dims come from
+    # the matched real part (or an honest box for roles with no concrete library part, NAMED from the role).
+    def _norm_role(role):
+        """Strip an instance suffix (CHAIR_A / SINK_2 → CHAIR / SINK) only when the FULL role isn't itself a
+        mapped key, so SIDE_TABLE_A keeps SIDE_TABLE etc. Returns the lookup key + a clean display label."""
+        s = str(role or '').strip()
+        if s in ROLE_NAME:
+            return s
+        base = re.sub(r'_(?:[A-Z]|\d+)$', '', s)
+        return base if base in ROLE_NAME else s
+
+    def _role_product(ifc, role):
+        """A per-role synthetic product (distinct id per role) carrying the getByName-resolved real mesh+name+
+        dims, or an honest role-named box when the role has no concrete library part."""
+        rk = _norm_role(role)
+        key = 'ROLE__' + (re.sub(r'[^A-Za-z0-9]+', '_', str(role or 'X')).strip('_').upper() or 'X')
+        if key not in by_id:
+            pat = ROLE_NAME.get(rk)
+            hit = get_by_name(by_name, pat) if pat else None
+            label = str(role or ifc).replace('_', ' ').title()
+            if hit:                                     # getByName resolved → real mesh + real name + real dims
+                name, gh, ric, rw, rd, rh = hit
+                p = {'id': key, 'name': label, 'group': 'asm', 'cat': 'ASM', 'catLabel': 'Assembly part',
+                     'ifc_class': ifc, 'w': round(abs(rw), 4), 'd': round(abs(rd), 4), 'h': round(abs(rh), 4),
+                     'asmOnly': True, 'role': role, 'gh': gh, 'libName': name}
+            else:                                       # no concrete library part — honest box, NAMED from role
+                p = {'id': key, 'name': label, 'group': 'asm', 'cat': 'ASM', 'catLabel': 'Assembly part',
+                     'ifc_class': ifc, 'w': 0.4, 'd': 0.4, 'h': 0.4, 'asmOnly': True, 'role': role}
+                gh2 = match_hash(defs, ifc, 0.4, 0.4, 0.4)
+                (p.__setitem__('gh', gh2) if gh2 else p.__setitem__('dimless', True))
+            products.append(p); by_id[key] = p
+        return key, ('gh' in by_id[key] and not by_id[key].get('dimless') and by_id[key].get('libName') is not None)
+
+    role_resolved = role_proxy = phantom_skipped = 0
     assemblies, leaf_refs = [], set()
     for bid, rows in lines_by_bom.items():
         meta = bom_meta.get(bid)
         if not meta:
             continue
         children = []
-        for (_, ref, role, seq, dx, dy, dz, rrule, aw_mm, ms_mm) in rows:
+        for (_, ref, role, seq, dx, dy, dz, rrule, aw_mm, ms_mm, ctype) in rows:
             if not ref:
                 continue
+            if str(ctype or '').upper() == 'PHANTOM' or ref == 'BUFFER':
+                phantom_skipped += 1                    # layout spacer — skip (Java explodeBomTree parity)
+                continue
             isbom = ref in bom_ids
+            if not isbom and ref.startswith('Ifc'):     # bare IFC-class placeholder → resolve by role (Java way)
+                ref, named = _role_product(ref, role)
+                if named:
+                    role_resolved += 1                  # role → getByName-resolved real part (mesh + name + dims)
+                else:
+                    role_proxy += 1                     # role with no concrete library part → honest named box
             rotDeg, rotRule = parse_rot(rrule)
             ch = {'ref': ref, 'role': role, 'seq': seq or 0, 'dx': round(dx or 0, 4),
                   'dy': round(dy or 0, 4), 'dz': round(dz or 0, 4), 'rotDeg': rotDeg, 'isBom': isbom,
@@ -190,7 +315,8 @@ def main():
             w = d = h = 0.25                                     # if matched, is what actually renders)
         rifc = ifc or catifc.get(cat) or 'IfcBuildingElementProxy'
         disp = name if name and name != pid else pid.replace('_', ' ').title()
-        gh = match_hash(defs, rifc, w, d, h)
+        # Java-faithful: getByName(product_id) FIRST (the id is the human-readable name), else nearest-volume.
+        gh, _rn, _rw, _rd, _rh = resolve_geom(pid, rifc, w, d, h)
         p = {'id': pid, 'name': disp, 'group': 'asm', 'cat': cat or 'ASM', 'catLabel': catname.get(cat, 'Assembly part'),
              'ifc_class': rifc, 'w': round(w, 4), 'd': round(d, 4), 'h': round(h, 4), 'asmOnly': True}
         if dimless:
@@ -237,6 +363,8 @@ def main():
         lvl[a['level']] += 1
     print('§DAGEVU-ASSEMBLY assemblies=%d (%s) leafProductsAdded=%d totalProducts=%d' % (
         len(assemblies), ', '.join('%s:%d' % (k, lvl[k]) for k in sorted(lvl)), added, len(products)))
+    print('§DAGEVU-ROLERESOLVE phantomSkipped=%d roleResolvedToConcrete=%d perRoleProxies=%d' % (
+        phantom_skipped, role_resolved, role_proxy))
     print('§DAGEVU-GEOM out=%s geoms=%d rawBytes=%d (~%.2f MB)' % (GEOM_OUT, len(geoms), gbytes, gbytes / 1e6))
 
 
