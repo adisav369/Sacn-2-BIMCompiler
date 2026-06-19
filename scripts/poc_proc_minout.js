@@ -11,7 +11,8 @@
 //   false (subtotal/tax/total all null) + docno=DocumentNo + date=MovementDate; (c) every folded line qty ==
 //   its M_InOutLine.MovementQty (independent re-derivation); (d) a §FALSIFIER (bend a line MovementQty +7) shifts
 //   the folded qty exactly (proves the fold READS the rows, never a fabricated qty); (e) the broad-match GUARD —
-//   292 "Rpt M_InOutConfirm" (Shipment Confirmation) + 293/294 RV_InOutDetails stay absent-handler (NOT mis-routed
+//   292 "Rpt M_InOutConfirm" (Shipment Confirmation) routes to its own report:m_inoutconfirm leg (§P2-tail-leg6) +
+//   293/294 RV_InOutDetails stay absent-handler — none mis-routed to report:m_inout (NOT mis-routed
 //   to report:m_inout — the match is m_inout\b word-boundary, "m_inoutconfirm" has none).
 // NON-INVENT: M_InOut 100 + its line/product are REAL ad_full.db rows. A shipment carries qty, not money.
 // §-log first — READ build/erp/poc_proc_minout.log before concluding (exit code ≠ evidence).
@@ -106,8 +107,9 @@ verdict(bentQ === baseQ + 7 && bentQ !== baseQ,
         'bending a line MovementQty shifts the folded qty exactly (the fold reads the rows, never a fabricated qty)', 'Δ = +7');
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════════════
-// 4 · §MINOUT-GUARD — 292 Rpt M_InOutConfirm + 293/294 RV_InOutDetails stay ABSENT-handler.
+// 4 · §MINOUT-GUARD — 292 Rpt M_InOutConfirm + 293/294 RV_InOutDetails do NOT mis-route to report:m_inout.
 //     The m_inout match is WORD-BOUNDARY specific — it must NOT catch "m_inoutconfirm" or "rv_inoutdetails".
+//     (292 routes to its own report:m_inoutconfirm leg, §P2-tail-leg6; 293/294 stay absent-handler.)
 // ════════════════════════════════════════════════════════════════════════════════════════════════════════
 console.log('\n— §MINOUT-GUARD (M_InOutConfirm/RV_InOutDetails report-view procs are NOT mis-routed to report:m_inout) —');
 var guardIds = [292, 293, 294];
@@ -121,12 +123,15 @@ guardIds.forEach(function (id) {
 verdict(leaked.length === 0,
         'no M_InOutConfirm / RV_InOutDetails proc is mis-routed to report:m_inout (the match is m_inout\\b word-boundary)', 'leaked=[' + leaked.join(',') + ']');
 
-// 292 has no foldReceipt route → it is NEVER dispatched to a fabricated report. The honest non-fold is either
-// 'absent-handler' (blank classname, no registry entry) or — reached first — 'param-validation-failed'.
-var r292 = P.dispatch(db, { AD_Process_ID: 292, params: {} }, ctx());
-console.log('§MINOUT-GUARD 292 Rpt M_InOutConfirm dispatched=' + r292.dispatched + ' reason=' + r292.reason + ' result=' + (r292.result ? 'present' : 'none'));
-verdict(r292.dispatched === false && (r292.reason === 'absent-handler' || r292.reason === 'param-validation-failed') && !r292.result,
-        'Rpt M_InOutConfirm (292) is an honest non-fold, NEVER a fabricated receipt', 'reason=' + r292.reason);
+// NOTE: 292 "Rpt M_InOutConfirm" now routes to its OWN leg (report:m_inoutconfirm, §P2-tail-leg6) — it is no longer
+// the absent example here; the loop above already proves it does NOT mis-route to report:m_inout. The honest-non-fold
+// example is 293 RV_InOutDetails Receive — a report-VIEW proc with no receipt fold → it has no foldReceipt route and
+// is NEVER dispatched to a fabricated report. The honest non-fold is either 'absent-handler' (blank classname, no
+// registry entry) or — reached first — 'param-validation-failed'.
+var r293 = P.dispatch(db, { AD_Process_ID: 293, params: {} }, ctx());
+console.log('§MINOUT-GUARD 293 RV_InOutDetails Receive dispatched=' + r293.dispatched + ' reason=' + r293.reason + ' result=' + (r293.result ? 'present' : 'none'));
+verdict(r293.dispatched === false && (r293.reason === 'absent-handler' || r293.reason === 'param-validation-failed') && !r293.result,
+        'RV_InOutDetails Receive (293) is an honest non-fold, NEVER a fabricated receipt', 'reason=' + r293.reason);
 
 db.close();
 console.log('\n' + (fails ? '🔴 ' + fails + ' check(s) FAILED — W-PROC-MINOUT NOT proven' : '═══ ALL PASS — Rpt M_InOut folds an M_InOut → non-financial receipt via the existing foldReceipt (KIND-1, no new fold code) — W-PROC-MINOUT ═══'));
