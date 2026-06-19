@@ -3,7 +3,7 @@
 > **New here?** The one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** — compares this architecture to legacy ERP at a glance. This page is the formal model.
 
 <div class="bim-banner" markdown>
-<b>Technical abstract.</b> An accounting kernel whose state is a deterministic fold over an append-only, signed operation log — serverless, in the browser, over SQLite. A companion to the [BIM-ERP](ERP.md) work.
+<b>Technical abstract.</b> An accounting kernel whose state is a deterministic fold over an append-only, signed operation log — serverless, in the browser, over SQLite. The iDempiere-faithful client folded on this kernel is **Kernel-ERP**. A companion to the [BIM-ERP](ERP.md) work.
 </div>
 
 **Redhuan D. Oon**
@@ -21,10 +21,11 @@ June 2026
 
 Conventional ERP systems represent state as mutable rows protected by a database server, a lock manager, and a transaction monitor. This work represents state instead as a *deterministic fold over an append-only, cryptographically signed sequence of operations*: a fact is computed by replaying the log, never stored as a guarded scalar. An accounting kernel built this way executes without a server — in a browser, over SQLite — and accepts writes while partitioned from all peers.
 
-The constituent techniques are established: append-only-log-as-system-of-record with deterministic materialisation (Datomic, event sourcing); hash-chained verifiable ledgers (Amazon QLDB, immudb); single-writer state at the edge (Cloudflare Durable Objects); offline convergence (local-first / CRDT). The contribution is their composition under ERP semantics, with two structural results:
+The constituent techniques are established: append-only-log-as-system-of-record with deterministic materialisation (Datomic, event sourcing); hash-chained verifiable ledgers (Amazon QLDB, immudb); single-writer state at the edge (Cloudflare Durable Objects); offline convergence (local-first / CRDT). The contribution is their composition under ERP semantics, with three structural results:
 
 1. **Reduction.** iDempiere's Application Dictionary (≈925 tables) reduces to a five-relation bridge — *documents, lines, journal, containers, items* — plus a small verb set, sufficient to fold an ERP within a single browser context.
 2. **Unification.** BIM and ERP share one operation log, so a building model materialises into a procurement order through the same kernel.
+3. **Derivation.** A stored process is re-expressed as a fold, not a method. iDempiere's `AD_Process` results are re-derived deterministically over the signed log via the existing verbs — no new code path — so a process *is* a replay, gated to the ported document family (its consequences extracted, never invented). Witnessed for document-generating actions ProjectGenOrder, InOutGenerate and InvoiceGenerate, and for report folds over M_InOut, M_Movement, M_Inventory, C_Project, PP_Order and C_Payment.
 
 The method is *extraction* rather than greenfield specification: iDempiere's model classes act as the oracle and its executed records (the GardenWorld dataset) as static ground truth, each verb validated by multiset-diffing the kernel's projection against those records. We report a kernel and architecture witnessed by deterministic replay, period-close checkpointing (compaction as balance-carried-forward), and a single compare-and-set operation class for the one genuinely shared resource.
 
@@ -52,4 +53,4 @@ Each claim is reproducible from the repository, validated by `§`-tagged logs ra
 | Working set bounded by the period, not the log (flat bootstrap across 100× history) | `scripts/poc_volume.js` → `§VOL PASS` |
 | Signed hash-chain, ordered replay, owner-gate / CAS, key-recovery floor | `scripts/poc_chain.js`, `poc_distributed.js`, `poc_sign.js`, `poc_email_dr.js` |
 
-Companion documents: [AD-in-Browser (iDempiere)](ERP.md) · [The Holy Grail (editable rules, live)](HolyGrail.md) · [Distributed ERP (Contention Map)](DistributedERP.md) · [Local-First Prior Art](LocalFirstPriorArt.md).
+Companion documents: [AD-in-Browser (Kernel-ERP / iDempiere)](ERP.md) · [The Holy Grail (editable rules, live)](HolyGrail.md) · [The Fold Engine Black Book (op-log dev manual)](FoldEngineBlackBook.html) · [Cross-ERP Rosetta Stone (incl. SAP / ACDOCA)](ERPConceptRosetta.html) · [Distributed ERP (Contention Map)](DistributedERP.md) · [Local-First Prior Art](LocalFirstPriorArt.md).

@@ -79,14 +79,15 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions and [SQLite](https:
 
     [:octicons-arrow-right-24: Clash Detection](CLASH_DETECTION.md)
 
--   **ERP-Native + Reports**
+-   **Kernel-ERP — ERP as a Fold over a Signed Op-Log**
 
     ---
 
-    [C_Order, C_OrderLine, M_Product, M_BOM](DATA_MODEL.md) — [iDempiere](https://idempiere.org/) patterns.
+    [C_Order, C_OrderLine, M_Product, M_BOM](DATA_MODEL.md) — folded from the [iDempiere](https://idempiere.org/) oracle.
+    State is a deterministic fold over a signed operation log; even an `AD_Process` is re-derived as a replay, not a method.
     Same compiled output produces [BOM schedules, compliance certificates, cost reports](REPORTING_ENGINE_SRS.md).
 
-    [:octicons-arrow-right-24: ERP world view](MANIFESTO.md) · [:octicons-arrow-right-24: Reporting](REPORTING_ENGINE_SRS.md) · [:octicons-arrow-right-24: Cross-ERP Rosetta Stone](ERPConceptRosetta.html) · [:octicons-arrow-right-24: ACDOCA Fold Plan (SAP)](ACDOCA_FOLD_PLAN.md)
+    [:octicons-arrow-right-24: Op-Log ERP (the engine)](OpLogERP.md) · [:octicons-arrow-right-24: Fold Engine Black Book](FoldEngineBlackBook.html) · [:octicons-arrow-right-24: Cross-ERP Rosetta Stone (incl. SAP / ACDOCA)](ERPConceptRosetta.html) · [:octicons-arrow-right-24: ERP world view](MANIFESTO.md)
 
 -   **Enterprise Security — No Server Required**
 
@@ -217,6 +218,8 @@ mvn compile -q                              # Compile all modules
 | Explore the enterprise platform | [**FederatedModel — 4D through 8D**](Enterprise.md) |
 | Navigate 1M+ elements in real time | [**RTree Query Engine — Compile Once, Query Forever**](RTree.md) |
 | Walk to any element indoors | [Find & Navigate — Indoor Wayfinding](RouteTemplate.md) |
+| Run the ERP as an op-log fold | [**Kernel-ERP — Op-Log ERP Engine**](OpLogERP.md) · [Fold Engine Black Book](FoldEngineBlackBook.html) |
+| Author geometry in the browser | [**DAGeVu Modeller — Geometry as a Fold**](ModellerKernelFold.md) |
 
 <div style="clear: right;"></div>
 

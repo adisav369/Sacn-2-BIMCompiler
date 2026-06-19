@@ -373,6 +373,8 @@ details.fold .fbd{padding:6px 16px 14px}
 
 A classic ERP is a **server of record**: every read, write and posting is a round-trip to a machine that *owns the truth*. We keep the accounting and the document flow but **delete that server**. The truth becomes a *signed, hash-chained op-log*; the live numbers are a deterministic **fold** of it, replayed by a SQLite-WASM kernel **in the browser**. The host turns disposable (a Git remote); the user owns the log; period-end **compaction** is a *signed checkpoint* carrying balances forward — not a batch job with a down-window (the close *postings* are themselves folds, still being built).
 
+The browser client that renders this is now branded **Kernel-ERP** — the product name; "folded from the iDempiere oracle" and "iDempiere-faithful" remain accurate *descriptions* of what the engine does (the oracle of record is a real iDempiere, the `idempiere_test` Postgres, diffed to the cent). By deliberate design the surface is **indistinguishable from real iDempiere**: classic ADWindow chrome only — one toolbar (New / Copy / Save / Save&New / Delete / Ignore / Process), folder tabs, the standard header — with everything *not* native to iDempiere moved off onto a single `⋯` pill rail (share / home / graph / kanban / POS / Ninja / history). Editing is in-place (form-view edits inline, no modal); *Zoom Across* is a real where-used drill, the *Process* button greys when a record has none, and leaving an unsaved record raises the native dirty-exit prompt — all diffed against the iDempiere source, not approximated (`W-ZOOM-ACROSS`, `W-DIRTY-GATE`).
+
 A claim about **substrate and delivery**, not features — the legacy stacks have vastly more. What we show: the *architecture* folds the same transactions with **zero network on the read/fold path** — proven by folding a **live Odoo**, **iDempiere's own flows** (it's the AD we render), and a **SAP Business One** flow (mock export) into the same six verbs. S/4HANA is still pending a real oracle.
 
 <div class="gitline" markdown="1">**ERP as git** — what git did to source code, we do to transactions: the log is the truth, every client folds the whole history, and the host is a *disposable remote*. The one thing git lacks — invariant enforcement (no double-spend) — we add. [See the full git ∷ ours parallel ↓](#erp-as-git)</div>
@@ -692,7 +694,7 @@ Three tables, not one wall. Columns are **architecture**, not a feature scorecar
 - "0 round-trip" — *structural* (no server of record on the read/fold path), not a benchmark. Honest counter: server-removal only wins over a network; on-box, durable Postgres is *faster* per-op (it buys durability + concurrency we defer).
 - Most ERP cells are *n/a — architectural*: the legacy stack exposes no comparable single number (throughput ceiling, batch-vs-naive) — server-bound by design.
 
-**NOT feature parity — plainly.** iDempiere, Odoo and SAP have *vastly* more features, localisations and integrations. The ~28K LOC renders the dictionary and folds the paths built so far (the order→ship→invoice→match→pay→allocate trade loop, inventory movement→on-hand→replenish, GL posting incl. inter-org + FX + `reverseCorrect`/void, signed rule-edit, period-close, **and the `beforeSave`+DocAction-FSM model layer of every document class** — **43 surfaces now oracle-equivalent to real iDempiere**) — it does **not** re-implement the full transactional server. **Only ~1% of the M-class business logic is ported** (the `M*.java` model logic = 104,940 code-LOC; ~205 LOC of transactional verbs folded + ≈830 LOC of cited `beforeSave` regions ported as hooks across 16 document classes) — the engine is the *host*, the M-class logic is the work still ahead. The win is **delivery/definition**: the AD-interpreter is lean because the AD is self-describing, and the whole server/build stack is gone. Each transactional verb still has to be folded deterministically. See `feedback_erp_perf_claims`.
+**NOT feature parity — plainly.** iDempiere, Odoo and SAP have *vastly* more features, localisations and integrations. The ~28K LOC renders the dictionary and folds the paths built so far (the order→ship→invoice→match→pay→allocate trade loop, inventory movement→on-hand→replenish, GL posting incl. inter-org + FX + `reverseCorrect`/void, signed rule-edit, period-close, **and the `beforeSave`+DocAction-FSM model layer of every document class** — **43 surfaces now oracle-equivalent to real iDempiere**) — it does **not** re-implement the full transactional server. **Only ~1% of the M-class business logic is ported** (the `M*.java` model logic = 104,940 code-LOC; ~205 LOC of transactional verbs folded + ≈830 LOC of cited `beforeSave` regions ported as hooks across 16 document classes) — the engine is the *host*, the M-class logic is the work still ahead. The win is **delivery/definition**: the AD-interpreter is lean because the AD is self-describing, and the whole server/build stack is gone. That self-description is load-bearing for breadth, not just one curated surface: CRUD generality (#348) derives each table's editability — column type, read-only, defaults — **from its own Application Dictionary rows**, so any table is editable per its own dictionary rather than hand-curated screen by screen. Each transactional verb still has to be folded deterministically. See `feedback_erp_perf_claims`.
 
 
 
@@ -962,7 +964,9 @@ Splitting all 1,427,147 Java LOC by fate [^split]:
 
 **Read it:** ~86% is UI, boilerplate, or server plumbing the browser deletes outright. Even the irreducible 14% is ceremony-heavy — in the `M*` models a third is blank/comment/signatures and most of the rest is generic accessor/lifecycle code the dictionary already handles; the *behavioural* logic (state transitions, posting math, tax rounding) is a minority.
 
-**And the irreducible 14% is not one up-front lump.** A large slice of it is the **SvrProcess corpus** — `org.compiere.process.*`, ~54K LOC across **476** `AD_Process` reports/procedures. We do **not** port that corpus to reach parity; we built and proved the **dispatch *mechanism*** (`ad_process.js`, W-PROC: `classname`→handler-registry→`prepare`/validate-params→`doIt`, a port of `ProcessUtil.startJavaProcess` + `SvrProcess.startProcess`) and fold individual procs **on demand** — when a customer actually invokes that report or routine, gated on need + an oracle, never as a sequencing prerequisite. **22 of 476 dispatch today** (the report procs fold straight through `report_overlay`); the remaining **454 are named-deferred, not blocking** — *the deliverable is the mechanism, not the corpus* ([coverage matrix §A/§B](ERP_COVERAGE_MATRIX.md)). So ~54K of the ~200K "must-fold" bucket amortises over real demand rather than gating the conversion estimate.
+**And the irreducible 14% is not one up-front lump.** A large slice of it is the **SvrProcess corpus** — `org.compiere.process.*`, ~54K LOC across **476** `AD_Process` reports/procedures. We do **not** port that corpus to reach parity; we built and proved the **dispatch *mechanism*** (`ad_process.js`, W-PROC: `classname`→handler-registry→`prepare`/validate-params→`doIt`, a port of `ProcessUtil.startJavaProcess` + `SvrProcess.startProcess`) and fold individual procs **on demand** — when a customer actually invokes that report or routine, gated on need + an oracle, never as a sequencing prerequisite. The remaining procs are **named-deferred, not blocking** — *the deliverable is the mechanism, not the corpus* ([coverage matrix §A/§B](ERP_COVERAGE_MATRIX.md)). So ~54K of the ~200K "must-fold" bucket amortises over real demand rather than gating the conversion estimate.
+
+**The process *fold* lane — a server action re-derived from the log.** The point is sharper than dispatch: an iDempiere "process" (its server-side document actions and reports) is re-expressed as an **op-log fold** — its result is a deterministic *re-derivation* by replaying the signed log, requiring **no new primitive verb** (`newVerbs=0`) and gated to the already-ported `DOC_FAMILY` (the consequences are *extracted* from the iDempiere source, never invented). A demand audit of the live corpus sorts the **451 actually-used** processes (the exact subset a real role can reach, `W-PROC-PICKER` vs the live oracle, `diff=0`) into three kinds — **148 KIND-1** (reports), **16 KIND-2** (document generators), **287 KIND-3** (the rest). Shipped folds so far: the **KIND-2 document generators** — `ProjectGenOrder` (AD_Process 164, project → Sales Order, #352), `InOutGenerate` (118, confirmed Sales Order → `M_InOut` shipment, #355) and `InvoiceGenerate` (119, confirmed Sales Order → `C_Invoice`, #358) — each folding through the same `buildDoc` recursion as `completeIt`; and a run of **KIND-1 report folds** — `M_InOut` (117), `M_Movement` (290), `M_Inventory` (291), `C_Project` Print (217), `PP_Order` (53028) and the `C_Payment` voucher (313) — each `W-PROC-*` diffed to the cent against the iDempiere print/report output. These join `foldStatement` / `foldPrint` / NinjaExcel as proof that the *process tier* folds, not just the document tier.
 
 Folding that behavioural core into declarative verbs compresses ~5–8× (no Java/OSGi ceremony, no per-field getters) — though **costing and MRP fold least cleanly** (stateful cost rollups, landed cost), pulling toward the conservative end:
 
@@ -1019,7 +1023,12 @@ Folding that behavioural core into declarative verbs compresses ~5–8× (no Jav
 1. **SAP S/4HANA fold** — BLOCKED. `build/erp/sap_fold.log` says `§SAP-FOLD NOT-RUN (skeleton ready;
    gated on oracle access)`. No real SAP O2C+FI export has been folded; only **SAP Business One (B1)
    against a hand-authored MOCK** has (`build/erp/b1_fold.log`). The "SAP" column is therefore
-   *partly mock, partly not-run* — never present S/4HANA as proven.
+   *partly mock, partly not-run* — never present S/4HANA as proven. The *plan* is published and the
+   target fixed: the **[ACDOCA Fold Plan](ACDOCA_FOLD_PLAN.md)** documents how S/4HANA's Universal
+   Journal (`ACDOCA`) + document-flow graph (`VBFA`) map onto the engine's own one-journal/op-log
+   shape, and the **[Cross-ERP Rosetta Stone](ERPConceptRosetta.html)** now carries an SAP/ACDOCA
+   column in its concept matrix — but both are *doctrine ahead of a run*, not evidence. The fold stays
+   **NOT claimed** until a real S/4HANA oracle is folded `newVerbs=0`.
 2. **Odoo / SAP server-side period-close timing & down-window** — no measured number; marked
    *architectural*. We have our own 2.68 s/40k-op figure but no head-to-head legacy batch-close time.
 3. **Odoo / SAP server round-trip latency (ms)** — not measured here. The closest real datum is the
@@ -1078,20 +1087,37 @@ the same ledger, no new server. **Both shipped 2026-06 and run LIVE on GitHub Pa
    pick *"walk the aisles"* app over the same tenant: the warehouse compiled as a BIM-like model (the
    same BOM recursion that compiles a building), fly-to + lens to the next bin, QR scan as the one
    clean act, every pick a signed op; `qtyOnHand` and the ERP window agree **to the unit** (W-WH-LIVE).
-3. **BIM → Project Order — PAPER → [spec](BIMtoProject.md)** — the fold generalizes *beyond
+3. **BIM → Project Order — LIVE → [spec](BIMtoProject.md)** — the fold generalizes *beyond
    accounting*. Any selection in the BIM Find panel folds into an iDempiere `C_Project` (4D schedule
    from `sequence_rules.json`, 5D cost from the active rate pack) → Generate-PO; delivery
    (`C_ProjectIssue`) folds **back** as an *"Actual"* schedule for a split-screen
    as-planned-vs-as-built Time Machine; rollback is the *same* history dots (`crudFoldBack`), scoped
-   to the project. The same kernel that migrates an ERP now folds a *building* — **one op-log, one
-   timeline across BIM and ERP.** (Spec only — not yet built, not measured in the vitals above.)
+   to the project. The same kernel that migrates an ERP now folds a *building*. The **Find→ERP
+   deep-link is wired live** — a priced selection pushes its Project into Kernel-ERP as an order, with
+   status + audio on every push outcome (#401); the Hospital BIM Project Order now ships *baked into
+   the GardenWorld seed* (`W-GW-HOSP-FOLD`, #415) so it opens with the tenant. Note: an earlier
+   *in-window 3D embed* (the viewer fused inside the ERP's Project window) was deliberately **retired**
+   (`W-STRIP-EMBED`, #409) — cross-surface flow now goes forward as a loosely-coupled cross-tab message
+   + URL cold-launch, BIM and ERP staying *separate surfaces over one signed op-log*, not a fused viewer.
+4. **System Administration as op-logged genesis — LIVE** — the same fold reaches *upstream*, to where a
+   tenant is born. We reproduce iDempiere's System Administrator (role 0 / System) on the engine, with
+   its **Initial Tenant Setup** rewritten as genesis: the wizard **births a tenant as a signed op-log
+   and posts it to the cent, in-browser** (#356), and a born tenant becomes a login-able **resident
+   client** (#359). The canonical path is System-only — System login → menu *"Initial Tenant Setup"* →
+   the wizard embedded in the chrome, gated so a client admin cannot mint companies (`W-GENESIS-SYSADMIN-LIVE`,
+   #397). Two surfaces iDempiere's own System role has no serverless analogue for were added: a **System
+   Monitor + login-info panel** (#406) and a **Plugins & Releases** page — a gated release/update surface
+   iDempiere lacks (#408) — plus a surgical **"Reset demo/seed ERPs"** that rebuilds only the seed band and
+   keeps born tenants (`W-SEED-RESET`, #413). The point is the same one fold: a company's *birth* is just
+   the genesis of its own op-log.
 
 Items 1–2 are the two ERP objectives stated in the [bim-ootb README](https://github.com/red1oon/bim-ootb#roadmap);
 both **landed downstream of the migration this paper measures** — possible precisely because the
 kernel is the same fold whether it is migrating an existing ERP or running a new app on it. Item 3 is
 the **shared BIM↔ERP objective** — a single parallel op|view history timeline across the BIM building
-and the ERP context — now specced. (The wider roadmap also carries one BIM-only objective: a 2D grid
-*editor*.)
+and the ERP context — now **wired live** (the in-window viewer embed was tried then retired in favour of
+loose cross-surface coupling). Item 4 carries that same op-log discipline *upstream*, to a tenant's birth.
+(The wider roadmap also carries one BIM-only objective: a 2D grid *editor*.)
 
 
 </div>
@@ -1124,7 +1150,7 @@ The on-ramp ends here. To see *how* each claim is built:
 <details class="fold" markdown="1"><summary>Status</summary>
 <div class="fbd" markdown="1">
 
-DRAFT (2026-06-08). The evaluator-facing companion to the deep papers ([ERP.md](ERP.md) · [DistributedERP.md](DistributedERP.md) · [BIMERPPaper.md](BIMERPPaper.md)). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.
+DRAFT (2026-06-08, currency pass 2026-06-19: the Kernel-ERP rebrand + iDempiere-fidelity surface, the AD_Process fold lane, genesis / System Admin, and the live BIM→Project push). The evaluator-facing companion to the deep papers ([ERP.md](ERP.md) · [DistributedERP.md](DistributedERP.md) · [BIMERPPaper.md](BIMERPPaper.md)). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.
 
 </div>
 </details>

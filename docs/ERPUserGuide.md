@@ -1,4 +1,4 @@
-# iDempiere Browser ERP — User Guide
+# Kernel-ERP — iDempiere-faithful Browser ERP — User Guide
 
 *The browser kernel renders the full iDempiere Application Dictionary from SQLite — no Java, no server,
 no install. This guide walks from first load to POS sale to financial report.*
