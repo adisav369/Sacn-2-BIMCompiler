@@ -86,6 +86,135 @@ def match_hash(defs, ifc, w, d, h):
     return min(pool, key=lambda x: abs(x[1] - vol))[0]
 
 
+# ── Spatial placement ports (BOMTierResolver computeZoneAnchor + PhantomLayout GPD walk + LocalCoord rotation).
+# No BOM db carries wall locators / openings / ad_room_boundary (verified by query 2026-06-19, see card §DATA
+# AVAILABILITY) — the wall-anchored absolute layout was a RUNTIME computation against the building's real room,
+# stored only in the cooked extracted.db, never in the BOM recipe. So a modeller drop cannot copy it. What we
+# faithfully CAN do: synthesize a square envelope from the assembly aabb and run the cascade's LOGIC against it.
+# These ports mirror DAGCompiler coordinate/LocalCoord.java + library/BOMTierResolver.java exactly.
+_CARD_RAD = {'south': 0.0, 'north': math.pi, 'west': -math.pi / 2, 'east': math.pi / 2}
+
+
+def card_to_rad(d):                                          # LocalCoord.cardinalToRadians (L108-116)
+    return _CARD_RAD.get(d, 0.0)
+
+
+_ABS_RULES = ('EW', 'NS')                                    # absolute axis rules — no wall context needed
+_REL_RULES = ('FACE_INTO_ROOM', 'FACE_AWAY_FROM_WALL', 'FACE_OUTSIDE', 'PARALLEL_TO_WALL')  # host-relative
+
+
+def resolve_symbolic_rot(label, wall_ctx):
+    """Resolve a SYMBOLIC rotation_rule to radians. Two families:
+    • ABSOLUTE axis rules (wall/plate run direction) — EW / NS. Semantics confirmed in
+      WitnessBuilder.wallMountedFixture javadoc ("NS" = wall runs north-south along Y; "EW" = east-west along X).
+      The Java orients walls via geometry construction, not a rotation; translated to our unit-mesh+rotation
+      model: EW → 0° (mesh long axis stays X), NS → +90° (run along Y). No wall context needed.
+    • HOST-RELATIVE facing rules — port of LocalCoord.resolveRotation (L80-92): FACE_INTO_ROOM /
+      FACE_AWAY_FROM_WALL → face off that wall (Java treats both identically: back-to-wall = facing in);
+      FACE_OUTSIDE → opposite (+π); PARALLEL_TO_WALL → +90°. Need a wall context.
+    Returns 0.0 for an unknown label or a relative rule with no wall context (honest — not inventable)."""
+    if label == 'EW':
+        return 0.0
+    if label == 'NS':
+        return math.pi / 2
+    if not wall_ctx:
+        return 0.0
+    if label in ('FACE_INTO_ROOM', 'FACE_AWAY_FROM_WALL'):
+        return card_to_rad(wall_ctx)
+    if label == 'FACE_OUTSIDE':
+        return card_to_rad(wall_ctx) + math.pi
+    if label == 'PARALLEL_TO_WALL':
+        return card_to_rad(wall_ctx) + math.pi / 2
+    return 0.0
+
+
+def layout_assembly(asm, by_id, bom_meta):
+    """ENVELOPE-RELATIVE placement for ONE assembly (faithful port of BOMTierResolver computeZoneAnchor +
+    PhantomLayout GPD walk + LocalCoord.resolveRotation). Mutates each child's dx/dy/rotDeg in place and sets
+    autoLayout/wall. Synthesize a square envelope from the assembly aabb (w×d) centred on the drop point; a set
+    with NO authored offsets is backed to its LONGEST wall and GPD-walked along it (anchor advances by each
+    child's extent; child backed off the wall by half its REAL depth) — so a bathroom's fixtures LINE a wall
+    instead of floating in a bare +X row. Symbolic rotation_rule resolves against the established wall; a
+    no-rule child of a wall-walk faces the wall (resolveWithGPD L548). HONEST CEILING: faithful to the recipe +
+    the cascade's LOGIC, but the envelope is SYNTHESIZED (not the building's real room).
+    ⚠ MUST run AFTER the leaf set is closed — else _extent/_depth fall back to defaults for leaf-closure
+    products and the walk is NOT flush-backed by real dims (W-BOM-SPATIAL caught exactly this). Returns
+    (wall_set, float_set, rot_resolved, rot_unresolved) increments. NON-INVENT: aabb / allocated_width_mm /
+    product dims / rotation rules all read from the data."""
+    children = asm['children']
+    rot_resolved = rot_unresolved = 0
+
+    def _extent(ch):
+        if ch['isBom']:
+            m = bom_meta.get(ch['ref'])
+            w = (m[4] or 0) / 1000.0 if m else 0.0
+            return w if w > 0.01 else 0.5                        # nested aabb width; degenerate/missing → 0.5 default
+        if ch['_aw'] > 0.01:
+            return ch['_aw']                                     # allocated slot width
+        p = by_id.get(ch['ref'])
+        return (p['w'] if p and p.get('w') else 0.5)            # else the product's own width
+
+    def _depth(ch):
+        p = by_id.get(ch['ref'])
+        return (p.get('d') or 0.3) if p else 0.3
+
+    def _resolve_child_rot(ch, wall_ctx):
+        """Faithful to BOMTierResolver. Precedence: ABSOLUTE EW/NS (any wall) > HOST-RELATIVE FACE_*/PARALLEL
+        vs wall_ctx (LocalCoord.resolveRotation; 0°+honest if no wall) > no-rule wall-walk default = the wall
+        FACING (card_to_rad(wall), resolveWithGPD L548) > explicit non-zero numeric kept."""
+        nonlocal rot_resolved, rot_unresolved
+        label = ch.get('rotRule')                               # set only for SYMBOLIC rules (numeric → None)
+        if label in _ABS_RULES:
+            ch['rotDeg'] = round(resolve_symbolic_rot(label, None) * 180.0 / math.pi, 2); rot_resolved += 1
+        elif label in _REL_RULES:
+            if wall_ctx:
+                ch['rotDeg'] = round(resolve_symbolic_rot(label, wall_ctx) * 180.0 / math.pi, 2); rot_resolved += 1
+            else:
+                ch['rotDeg'] = 0.0; rot_unresolved += 1         # no wall context — honest 0°, label retained
+        elif wall_ctx and abs(ch['rotDeg']) < 0.001:
+            ch['rotDeg'] = round(card_to_rad(wall_ctx) * 180.0 / math.pi, 2); rot_resolved += 1
+
+    exts = [_extent(ch) for ch in children]
+    W = asm['w'] or 0.0
+    Dd = asm['d'] or 0.0
+    if max(W, Dd) < 0.01:                                       # assembly carries no aabb → derive from children
+        W = max(sum(exts), 0.5)
+        Dd = max((_depth(ch) for ch in children), default=0.4)
+    minX, minY = -W / 2.0, -Dd / 2.0
+
+    wall_set = float_set = 0
+    has_offsets = any(abs(ch['dx']) > 0.001 or abs(ch['dy']) > 0.001 for ch in children)
+    if not has_offsets and len(children) > 1:
+        along_x = W >= Dd                                       # walk along the longer axis
+        wall = 'south' if along_x else 'west'                   # back the set to that (longest) wall
+        span = sum(e + ch['_ms'] for e, ch in zip(exts, children)) - children[-1]['_ms']
+        cursor = -span / 2.0                                    # centre the run on the drop point
+        for ch, ext in zip(children, exts):
+            halfD = _depth(ch) / 2.0
+            along = cursor + ext / 2.0                          # centre = anchor + half-extent (Java cx=anchor+halfW)
+            if along_x:
+                ch['dx'] = round(along, 4)
+                ch['dy'] = round(minY + halfD, 4)               # backed off the south wall by half depth
+            else:
+                ch['dy'] = round(along, 4)
+                ch['dx'] = round(minX + halfD, 4)               # backed off the west wall by half depth
+            cursor += ext + ch['_ms']                           # advance anchor by extent (+ min gap)
+            _resolve_child_rot(ch, wall)
+        asm['autoLayout'] = 'WALL_LINEAR'
+        asm['wall'] = wall
+        wall_set = 1
+    else:
+        # Authored-offset (or single-child) set: keep dx/dy verbatim. No wall established → host-relative FACE_*
+        # rules left at 0°+label (honest); only absolute EW/NS resolve. Guessing a nearest wall = invention.
+        for ch in children:
+            _resolve_child_rot(ch, None)
+        if has_offsets:
+            float_set = 1
+    for ch in children:                                         # drop transient layout inputs from the shipped JSON
+        ch.pop('_aw', None); ch.pop('_ms', None)
+    return wall_set, float_set, rot_resolved, rot_unresolved
+
+
 # ── normalizeRole port (FurnitureWorker.java:100-117) → a canonical getByName PATTERN per BOM role. The Java
 # normalizeRole switch remaps role tokens (TABLE→DINING_TABLE, CHAIR_*→DINING_CHAIR, DESK→WORKSTATION_DESK …);
 # here we map each role to the human-readable library name that getByName resolves to a real, correctly-named,
@@ -235,6 +364,7 @@ def main():
         return key, ('gh' in by_id[key] and not by_id[key].get('dimless') and by_id[key].get('libName') is not None)
 
     role_resolved = role_proxy = phantom_skipped = 0
+    rot_resolved = rot_unresolved = sets_wall = sets_float = 0
     assemblies, leaf_refs = [], set()
     for bid, rows in lines_by_bom.items():
         meta = bom_meta.get(bid)
@@ -268,35 +398,7 @@ def main():
         asm = {'id': bid, 'name': meta[1], 'level': meta[2], 'category': meta[3],
                'w': round((meta[4] or 0) / 1000.0, 3), 'd': round((meta[5] or 0) / 1000.0, 3),
                'h': round((meta[6] or 0) / 1000.0, 3), 'children': children}
-
-        # ── LINEAR LAYOUT (ported from PhantomLayout.placeNext + BOMTierResolver.resolveWithGPD/resolveFloatChildren):
-        # the Java engine picks explicit dx/dy when ANY child carries an offset (hasOffsets branch); otherwise it
-        # GPD-WALKS the children along a host axis — anchor advances by each child's extent, centre = anchor+half.
-        # archive/BOM.db is 100% FLOAT+LINEAR, so a set with all-zero offsets (e.g. DUPLEX_BATHROOM_SET) must be
-        # spread, not stacked. Room-aware fixture placement needs a room envelope a bare drop lacks; this is the
-        # faithful room-independent walk along local +X. NON-INVENT: extents are allocated_width_mm (fallback the
-        # product/sub-assembly width) read from the data.
-        def _extent(ch):
-            if ch['isBom']:
-                m = bom_meta.get(ch['ref'])
-                return (m[4] or 0) / 1000.0 if m else 0.5         # nested → its aabb width
-            if ch['_aw'] > 0.01:
-                return ch['_aw']                                  # allocated slot width
-            p = by_id.get(ch['ref'])
-            return (p['w'] if p and p.get('w') else 0.5)          # else the product's own width
-
-        has_offsets = any(abs(ch['dx']) > 0.001 or abs(ch['dy']) > 0.001 for ch in children)
-        if not has_offsets and len(children) > 1:
-            cursor = 0.0
-            for ch in children:
-                ext = _extent(ch)
-                ch['dx'] = round(cursor + ext / 2.0, 4)           # centre at anchor + half-extent (Java cx=anchor+halfW)
-                ch['dy'] = 0.0
-                cursor += ext + ch['_ms']                         # advance anchor by extent (+ min gap)
-            asm['autoLayout'] = 'LINEAR'
-        for ch in children:                                       # drop transient layout inputs from the shipped JSON
-            ch.pop('_aw', None); ch.pop('_ms', None)
-        assemblies.append(asm)
+        assemblies.append(asm)            # layout runs in PASS 2 (after the leaf set is closed — see below)
 
     # CLOSE the leaf set: every leaf product an assembly places must resolve in the catalog (get/meshArrays),
     # even if it isn't in a browse category. Add the missing ones tagged asmOnly (+ nearest real mesh).
@@ -324,6 +426,13 @@ def main():
         if gh:
             p['gh'] = gh
         products.append(p); by_id[pid] = p; added += 1
+
+    # ── PASS 2: ENVELOPE-RELATIVE LAYOUT — run NOW that every leaf product's real dims are in by_id (the leaf
+    # set is closed). Running this inside pass 1 fell back to default 0.3/0.5 dims for leaf-closure products →
+    # the wall-walk was NOT flush-backed by real depth (W-BOM-SPATIAL caught all 36 such mismatches).
+    for asm in assemblies:
+        ws, fs, rr, ru = layout_assembly(asm, by_id, bom_meta)
+        sets_wall += ws; sets_float += fs; rot_resolved += rr; rot_unresolved += ru
 
     catalog = {
         'source': 'library/archive/BOM.db (M_Product_Category + M_Product + m_bom/m_bom_line)',
@@ -365,6 +474,8 @@ def main():
         len(assemblies), ', '.join('%s:%d' % (k, lvl[k]) for k in sorted(lvl)), added, len(products)))
     print('§DAGEVU-ROLERESOLVE phantomSkipped=%d roleResolvedToConcrete=%d perRoleProxies=%d' % (
         phantom_skipped, role_resolved, role_proxy))
+    print('§DAGEVU-SPATIAL wallAnchoredSets=%d floatOffsetSets=%d rotSymbolicResolved=%d rotSymbolicUnresolvable=%d' % (
+        sets_wall, sets_float, rot_resolved, rot_unresolved))
     print('§DAGEVU-GEOM out=%s geoms=%d rawBytes=%d (~%.2f MB)' % (GEOM_OUT, len(geoms), gbytes, gbytes / 1e6))
 
 
