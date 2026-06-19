@@ -51,6 +51,20 @@
     pp_order:  { key: 'pp_order',  pk: 'pp_order_id',  lineTable: 'pp_order_bomline',fk: 'pp_order_id',
                  fkProduct: 'm_product_id', amount: null,        qty: 'qtyrequiered',price: null,
                  date: 'datepromised', total: null },
+    // Rpt C_Payment (AD_Process 313, "Payment Print") — a HEADER-ONLY financial document (AD_PROCESS_FOLD_LANE
+    // §P2-tail-leg5). A payment has NO line table; its amount is PayAmt on the header → folded by foldVoucher, NOT
+    // foldReceipt. `amounts` names the real money columns; `total`=payamt is the document amount. The voucher's
+    // amounts obey iDempiere's allocation invariant: PayAmt + Discount + Write-off − Over/Under = the settled
+    // invoice's GrandTotal (re-derived in W-PROC-PAYMENT, never asserted). headerOnly=Y → no line rows folded.
+    c_payment: { key: 'c_payment', pk: 'c_payment_id', docnoCol: 'documentno', date: 'datetrx',
+                 total: 'payamt', headerOnly: true,
+                 amounts: [ { col: 'payamt',      label: 'Payment Amount' },
+                            { col: 'discountamt',  label: 'Discount' },
+                            { col: 'writeoffamt',  label: 'Write-off' },
+                            { col: 'overunderamt', label: 'Over/Under Payment' },
+                            { col: 'taxamt',       label: 'Tax' } ],
+                 flags:   [ { col: 'isreceipt',    label: 'Receipt' },
+                            { col: 'tendertype',   label: 'Tender' } ] },
     // Rpt C_Project (AD_Process 217, "Project Print") — a KIND-1 report folded by the SAME foldReceipt as the
     // order/invoice prints (no new fold code, AD_PROCESS_FOLD_LANE §P2-leg3). A project IS a document: header
     // C_Project + lines C_ProjectLine; the planned amounts are its money (subtotal = Σ PlannedAmt, total = the
@@ -109,6 +123,34 @@
                  : (header.c_bpartner_id != null ? '#' + header.c_bpartner_id : null)),
       lines: outLines, subtotal: subtotal, tax: tax, total: total,
       financial: fin, foldsFrom: 'bundle'
+    };
+  }
+
+  // foldVoucher — fold a HEADER-ONLY financial document (one with NO line table) into a voucher: a payment, where
+  // the document amount lives on the header (PayAmt) and there are genuinely no line rows (AD_PROCESS_FOLD_LANE
+  // §P2-tail-leg5). foldReceipt's subtotal=Σline model is WRONG here (an unapplied payment with 0 lines would
+  // yield tax=PayAmt) — so this is a distinct fold, NOT a foldReceipt call. PURE: header in, voucher out. Every
+  // amount is BigDecimal-exact off a REAL header column named in map.amounts (never a synthesized/fabricated line).
+  // `amounts` carries the named money columns (PayAmt/Discount/Write-off/…); `flags` carries non-money descriptors
+  // (IsReceipt/TenderType). total = the document amount (map.total, e.g. payamt). No `lines` key — the host's
+  // line-table branch is skipped; the headerOnly branch renders the amount breakdown.
+  function foldVoucher(map, header, names) {
+    if (!map || !header) return null;
+    names = names || {};
+    var amounts = (map.amounts || []).map(function (a) {
+      return { col: a.col, label: a.label, value: money2(bd(header[a.col])) };   // EXACT BigDecimal off the raw column
+    });
+    var flags = (map.flags || []).map(function (f) {
+      return { label: f.label, value: (header[f.col] != null && header[f.col] !== '') ? String(header[f.col]) : null };
+    });
+    return {
+      key: map.key, id: header[map.pk], docno: header[map.docnoCol || 'documentno'],
+      date: (map.date && header[map.date] != null) ? String(header[map.date]).slice(0, 10) : null,
+      partner: (names.partner != null ? names.partner
+                 : (header.c_bpartner_id != null ? '#' + header.c_bpartner_id : null)),
+      amounts: amounts, flags: flags,
+      total: (map.total ? money2(bd(header[map.total])) : null),
+      financial: true, headerOnly: true, foldsFrom: 'bundle'
     };
   }
 
@@ -583,7 +625,7 @@
              coverage: coverage, scopeFacts: countFacts(windows), totalFacts: totalFacts };
   }
 
-  var CORE = { REPORT_MAP: REPORT_MAP, foldReceipt: foldReceipt, foldTrialBalance: foldTrialBalance, foldPnL: foldPnL,
+  var CORE = { REPORT_MAP: REPORT_MAP, foldReceipt: foldReceipt, foldVoucher: foldVoucher, foldTrialBalance: foldTrialBalance, foldPnL: foldPnL,
                foldStatement: foldStatement, foldPrint: foldPrint, foldQWeb: foldQWeb, resolveScope: resolveScope,
                amtExpr: amtExpr, signedBalance: signedBalance, round2: round2 };
   if (typeof module !== 'undefined' && module.exports) { module.exports = CORE; return; }
