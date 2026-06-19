@@ -4098,6 +4098,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#your-first-insert-the-bom-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your first insert — the BOM catalog
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-toolbar-icon-index" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4470,6 +4481,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#your-first-insert-the-bom-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your first insert — the BOM catalog
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-toolbar-icon-index" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4512,6 +4534,28 @@ you apply <strong>operations</strong> — insert a component, sketch a profile, 
 recorded, replayable, and reversible, and the same signed-log idea drives the Kernel-ERP engine.</p>
 <p><strong>Open it:</strong> <a href="https://red1oon.github.io/bim-ootb/viewer/modeller.html">red1oon.github.io/bim-ootb/viewer/modeller.html</a>
 (desktop — the B-rep kernel is heavy). The <strong>Home</strong> button returns to the Matrix landing.</p>
+<p><img alt="DAGeVu Modeller — the INSERT · BOM CATALOG panel open (left), the authored scene on the grid, the tool rail down the right, and the op-log history scrubber along the bottom" src="../assets/modeller.png" /></p>
+<h2 id="your-first-insert-the-bom-catalog">Your first insert — the BOM catalog<a class="headerlink" href="#your-first-insert-the-bom-catalog" title="Permanent link">&para;</a></h2>
+<p>The fastest way to build is to <strong>assemble, not draw</strong>. Tap the <strong>Insert</strong> tool (the cube icon on the
+right rail) to open the <strong>INSERT · BOM CATALOG</strong> panel on the left:</p>
+<ol>
+<li><strong>Find a component.</strong> Type in <strong>search parts…</strong>, or narrow with the filter chips —
+   <strong>All · Structure · Openings · Furniture · Sets</strong>. The catalog is loaded from the real
+   <code>component_library.db</code>, so what you see are actual parts and pre-built assemblies.</li>
+<li><strong>Pick a part — or a whole set.</strong> Single parts drop one element. <strong>Sets</strong> are <em>assemblies</em> (whole
+   BOM sets) grouped by level — <strong>Buildings · Floors · Rooms · Sets · Items</strong> — each collapsible, with a
+   part-count badge (e.g. <em>Duplex Single Half-Unit</em>, <em>DX Level 1 Structured</em>). Pick one to drop the
+   entire recipe at once.</li>
+<li><strong>Aim and place.</strong> The status line prompts <strong>"aim on the grid, R to rotate, click to place"</strong>. Move
+   the cursor over the grid to position the ghost preview; press <strong>R</strong> to rotate (the <strong>Rotate</strong> angle
+   in the panel footer updates); set <strong>Elev</strong> (metres) to lift it to a storey height; then <strong>click</strong> to
+   drop it.</li>
+<li><strong>It's a signed op.</strong> The placement lands as one operation in the op-log — visible on the history
+   scrubber at the bottom and fully <strong>undoable</strong> (<code>Ctrl+Z</code>). An assembly drops as a single grouped op
+   of <em>N</em> parts.</li>
+</ol>
+<p>From there, use the tool rail to refine: move/rotate a placed object, sketch and extrude new geometry,
+cut, sweep an MEP run, or bump a component's level of detail.</p>
 <h2 id="the-toolbar-icon-index">The toolbar — icon index<a class="headerlink" href="#the-toolbar-icon-index" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
