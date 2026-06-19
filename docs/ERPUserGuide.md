@@ -15,10 +15,41 @@ no install. This guide walks from first load to POS sale to financial report.*
 
 ---
 
-## Quick start
+## Quick start — the bubbles front door
 
-Open **idempiere.html** (or follow the "iDempiere" link from the front door). A login card appears
-immediately — no credentials, just pick a role.
+The ERP opens at **erp.html** — the **bubble launcher** (from the [Matrix front door](USER_GUIDE.md)
+pick the **ERP** door). It is *not* a form yet: it's a slowly-rotating constellation where **each
+bubble is an Application-Dictionary entity** — Business Partners, Products, Orders, Warehouses, and
+the rest — rendered live from the seed.
+
+[**→ ERP bubbles (erp.html)**](https://red1oon.github.io/bim-ootb/erp/erp.html)
+
+![The Kernel-ERP bubbles — a rotating constellation of AD entities; tap to dive into records, long-press to open the real iDempiere window](assets/erp_bubbles.png)
+
+**How you move through it (verified in `ad_graph.js`):**
+
+| Gesture on a bubble | What happens |
+|---|---|
+| **Drag** empty space | Orbit the constellation |
+| **Tap** a table bubble | Flies in and dives into *that entity's records* — still inside the globe |
+| **Tap** a record bubble | Expands it / fans out its related records |
+| **Long-press** (~½ s) a bubble | Opens that window (or record) in the **real iDempiere renderer** — `idempiere.html` → the login card |
+| **Double-tap** a bubble | Shortcut: opens *all* records of that table in iDempiere |
+
+So a **long-press** (or double-tap) is the bridge from the playful launcher into the faithful
+iDempiere window described in the rest of this guide. A bubble with no iDempiere window just reports
+that honestly.
+
+**The `⋯` rail** (bottom-right three-dots — the only non-iDempiere chrome) reveals the two concept
+lenses over the same engine:
+
+- **Glass** (`glassbowl.html`) — the engine-as-data "glass bowl" lens.
+- **Gravity** (`glassbowl_gravity.html`) — a central-mass / orbiting-satellites view.
+
+Both are marked *CONCEPT* and run fully offline.
+
+> **Skip straight to the forms:** if you just want the classic ERP, open **idempiere.html** directly
+> (or long-press any bubble). A login card appears immediately — no credentials, just pick a role.
 
 ---
 
