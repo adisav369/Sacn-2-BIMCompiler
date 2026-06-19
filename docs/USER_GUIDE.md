@@ -47,6 +47,10 @@ iDempiere Application Dictionary from SQLite — no Java, no server, no install.
 
 → **[ERP User Guide](ERPUserGuide.md)**
 
+**ERP practitioners** — implementers, power users, developers, and other ERP projects — start with
+**[Migrate & Compare](MigrateComparisonPaper.md)**: how Kernel-ERP folds the iDempiere (and a live Odoo)
+tenant onto one signed op-log, what stands comparison with a legacy stack, and the honest gaps.
+
 ---
 
 ## Further reading
