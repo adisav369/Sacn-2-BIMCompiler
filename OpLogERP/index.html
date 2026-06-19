@@ -4519,7 +4519,7 @@
 <p><strong>New here?</strong> The one-page evaluator companion — <strong><a href="../MigrateComparisonPaper/">Migrate &amp; Compare (ERP)</a></strong> — compares this architecture to legacy ERP at a glance. This page is the formal model.</p>
 </blockquote>
 <div class="bim-banner">
-<p><b>Technical abstract.</b> An accounting kernel whose state is a deterministic fold over an append-only, signed operation log — serverless, in the browser, over SQLite. A companion to the <a href="../ERP/">BIM-ERP</a> work.</p>
+<p><b>Technical abstract.</b> An accounting kernel whose state is a deterministic fold over an append-only, signed operation log — serverless, in the browser, over SQLite. The iDempiere-faithful client folded on this kernel is <strong>Kernel-ERP</strong>. A companion to the <a href="../ERP/">BIM-ERP</a> work.</p>
 </div>
 <p><strong>Redhuan D. Oon</strong>
 ADempiere (2006) | iDempiere (2010) | Author, <em>Open Source ERP</em> (2010) | BIM5D (2025)</p>
@@ -4529,10 +4529,11 @@ ADempiere (2006) | iDempiere (2010) | Author, <em>Open Source ERP</em> (2010) | 
 <hr />
 <h2 id="abstract">Abstract<a class="headerlink" href="#abstract" title="Permanent link">&para;</a></h2>
 <p>Conventional ERP systems represent state as mutable rows protected by a database server, a lock manager, and a transaction monitor. This work represents state instead as a <em>deterministic fold over an append-only, cryptographically signed sequence of operations</em>: a fact is computed by replaying the log, never stored as a guarded scalar. An accounting kernel built this way executes without a server — in a browser, over SQLite — and accepts writes while partitioned from all peers.</p>
-<p>The constituent techniques are established: append-only-log-as-system-of-record with deterministic materialisation (Datomic, event sourcing); hash-chained verifiable ledgers (Amazon QLDB, immudb); single-writer state at the edge (Cloudflare Durable Objects); offline convergence (local-first / CRDT). The contribution is their composition under ERP semantics, with two structural results:</p>
+<p>The constituent techniques are established: append-only-log-as-system-of-record with deterministic materialisation (Datomic, event sourcing); hash-chained verifiable ledgers (Amazon QLDB, immudb); single-writer state at the edge (Cloudflare Durable Objects); offline convergence (local-first / CRDT). The contribution is their composition under ERP semantics, with three structural results:</p>
 <ol>
 <li><strong>Reduction.</strong> iDempiere's Application Dictionary (≈925 tables) reduces to a five-relation bridge — <em>documents, lines, journal, containers, items</em> — plus a small verb set, sufficient to fold an ERP within a single browser context.</li>
 <li><strong>Unification.</strong> BIM and ERP share one operation log, so a building model materialises into a procurement order through the same kernel.</li>
+<li><strong>Derivation.</strong> A stored process is re-expressed as a fold, not a method. iDempiere's <code>AD_Process</code> results are re-derived deterministically over the signed log via the existing verbs — no new code path — so a process <em>is</em> a replay, gated to the ported document family (its consequences extracted, never invented). Witnessed for document-generating actions ProjectGenOrder, InOutGenerate and InvoiceGenerate, and for report folds over M_InOut, M_Movement, M_Inventory, C_Project, PP_Order and C_Payment.</li>
 </ol>
 <p>The method is <em>extraction</em> rather than greenfield specification: iDempiere's model classes act as the oracle and its executed records (the GardenWorld dataset) as static ground truth, each verb validated by multiset-diffing the kernel's projection against those records. We report a kernel and architecture witnessed by deterministic replay, period-close checkpointing (compaction as balance-carried-forward), and a single compare-and-set operation class for the one genuinely shared resource.</p>
 <h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
@@ -4574,7 +4575,7 @@ ADempiere (2006) | iDempiere (2010) | Author, <em>Open Source ERP</em> (2010) | 
 </tr>
 </tbody>
 </table>
-<p>Companion documents: <a href="../ERP/">AD-in-Browser (iDempiere)</a> · <a href="../HolyGrail/">The Holy Grail (editable rules, live)</a> · <a href="../DistributedERP/">Distributed ERP (Contention Map)</a> · <a href="../LocalFirstPriorArt/">Local-First Prior Art</a>.</p>
+<p>Companion documents: <a href="../ERP/">AD-in-Browser (Kernel-ERP / iDempiere)</a> · <a href="../HolyGrail/">The Holy Grail (editable rules, live)</a> · <a href="../FoldEngineBlackBook.html">The Fold Engine Black Book (op-log dev manual)</a> · <a href="../ERPConceptRosetta.html">Cross-ERP Rosetta Stone (incl. SAP / ACDOCA)</a> · <a href="../DistributedERP/">Distributed ERP (Contention Map)</a> · <a href="../LocalFirstPriorArt/">Local-First Prior Art</a>.</p>
 
 
 

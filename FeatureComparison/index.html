@@ -1016,6 +1016,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dagevu-browser-bim-authoring-modeller" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DAGeVu — Browser BIM Authoring Modeller
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DAGeVu — Browser BIM Authoring Modeller">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#geometry-as-a-fold-over-a-signed-op-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Geometry as a Fold over a Signed Op-Log
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shipped-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped Capabilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connect-scene-one-shared-history-across-bim-and-erp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connect Scene — One Shared History Across BIM and ERP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#morpheus-choose-your-door-landing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Morpheus — Choose-Your-Door Landing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture_1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5171,6 +5232,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dagevu-browser-bim-authoring-modeller" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DAGeVu — Browser BIM Authoring Modeller
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DAGeVu — Browser BIM Authoring Modeller">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#geometry-as-a-fold-over-a-signed-op-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Geometry as a Fold over a Signed Op-Log
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shipped-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped Capabilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connect-scene-one-shared-history-across-bim-and-erp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connect Scene — One Shared History Across BIM and ERP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#morpheus-choose-your-door-landing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Morpheus — Choose-Your-Door Landing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture_1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5242,6 +5364,7 @@
 <h2 id="what-it-is">What It Is<a class="headerlink" href="#what-it-is" title="Permanent link">&para;</a></h2>
 <p>BIM OOTB is a browser-based IFC viewer that runs entirely on the client. No server. No cloud subscription. No software to install. Open a URL, drop an IFC file, and view a full BIM model with construction scheduling, cost breakdown, and clash detection — all in a single browser tab.</p>
 <p>The viewer handles buildings from 200 to 122,000+ elements with smooth orbit, pick, and section cut — and a <strong>whole-city view that streams a 1,000,000+ element city</strong> (52 buildings, 24 archetypes) in the same single browser tab. After first load, it works offline from local cache. The entire application is under 500KB of code.</p>
+<p>The viewer is read-only by design. Alongside it now ships an early <strong>browser BIM authoring modeller</strong> — <strong>DAGeVu</strong> — and a "choose your door" landing that wires viewer, modeller, and the ERP engine over one shared signed op-log. These are covered in the <strong>DAGeVu — Browser BIM Authoring Modeller</strong> section below; the bulk of this paper documents the mature read-only viewer.</p>
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <h3 id="ifc-in-building-out">IFC In, Building Out<a class="headerlink" href="#ifc-in-building-out" title="Permanent link">&para;</a></h3>
 <p>An IFC file is parsed once into a SQLite database. Geometry is content-hashed and deduplicated — identical columns, beams, or fittings share one mesh. The database is cached locally in the browser's IndexedDB. On return visits, the building loads from cache in under one second.</p>
@@ -5767,6 +5890,13 @@ fetched on demand. See ERP.md §16.6.</p>
 <td>None</td>
 <td>None</td>
 </tr>
+<tr>
+<td>Browser authoring (B-rep)</td>
+<td><strong>DAGeVu (spine-proven, op-log fold)</strong></td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+</tr>
 </tbody>
 </table>
 <h3 id="key-differences">Key Differences<a class="headerlink" href="#key-differences" title="Permanent link">&para;</a></h3>
@@ -5829,6 +5959,30 @@ fetched on demand. See ERP.md §16.6.</p>
 <p>B-rep kernels (OpenCascade, Parasolid) are essential for <strong>design authoring</strong> — push/pull faces, fillet edges, compute precise booleans. That is Revit's job.</p>
 <p>Construction-phase BIM — viewing, measuring, clash detection, 4D scheduling, 5D costing, field coordination — operates on the <strong>IFC deliverable</strong>, which is already tessellated at source. Sub-millimeter measurement accuracy is a coordinate precision problem (Float64), not a surface representation problem.</p>
 <p>BIM OOTB consumes the IFC file as-is. What the architect exported is what the site team sees. No re-modelling, no re-tessellation, no geometry invented beyond what the authoring tool provided.</p>
+<h2 id="dagevu-browser-bim-authoring-modeller">DAGeVu — Browser BIM Authoring Modeller<a class="headerlink" href="#dagevu-browser-bim-authoring-modeller" title="Permanent link">&para;</a></h2>
+<p>The viewer described above is read-only by design — it consumes the IFC deliverable and never invents geometry. Alongside it now sits an <strong>authoring counterpart</strong>: <strong>DAGeVu</strong>, a browser BIM geometry-authoring surface shipped on GitHub Pages (first landed in PR #370 with 13 witnesses; many follow-ups since). It is a <strong>separate surface</strong> — it does not load or touch the production read-only viewer.</p>
+<p>This is an <strong>early, spine-proven authoring surface</strong>, not a finished CAD application. What it demonstrates is the core thesis rather than a complete feature set.</p>
+<h3 id="geometry-as-a-fold-over-a-signed-op-log">Geometry as a Fold over a Signed Op-Log<a class="headerlink" href="#geometry-as-a-fold-over-a-signed-op-log" title="Permanent link">&para;</a></h3>
+<p>DAGeVu treats an <strong>occt-wasm B-rep kernel as a pure <code>ops → mesh</code> function</strong>. The <strong>signed operation log IS the feature tree</strong>, and the displayed geometry is a deterministic <strong>fold</strong> (replay) over that log — the same op-log philosophy that drives the ERP engine described above, where business records are likewise a fold over a signed <code>kernel_ops</code> log. Geometry and ERP records ride the <em>same kind</em> of signed log. The dated prior-art disclosure of this idea is recorded in <strong><a href="../ModellerKernelFold/">Event-Sourced Geometry as a Fold over a Signed Operation Log</a></strong>.</p>
+<p>(The surface was renamed from "Bonsai" to <strong>DAGeVu</strong> to avoid a brand clash with BlenderBIM's Bonsai add-on. The internal <code>window.Bonsai</code> API, the <code>bonsai_*.js</code> filenames, and the <code>W-BONSAI-*</code> witness IDs are unchanged — only user-facing strings moved.)</p>
+<h3 id="shipped-capabilities">Shipped Capabilities<a class="headerlink" href="#shipped-capabilities" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>occt B-rep kernel rendered through Three.js</strong> — the occt-wasm mesh output renders through the same Three.js r184 pipeline as the viewer (<code>W-BONSAI-VIEWER</code>).</li>
+<li><strong>Signed op-log feature tree</strong> — every authoring op is a signed entry on the in-viewer <code>kernel_ops</code> log; history replay and pick-cut fold the model from the log (<code>W-BONSAI-SIGNED</code>, <code>W-BONSAI-RECIPE</code>).</li>
+<li><strong>planegcs sketch constraint solver</strong> — a 2D sketch is solved into a constrained profile that drives the occt extrude (<code>W-BONSAI-SKETCH</code>).</li>
+<li><strong>Depth ops</strong> — sweep along a path, plus fillet / chamfer edge ops (route-sweep / fillet-chamfer depth track, PR #376; <code>GEOM_SWEEP</code> leg).</li>
+<li><strong>BOM-hierarchy INSERT catalog</strong> — insert library components at a chosen LOD via a filter + cheat-sheet + tree picker (<code>W-BOM-CATALOG</code>, PR #386), backed by <strong>real library meshes</strong> lazily loaded on insert, preferring detail over box matches (<code>W-BOM-MESH</code>, PRs #387–#388).</li>
+<li><strong>Recursive BOM-assembly insert</strong> — drop a whole house / floor / room / set in a single action, with a ported wall-anchored layout walk and component orientation (<code>W-BOM-ASSEMBLY</code>, PR #393; layout/orient follow-ups PRs #389–#394).</li>
+<li><strong>Operability</strong> — grid-move preview with numeric dimension input (PR #380); Iso / Top view presets and zoom-to-fit (PR #381); placement, edit, delete, point-undo, persistence across reload (PRs #378–#379).</li>
+<li><strong>op_hash-keyed incremental regen cache</strong> — shape and mesh reuse keyed by op hash, so re-folding the log does not re-evaluate unchanged ops (PR #382).</li>
+<li><strong>Bonsai-style Outliner</strong> — a collapsible richer Find over the signed op-log (<code>W-BONSAI-OUTLINER</code>).</li>
+<li><strong>Authoring grid + IFC4 export</strong> — snap-to-grid 2D correlation (<code>W-BONSAI-GRID</code>) and IFC4 export of the authored signed op-log (<code>W-BONSAI-IFC</code>).</li>
+<li><strong>Lucide line icons + authoring audio</strong> and a bottom-right pill rail (PRs #371, #404).</li>
+</ul>
+<h3 id="connect-scene-one-shared-history-across-bim-and-erp">Connect Scene — One Shared History Across BIM and ERP<a class="headerlink" href="#connect-scene-one-shared-history-across-bim-and-erp" title="Permanent link">&para;</a></h3>
+<p>The viewer, the DAGeVu modeller, and the ERP engine are <strong>separate surfaces</strong> that share one signed op-log. <strong>Connect Scene</strong> (PRs #383–#385) is the cross-surface context broker over that log: the surfaces stay independent, and only <strong>selection, timeline, and identity</strong> cross between them. Proven legs are P0 (broker), P1 (selection), P2 (timeline — one log, two folds, that co-vanish on undo; <code>W-CONNECT-TIMELINE</code>), and P3 (identity / commit; <code>W-CONNECT-IDENTITY</code>). This is the concrete realization of <em>one shared history</em> spanning the geometry fold and the ERP record fold.</p>
+<h3 id="morpheus-choose-your-door-landing">Morpheus — Choose-Your-Door Landing<a class="headerlink" href="#morpheus-choose-your-door-landing" title="Permanent link">&para;</a></h3>
+<p>A "choose your door" front door (<code>index2.html</code>, PRs #372–#374) wires the read-only viewer, the DAGeVu authoring modeller, and the ERP engine behind an 8-icon launcher, including real drop-your-own-IFC import into the same extraction pipeline the viewer uses.</p>
 <h2 id="architecture_1">Architecture<a class="headerlink" href="#architecture_1" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>IFC File
   ↓  (extract once)
@@ -5918,6 +6072,11 @@ WebGL → Screen
 <td>iDempiere AD + sql.js</td>
 <td>Application Dictionary renderer in browser</td>
 </tr>
+<tr>
+<td>Authoring kernel</td>
+<td>occt-wasm (OpenCascade) + planegcs</td>
+<td>B-rep <code>ops → mesh</code> fold + 2D sketch constraint solver (DAGeVu)</td>
+</tr>
 </tbody>
 </table>
 <p>All open-source dependencies. No proprietary components.</p>
@@ -5927,7 +6086,7 @@ WebGL → Screen
 <p>Open source. MIT licence.
 GitHub: <a href="https://github.com/red1oon/BIMCompiler">github.com/red1oon/BIMCompiler</a></p>
 <hr />
-<p><em>BIM OOTB — Frictionless BIM. Two DBs. One browser. Zero install.</em></p>
+<p><em>BIM OOTB — Frictionless BIM. View, author, and run the ERP in one browser, over one signed log. Zero install.</em></p>
 
 
 
