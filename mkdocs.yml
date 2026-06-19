@@ -192,7 +192,8 @@ nav:
   - Guides:
       - Getting Started: WorkOrderGuide.md
       - "User Guide (start here)": USER_GUIDE.md
-      - BIM User Guide: BIMUserGuide.md
+      - "Viewer Guide": BIMUserGuide.md
+      - "DAGeVu Modeller Guide": ModellerGuide.md
       - "BIM Designer Guide (deprecated)": BIM_Designer_UserGuide.md
       - 2D Plans Viewer: 2D_HTML_GUIDE.md
       - Find and Navigate: RouteTemplate.md
