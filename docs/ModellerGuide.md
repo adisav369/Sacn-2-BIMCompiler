@@ -13,6 +13,31 @@ recorded, replayable, and reversible, and the same signed-log idea drives the Ke
 **Open it:** [red1oon.github.io/bim-ootb/viewer/modeller.html](https://red1oon.github.io/bim-ootb/viewer/modeller.html)
 (desktop — the B-rep kernel is heavy). The **Home** button returns to the Matrix landing.
 
+![DAGeVu Modeller — the INSERT · BOM CATALOG panel open (left), the authored scene on the grid, the tool rail down the right, and the op-log history scrubber along the bottom](assets/modeller.png)
+
+## Your first insert — the BOM catalog
+
+The fastest way to build is to **assemble, not draw**. Tap the **Insert** tool (the cube icon on the
+right rail) to open the **INSERT · BOM CATALOG** panel on the left:
+
+1. **Find a component.** Type in **search parts…**, or narrow with the filter chips —
+   **All · Structure · Openings · Furniture · Sets**. The catalog is loaded from the real
+   `component_library.db`, so what you see are actual parts and pre-built assemblies.
+2. **Pick a part — or a whole set.** Single parts drop one element. **Sets** are *assemblies* (whole
+   BOM sets) grouped by level — **Buildings · Floors · Rooms · Sets · Items** — each collapsible, with a
+   part-count badge (e.g. *Duplex Single Half-Unit*, *DX Level 1 Structured*). Pick one to drop the
+   entire recipe at once.
+3. **Aim and place.** The status line prompts **"aim on the grid, R to rotate, click to place"**. Move
+   the cursor over the grid to position the ghost preview; press **R** to rotate (the **Rotate** angle
+   in the panel footer updates); set **Elev** (metres) to lift it to a storey height; then **click** to
+   drop it.
+4. **It's a signed op.** The placement lands as one operation in the op-log — visible on the history
+   scrubber at the bottom and fully **undoable** (`Ctrl+Z`). An assembly drops as a single grouped op
+   of *N* parts.
+
+From there, use the tool rail to refine: move/rotate a placed object, sketch and extrude new geometry,
+cut, sweep an MEP run, or bump a component's level of detail.
+
 ## The toolbar — icon index
 
 | Icon | Does |
