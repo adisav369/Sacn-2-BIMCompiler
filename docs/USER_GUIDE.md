@@ -12,10 +12,9 @@ door, or jump straight to any surface by its URL below.
 | Surface | What it is | Open it |
 |---|---|---|
 | **Matrix landing** | the front door — *choose your door* | [red1oon.github.io/bim-ootb](https://red1oon.github.io/bim-ootb/) |
-| **BIM Viewer** | open a building — 3D/2D, clash, 4D/5D, Find | [viewer.html](https://red1oon.github.io/bim-ootb/viewer/viewer.html) · [guide](BIMUserGuide.md) |
+| **BIM Viewer** | the **buildings page** — Drop IFC, Save As, or pick a ready-made building → opens the 3D/2D viewer | [open buildings](https://red1oon.github.io/bim-ootb/gallery.html) · [guide](BIMUserGuide.md) |
 | **DAGeVu Modeller** | author B-rep geometry over a signed op-log | [modeller.html](https://red1oon.github.io/bim-ootb/viewer/modeller.html) · [guide](ModellerGuide.md) |
-| **Kernel-ERP** | iDempiere-faithful ERP in the browser | [idempiere.html](https://red1oon.github.io/bim-ootb/erp/idempiere.html) · [guide](ERPUserGuide.md) |
-| **Buildings gallery** | the building catalog + drop-your-own-IFC | [gallery.html](https://red1oon.github.io/bim-ootb/gallery.html) |
+| **Kernel-ERP** | the ERP **bubbles** — click/explode or long-press a bubble → iDempiere; **⋯** → Glass / Gravity | [erp.html](https://red1oon.github.io/bim-ootb/erp/erp.html) · [guide](ERPUserGuide.md) |
 
 **Bookmark any of these.** Going straight to `idempiere.html`, the Modeller, or the Viewer — bypassing the
 landing — is perfectly fine; that's what they're for. To come back to the front door, press **Home** on any
