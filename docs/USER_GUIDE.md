@@ -27,6 +27,9 @@ summon the full round selector again.
 
 Open a building, navigate in 3D/2D, run clash detection, track 4D progress. Desktop and mobile.
 
+**First run:** ① front door → **Buildings / IFC** · ② open a City / Landmark card (or drop your own
+`.ifc`) · ③ click any element for its IFC data, filter by storey or discipline.
+
 → **[Viewer Guide](BIMUserGuide.md)**
 
 ---
@@ -36,6 +39,9 @@ Open a building, navigate in 3D/2D, run clash detection, track 4D progress. Desk
 Author geometry in the browser — insert library components, sketch, extrude, sweep — where the signed
 operation log *is* the feature tree. Early/work-in-progress; desktop.
 
+**First run:** ① front door → **BIM Modeller** · ② **Insert** → pick a part or a whole assembly from the
+BOM catalog · ③ aim on the grid, **R** to rotate, click to place — one undoable signed op.
+
 → **[Modeller Guide](ModellerGuide.md)**
 
 ---
@@ -44,6 +50,9 @@ operation log *is* the feature tree. Early/work-in-progress; desktop.
 
 Login, install the demo tenant, run the POS, view financial statements. The browser kernel renders the full
 iDempiere Application Dictionary from SQLite — no Java, no server, no install.
+
+**First run:** ① front door → **ERP** (the bubbles) · ② **long-press** a bubble → real iDempiere → pick a
+role · ③ tap **⌂** for the menu, or run the **POS** as GardenUser.
 
 → **[ERP User Guide](ERPUserGuide.md)**
 

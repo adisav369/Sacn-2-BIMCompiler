@@ -27,7 +27,10 @@ set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG="$REPO/build/docs_deploy.log"
 SHRINK_TOL="${SHRINK_TOL:-5}"
-CANARIES="MigrateComparisonPaper DistributedERP HolyGrail ERP RetailScaleStory glassbowl POS_WAN_SCALE_BENCH"
+# Canaries = pages that MUST exist post-deploy. Keep only real BIMCompiler doc pages here.
+# (RetailScaleStory + glassbowl removed 2026-06-20: they live on the bim-ootb site, not BIMCompiler —
+#  they were never in this repo's docs/ nor on gh-pages, so they cried a false 404 every deploy.)
+CANARIES="MigrateComparisonPaper DistributedERP HolyGrail ERP POS_WAN_SCALE_BENCH"
 BASE_URL="${BASE_URL:-https://red1oon.github.io/BIMCompiler}"
 
 mkdir -p "$REPO/build"
