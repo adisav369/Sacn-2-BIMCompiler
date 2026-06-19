@@ -2642,10 +2642,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#quick-start-the-bubbles-front-door" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick start
+        Quick start — the bubbles front door
       
     </span>
   </a>
@@ -4974,10 +4974,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#quick-start-the-bubbles-front-door" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick start
+        Quick start — the bubbles front door
       
     </span>
   </a>
@@ -5545,9 +5545,58 @@ the Roadmap section for POS and warehouse-walk. The paper is the architectural r
 is the operating manual.</p>
 </blockquote>
 <hr />
-<h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
-<p>Open <strong>idempiere.html</strong> (or follow the "iDempiere" link from the front door). A login card appears
-immediately — no credentials, just pick a role.</p>
+<h2 id="quick-start-the-bubbles-front-door">Quick start — the bubbles front door<a class="headerlink" href="#quick-start-the-bubbles-front-door" title="Permanent link">&para;</a></h2>
+<p>The ERP opens at <strong>erp.html</strong> — the <strong>bubble launcher</strong> (from the <a href="../USER_GUIDE/">Matrix front door</a>
+pick the <strong>ERP</strong> door). It is <em>not</em> a form yet: it's a slowly-rotating constellation where <strong>each
+bubble is an Application-Dictionary entity</strong> — Business Partners, Products, Orders, Warehouses, and
+the rest — rendered live from the seed.</p>
+<p><a href="https://red1oon.github.io/bim-ootb/erp/erp.html"><strong>→ ERP bubbles (erp.html)</strong></a></p>
+<p><img alt="The Kernel-ERP bubbles — a rotating constellation of AD entities; tap to dive into records, long-press to open the real iDempiere window" src="../assets/erp_bubbles.png" /></p>
+<p><strong>How you move through it (verified in <code>ad_graph.js</code>):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Gesture on a bubble</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Drag</strong> empty space</td>
+<td>Orbit the constellation</td>
+</tr>
+<tr>
+<td><strong>Tap</strong> a table bubble</td>
+<td>Flies in and dives into <em>that entity's records</em> — still inside the globe</td>
+</tr>
+<tr>
+<td><strong>Tap</strong> a record bubble</td>
+<td>Expands it / fans out its related records</td>
+</tr>
+<tr>
+<td><strong>Long-press</strong> (~½ s) a bubble</td>
+<td>Opens that window (or record) in the <strong>real iDempiere renderer</strong> — <code>idempiere.html</code> → the login card</td>
+</tr>
+<tr>
+<td><strong>Double-tap</strong> a bubble</td>
+<td>Shortcut: opens <em>all</em> records of that table in iDempiere</td>
+</tr>
+</tbody>
+</table>
+<p>So a <strong>long-press</strong> (or double-tap) is the bridge from the playful launcher into the faithful
+iDempiere window described in the rest of this guide. A bubble with no iDempiere window just reports
+that honestly.</p>
+<p><strong>The <code>⋯</code> rail</strong> (bottom-right three-dots — the only non-iDempiere chrome) reveals the two concept
+lenses over the same engine:</p>
+<ul>
+<li><strong>Glass</strong> (<code>glassbowl.html</code>) — the engine-as-data "glass bowl" lens.</li>
+<li><strong>Gravity</strong> (<code>glassbowl_gravity.html</code>) — a central-mass / orbiting-satellites view.</li>
+</ul>
+<p>Both are marked <em>CONCEPT</em> and run fully offline.</p>
+<blockquote>
+<p><strong>Skip straight to the forms:</strong> if you just want the classic ERP, open <strong>idempiere.html</strong> directly
+(or long-press any bubble). A login card appears immediately — no credentials, just pick a role.</p>
+</blockquote>
 <hr />
 <h2 id="initial-tenant-setup-born-a-new-client-live">Initial Tenant Setup — born a new client <em>(LIVE)</em><a class="headerlink" href="#initial-tenant-setup-born-a-new-client-live" title="Permanent link">&para;</a></h2>
 <p>This is iDempiere's <strong>Initial Client Setup</strong>, on our engine. Open <strong>genesis.html</strong>, give the new

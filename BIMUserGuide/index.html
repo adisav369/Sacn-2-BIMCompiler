@@ -4059,10 +4059,21 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#quick-start-your-first-building" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Start
+        Quick Start — your first building
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-it-on-your-own-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run it on your own machine
       
     </span>
   </a>
@@ -4702,10 +4713,21 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#quick-start-your-first-building" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Start
+        Quick Start — your first building
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-it-on-your-own-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run it on your own machine
       
     </span>
   </a>
@@ -4991,11 +5013,36 @@
 <p><strong>Foundation:</strong> <a href="../BIM_Designer_Browser/">BIM_Designer_Browser.md</a> · <a href="../BIM_2D_Guide/">BIM_2D_Guide.md</a> · <a href="../CLASH_DETECTION/">CLASH_DETECTION.md</a> · <a href="../4D5DAnalysis/">4D5DAnalysis.md</a></p>
 </blockquote>
 <hr />
-<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
-<p><strong>Zero install.</strong> Open the live app in any browser:</p>
-<p><a href="https://red1oon.github.io/bim-ootb/"><strong>BIM OOTB — 33 buildings, 1M elements</strong></a></p>
-<p>Click any building → downloads its DB (1–60 MB) → streams geometry in your browser.
-Cached in IndexedDB — second visit is instant. Works on desktop and mobile.</p>
+<h2 id="quick-start-your-first-building">Quick Start — your first building<a class="headerlink" href="#quick-start-your-first-building" title="Permanent link">&para;</a></h2>
+<p><strong>Zero install.</strong> Everything runs client-side in any browser; download a building once and it is
+cached in IndexedDB, so the second visit is instant. Works on desktop and mobile.</p>
+<p>You enter the viewer through the <strong>buildings page</strong> — <em>not</em> <code>viewer/viewer.html</code> directly (that bare
+URL opens an unrelated warehouse view). From the <a href="../USER_GUIDE/">Matrix front door</a> pick the <strong>BIM</strong>
+door, or go straight to it:</p>
+<p><a href="https://red1oon.github.io/bim-ootb/gallery.html"><strong>→ Buildings page (gallery.html)</strong></a></p>
+<p><img alt="The buildings page — drop a file in the centre zone, or pick a ready-made building from My Buildings / Community Projects" src="../assets/buildings_page.png" /></p>
+<p><strong>Three ways in — pick one:</strong></p>
+<ol>
+<li><strong>Pick a ready-made building.</strong> Scroll the <strong>My Buildings</strong> / <strong>Community Projects</strong> gallery and
+   tap a card (SampleHouse, Duplex, Clinic, Terminal, Hospital, …). It downloads that building's DB
+   (0.5–177 MB), flies to it, and streams the geometry in the 3D viewer.</li>
+<li><strong>Drop your own IFC.</strong> Drag an <code>.ifc</code> / <code>.obj</code> / <code>.dae</code> / <code>.glb</code> file onto the centre <strong>"Drop IFC
+   or 3D file here"</strong> zone (or tap it to browse). The file is parsed in-browser and opens in the viewer.</li>
+<li><strong>Add to an existing project.</strong> When you drop a file that matches a building already loaded, a
+   prompt offers <strong>Merge</strong> (combine disciplines — <code>Enter</code>) or <strong>New</strong> (a fresh building — <code>Escape</code>);
+   two versions of the same building can be opened side-by-side with <strong>Compare Versions</strong>.</li>
+</ol>
+<p>Once the viewer opens:</p>
+<ol>
+<li>Watch the progress bar and element flicker as geometry streams in.</li>
+<li><strong>Click any element</strong> → the Info panel shows its IFC class, name, GUID, storey, discipline, material.</li>
+<li><strong>Filter</strong> by storey or discipline (bottom-left panels) to isolate part of the model.</li>
+<li><strong>Alt+Z</strong> for X-Ray, <strong>☆</strong> for white background, <strong>✈</strong> to fly around, <strong>📷</strong> for a screenshot.</li>
+<li>Open another building → the first pauses; tap back to resume.</li>
+</ol>
+<p>Full navigation, panels, and the keyboard cheat-sheet are below.</p>
+<hr />
+<h2 id="run-it-on-your-own-machine">Run it on your own machine<a class="headerlink" href="#run-it-on-your-own-machine" title="Permanent link">&para;</a></h2>
 <p><strong>Local setup (3 steps):</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1"># 1. Go to deploy folder</span>
 <span class="nb">cd</span><span class="w"> </span>deploy
@@ -5003,24 +5050,13 @@ Cached in IndexedDB — second visit is instant. Works on desktop and mobile.</p
 <span class="c1"># 2. Start local server</span>
 python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8080</span>
 
-<span class="c1"># 3. Open in browser</span>
-<span class="c1"># http://localhost:8080/landing.html</span>
+<span class="c1"># 3. Open the buildings page in your browser</span>
+<span class="c1"># http://localhost:8080/gallery.html</span>
 </code></pre></div>
 <p>Per-building DBs must be in <code>deploy/buildings/</code>:
 - <code>{Name}_extracted.db</code> — metadata + transforms
 - <code>{Name}_library.db</code> — geometry BLOBs (vertices + faces)</p>
-<p><strong>Workflow:</strong></p>
-<ol>
-<li>Open the URL → city of bounding boxes appears</li>
-<li>Click a building in the list (right panel) → flies to it, streams geometry</li>
-<li>Watch the progress bar and element flicker as it renders</li>
-<li>Click any element → Info panel shows IFC metadata</li>
-<li>Filter by storey or discipline (bottom-left panels)</li>
-<li>Alt+Z for X-Ray, ☆ for white background</li>
-<li>✈ to fly around all rendered buildings</li>
-<li>📷 for screenshot</li>
-<li>Switch to another building → first one pauses, click back to resume</li>
-</ol>
+<p>Then open <code>http://localhost:8080/gallery.html</code> and use the same three ways in as above.</p>
 <p><strong>DB sizes:</strong></p>
 <table>
 <thead>
