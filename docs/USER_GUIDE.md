@@ -12,7 +12,7 @@ door, or jump straight to any surface by its URL below.
 | Surface | What it is | Open it |
 |---|---|---|
 | **Matrix landing** | the front door — *choose your door* | [red1oon.github.io/bim-ootb](https://red1oon.github.io/bim-ootb/) |
-| **BIM Viewer** | the **buildings page** — Drop IFC, Save As, or pick a ready-made building → opens the 3D/2D viewer | [open buildings](https://red1oon.github.io/bim-ootb/gallery.html) · [guide](BIMUserGuide.md) |
+| **BIM Viewer** | the **Buildings / IFC** door — drop your own IFC or open a ready-made City / Landmark building → opens the 3D/2D viewer | [front door](https://red1oon.github.io/bim-ootb/) → **Buildings / IFC** · [guide](BIMUserGuide.md) |
 | **DAGeVu Modeller** | author B-rep geometry over a signed op-log | [modeller.html](https://red1oon.github.io/bim-ootb/viewer/modeller.html) · [guide](ModellerGuide.md) |
 | **Kernel-ERP** | the ERP **bubbles** — click/explode or long-press a bubble → iDempiere; **⋯** → Glass / Gravity | [erp.html](https://red1oon.github.io/bim-ootb/erp/erp.html) · [guide](ERPUserGuide.md) |
 

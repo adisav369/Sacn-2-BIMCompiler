@@ -9,21 +9,21 @@
 **Zero install.** Everything runs client-side in any browser; download a building once and it is
 cached in IndexedDB, so the second visit is instant. Works on desktop and mobile.
 
-You enter the viewer through the **buildings page** — *not* `viewer/viewer.html` directly (that bare
-URL opens an unrelated warehouse view). From the [Matrix front door](USER_GUIDE.md) pick the **BIM**
-door, or go straight to it:
+You enter through the **Matrix front door** (`index.html`) — *not* `viewer/viewer.html` directly (that
+bare URL opens an unrelated warehouse view). On the front door choose the **Buildings / IFC** door and
+the **BUILDINGS & IFC hub** opens:
 
-[**→ Buildings page (gallery.html)**](https://red1oon.github.io/bim-ootb/gallery.html)
+[**→ Front door (index.html)**](https://red1oon.github.io/bim-ootb/) → choose **Buildings / IFC**
 
-![The buildings page — drop a file in the centre zone, or pick a ready-made building from My Buildings / Community Projects](assets/buildings_page.png)
+![The BUILDINGS & IFC hub — drop a file in the centre zone, or open a ready-made City / Landmark building](assets/buildings_page.png)
 
 **Three ways in — pick one:**
 
-1. **Pick a ready-made building.** Scroll the **My Buildings** / **Community Projects** gallery and
-   tap a card (SampleHouse, Duplex, Clinic, Terminal, Hospital, …). It downloads that building's DB
-   (0.5–177 MB), flies to it, and streams the geometry in the 3D viewer.
-2. **Drop your own IFC.** Drag an `.ifc` / `.obj` / `.dae` / `.glb` file onto the centre **"Drop IFC
-   or 3D file here"** zone (or tap it to browse). The file is parsed in-browser and opens in the viewer.
+1. **Open a ready-made building.** Tap a card under **City Buildings** or **Landmark Buildings**
+   (SampleHouse, Duplex, Clinic, Terminal, Hospital, …). It downloads that building's DB (0.5–177 MB),
+   flies to it, and streams the geometry in the 3D viewer.
+2. **Drop your own IFC.** Drag an `.ifc` / `.obj` / `.dae` / `.glb` file onto the centre **"Drop IFC /
+   3D files here"** zone (or tap it to browse). The file is parsed in-browser and opens in the viewer.
 3. **Add to an existing project.** When you drop a file that matches a building already loaded, a
    prompt offers **Merge** (combine disciplines — `Enter`) or **New** (a fresh building — `Escape`);
    two versions of the same building can be opened side-by-side with **Compare Versions**.
@@ -51,15 +51,15 @@ cd deploy
 # 2. Start local server
 python3 -m http.server 8080
 
-# 3. Open the buildings page in your browser
-# http://localhost:8080/gallery.html
+# 3. Open the front door in your browser, then choose Buildings / IFC
+# http://localhost:8080/index.html
 ```
 
 Per-building DBs must be in `deploy/buildings/`:
 - `{Name}_extracted.db` — metadata + transforms
 - `{Name}_library.db` — geometry BLOBs (vertices + faces)
 
-Then open `http://localhost:8080/gallery.html` and use the same three ways in as above.
+Then open `http://localhost:8080/index.html`, choose **Buildings / IFC**, and use the same three ways in as above.
 
 **DB sizes:**
 
