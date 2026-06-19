@@ -46,6 +46,7 @@ def build_mesh_index():
     ct = {r[0]: r[1] for r in c.execute('SELECT id, ifc_class FROM component_types')}
     defs = defaultdict(list)
     by_name = []                                          # [(name, gh, xy_footprint, ifc, w, d, h)]
+    gh_fc = {}                                            # geometry_hash → face_count (for honest-box detection)
     for r in c.execute('SELECT type_id, name, geometry_hash, local_min_x, local_max_x, local_min_y, '
                         'local_max_y, local_min_z, local_max_z, face_count FROM component_definitions'):
         ic = ct.get(r[0])
@@ -53,9 +54,10 @@ def build_mesh_index():
             continue
         ex = (r[4] - r[3]); ey = (r[6] - r[5]); ez = (r[8] - r[7])
         defs[ic].append((r[2], abs(ex * ey * ez), r[9] or 0))   # (geometry_hash, |volume|, face_count)
+        gh_fc[r[2]] = max(gh_fc.get(r[2], 0), r[9] or 0)
         if r[1]:
             by_name.append((r[1], r[2], ex * ey, ic, round(ex, 4), round(ey, 4), round(ez, 4)))
-    return c, defs, by_name
+    return c, defs, by_name, gh_fc
 
 
 def get_by_name(by_name, pattern):
@@ -249,7 +251,7 @@ ROLE_NAME = {
 
 def main():
     b = sqlite3.connect(BOM)
-    libc, defs, by_name = build_mesh_index()
+    libc, defs, by_name, gh_fc = build_mesh_index()
 
     def resolve_geom(pattern, ifc, w, d, h):
         """Java-faithful geometry resolution: getByName(pattern) FIRST (exact-name → largest-XF substring),
@@ -434,6 +436,14 @@ def main():
         ws, fs, rr, ru = layout_assembly(asm, by_id, bom_meta)
         sets_wall += ws; sets_float += fs; rot_resolved += rr; rot_unresolved += ru
 
+    # HONEST-BOX flag: a product whose getByName-resolved mesh is itself ≤12 faces means the library's BEST part
+    # for it IS a box (e.g. Wardrobe — the only Wardrobe in component_library is 12 faces). Mark it so witnesses
+    # don't fault an honest box as a missing detailed mesh (same honesty as the W-LOD300 honest-box justification).
+    box_only = 0
+    for p in products:
+        if p.get('gh') and gh_fc.get(p['gh'], 0) <= 12:
+            p['boxOnly'] = True; box_only += 1
+
     catalog = {
         'source': 'library/archive/BOM.db (M_Product_Category + M_Product + m_bom/m_bom_line)',
         'note': 'LOD-200 box proxies from w/d/h dims; real meshes via component_library.db range-load (later).',
@@ -476,6 +486,7 @@ def main():
         phantom_skipped, role_resolved, role_proxy))
     print('§DAGEVU-SPATIAL wallAnchoredSets=%d floatOffsetSets=%d rotSymbolicResolved=%d rotSymbolicUnresolvable=%d' % (
         sets_wall, sets_float, rot_resolved, rot_unresolved))
+    print('§DAGEVU-BOXONLY honestBoxProducts=%d (library best part is a box ≤12 faces)' % box_only)
     print('§DAGEVU-GEOM out=%s geoms=%d rawBytes=%d (~%.2f MB)' % (GEOM_OUT, len(geoms), gbytes, gbytes / 1e6))
 
 
