@@ -4589,15 +4589,18 @@ the <strong>BUILDINGS &amp; IFC hub</strong> opens:</p>
    two versions of the same building can be opened side-by-side with <strong>Compare Versions</strong>.</li>
 </ol>
 <div class="admonition privacy">
-<p class="admonition-title">Your IFC never leaves your device</p>
-<p>Parsing, viewing and merging all run <strong>in your browser</strong>. I guarantee that privacy by keeping <strong>all
-source code open on <a href="https://github.com/red1oon/bim-ootb">GitHub</a></strong> — audit exactly what runs — and it
-works <strong>fully offline</strong> (cut your network and it still opens your model: proof nothing is sent). I'm
-hardening it further with a <strong>Content-Security-Policy that blocks every outbound connection</strong>, as I am
-studying deeper on browser security. The dropped file becomes an <strong>extracted SQLite</strong> that lives only in your
-browser. <strong>Save As</strong> downloads it to your own machine (a <code>_meta.db</code> + <code>_geo.db</code> pair for big models, or
-<strong>Export IFC</strong> back to a <code>.ifc</code>); <strong>Open</strong> loads that file straight back, byte-identical. It's <em>your</em> copy
-— keep it, move it, delete it. Clear it any time with <strong>Clear Cache</strong> on the front door.</p>
+<p class="admonition-title">Disclaimer</p>
+<p>Your IFC never leaves your device. Parsing, viewing and merging all run <strong>in your browser</strong>. I guarantee
+that privacy by keeping <strong>all source code open on <a href="https://github.com/red1oon/bim-ootb">GitHub</a></strong> — audit
+exactly what runs. <strong>✈ Works offline once loaded</strong> — open a model with your network off and it still
+runs: proof nothing is sent (import an IFC once, then drop another in airplane mode). <strong>No AI API runs in
+the software — it is completely deterministic.</strong> AI was used only as a pair-programming aid during
+development, under strict guardrails. I'm hardening this further with a <strong>Content-Security-Policy that
+blocks every outbound connection</strong>, as I am studying deeper on browser security.</p>
+<p>The dropped file becomes an <strong>extracted SQLite</strong> that lives only in your browser. <strong>Save As</strong> downloads it
+to your own machine (a <code>_meta.db</code> + <code>_geo.db</code> pair for big models, or <strong>Export IFC</strong> back to a <code>.ifc</code>);
+<strong>Open</strong> loads that file straight back, byte-identical. It's <em>your</em> copy — keep it, move it, delete it.
+Clear it any time with <strong>Clear Cache</strong> on the front door.</p>
 </div>
 <p>Once the viewer opens:</p>
 <ol>

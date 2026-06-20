@@ -91,6 +91,8 @@
 .md-typeset .admonition.privacy,
 .md-typeset details.privacy {
   border-color: #d32f2f;
+  text-transform: uppercase;   /* DISCLAIMER style — whole box reads as a notice */
+  letter-spacing: 0.02em;
 }
 .md-typeset .privacy > .admonition-title,
 .md-typeset .privacy > summary {
