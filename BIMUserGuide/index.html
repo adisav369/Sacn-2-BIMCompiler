@@ -4588,6 +4588,14 @@ the <strong>BUILDINGS &amp; IFC hub</strong> opens:</p>
    prompt offers <strong>Merge</strong> (combine disciplines — <code>Enter</code>) or <strong>New</strong> (a fresh building — <code>Escape</code>);
    two versions of the same building can be opened side-by-side with <strong>Compare Versions</strong>.</li>
 </ol>
+<div class="admonition note">
+<p class="admonition-title">Your IFC never leaves your device</p>
+<p>Parsing, viewing and merging all run <strong>in your browser</strong> — nothing is uploaded to any server, and we
+never see or store your model. The dropped file becomes an <strong>extracted SQLite</strong> that lives only in your
+browser. <strong>Save As</strong> downloads it to your own machine (a <code>_meta.db</code> + <code>_geo.db</code> pair for big models, or
+<strong>Export IFC</strong> back to a <code>.ifc</code>); <strong>Open</strong> loads that file straight back, byte-identical. It's <em>your</em> copy
+— keep it, move it, delete it. Clear it any time with <strong>Clear Cache</strong> on the front door.</p>
+</div>
 <p>Once the viewer opens:</p>
 <ol>
 <li>Watch the progress bar and element flicker as geometry streams in.</li>
