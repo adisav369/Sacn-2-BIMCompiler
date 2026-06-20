@@ -98,12 +98,15 @@ The launch sprouts small buildings first (they render fast and are visibly sprea
 - Cinematic drone tour auto-generated from building storeys
 - Gantt chart overlay with phase progress
 - Gantt Phase Stepper: step through construction phases one at a time, meshes materialise per phase
+- Closed 360 BIM↔ERP loop: selecting a model element lights its matching project line back in the ERP (and vice-versa) over a shared signed op-log — one identity, two separate surfaces, no server
 
 ### 5D Cost
 - Bill of Quantities extracted from IFC element dimensions — browser-side JavaScript BOM extractor groups elements by storey, discipline, and IFC class
 - Cost dashboard with phase-by-phase breakdown
 - 17 country-specific rate templates
 - Building envelope, storey heights, floor-to-floor deltas, column cadence and bay proportions computed automatically
+- Budget-vs-actual variance twin: the Time Machine reads the *stored* Planned↔Committed figures off the project records (not a re-computation), so the cost story scrubs in lockstep with the 4D
+- Shopfloor cost-element S-curve: a stacked Material/Labour/Burden/Overhead accrual folded from the project's manufacturing orders — each bucket sums to the phase's planned amount to the cent (BigDecimal)
 
 ### Clash Detection
 - R-tree spatial index built from element bounding boxes
@@ -208,6 +211,7 @@ servers, unnecessary in single-user browser. See ERP.md §16.2.
 |---|---|---|---|---|
 | 4D Schedule + 3D Model | Same browser tab | Separate tools | Separate | Separate |
 | 5D Cost + BOQ | Extracted from IFC | Manual input | Manual | Manual |
+| Budget-vs-actual variance | Twin folded from one op-log¹ | Yes (full EVM/CPM) | Limited | Yes |
 | Offline | Yes | No | No | No |
 | Server required | No | Oracle DB | Cloud | SAP HANA |
 | Licence cost | Free (MIT) | $3-8K/user/yr | $375+/mo | Enterprise |
@@ -215,6 +219,8 @@ servers, unnecessary in single-user browser. See ERP.md §16.2.
 | BOM from model | Automatic | N/A | N/A | Manual |
 | Install | URL | Desktop | Cloud | On-premise/cloud |
 | ERP foundation | iDempiere AD (open) | Proprietary | Proprietary | Proprietary |
+
+¹ Planned↔Committed and the shopfloor cost S-curve fold from the same signed op-log as the 3D/4D, so they can never drift — the honest claim is this *unification + log-native what-if*, **not** a CPM engine (no resource levelling or critical-path depth like P6).
 
 ### iDempiere Relationship
 

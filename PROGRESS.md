@@ -18,6 +18,9 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
+## TM 4D/5D variance + 360 loop — MERGED+LIVE 2026-06-21
+- ✅ 360 loop + kanban/pivot + shopfloor S-curve LIVE (bim-ootb PR #462 sw v684) → `prompts/TM_4D5D_VARIANCE_LANE.md` (+ `prompts/RESUME_360_KANBAN_PIVOT.md`)
+
 ## Ninja Create (PackOut/PackIn) — 2026-06-14
 - ✅ **SHIPPED** Create face on the Plugin Engine pill (bim-ootb PR #301, erp sw v673): drop .xlsx model sheet →
   preview → Emit & Install through the writable `window.__idmpDb`. Witness `§NINJA-DOM-WITNESS PASS`

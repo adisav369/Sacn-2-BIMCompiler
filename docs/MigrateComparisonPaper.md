@@ -1099,6 +1099,17 @@ the same ledger, no new server. **Both shipped 2026-06 and run LIVE on GitHub Pa
    *in-window 3D embed* (the viewer fused inside the ERP's Project window) was deliberately **retired**
    (`W-STRIP-EMBED`, #409) — cross-surface flow now goes forward as a loosely-coupled cross-tab message
    + URL cold-launch, BIM and ERP staying *separate surfaces over one signed op-log*, not a fused viewer.
+   That loose coupling is now a **closed 360 loop** (PR #462, LIVE): the project plays as a **4D/5D
+   construction twin** — the Time Machine reads the *stored* `PlannedAmt`↔`CommittedAmt` variance off the
+   records (not a re-computation; `W-PC-TWIN-SOURCE`), a stacked **cost-element S-curve** folds the
+   manufacturing orders as the cursor scrubs (16 `PP_Order`s, every Material/Labor/Burden/Overhead bucket
+   summing to the phase's `PlannedAmt` **to the rupiah**; `W-SHOP-SCURVE`), and selecting a model element
+   **lights its matching `C_ProjectLine` back in the ERP** over the shared `Connect` bus (`W-CONNECT-ERP`)
+   — one identity across viewer and ERP, no server. The manufacturing orders also fall into the standard
+   **kanban** (drag = a signed `SET_STATUS`, no special-casing) and a general **pivot** cross-tab, both the
+   same fold rather than new code. This unifies onto one op-log what is normally four tools — Primavera
+   (schedule/EVM) · Unifier (cost) · Synchro (4D) · CostX (5D); the honest claim is the *unification + the
+   log-native what-if*, **not** a CPM scheduling engine (no resource levelling / critical-path depth).
 4. **System Administration as op-logged genesis — LIVE** — the same fold reaches *upstream*, to where a
    tenant is born. We reproduce iDempiere's System Administrator (role 0 / System) on the engine, with
    its **Initial Tenant Setup** rewritten as genesis: the wizard **births a tenant as a signed op-log
@@ -1150,7 +1161,7 @@ The on-ramp ends here. To see *how* each claim is built:
 <details class="fold" markdown="1"><summary>Status</summary>
 <div class="fbd" markdown="1">
 
-DRAFT (2026-06-08, currency pass 2026-06-19: the Kernel-ERP rebrand + iDempiere-fidelity surface, the AD_Process fold lane, genesis / System Admin, and the live BIM→Project push). The evaluator-facing companion to the deep papers ([ERP.md](ERP.md) · [DistributedERP.md](DistributedERP.md) · [BIMERPPaper.md](BIMERPPaper.md)). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.
+DRAFT (2026-06-08, currency pass 2026-06-21: the Kernel-ERP rebrand + iDempiere-fidelity surface, the AD_Process fold lane, genesis / System Admin, the live BIM→Project push, and the closed 360 BIM↔ERP loop — 4D/5D variance twin + shopfloor cost-element S-curve + cross-surface record-light). The evaluator-facing companion to the deep papers ([ERP.md](ERP.md) · [DistributedERP.md](DistributedERP.md) · [BIMERPPaper.md](BIMERPPaper.md)). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.
 
 </div>
 </details>
