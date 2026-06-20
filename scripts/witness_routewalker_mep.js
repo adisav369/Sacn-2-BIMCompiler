@@ -33,6 +33,10 @@
  *                     well-formed GEOM_SWEEP commit payload (2-point path, square profile,
  *                     drop-transform applied, limit honoured). Proves the bridge is ready to
  *                     feed window.Bonsai.oplog.commit() in the op-log-native modeller.
+ *   C8 ALIGN        — auto-emit-on-drop transform: rwAlignSegments() maps the anchor-space
+ *                     routes onto a WORLD-placed building's bbox (1:1 m + yaw). EVERY aligned
+ *                     endpoint lands inside the placed bbox, and lengths are preserved.
+ *                     Proves the routed MEP registers to the dropped building's footprint.
  */
 'use strict';
 var fs = require('fs');
@@ -54,7 +58,8 @@ function loadRouteWalker(SQL, mepBuf) {
     '_rwDb = new SQL.Database(new Uint8Array(MEP_BUF));\n' +
     '_rwReady = true;\n' +
     'return { rwWalk: rwWalk, loadArc: _rwLoadArcEnvelope, findAnchor: _rwFindAnchorKey, ' +
-    'routeSegments: rwRouteSegments, sweepOps: rwSweepOps, centroid: rwSegmentCentroid };');
+    'routeSegments: rwRouteSegments, sweepOps: rwSweepOps, centroid: rwSegmentCentroid, ' +
+    'align: rwAlignSegments };');
   return factory(SQL, mepBuf);
 }
 
@@ -191,7 +196,37 @@ function readRouted(db) {
   if (malformed > 0) fail('C7 ' + malformed + ' GEOM_SWEEP payloads malformed');
   if (offCentre > 0) fail('C7 ' + offCentre + ' payloads did not apply the drop transform');
 
-  console.log('§RW_VERDICT ' + (pass ? 'PASS' : 'FAIL') + ' claims=' + (pass ? '7/7' : '<7/7'));
+  // ─── C8: auto-emit-on-drop alignment — routes register to the placed bbox ──
+  // The placed building's world bbox = the anchor span (1:1 m) translated to a drop point [10,5,0].
+  var aMin = [Infinity, Infinity, Infinity], aMax = [-Infinity, -Infinity, -Infinity];
+  segNoDb.forEach(function (s) {
+    [s.from, s.to].forEach(function (p) {
+      for (var i = 0; i < 3; i++) { if (p[i] < aMin[i]) aMin[i] = p[i]; if (p[i] > aMax[i]) aMax[i] = p[i]; }
+    });
+  });
+  var drop = [10, 5, 0];
+  var placedBBox = { min: drop, max: [drop[0] + (aMax[0] - aMin[0]), drop[1] + (aMax[1] - aMin[1]), drop[2] + (aMax[2] - aMin[2])] };
+  var aligned = rw.align(segNoDb, placedBBox, { rotDeg: 0 });
+  var EPS = 1e-6;
+  var outside = 0, lenDrift = 0;
+  aligned.forEach(function (s, i) {
+    [s.from, s.to].forEach(function (p) {
+      if (p[0] < placedBBox.min[0] - EPS || p[0] > placedBBox.max[0] + EPS ||
+          p[1] < placedBBox.min[1] - EPS || p[1] > placedBBox.max[1] + EPS ||
+          p[2] < placedBBox.min[2] - EPS || p[2] > placedBBox.max[2] + EPS) outside++;
+    });
+    var d = Math.sqrt(Math.pow(s.to[0] - s.from[0], 2) + Math.pow(s.to[1] - s.from[1], 2) +
+      Math.pow(s.to[2] - s.from[2], 2));
+    if (Math.abs(d - segNoDb[i].len) > 1e-6) lenDrift++;
+  });
+  console.log('§RW_C8 aligned=' + aligned.length + ' placedBBox=[' + placedBBox.min.join(',') + '..' +
+    placedBBox.max.join(',') + '] endpointsOutside=' + outside + ' lenDrift=' + lenDrift);
+  if (aligned.length !== segNoDb.length) fail('C8 aligned count != segments');
+  // anchor bbox spans ~9×17×7 ≈ placed 9×17×7, so all endpoints must fall inside the placed bbox
+  if (outside > 0) fail('C8 ' + outside + ' aligned endpoints fell OUTSIDE the placed building bbox');
+  if (lenDrift > 0) fail('C8 ' + lenDrift + ' aligned runs changed length (transform not rigid)');
+
+  console.log('§RW_VERDICT ' + (pass ? 'PASS' : 'FAIL') + ' claims=' + (pass ? '8/8' : '<8/8'));
   console.log('── W-ROUTEWALKER-MEP ' + (pass ? 'PASS' : 'FAIL') + ' ──');
   process.exit(pass ? 0 : 1);
 })().catch(function (e) {
