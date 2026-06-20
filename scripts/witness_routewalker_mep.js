@@ -28,6 +28,11 @@
  *                     polylines (from→to) for the SAME runs the proven insert path emits
  *                     (count == Path A pipes), each connecting two REAL anchor positions.
  *                     Proves the GEOM_SWEEP bridge is faithful to the routed MEP.
+ *   C7 SWEEP_OPS    — modeller-ready path: rwRouteSegments(null, name, {arcEnvelope}) works
+ *                     WITHOUT a building DB, and rwSweepOps() maps each segment to a
+ *                     well-formed GEOM_SWEEP commit payload (2-point path, square profile,
+ *                     drop-transform applied, limit honoured). Proves the bridge is ready to
+ *                     feed window.Bonsai.oplog.commit() in the op-log-native modeller.
  */
 'use strict';
 var fs = require('fs');
@@ -49,7 +54,7 @@ function loadRouteWalker(SQL, mepBuf) {
     '_rwDb = new SQL.Database(new Uint8Array(MEP_BUF));\n' +
     '_rwReady = true;\n' +
     'return { rwWalk: rwWalk, loadArc: _rwLoadArcEnvelope, findAnchor: _rwFindAnchorKey, ' +
-    'routeSegments: rwRouteSegments };');
+    'routeSegments: rwRouteSegments, sweepOps: rwSweepOps, centroid: rwSegmentCentroid };');
   return factory(SQL, mepBuf);
 }
 
@@ -160,7 +165,33 @@ function readRouted(db) {
     ' segment TO endpoints are not real anchors (xy)');
   if (lenBad > 0) fail('C6 ' + lenBad + ' segments have inconsistent/degenerate length');
 
-  console.log('§RW_VERDICT ' + (pass ? 'PASS' : 'FAIL') + ' claims=' + (pass ? '6/6' : '<6/6'));
+  // ─── C7: modeller-ready — null-DB segments + GEOM_SWEEP payload mapping ────
+  // No building DB (op-log modeller), pass the ARC envelope explicitly.
+  var arcBoxes = rw.loadArc(new SQL.Database(new Uint8Array(fs.readFileSync(DUPLEX_DB))));
+  var segNoDb = rw.routeSegments(null, 'Duplex', { arcEnvelope: arcBoxes });
+  var centroid = rw.centroid(segNoDb);
+  var LIMIT = 6;
+  var translate = [-centroid[0], -centroid[1], -centroid[2]]; // centre routed run at modeller origin
+  var ops = rw.sweepOps(segNoDb, { translate: translate, limit: LIMIT, profileM: 0.05 });
+  var malformed = 0, offCentre = 0;
+  ops.forEach(function (o, i) {
+    var p = o.parameters;
+    if (o.op_type !== 'GEOM_SWEEP' || !p || !p.path || p.path.length !== 2 ||
+        !p.profile || p.profile.w !== 0.05 || p.profile.h !== 0.05) { malformed++; return; }
+    // each endpoint = original ± translate; verify the translate landed (midpoint near origin-ish band)
+    var s = segNoDb[i];
+    if (Math.abs(p.path[0][0] - (s.from[0] + translate[0])) > 1e-9) offCentre++;
+  });
+  console.log('§RW_C7 nullDbSegments=' + segNoDb.length + ' centroid=[' +
+    centroid.map(function (c) { return c.toFixed(2); }).join(',') + '] ops=' + ops.length +
+    ' limit=' + LIMIT + ' malformed=' + malformed + ' offCentre=' + offCentre);
+  if (segNoDb.length !== segs.length) fail('C7 null-DB segments ' + segNoDb.length +
+    ' != with-DB segments ' + segs.length + ' (DB-independence broken)');
+  if (ops.length !== LIMIT) fail('C7 sweepOps limit not honoured: ' + ops.length + ' != ' + LIMIT);
+  if (malformed > 0) fail('C7 ' + malformed + ' GEOM_SWEEP payloads malformed');
+  if (offCentre > 0) fail('C7 ' + offCentre + ' payloads did not apply the drop transform');
+
+  console.log('§RW_VERDICT ' + (pass ? 'PASS' : 'FAIL') + ' claims=' + (pass ? '7/7' : '<7/7'));
   console.log('── W-ROUTEWALKER-MEP ' + (pass ? 'PASS' : 'FAIL') + ' ──');
   process.exit(pass ? 0 : 1);
 })().catch(function (e) {

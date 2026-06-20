@@ -200,15 +200,18 @@ function _rwFindAnchorKey(buildingName, dbBldName) {
 function rwRouteSegments(buildingDb, buildingName, opts) {
   if (!_rwReady) { console.warn('§RW_SEG_FAIL not initialised'); return []; }
   opts = opts || {};
+  // Op-log modeller has NO building DB — pass buildingDb=null + opts.arcEnvelope (or none).
   var dbBldName = buildingName;
-  try {
-    var bldRow = buildingDb.exec("SELECT DISTINCT building FROM elements_meta LIMIT 1");
-    if (bldRow.length && bldRow[0].values.length) dbBldName = bldRow[0].values[0][0];
-  } catch (e) { /* use passed name */ }
+  if (buildingDb) {
+    try {
+      var bldRow = buildingDb.exec("SELECT DISTINCT building FROM elements_meta LIMIT 1");
+      if (bldRow.length && bldRow[0].values.length) dbBldName = bldRow[0].values[0][0];
+    } catch (e) { /* use passed name */ }
+  }
 
   var anchorKey = _rwFindAnchorKey(buildingName, dbBldName);
   if (anchorKey === null) { console.log('§RW_SEG no anchors for ' + buildingName); return []; }
-  var arcEnvelope = _rwLoadArcEnvelope(buildingDb);
+  var arcEnvelope = opts.arcEnvelope || (buildingDb ? _rwLoadArcEnvelope(buildingDb) : []);
 
   var segments = [];
   ['CW', 'SP'].forEach(function (disc) {
@@ -221,6 +224,43 @@ function rwRouteSegments(buildingDb, buildingName, opts) {
     ' CW=' + segments.filter(function (s) { return s.disc === 'CW'; }).length +
     ' SP=' + segments.filter(function (s) { return s.disc === 'SP'; }).length);
   return segments;
+}
+
+// Map route segments → modeller GEOM_SWEEP commit payloads (the op-log emit).
+// Each payload: { op_type:'GEOM_SWEEP', parameters:{ profile:{w,h}, path:[from,to] }, _rw:{disc,storey} }.
+// opts: { translate:[tx,ty,tz] (drop transform applied to both endpoints, default 0),
+//         profileM (pipe cross-section in metres, default RW_PIPE_NOMINAL_MM/1000),
+//         limit (cap the number of ops emitted — occt pipe is costly; default all) }.
+// Pure: no DB, no commit — caller feeds each payload to window.Bonsai.oplog.commit().
+function rwSweepOps(segments, opts) {
+  opts = opts || {};
+  var t = opts.translate || [0, 0, 0];
+  var pw = (opts.profileM != null) ? opts.profileM : (RW_PIPE_NOMINAL_MM / 1000);
+  var segs = (opts.limit != null && opts.limit < segments.length) ? segments.slice(0, opts.limit) : segments;
+  return segs.map(function (s) {
+    return {
+      op_type: 'GEOM_SWEEP',
+      parameters: {
+        profile: { w: pw, h: pw },
+        path: [
+          [s.from[0] + t[0], s.from[1] + t[1], s.from[2] + t[2]],
+          [s.to[0] + t[0], s.to[1] + t[1], s.to[2] + t[2]]
+        ]
+      },
+      _rw: { disc: s.disc, storey: s.storey, axis: s.axis }
+    };
+  });
+}
+
+// Centroid of all segment endpoints — the natural drop-transform pivot
+// (negate to centre a routed building at the modeller origin / drop point).
+function rwSegmentCentroid(segments) {
+  if (!segments.length) return [0, 0, 0];
+  var sx = 0, sy = 0, sz = 0, n = 0;
+  segments.forEach(function (s) {
+    sx += s.from[0] + s.to[0]; sy += s.from[1] + s.to[1]; sz += s.from[2] + s.to[2]; n += 2;
+  });
+  return [sx / n, sy / n, sz / n];
 }
 
 // Mirror of _rwApplyPattern's pairing, but collects endpoint pairs into `out`.
