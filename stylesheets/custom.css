@@ -93,6 +93,10 @@
   border-color: #d32f2f;
   text-transform: uppercase;   /* DISCLAIMER style — whole box reads as a notice */
   letter-spacing: 0.02em;
+  font-size: 0.8rem;           /* bump up from the tiny default admonition size */
+}
+.md-typeset .privacy > p {
+  line-height: 1.7;            /* breathing room so the all-caps stays legible */
 }
 .md-typeset .privacy > .admonition-title,
 .md-typeset .privacy > summary {
