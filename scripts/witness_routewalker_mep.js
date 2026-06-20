@@ -28,15 +28,14 @@
  *                     polylines (from→to) for the SAME runs the proven insert path emits
  *                     (count == Path A pipes), each connecting two REAL anchor positions.
  *                     Proves the GEOM_SWEEP bridge is faithful to the routed MEP.
- *   C7 SWEEP_OPS    — modeller-ready path: rwRouteSegments(null, name, {arcEnvelope}) works
- *                     WITHOUT a building DB, and rwSweepOps() maps each segment to a
- *                     well-formed GEOM_SWEEP commit payload (2-point path, square profile,
- *                     drop-transform applied, limit honoured). Proves the bridge is ready to
- *                     feed window.Bonsai.oplog.commit() in the op-log-native modeller.
- *   C8 ALIGN        — auto-emit-on-drop transform: rwAlignSegments() maps the anchor-space
- *                     routes onto a WORLD-placed building's bbox (1:1 m + yaw). EVERY aligned
- *                     endpoint lands inside the placed bbox, and lengths are preserved.
- *                     Proves the routed MEP registers to the dropped building's footprint.
+ *   C7 SWEEP_OPS    — faithful null-DB path: rwRouteSegments(null, 'Duplex') with NO arcEnvelope
+ *                     param auto-loads ARC envelope from mep_rw.db arc_envelope table → same 204
+ *                     segments as with-DB. rwSweepOps maps each to a GEOM_SWEEP payload (no cap).
+ *                     Proves the fix: ARC envelope loaded from mep_rw.db → clash gate active.
+ *   C8 ALIGN        — correct world transform: rwBuildingOrigin() from building_origin table gives
+ *                     the structural AABB min (StructuralBomBuilder origin). Transform:
+ *                     worldPos = dropPoint + (anchorPos - buildingOrigin). World bbox min == drop.
+ *                     Lengths preserved (rigid). Proves MEP co-locates with structural elements.
  */
 'use strict';
 var fs = require('fs');
@@ -57,9 +56,9 @@ function loadRouteWalker(SQL, mepBuf) {
   var factory = new Function('SQL', 'MEP_BUF', src + '\n' +
     '_rwDb = new SQL.Database(new Uint8Array(MEP_BUF));\n' +
     '_rwReady = true;\n' +
-    'return { rwWalk: rwWalk, loadArc: _rwLoadArcEnvelope, findAnchor: _rwFindAnchorKey, ' +
-    'routeSegments: rwRouteSegments, sweepOps: rwSweepOps, centroid: rwSegmentCentroid, ' +
-    'align: rwAlignSegments };');
+    'return { rwWalk: rwWalk, loadArc: _rwLoadArcEnvelope, loadArcFromDb: _rwLoadArcEnvelopeFromDb, ' +
+    'findAnchor: _rwFindAnchorKey, routeSegments: rwRouteSegments, sweepOps: rwSweepOps, ' +
+    'centroid: rwSegmentCentroid, buildingOrigin: rwBuildingOrigin };');
   return factory(SQL, mepBuf);
 }
 
@@ -170,63 +169,75 @@ function readRouted(db) {
     ' segment TO endpoints are not real anchors (xy)');
   if (lenBad > 0) fail('C6 ' + lenBad + ' segments have inconsistent/degenerate length');
 
-  // ─── C7: modeller-ready — null-DB segments + GEOM_SWEEP payload mapping ────
-  // No building DB (op-log modeller), pass the ARC envelope explicitly.
-  var arcBoxes = rw.loadArc(new SQL.Database(new Uint8Array(fs.readFileSync(DUPLEX_DB))));
-  var segNoDb = rw.routeSegments(null, 'Duplex', { arcEnvelope: arcBoxes });
-  var centroid = rw.centroid(segNoDb);
-  var LIMIT = 6;
-  var translate = [-centroid[0], -centroid[1], -centroid[2]]; // centre routed run at modeller origin
-  var ops = rw.sweepOps(segNoDb, { translate: translate, limit: LIMIT, profileM: 0.05 });
-  var malformed = 0, offCentre = 0;
-  ops.forEach(function (o, i) {
+  // ─── C7: faithful null-DB path — ARC envelope auto-loaded from mep_rw.db arc_envelope table ──
+  // The fix: rwRouteSegments(null, 'Duplex') with NO arcEnvelope param loads it from mep_rw.db.
+  // Must yield the SAME 204 segments as the with-DB path (same clash gate, same anchor pairs).
+  var segNoDb = rw.routeSegments(null, 'Duplex');    // NO arcEnvelope param — auto-loaded from mep_rw.db
+  var arcFromDb = rw.loadArcFromDb('Duplex');
+  var ops = rw.sweepOps(segNoDb, { profileM: 0.05 }); // no limit, no cap
+  var malformed = 0;
+  ops.forEach(function (o) {
     var p = o.parameters;
     if (o.op_type !== 'GEOM_SWEEP' || !p || !p.path || p.path.length !== 2 ||
-        !p.profile || p.profile.w !== 0.05 || p.profile.h !== 0.05) { malformed++; return; }
-    // each endpoint = original ± translate; verify the translate landed (midpoint near origin-ish band)
-    var s = segNoDb[i];
-    if (Math.abs(p.path[0][0] - (s.from[0] + translate[0])) > 1e-9) offCentre++;
+        !p.profile || p.profile.w !== 0.05 || p.profile.h !== 0.05) malformed++;
   });
-  console.log('§RW_C7 nullDbSegments=' + segNoDb.length + ' centroid=[' +
-    centroid.map(function (c) { return c.toFixed(2); }).join(',') + '] ops=' + ops.length +
-    ' limit=' + LIMIT + ' malformed=' + malformed + ' offCentre=' + offCentre);
-  if (segNoDb.length !== segs.length) fail('C7 null-DB segments ' + segNoDb.length +
-    ' != with-DB segments ' + segs.length + ' (DB-independence broken)');
-  if (ops.length !== LIMIT) fail('C7 sweepOps limit not honoured: ' + ops.length + ' != ' + LIMIT);
+  console.log('§RW_C7 nullDbSegments=' + segNoDb.length + ' arcFromDb=' + arcFromDb.length +
+    ' ops=' + ops.length + ' malformed=' + malformed);
+  if (arcFromDb.length === 0) fail('C7 arc_envelope table empty in mep_rw.db (run build_mep_arc_envelope.js)');
+  if (segNoDb.length !== segs.length) fail('C7 null-DB (no arcEnvelope param) segments ' + segNoDb.length +
+    ' != with-DB segments ' + segs.length + ' — clash gate not matching');
+  if (ops.length !== segNoDb.length) fail('C7 sweepOps count ' + ops.length + ' != segments ' + segNoDb.length);
   if (malformed > 0) fail('C7 ' + malformed + ' GEOM_SWEEP payloads malformed');
-  if (offCentre > 0) fail('C7 ' + offCentre + ' payloads did not apply the drop transform');
 
-  // ─── C8: auto-emit-on-drop alignment — routes register to the placed bbox ──
-  // The placed building's world bbox = the anchor span (1:1 m) translated to a drop point [10,5,0].
-  var aMin = [Infinity, Infinity, Infinity], aMax = [-Infinity, -Infinity, -Infinity];
-  segNoDb.forEach(function (s) {
-    [s.from, s.to].forEach(function (p) {
-      for (var i = 0; i < 3; i++) { if (p[i] < aMin[i]) aMin[i] = p[i]; if (p[i] > aMax[i]) aMax[i] = p[i]; }
-    });
-  });
+  // ─── C8: building origin + world transform — rigid + pipes inside structural bbox ──
+  // rwBuildingOrigin() gives the structural AABB min (StructuralBomBuilder allMinXYZ).
+  // Correct world transform: worldPos = dropPoint + (anchorPos - buildingOrigin).
+  // Invariants:
+  //   (a) transform is rigid — each segment length unchanged
+  //   (b) all world endpoints fall within the world structural bbox:
+  //       worldStructMin = drop, worldStructMax = drop + (structExtent - buildingOrigin)
+  //       where structExtent = max ARC element extents in extraction space
+  var org = rw.buildingOrigin('Duplex');
   var drop = [10, 5, 0];
-  var placedBBox = { min: drop, max: [drop[0] + (aMax[0] - aMin[0]), drop[1] + (aMax[1] - aMin[1]), drop[2] + (aMax[2] - aMin[2])] };
-  var aligned = rw.align(segNoDb, placedBBox, { rotDeg: 0 });
-  var EPS = 1e-6;
-  var outside = 0, lenDrift = 0;
-  aligned.forEach(function (s, i) {
-    [s.from, s.to].forEach(function (p) {
-      if (p[0] < placedBBox.min[0] - EPS || p[0] > placedBBox.max[0] + EPS ||
-          p[1] < placedBBox.min[1] - EPS || p[1] > placedBBox.max[1] + EPS ||
-          p[2] < placedBBox.min[2] - EPS || p[2] > placedBBox.max[2] + EPS) outside++;
-    });
-    var d = Math.sqrt(Math.pow(s.to[0] - s.from[0], 2) + Math.pow(s.to[1] - s.from[1], 2) +
-      Math.pow(s.to[2] - s.from[2], 2));
-    if (Math.abs(d - segNoDb[i].len) > 1e-6) lenDrift++;
+  // Structural world bbox from ARC envelope (extents in extraction space → world)
+  var arcBoxes = rw.loadArcFromDb('Duplex');
+  var structMin = [Infinity, Infinity, Infinity], structMax = [-Infinity, -Infinity, -Infinity];
+  arcBoxes.forEach(function(b) {
+    var ex = [b.cx - b.w/2, b.cx + b.w/2], ey = [b.cy - b.d/2, b.cy + b.d/2], ez = [b.cz - b.h/2, b.cz + b.h/2];
+    if (ex[0] < structMin[0]) structMin[0] = ex[0]; if (ex[1] > structMax[0]) structMax[0] = ex[1];
+    if (ey[0] < structMin[1]) structMin[1] = ey[0]; if (ey[1] > structMax[1]) structMax[1] = ey[1];
+    if (ez[0] < structMin[2]) structMin[2] = ez[0]; if (ez[1] > structMax[2]) structMax[2] = ez[1];
   });
-  console.log('§RW_C8 aligned=' + aligned.length + ' placedBBox=[' + placedBBox.min.join(',') + '..' +
-    placedBBox.max.join(',') + '] endpointsOutside=' + outside + ' lenDrift=' + lenDrift);
-  if (aligned.length !== segNoDb.length) fail('C8 aligned count != segments');
-  // anchor bbox spans ~9×17×7 ≈ placed 9×17×7, so all endpoints must fall inside the placed bbox
-  if (outside > 0) fail('C8 ' + outside + ' aligned endpoints fell OUTSIDE the placed building bbox');
-  if (lenDrift > 0) fail('C8 ' + lenDrift + ' aligned runs changed length (transform not rigid)');
+  // World structural bbox (structural min maps to drop)
+  var ox = org ? org.x : structMin[0], oy = org ? org.y : structMin[1], oz = org ? org.z : structMin[2];
+  var wStructMin = [drop[0] + (structMin[0] - ox), drop[1] + (structMin[1] - oy), drop[2] + (structMin[2] - oz)];
+  var wStructMax = [drop[0] + (structMax[0] - ox), drop[1] + (structMax[1] - oy), drop[2] + (structMax[2] - oz)];
+  // Apply world transform to segments
+  function toWorld8(p) {
+    return [drop[0] + (p[0] - ox), drop[1] + (p[1] - oy), drop[2] + (p[2] - oz)];
+  }
+  var EPS = 0.1; // 100mm tolerance (pipes may reach into wall faces)
+  var outside = 0, lenDrift = 0;
+  segNoDb.forEach(function (s) {
+    var wf = toWorld8(s.from), wt = toWorld8(s.to);
+    [wf, wt].forEach(function (p) {
+      if (p[0] < wStructMin[0] - EPS || p[0] > wStructMax[0] + EPS ||
+          p[1] < wStructMin[1] - EPS || p[1] > wStructMax[1] + EPS ||
+          p[2] < wStructMin[2] - EPS || p[2] > wStructMax[2] + EPS) outside++;
+    });
+    var d = Math.sqrt(Math.pow(wt[0]-wf[0],2)+Math.pow(wt[1]-wf[1],2)+Math.pow(wt[2]-wf[2],2));
+    if (Math.abs(d - s.len) > 1e-6) lenDrift++;
+  });
+  console.log('§RW_C8 origin=[' + [ox, oy, oz].map(function(v){return v.toFixed(3);}).join(',') + ']' +
+    ' drop=[' + drop.join(',') + '] worldStructMin=[' + wStructMin.map(function(v){return v.toFixed(3);}).join(',') + ']' +
+    ' worldStructMax=[' + wStructMax.map(function(v){return v.toFixed(3);}).join(',') + ']' +
+    ' outside=' + outside + ' lenDrift=' + lenDrift);
+  if (!org) fail('C8 rwBuildingOrigin(Duplex) returned null (building_origin table missing)');
+  if (lenDrift > 0) fail('C8 ' + lenDrift + ' world-transformed runs changed length (not rigid)');
+  if (outside > 0) fail('C8 ' + outside + ' world-space pipe endpoints fell outside the structural bbox');
 
-  console.log('§RW_VERDICT ' + (pass ? 'PASS' : 'FAIL') + ' claims=' + (pass ? '8/8' : '<8/8'));
+  console.log('§RW_VERDICT ' + (pass ? 'PASS' : 'FAIL') + ' claims=' + (pass ? '8/8' : '<8/8') +
+    ' (C7=clash-gate-from-db C8=building-origin-transform)');
   console.log('── W-ROUTEWALKER-MEP ' + (pass ? 'PASS' : 'FAIL') + ' ──');
   process.exit(pass ? 0 : 1);
 })().catch(function (e) {
