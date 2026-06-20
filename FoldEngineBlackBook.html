@@ -692,6 +692,33 @@ onReceive(op =&gt; verifyChain(log.concat(op)) ? apply(op) : drop(op));</code></
       (Ch.9). One line: <b>they event-source the data; we event-source the data <i>and the model</i>, in one signed log,
       with no server and no store of record.</b></p>
 
+      <p><b class="beat">What this is not.</b> Two approaches look structurally adjacent; both are wrong comparisons,
+      and conflating them with this engine is the most common misreading.</p>
+
+      <p><b>Not EAV.</b> The Entity-Attribute-Value anti-pattern (Magento, WooCommerce product metadata,
+      parts of WordPress) stores all attributes as generic rows: <code>(entity_id, attribute_name, value)</code>.
+      Reconstructing a single invoice from a naive EAV store can require 20–30 self-joins on the same table,
+      collapsing query performance and making selective indexing impossible at scale. The 5-relation kernel is
+      structurally different: each relation has typed, positioned columns; records are indexed on their natural
+      keys; and the fold output is a deterministic, typed projection — not an arbitrary string sitting in a
+      <code>value</code> column. EAV achieves flexibility by destroying structure; the kernel achieves it by
+      <i>relocating</i> structure — from the schema into the verb set (Ch.2). The surface resemblance (few
+      tables, flexible data) is superficial. The mechanisms are opposite.</p>
+
+      <p>The distinction matters because Datomic — cited above as the nearest neighbor — also uses a 5-tuple
+      <code>(entity, attribute, value, transaction, op)</code> that looks like EAV. It is not, for the same
+      reason: the tuple is typed, immutable, and indexed on all four axes simultaneously. A principled
+      immutable datom and a lazy EAV blob share no meaningful property beyond the word "attribute."</p>
+
+      <p><b>Not a view layer.</b> Oracle APPS and SAP acknowledge that their underlying schemas are
+      impenetrable (SAP: 452,000 tables, 7.3M fields) and respond by layering thousands of SQL VIEWs and
+      synonyms on top. The abstraction is real for the programmer; the physical overhead is unchanged —
+      storage, query planning, and I/O remain proportional to the underlying structure. This engine performs
+      a physical reduction: the 5 relations <i>are</i> the on-disk structure written to SQLite. There is
+      no shadow schema underneath. The complexity was not hidden; it was relocated from fixed table columns
+      into runtime operational verbs — which are themselves first-class values in the signed log, not
+      application code (Ch.2, Ch.9). That relocation is the move the view-layer approach never makes.</p>
+
       <p><b class="beat">How bleeding-edge is each part — honestly.</b> Bleeding edge is rarely one new atom; it is a novel
       <i>composition</i> of known atoms aimed at a problem nobody composed them for. Tiered without flattery:</p>
       <ul style="font-size:15px;color:#dbe4ec;max-width:74ch;line-height:1.6">
