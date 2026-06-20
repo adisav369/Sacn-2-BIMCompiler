@@ -276,21 +276,6 @@ h1 span{color:var(--mute);font-weight:400}
   </div>
 </div>
 
-<div id="compare">
-  <h2>What this replaced</h2>
-  <div class="cmp-grid">
-    <div class="cmp-cell head">Dimension</div><div class="cmp-cell head">iDempiere → Fold Engine</div>
-    <div class="cmp-cell">Lines of code</div><div class="cmp-cell them" id="cmp-loc">1,400,000 Java → <span class="us">28,000 JS (50×)</span></div>
-    <div class="cmp-cell">Code size</div><div class="cmp-cell them" id="cmp-bytes">43 MB Java → <span class="us">1.7 MB JS (26×)</span></div>
-    <div class="cmp-cell">DB tables</div><div class="cmp-cell them" id="cmp-tbl">925 schemas → <span class="us">5 relations (185×)</span></div>
-    <div class="cmp-cell">Infrastructure</div><div class="cmp-cell them">JVM + App Server + PG → <span class="us">Browser tab</span></div>
-    <div class="cmp-cell">Server cost</div><div class="cmp-cell them">$1,000–10,000 / month → <span class="us">$0</span></div>
-    <div class="cmp-cell">GL accuracy</div><div class="cmp-cell"><span class="us">maxDiff = 0¢ oracle-verified</span></div>
-    <div class="cmp-cell">10K verify</div><div class="cmp-cell"><span class="us" id="cmp-verify">—</span></div>
-    <div class="cmp-cell">Housekeeping</div><div class="cmp-cell"><span class="us">Seed compaction — 1 click, System Monitor</span></div>
-  </div>
-  <p class="note">Coverage ~0.2% of iDempiere M-class logic. Architecture proven; breadth ahead.</p>
-</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script>
@@ -591,7 +576,6 @@ async function runRound(round){
   document.getElementById('m-vfy-ms').textContent=vMs+' ms';
   document.getElementById('m-vfy-rate').textContent=vRate.toLocaleString()+'/s';
   document.getElementById('chipMs').textContent=vMs+' ms';
-  document.getElementById('cmp-verify').textContent=vMs+' ms';
   setBadge('verify',_isRunning?'pass':'idle'); vfyDb.close();
   if(!_isRunning) return;
 
@@ -645,7 +629,6 @@ async function runRound(round){
   _rounds++;
   document.getElementById('lcRounds').textContent=_rounds;
   document.getElementById('roundNum').textContent=round;
-  document.getElementById('compare').style.display='block';
 }
 
 // ── main loop ──
