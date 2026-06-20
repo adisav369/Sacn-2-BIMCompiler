@@ -1,0 +1,429 @@
+{
+  "measured_at_note": "stamped by deploy wrapper; node has no stable clock here",
+  "ours": {
+    "name": "Fold-Engine ERP (browser)",
+    "lang": "JS",
+    "loc": 28236,
+    "bytes": 1754467,
+    "mb": 1.67,
+    "files": 79,
+    "tables": 7,
+    "source": "bim-ootb/erp/*.js (minus vendored)",
+    "measured": true
+  },
+  "them": {
+    "name": "iDempiere",
+    "lang": "Java",
+    "loc": 1431612,
+    "bytes": 45306052,
+    "mb": 43.21,
+    "files": 4465,
+    "tables": 925,
+    "tables_source": "published iDempiere AD_Table count (documented)",
+    "loc_source": "~/idempiere-dev-setup/idempiere/**/*.java",
+    "measured": true
+  },
+  "ratios": {
+    "loc": 50.7,
+    "bytes": 25.8,
+    "tables": 132.1
+  },
+  "file_list": [
+    {
+      "file": "accts_posted.js",
+      "loc": 219,
+      "bytes": 11759
+    },
+    {
+      "file": "ad_callout.js",
+      "loc": 139,
+      "bytes": 8381
+    },
+    {
+      "file": "ad_charts.js",
+      "loc": 433,
+      "bytes": 15775
+    },
+    {
+      "file": "ad_data.js",
+      "loc": 527,
+      "bytes": 22980
+    },
+    {
+      "file": "ad_docfsm.js",
+      "loc": 309,
+      "bytes": 23258
+    },
+    {
+      "file": "ad_evaluator.js",
+      "loc": 292,
+      "bytes": 14853
+    },
+    {
+      "file": "ad_graph.js",
+      "loc": 1919,
+      "bytes": 78980
+    },
+    {
+      "file": "ad_modelval.js",
+      "loc": 689,
+      "bytes": 44509
+    },
+    {
+      "file": "ad_parser.js",
+      "loc": 459,
+      "bytes": 19189
+    },
+    {
+      "file": "ad_process.js",
+      "loc": 640,
+      "bytes": 47127
+    },
+    {
+      "file": "ad_table_map.js",
+      "loc": 141,
+      "bytes": 7980
+    },
+    {
+      "file": "ad_ui.js",
+      "loc": 3362,
+      "bytes": 159747
+    },
+    {
+      "file": "bigdecimal.js",
+      "loc": 138,
+      "bytes": 7850
+    },
+    {
+      "file": "bim_orders_overlay.js",
+      "loc": 84,
+      "bytes": 4604
+    },
+    {
+      "file": "blue_future.js",
+      "loc": 294,
+      "bytes": 17572
+    },
+    {
+      "file": "chat_lens.js",
+      "loc": 339,
+      "bytes": 20474
+    },
+    {
+      "file": "crud_overlay.js",
+      "loc": 2487,
+      "bytes": 181601
+    },
+    {
+      "file": "doc_cycle_validator.js",
+      "loc": 467,
+      "bytes": 27259
+    },
+    {
+      "file": "doc_poster.js",
+      "loc": 126,
+      "bytes": 8343
+    },
+    {
+      "file": "erp_descriptor.js",
+      "loc": 89,
+      "bytes": 5244
+    },
+    {
+      "file": "erp_engine.js",
+      "loc": 283,
+      "bytes": 16405
+    },
+    {
+      "file": "erp_kernel.js",
+      "loc": 294,
+      "bytes": 19847
+    },
+    {
+      "file": "erp_panel.js",
+      "loc": 478,
+      "bytes": 19505
+    },
+    {
+      "file": "erp_period_close.js",
+      "loc": 169,
+      "bytes": 10619
+    },
+    {
+      "file": "erp_persist.js",
+      "loc": 70,
+      "bytes": 3985
+    },
+    {
+      "file": "erp_picker.js",
+      "loc": 521,
+      "bytes": 36897
+    },
+    {
+      "file": "erp_pills.js",
+      "loc": 446,
+      "bytes": 26418
+    },
+    {
+      "file": "erp_postings.js",
+      "loc": 132,
+      "bytes": 7168
+    },
+    {
+      "file": "erp_preview.js",
+      "loc": 115,
+      "bytes": 6706
+    },
+    {
+      "file": "erp_replay.js",
+      "loc": 84,
+      "bytes": 5057
+    },
+    {
+      "file": "erp_seam.js",
+      "loc": 164,
+      "bytes": 9812
+    },
+    {
+      "file": "erp_search.js",
+      "loc": 514,
+      "bytes": 20319
+    },
+    {
+      "file": "erp_signer.js",
+      "loc": 93,
+      "bytes": 5434
+    },
+    {
+      "file": "erp_snapshot_sign.js",
+      "loc": 47,
+      "bytes": 3087
+    },
+    {
+      "file": "feed_fold.js",
+      "loc": 153,
+      "bytes": 8193
+    },
+    {
+      "file": "genesis.js",
+      "loc": 370,
+      "bytes": 23522
+    },
+    {
+      "file": "genesis_seed.js",
+      "loc": 12,
+      "bytes": 29165
+    },
+    {
+      "file": "glassbowl_pills.js",
+      "loc": 205,
+      "bytes": 13244
+    },
+    {
+      "file": "help_idmp.js",
+      "loc": 37,
+      "bytes": 2549
+    },
+    {
+      "file": "help_overlay.js",
+      "loc": 409,
+      "bytes": 26571
+    },
+    {
+      "file": "icons.js",
+      "loc": 104,
+      "bytes": 13672
+    },
+    {
+      "file": "idmp_history.js",
+      "loc": 253,
+      "bytes": 16938
+    },
+    {
+      "file": "idmp_pills.js",
+      "loc": 315,
+      "bytes": 22942
+    },
+    {
+      "file": "idmp_session.js",
+      "loc": 278,
+      "bytes": 15487
+    },
+    {
+      "file": "img_store.js",
+      "loc": 173,
+      "bytes": 9219
+    },
+    {
+      "file": "inout_confirm.js",
+      "loc": 181,
+      "bytes": 12719
+    },
+    {
+      "file": "kanban_host.js",
+      "loc": 114,
+      "bytes": 7145
+    },
+    {
+      "file": "kanban_lens.js",
+      "loc": 341,
+      "bytes": 20222
+    },
+    {
+      "file": "kernel_ops.js",
+      "loc": 609,
+      "bytes": 36137
+    },
+    {
+      "file": "menu_seed.js",
+      "loc": 3,
+      "bytes": 93319
+    },
+    {
+      "file": "migrate_agent.js",
+      "loc": 432,
+      "bytes": 21896
+    },
+    {
+      "file": "migrate_showme.js",
+      "loc": 264,
+      "bytes": 15308
+    },
+    {
+      "file": "ninja_bundle.js",
+      "loc": 121,
+      "bytes": 5242
+    },
+    {
+      "file": "ninja_create.js",
+      "loc": 108,
+      "bytes": 5243
+    },
+    {
+      "file": "ninja_excel.js",
+      "loc": 299,
+      "bytes": 17692
+    },
+    {
+      "file": "ninja_export.js",
+      "loc": 125,
+      "bytes": 5709
+    },
+    {
+      "file": "ninja_model.js",
+      "loc": 312,
+      "bytes": 12060
+    },
+    {
+      "file": "ninja_pill.js",
+      "loc": 335,
+      "bytes": 22054
+    },
+    {
+      "file": "ninja_rule.js",
+      "loc": 172,
+      "bytes": 10252
+    },
+    {
+      "file": "ninja_stage.js",
+      "loc": 294,
+      "bytes": 14624
+    },
+    {
+      "file": "ninja_starter.js",
+      "loc": 71,
+      "bytes": 3494
+    },
+    {
+      "file": "odoo_descriptor.js",
+      "loc": 154,
+      "bytes": 10829
+    },
+    {
+      "file": "overlay_kit.js",
+      "loc": 53,
+      "bytes": 2628
+    },
+    {
+      "file": "period_close_ui.js",
+      "loc": 160,
+      "bytes": 8708
+    },
+    {
+      "file": "pill_builder.js",
+      "loc": 301,
+      "bytes": 14516
+    },
+    {
+      "file": "plugin_overlay.js",
+      "loc": 443,
+      "bytes": 26373
+    },
+    {
+      "file": "plugin_registry.js",
+      "loc": 254,
+      "bytes": 12713
+    },
+    {
+      "file": "plugin_release.js",
+      "loc": 154,
+      "bytes": 11182
+    },
+    {
+      "file": "pos_core.js",
+      "loc": 476,
+      "bytes": 30798
+    },
+    {
+      "file": "pos_lens.js",
+      "loc": 1298,
+      "bytes": 79849
+    },
+    {
+      "file": "post_resolver.js",
+      "loc": 103,
+      "bytes": 7042
+    },
+    {
+      "file": "report_overlay.js",
+      "loc": 1058,
+      "bytes": 78570
+    },
+    {
+      "file": "role_band.js",
+      "loc": 158,
+      "bytes": 5726
+    },
+    {
+      "file": "rule_fold.js",
+      "loc": 246,
+      "bytes": 16076
+    },
+    {
+      "file": "sw.js",
+      "loc": 236,
+      "bytes": 14732
+    },
+    {
+      "file": "system_monitor.js",
+      "loc": 243,
+      "bytes": 18105
+    },
+    {
+      "file": "system_tenant.js",
+      "loc": 80,
+      "bytes": 5477
+    },
+    {
+      "file": "user_names.js",
+      "loc": 108,
+      "bytes": 4657
+    },
+    {
+      "file": "vfs_detect.js",
+      "loc": 58,
+      "bytes": 3124
+    }
+  ],
+  "witness": "W-CODEBASE-FACTS"
+}

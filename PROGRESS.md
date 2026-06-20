@@ -18,6 +18,15 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
+## Benchmark & Clash-Resolution lane (branch lane/benchmark-clash-resolution) — 2026-06-21
+Spec `prompts/BENCHMARK_AND_CLASH_RESOLUTION_LANE.md`. Phase A in progress (re-targeting all BIM measures LTU→Terminal 48k).
+- ✅ **A3** measure scripts re-targeted to Terminal + re-run (witness logs in `build/erp/measure_*.log`):
+  - Pick (W-PICK-MEASURE): median **3.5ms** (min 1.8 / p100 455.5), 2441 draw objects (672 BatchedMesh + 1769 InstancedMesh).
+  - Rich clash (W-CLASH-NARROWPHASE): broadphase 4000 pairs in **47ms**, rich verdict **5.14ms/pair**; CLASH **2220** · NEAR-MISS(<50mm) **737** · CLEAR 1043.
+- ✅ **A1** IfcClash STR-vs-MEP on 594MB Terminal IFC (`scripts/measure_ifcclash.py`, W-IFCCLASH-TERMINAL): **184.76s end-to-end** (parse 40.4s + tessellate STR 1032 @1.6s + MEP 2419 @138.3s + clash), **77 clashes** with TRUE depth/type (pierce 150mm, protrusion 281.7mm). Replaces "tens of seconds" estimate. NB: counts NOT comparable to our 2220 (different scope — IfcClash=2-disc intersection on IFC-class sets; ours=4000 cross-disc capped candidates). The comparable thing = WORK: 185s tessellate-every-run vs our 47ms SQL broadphase over pre-stored boxes.
+- 📌 FACT CORRECTION: Terminal_meta `elements_meta` discipline split is **ARC 35552 · PLB 8175 · ACMV 1570 · STR 1032 · FP 989 · ELEC 833 · MEP 277** (sums to 48428), NOT the lane-header labels. STR selector=IfcBeam/IfcColumn/IfcMember, MEP=IfcFlowTerminal/IfcFlowController.
+- NEXT: A1 result → A4 facts-only restyle of `bim_bench.html`/`bench_suite.html` (drop win/tie tags, Terminal numbers) → A2 localhost iDempiere → Phase B (penetration depth).
+
 ## TM 4D/5D variance + 360 loop — MERGED+LIVE 2026-06-21
 - ✅ 360 loop + kanban/pivot + shopfloor S-curve LIVE (bim-ootb PR #462 sw v684) → `prompts/TM_4D5D_VARIANCE_LANE.md` (+ `prompts/RESUME_360_KANBAN_PIVOT.md`)
 

@@ -67,112 +67,34 @@ extra:
       link: https://www.linkedin.com/in/red1oon/
 
 nav:
-  # ─── "I just found this project" ────────────────────────
+  # ─── Newbie + nerd: the few links that matter first ────
   - Start Here:
       - Home: index.md
+      - User Guide: USER_GUIDE.md
       - Feature Comparison: FeatureComparison.md
-      - "Prior Art — Geometry as Signed-Log Fold": ModellerKernelFold.md
       - "Migrate & Compare (ERP)": MigrateComparisonPaper.md
-      - "Cross-ERP Rosetta Stone (concept + cost)": ERPConceptRosetta.html
-      - "Fold Engine Black Book (dev manual)": FoldEngineBlackBook.html
-      - "ACDOCA Fold Plan (SAP headline)": ACDOCA_FOLD_PLAN.md
-      - "Fold-Engine Code Quality": FoldEngineQuality.md
-      - "Fold-Engine Constraints": FoldEngineConstraints.md
+      - "Benchmark Comparison (live)": bench_suite.html
       - About BIM OOTB: AboutMore.md
       - The ERP World View: MANIFESTO.md
-      - Beyond Buildings: ShipYard.md
 
-  # ─── BIM5D — the headline ─────────────────────────────
-  - BIM5D:
-      - 4D/5D Analysis: 4D5DAnalysis.md
-      - "BIM → Project Order (ERP)": BIMtoProject.md
-      - LTU A-House (125K): LTUAHouseAnalysis.md
-      - Enterprise Platform: Enterprise.md
+  # ─── The three apps you actually open ─────────────────
+  - The 3 Apps:
+      - Getting Started: WorkOrderGuide.md
+      - "BIM Viewer Guide": BIMUserGuide.md
+      - "DAGeVu Modeller Guide": ModellerGuide.md
+      - "Kernel-ERP User Guide": ERPUserGuide.md
 
-  # ─── The nerdy pull ───────────────────────────────────
-  - Last Mile:
-      - The Drift: LAST_MILE_PROBLEM.md
-      - 9 Gates: TestArchitecture.md
-      - BIMEyes: EYES_SRS.md
-      - Calibration: CALIBRATION_SRS.md
-
-  # ─── Core specs ────────────────────────────────────────
-  - Specs:
-      - BOM Compilation: BOMBasedCompilation.md
-      - Data Model: DATA_MODEL.md
-      - Rosetta Stones: TheRosettaStoneStrategy.md
-      - BIM COBOL (77 Verbs): BIM_COBOL.md
-      - Source Code Guide: SourceCodeGuide.md
-
-  # ─── BIM Designer ─────────────────────────────────────
-  - Designer:
-      - "Red Pill — Design From Grammar": RED_PILL.md
-      - "BOM-as-Context": BOM_AS_CONTEXT.md
-      - "BOM Engine Spec": BOM_ENGINE_SPEC.md
-      - Browser as Modeller: BIM_Modeller_OOTB.md
-      - BIM OOTB (Browser): BIM_Designer_Browser.md
-      - Clash Detection: CLASH_DETECTION.md
-      - SQLite3D Schema: SQLite3D_Schema.md
-      - Plugin SDK: PLUGIN_SDK.md
-      - Mobile & Cloud: MOBILE_DEPLOY.md
-      - DocAction Lifecycle: DocAction_SRS.md
-      - Validation Rules: DocValidate.md
-      - Assembly Builder: ASSEMBLY_BUILDER_SRS.md
-      - Blender Bridge: BlenderBridge.md
-      - Output DB (G4): G4_SRS.md
-      - BIM Designer Architecture: BIM_Designer.md
-
-  # ─── Enterprise (nD Platform + ERP) ───────────────────
-  - Enterprise:
-      - FederatedModel Platform: Enterprise.md
-      - Back Office: BACK_OFFICE_SRS.md
-      - 6D/7D/Audit: TIER1_SRS.md
-      - Standards Compliance: STANDARDS_COMPLIANCE_SRS.md
-      - Reporting Engine: REPORTING_ENGINE_SRS.md
-      - Infrastructure Designer: INFRA_DESIGNER_SRS.md
-      - PDF Terrain: PDF_TERRAIN.md
-      - 2D Guide: BIM_2D_Guide.md
-      - 2D Layout: 2D_LAYOUT.md
-      - Disciplines: DISC_VALIDATE_SRS.md
-      - ERP Database: DISC_VALIDATION_DB_SRS.md
-      - Generative House: GENERATIVE_HOUSE_SRS.md
-      - Geometry Forge: GEOMETRY_FORGE_SRS.md
-      - Forge Suite: FORGE_SUITE_SRS.md
-      - Prefab Architecture: PREFAB_ARCHITECTURE.md
-
-  # ─── Spatial ERP ──────────────────────────────────────
-  - Spatial ERP:
-      - "▶ Try it — iDempiere User Guide": ERPUserGuide.md
-      - "Every Record Has a Place": SpatialERP_OOTB.md
-      - "Construction ERP POC": SpatialERP_POC.md
-      - "AD-in-Browser (iDempiere)": ERP.md
-      - "iDempiere 2.0 — the Model": IDEMPIERE_2.md
-      - "Plugin Architecture (metadata-first)": PLUGIN_ARCHITECTURE.md
-      - "Engine ↔ UI Contract (the seam)": ENGINE_CONTRACT.md
+  # ─── For the nerds: the headline ideas ────────────────
+  - Go Deeper:
+      - "Fold Engine Black Book (dev manual)": FoldEngineBlackBook.html
       - "The Holy Grail (editable rules, live)": HolyGrail.md
-      - "ReadMe / ShowMe Help (POC)": ReadMeShowMe.md
-      - "O2C Help Steps (ReadMe)": HelpO2C.md
-      - "ERP Forward Roadmap": ERP_Roadmap.md
-
-  # ─── Roadmap & Papers ─────────────────────────────────
-  - Roadmap:
-      - BIM OOTB Roadmap: ROADMAP.md
-      - Action Roadmap: ACTION_ROADMAP.md
-      - Project Blueprint: ProjectOrderBlueprint.md
-      - Vibe Programming: VibeProgramming.md
-      - Strategic Positioning: StrategicIndustryPositioning.md
-      - BIM-ERP Paper: BIMERPPaper.md
-      - "Op-Log ERP Engine (Abstract)": OpLogERP.md
-      - Spatial Compilation Paper: SPATIAL_COMPILATION_PAPER.md
-      - Enabling-Tech Timeline: EnablingTechTimeline.md
-      - Local-First Prior Art: LocalFirstPriorArt.md
-      - Distributed ERP (Contention Map): DistributedERP.md
-      - "ERP Coverage Matrix (have we covered all bases?)": ERP_COVERAGE_MATRIX.md
-      - "Gap-Closure Spec (how a gap becomes oracle-equivalent)": GapClosureSpec.md
-      - "ERP Model Archetype (MOrder + deltas = the denominator)": ERP_MODEL_ARCHETYPE.md
-      - "POS Addon Spec (the 2012 Unicenta loop, as folds)": POS_ADDON_SPEC.md
-      - "Spatial Picking Spec (warehouse walk + QR)": SPATIAL_PICKING_SPEC.md
-      - "Depreciation Perf (server→serverless witness)": DepreciationPerf.md
+      - "Cross-ERP Rosetta Stone (concept + cost)": ERPConceptRosetta.html
+      - "BIM COBOL (77 Verbs)": BIM_COBOL.md
+      - "Prior Art — Geometry as Signed-Log Fold": ModellerKernelFold.md
+      - "4D/5D Analysis": 4D5DAnalysis.md
+      - "BIM → Project Order (ERP)": BIMtoProject.md
+      - "Strategic Positioning": StrategicIndustryPositioning.md
+      - "Beyond Buildings": ShipYard.md
 
   # ─── Proven buildings ─────────────────────────────────
   - Buildings:
@@ -188,20 +110,52 @@ nav:
       - LTU A-House: LTUAHouseAnalysis.md
       - 1M Stress Test: StressTest_1M.md
 
-  # ─── Guides ───────────────────────────────────────────
-  - Guides:
-      - Getting Started: WorkOrderGuide.md
-      - "User Guide (start here)": USER_GUIDE.md
-      - "Viewer Guide": BIMUserGuide.md
-      - "DAGeVu Modeller Guide": ModellerGuide.md
-      - "BIM Designer Guide (deprecated)": BIM_Designer_UserGuide.md
-      - 2D Plans Viewer: 2D_HTML_GUIDE.md
-      - Find and Navigate: RouteTemplate.md
-      - City-Scale RTree: RTreeGuide.md
-      - Back Office Guide: BackOfficeUserGuide.md
-      - IFC Onboarding: IFC_ONBOARDING_RUNBOOK.md
-      - Systems Installer: SYSTEMS_INSTALLER_GUIDE.md
-      - Deployment: DEPLOYMENT.md
-      - Localization: Localization.md
-      - Logging: BIMLogger.md
-      - Doc Index: INDEX.md
+  # ─── Everything else — the long tail, tucked away ─────
+  - Reference:
+      - Specs:
+          - BOM Compilation: BOMBasedCompilation.md
+          - Data Model: DATA_MODEL.md
+          - Rosetta Stones: TheRosettaStoneStrategy.md
+          - "ACDOCA Fold Plan (SAP headline)": ACDOCA_FOLD_PLAN.md
+          - "Fold-Engine Code Quality": FoldEngineQuality.md
+          - "Fold-Engine Constraints": FoldEngineConstraints.md
+      - Spatial ERP:
+          - "Every Record Has a Place": SpatialERP_OOTB.md
+          - "Construction ERP POC": SpatialERP_POC.md
+          - "AD-in-Browser (iDempiere)": ERP.md
+          - "iDempiere 2.0 — the Model": IDEMPIERE_2.md
+          - "Plugin Architecture (metadata-first)": PLUGIN_ARCHITECTURE.md
+          - "Engine ↔ UI Contract (the seam)": ENGINE_CONTRACT.md
+          - "ReadMe / ShowMe Help (POC)": ReadMeShowMe.md
+          - "O2C Help Steps (ReadMe)": HelpO2C.md
+          - "ERP Forward Roadmap": ERP_Roadmap.md
+      - Roadmap & Papers:
+          - BIM OOTB Roadmap: ROADMAP.md
+          - Action Roadmap: ACTION_ROADMAP.md
+          - Project Blueprint: ProjectOrderBlueprint.md
+          - Vibe Programming: VibeProgramming.md
+          - BIM-ERP Paper: BIMERPPaper.md
+          - "Op-Log ERP Engine (Abstract)": OpLogERP.md
+          - Spatial Compilation Paper: SPATIAL_COMPILATION_PAPER.md
+          - Enabling-Tech Timeline: EnablingTechTimeline.md
+          - Local-First Prior Art: LocalFirstPriorArt.md
+          - Distributed ERP (Contention Map): DistributedERP.md
+          - "ERP Coverage Matrix": ERP_COVERAGE_MATRIX.md
+          - "Gap-Closure Spec": GapClosureSpec.md
+          - "ERP Model Archetype": ERP_MODEL_ARCHETYPE.md
+          - "POS Addon Spec": POS_ADDON_SPEC.md
+          - "Spatial Picking Spec": SPATIAL_PICKING_SPEC.md
+          - "Depreciation Perf": DepreciationPerf.md
+      - Last Mile:
+          - The Drift: LAST_MILE_PROBLEM.md
+          - 9 Gates: TestArchitecture.md
+          - BIMEyes: EYES_SRS.md
+          - Calibration: CALIBRATION_SRS.md
+      - More Guides:
+          - Find and Navigate: RouteTemplate.md
+          - City-Scale RTree: RTreeGuide.md
+          - IFC Onboarding: IFC_ONBOARDING_RUNBOOK.md
+          - Systems Installer: SYSTEMS_INSTALLER_GUIDE.md
+          - Localization: Localization.md
+          - Logging: BIMLogger.md
+          - Doc Index: INDEX.md

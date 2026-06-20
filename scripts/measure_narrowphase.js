@@ -1,5 +1,5 @@
 // measure_narrowphase.js — HONEST proof + measurement of real mesh-to-mesh clash narrowphase
-// on the LTU 122k building. Broadphase (R-tree bbox) → candidate pairs → narrowphase
+// on the Terminal 48k building. Broadphase (R-tree bbox) → candidate pairs → narrowphase
 // (three-mesh-bvh intersectsGeometry, true triangle-triangle) → confirmed vs false-positive.
 // Replicates the viewer's exact element transform (ifc2three + euler(rotX,rotZ,-rotY) + unit scale).
 // Proves: (a) narrowphase works on real geometry, (b) how many bbox clashes are false positives,
@@ -10,8 +10,8 @@ const { spawn } = require('child_process');
 const SERVE_ROOT = '/home/red1';
 const PORT = 8000;
 const URL = `http://localhost:${PORT}/bim-ootb/viewer/viewer.html` +
-  `?db=/bim-compiler/deploy/dev/buildings/LTU_AHouse_extracted.db` +
-  `&lib=/bim-compiler/deploy/dev/buildings/LTU_AHouse_geo.db&bld=LTU_AHouse`;
+  `?db=/bim-compiler/deploy/dev/buildings/Terminal_extracted.db` +
+  `&lib=/bim-compiler/deploy/dev/buildings/Terminal_geo.db&bld=Terminal`;
 
 (async () => {
   const server = spawn('python3', ['-m', 'http.server', String(PORT), '--directory', SERVE_ROOT], { stdio: 'ignore' });
@@ -23,8 +23,8 @@ const URL = `http://localhost:${PORT}/bim-ootb/viewer/viewer.html` +
   page.on('pageerror', e => console.log('  ERR ' + String(e).slice(0, 160)));
 
   try {
-    console.log('\n═══ W-CLASH-NARROWPHASE — real mesh-to-mesh on LTU 122k ═══\n');
-    console.log('Loading LTU_AHouse… timeout 6min');
+    console.log('\n═══ W-CLASH-NARROWPHASE — real mesh-to-mesh on Terminal 48k ═══\n');
+    console.log('Loading Terminal… timeout 6min');
     await page.goto(URL, { waitUntil: 'domcontentloaded' });
     const t0 = Date.now(); let last = -1;
     while (Date.now() - t0 < 360000) {

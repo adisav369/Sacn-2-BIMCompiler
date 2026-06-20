@@ -1,4 +1,4 @@
-// measure_pick.js — HONEST measurement of element-pick latency on the LTU 122k building.
+// measure_pick.js — HONEST measurement of element-pick latency on the Terminal 48k building.
 // Reproduces the EXACT pick path from picking.js (collectMeshes + raycaster.intersectObjects,
 // firstHitOnly=false) and times it. No assumptions — measures the real raycast cost.
 // Usage: node measure_pick.js   (starts its own server on :8000 from /home/red1)
@@ -8,8 +8,8 @@ const { spawn } = require('child_process');
 const SERVE_ROOT = '/home/red1';
 const PORT = 8000;
 const URL = `http://localhost:${PORT}/bim-ootb/viewer/viewer.html` +
-  `?db=/bim-compiler/deploy/dev/buildings/LTU_AHouse_extracted.db` +
-  `&lib=/bim-compiler/deploy/dev/buildings/LTU_AHouse_geo.db&bld=LTU_AHouse`;
+  `?db=/bim-compiler/deploy/dev/buildings/Terminal_extracted.db` +
+  `&lib=/bim-compiler/deploy/dev/buildings/Terminal_geo.db&bld=Terminal`;
 
 (async () => {
   const server = spawn('python3', ['-m', 'http.server', String(PORT), '--directory', SERVE_ROOT],
@@ -23,8 +23,8 @@ const URL = `http://localhost:${PORT}/bim-ootb/viewer/viewer.html` +
   page.on('pageerror', e => console.log('  ERR ' + String(e).slice(0, 160)));
 
   try {
-    console.log('\n═══ W-PICK-MEASURE — real pick latency on LTU 122k ═══\n');
-    console.log('Loading LTU_AHouse (122,667 elements)… timeout 6min');
+    console.log('\n═══ W-PICK-MEASURE — real pick latency on Terminal 48k ═══\n');
+    console.log('Loading Terminal (48,428 elements)… timeout 6min');
     await page.goto(URL, { waitUntil: 'domcontentloaded' });
 
     // poll streaming status with progress, up to 6min
