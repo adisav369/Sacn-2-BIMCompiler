@@ -441,16 +441,22 @@ async function doHousekeeping(){
   document.getElementById('hkBanner').style.display='block';
   allBadges('hk'); allCards('hk');
   setClock(ERP_OPS_PER_ROUND,'hk');
-  await sleep(2800);
+  await sleepPausable(2800);   // pause-aware: PAUSE freezes the HK screen so it can be read
   document.getElementById('hkBanner').style.display='none';
   setStatus('✅ Housekeeping complete — seed pristine · born tenants kept · log at zero · restarting…','done');
   setClock(ERP_OPS_PER_ROUND,'done');
-  await sleep(1200);
+  await sleepPausable(1200);
   _cumDays += ERP_OPS_PER_ROUND / TX_PER_DAY;
 }
 
 function sleep(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
 function yield_(){ return new Promise(function(r){setTimeout(r,0);}); }
+// like sleep(), but if PAUSE is pressed mid-sleep it freezes at the next checkpoint until RESUME
+// (so the housekeeping phase can be paused and read, same accounting as yieldOrPause)
+async function sleepPausable(ms){
+  var step=100, e=0;
+  while(e<ms){ await sleep(step); e+=step; await yieldOrPause(); }
+}
 
 // pause-aware yield: if paused, waits until resumed
 async function yieldOrPause(){
@@ -792,6 +798,7 @@ function pickFile(msg){
     liveRecount(f).then(render);   // then upgrade to a live count of the current deployed code
   }).catch(function(){});
 })();
+
 </script>
 </body>
 </html>
