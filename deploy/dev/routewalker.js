@@ -623,6 +623,34 @@ function rwBuildingOrigin(buildingName) {
   }
 }
 
+/**
+ * Load a building's REAL rooms from mep_rw.db (building_room), baked from its OWN extracted BOM by
+ * scripts/build_mep_room_envelopes.js. The op-log modeller has no building DB and the catalog's FLOOR rooms
+ * are a SYNTHESISED row — so the faithful room source is this sidecar, the same way the clash gate reads
+ * arc_envelope. Rooms come back in EXTRACTION-WORLD metres (cx,cy,cz + extents), ready for rwPlaceFixtures;
+ * the caller then applies the SAME rigid transform the routed pipes use: world = bmin + (pos − buildingOrigin).
+ * @param {string} buildingName — matches source_building in mep_rw.db
+ * @returns {Array} [{ type, name, storey, cx, cy, cz, bx, by, bz }] (empty if the building has no baked rooms)
+ */
+function rwLoadRooms(buildingName) {
+  if (!_rwReady || !_rwDb) { console.warn('§RW_ROOMS_FAIL not initialised'); return []; }
+  var out = [];
+  try {
+    var rows = _rwDb.exec(
+      "SELECT role, cx, cy, cz, bx, by_, bz FROM building_room WHERE source_building = '" +
+      buildingName.replace(/'/g, "''") + "'"
+    );
+    if (rows.length) {
+      rows[0].values.forEach(function (v) {
+        out.push({ type: v[0], name: v[0], storey: 'Ground Floor',
+          cx: v[1], cy: v[2], cz: v[3], bx: v[4], by: v[5], bz: v[6] });
+      });
+    }
+  } catch (e) { /* table absent — no baked rooms for this building */ }
+  console.log('§RW_ROOMS building=' + buildingName + ' rooms=' + out.length);
+  return out;
+}
+
 // A4. ARC envelope loader (from building DB)
 function _rwLoadArcEnvelope(buildingDb) {
   var boxes = [];
