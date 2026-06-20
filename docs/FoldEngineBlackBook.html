@@ -485,6 +485,14 @@ export default {
       the Ch.1 sin, committed at the edge this time. <b>Plugins EMIT — ops and effects — they never mutate state. A
       plugin that writes the projection is a plugin that breaks replay on every other node.</b> The edge is a place to
       compute, not a back door to the kernel.</p>
+      <p><b class="beat">The kernel boundary — stated plainly for contributors.</b> The 5-relation substrate
+      (<code>Entity / Attribute / Value / Relationship / Event</code>) and the closed verb set (the ~77 COBOL-era
+      primitives in Ch.2) are <b>immutable by design</b>. A pull request that modifies the kernel is rejected by
+      definition — not by policy, but because adding a primitive breaks deterministic replay on every node that
+      has folded without it. The only legitimate surface for new ERP verbs is the <code>.foldbundle</code> plugin
+      seam: emit existing primitives, register a new handler, done. If you find yourself needing a 78th verb, the
+      answer is that you haven't decomposed the intent yet — every real business rule has folded cleanly into the
+      existing 77 so far.</p>
       <div class="nav-foot"><a data-to="ch7">← Ch.7</a><a data-to="ch9">Ch.9 · Editing the dictionary itself →</a></div>
     </section>
 
@@ -593,7 +601,45 @@ onReceive(op =&gt; verifyChain(log.concat(op)) ? apply(op) : drop(op));</code></
         <li>The <b>docs-deploy landmine</b> that wiped live pages twice → <i>publish only through the no-shrink seatbelt.</i></li>
         <li>The <b>Process gate</b> — <code>DOC_FAMILY</code> is a ported whitelist, not a pure AD read →
           <i>detect-from-AD is general; execute is gated to ported families; an un-ported table renders Process honestly absent.</i></li>
+        <li>The <b>fold that ran on every tick</b> — a contributor wired a fold into the render loop, not a user-action handler;
+          GC pressure caused micro-stutters in the Three.js loop within minutes. Rule: <b>folds fire on action, never per-frame.</b>
+          The render loop holds geometry; the fold engine holds state. They share a thread but must never share a tick.</li>
+        <li>The <b>"you'll need checkpointing"</b> concern — not pending. The baked <code>ad_seed.db</code> is the snapshot:
+          a signed, verified freeze of the log at a known state. Page load folds from the seed, not from op-zero.
+          Compaction is an operator action in the System Monitor (<code>SystemMonitor.resetSeedClients</code>), not an
+          architectural open question. A skeptic who raises this has solved a problem the engine already solved differently.</li>
       </ul>
+      <details style="margin-top:1.2em">
+        <summary style="cursor:pointer;color:#90caf9;font-size:14px;font-weight:600;letter-spacing:.03em">Housekeeping · answers for skeptics</summary>
+        <div style="margin-top:.8em;font-size:14px;color:#dbe4ec;max-width:74ch;line-height:1.7">
+          <p>Two concerns raised by external reviewers, answered plainly so they need not be raised again.</p>
+          <p><b>GC pressure and render-loop stutters.</b> The ERP fold engine and the Three.js render loop are decoupled
+          — they share a thread, not a tick. Folds fire in response to user actions (open window, commit a record,
+          switch tab); the render loop advances geometry. No fold runs continuously. GC pressure from fold allocations
+          is a real risk only if that separation is broken, which is why the scar above exists. The architecture does
+          not create the problem; violating the architecture does.</p>
+          <p><b>Log growth and the need for "git gc" — how long-term housekeeping actually works.</b>
+          The analogy is correct but the conclusion lags the implementation. <code>ad_seed.db</code> is the
+          checkpoint: a versioned, verified snapshot of the application dictionary and seed data. At page load
+          the engine hydrates that snapshot into IndexedDB (<code>ad_seed_v16</code>) and then folds only the
+          op-log delta on top — not from op-zero. As the ledger grows, a System Admin opens the
+          <b>System Monitor</b> (role 0 only) and triggers <b>"Reset demo/seed ERPs."</b> That action
+          (<code>SystemMonitor.resetSeedClients</code>) does four things in sequence:</p>
+          <ol style="font-size:14px;color:#dbe4ec;max-width:70ch;line-height:1.7;padding-left:1.4em">
+            <li>Re-fetches the pristine shipped <code>ad_seed.db</code> from the server (hard-reload, no cache).</li>
+            <li>Snapshots every born-tenant row (<code>AD_Client_ID ≥ 17</code>) from the live DB into a buffer.</li>
+            <li>Re-inserts those rows into the fresh seed (column-intersect, <code>INSERT OR IGNORE</code>)
+                — born tenants' business data survives intact.</li>
+            <li>Persists the rebuilt DB as the live IndexedDB blob and <b>clears the op-log</b> — the audit
+                trail is reset (operator's call; the data is not).</li>
+          </ol>
+          <p>The result is a clean checkpoint: demo/seed tenants return to pristine, born tenants keep their
+          data, and the op-log is truncated to zero. This is checkpoint + log truncation in one operator action.
+          No code change, no deploy, no architectural surgery. The "no server, deterministic fold" narrative
+          holds because the seed is itself a deterministic artifact — signed, reproducible from op-zero if an
+          audit ever demands it.</p>
+        </div>
+      </details>
       <div class="fromi"><b>From iDempiere → <code>processIt</code> / <code>DocumentEngine</code>.</b>
       iDempiere decides "is this a document?" by two checks: the Java model extends <code>DocAction</code>, and its
       <code>AD_Table</code> carries the document columns (<code>DocStatus</code>, <code>DocAction</code>,
@@ -645,6 +691,33 @@ onReceive(op =&gt; verifyChain(log.concat(op)) ? apply(op) : drop(op));</code></
       declarative dictionary, folded like the data, and dictionary edits are themselves signed ops in the <i>same</i> log
       (Ch.9). One line: <b>they event-source the data; we event-source the data <i>and the model</i>, in one signed log,
       with no server and no store of record.</b></p>
+
+      <p><b class="beat">What this is not.</b> Two approaches look structurally adjacent; both are wrong comparisons,
+      and conflating them with this engine is the most common misreading.</p>
+
+      <p><b>Not EAV.</b> The Entity-Attribute-Value anti-pattern (Magento, WooCommerce product metadata,
+      parts of WordPress) stores all attributes as generic rows: <code>(entity_id, attribute_name, value)</code>.
+      Reconstructing a single invoice from a naive EAV store can require 20–30 self-joins on the same table,
+      collapsing query performance and making selective indexing impossible at scale. The 5-relation kernel is
+      structurally different: each relation has typed, positioned columns; records are indexed on their natural
+      keys; and the fold output is a deterministic, typed projection — not an arbitrary string sitting in a
+      <code>value</code> column. EAV achieves flexibility by destroying structure; the kernel achieves it by
+      <i>relocating</i> structure — from the schema into the verb set (Ch.2). The surface resemblance (few
+      tables, flexible data) is superficial. The mechanisms are opposite.</p>
+
+      <p>The distinction matters because Datomic — cited above as the nearest neighbor — also uses a 5-tuple
+      <code>(entity, attribute, value, transaction, op)</code> that looks like EAV. It is not, for the same
+      reason: the tuple is typed, immutable, and indexed on all four axes simultaneously. A principled
+      immutable datom and a lazy EAV blob share no meaningful property beyond the word "attribute."</p>
+
+      <p><b>Not a view layer.</b> Oracle APPS and SAP acknowledge that their underlying schemas are
+      impenetrable (SAP: 452,000 tables, 7.3M fields) and respond by layering thousands of SQL VIEWs and
+      synonyms on top. The abstraction is real for the programmer; the physical overhead is unchanged —
+      storage, query planning, and I/O remain proportional to the underlying structure. This engine performs
+      a physical reduction: the 5 relations <i>are</i> the on-disk structure written to SQLite. There is
+      no shadow schema underneath. The complexity was not hidden; it was relocated from fixed table columns
+      into runtime operational verbs — which are themselves first-class values in the signed log, not
+      application code (Ch.2, Ch.9). That relocation is the move the view-layer approach never makes.</p>
 
       <p><b class="beat">How bleeding-edge is each part — honestly.</b> Bleeding edge is rarely one new atom; it is a novel
       <i>composition</i> of known atoms aimed at a problem nobody composed them for. Tiered without flattery:</p>
