@@ -825,17 +825,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2d-plans" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2D Plans
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#keyboard-mouse-cheat-sheet" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2064,7 +2053,7 @@
   <span class="md-ellipsis">
     
   
-    Designer
+    Designer (legacy — see Modeller)
   
 
     
@@ -2080,7 +2069,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Designer
+    Designer (legacy — see Modeller)
   
 
           </label>
@@ -2553,8 +2542,6 @@
       
         
       
-        
-      
     
     
     
@@ -2811,34 +2798,6 @@
     
   
     PDF Terrain
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../BIM_2D_Guide/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    2D Guide
   
 
     
@@ -4141,8 +4100,6 @@
       
         
       
-        
-      
     
     
     
@@ -4202,35 +4159,7 @@
   <span class="md-ellipsis">
     
   
-    BIM Designer Guide (deprecated)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../2D_HTML_GUIDE/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    2D Plans Viewer
+    BIM Designer Guide (legacy — see Modeller)
   
 
     
@@ -4582,17 +4511,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2d-plans" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2D Plans
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#keyboard-mouse-cheat-sheet" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4647,8 +4565,9 @@
 
 <h1 id="bim-ootb-browser-viewer-user-guide">BIM OOTB — Browser Viewer User Guide<a class="headerlink" href="#bim-ootb-browser-viewer-user-guide" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BIM_Designer_Browser/">BIM_Designer_Browser.md</a> · <a href="../BIM_2D_Guide/">BIM_2D_Guide.md</a> · <a href="../CLASH_DETECTION/">CLASH_DETECTION.md</a> · <a href="../4D5DAnalysis/">4D5DAnalysis.md</a></p>
+<p><strong>See also:</strong> <a href="../FeatureComparison/">Feature Comparison</a> · <a href="../CLASH_DETECTION/">Clash Detection</a> · <a href="../4D5DAnalysis/">4D/5D Analysis</a></p>
 </blockquote>
+<p>One browser, zero install: open a building, navigate in 3D/2D, run clash detection, track 4D progress.</p>
 <hr />
 <h2 id="quick-start-your-first-building">Quick Start — your first building<a class="headerlink" href="#quick-start-your-first-building" title="Permanent link">&para;</a></h2>
 <p><strong>Zero install.</strong> Everything runs client-side in any browser; download a building once and it is
@@ -4883,10 +4802,6 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <li>Issue log — capture site issues with photo + GPS + classification, export to Excel</li>
 </ul>
 <hr />
-<h2 id="2d-plans">2D Plans<a class="headerlink" href="#2d-plans" title="Permanent link">&para;</a></h2>
-<p>The 2D floor-plan viewer layers section-cut plans over the 3D model.</p>
-<p>→ <a href="../BIM_2D_Guide/">2D Plans Guide</a></p>
-<hr />
 <h2 id="keyboard-mouse-cheat-sheet">Keyboard &amp; Mouse Cheat-Sheet<a class="headerlink" href="#keyboard-mouse-cheat-sheet" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -4930,47 +4845,8 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 </tr>
 </tbody>
 </table>
-<p><strong>Floor-plan / 2D mode:</strong></p>
-<table>
-<thead>
-<tr>
-<th>Key / Button</th>
-<th>Action</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>G</strong></td>
-<td>Toggle grid overlay</td>
-</tr>
-<tr>
-<td><strong>GF / L1</strong></td>
-<td>Lock to a floor plan (section cut + door arcs + opening labels)</td>
-</tr>
-<tr>
-<td><strong>Front / Back / Left / Right</strong></td>
-<td>Elevation views</td>
-</tr>
-<tr>
-<td><strong>Roof</strong></td>
-<td>Roof plan view</td>
-</tr>
-<tr>
-<td><strong>Scissors slider</strong></td>
-<td>Move the section cut plane</td>
-</tr>
-<tr>
-<td><strong>Save cut</strong></td>
-<td>Save the current section as a named view</td>
-</tr>
-<tr>
-<td><strong>Unlock</strong> (lock icon)</td>
-<td>Return to free 3D orbit</td>
-</tr>
-</tbody>
-</table>
 <blockquote>
-<p><strong>Authoring geometry</strong> — grid editing, <code>GRID_MOVE</code>, undo/redo over the signed op-log — lives in the
+<p><strong>Authoring geometry &amp; 2D plans</strong> — grid editing, the 2D grid, <code>GRID_MOVE</code>, undo/redo over the signed op-log — lives in the
 <strong><a href="../ModellerGuide/">DAGeVu Modeller</a></strong>, a separate surface from this read-only viewer.</p>
 </blockquote>
 <hr />
@@ -5015,32 +4891,24 @@ you drop. Those toolchains are documented separately:</p>
 </thead>
 <tbody>
 <tr>
-<td><a href="../ERPUserGuide/">ERPUserGuide.md</a></td>
+<td><a href="../ModellerGuide/">DAGeVu Modeller Guide</a></td>
+<td>Author geometry &amp; the 2D grid over a signed op-log</td>
+</tr>
+<tr>
+<td><a href="../ERPUserGuide/">Kernel-ERP User Guide</a></td>
 <td>iDempiere browser ERP — login → install → POS → reporting</td>
 </tr>
 <tr>
-<td><a href="../BackOfficeUserGuide/">BackOfficeUserGuide.md</a></td>
-<td>Server-side portfolio + reports (Java pipeline)</td>
-</tr>
-<tr>
-<td><a href="../BIM_2D_Guide/">BIM_2D_Guide.md</a></td>
-<td>2D floor-plan viewer</td>
-</tr>
-<tr>
-<td><a href="../CLASH_DETECTION/">CLASH_DETECTION.md</a></td>
+<td><a href="../CLASH_DETECTION/">Clash Detection</a></td>
 <td>Clash detection engine</td>
 </tr>
 <tr>
-<td><a href="../4D5DAnalysis/">4D5DAnalysis.md</a></td>
+<td><a href="../4D5DAnalysis/">4D/5D Analysis</a></td>
 <td>nD analytics (4D–8D)</td>
 </tr>
 <tr>
-<td><a href="../IFC_ONBOARDING_RUNBOOK/">IFC_ONBOARDING_RUNBOOK.md</a></td>
+<td><a href="../IFC_ONBOARDING_RUNBOOK/">IFC Onboarding</a></td>
 <td>Onboard your own IFC file</td>
-</tr>
-<tr>
-<td><a href="../SourceCodeGuide/">SourceCodeGuide.md</a></td>
-<td>Developer onboarding, pipeline internals</td>
 </tr>
 </tbody>
 </table>

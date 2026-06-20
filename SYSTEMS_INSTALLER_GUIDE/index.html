@@ -1937,7 +1937,7 @@
   <span class="md-ellipsis">
     
   
-    Designer
+    Designer (legacy — see Modeller)
   
 
     
@@ -1953,7 +1953,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Designer
+    Designer (legacy — see Modeller)
   
 
           </label>
@@ -2426,8 +2426,6 @@
       
         
       
-        
-      
     
     
     
@@ -2687,34 +2685,6 @@
     
   
     PDF Terrain
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../BIM_2D_Guide/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    2D Guide
   
 
     
@@ -4028,8 +3998,6 @@
       
         
       
-        
-      
     
     
     
@@ -4092,35 +4060,7 @@
   <span class="md-ellipsis">
     
   
-    BIM Designer Guide (deprecated)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../2D_HTML_GUIDE/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    2D Plans Viewer
+    BIM Designer Guide (legacy — see Modeller)
   
 
     
@@ -4507,15 +4447,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-blender-bonsai-integration" class="md-nav__link">
+  <a href="#6-blender-bonsai-integration-legacy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Blender + Bonsai Integration
+        6. Blender + Bonsai Integration (legacy)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="6. Blender + Bonsai Integration">
+    <nav class="md-nav" aria-label="6. Blender + Bonsai Integration (legacy)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -5206,15 +5146,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-blender-bonsai-integration" class="md-nav__link">
+  <a href="#6-blender-bonsai-integration-legacy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Blender + Bonsai Integration
+        6. Blender + Bonsai Integration (legacy)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="6. Blender + Bonsai Integration">
+    <nav class="md-nav" aria-label="6. Blender + Bonsai Integration (legacy)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -5572,12 +5512,20 @@
 <blockquote>
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
-<div class="bim-banner">
-<p><b>Full platform setup from source — Java, Maven, SQLite, Blender.</b> Prerequisites, build steps, and verification for sysadmins and developers.</p>
+<div class="admonition note">
+<p class="admonition-title">BIM OOTB now runs in the browser — you probably don't need this guide</p>
+<p>The product is <strong>browser-based</strong>: open the <a href="https://red1oon.github.io/bim-ootb/">front door</a>, or
+use the front door's <strong>About → Run it yourself (DIY)</strong> to download a one-step self-host script. <strong>Zero
+Java, zero install.</strong> See the <strong><a href="../USER_GUIDE/">User Guide</a></strong>.</p>
+<p>This page is the <strong>legacy / advanced path</strong>: building the original <strong>Java compiler + back-office +
+Blender</strong> toolchain from source — only needed to compile buildings from raw IFC or run the server-side
+nD reporting stack. Most users can skip it entirely.</p>
 </div>
-<p><strong>Audience:</strong> Systems administrators, DevOps engineers, and developers setting up the full BIM Compiler platform from source.</p>
-<p><strong>For end-user desktop installation</strong>, see <a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/INSTALLER_SPEC.md">INSTALLER_SPEC.md</a>.
-<strong>For WAN/Docker deployment</strong>, see <a href="../DEPLOYMENT/">DEPLOYMENT.md</a>.</p>
+<div class="bim-banner">
+<p><b>Legacy full-platform setup from source — Java, Maven, SQLite, Blender.</b> Prerequisites, build steps, and verification for developers building the original compiler/back-office toolchain.</p>
+</div>
+<p><strong>Audience:</strong> Developers building the <strong>Java</strong> compiler + back-office from source (the browser app needs none of this).</p>
+<p><strong>For WAN/Docker deployment</strong> of the back-office server, see <a href="../DEPLOYMENT/">DEPLOYMENT.md</a>.</p>
 <hr />
 <h2 id="1-prerequisites">1. Prerequisites<a class="headerlink" href="#1-prerequisites" title="Permanent link">&para;</a></h2>
 <table>
@@ -5616,7 +5564,7 @@
 </tr>
 <tr>
 <td>Blender</td>
-<td>4.0+</td>
+<td>4.2+</td>
 <td>3D viewport (BIM Designer GUI)</td>
 <td><code>blender --version</code></td>
 </tr>
@@ -5686,18 +5634,18 @@ BonsaiBIMDesigner → GUI server, validation, assembly
 <tbody>
 <tr>
 <td><code>component_library.db</code></td>
-<td>~5 MB</td>
-<td>Master product catalog: 608 products, 23.9K geometries, thermal properties</td>
+<td>~230 MB</td>
+<td>Master catalog: 35 component types, 23,888 component definitions + geometries, thermal properties (80 tables)</td>
 </tr>
 <tr>
 <td><code>ERP.db</code></td>
-<td>~1 MB</td>
-<td>Discipline validation rules, IFC class mapping, MEP metadata (20 tables)</td>
+<td>~18 MB</td>
+<td>Discipline validation rules, IFC class mapping, MEP metadata (52 tables)</td>
 </tr>
 <tr>
-<td><code>ERP.db</code></td>
-<td>~100 KB</td>
-<td>Compliance thresholds and verdicts</td>
+<td><code>validation.db</code></td>
+<td>~80 KB</td>
+<td>Compliance thresholds: clash, occupancy &amp; validation rules + results (9 tables)</td>
 </tr>
 </tbody>
 </table>
@@ -5803,7 +5751,7 @@ sqlite3<span class="w"> </span>library/SH_BOM.db<span class="w"> </span><span cl
 sqlite3<span class="w"> </span>library/SH_BOM.db<span class="w"> </span><span class="s2">&quot;SELECT bom_type, name, m_product_category_id FROM m_bom&quot;</span>
 
 <span class="c1"># Check product catalog</span>
-sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM M_Product&quot;</span>
+sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM component_definitions&quot;</span>
 
 <span class="c1"># Check validation rules</span>
 sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM AD_Val_Rule&quot;</span>
@@ -5899,8 +5847,14 @@ from IFC extraction through gate verification. Proven on 5 Rosetta Stone buildin
 <span class="w">    </span>-Dbom.db<span class="o">=</span><span class="s2">&quot;library/SH_BOM.db&quot;</span><span class="w"> </span>-q
 </code></pre></div>
 <hr />
-<h2 id="6-blender-bonsai-integration">6. Blender + Bonsai Integration<a class="headerlink" href="#6-blender-bonsai-integration" title="Permanent link">&para;</a></h2>
-<p>The BIM Designer GUI runs inside Blender via the <a href="https://bonsaibim.org/">Bonsai</a> addon
+<h2 id="6-blender-bonsai-integration-legacy">6. Blender + Bonsai Integration (legacy)<a class="headerlink" href="#6-blender-bonsai-integration-legacy" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Superseded by the browser Modeller</p>
+<p>The desktop <strong>BIM Designer</strong> (Blender + Bonsai + the Java DesignerServer below) has been <strong>replaced by
+the in-browser <a href="../ModellerGuide/">DAGeVu Modeller</a></strong> — author geometry over a signed op-log, no Blender,
+no server. This section is kept only for the original Blender-based federation workflow.</p>
+</div>
+<p>The legacy BIM Designer GUI runs inside Blender via the <a href="https://bonsaibim.org/">Bonsai</a> addon
 (the open-source OpenBIM toolset). Two components work together:</p>
 <ol>
 <li><strong>Federation Module</strong> — IFC spatial database, clash detection, MEP routing, 4D/5D,
@@ -6017,8 +5971,8 @@ See <a href="BIM_Designer_SRS.md">BIM_Designer_SRS.md</a> for the full wire prot
          ▼                                        ▼
 ┌─────────────────┐                    ┌──────────────────────┐
 │  federation.db  │                    │  library/*.db        │
-│  (IFC spatial)  │                    │  component_library   │
-└─────────────────┘                    │  ERP     │
+│  (IFC spatial)  │                    │  component_library.db│
+└─────────────────┘                    │  ERP.db, validation  │
                                        │  *_BOM.db files      │
   http://localhost:8001                └──────────────────────┘
 ┌─────────────────┐                               │
@@ -6229,8 +6183,8 @@ curl<span class="w"> </span>-k<span class="w"> </span>https://your-server/api/he
 mvn<span class="w"> </span>compile<span class="w"> </span>-q<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;BUILD OK&quot;</span>
 
 <span class="c1"># 2. Databases accessible</span>
-sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM M_Product&quot;</span>
-<span class="c1"># Expected: 608+</span>
+sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM component_definitions&quot;</span>
+<span class="c1"># Expected: 23,888</span>
 
 <span class="c1"># 3. Tests pass</span>
 mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-pl<span class="w"> </span>BIMBackOffice<span class="w"> </span>-Dtest<span class="o">=</span><span class="s2">&quot;BackOfficeServerTest&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Tests run&quot;</span>
@@ -6270,11 +6224,11 @@ immediately.</p>
 </tr>
 <tr>
 <td><code>http://localhost:8001/component_library</code></td>
-<td>All 21 tables with row counts and schema</td>
+<td>All 80 tables with row counts and schema</td>
 </tr>
 <tr>
 <td><code>http://localhost:8001/ERP</code></td>
-<td>All 21 discipline metadata tables</td>
+<td>All 52 discipline-validation &amp; MEP metadata tables</td>
 </tr>
 <tr>
 <td><code>http://localhost:8001/SH_BOM</code></td>
@@ -6319,8 +6273,8 @@ sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </sp
 <h2 id="15-database-schema-reference">15. Database Schema Reference<a class="headerlink" href="#15-database-schema-reference" title="Permanent link">&para;</a></h2>
 <p>Full table inventory with purpose, Java access patterns, and review status:
 <strong><a href="https://github.com/red1oon/BIMCompiler/blob/master/database/DATABASE_SCHEMA.md"><code>database/DATABASE_SCHEMA.md</code></a></strong></p>
-<p>Quick summary: component_library.db (21 tables), ERP.db (20 tables),
-{PREFIX}_BOM.db (6 tables per building), output.db (written fresh each compile).</p>
+<p>Quick summary: component_library.db (80 tables), ERP.db (52 tables),
+validation.db (9 tables), {PREFIX}_BOM.db (~11 tables per building), output.db (written fresh each compile).</p>
 <hr />
 <h2 id="16-docker-what-to-containerize">16. Docker — What to Containerize<a class="headerlink" href="#16-docker-what-to-containerize" title="Permanent link">&para;</a></h2>
 <h3 id="what-docker-is-for">What Docker is for<a class="headerlink" href="#what-docker-is-for" title="Permanent link">&para;</a></h3>
@@ -6375,7 +6329,7 @@ sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </sp
          ┌───────────▼───────────┐
          │  /data/library/       │  ← bind-mounted volume
          │  component_library.db │
-         │  ERP.db   │
+         │  ERP.db, validation   │
          │  *_BOM.db files       │
          └───────────────────────┘
 </code></pre></div>
