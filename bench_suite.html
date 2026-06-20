@@ -203,59 +203,6 @@ h1 span{color:var(--mute);font-weight:400}
 
 <div id="statusBar">Ready — click to start continuous benchmark loop</div>
 
-<style>
-#single-station{margin:1rem 0;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:1.1rem 1.3rem}
-.ss-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
-.ss-head h2{font-size:1.05rem;color:var(--text);margin:0}
-.ss-sub{font-size:11.5px;color:var(--mute);margin-top:.25rem;max-width:80ch;line-height:1.5}
-.ss-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;align-self:flex-start;border:1px solid}
-.ss-badge.here{background:#123d21;color:var(--green);border-color:#2ea04388}
-.ss-badge.ref{background:#21262d;color:var(--mute);border-color:var(--border)}
-.ss-toggle-row{display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;margin:.9rem 0 .2rem}
-.ss-toggle{display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;user-select:none;font-weight:700;font-size:12px;
-  border:1px solid var(--border);border-radius:8px;padding:5px 10px;background:#0d1117}
-.ss-opt{padding:3px 8px;border-radius:5px;color:var(--mute);letter-spacing:.04em}
-.ss-opt.active{background:#1f6feb22;color:var(--blue)}
-#ssNet.active{background:#d2992222;color:var(--yellow)}
-.ss-mid{color:var(--mute);font-weight:400}
-.ss-rtt{display:flex;align-items:center;gap:.5rem;font-size:11.5px;color:var(--mute)}
-.ss-rtt input[type=range]{width:120px;accent-color:var(--yellow)}
-.ss-presets button{font-size:10px;background:#0d1117;color:var(--mute);border:1px solid var(--border);border-radius:4px;padding:2px 6px;cursor:pointer;margin-left:2px}
-.ss-presets button:hover{color:var(--text);border-color:var(--blue)}
-.ss-row{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:.6rem;padding:.55rem 0;border-top:1px solid var(--border);align-items:baseline}
-.ss-row.h{border-top:none;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
-.ss-lbl{font-size:12px;color:var(--text)}
-.ss-lbl small{display:block;color:var(--mute);font-size:10.5px;line-height:1.4;margin-top:2px}
-.ss-val{font-variant-numeric:tabular-nums;font-weight:700;font-size:14px}
-.ss-val .u{font-size:.72em;font-weight:400;color:var(--mute)}
-.ss-ours{color:var(--green)}.ss-them{color:var(--yellow)}
-.ss-win{font-size:10px;font-weight:700;margin-left:.4rem;padding:1px 5px;border-radius:3px}
-.ss-win.us{background:#123d21;color:var(--green)}.ss-win.them{background:#3a2e12;color:var(--yellow)}.ss-win.tie{background:#21262d;color:var(--mute)}
-.ss-foot{margin-top:.7rem;font-size:11px;color:var(--mute);line-height:1.55;border-top:1px dashed var(--border);padding-top:.6rem}
-.ss-foot b{color:var(--text)}
-</style>
-<div id="single-station">
-  <div class="ss-head">
-    <div>
-      <h2>Single-station — one desktop, the fair fight</h2>
-      <div class="ss-sub">Same machine, same workload: <b style="color:var(--green)">sql.js in a browser tab</b> vs <b style="color:var(--yellow)">PostgreSQL behind iDempiere's JVM</b>. This is the honest case — no network to remove, where the server is at its best. Storage numbers are <b>measured on this box</b>; the interactive op is timed <b>live</b> if a local iDempiere answers.</div>
-    </div>
-    <span class="ss-badge ref" id="ssBadge">reference measurement</span>
-  </div>
-  <div class="ss-toggle-row">
-    <div class="ss-toggle" id="ssToggle" role="switch" title="Toggle whether the server sits across a network. Our column never moves — we have no server to reach.">
-      <span class="ss-opt" id="ssNet">ON NETWORK</span><span class="ss-mid">&lt;&gt;</span><span class="ss-opt active" id="ssLocal">LOCALHOST</span>
-    </div>
-    <div class="ss-rtt" id="ssRtt" style="display:none">
-      server round-trip <input type="range" id="ssRttRange" min="1" max="200" value="20"><span id="ssRttVal" style="color:var(--yellow);font-weight:700">20 ms</span>
-      <span class="ss-presets"><button data-ms="1">LAN</button><button data-ms="20">office</button><button data-ms="80">cloud</button><button data-ms="200">WAN</button></span>
-    </div>
-  </div>
-  <div class="ss-row h"><span>Same op, same machine</span><span class="ss-ours">Fold engine (tab)</span><span class="ss-them">iDempiere (server)</span></div>
-  <div id="ssRows"></div>
-  <div class="ss-foot" id="ssFoot">Loading measured facts…</div>
-</div>
-
 <div class="grid">
   <div class="card" id="card-memory">
     <div class="card-head">
@@ -494,16 +441,22 @@ async function doHousekeeping(){
   document.getElementById('hkBanner').style.display='block';
   allBadges('hk'); allCards('hk');
   setClock(ERP_OPS_PER_ROUND,'hk');
-  await sleep(2800);
+  await sleepPausable(2800);   // pause-aware: PAUSE freezes the HK screen so it can be read
   document.getElementById('hkBanner').style.display='none';
   setStatus('✅ Housekeeping complete — seed pristine · born tenants kept · log at zero · restarting…','done');
   setClock(ERP_OPS_PER_ROUND,'done');
-  await sleep(1200);
+  await sleepPausable(1200);
   _cumDays += ERP_OPS_PER_ROUND / TX_PER_DAY;
 }
 
 function sleep(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
 function yield_(){ return new Promise(function(r){setTimeout(r,0);}); }
+// like sleep(), but if PAUSE is pressed mid-sleep it freezes at the next checkpoint until RESUME
+// (so the housekeeping phase can be paused and read, same accounting as yieldOrPause)
+async function sleepPausable(ms){
+  var step=100, e=0;
+  while(e<ms){ await sleep(step); e+=step; await yieldOrPause(); }
+}
 
 // pause-aware yield: if paused, waits until resumed
 async function yieldOrPause(){
@@ -846,80 +799,6 @@ function pickFile(msg){
   }).catch(function(){});
 })();
 
-// ── SINGLE-STATION card: [ON NETWORK] <> [LOCALHOST] (W-IDMP-LOCALHOST) ───────
-// Storage rows are MEASURED on this box (bench_localhost.json). The toggle layers a round-trip onto the
-// SERVER side only — our column never moves (no server to reach). That flat line IS the lesson.
-(function(){
-  var ST={onNet:false, rtt:20, f:null};
-  var isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol==='file:';
-  function fmt(ms){ if(ms==null)return '—'; if(ms>=1000)return (ms/1000).toFixed(ms<10000?2:0)+'<span class="u"> s</span>'; if(ms>=10)return Math.round(ms)+'<span class="u"> ms</span>'; return (+ms.toFixed(ms<1?3:1))+'<span class="u"> ms</span>'; }
-  function chip(ours,them){ // lower=faster; ours vs effective them
-    if(ours==null||them==null)return '';
-    var r=them/ours;
-    if(r>1.3)  return '<span class="ss-win us">we lead '+(r>=10?Math.round(r):r.toFixed(1))+'×</span>';
-    if(r<0.77) return '<span class="ss-win them">server leads '+( (1/r)>=10?Math.round(1/r):(1/r).toFixed(1) )+'×</span>';
-    return '<span class="ss-win tie">≈ tie</span>';
-  }
-  function rows(){
-    var f=ST.f, S=f.storage, N=f.ops_n, add=ST.onNet?ST.rtt:0;
-    // numeric rows: {label,sub,ours(ms),them(ms base),net(does rtt apply),teach}
-    var R=[
-      {label:'Durable write', sub:'one signed / fsync’d commit', ours:S.ours.per_op_ms, them:S.them.per_op_ms_durable, net:true,
-       teach:S.teaches},
-      {label:'Bulk commit', sub:N+' ops in one transaction', ours:+(S.ours.per_op_ms*N).toFixed(0), them:+(S.them.per_op_ms_onetxn*N).toFixed(0), net:true,
-       teach:'In one big transaction Postgres wins locally — raw bulk storage is its home turf. One round-trip for the whole batch.'},
-      {label:'Create + complete an order', sub:'callouts + ModelValidator + GL posting', ours:null, them:null, net:true, live:true,
-       teach:'The real application op. Timed LIVE when a local iDempiere REST answers — we don’t guess it. '+(isLocal?'(boot iDempiere on :8080 to populate)':'(open from localhost with iDempiere up)')},
-      {label:'Cold start', sub:'nothing running → ready to use', ours:'~3 s', them:'120–300 s', net:false, doc:true,
-       teach:'Open a tab + fetch the seed vs boot JVM + OSGi + Postgres pool. Network-independent.'},
-      {label:'Memory before first user', sub:'baseline footprint', ours:'browser tab', them:'~512 MB', net:false, doc:true,
-       teach:'JVM heap baseline vs a tab. iDempiere figures documented, not measured here.'},
-    ];
-    var html='';
-    R.forEach(function(r){
-      var oursH, themH, chH='';
-      if(r.doc){ oursH='<span class="ss-ours">'+r.ours+'</span>'; themH='<span class="ss-them">'+r.them+'</span>'; }
-      else if(r.live){ oursH='<span class="ss-ours" style="color:var(--mute)">—</span>'; themH='<span class="ss-them" style="color:var(--mute)">pending</span>'; }
-      else {
-        var effThem=r.them+(r.net?add:0);
-        oursH='<span class="ss-ours">'+fmt(r.ours)+'</span>';
-        themH='<span class="ss-them">'+(ST.onNet&&r.net? '<span style="color:var(--mute);font-size:.8em">'+(+r.them.toFixed(2))+'+'+add+'='+'</span>':'')+fmt(effThem)+'</span>';
-        chH=chip(r.ours,effThem);
-      }
-      html+='<div class="ss-row"><span class="ss-lbl">'+r.label+(r.doc?' <span style="font-size:9px;color:var(--mute)">(documented)</span>':r.live?'':' <span style="font-size:9px;color:var(--green)">(measured)</span>')+
-            '<small>'+r.teach+'</small></span><span class="ss-val">'+oursH+'</span><span class="ss-val">'+themH+chH+'</span></div>';
-    });
-    document.getElementById('ssRows').innerHTML=html;
-    var b=document.getElementById('ssBadge');
-    if(isLocal){ b.className='ss-badge here'; b.textContent='measured here · '+ST.f.machine.label; }
-    else { b.className='ss-badge ref'; b.textContent='reference measurement · '+ST.f.machine.label; }
-    document.getElementById('ssFoot').innerHTML = ST.onNet
-      ? '<b>['+ST.rtt+' ms round-trip]</b> '+ST.f.network_teaches
-      : '<b>[LOCALHOST]</b> '+ST.f.scope+'. Press <b>ON NETWORK</b> to add a server round-trip — watch our column stay put.';
-  }
-  function setToggle(onNet){
-    ST.onNet=onNet;
-    document.getElementById('ssNet').classList.toggle('active',onNet);
-    document.getElementById('ssLocal').classList.toggle('active',!onNet);
-    document.getElementById('ssRtt').style.display=onNet?'flex':'none';
-    if(ST.f)rows();
-  }
-  function wire(){
-    document.getElementById('ssToggle').addEventListener('click',function(){setToggle(!ST.onNet);});
-    var rng=document.getElementById('ssRttRange');
-    rng.addEventListener('input',function(){ST.rtt=+rng.value;document.getElementById('ssRttVal').textContent=ST.rtt+' ms';if(ST.f)rows();});
-    Array.prototype.forEach.call(document.querySelectorAll('.ss-presets button'),function(btn){
-      btn.addEventListener('click',function(){ST.rtt=+btn.dataset.ms;rng.value=ST.rtt;document.getElementById('ssRttVal').textContent=ST.rtt+' ms';if(ST.f)rows();});
-    });
-  }
-  wire();
-  fetch('bench_localhost.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(f){
-    if(!f){document.getElementById('ssFoot').textContent='Single-station facts unavailable.';return;}
-    ST.f=f; ST.rtt=f.rtt_default_ms||20;
-    var rng=document.getElementById('ssRttRange'); rng.value=ST.rtt; document.getElementById('ssRttVal').textContent=ST.rtt+' ms';
-    rows();
-  }).catch(function(){document.getElementById('ssFoot').textContent='Single-station facts unavailable.';});
-})();
 </script>
 </body>
 </html>
