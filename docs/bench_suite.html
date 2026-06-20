@@ -294,6 +294,13 @@ h1 span{color:var(--mute);font-weight:400}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script>
+// ── engine asset base ────────────────────────────────────────────────────────
+// When this page is served alongside the ERP app (…/erp/) the engine js + ad_seed.db are local.
+// When it is served from the docs site (…/BIMCompiler/) they are not — fall back to the deployed
+// app (GH Pages serves cross-origin with CORS *). Lets the live round + live-recount work anywhere.
+var ERP_BASE = (location.pathname.indexOf('/erp/') >= 0 || location.protocol === 'file:')
+  ? './' : 'https://red1oon.github.io/bim-ootb/erp/';
+function erpUrl(f){ return ERP_BASE + f; }
 // ── clock constants ──
 var CIRC = 2 * Math.PI * 62;   // r=62  →  ~389.6
 var ERP_OPS_PER_ROUND = 25500; // actual commitGroup calls per full round
@@ -671,14 +678,14 @@ document.getElementById('runBtn').addEventListener('click', async function(){
   setStatus('Loading sql.js + dependencies…','running');
   try{
     if(!_SQL){
-      await loadScript('./kernel_ops.js').catch(function(){});
-      await loadScript('./crud_overlay.js').catch(function(){});
+      await loadScript(erpUrl('kernel_ops.js')).catch(function(){});
+      await loadScript(erpUrl('crud_overlay.js')).catch(function(){});
       _KO  = window.KernelOps   || (window.window&&window.window.KernelOps);
       _CRUD= window.CrudOverlay || (window.window&&window.window.CrudOverlay);
       _SQL=await initSqlJs({locateFile:function(f){return 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/'+f;}});
       setStatus('Fetching seed database…','running');
       try{
-        var res=await fetch('./ad_seed.db');
+        var res=await fetch(erpUrl('ad_seed.db'));
         if(!res.ok)throw new Error(res.status);
         _seedBuf=new Uint8Array(await res.arrayBuffer());
       }catch(e){
@@ -767,7 +774,7 @@ function pickFile(msg){
     try{
       var loc=0, bytes=0, ok=0;
       await Promise.all(f.file_list.map(function(x){
-        return fetch(x.file,{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(t){
+        return fetch(erpUrl(x.file),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(t){
           if(t!=null){loc+=t.split('\n').length;bytes+=new Blob([t]).size;ok++;}
         }).catch(function(){});
       }));
