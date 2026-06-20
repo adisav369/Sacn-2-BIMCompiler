@@ -13,6 +13,15 @@ LIB = os.path.join(os.path.dirname(__file__), '..', 'library', 'component_librar
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'dagevu_catalog.json'
 GEOM_OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(OUT), 'dagevu_geometries.json')
 
+# ── PER-BUILDING BOMs (user decree 2026-06-20). The real unit/room SETs with AUTHORED LBD offsets
+# (StructuralBomBuilder §4 tack convention — TESTED-PERFECT in Java, do NOT re-derive) live in these
+# per-building DBs, NOT the generic archive (whose template sets carry dx=dy=0 → synthesised into a straight
+# ROW). We source SET layouts from them VERBATIM so a dropped set places as a real 2-D room. DX+SH first;
+# Terminal (TE, 5548 offsets) is the rich follow-on to verify/refine.
+_LD = os.path.join(os.path.dirname(__file__), '..', 'library')
+PER_BLDG = [('DX', os.path.join(_LD, 'DX_BOM.db')),
+            ('SH', os.path.join(_LD, 'SH_BOM.db'))]
+
 # Practical GROUPS → the curated M_Product_Category IDs under each (the filter taxonomy).
 GROUPS = [
     {'key': 'structure', 'label': 'Structure',
@@ -324,6 +333,31 @@ def main():
                        'FROM m_bom_line WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
         lines_by_bom[r[0]].append(r)
 
+    # ── MERGE the per-building BOM SETs (real authored offsets) into the same structures the assembly loop +
+    # layout already consume. bom_ids are building-prefixed ('DX::A102 SET') so they never collide across
+    # buildings; a same-building nested ref is prefixed too so it still resolves as a BOM. Rows are reshaped to
+    # the SAME 11-field tuple the generic m_bom_line SELECT yields (so the assembly loop is unchanged).
+    mprod_extra = {}                                  # product_id -> (name, ifc, w, d, h, cat) for per-bldg leaves
+    pb_sets = 0
+    for code, path in PER_BLDG:
+        if not os.path.exists(path):
+            print('  per-building BOM MISSING, skipped:', path); continue
+        pb = sqlite3.connect(path)
+        own = set(r[0] for r in pb.execute('SELECT bom_id FROM m_bom'))
+        pfx = lambda x, c=code: c + '::' + x
+        for r in pb.execute('SELECT bom_id, COALESCE(bom_name, bom_id), bom_level, m_product_category_id, '
+                            'aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM m_bom'):
+            bid = pfx(r[0]); bom_meta[bid] = (bid, r[1], r[2], r[3], r[4], r[5], r[6]); bom_ids.add(bid); pb_sets += 1
+        for r in pb.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
+                            'allocated_width_mm, min_space_mm, component_type FROM m_bom_line '
+                            'WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
+            ref = pfx(r[1]) if r[1] in own else r[1]   # same-building nested set → prefix so it folds as a BOM
+            lines_by_bom[pfx(r[0])].append((pfx(r[0]), ref, r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10]))
+        for r in pb.execute('SELECT product_id, COALESCE(Name, product_id), ifc_class, width, depth, height, '
+                            'M_Product_Category_ID FROM M_Product'):
+            mprod_extra.setdefault(r[0], (r[1], r[2], r[3], r[4], r[5], r[6]))
+        print('  per-building merged %s: sets=%d' % (code, len(own)))
+
     # ── Role-aware placeholder resolution — REPLICATES the Java geometry chain (BOMTierResolver →
     # PlacedFurniture(role,namePattern) → FurnitureWorker.normalizeRole → ComponentLibrary.getByName).
     # archive/BOM.db's furniture/MEP sets use a BARE IFC-CLASS as child_product_id (a placeholder); both its
@@ -408,11 +442,15 @@ def main():
     for pid in sorted(leaf_refs):
         if pid in by_id:
             continue
-        row = b.execute('SELECT product_id, COALESCE(Name, product_id), ifc_class, width, depth, height, '
-                        'M_Product_Category_ID FROM M_Product WHERE product_id=?', (pid,)).fetchone()
-        if not row:
-            continue                                             # leaf with no product row → unrenderable, skip
-        _, name, ifc, w, d, h, cat = row
+        ex = mprod_extra.get(pid)                                # per-building leaf? resolve its real dims first
+        if ex:
+            name, ifc, w, d, h, cat = ex
+        else:
+            row = b.execute('SELECT product_id, COALESCE(Name, product_id), ifc_class, width, depth, height, '
+                            'M_Product_Category_ID FROM M_Product WHERE product_id=?', (pid,)).fetchone()
+            if not row:
+                continue                                         # leaf with no product row → unrenderable, skip
+            _, name, ifc, w, d, h, cat = row
         w, d, h = (w or 0), (d or 0), (h or 0)
         dimless = max(w, d, h) < MIN_DIM
         if dimless:                                              # dimless leaf → small proxy (the REAL gh mesh,
@@ -435,6 +473,37 @@ def main():
     for asm in assemblies:
         ws, fs, rr, ru = layout_assembly(asm, by_id, bom_meta)
         sets_wall += ws; sets_float += fs; rot_resolved += rr; rot_unresolved += ru
+
+    # ── RETIRE the SYNTHESISED straight ROWS (user decree 2026-06-20). layout_assembly stamps autoLayout=
+    # 'WALL_LINEAR' on EXACTLY the sets it had to INVENT a line for (no authored offsets) — that flag is the
+    # precise "this is a fabricated row" signal. A set with real authored offsets that happen to be collinear (a
+    # kitchen COUNTER RUN, a pipe/door assembly) is NOT flagged → kept (the line is real, not invented). Retire a
+    # flagged GENERIC set only when nothing references it (don't orphan a parent) — its real-positioned
+    # replacement is the per-building / Structured cascade. Per-building ('::') sets are never synthesised.
+    # Retire ALL generic synthesised rows — even referenced ones: expandAssembly tolerates a missing child ref
+    # (a parent building simply drops its synthesised floor and keeps its REAL Structured floors). A cascade left
+    # with no real children expands empty (honest — we have no real positions for it) rather than a fabricated row.
+    kept, retired_generic = [], 0
+    for asm in assemblies:
+        if asm.get('autoLayout') == 'WALL_LINEAR' and ('::' not in asm['id']):
+            retired_generic += 1; continue
+        kept.append(asm)
+    assemblies = kept
+    # Also drop cascades that now expand to NOTHING (their only children were retired bom-refs) — iteratively, so a
+    # parent emptied by losing its last real child is dropped too. Keeps the picker free of dead drops. A set with
+    # any LEAF child is never empty (the `all(isBom…)` guard), so only all-missing-ref shells are removed.
+    emptied_names, changed = [], True
+    while changed:
+        changed = False
+        live = set(a['id'] for a in assemblies)
+        nxt = []
+        for a in assemblies:
+            if a['children'] and all(c['isBom'] and c['ref'] not in live for c in a['children']):
+                emptied_names.append(a['name']); retired_generic += 1; changed = True; continue
+            nxt.append(a)
+        assemblies = nxt
+    print('  per-building sets=%d  retired synthesised+empty=%d  assemblies=%d  emptied=%s'
+          % (pb_sets, retired_generic, len(assemblies), emptied_names or 'none'))
 
     # HONEST-BOX flag: a product whose getByName-resolved mesh is itself ≤12 faces means the library's BEST part
     # for it IS a box (e.g. Wardrobe — the only Wardrobe in component_library is 12 faces). Mark it so witnesses
