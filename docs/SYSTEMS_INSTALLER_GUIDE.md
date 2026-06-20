@@ -1,14 +1,22 @@
 # BIM Intent Compiler — Systems Installer Guide
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+!!! note "BIM OOTB now runs in the browser — you probably don't need this guide"
+    The product is **browser-based**: open the [front door](https://red1oon.github.io/bim-ootb/), or
+    use the front door's **About → Run it yourself (DIY)** to download a one-step self-host script. **Zero
+    Java, zero install.** See the **[User Guide](USER_GUIDE.md)**.
+
+    This page is the **legacy / advanced path**: building the original **Java compiler + back-office +
+    Blender** toolchain from source — only needed to compile buildings from raw IFC or run the server-side
+    nD reporting stack. Most users can skip it entirely.
+
 <div class="bim-banner" markdown>
-<b>Full platform setup from source — Java, Maven, SQLite, Blender.</b> Prerequisites, build steps, and verification for sysadmins and developers.
+<b>Legacy full-platform setup from source — Java, Maven, SQLite, Blender.</b> Prerequisites, build steps, and verification for developers building the original compiler/back-office toolchain.
 </div>
 
-**Audience:** Systems administrators, DevOps engineers, and developers setting up the full BIM Compiler platform from source.
+**Audience:** Developers building the **Java** compiler + back-office from source (the browser app needs none of this).
 
-**For end-user desktop installation**, see [INSTALLER_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/INSTALLER_SPEC.md).
-**For WAN/Docker deployment**, see [DEPLOYMENT.md](DEPLOYMENT.md).
+**For WAN/Docker deployment** of the back-office server, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---
 
@@ -20,7 +28,7 @@
 | Maven | 3.8+ | Build system, dependency management | `mvn --version` |
 | SQLite | 3.40+ | Database engine (bundled via JDBC, CLI for inspection) | `sqlite3 --version` |
 | Python | 3.10+ | IFC extraction (IfcOpenShell), Blender addon | `python3 --version` |
-| Blender | 4.0+ | 3D viewport (BIM Designer GUI) | `blender --version` |
+| Blender | 4.2+ | 3D viewport (BIM Designer GUI) | `blender --version` |
 | Git | 2.30+ | Source control, LFS for binary assets | `git --version` |
 | Docker | 24+ | WAN deployment (optional) | `docker --version` |
 | IfcOpenShell | 0.8+ | IFC file parsing and extraction | `python3 -c "import ifcopenshell"` |
@@ -70,9 +78,9 @@ The `library/` directory contains all SQLite databases. These ship with the repo
 
 | File | Size | Purpose |
 |------|------|---------|
-| `component_library.db` | ~5 MB | Master product catalog: 608 products, 23.9K geometries, thermal properties |
-| `ERP.db` | ~1 MB | Discipline validation rules, IFC class mapping, MEP metadata (20 tables) |
-| `ERP.db` | ~100 KB | Compliance thresholds and verdicts |
+| `component_library.db` | ~230 MB | Master catalog: 35 component types, 23,888 component definitions + geometries, thermal properties (80 tables) |
+| `ERP.db` | ~18 MB | Discipline validation rules, IFC class mapping, MEP metadata (52 tables) |
+| `validation.db` | ~80 KB | Compliance thresholds: clash, occupancy & validation rules + results (9 tables) |
 
 ### 3.2 Per-Building BOM Databases (one per building)
 
@@ -106,7 +114,7 @@ sqlite3 library/SH_BOM.db ".tables"
 sqlite3 library/SH_BOM.db "SELECT bom_type, name, m_product_category_id FROM m_bom"
 
 # Check product catalog
-sqlite3 library/component_library.db "SELECT COUNT(*) FROM M_Product"
+sqlite3 library/component_library.db "SELECT COUNT(*) FROM component_definitions"
 
 # Check validation rules
 sqlite3 library/ERP.db "SELECT COUNT(*) FROM AD_Val_Rule"
@@ -252,9 +260,14 @@ mvn exec:java -pl DAGCompiler \
 
 ---
 
-## 6. Blender + Bonsai Integration
+## 6. Blender + Bonsai Integration (legacy)
 
-The BIM Designer GUI runs inside Blender via the [Bonsai](https://bonsaibim.org/) addon
+!!! warning "Superseded by the browser Modeller"
+    The desktop **BIM Designer** (Blender + Bonsai + the Java DesignerServer below) has been **replaced by
+    the in-browser [DAGeVu Modeller](ModellerGuide.md)** — author geometry over a signed op-log, no Blender,
+    no server. This section is kept only for the original Blender-based federation workflow.
+
+The legacy BIM Designer GUI runs inside Blender via the [Bonsai](https://bonsaibim.org/) addon
 (the open-source OpenBIM toolset). Two components work together:
 
 1. **Federation Module** — IFC spatial database, clash detection, MEP routing, 4D/5D,
@@ -348,8 +361,8 @@ A typical development setup runs 4 services:
          ▼                                        ▼
 ┌─────────────────┐                    ┌──────────────────────┐
 │  federation.db  │                    │  library/*.db        │
-│  (IFC spatial)  │                    │  component_library   │
-└─────────────────┘                    │  ERP     │
+│  (IFC spatial)  │                    │  component_library.db│
+└─────────────────┘                    │  ERP.db, validation  │
                                        │  *_BOM.db files      │
   http://localhost:8001                └──────────────────────┘
 ┌─────────────────┐                               │
@@ -515,8 +528,8 @@ After installation, verify each layer:
 mvn compile -q && echo "BUILD OK"
 
 # 2. Databases accessible
-sqlite3 library/component_library.db "SELECT COUNT(*) FROM M_Product"
-# Expected: 608+
+sqlite3 library/component_library.db "SELECT COUNT(*) FROM component_definitions"
+# Expected: 23,888
 
 # 3. Tests pass
 mvn test -pl BIMBackOffice -Dtest="BackOfficeServerTest" 2>&1 | grep "Tests run"
@@ -550,8 +563,8 @@ immediately.
 | URL | What it shows |
 |-----|---------------|
 | `http://localhost:8001/` | All databases, table counts |
-| `http://localhost:8001/component_library` | All 21 tables with row counts and schema |
-| `http://localhost:8001/ERP` | All 21 discipline metadata tables |
+| `http://localhost:8001/component_library` | All 80 tables with row counts and schema |
+| `http://localhost:8001/ERP` | All 52 discipline-validation & MEP metadata tables |
 | `http://localhost:8001/SH_BOM` | Sample House BOM structure |
 | `http://localhost:8001/component_library/M_Product` | Paginated product catalog rows |
 
@@ -589,8 +602,8 @@ sqlite3 library/component_library.db ".schema" > database/schema_snapshot_compon
 Full table inventory with purpose, Java access patterns, and review status:
 **[`database/DATABASE_SCHEMA.md`](https://github.com/red1oon/BIMCompiler/blob/master/database/DATABASE_SCHEMA.md)**
 
-Quick summary: component_library.db (21 tables), ERP.db (20 tables),
-{PREFIX}_BOM.db (6 tables per building), output.db (written fresh each compile).
+Quick summary: component_library.db (80 tables), ERP.db (52 tables),
+validation.db (9 tables), {PREFIX}_BOM.db (~11 tables per building), output.db (written fresh each compile).
 
 ---
 
@@ -631,7 +644,7 @@ Docker wraps the **Back Office HTTP server** for WAN deployment. This is the onl
          ┌───────────▼───────────┐
          │  /data/library/       │  ← bind-mounted volume
          │  component_library.db │
-         │  ERP.db   │
+         │  ERP.db, validation   │
          │  *_BOM.db files       │
          └───────────────────────┘
 ```
