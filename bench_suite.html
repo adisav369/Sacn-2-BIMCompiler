@@ -200,9 +200,10 @@ h1 span{color:var(--mute);font-weight:400}
   </div>
 
   <style>
-  #ssMini{flex:1;min-width:230px;max-width:340px;border:1px solid var(--border);border-radius:10px;background:#0d1117;padding:.7rem .85rem;align-self:stretch}
+  #ssMini{flex:0 1 300px;min-width:240px;max-width:320px;align-self:flex-start;border:1px solid var(--border);border-radius:10px;background:#0d1117;padding:.7rem .85rem}
+  .ssm-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
   .ssm-title{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
-  .ssm-badge{float:right;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;border:1px solid var(--border);color:var(--mute)}
+  .ssm-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;border:1px solid var(--border);color:var(--mute);white-space:nowrap}
   .ssm-badge.here{background:#123d21;color:var(--green);border-color:#2ea04388}
   .ssm-toggle{display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;user-select:none;font-weight:700;font-size:11px;border:1px solid var(--border);border-radius:8px;padding:4px 8px;margin:.55rem 0;background:#161b22}
   .ssm-opt{padding:2px 7px;border-radius:5px;color:var(--mute)}
@@ -222,7 +223,7 @@ h1 span{color:var(--mute);font-weight:400}
   .ssm-win.us{color:var(--green)}.ssm-win.them{color:var(--yellow)}.ssm-win.tie{color:var(--mute)}
   </style>
   <div id="ssMini" style="display:none">
-    <span class="ssm-title">Same desktop</span><span class="ssm-badge" id="ssmBadge"></span>
+    <div class="ssm-head"><span class="ssm-title">Same desktop</span><span class="ssm-badge" id="ssmBadge"></span></div>
     <div class="ssm-toggle" id="ssmToggle" title="Put the server on a network — our side won't move">
       <span class="ssm-opt" id="ssmNet">ON NETWORK</span><span class="ssm-mid">&lt;&gt;</span><span class="ssm-opt active" id="ssmLocal">LOCALHOST</span>
     </div>
