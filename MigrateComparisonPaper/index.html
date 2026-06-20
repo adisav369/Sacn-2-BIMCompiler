@@ -5221,7 +5221,18 @@ the same ledger, no new server. <strong>Both shipped 2026-06 and run LIVE on Git
    the GardenWorld seed</em> (<code>W-GW-HOSP-FOLD</code>, #415) so it opens with the tenant. Note: an earlier
    <em>in-window 3D embed</em> (the viewer fused inside the ERP's Project window) was deliberately <strong>retired</strong>
    (<code>W-STRIP-EMBED</code>, #409) — cross-surface flow now goes forward as a loosely-coupled cross-tab message</li>
-<li>URL cold-launch, BIM and ERP staying <em>separate surfaces over one signed op-log</em>, not a fused viewer.</li>
+<li>URL cold-launch, BIM and ERP staying <em>separate surfaces over one signed op-log</em>, not a fused viewer.
+   That loose coupling is now a <strong>closed 360 loop</strong> (PR #462, LIVE): the project plays as a <strong>4D/5D
+   construction twin</strong> — the Time Machine reads the <em>stored</em> <code>PlannedAmt</code>↔<code>CommittedAmt</code> variance off the
+   records (not a re-computation; <code>W-PC-TWIN-SOURCE</code>), a stacked <strong>cost-element S-curve</strong> folds the
+   manufacturing orders as the cursor scrubs (16 <code>PP_Order</code>s, every Material/Labor/Burden/Overhead bucket
+   summing to the phase's <code>PlannedAmt</code> <strong>to the rupiah</strong>; <code>W-SHOP-SCURVE</code>), and selecting a model element
+   <strong>lights its matching <code>C_ProjectLine</code> back in the ERP</strong> over the shared <code>Connect</code> bus (<code>W-CONNECT-ERP</code>)
+   — one identity across viewer and ERP, no server. The manufacturing orders also fall into the standard
+   <strong>kanban</strong> (drag = a signed <code>SET_STATUS</code>, no special-casing) and a general <strong>pivot</strong> cross-tab, both the
+   same fold rather than new code. This unifies onto one op-log what is normally four tools — Primavera
+   (schedule/EVM) · Unifier (cost) · Synchro (4D) · CostX (5D); the honest claim is the <em>unification + the
+   log-native what-if</em>, <strong>not</strong> a CPM scheduling engine (no resource levelling / critical-path depth).</li>
 <li><strong>System Administration as op-logged genesis — LIVE</strong> — the same fold reaches <em>upstream</em>, to where a
    tenant is born. We reproduce iDempiere's System Administrator (role 0 / System) on the engine, with
    its <strong>Initial Tenant Setup</strong> rewritten as genesis: the wizard <strong>births a tenant as a signed op-log
@@ -5269,7 +5280,7 @@ loose cross-surface coupling). Item 4 carries that same op-log discipline <em>up
 <details class="fold">
 <summary>Status</summary>
 <div class="fbd">
-<p>DRAFT (2026-06-08, currency pass 2026-06-19: the Kernel-ERP rebrand + iDempiere-fidelity surface, the AD_Process fold lane, genesis / System Admin, and the live BIM→Project push). The evaluator-facing companion to the deep papers (<a href="../ERP/">ERP.md</a> · <a href="../DistributedERP/">DistributedERP.md</a> · <a href="../BIMERPPaper/">BIMERPPaper.md</a>). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.</p>
+<p>DRAFT (2026-06-08, currency pass 2026-06-21: the Kernel-ERP rebrand + iDempiere-fidelity surface, the AD_Process fold lane, genesis / System Admin, the live BIM→Project push, and the closed 360 BIM↔ERP loop — 4D/5D variance twin + shopfloor cost-element S-curve + cross-surface record-light). The evaluator-facing companion to the deep papers (<a href="../ERP/">ERP.md</a> · <a href="../DistributedERP/">DistributedERP.md</a> · <a href="../BIMERPPaper/">BIMERPPaper.md</a>). Every number here traces to a real source file (path cited per cell); where no head-to-head number exists, the cell says so — nothing is invented.</p>
 </div>
 </details>
 <hr />

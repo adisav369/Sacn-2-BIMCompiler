@@ -4296,6 +4296,7 @@
 <li>Cinematic drone tour auto-generated from building storeys</li>
 <li>Gantt chart overlay with phase progress</li>
 <li>Gantt Phase Stepper: step through construction phases one at a time, meshes materialise per phase</li>
+<li>Closed 360 BIM↔ERP loop: selecting a model element lights its matching project line back in the ERP (and vice-versa) over a shared signed op-log — one identity, two separate surfaces, no server</li>
 </ul>
 <h3 id="5d-cost">5D Cost<a class="headerlink" href="#5d-cost" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4303,6 +4304,8 @@
 <li>Cost dashboard with phase-by-phase breakdown</li>
 <li>17 country-specific rate templates</li>
 <li>Building envelope, storey heights, floor-to-floor deltas, column cadence and bay proportions computed automatically</li>
+<li>Budget-vs-actual variance twin: the Time Machine reads the <em>stored</em> Planned↔Committed figures off the project records (not a re-computation), so the cost story scrubs in lockstep with the 4D</li>
+<li>Shopfloor cost-element S-curve: a stacked Material/Labour/Burden/Overhead accrual folded from the project's manufacturing orders — each bucket sums to the phase's planned amount to the cent (BigDecimal)</li>
 </ul>
 <h3 id="clash-detection">Clash Detection<a class="headerlink" href="#clash-detection" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4522,6 +4525,13 @@ servers, unnecessary in single-user browser. See ERP.md §16.2.</p>
 <td>Manual</td>
 </tr>
 <tr>
+<td>Budget-vs-actual variance</td>
+<td>Twin folded from one op-log¹</td>
+<td>Yes (full EVM/CPM)</td>
+<td>Limited</td>
+<td>Yes</td>
+</tr>
+<tr>
 <td>Offline</td>
 <td>Yes</td>
 <td>No</td>
@@ -4572,6 +4582,7 @@ servers, unnecessary in single-user browser. See ERP.md §16.2.</p>
 </tr>
 </tbody>
 </table>
+<p>¹ Planned↔Committed and the shopfloor cost S-curve fold from the same signed op-log as the 3D/4D, so they can never drift — the honest claim is this <em>unification + log-native what-if</em>, <strong>not</strong> a CPM engine (no resource levelling or critical-path depth like P6).</p>
 <h3 id="idempiere-relationship">iDempiere Relationship<a class="headerlink" href="#idempiere-relationship" title="Permanent link">&para;</a></h3>
 <p>ERP OOTB uses iDempiere's AD as the source for UI metadata. The
 compiled manifest preserves the AD's tab hierarchy, field ordering,
