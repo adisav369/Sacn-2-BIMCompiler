@@ -2274,6 +2274,8 @@
       
         
       
+        
+      
     
     
     
@@ -2321,6 +2323,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PROJECT_CHRONOLOGY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Chronology (dates + commits)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3193,6 +3223,34 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#the-last-mile-crosses-to-javascript-the-modeller-drop-2026-06-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Last Mile crosses to JavaScript — the Modeller Drop (2026-06-22)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Last Mile crosses to JavaScript — the Modeller Drop (2026-06-22)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#still-owed-the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Still owed — the §GEO_SUMMARY self-proof (the JS twin of §7's "Next step for coder")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3884,6 +3942,34 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#the-last-mile-crosses-to-javascript-the-modeller-drop-2026-06-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Last Mile crosses to JavaScript — the Modeller Drop (2026-06-22)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Last Mile crosses to JavaScript — the Modeller Drop (2026-06-22)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#still-owed-the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Still owed — the §GEO_SUMMARY self-proof (the JS twin of §7's "Next step for coder")
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4422,6 +4508,72 @@ grep<span class="w"> </span>LOD-ROTATE<span class="w"> </span>logs/pipeline_*.lo
 grep<span class="w"> </span><span class="s2">&quot;Stage.*completed&quot;</span><span class="w"> </span>logs/pipeline_*.log<span class="w">  </span><span class="c1"># Stage timings</span>
 ./scripts/rosetta_trace.sh<span class="w"> </span>&lt;log&gt;<span class="w"> </span>&lt;output.db&gt;<span class="w"> </span><span class="o">[</span>ref.db<span class="o">]</span><span class="w">  </span><span class="c1"># Cross-box correlation</span>
 </code></pre></div>
+<hr />
+<h2 id="the-last-mile-crosses-to-javascript-the-modeller-drop-2026-06-22">The Last Mile crosses to JavaScript — the Modeller Drop (2026-06-22)<a class="headerlink" href="#the-last-mile-crosses-to-javascript-the-modeller-drop-2026-06-22" title="Permanent link">&para;</a></h2>
+<p>The compiler's Last Mile is won (§1–§12). But the browser <strong>DAGeVu modeller</strong> re-implements the placement
+in JS to <em>drop</em> a BOM (building / floor / room / furniture SET) interactively — and a port is a new last mile.
+This section records the textbook drift the doc predicted, and the proof discipline that closed it.</p>
+<p><strong>The drift (exactly where §7 warned):</strong> <code>viewer/bonsai_library.js expandAssembly</code> placed leaves with a naive
+<code>world = parent + yaw·(dx,dy) + dz</code> sum. It reproduced the <em>easy</em> half of the Java reconstruction (<code>BOMWalker</code>
+was ported faithfully) but reinvented the <em>hard</em> half (<code>PlacementCollectorVisitor</code>) as a shortcut that <strong>dropped
+three of the four §7 terms</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>§7 term</th>
+<th>Java <code>PlacementCollectorVisitor</code></th>
+<th>JS <code>expandAssembly</code> (before)</th>
+<th>Symptom</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. World/sub-BOM origin</td>
+<td><code>+ m_bom.origin_x/y/z</code> on descent</td>
+<td>dropped</td>
+<td>nested sets off by the parent origin</td>
+</tr>
+<tr>
+<td>2. Parent + line accumulate</td>
+<td>✓</td>
+<td>✓ (yaw only)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>3. <code>+ ½dim → centre</code></td>
+<td>LBD-corner → centroid half-extent</td>
+<td>dropped</td>
+<td>host <strong>8434 mm</strong> off oracle</td>
+</tr>
+<tr>
+<td>(mirror)</td>
+<td><code>MIRROR:X</code> = axis <strong>reflection</strong></td>
+<td>treated as rotation / ignored</td>
+<td>DX scattered <strong>±22.8 m</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The bake (<code>scripts/extract_dagevu_catalog.py</code>) compounded it: it read <code>m_bom_line.dx/dy/dz</code> verbatim but never
+read <code>m_bom.origin</code>, never flagged the LBD convention, and classified FLOOR/SET by <code>bom_level</code> not <code>bom_type</code>.</p>
+<p><strong>The fix (PR #478, sw v697):</strong> <code>expandAssembly</code> now folds the sub-BOM origin, <strong>reflects</strong> (not rotates) under
+mirror, and adds the half-extent to recover the box centre — the full §7 four-term chain. Revert-safe: the
+single-component INSERT path that already worked is untouched (<code>W-BOM-SPATIAL</code> regression PASS).</p>
+<p><strong>The proof — the JS twin of <code>geo_verify.py</code>:</strong> <code>scripts/witness_modeller_drop.js</code> loads the <em>shipped</em> module in
+a sandbox and asserts host-placement <strong>== the Java oracle to 0.000 mm</strong> (SH 55 leaves, DX set 5), the catalog
+satisfies the §1-style IntraBOM invariant (R1 <code>|dx|,|dy|&lt;10m</code>, R2 <code>|dz|&lt;4.5m</code>, R3 no absolute leak — leaks=0),
+and a known leaf lands at the Java BOM-chain centre to 0.03 mm. <em>Honest scope:</em> the <code>TranslationChainTest</code> Piano
+zone-anchor (0.674, 4.109) is a different runtime path (<code>BOMTierResolver</code>, never stored in a BOM) — we prove the
+achievable BOM-chain target, no invented coordinates.</p>
+<p><strong>The lesson (the doctrine, restated for ports):</strong> <em>Porting the walker is not porting the placer, and porting the
+algorithm is not porting the proof.</em> The shortcut survived because the simple-insert witness passed; the case that
+exercised the dropped terms was never held to the Java's numeric contract. Carry the invariant across, not just
+the idea.</p>
+<h3 id="still-owed-the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder">Still owed — the §GEO_SUMMARY self-proof (the JS twin of §7's "Next step for coder")<a class="headerlink" href="#still-owed-the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder" title="Permanent link">&para;</a></h3>
+<p>The Java compiler emits its own drift verdict (<code>[GEO] SUMMARY 58 elements, 1653 pairs, worst=0.002mm, DRIFT=0</code>).
+The modeller drop currently proves correctness only in the <em>external</em> witness — if <code>expandAssembly</code> drifts again,
+the running app stays silent. <strong>Next:</strong> make the drop emit a runtime <code>§GEO_SUMMARY</code> (leaves, all-pairs vs the
+set's declared bbox, worst-mm, DRIFT=0) so the modeller polices itself the way the pipeline does. Log-only,
+cannot regress geometry. Resume card: <code>prompts/RESUME_MODELLER_FOCUS.md</code> (top block).</p>
 <p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
 
