@@ -423,4 +423,51 @@ grep "Stage.*completed" logs/pipeline_*.log  # Stage timings
 ./scripts/rosetta_trace.sh <log> <output.db> [ref.db]  # Cross-box correlation
 ```
 
+---
+
+## The Last Mile crosses to JavaScript — the Modeller Drop (2026-06-22)
+
+The compiler's Last Mile is won (§1–§12). But the browser **DAGeVu modeller** re-implements the placement
+in JS to *drop* a BOM (building / floor / room / furniture SET) interactively — and a port is a new last mile.
+This section records the textbook drift the doc predicted, and the proof discipline that closed it.
+
+**The drift (exactly where §7 warned):** `viewer/bonsai_library.js expandAssembly` placed leaves with a naive
+`world = parent + yaw·(dx,dy) + dz` sum. It reproduced the *easy* half of the Java reconstruction (`BOMWalker`
+was ported faithfully) but reinvented the *hard* half (`PlacementCollectorVisitor`) as a shortcut that **dropped
+three of the four §7 terms**:
+
+| §7 term | Java `PlacementCollectorVisitor` | JS `expandAssembly` (before) | Symptom |
+|---|---|---|---|
+| 1. World/sub-BOM origin | `+ m_bom.origin_x/y/z` on descent | dropped | nested sets off by the parent origin |
+| 2. Parent + line accumulate | ✓ | ✓ (yaw only) | — |
+| 3. `+ ½dim → centre` | LBD-corner → centroid half-extent | dropped | host **8434 mm** off oracle |
+| (mirror) | `MIRROR:X` = axis **reflection** | treated as rotation / ignored | DX scattered **±22.8 m** |
+
+The bake (`scripts/extract_dagevu_catalog.py`) compounded it: it read `m_bom_line.dx/dy/dz` verbatim but never
+read `m_bom.origin`, never flagged the LBD convention, and classified FLOOR/SET by `bom_level` not `bom_type`.
+
+**The fix (PR #478, sw v697):** `expandAssembly` now folds the sub-BOM origin, **reflects** (not rotates) under
+mirror, and adds the half-extent to recover the box centre — the full §7 four-term chain. Revert-safe: the
+single-component INSERT path that already worked is untouched (`W-BOM-SPATIAL` regression PASS).
+
+**The proof — the JS twin of `geo_verify.py`:** `scripts/witness_modeller_drop.js` loads the *shipped* module in
+a sandbox and asserts host-placement **== the Java oracle to 0.000 mm** (SH 55 leaves, DX set 5), the catalog
+satisfies the §1-style IntraBOM invariant (R1 `|dx|,|dy|<10m`, R2 `|dz|<4.5m`, R3 no absolute leak — leaks=0),
+and a known leaf lands at the Java BOM-chain centre to 0.03 mm. *Honest scope:* the `TranslationChainTest` Piano
+zone-anchor (0.674, 4.109) is a different runtime path (`BOMTierResolver`, never stored in a BOM) — we prove the
+achievable BOM-chain target, no invented coordinates.
+
+**The lesson (the doctrine, restated for ports):** *Porting the walker is not porting the placer, and porting the
+algorithm is not porting the proof.* The shortcut survived because the simple-insert witness passed; the case that
+exercised the dropped terms was never held to the Java's numeric contract. Carry the invariant across, not just
+the idea.
+
+### Still owed — the §GEO_SUMMARY self-proof (the JS twin of §7's "Next step for coder")
+
+The Java compiler emits its own drift verdict (`[GEO] SUMMARY 58 elements, 1653 pairs, worst=0.002mm, DRIFT=0`).
+The modeller drop currently proves correctness only in the *external* witness — if `expandAssembly` drifts again,
+the running app stays silent. **Next:** make the drop emit a runtime `§GEO_SUMMARY` (leaves, all-pairs vs the
+set's declared bbox, worst-mm, DRIFT=0) so the modeller polices itself the way the pipeline does. Log-only,
+cannot regress geometry. Resume card: `prompts/RESUME_MODELLER_FOCUS.md` (top block).
+
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
