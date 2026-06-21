@@ -266,7 +266,7 @@ h1 span{color:var(--mute);font-weight:400}
       <div class="met"><span class="met-val" id="m-fold-10k">—</span><span class="met-lbl">10K records</span></div>
       <div class="met"><span class="met-val" id="m-fold-ratio">—</span><span class="met-lbl">+ EOD backup</span></div>
     </div>
-    <div class="card-hint"><b>What this checks:</b> a busy day's 10,000 records pushed through the engine, <b>then the End-of-Day backup</b> — a full snapshot of the signed store. The real daily close, live on this machine. <b>iDempiere side: pending a real run.</b></div>
+    <div class="card-hint"><b>What this checks:</b> a busy day's 10,000 records pushed through the engine, <b>then the End-of-Day backup</b> — a full snapshot of the signed store. Live on this machine. <b>iDempiere (est.):</b> a <code>completeIt()</code>+post is ~20–50&nbsp;ms in Java (callouts + ModelValidator + multi-table + GL), so 10K ≈ <b>3–8 min</b> — estimate (conservative), not measured; same box has no add-on backup.</div>
     <div class="idmp-ref" id="ref-fold">vs iDempiere: <strong>pending</strong> — a real 10K batch needs iDempiere booted (its callouts + posting). We won't show a number we haven't measured.</div>
   </div>
   <div class="card" id="card-load">
