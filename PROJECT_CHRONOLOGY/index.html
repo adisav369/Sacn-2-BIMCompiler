@@ -2415,6 +2415,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#performance-stated-plainly-two-different-numbers-often-confused" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance, stated plainly (two different numbers, often confused)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#by-the-numbers-commit-counts-are-git-rev-list-git-log-extractions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3467,6 +3478,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#performance-stated-plainly-two-different-numbers-often-confused" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance, stated plainly (two different numbers, often confused)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#by-the-numbers-commit-counts-are-git-rev-list-git-log-extractions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3671,6 +3693,19 @@ own repo (May 2026), where the ERP kernel grew beside the BIM viewer.</p>
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="performance-stated-plainly-two-different-numbers-often-confused">Performance, stated plainly (two different numbers, often confused)<a class="headerlink" href="#performance-stated-plainly-two-different-numbers-often-confused" title="Permanent link">&para;</a></h2>
+<p>These are two separate things — keep them apart:</p>
+<ul>
+<li><strong>1,065,130 elements (the sandbox city) → ~13 s</strong> to draw as <strong>GPU wireframe bounding
+  boxes only</strong>, zero mesh in RAM, then instant orbit. The full meshes are <em>not</em> loaded;
+  exact IFC geometry streams on demand (&lt;1 s per MESH press near the camera). Measured —
+  see <a href="../StressTest_1M/"><code>StressTest_1M.md</code></a>.</li>
+<li><strong>~126 K elements (LTU A-House) → ~10 s</strong> to render the <strong>full meshes to screen</strong>
+  (author's machine). This is real geometry, not bounding boxes.</li>
+</ul>
+<p>So "a million in seconds" means <em>bounding-box preview</em>; "everything drawn" is the
+six-figure, full-mesh number. Conflating the two would overstate the result — don't.</p>
 <hr />
 <h2 id="by-the-numbers-commit-counts-are-git-rev-list-git-log-extractions">By the numbers (commit counts are <code>git rev-list</code> / <code>git log</code> extractions)<a class="headerlink" href="#by-the-numbers-commit-counts-are-git-rev-list-git-log-extractions" title="Permanent link">&para;</a></h2>
 <h3 id="phase-ledger">Phase ledger<a class="headerlink" href="#phase-ledger" title="Permanent link">&para;</a></h3>
