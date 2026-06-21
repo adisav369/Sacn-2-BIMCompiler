@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+        <meta name="description" content="Project history by the numbers — from the IfcOpenShell Federation branch (Oct 2025) to the Java compiler to the browser-native BIM+ERP engine, with dated milestones and a commit ledger.">
       
       
         <meta name="author" content="Redhuan D. Oon">
@@ -2454,6 +2454,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#2025-the-federation-year-where-the-hell-was-and-what-it-taught" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2025 — the Federation year (where the hell was, and what it taught)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#status-of-each-runtime-what-changed-and-why" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3495,6 +3506,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#2025-the-federation-year-where-the-hell-was-and-what-it-taught" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2025 — the Federation year (where the hell was, and what it taught)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#status-of-each-runtime-what-changed-and-why" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3564,16 +3586,28 @@ own repo (May 2026), where the ERP kernel grew beside the BIM viewer.</p>
 </thead>
 <tbody>
 <tr>
+<td><strong>2025-10-25</strong></td>
+<td>"Fix critical scale bug (1000× error)" + coordinate offset fix</td>
+<td>IfcOpenShell <code>feature/IFC4_DB</code></td>
+<td>The meters-vs-millimetres lesson — units/coords had to be pinned before anything rendered true.</td>
+</tr>
+<tr>
 <td><strong>2025-10-30</strong></td>
 <td>"Full IFC4 database extraction and loading — MILESTONE"</td>
 <td>IfcOpenShell <code>feature/IFC4_DB</code> (<a href="https://github.com/red1oon/IfcOpenShell/commit/f410e32a13297355d8d5aed444ed176dd18e70a0">commit</a>)</td>
 <td><strong>True origin.</strong> IFC → queryable SQLite, inside Bonsai/Blender.</td>
 </tr>
 <tr>
+<td><strong>2025-11-01</strong></td>
+<td>"Instant GPU bbox preview + two-button workflow (BREAKTHROUGH!)"</td>
+<td>IfcOpenShell <code>feature/IFC4_DB</code></td>
+<td>Two-stage load (bbox preview → full geometry) — the first time large scenes felt instant.</td>
+</tr>
+<tr>
 <td><strong>2025-12-18</strong></td>
 <td>PDF Terrain + Federation GI database</td>
 <td>IfcOpenShell <code>feature/IFC4_DB</code> (<a href="https://github.com/red1oon/IfcOpenShell/commit/bc76b7123ef8ebc73155fc20a4714f42eaec1029">commit</a>)</td>
-<td>DB-as-scene-data extended past pure IFC: terrain, River IoT.</td>
+<td>DB-as-scene-data pushed past pure IFC — terrain + River IoT, run as <em>learning exercises</em>.</td>
 </tr>
 <tr>
 <td><strong>2026-01-25</strong></td>
@@ -3655,7 +3689,7 @@ own repo (May 2026), where the ERP kernel grew beside the BIM viewer.</p>
 <td><strong>Federation</strong> (IFC-as-SQLite in Blender; Terrain, River IoT)</td>
 <td>Oct 2025 – present</td>
 <td><code>red1oon/IfcOpenShell</code> <code>feature/IFC4_DB</code></td>
-<td style="text-align: right;"><em>not counted here (separate repo)</em></td>
+<td style="text-align: right;"><strong>414</strong> authored by red1oon (316 touch the federation module)</td>
 <td>🔵 <strong>Upstream / still live</strong> — the federation branch remains available to the IfcOpenShell community. It was <em>not</em> dropped from the project; the author personally moved off the Blender renderer when migrating to browser-only SQLite WASM (S195). The SQLite schema carried forward.</td>
 </tr>
 <tr>
@@ -3682,6 +3716,55 @@ own repo (May 2026), where the ERP kernel grew beside the BIM viewer.</p>
 </tbody>
 </table>
 <h3 id="monthly-commit-fix-activity">Monthly commit + fix activity<a class="headerlink" href="#monthly-commit-fix-activity" title="Permanent link">&para;</a></h3>
+<p><strong><code>red1oon/IfcOpenShell</code> <code>feature/IFC4_DB</code></strong> — Federation (commits authored by red1oon)</p>
+<table>
+<thead>
+<tr>
+<th>Month</th>
+<th style="text-align: right;">Commits</th>
+<th style="text-align: right;">Fix/bug commits</th>
+<th style="text-align: right;">Feat/add commits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2025-10</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">24</td>
+<td style="text-align: right;">39</td>
+</tr>
+<tr>
+<td>2025-11</td>
+<td style="text-align: right;">161</td>
+<td style="text-align: right;">75</td>
+<td style="text-align: right;">68</td>
+</tr>
+<tr>
+<td>2025-12</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">56</td>
+<td style="text-align: right;">77</td>
+</tr>
+<tr>
+<td>2026-01→03</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td>2026-04</td>
+<td style="text-align: right;">52</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td style="text-align: right;"><strong>414</strong></td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+</tbody>
+</table>
 <p><strong><code>red1oon/BIMCompiler</code></strong> (first commit 2026-01-25)</p>
 <table>
 <thead>
@@ -3769,7 +3852,52 @@ own repo (May 2026), where the ERP kernel grew beside the BIM viewer.</p>
 </tbody>
 </table>
 <p><em>Fix/feat counts are <code>git log --grep</code> matches on commit subjects (<code>fix|bug</code>, <code>feat|add</code>),
-case-insensitive — an indicator of effort split, not an exhaustive classification.</em></p>
+case-insensitive.</em></p>
+<p><strong>Do the fix + feat numbers add up to the "net real work"? No — read them as a texture, not a total.</strong>
+They are keyword matches on the commit <em>subject line</em>, so they (a) miss work whose subject said
+<code>refactor</code>, <code>perf</code>, <code>optimize</code>, <code>docs</code>, <code>wire</code>, <code>bake</code>; (b) double-count nothing but also credit
+nothing for size — a one-line typo fix and a 2,000-line feature each count as one; and (c) include
+the occasional <code>Revert</code>/merge that is motion, not progress. The honest "net work done" signal is the
+<strong>total commit count</strong> — each commit is one resolved, committed unit — with the fix/feat split telling
+you <em>how the effort leaned that month</em> (e.g. Nov 2025 was fix-heavy = stabilising; May–Jun 2026 swung
+feat-heavy = building). Lines-changed would be a finer measure, but commit-count is the one that
+doesn't lie about effort.</p>
+<hr />
+<h2 id="2025-the-federation-year-where-the-hell-was-and-what-it-taught">2025 — the Federation year (where the hell was, and what it taught)<a class="headerlink" href="#2025-the-federation-year-where-the-hell-was-and-what-it-taught" title="Permanent link">&para;</a></h2>
+<p>The whole idea was proven the hard way, inside Blender, across three intense months — <strong>349 commits,
+Oct–Dec 2025.</strong> This is the part the later browser work stands on.</p>
+<ul>
+<li>
+<p><strong>October (60 commits) — birth, and the unit war.</strong> The federation module, BBox semantic geometry,
+  a three-stage inference loader, material inference, GPU instancing, database-driven clash detection.
+  The recurring enemy was coordinates: <em>"database uses meters not millimetres"</em>, <em>"Fix critical scale
+  bug (1000× error)"</em>, multi-layer viewport offset fixes. Pinning units and the site offset was the
+  precondition for anything to render true — a lesson that carried straight into the browser viewer.
+  It culminates 2025-10-30 in <em>"Full IFC4 database extraction and loading — MILESTONE"</em>: IFC is now a
+  queryable SQLite DB.</p>
+</li>
+<li>
+<p><strong>November (161 commits — the heaviest, hardest month) — stability and speed hell.</strong> A
+  <em>"template explosion crash"</em> in the loaders. A full week (Nov 2–3) wrestling gizmo click-crashes,
+  registration, and context-menu handling. R-tree clash bugs. And a long string of brute
+  optimisations — <em>"20-30× faster reload"</em>, <em>"5-10× speedup for routing and clash"</em> — fighting
+  Blender's evaluation cost at scale. The reward came first, on <strong>Nov 1</strong>: <em>"Instant GPU bbox preview +
+  two-button workflow (BREAKTHROUGH!)"</em> — the two-stage load (cheap bbox preview, then full geometry)
+  that made big scenes feel instant. This month is <em>why</em> the eventual ceiling was recognised so
+  quickly later: it was a month of finding exactly where Blender stopped scaling.</p>
+</li>
+<li>
+<p><strong>December (128 commits) — pushing the schema past IFC, as a learning exercise.</strong> River IoT and PDF
+  terrain were <strong>deliberate exercises</strong> — not a product line — run to learn how far the
+  database-as-scene-data idea could stretch: OpenStreetMap river import, GPS/affine calibration,
+  mangrove-islet monitoring, a carbon-credit/biochar pipeline, KML/Google-Earth export, terrain
+  topology from PDF survey data. The takeaway wasn't the river; it was the confirmation that <em>anything
+  spatial — geometry, sensors, terrain — folds into the same queryable DB</em>. That generalisation is
+  what later made a building → procurement-order fold feel natural.</p>
+</li>
+</ul>
+<p>The through-line: 2025 proved the <strong>schema</strong> was the asset and Blender was only ever a renderer. Five
+months of Blender ceilings made the April 2026 browser pivot obvious rather than risky.</p>
 <hr />
 <h2 id="status-of-each-runtime-what-changed-and-why">Status of each runtime — what changed, and why<a class="headerlink" href="#status-of-each-runtime-what-changed-and-why" title="Permanent link">&para;</a></h2>
 <ul>
@@ -3811,6 +3939,9 @@ case-insensitive — an indicator of effort split, not an exhaustive classificat
 
 
 
+
+  
+  
 
 
 
