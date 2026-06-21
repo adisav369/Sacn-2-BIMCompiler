@@ -35,7 +35,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const CAT = process.argv[2] || '/tmp/cat_orig.json';
+const CAT = process.argv[2] || path.join(__dirname, '..', 'deploy/dev/dagevu_catalog.json');
 const TOL = 0.001; // 1mm — matches PlacementCollectorVisitorTest TOLERANCE
 const fails = [];
 const log = (m) => console.log(m);
