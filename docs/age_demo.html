@@ -16,8 +16,23 @@
 body{background:
    radial-gradient(900px 460px at 50% -8%,#15334d22,transparent),
    linear-gradient(180deg,var(--bg1),var(--bg0));
-  color:var(--ink);font-family:var(--sans);height:100vh;overflow:hidden;
-  display:flex;flex-direction:column;justify-content:center;padding:.7rem 1rem .6rem}
+  color:var(--ink);font-family:var(--sans);height:100vh;width:100vw;overflow:hidden;
+  display:flex;align-items:center;justify-content:center}
+/* scalable fit-box: the whole composition scales to any landscape viewport */
+#fit{width:980px;padding:.7rem 1rem .6rem;transform-origin:center center;flex:0 0 auto}
+/* rotate-to-landscape prompt (touch devices in portrait) */
+#rotate{display:none;position:fixed;inset:0;z-index:99;background:linear-gradient(180deg,var(--bg1),var(--bg0));
+  flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;padding:1.5rem}
+#rotate .phone{width:48px;height:84px;border:3px solid var(--blue);border-radius:11px;position:relative;
+  box-shadow:0 0 22px #4aa6ff55;animation:rot 2s ease-in-out infinite}
+#rotate .phone::after{content:"";position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:16px;height:2.5px;background:var(--blue);border-radius:2px}
+@keyframes rot{0%,38%{transform:rotate(0)}62%,100%{transform:rotate(90deg)}}
+#rotate .rtxt{font-size:17px;font-weight:700;letter-spacing:.02em}
+#rotate .rsub{font-size:12.5px;color:var(--mut)}
+@media (orientation:portrait) and (pointer:coarse){
+  #fit{display:none}
+  #rotate{display:flex}
+}
 /* title snug in the middle column, larger */
 .htop{min-height:156px;display:flex;align-items:center;justify-content:center;padding:0 .2rem;width:100%}
 h1{font-size:clamp(1.45rem,2.4vw,2rem);font-weight:800;letter-spacing:.01em;text-transform:uppercase;
@@ -155,6 +170,7 @@ h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
 </style>
 </head>
 <body>
+<div id="fit">
 <div class="stage">
   <!-- KernelERP -->
  <div class="col">
@@ -255,6 +271,13 @@ h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
   <div class="rw"><div class="cell kk">0.01 → 1.1 s</div><div class="cell lbl">Launch as data ages</div><div class="cell ii">flat (server)</div></div>
   <div class="rw"><div class="cell kk">flat — never slows</div><div class="cell lbl">Ops as data ages</div><div class="cell ii">slows as tables grow</div></div>
   <div class="rw"><div class="cell kk">none (~decade+)</div><div class="cell lbl">Housekeeping</div><div class="cell ii">required</div></div>
+</div>
+</div><!-- /#fit -->
+
+<div id="rotate">
+  <div class="phone"></div>
+  <div class="rtxt">Rotate to landscape</div>
+  <div class="rsub">this comparison runs side by side</div>
 </div>
 
 <script>
@@ -407,6 +430,18 @@ document.getElementById('go').addEventListener('click',function(){
 setBar('lk-f','lk',K_LAUNCH[1],LMAX,true); setBar('ok-f','ok',K_OPS[1],OPSMAX,true);
 setBar('li-f','li',I_LAUNCH[1],LMAX,true); setBar('oi-f','oi',I_OPS[1],OPSMAX,false);
 setDrums(1);
+
+// scale the whole composition to fit any viewport (landscape mobile/tablet → desktop)
+function fitScale(){
+  var fit=document.getElementById('fit'); if(!fit)return;
+  fit.style.transform='none';
+  var s=Math.min(window.innerWidth/fit.offsetWidth, window.innerHeight/fit.offsetHeight);
+  if(s>1)s=1;
+  fit.style.transform='scale('+s+')';
+}
+window.addEventListener('resize',fitScale);
+window.addEventListener('orientationchange',function(){setTimeout(fitScale,150);});
+fitScale();
 </script>
 </body>
 </html>
