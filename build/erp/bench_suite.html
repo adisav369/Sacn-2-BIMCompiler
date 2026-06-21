@@ -256,18 +256,18 @@ h1 span{color:var(--mute);font-weight:400}
   </div>
   <div class="card" id="card-fold">
     <div class="card-head">
-      <div><div class="card-title">② Fold Curve</div>
-        <div class="card-sub">listTip() at 10→10K ops</div></div>
+      <div><div class="card-title">② 10K Batch</div>
+        <div class="card-sub">process 10,000 records end-to-end</div></div>
       <span class="badge idle" id="badge-fold">IDLE</span>
     </div>
     <div class="chart-wrap"><canvas id="ch-fold"></canvas>
-      <div class="chart-overlay" id="ov-fold"><span class="ov-arrow">↑</span><span class="ov-num" id="ov-fold-n">—</span><span class="ov-sub">vs iDempiere</span></div></div>
+      <div class="chart-overlay" id="ov-fold"><span class="ov-num" id="ov-fold-n">—</span><span class="ov-sub">records/sec · ours</span></div></div>
     <div class="metrics">
-      <div class="met"><span class="met-val" id="m-fold-10k">—</span><span class="met-lbl">At 10K ops</span></div>
-      <div class="met"><span class="met-val" id="m-fold-ratio">—</span><span class="met-lbl">Scaling</span></div>
+      <div class="met"><span class="met-val" id="m-fold-10k">—</span><span class="met-lbl">10K records</span></div>
+      <div class="met"><span class="met-val" id="m-fold-ratio">—</span><span class="met-lbl">records/sec</span></div>
     </div>
-    <div class="card-hint"><b>What this checks:</b> how long folding the op-log takes as ops grow 10 → 10K — does read time stay flat?</div>
-    <div class="idmp-ref" id="ref-fold">vs iDempiere: <strong>~500 ms</strong> typical server list query (network + DB + JVM) — our fold: <strong id="ref-fold-ratio">—</strong> faster</div>
+    <div class="card-hint"><b>What this checks:</b> time to push 10,000 records through the engine (our side, live on this machine). The full black-box test. <b>iDempiere side: pending a real run</b> — not faked.</div>
+    <div class="idmp-ref" id="ref-fold">vs iDempiere: <strong>pending</strong> — a real 10K batch needs iDempiere booted (its callouts + posting). We won't show a number we haven't measured.</div>
   </div>
   <div class="card" id="card-load">
     <div class="card-head">
@@ -534,35 +534,33 @@ async function runRound(round){
   setBadge('memory',_isRunning?'pass':'idle'); memDb.close();
   if(!_isRunning) return;
 
-  setStatus('Round '+round+' — ② fold curve…','running');
+  setStatus('Round '+round+' — ② 10K batch…','running');
   setBadge('fold','running');
   var foldChart=makeChart('ch-fold','line','#58a6ff','ms');
   var foldDb=new _SQL.Database(new Uint8Array(_seedBuf));
   if(_KO) _KO.ensureTable(foldDb);
-  var fBr=[];
-  var fwr=foldDb.exec("SELECT AD_Window_ID,Name,Description FROM AD_Window WHERE IsActive='Y' ORDER BY AD_Window_ID LIMIT 60");
-  if(fwr.length)fwr[0].values.forEach(function(v){fBr.push({AD_Window_ID:v[0],Name:v[1],Description:v[2]});});
-  var fCps=[10,100,500,1000,5000,10000], fOps=0, fAt100=1, fAt10k=1;
-  for(var fi=0;fi<fCps.length&&_isRunning;fi++){
-    while(fOps<fCps[fi]&&_isRunning){
-      if(_KO){var fwid=fBr.length?fBr[fOps%fBr.length].AD_Window_ID:100;
-        var fop={op_type:'CRUD_UPDATE',op_uuid:'r'+round+'-f'+fOps,
-          params:{table:'AD_Window',id:fwid,changes:{Description:{old:'v'+(fOps-1),new:'v'+fOps}},actor:100}};
-        await _KO.commitGroup(foldDb,[fop],{gid:'f'+round+'-'+fOps,baseTs:1718200000000+fOps});}
-      fOps++;
-      if(fOps%200===0){addErp(200);await yieldOrPause();}
-    }
-    var ft0=performance.now();
-    if(_CRUD&&fBr.length)_CRUD.listTip(foldDb,'AD_Window','AD_Window_ID',fBr);
-    var fms=Math.round(performance.now()-ft0);
-    if(fCps[fi]===100)fAt100=Math.max(fms,1);
-    if(fCps[fi]===10000)fAt10k=fms;
-    pushPoint(foldChart,fCps[fi].toLocaleString(),fms);
-    await yield_();
+  var fWin=[];
+  var fwr=foldDb.exec("SELECT AD_Window_ID FROM AD_Window WHERE IsActive='Y' ORDER BY AD_Window_ID LIMIT 60");
+  if(fwr.length)fwr[0].values.forEach(function(v){fWin.push(v[0]);});
+  // BATCH: push records through the engine in 1000-record signed groups (proven-safe chunk size),
+  // timing the cumulative processing to 1K/2K/5K/10K. 10K = our end-to-end batch time, this machine.
+  var fChk={1000:1,2000:1,5000:1,10000:1}, fAt1k=1, fAt10k=1, fDone=0, fT0=performance.now();
+  while(fDone<10000&&_isRunning){
+    if(_KO){var chunk=[];
+      for(var fk=0;fk<1000;fk++){var fidx=fDone+fk,fwid=fWin.length?fWin[fidx%fWin.length]:100;
+        chunk.push({op_type:'CRUD_UPDATE',op_uuid:'r'+round+'-b'+fidx,
+          params:{table:'AD_Window',id:fwid,changes:{Description:{old:'v'+(fidx-1),new:'v'+fidx}},actor:100}});}
+      await _KO.commitGroup(foldDb,chunk,{gid:'b'+round+'-'+fDone,baseTs:1718200000000+fDone});}
+    fDone+=1000; addErp(1000);
+    if(fChk[fDone]){var fms=Math.round(performance.now()-fT0);
+      if(fDone===1000)fAt1k=Math.max(fms,1); if(fDone===10000)fAt10k=Math.max(fms,1);
+      pushPoint(foldChart,fDone.toLocaleString(),fms);}
+    await yieldOrPause();
   }
+  var fRate=Math.round(10000/fAt10k*1000);
   document.getElementById('m-fold-10k').textContent=fAt10k+' ms';
-  document.getElementById('m-fold-ratio').textContent=(fAt10k/fAt100).toFixed(1)+'×';
-  _ov.fold=Math.round(500/Math.max(fAt10k,1))+'×';
+  document.getElementById('m-fold-ratio').textContent=fRate.toLocaleString()+'/s';
+  _ov.fold=fRate.toLocaleString()+'/s';   // OUR throughput (iDempiere 10K batch pending — no versus)
   setBadge('fold',_isRunning?'pass':'idle'); foldDb.close();
   if(!_isRunning) return;
 
