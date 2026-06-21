@@ -19,7 +19,7 @@ body{background:
   color:var(--ink);font-family:var(--sans);height:100vh;overflow:hidden;
   display:flex;flex-direction:column;justify-content:center;padding:.7rem 1rem .6rem}
 /* title snug in the middle column, larger */
-.htop{min-height:122px;display:flex;align-items:center;justify-content:center;padding:0 .2rem;width:100%}
+.htop{min-height:156px;display:flex;align-items:center;justify-content:center;padding:0 .2rem;width:100%}
 h1{font-size:clamp(1.45rem,2.4vw,2rem);font-weight:800;letter-spacing:.01em;text-transform:uppercase;
   line-height:1.08;text-align:center}
 h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
@@ -30,8 +30,8 @@ h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
 .col{display:flex;flex-direction:column;align-items:center;gap:.55rem;min-width:0}
 .center-col{justify-content:flex-start}
 /* permanent side notes — larger, fill the top band above each panel */
-.exbox{width:100%;max-width:300px;min-height:122px;display:grid;align-content:center;
-  font-size:12.5px;line-height:1.6;border-radius:11px;padding:.7rem .95rem;border:1px solid}
+.exbox{width:100%;max-width:300px;height:156px;display:grid;align-content:center;overflow:hidden;
+  font-size:10.5px;line-height:1.48;border-radius:11px;padding:.55rem .8rem;border:1px solid}
 .exbox.k{border-color:#1f5c3d;background:linear-gradient(180deg,#0f211a,#0c1a15);color:#c4ead6}
 .exbox.i{border-color:#5e4d22;background:linear-gradient(180deg,#201a0f,#1a160c);color:#ecdcae}
 .exbox b{font-weight:700}
@@ -120,25 +120,25 @@ h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
 
 /* center */
 .center{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.9rem}
-.clk{position:relative;width:158px;height:158px}
-.clk svg{width:158px;height:158px;filter:drop-shadow(0 0 16px #2f8fd644)}
+.clk{position:relative;width:198px;height:198px}
+.clk svg{width:198px;height:198px;filter:drop-shadow(0 0 16px #2f8fd644)}
 .clk .face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.clk .yv{font-family:var(--mono);font-size:2.7rem;font-weight:800;line-height:1;color:#dbeeff}
+.clk .yv{font-family:var(--mono);font-size:3.4rem;font-weight:800;line-height:1;color:#dbeeff}
 .clk .yl{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut);margin-top:.3rem}
 .clk .age{font-size:10px;color:#5f7790;margin-top:.15rem;font-family:var(--mono)}
 .go{font-family:var(--sans);font-weight:700;font-size:13px;padding:.6rem 1.5rem;border:none;border-radius:10px;cursor:pointer;
   color:#fff;background:linear-gradient(135deg,#2a8cff,#7a4ddb);box-shadow:0 6px 18px #2a8cff44;letter-spacing:.02em}
 .go.run{background:linear-gradient(135deg,#5a4200,#9a7000)}
 /* DB drums — data filling up, in tandem each 5 years (no words) */
-.dbrow{position:relative;display:flex;gap:16px;justify-content:center;margin-top:.85rem;padding-top:5px}
-.cyl{position:relative;width:42px;height:74px;border-radius:50% / 13px;background:#0a1420;
+.dbrow{position:relative;display:flex;gap:22px;justify-content:center;margin-top:1.1rem;padding-top:6px}
+.cyl{position:relative;width:56px;height:104px;border-radius:50% / 15px;background:#0a1420;
   border:1px solid #243b52;overflow:hidden;box-shadow:inset 0 2px 8px #0007}
-.cyl .lid{position:absolute;top:3px;left:5px;right:5px;height:11px;border-radius:50%;border:1px solid #34516e;z-index:2;pointer-events:none}
+.cyl .lid{position:absolute;top:4px;left:6px;right:6px;height:14px;border-radius:50%;border:1px solid #34516e;z-index:2;pointer-events:none}
 .cyl .lvl{position:absolute;left:0;right:0;bottom:0;height:2%;
   transition:height 1s cubic-bezier(.4,0,.2,1),background 1s}
 .cyl.k .lvl{background:linear-gradient(180deg,#46e08e,#1f9f5e)}
 .cyl.i .lvl{background:linear-gradient(180deg,#f3bd4e,#d2842b)}
-.archive{position:absolute;left:-4px;right:-4px;top:calc(5px + 74px * (1 - 2048/4000));
+.archive{position:absolute;left:-5px;right:-5px;top:calc(6px + 104px * (1 - 2048/4000));
   border-top:1px dashed #ff5d5299;z-index:3}
 
 /* matrix — columns align under the panels: KernelERP | label | iDempiere */
@@ -216,7 +216,7 @@ h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
 
   <!-- iDempiere -->
  <div class="col">
-  <div class="exbox i" id="ex-i"><b>iDempiere</b> — a <b>Java server + Postgres</b>; the browser is a thin client. Data stays on the server → <b>launch is constant</b>; every action is a <b>network round-trip to ever-bigger tables</b> → <b>ops slow with age</b>.</div>
+  <div class="exbox i" id="ex-i"><b>iDempiere</b> — <b>Java server + Postgres</b>; thin browser client. Data on the server → <b>launch stays constant</b>; every action is a <b>network round-trip to bigger tables</b> → <b>ops slow with age</b>.</div>
   <div class="mon i">
     <div class="cap"><span class="dot"></span><span class="nm">iDempiere</span><span class="sub">server + Postgres</span></div>
     <div class="screen">
