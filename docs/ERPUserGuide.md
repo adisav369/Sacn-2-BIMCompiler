@@ -166,6 +166,35 @@ the cent** (`§PROJ_FOLD plannedAmt==golden`), every phase `SeqNo` tracing to `s
 > A sibling **`› VO`** button (in the model-diff panel) folds a model revision into a signed `C_Order`
 > variation amendment against the same project.
 
+### What-if schedule — slip a phase, watch the chain re-fold *(LIVE)*
+
+Once a building is folded into a project, you can ask **"what if this phase slips?"** without touching the
+real plan. In the **Find** panel's selection row, tap **`What-if`** to open the schedule what-if panel.
+
+![What-if schedule — slipping the marquee Superstructure phase +56 days re-folds every downstream phase in blue (finish-to-start). The finish moves 2029-05-28 → 2029-07-23, planned value drops 64.7M → 56.4M, but the budget (BAC) is unchanged — same scope, only the dates moved. Accept re-baselines; Discard drops it.](figs/whatif_ripple.png)
+
+The project's phases are a **finish-to-start chain** — each phase starts when the one before it finishes
+(that is exactly how the fold laid them out). So when you **slip one phase** with the **`−` / `+`** steppers,
+*every downstream phase re-folds with it*, in **blue**, beside the grey official plan:
+
+- **Grey bars** = the official planned schedule (untouched).
+- **Blue bars** = the what-if — the rippled schedule. Upstream phases (before your slip) stay put; the
+  slipped phase and everything after it shift together.
+- The header reads the impact straight off the fold: the new **finish date** (and the day slip), and how
+  **planned value (PV)** moves. The **budget (BAC) never changes** — a slip moves *dates*, not scope.
+
+Then decide:
+
+- **Accept — re-baseline** writes the rippled dates back onto the project as the new official plan (and
+  saves it), so the schedule now reflects the slip.
+- **Discard** drops the what-if entirely — the official plan was never touched.
+
+This is the **[Blue Future](#15-blue-future--the-speculative-branch-built-in-pre-release-test-harness)**
+branch model applied to the schedule: the what-if lives on a speculative blue branch over the same signed
+op-log, so it is real (not a mock) yet completely reversible until you accept it. The same engine that
+unifies a planner, a cost tool, and a 4D/5D viewer onto one log gives you free what-if — no separate
+scheduling tool, no drift. *(Engine proven by `W-WHATIF` 13/13 on the Hospital project; `viewer/whatif.js`.)*
+
 ---
 
 ## 3. The Bottom Pill Bar (cheat sheet)
