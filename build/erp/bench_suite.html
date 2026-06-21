@@ -180,7 +180,6 @@ h1 span{color:var(--mute);font-weight:400}
       <button id="pauseBtn">⏸ PAUSE</button>
       <span class="round-badge">Round <strong id="roundNum">—</strong> / ∞</span>
     </div>
-    <div id="hkBanner">⚙ HOUSEKEEPING — seed compacting · op-log truncating · born tenants preserved…</div>
     <div class="counters">
       <div class="ctr-row">
         <div class="lc"><span class="lc-val" id="lcOps">0</span><span class="lc-lbl">Records traversed</span></div>
@@ -197,6 +196,7 @@ h1 span{color:var(--mute);font-weight:400}
         </div>
       </div>
     </div>
+    <div id="hkBanner">⚙ HOUSEKEEPING — seed compacting · op-log truncating · born tenants preserved…</div>
   </div>
 
   <style>
@@ -836,7 +836,7 @@ function pickFile(msg){
   fetch('bench_localhost.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(f){
     if(!f)return;
     ST.f=f;ST.rtt=f.rtt_default_ms||20;
-    var b=document.getElementById('ssmBadge');if(local){b.className='ssm-badge here';b.textContent='this machine';}else{b.textContent=f.machine.label;}
+    var b=document.getElementById('ssmBadge');b.title=f.machine.label;if(local){b.className='ssm-badge here';b.textContent='this machine';}else{b.textContent='measured';}
     var rng=document.getElementById('ssmRng');rng.value=ST.rtt;document.getElementById('ssmRngV').textContent=ST.rtt+' ms';
     document.getElementById('ssMini').style.display='block';
     document.getElementById('ssmToggle').addEventListener('click',function(){setT(!ST.onNet);});
