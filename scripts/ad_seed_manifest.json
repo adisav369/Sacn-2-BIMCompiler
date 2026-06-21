@@ -48,6 +48,14 @@
   "prevCols": 5
  },
  {
+  "table": "AD_Ref_Table",
+  "case": "canonical",
+  "where": null,
+  "activeOnly": false,
+  "prevRows": 243,
+  "prevCols": 13
+ },
+ {
   "table": "AD_Tab",
   "case": "canonical",
   "where": null,

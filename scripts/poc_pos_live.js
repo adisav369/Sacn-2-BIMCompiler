@@ -80,13 +80,15 @@ const server = http.createServer((q, r) => {
   await pg.click('.pos-card[data-pid="124"]');       // ×2 — same line, qty folds
   const t2 = await pg.$$eval('.pos-card', ts => ts[0].getAttribute('data-pid'));
   await pg.click(`.pos-card[data-pid="${t2}"]`);     // a second product line
-  // 5b: Complete with NO partner picked must refuse (seed c_pos.BPartnerCashTrx is NULL)
-  await pg.click('#pos-float-tender'); await pg.waitForTimeout(300);
-  if (logs.find(t => t.startsWith('§POS-SALE'))) fail('sale committed without a partner');
-  await pg.selectOption('#pos-float-bp', '112');     // Standard — the GardenWorld walk-in
-  await pg.click('#pos-float-tender');                         // §D-2: opens receipt-preview modal
-  await pg.waitForSelector('#pos-pay-ok', { timeout: 5000 }).catch(() => fail('receipt-preview modal never appeared'));
-  await pg.click('#pos-pay-ok');                               // §D-2: OK = manual pay → Complete
+  // §R2-5 (FOLLOW-UP ROUND 2): the partner is DEFAULTED so the single Pay icon works out of the box —
+  // the empty-partner gate that silently blocked the old banknote ("Pay stopped working") is fixed.
+  const bpDefault = await pg.$eval('#pos-float-bp', e => e.value);
+  if (!bpDefault) fail('§R2-5 partner not defaulted (Pay would silently refuse)');
+  if (!logs.find(t => t.startsWith('§POS-PARTNER-DEFAULT'))) fail('no §POS-PARTNER-DEFAULT line');
+  await pg.selectOption('#pos-float-bp', '112');     // pin the cent check on the witnessed walk-in 112
+  // §R2-3/§R2-5 single Pay icon completes the sale DIRECTLY (no preview modal)
+  await pg.click('#pos-float-tender');
+  if (await pg.$('#pos-pay-modal')) fail('§R2-3 receipt-preview modal still present (should be retired)');
   await pg.waitForFunction(() => { const e = document.getElementById('pos-float-receipt'); return e && e.textContent.includes('✓'); }, null, { timeout: 15000 })
     .catch(() => fail('receipt never rendered'));
   const sale = logs.find(t => t.startsWith('§POS-SALE'));

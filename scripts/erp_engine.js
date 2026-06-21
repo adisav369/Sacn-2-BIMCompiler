@@ -245,6 +245,28 @@ function reversePosting(facts, opts) {
   });
 }
 
+// ── GENERATE: qtyRollup — the completeIt SIDE-EFFECT onto the PARENT order line ───────────────────
+// Implementing docs/ERP_SOURCE_AUDIT_DELTAS.md §A-1 — Witness: W-MORDER-QTYROLLUP.
+// iDempiere's completeIt does not only create the child document — it writes the fulfilled qty BACK onto
+// the source order line: MInOut.completeIt (MInOut.java:1981/1983) does oLine.setQtyDelivered(±movementqty);
+// MInvoice.completeIt (MInvoice.java:2121) does ol.setQtyInvoiced(+qtyinvoiced). buildDoc emits the child
+// doc+lines but NOT this writeback, so a partial-fulfillment order's running totals are never reconstructed.
+// PURE: given the child fan-out lines (each carrying source_line_id + a qty field) and the target spec, fold
+// to ONE UPDATE_FIELD op per touched order line carrying the SUMMED signed delta. The host applies it to the
+// parent table. Additive — completeOrder is NOT changed; a caller emits the rollup alongside the fan-out.
+//   opt = { idField:'source_line_id', qtyField:'movementqty', table:'C_OrderLine', target:'qtydelivered', sign:1 }
+function qtyRollup(childLines, opt) {
+  var by = {};
+  (childLines || []).forEach(function (l) {
+    var id = l[opt.idField];
+    if (id == null) return;
+    by[id] = (by[id] || 0) + (opt.sign || 1) * Number(l[opt.qtyField] || 0);
+  });
+  return Object.keys(by).map(function (id) {
+    return { op_type: 'UPDATE_FIELD', table: opt.table, id: Number(id), field: opt.target, delta: by[id] };
+  });
+}
+
 // ── The cell handler: decision-table over policy flags -> verb ops ───────────
 // completeOrder = state op + (flag-gated) verb fan-out. The flags are DATA
 // (erp_rules DOCPOLICY), the verbs are the small registry above.
@@ -277,6 +299,7 @@ return {
   resolveCtx: resolveCtx, dialectShim: dialectShim, evalGuard: evalGuard,
   match: match, buildDoc: buildDoc, DOC_SPECS: DOC_SPECS, explodeBOM: explodeBOM,
   movementSign: movementSign, qtyOnHand: qtyOnHand, reversePosting: reversePosting,
+  qtyRollup: qtyRollup,
   VERBS: VERBS, completeOrder: completeOrder, completeInvoice: completeInvoice
 };
 });

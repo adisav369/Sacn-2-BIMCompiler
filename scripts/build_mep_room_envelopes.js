@@ -27,7 +27,8 @@ var path = require('path');
 var initSqlJs = require('sql.js');
 
 var ROOT = path.join(__dirname, '..');
-var MEP_DB = path.join(ROOT, 'deploy/dev/mep_rw.db');
+// target mep_rw.db: default the bim-compiler dev sidecar; override with arg 1 to bake the live viewer copy.
+var MEP_DB = process.argv[2] ? path.resolve(process.argv[2]) : path.join(ROOT, 'deploy/dev/mep_rw.db');
 var BUILDINGS = [
   { name: 'SampleHouse', db: path.join(ROOT, 'deploy/buildings/SampleHouse_extracted.db'), floorBom: 'SH Ground Floor' },
 ];
