@@ -5,243 +5,271 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Does your ERP age? — 20-year side-by-side</title>
 <style>
-:root{--bg:#070a0f;--panel:#0d1117;--border:#222c3a;--blue:#3aa0ff;--green:#3fb950;--red:#f85149;--yellow:#d29922;--text:#e6edf3;--mute:#8b949e}
+:root{
+  --bg0:#0a0f16;--bg1:#0f1722;--panel:#121c28;--line:#1f2c3c;--soft:#2a3a4e;
+  --green:#34d27b;--amber:#f0a92b;--red:#ff5d52;--blue:#4aa6ff;
+  --ink:#eaf1f8;--mut:#8295a8;
+  --mono:'SF Mono','Cascadia Code',ui-monospace,monospace;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:radial-gradient(1200px 600px at 50% -10%,#10202f,#070a0f);color:var(--text);font-family:'SF Mono','Cascadia Code',ui-monospace,monospace;min-height:100vh;padding:1.4rem 1rem}
-h1{font-size:clamp(1.1rem,2.6vw,1.6rem);font-weight:700;text-align:center;letter-spacing:-.01em}
-h1 span{color:var(--mute);font-weight:400}
-.sub{text-align:center;color:var(--mute);font-size:12px;margin:.3rem 0 1.2rem}
+body{background:
+   radial-gradient(900px 460px at 50% -8%,#15334d22,transparent),
+   linear-gradient(180deg,var(--bg1),var(--bg0));
+  color:var(--ink);font-family:var(--sans);min-height:100vh;padding:1.5rem 1rem 2.5rem}
+.head{text-align:center;max-width:760px;margin:0 auto 1.3rem}
+.eyebrow{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--mut);font-weight:600}
+h1{font-size:clamp(1.25rem,3vw,1.85rem);font-weight:700;letter-spacing:-.015em;margin-top:.35rem}
+h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
+.lede{color:var(--mut);font-size:13px;margin-top:.5rem;line-height:1.55}
 
-.stage{display:grid;grid-template-columns:1fr auto 1fr;gap:1.1rem;align-items:center;max-width:1180px;margin:0 auto}
-@media(max-width:760px){.stage{grid-template-columns:1fr;gap:.7rem}}
+.stage{display:grid;grid-template-columns:1fr minmax(180px,210px) 1fr;gap:1.3rem;align-items:stretch;max-width:1200px;margin:1.4rem auto 0}
+@media(max-width:820px){.stage{grid-template-columns:1fr;gap:1rem}}
 
-/* ── monitor screen ── */
-.mon{border:1px solid var(--border);border-radius:14px;background:#05070b;padding:.55rem;box-shadow:0 0 0 1px #000 inset,0 14px 40px #0009}
-.mon .label{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--mute);padding:.1rem .35rem .45rem;text-transform:uppercase;letter-spacing:.08em}
-.mon.k .label b{color:var(--green)} .mon.i .label b{color:var(--yellow)}
-.screen{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:#000}
-/* dark/loading state */
-.darkscr{position:absolute;inset:0;background:#04060a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;z-index:3;transition:opacity .12s}
-.darkscr .yr{font-size:11px;color:#3a516a;letter-spacing:.15em;text-transform:uppercase}
-.timer{font-size:2.3rem;font-weight:700;color:#2f6dab;font-variant-numeric:tabular-nums;text-shadow:0 0 18px #1f5fa688}
-.timer.frozen{color:#7fd0ff;text-shadow:0 0 22px #3aa0ff88}
-.timer .u{font-size:.5em;color:#3a516a}
-/* power-on flash */
-.flash{position:absolute;inset:0;background:#eaf4ff;opacity:0;z-index:4;pointer-events:none}
-@keyframes powerOn{0%{opacity:0}8%{opacity:.95}30%{opacity:.5}100%{opacity:0}}
-.flash.go{animation:powerOn .55s ease-out forwards}
-/* login layer */
-.login{position:absolute;inset:0;background:linear-gradient(160deg,#eef3f8,#dbe6f1);color:#26323f;display:flex;flex-direction:column;opacity:0;transform:scale(.985);transition:opacity .4s ease,transform .4s ease;z-index:2}
-.login.show{opacity:1;transform:scale(1)}
-.login .top{background:linear-gradient(90deg,#1d6fb8,#2f8fd6);color:#fff;padding:.5rem .8rem;display:flex;align-items:center;gap:.5rem}
-.login .top .mk{font-weight:800;letter-spacing:-.02em;font-size:14px}
-.login .top .mk i{color:#bfe3ff;font-style:normal}
-.login .top .ver{margin-left:auto;font-size:9px;opacity:.8}
-.login .body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:.5rem;padding:.7rem 1.1rem}
-.login .ttl{font-size:12px;color:#5a6b7d;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.1rem}
-.fld{display:flex;flex-direction:column;gap:.15rem}
-.fld label{font-size:9px;color:#7c8b9c;text-transform:uppercase;letter-spacing:.06em}
-.fld .in{background:#fff;border:1px solid #b9c7d6;border-radius:5px;height:1.55rem;display:flex;align-items:center;padding:0 .5rem;font-size:11px;color:#46586b}
-.fld .in.fill{color:#26323f}
-.signin{margin-top:.25rem;background:linear-gradient(90deg,#1d6fb8,#2f8fd6);color:#fff;border:none;border-radius:5px;height:1.7rem;font-weight:700;font-family:inherit;font-size:11px;letter-spacing:.03em}
-.hint{font-size:8.5px;color:#6f8093;background:#cfe0f1;border-radius:5px;padding:.25rem .45rem;margin-top:.1rem;line-height:1.5}
-.hint b{color:#1d6fb8}
+/* monitor */
+.mon{background:linear-gradient(180deg,#101a26,#0c141d);border:1px solid var(--line);border-radius:16px;
+  padding:.7rem .7rem .55rem;box-shadow:0 18px 50px #0008,0 0 0 1px #0006 inset}
+.mon .cap{display:flex;align-items:center;gap:.5rem;padding:.1rem .35rem .55rem}
+.dot{width:8px;height:8px;border-radius:50%}
+.mon.k .dot{background:var(--green);box-shadow:0 0 10px var(--green)}
+.mon.i .dot{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.cap .nm{font-weight:700;font-size:13px}
+.cap .sub{margin-left:auto;font-size:10.5px;color:var(--mut)}
+.screen{position:relative;aspect-ratio:4/3;border-radius:9px;overflow:hidden;background:#000;border:1px solid #000;
+  box-shadow:0 0 0 3px #060b11,0 8px 22px #0007 inset}
 
-/* ── center clock ── */
-.center{display:flex;flex-direction:column;align-items:center;gap:.7rem;min-width:200px}
-.clockwrap{position:relative;width:190px;height:190px}
-.clockwrap svg{width:190px;height:190px;filter:drop-shadow(0 0 16px #2f8fd655)}
-.clk-yr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.clk-yr .y{font-size:2.6rem;font-weight:800;color:#cfe6ff;line-height:1;font-variant-numeric:tabular-nums}
-.clk-yr .yl{font-size:10px;color:var(--mute);letter-spacing:.18em;text-transform:uppercase;margin-top:.2rem}
-.ctl{display:flex;gap:.5rem}
-.ctl button{font-family:inherit;font-weight:700;font-size:13px;padding:.55rem 1.3rem;border:none;border-radius:8px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#1c8cff,#7948d1);letter-spacing:.03em}
-.ctl button.pause{background:linear-gradient(135deg,#5a4200,#9a7000)}
+/* login (faithful iDempiere iceblue) */
+.login{position:absolute;inset:0;background:#c7e8ff;display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .22s ease;z-index:2}
+.login.show{opacity:1}
+.card{width:86%;max-width:330px;background:#fff;border-radius:11px;box-shadow:0 10px 30px #0a2c4a33;overflow:hidden}
+.card .brand{display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.85rem 0 .7rem;border-bottom:1px solid #e6eef6}
+.card .brand img{height:34px;display:block}
+.card .brand .bk{display:flex;align-items:center;gap:.5rem}
+.card .brand .bk .bb{height:30px;width:30px;border-radius:50%;object-fit:cover;box-shadow:0 1px 4px #0003}
+.card .brand .bk .wm{font-weight:800;font-size:17px;letter-spacing:-.02em;color:#1f6fb6}
+.card .brand .bk .wm small{display:block;font-size:7px;font-weight:600;letter-spacing:.12em;color:#7d93a8;text-transform:uppercase}
+.frm{padding:.8rem 1rem 1rem}
+.r{display:flex;align-items:center;margin:.32rem 0}
+.r label{width:38%;font-size:11px;color:#33414f;font-weight:600}
+.r .ip{width:62%;height:1.55rem;border:1px solid #9fb6cc;border-radius:4px;background:#fdfefe;font-size:11px;color:#2b3a48;
+  display:flex;align-items:center;padding:0 .5rem}
+.r .ip.sel{justify-content:space-between}.r .ip.sel::after{content:"▾";color:#7d93a8;font-size:9px}
+.btn{margin-top:.6rem;width:100%;height:1.85rem;border:none;border-radius:5px;color:#fff;font-weight:700;font-size:12px;
+  font-family:var(--sans);background:linear-gradient(180deg,#2f96dc,#1f6fb6);box-shadow:0 2px 6px #1f6fb655;cursor:pointer}
+.tip{margin-top:.55rem;background:#e3eefb;border:1px solid #cadcef;border-radius:5px;
+  padding:.3rem .5rem;font-size:8.5px;color:#5f7488;line-height:1.6}
+.tip b{color:#1f6fb6}
 
-/* ── dB bars ── */
-.meters{margin-top:.6rem}
-.meter{margin:.4rem 0}
-.meter .ml{display:flex;justify-content:space-between;font-size:9px;color:var(--mute);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.15rem}
-.meter .ml b{color:var(--text)}
-.track{position:relative;height:11px;border-radius:6px;background:#0c1622;border:1px solid #16314a;overflow:hidden}
-.track::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:100%;background:#1d4e7a}
-.fill{position:absolute;left:0;top:0;bottom:0;width:2%;border-radius:6px;transition:width .9s ease,background .9s ease,box-shadow .9s ease;background:#3aa0ff}
+/* dark / relaunch overlay */
+.dark{position:absolute;inset:0;z-index:4;background:radial-gradient(120% 120% at 50% 45%,#0a1622,#02060b);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.55rem;
+  opacity:0;pointer-events:none;transition:opacity .14s ease}
+.dark.on{opacity:1}
+.dark .st{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#34598a}
+.timer{font-family:var(--mono);font-size:2.5rem;font-weight:700;color:#3b86d6;font-variant-numeric:tabular-nums;
+  text-shadow:0 0 22px #1f6fb677}
+.timer.done{color:#7fd4ff;text-shadow:0 0 26px #4aa6ffaa}
+.timer .u{font-size:.42em;color:#34598a}
+/* CRT power-on */
+.flash{position:absolute;inset:0;z-index:5;background:#f3f9ff;opacity:0;pointer-events:none}
+@keyframes po{0%{opacity:0;clip-path:inset(49% 0 49% 0)}18%{opacity:.95;clip-path:inset(46% 0 46% 0)}
+  45%{opacity:.55;clip-path:inset(0 0 0 0)}100%{opacity:0;clip-path:inset(0 0 0 0)}}
+.flash.go{animation:po .5s ease-out forwards}
 
-/* ── matrix ── */
-.matrix{max-width:680px;margin:1.5rem auto 0;border:1px solid var(--border);border-radius:10px;overflow:hidden;font-size:12px}
-.matrix .row{display:grid;grid-template-columns:1.1fr 1fr 1fr;border-top:1px solid var(--border)}
-.matrix .row:first-child{border-top:none}
-.matrix .c{padding:.5rem .8rem}
-.matrix .h{background:#0a0e14;color:var(--mute);text-transform:uppercase;font-size:10px;letter-spacing:.07em}
-.matrix .k{color:var(--green);font-weight:700}.matrix .i{color:var(--yellow);font-weight:700}
-.verdict{max-width:680px;margin:.7rem auto 0;text-align:center;font-size:12px;color:var(--mute);line-height:1.6}
-.verdict b.k{color:var(--green)}.verdict b.i{color:var(--yellow)}
-.pin{max-width:680px;margin:.6rem auto 0;font-size:10px;color:#5d6b7a;text-align:center;line-height:1.5}
+/* meters */
+.meters{margin-top:.55rem;padding:0 .25rem}
+.meter{margin:.42rem 0}
+.meter .ml{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-bottom:.2rem}
+.meter .ml b{font-family:var(--mono);color:var(--ink);letter-spacing:0}
+.track{position:relative;height:10px;border-radius:6px;background:#0b1521;border:1px solid #16314a}
+.track::after{content:"";position:absolute;left:0;bottom:-1px;height:2px;width:100%;background:#1c4e7a}
+.fill{position:absolute;left:1px;top:1px;bottom:1px;width:3%;border-radius:5px;
+  transition:width .8s cubic-bezier(.4,0,.2,1),background .8s,box-shadow .8s;background:var(--blue)}
+
+/* center */
+.center{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.9rem}
+.clk{position:relative;width:185px;height:185px}
+.clk svg{width:185px;height:185px;filter:drop-shadow(0 0 16px #2f8fd644)}
+.clk .face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.clk .yv{font-family:var(--mono);font-size:2.7rem;font-weight:800;line-height:1;color:#dbeeff}
+.clk .yl{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut);margin-top:.3rem}
+.clk .age{font-size:10px;color:#5f7790;margin-top:.15rem;font-family:var(--mono)}
+.go{font-family:var(--sans);font-weight:700;font-size:13px;padding:.6rem 1.5rem;border:none;border-radius:10px;cursor:pointer;
+  color:#fff;background:linear-gradient(135deg,#2a8cff,#7a4ddb);box-shadow:0 6px 18px #2a8cff44;letter-spacing:.02em}
+.go.run{background:linear-gradient(135deg,#5a4200,#9a7000)}
+
+/* matrix */
+.matrix{max-width:700px;margin:1.7rem auto 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:12.5px}
+.matrix .rw{display:grid;grid-template-columns:1.15fr 1fr 1fr;border-top:1px solid var(--line)}
+.matrix .rw:first-child{border-top:none}
+.matrix .cell{padding:.55rem .85rem}
+.matrix .hd{background:#0b121b;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut)}
+.matrix .kk{color:var(--green);font-weight:700;font-family:var(--mono)}
+.matrix .ii{color:var(--amber);font-weight:700;font-family:var(--mono)}
+.verdict{max-width:700px;margin:.8rem auto 0;text-align:center;font-size:12.5px;color:var(--mut);line-height:1.65}
+.verdict b.g{color:var(--green)}.verdict b.a{color:var(--amber)}
+.pin{max-width:700px;margin:.7rem auto 0;text-align:center;font-size:10px;color:#566678;line-height:1.55}
 </style>
 </head>
 <body>
-<h1>Does your ERP age? <span>— 20 years, same login, side by side</span></h1>
-<div class="sub">Watch the launch timer and the speed bars as the database ages two decades. Ops never age on the left; the right keeps launch flat but pays on ops.</div>
+<div class="head">
+  <div class="eyebrow">Aging Benchmark · same login, two decades</div>
+  <h1>Does your ERP age?</h1>
+  <div class="lede">The clock races Day&nbsp;1 → Year&nbsp;20. At every stop both apps <b>relaunch</b> — that's the moment you see the cost of age. <span class="g">KernelERP</span> ops never slow; <span class="a">iDempiere</span> keeps launch flat but pays on ops.</div>
+</div>
 
 <div class="stage">
   <!-- KernelERP -->
   <div class="mon k">
-    <div class="label"><b>KernelERP</b><span>in a browser tab</span></div>
-    <div class="screen" id="scr-k">
-      <div class="login" id="login-k">
-        <div class="top"><span class="mk">iDempiere<i>·</i></span><span class="ver">Release 13</span></div>
-        <div class="body">
-          <div class="ttl">Sign In</div>
-          <div class="fld"><label>User</label><div class="in fill">GardenAdmin</div></div>
-          <div class="fld"><label>Password</label><div class="in">••••••••</div></div>
-          <button class="signin">Sign In</button>
-          <div class="hint"><b>GardenAdmin</b>/GardenAdmin · <b>SuperUser</b>/System</div>
+    <div class="cap"><span class="dot"></span><span class="nm">KernelERP</span><span class="sub">in a browser tab</span></div>
+    <div class="screen">
+      <div class="login show" id="login-k">
+        <div class="card">
+          <div class="brand"><div class="bk"><img class="bb" src="doublebubble.jpg" alt=""><span class="wm">KernelERP<small>signed fold engine</small></span></div></div>
+          <div class="frm">
+            <div class="r"><label>User</label><div class="ip">GardenAdmin</div></div>
+            <div class="r"><label>Password</label><div class="ip">••••••••</div></div>
+            <div class="r"><label>Language</label><div class="ip sel">English</div></div>
+            <button class="btn">Login</button>
+            <div class="tip"><b>GardenAdmin</b>/GardenAdmin · <b>SuperUser</b>/System</div>
+          </div>
         </div>
       </div>
       <div class="flash" id="flash-k"></div>
-      <div class="darkscr" id="dark-k">
-        <div class="yr" id="yr-k">Day 1</div>
-        <div class="timer" id="t-k">0.00<span class="u">s</span></div>
-      </div>
+      <div class="dark" id="dark-k"><div class="st" id="st-k">Day 1 · launching</div><div class="timer" id="t-k">0.00<span class="u">s</span></div></div>
     </div>
     <div class="meters">
-      <div class="meter"><div class="ml"><span>Launch</span><b id="lk">—</b></div><div class="track"><div class="fill" id="lk-f"></div></div></div>
-      <div class="meter"><div class="ml"><span>Ops</span><b id="ok">—</b></div><div class="track"><div class="fill" id="ok-f"></div></div></div>
+      <div class="meter"><div class="ml"><span>Launch</span><b id="lk">0.01s</b></div><div class="track"><div class="fill" id="lk-f"></div></div></div>
+      <div class="meter"><div class="ml"><span>Ops / action</span><b id="ok">fast</b></div><div class="track"><div class="fill" id="ok-f"></div></div></div>
     </div>
   </div>
 
-  <!-- CENTER -->
+  <!-- center -->
   <div class="center">
-    <div class="clockwrap">
+    <div class="clk">
       <svg viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="44" fill="none" stroke="#16314a" stroke-width="3"/>
-        <circle id="ring" cx="50" cy="50" r="44" fill="none" stroke="#2f8fd6" stroke-width="3" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="276.5" transform="rotate(-90 50 50)"/>
+        <circle cx="50" cy="50" r="43" fill="none" stroke="#16314a" stroke-width="3.2"/>
+        <circle id="ring" cx="50" cy="50" r="43" fill="none" stroke="url(#cg)" stroke-width="3.2" stroke-linecap="round"
+          stroke-dasharray="270.2" stroke-dashoffset="270.2" transform="rotate(-90 50 50)"/>
+        <defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d27b"/><stop offset="1" stop-color="#f0a92b"/></linearGradient></defs>
       </svg>
-      <div class="clk-yr"><div class="y" id="clk-y">1</div><div class="yl">Year</div></div>
+      <div class="face"><div class="yv" id="yv">1</div><div class="yl">Year</div><div class="age" id="age">day one</div></div>
     </div>
-    <div class="ctl"><button id="go">▶ Start</button></div>
+    <button class="go" id="go">▶ Start</button>
   </div>
 
   <!-- iDempiere -->
   <div class="mon i">
-    <div class="label"><b>iDempiere</b><span>server + Postgres</span></div>
-    <div class="screen" id="scr-i">
-      <div class="login" id="login-i">
-        <div class="top"><span class="mk">iDempiere<i>·</i></span><span class="ver">Release 13</span></div>
-        <div class="body">
-          <div class="ttl">Sign In</div>
-          <div class="fld"><label>User</label><div class="in fill">GardenAdmin</div></div>
-          <div class="fld"><label>Password</label><div class="in">••••••••</div></div>
-          <button class="signin">Sign In</button>
-          <div class="hint"><b>GardenAdmin</b>/GardenAdmin · <b>SuperUser</b>/System</div>
+    <div class="cap"><span class="dot"></span><span class="nm">iDempiere</span><span class="sub">server + Postgres</span></div>
+    <div class="screen">
+      <div class="login show" id="login-i">
+        <div class="card">
+          <div class="brand"><img src="idmp_login_logo.png" alt="iDempiere"></div>
+          <div class="frm">
+            <div class="r"><label>User</label><div class="ip">GardenAdmin</div></div>
+            <div class="r"><label>Password</label><div class="ip">••••••••</div></div>
+            <div class="r"><label>Language</label><div class="ip sel">English</div></div>
+            <button class="btn">Login</button>
+            <div class="tip"><b>GardenAdmin</b>/GardenAdmin · <b>SuperUser</b>/System</div>
+          </div>
         </div>
       </div>
       <div class="flash" id="flash-i"></div>
-      <div class="darkscr" id="dark-i">
-        <div class="yr" id="yr-i">Day 1</div>
-        <div class="timer" id="t-i">0.00<span class="u">s</span></div>
-      </div>
+      <div class="dark" id="dark-i"><div class="st" id="st-i">Day 1 · launching</div><div class="timer" id="t-i">0.00<span class="u">s</span></div></div>
     </div>
     <div class="meters">
-      <div class="meter"><div class="ml"><span>Launch</span><b id="li">—</b></div><div class="track"><div class="fill" id="li-f"></div></div></div>
-      <div class="meter"><div class="ml"><span>Ops</span><b id="oi">—</b></div><div class="track"><div class="fill" id="oi-f"></div></div></div>
+      <div class="meter"><div class="ml"><span>Launch</span><b id="li">0.40s</b></div><div class="track"><div class="fill" id="li-f"></div></div></div>
+      <div class="meter"><div class="ml"><span>Ops / action</span><b id="oi">fast</b></div><div class="track"><div class="fill" id="oi-f"></div></div></div>
     </div>
   </div>
 </div>
 
 <div class="matrix">
-  <div class="row"><div class="c h"></div><div class="c h" style="color:var(--green)">KernelERP</div><div class="c h" style="color:var(--yellow)">iDempiere</div></div>
-  <div class="row"><div class="c">Launch as data ages</div><div class="c k">0.01 → 1.1 s</div><div class="c i">flat (server boot)</div></div>
-  <div class="row"><div class="c">Ops as data ages</div><div class="c k">flat — never slows</div><div class="c i">slows as tables grow</div></div>
-  <div class="row"><div class="c">Housekeeping</div><div class="c k">none (~decade+/entity)</div><div class="c i">required</div></div>
+  <div class="rw"><div class="cell hd"></div><div class="cell hd" style="color:var(--green)">KernelERP</div><div class="cell hd" style="color:var(--amber)">iDempiere</div></div>
+  <div class="rw"><div class="cell">Launch as data ages</div><div class="cell kk">0.01 → 1.1 s</div><div class="cell ii">flat (server)</div></div>
+  <div class="rw"><div class="cell">Ops as data ages</div><div class="cell kk">flat — never slows</div><div class="cell ii">slows as tables grow</div></div>
+  <div class="rw"><div class="cell">Housekeeping</div><div class="cell kk">none (~decade+)</div><div class="cell ii">required</div></div>
 </div>
-<div class="verdict"><b class="k">KernelERP</b>: ops never age — only launch creeps a second over 20 years. <b class="i">iDempiere</b>: launch stays flat, but ops slow with data and must be housekept.</div>
-<div class="pin">Launch = measured cold-open (load the aged DB into the tab), single-thread, 500 tx/day. Ops trend is illustrative of table growth; KernelERP per-op latency measured flat. "No housekeeping" ≈ a decade+ per entity (≈2 GB/tab) before OPFS-streaming or archive.</div>
+<div class="verdict"><b class="g">KernelERP</b>: ops never age — only launch creeps ~1 s over 20 years. <b class="a">iDempiere</b>: launch stays flat, but every action slows with data and must be housekept.</div>
+<div class="pin">Launch = measured cold-open (load the aged DB into the tab), single-thread, 500 tx/day. Ops trend illustrative of table growth; KernelERP per-op latency measured flat. "No housekeeping" ≈ a decade+ per entity (~2 GB/tab) before OPFS-streaming or archive.</div>
 
 <script>
-// measured cold-open (s) at junctures, KernelERP
 var YEARS=[1,5,10,15,20];
-var K_LAUNCH={1:0.01,5:0.28,10:0.55,15:0.83,20:1.10};
-var I_LAUNCH={1:0.40,5:0.40,10:0.40,15:0.40,20:0.40};   // flat: server boot independent of data age
-var K_OPS={1:0.03,5:0.03,10:0.03,15:0.03,20:0.03};      // flat fast (measured ~1-5ms)
+var K_LAUNCH={1:0.01,5:0.28,10:0.55,15:0.83,20:1.10};   // measured cold-open
+var I_LAUNCH={1:0.40,5:0.40,10:0.40,15:0.40,20:0.40};   // flat: server boot, data on disk
+var K_OPS={1:0.03,5:0.03,10:0.03,15:0.03,20:0.03};      // measured flat
 var I_OPS={1:0.10,5:0.65,10:1.35,15:2.15,20:3.00};      // illustrative: grows with table size
-// bar scaling: width% = value / MAXSCALE (longer=slower); colour blue->red by width
-var MAX=3.0;
-function barColour(frac){ // 0..1
-  if(frac<.33) return '#3aa0ff';
-  if(frac<.55) return '#46b3e6';
-  if(frac<.72) return '#d29922';
-  return '#f85149';
+var OPSMAX=3.0, LMAX=1.6;
+function ageWord(y){return y===1?'day one':y+' years of data';}
+function colour(frac){return frac<.34?'#4aa6ff':frac<.56?'#46b3e6':frac<.74?'#f0a92b':'#ff5d52';}
+function setBar(id,lab,val,max,fast){
+  var f=document.getElementById(id),frac=Math.min(val/max,1);
+  f.style.width=(Math.max(frac,.02)*100).toFixed(1)+'%';
+  f.style.background=colour(frac);
+  f.style.boxShadow=frac>=.74?'0 0 10px #ff5d5288':'none';
+  document.getElementById(lab).textContent=fast&&val<.05?'instant':val.toFixed(2)+'s';
 }
-function setBar(fillId,labId,val){
-  var f=document.getElementById(fillId), frac=Math.min(val/MAX,1);
-  f.style.width=(Math.max(frac,.015)*100).toFixed(1)+'%';
-  f.style.background=barColour(frac);
-  f.style.boxShadow=frac>=.72?'0 0 10px #f8514988':'none';
-  document.getElementById(labId).textContent=val.toFixed(2)+'s';
-}
-var ringEl=document.getElementById('ring'), CIRC=276.5;
-function setClock(year,prog){
-  document.getElementById('clk-y').textContent=year;
-  ringEl.style.strokeDashoffset=(CIRC*(1-prog)).toFixed(1);
-}
+var ring=document.getElementById('ring'),CIRC=270.2;
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
-function raceTimer(elId,target,dur){ // count up to target over dur ms, ease-out
+function raceClock(fromY,toY,prog0,prog1){
   return new Promise(function(res){
-    var el=document.getElementById(elId), t0=performance.now();
-    el.classList.remove('frozen');
-    function step(now){
-      var p=Math.min((now-t0)/dur,1), e=1-Math.pow(1-p,2), v=target*e;
-      el.innerHTML=v.toFixed(2)+'<span class="u">s</span>';
-      if(p<1) requestAnimationFrame(step);
-      else { el.innerHTML=target.toFixed(2)+'<span class="u">s</span>'; el.classList.add('frozen'); res(); }
-    }
-    requestAnimationFrame(step);
+    var t0=performance.now(),D=Math.abs(toY-fromY)>0?1100:0;
+    if(D===0){res();return;}
+    function s(now){var p=Math.min((now-t0)/D,1),e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+      var y=Math.round(fromY+(toY-fromY)*e);
+      document.getElementById('yv').textContent=y;
+      ring.style.strokeDashoffset=(CIRC*(1-(prog0+(prog1-prog0)*e))).toFixed(1);
+      if(p<1)requestAnimationFrame(s); else{document.getElementById('yv').textContent=toY;document.getElementById('age').textContent=ageWord(toY);res();}}
+    requestAnimationFrame(s);
   });
 }
-function label(year){return year===1?'Day 1':'Year '+year;}
-
-var running=false, _abort=false;
-async function boot(side,year){
-  var dark=document.getElementById('dark-'+side), login=document.getElementById('login-'+side),
-      flash=document.getElementById('flash-'+side), yr=document.getElementById('yr-'+side);
-  // reset to dark
-  login.classList.remove('show'); dark.style.opacity='1'; yr.textContent=label(year);
+function raceTimer(id,target,dur){
+  return new Promise(function(res){
+    var el=document.getElementById(id),t0=performance.now();el.classList.remove('done');
+    function s(now){var p=Math.min((now-t0)/dur,1),e=1-Math.pow(1-p,2),v=target*e;
+      el.innerHTML=v.toFixed(2)+'<span class="u">s</span>';
+      if(p<1)requestAnimationFrame(s);else{el.innerHTML=target.toFixed(2)+'<span class="u">s</span>';el.classList.add('done');res();}}
+    requestAnimationFrame(s);
+  });
+}
+// relaunch ONE side at a stop: panel ON -> dark -> timer (proportional) -> power-on -> panel ON
+async function relaunch(side,year,val){
+  var login=document.getElementById('login-'+side),dark=document.getElementById('dark-'+side),
+      flash=document.getElementById('flash-'+side),st=document.getElementById('st-'+side);
+  st.textContent=(year===1?'Day 1':'Year '+year)+' · launching';
   document.getElementById('t-'+side).innerHTML='0.00<span class="u">s</span>';
+  login.classList.remove('show'); dark.classList.add('on');
+  await sleep(180);
+  await raceTimer('t-'+side,val,280+val*1850);   // proportional: bigger launch = longer
+  await sleep(120);
+  flash.classList.add('go'); dark.classList.remove('on');
+  await sleep(140); login.classList.add('show');
+  await sleep(420); flash.classList.remove('go');
 }
-async function lightUp(side,launchVal){
-  var dark=document.getElementById('dark-'+side), login=document.getElementById('login-'+side),
-      flash=document.getElementById('flash-'+side);
-  await raceTimer('t-'+side,launchVal,2200);
-  await sleep(150);
-  flash.classList.add('go'); dark.style.opacity='0';
-  await sleep(120); login.classList.add('show');
-  await sleep(500); flash.classList.remove('go');
-}
-async function runStop(year,idx){
-  setClock(year, idx/(YEARS.length-1));
-  await boot('k',year); await boot('i',year);
-  await sleep(350);
-  // both light up together (race their own timers)
-  await Promise.all([ lightUp('k',K_LAUNCH[year]), lightUp('i',I_LAUNCH[year]) ]);
-  // update bars
-  setBar('lk-f','lk',K_LAUNCH[year]); setBar('ok-f','ok',K_OPS[year]);
-  setBar('li-f','li',I_LAUNCH[year]); setBar('oi-f','oi',I_OPS[year]);
-  await sleep(1900);
-}
+var running=false,abort=false;
 async function play(){
-  if(running) return; running=true; _abort=false;
-  var btn=document.getElementById('go'); btn.textContent='⏸ Running…'; btn.classList.add('pause');
-  for(var i=0;i<YEARS.length;i++){ if(_abort)break; await runStop(YEARS[i],i); }
-  btn.textContent='▶ Replay'; btn.classList.remove('pause'); running=false;
+  if(running)return; running=true; abort=false;
+  var btn=document.getElementById('go'); btn.textContent='⏸ Running'; btn.classList.add('run');
+  for(var i=0;i<YEARS.length;i++){
+    if(abort)break;
+    var y=YEARS[i],py=i?YEARS[i-1]:1;
+    await raceClock(py,y,(i?(i-1):0)/(YEARS.length-1),i/(YEARS.length-1)); // panels stay ON while clock races
+    if(abort)break;
+    await Promise.all([relaunch('k',y,K_LAUNCH[y]),relaunch('i',y,I_LAUNCH[y])]); // relaunch = the impact moment
+    setBar('lk-f','lk',K_LAUNCH[y],LMAX,true); setBar('ok-f','ok',K_OPS[y],OPSMAX,true);
+    setBar('li-f','li',I_LAUNCH[y],LMAX,true); setBar('oi-f','oi',I_OPS[y],OPSMAX,false);
+    await sleep(1500);
+  }
+  btn.textContent='▶ Replay'; btn.classList.remove('run'); running=false;
 }
 document.getElementById('go').addEventListener('click',function(){
-  if(running){ _abort=true; this.textContent='▶ Replay'; this.classList.remove('pause'); running=false; }
+  if(running){abort=true;this.textContent='▶ Replay';this.classList.remove('run');running=false;}
   else play();
 });
-// initial bar state (year 1)
-setBar('lk-f','lk',K_LAUNCH[1]); setBar('ok-f','ok',K_OPS[1]);
-setBar('li-f','li',I_LAUNCH[1]); setBar('oi-f','oi',I_OPS[1]);
+// initial bars (day 1)
+setBar('lk-f','lk',K_LAUNCH[1],LMAX,true); setBar('ok-f','ok',K_OPS[1],OPSMAX,true);
+setBar('li-f','li',I_LAUNCH[1],LMAX,true); setBar('oi-f','oi',I_OPS[1],OPSMAX,false);
 </script>
 </body>
 </html>
