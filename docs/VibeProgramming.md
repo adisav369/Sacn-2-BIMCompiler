@@ -1,6 +1,7 @@
 # Vibe Programming — How This Compiler Was Built
 
 > **Foundation:** [The Drift](LAST_MILE_PROBLEM.md) · [TestArchitecture](TestArchitecture.md) · [MANIFESTO](MANIFESTO.md)
+> **By the numbers:** [Project Chronology](PROJECT_CHRONOLOGY.md) — dated milestones + commit/fix ledger, Federation → Compiler → Browser.
 
 <div class="bim-banner" markdown>
 <b>One human. Zero traditional coding.</b> This compiler was built by a Java-literate ERP architect using AI as a force multiplier — domain expertise steers, AI types at the speed of thought. Current metrics in [PROGRESS.md](https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md).

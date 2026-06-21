@@ -131,6 +131,7 @@ nav:
           - "O2C Help Steps (ReadMe)": HelpO2C.md
           - "ERP Forward Roadmap": ERP_Roadmap.md
       - Roadmap & Papers:
+          - "Project Chronology (dates + commits)": PROJECT_CHRONOLOGY.md
           - BIM OOTB Roadmap: ROADMAP.md
           - Action Roadmap: ACTION_ROADMAP.md
           - Project Blueprint: ProjectOrderBlueprint.md
