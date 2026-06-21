@@ -228,7 +228,7 @@ h1 span{color:var(--mute);font-weight:400}
     <div class="ssm-nets" id="ssmNets" title="Where does the server sit? Our side never moves — only the server pays the network."></div>
     <div class="ssm-rttv" id="ssmRttv"></div>
     <div class="ssm-nums">
-      <div><span class="ssm-k">Us · in a tab</span><span class="ssm-v ours" id="ssmOurs">—</span></div>
+      <div><span class="ssm-k">KernelERP · in a tab</span><span class="ssm-v ours" id="ssmOurs">—</span></div>
       <div><span class="ssm-k">iDempiere · server</span><span class="ssm-v them" id="ssmThem">—</span></div>
     </div>
     <div class="ssm-win" id="ssmWin"></div>
@@ -261,12 +261,12 @@ h1 span{color:var(--mute);font-weight:400}
       <span class="badge idle" id="badge-fold">IDLE</span>
     </div>
     <div class="chart-wrap"><canvas id="ch-fold"></canvas>
-      <div class="chart-overlay" id="ov-fold"><span class="ov-num" id="ov-fold-n">—</span><span class="ov-sub">records/sec · ours</span></div></div>
+      <div class="chart-overlay" id="ov-fold"><span class="ov-num" id="ov-fold-n">—</span><span class="ov-sub">records/sec · KernelERP</span></div></div>
     <div class="metrics">
       <div class="met"><span class="met-val" id="m-fold-10k">—</span><span class="met-lbl">10K records</span></div>
       <div class="met"><span class="met-val" id="m-fold-ratio">—</span><span class="met-lbl">+ EOD backup</span></div>
     </div>
-    <div class="card-hint"><b>What this checks:</b> a busy day's 10,000 records pushed through the engine, <b>then the End-of-Day backup</b> — a full snapshot of the signed store. Live on this machine. <b>iDempiere (measured):</b> on this same box, a real <code>completeIt()</code> (callouts + ModelValidator + stock reserve + multi-table + GL) runs ~35&nbsp;ms/doc (median) — measured over 300 GardenWorld Standard-Order completions inside iDempiere 13's own engine — so 10K ≈ <b>6–7 min</b> (measured, extrapolated); same box has no add-on backup.</div>
+    <div class="card-hint"><b style="color:var(--green)">KernelERP ~1 s</b> · <b style="color:var(--yellow)">iDempiere ~6–7 min</b> — same 10,000 records on the same box. KernelERP also writes the End-of-Day backup (full signed snapshot); iDempiere has none. <span style="color:var(--mute)">iDempiere figure measured: a real <code>completeIt()</code> ≈ 35&nbsp;ms/doc over 300 GardenWorld orders.</span></div>
     <div class="idmp-ref" id="ref-fold">vs iDempiere: <strong>~6–7 min for 10K</strong> — measured on this box over 300 real <code>completeIt()</code> Standard-Order completions (iDempiere 13, GardenWorld), ~35&nbsp;ms/doc median; same box has no add-on backup.</div>
   </div>
   <div class="card" id="card-load">
