@@ -19,7 +19,7 @@ Open any link below in your browser (desktop or phone):
 | Link | What | Download | Mobile? |
 |------|------|----------|---------|
 | [**LIVE — Landing**](https://red1oon.github.io/bim-ootb/) | 33 buildings, 1M elements — pick a building to stream | ~5-10 MB/building | Yes |
-| [**LTU A-House (126K)**](https://red1oon.github.io/bim-ootb/viewer/viewer.html?db=buildings/LTU_AHouse_extracted.db) | 126K elements — stress test, streams in seconds | ~68 MB | Yes |
+| [**LTU A-House (126K)**](https://red1oon.github.io/bim-ootb/viewer/viewer.html?db=buildings/LTU_AHouse_extracted.db) | 126K elements — stress test; full mesh renders to screen in ~10s (author's machine) | ~68 MB | Yes |
 | [**DEV — Landing**](https://objectstorage.ap-kulai-2.oraclecloud.com/n/ax3cp6tzwuy2/b/bim-ootb-dev/o/index.html) | (deprecated — now same as LIVE via GitHub Pages) | same | Yes |
 
 **OCI Object Storage** (Malaysia West 2 Kulai). Always Free tier. No login required.

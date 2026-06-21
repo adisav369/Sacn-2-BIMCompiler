@@ -46,6 +46,22 @@ Three runtimes were tried; **the data format survived all three.** That is the d
 
 ---
 
+## Performance, stated plainly (two different numbers, often confused)
+
+These are two separate things — keep them apart:
+
+- **1,065,130 elements (the sandbox city) → ~13 s** to draw as **GPU wireframe bounding
+  boxes only**, zero mesh in RAM, then instant orbit. The full meshes are *not* loaded;
+  exact IFC geometry streams on demand (<1 s per MESH press near the camera). Measured —
+  see [`StressTest_1M.md`](StressTest_1M.md).
+- **~126 K elements (LTU A-House) → ~10 s** to render the **full meshes to screen**
+  (author's machine). This is real geometry, not bounding boxes.
+
+So "a million in seconds" means *bounding-box preview*; "everything drawn" is the
+six-figure, full-mesh number. Conflating the two would overstate the result — don't.
+
+---
+
 ## By the numbers (commit counts are `git rev-list` / `git log` extractions)
 
 ### Phase ledger

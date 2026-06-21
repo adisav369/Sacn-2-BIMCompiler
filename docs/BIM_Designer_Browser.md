@@ -25,7 +25,7 @@ S200 proved that a single HTML file + two static DBs + sql.js (WASM SQLite)
 renders IFC buildings in the browser with:
 - Correct rotation, transparency, original IFC material colours
 - Streaming from BLOB geometry (no intermediate format)
-- 126K elements (LTU AHouse) renders to completion
+- 126K elements (LTU AHouse) — full mesh renders to screen in ~10s (author's machine)
 - X-Ray mode (Alt+Z), trackpad orbit/pan, flat shading
 - No server, no API, no backend
 
