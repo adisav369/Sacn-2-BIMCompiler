@@ -37,6 +37,8 @@ var BUILDINGS = [
   // ad_mep_anchor x_m/y_m/z_m exactly; site_normalization already applied). The deploy/buildings &
   // deploy/dev copies are DIFFERENT extractions in other frames (guid 0 / coord-frame mismatch) — do NOT use.
   { name: 'Terminal',    db: path.join(ROOT, 'library/archive/Terminal_extracted.db') },
+  // SampleCastle: clean ARC shell (≈3.3k ARC, almost no MEP) — the STAGE we route generated MEP onto.
+  { name: 'SampleCastle', db: path.join(ROOT, 'deploy/buildings/SampleCastle_extracted.db') },
 ];
 
 // ARC classes used for the clash envelope (same filter as _rwLoadArcEnvelope in routewalker.js)
