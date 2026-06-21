@@ -949,6 +949,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Spatial BIM → ERP — Find a selection → Project Order (LIVE)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What-if schedule — slip a phase, watch the chain re-fold (LIVE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3891,6 +3908,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Spatial BIM → ERP — Find a selection → Project Order (LIVE)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What-if schedule — slip a phase, watch the chain re-fold (LIVE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4619,6 +4653,31 @@ the cent</strong> (<code>§PROJ_FOLD plannedAmt==golden</code>), every phase <co
 <p>A sibling <strong><code>› VO</code></strong> button (in the model-diff panel) folds a model revision into a signed <code>C_Order</code>
 variation amendment against the same project.</p>
 </blockquote>
+<h3 id="what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live">What-if schedule — slip a phase, watch the chain re-fold <em>(LIVE)</em><a class="headerlink" href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" title="Permanent link">&para;</a></h3>
+<p>Once a building is folded into a project, you can ask <strong>"what if this phase slips?"</strong> without touching the
+real plan. In the <strong>Find</strong> panel's selection row, tap <strong><code>What-if</code></strong> to open the schedule what-if panel.</p>
+<p><img alt="What-if schedule — slipping the marquee Superstructure phase +56 days re-folds every downstream phase in blue (finish-to-start). The finish moves 2029-05-28 → 2029-07-23, planned value drops 64.7M → 56.4M, but the budget (BAC) is unchanged — same scope, only the dates moved. Accept re-baselines; Discard drops it." src="../figs/whatif_ripple.png" /></p>
+<p>The project's phases are a <strong>finish-to-start chain</strong> — each phase starts when the one before it finishes
+(that is exactly how the fold laid them out). So when you <strong>slip one phase</strong> with the <strong><code>−</code> / <code>+</code></strong> steppers,
+<em>every downstream phase re-folds with it</em>, in <strong>blue</strong>, beside the grey official plan:</p>
+<ul>
+<li><strong>Grey bars</strong> = the official planned schedule (untouched).</li>
+<li><strong>Blue bars</strong> = the what-if — the rippled schedule. Upstream phases (before your slip) stay put; the
+  slipped phase and everything after it shift together.</li>
+<li>The header reads the impact straight off the fold: the new <strong>finish date</strong> (and the day slip), and how
+  <strong>planned value (PV)</strong> moves. The <strong>budget (BAC) never changes</strong> — a slip moves <em>dates</em>, not scope.</li>
+</ul>
+<p>Then decide:</p>
+<ul>
+<li><strong>Accept — re-baseline</strong> writes the rippled dates back onto the project as the new official plan (and
+  saves it), so the schedule now reflects the slip.</li>
+<li><strong>Discard</strong> drops the what-if entirely — the official plan was never touched.</li>
+</ul>
+<p>This is the <strong><a href="#15-blue-future--the-speculative-branch-built-in-pre-release-test-harness">Blue Future</a></strong>
+branch model applied to the schedule: the what-if lives on a speculative blue branch over the same signed
+op-log, so it is real (not a mock) yet completely reversible until you accept it. The same engine that
+unifies a planner, a cost tool, and a 4D/5D viewer onto one log gives you free what-if — no separate
+scheduling tool, no drift. <em>(Engine proven by <code>W-WHATIF</code> 13/13 on the Hospital project; <code>viewer/whatif.js</code>.)</em></p>
 <hr />
 <h2 id="3-the-bottom-pill-bar-cheat-sheet">3. The Bottom Pill Bar (cheat sheet)<a class="headerlink" href="#3-the-bottom-pill-bar-cheat-sheet" title="Permanent link">&para;</a></h2>
 <p>The pill is the single entry point for every tool. Left-to-right:</p>
