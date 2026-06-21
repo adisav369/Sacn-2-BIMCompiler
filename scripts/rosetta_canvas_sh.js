@@ -8,9 +8,14 @@
 //               = source of truth), AABB center brought into THREE space by the viewer's OWN ifc2three (scene.js:362).
 //   - compare  = ALL-PAIRS RELATIVE OFFSET (the proven scripts/geo_verify.py method), worst mm.
 //
-// RESULT 2026-06-21: 55 elements, 1485 pairs, 0.000mm worst — ZERO DRIFT. (The early non-zero numbers were all MY
-// measurement bugs — wrong instance/batched matrix, then IFC-vs-THREE axis mismatch, then served-center convention —
-// diagnosed and fixed; the building itself never drifted.)
+// RESULTS 2026-06-21 — ZERO DRIFT (worst 0.000mm):
+//   SampleHouse: 55 elements, 1485 pairs.   Duplex: 1085 elements, 588070 pairs.
+//   (The early non-zero numbers were all MY measurement bugs — wrong instance/batched matrix, then IFC-vs-THREE
+//   axis mismatch, then served-center convention — diagnosed and fixed; the buildings never drifted.)
+//
+// Usage:  node scripts/rosetta_canvas_sh.js [BuildingBase] [originalExtraction.db]
+//   SampleHouse (default): node scripts/rosetta_canvas_sh.js
+//   Duplex:                node scripts/rosetta_canvas_sh.js Duplex database/Stacked_Duplex.db
 //
 // NO FAKE DATA. NO INVENTED RECONSTRUCT. Real building, real canvas, real extraction.
 // See memory feedback_rosetta_proof_real_building, scripts/geo_verify.py (canonical method).
@@ -19,7 +24,11 @@ const http = require('http'), fs = require('fs'), path = require('path');
 const HOME = process.env.HOME;
 const ROOT = path.join(HOME, 'bim-ootb');                      // deploy root — READ ONLY, never edited
 const BLD = path.join(HOME, 'bim-compiler', 'deploy', 'buildings'); // real served DBs
-const ORIG_DB = path.join(HOME, 'bim-compiler', 'reference', 'transient_rosetta', 'Ifc4_SampleHouse_extracted.db');
+// args: [servedBuildingBase] [originalExtractionDb]   default = SampleHouse
+const BUILDING = process.argv[2] || 'SampleHouse';
+const ORIG_DB = process.argv[3]
+  ? path.resolve(process.argv[3])
+  : path.join(HOME, 'bim-compiler', 'reference', 'transient_rosetta', 'Ifc4_SampleHouse_extracted.db');
 const puppeteer = require(path.join(HOME, 'bim-compiler', 'node_modules', 'puppeteer'));
 const Database = require(path.join(HOME, 'bim-compiler', 'node_modules', 'better-sqlite3'));
 const MIME = { '.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.wasm':'application/wasm',
@@ -43,19 +52,22 @@ const server = http.createServer((q, r) => {
   pg.on('console', m => { const t = m.text(); if (/^§(SINGLE_DB_HUD|CINE_GUIDMAP|S26)/.test(t)) console.log('  page> ' + t); });
   pg.on('pageerror', e => console.log('  ERR ' + String(e).slice(0,160)));
 
-  await pg.goto(`http://localhost:${port}/viewer/viewer.html?db=buildings/SampleHouse_extracted.db`, { waitUntil:'load', timeout:60000 });
+  await pg.goto(`http://localhost:${port}/viewer/viewer.html?db=buildings/${BUILDING}_extracted.db`, { waitUntil:'load', timeout:60000 });
   await pg.waitForFunction("window.APP && window.APP.scene", { timeout:30000 })
     .catch(async () => { const g = await pg.evaluate(() => Object.keys(window).filter(k=>/^(A|APP|THREE)$/.test(k)).map(k=>k+':'+(typeof window[k]))); console.log('  globals=' + JSON.stringify(g)); throw new Error('A.scene not ready'); });
 
-  // wait until the scene has stopped growing (stream complete) — poll the rendered element count
+  // wait for FULL stream: progressive flush plateaus (first paint at 500, then every 5000), so a 2-poll
+  // "stable" is not enough. Require streaming finished AND count stable across 3 consecutive polls.
   await pg.waitForFunction(`(() => {
     const A = window.APP; if (!A || !A.scene) return false;
     let n = 0; A.scene.traverse(o => { if (o.userData && o.userData.guid && o.isMesh) n++;
       else if (o.isBatchedMesh && A._batchMeta && A._batchMeta[o.id]) n += A._batchMeta[o.id].length;
       else if (o.isInstancedMesh && A._instanceMeta && A._instanceMeta[o.id]) n += A._instanceMeta[o.id].length; });
-    window.__rcPrev = window.__rcCur; window.__rcCur = n;
-    return n > 0 && n === window.__rcPrev;
-  })()`, { timeout:45000, polling:500 });
+    const streamDone = (A.streaming === false) || (A.streamQueue && A.streamIdx >= A.streamQueue.length);
+    window.__h = (window.__h || []); window.__h.push(n); if (window.__h.length > 3) window.__h.shift();
+    const stable = window.__h.length === 3 && window.__h[0] === n && window.__h[1] === n;
+    return n > 0 && streamDone && stable;
+  })()`, { timeout:90000, polling:700 });
 
   // Canvas measurement: per-guid TRUE WORLD AABB CENTER of the actual rendered geometry.
   // Convention-free (geometry extent, not a stored "center"). Uses THREE's own per-element bbox+matrix:
@@ -104,7 +116,7 @@ const server = http.createServer((q, r) => {
   const canvasMap = canvas.map;
 
   // DEBUG: dump absolute canvas vs orig vs served(center, bbox) for first 6 matched guids
-  const sdb = new Database(path.join(BLD, 'SampleHouse_extracted.db'), { readonly:true });
+  const sdb = new Database(path.join(BLD, BUILDING + '_extracted.db'), { readonly:true });
   const served = {};
   for (const r of sdb.prepare('SELECT guid g,center_x cx,center_y cy,center_z cz,bbox_x bx,bbox_y by,bbox_z bz FROM element_transforms').all()) served[r.g]=r;
   sdb.close();
