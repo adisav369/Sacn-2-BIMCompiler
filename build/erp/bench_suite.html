@@ -23,7 +23,7 @@ h1 span{color:var(--mute);font-weight:400}
 
 /* reduction bar */
 .reduction{display:flex;gap:.5rem;flex-wrap:wrap;padding:.8rem 2rem;background:#0a0e14;border-bottom:1px solid var(--border)}
-.red-chip{display:flex;flex-direction:column;align-items:center;padding:.5rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel)}
+.red-chip{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:.5rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel)}
 .red-chip .num{font-size:1.2rem;font-weight:700;color:var(--green)}
 .red-chip .lbl{font-size:10px;color:var(--mute);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
 .red-chip .sub{font-size:10px;color:var(--mute)}
@@ -205,14 +205,13 @@ h1 span{color:var(--mute);font-weight:400}
   .ssm-title{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
   .ssm-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;border:1px solid var(--border);color:var(--mute);white-space:nowrap}
   .ssm-badge.here{background:#123d21;color:var(--green);border-color:#2ea04388}
-  .ssm-toggle{display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;user-select:none;font-weight:700;font-size:11px;border:1px solid var(--border);border-radius:8px;padding:4px 8px;margin:.55rem 0;background:#161b22}
-  .ssm-opt{padding:2px 7px;border-radius:5px;color:var(--mute)}
-  .ssm-opt.active{background:#1f6feb22;color:var(--blue)}
-  #ssmNet.active{background:#d2992222;color:var(--yellow)}
-  .ssm-mid{color:var(--mute);font-weight:400}
-  .ssm-rtt{display:flex;align-items:center;gap:.4rem;font-size:11px;color:var(--mute);margin-bottom:.4rem}
-  .ssm-rtt input{width:95px;accent-color:var(--yellow)}
-  .ssm-rtt span{color:var(--yellow);font-weight:700}
+  .ssm-nets{display:flex;flex-wrap:wrap;gap:4px;margin:.55rem 0 .5rem}
+  .ssm-net{font-size:10px;font-weight:700;letter-spacing:.03em;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:#161b22;color:#54606e;cursor:pointer;transition:color .12s,background .12s,border-color .12s}
+  .ssm-net:hover{color:var(--mute)}
+  .ssm-net.on{color:var(--yellow);border-color:#d2992288;background:#d2992218}
+  .ssm-net.loc.on{color:var(--blue);border-color:#1f6feb88;background:#1f6feb18}
+  .ssm-rttv{font-size:10px;color:var(--mute);margin:-.2rem 0 .35rem}
+  .ssm-rttv b{color:var(--yellow)}
   .ssm-nums{display:flex;gap:1.3rem;margin-top:.15rem}
   .ssm-nums>div{display:flex;flex-direction:column}
   .ssm-k{font-size:9.5px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
@@ -224,10 +223,8 @@ h1 span{color:var(--mute);font-weight:400}
   </style>
   <div id="ssMini" style="display:none">
     <div class="ssm-head"><span class="ssm-title">Same desktop</span><span class="ssm-badge" id="ssmBadge"></span></div>
-    <div class="ssm-toggle" id="ssmToggle" title="Put the server on a network — our side won't move">
-      <span class="ssm-opt" id="ssmNet">ON NETWORK</span><span class="ssm-mid">&lt;&gt;</span><span class="ssm-opt active" id="ssmLocal">LOCALHOST</span>
-    </div>
-    <div class="ssm-rtt" id="ssmRtt" style="display:none">round-trip <input type="range" id="ssmRng" min="1" max="200" value="20"><span id="ssmRngV">20 ms</span></div>
+    <div class="ssm-nets" id="ssmNets" title="Where does the server sit? Our side never moves — only the server pays the network."></div>
+    <div class="ssm-rttv" id="ssmRttv"></div>
     <div class="ssm-nums">
       <div><span class="ssm-k">Us · in a tab</span><span class="ssm-v ours" id="ssmOurs">—</span></div>
       <div><span class="ssm-k">iDempiere · server</span><span class="ssm-v them" id="ssmThem">—</span></div>
@@ -795,7 +792,7 @@ function pickFile(msg){
   }
   // live same-origin recount of OUR deployed engine → the part that "responds to growing code"
   async function liveRecount(f){
-    if(!f.file_list||!f.file_list.length)return f;
+    if(!f.file_list||!f.file_list.length||ERP_BASE!=='./')return f;  // cross-origin (docs) → trust baked number
     try{
       var loc=0, bytes=0, ok=0;
       await Promise.all(f.file_list.map(function(x){
@@ -818,29 +815,31 @@ function pickFile(msg){
   }).catch(function(){});
 })();
 
-// ── SAME-DESKTOP mini panel ([ON NETWORK] <> [LOCALHOST]) ──
+// ── SAME-DESKTOP mini panel — network-type chips (greyed → lit when selected) ──
 (function(){
-  var ST={onNet:false,rtt:20,f:null};
+  var NETS=[{k:'LOCALHOST',ms:0,loc:true},{k:'LAN',ms:1},{k:'OFFICE',ms:20},{k:'CLOUD',ms:80},{k:'WAN',ms:200}];
+  var ST={i:0,f:null};
   var local=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)||location.protocol==='file:';
   function fmt(ms){if(ms>=1000)return (ms/1000).toFixed(1)+'<span class="u"> s</span>';if(ms>=10)return Math.round(ms)+'<span class="u"> ms</span>';return (+ms.toFixed(ms<1?2:1))+'<span class="u"> ms</span>';}
   function draw(){
-    var S=ST.f.storage,add=ST.onNet?ST.rtt:0,us=S.ours.per_op_ms,them=S.them.per_op_ms_durable+add;
+    var S=ST.f.storage,n=NETS[ST.i],us=S.ours.per_op_ms,them=S.them.per_op_ms_durable+n.ms;
     document.getElementById('ssmOurs').innerHTML=fmt(us);
     document.getElementById('ssmThem').innerHTML=fmt(them);
+    document.getElementById('ssmRttv').innerHTML = n.ms ? ('+ <b>'+n.ms+' ms</b> round-trip to the server') : 'no network — server on this box';
     var w=document.getElementById('ssmWin'),r=them/us;
     if(r>1.3){w.className='ssm-win us';w.textContent='we’re '+(r>=10?Math.round(r):r.toFixed(1))+'× faster';}
     else if(r<0.77){w.className='ssm-win them';w.textContent='server '+((1/r)>=10?Math.round(1/r):(1/r).toFixed(1))+'× faster';}
     else{w.className='ssm-win tie';w.textContent='about the same';}
+    var chips=document.querySelectorAll('#ssmNets .ssm-net');
+    for(var j=0;j<chips.length;j++)chips[j].classList.toggle('on',j===ST.i);
   }
-  function setT(on){ST.onNet=on;document.getElementById('ssmNet').classList.toggle('active',on);document.getElementById('ssmLocal').classList.toggle('active',!on);document.getElementById('ssmRtt').style.display=on?'flex':'none';if(ST.f)draw();}
   fetch('bench_localhost.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(f){
     if(!f)return;
-    ST.f=f;ST.rtt=f.rtt_default_ms||20;
+    ST.f=f;
     var b=document.getElementById('ssmBadge');b.title=f.machine.label;if(local){b.className='ssm-badge here';b.textContent='this machine';}else{b.textContent='measured';}
-    var rng=document.getElementById('ssmRng');rng.value=ST.rtt;document.getElementById('ssmRngV').textContent=ST.rtt+' ms';
+    var host=document.getElementById('ssmNets');host.innerHTML='';
+    NETS.forEach(function(n,idx){var c=document.createElement('span');c.className='ssm-net'+(n.loc?' loc':'')+(idx===0?' on':'');c.textContent=n.k;c.addEventListener('click',function(){ST.i=idx;draw();});host.appendChild(c);});
     document.getElementById('ssMini').style.display='block';
-    document.getElementById('ssmToggle').addEventListener('click',function(){setT(!ST.onNet);});
-    rng.addEventListener('input',function(){ST.rtt=+rng.value;document.getElementById('ssmRngV').textContent=ST.rtt+' ms';draw();});
     draw();
   }).catch(function(){});
 })();
