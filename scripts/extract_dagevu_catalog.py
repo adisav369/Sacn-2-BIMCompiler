@@ -215,10 +215,16 @@ def layout_assembly(asm, by_id, bom_meta):
         asm['wall'] = wall
         wall_set = 1
     else:
-        # Authored-offset (or single-child) set: keep dx/dy verbatim. No wall established → host-relative FACE_*
-        # rules left at 0°+label (honest); only absolute EW/NS resolve. Guessing a nearest wall = invention.
+        # Authored-offset (or single-child) set: keep dx/dy verbatim. These are LBD-CORNER offsets (§4 tack
+        # convention) — the Java leaf math recovers the box CENTRE via cx=anchor+offset+halfW
+        # (PlacementCollectorVisitor.java:1278). Mark each LEAF child `lbd` so expandAssembly adds the half-extent
+        # axis-aligned (AFTER offset rotation, so the half is NOT rotated — exactly as the Java does). WALL_LINEAR
+        # children above already encode the centre (along=cursor+ext/2), so they are NOT flagged. No wall
+        # established → host-relative FACE_* rules left at 0°+label (honest); only absolute EW/NS resolve.
         for ch in children:
             _resolve_child_rot(ch, None)
+            if not ch['isBom']:
+                ch['lbd'] = 1                                    # leaf offset is LBD-corner → +half at expand time
         if has_offsets:
             float_set = 1
     for ch in children:                                         # drop transient layout inputs from the shipped JSON
@@ -325,7 +331,7 @@ def main():
 
     bom_meta = {r[0]: r for r in b.execute(
         'SELECT bom_id, COALESCE(bom_name, bom_id), bom_type, bom_category, '
-        'aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM m_bom')}
+        'aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z FROM m_bom')}
     bom_ids = set(bom_meta)
     lines_by_bom = defaultdict(list)
     for r in b.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
@@ -340,14 +346,20 @@ def main():
     mprod_extra = {}                                  # product_id -> (name, ifc, w, d, h, cat) for per-bldg leaves
     pb_sets = 0
     for code, path in PER_BLDG:
-        if not os.path.exists(path):
-            print('  per-building BOM MISSING, skipped:', path); continue
+        if not os.path.exists(path) or os.path.getsize(path) == 0:
+            print('  per-building BOM MISSING/empty, skipped:', path); continue
         pb = sqlite3.connect(path)
+        if not pb.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='m_bom'").fetchone():
+            print('  per-building BOM has no m_bom table, skipped:', path); continue
         own = set(r[0] for r in pb.execute('SELECT bom_id FROM m_bom'))
         pfx = lambda x, c=code: c + '::' + x
-        for r in pb.execute('SELECT bom_id, COALESCE(bom_name, bom_id), bom_level, m_product_category_id, '
-                            'aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM m_bom'):
-            bid = pfx(r[0]); bom_meta[bid] = (bid, r[1], r[2], r[3], r[4], r[5], r[6]); bom_ids.add(bid); pb_sets += 1
+        # Read bom_TYPE (not bom_level) into the `level` field — CONSISTENT with the generic m_bom path above
+        # (which uses bom_type). The DAGeVu drop invariant (IntraBOMRelativeTest R1/R2) exempts FLOOR/BUILDING by
+        # bom_TYPE; a per-building unit FLOOR (e.g. DUPLEX_SINGLE_UNIT_STD, bom_type=FLOOR but bom_level=SET) must
+        # classify as FLOOR so its legitimate building-scale offsets are not mis-flagged as absolute leaks.
+        for r in pb.execute('SELECT bom_id, COALESCE(bom_name, bom_id), bom_type, m_product_category_id, '
+                            'aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z FROM m_bom'):
+            bid = pfx(r[0]); bom_meta[bid] = (bid, r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9]); bom_ids.add(bid); pb_sets += 1
         for r in pb.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
                             'allocated_width_mm, min_space_mm, component_type FROM m_bom_line '
                             'WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
@@ -426,6 +438,13 @@ def main():
                   '_aw': (aw_mm or 0) / 1000.0, '_ms': (ms_mm or 0) / 1000.0}   # transient: alloc width + min space (m)
             if rotRule:
                 ch['rotRule'] = rotRule                          # symbolic rule retained for honesty
+                # MIRROR:X / MIRROR:Y is an axis REFLECTION (party-wall flip), NOT a rotation — the Java visitor
+                # negates X&Y of every descendant offset and propagates the mirror axis down the stack
+                # (PlacementCollectorVisitor.java:347-356, 391, 1144-1149). Emit a normalized `mirror` flag so
+                # expandAssembly applies the reflection without re-parsing the symbolic rule.
+                rru = str(rotRule).upper()
+                if rru.startswith('MIRROR'):
+                    ch['mirror'] = 'X' if rru.endswith('X') else ('Y' if rru.endswith('Y') else 'X')
             children.append(ch)
             if not isbom:
                 leaf_refs.add(ref)
@@ -434,6 +453,13 @@ def main():
         asm = {'id': bid, 'name': meta[1], 'level': meta[2], 'category': meta[3],
                'w': round((meta[4] or 0) / 1000.0, 3), 'd': round((meta[5] or 0) / 1000.0, 3),
                'h': round((meta[6] or 0) / 1000.0, 3), 'children': children}
+        # This BOM's own origin (m_bom.origin_x/y/z) — the Java visitor folds it onto the anchor on descent
+        # (PlacementCollectorVisitor.java:393-399). Emit only when non-zero (every current BOM is 0, but a future
+        # per-building bake may carry one) to keep the JSON tiny. expandAssembly adds it to each child anchor.
+        ox, oy, oz = (meta[7] or 0) if len(meta) > 7 else 0, (meta[8] or 0) if len(meta) > 8 else 0, \
+                     (meta[9] or 0) if len(meta) > 9 else 0
+        if abs(ox) > 1e-6 or abs(oy) > 1e-6 or abs(oz) > 1e-6:
+            asm['ox'] = round(ox, 4); asm['oy'] = round(oy, 4); asm['oz'] = round(oz, 4)
         assemblies.append(asm)            # layout runs in PASS 2 (after the leaf set is closed — see below)
 
     # CLOSE the leaf set: every leaf product an assembly places must resolve in the catalog (get/meshArrays),

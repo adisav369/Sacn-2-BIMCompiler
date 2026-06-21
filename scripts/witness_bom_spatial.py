@@ -109,7 +109,14 @@ def main():
         raw[r[0]].append(r)
 
     checked_sets = checked_children = pos_ok = rot_ok = 0
+    skipped_perbldg = 0
     for bid, a in asm.items():
+        # Per-building ('CODE::') assemblies are merged from the per-building XX_BOM.db, NOT archive/BOM.db which
+        # this witness reads — their placement is proven by scripts/witness_modeller_drop.js (W-MODELLER-DROP).
+        # Skip them here so this archive-scoped extractor-consistency check stays green.
+        if '::' in bid:
+            skipped_perbldg += 1
+            continue
         rows = [r for r in raw.get(bid, [])
                 if r[1] and not (str(r[10] or '').upper() == 'PHANTOM' or r[1] == 'BUFFER')]
         emit = a['children']
