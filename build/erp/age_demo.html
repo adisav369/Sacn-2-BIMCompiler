@@ -128,6 +128,17 @@ h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
 .go{font-family:var(--sans);font-weight:700;font-size:13px;padding:.6rem 1.5rem;border:none;border-radius:10px;cursor:pointer;
   color:#fff;background:linear-gradient(135deg,#2a8cff,#7a4ddb);box-shadow:0 6px 18px #2a8cff44;letter-spacing:.02em}
 .go.run{background:linear-gradient(135deg,#5a4200,#9a7000)}
+/* DB drums — data filling up, in tandem each 5 years (no words) */
+.dbrow{position:relative;display:flex;gap:16px;justify-content:center;margin-top:.85rem;padding-top:5px}
+.cyl{position:relative;width:42px;height:74px;border-radius:50% / 13px;background:#0a1420;
+  border:1px solid #243b52;overflow:hidden;box-shadow:inset 0 2px 8px #0007}
+.cyl .lid{position:absolute;top:3px;left:5px;right:5px;height:11px;border-radius:50%;border:1px solid #34516e;z-index:2;pointer-events:none}
+.cyl .lvl{position:absolute;left:0;right:0;bottom:0;height:2%;
+  transition:height 1s cubic-bezier(.4,0,.2,1),background 1s}
+.cyl.k .lvl{background:linear-gradient(180deg,#46e08e,#1f9f5e)}
+.cyl.i .lvl{background:linear-gradient(180deg,#f3bd4e,#d2842b)}
+.archive{position:absolute;left:-4px;right:-4px;top:calc(5px + 74px * (1 - 2048/4000));
+  border-top:1px dashed #ff5d5299;z-index:3}
 
 /* matrix — columns align under the panels: KernelERP | label | iDempiere */
 .matrix{max-width:920px;margin:.55rem auto 0;width:100%;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:12px}
@@ -196,6 +207,11 @@ h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
       <div class="face"><div class="yv" id="yv">1</div><div class="yl">Year</div><div class="age" id="age">day one</div></div>
     </div>
     <button class="go" id="go">▶ Start</button>
+    <div class="dbrow">
+      <div class="cyl k"><span class="lid"></span><div class="lvl" id="db-k"></div></div>
+      <div class="cyl i"><span class="lid"></span><div class="lvl" id="db-i"></div></div>
+      <div class="archive"></div>
+    </div>
   </div>
  </div>
 
@@ -244,7 +260,15 @@ h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
 
 <script>
 var YEARS=[1,5,10,15,20];
-var K_LAUNCH={1:0.01,5:0.28,10:0.55,15:0.83,20:1.10};   // measured cold-open
+// Volume basis: 5 users · normal daily work ≈ 200 transactions/day.
+// DB size (MB): KernelERP ~0.8 KB/tx (+25 MB seed); iDempiere ~2.6 KB/tx (+~150 MB base; ~3x via row+index+WAL).
+var DB_K_MB={1:25,5:317,10:609,15:901,20:1193};
+var DB_I_MB={1:150,5:1099,10:2048,15:2997,20:3946};
+var DB_SCALE=4000;        // drum full-scale (MB)
+var DB_CAP=2048;          // in-tab archive line (~2 GB sql.js ceiling).
+                          // NOTE-TO-SELF: this cap RISES over time as browsers/WASM/devices improve — not fixed; revisit.
+// launch = measured 0.373 ms/MB cold-open, re-based to the 5-user DB sizes above (keeps the screen consistent)
+var K_LAUNCH={1:0.01,5:0.12,10:0.23,15:0.34,20:0.45};
 var I_LAUNCH={1:0.40,5:0.40,10:0.40,15:0.40,20:0.40};   // flat: server boot, data on disk
 var K_OPS={1:0.03,5:0.03,10:0.03,15:0.03,20:0.03};      // measured flat
 var I_OPS={1:0.10,5:0.65,10:1.35,15:2.15,20:3.00};      // illustrative: grows with table size
@@ -291,6 +315,11 @@ function fillBar(id,lab,val,max,fast,durMs){
   var f=document.getElementById(id);
   f.style.transition='none'; f.style.width='2%'; void f.offsetWidth;
   setBar(id,lab,val,max,fast,durMs);
+}
+// DB drums fill in tandem with the year (no words)
+function setDrums(year){
+  document.getElementById('db-k').style.height=(Math.max(DB_K_MB[year]/DB_SCALE,0.02)*100).toFixed(1)+'%';
+  document.getElementById('db-i').style.height=(Math.min(DB_I_MB[year]/DB_SCALE,1)*100).toFixed(1)+'%';
 }
 var ring=document.getElementById('ring'),CIRC=270.2;
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
@@ -358,6 +387,7 @@ async function play(){
     var y=YEARS[i],py=i?YEARS[i-1]:1;
     await raceClock(py,y,(i?(i-1):0)/(YEARS.length-1),i/(YEARS.length-1)); // panels stay ON while clock races (ticking)
     if(abort)break;
+    setDrums(y);   // DB drums grow in tandem with the year
     sndBoot(280+Math.max(K_LAUNCH[y],I_LAUNCH[y])*1850);                   // rising boot hum
     var relaunching=Promise.all([relaunch('k',y,K_LAUNCH[y]),relaunch('i',y,I_LAUNCH[y])]); // LAUNCH half (bars synced inside)
     setTimeout(sndPowerOn,280+Math.min(K_LAUNCH[y],I_LAUNCH[y])*1850);     // chime when the faster one lights up
@@ -379,9 +409,10 @@ document.getElementById('go').addEventListener('click',function(){
   if(running){abort=true;this.textContent='▶ Replay';this.classList.remove('run');running=false;}
   else play();
 });
-// initial bars (day 1)
+// initial bars + drums (day 1)
 setBar('lk-f','lk',K_LAUNCH[1],LMAX,true); setBar('ok-f','ok',K_OPS[1],OPSMAX,true);
 setBar('li-f','li',I_LAUNCH[1],LMAX,true); setBar('oi-f','oi',I_OPS[1],OPSMAX,false);
+setDrums(1);
 </script>
 </body>
 </html>
