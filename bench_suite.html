@@ -358,6 +358,14 @@ function _hideOverlays(){
 var _isRunning=false, _paused=false, _pauseResolve=null;
 var _erpOps=0, _totalOps=0, _rounds=0, _startMs=0, _tickRaf=null;
 var _pausedMs=0, _pauseStart=0; // subtract paused time from wall-clock
+// ⑤ Peer Sync is the ONLY card driven by the network dial (peer sync = pure network round-trips).
+var _netRtt=0, _peerMergeMs=0, _peerOps=500; // _netRtt set by the dial; 500 ops × RTT = iDempiere server time
+function updatePeerOverlay(){
+  if(!_peerMergeMs)return;
+  if(_netRtt<=0){ _ov.peers='1×'; }                                  // LOCALHOST: no network → no edge on one box
+  else { _ov.peers=Math.round(_peerOps*_netRtt/_peerMergeMs).toLocaleString()+'×'; }  // ops × RTT vs our merge
+  var n=document.getElementById('ov-peers-n'); if(n&&_ov.peers)n.textContent=_ov.peers;
+}
 var _cumDays=0;
 var _SQL=null, _seedBuf=null, _KO=null, _CRUD=null;
 
@@ -654,7 +662,7 @@ async function runRound(round){
   }
   document.getElementById('m-peer-merge').textContent=p10m+' ms';
   document.getElementById('m-peer-ratio').textContent=(p10m/p2m).toFixed(1)+'×';
-  _ov.peers=Math.round(25000/Math.max(p10m,1)).toLocaleString()+'×';
+  _peerMergeMs=Math.max(p10m,1); updatePeerOverlay();  // ⑤ driven by the network dial (_netRtt)
 
   setBadge('peers',_isRunning?'pass':'idle');
   if(!_isRunning) return;
@@ -823,6 +831,7 @@ function pickFile(msg){
   function fmt(ms){if(ms>=1000)return (ms/1000).toFixed(1)+'<span class="u"> s</span>';if(ms>=10)return Math.round(ms)+'<span class="u"> ms</span>';return (+ms.toFixed(ms<1?2:1))+'<span class="u"> ms</span>';}
   function draw(){
     var S=ST.f.storage,n=NETS[ST.i],us=S.ours.per_op_ms,them=S.them.per_op_ms_durable+n.ms;
+    _netRtt=n.ms; updatePeerOverlay();   // ⑤ Peer Sync card follows the dial
     document.getElementById('ssmOurs').innerHTML=fmt(us);
     document.getElementById('ssmThem').innerHTML=fmt(them);
     document.getElementById('ssmRttv').innerHTML = n.ms ? ('+ <b>'+n.ms+' ms</b> round-trip to the server') : 'no network — server on this box';
