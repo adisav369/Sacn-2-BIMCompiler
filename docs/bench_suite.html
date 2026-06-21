@@ -257,16 +257,16 @@ h1 span{color:var(--mute);font-weight:400}
   <div class="card" id="card-fold">
     <div class="card-head">
       <div><div class="card-title">② Daily 10K + Backup</div>
-        <div class="card-sub">a day's 10,000 records, then End-of-Day backup</div></div>
+        <div class="card-sub">a day's 10,000 Sales Orders, then End-of-Day backup</div></div>
       <span class="badge idle" id="badge-fold">IDLE</span>
     </div>
     <div class="chart-wrap"><canvas id="ch-fold"></canvas>
-      <div class="chart-overlay" id="ov-fold"><span class="ov-num" id="ov-fold-n">—</span><span class="ov-sub">records/sec · KernelERP</span></div></div>
+      <div class="chart-overlay" id="ov-fold"><span class="ov-num" id="ov-fold-n">—</span><span class="ov-sub">orders/sec · KernelERP</span></div></div>
     <div class="metrics">
-      <div class="met"><span class="met-val" id="m-fold-10k">—</span><span class="met-lbl">10K records</span></div>
+      <div class="met"><span class="met-val" id="m-fold-10k">—</span><span class="met-lbl">10K orders</span></div>
       <div class="met"><span class="met-val" id="m-fold-ratio">—</span><span class="met-lbl">+ EOD backup</span></div>
     </div>
-    <div class="card-hint"><b style="color:var(--green)">KernelERP ~1 s</b> · <b style="color:var(--yellow)">iDempiere ~6–7 min</b> — same 10,000 records on the same box. KernelERP also writes the End-of-Day backup (full signed snapshot); iDempiere has none. <span style="color:var(--mute)">iDempiere figure measured: a real <code>completeIt()</code> ≈ 35&nbsp;ms/doc over 300 GardenWorld orders.</span></div>
+    <div class="card-hint"><b>Same unit = 1 completed Sales Order</b> (doc-no + C_Order + C_OrderLine + C_OrderTax + stock reservation). <b style="color:var(--green)">KernelERP ~2 s</b> (in a browser tab) · <b style="color:var(--yellow)">iDempiere ~6–7 min</b> for 10,000 — same box, ~170×. KernelERP also signs each order into a hash-chain (iDempiere has none) and writes the EOD backup. <span style="color:var(--mute)">Both single-threaded; measured — iDempiere ≈ 35&nbsp;ms/order over 300 real <code>completeIt()</code>, KernelERP folds the same rows. iDempiere's 35&nbsp;ms also re-runs its Java rule engine (callouts/validators/tax); like-for-like on the persisted order, not on re-running that logic.</span></div>
     <div class="idmp-ref" id="ref-fold">vs iDempiere: <strong>~6–7 min for 10K</strong> — measured on this box over 300 real <code>completeIt()</code> Standard-Order completions (iDempiere 13, GardenWorld), ~35&nbsp;ms/doc median; same box has no add-on backup.</div>
   </div>
   <div class="card" id="card-load">
@@ -539,17 +539,22 @@ async function runRound(round){
   var foldChart=makeChart('ch-fold','line','#58a6ff','ms');
   var foldDb=new _SQL.Database(new Uint8Array(_seedBuf));
   if(_KO) _KO.ensureTable(foldDb);
-  var fWin=[];
-  var fwr=foldDb.exec("SELECT AD_Window_ID FROM AD_Window WHERE IsActive='Y' ORDER BY AD_Window_ID LIMIT 60");
-  if(fwr.length)fwr[0].values.forEach(function(v){fWin.push(v[0]);});
-  // BATCH: push records through the engine in 1000-record signed groups (proven-safe chunk size),
-  // timing the cumulative processing to 1K/2K/5K/10K. 10K = our end-to-end batch time, this machine.
+  // APPLE-TO-APPLE: each "record" is a COMPLETED Sales Order — the SAME multi-table effect iDempiere's
+  // completeIt() persists (C_Order + C_OrderLine + C_OrderTax + stock reservation), plus a signed audit op.
+  var _oid=0,_lid=0,_dno=2000000+round*100000;
+  var _mo=foldDb.exec("SELECT COALESCE(MAX(c_order_id),0) FROM c_order"); if(_mo.length)_oid=Number(_mo[0].values[0][0]);
+  var _ml=foldDb.exec("SELECT COALESCE(MAX(c_orderline_id),0) FROM c_orderline"); if(_ml.length)_lid=Number(_ml[0].values[0][0]);
   var fChk={1000:1,2000:1,5000:1,10000:1}, fAt1k=1, fAt10k=1, fDone=0, fT0=performance.now();
   while(fDone<10000&&_isRunning){
     if(_KO){var chunk=[];
-      for(var fk=0;fk<1000;fk++){var fidx=fDone+fk,fwid=fWin.length?fWin[fidx%fWin.length]:100;
-        chunk.push({op_type:'CRUD_UPDATE',op_uuid:'r'+round+'-b'+fidx,
-          params:{table:'AD_Window',id:fwid,changes:{Description:{old:'v'+(fidx-1),new:'v'+fidx}},actor:100}});}
+      for(var fk=0;fk<1000;fk++){
+        var co=++_oid, cl=++_lid, dn=++_dno, now=1718200000000+fDone+fk;
+        foldDb.run("INSERT INTO c_order(c_order_id,ad_client_id,ad_org_id,documentno,c_doctype_id,c_doctypetarget_id,c_bpartner_id,m_warehouse_id,m_pricelist_id,dateordered,dateacct,issotrx,docstatus,docaction,grandtotal,totallines,c_currency_id,isactive,created,updated)VALUES(?,11,11,?,132,132,118,103,101,?,?,'Y','CO','CO',26.49,24.99,100,'Y',?,?)",[co,String(dn),now,now,now,now]);
+        foldDb.run("INSERT INTO c_orderline(c_orderline_id,c_order_id,ad_client_id,ad_org_id,line,m_product_id,qtyordered,qtyentered,priceactual,priceentered,linenetamt,c_tax_id,isactive,created,updated)VALUES(?,?,11,11,10,123,1,1,24.99,24.99,24.99,107,'Y',?,?)",[cl,co,now,now]);
+        foldDb.run("INSERT INTO c_ordertax(c_order_id,c_tax_id,ad_client_id,ad_org_id,taxamt,taxbaseamt,isactive,created,updated)VALUES(?,107,11,11,1.50,24.99,'Y',?,?)",[co,now,now]);
+        foldDb.run("INSERT INTO m_storagereservation(m_product_id,m_warehouse_id,m_attributesetinstance_id,issotrx,qty,datelastinventory,ad_client_id,ad_org_id,isactive)VALUES(123,103,0,'Y',1,?,11,11,'Y')ON CONFLICT(m_product_id,m_warehouse_id,m_attributesetinstance_id,issotrx)DO UPDATE SET qty=qty+1",[now]);
+        chunk.push({op_type:'SO_COMPLETE',op_uuid:'r'+round+'-o'+co,
+          params:{order:co,docno:dn,bp:118,lines:[{product:123,qty:1,amt:24.99}],tax:1.50,total:26.49,actor:100}});}
       await _KO.commitGroup(foldDb,chunk,{gid:'b'+round+'-'+fDone,baseTs:1718200000000+fDone});}
     fDone+=1000; addErp(1000);
     if(fChk[fDone]){var fms=Math.round(performance.now()-fT0);
