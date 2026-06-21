@@ -137,6 +137,8 @@ resident list (System, GardenWorld, and every installed tenant). Each tenant is 
 
 ## Spatial BIM → ERP — Find a selection → Project Order  *(LIVE)*
 
+![The live 4D/5D twin — the Time Machine plays the build (here Day 88 of the program, RM501K committed) in the real model while the dashboard tracks phase progress, site resources, and the cost S-curve; the left readout folds Budget-vs-Actual variance (RM44.7M → +35%) straight off the same project. One signed op-log unifies what is normally four tools — schedule, cost, 4D, and 5D — with no drift.](figs/whatif_live_twin.png)
+
 The BIM viewer can fold a priced building selection straight into a real iDempiere **`C_Project`**
 tree — phases, tasks, and priced lines — that this ERP then reads in its standard Project windows. The
 whole building, or any slice you select, becomes work to be done.
