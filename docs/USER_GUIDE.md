@@ -1,65 +1,61 @@
+---
+description: BIM OOTB user guide — view IFC buildings in 3D, author geometry, and run the Kernel-ERP, all client-side in one browser tab with zero install.
+---
 # BIM OOTB — User Guide
 
-One browser. **View** a building, **author** geometry, **run** the ERP — all client-side, zero install.
+One browser. **View** a building · **author** geometry · **run** the ERP. Zero install, all client-side.
 
 ![The Matrix landing — choose your door](assets/matrix_landing.png)
 
-**First visit** drops you at the Matrix front door — the red / blue choice, then the round selector. Pick a
-door, or jump straight to any surface by its URL below.
+Start at the **[front door → red1oon.github.io/bim-ootb](https://red1oon.github.io/bim-ootb/)** — the
+Matrix landing (red / blue → round selector). Pick a door, or jump straight to any app by its URL below.
+**Bookmark any of them**; press **Home** on any surface to come back to the front door. On a return visit
+the landing shows the compact `⋯` launcher; **refresh** for the full round selector again.
 
-## The surfaces
+## Pick a surface
 
-| Surface | What it is | Open it |
-|---|---|---|
-| **Matrix landing** | the front door — *choose your door* | [red1oon.github.io/bim-ootb](https://red1oon.github.io/bim-ootb/) |
-| **BIM Viewer** | the **Buildings / IFC** door — drop your own IFC or open a ready-made City / Landmark building → opens the 3D/2D viewer | [front door](https://red1oon.github.io/bim-ootb/) → **Buildings / IFC** · [guide](BIMUserGuide.md) |
-| **DAGeVu Modeller** | author B-rep geometry over a signed op-log | [modeller.html](https://red1oon.github.io/bim-ootb/viewer/modeller.html) · [guide](ModellerGuide.md) |
-| **Kernel-ERP** | the ERP **bubbles** — click/explode or long-press a bubble → iDempiere; **⋯** → Glass / Gravity | [erp.html](https://red1oon.github.io/bim-ootb/erp/erp.html) · [guide](ERPUserGuide.md) |
+<div class="grid cards" markdown>
 
-**Bookmark any of these.** Going straight to `idempiere.html`, the Modeller, or the Viewer — bypassing the
-landing — is perfectly fine; that's what they're for. To come back to the front door, press **Home** on any
-surface (or open the root URL). On a return visit the landing shows the compact `⋯` launcher; **refresh** to
-summon the full round selector again.
+-   <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> __BIM Viewer__
 
----
+    **Drop your own IFC** → extracted to SQLite right in the browser; merge disciplines, fly-through, clash matrix, 4D/5D time-machine, ERP Project Order — all on the same file. Desktop and mobile, works offline.
 
-## BIM Viewer
+    _Front door → the **Buildings / IFC** icon (above)_ · [Open](https://red1oon.github.io/bim-ootb/#buildings) · [Guide](BIMUserGuide.md)
 
-Open a building, navigate in 3D/2D, run clash detection, track 4D progress. Desktop and mobile.
+-   <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px"><path d="M8 19a4 4 0 0 1-2.24-7.32A3.5 3.5 0 0 1 9 6.03V6a3 3 0 1 1 6 0v.04a3.5 3.5 0 0 1 3.24 5.65A4 4 0 0 1 16 19Z"/><path d="M12 19v3"/></svg> __DAGeVu Modeller__
 
-**First run:** ① front door → **Buildings / IFC** · ② open a City / Landmark card (or drop your own
-`.ifc`) · ③ click any element for its IFC data, filter by storey or discipline.
+    Author B-rep geometry — insert library parts, sketch, extrude, sweep — where the signed op-log *is* the feature tree. Early/WIP; desktop.
 
-→ **[Viewer Guide](BIMUserGuide.md)**
+    _Front door → the **BIM Modeller** icon (above)_ · [Open](https://red1oon.github.io/bim-ootb/viewer/modeller.html) · [Guide](ModellerGuide.md)
 
----
+-   <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> __Kernel-ERP__
 
-## DAGeVu Modeller
+    Real iDempiere in the browser — POS, financial statements, the full Application Dictionary from SQLite. No Java, no server, no install.
 
-Author geometry in the browser — insert library components, sketch, extrude, sweep — where the signed
-operation log *is* the feature tree. Early/work-in-progress; desktop.
+    _Front door → the **ERP** icon (above)_ · [Open](https://red1oon.github.io/bim-ootb/erp/erp.html) · [Guide](ERPUserGuide.md)
 
-**First run:** ① front door → **BIM Modeller** · ② **Insert** → pick a part or a whole assembly from the
-BOM catalog · ③ aim on the grid, **R** to rotate, click to place — one undoable signed op.
+</div>
 
-→ **[Modeller Guide](ModellerGuide.md)**
+> **ERP practitioners** — implementers, power users, developers, and other ERP projects — start with
+> **[Migrate & Compare](MigrateComparisonPaper.md)**: how Kernel-ERP folds a live iDempiere (and Odoo)
+> tenant onto one signed op-log, what stands comparison with a legacy stack, and the honest gaps.
 
----
+## Also on the front door
 
-## Kernel-ERP
+<div class="grid cards" markdown>
 
-Login, install the demo tenant, run the POS, view financial statements. The browser kernel renders the full
-iDempiere Application Dictionary from SQLite — no Java, no server, no install.
+-   <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> __About & Install__
 
-**First run:** ① front door → **ERP** (the bubbles) · ② **long-press** a bubble → real iDempiere → pick a
-role · ③ tap **⌂** for the menu, or run the **POS** as GardenUser.
+    What BIM OOTB is, and how to keep it. It's a **frictionless PWA** — your browser can *install* it (add to home screen) so it runs **offline, no server**. The same box has a **Run it yourself (DIY)** tab: download a one-step install script + README to self-host the whole stack on your own machine.
 
-→ **[ERP User Guide](ERPUserGuide.md)**
+    _Front door → the **About** icon (above)_ · [Self-host guide](SYSTEMS_INSTALLER_GUIDE.md)
 
-**ERP practitioners** — implementers, power users, developers, and other ERP projects — start with
-**[Migrate & Compare](MigrateComparisonPaper.md)**: how Kernel-ERP folds the iDempiere (and a live Odoo)
-tenant onto one signed op-log, what stands comparison with a legacy stack, and the honest gaps.
+-   <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg> __Clear Cache__
 
----
+    Resets to the start screen. Clears only the **in-browser building data** — cached buildings and any IFC scene you dropped in but never saved to a `.db` — and returns you to the red / blue gate. **Keeps** the installed app, its offline data, and any `.db` file you saved yourself.
+
+    _Front door → the **Trash** icon (above)_
+
+</div>
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

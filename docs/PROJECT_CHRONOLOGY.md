@@ -1,3 +1,6 @@
+---
+description: Project history by the numbers — from the IfcOpenShell Federation branch (Oct 2025) to the Java compiler to the browser-native BIM+ERP engine, with dated milestones and a commit ledger.
+---
 # Project Chronology — Federation → Compiler → Browser
 
 *How the tech was discovered, by the numbers. Every date traces to a git commit or a
@@ -26,8 +29,10 @@ Three runtimes were tried; **the data format survived all three.** That is the d
 
 | Date | Milestone | Where | Significance |
 |------|-----------|-------|--------------|
+| **2025-10-25** | "Fix critical scale bug (1000× error)" + coordinate offset fix | IfcOpenShell `feature/IFC4_DB` | The meters-vs-millimetres lesson — units/coords had to be pinned before anything rendered true. |
 | **2025-10-30** | "Full IFC4 database extraction and loading — MILESTONE" | IfcOpenShell `feature/IFC4_DB` ([commit](https://github.com/red1oon/IfcOpenShell/commit/f410e32a13297355d8d5aed444ed176dd18e70a0)) | **True origin.** IFC → queryable SQLite, inside Bonsai/Blender. |
-| **2025-12-18** | PDF Terrain + Federation GI database | IfcOpenShell `feature/IFC4_DB` ([commit](https://github.com/red1oon/IfcOpenShell/commit/bc76b7123ef8ebc73155fc20a4714f42eaec1029)) | DB-as-scene-data extended past pure IFC: terrain, River IoT. |
+| **2025-11-01** | "Instant GPU bbox preview + two-button workflow (BREAKTHROUGH!)" | IfcOpenShell `feature/IFC4_DB` | Two-stage load (bbox preview → full geometry) — the first time large scenes felt instant. |
+| **2025-12-18** | PDF Terrain + Federation GI database | IfcOpenShell `feature/IFC4_DB` ([commit](https://github.com/red1oon/IfcOpenShell/commit/bc76b7123ef8ebc73155fc20a4714f42eaec1029)) | DB-as-scene-data pushed past pure IFC — terrain + River IoT, run as *learning exercises*. |
 | **2026-01-25** | BIM Compiler repo created (Phase 3+4 builders) | BIMCompiler `1702488d` | Work leaves Blender plugin → standalone Java/Maven compiler. |
 | **2026-04-11** | Two-DB split born (BLOBs in `library.db`, hashes in `extracted.db`) | BIMCompiler `f116fdde` (S173) | Hash-addressed geometry dedup — survives every later runtime. |
 | **2026-04-12** | Geometry Nodes halted | BIMCompiler `2bb9335e` (S175) | Blender's instancer hit a hard ceiling (~8 min/orbit at 500 trees). |
@@ -47,12 +52,23 @@ Three runtimes were tried; **the data format survived all three.** That is the d
 
 | Phase | Span | Repo | Commits | Status |
 |-------|------|------|--------:|--------|
-| **Federation** (IFC-as-SQLite in Blender; Terrain, River IoT) | Oct 2025 – present | `red1oon/IfcOpenShell` `feature/IFC4_DB` | *not counted here (separate repo)* | 🔵 **Upstream / still live** — the federation branch remains available to the IfcOpenShell community. It was *not* dropped from the project; the author personally moved off the Blender renderer when migrating to browser-only SQLite WASM (S195). The SQLite schema carried forward. |
+| **Federation** (IFC-as-SQLite in Blender; Terrain, River IoT) | Oct 2025 – present | `red1oon/IfcOpenShell` `feature/IFC4_DB` | **414** authored by red1oon (316 touch the federation module) | 🔵 **Upstream / still live** — the federation branch remains available to the IfcOpenShell community. It was *not* dropped from the project; the author personally moved off the Blender renderer when migrating to browser-only SQLite WASM (S195). The SQLite schema carried forward. |
 | **Java/Maven compiler** (IFCtoBOM, DAGCompiler 12-stage, RosettaStone G1–G6) | Jan 2026 – present | `red1oon/BIMCompiler` | **2,340** total | 🟡 **Maintenance / proof-only** — superseded as the *runtime*, retained as the round-trip *proof* (gates stable since May 2026) and as the ERP-engine source (`build/erp/`). |
 | **Browser pivot → BIM OOTB** (Three.js + sql.js + web-ifc) | Apr 2026 | `red1oon/BIMCompiler` (S195–S271) | within the 2,340 above | ✅ Folded forward into bim-ootb. |
 | **bim-ootb** (BIM viewer + Kernel-ERP, DAGeVu, Connect Scene) | May 2026 – present | `red1oon/bim-ootb` | **717** total | ✅ **Active / live** — the shipping product. |
 
 ### Monthly commit + fix activity
+
+**`red1oon/IfcOpenShell` `feature/IFC4_DB`** — Federation (commits authored by red1oon)
+
+| Month | Commits | Fix/bug commits | Feat/add commits |
+|-------|--------:|----------------:|-----------------:|
+| 2025-10 | 60 | 24 | 39 |
+| 2025-11 | 161 | 75 | 68 |
+| 2025-12 | 128 | 56 | 77 |
+| 2026-01→03 | 13 | — | — |
+| 2026-04 | 52 | — | — |
+| **Total** | **414** | — | — |
 
 **`red1oon/BIMCompiler`** (first commit 2026-01-25)
 
@@ -75,7 +91,52 @@ Three runtimes were tried; **the data format survived all three.** That is the d
 | **Total** | **717** | — | — |
 
 *Fix/feat counts are `git log --grep` matches on commit subjects (`fix|bug`, `feat|add`),
-case-insensitive — an indicator of effort split, not an exhaustive classification.*
+case-insensitive.*
+
+**Do the fix + feat numbers add up to the "net real work"? No — read them as a texture, not a total.**
+They are keyword matches on the commit *subject line*, so they (a) miss work whose subject said
+`refactor`, `perf`, `optimize`, `docs`, `wire`, `bake`; (b) double-count nothing but also credit
+nothing for size — a one-line typo fix and a 2,000-line feature each count as one; and (c) include
+the occasional `Revert`/merge that is motion, not progress. The honest "net work done" signal is the
+**total commit count** — each commit is one resolved, committed unit — with the fix/feat split telling
+you *how the effort leaned that month* (e.g. Nov 2025 was fix-heavy = stabilising; May–Jun 2026 swung
+feat-heavy = building). Lines-changed would be a finer measure, but commit-count is the one that
+doesn't lie about effort.
+
+---
+
+## 2025 — the Federation year (where the hell was, and what it taught)
+
+The whole idea was proven the hard way, inside Blender, across three intense months — **349 commits,
+Oct–Dec 2025.** This is the part the later browser work stands on.
+
+- **October (60 commits) — birth, and the unit war.** The federation module, BBox semantic geometry,
+  a three-stage inference loader, material inference, GPU instancing, database-driven clash detection.
+  The recurring enemy was coordinates: *"database uses meters not millimetres"*, *"Fix critical scale
+  bug (1000× error)"*, multi-layer viewport offset fixes. Pinning units and the site offset was the
+  precondition for anything to render true — a lesson that carried straight into the browser viewer.
+  It culminates 2025-10-30 in *"Full IFC4 database extraction and loading — MILESTONE"*: IFC is now a
+  queryable SQLite DB.
+
+- **November (161 commits — the heaviest, hardest month) — stability and speed hell.** A
+  *"template explosion crash"* in the loaders. A full week (Nov 2–3) wrestling gizmo click-crashes,
+  registration, and context-menu handling. R-tree clash bugs. And a long string of brute
+  optimisations — *"20-30× faster reload"*, *"5-10× speedup for routing and clash"* — fighting
+  Blender's evaluation cost at scale. The reward came first, on **Nov 1**: *"Instant GPU bbox preview +
+  two-button workflow (BREAKTHROUGH!)"* — the two-stage load (cheap bbox preview, then full geometry)
+  that made big scenes feel instant. This month is *why* the eventual ceiling was recognised so
+  quickly later: it was a month of finding exactly where Blender stopped scaling.
+
+- **December (128 commits) — pushing the schema past IFC, as a learning exercise.** River IoT and PDF
+  terrain were **deliberate exercises** — not a product line — run to learn how far the
+  database-as-scene-data idea could stretch: OpenStreetMap river import, GPS/affine calibration,
+  mangrove-islet monitoring, a carbon-credit/biochar pipeline, KML/Google-Earth export, terrain
+  topology from PDF survey data. The takeaway wasn't the river; it was the confirmation that *anything
+  spatial — geometry, sensors, terrain — folds into the same queryable DB*. That generalisation is
+  what later made a building → procurement-order fold feel natural.
+
+The through-line: 2025 proved the **schema** was the asset and Blender was only ever a renderer. Five
+months of Blender ceilings made the April 2026 browser pivot obvious rather than risky.
 
 ---
 

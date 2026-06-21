@@ -1,3 +1,6 @@
+---
+description: How a WASM event-sourced browser engine reproduces legacy ERP (iDempiere, Odoo) document folds to the cent — local-first, serverless, no database server.
+---
 <style>
 /* drop the MkDocs auto-injected nav-title H1 — the banner below IS the title */
 .md-typeset h1{display:none}

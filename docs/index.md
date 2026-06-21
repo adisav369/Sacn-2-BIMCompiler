@@ -1,4 +1,5 @@
 ---
+description: Browser-native IFC viewer and local-first ERP kernel — drop an IFC file, view a BIM model in 3D, run a serverless event-sourced ERP. No install, no server, MIT-licensed.
 hide:
   - navigation
   - toc

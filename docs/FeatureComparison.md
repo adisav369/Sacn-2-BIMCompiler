@@ -1,3 +1,6 @@
+---
+description: Technical feature paper for BIM OOTB — in-browser IFC parsing, clash detection, 4D/5D analysis and instanced rendering in a serverless, local-first BIM viewer.
+---
 # BIM OOTB — Technical Feature Paper
 
 > **For the ERP side**, see the one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** — legacy ERP vs the WASM event-sourced browser.
