@@ -279,23 +279,9 @@ h1 span{color:var(--mute);font-weight:400}
     </div>
     <div class="idmp-ref" id="ref-load">vs iDempiere: <strong>~2–5 min cold start</strong> (JVM + OSGi + PG pool) — our load: <strong id="ref-load-ratio">—</strong> faster</div>
   </div>
-  <div class="card" id="card-verify">
-    <div class="card-head">
-      <div><div class="card-title">④ verifyChain</div>
-        <div class="card-sub">Cryptographic chain at 100→10K ops</div></div>
-      <span class="badge idle" id="badge-verify">IDLE</span>
-    </div>
-    <div class="chart-wrap"><canvas id="ch-verify"></canvas>
-      <div class="chart-overlay" id="ov-verify"><span class="ov-arrow">↑</span><span class="ov-num" id="ov-verify-n">∞</span><span class="ov-sub">no equiv. in iDempiere</span></div></div>
-    <div class="metrics">
-      <div class="met"><span class="met-val" id="m-vfy-ms">—</span><span class="met-lbl">10K ops</span></div>
-      <div class="met"><span class="met-val" id="m-vfy-rate">—</span><span class="met-lbl">Ops/sec</span></div>
-    </div>
-    <div class="idmp-ref show" id="ref-verify">vs iDempiere: <strong>no cryptographic audit trail</strong> — tamper-evidence requires an external audit log add-on; this engine has it built in</div>
-  </div>
   <div class="card" id="card-peers">
     <div class="card-head">
-      <div><div class="card-title">⑤ Multi-Peer Sync</div>
+      <div><div class="card-title">④ Multi-Peer Sync</div>
         <div class="card-sub">N nodes merge — no server</div></div>
       <span class="badge idle" id="badge-peers">IDLE</span>
     </div>
@@ -306,6 +292,20 @@ h1 span{color:var(--mute);font-weight:400}
       <div class="met"><span class="met-val" id="m-peer-ratio">—</span><span class="met-lbl">Scaling</span></div>
     </div>
     <div class="idmp-ref show" id="ref-peers">vs iDempiere: <strong>server required</strong> — every peer op is a network round-trip (~50–200 ms each); 500 ops ≈ 25–100 s via server. Our merge: <strong id="ref-peers-ratio">—</strong> faster, no server</div>
+  </div>
+  <div class="card" id="card-verify">
+    <div class="card-head">
+      <div><div class="card-title">⑤ verifyChain</div>
+        <div class="card-sub">Cryptographic chain at 100→10K ops</div></div>
+      <span class="badge idle" id="badge-verify">IDLE</span>
+    </div>
+    <div class="chart-wrap"><canvas id="ch-verify"></canvas>
+      <div class="chart-overlay" id="ov-verify"><span class="ov-arrow">↑</span><span class="ov-num" id="ov-verify-n">∞</span><span class="ov-sub">no equiv. in iDempiere</span></div></div>
+    <div class="metrics">
+      <div class="met"><span class="met-val" id="m-vfy-ms">—</span><span class="met-lbl">10K ops</span></div>
+      <div class="met"><span class="met-val" id="m-vfy-rate">—</span><span class="met-lbl">Ops/sec</span></div>
+    </div>
+    <div class="idmp-ref show" id="ref-verify">vs iDempiere: <strong>no cryptographic audit trail</strong> — tamper-evidence requires an external audit log add-on; this engine has it built in</div>
   </div>
 </div>
 
@@ -593,7 +593,7 @@ async function runRound(round){
   setBadge('load',_isRunning?'pass':'idle');
   if(!_isRunning) return;
 
-  setStatus('Round '+round+' — ④ verifyChain…','running');
+  setStatus('Round '+round+' — ⑤ verifyChain…','running');
   setBadge('verify','running');
   var vfyChart=makeChart('ch-verify','line','#d29922','ms');
   var vfyDb=new _SQL.Database(new Uint8Array(_seedBuf));
@@ -620,7 +620,7 @@ async function runRound(round){
   setBadge('verify',_isRunning?'pass':'idle'); vfyDb.close();
   if(!_isRunning) return;
 
-  setStatus('Round '+round+' — ⑤ peer sync…','running');
+  setStatus('Round '+round+' — ④ peer sync…','running');
   setBadge('peers','running');
   var peersChart=makeChart('ch-peers','bar','#3fb950','ms');
   var pCounts=[2,5,10], OPP=50, p2m=1, p10m=1;
