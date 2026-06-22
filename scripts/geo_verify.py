@@ -36,9 +36,20 @@ def parse_geo_log(log_path):
         for line in f:
             if '[GEO  ] TACK' not in line or 'LEAF' not in line:
                 continue
+            # Position = world AABB MIN corner (LBD = Lower-Bound Datum), to compare
+            # apples-to-apples against the DB rtree (minX,minY,minZ) in load_positions().
+            # Two log emitters carry the IDENTICAL value under different field names:
+            #   old: "... LBD=(x,y,z)"
+            #   new: "... → AABB X=[xmin,xmax] Y=[ymin,ymax] Z=[zmin,zmax]"  (xmin,ymin,zmin)
+            # Try old first, then new — never invent a position.
             m = re.search(
                 r'LEAF\s+(.+?)\s+guid=(\S+)\s+.*LBD=\(([-\d.]+),([-\d.]+),([-\d.]+)\)',
                 line)
+            if not m:
+                m = re.search(
+                    r'LEAF\s+(.+?)\s+guid=(\S+)\s+.*?AABB\s+'
+                    r'X=\[([-\d.]+),[-\d.]+\]\s+Y=\[([-\d.]+),[-\d.]+\]\s+Z=\[([-\d.]+),[-\d.]+\]',
+                    line)
             if m:
                 guid = m.group(2)
                 # Strip mirrored unit prefix (A_/B_) to match raw IFC GUIDs

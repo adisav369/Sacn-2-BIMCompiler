@@ -56,6 +56,11 @@ if sqlite3 "$comp_db" "SELECT 1 FROM ad_geometry_map LIMIT 1" 2>/dev/null; then
     sqlite3 "$comp_db" < migration/migration_rename_geometry_map.sql
 fi
 
+# Restore generative-device geometry (map rows + meshes) dropped/dangled by the
+# 2026-06-22 resync — idempotent, NON-INVENT from master + committed source extractions.
+# MUST precede CL_001 (which seeds M_Product_Image from these I_Geometry_Map rows).
+python3 scripts/restore_generative_meshes.py
+
 # Seed M_Product_Image for generative MEP products (CL_001 — idempotent)
 sqlite3 "$comp_db" < migration/CL_001_generative_product_images.sql 2>/dev/null
 

@@ -70,9 +70,16 @@ public class MeshBinder {
         // CP-1 MA provides IFC GUIDs as element_refs (22 chars, base64url+'$').
         // I_Geometry_Map GUID entries carry per-instance geometry hashes from extraction.
         // This preserves per-instance mesh diversity that product-level collapses.
-        if (p.elementRef() != null && p.elementRef().length() == 22
-                && !p.elementRef().contains(":")) {
-            String instanceHash = library.resolveGeometryByRef(p.elementRef(), p.ifcClass());
+        // Use the BASE GUID, not elementRef: multi-unit buildings (Duplex) carry a
+        // unit prefix on the placement ref ("A_"/"B_" → 24 chars), while extraction
+        // stored the geometry under the bare 22-char GUID. baseGuid() strips the unit
+        // prefix (identity.baseGuid()); units A/B share the base mesh and the walker
+        // applies the mirror/rotation. Without this, IfcCovering "A_<guid>" hard-fails
+        // even though its geometry is present (RESUME_FACING_GATE.md §NEXT-1a).
+        String lookupGuid = p.baseGuid();
+        if (lookupGuid != null && lookupGuid.length() == 22
+                && !lookupGuid.contains(":")) {
+            String instanceHash = library.resolveGeometryByRef(lookupGuid, p.ifcClass());
             if (instanceHash != null) {
                 refGeoHash = instanceHash;
             }
