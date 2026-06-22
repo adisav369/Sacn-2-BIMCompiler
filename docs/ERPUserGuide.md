@@ -147,6 +147,18 @@ surface with five tabs — **Graph · Cards · Pivot · List · Timeline** — a
 A window with few, uniform records — say three demo Projects all of one type — honestly shows near-single
 donuts: there is simply no spread to chart. The same window on a real tenant fans into full segments.
 
+**Forecast — reading the future.** The **Forecast** toggle at the top-right of the Dashboard projects a
+*run-rate* future onto the two time-axis tabs and leaves the others untouched (a donut or a kanban has no
+future tense). On **Graph** a cumulative **S-curve** card shows the running total to date — a real fold;
+switch Forecast on and a dashed-blue tail extends it past a *now* marker, the average of the recent
+run-rate, drawn dashed so it is never mistaken for an actual. **Timeline** gains the same — dashed
+projected columns past a *now* divider that the slider scrubs into. On a **Project** window the S-curve
+reads as a **variance** curve instead: the planned baseline (the contract) against the committed outturn,
+with the Δ (e.g. the Hospital plan, planned 64.7M → committed 87.4M, +35%). Every dashed point is a
+*labelled extrapolation* of the real folds — nothing invented; the committed baseline is extracted, not
+modelled. (The interactive schedule what-if — dragging a phase to slip and folding the ripple on a
+reversible blue branch — lives on the 4D Time Machine, not the Dashboard.)
+
 **Choosing a tenant at login — the front door:** the login card opens on a **five-tenant front door**.
 Even on a cold seed it lists **GardenWorld plus five migrated demo tenants** (Odoo · iDempiere · SAP ·
 Oracle · Dynamics), each tagged *demo · ready* or *demo · PoC* (the login step unions the resident
