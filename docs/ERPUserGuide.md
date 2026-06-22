@@ -193,7 +193,7 @@ whole building, or any slice you select, becomes work to be done.
 type). The selected bar shows its indicative 5D cost in the active rate pack. Tap **`› ERP`** to push
 it. The fold (`proj_fold.js`):
 
-![The viewer's Find panel — the MEP discipline selected on a real model (RM169,209 indicative 5D, lit up in 3D). The selection bar at the bottom carries the actions: **› ERP** pushes the selection as a Project Order, and **What-if** opens the schedule what-if on the folded project.](figs/find_panel_erp.png)
+![The viewer's Find panel — the MEP discipline selected on a real model (RM169,209 indicative 5D, lit up in 3D). The selection bar at the bottom carries the actions: **› ERP** pushes the selection as a Project Order, and **▶** navigates. (Schedule authoring and What-if now live on the Time Machine — see below.)](figs/find_panel_erp.png)
 
 | What you selected | becomes |
 |---|---|
@@ -218,21 +218,62 @@ the cent** (`§PROJ_FOLD plannedAmt==golden`), every phase `SeqNo` tracing to `s
 > A sibling **`› VO`** button (in the model-diff panel) folds a model revision into a signed `C_Order`
 > variation amendment against the same project.
 
+### Author the 4D/5D schedule — build it up from the model *(LIVE)*
+
+The **Time Machine** is not only for playback — it is where you **author** the construction schedule and
+its cost, building the 4D/5D **up from a bare model**. There is no separate scheduling tool and no
+re-linking step: every edit is written straight into the IFC-native schedule tables the viewer already
+reads, so the visual gesture and the system-of-record are the *same signed rows*.
+
+**Where the button is** — in the viewer:
+
+1. Open a building and the **Time Machine** (the clock pill, or press **`t`**).
+2. On the panel, press **`✎`** (Author 4D Schedule) — the authoring wizard opens.
+
+**What you do:**
+
+1. **Generate first draft** — folds the model's elements into **organized phases** (a WBS): Substructure,
+   Superstructure, MEP, Architecture, Finishes — grouped by the same trade rules the Time Machine plays.
+   Every element is assigned to a phase, contiguous dates are laid out, and the **5D cost folds per phase**.
+2. **Craft it up** — rename a phase, expand it to list its elements (click one to light it in 3D), and
+   **reassign** an element to a different phase from its dropdown. Because the cost folds from the
+   assignments, *moving an element moves its cost between phases* — the WBS you author organizes the 5D.
+3. **Tune the dates** — the **`−5d` / `+5d`** steppers and the **Start** date lay the phases out; on the
+   gantt you can also drag a bar directly (the shipped drag-to-slip).
+4. **Apply to 4D ▶** — re-folds the Time Machine so the gantt and the playback show *your* schedule.
+
+![The Author 4D Schedule wizard (the ✎ button on the Time Machine) on a real SampleHouse — **Generate first draft** folded 60 elements into three organized phases (Superstructure 28 · Architecture 15 · Finishes 17), each with its element count and 5D cost; the footer totals **5D 59,234** in the active rate pack. Rename a phase, reassign an element (it carries its cost with it), or tune the dates — every edit lands in the IFC-native schedule tables.](figs/author4d_wizard.png)
+
+**Start from nothing.** Tick **Start blank (set the dates yourself)** and the wizard organizes the phases
+and assignments but leaves them **undated** — nothing shows on the timeline until you set a **Start** and
+press **`Schedule now ▶`** to originate the dates yourself. The auto-draft is a *suggested start*, never
+the only path: you can accept it and finish fast, or build the schedule up by hand.
+
+![Start blank — the same three phases are organized but **undated** (“unscheduled”); a banner prompts you to set a start and press **Schedule now** to originate the dates. The 5D cost still folds from the assignments (it does not depend on dates). This is the build-it-up-from-a-blank-model path.](figs/author4d_blank.png)
+
+The link between an element and its phase is **identity by construction** — it survives renaming the phase
+or the element, where name-matching schedulers would re-bind or break. *(Engine proven by `W-AUTHOR-4D-BLANK`
+16/16, the 5D fold by `W-AUTHOR-5D-COST` 10/10, the blank start by `W-AUTHOR-BLANK-START` 11/11, all on the
+real SampleHouse through the shipped read-path; `viewer/schedule_author.js` + `schedule_author_ui.js`.)*
+
+> **Zoom-Across knows where the Time Machine is.** When the Time Machine is open and you pinpoint an
+> element (from **Find**, or a **Zoom-Across** from a record in the ERP), the timeline **jumps to that
+> element's construction moment** instead of only lighting it in 3D — the Time Machine *consumes* the
+> pinpoint. With the Time Machine closed, the pinpoint goes to **Find** as before (cost/location first).
+
 ### What-if schedule — slip a phase, watch the chain re-fold *(LIVE)*
 
 Once a building is folded into a project, you can ask **"what if this phase slips?"** without touching the
 real plan.
 
-**Where the button is** — in the viewer (the same Find panel as the screenshot above):
+**Where the button is** — on the **Time Machine** (the same hub that owns the 4D/5D):
 
-1. Open a building and the **Find** panel.
-2. **Select a scope** — a discipline, storey, or type. The **selection bar** appears at the bottom (it is
-   hidden until you select something), showing the cost and the **`› ERP`** / **`What-if`** / **`▶`** actions.
-3. Tap **`What-if`**.
+1. Open a building and the **Time Machine** (the clock pill, or press **`t`**).
+2. Press **`⑂`** (What-if) on the panel.
 
-It works out of the box — you do not even have to push first: with no project of your own yet, the panel
-opens on the built-in **Hospital** project (the 7-phase chain below). Push one with **`› ERP`** and it opens
-on *that* one instead.
+It works out of the box — you do not even have to push a project first: with no project of your own yet, the
+panel opens on the built-in **Hospital** project (the 7-phase chain below). Push one from the viewer's
+**Find** panel with **`› ERP`** and it opens on *that* one instead.
 
 ![What-if schedule — slipping the marquee Superstructure phase +56 days re-folds every downstream phase in blue (finish-to-start). The finish moves 2029-05-28 → 2029-07-23, planned value drops 64.7M → 56.4M, but the budget (BAC) is unchanged — same scope, only the dates moved. Accept re-baselines; Discard drops it.](figs/whatif_ripple.png)
 
