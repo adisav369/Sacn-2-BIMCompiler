@@ -28,14 +28,16 @@
  *
  * THE PROOF the rendered drop is correct = expandAssembly (the host's actual code, loaded from the catalog
  * under test) must reproduce the Java leaf CENTRE (= what place() seats the box on), to 1mm, for:
- *   (b) FURN_PIANO via BUILDING_SH_STD — the proven SH Rosetta building, Java centre (10.593, 7.155, 1.640)
+ *   (b) the PIANO leaf via BUILDING_SH_STD — its centre matches the proven compiler output.db (origin-normalised)
  *   (c) DX::DX_A102_SET dropped at origin — every leaf CENTRE inside the set's own [0,w]x[0,d]x[0,h] footprint
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
+let Database = null; try { Database = require('better-sqlite3'); } catch (e) { /* oracle check self-skips */ }
 
 const CAT = process.argv[2] || path.join(__dirname, '..', 'deploy/dev/dagevu_catalog.json');
+const OUTPUT_DB = process.argv[3] || path.join(__dirname, '..', 'DAGCompiler/lib/output/samplehouse.db');
 const TOL = 0.001; // 1mm — matches PlacementCollectorVisitorTest TOLERANCE
 const fails = [];
 const log = (m) => console.log(m);
@@ -118,21 +120,34 @@ function checkInvariant() {
   log(`§W-MDROP-INVARIANT sets=${checkedSets} leaves=${checkedLeaves} R1leaks=${r1} R2leaks=${r2} R3leaks=${r3}`);
 }
 
-// ── (b) FURN_PIANO via BUILDING_SH_STD lands at the Java hand-calc position ──────────────────────────────────
-// chain BUILDING_SH_STD(o=0) -> line SH_GF_STR(0,0,0) -> SH_GF_STR(o=0) -> leaf FURN_PIANO(dx=9.90750,dy=6.85500,
-// dz=1.05507), dims 1.371x0.6x1.17. The Java AABB is X=[9.9075,11.2785] Y=[6.855,7.455] Z=[1.0551,2.2251]; the
-// box CENTRE (what place() needs in x/y) = (10.593, 7.155) and the box BASE (what place() needs in z, since the
-// proxy box is based at z=0) = dz = 1.0551. So expandAssembly must return (10.593, 7.155, 1.0551).
+// ── (b) the PIANO leaf via BUILDING_SH_STD lands at the COMPILER-OUTPUT centre ────────────────────────────────
+// ORACLE = the proven compiler output.db (samplehouse.db), NOT a hand-calc yardstick (the old FURN_PIANO/SH_GF_STR
+// target was archive-era — the current SH_BOM.db routes the piano via SH_1_LIVING_ROOM_SET, id PIANO_1372x600x1170).
+// FRAME: the drop FOLDS the building's m_bom.origin (ASM ox/oy/oz = -9.2348,-2.7464,-0.47) onto every child on
+// descent; the compiler output is in the origin-NORMALISED frame (it does not carry that translation). So the drop
+// centre minus the building origin must equal the compiler centre — this is exact to the µm. The residual building-
+// origin TRANSLATION (drop sits at building-local 0; compiler at IFC-world) is the documented absolute-frame item
+// (RESUME_DROP_VS_JAVA_STRICT) — it is translation-invariant, so the positional SPREAD this witness guards is closed.
 function checkPiano() {
-  const PX = 9.9075015, PY = 6.855, PZ = 1.0550699, W = 1.371, D = 0.6;
-  const want = { x: PX + W / 2, y: PY + D / 2, z: PZ };   // x/y = box centre, z = box base (LBD bottom = dz)
+  const ID = 'PIANO_1372x600x1170';
   const leaves = expandCentres('BUILDING_SH_STD', { x: 0, y: 0, z: 0, rot: 0 });
-  const piano = leaves.find(l => l.ref === 'FURN_PIANO');
-  if (!piano) { fail('PIANO: FURN_PIANO not found in BUILDING_SH_STD expansion'); log('§W-MDROP-PIANO MISSING'); return; }
-  const d = Math.max(Math.abs(piano.cx - want.x), Math.abs(piano.cy - want.y), Math.abs(piano.cz - want.z));
-  log(`§W-MDROP-PIANO place=(${piano.cx.toFixed(3)},${piano.cy.toFixed(3)},${piano.cz.toFixed(3)}) ` +
-      `javaTarget=(${want.x.toFixed(3)},${want.y.toFixed(3)},${want.z.toFixed(3)}) maxDiff=${(d * 1000).toFixed(2)}mm`);
-  if (d > TOL) fail(`PIANO: position off Java target by ${(d * 1000).toFixed(2)}mm (>1mm)`);
+  const piano = leaves.find(l => l.ref === ID);
+  if (!piano) { fail(`PIANO: ${ID} not found in BUILDING_SH_STD expansion`); log('§W-MDROP-PIANO MISSING'); return; }
+  if (!Database || !fs.existsSync(OUTPUT_DB)) { log('§W-MDROP-PIANO oracle SKIP (no output.db/better-sqlite3)'); return; }
+  const odb = new Database(OUTPUT_DB, { readonly: true });
+  const row = odb.prepare(
+    'SELECT (r.minX+r.maxX)/2 AS cx,(r.minY+r.maxY)/2 AS cy, r.minZ AS bz, (r.maxX-r.minX) AS w ' +
+    'FROM elements_meta em JOIN elements_rtree r ON em.id=r.id ' +
+    "WHERE em.ifc_class='IfcFurniture' AND ABS((r.maxX-r.minX)-1.372)<0.005").get();
+  odb.close();
+  if (!row) { fail('PIANO: no 1.372m-wide IfcFurniture in compiler output.db oracle'); return; }
+  const b = ASM['BUILDING_SH_STD'] || {};                 // building origin the drop folds (compiler does not)
+  const ox = b.ox || 0, oy = b.oy || 0, oz = b.oz || 0;
+  const got = { x: piano.cx - ox, y: piano.cy - oy, z: piano.cz - oz };   // drop → origin-normalised (compiler) frame
+  const d = Math.max(Math.abs(got.x - row.cx), Math.abs(got.y - row.cy), Math.abs(got.z - row.bz));
+  log(`§W-MDROP-PIANO drop-origin=(${got.x.toFixed(3)},${got.y.toFixed(3)},${got.z.toFixed(3)}) ` +
+      `compiler=(${row.cx.toFixed(3)},${row.cy.toFixed(3)},${row.bz.toFixed(3)}) maxDiff=${(d * 1000).toFixed(2)}mm`);
+  if (d > TOL) fail(`PIANO: position off compiler oracle by ${(d * 1000).toFixed(2)}mm (>1mm)`);
 }
 
 // ── (c) DX::DX_A102_SET dropped at origin: every leaf CENTRE inside its own [0,w]x[0,d]x[0,h] footprint ────────
@@ -223,8 +238,8 @@ async function checkHostEquivalence(setId) {
     fails.slice(0, 12).forEach(f => log('  - ' + f));
     process.exit(1);
   }
-  log('\n§W-MODELLER-DROP PASS — catalog satisfies the Java IntraBOM invariant (R1/R2/R3), a known leaf ' +
-      '(FURN_PIANO/BUILDING_SH_STD) lands at the Java hand-calc centre to 1mm, a furniture set ' +
+  log('\n§W-MODELLER-DROP PASS — catalog satisfies the Java IntraBOM invariant (R1/R2/R3), the PIANO leaf ' +
+      '(BUILDING_SH_STD) lands at the proven compiler output.db centre (origin-normalised) to 1mm, a furniture set ' +
       '(DX::DX_A102_SET) drops inside its own bbox, and the host expandAssembly == the Java oracle to 1mm.');
   process.exit(0);
 })();

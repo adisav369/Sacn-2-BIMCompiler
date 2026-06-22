@@ -228,7 +228,7 @@ def layout_assembly(asm, by_id, bom_meta):
         if has_offsets:
             float_set = 1
     for ch in children:                                         # drop transient layout inputs from the shipped JSON
-        ch.pop('_aw', None); ch.pop('_ms', None)
+        ch.pop('_aw', None); ch.pop('_ms', None); ch.pop('_ad', None); ch.pop('_ah', None)
     return wall_set, float_set, rot_resolved, rot_unresolved
 
 
@@ -335,7 +335,7 @@ def main():
     bom_ids = set(bom_meta)
     lines_by_bom = defaultdict(list)
     for r in b.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
-                       'allocated_width_mm, min_space_mm, component_type '
+                       'allocated_width_mm, min_space_mm, component_type, allocated_depth_mm, allocated_height_mm '
                        'FROM m_bom_line WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
         lines_by_bom[r[0]].append(r)
 
@@ -361,10 +361,10 @@ def main():
                             'aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z FROM m_bom'):
             bid = pfx(r[0]); bom_meta[bid] = (bid, r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9]); bom_ids.add(bid); pb_sets += 1
         for r in pb.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
-                            'allocated_width_mm, min_space_mm, component_type FROM m_bom_line '
-                            'WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
+                            'allocated_width_mm, min_space_mm, component_type, allocated_depth_mm, allocated_height_mm '
+                            'FROM m_bom_line WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
             ref = pfx(r[1]) if r[1] in own else r[1]   # same-building nested set → prefix so it folds as a BOM
-            lines_by_bom[pfx(r[0])].append((pfx(r[0]), ref, r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10]))
+            lines_by_bom[pfx(r[0])].append((pfx(r[0]), ref, r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12]))
         for r in pb.execute('SELECT product_id, COALESCE(Name, product_id), ifc_class, width, depth, height, '
                             'M_Product_Category_ID FROM M_Product'):
             mprod_extra.setdefault(r[0], (r[1], r[2], r[3], r[4], r[5], r[6]))
@@ -419,7 +419,7 @@ def main():
         if not meta:
             continue
         children = []
-        for (_, ref, role, seq, dx, dy, dz, rrule, aw_mm, ms_mm, ctype) in rows:
+        for (_, ref, role, seq, dx, dy, dz, rrule, aw_mm, ms_mm, ctype, ad_mm, ah_mm) in rows:
             if not ref:
                 continue
             if str(ctype or '').upper() == 'PHANTOM' or ref == 'BUFFER':
@@ -435,7 +435,8 @@ def main():
             rotDeg, rotRule = parse_rot(rrule)
             ch = {'ref': ref, 'role': role, 'seq': seq or 0, 'dx': round(dx or 0, 4),
                   'dy': round(dy or 0, 4), 'dz': round(dz or 0, 4), 'rotDeg': rotDeg, 'isBom': isbom,
-                  '_aw': (aw_mm or 0) / 1000.0, '_ms': (ms_mm or 0) / 1000.0}   # transient: alloc width + min space (m)
+                  '_aw': (aw_mm or 0) / 1000.0, '_ms': (ms_mm or 0) / 1000.0,   # transient: alloc width + min space (m)
+                  '_ad': (ad_mm or 0) / 1000.0, '_ah': (ah_mm or 0) / 1000.0}   # transient: alloc depth + height (m)
             if rotRule:
                 ch['rotRule'] = rotRule                          # symbolic rule retained for honesty
                 # MIRROR:X / MIRROR:Y is an axis REFLECTION (party-wall flip), NOT a rotation — the Java visitor
@@ -492,6 +493,44 @@ def main():
         if gh:
             p['gh'] = gh
         products.append(p); by_id[pid] = p; added += 1
+
+    # ── PASS 1.5: PER-INSTANCE BOX dims (W-DROP-VS-COMPILER PART 2, 2026-06-23). The compiler sizes each placed
+    # element from the BOM LINE's allocated_width/depth/height_mm — NOT the shared product's M_Product dims. A
+    # product placed N× at DISTINCT sizes (SH `CEILING_57t`: 9.31×5.66, 4.45×1.95, 4.45×3.46) collapsed to ONE
+    # product box → inflated covering + over-spread (the d=9.308 box was the SOLE element past the slab footprint).
+    # It is ALSO the cross-building leaf-id COLLISION cure: per-bldg leaf product_ids are bare (unprefixed), so
+    # DX's `CEILING_57t` (7.97×9.31) shadowed SH's via mprod_extra.setdefault — but the LINE's allocated_* carry
+    # SH's truth, so overriding to them fixes the dim regardless of which product won the id race. NON-INVENT:
+    # allocated_* read verbatim from the editable BOM line (the leaf layer). EDITABLE-LAYER-SAFE: the override is a
+    # per-instance synthetic product (asmOnly, reuses the base mesh/ifc/name — same pattern as the ROLE__ products
+    # and leaf-closure), so the LINE still references an addressable product the user can edit. Run BEFORE PASS 2
+    # (layout reads the leaf box dims for the LBD-corner half-extent + wall-walk) but AFTER leaf-closure (base dims
+    # known). Only overrides when allocated differs from the resolved product >1mm (else the base already matches).
+    inst_products = 0
+    def _instance_product(base_ref, iw, idd, ih):
+        nonlocal inst_products
+        key = '%s__%dx%dx%d' % (base_ref, round(iw * 1000), round(idd * 1000), round(ih * 1000))
+        if key not in by_id:
+            base = by_id.get(base_ref, {})
+            p = dict(base); p['id'] = key
+            p['w'] = round(iw, 4); p['d'] = round(idd, 4); p['h'] = round(ih, 4)
+            p['asmOnly'] = True; p['instanceOf'] = base_ref
+            products.append(p); by_id[key] = p; inst_products += 1
+        return key
+    DIM_TOL = 0.001                                              # 1mm — below this the base box already matches
+    for asm in assemblies:
+        for ch in asm['children']:
+            if ch['isBom']:
+                continue
+            iw, idd, ih = ch.get('_aw', 0), ch.get('_ad', 0), ch.get('_ah', 0)
+            if min(iw, idd, ih) <= 0:                            # no allocated box on this line → keep base product
+                continue
+            base = by_id.get(ch['ref'])
+            if not base:
+                continue
+            if (abs(iw - (base.get('w') or 0)) > DIM_TOL or abs(idd - (base.get('d') or 0)) > DIM_TOL
+                    or abs(ih - (base.get('h') or 0)) > DIM_TOL):
+                ch['ref'] = _instance_product(ch['ref'], iw, idd, ih)
 
     # ── PASS 2: ENVELOPE-RELATIVE LAYOUT — run NOW that every leaf product's real dims are in by_id (the leaf
     # set is closed). Running this inside pass 1 fell back to default 0.3/0.5 dims for leaf-closure products →
@@ -603,6 +642,8 @@ def main():
         phantom_skipped, role_resolved, role_proxy))
     print('§DAGEVU-SPATIAL wallAnchoredSets=%d floatOffsetSets=%d rotSymbolicResolved=%d rotSymbolicUnresolvable=%d' % (
         sets_wall, sets_float, rot_resolved, rot_unresolved))
+    print('§DAGEVU-INSTANCE perInstanceBoxProducts=%d (leaf line allocated_* dims differ from product → own box, '
+          'NON-INVENT; fixes reused-product instances + cross-building dim collision)' % inst_products)
     print('§DAGEVU-BOXONLY honestBoxProducts=%d (library best part is a box ≤12 faces)' % box_only)
     print('§DAGEVU-GEOM out=%s geoms=%d rawBytes=%d (~%.2f MB)' % (GEOM_OUT, len(geoms), gbytes, gbytes / 1e6))
 

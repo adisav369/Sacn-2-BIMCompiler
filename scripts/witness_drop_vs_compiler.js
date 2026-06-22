@@ -41,14 +41,19 @@ const bucket = (c) => !c ? 'UNKNOWN' : /Wall/.test(c) ? 'WALL' : /Furni/.test(c)
   : /Door/.test(c) ? 'DOOR' : /Window/.test(c) ? 'WINDOW' : c.replace('Ifc', '');
 const med = (a) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
 
-function summarize(label, leaves) {
-  // leaves: [{x,y,z,w,d,h,cls}]  — centre + box dims + ifc_class
+function summarize(label, leaves, zMode) {
+  // leaves: [{x,y,z,w,d,h,cls}]  — x/y are box CENTRES; z depends on zMode.
+  //   zMode='center' (compiler output.db: z = (minZ+maxZ)/2) → box spans z ± h/2.
+  //   zMode='base'   (drop: place() seats the box BASE at z, bbox[4]=0)   → box spans z .. z+h.
+  // Modelling the drop's base-seated z as a centre falsely inflated H by ~h/2 of the tallest element
+  // (the 1.26 'over-spread' was this harness artifact, NOT a drop defect — real drop Z span == compiler's).
+  const base = zMode === 'base';
   let mnx = 1e9, mny = 1e9, mnz = 1e9, mxx = -1e9, mxy = -1e9, mxz = -1e9;
   const byc = {};
   leaves.forEach(l => {
     mnx = Math.min(mnx, l.x - l.w / 2); mxx = Math.max(mxx, l.x + l.w / 2);
     mny = Math.min(mny, l.y - l.d / 2); mxy = Math.max(mxy, l.y + l.d / 2);
-    mnz = Math.min(mnz, l.z - l.h / 2); mxz = Math.max(mxz, l.z + l.h / 2);
+    mnz = Math.min(mnz, base ? l.z : l.z - l.h / 2); mxz = Math.max(mxz, base ? l.z + l.h : l.z + l.h / 2);
     (byc[l.cls] = byc[l.cls] || []).push(l);
   });
   console.log(`\n  ${label}: ${leaves.length} leaves   extent W×D×H = ${(mxx - mnx).toFixed(2)} × ${(mxy - mny).toFixed(2)} × ${(mxz - mnz).toFixed(2)} m`);
@@ -73,7 +78,7 @@ function summarize(label, leaves) {
   // class comparison to the placeable BOM classes the drop emits, but show the full compiler extent too.
   const oracle = orows.map(r => ({ x: r.x, y: r.y, z: r.z, w: r.w, d: r.d, h: r.h, cls: bucket(r.c) }));
   console.log('═══ ORACLE = compiler output.db (proven) ═══');
-  const O = summarize('COMPILER', oracle);
+  const O = summarize('COMPILER', oracle, 'center');
 
   // ── Each candidate drop ──
   for (const id of CANDIDATES) {
@@ -86,7 +91,7 @@ function summarize(label, leaves) {
       return { x: l.x, y: l.y, z: l.z, w: p.w || 0, d: p.d || 0, h: p.h || 0, cls: bucket(p.ifc_class) };
     });
     console.log(`\n═══ CANDIDATE ${id} ═══`);
-    const C = summarize(id, mapped);
+    const C = summarize(id, mapped, 'base');
     // headline extent ratio vs compiler placeable footprint
     const er = O.ext.map((o, i) => (C.ext[i] / o));
     console.log(`     extent ratio drop/compiler = ${er.map(x => x.toFixed(2)).join(' , ')}  (1.00 = same size)`);
