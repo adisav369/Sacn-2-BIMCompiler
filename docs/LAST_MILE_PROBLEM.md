@@ -462,12 +462,30 @@ algorithm is not porting the proof.* The shortcut survived because the simple-in
 exercised the dropped terms was never held to the Java's numeric contract. Carry the invariant across, not just
 the idea.
 
-### Still owed — the §GEO_SUMMARY self-proof (the JS twin of §7's "Next step for coder")
+### The §GEO_SUMMARY self-proof — the JS twin of §7's "Next step for coder" (DONE 2026-06-22)
 
 The Java compiler emits its own drift verdict (`[GEO] SUMMARY 58 elements, 1653 pairs, worst=0.002mm, DRIFT=0`).
-The modeller drop currently proves correctness only in the *external* witness — if `expandAssembly` drifts again,
-the running app stays silent. **Next:** make the drop emit a runtime `§GEO_SUMMARY` (leaves, all-pairs vs the
-set's declared bbox, worst-mm, DRIFT=0) so the modeller polices itself the way the pipeline does. Log-only,
-cannot regress geometry. Resume card: `prompts/RESUME_MODELLER_FOCUS.md` (top block).
+The modeller drop used to prove correctness only in the *external* witness — if `expandAssembly` drifted again,
+the running app stayed silent. **Closed (bim-ootb PR #481, sw v698):** every BOM drop now emits a runtime
+`§GEO_SUMMARY` so the modeller polices itself the way the pipeline does:
+
+```
+§GEO_SUMMARY BUILDING_SH_STD [BUILDING] 55 leaves, 1485 pairs, worst=0mm, DRIFT=0
+```
+
+`bonsai_library.js geoSummary(rootId)` recomputes the proven IntraBOM invariant (faithful to
+`witness_modeller_drop.js checkInvariant`) over the expanded placement, scoped by bom_type — R1 `|dx|,|dy|<10m`
++ R2 `|dz|<4.5m` for SET/ROOM leaves, and an R3 absolute-leak gate (all-pairs leaf-centre span vs
+`env = max(declared bbox, 10m)+3m`). It is **log-only** — reads the catalog + `expandAssembly` output, never
+mutates geometry or the op-log — so it cannot regress geometry.
+
+*Honest design note (NON-INVENT):* the catalog's declared bbox is the parent-**product** aabb, not the laid-out
+footprint (`BED_SET` declares 1.2×0.6 m but its five children span 3.5×2.0 m), so a tight "span == declared bbox"
+check would false-alarm on **correct** data. The gate therefore uses the same *loose* `max(declared, 10m)+3m`
+absolute-leak envelope the external witness proved — it passes coherent sets and fires on the ±22.8 m scatter
+that PR #478 fixed. Witness `scripts/witness_modeller_geo_summary.js` (**W-GEO-SUMMARY**): all 57 droppable roots
+report `DRIFT=0 / worst=0mm`; the line format matches the Java twin; and **G4 falsifiability** — the gate fires
+(`worst=4844mm, DRIFT=1`) on a simulated PR #478 scatter, so the self-proof can fail, not just pass.
+Resume card: `prompts/RESUME_MODELLER_FOCUS.md` (top block).
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*
