@@ -7,195 +7,145 @@
 
 ---
 
-## The Core Problem: From Geometry to Intent and Back
+## How to read this — the honest frame
 
-As far as I can tell, most BIM tools store **geometry as the source of truth**.
-An IFC file carries the building — 51,000+ elements of geometry, relationships,
-properties, all in one monolithic file. Lose the IFC, lose the building.
+This project is broad. To keep it honest, everything below is sorted into three tiers,
+and the line between them is never blurred:
 
-But geometry — at least in the files I've worked with — is not intent. A
-200 MB IFC file captures *what was drawn*. What was meant — the recipe — stays
-in the architect's head. You cannot ask it "give me a building like this one
-but with 4m ceilings" because the intent was never separated from the output.
+- **Tier 1 — Landed.** Works today, **use-as-is-where-is**, and every claim carries a
+  witness (a `§`-logged, falsifiable test you can run). This is real commercial value now.
+- **Tier 2 — Wedges.** Small hardening or a short build away — the commercial on-ramps.
+  Stated as *targets*, never as done.
+- **Tier 3 — Frontier.** The demonstrated promise — proven in architecture, not yet
+  finished. Shown to be *possible*, labelled as *unfinished*.
 
-### Did Anybody Solve This?
+If you grep the repo, the Tier-1 claims must hold and the Tier-2/3 ones must read as
+runway. That discipline is the point.
 
-**Autodesk solved it — inside a proprietary wall.** Revit's native .rvt format
-maintains full spatial fidelity internally. But .rvt is editable only in Revit,
-with a shelf-life tied to Autodesk's support cycle [[6]](#ref6). When geometry leaves
-Revit as IFC, "there's always loss of data... all constraints are lost and
-component parametrics are gone" [[7]](#ref7). The spatial compilation that works inside
-.rvt is not available to anyone outside it.
+---
 
-**The openBIM world has no equivalent.** Bonsai/BlenderBIM is IFC-native — you
-model directly in IFC, not in a proprietary format that exports to IFC [[8]](#ref8). But
-IFC is an exchange format, not a compilation target. Bonsai can author and
-display IFC geometry, but it does not decompose a building into a reusable BOM
-recipe, compile from that recipe, or verify the round-trip. Coordinate handling
-with large georeferenced files remains an active area of development [[9]](#ref9).
+## The core problem: geometry is not intent
 
-**The compilation challenge:** can you extract a building's intent from its
-geometry, express that intent as a reusable recipe (BOM), and then recompile
-the recipe back into spatially correct 3D geometry — proving the recipe is
-faithful to the original? I have two concerns. Construction is
+Most BIM tools store **geometry as the source of truth**. An IFC file carries the
+building — 51,000+ elements of geometry, relationships, properties — in one monolithic
+file. Lose the IFC, lose the building. But a 200 MB IFC captures *what was drawn*, not
+*what was meant*. You cannot ask it "give me a building like this but with 4 m ceilings,"
+because the intent was never separated from the output.
+
+**Autodesk solved it behind a proprietary wall.** Revit's `.rvt` keeps full spatial
+fidelity internally, but is editable only in Revit with a shelf-life tied to Autodesk's
+support cycle [[6]](#ref6). Leave via IFC and "there's always loss of data... all
+constraints are lost and component parametrics are gone" [[7]](#ref7).
+
+**The openBIM world has no equivalent.** Bonsai/BlenderBIM is IFC-native [[8]](#ref8), but
+IFC is an exchange format, not a compilation target — it does not decompose a building
+into a reusable BOM recipe, compile from it, and verify the round-trip [[9]](#ref9).
+
+**The compilation challenge:** extract a building's intent from its geometry, express it
+as a reusable recipe (BOM), recompile the recipe back into spatially correct geometry —
+and *prove* the recipe is faithful. Construction is
 [industrialised manufacturing](https://www.autodesk.com/design-make/emerging-tech/industrialized-construction) [[11]](#ref11),
-yet architecture remains an artistic discipline — the compiler must give
-determinism to what was drawn as art. And the industry's embrace of
-[probabilistic AI](https://www.sciencedirect.com/science/article/pii/S2590123024008107) [[12]](#ref12)
-worries me — a beam is either at (3200, 0, 2700) or it isn't.
+yet architecture is drawn as art; the compiler gives determinism to art. A beam is either
+at (3200, 0, 2700) or it isn't — no probabilistic guessing [[12]](#ref12).
 
-That is what the BIM Intent Compiler does. In two databases.
+That is what the BIM Intent Compiler does, in two databases — and it is the **proven core**
+that makes Tier 1 real.
 
----
+### The proven core (why the rest can be believed)
 
-## Two Databases: The Heart of the Architecture
+1. **Input DB** — an IFC (or OBJ/STL/DAE/GLB) is extracted into a normalised SQLite DB.
+   Geometry hell is resolved here: origin divergence, unit mismatch (the 1000× metres-vs-mm
+   error), axis ambiguity, and GUID identity — documented industry problems
+   [[1]](#ref1)[[2]](#ref2)[[3]](#ref3)[[4]](#ref4)[[5]](#ref5). Every element becomes a row;
+   every spatial relationship a foreign key. The building is SQL-queryable.
+2. **BOM abstraction** — 51,000 elements decompose into ~700 BOM lines (73× compression)
+   via formula verbs (TILE, ROUTE, FRAME, CLUSTER). This is the *intent*: not "12 wall
+   meshes at these coordinates" but "12 of product W-EXT-200, tiled at 2.5 m along the
+   north facade."
+3. **Output DB** — the BOM + shared library recompiles into spatially placed geometry,
+   each element carrying its original GUID. A 200 MB IFC becomes a ~10 KB semantic
+   definition. The output is disposable — delete it, recompile, the geometry reproduces.
+4. **Rosetta Stone** — Input vs Output across verification gates (counts, volumes, geometry
+   hashes, spatial digests, GUID provenance, transforms, materials). **21 buildings from 9
+   authoring tools; 116/157 gates PASS, 4 ALL GREEN; worst-case positional error 0.002 mm.**
+   See [`SPATIAL_COMPILATION_PAPER.md`](SPATIAL_COMPILATION_PAPER.md).
 
-### Step 1 — Input DB: Extract the Building
-
-An IFC file (or OBJ, STL, DAE, GLB from the Drop Zone) is extracted into a
-normalised SQLite database. Geometry hell is handled here — these are not
-theoretical concerns but documented industry problems [[1]](#ref1)[[2]](#ref2)[[3]](#ref3):
-
-- **Origin divergence** — Tool A at (0,0,0), Tool B at GPS (317000, 175000).
-  Models from different disciplines scatter across kilometres when merged.
-  Even minor coordinate mismatches cause incorrect clash detections [[4]](#ref4).
-  Normalised to a common origin.
-- **Unit mismatch** — millimetres, metres, inches silently mixed across files.
-  A wall at `x=4500` could be 4.5 metres or 4.5 millimetres (1000× error).
-  Detected and corrected.
-- **Axis ambiguity** — Z-up vs Y-up, rotation chains 6 levels deep, baked
-  transforms. Geometric degradation of exports into CSG or faceted polyhedra
-  remains widespread [[5]](#ref5). Resolved to a consistent coordinate system.
-- **GUID identity** — IFC elements carry GloballyUniqueId, but non-IFC formats
-  (OBJ, STL, DAE, GLB) have no element identity at all. The extraction pipeline
-  preserves IFC GUIDs through the entire compilation chain and generates
-  deterministic GUIDs for non-IFC objects, so every element — regardless of
-  source format — has a stable, traceable identity in the database. Without
-  this, diffing two versions, tracking changes, and round-tripping back to IFC
-  would be impossible.
-
-After extraction, every element is a row. Every spatial relationship is a
-foreign key. The building is SQL-queryable:
-
-```sql
-SELECT guid, ifc_class, storey, discipline, material
-FROM elements_meta
-WHERE storey = 'Ground Floor' AND discipline = 'ARC';
-```
-
-This alone is useful — but it is still just a structured copy of the geometry.
-The building's intent has not been separated yet.
-
-### Step 2 — BOM Abstraction: Find the Recipe
-
-The compiler decomposes 51,000 elements into ~700 BOM lines (73× compression).
-Recurring patterns are expressed as formula verbs:
-
-| Verb | Pattern | Example |
-|------|---------|---------|
-| **TILE** | Repeat at regular spacing | Floor tiles, ceiling panels |
-| **ROUTE** | Place along a path | Pipes, ducts, cable trays |
-| **FRAME** | Structural grid | Column grids, beam lines |
-| **CLUSTER** | Group identical elements | Rail sleepers (75→5 lines, 93%) |
-
-The BOM is the building's *recipe* — a hierarchical bill of materials with
-spatial tack offsets (dx, dy, dz from parent). Each child references a product
-in a shared component library (LOD meshes keyed by hash). The recipe says:
-"place this product at this offset from its parent, repeat 12 times at 2.5m
-spacing." The geometry is not stored — it is referenced.
-
-**This is the intent.** Not "here are 12 wall meshes at these coordinates" but
-"12 instances of product W-EXT-200, tiled at 2.5m along the north facade."
-
-These verbs are only possible because products are reusable library artifacts,
-not per-building geometry. A ROUTE verb says "place PIPE-CU-15 along this path
-at 600mm spacing with elbows at bends" — an instruction that requires a shared
-product library to draw from. Closed-source BIM databases store geometry
-per-building; they cannot express BOM-level operations like TILE, ROUTE, or
-CLUSTER because there is no shared catalog of reusable artifacts to operate on.
-The same pattern extends to 2D — grid-line-resolved geometry spaces generate
-architectural drawings from the same BOM structure.
-
-### Step 3 — Output DB: Compile from Intent
-
-The compiler takes the BOM recipe + shared component library and recompiles
-into a new database of spatially placed 3D geometry. This is the **output DB**
-— the holy grail. A building generated from intent, not copied from a drawing.
-
-```
-INPUT DB (extracted)     →  what the architect drew
-BOM (abstracted)         →  what the architect MEANT
-OUTPUT DB (compiled)     →  the building, reproduced from intent
-```
-
-Every element in the Output DB carries its original GUID — whether that GUID
-came from an IFC file or was generated for a non-IFC import. This is what
-makes the round-trip work: the Output DB can export back to IFC with the
-same element identities the architect started with.
-
-The output DB is disposable. Delete it and recompile from the BOM + library.
-The same geometry reproduces exactly. A 200 MB IFC file becomes a 10 KB
-semantic definition that references a shared library.
-
-### Step 4 — Rosetta Stone: Prove the Recipe Works
-
-How do you know the BOM recipe faithfully captures the original building?
-Compare Input DB against Output DB. The Rosetta Stone strategy runs 9
-verification gates across both databases — element counts, bounding volumes,
-geometry hashes, spatial digests, GUID provenance, discipline isolation,
-metadata survival, transform accuracy, and material assignment.
-
-21 buildings from 9 authoring tools. 116/157 gates PASS, 4 ALL GREEN.
-Worst-case positional error: 0.002mm. The recipe reproduces the building.
-
-See [`SPATIAL_COMPILATION_PAPER.md`](SPATIAL_COMPILATION_PAPER.md) for the
-full proof methodology.
+The hard problem was always the spatial compilation. Everything downstream — 4D, 5D, cost,
+ERP — is a projection of the same verified BOM.
 
 ---
 
-## Why This Changes Everything
+## Tier 1 — Landed: use-as-is, where-is (witnessed today)
 
-Once you have a verified BOM recipe that compiles to correct 3D geometry,
-every downstream operation becomes a query on the same database:
+These work now, in a browser tab, no install. Each carries a witness you can run.
 
-| Dimension | Traditional approach | With compiled BOM |
-|-----------|---------------------|-------------------|
-| **3D Geometry** | Stored in IFC, locked in viewer | Compiled from recipe on demand |
-| **4D Schedule** | Separate tool (Primavera, MS Project) | Topological sort of BOM depth = construction sequence |
-| **5D Cost** | QS manually counts in Navisworks | `SUM(price × qty)` on BOM leaves — IFC already has the data |
-| **6D Carbon** | Separate LCA tool | `SUM(weight × emission_factor)` on same BOM |
-| **7D Facility** | Separate CAFM system | Asset register = BOM leaves with maintenance intervals |
+| Capability | What it does | Witness |
+|---|---|---|
+| **IFC handoff** | Drop IFC/OBJ/STL/DAE/GLB/glTF/3DS/FBX → queryable DB → view, classify, export back to IFC. Geometry hell resolved at import. | Rosetta gates; `import.js` round-trip |
+| **4D Time Machine** | Construction-sequence playback from BOM depth; stacked S-curve folded from real orders (Σ == PlannedAmt). | `W-SHOP-SCURVE` |
+| **5D cost (editable)** | BOQ + cost rollup with **editable** per-jurisdiction rate templates; Variation Order Excel (FIDIC Clause 12). | `4D5DAnalysis.md`; VO demo [[10]](#ref10) |
+| **BIM↔ERP — to the cent** | A BIM-pushed building folds into a real procurement/project order and ERP documents, reproducing iDempiere/Odoo output at **`maxDiff=0c`**. **No other tool connects BIM to ERP over one signed log.** | `W-PROJ-FOLD`, `W-GW-HOSP-FOLD`, `W-FOLD-COMPLETE` |
+| **Budget vs Actual (EVM)** | Planned vs Committed at project + phase + task grain; CV/SV/CPI/SPI in BigDecimal; cost overrun surfaced on the 4D S-curve. | `W-GW-HOSP-COSTVAR`; `proj_control.js` |
+| **What-If (cost)** | Speculative VO branch — revised = original + approved + pending — kept separate from the official ledger, reversible. | `W-FIN-BLUE-SPEC` (5/5) |
+| **Dashboard / analytics** | Generic multi-view over **any** data model: donut grid, "By-X" group-by chips that fill the grid, pivot lens, scrubbable timeline filmstrip, CSV/SVG/PNG export. Field-driven, not hardcoded per table. | `W-DASHBOARD`; `pivot_lens.html` |
+| **POS sale loop** | Ring → complete → backflush BOM → hold/recall → deliver-later → register, all over the signed op-log; the signed orderline doubles as the buyer's receipt artifact. WAN bench **to 10,000 stations** with idempotent retry + email-backup recovery. | `W-POS`; `poc_pos_wan_scale.js` (B1–B7) |
+| **iDempiere DB extraction** | Connect a live iDempiere PostgreSQL → raw, non-inventive PG→SQLite extraction (`--list-clients`, `--masters`). | `migrate_agent.js`; `ERP_RAW_MIGRATION.md` |
 
-**4D/5D becomes tractable once the geometry is correct — but GIGO applies.**
-IFC declares fields for quantities, costs, and schedules — though in practice
-authoring tools populate these inconsistently. Worse: is an "IfcBeam" in one
-building the same product as an "IfcBeam" in another? IFC class names are
-categories, not products. A steel I-beam and a timber glulam beam are both
-IfcBeam. Without product classification, costing is garbage-in-garbage-out —
-you cannot price "beam," only "UB 254×146×31 Grade S355."
-
-This is an ERP problem, not a geometry problem. The compiler addresses it
-at two levels: **M_Product_Category** (iDempiere's hierarchical classification)
-maps IFC classes to swap pools of actual products with units of measure and
-prices. **Rates templates** (editable JSON, one per jurisdiction) let the QS
-override unit rates, labour costs, and equipment rates per project — because
-CIDB Malaysia rates are not RS Means US rates. The template is the user's
-domain knowledge; the compiler applies it consistently across the BOM.
-
-Once the geometry is spatially correct, the BOM is classified, and the rates
-are set, scheduling is a topological sort, costing is a rollup, carbon is a
-sum. Not trivial — but reducible to SQL queries on a verified database,
-rather than separate systems with separate data [[10]](#ref10).
-
-**The hard problem was always the spatial compilation** — proving that a
-recipe can reproduce a real building's geometry. Everything downstream is
-a projection of the same verified BOM.
+**The standout no one else has:** *building → procurement order, in one browser, tied to
+the cent.* The Dashboard is the answer to "where's your Odoo kanban / SAP analytics" — and
+because it's AD-field-driven, it's one dashboard for *every* data model, not a bespoke
+screen per report.
 
 ---
 
-## The Landscape: Nobody Else Compiles
+## Tier 2 — Wedges: small hardening, the commercial on-ramps
 
-### Tier 1 — Incumbents (Geometry Authoring)
+Real markets, short runway. Stated as targets — not yet shipped.
+
+- **POS → Malaysian e-invoicing + personal accounting (the long tail).** The LHDN/MyInvois
+  mandate forces every business onto e-invoicing, and the government's own central service
+  has buckled under server-side load — a structural opening for a **serverless, local-first**
+  POS that each merchant runs themselves. The sale loop is landed; the wedge is hardening it
+  against real-world bugs and adding the compliance surface. The signed orderline is already
+  a receipt artifact — evolving it into a MyInvois-format submission is the build. *(Not yet
+  in code; this is the target.)*
+- **Touch-kitchen + self-order tabs + QR payment.** A self-order surface (URL-fetched remote
+  ordering, QR payment display, payment-status fold returned by email) sits naturally on the
+  same op-log. *(Not yet in code; the POS loop it rides is.)*
+- **iDempiere DB health-check report — "the diagnosis; the diet is optional."** A read-only
+  analysis pass over the *already-working* extraction: scan a user's DB for dirty data,
+  orphans, GL imbalances, and a migration-gap score. Sold as a **health check + migration
+  plan** — standalone value even if they never migrate. Low lift (the extraction plumbing
+  exists), high value (migration paralysis is real). *(Analysis pass not yet built; extraction
+  is.)*
+- **What-If (schedule ripple).** Finish-to-start cascade on the timeline. Engine done; browser
+  drive pending.
+
+---
+
+## Tier 3 — Frontier: the demonstrated promise (the dragon's head)
+
+**DAGeVu modeller** — a browser-native BIM authoring tool whose endgame is to **sever the
+Revit-license tether**. The *hard* part is shipped and witnessed: an occt-wasm B-rep kernel
+as a pure `ops → mesh` fold, the signed op-log **as the feature tree** (scrub, undo, tamper-
+evident), and **IFC4 export that round-trips** (`IfcWall` + profile + `IfcOpeningElement`,
+re-imports exact). A user can *today* author a few walls, a door, an opening, and MEP runs,
+and export usable IFC — without Revit.
+
+Honest distance to the mountain top: **~35%** — but the 35% that's done is the part that
+takes others decades. The gaps are UX/performance, not physics: dimension-driven parametric
+edit, a regen cache (so a 50-wall model stays instant), multi-select + properties panel,
+native wall/door/window tools, and snap-to-geometry. The read: **weeks, not years**, because
+kernel fidelity, signed history, and IFC round-trip are already proven.
+
+Witnesses: `W-BONSAI-*` (`bonsai_signed_live.js`, `bonsai_ifc_live.js`, `bonsai_sweep_live.js`,
+`bonsai_fillet_live.js`, `bonsai_move_live.js`). See [`ModellerKernelFold.md`](ModellerKernelFold.md).
+
+---
+
+## The landscape — nobody else compiles, nobody else connects
+
+### Tier 1 — Incumbents (geometry authoring)
 
 | Tool | Role |
 |------|------|
@@ -203,123 +153,88 @@ a projection of the same verified BOM.
 | **ArchiCAD** (Graphisoft) | Architectural BIM. Strong in EU/Asia. |
 | **Tekla Structures** (Trimble) | Steel/concrete detailing, fabrication-grade. |
 
-These create the IFC files. They model geometry. They do not decompose it
-into a BOM recipe, compile from intent, or verify the round-trip.
+They create IFC. They model geometry. They do not decompose it into a BOM recipe, compile
+from intent, or verify the round-trip.
 
-### Tier 2 — Visual Newcomers
+### Tier 2 — Visual newcomers
 
-| Tool | What It Does |
+| Tool | What it does |
 |------|-------------|
 | [**Snaptrude**](https://www.snaptrude.com/) | Browser sketch-to-BIM |
 | [**TestFit**](https://www.testfit.io/) | AI generative site planning |
 | [**Arkio**](https://www.arkio.is/) | VR/AR collaborative design |
 
-Design exploration tools. No BOM, no compilation, no verification.
+Design exploration. No BOM, no compilation, no verification.
 
-### Tier 3 — Open Source (IFC-Native)
+### Tier 3 — Open source (IFC-native)
 
-| Tool | What It Does |
+| Tool | What it does |
 |------|-------------|
 | [**Bonsai/BlenderBIM**](https://bonsaibim.org/) | IFC-native authoring inside Blender |
 | [**IfcOpenShell**](https://ifcopenshell.org/) | IFC parsing/generation library |
-| [**IFC.js / ThatOpenCompany**](https://thatopen.com/) | Web IFC viewer/editor |
+| [**ThatOpen (IFC.js)**](https://thatopen.com/) | Web IFC viewer/editor |
 
-They parse and display IFC. They do not abstract intent from geometry,
-compile from BOM recipes, or prove spatial round-trip fidelity.
-
----
-
-## Five Moats
-
-**1. Spatial compilation is solved — and hard to replicate.**
-Extracting intent from geometry, compiling back from BOM + library, and
-proving the round-trip with 0.002mm accuracy across 21 buildings from 9
-authoring tools. This is years of domain-specific work.
-
-**2. DB/ERP integration requires rare domain knowledge.**
-Mapping IFC to ERP semantics (M_Product, M_BOM, C_Order) requires
-understanding both BIM and manufacturing ERP — a rare combination.
-
-**3. Domain-agnostic — one pipeline for any facility type.**
-Houses, terminals, bridges, roads, railways. No code changes per domain —
-only a YAML mapping. Rail achieves 93% BOM compression.
-See [`INFRA_DESIGNER_SRS.md`](INFRA_DESIGNER_SRS.md).
-
-**4. Symbolic inference over relational data.**
-Validation rules evaluated in dependency order (Kahn's topological sort),
-proof trees with citations, skip-on-fail. Deterministic, not heuristic.
-
-**5. Browser-native BIM Designer with zero install.**
-BIM OOTB: sql.js WASM + Three.js. Imports IFC + six non-IFC formats via
-Drop Zone, guided wizard, IFC export. Proven at 126K elements. Any
-stakeholder with a URL can import, classify, view, and export.
-
-**The asymmetry:** adding a GUI to a compilation foundation takes weeks.
-Adding spatial compilation to a GUI-first tool takes years.
+They parse and display IFC. They do not abstract intent, compile from recipes, or prove
+round-trip fidelity — and **none connect BIM to a transaction ERP over one signed log.**
 
 ---
 
-## How It's Delivered
+## Moats
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  UPSTREAM SOURCES                                       │
-│  Revit · ArchiCAD · Bonsai · SketchUp · Blender        │
-│                       │                                 │
-│              IFC / OBJ / STL / DAE / GLB                │
-│                       ▼                                 │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │  BIM OOTB — Browser BIM Designer (primary)       │   │
-│  │  Drop Zone → Classify → Enrich → View → Export   │   │
-│  │  sql.js + Three.js · zero install · 126K el.     │   │
-│  └────────────────────┬─────────────────────────────┘   │
-│                       │                                 │
-│  ┌────────────────────▼─────────────────────────────┐   │
-│  │       BIM INTENT COMPILER (DAGCompiler)          │   │
-│  │  Input DB → BOM → Output DB → Rosetta Stone      │   │
-│  │  77 verbs · 4-DB schema · 9-gate verification    │   │
-│  └────────────────────┬─────────────────────────────┘   │
-│                       │                                 │
-│  ┌────────────────────▼─────────────────────────────┐   │
-│  │              iDempiere ERP                       │   │
-│  │  C_Order → C_OrderLine → Purchase Orders         │   │
-│  └──────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
-```
+1. **Spatial compilation is solved — and hard to replicate.** Intent extraction, recompile,
+   and a 0.002 mm round-trip across 21 buildings from 9 tools. Years of domain work.
+2. **BIM↔ERP over one signed op-log — unique.** Building → procurement order, ERP documents
+   reproduced to the cent. Requires rare BIM *and* manufacturing-ERP knowledge in one head.
+3. **One generic dashboard for every data model.** AD-field-driven group-by/pivot/timeline —
+   not a bespoke report per table.
+4. **Serverless / local-first by construction.** Each browser is its own server; the only
+   shared resource is a stateless signature gatekeeper. Scales to 10,000 POS stations with no
+   central database to overload — the exact failure mode that sank the national e-invoicing
+   rollout.
+5. **Domain-agnostic pipeline.** Houses, terminals, bridges, rail (93% BOM compression) — one
+   pipeline, a YAML mapping per domain. See [`INFRA_DESIGNER_SRS.md`](INFRA_DESIGNER_SRS.md).
+6. **Op-log = git-for-data.** Every state is a deterministic, reversible fold of a signed log
+   — what makes What-If branches, audit, and crash-replay fall out for free.
+
+**The asymmetry:** adding a GUI to a compilation foundation takes weeks. Adding spatial
+compilation — or a to-the-cent ERP fold — to a GUI-first tool takes years.
 
 ---
 
-## Who Uses This
+## Who uses this, and what they'd pay for
 
-| Role | Workflow | What they get |
-|------|----------|---------------|
-| **Quantity Surveyor** | Drop IFC on browser → BOQ charts + Variation Order Excel [[10]](#ref10) | Automated takeoff with FIDIC Clause 12 costing, no Navisworks |
-| **Contractor (tender)** | Import architect's IFC → view + classify + export costed BOM | Material quantities tied to verified geometry, not manual counts |
-| **Project Manager** | Import two IFC revisions → diff overlay + cost impact | Change detection with 4D/5D variance in one click |
-| **BIM Coordinator** | Merge multi-discipline models → check spatial consistency | Geometry hell resolved at import, not discovered at coordination |
-| **Facility Manager** | Query the compiled DB for asset register | Every element traceable by GUID, storey, discipline, material |
-| **Developer / Investor** | Browse a building in browser, no software install [[10]](#ref10) | Share a URL — stakeholder sees the model immediately |
+| Role | Workflow | Value | Tier |
+|------|----------|-------|------|
+| **Quantity Surveyor** | Drop IFC → BOQ + Variation Order Excel | Automated takeoff, no Navisworks | 1 |
+| **Contractor (tender)** | Import architect's IFC → classify → costed BOM | Quantities tied to verified geometry | 1 |
+| **Project Manager** | Push building → ERP project; track Planned vs Committed + EVM | Budget/actual + cost What-If in one place | 1 |
+| **Developer / Investor** | Share a URL → browse the model, no install | Instant stakeholder view | 1 |
+| **SME merchant (Malaysia)** | Run a local POS that does e-invoicing + accounting | Mandate compliance without a server to crash | 2 (target) |
+| **ERP owner (migration)** | Run a DB health-check → dirty-data + migration-gap report | Knows what they're sitting on before committing | 2 (target) |
+| **Architect / small practice** | Author basic geometry in-browser, export IFC | A path off per-seat license fees | 3 (frontier) |
 
 ---
 
-## Get Involved
+## Get involved
 
-The project is open source (GPLv3) and actively developed. Roadmap and
-deliverables: [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md).
+The project is **open source (MIT)** and actively developed. Roadmap:
+[`ACTION_ROADMAP.md`](ACTION_ROADMAP.md). For the journey from the IfcOpenShell Federation
+branch (Oct 2025) to today, see [`PROJECT_CHRONOLOGY.md`](PROJECT_CHRONOLOGY.md).
 
-If you work with IFC models and want verified spatial compilation from BIM
-data — try it, break it, tell us what is missing. Contributions welcome:
-product catalogs, jurisdiction rules, format importers, and test buildings.
+If you work with IFC models, run an ERP you're afraid to migrate, or just want verified
+spatial compilation — try it, break it, tell us what's missing. Contributions welcome:
+product catalogs, jurisdiction rules, format importers, test buildings.
 
 ---
 
 *Cross-references:*
-*[`SPATIAL_COMPILATION_PAPER.md`](SPATIAL_COMPILATION_PAPER.md) — academic paper (0.002mm proof),*
+*[`SPATIAL_COMPILATION_PAPER.md`](SPATIAL_COMPILATION_PAPER.md) — academic paper (0.002 mm proof),*
+*[`MigrateComparisonPaper.md`](MigrateComparisonPaper.md) — ERP fold, to the cent,*
 *[`BOMBasedCompilation.md`](BOMBasedCompilation.md) — compilation pipeline spec,*
 *[`DATA_MODEL.md`](DATA_MODEL.md) — 4-database schema,*
 *[`TestArchitecture.md`](TestArchitecture.md) — Rosetta Stone gates and traceability,*
-*[`BIM_Designer_Browser.md`](BIM_Designer_Browser.md) — browser viewer spec,*
-*[`MANIFESTO.md`](MANIFESTO.md) — ERP foundation,*
+*[`ModellerKernelFold.md`](ModellerKernelFold.md) — modeller as signed-log fold,*
+*[`PROJECT_CHRONOLOGY.md`](PROJECT_CHRONOLOGY.md) — dated history + commit ledger,*
 *[`ACTION_ROADMAP.md`](ACTION_ROADMAP.md) — project roadmap*
 
 ---
@@ -344,7 +259,7 @@ product catalogs, jurisdiction rules, format importers, and test buildings.
 
 <span id="ref9">[9]</span> OSArch Community. "How to import IFC with large coordinates?" — Documents floating-point precision limits with georeferenced files requiring local origin offsets, and that "horizontal construction where distances frequently exceed 1km presents challenges." [OSArch](https://community.osarch.org/discussion/1099/blenderbim-how-to-import-ifc-with-large-coordinates)
 
-<span id="ref10">[10]</span> Oon, R.D. "BIM OOTB — Browser Variation Order from IFC Import." 2026. — Demonstrates what becomes possible when BIM data lives in a queryable DB rather than a file: geometry stored as hash-keyed BLOBs (identical meshes instanced, not duplicated), revision diff as SQL `EXCEPT` on GUID sets, cost impact as `GROUP BY` on diff × rates template. IFC import, 4D/5D variance, and costed Variation Order Excel — entirely in the browser, no server. The browser demo is a consequence of the DB-first architecture, not a separate feature. [YouTube](https://youtu.be/hv0kcc_TKvY)
+<span id="ref10">[10]</span> Oon, R.D. "BIM OOTB — Browser Variation Order from IFC Import." 2026. — Demonstrates what becomes possible when BIM data lives in a queryable DB rather than a file: geometry stored as hash-keyed BLOBs (identical meshes instanced, not duplicated), revision diff as SQL `EXCEPT` on GUID sets, cost impact as `GROUP BY` on diff × rates template. IFC import, 4D/5D variance, and costed Variation Order Excel — entirely in the browser, no server. [YouTube](https://youtu.be/hv0kcc_TKvY)
 
 <span id="ref11">[11]</span> Autodesk. "Industrialized Construction." — "Applies the discipline and systematized fabrication process of manufacturing to the design and build process... as consistent and replicable as widgets rolling off a factory assembly line." [Autodesk Emerging Tech](https://www.autodesk.com/design-make/emerging-tech/industrialized-construction)
 
