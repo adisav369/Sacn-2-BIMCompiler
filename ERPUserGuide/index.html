@@ -4628,14 +4628,15 @@ serves the landing on <code>localhost:8080</code> — BIM and ERP, your domain, 
 <p><strong>What a resident tenant leaves behind:</strong> it is merged into the seed in browser IndexedDB — it survives
 a plain reload, re-install is a guarded no-op, and the install appears as a dot on the <strong>W</strong>
 world-history timeline.</p>
-<p><img alt="Once the data is in, every window folds into the Dashboard lens — here Orders, broken into donuts across every dimension (location, currency, payment rule, document type, date promised…). Tap any slice to drill into the records behind it. A migrated Odoo tenant's catalog and its sale orders read exactly this way." src="../figs/dashboard_order.png" /></p>
+<p><img alt="Once the data is in, every window folds into the Dashboard lens — here Orders, broken into donuts across every dimension (location, currency, payment rule, document type, date promised…). Long-press any slice to drill into the records behind it. A migrated Odoo tenant's catalog and its sale orders read exactly this way." src="../figs/dashboard_order.png" /></p>
 <p><strong>Reading the Dashboard.</strong> The <strong>Dashboard</strong> pill (on the ⋯ rail) opens the current window's records as one
 surface with five tabs — <strong>Graph · Cards · Pivot · List · Timeline</strong> — all folding the <em>same</em> live records:</p>
 <ul>
 <li><strong>Graph</strong> is a grid of donuts, one per dimension (status, partner, location, date…) — the % sits on the arc,
-  the centre shows the total. <strong>Tap a slice to drill</strong> to the records behind it: one record opens its form,
-  several narrow the window grid with a <em>Show all</em> banner to step back. <strong>Long-press</strong> a donut to flip it to a
-  plain table.</li>
+  the centre shows the total. <strong>Long-press to drill</strong> to the records behind any segment: one record opens its
+  form, several narrow the window grid with a <em>Show all</em> to step back. A plain tap/hover only previews;
+  <strong>double-tap</strong> a donut to flip it to a plain table. The same long-press drills from any tab — a <strong>List</strong> row,
+  a <strong>Timeline</strong> or <strong>Cards</strong> tile, or a <strong>Pivot</strong> cell.</li>
 <li>The <strong>Explore</strong> panel on the right lists every dimension as a chip. The chips already drawn on the left are
   <strong>highlighted</strong> — tap a lit one to remove its chart, tap any other to add one. <em>Top 3</em> and <em>Anything unusual?</em>
   answer in a sentence.</li>
