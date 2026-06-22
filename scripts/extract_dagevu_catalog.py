@@ -509,12 +509,34 @@ def main():
     # Retire ALL generic synthesised rows — even referenced ones: expandAssembly tolerates a missing child ref
     # (a parent building simply drops its synthesised floor and keeps its REAL Structured floors). A cascade left
     # with no real children expands empty (honest — we have no real positions for it) rather than a fabricated row.
+    # SUPERSEDE the generic archive structural cascade with the REAL per-building one. The witness
+    # (W-DROP-VS-COMPILER 2026-06-23) proved the generic archive BUILDING_XX_STD is AXIS-SCRAMBLED (a 0.47m slab
+    # rendered 8.6m tall, walls on edge) + carries placeholder cube furniture — "geometry hell" on drop — while
+    # the per-building XX::BUILDING_XX_STD reproduces the proven compiler element dims to the mm. Both are
+    # level=BUILDING with the same name, so the picker shows two identical "Sample House"es, one broken. Retire any
+    # generic (non-'::') assembly whose identity has a real per-building twin XX::<id> (building AND its structural
+    # STR twins) so only the real, dimensionally-correct cascade is droppable. NON-INVENT: pure id-twin match.
+    _real_by_base = {a['id'].split('::', 1)[1]: a for a in assemblies if '::' in a['id']}
+    superseded = set(a['id'] for a in assemblies if '::' not in a['id'] and a['id'] in _real_by_base)
+
     kept, retired_generic = [], 0
     for asm in assemblies:
+        if asm['id'] in superseded:
+            retired_generic += 1; continue
         if asm.get('autoLayout') == 'WALL_LINEAR' and ('::' not in asm['id']):
             retired_generic += 1; continue
         kept.append(asm)
     assemblies = kept
+
+    # PROMOTE the real per-building BUILDING root to the now-freed clean id (BUILDING_XX_STD) so every existing
+    # drop / deep-link / witness that names BUILDING_XX_STD resolves to the REAL, dimensionally-correct cascade
+    # instead of the retired archive stub. Only the droppable BUILDING root is promoted; its children keep their
+    # XX:: ids (the building references them by those ids, unchanged). NON-INVENT: pure id promotion.
+    promoted = 0
+    for base in superseded:
+        twin = _real_by_base.get(base)
+        if twin and twin.get('level') == 'BUILDING' and twin in assemblies:
+            twin['id'] = base; promoted += 1
     # Also drop cascades that now expand to NOTHING (their only children were retired bom-refs) — iteratively, so a
     # parent emptied by losing its last real child is dropped too. Keeps the picker free of dead drops. A set with
     # any LEAF child is never empty (the `all(isBom…)` guard), so only all-missing-ref shells are removed.
