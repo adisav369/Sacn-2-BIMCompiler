@@ -124,6 +124,8 @@ serves the landing on `localhost:8080` — BIM and ERP, your domain, your brandi
 a plain reload, re-install is a guarded no-op, and the install appears as a dot on the **W**
 world-history timeline.
 
+![Once the data is in, every window folds into the Dashboard lens — here Orders, broken into donuts across every dimension (location, currency, payment rule, document type, date promised…). Tap any slice to drill into the records behind it. A migrated Odoo tenant's catalog and its sale orders read exactly this way.](figs/dashboard_order.png)
+
 **Choosing a tenant at login — the front door:** the login card opens on a **five-tenant front door**.
 Even on a cold seed it lists **GardenWorld plus five migrated demo tenants** (Odoo · iDempiere · SAP ·
 Oracle · Dynamics), each tagged *demo · ready* or *demo · PoC* (the login step unions the resident
@@ -147,6 +149,8 @@ whole building, or any slice you select, becomes work to be done.
 type). The selected bar shows its indicative 5D cost in the active rate pack. Tap **`› ERP`** to push
 it. The fold (`proj_fold.js`):
 
+![The viewer's Find panel — the MEP discipline selected on a real model (RM169,209 indicative 5D, lit up in 3D). The selection bar at the bottom carries the actions: **› ERP** pushes the selection as a Project Order, and **What-if** opens the schedule what-if on the folded project.](figs/find_panel_erp.png)
+
 | What you selected | becomes |
 |---|---|
 | whole building | a `C_Project` (header, span, planned amount) |
@@ -161,6 +165,8 @@ it stays a plan-only project (the non-invent gate). The push is **idempotent** (
 rows) and persists to the same browser origin as this ERP, so the folded project appears in the standard
 **`C_Project` / `C_Order`** windows on the next boot — round-trip complete.
 
+![The pushed selection landed: iDempiere's standard Project window → **Task Line** tab, every trade folded as a real `C_ProjectLine` — Concrete Gang, Steel Erector, Electrician, Plumber, HVAC Tech, Mason, Carpenter — each with its description, quantity, and product. What you picked in 3D is now work in the ERP, in native windows, round-trip complete.](figs/erp_project_lines.png)
+
 **Witnessed on the Duplex:** 6 phases · 9 tasks · 16 lines, `PlannedAmt` folding to the 5D golden **to
 the cent** (`§PROJ_FOLD plannedAmt==golden`), every phase `SeqNo` tracing to `sequence_rules.json`
 (shipped bim-ootb PR #316). See the **[BIM → Project blueprint](BIMtoProject.md)**.
@@ -171,7 +177,18 @@ the cent** (`§PROJ_FOLD plannedAmt==golden`), every phase `SeqNo` tracing to `s
 ### What-if schedule — slip a phase, watch the chain re-fold *(LIVE)*
 
 Once a building is folded into a project, you can ask **"what if this phase slips?"** without touching the
-real plan. In the **Find** panel's selection row, tap **`What-if`** to open the schedule what-if panel.
+real plan.
+
+**Where the button is** — in the viewer (the same Find panel as the screenshot above):
+
+1. Open a building and the **Find** panel.
+2. **Select a scope** — a discipline, storey, or type. The **selection bar** appears at the bottom (it is
+   hidden until you select something), showing the cost and the **`› ERP`** / **`What-if`** / **`▶`** actions.
+3. Tap **`What-if`**.
+
+It works out of the box — you do not even have to push first: with no project of your own yet, the panel
+opens on the built-in **Hospital** project (the 7-phase chain below). Push one with **`› ERP`** and it opens
+on *that* one instead.
 
 ![What-if schedule — slipping the marquee Superstructure phase +56 days re-folds every downstream phase in blue (finish-to-start). The finish moves 2029-05-28 → 2029-07-23, planned value drops 64.7M → 56.4M, but the budget (BAC) is unchanged — same scope, only the dates moved. Accept re-baselines; Discard drops it.](figs/whatif_ripple.png)
 
