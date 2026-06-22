@@ -262,6 +262,7 @@ public class ExtractionPopulator {
         }
 
         List<ExtractionRow> result = new ArrayList<>();
+        List<String> framelessViolations = new ArrayList<>();   // GIGO: collect ALL un-fronted elements, fail once
         for (var entry : groups.entrySet()) {
             String[] parts = entry.getKey().split("\\|", 2);
             String ifcClass = parts[0];
@@ -272,9 +273,17 @@ public class ExtractionPopulator {
             int ordinal = 1;
             for (RawElement e : elems) {
                 String elementRef = deriveElementRef(e.elementName(), e.ifcClass());
-                String orientation = FACING_GATE_V2
-                        ? classifyOrientationV2(e, ifcClass, elementRef)   // GIGO: hard-fail directional w/o facing
-                        : classifyOrientation(e, ifcClass);                // v1 (retained, tested)
+                String orientation;
+                if (FACING_GATE_V2) {
+                    try {
+                        orientation = classifyOrientationV2(e, ifcClass, elementRef);
+                    } catch (FacingNotCapturedException ex) {
+                        framelessViolations.add(ex.getMessage());   // accumulate; row discarded on hard fail below
+                        orientation = null;
+                    }
+                } else {
+                    orientation = classifyOrientation(e, ifcClass);    // v1 (retained, tested)
+                }
                 String discipline = e.discipline() != null ? e.discipline() : "ARC";
                 // M_Product_ID: abstract catalog name via alias cascade, or element_ref fallback
                 // Implementing BBC.md §9 Data Flywheel — Witness: W-PRODUCT-ABSTRACT
@@ -306,6 +315,12 @@ public class ExtractionPopulator {
                 ));
                 ordinal++;
             }
+        }
+        if (FACING_GATE_V2 && !framelessViolations.isEmpty()) {   // GIGO hard fail — bad data cannot pass
+            throw new FacingNotCapturedException(
+                framelessViolations.size() + " element(s) reached the BOM with no captured FRONT "
+                + "(walls: inward/outward; furniture: look-direction) — GIGO hard fail, no fallback. "
+                + "Capture real frames at extraction (Fix-1). First: " + framelessViolations.get(0));
         }
         return result;
     }
@@ -352,76 +367,84 @@ public class ExtractionPopulator {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // FACING GATE v2 — GIGO. A directional element (one with a FRONT) MUST carry a real
-    // captured facing, or the build HARD-FAILS. No silent fallback to "0" — that v1 gap
-    // let a chair reach the BOM with no front, then face one way on drop. v1
-    // (classifyOrientation, above) is retained verbatim; v2 only ADDS the requirement.
+    // FACING GATE v2 (WIDENED) — GIGO. Any element with a FRONT MUST carry a REAL captured
+    // front, or the build HARD-FAILS. No silent fallback to "0" — that v1 gap let a chair (and
+    // a 180°-flipped wall) reach the BOM with the wrong/absent face. v1 (classifyOrientation,
+    // above) is retained verbatim; v2 replaces its semantics:
     //
-    // WHY this is the SOURCE fix (not a downstream test): a chair's facing is captured
-    // NOWHERE today — element placement rotation is 0 for every SH/DX element, and every
-    // component_definitions row carries only schema-default up_axis=Z/forward_axis=Y/
-    // default_rotation=0. v1 quietly wrote rotation_rule="0" and moved on. v2 refuses.
+    //   • WALLS/PLATES have a front too — the room-side (inward) vs outside. The AABB EW/NS
+    //     proxy gives the run-axis but CANNOT tell inward from outward, so under v2 it NO LONGER
+    //     counts as "has orientation". The real front comes from the IFC material-layer-set
+    //     direction (LayerSetDirection/DirectionSense) or the space boundary (which side the
+    //     IfcSpace sits on) — captured in Fix-1.
+    //   • DIRECTIONAL FURNITURE (chair/sofa/desk/toilet/...) needs its look-direction.
+    //   • Plan-symmetric / up-only objects (round table, square slab, column) have NO horizontal
+    //     front — their YAW is free, so a front is N/A HERE (returns null, not a fake "0").
     //
-    // Fix-1 (separate) supplies the data capturedFacing() reads: derive the front from the
-    // IFC component metadata (Up/Forward axis) or the mesh, and populate up_axis/forward_
-    // axis/default_rotation. Authoritative "has a front" signal = ad_product_dim.clear_front>0
-    // / ad_placement_rule.clearance_front_m (to be threaded into requiresFacing()).
+    // WHY this is the SOURCE fix: a real front is captured NOWHERE today — element placement
+    // rotation is 0 for every SH/DX element, and every component_definitions row is schema-default
+    // up_axis=Z/forward_axis=Y/default_rotation=0. v1 quietly wrote rotation_rule="0". v2 refuses.
+    //
+    // SCOPE NOTE: this gate governs the horizontal FRONT (→ rotation_rule on the BOM line). The
+    // UP frame (a round table's "top must be up") lives in a DIFFERENT column —
+    // component_definitions.up_axis — and is enforced by the component-library gate (Fix-1b),
+    // not here. Fix-1 fills FRONT_SOURCE below from real IFC/mesh data.
     // ──────────────────────────────────────────────────────────────────────────
 
-    /** Toggle the v2 facing gate. ON = hard-fail any directional element with no captured facing. */
+    /** Toggle the v2 facing gate. ON = hard-fail any element with a front but no captured front. */
     public static volatile boolean FACING_GATE_V2 = true;
 
-    /** Thrown when a directional element would reach the BOM with no captured facing (GIGO hard fail). */
+    /** Thrown when an element with a front would reach the BOM with no captured front (GIGO hard fail). */
     public static final class FacingNotCapturedException extends RuntimeException {
         public FacingNotCapturedException(String msg) { super(msg); }
     }
 
-    /** Role tokens whose product has an inherent FRONT. Conservative + documented; the
-     *  authoritative source is ad_product_dim.clear_front>0 (to be wired in Fix-1). */
+    /** Furniture role tokens with an inherent look-direction. Authoritative signal to wire in
+     *  Fix-1: ad_product_dim.clear_front>0 / ad_placement_rule.clearance_front_m. */
     private static final String[] DIRECTIONAL_ROLE_TOKENS = {
         "CHAIR", "ARMCHAIR", "STOOL", "BENCH", "SOFA", "SEAT", "COUCH", "BED", "DESK",
         "TOILET", "WC", "URINAL", "BASIN", "SINK", "LAVATORY",
         "STOVE", "HOB", "COOKER", "OVEN", "FRIDGE", "REFRIGERATOR", "WASHER", "TV", "MONITOR"
     };
 
-    /** True if this element has an inherent front that REQUIRES a known facing. */
-    static boolean requiresFacing(String ifcClass, String elementRef) {
+    /** True if this element has a horizontal FRONT that requires a real captured facing.
+     *  WIDENED: walls/plates (inward vs outward) now count, alongside directional furniture.
+     *  Plan-symmetric furniture (round table) vs rectangular (has a front) can only be told from
+     *  geometry → deferred to Fix-1; conservatively NOT required here for non-directional furniture. */
+    static boolean hasFront(String ifcClass, String elementRef) {
         if (ifcClass == null) return false;
+        if (ifcClass.contains("Wall") || "IfcPlate".equals(ifcClass)) return true;   // room-side vs outside
         boolean furniture = ifcClass.contains("Furnitur") || ifcClass.contains("Furnishing");
-        if (!furniture) return false;            // walls/plates/structure: handled by AABB, not facing
-        String ref = (elementRef == null ? "" : elementRef).toUpperCase(Locale.ROOT);
-        for (String t : DIRECTIONAL_ROLE_TOKENS) if (ref.contains(t)) return true;
-        return false;                            // non-directional furniture (round table, plain box)
+        if (furniture) {
+            String ref = (elementRef == null ? "" : elementRef).toUpperCase(Locale.ROOT);
+            for (String t : DIRECTIONAL_ROLE_TOKENS) if (ref.contains(t)) return true;
+        }
+        return false;   // slabs/roofs/columns/round furniture: up-only or yaw-free → no front HERE
     }
 
-    /** The REAL captured facing of an element, or null if none has been captured. NON-INVENT:
-     *  never synthesise a facing here. TODO Fix-1: read element placement rotation
-     *  (element_transforms.rotation_z != 0) or component up_axis/forward_axis/default_rotation
-     *  once populated. Today all are schema-default → returns null → v2 hard-fails directional. */
-    private static String capturedFacing(RawElement e) {
-        return null;   // no facing source captured yet — see Fix-1
-    }
+    /** Source of an element's REAL captured front, or null if not captured. NON-INVENT — never
+     *  synthesise. Fix-1 replaces this with the real reader (walls: layer-set direction / space
+     *  boundary; furniture: forward_axis or mesh front-normal). The witness injects fronts to
+     *  exercise the pass path. Default returns null → every fronted element HARD-FAILS (intended
+     *  GIGO; today nothing real is captured — placement rot=0, component axes all default). */
+    static java.util.function.Function<RawElement, String> FRONT_SOURCE = e -> null;
 
     /**
-     * v2 orientation classifier. Walls/plates: AABB aspect (delegates to v1, unchanged).
-     * Directional furniture: REQUIRES a captured facing, else HARD FAIL (no "0" fallback).
-     * Everything else: null (orientation not applicable — NOT a disguised default).
+     * v2 orientation classifier (WIDENED). Elements WITH a front (walls/plates + directional
+     * furniture): REQUIRE a real captured front, else HARD FAIL — the AABB EW/NS proxy no longer
+     * satisfies this (it can't tell inward from outward). Elements WITHOUT a horizontal front
+     * (slab/roof/column/round): null (N/A — never a disguised "0").
      */
     static String classifyOrientationV2(RawElement e, String ifcClass, String elementRef) {
-        String wall = classifyOrientation(e, ifcClass);   // EW/NS/POINT for walls/plates, else null
-        if (wall != null) return wall;
-        if (requiresFacing(ifcClass, elementRef)) {
-            String facing = capturedFacing(e);
-            if (facing == null || facing.isBlank()) {
-                throw new FacingNotCapturedException(
-                    "FACING NOT CAPTURED for directional element guid=" + e.guid()
-                    + " ref=" + elementRef + " class=" + ifcClass
-                    + " — no placement rotation, no component up/forward axis (all schema-default Z/Y/0). "
-                    + "Refusing to emit rotation_rule=0 (GIGO hard fail). Capture facing at extraction (Fix-1).");
-            }
-            return facing;
+        if (!hasFront(ifcClass, elementRef)) return null;        // no horizontal front → orientation N/A here
+        String front = FRONT_SOURCE.apply(e);
+        if (front == null || front.isBlank()) {
+            throw new FacingNotCapturedException(
+                "FRONT NOT CAPTURED for guid=" + e.guid() + " ref=" + elementRef + " class=" + ifcClass
+                + " — placement rotation=0 and no real face direction (AABB EW/NS does NOT count: it cannot "
+                + "tell inward from outward). Refusing rotation_rule=0 (GIGO hard fail). Capture at extraction (Fix-1).");
         }
-        return null;
+        return front;
     }
 
     /**
