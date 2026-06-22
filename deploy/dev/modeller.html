@@ -1490,6 +1490,7 @@ async function placeAssembly(x, y) {
   lastInsertId = placed[placed.length - 1].id; bLod.style.display = ''; bLod.disabled = false; paintLod();
   setStat('assembled ' + (asm ? asm.name : insertHash) + ' → ' + placed.length + ' parts placed (signed)'); audioCue('commit'); syncHistory();
   console.log('§MODELLER assembly-drop ' + insertHash + ' parts=' + placed.length);
+  try { L.geoSummary(insertHash); } catch (e) { console.warn('§GEO_SUMMARY failed ' + e); }  // runtime self-proof (LAST_MILE §7)
   // refine ALL leaves to real meshes in ONE pass: load the geom store once, set LOD-300 per leaf, single re-fold.
   // SELF-HEALING (W-BONSAI-LOD-RESILIENT): if the geometries fetch hiccups, the leaves land as LOD-200 boxes; with
   // the resilient ensureMesh, RETRY the load up to twice (300ms apart) so a transient drop doesn't leave the user
