@@ -983,6 +983,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#author-the-4d5d-schedule-build-it-up-from-the-model-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Author the 4D/5D schedule — build it up from the model (LIVE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3972,6 +3983,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#author-the-4d5d-schedule-build-it-up-from-the-model-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Author the 4D/5D schedule — build it up from the model (LIVE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4715,7 +4737,7 @@ whole building, or any slice you select, becomes work to be done.</p>
 <p><strong>How.</strong> In the viewer's <strong>Find</strong> panel select a scope (whole building, a storey, a discipline, or a
 type). The selected bar shows its indicative 5D cost in the active rate pack. Tap <strong><code>› ERP</code></strong> to push
 it. The fold (<code>proj_fold.js</code>):</p>
-<p><img alt="The viewer's Find panel — the MEP discipline selected on a real model (RM169,209 indicative 5D, lit up in 3D). The selection bar at the bottom carries the actions: **› ERP** pushes the selection as a Project Order, and **What-if** opens the schedule what-if on the folded project." src="../figs/find_panel_erp.png" /></p>
+<p><img alt="The viewer's Find panel — the MEP discipline selected on a real model (RM169,209 indicative 5D, lit up in 3D). The selection bar at the bottom carries the actions: **› ERP** pushes the selection as a Project Order, and **▶** navigates. (Schedule authoring and What-if now live on the Time Machine — see below.)" src="../figs/find_panel_erp.png" /></p>
 <table>
 <thead>
 <tr>
@@ -4756,19 +4778,55 @@ the cent</strong> (<code>§PROJ_FOLD plannedAmt==golden</code>), every phase <co
 <p>A sibling <strong><code>› VO</code></strong> button (in the model-diff panel) folds a model revision into a signed <code>C_Order</code>
 variation amendment against the same project.</p>
 </blockquote>
+<h3 id="author-the-4d5d-schedule-build-it-up-from-the-model-live">Author the 4D/5D schedule — build it up from the model <em>(LIVE)</em><a class="headerlink" href="#author-the-4d5d-schedule-build-it-up-from-the-model-live" title="Permanent link">&para;</a></h3>
+<p>The <strong>Time Machine</strong> is not only for playback — it is where you <strong>author</strong> the construction schedule and
+its cost, building the 4D/5D <strong>up from a bare model</strong>. There is no separate scheduling tool and no
+re-linking step: every edit is written straight into the IFC-native schedule tables the viewer already
+reads, so the visual gesture and the system-of-record are the <em>same signed rows</em>.</p>
+<p><strong>Where the button is</strong> — in the viewer:</p>
+<ol>
+<li>Open a building and the <strong>Time Machine</strong> (the clock pill, or press <strong><code>t</code></strong>).</li>
+<li>On the panel, press <strong><code>✎</code></strong> (Author 4D Schedule) — the authoring wizard opens.</li>
+</ol>
+<p><strong>What you do:</strong></p>
+<ol>
+<li><strong>Generate first draft</strong> — folds the model's elements into <strong>organized phases</strong> (a WBS): Substructure,
+   Superstructure, MEP, Architecture, Finishes — grouped by the same trade rules the Time Machine plays.
+   Every element is assigned to a phase, contiguous dates are laid out, and the <strong>5D cost folds per phase</strong>.</li>
+<li><strong>Craft it up</strong> — rename a phase, expand it to list its elements (click one to light it in 3D), and
+   <strong>reassign</strong> an element to a different phase from its dropdown. Because the cost folds from the
+   assignments, <em>moving an element moves its cost between phases</em> — the WBS you author organizes the 5D.</li>
+<li><strong>Tune the dates</strong> — the <strong><code>−5d</code> / <code>+5d</code></strong> steppers and the <strong>Start</strong> date lay the phases out; on the
+   gantt you can also drag a bar directly (the shipped drag-to-slip).</li>
+<li><strong>Apply to 4D ▶</strong> — re-folds the Time Machine so the gantt and the playback show <em>your</em> schedule.</li>
+</ol>
+<p><img alt="The Author 4D Schedule wizard (the ✎ button on the Time Machine) on a real SampleHouse — **Generate first draft** folded 60 elements into three organized phases (Superstructure 28 · Architecture 15 · Finishes 17), each with its element count and 5D cost; the footer totals **5D 59,234** in the active rate pack. Rename a phase, reassign an element (it carries its cost with it), or tune the dates — every edit lands in the IFC-native schedule tables." src="../figs/author4d_wizard.png" /></p>
+<p><strong>Start from nothing.</strong> Tick <strong>Start blank (set the dates yourself)</strong> and the wizard organizes the phases
+and assignments but leaves them <strong>undated</strong> — nothing shows on the timeline until you set a <strong>Start</strong> and
+press <strong><code>Schedule now ▶</code></strong> to originate the dates yourself. The auto-draft is a <em>suggested start</em>, never
+the only path: you can accept it and finish fast, or build the schedule up by hand.</p>
+<p><img alt="Start blank — the same three phases are organized but **undated** (“unscheduled”); a banner prompts you to set a start and press **Schedule now** to originate the dates. The 5D cost still folds from the assignments (it does not depend on dates). This is the build-it-up-from-a-blank-model path." src="../figs/author4d_blank.png" /></p>
+<p>The link between an element and its phase is <strong>identity by construction</strong> — it survives renaming the phase
+or the element, where name-matching schedulers would re-bind or break. <em>(Engine proven by <code>W-AUTHOR-4D-BLANK</code>
+16/16, the 5D fold by <code>W-AUTHOR-5D-COST</code> 10/10, the blank start by <code>W-AUTHOR-BLANK-START</code> 11/11, all on the
+real SampleHouse through the shipped read-path; <code>viewer/schedule_author.js</code> + <code>schedule_author_ui.js</code>.)</em></p>
+<blockquote>
+<p><strong>Zoom-Across knows where the Time Machine is.</strong> When the Time Machine is open and you pinpoint an
+element (from <strong>Find</strong>, or a <strong>Zoom-Across</strong> from a record in the ERP), the timeline <strong>jumps to that
+element's construction moment</strong> instead of only lighting it in 3D — the Time Machine <em>consumes</em> the
+pinpoint. With the Time Machine closed, the pinpoint goes to <strong>Find</strong> as before (cost/location first).</p>
+</blockquote>
 <h3 id="what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live">What-if schedule — slip a phase, watch the chain re-fold <em>(LIVE)</em><a class="headerlink" href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" title="Permanent link">&para;</a></h3>
 <p>Once a building is folded into a project, you can ask <strong>"what if this phase slips?"</strong> without touching the
 real plan.</p>
-<p><strong>Where the button is</strong> — in the viewer (the same Find panel as the screenshot above):</p>
+<p><strong>Where the button is</strong> — on the <strong>Time Machine</strong> (the same hub that owns the 4D/5D):</p>
 <ol>
-<li>Open a building and the <strong>Find</strong> panel.</li>
-<li><strong>Select a scope</strong> — a discipline, storey, or type. The <strong>selection bar</strong> appears at the bottom (it is
-   hidden until you select something), showing the cost and the <strong><code>› ERP</code></strong> / <strong><code>What-if</code></strong> / <strong><code>▶</code></strong> actions.</li>
-<li>Tap <strong><code>What-if</code></strong>.</li>
+<li>Open a building and the <strong>Time Machine</strong> (the clock pill, or press <strong><code>t</code></strong>).</li>
+<li>Press <strong><code>⑂</code></strong> (What-if) on the panel.</li>
 </ol>
-<p>It works out of the box — you do not even have to push first: with no project of your own yet, the panel
-opens on the built-in <strong>Hospital</strong> project (the 7-phase chain below). Push one with <strong><code>› ERP</code></strong> and it opens
-on <em>that</em> one instead.</p>
+<p>It works out of the box — you do not even have to push a project first: with no project of your own yet, the
+panel opens on the built-in <strong>Hospital</strong> project (the 7-phase chain below). Push one from the viewer's
+<strong>Find</strong> panel with <strong><code>› ERP</code></strong> and it opens on <em>that</em> one instead.</p>
 <p><img alt="What-if schedule — slipping the marquee Superstructure phase +56 days re-folds every downstream phase in blue (finish-to-start). The finish moves 2029-05-28 → 2029-07-23, planned value drops 64.7M → 56.4M, but the budget (BAC) is unchanged — same scope, only the dates moved. Accept re-baselines; Discard drops it." src="../figs/whatif_ripple.png" /></p>
 <p>The project's phases are a <strong>finish-to-start chain</strong> — each phase starts when the one before it finishes
 (that is exactly how the fold laid them out). So when you <strong>slip one phase</strong> with the <strong><code>−</code> / <code>+</code></strong> steppers,
