@@ -126,6 +126,26 @@ world-history timeline.
 
 ![Once the data is in, every window folds into the Dashboard lens — here Orders, broken into donuts across every dimension (location, currency, payment rule, document type, date promised…). Tap any slice to drill into the records behind it. A migrated Odoo tenant's catalog and its sale orders read exactly this way.](figs/dashboard_order.png)
 
+**Reading the Dashboard.** The **Dashboard** pill (on the ⋯ rail) opens the current window's records as one
+surface with five tabs — **Graph · Cards · Pivot · List · Timeline** — all folding the *same* live records:
+
+- **Graph** is a grid of donuts, one per dimension (status, partner, location, date…) — the % sits on the arc,
+  the centre shows the total. **Tap a slice to drill** to the records behind it: one record opens its form,
+  several narrow the window grid with a *Show all* banner to step back. **Long-press** a donut to flip it to a
+  plain table.
+- The **Explore** panel on the right lists every dimension as a chip. The chips already drawn on the left are
+  **highlighted** — tap a lit one to remove its chart, tap any other to add one. *Top 3* and *Anything unusual?*
+  answer in a sentence.
+- **Pivot** cross-tabs any two dimensions by a measure (count / amount / qty); foreign-key columns read their
+  real names (e.g. *Manufacturing Order*, *Business Partner*) and a cell lists its records.
+- **List** is the grid distilled; **Timeline** scrubs the records along their dates (a date-less window such as
+  Business Partner falls back to *Created / Updated*).
+- **Export** (top-right, plus the ⤓ on each donut) writes the real folds out as **CSV**, or a donut as
+  **SVG / PNG** — nothing invented, just the numbers on screen.
+
+A window with few, uniform records — say three demo Projects all of one type — honestly shows near-single
+donuts: there is simply no spread to chart. The same window on a real tenant fans into full segments.
+
 **Choosing a tenant at login — the front door:** the login card opens on a **five-tenant front door**.
 Even on a cold seed it lists **GardenWorld plus five migrated demo tenants** (Odoo · iDempiere · SAP ·
 Oracle · Dynamics), each tagged *demo · ready* or *demo · PoC* (the login step unions the resident
