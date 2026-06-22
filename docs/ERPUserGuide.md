@@ -159,6 +159,17 @@ with the Δ (e.g. the Hospital plan, planned 64.7M → committed 87.4M, +35%). E
 modelled. (The interactive schedule what-if — dragging a phase to slip and folding the ripple on a
 reversible blue branch — lives on the 4D Time Machine, not the Dashboard.)
 
+![Forecast on the Timeline — dashed "forecast" columns sit past the **NOW** divider, and the slider scrubs into them (here landing on a projected order, ≈180, labelled *projection*). The solid cards on the left are real records; the dashed ones are a run-rate extrapolation, never mistaken for an actual.](figs/dashboard_forecast_timeline.png)
+
+Two more reads sit on the same tabs. On **Pivot**, each cell is shaded by its size — *darker = higher* — so
+the busy spots stand out without reading every number. On **Graph**, a **Web** button folds the pies you have
+on the board into one radar: each pie becomes a spoke, reaching out by how *lopsided* it is (its biggest
+slice's share). A spiky web flags a cut dominated by one value; a round web means it is evenly spread — a fast
+way to see which cut is worth a look, then tap **Pies** to flip back and drill. Because it reads the live
+pies, adding or removing a cut with the Explore chips reshapes the web.
+
+![The concentration Web — the six pies on the board folded into one radar. Each spoke is a cut (Document Status, Business Partner, Partner / Invoice Location, Invoice Rule…) reaching out by its biggest slice's share: Document Status at 70% is the most lopsided, the two Locations at 42% the most even. The Explore chips on the right pick which pies — and therefore which spokes — appear.](figs/dashboard_web.png)
+
 **Choosing a tenant at login — the front door:** the login card opens on a **five-tenant front door**.
 Even on a cold seed it lists **GardenWorld plus five migrated demo tenants** (Odoo · iDempiere · SAP ·
 Oracle · Dynamics), each tagged *demo · ready* or *demo · PoC* (the login step unions the resident
