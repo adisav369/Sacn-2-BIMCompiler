@@ -4628,6 +4628,7 @@ serves the landing on <code>localhost:8080</code> — BIM and ERP, your domain, 
 <p><strong>What a resident tenant leaves behind:</strong> it is merged into the seed in browser IndexedDB — it survives
 a plain reload, re-install is a guarded no-op, and the install appears as a dot on the <strong>W</strong>
 world-history timeline.</p>
+<p><img alt="Once the data is in, every window folds into the Dashboard lens — here Orders, broken into donuts across every dimension (location, currency, payment rule, document type, date promised…). Tap any slice to drill into the records behind it. A migrated Odoo tenant's catalog and its sale orders read exactly this way." src="../figs/dashboard_order.png" /></p>
 <p><strong>Choosing a tenant at login — the front door:</strong> the login card opens on a <strong>five-tenant front door</strong>.
 Even on a cold seed it lists <strong>GardenWorld plus five migrated demo tenants</strong> (Odoo · iDempiere · SAP ·
 Oracle · Dynamics), each tagged <em>demo · ready</em> or <em>demo · PoC</em> (the login step unions the resident
@@ -4645,6 +4646,7 @@ whole building, or any slice you select, becomes work to be done.</p>
 <p><strong>How.</strong> In the viewer's <strong>Find</strong> panel select a scope (whole building, a storey, a discipline, or a
 type). The selected bar shows its indicative 5D cost in the active rate pack. Tap <strong><code>› ERP</code></strong> to push
 it. The fold (<code>proj_fold.js</code>):</p>
+<p><img alt="The viewer's Find panel — the MEP discipline selected on a real model (RM169,209 indicative 5D, lit up in 3D). The selection bar at the bottom carries the actions: **› ERP** pushes the selection as a Project Order, and **What-if** opens the schedule what-if on the folded project." src="../figs/find_panel_erp.png" /></p>
 <table>
 <thead>
 <tr>
@@ -4677,6 +4679,7 @@ fold via BigDecimal. A Purchase Order is generated <strong>only</strong> if the 
 it stays a plan-only project (the non-invent gate). The push is <strong>idempotent</strong> (a second push adds zero
 rows) and persists to the same browser origin as this ERP, so the folded project appears in the standard
 <strong><code>C_Project</code> / <code>C_Order</code></strong> windows on the next boot — round-trip complete.</p>
+<p><img alt="The pushed selection landed: iDempiere's standard Project window → **Task Line** tab, every trade folded as a real C_ProjectLine — Concrete Gang, Steel Erector, Electrician, Plumber, HVAC Tech, Mason, Carpenter — each with its description, quantity, and product. What you picked in 3D is now work in the ERP, in native windows, round-trip complete." src="../figs/erp_project_lines.png" /></p>
 <p><strong>Witnessed on the Duplex:</strong> 6 phases · 9 tasks · 16 lines, <code>PlannedAmt</code> folding to the 5D golden <strong>to
 the cent</strong> (<code>§PROJ_FOLD plannedAmt==golden</code>), every phase <code>SeqNo</code> tracing to <code>sequence_rules.json</code>
 (shipped bim-ootb PR #316). See the <strong><a href="../BIMtoProject/">BIM → Project blueprint</a></strong>.</p>
@@ -4686,7 +4689,17 @@ variation amendment against the same project.</p>
 </blockquote>
 <h3 id="what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live">What-if schedule — slip a phase, watch the chain re-fold <em>(LIVE)</em><a class="headerlink" href="#what-if-schedule-slip-a-phase-watch-the-chain-re-fold-live" title="Permanent link">&para;</a></h3>
 <p>Once a building is folded into a project, you can ask <strong>"what if this phase slips?"</strong> without touching the
-real plan. In the <strong>Find</strong> panel's selection row, tap <strong><code>What-if</code></strong> to open the schedule what-if panel.</p>
+real plan.</p>
+<p><strong>Where the button is</strong> — in the viewer (the same Find panel as the screenshot above):</p>
+<ol>
+<li>Open a building and the <strong>Find</strong> panel.</li>
+<li><strong>Select a scope</strong> — a discipline, storey, or type. The <strong>selection bar</strong> appears at the bottom (it is
+   hidden until you select something), showing the cost and the <strong><code>› ERP</code></strong> / <strong><code>What-if</code></strong> / <strong><code>▶</code></strong> actions.</li>
+<li>Tap <strong><code>What-if</code></strong>.</li>
+</ol>
+<p>It works out of the box — you do not even have to push first: with no project of your own yet, the panel
+opens on the built-in <strong>Hospital</strong> project (the 7-phase chain below). Push one with <strong><code>› ERP</code></strong> and it opens
+on <em>that</em> one instead.</p>
 <p><img alt="What-if schedule — slipping the marquee Superstructure phase +56 days re-folds every downstream phase in blue (finish-to-start). The finish moves 2029-05-28 → 2029-07-23, planned value drops 64.7M → 56.4M, but the budget (BAC) is unchanged — same scope, only the dates moved. Accept re-baselines; Discard drops it." src="../figs/whatif_ripple.png" /></p>
 <p>The project's phases are a <strong>finish-to-start chain</strong> — each phase starts when the one before it finishes
 (that is exactly how the fold laid them out). So when you <strong>slip one phase</strong> with the <strong><code>−</code> / <code>+</code></strong> steppers,
