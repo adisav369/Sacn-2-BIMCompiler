@@ -3236,10 +3236,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#still-owed-the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder" class="md-nav__link">
+  <a href="#the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder-done-2026-06-22" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Still owed — the §GEO_SUMMARY self-proof (the JS twin of §7's "Next step for coder")
+        The §GEO_SUMMARY self-proof — the JS twin of §7's "Next step for coder" (DONE 2026-06-22)
       
     </span>
   </a>
@@ -3955,10 +3955,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#still-owed-the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder" class="md-nav__link">
+  <a href="#the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder-done-2026-06-22" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Still owed — the §GEO_SUMMARY self-proof (the JS twin of §7's "Next step for coder")
+        The §GEO_SUMMARY self-proof — the JS twin of §7's "Next step for coder" (DONE 2026-06-22)
       
     </span>
   </a>
@@ -4568,12 +4568,26 @@ achievable BOM-chain target, no invented coordinates.</p>
 algorithm is not porting the proof.</em> The shortcut survived because the simple-insert witness passed; the case that
 exercised the dropped terms was never held to the Java's numeric contract. Carry the invariant across, not just
 the idea.</p>
-<h3 id="still-owed-the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder">Still owed — the §GEO_SUMMARY self-proof (the JS twin of §7's "Next step for coder")<a class="headerlink" href="#still-owed-the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder" title="Permanent link">&para;</a></h3>
+<h3 id="the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder-done-2026-06-22">The §GEO_SUMMARY self-proof — the JS twin of §7's "Next step for coder" (DONE 2026-06-22)<a class="headerlink" href="#the-geo_summary-self-proof-the-js-twin-of-7s-next-step-for-coder-done-2026-06-22" title="Permanent link">&para;</a></h3>
 <p>The Java compiler emits its own drift verdict (<code>[GEO] SUMMARY 58 elements, 1653 pairs, worst=0.002mm, DRIFT=0</code>).
-The modeller drop currently proves correctness only in the <em>external</em> witness — if <code>expandAssembly</code> drifts again,
-the running app stays silent. <strong>Next:</strong> make the drop emit a runtime <code>§GEO_SUMMARY</code> (leaves, all-pairs vs the
-set's declared bbox, worst-mm, DRIFT=0) so the modeller polices itself the way the pipeline does. Log-only,
-cannot regress geometry. Resume card: <code>prompts/RESUME_MODELLER_FOCUS.md</code> (top block).</p>
+The modeller drop used to prove correctness only in the <em>external</em> witness — if <code>expandAssembly</code> drifted again,
+the running app stayed silent. <strong>Closed (bim-ootb PR #481, sw v698):</strong> every BOM drop now emits a runtime
+<code>§GEO_SUMMARY</code> so the modeller polices itself the way the pipeline does:</p>
+<div class="highlight"><pre><span></span><code>§GEO_SUMMARY BUILDING_SH_STD [BUILDING] 55 leaves, 1485 pairs, worst=0mm, DRIFT=0
+</code></pre></div>
+<p><code>bonsai_library.js geoSummary(rootId)</code> recomputes the proven IntraBOM invariant (faithful to
+<code>witness_modeller_drop.js checkInvariant</code>) over the expanded placement, scoped by bom_type — R1 <code>|dx|,|dy|&lt;10m</code>
++ R2 <code>|dz|&lt;4.5m</code> for SET/ROOM leaves, and an R3 absolute-leak gate (all-pairs leaf-centre span vs
+<code>env = max(declared bbox, 10m)+3m</code>). It is <strong>log-only</strong> — reads the catalog + <code>expandAssembly</code> output, never
+mutates geometry or the op-log — so it cannot regress geometry.</p>
+<p><em>Honest design note (NON-INVENT):</em> the catalog's declared bbox is the parent-<strong>product</strong> aabb, not the laid-out
+footprint (<code>BED_SET</code> declares 1.2×0.6 m but its five children span 3.5×2.0 m), so a tight "span == declared bbox"
+check would false-alarm on <strong>correct</strong> data. The gate therefore uses the same <em>loose</em> <code>max(declared, 10m)+3m</code>
+absolute-leak envelope the external witness proved — it passes coherent sets and fires on the ±22.8 m scatter
+that PR #478 fixed. Witness <code>scripts/witness_modeller_geo_summary.js</code> (<strong>W-GEO-SUMMARY</strong>): all 57 droppable roots
+report <code>DRIFT=0 / worst=0mm</code>; the line format matches the Java twin; and <strong>G4 falsifiability</strong> — the gate fires
+(<code>worst=4844mm, DRIFT=1</code>) on a simulated PR #478 scatter, so the self-proof can fail, not just pass.
+Resume card: <code>prompts/RESUME_MODELLER_FOCUS.md</code> (top block).</p>
 <p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
 

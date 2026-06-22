@@ -4629,6 +4629,25 @@ serves the landing on <code>localhost:8080</code> — BIM and ERP, your domain, 
 a plain reload, re-install is a guarded no-op, and the install appears as a dot on the <strong>W</strong>
 world-history timeline.</p>
 <p><img alt="Once the data is in, every window folds into the Dashboard lens — here Orders, broken into donuts across every dimension (location, currency, payment rule, document type, date promised…). Tap any slice to drill into the records behind it. A migrated Odoo tenant's catalog and its sale orders read exactly this way." src="../figs/dashboard_order.png" /></p>
+<p><strong>Reading the Dashboard.</strong> The <strong>Dashboard</strong> pill (on the ⋯ rail) opens the current window's records as one
+surface with five tabs — <strong>Graph · Cards · Pivot · List · Timeline</strong> — all folding the <em>same</em> live records:</p>
+<ul>
+<li><strong>Graph</strong> is a grid of donuts, one per dimension (status, partner, location, date…) — the % sits on the arc,
+  the centre shows the total. <strong>Tap a slice to drill</strong> to the records behind it: one record opens its form,
+  several narrow the window grid with a <em>Show all</em> banner to step back. <strong>Long-press</strong> a donut to flip it to a
+  plain table.</li>
+<li>The <strong>Explore</strong> panel on the right lists every dimension as a chip. The chips already drawn on the left are
+  <strong>highlighted</strong> — tap a lit one to remove its chart, tap any other to add one. <em>Top 3</em> and <em>Anything unusual?</em>
+  answer in a sentence.</li>
+<li><strong>Pivot</strong> cross-tabs any two dimensions by a measure (count / amount / qty); foreign-key columns read their
+  real names (e.g. <em>Manufacturing Order</em>, <em>Business Partner</em>) and a cell lists its records.</li>
+<li><strong>List</strong> is the grid distilled; <strong>Timeline</strong> scrubs the records along their dates (a date-less window such as
+  Business Partner falls back to <em>Created / Updated</em>).</li>
+<li><strong>Export</strong> (top-right, plus the ⤓ on each donut) writes the real folds out as <strong>CSV</strong>, or a donut as
+  <strong>SVG / PNG</strong> — nothing invented, just the numbers on screen.</li>
+</ul>
+<p>A window with few, uniform records — say three demo Projects all of one type — honestly shows near-single
+donuts: there is simply no spread to chart. The same window on a real tenant fans into full segments.</p>
 <p><strong>Choosing a tenant at login — the front door:</strong> the login card opens on a <strong>five-tenant front door</strong>.
 Even on a cold seed it lists <strong>GardenWorld plus five migrated demo tenants</strong> (Odoo · iDempiere · SAP ·
 Oracle · Dynamics), each tagged <em>demo · ready</em> or <em>demo · PoC</em> (the login step unions the resident
