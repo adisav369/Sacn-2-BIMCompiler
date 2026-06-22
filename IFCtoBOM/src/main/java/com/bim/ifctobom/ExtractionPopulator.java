@@ -148,8 +148,20 @@ public class ExtractionPopulator {
     record RawElement(   // package-private: the FACING_GATE_V2 witness constructs these
             String ifcClass, String elementName, String storey, String discipline,
             double minX, double maxX, double minY, double maxY, double minZ, double maxZ,
-            String materialName, String materialRgba, String guid
-    ) {}
+            String materialName, String materialRgba, String guid,
+            // Fix-1: captured IFC ObjectPlacement yaw (radians). null = NO captured placement → uncaptured
+            // front → hard-fail. A captured 0.0 is a VALID front (genuinely facing 0), NOT a fallback.
+            Double rotationZ
+    ) {
+        /** Backward-compat ctor (no captured placement). The shipped W-FACING-GATE witness uses this 13-arg
+         *  form → rotationZ=null → hard-fails exactly as that witness asserts. */
+        RawElement(String ifcClass, String elementName, String storey, String discipline,
+                   double minX, double maxX, double minY, double maxY, double minZ, double maxZ,
+                   String materialName, String materialRgba, String guid) {
+            this(ifcClass, elementName, storey, discipline,
+                 minX, maxX, minY, maxY, minZ, maxZ, materialName, materialRgba, guid, null);
+        }
+    }
 
     private record ExtractionRow(
             String buildingType, String storey, String ifcClass,
@@ -163,13 +175,27 @@ public class ExtractionPopulator {
 
     // ── Read reference DB ───────────────────────────────────────────────────
 
-    private static List<RawElement> readReferenceDb(Path refDb) throws SQLException {
+    static List<RawElement> readReferenceDb(Path refDb) throws SQLException {   // package-private: W-FACING-CAPTURE drives it
         List<RawElement> result = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + refDb)) {
-            String sql = """
+            // Fix-1: only trust rotation_z from the CURRENT extractor — gated by element_transforms
+            // existing AND carrying transform_source (stale world-coords DBs lack that column, and their
+            // rotation_z=0 is GIGO). When absent, rotationZ stays null → fronted elements hard-fail.
+            boolean haveTransforms = hasTransformSource(conn);
+            String sql = haveTransforms ? """
                     SELECT m.ifc_class, m.element_name, m.storey, m.discipline,
                            r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
-                           m.material_name, m.material_rgba, m.guid
+                           m.material_name, m.material_rgba, m.guid,
+                           CASE WHEN t.transform_source IS NOT NULL THEN t.rotation_z ELSE NULL END AS rot_z
+                    FROM elements_meta m
+                    JOIN elements_rtree r ON m.id = r.id
+                    LEFT JOIN element_transforms t ON m.guid = t.guid
+                    ORDER BY m.ifc_class, m.storey, r.minX, r.minY, r.minZ
+                    """ : """
+                    SELECT m.ifc_class, m.element_name, m.storey, m.discipline,
+                           r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+                           m.material_name, m.material_rgba, m.guid,
+                           NULL AS rot_z
                     FROM elements_meta m
                     JOIN elements_rtree r ON m.id = r.id
                     ORDER BY m.ifc_class, m.storey, r.minX, r.minY, r.minZ
@@ -195,17 +221,28 @@ public class ExtractionPopulator {
                                 ifcClass, elemName, cx, cy, cz);
                         continue;
                     }
+                    double rotZ = rs.getDouble(14);
+                    Double rotationZ = rs.wasNull() ? null : rotZ;   // null = uncaptured → hard-fail
                     result.add(new RawElement(
                             ifcClass, elemName,
                             rs.getString(3), rs.getString(4),
                             minX, maxX, minY, maxY, minZ, maxZ,
                             rs.getString(11), rs.getString(12),
-                            rs.getString(13)
+                            rs.getString(13), rotationZ
                     ));
                 }
             }
         }
         return result;
+    }
+
+    /** Fix-1 freshness gate: true iff element_transforms exists AND carries the transform_source column
+     *  (the marker the current S172 extractor stamps). Older world-coords DBs (rotation_z=0, bbox_* cols)
+     *  return false → no rotation is trusted → fronted elements hard-fail rather than pass on stale zeros. */
+    private static boolean hasTransformSource(Connection conn) throws SQLException {
+        try (ResultSet rs = conn.getMetaData().getColumns(null, null, "element_transforms", "transform_source")) {
+            return rs.next();
+        }
     }
 
     // ── R21: Read opening→host map ─────────────────────────────────────────
@@ -287,12 +324,16 @@ public class ExtractionPopulator {
                 String discipline = e.discipline() != null ? e.discipline() : "ARC";
                 // M_Product_ID: abstract catalog name via alias cascade, or element_ref fallback
                 // Implementing BBC.md §9 Data Flywheel — Witness: W-PRODUCT-ABSTRACT
+                // Fix-1: PRODUCT NAMING uses the v1 run-axis bucket (EW/NS/POINT), NOT the facing.
+                // `orientation` now carries captured facing radians (→ rotation_rule); feeding that to the
+                // resolver would rename WALL_EW → WALL_3.1416 and drift RosettaStone. Decouple the two.
                 String mProductId;
                 if (resolver != null) {
                     double w = e.maxX() - e.minX();
                     double d = e.maxY() - e.minY();
                     double h = e.maxZ() - e.minZ();
-                    mProductId = resolver.resolve(elementRef, ifcClass, orientation, w, d, h);
+                    String runAxis = classifyOrientation(e, ifcClass);   // v1 bucket — naming only
+                    mProductId = resolver.resolve(elementRef, ifcClass, runAxis, w, d, h);
                 } else {
                     mProductId = elementRef;  // backward compat: no resolver = raw names
                 }
@@ -423,11 +464,13 @@ public class ExtractionPopulator {
     }
 
     /** Source of an element's REAL captured front, or null if not captured. NON-INVENT — never
-     *  synthesise. Fix-1 replaces this with the real reader (walls: layer-set direction / space
-     *  boundary; furniture: forward_axis or mesh front-normal). The witness injects fronts to
-     *  exercise the pass path. Default returns null → every fronted element HARD-FAILS (intended
-     *  GIGO; today nothing real is captured — placement rot=0, component axes all default). */
-    static java.util.function.Function<RawElement, String> FRONT_SOURCE = e -> null;
+     *  synthesise. Fix-1: the real front is the IFC ObjectPlacement YAW captured into
+     *  element_transforms.rotation_z (stamped transform_source='ifc_extract' by the current extractor),
+     *  threaded onto RawElement.rotationZ. Emitted as a literal radian string — LocalCoord.resolveRotation
+     *  parses it straight into rotation_rule. A captured 0.0 is a VALID front (genuinely facing 0); only a
+     *  MISSING placement (rotationZ==null) hard-fails. Witnesses may override this to inject a front. */
+    static java.util.function.Function<RawElement, String> FRONT_SOURCE =
+            e -> e.rotationZ() == null ? null : String.valueOf(e.rotationZ());
 
     /**
      * v2 orientation classifier (WIDENED). Elements WITH a front (walls/plates + directional
