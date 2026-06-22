@@ -114,6 +114,73 @@ _ABS_RULES = ('EW', 'NS')                                    # absolute axis rul
 _REL_RULES = ('FACE_INTO_ROOM', 'FACE_AWAY_FROM_WALL', 'FACE_OUTSIDE', 'PARALLEL_TO_WALL')  # host-relative
 
 
+def expand_verb(verb_ref, qty, ox, oy, oz):
+    """VERBATIM port of PlacementCollectorVisitor.expandVerb (DAGCompiler walker, L1482-1717).
+    Returns a list of per-instance LBD-corner offsets, each [dx,dy,dz] — or [dx,dy,dz,w,d,h] for
+    CLUSTER's 6-value form (per-instance dims). Every offset already includes the line origin
+    (ox,oy,oz), exactly as the compiler folds it. NON-INVENT: verb_ref is authored BOM data
+    written by VerbFactorizer (the compiler's own factoring of N IFC instances); expanding it
+    here is the SAME deterministic reconstruction the compiler runs at compile time — so the
+    drop reproduces output.db without ever reading extracted.db (the red line). Verbs unused by
+    SH/DX (ROUTE/FRAME/SPRAY/PLACE_DEVICE) are ported too for parity + an origin-fallback guard."""
+    v = verb_ref or ''
+    if not v:
+        return [[ox, oy, oz] for _ in range(max(qty, 1))]
+    if v.startswith('TILE:'):                                # TILE:nx:ny:stepX:stepY → 2D grid
+        p = v[5:].split(':'); nx, ny, sx, sy = int(p[0]), int(p[1]), float(p[2]), float(p[3])
+        return [[ox + ix * sx, oy + iy * sy, oz] for ix in range(nx) for iy in range(ny)]
+    if v.startswith('ROUTE:'):                               # ROUTE:axis:step:n|... → axis-aligned legs
+        out, cx, cy = [], ox, oy
+        for leg in v[6:].split('|'):
+            p = leg.split(':'); axis = p[0][0]; step = float(p[1]); cnt = int(p[2])
+            for _ in range(cnt):
+                out.append([cx, cy, oz])
+                if axis == 'X':
+                    cx += step
+                else:
+                    cy += step
+        return out
+    if v.startswith('FRAME:'):                               # FRAME:x1,..|y1,..|.. → cartesian gridlines (floor-rel)
+        h = v[6:].split('|'); xs = [float(x) for x in h[0].split(',')]; ys = [float(y) for y in h[1].split(',')]
+        return [[x, y, oz] for x in xs for y in ys]
+    if v.startswith('CLUSTER:'):                             # CLUSTER:dx,dy,dz[,w,d,h];... → exact per-instance
+        out = []
+        for e in v[8:].split(';'):
+            vals = e.split(',')
+            row = [ox + float(vals[0]), oy + float(vals[1]), oz + float(vals[2])]
+            if len(vals) >= 6:
+                row += [float(vals[3]), float(vals[4]), float(vals[5])]   # per-instance w,d,h (m)
+            out.append(row)
+        return out
+    if v.startswith('SPRAY:'):                               # SPRAY:stepX:stepY → semi-regular grid (qty-driven)
+        p = v[6:].split(':'); sx, sy = float(p[0]), float(p[1])
+        ny = max(1, int((qty * sx / sy) ** 0.5 + 0.5)); nx = (qty + ny - 1) // ny   # Java Math.round (positive)
+        out = []
+        for ix in range(nx):
+            for iy in range(ny):
+                if len(out) < qty:
+                    out.append([ox + ix * sx, oy + iy * sy, oz])
+        return out
+    if v.startswith('LINE_MULTI:'):                          # LINE_MULTI:axis:p1,..;axis:p1,.. → groups
+        out = []
+        for grp in v[11:].split(';'):
+            ci = grp.index(':'); axis = grp[:ci]
+            for ps in grp[ci + 1:].split(','):
+                pos = float(ps.strip())
+                out.append({'X': [pos, oy, oz], 'Y': [ox, pos, oz], 'Z': [ox, oy, pos]}.get(axis, [ox, oy, oz]))
+        return out
+    if v.startswith('LINE:'):                                # LINE:axis:p1,p2,.. → explicit positions on one axis
+        data = v[5:]; ci = data.index(':'); axis = data[:ci]
+        out = []
+        for ps in data[ci + 1:].split(','):
+            pos = float(ps.strip())
+            out.append({'X': [pos, oy, oz], 'Y': [ox, pos, oz], 'Z': [ox, oy, pos]}.get(axis, [ox, oy, oz]))
+        return out
+    if v.startswith('PLACE_DEVICE:'):                        # marker verb — position already in origin
+        return [[ox, oy, oz] for _ in range(max(qty, 1))]
+    return [[ox, oy, oz] for _ in range(max(qty, 1))]        # unknown verb → origin fallback (compiler parity)
+
+
 def resolve_symbolic_rot(label, wall_ctx):
     """Resolve a SYMBOLIC rotation_rule to radians. Two families:
     • ABSOLUTE axis rules (wall/plate run direction) — EW / NS. Semantics confirmed in
@@ -334,10 +401,12 @@ def main():
         'aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z FROM m_bom')}
     bom_ids = set(bom_meta)
     lines_by_bom = defaultdict(list)
+    # NOTE: the generic archive BOM.db has no qty/verb_ref columns (only the per-building DBs do); its sets are
+    # synthesised/retired and never factored, so pad qty=1, verb_ref=None to match the 15-field row shape.
     for r in b.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
                        'allocated_width_mm, min_space_mm, component_type, allocated_depth_mm, allocated_height_mm '
                        'FROM m_bom_line WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
-        lines_by_bom[r[0]].append(r)
+        lines_by_bom[r[0]].append(tuple(r) + (1, None))
 
     # ── MERGE the per-building BOM SETs (real authored offsets) into the same structures the assembly loop +
     # layout already consume. bom_ids are building-prefixed ('DX::A102 SET') so they never collide across
@@ -361,10 +430,11 @@ def main():
                             'aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z FROM m_bom'):
             bid = pfx(r[0]); bom_meta[bid] = (bid, r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9]); bom_ids.add(bid); pb_sets += 1
         for r in pb.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
-                            'allocated_width_mm, min_space_mm, component_type, allocated_depth_mm, allocated_height_mm '
+                            'allocated_width_mm, min_space_mm, component_type, allocated_depth_mm, allocated_height_mm, '
+                            'qty, verb_ref '
                             'FROM m_bom_line WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
             ref = pfx(r[1]) if r[1] in own else r[1]   # same-building nested set → prefix so it folds as a BOM
-            lines_by_bom[pfx(r[0])].append((pfx(r[0]), ref, r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12]))
+            lines_by_bom[pfx(r[0])].append((pfx(r[0]), ref, r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[14]))
         for r in pb.execute('SELECT product_id, COALESCE(Name, product_id), ifc_class, width, depth, height, '
                             'M_Product_Category_ID FROM M_Product'):
             mprod_extra.setdefault(r[0], (r[1], r[2], r[3], r[4], r[5], r[6]))
@@ -413,13 +483,14 @@ def main():
 
     role_resolved = role_proxy = phantom_skipped = 0
     rot_resolved = rot_unresolved = sets_wall = sets_float = 0
+    verb_lines = verb_instances = 0
     assemblies, leaf_refs = [], set()
     for bid, rows in lines_by_bom.items():
         meta = bom_meta.get(bid)
         if not meta:
             continue
         children = []
-        for (_, ref, role, seq, dx, dy, dz, rrule, aw_mm, ms_mm, ctype, ad_mm, ah_mm) in rows:
+        for (_, ref, role, seq, dx, dy, dz, rrule, aw_mm, ms_mm, ctype, ad_mm, ah_mm, qty, verb_ref) in rows:
             if not ref:
                 continue
             if str(ctype or '').upper() == 'PHANTOM' or ref == 'BUFFER':
@@ -446,9 +517,28 @@ def main():
                 rru = str(rotRule).upper()
                 if rru.startswith('MIRROR'):
                     ch['mirror'] = 'X' if rru.endswith('X') else ('Y' if rru.endswith('Y') else 'X')
-            children.append(ch)
-            if not isbom:
+            # ── VERB EXPANSION (W-DROP-VS-COMPILER PART 3, 2026-06-23). A LEAF line factored by the compiler
+            # (VerbFactorizer) carries qty=N + a verb_ref (TILE/LINE/CLUSTER/…) encoding the N real placements —
+            # the compiler reconstructs them at compile time via expandVerb, reading ONLY the BOM. The drop dropped
+            # the verb → it placed ONE box per line (the missing chairs/windows/members). FIX: expand the verb HERE
+            # into N real leaf children (each an editable layer with its own LBD offset + dims), so the proven host
+            # places them unchanged. NON-INVENT (verb_ref is authored BOM data; expand_verb is the compiler's own
+            # algorithm) and red-line-safe (no extracted.db). qty>1 lines all carry a verb in SH/DX (verified) → the
+            # length-based `qty` trap can't fire; only verb-bearing leaf lines expand.
+            if not isbom and verb_ref:
+                offs = expand_verb(verb_ref, qty or 1, ch['dx'], ch['dy'], ch['dz'])
+                verb_lines += 1; verb_instances += len(offs)
+                for off in offs:
+                    c2 = dict(ch)
+                    c2['dx'] = round(off[0], 4); c2['dy'] = round(off[1], 4); c2['dz'] = round(off[2], 4)
+                    if len(off) >= 6:                           # CLUSTER per-instance dims override the line alloc
+                        c2['_aw'], c2['_ad'], c2['_ah'] = off[3], off[4], off[5]
+                    children.append(c2)
                 leaf_refs.add(ref)
+            else:
+                children.append(ch)
+                if not isbom:
+                    leaf_refs.add(ref)
         if not children:
             continue
         asm = {'id': bid, 'name': meta[1], 'level': meta[2], 'category': meta[3],
@@ -644,6 +734,9 @@ def main():
         sets_wall, sets_float, rot_resolved, rot_unresolved))
     print('§DAGEVU-INSTANCE perInstanceBoxProducts=%d (leaf line allocated_* dims differ from product → own box, '
           'NON-INVENT; fixes reused-product instances + cross-building dim collision)' % inst_products)
+    print('§DAGEVU-VERB factoredLeafLines=%d → expandedInstances=%d (compiler verb_ref TILE/LINE/CLUSTER expanded '
+          'to real editable leaves, NON-INVENT port of PlacementCollectorVisitor.expandVerb; no extracted.db)'
+          % (verb_lines, verb_instances))
     print('§DAGEVU-BOXONLY honestBoxProducts=%d (library best part is a box ≤12 faces)' % box_only)
     print('§DAGEVU-GEOM out=%s geoms=%d rawBytes=%d (~%.2f MB)' % (GEOM_OUT, len(geoms), gbytes, gbytes / 1e6))
 

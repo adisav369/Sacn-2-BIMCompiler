@@ -25,6 +25,9 @@ const CANDIDATES = (process.argv[2] || 'BUILDING_SH_STD,SH::BUILDING_SH_STD').sp
 
 const cat = JSON.parse(fs.readFileSync(CAT, 'utf8'));
 const PROD = {}; cat.products.forEach(p => PROD[p.id] = p);
+const ASM = {}; (cat.assemblies || []).forEach(a => ASM[a.id] = a);
+const POS_TOL = 0.001;                       // 1mm — the compiler's own tack tolerance
+let posPass = false;                         // set true once a candidate reproduces the compiler to POS_TOL
 
 function loadHost() {
   const src = fs.readFileSync(path.join(ROOT, 'deploy/dev/bonsai_library.js'), 'utf8');
@@ -95,5 +98,34 @@ function summarize(label, leaves, zMode) {
     // headline extent ratio vs compiler placeable footprint
     const er = O.ext.map((o, i) => (C.ext[i] / o));
     console.log(`     extent ratio drop/compiler = ${er.map(x => x.toFixed(2)).join(' , ')}  (1.00 = same size)`);
+
+    // ── PER-ELEMENT POSITION CONGRUENCE (the real white-box gate). Expand the building CANONICALLY (rot=0, the
+    // Java-faithful path) and bring each leaf into the compiler's ORIGIN-NORMALISED frame by subtracting the
+    // building's own m_bom.origin (a.ox/oy/oz) that the drop folds but the compiler output does not carry. Then
+    // nearest-match each drop leaf to a compiler leaf OF THE SAME CLASS and report the worst pair. This proves the
+    // drop reproduces the compiler's exact placements (incl. verb-expanded qty>1 instances) — NOT just the extent.
+    // Compiler-only generated classes (FlowTerminal etc.) are absent from a BOM drop by design → not gated.
+    const a = ASM[id] || {}, aox = a.ox || 0, aoy = a.oy || 0, aoz = a.oz || 0;
+    const canon = L.expandAssembly(id, { x: 0, y: 0, z: 0, rot: 0 });
+    const dByc = {};
+    canon.forEach(l => { const p = PROD[l.hash] || {}; const c = bucket(p.ifc_class);
+      (dByc[c] = dByc[c] || []).push({ x: l.x - aox, y: l.y - aoy, z: (l.z + (p.h || 0) / 2) - aoz }); });   // → compiler centre frame
+    let worstAll = 0, gated = 0;
+    Object.keys(dByc).sort().forEach(c => {
+      const os = (O.byc[c] || []).slice();        // compiler leaves of this class (centres)
+      if (!os.length) return;                     // class the compiler doesn't place (e.g. honest box w/o oracle)
+      const used = new Array(os.length).fill(false);
+      let worst = 0;
+      dByc[c].forEach(d => { let best = 1e9, bi = -1;
+        os.forEach((o, i) => { if (used[i]) return; const dd = Math.max(Math.abs(d.x - o.x), Math.abs(d.y - o.y), Math.abs(d.z - o.z)); if (dd < best) { best = dd; bi = i; } });
+        if (bi >= 0) used[bi] = true; worst = Math.max(worst, best); });
+      worstAll = Math.max(worstAll, worst); gated++;
+      console.log(`     pos ${c.padEnd(8)} drop=${String(dByc[c].length).padStart(2)} compiler=${String(os.length).padStart(2)}  worst=${(worst * 1000).toFixed(2)}mm`);
+    });
+    const ok = gated > 0 && worstAll <= POS_TOL;
+    console.log(`     §POS-CONGRUENCE ${id}: worst=${(worstAll * 1000).toFixed(2)}mm over ${gated} classes — ${ok ? 'PASS (≤1mm, reproduces compiler)' : 'over 1mm'}`);
+    if (ok) posPass = true;
   }
+  console.log(`\n§W-DROP-VS-COMPILER ${posPass ? 'GREEN — a candidate reproduces the compiler output.db to ≤1mm (BOM round-trips, no extracted.db)' : 'RED — no candidate matched the compiler within 1mm'}`);
+  process.exit(posPass ? 0 : 1);
 })();
