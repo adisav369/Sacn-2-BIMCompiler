@@ -124,15 +124,16 @@ serves the landing on `localhost:8080` — BIM and ERP, your domain, your brandi
 a plain reload, re-install is a guarded no-op, and the install appears as a dot on the **W**
 world-history timeline.
 
-![Once the data is in, every window folds into the Dashboard lens — here Orders, broken into donuts across every dimension (location, currency, payment rule, document type, date promised…). Tap any slice to drill into the records behind it. A migrated Odoo tenant's catalog and its sale orders read exactly this way.](figs/dashboard_order.png)
+![Once the data is in, every window folds into the Dashboard lens — here Orders, broken into donuts across every dimension (location, currency, payment rule, document type, date promised…). Long-press any slice to drill into the records behind it. A migrated Odoo tenant's catalog and its sale orders read exactly this way.](figs/dashboard_order.png)
 
 **Reading the Dashboard.** The **Dashboard** pill (on the ⋯ rail) opens the current window's records as one
 surface with five tabs — **Graph · Cards · Pivot · List · Timeline** — all folding the *same* live records:
 
 - **Graph** is a grid of donuts, one per dimension (status, partner, location, date…) — the % sits on the arc,
-  the centre shows the total. **Tap a slice to drill** to the records behind it: one record opens its form,
-  several narrow the window grid with a *Show all* banner to step back. **Long-press** a donut to flip it to a
-  plain table.
+  the centre shows the total. **Long-press to drill** to the records behind any segment: one record opens its
+  form, several narrow the window grid with a *Show all* to step back. A plain tap/hover only previews;
+  **double-tap** a donut to flip it to a plain table. The same long-press drills from any tab — a **List** row,
+  a **Timeline** or **Cards** tile, or a **Pivot** cell.
 - The **Explore** panel on the right lists every dimension as a chip. The chips already drawn on the left are
   **highlighted** — tap a lit one to remove its chart, tap any other to add one. *Top 3* and *Anything unusual?*
   answer in a sentence.
