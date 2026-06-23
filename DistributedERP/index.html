@@ -2714,6 +2714,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#why-the-instinct-is-disbelief" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the instinct is disbelief
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#how-to-read-this-document" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3774,6 +3785,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#why-the-instinct-is-disbelief" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the instinct is disbelief
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#how-to-read-this-document" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4186,6 +4208,19 @@
 <li><strong>One</strong> genuinely real-time case remains: a single thing claimed in two places at once (a loyalty prize, a credit balance). That is <em>one operation class</em>, not a property of the whole system.</li>
 </ul>
 <p>None of it needs a fat, always-on server.</p>
+<hr />
+<h2 id="why-the-instinct-is-disbelief">Why the instinct is disbelief<a class="headerlink" href="#why-the-instinct-is-disbelief" title="Permanent link">&para;</a></h2>
+<p>The honest first reaction to this document is skepticism — <em>ERP without a server sounds like a category error.</em> That reaction is worth naming, because it's the whole point: everyone "knows" an ERP needs a fat, always-on server, so a serverless one reads as impossible until the model shifts. The disbelief comes from a <strong>mental model</strong>, not a missing feature.</p>
+<p>Two things make it real now, and only now:</p>
+<ul>
+<li>
+<p><strong>The browser quietly became able to hold the whole engine.</strong> None of the underlying pieces is new on its own — the doc is scrupulous about that (§10: SQLite-in-WASM dates to 2012, official WASM/OPFS to 2022; local-first, op-logs, hash-chains are all prior art). What is recent is the <em>assembly</em>: SQLite-WASM with durable OPFS persistence, PWA install, Web Crypto for signing and hash-chaining, and <code>BarcodeDetector</code> for the scan-is-the-op gesture, all dependable enough <em>in the same tab, at once</em> to run an entire ERP <strong>and</strong> a BIM kernel with no backend. For this project the decisive event is concrete: <strong>the browser port landed in April 2026.</strong> Before that, this argument was a thesis; after it, it runs.</p>
+</li>
+<li>
+<p><strong>The unlock is conceptual, not hardware.</strong> <em>A fact is a fold; delete the stored scalar.</em> Once a quantity is derived from a signed, append-only log instead of guarded in a mutable cell, the contention you were fighting turns out to be something the storage design invented — and the always-on server you were defending turns out to have been optional all along. That is why the git analogy lands: no central machine owns your code history, yet every clone can verify and rebuild it. This does the same for ERP transactions and BIM geometry.</p>
+</li>
+</ul>
+<p>So the skepticism is the correct starting point. The rest of this document is the work of converting it — claim by claim, each with a witness and an honest residual.</p>
 <hr />
 <h2 id="how-to-read-this-document">How to read this document<a class="headerlink" href="#how-to-read-this-document" title="Permanent link">&para;</a></h2>
 <ul>
