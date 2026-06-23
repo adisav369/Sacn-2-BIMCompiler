@@ -28,6 +28,20 @@ None of it needs a fat, always-on server.
 
 ---
 
+## Why the instinct is disbelief
+
+The honest first reaction to this document is skepticism — *ERP without a server sounds like a category error.* That reaction is worth naming, because it's the whole point: everyone "knows" an ERP needs a fat, always-on server, so a serverless one reads as impossible until the model shifts. The disbelief comes from a **mental model**, not a missing feature.
+
+Two things make it real now, and only now:
+
+- **The browser quietly became able to hold the whole engine.** None of the underlying pieces is new on its own — the doc is scrupulous about that (§10: SQLite-in-WASM dates to 2012, official WASM/OPFS to 2022; local-first, op-logs, hash-chains are all prior art). What is recent is the *assembly*: SQLite-WASM with durable OPFS persistence, PWA install, Web Crypto for signing and hash-chaining, and `BarcodeDetector` for the scan-is-the-op gesture, all dependable enough *in the same tab, at once* to run an entire ERP **and** a BIM kernel with no backend. For this project the decisive event is concrete: **the browser port landed in April 2026.** Before that, this argument was a thesis; after it, it runs.
+
+- **The unlock is conceptual, not hardware.** *A fact is a fold; delete the stored scalar.* Once a quantity is derived from a signed, append-only log instead of guarded in a mutable cell, the contention you were fighting turns out to be something the storage design invented — and the always-on server you were defending turns out to have been optional all along. That is why the git analogy lands: no central machine owns your code history, yet every clone can verify and rebuild it. This does the same for ERP transactions and BIM geometry.
+
+So the skepticism is the correct starting point. The rest of this document is the work of converting it — claim by claim, each with a witness and an honest residual.
+
+---
+
 ## How to read this document
 
 - **§0** is the foundation: the one root idea and the four working truths everything else falls out of.
