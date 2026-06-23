@@ -299,6 +299,46 @@ op-log, so it is real (not a mock) yet completely reversible until you accept it
 unifies a planner, a cost tool, and a 4D/5D viewer onto one log gives you free what-if — no separate
 scheduling tool, no drift. *(Engine proven by `W-WHATIF` 13/13 on the Hospital project; `viewer/whatif.js`.)*
 
+### Schedule Editor — the advanced Gantt, on its own surface *(LIVE)*
+
+The Time Machine's **`✎`** wizard and **`⑂`** what-if are the *intuitive* front — quick, visual, one
+gesture. When you want the **serious planner** — an expandable WBS, real dependencies, a critical path,
+and a draggable Gantt — open the **Schedule Editor** in its own tab (`viewer/schedule_editor.html?db=…`,
+or the model's share link). It is a separate, focused surface so the front visual stays light; both edit
+the **same IFC-native schedule tables**, so nothing forks.
+
+![The Schedule Editor on a real SampleHouse — left: the **WBS outline** (Project → Superstructure · Architecture · Finishes, each with its element count and dates); right: the **dependencies** (a finish-to-start chain you author and retype); bottom: the **interactive Gantt**. **Compute CPM** has run — the critical path is red on the rail, in the dependency links, and along the timeline bars, and the header reads *project 90d · critical 3/3*. Drag a bar to reschedule; drag its ▸ handle onto another bar to link.](figs/sched_editor_gantt.png)
+
+What it does, and how it earns each step:
+
+1. **Expandable WBS outline** — the phases you authored render as a collapsible tree, each leaf showing
+   its element count and dates.
+2. **View & edit dependencies** — add a link between two phases, choose its type (**FS / SS / FF / SF**),
+   set a **lag**, or delete it. The graph is written to the IFC-native `task_sequences` table; a link
+   that would create a **cycle** is refused (a schedule cannot loop).
+3. **Compute CPM** — a real **critical-path forward/backward pass** over the dependency graph computes
+   each task's early/late dates, **total & free float**, and which tasks are **critical**. The critical
+   path lights up red across the outline, the links, and the bars; the readout shows the project duration
+   and how many tasks are critical. *(Editing the graph after a run clears the result until you recompute,
+   so a stale critical path is never shown.)*
+4. **Interactive Gantt** — **drag a bar** to reschedule it (snapped to whole days, duration preserved);
+   **drag the ▸ handle** from one bar onto another to **link** them. This is the MS-Project gesture, on
+   your signed schedule.
+
+**Live across tabs.** Every edit is a signed op broadcast on one channel, so a second open surface
+**re-folds it live** — drag a bar in the editor and a Time Machine (or a second editor) open on the same
+model updates immediately, because both are folds of the *same* log. This is the difference from the
+field: open-source 4D (Bonsai) can build a schedule and run CPM but its Gantt is a generated picture you
+edit through side panels; MS Project gives you the interactive Gantt but has no model, no cost, and no
+ERP. The Schedule Editor is a real drag-on-the-chart editor **on one signed op-log that the model, the
+4D playback, the 5D cost, and the ERP all fold from** — so a date you drag here is the same fact the
+enterprise reads. *(Proven by `W-SCHED-EDIT` 19/19, `W-SCHED-CPM` 10/10, `W-SCHED-MOVE` 7/7, and
+`W-SCHED-SYNC` 11/11, plus headless drag/sync smokes; `viewer/schedule_author.js` + `schedule_sync.js`.)*
+
+> **Where it stops — on purpose.** The editor computes from the graph *you* author; it never
+> auto-reschedules or "levels" resources for you. Automatic schedule optimisation is a decades-deep
+> rabbit hole and a place for drift; the line here is deliberate — deterministic compute, your plan.
+
 ---
 
 ## 3. The Bottom Pill Bar (cheat sheet)
