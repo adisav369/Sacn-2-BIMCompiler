@@ -3459,14 +3459,16 @@ you apply <strong>operations</strong> — insert a component, sketch a profile, 
 recorded, replayable, and reversible, and the same signed-log idea drives the Kernel-ERP engine.</p>
 <p><strong>Open it:</strong> <a href="https://red1oon.github.io/bim-ootb/viewer/modeller.html">red1oon.github.io/bim-ootb/viewer/modeller.html</a>
 (desktop — the B-rep kernel is heavy). The <strong>Home</strong> button returns to the Matrix landing.</p>
-<p><img alt="DAGeVu Modeller — the INSERT · BOM CATALOG panel open (left), the authored scene on the grid, the tool rail down the right, and the op-log history scrubber along the bottom" src="../assets/modeller.png" /></p>
+<p><img alt="DAGeVu Modeller — the INSERT · BOM CATALOG panel open (left), the authored scene on the grid, the ⋯ toolbar pill rail at the bottom‑right, and the op-log history scrubber along the bottom" src="../assets/modeller.png" /></p>
 <h2 id="your-first-insert-the-bom-catalog">Your first insert — the BOM catalog<a class="headerlink" href="#your-first-insert-the-bom-catalog" title="Permanent link">&para;</a></h2>
-<p>The fastest way to build is to <strong>assemble, not draw</strong>. Tap the <strong>Insert</strong> tool (the cube icon on the
-right rail) to open the <strong>INSERT · BOM CATALOG</strong> panel on the left:</p>
+<p>The fastest way to build is to <strong>assemble, not draw</strong>. Tap the <strong>Insert</strong> tool (the cube icon in the
+toolbar — open the <strong>⋯</strong> pill rail at the bottom‑right if the pills are collapsed) to open the
+<strong>INSERT · BOM CATALOG</strong> panel on the left:</p>
 <ol>
 <li><strong>Find a component.</strong> Type in <strong>search parts…</strong>, or narrow with the filter chips —
-   <strong>All · Structure · Openings · Furniture · Sets</strong>. The catalog is loaded from the real
-   <code>component_library.db</code>, so what you see are actual parts and pre-built assemblies.</li>
+   <strong>All · Structure · Openings · Furniture · Sets</strong>. The catalog is extracted from the real
+   component library (<code>component_library.db</code> plus the per-building BOMs), so what you see are actual
+   parts and pre-built assemblies.</li>
 <li><strong>Pick a part — or a whole set.</strong> Single parts drop one element. <strong>Sets</strong> are <em>assemblies</em> (whole
    BOM sets) grouped by level — <strong>Buildings · Floors · Rooms · Sets · Items</strong> — each collapsible, with a
    part-count badge (e.g. <em>Duplex Single Half-Unit</em>, <em>DX Level 1 Structured</em>). Pick one to drop the
@@ -3477,11 +3479,16 @@ right rail) to open the <strong>INSERT · BOM CATALOG</strong> panel on the left
    drop it.</li>
 <li><strong>It's a signed op.</strong> The placement lands as one operation in the op-log — visible on the history
    scrubber at the bottom and fully <strong>undoable</strong> (<code>Ctrl+Z</code>). An assembly drops as a single grouped op
-   of <em>N</em> parts.</li>
+   of <em>N</em> parts, each seated and oriented from the recipe — e.g. <strong>doors and windows take their host
+   wall's facing automatically</strong>, rotating with the wall rather than landing flat.</li>
 </ol>
-<p>From there, use the tool rail to refine: move/rotate a placed object, sketch and extrude new geometry,
-cut, sweep an MEP run, or bump a component's level of detail.</p>
+<p>From there, use the toolbar pills to refine: move/rotate a placed object, sketch and extrude new geometry,
+cut, sweep an MEP run, or bump a component's level of detail. The <strong>Outliner</strong> panel (left) lists the
+placed elements; collapse it with its chevron to free up the canvas.</p>
 <h2 id="the-toolbar-icon-index">The toolbar — icon index<a class="headerlink" href="#the-toolbar-icon-index" title="Permanent link">&para;</a></h2>
+<p>The toolbar is a <strong>⋯ pill rail</strong> at the bottom-right: tap <strong>⋯</strong> to fan the icon-only glass pills up,
+and hover any pill for its name. The <strong>? Help</strong> pill opens the <strong>TOOLBAR · PILL REGISTRY</strong> — the live
+list of every tool's icon, name, and keyboard shortcut (<code>Esc</code> always cancels the current mode).</p>
 <table>
 <thead>
 <tr>
@@ -3490,6 +3497,14 @@ cut, sweep an MEP run, or bump a component's level of detail.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><strong>⋯ Toolbar</strong></td>
+<td>Fan the toolbar pills open / closed (bottom-right)</td>
+</tr>
+<tr>
+<td><strong>? Help</strong></td>
+<td>Toolbar &amp; shortcuts — the live pill registry</td>
+</tr>
 <tr>
 <td><strong>Home</strong></td>
 <td>Back to the Matrix landing</td>
