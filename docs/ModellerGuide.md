@@ -13,16 +13,18 @@ recorded, replayable, and reversible, and the same signed-log idea drives the Ke
 **Open it:** [red1oon.github.io/bim-ootb/viewer/modeller.html](https://red1oon.github.io/bim-ootb/viewer/modeller.html)
 (desktop — the B-rep kernel is heavy). The **Home** button returns to the Matrix landing.
 
-![DAGeVu Modeller — the INSERT · BOM CATALOG panel open (left), the authored scene on the grid, the tool rail down the right, and the op-log history scrubber along the bottom](assets/modeller.png)
+![DAGeVu Modeller — the INSERT · BOM CATALOG panel open (left), the authored scene on the grid, the ⋯ toolbar pill rail at the bottom‑right, and the op-log history scrubber along the bottom](assets/modeller.png)
 
 ## Your first insert — the BOM catalog
 
-The fastest way to build is to **assemble, not draw**. Tap the **Insert** tool (the cube icon on the
-right rail) to open the **INSERT · BOM CATALOG** panel on the left:
+The fastest way to build is to **assemble, not draw**. Tap the **Insert** tool (the cube icon in the
+toolbar — open the **⋯** pill rail at the bottom‑right if the pills are collapsed) to open the
+**INSERT · BOM CATALOG** panel on the left:
 
 1. **Find a component.** Type in **search parts…**, or narrow with the filter chips —
-   **All · Structure · Openings · Furniture · Sets**. The catalog is loaded from the real
-   `component_library.db`, so what you see are actual parts and pre-built assemblies.
+   **All · Structure · Openings · Furniture · Sets**. The catalog is extracted from the real
+   component library (`component_library.db` plus the per-building BOMs), so what you see are actual
+   parts and pre-built assemblies.
 2. **Pick a part — or a whole set.** Single parts drop one element. **Sets** are *assemblies* (whole
    BOM sets) grouped by level — **Buildings · Floors · Rooms · Sets · Items** — each collapsible, with a
    part-count badge (e.g. *Duplex Single Half-Unit*, *DX Level 1 Structured*). Pick one to drop the
@@ -33,15 +35,23 @@ right rail) to open the **INSERT · BOM CATALOG** panel on the left:
    drop it.
 4. **It's a signed op.** The placement lands as one operation in the op-log — visible on the history
    scrubber at the bottom and fully **undoable** (`Ctrl+Z`). An assembly drops as a single grouped op
-   of *N* parts.
+   of *N* parts, each seated and oriented from the recipe — e.g. **doors and windows take their host
+   wall's facing automatically**, rotating with the wall rather than landing flat.
 
-From there, use the tool rail to refine: move/rotate a placed object, sketch and extrude new geometry,
-cut, sweep an MEP run, or bump a component's level of detail.
+From there, use the toolbar pills to refine: move/rotate a placed object, sketch and extrude new geometry,
+cut, sweep an MEP run, or bump a component's level of detail. The **Outliner** panel (left) lists the
+placed elements; collapse it with its chevron to free up the canvas.
 
 ## The toolbar — icon index
 
+The toolbar is a **⋯ pill rail** at the bottom-right: tap **⋯** to fan the icon-only glass pills up,
+and hover any pill for its name. The **? Help** pill opens the **TOOLBAR · PILL REGISTRY** — the live
+list of every tool's icon, name, and keyboard shortcut (`Esc` always cancels the current mode).
+
 | Icon | Does |
 |------|------|
+| **⋯ Toolbar** | Fan the toolbar pills open / closed (bottom-right) |
+| **? Help** | Toolbar & shortcuts — the live pill registry |
 | **Home** | Back to the Matrix landing |
 | **Fit** | Zoom to fit — frames the selection, or the whole scene (`F`) |
 | **Iso** | Cycle the view: Iso ⇄ Top |
