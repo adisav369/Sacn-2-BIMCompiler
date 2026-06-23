@@ -1004,6 +1004,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#schedule-editor-the-advanced-gantt-on-its-own-surface-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schedule Editor — the advanced Gantt, on its own surface (LIVE)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4004,6 +4015,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#schedule-editor-the-advanced-gantt-on-its-own-surface-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schedule Editor — the advanced Gantt, on its own surface (LIVE)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4849,6 +4871,43 @@ branch model applied to the schedule: the what-if lives on a speculative blue br
 op-log, so it is real (not a mock) yet completely reversible until you accept it. The same engine that
 unifies a planner, a cost tool, and a 4D/5D viewer onto one log gives you free what-if — no separate
 scheduling tool, no drift. <em>(Engine proven by <code>W-WHATIF</code> 13/13 on the Hospital project; <code>viewer/whatif.js</code>.)</em></p>
+<h3 id="schedule-editor-the-advanced-gantt-on-its-own-surface-live">Schedule Editor — the advanced Gantt, on its own surface <em>(LIVE)</em><a class="headerlink" href="#schedule-editor-the-advanced-gantt-on-its-own-surface-live" title="Permanent link">&para;</a></h3>
+<p>The Time Machine's <strong><code>✎</code></strong> wizard and <strong><code>⑂</code></strong> what-if are the <em>intuitive</em> front — quick, visual, one
+gesture. When you want the <strong>serious planner</strong> — an expandable WBS, real dependencies, a critical path,
+and a draggable Gantt — open the <strong>Schedule Editor</strong> in its own tab (<code>viewer/schedule_editor.html?db=…</code>,
+or the model's share link). It is a separate, focused surface so the front visual stays light; both edit
+the <strong>same IFC-native schedule tables</strong>, so nothing forks.</p>
+<p><img alt="The Schedule Editor on a real SampleHouse — left: the **WBS outline** (Project → Superstructure · Architecture · Finishes, each with its element count and dates); right: the **dependencies** (a finish-to-start chain you author and retype); bottom: the **interactive Gantt**. **Compute CPM** has run — the critical path is red on the rail, in the dependency links, and along the timeline bars, and the header reads *project 90d · critical 3/3*. Drag a bar to reschedule; drag its ▸ handle onto another bar to link." src="../figs/sched_editor_gantt.png" /></p>
+<p>What it does, and how it earns each step:</p>
+<ol>
+<li><strong>Expandable WBS outline</strong> — the phases you authored render as a collapsible tree, each leaf showing
+   its element count and dates.</li>
+<li><strong>View &amp; edit dependencies</strong> — add a link between two phases, choose its type (<strong>FS / SS / FF / SF</strong>),
+   set a <strong>lag</strong>, or delete it. The graph is written to the IFC-native <code>task_sequences</code> table; a link
+   that would create a <strong>cycle</strong> is refused (a schedule cannot loop).</li>
+<li><strong>Compute CPM</strong> — a real <strong>critical-path forward/backward pass</strong> over the dependency graph computes
+   each task's early/late dates, <strong>total &amp; free float</strong>, and which tasks are <strong>critical</strong>. The critical
+   path lights up red across the outline, the links, and the bars; the readout shows the project duration
+   and how many tasks are critical. <em>(Editing the graph after a run clears the result until you recompute,
+   so a stale critical path is never shown.)</em></li>
+<li><strong>Interactive Gantt</strong> — <strong>drag a bar</strong> to reschedule it (snapped to whole days, duration preserved);
+   <strong>drag the ▸ handle</strong> from one bar onto another to <strong>link</strong> them. This is the MS-Project gesture, on
+   your signed schedule.</li>
+</ol>
+<p><strong>Live across tabs.</strong> Every edit is a signed op broadcast on one channel, so a second open surface
+<strong>re-folds it live</strong> — drag a bar in the editor and a Time Machine (or a second editor) open on the same
+model updates immediately, because both are folds of the <em>same</em> log. This is the difference from the
+field: open-source 4D (Bonsai) can build a schedule and run CPM but its Gantt is a generated picture you
+edit through side panels; MS Project gives you the interactive Gantt but has no model, no cost, and no
+ERP. The Schedule Editor is a real drag-on-the-chart editor <strong>on one signed op-log that the model, the
+4D playback, the 5D cost, and the ERP all fold from</strong> — so a date you drag here is the same fact the
+enterprise reads. <em>(Proven by <code>W-SCHED-EDIT</code> 19/19, <code>W-SCHED-CPM</code> 10/10, <code>W-SCHED-MOVE</code> 7/7, and
+<code>W-SCHED-SYNC</code> 11/11, plus headless drag/sync smokes; <code>viewer/schedule_author.js</code> + <code>schedule_sync.js</code>.)</em></p>
+<blockquote>
+<p><strong>Where it stops — on purpose.</strong> The editor computes from the graph <em>you</em> author; it never
+auto-reschedules or "levels" resources for you. Automatic schedule optimisation is a decades-deep
+rabbit hole and a place for drift; the line here is deliberate — deterministic compute, your plan.</p>
+</blockquote>
 <hr />
 <h2 id="3-the-bottom-pill-bar-cheat-sheet">3. The Bottom Pill Bar (cheat sheet)<a class="headerlink" href="#3-the-bottom-pill-bar-cheat-sheet" title="Permanent link">&para;</a></h2>
 <p>The pill is the single entry point for every tool. Left-to-right:</p>
