@@ -135,17 +135,66 @@ const server = http.createServer((q, r) => {
     console.log(`   ${g.slice(-6)}  C[${f(c)}] O[${f(o)}] Sctr[${s.cx.toFixed(2)},${s.cy.toFixed(2)},${s.cz.toFixed(2)}]`);
   }
 
+  // CLASS MAP (guid → ifc_class) from the extraction — for the per-class drift breakdown (defensive: missing
+  // table/column → 'UNKNOWN', never throws). Read from the served db (already open above would have closed; reopen).
+  const clsMap = {};
+  try {
+    const cdb = new Database(path.join(BLD, BUILDING + '_extracted.db'), { readonly:true });
+    for (const r of cdb.prepare('SELECT guid g, ifc_class c FROM elements_meta').all()) clsMap[norm(r.g)] = r.c || 'UNKNOWN';
+    cdb.close();
+  } catch (e) { console.log(`  §CLASS-MAP unavailable (${e.message}) — breakdown will read UNKNOWN`); }
+
   // ALL-PAIRS RELATIVE OFFSET — proven geo_verify.py method (worst mm, cancels global recenter)
   const both = Object.keys(orig).filter(g => g in canvasMap);
   console.log(`\n  GUIDs: canvas=${Object.keys(canvasMap).length}  original=${Object.keys(orig).length}  matched=${both.length}`);
+  // Per-ELEMENT drift attribution (typed arrays = no hashing in the O(n²) hot loop): how many >1mm pairs each
+  // element participates in, and its worst pair-drift. A class that dominates these is the culprit to trace.
+  const N = both.length, dCount = new Float64Array(N), dWorstE = new Float64Array(N);
   let total=0, match=0, drift=0, worst=0, worstPair='';
-  for (let i=0;i<both.length;i++) for (let j=i+1;j<both.length;j++) {
+  for (let i=0;i<N;i++) for (let j=i+1;j<N;j++) {
     const a=both[i], b=both[j], c1=canvasMap[a], c2=canvasMap[b], e1=orig[a], e2=orig[b];
     let err=0; for (let k=0;k<3;k++){ const e=Math.abs((c2[k]-c1[k])-(e2[k]-e1[k]))*1000; if(e>err)err=e; }
-    total++; if (err<=1.0) match++; else { drift++; if(err>worst){worst=err; worstPair=a+' <> '+b;} }
+    total++; if (err<=1.0) match++; else { drift++; if(err>worst){worst=err; worstPair=a+' <> '+b;}
+      dCount[i]++; dCount[j]++; if(err>dWorstE[i])dWorstE[i]=err; if(err>dWorstE[j])dWorstE[j]=err; }
   }
   console.log(`  Pairs: ${total}  MATCH: ${match}  DRIFT: ${drift}  Worst: ${worst.toFixed(3)}mm`);
   if (worstPair) console.log(`  Worst at: ${worstPair}`);
+  // §CLASS-DRIFT — aggregate the per-element attribution by ifc_class. `drifters` = elements with ≥1 >1mm pair;
+  // `worst` = worst pair-drift any element of that class touches; `pairhits` = total drifting-pair incidences.
+  // This LOCALISES a global RED to specific classes (e.g. recovered IfcBuildingElementPart / instanced-batched).
+  if (drift > 0) {
+    const byCls = {};
+    for (let i=0;i<N;i++) {
+      const cl = clsMap[both[i]] || 'UNKNOWN';
+      const e = byCls[cl] || (byCls[cl] = { n:0, drifters:0, worst:0, pairhits:0 });
+      e.n++; if (dCount[i] > 0) { e.drifters++; e.pairhits += dCount[i]; if (dWorstE[i] > e.worst) e.worst = dWorstE[i]; }
+    }
+    const rows = Object.entries(byCls).sort((a,b)=> b[1].worst - a[1].worst);
+    console.log(`\n  §CLASS-DRIFT — per-ifc_class attribution of the ${drift} drifting pairs (sorted by worst):`);
+    console.log(`     ${'ifc_class'.padEnd(26)} ${'elems'.padStart(6)} ${'drift'.padStart(6)} ${'worst(mm)'.padStart(10)} ${'pairhits'.padStart(9)}`);
+    for (const [cl, e] of rows) {
+      if (e.drifters === 0) continue;
+      console.log(`     ${cl.padEnd(26)} ${String(e.n).padStart(6)} ${String(e.drifters).padStart(6)} ${e.worst.toFixed(1).padStart(10)} ${String(e.pairhits).padStart(9)}`);
+    }
+    const clean = rows.filter(([,e])=>e.drifters===0).map(([c])=>c);
+    if (clean.length) console.log(`     §CLEAN (0 drift): ${clean.join(', ')}`);
+    // §ROGUES — with all-pairs, a SMALL mislocated subset makes EVERY element pair-drift against it (why every
+    // class shows drifters). Rank elements by drift-pair count: the rogues touch ~N pairs; innocents touch few.
+    // Dump the top rogues with canvas-vs-orig offset (Δ relative to the building median, frame-invariant) so the
+    // ACTUAL mislocation is visible, not just "everything drifts". This is where to trace, not the class table.
+    const idx = Array.from({length:N}, (_,i)=>i).sort((a,b)=> dCount[b]-dCount[a]);
+    // building median position (canvas & orig) to express each rogue's offset frame-invariantly
+    const med = (arr,k)=>{ const v=both.map(g=>arr[g][k]).sort((x,y)=>x-y); return v[v.length>>1]; };
+    const cm=[0,1,2].map(k=>med(canvasMap,k)), om=[0,1,2].map(k=>med(orig,k));
+    console.log(`\n  §ROGUES — top elements by drifting-pair count (Δ = (canvas−medianCanvas) − (orig−medianOrig), mm):`);
+    for (let r=0;r<Math.min(10,N);r++) {
+      const i=idx[r]; if (dCount[i]===0) break; const g=both[i], c=canvasMap[g], o=orig[g];
+      const d=[0,1,2].map(k=> (((c[k]-cm[k])-(o[k]-om[k]))*1000).toFixed(0));
+      console.log(`     ${g.slice(-8)} ${ (clsMap[g]||'?').padEnd(22)} pairs=${String(dCount[i]).padStart(5)} worst=${dWorstE[i].toFixed(1).padStart(7)}mm  Δ=[${d.join(',')}]`);
+    }
+    const rogueShare = idx.slice(0,Math.min(50,N)).reduce((s,i)=>s+(dCount[i]>N*0.5?1:0),0);
+    console.log(`     §ROGUE-COUNT ${rogueShare} element(s) drift against >50% of the building (the mislocated cluster); the rest pair-drift only against these.`);
+  }
   // TRULY-REVEALING whitebox header — a session reads THIS and knows exactly what was proven, against what, how,
   // and what was NOT covered, without re-running or re-deriving the frame doctrine.
   console.log(`  §METHOD all-pairs RELATIVE-OFFSET (geo_verify) — translation/convention INVARIANT, no frame fudge.`);
