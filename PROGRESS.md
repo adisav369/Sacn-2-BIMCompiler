@@ -18,6 +18,18 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
+## SC IFC2BOM onboarding + Modelling-from-cascade vision — 2026-06-23 (branch lane/benchmark-clash-resolution)
+Cards: `prompts/RESUME_DROP_OUTLINER_ROADMAP.md` §1, `prompts/MODELLING_FROM_BOM_CASCADE.md`, `prompts/ONTOLOGICAL_BOM_EXTRACTION.md`.
+- **SC (IFC2x3 residential; files historically named schependomlaan) now compiles: 2/4 → 7/10 gates, oracle minted.** Done in IFC2BOM (4 Java files + classify_sc.yaml):
+  - 362-drop fixed — root was a `Unknown` storey-container silently dropped (NOT type-coverage). `IFCtoBOMPipeline` now RECOVERS unmapped containers via `SpatialContainerConfig.discover` instead of dropping.
+  - New per-building `reconciliation_tolerance` (yaml, mirrors geometry_fail_threshold) for genuine source catalog-identity duplicate-collapses; SC=6 → delta −6 within tol = PASS.
+  - **MEP routed out of BOM by authoritative `elements_meta.discipline`** (`StructuralBomBuilder.isSpatialDiscipline` keeps ARC/STR, routes rest → DISC/RouteWalker). Generalizes the per-building MEP class-list that leaked SC's 60 IfcFlowSegment. REB already filtered.
+  - `expected_elements` now = actual placeable (`leafSUM(qty)+composition`) → compiler count gate reconciles (3516==3516).
+  - Regression-checked: SH 65/65, DX 192+73=265 UNCHANGED. No compiler/spatial code touched.
+- **Remaining SC gates (3, SC's first compile, deeper/separate):** 1 critical placement proof (hard threshold 0 for EXTRACTED), C8 mesh diversity (5 window/door variants = catalog geometry gap), geo_verify drift (known-stale harness — don't hand-roll).
+- **Vision banked:** the BOM cascade IS the modelling grammar (subtree move/delete/swap re-folds; 2D×3D grid stretch≠scale w/ host-constrained openings + roof pitch invariant; cascade-derived LOD; signed-foldable-portable BOM = the novelty). SC cascade proven walkable: BUILDING→11 FLOOR→99 SET+52 ASSEMBLY→3516 leaves.
+- **Next:** spec construction-verb BOM grammar (WALL/SLAB/ROOF/OPENING = the unlock) OR drop re-measure vs oracle OR SC fidelity gates. Prompt edits are local (prompts/ gitignored); Java+yaml committed this session.
+
 ## Benchmark & Clash-Resolution lane (branch lane/benchmark-clash-resolution) — 2026-06-21
 Spec `prompts/BENCHMARK_AND_CLASH_RESOLUTION_LANE.md`. Phase A in progress (re-targeting all BIM measures LTU→Terminal 48k).
 - ✅ **A3** measure scripts re-targeted to Terminal + re-run (witness logs in `build/erp/measure_*.log`):

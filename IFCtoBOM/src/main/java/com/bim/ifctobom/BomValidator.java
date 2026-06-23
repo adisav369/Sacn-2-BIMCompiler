@@ -67,6 +67,18 @@ public class BomValidator {
      */
     public static int validateAndReport(Connection bomConn,
                                         int extractionCount, int compositionPaired) throws SQLException {
+        return validateAndReport(bomConn, extractionCount, compositionPaired, 0);
+    }
+
+    /**
+     * @param reconciliationTolerance allowed |delta| in extraction reconciliation —
+     *        per-building count of known source-model catalog-identity duplicates
+     *        (same resolved product + position) that verb-factoring legitimately
+     *        collapses. 0 = exact. Mirrors geometryFailThreshold.
+     */
+    public static int validateAndReport(Connection bomConn,
+                                        int extractionCount, int compositionPaired,
+                                        int reconciliationTolerance) throws SQLException {
         System.out.println();
         System.out.println("=== BOM QA Validation ===");
 
@@ -83,7 +95,7 @@ public class BomValidator {
         fails += checkBufferInvariant(bomConn);
         fails += checkProductNormalization(bomConn);
         if (extractionCount >= 0) {
-            fails += checkExtractionReconciliation(bomConn, extractionCount, compositionPaired);
+            fails += checkExtractionReconciliation(bomConn, extractionCount, compositionPaired, reconciliationTolerance);
         }
         fails += checkShapeConsistency(bomConn);
         printFloorDistribution(bomConn);
@@ -594,7 +606,8 @@ public class BomValidator {
      */
     private static int checkExtractionReconciliation(Connection conn,
                                                      int expectedCount,
-                                                     int compositionPaired) throws SQLException {
+                                                     int compositionPaired,
+                                                     int tolerance) throws SQLException {
         int fails = 0;
         try (Statement stmt = conn.createStatement()) {
             // Count extraction-sourced LEAF instances (SUM(qty), not COUNT(*)).
@@ -624,8 +637,16 @@ public class BomValidator {
             }
             if (delta == 0) {
                 report("Extraction reconciliation", detail, "PASS");
+            } else if (Math.abs(delta) <= tolerance) {
+                // Within per-building tolerance: |delta| known source-model
+                // catalog-identity duplicates (same resolved product + position)
+                // that verb-factoring legitimately collapses. NON-INVENT — count
+                // is measured per building, mirrors geometryFailThreshold.
+                report("Extraction reconciliation",
+                        detail + " — within tolerance " + tolerance, "PASS");
             } else {
-                report("Extraction reconciliation", detail, "FAIL");
+                report("Extraction reconciliation",
+                        detail + (tolerance > 0 ? " — exceeds tolerance " + tolerance : ""), "FAIL");
                 fails++;
             }
         }

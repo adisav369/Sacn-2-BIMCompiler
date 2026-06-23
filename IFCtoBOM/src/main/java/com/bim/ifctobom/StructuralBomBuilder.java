@@ -22,6 +22,26 @@ import java.util.*;
 public class StructuralBomBuilder {
 
     /**
+     * Spatial disciplines that form the geometric structure and belong in the
+     * BOM. Everything else (MEP/FP/ACMV/ELEC/CW/SP/LPG…) is parasitic — it
+     * depends on the ARC/STR envelope and is routed via the DISC path
+     * (IFCtoERP → ERP.db recipe templates → RouteWalker), NOT placed in the BOM.
+     * REB (Bonsai-era rebar) is already filtered upstream in ExtractionPopulator.
+     */
+    private static final Set<String> SPATIAL_DISCIPLINES = Set.of("ARC", "STR");
+
+    /**
+     * True if an element's discipline belongs in the structural BOM. Null/blank
+     * discipline defaults to spatial (kept) — matches DisciplineBomBuilder's
+     * null→ARC fallback. This is the AUTHORITATIVE routing signal
+     * (elements_meta.discipline); the YAML MEP class list is a legacy fallback.
+     */
+    public static boolean isSpatialDiscipline(String discipline) {
+        return discipline == null || discipline.isBlank()
+                || SPATIAL_DISCIPLINES.contains(discipline);
+    }
+
+    /**
      * Build result containing counts and computed values.
      */
     public record BuildResult(
@@ -179,8 +199,12 @@ public class StructuralBomBuilder {
                         && excluded.contains(ScopeBomBuilder.elementKey(e))) {
                     continue;  // assigned to a SET BOM
                 }
-                // MEP elements excluded from structural BOM — DISC path (IFCtoERP)
-                if (!mepClasses.isEmpty() && mepClasses.contains(e.ifcClass())) {
+                // Non-spatial disciplines (MEP/FP/ACMV/…) excluded from the
+                // structural BOM — routed to the DISC path (IFCtoERP/RouteWalker).
+                // Authoritative = element discipline field; YAML MEP class list
+                // is a legacy fallback. BOM = ARC/STR only.
+                if (!isSpatialDiscipline(e.discipline())
+                        || (!mepClasses.isEmpty() && mepClasses.contains(e.ifcClass()))) {
                     mepSkipped++;
                     continue;
                 }
