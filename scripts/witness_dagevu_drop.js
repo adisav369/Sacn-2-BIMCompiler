@@ -89,6 +89,35 @@ function orientationBaseline(L, id, wantAbsentNote) {
   return { present, absent };
 }
 
+// Independent host-rotation proof: INDEPENDENTLY re-derive (geometrically) which wall each opening is embedded in,
+// then assert the dropped opening's rotation EQUALS that host wall's rotation (EN BLOC inheritance). Independent =
+// it does NOT read the leaf's hostRef the library wrote, so this is a real oracle, not a tautology. Fails on the
+// original bug (openings at rot=0 while host walls rotate → mismatched>0). Unresolved openings (no embedding wall)
+// keep rot=0 honestly. NON-INVENT: host wall + its rotation are read from the drop, never fabricated.
+function hostRotProof(L, id) {
+  const lv = L.dropLeaves(id, 0, 0, 0, 0);
+  const cls = h => (PROD[h] || {}).ifc_class || '';
+  const norm = r => (((r || 0) % 360) + 360) % 360;
+  const walls = lv.filter(l => /IfcWall/.test(cls(l.hash)));
+  const opens = lv.filter(l => /IfcDoor|IfcWindow|IfcOpening/.test(cls(l.hash)));
+  const runAx = rot => { const d = Math.abs((rot || 0) % 180); return Math.abs(d - 90) < 45 ? 'NS' : 'EW'; };
+  let resolved = 0, unresolved = 0, mismatched = 0; const dwRots = new Set();
+  opens.forEach(op => {
+    if (/IfcDoor|IfcWindow/.test(cls(op.hash))) dwRots.add(norm(op.rot));
+    let best = null, bd = Infinity;
+    for (const w of walls) {
+      const wp = PROD[w.hash] || {}; const ax = runAx(w.rot);
+      const wlen = ax === 'NS' ? (wp.d || 0) : (wp.w || 0), wth = ax === 'NS' ? (wp.w || 0) : (wp.d || 0);
+      const perp = ax === 'NS' ? Math.abs(op.x - w.x) : Math.abs(op.y - w.y);
+      const along = ax === 'NS' ? Math.abs(op.y - w.y) : Math.abs(op.x - w.x);
+      if (perp < wth / 2 + 0.15 && along < wlen / 2 + 0.25 && perp < bd) { bd = perp; best = w; }
+    }
+    if (best) { resolved++; if (norm(op.rot) !== norm(best.rot)) mismatched++; } else unresolved++;
+  });
+  console.log(`     §HOST-PROOF ${id}: openings=${opens.length} resolved=${resolved} unresolved=${unresolved} mismatched=${mismatched} door/window-rots={${[...dwRots].sort((a, b) => a - b).join(',')}}`);
+  return { openings: opens.length, resolved, unresolved, mismatched, dwRots: [...dwRots].sort((a, b) => a - b) };
+}
+
 (async function main() {
   const L = await loadHost();
   console.log('═══ W-DAGEVU-DROP — drop on the DAGeVu canvas + ORIENTATION BASELINE (§-log truthful) ═══');
@@ -126,12 +155,22 @@ function orientationBaseline(L, id, wantAbsentNote) {
   check('SH anchors present: ROOF+WALL+DOOR+BED', ['ROOF', 'WALL', 'DOOR', 'BED'].every(k => shB.present[k]), `present=${['ROOF', 'WALL', 'DOOR', 'BED'].filter(k => shB.present[k]).join(',')}`);
   check('SH NOT all collapsed to rot=0 (facing preserved)', shWallRots.length >= 2 || (shB.present.BED || {}).rots?.some(r => r !== 0), `wall rots={${shWallRots.join(',')}} bed rots={${(shB.present.BED || {}).rots || ''}}`);
   check('SH cabinet/sink/fridge correctly ABSENT (not fabricated)', ['CABINET', 'SINK', 'FRIDGE'].every(k => shB.absent.includes(k)), `absent=${['CABINET', 'SINK', 'FRIDGE'].filter(k => shB.absent.includes(k)).join(',')}`);
+  // ── HOST-ROTATION INHERITANCE (the fix: openings rotate EN BLOC with their host wall, not flat at rot=0) ──
+  const shHost = hostRotProof(L, BLD);
+  check('SH every opening embedded in a wall (host resolved)', shHost.resolved === shHost.openings && shHost.unresolved === 0, `resolved=${shHost.resolved}/${shHost.openings} unresolved=${shHost.unresolved}`);
+  check('SH openings INHERIT host-wall rotation EN BLOC (rot==host, no mismatch)', shHost.mismatched === 0, `mismatched=${shHost.mismatched} (each opening rot must equal its host wall rot)`);
+  check('SH doors/windows NOT collapsed to rot=0 (the old facing bug)', shHost.dwRots.some(r => r !== 0), `door/window rots={${shHost.dwRots.join(',')}}`);
 
   // ── 3) DX BUILDING (where cabinets + sink live — their orientation baseline) ──
   const DXB = orientationBaseline(L, 'BUILDING_DX_STD', Object.assign(['FRIDGE'], { note: 'no fridge in the DX catalog either' }));
   check('DX anchors present: CABINET + SINK', !!DXB.present.CABINET && !!DXB.present.SINK, `cabinet n=${(DXB.present.CABINET || {}).n || 0} sink n=${(DXB.present.SINK || {}).n || 0}`);
   check('DX vanity sink is oriented (rot≠0 present)', ((DXB.present.SINK || {}).rots || []).some(r => r !== 0), `sink rots={${(DXB.present.SINK || {}).rots || ''}}`);
   check('FRIDGE absent in BOTH buildings (honest GIGO flag)', shB.absent.includes('FRIDGE') && DXB.absent.includes('FRIDGE'), `no fridge in SH or DX catalog`);
+  // ── DX host-rotation inheritance (more walls, mirror units; some interior openings have no embedding wall → honest 0) ──
+  const dxHost = hostRotProof(L, 'BUILDING_DX_STD');
+  check('DX resolved openings INHERIT host-wall rotation EN BLOC (no mismatch)', dxHost.mismatched === 0, `mismatched=${dxHost.mismatched} of resolved=${dxHost.resolved}`);
+  check('DX majority of openings host-resolved (rest honest rot=0)', dxHost.resolved >= dxHost.openings * 0.7, `resolved=${dxHost.resolved}/${dxHost.openings} unresolved=${dxHost.unresolved}`);
+  check('DX doors/windows span multiple cardinal facings (inherited, not flat)', dxHost.dwRots.filter(r => r !== 0).length >= 2, `door/window rots={${dxHost.dwRots.join(',')}}`);
 
   // ── verdict + baseline sidecar ──
   const passed = checks.filter(c => c.pass).length, total = checks.length, ok = passed === total;
@@ -141,8 +180,8 @@ function orientationBaseline(L, id, wantAbsentNote) {
     checks_passed: passed, checks_total: total,
     note: 'Orientation = yaw° about Z. Baseline to diff against (avoid GIGO). Absences are TRUTH, not gaps.',
     dining_set: { id: DSET, leaves: set.length, chairs: chairs.length, chair_h_m: +Math.min(...chairH).toFixed(3), rots: setRots },
-    sh: { id: BLD, leaves: sh.length, extent_m: ext.map(e => +e.toFixed(2)), anchors: baselineOf(shB), absent: shB.absent },
-    dx: { id: 'BUILDING_DX_STD', anchors: baselineOf(DXB), absent: DXB.absent },
+    sh: { id: BLD, leaves: sh.length, extent_m: ext.map(e => +e.toFixed(2)), anchors: baselineOf(shB), absent: shB.absent, host_rot: shHost },
+    dx: { id: 'BUILDING_DX_STD', anchors: baselineOf(DXB), absent: DXB.absent, host_rot: dxHost },
     inputs: { catalog: { path: path.relative(ROOT, CAT), sha: sha12(CAT) } },
     checks: checks.map(c => ({ name: c.name, pass: c.pass })) };
   fs.writeFileSync(path.join(ROOT, 'logs', 'PROOF_dagevu_drop.json'), JSON.stringify(PROOF, null, 2) + '\n');
