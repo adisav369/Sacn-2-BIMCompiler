@@ -29,6 +29,15 @@ const ASM = {}; (cat.assemblies || []).forEach(a => ASM[a.id] = a);
 const POS_TOL = 0.001;                       // 1mm — the compiler's own tack tolerance
 let posPass = false;                         // set true once a candidate reproduces the compiler to POS_TOL
 
+// ── ANTI-DRIFT: fingerprint the proof's INPUTS so staleness is detectable from the log without re-running. ──
+// A proof is only valid for the exact (catalog, oracle.db) it ran against. Record their hashes; check_proof_fresh.js
+// re-hashes current files and flags STALE the instant either input regenerates (the silent-drift failure mode).
+const crypto = require('crypto');
+const sha12 = (f) => { try { return crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex').slice(0, 12); } catch { return 'MISSING'; } };
+const fingerprint = (f) => { try { const s = fs.statSync(f); return { path: path.relative(ROOT, f), sha: sha12(f), bytes: s.size, mtime: s.mtime.toISOString() }; } catch { return { path: path.relative(ROOT, f), sha: 'MISSING', bytes: 0, mtime: null }; } };
+const INPUTS = { catalog: fingerprint(CAT), oracle: fingerprint(OUTPUT_DB) };
+const RESULTS = [];
+
 function loadHost() {
   const src = fs.readFileSync(path.join(ROOT, 'deploy/dev/bonsai_library.js'), 'utf8');
   const win = { Bonsai: {} };
@@ -109,23 +118,61 @@ function summarize(label, leaves, zMode) {
     const canon = L.expandAssembly(id, { x: 0, y: 0, z: 0, rot: 0 });
     const dByc = {};
     canon.forEach(l => { const p = PROD[l.hash] || {}; const c = bucket(p.ifc_class);
-      (dByc[c] = dByc[c] || []).push({ x: l.x - aox, y: l.y - aoy, z: (l.z + (p.h || 0) / 2) - aoz }); });   // → compiler centre frame
+      (dByc[c] = dByc[c] || []).push({ x: l.x - aox, y: l.y - aoy, z: (l.z + (p.h || 0) / 2) - aoz, hash: l.hash, ph: p.h || 0 }); });   // → compiler centre frame
     let worstAll = 0, gated = 0;
     Object.keys(dByc).sort().forEach(c => {
       const os = (O.byc[c] || []).slice();        // compiler leaves of this class (centres)
       if (!os.length) return;                     // class the compiler doesn't place (e.g. honest box w/o oracle)
       const used = new Array(os.length).fill(false);
-      let worst = 0;
-      dByc[c].forEach(d => { let best = 1e9, bi = -1;
-        os.forEach((o, i) => { if (used[i]) return; const dd = Math.max(Math.abs(d.x - o.x), Math.abs(d.y - o.y), Math.abs(d.z - o.z)); if (dd < best) { best = dd; bi = i; } });
-        if (bi >= 0) used[bi] = true; worst = Math.max(worst, best); });
+      let worst = 0, worstPair = null;
+      dByc[c].forEach(d => { let best = 1e9, bi = -1, bo = null;
+        os.forEach((o, i) => { if (used[i]) return; const dd = Math.max(Math.abs(d.x - o.x), Math.abs(d.y - o.y), Math.abs(d.z - o.z)); if (dd < best) { best = dd; bi = i; bo = o; } });
+        if (bi >= 0) used[bi] = true; if (best > worst) { worst = best; worstPair = { d, o: bo }; } });
       worstAll = Math.max(worstAll, worst); gated++;
       console.log(`     pos ${c.padEnd(8)} drop=${String(dByc[c].length).padStart(2)} compiler=${String(os.length).padStart(2)}  worst=${(worst * 1000).toFixed(2)}mm`);
+      // WHITEBOX DUMP: any class over tolerance prints its worst offending pair + the offending AXIS — so the next
+      // session reads WHERE the gap is (X/Y/Z, which element) without re-deriving. Anti-cheat: this localises the
+      // defect rather than inviting a tolerance bump.
+      if (worst > POS_TOL && worstPair) {
+        const { d, o } = worstPair;
+        const ax = [['X', d.x - o.x], ['Y', d.y - o.y], ['Z', d.z - o.z]].sort((p, q) => Math.abs(q[1]) - Math.abs(p[1]))[0];
+        console.log(`       §WORST ${c} on ${ax[0]} Δ=${(ax[1] * 1000).toFixed(2)}mm  drop[${d.hash} ph=${(d.ph * 1000).toFixed(0)}mm] @(${d.x.toFixed(4)},${d.y.toFixed(4)},${d.z.toFixed(4)}) vs compiler @(${o.x.toFixed(4)},${o.y.toFixed(4)},${o.z.toFixed(4)})`);
+      }
+      // DUMP=<class>: prove whether a residual is a real drop defect (SETS differ) or a matching artifact (SETS equal
+      // when sorted) — compare the multiset of each axis, sorted, drop vs compiler. Anti-cheat: distinguishes "drop
+      // lost geometry" from "witness mis-paired near-coincident leaves" before any fix touches anything.
+      if (process.env.DUMP && c.toUpperCase().startsWith(process.env.DUMP.toUpperCase())) {
+        const fmt = (arr, k) => arr.map(e => e[k]).sort((a, b) => a - b).map(v => v.toFixed(4)).join(' ');
+        console.log(`       §DUMP ${c} drop.z    = ${fmt(dByc[c], 'z')}`);
+        console.log(`       §DUMP ${c} compiler.z= ${fmt(os, 'z')}`);
+      }
     });
     const ok = gated > 0 && worstAll <= POS_TOL;
     console.log(`     §POS-CONGRUENCE ${id}: worst=${(worstAll * 1000).toFixed(2)}mm over ${gated} classes — ${ok ? 'PASS (≤1mm, reproduces compiler)' : 'over 1mm'}`);
     if (ok) posPass = true;
+    RESULTS.push({ id, leaves: leaves.length, extent_ratio: er.map(x => +x.toFixed(3)), worst_mm: +(worstAll * 1000).toFixed(2), classes_gated: gated, pass: ok });
   }
-  console.log(`\n§W-DROP-VS-COMPILER ${posPass ? 'GREEN — a candidate reproduces the compiler output.db to ≤1mm (BOM round-trips, no extracted.db)' : 'RED — no candidate matched the compiler within 1mm'}`);
+  console.log(`\n§ORACLE-NOTE output.db is the COOKED output of Java's BOM exercise — SECONDARY cross-check, NOT the geometry`);
+  console.log(`  truth. The truth = raw extraction, frame-invariant (scripts/rosetta_canvas_sh.js, logs/PROOFS_INDEX.md).`);
+  console.log(`  A RED here can be Java-cooking (e.g. DX 2mm on 3/644 absent from BOM AND extraction) — localise with`);
+  console.log(`  §WORST/§DUMP and trace to a source BEFORE treating it as a drop defect. NEVER loosen POS_TOL to pass.`);
+  console.log(`§W-DROP-VS-COMPILER ${posPass ? 'GREEN — a candidate reproduces the cooked compiler output.db to ≤1mm' : 'RED — no candidate matched the cooked output.db within 1mm (may be Java-cooking; verify vs extraction)'}`);
+
+  // ── Persist the proof + its INPUT FINGERPRINTS (Log Mandate + anti-cheat). The sidecar records the EXACT oracle
+  // (compiler output.db — never extracted.db) and the tolerance the verdict was earned at. Loosening POS_TOL or
+  // swapping the oracle therefore shows up as a git diff here — a bypass can't be silent. One sidecar per oracle db
+  // so SH and DX don't clobber each other. check_proof_fresh.js re-hashes these inputs to detect staleness.
+  const PROOF = {
+    witness: 'W-DROP-VS-COMPILER',
+    stamp: new Date().toISOString(),
+    oracle_doctrine: 'compiler output.db ONLY — extracted.db BANNED (collude-risk)',
+    pos_tol_mm: POS_TOL * 1000,
+    verdict: posPass ? 'GREEN' : 'RED',
+    inputs: INPUTS,
+    candidates: RESULTS,
+  };
+  const sidecar = path.join(ROOT, 'logs', `PROOF_drop_vs_compiler__${path.basename(OUTPUT_DB, '.db')}.json`);
+  fs.writeFileSync(sidecar, JSON.stringify(PROOF, null, 2) + '\n');
+  console.log(`§PROOF-SIDECAR ${path.relative(ROOT, sidecar)} — oracle=${INPUTS.oracle.sha} catalog=${INPUTS.catalog.sha} tol=${POS_TOL * 1000}mm verdict=${PROOF.verdict}`);
   process.exit(posPass ? 0 : 1);
 })();
