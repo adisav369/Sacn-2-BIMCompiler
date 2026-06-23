@@ -303,9 +303,10 @@ scheduling tool, no drift. *(Engine proven by `W-WHATIF` 13/13 on the Hospital p
 
 The Time Machine's **`✎`** wizard and **`⑂`** what-if are the *intuitive* front — quick, visual, one
 gesture. When you want the **serious planner** — an expandable WBS, real dependencies, a critical path,
-and a draggable Gantt — open the **Schedule Editor** in its own tab (`viewer/schedule_editor.html?db=…`,
-or the model's share link). It is a separate, focused surface so the front visual stays light; both edit
-the **same IFC-native schedule tables**, so nothing forks.
+and a draggable Gantt — press **`↗ Editor`** on the Time Machine (right beside ✎ Author and ⑂ What-if) to
+open the **Schedule Editor** in its own tab, loaded on the same model. *(You can also open it directly at
+`viewer/schedule_editor.html?db=…`.)* It is a separate, focused surface so the front visual stays light;
+both edit the **same IFC-native schedule tables**, so nothing forks.
 
 ![The Schedule Editor on a real SampleHouse — left: the **WBS outline** (Project → Superstructure · Architecture · Finishes, each with its element count and dates); right: the **dependencies** (a finish-to-start chain you author and retype); bottom: the **interactive Gantt**. **Compute CPM** has run — the critical path is red on the rail, in the dependency links, and along the timeline bars, and the header reads *project 90d · critical 3/3*. Drag a bar to reschedule; drag its ▸ handle onto another bar to link.](figs/sched_editor_gantt.png)
 
