@@ -845,7 +845,9 @@ is faked — where the browser doesn't expose a number (e.g. JS heap on Firefox)
 ### Field health · paradigm vitals
 A classic ERP watches a *server's* vitals (CPU, heap, connection pool). With no server, you watch the
 **paradigm's** vitals instead — four widgets, each folded from a **real live signal** (never invented), each
-with a status dot:
+with a status dot. On open the four dots pulse amber **"checking…"** while the live signals are gathered, then
+**settle** — lighting up one-by-one to their real colour, so you can see the panel is genuinely polling the
+device, not painting a cached picture:
 
 | Widget | What it tells the SysAdmin |
 |---|---|
@@ -854,7 +856,34 @@ with a status dot:
 | **Op-log DB** | The signed op-log's real size (`PRAGMA page_count × page_size`) against the in-memory **200 MB** ceiling, with headroom — the reassuring "you're nowhere near the wall" optic. Reads `n/a` until a tenant has folded a rule or posted a doc. |
 | **Environment** | The storage backend the device actually negotiated — **OPFS** when cross-origin-isolated, else **IndexedDB** (named honestly, e.g. *"OPFS API present but NOT crossOriginIsolated → IndexedDB VFS"* on GitHub Pages). |
 
-![The System Monitor's **Field health · paradigm vitals** group on a live device — four widgets, each folded from a real signal with a status dot: **Field errors** (0, clean session), **Durability**, **Op-log DB** (its real ceiling), and **Environment** (IDB on a non-isolated origin). Below, the iDempiere-faithful Memory / Cache / Logs sections carry real device numbers or an honest "No longer needed" reframe. *(The **Release** row here is a pre-stamp snapshot reading "(uncontrolled)"; post-deploy it reads the live `vNNN` — see below.)*](figs/system_monitor_field_health.png)
+![The System Monitor on a live device (build **v753**) — the **Release** row reads the real deployed version linking to its GitHub release, and the four **Field health · paradigm vitals** have settled: **Field errors 🟢 0** (clean session), **Durability ⚪ n/a** (no offline queue in this fresh session), **Op-log DB ⚪ n/a** (no op-log until the first fold), **Environment 🟢 IDB** (IndexedDB VFS — the correct backend on GitHub Pages). Below, the iDempiere-faithful Memory / Cache / Logs sections carry real device numbers (heap, storage) or an honest "No longer needed" reframe.](figs/system_monitor_v753.png)
+
+### Reading the dots — what each state means
+
+The dot colour is a **traffic light**, and a widget shows **grey when it simply has no signal yet** — grey is
+*not* an error, it means "nothing to report" (e.g. an op-log that hasn't been written to). The header dot is the
+**worst** of the four.
+
+| Dot | Meaning |
+|---|---|
+| 🟢 **green** (OK) | healthy — nothing to do |
+| 🟠 **amber** (attention) | within limits but worth watching |
+| 🔴 **red** (action) | a real problem — act now |
+| ⚪ **grey** (n/a) | no signal yet — not an error |
+
+What each widget shows in **every** state (so the panel reads the same on any device):
+
+| Widget | 🟢 green | 🟠 amber | 🔴 red | ⚪ grey |
+|---|---|---|---|---|
+| **Field errors** | `0` — no uncaught errors this session | a soft/resource error captured | a **hard** error (JS exception / rejected promise) this session | error beacon not installed |
+| **Durability** | every queued edit **relayed** (`inflight 0`), within quota | unsynced work exists (`inflight > 0`), or oldest unacked edit **> 6 days**, or storage **> 70 %** of quota | unsynced edits **and** the browser hasn't granted persistent storage (eviction could lose them) | no offline queue this session |
+| **Op-log DB** | **≤ 100 MB** — shows headroom + "N× under the 200 MB ceiling" | **> 100 MB** — "compact recommended" | **> 200 MB** — at the in-memory ceiling | no op-log yet (fold a rule or post a doc to populate) |
+| **Environment** | a named backend — **OPFS** (when cross-origin-isolated) or **IDB** (the correct choice on GitHub Pages) | a **misconfiguration** — e.g. IndexedDB on a COOP/COEP origin where OPFS was expected | **genesis bootstrap** — the local checkpoint was missing/corrupt and the tenant rebuilt from seed | storage backend not detected |
+
+> The screenshot above is a *fresh, just-opened* session: nothing has been queued and no op-log written yet, so
+> **Durability** and **Op-log DB** honestly read grey `n/a` (there is nothing to measure), while **Field errors**
+> and **Environment** are green. Log in and post a document and you'll watch **Op-log DB** turn into a real
+> megabyte figure and **Durability** start counting `durable@N · inflight M`.
 
 ### The Release row — the deployed build, linked to its release
 The **Release** row reads the version that is actually deployed to this device (the service-worker
