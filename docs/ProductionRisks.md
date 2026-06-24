@@ -15,6 +15,8 @@ Per the project's prime rule (*deterministic, non-invent, extract*) and its test
 
 ## What we gave up, and what now must replace it
 
+![The Devil You Knew → The Angel You Must Test — what each serverful comfort gave for free, and what the serverless model must now prove](devil_to_angel.svg)
+
 | The devil we knew (old stack) | What it gave us *for free* | The angel must now prove (this doc) |
 |---|---|---|
 | **Postgres + fsync** | synchronous durability — a committed row is on disk before `COMMIT` returns | async durability is bounded and recoverable — no silent loss window (**A1, A2, G1**) |
