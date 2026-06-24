@@ -361,6 +361,60 @@ Likelihood: **H/M/L**. Mitigation: **in place / partial / design-only**.
 
 ---
 
+## H. The New-Paradigm Monitor — observability you can *feel*
+
+The classic iDempiere **System Monitor** in the login panel watched the *server's* vitals — JVM heap, DB connections, pool, uptime. In this paradigm there is no server, so the monitor's job flips: it watches the **paradigm's** vitals — the things that only exist *because* the evil comforts are gone. This is two wins at once:
+
+1. **It is the concrete remedy for [G2 — observability](#g2-observability-without-a-server-to-read-s2-to-build-the-operational-blind-spot).** The same widgets that let a user *feel* the new model are the field-health signals (durability lag, replay integrity, eviction, CAS retry) you need so you're not flying blind.
+2. **It is a first-impression "wow" surface.** It lives in the login panel — the first thing seen — with familiar iDempiere chrome (zero learning curve, per the GRAND_LANE law). A user pokes it and goes *"ah — this is the new stuff, and I can touch it."*
+
+Most of the raw signals already exist — `FoldEngineConstraints.md §6` specs the monitor (`vfs_backend`, `quota_used_pct`, `offline_queue_mb`, `cas_retry_rate`, `fold_ms_p95`, `battery_pct`, `bootstrap_path`) and `vfs_detect.js` / `offline_queue.js` / `battery_aware.js` already emit some. So this is mostly **wiring existing signals into the panel as feel-it widgets.**
+
+### The widget set (each maps to a risk + an existing signal)
+
+| Widget | What you feel | Risk | Existing signal / witness |
+|---|---|---|---|
+| **Prove-the-books** | press *Verify* → the whole balance rebuilds from zero events; `replay-hash == live-hash` ✓ | **D1** | `replay-hash` (`erp_kernel.js`) |
+| **Tap-to-fold** | tap any figure → the N signed ops that sum to it | root truth | `kernel_ops` query |
+| **Chain integrity** | `chain OK · len N · tip …`; tamper → breaks at op N | **D4** | `verifyChain()` (`poc_chain.js`) |
+| **Durability ladder** | every record `local → syncing → durable@N`; oldest un-acked age; quota; `persisted()` | **A1 · G2** | `§6 quota_used_pct / offline_queue_mb` |
+| **Pull-the-plug** | toggle offline → keeps working, ops queue, reconcile on reconnect | availability | `offline_queue.js` |
+| **Bootstrap path** | "started from *checkpoint* (fast) vs *genesis* (25 s)" | **B2** | `§6 bootstrap_path` |
+| **Serverless meter** | `servers: 0 · round-trips: 0 · infra cost: $0` vs classic-iDempiere baseline | **§11.1** | round-trip counter / `fold_ms_p95` |
+| **Disposable-host light** | "your truth replays to the identical tip from any host" | **§11.1** | replica test (`test_kernel_replica.js`) |
+| **Your-key panel** | your signing key, rotation history, recovery method | **E1** | `poc_rotate.js` |
+| **Business-time clock** | "real-time: the 1 CAS class · everything else folds at close-of-day" | Truth 2 | fold cadence |
+| **Crypto-shred demo** | shred a subject key → PII gone, chain still verifies, books intact | **E2** | `poc_erase.js` |
+
+A **Classic ↔ Angelic** toggle keeps the familiar panel and swaps the readouts.
+
+### Build-ready specs — the top 3 (witness-claim first, per CLAUDE.md)
+
+Spec-first, each with the `§`-log line that *is* the proof. Start order = cheapest-highest-impact.
+
+**① W-MON-PROVE-BOOKS — "rebuild my books from zero, live."** *(cheapest — the witness already exists, it just needs a button)*
+- **Surface:** a *Verify* button in the login-panel monitor.
+- **Behavior:** clone the current op-log into a *fresh* in-memory kernel, replay, hash the folded state, compare to the live hash.
+- **Acceptance `§`-log:** `§MON-REPLAY ops=N replayHash=… liveHash=… match=Y ms=…`
+- **Proves:** D1 determinism, *interactively* — the number is a fold, not a stored cell. (Falsifier: corrupt one op → `match=N`, flagged red.)
+- **Reuse:** the existing `replay-hash == live-hash` path in `erp_kernel.js` / `poc_kernel.js`. **Status: 🟡 → ship as the first touchable slice.**
+
+**② W-MON-DURABILITY-LADDER — "show me what's safe."** *(the most important field-health widget)*
+- **Surface:** per-record badge `local → syncing → durable@N`, plus oldest un-acked op age, `quota_used_pct`, `persisted()`.
+- **Acceptance `§`-log:** `§MON-DUR local=… syncing=… durable=… oldestUnackedSec=… quotaPct=… persisted=…`
+- **Proves:** A1 made visible — the UI **never** marks an unsynced op as safe. (Falsifier: append offline → all `local`; force-sync → transition to `durable@N`; a `local` op shown as safe = test fail.)
+- **Status: 🔴 TO BUILD** (directly closes part of G2).
+
+**③ W-MON-SERVERLESS-METER — "feel the zero."** *(the wow)*
+- **Surface:** live counters — server round-trips this session, queries answered locally, `fold_ms_p95`, est. always-on infra cost ($0), beside a classic-iDempiere baseline (app + DB + standby, 24/7).
+- **Acceptance `§`-log:** `§MON-SRV roundTrips=0 localQueries=N foldMsP95=… infraCost=0`
+- **Proves:** §11.1 made tangible — the disposed compute tier, costed. (Falsifier: any server round-trip in a normal session → `roundTrips>0`, investigate.)
+- **Status: 🔴 TO BUILD.**
+
+> These three are tracked as G2 sub-tasks. ① is the recommended first build — a button over an existing witness — and the session-starter for it lives in `prompts/RESUME_PROVE_BOOKS_MONITOR.md`.
+
+---
+
 ## The gap summary — what blocks production
 
 A green register is the bar. Today's **🔴 TO BUILD** rows, in priority order:
