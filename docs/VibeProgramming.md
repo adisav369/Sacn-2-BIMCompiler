@@ -459,28 +459,7 @@ AI doesn't make you faster. **AI makes the unreachable reachable.** The domain e
 
 The combination — domain expert steering, AI building — is a new category. Not faster programming. Not no-code. Not outsourcing. A single mind with the full context, building at the speed of thought, with guard rails that only decades of industry experience can provide.
 
-### The Parallel SQLite Ferment — and What the LLM Got Wrong (2024–2026)
-
-The timeline above shows the project riding the **cheap, old end** of the toolchain — sql.js (2012), rtree-sql.js (2019/2022), Three.js (2023). Worth recording, because it is the honest "how close to the edge" story: while this was being assembled, the SQLite world was in the most active stretch of its history. None of the milestones below are **dependencies** — several solve a problem [DistributedERP](DistributedERP.md) argues *away* — but they locate the project precisely in its moment. Dates verified **2026‑06‑24** against the linked primary sources.
-
-| Date | Milestone | What it is | Relation here |
-|---|---|---|---|
-| **2024‑01‑15** | [SQLite 3.45.0 — JSONB](https://sqlite.org/releaselog/3_45_0.html) | binary JSON stored in the DB, no re-parse | available in the substrate; the engine leans on the relational core + op-log, not JSONB as its store |
-| **2024‑12‑10** | [Limbo announced](https://turso.tech/blog/introducing-limbo-a-complete-rewrite-of-sqlite-in-rust) | "a complete rewrite of SQLite in Rust" | **parallel** — a different bet on SQLite's future; not used |
-| **~2025‑07‑01** | [Turso first alpha](https://turso.tech/blog/turso-the-next-evolution-of-sqlite) | Limbo → "Turso, the next evolution of SQLite" | parallel; date is the announcement post (≈, not a tagged release) |
-| **2025‑10‑06** | [Turso concurrent writes (MVCC), tech preview](https://turso.tech/blog/beyond-the-single-writer-limitation-with-tursos-concurrent-writes) | `BEGIN CONCURRENT` via Hekaton-style MVCC — "beyond the single-writer limitation" | **the pointed contrast** — see below |
-| **2025‑11‑04** | [SQLite 3.51.0 — 64-bit WASM build](https://sqlite.org/releaselog/3_51_0.html) | canonical WASM stays 32-bit; a 64-bit build is now a plain `make` | parallel; our sql.js runs fine 32-bit |
-| **2026‑01‑05** | [Turso v0.4.0](https://turso.tech/blog/turso-0.4.0) | MVCC overhaul — indexes, checkpointing, recovery | parallel |
-| **2026‑03‑04** | [Turso v0.5.0](https://turso.tech/blog/turso-0.5.0) · [LinkedIn](https://www.linkedin.com/posts/glommer_turso-v050-activity-7435040873526194176-Dowg) | concurrent writes → beta (`PRAGMA journal_mode='mvcc'`), Change Data Capture | parallel |
-
-**The contrast worth keeping.** The headline milestone — **Turso shipping concurrent writes to "go beyond the single-writer limitation" (Oct 2025)** — is, for this project, an argument in the *other* direction. The same season the industry shipped a sophisticated MVCC engine to let many writers share one database file, this project shipped the claim that, modelled correctly, **you never needed them**: ~90% of ERP is single-writer by physics, the rest is a daily one-way fold, and the one genuinely contended op-class is a compare-and-set — not concurrency in the store ([DistributedERP §0–§5](DistributedERP.md)). "Close to the edge" here means *contemporaneous with, and a counterpoint to,* the hottest SQLite work of the moment — built from the opposite end of it.
-
-**Provenance — what the LLM did, and where it slipped.** This sub-timeline was **harvested with LLM assistance** (the prompt was literally "show how close we were to the cutting edge"). That is fast and useful for *finding* candidate milestones — and exactly where invention creeps in, so every row was re-checked against a primary source. Two failure modes, recorded so the next reader trusts the table:
-
-1. **Wrong feature, confidently stated.** JSONB was attributed to SQLite 3.51.0. The version and its date (3.51.0, 2025‑11‑04) are real, but JSONB shipped back in **3.45.0 (2024‑01‑15)**; 3.51.0's WASM-relevant item is the 64‑bit build. Corrected against the SQLite release log.
-2. **Right facts, wrong frame.** Turso MVCC / edge-DB replication were offered as *what made the project possible.* They are the opposite of the architecture and are kept here as **contrast, not dependency.**
-
-The lesson, in one line: **an LLM is a fast *harvester* of where the edge is, not an *authority* on it.** Extract, then verify; cite, then claim. The interesting part of vibe-programming at the frontier is not that the model knew the dates — it's that the dates had to be checked, and one of them was wrong.
+> **The parallel SQLite/Turso ferment of 2024–2026** — and what an LLM got *wrong* when asked to date it — is recorded in the [Enabling-Tech Timeline → The Turso / core-SQLite ferment](EnablingTechTimeline.md#the-turso-core-sqlite-ferment-20242026-parallel-mostly-routed-around), where the ROUTED-AROUND thesis already lives.
 
 ---
 
