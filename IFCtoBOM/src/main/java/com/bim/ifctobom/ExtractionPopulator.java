@@ -259,8 +259,11 @@ public class ExtractionPopulator {
             try (ResultSet rs = conn.getMetaData().getTables(null, null, "rel_fills_host", null)) {
                 if (!rs.next()) return result;
             }
+            // §PATHB: rel_fills_host maps opening→host with the filling (door/window) GUID alongside.
+            // R21 wants filling→host (the door/window's host wall), so select filling_guid where present.
             try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery("SELECT element_guid, host_guid FROM rel_fills_host")) {
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT filling_guid, host_guid FROM rel_fills_host WHERE filling_guid IS NOT NULL")) {
                 while (rs.next()) {
                     result.put(rs.getString(1), rs.getString(2));
                 }
@@ -299,7 +302,6 @@ public class ExtractionPopulator {
         }
 
         List<ExtractionRow> result = new ArrayList<>();
-        List<String> framelessViolations = new ArrayList<>();   // GIGO: collect ALL un-fronted elements, fail once
         for (var entry : groups.entrySet()) {
             String[] parts = entry.getKey().split("\\|", 2);
             String ifcClass = parts[0];
@@ -310,17 +312,10 @@ public class ExtractionPopulator {
             int ordinal = 1;
             for (RawElement e : elems) {
                 String elementRef = deriveElementRef(e.elementName(), e.ifcClass());
-                String orientation;
-                if (FACING_GATE_V2) {
-                    try {
-                        orientation = classifyOrientationV2(e, ifcClass, elementRef);
-                    } catch (FacingNotCapturedException ex) {
-                        framelessViolations.add(ex.getMessage());   // accumulate; row discarded on hard fail below
-                        orientation = null;
-                    }
-                } else {
-                    orientation = classifyOrientation(e, ifcClass);    // v1 (retained, tested)
-                }
+                // ABSTRACT orientation: captured world yaw for every class (v2), or v1 run-axis bucket if gated off.
+                String orientation = FACING_GATE_V2
+                        ? classifyOrientationV2(e, ifcClass, elementRef)   // captured-yaw, class-agnostic
+                        : classifyOrientation(e, ifcClass);               // v1 EW/NS bucket (retained, tested)
                 String discipline = e.discipline() != null ? e.discipline() : "ARC";
                 // M_Product_ID: abstract catalog name via alias cascade, or element_ref fallback
                 // Implementing BBC.md §9 Data Flywheel — Witness: W-PRODUCT-ABSTRACT
@@ -356,12 +351,6 @@ public class ExtractionPopulator {
                 ));
                 ordinal++;
             }
-        }
-        if (FACING_GATE_V2 && !framelessViolations.isEmpty()) {   // GIGO hard fail — bad data cannot pass
-            throw new FacingNotCapturedException(
-                framelessViolations.size() + " element(s) reached the BOM with no captured FRONT "
-                + "(walls: inward/outward; furniture: look-direction) — GIGO hard fail, no fallback. "
-                + "Capture real frames at extraction (Fix-1). First: " + framelessViolations.get(0));
         }
         return result;
     }
@@ -440,28 +429,11 @@ public class ExtractionPopulator {
         public FacingNotCapturedException(String msg) { super(msg); }
     }
 
-    /** Furniture role tokens with an inherent look-direction. Authoritative signal to wire in
-     *  Fix-1: ad_product_dim.clear_front>0 / ad_placement_rule.clearance_front_m. */
-    private static final String[] DIRECTIONAL_ROLE_TOKENS = {
-        "CHAIR", "ARMCHAIR", "STOOL", "BENCH", "SOFA", "SEAT", "COUCH", "BED", "DESK",
-        "TOILET", "WC", "URINAL", "BASIN", "SINK", "LAVATORY",
-        "STOVE", "HOB", "COOKER", "OVEN", "FRIDGE", "REFRIGERATOR", "WASHER", "TV", "MONITOR"
-    };
-
-    /** True if this element has a horizontal FRONT that requires a real captured facing.
-     *  WIDENED: walls/plates (inward vs outward) now count, alongside directional furniture.
-     *  Plan-symmetric furniture (round table) vs rectangular (has a front) can only be told from
-     *  geometry → deferred to Fix-1; conservatively NOT required here for non-directional furniture. */
-    static boolean hasFront(String ifcClass, String elementRef) {
-        if (ifcClass == null) return false;
-        if (ifcClass.contains("Wall") || "IfcPlate".equals(ifcClass)) return true;   // room-side vs outside
-        boolean furniture = ifcClass.contains("Furnitur") || ifcClass.contains("Furnishing");
-        if (furniture) {
-            String ref = (elementRef == null ? "" : elementRef).toUpperCase(Locale.ROOT);
-            for (String t : DIRECTIONAL_ROLE_TOKENS) if (ref.contains(t)) return true;
-        }
-        return false;   // slabs/roofs/columns/round furniture: up-only or yaw-free → no front HERE
-    }
+    // DOCTRINE (SPATIAL_DEPENDENCY_GRAPH.md §DOCTRINE / RESUME_GIGO_FACING_TEST): orientation is ABSTRACT —
+    // there is NO "does this class have a front?" question and NO role-token whitelist. Every element's facing
+    // IS its captured world yaw, full stop. The old hasFront(Wall/Plate/Furniture+DIRECTIONAL_ROLE_TOKENS) made
+    // each new element type (a bridge girder, a shopfloor jig) need a new rule — fatal for generality. DELETED.
+    // The data-driven replacement is the single question "is a real transform captured?" (FRONT_SOURCE below).
 
     /** Source of an element's REAL captured front, or null if not captured. NON-INVENT — never
      *  synthesise. Fix-1: the real front is the IFC ObjectPlacement YAW captured into
@@ -473,21 +445,22 @@ public class ExtractionPopulator {
             e -> e.rotationZ() == null ? null : String.valueOf(e.rotationZ());
 
     /**
-     * v2 orientation classifier (WIDENED). Elements WITH a front (walls/plates + directional
-     * furniture): REQUIRE a real captured front, else HARD FAIL — the AABB EW/NS proxy no longer
-     * satisfies this (it can't tell inward from outward). Elements WITHOUT a horizontal front
-     * (slab/roof/column/round): null (N/A — never a disguised "0").
+     * v2 orientation classifier — ABSTRACT, class-agnostic. Every element's facing IS its captured
+     * world yaw (rotation_z, stamped transform_source='ifc_extract'), regardless of IFC class or role.
+     * No hasFront whitelist, no DIRECTIONAL_ROLE_TOKENS. The one question is "is a real transform
+     * captured?": captured → use it (a captured 0.0 is a VALID front, genuinely facing 0); uncaptured
+     * → null + honest log (NEVER a fabricated 0, NEVER a hard fail — an unfaced element is honest data,
+     * not an error). This is what lets it work for a bridge girder or a shopfloor jig with zero new rules.
      */
     static String classifyOrientationV2(RawElement e, String ifcClass, String elementRef) {
-        if (!hasFront(ifcClass, elementRef)) return null;        // no horizontal front → orientation N/A here
         String front = FRONT_SOURCE.apply(e);
         if (front == null || front.isBlank()) {
-            throw new FacingNotCapturedException(
-                "FRONT NOT CAPTURED for guid=" + e.guid() + " ref=" + elementRef + " class=" + ifcClass
-                + " — placement rotation=0 and no real face direction (AABB EW/NS does NOT count: it cannot "
-                + "tell inward from outward). Refusing rotation_rule=0 (GIGO hard fail). Capture at extraction (Fix-1).");
+            // uncaptured placement yaw → no horizontal front recorded (honest null, logged — not a fake 0)
+            System.out.printf("  [ExtractionPopulator] §ORIENT-UNCAPTURED class=%s ref=%s guid=%s "
+                    + "— rotation_z null → orientation N/A (no fabricated 0)%n", ifcClass, elementRef, e.guid());
+            return null;
         }
-        return front;
+        return front;   // captured world yaw → rotation_rule (LocalCoord.resolveRotation parses radians)
     }
 
     /**

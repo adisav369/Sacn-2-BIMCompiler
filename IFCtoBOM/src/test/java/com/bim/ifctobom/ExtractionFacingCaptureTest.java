@@ -1,6 +1,5 @@
 package com.bim.ifctobom;
 
-import com.bim.ifctobom.ExtractionPopulator.FacingNotCapturedException;
 import com.bim.ifctobom.ExtractionPopulator.RawElement;
 import org.junit.jupiter.api.*;
 
@@ -28,7 +27,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * <ul>
  *   <li>W-FACING-CAPTURE-1: a fronted element WITH a captured yaw passes, carrying that yaw as radians.</li>
  *   <li>W-FACING-CAPTURE-2: a captured 0.0 is a VALID front (NOT the refused fallback) — passes as "0.0".</li>
- *   <li>W-FACING-CAPTURE-3: NO captured placement (rotationZ==null) → default source null → hard-fail.</li>
+ *   <li>W-FACING-CAPTURE-3: NO captured placement (rotationZ==null) → default source null → honest NULL
+ *       orientation (no rotation_rule), never a fabricated 0 and never a hard fail.</li>
  *   <li>W-FACING-CAPTURE-4: readReferenceDb threads rotation_z when transform_source is present, and the
  *       freshness gate drops a STALE DB (no transform_source column) to null → those fronts hard-fail.</li>
  * </ul>
@@ -71,15 +71,15 @@ class ExtractionFacingCaptureTest {
         } finally { restore(prev); }
     }
 
-    @Test @DisplayName("W-FACING-CAPTURE-3: no captured placement hard-fails under the default source")
-    void uncapturedHardFails() {
+    @Test @DisplayName("W-FACING-CAPTURE-3: no captured placement → honest null (no fabricated 0, no hard fail)")
+    void uncapturedReturnsNull() {
         String prev = save();
         try {
             ExtractionPopulator.FRONT_SOURCE = defaultSource();
-            assertThrows(FacingNotCapturedException.class,
-                    () -> ExtractionPopulator.classifyOrientationV2(
+            assertNull(ExtractionPopulator.classifyOrientationV2(
                             chairUncaptured(), "IfcFurniture", "Chair - Dining"),
-                    "rotationZ==null = no captured IFC placement → GIGO hard-fail, no rotation_rule=0 fallback");
+                    "rotationZ==null = no captured IFC placement → null orientation (no rotation_rule), "
+                    + "never a rotation_rule=0 fabrication and never a hard fail (an unfaced element is honest data)");
         } finally { restore(prev); }
     }
 

@@ -1,100 +1,94 @@
 package com.bim.ifctobom;
 
-import com.bim.ifctobom.ExtractionPopulator.FacingNotCapturedException;
 import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * FACING GATE v2 (WIDENED) witness — GIGO at the SOURCE (IFCtoBOM): any element with a FRONT may
- * NOT reach the BOM with no real captured front. v1 silently wrote rotation_rule="0" for furniture
- * (and a 180°-flipped wall passed unnoticed because the AABB EW/NS proxy can't tell inward from
- * outward), so a chair faced one way and a wall's brick could face into the room. v2 refuses, no
- * fallback — and now covers WALLS too, not just directional furniture.
+ * ABSTRACT ORIENTATION witness (SPATIAL_DEPENDENCY_GRAPH.md §DOCTRINE / RESUME_GIGO_FACING_TEST). The
+ * orientation classifier is now CLASS-AGNOSTIC: there is no "does this class have a front?" whitelist
+ * (the deleted hasFront(Wall/Plate/Furniture) + DIRECTIONAL_ROLE_TOKENS) — every element's facing IS its
+ * captured world yaw, and the only question is "is a real transform captured?". This is what lets the
+ * same code orient a bridge girder or a shopfloor jig with zero new rules.
  *
  * <p>Each test names the issue it proves:
  * <ul>
- *   <li>W-FACING-GATE-1: "has a front" now includes WALLS (room-side vs outside) and directional
- *       furniture; slabs/columns/plain tables have no horizontal front (up-only / yaw-free).</li>
- *   <li>W-FACING-GATE-2: a fronted element with NO captured front HARD-FAILS — chair AND wall.</li>
- *   <li>W-FACING-GATE-3: when a REAL front is captured, it passes through (pass path via source).</li>
- *   <li>W-FACING-GATE-4: the AABB EW/NS proxy NO LONGER counts — a long wall v1 called "EW"
- *       hard-fails under v2 (EW/NS can't distinguish inward from outward).</li>
- *   <li>W-FACING-GATE-5: the gate ships ON by default (pipeline enforces GIGO).</li>
+ *   <li>W-FACING-ABSTRACT-1: orientation is class-agnostic — a SLAB (old hasFront=false) with a captured
+ *       yaw now PASSES carrying that yaw; class membership no longer gates facing.</li>
+ *   <li>W-FACING-ABSTRACT-2: an element with NO captured front returns an HONEST NULL (chair AND wall) —
+ *       never a hard fail, never a fabricated rotation_rule=0.</li>
+ *   <li>W-FACING-ABSTRACT-3: a real captured front passes through, carrying that front.</li>
+ *   <li>W-FACING-ABSTRACT-4: the AABB EW/NS proxy is gone — a long wall with no captured yaw returns null
+ *       (the classifier never invents EW/NS).</li>
+ *   <li>W-FACING-ABSTRACT-5: the v2 classifier ships ON by default.</li>
  * </ul>
  */
 class ExtractionFacingGateV2Test {
 
-    private static ExtractionPopulator.RawElement chair() {
+    /** 13-arg ctor → rotationZ=null = NO captured placement (the uncaptured state). */
+    private static ExtractionPopulator.RawElement chairUncaptured() {
         return new ExtractionPopulator.RawElement(
                 "IfcFurniture", "Dining_Chair:285330", "Ground Floor", "ARC",
                 0, 0.5, 0, 0.5, 0, 0.9, null, null, "GUID-CHAIR-1");
     }
-    private static ExtractionPopulator.RawElement wallEW() {
+    private static ExtractionPopulator.RawElement wallUncaptured() {
         return new ExtractionPopulator.RawElement(
                 "IfcWall", "Basic Wall:Ext:285330", "Ground Floor", "ARC",
                 0, 9.0, 0, 0.1, 0, 2.7, null, null, "GUID-WALL-1");   // dx >> dy → v1 would say "EW"
     }
-    private static ExtractionPopulator.RawElement slab() {
+    /** 14-arg ctor → a captured yaw (here a SLAB — old hasFront would have said "no front"). */
+    private static ExtractionPopulator.RawElement slabFacing(double yaw) {
         return new ExtractionPopulator.RawElement(
                 "IfcSlab", "Floor Slab:285", "Ground Floor", "STR",
-                0, 8.0, 0, 6.0, 0, 0.2, null, null, "GUID-SLAB-1");
+                0, 8.0, 0, 6.0, 0, 0.2, null, null, "GUID-SLAB-1", yaw);
     }
 
-    @Test @DisplayName("W-FACING-GATE-1: walls now have a front too; slabs/plain tables do not")
-    void frontMembership() {
-        assertTrue (ExtractionPopulator.hasFront("IfcWall", "Basic Wall"),
-                "a wall has a front: room-side vs outside");
-        assertTrue (ExtractionPopulator.hasFront("IfcFurniture", "Dining_Chair"),
-                "a chair has a look-direction");
-        assertFalse(ExtractionPopulator.hasFront("IfcSlab", "Floor Slab"),
-                "a slab is up-only / yaw-free — no horizontal front here");
-        assertFalse(ExtractionPopulator.hasFront("IfcFurniture", "Dining_Table"),
-                "round vs rectangular table needs geometry (Fix-1) — not required here");
+    @Test @DisplayName("W-FACING-ABSTRACT-1: class-agnostic — a slab with a captured yaw passes (no whitelist)")
+    void classAgnosticFacing() {
+        ExtractionPopulator.FRONT_SOURCE = defaultSource();
+        String front = ExtractionPopulator.classifyOrientationV2(
+                slabFacing(Math.PI), "IfcSlab", "Floor Slab");
+        assertEquals(String.valueOf(Math.PI), front,
+                "a slab is no longer exempt — its captured yaw flows through; facing is not class-gated");
     }
 
-    @Test @DisplayName("W-FACING-GATE-2: fronted element with no captured front HARD-FAILS (chair AND wall)")
-    void hardFailOnUncapturedFront() {
-        String prev = setFrontSource(e -> null);   // nothing captured (the real state today)
-        try {
-            FacingNotCapturedException c = assertThrows(FacingNotCapturedException.class,
-                    () -> ExtractionPopulator.classifyOrientationV2(chair(), "IfcFurniture", "Dining_Chair"));
-            assertTrue(c.getMessage().contains("GUID-CHAIR-1"), "names the offending chair");
-            FacingNotCapturedException w = assertThrows(FacingNotCapturedException.class,
-                    () -> ExtractionPopulator.classifyOrientationV2(wallEW(), "IfcWall", "Basic Wall"),
-                    "a wall with no captured front must hard-fail too — walls are not exempt");
-            assertTrue(w.getMessage().contains("GUID-WALL-1"), "names the offending wall");
-        } finally { restoreFrontSource(prev); }
+    @Test @DisplayName("W-FACING-ABSTRACT-2: no captured front → honest NULL (chair AND wall), never a fake 0")
+    void uncapturedReturnsNull() {
+        ExtractionPopulator.FRONT_SOURCE = defaultSource();
+        assertNull(ExtractionPopulator.classifyOrientationV2(chairUncaptured(), "IfcFurniture", "Dining_Chair"),
+                "uncaptured chair → null orientation (no rotation_rule), not a hard fail and not a fabricated 0");
+        assertNull(ExtractionPopulator.classifyOrientationV2(wallUncaptured(), "IfcWall", "Basic Wall"),
+                "uncaptured wall → null too — walls get no special hard-fail treatment");
     }
 
-    @Test @DisplayName("W-FACING-GATE-3: a real captured front passes through")
+    @Test @DisplayName("W-FACING-ABSTRACT-3: a real captured front passes through, carrying that front")
     void passWhenFrontCaptured() {
-        String prev = setFrontSource(e -> "S");     // Fix-1 will supply this from IFC/mesh
+        String prev = setFrontSource(e -> "S");
         try {
-            assertEquals("S", ExtractionPopulator.classifyOrientationV2(wallEW(), "IfcWall", "Basic Wall"),
-                    "a wall with a captured front passes, carrying that front");
+            assertEquals("S", ExtractionPopulator.classifyOrientationV2(wallUncaptured(), "IfcWall", "Basic Wall"),
+                    "an injected captured front passes, carrying that front");
         } finally { restoreFrontSource(prev); }
     }
 
-    @Test @DisplayName("W-FACING-GATE-4: AABB EW/NS no longer counts — long wall hard-fails")
-    void ewNsNoLongerCounts() {
-        String prev = setFrontSource(e -> null);
-        try {
-            assertThrows(FacingNotCapturedException.class,
-                    () -> ExtractionPopulator.classifyOrientationV2(wallEW(), "IfcWall", "Basic Wall"),
-                    "the long wall v1 classified 'EW' now hard-fails: EW/NS can't tell inward from outward");
-        } finally { restoreFrontSource(prev); }
+    @Test @DisplayName("W-FACING-ABSTRACT-4: AABB EW/NS is gone — uncaptured long wall returns null")
+    void ewNsGone() {
+        ExtractionPopulator.FRONT_SOURCE = defaultSource();
+        assertNull(ExtractionPopulator.classifyOrientationV2(wallUncaptured(), "IfcWall", "Basic Wall"),
+                "the long wall v1 called 'EW' yields null — the classifier never invents an EW/NS facing");
     }
 
-    @Test @DisplayName("W-FACING-GATE-5: the gate ships ON by default (pipeline enforces GIGO)")
+    @Test @DisplayName("W-FACING-ABSTRACT-5: the v2 classifier ships ON by default")
     void gateOnByDefault() {
         assertTrue(ExtractionPopulator.FACING_GATE_V2,
-                "v2 facing gate is enabled by default — the pipeline hard-fails uncaptured fronts");
+                "v2 (captured-yaw, class-agnostic) is the default orientation path");
     }
 
     // ── helpers to swap the injectable front source around a test
     private static String token = "x";
     private static java.util.function.Function<ExtractionPopulator.RawElement, String> saved;
+    private static java.util.function.Function<ExtractionPopulator.RawElement, String> defaultSource() {
+        return e -> e.rotationZ() == null ? null : String.valueOf(e.rotationZ());
+    }
     private static String setFrontSource(java.util.function.Function<ExtractionPopulator.RawElement, String> src) {
         saved = ExtractionPopulator.FRONT_SOURCE;
         ExtractionPopulator.FRONT_SOURCE = src;
@@ -102,5 +96,9 @@ class ExtractionFacingGateV2Test {
     }
     private static void restoreFrontSource(String t) {
         ExtractionPopulator.FRONT_SOURCE = saved;
+    }
+
+    @AfterEach void resetFrontSource() {
+        ExtractionPopulator.FRONT_SOURCE = defaultSource();
     }
 }
