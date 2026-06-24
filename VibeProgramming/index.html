@@ -2944,6 +2944,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-parallel-sqlite-ferment-and-what-the-llm-got-wrong-20242026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Parallel SQLite Ferment — and What the LLM Got Wrong (2024–2026)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4216,6 +4227,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-parallel-sqlite-ferment-and-what-the-llm-got-wrong-20242026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Parallel SQLite Ferment — and What the LLM Got Wrong (2024–2026)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5119,6 +5141,69 @@ Proven at 126K elements (LTU AHouse).
 <p>The team comparison is not a speed ratio. A team <em>can</em> build it — but they'd never pivot from Blender to browser in one conversation. The sunk cost of 3 engineers hired for Blender would anchor the project for months. The solo pre-AI comparison is not a speed ratio either — it's a binary: <strong>possible vs impossible</strong>. The WASM R-tree spatial index, the Three.js clipping planes with depth buffer management, the service worker cache versioning — these are not things a BIM domain expert learns by Googling. They are outside the search radius entirely.</p>
 <p>AI doesn't make you faster. <strong>AI makes the unreachable reachable.</strong> The domain expert provides judgment that AI cannot: whether 25mm tolerance makes engineering sense, whether a pipe through a wall is a false positive, whether the building loads correctly on a foreman's phone. Speed without domain judgment produces fast garbage. Domain judgment without AI produces slow abandonment.</p>
 <p>The combination — domain expert steering, AI building — is a new category. Not faster programming. Not no-code. Not outsourcing. A single mind with the full context, building at the speed of thought, with guard rails that only decades of industry experience can provide.</p>
+<h3 id="the-parallel-sqlite-ferment-and-what-the-llm-got-wrong-20242026">The Parallel SQLite Ferment — and What the LLM Got Wrong (2024–2026)<a class="headerlink" href="#the-parallel-sqlite-ferment-and-what-the-llm-got-wrong-20242026" title="Permanent link">&para;</a></h3>
+<p>The timeline above shows the project riding the <strong>cheap, old end</strong> of the toolchain — sql.js (2012), rtree-sql.js (2019/2022), Three.js (2023). Worth recording, because it is the honest "how close to the edge" story: while this was being assembled, the SQLite world was in the most active stretch of its history. None of the milestones below are <strong>dependencies</strong> — several solve a problem <a href="../DistributedERP/">DistributedERP</a> argues <em>away</em> — but they locate the project precisely in its moment. Dates verified <strong>2026‑06‑24</strong> against the linked primary sources.</p>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Milestone</th>
+<th>What it is</th>
+<th>Relation here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>2024‑01‑15</strong></td>
+<td><a href="https://sqlite.org/releaselog/3_45_0.html">SQLite 3.45.0 — JSONB</a></td>
+<td>binary JSON stored in the DB, no re-parse</td>
+<td>available in the substrate; the engine leans on the relational core + op-log, not JSONB as its store</td>
+</tr>
+<tr>
+<td><strong>2024‑12‑10</strong></td>
+<td><a href="https://turso.tech/blog/introducing-limbo-a-complete-rewrite-of-sqlite-in-rust">Limbo announced</a></td>
+<td>"a complete rewrite of SQLite in Rust"</td>
+<td><strong>parallel</strong> — a different bet on SQLite's future; not used</td>
+</tr>
+<tr>
+<td><strong>~2025‑07‑01</strong></td>
+<td><a href="https://turso.tech/blog/turso-the-next-evolution-of-sqlite">Turso first alpha</a></td>
+<td>Limbo → "Turso, the next evolution of SQLite"</td>
+<td>parallel; date is the announcement post (≈, not a tagged release)</td>
+</tr>
+<tr>
+<td><strong>2025‑10‑06</strong></td>
+<td><a href="https://turso.tech/blog/beyond-the-single-writer-limitation-with-tursos-concurrent-writes">Turso concurrent writes (MVCC), tech preview</a></td>
+<td><code>BEGIN CONCURRENT</code> via Hekaton-style MVCC — "beyond the single-writer limitation"</td>
+<td><strong>the pointed contrast</strong> — see below</td>
+</tr>
+<tr>
+<td><strong>2025‑11‑04</strong></td>
+<td><a href="https://sqlite.org/releaselog/3_51_0.html">SQLite 3.51.0 — 64-bit WASM build</a></td>
+<td>canonical WASM stays 32-bit; a 64-bit build is now a plain <code>make</code></td>
+<td>parallel; our sql.js runs fine 32-bit</td>
+</tr>
+<tr>
+<td><strong>2026‑01‑05</strong></td>
+<td><a href="https://turso.tech/blog/turso-0.4.0">Turso v0.4.0</a></td>
+<td>MVCC overhaul — indexes, checkpointing, recovery</td>
+<td>parallel</td>
+</tr>
+<tr>
+<td><strong>2026‑03‑04</strong></td>
+<td><a href="https://turso.tech/blog/turso-0.5.0">Turso v0.5.0</a> · <a href="https://www.linkedin.com/posts/glommer_turso-v050-activity-7435040873526194176-Dowg">LinkedIn</a></td>
+<td>concurrent writes → beta (<code>PRAGMA journal_mode='mvcc'</code>), Change Data Capture</td>
+<td>parallel</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The contrast worth keeping.</strong> The headline milestone — <strong>Turso shipping concurrent writes to "go beyond the single-writer limitation" (Oct 2025)</strong> — is, for this project, an argument in the <em>other</em> direction. The same season the industry shipped a sophisticated MVCC engine to let many writers share one database file, this project shipped the claim that, modelled correctly, <strong>you never needed them</strong>: ~90% of ERP is single-writer by physics, the rest is a daily one-way fold, and the one genuinely contended op-class is a compare-and-set — not concurrency in the store (<a href="../DistributedERP/">DistributedERP §0–§5</a>). "Close to the edge" here means <em>contemporaneous with, and a counterpoint to,</em> the hottest SQLite work of the moment — built from the opposite end of it.</p>
+<p><strong>Provenance — what the LLM did, and where it slipped.</strong> This sub-timeline was <strong>harvested with LLM assistance</strong> (the prompt was literally "show how close we were to the cutting edge"). That is fast and useful for <em>finding</em> candidate milestones — and exactly where invention creeps in, so every row was re-checked against a primary source. Two failure modes, recorded so the next reader trusts the table:</p>
+<ol>
+<li><strong>Wrong feature, confidently stated.</strong> JSONB was attributed to SQLite 3.51.0. The version and its date (3.51.0, 2025‑11‑04) are real, but JSONB shipped back in <strong>3.45.0 (2024‑01‑15)</strong>; 3.51.0's WASM-relevant item is the 64‑bit build. Corrected against the SQLite release log.</li>
+<li><strong>Right facts, wrong frame.</strong> Turso MVCC / edge-DB replication were offered as <em>what made the project possible.</em> They are the opposite of the architecture and are kept here as <strong>contrast, not dependency.</strong></li>
+</ol>
+<p>The lesson, in one line: <strong>an LLM is a fast <em>harvester</em> of where the edge is, not an <em>authority</em> on it.</strong> Extract, then verify; cite, then claim. The interesting part of vibe-programming at the frontier is not that the model knew the dates — it's that the dates had to be checked, and one of them was wrong.</p>
 <hr />
 <h2 id="for-the-bonsaiblenderbim-community">For the Bonsai/BlenderBIM Community<a class="headerlink" href="#for-the-bonsaiblenderbim-community" title="Permanent link">&para;</a></h2>
 <p>If you're evaluating this project and wondering whether vibe-programmed code can be trusted:</p>
