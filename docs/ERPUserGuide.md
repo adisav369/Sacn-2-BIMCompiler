@@ -822,6 +822,40 @@ immediately lands on the spatial model ready for the walk.
 
 ---
 
+## System Monitor — paradigm vitals & the deploy version  *(LIVE)*
+
+iDempiere ships a **System Monitor** (the `/idempiere-monitor` servlet) where an admin watches Memory,
+Cache, Logs/Trace, Servers, Cluster and Database. Kernel-ERP keeps the *same sections* but on a serverless
+browser kernel — so each one shows **your real device value** where one exists, and an honest **"No longer
+needed"** badge where the server is simply gone (background processors, cluster nodes, the Postgres host).
+
+**Open it:** on the login card, the info panel → **System Monitor** (it's also reachable in-session). Nothing
+is faked — where the browser doesn't expose a number (e.g. JS heap on Firefox) the row says `n/a`.
+
+### Field health · paradigm vitals
+A classic ERP watches a *server's* vitals (CPU, heap, connection pool). With no server, you watch the
+**paradigm's** vitals instead — four widgets, each folded from a **real live signal** (never invented), each
+with a status dot:
+
+| Widget | What it tells the SysAdmin |
+|---|---|
+| **Field errors** | Uncaught errors captured **this session** (the G2 remedy — silent field failures are surfaced, not swallowed). Green `0` = a clean run. |
+| **Durability** | The offline op queue: how many edits are **relayed (durable)** vs still **in-flight**. The A1 safety invariant holds — an unsynced op is **never** shown as "safe". |
+| **Op-log DB** | The signed op-log's real size (`PRAGMA page_count × page_size`) against the in-memory **200 MB** ceiling, with headroom — the reassuring "you're nowhere near the wall" optic. Reads `n/a` until a tenant has folded a rule or posted a doc. |
+| **Environment** | The storage backend the device actually negotiated — **OPFS** when cross-origin-isolated, else **IndexedDB** (named honestly, e.g. *"OPFS API present but NOT crossOriginIsolated → IndexedDB VFS"* on GitHub Pages). |
+
+![The System Monitor's **Field health · paradigm vitals** group on a live device — four widgets, each folded from a real signal with a status dot: **Field errors** (0, clean session), **Durability**, **Op-log DB** (its real ceiling), and **Environment** (IDB on a non-isolated origin). Below, the iDempiere-faithful Memory / Cache / Logs sections carry real device numbers or an honest "No longer needed" reframe. *(The **Release** row here is a pre-stamp snapshot reading "(uncontrolled)"; post-deploy it reads the live `vNNN` — see below.)*](figs/system_monitor_field_health.png)
+
+### The Release row — the deployed build, linked to its release
+The **Release** row reads the version that is actually deployed to this device (the service-worker
+`CACHE_VERSION`, e.g. `v753`) and links to that build's **GitHub Release** page — the release notes are the
+merge commit, so the link literally shows *what was last shipped*. Releases are **cut automatically at deploy**:
+a new `vNNN` can't go live without its release page existing. (Earlier builds briefly showed "(uncontrolled)"
+in the moment right after a service-worker update — before the page was controlled again; the version is now
+stamped deterministically so the row always tells the truth.)
+
+---
+
 ## 11. Clearing Cache / Resetting Demo Data
 
 The app state lives in **IndexedDB** (key `bim_erp_db`, version 14). To reset to a clean demo:
