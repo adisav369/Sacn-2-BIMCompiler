@@ -207,6 +207,25 @@ CREATE TABLE IF NOT EXISTS rel_adjacency (
     provenance TEXT DEFAULT 'derived:face-touch',
     PRIMARY KEY (a_guid, b_guid, touch_axis)
 );
+-- anchored-to edge (SPATIAL_DEPENDENCY_GRAPH.md): a DERIVED edge from element → DATUM plane. Datums are
+-- NOT recovered (a bridge has no IfcGrid, no storeys) — they EMERGE by measure: a datum on an axis is a
+-- coordinate where ≥min_support element FACES align within tol (a gridline, a storey plane, a pier station).
+-- NON-INVENT: zero class names, no template grid; the cadence of the real geometry defines the datums.
+CREATE TABLE IF NOT EXISTS datum_plane (
+    datum_id INTEGER PRIMARY KEY,
+    axis TEXT,
+    coord REAL,
+    support_count INTEGER,
+    provenance TEXT DEFAULT 'derived:cadence'
+);
+CREATE TABLE IF NOT EXISTS rel_anchored (
+    element_guid TEXT,
+    datum_id INTEGER,
+    axis TEXT,
+    offset_mm REAL,
+    provenance TEXT DEFAULT 'derived:cadence-snap',
+    PRIMARY KEY (element_guid, datum_id)
+);
 CREATE TABLE IF NOT EXISTS surface_styles (
     style_name TEXT PRIMARY KEY,
     surface_r REAL, surface_g REAL, surface_b REAL,
@@ -848,6 +867,67 @@ def derive_adjacency(conn, tol=0.03, min_overlap=0.02):
     return rows
 
 
+def derive_datums_and_anchors(conn, tol=0.05, min_support=3):
+    """§ANCHORED (SPATIAL_DEPENDENCY_GRAPH.md): derive datum planes + the `anchored-to` edge by MEASURE.
+
+    A datum on an axis is a coordinate where the FACES (min & max box faces) of ≥min_support DISTINCT
+    elements align within `tol` — i.e. a gridline, a storey plane, or a bridge pier station, EMERGENT from
+    the real cadence, never a recovered IfcGrid (the bridge has none) and never a template. Each supporting
+    element gets a rel_anchored edge to the datum (closest face → signed offset). NON-INVENT, grep-clean of
+    class names: pure geometry. Greedy tol-bounded 1-D clustering caps each datum's spread at `tol` (no chaining
+    into a smeared pseudo-plane).
+
+    Returns (n_datums, n_anchors).
+    """
+    rows = conn.execute("""
+        SELECT m.guid, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+    """).fetchall()
+    if not rows:
+        return 0, 0
+    box = {g: (x0, x1, y0, y1, z0, z1) for g, x0, x1, y0, y1, z0, z1 in rows}
+    n_datums = 0
+    n_anchors = 0
+    datum_id = 0
+    for ax in range(3):
+        # candidate faces: both the min and the max box face of every element on this axis
+        cand = []
+        for g, b in box.items():
+            cand.append((b[2 * ax], g))
+            cand.append((b[2 * ax + 1], g))
+        cand.sort()
+        # greedy clustering bounded to spread ≤ tol (prevents chaining across a gradient)
+        i = 0
+        while i < len(cand):
+            start = cand[i][0]
+            j = i
+            while j < len(cand) and cand[j][0] - start <= tol:
+                j += 1
+            group = cand[i:j]
+            i = j
+            guids = {g for _, g in group}
+            if len(guids) < min_support:
+                continue
+            coord = sum(c for c, _ in group) / len(group)
+            datum_id += 1
+            conn.execute(
+                "INSERT INTO datum_plane (datum_id, axis, coord, support_count, provenance) "
+                "VALUES (?, ?, ?, ?, 'derived:cadence')",
+                (datum_id, "XYZ"[ax], round(coord, 6), len(guids)))
+            n_datums += 1
+            for g in guids:
+                b = box[g]
+                faces = (b[2 * ax], b[2 * ax + 1])
+                off = min((f - coord for f in faces), key=abs)   # closest face → signed offset
+                conn.execute(
+                    "INSERT OR IGNORE INTO rel_anchored (element_guid, datum_id, axis, offset_mm, provenance) "
+                    "VALUES (?, ?, ?, ?, 'derived:cadence-snap')",
+                    (g, datum_id, "XYZ"[ax], round(off * 1000, 3)))
+                n_anchors += 1
+    conn.commit()
+    return n_datums, n_anchors
+
+
 def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                       dry_run=False, library_path=None, building_type=None,
                       skip_normalize=False):
@@ -1368,6 +1448,13 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
         if adj_rows > 0:
             print(f"  §ABUTS rel_adjacency: {adj_rows} face-touch edges derived "
                   f"(measured shared-face contact, provenance=derived:face-touch)")
+
+    # ── §ANCHORED: derive datum planes + the anchored-to edge from face cadence ──
+    if not dry_run:
+        n_datums, n_anchors = derive_datums_and_anchors(conn)
+        if n_datums > 0:
+            print(f"  §ANCHORED datum_plane: {n_datums} datums emerged from cadence, "
+                  f"{n_anchors} anchored-to edges (provenance=derived:cadence)")
 
     # Extract rich surface styles + material layers
     source_tag = f"EXTRACTED:{os.path.basename(ifc_path)}"
