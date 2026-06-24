@@ -193,6 +193,20 @@ CREATE TABLE IF NOT EXISTS rel_fills_host (
     filling_class TEXT,
     provenance TEXT DEFAULT 'ifc:recovered'
 );
+-- abuts edge (SPATIAL_DEPENDENCY_GRAPH.md): the first DERIVED measured edge. Two elements ABUT if they
+-- share a face — measured from AABBs: faces within tol on ONE axis (the touch axis) AND a real overlap on
+-- the other two. DERIVED, never recovered/guessed: provenance carries the measure ('derived:face-touch').
+-- One row per unordered pair (a_guid < b_guid). gap_mm = |signed gap| at the touching face; contact_m2 =
+-- the shared-face contact patch (the two non-touch overlaps multiplied) — a measured fold quantity.
+CREATE TABLE IF NOT EXISTS rel_adjacency (
+    a_guid TEXT,
+    b_guid TEXT,
+    touch_axis TEXT,
+    gap_mm REAL,
+    contact_m2 REAL,
+    provenance TEXT DEFAULT 'derived:face-touch',
+    PRIMARY KEY (a_guid, b_guid, touch_axis)
+);
 CREATE TABLE IF NOT EXISTS surface_styles (
     style_name TEXT PRIMARY KEY,
     surface_r REAL, surface_g REAL, surface_b REAL,
@@ -756,6 +770,84 @@ def extract_rel_fills_host(ifc_file, conn):
     return rows, filled
 
 
+def _face_touch(a, b, tol, min_overlap):
+    """Is the AABB pair (a,b) a FACE-TOUCH? Returns (touch_axis, gap_m, contact_m2) or None.
+
+    Pure geometry — references NO IFC class. a,b are (minX,maxX,minY,maxY,minZ,maxZ).
+    Face-touch on axis k ⇔ the opposing faces on k are within `tol` (small gap or small
+    interpenetration) AND the boxes genuinely overlap on the OTHER two axes (≥ min_overlap each).
+    The touch axis is the one with the smallest |overlap| (closest to a back-to-back face).
+    Corner/edge grazes (two axes near-zero) and deep clashes (no axis near-zero) are excluded.
+    """
+    # signed overlap per axis: >0 interpenetrate, =0 touch, <0 gap
+    ov = []
+    for k in range(3):
+        lo = max(a[2 * k], b[2 * k])
+        hi = min(a[2 * k + 1], b[2 * k + 1])
+        ov.append(hi - lo)
+    # pick the touch axis = axis whose |overlap| is smallest (the back-to-back face)
+    axis = min(range(3), key=lambda k: abs(ov[k]))
+    if abs(ov[axis]) > tol:
+        return None                       # faces not within tol on the closest axis → not adjacent
+    others = [k for k in range(3) if k != axis]
+    if ov[others[0]] < min_overlap or ov[others[1]] < min_overlap:
+        return None                       # no real shared face (corner/edge graze) → not a face-touch
+    contact = ov[others[0]] * ov[others[1]]
+    return "XYZ"[axis], abs(ov[axis]), contact
+
+
+def derive_adjacency(conn, tol=0.03, min_overlap=0.02):
+    """§ABUTS (SPATIAL_DEPENDENCY_GRAPH.md): derive the `abuts` edge from MEASURED face-touch.
+
+    Reads the pristine AABBs (elements_meta ⋈ elements_rtree), writes one rel_adjacency row per
+    unordered face-touching pair. DERIVED, NON-INVENT: every edge is a measured face contact, stamped
+    provenance='derived:face-touch'; NO proximity radius, NO class whitelist (grep-clean of class names).
+    Uses the rtree to fetch only spatially-near candidates (scales past O(n²) on large buildings).
+
+    Returns rows written.
+    """
+    rows = 0
+    try:
+        elems = conn.execute("""
+            SELECT m.guid, r.id, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+            FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+        """).fetchall()
+        box = {}    # id → (guid, aabb tuple)
+        for guid, rid, x0, x1, y0, y1, z0, z1 in elems:
+            box[rid] = (guid, (x0, x1, y0, y1, z0, z1))
+        seen = set()
+        for rid, (guid_a, a) in box.items():
+            # rtree candidates: any element whose AABB comes within `tol` of a's expanded AABB
+            cand = conn.execute("""
+                SELECT id FROM elements_rtree
+                WHERE maxX >= ? AND minX <= ? AND maxY >= ? AND minY <= ? AND maxZ >= ? AND minZ <= ?
+            """, (a[0] - tol, a[1] + tol, a[2] - tol, a[3] + tol, a[4] - tol, a[5] + tol)).fetchall()
+            for (rid_b,) in cand:
+                if rid_b == rid or rid_b not in box:
+                    continue
+                guid_b, b = box[rid_b]
+                if guid_a == guid_b:
+                    continue
+                lo, hi = (guid_a, guid_b) if guid_a < guid_b else (guid_b, guid_a)
+                if (lo, hi) in seen:
+                    continue
+                ft = _face_touch(a, b, tol, min_overlap)
+                if ft is None:
+                    continue
+                touch_axis, gap_m, contact = ft
+                seen.add((lo, hi))
+                conn.execute(
+                    "INSERT OR IGNORE INTO rel_adjacency "
+                    "(a_guid, b_guid, touch_axis, gap_mm, contact_m2, provenance) "
+                    "VALUES (?, ?, ?, ?, ?, 'derived:face-touch')",
+                    (lo, hi, touch_axis, round(gap_m * 1000, 3), round(contact, 6)))
+                rows += 1
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # elements_rtree absent (non-geometric ref DB)
+    return rows
+
+
 def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                       dry_run=False, library_path=None, building_type=None,
                       skip_normalize=False):
@@ -1269,6 +1361,13 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             print(f"  §PATHB rel_fills_host: {fills_rows} host edges recovered "
                   f"({fills_filled} with a door/window filling, "
                   f"{fills_rows - fills_filled} open voids)")
+
+    # ── §ABUTS: derive the face-touch adjacency edge from measured AABBs ────
+    if not dry_run:
+        adj_rows = derive_adjacency(conn)
+        if adj_rows > 0:
+            print(f"  §ABUTS rel_adjacency: {adj_rows} face-touch edges derived "
+                  f"(measured shared-face contact, provenance=derived:face-touch)")
 
     # Extract rich surface styles + material layers
     source_tag = f"EXTRACTED:{os.path.basename(ifc_path)}"
