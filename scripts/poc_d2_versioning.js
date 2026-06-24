@@ -133,6 +133,18 @@ function check(n, c, d) { console.log((c ? '   ✓ ' : '   ✗ ') + n + (d ? ' �
   var vAfter = await Kt.verifyChain(dt);
   check('W-D2-TAMPER forging a stored op\'s _sv breaks the signed chain', okBefore && vAfter.ok === false, 'before=' + okBefore + ' after=' + vAfter.ok);
 
+  // ════════ W-D2-DEFAULT-SEAM — after install(), the DEFAULT commitOp path auto-stamps _sv (no opt-in) ════════
+  console.log('\n── W-D2-DEFAULT-SEAM: install() makes plain commitOp auto-stamp ──');
+  UP.setCurrent('POST', 2);                                  // declare current POST schema = v2
+  var Kd = freshKernel(); Kd.setSigner(sgn); var dd = new SQL.Database();
+  var installed = UP.install(Kd);                            // ONE line — the default write seam
+  Kd.commitOp(dd, 'POST', { table: 'C_Invoice', id: 600, lines: [{ acct: '101', amtacctdr: 1, amtacctcr: 0 }] });
+  var stampedRow = getP(Kd.replayOps(dd, null, '*')[0]);     // replayOps pre-parses params
+  check('W-D2-DEFAULT-SEAM install() wired the stamper', installed === true);
+  check('W-D2-DEFAULT-SEAM plain commitOp auto-stamped _sv=2 (no commitVersioned needed)', stampedRow._sv === 2, '_sv=' + stampedRow._sv);
+  await Kd.sealChain(dd);
+  check('W-D2-DEFAULT-SEAM auto-stamped op still seals + verifies', (await Kd.verifyChain(dd)).ok === true);
+
   console.log('\n§D2-WITNESS OVERALL=' + (FAILS.length === 0 ? 'PASS' : 'FAIL (' + FAILS.join('; ') + ')'));
   process.exit(FAILS.length === 0 ? 0 : 1);
 })().catch(function (e) { console.error('FATAL ' + e.stack); process.exit(2); });

@@ -102,8 +102,20 @@
 
   function reset() { _current = {}; _up = {}; }
 
+  // install — make stamping the DEFAULT write seam: every kernel.commitOp/commitGroup now brands params._sv.
+  // One line at app boot: ERP.OpUpcaster.install(window.KernelOps). Decoupled — the kernel only sees the fn.
+  function install(kernel) {
+    if (!kernel || typeof kernel.setVersionStamper !== 'function') {
+      console.log('§OP_UPCASTER install SKIPPED — kernel has no setVersionStamper (update kernel_ops.js)');
+      return false;
+    }
+    kernel.setVersionStamper(stamp);
+    console.log('§OP_UPCASTER install OK — schema_version stamping is now the default write seam');
+    return true;
+  }
+
   console.log('§OP_UPCASTER_LOADED v1 (D2: schema_version stamp + read-time upcaster registry)');
   return { SV_KEY: SV_KEY, setCurrent: setCurrent, currentOf: currentOf, versionOf: versionOf,
     register: register, stamp: stamp, supports: supports, upcast: upcast, upcastAll: upcastAll,
-    commitVersioned: commitVersioned, reset: reset };
+    commitVersioned: commitVersioned, install: install, reset: reset };
 }));
