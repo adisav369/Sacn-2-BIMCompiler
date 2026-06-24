@@ -87,7 +87,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#bim-ootb-install-self-host-guide" class="md-skip">
+        <a href="#bim-intent-compiler-systems-installer-guide" class="md-skip">
           Skip to content
         </a>
       
@@ -3277,10 +3277,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pick-how-you-run-it" class="md-nav__link">
+  <a href="#1-prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pick how you run it
+        1. Prerequisites
       
     </span>
   </a>
@@ -3288,10 +3288,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#host-it-for-others" class="md-nav__link">
+  <a href="#2-clone-and-build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Host it for others
+        2. Clone and Build
       
     </span>
   </a>
@@ -3299,13 +3299,517 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-the-data-lives" class="md-nav__link">
+  <a href="#3-database-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where the data lives
+        3. Database Files
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="3. Database Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-core-databases-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Core Databases (required)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-per-building-bom-databases-one-per-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Per-Building BOM Databases (one per building)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-working-databases-generated-at-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Working Databases (generated at runtime)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-inspecting-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Inspecting Databases
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-running-the-servers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Running the Servers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Running the Servers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-bim-designer-server-tcp-port-9876" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 BIM Designer Server (TCP, port 9876)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-back-office-server-http-port-9877" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Back Office Server (HTTP, port 9877)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-datasette-database-browser-erd-http-port-8001" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Datasette — Database Browser &amp; ERD (HTTP, port 8001)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-all-servers-typical-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 All Servers (typical setup)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-running-the-compilation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Running the Compilation Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Running the Compilation Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-rosetta-stone-buildings-full-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Rosetta Stone Buildings (full pipeline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-onboarding-a-new-ifc-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Onboarding a New IFC Building
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-dagcompiler-compile-bom-to-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 DAGCompiler (compile BOM to output)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-blender-bonsai-integration-legacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Blender + Bonsai Integration (legacy)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Blender + Bonsai Integration (legacy)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-federation-module-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Federation Module Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-blender-addon-activation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Blender Addon Activation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-federation-features-no-server-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Federation Features (no server required)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-connecting-blender-to-the-bim-designer-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Connecting Blender to the BIM Designer Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-putting-it-all-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Putting It All Together
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-test-suites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Test Suites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Test Suites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-full-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Full Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-individual-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Individual Modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-bonsaibimdesigner-408-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 BonsaiBIMDesigner (408 tests)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-bimbackoffice-14-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 BIMBackOffice (14 tests)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-tamper-seal-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 Tamper Seal Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-wan-deployment-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. WAN Deployment (Docker)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-migration-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Migration Scripts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Directory Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-verification-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Verification Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-erd-diagrams-database-browsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. ERD Diagrams &amp; Database Browsing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. ERD Diagrams &amp; Database Browsing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141-datasette-live-database-erd-port-8001" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 Datasette — Live Database ERD (port 8001)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142-interactive-architecture-viz-html" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 Interactive Architecture Viz (HTML)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to refresh
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-database-schema-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Database Schema Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-docker-what-to-containerize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Docker — What to Containerize
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Docker — What to Containerize">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-docker-is-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Docker is for
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-docker-is-not-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Docker is NOT for
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#updating-databases-in-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Updating databases in Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3444,10 +3948,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pick-how-you-run-it" class="md-nav__link">
+  <a href="#1-prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pick how you run it
+        1. Prerequisites
       
     </span>
   </a>
@@ -3455,10 +3959,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#host-it-for-others" class="md-nav__link">
+  <a href="#2-clone-and-build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Host it for others
+        2. Clone and Build
       
     </span>
   </a>
@@ -3466,13 +3970,517 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-the-data-lives" class="md-nav__link">
+  <a href="#3-database-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where the data lives
+        3. Database Files
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="3. Database Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-core-databases-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Core Databases (required)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-per-building-bom-databases-one-per-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Per-Building BOM Databases (one per building)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-working-databases-generated-at-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Working Databases (generated at runtime)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-inspecting-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Inspecting Databases
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-running-the-servers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Running the Servers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Running the Servers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-bim-designer-server-tcp-port-9876" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 BIM Designer Server (TCP, port 9876)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-back-office-server-http-port-9877" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Back Office Server (HTTP, port 9877)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-datasette-database-browser-erd-http-port-8001" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Datasette — Database Browser &amp; ERD (HTTP, port 8001)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-all-servers-typical-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 All Servers (typical setup)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-running-the-compilation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Running the Compilation Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Running the Compilation Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-rosetta-stone-buildings-full-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Rosetta Stone Buildings (full pipeline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-onboarding-a-new-ifc-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Onboarding a New IFC Building
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-dagcompiler-compile-bom-to-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 DAGCompiler (compile BOM to output)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-blender-bonsai-integration-legacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Blender + Bonsai Integration (legacy)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Blender + Bonsai Integration (legacy)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-federation-module-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Federation Module Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-blender-addon-activation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Blender Addon Activation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-federation-features-no-server-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Federation Features (no server required)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-connecting-blender-to-the-bim-designer-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Connecting Blender to the BIM Designer Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-putting-it-all-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Putting It All Together
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-test-suites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Test Suites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Test Suites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-full-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Full Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-individual-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Individual Modules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-bonsaibimdesigner-408-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 BonsaiBIMDesigner (408 tests)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-bimbackoffice-14-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 BIMBackOffice (14 tests)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-tamper-seal-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 Tamper Seal Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-wan-deployment-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. WAN Deployment (Docker)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-migration-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Migration Scripts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Directory Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-verification-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Verification Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-erd-diagrams-database-browsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. ERD Diagrams &amp; Database Browsing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. ERD Diagrams &amp; Database Browsing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141-datasette-live-database-erd-port-8001" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 Datasette — Live Database ERD (port 8001)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142-interactive-architecture-viz-html" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 Interactive Architecture Viz (HTML)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to refresh
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-database-schema-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Database Schema Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-docker-what-to-containerize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Docker — What to Containerize
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Docker — What to Containerize">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-docker-is-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Docker is for
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-docker-is-not-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Docker is NOT for
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#updating-databases-in-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Updating databases in Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3496,80 +4504,862 @@
   
 
 
-<h1 id="bim-ootb-install-self-host-guide">BIM OOTB — Install &amp; Self-Host Guide<a class="headerlink" href="#bim-ootb-install-self-host-guide" title="Permanent link">&para;</a></h1>
-<p>One browser, no install to <strong>use</strong> — one step to <strong>self-host</strong>. There's <strong>no database server to administer and no Java runtime</strong>: the SQLite engine itself ships as <strong>WebAssembly</strong> (<code>sql-wasm.wasm</code>) and runs inside the browser tab — the standard serverless-SQLite approach, the same one <a href="https://sql.js.org/">sql.js</a> and other in-browser SQLite apps use. Everything is static files plus data that lives in the browser.</p>
-<p>To <strong>use</strong> the hosted app you install nothing; to <strong>self-host</strong> you run a static web server (the one-step DIY script below does this for you).</p>
-<p>Start at the <strong><a href="https://red1oon.github.io/bim-ootb/">front door → red1oon.github.io/bim-ootb</a></strong>. See the <strong><a href="../USER_GUIDE/">User Guide</a></strong> to get going.</p>
-<h2 id="pick-how-you-run-it">Pick how you run it<a class="headerlink" href="#pick-how-you-run-it" title="Permanent link">&para;</a></h2>
-<div class="grid cards">
-<ul>
-<li>
-<p><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px"><path d="M17.5 19a4.5 4.5 0 1 0 0-9 6 6 0 0 0-11.5-1.5A4 4 0 0 0 6 19Z"/></svg> <strong>Use it hosted</strong></p>
-<p>Nothing to install. Open the front door and go. It's a <strong>PWA</strong> — your browser can <em>install</em> it (add to home screen) so it runs <strong>offline, no server</strong>.</p>
-<p><em>Front door → pick a surface</em> · <a href="https://red1oon.github.io/bim-ootb/">Open</a> · <a href="../USER_GUIDE/">User Guide</a></p>
-</li>
-<li>
-<p><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> <strong>Run it yourself (DIY)</strong></p>
-<p>Self-host the whole stack on your own machine in <strong>one step</strong>. The front door's <strong>About</strong> box has a <strong>Run it yourself (DIY)</strong> tab: download a one-step install script + README, run it, and you're serving the full app locally.</p>
-<p><em>Front door → <strong>About</strong> icon → <strong>Run it yourself (DIY)</strong> tab</em></p>
-</li>
-<li>
-<p><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg> <strong>Serve the files manually</strong></p>
-<p>For developers: the app is just static files. Serve the <code>deploy/</code> folder with any web server.</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>deploy
-python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8080</span>
-<span class="c1"># open http://localhost:8080/index.html</span>
-</code></pre></div>
-</li>
-</ul>
+<h1 id="bim-intent-compiler-systems-installer-guide">BIM Intent Compiler — Systems Installer Guide<a class="headerlink" href="#bim-intent-compiler-systems-installer-guide" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+</blockquote>
+<div class="admonition note">
+<p class="admonition-title">BIM OOTB now runs in the browser — you probably don't need this guide</p>
+<p>The product is <strong>browser-based</strong>: open the <a href="https://red1oon.github.io/bim-ootb/">front door</a>, or
+use the front door's <strong>About → Run it yourself (DIY)</strong> to download a one-step self-host script. <strong>Zero
+Java, zero install.</strong> See the <strong><a href="../USER_GUIDE/">User Guide</a></strong>.</p>
+<p>This page is the <strong>legacy / advanced path</strong>: building the original <strong>Java compiler + back-office +
+Blender</strong> toolchain from source — only needed to compile buildings from raw IFC or run the server-side
+nD reporting stack. Most users can skip it entirely.</p>
 </div>
-<h2 id="host-it-for-others">Host it for others<a class="headerlink" href="#host-it-for-others" title="Permanent link">&para;</a></h2>
-<p>Upload the same static <code>deploy/</code> folder to <strong>any</strong> static host — GitHub Pages, OCI Object Storage, S3, or an nginx/Apache document root. No backend required.</p>
-<p><strong>One rule for object storage</strong> (OCI, S3): set the <strong>MIME content-type on every file</strong>. Object stores don't infer it from the extension, and the browser's <code>nosniff</code> header silently blocks scripts served as the wrong type.</p>
+<div class="bim-banner">
+<p><b>Legacy full-platform setup from source — Java, Maven, SQLite, Blender.</b> Prerequisites, build steps, and verification for developers building the original compiler/back-office toolchain.</p>
+</div>
+<p><strong>Audience:</strong> Developers building the <strong>Java</strong> compiler + back-office from source (the browser app needs none of this).</p>
+<p><strong>For WAN/Docker deployment</strong> of the back-office server, see <a href="../DEPLOYMENT/">DEPLOYMENT.md</a>.</p>
+<hr />
+<h2 id="1-prerequisites">1. Prerequisites<a class="headerlink" href="#1-prerequisites" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Extension</th>
-<th>content-type</th>
+<th>Component</th>
+<th>Version</th>
+<th>Purpose</th>
+<th>Check</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>.html</code></td>
-<td><code>text/html</code></td>
+<td>Java (JDK)</td>
+<td>17+</td>
+<td>Compiler, servers, all backend logic</td>
+<td><code>java --version</code></td>
 </tr>
 <tr>
-<td><code>.js</code></td>
-<td><code>application/javascript</code></td>
+<td>Maven</td>
+<td>3.8+</td>
+<td>Build system, dependency management</td>
+<td><code>mvn --version</code></td>
 </tr>
 <tr>
-<td><code>.css</code></td>
-<td><code>text/css</code></td>
+<td>SQLite</td>
+<td>3.40+</td>
+<td>Database engine (bundled via JDBC, CLI for inspection)</td>
+<td><code>sqlite3 --version</code></td>
 </tr>
 <tr>
-<td><code>.json</code></td>
-<td><code>application/json</code></td>
+<td>Python</td>
+<td>3.10+</td>
+<td>IFC extraction (IfcOpenShell), Blender addon</td>
+<td><code>python3 --version</code></td>
 </tr>
 <tr>
-<td><code>.wasm</code></td>
-<td><code>application/wasm</code></td>
+<td>Blender</td>
+<td>4.2+</td>
+<td>3D viewport (BIM Designer GUI)</td>
+<td><code>blender --version</code></td>
 </tr>
 <tr>
-<td><code>.png</code></td>
-<td><code>image/png</code></td>
+<td>Git</td>
+<td>2.30+</td>
+<td>Source control, LFS for binary assets</td>
+<td><code>git --version</code></td>
+</tr>
+<tr>
+<td>Docker</td>
+<td>24+</td>
+<td>WAN deployment (optional)</td>
+<td><code>docker --version</code></td>
+</tr>
+<tr>
+<td>IfcOpenShell</td>
+<td>0.8+</td>
+<td>IFC file parsing and extraction</td>
+<td><code>python3 -c "import ifcopenshell"</code></td>
+</tr>
+<tr>
+<td>Bonsai</td>
+<td>0.8+</td>
+<td>Blender BIM addon (federation viewer)</td>
+<td>Bundled with IfcOpenShell</td>
 </tr>
 </tbody>
 </table>
-<p>Full bucket layout and the upload checklist: <strong><code>deploy/OCI_UPLOAD.md</code></strong>.</p>
-<h2 id="where-the-data-lives">Where the data lives<a class="headerlink" href="#where-the-data-lives" title="Permanent link">&para;</a></h2>
-<p>Everything runs in the browser. Each building is loaded straight into the page as SQLite files in <code>deploy/buildings/</code>:</p>
-<ul>
-<li>a <strong>metadata</strong> DB — element records + transforms (<code>{Name}_extracted.db</code>, or <code>{Name}_meta.db</code> for split buildings)</li>
-<li>a <strong>geometry</strong> DB — vertices + faces (<code>{Name}_library.db</code> / <code>{Name}_geo.db</code>)</li>
-</ul>
-<p>The download size is the <strong>sum of both</strong> — small buildings are a few MB; large ones (Clinic, Hospital) run into the hundreds of MB. No server reads them; your data never leaves the browser unless you export it.</p>
+<p><strong>Tested on:</strong> Ubuntu 24.04 (Linux 6.17), OpenJDK 17.0.18, Maven 3.8.7, Blender 5.0.1, IfcOpenShell 0.8.4, Bonsai 0.8.4-alpha.</p>
 <hr />
-<p><em>Generating new building databases from raw IFC is a separate developer toolchain — see <a href="../IFC_ONBOARDING_RUNBOOK/">IFC Onboarding Runbook</a>.</em></p>
+<h2 id="2-clone-and-build">2. Clone and Build<a class="headerlink" href="#2-clone-and-build" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># 2.1 Clone the repository</span>
+git<span class="w"> </span>clone<span class="w"> </span>git@github.com:red1oon/BIMCompiler.git
+<span class="nb">cd</span><span class="w"> </span>BIMCompiler
+
+<span class="c1"># 2.2 Compile all 9 modules</span>
+mvn<span class="w"> </span>compile<span class="w"> </span>-q
+
+<span class="c1"># 2.3 Verify — run the full test gate</span>
+./scripts/run_tests.sh
+</code></pre></div>
+<p><strong>Expected output:</strong> ~382 PASS, ~94 intentional RED (pre-existing calibration items — see <code>scripts/run_tests.sh</code> header for breakdown).</p>
+<p><strong>Module build order</strong> (Maven reactor handles this automatically):</p>
+<div class="highlight"><pre><span></span><code>orm-core          → base ORM, BIMLogger
+ORMSandbox        → DAO smoke tests
+DAGCompiler       → 11-stage compilation pipeline
+2D_Layout         → floor plan generation
+TopologyMaker     → grid strategy, PO lifecycle
+BIM_COBOL         → 77 domain verbs, witness engine
+IFCtoBOM          → IFC extraction to BOM database
+BIMBackOffice     → ERP reporting, sessions, portfolio
+BonsaiBIMDesigner → GUI server, validation, assembly
+</code></pre></div>
+<hr />
+<h2 id="3-database-files">3. Database Files<a class="headerlink" href="#3-database-files" title="Permanent link">&para;</a></h2>
+<p>The <code>library/</code> directory contains all SQLite databases. These ship with the repo.</p>
+<h3 id="31-core-databases-required">3.1 Core Databases (required)<a class="headerlink" href="#31-core-databases-required" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Size</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>component_library.db</code></td>
+<td>~230 MB</td>
+<td>Master catalog: 35 component types, 23,888 component definitions + geometries, thermal properties (80 tables)</td>
+</tr>
+<tr>
+<td><code>ERP.db</code></td>
+<td>~18 MB</td>
+<td>Discipline validation rules, IFC class mapping, MEP metadata (52 tables)</td>
+</tr>
+<tr>
+<td><code>validation.db</code></td>
+<td>~80 KB</td>
+<td>Compliance thresholds: clash, occupancy &amp; validation rules + results (9 tables)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-per-building-bom-databases-one-per-building">3.2 Per-Building BOM Databases (one per building)<a class="headerlink" href="#32-per-building-bom-databases-one-per-building" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Building</th>
+<th>Elements</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SH_BOM.db</code></td>
+<td>Sample House</td>
+<td>—</td>
+<td>Hello-world residential</td>
+</tr>
+<tr>
+<td><code>FK_BOM.db</code></td>
+<td>FZK Haus</td>
+<td>82</td>
+<td>Small residential</td>
+</tr>
+<tr>
+<td><code>DX_BOM.db</code></td>
+<td>Duplex</td>
+<td>1,099</td>
+<td>Multi-unit residential</td>
+</tr>
+<tr>
+<td><code>TE_BOM.db</code></td>
+<td>Terminal</td>
+<td>48,428</td>
+<td>Commercial airport terminal</td>
+</tr>
+<tr>
+<td><code>BR_BOM.db</code></td>
+<td>Bridge</td>
+<td>48</td>
+<td>Infrastructure</td>
+</tr>
+<tr>
+<td><code>RD_BOM.db</code></td>
+<td>Road</td>
+<td>53</td>
+<td>Infrastructure</td>
+</tr>
+<tr>
+<td><code>RL_BOM.db</code></td>
+<td>Rail</td>
+<td>73</td>
+<td>Infrastructure</td>
+</tr>
+<tr>
+<td><code>IN_BOM.db</code></td>
+<td>Infrastructure (combined)</td>
+<td>174</td>
+<td>Multi-facility infrastructure</td>
+</tr>
+<tr>
+<td><code>DM_BOM.db</code></td>
+<td>DemoHouse</td>
+<td>—</td>
+<td>Generative template</td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-working-databases-generated-at-runtime">3.3 Working Databases (generated at runtime)<a class="headerlink" href="#33-working-databases-generated-at-runtime" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Created By</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>work_*.db</code></td>
+<td>BonsaiBIMDesigner</td>
+<td>Design variants, C_Order snapshots</td>
+</tr>
+<tr>
+<td><code>_*_compile.db</code></td>
+<td>DAGCompiler</td>
+<td>Temporary compile output (per run)</td>
+</tr>
+<tr>
+<td><code>output_template.db</code></td>
+<td>Pipeline</td>
+<td>Schema template for fresh output DBs</td>
+</tr>
+</tbody>
+</table>
+<h3 id="34-inspecting-databases">3.4 Inspecting Databases<a class="headerlink" href="#34-inspecting-databases" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># List tables</span>
+sqlite3<span class="w"> </span>library/SH_BOM.db<span class="w"> </span><span class="s2">&quot;.tables&quot;</span>
+
+<span class="c1"># Check BOM hierarchy</span>
+sqlite3<span class="w"> </span>library/SH_BOM.db<span class="w"> </span><span class="s2">&quot;SELECT bom_type, name, m_product_category_id FROM m_bom&quot;</span>
+
+<span class="c1"># Check product catalog</span>
+sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM component_definitions&quot;</span>
+
+<span class="c1"># Check validation rules</span>
+sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM AD_Val_Rule&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="4-running-the-servers">4. Running the Servers<a class="headerlink" href="#4-running-the-servers" title="Permanent link">&para;</a></h2>
+<h3 id="41-bim-designer-server-tcp-port-9876">4.1 BIM Designer Server (TCP, port 9876)<a class="headerlink" href="#41-bim-designer-server-tcp-port-9876" title="Permanent link">&para;</a></h3>
+<p>For Blender addon clients — single-user design mode:</p>
+<div class="highlight"><pre><span></span><code>mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> </span>BonsaiBIMDesigner<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;com.bim.designer.api.DesignerServer&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.args<span class="o">=</span><span class="s2">&quot;library 9876&quot;</span><span class="w"> </span>-q
+</code></pre></div>
+<p>Or from compiled classes:</p>
+<div class="highlight"><pre><span></span><code>java<span class="w"> </span>-cp<span class="w"> </span><span class="s2">&quot;BonsaiBIMDesigner/target/classes:BIMBackOffice/target/classes:DAGCompiler/target/classes:BIM_COBOL/target/classes:IFCtoBOM/target/classes:orm-core/target/classes:</span><span class="k">$(</span>mvn<span class="w"> </span>-q<span class="w"> </span>dependency:build-classpath<span class="w"> </span>-pl<span class="w"> </span>BonsaiBIMDesigner<span class="w"> </span>-Dmdep.outputFile<span class="o">=</span>/dev/stdout<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>com.bim.designer.api.DesignerServer<span class="w"> </span>library<span class="w"> </span><span class="m">9876</span>
+</code></pre></div>
+<p><strong>Protocol:</strong> ndjson over TCP. One JSON object per line, newline-delimited.</p>
+<h3 id="42-back-office-server-http-port-9877">4.2 Back Office Server (HTTP, port 9877)<a class="headerlink" href="#42-back-office-server-http-port-9877" title="Permanent link">&para;</a></h3>
+<p>For multi-project ERP reporting, portfolio, 4D-7D queries:</p>
+<div class="highlight"><pre><span></span><code>java<span class="w"> </span>-cp<span class="w"> </span><span class="s2">&quot;BIMBackOffice/target/classes:orm-core/target/classes:</span><span class="k">$(</span>mvn<span class="w"> </span>-q<span class="w"> </span>dependency:build-classpath<span class="w"> </span>-pl<span class="w"> </span>BIMBackOffice<span class="w"> </span>-Dmdep.outputFile<span class="o">=</span>/dev/stdout<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>com.bim.backoffice.server.BackOfficeServer<span class="w"> </span>library<span class="w"> </span><span class="m">9877</span>
+</code></pre></div>
+<p><strong>Verify:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:9877/api/health
+curl<span class="w"> </span>http://localhost:9877/api/portfolio
+curl<span class="w"> </span>http://localhost:9877/api/cost?id<span class="o">=</span>SH
+</code></pre></div>
+<h3 id="43-datasette-database-browser-erd-http-port-8001">4.3 Datasette — Database Browser &amp; ERD (HTTP, port 8001)<a class="headerlink" href="#43-datasette-database-browser-erd-http-port-8001" title="Permanent link">&para;</a></h3>
+<p>Interactive SQL browser for all project databases. Provides table browsing, ad-hoc SQL queries,
+JSON API, and CSV export — no Java or SQLite CLI needed.</p>
+<p><strong>Install (one-time, in project venv):</strong></p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+pip<span class="w"> </span>install<span class="w"> </span>datasette
+</code></pre></div>
+<p><strong>Launch:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+datasette<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>library/ERP.db<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>library/SH_BOM.db<span class="w"> </span>library/DX_BOM.db<span class="w"> </span>library/TE_BOM.db<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>library/BR_BOM.db<span class="w"> </span>library/RD_BOM.db<span class="w"> </span>library/RL_BOM.db<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>--port<span class="w"> </span><span class="m">8001</span><span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>--setting<span class="w"> </span>sql_time_limit_ms<span class="w"> </span><span class="m">5000</span><span class="w"> </span><span class="p">&amp;</span>
+</code></pre></div>
+<p><strong>Browse:</strong>
+- Home page: <code>http://localhost:8001/</code> — lists all databases and tables
+- Table view: <code>http://localhost:8001/component_library/M_Product</code> — paginated rows
+- SQL console: <code>http://localhost:8001/component_library?sql=SELECT+COUNT(*)+FROM+M_Product</code>
+- JSON API: append <code>.json</code> to any URL for machine-readable output</p>
+<p><strong>Datasette reads SQLite files live</strong> — no restart needed after migrations or recompiles.
+Changes to <code>component_library.db</code>, <code>ERP.db</code>, or <code>*_BOM.db</code> are visible immediately.</p>
+<h3 id="44-all-servers-typical-setup">4.4 All Servers (typical setup)<a class="headerlink" href="#44-all-servers-typical-setup" title="Permanent link">&para;</a></h3>
+<p>Run in separate terminals or background:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Terminal 1: Designer (for Blender)</span>
+mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> </span>BonsaiBIMDesigner<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;com.bim.designer.api.DesignerServer&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.args<span class="o">=</span><span class="s2">&quot;library 9876&quot;</span><span class="w"> </span>-q<span class="w"> </span><span class="p">&amp;</span>
+
+<span class="c1"># Terminal 2: Back Office (for browser/API clients)</span>
+java<span class="w"> </span>-cp<span class="w"> </span><span class="s2">&quot;BIMBackOffice/target/classes:orm-core/target/classes:</span><span class="k">$(</span>mvn<span class="w"> </span>-q<span class="w"> </span>dependency:build-classpath<span class="w"> </span>-pl<span class="w"> </span>BIMBackOffice<span class="w"> </span>-Dmdep.outputFile<span class="o">=</span>/dev/stdout<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>com.bim.backoffice.server.BackOfficeServer<span class="w"> </span>library<span class="w"> </span><span class="m">9877</span><span class="w"> </span><span class="p">&amp;</span>
+
+<span class="c1"># Terminal 3: Datasette (database browser)</span>
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+datasette<span class="w"> </span>library/*.db<span class="w"> </span>--port<span class="w"> </span><span class="m">8001</span><span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--setting<span class="w"> </span>sql_time_limit_ms<span class="w"> </span><span class="m">5000</span><span class="w"> </span><span class="p">&amp;</span>
+</code></pre></div>
+<hr />
+<h2 id="5-running-the-compilation-pipeline">5. Running the Compilation Pipeline<a class="headerlink" href="#5-running-the-compilation-pipeline" title="Permanent link">&para;</a></h2>
+<h3 id="51-rosetta-stone-buildings-full-pipeline">5.1 Rosetta Stone Buildings (full pipeline)<a class="headerlink" href="#51-rosetta-stone-buildings-full-pipeline" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Compile all Rosetta Stone buildings (SH, DX, TE, infrastructure)</span>
+./scripts/run_RosettaStones.sh<span class="w"> </span>classify_sh.yaml<span class="w">    </span><span class="c1"># Sample House</span>
+./scripts/run_RosettaStones.sh<span class="w"> </span>classify_dx.yaml<span class="w">    </span><span class="c1"># Duplex</span>
+./scripts/run_RosettaStones.sh<span class="w"> </span>classify_te.yaml<span class="w">    </span><span class="c1"># Terminal</span>
+./scripts/run_RosettaStones.sh<span class="w"> </span>classify_in.yaml<span class="w">    </span><span class="c1"># Infrastructure</span>
+</code></pre></div>
+<h3 id="52-onboarding-a-new-ifc-building">5.2 Onboarding a New IFC Building<a class="headerlink" href="#52-onboarding-a-new-ifc-building" title="Permanent link">&para;</a></h3>
+<p>To add a new building to the pipeline (zero code changes required):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Generate skeleton YAML + DSL from an extracted reference DB</span>
+mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> </span>IFCtoBOM<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;com.bim.ifctobom.NewBuildingGenerator&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.args<span class="o">=</span><span class="s2">&quot;--prefix XX --type BuildingType --name &#39;Name&#39;&quot;</span><span class="w"> </span>-q
+</code></pre></div>
+<p>Then follow the 8-step process in <strong><a href="../IFC_ONBOARDING_RUNBOOK/">IFC_ONBOARDING_RUNBOOK.md</a></strong> —
+from IFC extraction through gate verification. Proven on 5 Rosetta Stone buildings.</p>
+<p><strong>Quick version</strong> (if YAML + DSL already exist):</p>
+<div class="highlight"><pre><span></span><code>./scripts/run_RosettaStones.sh<span class="w"> </span>classify_xx.yaml
+</code></pre></div>
+<p>Output: <code>library/XX_BOM.db</code> (per-building BOM dictionary).</p>
+<h3 id="53-dagcompiler-compile-bom-to-output">5.3 DAGCompiler (compile BOM to output)<a class="headerlink" href="#53-dagcompiler-compile-bom-to-output" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> </span>DAGCompiler<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;com.bim.compiler.CompilationPipeline&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dbom.db<span class="o">=</span><span class="s2">&quot;library/SH_BOM.db&quot;</span><span class="w"> </span>-q
+</code></pre></div>
+<hr />
+<h2 id="6-blender-bonsai-integration-legacy">6. Blender + Bonsai Integration (legacy)<a class="headerlink" href="#6-blender-bonsai-integration-legacy" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Superseded by the browser Modeller</p>
+<p>The desktop <strong>BIM Designer</strong> (Blender + Bonsai + the Java DesignerServer below) has been <strong>replaced by
+the in-browser <a href="../ModellerGuide/">DAGeVu Modeller</a></strong> — author geometry over a signed op-log, no Blender,
+no server. This section is kept only for the original Blender-based federation workflow.</p>
+</div>
+<p>The legacy BIM Designer GUI runs inside Blender via the <a href="https://bonsaibim.org/">Bonsai</a> addon
+(the open-source OpenBIM toolset). Two components work together:</p>
+<ol>
+<li><strong>Federation Module</strong> — IFC spatial database, clash detection, MEP routing, 4D/5D,
+   digital twin. Pure Python, runs inside Blender. No server needed.</li>
+<li><strong>BIM Designer Server</strong> — Java compilation backend (TCP :9876). Blender sends
+   ndjson commands, Java returns BOM data, compiled geometry, and validation results.</li>
+</ol>
+<h3 id="61-federation-module-setup">6.1 Federation Module Setup<a class="headerlink" href="#61-federation-module-setup" title="Permanent link">&para;</a></h3>
+<p>The Federation module lives in a separate repo (fork of IfcOpenShell/Bonsai):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Clone the federation branch</span>
+git<span class="w"> </span>clone<span class="w"> </span>-b<span class="w"> </span>feature/IFC4_DB<span class="w"> </span>git@github.com:red1oon/IfcOpenShell.git<span class="w"> </span>~/IfcOpenShell
+
+<span class="c1"># 2. Install system dependency (R-tree spatial index)</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>libspatialindex-dev<span class="w">    </span><span class="c1"># Ubuntu/Debian</span>
+<span class="c1"># brew install spatialindex              # macOS</span>
+
+<span class="c1"># 3. Install Python dependency</span>
+pip<span class="w"> </span>install<span class="w"> </span>rtree
+
+<span class="c1"># 4. Register the federation module in Bonsai</span>
+<span class="c1"># Edit: ~/IfcOpenShell/src/bonsai/bonsai/bim/__init__.py</span>
+<span class="c1"># Add to the modules dict:  &quot;federation&quot;: None</span>
+</code></pre></div>
+<p><strong>Addon path:</strong> <code>~/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/</code>
+<strong>Documentation:</strong> <code>federation/README.md</code> (750 lines — full user guide, CLI examples)</p>
+<h3 id="62-blender-addon-activation">6.2 Blender Addon Activation<a class="headerlink" href="#62-blender-addon-activation" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open Blender → Edit → Preferences → Add-ons</li>
+<li>Point to the Bonsai addon directory (<code>~/IfcOpenShell/src/bonsai/</code>)</li>
+<li>Enable "Bonsai BIM" addon</li>
+<li>The Federation module registers automatically (~260 Blender classes)</li>
+<li>Verify: Federation panels appear in the N-panel sidebar</li>
+</ol>
+<h3 id="63-federation-features-no-server-required">6.3 Federation Features (no server required)<a class="headerlink" href="#63-federation-features-no-server-required" title="Permanent link">&para;</a></h3>
+<p>The Federation module preprocesses IFC files into SQLite databases for sub-100ms
+spatial queries inside Blender:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Preprocess IFC files (can run standalone, outside Blender)</span>
+python3<span class="w"> </span>-m<span class="w"> </span>bonsai.bim.module.federation.core.federation_preprocessor<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>model1.ifc<span class="w"> </span>model2.ifc<span class="w"> </span>--output<span class="w"> </span>federation.db
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Panel</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multi-model spatial index</td>
+<td>Setup</td>
+<td>Production</td>
+</tr>
+<tr>
+<td>Clash detection + BCF export</td>
+<td>Clash</td>
+<td>Production</td>
+</tr>
+<tr>
+<td>MEP conduit routing</td>
+<td>MEP</td>
+<td>Production</td>
+</tr>
+<tr>
+<td>4D construction scheduling</td>
+<td>4D</td>
+<td>Production</td>
+</tr>
+<tr>
+<td>5D cost (Bill of Quantities)</td>
+<td>5D</td>
+<td>Production</td>
+</tr>
+<tr>
+<td>Digital Twin (sensors, assets)</td>
+<td>Digital Twin</td>
+<td>Beta</td>
+</tr>
+<tr>
+<td>NLP natural language queries</td>
+<td>NLP</td>
+<td>Beta</td>
+</tr>
+<tr>
+<td>PDF → BIM terrain extraction</td>
+<td>Setup</td>
+<td>Beta</td>
+</tr>
+</tbody>
+</table>
+<h3 id="64-connecting-blender-to-the-bim-designer-server">6.4 Connecting Blender to the BIM Designer Server<a class="headerlink" href="#64-connecting-blender-to-the-bim-designer-server" title="Permanent link">&para;</a></h3>
+<p>Start the Java server (§4.1), then connect from Blender:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># In Blender&#39;s Python console or addon:</span>
+<span class="kn">import</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">json</span>
+
+<span class="n">sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">create_connection</span><span class="p">((</span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="mi">9876</span><span class="p">))</span>
+<span class="n">request</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;listBuildings&quot;</span><span class="p">})</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+<span class="n">sock</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">sock</span><span class="o">.</span><span class="n">makefile</span><span class="p">()</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">response</span><span class="p">))</span>
+</code></pre></div>
+<p><strong>Protocol:</strong> ndjson over TCP. One JSON object per line, newline-delimited.
+Server actions: <code>compile</code>, <code>createNew</code>, <code>verb</code>, <code>snap</code>, <code>save</code>, <code>recall</code>, <code>promote</code>.
+See <a href="BIM_Designer_SRS.md">BIM_Designer_SRS.md</a> for the full wire protocol spec.</p>
+<h3 id="65-putting-it-all-together">6.5 Putting It All Together<a class="headerlink" href="#65-putting-it-all-together" title="Permanent link">&para;</a></h3>
+<p>A typical development setup runs 4 services:</p>
+<div class="highlight"><pre><span></span><code>┌─────────────────┐     TCP :9876      ┌──────────────────────┐
+│  Blender 4.2+   │ ◄──── ndjson ────► │  BIM Designer Server │
+│  + Bonsai addon │                    │  (Java, mvn exec)    │
+│  + Federation   │                    └──────────┬───────────┘
+└────────┬────────┘                               │
+         │ local files                    reads   │
+         ▼                                        ▼
+┌─────────────────┐                    ┌──────────────────────┐
+│  federation.db  │                    │  library/*.db        │
+│  (IFC spatial)  │                    │  component_library.db│
+└─────────────────┘                    │  ERP.db, validation  │
+                                       │  *_BOM.db files      │
+  http://localhost:8001                └──────────────────────┘
+┌─────────────────┐                               │
+│  Datasette      │ ◄── reads SQLite files ───────┘
+│  (DB browser)   │
+└─────────────────┘
+
+  http://localhost:9877
+┌─────────────────┐
+│  BackOffice     │ ◄── portfolio, cost, 4D-7D reports
+│  (HTTP API)     │
+└─────────────────┘
+</code></pre></div>
+<hr />
+<h2 id="7-test-suites">7. Test Suites<a class="headerlink" href="#7-test-suites" title="Permanent link">&para;</a></h2>
+<h3 id="71-full-gate">7.1 Full Gate<a class="headerlink" href="#71-full-gate" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./scripts/run_tests.sh<span class="w">          </span><span class="c1"># All suites</span>
+</code></pre></div>
+<h3 id="72-individual-modules">7.2 Individual Modules<a class="headerlink" href="#72-individual-modules" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./scripts/run_tests.sh<span class="w"> </span>dag<span class="w">      </span><span class="c1"># DAGCompiler (pipeline + gates)</span>
+./scripts/run_tests.sh<span class="w"> </span>orm<span class="w">      </span><span class="c1"># ORMSandbox (DAO layer)</span>
+./scripts/run_tests.sh<span class="w"> </span>topology<span class="w"> </span><span class="c1"># TopologyMaker (grid strategy)</span>
+./scripts/run_tests.sh<span class="w"> </span>cobol<span class="w">    </span><span class="c1"># BIM_COBOL (verb witnesses)</span>
+</code></pre></div>
+<h3 id="73-bonsaibimdesigner-408-tests">7.3 BonsaiBIMDesigner (408 tests)<a class="headerlink" href="#73-bonsaibimdesigner-408-tests" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-pl<span class="w"> </span>BonsaiBIMDesigner<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5
+</code></pre></div>
+<h3 id="74-bimbackoffice-14-tests">7.4 BIMBackOffice (14 tests)<a class="headerlink" href="#74-bimbackoffice-14-tests" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-pl<span class="w"> </span>BIMBackOffice<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5
+</code></pre></div>
+<h3 id="75-tamper-seal-verification">7.5 Tamper Seal Verification<a class="headerlink" href="#75-tamper-seal-verification" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./scripts/verify_test_seal.sh
+</code></pre></div>
+<p>Checks SHA256 fingerprints of 68 critical files. If any have changed since the last seal ceremony, the seal breaks.</p>
+<hr />
+<h2 id="8-wan-deployment-docker">8. WAN Deployment (Docker)<a class="headerlink" href="#8-wan-deployment-docker" title="Permanent link">&para;</a></h2>
+<p>See <a href="../DEPLOYMENT/">DEPLOYMENT.md</a> for full instructions. Quick summary:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Generate TLS certificates</span>
+./deploy/generate-certs.sh
+
+<span class="c1"># Set session signing secret</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">BIM_SESSION_SECRET</span><span class="o">=</span><span class="s2">&quot;your-secret-here&quot;</span>
+
+<span class="c1"># Launch</span>
+docker-compose<span class="w"> </span>up<span class="w"> </span>-d
+
+<span class="c1"># Verify</span>
+curl<span class="w"> </span>-k<span class="w"> </span>https://your-server/api/health
+</code></pre></div>
+<p><strong>Architecture:</strong></p>
+<div class="highlight"><pre><span></span><code>Internet → nginx:443 (TLS) → BackOfficeServer:9877 (HTTP) → SQLite DBs
+                                      ↓
+                               SessionManager
+                               (HMAC tokens, per-DB write locks, WAL mode)
+</code></pre></div>
+<hr />
+<h2 id="9-migration-scripts">9. Migration Scripts<a class="headerlink" href="#9-migration-scripts" title="Permanent link">&para;</a></h2>
+<p>SQL migrations are in <code>migration/</code> — <strong>append-only, never modify existing</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Migration</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ASM001_material_thermal.sql</code></td>
+<td>Thermal conductivity table for U-value calculation</td>
+</tr>
+<tr>
+<td><code>ASM003_ac11_materials.sql</code></td>
+<td>AC11 material properties</td>
+</tr>
+<tr>
+<td><code>DV006b_infra_bridge_rules_fix.sql</code></td>
+<td>Bridge validation rules fix</td>
+</tr>
+<tr>
+<td><code>DV007_infra_road_rules.sql</code></td>
+<td>Road discipline rules (10 rules)</td>
+</tr>
+<tr>
+<td><code>DV008_infra_rail_rules.sql</code></td>
+<td>Rail discipline rules (7 rules)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Running a migration:</strong></p>
+<div class="highlight"><pre><span></span><code>sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span>&lt;<span class="w"> </span>migration/DV007_infra_road_rules.sql
+</code></pre></div>
+<hr />
+<h2 id="10-directory-structure">10. Directory Structure<a class="headerlink" href="#10-directory-structure" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>BIMCompiler/
+├── orm-core/              # Base ORM, BIMLogger, shared utilities
+├── ORMSandbox/            # DAO smoke tests, BuildingInspector
+├── DAGCompiler/           # 11-stage compilation pipeline (G1-G6 gates)
+├── 2D_Layout/             # Floor plan generation
+├── TopologyMaker/         # Grid strategy, production order lifecycle
+├── BIM_COBOL/             # 77 domain verbs, witness engine
+├── IFCtoBOM/              # IFC extraction → BOM database pipeline
+├── BIMBackOffice/         # ERP reporting, sessions, portfolio, 4D-7D
+├── BonsaiBIMDesigner/     # GUI server, validation, assembly, placement
+├── library/               # SQLite databases (product catalog, BOMs)
+├── migration/             # SQL migration scripts (append-only)
+├── scripts/               # Build, test, and audit shell scripts
+├── deploy/                # nginx config, TLS cert generator
+├── docs/                  # All specifications and analysis documents
+├── docker-compose.yml     # WAN deployment
+├── Dockerfile             # Multi-stage build
+└── pom.xml                # Parent POM (9 modules)
+</code></pre></div>
+<hr />
+<h2 id="11-troubleshooting">11. Troubleshooting<a class="headerlink" href="#11-troubleshooting" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mvn compile</code> fails</td>
+<td>Missing JDK 17</td>
+<td>Install OpenJDK 17: <code>sudo apt install openjdk-17-jdk</code></td>
+</tr>
+<tr>
+<td><code>sqlite3: command not found</code></td>
+<td>SQLite CLI not installed</td>
+<td><code>sudo apt install sqlite3</code></td>
+</tr>
+<tr>
+<td>Port 9876/9877 in use</td>
+<td>Server already running</td>
+<td><code>lsof -i :9876</code> then kill the process</td>
+</tr>
+<tr>
+<td><code>ClassNotFoundException</code></td>
+<td>Incomplete build</td>
+<td><code>mvn compile -q</code> (compile all modules first)</td>
+</tr>
+<tr>
+<td>Test seal BROKEN</td>
+<td>Files changed since last seal</td>
+<td>Expected during development; run <code>./scripts/verify_test_seal.sh</code> to see which files</td>
+</tr>
+<tr>
+<td><code>No such database: XX_BOM.db</code></td>
+<td>BOM not extracted yet</td>
+<td>Run <code>./scripts/run_RosettaStones.sh classify_xx.yaml</code></td>
+</tr>
+<tr>
+<td>IfcOpenShell import error</td>
+<td>Python package missing</td>
+<td><code>pip install ifcopenshell</code> or use conda</td>
+</tr>
+<tr>
+<td>Blender addon not showing</td>
+<td>Addon not enabled</td>
+<td>Blender → Preferences → Add-ons → search "Bonsai" → enable</td>
+</tr>
+<tr>
+<td>CORS errors in browser</td>
+<td>Direct access without proxy</td>
+<td>Use nginx proxy (see DEPLOYMENT.md) or add <code>--cors</code> flag</td>
+</tr>
+<tr>
+<td><code>HMAC signing failed</code></td>
+<td>JDK crypto issue</td>
+<td>Ensure standard JDK (not headless-minimal)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-environment-variables">12. Environment Variables<a class="headerlink" href="#12-environment-variables" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BIM_SESSION_SECRET</code></td>
+<td>(random per JVM)</td>
+<td>HMAC-SHA256 key for session token signing</td>
+</tr>
+<tr>
+<td><code>BIM_LIBRARY_DIR</code></td>
+<td><code>./library</code></td>
+<td>Path to database directory</td>
+</tr>
+<tr>
+<td><code>BIM_LOG_LEVEL</code></td>
+<td><code>INFO</code></td>
+<td>Logging level (DEBUG, INFO, WARN, ERROR)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="13-verification-checklist">13. Verification Checklist<a class="headerlink" href="#13-verification-checklist" title="Permanent link">&para;</a></h2>
+<p>After installation, verify each layer:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Build compiles</span>
+mvn<span class="w"> </span>compile<span class="w"> </span>-q<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;BUILD OK&quot;</span>
+
+<span class="c1"># 2. Databases accessible</span>
+sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM component_definitions&quot;</span>
+<span class="c1"># Expected: 23,888</span>
+
+<span class="c1"># 3. Tests pass</span>
+mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-pl<span class="w"> </span>BIMBackOffice<span class="w"> </span>-Dtest<span class="o">=</span><span class="s2">&quot;BackOfficeServerTest&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Tests run&quot;</span>
+<span class="c1"># Expected: Tests run: 14, Failures: 0</span>
+
+<span class="c1"># 4. Designer server starts</span>
+timeout<span class="w"> </span><span class="m">5</span><span class="w"> </span>mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> </span>BonsaiBIMDesigner<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;com.bim.designer.api.DesignerServer&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.args<span class="o">=</span><span class="s2">&quot;library 9876&quot;</span><span class="w"> </span>-q<span class="w"> </span><span class="p">&amp;</span>
+sleep<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;{&quot;action&quot;:&quot;listBuildings&quot;}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>nc<span class="w"> </span>-w2<span class="w"> </span>localhost<span class="w"> </span><span class="m">9876</span>
+<span class="nb">kill</span><span class="w"> </span>%1<span class="w"> </span><span class="m">2</span>&gt;/dev/null
+
+<span class="c1"># 5. Back Office server starts</span>
+curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:9877/api/health<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">&quot;UP&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;BACKOFFICE OK&quot;</span>
+
+<span class="c1"># 6. Rosetta Stone compiles</span>
+./scripts/run_RosettaStones.sh<span class="w"> </span>classify_sh.yaml<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3
+</code></pre></div>
+<hr />
+<h2 id="14-erd-diagrams-database-browsing">14. ERD Diagrams &amp; Database Browsing<a class="headerlink" href="#14-erd-diagrams-database-browsing" title="Permanent link">&para;</a></h2>
+<h3 id="141-datasette-live-database-erd-port-8001">14.1 Datasette — Live Database ERD (port 8001)<a class="headerlink" href="#141-datasette-live-database-erd-port-8001" title="Permanent link">&para;</a></h3>
+<p>Datasette (§4.3) serves as the <strong>live ERD and data browser</strong>. Every table's schema, foreign keys,
+and row counts are visible at <code>http://localhost:8001/</code>. No manual refresh needed — Datasette
+reads SQLite files directly, so schema changes from migrations or table drops are reflected
+immediately.</p>
+<table>
+<thead>
+<tr>
+<th>URL</th>
+<th>What it shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>http://localhost:8001/</code></td>
+<td>All databases, table counts</td>
+</tr>
+<tr>
+<td><code>http://localhost:8001/component_library</code></td>
+<td>All 80 tables with row counts and schema</td>
+</tr>
+<tr>
+<td><code>http://localhost:8001/ERP</code></td>
+<td>All 52 discipline-validation &amp; MEP metadata tables</td>
+</tr>
+<tr>
+<td><code>http://localhost:8001/SH_BOM</code></td>
+<td>Sample House BOM structure</td>
+</tr>
+<tr>
+<td><code>http://localhost:8001/component_library/M_Product</code></td>
+<td>Paginated product catalog rows</td>
+</tr>
+</tbody>
+</table>
+<h3 id="142-interactive-architecture-viz-html">14.2 Interactive Architecture Viz (HTML)<a class="headerlink" href="#142-interactive-architecture-viz-html" title="Permanent link">&para;</a></h3>
+<p>One interactive ERD in <code>database/</code> — clickable tables with detail panels, compilation pipeline, BOM tree:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Content</th>
+<th>How to View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>database/bim_architecture_viz.html</code></td>
+<td>4-DB architecture, clickable tables, pipeline steps, BOM tree</td>
+<td>Open in any browser</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Full schema reference:</strong> <code>database/DATABASE_SCHEMA.md</code> — complete table inventory with purpose, Java access, and review status.</p>
+<p><strong>Serving on a network:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>database<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8080</span>
+<span class="c1"># Browse: http://localhost:8080/bim_architecture_viz.html</span>
+</code></pre></div>
+<h3 id="when-to-refresh">When to refresh<a class="headerlink" href="#when-to-refresh" title="Permanent link">&para;</a></h3>
+<p>The architecture viz is <strong>hand-authored HTML</strong> — update when tables are added/dropped.
+For live schema inspection, use Datasette instead (§4.3).</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Schema snapshot for comparison</span>
+sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="s2">&quot;.schema&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>database/schema_snapshot_component_library.sql
+</code></pre></div>
+<hr />
+<h2 id="15-database-schema-reference">15. Database Schema Reference<a class="headerlink" href="#15-database-schema-reference" title="Permanent link">&para;</a></h2>
+<p>Full table inventory with purpose, Java access patterns, and review status:
+<strong><a href="https://github.com/red1oon/BIMCompiler/blob/master/database/DATABASE_SCHEMA.md"><code>database/DATABASE_SCHEMA.md</code></a></strong></p>
+<p>Quick summary: component_library.db (80 tables), ERP.db (52 tables),
+validation.db (9 tables), {PREFIX}_BOM.db (~11 tables per building), output.db (written fresh each compile).</p>
+<hr />
+<h2 id="16-docker-what-to-containerize">16. Docker — What to Containerize<a class="headerlink" href="#16-docker-what-to-containerize" title="Permanent link">&para;</a></h2>
+<h3 id="what-docker-is-for">What Docker is for<a class="headerlink" href="#what-docker-is-for" title="Permanent link">&para;</a></h3>
+<p>Docker wraps the <strong>Back Office HTTP server</strong> for WAN deployment. This is the only component that needs containerization — it's a stateless API server with SQLite databases mounted as a volume.</p>
+<h3 id="what-docker-is-not-for">What Docker is NOT for<a class="headerlink" href="#what-docker-is-not-for" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Why not Docker</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Blender + BIM Designer</td>
+<td>Desktop GUI, needs OpenGL/GPU, user interaction</td>
+</tr>
+<tr>
+<td>IFCtoBOM extraction</td>
+<td>Batch CLI, runs once per building, needs local IFC files</td>
+</tr>
+<tr>
+<td>DAGCompiler pipeline</td>
+<td>Batch CLI, runs once per compile, development tool</td>
+</tr>
+<tr>
+<td>Test suites</td>
+<td>Development-time only, need full Maven + JDK</td>
+</tr>
+<tr>
+<td>Migration scripts</td>
+<td>One-shot <code>sqlite3</code> commands, run locally</td>
+</tr>
+</tbody>
+</table>
+<h3 id="docker-architecture">Docker architecture<a class="headerlink" href="#docker-architecture" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────┐
+│                  WAN / Internet                  │
+└────────────────────┬────────────────────────────┘
+                     │
+         ┌───────────▼───────────┐
+         │   nginx:443 (TLS)     │  ← docker-compose service
+         │   SSL termination     │
+         └───────────┬───────────┘
+                     │
+         ┌───────────▼───────────┐
+         │  BackOfficeServer     │  ← docker-compose service
+         │  :9877 (HTTP)         │
+         │  HMAC session tokens  │
+         └───────────┬───────────┘
+                     │
+         ┌───────────▼───────────┐
+         │  /data/library/       │  ← bind-mounted volume
+         │  component_library.db │
+         │  ERP.db, validation   │
+         │  *_BOM.db files       │
+         └───────────────────────┘
+</code></pre></div>
+<h3 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Build</span>
+docker-compose<span class="w"> </span>build
+
+<span class="c1"># 2. Set HMAC secret (production — don&#39;t skip this)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">BIM_SESSION_SECRET</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="c1"># 3. Generate TLS certs (if not using Let&#39;s Encrypt)</span>
+./deploy/generate-certs.sh
+
+<span class="c1"># 4. Launch</span>
+docker-compose<span class="w"> </span>up<span class="w"> </span>-d
+
+<span class="c1"># 5. Verify</span>
+curl<span class="w"> </span>-k<span class="w"> </span>https://localhost/api/health
+docker-compose<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>backoffice
+</code></pre></div>
+<h3 id="updating-databases-in-docker">Updating databases in Docker<a class="headerlink" href="#updating-databases-in-docker" title="Permanent link">&para;</a></h3>
+<p>The <code>library/</code> directory is bind-mounted, so database updates are live:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run a migration against the mounted volume</span>
+sqlite3<span class="w"> </span>./library/ERP.db<span class="w"> </span>&lt;<span class="w"> </span>migration/DV008_infra_rail_rules.sql
+
+<span class="c1"># Recompile a building (output goes to same library/)</span>
+./scripts/run_RosettaStones.sh<span class="w"> </span>classify_sh.yaml
+
+<span class="c1"># No container restart needed — SQLite reads see changes immediately</span>
+</code></pre></div>
+<hr />
+<p><em>For the project overview paper, see <a href="../BIMERPPaper/">BIMERPPaper.md</a>.</em>
+<em>For the end-user installer specification, see <a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/INSTALLER_SPEC.md">INSTALLER_SPEC.md</a>.</em>
+<em>For the WAN/Docker deployment guide, see <a href="../DEPLOYMENT/">DEPLOYMENT.md</a>.</em></p>
 <p><em>Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
 

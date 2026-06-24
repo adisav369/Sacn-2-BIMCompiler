@@ -1331,6 +1331,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#system-monitor-paradigm-vitals-the-deploy-version-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Monitor — paradigm vitals &amp; the deploy version (LIVE)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="System Monitor — paradigm vitals &amp; the deploy version (LIVE)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#field-health-paradigm-vitals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field health · paradigm vitals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-release-row-the-deployed-build-linked-to-its-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Release row — the deployed build, linked to its release
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#11-clearing-cache-resetting-demo-data" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4383,6 +4422,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#system-monitor-paradigm-vitals-the-deploy-version-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Monitor — paradigm vitals &amp; the deploy version (LIVE)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="System Monitor — paradigm vitals &amp; the deploy version (LIVE)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#field-health-paradigm-vitals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field health · paradigm vitals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-release-row-the-deployed-build-linked-to-its-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Release row — the deployed build, linked to its release
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#11-clearing-cache-resetting-demo-data" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5008,7 +5086,27 @@ anything you can see. You make it <strong>4D</strong> by <strong>binding</strong
 elements it builds (rename-proof — the link survives a model re-export). Once bound, the 5D cost folds up
 from the assigned elements and the Time Machine scrubs the model along your imported dates. <em>This binding
 step is exactly the thing a P6 reporting tool cannot do — it has no model to bind to.</em></p>
+<p><strong>Auto-bind by convention — skip the manual first pass.</strong> Because the planner controls the activity
+<em>name</em> in P6/MS Project, they can write the binding <strong>into the file</strong> as a short token appended to the
+name:</p>
+<div class="highlight"><pre><span></span><code>@&lt;discipline&gt;:&lt;IfcClass&gt;[|&lt;IfcClass&gt;…][:&lt;storey&gt;]
+</code></pre></div>
+<p>For example <code>Columns @STR:IfcColumn</code>, <code>Structural Framing @STR:IfcMember|IfcBeam</code>, or
+<code>Internal Finishes @ARC:IfcCovering:Level 3</code>. On import, tick <strong>“auto-bind by convention”</strong> (next to the
+<strong>⤓ Import P6</strong> button) and the importer parses each token <strong>off</strong> the name (the WBS still shows the clean
+label, e.g. <code>Columns</code>), resolves it against your model — <em>all</em> elements whose <code>discipline</code>/<code>IfcClass</code>/<code>storey</code>
+match — and pre-binds the task. You get a reviewable first pass instead of clicking every task. It is
+<strong>coarse on purpose</strong>: <code>@STR:IfcColumn</code> binds <em>all</em> columns to one task; refine to per-level sub-tasks with
+<strong>break-down by storey</strong> in the editor. Two honest constraints make this safe, not a guess: the token is a
+<strong>declared predicate we execute</strong> — <em>not</em> an embedded GUID (which would rot the moment the model is
+re-exported) and <em>not</em> a fuzzy name match (which guesses). A selector survives a re-export where a baked
+GUID list would bind nothing; anything a selector can’t resolve is <em>reported</em> (“N selector(s) matched
+nothing — review”), never silently dropped. The pre-bind is the same signed, rename-proof <code>task_elements</code>
+link as a manual bind — you can adjust or clear it per task.</p>
 <blockquote>
+<p><strong>Demo files (self-binding).</strong> Alongside the plain demo programmes, the tokened variants
+<code>tests/fixtures/Hospital_GW_Programme.bound.xer</code> / <code>.bound.xml</code> carry the <code>@disc:class</code> tokens, so the
+import is self-binding with the checkbox on — no sidecar needed.</p>
 <p><strong>Demo files.</strong> The same ready GW-Hospital programme ships in all three formats —
 <code>tests/fixtures/Hospital_GW_Programme.xer</code> (P6 XER), <code>…/Hospital_GW_Programme.xml</code> (P6 PMXML) and
 <code>…/Hospital_GW_MSProject.xml</code> (MS Project MSPDI) — so you can try the import end-to-end on the sample
@@ -5016,6 +5114,15 @@ model. <em>(Proven by <code>W-FGN</code> 28/28 on the real Hospital model — ev
 reproduces the plan's 300-day critical path exactly, and 525 real elements bind and fold to 5D cost;
 plus the <code>§SE-IMPORT-SMOKE</code> 7/7 headless UI check.)</em></p>
 </blockquote>
+<p><strong>Does it survive a <em>real</em> P6 file?</strong> The Hospital demo above is <em>ours</em> — useful to learn the flow, but it
+can't prove fidelity against quirks only a real export carries (a tool can't grade its own homework). So
+the import is also witnessed against a <strong>genuinely Primavera-emitted</strong> <code>.xer</code> (a public, cited sample, 52
+tasks / 61 links — fetched at test time, never shipped). The result (<code>W-REAL-PARSE</code>/<code>W-REAL-CPM</code>, 12/12):
+every record parses with <strong>zero unmapped links and zero dangling references</strong>, and our critical path
+<strong>exactly matches P6's own</strong> (<code>driving_path_flag</code>, 52/52). The one honest gap: the imported <em>dates</em> land a
+few days early on long chains because we count <strong>calendar days</strong> while P6 follows a <strong>working calendar</strong>
+(skipping weekends/holidays). We report that offset rather than hide it — it's a <strong>smaller, named gap</strong>
+than before, and modelling the working calendar is a clean follow-up for a later project.</p>
 <hr />
 <h2 id="3-the-bottom-pill-bar-cheat-sheet">3. The Bottom Pill Bar (cheat sheet)<a class="headerlink" href="#3-the-bottom-pill-bar-cheat-sheet" title="Permanent link">&para;</a></h2>
 <p>The pill is the single entry point for every tool. Left-to-right:</p>
@@ -5554,6 +5661,52 @@ warehouse-confirm gate first.</p>
 <p>Tap the <strong>⌂ share</strong> route from the Warehouse pill action or the viewer share button to copy
 the short GH Pages URL for this walk session. The URL is self-contained — opening it on a phone
 immediately lands on the spatial model ready for the walk.</p>
+<hr />
+<h2 id="system-monitor-paradigm-vitals-the-deploy-version-live">System Monitor — paradigm vitals &amp; the deploy version  <em>(LIVE)</em><a class="headerlink" href="#system-monitor-paradigm-vitals-the-deploy-version-live" title="Permanent link">&para;</a></h2>
+<p>iDempiere ships a <strong>System Monitor</strong> (the <code>/idempiere-monitor</code> servlet) where an admin watches Memory,
+Cache, Logs/Trace, Servers, Cluster and Database. Kernel-ERP keeps the <em>same sections</em> but on a serverless
+browser kernel — so each one shows <strong>your real device value</strong> where one exists, and an honest <strong>"No longer
+needed"</strong> badge where the server is simply gone (background processors, cluster nodes, the Postgres host).</p>
+<p><strong>Open it:</strong> on the login card, the info panel → <strong>System Monitor</strong> (it's also reachable in-session). Nothing
+is faked — where the browser doesn't expose a number (e.g. JS heap on Firefox) the row says <code>n/a</code>.</p>
+<h3 id="field-health-paradigm-vitals">Field health · paradigm vitals<a class="headerlink" href="#field-health-paradigm-vitals" title="Permanent link">&para;</a></h3>
+<p>A classic ERP watches a <em>server's</em> vitals (CPU, heap, connection pool). With no server, you watch the
+<strong>paradigm's</strong> vitals instead — four widgets, each folded from a <strong>real live signal</strong> (never invented), each
+with a status dot:</p>
+<table>
+<thead>
+<tr>
+<th>Widget</th>
+<th>What it tells the SysAdmin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Field errors</strong></td>
+<td>Uncaught errors captured <strong>this session</strong> (the G2 remedy — silent field failures are surfaced, not swallowed). Green <code>0</code> = a clean run.</td>
+</tr>
+<tr>
+<td><strong>Durability</strong></td>
+<td>The offline op queue: how many edits are <strong>relayed (durable)</strong> vs still <strong>in-flight</strong>. The A1 safety invariant holds — an unsynced op is <strong>never</strong> shown as "safe".</td>
+</tr>
+<tr>
+<td><strong>Op-log DB</strong></td>
+<td>The signed op-log's real size (<code>PRAGMA page_count × page_size</code>) against the in-memory <strong>200 MB</strong> ceiling, with headroom — the reassuring "you're nowhere near the wall" optic. Reads <code>n/a</code> until a tenant has folded a rule or posted a doc.</td>
+</tr>
+<tr>
+<td><strong>Environment</strong></td>
+<td>The storage backend the device actually negotiated — <strong>OPFS</strong> when cross-origin-isolated, else <strong>IndexedDB</strong> (named honestly, e.g. <em>"OPFS API present but NOT crossOriginIsolated → IndexedDB VFS"</em> on GitHub Pages).</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="The System Monitor's **Field health · paradigm vitals** group on a live device — four widgets, each folded from a real signal with a status dot: **Field errors** (0, clean session), **Durability**, **Op-log DB** (its real ceiling), and **Environment** (IDB on a non-isolated origin). Below, the iDempiere-faithful Memory / Cache / Logs sections carry real device numbers or an honest &quot;No longer needed&quot; reframe. *(The **Release** row here is a pre-stamp snapshot reading &quot;(uncontrolled)&quot;; post-deploy it reads the live vNNN — see below.)*" src="../figs/system_monitor_field_health.png" /></p>
+<h3 id="the-release-row-the-deployed-build-linked-to-its-release">The Release row — the deployed build, linked to its release<a class="headerlink" href="#the-release-row-the-deployed-build-linked-to-its-release" title="Permanent link">&para;</a></h3>
+<p>The <strong>Release</strong> row reads the version that is actually deployed to this device (the service-worker
+<code>CACHE_VERSION</code>, e.g. <code>v753</code>) and links to that build's <strong>GitHub Release</strong> page — the release notes are the
+merge commit, so the link literally shows <em>what was last shipped</em>. Releases are <strong>cut automatically at deploy</strong>:
+a new <code>vNNN</code> can't go live without its release page existing. (Earlier builds briefly showed "(uncontrolled)"
+in the moment right after a service-worker update — before the page was controlled again; the version is now
+stamped deterministically so the row always tells the truth.)</p>
 <hr />
 <h2 id="11-clearing-cache-resetting-demo-data">11. Clearing Cache / Resetting Demo Data<a class="headerlink" href="#11-clearing-cache-resetting-demo-data" title="Permanent link">&para;</a></h2>
 <p>The app state lives in <strong>IndexedDB</strong> (key <code>bim_erp_db</code>, version 14). To reset to a clean demo:</p>
