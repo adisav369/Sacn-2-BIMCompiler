@@ -1,0 +1,5232 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../DistributedERP/">
+      
+      
+        <link rel="next" href="../ERP_COVERAGE_MATRIX/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Production Risks & Test Plan - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#production-readiness-risk-register-test-plan" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Production Risks & Test Plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  The 3 Apps
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../FoldEngineBlackBook.html" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Go Deeper
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FeatureComparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Feature Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MigrateComparisonPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrate & Compare (ERP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bench_suite.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark Comparison (live)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../age_demo.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Does Your ERP Age? (live)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AboutMore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About BIM OOTB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute (start here)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The 3 Apps
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    The 3 Apps
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Viewer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ModellerGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DAGeVu Modeller Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERPUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kernel-ERP User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Go Deeper
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Go Deeper
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FoldEngineBlackBook.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold Engine Black Book (dev manual)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HolyGrail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Holy Grail (editable rules, live)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERPConceptRosetta.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-ERP Rosetta Stone (concept + cost)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (77 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ModellerKernelFold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prior Art — Geometry as Signed-Log Fold
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4D5DAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4D/5D Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMtoProject/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM → Project Order (ERP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ShipYard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond Buildings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HospitalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hospital (HA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RevitAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Revit MEP (RM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StressTest_1M/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1M Stress Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACDOCA_FOLD_PLAN/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ACDOCA Fold Plan (SAP headline)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FoldEngineQuality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Code Quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FoldEngineConstraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Constraints
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial ERP
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spatial ERP
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SpatialERP_OOTB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Every Record Has a Place
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SpatialERP_POC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction ERP POC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD-in-Browser (iDempiere)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IDEMPIERE_2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    iDempiere 2.0 — the Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PLUGIN_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Architecture (metadata-first)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ENGINE_CONTRACT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engine ↔ UI Contract (the seam)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ReadMeShowMe/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReadMe / ShowMe Help (POC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HelpO2C/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    O2C Help Steps (ReadMe)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_Roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Forward Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap & Papers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap & Papers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PROJECT_CHRONOLOGY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Chronology (dates + commits)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VibeProgramming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vibe Programming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OpLogERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Op-Log ERP Engine (Abstract)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EnablingTechTimeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enabling-Tech Timeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LocalFirstPriorArt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local-First Prior Art
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DistributedERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Risks & Test Plan
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Risks & Test Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-this-document-is-disciplined" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How this document is disciplined
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-we-gave-up-and-what-now-must-replace-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What we gave up, and what now must replace it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#severity-status-legend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Severity &amp; status legend
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#master-register-read-this-then-drill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Master register (read this, then drill)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-durability-data-loss-replacing-fsync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A. Durability &amp; data loss — replacing fsync
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="A. Durability &amp; data loss — replacing fsync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a1-eviction-async-durability-loss-window-s1-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A1 — Eviction × async-durability loss window · S1 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-lost-sequencer-relay-s1-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2 — Lost sequencer / relay · S1 · ✅ EXISTS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a3-lost-signing-key-the-floor-s1s4-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A3 — Lost signing key (the floor) · S1/S4 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#b-capacity-performance-replacing-the-db-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B. Capacity &amp; performance — replacing the DB engine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="B. Capacity &amp; performance — replacing the DB engine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#b1-in-memory-ram-ceiling-s2s3-to-build-the-top-capacity-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B1 — In-memory RAM ceiling · S2/S3 · 🔴 TO BUILD (the top capacity gap)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b2-first-load-cold-start-wasm-db-hydrate-s3-to-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B2 — First-load cold start (WASM + DB hydrate) · S3 · 🔴 TO BUILD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b3-indexeddb-1gb-cap-opfs-gated-by-coop-coep-s2-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B3 — IndexedDB ~1GB cap / OPFS gated by COOP-COEP · S2 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#c-environment-heterogeneity-replacing-the-controlled-server-os" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C. Environment heterogeneity — replacing the controlled server OS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="C. Environment heterogeneity — replacing the controlled server OS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c1-safariios-heterogeneity-eviction-s1s2-to-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C1 — Safari/iOS heterogeneity &amp; eviction · S1/S2 · 🔴 TO BUILD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c2-browser-library-api-drift-s2-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C2 — Browser / library API drift · S2 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-correctness-determinism-replacing-server-side-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D. Correctness &amp; determinism — replacing server-side enforcement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="D. Correctness &amp; determinism — replacing server-side enforcement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#d1-nondeterminism-creep-replay-divergence-s1-exists-guard-it-forever" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D1 — Nondeterminism creep → replay divergence · S1 · ✅ EXISTS (guard it forever)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d2-schema-migration-to-n-offline-clients-s1-to-build-the-category-wide-hard-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D2 — Schema migration to N offline clients · S1 · 🔴 TO BUILD (the category-wide hard one)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d3-cas-sliver-cross-branch-arbitration-s1-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D3 — CAS sliver / cross-branch arbitration · S1 · ✅ EXISTS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d4-relay-equivocation-s1-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D4 — Relay equivocation · S1 · ✅ EXISTS
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#e-security-compliance-replacing-the-server-trust-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E. Security &amp; compliance — replacing the server trust boundary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="E. Security &amp; compliance — replacing the server trust boundary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#e1-key-custody-rotation-revoke-recovery-s4-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E1 — Key custody / rotation / revoke / recovery · S4 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2-right-to-erasure-on-an-immutable-log-gdprccpa-s4-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E2 — Right-to-erasure on an immutable log (GDPR/CCPA) · S4 · ✅ EXISTS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e3-bearer-token-forwarding-credit-s4-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E3 — Bearer-token forwarding (credit) · S4 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#f-integration-fidelity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F. Integration fidelity
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="F. Integration fidelity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f1-web-ifc-import-fidelity-s3-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F1 — web-ifc import fidelity · S3 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#g-operations-replacing-dockers-maturity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G. Operations — replacing Docker's maturity
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="G. Operations — replacing Docker&#39;s maturity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#g1-relay-operation-idempotency-retry-dr-s2-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G1 — Relay operation: idempotency / retry / DR · S2 · ✅ EXISTS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#g2-observability-without-a-server-to-read-s2-to-build-the-operational-blind-spot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G2 — Observability without a server to read · S2 · 🔴 TO BUILD (the operational blind spot)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#g3-release-rollback-swjs-cache-versioning-s2-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G3 — Release / rollback (sw.js cache, versioning) · S2 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-gap-summary-what-blocks-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The gap summary — what blocks production
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-execution-plan-how-per-the-projects-law" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test execution plan (how, per the project's law)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Governance
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_COVERAGE_MATRIX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Coverage Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GapClosureSpec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gap-Closure Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ERP_MODEL_ARCHETYPE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Model Archetype
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../POS_ADDON_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    POS Addon Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_PICKING_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Picking Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Last Mile
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9 Gates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIMEyes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    More Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    More Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RouteTemplate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Find and Navigate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RTreeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    City-Scale RTree
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Localization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-this-document-is-disciplined" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How this document is disciplined
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-we-gave-up-and-what-now-must-replace-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What we gave up, and what now must replace it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#severity-status-legend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Severity &amp; status legend
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#master-register-read-this-then-drill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Master register (read this, then drill)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-durability-data-loss-replacing-fsync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A. Durability &amp; data loss — replacing fsync
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="A. Durability &amp; data loss — replacing fsync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a1-eviction-async-durability-loss-window-s1-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A1 — Eviction × async-durability loss window · S1 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a2-lost-sequencer-relay-s1-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A2 — Lost sequencer / relay · S1 · ✅ EXISTS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a3-lost-signing-key-the-floor-s1s4-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A3 — Lost signing key (the floor) · S1/S4 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#b-capacity-performance-replacing-the-db-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B. Capacity &amp; performance — replacing the DB engine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="B. Capacity &amp; performance — replacing the DB engine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#b1-in-memory-ram-ceiling-s2s3-to-build-the-top-capacity-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B1 — In-memory RAM ceiling · S2/S3 · 🔴 TO BUILD (the top capacity gap)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b2-first-load-cold-start-wasm-db-hydrate-s3-to-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B2 — First-load cold start (WASM + DB hydrate) · S3 · 🔴 TO BUILD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b3-indexeddb-1gb-cap-opfs-gated-by-coop-coep-s2-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B3 — IndexedDB ~1GB cap / OPFS gated by COOP-COEP · S2 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#c-environment-heterogeneity-replacing-the-controlled-server-os" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C. Environment heterogeneity — replacing the controlled server OS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="C. Environment heterogeneity — replacing the controlled server OS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c1-safariios-heterogeneity-eviction-s1s2-to-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C1 — Safari/iOS heterogeneity &amp; eviction · S1/S2 · 🔴 TO BUILD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c2-browser-library-api-drift-s2-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C2 — Browser / library API drift · S2 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d-correctness-determinism-replacing-server-side-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D. Correctness &amp; determinism — replacing server-side enforcement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="D. Correctness &amp; determinism — replacing server-side enforcement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#d1-nondeterminism-creep-replay-divergence-s1-exists-guard-it-forever" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D1 — Nondeterminism creep → replay divergence · S1 · ✅ EXISTS (guard it forever)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d2-schema-migration-to-n-offline-clients-s1-to-build-the-category-wide-hard-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D2 — Schema migration to N offline clients · S1 · 🔴 TO BUILD (the category-wide hard one)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d3-cas-sliver-cross-branch-arbitration-s1-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D3 — CAS sliver / cross-branch arbitration · S1 · ✅ EXISTS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d4-relay-equivocation-s1-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D4 — Relay equivocation · S1 · ✅ EXISTS
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#e-security-compliance-replacing-the-server-trust-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E. Security &amp; compliance — replacing the server trust boundary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="E. Security &amp; compliance — replacing the server trust boundary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#e1-key-custody-rotation-revoke-recovery-s4-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E1 — Key custody / rotation / revoke / recovery · S4 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2-right-to-erasure-on-an-immutable-log-gdprccpa-s4-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E2 — Right-to-erasure on an immutable log (GDPR/CCPA) · S4 · ✅ EXISTS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e3-bearer-token-forwarding-credit-s4-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        E3 — Bearer-token forwarding (credit) · S4 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#f-integration-fidelity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F. Integration fidelity
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="F. Integration fidelity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#f1-web-ifc-import-fidelity-s3-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        F1 — web-ifc import fidelity · S3 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#g-operations-replacing-dockers-maturity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G. Operations — replacing Docker's maturity
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="G. Operations — replacing Docker&#39;s maturity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#g1-relay-operation-idempotency-retry-dr-s2-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G1 — Relay operation: idempotency / retry / DR · S2 · ✅ EXISTS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#g2-observability-without-a-server-to-read-s2-to-build-the-operational-blind-spot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G2 — Observability without a server to read · S2 · 🔴 TO BUILD (the operational blind spot)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#g3-release-rollback-swjs-cache-versioning-s2-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        G3 — Release / rollback (sw.js cache, versioning) · S2 · 🟡 PARTIAL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-gap-summary-what-blocks-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The gap summary — what blocks production
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-execution-plan-how-per-the-projects-law" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test execution plan (how, per the project's law)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Governance
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="production-readiness-risk-register-test-plan">Production Readiness — Risk Register &amp; Test Plan<a class="headerlink" href="#production-readiness-risk-register-test-plan" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><em>"The Angel Must Be Tested First."</em>
+We left the devil we knew — a Postgres container, a JVM app server, Docker's operational maturity, fsync durability, a server that enforces every rule. Those were <em>evil comforts</em>: heavy, costly, always-on — but battle-proven, and their failure modes are a generation old and well-charted. This architecture trades them for something lighter and, on paper, better: no server of record, compute on the client, durability in a signed log (<a href="../DistributedERP/">DistributedERP §0</a>). <strong>That trade is only real once each comfort we removed has a replacement we have <em>tested to failure</em>.</strong> This document is that test list. It is a pre-mortem, not a brochure.</p>
+</blockquote>
+<h2 id="how-this-document-is-disciplined">How this document is disciplined<a class="headerlink" href="#how-this-document-is-disciplined" title="Permanent link">&para;</a></h2>
+<p>Per the project's prime rule (<em>deterministic, non-invent, extract</em>) and its testing law (<em>every test names the issue it proves or disproves</em>), every risk below carries a <strong>test plan</strong>, and every test is tagged with its honest status:</p>
+<ul>
+<li><strong>✅ EXISTS</strong> — a named witness already proves/disproves it (cite the <code>poc_*.js</code> / <code>W-*</code> / <code>§</code>-log).</li>
+<li><strong>🟡 PARTIAL</strong> — a witness covers part of it; the production-grade case is not yet exercised.</li>
+<li><strong>🔴 TO BUILD</strong> — <em>this is a gap</em>. No test exists. Until it does, the risk is <strong>unverified</strong> and the feature is <strong>not production-ready</strong> on that axis.</li>
+</ul>
+<p><strong>The 🔴 rows are the real output of this document.</strong> A green register is the goal; today's reds are the work-to-zero before a paying tenant. We do not ship an axis whose test is 🔴.</p>
+<h2 id="what-we-gave-up-and-what-now-must-replace-it">What we gave up, and what now must replace it<a class="headerlink" href="#what-we-gave-up-and-what-now-must-replace-it" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>The devil we knew (old stack)</th>
+<th>What it gave us <em>for free</em></th>
+<th>The angel must now prove (this doc)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Postgres + fsync</strong></td>
+<td>synchronous durability — a committed row is on disk before <code>COMMIT</code> returns</td>
+<td>async durability is bounded and recoverable — no silent loss window (<strong>A1, A2, G1</strong>)</td>
+</tr>
+<tr>
+<td><strong>JVM app server</strong></td>
+<td>one place that <em>enforces</em> every invariant, server-side</td>
+<td>the deterministic kernel enforces on replay, on every client, identically (<strong>D1, D3</strong>)</td>
+</tr>
+<tr>
+<td><strong>Docker / k8s</strong></td>
+<td>mature ops: logs, metrics, health checks, rollback</td>
+<td>observability + release/rollback without a server to read logs from (<strong>G2, G3</strong>)</td>
+</tr>
+<tr>
+<td><strong>A real DB engine</strong></td>
+<td>unbounded dataset, concurrency, query planner</td>
+<td>the in-memory + sharded model holds at real data size on real devices (<strong>B1, B2, B3</strong>)</td>
+</tr>
+<tr>
+<td><strong>A controlled server OS</strong></td>
+<td>one runtime you pin and patch</td>
+<td>survival across the browser zoo you do <em>not</em> control (<strong>C1, C2</strong>)</td>
+</tr>
+<tr>
+<td><strong>Server-side auth + access control</strong></td>
+<td>a trust boundary you own</td>
+<td>signed facts + key custody carry trust off-server (<strong>E1, E2, E3</strong>)</td>
+</tr>
+</tbody>
+</table>
+<p>The thesis is that each replacement is <em>better</em> (cheaper, offline-capable, more auditable). The job here is to <strong>falsify that thesis on every axis before a customer does.</strong></p>
+<hr />
+<h2 id="severity-status-legend">Severity &amp; status legend<a class="headerlink" href="#severity-status-legend" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>S1 — Integrity / data loss</strong> (silent wrong number, or lost committed work). The unforgivable class.</li>
+<li><strong>S2 — Availability</strong> (can't work, can't recover).</li>
+<li><strong>S3 — Performance / UX</strong> (too slow, too heavy, degrades on real devices).</li>
+<li><strong>S4 — Security / compliance</strong> (forgery, key loss, GDPR).</li>
+</ul>
+<p>Likelihood: <strong>H/M/L</strong>. Mitigation: <strong>in place / partial / design-only</strong>.</p>
+<h2 id="master-register-read-this-then-drill">Master register (read this, then drill)<a class="headerlink" href="#master-register-read-this-then-drill" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Risk</th>
+<th>Class</th>
+<th>Sev</th>
+<th>Likelihood</th>
+<th>Mitigation</th>
+<th>Test status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A1</strong></td>
+<td>Eviction × async-durability loss window</td>
+<td>Durability</td>
+<td><strong>S1</strong></td>
+<td><strong>H</strong> (Safari)</td>
+<td>in place</td>
+<td>🟡 PARTIAL</td>
+</tr>
+<tr>
+<td><strong>A2</strong></td>
+<td>Lost sequencer / relay (rebuild books)</td>
+<td>Durability</td>
+<td>S1</td>
+<td>M</td>
+<td>in place</td>
+<td>✅ EXISTS</td>
+</tr>
+<tr>
+<td><strong>A3</strong></td>
+<td>Lost signing key (the floor)</td>
+<td>Durability</td>
+<td>S1/S4</td>
+<td>M</td>
+<td>partial</td>
+<td>🟡 PARTIAL</td>
+</tr>
+<tr>
+<td><strong>B1</strong></td>
+<td>In-memory RAM ceiling</td>
+<td>Capacity</td>
+<td><strong>S2/S3</strong></td>
+<td><strong>H</strong> at scale</td>
+<td>partial</td>
+<td>🔴 TO BUILD</td>
+</tr>
+<tr>
+<td><strong>B2</strong></td>
+<td>First-load cold start (WASM + DB hydrate)</td>
+<td>Capacity</td>
+<td>S3</td>
+<td>M</td>
+<td>partial</td>
+<td>🔴 TO BUILD</td>
+</tr>
+<tr>
+<td><strong>B3</strong></td>
+<td>IndexedDB ~1GB cap / OPFS gated by COOP-COEP</td>
+<td>Capacity</td>
+<td>S2</td>
+<td>M</td>
+<td>in place (detect)</td>
+<td>🟡 PARTIAL</td>
+</tr>
+<tr>
+<td><strong>C1</strong></td>
+<td>Safari/iOS heterogeneity &amp; eviction</td>
+<td>Environment</td>
+<td><strong>S1/S2</strong></td>
+<td><strong>H</strong></td>
+<td>partial</td>
+<td>🔴 TO BUILD</td>
+</tr>
+<tr>
+<td><strong>C2</strong></td>
+<td>Browser/library API drift</td>
+<td>Environment</td>
+<td>S2</td>
+<td>M</td>
+<td>partial</td>
+<td>🟡 PARTIAL</td>
+</tr>
+<tr>
+<td><strong>D1</strong></td>
+<td>Nondeterminism creep → replay divergence</td>
+<td>Correctness</td>
+<td><strong>S1</strong></td>
+<td>M</td>
+<td>in place</td>
+<td>✅ EXISTS</td>
+</tr>
+<tr>
+<td><strong>D2</strong></td>
+<td>Schema migration to N offline clients</td>
+<td>Correctness</td>
+<td><strong>S1</strong></td>
+<td><strong>H</strong> (on 1st breaking change)</td>
+<td>design-only</td>
+<td>🔴 TO BUILD</td>
+</tr>
+<tr>
+<td><strong>D3</strong></td>
+<td>CAS sliver / cross-branch arbitration</td>
+<td>Correctness</td>
+<td>S1</td>
+<td>L</td>
+<td>in place</td>
+<td>✅ EXISTS</td>
+</tr>
+<tr>
+<td><strong>D4</strong></td>
+<td>Relay equivocation</td>
+<td>Correctness</td>
+<td>S1</td>
+<td>L</td>
+<td>in place</td>
+<td>✅ EXISTS</td>
+</tr>
+<tr>
+<td><strong>E1</strong></td>
+<td>Key custody / rotation / revoke / recovery</td>
+<td>Security</td>
+<td><strong>S4</strong></td>
+<td>M</td>
+<td>partial</td>
+<td>🟡 PARTIAL</td>
+</tr>
+<tr>
+<td><strong>E2</strong></td>
+<td>Right-to-erasure on an immutable log</td>
+<td>Compliance</td>
+<td>S4</td>
+<td>M</td>
+<td>in place</td>
+<td>✅ EXISTS</td>
+</tr>
+<tr>
+<td><strong>E3</strong></td>
+<td>Bearer-token forwarding (credit)</td>
+<td>Security</td>
+<td>S4</td>
+<td>M</td>
+<td>in place</td>
+<td>🟡 PARTIAL</td>
+</tr>
+<tr>
+<td><strong>F1</strong></td>
+<td>web-ifc import fidelity</td>
+<td>Integration</td>
+<td>S3</td>
+<td>M</td>
+<td>partial</td>
+<td>🟡 PARTIAL</td>
+</tr>
+<tr>
+<td><strong>G1</strong></td>
+<td>Relay operation: idempotency / retry / DR</td>
+<td>Operations</td>
+<td>S2</td>
+<td>M</td>
+<td>in place</td>
+<td>✅ EXISTS</td>
+</tr>
+<tr>
+<td><strong>G2</strong></td>
+<td>Observability without a server to read</td>
+<td>Operations</td>
+<td><strong>S2</strong></td>
+<td><strong>H</strong></td>
+<td>design-only</td>
+<td>🔴 TO BUILD</td>
+</tr>
+<tr>
+<td><strong>G3</strong></td>
+<td>Release / rollback (<code>sw.js</code> cache, versioning)</td>
+<td>Operations</td>
+<td>S2</td>
+<td>M</td>
+<td>partial</td>
+<td>🟡 PARTIAL</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Headline:</strong> the 🔴 set — <strong>B1, B2, C1, D2, G2</strong> — is the production gate. Three are <em>capacity/environment</em> (does it survive a real phone and a real Safari?), one is the category-wide hard problem (<em>schema migration offline</em>), and one is <em>can you even see production?</em> These five are the pre-launch backlog.</p>
+<hr />
+<h2 id="a-durability-data-loss-replacing-fsync">A. Durability &amp; data loss — replacing fsync<a class="headerlink" href="#a-durability-data-loss-replacing-fsync" title="Permanent link">&para;</a></h2>
+<h3 id="a1-eviction-async-durability-loss-window-s1-partial">A1 — Eviction × async-durability loss window  · S1 · 🟡 PARTIAL<a class="headerlink" href="#a1-eviction-async-durability-loss-window-s1-partial" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Old paradigm gave you:</strong> <code>COMMIT</code> returns only after the row is on disk. Loss requires disk failure.</li>
+<li><strong>Now you must prove:</strong> a committed op survives the <em>gap</em> between local append and the moment its signed log reaches a second location — even if the browser <strong>evicts</strong> the origin's storage (Safari ITP ~7 days; low-disk eviction; user clears data) inside that gap.</li>
+<li><strong>Failure scenario:</strong> a foreman records 40 snags offline on an iPhone; closes the PWA; iOS evicts storage on day 8 before the device ever reached Wi-Fi. The ops are gone, and <em>nothing told anyone</em>.</li>
+<li><strong>Severity / likelihood:</strong> S1 / <strong>H</strong> on Safari-iOS, M elsewhere. This is the single most dangerous row.</li>
+<li><strong>Mitigation in place:</strong> self-securing log + email/social durability (<a href="../DistributedERP/">§5.2b</a>); <code>navigator.storage.persist()</code> requested on first load; clipboard/relay export (<code>poc_oplog_clipboard.js</code>); per-node email-DR (<code>§14</code>).</li>
+<li><strong>Remedy steps:</strong></li>
+<li><strong>Make durability <em>visible</em>, not implicit.</strong> A per-record state badge: <code>local → syncing → durable@N</code> (durable only after the op reaches ≥1 replica/the user's channel). The user must be able to <em>see</em> unsynced work.</li>
+<li><strong>Block-on-critical:</strong> for high-value ops (a posted invoice, a certified claim), refuse to mark "done" until at least one durable replica acks — the offline-card-decline pattern (<code>§5(3)</code>).</li>
+<li><strong>Aggressive opportunistic flush:</strong> on every <code>visibilitychange</code>/<code>online</code> event, push the un-acked tail to the relay and emit the signed-email snapshot (<code>§14</code> checkpoint+deltas).</li>
+<li><strong>Eviction early-warning:</strong> check <code>navigator.storage.estimate()</code> + <code>persisted()</code> on load; if <code>persisted=false</code> or quota is tight, surface a "back up now" prompt and auto-emit a snapshot.</li>
+<li><strong>Recovery drill in-product:</strong> a one-tap "restore from my inbox" that reads the latest signed snapshot and replays (<code>§9.A</code>).</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>export → wipe → import → <code>replay-hash == pre-export hash</code></td>
+<td>a wiped device recovers to byte-identical state</td>
+<td>✅ EXISTS (<code>poc_persist.js</code>)</td>
+</tr>
+<tr>
+<td>inbox snapshot → new PWA → count restored</td>
+<td>lost-phone recovery from the user's own channel</td>
+<td>✅ EXISTS (<code>poc_email_dr</code>, W-POS-WAN-SCALE <strong>B6</strong>)</td>
+</tr>
+<tr>
+<td><strong>real-Safari-iOS eviction soak</strong>: append N ops offline → force ITP eviction (7-day clock or devtools) → assert auto-snapshot fired <em>before</em> eviction, and recovery replays N ops</td>
+<td>the <em>window itself</em> is closed on the device we don't control</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td><strong>durability-badge invariant</strong>: an op shown <code>durable@N</code> is provably on ≥1 replica; one shown <code>local</code> is never counted as safe</td>
+<td>the UI never lies about safety</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>block-on-critical: high-value op cannot reach "done" offline</td>
+<td>no silent high-value loss</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>- <strong>Leading indicators:</strong> % sessions that emit a durable snapshot before close; median time-to-first-durable; count of devices with <code>persisted=false</code>; age of oldest un-acked op in the field.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>- <strong>Residual after mitigation:</strong> email-account loss is a risk the user <em>already</em> carries; we inherit it, never manufacture a new one. But the <strong>soak test must be green</strong> before this is anything but a hope.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="a2-lost-sequencer-relay-s1-exists">A2 — Lost sequencer / relay  · S1 · ✅ EXISTS<a class="headerlink" href="#a2-lost-sequencer-relay-s1-exists" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Old paradigm gave you:</strong> the DB <em>is</em> the book; lose it and you restore a backup.</li>
+<li><strong>Now you must prove:</strong> the <strong>net books</strong> are reproducible from the union of signed edge logs even if the central relay is destroyed — because disjoint per-branch folds commute.</li>
+<li><strong>Mitigation in place + test:</strong> 50-branch blackout rebuilt from the edges → <code>maxDiff=0c</code>, identical tip (<code>poc_blackout_resume.js §ORDER-HONEST</code>). ✅</li>
+<li><strong>Remedy steps:</strong> (1) keep relay state itself snapshot+replicated (it's an <em>optimization</em>, the logs are the truth); (2) document the rebuild runbook (collect edges → verify sigs → total-order → replay) as an operational procedure, not just a witness.</li>
+<li><strong>Residual:</strong> the <strong>cross-branch CAS arbitration order</strong> is the one thing <em>not</em> reconstructible from logs alone → see <strong>D3</strong>.</li>
+<li><strong>Test plan addition:</strong> 🟡 add a <em>scheduled</em> "rebuild-from-edges" drill (quarterly) that runs the witness against a snapshot of <em>real</em> field logs, not a fixture — <strong>🔴 TO BUILD</strong> (the witness exists; the recurring drill on real data does not).</li>
+</ul>
+<h3 id="a3-lost-signing-key-the-floor-s1s4-partial">A3 — Lost signing key (the floor)  · S1/S4 · 🟡 PARTIAL<a class="headerlink" href="#a3-lost-signing-key-the-floor-s1s4-partial" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> key loss degrades to <em>recoverable</em>, not <em>catastrophic</em> — facts are recoverable given the key; the key itself has a recovery path for consumer nodes.</li>
+<li><strong>Mitigation in place:</strong> the key is the single anchor; secure-enclave custody; rotation/revoke witnessed (<code>poc_rotate.js</code>). Consumer recovery anchors enumerated in <code>poc_email_dr</code> (k-of-n across one's own channels, platform passkey, employer escrow, <code>§14</code>).</li>
+<li><strong>Remedy steps:</strong> (1) ship at least one concrete consumer recovery path end-to-end (passkey-bound key is the strongest default); (2) make "you are responsible for the <em>key</em>, not the data" an explicit onboarding step; (3) for org nodes, escrow with split custody.</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>rotate → past valid under old key, post-rotation old-key op rejected, revoked key loses future not past</td>
+<td>key lifecycle is real, not hand-waved</td>
+<td>✅ EXISTS (<code>poc_rotate.js</code>)</td>
+</tr>
+<tr>
+<td><strong>k-of-n key recovery end-to-end</strong> on a wiped consumer device</td>
+<td>a real human can get their key back</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>- <strong>Residual:</strong> key <em>theft</em> is irreducible — true for every system (you can steal a server's key too). We don't claim to solve it; we witness and consequence it.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="b-capacity-performance-replacing-the-db-engine">B. Capacity &amp; performance — replacing the DB engine<a class="headerlink" href="#b-capacity-performance-replacing-the-db-engine" title="Permanent link">&para;</a></h2>
+<h3 id="b1-in-memory-ram-ceiling-s2s3-to-build-the-top-capacity-gap">B1 — In-memory RAM ceiling  · S2/S3 · 🔴 TO BUILD (the top capacity gap)<a class="headerlink" href="#b1-in-memory-ram-ceiling-s2s3-to-build-the-top-capacity-gap" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Old paradigm gave you:</strong> Postgres streams from disk; dataset size is bounded by disk, not RAM.</li>
+<li><strong>Now you must prove:</strong> sql.js is <strong>in-memory</strong>, so RAM bounds the working set. The headline buildings (122K elements) and the AD engine must fit and stay smooth on a <strong>mid-tier phone</strong>, not just a dev laptop. ETT names this as <em>the</em> real scaling axis (Memory64 is still FUTURE/pending).</li>
+<li><strong>Failure scenario:</strong> a customer's 300K-element hospital opens fine on the demo MacBook and <strong>crashes the tab on the site foreman's Android</strong>.</li>
+<li><strong>Mitigation in place / design:</strong> geometry DLOD + split-DB streaming (S285 city); the <strong>gravity-sharding spec</strong> for the engine (<code>§13</code>) — <em>spec only, no code yet</em>. So the ceiling is <em>designed for</em> but not <em>enforced</em>.</li>
+<li><strong>Remedy steps:</strong></li>
+<li><strong>Establish a hard memory budget</strong> per target device class (e.g. ≤ X MB heap on a 4 GB Android) and treat exceeding it as a build failure, not a surprise.</li>
+<li><strong>Bring §13 gravity-sharding forward</strong> from spec to code <em>before</em> a tenant's dataset forces it — stream the engine by op-log mass; fetch cold tables on touch.</li>
+<li><strong>Geometry: enforce DLOD/streaming budgets</strong> — never hydrate the full model when the camera only needs a floor.</li>
+<li><strong>Backpressure &amp; graceful degradation:</strong> when near budget, drop LOD / evict cold shards rather than crash; surface "large model — streaming" instead of freezing.</li>
+<li><strong>Set documented dataset limits</strong> (elements, AD tables) per device tier and <em>test at the limit</em>, with a clear message past it — no silent truncation.</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>device-tier memory soak</strong>: open the largest real building + full AD on a real mid-tier Android/iPhone; measure peak heap vs budget over a 30-min session</td>
+<td>the ceiling holds on the device we ship to</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>gravity-shard witness: tier-0 content-hash matches prefetch; cold-touch pulls exactly that table; over-fetch = 0; resident replay-hash == full-engine replay-hash on walked paths</td>
+<td>the engine streams without over-fetch or invention (<code>§13</code>)</td>
+<td><strong>🔴 TO BUILD</strong> (spec exists, code does not)</td>
+</tr>
+<tr>
+<td>DLOD budget test: camera on one floor never hydrates the whole model</td>
+<td>geometry stays within budget</td>
+<td>🟡 PARTIAL (streaming exists; budget assertion does not)</td>
+</tr>
+<tr>
+<td>- <strong>Leading indicators:</strong> peak heap by device class; tab-crash / OOM telemetry; DB/asset bytes shipped per session.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>- <strong>Residual:</strong> WASM Memory64 (Safari pending) would lift the ceiling; we do <strong>not</strong> depend on it. Until then, sharding + budgets are the answer, and they must be <em>tested at limit</em>.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="b2-first-load-cold-start-wasm-db-hydrate-s3-to-build">B2 — First-load cold start (WASM + DB hydrate)  · S3 · 🔴 TO BUILD<a class="headerlink" href="#b2-first-load-cold-start-wasm-db-hydrate-s3-to-build" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>This is your "cold start"</strong> — not a Lambda spin-up, but the download of sql.js WASM + the DB file(s) + in-memory hydrate on first paint. It grows with dataset size and is worst on a cold cache / slow mobile network.</li>
+<li><strong>Remedy steps:</strong> (1) precache WASM + core via the service worker (already done for the shell — verify for DB shards); (2) ship the <strong>gravity tier-0</strong> <code>initbubble</code>-style prefetch (<code>&lt;300ms</code> target, <code>§13</code>) and stream the rest on approach; (3) split DBs so first paint needs only the near set; (4) show real progress, never a blank freeze.</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>first-load budget on throttled mobile</strong> (cold cache, Fast-3G/mid CPU): time-to-interactive vs a stated budget for S/M/L datasets</td>
+<td>first paint is acceptable on a real network</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>SW precache hit on 2nd load → offline cold start works</td>
+<td>the PWA truly starts offline</td>
+<td>🟡 PARTIAL (shell precached; per-dataset path unverified)</td>
+</tr>
+<tr>
+<td>- <strong>Leading indicators:</strong> TTI p50/p95 by dataset size + network class; precache hit-rate.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="b3-indexeddb-1gb-cap-opfs-gated-by-coop-coep-s2-partial">B3 — IndexedDB ~1GB cap / OPFS gated by COOP-COEP  · S2 · 🟡 PARTIAL<a class="headerlink" href="#b3-indexeddb-1gb-cap-opfs-gated-by-coop-coep-s2-partial" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> on GitHub Pages (no COOP/COEP → <code>crossOriginIsolated=false</code> → no OPFS), persistence falls to the IndexedDB VFS with its <strong>~1GB blob cap</strong>, and we <strong>detect and degrade</strong>, never silently fail. <code>vfs_detect.js</code> already does the detection (witnessed: GH Pages → IDB).</li>
+<li><strong>Remedy steps:</strong> (1) keep <code>vfs_detect</code>'s <code>misconfig</code> falsifier (never silently pick IDB where OPFS was available); (2) define behavior when a dataset would exceed the IDB cap — <em>fail loud with a path forward</em> (host with COOP/COEP for OPFS, or stay in-memory + rely on the log), never a half-written DB; (3) if a tenant needs OPFS speed, document the COOP/COEP hosting requirement as a deployment option (not GH Pages).</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vfs_detect</code> chooses opfs only when isolated; flags <code>misconfig</code> when it could have</td>
+<td>no silent downgrade</td>
+<td>✅ EXISTS (<code>poc_vfs_detect</code>)</td>
+</tr>
+<tr>
+<td><strong>over-cap behavior</strong>: a dataset exceeding the IDB cap fails loud with guidance, no corruption</td>
+<td>the cap is a guard rail, not a cliff</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>- <strong>Residual:</strong> OPFS persistence concurrency is the field's still-maturing column — we are <strong>ROUTED-AROUND</strong> it (ETT), so its immaturity doesn't touch us; the cap does, and must be guarded.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="c-environment-heterogeneity-replacing-the-controlled-server-os">C. Environment heterogeneity — replacing the controlled server OS<a class="headerlink" href="#c-environment-heterogeneity-replacing-the-controlled-server-os" title="Permanent link">&para;</a></h2>
+<h3 id="c1-safariios-heterogeneity-eviction-s1s2-to-build">C1 — Safari/iOS heterogeneity &amp; eviction  · S1/S2 · 🔴 TO BUILD<a class="headerlink" href="#c1-safariios-heterogeneity-eviction-s1s2-to-build" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Old paradigm gave you:</strong> one runtime you pin, patch, and reproduce. Production == staging.</li>
+<li><strong>Now you must prove:</strong> survival across browsers you do <strong>not</strong> control — and Safari/iOS is the hostile case: storage eviction (ITP), quota caps, WASM and IndexedDB quirks, mobile memory pressure, the meta/viewport split. <em>This is your real version of the article's "you can't see the servers"</em> — the environment is opaque and not yours.</li>
+<li><strong>Failure scenario:</strong> everything green in headless Chromium and on the dev's iPhone; a customer's older iPad on iOS Safari evicts mid-session, or the WASM heap behaves differently, and only that user sees it.</li>
+<li><strong>Mitigation in place:</strong> <code>vfs_detect</code> degradation; mobile meta handling; the architecture <em>assumes</em> an untrusted, evictable client.</li>
+<li><strong>Remedy steps:</strong></li>
+<li><strong>Real-device matrix in CI/smoke</strong> — not just headless Chromium. At minimum: current + one-back iOS Safari, Chrome Android (mid-tier), desktop Safari/Firefox/Chrome. (BrowserStack/Sauce or a physical device lab.)</li>
+<li><strong>Treat A1 eviction soak (above) as Safari-first</strong> — Safari is where the durability window actually bites.</li>
+<li><strong>Capability probes, not UA sniffing</strong> — feature-detect OPFS, BroadcastChannel, Web Share, persist; degrade per capability (the <code>vfs_detect</code> pattern, generalized).</li>
+<li><strong>A "what my browser supports" diagnostic page</strong> users/support can open to report environment, so a field bug is reproducible.</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>cross-browser smoke matrix</strong> (scripts load, DB returns data, buttons exist, share works) on iOS Safari + Android Chrome + desktop trio</td>
+<td>the app <em>runs</em> on the zoo, not just Chromium</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>Safari eviction soak (= A1 row)</td>
+<td>the durability window closes on Safari</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>capability-probe degradation (force each API off) → graceful fallback path taken</td>
+<td>no hard dependency on an optional API</td>
+<td>🟡 PARTIAL (<code>vfs_detect</code> proves the pattern for OPFS/IDB; others unproven)</td>
+</tr>
+<tr>
+<td>- <strong>Leading indicators:</strong> error/crash rate segmented by browser+OS+device tier; eviction events on Safari; capability-mix distribution from the field.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>- <strong>Residual:</strong> you can mitigate but never eliminate browser heterogeneity — so the smoke matrix is <em>permanent CI</em>, re-run every release, because the vendors move under you (→ C2).</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="c2-browser-library-api-drift-s2-partial">C2 — Browser / library API drift  · S2 · 🟡 PARTIAL<a class="headerlink" href="#c2-browser-library-api-drift-s2-partial" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> when a browser changes OPFS/eviction/BroadcastChannel/Web Share semantics, or three.js bumps a major (r166 → r184 changed culling; ROADMAP once carried a year-typo), you catch it <em>before</em> a user does.</li>
+<li><strong>Mitigation in place:</strong> ETT tracks the dependency dates + effect tags; viewer pins three.js versions; CI smoke (<code>system_is_real.sh</code>, <code>ci.yml</code>).</li>
+<li><strong>Remedy steps:</strong> (1) pin and changelog-review every renderer/sql.js/web-ifc bump; (2) keep a "canary" build on the next browser channel (Chrome Beta, Safari Technology Preview) in the smoke matrix; (3) wrap each browser capability behind a thin adapter so a drift is a one-file fix, not a scatter.</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CI smoke on each release (scripts load, real building renders, clash returns)</td>
+<td>a dependency bump didn't break the core</td>
+<td>🟡 PARTIAL (<code>ci.yml</code> headless subset exists; renderer-version regression suite does not)</td>
+</tr>
+<tr>
+<td>renderer-upgrade regression: pinned-vs-new three.js renders identical frame/clash on a fixture</td>
+<td>a three.js bump is safe before adopting</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>- <strong>Residual:</strong> the routed-around OPFS-concurrency column (ETT) keeps maturing; that's a <em>bonus</em>, not a risk — but watch that we don't accidentally take a dependency on it.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="d-correctness-determinism-replacing-server-side-enforcement">D. Correctness &amp; determinism — replacing server-side enforcement<a class="headerlink" href="#d-correctness-determinism-replacing-server-side-enforcement" title="Permanent link">&para;</a></h2>
+<h3 id="d1-nondeterminism-creep-replay-divergence-s1-exists-guard-it-forever">D1 — Nondeterminism creep → replay divergence  · S1 · ✅ EXISTS (guard it forever)<a class="headerlink" href="#d1-nondeterminism-creep-replay-divergence-s1-exists-guard-it-forever" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Old paradigm gave you:</strong> one server computed the answer; clients just displayed it.</li>
+<li><strong>Now you must prove:</strong> every client replays the ordered log to the <strong>identical</strong> state. A single nondeterministic verb — <code>Date.now()</code>, <code>Math.random()</code>, a live FX/rate read — breaks merge and silently diverges two devices' books. This is <strong>infrastructure</strong>, not style (<code>§7</code>).</li>
+<li><strong>Mitigation in place + test:</strong> values are generated at the edge and recorded as op inputs; the kernel only reads them; UUIDv7 for identity. Witness: <code>replay-hash == live-hash</code> (<code>erp_kernel.js</code> / <code>poc_kernel.js</code> / <code>poc_longtail.js</code>). ✅</li>
+<li><strong>Remedy steps:</strong></li>
+<li><strong>Make the witness a CI gate</strong> on <em>every</em> kernel/verb change — a red <code>replay-hash</code> blocks merge. (Today it's a local discipline per CLAUDE.md; promote it to enforced.)</li>
+<li><strong>Lint for forbidden calls</strong> in verb code (<code>Date.now</code>, <code>Math.random</code>, <code>fetch</code> of live values, argless <code>new Date</code>) — fail the build, mirroring the workflow-script ban.</li>
+<li><strong>Determinism fuzz:</strong> replay a real op-log on two fresh kernels in shuffled-but-legal order → assert identical tip.</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>replay-hash == live-hash</code> on real SampleHouse / long-tail</td>
+<td>the kernel is deterministic today</td>
+<td>✅ EXISTS</td>
+</tr>
+<tr>
+<td><strong>CI gate</strong> wiring of the above on every verb change</td>
+<td>a future nondeterministic verb is <em>caught</em>, not shipped</td>
+<td><strong>🔴 TO BUILD</strong> (the test exists; the gate does not)</td>
+</tr>
+<tr>
+<td>static lint for forbidden nondeterministic calls in verbs</td>
+<td>invention can't creep in by hand</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>- <strong>Leading indicators:</strong> any field report of two devices disagreeing on a number = a P0 determinism breach; replay-hash CI pass-rate.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="d2-schema-migration-to-n-offline-clients-s1-to-build-the-category-wide-hard-one">D2 — Schema migration to N offline clients  · S1 · 🔴 TO BUILD (the category-wide hard one)<a class="headerlink" href="#d2-schema-migration-to-n-offline-clients-s1-to-build-the-category-wide-hard-one" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> the <em>honest</em> open problem (<code>§9.E</code>, shared across the whole local-first category): when the AD/schema changes, <strong>N offline clients holding old ops</strong> must replay them to their <em>original</em> effect and adopt the new schema without diverging — with no server to coordinate a migration.</li>
+<li><strong>Failure scenario:</strong> you ship a breaking AD change; a van that's been offline two weeks syncs old-format ops that the new kernel replays <em>differently</em> → its books diverge. Postgres gave you one atomic migration; you have N devices on their own clocks.</li>
+<li><strong>Mitigation in place:</strong> <em>design-only</em> — compiled-AD manifest + forward-only / frozen-effects replay (old ops replay to frozen effect). <strong>No witness yet.</strong></li>
+<li><strong>Remedy steps:</strong></li>
+<li><strong>Freeze-effects replay:</strong> every op records the AD-manifest version it was authored under; replay applies the <em>frozen</em> semantics of that version, never the latest. The migration is additive, never a reinterpretation of history.</li>
+<li><strong>Manifest versioning + compatibility matrix:</strong> a client refuses to apply ops from a manifest it can't frozen-replay, and asks to update — loud, not silent.</li>
+<li><strong>Migration as an op:</strong> the schema change is itself a signed, ordered op in the log, so every client adopts it deterministically at the same logical point.</li>
+<li><strong>Forward-only discipline:</strong> never modify a shipped verb's effect; add a new verb + version bump (mirrors the <code>migration/*.sql</code> append-only sacred rule).</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>old-manifest ops replay to original effect under a new kernel</td>
+<td>history is frozen, not reinterpreted</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>two clients on manifest v1 and v2 converge after a migration op</td>
+<td>offline migration doesn't diverge</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>a client refuses (loud) an op from an unsupported manifest</td>
+<td>no silent misapply</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>- <strong>Leading indicators:</strong> distribution of manifest versions in the field; count of refused-op events; any post-migration <code>replay-hash</code> mismatch.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>- <strong>Residual:</strong> stated plainly — this is a <strong>partial mitigation of a problem the category has not fully solved.</strong> Until the three tests are green, <em>do not ship a breaking schema change to offline clients.</em> This is the most important honesty in the document.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="d3-cas-sliver-cross-branch-arbitration-s1-exists">D3 — CAS sliver / cross-branch arbitration  · S1 · ✅ EXISTS<a class="headerlink" href="#d3-cas-sliver-cross-branch-arbitration-s1-exists" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> the one op-class that needs real-time arbitration (a single indivisible claim across sites) loses <em>gracefully</em> when the live arbiter is lost — the loser becomes a deterministic, explainable correction (a receivable/backorder), never a silent overwrite.</li>
+<li><strong>Mitigation in place + test:</strong> total order at the broker is the serialization point; the un-reconstructible sliver is bounded and routed to the ledger; quorum-CAS keeps the live decision within a measured window. Witness: <code>poc_quorum_cas.js §INTERSECTION-NO-SPLIT / §WINDOW-NUMBER</code>; <code>poc_blackout_resume.js §CAS-SLIVER</code>. ✅</li>
+<li><strong>Remedy steps:</strong> (1) operate the quorum only for genuinely high-value global ops (don't pay the cost broadly); (2) make the ledger correction path (loser → receivable) a tested, visible accounting flow, not a footnote.</li>
+<li><strong>Test plan:</strong> the witnesses exist (✅). 🟡 add a fault-injection drill: kill the broker mid-arbitration under quorum and assert no split-decision — <strong>🔴 TO BUILD</strong> as a <em>recurring</em> chaos test (the unit witness exists; the chaos drill does not).</li>
+</ul>
+<h3 id="d4-relay-equivocation-s1-exists">D4 — Relay equivocation  · S1 · ✅ EXISTS<a class="headerlink" href="#d4-relay-equivocation-s1-exists" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> a dishonest relay handing different clients different orderings is <strong>detected and attributed</strong>, not silently divergent.</li>
+<li><strong>Mitigation in place + test:</strong> clients sign their observed period-tip and gossip it; mismatched signed tips are attributable to the relay; an honest relay yields identical tips (no false positive). Witness: <code>poc_equivocation.js §DETECT/§ATTRIBUTABLE</code>. ✅</li>
+<li><strong>Remedy steps:</strong> (1) ship tip-gossip in the real client (the witness proves the mechanism; verify it's wired in production); (2) alert on any detected divergence.</li>
+<li><strong>Test plan:</strong> ✅ mechanism proven; 🟡 wire-in + alerting in the shipping client is <strong>🔴 TO BUILD</strong>.</li>
+</ul>
+<hr />
+<h2 id="e-security-compliance-replacing-the-server-trust-boundary">E. Security &amp; compliance — replacing the server trust boundary<a class="headerlink" href="#e-security-compliance-replacing-the-server-trust-boundary" title="Permanent link">&para;</a></h2>
+<h3 id="e1-key-custody-rotation-revoke-recovery-s4-partial">E1 — Key custody / rotation / revoke / recovery  · S4 · 🟡 PARTIAL<a class="headerlink" href="#e1-key-custody-rotation-revoke-recovery-s4-partial" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> trust rides a signing key off-server. Custody, rotation, revoke, and <em>consumer recovery</em> all work — because there's no server account to "reset password" against.</li>
+<li><strong>Mitigation in place + test:</strong> secure-enclave custody; <code>poc_rotate.js</code> proves rotate/revoke/history-valid/future-gated. Consumer recovery anchors enumerated (<code>§14</code>). (Overlaps A3.)</li>
+<li><strong>Remedy steps:</strong> (1) ship a passkey-bound key as the default consumer custody (hardware-backed, recoverable via platform sync); (2) org nodes: split/escrow custody; (3) rotation runbook (planned + emergency/compromise); (4) make "secure your key" an onboarding gate, not a setting.</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>rotate/revoke lifecycle</td>
+<td>history verifies under the key valid at its seq</td>
+<td>✅ EXISTS (<code>poc_rotate.js</code>)</td>
+</tr>
+<tr>
+<td>forged body under issuer key → rejected</td>
+<td>the container is untrusted by design</td>
+<td>✅ EXISTS (<code>poc_sign.js</code>)</td>
+</tr>
+<tr>
+<td>passkey-bound key recovery on a wiped device</td>
+<td>a real consumer recovers without a server</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>emergency revoke propagates and gates the compromised key's future</td>
+<td>a stolen key can be killed forward</td>
+<td>🟡 PARTIAL (unit proven; field propagation untested)</td>
+</tr>
+<tr>
+<td>- <strong>Residual:</strong> key <em>theft</em> is the irreducible floor (true of any system). We witness + consequence, never claim to prevent.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="e2-right-to-erasure-on-an-immutable-log-gdprccpa-s4-exists">E2 — Right-to-erasure on an immutable log (GDPR/CCPA)  · S4 · ✅ EXISTS<a class="headerlink" href="#e2-right-to-erasure-on-an-immutable-log-gdprccpa-s4-exists" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> you can honour erasure on an append-only signed log without faux-deletion or breaking the chain.</li>
+<li><strong>Mitigation in place + test:</strong> PII in a per-subject encrypted envelope; erase = destroy the subject key (crypto-shred); non-PII (account/cents) stays clear and folds. Witness: <code>poc_erase.js §ERASE/§BOOKS-INTACT</code> — drop the key → PII irrecoverable, chain still verifies, tip identical, books byte-identical (<code>maxDiff=0c</code>). ✅</li>
+<li><strong>Remedy steps:</strong> (1) a tested erasure <em>request</em> workflow (intake → locate subject key across replicas → shred → certificate of erasure); (2) document the honest posture: <em>tombstone the identity, keep the accounting fact</em>; (3) define key-shred propagation to replicas/relay.</li>
+<li><strong>Test plan:</strong> ✅ mechanism proven. 🟡 the operational erasure-request workflow + multi-replica shred propagation is <strong>🔴 TO BUILD</strong>.</li>
+<li><strong>Residual:</strong> cleartext PII can only be "erased" by rewriting the chain — so the discipline is <em>PII rides only in the envelope, never in the clear</em>. Lint for it.</li>
+</ul>
+<h3 id="e3-bearer-token-forwarding-credit-s4-partial">E3 — Bearer-token forwarding (credit)  · S4 · 🟡 PARTIAL<a class="headerlink" href="#e3-bearer-token-forwarding-credit-s4-partial" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> a personal-credit URL can't be forwarded to give away the credit line, while promos stay deliberately forwardable.</li>
+<li><strong>Mitigation in place:</strong> bind-on-first-open for personal credit (sign to device/public key, or one activation touch); bearer is fine for promo/view (<code>§5</code>).</li>
+<li><strong>Remedy steps:</strong> (1) enforce device-bind on first open for any value-bearing token; (2) single-use semantics + identity binding for one-per-customer offers; (3) classify every token issuance as bearer vs bound at mint time.</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>forwarded personal-credit token fails device-bind</td>
+<td>credit can't be given away by forwarding</td>
+<td>🟡 PARTIAL (design clear; end-to-end witness <strong>🔴 TO BUILD</strong>)</td>
+</tr>
+<tr>
+<td>double-claim of single-use offer is caught + attributable at reconcile</td>
+<td>bearer fraud is witnessed, not silent (<code>§5.1</code>)</td>
+<td>🟡 PARTIAL</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="f-integration-fidelity">F. Integration fidelity<a class="headerlink" href="#f-integration-fidelity" title="Permanent link">&para;</a></h2>
+<h3 id="f1-web-ifc-import-fidelity-s3-partial">F1 — web-ifc import fidelity  · S3 · 🟡 PARTIAL<a class="headerlink" href="#f1-web-ifc-import-fidelity-s3-partial" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> in-browser IFC import is <em>correct enough</em>, or that pre-extraction (the compiler/Bonsai path) is the supported route and import is best-effort. <code>import_worker.js</code> already documents real quirks: web-ifc 0.0.77 returns white for IFC4 Revit <code>IFCINDEXEDCOLOURMAP</code>; unit-scaling needs heuristics.</li>
+<li><strong>Remedy steps:</strong> (1) a golden-IFC regression corpus (IFC2x3 + IFC4 + Revit-export) with expected element counts/colors/units; (2) pin web-ifc and changelog-review bumps; (3) make pre-extraction the <em>recommended</em> path for production datasets, import the <em>onboarding convenience</em>; (4) surface import warnings (not silent white/mis-scaled geometry).</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>golden-IFC corpus → expected counts/units/colors</td>
+<td>import fidelity is bounded and regression-guarded</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>round-trip IFC → browser → same schema → viewer</td>
+<td>the pipeline closes</td>
+<td>🟡 PARTIAL (S220 closed the round-trip; no fidelity corpus)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="g-operations-replacing-dockers-maturity">G. Operations — replacing Docker's maturity<a class="headerlink" href="#g-operations-replacing-dockers-maturity" title="Permanent link">&para;</a></h2>
+<h3 id="g1-relay-operation-idempotency-retry-dr-s2-exists">G1 — Relay operation: idempotency / retry / DR  · S2 · ✅ EXISTS<a class="headerlink" href="#g1-relay-operation-idempotency-retry-dr-s2-exists" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> when the dumb relay <em>is</em> needed (multi-branch, durability), it ingests idempotently, survives crash/restart, and recovers — without becoming a server of record.</li>
+<li><strong>Mitigation in place + test:</strong> <code>erp_relay_server.js</code> + <code>test_kernel_relay.js</code> (idempotent ingest, convergence over HTTP, durable restart); fleet-scale <code>W-POS-WAN-SCALE</code> (10k tills, relay-crash + email-backup DR, idempotent retry, partitioned doc-numbering). ✅</li>
+<li><strong>Remedy steps:</strong> (1) run the relay <em>intermittently</em>, not 24/7 (it's not always-on by design); (2) a documented DR runbook (relay loss → rebuild from edges, A2); (3) idempotency keys on every ingest; (4) capacity-test at expected fleet size.</li>
+<li><strong>Test plan:</strong> ✅ exists. 🟡 add a production-scale load test at the <em>tenant's</em> real fleet size — <strong>🔴 TO BUILD</strong> per onboarding.</li>
+</ul>
+<h3 id="g2-observability-without-a-server-to-read-s2-to-build-the-operational-blind-spot">G2 — Observability without a server to read  · S2 · 🔴 TO BUILD (the operational blind spot)<a class="headerlink" href="#g2-observability-without-a-server-to-read-s2-to-build-the-operational-blind-spot" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Old paradigm gave you:</strong> server logs, APM, dashboards — one place to see production.</li>
+<li><strong>Now you must prove:</strong> with compute on N clients and no server of record, <strong>you can still see production</strong> — errors, performance, durability lag, capability mix — <em>without</em> a telemetry pipe that violates the offline/privacy stance.</li>
+<li><strong>Failure scenario:</strong> A1 (a data-loss window) or C1 (a Safari-only crash) happens in the field and <strong>you never find out</strong>, because there's no server log and no error stream.</li>
+<li><strong>Mitigation in place:</strong> the signed op-log is a perfect <em>audit</em> trail per node — but it's on the node, not aggregated; you can't see fleet health from it without collection.</li>
+<li><strong>Remedy steps:</strong></li>
+<li><strong>Opt-in, signed, privacy-preserving telemetry:</strong> ship anonymized health beacons (error class, device tier, heap peak, durability lag, capability mix) — never PII, signed like everything else, user-consented.</li>
+<li><strong>Client-side error capture</strong> (window.onerror / unhandledrejection) → batched to a sink, with offline buffering.</li>
+<li><strong>A self-diagnostic the user/support can run</strong> (C1) so a field bug is reproducible without server logs.</li>
+<li><strong>Field invariants as alerts:</strong> two-devices-disagree (D1), refused-op spikes (D2), oldest-un-acked-op age (A1), eviction events (C1).</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>error in a client surfaces in the health sink within N (offline-buffered)</td>
+<td>you can see production failures</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>beacon carries zero PII (schema-checked)</td>
+<td>observability doesn't break the privacy stance</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>the four field-invariant alerts fire on injected faults</td>
+<td>the dangerous rows (A1/C1/D1/D2) are <em>visible</em></td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>- <strong>Leading indicators:</strong> beacon coverage (% sessions reporting); mean-time-to-detect a field fault.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>- <strong>Residual:</strong> this is the operational price of no server. It's solvable, but it is <strong>design-only today</strong> — and shipping without it means flying blind on exactly the S1 rows.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="g3-release-rollback-swjs-cache-versioning-s2-partial">G3 — Release / rollback (<code>sw.js</code> cache, versioning)  · S2 · 🟡 PARTIAL<a class="headerlink" href="#g3-release-rollback-swjs-cache-versioning-s2-partial" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Now you must prove:</strong> a PWA with a service-worker cache can be <em>updated</em> and <em>rolled back</em> safely — a bad deploy can't strand users on a broken cached version, and <code>CACHE_VERSION</code>/precache bumps don't wipe the wrong assets.</li>
+<li><strong>Mitigation in place:</strong> the no-shrink docs seatbelt (<code>safe_gh_deploy.sh</code>, W-DEPLOY-GUARD); CI smoke (<code>system_is_real.sh</code>); the CLAUDE.md <code>sw.js</code> conflict discipline (keep both precache additions, take higher <code>CACHE_VERSION</code>).</li>
+<li><strong>Remedy steps:</strong> (1) SW update flow that prompts-to-reload on new version, with a kill-switch to force-refresh a broken release; (2) staged rollout + a tested rollback (re-publish previous <code>CACHE_VERSION</code>); (3) smoke-gate every deploy (already partly there); (4) version every DB/asset so a client never mixes incompatible shards.</li>
+<li><strong>Test plan:</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Proves / disproves</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>deploy guard aborts on delete/shrink</td>
+<td>a thin/stale tree can't wipe live</td>
+<td>✅ EXISTS (<code>W-DEPLOY-GUARD</code>)</td>
+</tr>
+<tr>
+<td>SW update → new version adopted; forced refresh recovers a broken release</td>
+<td>a bad deploy is recoverable, not sticky</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+<tr>
+<td>rollback to previous <code>CACHE_VERSION</code> restores working app</td>
+<td>rollback actually works</td>
+<td><strong>🔴 TO BUILD</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="the-gap-summary-what-blocks-production">The gap summary — what blocks production<a class="headerlink" href="#the-gap-summary-what-blocks-production" title="Permanent link">&para;</a></h2>
+<p>A green register is the bar. Today's <strong>🔴 TO BUILD</strong> rows, in priority order:</p>
+<ol>
+<li><strong>A1 / C1 — Safari eviction soak + cross-browser device matrix</strong> (S1). The data-loss window and the opaque environment. <em>Highest.</em></li>
+<li><strong>G2 — observability</strong> (S2/S1-visibility). Without it you can't even <em>detect</em> A1/C1/D1/D2 in the field.</li>
+<li><strong>D2 — offline schema migration</strong> (S1). Don't ship a breaking schema change until its three tests are green.</li>
+<li><strong>B1 / B2 — memory + first-load on real mid-tier devices</strong> (S2/S3). Bring §13 sharding from spec to code.</li>
+<li><strong>D1 CI gate + lint</strong> (S1). The determinism witness exists; <em>enforce</em> it on every change.</li>
+<li>The wire-in / drill rows: D3 chaos, D4 alerting, E1/E2/E3 end-to-end, F1 corpus, G1 fleet load, G3 rollback.</li>
+</ol>
+<p><strong>Rule:</strong> an axis whose test is 🔴 is <strong>not production-ready</strong>. We ship a tenant only on axes that are ✅, with the 🔴 set tracked to zero like any backlog.</p>
+<h2 id="test-execution-plan-how-per-the-projects-law">Test execution plan (how, per the project's law)<a class="headerlink" href="#test-execution-plan-how-per-the-projects-law" title="Permanent link">&para;</a></h2>
+<p>Following <code>docs/TestArchitecture.md</code>: <strong>§-log whitebox witness is primary</strong>, Playwright/real-device is secondary (wiring/deploy/render only). Every test above <strong>names the issue it proves or disproves</strong> — a test that passes without revealing the issue is not a test.</p>
+<ul>
+<li><strong>Tier 1 — kernel/engine witnesses</strong> (<code>poc_*.js</code>, <code>replay-hash</code>): node, deterministic, the proof of record. <em>Most ✅ rows live here.</em></li>
+<li><strong>Tier 2 — CI gates</strong>: promote the determinism witness (D1), deploy guard (G3), and headless smoke to <em>enforced</em> on every change.</li>
+<li><strong>Tier 3 — real-device &amp; chaos</strong>: the 🔴 environment/durability/observability rows need a device lab + fault injection — the genuinely new test infrastructure this paradigm demands.</li>
+</ul>
+<h2 id="governance">Governance<a class="headerlink" href="#governance" title="Permanent link">&para;</a></h2>
+<ul>
+<li>This register is <strong>reviewed every release</strong>; a 🔴 on an S1 axis is a release blocker.</li>
+<li>New features add their own rows here <strong>before</strong> code (spec-first, witness-claim-first — CLAUDE.md).</li>
+<li>Status changes (🔴→🟡→✅) cite the witness that moved them.</li>
+<li>Cross-refs: the residuals catalogue is <a href="../DistributedERP/#9-edge-scenarios-the-adversarial-suite">DistributedERP §9</a>; the cost/latency claims are <a href="../DistributedERP/">§11.1</a>; the enabling-tech ceilings are <a href="../EnablingTechTimeline/">EnablingTechTimeline.md</a>; the fleet-scale proof is <a href="../POS_WAN_SCALE_BENCH/">POS_WAN_SCALE_BENCH.md</a>.</li>
+</ul>
+<blockquote>
+<p><strong>Back to the architecture:</strong> this document is the <em>test-and-remedy</em> companion to <strong><a href="../DistributedERP/">Distributed ERP — Contention Map &amp; Guards</a></strong>. That doc argues the design and names the honest residuals (§9); this one turns each residual into a remedy + a test with an honest status, so the angel is <em>proven</em>, not <em>trusted</em>.</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/red1oon/bim-ootb" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/red1oon/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/fold-footnotes.js"></script>
+      
+    
+  </body>
+</html>

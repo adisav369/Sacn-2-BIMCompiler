@@ -16,7 +16,7 @@
         <link rel="prev" href="../LocalFirstPriorArt/">
       
       
-        <link rel="next" href="../ERP_COVERAGE_MATRIX/">
+        <link rel="next" href="../ProductionRisks/">
       
       
         
@@ -2308,6 +2308,8 @@
       
         
       
+        
+      
     
     
     
@@ -3099,6 +3101,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProductionRisks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Risks & Test Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4500,6 +4530,9 @@ Fraud and overspend are <strong>not solvable</strong> (a CAP partition; the offl
 <hr />
 <h2 id="9-edge-scenarios-the-adversarial-suite">9. Edge scenarios — the adversarial suite<a class="headerlink" href="#9-edge-scenarios-the-adversarial-suite" title="Permanent link">&para;</a></h2>
 <p>The normal day (§3) leaves a bounded residue. Each row below names the issue it proves or disproves, the truth/guard that carries it, the acceptance witness, and the <strong>honest residual</strong> that remains. (This consolidates the former "residuals" list — every item below is on the list, and none of them is a blocker.)</p>
+<blockquote>
+<p><strong>From residual to production-proof.</strong> This section names the residuals; the <strong><a href="../ProductionRisks/">Production Readiness — Risk Register &amp; Test Plan</a></strong> turns each into a remedy plus a test with an honest status (✅ exists / 🟡 partial / 🔴 to build). We left the <em>devil we knew</em> (Postgres/JVM/Docker); the angel that replaces it must be <strong>tested to failure first</strong> — that companion doc is where the gaps are surfaced and worked to zero before any tenant.</p>
+</blockquote>
 <h3 id="a-durability-loss">A. Durability &amp; loss<a class="headerlink" href="#a-durability-loss" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
