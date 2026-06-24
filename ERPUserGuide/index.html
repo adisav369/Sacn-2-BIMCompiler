@@ -1354,6 +1354,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#reading-the-dots-what-each-state-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading the dots — what each state means
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-release-row-the-deployed-build-linked-to-its-release" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4445,6 +4456,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#reading-the-dots-what-each-state-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading the dots — what each state means
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-release-row-the-deployed-build-linked-to-its-release" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5672,7 +5694,9 @@ is faked — where the browser doesn't expose a number (e.g. JS heap on Firefox)
 <h3 id="field-health-paradigm-vitals">Field health · paradigm vitals<a class="headerlink" href="#field-health-paradigm-vitals" title="Permanent link">&para;</a></h3>
 <p>A classic ERP watches a <em>server's</em> vitals (CPU, heap, connection pool). With no server, you watch the
 <strong>paradigm's</strong> vitals instead — four widgets, each folded from a <strong>real live signal</strong> (never invented), each
-with a status dot:</p>
+with a status dot. On open the four dots pulse amber <strong>"checking…"</strong> while the live signals are gathered, then
+<strong>settle</strong> — lighting up one-by-one to their real colour, so you can see the panel is genuinely polling the
+device, not painting a cached picture:</p>
 <table>
 <thead>
 <tr>
@@ -5699,7 +5723,85 @@ with a status dot:</p>
 </tr>
 </tbody>
 </table>
-<p><img alt="The System Monitor's **Field health · paradigm vitals** group on a live device — four widgets, each folded from a real signal with a status dot: **Field errors** (0, clean session), **Durability**, **Op-log DB** (its real ceiling), and **Environment** (IDB on a non-isolated origin). Below, the iDempiere-faithful Memory / Cache / Logs sections carry real device numbers or an honest &quot;No longer needed&quot; reframe. *(The **Release** row here is a pre-stamp snapshot reading &quot;(uncontrolled)&quot;; post-deploy it reads the live vNNN — see below.)*" src="../figs/system_monitor_field_health.png" /></p>
+<p><img alt="The System Monitor on a live device (build **v753**) — the **Release** row reads the real deployed version linking to its GitHub release, and the four **Field health · paradigm vitals** have settled: **Field errors 🟢 0** (clean session), **Durability ⚪ n/a** (no offline queue in this fresh session), **Op-log DB ⚪ n/a** (no op-log until the first fold), **Environment 🟢 IDB** (IndexedDB VFS — the correct backend on GitHub Pages). Below, the iDempiere-faithful Memory / Cache / Logs sections carry real device numbers (heap, storage) or an honest &quot;No longer needed&quot; reframe." src="../figs/system_monitor_v753.png" /></p>
+<h3 id="reading-the-dots-what-each-state-means">Reading the dots — what each state means<a class="headerlink" href="#reading-the-dots-what-each-state-means" title="Permanent link">&para;</a></h3>
+<p>The dot colour is a <strong>traffic light</strong>, and a widget shows <strong>grey when it simply has no signal yet</strong> — grey is
+<em>not</em> an error, it means "nothing to report" (e.g. an op-log that hasn't been written to). The header dot is the
+<strong>worst</strong> of the four.</p>
+<table>
+<thead>
+<tr>
+<th>Dot</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🟢 <strong>green</strong> (OK)</td>
+<td>healthy — nothing to do</td>
+</tr>
+<tr>
+<td>🟠 <strong>amber</strong> (attention)</td>
+<td>within limits but worth watching</td>
+</tr>
+<tr>
+<td>🔴 <strong>red</strong> (action)</td>
+<td>a real problem — act now</td>
+</tr>
+<tr>
+<td>⚪ <strong>grey</strong> (n/a)</td>
+<td>no signal yet — not an error</td>
+</tr>
+</tbody>
+</table>
+<p>What each widget shows in <strong>every</strong> state (so the panel reads the same on any device):</p>
+<table>
+<thead>
+<tr>
+<th>Widget</th>
+<th>🟢 green</th>
+<th>🟠 amber</th>
+<th>🔴 red</th>
+<th>⚪ grey</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Field errors</strong></td>
+<td><code>0</code> — no uncaught errors this session</td>
+<td>a soft/resource error captured</td>
+<td>a <strong>hard</strong> error (JS exception / rejected promise) this session</td>
+<td>error beacon not installed</td>
+</tr>
+<tr>
+<td><strong>Durability</strong></td>
+<td>every queued edit <strong>relayed</strong> (<code>inflight 0</code>), within quota</td>
+<td>unsynced work exists (<code>inflight &gt; 0</code>), or oldest unacked edit <strong>&gt; 6 days</strong>, or storage <strong>&gt; 70 %</strong> of quota</td>
+<td>unsynced edits <strong>and</strong> the browser hasn't granted persistent storage (eviction could lose them)</td>
+<td>no offline queue this session</td>
+</tr>
+<tr>
+<td><strong>Op-log DB</strong></td>
+<td><strong>≤ 100 MB</strong> — shows headroom + "N× under the 200 MB ceiling"</td>
+<td><strong>&gt; 100 MB</strong> — "compact recommended"</td>
+<td><strong>&gt; 200 MB</strong> — at the in-memory ceiling</td>
+<td>no op-log yet (fold a rule or post a doc to populate)</td>
+</tr>
+<tr>
+<td><strong>Environment</strong></td>
+<td>a named backend — <strong>OPFS</strong> (when cross-origin-isolated) or <strong>IDB</strong> (the correct choice on GitHub Pages)</td>
+<td>a <strong>misconfiguration</strong> — e.g. IndexedDB on a COOP/COEP origin where OPFS was expected</td>
+<td><strong>genesis bootstrap</strong> — the local checkpoint was missing/corrupt and the tenant rebuilt from seed</td>
+<td>storage backend not detected</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>The screenshot above is a <em>fresh, just-opened</em> session: nothing has been queued and no op-log written yet, so
+<strong>Durability</strong> and <strong>Op-log DB</strong> honestly read grey <code>n/a</code> (there is nothing to measure), while <strong>Field errors</strong>
+and <strong>Environment</strong> are green. Log in and post a document and you'll watch <strong>Op-log DB</strong> turn into a real
+megabyte figure and <strong>Durability</strong> start counting <code>durable@N · inflight M</code>.</p>
+</blockquote>
 <h3 id="the-release-row-the-deployed-build-linked-to-its-release">The Release row — the deployed build, linked to its release<a class="headerlink" href="#the-release-row-the-deployed-build-linked-to-its-release" title="Permanent link">&para;</a></h3>
 <p>The <strong>Release</strong> row reads the version that is actually deployed to this device (the service-worker
 <code>CACHE_VERSION</code>, e.g. <code>v753</code>) and links to that build's <strong>GitHub Release</strong> page — the release notes are the
