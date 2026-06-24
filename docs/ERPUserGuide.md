@@ -407,6 +407,16 @@ link as a manual bind — you can adjust or clear it per task.
 > reproduces the plan's 300-day critical path exactly, and 525 real elements bind and fold to 5D cost;
 > plus the `§SE-IMPORT-SMOKE` 7/7 headless UI check.)*
 
+**Does it survive a *real* P6 file?** The Hospital demo above is *ours* — useful to learn the flow, but it
+can't prove fidelity against quirks only a real export carries (a tool can't grade its own homework). So
+the import is also witnessed against a **genuinely Primavera-emitted** `.xer` (a public, cited sample, 52
+tasks / 61 links — fetched at test time, never shipped). The result (`W-REAL-PARSE`/`W-REAL-CPM`, 12/12):
+every record parses with **zero unmapped links and zero dangling references**, and our critical path
+**exactly matches P6's own** (`driving_path_flag`, 52/52). The one honest gap: the imported *dates* land a
+few days early on long chains because we count **calendar days** while P6 follows a **working calendar**
+(skipping weekends/holidays). We report that offset rather than hide it — it's a **smaller, named gap**
+than before, and modelling the working calendar is a clean follow-up for a later project.
+
 ---
 
 ## 3. The Bottom Pill Bar (cheat sheet)
