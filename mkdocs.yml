@@ -143,6 +143,7 @@ nav:
           - Enabling-Tech Timeline: EnablingTechTimeline.md
           - Local-First Prior Art: LocalFirstPriorArt.md
           - Distributed ERP (Contention Map): DistributedERP.md
+          - "Production Risks & Test Plan": ProductionRisks.md
           - "ERP Coverage Matrix": ERP_COVERAGE_MATRIX.md
           - "Gap-Closure Spec": GapClosureSpec.md
           - "ERP Model Archetype": ERP_MODEL_ARCHETYPE.md

@@ -269,6 +269,8 @@ Every residual in this doc resolves there: a double-claim → flagged at month-e
 
 The normal day (§3) leaves a bounded residue. Each row below names the issue it proves or disproves, the truth/guard that carries it, the acceptance witness, and the **honest residual** that remains. (This consolidates the former "residuals" list — every item below is on the list, and none of them is a blocker.)
 
+> **From residual to production-proof.** This section names the residuals; the **[Production Readiness — Risk Register & Test Plan](ProductionRisks.md)** turns each into a remedy plus a test with an honest status (✅ exists / 🟡 partial / 🔴 to build). We left the *devil we knew* (Postgres/JVM/Docker); the angel that replaces it must be **tested to failure first** — that companion doc is where the gaps are surfaced and worked to zero before any tenant.
+
 ### A. Durability & loss
 
 | Scenario | Truth / § | Mechanism | Acceptance witness | Honest residual |
