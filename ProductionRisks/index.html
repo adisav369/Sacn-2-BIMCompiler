@@ -2939,10 +2939,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#d2-schema-migration-to-n-offline-clients-s1-to-build-the-category-wide-hard-one" class="md-nav__link">
+  <a href="#d2-schema-migration-to-n-offline-clients-s1-partial-remedy-core-built-2026-06-24-fieldchaos-drills-remain" class="md-nav__link">
     <span class="md-ellipsis">
       
-        D2 — Schema migration to N offline clients · S1 · 🔴 TO BUILD (the category-wide hard one)
+        D2 — Schema migration to N offline clients · S1 · 🟡 PARTIAL (remedy core BUILT 2026-06-24; field/chaos drills remain)
       
     </span>
   </a>
@@ -4061,10 +4061,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#d2-schema-migration-to-n-offline-clients-s1-to-build-the-category-wide-hard-one" class="md-nav__link">
+  <a href="#d2-schema-migration-to-n-offline-clients-s1-partial-remedy-core-built-2026-06-24-fieldchaos-drills-remain" class="md-nav__link">
     <span class="md-ellipsis">
       
-        D2 — Schema migration to N offline clients · S1 · 🔴 TO BUILD (the category-wide hard one)
+        D2 — Schema migration to N offline clients · S1 · 🟡 PARTIAL (remedy core BUILT 2026-06-24; field/chaos drills remain)
       
     </span>
   </a>
@@ -4633,6 +4633,11 @@ We left the devil we knew — a Postgres container, a JVM app server, Docker's o
 <td></td>
 <td></td>
 </tr>
+<tr>
+<td>- <strong>🔬 Discovery spike (S1, MEASURED 2026-06-24 — <code>scripts/spike_s1_discovery.js</code>, log <code>logs/spike_s1_discovery_20260624_101214.log</code>):</strong> <code>§SPIKE-A1 unackedAtEvict=20 snapshotFiredBefore=N recoveredOps=30 lostOps=20 evictHooks=none</code>. <strong>Verdict — the window is OPEN, exactly as the failure scenario predicts.</strong> Of 50 ops appended offline, the 30 that reached the relay (server-durable) recover byte-for-byte; the <strong>20 un-acked tail ops are lost with no warning.</strong> Crucially, <strong>no auto-snapshot fires before eviction</strong> — a precise scan for an eviction/unload handler that snapshots the <em>op-log</em> (not crud_overlay's localStorage form-draft) finds <strong>none</strong>. Today's mitigation is <strong>resist-only</strong> (<code>navigator.storage.persist()</code> in <code>battery_aware.js</code>) + relay-ack durability; neither closes the gap on Safari ITP, which evicts regardless of <code>persist()</code>. Severity stays <strong>S1/H</strong> — now <em>measured</em>, not estimated. <strong>Remedy</strong> = step 3 (opportunistic flush on <code>visibilitychange</code>) + step 4 (eviction early-warning auto-snapshot); both tenant-gated, out of this spike's scope.</td>
+<td></td>
+<td></td>
+</tr>
 </tbody>
 </table>
 <h3 id="a2-lost-sequencer-relay-s1-exists">A2 — Lost sequencer / relay  · S1 · ✅ EXISTS<a class="headerlink" href="#a2-lost-sequencer-relay-s1-exists" title="Permanent link">&para;</a></h3>
@@ -4724,6 +4729,11 @@ We left the devil we knew — a Postgres container, a JVM app server, Docker's o
 </tr>
 <tr>
 <td>- <strong>Residual:</strong> WASM Memory64 (Safari pending) would lift the ceiling; we do <strong>not</strong> depend on it. Until then, sharding + budgets are the answer, and they must be <em>tested at limit</em>.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>- <strong>🔬 Discovery spike (S2/S3, 2026-06-24 — <code>scripts/spike_s1_discovery.js</code>, log <code>logs/spike_s1_discovery_20260624_101214.log</code>) — ⚠ SPIKE MISMODELLED THE LOAD PATH; CORRECTED.</strong> First pass measured <code>new SQL.Database(buf)</code> = a <strong>full-DB hydrate into the WASM heap</strong> (Hospital_3, 266.8 MB file → projected ~499 MB resident → <code>crashed=Y</code>). <strong>That is NOT how the viewer loads.</strong> The shipped viewer <strong>streams</strong> via range-request httpvfs (<code>_useRangeStream</code>/<code>_rangeDb</code> in <code>streaming.js</code>) with bbox-DLOD bucketing — geometry is fetched <strong>on demand</strong>, IndexedDB-backed, never the whole DB into the heap. <strong>Empirical truth (user, 2026-06-24):</strong> the <em>largest committed building is LTU (125,698 elements, ~2× Hospital_3)</em>, and it loads in <strong>~12 s, smooth, beating Bonsai</strong> — streaming + DLOD already hold the headline building on real hardware. <strong>So the in-memory ceiling does NOT manifest on the geometry viewer; §13 gravity-sharding is NOT urgent for BIM rendering</strong> (it is already effectively present via httpvfs range-streaming + DLOD). <strong>What the proxy number DOES establish:</strong> a <em>guard rail</em> — any code path that bypasses streaming and does a <code>SELECT *</code>-into-memory full hydrate would blow the 200 MB ceiling, so full-hydrate must stay off the mobile path. The genuine 200 MB concern is the <strong>ERP op-log DB</strong> (FoldEngineConstraints §2 #1: 437 B/op; design keeps the live DB ~13 MB ≈ 6× under), <strong>also not hit in practice</strong> (confirmed: no 200 MB plots on the ERP side). Severity for the BIM-viewer interpretation <strong>downgraded to 🟡 (streaming proven on the largest building)</strong>; the device-tier soak on a real mid-tier phone is still worth doing as confirmation, but it is no longer the alarm the first proxy implied.</td>
 <td></td>
 <td></td>
 </tr>
@@ -4842,6 +4852,21 @@ We left the devil we knew — a Postgres container, a JVM app server, Docker's o
 <td></td>
 <td></td>
 </tr>
+<tr>
+<td>- <strong>🔬 Discovery spike (S1/S2, 2026-06-24 — <code>scripts/spike_s1_discovery.js</code>):</strong> <code>§SPIKE-C1 browser=blocked:needs-device loads=? dbReturns=? renders=? shares=? notes=no-iOS-Safari-in-sandbox</code>. <strong>Verdict — BLOCKED, recorded honestly (no fake readout).</strong> Real iOS Safari is unreachable from this environment, so the one spike that <em>requires</em> the hostile target cannot be measured here. This is itself a finding: <strong>C1 stays 🔴 and unmeasurable until a device lab (BrowserStack/Sauce or a physical iPhone) is wired</strong> — it is the highest-value gap precisely because we cannot self-serve it. Per the prime directive, a device number was <strong>not invented</strong>. ⛔ <strong>The one fact this spike needs from the user/ops: a BrowserStack/Sauce account or a physical iOS device to point the smoke matrix at.</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>- <strong>🔧 Matrix runner WIRED 2026-06-24 (<code>scripts/c1_browser_matrix.js</code>), awaiting credentials.</strong> The permanent cross-browser smoke matrix (iOS Safari current+one-back, Android Chrome mid-tier, desktop Safari/Firefox/Chrome) connecting Playwright → BrowserStack/Sauce; runs the C1 checks (loads/dbReturns/renders/shares) and emits one <code>§SPIKE-C1</code> line per browser. With no creds it prints <code>blocked:no-credentials</code> per target (honest, never faked). To activate: <code>export BROWSERSTACK_USERNAME/ACCESS_KEY</code> (or <code>SAUCE_*</code>) + <code>C1_TARGET_URL</code>, then <code>node scripts/c1_browser_matrix.js</code>. This is the C1 <em>remedy</em> (a permanent CI matrix), not a one-shot — once green it re-runs every release (the C1 residual demands it).</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>- <strong>🛰 Beacon installed (G2 seed, 2026-06-24 — <code>deploy/dev/error_beacon.js</code> + identical <code>build/erp/error_beacon.js</code>; witness <code>scripts/spike_beacon_witness.js</code> PASS, log <code>logs/spike_beacon_20260624_101419.log</code>):</strong> <code>§SPIKE-BEACON installed=Y captured=63 bounded=Y@50 pii=N telemetryPipe=N</code>. The minimal field-error capture is live on <strong>both surfaces</strong> (BIM viewer + ERP engine dir — <em>a file is a file</em>; pure <code>window.onerror</code>/<code>unhandledrejection</code>, no deps): each uncaught error → a <code>§FIELD-ERROR</code> console line + a 50-entry PII-free offline ring (<code>localStorage:bim_field_errors</code>). <strong>No telemetry pipe, no PII</strong> (tenant-gated). This is the "stop flying blind" floor under §H — the same signal the New-Paradigm <strong>System Monitor</strong> reads (<code>window.__ERR_BEACON__.captured</code>) for its G2 observability widget.</td>
+<td></td>
+<td></td>
+</tr>
 </tbody>
 </table>
 <h3 id="c2-browser-library-api-drift-s2-partial">C2 — Browser / library API drift  · S2 · 🟡 PARTIAL<a class="headerlink" href="#c2-browser-library-api-drift-s2-partial" title="Permanent link">&para;</a></h3>
@@ -4921,7 +4946,7 @@ We left the devil we knew — a Postgres container, a JVM app server, Docker's o
 </tr>
 </tbody>
 </table>
-<h3 id="d2-schema-migration-to-n-offline-clients-s1-to-build-the-category-wide-hard-one">D2 — Schema migration to N offline clients  · S1 · 🔴 TO BUILD (the category-wide hard one)<a class="headerlink" href="#d2-schema-migration-to-n-offline-clients-s1-to-build-the-category-wide-hard-one" title="Permanent link">&para;</a></h3>
+<h3 id="d2-schema-migration-to-n-offline-clients-s1-partial-remedy-core-built-2026-06-24-fieldchaos-drills-remain">D2 — Schema migration to N offline clients  · S1 · 🟡 PARTIAL (remedy core BUILT 2026-06-24; field/chaos drills remain)<a class="headerlink" href="#d2-schema-migration-to-n-offline-clients-s1-partial-remedy-core-built-2026-06-24-fieldchaos-drills-remain" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Now you must prove:</strong> the <em>honest</em> open problem (<code>§9.E</code>, shared across the whole local-first category): when the AD/schema changes, <strong>N offline clients holding old ops</strong> must replay them to their <em>original</em> effect and adopt the new schema without diverging — with no server to coordinate a migration.</li>
 <li><strong>Failure scenario:</strong> you ship a breaking AD change; a van that's been offline two weeks syncs old-format ops that the new kernel replays <em>differently</em> → its books diverge. Postgres gave you one atomic migration; you have N devices on their own clocks.</li>
@@ -4945,17 +4970,17 @@ We left the devil we knew — a Postgres container, a JVM app server, Docker's o
 <tr>
 <td>old-manifest ops replay to original effect under a new kernel</td>
 <td>history is frozen, not reinterpreted</td>
-<td><strong>🔴 TO BUILD</strong></td>
+<td>✅ <strong>W-D2-FREEZE</strong> (<code>poc_d2_versioning.js</code>, maxDiff=0c)</td>
 </tr>
 <tr>
 <td>two clients on manifest v1 and v2 converge after a migration op</td>
 <td>offline migration doesn't diverge</td>
-<td><strong>🔴 TO BUILD</strong></td>
+<td>✅ <strong>W-D2-CONVERGE</strong> (mixed v1+v2 log, maxDiff=0c)</td>
 </tr>
 <tr>
 <td>a client refuses (loud) an op from an unsupported manifest</td>
 <td>no silent misapply</td>
-<td><strong>🔴 TO BUILD</strong></td>
+<td>✅ <strong>W-D2-REFUSE</strong> (<code>D2_UNSUPPORTED</code> thrown, not folded)</td>
 </tr>
 <tr>
 <td>- <strong>Leading indicators:</strong> distribution of manifest versions in the field; count of refused-op events; any post-migration <code>replay-hash</code> mismatch.</td>
@@ -4964,6 +4989,16 @@ We left the devil we knew — a Postgres container, a JVM app server, Docker's o
 </tr>
 <tr>
 <td>- <strong>Residual:</strong> stated plainly — this is a <strong>partial mitigation of a problem the category has not fully solved.</strong> Until the three tests are green, <em>do not ship a breaking schema change to offline clients.</em> This is the most important honesty in the document.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>- <strong>✅ REMEDY CORE BUILT 2026-06-24 — <code>build/erp/op_upcaster.js</code> (schema_version stamp + read-time upcaster registry); witness <code>scripts/poc_d2_versioning.js</code> PASS 7/7.</strong> The forced strategy from the spike, implemented: (a) every new op is stamped <code>params._sv = currentOf(opType)</code> via <code>commitVersioned</code> (a SIGNED fact — <code>_sv</code> is inside parameters, so it's hashed → an op's declared version is tamper-evident, proven by <strong>W-D2-TAMPER</strong>: forging <code>_sv</code> on a stored op breaks the chain); (b) <code>register(opType, fromV, fn)</code> builds a version-N→N+1 upcaster chain; (c) <code>upcast()</code>/<code>upcastAll()</code> transform old ops to the current shape <strong>on read</strong>, in memory, never touching the stored op (<strong>W-D2-SIGNED</strong>: <code>verifyChain</code> still ok after folding upcasted ops); (d) a future/unknown-version op is <strong>refused loudly</strong> (<code>D2_UNSUPPORTED</code> thrown — <strong>W-D2-REFUSE</strong>), never silently misapplied. The 3 test-plan rows above are now green (W-D2-FREEZE/CONVERGE/REFUSE). <strong>Still 🟡, not ✅:</strong> this is the <em>engine</em> core — the field/operational drills remain (manifest-version distribution telemetry; a recurring chaos drill that migrates a real field log; and wiring <code>commitVersioned</code> as the app's default write seam — currently opt-in). <em>Do-not-ship rule relaxes:</em> a breaking change is now shippable <strong>iff</strong> it ships with its registered upcaster + a version bump (forward-only, mirrors <code>migration/*.sql</code>). Spec: <code>prompts/D2_REMEDY_VERSIONING.md</code>.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>- <strong>🔬 Discovery spike (S1, MEASURED 2026-06-24 — <code>scripts/spike_d2_versioning.js</code>, log <code>logs/spike_d2_versioning_…</code>) — prompted by Ludwikowski's <em>"Event Sourcing — what could possibly go wrong?"</em> (his #1 pitfall: events are immutable + live forever, yet you WILL change their shape):</strong> <code>§SPIKE-D2 versionField=N upcaster=N additiveChange=TOLERATED breakingRename=FOLDS-WRONG(maxDiff=39000c) upcastOnRead=RESTORES(diff=0) chainIntactAfterUpcast=Y rewriteStoredOp=BREAKS-CHAIN(payload altered)</code>. <strong>Verdict — the gap is real and the SIGNED log makes it sharper than in classic ES.</strong> Measured on the real kernel: (1) <strong>no <code>schema_version</code> on ops and no upcaster registry today</strong> — so versioning is implicit. (2) An <strong>additive</strong> change (v2 adds an optional field) is <strong>tolerated</strong> by the accidental tolerant-reader (missing field → undefined → ignored). (3) A <strong>breaking rename</strong> (<code>account_id</code>→<code>acct</code>) <strong>folds wrong silently</strong> — the books drift 39,000¢ with no error, <em>exactly</em> the failure scenario. (4) <strong>Upcast-on-read</strong> (transform v1→v2 in memory before the reducer) <strong>fully restores correctness AND keeps the chain valid</strong> (<code>verifyChain</code> ok) because the stored op is never touched. (5) <strong>The forbidden migration is provable:</strong> rewriting a stored op's <code>parameters</code> to the v2 shape <strong>breaks the chain</strong> (<code>verifyChain</code> → <code>payload altered</code>), because <code>op_hash = SHA-256(prev_hash | canonical(op))</code> covers the param JSON + the signature is over that hash. <strong>So our remedy is forced, not optional:</strong> classic ES can rewrite/upsert old events during migration; <strong>we cannot</strong> — the only legal path is <strong>(a) stamp each op with its <code>schema_version</code> + (b) a read-time upcaster registry</strong> (= the existing "freeze-effects replay" remedy step 1, now <em>measured</em> as mandatory). Severity stays <strong>S1</strong> — and this is the highest-value next build per the talk's own "most experienced practitioners say versioning bites everyone." The three 🔴 test-plan rows above are the build; this spike measured <em>why</em> and <em>which strategy is the only one the signed log permits</em>.</td>
 <td></td>
 <td></td>
 </tr>
@@ -5293,6 +5328,7 @@ We left the devil we knew — a Postgres container, a JVM app server, Docker's o
 <blockquote>
 <p>These three are tracked as G2 sub-tasks. ① is the recommended first build — a button over an existing witness — and the session-starter for it lives in <code>prompts/RESUME_PROVE_BOOKS_MONITOR.md</code>.</p>
 </blockquote>
+<p><strong>✅ BUILT 2026-06-24 — the 4 field-health widgets (the SysAdmin optic, distinct from the ①②③ wow-widgets above).</strong> <code>build/erp/system_monitor.js</code> (<code>fold(signals) → {widgets, overall}</code>, pure/headless-testable + <code>render()</code>) folds <strong>real</strong> spike signals into a live monitor: <strong>① field_errors</strong> (G2, from <code>error_beacon.js</code>), <strong>② durability_ladder</strong> (A1 — <em>never</em> labels an unrelayed op "durable"), <strong>③ db_size_gauge</strong> (the <em>real</em> B1 — op-log MB vs the 200 MB ceiling; shows headroom, the reassuring optic), <strong>④ environment</strong> (C1 — <code>vfs_detect</code> backend + bootstrap_path). Host <code>build/erp/system_monitor.html</code> with the <strong>Classic↔Angelic</strong> toggle (Classic = all server vitals N/A → "there is no server"). Witness <code>scripts/poc_system_monitor.js</code> <strong>PASS 14/14</strong> (real sql.js op-log DB + real OfflineQueue + real beacon + real VFS; falsifiers bite) + <code>scripts/smoke_system_monitor.js</code> <strong>PASS 6/6</strong> (headless Chromium: loads, folds 4, paints, toggle works). Spec: <code>prompts/SYSTEM_MONITOR_WIDGETS.md</code>. Staged to <code>deploy/dev/</code>; wire into the ERP login-panel <code>idempiere.html</code> when <code>bim-ootb</code> is reachable.</p>
 <hr />
 <h2 id="the-gap-summary-what-blocks-production">The gap summary — what blocks production<a class="headerlink" href="#the-gap-summary-what-blocks-production" title="Permanent link">&para;</a></h2>
 <p>A green register is the bar. Today's <strong>🔴 TO BUILD</strong> rows, in priority order:</p>

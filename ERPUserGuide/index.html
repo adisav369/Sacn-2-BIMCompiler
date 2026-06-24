@@ -1015,6 +1015,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#import-a-primavera-ms-project-programme-adopt-an-existing-plan-live-p6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import a Primavera / MS Project programme — adopt an existing plan (LIVE: P6)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4056,6 +4067,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#import-a-primavera-ms-project-programme-adopt-an-existing-plan-live-p6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import a Primavera / MS Project programme — adopt an existing plan (LIVE: P6)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4938,6 +4960,61 @@ enterprise reads. <em>(Proven by <code>W-SCHED-EDIT</code> 19/19, <code>W-SCHED-
 <p><strong>Where it stops — on purpose.</strong> The editor computes from the graph <em>you</em> author; it never
 auto-reschedules or "levels" resources for you. Automatic schedule optimisation is a decades-deep
 rabbit hole and a place for drift; the line here is deliberate — deterministic compute, your plan.</p>
+</blockquote>
+<hr />
+<h3 id="import-a-primavera-ms-project-programme-adopt-an-existing-plan-live-p6">Import a Primavera / MS Project programme — adopt an existing plan <em>(LIVE: P6)</em><a class="headerlink" href="#import-a-primavera-ms-project-programme-adopt-an-existing-plan-live-p6" title="Permanent link">&para;</a></h3>
+<p>You don't have to author from scratch. If the schedule already lives in <strong>Primavera P6</strong> or <strong>MS
+Project</strong>, bring it in: in the Schedule Editor press <strong><code>⤓ Import P6</code></strong>, pick the export file, and its
+<strong>WBS, dependencies and dates land straight into the same IFC-native tables</strong> the rest of the 4D/5D
+stack reads. The imported plan immediately gets the expandable WBS, the <strong>FS/SS/FF/SF</strong> dependency
+editor, <strong>Compute CPM</strong>, the drag-Gantt, What-if and the 5D cost fold — nothing special-cased.</p>
+<p><strong>How the two worlds meet.</strong> The 3D model comes from <strong>Autodesk</strong> (Revit/Navisworks → IFC → the BIM
+Viewer). The programme comes from <strong>Primavera / MS Project</strong>. The importer is a thin reader that turns
+either side's export into our one signed schedule — and the two are stitched together by <strong>binding</strong>:</p>
+<p><img alt="How the BIM model (Autodesk) and the construction programme (Primavera / MS Project) meet — the importer lands the plan into the IFC-native schedule; binding ties each task to a model element; the model, 4D playback, 5D cost and ERP all fold from one signed log." src="../figs/foreign_import_flow.svg" /></p>
+<p><strong>The formats</strong> — each is a separate reader behind one mapper, so the result is identical whichever you
+feed in:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>File</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Primavera P6</td>
+<td><strong><code>.xer</code></strong> (the interchange planners email around)</td>
+<td><strong>LIVE</strong></td>
+</tr>
+<tr>
+<td>Primavera P6</td>
+<td><strong><code>.xml</code></strong> — P6 XML / <strong>PMXML</strong> (the open, structured export)</td>
+<td><strong>LIVE</strong></td>
+</tr>
+<tr>
+<td>MS Project</td>
+<td><strong><code>.xml</code></strong> — <strong>MSPDI</strong> (Project's XML export)</td>
+<td><strong>LIVE</strong></td>
+</tr>
+</tbody>
+</table>
+<p><em>(Both <code>.xml</code> flavours are auto-detected by content — you don't pick the format, just the file.)</em></p>
+<p><strong>The honest boundary — why import isn't yet 4D.</strong> A P6 or MS Project file carries the <em>plan</em> (tasks,
+logic, dates) but <strong>no model geometry</strong> — it has activity codes, not your building's element GUIDs. So a
+freshly imported schedule is a real, editable, CPM-computable programme, but its tasks aren't yet tied to
+anything you can see. You make it <strong>4D</strong> by <strong>binding</strong>: in the <strong><code>✎</code></strong> wizard you assign each task the
+elements it builds (rename-proof — the link survives a model re-export). Once bound, the 5D cost folds up
+from the assigned elements and the Time Machine scrubs the model along your imported dates. <em>This binding
+step is exactly the thing a P6 reporting tool cannot do — it has no model to bind to.</em></p>
+<blockquote>
+<p><strong>Demo files.</strong> The same ready GW-Hospital programme ships in all three formats —
+<code>tests/fixtures/Hospital_GW_Programme.xer</code> (P6 XER), <code>…/Hospital_GW_Programme.xml</code> (P6 PMXML) and
+<code>…/Hospital_GW_MSProject.xml</code> (MS Project MSPDI) — so you can try the import end-to-end on the sample
+model. <em>(Proven by <code>W-FGN</code> 28/28 on the real Hospital model — every format maps to the same rows, CPM
+reproduces the plan's 300-day critical path exactly, and 525 real elements bind and fold to 5D cost;
+plus the <code>§SE-IMPORT-SMOKE</code> 7/7 headless UI check.)</em></p>
 </blockquote>
 <hr />
 <h2 id="3-the-bottom-pill-bar-cheat-sheet">3. The Bottom Pill Bar (cheat sheet)<a class="headerlink" href="#3-the-bottom-pill-bar-cheat-sheet" title="Permanent link">&para;</a></h2>
