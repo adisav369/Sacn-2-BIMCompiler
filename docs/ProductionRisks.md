@@ -417,6 +417,8 @@ Spec-first, each with the `§`-log line that *is* the proof. Start order = cheap
 
 > These three are tracked as G2 sub-tasks. ① is the recommended first build — a button over an existing witness — and the session-starter for it lives in `prompts/RESUME_PROVE_BOOKS_MONITOR.md`.
 
+**✅ BUILT 2026-06-24 — the 4 field-health widgets (the SysAdmin optic, distinct from the ①②③ wow-widgets above).** `build/erp/system_monitor.js` (`fold(signals) → {widgets, overall}`, pure/headless-testable + `render()`) folds **real** spike signals into a live monitor: **① field_errors** (G2, from `error_beacon.js`), **② durability_ladder** (A1 — *never* labels an unrelayed op "durable"), **③ db_size_gauge** (the *real* B1 — op-log MB vs the 200 MB ceiling; shows headroom, the reassuring optic), **④ environment** (C1 — `vfs_detect` backend + bootstrap_path). Host `build/erp/system_monitor.html` with the **Classic↔Angelic** toggle (Classic = all server vitals N/A → "there is no server"). Witness `scripts/poc_system_monitor.js` **PASS 14/14** (real sql.js op-log DB + real OfflineQueue + real beacon + real VFS; falsifiers bite) + `scripts/smoke_system_monitor.js` **PASS 6/6** (headless Chromium: loads, folds 4, paints, toggle works). Spec: `prompts/SYSTEM_MONITOR_WIDGETS.md`. Staged to `deploy/dev/`; wire into the ERP login-panel `idempiere.html` when `bim-ootb` is reachable.
+
 ---
 
 ## The gap summary — what blocks production

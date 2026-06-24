@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT
+     New-Paradigm System Monitor host — 4 field-health widgets folding REAL signals.
+     Spec: prompts/SYSTEM_MONITOR_WIDGETS.md · Module: system_monitor.js · Risk: ProductionRisks.md §H -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>System Monitor — paradigm vitals</title>
+<script src="error_beacon.js?v=1"></script>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f4f6f8; margin: 0; padding: 18px; color: #1d2733; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #777; margin-bottom: 16px; }
+  .toggle { display: inline-flex; border: 1px solid #cfd6dd; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
+  .toggle button { border: 0; background: #fff; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+  .toggle button.on { background: #1d2733; color: #fff; }
+  #panel { max-width: 380px; }
+  .ctrls { margin-top: 16px; max-width: 380px; }
+  .ctrls button { font-size: 12px; padding: 6px 10px; margin: 0 6px 6px 0; border: 1px solid #cfd6dd; border-radius: 5px; background: #fff; cursor: pointer; }
+  .classic { border: 1px solid #ddd; border-radius: 8px; max-width: 380px; overflow: hidden; }
+  .classic .hdr { padding: 8px 10px; background: #5a3a1d; color: #fff; font-size: 12px; font-weight: 600; }
+  .classic .row { display: flex; justify-content: space-between; padding: 7px 10px; border-bottom: 1px solid #ececec; font-size: 13px; }
+  .classic .na { color: #b00; }
+</style>
+</head>
+<body>
+<h1>System Monitor</h1>
+<div class="sub">Classic iDempiere watched the <i>server's</i> vitals. There is no server — so this watches the <b>paradigm's</b> vitals. (G2 observability · ProductionRisks §H)</div>
+
+<div class="toggle">
+  <button id="tAng" class="on" onclick="setView('angelic')">Angelic (paradigm)</button>
+  <button id="tCla" onclick="setView('classic')">Classic (server)</button>
+</div>
+
+<div id="panel"></div>
+
+<div class="ctrls">
+  <button onclick="demoError()">↯ throw a field error</button>
+  <button onclick="demoUnrelayed()">＋ queue an unsynced op</button>
+  <button onclick="demoRelay()">✓ relay (sync) all</button>
+  <button onclick="refresh()">⟳ refresh</button>
+</div>
+
+<script src="lib/sql-wasm.js" onerror="this.onerror=null;this.src='sqljs/sql-wasm.js'"></script>
+<script src="vfs_detect.js?v=1"></script>
+<script src="offline_queue.js?v=1"></script>
+<script src="system_monitor.js?v=1"></script>
+<script>
+'use strict';
+var SM = (window.ERP && window.ERP.SystemMonitor);
+var Q = null, DB = null, VFSRES = null, view = 'angelic';
+var PERSISTED = null, EST = null;
+
+function setView(v) {
+  view = v;
+  document.getElementById('tAng').className = v === 'angelic' ? 'on' : '';
+  document.getElementById('tCla').className = v === 'classic' ? 'on' : '';
+  refresh();
+}
+
+async function boot() {
+  // real signals: a small op-log DB, an offline queue, vfs detect, storage estimate/persisted
+  try {
+    var initSqlJs = window.initSqlJs;
+    var SQL = await initSqlJs({ locateFile: function (f) { return (location.pathname.indexOf('/sqljs/') > -1 ? '' : 'lib/') + f; } });
+    DB = new SQL.Database();
+    DB.run('CREATE TABLE kernel_ops (id INTEGER PRIMARY KEY, parameters TEXT)');
+    var stmt = DB.prepare('INSERT INTO kernel_ops (parameters) VALUES (?)');
+    for (var i = 0; i < 400; i++) stmt.run([JSON.stringify({ table: 'C_Invoice', id: 9000 + i, amt: i })]);
+    stmt.free();
+  } catch (e) { console.warn('§MON-HOST db init failed (gauge → na):', e.message); }
+
+  Q = new window.ERP.OfflineQueue();
+  var sids = [];
+  for (var j = 0; j < 12; j++) sids.push(Q.enqueue({ op_uuid: 'seed' + j, type: 'POST' }).queued);
+  Q.markRelayed(sids);                                  // start all-synced (healthy)
+
+  VFSRES = window.ERP.VFS.detect();                     // real backend on THIS origin (GH Pages → idb)
+
+  try { if (navigator.storage && navigator.storage.estimate) EST = await navigator.storage.estimate(); } catch (e) {}
+  try { if (navigator.storage && navigator.storage.persisted) PERSISTED = await navigator.storage.persisted(); } catch (e) {}
+
+  refresh();
+}
+
+function signals() {
+  return { beacon: window.__ERR_BEACON__, queue: Q, db: DB, vfs: VFSRES,
+    storageEstimate: EST, persisted: PERSISTED, bootstrapPath: 'checkpoint' };
+}
+
+function refresh() {
+  var el = document.getElementById('panel');
+  if (view === 'classic') { renderClassic(el); return; }
+  if (!SM) { el.textContent = 'system_monitor.js not loaded'; return; }
+  SM.render(SM.fold(signals()), el);                    // fold REAL signals → paint
+}
+
+// Classic server-vitals panel — every row is N/A, because the tier it measured was disposed (§11.1).
+function renderClassic(el) {
+  var rows = [['JVM heap', 'N/A — no server'], ['DB connections', 'N/A — no pool'], ['Session count', 'N/A — serverless'],
+              ['App-server uptime', 'N/A — nothing always-on'], ['Infra cost', '$0 — no always-on tier']];
+  el.innerHTML = '<div class="classic"><div class="hdr">Classic System Monitor — server vitals</div>' +
+    rows.map(function (r) { return '<div class="row"><span>' + r[0] + '</span><span class="na">' + r[1] + '</span></div>'; }).join('') +
+    '</div><div class="sub" style="margin-top:8px">↑ The old monitor is all N/A here — there is no server to watch. Flip to <b>Angelic</b> for the vitals that <i>do</i> exist.</div>';
+}
+
+// demo controls — drive the REAL signal sources so the widgets move
+function demoError() { throw new Error('demo field error @ ' + (window.__ERR_BEACON__ ? window.__ERR_BEACON__.captured + 1 : '?')); }
+function demoUnrelayed() { Q.enqueue({ op_uuid: 'live' + Q.count(), type: 'POST' }); refresh(); }
+function demoRelay() { var all = (Q._q || []).map(function (r) { return r.id; }); Q.markRelayed(all); refresh(); }
+
+// surface thrown demo errors through the beacon (they're uncaught → beacon captures → widget moves)
+window.addEventListener('error', function () { setTimeout(refresh, 30); });
+
+boot();
+</script>
+</body>
+</html>
