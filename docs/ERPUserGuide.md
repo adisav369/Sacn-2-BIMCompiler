@@ -363,7 +363,9 @@ feed in:
 |---|---|---|
 | Primavera P6 | **`.xer`** (the interchange planners email around) | **LIVE** |
 | Primavera P6 | **`.xml`** — P6 XML / **PMXML** (the open, structured export) | **LIVE** |
-| MS Project | **`.xml`** — **MSPDI** (Project's XML export) | next, same seam |
+| MS Project | **`.xml`** — **MSPDI** (Project's XML export) | **LIVE** |
+
+*(Both `.xml` flavours are auto-detected by content — you don't pick the format, just the file.)*
 
 **The honest boundary — why import isn't yet 4D.** A P6 or MS Project file carries the *plan* (tasks,
 logic, dates) but **no model geometry** — it has activity codes, not your building's element GUIDs. So a
@@ -373,11 +375,12 @@ elements it builds (rename-proof — the link survives a model re-export). Once 
 from the assigned elements and the Time Machine scrubs the model along your imported dates. *This binding
 step is exactly the thing a P6 reporting tool cannot do — it has no model to bind to.*
 
-> **Demo files.** A ready GW-Hospital programme ships in both formats —
-> `tests/fixtures/Hospital_GW_Programme.xer` and `…/Hospital_GW_Programme.xml` — so you can try the
-> import end-to-end on the sample model. *(Proven by `W-FGN` 22/22 on the real Hospital model — both
-> formats map to identical rows, CPM reproduces the plan's critical path exactly, and 525 real elements
-> bind and fold to 5D cost; plus the `§SE-IMPORT-SMOKE` 7/7 headless UI check.)*
+> **Demo files.** The same ready GW-Hospital programme ships in all three formats —
+> `tests/fixtures/Hospital_GW_Programme.xer` (P6 XER), `…/Hospital_GW_Programme.xml` (P6 PMXML) and
+> `…/Hospital_GW_MSProject.xml` (MS Project MSPDI) — so you can try the import end-to-end on the sample
+> model. *(Proven by `W-FGN` 28/28 on the real Hospital model — every format maps to the same rows, CPM
+> reproduces the plan's 300-day critical path exactly, and 525 real elements bind and fold to 5D cost;
+> plus the `§SE-IMPORT-SMOKE` 7/7 headless UI check.)*
 
 ---
 
