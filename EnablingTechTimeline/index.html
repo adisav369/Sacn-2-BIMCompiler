@@ -3715,6 +3715,13 @@ Where a date could not be independently confirmed this session it is marked <em>
 <td>[FeatureComparison.md §vs IFC.js]</td>
 </tr>
 <tr>
+<td><strong>2022-03</strong></td>
+<td><strong>BroadcastChannel</strong> cross-browser (Chrome 54 2016 / Firefox 38 2015; <strong>Safari 15.4</strong> completes the set)</td>
+<td>same-origin multi-tab message bus, no server</td>
+<td><strong>ENABLER</strong> — instant multi-tab relay (viewer ↔ BOQ-charts 4D-Gantt sync, <code>main.js</code> S240 / <code>boq_charts.html</code> S253); degrades gracefully to DB-load / <code>generateSchedule</code> when absent, so it lifts UX, not capability</td>
+<td><a href="https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel">MDN</a> · <a href="https://caniuse.com/broadcastchannel">caniuse</a></td>
+</tr>
+<tr>
 <td><strong>2022-11</strong></td>
 <td>SQLite <strong>3.40.0</strong> — first <em>official</em> WASM build + OPFS VFS</td>
 <td>SQLite team ships browser WASM; OPFS sync-access-handle VFS (concurrent connections, single transaction)</td>
