@@ -1,50 +1,57 @@
-# Java → JS Placement / Facing Port Ledger
+# Chair-Facing Root Cause + Java Placement Port Ledger
 
-# ⚠ DO NOT REMOVE — scope: every rotation/facing/placement mechanism in the Java compiler
-# (`PlacementCollectorVisitor.java`) and whether the JS drop engine (`deploy/dev/bonsai_library.js`,
-# the DAGeVu canvas placer) ports it. Read the log after every run. Honour until DONE.
-# Witness: `scripts/witness_dagevu_drop.js` (W-DAGEVU-DROP). Live 2026-06-24.
+# ⚠ DO NOT REMOVE — scope: why dropped buildings showed dining chairs "facing one way", traced by the
+# RosettaStone method (reproduce → compare to the real extraction → white-box the drift → fix the SOURCE),
+# and the standing account of what the JS drop engine ports from the Java compiler. Read the log after every run.
+# Witnesses: W-ROTATION-ROSETTA-SH (facing vs real extraction) + W-DAGEVU-DROP (structural baseline). 2026-06-24.
 
-This file answers the standing question — *"why doesn't our JS do what the Java did perfectly, and where are we
-NOT?"* — with a line-by-line accounting. The honest headline:
+## The headline (no invented angle)
+The chairs faced one way because the **per-instance yaw was dropped during BOM factorization**, NOT because the
+JS engine lacked facing logic. Found by comparing the reproduction to the real IFC extraction, fixed at the
+source, and proven by a rotation RosettaStone going to **Δ = 0** — not by a hardcoded offset.
 
-> The Java compiler is **not** a universal facing oracle. For furniture it faithfully renders whatever
-> `rotation_rule` the BOM carries — nothing more. Where that field is `0`/empty (the archive synthetic dining set,
-> the stale building seats), **Java places the chairs facing one way too.** So the "chairs face one way" bug is a
-> **data / missing-verb** gap that Java shares — not a piece of Java facing logic we failed to port.
+> An earlier attempt hardcoded `rot = bearing + 270°` (a "radial-seating verb"). That was **invented data** — it
+> injects the answer into the reproduction, which defeats the round-trip (you can't detect drift once you've
+> baked it in). It was reverted from dev and from production (bim-ootb #510, sw v718). The constant is gone.
 
-## Mechanisms in `PlacementCollectorVisitor.java`
+## The method, step by step
+1. **Black box (RosettaStone).** Position already round-trips at 0.000mm (`rosetta_canvas_sh.js`). The ground-truth
+   extraction (`element_transforms`) stores **shared canonical meshes + per-instance centers** — repeated furniture
+   shares one mesh (46 meshes / 55 elements), so rotation must be a per-instance field.
+2. **Re-extract.** The current extractor `DAGCompiler/python/extractIFCtoDB.py` **does** capture yaw — it reads the
+   IfcLocalPlacement chain → Euler `rot_z` → `element_transforms.rotation_z`. The stale rosetta DB predated that
+   column. A fresh extraction of `Ifc4_SampleHouse.ifc` gives the real dining yaws: **{0, 180, 0, 180, 90, −90}**
+   (two facing columns + two facing ends) — chairs that genuinely face their table.
+3. **White box (where the drift enters).** The catalog drop flattened the 4 side chairs to rot=0. Traced through:
+   catalog `rotDeg` ← BOM `rotation_rule` ← `VerbFactorizer`. The 4 side chairs were grouped into ONE
+   `verb_ref=TILE:2:2` line, and `VerbFactorizer` stores only **`first.orientation()`** for a factored line
+   (`VerbFactorizer.java:165`). `VerbDetector.detectTile` groups by **position only** — it never checks rotation —
+   so a 2×2 of chairs at `{0,π,0,π}` collapsed to the first chair's 0, silently dropping the real π on the others.
+4. **Fix the source (non-invent).** Added an **orientation-uniformity guard** in `VerbFactorizer.doFactorize`
+   (mirrors the existing material-uniformity guard): a group whose per-instance yaw differs beyond tolerance is NOT
+   factorized → it falls through to the per-instance path, which writes `e.orientation()` per element. The real
+   captured yaw flows verbatim: extraction → BOM (4 separate lines, rot {0,0,180,180}) → catalog → drop.
+5. **Prove (RosettaStone to zero).** `scripts/witness_rotation_rosetta_sh.js` matches every dropped furniture leaf
+   to the real extraction element (same class + table-relative position) and compares yaw. **Δ-spread = 0°** — the
+   reproduction reproduces the extraction's facing exactly, with no constant anywhere.
 
-| # | Java mechanism (file:line) | What it does | JS status |
-|---|---|---|---|
-| 1 | `parseRotation(MBOMLine)` (1901-1914) | BOM line `rotation_rule` numeric string → radians; `MIRROR:*`→0; non-numeric→0 (logged) | ✅ **PORTED** — `expandAssembly` reads each child's `rotDeg` (= `parse_rot(rotation_rule)`), same fallback semantics |
-| 2 | `rotationStack` cascade (350, 385-387) `newCumRot = cumRot + lineRot`, pushed per sub-assembly | Parent rotation accumulates onto children's facing **and** rotates their (dx,dy), recursively | ✅ **PORTED** — `expandAssembly` `wrot = (pr + ch.rotDeg)`, recurses with it; (dx,dy) rotated by `cumRot` |
-| 3 | MIRROR:X/Y/Z (1428-1430, parseMirror 1916+) | `MIRROR:X ≡ rot=π`, negates child (dx,dy), propagates to sub-tree | ✅ **PORTED** — `expandAssembly` `pm` mirror axis negates dx,dy and inherits to children |
-| 4 | `facingDirection(placementRule)` (1019-1038, §12g GAP-4) | Generative **device** anchor face → yaw: `WALL_BACK/COUNTER_BACK→0`, `WALL_ENTRY→π`, side `WALL_*/COUNTER_*→−π/2`, CEILING/FLOOR→0 | ✅ **PORTED (faithful, DORMANT)** — `_facingDirection()` 1:1 in degrees. The post-compile drop catalog carries **no** `placement_rule` on its leaves, so there is nothing to act on today; kept verbatim for the day anchor-ruled leaves are dropped |
-| 5 | `standoffOffset(hostSurface)` (1040+) | Device sits 5mm off wall / 50mm pendant gap / 0 on floor | ❌ **NOT PORTED** — sub-cm cosmetic standoff for generative MEP only; not visible at drop LOD. *Deliberately skipped.* |
-| 6 | `MEPDevicePlacer` / END_JOIN / collision shifts (767, 471-, ROOM_DONE 1014) | Compile-time generative MEP routing + clash resolution; calls #4 | ❌ **NOT PORTED** — the drop consumes **post-compile** catalog geometry (devices already placed); generative routing is a compile concern, not a drop concern. *Deliberately out of scope.* |
+## Java → JS placement port status (unchanged truths)
+| Java mechanism | JS status |
+|---|---|
+| `parseRotation(rotation_rule)` numeric radians (PlacementCollectorVisitor:1901) | ✅ ported — `expandAssembly` `rotDeg` |
+| `rotationStack` cascade `cumRot+lineRot` (350,385) | ✅ ported — recursive `wrot = pr + ch.rotDeg` |
+| MIRROR:X/Y/Z reflection (1428) | ✅ ported — `expandAssembly` mirror negation |
+| `facingDirection(placement_rule)` — MEP **device** anchor table only (1019, §12g GAP-4) | n/a to the drop — fires only on generative devices with a `placement_rule`; the drop catalog has none. It never faces furniture (no table-ring case). |
+| host-relative opening facing | ⚠ JS `_inheritHostRotation`: SH/DX openings carry `rotation_rule=0` + no host link, so Java renders them flat too; JS geometrically recovers the host wall and copies its yaw (declared enhancement, provenance-logged). |
 
-## JS-BEYOND-JAVA (enhancements — Java does NOT do these; declared, not hidden)
+## The one real gap that remains (honest)
+The **standalone `SH_DINING_SET`** (a synthetic convenience template in `library/archive/BOM.db`, `rotation_rule=0`)
+has **no real-building ground truth**, so its chairs cannot be RosettaStone-verified and still face one way if
+dropped. It is logged informationally in W-DAGEVU-DROP, **not asserted**. Fixing it would mean either sourcing it
+from a real building or deleting it — not inventing rotations.
 
-| Mechanism | Why it exists | Honest status |
-|---|---|---|
-| `_inheritHostRotation` (openings) | SH/DX BOM dropped the host link (`host_element_ref` 100% empty) **and** opening `rotation_rule=0` → Java renders doors/windows **flat at rot=0**. JS geometrically recovers the embedding wall at placement time and copies its rotation (EN BLOC). | ⚠ **ENHANCEMENT** — closes a gap **Java also has** (Java would place them flat). Geometric, provenance-logged, unresolved openings kept honest at rot=0. |
-| `_faceRingChairs` (radial seating verb) | Java has **no seat facer**; it renders `rotation_rule`, which is `0` for the archive dining set and stale building seats → chairs face one way in Java too. PRIME RULE: *compute positions via verbs, never invent.* | ⚠ **ENHANCEMENT** — a deterministic construction verb: `rot = bearing(table→seat) + 270°`. The **270° offset is PINNED from the building's own correctly-faced seats** (those carrying real IFC yaw all show `Δ = rot − bearing = 270°`); the verb reproduces them to ~0.003° (idempotent), proving the offset is the real mesh convention, not a guess. Only a genuine ring (≥3 chairs near one table) is faced; lone armchairs keep their own facing. |
-
-## The data truth (why #1-#3 being ported is not enough on its own)
-
-`SH_DINING_SET` assembly lines (deploy/dev/dagevu_catalog.json) — **every child `rotDeg=0`**:
-```
-ref=ROLE__TABLE…  rotDeg=0 ;  ref=ROLE__CHAIR_A…F  rotDeg=0   (orientation empty)
-```
-A perfect port of #1-#3 renders this exactly as Java does: all seats at rot=0, all facing one way. The fix is the
-missing **verb** (#`_faceRingChairs`), supplying facing the data lacks — derived from real positions + a constant
-extracted from real correct data. This is the principled, non-invent path, not a heuristic patch.
-
-## Witness
-
-`W-DAGEVU-DROP` (`scripts/witness_dagevu_drop.js`) now computes the **sharp, convention-free facing invariant** —
-a seated ring faces its table iff `Δ = rot − bearing(table→seat)` is constant (small circular spread). It went
-**RED 18/20** before the verb (SH_DINING_SET spread 156.7°, building dining 249.3°) and **GREEN 20/20** after
-(both spreads 0°). The old tautological "every leaf has a finite rotation" check and the self-excusing
-"`{0}°` is the canonical template" prose were deleted — they were the GIGO that let an all-one-way set pass.
+## Artifacts
+- Source fix: `IFCtoBOM/.../VerbFactorizer.java` (orientation-uniformity guard + `orientationsUniform`).
+- Regenerated: `library/SH_BOM.db` (LFS-local; the SCRIPT path is the durable artifact), `dagevu_catalog.json`.
+- Witness: `scripts/witness_rotation_rosetta_sh.js` (W-ROTATION-ROSETTA-SH, GREEN Δ=0 vs real extraction).
+- Reverted: the `270°` radial verb (dev engine + bim-ootb #510, sw v718).
