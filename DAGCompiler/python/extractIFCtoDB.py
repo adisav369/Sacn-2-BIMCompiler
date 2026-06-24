@@ -181,6 +181,18 @@ CREATE TABLE IF NOT EXISTS rel_aggregates (
     child_guid TEXT NOT NULL,
     PRIMARY KEY (parent_guid, child_guid)
 );
+-- Path B (§PATHB / SPATIAL_DEPENDENCY_GRAPH.md): the void/fill chain, recovered verbatim from
+-- IfcRelVoidsElement (host→opening) composed with IfcRelFillsElement (opening→filling). One row per
+-- opening that voids a host; filling_guid NULL = open void (no door/window). provenance is always
+-- 'ifc:recovered' — NON-INVENT, we copy authored relations and derive nothing here.
+CREATE TABLE IF NOT EXISTS rel_fills_host (
+    opening_guid TEXT PRIMARY KEY,
+    host_guid TEXT,
+    filling_guid TEXT,
+    host_class TEXT,
+    filling_class TEXT,
+    provenance TEXT DEFAULT 'ifc:recovered'
+);
 CREATE TABLE IF NOT EXISTS surface_styles (
     style_name TEXT PRIMARY KEY,
     surface_r REAL, surface_g REAL, surface_b REAL,
@@ -684,6 +696,64 @@ def _open_library(library_path):
                 f"component_library.db missing table '{t}' — "
                 f"run schema migration first")
     return lib
+
+
+def extract_rel_fills_host(ifc_file, conn):
+    """§PATHB (SPATIAL_DEPENDENCY_GRAPH.md Phase 1): recover the void/fill chain.
+
+    The `hosted-by` edge, RECOVERED from authored relations — never proximity-guessed:
+      IfcRelVoidsElement: RelatingBuildingElement (host) → RelatedOpeningElement (opening)
+      IfcRelFillsElement: RelatingOpeningElement (opening) → RelatedBuildingElement (filling)
+    Compose on the shared opening GUID → filling → opening → host. One row per opening that
+    voids a host; filling_guid NULL = open void. NON-INVENT: copies authored relations, derives
+    nothing (the relative host-ride transform is derivable later from element_transforms).
+
+    Returns (rows_written, rows_with_filling).
+    """
+    rows = 0
+    filled = 0
+    try:
+        # opening_guid → host element (from Voids)
+        host_of_opening = {}
+        for rel in ifc_file.by_type("IfcRelVoidsElement"):
+            try:
+                host = rel.RelatingBuildingElement
+                opening = rel.RelatedOpeningElement
+                if not opening or not hasattr(opening, 'GlobalId'):
+                    continue
+                host_of_opening[opening.GlobalId] = host
+            except (AttributeError, TypeError):
+                pass
+        # opening_guid → filling element (from Fills)
+        filling_of_opening = {}
+        for rel in ifc_file.by_type("IfcRelFillsElement"):
+            try:
+                opening = rel.RelatingOpeningElement
+                filling = rel.RelatedBuildingElement
+                if not opening or not hasattr(opening, 'GlobalId'):
+                    continue
+                filling_of_opening[opening.GlobalId] = filling
+            except (AttributeError, TypeError):
+                pass
+        # One row per opening that voids a host (filling optional)
+        for opening_guid, host in host_of_opening.items():
+            if not host or not hasattr(host, 'GlobalId'):
+                continue
+            filling = filling_of_opening.get(opening_guid)
+            filling_guid = filling.GlobalId if (filling and hasattr(filling, 'GlobalId')) else None
+            filling_class = filling.is_a() if filling else None
+            conn.execute(
+                "INSERT OR IGNORE INTO rel_fills_host "
+                "(opening_guid, host_guid, filling_guid, host_class, filling_class, provenance) "
+                "VALUES (?, ?, ?, ?, ?, 'ifc:recovered')",
+                (opening_guid, host.GlobalId, filling_guid, host.is_a(), filling_class))
+            rows += 1
+            if filling_guid:
+                filled += 1
+        conn.commit()
+    except RuntimeError:
+        pass  # IFC schema may not have these relation types
+    return rows, filled
 
 
 def extract_reference(ifc_path, output_path, classes=None, exclude=None,
@@ -1191,6 +1261,14 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             pass  # IFC schema may not have these types
     if agg_count > 0:
         print(f"  IfcRelAggregates: {agg_count} parent→child decomposition mappings")
+
+    # ── §PATHB: recover the void/fill chain into rel_fills_host ─────────────
+    if not dry_run:
+        fills_rows, fills_filled = extract_rel_fills_host(ifc_file, conn)
+        if fills_rows > 0:
+            print(f"  §PATHB rel_fills_host: {fills_rows} host edges recovered "
+                  f"({fills_filled} with a door/window filling, "
+                  f"{fills_rows - fills_filled} open voids)")
 
     # Extract rich surface styles + material layers
     source_tag = f"EXTRACTED:{os.path.basename(ifc_path)}"
