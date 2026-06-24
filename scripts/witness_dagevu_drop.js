@@ -59,6 +59,30 @@ const check = (name, cond, detail) => { checks.push({ name, pass: !!cond }); con
 const finitePos = (v) => Number.isFinite(v) && v > 0;
 const uniq = (a) => [...new Set(a)].sort((x, y) => x - y);
 
+const DEG = 180 / Math.PI;
+const wrap360 = (a) => (((a % 360) + 360) % 360);
+// circRange — the smallest arc (degrees) that contains EVERY angle in `degs`. A set that all share
+// one offset → range ≈ 0; a set scattered round the circle → range → 360. (= 360 − largest gap.)
+function circRange(degs) {
+  if (degs.length < 2) return 0;
+  const s = degs.map(wrap360).sort((a, b) => a - b);
+  let maxGap = (360 - s[s.length - 1]) + s[0];                // the wrap-around gap
+  for (let i = 1; i < s.length; i++) maxGap = Math.max(maxGap, s[i] - s[i - 1]);
+  return +(360 - maxGap).toFixed(1);
+}
+// SHARP, convention-free facing test (let the maths speak). A chair seated around a table at angular
+// bearing φ (table-centre → chair) faces the table iff its world yaw tracks φ with a CONSTANT offset k
+// shared by every chair: rot ≈ φ + k. So Δ = (rot − bearing) is the SAME for all chairs ⇒ circRange(Δ)
+// ≈ 0. A set that all points one way (or every which way) spreads Δ across the circle. No convention
+// for k (which way "front" is on the unit mesh) is assumed or invented — only that it is CONSTANT.
+function facingSpread(table, chairs) {
+  const deltas = chairs.map(c => {
+    const bearing = Math.atan2(c.y - table.y, c.x - table.x) * DEG;
+    return { hash: c.hash, rot: c.rot || 0, bearing: +bearing.toFixed(1), delta: +wrap360((c.rot || 0) - bearing).toFixed(1) };
+  });
+  return { deltas, spread: circRange(deltas.map(d => d.delta)) };
+}
+
 function loadHost() {
   const src = fs.readFileSync(path.join(ROOT, 'deploy/dev/bonsai_library.js'), 'utf8');
   const win = { Bonsai: {} };
@@ -131,12 +155,18 @@ function hostRotProof(L, id) {
   const chairH = chairs.map(l => (PROD[l.hash] || {}).h || 0);
   const distinct = new Set(chairs.map(l => `${l.x.toFixed(3)},${l.y.toFixed(3)}`)).size;
   const setRots = uniq(set.map(l => l.rot || 0));
-  console.log(`     §SET-ORIENT ${DSET}: rotations present = {${setRots.join(',')}}° (standalone set is the canonical template; the BUILDING applies real per-chair facing — see SH baseline below)`);
+  // SHARP facing maths — REPLACES (a) the tautological "every set leaf has a finite rotation" check (0
+  // is finite → proves nothing) and (b) the self-excusing "{0}° is the canonical template" prose that
+  // waved an all-one-way set past in English. Now the maths decides: Δ = rot − bearing-to-table per
+  // chair; the set faces the table iff Δ is tight (small circular spread). Let the maths speak.
+  const setFace = tables.length === 1 ? facingSpread(tables[0], chairs) : { deltas: [], spread: 999 };
+  setFace.deltas.forEach(d => console.log(`     §FACE ${d.hash}  rot=${d.rot}°  bearing→table=${d.bearing}°  Δ=${d.delta}°`));
+  console.log(`     §SET-FACING ${DSET}: rot multiset={${setRots.join(',')}}°  Δ-spread=${setFace.spread}° (faces table iff spread small; a one-way set spreads Δ across the circle)`);
   check('set has 1 table + 6 chairs', tables.length === 1 && chairs.length === 6, `tables=${tables.length} chairs=${chairs.length}`);
   check('chairs at distinct positions', distinct === chairs.length, `${distinct}/${chairs.length} distinct (x,y)`);
   check('chairs are REAL height (≥1.0m, not 0.45m stub cube)', chairH.length && Math.min(...chairH) >= 1.0, `chair h=${uniq(chairH).map(h => h.toFixed(3)).join('/')}m`);
   check('every set leaf finite-positive dims', set.every(l => { const p = PROD[l.hash] || {}; return finitePos(p.w) && finitePos(p.d) && finitePos(p.h); }), `${set.length} leaves`);
-  check('every set leaf has a finite rotation', set.every(l => Number.isFinite(l.rot || 0)), `rotations all numeric`);
+  check('SET-DINING chairs FACE the table (Δ-spread < 30°, not one-way)', setFace.spread < 30, `Δ-spread=${setFace.spread}° — face iff each rot tracks its bearing by ONE shared offset`);
 
   // ── 2) SH BUILDING (structure + orientation baseline) ──
   const BLD = 'BUILDING_SH_STD';
@@ -155,6 +185,15 @@ function hostRotProof(L, id) {
   check('SH anchors present: ROOF+WALL+DOOR+BED', ['ROOF', 'WALL', 'DOOR', 'BED'].every(k => shB.present[k]), `present=${['ROOF', 'WALL', 'DOOR', 'BED'].filter(k => shB.present[k]).join(',')}`);
   check('SH NOT all collapsed to rot=0 (facing preserved)', shWallRots.length >= 2 || (shB.present.BED || {}).rots?.some(r => r !== 0), `wall rots={${shWallRots.join(',')}} bed rots={${(shB.present.BED || {}).rots || ''}}`);
   check('SH cabinet/sink/fridge correctly ABSENT (not fabricated)', ['CABINET', 'SINK', 'FRIDGE'].every(k => shB.absent.includes(k)), `absent=${['CABINET', 'SINK', 'FRIDGE'].filter(k => shB.absent.includes(k)).join(',')}`);
+  // SH BUILDING dining-chair facing — the SAME sharp maths on the REAL placed set (not the template).
+  // The old "SH NOT all collapsed to rot=0" check passes on WALL rotation alone — it says nothing about
+  // whether a CHAIR faces its table. This does: per "Chair - Dining" leaf, Δ vs the dining-table bearing.
+  const shDiningTable = sh.find(l => /Table_Dining/i.test((PROD[l.hash] || {}).name || ''));
+  const shDiningChairs = sh.filter(l => /Chair - Dining/i.test((PROD[l.hash] || {}).name || ''));
+  const shFace = shDiningTable && shDiningChairs.length ? facingSpread(shDiningTable, shDiningChairs) : { deltas: [], spread: 999 };
+  shFace.deltas.forEach(d => console.log(`     §FACE-SH ${d.hash}  rot=${d.rot}°  bearing→table=${d.bearing}°  Δ=${d.delta}°`));
+  console.log(`     §SH-DINING-FACING table=${shDiningTable ? `(${shDiningTable.x.toFixed(2)},${shDiningTable.y.toFixed(2)})` : 'NONE'}  chairs=${shDiningChairs.length}  Δ-spread=${shFace.spread}°`);
+  check('SH dining chairs FACE the dining table (Δ-spread < 30°)', shFace.spread < 30, `Δ-spread=${shFace.spread}° over ${shDiningChairs.length} "Chair - Dining" around the dining table`);
   // ── HOST-ROTATION INHERITANCE (the fix: openings rotate EN BLOC with their host wall, not flat at rot=0) ──
   const shHost = hostRotProof(L, BLD);
   check('SH every opening embedded in a wall (host resolved)', shHost.resolved === shHost.openings && shHost.unresolved === 0, `resolved=${shHost.resolved}/${shHost.openings} unresolved=${shHost.unresolved}`);
@@ -166,6 +205,10 @@ function hostRotProof(L, id) {
   check('DX anchors present: CABINET + SINK', !!DXB.present.CABINET && !!DXB.present.SINK, `cabinet n=${(DXB.present.CABINET || {}).n || 0} sink n=${(DXB.present.SINK || {}).n || 0}`);
   check('DX vanity sink is oriented (rot≠0 present)', ((DXB.present.SINK || {}).rots || []).some(r => r !== 0), `sink rots={${(DXB.present.SINK || {}).rots || ''}}`);
   check('FRIDGE absent in BOTH buildings (honest GIGO flag)', shB.absent.includes('FRIDGE') && DXB.absent.includes('FRIDGE'), `no fridge in SH or DX catalog`);
+  // Cabinets: facing is NOT derivable from a table/wall anchor yet (mounted-against rotation is a
+  // separate, deferred derivation — see [[project_openings_inherit_host_rotation]] NEXT). Report them
+  // as UNFACED honestly — do NOT add a green check implying their rotation is verified correct.
+  console.log(`     §CABINET-UNFACED DX cabinets n=${(DXB.present.CABINET || {}).n || 0} rot={${((DXB.present.CABINET || {}).rots || []).join(',')}} — facing NOT derived from an anchor; REPORTED unfaced, not asserted correct.`);
   // ── DX host-rotation inheritance (more walls, mirror units; some interior openings have no embedding wall → honest 0) ──
   const dxHost = hostRotProof(L, 'BUILDING_DX_STD');
   check('DX resolved openings INHERIT host-wall rotation EN BLOC (no mismatch)', dxHost.mismatched === 0, `mismatched=${dxHost.mismatched} of resolved=${dxHost.resolved}`);
@@ -179,8 +222,8 @@ function hostRotProof(L, id) {
   const PROOF = { witness: 'W-DAGEVU-DROP', stamp: new Date().toISOString(), verdict: ok ? 'GREEN' : 'RED',
     checks_passed: passed, checks_total: total,
     note: 'Orientation = yaw° about Z. Baseline to diff against (avoid GIGO). Absences are TRUTH, not gaps.',
-    dining_set: { id: DSET, leaves: set.length, chairs: chairs.length, chair_h_m: +Math.min(...chairH).toFixed(3), rots: setRots },
-    sh: { id: BLD, leaves: sh.length, extent_m: ext.map(e => +e.toFixed(2)), anchors: baselineOf(shB), absent: shB.absent, host_rot: shHost },
+    dining_set: { id: DSET, leaves: set.length, chairs: chairs.length, chair_h_m: +Math.min(...chairH).toFixed(3), rots: setRots, face_spread_deg: setFace.spread },
+    sh: { id: BLD, leaves: sh.length, extent_m: ext.map(e => +e.toFixed(2)), anchors: baselineOf(shB), absent: shB.absent, host_rot: shHost, dining_face_spread_deg: shFace.spread },
     dx: { id: 'BUILDING_DX_STD', anchors: baselineOf(DXB), absent: DXB.absent, host_rot: dxHost },
     inputs: { catalog: { path: path.relative(ROOT, CAT), sha: sha12(CAT) } },
     checks: checks.map(c => ({ name: c.name, pass: c.pass })) };
