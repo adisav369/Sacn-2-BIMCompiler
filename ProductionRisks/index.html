@@ -3105,6 +3105,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#h-the-new-paradigm-monitor-observability-you-can-feel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        H. The New-Paradigm Monitor — observability you can feel
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="H. The New-Paradigm Monitor — observability you can feel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-widget-set-each-maps-to-a-risk-an-existing-signal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The widget set (each maps to a risk + an existing signal)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-ready-specs-the-top-3-witness-claim-first-per-claudemd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build-ready specs — the top 3 (witness-claim first, per CLAUDE.md)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-gap-summary-what-blocks-production" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4188,6 +4227,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#h-the-new-paradigm-monitor-observability-you-can-feel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        H. The New-Paradigm Monitor — observability you can feel
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="H. The New-Paradigm Monitor — observability you can feel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-widget-set-each-maps-to-a-risk-an-existing-signal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The widget set (each maps to a risk + an existing signal)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-ready-specs-the-top-3-witness-claim-first-per-claudemd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build-ready specs — the top 3 (witness-claim first, per CLAUDE.md)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-gap-summary-what-blocks-production" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5106,6 +5184,115 @@ We left the devil we knew — a Postgres container, a JVM app server, Docker's o
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="h-the-new-paradigm-monitor-observability-you-can-feel">H. The New-Paradigm Monitor — observability you can <em>feel</em><a class="headerlink" href="#h-the-new-paradigm-monitor-observability-you-can-feel" title="Permanent link">&para;</a></h2>
+<p>The classic iDempiere <strong>System Monitor</strong> in the login panel watched the <em>server's</em> vitals — JVM heap, DB connections, pool, uptime. In this paradigm there is no server, so the monitor's job flips: it watches the <strong>paradigm's</strong> vitals — the things that only exist <em>because</em> the evil comforts are gone. This is two wins at once:</p>
+<ol>
+<li><strong>It is the concrete remedy for <a href="#g2-observability-without-a-server-to-read-s2-to-build-the-operational-blind-spot">G2 — observability</a>.</strong> The same widgets that let a user <em>feel</em> the new model are the field-health signals (durability lag, replay integrity, eviction, CAS retry) you need so you're not flying blind.</li>
+<li><strong>It is a first-impression "wow" surface.</strong> It lives in the login panel — the first thing seen — with familiar iDempiere chrome (zero learning curve, per the GRAND_LANE law). A user pokes it and goes <em>"ah — this is the new stuff, and I can touch it."</em></li>
+</ol>
+<p>Most of the raw signals already exist — <code>FoldEngineConstraints.md §6</code> specs the monitor (<code>vfs_backend</code>, <code>quota_used_pct</code>, <code>offline_queue_mb</code>, <code>cas_retry_rate</code>, <code>fold_ms_p95</code>, <code>battery_pct</code>, <code>bootstrap_path</code>) and <code>vfs_detect.js</code> / <code>offline_queue.js</code> / <code>battery_aware.js</code> already emit some. So this is mostly <strong>wiring existing signals into the panel as feel-it widgets.</strong></p>
+<h3 id="the-widget-set-each-maps-to-a-risk-an-existing-signal">The widget set (each maps to a risk + an existing signal)<a class="headerlink" href="#the-widget-set-each-maps-to-a-risk-an-existing-signal" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Widget</th>
+<th>What you feel</th>
+<th>Risk</th>
+<th>Existing signal / witness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Prove-the-books</strong></td>
+<td>press <em>Verify</em> → the whole balance rebuilds from zero events; <code>replay-hash == live-hash</code> ✓</td>
+<td><strong>D1</strong></td>
+<td><code>replay-hash</code> (<code>erp_kernel.js</code>)</td>
+</tr>
+<tr>
+<td><strong>Tap-to-fold</strong></td>
+<td>tap any figure → the N signed ops that sum to it</td>
+<td>root truth</td>
+<td><code>kernel_ops</code> query</td>
+</tr>
+<tr>
+<td><strong>Chain integrity</strong></td>
+<td><code>chain OK · len N · tip …</code>; tamper → breaks at op N</td>
+<td><strong>D4</strong></td>
+<td><code>verifyChain()</code> (<code>poc_chain.js</code>)</td>
+</tr>
+<tr>
+<td><strong>Durability ladder</strong></td>
+<td>every record <code>local → syncing → durable@N</code>; oldest un-acked age; quota; <code>persisted()</code></td>
+<td><strong>A1 · G2</strong></td>
+<td><code>§6 quota_used_pct / offline_queue_mb</code></td>
+</tr>
+<tr>
+<td><strong>Pull-the-plug</strong></td>
+<td>toggle offline → keeps working, ops queue, reconcile on reconnect</td>
+<td>availability</td>
+<td><code>offline_queue.js</code></td>
+</tr>
+<tr>
+<td><strong>Bootstrap path</strong></td>
+<td>"started from <em>checkpoint</em> (fast) vs <em>genesis</em> (25 s)"</td>
+<td><strong>B2</strong></td>
+<td><code>§6 bootstrap_path</code></td>
+</tr>
+<tr>
+<td><strong>Serverless meter</strong></td>
+<td><code>servers: 0 · round-trips: 0 · infra cost: $0</code> vs classic-iDempiere baseline</td>
+<td><strong>§11.1</strong></td>
+<td>round-trip counter / <code>fold_ms_p95</code></td>
+</tr>
+<tr>
+<td><strong>Disposable-host light</strong></td>
+<td>"your truth replays to the identical tip from any host"</td>
+<td><strong>§11.1</strong></td>
+<td>replica test (<code>test_kernel_replica.js</code>)</td>
+</tr>
+<tr>
+<td><strong>Your-key panel</strong></td>
+<td>your signing key, rotation history, recovery method</td>
+<td><strong>E1</strong></td>
+<td><code>poc_rotate.js</code></td>
+</tr>
+<tr>
+<td><strong>Business-time clock</strong></td>
+<td>"real-time: the 1 CAS class · everything else folds at close-of-day"</td>
+<td>Truth 2</td>
+<td>fold cadence</td>
+</tr>
+<tr>
+<td><strong>Crypto-shred demo</strong></td>
+<td>shred a subject key → PII gone, chain still verifies, books intact</td>
+<td><strong>E2</strong></td>
+<td><code>poc_erase.js</code></td>
+</tr>
+</tbody>
+</table>
+<p>A <strong>Classic ↔ Angelic</strong> toggle keeps the familiar panel and swaps the readouts.</p>
+<h3 id="build-ready-specs-the-top-3-witness-claim-first-per-claudemd">Build-ready specs — the top 3 (witness-claim first, per CLAUDE.md)<a class="headerlink" href="#build-ready-specs-the-top-3-witness-claim-first-per-claudemd" title="Permanent link">&para;</a></h3>
+<p>Spec-first, each with the <code>§</code>-log line that <em>is</em> the proof. Start order = cheapest-highest-impact.</p>
+<p><strong>① W-MON-PROVE-BOOKS — "rebuild my books from zero, live."</strong> <em>(cheapest — the witness already exists, it just needs a button)</em>
+- <strong>Surface:</strong> a <em>Verify</em> button in the login-panel monitor.
+- <strong>Behavior:</strong> clone the current op-log into a <em>fresh</em> in-memory kernel, replay, hash the folded state, compare to the live hash.
+- <strong>Acceptance <code>§</code>-log:</strong> <code>§MON-REPLAY ops=N replayHash=… liveHash=… match=Y ms=…</code>
+- <strong>Proves:</strong> D1 determinism, <em>interactively</em> — the number is a fold, not a stored cell. (Falsifier: corrupt one op → <code>match=N</code>, flagged red.)
+- <strong>Reuse:</strong> the existing <code>replay-hash == live-hash</code> path in <code>erp_kernel.js</code> / <code>poc_kernel.js</code>. <strong>Status: 🟡 → ship as the first touchable slice.</strong></p>
+<p><strong>② W-MON-DURABILITY-LADDER — "show me what's safe."</strong> <em>(the most important field-health widget)</em>
+- <strong>Surface:</strong> per-record badge <code>local → syncing → durable@N</code>, plus oldest un-acked op age, <code>quota_used_pct</code>, <code>persisted()</code>.
+- <strong>Acceptance <code>§</code>-log:</strong> <code>§MON-DUR local=… syncing=… durable=… oldestUnackedSec=… quotaPct=… persisted=…</code>
+- <strong>Proves:</strong> A1 made visible — the UI <strong>never</strong> marks an unsynced op as safe. (Falsifier: append offline → all <code>local</code>; force-sync → transition to <code>durable@N</code>; a <code>local</code> op shown as safe = test fail.)
+- <strong>Status: 🔴 TO BUILD</strong> (directly closes part of G2).</p>
+<p><strong>③ W-MON-SERVERLESS-METER — "feel the zero."</strong> <em>(the wow)</em>
+- <strong>Surface:</strong> live counters — server round-trips this session, queries answered locally, <code>fold_ms_p95</code>, est. always-on infra cost ($0), beside a classic-iDempiere baseline (app + DB + standby, 24/7).
+- <strong>Acceptance <code>§</code>-log:</strong> <code>§MON-SRV roundTrips=0 localQueries=N foldMsP95=… infraCost=0</code>
+- <strong>Proves:</strong> §11.1 made tangible — the disposed compute tier, costed. (Falsifier: any server round-trip in a normal session → <code>roundTrips&gt;0</code>, investigate.)
+- <strong>Status: 🔴 TO BUILD.</strong></p>
+<blockquote>
+<p>These three are tracked as G2 sub-tasks. ① is the recommended first build — a button over an existing witness — and the session-starter for it lives in <code>prompts/RESUME_PROVE_BOOKS_MONITOR.md</code>.</p>
+</blockquote>
 <hr />
 <h2 id="the-gap-summary-what-blocks-production">The gap summary — what blocks production<a class="headerlink" href="#the-gap-summary-what-blocks-production" title="Permanent link">&para;</a></h2>
 <p>A green register is the bar. Today's <strong>🔴 TO BUILD</strong> rows, in priority order:</p>
