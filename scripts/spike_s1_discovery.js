@@ -113,9 +113,13 @@ function hasSnapshotOnEvictHook() {
     ' mitigation=persist()-resist-only(battery_aware.js) relay-ack=server-durable');
 
   // ─────────────────────────────────────────────────────────────────────────────────────────────────
-  // SPIKE B1 — does the biggest building survive a real mid-tier phone?  (proxy: node V8/WASM, NOT a phone)
-  //   Load the LARGEST committed building's extracted DB fully into an in-memory sql.js instance (the same
-  //   substrate the viewer uses) and measure resident heap vs the 200 MB mobile ceiling.
+  // SPIKE B1 — GUARD RAIL, not the shipped path.  (proxy: node V8/WASM, NOT a phone)
+  //   ⚠ The shipped viewer does NOT full-hydrate: it STREAMS via range-request httpvfs (_useRangeStream /
+  //   _rangeDb in streaming.js) + bbox-DLOD, fetching geometry ON DEMAND. Empirically the LARGEST building
+  //   (LTU, 125,698 elems) loads ~12 s smooth. So this full-DB-into-WASM-heap load is the WORST CASE a
+  //   non-streaming path would hit — a guard rail proving full-hydrate must stay OFF the mobile path — NOT a
+  //   measurement of the real viewer. The genuine 200 MB ceiling (FoldEngineConstraints §2#1) is the ERP
+  //   OP-LOG DB (437 B/op; design keeps it ~13 MB), not this geometry blob.
   // ─────────────────────────────────────────────────────────────────────────────────────────────────
   console.log('\n── SPIKE B1 — biggest building in-memory ceiling (proxy) ──');
   if (!fs.existsSync(BIGGEST_DB)) {
@@ -140,10 +144,12 @@ function hasSnapshotOnEvictHook() {
     var decodedEstMB = mb(geoBytes);
     var projectedResidentMB = Math.round((fileMB + decodedEstMB) * 10) / 10;
     var crashed = projectedResidentMB > MOBILE_BUDGET_MB;  // projected to exceed the iOS tab-kill ceiling
-    console.log('§SPIKE-B1 device=proxy(node18-v8/wasm,NOT-a-phone) elements=' + elements +
+    console.log('§SPIKE-B1 loadModel=FULL-HYDRATE-GUARDRAIL(NOT-viewer-which-streams-via-httpvfs+DLOD)' +
+      ' device=proxy(node18-v8/wasm,NOT-a-phone) elements=' + elements +
       ' peakHeapMB=' + peakHeapMB + ' dbFileMB=' + fileMB + ' geomBytesMB=' + decodedEstMB +
-      ' projectedMobileResidentMB=' + projectedResidentMB + ' budgetMB=' + MOBILE_BUDGET_MB +
-      ' crashed=' + (crashed ? 'Y(projected)' : 'N') + ' ttiMs=' + Math.round(ttiMs) + ' geoms=' + geoms);
+      ' projectedIfFullHydratedMB=' + projectedResidentMB + ' budgetMB=' + MOBILE_BUDGET_MB +
+      ' wouldBreachIfNonStreaming=' + (crashed ? 'Y' : 'N') + ' ttiMs=' + Math.round(ttiMs) + ' geoms=' + geoms +
+      ' NOTE=largest-real-building=LTU(125698-elems)-loads-~12s-smooth-via-streaming');
     bdb.close();
   }
 
