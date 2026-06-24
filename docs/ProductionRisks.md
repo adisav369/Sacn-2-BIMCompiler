@@ -438,6 +438,8 @@ Following `docs/TestArchitecture.md`: **§-log whitebox witness is primary**, Pl
 
 ## Governance
 
+**Sequencing — discover now, build at tenant-time.** Do **not** gate this register on the feature lanes landing. Split the work three ways: *proof-of-paradigm* demo widgets (§H ①) run **in parallel** (they aid the sell); the **S1 reds are *measured* now via cheap discovery spikes** (A1/B1/C1 — *"how bad is it?"* on real devices), because their findings reshape the roadmap and cannot be crammed at the end; the **heavy remedies are tenant-gated** (full G2 pipeline, device-lab CI, D2 migration, §13 sharding code). Bright line: free users / demos / design-partners on their own data → ship and learn; a **paying tenant never sits on a 🔴 S1 axis.** A risk left unmeasured is *unknown*, not deferred — so **never delay the discovery, only the build.** Discovery session-starter: `prompts/RESUME_S1_DISCOVERY_SPIKES.md`.
+
 - This register is **reviewed every release**; a 🔴 on an S1 axis is a release blocker.
 - New features add their own rows here **before** code (spec-first, witness-claim-first — CLAUDE.md).
 - Status changes (🔴→🟡→✅) cite the witness that moved them.
