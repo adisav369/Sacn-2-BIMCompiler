@@ -375,6 +375,31 @@ elements it builds (rename-proof — the link survives a model re-export). Once 
 from the assigned elements and the Time Machine scrubs the model along your imported dates. *This binding
 step is exactly the thing a P6 reporting tool cannot do — it has no model to bind to.*
 
+**Auto-bind by convention — skip the manual first pass.** Because the planner controls the activity
+*name* in P6/MS Project, they can write the binding **into the file** as a short token appended to the
+name:
+
+```
+@<discipline>:<IfcClass>[|<IfcClass>…][:<storey>]
+```
+
+For example `Columns @STR:IfcColumn`, `Structural Framing @STR:IfcMember|IfcBeam`, or
+`Internal Finishes @ARC:IfcCovering:Level 3`. On import, tick **“auto-bind by convention”** (next to the
+**⤓ Import P6** button) and the importer parses each token **off** the name (the WBS still shows the clean
+label, e.g. `Columns`), resolves it against your model — *all* elements whose `discipline`/`IfcClass`/`storey`
+match — and pre-binds the task. You get a reviewable first pass instead of clicking every task. It is
+**coarse on purpose**: `@STR:IfcColumn` binds *all* columns to one task; refine to per-level sub-tasks with
+**break-down by storey** in the editor. Two honest constraints make this safe, not a guess: the token is a
+**declared predicate we execute** — *not* an embedded GUID (which would rot the moment the model is
+re-exported) and *not* a fuzzy name match (which guesses). A selector survives a re-export where a baked
+GUID list would bind nothing; anything a selector can’t resolve is *reported* (“N selector(s) matched
+nothing — review”), never silently dropped. The pre-bind is the same signed, rename-proof `task_elements`
+link as a manual bind — you can adjust or clear it per task.
+
+> **Demo files (self-binding).** Alongside the plain demo programmes, the tokened variants
+> `tests/fixtures/Hospital_GW_Programme.bound.xer` / `.bound.xml` carry the `@disc:class` tokens, so the
+> import is self-binding with the checkbox on — no sidecar needed.
+
 > **Demo files.** The same ready GW-Hospital programme ships in all three formats —
 > `tests/fixtures/Hospital_GW_Programme.xer` (P6 XER), `…/Hospital_GW_Programme.xml` (P6 PMXML) and
 > `…/Hospital_GW_MSProject.xml` (MS Project MSPDI) — so you can try the import end-to-end on the sample
