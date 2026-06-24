@@ -2680,6 +2680,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-turso-core-sqlite-ferment-20242026-parallel-mostly-routed-around" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Turso / core-SQLite ferment (2024–2026) — parallel, mostly ROUTED-AROUND
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compass-date-the-counterfactual-margin-we-could-have-missed-this-by" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3519,6 +3530,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-turso-core-sqlite-ferment-20242026-parallel-mostly-routed-around" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Turso / core-SQLite ferment (2024–2026) — parallel, mostly ROUTED-AROUND
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compass-date-the-counterfactual-margin-we-could-have-missed-this-by" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3804,6 +3826,87 @@ half of the field is still at the gate. <strong>First-mover, not early-mover.</s
 sql.js for a persistent VFS — a choice to make only when a concrete need forces it, at which
 point this table is the caveat list.</p>
 <hr />
+<h2 id="the-turso-core-sqlite-ferment-20242026-parallel-mostly-routed-around">The Turso / core-SQLite ferment (2024–2026) — parallel, mostly ROUTED-AROUND<a class="headerlink" href="#the-turso-core-sqlite-ferment-20242026-parallel-mostly-routed-around" title="Permanent link">&para;</a></h2>
+<p>While this project was being assembled, the SQLite <em>core</em> was in the most active stretch of its
+history: a full Rust rewrite (Turso/Limbo) and the long-sought attack on the single-writer write
+path (MVCC concurrent writes). Recorded here because it is the honest "how close to the edge" backdrop
+— <strong>but classified by our standard tags, none of it is a dependency.</strong> Several of these milestones
+solve precisely the problem <a href="../DistributedERP/">DistributedERP §0–§5</a> <em>dissolves</em> by modelling, so they
+land in <strong>ROUTED-AROUND</strong>, the same column as the OPFS-concurrency work above. Dates verified
+<strong>2026‑06‑24</strong> against the linked primary sources.</p>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Move</th>
+<th>What changed</th>
+<th>Effect on us</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>2024‑01‑15</strong></td>
+<td>SQLite <strong>3.45.0</strong> — JSONB</td>
+<td>binary JSON stored in the DB, no re-parse</td>
+<td><strong>NEUTRAL</strong> — present in the substrate; the engine rides the relational core + op-log, not JSONB as its store</td>
+<td><a href="https://sqlite.org/releaselog/3_45_0.html">releaselog 3_45_0</a></td>
+</tr>
+<tr>
+<td><strong>2024‑12‑10</strong></td>
+<td><strong>Limbo</strong> announced</td>
+<td>"a complete rewrite of SQLite in Rust"</td>
+<td><strong>NEUTRAL</strong> — a different bet on SQLite's future; we run sql.js (C→WASM)</td>
+<td><a href="https://turso.tech/blog/introducing-limbo-a-complete-rewrite-of-sqlite-in-rust">Turso blog</a></td>
+</tr>
+<tr>
+<td><strong>~2025‑07‑01</strong></td>
+<td><strong>Turso</strong> first alpha</td>
+<td>Limbo → "Turso, the next evolution of SQLite"</td>
+<td><strong>NEUTRAL</strong> — date is the announcement post (≈, not a tagged release)</td>
+<td><a href="https://turso.tech/blog/turso-the-next-evolution-of-sqlite">Turso blog</a></td>
+</tr>
+<tr>
+<td><strong>2025‑10‑06</strong></td>
+<td>Turso <strong>concurrent writes (MVCC)</strong>, tech preview</td>
+<td><code>BEGIN CONCURRENT</code> via Hekaton-style MVCC — "beyond the single-writer limitation"</td>
+<td><strong>ROUTED-AROUND</strong> — the headline concurrency we deliberately don't use; we partition writers by physics + op-log instead</td>
+<td><a href="https://turso.tech/blog/beyond-the-single-writer-limitation-with-tursos-concurrent-writes">Turso blog</a></td>
+</tr>
+<tr>
+<td><strong>2025‑11‑04</strong></td>
+<td>SQLite <strong>3.51.0</strong> — 64-bit WASM build</td>
+<td>canonical WASM stays 32-bit; a 64-bit build is now a plain <code>make</code></td>
+<td><strong>NEUTRAL</strong> — our sql.js runs fine 32-bit</td>
+<td><a href="https://sqlite.org/releaselog/3_51_0.html">releaselog 3_51_0</a></td>
+</tr>
+<tr>
+<td><strong>2026‑01‑05</strong></td>
+<td>Turso <strong>v0.4.0</strong> — MVCC overhaul</td>
+<td>indexes, checkpointing, recovery for concurrent writes</td>
+<td><strong>ROUTED-AROUND</strong></td>
+<td><a href="https://turso.tech/blog/turso-0.4.0">Turso blog</a></td>
+</tr>
+<tr>
+<td><strong>2026‑03‑04</strong></td>
+<td>Turso <strong>v0.5.0</strong></td>
+<td>concurrent writes → beta (<code>PRAGMA journal_mode='mvcc'</code>), Change Data Capture</td>
+<td><strong>ROUTED-AROUND</strong></td>
+<td><a href="https://turso.tech/blog/turso-0.5.0">Turso blog</a> · <a href="https://www.linkedin.com/posts/glommer_turso-v050-activity-7435040873526194176-Dowg">LinkedIn</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>The contrast worth keeping.</strong> The most-quoted milestone — <strong>Turso shipping concurrent writes to "go
+beyond the single-writer limitation" (Oct 2025)</strong> — is, for this project, an argument in the <em>other</em>
+direction. The same season the industry shipped a sophisticated MVCC engine to let many writers share one
+database file, this project shipped the claim that, modelled correctly, <strong>you never needed it</strong>: ~90% of
+ERP is single-writer by physics, the rest is a daily one-way fold, and the one genuinely contended op-class
+is a compare-and-set — not concurrency in the store. So "close to the edge" here does <strong>not</strong> mean we
+adopted the newest engine; it means we are <em>contemporaneous with, and a counterpoint to,</em> the hottest
+SQLite-core work of the moment — having walked in on the 2014 in-memory path (the FOUNDATION above) while
+that half of the field is still at the gate. <strong>First-mover, not early-mover</strong> — the same thesis the OPFS
+column already shows, now with the SQLite-core column added.</p>
+<hr />
 <h2 id="compass-date-the-counterfactual-margin-we-could-have-missed-this-by">Compass date — the counterfactual margin ("we could have missed this by…")<a class="headerlink" href="#compass-date-the-counterfactual-margin-we-could-have-missed-this-by" title="Permanent link">&para;</a></h2>
 <p>Not every enabler was a close call. The trick is to find the <strong>last-to-arrive capability we
 genuinely depend on</strong> — the binding constraint — and measure from <em>there</em>.</p>
@@ -3949,6 +4052,15 @@ we have <em>not yet needed to walk through</em> (so no margin to report — they
 <li><strong>sql.js first year.</strong> PowerSync dates the in-memory JS port to <strong>2014</strong>; the kripken
   origin (asm.js era) may be earlier (~2012). Used 2014 as the cited figure.</li>
 <li><strong>Web Payment Request API date (~2018).</strong> Asserted in §11.5; not re-verified this session.</li>
+<li><strong>Turso/core-SQLite ferment — harvested with LLM help, two corrections logged.</strong> When an LLM was asked
+  to "show how close we were to the cutting edge," it surfaced the right milestones but slipped twice — both
+  caught on verification against primary sources (the same discipline that rejected the fabricated DeepSeek
+  "SQLite 3.53.0 opfs-wl" above): <strong>(1)</strong> JSONB was attributed to <strong>SQLite 3.51.0</strong>; the version/date are
+  real (3.51.0, 2025‑11‑04) but JSONB actually shipped in <strong>3.45.0 (2024‑01‑15)</strong> — 3.51.0's WASM-relevant
+  item is the 64‑bit build. <strong>(2)</strong> Turso MVCC / edge-DB replication were offered as <em>what made the project
+  possible</em>; they are the <strong>opposite</strong> of the architecture and are tagged <strong>ROUTED-AROUND</strong> here, not ENABLER.
+  Lesson, restated: an LLM is a fast <em>harvester</em> of where the edge is, not an <em>authority</em> on it — extract,
+  then verify.</li>
 </ul>
 <h2 id="prior-art-the-log-concept-is-not-ours-no-novelty-of-concept-claim">Prior art — the log concept is NOT ours (no novelty-of-concept claim)<a class="headerlink" href="#prior-art-the-log-concept-is-not-ours-no-novelty-of-concept-claim" title="Permanent link">&para;</a></h2>
 <p>The log-as-source-of-truth is one of the most trodden ideas in computing; we claim <strong>application and
