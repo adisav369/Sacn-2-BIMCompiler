@@ -396,12 +396,151 @@ function applySTDMEP(bom) {
   if (applied) console.log('§BOM_STD_MEP applied=' + applied + ' storeys (no MEP data)');
 }
 
+// ── §SHELL-N-ZSPAN: instanced-by n (TYPICAL_STOREY × n) ──────────────────────────────────────────────
+// Implementing CONSTRUCTION_GRID_BOM_DUAL_MODEL.md §SHELL-N-ZSPAN — Witness: W-TYPICAL-N.
+// The LAST graph cross-edge (SPATIAL_DEPENDENCY_GRAPH.md): a storey is a product repeated n times (= TILE qty=N
+// on the Z axis). Detect repeated storeys by a MEASURED signature — floor-to-floor within tol AND per-(discipline,
+// class) count-vector cosine ≥ thresh — and collapse a run into TYPICAL_FLOOR × n. n is the qty on the typical-floor
+// order line; a Z-runner's extent folds from n (extent=f(n)). Grep-CLEAN: the signature is keyed by WHATEVER
+// (discipline,class) pairs are present — no IFC class-name literal drives any branch; similarity is pure counting.
+function _storeySignature(storey) {
+  var vec = {};
+  (storey.disciplines || []).forEach(function (d) {
+    (d.classes || []).forEach(function (c) { vec[d.name + '|' + c.ifc_class] = c.count; });
+  });
+  return vec;
+}
+function _cosine(a, b) {
+  var keys = {}; Object.keys(a).forEach(function (k) { keys[k] = 1; }); Object.keys(b).forEach(function (k) { keys[k] = 1; });
+  var dot = 0, na = 0, nb = 0;
+  Object.keys(keys).forEach(function (k) { var x = a[k] || 0, y = b[k] || 0; dot += x * y; na += x * x; nb += y * y; });
+  return (na && nb) ? dot / Math.sqrt(na * nb) : 0;
+}
+// factorizeTypicalStoreys(storeys, storeyHeights, opts) → [{ repStorey, n, memberStoreys, typical, sim }]
+// storeys[i] = { name, disciplines:[{name, classes:[{ifc_class,count}]}] } (the extractBOM shape); storeyHeights[i]
+// = floor-to-floor for storey i. Greedy single-pass: each unused storey seeds a group, later storeys join iff
+// floor-to-floor within ffTol AND signature cosine ≥ simThresh. n = group size; typical = n ≥ 2. Deterministic.
+function factorizeTypicalStoreys(storeys, storeyHeights, opts) {
+  opts = opts || {};
+  var ffTol = opts.ffTol != null ? opts.ffTol : 0.35;
+  var simThresh = opts.simThresh != null ? opts.simThresh : 0.92;
+  var used = {}, out = [];
+  for (var i = 0; i < storeys.length; i++) {
+    if (used[i]) continue;
+    used[i] = 1;
+    var members = [i], sigI = _storeySignature(storeys[i]), ffI = storeyHeights ? storeyHeights[i] : null, sims = [];
+    for (var j = i + 1; j < storeys.length; j++) {
+      if (used[j]) continue;
+      var ffJ = storeyHeights ? storeyHeights[j] : null;
+      var ffOk = (ffI != null && ffJ != null) ? Math.abs(ffI - ffJ) <= ffTol : true;
+      var sim = _cosine(sigI, _storeySignature(storeys[j]));
+      if (ffOk && sim >= simThresh) { members.push(j); used[j] = 1; sims.push(Math.round(sim * 1000) / 1000); }
+    }
+    out.push({
+      repStorey: storeys[i].name, n: members.length,
+      memberStoreys: members.map(function (m) { return storeys[m].name; }),
+      typical: members.length >= 2, joinSims: sims
+    });
+  }
+  return out;
+}
+
+// ── §SHELL-N-ZSPAN: instanced-by n as MEASURED translational symmetry along Z ────────────────────────
+// Implementing CONSTRUCTION_GRID_BOM_DUAL_MODEL.md §SHELL-N-ZSPAN + SPATIAL_DEPENDENCY_GRAPH.md (the last edge),
+// under the MAIN MISSION: a percept must reconstruct EXACTLY (RosettaStone), LOSSLESSLY (typical + residuals).
+//
+// An element is "instanced-by n along Z" iff a copy of it (same class, same X/Y) recurs at a fixed pitch p — a
+// measured translational symmetry, NOT read from the dirty `storey` field (which has overlapping Z-bands + 'Unknown'
+// labels). This is the Z-axis analogue of the roof TILE verb (qty=N). It is the editable BATCH "typical floor × n":
+// edit the one stored representative (the fundamental domain) → all n instances re-fold; collapse n→1 → instances
+// (and their Z-runner extents) vanish. GREP-CLEAN: `class` is only ever an opaque equality key — no IFC class-name
+// literal drives any branch; the trigger is the MEASURED recurrence, never the name.
+//
+// LOSSLESS DECOMPOSITION (the RosettaStone contract): the element set is partitioned into
+//   reps (one per instanced column, stored as-is) ∪ instances (GENERATED = rep + k·p, geometry not stored) ∪
+//   residuals (everything non-recurring, stored as-is).
+// reconstruct = reps + (regenerate each instance from its rep by +k·p on Z) + residuals  ==  extracted.db, 0.000 mm.
+// n is claimed ONLY where a real copy lands within epsMm of rep+k·p; anything that does not land EXACTLY is a
+// residual (carried, never invented). coveredFraction = instances / total = the honest, measured typicality.
+//
+// elements: [{ guid, cls, x, y, z }] (class + element CENTROID). opts: { epsMm, minPitchM, groupMm }.
+function _dominantPitch(elements, groupMm, minPitchM) {
+  // histogram within-column (cls + X/Y quantized to groupMm) consecutive z-gaps; dominant gap = the floor pitch.
+  var col = {}, q = groupMm / 1000;
+  for (var i = 0; i < elements.length; i++) {
+    var e = elements[i], k = e.cls + '|' + Math.round(e.x / q) + '|' + Math.round(e.y / q);
+    (col[k] || (col[k] = [])).push(e.z);
+  }
+  var hist = {};
+  Object.keys(col).forEach(function (k) {
+    var zs = col[k].slice().sort(function (a, b) { return a - b; });
+    for (var i = 1; i < zs.length; i++) {
+      var d = Math.round((zs[i] - zs[i - 1]) * 100) / 100;          // 1 cm bins
+      if (d >= minPitchM) hist[d] = (hist[d] || 0) + 1;
+    }
+  });
+  var best = null, bestN = 0;
+  Object.keys(hist).forEach(function (d) { if (hist[d] > bestN) { bestN = hist[d]; best = parseFloat(d); } });
+  return { pitch: best, support: bestN };
+}
+// factorizeInstancedZ(elements, opts) → the instanced-by-n decomposition (see contract above).
+function factorizeInstancedZ(elements, opts) {
+  opts = opts || {};
+  var epsMm = opts.epsMm != null ? opts.epsMm : 1e-3;        // "0.000 mm" landing tolerance (default 0.001 mm)
+  var groupMm = opts.groupMm != null ? opts.groupMm : 1;     // X/Y column grouping grid
+  var minPitchM = opts.minPitchM != null ? opts.minPitchM : 0.5;
+  var eps = epsMm / 1000, q = groupMm / 1000;
+  var dp = _dominantPitch(elements, groupMm, minPitchM), p = dp.pitch;
+  var reps = [], instances = [], residual = [];
+  if (!p) { // no vertical recurrence at all (e.g. single-storey) → everything is residual; n=1 honest.
+    elements.forEach(function (e) { residual.push(e.guid); });
+    return { pitch: null, pitchSupport: 0, reps: reps, instances: instances, residualGuids: residual,
+             coveredFraction: 0, n_by_rep: {} };
+  }
+  // form columns (cls + X/Y quantized to groupMm); within each, lowest-z = rep, others tested against rep+k·p EXACTLY
+  var col = {};
+  elements.forEach(function (e) {
+    var k = e.cls + '|' + Math.round(e.x / q) + '|' + Math.round(e.y / q);
+    (col[k] || (col[k] = [])).push(e);
+  });
+  var n_by_rep = {};
+  Object.keys(col).sort().forEach(function (k) {
+    var g = col[k].slice().sort(function (a, b) { return a.z - b.z; });
+    if (g.length < 2) { residual.push(g[0].guid); return; }
+    var rep = g[0], isRep = false;
+    for (var i = 1; i < g.length; i++) {
+      var e = g[i], kk = Math.round((e.z - rep.z) / p);
+      if (kk >= 1 && Math.abs(e.z - (rep.z + kk * p)) <= eps &&
+          Math.abs(e.x - rep.x) <= eps && Math.abs(e.y - rep.y) <= eps) {
+        instances.push({ repGuid: rep.guid, guid: e.guid, k: kk });   // GENERATED: rep + k·p on Z
+        isRep = true;
+      } else {
+        residual.push(e.guid);                                        // does not land exactly → carried, not invented
+      }
+    }
+    if (isRep) { reps.push(rep.guid); n_by_rep[rep.guid] = 1 + instances.filter(function (x) { return x.repGuid === rep.guid; }).length; }
+    else residual.push(rep.guid);
+  });
+  return { pitch: p, pitchSupport: dp.support, reps: reps, instances: instances, residualGuids: residual,
+           coveredFraction: instances.length / elements.length, n_by_rep: n_by_rep };
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 window.BOMExtract = {
   extract: extractBOM,
   loadCached: loadCachedBOM,
   applySTDMEP: applySTDMEP,
-  STD_MEP: STD_MEP
+  STD_MEP: STD_MEP,
+  factorizeTypicalStoreys: factorizeTypicalStoreys,
+  factorizeInstancedZ: factorizeInstancedZ,
+  _storeySignature: _storeySignature,
+  _cosine: _cosine,
+  _dominantPitch: _dominantPitch
 };
 
-})(window);
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { factorizeTypicalStoreys: factorizeTypicalStoreys, factorizeInstancedZ: factorizeInstancedZ,
+    _storeySignature: _storeySignature, _cosine: _cosine, _dominantPitch: _dominantPitch };
+}
+
+})(typeof window !== 'undefined' ? window : globalThis);
