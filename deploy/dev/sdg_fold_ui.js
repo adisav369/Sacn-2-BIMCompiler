@@ -221,8 +221,23 @@
     console.log('§FOLD-UI disabled');
   }
 
-  var api = { buildGraph: buildGraph, sceneDelta: sceneDelta, indexMeshes: indexMeshes,
-    applyFold: applyFold, reset: reset, enableDatumDrag: enableDatumDrag, disableDatumDrag: disableDatumDrag };
+  // toggle(A) — flip datum-drag mode on/off; updates the toolbar button state if present.
+  function toggle(A) {
+    A._sdgActive = !A._sdgActive;
+    var btn = (typeof document !== 'undefined') && document.getElementById('sdg-fold-btn');
+    if (A._sdgActive) {
+      enableDatumDrag(A);
+      if (!A._sdgHandles) { A._sdgActive = false; if (btn) btn.classList.remove('active'); return; }  // no datums → stay off
+      if (btn) btn.classList.add('active');
+    } else {
+      disableDatumDrag(A);
+      if (btn) btn.classList.remove('active');
+    }
+    return A._sdgActive;
+  }
+
+  var api = { buildGraph: buildGraph, sceneDelta: sceneDelta, indexMeshes: indexMeshes, applyFold: applyFold,
+    reset: reset, enableDatumDrag: enableDatumDrag, disableDatumDrag: disableDatumDrag, toggle: toggle };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.SDGFoldUI = api;
