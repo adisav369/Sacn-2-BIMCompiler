@@ -100,18 +100,59 @@ function swWalkColumns(columns, grid, opts) {
   return out;
 }
 
+// ─── SPANS WALK: girders between adjacent grid columns ───────
+// The `spans` edge (prompts/SPATIAL_DEPENDENCY_GRAPH.md §SPANS): along each gridline, columns
+// snapped to that line are sorted and ADJACENT pairs get a girder. The girder runs ON one datum
+// (its gridline) and SPANS between two distinct perpendicular datums (the two gridlines its
+// endpoints sit on); span == |toDatum − fromDatum| = one structural bay. Cross-section is NOT
+// derived here (held; sized by the regulatory handler later). NON-INVENT: endpoints are real
+// snapped columns, span is a measured grid gap, zero invented length.
+function swWalkGirders(columns, grid, opts) {
+  var snap = columns.map(function (c) {
+    return { x: swNearest(c.x, grid.xLines).line, y: swNearest(c.y, grid.yLines).line, srcGuid: c.guid };
+  });
+  var girders = [];
+  function emit(axis, onDatum, fromD, toD, from, to, i) {
+    girders.push({
+      guid: SW_PREFIX + 'GIRDER-' + axis + onDatum.toFixed(2) + '-' + i,
+      axis: axis, onDatum: onDatum,            // the gridline the girder runs along
+      fromDatum: fromD, toDatum: toD,          // the two distinct datums it spans between
+      from: from, to: to, span: Math.abs(toD - fromD),
+      provenance: 'derived:str-walk'
+    });
+  }
+  // Girders along each X-line span between adjacent Y-datums (sort the line's columns by y).
+  grid.xLines.forEach(function (xl) {
+    var on = snap.filter(function (s) { return s.x === xl; }).sort(function (a, b) { return a.y - b.y; });
+    for (var i = 1; i < on.length; i++) {
+      if (on[i].y === on[i - 1].y) continue;   // duplicate column at one intersection
+      emit('Xline@', xl, on[i - 1].y, on[i].y, [xl, on[i - 1].y], [xl, on[i].y], i);
+    }
+  });
+  // Girders along each Y-line span between adjacent X-datums.
+  grid.yLines.forEach(function (yl) {
+    var on = snap.filter(function (s) { return s.y === yl; }).sort(function (a, b) { return a.x - b.x; });
+    for (var i = 1; i < on.length; i++) {
+      if (on[i].x === on[i - 1].x) continue;
+      emit('Yline@', yl, on[i - 1].x, on[i].x, [on[i - 1].x, yl], [on[i].x, yl], i);
+    }
+  });
+  return girders;
+}
+
 // ─── Convenience: derive + walk in one call ──────────────────
 function swWalkSkeleton(columns, opts) {
   var grid = swDeriveGrid(columns, opts);
   var walked = swWalkColumns(columns, grid, opts);
-  return { grid: grid, walked: walked };
+  var girders = swWalkGirders(columns, grid, opts);
+  return { grid: grid, walked: walked, girders: girders };
 }
 
 // ─── Exports (node) + globals (browser eval) ─────────────────
 var _swApi = {
   SW_PREFIX: SW_PREFIX, SW_GRID_GAP_TOL: SW_GRID_GAP_TOL, SW_GRID_SPAN_MAX: SW_GRID_SPAN_MAX,
   swClusterAxis: swClusterAxis, swDeriveGrid: swDeriveGrid, swNearest: swNearest,
-  swWalkColumns: swWalkColumns, swWalkSkeleton: swWalkSkeleton
+  swWalkColumns: swWalkColumns, swWalkGirders: swWalkGirders, swWalkSkeleton: swWalkSkeleton
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = _swApi;
 if (typeof window !== 'undefined') Object.keys(_swApi).forEach(function (k) { window[k] = _swApi[k]; });
