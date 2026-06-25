@@ -275,6 +275,62 @@ function swWalkTessellation(tess, n, opts) {
   return out;
 }
 
+// ═══ RE-WALK LOOP — ARC edit → STR re-walks (STR_ROUTEWALKING_SPEC §3/§4) = THE WEDGE ═══
+// An ARC grid edit (a datum moves by Δ) cascades through the walker as ONE signed op chain:
+// columns on the moved datum re-anchor; girders touching it re-span (cross-section HELD); the
+// regulatory handler re-checks the changed spans and any signal that FLIPS becomes an EXCEPTION
+// (the "you may need to upsize / add a column" message). NON-INVENT: the ONLY new number is the
+// user's Δ; every new position/span is Δ folded onto a measured value; every exception is cited.
+//   base  = { grid, walked, girders } from swWalkSkeleton
+//   edit  = { axis:'x'|'y', datum:<gridline value to move>, delta:<metres>, material }
+function swReWalk(base, edit, opts) {
+  opts = opts || {};
+  var mat = edit.material || 'STEEL';
+  var ops = [{ opType: 'GEOM_GRID_MOVE', params: { axis: edit.axis, datum: edit.datum, delta: edit.delta }, provenance: 'user-edit' }];
+
+  // 1. re-anchor columns sitting on the moved datum (others untouched) — position = f(new grid)
+  var movedColumns = [];
+  var newWalked = base.walked.map(function (c) {
+    var on = edit.axis === 'y' ? c.y === edit.datum : c.x === edit.datum;
+    if (!on) return c;
+    var nc = Object.assign({}, c);
+    if (edit.axis === 'y') nc.y = c.y + edit.delta; else nc.x = c.x + edit.delta;
+    movedColumns.push(nc);
+    ops.push({ opType: 'STR_REANCHOR', params: { srcGuid: c.srcGuid, from: [c.x, c.y], to: [nc.x, nc.y] }, provenance: 'derived:grid' });
+    return nc;
+  });
+
+  // 2. re-span girders touching the moved datum + regulatory re-check
+  var changedGirders = [], exceptions = [];
+  var newGirders = base.girders.map(function (g) {
+    var spansIt = (g.fromDatum === edit.datum || g.toDatum === edit.datum);
+    var runsAlong = (edit.axis === 'y' && g.axis === 'Yline@' && g.onDatum === edit.datum) ||
+                    (edit.axis === 'x' && g.axis === 'Xline@' && g.onDatum === edit.datum);
+    if (!spansIt && !runsAlong) return g;
+    var ng = Object.assign({}, g);
+    if (runsAlong) {                          // girder ALONG the moved line: translate, span held
+      ng.onDatum = g.onDatum + edit.delta;
+      if (Array.isArray(g.from)) { ng.from = g.from.slice(); ng.to = g.to.slice(); }
+      return ng;
+    }
+    if (g.fromDatum === edit.datum) ng.fromDatum = g.fromDatum + edit.delta;
+    if (g.toDatum === edit.datum) ng.toDatum = g.toDatum + edit.delta;
+    ng.span = Math.abs(ng.toDatum - ng.fromDatum);   // cross-section held; only the span changes
+    ops.push({ opType: 'STR_RESPAN', params: { guid: g.guid, oldSpan: g.span, newSpan: ng.span }, provenance: 'derived:str-walk' });
+    changedGirders.push(ng);
+    var before = swCheckGirder(g.span, { material: mat });
+    var after = swCheckGirder(ng.span, { material: mat });
+    if (before.signal !== after.signal) {            // the WEDGE: an edit surfaces a consequence
+      exceptions.push({ guid: g.guid, oldSignal: before.signal, newSignal: after.signal, span: ng.span, message: after.message, source: after.source });
+      ops.push({ opType: 'STR_SIGNAL', params: { guid: g.guid, from: before.signal, to: after.signal, message: after.message }, source: after.source, provenance: 'derived:regulatory' });
+    }
+    return ng;
+  });
+
+  return { ops: ops, movedColumns: movedColumns, changedGirders: changedGirders,
+           exceptions: exceptions, after: { grid: base.grid, walked: newWalked, girders: newGirders } };
+}
+
 // ─── Convenience: derive + walk in one call ──────────────────
 function swWalkSkeleton(columns, opts) {
   var grid = swDeriveGrid(columns, opts);
@@ -289,7 +345,8 @@ var _swApi = {
   swClusterAxis: swClusterAxis, swDeriveGrid: swDeriveGrid, swNearest: swNearest,
   swWalkColumns: swWalkColumns, swWalkGirders: swWalkGirders, swWalkSkeleton: swWalkSkeleton,
   SW_SPAN_RULES: SW_SPAN_RULES, swCheckGirder: swCheckGirder, swConforms: swConforms,
-  swDeriveTessellation: swDeriveTessellation, swWalkTessellation: swWalkTessellation
+  swDeriveTessellation: swDeriveTessellation, swWalkTessellation: swWalkTessellation,
+  swReWalk: swReWalk
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = _swApi;
 if (typeof window !== 'undefined') Object.keys(_swApi).forEach(function (k) { window[k] = _swApi[k]; });
