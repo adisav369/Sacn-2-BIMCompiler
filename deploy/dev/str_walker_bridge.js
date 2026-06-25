@@ -43,6 +43,14 @@
     if (!_state) { console.warn('§STRWALK-REWALK no state — call swbInit first'); return null; }
     var edit = { axis: gridMoveParams.axis, datum: gridMoveParams.datum, delta: gridMoveParams.delta,
                  material: opts.material || 'STEEL' };
+    // The live authoring-grid line position is not bit-identical to the walker's emergent datum →
+    // snap it to the nearest walker gridline so the re-walk targets the right structural bay.
+    var lines = edit.axis === 'x' ? _state.base.grid.xLines : _state.base.grid.yLines;
+    if (lines && lines.length) {
+      var snapped = SW.swNearest(edit.datum, lines).line;
+      if (snapped !== edit.datum) console.log('§STRWALK-SNAP datum ' + edit.datum + ' → walker ' + snapped);
+      edit.datum = snapped;
+    }
     var rw = SW.swReWalk(_state.base, edit, opts);
     var committed = 0;
     rw.ops.forEach(function (op) {
