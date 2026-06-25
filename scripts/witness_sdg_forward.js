@@ -105,6 +105,11 @@ function runCase(dbRel, label) {
 
     check(`${label}:fold-non-empty`, fwd.moved.length + fwd.stretched.length > 0, `${fwd.moved.length}+${fwd.stretched.length} touched`);
 
+    // 0) DISJOINT — an element is rigid-MOVED xor STRETCHED, never both (spans authoritative on the dragged axis).
+    const movedG = new Set(fwd.moved.map(m => m.guid)), stretchG = new Set(fwd.stretched.map(s => s.guid));
+    const both = [...movedG].filter(g => stretchG.has(g));
+    check(`${label}:moved∩stretched-empty`, both.length === 0, `${both.length} elems both moved AND stretched`);
+
     // 1) IDENTITY ROUND-TRIP — fold(+Δ) negates fold(−Δ) exactly → 0.000 mm worst offset.
     const fMap = new Map(fwd.moved.map(m => [m.guid, m]));
     const rMap = new Map(rev.moved.map(m => [m.guid, m]));

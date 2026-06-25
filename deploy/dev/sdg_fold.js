@@ -93,6 +93,7 @@
       var kids = childrenOf[guid]; if (!kids) return;
       kids.forEach(function (c) {
         if (pinned.has(c)) { if (result.pinned.indexOf(c) < 0) result.pinned.push(c); return; }
+        if (spanGuids.has(c)) return;                            // spans authoritative — never also rigid-moved
         if (moved.has(c)) return;                                // already seeded/visited
         moved.set(c, vec.slice());
         cascade(c, vec);
@@ -104,8 +105,8 @@
     (graph.fillsHost || []).forEach(function (h) {
       if (!moved.has(h.host)) return;
       var vec = moved.get(h.host);
-      if (h.opening) addMove(h.opening, vec.slice());
-      if (h.filling) addMove(h.filling, vec.slice());
+      if (h.opening && !spanGuids.has(h.opening)) addMove(h.opening, vec.slice());
+      if (h.filling && !spanGuids.has(h.filling)) addMove(h.filling, vec.slice());
     });
 
     // --- clamp (explode-guard): surface any element pushed past clampMm instead of applying it.
