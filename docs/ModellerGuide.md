@@ -3,6 +3,73 @@
 > **Work in progress.** The DAGeVu modeller is an early, spine-proven authoring surface — this guide is
 > deliberately a short intro plus an index of the toolbar icons. Expect it to grow as the modeller does.
 
+---
+
+> ## ⚠ UNDER DEPRECATION — a major direction shift is in progress *(2026-06-25)*
+>
+> **The from-scratch authoring surface described below is not broken — it is being *inverted*.** We are
+> experimenting with a new primary direction for the modeller, and the existing tools (insert · sketch ·
+> extrude · sweep · the grid) remain available while the shift lands. Nothing here is going away without a
+> replacement; this note is so you don't feel stranded if the surface starts changing under you.
+>
+> **The inversion — *don't author from scratch; open a ready-made building and edit it.*** Instead of drawing a
+> model up from a blank grid, you **📂 Open an existing `extracted.db`** (a real building's **ARC** model — its
+> *digital twin*) and **edit that**. The other disciplines and dimensions are not re-drawn — they **follow**:
+> structure, MEP, the 4D schedule, the 5D cost and the ERP all **auto-complete** by "crawling" against the ARC
+> (RouteWalk), and every edit and every follow is one **signed operation** the enterprise folds from.
+>
+> **Why the shift — four benefits you feel immediately:**
+> - **Speed** — you start *complete* (a real building), not from an empty canvas.
+> - **Completion** — open a bare ARC and the rest *fills itself in* (RouteWalk), rather than you placing every part.
+> - **Reuse** — the real building is the substrate; you compose and edit *batches*, never reconstruct.
+> - **Trust** — the opened twin is a faithful, verified reconstruction, so editing starts from truth (no invention).
+>
+> **The underlying principle: *Open = ARC only.*** What you open and edit is the **architectural** model — the single
+> editable substrate. Structure / MEP / 4D / 5D / ERP are shown but *derived* (they regenerate against your ARC
+> edits). This makes the digital twin **editable + generative** (it completes itself), not a read-only mirror.
+
+*How it works (the inversion at a glance):*
+
+<svg viewBox="0 0 820 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The modelling inversion: open a ready ARC twin, edit it, and the rest auto-completes from one signed op-log." style="max-width:100%;height:auto;font-family:system-ui,-apple-system,sans-serif">
+  <rect x="0" y="0" width="820" height="320" fill="#fbfcfe"/>
+  <text x="20" y="28" font-size="16" font-weight="700" fill="#1b2b3a">The Modelling Inversion — open a ready ARC twin, edit, auto-complete</text>
+  <rect x="20" y="46" width="780" height="40" rx="6" fill="#f1f1f1" stroke="#cfcfcf"/>
+  <text x="34" y="63" font-size="12.5" font-weight="700" fill="#9a9a9a">OLD ✗ author from scratch</text>
+  <text x="34" y="79" font-size="12" fill="#9a9a9a">blank canvas  →  draw walls  →  place every element by hand  →  slow, and still incomplete (no STR/MEP/4D/5D/ERP)</text>
+  <g font-size="12" fill="#16324a">
+    <rect x="20" y="118" width="170" height="74" rx="8" fill="#e9f2fb" stroke="#3f78b5" stroke-width="1.5"/>
+    <text x="105" y="140" text-anchor="middle" font-weight="700">📂 Open extracted.db</text>
+    <text x="105" y="158" text-anchor="middle">the ARC twin</text>
+    <text x="105" y="176" text-anchor="middle" fill="#5b6473">(real building, verbatim)</text>
+    <rect x="232" y="118" width="170" height="74" rx="8" fill="#e9f2fb" stroke="#3f78b5" stroke-width="1.5"/>
+    <text x="317" y="140" text-anchor="middle" font-weight="700">Edit the ARC</text>
+    <text x="317" y="158" text-anchor="middle">Outliner BOM Tree</text>
+    <text x="317" y="176" text-anchor="middle" fill="#5b6473">re-parent · grid · move</text>
+    <rect x="444" y="118" width="170" height="74" rx="8" fill="#eef6ee" stroke="#5a9e5a" stroke-width="1.5"/>
+    <text x="529" y="140" text-anchor="middle" font-weight="700">Followers crawl</text>
+    <text x="529" y="158" text-anchor="middle">RouteWalk</text>
+    <text x="529" y="176" text-anchor="middle" fill="#5b6473">STR · MEP regenerate</text>
+    <rect x="656" y="118" width="144" height="74" rx="8" fill="#eef6ee" stroke="#5a9e5a" stroke-width="1.5"/>
+    <text x="728" y="140" text-anchor="middle" font-weight="700">Auto-complete</text>
+    <text x="728" y="158" text-anchor="middle">4D · 5D · ERP</text>
+    <text x="728" y="176" text-anchor="middle" fill="#5b6473">the live twin</text>
+  </g>
+  <g fill="#3f78b5" font-size="20" font-weight="700">
+    <text x="201" y="161">→</text><text x="413" y="161">→</text><text x="625" y="161">→</text>
+  </g>
+  <rect x="20" y="222" width="780" height="44" rx="8" fill="#1b1d23"/>
+  <text x="410" y="243" text-anchor="middle" font-size="13" font-weight="700" fill="#dce6f4">ONE signed op-log</text>
+  <text x="410" y="260" text-anchor="middle" font-size="11.5" fill="#aab4c4">every edit &amp; every follow is a signed fact — model · structure · MEP · 4D · 5D · ERP all fold from it</text>
+  <text x="20" y="292" font-size="11" fill="#8a93a0">Open = ARC only (the single editable substrate). The twin becomes editable + generative — it completes itself.</text>
+  <text x="20" y="308" font-size="10.5" fill="#aab4c4">Experimental: modeller.html?bomtree · spec SPATIAL_DEPENDENCY_GRAPH §INVERT-TWIN-EDITING</text>
+</svg>
+
+> *Status:* the first slice — the **📂 Open** icon and the editable **BOM Tree** in the Outliner — is live behind the
+> experimental `?bomtree` flag. The auto-complete (RouteWalk) and the geometry-on-canvas editing land next. The
+> classic authoring surface documented below stays usable throughout.
+
+---
+
 ## What it is
 
 DAGeVu is a **browser BIM authoring** surface that sits beside the read-only viewer. Instead of editing a file,
