@@ -140,6 +140,65 @@ function swWalkGirders(columns, grid, opts) {
   return girders;
 }
 
+// ═══ REGULATORY HANDLER — span/depth + deflection → RED/ORANGE (STR_ROUTEWALKING_SPEC §2B) ═══
+// EVERY threshold lives in this CITED table — no magic numbers in the logic below (the door
+// doctrine: measure/cite, never invent). These are PRELIMINARY (LOD 200-300) sizing rules of
+// thumb with their code basis; a full check is the engineer's, not the walker's. UBBL (Malaysia)
+// governs structural design by ADOPTING the MS EN Eurocodes, so Eurocode is the citation of record.
+var SW_SPAN_RULES = {
+  STEEL: {
+    depthRatio: 20,        // preliminary girder depth ≈ span/20
+    deflectionDenom: 360,  // serviceability δ ≤ span/360 (variable load)
+    maxBeamSpan: 18,       // practical rolled-section span; beyond → plate girder / truss
+    source: 'EN 1993-1-1 (Eurocode 3) §7.2 serviceability δ≤L/360; preliminary depth ≈ L/20 ' +
+            '(SCI Steel Designers\' Manual). Cross-ref AISC 360-16; IBC/ASCE 7 Table 1604.3.'
+  },
+  RC: {
+    depthRatio: 12,        // preliminary RC beam overall depth ≈ span/12
+    deflectionDenom: 250,  // total deflection ≈ span/250 basic
+    maxBeamSpan: 12,       // beyond → post-tension / deep beam
+    source: 'EN 1992-1-1 (Eurocode 2) §7.4.2 span/effective-depth basic ratios; preliminary depth ' +
+            '≈ L/12. Cross-ref ACI 318-19 Table 9.3.1.1 (L/16 simply-supported).'
+  }
+};
+
+// Check one walked girder's span against the cited rule → a RED/ORANGE/GREEN signal.
+// span (m); opts.material 'STEEL'|'RC'; opts.proposedDepth (m, optional) = the depth being offered.
+function swCheckGirder(span, opts) {
+  opts = opts || {};
+  var mat = opts.material || 'STEEL';
+  var rule = SW_SPAN_RULES[mat];
+  var requiredDepth = span / rule.depthRatio;
+  var maxDeflection = span / rule.deflectionDenom;
+  var signal, message;
+  if (span > rule.maxBeamSpan) {
+    signal = 'RED';
+    message = 'span ' + span.toFixed(1) + 'm > ' + rule.maxBeamSpan + 'm max for a ' + mat +
+      ' beam → no valid solid-beam load path: add an intermediate column or use a truss';
+  } else if (opts.proposedDepth != null && opts.proposedDepth < requiredDepth - 1e-9) {
+    signal = 'ORANGE';
+    message = 'proposed depth ' + opts.proposedDepth.toFixed(2) + 'm < required ' +
+      requiredDepth.toFixed(2) + 'm (L/' + rule.depthRatio + ') → upsize';
+  } else {
+    signal = 'GREEN';
+    message = 'ok: provide depth ≥ ' + requiredDepth.toFixed(2) + 'm (L/' + rule.depthRatio +
+      '), keep δ ≤ ' + maxDeflection.toFixed(3) + 'm (L/' + rule.deflectionDenom + ')';
+  }
+  return {
+    signal: signal, material: mat, span: span, requiredDepth: requiredDepth,
+    maxDeflection: maxDeflection, rule: 'span/depth+deflection', source: rule.source,
+    message: message, provenance: 'derived:regulatory'
+  };
+}
+
+// Validate a REAL member's as-built depth against the rule (depth adequate ⟺ span/depth ≤ ratio).
+function swConforms(span, depth, opts) {
+  var mat = (opts && opts.material) || 'STEEL';
+  var rule = SW_SPAN_RULES[mat];
+  var ratio = depth > 0 ? span / depth : Infinity;
+  return { conforms: ratio <= rule.depthRatio, ratio: ratio, limit: rule.depthRatio, source: rule.source };
+}
+
 // ─── Convenience: derive + walk in one call ──────────────────
 function swWalkSkeleton(columns, opts) {
   var grid = swDeriveGrid(columns, opts);
@@ -152,7 +211,8 @@ function swWalkSkeleton(columns, opts) {
 var _swApi = {
   SW_PREFIX: SW_PREFIX, SW_GRID_GAP_TOL: SW_GRID_GAP_TOL, SW_GRID_SPAN_MAX: SW_GRID_SPAN_MAX,
   swClusterAxis: swClusterAxis, swDeriveGrid: swDeriveGrid, swNearest: swNearest,
-  swWalkColumns: swWalkColumns, swWalkGirders: swWalkGirders, swWalkSkeleton: swWalkSkeleton
+  swWalkColumns: swWalkColumns, swWalkGirders: swWalkGirders, swWalkSkeleton: swWalkSkeleton,
+  SW_SPAN_RULES: SW_SPAN_RULES, swCheckGirder: swCheckGirder, swConforms: swConforms
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = _swApi;
 if (typeof window !== 'undefined') Object.keys(_swApi).forEach(function (k) { window[k] = _swApi[k]; });
