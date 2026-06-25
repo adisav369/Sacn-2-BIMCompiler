@@ -1,0 +1,5288 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>CORE SRS — BIM Intent Compiler Platform - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  <script data-goatcounter="https://red1oon.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#core-srs-bim-intent-compiler-platform" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CORE SRS — BIM Intent Compiler Platform
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  The 3 Apps
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../FoldEngineBlackBook.html" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Go Deeper
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BOMBasedCompilation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-ootb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FeatureComparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Feature Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../MigrateComparisonPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrate & Compare (ERP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bench_suite.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark Comparison (live)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../age_demo.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Does Your ERP Age? (live)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AboutMore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About BIM OOTB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute (start here)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The 3 Apps
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    The 3 Apps
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Viewer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ModellerGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DAGeVu Modeller Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ERPUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kernel-ERP User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Go Deeper
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Go Deeper
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FoldEngineBlackBook.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold Engine Black Book (dev manual)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../HolyGrail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Holy Grail (editable rules, live)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ERPConceptRosetta.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-ERP Rosetta Stone (concept + cost)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (77 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ModellerKernelFold/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prior Art — Geometry as Signed-Log Fold
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../4D5DAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4D/5D Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMtoProject/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM → Project Order (ERP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ShipYard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond Buildings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../HospitalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hospital (HA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../RevitAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Revit MEP (RM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LTUAHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LTU A-House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StressTest_1M/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1M Stress Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACDOCA_FOLD_PLAN/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ACDOCA Fold Plan (SAP headline)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FoldEngineQuality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Code Quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FoldEngineConstraints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fold-Engine Constraints
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial ERP
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spatial ERP
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SpatialERP_OOTB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Every Record Has a Place
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SpatialERP_POC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction ERP POC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AD-in-Browser (iDempiere)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IDEMPIERE_2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    iDempiere 2.0 — the Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PLUGIN_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Architecture (metadata-first)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ENGINE_CONTRACT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engine ↔ UI Contract (the seam)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ReadMeShowMe/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ReadMe / ShowMe Help (POC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../HelpO2C/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    O2C Help Steps (ReadMe)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ERP_Roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Forward Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap & Papers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap & Papers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PROJECT_CHRONOLOGY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Chronology (dates + commits)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM OOTB Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VibeProgramming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vibe Programming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../OpLogERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Op-Log ERP Engine (Abstract)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EnablingTechTimeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enabling-Tech Timeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LocalFirstPriorArt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local-First Prior Art
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DistributedERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distributed ERP (Contention Map)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProductionRisks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Risks & Test Plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ERP_COVERAGE_MATRIX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Coverage Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GapClosureSpec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gap-Closure Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ERP_MODEL_ARCHETYPE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Model Archetype
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../POS_ADDON_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    POS Addon Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SPATIAL_PICKING_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Picking Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DepreciationPerf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Depreciation Perf
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Last Mile
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9 Gates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIMEyes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    More Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    More Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../RouteTemplate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Find and Navigate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../RTreeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    City-Scale RTree
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../Localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Localization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scale-research-program" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1 Scale Research Program
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§1 Scale Research Program">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-objective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1.1 Objective
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-ifc-source-repositories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1.2 IFC Source Repositories
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-extraction-pipeline-for-new-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1.3 Extraction Pipeline for New Models
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-scale-stress-test-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1.4 Scale Stress Test Protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#15-verb-discovery-from-new-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1.5 Verb Discovery from New Models
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#16-rule-mining-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1.6 Rule Mining Protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-reporting-analytics-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2 Reporting &amp; Analytics Engine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§2 Reporting &amp; Analytics Engine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2.1 Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-report-types-4d-7d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2.2 Report Types (4D-7D)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§2.2 Report Types (4D-7D)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#4d-schedule-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4D — Schedule Reports
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5d-cost-quantity-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5D — Cost &amp; Quantity Reports
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6d-sustainability-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6D — Sustainability Reports
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7d-facility-management-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7D — Facility Management Reports
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-client-presentation-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2.3 Client Presentation Layers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§2.3 Client Presentation Layers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kanban-board" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kanban Board
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kpi-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        KPI Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#balanced-scorecard-bsc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Balanced Scorecard (BSC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#social-media-stakeholder-communication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Social Media / Stakeholder Communication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bcf-issue-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BCF Issue Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cobie-handover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        COBie Handover
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#regulatory-submission-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Regulatory Submission Templates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-reportdao-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2.4 ReportDAO Interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-industry-gap-closure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3 Industry Gap Closure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§3 Industry Gap Closure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-gap-matrix-current-vs-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.1 Gap Matrix — Current vs Required
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-moat-deepening-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.2 Moat Deepening Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§3.2 Moat Deepening Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#moat-5-infrastructure-first-mover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Moat 5: Infrastructure First-Mover
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#moat-6-calibration-proven-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Moat 6: Calibration-Proven Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#moat-7-verb-grammar-as-knowledge-capture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Moat 7: Verb Grammar as Knowledge Capture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#moat-8-multi-client-report-distribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Moat 8: Multi-Client Report Distribution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-ifcopenshell-federation-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.3 IfcOpenShell Federation Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-compliance-regulatory-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4 Compliance &amp; Regulatory Framework
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§4 Compliance &amp; Regulatory Framework">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-jurisdiction-expansion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4.1 Jurisdiction Expansion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-compliance-report-verbs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4.2 Compliance Report Verbs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-verb-cited-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4.3 Verb-Cited Evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-schema-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5 Schema Extensions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§5 Schema Extensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-new-columns-future-migrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.1 New Columns (future migrations)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-database-split-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.2 Database Split Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-implementation-priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6 Implementation Priority
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§6 Implementation Priority">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-r-research-scale-rule-mining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase R (Research) — Scale &amp; Rule Mining
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-re-report-engine-dao-adapters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase RE (Report Engine) — DAO + Adapters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-j-jurisdiction-regulatory-expansion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase J (Jurisdiction) — Regulatory Expansion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-success-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §7 Success Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §8 References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="core-srs-bim-intent-compiler-platform">CORE SRS — BIM Intent Compiler Platform<a class="headerlink" href="#core-srs-bim-intent-compiler-platform" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Foundation:</strong> <a href="../../BOMBasedCompilation/">BBC</a> · <a href="../../DATA_MODEL/">DATA_MODEL</a> · <a href="../../BIM_COBOL/">BIM_COBOL</a> · <a href="../../MANIFESTO/">MANIFESTO</a> · <a href="../../TestArchitecture/">TestArchitecture</a></p>
+</blockquote>
+<p><strong>Version:</strong> 1.0 | <strong>Date:</strong> 2026-03-19
+<strong>Scope:</strong> Scale research, reporting engine, industry gap closure, moat strategy
+<strong>Companion:</strong> <code>BIM_Designer.md</code> (UI), <code>StrategicIndustryPositioning.md</code> (market)</p>
+<hr />
+<h2 id="1-scale-research-program">§1 Scale Research Program<a class="headerlink" href="#1-scale-research-program" title="Permanent link">&para;</a></h2>
+<h3 id="11-objective">§1.1 Objective<a class="headerlink" href="#11-objective" title="Permanent link">&para;</a></h3>
+<p>Prove the compiler handles real-world diversity and volume. Current proof is
+3 building types (residential SH/DX, commercial TE) + 3 infrastructure types
+(bridge/road/rail). Industry tools handle thousands of building types at 1M+
+element counts. We must prove verb grammar generalises and pipeline scales.</p>
+<h3 id="12-ifc-source-repositories">§1.2 IFC Source Repositories<a class="headerlink" href="#12-ifc-source-repositories" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>Moved to:</strong> <a href="https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/lib/input/IFC/IFCAnalysis.md"><code>DAGCompiler/lib/input/IFC/IFCAnalysis.md</code></a>
+— full inventory, quality ratings, entity coverage matrix, and manual-download guide.</p>
+<p><strong>Current state:</strong> 24 IFC files on disk (12 in-pipeline + 12 downloaded).
+Covers 6 building types: residential, commercial/terminal, institutional,
+and 3 infrastructure (bridge, road, rail via IFC4X3 PCERT).</p>
+<p><strong>Download target:</strong> 50+ distinct models across 8 building typologies.</p>
+</blockquote>
+<h3 id="13-extraction-pipeline-for-new-models">§1.3 Extraction Pipeline for New Models<a class="headerlink" href="#13-extraction-pipeline-for-new-models" title="Permanent link">&para;</a></h3>
+<p>For each downloaded IFC:</p>
+<div class="highlight"><pre><span></span><code>Step 1: Extract    → python extract.py &lt;file&gt;.ifc → &lt;prefix&gt;_extracted.db
+Step 2: Classify   → write classify_&lt;prefix&gt;.yaml (discipline mapping)
+Step 3: Compile    → run_RosettaStones.sh &lt;prefix&gt; → &lt;prefix&gt;_BOM.db
+Step 4: Mine       → run mining queries → DV0xx migration SQL
+Step 5: Validate   → BOM QA checks (G1-G6 gates, or subset)
+Step 6: Verb-mine  → VerbDetector report → new verb candidates
+Step 7: Document   → &lt;Prefix&gt;Analysis.md (element census, verb distribution)
+</code></pre></div>
+<p><strong>Automation gate:</strong> Steps 1-3 should be scriptable for batch processing.
+<code>scripts/batch_extract.sh</code> takes a directory of IFC files and produces
+extracted DBs + YAML templates.</p>
+<h3 id="14-scale-stress-test-protocol">§1.4 Scale Stress Test Protocol<a class="headerlink" href="#14-scale-stress-test-protocol" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Target</th>
+<th>Current Proven</th>
+<th>Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ST-1 Element count</td>
+<td>500K elements</td>
+<td>48K (TE)</td>
+<td>Pipeline completes without OOM</td>
+</tr>
+<tr>
+<td>ST-2 BOM depth</td>
+<td>10 levels</td>
+<td>4 levels (TE)</td>
+<td>Parent-relative offsets correct</td>
+</tr>
+<tr>
+<td>ST-3 Verb factorization</td>
+<td>100:1 ratio</td>
+<td>37:1 (TE)</td>
+<td>At least 50:1 on data centre</td>
+</tr>
+<tr>
+<td>ST-4 Concurrent buildings</td>
+<td>20 buildings</td>
+<td>4 (SH/DX/TE/BR)</td>
+<td>Total wall clock &lt; 60s</td>
+</tr>
+<tr>
+<td>ST-5 Discipline count</td>
+<td>12 disciplines</td>
+<td>8 (TE)</td>
+<td>All IFC4X3 facility types</td>
+</tr>
+<tr>
+<td>ST-6 Mixed IFC versions</td>
+<td>IFC2X3 + IFC4 + IFC4X3</td>
+<td>2X3 + 4</td>
+<td>Single pipeline run</td>
+</tr>
+<tr>
+<td>ST-7 Memory ceiling</td>
+<td>&lt;4GB heap</td>
+<td>~2GB (TE)</td>
+<td>-Xmx4g with 500K elements</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pass criteria:</strong> G1-COUNT passes for every model. G2-VOLUME within 1%.
+Pipeline wall clock scales linearly (not quadratic) with element count.</p>
+<h3 id="15-verb-discovery-from-new-models">§1.5 Verb Discovery from New Models<a class="headerlink" href="#15-verb-discovery-from-new-models" title="Permanent link">&para;</a></h3>
+<p>Each new model type should yield at least one new verb candidate:</p>
+<table>
+<thead>
+<tr>
+<th>Building Type</th>
+<th>Expected Verb</th>
+<th>Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hospital</td>
+<td>ZONE</td>
+<td>Sterile/non-sterile boundary placement</td>
+</tr>
+<tr>
+<td>High-rise</td>
+<td>STACK</td>
+<td>Floor plate repetition with setbacks</td>
+</tr>
+<tr>
+<td>Data centre</td>
+<td>GRID_FILL</td>
+<td>Cabinet rows with hot/cold aisle spacing</td>
+</tr>
+<tr>
+<td>Tunnel</td>
+<td>BORE</td>
+<td>Circular segmental lining ring pattern</td>
+</tr>
+<tr>
+<td>Hotel</td>
+<td>MIRROR_STACK</td>
+<td>Floor plate mirror + vertical repeat</td>
+</tr>
+<tr>
+<td>Dam</td>
+<td>TAPER</td>
+<td>Gravity section with varying thickness</td>
+</tr>
+<tr>
+<td>Factory</td>
+<td>BAY</td>
+<td>Portal frame bay repetition</td>
+</tr>
+</tbody>
+</table>
+<h3 id="16-rule-mining-protocol">§1.6 Rule Mining Protocol<a class="headerlink" href="#16-rule-mining-protocol" title="Permanent link">&para;</a></h3>
+<p>For each new extracted model, run the standard mining queries
+(same pattern as <code>TE_MINING_RESULTS.md</code> and <code>DV006b/DV007/DV008</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Dimension census: avg W×D×H per ifc_class per segment</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">em</span><span class="p">.</span><span class="n">ifc_class</span><span class="p">,</span><span class="w"> </span><span class="n">ss</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">),</span>
+<span class="w">       </span><span class="n">ROUND</span><span class="p">(</span><span class="k">AVG</span><span class="p">(</span><span class="n">rt</span><span class="p">.</span><span class="n">maxX</span><span class="o">-</span><span class="n">rt</span><span class="p">.</span><span class="n">minX</span><span class="p">)</span><span class="o">*</span><span class="mi">1000</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+<span class="w">       </span><span class="n">ROUND</span><span class="p">(</span><span class="k">AVG</span><span class="p">(</span><span class="n">rt</span><span class="p">.</span><span class="n">maxY</span><span class="o">-</span><span class="n">rt</span><span class="p">.</span><span class="n">minY</span><span class="p">)</span><span class="o">*</span><span class="mi">1000</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+<span class="w">       </span><span class="n">ROUND</span><span class="p">(</span><span class="k">AVG</span><span class="p">(</span><span class="n">rt</span><span class="p">.</span><span class="n">maxZ</span><span class="o">-</span><span class="n">rt</span><span class="p">.</span><span class="n">minZ</span><span class="p">)</span><span class="o">*</span><span class="mi">1000</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">elements_meta</span><span class="w"> </span><span class="n">em</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">elements_rtree</span><span class="w"> </span><span class="n">rt</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">em</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rt</span><span class="p">.</span><span class="n">id</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">em</span><span class="p">.</span><span class="n">ifc_class</span><span class="p">,</span><span class="w"> </span><span class="n">ss</span><span class="p">.</span><span class="n">name</span><span class="p">;</span>
+
+<span class="c1">-- NN spacing: nearest-neighbour distances per class</span>
+<span class="c1">-- Z-continuity: layer stacking, embed depth</span>
+<span class="c1">-- Ratio rules: cross-element dimensional relationships</span>
+</code></pre></div>
+<p>Output: <code>migration/DVxxx_&lt;prefix&gt;_rules.sql</code> + <code>&lt;Prefix&gt;RulesTest.java</code>.</p>
+<hr />
+<h2 id="2-reporting-analytics-engine">§2 Reporting &amp; Analytics Engine<a class="headerlink" href="#2-reporting-analytics-engine" title="Permanent link">&para;</a></h2>
+<h3 id="21-architecture">§2.1 Architecture<a class="headerlink" href="#21-architecture" title="Permanent link">&para;</a></h3>
+<p>The reporting engine bridges the compiler's structured output (5 databases)
+to multiple client presentation layers. The engine is Java DAO + SQL, not
+a monolithic report renderer. Each report is a <strong>verb</strong> that queries the
+database and emits structured data (JSON/CSV/XML).</p>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────┐
+│                  REPORT ENGINE ARCHITECTURE              │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  DATA LAYER (existing databases)                        │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
+│  │component_lib │ │ {P}_BOM.db   │ │ ERP  │ │
+│  │ M_Product    │ │ m_bom        │ │ ad_space_type    │ │
+│  │ geometries   │ │ m_bom_line   │ │ placement_rules  │ │
+│  └──────────────┘ └──────────────┘ └──────────────────┘ │
+│  ┌──────────────┐ ┌──────────────┐                      │
+│  │ validation   │ │ output.db    │                      │
+│  │ AD_Val_Rule  │ │ (compile DB) │                      │
+│  │ AD_Val_Param │ │              │                      │
+│  └──────────────┘ └──────────────┘                      │
+│                                                         │
+│  REPORT DAO LAYER (Java)                                │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ ReportDAO                                        │   │
+│  │  .bomSummary(buildingId)     → BOMReport         │   │
+│  │  .complianceMatrix(jurisd)  → ComplianceReport   │   │
+│  │  .costBreakdown(buildingId) → CostReport         │   │
+│  │  .scheduleSequence(orderId) → ScheduleReport     │   │
+│  │  .carbonFootprint(buildingId)→ CarbonReport      │   │
+│  │  .assetRegistry(facilityId) → AssetReport        │   │
+│  │  .kpiDashboard(portfolioId) → KPIReport          │   │
+│  │  .verbDistribution(buildingId)→ VerbReport       │   │
+│  └──────────────────────────────────────────────────┘   │
+│                                                         │
+│  EXPORT ADAPTERS                                        │
+│  ┌───────┐ ┌───────┐ ┌──────┐ ┌──────┐ ┌────────────┐  │
+│  │ JSON  │ │  CSV  │ │ XLSX │ │ IFC  │ │ iDempiere  │  │
+│  │ (API) │ │(batch)│ │(CIDB)│ │(BCF) │ │  (REST)    │  │
+│  └───────┘ └───────┘ └──────┘ └──────┘ └────────────┘  │
+│                                                         │
+│  CLIENT PRESENTATION (consuming adapters)               │
+│  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌─────────────┐  │
+│  │ Kanban   │ │  KPI     │ │ Social │ │  Balanced   │  │
+│  │ Board    │ │Dashboard │ │ Media  │ │  Scorecard  │  │
+│  └──────────┘ └──────────┘ └────────┘ └─────────────┘  │
+│  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌─────────────┐  │
+│  │ BCF      │ │ COBie    │ │ PDF    │ │  Regulatory  │  │
+│  │ Issues   │ │ Handover │ │ Report │ │  Submission  │  │
+│  └──────────┘ └──────────┘ └────────┘ └─────────────┘  │
+└─────────────────────────────────────────────────────────┘
+</code></pre></div>
+<h3 id="22-report-types-4d-7d">§2.2 Report Types (4D-7D)<a class="headerlink" href="#22-report-types-4d-7d" title="Permanent link">&para;</a></h3>
+<h4 id="4d-schedule-reports">4D — Schedule Reports<a class="headerlink" href="#4d-schedule-reports" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Report</th>
+<th>Source</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R-4D-01 Construction Sequence</td>
+<td>PP_Order_Node verb ordering</td>
+<td>Gantt JSON for timeline renderers</td>
+</tr>
+<tr>
+<td>R-4D-02 Critical Path</td>
+<td>PP_Order_Node dependencies</td>
+<td>Critical chain with float analysis</td>
+</tr>
+<tr>
+<td>R-4D-03 Phase Progress</td>
+<td>C_Order.DocStatus per storey</td>
+<td>% complete by discipline per floor</td>
+</tr>
+<tr>
+<td>R-4D-04 Verb Execution Plan</td>
+<td>VerbDetector verb distribution</td>
+<td>Which verbs fire in which order</td>
+</tr>
+</tbody>
+</table>
+<p><strong>iDempiere analogue:</strong> <code>PP_Order</code> → <code>PP_Order_Node</code> → <code>PP_Order_Workflow</code>.
+Our <code>PP_Order_Node</code> already stores verb execution sequence. The reporting
+engine reads this as a Gantt source.</p>
+<h4 id="5d-cost-quantity-reports">5D — Cost &amp; Quantity Reports<a class="headerlink" href="#5d-cost-quantity-reports" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Report</th>
+<th>Source</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R-5D-01 BOM Cost Summary</td>
+<td>m_bom_line × M_Product.cost</td>
+<td>Total by discipline, storey, category</td>
+</tr>
+<tr>
+<td>R-5D-02 Elemental Cost Plan</td>
+<td>m_bom_line × CIDB rates</td>
+<td>NRM-1 compliant cost plan</td>
+</tr>
+<tr>
+<td>R-5D-03 Material Takeoff</td>
+<td>m_bom_line grouped by material</td>
+<td>Concrete m³, steel tonnes, timber m³</td>
+</tr>
+<tr>
+<td>R-5D-04 Procurement Schedule</td>
+<td>m_bom_line × PP_Order_Node</td>
+<td>What to buy when (material + time)</td>
+</tr>
+<tr>
+<td>R-5D-05 Variance Report</td>
+<td>C_Order vs W_Variant</td>
+<td>Cost delta between design iterations</td>
+</tr>
+</tbody>
+</table>
+<p><strong>iDempiere analogue:</strong> <code>M_CostDetail</code> → <code>C_InvoiceLine</code>. Our M_Product already
+carries cost columns. The DAO joins m_bom_line quantities × product unit costs.</p>
+<h4 id="6d-sustainability-reports">6D — Sustainability Reports<a class="headerlink" href="#6d-sustainability-reports" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Report</th>
+<th>Source</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R-6D-01 Embodied Carbon</td>
+<td>M_Product.carbon_kg_per_unit × qty</td>
+<td>Total kgCO2e by element type</td>
+</tr>
+<tr>
+<td>R-6D-02 Energy Model Input</td>
+<td>m_bom_line envelope + U-values</td>
+<td>IDF/gbXML export for EnergyPlus</td>
+</tr>
+<tr>
+<td>R-6D-03 Material Passport</td>
+<td>M_Product.material_name × qty</td>
+<td>Circular economy material inventory</td>
+</tr>
+<tr>
+<td>R-6D-04 LEED/BREEAM Checklist</td>
+<td>AD_Val_Rule sustainability rules</td>
+<td>Credit compliance matrix</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Schema gap:</strong> M_Product needs <code>carbon_kg_per_unit REAL</code>, <code>recyclability TEXT</code>,
+<code>eol_strategy TEXT</code> columns. Migration: <code>V010_sustainability_columns.sql</code>.</p>
+<h4 id="7d-facility-management-reports">7D — Facility Management Reports<a class="headerlink" href="#7d-facility-management-reports" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Report</th>
+<th>Source</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R-7D-01 Asset Register</td>
+<td>M_Product × m_bom_line with location</td>
+<td>COBie-format asset handover</td>
+</tr>
+<tr>
+<td>R-7D-02 Maintenance Schedule</td>
+<td>AD_Val_Rule maintenance intervals</td>
+<td>PM calendar by asset type</td>
+</tr>
+<tr>
+<td>R-7D-03 Sensor Compliance</td>
+<td>AD_Val_Rule sensor rules (NFPA/ASHRAE)</td>
+<td>IoT sensor placement audit</td>
+</tr>
+<tr>
+<td>R-7D-04 Lifecycle Cost</td>
+<td>M_Product.cost × maintenance_interval × lifespan</td>
+<td>NPV total cost of ownership</td>
+</tr>
+<tr>
+<td>R-7D-05 Space Utilisation</td>
+<td>m_bom floor AABB vs occupied area</td>
+<td>Efficiency ratio per storey</td>
+</tr>
+</tbody>
+</table>
+<p><strong>IfcOpenShell Federation already has:</strong> <code>asset_registry.py</code>, <code>maintenance_manager.py</code>,
+<code>sensor_installation.py</code>, <code>compliance_templates.py</code>. These Python PoCs become
+Java DAOs reading the same database schemas.</p>
+<h3 id="23-client-presentation-layers">§2.3 Client Presentation Layers<a class="headerlink" href="#23-client-presentation-layers" title="Permanent link">&para;</a></h3>
+<h4 id="kanban-board">Kanban Board<a class="headerlink" href="#kanban-board" title="Permanent link">&para;</a></h4>
+<p>Construction progress as card-based workflow. Each card = one <code>C_Order</code>
+(building) or <code>C_OrderLine</code> (element group).</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Maps to</th>
+<th>Cards show</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backlog</td>
+<td>DocStatus = DR</td>
+<td>Building name, element count, est. cost</td>
+</tr>
+<tr>
+<td>In Progress</td>
+<td>DocStatus = IP</td>
+<td>% verbs executed, current discipline</td>
+</tr>
+<tr>
+<td>Review</td>
+<td>DocStatus = CO</td>
+<td>Validation pass/fail count, blockers</td>
+</tr>
+<tr>
+<td>Complete</td>
+<td>DocStatus = AP</td>
+<td>Final cost, duration, compliance score</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Data source:</strong> <code>ReportDAO.boardStatus(portfolioId)</code> returns JSON array
+of <code>{orderId, name, status, progress, blockerCount, estCost}</code>.</p>
+<p><strong>Integration targets:</strong>
+- Trello API (POST /1/cards)
+- Jira REST (POST /rest/api/3/issue)
+- GitHub Projects (GraphQL mutation)
+- Notion API (POST /v1/pages)</p>
+<h4 id="kpi-dashboard">KPI Dashboard<a class="headerlink" href="#kpi-dashboard" title="Permanent link">&para;</a></h4>
+<p>Real-time compilation metrics for project managers.</p>
+<table>
+<thead>
+<tr>
+<th>KPI</th>
+<th>Formula</th>
+<th>Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Compilation Success Rate</td>
+<td>PASS buildings / total buildings</td>
+<td>&gt; 95%</td>
+</tr>
+<tr>
+<td>BOM Factorization Ratio</td>
+<td>extracted elements / BOM lines</td>
+<td>&gt; 30:1</td>
+</tr>
+<tr>
+<td>Validation Compliance</td>
+<td>PASS rules / total rules</td>
+<td>100% for AP</td>
+</tr>
+<tr>
+<td>Cost Variance</td>
+<td>(actual - baseline) / baseline</td>
+<td>&lt; 5%</td>
+</tr>
+<tr>
+<td>Schedule Variance</td>
+<td>(actual days - planned) / planned</td>
+<td>&lt; 10%</td>
+</tr>
+<tr>
+<td>Carbon Intensity</td>
+<td>total kgCO2e / gross floor area m²</td>
+<td>&lt; benchmark</td>
+</tr>
+<tr>
+<td>Element Reuse</td>
+<td>shared M_Product / total M_Product</td>
+<td>&gt; 60%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Data source:</strong> <code>ReportDAO.kpiDashboard(portfolioId)</code> returns JSON map.</p>
+<h4 id="balanced-scorecard-bsc">Balanced Scorecard (BSC)<a class="headerlink" href="#balanced-scorecard-bsc" title="Permanent link">&para;</a></h4>
+<p>Strategic performance measurement across four perspectives:</p>
+<table>
+<thead>
+<tr>
+<th>Perspective</th>
+<th>Measures</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Financial</strong></td>
+<td>Cost variance, procurement efficiency, NPV lifecycle</td>
+<td>R-5D-01, R-7D-04</td>
+</tr>
+<tr>
+<td><strong>Client</strong></td>
+<td>Design iteration count, approval cycle time, defect rate</td>
+<td>W_Variant count, DocStatus timestamps</td>
+</tr>
+<tr>
+<td><strong>Process</strong></td>
+<td>Compilation throughput, gate pass rate, verb coverage</td>
+<td>Pipeline metrics, G1-G6 results</td>
+</tr>
+<tr>
+<td><strong>Learning</strong></td>
+<td>New verb discovery rate, rule mining yield, model diversity</td>
+<td>VerbDetector reports, DV0xx count</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Data source:</strong> <code>ReportDAO.balancedScorecard(orgId, period)</code> returns
+four-quadrant JSON with traffic-light status per measure.</p>
+<h4 id="social-media-stakeholder-communication">Social Media / Stakeholder Communication<a class="headerlink" href="#social-media-stakeholder-communication" title="Permanent link">&para;</a></h4>
+<p>Automated project milestone posts for non-technical stakeholders.</p>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Content</th>
+<th>Channel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Building compiled (AP)</td>
+<td>"Project X: 1,099 elements compiled to BOM in 2.3s. 100% compliance."</td>
+<td>LinkedIn, Twitter/X</td>
+</tr>
+<tr>
+<td>Gate passed (G1-G6)</td>
+<td>"Rosetta Stone gate PASS: 48,428 elements verified."</td>
+<td>Slack #project-updates</td>
+</tr>
+<tr>
+<td>Milestone reached</td>
+<td>"Phase G complete: BIM Designer handles all building types."</td>
+<td>Email digest</td>
+</tr>
+<tr>
+<td>Compliance report</td>
+<td>"Jurisdiction MY: 30/30 rules PASS for Project X."</td>
+<td>PDF attachment</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Data source:</strong> <code>ReportDAO.milestoneEvent(buildingId)</code> returns
+structured event with headline, body, metrics, image path.</p>
+<p><strong>Integration targets:</strong>
+- Slack Webhook (POST with Block Kit JSON)
+- LinkedIn API (POST /v2/ugcPosts)
+- Twitter/X API (POST /2/tweets)
+- Email (SMTP with HTML template)
+- MS Teams Webhook (POST with Adaptive Card JSON)</p>
+<h4 id="bcf-issue-management">BCF Issue Management<a class="headerlink" href="#bcf-issue-management" title="Permanent link">&para;</a></h4>
+<p>BIM Collaboration Format (ISO 19650) for model issues.</p>
+<table>
+<thead>
+<tr>
+<th>Issue Type</th>
+<th>Source</th>
+<th>BCF Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Clash</td>
+<td>AD_Val_Rule CLASH type</td>
+<td>guid, viewpoint, description, assignee</td>
+</tr>
+<tr>
+<td>Non-compliance</td>
+<td>AD_Val_Rule FAIL verdict</td>
+<td>rule_id, jurisdiction, element_guid</td>
+</tr>
+<tr>
+<td>Design query</td>
+<td>W_Variant comparison</td>
+<td>before/after viewpoint, cost delta</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Data source:</strong> <code>ReportDAO.bcfIssues(buildingId)</code> returns BCF 3.0 XML.</p>
+<h4 id="cobie-handover">COBie Handover<a class="headerlink" href="#cobie-handover" title="Permanent link">&para;</a></h4>
+<p>Construction Operations Building information exchange (ISO 15686-4).</p>
+<table>
+<thead>
+<tr>
+<th>COBie Sheet</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Facility</td>
+<td>C_Order building record</td>
+</tr>
+<tr>
+<td>Floor</td>
+<td>m_bom WHERE bom_type='FLOOR'</td>
+</tr>
+<tr>
+<td>Space</td>
+<td>m_bom WHERE bom_type='SET' (rooms)</td>
+</tr>
+<tr>
+<td>Type</td>
+<td>M_Product catalog</td>
+</tr>
+<tr>
+<td>Component</td>
+<td>m_bom_line LEAF elements</td>
+</tr>
+<tr>
+<td>System</td>
+<td>mep_systems from extraction</td>
+</tr>
+<tr>
+<td>Attribute</td>
+<td>M_AttributeSetInstance</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Data source:</strong> <code>ReportDAO.cobieExport(buildingId)</code> returns XLSX
+with all 19 COBie sheets populated from BOM data.</p>
+<h4 id="regulatory-submission-templates">Regulatory Submission Templates<a class="headerlink" href="#regulatory-submission-templates" title="Permanent link">&para;</a></h4>
+<p>Jurisdiction-specific compliance reports with verb citations.</p>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Jurisdiction</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UBBL Compliance</td>
+<td>MY (Malaysia)</td>
+<td>AD_Val_Rule results, room dimensions, fire rating</td>
+</tr>
+<tr>
+<td>Building Regs Part B</td>
+<td>UK</td>
+<td>Fire escape routes, compartmentation</td>
+</tr>
+<tr>
+<td>IBC Chapter 10</td>
+<td>US</td>
+<td>Means of egress, occupancy loads</td>
+</tr>
+<tr>
+<td>BCA Section J</td>
+<td>AU</td>
+<td>Energy efficiency, glazing ratios</td>
+</tr>
+<tr>
+<td>EN 1991-1-1</td>
+<td>EU</td>
+<td>Structural load combinations</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Data source:</strong> <code>ReportDAO.regulatoryReport(buildingId, jurisdiction)</code>
+returns structured report with rule citations and pass/fail verdicts.</p>
+<h3 id="24-reportdao-interface">§2.4 ReportDAO Interface<a class="headerlink" href="#24-reportdao-interface" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// Implementing CORE_SRS.md §2.4 — Witness: W-REPORT-DAO</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">ReportDAO</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="c1">// 4D Schedule</span>
+<span class="w">    </span><span class="kd">record</span> <span class="nc">GanttTask</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">phase</span><span class="p">,</span>
+<span class="w">                     </span><span class="kt">int</span><span class="w"> </span><span class="n">sequence</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">durationDays</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">dependency</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">GanttTask</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">constructionSequence</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">bomConn</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">buildingId</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// 5D Cost</span>
+<span class="w">    </span><span class="kd">record</span> <span class="nc">CostLine</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">discipline</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">category</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">productName</span><span class="p">,</span>
+<span class="w">                    </span><span class="kt">int</span><span class="w"> </span><span class="n">qty</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">unitCost</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">totalCost</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">uom</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">CostLine</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">costBreakdown</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">bomConn</span><span class="p">,</span><span class="w"> </span><span class="n">Connection</span><span class="w"> </span><span class="n">compConn</span><span class="p">,</span>
+<span class="w">                                 </span><span class="n">String</span><span class="w"> </span><span class="n">buildingId</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// 6D Carbon</span>
+<span class="w">    </span><span class="kd">record</span> <span class="nc">CarbonLine</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">element</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">material</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">qty</span><span class="p">,</span>
+<span class="w">                      </span><span class="kt">double</span><span class="w"> </span><span class="n">carbonPerUnit</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">totalCarbon</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">CarbonLine</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">carbonFootprint</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">bomConn</span><span class="p">,</span><span class="w"> </span><span class="n">Connection</span><span class="w"> </span><span class="n">compConn</span><span class="p">,</span>
+<span class="w">                                     </span><span class="n">String</span><span class="w"> </span><span class="n">buildingId</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// 7D Assets</span>
+<span class="w">    </span><span class="kd">record</span> <span class="nc">AssetRecord</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">guid</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">type</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">location</span><span class="p">,</span>
+<span class="w">                       </span><span class="n">String</span><span class="w"> </span><span class="n">floor</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">system</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">manufacturer</span><span class="p">,</span>
+<span class="w">                       </span><span class="n">String</span><span class="w"> </span><span class="n">maintenanceInterval</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">AssetRecord</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">assetRegister</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">bomConn</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">buildingId</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// KPI</span>
+<span class="w">    </span><span class="kd">record</span> <span class="nc">KPI</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">target</span><span class="p">,</span>
+<span class="w">               </span><span class="n">String</span><span class="w"> </span><span class="n">unit</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">status</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">KPI</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">kpiDashboard</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">bomConn</span><span class="p">,</span><span class="w"> </span><span class="n">Connection</span><span class="w"> </span><span class="n">valConn</span><span class="p">,</span>
+<span class="w">                           </span><span class="n">String</span><span class="w"> </span><span class="n">portfolioId</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Board</span>
+<span class="w">    </span><span class="kd">record</span> <span class="nc">BoardCard</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">orderId</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">status</span><span class="p">,</span>
+<span class="w">                     </span><span class="kt">double</span><span class="w"> </span><span class="n">progress</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">blockers</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">estCost</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">BoardCard</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">boardStatus</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">workConn</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Compliance</span>
+<span class="w">    </span><span class="kd">record</span> <span class="nc">ComplianceResult</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">ruleId</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">ruleName</span><span class="p">,</span>
+<span class="w">                            </span><span class="n">String</span><span class="w"> </span><span class="n">jurisdiction</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">verdict</span><span class="p">,</span>
+<span class="w">                            </span><span class="n">String</span><span class="w"> </span><span class="n">citation</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">detail</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">ComplianceResult</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">complianceMatrix</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">valConn</span><span class="p">,</span>
+<span class="w">                                           </span><span class="n">String</span><span class="w"> </span><span class="n">buildingId</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">jurisdiction</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Milestone events (for social/notification)</span>
+<span class="w">    </span><span class="kd">record</span> <span class="nc">MilestoneEvent</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">type</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">headline</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">body</span><span class="p">,</span>
+<span class="w">                          </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="o">&gt;</span><span class="w"> </span><span class="n">metrics</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="n">MilestoneEvent</span><span class="w"> </span><span class="nf">milestoneEvent</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">bomConn</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">buildingId</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="3-industry-gap-closure">§3 Industry Gap Closure<a class="headerlink" href="#3-industry-gap-closure" title="Permanent link">&para;</a></h2>
+<h3 id="31-gap-matrix-current-vs-required">§3.1 Gap Matrix — Current vs Required<a class="headerlink" href="#31-gap-matrix-current-vs-required" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Solibri</th>
+<th>Autodesk ACC</th>
+<th>BIM Compiler (now)</th>
+<th>BIM Compiler (target)</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IFC4X3 infrastructure</td>
+<td>No</td>
+<td>No</td>
+<td><strong>30 rules mined</strong></td>
+<td>100+ rules, 8 types</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Clash detection (hard)</td>
+<td>Full</td>
+<td>Full</td>
+<td>Spatial predicates</td>
+<td>BBox + clearance check</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Clash detection (soft)</td>
+<td>Full</td>
+<td>Full</td>
+<td>None</td>
+<td>Zone overlap check</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Multi-model federation</td>
+<td>Full</td>
+<td>Full</td>
+<td>Single model</td>
+<td>Federated C_Order set</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Issue management (BCF)</td>
+<td>Native</td>
+<td>Native</td>
+<td>None</td>
+<td>BCF 3.0 export</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>PDF report export</td>
+<td>Native</td>
+<td>Native</td>
+<td>None</td>
+<td>Via ReportDAO + template</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Real-time multi-user</td>
+<td>No</td>
+<td>Yes</td>
+<td>Single TCP</td>
+<td>WebSocket + OT</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>AI-assisted design</td>
+<td>No</td>
+<td>Partial</td>
+<td>BIM COBOL NL</td>
+<td>NL→verb compiler</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>COBie handover</td>
+<td>Plugin</td>
+<td>Native</td>
+<td>None</td>
+<td>ReportDAO.cobieExport</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Regulatory templates</td>
+<td>8 codes</td>
+<td>3 codes</td>
+<td>1 code (MY)</td>
+<td>6+ codes</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>500K+ elements</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>48K proven</td>
+<td>ST-1 stress test</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Version comparison</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>W_Variant</td>
+<td>Visual diff report</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Drawing export (2D)</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Stub only</td>
+<td>Phase C SVG pipeline</td>
+<td>P2</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-moat-deepening-strategy">§3.2 Moat Deepening Strategy<a class="headerlink" href="#32-moat-deepening-strategy" title="Permanent link">&para;</a></h3>
+<p><strong>Existing moats (from StrategicIndustryPositioning.md):</strong>
+1. IFC-native compilation (not export)
+2. DB/ERP integration (Spatial MRP)
+3. LLM development velocity
+4. Symbolic inference (proof trees)</p>
+<p><strong>New moats to build:</strong></p>
+<h4 id="moat-5-infrastructure-first-mover">Moat 5: Infrastructure First-Mover<a class="headerlink" href="#moat-5-infrastructure-first-mover" title="Permanent link">&para;</a></h4>
+<p>No commercial BIM tool validates infrastructure IFC4X3 with parametric rules.
+We have 30 mined rules from real bridge/road/rail extractions. Extending to
+tunnel, dam, and port infrastructure gives us a rule library that Solibri
+cannot match without the same extraction-mining pipeline.</p>
+<p><strong>Action:</strong> Scale research (§1) targets 10+ infrastructure models by Q3 2026.
+Each yields 5-15 rules. Target: 150+ infrastructure validation rules.</p>
+<h4 id="moat-6-calibration-proven-rules">Moat 6: Calibration-Proven Rules<a class="headerlink" href="#moat-6-calibration-proven-rules" title="Permanent link">&para;</a></h4>
+<p>CalibrationTest proves rules against 48K-element ground truth. No competitor
+validates rules against extraction oracles. Every new Rosetta Stone extends
+the calibration corpus. A rule that passes calibration is worth more than
+a rule that passes specification review.</p>
+<p><strong>Action:</strong> Each new model becomes a calibration oracle. CalibrationTest
+generalises from TE-specific to model-agnostic (accept any <code>_extracted.db</code>).</p>
+<h4 id="moat-7-verb-grammar-as-knowledge-capture">Moat 7: Verb Grammar as Knowledge Capture<a class="headerlink" href="#moat-7-verb-grammar-as-knowledge-capture" title="Permanent link">&para;</a></h4>
+<p>64 verbs encode construction patterns as executable code. Each verb captures
+engineering knowledge that took decades to formalise. TILE captures sleeper
+spacing. ROUTE captures pipe runs. CLUSTER captures equipment groups.
+New verbs (ZONE, STACK, BORE, TAPER) capture domain-specific patterns.</p>
+<p><strong>Action:</strong> Verb discovery from scale research (§1.5). Each new verb is a
+patent-grade knowledge capture that competitors cannot replicate without
+the same extraction → factorization → witness pipeline.</p>
+<h4 id="moat-8-multi-client-report-distribution">Moat 8: Multi-Client Report Distribution<a class="headerlink" href="#moat-8-multi-client-report-distribution" title="Permanent link">&para;</a></h4>
+<p>The ReportDAO abstraction (§2.4) allows the same compiled data to reach:
+- Construction managers (Kanban)
+- Executives (BSC)
+- Regulators (compliance templates)
+- Public stakeholders (social media)
+- Facility managers (COBie)
+- Architects (BCF issues)</p>
+<p>No competitor serves all six audiences from a single compilation. Revit
+exports to Navisworks for clash, separately to Cost for QTO, separately
+to Maximo for FM. We serve all from one <code>C_Order</code>.</p>
+<h3 id="33-ifcopenshell-federation-integration">§3.3 IfcOpenShell Federation Integration<a class="headerlink" href="#33-ifcopenshell-federation-integration" title="Permanent link">&para;</a></h3>
+<p>The Federation addon (50+ Python files) has proven capabilities as hardcoded
+scripts. Integration strategy: Java DAO reads the same SQLite schemas that
+the Python PoCs write.</p>
+<table>
+<thead>
+<tr>
+<th>Federation PoC</th>
+<th>Java DAO</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fast_bbox_loader.py</code></td>
+<td>PlacementLoader (existing)</td>
+<td>DONE — same spatial index</td>
+</tr>
+<tr>
+<td><code>boq/</code> BOQ calculator</td>
+<td>ReportDAO.costBreakdown</td>
+<td>Schema match needed</td>
+</tr>
+<tr>
+<td><code>tandem/asset_registry.py</code></td>
+<td>ReportDAO.assetRegister</td>
+<td>Schema match needed</td>
+</tr>
+<tr>
+<td><code>tandem/maintenance_manager.py</code></td>
+<td>ReportDAO.maintenanceSchedule</td>
+<td>Schema match needed</td>
+</tr>
+<tr>
+<td><code>tandem/sensor_installation.py</code></td>
+<td>AD_Val_Rule sensor rules</td>
+<td>DV006b pattern — mine + migrate</td>
+</tr>
+<tr>
+<td><code>semantic_utils.py</code></td>
+<td>ClassifyDAOImpl (existing)</td>
+<td>DONE — same discipline map</td>
+</tr>
+<tr>
+<td><code>clash/</code> spatial intersection</td>
+<td>SpatialPredicates (existing)</td>
+<td>Needs hard clash impl</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Principle:</strong> Python scripts are PoC. Java DAOs are production. The database
+schema is the contract between them. IfcOpenShell writes, Java reads.</p>
+<hr />
+<h2 id="4-compliance-regulatory-framework">§4 Compliance &amp; Regulatory Framework<a class="headerlink" href="#4-compliance-regulatory-framework" title="Permanent link">&para;</a></h2>
+<h3 id="41-jurisdiction-expansion">§4.1 Jurisdiction Expansion<a class="headerlink" href="#41-jurisdiction-expansion" title="Permanent link">&para;</a></h3>
+<p>Current: MY (Malaysia UBBL) — 30 researched rules.</p>
+<table>
+<thead>
+<tr>
+<th>Jurisdiction</th>
+<th>Code</th>
+<th>Priority</th>
+<th>Rule Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MY</td>
+<td>UBBL 1984 (amended 2021)</td>
+<td>DONE</td>
+<td>30 rules in validation.db</td>
+</tr>
+<tr>
+<td>SG</td>
+<td>Building Control Act / SS CP5</td>
+<td>P1</td>
+<td>Similar tropical climate</td>
+</tr>
+<tr>
+<td>UK</td>
+<td>Building Regulations 2010</td>
+<td>P1</td>
+<td>Largest openBIM mandate market</td>
+</tr>
+<tr>
+<td>AU</td>
+<td>NCC/BCA 2024</td>
+<td>P2</td>
+<td>Performance-based, good test case</td>
+</tr>
+<tr>
+<td>US</td>
+<td>IBC 2024 / NFPA</td>
+<td>P2</td>
+<td>Largest BIM market by value</td>
+</tr>
+<tr>
+<td>EU</td>
+<td>Eurocodes (EN 1990-1999)</td>
+<td>P3</td>
+<td>Structural focus, 27 countries</td>
+</tr>
+<tr>
+<td>HK</td>
+<td>BD Buildings Ordinance</td>
+<td>P3</td>
+<td>High-rise specialist market</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rule template:</strong> Each jurisdiction contributes ~30 rules to <code>AD_Val_Rule</code>
+with <code>jurisdiction</code> column. Total target: 200+ jurisdiction-specific rules.</p>
+<h3 id="42-compliance-report-verbs">§4.2 Compliance Report Verbs<a class="headerlink" href="#42-compliance-report-verbs" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>REPORT COMPLIANCE &lt;building_id&gt; JURISDICTION &lt;code&gt;
+  → ComplianceReport { rules[], pass_count, fail_count, citations[] }
+
+REPORT COMPLIANCE_MATRIX &lt;portfolio_id&gt;
+  → Matrix { buildings × jurisdictions × verdicts }
+
+REPORT REGULATORY_SUBMISSION &lt;building_id&gt; JURISDICTION &lt;code&gt; TEMPLATE &lt;format&gt;
+  → PDF/XLSX with jurisdiction-specific sections, rule citations, evidence
+</code></pre></div>
+<h3 id="43-verb-cited-evidence">§4.3 Verb-Cited Evidence<a class="headerlink" href="#43-verb-cited-evidence" title="Permanent link">&para;</a></h3>
+<p>Every compliance report line includes:</p>
+<div class="highlight"><pre><span></span><code>Rule:     UBBL_BEDROOM_MIN_AREA (AD_Val_Rule 101)
+Verdict:  PASS
+Evidence: m_bom_line &#39;TE_GF_BEDROOM_01&#39; → AABB 3100×3100mm → 9.61m²
+Citation: UBBL Schedule 3, Table 1: Min bedroom area 9.2m²
+Verb:     // Implementing BBC.md §3.2 — Witness: W-CAL-RULES-EXIST
+</code></pre></div>
+<hr />
+<h2 id="5-schema-extensions">§5 Schema Extensions<a class="headerlink" href="#5-schema-extensions" title="Permanent link">&para;</a></h2>
+<h3 id="51-new-columns-future-migrations">§5.1 New Columns (future migrations)<a class="headerlink" href="#51-new-columns-future-migrations" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">-- V010: Sustainability columns on M_Product</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">carbon_kg_per_unit</span><span class="w"> </span><span class="nb">REAL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">recyclability</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;UNKNOWN&#39;</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">eol_strategy</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;LANDFILL&#39;</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">lifespan_years</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">50</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">maintenance_interval_months</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">12</span><span class="p">;</span>
+
+<span class="c1">-- V011: Facility type on AD_Val_Rule (infrastructure scoping)</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">facility_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">;</span>
+<span class="c1">-- Values: BUILDING, BRIDGE, ROAD, RAIL, TUNNEL, DAM, PORT, null=any</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">facility_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;BRIDGE&#39;</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">provenance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;Infra_Bridge&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">facility_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;ROAD&#39;</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">provenance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;Infra_Road&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">facility_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;RAIL&#39;</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">provenance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;Infra_Rail&#39;</span><span class="p">;</span>
+
+<span class="c1">-- V012: Report configuration</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">AD_Report_Config</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">report_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">report_name</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">report_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">  </span><span class="c1">-- SCHEDULE, COST, CARBON, ASSET, KPI, COMPLIANCE</span>
+<span class="w">    </span><span class="n">template_path</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">jurisdiction</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">is_active</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span>
+<span class="p">);</span>
+</code></pre></div>
+<h3 id="52-database-split-status">§5.2 Database Split Status<a class="headerlink" href="#52-database-split-status" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Database</th>
+<th>Purpose</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>component_library.db</td>
+<td>Product catalog + geometries</td>
+<td>Stable (616 products, 24K geometries)</td>
+</tr>
+<tr>
+<td>{PREFIX}_BOM.db</td>
+<td>Per-building compiled BOM</td>
+<td>Stable (4 buildings)</td>
+</tr>
+<tr>
+<td>validation.db</td>
+<td>AD_Val_Rule + params</td>
+<td>Growing (63 rules, 132 params)</td>
+</tr>
+<tr>
+<td>ERP.db</td>
+<td>Discipline metadata (split from component_lib)</td>
+<td>Phase 2 in progress</td>
+</tr>
+<tr>
+<td>output.db</td>
+<td>Compile output (geometry, placements)</td>
+<td>Stable (G4 schema)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-implementation-priority">§6 Implementation Priority<a class="headerlink" href="#6-implementation-priority" title="Permanent link">&para;</a></h2>
+<h3 id="phase-r-research-scale-rule-mining">Phase R (Research) — Scale &amp; Rule Mining<a class="headerlink" href="#phase-r-research-scale-rule-mining" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Task</th>
+<th>Deliverable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R-1</td>
+<td>Download 50+ IFC models from public sources</td>
+<td><code>reference/&lt;type&gt;/</code> directories</td>
+</tr>
+<tr>
+<td>R-2</td>
+<td>Batch extraction script</td>
+<td><code>scripts/batch_extract.sh</code></td>
+</tr>
+<tr>
+<td>R-3</td>
+<td>Extract + classify 20 models</td>
+<td>20 <code>_extracted.db</code> + YAML files</td>
+</tr>
+<tr>
+<td>R-4</td>
+<td>Mine rules from 10 models</td>
+<td>DV010-DV020 migrations</td>
+</tr>
+<tr>
+<td>R-5</td>
+<td>Scale stress test ST-1 through ST-7</td>
+<td>ScaleStressTest.java</td>
+</tr>
+<tr>
+<td>R-6</td>
+<td>Verb discovery report</td>
+<td>New verb candidates documented</td>
+</tr>
+</tbody>
+</table>
+<h3 id="phase-re-report-engine-dao-adapters">Phase RE (Report Engine) — DAO + Adapters<a class="headerlink" href="#phase-re-report-engine-dao-adapters" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Task</th>
+<th>Deliverable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RE-1</td>
+<td>ReportDAO interface + impl</td>
+<td>ReportDAOImpl.java</td>
+</tr>
+<tr>
+<td>RE-2</td>
+<td>5D cost breakdown (first report)</td>
+<td>R-5D-01 working with test</td>
+</tr>
+<tr>
+<td>RE-3</td>
+<td>Compliance matrix report</td>
+<td>R-4.2 working with MY rules</td>
+</tr>
+<tr>
+<td>RE-4</td>
+<td>COBie handover export</td>
+<td>19-sheet XLSX from BOM data</td>
+</tr>
+<tr>
+<td>RE-5</td>
+<td>JSON API adapter</td>
+<td>REST endpoint for dashboard clients</td>
+</tr>
+<tr>
+<td>RE-6</td>
+<td>Kanban/KPI/BSC templates</td>
+<td>JSON schemas for each client type</td>
+</tr>
+<tr>
+<td>RE-7</td>
+<td>Social media adapter</td>
+<td>Slack webhook + LinkedIn post</td>
+</tr>
+<tr>
+<td>RE-8</td>
+<td>BCF 3.0 issue export</td>
+<td>XML from AD_Val_Rule results</td>
+</tr>
+</tbody>
+</table>
+<h3 id="phase-j-jurisdiction-regulatory-expansion">Phase J (Jurisdiction) — Regulatory Expansion<a class="headerlink" href="#phase-j-jurisdiction-regulatory-expansion" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Task</th>
+<th>Deliverable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>J-1</td>
+<td>SG CP5 rules (30 rules)</td>
+<td>DV030_sg_cp5.sql + test</td>
+</tr>
+<tr>
+<td>J-2</td>
+<td>UK Building Regs (30 rules)</td>
+<td>DV031_uk_bregs.sql + test</td>
+</tr>
+<tr>
+<td>J-3</td>
+<td>Regulatory template engine</td>
+<td>PDF generator with citations</td>
+</tr>
+<tr>
+<td>J-4</td>
+<td>Multi-jurisdiction comparison</td>
+<td>Matrix report across codes</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-success-metrics">§7 Success Metrics<a class="headerlink" href="#7-success-metrics" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Current</th>
+<th>6-month Target</th>
+<th>12-month Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rosetta Stone buildings</td>
+<td>4</td>
+<td>15</td>
+<td>30</td>
+</tr>
+<tr>
+<td>Reference models extracted</td>
+<td>14</td>
+<td>50</td>
+<td>100</td>
+</tr>
+<tr>
+<td>Validation rules</td>
+<td>63</td>
+<td>200</td>
+<td>500</td>
+</tr>
+<tr>
+<td>Jurisdictions</td>
+<td>1 (MY)</td>
+<td>3 (MY/SG/UK)</td>
+<td>6</td>
+</tr>
+<tr>
+<td>BIM verbs</td>
+<td>63</td>
+<td>75</td>
+<td>100</td>
+</tr>
+<tr>
+<td>Max element count proven</td>
+<td>48K</td>
+<td>500K</td>
+<td>1M</td>
+</tr>
+<tr>
+<td>Report types</td>
+<td>3 (existing)</td>
+<td>12</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Client integrations</td>
+<td>0</td>
+<td>3 (Slack/Kanban/PDF)</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Infrastructure types</td>
+<td>3 (BR/RD/RL)</td>
+<td>6</td>
+<td>10</td>
+</tr>
+<tr>
+<td>Test witnesses</td>
+<td>166</td>
+<td>250</td>
+<td>400</td>
+</tr>
+<tr>
+<td>Industry compliance score</td>
+<td>23/30</td>
+<td>27/30</td>
+<td>29/30</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-references">§8 References<a class="headerlink" href="#8-references" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BIM_Designer.md</code></td>
+<td>UI specification (all presentation-layer details)</td>
+</tr>
+<tr>
+<td><code>StrategicIndustryPositioning.md</code></td>
+<td>Market analysis, competitive matrix, moat thesis</td>
+</tr>
+<tr>
+<td><code>BOMBasedCompilation.md</code></td>
+<td>Master spec: tack, walker, verb grammar, pipeline</td>
+</tr>
+<tr>
+<td><code>MANIFESTO.md</code></td>
+<td>iDempiere table mapping, C_Order model</td>
+</tr>
+<tr>
+<td><code>DocValidate.md</code></td>
+<td>Validation architecture, AD_Val_Rule</td>
+</tr>
+<tr>
+<td><code>InfrastructureAnalysis.md</code></td>
+<td>Infrastructure IFC4X3, segment mapping</td>
+</tr>
+<tr>
+<td><code>CALIBRATION_SRS.md</code></td>
+<td>Extraction oracle vs rule prediction</td>
+</tr>
+<tr>
+<td><code>ACTION_ROADMAP.md</code></td>
+<td>Phase 0-H implementation plan</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>CORE_SRS.md v1.0 — BIM Intent Compiler Platform Specification</em>
+<em>Phases R (Research), RE (Report Engine), J (Jurisdiction) extend ACTION_ROADMAP.md</em></p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/red1oon/bim-ootb" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/red1oon/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/fold-footnotes.js"></script>
+      
+    
+  </body>
+</html>

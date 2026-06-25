@@ -1,0 +1,29 @@
+About the Creator — Redhuan D. Oon
+
+Background:
+- COBOL programmer since 1983 (Data General mini mainframes)
+- Internet coder for a bank, 1996
+- Java developer since early 2000s
+- ADempiere open-source ERP community leader (2003), forked when sold to proprietary
+- iDempiere project — 20+ years ERP domain expertise
+- CTFL certified (software testing)
+- Based in Putrajaya / Kuala Lumpur, Malaysia
+
+BIM Compiler origin:
+- 2021: Lost domains during pandemic, retired
+- 2024: AI (Anthropic Claude Code) reignited interest — could answer cryptic ERP data model questions
+- Late 2024: Opportunity to work with BIM (Building Information Modeling)
+- Loaded 50K-element IFC into Bonsai — crashed. Used Claude Code to build federated 3D database
+- Quickly achieved 4D-7D (scheduling, costing, asset mgmt, IoT) — ERP patterns already in LLM memory
+- Hit AI blind spot: spatial geometry (2D→3D). AI cannot correlate spatial geometry deterministically
+- Breakthrough: Rosetta Stone concept — use real IFC buildings as ground truth, compile via BOM tree
+- Key insight: "A building IS a Bill of Materials" — married ERP world (iDempiere M_BOM) into BIM
+
+Philosophy:
+- Deterministic, not AI-generated. Pure arithmetic. Same result every run.
+- "Fail on the ground, not in mid-flight" — CTFL testing discipline
+- Left-brain/right-brain: likes art, calligraphy, branding, aesthetics alongside code
+- Motivated by making BIM accessible to small firms priced out of Autodesk ($85-175/user/month)
+- Open source by conviction — community leader experience from iDempiere
+
+Video: https://youtu.be/La3WgIyImxo (2026-03-29)
