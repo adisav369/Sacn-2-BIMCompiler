@@ -158,15 +158,22 @@
     if (!Object.keys(datums).length) { console.warn('§FOLD-UI no datums in DB — bake SDG edges into the building DB first'); return; }
     var grp = new THREE.Group(); grp.name = 'sdg_datums'; A.scene.add(grp);
     A._sdgHandles = [];
+    // size + center the handles to the MODEL (not a fixed 40 m) so planes lie coplanar with the building.
+    var lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    Object.keys(A._sdgGraph.transforms).forEach(function (g) {
+      var t = A._sdgGraph.transforms[g], p = A.ifc2three(t.cx, t.cy, t.cz);
+      ['x', 'y', 'z'].forEach(function (a, i) { if (p[a] < lo[i]) lo[i] = p[a]; if (p[a] > hi[i]) hi[i] = p[a]; });
+    });
+    if (!isFinite(lo[0])) { lo = [-5, -5, -5]; hi = [5, 5, 5]; }     // fallback for an empty graph
+    var ctr = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
+    var pad = function (i) { return Math.max(2, (hi[i] - lo[i]) * 0.6 + 1); };  // half-size per three axis
     Object.keys(datums).forEach(function (id) {
-      var dt = datums[id];
-      var geo = new THREE.PlaneGeometry(40, 40);
-      var mat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false });
-      var pl = new THREE.Mesh(geo, mat);
-      // orient the plane normal along the datum axis, position at its coord (datum coords are in IFC space)
-      if (dt.axis === 'Z') { pl.rotation.x = -Math.PI / 2; pl.position.y = dt.coord - A.modelOffset.z; }
-      else if (dt.axis === 'X') { pl.rotation.y = Math.PI / 2; pl.position.x = dt.coord - A.modelOffset.x; }
-      else { pl.position.z = -(dt.coord - A.modelOffset.y); }
+      var dt = datums[id], w, h, pl;
+      var mat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false });
+      // a plane normal to the datum axis, sized to the model's extent in the OTHER two three-axes
+      if (dt.axis === 'Z') { w = pad(0) * 2; h = pad(2) * 2; pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); pl.rotation.x = -Math.PI / 2; pl.position.set(ctr[0], dt.coord - A.modelOffset.z, ctr[2]); }
+      else if (dt.axis === 'X') { w = pad(2) * 2; h = pad(1) * 2; pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); pl.rotation.y = Math.PI / 2; pl.position.set(dt.coord - A.modelOffset.x, ctr[1], ctr[2]); }
+      else { w = pad(0) * 2; h = pad(1) * 2; pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); pl.position.set(ctr[0], ctr[1], -(dt.coord - A.modelOffset.y)); }
       pl.userData.sdgDatumId = +id; pl.userData.sdgAxis = dt.axis;
       grp.add(pl); A._sdgHandles.push(pl);
     });
