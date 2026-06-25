@@ -226,6 +226,19 @@ CREATE TABLE IF NOT EXISTS rel_anchored (
     provenance TEXT DEFAULT 'derived:cadence-snap',
     PRIMARY KEY (element_guid, datum_id)
 );
+-- spans edge (SPATIAL_DEPENDENCY_GRAPH.md): a DERIVED edge — an element SPANS two datums when its bbox
+-- reaches from near one datum to near another on an axis (a girder between piers, a slab across gridlines).
+-- The fold rule: the element stretches between the two datums with its cross-section sizes HELD. DERIVED
+-- from datum_plane geometry, NON-INVENT, grep-clean. One row per (element, axis); datum_lo < datum_hi.
+CREATE TABLE IF NOT EXISTS rel_spans (
+    element_guid TEXT,
+    axis TEXT,
+    datum_lo_id INTEGER,
+    datum_hi_id INTEGER,
+    span_m REAL,
+    provenance TEXT DEFAULT 'derived:bbox-spans-datums',
+    PRIMARY KEY (element_guid, axis)
+);
 CREATE TABLE IF NOT EXISTS surface_styles (
     style_name TEXT PRIMARY KEY,
     surface_r REAL, surface_g REAL, surface_b REAL,
@@ -928,6 +941,45 @@ def derive_datums_and_anchors(conn, tol=0.05, min_support=3):
     return n_datums, n_anchors
 
 
+def derive_spans(conn, tol=0.05):
+    """§SPANS (SPATIAL_DEPENDENCY_GRAPH.md): derive the `spans` edge — element stretches between two datums.
+
+    An element SPANS on an axis when its min face is near one datum AND its max face is near a DIFFERENT
+    datum (both within tol) — its bbox reaches across the datum interval (a girder between piers, a slab
+    across gridlines). Reuses datum_plane (must be populated first by derive_datums_and_anchors). NON-INVENT,
+    grep-clean: pure geometry. span_m = the HELD extent; the fold rule stretches it between the two datums.
+
+    Returns rows written.
+    """
+    datums = {0: [], 1: [], 2: []}
+    for did, ax, co in conn.execute("SELECT datum_id, axis, coord FROM datum_plane"):
+        datums["XYZ".index(ax)].append((did, co))
+    if not any(datums.values()):
+        return 0
+    rows = conn.execute("""
+        SELECT m.guid, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+    """).fetchall()
+    n = 0
+    for guid, *b in rows:
+        for ax in range(3):
+            lo_face, hi_face = b[2 * ax], b[2 * ax + 1]
+            lo = min(datums[ax], key=lambda d: abs(d[1] - lo_face), default=None)
+            hi = min(datums[ax], key=lambda d: abs(d[1] - hi_face), default=None)
+            if lo is None or hi is None:
+                continue
+            if abs(lo[1] - lo_face) > tol or abs(hi[1] - hi_face) > tol or lo[0] == hi[0]:
+                continue
+            d_lo, d_hi = (lo, hi) if lo[1] <= hi[1] else (hi, lo)
+            conn.execute(
+                "INSERT OR IGNORE INTO rel_spans (element_guid, axis, datum_lo_id, datum_hi_id, span_m, provenance) "
+                "VALUES (?, ?, ?, ?, ?, 'derived:bbox-spans-datums')",
+                (guid, "XYZ"[ax], d_lo[0], d_hi[0], round(hi_face - lo_face, 6)))
+            n += 1
+    conn.commit()
+    return n
+
+
 def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                       dry_run=False, library_path=None, building_type=None,
                       skip_normalize=False):
@@ -1455,6 +1507,13 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
         if n_datums > 0:
             print(f"  §ANCHORED datum_plane: {n_datums} datums emerged from cadence, "
                   f"{n_anchors} anchored-to edges (provenance=derived:cadence)")
+
+    # ── §SPANS: derive the spans edge (element bbox straddles two datums) ────
+    if not dry_run:
+        span_rows = derive_spans(conn)
+        if span_rows > 0:
+            print(f"  §SPANS rel_spans: {span_rows} span edges derived "
+                  f"(element stretches between two datums, provenance=derived:bbox-spans-datums)")
 
     # Extract rich surface styles + material layers
     source_tag = f"EXTRACTED:{os.path.basename(ifc_path)}"
