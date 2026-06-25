@@ -199,6 +199,82 @@ function swConforms(span, depth, opts) {
   return { conforms: ratio <= rule.depthRatio, ratio: ratio, limit: rule.depthRatio, source: rule.source };
 }
 
+// ═══ TESSELLATION WALKER — the GENERATIVE half (STR_ROUTEWALKING_SPEC §2A.3 / §5) ═══
+// A space-frame / cladding system = ONE measured unit repeated n times over a measured surface
+// domain = `instanced-by n` (extent = f(n); collapse n→1 ⇒ the system vanishes). This walk is
+// GENERATIVE: it reconstructs the COUNT + COVERAGE within tol, NEVER bit-exact positions, and is
+// graded against extracted plates as ORACLE. NON-INVENT: unit, domain, surface profile and band
+// density are all MEASURED; provenance derived:str-walk; the non-modal tail is reported, not dropped.
+
+// Measure the tessellation parameters from a real plate cloud (no invention).
+// plates: [{ x,y,z, bx,by,bz }]. opts.edgeTrim = fraction of extreme x-bands dropped as taper.
+function swDeriveTessellation(plates, opts) {
+  opts = opts || {};
+  var edgeTrim = opts.edgeTrim != null ? opts.edgeTrim : 0.1;
+  // modal unit = most common rounded bbox (the repeated cell)
+  var hist = {};
+  plates.forEach(function (p) {
+    var k = p.bx.toFixed(1) + 'x' + p.by.toFixed(1) + 'x' + p.bz.toFixed(2);
+    hist[k] = (hist[k] || 0) + 1;
+  });
+  var modeKey = Object.keys(hist).sort(function (a, b) { return hist[b] - hist[a]; })[0];
+  var modalCount = hist[modeKey];
+  var mb = modeKey.split('x').map(Number);
+  // domain = bbox of centres
+  var xs = plates.map(function (p) { return p.x; }), ys = plates.map(function (p) { return p.y; }),
+      zs = plates.map(function (p) { return p.z; });
+  var domain = {
+    minX: Math.min.apply(null, xs), maxX: Math.max.apply(null, xs),
+    minY: Math.min.apply(null, ys), maxY: Math.max.apply(null, ys),
+    minZ: Math.min.apply(null, zs), maxZ: Math.max.apply(null, zs)
+  };
+  // surface profile z ≈ f(x): mean z per 1m x-band. NOTE this is a 1D MID-SURFACE simplification of
+  // the true z=f(x,y) shell (the canopy curves in BOTH x and y; measured locally thin = 0.07m/cell,
+  // globally 8.7m). Sufficient for count/extent reconstruction; a full 2D surface fit is a later slice.
+  var bandSum = {}, bandN = {};
+  plates.forEach(function (p) { var b = Math.floor(p.x); bandSum[b] = (bandSum[b] || 0) + p.z; bandN[b] = (bandN[b] || 0) + 1; });
+  var bands = Object.keys(bandN).map(Number).sort(function (a, b) { return a - b; });
+  var zProfile = bands.map(function (b) { return { x: b, z: bandSum[b] / bandN[b], n: bandN[b] }; });
+  // interior band density (edge-trimmed) → independent count predictor
+  var counts = bands.map(function (b) { return bandN[b]; }).sort(function (a, b) { return a - b; });
+  var lo = Math.floor(counts.length * edgeTrim);
+  var interior = counts.slice(lo, counts.length - lo);
+  var bandDensity = interior.reduce(function (s, v) { return s + v; }, 0) / interior.length;
+  return {
+    unit: { bx: mb[0], by: mb[1], bz: mb[2] }, modalShare: modalCount / plates.length,
+    tail: plates.length - modalCount, domain: domain, zProfile: zProfile,
+    nBands: bands.length, bandDensity: bandDensity, predictedN: Math.round(bandDensity * bands.length),
+    extractedN: plates.length
+  };
+}
+
+function _swZAt(zProfile, x) {
+  var best = zProfile[0];
+  for (var i = 1; i < zProfile.length; i++) if (Math.abs(zProfile[i].x - x) < Math.abs(best.x - x)) best = zProfile[i];
+  return best.z;
+}
+
+// Generate n unit placements tiling the surface domain (extent = f(n)). The domain filled is
+// PROPORTIONAL to n: collapse n→1 ⇒ a single cell. Positions are a regular reconstruction of the
+// distribution (band by band at the measured density), NOT a claim to match extracted positions.
+function swWalkTessellation(tess, n, opts) {
+  var d = tess.domain, out = [];
+  var perBand = Math.max(1, Math.round(tess.bandDensity));
+  var bandsNeeded = Math.ceil(n / perBand);
+  for (var bi = 0; bi < bandsNeeded && out.length < n; bi++) {
+    var x = d.minX + bi;                  // 1m x-strips, as measured
+    if (x > d.maxX) break;
+    var z = _swZAt(tess.zProfile, x);     // surface height at this strip (z = f(x))
+    var inStrip = Math.min(perBand, n - out.length);
+    for (var j = 0; j < inStrip; j++) {
+      var y = d.minY + (d.maxY - d.minY) * (inStrip > 1 ? j / (inStrip - 1) : 0);
+      out.push({ guid: SW_PREFIX + 'PLATE-' + bi + '-' + j, x: x, y: y, z: z,
+        bx: tess.unit.bx, by: tess.unit.by, bz: tess.unit.bz, provenance: 'derived:str-walk' });
+    }
+  }
+  return out;
+}
+
 // ─── Convenience: derive + walk in one call ──────────────────
 function swWalkSkeleton(columns, opts) {
   var grid = swDeriveGrid(columns, opts);
@@ -212,7 +288,8 @@ var _swApi = {
   SW_PREFIX: SW_PREFIX, SW_GRID_GAP_TOL: SW_GRID_GAP_TOL, SW_GRID_SPAN_MAX: SW_GRID_SPAN_MAX,
   swClusterAxis: swClusterAxis, swDeriveGrid: swDeriveGrid, swNearest: swNearest,
   swWalkColumns: swWalkColumns, swWalkGirders: swWalkGirders, swWalkSkeleton: swWalkSkeleton,
-  SW_SPAN_RULES: SW_SPAN_RULES, swCheckGirder: swCheckGirder, swConforms: swConforms
+  SW_SPAN_RULES: SW_SPAN_RULES, swCheckGirder: swCheckGirder, swConforms: swConforms,
+  swDeriveTessellation: swDeriveTessellation, swWalkTessellation: swWalkTessellation
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = _swApi;
 if (typeof window !== 'undefined') Object.keys(_swApi).forEach(function (k) { window[k] = _swApi[k]; });
