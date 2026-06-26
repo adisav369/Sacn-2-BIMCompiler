@@ -141,6 +141,26 @@ function readClass(db, cls) {
   assert('C5 NON-INVENT', reproducible && rangeOk,
     'calibration re-fits identical=' + reproducible + '; every conf∈[0,1] from measured margins, labels∈{0,1} from oracle=' + rangeOk);
 
+  // ── C6 SHIPPED-MAP-DERIVED ──  the shipped WC_CALIBRATION reproduces from this fresh Terminal fit
+  //    (a DERIVED artifact for live use — calibrate-once-on-RosettaStone — NOT an invented constant).
+  var freshBlocks = iso.blocks.map(function (bl) { return { xhi: bl.xhi, p: bl.sum / bl.n }; });
+  var ship = WC.WC_CALIBRATION;
+  var sameLen = ship.length === freshBlocks.length;
+  var blocksMatch = sameLen && ship.every(function (b, i) {
+    return Math.abs(b.xhi - freshBlocks[i].xhi) < 1e-4 && Math.abs(b.p - freshBlocks[i].p) < 1e-4;
+  });
+  // and functionally: applying the shipped map gives the same calibrated values as the fresh fit, EXCEPT
+  // for at most a couple of samples sitting exactly ON a breakpoint (the 6-decimal rounding of xhi flips
+  // which block they fall in — a float boundary effect, not a calibration difference; the p-values match).
+  // >1e-3 = a genuine block-flip (the rounded breakpoint moved a boundary sample); ≤1e-3 = p-rounding noise (6 dp).
+  var mismatch = samples.filter(function (s) { return Math.abs(WC.wcCalibrated(s.conf) - iso.map(s.conf)) > 1e-3; });
+  var meanDiff = samples.reduce(function (a, s) { return a + Math.abs(WC.wcCalibrated(s.conf) - iso.map(s.conf)); }, 0) / samples.length;
+  log('§CONF shipped WC_CALIBRATION=' + JSON.stringify(ship.map(function (b) { return [+b.xhi.toFixed(3), +b.p.toFixed(3)]; })));
+  assert('C6 SHIPPED-MAP-DERIVED', blocksMatch && mismatch.length <= ship.length && meanDiff < 0.01,
+    'shipped map reproduces from fresh Terminal fit (blocks match=' + blocksMatch + '); functional diff only at ' +
+    mismatch.length + ' breakpoint sample(s) (≤' + ship.length + ', mean Δ ' + meanDiff.toFixed(5) +
+    ') = float-boundary rounding ⇒ derived artifact ready to apply LIVE, not invented');
+
   log('───────────────────────────────────────────────');
   log('§CONF D2 PINNED: method=isotonic/PAV, ECE bar=' + ECE_BAR + '; raw held-out ECE=' + rawTestEce.toFixed(4) +
       ' → calibrated held-out ECE=' + calTestEce.toFixed(4) + ' (inverted control=' + invEce.toFixed(4) + ')');

@@ -18,6 +18,9 @@
  *                     survives persistence; the signal row carries the cited source.
  *   C5 FOLD+TAB     — state folds (re-walked spans become current); swbTabData returns the STR
  *                     tab signal breakdown (RED/ORANGE/GREEN) for the Outliner.
+ *   C6 CONF-TAB     — swbTabData carries a per-girder CALIBRATED confidence (the SHIPPED Terminal
+ *                     isotonic map, not the raw number) ∈ [0,1] + a low-confidence flag/count for the
+ *                     Outliner highlight — the EARNED gauge the spec §4 mandates, applied LIVE.
  */
 'use strict';
 var fs = require('fs');
@@ -109,6 +112,24 @@ function loadKernelOps() {
   assert('C5 FOLD+TAB',
     folded,
     'STR tab: grid ' + tab.grid + ', ' + tab.girders + ' girders, signals ' + JSON.stringify(tab.signals) + ' (re-walk folded in)');
+
+  // ── C6 CONF-TAB (calibrated confidence per element, applied live from the shipped map) ──
+  var els = tab.elements || [];
+  var WC = require(path.join(ROOT, 'deploy/dev/walker_confidence.js'));
+  var shippedP = WC.WC_CALIBRATION.map(function (b) { return b.p; });
+  var rangeOk = els.length === tab.girders && els.every(function (e) {
+    return e.confidence >= 0 && e.confidence <= 1 && !!e.guid;
+  });
+  // every calibrated value is one of the shipped map's block probabilities (it IS the shipped map)
+  var fromShipped = els.every(function (e) {
+    return shippedP.some(function (p) { return Math.abs(e.confidence - p) < 1e-6; });
+  });
+  var lowFlagged = tab.lowConfidence === els.filter(function (e) { return e.lowConfidence; }).length &&
+                   tab.lowConfThreshold === 0.8;
+  assert('C6 CONF-TAB',
+    rangeOk && fromShipped && lowFlagged,
+    els.length + ' girders carry calibrated confidence ∈[0,1] from the shipped map=' + fromShipped +
+    '; ' + tab.lowConfidence + ' low-confidence (<' + tab.lowConfThreshold + ') flagged for the Outliner highlight');
 
   log('───────────────────────────────────────────────');
   log('W-STR-BRIDGE: ' + pass + ' PASS / ' + fail + ' FAIL');

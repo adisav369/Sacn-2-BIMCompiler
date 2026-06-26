@@ -19,6 +19,27 @@
 
 function _clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
 
+// ── SHIPPED calibration map (calibrate ONCE on the RosettaStone, apply LIVE where there is no oracle).
+// These isotonic/PAV blocks are the FIT on REAL Terminal STR walked elements (columns+girders) — a
+// DERIVED artifact, NOT an invented constant: scripts/witness_walker_confidence.js regenerates them
+// from Terminal_extracted.db and ASSERTS this constant reproduces (the reproducibility gate). Each
+// block = { xhi, p } : a raw confidence ≤ xhi maps to P(correct)=p (non-decreasing). The spec mandate:
+// "confidence is CALIBRATED on the RosettaStone BEFORE it is ever shown." ── provenance: derived:terminal-fit
+var WC_CALIBRATION = [
+  { xhi: 0.117052, p: 0.666667 },
+  { xhi: 0.911109, p: 0.929293 },
+  { xhi: 1.000000, p: 1.000000 }
+];
+
+// Apply a calibration map (blocks of {xhi,p}) to a raw confidence → calibrated P(correct) ∈ [0,1].
+// Defaults to the shipped Terminal map. This is what the live Outliner shows — never the raw number.
+function wcCalibrated(rawConf, map) {
+  var blocks = map || WC_CALIBRATION;
+  var x = _clamp01(rawConf);
+  for (var i = 0; i < blocks.length; i++) if (x <= blocks[i].xhi) return blocks[i].p;
+  return blocks.length ? blocks[blocks.length - 1].p : x;
+}
+
 // ── RAW confidence: weakest-link of the geometric guard margin and the regulatory margin. ──
 // guardMargin ∈ [0,1] (min guard margin from walker_guards.wgEvaluate); ruleMargin ∈ [0,1] (how far
 // the member sits under its code limit — e.g. (maxSpan−span)/maxSpan). Product = a candidate that is
@@ -77,6 +98,7 @@ function wcEce(samples, confFn, nBins) {
 }
 
 var _wcApi = {
+  WC_CALIBRATION: WC_CALIBRATION, wcCalibrated: wcCalibrated,
   wcRaw: wcRaw, wcReliability: wcReliability, wcFitIsotonic: wcFitIsotonic, wcEce: wcEce
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = _wcApi;
