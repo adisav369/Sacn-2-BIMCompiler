@@ -120,7 +120,12 @@ CREATE TABLE IF NOT EXISTS spatial_structure (
     name TEXT,
     parent_guid TEXT,
     object_type TEXT,
-    predefined_type TEXT
+    predefined_type TEXT,
+    -- IfcSpace footprint AABB (room qualification: habitable area = size_x*size_y, height = size_z).
+    -- Spaces are non-geometric in the iterator (no body mesh) but DO carry a Representation solid;
+    -- we tessellate it once here for the AABB only. NULL for Building/Storey (no own footprint).
+    center_x REAL, center_y REAL, center_z REAL,
+    size_x REAL, size_y REAL, size_z REAL
 );
 CREATE TABLE IF NOT EXISTS elements_meta (
     id INTEGER PRIMARY KEY,
@@ -156,6 +161,11 @@ CREATE TABLE IF NOT EXISTS element_transforms (
     rotation_x REAL DEFAULT 0,
     rotation_y REAL DEFAULT 0,
     rotation_z REAL DEFAULT 0,
+    -- AABB full extent (maxK-minK), same source as elements_rtree — the bbox substrate the STR walker +
+    -- cross-edge derivation read (previously backfilled post-hoc by scripts/backfill_bbox.py; now native).
+    bbox_x REAL,
+    bbox_y REAL,
+    bbox_z REAL,
     transform_source TEXT
 );
 CREATE TABLE IF NOT EXISTS port_elements (
@@ -1057,6 +1067,12 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             conn.execute(
                 "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid) "
                 "VALUES (?, 'IfcBuildingStorey', ?, ?)", (s.GlobalId, s.Name, parent))
+        # IfcSpace footprint AABB — tessellate the space solid ONCE (world coords) for its bounding box.
+        # Enables habitable-AABB room qualification + per-room door proximity (SPATIAL_DEPENDENCY_GRAPH
+        # room/storey design). World-coord AABB is normalized later alongside element_transforms.
+        space_settings = ifcopenshell.geom.settings()
+        space_settings.set(space_settings.USE_WORLD_COORDS, True)
+        n_space_geom = 0
         for sp in ifc_file.by_type("IfcSpace"):
             parent_guid = None
             try:
@@ -1068,11 +1084,29 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 pass
             obj_type = getattr(sp, "ObjectType", None)
             predef = getattr(sp, "PredefinedType", None)
+            cx = cy = cz = sx = sy = sz = None
+            try:
+                shp = ifcopenshell.geom.create_shape(space_settings, sp)
+                v = shp.geometry.verts            # flat [x,y,z, x,y,z, ...]
+                if v:
+                    xs, ys, zs = v[0::3], v[1::3], v[2::3]
+                    minx, maxx = min(xs), max(xs)
+                    miny, maxy = min(ys), max(ys)
+                    minz, maxz = min(zs), max(zs)
+                    cx, cy, cz = (minx + maxx) / 2, (miny + maxy) / 2, (minz + maxz) / 2
+                    sx, sy, sz = maxx - minx, maxy - miny, maxz - minz
+                    n_space_geom += 1
+            except Exception:
+                pass                              # space without a usable Representation → AABB stays NULL
             conn.execute(
                 "INSERT OR IGNORE INTO spatial_structure "
-                "(guid, type, name, parent_guid, object_type, predefined_type) "
-                "VALUES (?, 'IfcSpace', ?, ?, ?, ?)",
-                (sp.GlobalId, sp.Name or sp.LongName, parent_guid, obj_type, predef))
+                "(guid, type, name, parent_guid, object_type, predefined_type, "
+                "center_x, center_y, center_z, size_x, size_y, size_z) "
+                "VALUES (?, 'IfcSpace', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (sp.GlobalId, sp.Name or sp.LongName, parent_guid, obj_type, predef,
+                 cx, cy, cz, sx, sy, sz))
+        if n_space_geom:
+            print(f"  §SPACE-AABB: {n_space_geom} IfcSpace footprints tessellated (habitable area/height)")
         conn.commit()
 
     # Geometry settings — S169: LOCAL coords for canonical mesh deduplication.
@@ -1333,10 +1367,13 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                     conn.execute(
                         "INSERT OR IGNORE INTO element_transforms "
                         "(guid, center_x, center_y, center_z, "
-                        "rotation_x, rotation_y, rotation_z, transform_source) "
-                        "VALUES (?,?,?,?,?,?,?,'ifc_extract')",
+                        "rotation_x, rotation_y, rotation_z, bbox_x, bbox_y, bbox_z, transform_source) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,'ifc_extract')",
                         (guid, float(center[0]), float(center[1]), float(center[2]),
-                         float(rot_x), float(rot_y), float(rot_z)))
+                         float(rot_x), float(rot_y), float(rot_z),
+                         float(maxXYZ[0]) - float(minXYZ[0]),
+                         float(maxXYZ[1]) - float(minXYZ[1]),
+                         float(maxXYZ[2]) - float(minXYZ[2])))
                     space = get_space_for_element(elem)
                     if space:
                         conn.execute(
@@ -1442,6 +1479,12 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                         minY = minY - ?, maxY = maxY - ?,
                         minZ = minZ - ?, maxZ = maxZ - ?
                 """, (ox, ox, oy, oy, oz, oz))
+                # IfcSpace footprint AABB shares the element frame → apply the same offset (size invariant)
+                conn.execute("""
+                    UPDATE spatial_structure
+                    SET center_x = center_x - ?, center_y = center_y - ?, center_z = center_z - ?
+                    WHERE center_x IS NOT NULL
+                """, (ox, oy, oz))
                 # Store offset for IFC round-trip export
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS site_normalization (

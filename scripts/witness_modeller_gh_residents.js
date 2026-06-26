@@ -24,11 +24,14 @@ const MOD = path.join(WT, 'modeller');
 const OL = path.join(WT, 'viewer/str_walker_outliner.js');
 
 // the curated residents (mirror of str_walker_outliner.js RESIDENTS) + MEASURED expected walk + size band
+// SH/DX = re-extracted with the current extractor (REAL IfcSpace rooms + space AABB + native bbox + SDG
+// edges baked) → clean reference DBs, 0 cooked m_bom tables. SC still the legacy synthetic extract (no
+// source IFC on disk to re-extract — flagged). Terminal_meta = pristine bbox substrate.
 const RESIDENTS = [
-  { key: 'SampleHouse',  db: 'SampleHouse_extracted.db',  system: 'wall-bearing',  grid: '2x3',   cols: 0,   girders: 0,   mb: [0.5, 3],  cooked: 3 },
-  { key: 'Duplex',       db: 'Duplex_extracted.db',       system: 'wall-bearing',  grid: '9x6',   cols: 0,   girders: 0,   mb: [10, 20],  cooked: 1 },
-  { key: 'SampleCastle', db: 'SampleCastle_extracted.db', system: 'column-framed', grid: '8x9',   cols: 23,  girders: 13,  mb: [5, 12],   cooked: 3 },
-  { key: 'Terminal',     db: 'Terminal_meta.db',          system: 'column-framed', grid: '18x10', cols: 158, girders: 108, mb: [12, 25],  cooked: 0 }
+  { key: 'SampleHouse',  db: 'SampleHouse_extracted.db',  system: 'wall-bearing',  grid: '2x3',   cols: 0,   girders: 0,   mb: [0.3, 1.5], cooked: 0 },
+  { key: 'Duplex',       db: 'Duplex_extracted.db',       system: 'wall-bearing',  grid: '9x6',   cols: 0,   girders: 0,   mb: [0.5, 2],   cooked: 0 },
+  { key: 'SampleCastle', db: 'SampleCastle_extracted.db', system: 'column-framed', grid: '8x9',   cols: 23,  girders: 13,  mb: [5, 12],    cooked: 3 },
+  { key: 'Terminal',     db: 'Terminal_meta.db',          system: 'column-framed', grid: '18x10', cols: 158, girders: 108, mb: [12, 25],   cooked: 0 }
 ];
 
 global.window = {};
