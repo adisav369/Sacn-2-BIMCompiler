@@ -60,6 +60,15 @@ function summarize(tree) {
     'C2 Duplex — rooms=' + d.rooms.length + ' storeys=' + JSON.stringify(d.storeys) + ' layers=' + JSON.stringify(d.layers));
   dx.close();
 
+  // C2b — SampleCastle (Schependomlaan): 4 habitable storeys + foundation/roof layers; mostly-2D spaces →
+  // qualified via the door-at-storey leg (AABB degrades gracefully on null), proving the fallback path.
+  let sc = open('SampleCastle_v2.db');
+  let c = summarize(BT.seedFromDb(sc, { building: 'SampleCastle' }));
+  ok(c.rooms.length >= 95 && c.storeys.length === 4 && c.layers.length === 2 &&
+     c.layers.some(l => /fundering/.test(l)) && c.layers.some(l => /dak/.test(l)),
+    'C2b SampleCastle — rooms=' + c.rooms.length + ' storeys=' + c.storeys.length + ' layers=' + JSON.stringify(c.layers));
+  sc.close();
+
   // C3 — NON-INVENT: every room label is a real IfcSpace name in the DB
   sh = open('SampleHouse_v2.db');
   const realNames = new Set((sh.exec("SELECT name FROM spatial_structure WHERE type='IfcSpace'")[0].values).map(v => v[0]));

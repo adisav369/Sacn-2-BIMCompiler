@@ -30,7 +30,7 @@ const OL = path.join(WT, 'viewer/str_walker_outliner.js');
 const RESIDENTS = [
   { key: 'SampleHouse',  db: 'SampleHouse_extracted.db',  system: 'wall-bearing',  grid: '2x3',   cols: 0,   girders: 0,   mb: [0.3, 1.5], cooked: 0 },
   { key: 'Duplex',       db: 'Duplex_extracted.db',       system: 'wall-bearing',  grid: '9x6',   cols: 0,   girders: 0,   mb: [0.5, 2],   cooked: 0 },
-  { key: 'SampleCastle', db: 'SampleCastle_extracted.db', system: 'column-framed', grid: '8x9',   cols: 23,  girders: 13,  mb: [5, 12],    cooked: 3 },
+  { key: 'SampleCastle', db: 'SampleCastle_extracted.db', system: 'column-framed', grid: '7x9',   cols: 23,  girders: 14,  mb: [5, 15],    cooked: 0 },
   { key: 'Terminal',     db: 'Terminal_meta.db',          system: 'column-framed', grid: '18x10', cols: 158, girders: 108, mb: [12, 25],   cooked: 0 }
 ];
 
