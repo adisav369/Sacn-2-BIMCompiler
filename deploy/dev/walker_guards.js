@@ -32,7 +32,9 @@ var WG_TOL = {
   surfaceSnap: 0.30,   // m — within this, snap onto the plane + flag (SOFT); beyond = floating (HARD)
   clashTouch: 0.02,    // m — AABB overlap up to this = touching (SOFT); beyond = penetration (HARD)
   orient: 0.262,       // rad (15°) — facing within this of the host normal = aligned (PASS)
-  orientHard: 1.047    // rad (60°) — beyond this off the host normal = impossible orientation (HARD)
+  orientHard: 1.047,   // rad (60°) — beyond this off the host normal = impossible orientation (HARD)
+  fit: 0.30,           // m — walker's snap displacement (quantization error) within this = fits (PASS)
+  fitHard: 0.50        // m — beyond this the walk cannot place it on the derived datum → REFUSE (HARD)
 };
 
 // ── small vector helpers ──
@@ -123,7 +125,22 @@ function wgSource(cand, ctx) {
     measure: ok ? cand.path.length : 0, reason: ok ? ('path of ' + cand.path.length + ' hops to source') : 'NO path to a main/ground — starts in mid-air' };
 }
 
-var WG_GUARDS = [wgContainment, wgSurface, wgOrientation, wgClash, wgSource];
+// ═══ §2A.5 FIT — the walker's snap displacement from its measured anchor (REFUSE-to-place valve) ═══
+// MEASURED: cand.snapResidual = how far the walk had to move the element to land it on the derived datum
+// (the grid-quantization error). On a clean grid this is centimetres; on a rotated/smeared plan where
+// the axis-aligned datum derivation degrades, it blows up → the walk cannot honestly place the element
+// → HARD → a WALKER_GAP, not a wrong placement. Generalises STR's null-on-no-plates. No class branch.
+function wgFit(cand, ctx) {
+  if (cand.snapResidual == null) return { guard: 'fit', status: 'pass', margin: 1, measure: null, reason: 'no snap residual reported — not constrained' };
+  var tolP = (ctx.tol && ctx.tol.fit) || WG_TOL.fit;
+  var tolH = (ctx.tol && ctx.tol.fitHard) || WG_TOL.fitHard;
+  var r = cand.snapResidual;
+  var status = r <= tolP ? 'pass' : (r <= tolH ? 'soft' : 'hard');
+  return { guard: 'fit', status: status, margin: _clamp01(1 - r / tolH),
+    measure: r, reason: 'snap residual ' + r.toFixed(3) + 'm (fits≤' + tolP + ', refuse>' + tolH + ')' };
+}
+
+var WG_GUARDS = [wgContainment, wgSurface, wgOrientation, wgClash, wgSource, wgFit];
 
 // ═══ §2C THE GUARD-PASS CONTRACT — evaluate all guards on one candidate → one signed outcome ═══
 // Returns { id, outcome:'PLACE'|'PLACE_FLAG'|'REFUSE', signal:'GREEN'|'ORANGE'|'RED', confidence,
@@ -184,7 +201,7 @@ function wgRunPass(candidates, ctx) {
 var _wgApi = {
   WG_TOL: WG_TOL,
   wgContainment: wgContainment, wgSurface: wgSurface, wgOrientation: wgOrientation,
-  wgClash: wgClash, wgSource: wgSource, wgEvaluate: wgEvaluate, wgRunPass: wgRunPass
+  wgClash: wgClash, wgSource: wgSource, wgFit: wgFit, wgEvaluate: wgEvaluate, wgRunPass: wgRunPass
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = _wgApi;
 if (typeof window !== 'undefined') Object.keys(_wgApi).forEach(function (k) { window[k] = _wgApi[k]; });
