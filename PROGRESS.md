@@ -183,3 +183,17 @@ Spec `prompts/BENCHMARK_AND_CLASH_RESOLUTION_LANE.md`. Phase A in progress (re-t
 - Docs site: https://red1oon.github.io/BIMCompiler/
 - Academic paper: `docs/SPATIAL_COMPILATION_PAPER.md`
 - OCI setup: `internal/OCI_SETUP.md`
+
+## LOD-mesh render: LANDED routed network as tubes — SHIPPED 2026-06-28 (lane/benchmark-clash-resolution + bim-ootb)
+**Done:** the disc-walker's LANDED routed segments (proven real→real ≤1e-6) now render as cylinder TUBES (LOD mesh)
+between the real endpoints instead of flat 1px lines — the disc-walker analogue of the Java compiler placing catalog
+geometry AT real positions. GENERATED fixtures stay LOD marker cubes (plausible, no ground truth): the visual split
+tube-vs-cube IS the LANDED-vs-GENERATED honesty made visible. `modeller.html:_renderDiscChains` rewritten
+(CylinderGeometry + InstancedMesh, per-disc LOD radius DW_TUBE_R, compose mid/quat(up→dir)/scale.y=len).
+**Witnesses:** `witness_disc_tube_render.js` W-DW-TUBE 5/5 — T1 1:1 tube/seg (5315), T2 endpoint-exact (all 5315
+reconstruct to maxDrift 4e-9m ≤1e-6, faithful THREE quaternion math replicated VERBATIM in node), T3 LOD radius map,
+T4 vertical-singularity exact, T5 resident→0 tubes (LANDED-only, fixtures stay cubes). Browser smoke
+`smoke_disc_tube.js` 3/3 (module parses, THREE/DiscWalker ready, tube code served). Deployed bim-ootb (sw v7).
+**Note:** this is the render of the LANDED layer (toward-Java placement, for the layer that HAS ground truth).
+GENERATED-fixture catalog meshes (vs cubes) deliberately NOT done — no source geometry for an absent discipline;
+cubes stay the honest "plausible marker."
