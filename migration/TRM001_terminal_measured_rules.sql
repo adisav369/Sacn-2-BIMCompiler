@@ -53,6 +53,20 @@ CREATE TABLE IF NOT EXISTS ad_clash_avoidance (
     n_measured      INTEGER,
     provenance      TEXT
 );
+-- Measured routing sibling (symmetric to ad_placement_measured): retains the
+-- precise IFC classes the modeller's disc_walker Router matches against the
+-- target building. ad_mep_pattern keeps the node-token rows for the prior-art
+-- RouteWalker; this keeps IFC classes for the disc_walker. One mine, two views.
+CREATE TABLE IF NOT EXISTS ad_routing_measured (
+    disc            TEXT NOT NULL,
+    from_ifc_class  TEXT NOT NULL,
+    to_ifc_class    TEXT NOT NULL,
+    pattern         TEXT,                 -- nn | main | riser | bend | array | grid
+    params_json     TEXT,
+    n_measured      INTEGER,
+    provenance      TEXT,
+    src_guids       TEXT
+);
 -- Terminal has IfcSpace=0 (LANDMINE) -> cannot key into ad_space_type_mep_bom
 -- by space_type without inventing one. Kept as a measured per-scope count.
 CREATE TABLE IF NOT EXISTS ad_space_bom_measured (
@@ -69,6 +83,7 @@ CREATE TABLE IF NOT EXISTS ad_space_bom_measured (
 -- Re-run safe: purge prior measured:terminal rows before re-insert.
 DELETE FROM ad_mep_anchor  WHERE anchor_id LIKE 'TRM:%';
 DELETE FROM ad_mep_pattern WHERE source_building='Terminal' AND pattern_id LIKE 'TRM\_%' ESCAPE '\';
+DELETE FROM ad_routing_measured;
 DELETE FROM ad_placement_measured;
 DELETE FROM ad_place_order;
 DELETE FROM ad_clash_avoidance;
@@ -76,37 +91,48 @@ DELETE FROM ad_space_bom_measured;
 
 -- ── rule_routing -> ad_mep_pattern (existing W019 table) ──
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_ACMV_01','ACMV','TERMINAL',10,'JUNCTION','FIXTURE','NN','DUCT_STRAIGHT','nn',NULL,'n_measured=289; measured:terminal/nn-chain; params={"nn_dist_avg_m":0.71,"nn_dist_min_m":0.07,"nn_dist_max_m":4.19}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('ACMV','IfcDuctFitting','IfcAirTerminal','nn','{"nn_dist_avg_m":0.71,"nn_dist_min_m":0.07,"nn_dist_max_m":4.19}',289,'measured:terminal/nn-chain','3OCW4O$7PFvhdRJm6DyGZH,3OCW4O$7PFvhdRJm6DyGaw');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:3OCW4O$7PFvhdRJm6DyGZH','Terminal','FIXTURE',94.59372323507888,-35.402846620372564,2.962314468774005,'Aras Tanah','3OCW4O$7PFvhdRJm6DyGZH');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:3OCW4O$7PFvhdRJm6DyGaw','Terminal','FIXTURE',94.59367501123992,-28.802846620374062,2.962314468774005,'Aras Tanah','3OCW4O$7PFvhdRJm6DyGaw');
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_ACMV_01','ACMV','TERMINAL',20,'SEGMENT','JUNCTION','NN','DUCT_STRAIGHT','nn',NULL,'n_measured=713; measured:terminal/nn-chain; params={"nn_dist_avg_m":0.66,"nn_dist_min_m":0.06,"nn_dist_max_m":4.49}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('ACMV','IfcDuctSegment','IfcDuctFitting','nn','{"nn_dist_avg_m":0.66,"nn_dist_min_m":0.06,"nn_dist_max_m":4.49}',713,'measured:terminal/nn-chain','0LtF4XFWP4uewA_8hVQC8l,0LtF4XFWP4uewA_8hVQCCl');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:0LtF4XFWP4uewA_8hVQC8l','Terminal','GENERIC',128.17618687259503,-6.850996882671088,11.023557238892046,'Aras 01','0LtF4XFWP4uewA_8hVQC8l');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:0LtF4XFWP4uewA_8hVQCCl','Terminal','GENERIC',128.14089276330625,-12.593016848747506,11.187499999999952,'Aras 01','0LtF4XFWP4uewA_8hVQCCl');
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_FP_01','FP','TERMINAL',10,'FIXTURE','COLUMN','XY','GENERIC','grid',NULL,'n_measured=909; measured:terminal/cadence; params={"col_grid_x_main_m":12.0,"col_grid_x_sub_m":6.0,"col_grid_y_m":8.0,"head_subdiv_m":3.0}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('FP','IfcFireSuppressionTerminal','IfcColumn','grid','{"col_grid_x_main_m":12.0,"col_grid_x_sub_m":6.0,"col_grid_y_m":8.0,"head_subdiv_m":3.0}',909,'measured:terminal/cadence','0XfFSNafP5APj2WZXUWDV5,2OkdVb6dv6$8Mij3nPAUF$,1E9qyzOJH5FOQRgiJ2rPD7,2B0$$pk5P4exV94gMWLrQY,0LYMEnnRj06uUGlKP2HEYQ');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:0XfFSNafP5APj2WZXUWDV5','Terminal','FIXTURE',144.9548021952806,-33.76268215812051,13.096740230780286,'Aras 02','0XfFSNafP5APj2WZXUWDV5');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:2OkdVb6dv6$8Mij3nPAUF$','Terminal','FIXTURE',143.15259682952185,-30.606593680452413,15.250316476881016,'Aras 02','2OkdVb6dv6$8Mij3nPAUF$');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:1E9qyzOJH5FOQRgiJ2rPD7','Terminal','FIXTURE',134.15600827309382,-37.855950448408976,19.250316476881036,'Aras 03','1E9qyzOJH5FOQRgiJ2rPD7');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:2B0$$pk5P4exV94gMWLrQY','Terminal','FIXTURE',144.99535451276245,-33.760978582254104,17.096740230780302,'Aras 03','2B0$$pk5P4exV94gMWLrQY');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:0LYMEnnRj06uUGlKP2HEYQ','Terminal','FIXTURE',114.94976385743459,-33.768140679206915,1.0967402307800553,'Aras Tanah','0LYMEnnRj06uUGlKP2HEYQ');
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_FP_01','FP','TERMINAL',20,'FIXTURE','FIXTURE','XY','SPRINKLER_GRID','array',NULL,'n_measured=909; measured:terminal/cadence; params={"spacing_x_m":3.0,"spacing_y_m":3.6,"axis":"XY-ceiling-plane"}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('FP','IfcFireSuppressionTerminal','IfcFireSuppressionTerminal','array','{"spacing_x_m":3.0,"spacing_y_m":3.6,"axis":"XY-ceiling-plane"}',909,'measured:terminal/cadence','1bKpHa2d96SwdoiyWXCOfi,0XfFSNafP5APj2WZXUWDWm,2OkdVb6dv6$8Mij3nPAUEj,1E9qyzOJH5FOQRgiJ2rP2O,0LYMEnnRj06uUGlKP2HEaI');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:1bKpHa2d96SwdoiyWXCOfi','Terminal','FIXTURE',120.95898252977574,-16.806589991880642,7.2503164768811095,'Aras Tanah','1bKpHa2d96SwdoiyWXCOfi');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:0XfFSNafP5APj2WZXUWDWm','Terminal','FIXTURE',141.6047525540349,-8.017964013025848,13.096740230780286,'Aras 02','0XfFSNafP5APj2WZXUWDWm');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:2OkdVb6dv6$8Mij3nPAUEj','Terminal','FIXTURE',146.15483956931752,-31.206593676522893,15.250316476881016,'Aras 02','2OkdVb6dv6$8Mij3nPAUEj');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:1E9qyzOJH5FOQRgiJ2rP2O','Terminal','FIXTURE',138.95533987726964,-37.855950448408976,19.250316476881036,'Aras 03','1E9qyzOJH5FOQRgiJ2rP2O');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:0LYMEnnRj06uUGlKP2HEaI','Terminal','FIXTURE',115.03930576977098,-7.600026162949593,1.0967402307800553,'Aras Tanah','0LYMEnnRj06uUGlKP2HEaI');
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_PLB_01','PLB','TERMINAL',10,'JUNCTION','SEGMENT','NN','PIPE_STRAIGHT','nn',NULL,'n_measured=200; measured:terminal/nn-chain; params={"avg_gap_m":0.123,"min_m":0.014,"max_m":0.88,"method":"nearest-neighbour-3d"}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('PLB','IfcPipeFitting','IfcPipeSegment','nn','{"avg_gap_m":0.123,"min_m":0.014,"max_m":0.88,"method":"nearest-neighbour-3d"}',200,'measured:terminal/nn-chain','');
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_PLB_01','PLB','TERMINAL',20,'SEGMENT','SEGMENT','XY','PIPE_STRAIGHT','main',NULL,'n_measured=2181; measured:terminal/horizontal-main; params={"orientation":"horizontal","avg_bbox_x_m":1.42,"avg_bbox_y_m":0.61,"avg_bbox_z_m":0.08,"band":"ceiling-void"}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('PLB','IfcPipeSegment','IfcPipeSegment','main','{"orientation":"horizontal","avg_bbox_x_m":1.42,"avg_bbox_y_m":0.61,"avg_bbox_z_m":0.08,"band":"ceiling-void"}',2181,'measured:terminal/horizontal-main','');
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_PLB_01','PLB','TERMINAL',30,'SEGMENT','SEGMENT','Z','PIPE_STRAIGHT','riser',NULL,'n_measured=36; measured:terminal/riser; params={"orientation":"vertical","max_span_m":20.06,"avg_short_riser_m":0.41,"tall_risers_gt3m":36}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('PLB','IfcPipeSegment','IfcPipeSegment','riser','{"orientation":"vertical","max_span_m":20.06,"avg_short_riser_m":0.41,"tall_risers_gt3m":36}',36,'measured:terminal/riser','');
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_PLB_01','PLB','TERMINAL',40,'VALVE','JUNCTION','NN','PIPE_STRAIGHT','nn',NULL,'n_measured=111; measured:terminal/nn-chain; params={"avg_gap_m":0.273,"min_m":0.03,"method":"nearest-neighbour-3d-inline"}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('PLB','IfcValve','IfcPipeFitting','nn','{"avg_gap_m":0.273,"min_m":0.03,"method":"nearest-neighbour-3d-inline"}',111,'measured:terminal/nn-chain','');
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_STR_01','STR','TERMINAL',10,'BEAM','COLUMN','XY','FRAME','grid',NULL,'n_measured=432; measured:terminal/cadence; params={"grid_x_main_m":12,"grid_x_sub_m":6,"grid_y_m":8,"x_lines":[90,96,108,120,126,138,150],"y_lines":[-40,-32,-24,-16,-8,0],"span_mode_m":[5,6,7],"span_long_m":[40,60]}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('STR','IfcBeam','IfcColumn','grid','{"grid_x_main_m":12,"grid_x_sub_m":6,"grid_y_m":8,"x_lines":[90,96,108,120,126,138,150],"y_lines":[-40,-32,-24,-16,-8,0],"span_mode_m":[5,6,7],"span_long_m":[40,60]}',432,'measured:terminal/cadence','2dEJAAEyDAlQ$4dg_s$LMV,2dEJAAEyDAlQ$4dg_s$LNN,1VMnq7yIn6MR9yd51aN4H5,09nghOD7H61f8AyUeTxQ1$');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:2dEJAAEyDAlQ$4dg_s$LMV','Terminal','GENERIC',137.99411861967636,-4.156581397890569,15.761936923528497,'04 THIRD FLOOR LEVEL','2dEJAAEyDAlQ$4dg_s$LMV');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:2dEJAAEyDAlQ$4dg_s$LNN','Terminal','GENERIC',125.79411984037972,-4.156581397890569,15.761936923528497,'04 THIRD FLOOR LEVEL','2dEJAAEyDAlQ$4dg_s$LNN');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:1VMnq7yIn6MR9yd51aN4H5','Terminal','GENERIC',91.67700018562951,-4.156581397890575,17.67011340017168,'04 THIRD FLOOR LEVEL','1VMnq7yIn6MR9yd51aN4H5');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:09nghOD7H61f8AyUeTxQ1$','Terminal','GENERIC',90.00294336973458,-20.156581397891273,-0.23806307557422718,'GROUND FLOOR LEVEL','09nghOD7H61f8AyUeTxQ1$');
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_STR_01','STR','TERMINAL',20,'COLUMN','COLUMN','XY','FRAME','grid',NULL,'n_measured=158; measured:terminal/cadence; params={"grid_x_main_m":12,"grid_x_sub_m":6,"grid_y_m":8,"x_strong_lines":[90,96,108,120,126,138],"y_lines":[-40,-32,-24,-16,-8,0],"col_heights_m":[4,8,16]}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('STR','IfcColumn','IfcColumn','grid','{"grid_x_main_m":12,"grid_x_sub_m":6,"grid_y_m":8,"x_strong_lines":[90,96,108,120,126,138],"y_lines":[-40,-32,-24,-16,-8,0],"col_heights_m":[4,8,16]}',158,'measured:terminal/cadence','3U5nM7ybH3iu0ds0wn6rKc,0DHQy0EpTAxRiC982SlS0r,12OOsB1FH4oBULXFlS0hBT');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:3U5nM7ybH3iu0ds0wn6rKc','Terminal','GENERIC',134.17941273732472,-0.2884313233114288,10.118987689039582,'GROUND FLOOR LEVEL','3U5nM7ybH3iu0ds0wn6rKc');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:0DHQy0EpTAxRiC982SlS0r','Terminal','GENERIC',90.00147278155708,-0.1345231847135203,8.114878099998489,'GROUND FLOOR LEVEL','0DHQy0EpTAxRiC982SlS0r');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:12OOsB1FH4oBULXFlS0hBT','Terminal','GENERIC',137.97907118525663,-8.161056021399032,4.22881749393929,'Aras Tanah','12OOsB1FH4oBULXFlS0hBT');
 INSERT INTO ad_mep_pattern (pattern_id,discipline,building_type,sequence,from_node_type,to_node_type,direction_axis,piece_type,offset_rule,gradient,notes,source_building) VALUES ('TRM_STR_01','STR','TERMINAL',30,'MEMBER','MEMBER','NN','FRAME','nn',NULL,'n_measured=442; measured:terminal/nn-chain; params={"role":"roof_space_frame","member_len_mode_m":[2,3,4],"member_chord_len_m":[27,31,32],"footprint_x":[91,150],"footprint_y":[-40,0]}','Terminal');
+INSERT INTO ad_routing_measured (disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,provenance,src_guids) VALUES ('STR','IfcMember','IfcMember','nn','{"role":"roof_space_frame","member_len_mode_m":[2,3,4],"member_chord_len_m":[27,31,32],"footprint_x":[91,150],"footprint_y":[-40,0]}',442,'measured:terminal/nn-chain','2ZmzfRjKLERfhHU3GYOF0r,2ZmzfRjKLERfhHU3GYOF1n,2ZmzfRjKLERfhHU3GYOF28,0u2maiLhzDX8TET5sNTKyu,0u2maiLhzDX8TET5sNTKyt');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:2ZmzfRjKLERfhHU3GYOF0r','Terminal','GENERIC',104.9794139580285,-32.1564925522464,16.146554570587313,'Unknown','2ZmzfRjKLERfhHU3GYOF0r');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:2ZmzfRjKLERfhHU3GYOF1n','Terminal','GENERIC',104.9794139580285,-24.15649255224709,16.146554570587313,'Unknown','2ZmzfRjKLERfhHU3GYOF1n');
 INSERT INTO ad_mep_anchor (anchor_id,source_building,anchor_type,x_m,y_m,z_m,storey,ifc_guid) VALUES ('TRM:2ZmzfRjKLERfhHU3GYOF28','Terminal','GENERIC',104.9794139580285,-16.1564925522434,16.146554570587313,'Unknown','2ZmzfRjKLERfhHU3GYOF28');
@@ -369,4 +395,29 @@ INSERT INTO ad_clash_avoidance (disc_a,disc_b,min_clear_m,yields,z_band,n_measur
 INSERT INTO ad_clash_avoidance (disc_a,disc_b,min_clear_m,yields,z_band,n_measured,provenance) VALUES ('PLB','ELEC',0.884,'ELEC','L04',235,'measured:terminal;p05_clearance=0.884m;raw_min=0.218m;median=2.92m');
 INSERT INTO ad_clash_avoidance (disc_a,disc_b,min_clear_m,yields,z_band,n_measured,provenance) VALUES ('PLB','FP',0.103,'FP','L04',262,'measured:terminal;p05_clearance=0.103m;raw_min=0.059m;median=2.2m');
 INSERT INTO ad_clash_avoidance (disc_a,disc_b,min_clear_m,yields,z_band,n_measured,provenance) VALUES ('FP','ELEC',0.263,'FP','ROOF',29,'measured:terminal;p05_clearance=0.263m;raw_min=0.152m;median=1.31m');
+
+-- ── disc_walker compatibility views (ERP.db as drop-in rule source) ──
+DROP VIEW IF EXISTS rule_placement;
+CREATE VIEW rule_placement AS
+  SELECT disc, ifc_class, ref_kind, from_edge_x AS dx, from_edge_y AS dy,
+         z_offset AS dz, spacing_x_m, spacing_y_m, z_band_lo, z_band_hi,
+         storey_scope, n_measured, provenance, src_guids
+  FROM ad_placement_measured;
+DROP VIEW IF EXISTS rule_routing;
+CREATE VIEW rule_routing AS
+  SELECT disc, from_ifc_class AS from_kind, to_ifc_class AS to_kind, pattern,
+         params_json, n_measured, provenance, src_guids
+  FROM ad_routing_measured;
+DROP VIEW IF EXISTS rule_place_order;
+CREATE VIEW rule_place_order AS
+  SELECT disc, order_index, storey_scope, z_band_lo, z_band_hi, n_measured, provenance
+  FROM ad_place_order;
+DROP VIEW IF EXISTS rule_avoidance;
+CREATE VIEW rule_avoidance AS
+  SELECT disc_a, disc_b, min_clear_m, yields, z_band, n_measured, provenance
+  FROM ad_clash_avoidance;
+DROP VIEW IF EXISTS rule_space_bom;
+CREATE VIEW rule_space_bom AS
+  SELECT disc, scope, ifc_class, count_per, spacing_m, n_measured, provenance, src_guids
+  FROM ad_space_bom_measured;
 

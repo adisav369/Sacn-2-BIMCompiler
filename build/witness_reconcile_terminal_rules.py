@@ -83,6 +83,7 @@ def main():
     pairs = [
         ("rule_placement", "ad_placement_measured", None),
         ("rule_routing", "ad_mep_pattern", "source_building='Terminal'"),
+        ("rule_routing", "ad_routing_measured", None),
         ("rule_space_bom", "ad_space_bom_measured", None),
         ("rule_place_order", "ad_place_order", None),
         ("rule_avoidance", "ad_clash_avoidance", None),

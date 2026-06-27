@@ -206,6 +206,20 @@ def main():
     n_measured      INTEGER,
     provenance      TEXT
 );""")
+    a("-- Measured routing sibling (symmetric to ad_placement_measured): retains the")
+    a("-- precise IFC classes the modeller's disc_walker Router matches against the")
+    a("-- target building. ad_mep_pattern keeps the node-token rows for the prior-art")
+    a("-- RouteWalker; this keeps IFC classes for the disc_walker. One mine, two views.")
+    a("""CREATE TABLE IF NOT EXISTS ad_routing_measured (
+    disc            TEXT NOT NULL,
+    from_ifc_class  TEXT NOT NULL,
+    to_ifc_class    TEXT NOT NULL,
+    pattern         TEXT,                 -- nn | main | riser | bend | array | grid
+    params_json     TEXT,
+    n_measured      INTEGER,
+    provenance      TEXT,
+    src_guids       TEXT
+);""")
     a("-- Terminal has IfcSpace=0 (LANDMINE) -> cannot key into ad_space_type_mep_bom")
     a("-- by space_type without inventing one. Kept as a measured per-scope count.")
     a("""CREATE TABLE IF NOT EXISTS ad_space_bom_measured (
@@ -224,6 +238,7 @@ def main():
     a("-- Re-run safe: purge prior measured:terminal rows before re-insert.")
     a("DELETE FROM ad_mep_anchor  WHERE anchor_id LIKE 'TRM:%';")
     a("DELETE FROM ad_mep_pattern WHERE source_building='Terminal' AND pattern_id LIKE 'TRM\\_%' ESCAPE '\\';")
+    a("DELETE FROM ad_routing_measured;")
     a("DELETE FROM ad_placement_measured;")
     a("DELETE FROM ad_place_order;")
     a("DELETE FROM ad_clash_avoidance;")
@@ -273,6 +288,14 @@ def main():
               q(direction_axis(r["pattern"])), q(piece_type(disc, r["pattern"])),
               q(r["pattern"]), q(notes)))
         counts["pattern"] += 1
+        # symmetric measured sibling — keeps the precise IFC classes for disc_walker
+        a("INSERT INTO ad_routing_measured "
+          "(disc,from_ifc_class,to_ifc_class,pattern,params_json,n_measured,"
+          "provenance,src_guids) VALUES (%s,%s,%s,%s,%s,%s,%s,%s);" % (
+              q(disc), q(r["from_kind"]), q(r["to_kind"]), q(r["pattern"]),
+              q(r["params_json"]), q(r["n_measured"]),
+              q(prov_tag(r["provenance"])), q(r["src_guids"])))
+        counts["routing_m"] = counts.get("routing_m", 0) + 1
         emit_anchors(r["src_guids"])
     a("")
 
@@ -332,6 +355,38 @@ def main():
         counts["clash"] += 1
     a("")
 
+    # ── COMPATIBILITY VIEWS — make ERP.db a DROP-IN source for the modeller's
+    #    disc_walker.js engine (§CONVERGENCE: "drop-in, not a re-interpretation").
+    #    The engine reads rule_placement/rule_routing/rule_place_order/
+    #    rule_avoidance by exact name+columns; these views project the reconciled
+    #    measured tables back to that contract (z_offset->dz, IFC classes intact).
+    #    The SAME engine can dwOpen(ERP.db) and walk identically to terminal_rules.db.
+    a("-- ── disc_walker compatibility views (ERP.db as drop-in rule source) ──")
+    a("DROP VIEW IF EXISTS rule_placement;")
+    a("""CREATE VIEW rule_placement AS
+  SELECT disc, ifc_class, ref_kind, from_edge_x AS dx, from_edge_y AS dy,
+         z_offset AS dz, spacing_x_m, spacing_y_m, z_band_lo, z_band_hi,
+         storey_scope, n_measured, provenance, src_guids
+  FROM ad_placement_measured;""")
+    a("DROP VIEW IF EXISTS rule_routing;")
+    a("""CREATE VIEW rule_routing AS
+  SELECT disc, from_ifc_class AS from_kind, to_ifc_class AS to_kind, pattern,
+         params_json, n_measured, provenance, src_guids
+  FROM ad_routing_measured;""")
+    a("DROP VIEW IF EXISTS rule_place_order;")
+    a("""CREATE VIEW rule_place_order AS
+  SELECT disc, order_index, storey_scope, z_band_lo, z_band_hi, n_measured, provenance
+  FROM ad_place_order;""")
+    a("DROP VIEW IF EXISTS rule_avoidance;")
+    a("""CREATE VIEW rule_avoidance AS
+  SELECT disc_a, disc_b, min_clear_m, yields, z_band, n_measured, provenance
+  FROM ad_clash_avoidance;""")
+    a("DROP VIEW IF EXISTS rule_space_bom;")
+    a("""CREATE VIEW rule_space_bom AS
+  SELECT disc, scope, ifc_class, count_per, spacing_m, n_measured, provenance, src_guids
+  FROM ad_space_bom_measured;""")
+    a("")
+
     if unresolved:
         a("-- WARNING: %d src_guid(s) did NOT resolve to a Terminal element and were"
           % len(unresolved))
@@ -342,8 +397,8 @@ def main():
 
     print("generated %s" % OUT_SQL)
     print("  meta source     = %s" % meta_path)
-    for k in ("anchor", "pattern", "placement", "spacebom", "order", "clash"):
-        print("  %-16s= %d" % (k, counts[k]))
+    for k in ("anchor", "pattern", "routing_m", "placement", "spacebom", "order", "clash"):
+        print("  %-16s= %d" % (k, counts.get(k, 0)))
     print("  unresolved guids= %d" % len(unresolved))
     rules.close()
     meta.close()
