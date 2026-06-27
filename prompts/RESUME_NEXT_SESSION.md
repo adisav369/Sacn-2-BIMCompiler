@@ -44,8 +44,13 @@ Three OWN top-level app folders in `bim-ootb/`: **`viewer/` · `erp/` · `modell
    (wiring). No regression: generalize 49/49, shim 6/6, erp-equiv 14/14, W-DW-OPLOG/TERM-WALK/UX-DISC all green.
 
 ## NEXT (pick up here)
-- **ELEC/STR round-trip REDs** — HONEST, left as-is (ELEC z-band metric harsh but array GREEN; STR off-grid by design
-  = grid-lock crux). Do NOT tune to pass. Separate hard prompt — this is the genuine remaining open problem.
+- **ELEC/STR round-trip REDs — the LAST MILE.** Now has a dedicated, sharp handoff: `prompts/RESUME_LASTMILE_STR_ELEC_REDS.md`.
+  Diagnosis is in hand (NOT just "it's hard"): the Placer **z-band is the wrong model** for (a) spanning STR
+  beams/members — proven by IfcColumn GREEN / IfcBeam RED in the SAME disc — route them like pipes/ducts (Gap-3);
+  (b) ELEC IfcElectricAppliance (cover 0.05, multi-height) — SHIM host-attach like FP IfcAlarm; (c) ELEC lights —
+  array cadence already GREEN, z-band count is the redundant-harsh lens. Each move anchored to an already-GREEN
+  analogue; **earn-don't-tune** (replace wrong model, re-measure; never loosen a threshold). Grid-lock crux
+  (~71.5% on-grid by design) = a scope decision to bring to the user, not an extraction. Read that card first.
 - **Router `main`/`riser` patterns** (lower-pri): nn-chains done; the horizontal-main + vertical-riser PLB patterns
   stay descriptive (need orientation fits) — a later piece if the demo wants trunk runs, not just nn links.
 - **DEPLOY** the SHIM host-attach + ERP.db drop-in to `bim-ootb/viewer/disc_walker.js` (its own deploy session) —
