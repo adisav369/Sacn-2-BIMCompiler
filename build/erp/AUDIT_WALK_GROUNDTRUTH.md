@@ -38,9 +38,12 @@ So the doctrine in PROGRESS.md — *"LANDED routed-endpoints exact 1e-6; GENERAT
 EXACT count, no rmse-as-fidelity"* — is **borne out by the witnesses.** The exposure is not in the labelling; it is
 in **two coverage gaps** where the badge outruns the proof:
 
-1. **F-WALK-1 — the LANDED↔ERP.db drop-in is UNWITNESSED.** The landing proof reads only `terminal_rules.db`; the
-   ERP.db-drop-in proof runs only on MEP-less residents where every routing comparison is `0==0`. *No witness walks
-   LANDED segments through the ERP.db views.*
+1. **F-WALK-1 — ~~the LANDED↔ERP.db drop-in is UNWITNESSED~~ → RESOLVED 2026-06-28.** *Was:* the landing proof read
+   only `terminal_rules.db`; the ERP.db-drop-in proof ran only on MEP-less residents where every routing comparison
+   is `0==0`. *Now closed by* `witness_disc_walk_erp_landed.js` (W-TRM-WALK-LANDED, 4/0): walking **Terminal**
+   through the ERP.db TRM001 views routes **5315 real segments** (L1, non-vacuous) **identical** to
+   `terminal_rules.db` — same `from_guid/to_guid/xyz/gap/bound` (L2) — and every ERP.db segment still lands on real
+   geometry ≤1e-6 (L4). The LANDED layer's ERP-consume path is now proven, not asserted.
 2. **F-WALK-2 — `roof`/`STR-datum` GENERATED sets escape the count-exact bound.** They still bbox-tile (cap
    50 k/storey → **233 374** placed for SampleCastle roof) instead of area-scaling. The count-exact guarantee that
    covers PLB/ELEC **does not cover roof** — and the engine says so itself: `§DW-CAP …no src area — re-bake`.
@@ -83,7 +86,7 @@ Class = this audit's. Evidence = a re-run `§` line (`build/erp/audit_<witness>.
 | Produced set (witness) | Claimed | Refutations applied | **Verdict** | Evidence |
 |---|---|---|---|---|
 | **Roster + placement equivalence** ERP.db views vs terminal_rules.db | drop-in, lossless | NONEMPTY | **SOLID (placement leg)** | `§E1 ROSTER-EQUIV rules=[ACMV,ELEC,FP,PLB,STR,roof] erp=[…] ≡`; `§E2 WALK-EQUIV …placed rules=18854 erp=18854 pos≡` per disc; `§E4 …total placed = 264866 (>0)` — placement counts + coordinates survive the TRM001 reconciliation byte-for-byte. |
-| **Routing (LANDED) equivalence** ERP.db views vs terminal_rules.db | drop-in, lossless | **VACUOUS-COVERAGE** | **OVERSTATED** | `§E3 ROUTER-EQUIV …chains rules=0 erp=0 ≡` on **every** disc — because `witness_disc_walk_erp_equivalence.js:41` walks only `['SampleCastle','Duplex','SampleHouse']`, all MEP-less, so every routing comparison is `0==0`. The drop-in equivalence is proven for the **GENERATED placement** layer and **asserted-but-untested** for the **LANDED routing** layer. The one building that produces real chains (Terminal) is never walked through the ERP.db views. |
+| **Routing (LANDED) equivalence** ERP.db views vs terminal_rules.db | drop-in, lossless | VACUOUS-COVERAGE → **closed** | **RESOLVED** | *Was OVERSTATED:* `§E3 …chains rules=0 erp=0 ≡` on every disc (resident-only walk = `0==0`). *Now:* `witness_disc_walk_erp_landed.js` walks **Terminal** through the ERP.db views — `§L1 …routes 5315 real segments (NOT 0==0)`, `§L2 SEG-EQUIV 5315 landed segs identical rules≡erp`, `§L3 PLACE-EQUIV 28174 placements identical`, `§L4 …classMismatch=0 posDrift=0`. The LANDED-layer drop-in is now witnessed non-vacuously. |
 
 ---
 
@@ -95,8 +98,10 @@ Class = this audit's. Evidence = a re-run `§` line (`build/erp/audit_<witness>.
   *The grail leg holds: routed endpoints are extracted geometry, exact to 1e-6, zero invented.*
 - **SOLID — GENERATED count-exact (Class G, labelled):** PLB/ELEC density placer on all three residents
   (count == measured Σ round(density×area)|envelope, position explicitly **no-fidelity** — the honest disclosure).
-- **OVERSTATED — 2:**
-  - **F-WALK-1** ERP.db drop-in for the **routing/LANDED** layer is **vacuous** (only ever compared `0==0`).
+- **RESOLVED — 1:**
+  - **F-WALK-1** ERP.db drop-in for the **routing/LANDED** layer — closed by `witness_disc_walk_erp_landed.js` (4/0):
+    Terminal walked through the ERP.db views routes 5315 segments identical to `terminal_rules.db`, non-vacuous.
+- **OVERSTATED — 1:**
   - **F-WALK-2** `roof/IfcPlate` GENERATED count is a **bbox-tile cap artifact (233 374)**, not measured-bound;
     the count-exact badge does not cover it. `STR Member datum` SOFT (same un-bounded path, smaller).
 - **MINOR — F-WALK-3 (provenance):** 4 of 11 `ad_routing_measured` rows (PLB nn/main/riser/valve) carry **empty
@@ -113,10 +118,10 @@ layer) and the GENERATED fixtures correctly claim count-only. The remaining expo
 
 ## 3 · Harden-first list (FLAG, not fix — for the owning disc-walker lane)
 
-1. **F-WALK-1 — close the LANDED↔ERP.db coverage gap.** Add a witness (or extend `…erp_equivalence.js`) that walks
-   **Terminal through the ERP.db TRM001 views** and asserts `routeChains` produces the **same 5 315 segments**
-   (from_guid/to_guid/gap) as `terminal_rules.db`. Until then the routing drop-in is asserted-not-tested. *Smallest
-   real win in this audit* — the LANDED leg is the load-bearing one and its ERP-consume path is currently unproven.
+1. **F-WALK-1 — ✅ DONE 2026-06-28.** `witness_disc_walk_erp_landed.js` (W-TRM-WALK-LANDED, 4/0) walks **Terminal
+   through the ERP.db TRM001 views** and asserts the **same 5 315 segments** (from_guid/to_guid/xyz/gap/bound) as
+   `terminal_rules.db`, non-vacuously (L1 segs>0), all landing on real geometry ≤1e-6 (L4). The LANDED leg's
+   ERP-consume path is proven.
 2. **F-WALK-2 — area-scale the `roof`/`STR-datum` rules** (the engine literally requests it: `§DW-CAP …re-bake to
    area-scale`). Re-bake with `src_storey_area_m2` like `duplex_rules` PLB/ELEC so roof placed-count becomes
    `Σ round(density×area)` instead of the 50 k/storey cap → brings roof under the same count-exact guarantee and
