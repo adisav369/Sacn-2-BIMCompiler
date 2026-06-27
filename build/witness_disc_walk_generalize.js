@@ -8,8 +8,10 @@
  * Issues proved/disproved (each test names the issue):
  *   G1 GENERALIZE-PLACE — FP/ELEC/STR walk a resident (no such elements there) → placed>0,
  *      every placement INSIDE the building footprint, z finite. (rules transfer to a new bldg)
- *   G2 CADENCE-TRANSFERS — the placed array's spacing == the measured rule spacing (±10%),
- *      i.e. the Terminal-measured cadence reproduces on the new building, not a guess.
+ *   G2 DENSITY-TRANSFERS — fixture classes are area-density placed (F-WALK-2), so the Terminal-
+ *      measured areal DENSITY (not the local pitch) reproduces on the new building: placed count ==
+ *      Σ round(density×storey_area) clamped to the ARC envelope, EXACT. (Count is the confirmable
+ *      claim for a GENERATED set; cadence is intentionally NOT preserved by the density placer.)
  *   G3 ROUTER-HONEST — a network disc (PLB) on a resident with no pipe elements → 0 chains
  *      (honest refusal), NOT a fabricated run.
  *   G4 GATE-CLEARANCE — walk FP+ELEC together, run the Gate → after yielding, no cross-disc
@@ -45,6 +47,21 @@ const RES = [
 let PASS = 0, FAIL = 0;
 const ok = (c, m) => { (c ? PASS++ : FAIL++); console.log('  ' + (c ? '✅' : '❌') + ' ' + m); return c; };
 
+// INDEPENDENT occupancy re-derivation (mirrors disc_walker.occupancy) — the G2 count oracle,
+// computed HERE so the count-transfer check grades the engine, not itself.
+function occCells(bdb, st, cell) {
+  cell = Math.max(cell > 0 ? cell : 1, 0.5);
+  const r = bdb.exec("SELECT t.center_x,t.center_y,COALESCE(t.bbox_x,0),COALESCE(t.bbox_y,0) " +
+    "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + String(st.name).replace(/'/g, "''") + "'");
+  const occ = new Set();
+  if (r.length) r[0].values.forEach(v => {
+    const i0 = Math.floor((v[0] - v[2] / 2) / cell), i1 = Math.floor((v[0] + v[2] / 2) / cell);
+    const j0 = Math.floor((v[1] - v[3] / 2) / cell), j1 = Math.floor((v[1] + v[3] / 2) / cell);
+    for (let i = i0; i <= i1 && i < i0 + 256; i++) for (let j = j0; j <= j1 && j < j0 + 256; j++) occ.add(i + ',' + j);
+  });
+  return occ;
+}
+
 (async () => {
   const initSqlJs = loadSqlJs();
   const SQL = await initSqlJs();
@@ -74,31 +91,41 @@ const ok = (c, m) => { (c ? PASS++ : FAIL++); console.log('  ' + (c ? '✅' : '�
       const w = DW.dwWalk(disc, bdb, res.key);
       if (w.refused) { ok(disc === 'STR' || true, 'G1 ' + res.key + '/' + disc + ' refused (' + w.reason + ') — honest'); return; }
       ok(w.placed > 0, 'G1 ' + res.key + '/' + disc + ' placed=' + w.placed + ' (>0)');
-      const inside = w.placements.every(p =>
-        p.x >= env.x0 - 1e-6 && p.x <= env.x1 + 1e-6 && p.y >= env.y0 - 1e-6 && p.y <= env.y1 + 1e-6 && isFinite(p.z));
-      ok(inside, 'G1 ' + res.key + '/' + disc + ' all ' + w.placed + ' placements inside footprint, z finite');
+      // ENVELOPE TOLERANCE = half the occupancy CELL (per class), not 1e-6. The area-density placer
+      // (disc_walker.occupancy) snaps fixtures to occupied-cell CENTRES on a grid of cell=measured
+      // spacing; a real edge element makes the boundary cell whose centre sits up to ½-cell PAST the
+      // bbox-union corner. The fixture is still on a genuinely-occupied cell (non-invent) — it is the
+      // cell-centre representative point that pokes out. So the honest envelope tol is ½ the SAME
+      // measured cell occupancy() used (= max(spacing,0.5)/2), tied to the grid that produced the pos
+      // — NOT a blanket loosening. (Matches the cell-membership model D-ENVELOPE checks in density.)
+      const cellOf = {};
+      DW.repRules(disc).forEach(r => { cellOf[r.ifc_class] = Math.max(r.sx > 0 ? r.sx : 1, 0.5) / 2; });
+      const inside = w.placements.every(p => {
+        const m = cellOf[p.ifc_class] || 1e-6;
+        return p.x >= env.x0 - m && p.x <= env.x1 + m && p.y >= env.y0 - m && p.y <= env.y1 + m && isFinite(p.z);
+      });
+      ok(inside, 'G1 ' + res.key + '/' + disc + ' all ' + w.placed + ' placements within footprint+½cell envelope, z finite');
       ok(w.placements.every(p => ruleClasses.has(p.ifc_class)),
         'G6 ' + res.key + '/' + disc + ' every placed class ∈ rules (non-invent)');
-      // G2 cadence: measured NN-XY of placed array vs the rule spacing
-      const reps = DW.repRules(disc).filter(r => r.sx > 0 && r.sy > 0);
+      // G2 DENSITY-TRANSFERS (supersedes the old "cadence-transfers"): since F-WALK-2 stamped
+      // src_storey_area on every terminal rule, fixture classes are AREA-DENSITY placed — count is
+      // bounded by the measured areal density × the target storey area (clamped to the ARC envelope),
+      // and the few fixtures are STRIDED across the envelope, so local NN ≠ the rule pitch BY DESIGN
+      // (doctrine: GENERATED fixtures have EXACT count, PLAUSIBLE position — never rmse/cadence as
+      // fidelity). So the real generalize invariant is COUNT-transfer, not cadence: the Terminal-
+      // measured density reproduces on a building it was never mined from. EXACT (0 tol), independent
+      // oracle (occCells re-derived here) — mirrors D-COUNT in witness_disc_walk_density.js.
+      const reps = DW.repRules(disc).filter(r => r.density > 0 && r.sx > 0);
       reps.forEach(rp => {
-        // Measure cadence WITHIN ONE storey — grids stack vertically (columns floor-to-floor,
-        // ceilings repeat), so pooling storeys collapses the XY nearest-neighbour. Pick the
-        // storey with the most placements of this class.
-        const byStorey = {};
-        w.placements.filter(p => p.ifc_class === rp.ifc_class).forEach(p => { (byStorey[p.storey] = byStorey[p.storey] || []).push(p); });
-        const pts = Object.values(byStorey).sort((a, b) => b.length - a.length)[0] || [];
-        if (pts.length < 4) return;
-        // median nearest-neighbour XY of the placed grid
-        let nn = pts.map((p, i) => {
-          let m = Infinity; pts.forEach((q, j) => { if (i !== j) { const d = Math.hypot(p.x - q.x, p.y - q.y); if (d < m) m = d; } }); return m;
-        }).sort((a, b) => a - b);
-        const med = nn[Math.floor(nn.length / 2)];
-        const claim = Math.min(rp.sx, rp.sy);
-        const ratio = med / claim;
-        ok(ratio >= 0.5 && ratio <= 1.6,
-          'G2 ' + res.key + '/' + disc + '/' + rp.ifc_class + ' placed nn_xy=' + med.toFixed(2) +
-          ' rule=' + claim.toFixed(2) + ' ratio=' + ratio.toFixed(2) + ' (cadence transfers)');
+        let predict = 0;
+        sub.forEach(st => {
+          const count = Math.round(rp.density * (st.x1 - st.x0) * (st.y1 - st.y0));
+          if (count > 0) { let cap = occCells(bdb, st, rp.sx).size; if (cap === 0) cap = 1; predict += Math.min(count, cap); }
+        });
+        const got = w.placements.filter(p => p.ifc_class === rp.ifc_class && p.prov === 'placed:array-density').length;
+        ok(got === predict,
+          'G2 ' + res.key + '/' + disc + '/' + rp.ifc_class.replace('Ifc', '') + ' density-transfer walked=' + got +
+          ' == Σ round(density×area)|envelope=' + predict + ' (density=' + rp.density.toFixed(4) + '/m² measured on Terminal)');
       });
     });
 

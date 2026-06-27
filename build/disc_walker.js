@@ -109,6 +109,14 @@
       var dens = _med(g.map(function (r) {
         return (r.src_storey_area_m2 > 0 && r.n_measured > 0) ? (r.n_measured / r.src_storey_area_m2) : null;
       }));
+      // §PRIM (W-DW-PRIM): the class's MEASURED median bbox (stamped by stamp_src_bbox.py off
+      // the source meta DB). Lets the modeller render each GENERATED fixture as a BOX of the real
+      // class footprint/height, not a uniform 0.18 cube. NON-INVENT: SIZE only — no position/count
+      // change; absent (NULL bbox / unstamped DB) → bbox=null → engine keeps the 0.18 fallback.
+      var bdx = _med(g.map(function (r) { return r.bbox_dx; }));
+      var bdy = _med(g.map(function (r) { return r.bbox_dy; }));
+      var bdz = _med(g.map(function (r) { return r.bbox_dz; }));
+      var bbox = (bdx > 0 && bdy > 0 && bdz > 0) ? { dx: bdx, dy: bdy, dz: bdz } : null;
       return {
         ifc_class: cls,
         ref_kind: g[0].ref_kind,
@@ -118,6 +126,7 @@
         density: dens || 0,
         n_measured: _med(g.map(function (r) { return r.n_measured; })),
         n_rules: g.length,
+        bbox: bbox,
         src: (g[0].src_guids || '').split(',')[0] || ''
       };
     });
@@ -170,6 +179,12 @@
   var _MAX_PER_STOREY = 50000;                               // legacy spacing-tile backstop (never silent)
   function place(disc, storeys, bdb) {
     var reps = repRules(disc), out = [];
+    // §PRIM: attach the class's MEASURED bbox (or null) to every placement so the modeller
+    // sizes its GENERATED-fixture box per class. SIZE only — count/position untouched.
+    function _emit(o, rp) {
+      o.bx = rp.bbox ? rp.bbox.dx : null; o.by = rp.bbox ? rp.bbox.dy : null; o.bz = rp.bbox ? rp.bbox.dz : null;
+      out.push(o);
+    }
     reps.forEach(function (rp) {
       storeys.forEach(function (st) {
         var w = st.x1 - st.x0, d = st.y1 - st.y0;
@@ -182,8 +197,8 @@
             var cap = cells.length, placeN = Math.min(count, cap), stride = cap / placeN;
             for (var c = 0; c < placeN; c++) {
               var cell = cells[Math.floor(c * stride)];
-              out.push({ disc: disc, ifc_class: rp.ifc_class, x: cell.x, y: cell.y, z: z,
-                storey: st.name, prov: 'placed:array-density', src: rp.src });
+              _emit({ disc: disc, ifc_class: rp.ifc_class, x: cell.x, y: cell.y, z: z,
+                storey: st.name, prov: 'placed:array-density', src: rp.src }, rp);
             }
             if (count > cap) console.log(TAG + ' §DW-CAP ' + disc + '/' + rp.ifc_class + ' storey=' + st.name +
               ' placed=' + placeN + ' of ' + count + ' (envelope is the ceiling)');
@@ -195,8 +210,8 @@
             console.log(TAG + ' §DW-CAP ' + disc + '/' + rp.ifc_class + ' storey=' + st.name + ' tile capped to ' + (nx * ny) + ' (no src area — re-bake to area-scale)');
           }
           for (var i = 0; i < nx; i++) for (var j = 0; j < ny; j++) {
-            out.push({ disc: disc, ifc_class: rp.ifc_class, x: st.x0 + (i + 0.5) * (w / nx),
-              y: st.y0 + (j + 0.5) * (d / ny), z: z, storey: st.name, prov: 'placed:array', src: rp.src });
+            _emit({ disc: disc, ifc_class: rp.ifc_class, x: st.x0 + (i + 0.5) * (w / nx),
+              y: st.y0 + (j + 0.5) * (d / ny), z: z, storey: st.name, prov: 'placed:array', src: rp.src }, rp);
           }
         } else if (rp.ref_kind === 'host' && bdb) {         // SHIM → tack onto real host walls
           var walls = hostWalls(bdb, st.name);
@@ -206,13 +221,13 @@
             var stride = walls.length / nP;
             for (var k = 0; k < nP; k++) {
               var wl = walls[Math.floor(k * stride)];
-              out.push({ disc: disc, ifc_class: rp.ifc_class, x: wl.cx, y: wl.cy, z: z,
-                yaw: wl.rot, storey: st.name, prov: 'shim:host-wall', host: wl.guid, src: rp.src });
+              _emit({ disc: disc, ifc_class: rp.ifc_class, x: wl.cx, y: wl.cy, z: z,
+                yaw: wl.rot, storey: st.name, prov: 'shim:host-wall', host: wl.guid, src: rp.src }, rp);
             }
           }                                                 // no walls → honest skip (no host surface)
         } else {                                            // single placement (datum rule, no host)
-          out.push({ disc: disc, ifc_class: rp.ifc_class, x: (st.x0 + st.x1) / 2, y: (st.y0 + st.y1) / 2,
-            z: z, storey: st.name, prov: 'placed:single', src: rp.src });
+          _emit({ disc: disc, ifc_class: rp.ifc_class, x: (st.x0 + st.x1) / 2, y: (st.y0 + st.y1) / 2,
+            z: z, storey: st.name, prov: 'placed:single', src: rp.src }, rp);
         }
       });
     });
