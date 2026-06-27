@@ -104,6 +104,31 @@ drift confusion (today's stale `modeller/terminal_rules.db` vs the rebaked one w
   (they have deep services) — and do they ultimately need their OWN mining (a 3rd standard)? This answers
   "where is the class boundary" empirically. Hospital (19670 MEP) is the stress test for the O(n) gate/router.
 
+## ✅ POC RESULT (2026-06-27 — Steps 0-2 DONE, witnessed; user: "sufficient for POC, important is it works")
+- **Step 0** ✅ extracted `Ifc2x3_Duplex_Federated.ifc` → `build/Duplex_mep_extracted.db` + meta clone
+  `build/Duplex_mep_meta.db` (ARC253/STR12/**MEP904** carried, 0 failed, 0 bbox_fallback, ROT_TRUTH 1169 ok,
+  all 904 MEP transforms real & distinct, 0 orphans). ⚠ DATA CORRECTION: §THE DATA's specialized classes
+  (IfcPipeSegment/IfcSanitaryTerminal/IfcValve/IfcLightFixture…) DO NOT EXIST — this IFC2x3 model uses GENERIC
+  flow classes only (IfcFlowSegment 427/FlowFitting 358/FlowTerminal 105/FlowController 14/FlowMovingDevice 4=908).
+- **Step 1** ✅ `build/bake_duplex_rules.py` LIVE-mines `build/duplex_rules.db` (16 placement / 10 space_bom /
+  3 routing / 5 place_order / 4 avoidance). Sub-disc (PLB/ELEC/ACMV) recovered NON-INVENT: name-keywords +
+  nearest-neighbour for generic fittings, persisted to `mep_subdisc` table. Storey DERIVED from measured z-gap
+  (split z=1.93, 2 storeys). **§DXM-CLEARANCE (the thesis, MEASURED):** ELEC|PLB **0.416m/0.499m**,
+  ACMV|PLB 0.953m, ACMV|ELEC 1.754m — vs Terminal's 2.27-2.82m plenum numbers. Residential trades share ONE
+  tight ceiling void; forcing the airport's wide cross-disc clearance is what manufactured the SH/DX/SC clashes.
+- **Step 2** ✅ `build/witness_duplex_rules.py` round-trip (mirror §TRM-RT): **PLB GREEN 4/0/0** (the real
+  residential plumbing reproduces — FlowSegment cover 0.93, Fitting 0.85, terminals/controllers array GREEN);
+  **ELEC WEAK** (89 fixtures GREEN, sparse 8-seg conduit honest WEAK); **ACMV RED** (n=2 ducts — a house has
+  ~no ductwork; honest, NOT tuned). PLB fitting→segment chain ratio=1.00 GREEN. seg→seg = structural main-run.
+- **CROSS-BUILDING SURVEY** (user-invited; Terminal LOD400 noted): overall MEP p05 NN is DENSE everywhere
+  (intra-run pipe packing ~0.02-0.12m in Duplex/Hospital/Terminal/offices) — it does NOT discriminate class.
+  The discriminator is the CROSS-disc gap (Terminal 2.4m vs residential 0.4-0.5m). MEP counts: Hospital 19670,
+  Terminal 9733, WBDG_Office 5728, HHS_Office 3390, Clinic 102, Duplex 904, SC 73.
+- **REMAINING (not blocking POC):** Step 3 = walk `duplex_rules.db` onto SH/SC via `disc_walker.js` (rules=duplex
+  variant of `witness_disc_walk_generalize.js`) → prove the RED-clash count COLLAPSES with residential clearances
+  (this is the final clash-cure proof; rules+oracle are ready). Step 4 = Clinic/Hospital scale tier + class
+  boundary. DEPLOY: per §DATA LOCALITY, copy `duplex_rules.db` to a `modeller/` GH copy with provenance stamp.
+
 ## ACCEPTANCE / WHAT "DONE" LOOKS LIKE
 - `duplex_rules.db` round-trips GREEN (or honest WEAK) on DX's own MEP (§DX-RT, mirror §TRM-RT-DISC).
 - With DX residential clearances, SH/DX/SC walk with **few/zero irreducible RED clashes** (the gate flags,
