@@ -197,20 +197,27 @@ discipline returns **REFUSE — no measured rule** rather than guessing.
 
 ### Why the right standard matters — clash collapse
 
-The walk also gates clashes between the disciplines it placed. Using the **right** standard for the building
-class collapses the phantom clashes a mismatched (too-wide) standard would raise. Same layout, same elements —
+The walk also gates clashes between the fixtures it placed. Using the **right** standard for the building
+class collapses the phantom clashes a mismatched (too-wide) standard would raise. Same layout, same fixtures —
 only the clearance standard changes (`build/logs/witness_disc_walk_duplex_generalize.log`, gated irreducible
 residual):
 
 | Building | Residual @ large-complex standard | Residual @ residential standard | Collapse |
 |---|---:|---:|---:|
-| SampleHouse | 2 235 | **11** | 99.5 % |
-| Duplex | 3 172 | **37** | 98.8 % |
-| SampleCastle | 360 | **1** | 99.7 % |
+| SampleHouse | 9 | **4** | 56 % |
+| Duplex | 32 | **2** | 94 % |
+| SampleCastle | 501 | **3** | 99.4 % |
 
-Forcing a plenum-scale clearance onto a house turns ordinary close-coordinated runs into thousands of false
-clashes; the residential standard reports the *real* handful. (Every residual is **flagged, none silent** — the
-walk never hides a clash to make the number look good.)
+The plenum-scale (large-complex) clearance flags far more phantom clashes than the residential one, and the gap
+widens with building size — on the dense castle it is **501 vs 3**. (Every residual is **flagged, none silent** —
+the walk never hides a clash to make the number look good.)
+
+> These are clashes between **generated** fixtures (the walk fills a discipline the building lacks), so they
+> illustrate the *clearance standard's* effect, not a measured fact about a real building — the fixture **count**
+> is exact (area-scaled from measured quantity), the **positions** are plausible, not landed. The measured,
+> real-building evidence is the survey in the next-but-one table. *(Earlier builds of this table showed much
+> larger numbers; those were inflated by a placer that tiled the floor area instead of scaling the measured
+> per-floor count — fixed 2026-06-28, witness `witness_disc_walk_density.js` 43/0.)*
 
 ### Does the residential standard reproduce a real house's MEP?
 
