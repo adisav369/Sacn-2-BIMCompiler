@@ -942,6 +942,67 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#walk-disciplines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Walk · Disciplines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Walk · Disciplines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-a-walk-actually-places" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a walk actually places
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-the-right-standard-matters-clash-collapse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the right standard matters — clash collapse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#does-the-residential-standard-reproduce-a-real-houses-mep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does the residential standard reproduce a real house's MEP?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-real-finding-its-density-not-clearance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The real finding — it's density, not clearance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3479,6 +3540,67 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#walk-disciplines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Walk · Disciplines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Walk · Disciplines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-a-walk-actually-places" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a walk actually places
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-the-right-standard-matters-clash-collapse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the right standard matters — clash collapse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#does-the-residential-standard-reproduce-a-real-houses-mep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Does the residential standard reproduce a real house's MEP?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-real-finding-its-density-not-clearance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The real finding — it's density, not clearance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3720,6 +3842,267 @@ list of every tool's icon, name, and keyboard shortcut (<code>Esc</code> always 
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="walk-disciplines">Walk · Disciplines<a class="headerlink" href="#walk-disciplines" title="Permanent link">&para;</a></h2>
+<p>The inversion above promises that when you open a bare <strong>ARC</strong> building, <em>the other disciplines fill
+themselves in</em>. That is the <strong>Walk · Disciplines</strong> roster in the Outliner. You pick a discipline that is
+<strong>absent</strong> from the building — Structure, Electrical, Fire-Protection, Plumbing, HVAC — and the modeller
+<strong>walks</strong> it: it places that trade's elements at the <strong>measured cadence</strong> of a real coordinated building,
+chains the runs it can, gates the clashes, and <strong>honestly refuses</strong> when the building has nothing to hang the
+trade on. Nothing is invented — every placement uses a spacing/clearance rule <em>mined from a real IFC model</em>.</p>
+<p><strong>One engine, two standards.</strong> A single walker (<code>disc_walker.js</code>) drives every discipline — the discipline is
+just a data filter, not a separate code path. It carries <strong>two measured rule-sets</strong>, and the modeller
+<strong>auto-selects</strong> by building class:</p>
+<table>
+<thead>
+<tr>
+<th>Building class</th>
+<th>Standard used</th>
+<th>Mined from</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>House / residential (SampleHouse, Duplex, SampleCastle)</td>
+<td><strong>residential</strong> (<code>duplex_rules.db</code>)</td>
+<td>the Duplex's <em>own</em> real MEP — 908 elements</td>
+<td>tight residential cadence (~0.5 m trade separation)</td>
+</tr>
+<tr>
+<td>Large / complex (airport, hospital)</td>
+<td><strong>large-complex</strong> (<code>terminal_rules.db</code>)</td>
+<td>a real airport terminal</td>
+<td>sparse, plenum-scale cadence</td>
+</tr>
+</tbody>
+</table>
+<p>On open you'll see <code>§DW-PROV</code> print the standard and its provenance stamp, so you always know which rule-set is
+driving the walk and where it came from. The rest of this section is the <strong>evidence</strong> that the walk produces
+sensible numbers — every figure below traces to a witnessed <code>§</code>-log from the build (no estimates).</p>
+<h3 id="what-a-walk-actually-places">What a walk actually places<a class="headerlink" href="#what-a-walk-actually-places" title="Permanent link">&para;</a></h3>
+<p>This is what you see in the status line when you walk each discipline on the three residential buildings
+(<code>§DW §WALK …</code>, from <code>build/logs/witness_disc_walk_generalize.log</code>). <em>Placed</em> is how many elements the walk
+seated; <em>chains</em> is how many runs it could link end-to-end; the honesty note is what the walk reported when a
+trade had nothing to route:</p>
+<table>
+<thead>
+<tr>
+<th>Building (storeys)</th>
+<th>Discipline</th>
+<th style="text-align: right;">Placed</th>
+<th style="text-align: right;">Chains</th>
+<th>Honesty note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SampleHouse</strong> (3)</td>
+<td>Fire-Protection</td>
+<td style="text-align: right;">55</td>
+<td style="text-align: right;">0</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Electrical</td>
+<td style="text-align: right;">159</td>
+<td style="text-align: right;">0</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Structure</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">1</td>
+<td>members linked, no measured gap</td>
+</tr>
+<tr>
+<td></td>
+<td>Plumbing</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0</td>
+<td>~no pipes in a small house → honest</td>
+</tr>
+<tr>
+<td><strong>Duplex</strong> (5)</td>
+<td>Fire-Protection</td>
+<td style="text-align: right;">303</td>
+<td style="text-align: right;">0</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Electrical</td>
+<td style="text-align: right;">771</td>
+<td style="text-align: right;">0</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Structure</td>
+<td style="text-align: right;">162</td>
+<td style="text-align: right;">1</td>
+<td>members linked</td>
+</tr>
+<tr>
+<td></td>
+<td>Plumbing</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">0</td>
+<td>sparse → honest</td>
+</tr>
+<tr>
+<td><strong>SampleCastle</strong> (7)</td>
+<td>Fire-Protection</td>
+<td style="text-align: right;">2 665</td>
+<td style="text-align: right;">0</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Electrical</td>
+<td style="text-align: right;">8 123</td>
+<td style="text-align: right;">0</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Structure</td>
+<td style="text-align: right;">1 836</td>
+<td style="text-align: right;">1</td>
+<td>members linked</td>
+</tr>
+<tr>
+<td></td>
+<td>Plumbing</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">0</td>
+<td>sparse → honest</td>
+</tr>
+</tbody>
+</table>
+<p>Place counts scale with footprint (a 7-storey castle gets ~50× the fixtures of a 3-storey house) because the
+<strong>cadence is constant</strong> — the same measured spacing rule simply tiles a bigger floor. Walking an <em>unknown</em>
+discipline returns <strong>REFUSE — no measured rule</strong> rather than guessing.</p>
+<h3 id="why-the-right-standard-matters-clash-collapse">Why the right standard matters — clash collapse<a class="headerlink" href="#why-the-right-standard-matters-clash-collapse" title="Permanent link">&para;</a></h3>
+<p>The walk also gates clashes between the disciplines it placed. Using the <strong>right</strong> standard for the building
+class collapses the phantom clashes a mismatched (too-wide) standard would raise. Same layout, same elements —
+only the clearance standard changes (<code>build/logs/witness_disc_walk_duplex_generalize.log</code>, gated irreducible
+residual):</p>
+<table>
+<thead>
+<tr>
+<th>Building</th>
+<th style="text-align: right;">Residual @ large-complex standard</th>
+<th style="text-align: right;">Residual @ residential standard</th>
+<th style="text-align: right;">Collapse</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SampleHouse</td>
+<td style="text-align: right;">2 235</td>
+<td style="text-align: right;"><strong>11</strong></td>
+<td style="text-align: right;">99.5 %</td>
+</tr>
+<tr>
+<td>Duplex</td>
+<td style="text-align: right;">3 172</td>
+<td style="text-align: right;"><strong>37</strong></td>
+<td style="text-align: right;">98.8 %</td>
+</tr>
+<tr>
+<td>SampleCastle</td>
+<td style="text-align: right;">360</td>
+<td style="text-align: right;"><strong>1</strong></td>
+<td style="text-align: right;">99.7 %</td>
+</tr>
+</tbody>
+</table>
+<p>Forcing a plenum-scale clearance onto a house turns ordinary close-coordinated runs into thousands of false
+clashes; the residential standard reports the <em>real</em> handful. (Every residual is <strong>flagged, none silent</strong> — the
+walk never hides a clash to make the number look good.)</p>
+<h3 id="does-the-residential-standard-reproduce-a-real-houses-mep">Does the residential standard reproduce a real house's MEP?<a class="headerlink" href="#does-the-residential-standard-reproduce-a-real-houses-mep" title="Permanent link">&para;</a></h3>
+<p>The residential standard was mined from the Duplex's own MEP — so the acid test is whether it <em>re-grows</em> that
+same MEP (<code>build/logs/witness_duplex_rules.log</code>, <code>§DXM-RT</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Discipline</th>
+<th>Verdict</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plumbing</td>
+<td>✅ <strong>GREEN</strong> (4/4 classes)</td>
+<td>the bulk of a house's MEP reproduces — segments cover 0.93, fittings 0.85</td>
+</tr>
+<tr>
+<td>Electrical</td>
+<td>🟡 <strong>WEAK</strong></td>
+<td>fixtures (receptacles/lights, n = 89) GREEN; the sparse 8-segment conduit is honestly WEAK</td>
+</tr>
+<tr>
+<td>HVAC</td>
+<td>🔴 <strong>RED</strong> (n = 2)</td>
+<td>a house has ~no ductwork — honest RED, <em>not</em> a failure (there is nothing to reproduce)</td>
+</tr>
+</tbody>
+</table>
+<p>RED/WEAK here are <strong>honesty</strong>, not breakage: a single-family house genuinely has almost no ducting, so the walk
+declines to fabricate it.</p>
+<h3 id="the-real-finding-its-density-not-clearance">The real finding — it's density, not clearance<a class="headerlink" href="#the-real-finding-its-density-not-clearance" title="Permanent link">&para;</a></h3>
+<p>Surveying four real, fully-coordinated buildings (<code>build/logs/survey_class_boundary_postfix.log</code>, <code>§CB</code>), the
+trade-to-trade separation is <em>about the same everywhere</em> — there is <strong>no clearance class-boundary</strong>. The
+"phantom-flag" column is the share of a building's <em>real</em> trade pairs that each standard wrongly calls a clash:</p>
+<table>
+<thead>
+<tr>
+<th>Building</th>
+<th style="text-align: right;">Median cross-disc clearance</th>
+<th style="text-align: right;">Phantom-flagged by residential</th>
+<th style="text-align: right;">Phantom-flagged by large-complex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Duplex (residential)</td>
+<td style="text-align: right;">1.10 m</td>
+<td style="text-align: right;">1.7 %</td>
+<td style="text-align: right;">0.7 %</td>
+</tr>
+<tr>
+<td>Clinic (healthcare)</td>
+<td style="text-align: right;">0.62 m</td>
+<td style="text-align: right;">3.2 %</td>
+<td style="text-align: right;">0.4 %</td>
+</tr>
+<tr>
+<td>Hospital (LOD400)</td>
+<td style="text-align: right;">0.62 m</td>
+<td style="text-align: right;">2.1 %</td>
+<td style="text-align: right;">0.4 %</td>
+</tr>
+<tr>
+<td>Terminal (LOD400 airport)</td>
+<td style="text-align: right;">0.43 m</td>
+<td style="text-align: right;">11.4 %</td>
+<td style="text-align: right;">4.8 %</td>
+</tr>
+</tbody>
+</table>
+<p>The tightest real trade pair (electrical vs plumbing) sits at ~0.45–0.62 m in <em>every</em> building, house to airport.
+What separates classes is <strong>density and count</strong>, not clearance — a takeaway that corrected an earlier
+Terminal rule that over-stated separation (it had been flagging 37.5 % of the airport's <em>own</em> coordinated MEP;
+re-mined, that drops to 4.8 %).</p>
+<blockquote>
+<p><strong>Deeper proof.</strong> The full mining, round-trip and boundary analysis lives in the resume cards
+<code>prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md</code> and <code>prompts/RESUME_TERMINAL_RULE_MINING.md</code>, each backed by
+the witnessed <code>build/logs/</code> set summarised above.</p>
+</blockquote>
 <hr />
 <p><em>Part of <a href="../USER_GUIDE/">BIM OOTB</a>. Copyright (c) 2025–2026 Redhuan D. Oon. MIT Licensed.</em></p>
 
