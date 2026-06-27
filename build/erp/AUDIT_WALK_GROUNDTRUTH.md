@@ -20,6 +20,16 @@
 
 ---
 
+## STATUS — ALL FINDINGS RESOLVED (2026-06-28)
+
+F-WALK-1 ✅ (LANDED↔ERP.db drop-in witnessed, `witness_disc_walk_erp_landed.js` 4/0) ·
+F-WALK-2 ✅ (roof area-scaled not cap-tiled, `witness_disc_walk_roof_bound.js` 10/0) ·
+F-WALK-3 ✅ (routing `src_guids` backfilled real, 0 empty). Full disc-walker suite **77/0**.
+Engine honesty contract complete: **every walked set is LANDED (real→real ≤1e-6) or count-exact GENERATED with
+measured density**. Remaining = a DEPLOY step (re-stamped `terminal_rules.db` → `bim-ootb/modeller/`), not a finding.
+
+---
+
 ## 0 · Headline
 
 The disc-walk produces **two epistemically distinct classes**, and on inspection the engine **already labels them
@@ -108,10 +118,12 @@ Class = this audit's. Evidence = a re-run `§` line (`build/erp/audit_<witness>.
     `witness_disc_walk_roof_bound.js` (10/0): measured `src_storey_area_m2` stamped → roof area-scaled to
     **15 273** (count-exact, envelope-bound, rules≡erp). All 37 terminal placement rules now carry measured src-area
     (uniform model with duplex). Full suite **77/0** (6+43+14+4+10).
-- **MINOR — F-WALK-3 (provenance):** 4 of 11 `ad_routing_measured` rows (PLB nn/main/riser/valve) carry **empty
-  `src_guids`** in `TRM001…sql:116,118,120,122`. Does NOT affect landing (segment endpoints come from the live
-  building at walk time, not from the rule) — but "every row traces to src_guids" is false for the routing table;
-  the *gap params* are measured, the *witness elements they were measured from* are not recorded for those 4 rows.
+- **RESOLVED — F-WALK-3 (provenance):** *Was:* 4 of 11 `ad_routing_measured` rows (PLB nn/main/riser/valve) carried
+  **empty `src_guids`**. *Now closed by* `build/stamp_routing_src_guids.py`: each backfilled with REAL Terminal
+  elements of the measured class (nn rows = actual nn-pair `from_guids`; main/riser = real `IfcPipeSegment`
+  samples) — **20/20 verified real `elements_meta` rows, 0 empty remaining** in both terminal_rules.db and ERP.db.
+  `params_json`/`n_measured` untouched (nnchain still 6/0 → landing unchanged). The routing table now matches the
+  placement table's provenance discipline.
 
 **Net:** the doctrine's LANDED-vs-GENERATED split is **real and honestly labelled by the engine.** Exact-landing is
 **CONFIRMED for routed segments** (answering the PROGRESS.md "exact-landing UNCONFIRMED" item — for the routing
@@ -132,8 +144,9 @@ layer) and the GENERATED fixtures correctly claim count-only. The remaining expo
    count-exact, rules≡erp) — `witness_disc_walk_roof_bound.js` (W-TRM-ROOF-BOUND 10/0). Uniform with duplex.
    **Deploy follow-up:** push the re-stamped `terminal_rules.db` to `bim-ootb/modeller/` (live modeller copy still
    pre-stamp — drift until deployed; engine-side proven, deploy is a separate OCI/PR step).
-3. **F-WALK-3 — backfill `src_guids` on the 4 PLB routing rows** (nn/main/riser/valve) so the routing table matches
-   the placement table's provenance discipline (every measured row names the Terminal elements it was measured from).
+3. **F-WALK-3 — ✅ DONE 2026-06-28.** `build/stamp_routing_src_guids.py` backfilled the 4 PLB routing rows with real
+   Terminal elements (20/20 real, 0 empty in both DBs); params untouched. Routing table now matches placement
+   provenance discipline.
 4. **Headline hygiene:** in the `Walk · Disciplines` roster / ModellerGuide, render the **per-disc class** — LANDED
    (has real chains) vs GENERATED-count-exact vs GENERATED-unbounded(roof) — so a viewer never reads a placed roof
    count as if it were a landed quantity. The data to do this already exists (`prov=`, `chainSegs`, `§DW-CAP`).

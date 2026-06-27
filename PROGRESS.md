@@ -45,9 +45,11 @@ both DBs 0-mismatch). Roof now AREA-SCALED not bbox-tile-capped: SC roof 233374�
 count-exact B2 0-tol, prov=placed:array-density, rules≡erp); DX 3659. Uniform model w/ duplex. Full disc-walker
 suite **77/0** (nnchain6+density43+erp-equiv14+erp-landed4+roof-bound10); F-WALK-1 equivalence PRESERVED.
 **Engine honesty contract: every walked set now LANDED (real→real 1e-6) or count-exact GENERATED w/ measured density.**
-⚠ DEPLOY follow-up: re-stamped terminal_rules.db NOT yet pushed to bim-ootb/modeller (live copy pre-stamp = drift;
-engine proven, deploy separate). Still open: F-WALK-3 4/11 PLB routing rows empty src_guids (provenance nit, doesn't
-affect landing — endpoints come from live building).
+**F-WALK-3 ✅ CLOSED 2026-06-28** (`stamp_routing_src_guids.py`): 4 empty PLB routing src_guids backfilled w/ REAL
+Terminal elements (nn rows=actual nn-pair from_guids, main/riser=real IfcPipeSegment); 20/20 real, 0 empty in both
+DBs; params untouched (nnchain still 6/0). **AUDIT NOW ZERO open findings — all 3 RESOLVED** (`AUDIT_WALK_GROUNDTRUTH.md
+§STATUS`). ⚠ DEPLOY follow-up: re-stamped terminal_rules.db NOT yet pushed to bim-ootb/modeller (live copy pre-stamp
+= drift; engine proven, deploy separate step).
 **NB (scope, user-flagged):** these fixes harden the rule/POSITION layer (LANDED + count-exact). They are NOT mesh
 placement. Walk render today = uniform 0.18m InstancedMesh marker cubes (`modeller.html:_renderDiscWalk`), segs not
 drawn. Java-equivalent LOD meshes (catalog geometry) = SEPARATE RosettaStone/compiler track; disc-walker doesn't feed it.
