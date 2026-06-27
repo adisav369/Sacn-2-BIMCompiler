@@ -54,9 +54,26 @@ cleared; the already-live area-scale engine (#558) now activated for the Termina
 **NB (scope):** F-WALK-1/2/3 + deploy (#559) + LANDED-tube LOD render (#560) ALL DONE this session — see the
 "LOD-mesh render" section appended below. Walk now shows LANDED routes as exact tubes + GENERATED fixtures as
 marker cubes (the honest visual split).
-**Next (optional, new track):** GENERATED-fixture representative primitives — replace fixture marker cubes with
-per-class primitives sized from measured bbox, clearly labelled plausible-not-landed (NOT fake catalog meshes; an
-absent discipline has no source geometry). Lower priority; everything above is shipped+live.
+**✅ W-DW-PRIM CLOSED + LIVE 2026-06-28** (GENERATED-fixture representative primitives): the uniform 0.18³
+marker cube in modeller `_renderDiscWalk` is now a per-ifc_class BOX sized to that class's MEASURED median bbox.
+NON-INVENT: SIZE only (count+position UNCHANGED, P4); SHAPE stays a box (no fake catalog mesh — only the DIMS
+are measured); absent class → honest 0.18 fallback. `build/stamp_src_bbox.py <rules.db> <meta.db>` stamps
+bbox_dx/dy/dz (median per class off the meta DB, col-guard+idempotent) → terminal_rules (13 cls/Terminal_meta) +
+duplex_rules (4 cls/Duplex_mep_meta). `disc_walker.js` repRules+place carry bx/by/bz; `modeller.html`
+_renderDiscWalk groups by ifc_class → BoxGeometry(bx,by,bz), 3-material split preserved, logs §DW-PRIM real dims.
+**Witnesses:** `witness_disc_prim.js` W-DW-PRIM **10/10** (P1 stamped==independent meta median 0-tol · P2
+IfcNope→null→0.18 fallback · P3 carried · P4 count+xyz≡bbox-stripped walk · P5 box transform exact) +
+`smoke_disc_prim.js` 3/3. **§DWG repaired to 49/0** (was pre-existing-RED 39/10 — the card's "49" baseline; F-WALK-2
+made fixtures area-density placed but G1 still asserted bbox±1e-6 [occupancy cell-centres sit ≤½-cell past the
+footprint] and G2 the old tile cadence [density STRIDES → local NN≠pitch by design]; WITNESS fixed to assert the
+right invariant: G1 tol=½ occupancy cell, G2=DENSITY-TRANSFERS count==Σround(density×area)|envelope EXACT). Full
+suite: density43·nnchain6·erp-equiv14·erp-landed4·roof10·§DWG49·§DXG12·tube5·shim6·prim10.
+**Also §DW_IDB (OFFLINE TODO, same PR):** `dwInit` rules-DB load now routes through the shared bim_ootb_cache/'dbs'
+store (IDB hit→miss fetch+put→bare-fetch fallback) → terminal_rules.db/duplex_rules.db open w/ NO network on
+revisit (makes sw.js "cached in IndexedDB" true). **DEPLOYED LIVE** (bim-ootb PR #562 MERGED, sw v8): live
+red1oon.github.io/bim-ootb/modeller curl-verified — §DW-PRIM render + §DW_IDB present, both live rules DBs
+byte-identical to canonical w/ bbox cols. bim-compiler 28b47e01 pushed (lane/benchmark-clash-resolution).
+Spec=`prompts/RESUME_DISC_WALKER_ENVELOPE_BOUND.md §PRIM + §OFFLINE TODO`.
 
 ## SC IFC2BOM onboarding + Modelling-from-cascade vision — 2026-06-23 (branch lane/benchmark-clash-resolution)
 Cards: `prompts/RESUME_DROP_OUTLINER_ROADMAP.md` §1, `prompts/MODELLING_FROM_BOM_CASCADE.md`, `prompts/ONTOLOGICAL_BOM_EXTRACTION.md`.
