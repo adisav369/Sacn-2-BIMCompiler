@@ -184,6 +184,7 @@ def main():
     placement_rule  TEXT,                 -- FK -> ad_placement_offset.placement_rule
     standard        TEXT,                 -- copied from the FK'd named rule
     n_measured      INTEGER,
+    src_storey_area_m2 REAL,             -- measured source-storey footprint (area-density bound)
     provenance      TEXT,
     src_guids       TEXT
 );""")
@@ -306,13 +307,14 @@ def main():
         a("INSERT INTO ad_placement_measured "
           "(disc,ifc_class,ref_kind,storey_scope,from_edge_x,from_edge_y,"
           "z_rule,z_offset,x_ref,y_ref,spacing_x_m,spacing_y_m,z_band_lo,"
-          "z_band_hi,placement_rule,standard,n_measured,provenance,src_guids) "
-          "VALUES (%s,%s,%s,%s,%s,%s,'FLOOR',%s,'CENTER','CENTER',%s,%s,%s,%s,%s,%s,%s,%s,%s);" % (
+          "z_band_hi,placement_rule,standard,n_measured,src_storey_area_m2,provenance,src_guids) "
+          "VALUES (%s,%s,%s,%s,%s,%s,'FLOOR',%s,'CENTER','CENTER',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);" % (
               q(r["disc"]), q(r["ifc_class"]), q(r["ref_kind"]), q(r["storey_scope"]),
               q(r["dx"] or 0), q(r["dy"] or 0), q(r["dz"]),
               q(r["spacing_x_m"] or 0), q(r["spacing_y_m"] or 0),
               q(r["z_band_lo"]), q(r["z_band_hi"]),
               q(named), q(std), q(r["n_measured"]),
+              q(r["src_storey_area_m2"] if "src_storey_area_m2" in r.keys() else None),
               q(prov_tag(r["provenance"])), q(r["src_guids"])))
         counts["placement"] += 1
         emit_anchors(r["src_guids"])
@@ -366,7 +368,7 @@ def main():
     a("""CREATE VIEW rule_placement AS
   SELECT disc, ifc_class, ref_kind, from_edge_x AS dx, from_edge_y AS dy,
          z_offset AS dz, spacing_x_m, spacing_y_m, z_band_lo, z_band_hi,
-         storey_scope, n_measured, provenance, src_guids
+         storey_scope, n_measured, src_storey_area_m2, provenance, src_guids
   FROM ad_placement_measured;""")
     a("DROP VIEW IF EXISTS rule_routing;")
     a("""CREATE VIEW rule_routing AS

@@ -37,13 +37,22 @@ produces 2 honestly-labelled classes — **LANDED** routed segs (Terminal PLB 43
 **F-WALK-1 ✅ CLOSED 2026-06-28** (`witness_disc_walk_erp_landed.js` W-TRM-WALK-LANDED 4/0): walked MEP-rich Terminal
 thru ERP.db TRM001 views → 5315 landed segs IDENTICAL to terminal_rules.db (L2 from_guid/to_guid/xyz/gap/bound),
 non-vacuous (L1 segs>0), 28174 placements ≡ (L3), all on real geometry ≤1e-6 (L4). LANDED-layer ERP-consume path
-proven, not asserted. Still open: F-WALK-2 roof/IfcPlate bbox-tiles (SC roof=233374, cap not area-scale — engine
-logs "re-bake"); F-WALK-3 4/11 PLB routing rows empty src_guids.
-**NB (scope, user-flagged):** F-WALK-1 is rule-source EQUIVALENCE (endpoint/position plumbing), NOT mesh placement.
-Walk render today = uniform 0.18m InstancedMesh marker cubes (`modeller.html:_renderDiscWalk`), segs not drawn.
-Java-equivalent LOD meshes (catalog geometry) = the SEPARATE RosettaStone/compiler track; disc-walker does not feed it.
-**Next:** F-WALK-2 re-bake roof/STR with src_area; F-WALK-3 backfill routing src_guids; 3D confidence/clash highlight
-render in outliner.
+proven, not asserted.
+**F-WALK-2 ✅ CLOSED 2026-06-28** (`witness_disc_walk_roof_bound.js` W-TRM-ROOF-BOUND 10/0): `stamp_terminal_src_area.py`
+stamps MEASURED src_storey_area_m2 (z-band footprint from Terminal) on all 37 terminal placement rules; reconcile
+carries it into ERP.db ad_placement_measured + rule_placement view (TRM001 regenerated, diff = placement layer ONLY,
+both DBs 0-mismatch). Roof now AREA-SCALED not bbox-tile-capped: SC roof 233374→15273 (×15, envelope-bound,
+count-exact B2 0-tol, prov=placed:array-density, rules≡erp); DX 3659. Uniform model w/ duplex. Full disc-walker
+suite **77/0** (nnchain6+density43+erp-equiv14+erp-landed4+roof-bound10); F-WALK-1 equivalence PRESERVED.
+**Engine honesty contract: every walked set now LANDED (real→real 1e-6) or count-exact GENERATED w/ measured density.**
+⚠ DEPLOY follow-up: re-stamped terminal_rules.db NOT yet pushed to bim-ootb/modeller (live copy pre-stamp = drift;
+engine proven, deploy separate). Still open: F-WALK-3 4/11 PLB routing rows empty src_guids (provenance nit, doesn't
+affect landing — endpoints come from live building).
+**NB (scope, user-flagged):** these fixes harden the rule/POSITION layer (LANDED + count-exact). They are NOT mesh
+placement. Walk render today = uniform 0.18m InstancedMesh marker cubes (`modeller.html:_renderDiscWalk`), segs not
+drawn. Java-equivalent LOD meshes (catalog geometry) = SEPARATE RosettaStone/compiler track; disc-walker doesn't feed it.
+**Next:** deploy re-stamped terminal_rules.db to bim-ootb; F-WALK-3 backfill routing src_guids; walker LOD-mesh render
+(cylinders on landed segs + catalog geometry on fixtures, replace marker cubes) = the toward-Java-placement track.
 
 ## SC IFC2BOM onboarding + Modelling-from-cascade vision — 2026-06-23 (branch lane/benchmark-clash-resolution)
 Cards: `prompts/RESUME_DROP_OUTLINER_ROADMAP.md` §1, `prompts/MODELLING_FROM_BOM_CASCADE.md`, `prompts/ONTOLOGICAL_BOM_EXTRACTION.md`.

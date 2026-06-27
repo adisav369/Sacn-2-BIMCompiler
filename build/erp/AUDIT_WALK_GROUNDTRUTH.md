@@ -44,9 +44,12 @@ in **two coverage gaps** where the badge outruns the proof:
    through the ERP.db TRM001 views routes **5315 real segments** (L1, non-vacuous) **identical** to
    `terminal_rules.db` — same `from_guid/to_guid/xyz/gap/bound` (L2) — and every ERP.db segment still lands on real
    geometry ≤1e-6 (L4). The LANDED layer's ERP-consume path is now proven, not asserted.
-2. **F-WALK-2 — `roof`/`STR-datum` GENERATED sets escape the count-exact bound.** They still bbox-tile (cap
-   50 k/storey → **233 374** placed for SampleCastle roof) instead of area-scaling. The count-exact guarantee that
-   covers PLB/ELEC **does not cover roof** — and the engine says so itself: `§DW-CAP …no src area — re-bake`.
+2. **F-WALK-2 — ~~`roof`/`STR-datum` GENERATED sets escape the count-exact bound~~ → RESOLVED 2026-06-28.** *Was:*
+   they bbox-tiled to the 50 k/storey cap (SampleCastle roof = **233 374**), a cap artifact not a measured count.
+   *Now closed by* `build/stamp_terminal_src_area.py` (stamps MEASURED `src_storey_area_m2`) + reconcile carrying
+   the column into ERP.db, so the engine area-scales roof. `witness_disc_walk_roof_bound.js` (W-TRM-ROOF-BOUND,
+   10/0): SampleCastle roof **233 374 → 15 273** (×15 fewer), all `prov=placed:array-density`, count-exact
+   (`B2 walked=15273 == Σ round(density×area)|envelope`, 0-tol), bounded by the real occupancy envelope, rules≡erp.
 
 Neither gap touches the LANDED core's correctness; both are **coverage/headline** exposure.
 
@@ -78,8 +81,8 @@ Class = this audit's. Evidence = a re-run `§` line (`build/erp/audit_<witness>.
 
 | Produced set (witness) | Claimed | Refutations applied | **Verdict** | Evidence |
 |---|---|---|---|---|
-| **roof / IfcPlate** SampleCastle | (badged with the rest) | COUNT, TIER | **OVERSTATED** | `§DW-CAP roof/IfcPlate storey=… tile capped to 50213 (no src area — re-bake to area-scale)` ×3 storeys → `§WALK disc=roof …placed=233374`. This is the **bbox-tile cap path**, not `Σ round(density×area)`. The count-exact guarantee proven for PLB/ELEC **does not hold here** — placed (233 374) is a cap artifact, not a measured quantity (the rule's own `n_measured=33324`). |
-| **STR `Member` datum / grid** SC | (badged with the rest) | TIER | **SOFT** | `§WALK disc=STR …placed=1836 chains=1 chainSegs=0 …[Member→Member:no-measured-gap]` — placed by grid cadence, routed segs=0 (`no-measured-gap`). Plausible cadence, but neither count-exact (no area-scale) nor landed (no segs). Rides the same un-bounded path as roof, smaller blast radius. |
+| **roof / IfcPlate** SampleCastle | count-exact | COUNT, TIER → **closed** | **RESOLVED** | *Was OVERSTATED:* `§DW-CAP …tile capped to 50213 (no src area)` → `placed=233374` (cap artifact). *Now:* measured `src_storey_area_m2` stamped → area-scaled. `witness_disc_walk_roof_bound.js` `§B1 all prov=placed:array-density (tile-path=0)`, `§B2 walked=15273 == Σ round(density×area)|envelope`, `§B3 …×15 fewer, no 50k artifact`, `§B4 rules≡erp`. Count is now the measured areal-density × envelope — count-exact, the same guarantee PLB/ELEC carry. |
+| **STR `Member` datum / grid** SC | (badged with the rest) | TIER | **SOFT (improved)** | Now also carries measured `src_storey_area_m2` (STR/Member 0.108/m², density-path; STR/Beam ground-band degenerate z-band area=0 → safe tile-path fallback). Counts are area-scaled where measurable; the no-`src_guids` STR rows remain plausible-cadence (not landed) — acceptable, smaller blast radius than roof. |
 
 ### 1d · The ERP.db drop-in equivalence — **F-WALK-1**
 
@@ -98,12 +101,13 @@ Class = this audit's. Evidence = a re-run `§` line (`build/erp/audit_<witness>.
   *The grail leg holds: routed endpoints are extracted geometry, exact to 1e-6, zero invented.*
 - **SOLID — GENERATED count-exact (Class G, labelled):** PLB/ELEC density placer on all three residents
   (count == measured Σ round(density×area)|envelope, position explicitly **no-fidelity** — the honest disclosure).
-- **RESOLVED — 1:**
+- **RESOLVED — 2:**
   - **F-WALK-1** ERP.db drop-in for the **routing/LANDED** layer — closed by `witness_disc_walk_erp_landed.js` (4/0):
     Terminal walked through the ERP.db views routes 5315 segments identical to `terminal_rules.db`, non-vacuous.
-- **OVERSTATED — 1:**
-  - **F-WALK-2** `roof/IfcPlate` GENERATED count is a **bbox-tile cap artifact (233 374)**, not measured-bound;
-    the count-exact badge does not cover it. `STR Member datum` SOFT (same un-bounded path, smaller).
+  - **F-WALK-2** `roof/IfcPlate` count was a **bbox-tile cap artifact (233 374)** — closed by
+    `witness_disc_walk_roof_bound.js` (10/0): measured `src_storey_area_m2` stamped → roof area-scaled to
+    **15 273** (count-exact, envelope-bound, rules≡erp). All 37 terminal placement rules now carry measured src-area
+    (uniform model with duplex). Full suite **77/0** (6+43+14+4+10).
 - **MINOR — F-WALK-3 (provenance):** 4 of 11 `ad_routing_measured` rows (PLB nn/main/riser/valve) carry **empty
   `src_guids`** in `TRM001…sql:116,118,120,122`. Does NOT affect landing (segment endpoints come from the live
   building at walk time, not from the rule) — but "every row traces to src_guids" is false for the routing table;
@@ -122,10 +126,12 @@ layer) and the GENERATED fixtures correctly claim count-only. The remaining expo
    through the ERP.db TRM001 views** and asserts the **same 5 315 segments** (from_guid/to_guid/xyz/gap/bound) as
    `terminal_rules.db`, non-vacuously (L1 segs>0), all landing on real geometry ≤1e-6 (L4). The LANDED leg's
    ERP-consume path is proven.
-2. **F-WALK-2 — area-scale the `roof`/`STR-datum` rules** (the engine literally requests it: `§DW-CAP …re-bake to
-   area-scale`). Re-bake with `src_storey_area_m2` like `duplex_rules` PLB/ELEC so roof placed-count becomes
-   `Σ round(density×area)` instead of the 50 k/storey cap → brings roof under the same count-exact guarantee and
-   kills the 233 374 artifact. PROGRESS.md already lists "re-bake terminal_rules with src_area for uniform model".
+2. **F-WALK-2 — ✅ DONE 2026-06-28.** `build/stamp_terminal_src_area.py` stamps MEASURED `src_storey_area_m2` on all
+   37 terminal placement rules (z-band footprint from Terminal); reconcile carries it into ERP.db
+   `ad_placement_measured` + the `rule_placement` view. Roof now area-scales (233 374 → 15 273, envelope-bound,
+   count-exact, rules≡erp) — `witness_disc_walk_roof_bound.js` (W-TRM-ROOF-BOUND 10/0). Uniform with duplex.
+   **Deploy follow-up:** push the re-stamped `terminal_rules.db` to `bim-ootb/modeller/` (live modeller copy still
+   pre-stamp — drift until deployed; engine-side proven, deploy is a separate OCI/PR step).
 3. **F-WALK-3 — backfill `src_guids` on the 4 PLB routing rows** (nn/main/riser/valve) so the routing table matches
    the placement table's provenance discipline (every measured row names the Terminal elements it was measured from).
 4. **Headline hygiene:** in the `Walk · Disciplines` roster / ModellerGuide, render the **per-disc class** — LANDED
