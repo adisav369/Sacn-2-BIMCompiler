@@ -301,6 +301,20 @@ the grid-lock crux, not a bug). ELEC array IS GREEN (1.25–2.2m grid); its RED 
   nn chain (E3 — IFC classes survived the reconciliation). Proves §CONVERGENCE "drop-in, not re-interpretation".
 - Reconcile witness now 12/12 (added ad_routing_measured parity).
 
+### §ROUTER-NNCHAIN ✅ DONE 2026-06-27 (W-NNCHAIN 6/6 values + W-ROUTER-NNCHAIN 8/8 wiring) — Router half LIVE
+- `routeChains(disc, bdb)` in `disc_walker.js` (bim-compiler `3939b692`; modeller copy in bim-ootb PR #555): produces
+  real nn-3d segments; spatial-hash O(n); bounded by measured max gap; **routes the TIGHTER of both nn orientations**
+  (the leaf→trunk direction the avg gap was mined from) → all measured-max rules reproduce avg ±25% (pipe 1.14, ducts
+  0.99/0.98). NON-INVENT: every seg joins TWO REAL elements at REAL positions; honest no-neighbour skip; resident→0.
+- Modeller (PR #555): walk PLB/ACMV on the Terminal resident → whole network as instant 3D lines + bounded signed
+  `GEOM_SWEEP` sample (cap 60, `_dw.from_guid/to_guid/gap`) to the op-log, undo/redo. occt is per-sweep so the line
+  view is the live network; the op-log proves the signed/foldable mechanism (honest cap log, never silent).
+- Witnesses: `build/witness_disc_route_nnchain.js` 6/6 (R1 live, R2 0-mismatch/0-drift, R3 gap-bounded, R4 cadence,
+  R5 honest-skip, R6 resident-zero); `modeller/tests/witness_modeller_router_nnchain.js` 8/8. No regression.
+- ⏭ Remaining (lower-pri): `main`/`riser` PLB patterns stay descriptive (need orientation fits) — a later piece.
+
+<details><summary>original SPEC (kept for provenance)</summary>
+
 ### §ROUTER-NNCHAIN — make the Router half LIVE on a real-MEP building (SPEC 2026-06-27)
 **Problem:** the residents (SH/DX/SC) carry no MEP network, so the Router honestly returns 0 chains — the Router half
 has never been *seen* producing geometry. The Terminal (already a modeller resident, `Terminal_meta.db`) IS MEP-rich
@@ -334,9 +348,13 @@ measured max 0.88m, 36 honest no-neighbour, **20ms** (grid bucketing, NOT brute 
 - Headless `modeller/tests/witness_modeller_router_nnchain.js`: open Terminal, walk PLB → `chainSegs>0`, N signed
   `GEOM_SWEEP` ops with `_dw.from_guid/_dw.to_guid` in the op-log, undo/redo clean, no LOAD_FAIL.
 
+</details>
+
 ### NEXT-SESSION (genuinely remaining):
 - **Tack-chain op-log emit** ✅ DONE 2026-06-27 (W-DW-OPLOG 6/6, bim-ootb PR #553 MERGED) — disc-walk placements
   (incl shim:host-wall tacks) commit as signed `GEOM_INSERT` w/ `parameters._dw`, undo/redo clean, markers restored.
+- **Router on real-MEP buildings** ✅ DONE 2026-06-27 (§ROUTER-NNCHAIN above; W-NNCHAIN 6/6 + W-ROUTER-NNCHAIN 8/8,
+  bim-ootb PR #555) — Terminal PLB/ACMV route real nn-3d chains, rendered live + folded to the signed op-log.
 - **DEPLOY** — port the SHIM host-attach + ERP.db drop-in to `bim-ootb/viewer/disc_walker.js`, render the host-wall
   yaw marker, verify headless, sw bump (its own deploy session).
 - ✅ PR #549 MERGED on origin/main (verified: disc_walker.js + terminal_rules.db + sw v737 present); `/tmp/wt-discwalk` removed.

@@ -34,12 +34,22 @@ Three OWN top-level app folders in `bim-ootb/`: **`viewer/` · `erp/` · `modell
    (JSON round-trip, survives scrub/replay); SHIM carries `_dw.host = wall guid`; fold re-renders markers after.
    **W-DW-OPLOG 6/6** (O1 committed=55, O2 _dw.disc roundtrip, O3 SHIM host guid, O4 undo−1, O5 redo, O6 clean).
    W-TERM-WALK 9/9 + W-UX-DISC 8/8 regression-clean.
+6. **Router half LIVE — nn-chains** (bim-compiler `3939b692`; bim-ootb PR #555 feat/router-nnchain, auto-merge armed):
+   `route()` only COUNTED endpoint classes; new `routeChains(disc, bdb)` PRODUCES real nearest-neighbour-3d segments —
+   spatial-hash O(n) (not 16M brute pairs), bounded by the measured max gap, **routes the TIGHTER of the two nn
+   orientations** (the genuine connectivity direction; pulled DuctFitting→AirTerminal ratio 2.06→0.98). NON-INVENT:
+   every segment joins TWO REAL elements at REAL positions, honest no-neighbour skip. Modeller: walk PLB/ACMV on the
+   **Terminal** resident (MEP-rich) → whole network (4314 PLB) as instant 3D lines + bounded signed `GEOM_SWEEP` sample
+   (cap 60, `_dw.from_guid/to_guid/gap`) to the op-log, undo/redo. **W-NNCHAIN 6/6** (values) + **W-ROUTER-NNCHAIN 8/8**
+   (wiring). No regression: generalize 49/49, shim 6/6, erp-equiv 14/14, W-DW-OPLOG/TERM-WALK/UX-DISC all green.
 
 ## NEXT (pick up here)
-- **Router demo on a real-MEP building** — residents have no pipes (Router honest-0). Demo nn-chains on a building WITH
-  IfcPipeSegment/DuctSegment to show the Router half live.
 - **ELEC/STR round-trip REDs** — HONEST, left as-is (ELEC z-band metric harsh but array GREEN; STR off-grid by design
-  = grid-lock crux). Do NOT tune to pass. Separate hard prompt.
+  = grid-lock crux). Do NOT tune to pass. Separate hard prompt — this is the genuine remaining open problem.
+- **Router `main`/`riser` patterns** (lower-pri): nn-chains done; the horizontal-main + vertical-riser PLB patterns
+  stay descriptive (need orientation fits) — a later piece if the demo wants trunk runs, not just nn links.
+- **DEPLOY** the SHIM host-attach + ERP.db drop-in to `bim-ootb/viewer/disc_walker.js` (its own deploy session) —
+  separate from the modeller copy already shipped.
 
 ## HOUSEKEEPING / FLAGS
 - ⚠ bim-ootb local main has an UNPUSHED commit from ANOTHER session: `b261b64 feat(viewer): three r184→r185`
