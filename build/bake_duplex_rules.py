@@ -153,8 +153,31 @@ def derive_storeys(pts):
     return storey_of, split
 
 
+def storey_areas(meta, storey_of):
+    """Per-storey FOOTPRINT area (m²) over ALL source elements, measured the SAME
+    way disc_walker.substrate() measures the target storey: XY bbox of every element's
+    center±bbox/2, grouped by the z-split storey. This is the floor area the areal
+    density (n_measured / area) normalises to — non-invent, both sides measured alike.
+    src_storey_area travels with each placement row so the live placer can area-scale
+    the measured count instead of tiling the bbox (kills the 708k explosion)."""
+    rows = meta.execute(
+        """SELECT t.center_x, t.center_y, t.center_z,
+                  COALESCE(t.bbox_x,0), COALESCE(t.bbox_y,0)
+           FROM element_transforms t""").fetchall()
+    ext = {}  # storey -> [minx,maxx,miny,maxy]
+    for cx, cy, cz, bx, by in rows:
+        s = storey_of(cz)
+        e = ext.setdefault(s, [math.inf, -math.inf, math.inf, -math.inf])
+        e[0] = min(e[0], cx - bx / 2); e[1] = max(e[1], cx + bx / 2)
+        e[2] = min(e[2], cy - by / 2); e[3] = max(e[3], cy + by / 2)
+    out = {}
+    for s, e in ext.items():
+        out[s] = round(max(0.0, e[1] - e[0]) * max(0.0, e[3] - e[2]), 2)
+    return out
+
+
 # ═══════════════════════════ 3. MINE RULES ═══════════════════════════
-def mine(pts, cls_of, subdisc, storey_of, meta_bbox):
+def mine(pts, cls_of, subdisc, storey_of, meta_bbox, storey_area):
     placement, space_bom, routing, place_order, avoidance = [], [], [], [], []
 
     # group elements by (subdisc, storey, ifc_class)
@@ -194,6 +217,7 @@ def mine(pts, cls_of, subdisc, storey_of, meta_bbox):
             z_band_lo=round(percentile(zs, .05), 3),
             z_band_hi=round(percentile(zs, .95), 3),
             storey_scope=storey, n_measured=len(guids),
+            src_storey_area_m2=storey_area.get(storey, 0.0),
             provenance=f'measured:duplex/{sd}/{storey}',
             src_guids=guids[:5]))
 
@@ -341,7 +365,8 @@ def write_db(placement, space_bom, routing, place_order, avoidance):
         CREATE TABLE rule_placement(
             disc TEXT, ifc_class TEXT, ref_kind TEXT, dx REAL, dy REAL, dz REAL,
             spacing_x_m REAL, spacing_y_m REAL, z_band_lo REAL, z_band_hi REAL,
-            storey_scope TEXT, n_measured INTEGER, provenance TEXT, src_guids TEXT);
+            storey_scope TEXT, n_measured INTEGER, src_storey_area_m2 REAL,
+            provenance TEXT, src_guids TEXT);
         CREATE TABLE rule_space_bom(
             disc TEXT, scope TEXT, ifc_class TEXT, count_per INTEGER, spacing_m REAL,
             n_measured INTEGER, provenance TEXT, src_guids TEXT);
@@ -357,10 +382,11 @@ def write_db(placement, space_bom, routing, place_order, avoidance):
     """)
     g = lambda r: ",".join(r['src_guids'])
     for r in placement:
-        cur.execute("INSERT INTO rule_placement VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        cur.execute("INSERT INTO rule_placement VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (r['disc'], r['ifc_class'], r['ref_kind'], r['dx'], r['dy'], r['dz'],
              r['spacing_x_m'], r['spacing_y_m'], r['z_band_lo'], r['z_band_hi'],
-             r['storey_scope'], r['n_measured'], r['provenance'], g(r)))
+             r['storey_scope'], r['n_measured'], r['src_storey_area_m2'],
+             r['provenance'], g(r)))
     for r in space_bom:
         cur.execute("INSERT INTO rule_space_bom VALUES (?,?,?,?,?,?,?,?)",
             (r['disc'], r['scope'], r['ifc_class'], r['count_per'], r['spacing_m'],
@@ -388,8 +414,11 @@ def main():
     log(f"§DXM-BEGIN mining {os.path.basename(META_DB)} -> {os.path.basename(OUT_DB)}")
     pts, cls_of, name_of, subdisc, meta_bbox = classify(meta)
     storey_of, split = derive_storeys(pts)
+    storey_area = storey_areas(meta, storey_of)
+    log(f"§DXM-AREA src storey footprints (m²): " +
+        ", ".join(f"{s}={a:.0f}" for s, a in sorted(storey_area.items())))
     placement, space_bom, routing, place_order, avoidance = mine(
-        pts, cls_of, subdisc, storey_of, meta_bbox)
+        pts, cls_of, subdisc, storey_of, meta_bbox, storey_area)
     write_db(placement, space_bom, routing, place_order, avoidance)
     log(f"baked {OUT_DB}")
     log(f"  rule_placement   = {len(placement)}")
