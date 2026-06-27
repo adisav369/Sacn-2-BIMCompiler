@@ -51,11 +51,12 @@ DBs; params untouched (nnchain still 6/0). **AUDIT NOW ZERO open findings — al
 §STATUS`). **DEPLOYED LIVE 2026-06-28** (bim-ootb PR #559 MERGED, sw v6): terminal_rules.db content_sha b72cf8d5b487
 on red1oon.github.io/bim-ootb/modeller — curl-verified (src_area present, roof 2785.46, 0 empty routing guids). Drift
 cleared; the already-live area-scale engine (#558) now activated for the Terminal-rules Walk roster.
-**NB (scope, user-flagged):** these fixes harden the rule/POSITION layer (LANDED + count-exact). They are NOT mesh
-placement. Walk render today = uniform 0.18m InstancedMesh marker cubes (`modeller.html:_renderDiscWalk`), segs not
-drawn. Java-equivalent LOD meshes (catalog geometry) = SEPARATE RosettaStone/compiler track; disc-walker doesn't feed it.
-**Next:** deploy re-stamped terminal_rules.db to bim-ootb; F-WALK-3 backfill routing src_guids; walker LOD-mesh render
-(cylinders on landed segs + catalog geometry on fixtures, replace marker cubes) = the toward-Java-placement track.
+**NB (scope):** F-WALK-1/2/3 + deploy (#559) + LANDED-tube LOD render (#560) ALL DONE this session — see the
+"LOD-mesh render" section appended below. Walk now shows LANDED routes as exact tubes + GENERATED fixtures as
+marker cubes (the honest visual split).
+**Next (optional, new track):** GENERATED-fixture representative primitives — replace fixture marker cubes with
+per-class primitives sized from measured bbox, clearly labelled plausible-not-landed (NOT fake catalog meshes; an
+absent discipline has no source geometry). Lower priority; everything above is shipped+live.
 
 ## SC IFC2BOM onboarding + Modelling-from-cascade vision — 2026-06-23 (branch lane/benchmark-clash-resolution)
 Cards: `prompts/RESUME_DROP_OUTLINER_ROADMAP.md` §1, `prompts/MODELLING_FROM_BOM_CASCADE.md`, `prompts/ONTOLOGICAL_BOM_EXTRACTION.md`.
