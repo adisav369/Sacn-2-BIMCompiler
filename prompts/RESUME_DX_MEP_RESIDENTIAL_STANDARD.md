@@ -53,6 +53,22 @@ are a separate scale tier tested last.
   Hospital_3. Plus `docs/HospitalAnalysis.md`, existing MEP infra (DV037/039/040/043, ad_mep schema,
   scripts/witness_mep_coordination_route.js).
 
+## 🗂 DATA LOCALITY & DRIFT — GH-modeller vs OCI-viewer MUST stay SEPARATE (user 2026-06-27)
+The Modeller and the Viewer treat building data DIFFERENTLY and must NOT share copies — that mixing is the
+drift confusion (today's stale `modeller/terminal_rules.db` vs the rebaked one was exactly this).
+- **Modeller (GH-Pages):** plain `fetch()` of `modeller/*.db` into an in-memory sql.js DB; the SW **skips .db**
+  (network, no precache); curated ARC/STR substrate + `*_rules.db` for the disc-walker. Small, GH-served, repo-tracked.
+- **Viewer (OCI):** `buildings/*.db` uploaded to the OCI bucket, **httpvfs range-streamed** with DLOD / full-hydrate
+  guard (large city/Hospital DBs). Different transport, different shape, different lifecycle.
+- **Current overlap = the hazard:** `Duplex_extracted.db`, `Terminal_meta.db`, `Terminal_geo.db` exist in BOTH
+  `modeller/` and `buildings/` and can silently diverge. Clinic/Hospital exist ONLY in `buildings/` (viewer/OCI).
+- **RULE for this plan:** every DB the Modeller needs (re-extracted `Duplex_mep_meta.db`, `duplex_rules.db`,
+  and modeller-appropriate Clinic/Hospital extractions for Step 4) gets its **own GH copy under `modeller/`**,
+  produced from the bim-compiler source (extract/bake) and COPIED in on deploy — **never point the modeller at
+  `buildings/`** and never assume the two mirror. Stamp provenance so a stale copy is detectable (e.g. a
+  `rules_meta(version, built_from, sha)` row, or filename/version the §-log prints on dwInit), so we never again
+  ship the live engine against a stale DB. Viewer/OCI copies are produced separately and are NOT touched here.
+
 ## THE PLAN (next session — ordered, each step witness-first, mirrors the Terminal arc)
 ### Step 0 — Re-extract DX MEP (the missing substrate)
 - Extract `Ifc2x3_Duplex_MEP.ifc` (or `_Federated`) → a `Duplex_mep_meta.db` with `elements_meta` +
@@ -81,6 +97,9 @@ are a separate scale tier tested last.
   the modeller alongside terminal_rules.db (building-class auto-select, or a user toggle).
 
 ### Step 4 — Scale tier: huge complex (Clinic → Hospital)
+- ⚠ Clinic/Hospital live ONLY in `buildings/` (viewer/OCI). To test them in the MODELLER, first make their
+  **own GH copies under `modeller/`** (modeller-appropriate extraction), per §DATA LOCALITY — do NOT point the
+  modeller at `buildings/`.
 - Test BOTH standards on Clinic/Hospital: do the huge complexes round-trip better under Terminal-class rules
   (they have deep services) — and do they ultimately need their OWN mining (a 3rd standard)? This answers
   "where is the class boundary" empirically. Hospital (19670 MEP) is the stress test for the O(n) gate/router.
