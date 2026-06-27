@@ -286,6 +286,16 @@ done
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════
+# Phase 8c: Measured Terminal rules reconciled into prior-art vocabulary
+# (RESUME_TERMINAL_RULE_MINING.md §PRIOR-ART RECONCILIATION). Flows the mined
+# terminal_rules.db into ad_mep_anchor/ad_mep_pattern (existing W019) +
+# ad_placement_measured (adopts DV042 vocab) + new place-order/clash layer.
+# Regenerate via: python3 build/reconcile_terminal_rules.py
+# ═══════════════════════════════════════════════════════════════════════
+apply "$MIGRATION/TRM001_terminal_measured_rules.sql"  "TRM001 measured Terminal rules"
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════
 # Phase 9: Per-building validation rules (mined from output DBs)
 # ═══════════════════════════════════════════════════════════════════════
 if [ "$MODE" = "--with-rules" ] || [ "$MODE" = "--full" ]; then
