@@ -18,6 +18,21 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
+## disc-walker density-fix (area-scaled n_measured) — SHIPPED+LIVE 2026-06-28 (lane/benchmark-clash-resolution)
+**Done:** placer 708k explosion root-caused + fixed, RouteWalker-aligned (count bounded by measured quantity ×
+real ARC occupancy envelope, NOT bbox area). `bake_duplex_rules.py` stamps measured `src_storey_area_m2`;
+`disc_walker.js` area-scales fixture counts + places on `occupancy()` cells (fixtures only — network routes).
+SampleCastle PLB **708158→752** (×940). Deployed bim-ootb **#558 MERGED**, sw v5, duplex_rules.db content_sha
+7551d63b7f57 — live-verified. Docs clash-collapse table corrected (SC 501 vs 3) + redeployed.
+**Witnesses:** `witness_disc_walk_density` 43/0 (D-COUNT EXACT, D-ENVELOPE void=0); terminal §DWG 49/0 UNCHANGED;
+§DXG 12/0; nnchain landed R2 5315 segs posDrift=0 (1e-6); round-trip PLB GREEN/ELEC WEAK/ACMV RED.
+**Doctrine (user, load-bearing):** fidelity needs a ground truth — LANDED routed-endpoints exact 1e-6;
+GENERATED fixtures = plausible position, EXACT count, no rmse-as-fidelity. ERP.db-along-route = generated layer,
+exact-landing UNCONFIRMED (next audit). Spec=`prompts/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`.
+**Also this session:** ModellerGuide §Walk·Disciplines doc + review arc (prior, deployed). 
+**Next:** confirm ERP.db ground-truth (exact vs generated); re-bake terminal_rules with src_area for uniform model;
+3D confidence/clash highlight render in outliner; optional 3rd (healthcare) density standard.
+
 ## SC IFC2BOM onboarding + Modelling-from-cascade vision — 2026-06-23 (branch lane/benchmark-clash-resolution)
 Cards: `prompts/RESUME_DROP_OUTLINER_ROADMAP.md` §1, `prompts/MODELLING_FROM_BOM_CASCADE.md`, `prompts/ONTOLOGICAL_BOM_EXTRACTION.md`.
 - **SC (IFC2x3 residential; files historically named schependomlaan) now compiles: 2/4 → 7/10 gates, oracle minted.** Done in IFC2BOM (4 Java files + classify_sc.yaml):
