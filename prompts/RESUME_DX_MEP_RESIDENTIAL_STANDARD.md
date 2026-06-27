@@ -152,8 +152,14 @@ drift confusion (today's stale `modeller/terminal_rules.db` vs the rebaked one w
   (Clinic 27%→0.4%, Hospital 21%→0.4%). ERP projection regenerated via `reconcile_terminal_rules.py` (ad_clash_avoidance
   47→10 + TRM001; W-TRM-RECONCILE 12/12). Terminal round-trip still GREEN; original generalize 49/49 (residual
   clashes now honest 5/7/22 on SH/DX/SC). Step 3 witness re-pointed to ARCHIVED inflated values (valid bug regression).
-- **REMAINING:** DEPLOY per §DATA LOCALITY (`modeller/` GH copy of `duplex_rules.db` + the FIXED `terminal_rules.db`
-  + provenance stamp + building-class auto-select). Future hardening: disc_walker placer density cap (SC 700k obs).
+- **DEPLOYED** ✅ bim-ootb PR #557 (auto-merge armed, sw v3→v4): `modeller/duplex_rules.db` (NEW, residential) +
+  `modeller/terminal_rules.db` REFRESHED (global-p05 fix) — both carry a stamped `rules_meta` provenance row
+  (`build/stamp_rules_provenance.py`) that `dwInit` prints as `§DW-PROV` so a stale copy is detectable.
+  `disc_walker.js` gains rulesFile param + reload-on-class-change + `loadedFile()`; `modeller.html` `window._dwRules`
+  picks residential(house)/large-complex(else) at both dwInit sites. Verified headless §-log: house→duplex_rules.db,
+  dwInit placement=16 avoidance=4, §DW-PROV prints standard=residential+clearances; classifier 11/11; no page errors.
+- **REMAINING:** verify PR #557 actually lands (squash + late-push orphan caution). Future hardening: disc_walker
+  placer density cap (SC 700k obs). Step 4 Clinic/Hospital deeper PLACEMENT mining (density, not clearance) if wanted.
 
 ## ACCEPTANCE / WHAT "DONE" LOOKS LIKE
 - `duplex_rules.db` round-trips GREEN (or honest WEAK) on DX's own MEP (§DX-RT, mirror §TRM-RT-DISC).
