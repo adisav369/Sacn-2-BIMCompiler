@@ -50,13 +50,53 @@
         ' [' + (m.clearance_summary || '') + ']');
     } catch (e) { console.log(TAG + ' §DW-PROV ' + file + ' rules_meta read failed: ' + e.message); }
   }
+  // §DW_IDB — OFFLINE cache for the rules DB. dwInit hits the network on EVERY open for
+  // terminal_rules.db / duplex_rules.db; wrap it with the SHARED bim_ootb_cache/'dbs' store
+  // (the same store kernel_ops.js seals into + scene.js cachedFetch reads), so a repeat visit
+  // opens the rules with NO network — making the modeller sw.js "terminal_rules.db cached in
+  // IndexedDB" claim true. Try IDB hit → on miss fetch + put → bare fetch fallback on any IDB
+  // error. Browser-only: node witnesses use dwOpen and never reach this path (indexedDB guard).
+  function _openCacheDB() {
+    if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+    if (ROOT.APP && ROOT.APP.openCacheDB) { try { return ROOT.APP.openCacheDB(); } catch (e) { /* fall through */ } }
+    return new Promise(function (res) {                       // no version → current (avoid VersionError drift below scene.js v2)
+      var rq = indexedDB.open('bim_ootb_cache');
+      rq.onsuccess = function () { res(rq.result); };
+      rq.onerror = function () { res(null); };
+    });
+  }
+  function _idbGet(idb, key) {
+    return new Promise(function (res) {
+      try { var rq = idb.transaction('dbs', 'readonly').objectStore('dbs').get(key);
+        rq.onsuccess = function () { res(rq.result || null); }; rq.onerror = function () { res(null); };
+      } catch (e) { res(null); }
+    });
+  }
+  function _idbPut(idb, key, buf) {
+    try { var tx = idb.transaction('dbs', 'readwrite'); tx.objectStore('dbs').put(buf, key);
+      tx.oncomplete = function () { console.log(TAG + ' §DW_IDB_WRITE ' + key + ' size=' + (buf.byteLength / 1024).toFixed(0) + 'KB'); };
+      tx.onerror = function () { console.warn(TAG + ' §DW_IDB_WRITE_ERR ' + (tx.error && tx.error.message)); };
+    } catch (e) { console.warn(TAG + ' §DW_IDB_WRITE_ERR ' + (e && e.message)); }
+  }
+  async function _loadDbBuf(url) {
+    var idb = await _openCacheDB();
+    if (idb && idb.objectStoreNames && idb.objectStoreNames.contains('dbs')) {
+      var hit = await _idbGet(idb, url);
+      if (hit) { console.log(TAG + ' §DW_IDB_HIT ' + url + ' size=' + (hit.byteLength / 1024).toFixed(0) + 'KB'); return hit; }
+      console.log(TAG + ' §DW_IDB_MISS ' + url + ' — fetching');
+      var buf = await (await fetch(url)).arrayBuffer();
+      _idbPut(idb, url, buf);                                 // fire-and-forget (mirrors kernel_ops persist)
+      return buf;
+    }
+    return (await fetch(url)).arrayBuffer();                  // no IDB / no 'dbs' store → bare fetch
+  }
   async function dwInit(SQL, baseUrl, rulesFile) {
     var file = rulesFile || 'terminal_rules.db';
     // Building-class select: reload only when the requested standard CHANGES (open a house
     // after a terminal → swap residential rules in). Same file already loaded → no-op.
     if (_ready && _loadedFile === file) return _ready;
     var url = (baseUrl || '../modeller/') + file;
-    var buf = await (await fetch(url)).arrayBuffer();
+    var buf = await _loadDbBuf(url);                          // §DW_IDB: IDB-cached, network only on first open
     _db = new SQL.Database(new Uint8Array(buf));
     _ready = true; _loadedFile = file;
     var n = function (t) { var r = _db.exec('SELECT COUNT(*) FROM ' + t); return r.length ? r[0].values[0][0] : 0; };
