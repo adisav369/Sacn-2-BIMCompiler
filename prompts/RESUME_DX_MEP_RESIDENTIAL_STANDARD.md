@@ -124,10 +124,19 @@ drift confusion (today's stale `modeller/terminal_rules.db` vs the rebaked one w
   (intra-run pipe packing ~0.02-0.12m in Duplex/Hospital/Terminal/offices) — it does NOT discriminate class.
   The discriminator is the CROSS-disc gap (Terminal 2.4m vs residential 0.4-0.5m). MEP counts: Hospital 19670,
   Terminal 9733, WBDG_Office 5728, HHS_Office 3390, Clinic 102, Duplex 904, SC 73.
-- **REMAINING (not blocking POC):** Step 3 = walk `duplex_rules.db` onto SH/SC via `disc_walker.js` (rules=duplex
-  variant of `witness_disc_walk_generalize.js`) → prove the RED-clash count COLLAPSES with residential clearances
-  (this is the final clash-cure proof; rules+oracle are ready). Step 4 = Clinic/Hospital scale tier + class
-  boundary. DEPLOY: per §DATA LOCALITY, copy `duplex_rules.db` to a `modeller/` GH copy with provenance stamp.
+- **Step 3** ✅ `build/witness_disc_walk_duplex_generalize.js` — the CLASH-COLLAPSE proof (12/12 PASS, SH/DX/SC).
+  Walks PLB+ELEC onto each building once, then gates the IDENTICAL layout under Duplex clearance (0.499m) vs
+  Terminal clearance (1.287m) — only the threshold differs. **Gated irreducible residual collapses ~99%:**
+  SampleHouse 2235→**11**, Duplex 3172→**37**, SampleCastle 360→**1**. Raw phantom clashes also collapse
+  (SH 6000→1961, DX 5997→679, SC 2776→57). D3: gate stays honest under residential rules (every residual
+  FLAGGED clash=true, zero silent). This IS the direct cure for the thesis's SH/DX/SC RED clashes. NOTE: the
+  placer has no sanity cap — residential ~0.5m cadence tiled over a big footprint (SC) yields >700k placements;
+  the witness deterministically stride-caps to 6000/disc (LOGGED §DXG-CAP, ratio-preserving) for O(n²) tractability.
+  A placer density cap is a future disc_walker hardening item, not a POC blocker. Miner fix: NETWORK classes
+  (Segment/Fitting) now carry array spacing=0 (routed, not tiled) — round-trip unchanged (PLB GREEN 4/0/0).
+- **REMAINING (not blocking POC):** Step 4 = Clinic/Hospital scale tier + class boundary. DEPLOY: per §DATA
+  LOCALITY, copy `duplex_rules.db` to a `modeller/` GH copy with provenance stamp + building-class auto-select
+  alongside terminal_rules.db. Future: disc_walker placer density cap (the SC 700k observation).
 
 ## ACCEPTANCE / WHAT "DONE" LOOKS LIKE
 - `duplex_rules.db` round-trips GREEN (or honest WEAK) on DX's own MEP (§DX-RT, mirror §TRM-RT-DISC).

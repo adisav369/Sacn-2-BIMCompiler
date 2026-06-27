@@ -180,6 +180,13 @@ def mine(pts, cls_of, subdisc, storey_of, meta_bbox):
             if best is not None:
                 nn_xy.append(best)
         sx = round(st.median(nn_xy), 3) if nn_xy else 0
+        # NETWORK classes (Segment/Fitting) are ROUTED, not array-tiled: their NN-XY
+        # is the intra-run pipe packing (~5cm), which would tile a footprint into
+        # millions of points. Zero their array spacing → the placer single-places them
+        # (the run geometry comes from routing). Only FIXTURES (Terminal/Controller)
+        # carry a real array cadence. Mirrors the round-trip's network/placed split.
+        if 'Segment' in cls or 'Fitting' in cls:
+            sx = 0
         placement.append(dict(
             disc=sd, ifc_class=cls, ref_kind='storey', dx=None, dy=None,
             dz=round(st.median(zs), 3),
