@@ -19,7 +19,7 @@
   'use strict';
   var TAG = '§DW';
   var ROOT = (typeof window !== 'undefined') ? window : {};
-  var _db = null, _ready = false;
+  var _db = null, _ready = false, _loadedFile = null;
 
   function _rows(db, sql) {
     var r = db.exec(sql);
@@ -52,16 +52,20 @@
   }
   async function dwInit(SQL, baseUrl, rulesFile) {
     var file = rulesFile || 'terminal_rules.db';
+    // Building-class select: reload only when the requested standard CHANGES (open a house
+    // after a terminal → swap residential rules in). Same file already loaded → no-op.
+    if (_ready && _loadedFile === file) return _ready;
     var url = (baseUrl || '../modeller/') + file;
     var buf = await (await fetch(url)).arrayBuffer();
     _db = new SQL.Database(new Uint8Array(buf));
-    _ready = true;
+    _ready = true; _loadedFile = file;
     var n = function (t) { var r = _db.exec('SELECT COUNT(*) FROM ' + t); return r.length ? r[0].values[0][0] : 0; };
     console.log(TAG + ' dwInit ' + file + ' placement=' + n('rule_placement') + ' routing=' + n('rule_routing') +
       ' place_order=' + n('rule_place_order') + ' avoidance=' + n('rule_avoidance'));
     _logProvenance(file);
     return _ready;
   }
+  function loadedFile() { return _loadedFile; }
 
   // ── TARGET-BUILDING SUBSTRATE ─────────────────────────────────────────────────────
   // Real storeys from the building's OWN elements: median elevation + XY footprint (bbox union).
@@ -387,7 +391,7 @@
   var API = { dwInit: dwInit, dwOpen: dwOpen, dwWalk: dwWalk, substrate: substrate, place: place,
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
     hostWalls: hostWalls, countPer: countPer,
-    disciplines: disciplines, _ready: function () { return _ready; } };
+    disciplines: disciplines, loadedFile: loadedFile, _ready: function () { return _ready; } };
   ROOT.DiscWalker = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   console.log(TAG + ' module loaded');
