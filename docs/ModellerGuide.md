@@ -147,4 +147,107 @@ list of every tool's icon, name, and keyboard shortcut (`Esc` always cancels the
 
 ---
 
+## Walk · Disciplines
+
+The inversion above promises that when you open a bare **ARC** building, *the other disciplines fill
+themselves in*. That is the **Walk · Disciplines** roster in the Outliner. You pick a discipline that is
+**absent** from the building — Structure, Electrical, Fire-Protection, Plumbing, HVAC — and the modeller
+**walks** it: it places that trade's elements at the **measured cadence** of a real coordinated building,
+chains the runs it can, gates the clashes, and **honestly refuses** when the building has nothing to hang the
+trade on. Nothing is invented — every placement uses a spacing/clearance rule *mined from a real IFC model*.
+
+**One engine, two standards.** A single walker (`disc_walker.js`) drives every discipline — the discipline is
+just a data filter, not a separate code path. It carries **two measured rule-sets**, and the modeller
+**auto-selects** by building class:
+
+| Building class | Standard used | Mined from | Why |
+|---|---|---|---|
+| House / residential (SampleHouse, Duplex, SampleCastle) | **residential** (`duplex_rules.db`) | the Duplex's *own* real MEP — 908 elements | tight residential cadence (~0.5 m trade separation) |
+| Large / complex (airport, hospital) | **large-complex** (`terminal_rules.db`) | a real airport terminal | sparse, plenum-scale cadence |
+
+On open you'll see `§DW-PROV` print the standard and its provenance stamp, so you always know which rule-set is
+driving the walk and where it came from. The rest of this section is the **evidence** that the walk produces
+sensible numbers — every figure below traces to a witnessed `§`-log from the build (no estimates).
+
+### What a walk actually places
+
+This is what you see in the status line when you walk each discipline on the three residential buildings
+(`§DW §WALK …`, from `build/logs/witness_disc_walk_generalize.log`). *Placed* is how many elements the walk
+seated; *chains* is how many runs it could link end-to-end; the honesty note is what the walk reported when a
+trade had nothing to route:
+
+| Building (storeys) | Discipline | Placed | Chains | Honesty note |
+|---|---|---:|---:|---|
+| **SampleHouse** (3) | Fire-Protection | 55 | 0 | — |
+| | Electrical | 159 | 0 | — |
+| | Structure | 30 | 1 | members linked, no measured gap |
+| | Plumbing | 6 | 0 | ~no pipes in a small house → honest |
+| **Duplex** (5) | Fire-Protection | 303 | 0 | — |
+| | Electrical | 771 | 0 | — |
+| | Structure | 162 | 1 | members linked |
+| | Plumbing | 10 | 0 | sparse → honest |
+| **SampleCastle** (7) | Fire-Protection | 2 665 | 0 | — |
+| | Electrical | 8 123 | 0 | — |
+| | Structure | 1 836 | 1 | members linked |
+| | Plumbing | 14 | 0 | sparse → honest |
+
+Place counts scale with footprint (a 7-storey castle gets ~50× the fixtures of a 3-storey house) because the
+**cadence is constant** — the same measured spacing rule simply tiles a bigger floor. Walking an *unknown*
+discipline returns **REFUSE — no measured rule** rather than guessing.
+
+### Why the right standard matters — clash collapse
+
+The walk also gates clashes between the disciplines it placed. Using the **right** standard for the building
+class collapses the phantom clashes a mismatched (too-wide) standard would raise. Same layout, same elements —
+only the clearance standard changes (`build/logs/witness_disc_walk_duplex_generalize.log`, gated irreducible
+residual):
+
+| Building | Residual @ large-complex standard | Residual @ residential standard | Collapse |
+|---|---:|---:|---:|
+| SampleHouse | 2 235 | **11** | 99.5 % |
+| Duplex | 3 172 | **37** | 98.8 % |
+| SampleCastle | 360 | **1** | 99.7 % |
+
+Forcing a plenum-scale clearance onto a house turns ordinary close-coordinated runs into thousands of false
+clashes; the residential standard reports the *real* handful. (Every residual is **flagged, none silent** — the
+walk never hides a clash to make the number look good.)
+
+### Does the residential standard reproduce a real house's MEP?
+
+The residential standard was mined from the Duplex's own MEP — so the acid test is whether it *re-grows* that
+same MEP (`build/logs/witness_duplex_rules.log`, `§DXM-RT`):
+
+| Discipline | Verdict | What it means |
+|---|---|---|
+| Plumbing | ✅ **GREEN** (4/4 classes) | the bulk of a house's MEP reproduces — segments cover 0.93, fittings 0.85 |
+| Electrical | 🟡 **WEAK** | fixtures (receptacles/lights, n = 89) GREEN; the sparse 8-segment conduit is honestly WEAK |
+| HVAC | 🔴 **RED** (n = 2) | a house has ~no ductwork — honest RED, *not* a failure (there is nothing to reproduce) |
+
+RED/WEAK here are **honesty**, not breakage: a single-family house genuinely has almost no ducting, so the walk
+declines to fabricate it.
+
+### The real finding — it's density, not clearance
+
+Surveying four real, fully-coordinated buildings (`build/logs/survey_class_boundary_postfix.log`, `§CB`), the
+trade-to-trade separation is *about the same everywhere* — there is **no clearance class-boundary**. The
+"phantom-flag" column is the share of a building's *real* trade pairs that each standard wrongly calls a clash:
+
+| Building | Median cross-disc clearance | Phantom-flagged by residential | Phantom-flagged by large-complex |
+|---|---:|---:|---:|
+| Duplex (residential) | 1.10 m | 1.7 % | 0.7 % |
+| Clinic (healthcare) | 0.62 m | 3.2 % | 0.4 % |
+| Hospital (LOD400) | 0.62 m | 2.1 % | 0.4 % |
+| Terminal (LOD400 airport) | 0.43 m | 11.4 % | 4.8 % |
+
+The tightest real trade pair (electrical vs plumbing) sits at ~0.45–0.62 m in *every* building, house to airport.
+What separates classes is **density and count**, not clearance — a takeaway that corrected an earlier
+Terminal rule that over-stated separation (it had been flagging 37.5 % of the airport's *own* coordinated MEP;
+re-mined, that drops to 4.8 %).
+
+> **Deeper proof.** The full mining, round-trip and boundary analysis lives in the resume cards
+> `prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md` and `prompts/RESUME_TERMINAL_RULE_MINING.md`, each backed by
+> the witnessed `build/logs/` set summarised above.
+
+---
+
 *Part of [BIM OOTB](USER_GUIDE.md). Copyright (c) 2025–2026 Redhuan D. Oon. MIT Licensed.*
