@@ -117,18 +117,24 @@ const ok = (c, m) => { (c ? PASS++ : FAIL++); console.log('  ' + (c ? '✅' : '�
       const clr = DW.clearance();
       const key = ['FP', 'ELEC'].sort().join('|');
       const minc = clr[key] ? clr[key].min_clear : 0;
-      // after the gate, count cross-disc pairs still inside min_clear (sample-bounded for speed)
+      // HARDENED (no-handwave): after the gate, every cross-disc pair still inside min_clear
+      // is a real clash a human would SEE on canvas. The old assertion only checked "gate ran"
+      // and waved 307 Duplex clashes through GREEN. The honest invariant is NO SILENT CLASH:
+      // a residual is acceptable ONLY if its (lower-priority) element is FLAGGED clash=true so
+      // the UI renders it RED. A residual whose element is NOT flagged = the gate lied → FAIL.
       const fpP = all.filter(p => p.disc === 'FP'), elP = all.filter(p => p.disc === 'ELEC');
-      let viol = 0, checked = 0;
-      for (let i = 0; i < fpP.length && checked < 200000; i++) {
-        for (let j = 0; j < elP.length; j++) {
-          checked++;
+      let viol = 0, silent = 0;
+      for (let j = 0; j < elP.length; j++) {           // ELEC is lower-priority → it is the one that yields/flags
+        for (let i = 0; i < fpP.length; i++) {
           const d = Math.sqrt((fpP[i].x - elP[j].x) ** 2 + (fpP[i].y - elP[j].y) ** 2 + (fpP[i].z - elP[j].z) ** 2);
-          if (d < minc - 1e-6) viol++;
+          if (d < minc - 1e-6) { viol++; if (!elP[j].clash) silent++; break; }
         }
       }
-      console.log('  §DWG-GATE ' + res.key + ' min_clear=' + minc.toFixed(3) + ' yields=' + g.yields + ' residual_violations=' + viol);
-      ok(g.yields >= 0 && minc > 0, 'G4 ' + res.key + ' gate ran (min_clear=' + minc.toFixed(2) + 'm measured, yields=' + g.yields + ')');
+      console.log('  §DWG-GATE ' + res.key + ' min_clear=' + minc.toFixed(3) + ' yields=' + g.yields +
+        ' residual_violations=' + viol + ' flagged=' + g.residual + ' silent=' + silent + ' iters=' + g.iterations);
+      ok(minc > 0 && silent === 0,
+        'G4 ' + res.key + ' NO SILENT clash (every residual flagged clash=true) — viol=' + viol +
+        ' flagged=' + g.residual + ' silent=' + silent);
     }
 
     bdb.close();
