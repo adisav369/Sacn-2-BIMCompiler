@@ -134,9 +134,20 @@ drift confusion (today's stale `modeller/terminal_rules.db` vs the rebaked one w
   the witness deterministically stride-caps to 6000/disc (LOGGED §DXG-CAP, ratio-preserving) for O(n²) tractability.
   A placer density cap is a future disc_walker hardening item, not a POC blocker. Miner fix: NETWORK classes
   (Segment/Fitting) now carry array spacing=0 (routed, not tiled) — round-trip unchanged (PLB GREEN 4/0/0).
-- **REMAINING (not blocking POC):** Step 4 = Clinic/Hospital scale tier + class boundary. DEPLOY: per §DATA
-  LOCALITY, copy `duplex_rules.db` to a `modeller/` GH copy with provenance stamp + building-class auto-select
-  alongside terminal_rules.db. Future: disc_walker placer density cap (the SC 700k observation).
+- **Step 4** ✅ `build/survey_class_boundary.py` (§CB) — the class-boundary answer, benchmarked against Terminal
+  (the LOD400 gold/compliance reference per user). **SURPRISE, NON-INVENT:** real MEP packs trades at ~0.4-0.6m
+  in EVERY building — Duplex 0.45m, Clinic 0.62m, Hospital 0.62m, Terminal 0.43m (Terminal FP|ELEC=0.155m is the
+  TIGHTEST = highest LOD400, validating residential clearance FROM BELOW). **There is NO clearance-magnitude class
+  boundary.** The Terminal RULES' 2.4m was a per-storey-banding ARTIFACT: `terminal_rules.db` ELEC|PLB=1.287m flags
+  **37.5% of Terminal's OWN built/coordinated MEP** as clashing (residential 0.5m flags 2.6-12.6%) — a standard
+  inconsistent with its own building. DECISION: (1) NO 3rd clearance standard — Clinic/Hospital fit residential
+  ~0.5m; the directly-measured 0.5m is the correct UNIVERSAL compliance value. (2) The genuine class difference is
+  PLACEMENT density/count/storey-depth (hospital=19670 MEP across many storeys), NOT clearance → per-class mining is
+  for WHERE/HOW-MANY, shared ~0.5m clearance. (3) FOLLOW-UP: re-mine terminal_rules rule_avoidance with DIRECT
+  global-p05 (kill per-storey banding) to fix the self-flag. See memory `project_dx_mep_class_boundary`.
+- **REMAINING:** DEPLOY per §DATA LOCALITY (`modeller/` GH copy of `duplex_rules.db` + provenance stamp +
+  building-class auto-select alongside terminal_rules.db). Future hardening: disc_walker placer density cap (SC
+  700k observation); terminal_rules rule_avoidance re-mine (global-p05).
 
 ## ACCEPTANCE / WHAT "DONE" LOOKS LIKE
 - `duplex_rules.db` round-trips GREEN (or honest WEAK) on DX's own MEP (§DX-RT, mirror §TRM-RT-DISC).
