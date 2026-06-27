@@ -13,7 +13,8 @@
 // The rules carry RELATIVE dz + spacing (these transfer to a new building); absolute Terminal
 // z-bands do NOT transfer and are not used for placement. Honest-REFUSE when no rule covers a
 // disc, or the building lacks the substrate (no storeys / no network elements to route).
-// SOURCE COPY lives in bim-compiler/build/; the deployed copy is bim-ootb/viewer/disc_walker.js.
+// SOURCE COPY lives in bim-compiler/build/; the deployed copy is bim-ootb/modeller/disc_walker.js
+// (the Modeller is its own top-level app now — trilogy viewer/·erp/·modeller/).
 (function () {
   'use strict';
   var TAG = '§DW';
