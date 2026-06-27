@@ -31,17 +31,35 @@
   function _med(arr) { var a = arr.filter(function (v) { return v != null; }).sort(function (x, y) { return x - y; }); return a.length ? a[Math.floor(a.length / 2)] : 0; }
 
   // ── INIT ────────────────────────────────────────────────────────────────────────
-  // Browser: dwInit(SQL, baseUrl) fetches ../modeller/terminal_rules.db (local, no OCI).
+  // Browser: dwInit(SQL, baseUrl, rulesFile) fetches ../modeller/<rulesFile> (local, no OCI).
+  //   rulesFile defaults to 'terminal_rules.db' (large-complex standard, back-compat). Pass
+  //   'duplex_rules.db' for the residential standard — building-class select is the caller's
+  //   choice; the engine is disc=data-filter, never forked. §DATA-LOCALITY: each modeller/*.db
+  //   is its OWN bim-compiler-built copy carrying a `rules_meta` provenance row, printed below so
+  //   a STALE copy is detectable in the §-log (never assume modeller mirrors viewer/OCI buildings).
   // Node/witness: dwOpen(db) sets an already-opened sql.js instance directly.
   function dwOpen(db) { _db = db; _ready = !!db; return _ready; }
-  async function dwInit(SQL, baseUrl) {
-    var url = (baseUrl || '../modeller/') + 'terminal_rules.db';
+  // Print the rules_meta provenance (standard/version/built_from) if the DB carries it.
+  function _logProvenance(file) {
+    try {
+      var r = _db.exec("SELECT key,value FROM rules_meta");
+      if (!r.length) { console.log(TAG + ' §DW-PROV ' + file + ' NO rules_meta (unstamped — staleness undetectable)'); return; }
+      var m = {}; r[0].values.forEach(function (kv) { m[kv[0]] = kv[1]; });
+      console.log(TAG + ' §DW-PROV ' + file + ' standard=' + m.standard + ' version=' + m.version +
+        ' built_from=' + m.built_from + ' built_at=' + m.built_at + ' avoidance=' + m.n_avoidance +
+        ' [' + (m.clearance_summary || '') + ']');
+    } catch (e) { console.log(TAG + ' §DW-PROV ' + file + ' rules_meta read failed: ' + e.message); }
+  }
+  async function dwInit(SQL, baseUrl, rulesFile) {
+    var file = rulesFile || 'terminal_rules.db';
+    var url = (baseUrl || '../modeller/') + file;
     var buf = await (await fetch(url)).arrayBuffer();
     _db = new SQL.Database(new Uint8Array(buf));
     _ready = true;
     var n = function (t) { var r = _db.exec('SELECT COUNT(*) FROM ' + t); return r.length ? r[0].values[0][0] : 0; };
-    console.log(TAG + ' dwInit terminal_rules.db placement=' + n('rule_placement') + ' routing=' + n('rule_routing') +
+    console.log(TAG + ' dwInit ' + file + ' placement=' + n('rule_placement') + ' routing=' + n('rule_routing') +
       ' place_order=' + n('rule_place_order') + ' avoidance=' + n('rule_avoidance'));
+    _logProvenance(file);
     return _ready;
   }
 
