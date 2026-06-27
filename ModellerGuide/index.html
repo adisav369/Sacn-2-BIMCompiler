@@ -3986,8 +3986,8 @@ trade had nothing to route:</p>
 <strong>cadence is constant</strong> — the same measured spacing rule simply tiles a bigger floor. Walking an <em>unknown</em>
 discipline returns <strong>REFUSE — no measured rule</strong> rather than guessing.</p>
 <h3 id="why-the-right-standard-matters-clash-collapse">Why the right standard matters — clash collapse<a class="headerlink" href="#why-the-right-standard-matters-clash-collapse" title="Permanent link">&para;</a></h3>
-<p>The walk also gates clashes between the disciplines it placed. Using the <strong>right</strong> standard for the building
-class collapses the phantom clashes a mismatched (too-wide) standard would raise. Same layout, same elements —
+<p>The walk also gates clashes between the fixtures it placed. Using the <strong>right</strong> standard for the building
+class collapses the phantom clashes a mismatched (too-wide) standard would raise. Same layout, same fixtures —
 only the clearance standard changes (<code>build/logs/witness_disc_walk_duplex_generalize.log</code>, gated irreducible
 residual):</p>
 <table>
@@ -4002,27 +4002,35 @@ residual):</p>
 <tbody>
 <tr>
 <td>SampleHouse</td>
-<td style="text-align: right;">2 235</td>
-<td style="text-align: right;"><strong>11</strong></td>
-<td style="text-align: right;">99.5 %</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;"><strong>4</strong></td>
+<td style="text-align: right;">56 %</td>
 </tr>
 <tr>
 <td>Duplex</td>
-<td style="text-align: right;">3 172</td>
-<td style="text-align: right;"><strong>37</strong></td>
-<td style="text-align: right;">98.8 %</td>
+<td style="text-align: right;">32</td>
+<td style="text-align: right;"><strong>2</strong></td>
+<td style="text-align: right;">94 %</td>
 </tr>
 <tr>
 <td>SampleCastle</td>
-<td style="text-align: right;">360</td>
-<td style="text-align: right;"><strong>1</strong></td>
-<td style="text-align: right;">99.7 %</td>
+<td style="text-align: right;">501</td>
+<td style="text-align: right;"><strong>3</strong></td>
+<td style="text-align: right;">99.4 %</td>
 </tr>
 </tbody>
 </table>
-<p>Forcing a plenum-scale clearance onto a house turns ordinary close-coordinated runs into thousands of false
-clashes; the residential standard reports the <em>real</em> handful. (Every residual is <strong>flagged, none silent</strong> — the
-walk never hides a clash to make the number look good.)</p>
+<p>The plenum-scale (large-complex) clearance flags far more phantom clashes than the residential one, and the gap
+widens with building size — on the dense castle it is <strong>501 vs 3</strong>. (Every residual is <strong>flagged, none silent</strong> —
+the walk never hides a clash to make the number look good.)</p>
+<blockquote>
+<p>These are clashes between <strong>generated</strong> fixtures (the walk fills a discipline the building lacks), so they
+illustrate the <em>clearance standard's</em> effect, not a measured fact about a real building — the fixture <strong>count</strong>
+is exact (area-scaled from measured quantity), the <strong>positions</strong> are plausible, not landed. The measured,
+real-building evidence is the survey in the next-but-one table. <em>(Earlier builds of this table showed much
+larger numbers; those were inflated by a placer that tiled the floor area instead of scaling the measured
+per-floor count — fixed 2026-06-28, witness <code>witness_disc_walk_density.js</code> 43/0.)</em></p>
+</blockquote>
 <h3 id="does-the-residential-standard-reproduce-a-real-houses-mep">Does the residential standard reproduce a real house's MEP?<a class="headerlink" href="#does-the-residential-standard-reproduce-a-real-houses-mep" title="Permanent link">&para;</a></h3>
 <p>The residential standard was mined from the Duplex's own MEP — so the acid test is whether it <em>re-grows</em> that
 same MEP (<code>build/logs/witness_duplex_rules.log</code>, <code>§DXM-RT</code>):</p>
