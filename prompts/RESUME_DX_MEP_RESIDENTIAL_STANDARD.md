@@ -145,9 +145,15 @@ drift confusion (today's stale `modeller/terminal_rules.db` vs the rebaked one w
   PLACEMENT density/count/storey-depth (hospital=19670 MEP across many storeys), NOT clearance → per-class mining is
   for WHERE/HOW-MANY, shared ~0.5m clearance. (3) FOLLOW-UP: re-mine terminal_rules rule_avoidance with DIRECT
   global-p05 (kill per-storey banding) to fix the self-flag. See memory `project_dx_mep_class_boundary`.
-- **REMAINING:** DEPLOY per §DATA LOCALITY (`modeller/` GH copy of `duplex_rules.db` + provenance stamp +
-  building-class auto-select alongside terminal_rules.db). Future hardening: disc_walker placer density cap (SC
-  700k observation); terminal_rules rule_avoidance re-mine (global-p05).
+- **TERMINAL RULE FIXED** ✅ `build/remine_terminal_avoidance.py` (§TRA) — re-mined `terminal_rules.db`
+  rule_avoidance from 47 per-storey-banded rows → 10 DIRECT global-p05 rows (ELEC|FP 1.998→0.155, ELEC|PLB
+  1.287→0.220, ACMV|ELEC 2.274→0.453; well-coordinated ACMV|PLB 0.411→0.449 barely moves = only the inflated ones
+  were wrong). Old rows archived to `rule_avoidance_perstorey_archived`. VERIFIED: Terminal self-flag 37.5%→**4.8%**
+  (Clinic 27%→0.4%, Hospital 21%→0.4%). ERP projection regenerated via `reconcile_terminal_rules.py` (ad_clash_avoidance
+  47→10 + TRM001; W-TRM-RECONCILE 12/12). Terminal round-trip still GREEN; original generalize 49/49 (residual
+  clashes now honest 5/7/22 on SH/DX/SC). Step 3 witness re-pointed to ARCHIVED inflated values (valid bug regression).
+- **REMAINING:** DEPLOY per §DATA LOCALITY (`modeller/` GH copy of `duplex_rules.db` + the FIXED `terminal_rules.db`
+  + provenance stamp + building-class auto-select). Future hardening: disc_walker placer density cap (SC 700k obs).
 
 ## ACCEPTANCE / WHAT "DONE" LOOKS LIKE
 - `duplex_rules.db` round-trips GREEN (or honest WEAK) on DX's own MEP (§DX-RT, mirror §TRM-RT-DISC).

@@ -84,8 +84,22 @@ def p05_clearance(A, B, cap=CAP):
     return float(dists[int(.05*len(dists))]), len(dists), capped, frac_dx, frac_tm
 
 
-DX_CLR = 0.499   # duplex_rules ELEC|PLB median min_clear (residential, mined)
-TM_CLR = 1.287   # terminal_rules ELEC|PLB median min_clear (large-complex, mined)
+def _live_clr(db_path):
+    """ELEC|PLB median min_clear from a rules DB (reads the LIVE value, so the
+    terminal re-mine fix is reflected automatically)."""
+    try:
+        con = sqlite3.connect(db_path)
+        vs = [r[0] for r in con.execute(
+            "SELECT min_clear_m FROM rule_avoidance WHERE "
+            "(disc_a='ELEC' AND disc_b='PLB') OR (disc_a='PLB' AND disc_b='ELEC')").fetchall()]
+        con.close()
+        return float(np.median(vs)) if vs else None
+    except Exception:
+        return None
+
+
+DX_CLR = _live_clr(os.path.join(HERE, "duplex_rules.db")) or 0.499
+TM_CLR = _live_clr(os.path.join(HERE, "terminal_rules.db")) or 1.287
 
 
 def classify(p05):

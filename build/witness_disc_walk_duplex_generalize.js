@@ -121,15 +121,23 @@ const clone = L => L.map(p => ({ disc: p.disc, ifc_class: p.ifc_class, x: p.x, y
     const dxLayout = clone(L);
     const gDx = DW.gate(dxLayout);
 
-    // 3) swap to TERMINAL rules, gate + raw-clash on the IDENTICAL layout
-    DW.dwOpen(new SQL.Database(new Uint8Array(fs.readFileSync(TERM_RULES))));
+    // 3) swap to TERMINAL rules, gate + raw-clash on the IDENTICAL layout.
+    // Use the PRE-FIX inflated per-storey avoidance (archived) as the "terminal" arm:
+    // this witness DEMONSTRATES the historical bug that forced an airport-plenum number
+    // onto a house. The terminal_rules.db avoidance has since been RE-MINED to honest
+    // global-p05 (remine_terminal_avoidance.py) — so we restore the archived inflated
+    // rows in-memory here to keep this a valid regression of what the bug did.
+    const tmDb = new SQL.Database(new Uint8Array(fs.readFileSync(TERM_RULES)));
+    const hasArchive = tmDb.exec("SELECT name FROM sqlite_master WHERE name='rule_avoidance_perstorey_archived'").length;
+    if (hasArchive) tmDb.exec("DELETE FROM rule_avoidance; INSERT INTO rule_avoidance SELECT * FROM rule_avoidance_perstorey_archived;");
+    DW.dwOpen(tmDb);
     const tmClr = (DW.clearance()['ELEC|PLB'] || {}).min_clear || 0;
     const tmRaw = rawClashes(L, tmClr);
     const tmLayout = clone(L);
     const gTm = DW.gate(tmLayout);
 
     console.log('  §DXG-CLEAR ' + res.key + ' duplex_min_clear=' + dxClr.toFixed(3) +
-      'm  terminal_min_clear=' + tmClr.toFixed(3) + 'm  (PLB+ELEC placed=' + L.length + ')');
+      'm  terminal_min_clear(PRE-FIX inflated)=' + tmClr.toFixed(3) + 'm  (PLB+ELEC placed=' + L.length + ')');
     console.log('  §DXG-RAW   ' + res.key + ' raw cross-disc clashes seen: terminal=' + tmRaw +
       '  duplex=' + dxRaw + '  (collapse=' + (tmRaw - dxRaw) + ')');
     console.log('  §DXG-GATED ' + res.key + ' irreducible residual after gate: terminal=' + gTm.residual +
