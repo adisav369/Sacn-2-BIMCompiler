@@ -1,3 +1,30 @@
+# RESUME — ModellerGuide: walker-results table + review + polish
+
+## ✅ DONE 2026-06-28 (this arc — doc + review SHIPPED & LIVE)
+- **Doc:** `docs/ModellerGuide.md` gained `## Walk · Disciplines` (user-level): two-standards/auto-select
+  doctrine + **4 witnessed tables** — what-a-walk-places (per bldg/disc placed+chains, §DW §WALK), clash
+  collapse (§DXG 99.5/98.8/99.7%), residential round-trip PLB✅/ELEC🟡/ACMV🔴 (§DXM-RT), class-boundary =
+  density-not-clearance (§CB postfix). Every number re-run green this session and traced to a `build/logs/` §-log.
+  Published via `scripts/safe_gh_deploy.sh` (blessed the `.nojekyll` false-positive — gh-deploy re-creates it,
+  verified 200 live). Live page shows the section (12 hits). Commit `5afdf00e`, branch pushed clean.
+- **Review all-in-order:** (a) PR #557 MERGED+LIVE — deployed `modeller/duplex_rules.db` 200, rules_meta
+  standard=residential, 16/3/4 rows, git_sha 75f28c23 ✅; (b) §DW-PROV print path present in deployed
+  `disc_walker.js` ✅; (c) class-select house→duplex_rules.db present in deployed `modeller.html`
+  (`window._dwRules` regex duplex|sample.?house|castle|SH|DX|SC) ✅; (d) all 4 witnesses re-run green
+  (§DXM-RT-END / §DXG-END PASS=12 / §CB-END / §DWG-END PASS=49) ✅; (e) **no drift** — deployed duplex
+  content_sha=50c0b4433911 & terminal=b90fa163b29e both == local build ✅.
+
+## ⏭ NEXT (polish — carried forward, each its own bim-ootb deploy arc)
+1. **Placer density cap** (`disc_walker.js:141-143`): `nx*ny` footprint-tile explodes on big plans (SampleCastle
+   residential PLB walk = 708k placements). SPEC: cap `nx*ny` per storey/class (e.g. MAX_PER_STOREY≈2000) by
+   stride-thinning that PRESERVES the cadence ratio (G2 must still pass) + honest `§DW-CAP placed=… of …` log;
+   witness it, then bim-ootb PR + deploy (worktree, not shared tree). Do engine+deploy together — no source-only edit (drift).
+2. **3D-highlight render** of confidence/clash in the outliner (engine ready per [[project_walker_guards_rosettastone]]).
+3. **3rd standard** (Clinic/Hospital): deeper Step-4 PLACEMENT mining (DENSITY, not clearance) — only if a
+   healthcare-specific cadence is wanted; §CB shows clearance is class-agnostic so this is density-only.
+
+---
+## ORIGINAL CARD (for reference)
 # RESUME — ModellerGuide: walker-results table + review + polish (next session)
 
 ```
