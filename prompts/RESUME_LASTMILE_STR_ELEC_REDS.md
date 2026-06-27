@@ -1,5 +1,39 @@
 # RESUME — Last Mile: STR & ELEC round-trip REDs (the grid-lock crux)
 
+## ✅ STATUS — DONE 2026-06-27 (no RED left; STR=honest defended WEAK, ELEC=GREEN)
+`python3 build/witness_terminal_rules.py` → `§TRM-RT-PLACEMENT-ROLLUP green=12 weak=1 red=0`:
+```
+§TRM-RT-DISC ACMV GREEN | ELEC GREEN | FP GREEN | PLB GREEN | STR WEAK | roof GREEN   (was: ELEC RED, STR RED)
+```
+All three moves landed by REPLACING a wrong model with the measured right one — no threshold loosened:
+- **Move 1 (STR spans).** Witness now scores `IfcBeam`/`IfcMember` as `mode=spanned`, not z-band placed:
+  each element's measured span (`max(bbox)`) must land within **±25% (the existing R4 cadence band, reused
+  verbatim)** of a bay carried in its OWN routing rule — no bay added by hand. Same placer bars (cover≥0.85,
+  cnt≤15%). → `IfcMember` span_cover=0.86 **GREEN**; `IfcBeam` span_cover=0.83 **honest WEAK** (the grid-lock
+  crux: ~83% on the measured grid, ~17% off-grid by design — see §DISCUSS below, a scope decision not an extract).
+  This is NOT the NETWORK rubber-stamp (`structural=not-distance-scored`) — it re-measures and earns the verdict.
+- **Move 2 (ELEC IfcElectricAppliance).** RE-MINED the thin single-band rule (was 1 band, cover 0.05) into
+  **per-storey host bands** mirroring FP `IfcAlarm`: the 19 elements are RJ45 data points sitting ≤0.25m from a
+  real ARC wall (median 0.01m on L01/L02) at a consistent measured dz (~1.13m). `ref_kind='host'`,
+  `provenance=measured:terminal/wall-host`, src_guids real. → bands=3 cover=1.00 cnt_err=0.00 **GREEN**.
+- **Move 3 (ELEC IfcLightFixture).** Verdict = the existing `§TRM-ARRAY` re-measure (the 0.5–2.0 band already
+  governing array rules — **no new number**); z-band cover/count are the weaker, redundant lens. All 4 ceiling
+  arrays re-measure in-band (1.01/1.84/1.00/1.11) → `mode=array` **GREEN**.
+
+REGRESSION GATES all green: `witness_disc_walk_generalize` 49/49, `_shim` 6/6, `_erp_equivalence` 14/14
+(after re-running `reconcile_terminal_rules.py` + applying `migration/TRM001_terminal_measured_rules.sql` to
+`library/ERP.db` so the views copy tracks the re-mined appliance rule), `witness_disc_route_nnchain` 6/6,
+`witness_reconcile_terminal_rules` 12/12.
+
+FILES: `build/bake_terminal_rules.py` (appliance rule re-mined), `build/terminal_rules.db` (rebaked),
+`build/witness_terminal_rules.py` (span+array lenses), `migration/TRM001_terminal_measured_rules.sql`
+(regenerated), `library/ERP.db` (refreshed).
+⏭ FOLLOW-UP (separate bim-ootb PR, NOT this scope): deploy the rebaked `terminal_rules.db` to
+`~/bim-ootb/modeller/terminal_rules.db` (still stale; shared-tree hook blocks direct edit → goes via its PR flow).
+
+---
+
+
 ```
 # ⚠ DO NOT REMOVE
 SCOPE: Close the two remaining RED disciplines in the Terminal rule round-trip (STR, ELEC). The mining +
