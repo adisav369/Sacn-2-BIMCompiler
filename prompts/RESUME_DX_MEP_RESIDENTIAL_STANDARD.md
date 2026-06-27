@@ -15,6 +15,21 @@ oracle build/witness_terminal_rules.py. Today's clash-gate work: build/disc_walk
 witness_disc_walk_generalize.js (iterate-in-envelope + FLAG, no silent clash).
 ```
 
+## ⛓ MODELLER LANE ANCHOR — DO NOT LOSE SIGHT (read FIRST)
+This rule-mining is NOT a standalone disc-rules project — it is the **"MEP walker fills ARC"** leg of the
+overarching Modeller vision. Keep the whole picture in view every step:
+- **VISION-LOCK** (`prompts/RESUME_GRAPH_MODELLER_INTEGRATION.md §VISION-LOCK`, memory `project_modeller_vision_lock`):
+  open a WHOLE ARC building & EDIT it; **ARC = the sole edited substrate**; **3D GRID = primary handle**; every
+  non-ARC discipline = a **WALKER that fills ARC** (STR strengthens, MEP/CW/SP service, 4D/5D/ERP enterprise-ify).
+  `duplex_rules.db` exists to make the **MEP walker** honest on residential ARC — that is its only reason to exist.
+- **3D GRID is the user's NEXT primary focus** (edit ARC overall + fine-tune via the grid). The DX-MEP standard
+  must SERVE that: a walked discipline rides the edited ARC/grid, re-folds when the grid moves. Don't build rules
+  that can't follow a grid edit. If this work ever competes with the 3DGrid/editor, the editor wins — surface it.
+- **End state** = every drag on the ARC/grid is a signed fact the disciplines (and the enterprise) fold from.
+  Mining is plumbing for that; ship the smallest mining that makes the MEP walker honest, then return to the editor.
+- Companion lane cards (don't orphan them): `prompts/RESUME_MODELLER_POLISH.md` (gizmo/UX polish incl. SCALE,
+  cursor, toast), the still-open bim-ootb gaps (rotate-witness vertex hardening, confidence 3D-highlight render).
+
 ## WHY (the thesis the user set, 2026-06-27)
 Disc rules are **building-class-specific**, not universal. Terminal = large-complex (deep plenums, 2.4m
 clearances, 3–6m bays, multi-storey z-bands). A Duplex/house has none of that → Terminal-density MEP
