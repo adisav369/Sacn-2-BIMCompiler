@@ -191,9 +191,19 @@
     return { disc: disc, refused: false, placed: placements.length, placements: placements, chains: chains, storeys: sub.length };
   }
 
+  // The walkable disciplines the measured rules cover — drives the Outliner "Walk" roster so a
+  // discipline ABSENT from the open building (e.g. FP on a house) is still walkable. Derived, not whitelisted.
+  function disciplines() {
+    if (!_ready) return [];
+    // Only WALKABLE disciplines — those with a placement or routing rule. (rule_place_order alone, e.g. the
+    // generic 'MEP' band, is not walkable: it would always refuse, so it stays off the roster.)
+    var r = _db.exec("SELECT disc FROM rule_placement UNION SELECT disc FROM rule_routing");
+    return r.length ? r[0].values.map(function (v) { return v[0]; }).filter(function (d) { return d && d !== 'ARC'; }) : [];
+  }
+
   var API = { dwInit: dwInit, dwOpen: dwOpen, dwWalk: dwWalk, substrate: substrate, place: place,
     route: route, gate: gate, repRules: repRules, order: order, clearance: clearance,
-    _ready: function () { return _ready; } };
+    disciplines: disciplines, _ready: function () { return _ready; } };
   ROOT.DiscWalker = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   console.log(TAG + ' module loaded');
