@@ -30,8 +30,15 @@ SampleCastle PLB **708158→752** (×940). Deployed bim-ootb **#558 MERGED**, sw
 GENERATED fixtures = plausible position, EXACT count, no rmse-as-fidelity. ERP.db-along-route = generated layer,
 exact-landing UNCONFIRMED (next audit). Spec=`prompts/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`.
 **Also this session:** ModellerGuide §Walk·Disciplines doc + review arc (prior, deployed). 
-**Next:** confirm ERP.db ground-truth (exact vs generated); re-bake terminal_rules with src_area for uniform model;
-3D confidence/clash highlight render in outliner; optional 3rd (healthcare) density standard.
+**ERP ground-truth audit DONE 2026-06-28** (`build/erp/AUDIT_WALK_GROUNDTRUTH.md`, 3 witnesses re-run 63/0): walk
+produces 2 honestly-labelled classes — **LANDED** routed segs (Terminal PLB 4314+ACMV 1001, real→real, posDrift=0
+≤1e-6, over-bound=0 → exact-landing CONFIRMED for the routing layer) + **GENERATED** count-exact density fixtures
+(PLB/ELEC, count==Σround(density×area)|envelope, position explicitly no-fidelity). 3 findings FLAGGED (not fixed):
+F-WALK-1 LANDED↔ERP.db drop-in is VACUOUS (erp-equiv walks only MEP-less residents → routing compared 0==0;
+Terminal never walked thru ERP views); F-WALK-2 roof/IfcPlate still bbox-tiles (SC roof placed=233374, cap path not
+area-scale — engine itself logs "re-bake to area-scale"); F-WALK-3 4/11 PLB routing rows empty src_guids.
+**Next:** F-WALK-1 witness (walk Terminal thru ERP.db views, assert same 5315 segs); F-WALK-2 re-bake roof/STR with
+src_area; F-WALK-3 backfill routing src_guids; 3D confidence/clash highlight render in outliner.
 
 ## SC IFC2BOM onboarding + Modelling-from-cascade vision — 2026-06-23 (branch lane/benchmark-clash-resolution)
 Cards: `prompts/RESUME_DROP_OUTLINER_ROADMAP.md` §1, `prompts/MODELLING_FROM_BOM_CASCADE.md`, `prompts/ONTOLOGICAL_BOM_EXTRACTION.md`.
