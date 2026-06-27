@@ -26,7 +26,8 @@ F-WALK-1 ✅ (LANDED↔ERP.db drop-in witnessed, `witness_disc_walk_erp_landed.j
 F-WALK-2 ✅ (roof area-scaled not cap-tiled, `witness_disc_walk_roof_bound.js` 10/0) ·
 F-WALK-3 ✅ (routing `src_guids` backfilled real, 0 empty). Full disc-walker suite **77/0**.
 Engine honesty contract complete: **every walked set is LANDED (real→real ≤1e-6) or count-exact GENERATED with
-measured density**. Remaining = a DEPLOY step (re-stamped `terminal_rules.db` → `bim-ootb/modeller/`), not a finding.
+measured density**. DEPLOYED LIVE (bim-ootb PR #559, sw v6): `red1oon.github.io/bim-ootb/modeller/terminal_rules.db`
+content_sha `b72cf8d5b487` curl-verified (src_area present, roof 2785.46, 0 empty routing guids). **Nothing open.**
 
 ---
 

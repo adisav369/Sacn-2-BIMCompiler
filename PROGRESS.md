@@ -48,8 +48,9 @@ suite **77/0** (nnchain6+density43+erp-equiv14+erp-landed4+roof-bound10); F-WALK
 **F-WALK-3 ✅ CLOSED 2026-06-28** (`stamp_routing_src_guids.py`): 4 empty PLB routing src_guids backfilled w/ REAL
 Terminal elements (nn rows=actual nn-pair from_guids, main/riser=real IfcPipeSegment); 20/20 real, 0 empty in both
 DBs; params untouched (nnchain still 6/0). **AUDIT NOW ZERO open findings — all 3 RESOLVED** (`AUDIT_WALK_GROUNDTRUTH.md
-§STATUS`). ⚠ DEPLOY follow-up: re-stamped terminal_rules.db NOT yet pushed to bim-ootb/modeller (live copy pre-stamp
-= drift; engine proven, deploy separate step).
+§STATUS`). **DEPLOYED LIVE 2026-06-28** (bim-ootb PR #559 MERGED, sw v6): terminal_rules.db content_sha b72cf8d5b487
+on red1oon.github.io/bim-ootb/modeller — curl-verified (src_area present, roof 2785.46, 0 empty routing guids). Drift
+cleared; the already-live area-scale engine (#558) now activated for the Terminal-rules Walk roster.
 **NB (scope, user-flagged):** these fixes harden the rule/POSITION layer (LANDED + count-exact). They are NOT mesh
 placement. Walk render today = uniform 0.18m InstancedMesh marker cubes (`modeller.html:_renderDiscWalk`), segs not
 drawn. Java-equivalent LOD meshes (catalog geometry) = SEPARATE RosettaStone/compiler track; disc-walker doesn't feed it.
