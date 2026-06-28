@@ -216,6 +216,29 @@ T4 vertical-singularity exact, T5 resident→0 tubes (LANDED-only, fixtures stay
 GENERATED-fixture catalog meshes (vs cubes) deliberately NOT done — no source geometry for an absent discipline;
 cubes stay the honest "plausible marker."
 
+## Modeller polish backlog → ZERO (except user-gated #3b) — SHIPPED 2026-06-28 (bim-ootb, spec=prompts/RESUME_MODELLER_POLISH.md)
+Final three polish legs all LIVE, witness-first, each a fresh worktree off origin/main → PR → auto-merge squash →
+live-verified (sw v12→v15). Backlog now at ZERO except the user-gated #3b solid-scale kernel leg.
+- **#7 M8 Outliner incremental rebuild** (PR #568, sw v13, W-BONSAI-OUTLINER-INCR 5/5): the Outliner rebuilt BOTH
+  the seeded BOM-tree (whole building, 1000s of nodes) AND the flat op-log groups on every `bonsai:oplog` change →
+  jank at 100+ features. Now each section renders to its own persistent container; freshly-built HTML is string-diffed
+  vs the last render → an unchanged section is left untouched (no innerHTML reparse / no querySelectorAll re-wire). A
+  geometry commit changes only the flat HTML → seeded tree DOM reused (node identity preserved); active-blue no longer
+  baked — setActive() paints it over the surviving DOM for flat AND tree-leaf rows. Original W-BONSAI-OUTLINER still PASS.
+- **#9 H1 Z-drag in pure top view** (PR #569, sw v14, W-BONSAI-ZTOP 4/4): in top view `moveDragPlane('z')` degenerates
+  (ray ∥ the vertical plane) → Z-drag was a no-op. `_camTopDown()` detects it; the Z handle maps vertical SCREEN motion
+  → world-Z (drag up = +Z, magnitude = px × `_zWorldPerPixel`), through the SAME snappedMoveDelta/commitMoveDrag path.
+  Non-top views byte-identical.
+- **#6 M7 rich assembly-drop preview** (PR #570, sw v15, W-BONSAI-ASM-PREVIEW 4/4): preview now shows the N CHILD boxes
+  at their real landing positions (SAME dropLeaves transform the commit uses), not just one aabb footprint. Gate cleared
+  (W-BOM-DROP-CENTER shipped). `bonsai_library.previewLeafBoxes` merges the N box-proxies (capped 2000 → whole-building
+  drop falls back to the TRUE footprint box, logged); `showGhost` caches per (hash,yaw,elev) + rigidly translates per
+  move. Drop/commit path untouched.
+- **⛔ #3b solid-scale on B-rep SOLIDS = DEFERRED by user direction** ("only if authored-wall scaling becomes a real
+  need"). occt-wasm generalTransform Copy=false aliases the cached base under a history-scrub re-fold; a real fix =
+  recompile occt-wasm Copy=true OR rework the worker shape-release lifecycle (a dedicated kernel session, NOT polish).
+  Inserts (the common case) scale fine (#563). The one open question for the user = is authored-wall solid scaling wanted?
+
 ## Modeller editor polish + W-DW-PRIM — SHIPPED 2026-06-28 (bim-ootb modeller, spec=prompts/RESUME_MODELLER_POLISH.md)
 This session's bim-ootb modeller arc (all LIVE, witness-first, regression-clean; bim-compiler side = build/disc_walker.js + stamps + witnesses, committed `ae063761`):
 - **W-DW-PRIM** (PR #562, sw v8): GENERATED disc-walk fixtures render a per-ifc_class BOX of the class's MEASURED median bbox (`stamp_src_bbox.py`→bbox_dx/dy/dz on both rules DBs; size-only, count/pos unchanged). W-DW-PRIM 10/10 + §DWG repaired 39/10→49/0 + §DW_IDB offline rules cache.
