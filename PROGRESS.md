@@ -4,6 +4,14 @@
 
 ## Current State
 
+**§SDG-CASCADE hosted-by ride — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb PR #573, sw v16→v17, auto-merge armed;
+spec=`prompts/RESUME_ARC_EDITABLE_SUBSTRATE.md` slice 2). **Drag wall → door/window rides** (the SDG forward fold
+on the §ARC-1 substrate): `sdg_cascade.js ridersFor` resolves hosted fillings via the featureId↔guid bridge over
+real `rel_fills_host` edges; `commitMove` emits induced GEOM_MOVE per rider (same delta, directional, one-hop).
+Pure rigid translation → rosetta-invertible. **W-SDG-CASCADE-MODELLER 7/7** (node: rigid ride, offset-invariant,
+−delta recovers original 7e-8mm, non-invent) **+ §SDG-CASCADE-SMOKE 6/6** (headless: wall→door rides +1m). contains
+half DROPPED by design (0 ARC element↔element aggregates in SH/Duplex/SampleCastle). [[project_arc_editable_substrate]]
+
 **§ARC-1 editable-ARC substrate — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb PR #571, sw v15→v16, auto-merge armed;
 spec=`prompts/RESUME_ARC_EDITABLE_SUBSTRATE.md`). Real ARC building now loads as gizmo-EDITABLE, guid-carrying
 `GEOM_INSERT` meshes (was synthetic-only) — the PREREQUISITE substrate for the SDG forward-fold cascade. NON-INVENT
