@@ -215,3 +215,10 @@ T4 vertical-singularity exact, T5 resident→0 tubes (LANDED-only, fixtures stay
 **Note:** this is the render of the LANDED layer (toward-Java placement, for the layer that HAS ground truth).
 GENERATED-fixture catalog meshes (vs cubes) deliberately NOT done — no source geometry for an absent discipline;
 cubes stay the honest "plausible marker."
+
+## Modeller editor polish + W-DW-PRIM — SHIPPED 2026-06-28 (bim-ootb modeller, spec=prompts/RESUME_MODELLER_POLISH.md)
+This session's bim-ootb modeller arc (all LIVE, witness-first, regression-clean; bim-compiler side = build/disc_walker.js + stamps + witnesses, committed `ae063761`):
+- **W-DW-PRIM** (PR #562, sw v8): GENERATED disc-walk fixtures render a per-ifc_class BOX of the class's MEASURED median bbox (`stamp_src_bbox.py`→bbox_dx/dy/dz on both rules DBs; size-only, count/pos unchanged). W-DW-PRIM 10/10 + §DWG repaired 39/10→49/0 + §DW_IDB offline rules cache.
+- **Gizmo SCALE on inserts** (PR #563, sw v9): edge-anchored cube handles, W-BONSAI-SCALE 10/10. ⛔ solid-scale DEFERRED — occt-wasm generalTransform Copy=false aliases base under history-scrub (kernel rebuild/lifecycle rework, not a polish leg; cheap bake-via-cut tested + FAILS).
+- **#5 cursor-per-mode** (PR #564, sw v10, W-BONSAI-CURSOR 12/12) · **#8 error toast** (PR #566, sw v11, W-BONSAI-TOAST 6/6) · **#4 sketch/route point-recovery** (PR #567, sw v12, W-BONSAI-POINTS-RECOVERY 4/4).
+- **NEXT polish:** #7 Outliner incremental rebuild (jank 100+ features) · #6 assembly-drop preview (after BOM-drop anchor lane) · #9 Z-drag top-view · #3b solid-scale kernel leg. **DX-MEP residential standard = already DONE/LIVE (#557), NOT a todo** (stale memory corrected).
