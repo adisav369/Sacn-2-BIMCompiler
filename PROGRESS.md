@@ -4,6 +4,14 @@
 
 ## Current State
 
+**§STRETCH-1 ARC grid-STRETCHABLE + gated — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb PR #575, sw v18→v19,
+auto-merge armed; spec=`prompts/RESUME_ARC_STRETCHABLE.md`). The vision's PRIMARY handle (3D grid, stretch≠scale)
+now works on the REAL seeded building: `foldInsert(op,mv,gridCmds)` applies GEOM_GRID_MOVE to box-proxy WORLD
+positions (mirrors the worker's translate/scale); `foldChainToScene` routes commands via `gridBy`; `commitGridMove`
+runs the §GATE-1 conformity gate. Was a no-op (inserts fold host-side, grid folds worker-side). **W-GRID-INSERT 6/6
++ §STRETCH-GATE-SMOKE 5/5** + full regression green (ARC/CASCADE/GATE/insert + 3 smokes — core-fold change clean).
+**Modeller-vision roadmap: slice 4/N** (substrate → ride → gate → stretchable+gated). [[project_arc_editable_substrate]]
+
 **§GATE-1 RED/ORANGE conformity gate — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb PR #574, sw v17→v18, auto-merge
 armed; spec=`prompts/RESUME_MODELLER_CONFORMITY_GATE.md`). The SDG spine's **planner's gate**: after a move/ride,
 `commitMove` runs `sdg_gate.evaluate` → **RED** (wall clash / door-out-of-host) + **ORANGE** (tight clearance) →
