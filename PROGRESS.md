@@ -4,6 +4,15 @@
 
 ## Current State
 
+**§GATE-1 RED/ORANGE conformity gate — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb PR #574, sw v17→v18, auto-merge
+armed; spec=`prompts/RESUME_MODELLER_CONFORMITY_GATE.md`). The SDG spine's **planner's gate**: after a move/ride,
+`commitMove` runs `sdg_gate.evaluate` → **RED** (wall clash / door-out-of-host) + **ORANGE** (tight clearance) →
+toast + highlight + §GATE log. DELTA-based (pre-existing as-extracted overlaps ignored), REPORTS-only (op stands,
+user-gated), NON-INVENT (pure geometry + recovered edges, CLEARANCE a param). **W-SDG-GATE 6/6** (node) **+
+§GATE-SMOKE 6/6** (headless) + cascade regression 6/6. Turns the modeller from a *mover* into a *planner*.
+**Modeller-vision roadmap: slice 3 of N done** (§ARC-1 substrate → §SDG-CASCADE ride → §GATE conformity). Next:
+revert-RED / gate the stretch engine / ORANGE backprop / enterprise fold. [[project_arc_editable_substrate]]
+
 **§SDG-CASCADE hosted-by ride — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb PR #573, sw v16→v17, auto-merge armed;
 spec=`prompts/RESUME_ARC_EDITABLE_SUBSTRATE.md` slice 2). **Drag wall → door/window rides** (the SDG forward fold
 on the §ARC-1 substrate): `sdg_cascade.js ridersFor` resolves hosted fillings via the featureId↔guid bridge over
