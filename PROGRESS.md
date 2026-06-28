@@ -4,6 +4,14 @@
 
 ## Current State
 
+**§ARC-1 editable-ARC substrate — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb PR #571, sw v15→v16, auto-merge armed;
+spec=`prompts/RESUME_ARC_EDITABLE_SUBSTRATE.md`). Real ARC building now loads as gizmo-EDITABLE, guid-carrying
+`GEOM_INSERT` meshes (was synthetic-only) — the PREREQUISITE substrate for the SDG forward-fold cascade. NON-INVENT
+(box world-centre==measured center_xyz <1e-6). featureId↔guid bridge live (`window.__arc{Fid,Guid}*` + persisted
+`kernel_ops.output_guid`). **W-ARC-EDITABLE 8/8 + §ARC-SEED-SMOKE 8/8 + §ARC-1 REGRESSION 5/5.** Finding: SampleHouse
+hosted-by = 7/7 ARC↔ARC (cascade-ready); aggregates parents non-element STR-assembly → contains needs other data.
+NEXT = slice (2) W-SDG-CASCADE-MODELLER (hosted-by drag→ride; contains pending a building w/ element-level aggregates).
+
 **Gate:** `./scripts/run_RosettaStones.sh` — S190 fleet: 116/157 PASS, 4 ALL GREEN (BR,MO,RL,WI). 21 buildings. 9-gate system.
 
 | PFX | EL | GATES | Notes |
