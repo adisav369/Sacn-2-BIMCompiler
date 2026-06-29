@@ -4,6 +4,15 @@
 
 ## Current State
 
+**§8E-5 GREEN report (the §8D capstone) — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb `lane/arc-mesh-readpixels` b7553ef;
+spec §8E-5). ONE harness runs the WHOLE TE walk (ARC→STR→canopy→4 MEP→gate) → emits the inspectable artifact
+`modeller/tests/TE_GREEN_REPORT.md`. Per-layer roll-up: ARC EXACT 0.000 / STR col RMSE 0.094m (8 over-span RED) /
+canopy 1.38% / MEP ACMV +7% FP +13% tight, ELEC 2.39× finding, PLB routed ⛔ / clash 170→3. **Red-on-theirs (auditing
+the as-built): 994 real cross-disc pairs <0.10m, 57 <0.05m** = real coordination clashes Terminal contains
+(green-on-ours residual 0.06% + red-on-theirs = the defensible "more correct"). Confidence ECE 0.034 cited.
+**W-GREEN-REPORT-TE 7/7. §8E TE SUITE COMPLETE** (§8E-0/1/1b/2a/2b/4/5) except **§8E-3 routed MEP ⛔** (needs a
+MEP-bearing substrate / §5 unblock). DEFERRED: 261MB verbatim plate range-stream. [[project_modeller_vision_lock]]
+
 **§8E-4 Stage-2 clash (clash-ON) — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb `lane/arc-mesh-readpixels` 6b9b8b6; spec
 §8E-4). The two-stage ablation (§8B): `rule_avoidance` was already MINED (10 pairs, `measured:terminal/global-p05`) and
 the gate already iterate-yields + flags-RED — so this is the Δ proof. Walk all 4 MEP discs into the laid ARC as ONE set,
