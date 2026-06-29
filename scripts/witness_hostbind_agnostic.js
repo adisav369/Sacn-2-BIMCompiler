@@ -18,7 +18,7 @@
  *
  * CLAIMS (each names the issue it proves or disproves):
  *   H0 MINED-RULE      — the grille→window mount rule (mount face + offset) is MINED from the 13 real grilles with
- *                        a TIGHT spread (MAD≈0), not a hand-picked constant. Records ACMV_WINDOW_SHIM for promotion.
+ *                        a TIGHT spread (MAD≈0), not a hand-picked constant. Records VENT_WINDOW_SHIM for promotion (disc-mapping deferred to the rule_shim projection).
  *   H1 WALL-REGRESSION — the generalized hostBind reproduces the wall/SIDE result UNCHANGED (SH ELEC: 36 bound,
  *                        median ≤ wall thickness, float→0). Generalization didn't break class-2-wall.
  *   H2 WINDOW-ASSOC    — the 13 grilles ARE host-bound to windows: N/13 sit within reach of a same-storey window
@@ -138,7 +138,7 @@ function distToWalls(p, walls) {
   assert('H0 MINED-RULE',
     assoc.length >= 5 && spread <= 0.01 && isFinite(offCenter),
     'the grille→window rise is a TIGHT measured rule (' + assoc.length + ' samples, offset=' + offCenter.toFixed(3) +
-    'm, MAD=' + spread.toFixed(3) + 'm ≤ 0.01) — ACMV_WINDOW_SHIM | IfcWindow | CENTER | ' + Math.round(offCenter * 1000) + 'mm (promote to _shim_attributes)');
+    'm, MAD=' + spread.toFixed(3) + 'm ≤ 0.01) — VENT_WINDOW_SHIM | IfcWindow | CENTER | ' + Math.round(offCenter * 1000) + 'mm (promote to _shim_attributes)');
 
   // ── H2 WINDOW-ASSOC (count is the honest measured association) ──
   assert('H2 WINDOW-ASSOC',
