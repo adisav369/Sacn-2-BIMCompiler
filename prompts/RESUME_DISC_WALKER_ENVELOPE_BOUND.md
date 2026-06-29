@@ -23,9 +23,15 @@ analogue is n_measured scaled by floor-area ratio.
 > (`python3 build/project_rule_shim.py <db> <class> <src>`) onto the COMMITTED `*_rules.db` — a FULL re-bake drifts
 > `rule_avoidance` 10(global-p05)→47(per-storey) because the committed DBs were baked by a newer process than the
 > current `bake_*.py`. Touch only rule_shim until that bake drift is reconciled.
-> **NEXT BITE (in order):** (a) DEFAULT-ON host-bind is now safe — flip `dwWalk` to host-bind by default (the key
-> removes the mis-bind risk); (b) roadmap #1 full ERP→`disc_patterns` physical rename; (c) port `disc_walker.js` +
-> both `*_rules.db` → `~/bim-ootb/modeller/` + live SC grille-walk deploy. Full status: §NEXT below + the SHIM diagram.
+> **✅ DEFAULT-ON host-bind DONE** (358dcbd2 — `{noHostBind:true}` restores raw floating; W-DWWALK-HOSTBIND reframed).
+> **✅ PER-DISCIPLINE BORROW DONE** (5f013fe2 — `dwBorrow(disc, db)`, W-BORROW-FP 6/6: SampleCastle walks ELEC/ACMV/PLB
+> from duplex_rules + BORROWS FP/sprinkler from terminal_rules, 151 sprinklers host-bound to real ceilings, gate stays
+> residential; `_primFor` = LOD400 render seam). **✅ ANTI-DRIFT: `docs/WalkerDoctrine.md` is now the LOCKED core doc**
+> (CLAUDE.md pointer; small→DX / Terminal=LOD400-ref+borrow-source / dwInit-default trap / §DWG=generalization-test).
+> **NEXT BITE (in order):** (a) bim-ootb PORT — `disc_walker.js` + both `*_rules.db` → `~/bim-ootb/modeller/`, wire the
+> per-discipline borrow (FP from terminal) into the modeller walk call + render the `prim` kinds (better sprinkler
+> primitive now, LOD400 component-library swap seam) + deploy live SC sprinkler-walk; (b) roadmap #1 full
+> ERP→`disc_patterns` physical rename. Full status: §NEXT below + §SHIM-SELECT + docs/WalkerDoctrine.md.
 
 ## 🚫 §NAMING DIRECTIVE — DE-ERP (BINDING; user-confirmed 2026-06-29/30 — READ FIRST)
 **The prior-art pattern store is `disc_patterns.db`. "ERP.db" is a MISLEADING LEGACY NAME — do NOT use it for pattern
