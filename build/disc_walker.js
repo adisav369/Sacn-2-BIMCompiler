@@ -714,15 +714,18 @@
     var placements = place(disc, sub, bdb);
     // ── HOST-BIND from the PROJECTION: snap floating host-bound placements onto a real host (anti-float),
     // count-preserving. Source = caller opts.shims (override) ELSE the projected `rule_shim` table (the
-    // first-class §SHIM flow — same as routing/placement). opts.noHostBind=true disables (regression escape hatch).
-    // OPT-IN (default OFF → live walk byte-identical, regressions invariant). Enable with opts.hostBind=true (reads
-    // the projected `rule_shim`) or opts.shims (caller override). §SHIM-SELECT: the floating set is GROUPED BY
-    // ifc_class and each group binds with its OWN shim (rule_shim.fixture_ifc_class) — so ELEC ceiling-lights snap
-    // to IfcCovering and wall-outlets to IfcWall IN ONE WALK; a class with no per-fixture row falls back to the
-    // disc-level shim. Caller-passed raw rows (no fixture_ifc_class) → disc-level fallback = byte-identical.
+    // first-class §SHIM flow — same as routing/placement). §SHIM-SELECT made this DEFAULT-ON (2026-06-30): the
+    // per-fixture-ifc_class selection key removed the mis-bind risk (ELEC ceiling-lights → IfcCovering, wall-outlets
+    // → IfcWall) so the live walk now anti-floats by default. CORRECTNESS-SAFE: a fixture binds only to its MEASURED
+    // host when one exists in reach, else it stays floating (REFUSE) — never fabricated, count always preserved.
+    // ESCAPE HATCHES: opts.noHostBind=true (or opts.hostBind===false) restores the raw floating generation walk
+    // (used by the GENERATION-layer count checks in witness_disc_walk_generalize.js). opts.shims forces the caller
+    // override. A discipline with NO matching shim row is a no-op (floats as before). The floating set is GROUPED BY
+    // ifc_class and each group binds with its OWN shim; a class with no per-fixture row falls back to the disc-level
+    // shim. Caller-passed raw rows (no fixture_ifc_class) → disc-level fallback.
     var hbInfo = null;
     var shimSrc = (opts && opts.shims) || _loadRuleShims();
-    var doBind = !!(opts && (opts.hostBind || opts.shims));
+    var doBind = (opts && opts.shims) ? true : !(opts && (opts.noHostBind || opts.hostBind === false));
     // Only FLOATING density placements (prov 'placed:*') are anti-float candidates. Placements already tacked to a
     // real host by the ref_kind='host' path (prov 'shim:host-*') are LEFT UNTOUCHED — re-binding them would move a
     // correctly-hosted fixture. So host-bind rescues only what actually floats; already-hosted walks are invariant.

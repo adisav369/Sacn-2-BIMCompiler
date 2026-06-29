@@ -5,6 +5,11 @@
  * they were NEVER mined from. Proves the convergence end-point: a disc-node walk on SH/DX/SC
  * from terminal_rules.db, honest-refusing where the substrate is absent. NON-INVENT.
  *
+ * ⚠ THIS IS A GENERALIZATION TEST, NOT THE PRODUCTION PATH. Production walks small/residential
+ * buildings (SH/DX/SC) with `duplex_rules.db` — see docs/WalkerDoctrine.md §1. Walking
+ * terminal_rules here is deliberate: it stresses that Terminal-mined density transfers to a
+ * building it was never mined from. Do not read this witness as "we use Terminal on small buildings."
+ *
  * Issues proved/disproved (each test names the issue):
  *   G1 GENERALIZE-PLACE — FP/ELEC/STR walk a resident (no such elements there) → placed>0,
  *      every placement INSIDE the building footprint, z finite. (rules transfer to a new bldg)
@@ -88,7 +93,11 @@ function occCells(bdb, st, cell) {
 
     // ── G1/G2/G6 — FP/ELEC/STR generalize-place + cadence + non-invent ──
     ['FP', 'ELEC', 'STR'].forEach(disc => {
-      const w = DW.dwWalk(disc, bdb, res.key);
+      // G1/G2/G6 verify the GENERATION layer (area-density count + envelope + non-invent classes) that host-bind
+      // refines ON TOP. host-bind is DEFAULT-ON since §SHIM-SELECT, so isolate the raw generation here with
+      // {noHostBind:true} (count is the generation invariant; host-bind only moves positions, count-preserved).
+      // The live host-bound walk's gate honesty is checked by G4 below (default walk) + W-SHIM-SELECT/W-DWWALK-HOSTBIND.
+      const w = DW.dwWalk(disc, bdb, res.key, { noHostBind: true });
       if (w.refused) { ok(disc === 'STR' || true, 'G1 ' + res.key + '/' + disc + ' refused (' + w.reason + ') — honest'); return; }
       ok(w.placed > 0, 'G1 ' + res.key + '/' + disc + ' placed=' + w.placed + ' (>0)');
       // ENVELOPE TOLERANCE = half the occupancy CELL (per class), not 1e-6. The area-density placer

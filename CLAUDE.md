@@ -6,9 +6,12 @@
 **NEVER TOUCH PRODUCTION.** `deploy/live/` is the production snapshot — do not edit directly. All dev work goes to `deploy/dev/` ONLY. Read `deploy/OCI_UPLOAD.md` §RULES before any OCI upload.
 
 ## WORK-TO-ZERO (the backlog contract — enforced every session)
-There is ONE standing backlog: `prompts/FRONTEND_LANE_MASTER.md §OUTSTANDING`. A dictated item, once given,
+There is ONE standing backlog: `prompts/FRONTEND_LANE_MASTER.md §NEW BACKLOG`. A dictated item, once given,
 **STICKS until ✅ DONE or ⛔ BLOCKED — it is never re-parked, never re-asked if the answer is in the code.**
-- After the session's explicit task (or immediately if none is given), **work §OUTSTANDING top-to-bottom to zero**:
+(The old `§OUTSTANDING` band ran to ZERO and was RETIRED 2026-06-20 → archived to
+`prompts/archive/FRONTEND_LANE_MASTER_OUTSTANDING_drained_2026-06-20.md`. Do NOT re-walk it; its 3 still-⛔ items
+were carried forward into the master file's `§OUTSTANDING — RETIRED` block.)
+- After the session's explicit task (or immediately if none is given), **work §NEW BACKLOG top-to-bottom to zero**:
   take the top open item → spec → implement → witness/§-log → mark it `✅ DONE (witness)` in the list → next item.
 - **Do NOT stop and report "it's parked."** Keep going through the list. The default is *continue*, not *hand back*.
 - **Stop only when:** (a) the user interrupts (their call, any time), or (b) an item genuinely needs a user
@@ -47,6 +50,14 @@ A BOM is a recipe: one parent, N children, each with a quantity. Each child can 
 
 ## ERP Blueprint
 ERP / secured-distributed / serverless work → **`docs/ERP.md`** is the overarching blueprint; its Companion-docs map fans out to `docs/DistributedERP.md` (the doctrine + edge suite) + the `scripts/poc_*.js` witnesses. Read it first for ERP-side sessions.
+
+## Walker Doctrine (ANTI-DRIFT — read before ANY disc-walker / MEP-walk / rules-DB work)
+**`docs/WalkerDoctrine.md`** is the LOCKED core doc. The settled fundamentals (do NOT re-litigate or override): small/residential
+buildings (SH/DX/**SC**) walk **`duplex_rules.db`** — they do NOT use Terminal rules in production; the walk axis is BUILDING-CLASS,
+discipline is a `WHERE` column (never a per-building file). Terminal = the LOD400 reference + a BORROW source for disciplines ABSENT
+from residential (e.g. FP/sprinkler) rendered as a SEPARATE class with LOD400-mesh priority — borrowing a discipline's measured rows,
+NOT switching the building to Terminal rules. ⚠ `disc_walker.dwInit` DEFAULTS to `terminal_rules.db` (back-compat) — a residential
+caller MUST pass `duplex_rules.db`. `§DWG` walks Terminal-on-small as a GENERALIZATION TEST, not the production path.
 
 ## Session Startup
 0. Before reading `~/bim-ootb` as canon: `git -C ~/bim-ootb fetch origin && git -C ~/bim-ootb merge --ff-only origin/main`

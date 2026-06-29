@@ -1,30 +1,29 @@
 #!/usr/bin/env node
 /**
  * # ⚠ DO NOT REMOVE — W-DWWALK-HOSTBIND scope (read this block first)
- * SCOPE: Promote the host-bind anti-float fix from the WITNESS into the LIVE WALK. Until now `disc_walker.hostBind`
- *   was only exercised by witnesses; `dwWalk` (the Outliner "Walk · Disciplines" entry point) placed ELEC at
- *   floating footprint-cell centres and never host-bound them. This proves `dwWalk(disc, bdb, name, {shims})` now
- *   routes the floating placements through hostBind for any discipline that has a matching host percept — COUNT
- *   PRESERVED (bound ∪ refused), refusals kept floating + counted — while `dwWalk` WITHOUT shims stays byte-identical
- *   (no live-behaviour change unless a percept is supplied).
+ * SCOPE: the host-bind anti-float fix in the LIVE WALK, now DEFAULT-ON (§SHIM-SELECT, 2026-06-30). `dwWalk` (the
+ *   Outliner "Walk · Disciplines" entry point) used to place ELEC at floating footprint-cell centres; it now snaps
+ *   each floating placement onto its MEASURED host BY DEFAULT (no opts needed), COUNT-PRESERVED (bound ∪ refused,
+ *   refusals kept floating + counted). The per-fixture-ifc_class SELECTION KEY removed the mis-bind risk that kept
+ *   this opt-in (wall-outlets→IfcWall, ceiling-lights→IfcCovering). `{noHostBind:true}` (or `{hostBind:false}`)
+ *   restores the raw floating generation — the escape hatch the generation-count witnesses use.
  *
- *   This is the CALLER-PASSED interim of the §NAMING DIRECTIVE §SHIM step (RESUME_DISC_WALKER_ENVELOPE_BOUND.md):
- *   the hardened end-state projects a `rule_shim` table into the *_rules.db that dwWalk reads directly. Percepts
- *   here are read from disc_patterns.db `_shim_attributes` (physically library/ERP.db until the rename slice lands).
- *   NON-INVENT: walls are REAL SampleHouse geometry; the percept is the prior-art pattern-store fact, never guessed;
- *   refusals are counted, never fabricated onto a wall. Read the §-log after the run; exit code is not the evidence.
+ *   The shim flows as a first-class PROJECTED rule (`rule_shim` in the *_rules.db, read directly by dwWalk). Percepts
+ *   trace to disc_patterns.db `_shim_attributes` (physically library/ERP.db until the rename slice lands).
+ *   NON-INVENT: walls are REAL SampleHouse geometry; the host is the MEASURED nearest, never guessed; refusals are
+ *   counted, never fabricated onto a host. Read the §-log after the run; exit code is not the evidence.
  *
  * CLAIMS:
  *   W0 PERCEPT-SOURCE — the ELEC wall percept is read from disc_patterns.db `_shim_attributes` (host=IfcWall,SIDE).
- *   W1 BYTE-IDENTICAL — dwWalk('ELEC', SH) WITHOUT shims is unchanged: same placed count, same floating set
- *                       (the live walk is untouched until a percept is passed).
- *   W2 LIVE-HOSTBIND  — dwWalk('ELEC', SH, {shims}) host-binds the floating placements: float→0, every bound point
- *                       on a real wall within reach, result.hostBind populated.
- *   W3 COUNT-PRESERVED— the host-bound walk returns the SAME number of placements as the plain walk (bound ∪ refused),
- *                       so promotion moves fixtures onto hosts without adding/dropping any.
- *   W4 NO-PERCEPT-NOOP— dwWalk for a discipline with NO matching percept (PLB) is identical with/without shims.
- *   W5 PROJECTION-SRC — dwWalk('ELEC', SH, {hostBind:true}) with NO caller shims reads the `rule_shim` table
- *                       projected into the *_rules.db (the §SHIM first-class flow) and binds identically.
+ *   W1 RAW-FLOAT      — dwWalk('ELEC', SH, {noHostBind:true}) restores the raw floating generation: deterministic,
+ *                       hostBind=null, most placements floating (the pre-host-bind defect, via the escape hatch).
+ *   W2 DEFAULT-HOSTBIND — dwWalk('ELEC', SH) with NO opts now anti-floats by default: float↓, every bound point on a
+ *                       real wall within reach, result.hostBind populated.
+ *   W3 COUNT-PRESERVED— the default host-bound walk returns the SAME number of placements as the raw walk (bound ∪
+ *                       refused), so anti-float moves fixtures onto hosts without adding/dropping any.
+ *   W4 NO-SHIM-NOOP   — dwWalk for a discipline with NO matching shim (PLB) is a no-op under default-on (floats).
+ *   W5 PROJECTION-SRC — dwWalk('ELEC', SH, {hostBind:true}) reads the `rule_shim` table projected into the *_rules.db
+ *                       (the §SHIM first-class flow) and binds identically to the default walk.
  */
 'use strict';
 var fs = require('fs');
@@ -78,43 +77,43 @@ function distToWalls(p, walls) {
   var wallThick = median(walls.map(function (w) { return Math.min(w.bx, w.by_); }));
   var wallGuids = {}; rows(sh, "SELECT guid g FROM elements_meta WHERE ifc_class LIKE '%Wall%'").forEach(function (r) { wallGuids[r.g] = 1; });
 
-  // ── plain walk (no shims) = the live baseline ──
-  var plain = DW.dwWalk('ELEC', sh, 'SampleHouse');
-  var plainFloat = plain.placements.map(function (p) { return distToWalls(p, walls); }).filter(function (d) { return d > 0.6; }).length;
-  log('§DWHB PLAIN dwWalk ELEC: placed=' + plain.placed + ' float=' + plainFloat + ' hostBind=' + plain.hostBind);
+  // ── RAW floating generation = {noHostBind:true} (the layer host-bind refines; restores pre-§SHIM-SELECT walk) ──
+  var raw = DW.dwWalk('ELEC', sh, 'SampleHouse', { noHostBind: true });
+  var rawFloat = raw.placements.map(function (p) { return distToWalls(p, walls); }).filter(function (d) { return d > 0.6; }).length;
+  log('§DWHB RAW dwWalk ELEC {noHostBind}: placed=' + raw.placed + ' float=' + rawFloat + ' hostBind=' + raw.hostBind);
 
-  // ── W1 BYTE-IDENTICAL: a 2nd plain walk matches the first (no shims = deterministic, unchanged) ──
-  var plain2 = DW.dwWalk('ELEC', sh, 'SampleHouse');
-  assert('W1 BYTE-IDENTICAL', plain2.placed === plain.placed && !plain.hostBind && plainFloat > plain.placed * 0.5,
-    'no-shims walk unchanged & still floats: placed=' + plain.placed + ' (== ' + plain2.placed + '), hostBind=null, ' +
-    plainFloat + '/' + plain.placed + ' floating (the live defect, untouched without a percept)');
+  // ── W1 RAW-FLOAT: {noHostBind:true} restores the raw floating generation (the defect the live walk now fixes) ──
+  var raw2 = DW.dwWalk('ELEC', sh, 'SampleHouse', { noHostBind: true });
+  assert('W1 RAW-FLOAT', raw2.placed === raw.placed && !raw.hostBind && rawFloat > raw.placed * 0.5,
+    '{noHostBind} = deterministic raw generation: placed=' + raw.placed + ' (== ' + raw2.placed + '), hostBind=null, ' +
+    rawFloat + '/' + raw.placed + ' floating (the pre-host-bind defect, reachable via the escape hatch)');
 
-  // ── W2 LIVE-HOSTBIND: same walk WITH the percept ──
-  var hbWalk = DW.dwWalk('ELEC', sh, 'SampleHouse', { shims: shims });
-  var hbFloat = hbWalk.placements.map(function (p) { return distToWalls(p, walls); }).filter(function (d) { return d > 0.6; }).length;
-  var bound = hbWalk.placements.filter(function (p) { return p.host; });
+  // ── W2 DEFAULT-HOSTBIND: dwWalk('ELEC', SH) with NO opts now anti-floats BY DEFAULT (§SHIM-SELECT default-on) ──
+  var def = DW.dwWalk('ELEC', sh, 'SampleHouse');
+  var defFloat = def.placements.map(function (p) { return distToWalls(p, walls); }).filter(function (d) { return d > 0.6; }).length;
+  var bound = def.placements.filter(function (p) { return p.host; });
   var badHost = bound.filter(function (p) { return !wallGuids[p.host] || p.snapDist > 6; }).length;
-  log('§DWHB HOSTBOUND dwWalk ELEC {shims}: placed=' + hbWalk.placed + ' bound=' + (hbWalk.hostBind && hbWalk.hostBind.bound) +
-    ' refused=' + (hbWalk.hostBind && hbWalk.hostBind.refused) + ' float=' + hbFloat + ' median-bound-dist=' +
+  log('§DWHB DEFAULT dwWalk ELEC (no opts): placed=' + def.placed + ' bound=' + (def.hostBind && def.hostBind.bound) +
+    ' refused=' + (def.hostBind && def.hostBind.refused) + ' float=' + defFloat + ' median-bound-dist=' +
     median(bound.map(function (p) { return distToWalls(p, walls); })).toFixed(3) + 'm');
-  assert('W2 LIVE-HOSTBIND',
-    !!hbWalk.hostBind && hbWalk.hostBind.bound > 0 && hbFloat < plainFloat && badHost === 0,
-    'dwWalk host-binds live: ' + hbWalk.hostBind.bound + ' bound to real walls (0 bad), float ' + plainFloat + '→' + hbFloat +
-    ', percept=' + hbWalk.hostBind.percept);
+  assert('W2 DEFAULT-HOSTBIND',
+    !!def.hostBind && def.hostBind.bound > 0 && defFloat < rawFloat && badHost === 0,
+    'the LIVE walk host-binds by default: ' + def.hostBind.bound + ' bound to real walls (0 bad), float ' + rawFloat + '→' + defFloat +
+    ', host=' + def.hostBind.host);
 
   // ── W3 COUNT-PRESERVED ──
   assert('W3 COUNT-PRESERVED',
-    hbWalk.placed === plain.placed && (hbWalk.hostBind.bound + hbWalk.hostBind.refused) === plain.placed,
-    'host-bound walk keeps the count: ' + hbWalk.placed + ' == plain ' + plain.placed + ' (bound ' + hbWalk.hostBind.bound +
-    ' + refused ' + hbWalk.hostBind.refused + '); promotion moves fixtures onto hosts, adds/drops none');
+    def.placed === raw.placed && (def.hostBind.bound + def.hostBind.refused) === raw.placed,
+    'default host-bound walk keeps the count: ' + def.placed + ' == raw ' + raw.placed + ' (bound ' + def.hostBind.bound +
+    ' + refused ' + def.hostBind.refused + '); anti-float moves fixtures onto hosts, adds/drops none');
 
-  // ── W4 NO-PERCEPT-NOOP: PLB has no matching shim → identical with/without ──
-  var plbPlain = DW.dwWalk('PLB', sh, 'SampleHouse');
-  var plbShim = DW.dwWalk('PLB', sh, 'SampleHouse', { shims: shims });
-  log('§DWHB PLB no-percept: plain placed=' + plbPlain.placed + ' withShims placed=' + plbShim.placed + ' hostBind=' + plbShim.hostBind);
-  assert('W4 NO-PERCEPT-NOOP',
-    plbPlain.placed === plbShim.placed && !plbShim.hostBind,
-    'a discipline with no matching percept is untouched: PLB placed=' + plbPlain.placed + ' == ' + plbShim.placed + ', hostBind=null');
+  // ── W4 NO-SHIM-NOOP: PLB has no matching shim → default walk is a no-op (floats, same as {noHostBind}) ──
+  var plbDef = DW.dwWalk('PLB', sh, 'SampleHouse');
+  var plbRaw = DW.dwWalk('PLB', sh, 'SampleHouse', { noHostBind: true });
+  log('§DWHB PLB no-shim: default placed=' + plbDef.placed + ' raw placed=' + plbRaw.placed + ' hostBind=' + plbDef.hostBind);
+  assert('W4 NO-SHIM-NOOP',
+    plbDef.placed === plbRaw.placed && !plbDef.hostBind,
+    'a discipline with no matching shim is untouched by default-on: PLB placed=' + plbDef.placed + ' == ' + plbRaw.placed + ', hostBind=null');
 
   // ── W5 PROJECTION-SOURCE: opts.hostBind=true (NO caller shims) → dwWalk reads the projected rule_shim table ──
   var nShimRows = rows(rdb, "SELECT COUNT(*) c FROM rule_shim")[0].c;
@@ -125,17 +124,17 @@ function distToWalls(p, walls) {
     (projWalk.hostBind && projWalk.hostBind.bound) + ' percept=' + (projWalk.hostBind && projWalk.hostBind.percept) +
     ' (read from the *_rules.db projection, no caller shims)');
   assert('W5 PROJECTION-SOURCE',
-    nShimRows > 0 && !!projWalk.hostBind && projWalk.hostBind.bound === hbWalk.hostBind.bound && projBad === 0 &&
+    nShimRows > 0 && !!projWalk.hostBind && projWalk.hostBind.bound === def.hostBind.bound && projBad === 0 &&
     /Wall/i.test(projWalk.hostBind.host),
     'dwWalk reads the projected rule_shim (' + nShimRows + ' rows): {hostBind:true} binds ' + projWalk.hostBind.bound +
-    ' (== caller-shim ' + hbWalk.hostBind.bound + ') to real walls, 0 bad — §SHIM flows like routing/placement, no caller plumbing');
+    ' (== default ' + def.hostBind.bound + ') to real walls, 0 bad — §SHIM flows like routing/placement, no caller plumbing');
 
   rdb.close(); sh.close();
   log('───────────────────────────────────────────────');
-  log('§DWHB SUMMARY: dwWalk applies host-bind in the LIVE walk (ELEC float ' + plainFloat + '/' + plain.placed +
-    ' → ' + hbFloat + ', count preserved) — SOURCED FROM THE PROJECTED rule_shim table (W5, {hostBind:true}, no caller ' +
-    'plumbing) = §SHIM flows like routing/placement. OPT-IN (default byte-identical) until the per-fixture-ifc_class ' +
-    'SELECTION KEY lands (a disc has >1 host: ELEC wall-outlets vs ceiling-lights — naive priority would mis-bind lights).');
+  log('§DWHB SUMMARY: dwWalk anti-floats in the LIVE walk BY DEFAULT (§SHIM-SELECT default-on): ELEC float ' + rawFloat + '/' + raw.placed +
+    ' → ' + defFloat + ', count preserved, SOURCED FROM THE PROJECTED rule_shim table (per-fixture selection key picks ' +
+    'the right host: wall-outlets→IfcWall, ceiling-lights→IfcCovering). {noHostBind:true} restores the raw floating ' +
+    'generation (W1, the escape hatch the generation-count witnesses use).');
   log('W-DWWALK-HOSTBIND: ' + pass + ' PASS / ' + fail + ' FAIL');
   try { fs.mkdirSync(path.dirname(LOG), { recursive: true }); fs.writeFileSync(LOG, _lines.join('\n')); log('§LOG ' + LOG); } catch (e) {}
   process.exit(fail ? 1 : 0);
