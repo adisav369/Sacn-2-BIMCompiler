@@ -14,6 +14,28 @@ pitch only arranges locally. We have no rooms (IfcSpace=0 in ALL extracted.db), 
 analogue is n_measured scaled by floor-area ratio.
 ```
 
+## 🚫 §NAMING DIRECTIVE — DE-ERP (BINDING; user-confirmed 2026-06-29/30 — READ FIRST)
+**The prior-art pattern store is `disc_patterns.db`. "ERP.db" is a MISLEADING LEGACY NAME — do NOT use it for pattern
+work going forward.** `library/ERP.db` is the renamed `disc_validation.db` holding GEOMETRY percepts; the "ERP" label
+wrongly connotes accounting. Where older blocks below still say "ERP.db", read it as **"disc_patterns.db (currently still
+physically `library/ERP.db` until the rename slice lands)"** — and do NOT introduce NEW code/specs that name or read
+"ERP.db" for patterns; write `disc_patterns.db`.
+- **IN `disc_patterns.db` (geometry percepts):** `_shim_attributes` (anchor/mount/offset), `_import_joint_piece_types`
+  (parts+Ø+joins), `ad_assembly_connector`/`ad_assembly_manifest` (join+clearance), `ad_mep_pattern`,
+  `ad_routing_measured`/`ad_placement_measured`, `M_BOM`/`M_BOM_Line`.
+- **OUT (NOT the pattern store, out of scope):** accounting — `C_Order`/`C_OrderLine`, `AD_*` business, GL. The GL store
+  `build/erp/erp_rules.db` is a DIFFERENT file and stays separate. Geometry is the hard part; accounting is downstream.
+- **PROJECTION contract (unchanged):** the walker reads the lean per-BUILDING-CLASS `build/*_rules.db`
+  (`terminal_rules`/`duplex_rules`) = byte-identical projections of `disc_patterns.db`. **Discipline = a `WHERE` column,
+  never a file.** Cross-disc tables (`rule_avoidance` = disc-PAIRS, `rule_place_order`) stay WHOLE — never split by disc.
+- **SHIM must become a FIRST-CLASS projected rule (answers "does shim flow like routing?" — NOT YET, this is the wiring):**
+  add a `rule_shim` table (`host_ifc_class, mount, offset_m, height_m`, building-class-keyed, provenance-stamped) to each
+  `*_rules.db`, projected from `disc_patterns.db._shim_attributes`; have `dwWalk` apply it (place→`hostBind`) so NEW items
+  walked from the Outliner DISC tab get anchor/offset FROM THE PROJECTION — same flow as routing/placement. Today
+  `hostBind` only takes a caller-passed `shim` and `dwWalk` never calls it (witness-only).
+- **SEQUENCING:** do the RENAME + `rule_shim` projection BEFORE accreting more "ERP.db" references — every new
+  shim/join/assembly read must source from `disc_patterns.db` (or its `*_rules.db` projection), not the legacy name.
+
 ## THE MEASUREMENT DOCTRINE (user 2026-06-28 — the load-bearing constraint)
 A fidelity claim is only as good as having a GROUND TRUTH to land on. Split the walked output by construction:
 - **LANDED (reconstructive, real→real):** routed segment endpoints ARE real extracted elements — land them
@@ -157,31 +179,35 @@ Key = the full `url` string (e.g. `'../modeller/terminal_rules.db'`). Log: `§DW
 
 ## 🗺️ ROADMAP — walker → assembly (from 2026-06-29; resume here next session)
 The walk is **PATTERN × SUBSTRATE → network**, and the full chain is **ROUTE → INSTANTIATE → JOIN → SHIM**, every
-step sourced from `library/ERP.db` (the prior-art pattern store — see [[reference_erp_db_pattern_store]]), NOT the leaf
-`component_library.db` and NOT the accounting `erp_rules.db`. Where we are:
+step sourced from **`disc_patterns.db`** (the prior-art pattern store, currently still physically `library/ERP.db` — see
+§NAMING DIRECTIVE + [[reference_erp_db_pattern_store]]), NOT the leaf `component_library.db` and NOT the accounting
+`erp_rules.db`. Where we are:
 
 ```
- ERP.db (ex disc_validation.db)
+ disc_patterns.db   (currently library/ERP.db, ex disc_validation.db)
   ├─ ad_routing/placement_measured ─► *_rules.db projection ─► routeChains / place   ✅ ROUTE done (W-WALKBACK-MEP 8/8)
   ├─ ad_mep_pattern (METER→JUNCTION→FIXTURE abstract recipe)                          ◻ not consumed
   ├─ _import_joint_piece_types (parts + Ø + how-they-join, 7083)                      ◻ INSTANTIATE — not wired
   ├─ ad_assembly_connector (face / Ø / connects_to, 29)                              ◻ JOIN — not wired
-  └─ _shim_attributes (anchor shims, 11)                                            ◧ SHIM — hostBind spike uses it (ELEC)
+  └─ _shim_attributes (anchor shims, 12 incl VENT_WINDOW)            ◧ SHIM — hostBind host-agnostic (W-HOSTBIND-AGNOSTIC 6/6),
+                                                                       but NOT yet a projected rule_shim, dwWalk doesn't apply it
 ```
 
-**DONE this session (engine proven, all opt-in / regression-clean):**
+**DONE so far (engine proven, all opt-in / regression-clean):**
 - ROUTE: `routeChains(disc,bdb[,{toFace}])` emits the real network on a MEP-bearing substrate; non-invent; landed/real→real.
-- hostBind: anti-float for wall-mounted classes via the `_shim_attributes` percept (ELEC SH 26/38→0 float).
+- hostBind (host-AGNOSTIC, W-HOSTBIND-AGNOSTIC 6/6): wall/window-top/ceiling via the `_shim_attributes` percept (ELEC SH
+  26/38→0; 7 SC grilles reproduced at window-top). Percept-driven, caller passes `shim`.
 
-**NEXT — in priority order (each a bounded, witnessed slice):**
-1. **Promote host-bind into the MINING pipeline** (close the SH ELEC defect for real, not a post-step). Re-bake so
-   residential ELEC outlets/switches + FP alarms carry `ref_kind='host'` sourced from ERP.db `_shim_attributes`; SPLIT
-   ELEC wall (ELEC_WALL_SHIM) vs ceiling (ELEC_CEILING_SHIM → lights on IfcCovering BOTTOM). Touch `bake_duplex_rules.py`
-   /`bake_terminal_rules.py`; witness = the floating count must drop in the GENERATED `place()` output itself, no post-call.
-2. **Rename ERP.db → `disc_patterns.db`** (de-"ERP", isolate accounting). Carve the geometry-pattern tables out of
-   `library/ERP.db` into a clearly-named store; leave the accounting tables behind. Keep `*_rules.db` as the projection;
-   split files by BUILDING-CLASS, discipline stays a column, cross-disc tables (rule_avoidance/place_order) stay whole.
-   Witness: the projection re-bakes byte-identical from the renamed store (no number drift).
+**NEXT — in priority order (do the naming/projection FIRST so nothing new accretes onto "ERP.db"):**
+1. **RENAME → `disc_patterns.db`** (de-"ERP", per §NAMING DIRECTIVE). Carve the geometry-pattern tables out of
+   `library/ERP.db` into the clearly-named store; leave accounting behind. Keep `*_rules.db` as the projection; split by
+   BUILDING-CLASS, discipline = column, cross-disc tables whole. Witness: every `*_rules.db` re-bakes byte-identical from
+   the renamed store (no number drift). **Do this before #2/#3 so they source from `disc_patterns.db`, not the legacy name.**
+2. **Make SHIM a first-class PROJECTED rule + apply it on the live walk** (this is the "does shim flow like routing?" gap).
+   Add `rule_shim` (host_ifc_class/mount/offset_m/height_m, building-class-keyed, provenance) to each `*_rules.db`,
+   projected from `disc_patterns.db._shim_attributes`; `dwWalk` applies `place→hostBind` so NEW items from the DISC tab get
+   anchor/offset from the projection. Witness: residential ELEC/FP-alarm float drops in the GENERATED `dwWalk` output
+   itself (no post-call); SPLIT ELEC wall vs ceiling. (Supersedes the old "promote host-bind into mining" item.)
 3. **Route→ASSEMBLE bridge** (turn routed boxes into real parts). At each routed node, instantiate the catalog part
    (`_import_joint_piece_types`/component_geometries), orient so its `ad_assembly_connector` face (WASTE_OUT Ø100→
    PLUMBING_STACK) meets the run, stand off by `ad_assembly_manifest`/`_shim_attributes` clearance. Witness on Duplex-MEP
