@@ -14,11 +14,18 @@ pitch only arranges locally. We have no rooms (IfcSpace=0 in ALL extracted.db), 
 analogue is n_measured scaled by floor-area ratio.
 ```
 
-> ▶ **RESUME HERE (2026-06-30)** — SHIM is now a PROJECTED rule (`rule_shim` in each `*_rules.db`, dwWalk reads it,
-> W-DWWALK-HOSTBIND 6/6; all regressions green, pushed on `lane/benchmark-clash-resolution`). **NEXT BITE = the
-> SELECTION KEY:** stamp `rule_shim.fixture_ifc_class` (mine which fixture class mounts on which host) so a disc with
-> >1 host (ELEC wall-outlet vs ceiling-light) no longer mis-binds → unlocks safe DEFAULT-ON host-bind. Then roadmap
-> #1 (full ERP→disc_patterns physical rename) + bim-ootb port/deploy. Full status: §NEXT below + the SHIM diagram.
+> ▶ **RESUME HERE (2026-06-30)** — ✅ SELECTION KEY DONE (W-SHIM-SELECT 6/6, see §SHIM-SELECT below). `rule_shim`
+> now carries `fixture_ifc_class` MEASURED from the source building (5 terminal + 3 duplex per-fixture rows; every
+> host is the nearest-NN, ambiguous→REFUSE→disc-level fallback). dwWalk groups floating placements by ifc_class and
+> binds each with its own shim → ELEC ceiling-lights snap to IfcCovering instead of being mis-bound to walls (Terminal:
+> 1872 lights→ceiling, 0→wall). All regressions green: §DWG 49 · §DXG 12 · W-DWWALK-HOSTBIND 6 · W-HOSTBIND-AGNOSTIC 6
+> · W-ELEC-HOSTBIND 5 · W-WALKBACK-MEP 8 · disc_walk_shim 6. ⚠ IMPLEMENTATION NOTE: applied the projection STANDALONE
+> (`python3 build/project_rule_shim.py <db> <class> <src>`) onto the COMMITTED `*_rules.db` — a FULL re-bake drifts
+> `rule_avoidance` 10(global-p05)→47(per-storey) because the committed DBs were baked by a newer process than the
+> current `bake_*.py`. Touch only rule_shim until that bake drift is reconciled.
+> **NEXT BITE (in order):** (a) DEFAULT-ON host-bind is now safe — flip `dwWalk` to host-bind by default (the key
+> removes the mis-bind risk); (b) roadmap #1 full ERP→`disc_patterns` physical rename; (c) port `disc_walker.js` +
+> both `*_rules.db` → `~/bim-ootb/modeller/` + live SC grille-walk deploy. Full status: §NEXT below + the SHIM diagram.
 
 ## 🚫 §NAMING DIRECTIVE — DE-ERP (BINDING; user-confirmed 2026-06-29/30 — READ FIRST)
 **The prior-art pattern store is `disc_patterns.db`. "ERP.db" is a MISLEADING LEGACY NAME — do NOT use it for pattern
@@ -334,3 +341,46 @@ proves BOTH host types in one run:
   not self-consistency); (2) the 6 refused grilles' true host (ground-floor wall/ceiling — a 2nd host rule); (3) port
   `disc_walker.js` to `~/bim-ootb/modeller/` + a live SC grille-walk in the §-log (deploy). ELEC host-bind mining promotion
   (W-ELEC-HOSTBIND "promote to mining") still stands as its own bite.
+
+## §SHIM-SELECT — the fixture_ifc_class SELECTION KEY (W-SHIM-SELECT, 2026-06-30)
+**Problem (the open hole that blocked DEFAULT-ON host-bind).** `rule_shim` was projected at DISC level only
+(`fixture_ifc_class=NULL`); a disc with >1 host (ELEC = wall-outlet + ceiling-light; FP = wall-alarm + ceiling-
+sprinkler) was disambiguated by a coarse `priority` (SIDE/wall first). That MIS-BINDS ceiling fixtures to walls.
+The selection key = stamp each `rule_shim` row with the fixture's own `ifc_class`, MEASURED from the source
+building, so `dwWalk` picks the shim by `fixture_ifc_class == placement.ifc_class`.
+
+**MINING (non-invent, `project_rule_shim.py` gets a `source_db` param).** For each `(disc, fixture_ifc_class)`
+the walker actually PLACES (∈ `rule_placement`) and whose disc has ≥1 shim: measure every fixture instance's
+point-to-bbox-surface distance to the nearest host of each CANDIDATE host class (the disc's own shim hosts), in
+the source building it was mined from (Terminal → `Terminal_extracted.db`; Duplex → `Duplex_mep_meta.db`, disc
+resolved via `mep_subdisc`). Winner = host with smallest median. STAMP the per-fixture row ONLY when the winner
+is DECISIVE: `median(winner) ≤ MOUNT_TOL (0.5m)` AND (single candidate OR `median(winner) ≤ ½·median(runner-up)`).
+Else REFUSE (no per-fixture row — the disc-level row stays as fallback). The per-fixture row copies mount/offset/
+height from the matching `_shim_attributes` percept; provenance = `measured:fixture-host-nn:<src>@<median>m`.
+- MEASURED (Terminal): IfcLightFixture→IfcCovering(0.040m) · IfcElectricAppliance→IfcWall(0.000m) ·
+  IfcAirTerminal→IfcCovering(0.114m) · IfcFireSuppressionTerminal→IfcCovering(0.313m) · IfcAlarm→IfcWall(0.031m).
+  DISTINCT hosts within ELEC and within FP = the mis-bind resolved at the DATA level.
+- MEASURED (Duplex, generic flow-classes): ELEC IfcFlow*→IfcWall (all ≤0.24m; ceiling >4.8m) → SampleHouse ELEC
+  walk stays all-wall = the existing W-DWWALK-HOSTBIND W5 path UNCHANGED. ACMV refused (no host within 0.5m).
+
+**READ PATH (`disc_walker.js`).** New `_shimForFixture(shims, disc, ifcClass)`: exact `fixture_ifc_class` match
+first (lowest priority wins), else fall back to disc-level `_shimForDisc`. `dwWalk` host-bind block now GROUPS the
+floating placements by `ifc_class` and binds each group with its own shim → lights snap to ceilings, appliances to
+walls IN ONE WALK. Caller-passed `opts.shims` (raw `_shim_attributes` rows, no fixture_ifc_class) → no exact match
+→ disc-level fallback = byte-identical to today (interim path preserved). hbInfo aggregates across groups
+(total bound/refused + per-class breakdown); aggregate `host`='MIXED' when groups differ.
+
+**WITNESS (`scripts/witness_shim_select.js`, W-SHIM-SELECT):**
+- S0 MINED-DISTINCT — terminal_rules.rule_shim carries `ELEC/IfcLightFixture→IfcCovering` AND
+  `ELEC/IfcElectricAppliance→IfcWall` (distinct hosts), each `provenance LIKE measured:fixture-host-nn%`.
+- S1 NON-INVENT-ORACLE — re-measure each stamped row's fixture→host NN independently from the source DB; the
+  stamped host == the independently-measured nearest, median ≤ MOUNT_TOL. (no fabrication)
+- S2 SELECTION — `_shimForFixture` picks IfcCovering/BOTTOM for IfcLightFixture and IfcWall/SIDE for
+  IfcElectricAppliance — different shims for the same disc.
+- S3 LIVE-GROUPED — `dwWalk('ELEC', Terminal, {hostBind:true})` binds IfcLightFixture to IfcCovering (BOTTOM) and
+  IfcElectricAppliance to IfcWall (SIDE) in one walk; both mounts present; count preserved.
+- S4 FALLBACK — a class with no per-fixture row falls back to the disc-level shim (no crash, count preserved).
+- S5 REGRESSION — duplex ELEC all→wall (SampleHouse) unchanged → W-DWWALK-HOSTBIND green.
+
+**ACCEPTANCE.** S0–S5 green; existing §DWG 49 / §DXG 12 / W-DWWALK-HOSTBIND 6 / W-HOSTBIND-AGNOSTIC 6 /
+W-ELEC-HOSTBIND 5 / W-WALKBACK-MEP 8 stay 0-FAIL after re-bake. Then DEFAULT-ON host-bind is safe (follow-up).

@@ -422,7 +422,9 @@ def main():
     write_db(placement, space_bom, routing, place_order, avoidance)
     # §SHIM projection: host-bind percepts flow into the rules DB like routing/placement (RESUME §NAMING §SHIM).
     from project_rule_shim import project_shims
-    project_shims(OUT_DB, "residential", log=log)
+    # source_db = Duplex_mep_meta.db (carries elements_meta + mep_subdisc) → §SHIM-SELECT measures
+    # each generic flow-class's nearest host for the per-fixture selection key.
+    project_shims(OUT_DB, "residential", source_db=META_DB, log=log)
     log(f"baked {OUT_DB}")
     log(f"  rule_placement   = {len(placement)}")
     log(f"  rule_space_bom   = {len(space_bom)}")

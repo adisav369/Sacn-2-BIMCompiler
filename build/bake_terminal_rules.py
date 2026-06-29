@@ -145,7 +145,10 @@ def main():
     con.close()
     # §SHIM projection: host-bind percepts flow into the rules DB like routing/placement (RESUME §NAMING §SHIM).
     from project_rule_shim import project_shims
-    project_shims(DB_PATH, "terminal")
+    # source_db = the building the rules were mined from → §SHIM-SELECT measures each fixture
+    # class's nearest host (light→ceiling vs appliance→wall) for the per-fixture selection key.
+    TE_SRC = os.path.join(HERE, "..", "deploy", "buildings", "Terminal_extracted.db")
+    project_shims(DB_PATH, "terminal", source_db=TE_SRC)
 
 
 if __name__ == "__main__":

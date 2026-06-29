@@ -664,14 +664,19 @@
   function _discOf(s) { return s.disc != null ? s.disc : String(s.product_value || '').split('_')[0]; }
   function _shimForDisc(shims, disc) {
     if (!shims || !shims.length) return null;
-    var m = shims.filter(function (s) { return _discOf(s) === disc; });
+    // disc-level fallback rows = no fixture_ifc_class (NULL/empty). Per-fixture rows are handled by _shimForFixture.
+    var m = shims.filter(function (s) { return _discOf(s) === disc && !s.fixture_ifc_class; });
+    if (!m.length) m = shims.filter(function (s) { return _discOf(s) === disc; });  // caller-passed raw rows have no col
     if (!m.length) return null;
-    // SELECTION KEY (open refinement): a disc may carry >1 shim (ELEC wall+ceiling). Deterministic pick = lowest
-    // `priority` (rule_shim stamps SIDE/wall anti-float = 0). fixture_ifc_class match is the future ifc_class refinement.
+    // SELECTION KEY (disc-level fallback): a disc may carry >1 shim (ELEC wall+ceiling). Deterministic pick = lowest
+    // `priority` (rule_shim stamps SIDE/wall anti-float = 0). Per-fixture-ifc_class refinement = _shimForFixture (§SHIM-SELECT).
     m.sort(function (a, b) { return (a.priority != null ? a.priority : 9) - (b.priority != null ? b.priority : 9); });
-    if (m.length > 1) console.log(TAG + ' §SHIM-AMBIG disc=' + disc + ' has ' + m.length + ' shims — picked ' +
-      (m[0].host_ifc_class || '') + '/' + (m[0].mount || '') + ' by priority (ifc_class selection-key still open)');
-    var s = m[0];
+    if (m.length > 1) console.log(TAG + ' §SHIM-AMBIG disc=' + disc + ' has ' + m.length + ' disc-level shims — picked ' +
+      (m[0].host_ifc_class || '') + '/' + (m[0].mount || '') + ' by priority (no per-fixture row matched)');
+    return _normShim(m[0]);
+  }
+  // Normalize a rule_shim / raw _shim_attributes row to the percept shape hostBind consumes.
+  function _normShim(s) {
     return {
       host_ifc_class: s.host_ifc_class, mount: s.mount,
       offset_m: s.offset_m != null ? s.offset_m : (s.offset_mm != null ? s.offset_mm / 1000 : 0),
@@ -679,6 +684,20 @@
       reach_m: s.reach_m != null ? s.reach_m : 6, same_storey: !!s.same_storey,
       product_value: s.product_value || (_discOf(s) + ':' + s.host_ifc_class + '/' + s.mount)
     };
+  }
+  // §SHIM-SELECT — the SELECTION KEY: pick the shim by (disc, fixture ifc_class). A per-fixture row
+  // (rule_shim.fixture_ifc_class == ifcClass, MEASURED nearest host) wins; else fall back to the disc-level
+  // pick (_shimForDisc). This is what stops ELEC ceiling-lights mis-binding to walls: lights carry their own
+  // IfcCovering row, wall-outlets their own IfcWall row. Caller-passed raw rows (no fixture_ifc_class column)
+  // never match the exact branch → disc-level fallback = byte-identical to the interim path.
+  function _shimForFixture(shims, disc, ifcClass) {
+    if (!shims || !shims.length) return null;
+    var m = shims.filter(function (s) { return _discOf(s) === disc && s.fixture_ifc_class && s.fixture_ifc_class === ifcClass; });
+    if (m.length) {
+      m.sort(function (a, b) { return (a.priority != null ? a.priority : 9) - (b.priority != null ? b.priority : 9); });
+      return _normShim(m[0]);
+    }
+    return _shimForDisc(shims, disc);
   }
   function dwWalk(disc, bdb, buildingName, opts) {
     if (!_ready) { console.warn(TAG + ' not initialised'); return { disc: disc, refused: true, reason: 'engine not initialised', placed: 0 }; }
@@ -697,28 +716,49 @@
     // count-preserving. Source = caller opts.shims (override) ELSE the projected `rule_shim` table (the
     // first-class §SHIM flow — same as routing/placement). opts.noHostBind=true disables (regression escape hatch).
     // OPT-IN (default OFF → live walk byte-identical, regressions invariant). Enable with opts.hostBind=true (reads
-    // the projected `rule_shim`) or opts.shims (caller override). NOT default-on yet: a disc can carry >1 host (ELEC
-    // wall-outlets vs ceiling-lights); naive priority would mis-bind ceiling LightFixtures to walls. Safe auto-apply
-    // awaits the per-fixture-ifc_class SELECTION KEY (rule_shim.fixture_ifc_class, currently NULL). §SHIM-SELECT.
+    // the projected `rule_shim`) or opts.shims (caller override). §SHIM-SELECT: the floating set is GROUPED BY
+    // ifc_class and each group binds with its OWN shim (rule_shim.fixture_ifc_class) — so ELEC ceiling-lights snap
+    // to IfcCovering and wall-outlets to IfcWall IN ONE WALK; a class with no per-fixture row falls back to the
+    // disc-level shim. Caller-passed raw rows (no fixture_ifc_class) → disc-level fallback = byte-identical.
     var hbInfo = null;
     var shimSrc = (opts && opts.shims) || _loadRuleShims();
-    var shim = (opts && (opts.hostBind || opts.shims)) ? _shimForDisc(shimSrc, disc) : null;
+    var doBind = !!(opts && (opts.hostBind || opts.shims));
     // Only FLOATING density placements (prov 'placed:*') are anti-float candidates. Placements already tacked to a
     // real host by the ref_kind='host' path (prov 'shim:host-*') are LEFT UNTOUCHED — re-binding them would move a
     // correctly-hosted fixture. So host-bind rescues only what actually floats; already-hosted walks are invariant.
     var floating = [], fixed = [];
     placements.forEach(function (p) { (/^placed:/.test(p.prov || '') ? floating : fixed).push(p); });
-    if (shim && floating.length) {
+    if (doBind && floating.length) {
       var stZ = {}; sub.forEach(function (st) { stZ[st.name] = st.z; });
       floating.forEach(function (p) { if (p.storeyZ == null) p.storeyZ = stZ[p.storey]; });
-      var hb = hostBind(floating, bdb, shim);
-      if (!hb.noHost) {
-        placements = fixed.concat(hb.bound, hb.refusedList || []);  // count preserved: fixed + bound ∪ refused
-        hbInfo = { percept: shim.product_value, host: shim.host_ifc_class, mount: shim.mount, bound: hb.bound.length, refused: hb.refused, floating: floating.length };
-        console.log(TAG + ' §WALK-HOSTBIND disc=' + disc + ' percept=' + shim.product_value + ' host=' + shim.host_ifc_class +
-          '/' + shim.mount + ' floating=' + floating.length + ' bound=' + hb.bound.length + ' refused=' + hb.refused + ' (count preserved)');
-      } else {
-        console.log(TAG + ' §WALK-HOSTBIND disc=' + disc + ' percept=' + shim.product_value + ' REFUSE no-host (' + shim.host_ifc_class + ' absent) — kept floating');
+      // group floating by ifc_class → each group picks its own shim via the selection key.
+      var byCls = {}; floating.forEach(function (p) { (byCls[p.ifc_class] = byCls[p.ifc_class] || []).push(p); });
+      var rebuilt = fixed.slice(), totBound = 0, totRefused = 0, byClassInfo = [], hostsSeen = {}, perceptsSeen = {}, mountsSeen = {}, anyBound = false;
+      Object.keys(byCls).forEach(function (cls) {
+        var grp = byCls[cls];
+        var shim = _shimForFixture(shimSrc, disc, cls);
+        if (!shim) { rebuilt = rebuilt.concat(grp); totRefused += 0; return; }   // no shim for class → leave floating
+        var hb = hostBind(grp, bdb, shim);
+        if (hb.noHost) {
+          rebuilt = rebuilt.concat(grp);                                          // host class absent in bldg → kept floating
+          console.log(TAG + ' §WALK-HOSTBIND disc=' + disc + '/' + cls + ' percept=' + shim.product_value +
+            ' REFUSE no-host (' + shim.host_ifc_class + ' absent) — kept floating');
+          byClassInfo.push({ ifc_class: cls, percept: shim.product_value, host: shim.host_ifc_class, mount: shim.mount, bound: 0, refused: grp.length, noHost: true });
+          return;
+        }
+        rebuilt = rebuilt.concat(hb.bound, hb.refusedList || []);                 // count preserved per group
+        totBound += hb.bound.length; totRefused += hb.refused; anyBound = anyBound || hb.bound.length > 0;
+        if (hb.bound.length) { hostsSeen[shim.host_ifc_class] = 1; perceptsSeen[shim.product_value] = 1; mountsSeen[shim.mount] = 1; }
+        byClassInfo.push({ ifc_class: cls, percept: shim.product_value, host: shim.host_ifc_class, mount: shim.mount, bound: hb.bound.length, refused: hb.refused });
+        console.log(TAG + ' §WALK-HOSTBIND disc=' + disc + '/' + cls + ' percept=' + shim.product_value + ' host=' +
+          shim.host_ifc_class + '/' + shim.mount + ' floating=' + grp.length + ' bound=' + hb.bound.length + ' refused=' + hb.refused + ' (count preserved)');
+      });
+      if (anyBound || byClassInfo.length) {
+        placements = rebuilt;
+        var hostKeys = Object.keys(hostsSeen), perceptKeys = Object.keys(perceptsSeen), mountKeys = Object.keys(mountsSeen);
+        function _agg(keys) { return keys.length === 1 ? keys[0] : (keys.length ? 'MIXED' : null); }
+        hbInfo = { bound: totBound, refused: totRefused, floating: floating.length,
+          host: _agg(hostKeys), mount: _agg(mountKeys), percept: _agg(perceptKeys), byClass: byClassInfo };
       }
     }
     var chains = route(disc, bdb);
@@ -743,6 +783,7 @@
   var API = { dwInit: dwInit, dwOpen: dwOpen, dwWalk: dwWalk, substrate: substrate, place: place, hostBind: hostBind,
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
     hostWalls: hostWalls, countPer: countPer, occupancy: occupancy,
+    _shimForDisc: _shimForDisc, _shimForFixture: _shimForFixture, _loadRuleShims: _loadRuleShims,
     disciplines: disciplines, loadedFile: loadedFile, _ready: function () { return _ready; } };
   ROOT.DiscWalker = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
