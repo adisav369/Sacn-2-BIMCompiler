@@ -20,6 +20,16 @@
   var TAG = '§DW';
   var ROOT = (typeof window !== 'undefined') ? window : {};
   var _db = null, _ready = false, _loadedFile = null;
+  // §BORROW — per-discipline source map (docs/WalkerDoctrine.md §2). The PRIMARY _db is the building-class
+  // ruleset (e.g. duplex_rules.db for residential). A discipline ABSENT from the residential set (e.g. FP/
+  // sprinkler) can be BORROWED from another ruleset (e.g. terminal_rules.db) WITHOUT switching the building's
+  // class: per-discipline reads (placement/space_bom/routing/shim) route to _dbFor(disc); cross-disc tables
+  // (rule_avoidance/place_order, the gate) stay on the PRIMARY _db (residential clearance standard). NON-INVENT:
+  // a borrowed discipline reuses that DB's MEASURED rows; nothing is fabricated.
+  var _borrow = {};                                              // disc -> borrowed sql.js db handle
+  function _dbFor(disc) { return _borrow[disc] || _db; }
+  // Register/clear a borrowed discipline source. dwBorrow('FP', terminalDb) → FP rules read from terminalDb.
+  function dwBorrow(disc, db) { if (db) _borrow[disc] = db; else delete _borrow[disc]; return _borrow; }
 
   function _rows(db, sql) {
     var r = db.exec(sql);
@@ -28,6 +38,20 @@
     return vals.map(function (v) { var o = {}; cols.forEach(function (c, i) { o[c] = v[i]; }); return o; });
   }
   function _esc(s) { return String(s).replace(/'/g, "''"); }
+  // §LOD-SEAM (docs/WalkerDoctrine.md §5): map a fixture ifc_class → a SEMANTIC primitive kind. The modeller renders a
+  // recognizable shape per kind NOW (POC) and swaps a fine LOD400 component-library mesh later — one seam, same placement.
+  // Pure classification (no geometry, no invention); unknown classes fall back to 'box'.
+  function _primFor(cls) {
+    cls = String(cls || '');
+    if (/FireSuppressionTerminal|Sprinkler/i.test(cls)) return 'sprinkler';
+    if (/AirTerminal|Diffuser/i.test(cls)) return 'diffuser';
+    if (/LightFixture|Lamp/i.test(cls)) return 'light';
+    if (/Alarm|Sensor/i.test(cls)) return 'alarm';
+    if (/Outlet|ElectricAppliance|SwitchingDevice/i.test(cls)) return 'outlet';
+    if (/Valve|FlowController/i.test(cls)) return 'valve';
+    if (/Pipe|Duct|FlowSegment|FlowFitting/i.test(cls)) return 'run';
+    return 'box';
+  }
   function _med(arr) { var a = arr.filter(function (v) { return v != null; }).sort(function (x, y) { return x - y; }); return a.length ? a[Math.floor(a.length / 2)] : 0; }
 
   // ── INIT ────────────────────────────────────────────────────────────────────────
@@ -134,7 +158,7 @@
   // (median spacing + dz) — on a new building we have no storey mapping, so we apply
   // the measured cadence once per target storey rather than the Terminal's per-storey rows.
   function repRules(disc) {
-    var rules = _rows(_db, "SELECT * FROM rule_placement WHERE disc='" + _esc(disc) + "'");
+    var rules = _rows(_dbFor(disc), "SELECT * FROM rule_placement WHERE disc='" + _esc(disc) + "'");
     var by = {};
     rules.forEach(function (r) { (by[r.ifc_class] = by[r.ifc_class] || []).push(r); });
     return Object.keys(by).map(function (cls) {
@@ -186,7 +210,7 @@
   }
   // Measured per-storey count for a host class (rule_space_bom); 0 = unknown -> one per host.
   function countPer(disc, cls) {
-    var r = _rows(_db, "SELECT count_per FROM rule_space_bom WHERE disc='" + _esc(disc) +
+    var r = _rows(_dbFor(disc), "SELECT count_per FROM rule_space_bom WHERE disc='" + _esc(disc) +
       "' AND ifc_class='" + _esc(cls) + "'");
     return r.length ? _med(r.map(function (x) { return x.count_per; })) : 0;
   }
@@ -223,6 +247,7 @@
     // sizes its GENERATED-fixture box per class. SIZE only — count/position untouched.
     function _emit(o, rp) {
       o.bx = rp.bbox ? rp.bbox.dx : null; o.by = rp.bbox ? rp.bbox.dy : null; o.bz = rp.bbox ? rp.bbox.dz : null;
+      o.prim = _primFor(o.ifc_class);                         // §LOD-SEAM: semantic primitive kind (modeller render hint)
       out.push(o);
     }
     reps.forEach(function (rp) {
@@ -344,7 +369,7 @@
         var pz = (shim.height_m != null && p.storeyZ != null) ? (p.storeyZ + shim.height_m) : p.z;
         bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: fx, y: fy, z: pz, yaw: bl.horiz === 0 ? 0 : Math.PI / 2,
           storey: p.storey, host: bl.w.g, mount: 'SIDE', prov: 'shim:host-' + hostClass + '-side',
-          bx: p.bx, by: p.by, bz: p.bz, src: p.src, snapDist: +best.toFixed(4) });
+          bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4) });
       });
       return { bound: bound, refused: refused, refusedList: refusedList, hostCount: hosts.length, hostClass: hostClass, mount: mount };
     }
@@ -370,7 +395,7 @@
       var pz = bh.z + sign * faceHalf * (bh.bz / 2) + sign * off; // named face of the REAL host + offset
       bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: bh.x, y: bh.y, z: pz, yaw: horiz === 0 ? 0 : Math.PI / 2,
         storey: p.storey, host: bh.g, mount: mount, prov: 'shim:host-' + hostClass + '-' + mount.toLowerCase(),
-        bx: p.bx, by: p.by, bz: p.bz, src: p.src, snapDist: +best.toFixed(4) });
+        bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4) });
     });
     return { bound: bound, refused: refused, refusedList: refusedList, hostCount: hosts.length, hostClass: hostClass, mount: mount };
   }
@@ -379,7 +404,7 @@
   // Chain rules need real from/to elements in the TARGET building. Residents have no MEP
   // network → honest 0 (refusal), not a fabricated run.
   function route(disc, bdb) {
-    var rr = _rows(_db, "SELECT * FROM rule_routing WHERE disc='" + _esc(disc) + "' AND pattern='nn'");
+    var rr = _rows(_dbFor(disc), "SELECT * FROM rule_routing WHERE disc='" + _esc(disc) + "' AND pattern='nn'");
     var chains = [];
     rr.forEach(function (r) {
       var nf = _rows(bdb, "SELECT COUNT(*) c FROM elements_meta WHERE ifc_class='" + _esc(r.from_kind) + "'");
@@ -497,8 +522,9 @@
     return { pairs: pairs, noNbr: noNbr, mean: pairs.length ? sum / pairs.length : Infinity };
   }
   function routeChains(disc, bdb, opts) {
+    // (rule source = _dbFor(disc) below, so a borrowed discipline routes from its own ruleset)
     opts = opts || {};
-    var rr = _rows(_db, "SELECT * FROM rule_routing WHERE disc='" + _esc(disc) + "' AND pattern='nn'");
+    var rr = _rows(_dbFor(disc), "SELECT * FROM rule_routing WHERE disc='" + _esc(disc) + "' AND pattern='nn'");
     var segs = [], byRule = [];
     rr.forEach(function (r) {
       var gp = _gapParams(r.params_json);
@@ -658,8 +684,10 @@
   // from `_db` via _loadRuleShims) — same flow as routing/placement. A caller-passed opts.shims OVERRIDES it
   // (witness/host override). Both row shapes are accepted: rule_shim carries `disc`+`offset_m`+`priority`; the raw
   // disc_patterns `_shim_attributes` row carries `product_value`(prefix=disc)+`offset_mm`. Returns [] if neither.
-  function _loadRuleShims() {
-    try { return _rows(_db, "SELECT * FROM rule_shim"); } catch (e) { return []; }   // table absent (un-projected) → []
+  function _loadRuleShims(disc) {
+    // disc-aware: when a disc is given, read its shims from _dbFor(disc) (a borrowed discipline carries its own
+    // per-fixture rule_shim rows in the borrowed DB). With no disc → primary _db (back-compat).
+    try { return _rows(_dbFor(disc), "SELECT * FROM rule_shim"); } catch (e) { return []; }   // table absent → []
   }
   function _discOf(s) { return s.disc != null ? s.disc : String(s.product_value || '').split('_')[0]; }
   function _shimForDisc(shims, disc) {
@@ -703,7 +731,7 @@
     if (!_ready) { console.warn(TAG + ' not initialised'); return { disc: disc, refused: true, reason: 'engine not initialised', placed: 0 }; }
     var reps = repRules(disc);
     var sub = substrate(bdb);
-    if (!reps.length && !_rows(_db, "SELECT 1 FROM rule_routing WHERE disc='" + _esc(disc) + "' LIMIT 1").length) {
+    if (!reps.length && !_rows(_dbFor(disc), "SELECT 1 FROM rule_routing WHERE disc='" + _esc(disc) + "' LIMIT 1").length) {
       console.log(TAG + ' §WALK disc=' + disc + ' bldg=' + buildingName + ' REFUSE no-measured-rule');
       return { disc: disc, refused: true, reason: 'no measured rule for ' + disc, placed: 0 };
     }
@@ -724,7 +752,7 @@
     // ifc_class and each group binds with its OWN shim; a class with no per-fixture row falls back to the disc-level
     // shim. Caller-passed raw rows (no fixture_ifc_class) → disc-level fallback.
     var hbInfo = null;
-    var shimSrc = (opts && opts.shims) || _loadRuleShims();
+    var shimSrc = (opts && opts.shims) || _loadRuleShims(disc);
     var doBind = (opts && opts.shims) ? true : !(opts && (opts.noHostBind || opts.hostBind === false));
     // Only FLOATING density placements (prov 'placed:*') are anti-float candidates. Placements already tacked to a
     // real host by the ref_kind='host' path (prov 'shim:host-*') are LEFT UNTOUCHED — re-binding them would move a
@@ -780,10 +808,13 @@
     // Only WALKABLE disciplines — those with a placement or routing rule. (rule_place_order alone, e.g. the
     // generic 'MEP' band, is not walkable: it would always refuse, so it stays off the roster.)
     var r = _db.exec("SELECT disc FROM rule_placement UNION SELECT disc FROM rule_routing");
-    return r.length ? r[0].values.map(function (v) { return v[0]; }).filter(function (d) { return d && d !== 'ARC'; }) : [];
+    var ds = r.length ? r[0].values.map(function (v) { return v[0]; }) : [];
+    // §BORROW: borrowed disciplines (e.g. FP from terminal_rules) are walkable too → add to the roster.
+    Object.keys(_borrow).forEach(function (d) { if (ds.indexOf(d) < 0) ds.push(d); });
+    return ds.filter(function (d) { return d && d !== 'ARC'; });
   }
 
-  var API = { dwInit: dwInit, dwOpen: dwOpen, dwWalk: dwWalk, substrate: substrate, place: place, hostBind: hostBind,
+  var API = { dwInit: dwInit, dwOpen: dwOpen, dwBorrow: dwBorrow, dwWalk: dwWalk, substrate: substrate, place: place, hostBind: hostBind,
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
     hostWalls: hostWalls, countPer: countPer, occupancy: occupancy,
     _shimForDisc: _shimForDisc, _shimForFixture: _shimForFixture, _loadRuleShims: _loadRuleShims,

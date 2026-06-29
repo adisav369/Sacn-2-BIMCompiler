@@ -40,6 +40,14 @@ memory `project_dx_mep_class_boundary`). Its job for small buildings is **NOT** 
 
 **Borrow = reuse the measured Terminal rule rows for that one discipline; it is NOT "switch the building to Terminal rules".**
 
+**Implemented (`W-BORROW-FP` 6/6, `scripts/witness_borrow_fp.js`):** `disc_walker.dwBorrow(disc, db)` registers a
+per-discipline source. Per-discipline reads (`repRules`/`countPer`/`route`/`routeChains`/`_loadRuleShims`) route to
+`_dbFor(disc) = _borrow[disc] || _db`; cross-disc tables (`clearance`/`order`/`gate`) stay on the PRIMARY `_db`. Proven on
+SampleCastle (residential, primary=duplex_rules): FP absent from duplex → `dwBorrow('FP', terminalDb)` → 247 FP placed
+(151 sprinklers host-bound to real `IfcCovering` ceilings), classes from Terminal while ELEC stays on duplex, count
+bounded by `density×area∩envelope` (not an explosion), Terminal MEASURED bbox carried, gate clearance still the duplex
+pair-set (3, not Terminal's 10). Each placement carries a `prim` semantic-kind tag (`_primFor`, §5 LOD seam).
+
 ## §3 — MEP relationship taxonomy (route MEP work by which class a device is)
 1. **Networked** (route→join→shim at PORTS): supply/waste plumbing, ducted HVAC. Needs `IfcPort`/connectors.
    Oracle = Duplex-MEP (`W-WALKBACK-MEP`).
