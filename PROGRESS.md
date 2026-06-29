@@ -4,6 +4,19 @@
 
 ## Current State
 
+**ELEC host-bind anti-float SPIKE — ✅ WITNESSED 2026-06-29** (bim-compiler `scripts/witness_elec_hostbind.js`,
+**W-ELEC-HOSTBIND 5/5**). Confirms the long-standing SH defect (ELEC outlets floating mid-room) is REAL and the
+host-bind assumption fixes it. Root: residential ELEC rules mined as `ref_kind='storey'` (density) → `place('ELEC',SH)`
+scatters at footprint-cell centres (BEFORE: 26/38 float, median 2.00m off any wall). New additive engine fn
+`disc_walker.hostBind(placements,bdb,shim)` snaps each to the nearest REAL wall (project to centreline → push to face),
+driven by the shim percept READ FROM `library/ERP.db._shim_attributes` (ELEC_WALL_SHIM | IfcWall | SIDE | 1200mm) —
+NOT invented. AFTER: 0/36 float, median 0.145m = exactly wall half-thickness (on the face); 2 honestly REFUSED (no wall
+≤6m); every bound point carries a real wall guid. hostBind is OPT-IN (not in dwWalk) → live walkers byte-identical
+(nnchain + W-WALKBACK-MEP 8/8 regression-clean). **NEXT (review next session): promote host-bind into the mining
+pipeline** — residential ELEC (+ FP alarms) should be `ref_kind='host'` sourced from ERP.db `_shim_attributes`, so the
+fix is data-driven not a post-step. Also: ELEC splits wall (outlets/switches) vs ceiling (lights, ELEC_CEILING_SHIM).
+[[project_terminal_rule_mining]]
+
 **§8E-3 routed MEP network — ✅ UNBLOCKED+WITNESSED 2026-06-29** (bim-compiler `scripts/witness_walkback_mep.js`,
 **W-WALKBACK-MEP 8/8**; spec WALKER_GUARDS §5 + §8E-3). The ⛔ was a SUBSTRATE gap, not an engine fault: `build/disc_walker.js`
 `routeChains` reads endpoints DIRECTLY from a real MEP-bearing extracted.db → candidates+oracle share ONE frame by

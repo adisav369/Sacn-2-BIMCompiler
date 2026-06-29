@@ -287,6 +287,54 @@
     return out;
   }
 
+  // ── HOST-BIND (the anti-float fix for wall-mounted disciplines) ─────────────────────
+  // Density/storey placement scatters fixtures at FOOTPRINT-cell centres → they float mid-room (SH ELEC: 38/38
+  // ~3.9m off any wall). But wall-mounted classes (ELEC outlets/switches, FP alarms) are HOST-BOUND. This snaps
+  // each floating placement onto the nearest real host wall: project onto the wall's CENTRELINE (wall line =
+  // centre ± half its dominant horizontal axis), push to the wall FACE by half-thickness + the shim offset, and
+  // set Z to the measured mount height. NON-INVENT: the wall + its geometry are REAL; the shim percept
+  // {host_ifc_class, mount, offset_m, height_m} is supplied (sourced from ERP.db `_shim_attributes`), never guessed.
+  // A placement with no wall within `reach_m` is REFUSED (kept floating + counted) — REFUSE beats fabricate.
+  function hostBind(placements, bdb, shim) {
+    shim = shim || {};
+    var reach = shim.reach_m != null ? shim.reach_m : 6;
+    var walls = _rows(bdb,
+      "SELECT m.guid g, t.center_x x, t.center_y y, t.center_z z, t.bbox_x bx, t.bbox_y by_, t.bbox_z bz " +
+      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%Wall%'");
+    if (!walls.length) return { bound: [], refused: placements.length, noHost: true };
+    var lines = walls.map(function (w) {
+      var horiz = w.bx >= w.by_ ? 0 : 1;                       // dominant horizontal axis = wall run
+      var hlen = (horiz === 0 ? w.bx : w.by_) / 2, thick = (horiz === 0 ? w.by_ : w.bx);
+      var a = [w.x, w.y], b = [w.x, w.y]; a[horiz] -= hlen; b[horiz] += hlen;
+      return { a: a, b: b, horiz: horiz, thick: thick, w: w };
+    });
+    var bound = [], refused = 0;
+    placements.forEach(function (p) {
+      var best = Infinity, bl = null, bpt = null;
+      for (var i = 0; i < lines.length; i++) {
+        var L = lines[i], abx = L.b[0] - L.a[0], aby = L.b[1] - L.a[1];
+        var l2 = abx * abx + aby * aby;
+        var t = l2 > 0 ? ((p.x - L.a[0]) * abx + (p.y - L.a[1]) * aby) / l2 : 0;
+        t = t < 0 ? 0 : (t > 1 ? 1 : t);
+        var cx = L.a[0] + t * abx, cy = L.a[1] + t * aby;
+        var d = Math.hypot(p.x - cx, p.y - cy);
+        if (d < best) { best = d; bl = L; bpt = [cx, cy]; }
+      }
+      if (!bl || best > reach) { refused++; return; }           // no wall in reach → honest refuse (stays floating)
+      // push from centreline to the room-side face: perpendicular toward the original (floating) point.
+      var perpx = p.x - bpt[0], perpy = p.y - bpt[1], pl = Math.hypot(perpx, perpy) || 1;
+      var off = bl.thick / 2 + (shim.offset_m || 0);
+      var fx = bpt[0] + (perpx / pl) * off, fy = bpt[1] + (perpy / pl) * off;
+      // Z: preserve the MEASURED rule-z by default (non-invent); use the shim mount height only when the witness
+      // supplies a storey base (height isn't measured for that building).
+      var pz = (shim.height_m != null && p.storeyZ != null) ? (p.storeyZ + shim.height_m) : p.z;
+      bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: fx, y: fy, z: pz, yaw: bl.horiz === 0 ? 0 : Math.PI / 2,
+        storey: p.storey, host: bl.w.g, mount: shim.mount || 'SIDE', prov: 'shim:host-wall-bound',
+        bx: p.bx, by: p.by, bz: p.bz, src: p.src, snapDist: +best.toFixed(4) });
+    });
+    return { bound: bound, refused: refused, hostCount: walls.length };
+  }
+
   // ── ROUTER ────────────────────────────────────────────────────────────────────────
   // Chain rules need real from/to elements in the TARGET building. Residents have no MEP
   // network → honest 0 (refusal), not a fabricated run.
@@ -589,7 +637,7 @@
     return r.length ? r[0].values.map(function (v) { return v[0]; }).filter(function (d) { return d && d !== 'ARC'; }) : [];
   }
 
-  var API = { dwInit: dwInit, dwOpen: dwOpen, dwWalk: dwWalk, substrate: substrate, place: place,
+  var API = { dwInit: dwInit, dwOpen: dwOpen, dwWalk: dwWalk, substrate: substrate, place: place, hostBind: hostBind,
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
     hostWalls: hostWalls, countPer: countPer, occupancy: occupancy,
     disciplines: disciplines, loadedFile: loadedFile, _ready: function () { return _ready; } };
