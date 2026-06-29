@@ -4,6 +4,15 @@
 
 ## Current State
 
+**§8E-4 Stage-2 clash (clash-ON) — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb `lane/arc-mesh-readpixels` 6b9b8b6; spec
+§8E-4). The two-stage ablation (§8B): `rule_avoidance` was already MINED (10 pairs, `measured:terminal/global-p05`) and
+the gate already iterate-yields + flags-RED — so this is the Δ proof. Walk all 4 MEP discs into the laid ARC as ONE set,
+gate OFF→ON. **Δ-TABLE: clashes 170→3 (−98.2%)** · 164 yields · 5 iter · count Δ=0 (4813) · **xy-drift=0** (envelope
+preserved) · below-floor=0 · 3 flagged RED · ACMV (top priority) never yields. **W-DW-CLASH-TE 10/10**: S8 oracle —
+residual rate **0.06% ≤ real-TE p05 tail 2.17%** (no worse than the engineer); position GENERATED → judged by clash
+RATE, not per-element NN. **NEXT = §8E-5 GREEN report + red-on-theirs** over the whole TE walk; §8E-3 routed MEP network
+⛔ (needs endpoints / MEP-bearing substrate); DEFERRED 261MB plate stream. [[project_modeller_vision_lock]]
+
 **§8E-2b MEP-family density trades — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb `lane/arc-mesh-readpixels` 6879595 +
 bim-compiler cb49ca8f, PUSHED; spec §8E-2b). The 4 MEP discs (PLB/ELEC/FP/ACMV) walk via the shared `disc_walker.js`
 engine + render (`_renderDiscWalk`) into the laid TE ARC = "disciplines FILL the ARC" (VISION-LOCK §4). New probe
