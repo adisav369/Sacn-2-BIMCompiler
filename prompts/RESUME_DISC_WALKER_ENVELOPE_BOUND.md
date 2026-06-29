@@ -270,11 +270,20 @@ step sourced from **`disc_patterns.db`** (the prior-art pattern store, currently
    ORIENTATION from the incident run vector; no-catalog → REFUSE, no-part-for-class → honest SKIP. ORACLE=Duplex-MEP:
    661 parts, posDrift 0m (every part on a real element), Ø re-measured from catalog (FlowFitting 45mm/FlowSegment
    50mm, mismatch 0), 363 distinct run-derived orientations, 358 joints carry their catalog Ø pair — LANDED/real→real,
-   the assembly analogue of W-WALKBACK-MEP. `opts.catalog` is caller-passed today (mirrors host-bind's caller-passed
-   shim start). REMAINING (follow-up): (a) project a first-class `rule_joint_piece` into the `*_rules.db` so the caller
-   need not pass the catalog (the §SHIM-SELECT pattern); (b) orient by the actual `ad_assembly_connector` face +
-   stand off by `ad_assembly_manifest` clearance (currently run-vector orientation, no standoff); (c) port `assemble`
-   into the modeller render (instantiate part meshes via the `_dwPrimGeo` LOD seam).
+   the assembly analogue of W-WALKBACK-MEP.
+   ✅ **(a) PROJECTED CATALOG DONE** (`a46b4c25`, W-ASSEMBLE 10/10): `build/project_rule_joint_piece.py` projects
+   `disc_patterns._import_joint_piece_types` → a `rule_joint_piece` table per `*_rules.db` (keyed by (disc, ifc_class)
+   from `rule_routing`, MEASURED median Ø/length from the matching source; duplex 3 rows, terminal 6, honest skips).
+   `assemble` reads it via `_loadJointPieces` when no `opts.catalog` → no caller percept. Isolated/idempotent
+   (rule_avoidance 4/10 unchanged — no bake drift). J1-J4: projected-source, traceable, non-invent, refuse-when-absent.
+   ✅ **(b) CONNECTOR-FACE ORIENT + STANDOFF DONE** (`a46b4c25`, W-ASSEMBLE-CONNECT 6/6): `connectorFor()` reads the
+   FIXTURE→SERVICE hookup verbatim from `ad_assembly_connector` (face/Ø/connects_to) + `ad_assembly_manifest` standoff;
+   `connectorEnrich()` attaches it + stands the pose off along the face by the measured clearance; `_faceDir` is a frame
+   convention (face name → local axis). Applied to the LIVE SC FP sprinkler walk: 151 sprinklers carry SPRINKLER→FP_MAIN
+   (TOP, Ø25, flush 0m); unmapped fixtures untouched. `assemblyKey` is caller-passed (a projected `rule_connector` is
+   the later first-class step). REMAINING: (c) port `assemble`/`connectorEnrich` into the modeller render — instantiate
+   part meshes via the `_dwPrimGeo` LOD seam + render the connector hookup edges; deploy. (Optional later: project
+   `rule_connector` so the ifc_class→assembly map is first-class too.)
 4. **Wire routeChains into the modeller §8E-3 render** (bim-ootb) — overlay the nn-segments as edges into the laid ARC
    (mirror `_seedStrWalk`/`swbCanopyOps`) + a `__dwPixelProbe` readPixels assertion. Engine proven; render + deploy only.
 5. **Deeper route-to-FACE / generalization** (lower pri): a face-AND-direction model for ACMV ducts; route duplex_rules
