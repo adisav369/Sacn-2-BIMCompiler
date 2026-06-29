@@ -264,10 +264,17 @@ step sourced from **`disc_patterns.db`** (the prior-art pattern store, currently
    `priority` only → would mis-bind ceiling LightFixtures to walls. THIS is why host-bind is OPT-IN not default-on. Next bite:
    stamp `fixture_ifc_class` per shim (mine which fixture class mounts on which host) → `_shimForDisc` matches on it → safe
    default-on. SPLIT ELEC wall(outlet) vs ceiling(light); verify GENERATED residential ELEC/FP float drops with NO caller percept.
-3. **Route→ASSEMBLE bridge** (turn routed boxes into real parts). At each routed node, instantiate the catalog part
-   (`_import_joint_piece_types`/component_geometries), orient so its `ad_assembly_connector` face (WASTE_OUT Ø100→
-   PLUMBING_STACK) meets the run, stand off by `ad_assembly_manifest`/`_shim_attributes` clearance. Witness on Duplex-MEP
-   (real parts exist as oracle): assembled part poses land on the extracted fittings/terminals, non-invent.
+3. ✅ **Route→ASSEMBLE bridge DONE 2026-06-30** (bim-compiler `f443ae4d`, W-ASSEMBLE 7/7). `disc_walker.assemble(disc,
+   bdb, {catalog})`: at each routed NODE (real element endpoint from routeChains), instantiate the matching catalog
+   piece (`_import_joint_piece_types` by ifc_class) — POSE from the real node, TYPE+Ø from the MEASURED catalog,
+   ORIENTATION from the incident run vector; no-catalog → REFUSE, no-part-for-class → honest SKIP. ORACLE=Duplex-MEP:
+   661 parts, posDrift 0m (every part on a real element), Ø re-measured from catalog (FlowFitting 45mm/FlowSegment
+   50mm, mismatch 0), 363 distinct run-derived orientations, 358 joints carry their catalog Ø pair — LANDED/real→real,
+   the assembly analogue of W-WALKBACK-MEP. `opts.catalog` is caller-passed today (mirrors host-bind's caller-passed
+   shim start). REMAINING (follow-up): (a) project a first-class `rule_joint_piece` into the `*_rules.db` so the caller
+   need not pass the catalog (the §SHIM-SELECT pattern); (b) orient by the actual `ad_assembly_connector` face +
+   stand off by `ad_assembly_manifest` clearance (currently run-vector orientation, no standoff); (c) port `assemble`
+   into the modeller render (instantiate part meshes via the `_dwPrimGeo` LOD seam).
 4. **Wire routeChains into the modeller §8E-3 render** (bim-ootb) — overlay the nn-segments as edges into the laid ARC
    (mirror `_seedStrWalk`/`swbCanopyOps`) + a `__dwPixelProbe` readPixels assertion. Engine proven; render + deploy only.
 5. **Deeper route-to-FACE / generalization** (lower pri): a face-AND-direction model for ACMV ducts; route duplex_rules
