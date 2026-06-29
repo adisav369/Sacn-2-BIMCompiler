@@ -4,6 +4,38 @@
 
 ## Current State
 
+**§8E-2b MEP-family density trades — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb `lane/arc-mesh-readpixels` 6879595 +
+bim-compiler cb49ca8f, PUSHED; spec §8E-2b). The 4 MEP discs (PLB/ELEC/FP/ACMV) walk via the shared `disc_walker.js`
+engine + render (`_renderDiscWalk`) into the laid TE ARC = "disciplines FILL the ARC" (VISION-LOCK §4). New probe
+`__dwPixelProbe` (A/B-isolates the disc-walk layer). **W-DW-DENSITY-TE 8/8**: render+in-frustum; readPixels MEP paints;
+100% envelope; count same-order; **ACMV +7% / FP +13% tight**; PLB routed → honest no-network refusal (no fabricated
+8175); no fidelity field (measurement doctrine). FINDING (not hidden): ELEC 2.4× over = density-transfer drift (ARC
+footprint ≠ disc coverage area). Engine fix: single-placement now envelope-bound (build §DWD 43/§DWG 49/§DXG 12 green).
+**NEXT = §8E-4 Stage-2 clash** (mine `rule_avoidance`, re-walk in tandem, before/after interim Δ); §8E-3 MEP routed
+network ⛔ (needs endpoints / a MEP-bearing substrate). [[project_modeller_vision_lock]]
+
+**§8E-2a STR space-frame canopy — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb `lane/arc-mesh-readpixels` 01c9312, PUSHED,
+not yet PR'd; spec=`prompts/WALKER_GUARDS_ROSETTASTONE_SPEC.md §8E-2a`). The §8E-2 generative tolerance layer: the
+33,324-IfcPlate roof = one measured unit `instanced-by n`. New bridge verb `swbCanopyOps` measures the tessellation +
+renders a BOUNDED representative canopy into the laid ARC — **count proven NUMERICALLY** (predictedN 33784 vs
+extractedN 33324 = 1.38%), never by drawing 33K boxes (verbatim mesh = deferred 261MB stream). **W-STR-CANOPY 8/8**
+(unit==measured modal 0.5×0.1×0.11m 0-tol; domain x/y match; NN cadence gen 0.082m vs real 0.150m within band;
+readPixels 8511px; §DW-CAP placed=2374 of 33232; empty→0 ops falsifier). Fixture `Terminal_plates_proof.db`.
+**NEXT = §8E-2b MEP-family density trades** (PLB/ELEC/FP/ACMV via the separate `disc_walker.js` + `terminal_rules.db`,
+rendered into the laid ARC) → then §8E-4 Stage-2 clash. [[project_modeller_vision_lock]]
+
+**§8E-1b STR girder render — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb `lane/arc-mesh-readpixels` b5302cc, PUSHED, not
+yet PR'd; spec=`prompts/WALKER_GUARDS_ROSETTASTONE_SPEC.md §8E-1b`). Finished the STR skeleton render: columns rendered
+only in the witness — production seeded ARC alone. Lifted the render into reusable bridge verb `swbRenderOps` +
+production `_seedStrWalk` (overlays laid ARC, idempotent), and rendered the **girders** `swWalkGirders` computes.
+NON-INVENT: column size = measured bbox; girder length = derived bay span; girder section = MEASURED IfcBeam median
+0.500×0.750m (n=432). Single-level bay lattice at mean column-top z. **W-STR-INTO-ARC now 11/11** (G1 108 girders
+rendered; G2 108/108 endpoints on a walked-column intersection; G3 section==measured 0-tol; G4 readPixels 7281px; G5
+bay span within band of beam length). Regulatory handler honestly flags 8 over-span (>18m) girders RED. Fixture rebuilt
+with STR IfcBeam. **NEXT = §8E-2 density trades clash-OFF** (PLB/ELEC/FP/ACMV + the GENERATIVE space-frame plate
+tessellation render — count/cadence/NN vs oracle, tolerance bar; verbatim 33K-plate 261MB stream stays DEFERRED). Then
+§8E-4 Stage-2 clash. Execute progressively (study the §-log, never big-bang). [[project_modeller_vision_lock]]
+
 **§STRETCH-1 ARC grid-STRETCHABLE + gated — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb PR #575, sw v18→v19,
 auto-merge armed; spec=`prompts/RESUME_ARC_STRETCHABLE.md`). The vision's PRIMARY handle (3D grid, stretch≠scale)
 now works on the REAL seeded building: `foldInsert(op,mv,gridCmds)` applies GEOM_GRID_MOVE to box-proxy WORLD
