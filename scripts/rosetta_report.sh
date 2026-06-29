@@ -23,7 +23,7 @@ cd "$PROJECT_DIR"
 
 YAML_DIR="IFCtoBOM/src/main/resources"
 COMP_DB="library/component_library.db"
-DISC_DB="library/ERP.db"
+DISC_DB="library/disc_patterns.db"   # de-ERP: canonical pattern-store name (ERP.db is a back-compat symlink)
 
 # ── Helpers ──────────────────────────────────────────────────
 

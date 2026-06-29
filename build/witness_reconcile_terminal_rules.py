@@ -26,7 +26,9 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 RULES_DB = os.path.join(HERE, "terminal_rules.db")
-ERP_DB = os.path.join(ROOT, "library", "ERP.db")
+# de-ERP (§NAMING DIRECTIVE): the prior-art pattern store is disc_patterns.db (physically library/ERP.db
+# behind the symlink today). Read the canonical name; the symlink makes content byte-identical.
+ERP_DB = os.path.join(ROOT, "library", "disc_patterns.db")
 MIG = os.path.join(ROOT, "migration", "TRM001_terminal_measured_rules.sql")
 META = next((p for p in [
     os.path.expanduser("~/bim-ootb/buildings/Terminal_meta.db"),

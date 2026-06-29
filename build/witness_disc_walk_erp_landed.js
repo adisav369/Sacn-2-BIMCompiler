@@ -38,7 +38,7 @@ function loadSqlJs() {
 }
 
 const RULES_DB = path.join(ROOT, 'build/terminal_rules.db');
-const ERP_DB = path.join(ROOT, 'library/ERP.db');
+const ERP_DB = path.join(ROOT, 'library/disc_patterns.db');   // de-ERP: canonical pattern-store name (was library/ERP.db)
 const MODELLER = path.join(process.env.HOME || '', 'bim-ootb/modeller');
 const TERMINAL = path.join(MODELLER, 'Terminal_meta.db');
 const DISCS = ['PLB', 'ACMV'];   // the disciplines Terminal actually routes (the LANDED layer)
@@ -66,7 +66,9 @@ function sigPlacements(pl) {
 function walkAll(tdb, tag) {
   let segs = [], placements = [];
   for (const d of DISCS) {
-    const w = DW.dwWalk(d, tdb, 'Terminal/' + tag);
+    // noHostBind: compare the RULE-SOURCE walk (rule_shim host-bind projection lives only in *_rules.db,
+    // not the ERP.db TRM001 views — see witness_disc_walk_erp_equivalence). Landed routing is unaffected.
+    const w = DW.dwWalk(d, tdb, 'Terminal/' + tag, { noHostBind: true });
     segs = segs.concat(w.chainSegs || []);
     placements = placements.concat(w.placements || []);
   }

@@ -30,7 +30,10 @@
 # Implementing DISC_VALIDATION_DB_SRS.md §6.4 — Witness: W-DISC-CAT
 set -euo pipefail
 
-DB="library/ERP.db"
+# de-ERP (§NAMING DIRECTIVE, user-confirmed 2026-06-30): the prior-art pattern store is now
+# disc_patterns.db ("ERP" was a misleading legacy label — this DB holds GEOMETRY percepts, not accounting).
+# Build it as disc_patterns.db; a back-compat ERP.db symlink is created at the end for any straggler reader.
+DB="library/disc_patterns.db"
 MIGRATION="migration"
 COMPLIB="library/component_library.db"
 
@@ -358,6 +361,11 @@ if [ "$MODE" = "--full" ]; then
         ./scripts/run_RosettaStones.sh "$yaml" 2>&1 | tail -5
     done
 fi
+
+# de-ERP back-compat: keep library/ERP.db resolving (symlink → disc_patterns.db) for any unmigrated
+# reader / external doc example. New code names disc_patterns.db; ERP.db is vestigial.
+ln -sf "$(basename "$DB")" "library/ERP.db"
+echo "  Back-compat symlink: library/ERP.db → $(basename "$DB")"
 
 echo ""
 echo "═══ rebuild_erp.sh: DONE ═══"

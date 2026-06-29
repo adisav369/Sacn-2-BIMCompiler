@@ -39,7 +39,7 @@ function loadSqlJs() {
 }
 
 const RULES_DB = path.join(ROOT, 'build/terminal_rules.db');
-const ERP_DB = path.join(ROOT, 'library/ERP.db');
+const ERP_DB = path.join(ROOT, 'library/disc_patterns.db');   // de-ERP: canonical pattern-store name (was library/ERP.db)
 const MODELLER = path.join(process.env.HOME || '', 'bim-ootb/modeller');
 const RES = [
   { key: 'SampleCastle', db: path.join(MODELLER, 'SampleCastle_extracted.db') },

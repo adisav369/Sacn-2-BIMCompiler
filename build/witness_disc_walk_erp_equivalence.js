@@ -36,7 +36,7 @@ function loadSqlJs() {
 }
 
 const RULES_DB = path.join(ROOT, 'build/terminal_rules.db');
-const ERP_DB = path.join(ROOT, 'library/ERP.db');
+const ERP_DB = path.join(ROOT, 'library/disc_patterns.db');   // de-ERP: canonical pattern-store name (was library/ERP.db)
 const MODELLER = path.join(process.env.HOME || '', 'bim-ootb/modeller');
 const BUILDING = ['SampleCastle', 'Duplex', 'SampleHouse']
   .map(k => ({ key: k, db: path.join(MODELLER, k + '_extracted.db') }))
@@ -82,8 +82,12 @@ function sigChains(ch) {
   const discs = rosterR.length ? rosterR : rosterE;
   let anyPlaced = 0, walkMismatch = 0, chainMismatch = 0;
   for (const d of discs) {
-    DW.dwOpen(rulesDb); const wr = DW.dwWalk(d, bdb, BUILDING.key + '/rules');
-    DW.dwOpen(erpDb);   const we = DW.dwWalk(d, bdb, BUILDING.key + '/erp');
+    // RULE-SOURCE equivalence: walk both with noHostBind. host-bind reads the rule_shim PROJECTION
+    // (§SHIM-SELECT) which lives only in the *_rules.db, NOT in the ERP.db TRM001 compatibility views — so
+    // default-on host-bind would diverge POSITIONS (counts still match). This witness tests that the mined
+    // placement/routing RULES are equivalent drop-ins; the shim projection is a separate layer. (§DWG pattern.)
+    DW.dwOpen(rulesDb); const wr = DW.dwWalk(d, bdb, BUILDING.key + '/rules', { noHostBind: true });
+    DW.dwOpen(erpDb);   const we = DW.dwWalk(d, bdb, BUILDING.key + '/erp', { noHostBind: true });
     const sameRefuse = !!wr.refused === !!we.refused;
     const sameCount = (wr.placed || 0) === (we.placed || 0);
     const samePos = sigPlacements(wr.placements) === sigPlacements(we.placements);

@@ -85,7 +85,7 @@ sqlite3 "$EXTRACTED_DB" "
 echo ""
 
 # Step 3: Check which elements have product mappings
-ERP_DB="library/ERP.db"
+ERP_DB="library/disc_patterns.db"   # de-ERP: canonical pattern-store name (ERP.db is a back-compat symlink)
 COMP_DB="library/component_library.db"
 
 echo "  Product mapping coverage:"

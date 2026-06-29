@@ -26,7 +26,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
 COMP_DB="library/component_library.db"
-DISC_DB="library/ERP.db"
+DISC_DB="library/disc_patterns.db"   # de-ERP: canonical pattern-store name (ERP.db is a back-compat symlink)
 INPUT_DIR="DAGCompiler/lib/input"
 
 B="\033[1m"

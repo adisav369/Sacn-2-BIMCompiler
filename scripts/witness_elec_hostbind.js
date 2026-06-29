@@ -26,7 +26,7 @@ var initSqlJs = require('sql.js');
 
 var ROOT = path.join(__dirname, '..');
 var DW = require(path.join(ROOT, 'build/disc_walker.js'));
-var ERP = path.join(ROOT, 'library/ERP.db');
+var ERP = path.join(ROOT, 'library/disc_patterns.db');   // de-ERP: canonical pattern-store name (ERP.db is a back-compat symlink)
 var RULES = path.join(ROOT, 'build/duplex_rules.db');
 var SH = path.join(ROOT, 'deploy/buildings/SampleHouse_extracted.db');
 var LOG = path.join(ROOT, 'logs', 'witness_elec_hostbind_' +
