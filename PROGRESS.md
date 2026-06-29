@@ -4,6 +4,17 @@
 
 ## Current State
 
+**§8E-3 routed MEP network — ✅ UNBLOCKED+WITNESSED 2026-06-29** (bim-compiler `scripts/witness_walkback_mep.js`,
+**W-WALKBACK-MEP 7/7**; spec WALKER_GUARDS §5 + §8E-3). The ⛔ was a SUBSTRATE gap, not an engine fault: `build/disc_walker.js`
+`routeChains` reads endpoints DIRECTLY from a real MEP-bearing extracted.db → candidates+oracle share ONE frame by
+construction (the §5 local↔site split cannot arise) + endpoint classes present; §8E emitted 0 only because the modeller
+passed the LAID ARC-ONLY fixture as bdb. **0→N:** Terminal 5317 segs (PLB+ACMV), Duplex MEP `build/Duplex_mep_extracted.db`
+358 segs (PLB), ARC-only SampleHouse 0. NON-INVENT: 5675 segs, 0 fabricated, every gap ≤ measured bound. Walk-back vs a
+GEOMETRIC touch oracle (fitting↔pipe-run point-to-3D-seg; IFCs carry NO IfcRelConnectsPorts → geometric touch IS ground
+truth): precision PLB 0.874(TE)/0.969(DX) @0.15m; recall ~0.40 = junction-degree coverage. FINDING: ACMV ducts looser
+(0.192, nn-to-CENTRE vs face) → route-to-face next. **NEXT = wire routeChains MEP net into modeller §8E-3 render** (engine
+proven, only render+`__dwPixelProbe`+deploy remain). [[project_modeller_vision_lock]]
+
 **§8E-5 GREEN report (the §8D capstone) — ✅ DONE+WITNESSED 2026-06-29** (bim-ootb `lane/arc-mesh-readpixels` b7553ef;
 spec §8E-5). ONE harness runs the WHOLE TE walk (ARC→STR→canopy→4 MEP→gate) → emits the inspectable artifact
 `modeller/tests/TE_GREEN_REPORT.md`. Per-layer roll-up: ARC EXACT 0.000 / STR col RMSE 0.094m (8 over-span RED) /
