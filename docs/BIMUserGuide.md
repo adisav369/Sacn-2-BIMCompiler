@@ -1,6 +1,6 @@
 # BIM OOTB — Browser Viewer User Guide
 
-> **Foundation:** [BIM_Designer_Browser.md](BIM_Designer_Browser.md) · [BIM_2D_Guide.md](BIM_2D_Guide.md) · [CLASH_DETECTION.md](CLASH_DETECTION.md) · [4D5DAnalysis.md](4D5DAnalysis.md)
+> **Foundation:** [BIM_Designer_Browser.md](BIM_Designer_Browser.md) · [CLASH_DETECTION.md](CLASH_DETECTION.md) · [4D5DAnalysis.md](4D5DAnalysis.md)
 
 ---
 
@@ -139,14 +139,6 @@ All panels collapse with **−/+**.
 - GPS Walk Mode — blue dot tracks position in the model
 - Wall X-Ray — tap a wall in Walk Mode to see MEP behind it
 - Issue log — capture site issues with photo + GPS + classification, export to Excel
-
----
-
-## 2D Plans
-
-The 2D floor-plan viewer layers section-cut plans over the 3D model.
-
-→ [2D Plans Guide](BIM_2D_Guide.md)
 
 ---
 
@@ -412,7 +404,6 @@ python3 DAGCompiler/python/spatial_checker.py \
 |-----|------|
 | [ERPUserGuide.md](ERPUserGuide.md) | iDempiere browser ERP — login → install → POS → reporting |
 | [BackOfficeUserGuide.md](BackOfficeUserGuide.md) | Server-side portfolio + reports (Java pipeline) |
-| [BIM_2D_Guide.md](BIM_2D_Guide.md) | 2D floor-plan viewer |
 | [CLASH_DETECTION.md](CLASH_DETECTION.md) | Clash detection engine |
 | [4D5DAnalysis.md](4D5DAnalysis.md) | nD analytics (4D–8D) |
 | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) | Onboard your own IFC file |

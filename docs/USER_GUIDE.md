@@ -5,6 +5,16 @@ description: BIM OOTB user guide — view IFC buildings in 3D, author geometry, 
 
 One browser. **View** a building · **author** geometry · **run** the ERP. Zero install, all client-side.
 
+!!! privacy "🔒 Data Security Guarantee"
+    **There is no AI and no LLM in this app. Your data never leaves your browser.** Any file you drop
+    into the app stays inside your browser's own IndexedDB and kernel, protected by standard browser
+    security — and you save it back to your own machine, when and where you choose. Every IFC you drop,
+    every building you open, every ERP edit stays client-side on your own device — nothing is uploaded to
+    us, nothing is tracked, nothing phones home, and no model is fed your data. Every result is deterministic
+    and traces to a line of open code you can read.
+
+    [**Read the full guarantee — how the trust model works →**](EnterpriseAuthentication.md)
+
 ![The Matrix landing — choose your door](assets/matrix_landing.png)
 
 Start at the **[front door → red1oon.github.io/bim-ootb](https://red1oon.github.io/bim-ootb/)** — the
