@@ -19,6 +19,27 @@ REPO: layer is repo-agnostic by design (pure JS + connector seam). Built+witness
   (the consolidating active repo). Modeller is mid-heavy-session → keep red-pill a SEPARATE additive module, never inline.
 ```
 
+## ▶ RESUME HERE (next dedicated session)
+
+**Where we are:** engine slice GREEN 25/25 in `build/redpill/` (bim-compiler, commit `650c9f1a`, pushed to
+`lane/benchmark-clash-resolution`). Mock view: `build/erp/branches_mock.html` (+ `figs/branches_redpill_{v3,capture}.png`).
+Public post live on osARCH + reddit/coolgithubprojects (honest final copy; "Scales like Git", web-ifc importer,
+"BCF-aligned (planned)"). r/OpenBIM not yet posted (low traffic).
+
+**First action:** port `build/redpill/*` into **bim-ootb** (the consolidating active repo) as a standalone
+`redpill/` module on its OWN `/tmp/wt-*` worktree off fresh `origin/main` — **pure move, no modeller edits**
+(modeller is mid-heavy-session; keep red-pill additive, self-injecting button). Then:
+1. swap the 5 connector stubs for live bindings — `evaluateGate→sdg_gate.evaluate`, `foldCost→rates.js`,
+   `sign/verifyChain→kernel_ops.js`, `subscribeOps→'bonsai:oplog'`, `bus→BroadcastChannel`. Engine + witnesses unchanged.
+2. wire `branches_mock.html` as the VIEW over the real engine (replace its mock data with `RedpillEngine`/`Gate`/`Chatlog` output).
+3. re-run the 3 witnesses in bim-ootb (must stay 25/25) + a headless smoke.
+
+**Still open (design, §3/§12):** seam protocol (shared-datum CAS), Tier-1 heartbeat payload, op-message field default.
+**Comms follow-up (if asked):** draft the 4 ready-to-paste reply comments — Speckle? · merge-conflicts(draft/craft)? ·
+open-source/license? · scaling? ; consider deploying the mock to a live URL so the post has something to click.
+**Positioning banked:** §COMPETE (11 players), §POSITION (prior-art honesty), keystone framing (collaboration falls
+out of the signed log "for free" — no server added, the need for one removed).
+
 ---
 
 ## §0 — THE ONE-LINE THESIS
