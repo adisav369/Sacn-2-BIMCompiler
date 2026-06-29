@@ -599,6 +599,61 @@
     return { segs: segs, byRule: byRule };
   }
 
+  // ── ROUTE → ASSEMBLE bridge (docs/WalkerDoctrine.md roadmap #3) ──────────────────────────────────
+  // routeChains gives the real nn-NETWORK (segments between real extracted element guids). assemble() turns that
+  // network into instantiated catalog PARTS: at each routed NODE (a real element endpoint), instantiate the matching
+  // catalog piece (disc_patterns._import_joint_piece_types, keyed by ifc_class) — POSE from the REAL node, TYPE+Ø
+  // from the catalog (MEASURED, mined off the source building), ORIENTATION from the incident run direction.
+  // NON-INVENT: nothing fabricated — pose is a real element's position, size is a measured catalog Ø, direction is
+  // real segment geometry. A node whose class has no catalog part is honestly SKIPPED (no fabricated part).
+  // opts.catalog = [{ifc_class, piece_type, diameter_mm, length_mm}] — caller-passed percept from the pattern store
+  // (mirrors the host-bind shim's caller-passed start; a projected `rule_joint_piece` is the later first-class step).
+  // opts.toFace forwards to routeChains. Returns {parts, joints, segs, nodes} or {refused, reason}.
+  function assemble(disc, bdb, opts) {
+    opts = opts || {};
+    var rc = routeChains(disc, bdb, opts);
+    if (!rc.segs.length) return { disc: disc, refused: true, reason: 'no routed network', parts: [], joints: [] };
+    var cat = opts.catalog || [];
+    if (!cat.length) return { disc: disc, refused: true, reason: 'no catalog (pass opts.catalog from _import_joint_piece_types)', parts: [], joints: [] };
+    var byCls = {};
+    cat.forEach(function (c) { (byCls[c.ifc_class] = byCls[c.ifc_class] || []).push(c); });
+    function _part(cls) {
+      var g = byCls[cls]; if (!g) return null;
+      return { piece_type: g[0].piece_type,                       // representative type (one per class in the catalog)
+        diameter_mm: _med(g.map(function (c) { return c.diameter_mm; })),   // MEASURED median Ø for the class
+        length_mm: _med(g.map(function (c) { return c.length_mm; })) };
+    }
+    // unique nodes from the network; accumulate incident run unit-vectors at each node for orientation.
+    var nodes = {}, joints = [];
+    function _touch(guid, kind, xyz, dir) {
+      var n = nodes[guid] || (nodes[guid] = { guid: guid, ifc_class: kind, x: xyz[0], y: xyz[1], z: xyz[2], dirs: [] });
+      if (dir) n.dirs.push(dir);
+    }
+    rc.segs.forEach(function (s) {
+      var dx = s.to[0] - s.from[0], dy = s.to[1] - s.from[1], dz = s.to[2] - s.from[2];
+      var L = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1, u = [dx / L, dy / L, dz / L];
+      _touch(s.from_guid, s.from_kind, s.from, u);                // run leaves the from-end along +u
+      _touch(s.to_guid, s.to_kind, s.to, [-u[0], -u[1], -u[2]]);  // and arrives at the to-end along -u
+      var pf = _part(s.from_kind), pt = _part(s.to_kind);
+      joints.push({ from_guid: s.from_guid, to_guid: s.to_guid, gap: s.gap,
+        dia_from_mm: pf ? pf.diameter_mm : null, dia_to_mm: pt ? pt.diameter_mm : null });
+    });
+    var parts = [], skipped = 0;
+    Object.keys(nodes).forEach(function (g) {
+      var n = nodes[g], p = _part(n.ifc_class);
+      if (!p) { skipped++; return; }                              // no catalog part for this class → honest skip
+      var ax = 0, ay = 0, az = 0;                                 // orientation = mean incident run vector, renormalized
+      n.dirs.forEach(function (d) { ax += d[0]; ay += d[1]; az += d[2]; });
+      var aL = Math.sqrt(ax * ax + ay * ay + az * az);
+      var dir = aL > 1e-9 ? [ax / aL, ay / aL, az / aL] : [0, 0, 1];
+      parts.push({ disc: disc, guid: n.guid, ifc_class: n.ifc_class, piece_type: p.piece_type,
+        diameter_mm: p.diameter_mm, length_mm: p.length_mm, pos: [n.x, n.y, n.z], dir: dir,
+        prim: _primFor(n.ifc_class), prov: 'assembled:catalog+routed-node' });
+    });
+    return { disc: disc, refused: false, parts: parts, joints: joints, segs: rc.segs.length,
+      nodes: Object.keys(nodes).length, skipped: skipped };
+  }
+
   // ── GATE (place-order + avoidance) ─────────────────────────────────────────────────
   // Global per-disc order = the median order_index across the measured place_order rows.
   function order() {
@@ -828,7 +883,7 @@
     return ds.filter(function (d) { return d && d !== 'ARC'; });
   }
 
-  var API = { dwInit: dwInit, dwOpen: dwOpen, dwBorrow: dwBorrow, dwBorrowFile: dwBorrowFile, dwWalk: dwWalk, substrate: substrate, place: place, hostBind: hostBind,
+  var API = { dwInit: dwInit, dwOpen: dwOpen, dwBorrow: dwBorrow, dwBorrowFile: dwBorrowFile, dwWalk: dwWalk, assemble: assemble, substrate: substrate, place: place, hostBind: hostBind,
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
     hostWalls: hostWalls, countPer: countPer, occupancy: occupancy,
     _shimForDisc: _shimForDisc, _shimForFixture: _shimForFixture, _loadRuleShims: _loadRuleShims,
