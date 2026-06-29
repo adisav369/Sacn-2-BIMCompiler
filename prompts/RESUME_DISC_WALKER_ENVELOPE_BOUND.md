@@ -222,3 +222,44 @@ cadence into DX ACMV. ELEC on SC will float like SH → apply the host-bind fix 
 - **"NO fittings/terminals kept"** → the **13 grilles ARE kept** as `IfcDistributionElement` named `vent. rooster`, discipline=MEP, **all 13 with geometry** (on 2 storeys: 4 begane grond + 9 tweede verdieping — NOT all 7).
 - **routeChains `no-endpoints` root cause** → source has **zero** `IfcPort`/`IfcDistributionPort`/`IfcRelNests`. The 635 `IfcRelConnectsPathElements` are wall joins. There is **no duct↔grille network topology in the model at all** — nothing was dropped at extract; the connectivity does not exist. `routeChains` cannot walk a network that isn't there, and fabricating one is forbidden.
 - **NET:** SC's "rich ventilation" is **13 disconnected, fully-extracted grilles + a separate rainwater-drainage run** — not an under-extraction. SC is NOT an ACMV walk-back oracle (no network to learn from). What IS real & open: (1) ELEC host-bind float (roadmap #1, applies as on SH); (2) treating the 13 grilles as standalone ACMV *placement* anchors (PLACE-only, no ROUTE) if a placement-density walk is wanted; (3) ARC/STR remains the clean crawl substrate as stated. DECISION FOR USER: drop the vent-router sub-task (recommended), or pivot SC to ELEC-host-bind / grille-placement-only.
+
+## ➕ ADDENDUM — SC DIRECTION RESOLVED (2026-06-30, prior-session review of the audit above)
+The SOURCE-AUDIT above is CORRECT — independently re-verified against `internal/sources/Ifc2x3_SampleCastle.ifc`:
+`IFCPRODUCTDEFINITIONSHAPE`=3752 (the "DUCT" artifact), real `IFCDUCT*`=0, 372/402 ventilatierooster=`IFCPROPERTYSINGLEVALUE`,
+grilles `vent. rooster`=4(begane grond)+9(tweede)=13 all extracted-with-geometry, all 60 `IfcFlowSegment`='hwa afvoer'
+(rainwater/PLB), and `IfcPort`/`IfcDistributionPort`/`IfcRelNests`/`IfcRelConnectsPorts`=0. **Accept it. No vent extraction;
+no fabricated ducts.**
+
+**BUT the 3-option fork is slightly mis-framed. RESOLUTION = Option 1 as the spine + fold Option 2 in; NOT Option 3.**
+Reason: the audit's "SC is not an ACMV walk-back oracle" is true *for ROUTING* — but the 13 grilles ARE a real
+**host-bound PLACEMENT oracle**. Measured: 2nd-floor grilles sit at z=8.22m = the window-top line (windows top ≈8.25m);
+ground-floor at 2.5m (above window heads); widths VARY with the opening (0.83 vs 0.063m); product types encode size
+(`DucoFIT_50`, `Ducomax_Corto_20`). So a grille is a STANDALONE device **governed by its host (window-top) + sized to the
+opening** — NOT a joined-network part. The earlier route→JOIN path (`ad_assembly_connector` face/Ø/connects_to-a-stack)
+does NOT apply to it (no port, no network — confirmed).
+
+**MEP relationship taxonomy (the refinement this surfaced — use it to route future MEP work):**
+1. **Networked** (route→join→shim at PORTS): supply/waste plumbing, ducted HVAC. Needs ports/connectors. (Duplex-MEP = the
+   class-1 oracle, W-WALKBACK-MEP.)
+2. **Host-bound standalone** (host-bind + size, **NO join**): vent grilles (`host=IfcWindow, mount=TOP`), ELEC outlets
+   (`host=IfcWall, mount=SIDE`), alarms (`host=IfcCovering, mount=BOTTOM`). Governed by host + sizing/spaciousness rule
+   (`_shim_attributes` for where, `ad_space_type_mep_bom` for count/size). SC's 13 grilles = the class-2 oracle.
+3. **Run without recorded joins** (segments, no ports): SC's 60 `hwa afvoer` rainwater downpipes — reconstructed by
+   PROXIMITY (nn route), not by recorded connectors.
+
+**THE SLICE (do this, not the refuted vent-extraction):** generalize `disc_walker.hostBind` from walls-only to
+**host-type-agnostic** — drive `host_ifc_class` + `mount` from the shim percept (it currently hard-targets `%Wall%`).
+Then ONE witness proves it on TWO real host types:
+- (a) **ELEC outlets → wall** (`host=IfcWall, mount=SIDE`) = the genuinely-open SH float fix (W-ELEC-HOSTBIND already
+  spiked this for walls; promote + generalize).
+- (b) **the 13 SC grilles → window-top** (`host=IfcWindow, mount=TOP`) = walk-BACK against the real grilles: does the
+  host-bind rule reproduce their window-top z + opening-width? PLACE-only, no route, no fabricated ducts.
+- ⚠ HONESTY: (b) is SELF-CONSISTENCY (mine the window-top rule from the 13, reproduce the 13) — same status as the routing
+  rules (mined-then-applied-to-same). Report as such; cross-building generalization (apply to Duplex/SH openings) is a
+  LATER step.
+
+**NET for SC:** drop the vent-EXTRACTION task (refuted); KEEP SC as the clean ARC/STR crawl substrate; do the
+host-agnostic `hostBind` slice witnessed on ELEC-wall + the 13 grille-window-top. SC is useful for class-2 (host-bound)
+and class-3 (proximity run), just not class-1 (networked). DROP the "DX-ACMV-thickening from a vent network" sub-goal —
+there is no network; a grille placement-density rule (count/size by room) is the only ACMV thing SC can teach, and it's
+class-2 not class-1.
