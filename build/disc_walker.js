@@ -323,6 +323,12 @@
       "SELECT m.guid g, t.center_x x, t.center_y y, t.center_z z " +
       "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class='" + _esc(cls) + "'");
   }
+  // Same, with the AABB extent — needed for FACE routing (a run's physical line = centre ± half its dominant axis).
+  function _loadXYZB(bdb, cls) {
+    return _rows(bdb,
+      "SELECT m.guid g, t.center_x x, t.center_y y, t.center_z z, t.bbox_x bx, t.bbox_y by_, t.bbox_z bz " +
+      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class='" + _esc(cls) + "'");
+  }
   var _DERIVED_MAX_K = 4;                                     // when a rule has no measured max, bound = K×avg (logged)
   // ONE nn pass: for each ANCHOR element find the nearest CAND within `bound` (spatial-hash, O(n)).
   // Returns the paired list {ai, ci, gap} + the no-neighbour count + the mean gap of paired.
@@ -351,7 +357,59 @@
     });
     return { pairs: pairs, noNbr: noNbr, mean: pairs.length ? sum / pairs.length : Infinity };
   }
-  function routeChains(disc, bdb) {
+  // ── FACE routing (opt-in) ───────────────────────────────────────────────────────────
+  // A duct/pipe RUN connects to a fitting at its END/FACE, not its CENTRE. Centre-nn pairs a large duct by its
+  // far centre (inflated gap, wrong partner); FACE-nn measures the node→run LINE distance so the genuine touching
+  // run is chosen. NON-INVENT: the line endpoints are MEASURED (centre ± half the dominant AABB axis; rotations are
+  // π/2-multiples so the AABB long axis IS the run axis), no invented constant. Default OFF — live dwWalk is unchanged.
+  function _segLine(s) {
+    var ext = [s.bx || 0, s.by_ || 0, s.bz || 0], ax = 0;
+    if (ext[1] > ext[ax]) ax = 1; if (ext[2] > ext[ax]) ax = 2;
+    var h = ext[ax] / 2, a = [s.x, s.y, s.z], b = [s.x, s.y, s.z];
+    a[ax] -= h; b[ax] += h; return { a: a, b: b };
+  }
+  function _ptSeg(px, py, pz, a, b) {
+    var abx = b[0] - a[0], aby = b[1] - a[1], abz = b[2] - a[2];
+    var apx = px - a[0], apy = py - a[1], apz = pz - a[2];
+    var l2 = abx * abx + aby * aby + abz * abz;
+    var t = l2 > 0 ? (apx * abx + apy * aby + apz * abz) / l2 : 0;
+    t = t < 0 ? 0 : (t > 1 ? 1 : t);
+    var cx = a[0] + t * abx, cy = a[1] + t * aby, cz = a[2] + t * abz;
+    return Math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy) + (pz - cz) * (pz - cz));
+  }
+  // For each NODE (fitting/terminal) find the nearest RUN by point-to-LINE distance within bound (spatial-hash on
+  // the run's endpoints + midpoint, so a long run that spans many cells is still found from the node's cell).
+  function _nnPassFace(nodes, runs, bound) {
+    var CELL = bound > 0 ? bound : 1, grid = {};
+    var ck = function (a, b, c) { return a + ',' + b + ',' + c; };
+    var lines = runs.map(_segLine);
+    runs.forEach(function (r, i) {
+      var L = lines[i];
+      [L.a, L.b, [(L.a[0] + L.b[0]) / 2, (L.a[1] + L.b[1]) / 2, (L.a[2] + L.b[2]) / 2]].forEach(function (q) {
+        var k = ck(Math.floor(q[0] / CELL), Math.floor(q[1] / CELL), Math.floor(q[2] / CELL));
+        (grid[k] = grid[k] || []).push(i);
+      });
+    });
+    var pairs = [], noNbr = 0, sum = 0;
+    nodes.forEach(function (f, fi) {
+      var ix = Math.floor(f.x / CELL), iy = Math.floor(f.y / CELL), iz = Math.floor(f.z / CELL);
+      var best = Infinity, bj = -1, seen = {};
+      for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) for (var dz = -1; dz <= 1; dz++) {
+        var arr = grid[ck(ix + dx, iy + dy, iz + dz)]; if (!arr) continue;
+        for (var a = 0; a < arr.length; a++) {
+          var si = arr[a]; if (seen[si]) continue; seen[si] = 1;
+          if (runs[si].g === f.g) continue;
+          var d = _ptSeg(f.x, f.y, f.z, lines[si].a, lines[si].b);
+          if (d < best) { best = d; bj = si; }
+        }
+      }
+      if (bj >= 0 && best <= bound) { pairs.push({ ni: fi, ri: bj, gap: best }); sum += best; }
+      else { noNbr++; }
+    });
+    return { pairs: pairs, noNbr: noNbr, mean: pairs.length ? sum / pairs.length : Infinity };
+  }
+  function routeChains(disc, bdb, opts) {
+    opts = opts || {};
     var rr = _rows(_db, "SELECT * FROM rule_routing WHERE disc='" + _esc(disc) + "' AND pattern='nn'");
     var segs = [], byRule = [];
     rr.forEach(function (r) {
@@ -365,6 +423,26 @@
       var from = _loadXYZ(bdb, r.from_kind), to = _loadXYZ(bdb, r.to_kind);
       if (!from.length || !to.length) {                      // building lacks one endpoint class → honest 0
         byRule.push({ from: r.from_kind, to: r.to_kind, segs: 0, noNbr: 0, skipped: 'no-endpoints' });
+        return;
+      }
+      // FACE mode (opt-in): pair each NODE to the nearest RUN by point-to-line distance (the run's real face),
+      // not centre-to-centre. The RUN is the *Segment class; the NODE is the other. from_guid/to_guid still follow
+      // the rule's from_kind/to_kind. NON-INVENT: real positions + measured AABB line; bounded by the measured gap.
+      if (opts.toFace) {
+        var fromIsRun = /Segment/.test(r.from_kind);
+        var runCls = fromIsRun ? r.from_kind : r.to_kind, nodeCls = fromIsRun ? r.to_kind : r.from_kind;
+        var runs = _loadXYZB(bdb, runCls), nodes = _loadXYZ(bdb, nodeCls);
+        var fp = _nnPassFace(nodes, runs, bound);
+        fp.pairs.forEach(function (pr) {
+          var nEl = nodes[pr.ni], rEl = runs[pr.ri];
+          var fEl = fromIsRun ? rEl : nEl, tEl = fromIsRun ? nEl : rEl;
+          segs.push({ disc: disc, rule: 'nn', from_kind: r.from_kind, to_kind: r.to_kind,
+            from_guid: fEl.g, to_guid: tEl.g, from: [fEl.x, fEl.y, fEl.z], to: [tEl.x, tEl.y, tEl.z],
+            gap: +pr.gap.toFixed(4), bound: +(+bound).toFixed(4), gapSource: gapSource, mode: 'face' });
+        });
+        byRule.push({ from: r.from_kind, to: r.to_kind, segs: fp.pairs.length, noNbr: fp.noNbr,
+          bound: +(+bound).toFixed(4), gapSource: gapSource, avg_measured: gp.avg, iterDir: 'node→run-face',
+          meanGap: +fp.mean.toFixed(4), mode: 'face' });
         return;
       }
       // The rule declares from→to, but its measured avg gap was mined from whichever endpoint set is the

@@ -43,6 +43,9 @@
  *   M5 REFUSE-COVERAGE    — fittings with no neighbour within the measured bound are honestly skipped + counted
  *                           (byRule.noNbr) — REFUSE beats fabricate.
  *   M6 REPRODUCE          — re-run identical; bars set f(measured), every seg traces real from_guid/to_guid + measured bound.
+ *   M7 ROUTE-TO-FACE      — opt-in `routeChains(disc,bdb,{toFace:true})` pairs node→run by point-to-LINE (the run's real
+ *                           face) not centre-to-centre; it PARTIALLY lifts ACMV duct precision (ducts stay harder) and
+ *                           does not regress short-run PLB, 0 fabricated. Default OFF — live dwWalk is byte-identical.
  */
 'use strict';
 var fs = require('fs');
@@ -167,9 +170,10 @@ function walkSubstrate(SQL, sub) {
     var fromIsRun = /Segment/.test(d.from);
     var runCls = fromIsRun ? d.from : d.to, nodeCls = fromIsRun ? d.to : d.from;
     var nodes = readClassXYZ(bdb, nodeCls), runsAll = readClassXYZ(bdb, runCls);
-    var walkedPairs = rc.segs.map(function (s) {
-      return fromIsRun ? { node: s.to_guid, run: s.from_guid } : { node: s.from_guid, run: s.to_guid };
-    });
+    // score ONLY this rule's segs against this rule's oracle (a disc may carry several nn-rules, e.g. ACMV's
+    // DuctSegment→DuctFitting AND DuctFitting→AirTerminal — mixing them understates precision).
+    var walkedPairs = rc.segs.filter(function (s) { return s.from_kind === d.from && s.to_kind === d.to; })
+      .map(function (s) { return fromIsRun ? { node: s.to_guid, run: s.from_guid } : { node: s.from_guid, run: s.to_guid }; });
     var sweep = TOUCH_SWEEP.map(function (tol) {
       var orc = touchOracle(nodes, runsAll, tol);
       var matched = 0;
@@ -296,7 +300,8 @@ function walkSubstrate(SQL, sub) {
   // route-to-nearest-FACE/endpoint engine refinement (a future slice); reported here, never fabricated to green.
   var acmv = terminal.byDisc.find(function (d) { return d.disc === 'ACMV'; });
   if (acmv) log('§MEP-WB FINDING ACMV/Terminal precision=' + acmv.plat.precision.toFixed(3) + ' @' + PLATEAU_TOL +
-    'm (vs PLB 0.874): nn-to-CENTRE is loose for large ducts (centre far from connection face) — route-to-face is the next refinement, not faked');
+    'm (vs PLB ' + primary.plat.precision.toFixed(3) + '): nn-to-CENTRE is loose for large ducts (centre far from ' +
+    'connection face). M7 measures route-to-FACE as the refinement — a PARTIAL lift, ducts remain genuinely harder; reported, not faked');
 
   // ── M5 REFUSE-COVERAGE ──
   log('');
@@ -320,6 +325,50 @@ function walkSubstrate(SQL, sub) {
   assert('M6 REPRODUCE',
     r1 === r2 && traced,
     'routeChains re-runs identical (' + r1 + '==' + r2 + '); every seg traces real from/to guid + measured bound');
+
+  // ── M7 ROUTE-TO-FACE (the refinement that improves the ACMV finding; opt-in, non-invent) ──
+  // Pair each node to the nearest run by point-to-LINE distance (the run's real face) instead of centre-to-centre.
+  // Score the SAME geometric touch oracle: face routing should LIFT precision where the run is large (ACMV ducts),
+  // and never regress short-run PLB. NON-INVENT preserved: every face seg still joins two real guids, gap ≤ bound.
+  log('');
+  log('─── M7 ROUTE-TO-FACE (opt-in refinement) ───');
+  function scoreFace(dbFile, rulesFile, disc, from, to) {
+    var rdb2 = loadDb(SQL, rulesFile), bdb2 = loadDb(SQL, dbFile); DW.dwOpen(rdb2);
+    var rc = DW.routeChains(disc, bdb2, { toFace: true });
+    var fromIsRun = /Segment/.test(from);
+    var runCls = fromIsRun ? from : to, nodeCls = fromIsRun ? to : from;
+    var nodes = readClassXYZ(bdb2, nodeCls), runsAll = readClassXYZ(bdb2, runCls);
+    var orc = touchOracle(nodes, runsAll, PLATEAU_TOL);
+    var ruleSegs = rc.segs.filter(function (s) { return s.from_kind === from && s.to_kind === to; });
+    var matched = 0, fab = 0, over = 0;
+    ruleSegs.forEach(function (s) {
+      var node = fromIsRun ? s.to_guid : s.from_guid, run = fromIsRun ? s.from_guid : s.to_guid;
+      if (orc.touchSet[node] && orc.touchSet[node][run]) matched++;
+      var fr = rows(bdb2, "SELECT center_x x,center_y y,center_z z FROM element_transforms WHERE guid='" + s.from_guid + "'")[0];
+      var to2 = rows(bdb2, "SELECT center_x x,center_y y,center_z z FROM element_transforms WHERE guid='" + s.to_guid + "'")[0];
+      if (!fr || !to2 || Math.hypot(fr.x - s.from[0], fr.y - s.from[1], fr.z - s.from[2]) > 1e-9 ||
+          Math.hypot(to2.x - s.to[0], to2.y - s.to[1], to2.z - s.to[2]) > 1e-9) fab++;
+      if (s.gap > s.bound + 1e-9) over++;
+    });
+    rdb2.close(); bdb2.close();
+    return { segs: ruleSegs.length, prec: ruleSegs.length ? matched / ruleSegs.length : 0, fab: fab, over: over,
+      mode: (ruleSegs[0] && ruleSegs[0].mode) || 'none' };
+  }
+  var faceACMV = scoreFace(TE, TE_RULES, 'ACMV', 'IfcDuctSegment', 'IfcDuctFitting');
+  var facePLBte = scoreFace(TE, TE_RULES, 'PLB', 'IfcPipeFitting', 'IfcPipeSegment');
+  var facePLBdx = scoreFace(DX, DX_RULES, 'PLB', 'IfcFlowFitting', 'IfcFlowSegment');
+  var centerACMV = terminal.byDisc.find(function (d) { return d.disc === 'ACMV'; }).plat.precision;
+  log('§MEP-WB FACE ACMV/Terminal: precision ' + centerACMV.toFixed(3) + ' (centre) → ' + faceACMV.prec.toFixed(3) +
+    ' (face) over ' + faceACMV.segs + ' segs, mode=' + faceACMV.mode + ' [' + faceACMV.fab + ' fabricated, ' + faceACMV.over + ' over-bound]');
+  log('§MEP-WB FACE PLB/Terminal:  precision ' + primary.plat.precision.toFixed(3) + ' (centre) → ' + facePLBte.prec.toFixed(3) + ' (face)');
+  log('§MEP-WB FACE PLB/Duplex:    precision ' + dxPlb.plat.precision.toFixed(3) + ' (centre) → ' + facePLBdx.prec.toFixed(3) + ' (face)');
+  assert('M7 ROUTE-TO-FACE',
+    faceACMV.prec > centerACMV && faceACMV.fab === 0 && faceACMV.over === 0 &&
+    facePLBte.prec >= primary.plat.precision - 0.02 && facePLBdx.prec >= dxPlb.plat.precision - 0.02 &&
+    facePLBte.fab === 0 && facePLBdx.fab === 0,
+    'face LIFTS ACMV precision ' + centerACMV.toFixed(3) + '→' + faceACMV.prec.toFixed(3) +
+    ' (partial — ducts stay harder), does NOT regress PLB (TE ' + primary.plat.precision.toFixed(3) + '→' + facePLBte.prec.toFixed(3) +
+    ', DX ' + dxPlb.plat.precision.toFixed(3) + '→' + facePLBdx.prec.toFixed(3) + '), 0 fabricated; opt-in (live dwWalk unchanged)');
 
   log('');
   log('───────────────────────────────────────────────');
