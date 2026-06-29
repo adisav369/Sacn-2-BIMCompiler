@@ -14,7 +14,11 @@
  *   code is not the evidence.
  *
  * CLAIMS:
- *   A0 REFUSE-NO-CATALOG  — assemble with NO catalog REFUSES (honest; the parts come from the pattern store, not air).
+ *   J1 PROJECTED-SOURCE   — (roadmap #3a) assemble with NO caller catalog reads the first-class PROJECTED
+ *                           `rule_joint_piece` table (build/project_rule_joint_piece.py) and still instantiates parts.
+ *   J2 PROJECTED-TRACEABLE— every projected-path part Ø == its rule_joint_piece row (the projected measured median).
+ *   J3 PROJECTED-NON-INVENT — the projected Ø == an INDEPENDENT median of the source catalog for that class.
+ *   J4 REFUSE-WHEN-ABSENT — with NEITHER caller catalog NOR a rule_joint_piece table, assemble REFUSES (no fabrication).
  *   A1 INSTANTIATED       — assemble('PLB', DXMEP, {catalog}) produces parts > 0 at the routed nodes.
  *   A2 LAND-ON-REAL       — every part.guid is a REAL elements_meta row and part.pos == its element_transforms
  *                           centre (1e-6). Pose is NOT fabricated — it is a real extracted element.
@@ -62,11 +66,40 @@ function med(a) { a = a.filter(function (v) { return v != null; }).slice().sort(
   log('§AS catalog rows (Duplex IfcFlow*): ' + catalog.length + ' over classes ' +
     JSON.stringify(Array.from(new Set(catalog.map(function (c) { return c.ifc_class; }))).sort()));
 
-  // ── A0 REFUSE-NO-CATALOG ──
-  var noCat = DW.assemble('PLB', dx, {});
-  log('§AS A0 assemble (no catalog): refused=' + noCat.refused + ' reason=' + (noCat.reason || '-'));
-  assert('A0 REFUSE-NO-CATALOG', noCat.refused === true && /catalog/.test(noCat.reason || ''),
-    'assemble with no catalog REFUSES (' + (noCat.reason || '') + ') — parts come from the pattern store, not fabricated');
+  // ── J1 PROJECTED-SOURCE (roadmap #3a): assemble with NO caller catalog reads the first-class rule_joint_piece ──
+  var proj = DW.assemble('PLB', dx);                            // no opts.catalog → projected rule_joint_piece
+  var rjp = rows(rdb, "SELECT ifc_class, diameter_mm FROM rule_joint_piece WHERE disc='PLB'");
+  var rjpDia = {}; rjp.forEach(function (r) { rjpDia[r.ifc_class] = r.diameter_mm; });
+  log('§AS J1 assemble PLB (PROJECTED, no caller catalog): refused=' + proj.refused + ' parts=' + (proj.parts || []).length +
+    ' rule_joint_piece(PLB)=' + JSON.stringify(rjpDia));
+  assert('J1 PROJECTED-SOURCE', !proj.refused && proj.parts.length > 0 && rjp.length > 0,
+    proj.parts.length + ' parts from the PROJECTED rule_joint_piece table (no caller catalog needed) — §SHIM-SELECT/routing pattern');
+
+  // ── J2 TRACEABLE: every projected-path part Ø == its rule_joint_piece row (the projected measured median) ──
+  var jBad = proj.parts.filter(function (p) { return Math.abs(p.diameter_mm - rjpDia[p.ifc_class]) > 1e-9; }).length;
+  assert('J2 PROJECTED-TRACEABLE', jBad === 0,
+    'every projected part Ø == rule_joint_piece.diameter_mm for its (disc,ifc_class) (mismatch=' + jBad + ') — traceable to the projection');
+
+  // ── J3 NON-INVENT: the projected Ø == an INDEPENDENT median of the source catalog for that class ──
+  function pyMedian(a) { a = a.filter(function (v) { return v != null; }).slice().sort(function (x, y) { return x - y; });
+    var n = a.length; if (!n) return null; var m = Math.floor(n / 2); return n % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+  var jInvent = 0;
+  Object.keys(rjpDia).forEach(function (k) {
+    var src = rows(pat, "SELECT diameter_mm d FROM _import_joint_piece_types WHERE ifc_class='" + k + "' AND source_building LIKE '%Duplex%'").map(function (r) { return r.d; });
+    if (Math.abs(pyMedian(src) - rjpDia[k]) > 1e-9) jInvent++;
+  });
+  log('§AS J3 projected Ø re-measured from source catalog: classes=' + Object.keys(rjpDia).length + ' invented=' + jInvent);
+  assert('J3 PROJECTED-NON-INVENT', jInvent === 0,
+    'every rule_joint_piece Ø == independent median of disc_patterns catalog for class+source (invented=' + jInvent + ') — non-invent projection');
+
+  // ── J4 REFUSE-WHEN-ABSENT: with NEITHER caller catalog NOR a rule_joint_piece table, assemble REFUSES (no fabrication) ──
+  var bare = loadDb(SQL, DX_RULES); bare.run("DROP TABLE IF EXISTS rule_joint_piece");
+  DW.dwOpen(bare);
+  var noCat = DW.assemble('PLB', dx);
+  DW.dwOpen(rdb);                                               // restore the projected rules DB for the rest
+  log('§AS J4 assemble (no catalog + no rule_joint_piece): refused=' + noCat.refused + ' reason=' + (noCat.reason || '-'));
+  assert('J4 REFUSE-WHEN-ABSENT', noCat.refused === true && /catalog/.test(noCat.reason || ''),
+    'with no caller catalog AND no projected table, assemble REFUSES (' + (noCat.reason || '') + ') — parts come from the pattern store, never fabricated');
 
   // ── A1 INSTANTIATED ──
   var res = DW.assemble('PLB', dx, { catalog: catalog });

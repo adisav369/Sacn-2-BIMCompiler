@@ -613,8 +613,12 @@
     opts = opts || {};
     var rc = routeChains(disc, bdb, opts);
     if (!rc.segs.length) return { disc: disc, refused: true, reason: 'no routed network', parts: [], joints: [] };
-    var cat = opts.catalog || [];
-    if (!cat.length) return { disc: disc, refused: true, reason: 'no catalog (pass opts.catalog from _import_joint_piece_types)', parts: [], joints: [] };
+    // CATALOG source: caller-passed opts.catalog (raw _import_joint_piece_types rows) ELSE the first-class
+    // PROJECTED `rule_joint_piece` table in the (borrowed-aware) rules DB — the §SHIM-SELECT/routing pattern, so
+    // assemble needs no caller percept. Each projected row is ALREADY the per-(disc,ifc_class) measured median
+    // (one row per class), so _part()'s _med over a single row returns that exact value (no re-aggregation drift).
+    var cat = opts.catalog || _loadJointPieces(disc);
+    if (!cat.length) return { disc: disc, refused: true, reason: 'no catalog (pass opts.catalog or project rule_joint_piece)', parts: [], joints: [] };
     var byCls = {};
     cat.forEach(function (c) { (byCls[c.ifc_class] = byCls[c.ifc_class] || []).push(c); });
     function _part(cls) {
@@ -652,6 +656,57 @@
     });
     return { disc: disc, refused: false, parts: parts, joints: joints, segs: rc.segs.length,
       nodes: Object.keys(nodes).length, skipped: skipped };
+  }
+
+  // ── CONNECTOR + CLEARANCE (roadmap #3b) ──────────────────────────────────────────────────────────
+  // The FIXTURE→SERVICE hookup: a named assembly (disc_patterns.ad_assembly_connector) declares which FACE
+  // connects to which SERVICE at what Ø (e.g. SPRINKLER TOP SUPPLY_IN Ø25 → FP_MAIN; TOILET BOTTOM WASTE_OUT
+  // Ø100 → PLUMBING_STACK), and ad_assembly_manifest gives the standoff CLEARANCE per face. _faceDir maps the
+  // measured FACE NAME to its local-frame axis — a frame CONVENTION (the face name is the datum), not invented data.
+  function _faceDir(face) {
+    switch (String(face).toUpperCase()) {
+      case 'TOP': return [0, 0, 1];
+      case 'BOTTOM': return [0, 0, -1];
+      case 'BACK': return [0, -1, 0];
+      case 'FRONT': return [0, 1, 0];
+      case 'LEFT': return [-1, 0, 0];
+      case 'RIGHT': return [1, 0, 0];
+      default: return null;
+    }
+  }
+  // Resolve the service connector + standoff for a named assembly. Picks the connector that names a SERVICE
+  // (connects_to) — the hookup that orients the part — else the first connector. NON-INVENT: face/type/Ø/
+  // connects_to/clearance are READ verbatim from the tables; only faceDir is the convention. null if no connector.
+  function connectorFor(assemblyId, connectors, manifest) {
+    var conns = (connectors || []).filter(function (c) { return c.assembly_id === assemblyId; });
+    if (!conns.length) return null;
+    var c = conns.filter(function (x) { return x.connects_to; })[0] || conns[0];
+    var mf = (manifest || []).filter(function (m) { return m.assembly_id === assemblyId && m.face === c.face; });
+    return { assembly_id: assemblyId, face: c.face, faceDir: _faceDir(c.face), connector_type: c.connector_type,
+      dia_mm: c.diameter_mm, connects_to: c.connects_to || null, standoff_m: mf.length ? mf[0].clearance_m : 0,
+      all: conns.map(function (x) { return { face: x.face, type: x.connector_type, dia_mm: x.diameter_mm, to: x.connects_to || null }; }) };
+  }
+  // Enrich placed parts/fixtures with their assembly connector + stand the pose OFF along the connector face by
+  // the measured manifest clearance (toward the service). opts.assemblyKey = {ifc_class: assembly_id} OR a fn(part)
+  // (caller-passed — a projected rule_connector is the later first-class step, mirroring rule_shim/rule_joint_piece).
+  // NON-INVENT: a part with no mapped assembly or no connector is LEFT UNTOUCHED (no fabricated hookup); the pose
+  // offset is exactly faceDir·standoff (0 standoff = flush hookup, the common measured case); count preserved.
+  function connectorEnrich(parts, opts) {
+    opts = opts || {};
+    var key = opts.assemblyKey || {}, conns = opts.connectors || [], manifest = opts.manifest || [], n = 0;
+    (parts || []).forEach(function (p) {
+      var aid = (typeof key === 'function') ? key(p) : key[p.ifc_class];
+      if (!aid) return;
+      var con = connectorFor(aid, conns, manifest);
+      if (!con || !con.faceDir) return;
+      p.connector = con; p.standoff_m = con.standoff_m;
+      var pos = p.pos || [p.x, p.y, p.z];
+      p.posStood = [pos[0] + con.faceDir[0] * con.standoff_m,
+                    pos[1] + con.faceDir[1] * con.standoff_m,
+                    pos[2] + con.faceDir[2] * con.standoff_m];
+      n++;
+    });
+    return { enriched: n, total: (parts || []).length };
   }
 
   // ── GATE (place-order + avoidance) ─────────────────────────────────────────────────
@@ -757,6 +812,13 @@
     // disc-aware: when a disc is given, read its shims from _dbFor(disc) (a borrowed discipline carries its own
     // per-fixture rule_shim rows in the borrowed DB). With no disc → primary _db (back-compat).
     try { return _rows(_dbFor(disc), "SELECT * FROM rule_shim"); } catch (e) { return []; }   // table absent → []
+  }
+  // The first-class PROJECTED catalog for assemble (roadmap #3a): per-(disc,ifc_class) measured piece + Ø + length,
+  // projected from disc_patterns._import_joint_piece_types by build/project_rule_joint_piece.py. Borrow-aware
+  // (_dbFor) and table-absent-safe → []. Shape matches a caller's opts.catalog row, so assemble's _part() is uniform.
+  function _loadJointPieces(disc) {
+    try { return _rows(_dbFor(disc), "SELECT ifc_class, piece_type, diameter_mm, length_mm FROM rule_joint_piece WHERE disc='" + _esc(disc) + "'"); }
+    catch (e) { return []; }
   }
   function _discOf(s) { return s.disc != null ? s.disc : String(s.product_value || '').split('_')[0]; }
   function _shimForDisc(shims, disc) {
@@ -883,7 +945,7 @@
     return ds.filter(function (d) { return d && d !== 'ARC'; });
   }
 
-  var API = { dwInit: dwInit, dwOpen: dwOpen, dwBorrow: dwBorrow, dwBorrowFile: dwBorrowFile, dwWalk: dwWalk, assemble: assemble, substrate: substrate, place: place, hostBind: hostBind,
+  var API = { dwInit: dwInit, dwOpen: dwOpen, dwBorrow: dwBorrow, dwBorrowFile: dwBorrowFile, dwWalk: dwWalk, assemble: assemble, connectorFor: connectorFor, connectorEnrich: connectorEnrich, substrate: substrate, place: place, hostBind: hostBind,
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
     hostWalls: hostWalls, countPer: countPer, occupancy: occupancy,
     _shimForDisc: _shimForDisc, _shimForFixture: _shimForFixture, _loadRuleShims: _loadRuleShims,
