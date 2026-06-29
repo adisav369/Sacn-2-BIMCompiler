@@ -39,9 +39,12 @@ analogue is n_measured scaled by floor-area ratio.
 > modeller.html has _dwEnsureBorrow/_dwPrimGeo/__dwRulesVer, both live `*_rules.db` byte-identical to build (FP sprinkler
 > shim live: FP/IfcFireSuppressionTerminal→IfcCovering/BOTTOM). SC sprinkler-walk now reachable in the modeller (151
 > host-bound). bim-compiler `37c603e8` (dwBorrowFile + density witness generation-count fix → §DWD 43/0).
-> **NEXT BITE:** roadmap #1 full ERP→`disc_patterns` physical carve-out (the NAME landed via SYMLINK; split the
-> geometry-pattern tables out of `library/ERP.db`, migrate the ~20 legacy readers, witness byte-identical re-bake).
-> Full status: §NEXT below + §SHIM-SELECT + docs/WalkerDoctrine.md.
+> **✅ roadmap #1 (de-ERP RENAME) DONE 2026-06-30** (bim-compiler `c70bfce1`): all 11 live code readers →
+> `disc_patterns.db`, producer rebuild_erp.sh outputs it + back-compat ERP.db symlink, accounting-split is a no-op
+> (ERP.db already pure geometry-pattern), full suite green, NO impact (byte-identical symlink). See roadmap #1 below.
+> **NEXT BITE:** roadmap #3 Route→ASSEMBLE bridge (instantiate catalog parts at routed nodes, oriented by
+> `ad_assembly_connector`, stood off by clearance — witness on Duplex-MEP where real parts exist as oracle) OR
+> roadmap #4 wire `routeChains` into the modeller render (engine proven; render+deploy only). Full status: §NEXT + roadmap below.
 
 ## 🚫 §NAMING DIRECTIVE — DE-ERP (BINDING; user-confirmed 2026-06-29/30 — READ FIRST)
 **The prior-art pattern store is `disc_patterns.db`. "ERP.db" is a MISLEADING LEGACY NAME — do NOT use it for pattern
@@ -242,10 +245,19 @@ step sourced from **`disc_patterns.db`** (the prior-art pattern store, currently
   physical carve-out = #1 still pending). OPT-IN (default OFF, regressions invariant) — see selection-key below.
 
 **NEXT — in priority order (do the naming/projection FIRST so nothing new accretes onto "ERP.db"):**
-1. **RENAME → `disc_patterns.db`** (de-"ERP", per §NAMING DIRECTIVE). ◧ PARTIAL: the NAME landed via a SYMLINK
-   (`library/disc_patterns.db`→`ERP.db`) so new code (project_rule_shim, witnesses) reads it; the FULL physical carve-out
-   (split geometry-pattern tables out of `library/ERP.db`, leave accounting behind, migrate the ~20 legacy `ERP.db` readers)
-   is still TODO. Witness target: every `*_rules.db` re-bakes byte-identical from the renamed store (no number drift).
+1. ✅ **RENAME → `disc_patterns.db` DONE 2026-06-30** (de-"ERP", per §NAMING DIRECTIVE; bim-compiler `c70bfce1`).
+   FINDING: `library/ERP.db` is ALREADY a pure geometry-pattern store — accounting tables (`C_Order`/`C_OrderLine`)
+   are EMPTY and `fact_acct`/`AD_Window`/GL are ABSENT, so the "split accounting out" part is a **no-op**; the DB is
+   git-IGNORED (local build artifact). REAL work = migrate readers. ALL 11 live code readers migrated ERP.db→disc_patterns.db
+   (4 build witnesses + 7 `scripts/`; project_rule_shim already used it). Producer `scripts/rebuild_erp.sh` now builds
+   `disc_patterns.db` (real) + a back-compat `ERP.db` symlink. NO deployed/runtime reader names ERP.db (verified). NO IMPACT:
+   disc_patterns.db is byte-identical to ERP.db (symlink) so every witness reads the same bytes — full suite GREEN
+   (incl. erp-equiv 14, erp-landed 4, reconcile 12, roof-bound 10). ⚠ erp_equivalence/erp_landed had a PRE-EXISTING
+   §SHIM-SELECT drift (terminal_rules has `rule_shim`; the ERP.db TRM001 views don't → default-on host-bind diverged
+   POSITIONS, counts always matched) — fixed by comparing the RULE-SOURCE walk with `{noHostBind:true}` (same pattern as
+   §DWG/§DWD). Docs still say "ERP.db" (many legitimately about ERP integration, not the store) — left as-is; the accretion
+   risk was in CODE, now drained. ⓘ Local tree keeps ERP.db real + disc_patterns symlink (resolves fine); a fresh
+   `rebuild_erp.sh` produces the canonical layout (disc_patterns real + ERP.db symlink) — cosmetic, both resolve.
 2. ✅ **SHIM is now a first-class PROJECTED rule** (`build/project_rule_shim.py` → `rule_shim` in each `*_rules.db`; `dwWalk`
    reads it; W-DWWALK-HOSTBIND 6/6 incl W5). **REMAINING = the SELECTION KEY `disc + ifc_class`** — `rule_shim.fixture_ifc_class`
    is NULL today, so a disc with >1 host (ELEC wall-outlet + ceiling-light; ACMV ceiling-diffuser + window-grille) picks by
