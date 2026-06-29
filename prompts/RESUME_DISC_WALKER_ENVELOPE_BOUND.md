@@ -263,3 +263,27 @@ host-agnostic `hostBind` slice witnessed on ELEC-wall + the 13 grille-window-top
 and class-3 (proximity run), just not class-1 (networked). DROP the "DX-ACMV-thickening from a vent network" sub-goal —
 there is no network; a grille placement-density rule (count/size by room) is the only ACMV thing SC can teach, and it's
 class-2 not class-1.
+
+## ✅ THE SLICE DONE (W-HOSTBIND-AGNOSTIC 6/6, 2026-06-30, bim-compiler `build/disc_walker.js`)
+`disc_walker.hostBind` is now **host-type-agnostic + mount-aware**: it drives `host_ifc_class` + `mount` from the shim
+percept instead of hard-targeting `%Wall%`. `host_ifc_class` matches as a substring (so `IfcWall` still picks up
+`IfcWallStandardCase` — wall path byte-for-byte unchanged). Mount faces: **SIDE** (wall centreline→face push, the
+original), **TOP/BOTTOM** (nearest host by XY → top/bottom face ± offset), and `same_storey` constrains host selection
+to the placement's own storey (REQUIRED for vertically STACKED hosts like windows). Witness `scripts/witness_hostbind_agnostic.js`
+proves BOTH host types in one run:
+- **(A) H1 WALL-REGRESSION** — ELEC→`IfcWall`/SIDE through the generalized path reproduces the anti-float fix UNCHANGED
+  (SH: 36 bound, float 26→0, median 0.145m = wall half-thickness, 0 fabricated). W-ELEC-HOSTBIND 5/5 + §DWG 49 + §DXG 12
+  + W-WALKBACK-MEP 8/8 all still green.
+- **(B) H0/H2/H3 GRILLE→WINDOW** — the grille→window rule is **MINED** from the 13 real `vent. rooster`
+  `IfcDistributionElement`: **7/13** are window-co-located on their OWN storey (median plan snap **0.014m**), each sitting
+  a **measured 0.415m above its same-storey window centre — MAD=0.000m** (an EXACT rule, not a fit). Applied back
+  (grilles' real XY+storey known, Z stripped → hostBind recomputes Z), it **reproduces** all 7: XY resid 0.014m, **|Δz|=0.000m**.
+  The other **6 are honestly REFUSED** (H5) — not window-co-located on their storey (4 ground-floor + 2 wall-nearer), never
+  forced. H4: every bound grille carries a REAL window guid. ⚠ HONESTY: this is SELF-CONSISTENCY (mined-then-applied-to-same),
+  the same status as the routing rules — NOT cross-building generalization (apply-to-DX/SH openings = a LATER step).
+- **Percept promoted:** `VENT_WINDOW_SHIM | IfcWindow | TOP | −513mm` added to ERP.db `_shim_attributes` (TOP−513 ==
+  window-centre+415, the measured value; CENTER isn't in the table's CHECK so stored as the equivalent TOP offset).
+- **NEXT (open):** (1) generalize the grille rule cross-building (apply to SH/DX window openings — real generalization,
+  not self-consistency); (2) the 6 refused grilles' true host (ground-floor wall/ceiling — a 2nd host rule); (3) port
+  `disc_walker.js` to `~/bim-ootb/modeller/` + a live SC grille-walk in the §-log (deploy). ELEC host-bind mining promotion
+  (W-ELEC-HOSTBIND "promote to mining") still stands as its own bite.

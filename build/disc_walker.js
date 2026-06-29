@@ -287,52 +287,92 @@
     return out;
   }
 
-  // ── HOST-BIND (the anti-float fix for wall-mounted disciplines) ─────────────────────
+  // ── HOST-BIND (the anti-float fix for host-bound standalone disciplines) ────────────
   // Density/storey placement scatters fixtures at FOOTPRINT-cell centres → they float mid-room (SH ELEC: 38/38
-  // ~3.9m off any wall). But wall-mounted classes (ELEC outlets/switches, FP alarms) are HOST-BOUND. This snaps
-  // each floating placement onto the nearest real host wall: project onto the wall's CENTRELINE (wall line =
-  // centre ± half its dominant horizontal axis), push to the wall FACE by half-thickness + the shim offset, and
-  // set Z to the measured mount height. NON-INVENT: the wall + its geometry are REAL; the shim percept
-  // {host_ifc_class, mount, offset_m, height_m} is supplied (sourced from ERP.db `_shim_attributes`), never guessed.
-  // A placement with no wall within `reach_m` is REFUSED (kept floating + counted) — REFUSE beats fabricate.
+  // ~3.9m off any wall). But "host-bound standalone" classes (taxonomy class-2: ELEC outlets→wall SIDE, FP
+  // alarms→covering BOTTOM, vent grilles→window TOP) are governed by a HOST + a mount face — NOT a joined
+  // network (class-1) and NOT a proximity run (class-3). This snaps each placement onto the nearest real host
+  // of `shim.host_ifc_class`, on the mount face named by `shim.mount`:
+  //   SIDE   — project onto the host's CENTRELINE (host line = centre ± half its dominant horizontal axis),
+  //            push to the room-side FACE by half-thickness + shim offset, yaw = host run axis. (walls)
+  //   TOP    — snap XY to the host centre, set Z to the host top-face (centre_z + bbox_z/2) + shim offset;
+  //            yaw = host run axis. (window grilles, slab-top risers)
+  //   BOTTOM — snap XY to the host centre, set Z to the host bottom-face (centre_z − bbox_z/2) − shim offset.
+  //            (ceiling-covering alarms/diffusers)
+  // NON-INVENT: the host + its geometry are REAL; the shim percept {host_ifc_class, mount, offset_m, height_m}
+  // is supplied (sourced from ERP.db `_shim_attributes`), never guessed. A placement with no host within
+  // `reach_m` is REFUSED (kept floating + counted) — REFUSE beats fabricate. host_ifc_class matches as a
+  // substring so 'IfcWall' still picks up IfcWallStandardCase (backward-compatible with the wall-only path).
   function hostBind(placements, bdb, shim) {
     shim = shim || {};
     var reach = shim.reach_m != null ? shim.reach_m : 6;
-    var walls = _rows(bdb,
-      "SELECT m.guid g, t.center_x x, t.center_y y, t.center_z z, t.bbox_x bx, t.bbox_y by_, t.bbox_z bz " +
-      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%Wall%'");
-    if (!walls.length) return { bound: [], refused: placements.length, noHost: true };
-    var lines = walls.map(function (w) {
-      var horiz = w.bx >= w.by_ ? 0 : 1;                       // dominant horizontal axis = wall run
-      var hlen = (horiz === 0 ? w.bx : w.by_) / 2, thick = (horiz === 0 ? w.by_ : w.bx);
-      var a = [w.x, w.y], b = [w.x, w.y]; a[horiz] -= hlen; b[horiz] += hlen;
-      return { a: a, b: b, horiz: horiz, thick: thick, w: w };
-    });
+    var hostClass = shim.host_ifc_class || 'IfcWall';
+    var mount = (shim.mount || 'SIDE').toUpperCase();
+    var hosts = _rows(bdb,
+      "SELECT m.guid g, m.storey st, t.center_x x, t.center_y y, t.center_z z, t.bbox_x bx, t.bbox_y by_, t.bbox_z bz " +
+      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%" + _esc(hostClass) + "%'");
+    if (!hosts.length) return { bound: [], refused: placements.length, noHost: true, hostClass: hostClass };
+    var off = shim.offset_m || 0;
     var bound = [], refused = 0;
+
+    if (mount === 'SIDE') {
+      // ── wall-face projection (the original, unchanged geometry) ──
+      var lines = hosts.map(function (w) {
+        var horiz = w.bx >= w.by_ ? 0 : 1;                       // dominant horizontal axis = host run
+        var hlen = (horiz === 0 ? w.bx : w.by_) / 2, thick = (horiz === 0 ? w.by_ : w.bx);
+        var a = [w.x, w.y], b = [w.x, w.y]; a[horiz] -= hlen; b[horiz] += hlen;
+        return { a: a, b: b, horiz: horiz, thick: thick, w: w };
+      });
+      placements.forEach(function (p) {
+        var best = Infinity, bl = null, bpt = null;
+        for (var i = 0; i < lines.length; i++) {
+          var L = lines[i], abx = L.b[0] - L.a[0], aby = L.b[1] - L.a[1];
+          var l2 = abx * abx + aby * aby;
+          var t = l2 > 0 ? ((p.x - L.a[0]) * abx + (p.y - L.a[1]) * aby) / l2 : 0;
+          t = t < 0 ? 0 : (t > 1 ? 1 : t);
+          var cx = L.a[0] + t * abx, cy = L.a[1] + t * aby;
+          var d = Math.hypot(p.x - cx, p.y - cy);
+          if (d < best) { best = d; bl = L; bpt = [cx, cy]; }
+        }
+        if (!bl || best > reach) { refused++; return; }          // no host in reach → honest refuse (stays floating)
+        // push from centreline to the room-side face: perpendicular toward the original (floating) point.
+        var perpx = p.x - bpt[0], perpy = p.y - bpt[1], pl = Math.hypot(perpx, perpy) || 1;
+        var faceOff = bl.thick / 2 + off;
+        var fx = bpt[0] + (perpx / pl) * faceOff, fy = bpt[1] + (perpy / pl) * faceOff;
+        // Z: preserve the MEASURED rule-z by default (non-invent); use the shim mount height only when the
+        // witness supplies a storey base (height isn't measured for that building).
+        var pz = (shim.height_m != null && p.storeyZ != null) ? (p.storeyZ + shim.height_m) : p.z;
+        bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: fx, y: fy, z: pz, yaw: bl.horiz === 0 ? 0 : Math.PI / 2,
+          storey: p.storey, host: bl.w.g, mount: 'SIDE', prov: 'shim:host-' + hostClass + '-side',
+          bx: p.bx, by: p.by, bz: p.bz, src: p.src, snapDist: +best.toFixed(4) });
+      });
+      return { bound: bound, refused: refused, hostCount: hosts.length, hostClass: hostClass, mount: mount };
+    }
+
+    // ── TOP / BOTTOM / CENTER: nearest host by XY, bind to its top/bottom/centre face ──
+    // CENTER (z = host centre + signed offset) is the natural anchor when the device rides at a fixed rise off
+    // the host centre (e.g. SC vent grilles sit 0.415m above their same-storey window centre). TOP/BOTTOM add a
+    // half-extent to reach the named face. `shim.same_storey` constrains host selection to the placement's own
+    // storey — required for vertically STACKED hosts (windows stack floor-on-floor; nearest-XY alone is ambiguous).
+    var sign = mount === 'BOTTOM' ? -1 : 1;                       // TOP=+half above, BOTTOM=−half below, CENTER=face 0
+    var faceHalf = mount === 'CENTER' ? 0 : 1;                    // CENTER rides the centre; TOP/BOTTOM the face
+    var sameStorey = !!shim.same_storey;
     placements.forEach(function (p) {
-      var best = Infinity, bl = null, bpt = null;
-      for (var i = 0; i < lines.length; i++) {
-        var L = lines[i], abx = L.b[0] - L.a[0], aby = L.b[1] - L.a[1];
-        var l2 = abx * abx + aby * aby;
-        var t = l2 > 0 ? ((p.x - L.a[0]) * abx + (p.y - L.a[1]) * aby) / l2 : 0;
-        t = t < 0 ? 0 : (t > 1 ? 1 : t);
-        var cx = L.a[0] + t * abx, cy = L.a[1] + t * aby;
-        var d = Math.hypot(p.x - cx, p.y - cy);
-        if (d < best) { best = d; bl = L; bpt = [cx, cy]; }
+      var best = Infinity, bh = null;
+      for (var i = 0; i < hosts.length; i++) {
+        var h = hosts[i];
+        if (sameStorey && p.storey != null && h.st !== p.storey) continue;  // stacked-host disambiguation
+        var d = Math.hypot(p.x - h.x, p.y - h.y);                 // XY proximity = host association
+        if (d < best) { best = d; bh = h; }
       }
-      if (!bl || best > reach) { refused++; return; }           // no wall in reach → honest refuse (stays floating)
-      // push from centreline to the room-side face: perpendicular toward the original (floating) point.
-      var perpx = p.x - bpt[0], perpy = p.y - bpt[1], pl = Math.hypot(perpx, perpy) || 1;
-      var off = bl.thick / 2 + (shim.offset_m || 0);
-      var fx = bpt[0] + (perpx / pl) * off, fy = bpt[1] + (perpy / pl) * off;
-      // Z: preserve the MEASURED rule-z by default (non-invent); use the shim mount height only when the witness
-      // supplies a storey base (height isn't measured for that building).
-      var pz = (shim.height_m != null && p.storeyZ != null) ? (p.storeyZ + shim.height_m) : p.z;
-      bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: fx, y: fy, z: pz, yaw: bl.horiz === 0 ? 0 : Math.PI / 2,
-        storey: p.storey, host: bl.w.g, mount: shim.mount || 'SIDE', prov: 'shim:host-wall-bound',
+      if (!bh || best > reach) { refused++; return; }             // no host in reach → honest refuse
+      var horiz = bh.bx >= bh.by_ ? 0 : 1;                        // host run axis (for yaw)
+      var pz = bh.z + sign * faceHalf * (bh.bz / 2) + sign * off; // named face of the REAL host + offset
+      bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: bh.x, y: bh.y, z: pz, yaw: horiz === 0 ? 0 : Math.PI / 2,
+        storey: p.storey, host: bh.g, mount: mount, prov: 'shim:host-' + hostClass + '-' + mount.toLowerCase(),
         bx: p.bx, by: p.by, bz: p.bz, src: p.src, snapDist: +best.toFixed(4) });
     });
-    return { bound: bound, refused: refused, hostCount: walls.length };
+    return { bound: bound, refused: refused, hostCount: hosts.length, hostClass: hostClass, mount: mount };
   }
 
   // ── ROUTER ────────────────────────────────────────────────────────────────────────
