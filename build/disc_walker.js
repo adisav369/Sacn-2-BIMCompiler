@@ -313,7 +313,7 @@
       "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%" + _esc(hostClass) + "%'");
     if (!hosts.length) return { bound: [], refused: placements.length, noHost: true, hostClass: hostClass };
     var off = shim.offset_m || 0;
-    var bound = [], refused = 0;
+    var bound = [], refused = 0, refusedList = [];
 
     if (mount === 'SIDE') {
       // ── wall-face projection (the original, unchanged geometry) ──
@@ -334,7 +334,7 @@
           var d = Math.hypot(p.x - cx, p.y - cy);
           if (d < best) { best = d; bl = L; bpt = [cx, cy]; }
         }
-        if (!bl || best > reach) { refused++; return; }          // no host in reach → honest refuse (stays floating)
+        if (!bl || best > reach) { refused++; refusedList.push(p); return; }  // no host in reach → honest refuse (stays floating)
         // push from centreline to the room-side face: perpendicular toward the original (floating) point.
         var perpx = p.x - bpt[0], perpy = p.y - bpt[1], pl = Math.hypot(perpx, perpy) || 1;
         var faceOff = bl.thick / 2 + off;
@@ -346,7 +346,7 @@
           storey: p.storey, host: bl.w.g, mount: 'SIDE', prov: 'shim:host-' + hostClass + '-side',
           bx: p.bx, by: p.by, bz: p.bz, src: p.src, snapDist: +best.toFixed(4) });
       });
-      return { bound: bound, refused: refused, hostCount: hosts.length, hostClass: hostClass, mount: mount };
+      return { bound: bound, refused: refused, refusedList: refusedList, hostCount: hosts.length, hostClass: hostClass, mount: mount };
     }
 
     // ── TOP / BOTTOM / CENTER: nearest host by XY, bind to its top/bottom/centre face ──
@@ -365,14 +365,14 @@
         var d = Math.hypot(p.x - h.x, p.y - h.y);                 // XY proximity = host association
         if (d < best) { best = d; bh = h; }
       }
-      if (!bh || best > reach) { refused++; return; }             // no host in reach → honest refuse
+      if (!bh || best > reach) { refused++; refusedList.push(p); return; }  // no host in reach → honest refuse
       var horiz = bh.bx >= bh.by_ ? 0 : 1;                        // host run axis (for yaw)
       var pz = bh.z + sign * faceHalf * (bh.bz / 2) + sign * off; // named face of the REAL host + offset
       bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: bh.x, y: bh.y, z: pz, yaw: horiz === 0 ? 0 : Math.PI / 2,
         storey: p.storey, host: bh.g, mount: mount, prov: 'shim:host-' + hostClass + '-' + mount.toLowerCase(),
         bx: p.bx, by: p.by, bz: p.bz, src: p.src, snapDist: +best.toFixed(4) });
     });
-    return { bound: bound, refused: refused, hostCount: hosts.length, hostClass: hostClass, mount: mount };
+    return { bound: bound, refused: refused, refusedList: refusedList, hostCount: hosts.length, hostClass: hostClass, mount: mount };
   }
 
   // ── ROUTER ────────────────────────────────────────────────────────────────────────
@@ -645,7 +645,28 @@
   }
 
   // ── WALK (the disc-node onWalk entry point) ─────────────────────────────────────────
-  function dwWalk(disc, bdb, buildingName) {
+  // opts.shims (optional) = array of host-bind percepts from disc_patterns.db `_shim_attributes` (physically
+  // library/ERP.db until the rename slice lands), or any {product_value, host_ifc_class, mount,
+  // offset_mm|offset_m, height_mm|height_m, reach_m?, same_storey?}. This is the CALLER-PASSED interim; the
+  // hardened spec (§NAMING DIRECTIVE §SHIM) supersedes it with a `rule_shim` table projected into the *_rules.db
+  // that dwWalk reads directly — not yet wired (selection-key per disc/ifc_class is an open design point).
+  // When supplied AND a percept's discipline (product_value prefix before '_') matches `disc`, the FLOATING
+  // density placements are routed through hostBind so the host-bound class (ELEC outlets→wall, grilles→window)
+  // ADHERES to a real host instead of scattering mid-room. Count is PRESERVED (bound ∪ refused), refusals kept
+  // floating + counted (REFUSE beats fabricate). DEFAULT (no opts.shims) → live walk byte-identical.
+  function _shimForDisc(shims, disc) {
+    if (!shims || !shims.length) return null;
+    var m = shims.filter(function (s) { return String(s.product_value || '').split('_')[0] === disc; });
+    if (!m.length) return null;
+    var s = m[0];                                            // first matching percept (e.g. ELEC_WALL_SHIM for ELEC)
+    return {
+      host_ifc_class: s.host_ifc_class, mount: s.mount,
+      offset_m: s.offset_m != null ? s.offset_m : (s.offset_mm != null ? s.offset_mm / 1000 : 0),
+      height_m: s.height_m != null ? s.height_m : (s.height_mm ? s.height_mm / 1000 : null),
+      reach_m: s.reach_m != null ? s.reach_m : 6, same_storey: !!s.same_storey, product_value: s.product_value
+    };
+  }
+  function dwWalk(disc, bdb, buildingName, opts) {
     if (!_ready) { console.warn(TAG + ' not initialised'); return { disc: disc, refused: true, reason: 'engine not initialised', placed: 0 }; }
     var reps = repRules(disc);
     var sub = substrate(bdb);
@@ -658,12 +679,28 @@
       return { disc: disc, refused: true, reason: 'no habitable storeys', placed: 0 };
     }
     var placements = place(disc, sub, bdb);
+    // ── opt-in HOST-BIND: snap floating host-bound placements onto a real host (anti-float), count-preserving ──
+    var hbInfo = null;
+    var shim = _shimForDisc(opts && opts.shims, disc);
+    if (shim && placements.length) {
+      var stZ = {}; sub.forEach(function (st) { stZ[st.name] = st.z; });
+      placements.forEach(function (p) { if (p.storeyZ == null) p.storeyZ = stZ[p.storey]; });
+      var hb = hostBind(placements, bdb, shim);
+      if (!hb.noHost) {
+        placements = hb.bound.concat(hb.refusedList || []);  // count preserved: bound ∪ refused (refused stay floating)
+        hbInfo = { percept: shim.product_value, host: shim.host_ifc_class, mount: shim.mount, bound: hb.bound.length, refused: hb.refused };
+        console.log(TAG + ' §WALK-HOSTBIND disc=' + disc + ' percept=' + shim.product_value + ' host=' + shim.host_ifc_class +
+          '/' + shim.mount + ' bound=' + hb.bound.length + ' refused=' + hb.refused + ' (count preserved)');
+      } else {
+        console.log(TAG + ' §WALK-HOSTBIND disc=' + disc + ' percept=' + shim.product_value + ' REFUSE no-host (' + shim.host_ifc_class + ' absent) — kept floating');
+      }
+    }
     var chains = route(disc, bdb);
     var rc = routeChains(disc, bdb);                         // LIVE nn-chain geometry (real on MEP-rich bldgs, 0 on residents)
     console.log(TAG + ' §WALK disc=' + disc + ' bldg=' + buildingName + ' placed=' + placements.length +
       ' chains=' + chains.length + ' chainSegs=' + rc.segs.length + ' storeys=' + sub.length +
       (rc.byRule.length ? ' [' + rc.byRule.map(function (b) { return b.from.replace('Ifc', '') + '→' + b.to.replace('Ifc', '') + ':' + (b.skipped || (b.segs + '/' + (b.segs + b.noNbr))); }).join(' ') + ']' : ''));
-    return { disc: disc, refused: false, placed: placements.length, placements: placements,
+    return { disc: disc, refused: false, placed: placements.length, placements: placements, hostBind: hbInfo,
       chains: chains, chainSegs: rc.segs, chainByRule: rc.byRule, storeys: sub.length };
   }
 

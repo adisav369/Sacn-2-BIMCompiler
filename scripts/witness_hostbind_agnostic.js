@@ -18,7 +18,7 @@
  *
  * CLAIMS (each names the issue it proves or disproves):
  *   H0 MINED-RULE      — the grille→window mount rule (mount face + offset) is MINED from the 13 real grilles with
- *                        a TIGHT spread (MAD≈0), not a hand-picked constant. Records VENT_WINDOW_SHIM for promotion.
+ *                        a TIGHT spread (MAD≈0), not a hand-picked constant. Records ACMV_WINDOW_SHIM for promotion.
  *   H1 WALL-REGRESSION — the generalized hostBind reproduces the wall/SIDE result UNCHANGED (SH ELEC: 36 bound,
  *                        median ≤ wall thickness, float→0). Generalization didn't break class-2-wall.
  *   H2 WINDOW-ASSOC    — the 13 grilles ARE host-bound to windows: N/13 sit within reach of a same-storey window
@@ -35,7 +35,7 @@ var initSqlJs = require('sql.js');
 
 var ROOT = path.join(__dirname, '..');
 var DW = require(path.join(ROOT, 'build/disc_walker.js'));
-var ERP = path.join(ROOT, 'library/ERP.db');
+var DISC_PATTERNS = path.join(ROOT, 'library/ERP.db'); // disc_patterns.db (physically library/ERP.db until rename slice)
 var RULES = path.join(ROOT, 'build/duplex_rules.db');
 var SH = path.join(ROOT, 'deploy/buildings/SampleHouse_extracted.db');
 var SC = path.join(ROOT, 'deploy/buildings/SampleCastle_extracted.db');
@@ -76,9 +76,9 @@ function distToWalls(p, walls) {
   // ════════════════════════════════════════════════════════════════════════════════════
   // (A) ELEC → WALL (SIDE) — regression of W-ELEC-HOSTBIND through the GENERALIZED path
   // ════════════════════════════════════════════════════════════════════════════════════
-  var erp = loadDb(SQL, ERP);
-  var wshim = rows(erp, "SELECT * FROM _shim_attributes WHERE product_value LIKE 'ELEC%WALL%'")[0];
-  erp.close();
+  var dp = loadDb(SQL, DISC_PATTERNS);
+  var wshim = rows(dp, "SELECT * FROM _shim_attributes WHERE product_value LIKE 'ELEC%WALL%'")[0];
+  dp.close();
   var shimWall = {
     host_ifc_class: wshim ? wshim.host_ifc_class : 'IfcWall',
     mount: wshim ? wshim.mount : 'SIDE',
@@ -138,7 +138,7 @@ function distToWalls(p, walls) {
   assert('H0 MINED-RULE',
     assoc.length >= 5 && spread <= 0.01 && isFinite(offCenter),
     'the grille→window rise is a TIGHT measured rule (' + assoc.length + ' samples, offset=' + offCenter.toFixed(3) +
-    'm, MAD=' + spread.toFixed(3) + 'm ≤ 0.01) — VENT_WINDOW_SHIM | IfcWindow | CENTER | ' + Math.round(offCenter * 1000) + 'mm (promote to _shim_attributes)');
+    'm, MAD=' + spread.toFixed(3) + 'm ≤ 0.01) — ACMV_WINDOW_SHIM | IfcWindow | CENTER | ' + Math.round(offCenter * 1000) + 'mm (promote to _shim_attributes)');
 
   // ── H2 WINDOW-ASSOC (count is the honest measured association) ──
   assert('H2 WINDOW-ASSOC',
