@@ -420,6 +420,9 @@ def main():
     placement, space_bom, routing, place_order, avoidance = mine(
         pts, cls_of, subdisc, storey_of, meta_bbox, storey_area)
     write_db(placement, space_bom, routing, place_order, avoidance)
+    # §SHIM projection: host-bind percepts flow into the rules DB like routing/placement (RESUME §NAMING §SHIM).
+    from project_rule_shim import project_shims
+    project_shims(OUT_DB, "residential", log=log)
     log(f"baked {OUT_DB}")
     log(f"  rule_placement   = {len(placement)}")
     log(f"  rule_space_bom   = {len(space_bom)}")

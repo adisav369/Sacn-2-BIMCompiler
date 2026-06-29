@@ -23,6 +23,8 @@
  *   W3 COUNT-PRESERVED— the host-bound walk returns the SAME number of placements as the plain walk (bound ∪ refused),
  *                       so promotion moves fixtures onto hosts without adding/dropping any.
  *   W4 NO-PERCEPT-NOOP— dwWalk for a discipline with NO matching percept (PLB) is identical with/without shims.
+ *   W5 PROJECTION-SRC — dwWalk('ELEC', SH, {hostBind:true}) with NO caller shims reads the `rule_shim` table
+ *                       projected into the *_rules.db (the §SHIM first-class flow) and binds identically.
  */
 'use strict';
 var fs = require('fs');
@@ -114,11 +116,26 @@ function distToWalls(p, walls) {
     plbPlain.placed === plbShim.placed && !plbShim.hostBind,
     'a discipline with no matching percept is untouched: PLB placed=' + plbPlain.placed + ' == ' + plbShim.placed + ', hostBind=null');
 
+  // ── W5 PROJECTION-SOURCE: opts.hostBind=true (NO caller shims) → dwWalk reads the projected rule_shim table ──
+  var nShimRows = rows(rdb, "SELECT COUNT(*) c FROM rule_shim")[0].c;
+  var projWalk = DW.dwWalk('ELEC', sh, 'SampleHouse', { hostBind: true });   // source = rule_shim projection, not caller
+  var projBound = projWalk.placements.filter(function (p) { return p.host; });
+  var projBad = projBound.filter(function (p) { return !wallGuids[p.host]; }).length;
+  log('§DWHB PROJECTION dwWalk ELEC {hostBind:true}: rule_shim rows=' + nShimRows + ' bound=' +
+    (projWalk.hostBind && projWalk.hostBind.bound) + ' percept=' + (projWalk.hostBind && projWalk.hostBind.percept) +
+    ' (read from the *_rules.db projection, no caller shims)');
+  assert('W5 PROJECTION-SOURCE',
+    nShimRows > 0 && !!projWalk.hostBind && projWalk.hostBind.bound === hbWalk.hostBind.bound && projBad === 0 &&
+    /Wall/i.test(projWalk.hostBind.host),
+    'dwWalk reads the projected rule_shim (' + nShimRows + ' rows): {hostBind:true} binds ' + projWalk.hostBind.bound +
+    ' (== caller-shim ' + hbWalk.hostBind.bound + ') to real walls, 0 bad — §SHIM flows like routing/placement, no caller plumbing');
+
   rdb.close(); sh.close();
   log('───────────────────────────────────────────────');
-  log('§DWHB SUMMARY: dwWalk now applies host-bind in the LIVE walk when a percept is supplied (ELEC float ' +
-    plainFloat + '/' + plain.placed + ' → ' + hbFloat + ', count preserved), and is byte-identical without one (live walk untouched). ' +
-    'CALLER-PASSED interim; next = project rule_shim into *_rules.db so dwWalk reads it directly (§NAMING §SHIM).');
+  log('§DWHB SUMMARY: dwWalk applies host-bind in the LIVE walk (ELEC float ' + plainFloat + '/' + plain.placed +
+    ' → ' + hbFloat + ', count preserved) — SOURCED FROM THE PROJECTED rule_shim table (W5, {hostBind:true}, no caller ' +
+    'plumbing) = §SHIM flows like routing/placement. OPT-IN (default byte-identical) until the per-fixture-ifc_class ' +
+    'SELECTION KEY lands (a disc has >1 host: ELEC wall-outlets vs ceiling-lights — naive priority would mis-bind lights).');
   log('W-DWWALK-HOSTBIND: ' + pass + ' PASS / ' + fail + ' FAIL');
   try { fs.mkdirSync(path.dirname(LOG), { recursive: true }); fs.writeFileSync(LOG, _lines.join('\n')); log('§LOG ' + LOG); } catch (e) {}
   process.exit(fail ? 1 : 0);

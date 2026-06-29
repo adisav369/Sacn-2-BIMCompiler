@@ -143,6 +143,9 @@ def main():
     print(f"  rule_place_order = {n_order}")
     print(f"  rule_avoidance   = {n_avoid}")
     con.close()
+    # §SHIM projection: host-bind percepts flow into the rules DB like routing/placement (RESUME §NAMING §SHIM).
+    from project_rule_shim import project_shims
+    project_shims(DB_PATH, "terminal")
 
 
 if __name__ == "__main__":

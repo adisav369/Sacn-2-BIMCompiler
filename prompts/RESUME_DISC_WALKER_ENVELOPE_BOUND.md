@@ -192,28 +192,37 @@ step sourced from **`disc_patterns.db`** (the prior-art pattern store, currently
   ├─ ad_mep_pattern (METER→JUNCTION→FIXTURE abstract recipe)                          ◻ not consumed
   ├─ _import_joint_piece_types (parts + Ø + how-they-join, 7083)                      ◻ INSTANTIATE — not wired
   ├─ ad_assembly_connector (face / Ø / connects_to, 29)                              ◻ JOIN — not wired
-  └─ _shim_attributes (anchor shims, 12 incl VENT_WINDOW)            ◧ SHIM — host-agnostic + dwWalk applies it caller-passed
-                                                                       (W-HOSTBIND-AGNOSTIC 6/6 + W-DWWALK-HOSTBIND 5/5);
-                                                                       remaining = the PROJECTED rule_shim (auto, not caller-passed)
+  └─ _shim_attributes (anchor shims, 12 incl VENT_WINDOW)            ✅ SHIM PROJECTED — host-agnostic hostBind + rule_shim
+                                                                       projected into *_rules.db + dwWalk READS it (no caller)
+                                                                       (W-HOSTBIND-AGNOSTIC 6/6 + W-DWWALK-HOSTBIND 6/6 incl W5);
+                                                                       remaining = disc+ifc_class SELECTION KEY (then safe default-on)
 ```
 
 **DONE so far (engine proven, all opt-in / regression-clean):**
 - ROUTE: `routeChains(disc,bdb[,{toFace}])` emits the real network on a MEP-bearing substrate; non-invent; landed/real→real.
 - hostBind (host-AGNOSTIC, W-HOSTBIND-AGNOSTIC 6/6): wall/window-top/ceiling via the `_shim_attributes` percept (ELEC SH
   26/38→0; 7 SC grilles reproduced at window-top). Percept-driven, caller passes `shim`.
-- dwWalk APPLIES host-bind on the live walk (W-DWWALK-HOSTBIND 5/5, `dwWalk(disc,bdb,name,{shims})`): the caller-passed
-  interim the directive names — placements = bound ∪ refused, count preserved, byte-identical without `{shims}`.
+- dwWalk APPLIES host-bind on the live walk (W-DWWALK-HOSTBIND 6/6, `dwWalk(disc,bdb,name,{hostBind:true})`): placements
+  = (already-hosted) + bound ∪ refused, count preserved, byte-identical without the flag. Only FLOATING (`placed:*`)
+  placements are rescued; already-hosted (`shim:host-*`) ones are left untouched.
+- ✅ **SHIM PROJECTED (the §SHIM first-class flow, 2026-06-30)**: `build/project_rule_shim.py` projects
+  `disc_patterns._shim_attributes` → a `rule_shim` table in each `*_rules.db` (disc, fixture_ifc_class[null], host_ifc_class,
+  mount, offset_m, height_m, same_storey, **priority**, building_class, provenance); idempotent, isolated (the 5 mined
+  tables untouched — no drift), wired into both bake scripts. `dwWalk` reads it directly (W5 PROJECTION-SOURCE: `{hostBind:true}`
+  with NO caller shims binds 36==caller-path on SH ELEC). `disc_patterns.db` name landed via SYMLINK→ERP.db (minimal; full
+  physical carve-out = #1 still pending). OPT-IN (default OFF, regressions invariant) — see selection-key below.
 
 **NEXT — in priority order (do the naming/projection FIRST so nothing new accretes onto "ERP.db"):**
-1. **RENAME → `disc_patterns.db`** (de-"ERP", per §NAMING DIRECTIVE). Carve the geometry-pattern tables out of
-   `library/ERP.db` into the clearly-named store; leave accounting behind. Keep `*_rules.db` as the projection; split by
-   BUILDING-CLASS, discipline = column, cross-disc tables whole. Witness: every `*_rules.db` re-bakes byte-identical from
-   the renamed store (no number drift). **Do this before #2/#3 so they source from `disc_patterns.db`, not the legacy name.**
-2. **Make SHIM a first-class PROJECTED rule** (the remaining half — `dwWalk` already APPLIES host-bind caller-passed,
-   W-DWWALK-HOSTBIND). Add `rule_shim` to each `*_rules.db`, projected from `disc_patterns.db._shim_attributes`, and have
-   `dwWalk` read it directly so the caller need not pass `{shims}`. **KEY = `disc + ifc_class`** (NOT a product_value
-   prefix — a disc has multiple shims: ELEC wall-outlet + ceiling-light; ACMV ceiling-diffuser + window-grille). Witness:
-   residential ELEC/FP-alarm float drops in the GENERATED `dwWalk` output with NO caller percept; SPLIT ELEC wall vs ceiling.
+1. **RENAME → `disc_patterns.db`** (de-"ERP", per §NAMING DIRECTIVE). ◧ PARTIAL: the NAME landed via a SYMLINK
+   (`library/disc_patterns.db`→`ERP.db`) so new code (project_rule_shim, witnesses) reads it; the FULL physical carve-out
+   (split geometry-pattern tables out of `library/ERP.db`, leave accounting behind, migrate the ~20 legacy `ERP.db` readers)
+   is still TODO. Witness target: every `*_rules.db` re-bakes byte-identical from the renamed store (no number drift).
+2. ✅ **SHIM is now a first-class PROJECTED rule** (`build/project_rule_shim.py` → `rule_shim` in each `*_rules.db`; `dwWalk`
+   reads it; W-DWWALK-HOSTBIND 6/6 incl W5). **REMAINING = the SELECTION KEY `disc + ifc_class`** — `rule_shim.fixture_ifc_class`
+   is NULL today, so a disc with >1 host (ELEC wall-outlet + ceiling-light; ACMV ceiling-diffuser + window-grille) picks by
+   `priority` only → would mis-bind ceiling LightFixtures to walls. THIS is why host-bind is OPT-IN not default-on. Next bite:
+   stamp `fixture_ifc_class` per shim (mine which fixture class mounts on which host) → `_shimForDisc` matches on it → safe
+   default-on. SPLIT ELEC wall(outlet) vs ceiling(light); verify GENERATED residential ELEC/FP float drops with NO caller percept.
 3. **Route→ASSEMBLE bridge** (turn routed boxes into real parts). At each routed node, instantiate the catalog part
    (`_import_joint_piece_types`/component_geometries), orient so its `ad_assembly_connector` face (WASTE_OUT Ø100→
    PLUMBING_STACK) meets the run, stand off by `ad_assembly_manifest`/`_shim_attributes` clearance. Witness on Duplex-MEP

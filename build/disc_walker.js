@@ -654,16 +654,30 @@
   // density placements are routed through hostBind so the host-bound class (ELEC outlets→wall, grilles→window)
   // ADHERES to a real host instead of scattering mid-room. Count is PRESERVED (bound ∪ refused), refusals kept
   // floating + counted (REFUSE beats fabricate). DEFAULT (no opts.shims) → live walk byte-identical.
+  // §SHIM PROJECTION SOURCE: the FIRST-CLASS source is the `rule_shim` table projected into the *_rules.db (read
+  // from `_db` via _loadRuleShims) — same flow as routing/placement. A caller-passed opts.shims OVERRIDES it
+  // (witness/host override). Both row shapes are accepted: rule_shim carries `disc`+`offset_m`+`priority`; the raw
+  // disc_patterns `_shim_attributes` row carries `product_value`(prefix=disc)+`offset_mm`. Returns [] if neither.
+  function _loadRuleShims() {
+    try { return _rows(_db, "SELECT * FROM rule_shim"); } catch (e) { return []; }   // table absent (un-projected) → []
+  }
+  function _discOf(s) { return s.disc != null ? s.disc : String(s.product_value || '').split('_')[0]; }
   function _shimForDisc(shims, disc) {
     if (!shims || !shims.length) return null;
-    var m = shims.filter(function (s) { return String(s.product_value || '').split('_')[0] === disc; });
+    var m = shims.filter(function (s) { return _discOf(s) === disc; });
     if (!m.length) return null;
-    var s = m[0];                                            // first matching percept (e.g. ELEC_WALL_SHIM for ELEC)
+    // SELECTION KEY (open refinement): a disc may carry >1 shim (ELEC wall+ceiling). Deterministic pick = lowest
+    // `priority` (rule_shim stamps SIDE/wall anti-float = 0). fixture_ifc_class match is the future ifc_class refinement.
+    m.sort(function (a, b) { return (a.priority != null ? a.priority : 9) - (b.priority != null ? b.priority : 9); });
+    if (m.length > 1) console.log(TAG + ' §SHIM-AMBIG disc=' + disc + ' has ' + m.length + ' shims — picked ' +
+      (m[0].host_ifc_class || '') + '/' + (m[0].mount || '') + ' by priority (ifc_class selection-key still open)');
+    var s = m[0];
     return {
       host_ifc_class: s.host_ifc_class, mount: s.mount,
       offset_m: s.offset_m != null ? s.offset_m : (s.offset_mm != null ? s.offset_mm / 1000 : 0),
       height_m: s.height_m != null ? s.height_m : (s.height_mm ? s.height_mm / 1000 : null),
-      reach_m: s.reach_m != null ? s.reach_m : 6, same_storey: !!s.same_storey, product_value: s.product_value
+      reach_m: s.reach_m != null ? s.reach_m : 6, same_storey: !!s.same_storey,
+      product_value: s.product_value || (_discOf(s) + ':' + s.host_ifc_class + '/' + s.mount)
     };
   }
   function dwWalk(disc, bdb, buildingName, opts) {
@@ -679,18 +693,30 @@
       return { disc: disc, refused: true, reason: 'no habitable storeys', placed: 0 };
     }
     var placements = place(disc, sub, bdb);
-    // ── opt-in HOST-BIND: snap floating host-bound placements onto a real host (anti-float), count-preserving ──
+    // ── HOST-BIND from the PROJECTION: snap floating host-bound placements onto a real host (anti-float),
+    // count-preserving. Source = caller opts.shims (override) ELSE the projected `rule_shim` table (the
+    // first-class §SHIM flow — same as routing/placement). opts.noHostBind=true disables (regression escape hatch).
+    // OPT-IN (default OFF → live walk byte-identical, regressions invariant). Enable with opts.hostBind=true (reads
+    // the projected `rule_shim`) or opts.shims (caller override). NOT default-on yet: a disc can carry >1 host (ELEC
+    // wall-outlets vs ceiling-lights); naive priority would mis-bind ceiling LightFixtures to walls. Safe auto-apply
+    // awaits the per-fixture-ifc_class SELECTION KEY (rule_shim.fixture_ifc_class, currently NULL). §SHIM-SELECT.
     var hbInfo = null;
-    var shim = _shimForDisc(opts && opts.shims, disc);
-    if (shim && placements.length) {
+    var shimSrc = (opts && opts.shims) || _loadRuleShims();
+    var shim = (opts && (opts.hostBind || opts.shims)) ? _shimForDisc(shimSrc, disc) : null;
+    // Only FLOATING density placements (prov 'placed:*') are anti-float candidates. Placements already tacked to a
+    // real host by the ref_kind='host' path (prov 'shim:host-*') are LEFT UNTOUCHED — re-binding them would move a
+    // correctly-hosted fixture. So host-bind rescues only what actually floats; already-hosted walks are invariant.
+    var floating = [], fixed = [];
+    placements.forEach(function (p) { (/^placed:/.test(p.prov || '') ? floating : fixed).push(p); });
+    if (shim && floating.length) {
       var stZ = {}; sub.forEach(function (st) { stZ[st.name] = st.z; });
-      placements.forEach(function (p) { if (p.storeyZ == null) p.storeyZ = stZ[p.storey]; });
-      var hb = hostBind(placements, bdb, shim);
+      floating.forEach(function (p) { if (p.storeyZ == null) p.storeyZ = stZ[p.storey]; });
+      var hb = hostBind(floating, bdb, shim);
       if (!hb.noHost) {
-        placements = hb.bound.concat(hb.refusedList || []);  // count preserved: bound ∪ refused (refused stay floating)
-        hbInfo = { percept: shim.product_value, host: shim.host_ifc_class, mount: shim.mount, bound: hb.bound.length, refused: hb.refused };
+        placements = fixed.concat(hb.bound, hb.refusedList || []);  // count preserved: fixed + bound ∪ refused
+        hbInfo = { percept: shim.product_value, host: shim.host_ifc_class, mount: shim.mount, bound: hb.bound.length, refused: hb.refused, floating: floating.length };
         console.log(TAG + ' §WALK-HOSTBIND disc=' + disc + ' percept=' + shim.product_value + ' host=' + shim.host_ifc_class +
-          '/' + shim.mount + ' bound=' + hb.bound.length + ' refused=' + hb.refused + ' (count preserved)');
+          '/' + shim.mount + ' floating=' + floating.length + ' bound=' + hb.bound.length + ' refused=' + hb.refused + ' (count preserved)');
       } else {
         console.log(TAG + ' §WALK-HOSTBIND disc=' + disc + ' percept=' + shim.product_value + ' REFUSE no-host (' + shim.host_ifc_class + ' absent) — kept floating');
       }
