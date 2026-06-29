@@ -70,7 +70,11 @@ function occCells(bdb, st, cell) {
 
     for (const disc of ['PLB', 'ELEC']) {
       const reps = DW.repRules(disc).filter(rp => rp.density > 0 && rp.sx > 0);   // fixture (array-cadence) classes
-      const w = DW.dwWalk(disc, bdb, res.key);
+      // GENERATION-layer count: walk with noHostBind so the raw area-scaled 'placed:array-density' count is
+      // measured BEFORE default-on host-bind rewrites a bound fixture's prov (same pattern as §DWG). This
+      // witness asserts the GENERATION quantity (count = n_measured × area-ratio); host-bind is count-preserving
+      // but re-tags bound fixtures, so the pre-bind walk is the correct surface for the D-COUNT/D-COLLAPSE checks.
+      const w = DW.dwWalk(disc, bdb, res.key, { noHostBind: true });
       const placed = w.placements || [];
 
       // D-COUNT — EXACT independent recompute, per fixture class, clamped to the occupancy envelope.

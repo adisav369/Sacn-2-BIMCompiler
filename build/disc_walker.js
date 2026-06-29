@@ -30,6 +30,20 @@
   function _dbFor(disc) { return _borrow[disc] || _db; }
   // Register/clear a borrowed discipline source. dwBorrow('FP', terminalDb) → FP rules read from terminalDb.
   function dwBorrow(disc, db) { if (db) _borrow[disc] = db; else delete _borrow[disc]; return _borrow; }
+  // Browser borrow-by-FILE (docs/WalkerDoctrine.md §2): IDB-cached load + open + register a borrowed discipline
+  // from ANOTHER rules file WITHOUT switching the primary. A residential build (duplex_rules primary) lacks FP →
+  // dwBorrowFile('FP', SQL, './', 'terminal_rules.db') routes FP's MEASURED rows to terminal_rules; the gate +
+  // cross-disc clearances stay on the primary. Reuses _loadDbBuf (same offline cache as dwInit). Idempotent per
+  // file. Browser-only (node witnesses use dwBorrow with an fs-opened handle and never reach _loadDbBuf's fetch).
+  async function dwBorrowFile(disc, SQL, baseUrl, file) {
+    if (_borrow[disc] && _borrow[disc]._dwFile === file) return _borrow[disc];   // already borrowed this file
+    var url = (baseUrl || '../modeller/') + file;
+    var buf = await _loadDbBuf(url);
+    var db = new SQL.Database(new Uint8Array(buf));
+    db._dwFile = file; _borrow[disc] = db;
+    console.log(TAG + ' §DW-BORROW ' + disc + ' ← ' + file);
+    return db;
+  }
 
   function _rows(db, sql) {
     var r = db.exec(sql);
@@ -814,7 +828,7 @@
     return ds.filter(function (d) { return d && d !== 'ARC'; });
   }
 
-  var API = { dwInit: dwInit, dwOpen: dwOpen, dwBorrow: dwBorrow, dwWalk: dwWalk, substrate: substrate, place: place, hostBind: hostBind,
+  var API = { dwInit: dwInit, dwOpen: dwOpen, dwBorrow: dwBorrow, dwBorrowFile: dwBorrowFile, dwWalk: dwWalk, substrate: substrate, place: place, hostBind: hostBind,
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
     hostWalls: hostWalls, countPer: countPer, occupancy: occupancy,
     _shimForDisc: _shimForDisc, _shimForFixture: _shimForFixture, _loadRuleShims: _loadRuleShims,
