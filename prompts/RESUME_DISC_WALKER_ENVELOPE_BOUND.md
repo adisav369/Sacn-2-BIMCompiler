@@ -192,3 +192,25 @@ step sourced from `library/ERP.db` (the prior-art pattern store — see [[refere
    onto a DIFFERENT residential building (true cross-building generalization, vs today's mined-then-applied self-consistency).
 
 Scope guard: accounting (C_Order, GL) is downstream/easy = out of scope; geometry/assembly is the hard part.
+
+## 🏰 SC (SampleCastle/Schependomlaan) = the next walker TARGET (user direction 2026-06-29)
+**Why ideal:** clean ARC(3342)+STR(206) over 7 real storeys (fundering→dak) = "ARC/STR perfect to crawl"; MEP is
+RUDIMENTARY (60 IfcFlowSegment, NO fittings/terminals) so MEP/ELEC are genuinely WALKED IN, not pre-built. Covered by
+duplex_rules (building_class=Duplex,SampleHouse,SampleCastle; standard=residential) → **uses DX rules, no new file.**
+Crawl probe (DX rules): places across all 7 storeys — ELEC 326 / PLB 101 / ACMV 14.
+
+**The "vent_router" = SC's RICH ventilation, UNDER-EXTRACTED.** Source IFC has 402 `ventilatierooster` (vent grilles),
+186 `VentilationProfileType`, 3752 `DUCT` refs — but extraction kept only 60 IfcFlowSegment, NO fittings/terminals. So
+`routeChains` PLB/ACMV on SC = `no-endpoints` (can't route without fittings). This is the dependency.
+
+**DECISION — SC_disc vs DX: LUMP INTO DX, do NOT make an SC_disc file.** Rationale = the building-class axis (SC is
+residential = DX class; discipline stays a column). The SC vent cadence is mined as **ACMV rows into duplex_rules** with
+provenance `measured:samplecastle/vent` + src_guids (traceable), thickening DX's currently-thin ACMV (2 placement rules,
+0 routing). A per-building SC_disc file would fragment the wrong axis.
+
+**PREREQUISITE (do FIRST): fix SC vent EXTRACTION** — recover `ventilatierooster`→IfcAirTerminal/FlowTerminal + the duct
+network→segments/fittings into SampleCastle_extracted.db (the data is in the IFC, dropped at extract — a Path-B-style
+recovery). THEN: (a) SC becomes a real ACMV walk-back ORACLE (as Duplex-MEP was for PLB — W-WALKBACK-MEP), (b) mine its
+cadence into DX ACMV. ELEC on SC will float like SH → apply the host-bind fix (roadmap #1).
+**Outliner DISC-tab story (the goal):** open SC (clean ARC/STR) → pick ACMV/ELEC/PLB from the DISC tab → DX rules
+(context + spacing + clearance) drive the walk to fill fine elements into the laid space.
