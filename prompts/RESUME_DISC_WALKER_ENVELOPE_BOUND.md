@@ -14,6 +14,12 @@ pitch only arranges locally. We have no rooms (IfcSpace=0 in ALL extracted.db), 
 analogue is n_measured scaled by floor-area ratio.
 ```
 
+> ▶ **RESUME HERE (2026-06-30)** — SHIM is now a PROJECTED rule (`rule_shim` in each `*_rules.db`, dwWalk reads it,
+> W-DWWALK-HOSTBIND 6/6; all regressions green, pushed on `lane/benchmark-clash-resolution`). **NEXT BITE = the
+> SELECTION KEY:** stamp `rule_shim.fixture_ifc_class` (mine which fixture class mounts on which host) so a disc with
+> >1 host (ELEC wall-outlet vs ceiling-light) no longer mis-binds → unlocks safe DEFAULT-ON host-bind. Then roadmap
+> #1 (full ERP→disc_patterns physical rename) + bim-ootb port/deploy. Full status: §NEXT below + the SHIM diagram.
+
 ## 🚫 §NAMING DIRECTIVE — DE-ERP (BINDING; user-confirmed 2026-06-29/30 — READ FIRST)
 **The prior-art pattern store is `disc_patterns.db`. "ERP.db" is a MISLEADING LEGACY NAME — do NOT use it for pattern
 work going forward.** `library/ERP.db` is the renamed `disc_validation.db` holding GEOMETRY percepts; the "ERP" label
