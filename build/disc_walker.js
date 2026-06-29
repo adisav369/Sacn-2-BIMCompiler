@@ -266,7 +266,20 @@
             }
           }                                                 // no walls → honest skip (no host surface)
         } else {                                            // single placement (datum rule, no host)
-          _emit({ disc: disc, ifc_class: rp.ifc_class, x: (st.x0 + st.x1) / 2, y: (st.y0 + st.y1) / 2,
+          // ENVELOPE-BIND the single too: a lone datum fixture must still sit on BUILT area, not in a courtyard
+          // void at the raw bbox centre. Snap the centre to the nearest occupied cell (same envelope as the array
+          // path). NON-INVENT: the cell is a real ARC footprint cell; no occupancy (bare DB) → keep the centre.
+          var scx = (st.x0 + st.x1) / 2, scy = (st.y0 + st.y1) / 2;
+          var scells = occupancy(bdb, st, rp.sx > 0 ? rp.sx : 1);
+          if (scells.length) {
+            var sbest = scells[0], sbd = Infinity;
+            for (var sc = 0; sc < scells.length; sc++) {
+              var sdd = (scells[sc].x - scx) * (scells[sc].x - scx) + (scells[sc].y - scy) * (scells[sc].y - scy);
+              if (sdd < sbd) { sbd = sdd; sbest = scells[sc]; }
+            }
+            scx = sbest.x; scy = sbest.y;
+          }
+          _emit({ disc: disc, ifc_class: rp.ifc_class, x: scx, y: scy,
             z: z, storey: st.name, prov: 'placed:single', src: rp.src }, rp);
         }
       });
