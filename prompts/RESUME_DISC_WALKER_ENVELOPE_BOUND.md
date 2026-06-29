@@ -28,10 +28,20 @@ analogue is n_measured scaled by floor-area ratio.
 > from duplex_rules + BORROWS FP/sprinkler from terminal_rules, 151 sprinklers host-bound to real ceilings, gate stays
 > residential; `_primFor` = LOD400 render seam). **✅ ANTI-DRIFT: `docs/WalkerDoctrine.md` is now the LOCKED core doc**
 > (CLAUDE.md pointer; small→DX / Terminal=LOD400-ref+borrow-source / dwInit-default trap / §DWG=generalization-test).
-> **NEXT BITE (in order):** (a) bim-ootb PORT — `disc_walker.js` + both `*_rules.db` → `~/bim-ootb/modeller/`, wire the
-> per-discipline borrow (FP from terminal) into the modeller walk call + render the `prim` kinds (better sprinkler
-> primitive now, LOD400 component-library swap seam) + deploy live SC sprinkler-walk; (b) roadmap #1 full
-> ERP→`disc_patterns` physical rename. Full status: §NEXT below + §SHIM-SELECT + docs/WalkerDoctrine.md.
+> **✅ bim-ootb PORT DONE+LIVE 2026-06-30 (PR #576 MERGED, sw v20):** ported current `disc_walker.js` + both
+> `*_rules.db` → `modeller/` (worktree off origin/main, NOT shared tree); brings DEFAULT-ON host-bind + §SHIM-SELECT
+> live to the modeller for the first time. New engine helper `dwBorrowFile` (browser IDB-cached borrow-by-file) +
+> modeller `_dwEnsureBorrow()` (residential primary borrows FP←terminal WITHOUT switching class; wired into roster +
+> click-walk). `§LOD-SEAM` render: `_renderDiscWalk` geometry now keyed by `p.prim` through `window._dwPrimGeo` (the
+> single LOD400 swap point; POC returns the MEASURED box for every kind — no fabricated shape, W-DW-PRIM). `§DW-RULES-BUST`:
+> fixed a LATENT staleness bug (since #562) — `§DW_IDB` cached the MUTABLE rules DBs keyed by url with no version, so
+> returning users kept old rules; now evicted once per `__dwRulesVer`. Live-verified: sw=v20, disc_walker has dwBorrowFile,
+> modeller.html has _dwEnsureBorrow/_dwPrimGeo/__dwRulesVer, both live `*_rules.db` byte-identical to build (FP sprinkler
+> shim live: FP/IfcFireSuppressionTerminal→IfcCovering/BOTTOM). SC sprinkler-walk now reachable in the modeller (151
+> host-bound). bim-compiler `37c603e8` (dwBorrowFile + density witness generation-count fix → §DWD 43/0).
+> **NEXT BITE:** roadmap #1 full ERP→`disc_patterns` physical carve-out (the NAME landed via SYMLINK; split the
+> geometry-pattern tables out of `library/ERP.db`, migrate the ~20 legacy readers, witness byte-identical re-bake).
+> Full status: §NEXT below + §SHIM-SELECT + docs/WalkerDoctrine.md.
 
 ## 🚫 §NAMING DIRECTIVE — DE-ERP (BINDING; user-confirmed 2026-06-29/30 — READ FIRST)
 **The prior-art pattern store is `disc_patterns.db`. "ERP.db" is a MISLEADING LEGACY NAME — do NOT use it for pattern
