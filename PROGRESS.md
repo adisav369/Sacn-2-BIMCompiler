@@ -15,9 +15,14 @@ rendered nothing (FIX: timeout-guarded `_loadDbBuf` in disc_walker.js → bare-f
 did N serial sealed commits → 112s UI FREEZE on a 267-fixture ELEC walk (FIX: one batched `commitSeedGroup` → 2.5s,
 kernel_ops orders by rowid so the shared baseTs is safe). Real Duplex ELEC now: 2.5s, 267 rendered, verifyChain ok,
 undo reverses. Regressions green (W-DW-PIXELPROBE 6/6, W-SEED-TRUNK-RENDER 8/8). Lesson banked
-[[feedback_test_real_user_path_not_seams]]. NEXT = extend the real-user E2E roster to the remaining authoring tools
-(insert/scale/rotate/sketch/route/cut/fillet/grid-stretch/gate-RED/cascade/seed-trunk) — each must pass a green
-real-user E2E before it counts as "developed". [[project_modeller_vision_lock]]
+[[feedback_test_real_user_path_not_seams]]. **▷ FULL SUITE IN PROGRESS (WIP branch `lane/modeller-e2e-suite`, NOT
+merged — 2 active lane sessions):** shared harness `modeller/tests/e2e_harness.js` (real pg.mouse/toolbar/history-slider,
+asserts by op-log+scene-graph+readPixels, auto-screenshots → tests/e2e_shots/ for the guide) validated by
+`witness_e2e_cut.js` — which already caught a 3rd real finding: **undo after GEOM_CUT collapses the cursor 254→0** (vs
+MOVE undo works → CUT-specific; investigate). Roster + guide plan + cadence in `modeller/tests/E2E_SUITE_RESUME.md`
+(DO NOT REMOVE). NEXT (fresh session, off origin/main): diagnose CUT-C5, then INSERT/SCALE/ROTATE/SKETCH→EXTRUDE/
+ROUTE→SWEEP/FILLET/OPENING/GRID-STRETCH/DELETE/SEED-TRUNK each to a green real-user E2E, then build world-class
+`docs/ModellerUserGuide.md` from the captured real screenshots. [[project_modeller_vision_lock]]
 
 **▶ SEED→3D CORRIDOR TRUNK — ✅ DONE + LIVE 2026-06-30 (engine, render GATE, animation ALL shipped).** Human-in-the-loop
 service entry → corridor-aware trunk (around real walls, through real doors) → 3D multi-riser (real stairs) → reusable
