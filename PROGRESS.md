@@ -4,20 +4,25 @@
 
 ## Current State
 
-**▶ SEED→3D CORRIDOR TRUNK — ✅ DONE + LIVE 2026-06-30 (this session's spine).** Human-in-the-loop service entry →
-corridor-aware trunk (around real walls, through real doors) → 3D multi-riser (real stairs) → reusable engine module →
-**deployed live in the modeller** (bim-ootb PR #580 MERGED, sw v23, GH-Pages verified). All witnessed, all non-invent
-(every blocked nav cell a real wall, every passage a real door, every riser a real IfcStair; unreachable fixtures
-REFUSED). Witnesses (bim-compiler): **W-SEED-TRUNK 6/6** (human seed drives topology), **W-SEED-DEFAULT 6/6** (popup
-check→default→override contract, `disc_walker.defaultSeed`), **W-CORRIDOR-TRUNK 6/6** (wall-crossings 10→0, through
-doors), **W-RISER-TRUNK 7/7** (multi-riser, L2 reach 13→25, all trace to one seed), **W-SEEDTRUNK-ENGINE 6/6**
-(`build/seed_trunk.js` `planTrunk` reproduces the spike). Deploy caught + fixed 2 real bugs (negative-z `--` SQL
-comment; ground=seed-storey). Headless eyeball-gap is SOLVED (correct swiftshader flags — was a wrong-flag, not a wall;
-live module verified no-pageerror/sceneReady). **NEXT = `prompts/RESUME_SEED_TRUNK.md`** (DO NOT REMOVE card): T1 render
-gate (`__seedTrunkProbe` seam + W-SEED-TRUNK-RENDER puppeteer, machine-verify the render — closes the eyeball gap for
-good); T2 construction ANIMATION (trunk grows from the seed outward = UX + human-visible verification; today render is
-INSTANT, no animation). Also open: a held-out trunk check (SampleCastle 7-storey). docs/internal/WalkerMaturity.md
-SEED-TRUNK row → L4 (LIVE). [[project_terminal_rule_mining]]
+**▶ SEED→3D CORRIDOR TRUNK — ✅ DONE + LIVE 2026-06-30 (engine, render GATE, animation ALL shipped).** Human-in-the-loop
+service entry → corridor-aware trunk (around real walls, through real doors) → 3D multi-riser (real stairs) → reusable
+engine module → **deployed live in the modeller** (bim-ootb #580 sw v23; render gate + animation **#582 sw v24**;
+held-out **#583**; all MERGED, GH-Pages verified). All witnessed, all non-invent. Engine witnesses (bim-compiler):
+**W-SEED-TRUNK 6/6**, **W-SEED-DEFAULT 6/6**, **W-CORRIDOR-TRUNK 6/6**, **W-RISER-TRUNK 7/7**, **W-SEEDTRUNK-ENGINE 6/6**.
+**▷ T1 RENDER GATE + T2 ANIMATION — ✅ DONE+LIVE 2026-06-30** (`prompts/RESUME_SEED_TRUNK.md`, bim-ootb #582 sw v24):
+**W-SEED-TRUNK-RENDER 8/8** (`modeller/tests/witness_seed_trunk_render.js`, headless swiftshader, IDB-free engine API).
+T1 = `window.__seedTrunkProbe` scene-graph census proves the rendered LineSegments == `planTrunk` net (vertices==2×data
+segs, vertical risers, corridor segs, order-independent no-drift maxDrift 5e-7m, canvas litPct 64%) → the eyeball gap is
+CLOSED by a machine gate. **The gate caught a real bug:** `_renderSeedTrunk`/`seedTrunk` guarded on `net.refused` truthy,
+but on a SUCCESS net `refused` is the integer COUNT of unreachable fixtures (only the early-return is `refused===true`) →
+any building with a refused fixture rendered an EMPTY trunk (Duplex ELEC refuses 112/267); fixed to `=== true`. T2 =
+construction animation: segments keyed by graph-path distance from the seed (derived from the engine's own coords —
+invents no order), banded ground→riser→upper, revealed via `geometry.setDrawRange` over ~2s easeOutCubic; RENDER-only
+(data unchanged); `prefers-reduced-motion`→instant; `§SEED-TRUNK-ANIM` gate-asserts the animation ends EXACTLY on net
+(animated 32 frames/2033ms finalSegs==5936; reduced-motion instant). **HELD-OUT generalization GREEN** (#583): SampleCastle
+7-storey column-framed, multi-riser (3 risers), 208415 segs rendered exactly==net, maxDrift 1.13e-6m. W-DW-PIXELPROBE
+regression green. SEED-TRUNK is now FULLY GATED (engine + render + animation). docs/internal/WalkerMaturity.md SEED-TRUNK
+row → L4 (LIVE) + RENDER GATED. [[project_terminal_rule_mining]]
 
 **(b) route-to-FACE ACMV — ✅ §FACE-SURFACE DONE 2026-06-30** (user-picked the residual thread; bim-compiler,
 **W-FACE-SURFACE 6/6**, `scripts/witness_route_face_surface.js`). FINDING: the ACMV duct-routing "ducts are genuinely
