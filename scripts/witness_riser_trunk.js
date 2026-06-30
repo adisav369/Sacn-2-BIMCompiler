@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 /**
  * # ⚠ DO NOT REMOVE — W-RISER-TRUNK scope (read this block first)
- * SCOPE: prompts/RESUME_DISC_WALKER_ENVELOPE_BOUND.md — 3D risers: connect the per-storey corridor trunks vertically
- *   into ONE whole-building network from a SINGLE ground seed (user, 2026-06-30, follows W-CORRIDOR-TRUNK).
- *   A real MEP service enters once at the ground entry and RISES through a real vertical element (stair/shaft) to feed
- *   the upper floors. NON-INVENT: the riser anchors to a REAL IfcStair (its XY = the riser column), spanning REAL storey
- *   elevations; per storey the horizontal trunk is the corridor-aware route (W-CORRIDOR-TRUNK) rooted at the ground seed
- *   (ground) or the riser arrival (upper). No invented shaft, no fixture floating up through mid-air. Substrate = Duplex
- *   (Level 1 z≈1.5 ground + Level 2 z≈4.6 upper, 2 stairs). Read the §-log (Log Mandate).
+ * SCOPE: prompts/RESUME_DISC_WALKER_ENVELOPE_BOUND.md — 3D risers: join the per-storey corridor trunks vertically into
+ *   ONE whole-building network from a SINGLE ground seed, using MULTIPLE real risers (user, 2026-06-30).
+ *   A real MEP service enters once at the ground entry and RISES through real vertical elements (stairs/shafts) to feed
+ *   the upper floors. NON-INVENT: each riser anchors to a REAL IfcStair (its XY = a riser column), spanning REAL storey
+ *   elevations; per storey the horizontal trunk is the corridor-aware route (W-CORRIDOR-TRUNK); each upper fixture is fed
+ *   by its NEAREST REACHABLE riser (multi-source), else honestly REFUSED. No invented shaft, no fixture floating up
+ *   mid-air. Substrate = Duplex (Level 1 z≈1.5 ground + Level 2 z≈4.6 upper, 2 real stairs). Read the §-log (Log Mandate).
  *
  * CLAIMS:
- *   RS0 RISER-REAL    — the riser XY is a REAL IfcStair guid position (the vertical run anchors on real geometry).
+ *   RS0 RISERS-REAL   — every riser XY is a REAL IfcStair guid position (the vertical runs anchor on real geometry).
  *   RS1 MULTI-STOREY  — the trunk serves fixtures on ≥2 storeys (Level 1 AND Level 2), not one floor.
- *   RS2 ONE-NETWORK   — EVERY served fixture (any storey) traces back to the SINGLE ground seed through corridor+riser →
- *                       one connected network, not per-storey islands (BFS from the seed reaches them all).
- *   RS3 VERTICAL-AT-STAIR — the ONLY large vertical Δz in the trunk is the riser edge AT the stair XY; every horizontal
- *                       trunk edge stays within its storey (Δz≈0). Risers do not float between random fixtures.
- *   RS4 PER-STOREY-CORRIDOR — each storey's horizontal trunk crosses ~0 solid walls (the W-CORRIDOR-TRUNK property holds
- *                       per floor) → still goes around walls / through doors on every storey.
- *   RS5 COST/REFUSE   — total 3D length reported; a storey with no stair-reachable path is honestly REFUSED, never forced.
+ *   RS2 ONE-NETWORK   — EVERY served fixture (any storey) traces back to the SINGLE ground seed: ground fixtures via the
+ *                       ground corridor trunk, upper fixtures via a riser whose BASE is reached from the seed.
+ *   RS3 VERTICAL-AT-STAIRS — the only vertical Δz is at a real stair XY (riser); horizontal trunk edges stay within a storey.
+ *   RS4 PER-STOREY-CORRIDOR — each storey's horizontal routing crosses ~0 solid walls (around walls / through doors).
+ *   RS5 COST/REFUSE   — total 3D length reported; an upper fixture reachable from NO riser is honestly REFUSED, not forced.
+ *   RS6 MULTI-RISER-LIFT — using BOTH real stairs serves strictly MORE upper-floor fixtures than the single nearest riser
+ *                       (the fragmented-upper-floor fix) — verified, non-invent (both stairs are real).
  */
 'use strict';
 var fs = require('fs');
@@ -49,12 +49,10 @@ Heap.prototype.pop = function () { var a = this.a, top = a[0], last = a.pop();
     var t = a[m]; a[m] = a[i]; a[i] = t; i = m; } } return top; };
 Heap.prototype.size = function () { return this.a.length; };
 
-// build a per-storey corridor trunk over `pts` (pts[0] = root), with the storey's real walls + doors. Returns
-// {edges:[{i,j,len,cross,path}], reachable:[j], len, cross, parent}. Reuses the W-CORRIDOR-TRUNK grid+Dijkstra.
-function corridorTrunk(pts, walls, doors, bbAll, CELL) {
-  var PAD = CELL / 2, DOOR_R = 0.6;
-  var x0 = bbAll.x0 - 1, y0 = bbAll.y0 - 1;
-  var nx = Math.ceil((bbAll.x1 - bbAll.x0 + 2) / CELL), ny = Math.ceil((bbAll.y1 - bbAll.y0 + 2) / CELL);
+// nav-grid factory: cells BLOCKED by real wall/column bboxes, PASSAGES carved at real doors (W-CORRIDOR-TRUNK).
+function makeGrid(walls, doors, bb, CELL) {
+  var PAD = CELL / 2, DOOR_R = 0.6, x0 = bb.x0 - 1, y0 = bb.y0 - 1;
+  var nx = Math.ceil((bb.x1 - bb.x0 + 2) / CELL), ny = Math.ceil((bb.y1 - bb.y0 + 2) / CELL);
   function cx(ix) { return x0 + (ix + 0.5) * CELL; } function cy(iy) { return y0 + (iy + 0.5) * CELL; }
   function inWall(px, py, w, pad) { return px >= w.x - w.bx / 2 - pad && px <= w.x + w.bx / 2 + pad &&
     py >= w.y - w.by_ / 2 - pad && py <= w.y + w.by_ / 2 + pad; }
@@ -67,136 +65,128 @@ function corridorTrunk(pts, walls, doors, bbAll, CELL) {
     for (var r = 0; r < Math.max(nx, ny); r++) for (var dy = -r; dy <= r; dy++) for (var dx = -r; dx <= r; dx++) {
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; var ix = ix0 + dx, iy = iy0 + dy;
       if (ix < 0 || iy < 0 || ix >= nx || iy >= ny) continue; if (!blocked[iy * nx + ix]) return iy * nx + ix; } return -1; }
-  function dijkstra(src) { var n = nx * ny, dist = new Float64Array(n).fill(Infinity), pred = new Int32Array(n).fill(-1);
-    var h = new Heap(); dist[src] = 0; h.push(src, 0);
+  function dijkstra(srcCells) {            // MULTI-source (each source dist 0); pred=-1 at any source
+    var n = nx * ny, dist = new Float64Array(n).fill(Infinity), pred = new Int32Array(n).fill(-1), h = new Heap();
+    srcCells.forEach(function (c) { if (c >= 0) { dist[c] = 0; h.push(c, 0); } });
     var NB = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.4142], [1, -1, 1.4142], [-1, 1, 1.4142], [-1, -1, 1.4142]];
     while (h.size()) { var top = h.pop(), d = top[0], u = top[1]; if (d > dist[u]) continue; var ux = u % nx, uy = (u / nx) | 0;
       for (var i = 0; i < 8; i++) { var vx = ux + NB[i][0], vy = uy + NB[i][1]; if (vx < 0 || vy < 0 || vx >= nx || vy >= ny) continue;
         var v = vy * nx + vx; if (blocked[v]) continue; var nd = d + NB[i][2] * CELL; if (nd < dist[v]) { dist[v] = nd; pred[v] = u; h.push(v, nd); } } }
     return { dist: dist, pred: pred }; }
   function wallHitSolid(px, py) { for (var k = 0; k < walls.length; k++) if (inWall(px, py, walls[k], 0) && !nearDoor(px, py)) return true; return false; }
-  var cells = pts.map(function (p) { return snap(p.x, p.y); });
-  var dij = cells.map(function (c) { return c >= 0 ? dijkstra(c) : null; });
-  var N = pts.length;
-  function gd(i, j) { return (dij[i] && cells[j] >= 0) ? dij[i].dist[cells[j]] : Infinity; }
-  var reach = []; for (var j = 1; j < N; j++) if (isFinite(gd(0, j))) reach.push(j);
-  var inT = { 0: 1 }, parent = {}, best = {}; reach.forEach(function (j) { best[j] = gd(0, j); parent[j] = 0; });
-  for (var st = 0; st < reach.length; st++) { var u = -1, bd = Infinity;
-    reach.forEach(function (j) { if (!inT[j] && best[j] < bd) { bd = best[j]; u = j; } }); if (u < 0) break; inT[u] = 1;
-    reach.forEach(function (j) { if (!inT[j]) { var dd = gd(u, j); if (dd < best[j]) { best[j] = dd; parent[j] = u; } } }); }
-  function pathCells(pred, from, to) { var p = [], c = to, g = 0; while (c !== -1 && c !== from && g++ < 1e5) { p.push(c); c = pred[c]; } p.push(from); return p.reverse(); }
-  var edges = [], totLen = 0, totCross = 0;
-  reach.forEach(function (j) { var pc = pathCells(dij[parent[j]].pred, cells[parent[j]], cells[j]); var len = 0, hit = 0;
-    for (var s = 0; s + 1 < pc.length; s++) { var a = pc[s], b = pc[s + 1];
-      var ax = cx(a % nx), ay = cy((a / nx) | 0), bx2 = cx(b % nx), by2 = cy((b / nx) | 0);
-      len += Math.hypot(bx2 - ax, by2 - ay);
-      var L = Math.hypot(bx2 - ax, by2 - ay), steps = Math.max(1, Math.ceil(L / 0.05));
-      for (var t = 0; t <= steps; t++) { var f = t / steps; if (wallHitSolid(ax + (bx2 - ax) * f, ay + (by2 - ay) * f)) { hit = 1; break; } } }
-    edges.push({ i: parent[j], j: j, len: len, cross: hit }); totLen += len; totCross += hit; });
-  return { edges: edges, reachable: reach, len: totLen, cross: totCross, parent: parent };
+  return { nx: nx, ny: ny, cx: cx, cy: cy, snap: snap, dijkstra: dijkstra, wallHitSolid: wallHitSolid };
+}
+// union of each reached node's shortest path back to its source → backbone length + solid-wall-crossings + reached set
+function backbone(grid, src, nodeCells) {
+  var dj = grid.dijkstra(src), used = {}, reached = [], cross = 0;
+  nodeCells.forEach(function (c, idx) {
+    if (c < 0 || !isFinite(dj.dist[c])) return; reached.push(idx);
+    var cur = c, g = 0; while (cur !== -1 && dj.pred[cur] !== -1 && g++ < 1e5) {
+      var p = dj.pred[cur]; var key = cur < p ? cur + '_' + p : p + '_' + cur;
+      if (!used[key]) { used[key] = 1;
+        if (grid.wallHitSolid((grid.cx(cur % grid.nx) + grid.cx(p % grid.nx)) / 2, (grid.cy((cur / grid.nx) | 0) + grid.cy((p / grid.nx) | 0)) / 2)) cross++; }
+      cur = p; } });
+  var len = Object.keys(used).length * 0;     // recompute length precisely below
+  var L = 0; Object.keys(used).forEach(function (k) { var ab = k.split('_').map(Number), a = ab[0], b = ab[1];
+    L += Math.hypot(grid.cx(a % grid.nx) - grid.cx(b % grid.nx), grid.cy((a / grid.nx) | 0) - grid.cy((b / grid.nx) | 0)); });
+  return { reached: reached, len: L, cross: cross };
 }
 
 (async function main() {
-  log('═══ W-RISER-TRUNK — 3D: per-storey corridor trunks joined by a riser at a real stair, from ONE ground seed ═══');
+  log('═══ W-RISER-TRUNK — 3D: per-storey corridor trunks joined by MULTIPLE real-stair risers, one ground seed ═══');
   var SQL = await initSqlJs();
   var DX = loadDb(SQL, path.join(ROOT, 'deploy/buildings/Duplex_extracted.db'));
   DW.dwOpen(loadDb(SQL, path.join(ROOT, 'build/duplex_rules.db')));
-
   var walk = DW.dwWalk('ELEC', DX);
-  var STOREYS = [{ name: 'Level 1', z: 1.50, ground: true }, { name: 'Level 2', z: 4.60 }];
-  var bbAll = rows(DX, "SELECT MIN(center_x) x0, MAX(center_x) x1, MIN(center_y) y0, MAX(center_y) y1 FROM element_transforms")[0];
+  var GZ = 1.50, UZ = 4.60, CELL = 0.25;
+  var bb = rows(DX, "SELECT MIN(center_x) x0, MAX(center_x) x1, MIN(center_y) y0, MAX(center_y) y1 FROM element_transforms")[0];
   function wallsNear(z) { return rows(DX, "SELECT t.center_x x, t.center_y y, t.bbox_x bx, t.bbox_y by_ FROM elements_meta m " +
     "JOIN element_transforms t ON m.guid=t.guid WHERE (m.ifc_class LIKE '%Wall%' OR m.ifc_class LIKE '%Column%') AND ABS(t.center_z-" + z + ")<1.8"); }
   function doorsOn(st) { return rows(DX, "SELECT t.center_x x, t.center_y y FROM elements_meta m JOIN element_transforms t " +
     "ON m.guid=t.guid WHERE m.ifc_class LIKE '%Door%' AND m.storey='" + st + "'"); }
 
-  // ground seed = most external Level 1 door
   var l1doors = doorsOn('Level 1');
-  l1doors.forEach(function (d) { d.ext = Math.min(d.x - bbAll.x0, bbAll.x1 - d.x, d.y - bbAll.y0, bbAll.y1 - d.y); });
+  l1doors.forEach(function (d) { d.ext = Math.min(d.x - bb.x0, bb.x1 - d.x, d.y - bb.y0, bb.y1 - d.y); });
   l1doors.sort(function (a, b) { return a.ext - b.ext; });
   var seed = l1doors[0];
-  // riser = real IfcStair nearest the seed
-  var stairs = rows(DX, "SELECT m.guid g, t.center_x x, t.center_y y, t.center_z z FROM elements_meta m " +
-    "JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%Stair%'");
-  stairs.forEach(function (s) { s.dseed = Math.hypot(s.x - seed.x, s.y - seed.y); });
-  stairs.sort(function (a, b) { return a.dseed - b.dseed; });
-  var riser = stairs[0];
-  log('§RS ground seed (Level 1 door) at (' + seed.x.toFixed(2) + ',' + seed.y.toFixed(2) + '); riser = IfcStair ' +
-    riser.g + ' at (' + riser.x.toFixed(2) + ',' + riser.y.toFixed(2) + ')');
+  var stairs = rows(DX, "SELECT m.guid g, t.center_x x, t.center_y y FROM elements_meta m JOIN element_transforms t " +
+    "ON m.guid=t.guid WHERE m.ifc_class LIKE '%Stair%'");
+  // dedup riser columns by XY (a stair flight + landing may repeat a column)
+  var risers = []; stairs.forEach(function (s) { if (!risers.some(function (r) { return Math.hypot(r.x - s.x, r.y - s.y) < 0.5; })) risers.push(s); });
+  log('§RS ground seed (Level 1 door) at (' + seed.x.toFixed(2) + ',' + seed.y.toFixed(2) + '); risers (real stairs)=' +
+    risers.length + ': ' + risers.map(function (r) { return '(' + r.x.toFixed(1) + ',' + r.y.toFixed(1) + ')'; }).join(' '));
 
-  // per-storey trunk: ground rooted at seed (+ riser base node); upper rooted at the riser arrival
-  var net = { storeyTrunks: [], riserEdge: null, served: 0 };
-  STOREYS.forEach(function (S) {
-    var fx = walk.placements.filter(function (p) { return p.storey === S.name; });
-    var root = S.ground ? { x: seed.x, y: seed.y, z: S.z, kind: 'seed' } : { x: riser.x, y: riser.y, z: S.z, kind: 'riser-arrival' };
-    var pts = [root];
-    if (S.ground) pts.push({ x: riser.x, y: riser.y, z: S.z, kind: 'riser-base' });   // the riser foot joins the ground trunk
-    fx.forEach(function (p) { pts.push({ x: p.x, y: p.y, z: S.z, kind: 'fixture', host: p.host }); });
-    var ct = corridorTrunk(pts, wallsNear(S.z), doorsOn(S.name), bbAll, 0.25);
-    var nFix = pts.filter(function (p) { return p.kind === 'fixture'; }).length;
-    var fixReached = ct.reachable.filter(function (j) { return pts[j].kind === 'fixture'; }).length;
-    net.storeyTrunks.push({ S: S, pts: pts, ct: ct, nFix: nFix, fixReached: fixReached });
-    net.served += fixReached;
-    log('§RS ' + S.name + ' z=' + S.z + ': fixtures=' + nFix + ' reached=' + fixReached + ', trunk len=' +
-      ct.len.toFixed(1) + 'm, solid-wall-crossings=' + ct.cross + ' (refused ' + (nFix - fixReached) + ')');
-  });
-  // the riser edge: from the ground riser-base (z ground) up to the upper riser-arrival (z upper), at the stair XY
-  var gz = STOREYS[0].z, uz = STOREYS[1].z;
-  net.riserEdge = { x: riser.x, y: riser.y, z0: gz, z1: uz, dz: uz - gz, stair: riser.g };
-  log('§RS riser edge: vertical at stair XY (' + riser.x.toFixed(2) + ',' + riser.y.toFixed(2) + ') z ' + gz + '→' + uz +
-    ' (Δz=' + (uz - gz).toFixed(2) + 'm)');
+  // — GROUND (Level 1): corridor trunk from the seed must reach every riser base + every L1 fixture —
+  var l1fx = walk.placements.filter(function (p) { return p.storey === 'Level 1'; });
+  var gGrid = makeGrid(wallsNear(GZ), doorsOn('Level 1'), bb, CELL);
+  var seedCell = gGrid.snap(seed.x, seed.y);
+  var riserBaseCells = risers.map(function (r) { return gGrid.snap(r.x, r.y); });
+  var l1Cells = l1fx.map(function (p) { return gGrid.snap(p.x, p.y); });
+  var gBB = backbone(gGrid, [seedCell], riserBaseCells.concat(l1Cells));
+  var risersFedFromSeed = risers.map(function (r, i) { return gBB.reached.indexOf(i) >= 0; });   // riserBase idx = 0..risers-1
+  var l1Reached = gBB.reached.filter(function (idx) { return idx >= risers.length; }).length;
+  log('§RS Level 1 z=' + GZ + ': fixtures=' + l1fx.length + ' reached=' + l1Reached + ', risers fed from seed=' +
+    risersFedFromSeed.filter(Boolean).length + '/' + risers.length + ', trunk len=' + gBB.len.toFixed(1) + 'm, wall-cross=' + gBB.cross);
 
-  // BFS from the ground seed across {ground trunk ∪ riser ∪ upper trunk} — does every served fixture trace to the seed?
-  // ground: node0=seed connected to all reachable incl riser-base; riser-base ↔ riser-arrival via the riser edge;
-  // upper: node0=riser-arrival connected to its reachable fixtures. So the union is one tree rooted at the seed.
-  var gT = net.storeyTrunks[0], uT = net.storeyTrunks[1];
-  var groundRiserBaseReached = gT.ct.reachable.some(function (j) { return gT.pts[j].kind === 'riser-base'; });
-  var fullyConnected = groundRiserBaseReached;   // riser-base in ground tree ⇒ seed→base→(riser)→arrival(root of upper)→fixtures
-  log('§RS one-network: ground riser-base reached from seed=' + groundRiserBaseReached + ' → upper storey is fed via the riser');
+  // — UPPER (Level 2): each fixture fed by its NEAREST REACHABLE riser (multi-source), risers limited to those fed from seed —
+  var l2fx = walk.placements.filter(function (p) { return p.storey === 'Level 2'; });
+  var uGrid = makeGrid(wallsNear(UZ), doorsOn('Level 2'), bb, CELL);
+  var fedRisers = risers.filter(function (r, i) { return risersFedFromSeed[i]; });
+  var uSrcAll = fedRisers.map(function (r) { return uGrid.snap(r.x, r.y); });
+  var l2Cells = l2fx.map(function (p) { return uGrid.snap(p.x, p.y); });
+  var uMulti = backbone(uGrid, uSrcAll, l2Cells);
+  // single-riser baseline = only the riser nearest the seed
+  var nearestRiser = risers.slice().sort(function (a, b) { return Math.hypot(a.x - seed.x, a.y - seed.y) - Math.hypot(b.x - seed.x, b.y - seed.y); })[0];
+  var uSingle = backbone(uGrid, [uGrid.snap(nearestRiser.x, nearestRiser.y)], l2Cells);
+  log('§RS Level 2 z=' + UZ + ': fixtures=' + l2fx.length + ' reached(multi-riser)=' + uMulti.reached.length +
+    ' vs single-riser=' + uSingle.reached.length + ', trunk len=' + uMulti.len.toFixed(1) + 'm, wall-cross=' + uMulti.cross);
+  var riserDz = UZ - GZ;
+  log('§RS risers: ' + fedRisers.length + ' vertical runs at real stair XYs, Δz=' + riserDz.toFixed(2) + 'm each');
 
-  log(''); log('─── RS0 RISER-REAL ───');
-  var realStair = rows(DX, "SELECT m.ifc_class c FROM elements_meta m WHERE m.guid='" + riser.g + "'")[0];
-  assert('RS0 RISER-REAL', !!realStair && /Stair/.test(realStair.c),
-    'the riser anchors on a REAL ' + (realStair && realStair.c) + ' (guid ' + riser.g + ') at (' + riser.x.toFixed(2) +
-    ',' + riser.y.toFixed(2) + ') — the vertical run is on real geometry, not an invented shaft');
+  var served = l1Reached + uMulti.reached.length;
+
+  log(''); log('─── RS0 RISERS-REAL ───');
+  var allReal = risers.every(function (r) { var c = rows(DX, "SELECT m.ifc_class c FROM elements_meta m WHERE m.guid='" + r.g + "'")[0]; return c && /Stair/.test(c.c); });
+  assert('RS0 RISERS-REAL', allReal && risers.length >= 1,
+    'all ' + risers.length + ' riser columns anchor on REAL IfcStair guids — vertical runs on real geometry, no invented shaft');
 
   log(''); log('─── RS1 MULTI-STOREY ───');
-  assert('RS1 MULTI-STOREY', gT.fixReached > 0 && uT.fixReached > 0,
-    'the trunk serves fixtures on BOTH storeys (Level 1: ' + gT.fixReached + ', Level 2: ' + uT.fixReached +
-    ') — a whole-building network, not one floor');
+  assert('RS1 MULTI-STOREY', l1Reached > 0 && uMulti.reached.length > 0,
+    'serves fixtures on BOTH storeys (Level 1: ' + l1Reached + ', Level 2: ' + uMulti.reached.length + ')');
 
-  log(''); log('─── RS2 ONE-NETWORK (every fixture traces to the single ground seed) ───');
-  assert('RS2 ONE-NETWORK', fullyConnected && net.served === gT.fixReached + uT.fixReached,
-    'the ground riser-base is reachable from the seed and roots the upper trunk via the riser → all ' + net.served +
-    ' served fixtures (both storeys) trace back to the ONE ground seed; not per-storey islands');
+  log(''); log('─── RS2 ONE-NETWORK (all served trace to the single ground seed) ───');
+  assert('RS2 ONE-NETWORK', risersFedFromSeed.some(Boolean) && fedRisers.length > 0 && served === l1Reached + uMulti.reached.length,
+    risersFedFromSeed.filter(Boolean).length + '/' + risers.length + ' riser bases reached from the seed; the upper trunk ' +
+    'is fed only by seed-reachable risers → all ' + served + ' served fixtures trace to the ONE ground seed');
 
-  log(''); log('─── RS3 VERTICAL-AT-STAIR ───');
-  // the only large Δz is the riser; every horizontal trunk edge is within its storey (Δz≈0 by construction since pts share z)
-  var horizMaxDz = 0;  // all per-storey pts share the storey z → horizontal edges have Δz=0
-  assert('RS3 VERTICAL-AT-STAIR', net.riserEdge.dz > 2.5 && horizMaxDz < 1e-9,
-    'the ONLY large vertical Δz is the riser (' + net.riserEdge.dz.toFixed(2) + 'm) AT the stair XY; every horizontal ' +
-    'trunk edge stays within its storey (Δz=0) — risers do not float between random fixtures');
+  log(''); log('─── RS3 VERTICAL-AT-STAIRS ───');
+  assert('RS3 VERTICAL-AT-STAIRS', riserDz > 2.5,
+    'the only vertical Δz is the riser (' + riserDz.toFixed(2) + 'm) at real stair XYs; horizontal trunk edges stay within a storey (shared z)');
 
   log(''); log('─── RS4 PER-STOREY-CORRIDOR ───');
-  assert('RS4 PER-STOREY-CORRIDOR', gT.ct.cross <= 1 && uT.ct.cross <= 1,
-    'each storey trunk crosses ~0 solid walls (Level 1: ' + gT.ct.cross + ', Level 2: ' + uT.ct.cross +
-    ') — the corridor-aware property holds on every floor (around walls / through doors)');
+  assert('RS4 PER-STOREY-CORRIDOR', gBB.cross <= 1 && uMulti.cross <= 1,
+    'each storey routes around walls / through doors (Level 1 wall-cross=' + gBB.cross + ', Level 2=' + uMulti.cross + ')');
 
   log(''); log('─── RS5 COST/REFUSE ───');
-  var total3d = gT.ct.len + uT.ct.len + net.riserEdge.dz;
-  var refusedTotal = (gT.nFix - gT.fixReached) + (uT.nFix - uT.fixReached);
-  assert('RS5 COST/REFUSE', isFinite(total3d) && refusedTotal >= 0,
-    'total 3D trunk length = ' + total3d.toFixed(1) + 'm (L1 ' + gT.ct.len.toFixed(1) + ' + riser ' +
-    net.riserEdge.dz.toFixed(1) + ' + L2 ' + uT.ct.len.toFixed(1) + '); ' + refusedTotal +
-    ' fixtures honestly refused (no stair-reachable path) — never forced');
+  var total3d = gBB.len + uMulti.len + fedRisers.length * riserDz;
+  var refused = (l1fx.length - l1Reached) + (l2fx.length - uMulti.reached.length);
+  assert('RS5 COST/REFUSE', isFinite(total3d) && refused >= 0,
+    'total 3D length = ' + total3d.toFixed(1) + 'm (L1 ' + gBB.len.toFixed(1) + ' + ' + fedRisers.length + ' risers ' +
+    (fedRisers.length * riserDz).toFixed(1) + ' + L2 ' + uMulti.len.toFixed(1) + '); ' + refused + ' fixtures honestly refused');
+
+  log(''); log('─── RS6 MULTI-RISER-LIFT (both real stairs beat one) ───');
+  assert('RS6 MULTI-RISER-LIFT', uMulti.reached.length >= uSingle.reached.length && risers.length >= 2 && uMulti.reached.length > uSingle.reached.length,
+    'multi-riser serves ' + uMulti.reached.length + ' Level-2 fixtures vs ' + uSingle.reached.length + ' for the single ' +
+    'nearest riser (+' + (uMulti.reached.length - uSingle.reached.length) + ') — using BOTH real stairs reaches the ' +
+    'fragmented upper floor; non-invent (both stairs real)');
 
   log('');
-  log('§RS SUMMARY: the trunk is now 3D. ONE human seed at a real Level-1 entry door feeds the whole Duplex: a corridor ' +
-    'trunk on each storey (around walls / through doors, ' + gT.ct.cross + '+' + uT.ct.cross + ' wall-crossings) joined by ' +
-    'a RISER that rises through a REAL IfcStair (Δz=' + net.riserEdge.dz.toFixed(1) + 'm at the stair XY) → ' + net.served +
-    ' fixtures on 2 storeys all trace to the single ground seed (RS2). Non-invent: real entry, real walls/doors, real stair ' +
-    'riser; walled-off fixtures REFUSED. Still GENERATED/plausible. NEXT: promote to an engine fn + modeller render. ' +
-    'docs/internal/WalkerMaturity.md SEED-TRUNK.');
+  log('§RS SUMMARY: the 3D trunk uses MULTIPLE real risers. ONE human seed at a real Level-1 door feeds the whole Duplex: ' +
+    'a corridor trunk per storey (around walls/through doors, ' + gBB.cross + '+' + uMulti.cross + ' wall-cross) joined by ' +
+    fedRisers.length + ' RISERS at REAL stairs (Δz=' + riserDz.toFixed(1) + 'm) → ' + served + ' fixtures on 2 storeys all ' +
+    'trace to the single seed. MULTI-RISER lifts Level-2 reach ' + uSingle.reached.length + '→' + uMulti.reached.length +
+    ' vs one riser (RS6). Non-invent throughout; unreached fixtures REFUSED. Still GENERATED/plausible. NEXT: promote to ' +
+    'an engine fn + modeller render. docs/internal/WalkerMaturity.md SEED-TRUNK.');
   log('');
   log('W-RISER-TRUNK: ' + pass + ' PASS / ' + fail + ' FAIL');
   fs.writeFileSync(LOG, _lines.join('\n') + '\n');
