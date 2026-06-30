@@ -141,9 +141,13 @@ function walkScore(SQL, c) {
   var orcC = touchOracle(nodes, runs, TOL, false), orcS = touchOracle(nodes, runs, TOL, true);
   function prec(orc) { var m = 0; walked.forEach(function (w) { if (orc.touchSet[w.node] && orc.touchSet[w.node][w.run]) m++; });
     return walked.length ? m / walked.length : 0; }
-  var ra = rankAnalysis(nodes, runs, TOL);
+  // rankAnalysis is O(nodes·runs) — skip on the huge held-out building; the hashed oracles give the lift, and the
+  // surface oracle's average touch-DEGREE (touches per node) is the hashed discrimination (small degree = not trivial).
+  var ra = c.skipRank ? null : rankAnalysis(nodes, runs, TOL);
+  var sDeg = orcS.pairs / Math.max(1, Object.keys(orcS.touchSet).length);   // avg surface-touch runs per touched node
   bdb.close();
-  return { walked: walked, nodes: nodes, runs: runs, precC: prec(orcC), precS: prec(orcS), ra: ra };
+  return { walked: walked, nodes: nodes, runs: runs, precC: prec(orcC), precS: prec(orcS), ra: ra, sDeg: sDeg,
+    nNodes: nodes.length, nRuns: runs.length };
 }
 
 (async function main() {
@@ -155,9 +159,14 @@ function walkScore(SQL, c) {
     plbTE: { disc: 'PLB', from: 'IfcPipeFitting', to: 'IfcPipeSegment', run: 'IfcPipeSegment', node: 'IfcPipeFitting',
       db: 'deploy/buildings/Terminal_extracted.db', rules: 'build/terminal_rules.db' },
     plbDX: { disc: 'PLB', from: 'IfcFlowFitting', to: 'IfcFlowSegment', run: 'IfcFlowSegment', node: 'IfcFlowFitting',
-      db: 'build/Duplex_mep_extracted.db', rules: 'build/duplex_rules.db' }
+      db: 'build/Duplex_mep_extracted.db', rules: 'build/duplex_rules.db' },
+    // HELD-OUT: duplex_rules mined from Duplex, routed onto LTU_AHouse (never mined). Its run class IfcFlowSegment is
+    // BULKY (~0.52×0.56m) while the node IfcFlowFitting is thin → the same centre-to-line bias + same correction.
+    ltuHO: { disc: 'PLB', from: 'IfcFlowFitting', to: 'IfcFlowSegment', run: 'IfcFlowSegment', node: 'IfcFlowFitting',
+      db: 'deploy/buildings/LTU_AHouse_extracted.db', rules: 'build/duplex_rules.db', skipRank: true }
   };
   var acmv = walkScore(SQL, CASES.acmvTE), plbTE = walkScore(SQL, CASES.plbTE), plbDX = walkScore(SQL, CASES.plbDX);
+  var ltu = walkScore(SQL, CASES.ltuHO);
 
   log('');
   log('─── headline: nearest-run touch fraction, centre vs surface (@' + TOL + 'm) ───');
@@ -224,12 +233,26 @@ function walkScore(SQL, c) {
     '), gapSurface == surface recompute (' + surfOk + '/' + carried + ') — additive, pairing/guids/gap unchanged');
 
   log('');
+  log('─── FS6 HELD-OUT (the correction generalizes to a building never mined) ───');
+  log('§FS LTU_AHouse HELD-OUT (duplex_rules→LTU, PLB FlowFitting→FlowSegment[bulky ' +
+    'run]): walked precision centre=' + ltu.precC.toFixed(3) + ' → surface=' + ltu.precS.toFixed(3) +
+    ' (nodes=' + ltu.nNodes + ' runs=' + ltu.nRuns + ', avg surface-touch degree=' + ltu.sDeg.toFixed(2) + ')');
+  // held-out lift on a bulky-run building + the surface oracle stays DISCRIMINATIVE (small avg touch-degree, not
+  // "everything touches everything"). degree bound is generous (a dense house) but must be << #runs (42071).
+  assert('FS6 HELD-OUT',
+    ltu.precS >= 0.95 && ltu.precS - ltu.precC > 0.02 && ltu.sDeg < 8 && ltu.nRuns > 1000,
+    'duplex_rules routed onto held-out LTU_AHouse: surface precision ' + ltu.precC.toFixed(3) + '→' + ltu.precS.toFixed(3) +
+    ' (bulky run lifts the held-out number too), surface oracle still discriminative (avg degree ' + ltu.sDeg.toFixed(2) +
+    ' ≪ ' + ltu.nRuns + ' runs) — the correction is a generalizing principle, not a Terminal quirk');
+
+  log('');
   log('§FS SUMMARY: the ACMV duct-routing "ducts are genuinely harder" precision (centre 0.269 / face-by-line 0.332 ' +
     '@0.15m) is SUBSTANTIALLY a centre-to-line SCORING ARTIFACT on bulky elements. A face/surface-aware touch ' +
     '(subtract both MEASURED perp half-sections) lifts ACMV nearest-touch ' + acmv.ra.nearC.toFixed(3) + '→' +
     acmv.ra.nearS.toFixed(3) + ' while thin PLB is invariant (TE ' + plbTE.ra.nearC.toFixed(3) + '→' + plbTE.ra.nearS.toFixed(3) +
     ', DX ' + plbDX.ra.nearC.toFixed(3) + '→' + plbDX.ra.nearS.toFixed(3) + ') and far runs are still rejected (farthest=' +
-    acmv.ra.farS.toFixed(3) + '). routeChains{toFace} now carries gapSurface (additive). docs/WalkerDoctrine.md §3/§FACE-SURFACE.');
+    acmv.ra.farS.toFixed(3) + '). It GENERALIZES held-out: duplex_rules→LTU_AHouse (never mined, bulky run) lifts ' +
+    ltu.precC.toFixed(3) + '→' + ltu.precS.toFixed(3) + '. routeChains{toFace} now carries gapSurface (additive). docs/WalkerDoctrine.md §3/§FACE-SURFACE.');
   log('');
   log('W-FACE-SURFACE: ' + pass + ' PASS / ' + fail + ' FAIL');
   fs.writeFileSync(LOG, _lines.join('\n') + '\n');

@@ -5,11 +5,11 @@
 ## Current State
 
 **(b) route-to-FACE ACMV — ✅ §FACE-SURFACE DONE 2026-06-30** (user-picked the residual thread; bim-compiler,
-**W-FACE-SURFACE 5/5**, `scripts/witness_route_face_surface.js`). FINDING: the ACMV duct-routing "ducts are genuinely
+**W-FACE-SURFACE 6/6**, `scripts/witness_route_face_surface.js`). FINDING: the ACMV duct-routing "ducts are genuinely
 harder" precision (0.269 centre / 0.332 M7 face-by-line @0.15m) is SUBSTANTIALLY a **centre-to-line SCORING ARTIFACT**
 on bulky elements, not a real disconnection. A face/surface-aware touch — node-centre→run-LINE gap MINUS both elements'
 MEASURED perpendicular half-sections (clamp ≥0) — shows ducts genuinely connect: ACMV nearest-run touch **0.518→0.996**,
-while thin PLB is INVARIANT (TE 0.998→0.999, DX 0.978→0.980). A correction of a known bias, NOT goalpost-moving — guarded
+while thin PLB is INVARIANT (TE 0.998→0.999, DX 0.978→0.980). GENERALIZES held-out (FS6): duplex_rules routed onto LTU_AHouse (never mined, bulky run) lifts 0.938→0.995, oracle still discriminative. A correction of a known bias, NOT goalpost-moving — guarded
 by two falsifiers: PLB-INVARIANCE (bulk-proportional — thin pipes don't move) + RANK-DISCRIMINATION (nearest 0.996, 2nd
 0.698 [a fitting is a junction joining ≥2 ducts], 5th 0.014, farthest 0.000 → far runs still rejected). Engine:
 `routeChains(disc,bdb,{toFace:true})` now carries `gapSurface` (additive; `gap`/guids/pairing UNCHANGED → W-WALKBACK-MEP

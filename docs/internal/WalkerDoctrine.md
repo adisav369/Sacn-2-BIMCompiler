@@ -57,7 +57,7 @@ pair-set (3, not Terminal's 10). Each placement carries a `prim` semantic-kind t
      genuinely harder" precision (0.269 centre / 0.332 face-by-line @0.15m) is substantially a SCORING ARTIFACT: surface
      touch lifts ACMV nearest-run 0.518→0.996 while thin PLB is INVARIANT (0.998→0.999). It is a correction, not free
      leniency — guarded by PLB-invariance (bulk-proportional) + rank-discrimination (far runs still rejected, 0.000).
-     `routeChains{toFace}` carries `gapSurface` (additive; pairing/guids/`gap` unchanged).
+     `routeChains{toFace}` carries `gapSurface` (additive; pairing/guids/`gap` unchanged). GENERALIZES held-out: duplex_rules→LTU_AHouse (never mined, bulky run) lifts 0.938→0.995 (FS6).
 2. **Host-bound standalone** (host-bind + size, **NO join**): vent grilles (`host=IfcWindow, mount=TOP`), ELEC outlets
    (`host=IfcWall, SIDE`), ceiling lights / sprinklers / air terminals (`host=IfcCovering, BOTTOM`), wall alarms (`IfcWall`).
    Governed by host (`rule_shim`) + count/size rule. Oracle = SC's 13 grilles + Terminal fixtures (`§SHIM-SELECT`).
