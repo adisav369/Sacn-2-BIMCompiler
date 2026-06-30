@@ -421,6 +421,42 @@ than before, and modelling the working calendar is a clean follow-up for a later
 
 ---
 
+<a id="hr-tenancy"></a>
+## Tenancy — lease the actual geometry  *(ALPHA — HR_BIM_Asset demonstrator)*
+
+> **⚠ DEMONSTRATOR, NOT OFFICIAL.** Tenancy lives in the **HR_BIM_Asset** module (the building's *operate*
+> phase). Every screen and generated output carries the **`CONTOH — TIDAK RASMI` / `SAMPLE — NOT OFFICIAL`**
+> watermark. Demo values only; no statutory/contract figure is asserted.
+
+Most property tools treat a unit as a database row. Here a unit **is** a room in the model — so a lease binds
+to **real geometry**, and the ERP's money cycle runs against it. One lease threads **three apps over one signed
+op-log**:
+
+| App | Contributes | On the kernel |
+|---|---|---|
+| **Viewer** (BIM) | the **WHERE** — the unit lit on the model; the **Tenancy lens** colors units occupied / vacant / expiring (see the [Viewer guide → Find lenses](BIMUserGuide.md#find-lenses-tenancy)) | `unit_guid` → a real `IfcSpace` room |
+| **ERP** (this app) | the **DEAL + MONEY** — the lease as an agreement, and the **rent run → AR** | `C_BPartner` (tenant) · `C_Invoice (ARI)` → `C_Payment (ARR)` → allocation → GL |
+| **HR** | the **PEOPLE + ACCESS** — tenant party, signed check-in / access to the leased zone | `C_BPartner` · signed `kernel_op` |
+
+**Rent run = the payroll engine inverted.** HR_BIM_Asset has **one** generic periodic RUN —
+`(period × parties × element-rules) → signed lines → GL post` — and tenancy is just **profile #2**: a `RENTRUN`
+emits one rent invoice per *active* lease (cash **IN**, AR), where payroll emits payslips (cash **OUT**). Same
+deterministic, glass-box, tamper-evident engine; same balanced journal. The GL **dotted line** lights up only
+when this ERP is present — standalone, HR_BIM_Asset runs the full cycle on its own seed.
+
+**Non-invent binding.** A demo lease references a **real** `IfcSpace` guid extracted from the building (e.g. an
+`≈ Level 1` room on the office demo). The join hits → the unit lights up; a non-matching guid is **honestly shown
+un-linked** — never a fabricated binding.
+
+**Witnessed (alpha, node):** the rent run filters to in-term leases and posts a **balanced AR journal**
+(`§HBA P-tenancy-term`, `P-tenancy-gl`); **one** engine serves payroll · tenancy · strata · maintenance
+(`P-one-engine`). Spec: **`prompts/RESUME_HR_BIM_ASSET.md`** (§PILLAR-4, §CROSS-APP, §BINDING).
+
+> **Siblings on the same engine:** *strata* (charge owners — profile #4) and *asset maintenance* (profile #3,
+> a derived 4D PM timeline off `next_due`/`pm_cycle`) — the building's **7D operate cockpit**.
+
+---
+
 ## 3. The Bottom Pill Bar (cheat sheet)
 
 The pill is the single entry point for every tool. Left-to-right:

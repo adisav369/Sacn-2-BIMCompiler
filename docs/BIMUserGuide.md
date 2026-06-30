@@ -132,6 +132,28 @@ All panels collapse with **−/+**.
 - IndexedDB cache — download once, instant on revisit
 - City mode — 786 building bboxes, click to download + stream on demand
 
+<a id="find-lenses-tenancy"></a>
+### Find lenses — Tenancy & Assets (HR_BIM_Asset)  *(ALPHA)*
+
+> **⚠ DEMONSTRATOR — NOT OFFICIAL.** Part of the **HR_BIM_Asset** operate-phase module; every output carries
+> the **`CONTOH — TIDAK RASMI` / `SAMPLE — NOT OFFICIAL`** watermark. Demo values only.
+
+Two extra lenses sit on the viewer toolbar as flaticon toggles — **Tenancy** (a two-head `users` glyph) and
+**IoT / Assets** (a `cpu` chip). They are **data-gated**: an icon appears **only when** the loaded building
+actually carries that data (a lease bound to a real room, or an asset bound to a real element) — no data, no
+clutter.
+
+- **Tenancy lens** — colors each unit by lease status: **occupied** (green) · **vacant** (grey) · **expiring**
+  (amber). It lights **only** units whose lease binds to a **real `IfcSpace` room guid** in *this* building; a
+  non-matching guid is honestly left un-linked (never a faked tint). High level = **population-density dots** per
+  storey (keyed to the real `IfcBuildingStorey`); toggling a lens **off** restores the model fully (zero residue).
+- **IoT / Assets lens** — colors equipment by **maintenance due** (ok / due / overdue), each asset bound to a real
+  BIM element (`bim_guid`) and its IoT device — the seam for the **7D** operate cockpit.
+
+The money + contract side of a tenancy (lease as agreement, **rent run → AR**) lives in the
+**[Kernel-ERP guide → Tenancy](ERPUserGuide.md#hr-tenancy)**.
+Spec: `prompts/RESUME_HR_BIM_ASSET.md` (§SPATIAL-VIEW, §BINDING).
+
 **Mobile-only (touch-optimised):**
 
 - Site Camera — phone camera with GPS + compass + timestamp overlay
@@ -165,7 +187,7 @@ All panels collapse with **−/+**.
 
 | Doc | What |
 |-----|------|
-| [Kernel-ERP User Guide](ERPUserGuide.md) | iDempiere browser ERP — login → install → POS → reporting |
+| [Kernel-ERP User Guide](ERPUserGuide.md) | iDempiere browser ERP — login → install → POS → reporting · [Tenancy](ERPUserGuide.md#hr-tenancy) |
 | [DAGeVu Modeller Guide](ModellerGuide.md) | Author geometry — the editable 3D Grid |
 | [Clash Detection](CLASH_DETECTION.md) | Clash detection engine |
 | [4D/5D Analysis](4D5DAnalysis.md) | nD analytics (4D–8D) |
