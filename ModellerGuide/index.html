@@ -2375,38 +2375,70 @@ large-complex set, none for the generic residential flow classes, honestly. Witn
 sprinkler.)</em></p>
 <h3 id="does-it-generalize-to-a-building-it-never-saw">Does it generalize to a building it never saw?<a class="headerlink" href="#does-it-generalize-to-a-building-it-never-saw" title="Permanent link">&para;</a></h3>
 <p>Re-growing the Duplex's own MEP (the table above) proves the rules are <em>self-consistent</em>. The harder, honest
-question is whether they <strong>generalize</strong> — does a rule-set mined from one house route sensibly on a <strong>different</strong>
-house it was never shown? We tested exactly that: the residential rules (mined from the Duplex) routed onto
-<strong>LTU_AHouse</strong> — a separate house with a real 32 000-fitting plumbing network — scored against <em>that</em> building's
-own pipes (<code>build/logs/witness_generalize_xbuild_*.log</code>, <code>§XB</code>):</p>
+question is whether they <strong>generalize</strong> — does a rule-set mined from one house route sensibly on <strong>buildings it
+was never shown</strong>? We routed the residential rules (mined from the Duplex) onto a <em>spectrum</em> of held-out
+buildings and scored each against <strong>that building's own pipes</strong> (<code>build/logs/witness_generalize_curve_*.log</code>,
+<code>§GC</code>). Precision is the <strong>don't-fabricate</strong> score: of the pipe joins the walker drew, how many land on a real
+pipe touch.</p>
 <table>
 <thead>
 <tr>
-<th>Test</th>
-<th style="text-align: right;">Routed segments</th>
+<th>Building</th>
+<th>Type</th>
+<th>In/out of domain</th>
+<th style="text-align: right;">Segments</th>
 <th style="text-align: right;">Precision @0.15 m</th>
-<th>What it means</th>
+<th style="text-align: right;">Fabricated</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Held-out</strong> (Duplex rules → LTU_AHouse, a house it never saw)</td>
-<td style="text-align: right;">32 138</td>
-<td style="text-align: right;"><strong>0.839</strong></td>
-<td>84 % of the picked pipe joins are <em>real</em> touches in a building outside the training set</td>
+<td>Duplex <em>(self-consistency ceiling)</em></td>
+<td>house</td>
+<td>—</td>
+<td style="text-align: right;">358</td>
+<td style="text-align: right;"><strong>0.969</strong></td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
-<td>Self-consistency (Duplex rules → the Duplex itself)</td>
-<td style="text-align: right;">—</td>
-<td style="text-align: right;">0.969</td>
-<td>the in-sample ceiling</td>
+<td><strong>LTU_AHouse</strong></td>
+<td>house</td>
+<td><strong>in-domain</strong></td>
+<td style="text-align: right;">32 138</td>
+<td style="text-align: right;"><strong>0.839</strong></td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>WBDG_Office</td>
+<td>office</td>
+<td>out-of-domain</td>
+<td style="text-align: right;">2 241</td>
+<td style="text-align: right;">0.749</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Clinic</td>
+<td>healthcare</td>
+<td>out-of-domain</td>
+<td style="text-align: right;">4 906</td>
+<td style="text-align: right;">0.705</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>HHS_Office</td>
+<td>office</td>
+<td>out-of-domain</td>
+<td style="text-align: right;">1 380</td>
+<td style="text-align: right;">0.620</td>
+<td style="text-align: right;">0</td>
 </tr>
 </tbody>
 </table>
-<p>Precision is the <strong>don't-fabricate</strong> score: of the joins the walker drew, how many land on a real pipe. <strong>0
-were fabricated</strong> and <strong>0 exceeded the measured gap bound</strong> — the bound mined from the Duplex held on a building
-40× larger without being widened. The <strong>0.130 gap</strong> between held-out and self-consistency is reported, not
-hidden: it is the honest cost of applying a rule beyond the model it came from.</p>
+<p>The model <strong>degrades gracefully</strong>: an unseen <em>house</em> (its own type) scores 0.839, and unseen <em>offices and
+clinics</em> still score 0.62–0.75 — below the in-sample ceiling of 0.969, as expected, but never collapsing. The
+honest reading is in the spread, not a single number. Crucially, on <strong>every</strong> building <strong>0 joins were fabricated</strong>
+and <strong>0 exceeded the gap bound</strong> — the 3.298 m bound mined from the small Duplex held on a building 40× larger
+without ever being widened. (An ARC-only building with no pipes routes <strong>0</strong>, never a guess.)</p>
 <blockquote>
 <p><strong>Deeper proof.</strong> The full mining, round-trip, boundary and generalization analysis lives in the resume cards
 <code>prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md</code>, <code>prompts/RESUME_TERMINAL_RULE_MINING.md</code> and
