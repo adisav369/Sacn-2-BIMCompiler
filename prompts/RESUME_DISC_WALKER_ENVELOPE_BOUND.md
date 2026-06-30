@@ -42,9 +42,15 @@ analogue is n_measured scaled by floor-area ratio.
 > **✅ roadmap #1 (de-ERP RENAME) DONE 2026-06-30** (bim-compiler `c70bfce1`): all 11 live code readers →
 > `disc_patterns.db`, producer rebuild_erp.sh outputs it + back-compat ERP.db symlink, accounting-split is a no-op
 > (ERP.db already pure geometry-pattern), full suite green, NO impact (byte-identical symlink). See roadmap #1 below.
-> **NEXT BITE:** roadmap #3 Route→ASSEMBLE bridge (instantiate catalog parts at routed nodes, oriented by
-> `ad_assembly_connector`, stood off by clearance — witness on Duplex-MEP where real parts exist as oracle) OR
-> roadmap #4 wire `routeChains` into the modeller render (engine proven; render+deploy only). Full status: §NEXT + roadmap below.
+> **✅ roadmap #3 Route→ASSEMBLE DONE 2026-06-30** (bim-compiler `f443ae4d`+`a46b4c25`): `assemble()` instantiates
+> catalog parts at routed nodes (W-ASSEMBLE 10/10, Duplex-MEP oracle); **#3a** projected `rule_joint_piece` (no caller
+> catalog); **#3b** `connectorFor`/`connectorEnrich` connector-face orient + clearance standoff (W-ASSEMBLE-CONNECT 6/6,
+> live 151 SC sprinklers → SPRINKLER→FP_MAIN). See roadmap #3 below for the engine detail.
+> **NEXT BITE:** roadmap **#3c** — PORT `assemble`/`connectorEnrich` into the modeller render (instantiate part meshes
+> via the `_dwPrimGeo` LOD seam + render connector hookup edges) + deploy the new `rule_joint_piece` rules DBs (sw bump,
+> §DW-RULES-BUST already handles the cache). Engine is proven+witnessed — this is render+deploy. (Optional earlier:
+> project a first-class `rule_connector` so the ifc_class→assembly map need not be caller-passed.) OR roadmap #4 wire
+> `routeChains` into the modeller render. Full status: §NEXT + roadmap below.
 
 ## 🚫 §NAMING DIRECTIVE — DE-ERP (BINDING; user-confirmed 2026-06-29/30 — READ FIRST)
 **The prior-art pattern store is `disc_patterns.db`. "ERP.db" is a MISLEADING LEGACY NAME — do NOT use it for pattern
