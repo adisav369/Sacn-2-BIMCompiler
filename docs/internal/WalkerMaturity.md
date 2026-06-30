@@ -57,3 +57,8 @@ count-exact + L4 rendered"; it cannot reach L2/L3 *as fidelity* because there is
   (GENERATED/plausible). NEXT: (1) corridor-aware route (through circulation, not through walls) — turns plausible into
   engineer-grade; (2) wire the seed as an engine entry-point + modeller click (production UX); (3) a held-out check.
   This is the one placement lever the matrix says we CAN buy with engine, because the seed makes the START non-invent.
+- **Default-seed contract (`W-SEED-DEFAULT 6/6`, `disc_walker.defaultSeed`):** the modeller's CHECK→DEFAULT→CONFIRM/OVERRIDE
+  popup (on Outliner.DISC.MEP, if no seed assigned) is backed by a non-invent picker — a REAL, DETERMINISTIC default
+  (most external IfcDoor on the lowest storey = service-entry proxy) + the full candidate list to "choose another";
+  `opts.seed` overrides verbatim; no entry element → honest REFUSE. The heuristic agreed with the hand-picked human
+  seed on SampleHouse. Popup wiring = the bim-ootb deploy step.

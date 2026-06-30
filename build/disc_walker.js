@@ -975,6 +975,40 @@
       chains: chains, chainSegs: rc.segs, chainByRule: rc.byRule, storeys: sub.length };
   }
 
+  // ── SEED PICKER (human-in-the-loop service entry; W-SEED-TRUNK / W-SEED-DEFAULT) ──────────────────
+  // When the user walks a GENERATED discipline (Outliner.DISC.MEP) the modeller checks for an assigned SEED (the
+  // service entry the trunk radiates from). If none, it shows this DEFAULT in a popup → the user OKs or picks another.
+  // NON-INVENT: the default is a REAL element (IfcDoor, +IfcStair for vertical) picked DETERMINISTICALLY — the most
+  // EXTERNAL entry (nearest the footprint boundary) on the LOWEST storey = the service-entry proxy. It is a HEURISTIC
+  // the human confirms; we never claim it is correct, which is exactly why the popup exists. opts.seed (a guid) →
+  // the user's explicit choice WINS (returned verbatim). No entry element → honest REFUSE (no fabricated seed).
+  function defaultSeed(bdb, opts) {
+    opts = opts || {};
+    var classes = opts.classes || (opts.vertical ? ['IfcDoor', 'IfcStair'] : ['IfcDoor']);
+    var like = classes.map(function (c) { return "m.ifc_class LIKE '%" + _esc(c) + "%'"; }).join(' OR ');
+    var cand = _rows(bdb, "SELECT m.guid g, m.ifc_class c, m.storey st, t.center_x x, t.center_y y, t.center_z z " +
+      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE " + like);
+    if (opts.seed) {                                          // user's explicit choice wins — resolve to the real element
+      var s = cand.filter(function (e) { return e.g === opts.seed; })[0] ||
+        _rows(bdb, "SELECT m.guid g, m.ifc_class c, m.storey st, t.center_x x, t.center_y y, t.center_z z " +
+          "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.guid='" + _esc(opts.seed) + "'")[0];
+      if (!s) return { refused: true, reason: 'assigned seed guid not found: ' + opts.seed };
+      return { guid: s.g, ifc_class: s.c, storey: s.st, x: s.x, y: s.y, z: s.z, source: 'user-assigned',
+        reason: 'user-assigned seed', candidates: cand.map(_seedLabel) };
+    }
+    if (!cand.length) return { refused: true, reason: 'no entry element (' + classes.join('/') + ') in model — ask the user to assign a seed' };
+    // footprint bbox from ALL elements → externality = min distance to a footprint edge (small = near the perimeter)
+    var bb = _rows(bdb, "SELECT MIN(center_x) x0, MAX(center_x) x1, MIN(center_y) y0, MAX(center_y) y1 FROM element_transforms")[0];
+    cand.forEach(function (e) { e.ext = Math.min(e.x - bb.x0, bb.x1 - e.x, e.y - bb.y0, bb.y1 - e.y); });
+    // deterministic: most external (smallest ext) → lowest storey (smallest z) → smallest guid
+    cand.sort(function (a, b) { return (a.ext - b.ext) || (a.z - b.z) || (a.g < b.g ? -1 : a.g > b.g ? 1 : 0); });
+    var d = cand[0];
+    return { guid: d.g, ifc_class: d.c, storey: d.st, x: d.x, y: d.y, z: d.z, externality: +d.ext.toFixed(4),
+      source: 'default-heuristic', reason: 'most external ' + d.c + ' on storey ' + d.st + ' (service-entry proxy; ' +
+      d.ext.toFixed(2) + 'm from footprint edge) — confirm or choose another', candidates: cand.map(_seedLabel) };
+  }
+  function _seedLabel(e) { return { guid: e.g, ifc_class: e.c, storey: e.st, x: e.x, y: e.y, z: e.z }; }
+
   // The walkable disciplines the measured rules cover — drives the Outliner "Walk" roster so a
   // discipline ABSENT from the open building (e.g. FP on a house) is still walkable. Derived, not whitelisted.
   function disciplines() {
@@ -990,7 +1024,7 @@
 
   var API = { dwInit: dwInit, dwOpen: dwOpen, dwBorrow: dwBorrow, dwBorrowFile: dwBorrowFile, dwWalk: dwWalk, assemble: assemble, connectorFor: connectorFor, connectorEnrich: connectorEnrich, substrate: substrate, place: place, hostBind: hostBind,
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
-    hostWalls: hostWalls, countPer: countPer, occupancy: occupancy,
+    hostWalls: hostWalls, countPer: countPer, occupancy: occupancy, defaultSeed: defaultSeed,
     _shimForDisc: _shimForDisc, _shimForFixture: _shimForFixture, _loadRuleShims: _loadRuleShims,
     disciplines: disciplines, loadedFile: loadedFile, _ready: function () { return _ready; } };
   ROOT.DiscWalker = API;
