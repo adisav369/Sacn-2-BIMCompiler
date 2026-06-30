@@ -4,6 +4,21 @@
 
 ## Current State
 
+**▶ MODELLER FIRST-CLASS: real-user E2E gates + Walk-tool fixes — ✅ DONE+LIVE 2026-07-01 (bim-ootb #584, sw v25).**
+User standard: tests must emulate a real USER SERIES OF ACTIONS through the PRODUCTION path and confirm complete/
+perfect/atomic by MATHS — engine-seam witnesses gave FALSE confidence. Built the E2E pattern (real `pg.mouse`/
+`#hist-slider`/`window.discWalk`, asserted by op-log + scene-graph + readPixels): **W-E2E-MOVE 9/9** (open→pick→drag
+X gizmo→commit→undo; atomic to 2.4e-8m, X-only, reversible to 0.00m — MOVE is genuinely first-class; also proved the
+conformity GATE fires in the real move path) and **W-E2E-WALK 8/8**. Checking the REAL path exposed the Walk tool was
+BROKEN two ways the seams hid: (1) `_dwEnsureBorrow`'s shared-IDB rules cache HUNG under transaction contention →
+rendered nothing (FIX: timeout-guarded `_loadDbBuf` in disc_walker.js → bare-fetch fallback); (2) `_commitDiscWalk`
+did N serial sealed commits → 112s UI FREEZE on a 267-fixture ELEC walk (FIX: one batched `commitSeedGroup` → 2.5s,
+kernel_ops orders by rowid so the shared baseTs is safe). Real Duplex ELEC now: 2.5s, 267 rendered, verifyChain ok,
+undo reverses. Regressions green (W-DW-PIXELPROBE 6/6, W-SEED-TRUNK-RENDER 8/8). Lesson banked
+[[feedback_test_real_user_path_not_seams]]. NEXT = extend the real-user E2E roster to the remaining authoring tools
+(insert/scale/rotate/sketch/route/cut/fillet/grid-stretch/gate-RED/cascade/seed-trunk) — each must pass a green
+real-user E2E before it counts as "developed". [[project_modeller_vision_lock]]
+
 **▶ SEED→3D CORRIDOR TRUNK — ✅ DONE + LIVE 2026-06-30 (engine, render GATE, animation ALL shipped).** Human-in-the-loop
 service entry → corridor-aware trunk (around real walls, through real doors) → 3D multi-riser (real stairs) → reusable
 engine module → **deployed live in the modeller** (bim-ootb #580 sw v23; render gate + animation **#582 sw v24**;
