@@ -253,9 +253,46 @@ What separates classes is **density and count**, not clearance — a takeaway th
 Terminal rule that over-stated separation (it had been flagging 37.5 % of the airport's *own* coordinated MEP;
 re-mined, that drops to 4.8 %).
 
-> **Deeper proof.** The full mining, round-trip and boundary analysis lives in the resume cards
-> `prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md` and `prompts/RESUME_TERMINAL_RULE_MINING.md`, each backed by
-> the witnessed `build/logs/` set summarised above.
+### After the walk — service hookups and assembly
+
+A walked fixture is not just a marker. Each one now carries its **fixture → service hookup**, read verbatim from
+the rules (a sprinkler's **TOP** face connects to the **fire main** at Ø25 mm; a ceiling light's TOP to the
+electrical conduit at Ø20 mm). On the canvas the hookup shows as a short edge from the fixture toward the service
+it feeds — so you can *see* which way each device wants to be served, not just where it sits. The face, diameter
+and service are measured patterns, never invented; a fixture with no recorded hookup is simply left plain.
+
+Where the building has a **real routed network**, the walk goes one step further and **assembles** it: at each
+real pipe/duct node it instantiates the matching catalog part (a fitting, sized to its **measured** diameter) and
+orients it along the run. Where there is **no network to assemble** — a castle whose fire trade is generated, not
+ducted — it says so (`§DW-ASSEMBLE … assemble REFUSE: no routed network`) and places nothing. Same honesty rule
+as everywhere else: real nodes get real parts, absent networks get a refusal, never a fabricated pipe.
+
+*(Trace: connectors are a projected rule per building class — fire-sprinkler and light hookups for the
+large-complex set, none for the generic residential flow classes, honestly. Witnessed by `W-RULE-CONNECTOR`,
+`W-ASSEMBLE-CONNECT`, and live in the modeller by `W-DW-PIXELPROBE` — the hookup edges render on every walked
+sprinkler.)*
+
+### Does it generalize to a building it never saw?
+
+Re-growing the Duplex's own MEP (the table above) proves the rules are *self-consistent*. The harder, honest
+question is whether they **generalize** — does a rule-set mined from one house route sensibly on a **different**
+house it was never shown? We tested exactly that: the residential rules (mined from the Duplex) routed onto
+**LTU_AHouse** — a separate house with a real 32 000-fitting plumbing network — scored against *that* building's
+own pipes (`build/logs/witness_generalize_xbuild_*.log`, `§XB`):
+
+| Test | Routed segments | Precision @0.15 m | What it means |
+|---|---:|---:|---|
+| **Held-out** (Duplex rules → LTU_AHouse, a house it never saw) | 32 138 | **0.839** | 84 % of the picked pipe joins are *real* touches in a building outside the training set |
+| Self-consistency (Duplex rules → the Duplex itself) | — | 0.969 | the in-sample ceiling |
+
+Precision is the **don't-fabricate** score: of the joins the walker drew, how many land on a real pipe. **0
+were fabricated** and **0 exceeded the measured gap bound** — the bound mined from the Duplex held on a building
+40× larger without being widened. The **0.130 gap** between held-out and self-consistency is reported, not
+hidden: it is the honest cost of applying a rule beyond the model it came from.
+
+> **Deeper proof.** The full mining, round-trip, boundary and generalization analysis lives in the resume cards
+> `prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md`, `prompts/RESUME_TERMINAL_RULE_MINING.md` and
+> `prompts/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`, each backed by the witnessed `build/logs/` set summarised above.
 
 ---
 
