@@ -96,10 +96,14 @@
         return { name: name, z: zs[Math.floor(zs.length * 0.1)], fx: byS[name] }; }).sort(function (a, b) { return a.z - b.z; });
     }
     if (!storeys.length) return { refused: true, reason: 'no fixtures to route' };
-    var ground = opts.groundStorey ? storeys.filter(function (s) { return s.name === opts.groundStorey; })[0] : storeys[0];
+    // ground = the storey the SEED sits on (the service enters there), else the caller's groundStorey, else lowest.
+    var gName = opts.groundStorey || (seedPt && seedPt.storey);
+    var ground = gName ? storeys.filter(function (s) { return s.name === gName; })[0] : storeys[0];
     if (!ground) ground = storeys[0];
+    // NOTE: parenthesize z — a NEGATIVE storey z (e.g. a foundation at -1.4) would render `center_z--1.4`, and SQLite
+    // reads `--` as a line comment, truncating the query ("incomplete input"). `(z)` keeps it a subtraction.
     function wallsNear(z) { return _rows(bdb, "SELECT t.center_x x, t.center_y y, t.bbox_x bx, t.bbox_y by_ FROM elements_meta m " +
-      "JOIN element_transforms t ON m.guid=t.guid WHERE (m.ifc_class LIKE '%Wall%' OR m.ifc_class LIKE '%Column%') AND ABS(t.center_z-" + z + ")<1.8"); }
+      "JOIN element_transforms t ON m.guid=t.guid WHERE (m.ifc_class LIKE '%Wall%' OR m.ifc_class LIKE '%Column%') AND ABS(t.center_z-(" + z + "))<1.8"); }
     function doorsOn(name) { return _rows(bdb, "SELECT t.center_x x, t.center_y y FROM elements_meta m JOIN element_transforms t " +
       "ON m.guid=t.guid WHERE m.ifc_class LIKE '%Door%' AND m.storey='" + _esc(name) + "'"); }
 
