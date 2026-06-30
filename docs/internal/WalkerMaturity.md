@@ -31,7 +31,7 @@ count-exact + L4 rendered"; it cannot reach L2/L3 *as fidelity* because there is
 | **STR** | WALK-BACK (girders) | **L3** | LANDED | W-WALKBACK-STR 5/5, W-CONFIDENCE-CALIBRATED, W-GUARD-ROTATED 5/5 | precision=don't-fabricate gate; calibrated conf ECE 0.034; rotate-degrades guard holds |
 | **any** | ASSEMBLE (parts at nodes) | **L2** | LANDED | W-ASSEMBLE 10/10, W-ASSEMBLE-CONNECT 6/6, W-RULE-CONNECTOR 4/4 | Duplex-MEP: 661 parts, posDrift 0m, Ø re-measured; self/landed (no held-out assemble) |
 | **PLB curve** | ROUTE generalization | **L3** | HELD-OUT | W-GENERALIZE-CURVE 7/7 | LTU 0.839 > WBDG_Office 0.749 > Clinic 0.705 > HHS_Office 0.620 @0.15m (graceful decay) |
-| **ELEC** | SEED-TRUNK (entry→trunk) | **L1** | GENERATED+seed | **W-SEED-TRUNK 6/6** | human assigns a real entry IfcDoor → trunk (MST) rooted there over the host-bound fixtures; seed drives entry+branching (T5); count preserved |
+| **ELEC** | SEED-TRUNK (entry→trunk) | **L1+** | GENERATED+seed | **W-SEED-TRUNK 6/6**, **W-SEED-DEFAULT 6/6**, **W-CORRIDOR-TRUNK 6/6** | seed→trunk now CORRIDOR-AWARE: nav grid blocked by REAL walls, carved at REAL doors; trunk goes around walls (solid-wall-crossings 10→0, ×1.22 length), walled-off fixtures REFUSED; 2D only (riser/3D next) |
 | **SAN / HEAT** | ROUTE | **L0** | — | — | LTU carries SAN 12k / HEAT 22k — never walked (no mined rule rows yet) |
 
 ## The two structural gaps the matrix exposes (the honest L0/L2 ceilings)
@@ -53,9 +53,11 @@ count-exact + L4 rendered"; it cannot reach L2/L3 *as fidelity* because there is
   not more engine).
 - **SEED-TRUNK L1→L2→L3 (the human-in-the-loop seed, user idea 2026-06-30):** `W-SEED-TRUNK` proved the mechanism — an
   engineer assigns a REAL entry element (SampleHouse front `IfcDoor`), the code roots a trunk there over the host-bound
-  fixtures, and a different seed reshapes the whole trunk (verified, not assumed). The trunk is a straight-line MST today
-  (GENERATED/plausible). NEXT: (1) corridor-aware route (through circulation, not through walls) — turns plausible into
-  engineer-grade; (2) wire the seed as an engine entry-point + modeller click (production UX); (3) a held-out check.
+  fixtures, and a different seed reshapes the whole trunk (verified, not assumed). **CORRIDOR-AWARE DONE** (`W-CORRIDOR-TRUNK 6/6`): a nav grid blocked by REAL wall/column bboxes
+  and carved at REAL doors carries an MST over GRID-PATH distance from the seed → the trunk routes AROUND walls and
+  THROUGH doorways (SampleHouse ELEC: solid-wall-crossings 10→0, ×1.22 length cost), walled-off fixtures honestly
+  REFUSED. Non-invent (every blocked cell a real wall, every passage a real door). NEXT: (1) 3D — risers/stairs across
+  storeys (today 2D per-storey); (2) promote the spike into an engine fn + modeller render; (3) a held-out check.
   This is the one placement lever the matrix says we CAN buy with engine, because the seed makes the START non-invent.
 - **Default-seed contract (`W-SEED-DEFAULT 6/6`, `disc_walker.defaultSeed`):** the modeller's CHECK→DEFAULT→CONFIRM/OVERRIDE
   popup (on Outliner.DISC.MEP, if no seed assigned) is backed by a non-invent picker — a REAL, DETERMINISTIC default
