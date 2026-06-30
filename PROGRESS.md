@@ -4,6 +4,18 @@
 
 ## Current State
 
+**§4 `__dwPixelProbe` render gate — ✅ DONE+LIVE 2026-06-30** (bim-ootb **#579 MERGED, sw v22**). Closes the §3c
+verification gap (the connector-edge + assemble render shipped with only §-log/node proof). Added
+`window.__dwPixelProbe(disc)` (dwRoot scene-graph census: fixture box InstancedMesh + §3c connector-edge LineSegments
++ tubes + parts, plus a one-frame readPixels litPct) + a render-only witness seam `window.__dwRender`.
+**W-DW-PIXELPROBE 6/6** (`modeller/tests/witness_dw_pixelprobe.js`, puppeteer): FP walk on SampleCastle → 759 fixture
+instances (2 classes), 1 connector-edge LineSegments covering all 663 enriched sprinklers, §DW-CONNECT hookups==enriched
+(count is a node-witnessed value — gate asserts log==render, not a magic number), canvas non-blank, assemble
+honest-REFUSE (no network, 0 parts), no pageerror. ⚠ The witness drives the render via the IDB-free engine API
+(`dwOpen`/`dwBorrow`) + seam — production `discWalk()` caches rules in `bim_ootb_cache` IndexedDB which hangs under
+puppeteer+swiftshader (real browsers fine, curl-verified). sw v21→v22. **NEXT = roadmap #5** (cross-building PLACEMENT
+generalization — held-out, the doctrine-central honesty gap). [[project_terminal_rule_mining]]
+
 **§3c ASSEMBLE render + first-class rule_connector — ✅ DONE+LIVE 2026-06-30** (bim-compiler `e74742ad`; bim-ootb
 **#578 MERGED, sw v21**, GH-Pages live). NEW `build/project_rule_connector.py` projects `disc_patterns.ad_assembly_connector`
 (+manifest) → `rule_connector` per `*_rules.db` (keyed (disc,ifc_class), DECISIVE-only, face/Ø/connects_to verbatim +
