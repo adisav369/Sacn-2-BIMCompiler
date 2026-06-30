@@ -4,6 +4,21 @@
 
 ## Current State
 
+**▶ SEED→3D CORRIDOR TRUNK — ✅ DONE + LIVE 2026-06-30 (this session's spine).** Human-in-the-loop service entry →
+corridor-aware trunk (around real walls, through real doors) → 3D multi-riser (real stairs) → reusable engine module →
+**deployed live in the modeller** (bim-ootb PR #580 MERGED, sw v23, GH-Pages verified). All witnessed, all non-invent
+(every blocked nav cell a real wall, every passage a real door, every riser a real IfcStair; unreachable fixtures
+REFUSED). Witnesses (bim-compiler): **W-SEED-TRUNK 6/6** (human seed drives topology), **W-SEED-DEFAULT 6/6** (popup
+check→default→override contract, `disc_walker.defaultSeed`), **W-CORRIDOR-TRUNK 6/6** (wall-crossings 10→0, through
+doors), **W-RISER-TRUNK 7/7** (multi-riser, L2 reach 13→25, all trace to one seed), **W-SEEDTRUNK-ENGINE 6/6**
+(`build/seed_trunk.js` `planTrunk` reproduces the spike). Deploy caught + fixed 2 real bugs (negative-z `--` SQL
+comment; ground=seed-storey). Headless eyeball-gap is SOLVED (correct swiftshader flags — was a wrong-flag, not a wall;
+live module verified no-pageerror/sceneReady). **NEXT = `prompts/RESUME_SEED_TRUNK.md`** (DO NOT REMOVE card): T1 render
+gate (`__seedTrunkProbe` seam + W-SEED-TRUNK-RENDER puppeteer, machine-verify the render — closes the eyeball gap for
+good); T2 construction ANIMATION (trunk grows from the seed outward = UX + human-visible verification; today render is
+INSTANT, no animation). Also open: a held-out trunk check (SampleCastle 7-storey). docs/internal/WalkerMaturity.md
+SEED-TRUNK row → L4 (LIVE). [[project_terminal_rule_mining]]
+
 **(b) route-to-FACE ACMV — ✅ §FACE-SURFACE DONE 2026-06-30** (user-picked the residual thread; bim-compiler,
 **W-FACE-SURFACE 6/6**, `scripts/witness_route_face_surface.js`). FINDING: the ACMV duct-routing "ducts are genuinely
 harder" precision (0.269 centre / 0.332 M7 face-by-line @0.15m) is SUBSTANTIALLY a **centre-to-line SCORING ARTIFACT**
