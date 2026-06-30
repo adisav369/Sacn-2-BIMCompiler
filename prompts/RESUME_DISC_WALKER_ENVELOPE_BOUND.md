@@ -392,6 +392,45 @@ proves BOTH host types in one run:
   `disc_walker.js` to `~/bim-ootb/modeller/` + a live SC grille-walk in the §-log (deploy). ELEC host-bind mining promotion
   (W-ELEC-HOSTBIND "promote to mining") still stands as its own bite.
 
+## §3c — modeller ASSEMBLE render + first-class rule_connector (SPEC, 2026-06-30)
+**Goal (roadmap #3c).** Port `assemble`/`connectorEnrich` into the modeller render: at routed NODES instantiate the
+catalog PART mesh via the `_dwPrimGeo` LOD seam, and draw the FIXTURE→SERVICE connector HOOKUP EDGE. Deploy the new
+`rule_joint_piece` (already projected) + `rule_connector` (NEW, below) DBs.
+
+**Prereq — project `rule_connector` first-class (the "optional earlier" step, now REQUIRED).** The modeller carries
+only `*_rules.db` (not `disc_patterns.db`), so `connectorEnrich` needs the connector hookup as a PROJECTED rule, mirroring
+`rule_shim`/`rule_joint_piece`. `build/project_rule_connector.py`:
+- KEY = `(disc, ifc_class)`. Resolve `ifc_class → assembly_id` via `disc_patterns.ad_element_mep`/`ad_element_mep_alias`
+  (ifc_class→element_type), then keep ONLY where that element_type is an EXACT `assembly_id` in `ad_assembly_connector`
+  AND the `(disc, ifc_class)` is one the rules DB actually walks (`rule_placement` ∪ `rule_routing` endpoints).
+- DECISIVE-ONLY (non-invent): pick the SERVICE connector (`connects_to` non-null) per assembly; read face/connector_type/
+  Ø/connects_to VERBATIM; standoff = matching `ad_assembly_manifest.clearance_m` (0 if none = flush). No mapping → NO row
+  (honest skip; `connectorEnrich` leaves the fixture untouched). Expected: terminal_rules = FP/IfcFireSuppressionTerminal→
+  SPRINKLER (TOP/SUPPLY_IN/Ø25→FP_MAIN, standoff 0) [+ ELEC/IfcLightFixture→LIGHT if it walks]; duplex_rules = 0 (generic
+  IfcFlow* have no assembly mapping — correct, not a gap).
+- Schema: `rule_connector(disc, ifc_class, assembly_id, face, connector_type, diameter_mm, connects_to, standoff_m, provenance)`.
+  Idempotent + ISOLATED (DROP+CREATE rule_connector only — no bake drift). Wire into both bake scripts.
+
+**Engine (`disc_walker.js`).** Add `_loadConnectors(disc)` (borrow-aware `_dbFor`, table-absent-safe → []). `connectorEnrich`:
+if `opts.connectors` passed → existing caller path UNCHANGED (W-ASSEMBLE-CONNECT byte-identical). Else load `rule_connector`
+for the disc, key by `ifc_class` → `{face,faceDir:_faceDir(face),dia_mm,connects_to,standoff_m}`, enrich each matching part/
+placement (set `.connector`, `.posStood = pos + faceDir·standoff`); unmapped untouched, count preserved.
+
+**Witness (`scripts/witness_rule_connector.js`, W-RULE-CONNECTOR):**
+- RC0 PROJECTED — terminal_rules.rule_connector has FP/IfcFireSuppressionTerminal→SPRINKLER (TOP/Ø25/FP_MAIN), provenance
+  `projected:ad_assembly_connector%`; duplex_rules has 0 rows (honest).
+- RC1 TRACEABLE — each projected row's face/Ø/connects_to == the verbatim ad_assembly_connector row (no fabrication).
+- RC2 SELF-CONTAINED == CALLER — `connectorEnrich(sprinklers)` with NO opts (projected path) gives the SAME enriched
+  connector (face/dia/connects_to/standoff/posStood) as the caller-passed path on the live SC FP walk. (proves the port
+  needs no caller percept.)
+- RC3 NON-INVENT-SKIP — a disc/class with no projected row (e.g. duplex ELEC) → 0 enriched, untouched.
+- REGRESSION: W-ASSEMBLE-CONNECT 6, W-ASSEMBLE 10, §DWG 49, §DXG 12 stay green.
+
+**Render (modeller.html).** New `_renderDiscAssembly(disc, parts)`: group parts by ifc_class → `_dwPrimGeo(prim,bx,by,bz)`
+box instance at each part.pos (oriented by part.dir); then connector edges = a short LineSegments from each enriched
+fixture along `connector.faceDir` (length = standoff or a fixed stub) tinted by service. Called after the chain render in
+the walk flow when `assemble` returns parts. §-log `§DW-ASSEMBLE disc parts=N joints=M connectors=K`.
+
 ## §SHIM-SELECT — the fixture_ifc_class SELECTION KEY (W-SHIM-SELECT, 2026-06-30)
 **Problem (the open hole that blocked DEFAULT-ON host-bind).** `rule_shim` was projected at DISC level only
 (`fixture_ifc_class=NULL`); a disc with >1 host (ELEC = wall-outlet + ceiling-light; FP = wall-alarm + ceiling-

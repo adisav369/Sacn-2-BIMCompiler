@@ -149,6 +149,10 @@ def main():
     # class's nearest host (light→ceiling vs appliance→wall) for the per-fixture selection key.
     TE_SRC = os.path.join(HERE, "..", "deploy", "buildings", "Terminal_extracted.db")
     project_shims(DB_PATH, "terminal", source_db=TE_SRC)
+    # §3c CONNECTOR projection: fixture→service hookup (face/Ø/connects_to/standoff) flows into the rules DB
+    # like routing/shim/joint_piece so the modeller renders connector edges with NO caller percept.
+    from project_rule_connector import project as project_connectors
+    project_connectors(DB_PATH)
 
 
 if __name__ == "__main__":

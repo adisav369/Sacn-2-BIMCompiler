@@ -691,13 +691,35 @@
   // (caller-passed — a projected rule_connector is the later first-class step, mirroring rule_shim/rule_joint_piece).
   // NON-INVENT: a part with no mapped assembly or no connector is LEFT UNTOUCHED (no fabricated hookup); the pose
   // offset is exactly faceDir·standoff (0 standoff = flush hookup, the common measured case); count preserved.
+  // Two source modes (additive — the caller path is byte-identical to before):
+  //  • CALLER-PASSED (opts.connectors present): assemblyKey {ifc_class:id}|fn(part) + connectors + manifest, as before.
+  //  • PROJECTED (no opts.connectors): read the first-class `rule_connector` table per (part.disc, part.ifc_class)
+  //    via _loadConnectors — so the modeller enriches with NO caller percept. Each part needs .disc + .ifc_class.
   function connectorEnrich(parts, opts) {
     opts = opts || {};
-    var key = opts.assemblyKey || {}, conns = opts.connectors || [], manifest = opts.manifest || [], n = 0;
+    var key = opts.assemblyKey || {}, conns = opts.connectors, manifest = opts.manifest || [], n = 0;
+    var projMap = null;
+    if (!conns) {                                              // PROJECTED path: ifc_class→connector per disc
+      projMap = {};
+      var discs = {};
+      (parts || []).forEach(function (p) { if (p.disc != null) discs[p.disc] = 1; });
+      Object.keys(discs).forEach(function (d) {
+        _loadConnectors(d).forEach(function (r) {
+          projMap[d + '|' + r.ifc_class] = { assembly_id: r.assembly_id, face: r.face, faceDir: _faceDir(r.face),
+            connector_type: r.connector_type, dia_mm: r.diameter_mm, connects_to: r.connects_to || null,
+            standoff_m: r.standoff_m || 0 };
+        });
+      });
+    }
     (parts || []).forEach(function (p) {
-      var aid = (typeof key === 'function') ? key(p) : key[p.ifc_class];
-      if (!aid) return;
-      var con = connectorFor(aid, conns, manifest);
+      var con;
+      if (conns) {                                             // caller-passed (UNCHANGED)
+        var aid = (typeof key === 'function') ? key(p) : key[p.ifc_class];
+        if (!aid) return;
+        con = connectorFor(aid, conns, manifest);
+      } else {                                                 // projected
+        con = projMap[p.disc + '|' + p.ifc_class] || null;
+      }
       if (!con || !con.faceDir) return;
       p.connector = con; p.standoff_m = con.standoff_m;
       var pos = p.pos || [p.x, p.y, p.z];
@@ -818,6 +840,14 @@
   // (_dbFor) and table-absent-safe → []. Shape matches a caller's opts.catalog row, so assemble's _part() is uniform.
   function _loadJointPieces(disc) {
     try { return _rows(_dbFor(disc), "SELECT ifc_class, piece_type, diameter_mm, length_mm FROM rule_joint_piece WHERE disc='" + _esc(disc) + "'"); }
+    catch (e) { return []; }
+  }
+  // The first-class PROJECTED connector hookup (§3c): per-(disc,ifc_class) fixture→service connector
+  // (face/Ø/connects_to + standoff), projected from disc_patterns.ad_assembly_connector/manifest by
+  // build/project_rule_connector.py. Borrow-aware (_dbFor) + table-absent-safe → []. Lets connectorEnrich
+  // read the hookup with NO caller percept (the modeller carries only *_rules.db, never disc_patterns.db).
+  function _loadConnectors(disc) {
+    try { return _rows(_dbFor(disc), "SELECT ifc_class, assembly_id, face, connector_type, diameter_mm, connects_to, standoff_m FROM rule_connector WHERE disc='" + _esc(disc) + "'"); }
     catch (e) { return []; }
   }
   function _discOf(s) { return s.disc != null ? s.disc : String(s.product_value || '').split('_')[0]; }
