@@ -31,7 +31,7 @@ count-exact + L4 rendered"; it cannot reach L2/L3 *as fidelity* because there is
 | **STR** | WALK-BACK (girders) | **L3** | LANDED | W-WALKBACK-STR 5/5, W-CONFIDENCE-CALIBRATED, W-GUARD-ROTATED 5/5 | precision=don't-fabricate gate; calibrated conf ECE 0.034; rotate-degrades guard holds |
 | **any** | ASSEMBLE (parts at nodes) | **L2** | LANDED | W-ASSEMBLE 10/10, W-ASSEMBLE-CONNECT 6/6, W-RULE-CONNECTOR 4/4 | Duplex-MEP: 661 parts, posDrift 0m, Ø re-measured; self/landed (no held-out assemble) |
 | **PLB curve** | ROUTE generalization | **L3** | HELD-OUT | W-GENERALIZE-CURVE 7/7 | LTU 0.839 > WBDG_Office 0.749 > Clinic 0.705 > HHS_Office 0.620 @0.15m (graceful decay) |
-| **ELEC** | SEED-TRUNK (entry→trunk, 3D) | **L1+** | GENERATED+seed | **W-SEED-TRUNK** / **-DEFAULT** / **-CORRIDOR-TRUNK** / **-RISER-TRUNK** 6/6 each | seed→corridor trunk (around walls/through doors, 10→0 crossings) now 3D: per-storey trunks joined by RISERS at REAL IfcStairs (Duplex: 1 seed feeds 2 floors via 2 real stairs, 55 fixtures trace to it; multi-riser lifts L2 reach 13→25, 8 REFUSED) |
+| **ELEC** | SEED-TRUNK (entry→3D trunk) | **L1+ (engine module)** | GENERATED+seed | **W-SEED-TRUNK** / **-DEFAULT** / **-CORRIDOR-TRUNK** / **-RISER-TRUNK** 6/6 each | seed→corridor trunk (around walls/through doors, 10→0 crossings) now 3D: per-storey trunks joined by RISERS at REAL IfcStairs (Duplex: 1 seed feeds 2 floors via 2 real stairs, 55 fixtures trace to it; multi-riser lifts L2 reach 13→25, 8 REFUSED) |
 | **SAN / HEAT** | ROUTE | **L0** | — | — | LTU carries SAN 12k / HEAT 22k — never walked (no mined rule rows yet) |
 
 ## The two structural gaps the matrix exposes (the honest L0/L2 ceilings)
