@@ -694,6 +694,8 @@
       
         
       
+        
+      
     
     
     
@@ -854,10 +856,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#find-lenses-tenancy-assets-hr_bim_asset-alpha" class="md-nav__link">
+  <a href="#fm-operate-lenses-hr_bim_asset-alpha" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Find lenses — Tenancy &amp; Assets (HR_BIM_Asset) (ALPHA)
+        FM / Operate lenses — HR_BIM_Asset (ALPHA)
       
     </span>
   </a>
@@ -943,6 +945,34 @@
     
   
     Kernel-ERP User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../HRBIMAssetGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HR / Tenancy / Operate Module
   
 
     
@@ -1727,10 +1757,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#find-lenses-tenancy-assets-hr_bim_asset-alpha" class="md-nav__link">
+  <a href="#fm-operate-lenses-hr_bim_asset-alpha" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Find lenses — Tenancy &amp; Assets (HR_BIM_Asset) (ALPHA)
+        FM / Operate lenses — HR_BIM_Asset (ALPHA)
       
     </span>
   </a>
@@ -2013,33 +2043,12 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <li>City mode — 786 building bboxes, click to download + stream on demand</li>
 </ul>
 <p><a id="find-lenses-tenancy"></a></p>
-<h3 id="find-lenses-tenancy-assets-hr_bim_asset-alpha">Find lenses — Tenancy &amp; Assets (HR_BIM_Asset)  <em>(ALPHA)</em><a class="headerlink" href="#find-lenses-tenancy-assets-hr_bim_asset-alpha" title="Permanent link">&para;</a></h3>
-<blockquote>
-<p><strong>⚠ DEMONSTRATOR — NOT OFFICIAL.</strong> Part of the <strong>HR_BIM_Asset</strong> operate-phase module; every output carries
-the <strong><code>CONTOH — TIDAK RASMI</code> / <code>SAMPLE — NOT OFFICIAL</code></strong> watermark. Demo values only.</p>
-</blockquote>
-<p>Two extra lenses sit on the viewer toolbar as flaticon toggles — <strong>Tenancy</strong> (a two-head <code>users</code> glyph) and
-<strong>IoT / Assets</strong> (a <code>cpu</code> chip). They are <strong>data-gated</strong>: an icon appears <strong>only when</strong> the loaded building
-actually carries that data (a lease bound to a real room, or an asset bound to a real element) — no data, no
-clutter.</p>
-<ul>
-<li><strong>Tenancy lens</strong> — colors each unit by lease status: <strong>occupied</strong> (green) · <strong>vacant</strong> (grey) · <strong>expiring</strong>
-  (amber). It lights <strong>only</strong> units whose lease binds to a <strong>real <code>IfcSpace</code> room guid</strong> in <em>this</em> building; a
-  non-matching guid is honestly left un-linked (never a faked tint). High level = <strong>population-density dots</strong> per
-  storey (keyed to the real <code>IfcBuildingStorey</code>); toggling a lens <strong>off</strong> restores the model fully (zero residue).</li>
-<li><strong>IoT / Assets lens</strong> — colors equipment by <strong>maintenance due</strong> (ok / due / overdue), each asset bound to a real
-  BIM element (<code>bim_guid</code>) and its IoT device — the seam for the <strong>7D</strong> operate cockpit.</li>
-<li><strong>Occupancy lens</strong> — colors each room by <strong>availability</strong> at the current period: <strong>occupied</strong> (green) ·
-  <strong>expiring</strong> (amber) · <strong>vacant</strong> (grey) · <strong>unavailable</strong> (purple, a maintenance/renovation blackout). The
-  state is a <em>replay</em> of the room's signed booking log (<code>ASSIGN</code>/<code>RELEASE</code>/<code>UNAVAIL</code>), so it shows the <strong>whole
-  floor</strong> — a vacant room reads vacant from the <em>absence</em> of a booking, never a faked tenant. It models the room
-  as an iDempiere bookable <strong>Resource</strong> (<code>S_Resource</code>/<code>S_ResourceAssignment</code>); the pivot of that data drives the
-  occupancy <strong>dashboard</strong> (per-storey utilization · availability-over-time · ticket aging).</li>
-</ul>
-<p>The money + contract side of a tenancy (lease as agreement, <strong>rent run → AR</strong>), the room-as-<strong>Resource</strong>
-occupancy/availability graph, the <strong>Request/ticket</strong> workflow, and the <strong>dashboard</strong> all live in the
-<strong><a href="../ERPUserGuide/#hr-tenancy">Kernel-ERP guide → Tenancy</a></strong>.
-Spec: <code>prompts/RESUME_HR_BIM_ASSET.md</code> (§SPATIAL-VIEW, §BINDING).</p>
+<h3 id="fm-operate-lenses-hr_bim_asset-alpha">FM / Operate lenses — HR_BIM_Asset  <em>(ALPHA)</em><a class="headerlink" href="#fm-operate-lenses-hr_bim_asset-alpha" title="Permanent link">&para;</a></h3>
+<p>The viewer carries one <strong><code>FM / Operate</code></strong> toolbar pill (a building glyph) that opens a wake-aware drawer of
+operate-phase lenses — <strong>Occupancy</strong> (incl. lease status) · <strong>Presence</strong> · <strong>Unit class</strong> · <strong>Assets / IoT</strong> ·
+<strong>Dashboard</strong>. It appears only when the loaded building carries operate data, and each lens is enabled only when
+<em>its</em> data exists (else greyed) — no data, no clutter.</p>
+<p>→ <strong>Full walkthrough (with screenshots): <a href="../HRBIMAssetGuide/">HR / Tenancy / Operate Module guide</a>.</strong></p>
 <p><strong>Mobile-only (touch-optimised):</strong></p>
 <ul>
 <li>Site Camera — phone camera with GPS + compass + timestamp overlay</li>
