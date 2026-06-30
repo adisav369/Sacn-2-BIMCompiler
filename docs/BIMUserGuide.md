@@ -133,33 +133,14 @@ All panels collapse with **−/+**.
 - City mode — 786 building bboxes, click to download + stream on demand
 
 <a id="find-lenses-tenancy"></a>
-### Find lenses — Tenancy & Assets (HR_BIM_Asset)  *(ALPHA)*
+### FM / Operate lenses — HR_BIM_Asset  *(ALPHA)*
 
-> **⚠ DEMONSTRATOR — NOT OFFICIAL.** Part of the **HR_BIM_Asset** operate-phase module; every output carries
-> the **`CONTOH — TIDAK RASMI` / `SAMPLE — NOT OFFICIAL`** watermark. Demo values only.
+The viewer carries one **`FM / Operate`** toolbar pill (a building glyph) that opens a wake-aware drawer of
+operate-phase lenses — **Occupancy** (incl. lease status) · **Presence** · **Unit class** · **Assets / IoT** ·
+**Dashboard**. It appears only when the loaded building carries operate data, and each lens is enabled only when
+*its* data exists (else greyed) — no data, no clutter.
 
-Two extra lenses sit on the viewer toolbar as flaticon toggles — **Tenancy** (a two-head `users` glyph) and
-**IoT / Assets** (a `cpu` chip). They are **data-gated**: an icon appears **only when** the loaded building
-actually carries that data (a lease bound to a real room, or an asset bound to a real element) — no data, no
-clutter.
-
-- **Tenancy lens** — colors each unit by lease status: **occupied** (green) · **vacant** (grey) · **expiring**
-  (amber). It lights **only** units whose lease binds to a **real `IfcSpace` room guid** in *this* building; a
-  non-matching guid is honestly left un-linked (never a faked tint). High level = **population-density dots** per
-  storey (keyed to the real `IfcBuildingStorey`); toggling a lens **off** restores the model fully (zero residue).
-- **IoT / Assets lens** — colors equipment by **maintenance due** (ok / due / overdue), each asset bound to a real
-  BIM element (`bim_guid`) and its IoT device — the seam for the **7D** operate cockpit.
-- **Occupancy lens** — colors each room by **availability** at the current period: **occupied** (green) ·
-  **expiring** (amber) · **vacant** (grey) · **unavailable** (purple, a maintenance/renovation blackout). The
-  state is a *replay* of the room's signed booking log (`ASSIGN`/`RELEASE`/`UNAVAIL`), so it shows the **whole
-  floor** — a vacant room reads vacant from the *absence* of a booking, never a faked tenant. It models the room
-  as an iDempiere bookable **Resource** (`S_Resource`/`S_ResourceAssignment`); the pivot of that data drives the
-  occupancy **dashboard** (per-storey utilization · availability-over-time · ticket aging).
-
-The money + contract side of a tenancy (lease as agreement, **rent run → AR**), the room-as-**Resource**
-occupancy/availability graph, the **Request/ticket** workflow, and the **dashboard** all live in the
-**[Kernel-ERP guide → Tenancy](ERPUserGuide.md#hr-tenancy)**.
-Spec: `prompts/RESUME_HR_BIM_ASSET.md` (§SPATIAL-VIEW, §BINDING).
+→ **Full walkthrough (with screenshots): [HR / Tenancy / Operate Module guide](HRBIMAssetGuide.md).**
 
 **Mobile-only (touch-optimised):**
 

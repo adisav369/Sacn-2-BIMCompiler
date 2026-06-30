@@ -427,6 +427,10 @@ than before, and modelling the working calendar is a clean follow-up for a later
 > **⚠ DEMONSTRATOR, NOT OFFICIAL.** Tenancy lives in the **HR_BIM_Asset** module (the building's *operate*
 > phase). Every screen and generated output carries the **`CONTOH — TIDAK RASMI` / `SAMPLE — NOT OFFICIAL`**
 > watermark. Demo values only; no statutory/contract figure is asserted.
+>
+> This page is the **money + contract** side (lease → rent run → AR). The **spatial** side — the FM/Operate
+> lenses (Occupancy · Presence · Unit class · Assets) and the dashboard, on the building — is in the
+> **[HR / Tenancy / Operate Module guide](HRBIMAssetGuide.md)**.
 
 Most property tools treat a unit as a database row. Here a unit **is** a room in the model — so a lease binds
 to **real geometry**, and the ERP's money cycle runs against it. One lease threads **three apps over one signed

@@ -88,6 +88,7 @@ nav:
       - "BIM Viewer Guide": BIMUserGuide.md
       - "DAGeVu Modeller Guide": ModellerGuide.md
       - "Kernel-ERP User Guide": ERPUserGuide.md
+      - "HR / Tenancy / Operate Module": HRBIMAssetGuide.md
 
   - Go Deeper:
       - "Fold Engine Black Book (dev manual)": FoldEngineBlackBook.html
