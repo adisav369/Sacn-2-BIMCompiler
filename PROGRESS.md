@@ -4,6 +4,19 @@
 
 ## Current State
 
+**(b) route-to-FACE ACMV — ✅ §FACE-SURFACE DONE 2026-06-30** (user-picked the residual thread; bim-compiler,
+**W-FACE-SURFACE 5/5**, `scripts/witness_route_face_surface.js`). FINDING: the ACMV duct-routing "ducts are genuinely
+harder" precision (0.269 centre / 0.332 M7 face-by-line @0.15m) is SUBSTANTIALLY a **centre-to-line SCORING ARTIFACT**
+on bulky elements, not a real disconnection. A face/surface-aware touch — node-centre→run-LINE gap MINUS both elements'
+MEASURED perpendicular half-sections (clamp ≥0) — shows ducts genuinely connect: ACMV nearest-run touch **0.518→0.996**,
+while thin PLB is INVARIANT (TE 0.998→0.999, DX 0.978→0.980). A correction of a known bias, NOT goalpost-moving — guarded
+by two falsifiers: PLB-INVARIANCE (bulk-proportional — thin pipes don't move) + RANK-DISCRIMINATION (nearest 0.996, 2nd
+0.698 [a fitting is a junction joining ≥2 ducts], 5th 0.014, farthest 0.000 → far runs still rejected). Engine:
+`routeChains(disc,bdb,{toFace:true})` now carries `gapSurface` (additive; `gap`/guids/pairing UNCHANGED → W-WALKBACK-MEP
+8/8 incl M7 + §DWG 49 / §DXG 12 / nnchain 6 all invariant). Thread (c) is SUBSUMED by §SHIM-SELECT (default-on
+rule_shim-driven host-bind = the "promote to mining" intent); (a) stays substrate-BLOCKED. Bim-compiler witness, no
+deploy (`gapSurface` opt-in, live dwWalk unchanged). [[project_terminal_rule_mining]]
+
 **§5 cross-building generalization — ✅ DONE 2026-06-30** (bim-compiler `a97978cf`, **W-GENERALIZE-XBUILD 7/7**,
 `scripts/witness_generalize_xbuild.js`). The doctrine-central upgrade from SELF-CONSISTENCY (mined-then-applied-to-SAME)
 to HELD-OUT: route `duplex_rules` (mined from Duplex) onto **LTU_AHouse** — a house with a real 32k-fitting generic

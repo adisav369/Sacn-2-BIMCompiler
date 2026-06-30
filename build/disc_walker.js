@@ -493,7 +493,14 @@
     var ext = [s.bx || 0, s.by_ || 0, s.bz || 0], ax = 0;
     if (ext[1] > ext[ax]) ax = 1; if (ext[2] > ext[ax]) ax = 2;
     var h = ext[ax] / 2, a = [s.x, s.y, s.z], b = [s.x, s.y, s.z];
-    a[ax] -= h; b[ax] += h; return { a: a, b: b };
+    a[ax] -= h; b[ax] += h; return { a: a, b: b, ax: ax };
+  }
+  // §FACE-SURFACE: MEASURED half-extent of an element's cross-section PERPENDICULAR to a run axis (mean of the two
+  // perp half-extents). centre-to-line over-states a bulky element's gap by ~this much; subtracting it (clamped ≥0)
+  // yields the surface-to-surface gap. NON-INVENT: bbox-derived, never a constant; 0 bbox → 0 (centre fallback).
+  function _perpHalf(bx, by, bz, ax) {
+    var e = [bx || 0, by || 0, bz || 0], perp = [0, 1, 2].filter(function (i) { return i !== ax; });
+    return (e[perp[0]] / 2 + e[perp[1]] / 2) / 2;
   }
   function _ptSeg(px, py, pz, a, b) {
     var abx = b[0] - a[0], aby = b[1] - a[1], abz = b[2] - a[2];
@@ -530,7 +537,12 @@
           if (d < best) { best = d; bj = si; }
         }
       }
-      if (bj >= 0 && best <= bound) { pairs.push({ ni: fi, ri: bj, gap: best }); sum += best; }
+      if (bj >= 0 && best <= bound) {
+        // §FACE-SURFACE: surface-to-surface gap = centre-line gap − both perp half-sections (measured), clamped ≥0.
+        var ax = lines[bj].ax, r = runs[bj];
+        var gSurf = Math.max(0, best - _perpHalf(r.bx, r.by_, r.bz, ax) - _perpHalf(f.bx, f.by_, f.bz, ax));
+        pairs.push({ ni: fi, ri: bj, gap: best, gapSurface: gSurf }); sum += best;
+      }
       else { noNbr++; }
     });
     return { pairs: pairs, noNbr: noNbr, mean: pairs.length ? sum / pairs.length : Infinity };
@@ -559,14 +571,15 @@
       if (opts.toFace) {
         var fromIsRun = /Segment/.test(r.from_kind);
         var runCls = fromIsRun ? r.from_kind : r.to_kind, nodeCls = fromIsRun ? r.to_kind : r.from_kind;
-        var runs = _loadXYZB(bdb, runCls), nodes = _loadXYZ(bdb, nodeCls);
+        var runs = _loadXYZB(bdb, runCls), nodes = _loadXYZB(bdb, nodeCls);  // nodes WITH bbox → §FACE-SURFACE gapSurface
         var fp = _nnPassFace(nodes, runs, bound);
         fp.pairs.forEach(function (pr) {
           var nEl = nodes[pr.ni], rEl = runs[pr.ri];
           var fEl = fromIsRun ? rEl : nEl, tEl = fromIsRun ? nEl : rEl;
           segs.push({ disc: disc, rule: 'nn', from_kind: r.from_kind, to_kind: r.to_kind,
             from_guid: fEl.g, to_guid: tEl.g, from: [fEl.x, fEl.y, fEl.z], to: [tEl.x, tEl.y, tEl.z],
-            gap: +pr.gap.toFixed(4), bound: +(+bound).toFixed(4), gapSource: gapSource, mode: 'face' });
+            gap: +pr.gap.toFixed(4), gapSurface: +pr.gapSurface.toFixed(4),  // §FACE-SURFACE: surface-to-surface gap
+            bound: +(+bound).toFixed(4), gapSource: gapSource, mode: 'face' });
         });
         byRule.push({ from: r.from_kind, to: r.to_kind, segs: fp.pairs.length, noNbr: fp.noNbr,
           bound: +(+bound).toFixed(4), gapSource: gapSource, avg_measured: gp.avg, iterDir: 'node→run-face',

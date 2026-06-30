@@ -46,11 +46,64 @@ analogue is n_measured scaled by floor-area ratio.
 > catalog parts at routed nodes (W-ASSEMBLE 10/10, Duplex-MEP oracle); **#3a** projected `rule_joint_piece` (no caller
 > catalog); **#3b** `connectorFor`/`connectorEnrich` connector-face orient + clearance standoff (W-ASSEMBLE-CONNECT 6/6,
 > live 151 SC sprinklers → SPRINKLER→FP_MAIN). See roadmap #3 below for the engine detail.
-> **NEXT BITE:** roadmap **#3c** — PORT `assemble`/`connectorEnrich` into the modeller render (instantiate part meshes
-> via the `_dwPrimGeo` LOD seam + render connector hookup edges) + deploy the new `rule_joint_piece` rules DBs (sw bump,
-> §DW-RULES-BUST already handles the cache). Engine is proven+witnessed — this is render+deploy. (Optional earlier:
-> project a first-class `rule_connector` so the ifc_class→assembly map need not be caller-passed.) OR roadmap #4 wire
-> `routeChains` into the modeller render. Full status: §NEXT + roadmap below.
+> **✅ roadmap #3c DONE+LIVE 2026-06-30** (bim-compiler `e74742ad`; bim-ootb PR #578 MERGED, sw **v21**, GH-Pages live):
+> ported `assemble`/`connectorEnrich` into the modeller render. **NEW first-class `rule_connector`** (the "optional earlier"
+> step, now done) — `build/project_rule_connector.py` projects `disc_patterns.ad_assembly_connector`(+manifest) → a
+> `rule_connector` table per `*_rules.db` keyed (disc, ifc_class), DECISIVE-only (exactly one assembly w/ a SERVICE
+> connector), face/Ø/connects_to verbatim, standoff = manifest clearance: **terminal = SPRINKLER + LIGHT (2 rows); duplex
+> = 0** (generic IfcFlow* have no assembly mapping — honest, not a gap). Applied STANDALONE (DROP+CREATE rule_connector
+> only = zero drift; also wired into both bake scripts). `disc_walker.connectorEnrich` now falls back to `_loadConnectors(disc)`
+> when no `opts.connectors` (projected path keys by (part.disc, part.ifc_class); caller-passed path byte-identical) →
+> **the modeller enriches with NO caller percept** (it never carries `disc_patterns.db`). **W-RULE-CONNECTOR 4/4**
+> (`scripts/witness_rule_connector.js`: 151 live SC sprinklers enriched identically by projected vs caller path); full
+> suite green. Render (modeller.html): `_renderDiscWalk` draws each enriched fixture's FIXTURE→SERVICE hookup as a
+> pale-cyan edge along `connector.faceDir` (len = standoff else 0.3m stub) → live **SC FP walk = 151 SPRINKLER TOP→FP_MAIN
+> edges** (§DW-CONNECT); `_renderDiscAssembly` instantiates projected catalog PARTS (`rule_joint_piece`) at routed nodes
+> via the `_dwPrimGeo` LOD seam + connector edges when a network exists (SC FP has no duct topology → assemble honest-REFUSE,
+> §DW-ASSEMBLE). `__dwAssembly` wired into `_clearDiscWalk`/`_redrawAllDiscWalks` (survives commit re-fold). sw v20→v21 +
+> `__dwRulesVer` v20→v21 (rules DBs changed → §DW-RULES-BUST re-fetch). Live-verified: sw=v21, modeller has _renderDiscAssembly/
+> §DW-CONNECT, disc_walker has _loadConnectors, live terminal_rules.db carries SPRINKLER+LIGHT rule_connector, duplex 0.
+> **✅ roadmap #4 (render gate) DONE+LIVE 2026-06-30** (bim-ootb PR #579 MERGED, sw **v22**, GH-Pages live). The
+> routeChains→tube render was ALREADY live (`_renderDiscChains`, §DW-TUBE); the genuine open piece was the `__dwPixelProbe`
+> readPixels assertion (the §8E-3/`_seedStrWalk`/`swbCanopyOps` refs in the old #4 text are STALE — none exist). Added
+> `window.__dwPixelProbe(disc)` (scene-graph census of dwRoot: fixture box InstancedMesh + §3c connector-edge LineSegments
+> + tubes + assembled parts, plus a one-frame readPixels litPct) + a thin render-only witness seam
+> `window.__dwRender={walk,assembly,redraw}`. ⚠ The production `discWalk()` path caches rules in `bim_ootb_cache`
+> IndexedDB which HANGS under puppeteer+swiftshader (real browsers fine — verified live by curl); the witness drives the
+> render via the IDB-FREE engine API (`dwOpen`/`dwBorrow` with plain-fetched DBs) + the seam (the render fns are
+> byte-identical to discWalk's). **W-DW-PIXELPROBE 6/6** (`modeller/tests/witness_dw_pixelprobe.js`, puppeteer): FP walk
+> on SC → 759 fixture instances (2 classes), 1 connector-edge LineSegments covering all 663 enriched sprinklers,
+> §DW-CONNECT hookups==enriched (count is a node-witnessed VALUE — gate asserts log==render not a magic number), canvas
+> non-blank, assemble honest-REFUSE (no network, 0 parts), no pageerror. sw v21→v22 (modeller.html changed; DBs unchanged
+> → __dwRulesVer stays v21). Live-verified sw=v22 + probe/seam present.
+> **✅ roadmap #5 (cross-building generalization) DONE 2026-06-30** (bim-compiler `a97978cf`, **W-GENERALIZE-XBUILD 7/7**,
+> `scripts/witness_generalize_xbuild.js`). The doctrine-central upgrade from SELF-CONSISTENCY to HELD-OUT: route
+> `duplex_rules` (mined from Duplex) onto **LTU_AHouse** — a HOUSE with a real 32k-fitting generic-IfcFlow* network
+> NEVER used in mining — scored vs LTU's OWN geometric-touch oracle (the W-WALKBACK-MEP oracle). **Result: 32138 segs,
+> precision 0.839 @0.15m (0.945 @0.30m), 0 fabricated, 0 over the Duplex-measured 3.298m bound** → the measured bound
+> generalizes without widening. Self-consistency baseline (Duplex-on-Duplex) = 0.969; **gap 0.130 = the honest measured
+> cost of generalization** (reported, not hidden). ⚠ SUBSTRATE FINDING (settles my earlier caveat): among the residential
+> class SH/DX/SC there is NO held-out MEP target (SH ARC-only, DX is the mining source, SC rainwater-only) — LTU_AHouse
+> (a house, same IfcFlow* taxonomy, rich real network) IS the genuine held-out residential-domain target. Bim-compiler
+> witness, no deploy.
+> **NEXT BITE:** the prioritized roadmap #1–#5 is now DRAINED. Remaining (thinner / substrate-gated) threads: (a)
+> PLACEMENT-cadence generalization analogue — BLOCKED: held-out buildings lack grilles/named-fixtures for ground truth
+> (the grille→window-top rule has no held-out target; same substrate wall as routing had before LTU); (b) deeper
+> route-to-FACE face-AND-direction model for ACMV ducts (M7 already lifts it partially); (c) ELEC host-bind mining
+> promotion (residential ELEC as ref_kind='host' in the bake, vs today's post-step). Pick per user direction.
+> Full status: §NEXT + roadmap below.
+>
+> ▶ **(b) PICKED 2026-06-30 (user direction) — ✅ §FACE-SURFACE DONE (W-FACE-SURFACE, see §FACE-SURFACE spec below).**
+> FINDING: the ACMV "ducts are genuinely harder" precision (0.269 centre / 0.332 face-by-line @0.15m) is SUBSTANTIALLY a
+> **centre-to-line SCORING ARTIFACT** on bulky elements, not a real disconnection. A face/surface-aware touch — gap =
+> centre-line gap − BOTH elements' MEASURED perpendicular half-extents (clamped ≥0) — shows the ducts genuinely connect:
+> ACMV nearest-run touch **0.518→0.996**, while thin PLB is INVARIANT (TE 0.998→0.999, DX 0.978→0.980). Two independent
+> falsifiers prove it is a real correction, not free leniency: (1) PLB-INVARIANCE (bulk-proportional — thin pipes don't
+> move); (2) RANK-DISCRIMINATION (surface-touch nearest 0.996, 2nd 0.698 [a fitting is a junction — physically joins ≥2
+> ducts], 5th 0.014, FARTHEST 0.000 → still rejects wrong pairs). Engine: `routeChains(disc,bdb,{toFace:true})` now
+> attaches `gapSurface` (additive; `gap`/guids/pairing UNCHANGED → M7 + W-WALKBACK-MEP invariant). (c) is SUBSUMED by
+> §SHIM-SELECT (default-on, rule_shim-driven host-bind = the "promote to mining" intent; ELEC wall/ceiling split mined;
+> residential stays all-wall by substrate, not engine). (a) stays BLOCKED (no held-out fixtures).
 
 ## 🚫 §NAMING DIRECTIVE — DE-ERP (BINDING; user-confirmed 2026-06-29/30 — READ FIRST)
 **The prior-art pattern store is `disc_patterns.db`. "ERP.db" is a MISLEADING LEGACY NAME — do NOT use it for pattern
@@ -287,13 +340,25 @@ step sourced from **`disc_patterns.db`** (the prior-art pattern store, currently
    `connectorEnrich()` attaches it + stands the pose off along the face by the measured clearance; `_faceDir` is a frame
    convention (face name → local axis). Applied to the LIVE SC FP sprinkler walk: 151 sprinklers carry SPRINKLER→FP_MAIN
    (TOP, Ø25, flush 0m); unmapped fixtures untouched. `assemblyKey` is caller-passed (a projected `rule_connector` is
-   the later first-class step). REMAINING: (c) port `assemble`/`connectorEnrich` into the modeller render — instantiate
-   part meshes via the `_dwPrimGeo` LOD seam + render the connector hookup edges; deploy. (Optional later: project
-   `rule_connector` so the ifc_class→assembly map is first-class too.)
-4. **Wire routeChains into the modeller §8E-3 render** (bim-ootb) — overlay the nn-segments as edges into the laid ARC
-   (mirror `_seedStrWalk`/`swbCanopyOps`) + a `__dwPixelProbe` readPixels assertion. Engine proven; render + deploy only.
-5. **Deeper route-to-FACE / generalization** (lower pri): a face-AND-direction model for ACMV ducts; route duplex_rules
-   onto a DIFFERENT residential building (true cross-building generalization, vs today's mined-then-applied self-consistency).
+   the later first-class step).
+   ✅ **(c) MODELLER RENDER + first-class rule_connector DONE+LIVE 2026-06-30** (bim-compiler `e74742ad`; bim-ootb #578,
+   sw v21): `build/project_rule_connector.py` → `rule_connector` per `*_rules.db` (terminal SPRINKLER+LIGHT, duplex 0
+   honest, DECISIVE-only, zero drift); `connectorEnrich` reads it via `_loadConnectors` with NO caller percept
+   (W-RULE-CONNECTOR 4/4 — projected == caller path on 151 live SC sprinklers). Modeller `_renderDiscWalk` draws hookup
+   edges (§DW-CONNECT) + `_renderDiscAssembly` parts-at-routed-nodes via the `_dwPrimGeo` seam (§DW-ASSEMBLE, honest-REFUSE
+   on no-network). See top RESUME pointer for detail.
+4. ✅ **RENDER GATE DONE+LIVE 2026-06-30** (bim-ootb #579, sw v22). routeChains→tube render was ALREADY live
+   (`_renderDiscChains`, §DW-TUBE); the §8E-3/`_seedStrWalk`/`swbCanopyOps` refs above are STALE (none exist). The real
+   open piece = the `__dwPixelProbe` readPixels assertion: added `window.__dwPixelProbe(disc)` (dwRoot scene-graph census
+   + readPixels litPct) + render-only seam `window.__dwRender`. **W-DW-PIXELPROBE 6/6** (`modeller/tests/witness_dw_pixelprobe.js`,
+   puppeteer) drives the render IDB-free (production discWalk's IndexedDB rules-cache hangs under swiftshader; real browsers
+   fine). See top RESUME pointer.
+5. ✅ **CROSS-BUILDING GENERALIZATION DONE 2026-06-30** (bim-compiler `a97978cf`, W-GENERALIZE-XBUILD 7/7). Mined
+   `duplex_rules` → HELD-OUT **LTU_AHouse** (house, real 32k-fitting IfcFlow* network, never mined), scored vs LTU's own
+   geometric-touch oracle: 32138 segs, precision **0.839 @0.15m** (vs self-consistency 0.969, gap 0.130), 0 fabricated,
+   0 over the Duplex-measured bound. SUBSTRATE FINDING: no held-out MEP target inside SH/DX/SC (SH ARC-only, DX mined-from,
+   SC rainwater-only) — LTU_AHouse is the genuine one; routing DOES have a held-out target after all. See top RESUME.
+   Residual: route-to-FACE ACMV (M7 partial); PLACEMENT-cadence generalization is BLOCKED (no held-out grilles/fixtures).
 
 Scope guard: accounting (C_Order, GL) is downstream/easy = out of scope; geometry/assembly is the hard part.
 
@@ -473,3 +538,45 @@ walls IN ONE WALK. Caller-passed `opts.shims` (raw `_shim_attributes` rows, no f
 
 **ACCEPTANCE.** S0–S5 green; existing §DWG 49 / §DXG 12 / W-DWWALK-HOSTBIND 6 / W-HOSTBIND-AGNOSTIC 6 /
 W-ELEC-HOSTBIND 5 / W-WALKBACK-MEP 8 stay 0-FAIL after re-bake. Then DEFAULT-ON host-bind is safe (follow-up).
+
+## §FACE-SURFACE — route-to-FACE refined with measured cross-section (W-FACE-SURFACE, 2026-06-30)
+**Thread (b), user-picked.** The ACMV duct-routing precision (centre 0.269 / M7 face-by-line 0.332 @0.15m) reads as
+"ducts are genuinely harder than pipes." The PROBE (`scratchpad/probe_face.js` + `probe_discrim.js`) shows that is
+SUBSTANTIALLY a SCORING ARTIFACT: the touch oracle measures node-CENTRE → run-LINE, which over-states the gap for BULKY
+elements by ~(node half-section + run half-section). Subtracting both MEASURED perpendicular half-extents (the real
+surfaces, non-invent) → ACMV nearest-run touch 0.518→0.996; thin PLB invariant (0.998→0.999). This is a CORRECTION of a
+known bias, NOT goalpost-moving — proven by two falsifiers:
+- **PLB-INVARIANCE** (bulk-proportional): thin pipes (half-section ~0.01m) barely move; bulky ducts (half-section
+  ~0.14m) lift a lot. If it were free leniency, PLB would jump too. It doesn't.
+- **RANK-DISCRIMINATION** (still rejects wrong pairs): surface-touch nearest 0.996 · 2nd 0.698 (a duct FITTING is a
+  junction — physically joins ≥2 ducts, so 2nd touching is correct topology) · 5th 0.014 · FARTHEST 0.000.
+
+**NON-INVENT boundary.** Perpendicular half-extent = mean of the TWO bbox half-extents perpendicular to the run's
+dominant AABB axis — MEASURED, never a constant. Clamp surface gap ≥0 (overlap = touch). A zero-bbox element → no
+subtraction → centre fallback (no fabrication). Pairing (which run is nearest, by centre-line) is UNCHANGED — only the
+reported/scored GAP changes; so guids + the centre `gap` field + M7 precision are invariant (regression-safe).
+
+**ENGINE (`disc_walker.js`, additive).**
+1. `_segLine(s)` also returns `ax` (the dominant-axis index it already computes).
+2. New `_perpHalf(bx,by,bz,ax)` = mean of the two perpendicular half-extents.
+3. `_nnPassFace(nodes, runs, bound)` — `nodes` loaded WITH bbox (caller passes `_loadXYZB`); each pair carries
+   `gapSurface = max(0, gap − _perpHalf(run,ax) − _perpHalf(node,ax))`.
+4. `routeChains` toFace branch: `nodes = _loadXYZB(...)`; each face-mode seg gets `gapSurface` (centre `gap` unchanged).
+
+**WITNESS (`scripts/witness_route_face_surface.js`, W-FACE-SURFACE).** Own surface-oracle (mirror of the centre touch
+oracle, subtracting measured perp half-extents). Substrates: Terminal (ACMV DuctSegment↔DuctFitting + PLB
+PipeFitting↔PipeSegment) + Duplex (PLB FlowFitting↔FlowSegment).
+- **FS1 LIFT (ACMV)** — surface nearest-touch ≫ centre (≥0.95 vs ~0.52); surface-scored precision on the FACE-walked
+  pairs ≫ centre-scored.
+- **FS2 PLB-INVARIANT (falsifier)** — PLB surface-touch − centre-touch < 0.02 on BOTH Terminal & Duplex (thin → no lift).
+- **FS3 DISCRIMINATION (falsifier)** — farthest-run surface-touch ≈0 (≤0.02) and 5th-nearest low (<0.1); nearest high.
+- **FS4 NON-INVENT** — every subtracted half-extent == independently re-measured bbox/2 (0 tol); a zeroed-bbox element
+  falls back to centre (gapSurface==gap), no fabrication.
+- **FS5 ENGINE-CARRIES** — `routeChains('ACMV',TE,{toFace:true})` segs carry `gapSurface` == independently recomputed
+  surface gap; the centre `gap` field == plain `{toFace:true}` today (pairing/guids byte-identical).
+- **REGRESSION** — W-WALKBACK-MEP 8/8 (incl M7) unchanged; §DWG 49 / §DXG 12 / nnchain 6 green.
+
+**ACCEPTANCE.** FS1–FS5 green + regression 0-FAIL. Report BOTH numbers (centre = pessimistic-for-bulky, surface =
+faithful); the lift is the honest correction, the two falsifiers are why it is not faked. Bim-compiler witness; the
+engine `gapSurface` field is additive and opt-in (live dwWalk unchanged) → no deploy required for the finding (a later
+slice can render faithful gaps / feed assemble).
