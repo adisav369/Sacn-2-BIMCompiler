@@ -275,20 +275,25 @@ sprinkler.)*
 ### Does it generalize to a building it never saw?
 
 Re-growing the Duplex's own MEP (the table above) proves the rules are *self-consistent*. The harder, honest
-question is whether they **generalize** — does a rule-set mined from one house route sensibly on a **different**
-house it was never shown? We tested exactly that: the residential rules (mined from the Duplex) routed onto
-**LTU_AHouse** — a separate house with a real 32 000-fitting plumbing network — scored against *that* building's
-own pipes (`build/logs/witness_generalize_xbuild_*.log`, `§XB`):
+question is whether they **generalize** — does a rule-set mined from one house route sensibly on **buildings it
+was never shown**? We routed the residential rules (mined from the Duplex) onto a *spectrum* of held-out
+buildings and scored each against **that building's own pipes** (`build/logs/witness_generalize_curve_*.log`,
+`§GC`). Precision is the **don't-fabricate** score: of the pipe joins the walker drew, how many land on a real
+pipe touch.
 
-| Test | Routed segments | Precision @0.15 m | What it means |
-|---|---:|---:|---|
-| **Held-out** (Duplex rules → LTU_AHouse, a house it never saw) | 32 138 | **0.839** | 84 % of the picked pipe joins are *real* touches in a building outside the training set |
-| Self-consistency (Duplex rules → the Duplex itself) | — | 0.969 | the in-sample ceiling |
+| Building | Type | In/out of domain | Segments | Precision @0.15 m | Fabricated |
+|---|---|---|---:|---:|---:|
+| Duplex *(self-consistency ceiling)* | house | — | 358 | **0.969** | 0 |
+| **LTU_AHouse** | house | **in-domain** | 32 138 | **0.839** | 0 |
+| WBDG_Office | office | out-of-domain | 2 241 | 0.749 | 0 |
+| Clinic | healthcare | out-of-domain | 4 906 | 0.705 | 0 |
+| HHS_Office | office | out-of-domain | 1 380 | 0.620 | 0 |
 
-Precision is the **don't-fabricate** score: of the joins the walker drew, how many land on a real pipe. **0
-were fabricated** and **0 exceeded the measured gap bound** — the bound mined from the Duplex held on a building
-40× larger without being widened. The **0.130 gap** between held-out and self-consistency is reported, not
-hidden: it is the honest cost of applying a rule beyond the model it came from.
+The model **degrades gracefully**: an unseen *house* (its own type) scores 0.839, and unseen *offices and
+clinics* still score 0.62–0.75 — below the in-sample ceiling of 0.969, as expected, but never collapsing. The
+honest reading is in the spread, not a single number. Crucially, on **every** building **0 joins were fabricated**
+and **0 exceeded the gap bound** — the 3.298 m bound mined from the small Duplex held on a building 40× larger
+without ever being widened. (An ARC-only building with no pipes routes **0**, never a guess.)
 
 > **Deeper proof.** The full mining, round-trip, boundary and generalization analysis lives in the resume cards
 > `prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md`, `prompts/RESUME_TERMINAL_RULE_MINING.md` and

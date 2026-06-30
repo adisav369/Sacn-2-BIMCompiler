@@ -11,7 +11,10 @@ to HELD-OUT: route `duplex_rules` (mined from Duplex) onto **LTU_AHouse** — a 
 @0.15m (0.945 @0.30m), 0 fabricated, 0 over the Duplex-measured 3.298m bound** (the measured bound generalizes without
 widening). Self-consistency baseline (Duplex-on-Duplex) 0.969; gap 0.130 = the honest measured cost of generalization.
 SUBSTRATE FINDING: no held-out MEP target inside SH/DX/SC (SH ARC-only, DX mined-from, SC rainwater-only) — LTU_AHouse
-is the genuine residential-domain held-out target. Bim-compiler witness, no deploy. **Roadmap #1–#5 now DRAINED;**
+is the genuine residential-domain held-out target. **CURVE extension (W-GENERALIZE-CURVE 6/6, `scripts/witness_generalize_curve.js`):**
+the residential rules degrade gracefully across a held-out spectrum — self 0.969 ≥ in-domain house LTU 0.839 >
+out-of-domain WBDG_Office 0.749 / Clinic 0.705 / HHS_Office 0.620 @0.15m, 0 fabricated + 0 over the Duplex-mined
+3.298m bound on EVERY building. Bim-compiler witnesses, no deploy. **Roadmap #1–#5 now DRAINED;**
 residual threads are substrate-gated (placement-cadence generalization has no held-out fixtures) or thin (route-to-FACE
 ACMV / ELEC host-bind mining promotion). [[project_terminal_rule_mining]]
 
