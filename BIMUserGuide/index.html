@@ -850,6 +850,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Viewer Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#find-lenses-tenancy-assets-hr_bim_asset-alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find lenses — Tenancy &amp; Assets (HR_BIM_Asset) (ALPHA)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1706,6 +1723,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Viewer Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#find-lenses-tenancy-assets-hr_bim_asset-alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find lenses — Tenancy &amp; Assets (HR_BIM_Asset) (ALPHA)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1978,6 +2012,27 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <li>IndexedDB cache — download once, instant on revisit</li>
 <li>City mode — 786 building bboxes, click to download + stream on demand</li>
 </ul>
+<p><a id="find-lenses-tenancy"></a></p>
+<h3 id="find-lenses-tenancy-assets-hr_bim_asset-alpha">Find lenses — Tenancy &amp; Assets (HR_BIM_Asset)  <em>(ALPHA)</em><a class="headerlink" href="#find-lenses-tenancy-assets-hr_bim_asset-alpha" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>⚠ DEMONSTRATOR — NOT OFFICIAL.</strong> Part of the <strong>HR_BIM_Asset</strong> operate-phase module; every output carries
+the <strong><code>CONTOH — TIDAK RASMI</code> / <code>SAMPLE — NOT OFFICIAL</code></strong> watermark. Demo values only.</p>
+</blockquote>
+<p>Two extra lenses sit on the viewer toolbar as flaticon toggles — <strong>Tenancy</strong> (a two-head <code>users</code> glyph) and
+<strong>IoT / Assets</strong> (a <code>cpu</code> chip). They are <strong>data-gated</strong>: an icon appears <strong>only when</strong> the loaded building
+actually carries that data (a lease bound to a real room, or an asset bound to a real element) — no data, no
+clutter.</p>
+<ul>
+<li><strong>Tenancy lens</strong> — colors each unit by lease status: <strong>occupied</strong> (green) · <strong>vacant</strong> (grey) · <strong>expiring</strong>
+  (amber). It lights <strong>only</strong> units whose lease binds to a <strong>real <code>IfcSpace</code> room guid</strong> in <em>this</em> building; a
+  non-matching guid is honestly left un-linked (never a faked tint). High level = <strong>population-density dots</strong> per
+  storey (keyed to the real <code>IfcBuildingStorey</code>); toggling a lens <strong>off</strong> restores the model fully (zero residue).</li>
+<li><strong>IoT / Assets lens</strong> — colors equipment by <strong>maintenance due</strong> (ok / due / overdue), each asset bound to a real
+  BIM element (<code>bim_guid</code>) and its IoT device — the seam for the <strong>7D</strong> operate cockpit.</li>
+</ul>
+<p>The money + contract side of a tenancy (lease as agreement, <strong>rent run → AR</strong>) lives in the
+<strong><a href="../ERPUserGuide/#hr-tenancy">Kernel-ERP guide → Tenancy</a></strong>.
+Spec: <code>prompts/RESUME_HR_BIM_ASSET.md</code> (§SPATIAL-VIEW, §BINDING).</p>
 <p><strong>Mobile-only (touch-optimised):</strong></p>
 <ul>
 <li>Site Camera — phone camera with GPS + compass + timestamp overlay</li>
@@ -2047,7 +2102,7 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <tbody>
 <tr>
 <td><a href="../ERPUserGuide/">Kernel-ERP User Guide</a></td>
-<td>iDempiere browser ERP — login → install → POS → reporting</td>
+<td>iDempiere browser ERP — login → install → POS → reporting · <a href="../ERPUserGuide/#hr-tenancy">Tenancy</a></td>
 </tr>
 <tr>
 <td><a href="../ModellerGuide/">DAGeVu Modeller Guide</a></td>

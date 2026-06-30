@@ -970,6 +970,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#tenancy-lease-the-actual-geometry-alpha-hr_bim_asset-demonstrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tenancy — lease the actual geometry (ALPHA — HR_BIM_Asset demonstrator)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#3-the-bottom-pill-bar-cheat-sheet" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2341,6 +2352,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#tenancy-lease-the-actual-geometry-alpha-hr_bim_asset-demonstrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tenancy — lease the actual geometry (ALPHA — HR_BIM_Asset demonstrator)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#3-the-bottom-pill-bar-cheat-sheet" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3353,6 +3375,58 @@ every record parses with <strong>zero unmapped links and zero dangling reference
 few days early on long chains because we count <strong>calendar days</strong> while P6 follows a <strong>working calendar</strong>
 (skipping weekends/holidays). We report that offset rather than hide it — it's a <strong>smaller, named gap</strong>
 than before, and modelling the working calendar is a clean follow-up for a later project.</p>
+<hr />
+<p><a id="hr-tenancy"></a></p>
+<h2 id="tenancy-lease-the-actual-geometry-alpha-hr_bim_asset-demonstrator">Tenancy — lease the actual geometry  <em>(ALPHA — HR_BIM_Asset demonstrator)</em><a class="headerlink" href="#tenancy-lease-the-actual-geometry-alpha-hr_bim_asset-demonstrator" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>⚠ DEMONSTRATOR, NOT OFFICIAL.</strong> Tenancy lives in the <strong>HR_BIM_Asset</strong> module (the building's <em>operate</em>
+phase). Every screen and generated output carries the <strong><code>CONTOH — TIDAK RASMI</code> / <code>SAMPLE — NOT OFFICIAL</code></strong>
+watermark. Demo values only; no statutory/contract figure is asserted.</p>
+</blockquote>
+<p>Most property tools treat a unit as a database row. Here a unit <strong>is</strong> a room in the model — so a lease binds
+to <strong>real geometry</strong>, and the ERP's money cycle runs against it. One lease threads <strong>three apps over one signed
+op-log</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>App</th>
+<th>Contributes</th>
+<th>On the kernel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Viewer</strong> (BIM)</td>
+<td>the <strong>WHERE</strong> — the unit lit on the model; the <strong>Tenancy lens</strong> colors units occupied / vacant / expiring (see the <a href="../BIMUserGuide/#find-lenses-tenancy">Viewer guide → Find lenses</a>)</td>
+<td><code>unit_guid</code> → a real <code>IfcSpace</code> room</td>
+</tr>
+<tr>
+<td><strong>ERP</strong> (this app)</td>
+<td>the <strong>DEAL + MONEY</strong> — the lease as an agreement, and the <strong>rent run → AR</strong></td>
+<td><code>C_BPartner</code> (tenant) · <code>C_Invoice (ARI)</code> → <code>C_Payment (ARR)</code> → allocation → GL</td>
+</tr>
+<tr>
+<td><strong>HR</strong></td>
+<td>the <strong>PEOPLE + ACCESS</strong> — tenant party, signed check-in / access to the leased zone</td>
+<td><code>C_BPartner</code> · signed <code>kernel_op</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rent run = the payroll engine inverted.</strong> HR_BIM_Asset has <strong>one</strong> generic periodic RUN —
+<code>(period × parties × element-rules) → signed lines → GL post</code> — and tenancy is just <strong>profile #2</strong>: a <code>RENTRUN</code>
+emits one rent invoice per <em>active</em> lease (cash <strong>IN</strong>, AR), where payroll emits payslips (cash <strong>OUT</strong>). Same
+deterministic, glass-box, tamper-evident engine; same balanced journal. The GL <strong>dotted line</strong> lights up only
+when this ERP is present — standalone, HR_BIM_Asset runs the full cycle on its own seed.</p>
+<p><strong>Non-invent binding.</strong> A demo lease references a <strong>real</strong> <code>IfcSpace</code> guid extracted from the building (e.g. an
+<code>≈ Level 1</code> room on the office demo). The join hits → the unit lights up; a non-matching guid is <strong>honestly shown
+un-linked</strong> — never a fabricated binding.</p>
+<p><strong>Witnessed (alpha, node):</strong> the rent run filters to in-term leases and posts a <strong>balanced AR journal</strong>
+(<code>§HBA P-tenancy-term</code>, <code>P-tenancy-gl</code>); <strong>one</strong> engine serves payroll · tenancy · strata · maintenance
+(<code>P-one-engine</code>). Spec: <strong><code>prompts/RESUME_HR_BIM_ASSET.md</code></strong> (§PILLAR-4, §CROSS-APP, §BINDING).</p>
+<blockquote>
+<p><strong>Siblings on the same engine:</strong> <em>strata</em> (charge owners — profile #4) and <em>asset maintenance</em> (profile #3,
+a derived 4D PM timeline off <code>next_due</code>/<code>pm_cycle</code>) — the building's <strong>7D operate cockpit</strong>.</p>
+</blockquote>
 <hr />
 <h2 id="3-the-bottom-pill-bar-cheat-sheet">3. The Bottom Pill Bar (cheat sheet)<a class="headerlink" href="#3-the-bottom-pill-bar-cheat-sheet" title="Permanent link">&para;</a></h2>
 <p>The pill is the single entry point for every tool. Left-to-right:</p>
