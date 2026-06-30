@@ -149,8 +149,15 @@ clutter.
   storey (keyed to the real `IfcBuildingStorey`); toggling a lens **off** restores the model fully (zero residue).
 - **IoT / Assets lens** — colors equipment by **maintenance due** (ok / due / overdue), each asset bound to a real
   BIM element (`bim_guid`) and its IoT device — the seam for the **7D** operate cockpit.
+- **Occupancy lens** — colors each room by **availability** at the current period: **occupied** (green) ·
+  **expiring** (amber) · **vacant** (grey) · **unavailable** (purple, a maintenance/renovation blackout). The
+  state is a *replay* of the room's signed booking log (`ASSIGN`/`RELEASE`/`UNAVAIL`), so it shows the **whole
+  floor** — a vacant room reads vacant from the *absence* of a booking, never a faked tenant. It models the room
+  as an iDempiere bookable **Resource** (`S_Resource`/`S_ResourceAssignment`); the pivot of that data drives the
+  occupancy **dashboard** (per-storey utilization · availability-over-time · ticket aging).
 
-The money + contract side of a tenancy (lease as agreement, **rent run → AR**) lives in the
+The money + contract side of a tenancy (lease as agreement, **rent run → AR**), the room-as-**Resource**
+occupancy/availability graph, the **Request/ticket** workflow, and the **dashboard** all live in the
 **[Kernel-ERP guide → Tenancy](ERPUserGuide.md#hr-tenancy)**.
 Spec: `prompts/RESUME_HR_BIM_ASSET.md` (§SPATIAL-VIEW, §BINDING).
 

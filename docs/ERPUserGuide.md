@@ -455,6 +455,37 @@ un-linked** — never a fabricated binding.
 > **Siblings on the same engine:** *strata* (charge owners — profile #4) and *asset maintenance* (profile #3,
 > a derived 4D PM timeline off `next_due`/`pm_cycle`) — the building's **7D operate cockpit**.
 
+### Occupancy & Availability — the room as a bookable Resource  *(ALPHA — HR_BIM_Asset demonstrator)*
+
+Rent answers *how much*; **occupancy answers *who* and *when-free*.** Here a room is modelled exactly as
+iDempiere does a bookable thing: a **`S_Resource`** (which **IS-A `M_Product`**), and a lease/booking is a
+**`S_ResourceAssignment`** over `AssignDateFrom→AssignDateTo`. The live availability is a **replay** of a signed
+op-log — `ASSIGN` / `RELEASE` (early move-out) / `UNAVAIL` (the `S_ResourceUnAvailable` blackout) — so each
+room resolves to **occupied · expiring · vacant · unavailable** at any period. **Non-invent:** a room only
+enters the graph through a real `IfcSpace` guid (a phantom room is REFUSED), and **vacancy is the *absence* of
+an assignment** — never a fabricated tenant. The demo populates **HHS Office across its 14 real rooms**.
+
+### Requests / Tickets — service on the same geometry  *(ALPHA)*
+
+A maintenance job or tenant issue is an **`R_Request`** whose **status is a signed FSM**
+(`OPEN→ASSIGN→START→RESOLVE→CLOSE`, with `REOPEN`; an illegal jump is REFUSED) and whose target is the **same
+room/asset guid**. That shared guid is the join: `byResource` lists every ticket on a unit, `aging` and
+`myWork` give the SLA and deskless-queue views, and a request **drives availability** — a `maintenance` ticket
+emits the `UNAVAIL` blackout, a `move-out` a `RELEASE`, a `move-in` an `ASSIGN` — closing the loop between the
+help-desk and the occupancy graph.
+
+### The occupancy dashboard — the pivot, rendered free
+
+`S_Resource`/`S_ResourceAssignment` pivots into an interesting display **for free**: the same replayed data
+becomes a **per-storey utilization** bar, a **room-availability-over-time** stacked bar, and an **open-ticket
+aging** doughnut (+ KPIs: rooms · avg utilization · open tickets). Every series is **read** from the logs (no
+invented numbers), rendered by the charting library already bundled in the viewer. Demo pane:
+`hr_bim_asset/demo/occupancy_dashboard.html`.
+
+**Witnessed (alpha, node):** occupancy availability + pivot (`W-HBA-OCC 21/21`), the request FSM + the
+Request↔occupancy effect (`W-HBA-REQ 15/15`), the dashboard config builders (`W-HBA-DASH 7/7`). See also the
+[Viewer guide → Find lenses](BIMUserGuide.md#find-lenses-tenancy) for the on-model Occupancy lens.
+
 ---
 
 ## 3. The Bottom Pill Bar (cheat sheet)
