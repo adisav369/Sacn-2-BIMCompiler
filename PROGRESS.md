@@ -4,6 +4,17 @@
 
 ## Current State
 
+**§3c ASSEMBLE render + first-class rule_connector — ✅ DONE+LIVE 2026-06-30** (bim-compiler `e74742ad`; bim-ootb
+**#578 MERGED, sw v21**, GH-Pages live). NEW `build/project_rule_connector.py` projects `disc_patterns.ad_assembly_connector`
+(+manifest) → `rule_connector` per `*_rules.db` (keyed (disc,ifc_class), DECISIVE-only, face/Ø/connects_to verbatim +
+standoff): terminal = SPRINKLER+LIGHT (2 rows), duplex = 0 (honest). Applied standalone (zero drift) + wired into both
+bake scripts. `disc_walker.connectorEnrich` falls back to `_loadConnectors(disc)` with no caller percept → the modeller
+enriches from the deployed DB alone (**W-RULE-CONNECTOR 4/4**: projected == caller path on 151 live SC sprinklers).
+Modeller `_renderDiscWalk` draws each fixture's FIXTURE→SERVICE hookup as a pale-cyan edge (§DW-CONNECT);
+`_renderDiscAssembly` instantiates catalog parts at routed nodes via the `_dwPrimGeo` seam (§DW-ASSEMBLE, honest-REFUSE
+when no network). Full disc-walker suite green; live-verified. **NEXT = roadmap #4** (wire `routeChains` into the modeller
+§8E-3 render + `__dwPixelProbe`). [[project_terminal_rule_mining]]
+
 **ELEC host-bind anti-float SPIKE — ✅ WITNESSED 2026-06-29** (bim-compiler `scripts/witness_elec_hostbind.js`,
 **W-ELEC-HOSTBIND 5/5**). Confirms the long-standing SH defect (ELEC outlets floating mid-room) is REAL and the
 host-bind assumption fixes it. Root: residential ELEC rules mined as `ref_kind='storey'` (density) → `place('ELEC',SH)`
