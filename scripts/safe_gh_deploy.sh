@@ -30,7 +30,7 @@ SHRINK_TOL="${SHRINK_TOL:-5}"
 # Canaries = pages that MUST exist post-deploy. Keep only real BIMCompiler doc pages here.
 # (RetailScaleStory + glassbowl removed 2026-06-20: they live on the bim-ootb site, not BIMCompiler —
 #  they were never in this repo's docs/ nor on gh-pages, so they cried a false 404 every deploy.)
-CANARIES="MigrateComparisonPaper DistributedERP HolyGrail ERP POS_WAN_SCALE_BENCH"
+CANARIES="USER_GUIDE BIMUserGuide ModellerGuide ERPUserGuide MigrateComparisonPaper DistributedERP HolyGrail"
 BASE_URL="${BASE_URL:-https://red1oon.github.io/BIMCompiler}"
 
 mkdir -p "$REPO/build"

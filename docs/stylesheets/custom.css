@@ -83,3 +83,32 @@
 [data-md-color-scheme="slate"] .md-typeset table:not([class]) tbody tr:nth-child(even) {
   background: #2e3b43;
 }
+
+/* ── Privacy callout: red lock — "your file never leaves your device" trust cue ── */
+:root {
+  --md-admonition-icon--privacy: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5m0 2a3 3 0 0 1 3 3v3H9V6a3 3 0 0 1 3-3z"/></svg>');
+}
+.md-typeset .admonition.privacy,
+.md-typeset details.privacy {
+  border-color: #d32f2f;
+  text-transform: uppercase;   /* DISCLAIMER style — whole box reads as a notice */
+  letter-spacing: 0.02em;
+  font-size: 0.8rem;           /* bump up from the tiny default admonition size */
+}
+.md-typeset .privacy > p {
+  line-height: 1.7;            /* breathing room so the all-caps stays legible */
+}
+.md-typeset .privacy > .admonition-title,
+.md-typeset .privacy > summary {
+  background-color: rgba(211, 47, 47, 0.12);
+  color: #d32f2f;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.md-typeset .privacy > .admonition-title::before,
+.md-typeset .privacy > summary::before {
+  background-color: #d32f2f;
+  -webkit-mask-image: var(--md-admonition-icon--privacy);
+          mask-image: var(--md-admonition-icon--privacy);
+}

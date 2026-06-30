@@ -1,4 +1,6 @@
 # DAGeVu Modeller — User Guide
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 > **Work in progress.** The DAGeVu modeller is an early, spine-proven authoring surface — this guide is
 > deliberately a short intro plus an index of the toolbar icons. Expect it to grow as the modeller does.

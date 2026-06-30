@@ -1,5 +1,8 @@
 # BIM Intent Compiler — Systems Installer Guide
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
+
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
+> **Foundation:** BBC · DATA_MODEL · BIM_COBOL · [MANIFESTO](MANIFESTO.md) · TestArchitecture
 
 !!! note "BIM OOTB now runs in the browser — you probably don't need this guide"
     The product is **browser-based**: open the [front door](https://red1oon.github.io/bim-ootb/), or
@@ -16,7 +19,7 @@
 
 **Audience:** Developers building the **Java** compiler + back-office from source (the browser app needs none of this).
 
-**For WAN/Docker deployment** of the back-office server, see [DEPLOYMENT.md](DEPLOYMENT.md).
+**For WAN/Docker deployment** of the back-office server, see DEPLOYMENT.md.
 
 ---
 
@@ -239,7 +242,7 @@ mvn exec:java -pl IFCtoBOM \
     -Dexec.args="--prefix XX --type BuildingType --name 'Name'" -q
 ```
 
-Then follow the 8-step process in **[IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md)** —
+Then follow the 8-step process in **IFC_ONBOARDING_RUNBOOK.md** —
 from IFC extraction through gate verification. Proven on 5 Rosetta Stone buildings.
 
 **Quick version** (if YAML + DSL already exist):
@@ -345,7 +348,7 @@ print(json.loads(response))
 
 **Protocol:** ndjson over TCP. One JSON object per line, newline-delimited.
 Server actions: `compile`, `createNew`, `verb`, `snap`, `save`, `recall`, `promote`.
-See [BIM_Designer_SRS.md](BIM_Designer_SRS.md) for the full wire protocol spec.
+See the wire protocol spec for the full wire protocol spec.
 
 ### 6.5 Putting It All Together
 
@@ -420,7 +423,7 @@ Checks SHA256 fingerprints of 68 critical files. If any have changed since the l
 
 ## 8. WAN Deployment (Docker)
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for full instructions. Quick summary:
+See DEPLOYMENT.md for full instructions. Quick summary:
 
 ```bash
 # Generate TLS certificates
@@ -687,6 +690,6 @@ sqlite3 ./library/ERP.db < migration/DV008_infra_rail_rules.sql
 
 *For the project overview paper, see [BIMERPPaper.md](BIMERPPaper.md).*
 *For the end-user installer specification, see [INSTALLER_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/INSTALLER_SPEC.md).*
-*For the WAN/Docker deployment guide, see [DEPLOYMENT.md](DEPLOYMENT.md).*
+*For the WAN/Docker deployment guide, see DEPLOYMENT.md.*
 
 *Copyright (c) 2025-2026 Redhuan D. Oon. MIT Licensed.*

@@ -1,4 +1,6 @@
 # BIM → Project Order — Blueprint
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 > **Status:** Tasks 0, A, C BUILT, witnessed & **LIVE** (browser-wired + deployed — bim-ootb PR #316:
 > `viewer/proj_fold.js?v=1` + `erp/bim_orders_overlay.js?v=1`; the `› ERP` button drives the fold).

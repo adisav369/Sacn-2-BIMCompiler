@@ -1,4 +1,6 @@
 # The ERP World View — Why Construction Is Manufacturing
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 > **Read this first.** Before any spec, any code, any schema. This is the lens
 > through which every design decision in this project makes sense.
@@ -12,14 +14,14 @@
 ## The Three Concerns
 
 iDempiere separates documents into header (C_Order) and lines (C_OrderLine),
-with its BOM spatiality validated against [Validation Rules](DocValidate.md).
+with its BOM spatiality validated against Validation Rules.
 We inherit the same separation:
 
 | Concern | iDempiere | BIM Compiler | Table |
 |---------|-----------|-------------|-------|
-| **WHAT** to build | Orders, Categories, Products | Which products, classified by [M_Product_Category](BOMBasedCompilation.md) + [AD_Org](DISC_VALIDATION_DB_SRS.md) | c_orderline |
-| **HOW** to validate | BOMs, AttributeSets, Validation | [Spatial rules propose, regulatory rules gate](DocValidate.md) — by discipline and jurisdiction | ad_val_rule |
-| **WHERE** it lands | Output.db for [4D–8D](ProjectOrderBlueprint.md) | Compiled placements + ASIs — the single source of truth downstream | output.db |
+| **WHAT** to build | Orders, Categories, Products | Which products, classified by M_Product_Category + AD_Org | c_orderline |
+| **HOW** to validate | BOMs, AttributeSets, Validation | Spatial rules propose, regulatory rules gate — by discipline and jurisdiction | ad_val_rule |
+| **WHERE** it lands | Output.db for 4D–8D | Compiled placements + ASIs — the single source of truth downstream | output.db |
 
 These three concerns are **never merged**. A change to WHAT (swap a product)
 does not require changes to HOW (rules are independent — swap jurisdiction
@@ -27,9 +29,9 @@ without touching products) or WHERE (compiled output recalculates automatically)
 ordering possible: override one concern, inherit the others.
 
 **The downstream payoff:** output.db with its ASIs (per-instance attributes) is
-what every downstream dimension reads — [4D scheduling](ProjectOrderBlueprint.md#51-4d-schedule-topological-sort-of-bom-tree),
-[5D cost](ProjectOrderBlueprint.md#52-5d-cost-inherent-in-the-data-model),
-[6D carbon](TIER1_SRS.md), [7D facility management](TIER1_SRS.md), and
+what every downstream dimension reads — 4D scheduling,
+5D cost,
+6D carbon, 7D facility management, and
 8D ERP integration. One compiled output, seven queries.
 
 ### WHAT: M_Product_Category (Classification) + AD_Org (Discipline)
@@ -352,21 +354,21 @@ Partners"). Here, the same table enforces building codes: sprinkler spacing
 >= 3000mm, emergency light within 6m of exit, fire door on every corridor.
 Jurisdiction-scoped — MY/UBBL rules fire for Malaysian buildings, US/IBC for
 American ones. Exactly like tax rules scoped by `C_Country`.
-→ [DocValidate.md](DocValidate.md) · [DocAction_SRS.md §5](DocAction_SRS.md)
+→ DocValidate.md · DocAction_SRS.md §5
 
 **Column Callout — Reactive field logic.**
 In iDempiere, a Callout fires when a user changes a field value (e.g., selecting
 a Business Partner auto-fills the address). Here, `DiffVerb + Callout` means:
 drag a wall in the viewport → cascading consequences fire (room AABB recalculates,
 furniture re-validates, MEP re-routes). Same pattern, spatial domain.
-→ [ProjectOrderBlueprint.md §9](ProjectOrderBlueprint.md)
+→ ProjectOrderBlueprint.md §9
 
 **ModelValidator — Event-driven hooks.**
 iDempiere's `ModelValidator` fires before/after save, before/after delete. Our
 `processIt()` orchestration follows the identical lifecycle: `prepareIt()` →
 `completeIt()` → `approveIt()`. Each discipline routes through DocEvent — the
 validation engine discovers applicable rules and fires them. No hardcoded logic.
-→ [DocAction_SRS.md §1](DocAction_SRS.md)
+→ DocAction_SRS.md §1
 
 **C_Project — Multi-order grouping.**
 Any ERP person recognises `C_Project` instantly: project accounting, milestone
@@ -374,7 +376,7 @@ tracking, cross-order budgets. Here, a housing development IS a C_Project.
 200 houses = 200 C_Orders under one C_Project. Site layout = C_ProjectLine
 per plot. The same entity that manages a manufacturing program manages a
 construction site.
-→ [ProjectOrderBlueprint.md §2](ProjectOrderBlueprint.md)
+→ ProjectOrderBlueprint.md §2
 
 **AD_Org — Discipline as organisational unit.**
 In iDempiere, `AD_Org` partitions data by business unit. Here, engineering
@@ -389,7 +391,7 @@ translations + per-country rate books: labels, currency, material rates, labour
 rates, equipment rates, rate source attribution — all in one file per locale.
 15 countries shipped. Same pattern: one master record (en_MY base), N locale
 overrides, deep-merged at runtime. Project-level override supported (copy locale
-file, edit rates for your contract). See → [Localization.md](Localization.md)
+file, edit rates for your contract). See → Localization.md
 
 The Terminal building (TE, 48,428 elements) exercises all active disciplines
 and proves the partitioning scales to commercial-institutional complexity:
@@ -427,7 +429,7 @@ and proves the partitioning scales to commercial-institutional complexity:
 - IDs 11-15 (ROAD, GEO, RAIL, LAND, SIGN) are IFC4X3 infrastructure
   disciplines — proven on 3 Rosetta Stones (BR, RD, RL).
 
-→ [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md) · [TerminalAnalysis.md](TerminalAnalysis.md)
+→ DISC_VALIDATION_DB_SRS.md · TerminalAnalysis.md
 
 **AD_ChangeLog — Full provenance and UNDO/REDO.**
 
@@ -464,14 +466,14 @@ The `bim_changelog` table lives in the per-building output database (output.db).
 `changelog` (query history) and `undoChanges` (revert N steps). Not yet
 integrated into BOM databases — the audit trail currently covers design
 edits in the viewport session.
-→ [TIER1_SRS.md §3](TIER1_SRS.md) · [ProjectOrderBlueprint.md §10](ProjectOrderBlueprint.md)
+→ TIER1_SRS.md §3 · ProjectOrderBlueprint.md §10
 
 **EntityType (D/U/A) — Dictionary vs User vs Application.**
 iDempiere protects shipped dictionary records from user modification. Our
 `X_M_BOM` enforces the same: Dictionary records (shipped BOM templates) are
 read-only. User records (verb-created BOMs) are fully mutable. GodMode
 bypass for migrations only. Three-tier protection at the ORM layer.
-→ [BBC.md §1](BOMBasedCompilation.md) · [AUDIT Appendix O.7](https://github.com/red1oon/BIMCompiler/blob/master/internal/AUDIT_S51_FOCUSED.md)
+→ BBC.md §1 · [AUDIT Appendix O.7](https://github.com/red1oon/BIMCompiler/blob/master/internal/AUDIT_S51_FOCUSED.md)
 
 **AD_PrintFormat — Output selection.**
 In iDempiere, `AD_PrintFormat` controls which columns appear on a printed
@@ -484,7 +486,7 @@ iDempiere's BOM Configurator lets a sales rep exclude optional components
 or set quantities at order time. Our exception-based ordering (qty=0 removes
 a subtree, reference class compresses N copies) is the identical pattern
 applied to buildings. 200 houses, 6 lines of exceptions each.
-→ [ProjectOrderBlueprint.md §1](ProjectOrderBlueprint.md)
+→ ProjectOrderBlueprint.md §1
 
 ---
 
@@ -504,12 +506,12 @@ of the original design that its scope never anticipated.
 a design question, we ask: *how does iDempiere handle this for manufacturing?*
 In our experience, these patterns often fit spatial problems directly:
 
-- **[Exception-based ordering](ProjectOrderBlueprint.md#1-exception-based-ordering-configure-to-order-for-buildings)** is iDempiere's Configure-to-Order. 200 houses, 6 lines of exceptions each — not 200 × 1099 elements. The BOM template is the product; the order is just the delta.
-- **[Two kinds of rules](DocValidate.md)** work in symbiosis: *spatial rules* mined from 35 real buildings tell the compiler where things go; *regulatory rules* (UBBL, NFPA 13, IBC) tell it what the law requires. Spatial proposes, regulatory validates — the Three Concerns in action.
-- **[4D scheduling](ProjectOrderBlueprint.md#51-4d-schedule-topological-sort-of-bom-tree)** is a topological sort of the BOM tree. Basic phase logic comes free from the BOM structure. Material logistics follow via M_InOut — iDempiere's goods receipt applied to construction deliveries.
-- **[5D cost](ProjectOrderBlueprint.md#52-5d-cost-inherent-in-the-data-model)** is inherent in the data model. Every M_Product has a price. The cost of a building is `SUM(price × qty)` — a query, not a feature.
-- **[Design themes](ProjectOrderBlueprint.md#1-exception-based-ordering-configure-to-order-for-buildings)** are C_Campaign — Bali, Scandinavian, Industrial. Marketing drives variant selection, orthogonal to product category and discipline.
-- **[Site developments](ProjectOrderBlueprint.md#2-c_project-site-as-bom)** are C_Project. 200 houses under one project, each a C_Order on a plot. The same entity that manages a manufacturing program manages a construction site.
+- **Exception-based ordering** is iDempiere's Configure-to-Order. 200 houses, 6 lines of exceptions each — not 200 × 1099 elements. The BOM template is the product; the order is just the delta.
+- **Two kinds of rules** work in symbiosis: *spatial rules* mined from 35 real buildings tell the compiler where things go; *regulatory rules* (UBBL, NFPA 13, IBC) tell it what the law requires. Spatial proposes, regulatory validates — the Three Concerns in action.
+- **4D scheduling** is a topological sort of the BOM tree. Basic phase logic comes free from the BOM structure. Material logistics follow via M_InOut — iDempiere's goods receipt applied to construction deliveries.
+- **5D cost** is inherent in the data model. Every M_Product has a price. The cost of a building is `SUM(price × qty)` — a query, not a feature.
+- **Design themes** are C_Campaign — Bali, Scandinavian, Industrial. Marketing drives variant selection, orthogonal to product category and discipline.
+- **Site developments** are C_Project. 200 houses under one project, each a C_Order on a plot. The same entity that manages a manufacturing program manages a construction site.
 
 **The test:** 21 real buildings compiled. 48,428 elements in the largest.
 9 verification gates. 116/157 PASS, 4 ALL GREEN. Browser viewer streams
@@ -532,7 +534,7 @@ is a display context that loads only what is asked for.
 Three.js, zero install. Imports IFC and 6 mesh formats (OBJ, STL, DAE, GLB,
 FBX, 3DS) via Drop Zone, classifies with a guided wizard, exports back to IFC.
 DB BLOBs stream directly to GPU — no glTF, no server, no conversion pipeline.
-See **[SQLite3D_Schema.md](SQLite3D_Schema.md)** for the full byte-level schema spec.
+See **SQLite3D_Schema.md** for the full byte-level schema spec.
 GPU instancing (InstancedMesh) and mobile geometry merge deliver 126K elements
 at 60fps on desktop and usable frame rates on phone hardware, from two static
 SQLite files. Commercial BIM viewers (APS, iTwin, Trimble Connect) require
@@ -647,12 +649,12 @@ downstream is reading receipts.
 
 After this manifesto:
 
-1. **[BBC.md](BOMBasedCompilation.md) §1** — the entity mapping table and technical detail
-2. **[DATA_MODEL.md](DATA_MODEL.md)** — schema, 4-DB architecture
-2a. **[SQLite3D_Schema.md](SQLite3D_Schema.md)** — browser viewer schema, BLOB encoding, instancing pipeline
-3. **[TestArchitecture.md](TestArchitecture.md)** — verification gates, tamper seal
-4. **[ProjectOrderBlueprint.md](ProjectOrderBlueprint.md)** — what's next (exception ordering, inheritance, C_Project)
-5. **[SourceCodeGuide.md](SourceCodeGuide.md)** — where the code is
+1. **BBC.md §1** — the entity mapping table and technical detail
+2. **DATA_MODEL.md** — schema, 4-DB architecture
+2a. **SQLite3D_Schema.md** — browser viewer schema, BLOB encoding, instancing pipeline
+3. **TestArchitecture.md** — verification gates, tamper seal
+4. **ProjectOrderBlueprint.md** — what's next (exception ordering, inheritance, C_Project)
+5. **SourceCodeGuide.md** — where the code is
 
 For the full academic treatment: **[BIMERPPaper.md](BIMERPPaper.md)**
 
@@ -715,7 +717,7 @@ The consequences of that question, taken seriously:
 
 **The browser proves the architecture is technology-agnostic.** The 2026 RouteWalker migration is the concrete demonstration: `RouteWalker.java` ran MEP pipe routing on a JVM, reading from iDempiere tables, writing to output.db. `routewalker.js` runs the same routing logic in a Web Worker, reading from `mep_rw.db` (SQLite sidecar), writing `RW2D-` prefixed elements into the building DB. Same data contract. Different runtime. The compiler is not a Java program — it is a data architecture.
 
-**The browser is a modelling computer, not a viewer.** The community's "BIM Jailbreak" aspiration treats the browser as a delivery mechanism for read-only geometry. This project treats it as the primary working environment. `measure.js` runs two-point distance measurement, area calculation, and full clash detection (R-tree spatial index, rule-driven from `clash_rules.json`) directly against the SQLite DB — no server, no plugin, no desktop app. The 2D grid overlay adds interactive section cuts, scissors-driven adaptive grids, and saved section planes. The compiler's rules — [BBC.md](BOMBasedCompilation.md) BOM placement verbs, [discipline validation](DISC_VALIDATION_DB_SRS.md) AD_Val_Rule sets — are not separate documents that an architect must consult separately. They are the logic the browser is executing against the same DB the user is editing. The modelling environment and the specification are the same thing.
+**The browser is a modelling computer, not a viewer.** The community's "BIM Jailbreak" aspiration treats the browser as a delivery mechanism for read-only geometry. This project treats it as the primary working environment. `measure.js` runs two-point distance measurement, area calculation, and full clash detection (R-tree spatial index, rule-driven from `clash_rules.json`) directly against the SQLite DB — no server, no plugin, no desktop app. The 2D grid overlay adds interactive section cuts, scissors-driven adaptive grids, and saved section planes. The compiler's rules — BBC.md BOM placement verbs, discipline validation AD_Val_Rule sets — are not separate documents that an architect must consult separately. They are the logic the browser is executing against the same DB the user is editing. The modelling environment and the specification are the same thing.
 
 **Sustainability through ERP heritage.** The osArch community's sustainability crisis is partly a problem of contributor scope: C++/Python BIM specialists are rare. iDempiere developers are not. The ERP pattern means the data layer is legible to any developer who has administered an iDempiere instance — without understanding IFC schema, Blender Python, or OpenCascade geometry kernels.
 
@@ -749,7 +751,7 @@ Then a working proof-of-concept proved otherwise.
 | `AD_Val_Rule` executes server-side | Same rules, same SQL, runs in a Web Worker thread |
 | `C_Project` groups orders | IndexedDB caches per-building DBs; `city_index.db` covers 786 buildings |
 | `AD_ChangeLog` for audit | `bim_changelog` table survives page reload, syncs on DB export |
-| `AD_ChangeLog` → transactional | [`kernel_ops` log](BIM_Modeller_OOTB.md#the-modelling-inversion) — every grid drag is a committed transaction, undo/redo/replay built in. [First proof: 2026-05-09](2D_LAYOUT.md#first-proof-of-kernel_ops-2026-05-09) |
+| `AD_ChangeLog` → transactional | [`kernel_ops` log](BIM_Modeller_OOTB.md#the-modelling-inversion) — every grid drag is a committed transaction, undo/redo/replay built in. First proof: 2026-05-09 |
 | `AD_PrintFormat` for output | Print sheet + `corporate.json`, browser-native canvas capture |
 
 ### What This Does NOT Change
@@ -777,7 +779,7 @@ This manifesto was never about backend technology. It was about data architectur
 
 The browser proved the architecture is technology-agnostic. The same patterns that work for manufacturing ERP work for browser-based BIM — because buildings are manufactured products, regardless of where the query runs.
 
-The next step is the spatial BOM editor: the [2D Layout specification](2D_LAYOUT.md) rebuilds the editing layer using grid overlays, not backend services. The ERP patterns are still there — they are just running in your browser tab.
+The next step is the spatial BOM editor: the 2D Layout specification rebuilds the editing layer using grid overlays, not backend services. The ERP patterns are still there — they are just running in your browser tab.
 
 ---
 

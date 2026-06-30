@@ -1,4 +1,6 @@
 # What Exists Today, What's Missing, and Where We Sit
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 <div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: #263238; border-left: 4px solid #ff9800; text-align: center; border-radius: 4px;">
 <span style="font-size: 1.3em; line-height: 1.7; color: #eceff1; letter-spacing: 0.3px;">We BIM living the <b style="color: #ff9800;">GAP</b> between<br><b style="color: #ff9800;">DESIGN</b> and our <b style="color: #ff9800;">SPREADSHEET</b></span>
@@ -68,7 +70,7 @@ that makes Tier 1 real.
 4. **Rosetta Stone** — Input vs Output across verification gates (counts, volumes, geometry
    hashes, spatial digests, GUID provenance, transforms, materials). **21 buildings from 9
    authoring tools; 116/157 gates PASS, 4 ALL GREEN; worst-case positional error 0.002 mm.**
-   See [`SPATIAL_COMPILATION_PAPER.md`](SPATIAL_COMPILATION_PAPER.md).
+   See `SPATIAL_COMPILATION_PAPER.md`.
 
 The hard problem was always the spatial compilation. Everything downstream — 4D, 5D, cost,
 ERP — is a projection of the same verified BOM.
@@ -192,7 +194,7 @@ round-trip fidelity — and **none connect BIM to a transaction ERP over one sig
    central database to overload — the exact failure mode that sank the national e-invoicing
    rollout.
 5. **Domain-agnostic pipeline.** Houses, terminals, bridges, rail (93% BOM compression) — one
-   pipeline, a YAML mapping per domain. See [`INFRA_DESIGNER_SRS.md`](INFRA_DESIGNER_SRS.md).
+   pipeline, a YAML mapping per domain. See `INFRA_DESIGNER_SRS.md`.
 6. **Op-log = git-for-data.** Every state is a deterministic, reversible fold of a signed log
    — what makes What-If branches, audit, and crash-replay fall out for free.
 
@@ -218,8 +220,8 @@ compilation — or a to-the-cent ERP fold — to a GUI-first tool takes years.
 ## Get involved
 
 The project is **open source (MIT)** and actively developed. Roadmap:
-[`ACTION_ROADMAP.md`](ACTION_ROADMAP.md). For the journey from the IfcOpenShell Federation
-branch (Oct 2025) to today, see [`PROJECT_CHRONOLOGY.md`](PROJECT_CHRONOLOGY.md).
+`ACTION_ROADMAP.md`. For the journey from the IfcOpenShell Federation
+branch (Oct 2025) to today, see `PROJECT_CHRONOLOGY.md`.
 
 If you work with IFC models, run an ERP you're afraid to migrate, or just want verified
 spatial compilation — try it, break it, tell us what's missing. Contributions welcome:
@@ -228,14 +230,14 @@ product catalogs, jurisdiction rules, format importers, test buildings.
 ---
 
 *Cross-references:*
-*[`SPATIAL_COMPILATION_PAPER.md`](SPATIAL_COMPILATION_PAPER.md) — academic paper (0.002 mm proof),*
+*`SPATIAL_COMPILATION_PAPER.md` — academic paper (0.002 mm proof),*
 *[`MigrateComparisonPaper.md`](MigrateComparisonPaper.md) — ERP fold, to the cent,*
-*[`BOMBasedCompilation.md`](BOMBasedCompilation.md) — compilation pipeline spec,*
-*[`DATA_MODEL.md`](DATA_MODEL.md) — 4-database schema,*
-*[`TestArchitecture.md`](TestArchitecture.md) — Rosetta Stone gates and traceability,*
+*`BOMBasedCompilation.md` — compilation pipeline spec,*
+*`DATA_MODEL.md` — 4-database schema,*
+*`TestArchitecture.md` — Rosetta Stone gates and traceability,*
 *[`ModellerKernelFold.md`](ModellerKernelFold.md) — modeller as signed-log fold,*
-*[`PROJECT_CHRONOLOGY.md`](PROJECT_CHRONOLOGY.md) — dated history + commit ledger,*
-*[`ACTION_ROADMAP.md`](ACTION_ROADMAP.md) — project roadmap*
+*`PROJECT_CHRONOLOGY.md` — dated history + commit ledger,*
+*`ACTION_ROADMAP.md` — project roadmap*
 
 ---
 

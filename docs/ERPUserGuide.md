@@ -1,4 +1,6 @@
 # Kernel-ERP — iDempiere-faithful Browser ERP — User Guide
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 *The browser kernel renders the full iDempiere Application Dictionary from SQLite — no Java, no server,
 no install. This guide walks from first load to POS sale to financial report.*
@@ -1088,6 +1090,6 @@ go live or **discard** to try again. Nothing provisional ever reaches the offici
 
 ---
 
-*For architecture details see [ERP.md](ERP.md). For the coverage evidence see
-[ERP_COVERAGE_MATRIX.md](ERP_COVERAGE_MATRIX.md). For the migration story see
+*For architecture details see ERP.md. For the coverage evidence see
+ERP_COVERAGE_MATRIX.md. For the migration story see
 [MigrateComparisonPaper.md](MigrateComparisonPaper.md).*

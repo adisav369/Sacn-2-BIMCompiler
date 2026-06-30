@@ -1,4 +1,6 @@
 # Prior-Art Record — Event-Sourced Geometry as a Fold over a Signed Operation Log
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 > **Defensive publication / authorship record.** First published **2026-06-18** by the BIM OOTB project
 > (red1oon). This page is a dated, public, enabling disclosure of the architecture described below so that

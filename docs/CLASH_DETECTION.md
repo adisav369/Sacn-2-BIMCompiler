@@ -1,6 +1,8 @@
 # Clash Detection — Browser-Native, Zero Install
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
 
-> **Foundation:** [BIM_Designer_Browser.md](BIM_Designer_Browser.md) | [SQLite3D_Schema.md](SQLite3D_Schema.md) | [ROADMAP.md](ROADMAP.md) | [BIM_COBOL.md](BIM_COBOL.md) (CHECK CLASH verbs)
+
+> **Foundation:** BIM_Designer_Browser.md | SQLite3D_Schema.md | ROADMAP.md | BIM_COBOL.md (CHECK CLASH verbs)
 
 <div class="bim-banner" markdown>
 <b>48,000 elements. 12 discipline-pair rules. One browser tab. Zero server.</b> Clash detection that runs entirely in the browser — SQL queries against a local SQLite database, bounding-box geometry rendered by the GPU, results in milliseconds. No Navisworks. No license. No desktop.
@@ -38,7 +40,7 @@ Every BIM coordination meeting plays the same scene: someone opens Navisworks, r
 
 ## 2. The Technology
 
-The same stack that powers the [BIM OOTB browser viewer](BIM_Designer_Browser.md) — **sql.js** (WASM SQLite with [R-tree extension](https://www.npmjs.com/package/rtree-sql.js)), **Three.js** (WebGL GPU rendering), and the **BLOB-to-GPU pipeline** where geometry goes straight from SQLite columns to the GPU with no intermediate file format. Full schema: [SQLite3D_Schema.md](SQLite3D_Schema.md).
+The same stack that powers the BIM OOTB browser viewer — **sql.js** (WASM SQLite with [R-tree extension](https://www.npmjs.com/package/rtree-sql.js)), **Three.js** (WebGL GPU rendering), and the **BLOB-to-GPU pipeline** where geometry goes straight from SQLite columns to the GPU with no intermediate file format. Full schema: SQLite3D_Schema.md.
 
 Clash detection adds one query pattern: cross-join `element_transforms` scoped by storey and discipline, with bounding-box overlap arithmetic in the `WHERE` clause. The R-tree spatial index (built async at load time) enables future features like smart grouping and heatmap — constant-bounds lookups in O(log N).
 
@@ -223,7 +225,7 @@ The key insight: **never cross-join the whole building**. Scope every query to a
 
 ## 7. Architecture
 
-Same architecture as the [BIM OOTB viewer](BIM_Designer_Browser.md) — one SQLite DB per building, WASM in the browser, BLOB geometry straight to GPU. Full schema: **[SQLite3D_Schema.md](SQLite3D_Schema.md)**. The DB file is the deployment artifact — upload it to any static hosting and it works. No server, no API, no conversion.
+Same architecture as the BIM OOTB viewer — one SQLite DB per building, WASM in the browser, BLOB geometry straight to GPU. Full schema: **SQLite3D_Schema.md**. The DB file is the deployment artifact — upload it to any static hosting and it works. No server, no API, no conversion.
 
 ---
 

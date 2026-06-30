@@ -1,4 +1,6 @@
 # Find & Navigate — Indoor Wayfinding Guide
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 Type "Find fire pump" in BIM OOTB. Walk to it from the front door.
 

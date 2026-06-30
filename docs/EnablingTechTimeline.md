@@ -1,4 +1,6 @@
 # Enabling-Technology Timeline — What Moved, When, and How It Affects Us
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 **Scope.** An academic, dated record of the browser/runtime technologies the BIM OOTB
 + Spatial ERP stack depends on (or deliberately does not). Each row is classified by

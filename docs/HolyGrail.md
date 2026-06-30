@@ -5,13 +5,15 @@
  */
 
 # The Holy Grail — Editable Business Rules, Live
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 > **See also:** the one-page evaluator companion — **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** (legacy ERP vs the WASM event-sourced browser); the *back-up-the-recipe* §below is linked from its backup figure.
 >
-> **For a retail owner:** the plain-English, animated one-pager — **[Two messages a day → books to the penny](../RetailScaleStory.html)** — proves the same engine at **10,000 tills** (benchmark `W-POS-WAN-SCALE`, runnable).
+> **For a retail owner:** the plain-English, animated one-pager — **[Two messages a day → books to the penny](RetailScaleStory.html)** — proves the same engine at **10,000 tills** (benchmark `W-POS-WAN-SCALE`, runnable).
 
 > *A first-person note from the author. The technical claims below are grounded in the
-> dated, witnessed sections of [ERP.md](ERP.md); this page is the reasoning that ties
+> dated, witnessed sections of ERP.md; this page is the reasoning that ties
 > them to a quest I have carried for a long time.*
 
 ## Who is writing this, and why it is personal
@@ -38,19 +40,19 @@ Not "an ERP in a browser." That is a means. The grail is one specific capability
 > reversibly, with no recompilation and no server.**
 
 In this project that is named directly: the *parked endgame* in
-[ERP.md "Why this is more than a port"](ERP.md) — *"let you **edit a rule and watch the
+ERP.md "Why this is more than a port" — *"let you **edit a rule and watch the
 affected records flip on that map** (the diff-oracle in the browser, §2d-3)"* — and in
-[GLASSBOWL_DOSSIER.md](GLASSBOWL_DOSSIER.md) as *the final big picture*: Glassbowl stops
+GLASSBOWL_DOSSIER.md as *the final big picture*: Glassbowl stops
 being a map of the engine and becomes **the console you run the engine from**.
 
 It is earmarked precisely, not vaguely:
 
 | Earmark | What it fixes |
 |---|---|
-| **[ERP.md §0.4](ERP.md)** — *Editable business rules, the SystemAdmin role* | names this as **the differentiator**, not a feature |
-| **[ERP.md §0.5](ERP.md)** — *the rules engine = a per-cell decision table* | the shape: a table per `(DocType, status, action)` cell — **not** Rete / DSL / inference |
-| **[ERP.md §0.9](ERP.md)** — *the rule mechanism, JSR-223-native* | the host language **is** JavaScript, so the rule language = the runtime language; the scripting-engine abstraction is *unnecessary* |
-| **[ERP.md §0.10](ERP.md)** — *the Rule Compiler* | the rules are already extracted to data: `erp_rules.db`, **746 records**, diff-verified |
+| **ERP.md §0.4** — *Editable business rules, the SystemAdmin role* | names this as **the differentiator**, not a feature |
+| **ERP.md §0.5** — *the rules engine = a per-cell decision table* | the shape: a table per `(DocType, status, action)` cell — **not** Rete / DSL / inference |
+| **ERP.md §0.9** — *the rule mechanism, JSR-223-native* | the host language **is** JavaScript, so the rule language = the runtime language; the scripting-engine abstraction is *unnecessary* |
+| **ERP.md §0.10** — *the Rule Compiler* | the rules are already extracted to data: `erp_rules.db`, **746 records**, diff-verified |
 | **ERP.md §2d-3 / GLASSBOWL_DOSSIER.md** | the live edit-and-reflow loop — the grail itself |
 
 ## Why two years of extracting `PO.java` was the wrong target
@@ -69,7 +71,7 @@ The paradigm shift is not "do the extraction better in a PWA." It is to **stop
 extracting the engine, and extract what the engine operates on**:
 
 - The Application Dictionary rows and the rule records were **already data** —
-  `AD_Rule`, `AD_Val_Rule`. That is iDempiere's own design ([ERP.md §0.9](ERP.md)); half
+  `AD_Rule`, `AD_Val_Rule`. That is iDempiere's own design (ERP.md §0.9); half
   the "rules engine" already exists as data. We *compile* it, we do not reinvent it.
 - The *remainder* — the deterministic part that actually runs a document — is small.
   Re-hosted as a **~150-line kernel** in the browser's native JavaScript, `PO.java`'s job
@@ -112,10 +114,10 @@ which is exactly why this remained a quest rather than a checkbox:
 1. **The engine is data.** A rule is a *row you read*, not Java you recompile.
 2. **The host language is the rule language.** Browser JavaScript *is* the runtime, so
    editing a rule is editing the running system — no JSR-223, no Drools workbench, no
-   scripting bridge ([ERP.md §0.9](ERP.md)).
+   scripting bridge (ERP.md §0.9).
 3. **The op-log makes editing safe.** Change-as-op, replay, dry-run, undo — *the safety
-   Drools never had* ([ERP.md §0.4](ERP.md)). You can edit a rule and **not corrupt
-   history**, because effects are frozen and replayable ([ERP.md §0.18](ERP.md)).
+   Drools never had* (ERP.md §0.4). You can edit a rule and **not corrupt
+   history**, because effects are frozen and replayable (ERP.md §0.18).
 
 iDempiere has condition (1) only half-done and lacks (2) and (3): its rules are
 half-data, half-welded into `M*` Java side effects, so they can never be made *fully*
@@ -126,7 +128,7 @@ the bloat this project removed.
 
 > **How *every* ERP's logic enters** (the generalize / decision-data / caged-plugin question, and why a
 > Drools-*like* affordance is kept but the Drools *engine* is not) → the six-layer **logic-admission model** in
-> [IDEMPIERE_2.md](IDEMPIERE_2.md#the-logic-admission-model--how-all-of-odooerpnextsap-logic-enters). The grail is
+> IDEMPIERE_2.md. The grail is
 > that model's L1/L2/L5 made *live*.
 
 ## The honest status — half-claimed, one mile left
@@ -134,7 +136,7 @@ the bloat this project removed.
 I will not overclaim my own grail. It is **half-reached, and witnessed that far:**
 
 - **Reached:** the rules are extracted to data — `erp_rules.db`, **746 records**,
-  **diff-verified** against the GardenWorld oracle ([ERP.md §0.10, §0.17](ERP.md)).
+  **diff-verified** against the GardenWorld oracle (ERP.md §0.10, §0.17).
   The engine renders *itself* from that data (Glassbowl), read-only.
 - **Remaining:** the **live edit loop** — *edit the rule → records reflow on the map* —
   is the write-loop, gated behind T3 (`push=live`, explicit go). The read-only History
@@ -204,9 +206,9 @@ edit is now demonstrated.
 
 ## Abstracting the DocAction corpus — and why it is the migration solvent
 
-> **How much of the corpus is folded today → [ERP Coverage Matrix](ERP_COVERAGE_MATRIX.md):** of the 14 DocActions × 52 C_DocTypes, the engine interprets **only `CO`** (Complete) — the other 13 actions and the per-doctype FSM are a ⛔ gap. The de-interleaved transition table is also the storage opcode table (`poc_oc_bytes.js` `§OPCODE-TABLE`).
+> **How much of the corpus is folded today → ERP Coverage Matrix:** of the 14 DocActions × 52 C_DocTypes, the engine interprets **only `CO`** (Complete) — the other 13 actions and the per-doctype FSM are a ⛔ gap. The de-interleaved transition table is also the storage opcode table (`poc_oc_bytes.js` `§OPCODE-TABLE`).
 >
-> **2026-06-11 — the recipe runs LIVE at a point of sale:** the POS addon ([POS_ADDON_SPEC](POS_ADDON_SPEC.md))
+> **2026-06-11 — the recipe runs LIVE at a point of sale:** the POS addon (POS_ADDON_SPEC)
 > dispatches the `WR` (on-the-fly shipment+invoice) DocAction recipe as ONE signed op group on `idempiere.html` —
 > order→CO + ship + invoice + BOM backflush + replenishment fold, all existing verbs (W-POS-WR: replay-equal to
 > the engine's own specs; tamper breaks `verifyChain`; the invoice posting == real `fact_acct(318)` to the cent).
@@ -482,7 +484,7 @@ thing a code-engine structurally cannot give you — a rule you edit while it ru
 
 ---
 
-*Grounding: [ERP.md](ERP.md) §0.4 · §0.5 · §0.9 · §0.10 · §0.17 · §0.18 · §2d-3 ·
-[GLASSBOWL_DOSSIER.md](GLASSBOWL_DOSSIER.md) · the §20 prototype addendum. Every claim of
+*Grounding: ERP.md §0.4 · §0.5 · §0.9 · §0.10 · §0.17 · §0.18 · §2d-3 ·
+GLASSBOWL_DOSSIER.md · the §20 prototype addendum. Every claim of
 extraction here is witnessed in a dated log; nothing on this page is asserted that the
 source data does not support.*

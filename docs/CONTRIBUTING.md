@@ -2,6 +2,8 @@
 description: Contribute to BIM OOTB — start with a rate template, a test building, a product catalog, a translation, or a format importer. Most contributions need no kernel knowledge and land in an afternoon.
 ---
 # Contribute — start here
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 This project is **open source (MIT)** and built to be pushed forward by a crowd, not one
 person. The fastest way in is **data and content** — most of it needs no knowledge of the
@@ -58,6 +60,6 @@ That's it. No CLA, no ceremony. Small, sourced, witnessed.
 
 For where the project is and where it's going, see
 [`StrategicIndustryPositioning.md`](StrategicIndustryPositioning.md) (what's landed vs the
-frontier) and [`PROJECT_CHRONOLOGY.md`](PROJECT_CHRONOLOGY.md) (how it got here).
+frontier) and `PROJECT_CHRONOLOGY.md` (how it got here).
 
 *Copyright (c) 2025–2026 Redhuan D. Oon. MIT Licensed.*

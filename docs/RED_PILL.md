@@ -1,12 +1,14 @@
 # Red Pill — Design Buildings From Grammar, Not From Scratch
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 > **The Red Pill:** You never start from a blank canvas. You start from a building you trust,
 > extract its grammar, and design by interrupting its replay.
 
 **Status:** Active development (S266–S270+)
 **Entry point:** Tap the Red Pill (capsule icon) in the viewer's icon pill
-**Supersedes:** [BIM_Designer_Browser.md](BIM_Designer_Browser.md) (viewer layer — still the foundation)
-**Full spec:** [NEW_FROM_REFERENCE.md](NEW_FROM_REFERENCE.md) (1800-line technical spec)
+**Supersedes:** BIM_Designer_Browser.md (viewer layer — still the foundation)
+**Full spec:** NEW_FROM_REFERENCE.md (1800-line technical spec)
 
 ---
 
@@ -581,10 +583,10 @@ All tests are whitebox: §-tagged `console.log()` lines prove values, counts, an
 
 | Doc | What It Provides |
 |---|---|
-| [BOMBasedCompilation.md](BOMBasedCompilation.md) | The recipe model — BOM hierarchy, tack offsets, verb formulas |
-| [TestArchitecture.md](TestArchitecture.md) | 9 verification gates, traceability matrix |
-| [SQLite3D_Schema.md](SQLite3D_Schema.md) | DB schema — `elements_meta`, `element_transforms` |
+| BOMBasedCompilation.md | The recipe model — BOM hierarchy, tack offsets, verb formulas |
+| TestArchitecture.md | 9 verification gates, traceability matrix |
+| SQLite3D_Schema.md | DB schema — `elements_meta`, `element_transforms` |
 | [CLASH_DETECTION.md](CLASH_DETECTION.md) | Clash rules, R-tree spatial indexing |
-| [BIM_Designer_Browser.md](BIM_Designer_Browser.md) | Viewer layer — the foundation Red Pill builds on |
-| [SPATIAL_COMPILATION_PAPER.md](SPATIAL_COMPILATION_PAPER.md) | Theoretical proof — BOM ↔ protein folding analogy |
-| [NEW_FROM_REFERENCE.md](NEW_FROM_REFERENCE.md) | Full 1800-line technical spec (all the details) |
+| BIM_Designer_Browser.md | Viewer layer — the foundation Red Pill builds on |
+| SPATIAL_COMPILATION_PAPER.md | Theoretical proof — BOM ↔ protein folding analogy |
+| NEW_FROM_REFERENCE.md | Full 1800-line technical spec (all the details) |

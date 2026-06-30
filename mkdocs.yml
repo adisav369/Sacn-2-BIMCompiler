@@ -31,6 +31,12 @@ theme:
 
 docs_dir: docs
 
+# Kept in the repo, OFF the public site: Java-era + stale specs (archive/) and
+# current-but-too-technical dev docs (internal/). Excluded from the gh.io build.
+exclude_docs: |
+  internal/
+  archive/
+
 markdown_extensions:
   - tables
   - footnotes
@@ -67,99 +73,41 @@ extra:
       link: https://www.linkedin.com/in/red1oon/
 
 nav:
-  # ─── Newbie + nerd: the few links that matter first ────
   - Start Here:
       - Home: index.md
-      - User Guide: USER_GUIDE.md
+      - "📖 User Guide": USER_GUIDE.md
+      - About BIM OOTB: AboutMore.md
       - Feature Comparison: FeatureComparison.md
       - "Migrate & Compare (ERP)": MigrateComparisonPaper.md
       - "Benchmark Comparison (live)": bench_suite.html
       - "Does Your ERP Age? (live)": age_demo.html
-      - About BIM OOTB: AboutMore.md
       - The ERP World View: MANIFESTO.md
-      - "Contribute (start here)": CONTRIBUTING.md
+      - Contribute: CONTRIBUTING.md
 
-  # ─── The three apps you actually open ─────────────────
   - The 3 Apps:
-      - Getting Started: WorkOrderGuide.md
       - "BIM Viewer Guide": BIMUserGuide.md
       - "DAGeVu Modeller Guide": ModellerGuide.md
       - "Kernel-ERP User Guide": ERPUserGuide.md
 
-  # ─── For the nerds: the headline ideas ────────────────
   - Go Deeper:
       - "Fold Engine Black Book (dev manual)": FoldEngineBlackBook.html
       - "The Holy Grail (editable rules, live)": HolyGrail.md
       - "Cross-ERP Rosetta Stone (concept + cost)": ERPConceptRosetta.html
-      - "BIM COBOL (77 Verbs)": BIM_COBOL.md
-      - "Prior Art — Geometry as Signed-Log Fold": ModellerKernelFold.md
+      - "BIM Modeller OOTB": BIM_Modeller_OOTB.md
+      - "Spatial ERP — Every Record Has a Place": SpatialERP_OOTB.md
+      - "Distributed ERP": DistributedERP.md
+      - "Red Pill — Design From Grammar": RED_PILL.md
+      - "Clash Detection": CLASH_DETECTION.md
       - "4D/5D Analysis": 4D5DAnalysis.md
       - "BIM → Project Order (ERP)": BIMtoProject.md
+      - "Geometry as a Signed-Log Fold": ModellerKernelFold.md
+
+  - Papers & Positioning:
+      - "Construction Economy / ERP Wave": BIMERPPaper.md
+      - "Enterprise Authentication (security)": EnterpriseAuthentication.md
       - "Strategic Positioning": StrategicIndustryPositioning.md
+      - "Local-First Prior Art": LocalFirstPriorArt.md
+      - "Enabling-Tech Timeline": EnablingTechTimeline.md
       - "Beyond Buildings": ShipYard.md
-
-  # ─── Proven buildings ─────────────────────────────────
-  - Buildings:
-      - Sample House (SH): SampleHouseAnalysis.md
-      - FZK Haus (FK): FZKHausAnalysis.md
-      - Duplex (DX): DuplexAnalysis.md
-      - AC Institute (IN): ACInstituteAnalysis.md
-      - Terminal (TE): TerminalAnalysis.md
-      - Hospital (HA): HospitalAnalysis.md
-      - Revit MEP (RM): RevitAnalysis.md
-      - Infrastructure: InfrastructureAnalysis.md
-      - DemoHouse (DM): DemoHouseAnalysis.md
-      - LTU A-House: LTUAHouseAnalysis.md
-      - 1M Stress Test: StressTest_1M.md
-
-  # ─── Everything else — the long tail, tucked away ─────
-  - Reference:
-      - Specs:
-          - BOM Compilation: BOMBasedCompilation.md
-          - Data Model: DATA_MODEL.md
-          - Rosetta Stones: TheRosettaStoneStrategy.md
-          - "ACDOCA Fold Plan (SAP headline)": ACDOCA_FOLD_PLAN.md
-          - "Fold-Engine Code Quality": FoldEngineQuality.md
-          - "Fold-Engine Constraints": FoldEngineConstraints.md
-      - Spatial ERP:
-          - "Every Record Has a Place": SpatialERP_OOTB.md
-          - "Construction ERP POC": SpatialERP_POC.md
-          - "AD-in-Browser (iDempiere)": ERP.md
-          - "iDempiere 2.0 — the Model": IDEMPIERE_2.md
-          - "Plugin Architecture (metadata-first)": PLUGIN_ARCHITECTURE.md
-          - "Engine ↔ UI Contract (the seam)": ENGINE_CONTRACT.md
-          - "ReadMe / ShowMe Help (POC)": ReadMeShowMe.md
-          - "O2C Help Steps (ReadMe)": HelpO2C.md
-          - "ERP Forward Roadmap": ERP_Roadmap.md
-      - Roadmap & Papers:
-          - "Project Chronology (dates + commits)": PROJECT_CHRONOLOGY.md
-          - BIM OOTB Roadmap: ROADMAP.md
-          - Action Roadmap: ACTION_ROADMAP.md
-          - Project Blueprint: ProjectOrderBlueprint.md
-          - Vibe Programming: VibeProgramming.md
-          - BIM-ERP Paper: BIMERPPaper.md
-          - "Op-Log ERP Engine (Abstract)": OpLogERP.md
-          - Spatial Compilation Paper: SPATIAL_COMPILATION_PAPER.md
-          - Enabling-Tech Timeline: EnablingTechTimeline.md
-          - Local-First Prior Art: LocalFirstPriorArt.md
-          - Distributed ERP (Contention Map): DistributedERP.md
-          - "Production Risks & Test Plan": ProductionRisks.md
-          - "ERP Coverage Matrix": ERP_COVERAGE_MATRIX.md
-          - "Gap-Closure Spec": GapClosureSpec.md
-          - "ERP Model Archetype": ERP_MODEL_ARCHETYPE.md
-          - "POS Addon Spec": POS_ADDON_SPEC.md
-          - "Spatial Picking Spec": SPATIAL_PICKING_SPEC.md
-          - "Depreciation Perf": DepreciationPerf.md
-      - Last Mile:
-          - The Drift: LAST_MILE_PROBLEM.md
-          - 9 Gates: TestArchitecture.md
-          - BIMEyes: EYES_SRS.md
-          - Calibration: CALIBRATION_SRS.md
-      - More Guides:
-          - Find and Navigate: RouteTemplate.md
-          - City-Scale RTree: RTreeGuide.md
-          - IFC Onboarding: IFC_ONBOARDING_RUNBOOK.md
-          - Systems Installer: SYSTEMS_INSTALLER_GUIDE.md
-          - Localization: Localization.md
-          - Logging: BIMLogger.md
-          - Doc Index: INDEX.md
+      - "Find & Navigate (wayfinding)": RouteTemplate.md
+      - "Self-Host (DIY installer)": SYSTEMS_INSTALLER_GUIDE.md

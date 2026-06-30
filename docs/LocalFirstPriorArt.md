@@ -1,4 +1,6 @@
 # Local-First Prior Art — How Others Did It, Their Weaknesses, Our Workarounds
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 **Scope.** Research companion to `ERP.md §0.20` (secured/durable next phase). For each production
 local-first system: *how it works*, *its documented weakness*, and *the workaround our architecture
@@ -177,7 +179,7 @@ SQLite-WASM**, and what does it cost? The canonical production example is **Noti
   canonical source of truth** (logical replication + WAL → the browser SQLite is a disposable **projection**).
   ([Notion blog](https://www.notion.com/blog/how-we-sped-up-notion-in-the-browser-with-wasm-sqlite),
   [HN](https://news.ycombinator.com/item?id=40949489)) — this validates [DistributedERP](DistributedERP.md)'s
-  *"the operator's install is the system of record; the browser is a projection"* ([ENGINE_FULL_ERP_ISSUES.md](../prompts/ENGINE_FULL_ERP_ISSUES.md) §I-A).
+  *"the operator's install is the system of record; the browser is a projection"* (`ENGINE_FULL_ERP_ISSUES.md` §I-A).
   Notion chose **server-of-record + local projection**, NOT local-first-authoritative.
 
 The hard constraints (each maps to one of our engine issues):

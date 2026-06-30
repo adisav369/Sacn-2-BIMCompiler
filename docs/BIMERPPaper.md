@@ -1,4 +1,6 @@
 # The Construction Economy Is About To Get Hit By an ERP Expert
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 > **ERP architecture companion:** **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** — the one-page legacy-vs-WASM-event-source comparison.
 
