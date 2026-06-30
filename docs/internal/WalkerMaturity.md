@@ -31,6 +31,7 @@ count-exact + L4 rendered"; it cannot reach L2/L3 *as fidelity* because there is
 | **STR** | WALK-BACK (girders) | **L3** | LANDED | W-WALKBACK-STR 5/5, W-CONFIDENCE-CALIBRATED, W-GUARD-ROTATED 5/5 | precision=don't-fabricate gate; calibrated conf ECE 0.034; rotate-degrades guard holds |
 | **any** | ASSEMBLE (parts at nodes) | **L2** | LANDED | W-ASSEMBLE 10/10, W-ASSEMBLE-CONNECT 6/6, W-RULE-CONNECTOR 4/4 | Duplex-MEP: 661 parts, posDrift 0m, Ø re-measured; self/landed (no held-out assemble) |
 | **PLB curve** | ROUTE generalization | **L3** | HELD-OUT | W-GENERALIZE-CURVE 7/7 | LTU 0.839 > WBDG_Office 0.749 > Clinic 0.705 > HHS_Office 0.620 @0.15m (graceful decay) |
+| **ELEC** | SEED-TRUNK (entry→trunk) | **L1** | GENERATED+seed | **W-SEED-TRUNK 6/6** | human assigns a real entry IfcDoor → trunk (MST) rooted there over the host-bound fixtures; seed drives entry+branching (T5); count preserved |
 | **SAN / HEAT** | ROUTE | **L0** | — | — | LTU carries SAN 12k / HEAT 22k — never walked (no mined rule rows yet) |
 
 ## The two structural gaps the matrix exposes (the honest L0/L2 ceilings)
@@ -50,3 +51,9 @@ count-exact + L4 rendered"; it cannot reach L2/L3 *as fidelity* because there is
 - **SAN/HEAT L0→L1:** LTU carries them richly → mine SAN/HEAT routing rows + walk-back (LTU is the ready oracle).
 - **Placement L2→L3:** needs a building with named devices on hosts, never mined — the substrate block (a NEW building,
   not more engine).
+- **SEED-TRUNK L1→L2→L3 (the human-in-the-loop seed, user idea 2026-06-30):** `W-SEED-TRUNK` proved the mechanism — an
+  engineer assigns a REAL entry element (SampleHouse front `IfcDoor`), the code roots a trunk there over the host-bound
+  fixtures, and a different seed reshapes the whole trunk (verified, not assumed). The trunk is a straight-line MST today
+  (GENERATED/plausible). NEXT: (1) corridor-aware route (through circulation, not through walls) — turns plausible into
+  engineer-grade; (2) wire the seed as an engine entry-point + modeller click (production UX); (3) a held-out check.
+  This is the one placement lever the matrix says we CAN buy with engine, because the seed makes the START non-invent.
