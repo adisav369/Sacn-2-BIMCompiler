@@ -978,6 +978,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Tenancy — lease the actual geometry (ALPHA — HR_BIM_Asset demonstrator)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#occupancy-availability-the-room-as-a-bookable-resource-alpha-hr_bim_asset-demonstrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Occupancy &amp; Availability — the room as a bookable Resource (ALPHA — HR_BIM_Asset demonstrator)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requests-tickets-service-on-the-same-geometry-alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requests / Tickets — service on the same geometry (ALPHA)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-occupancy-dashboard-the-pivot-rendered-free" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The occupancy dashboard — the pivot, rendered free
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2360,6 +2399,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Tenancy — lease the actual geometry (ALPHA — HR_BIM_Asset demonstrator)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#occupancy-availability-the-room-as-a-bookable-resource-alpha-hr_bim_asset-demonstrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Occupancy &amp; Availability — the room as a bookable Resource (ALPHA — HR_BIM_Asset demonstrator)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requests-tickets-service-on-the-same-geometry-alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requests / Tickets — service on the same geometry (ALPHA)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-occupancy-dashboard-the-pivot-rendered-free" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The occupancy dashboard — the pivot, rendered free
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3427,6 +3505,30 @@ un-linked</strong> — never a fabricated binding.</p>
 <p><strong>Siblings on the same engine:</strong> <em>strata</em> (charge owners — profile #4) and <em>asset maintenance</em> (profile #3,
 a derived 4D PM timeline off <code>next_due</code>/<code>pm_cycle</code>) — the building's <strong>7D operate cockpit</strong>.</p>
 </blockquote>
+<h3 id="occupancy-availability-the-room-as-a-bookable-resource-alpha-hr_bim_asset-demonstrator">Occupancy &amp; Availability — the room as a bookable Resource  <em>(ALPHA — HR_BIM_Asset demonstrator)</em><a class="headerlink" href="#occupancy-availability-the-room-as-a-bookable-resource-alpha-hr_bim_asset-demonstrator" title="Permanent link">&para;</a></h3>
+<p>Rent answers <em>how much</em>; <strong>occupancy answers <em>who</em> and <em>when-free</em>.</strong> Here a room is modelled exactly as
+iDempiere does a bookable thing: a <strong><code>S_Resource</code></strong> (which <strong>IS-A <code>M_Product</code></strong>), and a lease/booking is a
+<strong><code>S_ResourceAssignment</code></strong> over <code>AssignDateFrom→AssignDateTo</code>. The live availability is a <strong>replay</strong> of a signed
+op-log — <code>ASSIGN</code> / <code>RELEASE</code> (early move-out) / <code>UNAVAIL</code> (the <code>S_ResourceUnAvailable</code> blackout) — so each
+room resolves to <strong>occupied · expiring · vacant · unavailable</strong> at any period. <strong>Non-invent:</strong> a room only
+enters the graph through a real <code>IfcSpace</code> guid (a phantom room is REFUSED), and <strong>vacancy is the <em>absence</em> of
+an assignment</strong> — never a fabricated tenant. The demo populates <strong>HHS Office across its 14 real rooms</strong>.</p>
+<h3 id="requests-tickets-service-on-the-same-geometry-alpha">Requests / Tickets — service on the same geometry  <em>(ALPHA)</em><a class="headerlink" href="#requests-tickets-service-on-the-same-geometry-alpha" title="Permanent link">&para;</a></h3>
+<p>A maintenance job or tenant issue is an <strong><code>R_Request</code></strong> whose <strong>status is a signed FSM</strong>
+(<code>OPEN→ASSIGN→START→RESOLVE→CLOSE</code>, with <code>REOPEN</code>; an illegal jump is REFUSED) and whose target is the <strong>same
+room/asset guid</strong>. That shared guid is the join: <code>byResource</code> lists every ticket on a unit, <code>aging</code> and
+<code>myWork</code> give the SLA and deskless-queue views, and a request <strong>drives availability</strong> — a <code>maintenance</code> ticket
+emits the <code>UNAVAIL</code> blackout, a <code>move-out</code> a <code>RELEASE</code>, a <code>move-in</code> an <code>ASSIGN</code> — closing the loop between the
+help-desk and the occupancy graph.</p>
+<h3 id="the-occupancy-dashboard-the-pivot-rendered-free">The occupancy dashboard — the pivot, rendered free<a class="headerlink" href="#the-occupancy-dashboard-the-pivot-rendered-free" title="Permanent link">&para;</a></h3>
+<p><code>S_Resource</code>/<code>S_ResourceAssignment</code> pivots into an interesting display <strong>for free</strong>: the same replayed data
+becomes a <strong>per-storey utilization</strong> bar, a <strong>room-availability-over-time</strong> stacked bar, and an <strong>open-ticket
+aging</strong> doughnut (+ KPIs: rooms · avg utilization · open tickets). Every series is <strong>read</strong> from the logs (no
+invented numbers), rendered by the charting library already bundled in the viewer. Demo pane:
+<code>hr_bim_asset/demo/occupancy_dashboard.html</code>.</p>
+<p><strong>Witnessed (alpha, node):</strong> occupancy availability + pivot (<code>W-HBA-OCC 21/21</code>), the request FSM + the
+Request↔occupancy effect (<code>W-HBA-REQ 15/15</code>), the dashboard config builders (<code>W-HBA-DASH 7/7</code>). See also the
+<a href="../BIMUserGuide/#find-lenses-tenancy">Viewer guide → Find lenses</a> for the on-model Occupancy lens.</p>
 <hr />
 <h2 id="3-the-bottom-pill-bar-cheat-sheet">3. The Bottom Pill Bar (cheat sheet)<a class="headerlink" href="#3-the-bottom-pill-bar-cheat-sheet" title="Permanent link">&para;</a></h2>
 <p>The pill is the single entry point for every tool. Left-to-right:</p>
