@@ -4,6 +4,17 @@
 
 ## Current State
 
+**§5 cross-building generalization — ✅ DONE 2026-06-30** (bim-compiler `a97978cf`, **W-GENERALIZE-XBUILD 7/7**,
+`scripts/witness_generalize_xbuild.js`). The doctrine-central upgrade from SELF-CONSISTENCY (mined-then-applied-to-SAME)
+to HELD-OUT: route `duplex_rules` (mined from Duplex) onto **LTU_AHouse** — a house with a real 32k-fitting generic
+`IfcFlow*` network NEVER used in mining — scored vs LTU's OWN geometric-touch oracle. **32138 segs, precision 0.839
+@0.15m (0.945 @0.30m), 0 fabricated, 0 over the Duplex-measured 3.298m bound** (the measured bound generalizes without
+widening). Self-consistency baseline (Duplex-on-Duplex) 0.969; gap 0.130 = the honest measured cost of generalization.
+SUBSTRATE FINDING: no held-out MEP target inside SH/DX/SC (SH ARC-only, DX mined-from, SC rainwater-only) — LTU_AHouse
+is the genuine residential-domain held-out target. Bim-compiler witness, no deploy. **Roadmap #1–#5 now DRAINED;**
+residual threads are substrate-gated (placement-cadence generalization has no held-out fixtures) or thin (route-to-FACE
+ACMV / ELEC host-bind mining promotion). [[project_terminal_rule_mining]]
+
 **§4 `__dwPixelProbe` render gate — ✅ DONE+LIVE 2026-06-30** (bim-ootb **#579 MERGED, sw v22**). Closes the §3c
 verification gap (the connector-edge + assemble render shipped with only §-log/node proof). Added
 `window.__dwPixelProbe(disc)` (dwRoot scene-graph census: fixture box InstancedMesh + §3c connector-edge LineSegments
