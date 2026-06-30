@@ -31,7 +31,7 @@ count-exact + L4 rendered"; it cannot reach L2/L3 *as fidelity* because there is
 | **STR** | WALK-BACK (girders) | **L3** | LANDED | W-WALKBACK-STR 5/5, W-CONFIDENCE-CALIBRATED, W-GUARD-ROTATED 5/5 | precision=don't-fabricate gate; calibrated conf ECE 0.034; rotate-degrades guard holds |
 | **any** | ASSEMBLE (parts at nodes) | **L2** | LANDED | W-ASSEMBLE 10/10, W-ASSEMBLE-CONNECT 6/6, W-RULE-CONNECTOR 4/4 | Duplex-MEP: 661 parts, posDrift 0m, Ø re-measured; self/landed (no held-out assemble) |
 | **PLB curve** | ROUTE generalization | **L3** | HELD-OUT | W-GENERALIZE-CURVE 7/7 | LTU 0.839 > WBDG_Office 0.749 > Clinic 0.705 > HHS_Office 0.620 @0.15m (graceful decay) |
-| **ELEC** | SEED-TRUNK (entry→trunk) | **L1+** | GENERATED+seed | **W-SEED-TRUNK 6/6**, **W-SEED-DEFAULT 6/6**, **W-CORRIDOR-TRUNK 6/6** | seed→trunk now CORRIDOR-AWARE: nav grid blocked by REAL walls, carved at REAL doors; trunk goes around walls (solid-wall-crossings 10→0, ×1.22 length), walled-off fixtures REFUSED; 2D only (riser/3D next) |
+| **ELEC** | SEED-TRUNK (entry→trunk, 3D) | **L1+** | GENERATED+seed | **W-SEED-TRUNK** / **-DEFAULT** / **-CORRIDOR-TRUNK** / **-RISER-TRUNK** 6/6 each | seed→corridor trunk (around walls/through doors, 10→0 crossings) now 3D: per-storey trunks joined by a RISER at a REAL IfcStair (Duplex: 1 seed feeds 2 floors, 43 fixtures trace to it; 20 L2 fixtures REFUSED — single riser, multi-riser next) |
 | **SAN / HEAT** | ROUTE | **L0** | — | — | LTU carries SAN 12k / HEAT 22k — never walked (no mined rule rows yet) |
 
 ## The two structural gaps the matrix exposes (the honest L0/L2 ceilings)
@@ -56,8 +56,11 @@ count-exact + L4 rendered"; it cannot reach L2/L3 *as fidelity* because there is
   fixtures, and a different seed reshapes the whole trunk (verified, not assumed). **CORRIDOR-AWARE DONE** (`W-CORRIDOR-TRUNK 6/6`): a nav grid blocked by REAL wall/column bboxes
   and carved at REAL doors carries an MST over GRID-PATH distance from the seed → the trunk routes AROUND walls and
   THROUGH doorways (SampleHouse ELEC: solid-wall-crossings 10→0, ×1.22 length cost), walled-off fixtures honestly
-  REFUSED. Non-invent (every blocked cell a real wall, every passage a real door). NEXT: (1) 3D — risers/stairs across
-  storeys (today 2D per-storey); (2) promote the spike into an engine fn + modeller render; (3) a held-out check.
+  REFUSED. Non-invent (every blocked cell a real wall, every passage a real door). **3D RISERS DONE** (`W-RISER-TRUNK 6/6`): per-storey corridor trunks joined by a RISER anchored on a
+  REAL IfcStair, fed from ONE ground seed (Duplex: Level 1 door → riser up a real stair → Level 2; 43 fixtures on 2
+  floors all trace to the single seed; vertical only at the stair XY). HONEST EDGE: a SINGLE riser reaches 13/33 L2
+  fixtures (20 refused — fragmented upper floor); MULTI-RISER (Duplex has a 2nd real stair) is the next lift. NEXT:
+  (1) multi-riser; (2) promote the spike into an engine fn + modeller render; (3) a held-out check.
   This is the one placement lever the matrix says we CAN buy with engine, because the seed makes the START non-invent.
 - **Default-seed contract (`W-SEED-DEFAULT 6/6`, `disc_walker.defaultSeed`):** the modeller's CHECK→DEFAULT→CONFIRM/OVERRIDE
   popup (on Outliner.DISC.MEP, if no seed assigned) is backed by a non-invent picker — a REAL, DETERMINISTIC default
