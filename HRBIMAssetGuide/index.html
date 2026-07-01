@@ -16,7 +16,7 @@
         <link rel="prev" href="../ERPUserGuide/">
       
       
-        <link rel="next" href="../FoldEngineBlackBook.html">
+        <link rel="next" href="../TeamsOverlayGuide/">
       
       
         
@@ -698,6 +698,8 @@
       
         
       
+        
+      
     
     
     
@@ -959,10 +961,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#see-who-is-physically-here-right-now" class="md-nav__link">
+  <a href="#see-who-is-physically-here-right-now-with-people-you-can-walk-up-to" class="md-nav__link">
     <span class="md-ellipsis">
       
-        See who is physically here right now
+        See who is physically here right now — with people you can walk up to
       
     </span>
   </a>
@@ -1083,6 +1085,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TeamsOverlayGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Teams Overlay — Collaboration & Optics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1878,10 +1908,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#see-who-is-physically-here-right-now" class="md-nav__link">
+  <a href="#see-who-is-physically-here-right-now-with-people-you-can-walk-up-to" class="md-nav__link">
     <span class="md-ellipsis">
       
-        See who is physically here right now
+        See who is physically here right now — with people you can walk up to
       
     </span>
   </a>
@@ -2043,18 +2073,23 @@ If you want to know <em>how it works</em> (or you administer the data), read <st
    <a href="#troubleshooting">Troubleshooting</a>).</li>
 <li><strong>Open the drawer.</strong> Tap the pill. A small <strong>FM / Operate</strong> drawer opens listing the lenses. Lenses with data
    are bright and clickable; lenses with no data for <em>this</em> building are <strong>greyed and marked "no data"</strong>.</li>
-<li><strong>Turn on a lens.</strong> Tap <strong>Occupancy</strong>. The entry shows a blue <strong>● on</strong>, the rooms tint by status, and the
-   status bar reads e.g. <em>“HR · occupancy · 11 units lit”</em>.</li>
+</ol>
+<p><img alt="The FM / Operate drawer — five lenses (Occupancy, Presence, Unit class, Assets / IoT, Dashboard); &quot;Unit class&quot; is active (● on)" src="../img/hba_fm_drawer.png" /></p>
+<ol>
+<li><strong>Turn on a lens.</strong> Tap <strong>Occupancy</strong>. The rooms tint by status, and the status bar reads e.g.
+   <em>“HR · occupancy · 11 units lit”</em>.</li>
+</ol>
+<p><img alt="The Occupancy lens applied on the HHS office — rooms tinted by lease status across all three storeys" src="../img/hba_occupancy_live.png" /></p>
+<ol>
 <li><strong>Turn it off.</strong> Tap the lens again (or pick another). The model is restored <strong>exactly</strong> — overlays never
    leave residue and never disturb other panels.</li>
 </ol>
-<p><img alt="The Occupancy lens applied on the HHS office building — the FM / Operate drawer open, Occupancy active, rooms tinted by lease status across all three storeys" src="../img/hba_occupancy_live.png" /></p>
 <p>That's the whole interaction model: <strong>open → pill → drawer → toggle a lens</strong>. Everything below is variations on it.</p>
 <hr />
 <h2 id="common-tasks">Common tasks<a class="headerlink" href="#common-tasks" title="Permanent link">&para;</a></h2>
 <h3 id="see-which-rooms-are-occupied">See which rooms are occupied<a class="headerlink" href="#see-which-rooms-are-occupied" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Open the <strong>FM / Operate</strong> drawer → tap <strong>Occupancy</strong>.</li>
+<li>Open the <strong>FM / Operate</strong> drawer → tap <strong>Occupancy</strong> (see the screenshot above).</li>
 <li>Read the wash:</li>
 </ol>
 <table>
@@ -2091,34 +2126,21 @@ If you want to know <em>how it works</em> (or you administer the data), read <st
 <p><strong>Tenancy is part of Occupancy.</strong> An earlier alpha had a separate <em>Tenancy</em> lens; it's now folded in. Occupancy
 replays each room's signed booking log (<code>ASSIGN</code> / <code>RELEASE</code> / <code>UNAVAIL</code>), so it <em>is</em> the lease-status superset.</p>
 </blockquote>
-<h3 id="see-who-is-physically-here-right-now">See who is physically here right now<a class="headerlink" href="#see-who-is-physically-here-right-now" title="Permanent link">&para;</a></h3>
+<h3 id="see-who-is-physically-here-right-now-with-people-you-can-walk-up-to">See who is physically here right now — with people you can walk up to<a class="headerlink" href="#see-who-is-physically-here-right-now-with-people-you-can-walk-up-to" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Open the drawer → tap <strong>Presence</strong>.</li>
-<li>Zones tint by <strong>live headcount density</strong> (blue, deepening with people):</li>
+<li>Open the drawer → tap <strong>Presence</strong>. Zones tint by <strong>live headcount density</strong> (light → deep blue as more people
+   are present).</li>
+<li><strong>Zoom in.</strong> Each present person becomes a <strong>little avatar standing in the room</strong> where their signed check-in
+   put them. People cluster in a ring when several share a room — you're looking at the workforce <em>in situ</em>, not a
+   number in a grid.</li>
 </ol>
-<table>
-<thead>
-<tr>
-<th>Colour</th>
-<th>Headcount</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>light blue</td>
-<td><strong>1</strong> present</td>
-</tr>
-<tr>
-<td>mid blue</td>
-<td><strong>2–4</strong> present</td>
-</tr>
-<tr>
-<td>deep blue</td>
-<td><strong>5+</strong> present</td>
-</tr>
-</tbody>
-</table>
-<p>Headcount comes from <strong>signed check-ins</strong> at real building zones — a zone with no check-in is honestly empty.</p>
+<p><img alt="Presence — little avatars standing in the rooms where real check-ins placed them, clustered where several people share a space" src="../img/hba_presence_avatars.png" /></p>
+<ol>
+<li><strong>Hover an avatar</strong> → their card (name, room, since when, status), watermarked. <strong>Draw nearer</strong> and the nearest
+   person auto-labels; <strong>zoom out</strong> and the avatars collapse back to <strong>dots</strong> — an automatic level-of-detail ladder
+   (dot → mini → full) so a full floor never turns to soup.</li>
+<li>Headcount comes from <strong>signed check-ins</strong> — a room with no check-in has no avatar (never a faked person).</li>
+</ol>
 <h3 id="spot-equipment-that-needs-service">Spot equipment that needs service<a class="headerlink" href="#spot-equipment-that-needs-service" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Open the drawer → tap <strong>Assets / IoT</strong>.</li>
@@ -2127,18 +2149,23 @@ replays each room's signed booking log (<code>ASSIGN</code> / <code>RELEASE</cod
 </ol>
 <h3 id="classify-spaces">Classify spaces<a class="headerlink" href="#classify-spaces" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Open the drawer → tap <strong>Unit class</strong>.</li>
+<li>Open the drawer → tap <strong>Unit class</strong> (the drawer screenshot above shows it active).</li>
 <li>Spaces tint <strong>residential (green) · commercial (orange) · office (indigo) · unclassified (grey)</strong>.</li>
 <li>The class is never guessed — see <a href="#how-a-space-gets-its-class-non-invent">How a space gets its class</a>.</li>
 </ol>
 <h3 id="read-the-numbers-dashboard">Read the numbers (Dashboard)<a class="headerlink" href="#read-the-numbers-dashboard" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Open the drawer → tap <strong>Dashboard</strong>.</li>
-<li>An additive charts pane opens (it never touches the 3D scene): <strong>per-storey utilization</strong>, <strong>availability over
-   time</strong>, and an <strong>open-ticket aging</strong> doughnut, with KPI tiles. Every number is a read-only fold of the same
-   signed op-log — nothing is entered by hand.</li>
+<li>Open the drawer → tap <strong>Dashboard</strong>. An additive pane opens (it never touches the 3D scene) with three KPI
+   tiles and three charts, every value a read-only fold of the same signed op-log — nothing typed by hand.</li>
 </ol>
-<p><img alt="The occupancy / availability dashboard — KPIs, per-storey utilization, ticket-aging doughnut, all watermarked" src="../img/hba_occupancy_dashboard.png" /></p>
+<p><img alt="The occupancy / availability dashboard — KPI tiles (14 rooms · 60% utilisation · 7 open), per-storey utilisation across all three levels, an open-ticket aging doughnut, and a 12-month availability trend — all watermarked" src="../img/hba_occupancy_dashboard.png" /></p>
+<ol>
+<li>What you're seeing:</li>
+<li><strong>KPI tiles</strong> — rooms, overall utilisation, open tickets.</li>
+<li><strong>Occupancy by storey</strong> — utilisation % per level (all storeys, not just the ground floor).</li>
+<li><strong>Open requests by age</strong> — the SLA doughnut, tickets bucketed <code>&lt;1d · 1–3d · 3–7d · &gt;7d</code>.</li>
+<li><strong>Room availability over time</strong> — a 12-month stacked trend of occupied / expiring / unavailable / vacant.</li>
+</ol>
 <hr />
 <h2 id="a-building-with-no-rooms-aisle-zones">A building with no rooms? Aisle-zones<a class="headerlink" href="#a-building-with-no-rooms-aisle-zones" title="Permanent link">&para;</a></h2>
 <p>Not every building has <code>IfcSpace</code> rooms. A <strong>warehouse</strong> like the <em>GardenWorld</em> sample has none — just elements
@@ -2166,7 +2193,7 @@ aisles lit) while <em>Unit class</em> and <em>Assets / IoT</em> are greyed becau
 <tr>
 <td><strong>Presence</strong></td>
 <td><em>Who is physically here right now?</em></td>
-<td>1 <code>#90caf9</code> · 2–4 <code>#1976d2</code> · 5+ <code>#0d47a1</code></td>
+<td>1 <code>#90caf9</code> · 2–4 <code>#1976d2</code> · 5+ <code>#0d47a1</code> (+ per-person avatars near-field)</td>
 </tr>
 <tr>
 <td><strong>Unit class</strong></td>
@@ -2209,7 +2236,7 @@ are illustrative; any real statutory rate or fee sits behind a research gate and
   real mesh</strong> in the loaded building. An <code>IfcSpace</code> room usually isn't drawn as its own mesh, so the lens resolves
   and tints it through its <strong>rendered contained members</strong> (<code>rel_contained_in_space</code>). A guid that resolves to
   nothing is honestly <strong>un-linked</strong> — shown nowhere, never a faked tint. For a room-less building the same join
-  runs over <strong>aisle-zones</strong> (see above).</p>
+  runs over <strong>aisle-zones</strong> (see above). Avatars stand at the <strong>centroid</strong> of a zone's rendered members.</p>
 </li>
 <li>
 <p><strong>Occupancy = a signed resource ledger (<code>S_Resource</code>-style).</strong> A room is a <em>resource</em>; you <strong><code>ASSIGN</code></strong> a party
@@ -2292,9 +2319,9 @@ the room guids are real, the labels are sample lease declarations.</p>
 <td>Check the record's guid exists in the model; remember vacancy is the <em>absence</em> of a booking, not an error.</td>
 </tr>
 <tr>
-<td><strong>The dashboard shows fewer storeys than the building has</strong></td>
-<td>Only storeys whose rooms carry op-log data appear.</td>
-<td>Seed bookings/check-ins across the other storeys — the dashboard reads whatever the log contains.</td>
+<td><strong>The dashboard charts are blank</strong></td>
+<td>Chart.js didn't load (offline / blocked).</td>
+<td>The KPI tiles still read correctly; reload with the chart library reachable and the three charts render.</td>
 </tr>
 <tr>
 <td><strong>Toggled a lens off and the colours look odd</strong></td>
@@ -2309,11 +2336,11 @@ the room guids are real, the labels are sample lease declarations.</p>
 (<code>C_Invoice → C_Payment → allocation → GL</code>), the <strong>Request/ticket</strong> workflow, and the product catalog (rental vs
 purchase, installment schedules) — lives in the <strong><a href="../ERPUserGuide/#hr-tenancy">Kernel-ERP guide → Tenancy</a></strong>. HR
 supplies the <strong>people + access</strong> (party = <code>C_BPartner</code>, signed check-in, capability tokens); the Viewer supplies
-the <strong>spatial</strong> lenses above; ERP supplies the <strong>money</strong>. One lease threads all three over the shared BIM model
-and the one signed op-log.</p>
+the <strong>spatial</strong> view above; ERP supplies the <strong>money</strong>. One lease threads all three over the shared BIM model and
+the one signed op-log — see <strong><a href="../SpatialERPIntegration/">Spatial ERP × BIM × HR — One Building, One Log</a></strong>.</p>
 <hr />
-<p><em>Spec: <code>prompts/RESUME_HR_BIM_ASSET.md</code> (§FM-FAMILY · §REAL-BIND · §AISLE-ZONES · §RICH-DEMO · §BINDING · §CLASS ·
-§PILLAR 1–4). Back to the <a href="../BIMUserGuide/">BIM Viewer Guide</a>.</em></p>
+<p><em>Spec: <code>prompts/RESUME_HR_BIM_ASSET.md</code> (§FM-FAMILY · §REAL-BIND · §AISLE-ZONES · §RICH-DEMO · §AVATAR-LOD ·
+§BINDING · §CLASS · §PILLAR 1–4). Back to the <a href="../BIMUserGuide/">BIM Viewer Guide</a>.</em></p>
 
 
 
