@@ -26,6 +26,10 @@ BUILDINGS = {
     "SH": "deploy/buildings/SampleHouse_extracted.db",
     "DX": "deploy/buildings/Duplex_extracted.db",
     "SC": "deploy/buildings/SampleCastle_extracted.db",
+    # F11 (2026-07-02): Terminal's real source IFC is internal/UNMERGED/merged_federation.ifc;
+    # its db guids carry the extractor's T{n}_Terminal_ prefix — the sidecar records `guid_strip`
+    # and this witness joins on the stripped form, same as every consumer must.
+    "Terminal": "deploy/buildings/Terminal_extracted.db",
 }
 
 fails = 0
@@ -40,15 +44,19 @@ def check(name, cond, detail=""):
 
 
 def main():
+    import re
     for tag, db_rel in BUILDINGS.items():
         side_path = os.path.join(ROOT, "geomap", f"relations_{tag}.json")
         side = json.load(open(side_path))
         el = side["elements"]
+        rx = re.compile(side["guid_strip"]) if side.get("guid_strip") else None
+        norm = (lambda g: rx.sub("", g)) if rx else (lambda g: g)
         c = sqlite3.connect(f"file:{os.path.join(ROOT, db_rel)}?mode=ro", uri=True)
 
         both = agree = 0
         for g, st in c.execute("SELECT guid, storey FROM elements_meta "
                                "WHERE storey IS NOT NULL AND storey NOT IN ('','Unknown')"):
+            g = norm(g)
             s = el.get(g, {}).get("storey")
             if not s:
                 continue
@@ -74,7 +82,7 @@ def main():
             pass  # corpus DB has no rel_contained_in_space table (F2) — nothing to compare
 
         # NONINVENT guard: sidecar must not claim relations for GUIDs outside the source IFC
-        db_guids = {r[0] for r in c.execute("SELECT guid FROM elements_meta")}
+        db_guids = {norm(r[0]) for r in c.execute("SELECT guid FROM elements_meta")}
         joined = sum(1 for g in el if g in db_guids)
         check(f"{tag} sidecar join sanity", joined > 0,
               f"({joined} sidecar elements join corpus {len(db_guids)})")
