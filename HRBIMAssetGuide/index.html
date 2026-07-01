@@ -2037,24 +2037,32 @@ If you want to know <em>how it works</em> (or you administer the data), read <st
 <p>You need nothing but the Viewer and a building that carries some operate data (the <strong>HHS office</strong> sample does).</p>
 <ol>
 <li><strong>Open the building.</strong> In the Viewer, load a building (e.g. the <em>HHS Office</em> sample). Let the 3D model finish
-   streaming in.</li>
-<li><strong>Find the <code>FM / Operate</code> pill.</strong> Look on the right-hand toolbar for a <strong>building glyph</strong>. It appears <strong>only</strong>
-   when the building has operate data — if you don't see it, there's nothing to operate yet (see
-   <a href="#troubleshooting">Troubleshooting</a>).</li>
-<li><strong>Open the drawer.</strong> Tap the pill. A small <strong>FM / Operate</strong> drawer opens listing the lenses. Lenses with data
-   are bright and clickable; lenses with no data for <em>this</em> building are <strong>greyed and marked "no data"</strong>.</li>
+   streaming in — the FM pill only lights once the model is FULLY streamed (a half-loaded model won't show a
+   lens the tail of the stream hasn't carried in yet, so the pill deliberately waits).</li>
+<li><strong>Reveal the toolbar.</strong> On a fresh load the icon rail is tucked behind the <strong>⋯</strong> button (bottom-right) — tap
+   it to unfold the full icon rail.</li>
+<li><strong>Find the <code>FM / Operate</code> pill.</strong> Look for the <strong>building glyph</strong> in the rail — it turns <strong>blue</strong> once tapped
+   (see the screenshot below). It appears <strong>only</strong> when the building has operate data — if you don't see it,
+   there's nothing to operate yet (see <a href="#troubleshooting">Troubleshooting</a>).</li>
+<li><strong>Open the drawer.</strong> Tap the pill — it highlights blue and a small <strong>FM / Operate</strong> drawer opens listing the
+   lenses. Lenses with data are bright and clickable; lenses with no data for <em>this</em> building are <strong>greyed and
+   marked "no data"</strong>.</li>
 </ol>
-<p><img alt="The FM / Operate drawer — five lenses (Occupancy, Presence, Unit class, Assets / IoT, Dashboard); &quot;Unit class&quot; is active (● on)" src="../img/hba_fm_drawer.png" /></p>
+<p><img alt="The toolbar with the FM / Operate pill lit (blue, bottom-right rail) and its drawer open — five lenses: Occupancy, Presence, Unit class, Assets / IoT, Dashboard" src="../img/hba_fm_drawer.png" /></p>
 <ol>
-<li><strong>Turn on a lens.</strong> Tap <strong>Occupancy</strong>. The rooms tint by status, and the status bar reads e.g.
-   <em>“HR · occupancy · 11 units lit”</em>.</li>
+<li><strong>Turn on a lens.</strong> Tap <strong>Occupancy</strong>. Tapping a row applies the lens <strong>and closes the drawer</strong>; re-tap the
+   pill to reopen it and see which lens is active (highlighted, "● on"). The status bar reads e.g.
+   <em>“HR · occupancy · 11 units lit”</em> — that status line is the reliable readout of what's lit; on this sample
+   building the bound elements are small real fixtures, so at a building-wide view the wash can be subtle — zoom
+   toward a room to see an individual tinted element close up.</li>
 </ol>
-<p><img alt="The Occupancy lens applied on the HHS office — rooms tinted by lease status across all three storeys" src="../img/hba_occupancy_live.png" /></p>
+<p><img alt="The Occupancy lens applied on the HHS office — drawer reopened showing &quot;Occupancy ● on&quot; and &quot;11 units lit&quot; on the status bar" src="../img/hba_occupancy_live.png" /></p>
 <ol>
-<li><strong>Turn it off.</strong> Tap the lens again (or pick another). The model is restored <strong>exactly</strong> — overlays never
+<li><strong>Turn it off.</strong> Tap the lens row again (or pick another). The model is restored <strong>exactly</strong> — overlays never
    leave residue and never disturb other panels.</li>
 </ol>
-<p>That's the whole interaction model: <strong>open → pill → drawer → toggle a lens</strong>. Everything below is variations on it.</p>
+<p>That's the whole interaction model: <strong>open → reveal toolbar → pill → drawer → toggle a lens</strong>. Everything below
+is variations on it.</p>
 <hr />
 <h2 id="common-tasks">Common tasks<a class="headerlink" href="#common-tasks" title="Permanent link">&para;</a></h2>
 <h3 id="see-which-rooms-are-occupied">See which rooms are occupied<a class="headerlink" href="#see-which-rooms-are-occupied" title="Permanent link">&para;</a></h3>
@@ -2087,12 +2095,21 @@ If you want to know <em>how it works</em> (or you administer the data), read <st
 <td><strong>unavailable</strong> — a maintenance / renovation blackout</td>
 </tr>
 <tr>
-<td>3. The status bar tells you how many units lit. Toggle off to restore.</td>
+<td>3. The status bar tells you how many units lit (verified live: <em>"HR · occupancy · 11 units lit"</em> on the HHS</td>
+<td></td>
+</tr>
+<tr>
+<td>sample). Toggle off to restore.</td>
 <td></td>
 </tr>
 </tbody>
 </table>
 <blockquote>
+<p><strong>Where the colour actually lands.</strong> A room (<code>IfcSpace</code>) usually isn't its own mesh — the lens tints its real
+rendered <strong>contained members</strong> instead (see <a href="#under-the-hood--the-data-model">How a unit binds to the model</a>).
+On the HHS sample those members are small fixtures, so from a building-wide view the wash reads as a subtle
+tint; the <strong>GardenWorld</strong> warehouse below tints a whole aisle-floor at once and is the clearest example to look
+at first if you want to <em>see</em> the effect from a distance.</p>
 <p><strong>Tenancy is part of Occupancy.</strong> An earlier alpha had a separate <em>Tenancy</em> lens; it's now folded in. Occupancy
 replays each room's signed booking log (<code>ASSIGN</code> / <code>RELEASE</code> / <code>UNAVAIL</code>), so it <em>is</em> the lease-status superset.</p>
 </blockquote>
@@ -2104,22 +2121,29 @@ replays each room's signed booking log (<code>ASSIGN</code> / <code>RELEASE</cod
    put them. People cluster in a ring when several share a room — you're looking at the workforce <em>in situ</em>, not a
    number in a grid.</li>
 </ol>
-<p><img alt="Presence — little avatars standing in the rooms where real check-ins placed them, clustered where several people share a space" src="../img/hba_presence_avatars.png" /></p>
+<p><img alt="Presence — avatars standing in the rooms where real check-ins placed them, at two LOD tiers (full figures nearby, mini domes further off), with a hover card reading &quot;EMP-131 · RM_Level_3_2 · present · checked in · since 2026-07-15 08:32 · SAMPLE — NOT OFFICIAL&quot;" src="../img/hba_presence_avatars.png" /></p>
 <ol>
-<li><strong>Hover an avatar</strong> → their card (name, room, since when, status), watermarked. <strong>Draw nearer</strong> and the nearest
-   person auto-labels; <strong>zoom out</strong> and the avatars collapse back to <strong>dots</strong> — an automatic level-of-detail ladder
-   (dot → mini → full) so a full floor never turns to soup.</li>
+<li><strong>Hover an avatar</strong> → their card (name, room, since when, status), watermarked — exactly as captured above.
+   <strong>Draw nearer</strong> and the nearest person auto-labels; <strong>zoom out</strong> and the avatars collapse back to <strong>dots</strong> — an
+   automatic level-of-detail ladder (dot → mini → full) so a full floor never turns to soup. The screenshot above
+   catches the ladder mid-transition: a full-figure cluster close to camera, mini-dome clusters further back.</li>
 <li>Headcount comes from <strong>signed check-ins</strong> — a room with no check-in has no avatar (never a faked person).</li>
 </ol>
 <h3 id="spot-equipment-that-needs-service">Spot equipment that needs service<a class="headerlink" href="#spot-equipment-that-needs-service" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Open the drawer → tap <strong>Assets / IoT</strong>.</li>
 <li>Equipment tints <strong>ok (green) · due (amber) · overdue (red)</strong>, driven by each asset's next-due date and cycle.</li>
+</ol>
+<p><img alt="The Assets / IoT lens on the HHS office — drawer showing &quot;Assets / IoT ● on&quot; and &quot;1 unit lit&quot; (this sample carries one seeded asset record)" src="../img/hba_maintenance_lens.png" /></p>
+<ol>
 <li>If this entry is <strong>greyed “no data”</strong>, the building simply carries no asset/IoT records — nothing is faked.</li>
 </ol>
 <h3 id="classify-spaces">Classify spaces<a class="headerlink" href="#classify-spaces" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Open the drawer → tap <strong>Unit class</strong> (the drawer screenshot above shows it active).</li>
+<li>Open the drawer → tap <strong>Unit class</strong>.</li>
+</ol>
+<p><img alt="The Unit class lens on the HHS office — drawer showing &quot;Unit class ● on&quot; and &quot;4 units lit&quot;" src="../img/hba_class_lens.png" /></p>
+<ol>
 <li>Spaces tint <strong>residential (green) · commercial (orange) · office (indigo) · unclassified (grey)</strong>.</li>
 <li>The class is never guessed — see <a href="#how-a-space-gets-its-class-non-invent">How a space gets its class</a>.</li>
 </ol>
@@ -2140,10 +2164,13 @@ replays each room's signed booking log (<code>ASSIGN</code> / <code>RELEASE</cod
 <h2 id="a-building-with-no-rooms-aisle-zones">A building with no rooms? Aisle-zones<a class="headerlink" href="#a-building-with-no-rooms-aisle-zones" title="Permanent link">&para;</a></h2>
 <p>Not every building has <code>IfcSpace</code> rooms. A <strong>warehouse</strong> like the <em>GardenWorld</em> sample has none — just elements
 grouped into <strong>aisles</strong>. The module detects this and falls back to <strong>aisle-as-zone</strong>: each aisle becomes a zone,
-its members are the real elements parked in that aisle, and the same lenses light it. Below, Occupancy is on (two
-aisles lit) while <em>Unit class</em> and <em>Assets / IoT</em> are greyed because this warehouse carries neither.</p>
-<p><img alt="GardenWorld warehouse with the FM / Operate drawer — Occupancy lit on aisle-zones; Unit class and Assets / IoT greyed “no data”" src="../img/hba_gardenworld_aisles.png" /></p>
-<p>Nothing is invented to make this work: the aisle labels and the element guids are all read from the model.</p>
+its members are the real elements parked in that aisle, and the same lenses light it. Below, Occupancy is on
+("HR · occupancy · 2 units lit") while <em>Unit class</em> and <em>Assets / IoT</em> are greyed because this warehouse carries
+neither.</p>
+<p><img alt="GardenWorld warehouse with the FM / Operate drawer — Occupancy lit on an aisle-zone (the green floor patch, aisle A), Unit class and Assets / IoT greyed &quot;no data&quot;" src="../img/hba_gardenworld_aisles.png" /></p>
+<p>This is also the clearest example of the wash itself: the aisle's whole floor-slab tints green (occupied), an easy
+contrast to spot from a distance — unlike a room bound only to small fixtures (see the note under Occupancy
+above). Nothing is invented to make this work: the aisle labels and the element guids are all read from the model.</p>
 <hr />
 <h2 id="the-lenses-at-a-glance-reference">The lenses at a glance (reference)<a class="headerlink" href="#the-lenses-at-a-glance-reference" title="Permanent link">&para;</a></h2>
 <table>
