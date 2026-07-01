@@ -84,7 +84,7 @@ def main():
     import mine_geomap as mg
     cfg = mg.MANIFEST["SH"]
     sidecar = {"building": "SH", "db": cfg["db"], "db_frame": cfg["db_frame"],
-               "sources": [], "spaces": {}, "elements": {},
+               "sources": [], "storeys": {}, "spaces": {}, "elements": {},
                "space_boundaries": [], "aggregates": [], "wall_connects": []}
     for rel in cfg["ifcs"]:
         mg.mine_ifc(os.path.join(ROOT, rel), sidecar)
