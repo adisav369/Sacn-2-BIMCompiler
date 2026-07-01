@@ -62,6 +62,32 @@ MANIFEST = {
         "db": "deploy/buildings/SampleCastle_extracted.db",
         "db_frame": {"frame": "world-zup", "units": "m", "rotation_semantics": "none-baked-into-mesh"},
     },
+    # Clinic + Hospital (§NEXT-SESSION-TASKS item 4, onboarded 2026-07-02 via the SOP):
+    # real extracted DBs + real source IFCs already in-repo. GUID-join sampled 12/12 each
+    # before adding (F11 lesson: verify, don't assume); coverage() measures the full join.
+    # Frame: rotation cols measured all-zero + bbox all-positive on both DBs -> same
+    # world-baked semantics as SH/DX/SC. Hospital db guids join BOTH the IFC2x3 and IFC4
+    # sets (same model exported twice, sampled 12/12 in each) — the IFC4 set is mined.
+    "CL": {
+        "ifcs": ["internal/UNMERGED/Clinic_Architectural_IFC2x3.ifc",
+                 "internal/UNMERGED/Clinic_Structural_IFC2x3.ifc",
+                 "internal/UNMERGED/Clinic_Electrical_IFC2x3.ifc",
+                 "internal/UNMERGED/Clinic_HVAC_IFC2x3.ifc",
+                 "internal/UNMERGED/Clinic_Plumbing_IFC2x3.ifc"],
+        "db": "deploy/buildings/Clinic_extracted.db",
+        "db_frame": {"frame": "world-zup", "units": "m", "rotation_semantics": "none-baked-into-mesh"},
+    },
+    "HO": {
+        "ifcs": ["internal/UNMERGED/Hospital_IFC4_ARC.ifc",
+                 "internal/UNMERGED/Hospital_IFC4_STR.ifc",
+                 "internal/UNMERGED/Hospital_IFC4_ELE.ifc",
+                 "internal/UNMERGED/Hospital_IFC4_MECH.ifc",
+                 "internal/UNMERGED/Hospital_IFC4_PLB.ifc",
+                 "internal/UNMERGED/Hospital_IFC4_FIRE.ifc",
+                 "internal/UNMERGED/Hospital_IFC4_SPR.ifc"],
+        "db": "deploy/buildings/Hospital_extracted.db",
+        "db_frame": {"frame": "world-zup", "units": "m", "rotation_semantics": "none-baked-into-mesh"},
+    },
     # Terminal — F11 CORRECTION (2026-07-02): the real source IFC EXISTS at
     # internal/UNMERGED/merged_federation.ifc (215MB IFC4, federates the 8 SJTII discipline
     # files; GUID-joinable 200/200 sampled). The old "no source IFC in this repo" comment here
