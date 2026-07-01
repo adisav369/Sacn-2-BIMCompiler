@@ -870,7 +870,7 @@
     }
    },
    "db": "deploy/buildings/SampleHouse_extracted.db",
-   "db_md5": "e6f575e565bb15cb76a89a396f1398e6",
+   "db_md5": "7957a48bc4003e0fd1229725aa976fdb",
    "frame": {
     "frame": "world-zup",
     "rotation_semantics": "none-baked-into-mesh",

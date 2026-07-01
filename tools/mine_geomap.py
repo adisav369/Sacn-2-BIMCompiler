@@ -62,12 +62,17 @@ MANIFEST = {
         "db": "deploy/buildings/SampleCastle_extracted.db",
         "db_frame": {"frame": "world-zup", "units": "m", "rotation_semantics": "none-baked-into-mesh"},
     },
-    # Terminal: no source IFC in this repo (federation-era build) and its geometry
-    # DB is unjoinable (F4) — bands come from element_transforms bbox cols instead.
-    # Frame per F5: rotation cols are real Euler radians here; bbox frame UNVERIFIED.
+    # Terminal — F11 CORRECTION (2026-07-02): the real source IFC EXISTS at
+    # internal/UNMERGED/merged_federation.ifc (215MB IFC4, federates the 8 SJTII discipline
+    # files; GUID-joinable 200/200 sampled). The old "no source IFC in this repo" comment here
+    # was WRONG (conflated with F4's separate geometry-hash unjoinability, which still holds:
+    # bands come from element_transforms bbox cols, not meshes). guid_strip: the extractor
+    # prefixed db guids with a discipline index (T{n}_Terminal_<GlobalId>) — strip to join
+    # the sidecar's real IFC GlobalIds.
     "Terminal": {
-        "ifcs": [],
+        "ifcs": ["internal/UNMERGED/merged_federation.ifc"],
         "db": "deploy/buildings/Terminal_extracted.db",
+        "guid_strip": r"^T\d+_Terminal_",
         "db_frame": {"frame": "bbox-cols-frame-UNVERIFIED", "units": "m",
                      "rotation_semantics": "euler-radians-xyz"},
     },
@@ -240,11 +245,21 @@ def mine_ifc(ifc_path, sidecar):
 
 
 def coverage(tag, cfg, sidecar):
-    """§-log: what fraction of the SHIPPED corpus elements each signal covers."""
+    """§-log: what fraction of the SHIPPED corpus elements each signal covers.
+
+    guid_strip (F11, Terminal): the extractor prefixed db guids (T{n}_Terminal_<GlobalId>);
+    join on the stripped form. The sidecar stays keyed by the REAL IFC GlobalIds — consumers
+    apply the same strip, recorded in the artifact as `guid_strip`."""
+    import re
     db = os.path.join(ROOT, cfg["db"])
     c = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     db_guids = {r[0] for r in c.execute("SELECT guid FROM elements_meta")}
     c.close()
+    strip = cfg.get("guid_strip")
+    if strip:
+        rx = re.compile(strip)
+        db_guids = {rx.sub("", g) for g in db_guids}
+        sidecar["guid_strip"] = strip
     el = sidecar["elements"]
     hit = {k: 0 for k in ("storey", "space", "type_name", "fills_host", "aggregates_parent")}
     joined = 0
