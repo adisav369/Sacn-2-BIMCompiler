@@ -26,6 +26,9 @@ BUILDINGS = {
     "SH": "deploy/buildings/SampleHouse_extracted.db",
     "DX": "deploy/buildings/Duplex_extracted.db",
     "SC": "deploy/buildings/SampleCastle_extracted.db",
+    # §NEXT-SESSION-TASKS item 4 (2026-07-02): Clinic + Hospital onboarded via the MANIFEST SOP.
+    "CL": "deploy/buildings/Clinic_extracted.db",
+    "HO": "deploy/buildings/Hospital_extracted.db",
     # F11 (2026-07-02): Terminal's real source IFC is internal/UNMERGED/merged_federation.ifc;
     # its db guids carry the extractor's T{n}_Terminal_ prefix — the sidecar records `guid_strip`
     # and this witness joins on the stripped form, same as every consumer must.
