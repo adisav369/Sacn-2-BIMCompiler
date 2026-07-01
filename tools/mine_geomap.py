@@ -104,6 +104,14 @@ def mine_ifc(ifc_path, sidecar):
     n = {"storey": 0, "space": 0, "type": 0, "fills": 0, "agg": 0,
          "sb": 0, "conn": 0}
 
+    # Storeys with elevation — needed by rooms_from_topology's section cut.
+    for st in f.by_type("IfcBuildingStorey"):
+        sidecar["storeys"][st.Name] = {
+            "guid": st.GlobalId,
+            "elevation": float(st.Elevation) if st.Elevation is not None else None,
+            "src": src,
+        }
+
     # Spaces (with their storey) — targets for containment + boundaries
     for sp in f.by_type("IfcSpace"):
         storey = None
@@ -402,7 +410,7 @@ def main():
             continue
         print(f"\n== MINE {tag}")
         sidecar = {"building": tag, "db": cfg["db"], "db_frame": cfg["db_frame"],
-                   "sources": [], "spaces": {}, "elements": {},
+                   "sources": [], "storeys": {}, "spaces": {}, "elements": {},
                    "space_boundaries": [], "aggregates": [], "wall_connects": []}
         for rel in cfg["ifcs"]:
             mine_ifc(os.path.join(ROOT, rel), sidecar)
