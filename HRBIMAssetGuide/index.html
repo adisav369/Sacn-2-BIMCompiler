@@ -950,6 +950,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Spot equipment that needs service">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-iot-sensor-cctv-cockpit-mockup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The IoT sensor + CCTV cockpit (mockup)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1045,6 +1062,17 @@
     <span class="md-ellipsis">
       
         The money + contract side (when ERP is loaded)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#future-roadmap-addendum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Future roadmap (addendum)
       
     </span>
   </a>
@@ -1897,6 +1925,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Spot equipment that needs service">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-iot-sensor-cctv-cockpit-mockup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The IoT sensor + CCTV cockpit (mockup)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1992,6 +2037,17 @@
     <span class="md-ellipsis">
       
         The money + contract side (when ERP is loaded)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#future-roadmap-addendum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Future roadmap (addendum)
       
     </span>
   </a>
@@ -2138,6 +2194,23 @@ replays each room's signed booking log (<code>ASSIGN</code> / <code>RELEASE</cod
 <ol>
 <li>If this entry is <strong>greyed “no data”</strong>, the building simply carries no asset/IoT records — nothing is faked.</li>
 </ol>
+<h4 id="the-iot-sensor-cctv-cockpit-mockup">The IoT sensor + CCTV cockpit (mockup)<a class="headerlink" href="#the-iot-sensor-cctv-cockpit-mockup" title="Permanent link">&para;</a></h4>
+<p>Tapping <strong>Assets / IoT</strong> does two things at once: it tints the asset in the model (above) <strong>and</strong> opens a
+supplementary pane for that asset — a small operate-cockpit showing what a real IoT feed would look like.
+This whole pane is an <strong>explicit mockup</strong> — every reading is a deterministic synthetic curve (same input,
+same output, always — never <code>Math.random</code>), watermarked, and never claimed as a real sensor value.</p>
+<p><strong>Six sensor channels, last 24 hours</strong> — temperature, boiler pressure, sound level, dust (PM2.5), solar
+output, and electrical load — each its own small trend chart:</p>
+<p><img alt="The IoT pane's six sensor charts — temperature, boiler pressure, sound level, dust, solar output, electrical load — each a 24h trend line, watermarked SAMPLE/CONTOH" src="../img/hba_iot_sensors.png" /></p>
+<p><strong>A CCTV mockup grid and the ERP billing table</strong>, scrolled further down the same pane — six camera tiles
+(explicitly captioned "MOCKUP — NO REAL FEED", no invented video), and underneath, each sensor's <em>latest</em>
+reading compiled into a <strong>billable line</strong> — a real <code>C_OrderLine</code> (quantity, unit of measure, net amount)
+under a <code>C_Order</code> header, the same "compile into the real ERP dictionary, don't invent a parallel one"
+discipline the rest of this module follows:</p>
+<p><img alt="The CCTV mockup grid (6 tiles, no real feed) and the ERP billing table underneath — each sensor reading compiled as a billable order line with qty/UOM/net amount" src="../img/hba_iot_cctv.png" /></p>
+<p>This is the clearest illustration of the module's <strong>Spatial ERP</strong> idea: a sensor bound to a real element in
+the model is, at the same time, a line item a real ERP order can bill — one binding, two views (the 3D tint
+and the ledger line), off the same record.</p>
 <h3 id="classify-spaces">Classify spaces<a class="headerlink" href="#classify-spaces" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Open the drawer → tap <strong>Unit class</strong>.</li>
@@ -2336,8 +2409,26 @@ supplies the <strong>people + access</strong> (party = <code>C_BPartner</code>, 
 the <strong>spatial</strong> view above; ERP supplies the <strong>money</strong>. One lease threads all three over the shared BIM model and
 the one signed op-log — see <strong><a href="../SpatialERPIntegration/">Spatial ERP × BIM × HR — One Building, One Log</a></strong>.</p>
 <hr />
+<h2 id="future-roadmap-addendum">Future roadmap (addendum)<a class="headerlink" href="#future-roadmap-addendum" title="Permanent link">&para;</a></h2>
+<p>Two directions under consideration, not yet built:</p>
+<ul>
+<li><strong>Find ↔ FM linking.</strong> Today, <em>Find</em> (the Viewer's element search) and the <em>FM / Operate</em> drawer are separate
+  surfaces — Find locates a spatial element, FM toggles a building-wide lens. The natural next step is linking
+  them rather than merging them: extend Find's search index to also cover HR_BIM_Asset records (a tenant's name,
+  a lease number, a ticket ID), so a search hit that resolves to an operate record both zooms to the unit <em>and</em>
+  deep-links into the FM drawer already scoped to that record (e.g. searching a tenant opens Occupancy with
+  their lease highlighted). One front door — "find anything, including people" — without forcing lens-toggle
+  behaviour into a search box.</li>
+<li><strong>Larger property-portfolio management.</strong> The compile-not-model foundation laid in this module (a leasable
+  unit already compiles to a real <code>M_Product</code>/<code>M_Locator</code> under a <code>M_Warehouse</code>-as-building, a lease/strata
+  charge is a real <code>C_Subscription</code>, an asset is a real <code>a_asset</code>) is structured to scale past a single
+  demonstrator building — the same native AD tables carry a portfolio of many buildings/units without a new
+  schema per building. Find↔FM linking would be the natural cross-portfolio search layer once more than one
+  building is loaded at once.</li>
+</ul>
+<hr />
 <p><em>Spec: <code>prompts/RESUME_HR_BIM_ASSET.md</code> (§FM-FAMILY · §REAL-BIND · §AISLE-ZONES · §RICH-DEMO · §AVATAR-LOD ·
-§BINDING · §CLASS · §PILLAR 1–4). Back to the <a href="../BIMUserGuide/">BIM Viewer Guide</a>.</em></p>
+§BINDING · §CLASS · §PILLAR 1–4 · §CRITICAL "Compile not Model"). Back to the <a href="../BIMUserGuide/">BIM Viewer Guide</a>.</em></p>
 
 
 
