@@ -88,6 +88,16 @@ MANIFEST = {
         "db": "deploy/buildings/Hospital_extracted.db",
         "db_frame": {"frame": "world-zup", "units": "m", "rotation_semantics": "none-baked-into-mesh"},
     },
+    # HHS Office (user scope decision 2026-07-02: part of the "home dry" working corpus).
+    # Ifc4_Revit_MEP.ifc is a FEDERATED file (65,116 guids: ARC+STR+MEP context, not MEP-only).
+    # MEASURED join 4,743/6,871 (69.0%): ARC 1637/1774, STR 1581/1707, MEP 1525/3390 — the db's
+    # missing MEP portion came from a DIFFERENT export revision with NO in-repo source (stated,
+    # not hidden; coverage() reports the honest number). Frame: rotations all-zero (world-baked).
+    "HHS": {
+        "ifcs": ["internal/UNMERGED/Ifc4_Revit_MEP.ifc"],
+        "db": "deploy/buildings/HHS_Office_Federated_extracted.db",
+        "db_frame": {"frame": "world-zup", "units": "m", "rotation_semantics": "none-baked-into-mesh"},
+    },
     # Terminal — F11 CORRECTION (2026-07-02): the real source IFC EXISTS at
     # internal/UNMERGED/merged_federation.ifc (215MB IFC4, federates the 8 SJTII discipline
     # files; GUID-joinable 200/200 sampled). The old "no source IFC in this repo" comment here
