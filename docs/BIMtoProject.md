@@ -3,6 +3,8 @@
 > **Status:** Tasks 0, A, C(engine) BUILT & witnessed (2026-06-14, worktree `feat/bim-to-project`
 > commit `c208dfa`, localhost-only — not yet deployed); §D/§E + §H/§I still PAPER.
 > Sibling to `docs/BIMtoERP.md`.
+> ⚠ **Repo note:** the built files live in **bim-ootb**, not this repo — `viewer/proj_fold.js`,
+> `common/history_bar.js` (this doc is the cross-repo blueprint; don't look for them here).
 > **Built so far:** §0/Task 0 substrate confirmed (`W-PROJ-SCHEMA` — canonical `erp/ad_seed.db`,
 > 11 write targets, OPEN-3 resolved) · §A/Task A cost-on-selection + 5D-pack-in-Settings
 > (`W-FIND-COST`) · §C/Task C the fold engine `proj_fold.js` (`W-PROJ-PUSH/FOLD/SEQ` — building
