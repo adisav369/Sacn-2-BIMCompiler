@@ -29,6 +29,9 @@ BUILDINGS = {
     # §NEXT-SESSION-TASKS item 4 (2026-07-02): Clinic + Hospital onboarded via the MANIFEST SOP.
     "CL": "deploy/buildings/Clinic_extracted.db",
     "HO": "deploy/buildings/Hospital_extracted.db",
+    # HHS Office (user scope decision 2026-07-02): 69% join is the HONEST ceiling — the db's missing
+    # MEP portion came from an export revision with no in-repo source (see MANIFEST comment).
+    "HHS": "deploy/buildings/HHS_Office_Federated_extracted.db",
     # F11 (2026-07-02): Terminal's real source IFC is internal/UNMERGED/merged_federation.ifc;
     # its db guids carry the extractor's T{n}_Terminal_ prefix — the sidecar records `guid_strip`
     # and this witness joins on the stripped form, same as every consumer must.
@@ -57,6 +60,7 @@ def main():
         c = sqlite3.connect(f"file:{os.path.join(ROOT, db_rel)}?mode=ro", uri=True)
 
         both = agree = 0
+        disagree = []  # (stripped guid, db storey, sidecar storey)
         for g, st in c.execute("SELECT guid, storey FROM elements_meta "
                                "WHERE storey IS NOT NULL AND storey NOT IN ('','Unknown')"):
             g = norm(g)
@@ -66,8 +70,36 @@ def main():
             both += 1
             if normalize_storey(st) == normalize_storey(s):
                 agree += 1
-        check(f"{tag} storey exact-match", both > 0 and agree == both,
-              f"({agree}/{both} both-known rows)")
+            else:
+                disagree.append((g, st, s))
+        if not disagree:
+            check(f"{tag} storey exact-match", both > 0,
+                  f"({agree}/{both} both-known rows)")
+        else:
+            # Disagreement is NOT automatically a sidecar failure: the db's storey column can be a
+            # DERIVED (z-binned) value while the sidecar mines the REAL IfcRelContainedInSpatialStructure.
+            # ADJUDICATE against the source IFC directly: the witness passes only if the sidecar matches
+            # the file's own containment on EVERY disagreeing row — and then the db rows are a FINDING
+            # (extraction inaccuracy detected), not a fault. First seen: HHS, 93 rows, all MEP fittings
+            # z-binned to 'Level 1' while the file contains them in Level 2/3 (verified 2026-07-02).
+            import ifcopenshell
+            ifc_truth = {}
+            for srcrec in side["sources"]:
+                f = ifcopenshell.open(os.path.join(ROOT, srcrec["file"]))
+                for rel in f.by_type("IfcRelContainedInSpatialStructure"):
+                    if rel.RelatingStructure.is_a("IfcBuildingStorey"):
+                        for e in rel.RelatedElements:
+                            gid = getattr(e, "GlobalId", None)
+                            if gid:
+                                ifc_truth[gid] = rel.RelatingStructure.Name
+            bad = [(g, st, s) for g, st, s in disagree
+                   if normalize_storey(ifc_truth.get(g, "")) != normalize_storey(s)]
+            check(f"{tag} storey: sidecar == source-IFC containment on ALL {len(disagree)} db-disagreements",
+                  both > 0 and not bad,
+                  f"({agree}/{both} agree; sidecar-vs-IFC mismatches: {bad[:3]})")
+            if not bad:
+                print(f"§W-GEOMAP-TIER1 FINDING {tag}: db storey column WRONG on {len(disagree)} rows "
+                      f"(derived z-binning vs the file's real containment) — e.g. {disagree[0]}")
 
         sboth = sagree = 0
         try:
