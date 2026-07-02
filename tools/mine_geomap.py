@@ -89,12 +89,19 @@ MANIFEST = {
         "db_frame": {"frame": "world-zup", "units": "m", "rotation_semantics": "none-baked-into-mesh"},
     },
     # HHS Office (user scope decision 2026-07-02: part of the "home dry" working corpus).
-    # Ifc4_Revit_MEP.ifc is a FEDERATED file (65,116 guids: ARC+STR+MEP context, not MEP-only).
-    # MEASURED join 4,743/6,871 (69.0%): ARC 1637/1774, STR 1581/1707, MEP 1525/3390 — the db's
-    # missing MEP portion came from a DIFFERENT export revision with NO in-repo source (stated,
-    # not hidden; coverage() reports the honest number). Frame: rotations all-zero (world-baked).
+    # SOURCE UPGRADE 2026-07-02 (RESUME_IFC_BOM_GEOMAPPING.md §ALIAS-SPEC note): the 6
+    # opensourceBIM_HHS_Office_* files union to 100.0% GUID join (6,871/6,871) against
+    # HHS_Office_Federated_extracted.db, verified against the FULL corpus (not a sample) —
+    # a strictly better ground-truth source than Ifc4_Revit_MEP.ifc alone (was 69.0%,
+    # 4,743/6,871). Old file kept in the union per its own note ("doesn't hurt").
     "HHS": {
-        "ifcs": ["internal/UNMERGED/Ifc4_Revit_MEP.ifc"],
+        "ifcs": ["internal/UNMERGED/opensourceBIM_HHS_Office_architect.ifc",
+                 "internal/UNMERGED/opensourceBIM_HHS_Office_architect2.ifc",
+                 "internal/UNMERGED/opensourceBIM_HHS_Office_construction.ifc",
+                 "internal/UNMERGED/opensourceBIM_HHS_Office_construction2.ifc",
+                 "internal/UNMERGED/opensourceBIM_HHS_Office_MEP.ifc",
+                 "internal/UNMERGED/opensourceBIM_HHS_Office_MEP2.ifc",
+                 "internal/UNMERGED/Ifc4_Revit_MEP.ifc"],
         "db": "deploy/buildings/HHS_Office_Federated_extracted.db",
         "db_frame": {"frame": "world-zup", "units": "m", "rotation_semantics": "none-baked-into-mesh"},
     },
