@@ -1,4 +1,8 @@
 # The Construction Economy Is About To Get Hit By an ERP Expert
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
+
+> **ERP architecture companion:** **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** — the one-page legacy-vs-WASM-event-source comparison.
 
 <div class="bim-banner" markdown>
 <b>Academic paper — applying 30 years of ERP to construction.</b> What Autodesk and Primavera should have done together, from the architect of ADempiere and iDempiere.

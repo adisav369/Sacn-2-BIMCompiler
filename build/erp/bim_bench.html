@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BIM Benchmark — Viewer vs Bonsai (honest)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--blue:#58a6ff;--green:#3fb950;
+  --red:#f85149;--yellow:#d29922;--purple:#a371f7;--teal:#39d353;--text:#e6edf3;--mute:#8b949e}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'SF Mono','Cascadia Code',monospace;min-height:100vh}
+header{padding:2rem 2rem 1.4rem;border-bottom:1px solid var(--border)}
+.logo{font-size:11px;color:var(--mute);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.4rem}
+h1{font-size:clamp(1.3rem,3vw,1.9rem);font-weight:700;color:var(--green);letter-spacing:-.01em}
+h1 span{color:var(--mute);font-weight:400}
+.tagline{margin-top:.5rem;font-size:12.5px;color:var(--mute);max-width:90ch;line-height:1.6}
+.tagline b{color:var(--text)}
+.tagline .hl{color:var(--yellow)}
+
+/* honesty banner */
+.honesty{margin:1rem 2rem;padding:.8rem 1rem;border:1px solid #1f6feb44;background:#0d1d35;border-radius:8px;
+  font-size:12px;color:#9db8e0;line-height:1.6;max-width:96ch}
+.honesty b{color:var(--blue)}
+
+.section-label{padding:1.2rem 2rem .4rem;font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.1em}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:1px;background:var(--border)}
+.card{background:var(--panel);padding:1.2rem 1.4rem}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;gap:1rem}
+.card-title{font-size:14px;font-weight:700;color:var(--text)}
+.card-sub{font-size:11px;color:var(--mute);margin-top:3px;line-height:1.45}
+.badge{font-size:9px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:.05em;white-space:nowrap;align-self:flex-start}
+.badge.measured{background:#123d21;color:var(--green)}
+.badge.charac{background:#3a2e12;color:var(--yellow)}
+
+.chart-wrap{position:relative;height:150px;margin:.8rem 0}
+.metrics{display:flex;gap:1.4rem;flex-wrap:wrap;margin:.6rem 0}
+.met{display:flex;flex-direction:column}
+.met-val{font-size:1.25rem;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+.met-val.green{color:var(--green)}.met-val.red{color:var(--red)}.met-val.amber{color:var(--yellow)}
+.met-lbl{font-size:10px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+
+.versus{margin-top:.8rem;border-top:1px solid var(--border);padding-top:.7rem}
+.vs-row{display:grid;grid-template-columns:64px 1fr;gap:.6rem;font-size:11.5px;line-height:1.5;margin-bottom:.45rem}
+.vs-row:last-child{margin-bottom:0}
+.vs-who{font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding-top:1px}
+.vs-who.us{color:var(--green)}.vs-who.them{color:#e8a0a0}
+.vs-txt{color:#cdd6e0}
+.caveat{margin-top:.7rem;padding:.5rem .7rem;border-left:2px solid var(--yellow);background:#1c1607;border-radius:0 4px 4px 0;font-size:11px;color:#d8c98e;line-height:1.5}
+.win-tie{margin-top:.5rem;font-size:11px}
+.win-tie .tag{display:inline-block;padding:1px 7px;border-radius:3px;font-weight:700;font-size:10px;margin-right:.4rem}
+.tag.us{background:#123d21;color:var(--green)}.tag.them{background:#3d1212;color:#e8a0a0}.tag.tie{background:#21262d;color:var(--mute)}
+
+footer{padding:1.4rem 2rem;border-top:1px solid var(--border);font-size:11px;color:var(--mute);line-height:1.7;max-width:100ch}
+footer b{color:var(--text)}
+footer code{color:var(--teal);background:#0a0e14;padding:1px 5px;border-radius:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BIM OOTB · Benchmark vs Bonsai/IfcOpenShell · 2026</div>
+  <h1>BIM Benchmark <span>— measured, on this machine, re-runnable</span></h1>
+  <p class="tagline">Our browser viewer (THREE.js R184, SQL-streamed geometry) vs <b>Bonsai</b> (Blender + IfcOpenShell)
+  on the same <b>122,667-element LTU building</b>. Two dimensions below are <b>measured live</b>; three are
+  <b>characterized from source code</b> and honestly marked as not-yet-timed. <span class="hl">Where we lose or tie,
+  we say so.</span> Every measured number was produced by a script in the repo — anyone can re-run it.</p>
+</header>
+
+<div class="honesty">
+  <b>How to read this.</b> A green <b>MEASURED</b> badge = a real timing produced by a witness script on this machine
+  (cited in each card). A yellow <b>CHARACTERIZED</b> badge = we read both codebases and describe the architectural
+  cost honestly, but have <b>not</b> run a fair head-to-head timing yet, so we show no number. Bonsai numbers are
+  from its source and its own large-model warnings — not benchmarks we ran inside Blender. The fair comparison for a
+  122k model is Bonsai's <b>recommended viewing mode</b> (<code>LoadLinkedProject</code>: merged chunks + SQLite
+  property cache + raycast pick), which is architecturally close to our viewer — not Bonsai's default one-object-per-element
+  import, which it <b>refuses to auto-load above 30k elements</b>.
+</div>
+
+<div class="section-label">① Measured live on the 122k model</div>
+<div class="grid">
+
+  <!-- CLASH -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Clash detection — two-phase, rich verdict</div>
+        <div class="card-sub">Broadphase (bbox R-tree) → narrowphase: real intersection + clearance gap + contact point</div>
+      </div>
+      <span class="badge measured">MEASURED</span>
+    </div>
+    <div class="chart-wrap"><canvas id="ch-clash"></canvas></div>
+    <div class="metrics">
+      <div class="met"><span class="met-val">91<span style="font-size:.7em"> ms</span></span><span class="met-lbl">Broadphase (4,000 pairs)</span></div>
+      <div class="met"><span class="met-val red">2,004</span><span class="met-lbl">Real clashes</span></div>
+      <div class="met"><span class="met-val amber">1,321</span><span class="met-lbl">Near-miss &lt;50mm</span></div>
+      <div class="met"><span class="met-val">1.5<span style="font-size:.7em"> ms</span></span><span class="met-lbl">Rich verdict / pair</span></div>
+    </div>
+    <div class="caveat"><b>Two honest findings, both measured.</b> (1) bbox-only over-reports by ~50% — 675 of the 4,000
+      box-overlaps are not real intersections; narrowphase removes them. (2) <b>1,321 near-misses</b> (e.g. a pipe
+      29.4mm from a beam) that bbox-only could <i>never</i> find — that's clearance mode. Each verdict carries a world
+      contact point + measurement. (4,000 = raw box-overlap pairs, no discipline/ignore filtering.)</div>
+    <div class="versus">
+      <div class="vs-row"><span class="vs-who us">Ours</span><span class="vs-txt">bbox R-tree from SQL (instant) → fetch geometry for candidates only → three-mesh-bvh intersection + <code>closestPointToGeometry</code> for clearance/contact. Intersection 0.14ms/pair, +clearance 1.5ms/pair. In-browser.</span></div>
+      <div class="vs-row"><span class="vs-who them">Bonsai</span><span class="vs-txt">IfcClash: tessellates <i>every</i> element first, per-element triangle BVH + OBB, then Möller tri-tri + ray-protrusion. Multithreaded C++. Reports exact penetration depth + protrusion/pierce classification; no published large-model timing.</span></div>
+    </div>
+    <div class="win-tie">
+      <span class="tag tie">VERDICT RICHNESS: PARITY</span>Intersection + clearance gap + contact point — matched, measured.
+      <br><span class="tag them">THEY LEAD</span>Exact penetration depth + protrusion/pierce — we report a bbox-overlap <i>proxy</i> (labelled), exact depth is lazy-reveal-on-tap (planned).
+      <br><span class="tag us">WE LEAD</span>No up-front tessellation — broadphase is SQL over pre-stored boxes, geometry fetched only for candidates. Same verdict, less work, browser tab, zero install.
+    </div>
+  </div>
+
+  <!-- PICK -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Element pick latency</div>
+        <div class="card-sub">Click → raycast → select, on 14,283 draw objects (122k elements as BatchedMesh)</div>
+      </div>
+      <span class="badge measured">MEASURED</span>
+    </div>
+    <div class="chart-wrap"><canvas id="ch-pick"></canvas></div>
+    <div class="metrics">
+      <div class="met"><span class="met-val green">30<span style="font-size:.7em"> ms</span></span><span class="met-lbl">Median pick</span></div>
+      <div class="met"><span class="met-val">15<span style="font-size:.7em"> ms</span></span><span class="met-lbl">Best</span></div>
+      <div class="met"><span class="met-val amber">671<span style="font-size:.7em"> ms</span></span><span class="met-lbl">Worst (p100, dense ray)</span></div>
+    </div>
+    <div class="caveat"><b>Honest correction.</b> A "2-second pick" was feared — measurement shows median <b>30ms</b>,
+      not 2s. There is a worst-case tail (~670ms) on rays through dense geometry — R184's <code>BatchedMesh.raycast</code>
+      is unaccelerated. A bbox-prefilter (reusing the clash R-tree) would tighten that tail; the median is already fine.</div>
+    <div class="versus">
+      <div class="vs-row"><span class="vs-who us">Ours</span><span class="vs-txt">THREE.Raycaster over BatchedMesh; post-pick is a single indexed SQL row + highlight. Median 30ms.</span></div>
+      <div class="vs-row"><span class="vs-who them">Bonsai</span><span class="vs-txt">Blender-native select; the click itself is cheap (cache-invalidate), IFC panel data loads lazily for visible panels only. At 122k objects the cost is Blender's depsgraph/outliner, which is why it ships the chunked viewing mode.</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section-label">② Characterized from source — not yet head-to-head timed (no number shown, on purpose)</div>
+<div class="grid">
+
+  <div class="card">
+    <div class="card-head">
+      <div><div class="card-title">Load &amp; render</div>
+        <div class="card-sub">Time from open to interactive on 122k</div></div>
+      <span class="badge charac">CHARACTERIZED</span>
+    </div>
+    <div class="versus" style="border-top:none;padding-top:.3rem">
+      <div class="vs-row"><span class="vs-who us">Ours</span><span class="vs-txt">SQL-streamed geometry → BatchedMesh/InstancedMesh (GPU-side batched draw) + DLOD frustum culling. Cost is draw-side.</span></div>
+      <div class="vs-row"><span class="vs-who them">Bonsai</span><span class="vs-txt">Multithreaded C++ OCCT tessellation (fast, cached) + one Blender object per element. The per-object depsgraph cost is fundamental — Bonsai warns &amp; gates at 30k, ships a chunked viewing mode for big models.</span></div>
+    </div>
+    <div class="caveat">No number: our only timing was under software GL (swiftshader), which is not representative of real GPU. A fair head-to-head needs both on the same hardware. We won't show an inflated figure.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div><div class="card-title">Navigation (orbit/pan)</div>
+        <div class="card-sub">Frame cost while moving the camera</div></div>
+      <span class="badge charac">CHARACTERIZED</span>
+    </div>
+    <div class="versus" style="border-top:none;padding-top:.3rem">
+      <div class="vs-row"><span class="vs-who us">Ours</span><span class="vs-txt">DLOD frustum culling hides off-screen batch slots → GPU skips their triangles. Built-in.</span></div>
+      <div class="vs-row"><span class="vs-who them">Bonsai</span><span class="vs-txt">Pure Blender draw; default has zero per-frame Bonsai overhead. Offers an opt-in <code>EnableCulling</code> modal (Python per-frame) that swaps small/distant objects to bounds. Fair comparison is against that mode.</span></div>
+    </div>
+    <div class="caveat">No number yet: needs FPS capture on identical hardware for both. Pending.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div><div class="card-title">Save / persistence</div>
+        <div class="card-sub">Cost of persisting an edit</div></div>
+      <span class="badge charac">CHARACTERIZED</span>
+    </div>
+    <div class="versus" style="border-top:none;padding-top:.3rem">
+      <div class="vs-row"><span class="vs-who us">Ours</span><span class="vs-txt">Append one signed op to the log (O(change)) → OPFS/IndexedDB. Near-instant, but the store is proprietary.</span></div>
+      <div class="vs-row"><span class="vs-who them">Bonsai</span><span class="vs-txt">Writes a full standard <code>.ifc</code> (ISO-10303 SPF) every save: O(model) serialize + sort + Blender↔IFC sync. Slower per save, but portable, human-readable, tool-agnostic.</span></div>
+    </div>
+    <div class="win-tie"><span class="tag them">BONSAI WINS</span>Portability. To export a portable IFC from our store, we'd pay the same O(model) pass Bonsai pays every save. Our win is only on incremental in-app edits.</div>
+  </div>
+
+</div>
+
+<footer>
+  <b>Methodology.</b> Measured numbers were produced on this machine by witness scripts in the repo:
+  <code>scripts/measure_pick.js</code> (W-PICK-MEASURE) and <code>scripts/measure_clash_rich.js</code>
+  (W-CLASH-NARROWPHASE), both driving the real viewer on <code>LTU_AHouse</code> (122,667 elements) headless via
+  Playwright. The narrowphase replicates the viewer's exact element transform and uses three-mesh-bvh
+  <code>intersectsGeometry</code> (true tri-tri) + <code>closestPointToGeometry</code> (clearance gap + contact point).
+  Bonsai characterization is from reading <code>IfcOpenShell/src/bonsai</code> + <code>ifcclash</code> source — not
+  benchmarks run inside Blender (running IfcClash on LTU for a real head-to-head time is the next step).
+  <br><br><b>What we claim:</b> a real two-phase clash with verdict parity to IfcClash (intersection + clearance gap +
+  contact point, all measured), reached without up-front tessellation; pick median 30ms. <b>What we don't claim:</b>
+  exact penetration depth (we show a labelled bbox proxy; lazy-reveal-on-tap is planned), nor that we beat Bonsai on
+  render/navigation/save without a fair same-hardware timing — and Bonsai's portable standard <code>.ifc</code> output
+  is genuinely better. Run the scripts yourself; correct us if a number is wrong.
+</footer>
+
+<script>
+function chart(id,type,labels,data,colors,yLabel){
+  const ctx=document.getElementById(id).getContext('2d');
+  new Chart(ctx,{type:type,data:{labels:labels,datasets:[{data:data,
+    backgroundColor:colors,borderColor:colors,borderWidth:2,
+    fill:type==='line',tension:.3,pointRadius:4,pointBackgroundColor:colors}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+(yLabel||'')}}},
+      scales:{x:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'#21262d'}},
+        y:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'#21262d'},
+          title:{display:!!yLabel,text:yLabel,color:'#8b949e',font:{size:10}}}}}});
+}
+// Clash: rich 3-way verdict of the 4000 bbox candidates (measured)
+chart('ch-clash','bar',['Real clash','Near-miss <50mm','Clear (bbox-only FP)'],[2004,1321,675],
+  ['#f85149','#d29922','#3fb950'],' pairs');
+// Pick: the 25-sample distribution (min/median/max shown as a curve)
+chart('ch-pick','line',['best','p25','median','p75','worst'],[15,22,30,60,671],
+  ['#58a6ff','#58a6ff','#3fb950','#d29922','#f85149'],' ms');
+</script>
+</body>
+</html>

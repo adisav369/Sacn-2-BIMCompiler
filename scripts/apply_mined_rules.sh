@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-DB="library/ERP.db"
+DB="library/disc_patterns.db"   # de-ERP: canonical pattern-store name (ERP.db is a back-compat symlink)
 MIGRATION_DIR="migration"
 DRY_RUN=0
 

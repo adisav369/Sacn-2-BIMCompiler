@@ -1,7 +1,12 @@
 # BIM → Project Order — Blueprint
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
 
-> **Status:** Tasks 0, A, C(engine) BUILT & witnessed (2026-06-14, worktree `feat/bim-to-project`
-> commit `c208dfa`, localhost-only — not yet deployed); §D/§E + §H/§I still PAPER.
+
+> **Status:** Tasks 0, A, C BUILT, witnessed & **LIVE** (browser-wired + deployed — bim-ootb PR #316:
+> `viewer/proj_fold.js?v=1` + `erp/bim_orders_overlay.js?v=1`; the `› ERP` button drives the fold).
+> Re-witnessed 2026-06-15 against the deployed engine — `§PROJ_FOLD plannedAmt=1055478 golden=1055478
+> match=true` (6 phases · 9 tasks · 16 issued lines, idempotent, seqno traces to sequence_rules).
+> §D/§E + §H/§I still PAPER.
 > Sibling to `docs/BIMtoERP.md`.
 > ⚠ **Repo note:** the built files live in **bim-ootb**, not this repo — `viewer/proj_fold.js`,
 > `common/history_bar.js` (this doc is the cross-repo blueprint; don't look for them here).

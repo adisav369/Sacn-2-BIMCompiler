@@ -1,4 +1,6 @@
 # BIM OOTB — Technical Overview
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 ## About (Settings Panel)
 

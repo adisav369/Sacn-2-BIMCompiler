@@ -1,6 +1,8 @@
 # nD BIM Analysis — 4D Schedule, 5D Cost, 6D Carbon, 7D FM, 8D Safety
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
 
-> **Foundation:** [Enterprise](Enterprise.md) · [LTU A-House](LTUAHouseAnalysis.md) · [DATA_MODEL](DATA_MODEL.md)
+
+> **Foundation:** Enterprise · LTU A-House · DATA_MODEL
 
 <div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: #263238; border-left: 4px solid #ff9800; text-align: center; border-radius: 4px;">
 <span style="font-size: 1.3em; line-height: 1.7; color: #eceff1; letter-spacing: 0.3px;">What was once <b style="color: #ff9800;">PRIMAVERA/ORACLE</b>'s domain, is now ours.</span>
@@ -8,7 +10,7 @@
 
 ## What We Have
 
-The [Federated Model DB](Enterprise.md) (`_extracted.db`) drives **all nD analytics**
+The Federated Model DB (`_extracted.db`) drives **all nD analytics**
 from a single SQLite file. All IFC disciplines live in this one DB.
 No IFC file open, no geometry iterator, no RAM spike.
 
@@ -229,7 +231,7 @@ After the first load, the DB is cached in IndexedDB. Subsequent visits and every
 read locally — zero network round-trip. `§CHARTS_DB_SOURCE source=idb|import|oci` is logged
 to the console and embedded in the downloaded export log for auditability.
 
-Browser HTML mode ready — here in exotic language ([Localisation](Localization.md)).
+Browser HTML mode ready — here in exotic language (Localisation).
 
 <figure style="margin: 20px 0;">
 <img src="../assets/images/4D5DHTML.png" alt="4D5D HTML page translated in any exotic language" style="width:100%; border:1px solid #ccc;"/>
@@ -646,7 +648,7 @@ The **🔗 Share** button (top-left of panel) copies the current viewer URL with
 
 Example:
 ```
-.../sandbox/index.html?db=buildings/Duplex_extracted.db&tm=play
+.../viewer/viewer.html?db=buildings/Duplex_extracted.db&tm=play
 ```
 
 ### Architecture
@@ -683,10 +685,10 @@ Example:
 
 ## Next Steps
 
-1. **Browser nD engine** — port to JavaScript for [BIM OOTB](BIM_Designer_Browser.md) Phase 3.
+1. **Browser nD engine** — port to JavaScript for BIM OOTB Phase 3.
    Same JSON templates, same SQL queries, same output tables — runs in browser via sql.js (WASM).
    User drags custom `5D_rates.json` → browser re-runs 5D → downloads Excel. Zero server.
-   See [BIM_Designer_Browser.md §Phase 3](BIM_Designer_Browser.md) for full feature list.
+   See BIM_Designer_Browser.md §Phase 3 for full feature list.
 2. **Excel export (browser)** — SheetJS generates XLSX client-side from nD output tables.
    Replaces Java backend Excel generation for review/stakeholder use cases.
 3. **Community templates** — UK BCIS rates, US RSMeans, BREEAM carbon, LEED scoring

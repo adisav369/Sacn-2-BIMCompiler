@@ -197,13 +197,32 @@ public class IFCtoBOMPipeline {
                 BIMLogger.info("PIPELINE", "{}: auto-discovered {} spatial containers from extraction: {}",
                         config.buildingType(), containers.size(), containers.keySet());
             } else {
-                // YAML Order override — use as-is
-                containers = config.spatialContainers();
-                // Warn about extraction containers not in YAML (silent element loss)
-                for (String name : storeyElements.keySet()) {
-                    if (!containers.containsKey(name)) {
-                        BIMLogger.warn("PIPELINE", "{}: extraction container '{}' ({} elements) not in YAML — elements dropped",
-                                config.buildingType(), name, storeyElements.get(name).size());
+                // YAML Order override — keep listed containers as-is (preserves
+                // intent/order/role metadata), but RECOVER (do NOT silently drop)
+                // any extraction container the YAML omitted. The old behaviour
+                // dropped them and self-flagged it as "silent element loss".
+                // Recovery derives NON-INVENT metadata (code/role/seq from
+                // name+Z) via the same auto-discover path, so unmapped
+                // containers' elements still become leaves — matching how
+                // no-storeys-block buildings (SH/DX) already keep their
+                // 'Unknown' container. Only affects buildings currently losing
+                // elements (a passing building lists all its containers).
+                // Implementing RESUME_DROP_OUTLINER_ROADMAP §1 — Witness: W-SC-CONTAINER-RECOVER
+                // (SC 'Unknown' container: 277 IfcBuildingElementPart + 79 IfcOpeningElement).
+                containers = new LinkedHashMap<>(config.spatialContainers());
+                Map<String, List<ExtractionElement>> unmapped = new LinkedHashMap<>();
+                for (var e : storeyElements.entrySet()) {
+                    if (!containers.containsKey(e.getKey())) {
+                        unmapped.put(e.getKey(), e.getValue());
+                    }
+                }
+                if (!unmapped.isEmpty()) {
+                    Map<String, SpatialContainerConfig> recovered =
+                            SpatialContainerConfig.discover(unmapped);
+                    containers.putAll(recovered);
+                    for (var r : unmapped.entrySet()) {
+                        BIMLogger.warn("PIPELINE", "{}: extraction container '{}' ({} elements) not in YAML — RECOVERED via auto-discover (was silent drop)",
+                                config.buildingType(), r.getKey(), r.getValue().size());
                     }
                 }
             }
@@ -346,7 +365,9 @@ public class IFCtoBOMPipeline {
             // Previously ran post-commit (read-only) which let broken BOM.db persist
             // and silently produce 0 placements at compile time.
             // §6.12.2: MEP elements excluded from BOM — handled by IFCtoERP DISC path.
-            // Reconciliation counts only ARC/STR elements in the BOM.
+            // Reconciliation counts only ARC/STR elements in the BOM. Authoritative
+            // routing = element discipline field (StructuralBomBuilder.isSpatialDiscipline);
+            // the YAML MEP class list is a legacy fallback kept for back-compat.
             Set<String> mepClasses = new HashSet<>();
             if (config.disciplines() != null) {
                 var mep = config.disciplines().get("MEP");
@@ -355,14 +376,16 @@ public class IFCtoBOMPipeline {
                 }
             }
             int mepCount = 0;
-            if (!mepClasses.isEmpty()) {
-                for (ExtractionElement e : allElements) {
-                    if (mepClasses.contains(e.ifcClass())) mepCount++;
+            for (ExtractionElement e : allElements) {
+                if (!StructuralBomBuilder.isSpatialDiscipline(e.discipline())
+                        || mepClasses.contains(e.ifcClass())) {
+                    mepCount++;
                 }
             }
             int reconcileCount = extractionCount - mepCount;
             int qaFails = BomValidator.validateAndReport(bomConn,
-                    reconcileCount, composition.halfUnitLines());
+                    reconcileCount, composition.halfUnitLines(),
+                    config.reconciliationTolerance());
             if (qaFails > 0) {
                 System.err.printf("[IFCtoBOM] ABORTING — %d QA check(s) FAILED. "
                         + "Fix the data source and re-run.%n", qaFails);
@@ -383,6 +406,27 @@ public class IFCtoBOMPipeline {
             BIMLogger.stage(6, "IntegrityHash", "computing SHA256");
             String hash = IntegrityHash.computeAndStore(bomConn);
             System.out.printf("[IFCtoBOM] Integrity hash: %s%n", hash.substring(0, 16));
+
+            // 10a. Actual placeable count = LEAF SUM(qty) + composition pairs.
+            // This is what the compiler places (the BOM leaves), which can be
+            // BELOW reconcileCount by the reconciliation_tolerance (catalog-identity
+            // duplicate-collapses). expected_elements must reflect the placeable
+            // count so the compiler's count gate (BuildingRegistryTest) reconciles.
+            // For delta=0 buildings this equals reconcileCount (no change).
+            // RESUME_DROP_OUTLINER_ROADMAP §1 — Witness: W-SC-CONTAINER-RECOVER.
+            int placeableCount;
+            try (Statement st = bomConn.createStatement();
+                 ResultSet prs = st.executeQuery(
+                     "SELECT COALESCE(SUM(qty), 0) FROM m_bom_line WHERE "
+                     + "child_product_id NOT IN (SELECT Value FROM m_bom) "
+                     + "AND element_ref IS NOT NULL AND element_ref != ''")) {
+                int leafSum = prs.next() ? prs.getInt(1) : 0;
+                placeableCount = leafSum + composition.halfUnitLines();
+            }
+            if (placeableCount != reconcileCount) {
+                BIMLogger.info("PIPELINE", "expected_elements={} placeable (reconcile={}, {} duplicate-collapse within tolerance {})",
+                        placeableCount, reconcileCount, reconcileCount - placeableCount, config.reconciliationTolerance());
+            }
 
             // 10b. Write registry fields onto the BUILDING m_bom row (J4_003).
             // C_DocType is now a stub — building registry lives in m_bom.
@@ -407,7 +451,7 @@ public class IFCtoBOMPipeline {
                     ps.setString(1, config.buildingType());
                     ps.setString(2, outputPath);
                     ps.setString(3, refPath);
-                    ps.setInt(4, reconcileCount);
+                    ps.setInt(4, placeableCount);
                     ps.setInt(5, config.geometryFailThreshold());
                     if (config.jurisdiction() != null) {
                         ps.setString(6, config.jurisdiction());
@@ -429,7 +473,7 @@ public class IFCtoBOMPipeline {
             try (PreparedStatement ps = bomConn.prepareStatement(
                     "INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value, description) " +
                     "VALUES ('EXPECTED_ELEMENTS', ?, 'Active extraction element count for compilation')")) {
-                ps.setString(1, String.valueOf(reconcileCount));
+                ps.setString(1, String.valueOf(placeableCount));
                 ps.executeUpdate();
             }
 

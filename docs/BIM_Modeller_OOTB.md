@@ -1,6 +1,8 @@
 # BIM Modeller OOTB — The Browser as Modelling Computer
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
 
-> **Related:** [The ERP World View](MANIFESTO.md) · [2D Layout Architecture](2D_LAYOUT.md) · [SQLite3D Schema](SQLite3D_Schema.md) · [BOM Compilation](BOMBasedCompilation.md) · [Discipline Validation](DISC_VALIDATION_DB_SRS.md)
+
+> **Related:** [The ERP World View](MANIFESTO.md) · 2D Layout Architecture · SQLite3D Schema · BOM Compilation · Discipline Validation
 
 <div class="bim-banner" markdown>
 <b>A modeller is not a program that writes files.</b> It is an interactive log of operations applied to a database. The browser is the ideal runtime for this log.
@@ -125,7 +127,7 @@ All modelling reduces to three composable primitives:
 
 ### Constraints as SQL Queries
 
-The [discipline validation rules](DISC_VALIDATION_DB_SRS.md) — sprinkler spacing ≥ 3 000 mm, emergency light within 6 m of exit — are already expressed as SQL predicates in `AD_Val_Rule`. Modelling constraints are the same thing:
+The discipline validation rules — sprinkler spacing ≥ 3 000 mm, emergency light within 6 m of exit — are already expressed as SQL predicates in `AD_Val_Rule`. Modelling constraints are the same thing:
 
 ```sql
 -- Wall must align to grid
@@ -137,7 +139,7 @@ WHERE t.guid = ?
 -- 0 = satisfied. 1 = rejected, UI highlights violation.
 ```
 
-The solver runs on every `kernel_op` commit. The [BOM placement verbs in BBC.md](BOMBasedCompilation.md) — PLACE, STACK, MIRROR, ARRAY, ROUTE — are the operation vocabulary. The constraint system is the same `AD_Val_Rule` engine the compiler uses for regulatory validation, extended to interactive spatial constraints.
+The solver runs on every `kernel_op` commit. The BOM placement verbs in BBC.md — PLACE, STACK, MIRROR, ARRAY, ROUTE — are the operation vocabulary. The constraint system is the same `AD_Val_Rule` engine the compiler uses for regulatory validation, extended to interactive spatial constraints.
 
 ---
 

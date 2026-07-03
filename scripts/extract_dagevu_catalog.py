@@ -1,0 +1,745 @@
+#!/usr/bin/env python3
+# extract_dagevu_catalog.py — EXTRACT a curated, practical INSERT catalog for the DAGeVu modeller from the
+# BOM organizer (library/archive/BOM.db). NON-INVENT: every product/dim/ifc_class is read from BOM.db; nothing
+# fabricated. prompts/MODELLER_BOM_CATALOG_SPEC.md. Output: a small JSON the modeller loads whole (no 220MB,
+# no httpvfs) — LOD-200 box proxies come from M_Product w/d/h dims; real meshes (component_library.db) are a
+# later range-load enhancement. User decree: "extract only good practical ones — furniture sets, wall-openings,
+# structure (roof/walls/slab) — a good filter system + a cheat sheet of commonly popular sets."
+import sqlite3, json, sys, os, base64, math, re
+from collections import defaultdict
+
+BOM = os.path.join(os.path.dirname(__file__), '..', 'library', 'archive', 'BOM.db')
+LIB = os.path.join(os.path.dirname(__file__), '..', 'library', 'component_library.db')
+OUT = sys.argv[1] if len(sys.argv) > 1 else 'dagevu_catalog.json'
+GEOM_OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(OUT), 'dagevu_geometries.json')
+
+# ── PER-BUILDING BOMs (user decree 2026-06-20). The real unit/room SETs with AUTHORED LBD offsets
+# (StructuralBomBuilder §4 tack convention — TESTED-PERFECT in Java, do NOT re-derive) live in these
+# per-building DBs, NOT the generic archive (whose template sets carry dx=dy=0 → synthesised into a straight
+# ROW). We source SET layouts from them VERBATIM so a dropped set places as a real 2-D room. DX+SH first;
+# Terminal (TE, 5548 offsets) is the rich follow-on to verify/refine.
+_LD = os.path.join(os.path.dirname(__file__), '..', 'library')
+PER_BLDG = [('DX', os.path.join(_LD, 'DX_BOM.db')),
+            ('SH', os.path.join(_LD, 'SH_BOM.db'))]
+
+# Practical GROUPS → the curated M_Product_Category IDs under each (the filter taxonomy).
+GROUPS = [
+    {'key': 'structure', 'label': 'Structure',
+     'cats': ['IFC_WALL', 'IFC_SLAB', 'IFC_ROOF', 'IFC_BEAM', 'IFC_COLUMN', 'IFC_FOOTING',
+              'IFC_COVERING', 'IFC_MEMBER', 'IFC_PLATE', 'IFC_RAILING', 'IFC_STAIR']},
+    {'key': 'openings',  'label': 'Wall Openings', 'cats': ['IFC_DOOR', 'IFC_WINDOW']},
+    {'key': 'furniture', 'label': 'Furniture',     'cats': ['IFC_FURNITURE', 'IFC_FURNISHINGELEMENT']},
+]
+MIN_DIM = 0.01   # drop degenerate placeholder dims (sets carry 0.001) — those are assemblies, handled separately.
+
+# Cheat-sheet = commonly popular picks (by product_id), one-tap from any view. Ordered for the quick rail.
+CHEAT = ['DOOR_D1', 'DOOR_D1_DOUBLE', 'WINDOW_CASEMENT_819', 'SKYLIGHT_1180',
+         'WALL_EXT_BRICK_BLOCK', 'WALL_FOUNDATION_417', 'SLAB_GRADE_127', 'SLAB_FINISH_CERAMIC',
+         'HIP_ROOF_MY', 'ROOF_SH_FLAT_4FELT', 'BEAM_W310X60', 'RAILING_HANDRAIL_900',
+         'Bed_King', 'Bed_Queen', 'Dining_Table_With_Chairs', 'Base_Cabinet', 'Desk', 'Coffee_Table']
+
+
+# ── Geometry resolution — REPLICATES the authoritative Java chain (the "Java was working perfectly" rule).
+# The Java resolves furniture/fixture geometry via ComponentLibrary.getByName(namePattern)
+# (DAGCompiler/src/main/java/com/bim/compiler/library/ComponentLibrary.java:38-88):
+#     SELECT ... FROM component_definitions WHERE name LIKE '%'||pattern||'%'
+#     ORDER BY CASE WHEN name=pattern THEN 0 ELSE 1 END,                       -- EXACT name first
+#              (local_max_x-local_min_x)*(local_max_y-local_min_y) DESC        -- else LARGEST XY footprint
+#     LIMIT 1
+# i.e. exact-name match wins; otherwise the biggest-footprint substring match. This is THE resolver — it
+# returns the correctly-named real part with its real bounds, NOT a nearest-volume same-class box. We index
+# (name → row) once; get_by_name runs the identical ranking in Python. (match_hash, the old nearest-volume
+# heuristic, is retained ONLY as a structural-product last resort where no usable name exists.)
+def build_mesh_index():
+    c = sqlite3.connect(LIB)
+    ct = {r[0]: r[1] for r in c.execute('SELECT id, ifc_class FROM component_types')}
+    defs = defaultdict(list)
+    by_name = []                                          # [(name, gh, xy_footprint, ifc, w, d, h)]
+    gh_fc = {}                                            # geometry_hash → face_count (for honest-box detection)
+    for r in c.execute('SELECT type_id, name, geometry_hash, local_min_x, local_max_x, local_min_y, '
+                        'local_max_y, local_min_z, local_max_z, face_count FROM component_definitions'):
+        ic = ct.get(r[0])
+        if not ic:
+            continue
+        ex = (r[4] - r[3]); ey = (r[6] - r[5]); ez = (r[8] - r[7])
+        defs[ic].append((r[2], abs(ex * ey * ez), r[9] or 0))   # (geometry_hash, |volume|, face_count)
+        gh_fc[r[2]] = max(gh_fc.get(r[2], 0), r[9] or 0)
+        if r[1]:
+            by_name.append((r[1], r[2], ex * ey, ic, round(ex, 4), round(ey, 4), round(ez, 4)))
+    return c, defs, by_name, gh_fc
+
+
+def get_by_name(by_name, pattern):
+    """Port of Java ComponentLibrary.getByName (ComponentLibrary.java:38-88): WHERE name LIKE '%pattern%'
+    ORDER BY (exact-name-first, then largest XY footprint), LIMIT 1. Returns
+    (name, geometry_hash, ifc_class, w, d, h) or None. NON-INVENT: pure DB match on the pattern."""
+    if not pattern:
+        return None
+    pl = pattern.lower()
+    best = None  # (rank0_exact, -xy_footprint) → smallest tuple wins
+    for name, gh, xy, ic, w, d, h in by_name:
+        if pl in name.lower():
+            key = (0 if name == pattern else 1, -xy)
+            if best is None or key < best[0]:
+                best = (key, (name, gh, ic, w, d, h))
+    return best[1] if best else None
+
+
+def match_hash(defs, ifc, w, d, h):
+    # LAST-RESORT nearest-by-volume for structural products with no usable name pattern. Prefer a DETAILED
+    # mesh — a degenerate 12-tri box only when no richer candidate exists for this ifc_class.
+    cand = defs.get(ifc)
+    if not cand:
+        return None
+    vol = (w or 0.1) * (d or 0.1) * (h or 0.1)
+    detailed = [x for x in cand if x[2] > 12]
+    pool = detailed if detailed else cand
+    return min(pool, key=lambda x: abs(x[1] - vol))[0]
+
+
+# ── Spatial placement ports (BOMTierResolver computeZoneAnchor + PhantomLayout GPD walk + LocalCoord rotation).
+# No BOM db carries wall locators / openings / ad_room_boundary (verified by query 2026-06-19, see card §DATA
+# AVAILABILITY) — the wall-anchored absolute layout was a RUNTIME computation against the building's real room,
+# stored only in the cooked extracted.db, never in the BOM recipe. So a modeller drop cannot copy it. What we
+# faithfully CAN do: synthesize a square envelope from the assembly aabb and run the cascade's LOGIC against it.
+# These ports mirror DAGCompiler coordinate/LocalCoord.java + library/BOMTierResolver.java exactly.
+_CARD_RAD = {'south': 0.0, 'north': math.pi, 'west': -math.pi / 2, 'east': math.pi / 2}
+
+
+def card_to_rad(d):                                          # LocalCoord.cardinalToRadians (L108-116)
+    return _CARD_RAD.get(d, 0.0)
+
+
+_ABS_RULES = ('EW', 'NS')                                    # absolute axis rules — no wall context needed
+_REL_RULES = ('FACE_INTO_ROOM', 'FACE_AWAY_FROM_WALL', 'FACE_OUTSIDE', 'PARALLEL_TO_WALL')  # host-relative
+
+
+def expand_verb(verb_ref, qty, ox, oy, oz):
+    """VERBATIM port of PlacementCollectorVisitor.expandVerb (DAGCompiler walker, L1482-1717).
+    Returns a list of per-instance LBD-corner offsets, each [dx,dy,dz] — or [dx,dy,dz,w,d,h] for
+    CLUSTER's 6-value form (per-instance dims). Every offset already includes the line origin
+    (ox,oy,oz), exactly as the compiler folds it. NON-INVENT: verb_ref is authored BOM data
+    written by VerbFactorizer (the compiler's own factoring of N IFC instances); expanding it
+    here is the SAME deterministic reconstruction the compiler runs at compile time — so the
+    drop reproduces output.db without ever reading extracted.db (the red line). Verbs unused by
+    SH/DX (ROUTE/FRAME/SPRAY/PLACE_DEVICE) are ported too for parity + an origin-fallback guard."""
+    v = verb_ref or ''
+    if not v:
+        return [[ox, oy, oz] for _ in range(max(qty, 1))]
+    if v.startswith('TILE:'):                                # TILE:nx:ny:stepX:stepY → 2D grid
+        p = v[5:].split(':'); nx, ny, sx, sy = int(p[0]), int(p[1]), float(p[2]), float(p[3])
+        return [[ox + ix * sx, oy + iy * sy, oz] for ix in range(nx) for iy in range(ny)]
+    if v.startswith('ROUTE:'):                               # ROUTE:axis:step:n|... → axis-aligned legs
+        out, cx, cy = [], ox, oy
+        for leg in v[6:].split('|'):
+            p = leg.split(':'); axis = p[0][0]; step = float(p[1]); cnt = int(p[2])
+            for _ in range(cnt):
+                out.append([cx, cy, oz])
+                if axis == 'X':
+                    cx += step
+                else:
+                    cy += step
+        return out
+    if v.startswith('FRAME:'):                               # FRAME:x1,..|y1,..|.. → cartesian gridlines (floor-rel)
+        h = v[6:].split('|'); xs = [float(x) for x in h[0].split(',')]; ys = [float(y) for y in h[1].split(',')]
+        return [[x, y, oz] for x in xs for y in ys]
+    if v.startswith('CLUSTER:'):                             # CLUSTER:dx,dy,dz[,w,d,h];... → exact per-instance
+        out = []
+        for e in v[8:].split(';'):
+            vals = e.split(',')
+            row = [ox + float(vals[0]), oy + float(vals[1]), oz + float(vals[2])]
+            if len(vals) >= 6:
+                row += [float(vals[3]), float(vals[4]), float(vals[5])]   # per-instance w,d,h (m)
+            out.append(row)
+        return out
+    if v.startswith('SPRAY:'):                               # SPRAY:stepX:stepY → semi-regular grid (qty-driven)
+        p = v[6:].split(':'); sx, sy = float(p[0]), float(p[1])
+        ny = max(1, int((qty * sx / sy) ** 0.5 + 0.5)); nx = (qty + ny - 1) // ny   # Java Math.round (positive)
+        out = []
+        for ix in range(nx):
+            for iy in range(ny):
+                if len(out) < qty:
+                    out.append([ox + ix * sx, oy + iy * sy, oz])
+        return out
+    if v.startswith('LINE_MULTI:'):                          # LINE_MULTI:axis:p1,..;axis:p1,.. → groups
+        out = []
+        for grp in v[11:].split(';'):
+            ci = grp.index(':'); axis = grp[:ci]
+            for ps in grp[ci + 1:].split(','):
+                pos = float(ps.strip())
+                out.append({'X': [pos, oy, oz], 'Y': [ox, pos, oz], 'Z': [ox, oy, pos]}.get(axis, [ox, oy, oz]))
+        return out
+    if v.startswith('LINE:'):                                # LINE:axis:p1,p2,.. → explicit positions on one axis
+        data = v[5:]; ci = data.index(':'); axis = data[:ci]
+        out = []
+        for ps in data[ci + 1:].split(','):
+            pos = float(ps.strip())
+            out.append({'X': [pos, oy, oz], 'Y': [ox, pos, oz], 'Z': [ox, oy, pos]}.get(axis, [ox, oy, oz]))
+        return out
+    if v.startswith('PLACE_DEVICE:'):                        # marker verb — position already in origin
+        return [[ox, oy, oz] for _ in range(max(qty, 1))]
+    return [[ox, oy, oz] for _ in range(max(qty, 1))]        # unknown verb → origin fallback (compiler parity)
+
+
+def resolve_symbolic_rot(label, wall_ctx):
+    """Resolve a SYMBOLIC rotation_rule to radians. Two families:
+    • ABSOLUTE axis rules (wall/plate run direction) — EW / NS. Semantics confirmed in
+      WitnessBuilder.wallMountedFixture javadoc ("NS" = wall runs north-south along Y; "EW" = east-west along X).
+      The Java orients walls via geometry construction, not a rotation; translated to our unit-mesh+rotation
+      model: EW → 0° (mesh long axis stays X), NS → +90° (run along Y). No wall context needed.
+    • HOST-RELATIVE facing rules — port of LocalCoord.resolveRotation (L80-92): FACE_INTO_ROOM /
+      FACE_AWAY_FROM_WALL → face off that wall (Java treats both identically: back-to-wall = facing in);
+      FACE_OUTSIDE → opposite (+π); PARALLEL_TO_WALL → +90°. Need a wall context.
+    Returns 0.0 for an unknown label or a relative rule with no wall context (honest — not inventable)."""
+    if label == 'EW':
+        return 0.0
+    if label == 'NS':
+        return math.pi / 2
+    if not wall_ctx:
+        return 0.0
+    if label in ('FACE_INTO_ROOM', 'FACE_AWAY_FROM_WALL'):
+        return card_to_rad(wall_ctx)
+    if label == 'FACE_OUTSIDE':
+        return card_to_rad(wall_ctx) + math.pi
+    if label == 'PARALLEL_TO_WALL':
+        return card_to_rad(wall_ctx) + math.pi / 2
+    return 0.0
+
+
+def layout_assembly(asm, by_id, bom_meta):
+    """ENVELOPE-RELATIVE placement for ONE assembly (faithful port of BOMTierResolver computeZoneAnchor +
+    PhantomLayout GPD walk + LocalCoord.resolveRotation). Mutates each child's dx/dy/rotDeg in place and sets
+    autoLayout/wall. Synthesize a square envelope from the assembly aabb (w×d) centred on the drop point; a set
+    with NO authored offsets is backed to its LONGEST wall and GPD-walked along it (anchor advances by each
+    child's extent; child backed off the wall by half its REAL depth) — so a bathroom's fixtures LINE a wall
+    instead of floating in a bare +X row. Symbolic rotation_rule resolves against the established wall; a
+    no-rule child of a wall-walk faces the wall (resolveWithGPD L548). HONEST CEILING: faithful to the recipe +
+    the cascade's LOGIC, but the envelope is SYNTHESIZED (not the building's real room).
+    ⚠ MUST run AFTER the leaf set is closed — else _extent/_depth fall back to defaults for leaf-closure
+    products and the walk is NOT flush-backed by real dims (W-BOM-SPATIAL caught exactly this). Returns
+    (wall_set, float_set, rot_resolved, rot_unresolved) increments. NON-INVENT: aabb / allocated_width_mm /
+    product dims / rotation rules all read from the data."""
+    children = asm['children']
+    rot_resolved = rot_unresolved = 0
+
+    def _extent(ch):
+        if ch['isBom']:
+            m = bom_meta.get(ch['ref'])
+            w = (m[4] or 0) / 1000.0 if m else 0.0
+            return w if w > 0.01 else 0.5                        # nested aabb width; degenerate/missing → 0.5 default
+        if ch['_aw'] > 0.01:
+            return ch['_aw']                                     # allocated slot width
+        p = by_id.get(ch['ref'])
+        return (p['w'] if p and p.get('w') else 0.5)            # else the product's own width
+
+    def _depth(ch):
+        p = by_id.get(ch['ref'])
+        return (p.get('d') or 0.3) if p else 0.3
+
+    def _resolve_child_rot(ch, wall_ctx):
+        """Faithful to BOMTierResolver. Precedence: ABSOLUTE EW/NS (any wall) > HOST-RELATIVE FACE_*/PARALLEL
+        vs wall_ctx (LocalCoord.resolveRotation; 0°+honest if no wall) > no-rule wall-walk default = the wall
+        FACING (card_to_rad(wall), resolveWithGPD L548) > explicit non-zero numeric kept."""
+        nonlocal rot_resolved, rot_unresolved
+        label = ch.get('rotRule')                               # set only for SYMBOLIC rules (numeric → None)
+        if label in _ABS_RULES:
+            ch['rotDeg'] = round(resolve_symbolic_rot(label, None) * 180.0 / math.pi, 2); rot_resolved += 1
+        elif label in _REL_RULES:
+            if wall_ctx:
+                ch['rotDeg'] = round(resolve_symbolic_rot(label, wall_ctx) * 180.0 / math.pi, 2); rot_resolved += 1
+            else:
+                ch['rotDeg'] = 0.0; rot_unresolved += 1         # no wall context — honest 0°, label retained
+        elif wall_ctx and abs(ch['rotDeg']) < 0.001:
+            ch['rotDeg'] = round(card_to_rad(wall_ctx) * 180.0 / math.pi, 2); rot_resolved += 1
+
+    exts = [_extent(ch) for ch in children]
+    W = asm['w'] or 0.0
+    Dd = asm['d'] or 0.0
+    if max(W, Dd) < 0.01:                                       # assembly carries no aabb → derive from children
+        W = max(sum(exts), 0.5)
+        Dd = max((_depth(ch) for ch in children), default=0.4)
+    minX, minY = -W / 2.0, -Dd / 2.0
+
+    wall_set = float_set = 0
+    has_offsets = any(abs(ch['dx']) > 0.001 or abs(ch['dy']) > 0.001 for ch in children)
+    if not has_offsets and len(children) > 1:
+        along_x = W >= Dd                                       # walk along the longer axis
+        wall = 'south' if along_x else 'west'                   # back the set to that (longest) wall
+        span = sum(e + ch['_ms'] for e, ch in zip(exts, children)) - children[-1]['_ms']
+        cursor = -span / 2.0                                    # centre the run on the drop point
+        for ch, ext in zip(children, exts):
+            halfD = _depth(ch) / 2.0
+            along = cursor + ext / 2.0                          # centre = anchor + half-extent (Java cx=anchor+halfW)
+            if along_x:
+                ch['dx'] = round(along, 4)
+                ch['dy'] = round(minY + halfD, 4)               # backed off the south wall by half depth
+            else:
+                ch['dy'] = round(along, 4)
+                ch['dx'] = round(minX + halfD, 4)               # backed off the west wall by half depth
+            cursor += ext + ch['_ms']                           # advance anchor by extent (+ min gap)
+            _resolve_child_rot(ch, wall)
+        asm['autoLayout'] = 'WALL_LINEAR'
+        asm['wall'] = wall
+        wall_set = 1
+    else:
+        # Authored-offset (or single-child) set: keep dx/dy verbatim. These are LBD-CORNER offsets (§4 tack
+        # convention) — the Java leaf math recovers the box CENTRE via cx=anchor+offset+halfW
+        # (PlacementCollectorVisitor.java:1278). Mark each LEAF child `lbd` so expandAssembly adds the half-extent
+        # axis-aligned (AFTER offset rotation, so the half is NOT rotated — exactly as the Java does). WALL_LINEAR
+        # children above already encode the centre (along=cursor+ext/2), so they are NOT flagged. No wall
+        # established → host-relative FACE_* rules left at 0°+label (honest); only absolute EW/NS resolve.
+        for ch in children:
+            _resolve_child_rot(ch, None)
+            if not ch['isBom']:
+                ch['lbd'] = 1                                    # leaf offset is LBD-corner → +half at expand time
+        if has_offsets:
+            float_set = 1
+    for ch in children:                                         # drop transient layout inputs from the shipped JSON
+        ch.pop('_aw', None); ch.pop('_ms', None); ch.pop('_ad', None); ch.pop('_ah', None)
+    return wall_set, float_set, rot_resolved, rot_unresolved
+
+
+# ── normalizeRole port (FurnitureWorker.java:100-117) → a canonical getByName PATTERN per BOM role. The Java
+# normalizeRole switch remaps role tokens (TABLE→DINING_TABLE, CHAIR_*→DINING_CHAIR, DESK→WORKSTATION_DESK …);
+# here we map each role to the human-readable library name that getByName resolves to a real, correctly-named,
+# correctly-sized component_definitions part (every entry VERIFIED to resolve against component_library.db,
+# see the §-audit in MODELLER_BOM_CATALOG_SPEC.md). archive/BOM.db's furniture sets put the real intent in
+# `role` (the child_product_id is a bare IFC-class placeholder, child_name_pattern is NULL), so role → name is
+# the only non-invent bridge to the generic 220MB library. Unmapped roles (generic FURNITURE, MEP/structural
+# terminals with no concrete catalog part) fall through to an honest role-named box proxy.
+ROLE_NAME = {
+    # Dining / living furniture
+    'TABLE': 'Dining_Table', 'DINING_TABLE': 'Dining_Table',
+    'CHAIR': 'Dining_Chair', 'CHAIR_A': 'Dining_Chair', 'CHAIR_B': 'Dining_Chair', 'CHAIR_C': 'Dining_Chair',
+    'CHAIR_D': 'Dining_Chair', 'CHAIR_E': 'Dining_Chair', 'CHAIR_F': 'Dining_Chair',
+    'VISITOR_CHAIR_A': 'Dining_Chair', 'VISITOR_CHAIR_B': 'Dining_Chair',
+    'USER_CHAIR': 'Dining_Chair', 'GUEST_SEAT': 'Dining_Chair', 'LOUNGE_CHAIR': 'Dining_Chair',
+    'COFFEE_TABLE': 'Coffee_Table', 'SIDE_TABLE': 'Side_Table', 'SIDE_TABLE_A': 'Side_Table',
+    'SIDE_TABLE_B': 'Side_Table', 'SIDE_TABLE_L': 'Side_Table', 'SIDE_TABLE_R': 'Side_Table',
+    'SOFA': 'Sofa', 'SOFA_B': 'Sofa', 'PIANO': 'Piano', 'BED': 'Bed_King', 'WARDROBE': 'Wardrobe',
+    # Workstation
+    'DESK': 'Desk',
+    # Kitchen / bath cabinetry
+    'BASE_CABINET': 'Base_Cabinet', 'UPPER_CABINET': 'Upper_Cabinet', 'VANITY': 'Vanity_Cabinet',
+    'VANITY_A': 'Vanity_Cabinet', 'VANITY_B': 'Vanity_Cabinet', 'COUNTER': 'Counter_Top',
+    'TALL_CABINET': 'Tall_Cabinet',
+    # Sanitary / fixtures — these DO resolve to real library parts (IfcFlowTerminal class) with sensible dims
+    'TOILET': 'Toilet', 'FIXTURE': 'Toilet', 'SINK': 'Sink_Island', 'HAND_BIDET': 'Bidet', 'BIDET': 'Bidet',
+    'FLOOR_TRAP': 'Floor_Trap',
+    # MEP terminals with a clean library name
+    'LIGHT': 'Light_Pendant', 'SPRINKLER': 'Sprinkler', 'SPRINKLER_HEAD': 'Sprinkler', 'HEAD': 'Sprinkler',
+}
+
+
+def main():
+    b = sqlite3.connect(BOM)
+    libc, defs, by_name, gh_fc = build_mesh_index()
+
+    def resolve_geom(pattern, ifc, w, d, h):
+        """Java-faithful geometry resolution: getByName(pattern) FIRST (exact-name → largest-XF substring),
+        falling back to nearest-volume match_hash ONLY if the name doesn't resolve. Returns
+        (gh, name, rw, rd, rh) where name/dims come from the matched real part when name-resolved, else
+        (gh-or-None, None, None, None, None). NON-INVENT: pattern and dims are read from the data."""
+        hit = get_by_name(by_name, pattern) if pattern else None
+        if hit:
+            return hit[1], hit[0], hit[3], hit[4], hit[5]      # (gh, name, w, d, h)
+        return match_hash(defs, ifc, w, d, h), None, None, None, None
+
+    catname = {r[0]: r[1] for r in b.execute('SELECT M_Product_Category_ID, Name FROM M_Product_Category')}
+    catifc = {r[0]: r[1] for r in b.execute('SELECT M_Product_Category_ID, IFC_Class FROM M_Product_Category')}
+
+    products, by_id = [], {}
+    out_groups = []
+    for g in GROUPS:
+        gcats = []
+        for cat in g['cats']:
+            rows = b.execute(
+                'SELECT product_id, COALESCE(Name, product_id), ifc_class, width, depth, height '
+                'FROM M_Product WHERE M_Product_Category_ID=? AND COALESCE(is_active,1)=1 '
+                'ORDER BY product_id', (cat,)).fetchall()
+            items = []
+            for pid, name, ifc, w, d, h in rows:
+                w, d, h = (w or 0), (d or 0), (h or 0)
+                if max(w, d, h) < MIN_DIM:      # placeholder/degenerate → skip (it's an assembly, not a box leaf)
+                    continue
+                # friendly display name from product_id when Name is null
+                disp = name if name and name != pid else pid.replace('_', ' ').title()
+                rifc = ifc or catifc.get(cat) or 'IfcBuildingElementProxy'
+                # Java-faithful: the archive product_id IS the human-readable getByName pattern (Bed_King,
+                # Dining_Chair, …) → exact/substring match on component_definitions.name. Fall back to
+                # nearest-volume only when the id doesn't name a real part (some structural ids don't).
+                gh, _rn, _rw, _rd, _rh = resolve_geom(pid, rifc, w, d, h)
+                p = {'id': pid, 'name': disp, 'group': g['key'], 'cat': cat,
+                     'catLabel': catname.get(cat, cat), 'ifc_class': rifc,
+                     'w': round(w, 4), 'd': round(d, 4), 'h': round(h, 4)}
+                if gh:
+                    p['gh'] = gh                            # geometry_hash → lazily range-loaded real mesh
+                products.append(p); by_id[pid] = p; items.append(pid)
+            if items:
+                gcats.append({'cat': cat, 'label': catname.get(cat, cat),
+                              'ifc_class': catifc.get(cat), 'count': len(items)})
+        out_groups.append({'key': g['key'], 'label': g['label'], 'categories': gcats})
+
+    cheat = [pid for pid in CHEAT if pid in by_id]   # only ship cheat picks that survived the filter
+
+    # ── ASSEMBLIES (recursive BOM-INSERT, W-BOM-ASSEMBLY). m_bom = the 59 assemblies with children (BUILDING/
+    # FLOOR/ROOM/SET); m_bom_line = the children. A child whose product_id ALSO matches a bom_id is a NESTED
+    # assembly (recurse); otherwise it's a leaf product. NON-INVENT: offsets dx/dy/dz (meters) + rotation_rule
+    # are read verbatim. rotation_rule numeric = RADIANS → degrees; symbolic (FACE_*/EW/NS/PARALLEL_TO_WALL) is
+    # host-relative and not derivable at drop-time → applied as 0° with the label retained (honest).
+    def parse_rot(rule):
+        if rule is None:
+            return 0.0, None
+        s = str(rule).strip()
+        try:
+            return round(float(s) * 180.0 / math.pi, 2), None   # numeric = radians → degrees
+        except ValueError:
+            return 0.0, s                                        # symbolic → 0°, keep label
+
+    bom_meta = {r[0]: r for r in b.execute(
+        'SELECT bom_id, COALESCE(bom_name, bom_id), bom_type, bom_category, '
+        'aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z FROM m_bom')}
+    bom_ids = set(bom_meta)
+    lines_by_bom = defaultdict(list)
+    # NOTE: the generic archive BOM.db has no qty/verb_ref columns (only the per-building DBs do); its sets are
+    # synthesised/retired and never factored, so pad qty=1, verb_ref=None to match the 15-field row shape.
+    for r in b.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
+                       'allocated_width_mm, min_space_mm, component_type, allocated_depth_mm, allocated_height_mm '
+                       'FROM m_bom_line WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
+        lines_by_bom[r[0]].append(tuple(r) + (1, None))
+
+    # ── MERGE the per-building BOM SETs (real authored offsets) into the same structures the assembly loop +
+    # layout already consume. bom_ids are building-prefixed ('DX::A102 SET') so they never collide across
+    # buildings; a same-building nested ref is prefixed too so it still resolves as a BOM. Rows are reshaped to
+    # the SAME 11-field tuple the generic m_bom_line SELECT yields (so the assembly loop is unchanged).
+    mprod_extra = {}                                  # product_id -> (name, ifc, w, d, h, cat) for per-bldg leaves
+    pb_sets = 0
+    for code, path in PER_BLDG:
+        if not os.path.exists(path) or os.path.getsize(path) == 0:
+            print('  per-building BOM MISSING/empty, skipped:', path); continue
+        pb = sqlite3.connect(path)
+        if not pb.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='m_bom'").fetchone():
+            print('  per-building BOM has no m_bom table, skipped:', path); continue
+        own = set(r[0] for r in pb.execute('SELECT bom_id FROM m_bom'))
+        pfx = lambda x, c=code: c + '::' + x
+        # Read bom_TYPE (not bom_level) into the `level` field — CONSISTENT with the generic m_bom path above
+        # (which uses bom_type). The DAGeVu drop invariant (IntraBOMRelativeTest R1/R2) exempts FLOOR/BUILDING by
+        # bom_TYPE; a per-building unit FLOOR (e.g. DUPLEX_SINGLE_UNIT_STD, bom_type=FLOOR but bom_level=SET) must
+        # classify as FLOOR so its legitimate building-scale offsets are not mis-flagged as absolute leaks.
+        for r in pb.execute('SELECT bom_id, COALESCE(bom_name, bom_id), bom_type, m_product_category_id, '
+                            'aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z FROM m_bom'):
+            bid = pfx(r[0]); bom_meta[bid] = (bid, r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9]); bom_ids.add(bid); pb_sets += 1
+        for r in pb.execute('SELECT bom_id, child_product_id, role, sequence, dx, dy, dz, rotation_rule, '
+                            'allocated_width_mm, min_space_mm, component_type, allocated_depth_mm, allocated_height_mm, '
+                            'qty, verb_ref '
+                            'FROM m_bom_line WHERE COALESCE(is_active, 1)=1 ORDER BY bom_id, sequence'):
+            ref = pfx(r[1]) if r[1] in own else r[1]   # same-building nested set → prefix so it folds as a BOM
+            lines_by_bom[pfx(r[0])].append((pfx(r[0]), ref, r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[14]))
+        for r in pb.execute('SELECT product_id, COALESCE(Name, product_id), ifc_class, width, depth, height, '
+                            'M_Product_Category_ID FROM M_Product'):
+            mprod_extra.setdefault(r[0], (r[1], r[2], r[3], r[4], r[5], r[6]))
+        print('  per-building merged %s: sets=%d' % (code, len(own)))
+
+    # ── Role-aware placeholder resolution — REPLICATES the Java geometry chain (BOMTierResolver →
+    # PlacedFurniture(role,namePattern) → FurnitureWorker.normalizeRole → ComponentLibrary.getByName).
+    # archive/BOM.db's furniture/MEP sets use a BARE IFC-CLASS as child_product_id (a placeholder); both its
+    # child_name_pattern column AND the per-prefix XX_BOM.db's are 100% NULL (verified), so the ONLY identity
+    # the data carries is `role` (TOILET/BED/CHAIR_A…). The Java's namePattern is likewise role-derived
+    # (normalizeRole, FurnitureWorker.java:100), then getByName(namePattern) resolves the real part. We do the
+    # SAME: ROLE_NAME[role] → get_by_name → the correctly-named, correctly-sized real component_definitions
+    # part. Each DISTINCT role → a DISTINCT synthetic product (no collapse of a set's children to one mesh).
+    # NON-INVENT: role is read from the data; ROLE_NAME patterns are verified getByName hits; dims come from
+    # the matched real part (or an honest box for roles with no concrete library part, NAMED from the role).
+    def _norm_role(role):
+        """Strip an instance suffix (CHAIR_A / SINK_2 → CHAIR / SINK) only when the FULL role isn't itself a
+        mapped key, so SIDE_TABLE_A keeps SIDE_TABLE etc. Returns the lookup key + a clean display label."""
+        s = str(role or '').strip()
+        if s in ROLE_NAME:
+            return s
+        base = re.sub(r'_(?:[A-Z]|\d+)$', '', s)
+        return base if base in ROLE_NAME else s
+
+    def _role_product(ifc, role):
+        """A per-role synthetic product (distinct id per role) carrying the getByName-resolved real mesh+name+
+        dims, or an honest role-named box when the role has no concrete library part."""
+        rk = _norm_role(role)
+        key = 'ROLE__' + (re.sub(r'[^A-Za-z0-9]+', '_', str(role or 'X')).strip('_').upper() or 'X')
+        if key not in by_id:
+            pat = ROLE_NAME.get(rk)
+            hit = get_by_name(by_name, pat) if pat else None
+            label = str(role or ifc).replace('_', ' ').title()
+            if hit:                                     # getByName resolved → real mesh + real name + real dims
+                name, gh, ric, rw, rd, rh = hit
+                p = {'id': key, 'name': label, 'group': 'asm', 'cat': 'ASM', 'catLabel': 'Assembly part',
+                     'ifc_class': ifc, 'w': round(abs(rw), 4), 'd': round(abs(rd), 4), 'h': round(abs(rh), 4),
+                     'asmOnly': True, 'role': role, 'gh': gh, 'libName': name}
+            else:                                       # no concrete library part — honest box, NAMED from role
+                p = {'id': key, 'name': label, 'group': 'asm', 'cat': 'ASM', 'catLabel': 'Assembly part',
+                     'ifc_class': ifc, 'w': 0.4, 'd': 0.4, 'h': 0.4, 'asmOnly': True, 'role': role}
+                gh2 = match_hash(defs, ifc, 0.4, 0.4, 0.4)
+                (p.__setitem__('gh', gh2) if gh2 else p.__setitem__('dimless', True))
+            products.append(p); by_id[key] = p
+        return key, ('gh' in by_id[key] and not by_id[key].get('dimless') and by_id[key].get('libName') is not None)
+
+    role_resolved = role_proxy = phantom_skipped = 0
+    rot_resolved = rot_unresolved = sets_wall = sets_float = 0
+    verb_lines = verb_instances = 0
+    assemblies, leaf_refs = [], set()
+    for bid, rows in lines_by_bom.items():
+        meta = bom_meta.get(bid)
+        if not meta:
+            continue
+        children = []
+        for (_, ref, role, seq, dx, dy, dz, rrule, aw_mm, ms_mm, ctype, ad_mm, ah_mm, qty, verb_ref) in rows:
+            if not ref:
+                continue
+            if str(ctype or '').upper() == 'PHANTOM' or ref == 'BUFFER':
+                phantom_skipped += 1                    # layout spacer — skip (Java explodeBomTree parity)
+                continue
+            isbom = ref in bom_ids
+            if not isbom and ref.startswith('Ifc'):     # bare IFC-class placeholder → resolve by role (Java way)
+                ref, named = _role_product(ref, role)
+                if named:
+                    role_resolved += 1                  # role → getByName-resolved real part (mesh + name + dims)
+                else:
+                    role_proxy += 1                     # role with no concrete library part → honest named box
+            rotDeg, rotRule = parse_rot(rrule)
+            ch = {'ref': ref, 'role': role, 'seq': seq or 0, 'dx': round(dx or 0, 4),
+                  'dy': round(dy or 0, 4), 'dz': round(dz or 0, 4), 'rotDeg': rotDeg, 'isBom': isbom,
+                  '_aw': (aw_mm or 0) / 1000.0, '_ms': (ms_mm or 0) / 1000.0,   # transient: alloc width + min space (m)
+                  '_ad': (ad_mm or 0) / 1000.0, '_ah': (ah_mm or 0) / 1000.0}   # transient: alloc depth + height (m)
+            if rotRule:
+                ch['rotRule'] = rotRule                          # symbolic rule retained for honesty
+                # MIRROR:X / MIRROR:Y is an axis REFLECTION (party-wall flip), NOT a rotation — the Java visitor
+                # negates X&Y of every descendant offset and propagates the mirror axis down the stack
+                # (PlacementCollectorVisitor.java:347-356, 391, 1144-1149). Emit a normalized `mirror` flag so
+                # expandAssembly applies the reflection without re-parsing the symbolic rule.
+                rru = str(rotRule).upper()
+                if rru.startswith('MIRROR'):
+                    ch['mirror'] = 'X' if rru.endswith('X') else ('Y' if rru.endswith('Y') else 'X')
+            # ── VERB EXPANSION (W-DROP-VS-COMPILER PART 3, 2026-06-23). A LEAF line factored by the compiler
+            # (VerbFactorizer) carries qty=N + a verb_ref (TILE/LINE/CLUSTER/…) encoding the N real placements —
+            # the compiler reconstructs them at compile time via expandVerb, reading ONLY the BOM. The drop dropped
+            # the verb → it placed ONE box per line (the missing chairs/windows/members). FIX: expand the verb HERE
+            # into N real leaf children (each an editable layer with its own LBD offset + dims), so the proven host
+            # places them unchanged. NON-INVENT (verb_ref is authored BOM data; expand_verb is the compiler's own
+            # algorithm) and red-line-safe (no extracted.db). qty>1 lines all carry a verb in SH/DX (verified) → the
+            # length-based `qty` trap can't fire; only verb-bearing leaf lines expand.
+            if not isbom and verb_ref:
+                offs = expand_verb(verb_ref, qty or 1, ch['dx'], ch['dy'], ch['dz'])
+                verb_lines += 1; verb_instances += len(offs)
+                for off in offs:
+                    c2 = dict(ch)
+                    c2['dx'] = round(off[0], 4); c2['dy'] = round(off[1], 4); c2['dz'] = round(off[2], 4)
+                    if len(off) >= 6:                           # CLUSTER per-instance dims override the line alloc
+                        c2['_aw'], c2['_ad'], c2['_ah'] = off[3], off[4], off[5]
+                    children.append(c2)
+                leaf_refs.add(ref)
+            else:
+                children.append(ch)
+                if not isbom:
+                    leaf_refs.add(ref)
+        if not children:
+            continue
+        asm = {'id': bid, 'name': meta[1], 'level': meta[2], 'category': meta[3],
+               'w': round((meta[4] or 0) / 1000.0, 3), 'd': round((meta[5] or 0) / 1000.0, 3),
+               'h': round((meta[6] or 0) / 1000.0, 3), 'children': children}
+        # This BOM's own origin (m_bom.origin_x/y/z) — the Java visitor folds it onto the anchor on descent
+        # (PlacementCollectorVisitor.java:393-399). Emit only when non-zero (every current BOM is 0, but a future
+        # per-building bake may carry one) to keep the JSON tiny. expandAssembly adds it to each child anchor.
+        ox, oy, oz = (meta[7] or 0) if len(meta) > 7 else 0, (meta[8] or 0) if len(meta) > 8 else 0, \
+                     (meta[9] or 0) if len(meta) > 9 else 0
+        if abs(ox) > 1e-6 or abs(oy) > 1e-6 or abs(oz) > 1e-6:
+            asm['ox'] = round(ox, 4); asm['oy'] = round(oy, 4); asm['oz'] = round(oz, 4)
+        assemblies.append(asm)            # layout runs in PASS 2 (after the leaf set is closed — see below)
+
+    # CLOSE the leaf set: every leaf product an assembly places must resolve in the catalog (get/meshArrays),
+    # even if it isn't in a browse category. Add the missing ones tagged asmOnly (+ nearest real mesh).
+    added = 0
+    for pid in sorted(leaf_refs):
+        if pid in by_id:
+            continue
+        ex = mprod_extra.get(pid)                                # per-building leaf? resolve its real dims first
+        if ex:
+            name, ifc, w, d, h, cat = ex
+        else:
+            row = b.execute('SELECT product_id, COALESCE(Name, product_id), ifc_class, width, depth, height, '
+                            'M_Product_Category_ID FROM M_Product WHERE product_id=?', (pid,)).fetchone()
+            if not row:
+                continue                                         # leaf with no product row → unrenderable, skip
+            _, name, ifc, w, d, h, cat = row
+        w, d, h = (w or 0), (d or 0), (h or 0)
+        dimless = max(w, d, h) < MIN_DIM
+        if dimless:                                              # dimless leaf → small proxy (the REAL gh mesh,
+            w = d = h = 0.25                                     # if matched, is what actually renders)
+        rifc = ifc or catifc.get(cat) or 'IfcBuildingElementProxy'
+        disp = name if name and name != pid else pid.replace('_', ' ').title()
+        # Java-faithful: getByName(product_id) FIRST (the id is the human-readable name), else nearest-volume.
+        gh, _rn, _rw, _rd, _rh = resolve_geom(pid, rifc, w, d, h)
+        p = {'id': pid, 'name': disp, 'group': 'asm', 'cat': cat or 'ASM', 'catLabel': catname.get(cat, 'Assembly part'),
+             'ifc_class': rifc, 'w': round(w, 4), 'd': round(d, 4), 'h': round(h, 4), 'asmOnly': True}
+        if dimless:
+            p['dimless'] = True
+        if gh:
+            p['gh'] = gh
+        products.append(p); by_id[pid] = p; added += 1
+
+    # ── PASS 1.5: PER-INSTANCE BOX dims (W-DROP-VS-COMPILER PART 2, 2026-06-23). The compiler sizes each placed
+    # element from the BOM LINE's allocated_width/depth/height_mm — NOT the shared product's M_Product dims. A
+    # product placed N× at DISTINCT sizes (SH `CEILING_57t`: 9.31×5.66, 4.45×1.95, 4.45×3.46) collapsed to ONE
+    # product box → inflated covering + over-spread (the d=9.308 box was the SOLE element past the slab footprint).
+    # It is ALSO the cross-building leaf-id COLLISION cure: per-bldg leaf product_ids are bare (unprefixed), so
+    # DX's `CEILING_57t` (7.97×9.31) shadowed SH's via mprod_extra.setdefault — but the LINE's allocated_* carry
+    # SH's truth, so overriding to them fixes the dim regardless of which product won the id race. NON-INVENT:
+    # allocated_* read verbatim from the editable BOM line (the leaf layer). EDITABLE-LAYER-SAFE: the override is a
+    # per-instance synthetic product (asmOnly, reuses the base mesh/ifc/name — same pattern as the ROLE__ products
+    # and leaf-closure), so the LINE still references an addressable product the user can edit. Run BEFORE PASS 2
+    # (layout reads the leaf box dims for the LBD-corner half-extent + wall-walk) but AFTER leaf-closure (base dims
+    # known). Only overrides when allocated differs from the resolved product >1mm (else the base already matches).
+    inst_products = 0
+    def _instance_product(base_ref, iw, idd, ih):
+        nonlocal inst_products
+        key = '%s__%dx%dx%d' % (base_ref, round(iw * 1000), round(idd * 1000), round(ih * 1000))
+        if key not in by_id:
+            base = by_id.get(base_ref, {})
+            p = dict(base); p['id'] = key
+            p['w'] = round(iw, 4); p['d'] = round(idd, 4); p['h'] = round(ih, 4)
+            p['asmOnly'] = True; p['instanceOf'] = base_ref
+            products.append(p); by_id[key] = p; inst_products += 1
+        return key
+    DIM_TOL = 0.001                                              # 1mm — below this the base box already matches
+    for asm in assemblies:
+        for ch in asm['children']:
+            if ch['isBom']:
+                continue
+            iw, idd, ih = ch.get('_aw', 0), ch.get('_ad', 0), ch.get('_ah', 0)
+            if min(iw, idd, ih) <= 0:                            # no allocated box on this line → keep base product
+                continue
+            base = by_id.get(ch['ref'])
+            if not base:
+                continue
+            if (abs(iw - (base.get('w') or 0)) > DIM_TOL or abs(idd - (base.get('d') or 0)) > DIM_TOL
+                    or abs(ih - (base.get('h') or 0)) > DIM_TOL):
+                ch['ref'] = _instance_product(ch['ref'], iw, idd, ih)
+
+    # ── PASS 2: ENVELOPE-RELATIVE LAYOUT — run NOW that every leaf product's real dims are in by_id (the leaf
+    # set is closed). Running this inside pass 1 fell back to default 0.3/0.5 dims for leaf-closure products →
+    # the wall-walk was NOT flush-backed by real depth (W-BOM-SPATIAL caught all 36 such mismatches).
+    for asm in assemblies:
+        ws, fs, rr, ru = layout_assembly(asm, by_id, bom_meta)
+        sets_wall += ws; sets_float += fs; rot_resolved += rr; rot_unresolved += ru
+
+    # ── RETIRE the SYNTHESISED straight ROWS (user decree 2026-06-20). layout_assembly stamps autoLayout=
+    # 'WALL_LINEAR' on EXACTLY the sets it had to INVENT a line for (no authored offsets) — that flag is the
+    # precise "this is a fabricated row" signal. A set with real authored offsets that happen to be collinear (a
+    # kitchen COUNTER RUN, a pipe/door assembly) is NOT flagged → kept (the line is real, not invented). Retire a
+    # flagged GENERIC set only when nothing references it (don't orphan a parent) — its real-positioned
+    # replacement is the per-building / Structured cascade. Per-building ('::') sets are never synthesised.
+    # Retire ALL generic synthesised rows — even referenced ones: expandAssembly tolerates a missing child ref
+    # (a parent building simply drops its synthesised floor and keeps its REAL Structured floors). A cascade left
+    # with no real children expands empty (honest — we have no real positions for it) rather than a fabricated row.
+    # SUPERSEDE the generic archive structural cascade with the REAL per-building one. The witness
+    # (W-DROP-VS-COMPILER 2026-06-23) proved the generic archive BUILDING_XX_STD is AXIS-SCRAMBLED (a 0.47m slab
+    # rendered 8.6m tall, walls on edge) + carries placeholder cube furniture — "geometry hell" on drop — while
+    # the per-building XX::BUILDING_XX_STD reproduces the proven compiler element dims to the mm. Both are
+    # level=BUILDING with the same name, so the picker shows two identical "Sample House"es, one broken. Retire any
+    # generic (non-'::') assembly whose identity has a real per-building twin XX::<id> (building AND its structural
+    # STR twins) so only the real, dimensionally-correct cascade is droppable. NON-INVENT: pure id-twin match.
+    _real_by_base = {a['id'].split('::', 1)[1]: a for a in assemblies if '::' in a['id']}
+    superseded = set(a['id'] for a in assemblies if '::' not in a['id'] and a['id'] in _real_by_base)
+
+    kept, retired_generic = [], 0
+    for asm in assemblies:
+        if asm['id'] in superseded:
+            retired_generic += 1; continue
+        if asm.get('autoLayout') == 'WALL_LINEAR' and ('::' not in asm['id']):
+            retired_generic += 1; continue
+        kept.append(asm)
+    assemblies = kept
+
+    # PROMOTE the real per-building BUILDING root to the now-freed clean id (BUILDING_XX_STD) so every existing
+    # drop / deep-link / witness that names BUILDING_XX_STD resolves to the REAL, dimensionally-correct cascade
+    # instead of the retired archive stub. Only the droppable BUILDING root is promoted; its children keep their
+    # XX:: ids (the building references them by those ids, unchanged). NON-INVENT: pure id promotion.
+    promoted = 0
+    for base in superseded:
+        twin = _real_by_base.get(base)
+        if twin and twin.get('level') == 'BUILDING' and twin in assemblies:
+            twin['id'] = base; promoted += 1
+    # Also drop cascades that now expand to NOTHING (their only children were retired bom-refs) — iteratively, so a
+    # parent emptied by losing its last real child is dropped too. Keeps the picker free of dead drops. A set with
+    # any LEAF child is never empty (the `all(isBom…)` guard), so only all-missing-ref shells are removed.
+    emptied_names, changed = [], True
+    while changed:
+        changed = False
+        live = set(a['id'] for a in assemblies)
+        nxt = []
+        for a in assemblies:
+            if a['children'] and all(c['isBom'] and c['ref'] not in live for c in a['children']):
+                emptied_names.append(a['name']); retired_generic += 1; changed = True; continue
+            nxt.append(a)
+        assemblies = nxt
+    print('  per-building sets=%d  retired synthesised+empty=%d  assemblies=%d  emptied=%s'
+          % (pb_sets, retired_generic, len(assemblies), emptied_names or 'none'))
+
+    # HONEST-BOX flag: a product whose getByName-resolved mesh is itself ≤12 faces means the library's BEST part
+    # for it IS a box (e.g. Wardrobe — the only Wardrobe in component_library is 12 faces). Mark it so witnesses
+    # don't fault an honest box as a missing detailed mesh (same honesty as the W-LOD300 honest-box justification).
+    box_only = 0
+    for p in products:
+        if p.get('gh') and gh_fc.get(p['gh'], 0) <= 12:
+            p['boxOnly'] = True; box_only += 1
+
+    catalog = {
+        'source': 'library/archive/BOM.db (M_Product_Category + M_Product + m_bom/m_bom_line)',
+        'note': 'LOD-200 box proxies from w/d/h dims; real meshes via component_library.db range-load (later).',
+        'groups': out_groups,
+        'products': products,
+        'cheatsheet': cheat,
+        'assemblies': assemblies,
+    }
+    with open(OUT, 'w') as f:
+        json.dump(catalog, f, separators=(',', ':'))
+
+    # Emit the LAZY geometry store: hash -> {v,f} base64 (the SAME Float32-pos/Uint32-idx format the modeller
+    # already decodes). Fetched on demand (first real-mesh insert), never at boot. Tiny for the curated set;
+    # the SAME wiring scales to the full 220MB component_library.db by pointing the loader at it instead.
+    hashes = sorted(set(p['gh'] for p in products if p.get('gh')))
+    geoms, gbytes = {}, 0
+    for gh in hashes:
+        row = libc.execute('SELECT vertices, faces FROM component_geometries WHERE geometry_hash=?', (gh,)).fetchone()
+        if not row or not row[0] or not row[1]:
+            continue
+        v, fbuf = bytes(row[0]), bytes(row[1])
+        geoms[gh] = {'v': base64.b64encode(v).decode(), 'f': base64.b64encode(fbuf).decode()}
+        gbytes += len(v) + len(fbuf)
+    with open(GEOM_OUT, 'w') as f:
+        json.dump(geoms, f, separators=(',', ':'))
+
+    # SHOW summary (read this — the §-log discipline)
+    matched = sum(1 for p in products if p.get('gh'))
+    print('§DAGEVU-CATALOG out=%s products=%d matched_mesh=%d cheat=%d groups=%d' % (OUT, len(products), matched, len(cheat), len(out_groups)))
+    for g in out_groups:
+        print('  [%s] %s: %s' % (g['key'], g['label'],
+              ', '.join('%s(%d)' % (c['label'], c['count']) for c in g['categories'])))
+    print('  cheat-sheet: %s' % ', '.join(by_id[p]['name'] for p in cheat))
+    lvl = defaultdict(int)
+    for a in assemblies:
+        lvl[a['level']] += 1
+    print('§DAGEVU-ASSEMBLY assemblies=%d (%s) leafProductsAdded=%d totalProducts=%d' % (
+        len(assemblies), ', '.join('%s:%d' % (k, lvl[k]) for k in sorted(lvl)), added, len(products)))
+    print('§DAGEVU-ROLERESOLVE phantomSkipped=%d roleResolvedToConcrete=%d perRoleProxies=%d' % (
+        phantom_skipped, role_resolved, role_proxy))
+    print('§DAGEVU-SPATIAL wallAnchoredSets=%d floatOffsetSets=%d rotSymbolicResolved=%d rotSymbolicUnresolvable=%d' % (
+        sets_wall, sets_float, rot_resolved, rot_unresolved))
+    print('§DAGEVU-INSTANCE perInstanceBoxProducts=%d (leaf line allocated_* dims differ from product → own box, '
+          'NON-INVENT; fixes reused-product instances + cross-building dim collision)' % inst_products)
+    print('§DAGEVU-VERB factoredLeafLines=%d → expandedInstances=%d (compiler verb_ref TILE/LINE/CLUSTER expanded '
+          'to real editable leaves, NON-INVENT port of PlacementCollectorVisitor.expandVerb; no extracted.db)'
+          % (verb_lines, verb_instances))
+    print('§DAGEVU-BOXONLY honestBoxProducts=%d (library best part is a box ≤12 faces)' % box_only)
+    print('§DAGEVU-GEOM out=%s geoms=%d rawBytes=%d (~%.2f MB)' % (GEOM_OUT, len(geoms), gbytes, gbytes / 1e6))
+
+
+if __name__ == '__main__':
+    main()

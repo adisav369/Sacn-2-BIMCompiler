@@ -110,6 +110,37 @@ public class VerbFactorizer {
                 startSeq, true, false, 0);
     }
 
+    /** Yaw tolerance for the orientation-uniformity guard (radians, ~1.1°). */
+    private static final double ORIENT_TOL_RAD = 0.02;
+
+    /** True iff every element's orientation (yaw) equals the first within tolerance.
+     *  orientation() is the rotation captured at extraction (numeric radians, or a symbolic
+     *  rule). A factored verb line stores ONLY the first element's rotation, so a group with
+     *  mixed facing must NOT factorize. Numeric orientations compare modulo 2π within tol;
+     *  unparseable/symbolic orientations compare by exact string (conservative). */
+    private static boolean orientationsUniform(List<ExtractionElement> group) {
+        String first = group.get(0).orientation();
+        Double firstRad = parseRad(first);
+        for (int i = 1; i < group.size(); i++) {
+            String o = group.get(i).orientation();
+            Double r = parseRad(o);
+            if (firstRad != null && r != null) {
+                double d = Math.abs(firstRad - r) % (2 * Math.PI);
+                if (d > Math.PI) d = 2 * Math.PI - d;
+                if (d > ORIENT_TOL_RAD) return false;
+            } else if (!java.util.Objects.equals(first, o)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Parse an orientation string to radians; null=0; non-numeric (symbolic) → null. */
+    private static Double parseRad(String s) {
+        if (s == null || s.isEmpty()) return 0.0;
+        try { return Double.parseDouble(s.trim()); } catch (NumberFormatException e) { return null; }
+    }
+
     private static FactorResult doFactorize(Connection conn, String parentBomId,
                                           List<ExtractionElement> elements,
                                           double parentMinX, double parentMinY, double parentMinZ,
@@ -135,6 +166,7 @@ public class VerbFactorizer {
             // Reject non-uniform groups → they fall through to unfactored.
             String verbRef = null;
             boolean materialUniform = true;
+            boolean orientationUniform = true;
             if (group.size() >= 4) {  // only worth checking for groups that could factorize
                 String firstMat = first.materialRgba();
                 for (int mi = 1; mi < group.size(); mi++) {
@@ -144,8 +176,16 @@ public class VerbFactorizer {
                         break;
                     }
                 }
+                // Orientation uniformity guard: a factored line (TILE/ROUTE/FRAME) stores ONLY
+                // first.orientation() (see below) — a group whose per-instance facing differs
+                // (e.g. a 2×2 of dining chairs at {0,π,0,π}) would collapse to the first chair's
+                // rotation, silently dropping the real π on the others (the "chairs face one way"
+                // bug). Reject → fall through to the per-instance path, which writes e.orientation()
+                // per element. NON-INVENT: the real per-instance yaw (extraction rotation_z →
+                // orientation) is preserved verbatim, never flattened or fabricated.
+                orientationUniform = orientationsUniform(group);
             }
-            if (materialUniform) {
+            if (materialUniform && orientationUniform) {
                 verbRef = VerbDetector.detect(group, parentMinX, parentMinY, parentMinZ);
             }
 

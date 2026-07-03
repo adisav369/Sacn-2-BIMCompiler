@@ -45,7 +45,7 @@ def c(color, text):
 
 def load_library_state(project_dir):
     comp_db = project_dir / "library" / "component_library.db"
-    disc_db = project_dir / "library" / "ERP.db"
+    disc_db = project_dir / "library" / "disc_patterns.db"   # de-ERP: canonical name (ERP.db = back-compat symlink)
 
     existing_classes = set()
     registered_classes = set()

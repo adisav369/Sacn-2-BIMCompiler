@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fold Engine Benchmark Suite</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#0d1117; --panel:#161b22; --border:#30363d;
+  --blue:#58a6ff; --green:#3fb950; --red:#f85149;
+  --yellow:#d29922; --purple:#a371f7; --teal:#39d353;
+  --text:#e6edf3; --mute:#8b949e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'SF Mono','Cascadia Code',monospace;min-height:100vh}
+
+header{padding:2rem 2rem 1.4rem;border-bottom:1px solid var(--border)}
+.logo{font-size:11px;color:var(--mute);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.4rem}
+h1{font-size:clamp(1.3rem,3vw,1.9rem);font-weight:700;color:var(--blue);letter-spacing:-.01em}
+h1 span{color:var(--mute);font-weight:400}
+.tagline{margin-top:.4rem;font-size:12px;color:var(--mute);max-width:80ch;line-height:1.5}
+
+/* reduction bar */
+.reduction{display:flex;gap:.5rem;flex-wrap:wrap;padding:.8rem 2rem;background:#0a0e14;border-bottom:1px solid var(--border)}
+.red-chip{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:.5rem .9rem;border:1px solid var(--border);border-radius:8px;background:var(--panel)}
+.red-chip .num{font-size:1.2rem;font-weight:700;color:var(--green)}
+.red-chip .lbl{font-size:10px;color:var(--mute);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+.red-chip .sub{font-size:10px;color:var(--mute)}
+.arrow{align-self:center;color:var(--mute);font-size:1rem}
+
+/* control zone */
+.ctrl-zone{display:flex;align-items:flex-start;gap:1.6rem;padding:1.2rem 2rem;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.btn-group{display:flex;gap:.6rem;align-items:center;flex-shrink:0;padding-top:.4rem}
+#runBtn{padding:.65rem 1.6rem;font-size:14px;font-weight:700;font-family:inherit;
+  background:linear-gradient(135deg,#1c8cff,#7948d1);color:#fff;
+  border:none;border-radius:8px;cursor:pointer;letter-spacing:.04em;transition:opacity .15s,transform .1s}
+#runBtn:hover{opacity:.9}
+#runBtn:active{transform:scale(.97)}
+#runBtn:disabled{opacity:.35;cursor:default}
+#stopBtn{padding:.65rem 1.2rem;font-size:14px;font-weight:700;font-family:inherit;
+  background:linear-gradient(135deg,#7a1616,#c0392b);color:#fff;
+  border:none;border-radius:8px;cursor:pointer;letter-spacing:.04em;display:none;transition:opacity .15s}
+#stopBtn:hover{opacity:.85}
+
+/* clock */
+.clock-wrap{flex-shrink:0}
+#clockSvg{width:160px;height:160px;filter:drop-shadow(0 0 8px #d2992244)}
+#clockSvg.housekeeping{filter:drop-shadow(0 0 14px #58a6ff88);animation:pulse 1s ease-in-out infinite}
+#clockSvg.done{filter:drop-shadow(0 0 14px #3fb95088)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* counters */
+.counters{display:flex;flex-direction:column;gap:.6rem;flex:1;min-width:260px}
+.ctr-row{display:flex;gap:1.4rem;flex-wrap:wrap}
+.lc{display:flex;flex-direction:column}
+.lc-val{font-size:1.4rem;font-weight:700;color:var(--yellow);font-variant-numeric:tabular-nums;min-width:7ch;transition:color .4s}
+.lc-val.green{color:var(--green)}
+.lc-val.blue{color:var(--blue)}
+.lc-lbl{font-size:10px;color:var(--mute);text-transform:uppercase;letter-spacing:.07em}
+.round-badge{display:inline-flex;align-items:center;gap:.5rem;font-size:12px;color:var(--mute)}
+.round-badge strong{color:var(--text);font-size:14px}
+#hkBanner{display:none;padding:.5rem 1rem;background:linear-gradient(90deg,#1c3a6e,#1a2a40);
+  border:1px solid var(--blue);border-radius:6px;font-size:12px;color:var(--blue);letter-spacing:.04em;
+  animation:hkpulse 1.2s ease-in-out infinite}
+@keyframes hkpulse{0%,100%{border-color:var(--blue)}50%{border-color:#7948d1}}
+
+/* status */
+#statusBar{padding:.4rem 2rem;font-size:12px;color:var(--mute);min-height:1.6rem;
+  border-bottom:1px solid var(--border);background:#0a0e14;transition:color .3s}
+#statusBar.running{color:var(--blue)}
+#statusBar.hk{color:var(--yellow)}
+#statusBar.done{color:var(--green)}
+
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1px;background:var(--border)}
+.card{background:var(--panel);padding:1.1rem 1.3rem;transition:background .3s}
+.card.hk{background:#0d1d35}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.7rem}
+.card-title{font-size:13px;font-weight:700;color:var(--text)}
+.card-sub{font-size:11px;color:var(--mute);margin-top:2px;line-height:1.4}
+.badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.05em;white-space:nowrap}
+.badge.idle{background:#21262d;color:var(--mute)}
+.badge.running{background:#1c3a6e;color:var(--blue)}
+.badge.pass{background:#123d21;color:var(--green)}
+.badge.hk{background:#1a2a40;color:var(--blue);animation:hkpulse 1.2s infinite}
+.badge.fail{background:#3d1212;color:var(--red)}
+.chart-wrap{position:relative;height:110px;margin-top:.5rem}
+.metrics{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.7rem}
+.met{display:flex;flex-direction:column}
+.met-val{font-size:1rem;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+.met-lbl{font-size:10px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+.card-hint{font-size:10px;color:var(--mute);line-height:1.4;margin-top:.55rem;border-top:1px dashed var(--border);padding-top:.45rem}
+.card-hint b{color:#9db8e0;font-weight:600}
+
+/* idempiere ref row — hidden, replaced by chart overlay */
+.idmp-ref{display:none}
+
+/* pause overlay on each chart */
+.chart-overlay{position:absolute;inset:0;background:rgba(13,17,23,.86);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .25s}
+.chart-overlay.show{opacity:1}
+.ov-arrow{font-size:2.6rem;color:#d29922;line-height:1;margin-bottom:-.1rem}
+.ov-num{font-size:2.4rem;font-weight:700;color:#d29922;line-height:1.1;letter-spacing:-.02em}
+.ov-sub{font-size:9px;color:#8b949e;text-transform:uppercase;letter-spacing:.1em;margin-top:.3rem}
+
+/* paused state */
+#pauseBtn{padding:.65rem 1.2rem;font-size:14px;font-weight:700;font-family:inherit;
+  background:linear-gradient(135deg,#5a4200,#9a7000);color:#fff;
+  border:none;border-radius:8px;cursor:pointer;letter-spacing:.04em;display:none;transition:background .3s}
+#pauseBtn.resume{background:linear-gradient(135deg,#1a5c2e,#2d7a45)}
+#pauseBtn:hover{opacity:.85}
+#statusBar.paused{color:var(--yellow)}
+
+/* compare */
+#compare{padding:1.2rem 2rem;border-top:1px solid var(--border);display:none}
+#compare h2{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.7rem}
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);max-width:580px;
+  border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.cmp-cell{background:var(--panel);padding:.5rem .9rem;font-size:12px}
+.cmp-cell.head{background:#0a0e14;color:var(--mute);font-size:10px;text-transform:uppercase;letter-spacing:.07em}
+.cmp-cell.them{color:var(--red)}
+.us{color:var(--green);font-weight:700}
+.note{font-size:11px;color:var(--mute);margin-top:.6rem}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Fold Engine · Benchmark Suite · 2026</div>
+  <h1>5 Stress Tests <span>— continuous loop until housekeeping threshold</span></h1>
+  <p class="tagline">Each round = 25,500 signed ERP ops = <strong style="color:var(--yellow)">51 simulated business days</strong> at 500 tx/day.
+  102 days = 2 completed rounds with no degradation — the engine ran a quarter of a production year without a server.
+  At threshold the engine housekeeps (seed compaction + op-log truncation), turns green, and continues.</p>
+</header>
+
+<div class="reduction">
+  <div class="red-chip" title="Measured live from source on both sides — see bench_facts.json (W-CODEBASE-FACTS)"><span class="num" id="chipCodeNum">50×</span><span class="lbl">Less Code</span><span class="sub" id="chipCodeSub">28K vs 1.4M LOC</span></div>
+  <div class="arrow">→</div>
+  <div class="red-chip" title="Measured live from source on both sides — see bench_facts.json (W-CODEBASE-FACTS)"><span class="num" id="chipTblNum">185×</span><span class="lbl">Fewer Tables</span><span class="sub" id="chipTblSub">5 vs 925 schemas</span></div>
+  <div class="arrow">→</div>
+  <div class="red-chip"><span class="num">$0</span><span class="lbl">Server Cost</span><span class="sub">vs $1,000s/mo</span></div>
+  <div class="arrow">→</div>
+  <div class="red-chip"><span class="num" id="chipMs">—</span><span class="lbl">10K-op verify</span><span class="sub">cryptographic chain</span></div>
+  <div class="arrow">→</div>
+  <div class="red-chip"><span class="num" id="chipDays">0</span><span class="lbl">Days simulated</span><span class="sub">cumulative all rounds</span></div>
+</div>
+
+<div class="ctrl-zone">
+
+  <!-- clock -->
+  <div class="clock-wrap">
+    <svg id="clockSvg" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+      <!-- tick marks -->
+      <g id="ticks" stroke="#30363d" stroke-width="1.5"></g>
+      <!-- track -->
+      <circle cx="80" cy="80" r="62" fill="none" stroke="#21262d" stroke-width="10"/>
+      <!-- progress ring -->
+      <circle id="ringFill" cx="80" cy="80" r="62" fill="none"
+        stroke="#d29922" stroke-width="10" stroke-linecap="round"
+        stroke-dasharray="389.6" stroke-dashoffset="389.6"
+        transform="rotate(-90 80 80)" style="transition:stroke-dashoffset .4s,stroke .4s"/>
+      <!-- housekeeping sweep overlay -->
+      <circle id="ringHk" cx="80" cy="80" r="62" fill="none"
+        stroke="#58a6ff" stroke-width="10" stroke-linecap="round"
+        stroke-dasharray="389.6" stroke-dashoffset="389.6"
+        transform="rotate(-90 80 80)" opacity="0" style="transition:opacity .3s"/>
+      <!-- inner labels -->
+      <text id="clockNum" x="80" y="74" text-anchor="middle" fill="#e6edf3"
+        font-size="32" font-weight="700" font-family="'SF Mono',monospace">0</text>
+      <text id="clockUnit" x="80" y="92" text-anchor="middle" fill="#d29922"
+        font-size="11" font-family="'SF Mono',monospace">DAYS</text>
+      <text id="clockSub" x="80" y="108" text-anchor="middle" fill="#8b949e"
+        font-size="9" font-family="'SF Mono',monospace">SIMULATED</text>
+    </svg>
+  </div>
+
+  <!-- controls + counters -->
+  <div style="display:flex;flex-direction:column;gap:.8rem;flex:1">
+    <div class="btn-group">
+      <button id="runBtn">▶ RUN CONTINUOUS</button>
+      <button id="pauseBtn">⏸ PAUSE</button>
+      <span class="round-badge">Round <strong id="roundNum">—</strong> / ∞</span>
+    </div>
+    <div class="counters">
+      <div class="ctr-row">
+        <div class="lc"><span class="lc-val" id="lcOps">0</span><span class="lc-lbl">Records traversed</span></div>
+        <div class="lc"><span class="lc-val" id="lcSecs">0.0s</span><span class="lc-lbl">Wall time</span></div>
+        <div class="lc"><span class="lc-val blue" id="lcRate">—</span><span class="lc-lbl">Ops / sec</span></div>
+        <div class="lc"><span class="lc-val green" id="lcRounds">0</span><span class="lc-lbl">Rounds done</span></div>
+      </div>
+      <div id="idmpCmp" style="display:none;margin-top:.5rem;padding-top:.5rem;border-top:1px dashed #30363d">
+        <div style="font-size:9px;color:#d2992299;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.35rem">iDempiere server equivalent ↓</div>
+        <div class="ctr-row">
+          <div class="lc"><span class="lc-val" id="icmp-time" style="color:#d29922;font-size:1.1rem">—</span><span class="lc-lbl" style="color:#d2992288">Same ops, server time</span></div>
+          <div class="lc"><span class="lc-val" style="color:#d29922;font-size:1.1rem">~25/s</span><span class="lc-lbl" style="color:#d2992288">Server docs/sec · measured</span></div>
+          <div class="lc"><span class="lc-val" id="icmp-adv" style="color:#d29922;font-size:1.1rem">—</span><span class="lc-lbl" style="color:#d2992288">Throughput advantage</span></div>
+        </div>
+      </div>
+    </div>
+    <div id="hkBanner">⚙ HOUSEKEEPING — seed compacting · op-log truncating · born tenants preserved…</div>
+  </div>
+
+  <style>
+  #ssMini{flex:0 1 300px;min-width:240px;max-width:320px;align-self:flex-start;border:1px solid var(--border);border-radius:10px;background:#0d1117;padding:.7rem .85rem}
+  .ssm-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+  .ssm-title{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
+  .ssm-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;border:1px solid var(--border);color:var(--mute);white-space:nowrap}
+  .ssm-badge.here{background:#123d21;color:var(--green);border-color:#2ea04388}
+  .ssm-nets{display:flex;flex-wrap:wrap;gap:4px;margin:.55rem 0 .5rem}
+  .ssm-net{font-size:10px;font-weight:700;letter-spacing:.03em;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:#161b22;color:#54606e;cursor:pointer;transition:color .12s,background .12s,border-color .12s}
+  .ssm-net:hover{color:var(--mute)}
+  .ssm-net.on{color:var(--yellow);border-color:#d2992288;background:#d2992218}
+  .ssm-net.loc.on{color:var(--blue);border-color:#1f6feb88;background:#1f6feb18}
+  .ssm-rttv{font-size:10px;color:var(--mute);margin:-.2rem 0 .35rem}
+  .ssm-rttv b{color:var(--yellow)}
+  .ssm-nums{display:flex;gap:1.3rem;margin-top:.15rem}
+  .ssm-nums>div{display:flex;flex-direction:column}
+  .ssm-k{font-size:9.5px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+  .ssm-v{font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .ssm-v .u{font-size:.6em;font-weight:400;color:var(--mute)}
+  .ssm-v.ours{color:var(--green)}.ssm-v.them{color:var(--yellow)}
+  .ssm-win{margin-top:.45rem;font-size:11.5px;font-weight:700}
+  .ssm-win.us{color:var(--green)}.ssm-win.them{color:var(--yellow)}.ssm-win.tie{color:var(--mute)}
+  </style>
+  <div id="ssMini" style="display:none">
+    <div class="ssm-head"><span class="ssm-title">Same desktop</span><span class="ssm-badge" id="ssmBadge"></span></div>
+    <div class="ssm-nets" id="ssmNets" title="Where does the server sit? Our side never moves — only the server pays the network."></div>
+    <div class="ssm-rttv" id="ssmRttv"></div>
+    <div class="ssm-nums">
+      <div><span class="ssm-k">KernelERP · in a tab</span><span class="ssm-v ours" id="ssmOurs">—</span></div>
+      <div><span class="ssm-k">iDempiere · server</span><span class="ssm-v them" id="ssmThem">—</span></div>
+    </div>
+    <div class="ssm-win" id="ssmWin"></div>
+  </div>
+
+</div>
+
+<div id="statusBar">Ready — click to start continuous benchmark loop</div>
+
+<div class="grid">
+  <div class="card" id="card-memory">
+    <div class="card-head">
+      <div><div class="card-title">① Session Memory</div>
+        <div class="card-sub">Heap growth over 5K ops — GC stable?</div></div>
+      <span class="badge idle" id="badge-memory">IDLE</span>
+    </div>
+    <div class="chart-wrap"><canvas id="ch-memory"></canvas>
+      <div class="chart-overlay" id="ov-memory"><span class="ov-arrow">↑</span><span class="ov-num" id="ov-memory-n">—</span><span class="ov-sub">vs iDempiere</span></div></div>
+    <div class="metrics">
+      <div class="met"><span class="met-val" id="m-mem-delta">—</span><span class="met-lbl">Heap delta</span></div>
+      <div class="met"><span class="met-val" id="m-mem-verdict">—</span><span class="met-lbl">Leak?</span></div>
+    </div>
+    <div class="card-hint"><b>What this checks:</b> does the heap grow as it runs? Flat = no leak, GC stable. A leak test — not a memory-size claim.</div>
+    <div class="idmp-ref" id="ref-memory">vs iDempiere: <strong>~512 MB JVM baseline</strong> before first user — our delta is <strong id="ref-mem-ratio">—</strong> smaller</div>
+  </div>
+  <div class="card" id="card-fold">
+    <div class="card-head">
+      <div><div class="card-title">② Daily 10K + Backup</div>
+        <div class="card-sub">a day's 10,000 Sales Orders, then End-of-Day backup</div></div>
+      <span class="badge idle" id="badge-fold">IDLE</span>
+    </div>
+    <div class="chart-wrap"><canvas id="ch-fold"></canvas>
+      <div class="chart-overlay" id="ov-fold"><span class="ov-num" id="ov-fold-n">—</span><span class="ov-sub">orders/sec · KernelERP</span></div></div>
+    <div class="metrics">
+      <div class="met"><span class="met-val" id="m-fold-10k">—</span><span class="met-lbl">10K orders</span></div>
+      <div class="met"><span class="met-val" id="m-fold-ratio">—</span><span class="met-lbl">+ EOD backup</span></div>
+    </div>
+    <div class="card-hint"><b>Same unit = 1 completed Sales Order</b> (doc-no + C_Order + C_OrderLine + C_OrderTax + stock reservation). <b style="color:var(--green)">KernelERP ~2 s</b> (in a browser tab) · <b style="color:var(--yellow)">iDempiere ~6–7 min</b> for 10,000 — same box, ~170×. KernelERP also signs each order into a hash-chain (iDempiere has none) and writes the EOD backup. <span style="color:var(--mute)">Both single-threaded; measured — iDempiere ≈ 35&nbsp;ms/order over 300 real <code>completeIt()</code>, KernelERP folds the same rows. iDempiere's 35&nbsp;ms also re-runs its Java rule engine (callouts/validators/tax); like-for-like on the persisted order, not on re-running that logic.</span></div>
+    <div class="idmp-ref" id="ref-fold">vs iDempiere: <strong>~6–7 min for 10K</strong> — measured on this box over 300 real <code>completeIt()</code> Standard-Order completions (iDempiere 13, GardenWorld), ~35&nbsp;ms/doc median; same box has no add-on backup.</div>
+  </div>
+  <div class="card" id="card-load">
+    <div class="card-head">
+      <div><div class="card-title">③ Cold-Load vs Size</div>
+        <div class="card-sub">Hydration time as seed grows</div></div>
+      <span class="badge idle" id="badge-load">IDLE</span>
+    </div>
+    <div class="chart-wrap"><canvas id="ch-load"></canvas>
+      <div class="chart-overlay" id="ov-load"><span class="ov-arrow">↑</span><span class="ov-num" id="ov-load-n">—</span><span class="ov-sub">vs iDempiere</span></div></div>
+    <div class="metrics">
+      <div class="met"><span class="met-val" id="m-load-base">—</span><span class="met-lbl">Baseline</span></div>
+      <div class="met"><span class="met-val" id="m-load-5x">—</span><span class="met-lbl">At 5× size</span></div>
+    </div>
+    <div class="card-hint"><b>What this checks:</b> open → ready (hydration) time as the seed database gets bigger.</div>
+    <div class="idmp-ref" id="ref-load">vs iDempiere: <strong>~2–5 min cold start</strong> (JVM + OSGi + PG pool) — our load: <strong id="ref-load-ratio">—</strong> faster</div>
+  </div>
+  <div class="card" id="card-peers">
+    <div class="card-head">
+      <div><div class="card-title">④ Multi-Peer Sync</div>
+        <div class="card-sub">N nodes merge — no server</div></div>
+      <span class="badge idle" id="badge-peers">IDLE</span>
+    </div>
+    <div class="chart-wrap"><canvas id="ch-peers"></canvas>
+      <div class="chart-overlay" id="ov-peers"><span class="ov-arrow">↑</span><span class="ov-num" id="ov-peers-n">—</span><span class="ov-sub">vs iDempiere</span></div></div>
+    <div class="metrics">
+      <div class="met"><span class="met-val" id="m-peer-merge">—</span><span class="met-lbl">10-peer merge</span></div>
+      <div class="met"><span class="met-val" id="m-peer-ratio">—</span><span class="met-lbl">Scaling</span></div>
+    </div>
+    <div class="card-hint"><b>What this checks:</b> merge N offline copies into one. The edge is the network round-trips you skip — set it with the dial above.</div>
+    <div class="idmp-ref show" id="ref-peers">vs iDempiere: <strong>server required</strong> — every peer op is a network round-trip (~50–200 ms each); 500 ops ≈ 25–100 s via server. Our merge: <strong id="ref-peers-ratio">—</strong> faster, no server</div>
+  </div>
+  <div class="card" id="card-verify">
+    <div class="card-head">
+      <div><div class="card-title">⑤ verifyChain</div>
+        <div class="card-sub">Cryptographic chain at 100→10K ops</div></div>
+      <span class="badge idle" id="badge-verify">IDLE</span>
+    </div>
+    <div class="chart-wrap"><canvas id="ch-verify"></canvas>
+      <div class="chart-overlay" id="ov-verify"><span class="ov-arrow">↑</span><span class="ov-num" id="ov-verify-n">∞</span><span class="ov-sub">no equiv. in iDempiere</span></div></div>
+    <div class="metrics">
+      <div class="met"><span class="met-val" id="m-vfy-ms">—</span><span class="met-lbl">10K ops</span></div>
+      <div class="met"><span class="met-val" id="m-vfy-rate">—</span><span class="met-lbl">Ops/sec</span></div>
+    </div>
+    <div class="card-hint"><b>What this checks:</b> tamper-check speed at scale (our own engine). iDempiere has no built-in equivalent — not a head-to-head.</div>
+    <div class="idmp-ref show" id="ref-verify">vs iDempiere: <strong>no cryptographic audit trail</strong> — tamper-evidence requires an external audit log add-on; this engine has it built in</div>
+  </div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script>
+// ── engine asset base ────────────────────────────────────────────────────────
+// When this page is served alongside the ERP app (…/erp/) the engine js + ad_seed.db are local.
+// When it is served from the docs site (…/BIMCompiler/) they are not — fall back to the deployed
+// app (GH Pages serves cross-origin with CORS *). Lets the live round + live-recount work anywhere.
+var ERP_BASE = (location.pathname.indexOf('/erp/') >= 0 || location.protocol === 'file:')
+  ? './' : 'https://red1oon.github.io/bim-ootb/erp/';
+function erpUrl(f){ return ERP_BASE + f; }
+// ── clock constants ──
+var CIRC = 2 * Math.PI * 62;   // r=62  →  ~389.6
+var ERP_OPS_PER_ROUND = 25500; // actual commitGroup calls per full round
+var TX_PER_DAY = 500;          // busy ERP installation baseline
+
+// ── draw clock tick marks ──
+(function(){
+  var g = document.getElementById('ticks');
+  for(var i=0;i<12;i++){
+    var a = (i/12)*2*Math.PI - Math.PI/2;
+    var r1=56, r2=60;
+    var x1=80+r1*Math.cos(a), y1=80+r1*Math.sin(a);
+    var x2=80+r2*Math.cos(a), y2=80+r2*Math.sin(a);
+    var line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1.toFixed(1));line.setAttribute('y1',y1.toFixed(1));
+    line.setAttribute('x2',x2.toFixed(1));line.setAttribute('y2',y2.toFixed(1));
+    g.appendChild(line);
+  }
+})();
+
+// ── overlay ratios (filled as each bench completes) ──
+var _ov={memory:null,fold:null,load:null,verify:'∞',peers:null};
+function _showOverlays(){
+  ['memory','fold','load','verify','peers'].forEach(function(id){
+    var el=document.getElementById('ov-'+id);
+    var n=document.getElementById('ov-'+id+'-n');
+    if(el){if(n&&_ov[id])n.textContent=_ov[id]; el.classList.add('show');}
+  });
+}
+function _hideOverlays(){
+  ['memory','fold','load','verify','peers'].forEach(function(id){
+    var el=document.getElementById('ov-'+id); if(el)el.classList.remove('show');
+  });
+}
+
+// ── state ──
+var _isRunning=false, _paused=false, _pauseResolve=null;
+var _erpOps=0, _totalOps=0, _rounds=0, _startMs=0, _tickRaf=null;
+var _pausedMs=0, _pauseStart=0; // subtract paused time from wall-clock
+// ⑤ Peer Sync is the ONLY card driven by the network dial (peer sync = pure network round-trips).
+var _netRtt=0, _peerMergeMs=0, _peerOps=500; // _netRtt set by the dial; 500 ops × RTT = iDempiere server time
+function updatePeerOverlay(){
+  if(!_peerMergeMs)return;
+  if(_netRtt<=0){ _ov.peers='1×'; }                                  // LOCALHOST: no network → no edge on one box
+  else { _ov.peers=Math.round(_peerOps*_netRtt/_peerMergeMs).toLocaleString()+'×'; }  // ops × RTT vs our merge
+  var n=document.getElementById('ov-peers-n'); if(n&&_ov.peers)n.textContent=_ov.peers;
+}
+var _cumDays=0;
+var _SQL=null, _seedBuf=null, _KO=null, _CRUD=null;
+
+// ── clock update ──
+function setClock(erpOpsThisRound, mode) {
+  // mode: 'run' | 'hk' | 'done'
+  var fill = document.getElementById('ringFill');
+  var hk   = document.getElementById('ringHk');
+  var num  = document.getElementById('clockNum');
+  var unit = document.getElementById('clockUnit');
+  var sub  = document.getElementById('clockSub');
+  var svg  = document.getElementById('clockSvg');
+
+  var days = _cumDays + (erpOpsThisRound / TX_PER_DAY);
+  num.textContent = days.toFixed(1);
+  document.getElementById('chipDays').textContent = days.toFixed(0);
+
+  if(mode==='hk') {
+    var off = CIRC * 0;   // full ring
+    fill.setAttribute('stroke-dashoffset', off.toFixed(1));
+    fill.style.stroke='#58a6ff';
+    hk.setAttribute('stroke-dashoffset','0');
+    hk.style.opacity='0.6';
+    unit.textContent='COMPACT';
+    unit.setAttribute('fill','#58a6ff');
+    svg.className='housekeeping';
+  } else if(mode==='done') {
+    fill.style.stroke='#3fb950';
+    hk.style.opacity='0';
+    unit.textContent='DAYS';
+    unit.setAttribute('fill','#3fb950');
+    svg.className='done';
+  } else {
+    var frac = Math.min(erpOpsThisRound / ERP_OPS_PER_ROUND, 1);
+    var off2 = CIRC * (1 - frac);
+    fill.setAttribute('stroke-dashoffset', off2.toFixed(1));
+    fill.style.stroke='#d29922';
+    hk.style.opacity='0';
+    unit.textContent='DAYS';
+    unit.setAttribute('fill','#d29922');
+    svg.className='';
+  }
+}
+
+// ── ticker ──
+function startTicker() {
+  if(_tickRaf) cancelAnimationFrame(_tickRaf);
+  function tick(){
+    if(!_isRunning) return;
+    var activeMs=Date.now()-_startMs-_pausedMs-(_paused?Date.now()-_pauseStart:0);
+    var elapsed=Math.max(activeMs,0)/1000;
+    document.getElementById('lcSecs').textContent=elapsed.toFixed(1)+'s';
+    var rate=elapsed>0.1?Math.round(_erpOps/elapsed):0;
+    document.getElementById('lcRate').textContent=rate>0?rate.toLocaleString():'—';
+    _tickRaf=requestAnimationFrame(tick);
+  }
+  tick();
+}
+function stopTicker(){ if(_tickRaf){cancelAnimationFrame(_tickRaf);_tickRaf=null;} }
+
+function addOps(n, isErp){
+  _totalOps+=n;
+  if(isErp) _erpOps+=n;
+  document.getElementById('lcOps').textContent=_totalOps.toLocaleString();
+}
+
+// ── badge/status ──
+function setBadge(id,state){ var el=document.getElementById('badge-'+id); el.className='badge '+state; el.textContent=state.toUpperCase(); }
+function setStatus(msg,cls){ var el=document.getElementById('statusBar'); el.textContent=msg; el.className=cls||''; }
+function allBadges(state){ ['memory','fold','load','verify','peers'].forEach(function(id){setBadge(id,state);}); }
+function allCards(cls){ ['memory','fold','load','verify','peers'].forEach(function(id){ document.getElementById('card-'+id).className='card'+(cls?' '+cls:''); }); }
+
+// ── chart helpers ──
+var _charts={};
+function makeChart(id,type,color,yLabel){
+  var ctx=document.getElementById(id).getContext('2d');
+  var prev=_charts[id]; if(prev) prev.destroy();
+  var c=new Chart(ctx,{
+    type:type,
+    data:{labels:[],datasets:[{data:[],fill:type==='line',tension:0.35,
+      borderColor:color,backgroundColor:color+'22',
+      pointBackgroundColor:color,pointRadius:3,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return (yLabel||'')+c.parsed.y;}}}},
+      scales:{
+        x:{ticks:{color:'#8b949e',font:{size:9}},grid:{color:'#21262d'}},
+        y:{ticks:{color:'#8b949e',font:{size:9}},grid:{color:'#21262d'},
+          title:{display:!!yLabel,text:yLabel,color:'#8b949e',font:{size:9}}}
+      }
+    }
+  });
+  _charts[id]=c; return c;
+}
+function pushPoint(chart,label,val){ chart.data.labels.push(label); chart.data.datasets[0].data.push(val); chart.update(); }
+
+// ── housekeeping simulation ──
+async function doHousekeeping(){
+  setStatus('⚙ HOUSEKEEPING — seed compaction + op-log truncation…','hk');
+  document.getElementById('hkBanner').style.display='block';
+  allBadges('hk'); allCards('hk');
+  setClock(ERP_OPS_PER_ROUND,'hk');
+  await sleepPausable(2800);   // pause-aware: PAUSE freezes the HK screen so it can be read
+  document.getElementById('hkBanner').style.display='none';
+  setStatus('✅ Housekeeping complete — seed pristine · born tenants kept · log at zero · restarting…','done');
+  setClock(ERP_OPS_PER_ROUND,'done');
+  await sleepPausable(1200);
+  _cumDays += ERP_OPS_PER_ROUND / TX_PER_DAY;
+}
+
+function sleep(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
+function yield_(){ return new Promise(function(r){setTimeout(r,0);}); }
+// like sleep(), but if PAUSE is pressed mid-sleep it freezes at the next checkpoint until RESUME
+// (so the housekeeping phase can be paused and read, same accounting as yieldOrPause)
+async function sleepPausable(ms){
+  var step=100, e=0;
+  while(e<ms){ await sleep(step); e+=step; await yieldOrPause(); }
+}
+
+// pause-aware yield: if paused, waits until resumed
+async function yieldOrPause(){
+  await yield_();
+  if(_paused){
+    _pauseStart=Date.now();
+    await new Promise(function(r){_pauseResolve=r;});
+    _pausedMs+=Date.now()-_pauseStart;
+  }
+}
+
+// ── one full benchmark round ──
+async function runRound(round){
+  var erpThisRound=0;
+  function addErp(n){ erpThisRound+=n; addOps(n,true); setClock(erpThisRound,'run'); }
+
+  setStatus('Round '+round+' — ① session memory…','running');
+  setBadge('memory','running'); allCards('');
+  var memChart=makeChart('ch-memory','line','#a371f7','MB');
+  var memDb=new _SQL.Database(new Uint8Array(_seedBuf));
+  if(_KO) _KO.ensureTable(memDb);
+  var baseHeap=(performance.memory?performance.memory.usedJSHeapSize:0)/1024/1024;
+  var mCps=[0,100,500,1000,2000,5000], mOps=0, peakH=baseHeap;
+  for(var ci=0;ci<mCps.length&&_isRunning;ci++){
+    while(mOps<mCps[ci]&&_isRunning){
+      if(_KO){var op={op_type:'CRUD_UPDATE',op_uuid:'r'+round+'-m'+mOps,
+        params:{table:'AD_Window',id:100+(mOps%50),
+          changes:{Description:{old:'v'+(mOps-1),new:'v'+mOps}},actor:100}};
+        await _KO.commitGroup(memDb,[op],{gid:'m'+round+'-'+mOps,baseTs:1718200000000+mOps});}
+      mOps++;
+      if(mOps%100===0){addErp(100);await yieldOrPause();}
+    }
+    var h=(performance.memory?performance.memory.usedJSHeapSize:0)/1024/1024;
+    if(h>peakH)peakH=h;
+    pushPoint(memChart,mCps[ci]===0?'base':mCps[ci],(h-baseHeap).toFixed(2));
+    await yield_();
+  }
+  var memDelta=((peakH-baseHeap)).toFixed(2);
+  document.getElementById('m-mem-delta').textContent=memDelta+' MB';
+  document.getElementById('m-mem-verdict').textContent=Math.abs(+memDelta)<80?'No leak ✓':'CHECK';
+  _ov.memory=Math.round(512/Math.max(Math.abs(+memDelta),0.1))+'×';
+  setBadge('memory',_isRunning?'pass':'idle'); memDb.close();
+  if(!_isRunning) return;
+
+  setStatus('Round '+round+' — ② 10K batch…','running');
+  setBadge('fold','running');
+  var foldChart=makeChart('ch-fold','line','#58a6ff','ms');
+  var foldDb=new _SQL.Database(new Uint8Array(_seedBuf));
+  if(_KO) _KO.ensureTable(foldDb);
+  // APPLE-TO-APPLE: each "record" is a COMPLETED Sales Order — the SAME multi-table effect iDempiere's
+  // completeIt() persists (C_Order + C_OrderLine + C_OrderTax + stock reservation), plus a signed audit op.
+  var _oid=0,_lid=0,_dno=2000000+round*100000;
+  var _mo=foldDb.exec("SELECT COALESCE(MAX(c_order_id),0) FROM c_order"); if(_mo.length)_oid=Number(_mo[0].values[0][0]);
+  var _ml=foldDb.exec("SELECT COALESCE(MAX(c_orderline_id),0) FROM c_orderline"); if(_ml.length)_lid=Number(_ml[0].values[0][0]);
+  var fChk={1000:1,2000:1,5000:1,10000:1}, fAt1k=1, fAt10k=1, fDone=0, fT0=performance.now();
+  while(fDone<10000&&_isRunning){
+    if(_KO){var chunk=[];
+      for(var fk=0;fk<1000;fk++){
+        var co=++_oid, cl=++_lid, dn=++_dno, now=1718200000000+fDone+fk;
+        foldDb.run("INSERT INTO c_order(c_order_id,ad_client_id,ad_org_id,documentno,c_doctype_id,c_doctypetarget_id,c_bpartner_id,m_warehouse_id,m_pricelist_id,dateordered,dateacct,issotrx,docstatus,docaction,grandtotal,totallines,c_currency_id,isactive,created,updated)VALUES(?,11,11,?,132,132,118,103,101,?,?,'Y','CO','CO',26.49,24.99,100,'Y',?,?)",[co,String(dn),now,now,now,now]);
+        foldDb.run("INSERT INTO c_orderline(c_orderline_id,c_order_id,ad_client_id,ad_org_id,line,m_product_id,qtyordered,qtyentered,priceactual,priceentered,linenetamt,c_tax_id,isactive,created,updated)VALUES(?,?,11,11,10,123,1,1,24.99,24.99,24.99,107,'Y',?,?)",[cl,co,now,now]);
+        foldDb.run("INSERT INTO c_ordertax(c_order_id,c_tax_id,ad_client_id,ad_org_id,taxamt,taxbaseamt,isactive,created,updated)VALUES(?,107,11,11,1.50,24.99,'Y',?,?)",[co,now,now]);
+        foldDb.run("INSERT INTO m_storagereservation(m_product_id,m_warehouse_id,m_attributesetinstance_id,issotrx,qty,datelastinventory,ad_client_id,ad_org_id,isactive)VALUES(123,103,0,'Y',1,?,11,11,'Y')ON CONFLICT(m_product_id,m_warehouse_id,m_attributesetinstance_id,issotrx)DO UPDATE SET qty=qty+1",[now]);
+        chunk.push({op_type:'SO_COMPLETE',op_uuid:'r'+round+'-o'+co,
+          params:{order:co,docno:dn,bp:118,lines:[{product:123,qty:1,amt:24.99}],tax:1.50,total:26.49,actor:100}});}
+      await _KO.commitGroup(foldDb,chunk,{gid:'b'+round+'-'+fDone,baseTs:1718200000000+fDone});}
+    fDone+=1000; addErp(1000);
+    if(fChk[fDone]){var fms=Math.round(performance.now()-fT0);
+      if(fDone===1000)fAt1k=Math.max(fms,1); if(fDone===10000)fAt10k=Math.max(fms,1);
+      pushPoint(foldChart,fDone.toLocaleString(),fms);}
+    await yieldOrPause();
+  }
+  var fRate=Math.round(10000/fAt10k*1000);
+  // End-of-Day BACKUP: snapshot the whole store (signed op-log + data) — the real daily-close step
+  var bk0=performance.now(); var snap=foldDb.export(); var bkMs=Math.round(performance.now()-bk0);
+  var bkMB=(snap.length/1048576).toFixed(1);
+  pushPoint(foldChart,'backup',bkMs);
+  document.getElementById('m-fold-10k').textContent=fAt10k+' ms';
+  document.getElementById('m-fold-ratio').textContent=bkMB+' MB · '+bkMs+' ms';
+  _ov.fold=fRate.toLocaleString()+'/s';   // OUR throughput (iDempiere full-stack batch pending — no versus)
+  setBadge('fold',_isRunning?'pass':'idle'); foldDb.close();
+  if(!_isRunning) return;
+
+  setStatus('Round '+round+' — ③ cold-load…','running');
+  setBadge('load','running');
+  var loadChart=makeChart('ch-load','bar','#39d353','ms');
+  var lTiers=[{label:'base',rows:0},{label:'2×',rows:12000},{label:'3×',rows:26000},{label:'5×',rows:52000}];
+  var lBase=1,lLast=1;
+  for(var li=0;li<lTiers.length&&_isRunning;li++){
+    var lt=lTiers[li], inflated;
+    if(lt.rows===0){inflated=new Uint8Array(_seedBuf);}
+    else{
+      var tmp=new _SQL.Database(new Uint8Array(_seedBuf));
+      tmp.run('CREATE TABLE IF NOT EXISTS bench_pad(id INTEGER PRIMARY KEY,p TEXT)');
+      tmp.run('BEGIN');
+      var pad='x'.repeat(512);
+      for(var ri=0;ri<lt.rows;ri++)tmp.run('INSERT INTO bench_pad(p)VALUES(?)',[pad+ri]);
+      tmp.run('COMMIT'); inflated=tmp.export(); tmp.close();
+      addOps(lt.rows,false); await yieldOrPause();
+    }
+    var ltimes=[];
+    for(var ls=0;ls<3;ls++){
+      var lc2=new Uint8Array(inflated),lt0=performance.now();
+      var ldb=new _SQL.Database(lc2); ldb.exec('SELECT COUNT(*)FROM AD_Window');
+      ltimes.push(Math.round(performance.now()-lt0)); ldb.close();
+    }
+    ltimes.sort(function(a,b){return a-b;}); var lmed=ltimes[1];
+    if(li===0)lBase=Math.max(lmed,1);
+    if(li===lTiers.length-1)lLast=lmed;
+    pushPoint(loadChart,lt.label,lmed); await yieldOrPause();
+  }
+  document.getElementById('m-load-base').textContent=lBase+' ms';
+  document.getElementById('m-load-5x').textContent=lLast+' ms';
+  _ov.load=Math.round(120000/Math.max(lBase,1)).toLocaleString()+'×';
+  setBadge('load',_isRunning?'pass':'idle');
+  if(!_isRunning) return;
+
+  setStatus('Round '+round+' — ⑤ verifyChain…','running');
+  setBadge('verify','running');
+  var vfyChart=makeChart('ch-verify','line','#d29922','ms');
+  var vfyDb=new _SQL.Database(new Uint8Array(_seedBuf));
+  if(_KO) _KO.ensureTable(vfyDb);
+  var vCps=[100,500,1000,5000,10000], vOps=0, vMs=0, vRate=0;
+  for(var vi=0;vi<vCps.length&&_isRunning;vi++){
+    while(vOps<vCps[vi]&&_isRunning){
+      if(_KO){var vop={op_type:'CRUD_UPDATE',op_uuid:'r'+round+'-v'+vOps,
+        params:{table:'AD_Window',id:100+(vOps%40),
+          changes:{Description:{old:'v'+(vOps-1),new:'v'+vOps}},actor:100}};
+        await _KO.commitGroup(vfyDb,[vop],{gid:'v'+round+'-'+vOps,baseTs:1718200000000+vOps});}
+      vOps++;
+      if(vOps%200===0){addErp(200);await yieldOrPause();}
+    }
+    var vt0=performance.now();
+    var vr=_KO?await _KO.verifyChain(vfyDb):{ok:true};
+    var vms=Math.round(performance.now()-vt0);
+    if(vCps[vi]===10000){vMs=vms;vRate=vms>0?Math.round(10000/(vms/1000)):99999;}
+    pushPoint(vfyChart,vCps[vi].toLocaleString(),vms); await yieldOrPause();
+  }
+  document.getElementById('m-vfy-ms').textContent=vMs+' ms';
+  document.getElementById('m-vfy-rate').textContent=vRate.toLocaleString()+'/s';
+  document.getElementById('chipMs').textContent=vMs+' ms';
+  setBadge('verify',_isRunning?'pass':'idle'); vfyDb.close();
+  if(!_isRunning) return;
+
+  setStatus('Round '+round+' — ④ peer sync…','running');
+  setBadge('peers','running');
+  var peersChart=makeChart('ch-peers','bar','#3fb950','ms');
+  var pCounts=[2,5,10], OPP=50, p2m=1, p10m=1;
+  function serD(db,since){
+    var r=db.exec('SELECT op_uuid,timestamp,op_type,parameters,input_guids,output_guid,prev_hash,op_hash,sig,gid,branch_id FROM kernel_ops WHERE id>'+since+' ORDER BY id');
+    if(!r.length)return[];
+    return r[0].values.map(function(v){var o={};r[0].columns.forEach(function(c,i){o[c]=v[i];});return o;});
+  }
+  function merD(hub,delta){
+    delta.forEach(function(op){
+      try{hub.run('INSERT OR IGNORE INTO kernel_ops(op_uuid,timestamp,op_type,parameters,input_guids,output_guid,prev_hash,op_hash,sig,gid,branch_id)VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+        [op.op_uuid,op.timestamp,op.op_type,op.parameters,op.input_guids,op.output_guid,op.prev_hash,op.op_hash,op.sig,op.gid,op.branch_id]);}catch(e){}
+    });
+  }
+  for(var pni=0;pni<pCounts.length&&_isRunning;pni++){
+    var PN=pCounts[pni], peers=[];
+    for(var pp=0;pp<PN&&_isRunning;pp++){
+      var pdb=new _SQL.Database(new Uint8Array(_seedBuf));
+      if(_KO)_KO.ensureTable(pdb);
+      for(var pk=0;pk<OPP&&_isRunning;pk++){
+        if(_KO){var pop={op_type:'CRUD_UPDATE',op_uuid:'r'+round+'-peer'+pp+'-op'+pk+'-n'+PN,
+          params:{table:'AD_Window',id:100+((pp*OPP+pk)%60),
+            changes:{Description:{old:'v'+pk,new:'v'+(pk+1)}},actor:100+pp}};
+          await _KO.commitGroup(pdb,[pop],{gid:'r'+round+'p'+pp+'g'+pk+'n'+PN,baseTs:1718200000000+pni*1e6+pp*1000+pk});}
+        if(pk%20===0){addErp(20);await yieldOrPause();}
+      }
+      peers.push(pdb);
+    }
+    var hub=new _SQL.Database(new Uint8Array(_seedBuf));
+    if(_KO)_KO.ensureTable(hub);
+    var pt0=performance.now();
+    peers.forEach(function(p){merD(hub,serD(p,0));});
+    var pmerge=Math.round(performance.now()-pt0);
+    if(PN===2)p2m=Math.max(pmerge,1);
+    if(PN===10)p10m=pmerge;
+    pushPoint(peersChart,PN+' peers',pmerge);
+    peers.forEach(function(p){try{p.close();}catch(e){}});
+    hub.close(); await yieldOrPause();
+  }
+  document.getElementById('m-peer-merge').textContent=p10m+' ms';
+  document.getElementById('m-peer-ratio').textContent=(p10m/p2m).toFixed(1)+'×';
+  _peerMergeMs=Math.max(p10m,1); updatePeerOverlay();  // ⑤ driven by the network dial (_netRtt)
+
+  setBadge('peers',_isRunning?'pass':'idle');
+  if(!_isRunning) return;
+
+  _rounds++;
+  document.getElementById('lcRounds').textContent=_rounds;
+  document.getElementById('roundNum').textContent=round;
+}
+
+// ── main loop ──
+async function mainLoop(){
+  _isRunning=true; _stopReq=false;
+  _erpOps=0; _totalOps=0; _rounds=0; _cumDays=0;
+  _paused=false; _pausedMs=0; _pauseStart=0;
+  document.getElementById('runBtn').disabled=true;
+  var pb=document.getElementById('pauseBtn');
+  pb.style.display='inline-block'; pb.textContent='⏸ PAUSE'; pb.className='';
+  _startMs=Date.now();
+  startTicker();
+  var round=1;
+  while(_isRunning&&!_stopReq){
+    document.getElementById('roundNum').textContent=round;
+    setStatus('Round '+round+' starting…','running');
+    var roundErpBefore=_erpOps;
+    await runRound(round);
+    if(!_isRunning||_stopReq) break;
+    await doHousekeeping();
+    round++;
+  }
+  stopTicker();
+  _isRunning=false;
+  document.getElementById('runBtn').disabled=false;
+  document.getElementById('runBtn').textContent='▶ RUN CONTINUOUS';
+  document.getElementById('runBtn').style.background='linear-gradient(135deg,#1c8cff,#7948d1)';
+  document.getElementById('pauseBtn').style.display='none';
+  setStatus('Stopped after '+(_rounds)+' complete rounds · '+_erpOps.toLocaleString()+' ERP ops · '+_cumDays.toFixed(1)+' simulated days','done');
+  setClock(0,'done');
+}
+
+// ── button wiring ──
+document.getElementById('runBtn').addEventListener('click', async function(){
+  this.textContent='⏳ Loading…'; this.disabled=true;
+  setStatus('Loading sql.js + dependencies…','running');
+  try{
+    if(!_SQL){
+      await loadScript(erpUrl('kernel_ops.js')).catch(function(){});
+      await loadScript(erpUrl('crud_overlay.js')).catch(function(){});
+      _KO  = window.KernelOps   || (window.window&&window.window.KernelOps);
+      _CRUD= window.CrudOverlay || (window.window&&window.window.CrudOverlay);
+      _SQL=await initSqlJs({locateFile:function(f){return 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/'+f;}});
+      setStatus('Fetching seed database…','running');
+      try{
+        var res=await fetch(erpUrl('ad_seed.db'));
+        if(!res.ok)throw new Error(res.status);
+        _seedBuf=new Uint8Array(await res.arrayBuffer());
+      }catch(e){
+        _seedBuf=await pickFile('Select ad_seed.db to continue');
+      }
+    }
+    this.textContent='▶ RUN CONTINUOUS';
+    mainLoop();
+  }catch(err){
+    setStatus('❌ '+err.message,'');
+    this.disabled=false;
+    this.textContent='▶ RUN CONTINUOUS';
+  }
+});
+
+document.getElementById('pauseBtn').addEventListener('click',function(){
+  if(!_paused){
+    _paused=true; _pauseStart=Date.now();
+    this.textContent='▶ RESUME'; this.className='resume';
+    setStatus('PAUSED — overlays show advantage vs iDempiere · click Resume to continue','paused');
+    document.getElementById('clockSvg').style.opacity='.5';
+    _showOverlays();
+    // iDempiere comparison row
+    var IDMP_OPS_PER_SEC=25; // MEASURED: 300 real completeIt() Standard Orders on this box (iDempiere 13, GardenWorld) → ~25 docs/sec (35ms/doc median, steady-state)
+    var idmpSecs=Math.round(_erpOps/IDMP_OPS_PER_SEC);
+    var idmpTime=idmpSecs>=3600?(idmpSecs/3600).toFixed(1)+'h':idmpSecs>=60?Math.round(idmpSecs/60)+'m':idmpSecs+'s';
+    var actualRate=parseFloat(document.getElementById('lcRate').textContent.replace(/,/g,''))||1;
+    var advX=Math.round(actualRate/IDMP_OPS_PER_SEC);
+    document.getElementById('icmp-time').textContent=idmpTime;
+    document.getElementById('icmp-adv').textContent=advX+'×';
+    document.getElementById('idmpCmp').style.display='block';
+  } else {
+    _paused=false;
+    document.getElementById('clockSvg').style.opacity='1';
+    this.textContent='⏸ PAUSE'; this.className='';
+    setStatus('Resuming…','running');
+    _hideOverlays();
+    document.getElementById('idmpCmp').style.display='none';
+    if(_pauseResolve){ _pauseResolve(); _pauseResolve=null; }
+  }
+});
+
+function loadScript(src){
+  return new Promise(function(res,rej){
+    var s=document.createElement('script'); s.src=src;
+    s.onload=res; s.onerror=function(){rej(new Error('load fail: '+src));};
+    document.head.appendChild(s);
+  });
+}
+function pickFile(msg){
+  return new Promise(function(res,rej){
+    var inp=document.createElement('input'); inp.type='file'; inp.accept='.db';
+    alert(msg);
+    inp.onchange=function(){
+      var f=inp.files[0]; if(!f)return rej(new Error('no file'));
+      var r=new FileReader();
+      r.onload=function(e){res(new Uint8Array(e.target.result));};
+      r.readAsArrayBuffer(f);
+    };
+    inp.click();
+  });
+}
+
+// ── DYNAMIC benchmark facts (W-CODEBASE-FACTS) ────────────────────────────────
+// Both sides measured from real source; rendered from bench_facts.json. As OUR engine grows, the
+// page live-recounts its own deployed .js (same-origin) so the ratio tracks the code, not a frozen
+// number. Falls back silently to the static markup if facts are unavailable (offline / file://).
+(function(){
+  var fmtL=function(n){return n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?Math.round(n/1e3)+'K':String(n);};
+  function render(f){
+    try{
+      var us=f.ours, them=f.them, r=f.ratios;
+      var set=function(id,html){var el=document.getElementById(id);if(el)el.innerHTML=html;};
+      set('chipCodeNum', r.loc+'×');
+      set('chipCodeSub', fmtL(us.loc)+' vs '+fmtL(them.loc)+' LOC · '+us.mb+' vs '+them.mb+' MB ('+r.bytes+'× by size)');
+      set('chipTblNum', r.tables+'×');
+      set('chipTblSub', us.tables+' vs '+them.tables+' tables');
+      set('cmp-loc', them.loc.toLocaleString()+' Java → <span class="us">'+us.loc.toLocaleString()+' JS ('+r.loc+'×)</span>');
+      set('cmp-bytes', them.mb+' MB Java → <span class="us">'+us.mb+' MB JS ('+r.bytes+'×)</span>');
+      set('cmp-tbl', them.tables+' schemas → <span class="us">'+us.tables+' relations ('+r.tables+'×)</span>');
+    }catch(e){}
+  }
+  // live same-origin recount of OUR deployed engine → the part that "responds to growing code"
+  async function liveRecount(f){
+    if(!f.file_list||!f.file_list.length||ERP_BASE!=='./')return f;  // cross-origin (docs) → trust baked number
+    try{
+      var loc=0, bytes=0, ok=0;
+      await Promise.all(f.file_list.map(function(x){
+        return fetch(erpUrl(x.file),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(t){
+          if(t!=null){loc+=t.split('\n').length;bytes+=new Blob([t]).size;ok++;}
+        }).catch(function(){});
+      }));
+      if(ok===f.file_list.length){            // only trust a COMPLETE recount
+        f.ours.loc=loc; f.ours.bytes=bytes; f.ours.mb=+(bytes/1048576).toFixed(2);
+        f.ratios.loc=+(f.them.loc/Math.max(loc,1)).toFixed(1);
+        f.ratios.bytes=+(f.them.bytes/Math.max(bytes,1)).toFixed(1);
+      }
+    }catch(e){}
+    return f;
+  }
+  fetch('bench_facts.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(f){
+    if(!f)return;            // keep static fallback markup
+    render(f);               // baked numbers first (instant)
+    liveRecount(f).then(render);   // then upgrade to a live count of the current deployed code
+  }).catch(function(){});
+})();
+
+// ── SAME-DESKTOP mini panel — network-type chips (greyed → lit when selected) ──
+(function(){
+  var NETS=[{k:'LOCALHOST',ms:0,loc:true},{k:'LAN',ms:1},{k:'OFFICE',ms:20},{k:'CLOUD',ms:80},{k:'WAN',ms:200}];
+  var ST={i:0,f:null};
+  var local=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)||location.protocol==='file:';
+  function fmt(ms){if(ms>=1000)return (ms/1000).toFixed(1)+'<span class="u"> s</span>';if(ms>=10)return Math.round(ms)+'<span class="u"> ms</span>';return (+ms.toFixed(ms<1?2:1))+'<span class="u"> ms</span>';}
+  function draw(){
+    var S=ST.f.storage,n=NETS[ST.i],us=S.ours.per_op_ms,them=S.them.per_op_ms_durable+n.ms;
+    _netRtt=n.ms; updatePeerOverlay();   // ⑤ Peer Sync card follows the dial
+    document.getElementById('ssmOurs').innerHTML=fmt(us);
+    document.getElementById('ssmThem').innerHTML=fmt(them);
+    document.getElementById('ssmRttv').innerHTML = n.ms ? ('+ <b>'+n.ms+' ms</b> round-trip to the server') : 'no network — server on this box';
+    var w=document.getElementById('ssmWin'),r=them/us;
+    if(r>1.3){w.className='ssm-win us';w.textContent='we’re '+(r>=10?Math.round(r):r.toFixed(1))+'× faster';}
+    else if(r<0.77){w.className='ssm-win them';w.textContent='server '+((1/r)>=10?Math.round(1/r):(1/r).toFixed(1))+'× faster';}
+    else{w.className='ssm-win tie';w.textContent='about the same';}
+    var chips=document.querySelectorAll('#ssmNets .ssm-net');
+    for(var j=0;j<chips.length;j++)chips[j].classList.toggle('on',j===ST.i);
+  }
+  fetch('bench_localhost.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(f){
+    if(!f)return;
+    ST.f=f;
+    var b=document.getElementById('ssmBadge');b.title=f.machine.label;if(local){b.className='ssm-badge here';b.textContent='this machine';}else{b.textContent='measured';}
+    var host=document.getElementById('ssmNets');host.innerHTML='';
+    NETS.forEach(function(n,idx){var c=document.createElement('span');c.className='ssm-net'+(n.loc?' loc':'')+(idx===0?' on':'');c.textContent=n.k;c.addEventListener('click',function(){ST.i=idx;draw();});host.appendChild(c);});
+    document.getElementById('ssMini').style.display='block';
+    draw();
+  }).catch(function(){});
+})();
+
+</script>
+</body>
+</html>

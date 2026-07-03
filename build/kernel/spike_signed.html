@@ -1,0 +1,104 @@
+<!doctype html><html><head><meta charset="utf-8"><title>W-KERNEL-SIGNED spike</title></head>
+<body>
+<!-- classic scripts: sql.js (UMD global initSqlJs) + the SHIPPED signed op-log engine (window.KernelOps) -->
+<script src="/node_modules/sql.js/dist/sql-wasm.js"></script>
+<script src="/build/erp/kernel_ops.js"></script>
+<script type="module">
+// W-KERNEL-SIGNED (prompts/BONSAI_KERNEL_RESEARCH.md §5b Item 1b)
+// CLAIM: BIM parametric geometry rides the SAME signed, hash-chained op-log as ERP records.
+//   A. features commit as ONE signed group via the SHIPPED kernel_ops.commitGroup (W-OPGROUP/W-SIGN).
+//   B. the chain verifies (verifyChain ok).
+//   C. replaying geometry FROM the signed log reproduces BYTE-IDENTICAL meshes (= fold over the log).
+//   D. tampering a committed parameter BREAKS the chain (tamper-evident) — the doctrine's teeth.
+import { OcctKernel } from '/node_modules/occt-wasm/dist/index.js';
+const log = (m) => console.log(m);
+const shaHex = async (s) => { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join(''); };
+
+// ── the FOLD: pure (op-row) -> geometry; identical code path live AND on replay-from-log ──
+const vec = (a) => ({ x:a[0], y:a[1], z:a[2] });
+function applyFeature(kernel, op) {            // op = { op_type, parameters(JSON string) }
+  const P = JSON.parse(op.parameters);
+  if (op.op_type === 'GEOM_EXTRUDE') {
+    const rect = kernel.makeRectangle(P.profile.w, P.profile.h);
+    const solid = kernel.extrude(rect, P.dir[0], P.dir[1], P.dir[2]); kernel.release(rect); return solid;
+  }
+  if (op.op_type === 'GEOM_OPENING') {
+    const r = kernel.makeRectangle(P.profile.w, P.profile.h);
+    const wall = kernel.extrude(r, P.dir[0], P.dir[1], P.dir[2]); kernel.release(r);
+    const void_ = kernel.makeBoxFromCorners(vec(P.void.c1), vec(P.void.c2));
+    const cut = kernel.cut(wall, void_); kernel.release(wall); kernel.release(void_); return cut;
+  }
+  throw new Error('unknown op_type ' + op.op_type);
+}
+function fp(kernel, op) {
+  const shape = applyFeature(kernel, op); const m = kernel.tessellate(shape);
+  let cs = 2166136261 >>> 0; const p = m.positions;
+  for (let i=0;i<p.length;i++) cs = (Math.imul(cs,16777619) ^ (Math.round(p[i]*1e4)|0)) >>> 0;
+  kernel.release(shape); return { tris: m.triangleCount, cs };
+}
+
+(async () => {
+  let pass = true; const fail = (m) => { pass=false; log('§KERNEL-SIGNED-FAIL ' + m); };
+  try {
+    const SQL = await initSqlJs({ locateFile: f => '/node_modules/sql.js/dist/' + f });
+    const db = new SQL.Database();
+    const K = window.KernelOps;
+    if (!K || !K.commitGroup) throw new Error('KernelOps (shipped engine) not loaded');
+    K.ensureTable(db);
+    using kernel = await OcctKernel.init({ wasm: '/node_modules/occt-wasm/dist/occt-wasm.wasm' });
+
+    // the two features, as op-rows (op_type + params) — wall (extrude) + opening (boolean cut)
+    const feats = [
+      { op_type:'GEOM_EXTRUDE', params:{ profile:{w:4,h:0.2}, dir:[0,0,3] } },
+      { op_type:'GEOM_OPENING', params:{ profile:{w:4,h:0.2}, dir:[0,0,3], void:{ c1:[1,-1,1], c2:[2,1,2] } } },
+    ];
+    // direct-eval baselines (no log) to compare the signed-log replay against
+    const base = feats.map(f => fp(kernel, { op_type:f.op_type, parameters: JSON.stringify(f.params) }));
+
+    // W-SIGN: install an edge signer so the committed ops carry signatures (key stays at the edge)
+    K.setSigner({ sign: async (h) => shaHex(h + '::edge-secret'),
+                  verify: async (h, s) => s === await shaHex(h + '::edge-secret') });
+
+    // A. COMMIT as ONE signed group through the SHIPPED engine (reproducible: fixed gid + baseTs)
+    const res = await K.commitGroup(db, feats, { gid:'geom-grp-1', baseTs: 1700000000000 });
+    if (!res.committed) fail('commitGroup did not commit: ' + res.reason);
+    log('§KERNEL-SIGNED commit committed=' + (res.committed?'Y':'N') + ' gid=' + res.gid +
+        ' ops=' + (res.ids?res.ids.length:0) + ' tip=' + String(res.tip).slice(0,12));
+
+    // confirm the ops actually carry signatures (W-SIGN), not just hashes
+    const sigCnt = db.exec("SELECT COUNT(*) FROM kernel_ops WHERE sig IS NOT NULL")[0].values[0][0];
+    log('§KERNEL-SIGNED signed-rows=' + sigCnt + '/2');
+    if (sigCnt !== 2) fail('expected 2 signed rows, got ' + sigCnt);
+
+    // B. VERIFY the signed chain
+    const v = await K.verifyChain(db);
+    if (!v.ok) fail('verifyChain failed on a clean chain: ' + JSON.stringify(v));
+    log('§KERNEL-SIGNED verify ok=' + (v.ok?'Y':'N') + ' len=' + v.len);
+
+    // C. REPLAY geometry FROM the signed log — must be byte-identical to the direct baselines
+    const rows = db.exec("SELECT op_type, parameters FROM kernel_ops WHERE undone=0 ORDER BY id")[0].values;
+    let allIdentical = true;
+    rows.forEach((r, i) => {
+      const f = fp(kernel, { op_type: r[0], parameters: r[1] });
+      const same = f.tris === base[i].tris && f.cs === base[i].cs;
+      if (!same) { allIdentical = false; }
+      log('§KERNEL-SIGNED replay[' + i + '] ' + r[0] + ' tris=' + f.tris + ' cs=' + f.cs + ' identical=' + (same?'Y':'N'));
+    });
+    if (!allIdentical) fail('replay-from-signed-log not byte-identical to direct eval');
+
+    // D. TAMPER: mutate a committed parameter in place (no rehash) → chain MUST break
+    db.run("UPDATE kernel_ops SET parameters=? WHERE op_type='GEOM_EXTRUDE'",
+           [JSON.stringify({ profile:{w:4,h:0.99}, dir:[0,0,3] })]);
+    const vt = await K.verifyChain(db);
+    if (vt.ok) fail('TAMPER NOT DETECTED — verifyChain still ok after param mutation');
+    log('§KERNEL-SIGNED tamper detected=' + (!vt.ok?'Y':'N') + ' brokeAt=' + vt.brokeAt + ' why=' + vt.why);
+
+    log('§KERNEL-SIGNED VERDICT ' + (pass ? 'PASS — geometry rides the signed op-log; fold deterministic; tamper caught' : 'FAIL'));
+  } catch (e) {
+    log('§KERNEL-SIGNED-FAIL exception ' + (e && e.message ? e.message : String(e)));
+    log('§KERNEL-SIGNED VERDICT FAIL');
+  }
+  window.__done = true;
+})();
+</script></body></html>

@@ -1,4 +1,6 @@
 # Enabling-Technology Timeline — What Moved, When, and How It Affects Us
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 **Scope.** An academic, dated record of the browser/runtime technologies the BIM OOTB
 + Spatial ERP stack depends on (or deliberately does not). Each row is classified by
@@ -32,6 +34,7 @@ Where a date could not be independently confirmed this session it is marked *(un
 | **~2014** | sql.js (kripken) — SQLite cross-compiled to JS, later WASM, **in-memory only** | A full relational engine in a page, microsecond queries, no server, no persistence layer | **FOUNDATION** — *the DB we actually ride.* Load file → query in RAM → export whole file. Zero OPFS access-handle contention by construction | [PowerSync, May 2026](https://powersync.com/blog/sqlite-persistence-on-the-web) |
 | **~2018** | Web Payment Request API (browser-native) *(date unverified)* | Native checkout without a payment server | **ENABLER** — the third leg of the Spatial-ERP timing thesis (§11.5) | §11.5 (date not re-verified this session) |
 | **~2021–2023** | web-ifc / ThatOpen — IFC parse in-browser via WASM | IFC STEP files readable client-side | **ENABLER** — drop-IFC onboarding (IFC2x3+IFC4). We pre-extract to SQLite so repeat loads skip re-parse (our 10× vs re-parse-every-load) | [FeatureComparison.md §vs IFC.js] |
+| **2022-03** | **BroadcastChannel** cross-browser (Chrome 54 2016 / Firefox 38 2015; **Safari 15.4** completes the set) | same-origin multi-tab message bus, no server | **ENABLER** — instant multi-tab relay (viewer ↔ BOQ-charts 4D-Gantt sync, `main.js` S240 / `boq_charts.html` S253); degrades gracefully to DB-load / `generateSchedule` when absent, so it lifts UX, not capability | [MDN](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel) · [caniuse](https://caniuse.com/broadcastchannel) |
 | **2022-11** | SQLite **3.40.0** — first *official* WASM build + OPFS VFS | SQLite team ships browser WASM; OPFS sync-access-handle VFS (concurrent connections, single transaction) | **NEUTRAL** — reference/option only. We do **not** depend on the persistent build; our persistence is the op-log + in-memory sql.js | [devclass 2022-11-17](https://devclass.com/2022/11/17/sqlite-3-40-released-with-official-support-for-wasm-web-sql-reborn/); [sqlite.org/wasm](https://sqlite.org/wasm) |
 | **2023-02-23** | three.js **r150** | PBR maturity, mobile 60fps with 100K+ objects | **ENABLER** — perf/fidelity baseline behind §11.5's "Three.js r150+" leg | [r150 release (23 Feb)](https://github.com/mrdoob/three.js/releases/tag/r150) |
 | **2023-05-02** | WebGPU ships in Chrome 113 (stable) | GPU compute/render API beyond WebGL | **FUTURE** — viewer is WebGPU-ready (`navigator.gpu.requestAdapter()`), currently WebGL fallback everywhere (S276b). Activates automatically when GPU/driver support matures | [Chrome ships WebGPU](https://developer.chrome.com/blog/webgpu-release) |
@@ -67,6 +70,39 @@ half of the field is still at the gate. **First-mover, not early-mover.**
 The only move that would migrate us *into* the ROUTED-AROUND column is abandoning in-memory
 sql.js for a persistent VFS — a choice to make only when a concrete need forces it, at which
 point this table is the caveat list.
+
+---
+
+## The Turso / core-SQLite ferment (2024–2026) — parallel, mostly ROUTED-AROUND
+
+While this project was being assembled, the SQLite *core* was in the most active stretch of its
+history: a full Rust rewrite (Turso/Limbo) and the long-sought attack on the single-writer write
+path (MVCC concurrent writes). Recorded here because it is the honest "how close to the edge" backdrop
+— **but classified by our standard tags, none of it is a dependency.** Several of these milestones
+solve precisely the problem [DistributedERP §0–§5](DistributedERP.md) *dissolves* by modelling, so they
+land in **ROUTED-AROUND**, the same column as the OPFS-concurrency work above. Dates verified
+**2026‑06‑24** against the linked primary sources.
+
+| Date | Move | What changed | Effect on us | Source |
+|---|---|---|---|---|
+| **2024‑01‑15** | SQLite **3.45.0** — JSONB | binary JSON stored in the DB, no re-parse | **NEUTRAL** — present in the substrate; the engine rides the relational core + op-log, not JSONB as its store | [releaselog 3_45_0](https://sqlite.org/releaselog/3_45_0.html) |
+| **2024‑12‑10** | **Limbo** announced | "a complete rewrite of SQLite in Rust" | **NEUTRAL** — a different bet on SQLite's future; we run sql.js (C→WASM) | [Turso blog](https://turso.tech/blog/introducing-limbo-a-complete-rewrite-of-sqlite-in-rust) |
+| **~2025‑07‑01** | **Turso** first alpha | Limbo → "Turso, the next evolution of SQLite" | **NEUTRAL** — date is the announcement post (≈, not a tagged release) | [Turso blog](https://turso.tech/blog/turso-the-next-evolution-of-sqlite) |
+| **2025‑10‑06** | Turso **concurrent writes (MVCC)**, tech preview | `BEGIN CONCURRENT` via Hekaton-style MVCC — "beyond the single-writer limitation" | **ROUTED-AROUND** — the headline concurrency we deliberately don't use; we partition writers by physics + op-log instead | [Turso blog](https://turso.tech/blog/beyond-the-single-writer-limitation-with-tursos-concurrent-writes) |
+| **2025‑11‑04** | SQLite **3.51.0** — 64-bit WASM build | canonical WASM stays 32-bit; a 64-bit build is now a plain `make` | **NEUTRAL** — our sql.js runs fine 32-bit | [releaselog 3_51_0](https://sqlite.org/releaselog/3_51_0.html) |
+| **2026‑01‑05** | Turso **v0.4.0** — MVCC overhaul | indexes, checkpointing, recovery for concurrent writes | **ROUTED-AROUND** | [Turso blog](https://turso.tech/blog/turso-0.4.0) |
+| **2026‑03‑04** | Turso **v0.5.0** | concurrent writes → beta (`PRAGMA journal_mode='mvcc'`), Change Data Capture | **ROUTED-AROUND** | [Turso blog](https://turso.tech/blog/turso-0.5.0) · [LinkedIn](https://www.linkedin.com/posts/glommer_turso-v050-activity-7435040873526194176-Dowg) |
+
+**The contrast worth keeping.** The most-quoted milestone — **Turso shipping concurrent writes to "go
+beyond the single-writer limitation" (Oct 2025)** — is, for this project, an argument in the *other*
+direction. The same season the industry shipped a sophisticated MVCC engine to let many writers share one
+database file, this project shipped the claim that, modelled correctly, **you never needed it**: ~90% of
+ERP is single-writer by physics, the rest is a daily one-way fold, and the one genuinely contended op-class
+is a compare-and-set — not concurrency in the store. So "close to the edge" here does **not** mean we
+adopted the newest engine; it means we are *contemporaneous with, and a counterpoint to,* the hottest
+SQLite-core work of the moment — having walked in on the 2014 in-memory path (the FOUNDATION above) while
+that half of the field is still at the gate. **First-mover, not early-mover** — the same thesis the OPFS
+column already shows, now with the SQLite-core column added.
 
 ---
 
@@ -143,6 +179,15 @@ we have *not yet needed to walk through* (so no margin to report — they widen 
 - **sql.js first year.** PowerSync dates the in-memory JS port to **2014**; the kripken
   origin (asm.js era) may be earlier (~2012). Used 2014 as the cited figure.
 - **Web Payment Request API date (~2018).** Asserted in §11.5; not re-verified this session.
+- **Turso/core-SQLite ferment — harvested with LLM help, two corrections logged.** When an LLM was asked
+  to "show how close we were to the cutting edge," it surfaced the right milestones but slipped twice — both
+  caught on verification against primary sources (the same discipline that rejected the fabricated DeepSeek
+  "SQLite 3.53.0 opfs-wl" above): **(1)** JSONB was attributed to **SQLite 3.51.0**; the version/date are
+  real (3.51.0, 2025‑11‑04) but JSONB actually shipped in **3.45.0 (2024‑01‑15)** — 3.51.0's WASM-relevant
+  item is the 64‑bit build. **(2)** Turso MVCC / edge-DB replication were offered as *what made the project
+  possible*; they are the **opposite** of the architecture and are tagged **ROUTED-AROUND** here, not ENABLER.
+  Lesson, restated: an LLM is a fast *harvester* of where the edge is, not an *authority* on it — extract,
+  then verify.
 
 ## Prior art — the log concept is NOT ours (no novelty-of-concept claim)
 

@@ -1,6 +1,8 @@
 # ShipYard — A Deterministic Engine for Any Manufactured Assembly
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
 
-> **Foundation:** [MANIFESTO](MANIFESTO.md) · [BBC](BOMBasedCompilation.md) §3.5 · [ProjectOrderBlueprint](ProjectOrderBlueprint.md) §3 (Abstract Category Tree) · [BIM_COBOL](BIM_COBOL.md) §TILE
+
+> **Foundation:** [MANIFESTO](MANIFESTO.md) · BBC §3.5 · ProjectOrderBlueprint §3 (Abstract Category Tree) · BIM_COBOL §TILE
 
 <div class="bim-banner" markdown>
 <b>Roof tiles as hull plates. Tunnel linings as prefab rings. Earthworks as volumetric BOMs.</b> The engine does not compile buildings. It compiles recursive Bills of Materials with spatial coordinates. Construction was the first proof. This document demonstrates why it is not the last.
@@ -234,7 +236,7 @@ terrain-following for infrastructure. Same pattern — a surface provider that m
 
 **Generalisation:** The lofted surface pattern — parameters + formula → placement
 coordinates — is the same computation used by TRIM, TILE, ROUTE, and ARRAY verbs.
-See [Geometry Forge](GEOMETRY_FORGE_SRS.md) §3 for the unified treatment.
+See Geometry Forge §3 for the unified treatment.
 
 ---
 
@@ -688,7 +690,7 @@ into existing framework interfaces.
 
 For buildings, GEO debug mode verifies compiled positions against the
 **extraction source** — a database of positions from the original IFC
-([LMP §7](LAST_MILE_PROBLEM.md#7-separate-from-input)). The comparison
+(LMP §7). The comparison
 target is a lookup: `SELECT minX, minY, minZ FROM extracted.elements_rtree
 WHERE guid = ?`.
 
@@ -725,7 +727,7 @@ verification target isn't a reference structure, it's a physics equation.
 plate sit on the design surface within tolerance?"
 
 **BIMEyes integration.** The existing EYES proof framework
-([EYES_SRS.md](EYES_SRS.md)) defines proofs as `prove(placement) → PROVEN |
+(EYES_SRS.md) defines proofs as `prove(placement) → PROVEN |
 VIOLATED`. A formula-based proof is the same interface:
 
 ```java
@@ -780,17 +782,17 @@ that compiles a 35-building residential library can compile a hull block
 library, a tunnel ring library, or an industrial plant module library.
 The spatial relationships are different data, not different code.
 
-See [TheRosettaStoneStrategy.md §Cross-Domain](TheRosettaStoneStrategy.md#cross-domain-precedent--the-folding-problem) for the full comparison table.
+See TheRosettaStoneStrategy.md §Cross-Domain for the full comparison table.
 
 ---
 
 ## References
 
-- [ProjectOrderBlueprint.md §3](ProjectOrderBlueprint.md) — Abstract Category Tree (VESSEL example)
-- [BIM_COBOL.md §TILE](BIM_COBOL.md) — TILE verb specification
-- [TerminalAnalysis.md](TerminalAnalysis.md) — 48K-element proof of TILE at scale
-- [InfrastructureAnalysis.md](InfrastructureAnalysis.md) — Domain-agnostic precedent (BR/RD/RL)
-- [INFRA_DESIGNER_SRS.md §1](INFRA_DESIGNER_SRS.md) — AlignmentContext terrain-following
+- ProjectOrderBlueprint.md §3 — Abstract Category Tree (VESSEL example)
+- BIM_COBOL.md §TILE — TILE verb specification
+- TerminalAnalysis.md — 48K-element proof of TILE at scale
+- InfrastructureAnalysis.md — Domain-agnostic precedent (BR/RD/RL)
+- INFRA_DESIGNER_SRS.md §1 — AlignmentContext terrain-following
 - `prompts/40_strategic_review.md` — Strategic review (Appendices A-C, local only)
 - [bSI-InfraRoom/IFC-Tunnel-Deployment](https://github.com/bSI-InfraRoom/IFC-Tunnel-Deployment) — 60+ tunnel IFC files
 - [bSI-InfraRoom/IFC-infra-unit-test](https://github.com/bSI-InfraRoom/IFC-infra-unit-test) — Earthworks, marine, drainage IFC4X3

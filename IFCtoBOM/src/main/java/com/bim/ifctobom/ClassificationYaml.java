@@ -141,7 +141,11 @@ public class ClassificationYaml {
             int geometryFailThreshold,
             String jurisdiction,
             List<String> mepDisciplines,
-            int mepOrderQty  // coverage level: 99=standard, 0=max, N=budget cap (§6.12.4 §8)
+            int mepOrderQty,  // coverage level: 99=standard, 0=max, N=budget cap (§6.12.4 §8)
+            int reconciliationTolerance  // allowed |delta| in extraction reconciliation —
+            // count of known source-model catalog-identity duplicates (same resolved
+            // product + position) that verb-factoring legitimately collapses. Per-building,
+            // mirrors geometryFailThreshold. Default 0 (exact). RESUME_DROP_OUTLINER_ROADMAP §1.
     ) {}
 
     // ── Accessors ────────────────────────────────────────────────────────────
@@ -329,7 +333,8 @@ public class ClassificationYaml {
                 getInt(bldg, "geometry_fail_threshold", 0),
                 getString(bldg, "jurisdiction"),
                 mepDisciplines,
-                mepOrderQty
+                mepOrderQty,
+                getInt(bldg, "reconciliation_tolerance", 0)
         );
 
         return result;

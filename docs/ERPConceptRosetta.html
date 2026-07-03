@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<!-- ERPConceptRosetta.html — the CROSS-ERP concept Rosetta Stone.
+     Doctrine artifact (defined ahead of the folding engineers). Theme matched to RetailScaleStory.html
+     (the 10k-tills report) for visual consistency across the headline reports.
+     NON-INVENT: the Canonical + iDempiere columns ARE the model; the Odoo column is FOLD-PROVEN
+     (gen_ad_odoo.js, witnessed maxDiff=0c); the SAP / Oracle / Dynamics columns are REFERENCE mappings
+     (public data models) that a fold has NOT yet witnessed — marked ○ so nothing is overclaimed.
+     Companions: ERPRosettaStone.md (dev idiom map) · ACDOCA_FOLD_PLAN.md (the SAP headline). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cross-ERP Rosetta Stone — every ERP's terms, one canonical fold</title>
+<style>
+  :root{
+    --bg:#12171d; --panel:#1a212a; --panel2:#212a34; --ink:#e7edf3; --dim:#94a3b1; --line:#28323d;
+    --green:#7cb342; --amber:#ffa000; --red:#ef5350; --blue:#42a5f5; --violet:#b388ff;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+    max-width:1160px;margin:0 auto;padding:36px 22px 90px;background:var(--bg);color:var(--ink);line-height:1.55}
+  a{color:#8fc3f7}
+  .kicker{font-size:11px;font-weight:800;letter-spacing:2.6px;text-transform:uppercase;color:var(--green);margin:0 0 10px}
+  h1{font-size:clamp(28px,5vw,42px);line-height:1.1;font-weight:850;margin:0 0 14px;letter-spacing:.2px}
+  h1 .hl{color:var(--green)}
+  h2{font-size:13px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--dim);margin:48px 0 14px;
+    padding-bottom:9px;border-bottom:1px solid var(--line)}
+  .lede{font-size:17px;color:#cdd6df;max-width:74ch;margin:0 0 8px}
+  .lede b{color:#fff}
+  code{background:#0c1117;border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+    font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;color:#bfe0c9}
+  .pitch{margin:22px 0 6px;padding:17px 20px;background:linear-gradient(100deg,rgba(124,179,66,.10),rgba(66,165,245,.06));
+    border:1px solid var(--line);border-left:4px solid var(--green);border-radius:0 12px 12px 0;font-size:15px;color:#e9f0f6}
+  .pitch b{color:#fff}
+  .legend{display:flex;gap:10px 22px;flex-wrap:wrap;margin:16px 0 6px;font-size:12.5px;color:var(--dim);align-items:center}
+  .badge{font-weight:800;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid;letter-spacing:.3px}
+  .b-canon,.b-proven{color:#cfe9b5;border-color:#3f5a25;background:rgba(124,179,66,.14)}
+  .b-ref{color:#ffd79a;border-color:#6b552f;background:rgba(255,160,0,.12)}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#dbe6ef;font-weight:700;position:sticky;top:0}
+  td.canon{color:#a6d977;font-weight:700;white-space:nowrap}
+  td.idmp{color:#cfe0ef;white-space:nowrap}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#b9c6d4}
+  .foot{color:var(--dim);font-size:12.5px;margin-top:12px}
+  .pill{display:inline-block;font-size:10.5px;padding:0 6px;border-radius:10px;border:1px solid var(--line);color:var(--dim);margin-left:6px}
+  td.step{color:#cfe0ef;font-weight:600;white-space:nowrap}
+  .dec{color:var(--green);font-weight:700}
+  .imp{color:var(--amber);font-weight:700}
+  td.java{color:#d7c0c0}
+  .yes{color:var(--red);font-weight:700}
+  .no{color:var(--green);font-weight:700}
+</style>
+</head>
+<body>
+
+  <p class="kicker">ERP World View · Doctrine</p>
+  <h1>Cross-ERP <span class="hl">Rosetta Stone</span></h1>
+  <p class="lede">Every ERP's vocabulary, mapped to the one canonical model the engine folds into. Read a row across:
+  the <b>same business fact</b>, named five ways, retained faithfully in one AD shape.</p>
+
+  <div class="pitch">
+    <b>The doctrine (defined ahead of the folding engineers).</b> There is <b>one canonical model</b> — iDempiere's
+    Application Dictionary (AD), surfaced in the Fold Engine as the <code>kernel_ops</code> log + its projection. Every
+    other ERP is <b>not a second system</b> — it is <b>data re-keyed into that one model</b>. <code>account.account</code>
+    (Odoo), <code>SKA1</code> (SAP) and <code>GL_CODE_COMBINATIONS</code> (Oracle) all land as one thing:
+    <code>C_ElementValue</code>. Once folded there is no "Odoo logic" or "SAP logic" resident — only the canonical fold +
+    the closed verb set. This table is the dictionary that lets an iDempiere veteran read an Odoo (or SAP) chart and
+    <b>confidently fold a counterpart into the same shape</b>, because they recognise every term in the Canonical column.
+  </div>
+
+  <div class="legend">
+    <span><span class="badge b-canon">◆ CANONICAL</span> the fold target — iDempiere/AD <i>is</i> the model</span>
+    <span><span class="badge b-proven">✅ FOLDED</span> witnessed to the cent (<code>maxDiff=0c</code>)</span>
+    <span><span class="badge b-ref">○ REFERENCE</span> public data-model mapping; fold <b>not yet witnessed</b></span>
+  </div>
+  <p class="foot">Provenance by source column: <b>iDempiere</b> ◆ canonical · <b>Odoo</b> ✅ folded (the O2C/P2P rows
+  shipped in <code>gen_ad_odoo.js</code>, oracle-diffed) · <b>SAP&nbsp;S/4 · Oracle&nbsp;EBS · Dynamics&nbsp;BC</b> ○
+  reference (their standard table/term names are public and accurate; <i>our</i> fold of them is master-mapping only so
+  far — see the <a href="MigrateComparisonPaper/">honesty panel</a>). A cell marked “—” means the concept has no direct
+  named home in that product (often it is imperative code there, not a table).</p>
+
+  <h2>1 · Tenancy, organisation &amp; security</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td>Tenant / company</td><td class="canon">AD_Client</td><td class="idmp">AD_Client</td><td>res.company</td><td class="mono">T001 (BUKRS)</td><td class="mono">GL Ledger / OU</td><td>Company</td></tr>
+    <tr><td>Organisation / unit</td><td class="canon">AD_Org</td><td class="idmp">AD_Org</td><td>(branch / analytic)</td><td class="mono">WERKS · VKORG</td><td class="mono">Inventory Org / OU</td><td>Location / Dimension</td></tr>
+    <tr><td>User</td><td class="canon">AD_User</td><td class="idmp">AD_User</td><td>res.users</td><td class="mono">USR02 (SU01)</td><td class="mono">FND_USER</td><td>User</td></tr>
+    <tr><td>Role / access grant</td><td class="canon">AD_Role + *_Access</td><td class="idmp">AD_Role</td><td>res.groups · ir.model.access</td><td class="mono">PFCG role / auth obj</td><td class="mono">Responsibility</td><td>Permission Set</td></tr>
+    <tr><td>Accounting schema</td><td class="canon">C_AcctSchema</td><td class="idmp">C_AcctSchema</td><td>(company CoA + currency)</td><td class="mono">Ledger 0L / Ctrl Area</td><td class="mono">Set of Books / Ledger</td><td>G/L Setup</td></tr>
+  </table></div>
+
+  <h2>2 · Master data (the WHAT)</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td>Business partner</td><td class="canon">C_BPartner</td><td class="idmp">C_BPartner</td><td>res.partner</td><td class="mono">BUT000 · KNA1 / LFA1</td><td class="mono">HZ_PARTIES / AP_SUPPLIERS</td><td>Customer / Vendor</td></tr>
+    <tr><td>Product / item</td><td class="canon">M_Product</td><td class="idmp">M_Product</td><td>product.product</td><td class="mono">MARA (+MARC/MBEW)</td><td class="mono">MTL_SYSTEM_ITEMS_B</td><td>Item</td></tr>
+    <tr><td>Product category</td><td class="canon">M_Product_Category</td><td class="idmp">M_Product_Category</td><td>product.category</td><td class="mono">MATKL (material group)</td><td class="mono">Item Category</td><td>Item Category</td></tr>
+    <tr><td>Price list</td><td class="canon">M_PriceList(_Version)</td><td class="idmp">M_PriceList</td><td>product.pricelist</td><td class="mono">A004 / VK11 conditions</td><td class="mono">QP price list</td><td>Sales Price</td></tr>
+    <tr><td>Tax</td><td class="canon">C_Tax</td><td class="idmp">C_Tax</td><td>account.tax</td><td class="mono">MWSKZ (FTXP)</td><td class="mono">eBTax</td><td>VAT Posting Setup</td></tr>
+    <tr><td>G/L account (CoA)</td><td class="canon">C_ElementValue</td><td class="idmp">C_ElementValue</td><td>account.account</td><td class="mono">SKA1 / SKB1</td><td class="mono">GL_CODE_COMBINATIONS (seg)</td><td>G/L Account</td></tr>
+    <tr><td>Account combination</td><td class="canon">C_ValidCombination</td><td class="idmp">C_ValidCombination</td><td>(account + analytic)</td><td class="mono">ACDOCA assignment fields</td><td class="mono">GL_CODE_COMBINATIONS</td><td>Dimension combination</td></tr>
+  </table></div>
+
+  <h2>3 · Documents — Order to Cash (sell-side)</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td>Sales order</td><td class="canon">C_Order (SO)</td><td class="idmp">C_Order</td><td>sale.order(.line)</td><td class="mono">VBAK / VBAP</td><td class="mono">OE_ORDER_HEADERS_ALL</td><td>Sales Header / Line</td></tr>
+    <tr><td>Delivery / shipment</td><td class="canon">M_InOut</td><td class="idmp">M_InOut</td><td>stock.picking (out)</td><td class="mono">LIKP / LIPS</td><td class="mono">WSH_DELIVERY</td><td>Posted Sales Shipment</td></tr>
+    <tr><td>Sales invoice</td><td class="canon">C_Invoice (ARI)</td><td class="idmp">C_Invoice</td><td>account.move (out_invoice)</td><td class="mono">VBRK / VBRP</td><td class="mono">RA_CUSTOMER_TRX</td><td>Sales Invoice Header</td></tr>
+    <tr><td>Customer receipt</td><td class="canon">C_Payment</td><td class="idmp">C_Payment</td><td>account.payment</td><td class="mono">BSEG (incoming) / DZ</td><td class="mono">AR_CASH_RECEIPTS_ALL</td><td>Cash Receipt</td></tr>
+  </table></div>
+
+  <h2>4 · Documents — Procure to Pay (buy-side)</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td>Purchase order</td><td class="canon">C_Order (PO)</td><td class="idmp">C_Order</td><td>purchase.order(.line)</td><td class="mono">EKKO / EKPO</td><td class="mono">PO_HEADERS_ALL</td><td>Purchase Header / Line</td></tr>
+    <tr><td>Goods receipt</td><td class="canon">M_InOut (vendor)</td><td class="idmp">M_InOut</td><td>stock.picking (in)</td><td class="mono">MKPF / MSEG (MIGO)</td><td class="mono">RCV_TRANSACTIONS</td><td>Posted Purchase Receipt</td></tr>
+    <tr><td>Vendor invoice</td><td class="canon">C_Invoice (API)</td><td class="idmp">C_Invoice</td><td>account.move (in_invoice)</td><td class="mono">RBKP / RSEG (MIRO)</td><td class="mono">AP_INVOICES_ALL</td><td>Purchase Invoice</td></tr>
+    <tr><td>3-way match</td><td class="canon">M_MatchInv</td><td class="idmp">M_MatchInv</td><td>(reconcile / valuation)</td><td class="mono">GR/IR clearing (WRX)</td><td class="mono">PO–receipt–invoice match</td><td>Item Application</td></tr>
+  </table></div>
+
+  <h2>5 · Accounting &amp; posting (the books)</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td><b>Posted journal</b> (the books)</td><td class="canon">fact_acct / journal</td><td class="idmp">Fact_Acct</td><td>account.move.line</td><td class="mono"><b>ACDOCA</b> (BSEG+BKPF)</td><td class="mono">GL_JE_LINES / XLA_AE_LINES</td><td>G/L Entry</td></tr>
+    <tr><td>Document flow / lineage</td><td class="canon">kernel_ops chain</td><td class="idmp">(doc origin fields)</td><td>(invoice_origin)</td><td class="mono"><b>VBFA</b> (document flow)</td><td class="mono">XLA links</td><td>Navigate / applied entries</td></tr>
+    <tr><td>Trial balance / statement</td><td class="canon">foldStatement / foldTrialBalance</td><td class="idmp">PA_Report</td><td>(financial report)</td><td class="mono">FAGLB03 / Report Painter</td><td class="mono">FSG / FRx</td><td>Account Schedule</td></tr>
+  </table></div>
+
+  <h2>6 · Process, rules &amp; workflow</h2>
+  <div class="scroll"><table>
+    <tr><th>Concept</th><th>Canonical (AD / Fold) ◆</th><th>iDempiere ◆</th><th>Odoo ✅</th><th>SAP S/4 ○</th><th>Oracle EBS ○</th><th>Dynamics BC ○</th></tr>
+    <tr><td>Document status</td><td class="canon">DocStatus + C_DocType FSM</td><td class="idmp">C_DocType / DocumentEngine</td><td>state field (Python)</td><td class="mono">Status mgmt (BSVZ)</td><td class="mono">Workflow status</td><td>Document Status enum</td></tr>
+    <tr><td>Workflow engine (WfMC)</td><td class="canon">AD_Workflow</td><td class="idmp">AD_Workflow</td><td>automated actions <span class="pill">wkf removed v8</span></td><td class="mono">SAP Business Workflow</td><td class="mono">Oracle Workflow Builder</td><td>Power Automate / approvals</td></tr>
+    <tr><td>Validation rule</td><td class="canon">AdModelVal · AD_Val_Rule</td><td class="idmp">ModelValidator</td><td>@api.constrains (code)</td><td class="mono">BAdI / GGB0 (code)</td><td class="mono">business event (code)</td><td>OnValidate trigger (code)</td></tr>
+    <tr><td>Field derive / callout</td><td class="canon">AdCallout · AD_Column.Callout</td><td class="idmp">Callout</td><td>onchange (code)</td><td class="mono">field exit / PBO (code)</td><td class="mono">defaulting rule</td><td>OnAfterValidate (code)</td></tr>
+    <tr><td>Change log / provenance</td><td class="canon">kernel_ops (signed op-log)</td><td class="idmp">AD_ChangeLog</td><td>mail.tracking.value</td><td class="mono">CDHDR / CDPOS</td><td class="mono">FND audit trail</td><td>Change Log Entry</td></tr>
+  </table></div>
+
+  <div class="pitch" style="margin-top:30px;border-left-color:var(--blue);background:linear-gradient(100deg,rgba(66,165,245,.10),rgba(124,179,66,.05))">
+    <b>How to read the rules rows (§6).</b> Where a cell says “(code)”, that ERP keeps the rule in an <b>imperative
+    method body</b>, not a table. We do <b>not</b> import that code — we fold its <b>op-log effect</b> (DERIVE / VALIDATE /
+    ACT) into the canonical column, and route genuinely-custom logic to a <b>plugin</b>. So the left two columns are always
+    <i>data</i>; the right three are sometimes data (declarative config) and sometimes code (which becomes an effect or a
+    plugin). That asymmetry — declarative on the left, mixed on the right — is the whole migration thesis in one table.
+  </div>
+
+  <h2 id="cost-of-change">7 · Cost of change — the elementary case</h2>
+  <p class="lede">The Rosetta rows above show <b>where a fact lives</b>. This section shows <b>what it costs to change one</b>.
+  Start with the most boring change in any ERP: a clerk keeps overwriting an auto-filled field, so the business says
+  <b>“lock the Sales Order <i>Description</i> field — make it read-only.”</b> Read the two columns down.</p>
+
+  <div class="scroll"><table>
+    <tr><th>Step</th><th>iDempiere (Java monolith) ◆</th><th>Fold Engine (AD-declarative) ✅</th></tr>
+    <tr><td class="step">What you edit</td><td class="java"><code>AD_Field.IsReadOnly = 'Y'</code> — one dictionary row</td><td><span class="canon" style="color:#a6d977"><b>the same</b></span> <code>AD_Field.IsReadOnly = 'Y'</code></td></tr>
+    <tr><td class="step">Through what</td><td class="java">running Java server + Postgres + admin login, via the AD window</td><td>edit the row → <b>signed op-log append</b> (<code>kernel_ops</code>)</td></tr>
+    <tr><td class="step">Recompile?</td><td class="java"><span class="no">No</span> — it is AD-driven</td><td><span class="no">No</span> — <b>re-fold = re-read, not recompile</b></td></tr>
+    <tr><td class="step">Takes effect</td><td class="java">reset cache / re-login</td><td><b>on the spot</b> — the form repaints, no reload</td></tr>
+    <tr><td class="step">Reaches other sites</td><td class="java">central DB only</td><td><b>op-log replays to every node</b>, signature verified</td></tr>
+    <tr><td class="step">Server needed</td><td class="java"><span class="yes">yes</span></td><td><span class="no">none</span></td></tr>
+  </table></div>
+  <p class="foot">Witnessed live: <code>W-AD-SELFEDIT</code> — a signed <code>AD_Field</code> edit re-folds the open form
+  on the spot (field count 26→25→26), no reload, no recompile. The honest point: <b>even iDempiere makes this change
+  declarative</b> — that is exactly <i>why</i> the engine borrows its dictionary rather than re-authoring it. The Fold
+  Engine does not win on “is it config”; it wins on <b>no server, no cache reset, and self-propagation by op-log</b>.</p>
+
+  <p class="lede" style="margin-top:22px">Now the gradient. Cost stays near-zero while a change is <span class="dec">declarative</span>,
+  and rises only when the logic is genuinely <span class="imp">imperative</span> — and even then it is bounded to a single plugin.</p>
+  <div class="scroll"><table>
+    <tr><th>Change request</th><th>Nature</th><th>iDempiere cost ◆</th><th>Fold Engine cost ✅</th></tr>
+    <tr><td>Lock a field (read-only / mandatory)</td><td><span class="dec">declarative</span></td><td class="java">edit AD row, reset cache</td><td>edit AD row → op-log → re-fold, <b>no server</b></td></tr>
+    <tr><td>Default payment term from the partner</td><td><span class="dec">declarative binding</span></td><td class="java">set <code>AD_Column.Callout</code></td><td>set <code>AD_Column.Callout</code> → <code>AdCallout</code> dispatch</td></tr>
+    <tr><td>Block an order over credit limit</td><td><span class="dec">declarative rule</span></td><td class="java"><code>AD_Val_Rule</code> config</td><td><code>AD_Val_Rule</code> → <code>AdModelVal</code> fold</td></tr>
+    <tr><td>Bespoke rebate arithmetic</td><td><span class="imp">imperative (custom)</span></td><td class="java">new Java class, recompile, restart</td><td><b>one plugin</b> (<code>.foldbundle</code>), engine untouched</td></tr>
+    <tr><td>Change how an order posts to GL</td><td><span class="imp">imperative (core)</span></td><td class="java">edit <code>MOrder.completeIt()</code>, rebuild + redeploy the monolith</td><td>fold the op-log <b>effect</b> (config + <code>post_resolver</code>), else a plugin</td></tr>
+  </table></div>
+
+  <div class="pitch" style="margin-top:22px">
+    <b>Verdict.</b> A <span class="dec">declarative</span> change is near-zero and <b>self-propagating</b>; an
+    <span class="imp">imperative</span> change is <b>bounded to one plugin</b> — never a monolith rebuild.
+    <b>Cost scales with how imperative the change is, not with the size of the system.</b> This is the same thesis as the
+    cost equation below, seen from the <i>change</i> side instead of the <i>build</i> side.
+  </div>
+
+  <p class="lede" style="margin-top:22px"><b>§7 in numbers — one real change, counted.</b> Not a stopwatch (noisy) and
+  not the whole-codebase LOC ratio — the <b>effort surface</b> of <i>one identical change</i> done both ways:
+  “block completing a Sales Order when it would breach a custom <code>CreditCeiling</code> on the customer” (a real
+  customisation that genuinely needs a Java <code>ModelValidator</code> on the iDempiere side, not config).</p>
+  <div class="scroll"><table>
+    <tr><th>Effort axis (one real change)</th><th>iDempiere — OSGi ◆</th><th>Here — fold ✅</th></tr>
+    <tr><td><b>Lines to touch</b> <span style="color:var(--amber)">*</span></td><td class="java">~50 across 4 files</td><td>~16 across 2 files</td></tr>
+    <tr><td><b>Handling checks</b> (steps that can fail)</td><td class="java"><b>9</b> — import-package · register · AD sync · build · resolve · restart · log-clean · 2× acceptance</td><td><b>4</b> — re-fold reads · handler pinned · 2× acceptance</td></tr>
+    <tr><td><b>Data / DB artifacts</b></td><td class="java"><b>5</b> AD rows + DDL, carried by a <b>2Pack/SQL migration re-applied &amp; verified on every target instance (×N)</b></td><td><b>1</b> declarative slice edit — the slice <i>is</i> the schema; <b>0 migrations</b>: one <b>signed op-log append self-replays to all N nodes</b></td></tr>
+    <tr><td><b>Forced build + restart</b></td><td class="java"><span class="yes">2</span> — compile + server restart</td><td><span class="no">0</span></td></tr>
+  </table></div>
+  <p class="foot"><span style="color:var(--amber)">*</span> <b>Lines is a forecast estimate</b> (each line enumerated in the
+  witness card), <b>pending an actual <code>wc -l</code></b> on a built artifact each side. The other three axes — checks,
+  DB artifacts, build/restart — are <b>structural facts, exact</b>: they are fixed by OSGi (which forces a
+  build→resolve→restart loop and a per-instance migration) versus the fold (which forces neither). The decisive saving is
+  the bottom two rows: <b>build+restart 2 → 0</b>, and a <b>per-instance migration ×N collapsing to one signed op-log append</b>.</p>
+
+  <h2 id="cost-equation">8 · The cost equation — what actually scales</h2>
+  <p class="lede">A common first reading is that this architecture just <b>moves</b> cost: you save on UI and DB binding,
+  then pay it back managing a cryptographic op-log. That is the <b>wrong</b> equation — it confuses a one-time substrate
+  with a recurring tax. The honest accounting:</p>
+  <div class="scroll"><table>
+    <tr><th>Cost component</th><th>Scales with…</th><th>Honest size</th></tr>
+    <tr><td><b>Op-log / integrity substrate</b> (“git-for-data”)</td><td><b>nothing</b> — written once</td><td class="java"><b>fixed</b>. Orthogonal to rule count; it secures <i>whatever</i> the fold produces across nodes. Not a per-rule tax.</td></tr>
+    <tr><td><b>Business-rule complexity</b> (O2C, P2P, GL, FX)</td><td><b>dictionary coverage</b></td><td>cheap because the dictionary is <b>borrowed and already proven</b> by 20 years of iDempiere production — you pay to <i>interpret</i>, not to <i>author</i>.</td></tr>
+    <tr><td><b>UI / dictionary stitch</b></td><td>surfaces exposed</td><td class="java">the real ongoing engineering — surfacing the engine correctly per window.</td></tr>
+    <tr><td><b>Oracle-diffing discipline</b></td><td>claims of equivalence</td><td class="java">the proof the interpretation is faithful — diff to real iDempiere (<code>idempiere_test</code>) to the cent.</td></tr>
+  </table></div>
+  <div class="pitch" style="margin-top:22px;border-left-color:var(--blue);background:linear-gradient(100deg,rgba(66,165,245,.10),rgba(124,179,66,.05))">
+    <b>Why it is compression, not relocation.</b> The whole thesis rests on the dictionary being <b>borrowed and trusted</b>,
+    with the oracle as the proof it was read correctly (measured: <b>~51× fewer code lines built so far</b>, ~21× at
+    conservative full parity, zero server — see §10). Had we <i>authored</i> our
+    own dictionary, the original “immense cost of custom arithmetic to fold to the cent” would genuinely apply — and the
+    op-log-as-paradox reading would hold. We didn’t: we <b>interpret</b> a proven dictionary and <b>diff to an oracle</b>.
+    So rule cost ∝ <i>dictionary coverage</i> (cheap), the op-log stays a <b>fixed one-time substrate</b>, and the real
+    ongoing cost is the <b>stitch + oracle-diff</b> — exactly the elementary change matrix in §7, read as an equation.
+  </div>
+
+  <div class="pitch" style="margin-top:22px;border-left-color:var(--amber);background:linear-gradient(100deg,rgba(255,160,0,.10),rgba(124,179,66,.05))">
+    <b>What the industry actually spends — and why the saving lands here.</b> Public benchmarks agree the recurring cost
+    <b>dwarfs the build</b>: maintenance is <b>70–90% of an on-prem ERP's TCO</b> (50–80% across software broadly; the IEEE
+    Computer Society puts it at <b>60–80% of lifecycle cost</b>), and vendor support/maintenance alone runs
+    <b>15–25% of license — every year</b>. “Development happens once; maintenance continues for the system's life.” This
+    architecture removes the <b>two biggest recurring drivers</b> on the read/fold path — <b>server &amp; license renewal</b>
+    (no server of record) and the <b>recompile-redeploy cost of every change</b> (§7: declarative edits re-fold, no rebuild).
+    So the saving concentrates on the <b>largest</b> TCO bucket — the yearly maintenance line — not the one-time build.
+    <span style="color:var(--dim)">We publish <b>no single “% saved”</b> figure — TCO varies per org and inventing one would
+    betray the non-invent rule; the honest claim is <i>where</i> the saving lands, each clause above traceable to a citation
+    or a witnessed fact (~21–51× less code, zero-server, <code>W-AD-SELFEDIT</code> — §10).</span>
+  </div>
+  <p class="foot">Sources: maintenance share of TCO —
+    <a href="https://www.scnsoft.com/software-development/maintenance-and-support/costs">ScienceSoft</a> ·
+    <a href="https://galorath.com/blog/software-maintenance-costs/">Galorath</a> (IEEE 60–80%); ERP vendor support % of license —
+    <a href="https://www.panorama-consulting.com/how-to-forecast-post-implementation-erp-costs/">Panorama Consulting</a>
+    (18–25%) · <a href="https://www.panorama-consulting.com/cloud-erp-cost/">Panorama — Cloud ERP Cost</a>; build-once vs
+    maintain-forever — <a href="https://idealink.tech/blog/software-development-maintenance-true-cost-equation">Idealink</a>.
+    <b>Peer-reviewed primary sources:</b>
+    <a href="https://dl.acm.org/doi/10.1145/359511.359522">Lientz &amp; Swanson, <i>CACM</i> (1978)</a> — the foundational 487-organisation survey ·
+    <a href="https://www.researchgate.net/publication/243503924_Facts_and_Fallacies_of_Software_Engineering">Glass, <i>Facts and Fallacies of Software Engineering</i> (2002)</a> — the canonical <b>40–80% of lifecycle cost</b> range ·
+    <a href="https://www.semanticscholar.org/paper/Leveraging-legacy-system-dollars-for-e-business-Erlikh/7bcb4d5af04b7d0859fb80aca7c78ff346fa445a">Erlikh, <i>IEEE IT Professional</i> 2(3):17–23 (2000)</a> — legacy upkeep ≈80% of TCO; categories standardised in <b>ISO/IEC 14764</b>.
+    <b>Not a universal law:</b> the range is wide <i>by design</i> — long-lived, regulated, heavily-customised systems (ERP is the textbook case) sit high (70–90%); short-lived or throwaway software sits low (20–40%). So this is strongest <b>exactly where ERP lives</b>, not a claim about all software.
+    Figures are third-party research; <i>our</i> contribution is only the architecture that moves the saving onto that bucket.</p>
+
+  <h2 id="osgi-frame">9 · For the iDempiere OSGi plugin maintainer</h2>
+  <p class="lede">If you have shipped <code>ModelValidator</code>s, <code>Callout</code>s and custom <code>Doc_*</code> posting as
+  OSGi bundles, most of what you <i>maintain</i> is not business logic — it is <b>OSGi plumbing and upgrade-breakage</b>.
+  That is exactly the recurring cost the table below removes. Read it idiom for idiom: <b>the OSGi tax disappears; the
+  business logic does not.</b></p>
+  <div class="scroll"><table>
+    <tr><th>What you maintain in iDempiere / OSGi today</th><th>Here (Fold Engine) ✅</th></tr>
+    <tr><td class="java"><code>MANIFEST.MF</code> + <code>Import-Package</code>/<code>Export-Package</code> version ranges, <code>bnd</code></td><td><span class="no">none</span> — a plugin is a JS <code>.foldbundle</code> module, no manifest wiring</td></tr>
+    <tr><td class="java">Tycho/Maven build, target platform, p2 repository</td><td><span class="no">none</span> — no compile step, no target platform</td></tr>
+    <tr><td class="java">Declarative Services components, <code>Bundle Activator</code>, <code>IModelValidationEngine.addModelValidator</code></td><td>register a handler in the registry — no DS lifecycle</td></tr>
+    <tr><td class="java">Drop bundle in <code>plugins/</code>, <b>restart the OSGi runtime</b>, resolve wiring</td><td>ship the module — <b>re-fold = re-read, no restart</b></td></tr>
+    <tr><td class="java"><code>ClassNotFoundException</code> / unresolved-bundle / classloader-leak debugging</td><td><span class="no">gone</span> — no classloader graph to resolve</td></tr>
+    <tr><td class="java"><b>Every iDempiere upgrade can break your plugin</b> (Java API drift, package bumps)</td><td>you fold the <i>dictionary</i>, not compile against a moving Java API — the AD is the stable contract</td></tr>
+  </table></div>
+
+  <div class="pitch" style="margin-top:22px">
+    <b>What stays the same — the discipline ports.</b> You still <b>author the genuinely-custom logic</b> (a bespoke rebate,
+    a non-standard posting rule) — it lands as a registered handler / <code>.foldbundle</code> plugin instead of an OSGi DS
+    component (doctrine: <i>foreign imperative code is never auto-imported — it becomes a plugin</i>). <b>Money discipline is
+    identical</b>: your <code>BigDecimal</code> · <code>HALF_UP</code> · integer-cents habits carry 1:1 —
+    <code>bigdecimal.js</code> is proven bit-equal to Java <code>BigDecimal</code>. And you <b>recognise every dictionary
+    point</b>: a <code>ModelValidator</code> hook → <code>AdModelVal</code>/<code>AD_Val_Rule</code>; a <code>Callout</code> →
+    <code>AD_Column.Callout</code> → <code>AdCallout</code>; custom <code>Doc_*</code> posting → <code>post_resolver</code> (config) or a plugin.
+  </div>
+  <div class="pitch" style="margin-top:14px;border-left-color:var(--green)">
+    <b>What you often delete.</b> A large share of real iDempiere plugins are <code>ModelValidator</code>s/<code>Callout</code>s
+    expressing what the AD can hold <b>declaratively</b> — mandatory, read-only, default, validation. Those stop being a bundle
+    at all: they become an <code>AD_Field</code>/<code>AD_Val_Rule</code> edit that re-folds live (witnessed: <code>W-AD-SELFEDIT</code>).
+    The plugin you'd have built <i>and maintained forever</i> no longer exists.
+  </div>
+  <div class="pitch" style="margin-top:14px;border-left-color:var(--amber);background:linear-gradient(100deg,rgba(255,160,0,.10),rgba(124,179,66,.05))">
+    <b>What is new to learn — there is a curve.</b> The <b>op-log model</b> (“git-for-data”): plugin effects are signed ops,
+    and you think in <b>DERIVE / VALIDATE / ACT</b> effects rather than method overrides; provenance is the signed
+    <code>kernel_ops</code> chain, not <code>AD_ChangeLog</code>. Registration is <b>explicit</b>, not OSGi service auto-wiring
+    (the host handler set is pinned). Plugins are <b>JS, not Java</b> — idiom translation for a model/callout/validator dev;
+    a bigger shift if your work was deep ZK UI. Honest caveats: the JS plugin SDK is <b>younger</b> than 20 years of OSGi
+    ecosystem (fewer examples, more edges), and deep ZK customisation does <b>not</b> map 1:1 — that is the “stitch” cost §8 names.
+  </div>
+
+  <h2 id="measured">10 · Measured — both sides counted, on disk and in code</h2>
+  <p class="lede">The sections above argue the <i>shape</i> of the cost. This one is just a tape measure. Every figure below is
+  a real <code>du</code>/<code>wc</code>/sqlite count of <b>iDempiere itself</b> against <b>this engine</b> — same demo
+  tenant (GardenWorld), measured 2026-06-06 / -12, no estimates in the left three columns.</p>
+  <div class="scroll"><table>
+    <tr><th>Layer (measured)</th><th>iDempiere — Java / Postgres ◆</th><th>This — JS / SQLite ✅</th><th>Reduction</th></tr>
+    <tr><td>Definition — the AD seed</td><td class="java"><code>Adempiere_pg.dmp</code> = <b>45.2 MB</b></td><td><code>ad_seed.db</code> = <b>26.1 MB</b> (full-width, no slice-holes)</td><td><b>~1.7×</b></td></tr>
+    <tr><td>A live tenant on disk</td><td class="java">Postgres <b>143 MB</b> (41 heap + 39 idx + 6 TOAST + ~57 bloat)</td><td>SQLite <b>43 MB</b> (925 tables · 187,133 rows) → <b>8.5 MB</b> zstd backup</td><td><b>3.3×</b> (16.8× compressed)</td></tr>
+    <tr><td>Runtime code</td><td class="java"><b>1,427,147</b> Java LOC · 4,465 files · 294 <code>.zul</code> · 60 plugins</td><td><b>28,184</b> JS LOC · 132 files (static + SQLite-WASM)</td><td><b>~51×</b> lines, built so far</td></tr>
+    <tr><td>Stack to run it</td><td class="java">JVM + Postgres + ~3.7 GB build, server-bound</td><td>static files, offline-capable, <b>no server of record</b></td><td><span class="no">server → none</span></td></tr>
+  </table></div>
+
+  <div class="pitch" style="margin-top:22px;border-left-color:var(--red);background:linear-gradient(100deg,rgba(239,83,80,.10),rgba(124,179,66,.05))">
+    <b>The honest caveat — read this before quoting any ratio.</b> These are <b>delivery / definition</b> reductions,
+    <b>not feature parity</b>. The 28K JS <i>renders</i> the dictionary and <i>folds</i> the paths built so far (O2C, the
+    posted journal, signed rule-edit) — it does <b>not</b> re-implement the full transactional Java server. So far only
+    <b>~0.2% of the M-class transactional logic</b> is folded (<code>M*.java</code> ≈ 105K code-LOC). The code ratio
+    <b>falls as real coverage grows</b> (it was 89× → 76× → 51× as more was folded) — so the <b>honest headline is the
+    conservative ~21×</b> projected at full parity (≈68K JS), <b>not</b> the eye-catching early number. What is genuinely
+    removable is the <b>server/build stack</b> and the <b>generic AD-interpretation engine</b> (leaner because the dictionary
+    is self-describing); what is <b>irreducible</b> is each transactional verb, folded deterministically — that is the whole
+    thesis, stated against its own measuring tape.
+  </div>
+  <p class="foot">Source: real measurement, not estimate — <code>internal/BLOAT_MEASUREMENT.md</code> (live docker Postgres
+    → <code>migrate_pg_to_sqlite.js</code>, 2026-06-06) + LOC re-counted 2026-06-12; the model-layer denominator is
+    <code>docs/ERP_MODEL_ARCHETYPE.md</code> (the MOrder archetype + ~25 <code>completeIt</code> deltas). Full coverage
+    accounting: <a href="ERP_COVERAGE_MATRIX/">Coverage Matrix</a>.</p>
+
+  <p class="foot" style="margin-top:24px">
+    Companions: <a href="bench_suite.html">Benchmark Comparison</a> — the engine vs iDempiere live in-browser; both sides measured from real source (51× LOC, 26× by size), re-counted each deploy ·
+    <a href="FoldEngineBlackBook.html">Fold Engine Black Book</a> — the deep dev manual (op-log programming, how to extend the engine) ·
+    <a href="ERPRosettaStone/">ERP Rosetta Stone (iDempiere-Java → Fold Engine)</a> — the developer idiom map ·
+    <a href="ACDOCA_FOLD_PLAN/">ACDOCA Fold Plan</a> — the SAP headline (the Universal-Journal fold) ·
+    <a href="ERP_COVERAGE_MATRIX/">Coverage Matrix</a> — which surfaces are proven equivalent ·
+    <a href="MigrateComparisonPaper/">Migrate &amp; Compare</a> — the thesis &amp; honesty panel.
+    &nbsp;·&nbsp; Reference table/term names are public product documentation; their <i>fold</i> into the canonical column
+    is proven only for iDempiere (◆) and Odoo (✅) today — SAP/Oracle/Dynamics (○) are the campaign ahead.
+  </p>
+
+</body>
+</html>

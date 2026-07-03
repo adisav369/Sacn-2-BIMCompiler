@@ -21,8 +21,9 @@
     '  prev_hash TEXT,' +   // W-CHAIN: tip this op chains onto (NULL until sealed)
     '  op_hash TEXT,' +     // W-CHAIN: SHA-256(prev_hash | canonical(op))
     '  sig TEXT,' +         // W-SIGN: edge signature over op_hash (NULL unless a signer is set)
-    '  gid TEXT' +          // §I-K (W-OPGROUP): group id — every op of an op-group shares one gid (NULL for single ops)
-    ')';
+    '  gid TEXT,' +         // §I-K (W-OPGROUP): group id — every op of an op-group shares one gid (NULL for single ops)
+    '  branch_id TEXT' +    // BLUE FUTURE (W-BLUE-FUTURE): speculative-branch tag. NULL = official. NOT in _canonical
+    ')';                    //   → op_hash is branch-independent, so ACCEPT clears branch_id without rehashing.
   var IDX_TYPE_SQL =
     'CREATE INDEX IF NOT EXISTS idx_kernel_ops_type ON kernel_ops(op_type)';
   var IDX_UNDONE_SQL =
@@ -48,6 +49,9 @@
       try { db.run("ALTER TABLE kernel_ops ADD COLUMN sig TEXT"); }      catch (ignore) {}
       // §I-K (W-OPGROUP): group-id column on pre-existing DBs (idempotent, additive)
       try { db.run("ALTER TABLE kernel_ops ADD COLUMN gid TEXT"); }      catch (ignore) {}
+      // BLUE FUTURE (W-BLUE-FUTURE): speculative-branch column on pre-existing DBs (idempotent, additive)
+      try { db.run("ALTER TABLE kernel_ops ADD COLUMN branch_id TEXT"); } catch (ignore) {}
+      try { db.run("CREATE INDEX IF NOT EXISTS idx_kernel_ops_branch ON kernel_ops(branch_id, id)"); } catch (ignore) {}
       db.__kernelOpsTableCreated = true;
     } catch (e) {
       console.log('§KERNEL_OP ensureTable ERROR: ' + e.message);
@@ -78,17 +82,18 @@
     // Forward-reconciled from the app's erp/ copy on the §INTEG-COLLAPSE (2026-06-08); the substrate's
     // byte-stable period-close replay depends on it. See prompts/ERP_SUBSTRATE_INTEGRATION.md §ARCHIVE.
     var stamp = (ts != null) ? ts : Date.now();
+    var vParams = _stamp(opType, params);                  // D2: brand schema version into params (signed) if wired
     db.run(
       'INSERT INTO kernel_ops (op_uuid, timestamp, op_type, parameters, input_guids, output_guid) ' +
       'VALUES (?, ?, ?, ?, ?, ?)',
-      [uuid, stamp, opType, JSON.stringify(params),
+      [uuid, stamp, opType, JSON.stringify(vParams),
        inputGuids ? JSON.stringify(inputGuids) : null,
        outputGuid || null]
     );
     var r = db.exec('SELECT last_insert_rowid()');
     var opId = r[0].values[0][0];
     console.log('§KERNEL_OP committed id=' + opId + ' uuid=' + (uuid ? uuid.slice(0, 8) : 'null') +
-                ' type=' + opType + ' params=' + JSON.stringify(params));
+                ' type=' + opType + ' params=' + JSON.stringify(vParams));
     // S243 §3.7: persist modified DB back to IndexedDB so refresh survives
     _persistToIdb(db);
     return opId;
@@ -129,6 +134,16 @@
   // Set an edge signer to turn on W-SIGN. Key custody lives at the edge (the device/merchant),
   // never in this module. Leave unset for W-CHAIN-only (tamper-evidence without signatures).
   function setSigner(signer) { _signer = signer; }
+
+  // D2 (prompts/D2_REMEDY_VERSIONING.md): an optional version-stamper that brands every NEW op's params with
+  // its schema version BEFORE hashing — so the version is a signed fact. fn(opType, params) -> params'. Wired
+  // by ERP.OpUpcaster.install(KernelOps) at app boot; UNSET = legacy behaviour (ops carry no _sv = version 1).
+  // The kernel stays decoupled — it never imports the upcaster, just calls this hook if installed.
+  var _versionStamp = null;
+  function setVersionStamper(fn) { _versionStamp = fn; }
+  function _stamp(opType, params) {
+    return (_versionStamp && params && typeof params === 'object') ? _versionStamp(opType, params) : params;
+  }
 
   function _canonical(op) {   // stable serialisation — every mutating field, fixed order
     return op.id + '|' + op.timestamp + '|' + op.op_type + '|' +
@@ -259,6 +274,9 @@
     // gid is an edge-minted INPUT (same discipline as op_uuid) — honour caller's, else mint at commit.
     var gid = groupMeta.gid ||
               ((typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'g-' + Date.now());
+    // BLUE FUTURE (W-BLUE-FUTURE): a speculative-branch tag carried on every op of the group. NULL = official.
+    // NOT part of _canonical (the chain hashes the same with or without it) → ACCEPT later clears it in place.
+    var branchId = (groupMeta.branch_id != null) ? groupMeta.branch_id : null;
 
     // ── Idempotency: a gid already present is a no-op (replay-safe, retry-safe). ──
     var existing = db.exec('SELECT id, op_hash FROM kernel_ops WHERE gid = ' + JSON.stringify(gid) + ' ORDER BY id');
@@ -282,6 +300,7 @@
     for (var i = 0; i < opsArray.length; i++) {
       var src = opsArray[i];
       var params = src.params != null ? src.params : src.parameters;
+      params = _stamp(src.op_type, params);                  // D2: brand schema version (signed) if wired
       // §I-J (W-RATE-INPUT) — currency-determinism precondition: a conversion-bearing op MUST carry its
       // recorded rate inputs (rate/rateDate/rateSource), else the WHOLE group is rejected (all-or-none,
       // commits NOTHING). Today nothing is conversion-bearing → inert but enforced. NEVER looks up a rate.
@@ -325,10 +344,10 @@
       for (var j = 0; j < staged.length; j++) {
         var s = staged[j];
         db.run(
-          'INSERT INTO kernel_ops (id, op_uuid, timestamp, op_type, parameters, input_guids, output_guid, prev_hash, op_hash, sig, gid) ' +
-          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO kernel_ops (id, op_uuid, timestamp, op_type, parameters, input_guids, output_guid, prev_hash, op_hash, sig, gid, branch_id) ' +
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [s.id, s.op_uuid, s.timestamp, s.op_type, s.parameters, s.input_guids, s.output_guid,
-           s.prev_hash, s.op_hash, s.sig, gid]
+           s.prev_hash, s.op_hash, s.sig, gid, branchId]
         );
         ids.push(s.id);
       }
@@ -431,11 +450,20 @@
    * Used on page reload to restore state from the log.
    * @returns {Array} array of { id, op_type, parameters }
    */
-  function replayOps(db, opType) {
+  // BLUE FUTURE (W-BLUE-FUTURE): `branch` selects which timeline to replay —
+  //   undefined / null  → OFFICIAL only (branch_id IS NULL). Existing callers pass nothing and are unchanged:
+  //                       every pre-existing op has branch_id NULL, so the official projection is identical;
+  //                       only NEW speculative (blue) ops are excluded — exactly the invisibility invariant.
+  //   '<branch-id>'      → that speculative branch's ops only (the blue view).
+  //   '*'                → every op regardless of branch (debug/export).
+  function replayOps(db, opType, branch) {
     ensureTable(db);
     // G-IDENTITY (§0.21 D2/D3): replay RE-READS the recorded op_uuid — identity is never recomputed.
     var sql = 'SELECT id, op_uuid, op_type, parameters FROM kernel_ops WHERE undone = 0';
     var args = [];
+    if (branch === '*') { /* no branch filter */ }
+    else if (branch == null) { sql += ' AND branch_id IS NULL'; }
+    else { sql += ' AND branch_id = ?'; args.push(branch); }
     if (opType) { sql += ' AND op_type = ?'; args.push(opType); }
     sql += ' ORDER BY id';
     var r = db.exec(sql, args);
@@ -523,6 +551,52 @@
     return commitOp(db, 'SESSION_START', { ts: new Date().toISOString() });
   }
 
+  // ── BLUE FUTURE (W-BLUE-FUTURE) — speculative-branch lifecycle ────────────────────────────────────
+  // The blue branch is just ops tagged with branch_id. Because the tag is NOT in _canonical, the chain is
+  // valid with the tag present (blue) or cleared (accepted) — so ACCEPT is an in-place re-parent, not a
+  // re-hash. Blue ops are always the LATEST in id order (a private fork off the tip), so in the single-actor
+  // case accept needs no rebase: clearing branch_id makes them official and the chain still verifies. The
+  // multi-actor case (an official op interleaved after a blue op) needs conflict detection — NOT done here
+  // (honestly flagged; the §0.20 rebase + a conflict check is the upgrade path).
+
+  // branchOps — the ops of a branch, id order. {id, gid, op_type} rows. Empty if none.
+  function branchOps(db, branchId) {
+    ensureTable(db);
+    var r = db.exec('SELECT id, gid, op_type FROM kernel_ops WHERE branch_id = ' + JSON.stringify(String(branchId)) + ' AND undone = 0 ORDER BY id');
+    if (!r.length) return [];
+    return r[0].values.map(function (v) { return { id: v[0], gid: v[1], op_type: v[2] }; });
+  }
+
+  // discardBranch — "shirk the blues": fold the WHOLE branch away atomically (undone=1 for every branch op).
+  // The official tip never saw these ops (official reads filter branch_id IS NULL), so nothing official moves;
+  // the blue children just vanish. Idempotent. Returns { discarded }.
+  function discardBranch(db, branchId) {
+    ensureTable(db);
+    var before = branchOps(db, branchId).length;
+    db.run('UPDATE kernel_ops SET undone = 1 WHERE branch_id = ? AND undone = 0', [String(branchId)]);
+    console.log('§BLUE-DISCARD branch=' + branchId + ' folded=' + before + ' (official tip untouched)');
+    _persistToIdb(db);
+    return { discarded: before };
+  }
+
+  // acceptBranchUpTo — long-click a blue dot: turn every blue op of this branch with id <= uptoId WHITE +
+  // PERMANENT (clear branch_id → official). Ops after uptoId stay blue. Because branch_id ∉ _canonical, the
+  // op_hash is unchanged and the existing seal stays valid — accept is a metadata flip, not a re-seal (single
+  // -actor). Returns { accepted, remaining, chain } where chain is the verifyChain verdict proving integrity.
+  async function acceptBranchUpTo(db, branchId, uptoId) {
+    ensureTable(db);
+    var ops = branchOps(db, branchId);
+    var toAccept = ops.filter(function (o) { return o.id <= uptoId; });
+    db.run('UPDATE kernel_ops SET branch_id = NULL WHERE branch_id = ? AND id <= ? AND undone = 0',
+           [String(branchId), uptoId]);
+    var remaining = branchOps(db, branchId).length;
+    var chain = await verifyChain(db);   // chain must STILL verify — accept did not touch any hashed field
+    console.log('§BLUE-ACCEPT branch=' + branchId + ' uptoId=' + uptoId + ' accepted=' + toAccept.length +
+                ' remainingBlue=' + remaining + ' chainOk=' + chain.ok);
+    _persistToIdb(db);
+    return { accepted: toAccept.length, remaining: remaining, chain: chain };
+  }
+
   window.KernelOps = {
     ensureTable:  ensureTable,
     commitOp:     commitOp,
@@ -536,8 +610,12 @@
     commitGroup:  commitGroup,   // §I-K (W-OPGROUP): N ops, ONE group hash, all-or-none, sealed once (async)
     verifyChain:  verifyChain,   // W-CHAIN/W-SIGN: prove tamper-evidence (async)
     setSigner:    setSigner,     // W-SIGN: install an edge signer (opt-in)
-    assertRateAsInput: assertRateAsInput  // §I-J (W-RATE-INPUT): currency-determinism guard (pure, rate-as-op-input)
+    setVersionStamper: setVersionStamper, // D2: install a schema-version stamper (opt-in; ERP.OpUpcaster.install)
+    assertRateAsInput: assertRateAsInput, // §I-J (W-RATE-INPUT): currency-determinism guard (pure, rate-as-op-input)
+    branchOps:    branchOps,     // BLUE FUTURE (W-BLUE-FUTURE): the ops of a speculative branch (id order)
+    discardBranch: discardBranch, // BLUE FUTURE: shirk the blues — fold the whole branch away atomically
+    acceptBranchUpTo: acceptBranchUpTo // BLUE FUTURE: long-click a blue dot → accept-up-to-here (chain stays valid)
   };
 
-  console.log('§KERNEL_OPS_LOADED v8 (W-CHAIN/W-SIGN/G-IDENTITY/W-OPGROUP/W-RATE-INPUT)');
+  console.log('§KERNEL_OPS_LOADED v9 (W-CHAIN/W-SIGN/G-IDENTITY/W-OPGROUP/W-RATE-INPUT/W-BLUE-FUTURE)');
 })();

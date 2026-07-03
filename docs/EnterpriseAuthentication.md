@@ -1,4 +1,6 @@
 # Enterprise Authentication for Browser-Based BIM
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 ## Problem Statement
 

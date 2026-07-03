@@ -38,26 +38,34 @@ class SHPipelineTest {
     }
 
     // ── G1: COUNT ────────────────────────────────────────────────────────────
+    // Counts RAISED 2026-06-25 (orientation-abstraction lane, SPATIAL_DEPENDENCY_GRAPH.md §DOCTRINE):
+    // now that EVERY element carries its captured world yaw (classifyOrientationV2 is class-agnostic — no
+    // hasFront whitelist), VerbFactorizer's orientation-uniformity guard correctly REFUSES to collapse
+    // rotation-varying groups (openings {0,90,270}/{0,180}; previously-exempt tables/piano with real yaw).
+    // The BOM de-factorizes them into faithful per-instance leaves. PROVEN compiler-faithful, NOT inflated:
+    // W-DROP-VS-COMPILER §POS-CONGRUENCE GREEN (per-class drop==compiler output.db: DOOR 3=3, WINDOW 4=4,
+    // OpeningElement 7=7, FURN 14=14, ≤0.07mm) + W-ROTATION-ROSETTA-ALL GREEN (drop==raw extraction, all
+    // 10 classes). The old 37/11/48 encoded the over-factorized rot=0 era (3 furniture leaves collapsed).
 
     @Test
     @Order(1)
     void g1_structuralLineCount() {
-        assertEquals(37, result.structuralLines(),
-                "SH must have exactly 37 structural element lines (48 - 11 scope-assigned to SET BOMs)");
+        assertEquals(47, result.structuralLines(),
+                "SH must have exactly 47 structural element lines (61 - 14 scope-assigned to SET BOMs)");
     }
 
     @Test
     @Order(13)
     void g1_setLineCount() {
-        assertEquals(11, result.setLines(),
-                "SH must have exactly 11 SET BOM element lines (living 9 + bedroom 2)");
+        assertEquals(14, result.setLines(),
+                "SH must have exactly 14 SET BOM element lines (living 12 + bedroom 2)");
     }
 
     @Test
     @Order(14)
     void g1_totalLeafCount() {
-        assertEquals(48, result.structuralLines() + result.setLines(),
-                "Total LEAF = structural + SET must be 48");
+        assertEquals(61, result.structuralLines() + result.setLines(),
+                "Total LEAF = structural + SET must be 61 (matches compiler's placeable set)");
     }
 
     @Test
@@ -121,9 +129,11 @@ class SHPipelineTest {
     @Order(16)
     void setBomChildCounts() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
-            // LIVING_ROOM = 9 (Piano, Sofa, Coffee Table, 5x Armchair/Chair)
-            assertEquals(9, countLines(conn, "SH_1_LIVING_ROOM_SET"),
-                    "SH_1_LIVING_ROOM_SET must have 9 children");
+            // LIVING_ROOM = 12 (Piano, Sofa, Coffee Table + dining/armchairs) — RAISED from 9 on 2026-06-25:
+            // 3 furniture instances that over-factorization had collapsed at rot=0 are now faithful
+            // per-instance leaves (their captured yaw is no longer discarded). drop==compiler FURN 14=14.
+            assertEquals(12, countLines(conn, "SH_1_LIVING_ROOM_SET"),
+                    "SH_1_LIVING_ROOM_SET must have 12 children");
             // BEDROOM = 2 (Queen Bed + Desk)
             assertEquals(2, countLines(conn, "SH_2_BEDROOM_SET"),
                     "SH_2_BEDROOM_SET must have 2 children");

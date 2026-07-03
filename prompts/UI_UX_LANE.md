@@ -7,9 +7,9 @@
 #   (presentation only — NO engine/fold changes anywhere in this lane) · Lucide-only icons (pill-icon
 #   consistency) · bim-ootb edits ONLY in /tmp/wt-* off FRESH origin/main · ONE PR per track · sw bump
 #   once per train · orphan-check every squash · sw.js = conflict magnet (keep both hunks, higher version).
-# STATE AT WRITING (post #283): origin/main tip 72c9868 · erp sw v663 · viewer sw v648 ·
-#   pos_lens.js?v=5 (idempiere.html) · wh_walk.js?v=3 · wh_route.js?v=2 · WH×POS pick loop ✅ LIVE
-#   (W-WH-POS-PICK-LIVE, SPATIAL_PICKING_SPEC §S-2b) — this lane styles ON TOP of it, breaks nothing.
+# STATE AT WRITING (post FOLLOW-UP ROUND 2, 2026-06-14): erp sw v684 (#313 Sound-FX pill) · viewer sw v657
+#   (#311 WH cross-reload resume) · pos_lens.js?v=9 · wh_walk.js?v=8 · idmp_pills.js?v=12 · pills_idmp.json?v=31
+#   · icons.js?v=10 · ROUND 2 all ✅ (see §FOLLOW-UP ROUND 3 STATE block + the # DONE blocks below).
 
 ## ⚠ PRE-PINNED FACTS (verified in code 2026-06-13 — do NOT rediscover these wrong)
 1. **Viewer icons live in `viewer/panels.js`** (inline `ICONS` map, `var I = ICONS` ~line 1104).
@@ -460,8 +460,8 @@ Witnesses (bim-compiler, same train): **W-WH-LIVE 37/37 + W-WH-POS-PICK-LIVE 18/
 ### ⬜ RESUME ITEMS (carry to next session)
 1. ✅ **POS PR #308 LANDED** (orphan-check 2026-06-14: `origin/main:erp/sw.js` carries `CACHE_VERSION='v680'` + `pos_lens.js?v=9` + `icons.js?v=10`; `pos-pay-modal`/`pos-pay-ok` = 0 refs — modal retired as shipped. No orphan).
 2. ✅ **ERPUserGuide §7 synced + published** (2026-06-14): replaced the stale "Payment panel layout (sw v667 — minimalist)" + retired the "receipt-preview pay flow" heading → new "top-bar total + single Pay" layout (`#pos-top-total` running total · `#pos-pill-scan` right · single `#pos-float-tender` Pay completes directly · draggable `§POS-FLOAT-DRAG` · Standard-partner default `§POS-PARTNER-DEFAULT` · dock `(+)`/`route` glyphs · R2-AUDIO earcon note). `mkdocs gh-deploy --force` pushed gh-pages `128a0a6f..2cfc26b1`; built `site/ERPUserGuide/index.html` carries new §7, old heading 0 occurrences. → red1oon.github.io/BIMCompiler/.
-3. **R2-AUDIO default-on** is a judgment call I shipped (subtle, ui_clicks off). If the user wants it OFF-by-default or a mute toggle on idempiere.html, flip `erp/sfx.json master.enabled`. Earcon voices (pluck/bell/harp) tunable by ear. ⛔ user-fact (a preference, not extractable).
-4. ✅ **Cross-reload WH resume (C-R2-8)** SHIPPED — bim-ootb PR #311 (wh_walk.js?v=8, viewer sw v657). Spec below.
+3. ✅ **R2-AUDIO control SHIPPED** — bim-ootb PR #313 (erp sw v684). Resolved per user ("why not use the pill audio icon in BIM"): surfaced the SAME Sound-FX speaker pill as the BIM viewer on idempiere.html (pills_idmp.json +audio order 8.7, volume2 glyph; IdmpPillActions.audio → window.toggleSfx + builder.sync(); IdmpPillActive.audio → __sfx.isOn()). Choice persists (localStorage sfx_on overrides erp/sfx.json), so the user controls on/off — no judgment-call default. Witness poc_idmp_pills.js §AUDIO-PILL (renders + pointerup flips __sfx.isOn true→false + lit follows; §A-RESULT PASS); served the worktree ROOT so sfx.js loads cross-dir, EXPECT updated to the real 16-pill registry. Auto-merge enabled.
+4. ✅ **Cross-reload WH resume (C-R2-8)** SHIPPED + MERGED — bim-ootb PR #311 (wh_walk.js?v=8, viewer sw v657). Orphan-check 2026-06-14: origin/main carries v657 + wh_walk.js?v=8 + idmp_whwalk_progress. Spec below.
    Witness W-WH-POS-PICK-LIVE: step-1 SHORT pick → `§WH PROGRESS-SAVE picked=1/2` → page.reload() →
    re-pick still-DR shipment → `§WH RESUME-RELOAD restored=1/2` → counter=1 → `PICK-COMPLETE picked=2/3
    diffs=0 chainOk=Y` (restored W.done seals identically). W-WH-LIVE regression green (movement path
@@ -500,3 +500,68 @@ DOES fold the op-log at complete():787, stays out of scope — its completion wo
 `§WH RESUME-RELOAD … restored=1` + the picked-counter shows 1 → continue to step 2 → W4 PICK-COMPLETE
 fold `diffs=0` UNCHANGED (proves the restored W.done seals identically). Train: ONE PR (viewer surface),
 `wh_walk.js?v=7→8` + viewer sw bump; `npx eslint viewer/wh_walk.js` exit 0.
+
+---
+
+## ⟳ FOLLOW-UP ROUND 3 — live-test observations (paste-to-start)
+# Paste-to-start: `proceed with prompts/UI_UX_LANE.md §FOLLOW-UP ROUND 3`
+# RULES (unchanged): presentation-only · newVerbs=[] · NON-INVENT (extract ids/rows) · Lucide-only ·
+#   reproduce-first (open the LIVE surface, confirm the complaint, THEN fix) · witness-led (§-log first) ·
+#   bim-ootb edits in /tmp/wt-* off FRESH origin/main · ONE PR per surface · sw bump · orphan-check after squash.
+# Where an item names a control by ROLE not id, CONFIRM against the live surface before coding — never invent.
+
+## STATE AT WRITING (post ROUND 2, 2026-06-14)
+- erp sw v684 (#313 Sound-FX pill) · viewer sw v657 (#311 WH cross-reload resume)
+- pos_lens.js?v=9 · wh_walk.js?v=8 · idmp_pills.js?v=12 · pills_idmp.json?v=31 · icons.js?v=10
+- ROUND 2 all ✅: (1) POS #308 orphan-checked · (2) ERPUserGuide §7 synced + gh-deploy ·
+  (3) Sound-FX speaker pill on idempiere.html (the BIM audio pill; persists via localStorage sfx_on) ·
+  (4) WH cross-reload resume (idmp_whwalk_progress IDB cache, restores W.done for the same sale).
+
+## LIVE-VERIFY FIRST (before dictating ROUND 3 — reproduce on the deployed surface)
+- [ ] POS — Sound-FX speaker pill toggles the earcons (ring/pay/complete); a mute sticks across reload.
+- [ ] POS — top-bar running total updates as items ring; single Pay completes; pay panel drags.
+- [ ] WH walk — pick an item → reload the page → reopen the SAME sale → picked counter restored.
+- [ ] WH walk — tap a route row frames that bin; ✕ exits keeping a partial pick.
+
+## ROUND 3 — dictated observations (verbatim, 2026-06-15) — POS register completeness
+# User dictation (verbatim intent): "Keep the panel one bar line slim thus the rims are needed.
+# Do not want them expanded." · "check that adding items do create its underlying records. And that
+# payment has a button to processIt/Complete the Order." · "we forgot to have a previous sales records,
+# as cashier need to recall what was sold or previous sale to be reverted. Organise it well in the scene."
+# · "backflush should be a late process … it is an EODA … thus in the pill, organise such. Unicenta
+# plugin already that way, learn from it." · "WH walk, also do your own as a user." · "Issues arise when
+# you are not driving it as a user." → DRIVE EVERY CHANGE AS A USER (browser screenshots), not just witnesses.
+#
+# NON-INVENT GROUND (all extracted, witnessed):
+#  - Doc chain proven: W-POS-{RING,HOLD,WR,REGISTER,BACKFLUSH,DELIVERLATER,VOID,REPLENISH} all green.
+#  - Rim panel = restore e820d2d/v667 edge-rim drawers (.pos-rim-top orange #e65c00 = items drawer;
+#    .pos-rim-bottom green #2e7d32 = replenish drawer); collapsed by default; total back INSIDE slim center bar.
+#  - Pay = SET_STATUS CO = processIt (already wired §R2-3); keep R2: single Pay, draggable, partner-default, earcons.
+#  - Previous Sales = query op-log kernel_ops CREATE_DOCUMENT C_Order; Revert = DocFSM VO (CO→VO,
+#    reversePosting nets 0c, shipment C- negated → on-hand restored). Engine ready (ad_docfsm.js, W-POS-VOID).
+#  - EODA = the late End-of-Day fold (POSLens.md §195 "fold the day: sales, stock, reorder, variance";
+#    §206 "AutoBOMOrder + Replenishment Report → the fold"). MOVE backflush OUT of pos_core.completionOps
+#    (per-sale CONSUME, lines ~118-126) INTO the EOD fold. New witness poc_pos_eoda.js: EOD CONSUME ==
+#    Σ per-sale explodeBOM (nothing lost), qty spine moves ONCE at close, chainOk=Y.
+#
+# REFINEMENT (user 2026-06-15, round 2 of dictation):
+#  - Big central total: KEEP large (easy to read the clocking-up total; handy to press).
+#  - Pay needs an OK-CONFIRM before commit (R2-3 retired the modal; user wants confirm-to-pay back).
+#  - Bottom GREEN rim = PREVIOUS SALES (recall + Revert/Void), NOT replenishment.
+#  - Replenishment leaves the panel entirely → it is an EODA op.
+#  - EODA = CLOSE CASH (Unicenta/any-POS close-till): one press → BOM backflush → Generate Replenishment
+#    Report (iDempiere ops). The REPORT is issued from the MENU, not the panel.
+#  - Cashier daily routine: open cash POS → sales → (send WH to collect if needed) → close till. All records generated.
+#  - HISTORY LINE: record each sale (+ each ship/pick) as a history event (shared history_bar.js). POC volume
+#    is light (few sales/day × few demo days = trivial; bounded by cache/client lifetime, TBD-not-spec'd).
+#
+# A. [x] Slim rim-drawer pay panel restored (items-rim / big total+Pay / bottom-rim), R2 bits kept.
+#        DONE+user-driven: §POS-R3-SHAPE rims=true both collapsed total-in-panel 175.75 panelH=168;
+#        shots r3_pos_{1_slim,2_items,3_replenish}.png. (bottom rim repurposes to Previous Sales in B.)
+# A2.[ ] Pay → OK-confirm before commit (no direct complete on a stray tap).
+# B. [ ] Bottom green rim = Previous-Sales recall drawer + per-sale Revert(Void). Replenish OUT of panel.
+# C. [ ] EODA = Close Cash control: BOM backflush (moved off per-sale) → Generate Replenishment Report
+#        (iDempiere ops, issued from menu). New witness poc_pos_eoda.js.
+# D. [ ] History line records each sale + ship/pick (shared history_bar.js).
+# E. [ ] WH walk user-drive (phone) + POS day-loop user-drive — screenshots, friction logged, fixed; deploy.
+# Worktree: /tmp/wt-r3-pos (branch feat/r3-pos-eoda off origin/main @ 25b5b4b, sw v689).

@@ -96,16 +96,59 @@ function waitFor(lines, s, ms) {
   var pillThere = await page.$('#pill-whwalk');
   verdict(!!pillThere, '#pill-whwalk on the mobile pill strip');
 
-  // ── open the lens through the REAL pill (pointerup, the registry idiom) ──
-  await page.evaluate(function () {
-    var b = document.getElementById('pill-whwalk');
-    if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-    else if (window.WHWalk) WHWalk.toggle();
-  });
+  // ── §C-1 (UI_UX_LANE Track C): the walk AUTO-ENGAGES once geometry is ready (A._bboxCleared) — no
+  // pill hunt. Give auto-engage its window first; only fall back to the pill if it doesn't fire.
+  var autoEngaged = await waitFor(lines, '§WH_AUTOSTART gate=true open=auto', 8000);
+  verdict(autoEngaged, '§C-1 walk auto-engages on WH load (no pill tap needed)', (grab(lines, /(§WH_AUTOSTART.*)/) || ['', 'absent'])[1]);
+  if (!autoEngaged) {
+    // fallback path (defensive): open through the REAL pill (pointerup, the registry idiom)
+    await page.evaluate(function () {
+      if (window.WHWalk && WHWalk.isOpen && WHWalk.isOpen()) return;
+      var b = document.getElementById('pill-whwalk');
+      if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+      else if (window.WHWalk) WHWalk.toggle();
+    });
+  }
   var opened = await waitFor(lines, '§WH OPEN', 30000);
   verdict(opened, '§WH OPEN (lens mounted, seed + engines lazy-loaded)', (grab(lines, /(§WH OPEN.*)/) || ['', 'absent'])[1]);
   var step1 = await waitFor(lines, 'step=1/3 locator=101 fly=done lit=1', 20000);
   verdict(step1, 'W-WH-WALK §WH step=1/3 locator=101 fly=done lit=1', (grab(lines, /(§WH step=.*)/) || ['', 'absent'])[1]);
+
+  // ── §C-4: route-list drawer above the strip (auto-expanded at start; header toggles) ──
+  var rdAutoOpen = await page.evaluate(function () {
+    var rd = document.getElementById('wh-route-drawer'), list = document.getElementById('wh-route-list');
+    return !!(rd && rd.style.display !== 'none' && list && list.style.display !== 'none' && list.children.length === 3);
+  });
+  verdict(rdAutoOpen, '§C-4 route drawer auto-expands at walk start with 3 step rows');
+  // §WH-MODE-ICON (v653): the drawer toggle is the route icon in the strip (#wh-route-toggle), not a header.
+  await page.evaluate(function () { document.getElementById('wh-route-toggle').click(); });   // collapse
+  await new Promise(function (ok) { setTimeout(ok, 200); });
+  var rdToggle = (grab(lines, /(§WH_ROUTE_DRAWER.*)/) || ['', 'absent'])[1];
+  verdict(/§WH_ROUTE_DRAWER open=false steps=3 done=0/.test(rdToggle), '§C-4 route-icon tap collapses drawer (§WH_ROUTE_DRAWER open=false steps=3 done=0)', rdToggle);
+  await page.evaluate(function () { document.getElementById('wh-route-toggle').click(); });   // re-expand for the rest of the walk
+
+  // ── §C-R2-1 (FOLLOW-UP ROUND 2): tapping a route-list row highlights + frames that bin in the scene ──
+  await page.evaluate(function () { var r = document.getElementById('wh-route-list'); if (r && r.children[2]) r.children[2].click(); });
+  await new Promise(function (ok) { setTimeout(ok, 200); });
+  var rtTap = (grab(lines, /(§WH_ROUTE_TAP.*)/) || ['', 'absent'])[1];
+  verdict(/§WH_ROUTE_TAP idx=2 locator=102/.test(rtTap), '§C-R2-1 route-row tap → focusStep frames that bin (§WH_ROUTE_TAP idx=2 locator=102)', rtTap);
+  // restore framing to the current step (tapping a row only re-frames; W.idx unchanged)
+  await page.evaluate(function () { var r = document.getElementById('wh-route-list'); if (r && r.children[0]) r.children[0].click(); });
+  await new Promise(function (ok) { setTimeout(ok, 200); });
+
+  // ── §C-R2-2: big running picked-counter (top-left) starts at 0, amber (bare count, green only at total) ──
+  var ctr0 = await page.evaluate(function () {
+    var c = document.getElementById('wh-pick-counter');
+    return c ? { txt: c.textContent, shown: c.style.display !== 'none', amber: c.style.color.indexOf('255, 179, 0') >= 0 } : null;
+  });
+  verdict(ctr0 && ctr0.shown && ctr0.txt === '0' && ctr0.amber, '§C-R2-2 picked-counter shows 0 amber at walk start', JSON.stringify(ctr0));
+
+  // ── §C-R2-5: no 3-dot BIM dock behind the walk — BOTH #mobile-pill AND its ⋯ #mobile-trigger hidden ──
+  var pillHidden = await page.evaluate(function () {
+    var p = document.getElementById('mobile-pill'), t = document.getElementById('mobile-trigger');
+    return { pill: !p || p.style.display === 'none', trigger: !t || t.style.display === 'none', hasTrigger: !!t };
+  });
+  verdict(pillHidden.pill && pillHidden.trigger, '§C-R2-5 BIM pill strip AND ⋯ trigger both hidden in walk mode', JSON.stringify(pillHidden));
 
   // ── L2 falsifier: NON-target tap must not advance / open scan ──
   console.log('— L2: walk + tap falsifier —');
@@ -145,21 +188,39 @@ function waitFor(lines, s, ms) {
   verdict(pick1 && /qty=4/.test(p1) && /ops=2/.test(p1) && /committed=true/.test(p1) && /chainOk=Y/.test(p1),
     'step 1 commit: ONE group (2 ENACT_MOVE ops), qty=4, chainOk=Y', p1);
 
-  // step 2 (same bin 101, product 127): strip button → typed → SHORT-pick 3 of 4
+  // ── §C-R2-8: exit (✕) mid-walk then re-open RESUMES the same state (1 picked, not re-drafted) ──
+  await page.click('#wh-close');                                       // ✕ exit (C-R2-6 partial exit)
+  await new Promise(function (ok) { setTimeout(ok, 300); });
+  var closed = await page.evaluate(function () { return !WHWalk.isOpen(); });
+  verdict(closed, '§C-R2-6 ✕ exits the walk (no forced completion)');
+  await page.evaluate(function () { WHWalk.toggle(); });               // re-open within the same session
+  var resumed = await waitFor(lines, '§WH RESUME', 8000);
+  var rs = (grab(lines, /(§WH RESUME.*)/) || ['', 'absent'])[1];
+  verdict(resumed && /done=1/.test(rs) && /state preserved/.test(rs), '§C-R2-8 re-open RESUMES same state (done=1, not re-drafted)', rs);
+  // counter still shows 1 picked after resume (state truly preserved)
+  var ctrR = await page.evaluate(function () { var c = document.getElementById('wh-pick-counter'); return c ? c.textContent : null; });
+  verdict(ctrR === '1', '§C-R2-8 picked-counter still 1 after resume', String(ctrR));
+
+  // step 2 (same bin 101, product 127): §C-R2-4 AUTO-CONFIRM via the strip "Confirm" button —
+  // full/default qty, NO scan overlay (the 3D-box tap path is what opens scan; proven on step 1 above).
   var step2 = await waitFor(lines, 'step=2/3 locator=101 fly=done lit=1', 15000);
   verdict(step2, 'W-WH-WALK §WH step=2/3 locator=101 fly=done lit=1');
-  await page.click('#wh-scan-btn');
-  await new Promise(function (ok) { setTimeout(ok, 300); });
-  await page.evaluate(function () { document.getElementById('wh-typed').value = ''; });
-  await page.type('#wh-typed', '101');
-  await page.click('#wh-typed-go');
-  await new Promise(function (ok) { setTimeout(ok, 300); });
-  await page.click('#wh-qty-minus');                       // 4 → 3 (short-pick)
-  await page.click('#wh-qty-ok');
+  await page.click('#wh-scan-btn');                        // strip Confirm = autoConfirmPick (C-R2-4)
+  await new Promise(function (ok) { setTimeout(ok, 500); });
+  var ac = (grab(lines, /(§WH_AUTOCONFIRM step=2\/3.*)/) || ['', 'absent'])[1];
+  verdict(/§WH_AUTOCONFIRM step=2\/3 locator=101 qty=4 via=auto/.test(ac), '§C-R2-4 strip Confirm = auto-confirm full qty (no scan overlay)', ac);
+  var scanShut2 = await page.evaluate(function () { var s = document.getElementById('wh-scan'); return !s || s.style.display === 'none'; });
+  verdict(scanShut2, '§C-R2-4 auto-confirm did NOT open the scan overlay');
   var pick2 = await waitFor(lines, '§WH PICK step=2/3', 10000);
   var p2 = (grab(lines, /(§WH PICK step=2\/3.*)/) || ['', ''])[1];
-  verdict(pick2 && /qty=3 SHORT \(remainder 1/.test(p2) && /chainOk=Y/.test(p2),
-    'step 2 SHORT-pick: qty=3, remainder 1 stays open, chainOk=Y', p2);
+  verdict(pick2 && /qty=4/.test(p2) && /chainOk=Y/.test(p2),
+    'step 2 auto-confirm: full qty=4 committed, chainOk=Y', p2);
+  // §C-R2-2 the running counter advanced to 2 picks (still amber — step 3 not yet picked)
+  var ctr2 = await page.evaluate(function () {
+    var c = document.getElementById('wh-pick-counter');
+    return c ? { txt: c.textContent, amber: c.style.color.indexOf('255, 179, 0') >= 0 } : null;
+  });
+  verdict(ctr2 && ctr2.txt === '2' && ctr2.amber, '§C-R2-2 picked-counter = 2 amber after two picks', JSON.stringify(ctr2));
 
   // ── L4: step 3 — long-press skip-with-reason (the real strip gesture, prompt overridden) ──
   console.log('— L4: skip-with-reason —');
@@ -183,8 +244,8 @@ function waitFor(lines, s, ms) {
   verdict(/chainOk=Y/.test(c), 'op log chain verifies after completion', c);
   var f = (grab(lines, /(§WH FOLD .*)/) || ['', ''])[1];
   var foldOk = f.indexOf('123@101:-4') >= 0 && f.indexOf('123@50000:4') >= 0 &&
-               f.indexOf('127@101:-3') >= 0 && f.indexOf('127@50000:3') >= 0;
-  verdict(foldOk, 'fold values exact: 123@101:-4 · 123@50000:+4 · 127@101:-3 · 127@50000:+3 (skip excluded)', f);
+               f.indexOf('127@101:-4') >= 0 && f.indexOf('127@50000:4') >= 0;
+  verdict(foldOk, 'fold values exact: 123@101:-4 · 123@50000:+4 · 127@101:-4 · 127@50000:+4 (step 2 full, skip excluded)', f);
 
   // ── L6: phone wiring ──
   console.log('— L6: phone-sized viewport —');

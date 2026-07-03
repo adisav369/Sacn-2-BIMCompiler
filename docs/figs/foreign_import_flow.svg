@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 620" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5b6b7f"/>
+    </marker>
+    <style>
+      .ttl{font-weight:700;font-size:15px}
+      .sub{font-size:12px;fill:#4a5563}
+      .small{font-size:11px;fill:#5b6b7f}
+      .lbl{font-size:11px;fill:#5b6b7f}
+      .wht{fill:#fff;font-weight:700;font-size:15px}
+      .wsub{fill:#e8f0fb;font-size:12px}
+      .flow{stroke:#5b6b7f;stroke-width:2;fill:none}
+    </style>
+  </defs>
+
+  <!-- title -->
+  <text x="460" y="30" text-anchor="middle" class="ttl" fill="#1b2532">How the BIM model and the construction programme meet</text>
+  <text x="460" y="50" text-anchor="middle" class="sub">Autodesk (geometry) + Primavera / MS&#160;Project (schedule) → one signed 4D/5D log → ERP</text>
+
+  <!-- LEFT: Autodesk / BIM -->
+  <rect x="30" y="78" width="270" height="58" rx="8" fill="#1f6feb"/>
+  <text x="165" y="103" text-anchor="middle" class="wht">Autodesk &#8212; the 3D model</text>
+  <text x="165" y="122" text-anchor="middle" class="wsub">Revit &#183; Navisworks &#183; Civil&#160;3D</text>
+
+  <line x1="165" y1="136" x2="165" y2="170" class="flow" marker-end="url(#ar)"/>
+  <text x="178" y="158" class="lbl">IFC export</text>
+
+  <rect x="30" y="172" width="270" height="70" rx="8" fill="#eaf1fd" stroke="#1f6feb"/>
+  <text x="165" y="198" text-anchor="middle" class="ttl" fill="#13386e">BIM Viewer</text>
+  <text x="165" y="217" text-anchor="middle" class="sub">3D geometry, streamed</text>
+  <text x="165" y="233" text-anchor="middle" class="small">elements carry stable GUIDs</text>
+
+  <!-- RIGHT: Primavera / MS Project -->
+  <rect x="620" y="78" width="270" height="58" rx="8" fill="#e07b1a"/>
+  <text x="755" y="103" text-anchor="middle" class="wht">Primavera / MS&#160;Project &#8212; the plan</text>
+  <text x="755" y="122" text-anchor="middle" class="wsub">P6 &#183; MS&#160;Project &#183; Asta</text>
+
+  <line x1="755" y1="136" x2="755" y2="170" class="flow" marker-end="url(#ar)"/>
+  <text x="768" y="158" class="lbl">export file</text>
+
+  <rect x="620" y="172" width="270" height="70" rx="8" fill="#fdf0e3" stroke="#e07b1a"/>
+  <text x="755" y="197" text-anchor="middle" class="ttl" fill="#8a4a06">&#10515; Importer</text>
+  <text x="755" y="216" text-anchor="middle" class="small">.xer &#183; P6&#160;XML (PMXML) &#183; MSPDI&#160;.xml</text>
+  <text x="755" y="232" text-anchor="middle" class="small">one %F/tag-driven reader per format</text>
+
+  <!-- CENTER: TimeMachine / Schedule Editor -->
+  <line x1="165" y1="242" x2="320" y2="300" class="flow" marker-end="url(#ar)"/>
+  <line x1="755" y1="242" x2="600" y2="300" class="flow" marker-end="url(#ar)"/>
+  <text x="232" y="276" class="lbl">geometry</text>
+  <text x="618" y="276" text-anchor="end" class="lbl">WBS &#183; logic &#183; dates</text>
+
+  <rect x="300" y="296" width="320" height="104" rx="10" fill="#0a7ea4"/>
+  <text x="460" y="324" text-anchor="middle" class="wht">4D / 5D Time&#160;Machine + Schedule&#160;Editor</text>
+  <text x="460" y="346" text-anchor="middle" class="wsub">IFC-native schedule tables</text>
+  <text x="460" y="366" text-anchor="middle" class="wsub">WBS &#183; FS/SS/FF/SF&#160;+&#160;lag &#183; CPM &#183; drag-Gantt</text>
+  <text x="460" y="386" text-anchor="middle" class="wsub">What-if &#183; live cross-tab sync</text>
+
+  <!-- BINDING bridge -->
+  <line x1="165" y1="242" x2="165" y2="452" class="flow" stroke-dasharray="5 4"/>
+  <line x1="755" y1="242" x2="755" y2="452" class="flow" stroke-dasharray="5 4"/>
+  <rect x="210" y="436" width="500" height="56" rx="8" fill="#f3f6fa" stroke="#7a8aa0"/>
+  <text x="460" y="460" text-anchor="middle" class="ttl" fill="#33404f">Binding &#8212; task &#8596; element</text>
+  <text x="460" y="479" text-anchor="middle" class="small">imported tasks carry no GUIDs &#8594; you bind them to model elements (rename-proof). This is the 4D step.</text>
+  <line x1="165" y1="464" x2="210" y2="464" class="flow" marker-end="url(#ar)"/>
+  <line x1="755" y1="464" x2="710" y2="464" class="flow" marker-end="url(#ar)"/>
+  <line x1="460" y1="436" x2="460" y2="400" class="flow" marker-end="url(#ar)"/>
+
+  <!-- BOTTOM: ERP fold -->
+  <line x1="460" y1="492" x2="460" y2="528" class="flow" marker-end="url(#ar)"/>
+  <rect x="300" y="530" width="320" height="64" rx="10" fill="#2e7d46"/>
+  <text x="460" y="557" text-anchor="middle" class="wht">Signed op-log &#8594; ERP fold</text>
+  <text x="460" y="578" text-anchor="middle" class="wsub">C_Project &#183; 5D cost roll-up &#183; variance / forecast</text>
+
+  <!-- side note -->
+  <text x="30" y="586" class="small">Every drag, link and bind is one signed fact &#8212;</text>
+  <text x="30" y="602" class="small">the model, the 4D playback, the 5D cost and the ERP all fold from the same log.</text>
+</svg>

@@ -5,6 +5,12 @@
  */
 
 # Spatial ERP OOTB — Every Record Has a Place
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
+> **See it fused with BIM + HR:** [Spatial ERP × BIM × HR — One Building, One Log, Three Surfaces](SpatialERPIntegration.md)
+> shows how this ERP, the 3D Viewer and the HR/Operate lenses are the *same* system — one building, one signed
+> op-log, no redundant screens.
+
 
 ![Data Globe — Spatial UI for ERP](assets/images/SpatialERP.png)
 
@@ -43,7 +49,7 @@ This is not a whitepaper. It is built and tested. The BIM OOTB viewer already re
 
 ## The Solution — How It Works
 
-**[Construction ERP POC](SpatialERP_POC.md)** — the first implementation (engine complete, [79/79 tests passing](SpatialERP_POC.md)):
+**Construction ERP POC** — the first implementation (engine complete, 79/79 tests passing):
 
 A land acquisition agent in Dhaka opens `erp.html` on their phone. Creates a lead for Plot 60, Gulshan-1. Adds landowner details (confidential). Shares a link to the architect — owner data automatically stripped. The architect drops an IFC file, the building renders on the plot, FAR is computed. The BOQ engineer receives a link, generates cost lines from the IFC geometry. Management approves. Legal closes. Journal auto-posts: debit LAND_ACQUISITION, credit CASH. Every step logged in an append-only operation log — full audit trail, undo capability, time-travel queries.
 
@@ -134,7 +140,7 @@ One `index.html` on a bucket. The `.db` determines the domain. URL parameters de
 | Warehouse picker | `?db=gudang.db&scope=zone_A&mode=operator` |
 | Back office AP clerk | `?db=accounting.db&scope=payables&mode=full` |
 
-`containers` → spatial layout. `?scope=` → role perspective. `?mode=` → permission level. What changes per domain is the data, not the code. The [POC](SpatialERP_POC.md) proves this.
+`containers` → spatial layout. `?scope=` → role perspective. `?mode=` → permission level. What changes per domain is the data, not the code. The POC proves this.
 
 ---
 
@@ -177,7 +183,7 @@ already has coordinates. When the tech is ready, the data is already spatial.
 
 ## 3. Domain Catalog
 
-### 3.0 Construction ERP — The [POC](SpatialERP_POC.md) in Detail
+### 3.0 Construction ERP — The POC in Detail
 
 Real requirement from **Sysnova / Kazi Farms Group (Bangladesh)**. Land acquisition
 → development planning → BOQ → project execution. Six stakeholder roles. The
@@ -333,7 +339,7 @@ Documents become physical objects. Accountant opens their office → four cabine
 
 ### 3.7 Farm ERP — Agriculture + IoT
 
-Real-world context: **Kazi Farms Group (Bangladesh)** — poultry, dairy, feed, agriculture. Same group behind the [Sysnova Construction ERP](SpatialERP_POC.md). The farm is spatial: Farm → Zone → Shed → Row → Cage/Animal.
+Real-world context: **Kazi Farms Group (Bangladesh)** — poultry, dairy, feed, agriculture. Same group behind the Sysnova Construction ERP. The farm is spatial: Farm → Zone → Shed → Row → Cage/Animal.
 
 **The IoT twist:** Sensor readings (temperature, humidity, egg count, feed level) are `commitOp(db, 'SENSOR_READING', {...})` — same append-only log as human actions. Threshold breach auto-creates a `FARM_ALERT` document → card turns RED → manager taps [Acknowledge] → [Resolved]. Same StateMachine, automated trigger, human resolution.
 
@@ -972,7 +978,7 @@ records per entity view. 153/153 total tests passing.
 
 ---
 
-## 7. [POC](SpatialERP_POC.md) First — All-in-One Device
+## 7. POC First — All-in-One Device
 
 ### 7.1 The POC Principle
 
@@ -1062,7 +1068,7 @@ everything. They exist in the URL spec so that Step 2 is just adding
 
 ## 8. Implementation Phases
 
-### Phase 1 — The [POC](SpatialERP_POC.md): Schema + Swipe + Construction on One Phone
+### Phase 1 — The POC: Schema + Swipe + Construction on One Phone
 
 **Goal:** One person, one phone, one `.db`. Proves the five-table schema,
 the swipe UX, the state machine, and the journal — all in one demo.
@@ -1086,7 +1092,7 @@ The BIM viewer already proves the 3D engine. The POC proves the *ERP layer*.
 Proves that the F&B schema IS the BIM schema — no domain-specific tables.
 
 - [ ] Map existing extracted `.db` tables → containers + items
-- [ ] [Construction](SpatialERP_POC.md) order → documents + document_lines
+- [ ] Construction order → documents + document_lines
 - [ ] 5D QTO → journal entries
 - [ ] Same swipe card for storey/room navigation (mobile BIM)
 
@@ -1135,7 +1141,7 @@ Customer self-order with request-approve pattern.
 1. **Zero install.** One HTML file. One `.db`. One browser. $100 phone to MacBook Pro.
 2. **The TikTok effect.** Swipe through your business. Tap the red ones. 30-second training.
 3. **The QR moment.** Customer scans QR → sees their meal in progress. No app, no login. Universal onramp.
-4. **Offline-first.** SQLite in browser = works without internet. [Construction](SpatialERP_POC.md) sites, ships, mines, farms.
+4. **Offline-first.** SQLite in browser = works without internet. Construction sites, ships, mines, farms.
 5. **Proven data model.** iDempiere's 25-year ERP model maps 1:1 to five tables. Not invented — extracted.
 6. **Same data, different views.** Owner sees P&L, waiter sees orders, customer sees their meal. `?scope=` + `?mode=` is the entire access layer.
 7. **Cost.** SAP: $50K+/year. POS: $3K+ hardware. OOTB: free. Training: 30 seconds.
@@ -1491,7 +1497,7 @@ trust boundary without merging databases.
   connects them is a container. Same viewer, zoomed out. The shipment
   animating between hubs is a `MOVEMENT` document with GPS coordinates.
 
-This is Phase 4-5 work. The [POC](SpatialERP_POC.md) proves the P2P logic within one entity.
+This is Phase 4-5 work. The POC proves the P2P logic within one entity.
 The inter-entity extension uses the same `commitOp` / `replayOps` pattern
 — it just adds `EXT_RECEIVE` and `EXT_SEND` op types. No new tables.
 No new infrastructure. Just two more strings in the `op_type` column.
@@ -1564,14 +1570,14 @@ to documents:
 | Restaurant POS | $18.6B | Toast, Square, Lightspeed | $3k hardware + monthly fees → QR + browser |
 | Manufacturing Execution (MES) | $15.4B | Siemens, Rockwell, SAP ME | Server rooms → phone on shop floor |
 | Retail POS | $29.7B | Oracle Retail, SAP, Shopify POS | Per-terminal licensing → one browser |
-| [Construction BIM](SpatialERP_POC.md) | $9.8B | Autodesk, Bentley, Trimble | Desktop licenses → browser, proven |
+| Construction BIM | $9.8B | Autodesk, Bentley, Trimble | Desktop licenses → browser, proven |
 | Facility Management | $1.8B | IBM Tririga, Planon | Server-first → offline spatial |
 | Agriculture / Farm ERP | $4.2B | Trimble Ag, Granular, FarmERP | Cloud-dependent → offline-first, IoT via kernel_ops |
 | **Total addressable** | **~$83B** | | |
 
 The entry point is not competing head-on with SAP. It is the **long tail**:
 the 50-seat restaurant that can't afford Toast, the 5,000-bin warehouse
-running on spreadsheets, the [construction](SpatialERP_POC.md) site with no internet, the
+running on spreadsheets, the construction site with no internet, the
 small factory tracking production on whiteboards. These are the businesses
 that have never had ERP because ERP costs too much and requires too much.
 
@@ -1596,13 +1602,13 @@ SELECT date(j.timestamp) as day,
 FROM journal j GROUP BY day
 ```
 
-**[Construction POC](SpatialERP_POC.md) proves this:** LAND_ACQUISITION vs CONSTRUCTION_WIP spend over time. Each journal entry traces to a handler action in kernel_ops — drill-down to "who approved this on which date."
+**Construction POC proves this:** LAND_ACQUISITION vs CONSTRUCTION_WIP spend over time. Each journal entry traces to a handler action in kernel_ops — drill-down to "who approved this on which date."
 
 ### 12.2 Domain as Data, Not Code
 
 **Traditional weakness:** New domain = new tables + new Java/Python classes + new UI forms. Odoo has ~100 separate modules. iDempiere needs AD metadata + Java ModelValidator. SAP requires ABAP customisation.
 
-**OOTB advantage:** Schema is universal. A new domain is a seed `.sql` + handler `.js`. No schema changes. No module installation. `construction_seed.sql` proves this — 8 containers, 6 roles, 4 categories, [79/79 tests](SpatialERP_POC.md).
+**OOTB advantage:** Schema is universal. A new domain is a seed `.sql` + handler `.js`. No schema changes. No module installation. `construction_seed.sql` proves this — 8 containers, 6 roles, 4 categories, 79/79 tests.
 
 ### 12.3 True Offline + Zero Install
 
@@ -1617,7 +1623,7 @@ FROM journal j GROUP BY day
 | Mobile | Separate native app or none | ✅ Same browser, responsive |
 | Cost | $3K–$50K+ | ✅ Free |
 
-**[Construction POC](SpatialERP_POC.md) proves this:** Site foreman opens `erp.html` on a $100 phone with no internet. Marks phase completion. Syncs when back in range. No app download, no account.
+**Construction POC proves this:** Site foreman opens `erp.html` on a $100 phone with no internet. Marks phase completion. Syncs when back in range. No app download, no account.
 
 ### 12.4 Spatial Navigation Replaces Forms
 
@@ -1625,7 +1631,7 @@ FROM journal j GROUP BY day
 
 **OOTB advantage:** Swipe cards replace forms. Spatial navigation replaces menus. Status is a colour, not a dropdown. Training time: 30 seconds ("swipe through your business, tap the red ones").
 
-**[Construction POC](SpatialERP_POC.md) proves this:** Manager swipes through leads on a phone in a meeting. Taps approve. Done. No login screen, no menu navigation, no form submission.
+**Construction POC proves this:** Manager swipes through leads on a phone in a meeting. Taps approve. Done. No login screen, no menu navigation, no form submission.
 
 ### 12.5 kernel_ops Replaces 9 Subsystems
 
@@ -1652,7 +1658,7 @@ FROM journal j GROUP BY day
 
 **Strategic position:** Traditional ERP's moat is ecosystem and enterprise trust. OOTB's moat is architectural — kernel_ops journal, offline-first, zero-install, spatial navigation. These enable things traditional ERP cannot do: time-travel debugging, true offline for field workers, spatial navigation replacing menus, one-file deployment.
 
-**The play:** Prove the paradigm with the [Construction POC](SpatialERP_POC.md) (engine done, 79/79 tests). Expand domain-by-domain — each domain is a seed `.sql` + handler `.js`, not a rewrite.
+**The play:** Prove the paradigm with the Construction POC (engine done, 79/79 tests). Expand domain-by-domain — each domain is a seed `.sql` + handler `.js`, not a rewrite.
 
 ---
 
@@ -1927,4 +1933,4 @@ For the ERP practitioner evaluating alternatives. Drawn from published documenta
 
 ## 15. Forward Roadmap
 
-For planned features — FTS5 Smart Search, full iDempiere data migration, database sharding, CRDT multi-device sync, benchmark suite, offline OPFS persistence, and domain packs — see **[ERP_Roadmap.md](ERP_Roadmap.md)**.
+For planned features — FTS5 Smart Search, full iDempiere data migration, database sharding, CRDT multi-device sync, benchmark suite, offline OPFS persistence, and domain packs — see **ERP_Roadmap.md**.

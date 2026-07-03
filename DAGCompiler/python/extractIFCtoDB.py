@@ -120,7 +120,12 @@ CREATE TABLE IF NOT EXISTS spatial_structure (
     name TEXT,
     parent_guid TEXT,
     object_type TEXT,
-    predefined_type TEXT
+    predefined_type TEXT,
+    -- IfcSpace footprint AABB (room qualification: habitable area = size_x*size_y, height = size_z).
+    -- Spaces are non-geometric in the iterator (no body mesh) but DO carry a Representation solid;
+    -- we tessellate it once here for the AABB only. NULL for Building/Storey (no own footprint).
+    center_x REAL, center_y REAL, center_z REAL,
+    size_x REAL, size_y REAL, size_z REAL
 );
 CREATE TABLE IF NOT EXISTS elements_meta (
     id INTEGER PRIMARY KEY,
@@ -156,6 +161,11 @@ CREATE TABLE IF NOT EXISTS element_transforms (
     rotation_x REAL DEFAULT 0,
     rotation_y REAL DEFAULT 0,
     rotation_z REAL DEFAULT 0,
+    -- AABB full extent (maxK-minK), same source as elements_rtree — the bbox substrate the STR walker +
+    -- cross-edge derivation read (previously backfilled post-hoc by scripts/backfill_bbox.py; now native).
+    bbox_x REAL,
+    bbox_y REAL,
+    bbox_z REAL,
     transform_source TEXT
 );
 CREATE TABLE IF NOT EXISTS port_elements (
@@ -180,6 +190,64 @@ CREATE TABLE IF NOT EXISTS rel_aggregates (
     parent_guid TEXT NOT NULL,
     child_guid TEXT NOT NULL,
     PRIMARY KEY (parent_guid, child_guid)
+);
+-- Path B (§PATHB / SPATIAL_DEPENDENCY_GRAPH.md): the void/fill chain, recovered verbatim from
+-- IfcRelVoidsElement (host→opening) composed with IfcRelFillsElement (opening→filling). One row per
+-- opening that voids a host; filling_guid NULL = open void (no door/window). provenance is always
+-- 'ifc:recovered' — NON-INVENT, we copy authored relations and derive nothing here.
+CREATE TABLE IF NOT EXISTS rel_fills_host (
+    opening_guid TEXT PRIMARY KEY,
+    host_guid TEXT,
+    filling_guid TEXT,
+    host_class TEXT,
+    filling_class TEXT,
+    provenance TEXT DEFAULT 'ifc:recovered'
+);
+-- abuts edge (SPATIAL_DEPENDENCY_GRAPH.md): the first DERIVED measured edge. Two elements ABUT if they
+-- share a face — measured from AABBs: faces within tol on ONE axis (the touch axis) AND a real overlap on
+-- the other two. DERIVED, never recovered/guessed: provenance carries the measure ('derived:face-touch').
+-- One row per unordered pair (a_guid < b_guid). gap_mm = |signed gap| at the touching face; contact_m2 =
+-- the shared-face contact patch (the two non-touch overlaps multiplied) — a measured fold quantity.
+CREATE TABLE IF NOT EXISTS rel_adjacency (
+    a_guid TEXT,
+    b_guid TEXT,
+    touch_axis TEXT,
+    gap_mm REAL,
+    contact_m2 REAL,
+    provenance TEXT DEFAULT 'derived:face-touch',
+    PRIMARY KEY (a_guid, b_guid, touch_axis)
+);
+-- anchored-to edge (SPATIAL_DEPENDENCY_GRAPH.md): a DERIVED edge from element → DATUM plane. Datums are
+-- NOT recovered (a bridge has no IfcGrid, no storeys) — they EMERGE by measure: a datum on an axis is a
+-- coordinate where ≥min_support element FACES align within tol (a gridline, a storey plane, a pier station).
+-- NON-INVENT: zero class names, no template grid; the cadence of the real geometry defines the datums.
+CREATE TABLE IF NOT EXISTS datum_plane (
+    datum_id INTEGER PRIMARY KEY,
+    axis TEXT,
+    coord REAL,
+    support_count INTEGER,
+    provenance TEXT DEFAULT 'derived:cadence'
+);
+CREATE TABLE IF NOT EXISTS rel_anchored (
+    element_guid TEXT,
+    datum_id INTEGER,
+    axis TEXT,
+    offset_mm REAL,
+    provenance TEXT DEFAULT 'derived:cadence-snap',
+    PRIMARY KEY (element_guid, datum_id)
+);
+-- spans edge (SPATIAL_DEPENDENCY_GRAPH.md): a DERIVED edge — an element SPANS two datums when its bbox
+-- reaches from near one datum to near another on an axis (a girder between piers, a slab across gridlines).
+-- The fold rule: the element stretches between the two datums with its cross-section sizes HELD. DERIVED
+-- from datum_plane geometry, NON-INVENT, grep-clean. One row per (element, axis); datum_lo < datum_hi.
+CREATE TABLE IF NOT EXISTS rel_spans (
+    element_guid TEXT,
+    axis TEXT,
+    datum_lo_id INTEGER,
+    datum_hi_id INTEGER,
+    span_m REAL,
+    provenance TEXT DEFAULT 'derived:bbox-spans-datums',
+    PRIMARY KEY (element_guid, axis)
 );
 CREATE TABLE IF NOT EXISTS surface_styles (
     style_name TEXT PRIMARY KEY,
@@ -686,6 +754,242 @@ def _open_library(library_path):
     return lib
 
 
+def extract_rel_fills_host(ifc_file, conn):
+    """§PATHB (SPATIAL_DEPENDENCY_GRAPH.md Phase 1): recover the void/fill chain.
+
+    The `hosted-by` edge, RECOVERED from authored relations — never proximity-guessed:
+      IfcRelVoidsElement: RelatingBuildingElement (host) → RelatedOpeningElement (opening)
+      IfcRelFillsElement: RelatingOpeningElement (opening) → RelatedBuildingElement (filling)
+    Compose on the shared opening GUID → filling → opening → host. One row per opening that
+    voids a host; filling_guid NULL = open void. NON-INVENT: copies authored relations, derives
+    nothing (the relative host-ride transform is derivable later from element_transforms).
+
+    Returns (rows_written, rows_with_filling).
+    """
+    rows = 0
+    filled = 0
+    try:
+        # opening_guid → host element (from Voids)
+        host_of_opening = {}
+        for rel in ifc_file.by_type("IfcRelVoidsElement"):
+            try:
+                host = rel.RelatingBuildingElement
+                opening = rel.RelatedOpeningElement
+                if not opening or not hasattr(opening, 'GlobalId'):
+                    continue
+                host_of_opening[opening.GlobalId] = host
+            except (AttributeError, TypeError):
+                pass
+        # opening_guid → filling element (from Fills)
+        filling_of_opening = {}
+        for rel in ifc_file.by_type("IfcRelFillsElement"):
+            try:
+                opening = rel.RelatingOpeningElement
+                filling = rel.RelatedBuildingElement
+                if not opening or not hasattr(opening, 'GlobalId'):
+                    continue
+                filling_of_opening[opening.GlobalId] = filling
+            except (AttributeError, TypeError):
+                pass
+        # One row per opening that voids a host (filling optional)
+        for opening_guid, host in host_of_opening.items():
+            if not host or not hasattr(host, 'GlobalId'):
+                continue
+            filling = filling_of_opening.get(opening_guid)
+            filling_guid = filling.GlobalId if (filling and hasattr(filling, 'GlobalId')) else None
+            filling_class = filling.is_a() if filling else None
+            conn.execute(
+                "INSERT OR IGNORE INTO rel_fills_host "
+                "(opening_guid, host_guid, filling_guid, host_class, filling_class, provenance) "
+                "VALUES (?, ?, ?, ?, ?, 'ifc:recovered')",
+                (opening_guid, host.GlobalId, filling_guid, host.is_a(), filling_class))
+            rows += 1
+            if filling_guid:
+                filled += 1
+        conn.commit()
+    except RuntimeError:
+        pass  # IFC schema may not have these relation types
+    return rows, filled
+
+
+def _face_touch(a, b, tol, min_overlap):
+    """Is the AABB pair (a,b) a FACE-TOUCH? Returns (touch_axis, gap_m, contact_m2) or None.
+
+    Pure geometry — references NO IFC class. a,b are (minX,maxX,minY,maxY,minZ,maxZ).
+    Face-touch on axis k ⇔ the opposing faces on k are within `tol` (small gap or small
+    interpenetration) AND the boxes genuinely overlap on the OTHER two axes (≥ min_overlap each).
+    The touch axis is the one with the smallest |overlap| (closest to a back-to-back face).
+    Corner/edge grazes (two axes near-zero) and deep clashes (no axis near-zero) are excluded.
+    """
+    # signed overlap per axis: >0 interpenetrate, =0 touch, <0 gap
+    ov = []
+    for k in range(3):
+        lo = max(a[2 * k], b[2 * k])
+        hi = min(a[2 * k + 1], b[2 * k + 1])
+        ov.append(hi - lo)
+    # pick the touch axis = axis whose |overlap| is smallest (the back-to-back face)
+    axis = min(range(3), key=lambda k: abs(ov[k]))
+    if abs(ov[axis]) > tol:
+        return None                       # faces not within tol on the closest axis → not adjacent
+    others = [k for k in range(3) if k != axis]
+    if ov[others[0]] < min_overlap or ov[others[1]] < min_overlap:
+        return None                       # no real shared face (corner/edge graze) → not a face-touch
+    contact = ov[others[0]] * ov[others[1]]
+    return "XYZ"[axis], abs(ov[axis]), contact
+
+
+def derive_adjacency(conn, tol=0.03, min_overlap=0.02):
+    """§ABUTS (SPATIAL_DEPENDENCY_GRAPH.md): derive the `abuts` edge from MEASURED face-touch.
+
+    Reads the pristine AABBs (elements_meta ⋈ elements_rtree), writes one rel_adjacency row per
+    unordered face-touching pair. DERIVED, NON-INVENT: every edge is a measured face contact, stamped
+    provenance='derived:face-touch'; NO proximity radius, NO class whitelist (grep-clean of class names).
+    Uses the rtree to fetch only spatially-near candidates (scales past O(n²) on large buildings).
+
+    Returns rows written.
+    """
+    rows = 0
+    try:
+        elems = conn.execute("""
+            SELECT m.guid, r.id, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+            FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+        """).fetchall()
+        box = {}    # id → (guid, aabb tuple)
+        for guid, rid, x0, x1, y0, y1, z0, z1 in elems:
+            box[rid] = (guid, (x0, x1, y0, y1, z0, z1))
+        seen = set()
+        for rid, (guid_a, a) in box.items():
+            # rtree candidates: any element whose AABB comes within `tol` of a's expanded AABB
+            cand = conn.execute("""
+                SELECT id FROM elements_rtree
+                WHERE maxX >= ? AND minX <= ? AND maxY >= ? AND minY <= ? AND maxZ >= ? AND minZ <= ?
+            """, (a[0] - tol, a[1] + tol, a[2] - tol, a[3] + tol, a[4] - tol, a[5] + tol)).fetchall()
+            for (rid_b,) in cand:
+                if rid_b == rid or rid_b not in box:
+                    continue
+                guid_b, b = box[rid_b]
+                if guid_a == guid_b:
+                    continue
+                lo, hi = (guid_a, guid_b) if guid_a < guid_b else (guid_b, guid_a)
+                if (lo, hi) in seen:
+                    continue
+                ft = _face_touch(a, b, tol, min_overlap)
+                if ft is None:
+                    continue
+                touch_axis, gap_m, contact = ft
+                seen.add((lo, hi))
+                conn.execute(
+                    "INSERT OR IGNORE INTO rel_adjacency "
+                    "(a_guid, b_guid, touch_axis, gap_mm, contact_m2, provenance) "
+                    "VALUES (?, ?, ?, ?, ?, 'derived:face-touch')",
+                    (lo, hi, touch_axis, round(gap_m * 1000, 3), round(contact, 6)))
+                rows += 1
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # elements_rtree absent (non-geometric ref DB)
+    return rows
+
+
+def derive_datums_and_anchors(conn, tol=0.05, min_support=3):
+    """§ANCHORED (SPATIAL_DEPENDENCY_GRAPH.md): derive datum planes + the `anchored-to` edge by MEASURE.
+
+    A datum on an axis is a coordinate where the FACES (min & max box faces) of ≥min_support DISTINCT
+    elements align within `tol` — i.e. a gridline, a storey plane, or a bridge pier station, EMERGENT from
+    the real cadence, never a recovered IfcGrid (the bridge has none) and never a template. Each supporting
+    element gets a rel_anchored edge to the datum (closest face → signed offset). NON-INVENT, grep-clean of
+    class names: pure geometry. Greedy tol-bounded 1-D clustering caps each datum's spread at `tol` (no chaining
+    into a smeared pseudo-plane).
+
+    Returns (n_datums, n_anchors).
+    """
+    rows = conn.execute("""
+        SELECT m.guid, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+    """).fetchall()
+    if not rows:
+        return 0, 0
+    box = {g: (x0, x1, y0, y1, z0, z1) for g, x0, x1, y0, y1, z0, z1 in rows}
+    n_datums = 0
+    n_anchors = 0
+    datum_id = 0
+    for ax in range(3):
+        # candidate faces: both the min and the max box face of every element on this axis
+        cand = []
+        for g, b in box.items():
+            cand.append((b[2 * ax], g))
+            cand.append((b[2 * ax + 1], g))
+        cand.sort()
+        # greedy clustering bounded to spread ≤ tol (prevents chaining across a gradient)
+        i = 0
+        while i < len(cand):
+            start = cand[i][0]
+            j = i
+            while j < len(cand) and cand[j][0] - start <= tol:
+                j += 1
+            group = cand[i:j]
+            i = j
+            guids = {g for _, g in group}
+            if len(guids) < min_support:
+                continue
+            coord = sum(c for c, _ in group) / len(group)
+            datum_id += 1
+            conn.execute(
+                "INSERT INTO datum_plane (datum_id, axis, coord, support_count, provenance) "
+                "VALUES (?, ?, ?, ?, 'derived:cadence')",
+                (datum_id, "XYZ"[ax], round(coord, 6), len(guids)))
+            n_datums += 1
+            for g in guids:
+                b = box[g]
+                faces = (b[2 * ax], b[2 * ax + 1])
+                off = min((f - coord for f in faces), key=abs)   # closest face → signed offset
+                conn.execute(
+                    "INSERT OR IGNORE INTO rel_anchored (element_guid, datum_id, axis, offset_mm, provenance) "
+                    "VALUES (?, ?, ?, ?, 'derived:cadence-snap')",
+                    (g, datum_id, "XYZ"[ax], round(off * 1000, 3)))
+                n_anchors += 1
+    conn.commit()
+    return n_datums, n_anchors
+
+
+def derive_spans(conn, tol=0.05):
+    """§SPANS (SPATIAL_DEPENDENCY_GRAPH.md): derive the `spans` edge — element stretches between two datums.
+
+    An element SPANS on an axis when its min face is near one datum AND its max face is near a DIFFERENT
+    datum (both within tol) — its bbox reaches across the datum interval (a girder between piers, a slab
+    across gridlines). Reuses datum_plane (must be populated first by derive_datums_and_anchors). NON-INVENT,
+    grep-clean: pure geometry. span_m = the HELD extent; the fold rule stretches it between the two datums.
+
+    Returns rows written.
+    """
+    datums = {0: [], 1: [], 2: []}
+    for did, ax, co in conn.execute("SELECT datum_id, axis, coord FROM datum_plane"):
+        datums["XYZ".index(ax)].append((did, co))
+    if not any(datums.values()):
+        return 0
+    rows = conn.execute("""
+        SELECT m.guid, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+    """).fetchall()
+    n = 0
+    for guid, *b in rows:
+        for ax in range(3):
+            lo_face, hi_face = b[2 * ax], b[2 * ax + 1]
+            lo = min(datums[ax], key=lambda d: abs(d[1] - lo_face), default=None)
+            hi = min(datums[ax], key=lambda d: abs(d[1] - hi_face), default=None)
+            if lo is None or hi is None:
+                continue
+            if abs(lo[1] - lo_face) > tol or abs(hi[1] - hi_face) > tol or lo[0] == hi[0]:
+                continue
+            d_lo, d_hi = (lo, hi) if lo[1] <= hi[1] else (hi, lo)
+            conn.execute(
+                "INSERT OR IGNORE INTO rel_spans (element_guid, axis, datum_lo_id, datum_hi_id, span_m, provenance) "
+                "VALUES (?, ?, ?, ?, ?, 'derived:bbox-spans-datums')",
+                (guid, "XYZ"[ax], d_lo[0], d_hi[0], round(hi_face - lo_face, 6)))
+            n += 1
+    conn.commit()
+    return n
+
+
 def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                       dry_run=False, library_path=None, building_type=None,
                       skip_normalize=False):
@@ -763,6 +1067,12 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             conn.execute(
                 "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid) "
                 "VALUES (?, 'IfcBuildingStorey', ?, ?)", (s.GlobalId, s.Name, parent))
+        # IfcSpace footprint AABB — tessellate the space solid ONCE (world coords) for its bounding box.
+        # Enables habitable-AABB room qualification + per-room door proximity (SPATIAL_DEPENDENCY_GRAPH
+        # room/storey design). World-coord AABB is normalized later alongside element_transforms.
+        space_settings = ifcopenshell.geom.settings()
+        space_settings.set(space_settings.USE_WORLD_COORDS, True)
+        n_space_geom = 0
         for sp in ifc_file.by_type("IfcSpace"):
             parent_guid = None
             try:
@@ -774,11 +1084,29 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                 pass
             obj_type = getattr(sp, "ObjectType", None)
             predef = getattr(sp, "PredefinedType", None)
+            cx = cy = cz = sx = sy = sz = None
+            try:
+                shp = ifcopenshell.geom.create_shape(space_settings, sp)
+                v = shp.geometry.verts            # flat [x,y,z, x,y,z, ...]
+                if v:
+                    xs, ys, zs = v[0::3], v[1::3], v[2::3]
+                    minx, maxx = min(xs), max(xs)
+                    miny, maxy = min(ys), max(ys)
+                    minz, maxz = min(zs), max(zs)
+                    cx, cy, cz = (minx + maxx) / 2, (miny + maxy) / 2, (minz + maxz) / 2
+                    sx, sy, sz = maxx - minx, maxy - miny, maxz - minz
+                    n_space_geom += 1
+            except Exception:
+                pass                              # space without a usable Representation → AABB stays NULL
             conn.execute(
                 "INSERT OR IGNORE INTO spatial_structure "
-                "(guid, type, name, parent_guid, object_type, predefined_type) "
-                "VALUES (?, 'IfcSpace', ?, ?, ?, ?)",
-                (sp.GlobalId, sp.Name or sp.LongName, parent_guid, obj_type, predef))
+                "(guid, type, name, parent_guid, object_type, predefined_type, "
+                "center_x, center_y, center_z, size_x, size_y, size_z) "
+                "VALUES (?, 'IfcSpace', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (sp.GlobalId, sp.Name or sp.LongName, parent_guid, obj_type, predef,
+                 cx, cy, cz, sx, sy, sz))
+        if n_space_geom:
+            print(f"  §SPACE-AABB: {n_space_geom} IfcSpace footprints tessellated (habitable area/height)")
         conn.commit()
 
     # Geometry settings — S169: LOCAL coords for canonical mesh deduplication.
@@ -1039,10 +1367,13 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                     conn.execute(
                         "INSERT OR IGNORE INTO element_transforms "
                         "(guid, center_x, center_y, center_z, "
-                        "rotation_x, rotation_y, rotation_z, transform_source) "
-                        "VALUES (?,?,?,?,?,?,?,'ifc_extract')",
+                        "rotation_x, rotation_y, rotation_z, bbox_x, bbox_y, bbox_z, transform_source) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,'ifc_extract')",
                         (guid, float(center[0]), float(center[1]), float(center[2]),
-                         float(rot_x), float(rot_y), float(rot_z)))
+                         float(rot_x), float(rot_y), float(rot_z),
+                         float(maxXYZ[0]) - float(minXYZ[0]),
+                         float(maxXYZ[1]) - float(minXYZ[1]),
+                         float(maxXYZ[2]) - float(minXYZ[2])))
                     space = get_space_for_element(elem)
                     if space:
                         conn.execute(
@@ -1148,6 +1479,12 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
                         minY = minY - ?, maxY = maxY - ?,
                         minZ = minZ - ?, maxZ = maxZ - ?
                 """, (ox, ox, oy, oy, oz, oz))
+                # IfcSpace footprint AABB shares the element frame → apply the same offset (size invariant)
+                conn.execute("""
+                    UPDATE spatial_structure
+                    SET center_x = center_x - ?, center_y = center_y - ?, center_z = center_z - ?
+                    WHERE center_x IS NOT NULL
+                """, (ox, oy, oz))
                 # Store offset for IFC round-trip export
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS site_normalization (
@@ -1191,6 +1528,35 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None,
             pass  # IFC schema may not have these types
     if agg_count > 0:
         print(f"  IfcRelAggregates: {agg_count} parent→child decomposition mappings")
+
+    # ── §PATHB: recover the void/fill chain into rel_fills_host ─────────────
+    if not dry_run:
+        fills_rows, fills_filled = extract_rel_fills_host(ifc_file, conn)
+        if fills_rows > 0:
+            print(f"  §PATHB rel_fills_host: {fills_rows} host edges recovered "
+                  f"({fills_filled} with a door/window filling, "
+                  f"{fills_rows - fills_filled} open voids)")
+
+    # ── §ABUTS: derive the face-touch adjacency edge from measured AABBs ────
+    if not dry_run:
+        adj_rows = derive_adjacency(conn)
+        if adj_rows > 0:
+            print(f"  §ABUTS rel_adjacency: {adj_rows} face-touch edges derived "
+                  f"(measured shared-face contact, provenance=derived:face-touch)")
+
+    # ── §ANCHORED: derive datum planes + the anchored-to edge from face cadence ──
+    if not dry_run:
+        n_datums, n_anchors = derive_datums_and_anchors(conn)
+        if n_datums > 0:
+            print(f"  §ANCHORED datum_plane: {n_datums} datums emerged from cadence, "
+                  f"{n_anchors} anchored-to edges (provenance=derived:cadence)")
+
+    # ── §SPANS: derive the spans edge (element bbox straddles two datums) ────
+    if not dry_run:
+        span_rows = derive_spans(conn)
+        if span_rows > 0:
+            print(f"  §SPANS rel_spans: {span_rows} span edges derived "
+                  f"(element stretches between two datums, provenance=derived:bbox-spans-datums)")
 
     # Extract rich surface styles + material layers
     source_tag = f"EXTRACTED:{os.path.basename(ifc_path)}"

@@ -463,6 +463,7 @@
 <!-- S265 Phase 4: storey-panel and disc-panel moved inside #hud as accordion sections -->
 <button id="site-cam-btn" onclick="openSiteCamera()" data-trl-title="ui_tt_sitecam" title="Site Camera" style="display:none">&#128247;</button>
 <button id="walk-mode-btn" onclick="toggleWalkMode()" data-trl-title="ui_tt_walk" title="Walk Mode">&#128694;</button>
+<button id="sdg-fold-btn" onclick="window.SDGFoldUI&&SDGFoldUI.toggle(window.APP)" title="Datum Fold (drag a datum plane to re-fold)">&#9707;</button>
 <!-- S265 Phase 5: NLP mic merged into Find panel — standalone button removed -->
 <button id="nlp-btn" style="display:none"></button>
 <div id="walk-anchor-prompt">
@@ -756,6 +757,7 @@
 </div>
 
 <!-- §S276: Import map for Three.js r184 WebGPU — includes WebGPURenderer + TSL + compat mode -->
+<script src="error_beacon.js?v=1" onerror="console.warn('§LOAD_FAIL error_beacon.js — field-error capture disabled')"></script>
 <script type="importmap">
 { "imports": { "three": "./lib/three.webgpu.min.js" } }
 </script>
@@ -804,6 +806,8 @@
 <script src="kernel_ops.js?v=3" onerror="console.warn('[KernelOps] kernel_ops.js skipped')"></script>
 <script src="bom_extract.js?v=1" onerror="console.warn('[BOMExtract] bom_extract.js skipped')"></script>
 <script src="verb_expand.js?v=1" onerror="console.warn('[VerbExpand] verb_expand.js skipped')"></script>
+<script src="sdg_fold.js?v=1" onerror="console.warn('[SDGFold] sdg_fold.js skipped')"></script>
+<script src="sdg_fold_ui.js?v=1" onerror="console.warn('[SDGFoldUI] sdg_fold_ui.js skipped')"></script>
 <script src="bom_walker.js?v=1" onerror="console.warn('[BOMWalker] bom_walker.js skipped')"></script>
 <script src="grid_state.js?v=1" onerror="console.warn('[GridState] grid_state.js skipped')"></script>
 <script src="bom_engine/bom_strategies.js?v=1" onerror="console.warn('[BomStrategies] bom_strategies.js skipped')"></script>

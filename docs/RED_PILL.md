@@ -1,12 +1,14 @@
 # Red Pill — Design Buildings From Grammar, Not From Scratch
+*[← Back to the **User Guide**](USER_GUIDE.md) · [Home](index.md)*
+
 
 > **The Red Pill:** You never start from a blank canvas. You start from a building you trust,
 > extract its grammar, and design by interrupting its replay.
 
 **Status:** Active development (S266–S270+)
 **Entry point:** Tap the Red Pill (capsule icon) in the viewer's icon pill
-**Supersedes:** [BIM_Designer_Browser.md](BIM_Designer_Browser.md) (viewer layer — still the foundation)
-**Full spec:** [NEW_FROM_REFERENCE.md](NEW_FROM_REFERENCE.md) (1800-line technical spec)
+**Supersedes:** BIM_Designer_Browser.md (viewer layer — still the foundation)
+**Full spec:** NEW_FROM_REFERENCE.md (1800-line technical spec)
 
 ---
 
@@ -157,32 +159,81 @@ Tap the Red Pill icon → canvas clears → building envelope appears as ghost w
 | # | Icon | Action |
 |---|---|---|
 | 1 | Home | Return to viewer mode |
-| 2 | Grid `#` | Toggle 2D grid + lengths + bubbles (all-or-nothing) |
+| 2 | Grid `#` | Toggle 2D grid visibility (show/hide all RS-created lines) |
 | 3 | Clock | Time Machine replay |
-| 4 | Next `›` | Advance one construction phase (STR → ARC → MEP) |
+| 4 | Next `›` | Full BOM cascade — materialize entire building |
 | 5 | Folder | Load saved design from IndexedDB |
 | 6 | Disk | Save event log to IndexedDB |
 | 7 | UBBL | Compliance check (planned) |
+| 8 | Scissors | Section cut — same tool used by RS wall-click |
 
-### Gantt Stepper (Next Button)
+### 6.1 Next = Full BOM Cascade
 
-Each press reveals one construction phase, discipline by discipline:
+Single press materializes the entire BOM tree — all levels, all children, complete building. No level-by-level stepping (that was a development scaffold, retained as Shift+Next for debugging).
 
-1. **STR** — columns, beams, footings (structural grid emerges)
-2. **ARC** — walls, slabs, doors, windows (architectural infill)
-3. **MEP** — pipes, ducts, terminals (services)
+The BOM is a recipe. Next runs the recipe. If the output is wrong, the recipe is wrong.
 
-Grid starts as a 2-line envelope at step zero. Grid lines are added by user action only — double-click an element (wall/column) or Rosetta drag. Auto-grid was disabled (v17.9B) to prevent flooding with 200+ lines on large buildings.
+- `materializeBomLevel()` called recursively from root → full tree
+- §BOM_NEXT logs full tree with element count
+- If cascade error: status bar shows `"BOM cascade error — see F12 logs"`
+- **No fallback.** If it breaks, fix the data. Hardened, no mercy.
+- Envelope completeness: roof covering, walls, floor slab — all outer elements present
 
-### Grid Drag → Recompose
+### 6.2 RS Navigation — Click to Create Grid Lines
 
-1. Click a grid line → highlight + attach info in status bar
-2. Drag → `GridState.getDeltas()` → incremental delta (BUG-1 fix)
-3. `GridRecompose.applyDrag()` → engine `dragGrid(gridId, incrementalDelta)` → commands
-4. Commands applied to meshes (TRANSLATE/SCALE/ROOF_VERTICES/ROOF_LIFT)
-5. BOM L1 recompose fires (debounced 16ms) if BOM nodes configured
-6. Lengths and bays update in HUD
-7. `GRID_MOVE` logged to `kernel_ops`
+No automatic grid lines. Grid lines emerge from user interaction via Rosetta Stone (RS). Every line has RS provenance from creation — never heuristic.
+
+| Click target | What happens |
+|---|---|
+| **Floor slab** | Horizontal grid line at that floor's Y plane. The floor defines the axis. |
+| **Wall** | Vertical grid line at nearest inner wall + **section cut** at that plane. Cut exposes internals for deeper picks. |
+
+**Section cut = RS navigation.** The Scissors tool from the main pill performs the same operation. Clicking a wall is a shortcut — the cut happens automatically because you can't pick interior elements through exterior walls.
+
+**Interaction cycle:**
+
+```
+State A: No focus
+  → click element → grid line appears, co-linear elements highlight
+
+State B: Focused on line (draggable)
+  → drag → BOM cascade recompose (continuous, validated)
+  → click same line → release focus → back to State A
+  → click different element → release current, create new line (shortcut)
+
+State A: line persists (visible, passive), focus released
+```
+
+### 6.3 Zone Lighting + Cascade Colors
+
+When RS focuses a grid line, the affected zone lights up — everything from the drag line to the opposite boundary. Elements behind the drag line stay unlit. The user sees exactly what WILL change before dragging.
+
+| Color | Meaning |
+|---|---|
+| **Yellow** | Will reposition (element moves, keeps size) |
+| **Green** | Original extent within element (pre-drag boundary) |
+| **Blue** | New area being created (extension beyond pre-drag) |
+| **Orange** | Area being removed (shrink direction) |
+| **Red** | Clash zone (two elements overlapping — informational, does not block drag) |
+| **Unlit** | Not affected by this drag |
+
+Green/blue (or green/orange) boundaries are split within a single mesh via vertex coloring. The split plane is the pre-drag position, frozen during the interaction. The user always sees where original ends and new begins.
+
+Full color spec: BOM_ENGINE_SPEC.md §22.
+
+### 6.4 Drag = BOM Cascade with Validation
+
+1. Drag RS line → BOM walks parent chain → each child recomposes per its `m_bom_line` rules
+2. `fill_mode` drives behavior: SPAN stretches, FIXED repositions, SLOPE preserves angle
+3. Split colors show green (original) / blue (new) / orange (removed) in real-time
+4. TC-1 (adjacency) and TC-2 (coverage) validate continuously during drag
+5. If invariant breaks → line turns red, refuses to move further, status bar says WHY
+6. Red clash highlighting is allowed — user may intend to fix overlap later
+7. On release: colors clear, `GRID_MOVE` logged to `kernel_ops`
+
+### 6.5 2D Toggle
+
+The Grid `#` button toggles visibility of all RS-created grid lines. No grid creation logic — pure show/hide. Lines exist because RS created them (with provenance). The toggle is a display preference, not a mode switch.
 
 ---
 
@@ -381,7 +432,7 @@ Each Rosetta Stone placement is a witnessed fact — a user-verified ground trut
 | P2 | BUG-2 warning | Status: "no attached elements — place elements first" |
 | ~~P3~~ | ~~BUG-3 phase-aware recompose~~ | ~~Done S270d — B1+B2 proven: `materializeLevel()` fires on Next, reads CURRENT AABBs. §BOM_NEXT logs confirmed.~~ |
 | P4 | UBBL Validator | `bom_rules.js` + `disc_rules.json` done (8 rules). B1 done (scripts loaded). UI wiring (4c) remaining. |
-| P5 | Materialization | Grammar + event log → NewBuilding.db |
+| ~~P5~~ | ~~Materialization~~ | ~~Done (sw v653) — `materialize.js` `db.export()`s the edited in-memory db (B1-persisted `element_transforms` + replayed `kernel_ops`) as `NewIFC.db` into the `import://` cache scheme; reference never written back. NON-INVENT (no coordinate computed). `DocCanvas.materialize()`. **F9 closed:** `poc_redpill_materialize.js` (W-REDPILL-MATERIALIZE) runs the G8-GOVERNANCE identity gate on the REAL exported FILE (1b) — M1 identity round-trip PASS (3504/3504, digest match, centroid 0.0mm), M3 edited session carries 882/882 governed moves into the file & still PASSES (ungoverned=0), M4 reference untouched, M5 deterministic.~~ |
 | P6 | Share via URL | `?ref=SampleHouse&ops=...` |
 
 ### 11.6 BOM-Driven Cascade Tasks (S272 engine ready, needs wiring)
@@ -532,10 +583,10 @@ All tests are whitebox: §-tagged `console.log()` lines prove values, counts, an
 
 | Doc | What It Provides |
 |---|---|
-| [BOMBasedCompilation.md](BOMBasedCompilation.md) | The recipe model — BOM hierarchy, tack offsets, verb formulas |
-| [TestArchitecture.md](TestArchitecture.md) | 9 verification gates, traceability matrix |
-| [SQLite3D_Schema.md](SQLite3D_Schema.md) | DB schema — `elements_meta`, `element_transforms` |
+| BOMBasedCompilation.md | The recipe model — BOM hierarchy, tack offsets, verb formulas |
+| TestArchitecture.md | 9 verification gates, traceability matrix |
+| SQLite3D_Schema.md | DB schema — `elements_meta`, `element_transforms` |
 | [CLASH_DETECTION.md](CLASH_DETECTION.md) | Clash rules, R-tree spatial indexing |
-| [BIM_Designer_Browser.md](BIM_Designer_Browser.md) | Viewer layer — the foundation Red Pill builds on |
-| [SPATIAL_COMPILATION_PAPER.md](SPATIAL_COMPILATION_PAPER.md) | Theoretical proof — BOM ↔ protein folding analogy |
-| [NEW_FROM_REFERENCE.md](NEW_FROM_REFERENCE.md) | Full 1800-line technical spec (all the details) |
+| BIM_Designer_Browser.md | Viewer layer — the foundation Red Pill builds on |
+| SPATIAL_COMPILATION_PAPER.md | Theoretical proof — BOM ↔ protein folding analogy |
+| NEW_FROM_REFERENCE.md | Full 1800-line technical spec (all the details) |

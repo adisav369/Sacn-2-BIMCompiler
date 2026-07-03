@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Does your ERP age? — 20-year side-by-side</title>
+<style>
+:root{
+  --bg0:#0a0f16;--bg1:#0f1722;--panel:#121c28;--line:#1f2c3c;--soft:#2a3a4e;
+  --green:#34d27b;--amber:#f0a92b;--red:#ff5d52;--blue:#4aa6ff;
+  --ink:#eaf1f8;--mut:#8295a8;
+  --mono:'SF Mono','Cascadia Code',ui-monospace,monospace;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:
+   radial-gradient(900px 460px at 50% -8%,#15334d22,transparent),
+   linear-gradient(180deg,var(--bg1),var(--bg0));
+  color:var(--ink);font-family:var(--sans);height:100vh;width:100vw;overflow:hidden;
+  display:flex;align-items:center;justify-content:center}
+/* scalable fit-box: the whole composition scales to any landscape viewport */
+#fit{width:980px;padding:.7rem 1rem .6rem;transform-origin:center center;flex:0 0 auto}
+/* rotate-to-landscape prompt (touch devices in portrait) */
+#rotate{display:none;position:fixed;inset:0;z-index:99;background:linear-gradient(180deg,var(--bg1),var(--bg0));
+  flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;padding:1.5rem}
+#rotate .phone{width:48px;height:84px;border:3px solid var(--blue);border-radius:11px;position:relative;
+  box-shadow:0 0 22px #4aa6ff55;animation:rot 2s ease-in-out infinite}
+#rotate .phone::after{content:"";position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:16px;height:2.5px;background:var(--blue);border-radius:2px}
+@keyframes rot{0%,38%{transform:rotate(0)}62%,100%{transform:rotate(90deg)}}
+#rotate .rtxt{font-size:17px;font-weight:700;letter-spacing:.02em}
+#rotate .rsub{font-size:12.5px;color:var(--mut)}
+@media (orientation:portrait) and (pointer:coarse){
+  #fit{display:none}
+  #rotate{display:flex}
+}
+/* title snug in the middle column, larger */
+.htop{min-height:156px;display:flex;align-items:center;justify-content:center;padding:0 .2rem;width:100%}
+h1{font-size:clamp(1.45rem,2.4vw,2rem);font-weight:800;letter-spacing:.01em;text-transform:uppercase;
+  line-height:1.08;text-align:center}
+h1 .g{color:var(--green)} h1 .a{color:var(--amber)}
+.lede{color:var(--mut);font-size:11.5px;margin-top:.25rem;line-height:1.45}
+
+.stage{display:grid;grid-template-columns:1fr minmax(180px,210px) 1fr;gap:1.1rem;align-items:start;max-width:920px;margin:.2rem auto 0;width:100%}
+/* no single-column reflow — #fit always keeps the 3-column side-by-side and scales to fit */
+.col{display:flex;flex-direction:column;align-items:center;gap:.55rem;min-width:0}
+.center-col{justify-content:flex-start}
+/* permanent side notes — larger, fill the top band above each panel */
+.exbox{width:100%;max-width:300px;height:156px;display:grid;align-content:center;overflow:hidden;
+  font-size:10.5px;line-height:1.48;border-radius:11px;padding:.55rem .8rem;border:1px solid}
+.exbox.k{border-color:#1f5c3d;background:linear-gradient(180deg,#0f211a,#0c1a15);color:#c4ead6}
+.exbox.i{border-color:#5e4d22;background:linear-gradient(180deg,#201a0f,#1a160c);color:#ecdcae}
+.exbox b{font-weight:700}
+.exbox.k b{color:#5fe0a0}.exbox.i b{color:#f0c45a}
+
+/* monitor */
+.mon{background:linear-gradient(180deg,#101a26,#0c141d);border:1px solid var(--line);border-radius:14px;
+  padding:.55rem .55rem .45rem;box-shadow:0 14px 38px #0008,0 0 0 1px #0006 inset;
+  width:100%;max-width:280px;justify-self:center}
+.mon .cap{display:flex;align-items:center;gap:.5rem;padding:.1rem .35rem .55rem}
+.dot{width:8px;height:8px;border-radius:50%}
+.mon.k .dot{background:var(--green);box-shadow:0 0 10px var(--green)}
+.mon.i .dot{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.cap .nm{font-weight:700;font-size:13px}
+.cap .sub{margin-left:auto;font-size:10.5px;color:var(--mut)}
+.screen{position:relative;aspect-ratio:5/6;border-radius:9px;overflow:hidden;background:#000;border:1px solid #000;
+  box-shadow:0 0 0 3px #060b11,0 8px 22px #0007 inset}
+
+/* login (faithful iDempiere iceblue) */
+.login{position:absolute;inset:0;background:#c7e8ff;display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .22s ease;z-index:2}
+.login.show{opacity:1}
+.card{width:86%;max-width:330px;background:#fff;border-radius:11px;box-shadow:0 10px 30px #0a2c4a33;overflow:hidden}
+.card .brand{display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.85rem 0 .7rem;border-bottom:1px solid #e6eef6}
+.card .brand img{height:34px;display:block}
+.card .brand .bk{display:flex;align-items:center;gap:.5rem}
+.card .brand .bk .bb{height:30px;width:30px;border-radius:50%;object-fit:cover;box-shadow:0 1px 4px #0003}
+.card .brand .bk .wm{font-weight:800;font-size:17px;letter-spacing:-.02em;color:#1f6fb6}
+.card .brand .bk .wm small{display:block;font-size:7px;font-weight:600;letter-spacing:.12em;color:#7d93a8;text-transform:uppercase}
+.frm{padding:.8rem 1rem 1rem}
+.r{display:flex;align-items:center;margin:.32rem 0}
+.r label{width:38%;font-size:11px;color:#33414f;font-weight:600}
+.r .ip{width:62%;height:1.55rem;border:1px solid #9fb6cc;border-radius:4px;background:#fdfefe;font-size:11px;color:#2b3a48;
+  display:flex;align-items:center;padding:0 .5rem}
+.r .ip.sel{justify-content:space-between}.r .ip.sel::after{content:"▾";color:#7d93a8;font-size:9px}
+.btn{margin-top:.6rem;width:100%;height:1.85rem;border:none;border-radius:5px;color:#fff;font-weight:700;font-size:12px;
+  font-family:var(--sans);background:linear-gradient(180deg,#2f96dc,#1f6fb6);box-shadow:0 2px 6px #1f6fb655;cursor:pointer}
+.tip{margin-top:.55rem;background:#e3eefb;border:1px solid #cadcef;border-radius:5px;
+  padding:.3rem .5rem;font-size:8.5px;color:#5f7488;line-height:1.6}
+.tip b{color:#1f6fb6}
+
+.btn{transition:transform .08s,filter .08s}
+.btn.press{transform:scale(.95);filter:brightness(.85)}
+
+/* post-login workspace (menu unfold = AD round trip) */
+.work{position:absolute;inset:0;background:#eef3f8;display:flex;flex-direction:column;opacity:0;
+  pointer-events:none;transition:opacity .18s ease;z-index:3}
+.work.show{opacity:1}
+.work .wtop{display:flex;align-items:center;gap:.45rem;background:linear-gradient(90deg,#1d6fb8,#2f8fd6);
+  color:#fff;padding:.4rem .6rem}
+.work .wtop .wlogo{height:18px;background:#fff;border-radius:3px;padding:1px 3px}
+.work .wtop .wt{font-weight:700;font-size:11px}
+.work .wtop .wu{margin-left:auto;font-size:9px;opacity:.85}
+.work .menu{padding:.5rem .55rem;display:flex;flex-direction:column;gap:.32rem}
+.work .mi{background:#fff;border:1px solid #d4e0ec;border-left:3px solid #2f8fd6;border-radius:4px;
+  padding:.34rem .55rem;font-size:11px;color:#34465a;font-weight:600;
+  opacity:0;transform:translateY(-5px);transition:opacity .13s ease,transform .13s ease}
+.work .mi::before{content:"▸ ";color:#2f8fd6}
+.work .mi.in{opacity:1;transform:none}
+
+/* dark / relaunch overlay */
+.dark{position:absolute;inset:0;z-index:4;background:radial-gradient(120% 120% at 50% 45%,#0a1622,#02060b);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.55rem;
+  opacity:0;pointer-events:none;transition:opacity .14s ease}
+.dark.on{opacity:1}
+.dark .st{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#34598a}
+.timer{font-family:var(--mono);font-size:3.9rem;font-weight:800;color:#3b86d6;font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;text-shadow:0 0 26px #1f6fb688}
+.timer.done{color:#7fd4ff;text-shadow:0 0 26px #4aa6ffaa}
+.timer .u{font-size:.42em;color:#34598a}
+/* CRT power-on */
+.flash{position:absolute;inset:0;z-index:5;background:#f3f9ff;opacity:0;pointer-events:none}
+@keyframes po{0%{opacity:0;clip-path:inset(49% 0 49% 0)}18%{opacity:.95;clip-path:inset(46% 0 46% 0)}
+  45%{opacity:.55;clip-path:inset(0 0 0 0)}100%{opacity:0;clip-path:inset(0 0 0 0)}}
+.flash.go{animation:po .5s ease-out forwards}
+
+/* meters */
+.meters{margin-top:.55rem;padding:0 .25rem}
+.meter{margin:.42rem 0}
+.meter .ml{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-bottom:.2rem}
+.meter .ml b{font-family:var(--mono);color:var(--ink);letter-spacing:0}
+.track{position:relative;height:10px;border-radius:6px;background:#0b1521;border:1px solid #16314a}
+.track::after{content:"";position:absolute;left:0;bottom:-1px;height:2px;width:100%;background:#1c4e7a}
+.fill{position:absolute;left:1px;top:1px;bottom:1px;width:3%;border-radius:5px;
+  transition:width .8s cubic-bezier(.4,0,.2,1),background .8s,box-shadow .8s;background:var(--blue)}
+
+/* center */
+.center{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.9rem}
+.clk{position:relative;width:198px;height:198px}
+.clk svg{width:198px;height:198px;filter:drop-shadow(0 0 16px #2f8fd644)}
+.clk .face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.clk .yv{font-family:var(--mono);font-size:3.4rem;font-weight:800;line-height:1;color:#dbeeff}
+.clk .yl{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut);margin-top:.3rem}
+.clk .age{font-size:10px;color:#5f7790;margin-top:.15rem;font-family:var(--mono)}
+.go{font-family:var(--sans);font-weight:700;font-size:13px;padding:.6rem 1.5rem;border:none;border-radius:10px;cursor:pointer;
+  color:#fff;background:linear-gradient(135deg,#2a8cff,#7a4ddb);box-shadow:0 6px 18px #2a8cff44;letter-spacing:.02em}
+.go.run{background:linear-gradient(135deg,#5a4200,#9a7000)}
+/* DB drums — data filling up, in tandem each 5 years (no words) */
+.dbrow{position:relative;display:flex;gap:22px;justify-content:center;margin-top:1.1rem;padding-top:6px}
+.cyl{position:relative;width:56px;height:104px;border-radius:50% / 15px;background:#0a1420;
+  border:1px solid #243b52;overflow:hidden;box-shadow:inset 0 2px 8px #0007}
+.cyl .lid{position:absolute;top:4px;left:6px;right:6px;height:14px;border-radius:50%;border:1px solid #34516e;z-index:2;pointer-events:none}
+.cyl .lvl{position:absolute;left:0;right:0;bottom:0;height:2%;
+  transition:height 1s cubic-bezier(.4,0,.2,1),background 1s}
+.cyl.k .lvl{background:linear-gradient(180deg,#46e08e,#1f9f5e)}
+.cyl.i .lvl{background:linear-gradient(180deg,#f3bd4e,#d2842b)}
+.archive{position:absolute;left:-5px;right:-5px;top:calc(6px + 104px * (1 - 2048/4000));
+  border-top:1px dashed #ff5d5299;z-index:3}
+
+/* matrix — columns align under the panels: KernelERP | label | iDempiere */
+.matrix{max-width:920px;margin:.55rem auto 0;width:100%;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:12px}
+.matrix .rw{display:grid;grid-template-columns:1fr minmax(180px,210px) 1fr;border-top:1px solid var(--line);align-items:center}
+.matrix .rw:first-child{border-top:none}
+.matrix .cell{padding:.42rem .7rem;text-align:center}
+.matrix .kk{color:var(--green);font-weight:700;font-family:var(--mono)}
+.matrix .ii{color:var(--amber);font-weight:700;font-family:var(--mono)}
+.matrix .lbl{color:var(--mut);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase}
+.verdict{max-width:880px;margin:.5rem auto 0;text-align:center;font-size:12px;color:var(--mut);line-height:1.5}
+.verdict b.g{color:var(--green)}.verdict b.a{color:var(--amber)}
+.pin{max-width:880px;margin:.35rem auto 0;text-align:center;font-size:9.5px;color:#566678;line-height:1.45}
+</style>
+</head>
+<body>
+<div id="fit">
+<div class="stage">
+  <!-- KernelERP -->
+ <div class="col">
+  <div class="exbox k" id="ex-k"><b>KernelERP</b> — engine + your data run as a signed <b>kernel inside the browser tab</b>. Loads the whole store into memory at launch → <b>launch grows with age</b>; every action is in-memory → <b>ops never slow</b>.</div>
+  <div class="mon k">
+    <div class="cap"><span class="dot"></span><span class="nm">KernelERP</span><span class="sub">in a browser tab</span></div>
+    <div class="screen">
+      <div class="login show" id="login-k">
+        <div class="card">
+          <div class="brand"><div class="bk"><img class="bb" src="doublebubble.jpg" alt=""><span class="wm">KernelERP<small>signed fold engine</small></span></div></div>
+          <div class="frm">
+            <div class="r"><label>User</label><div class="ip">GardenAdmin</div></div>
+            <div class="r"><label>Password</label><div class="ip">••••••••</div></div>
+            <div class="r"><label>Language</label><div class="ip sel">English</div></div>
+            <button class="btn">Login</button>
+            <div class="tip"><b>GardenAdmin</b>/GardenAdmin · <b>SuperUser</b>/System</div>
+          </div>
+        </div>
+      </div>
+      <div class="work" id="work-k">
+        <div class="wtop"><img class="wlogo" src="doublebubble.jpg" alt=""><span class="wt">Menu</span><span class="wu">GardenAdmin</span></div>
+        <div class="menu">
+          <div class="mi">Sales Order</div><div class="mi">Business Partner</div>
+          <div class="mi">Invoice (Customer)</div><div class="mi">Material Receipt</div>
+          <div class="mi">Payment</div><div class="mi">Reports</div>
+        </div>
+      </div>
+      <div class="flash" id="flash-k"></div>
+      <div class="dark" id="dark-k"><div class="st" id="st-k">Day 1 · launching</div><div class="timer" id="t-k">0.00<span class="u">s</span></div></div>
+    </div>
+    <div class="meters">
+      <div class="meter"><div class="ml"><span>Launch</span><b id="lk">0.01s</b></div><div class="track"><div class="fill" id="lk-f"></div></div></div>
+      <div class="meter"><div class="ml"><span>Ops / action</span><b id="ok">fast</b></div><div class="track"><div class="fill" id="ok-f"></div></div></div>
+    </div>
+  </div>
+ </div>
+
+  <!-- center -->
+ <div class="col center-col">
+  <div class="htop"><h1 id="title">DOES YOUR<br>ERP AGE?</h1></div>
+  <div class="center">
+    <div class="clk">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="43" fill="none" stroke="#16314a" stroke-width="3.2"/>
+        <circle id="ring" cx="50" cy="50" r="43" fill="none" stroke="url(#cg)" stroke-width="3.2" stroke-linecap="round"
+          stroke-dasharray="270.2" stroke-dashoffset="270.2" transform="rotate(-90 50 50)"/>
+        <defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d27b"/><stop offset="1" stop-color="#f0a92b"/></linearGradient></defs>
+      </svg>
+      <div class="face"><div class="yv" id="yv">1</div><div class="yl">Year</div><div class="age" id="age">day one</div></div>
+    </div>
+    <button class="go" id="go">▶ Start</button>
+    <div class="dbrow">
+      <div class="cyl k"><span class="lid"></span><div class="lvl" id="db-k"></div></div>
+      <div class="cyl i"><span class="lid"></span><div class="lvl" id="db-i"></div></div>
+      <div class="archive"></div>
+    </div>
+  </div>
+ </div>
+
+  <!-- iDempiere -->
+ <div class="col">
+  <div class="exbox i" id="ex-i"><b>iDempiere</b> — <b>Java server + Postgres</b>; thin browser client. Data on the server → <b>launch stays constant</b>; every action is a <b>network round-trip to bigger tables</b> → <b>ops slow with age</b>.</div>
+  <div class="mon i">
+    <div class="cap"><span class="dot"></span><span class="nm">iDempiere</span><span class="sub">server + Postgres</span></div>
+    <div class="screen">
+      <div class="login show" id="login-i">
+        <div class="card">
+          <div class="brand"><img src="idmp_login_logo.png" alt="iDempiere"></div>
+          <div class="frm">
+            <div class="r"><label>User</label><div class="ip">GardenAdmin</div></div>
+            <div class="r"><label>Password</label><div class="ip">••••••••</div></div>
+            <div class="r"><label>Language</label><div class="ip sel">English</div></div>
+            <button class="btn">Login</button>
+            <div class="tip"><b>GardenAdmin</b>/GardenAdmin · <b>SuperUser</b>/System</div>
+          </div>
+        </div>
+      </div>
+      <div class="work" id="work-i">
+        <div class="wtop"><img class="wlogo" src="idmp_login_logo.png" alt=""><span class="wt">Menu</span><span class="wu">GardenAdmin</span></div>
+        <div class="menu">
+          <div class="mi">Sales Order</div><div class="mi">Business Partner</div>
+          <div class="mi">Invoice (Customer)</div><div class="mi">Material Receipt</div>
+          <div class="mi">Payment</div><div class="mi">Reports</div>
+        </div>
+      </div>
+      <div class="flash" id="flash-i"></div>
+      <div class="dark" id="dark-i"><div class="st" id="st-i">Day 1 · launching</div><div class="timer" id="t-i">0.00<span class="u">s</span></div></div>
+    </div>
+    <div class="meters">
+      <div class="meter"><div class="ml"><span>Launch</span><b id="li">0.40s</b></div><div class="track"><div class="fill" id="li-f"></div></div></div>
+      <div class="meter"><div class="ml"><span>Ops / action</span><b id="oi">fast</b></div><div class="track"><div class="fill" id="oi-f"></div></div></div>
+    </div>
+  </div>
+ </div>
+</div>
+
+<div class="matrix">
+  <div class="rw"><div class="cell kk">0.01 → 1.1 s</div><div class="cell lbl">Launch as data ages</div><div class="cell ii">flat (server)</div></div>
+  <div class="rw"><div class="cell kk">flat — never slows</div><div class="cell lbl">Ops as data ages</div><div class="cell ii">slows as tables grow</div></div>
+  <div class="rw"><div class="cell kk">none (~decade+)</div><div class="cell lbl">Housekeeping</div><div class="cell ii">required</div></div>
+</div>
+</div><!-- /#fit -->
+
+<div id="rotate">
+  <div class="phone"></div>
+  <div class="rtxt">Rotate to landscape</div>
+  <div class="rsub">this comparison runs side by side</div>
+</div>
+
+<script>
+var YEARS=[1,5,10,15,20];
+// Volume basis: 5 users · normal daily work ≈ 200 transactions/day.
+// DB size (MB): KernelERP ~0.8 KB/tx (+25 MB seed); iDempiere ~2.6 KB/tx (+~150 MB base; ~3x via row+index+WAL).
+var DB_K_MB={1:25,5:317,10:609,15:901,20:1193};
+var DB_I_MB={1:150,5:1099,10:2048,15:2997,20:3946};
+var DB_SCALE=4000;        // drum full-scale (MB)
+var DB_CAP=2048;          // in-tab archive line (~2 GB sql.js ceiling).
+                          // NOTE-TO-SELF: this cap RISES over time as browsers/WASM/devices improve — not fixed; revisit.
+// launch = measured 0.373 ms/MB cold-open, re-based to the 5-user DB sizes above (keeps the screen consistent)
+var K_LAUNCH={1:0.01,5:0.12,10:0.23,15:0.34,20:0.45};
+var I_LAUNCH={1:0.40,5:0.40,10:0.40,15:0.40,20:0.40};   // flat: server boot, data on disk
+var K_OPS={1:0.03,5:0.03,10:0.03,15:0.03,20:0.03};      // measured flat
+var I_OPS={1:0.10,5:0.65,10:1.35,15:2.15,20:3.00};      // illustrative: grows with table size
+var OPSMAX=3.0, LMAX=1.6;
+
+/* ── audio (Web Audio synth, no files) ── */
+var AC=null;
+function ac(){ if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){AC=null;} } if(AC&&AC.state==='suspended')AC.resume(); return AC; }
+function tone(f,dur,type,vol,slideTo){ var c=ac(); if(!c)return;
+  var o=c.createOscillator(),g=c.createGain(),t=c.currentTime;
+  o.type=type||'sine'; o.frequency.setValueAtTime(f,t);
+  if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.12,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t+dur+0.03); }
+function noisePop(){ var c=ac(); if(!c)return;
+  var b=c.createBuffer(1,Math.floor(c.sampleRate*0.09),c.sampleRate),d=b.getChannelData(0);
+  for(var i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2.2);
+  var s=c.createBufferSource(); s.buffer=b; var g=c.createGain(); g.gain.value=0.09;
+  s.connect(g).connect(c.destination); s.start(); }
+function sndBoot(durMs){ tone(120, Math.min(durMs/1000,2.4), 'sawtooth', 0.05, 380); }  // rising hum, longer launch = longer
+function sndPowerOn(){ tone(820,0.13,'triangle',0.16,1280); noisePop(); setTimeout(function(){tone(1660,0.09,'sine',0.09);},55); }
+var _tk=0;
+function sndTick(){ var c=ac(); if(!c)return;            // clock tick — alternating tick / tock
+  var f=(_tk++%2)?1500:1950;
+  var o=c.createOscillator(),g=c.createGain(),t=c.currentTime;
+  o.type='square'; o.frequency.setValueAtTime(f,t);
+  g.gain.setValueAtTime(0.07,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.028);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t+0.04); }
+
+function ageWord(y){return y===1?'day one':y+' years of data';}
+function colour(frac){return frac<.34?'#4aa6ff':frac<.56?'#46b3e6':frac<.74?'#f0a92b':'#ff5d52';}
+function setBar(id,lab,val,max,fast,durMs){
+  var f=document.getElementById(id),frac=Math.min(val/max,1);
+  f.style.transition=(durMs!=null)?('width '+durMs+'ms linear, background '+durMs+'ms linear, box-shadow .3s')
+                                   :'width .8s cubic-bezier(.4,0,.2,1),background .8s,box-shadow .8s';
+  f.style.width=(Math.max(frac,.02)*100).toFixed(1)+'%';
+  f.style.background=colour(frac);
+  f.style.boxShadow=frac>=.74?'0 0 10px #ff5d5288':'none';
+  document.getElementById(lab).textContent=fast&&val<.05?'instant':val.toFixed(2)+'s';
+}
+// reset to ~0 then fill to value over durMs — bar grows IN SYNC with its action
+function fillBar(id,lab,val,max,fast,durMs){
+  var f=document.getElementById(id);
+  f.style.transition='none'; f.style.width='2%'; void f.offsetWidth;
+  setBar(id,lab,val,max,fast,durMs);
+}
+// DB drums fill in tandem with the year (no words)
+function setDrums(year){
+  document.getElementById('db-k').style.height=(Math.max(DB_K_MB[year]/DB_SCALE,0.02)*100).toFixed(1)+'%';
+  document.getElementById('db-i').style.height=(Math.min(DB_I_MB[year]/DB_SCALE,1)*100).toFixed(1)+'%';
+}
+var ring=document.getElementById('ring'),CIRC=270.2;
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function raceClock(fromY,toY,prog0,prog1){
+  return new Promise(function(res){
+    var t0=performance.now(),D=Math.abs(toY-fromY)>0?1100:0,lastTick=-1;
+    if(D===0){res();return;}
+    function s(now){var el=now-t0,p=Math.min(el/D,1),e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+      var y=Math.round(fromY+(toY-fromY)*e);
+      document.getElementById('yv').textContent=y;
+      ring.style.strokeDashoffset=(CIRC*(1-(prog0+(prog1-prog0)*e))).toFixed(1);
+      if(el-lastTick>=62){ sndTick(); lastTick=el; }   // ticking clock as it races
+      if(p<1)requestAnimationFrame(s); else{document.getElementById('yv').textContent=toY;document.getElementById('age').textContent=ageWord(toY);res();}}
+    requestAnimationFrame(s);
+  });
+}
+function raceTimer(id,target,dur){
+  return new Promise(function(res){
+    var el=document.getElementById(id),t0=performance.now();el.classList.remove('done');
+    function s(now){var p=Math.min((now-t0)/dur,1),e=1-Math.pow(1-p,2),v=target*e;
+      el.innerHTML=v.toFixed(2)+'<span class="u">s</span>';
+      if(p<1)requestAnimationFrame(s);else{el.innerHTML=target.toFixed(2)+'<span class="u">s</span>';el.classList.add('done');res();}}
+    requestAnimationFrame(s);
+  });
+}
+// relaunch ONE side at a stop: panel ON -> dark -> timer (proportional) -> power-on -> panel ON
+async function relaunch(side,year,val){
+  var login=document.getElementById('login-'+side),dark=document.getElementById('dark-'+side),
+      flash=document.getElementById('flash-'+side),st=document.getElementById('st-'+side),
+      work=document.getElementById('work-'+side);
+  // reset the previous cycle's menu
+  work.classList.remove('show');
+  var mis=work.querySelectorAll('.mi'); for(var m=0;m<mis.length;m++)mis[m].classList.remove('in');
+  st.textContent=(year===1?'Day 1':'Year '+year)+' · launching';
+  document.getElementById('t-'+side).innerHTML='0.00<span class="u">s</span>';
+  login.classList.remove('show'); dark.classList.add('on');
+  await sleep(180);
+  var dur=280+val*1850;
+  fillBar('l'+side+'-f','l'+side,val,LMAX,true,dur);   // LAUNCH bar fills in sync with the relaunch timer
+  await raceTimer('t-'+side,val,dur);                  // proportional: bigger launch = longer
+  await sleep(120);
+  flash.classList.add('go'); dark.classList.remove('on');
+  await sleep(140); login.classList.add('show');
+  await sleep(420); flash.classList.remove('go');
+}
+// OPS phase: click Login -> the menu unfolds. Unfold speed = AD round-trip. Ops bar fills IN SYNC.
+async function ops(side,year,val){
+  var login=document.getElementById('login-'+side),work=document.getElementById('work-'+side),
+      btn=login.querySelector('.btn');
+  if(btn){ btn.classList.add('press'); sndTick(); }
+  await sleep(150); if(btn)btn.classList.remove('press');
+  await sleep(120);
+  login.classList.remove('show'); work.classList.add('show');
+  var items=work.querySelectorAll('.mi'), dur=Math.max(val*1000,90), per=dur/items.length;
+  fillBar('o'+side+'-f','o'+side,val,OPSMAX,side==='k',dur);  // OPS bar fills in sync with the unfold
+  for(var i=0;i<items.length;i++){ items[i].classList.add('in'); if(side==='i')sndTick(); await sleep(per); }
+}
+var running=false,abort=false;
+async function play(){
+  if(running)return; running=true; abort=false;
+  var btn=document.getElementById('go'); btn.textContent='⏸ Running'; btn.classList.add('run');
+  for(var i=0;i<YEARS.length;i++){
+    if(abort)break;
+    var y=YEARS[i],py=i?YEARS[i-1]:1;
+    await raceClock(py,y,(i?(i-1):0)/(YEARS.length-1),i/(YEARS.length-1)); // panels stay ON while clock races (ticking)
+    if(abort)break;
+    setDrums(y);   // DB drums grow in tandem with the year
+    sndBoot(280+Math.max(K_LAUNCH[y],I_LAUNCH[y])*1850);                   // rising boot hum
+    var relaunching=Promise.all([relaunch('k',y,K_LAUNCH[y]),relaunch('i',y,I_LAUNCH[y])]); // LAUNCH half (bars synced inside)
+    setTimeout(sndPowerOn,280+Math.min(K_LAUNCH[y],I_LAUNCH[y])*1850);     // chime when the faster one lights up
+    await relaunching;
+    if(abort)break;
+    await sleep(450);                                                      // settle on the login
+    await Promise.all([ops('k',y,K_OPS[y]),ops('i',y,I_OPS[y])]);          // OPS half: menu unfolds, ops bars synced
+    await sleep(1200);
+  }
+  if(!abort) sndPowerOn();
+  btn.textContent='▶ Replay'; btn.classList.remove('run'); running=false;
+}
+document.getElementById('go').addEventListener('click',function(){
+  ac(); // unlock audio on the user gesture
+  if(running){abort=true;this.textContent='▶ Replay';this.classList.remove('run');running=false;}
+  else play();
+});
+// initial bars + drums (day 1)
+setBar('lk-f','lk',K_LAUNCH[1],LMAX,true); setBar('ok-f','ok',K_OPS[1],OPSMAX,true);
+setBar('li-f','li',I_LAUNCH[1],LMAX,true); setBar('oi-f','oi',I_OPS[1],OPSMAX,false);
+setDrums(1);
+
+// scale the whole composition to fit any viewport (landscape mobile/tablet → desktop)
+function fitScale(){
+  var fit=document.getElementById('fit'); if(!fit)return;
+  fit.style.transform='none';
+  var s=Math.min(window.innerWidth/fit.offsetWidth, window.innerHeight/fit.offsetHeight);
+  if(s>1)s=1;
+  fit.style.transform='scale('+s+')';
+}
+window.addEventListener('resize',fitScale);
+window.addEventListener('orientationchange',function(){setTimeout(fitScale,150);});
+fitScale();
+</script>
+</body>
+</html>

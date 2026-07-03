@@ -1,0 +1,98 @@
+<!doctype html><html><head><meta charset="utf-8"><title>W-KERNEL-FOLD spike</title></head>
+<body><script type="module">
+// W-KERNEL-FOLD (prompts/BONSAI_KERNEL_RESEARCH.md §5 Item 1 — GO/NO-GO)
+// CLAIM: a parametric feature stored as a kernel_ops-shaped ROW (op_type + JSON params)
+// regenerates IDENTICAL geometry when REPLAYED through the reused kernel.
+// => geometry is a deterministic FOLD over the op-log, not stored state. Proves the doctrine.
+import { OcctKernel } from '/node_modules/occt-wasm/dist/index.js';
+
+const log = (m) => console.log(m);
+// deterministic mesh fingerprint: triangle count + bbox + position checksum
+function fingerprint(mesh) {
+  const p = mesh.positions; let cs = 2166136261 >>> 0;
+  let mnx=Infinity,mny=Infinity,mnz=Infinity,mxx=-Infinity,mxy=-Infinity,mxz=-Infinity, nan=0;
+  for (let i=0;i<p.length;i++){ const v=p[i]; if(Number.isNaN(v))nan++;
+    cs = (Math.imul(cs,16777619) ^ (Math.round(v*1e4)|0)) >>> 0; }
+  for (let i=0;i<p.length;i+=3){ const x=p[i],y=p[i+1],z=p[i+2];
+    if(x<mnx)mnx=x; if(y<mny)mny=y; if(z<mnz)mnz=z; if(x>mxx)mxx=x; if(y>mxy)mxy=y; if(z>mxz)mxz=z; }
+  const r=(n)=>Math.round(n*1e3)/1e3;
+  return { tris: mesh.triangleCount, verts: p.length/3, nan,
+    bbox:[r(mnx),r(mny),r(mnz),r(mxx),r(mxy),r(mxz)].join(','), cs };
+}
+
+// THE FOLD: pure function (op-row) -> geometry. Same code path live AND on replay.
+// op.parameters is the JSON string exactly as it would sit in a kernel_ops row.
+function applyFeature(kernel, op) {
+  const P = JSON.parse(op.parameters);
+  if (op.op_type === 'GEOM_EXTRUDE') {            // IfcExtrudedAreaSolid: profile + direction
+    const rect = kernel.makeRectangle(P.profile.w, P.profile.h);
+    const solid = kernel.extrude(rect, P.dir[0], P.dir[1], P.dir[2]);
+    kernel.release(rect);
+    return solid;
+  }
+  if (op.op_type === 'GEOM_OPENING') {            // IfcRelVoidsElement: base CUT void
+    const baseRect = kernel.makeRectangle(P.profile.w, P.profile.h);
+    const wall = kernel.extrude(baseRect, P.dir[0], P.dir[1], P.dir[2]); kernel.release(baseRect);
+    const v = (a) => ({ x:a[0], y:a[1], z:a[2] });   // kernel Vec3 = {x,y,z}, not array
+    const void_ = kernel.makeBoxFromCorners(v(P.void.c1), v(P.void.c2));
+    const cut = kernel.cut(wall, void_);
+    kernel.release(wall); kernel.release(void_);
+    return cut;
+  }
+  throw new Error('unknown op_type ' + op.op_type);
+}
+
+function evalFingerprint(kernel, op) {
+  const shape = applyFeature(kernel, op);
+  const mesh = kernel.tessellate(shape);
+  const fp = fingerprint(mesh);
+  kernel.release(shape);
+  return fp;
+}
+
+(async () => {
+  let pass = true; const fail = (m)=>{ pass=false; log('§KERNEL-FAIL '+m); };
+  try {
+    // 1. KERNEL LOADS (proves WASM tail-calls run in Chromium 147; Node18/V8-10.2 cannot)
+    const t0 = performance.now();
+    using kernel = await OcctKernel.init({ wasm: '/node_modules/occt-wasm/dist/occt-wasm.wasm' });
+    log('§KERNEL-FOLD init ok loadMs=' + Math.round(performance.now()-t0));
+
+    // 2. A feature as a kernel_ops ROW (the exact shape commitGroup persists)
+    const wallOp = { id: 1, op_type: 'GEOM_EXTRUDE',
+      parameters: JSON.stringify({ profile:{w:4,h:0.2}, dir:[0,0,3] }) };
+    log('§KERNEL-FOLD row=' + JSON.stringify(wallOp));
+
+    // 3. LIVE eval
+    const live = evalFingerprint(kernel, wallOp);
+    if (live.tris <= 0 || live.verts <= 0) fail('extrude produced empty mesh');
+    if (live.nan > 0) fail('mesh has NaN positions: ' + live.nan);
+    log('§KERNEL-FOLD live tris=' + live.tris + ' verts=' + live.verts + ' bbox=[' + live.bbox + '] cs=' + live.cs);
+
+    // 4. REPLAY from the serialized row (round-trip the JSON, fresh handles) -> must be IDENTICAL
+    const replayOp = { ...wallOp, parameters: JSON.stringify(JSON.parse(wallOp.parameters)) };
+    const replay = evalFingerprint(kernel, replayOp);
+    const identical = replay.tris===live.tris && replay.bbox===live.bbox && replay.cs===live.cs;
+    if (!identical) fail('replay != live  live.cs='+live.cs+' replay.cs='+replay.cs+' live.bbox='+live.bbox+' replay.bbox='+replay.bbox);
+    log('§KERNEL-FOLD replay tris=' + replay.tris + ' bbox=[' + replay.bbox + '] cs=' + replay.cs + ' identical=' + (identical?'Y':'N'));
+
+    // 5. BOOLEAN folds too (opening = wall CUT void): deterministic AND changes topology vs the wall
+    const openOp = { id: 2, op_type: 'GEOM_OPENING',
+      parameters: JSON.stringify({ profile:{w:4,h:0.2}, dir:[0,0,3], void:{ c1:[1,-1,1], c2:[2,1,2] } }) };
+    const open1 = evalFingerprint(kernel, openOp);
+    const open2 = evalFingerprint(kernel, { ...openOp, parameters: JSON.stringify(JSON.parse(openOp.parameters)) });
+    const cutDet = open1.tris===open2.tris && open1.bbox===open2.bbox && open1.cs===open2.cs;
+    const cutChanged = open1.cs !== live.cs;
+    if (open1.tris<=0) fail('cut produced empty mesh (BOP failure on the opening)');
+    if (!cutDet) fail('cut replay non-deterministic');
+    if (!cutChanged) fail('cut did not change geometry vs wall (void missed the wall)');
+    log('§KERNEL-FOLD opening tris=' + open1.tris + ' cs=' + open1.cs + ' deterministic=' + (cutDet?'Y':'N') + ' changedVsWall=' + (cutChanged?'Y':'N'));
+
+    log('§KERNEL-FOLD VERDICT ' + (pass ? 'PASS — geometry = deterministic fold over op-row' : 'FAIL'));
+  } catch (e) {
+    log('§KERNEL-FAIL exception ' + (e && e.message ? e.message : String(e)));
+    log('§KERNEL-FOLD VERDICT FAIL');
+  }
+  window.__done = true;
+})();
+</script></body></html>
