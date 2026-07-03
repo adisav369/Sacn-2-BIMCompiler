@@ -18,6 +18,24 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
+## Modeller §NEEDS-DESIGN batch (2026-07-03, watchdog→Fable5) — ✅ SHIPPED
+- Items 1,2,4,5,6,7 (eye-toggle, filter→scene dim, auto-expand-on-pick, Outliner windowing+O(k) pick,
+  selection edge outline, real shadows+perf guard) — bim-ootb **PR #625** MERGED; item 8 (floating drag
+  dims) — **PR #627** MERGED. Spec+decisions+DONE log: bim-ootb `prompts/RESUME_MODELLER_POLISH3.md`.
+  New witnesses 30/30 (OLVIRT/OLEYE/OLFILTER/SELOUTLINE/SHADOWS/FLOATDIM); regression 7 suites green.
+- Item 10 ✅ BUILT 2026-07-03 (Fable5): T=arm rotate ring / S=arm scale cubes (R kept Insert) — bim-ootb
+  **PR #631 MERGED** (squash `8d73fb0`, verified on main), W-E2E-RSARM 8/8 + regression 36/36 green.
+  First-RED fix: gizmo arrow shaft+tip share one material → arm-dim base opacity recorded on material.
+- OPEN (unassigned): item 9 PBR textures; SSAO (needs EffectComposer vendored); per-instance hide (§DECISIONS-2).
+
+## HBA lane/hr-overlay sync+PR handoff (2026-07-03, Fable5) — ✅ DONE
+- Queued task from `bim-ootb prompts/RESUME_HR_BIM_ASSET.md ⏭ NEXT` executed: merged origin/main (12 squash
+  add/add conflicts re-merged 3-way vs PR #609 head `cc67ed3`, union kept — S2 `_regovern` #622 + BOM #626
+  intact alongside P10b/E-Invoice), witness suite **39/39 green** post-merge (AD1 gross=5200/net=4234 held,
+  W-HBA-EINVOICE 19/19, main's W-HBA-ERP-GOVERNED 9/9 + BOM-GOVERNED 6/6 + GOVERN-WIRE 5/5 green in-branch),
+  **PR #628 MERGED** (`e42a96b`, verified landed) + doc closeout PR #629. `lane/hr-overlay` now squash-merged —
+  do NOT reuse; next HBA slice (Stage 3 pane read-through-lens + live smoke) starts off fresh origin/main.
+
 ## Kernel op-log timebomb audit (2026-07-03) — 3-agent scalability/macro/security sweep
 - Findings: `prompts/KERNEL_TIMEBOMB_AUDIT_2026-07-03.md` (13 defects, root cause: sound at op-CREATION,
   green-by-construction everywhere else → armed by success milestones). Batch-1 spec + full next-session plan:
@@ -28,9 +46,14 @@
 - ✅ T1 trust-root DECIDED by doctrine excavation (not fresh design): device-level central roster +
   ROTATE/REVOKE + burn-not-reattribute already in DistributedERP.md §228/§290/§445 + witnessed
   `scripts/poc_rotate.js`. Employee-attribution (PIN-as-metadata) split out as a separate question.
+- ✅ T2 content-addressed signing (W-CONTENT-SIGN 14/14: v2 `_sigv` content sigs survive id renumbering,
+  delimiter injection closed, v1 history + chain bytes untouched) + ✅ T1 roster/key-epoch verify
+  (W-ROSTER-VERIFY 17/17: NEW erp/erp_key_epochs.js HQ-signed device roster + ROTATE/REVOKE ported from
+  poc_rotate; importBranch(opts.roster) rejects the forged-foreign-key import, security#1 closed) —
+  bim-ootb PR #630, erp sw v760, kernel v10→v11. Red-before/green-after; teams suite 25/25 green.
 - ⛔ T4+T5 (unify 3 kernel copies) BROWSER-GATED — analysis done (neither copy is a superset), needs the
-  W-ONE-KERNEL building-load smoke. NEXT LANE = **T2→T1** (node-verifiable, additive-canonical recommended) —
-  execution plan in the batch-1 spec §NEXT SESSION. Deferred id-race retry + T7 scale cliff (~5k ops).
+  W-ONE-KERNEL building-load smoke. Deferred: commitGroup id-race retry + T7 scale cliff (~5k ops) +
+  employee attribution (PIN-as-metadata, separate question). Lane status: batch-1 spec §STATUS.
 
 ## Codebase quality audit (2026-07-02) — TRIAGED 2026-07-03
 - ✅ §5 self-XSS fixed BOTH repos (bim-ootb PR #618 sw v758 + bc PR #20; W-XSS-FILENAME 10/10 + 5/5, incl. the
@@ -43,26 +66,7 @@
 - Ninja Create two-way engine + live export — `prompts/NINJA_MODE_PILL.md # DONE`, W-NINJA-{EXTRACT,CALLOUT,EXPORT,EXPORT-LIVE} + W-ASSET-STATUS (bim-ootb PR #301/#309, sw v673/v681, 2026-06-14)
 - Reflexive AD self-edit — W-AD-{OPLOG-DISTRIB,SELFEDIT,SELFEDIT-LIVE} (bim-ootb PR #312 sw v683, 2026-06-14)
 - Odoo red-band fold-gap re-audit — W-ODOO-QWEB 41/41 to-the-cent; server actions honestly deferred; migrate_status_panel live (2026-06-14)
-- POS gap-close banked — `prompts/POS_GAP_CLOSE.md # DONE` (2026-06-12g2)
-- WH×POS pick lane BUILT, live-verified — `prompts/WH_POS_PICK_LANE.md # DONE` (2026-06-13)
-- Multi-lane WAVE 3 — `prompts/MULTI_LANE_WAVE3.md # DONE` (2026-06-12e)
-- Multi-lane WAVE 2 — `prompts/MULTI_LANE_LAUNCH.md # DONE` (2026-06-12)
-- MIGRATE_POSTING_CONFIG — bim-ootb PR #271 sw v653, IDB ad_seed_v15 (2026-06-12b)
-- POS lens addon §P-1..§P-4 — `prompts/POS_LENS_SESSION.md # DONE` LIVE (2026-06-12)
-- ERP backend-gap arc — `prompts/ERP_BACKEND_GAP.md` (feat/erp-substrate-phase012, 2026-06-09)
-- Backend lane DATA + ENGINE-SEAM half — D2/D3/R2 + C0 + readPostings (2026-06-03)
-- Lens-family doctrine — published docs (2026-06-03)
-- FRONTEND Item C Accts-Posted lens — bim-ootb PR #94 sw v565 LIVE (2026-06-03)
-- iDempiere Renderer #1 (I1) + master-detail drill — sw v560, PR #82/#83/#84 (2026-06-02)
-- LENS family lane-3 chrome fleet — PR #92 gh-pages LIVE (2026-06-03)
-- STEP-0 §SEAM-FROZEN host conformance — record-panel deliverable (2026-06-03)
-- Migrate ShowMe + ERP folder home — LIVE (2026-06-02)
-- Lens family phone∥desktop one engine — SPEC hardened + 2 witnesses (2026-06-03)
-- Engine POST plugin §13.1 — accounting genome PROVEN (2026-06-02) → [[project_glassbowl]]
-- ERPMaker/AnyAppMaker docs + Odoo fold source (2026-06-02) → [[project_erpmaker]]
-- Holy Grail doc + falsifier POC prompts + MIT license sweep (2026-06-01)
-- ERP Secured/Distributed doctrine + 6-witness POC suite + W-CHAIN live (2026-06-01) → [[project_erp_secured_phase]]
-- Glassbowl engine-as-data explorer + lifecycle chain + orbit viz — `docs/GLASSBOWL{,_DOSSIER}.md`, LIVE → [[project_glassbowl]]
+- Pre-2026-06-14 DONE items (21 lines) → `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-06-14.md`
 - Viewer S-series (S188–S286): browser viewer, DLOD, mobile perf, find/nav, multi-format import, cinematic — see MEMORY.md "Project — Shipped"
 
 ## OCI Deployment
