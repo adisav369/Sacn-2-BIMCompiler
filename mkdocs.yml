@@ -100,6 +100,7 @@ nav:
       - "Spatial ERP — Every Record Has a Place": SpatialERP_OOTB.md
       - "Spatial ERP × BIM × HR — One Building, One Log": SpatialERPIntegration.md
       - "Distributed ERP": DistributedERP.md
+      - "SQLite-in-Browser Architecture (verified vs. code)": SQLiteWasmArchitectureActual.html
       - "Red Pill — Design From Grammar": RED_PILL.md
       - "Clash Detection": CLASH_DETECTION.md
       - "4D/5D Analysis": 4D5DAnalysis.md

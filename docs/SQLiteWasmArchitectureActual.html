@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SQLite-in-Browser Architecture — bim-ootb ACTUAL</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; padding: 24px 16px 48px; }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { text-align: center; font-size: 1.3rem; color: #e2e8f0; letter-spacing: 0.03em; }
+  .sub { text-align: center; color: #64748b; font-size: 0.82rem; margin-top: 6px; margin-bottom: 4px; }
+  .corr { text-align: center; color: #f87171; font-size: 0.78rem; margin-bottom: 22px; }
+  .corr b { color: #fca5a5; }
+  .layer { border: 1px solid #334155; border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+  .layer-head { padding: 8px 14px; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.04em; }
+  .layer-body { padding: 12px 16px 16px; background: #131722; }
+  .l1 .layer-head { background: #1e293b; color: #93c5fd; }
+  .l2 .layer-head { background: #241a33; color: #c4b5fd; }
+  .l3 .layer-head { background: #1a2e2a; color: #86efac; }
+  .l4 .layer-head { background: #241a1a; color: #fca5a5; }
+  .l5 .layer-head { background: #1e293b; color: #93c5fd; }
+  .l6 .layer-head { background: #2a1414; color: #fca5a5; }
+  code { background: #0a0e17; color: #7dd3fc; padding: 1px 5px; border-radius: 4px; font-size: 0.82rem; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .box { flex: 1 1 240px; background: #0c1018; border: 1px solid #263042; border-radius: 8px; padding: 10px 12px; font-size: 0.82rem; }
+  .box .t { font-weight: 600; color: #cbd5e1; margin-bottom: 6px; }
+  .box .d { color: #64748b; font-size: 0.75rem; margin-top: 4px; }
+  .verdict { display: inline-block; font-weight: 700; border-radius: 4px; padding: 0 6px; font-size: 0.72rem; margin-right: 6px; }
+  .false { background: #450a0a; color: #fca5a5; }
+  .true { background: #052e16; color: #86efac; }
+  .partial { background: #422006; color: #fdba74; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  td, th { border-bottom: 1px solid #1e293b; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { color: #94a3b8; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .ev { color: #64748b; font-size: 0.72rem; }
+  .arrow { text-align: center; color: #475569; font-size: 1.1rem; margin: -4px 0 10px; }
+  footer { text-align: center; color: #475569; font-size: 0.72rem; margin-top: 28px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SQLite-in-Browser Architecture — bim-ootb ACTUAL</h1>
+  <div class="sub">Verified against the deployed viewer/modeller/erp code, 2026-07-04</div>
+  <div class="corr">Corrects <b>Screenshots/SQLiteProjectMap.png</b> — that chart's generic sqlite3-wasm layers (VFS/threading/API)
+    are accurate documentation for the <i>official</i> sqlite3-wasm API, but its "BIMCompiler notes" callout describes an
+    architecture this project does not use. 6 of 7 project-specific claims there are false or unbuilt.</div>
+
+  <div class="layer l1">
+    <div class="layer-head">LAYER 1 — APPLICATION CODE (actual)</div>
+    <div class="layer-body">
+      <div class="row">
+        <div class="box"><div class="t">sql.js Database API</div>
+          <code>new SQL.Database(bytes)</code><br><code>db.exec(sql)</code> / <code>db.prepare(sql)</code>
+          <div class="d">This is the <b>sql.js</b> port (older Emscripten build), NOT the official sqlite3.wasm
+          OO1/capi/Promiser API the source chart depicts. No <code>sqlite3InitModule</code>, no <code>oo1</code>
+          namespace, no Promiser anywhere in either repo.</div>
+        </div>
+        <div class="box"><div class="t">better-sqlite3 (native)</div>
+          <code>Database(path)</code> — Node only
+          <div class="d">Used only in bim-compiler's offline extraction/QTO/build scripts
+          (e.g. <code>mep_qto_populate.js</code>, <code>wizard_storeys.js</code>). Never loaded in the browser.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="layer l2">
+    <div class="layer-head">LAYER 2 — WASM MODULE (actual)</div>
+    <div class="layer-body">
+      <div class="row">
+        <div class="box"><div class="t">Standard build</div>
+          <code>lib/sql-wasm.js</code> + <code>.wasm</code>
+          <div class="d">Loaded main-thread via <code>fetch('lib/sql-wasm.wasm')</code>
+          (<code>viewer/loader.js:6</code>), with a jsDelivr CDN fallback if the local file 404s.</div>
+        </div>
+        <div class="box"><div class="t">FTS5 build (swapped in)</div>
+          <code>lib/sql-wasm-fts5.js</code> + <code>.wasm</code>
+          <div class="d">Stock sql.js has no FTS5. <code>erp/erp.html</code> / <code>erp/genesis.html</code> load the
+          special FTS5-compiled build instead. This is the <b>one</b> claim from the original chart that holds.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="layer l3">
+    <div class="layer-head">LAYER 3 — PERSISTENCE (actual — there is no VFS choice)</div>
+    <div class="layer-body">
+      <div class="box" style="flex:none">
+        <div class="t">Whole-file fetch → whole-file in-memory DB. No OPFS-SAH, no kvvfs, no IndexedDB-backed VFS.</div>
+        <code>fetch(url).then(r=&gt;r.arrayBuffer()).then(b=&gt;new SQL.Database(new Uint8Array(b)))</code>
+        <div class="d"><code>viewer/streaming.js:1442,1502,1516,1580</code> — every <code>.db</code> file (meta.db, geo.db,
+        extracted.db, component_library.db, ad_seed.db…) is downloaded complete over HTTP, then held entirely in the JS
+        heap for the session. Memory scales with total building size, not with what's on screen.</div>
+        <div class="d" style="margin-top:8px"><b style="color:#fca5a5">Dead code found:</b> <code>viewer/lib/httpvfs.js</code>
+        (a real byte-range-fetch Worker VFS) is loaded on some pages, and <code>streaming.js</code> has guarded branches
+        for it (<code>A._useRangeStream && A._rangeDb</code>, lines 54/387/520/544). But <code>_rangeDb</code> and
+        <code>_useRangeStream</code> are <b>never assigned anywhere</b> in either repo — the branch is unreachable, every
+        load falls through to the full-fetch path above. (This also corrects this project's own memory note
+        "viewer STREAMS via httpvfs" — the smooth large-building load is <b>DLOD render-culling</b>, see Layer 4, not
+        byte-range DB streaming.)</div>
+        <div class="d" style="margin-top:8px"><code>erp/vfs_detect.js:42-47</code> only <i>probes</i> OPFS capability for
+        a possible future switch; <code>erp/idempiere.html:828</code> says outright OPFS persistence is "not yet" wired
+        and blocked on GH-Pages hosting anyway.</div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="layer l4">
+    <div class="layer-head">LAYER 4 — THREADING (actual)</div>
+    <div class="layer-body">
+      <div class="box" style="flex:none">
+        <div class="t">Main thread only. Every SQLite call is synchronous JS on the UI thread.</div>
+        <div class="d">No Worker ever runs sql.js. What actually keeps large buildings (e.g. Terminal, 125K elements,
+        ~12s smooth) usable is <b>DLOD</b> — a Three.js frustum/visibility culling + bbox-batching layer over the
+        <i>render</i> loop (<code>viewer/streaming.js</code> §S261/§S262/§S265) — it reduces draw calls per frame, it
+        does not reduce what's resident in the SQLite heap. A future building large enough to blow the JS heap on load
+        would still stall even though frames stay smooth once loaded — DLOD masks the render cost, not the load cost.</div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="layer l5">
+    <div class="layer-head">LAYER 5 — API PATTERNS (actual)</div>
+    <div class="layer-body">
+      <div class="row">
+        <div class="box"><div class="t">Geometry hot loop</div>
+          <code>.exec()</code> dominant
+          <div class="d">11 <code>.exec()</code> call sites vs 4 <code>.prepare()</code> in <code>viewer/streaming.js</code>
+          — not prepared-statement-driven in the browser. <code>.prepare()/.get()/.run()</code> reuse exists only in
+          the Node-side better-sqlite3 build tooling, a separate binding entirely.</div>
+        </div>
+        <div class="box"><div class="t">Not used anywhere</div>
+          <code>rowMode</code> · <code>json_each()</code> · <code>sqlite3Worker1Promiser</code>
+          <div class="d">Zero matches across both repos for all three. They're official sqlite3-wasm concepts the
+          original chart's callout borrowed — this codebase doesn't have the API surface to use them.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="layer l6">
+    <div class="layer-head">LAYER 6 — "BIMCompiler notes" callout, corrected claim-by-claim</div>
+    <div class="layer-body">
+      <table>
+        <tr><th>#</th><th>Original claim</th><th>Verdict</th><th>Reality</th></tr>
+        <tr><td>1</td><td>OPFS-SAH in Worker for geometry store</td><td><span class="verdict false">FALSE</span></td>
+          <td class="ev">Only capability-<i>detected</i> (<code>erp/vfs_detect.js</code>), not wired; geometry loads via
+          plain sql.js in-memory (Layer 3).</td></tr>
+        <tr><td>2</td><td>Main thread gets Promiser proxy only</td><td><span class="verdict false">FALSE</span></td>
+          <td class="ev">No Promiser pattern anywhere; sql.js runs directly on the main thread, no proxy.</td></tr>
+        <tr><td>3</td><td>Unified BIM+ERP rows, single DB file</td><td><span class="verdict false">FALSE</span></td>
+          <td class="ev">Genuinely separate files (<code>*_extracted.db</code>/<code>*_geo.db</code>/
+          <code>component_library.db</code> vs <code>erp/ad_seed.db</code>/<code>ad_odoo.db</code>) — never joined.
+          This actually <b>matches</b> project doctrine (BIM output = migration source only, the iDempiere AD table is
+          runtime authority) — the original chart's claim would have been the wrong architecture even if built.</td></tr>
+        <tr><td>4</td><td><code>db.exec rowMode:'object'</code> for ERP queries</td><td><span class="verdict false">FALSE</span></td>
+          <td class="ev">Zero matches for <code>rowMode</code> in <code>erp/</code>.</td></tr>
+        <tr><td>5</td><td>Prepared stmts for geometry hot loop</td><td><span class="verdict false">FALSE</span></td>
+          <td class="ev"><code>.exec()</code>-dominant in the live browser path (Layer 5).</td></tr>
+        <tr><td>6</td><td><code>json_each()</code> for IFC attribute traversal</td><td><span class="verdict false">FALSE</span></td>
+          <td class="ev">Zero matches anywhere.</td></tr>
+        <tr><td>7</td><td>FTS5 compile flag needed for text search</td><td><span class="verdict true">TRUE</span></td>
+          <td class="ev"><code>erp/erp_search.js:64,97</code> — real <code>CREATE VIRTUAL TABLE erp_search USING
+          fts5(...)</code> with BM25 ranking, requires the swapped-in <code>sql-wasm-fts5.js/.wasm</code> build.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    Source screenshot: <code>~/Pictures/Screenshots/SQLiteProjectMap.png</code> (generic sqlite3-wasm reference, mostly
+    accurate as generic documentation — the correction here is scoped to its project-specific callout box only).<br>
+    Verified 2026-07-04 against <code>bim-ootb</code>: viewer/streaming.js, viewer/loader.js, erp/erp_search.js,
+    erp/vfs_detect.js, erp/idempiere.html.
+  </footer>
+</div>
+</body>
+</html>
