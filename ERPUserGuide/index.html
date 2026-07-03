@@ -392,6 +392,8 @@
       
         
       
+        
+      
     
     
     
@@ -461,6 +463,34 @@
     
   
     📖 User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WhatsNew/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🆕 What's New
   
 
     
@@ -1080,10 +1110,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#pos-screen-layout-the-killer-demo-surface-sw-v656-panel-lifecycle-v658v660" class="md-nav__link">
+  <a href="#pos-screen-layout-the-killer-demo-surface" class="md-nav__link">
     <span class="md-ellipsis">
       
-        POS screen layout (the killer-demo surface, sw v656 → panel lifecycle v658–v660)
+        POS screen layout (the killer-demo surface)
       
     </span>
   </a>
@@ -1091,10 +1121,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#payment-panel-layout-sw-v680-top-bar-total-single-pay" class="md-nav__link">
+  <a href="#payment-panel-layout-top-bar-total-single-pay" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Payment panel layout (sw v680 — top-bar total + single Pay)
+        Payment panel layout (top-bar total + single Pay)
       
     </span>
   </a>
@@ -1128,6 +1158,17 @@
     <span class="md-ellipsis">
       
         Hold / recall (§P-13)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kitchen-display" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kitchen Display
       
     </span>
   </a>
@@ -2587,10 +2628,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#pos-screen-layout-the-killer-demo-surface-sw-v656-panel-lifecycle-v658v660" class="md-nav__link">
+  <a href="#pos-screen-layout-the-killer-demo-surface" class="md-nav__link">
     <span class="md-ellipsis">
       
-        POS screen layout (the killer-demo surface, sw v656 → panel lifecycle v658–v660)
+        POS screen layout (the killer-demo surface)
       
     </span>
   </a>
@@ -2598,10 +2639,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#payment-panel-layout-sw-v680-top-bar-total-single-pay" class="md-nav__link">
+  <a href="#payment-panel-layout-top-bar-total-single-pay" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Payment panel layout (sw v680 — top-bar total + single Pay)
+        Payment panel layout (top-bar total + single Pay)
       
     </span>
   </a>
@@ -2635,6 +2676,17 @@
     <span class="md-ellipsis">
       
         Hold / recall (§P-13)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kitchen-display" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kitchen Display
       
     </span>
   </a>
@@ -3296,7 +3348,7 @@ pies, adding or removing a cut with the Explore chips reshapes the web.</p>
 Even on a cold seed it lists <strong>GardenWorld plus five migrated demo tenants</strong> (Odoo · iDempiere · SAP ·
 Oracle · Dynamics), each tagged <em>demo · ready</em> or <em>demo · PoC</em> (the login step unions the resident
 tenants with the demo manifest). Picking a demo tenant <strong>lazy-installs its shard on the spot</strong> — no
-dialog, no <code>?shard=</code>, no server (P0, erp sw v692). Once installed it survives a reload and joins the
+dialog, no <code>?shard=</code>, no server. Once installed it survives a reload and joins the
 resident list (System, GardenWorld, and every installed tenant). Each tenant is entered through its
 <strong>own Admin user</strong> (e.g. <em>SAP Flights Admin</em>); the System user belongs to the System(0) client only.
 (In-tenant test links that skip the picker enter via <code>?client=garden</code>.)</p>
@@ -3343,9 +3395,8 @@ it stays a plan-only project (the non-invent gate). The push is <strong>idempote
 rows) and persists to the same browser origin as this ERP, so the folded project appears in the standard
 <strong><code>C_Project</code> / <code>C_Order</code></strong> windows on the next boot — round-trip complete.</p>
 <p><img alt="The pushed selection landed: iDempiere's standard Project window → **Task Line** tab, every trade folded as a real C_ProjectLine — Concrete Gang, Steel Erector, Electrician, Plumber, HVAC Tech, Mason, Carpenter — each with its description, quantity, and product. What you picked in 3D is now work in the ERP, in native windows, round-trip complete." src="../figs/erp_project_lines.png" /></p>
-<p><strong>Witnessed on the Duplex:</strong> 6 phases · 9 tasks · 16 lines, <code>PlannedAmt</code> folding to the 5D golden <strong>to
-the cent</strong> (<code>§PROJ_FOLD plannedAmt==golden</code>), every phase <code>SeqNo</code> tracing to <code>sequence_rules.json</code>
-(shipped bim-ootb PR #316). See the <strong><a href="../BIMtoProject/">BIM → Project blueprint</a></strong>.</p>
+<p><strong>Verified on the Duplex:</strong> 6 phases · 9 tasks · 16 lines, <code>PlannedAmt</code> folding to the 5D golden <strong>to
+the cent</strong>, every phase <code>SeqNo</code> tracing to <code>sequence_rules.json</code>. See the <strong><a href="../BIMtoProject/">BIM → Project blueprint</a></strong>.</p>
 <blockquote>
 <p>A sibling <strong><code>› VO</code></strong> button (in the model-diff panel) folds a model revision into a signed <code>C_Order</code>
 variation amendment against the same project.</p>
@@ -3379,9 +3430,7 @@ press <strong><code>Schedule now ▶</code></strong> to originate the dates your
 the only path: you can accept it and finish fast, or build the schedule up by hand.</p>
 <p><img alt="Start blank — the same three phases are organized but **undated** (“unscheduled”); a banner prompts you to set a start and press **Schedule now** to originate the dates. The 5D cost still folds from the assignments (it does not depend on dates). This is the build-it-up-from-a-blank-model path." src="../figs/author4d_blank.png" /></p>
 <p>The link between an element and its phase is <strong>identity by construction</strong> — it survives renaming the phase
-or the element, where name-matching schedulers would re-bind or break. <em>(Engine proven by <code>W-AUTHOR-4D-BLANK</code>
-16/16, the 5D fold by <code>W-AUTHOR-5D-COST</code> 10/10, the blank start by <code>W-AUTHOR-BLANK-START</code> 11/11, all on the
-real SampleHouse through the shipped read-path; <code>viewer/schedule_author.js</code> + <code>schedule_author_ui.js</code>.)</em></p>
+or the element, where name-matching schedulers would re-bind or break.</p>
 <blockquote>
 <p><strong>Zoom-Across knows where the Time Machine is.</strong> When the Time Machine is open and you pinpoint an
 element (from <strong>Find</strong>, or a <strong>Zoom-Across</strong> from a record in the ERP), the timeline <strong>jumps to that
@@ -3416,11 +3465,11 @@ panel opens on the built-in <strong>Hospital</strong> project (the 7-phase chain
   saves it), so the schedule now reflects the slip.</li>
 <li><strong>Discard</strong> drops the what-if entirely — the official plan was never touched.</li>
 </ul>
-<p>This is the <strong><a href="#15-blue-future--the-speculative-branch-built-in-pre-release-test-harness">Blue Future</a></strong>
+<p>This is the <strong><a href="#15-blue-future-the-speculative-branch-built-in-pre-release-test-harness">Blue Future</a></strong>
 branch model applied to the schedule: the what-if lives on a speculative blue branch over the same signed
 op-log, so it is real (not a mock) yet completely reversible until you accept it. The same engine that
 unifies a planner, a cost tool, and a 4D/5D viewer onto one log gives you free what-if — no separate
-scheduling tool, no drift. <em>(Engine proven by <code>W-WHATIF</code> 13/13 on the Hospital project; <code>viewer/whatif.js</code>.)</em></p>
+scheduling tool, no drift.</p>
 <h3 id="schedule-editor-the-advanced-gantt-on-its-own-surface-live">Schedule Editor — the advanced Gantt, on its own surface <em>(LIVE)</em><a class="headerlink" href="#schedule-editor-the-advanced-gantt-on-its-own-surface-live" title="Permanent link">&para;</a></h3>
 <p>The Time Machine's <strong><code>✎</code></strong> wizard and <strong><code>⑂</code></strong> what-if are the <em>intuitive</em> front — quick, visual, one
 gesture. When you want the <strong>serious planner</strong> — an expandable WBS, real dependencies, a critical path,
@@ -3452,8 +3501,7 @@ field: open-source 4D (Bonsai) can build a schedule and run CPM but its Gantt is
 edit through side panels; MS Project gives you the interactive Gantt but has no model, no cost, and no
 ERP. The Schedule Editor is a real drag-on-the-chart editor <strong>on one signed op-log that the model, the
 4D playback, the 5D cost, and the ERP all fold from</strong> — so a date you drag here is the same fact the
-enterprise reads. <em>(Proven by <code>W-SCHED-EDIT</code> 19/19, <code>W-SCHED-CPM</code> 10/10, <code>W-SCHED-MOVE</code> 7/7, and
-<code>W-SCHED-SYNC</code> 11/11, plus headless drag/sync smokes; <code>viewer/schedule_author.js</code> + <code>schedule_sync.js</code>.)</em></p>
+enterprise reads.</p>
 <blockquote>
 <p><strong>Where it stops — on purpose.</strong> The editor computes from the graph <em>you</em> author; it never
 auto-reschedules or "levels" resources for you. Automatic schedule optimisation is a decades-deep
@@ -3530,15 +3578,14 @@ import is self-binding with the checkbox on — no sidecar needed.</p>
 <p><strong>Demo files.</strong> The same ready GW-Hospital programme ships in all three formats —
 <code>tests/fixtures/Hospital_GW_Programme.xer</code> (P6 XER), <code>…/Hospital_GW_Programme.xml</code> (P6 PMXML) and
 <code>…/Hospital_GW_MSProject.xml</code> (MS Project MSPDI) — so you can try the import end-to-end on the sample
-model. <em>(Proven by <code>W-FGN</code> 28/28 on the real Hospital model — every format maps to the same rows, CPM
-reproduces the plan's 300-day critical path exactly, and 525 real elements bind and fold to 5D cost;
-plus the <code>§SE-IMPORT-SMOKE</code> 7/7 headless UI check.)</em></p>
+model. Every format maps to the same rows, CPM reproduces the plan's 300-day critical path exactly, and
+525 real elements bind and fold to 5D cost.</p>
 </blockquote>
 <p><strong>Does it survive a <em>real</em> P6 file?</strong> The Hospital demo above is <em>ours</em> — useful to learn the flow, but it
 can't prove fidelity against quirks only a real export carries (a tool can't grade its own homework). So
-the import is also witnessed against a <strong>genuinely Primavera-emitted</strong> <code>.xer</code> (a public, cited sample, 52
-tasks / 61 links — fetched at test time, never shipped). The result (<code>W-REAL-PARSE</code>/<code>W-REAL-CPM</code>, 12/12):
-every record parses with <strong>zero unmapped links and zero dangling references</strong>, and our critical path
+the import is also verified against a <strong>genuinely Primavera-emitted</strong> <code>.xer</code> (a public, cited sample, 52
+tasks / 61 links). The result: every record parses with <strong>zero unmapped links and zero dangling
+references</strong>, and our critical path
 <strong>exactly matches P6's own</strong> (<code>driving_path_flag</code>, 52/52). The one honest gap: the imported <em>dates</em> land a
 few days early on long chains because we count <strong>calendar days</strong> while P6 follows a <strong>working calendar</strong>
 (skipping weekends/holidays). We report that offset rather than hide it — it's a <strong>smaller, named gap</strong>
@@ -3623,9 +3670,8 @@ becomes a <strong>per-storey utilization</strong> bar, a <strong>room-availabili
 aging</strong> doughnut (+ KPIs: rooms · avg utilization · open tickets). Every series is <strong>read</strong> from the logs (no
 invented numbers), rendered by the charting library already bundled in the viewer. Demo pane:
 <code>hr_bim_asset/demo/occupancy_dashboard.html</code>.</p>
-<p><strong>Witnessed (alpha, node):</strong> occupancy availability + pivot (<code>W-HBA-OCC 21/21</code>), the request FSM + the
-Request↔occupancy effect (<code>W-HBA-REQ 15/15</code>), the dashboard config builders (<code>W-HBA-DASH 7/7</code>). See also the
-<a href="../BIMUserGuide/#find-lenses-tenancy">Viewer guide → Find lenses</a> for the on-model Occupancy lens.</p>
+<p><em>(Alpha.)</em> See also the <a href="../BIMUserGuide/#find-lenses-tenancy">Viewer guide → Find lenses</a> for the
+on-model Occupancy lens.</p>
 <hr />
 <h2 id="3-the-bottom-pill-bar-cheat-sheet">3. The Bottom Pill Bar (cheat sheet)<a class="headerlink" href="#3-the-bottom-pill-bar-cheat-sheet" title="Permanent link">&para;</a></h2>
 <p>The pill is the single entry point for every tool. Left-to-right:</p>
@@ -3741,30 +3787,30 @@ No traditional row-update happens; the current state is the fold of all ops on t
 <h2 id="7-pos-point-of-sale">7. POS — Point of Sale<a class="headerlink" href="#7-pos-point-of-sale" title="Permanent link">&para;</a></h2>
 <p><strong>Prerequisite:</strong> log in as <strong>GardenUser</strong> (the POS station <code>c_pos_id=1</code> is scoped to that role).
 Tap the <strong>POS</strong> pill in the bottom bar (it appears only when the loaded db has a <code>c_pos</code> station).</p>
-<h3 id="pos-screen-layout-the-killer-demo-surface-sw-v656-panel-lifecycle-v658v660">POS screen layout (the killer-demo surface, sw v656 → panel lifecycle v658–v660)<a class="headerlink" href="#pos-screen-layout-the-killer-demo-surface-sw-v656-panel-lifecycle-v658v660" title="Permanent link">&para;</a></h3>
+<h3 id="pos-screen-layout-the-killer-demo-surface">POS screen layout (the killer-demo surface)<a class="headerlink" href="#pos-screen-layout-the-killer-demo-surface" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Album cards</strong> — the product grid is a photo album (<code>.pos-card</code>, <code>§POS-ALBUM cards=16</code>): each card
+<li><strong>Album cards</strong> — the product grid is a photo album: each card
   from <code>c_poskey → m_product</code> (the sealed keylayout) shows its photo (full-res from the device images
   folder → ledger thumbnail → placeholder glyph, honestly tiered) and its master price from the
   station's pricelist — you ring the master, not a manual price.</li>
-<li><strong>Floating payment panel</strong> — the cart pill summons a floating panel on its own layer
-  (<code>#pos-float-panel</code>); tap the cart pill again to dismiss it (<code>§POS-FLOAT toggle=</code>). The album keeps
+<li><strong>Floating payment panel</strong> — the cart pill summons a floating panel on its own layer;
+  tap the cart pill again to dismiss it. The album keeps
   scrolling underneath; payment never squeezes the grid.</li>
 <li><strong>Panel lifecycle</strong> — <strong>swipe-down</strong> to dismiss, and it <strong>follows the cart</strong>: when the cart empties
-  — sale completed, or the last line removed — the panel dismisses itself (<code>§POS-FLOAT
-  dispose=cart-empty</code>). The cart pill re-summons it anytime. Dismissing is pure UI: it never touches
+  — sale completed, or the last line removed — the panel dismisses itself. The cart pill re-summons it
+  anytime. Dismissing is pure UI: it never touches
   the cart contents or a committed sale (the sale is sealed atomically at Complete, before the panel
   ever moves).</li>
 </ul>
 <p><img alt="POS — Garden User · Store: product grid left, live cart right, replenishment suggestions below" src="../figs/pos_live.png" /></p>
-<h3 id="payment-panel-layout-sw-v680-top-bar-total-single-pay">Payment panel layout (sw v680 — top-bar total + single Pay)<a class="headerlink" href="#payment-panel-layout-sw-v680-top-bar-total-single-pay" title="Permanent link">&para;</a></h3>
-<p>The panel is a <strong>draggable</strong> float (<code>#pos-float-panel</code>), stripped to the essentials:</p>
+<h3 id="payment-panel-layout-top-bar-total-single-pay">Payment panel layout (top-bar total + single Pay)<a class="headerlink" href="#payment-panel-layout-top-bar-total-single-pay" title="Permanent link">&para;</a></h3>
+<p>The panel is a <strong>draggable</strong> float, stripped to the essentials:</p>
 <ul>
-<li><strong>Top bar — the running total.</strong> The top row shows the <strong>live cart total</strong> (<code>#pos-top-total</code>),
-  updating as you ring items. The <strong>cart icon</strong> stays on the left (tap it to summon/dismiss the panel,
-  <code>§POS-FLOAT toggle=</code>); the <strong>scan-QR</strong> button sits on the <strong>right</strong> (<code>#pos-pill-scan</code> — opens the
+<li><strong>Top bar — the running total.</strong> The top row shows the <strong>live cart total</strong>,
+  updating as you ring items. The <strong>cart icon</strong> stays on the left (tap it to summon/dismiss the panel);
+  the <strong>scan-QR</strong> button sits on the <strong>right</strong> (opens the
   barcode overlay to add an item).</li>
-<li><strong>One Pay icon.</strong> A single <strong>Pay</strong> icon (<code>#pos-float-tender</code>, right) <strong>completes the sale directly</strong>
+<li><strong>One Pay icon.</strong> A single <strong>Pay</strong> icon (right) <strong>completes the sale directly</strong>
   — there is no pre-completion preview modal (the earlier orange/green rim drawers + receipt-preview
   modal are retired). The walk-in partner is <strong>defaulted</strong> (the <strong>Standard</strong> business partner, else
   first active — <code>§POS-PARTNER-DEFAULT</code>), so Pay works out of the box.</li>
@@ -3803,11 +3849,11 @@ automatically (Chrome-only; Safari degrades silently — typed fallback always w
 ≤32KB ledger thumbnail; the full-res photo goes to the device images folder under a
 <code>sha256:</code> content address — <code>§POS-IMGKEY</code>), scan or type its barcode, key the price. <strong>Register</strong>
 commits ONE signed group of 4 CRUD_CREATE ops — M_Product, M_ProductPrice (station pricelist),
-AD_Image, C_POSKey — every default EXTRACTED from the dictionary and the station's own rows
-(<code>§POS-IMPORT registered productId=… gid=…</code>). The new card appears in the album and rings
+AD_Image, C_POSKey — every default EXTRACTED from the dictionary and the station's own rows.
+The new card appears in the album and rings
 immediately through the unchanged sale path. A duplicate barcode is refused and the existing
 product handed back (propose-merge). Editing name/price/photo later rides the same signed path,
-changed columns only (<code>W-POS-EDIT</code>).</p>
+changed columns only.</p>
 <h3 id="hold-recall-p-13">Hold / recall (§P-13)<a class="headerlink" href="#hold-recall-p-13" title="Permanent link">&para;</a></h3>
 <p><strong>Hold</strong> parks the in-progress cart as a real <code>DR</code> C_Order — the same ledger row the Sales Order
 window and Kanban read, not a private store (<code>§POS-HOLD park order=… listed window=Y kanban=Y</code>).
@@ -3824,14 +3870,39 @@ CREATE_DOCUMENT  C_Invoice  (invoice, policy-gated)
 SET_STATUS       C_Invoice → CO
 CONSUME          M_Transaction P−  (one per BOM leaf, the backflush)
 </code></pre></div>
+<h3 id="kitchen-display">Kitchen Display<a class="headerlink" href="#kitchen-display" title="Permanent link">&para;</a></h3>
+<p>The <strong>Kitchen</strong> pill (visible at a POS station) shows every order currently waiting to be served —
+the same <em>deliver-later</em> shipments described in <a href="#deliver-later-pick-at-the-warehouse-s-2b">§S-2b</a>,
+but for a kitchen counter rather than a warehouse pick. The queue is a live view of the ledger, not a
+separate list: as soon as a sale is rung with <strong>Deliver later</strong>, the ticket appears here, oldest first.</p>
+<ul>
+<li><strong>Queue order is first-in-first-out</strong> — the ticket that's been waiting longest is always at the top.</li>
+<li>Tap <strong>Serve</strong> on a ticket once the order is ready. This completes the same shipment the Warehouse
+  Walk would otherwise pick — serving from the kitchen and picking from the warehouse are two doors
+  onto the same document, so a ticket can only be served once (a second tap is refused).</li>
+<li>Nothing here is a separate order type — no new sale action exists for "send to kitchen"; any
+  deliver-later sale automatically becomes a kitchen ticket.</li>
+</ul>
 <h3 id="backflush-p-3">Backflush (§P-3)<a class="headerlink" href="#backflush-p-3" title="Permanent link">&para;</a></h3>
 <p>If any product has a BOM (e.g. Patio Furniture Set), <code>erp_engine.explodeBOM</code> recursively
 expands the recipe and adds a <code>CONSUME P−</code> op for every leaf component. The on-hand fold
 (<code>qtyOnHand</code>) reflects the deduction immediately.</p>
 <h3 id="replenishment-p-4">Replenishment (§P-4)<a class="headerlink" href="#replenishment-p-4" title="Permanent link">&para;</a></h3>
-<p>After each sale, the panel runs <code>poc_replenish</code> — it folds <code>m_transaction</code> to find on-hand
-per product and emits a reorder PO for anything that has fallen below <code>m_replenish.level_min</code>.
-The suggestion list shows at the bottom of the cart panel.</p>
+<p>Replenishment is a <strong>staged, reviewable action</strong> — nothing reorders automatically after a sale.</p>
+<ol>
+<li>Tap <strong>Generate Replenishment</strong> in the POS panel. The system folds every sale and movement to
+   find current on-hand per product, compares it against each product's stock policy
+   (<code>Level_Min</code>/<code>Level_Max</code>), and proposes an editable staging list — nothing is committed yet.</li>
+<li><strong>Review the list.</strong> Adjust the quantity on any row, or deselect a row you don't want ordered
+   this round. Batch sizes round up to the product's packing quantity automatically.</li>
+<li>Tap <strong>Confirm</strong> to commit. Every accepted row goes out as one signed group: a <strong>Purchase
+   Order</strong> for products sourced externally, or a <strong>stock Move</strong> for products sourced from
+   another warehouse — routed automatically per product.</li>
+<li>Tapping <strong>Generate Replenishment</strong> again is safe to repeat: it only proposes what's still
+   outstanding. Anything already ordered this round is never re-ordered, even if you generate
+   again before it arrives.</li>
+</ol>
+<p><em>(Screenshot pending — see <code>docs/figs/pos_live.png</code> for the general POS panel in the meantime.)</em></p>
 <hr />
 <h2 id="8-financial-reporting">8. Financial Reporting<a class="headerlink" href="#8-financial-reporting" title="Permanent link">&para;</a></h2>
 <p>Tap <strong>⌂ → Performance Analysis → Financial Report</strong> (or use the Statements pill from the Dictionary):</p>
@@ -3867,7 +3938,7 @@ The suggestion list shows at the bottom of the cart panel.</p>
 <tr>
 <td><strong>Invoice Print</strong></td>
 <td>✅ oracle-equivalent</td>
-<td>8/8 invoices, 48 cells, <code>foldPrint</code> W-PRINTFORMAT</td>
+<td>8/8 invoices, 48 cells</td>
 </tr>
 </tbody>
 </table>
@@ -3931,11 +4002,11 @@ silently skipped.</p>
 </thead>
 <tbody>
 <tr>
-<td>✅ LIVE (sw v659)</td>
+<td>✅ LIVE</td>
 <td>sample runs 9 cells <code>maxDiff=0c</code> against the seed; works on any installed/migrated tenant (one SQL dialect — SQLite)</td>
 </tr>
 <tr>
-<td>✅ LIVE (sw v662)</td>
+<td>✅ LIVE</td>
 <td>RULE tier — the lens's <strong>"Or describe a data point"</strong> box: type a business phrase (<code>SUM GrandTotal of Invoices, completed, from 2002-01-01 to 2003-12-31</code>), it compiles to SQL from the tenant's own dictionary; the sample falsifies wrong candidates to the cent; a tie is yours to pick (radio), then <strong>Apply &amp; run</strong> writes the row and re-verifies the whole workbook</td>
 </tr>
 <tr>
@@ -3990,10 +4061,9 @@ Off:</p>
 <span class="p">}</span>
 </code></pre></div>
 <p>A callout <em>derives</em> sibling-field values; it never validates (that is a separate rule layer). The
-sample is witnessed end-to-end (<strong>W-ASSET-STATUS</strong>, <code>scripts/poc_asset_status.js</code>): the rule fires
-through the real callout spine <em>because</em> <code>AD_Column.Callout</code> names it, and two falsifiers prove the
-seam is load-bearing in both directions — structure without the JS derives nothing, and the JS
-without that one wiring line never fires.</p>
+sample rule fires
+through the real callout spine <em>because</em> <code>AD_Column.Callout</code> names it — structure without the JS derives
+nothing, and the JS without that one wiring line never fires.</p>
 <h3 id="why-this-replaces-2pack">Why this replaces 2Pack<a class="headerlink" href="#why-this-replaces-2pack" title="Permanent link">&para;</a></h3>
 <p>2Pack never actually carried behavior. It packaged the dictionary XML plus a <em>reference</em>
 (<code>AD_Column.Callout = "org.compiere.model.CalloutX"</code>); the real logic lived in a JAR you dropped on
@@ -4038,16 +4108,16 @@ backup</strong>, and a <strong>teaching sample</strong> — versionable in git, 
 </thead>
 <tbody>
 <tr>
-<td>✅ LIVE (sw v670)</td>
-<td><strong>Install (PackIn)</strong> — paste a raw ES-module bundle URL → ACTIVE. PR #297, witness W-PLUGIN</td>
+<td>✅ LIVE</td>
+<td><strong>Install (PackIn)</strong> — paste a raw ES-module bundle URL → ACTIVE.</td>
 </tr>
 <tr>
-<td>✅ LIVE (sw v673)</td>
-<td><strong>Create (PackOut, forward)</strong> — drop sheet → preview → Emit &amp; Install through the live writable handle. PR #301, witness §NINJA-DOM-WITNESS (headless-chrome on the real deploy scripts)</td>
+<td>✅ LIVE</td>
+<td><strong>Create (PackOut, forward)</strong> — drop sheet → preview → Emit &amp; Install through the live writable handle.</td>
 </tr>
 <tr>
-<td>✅ Witnessed</td>
-<td>the <strong>behavior sample</strong> fires through <code>AdCallout</code> via the <code>AD_Column.Callout</code> seam; both falsifiers hold (W-ASSET-STATUS)</td>
+<td>✅ Verified</td>
+<td>the <strong>behavior sample</strong> fires through <code>AdCallout</code> via the <code>AD_Column.Callout</code> seam</td>
 </tr>
 <tr>
 <td>🔧 Proposed</td>
@@ -4144,7 +4214,7 @@ Any other building → the pill stays off the bar.</p>
 <tr>
 <td><strong>§S-2b</strong> ✅ LIVE</td>
 <td>POS→pick loop</td>
-<td>Sell <strong>deliver-later</strong> at the POS → the walk offers that open shipment → pick it to completion (on-hand moves at the pick). bim-ootb PR #283, W-WH-POS-PICK-LIVE. See §7 → <em>Deliver later</em>.</td>
+<td>Sell <strong>deliver-later</strong> at the POS → the walk offers that open shipment → pick it to completion (on-hand moves at the pick). See §7 → <em>Deliver later</em>.</td>
 </tr>
 </tbody>
 </table>
@@ -4153,13 +4223,12 @@ Any other building → the pill stays off the bar.</p>
 <strong>Deliver later · pick at warehouse</strong> (in the ⋯ dock — shown only when the tenant has a deliver-later
 sale doctype, seed <code>132</code>), the order completes (<code>C_Order → CO</code>) but the shipment is born <strong><code>DR</code></strong> (not
 yet picked). As a demo convenience the Warehouse Walk <strong>opens in a new browser tab</strong> straight away
-(<code>§POS-DELIVERLATER walk-tab=opened</code>) so you can pick immediately. That open shipment also appears as a
+so you can pick immediately. That open shipment also appears as a
 <strong>route source in the Warehouse Walk</strong> on any open: walk to the bin, scan/confirm, and the shipment
 completes by the <strong>picked</strong> quantity — on-hand moves <em>at the pick</em>, not at the sale. Short-picks leave
 the remainder open on the document. Once picked, the walk writes the completion back to the shared
-ledger so the selector never re-offers a picked shipment. The whole loop is witnessed live end-to-end
-(<strong>W-WH-POS-PICK-LIVE</strong>, PR #283). A "with-pick QA confirm" doctype (148) routes completion through the
-warehouse-confirm gate first.</p>
+ledger so the selector never re-offers a picked shipment. A "with-pick QA confirm" doctype (148) routes
+completion through the warehouse-confirm gate first.</p>
 <h3 id="share">Share<a class="headerlink" href="#share" title="Permanent link">&para;</a></h3>
 <p>Tap the <strong>⌂ share</strong> route from the Warehouse pill action or the viewer share button to copy
 the short GH Pages URL for this walk session. The URL is self-contained — opening it on a phone
@@ -4342,7 +4411,7 @@ needed if you see an old <code>CACHE_VERSION</code> number in the console.</p>
 <tr>
 <td><strong>Warehouse viewer: "Failed to fetch …oraclecloud…"</strong> on a bare open</td>
 <td>OCI-era <code>pwa_last_db</code> resumed the retired bucket URL</td>
-<td>Fixed viewer sw v647 — self-heals to the landing (<code>§PWA_RESUME_CLEAR</code>); or clear site data once</td>
+<td>Fixed — self-heals to the landing; or clear site data once</td>
 </tr>
 </tbody>
 </table>
@@ -4358,12 +4427,12 @@ needed if you see an old <code>CACHE_VERSION</code> number in the console.</p>
 <tbody>
 <tr>
 <td><code>AD_Callout</code> derived fields on field-change</td>
-<td>✅ headless (W-CALLOUT-HARDEN)</td>
+<td>✅ engine ready</td>
 <td>Render-wiring parked</td>
 </tr>
 <tr>
 <td><code>AD_Val_Rule</code> picklist filter</td>
-<td>✅ headless (W-VALRULE-HARDEN)</td>
+<td>✅ engine ready</td>
 <td>Render-wiring parked</td>
 </tr>
 <tr>
@@ -4526,8 +4595,7 @@ the real books:</p>
 document with its full fan-out (shipment · invoice · the GL postings), create records, run
 processes. Each op is a signed op-log entry carrying a <code>branch_id</code>, so it lands on the blue branch
 and <strong>never touches the official tip</strong>. The official chrome filters to <code>branch_id IS NULL</code>, so your
-real books read exactly as before while blue is open (the read-site branch filter, sw v687, closed
-the leak where blue rows could surface in official lists).</p>
+real books read exactly as before while blue is open.</p>
 <h3 id="closing-the-branch-accept-or-discard">Closing the branch — accept or discard<a class="headerlink" href="#closing-the-branch-accept-or-discard" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -4557,9 +4625,7 @@ faithful rehearsal, not a simulation. Take a freshly-migrated client through its
 (orders → ship → invoice → post → reports) in blue, read the consolidated result, then <strong>accept</strong> to
 go live or <strong>discard</strong> to try again. Nothing provisional ever reaches the official ledger.</p>
 <blockquote>
-<p>Engine: <code>blue_future.js</code> (<code>window.BlueFuture</code>) over the kernel op-log <code>branch_id</code> lane. Witnessed
-live end-to-end — <strong>W-BLUE-FUTURE-LIVE</strong> (bim-ootb PR #317, erp sw v687); engine <strong>W-BLUE-FUTURE</strong>
-9 / 9 headless.</p>
+<p>Engine: <code>blue_future.js</code> (<code>window.BlueFuture</code>) over the kernel op-log <code>branch_id</code> lane.</p>
 </blockquote>
 <hr />
 <p><em>For architecture details see ERP.md. For the coverage evidence see

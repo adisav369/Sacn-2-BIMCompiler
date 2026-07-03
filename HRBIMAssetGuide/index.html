@@ -392,6 +392,8 @@
       
         
       
+        
+      
     
     
     
@@ -461,6 +463,34 @@
     
   
     📖 User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WhatsNew/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🆕 What's New
   
 
     
@@ -970,6 +1000,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#jump-straight-to-the-erp-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jump straight to the ERP record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#classify-spaces" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -985,6 +1026,50 @@
     <span class="md-ellipsis">
       
         Read the numbers (Dashboard)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#payroll-payslip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Payroll — payslip
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#leave-balance-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Leave — balance &amp; statement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tenancy-ad-compile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tenancy — AD compile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bim-bom-assembly-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BIM BOM — assembly &amp; recipe
       
     </span>
   </a>
@@ -1945,6 +2030,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#jump-straight-to-the-erp-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jump straight to the ERP record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#classify-spaces" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1960,6 +2056,50 @@
     <span class="md-ellipsis">
       
         Read the numbers (Dashboard)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#payroll-payslip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Payroll — payslip
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#leave-balance-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Leave — balance &amp; statement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tenancy-ad-compile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tenancy — AD compile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bim-bom-assembly-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BIM BOM — assembly &amp; recipe
       
     </span>
   </a>
@@ -2105,6 +2245,8 @@ If you want to know <em>how it works</em> (or you administer the data), read <st
    marked "no data"</strong>.</li>
 </ol>
 <p><img alt="The toolbar with the FM / Operate pill lit (blue, bottom-right rail) and its drawer open — five lenses: Occupancy, Presence, Unit class, Assets / IoT, Dashboard" src="../img/hba_fm_drawer.png" /></p>
+<p><em>(The drawer has since grown to 8 entries — the 4 lenses above plus Tenancy / AD, Dashboard, Payslip, and
+   Leave; see <a href="#the-lenses-at-a-glance-reference">The lenses at a glance</a> for the full current list.)</em></p>
 <ol>
 <li><strong>Turn on a lens.</strong> Tap <strong>Occupancy</strong>. Tapping a row applies the lens <strong>and closes the drawer</strong>; re-tap the
    pill to reopen it and see which lens is active (highlighted, "● on"). The status bar reads e.g.
@@ -2162,7 +2304,7 @@ is variations on it.</p>
 </table>
 <blockquote>
 <p><strong>Where the colour actually lands.</strong> A room (<code>IfcSpace</code>) usually isn't its own mesh — the lens tints its real
-rendered <strong>contained members</strong> instead (see <a href="#under-the-hood--the-data-model">How a unit binds to the model</a>).
+rendered <strong>contained members</strong> instead (see <a href="#under-the-hood-the-data-model">How a unit binds to the model</a>).
 On the HHS sample those members are small fixtures, so from a building-wide view the wash reads as a subtle
 tint; the <strong>GardenWorld</strong> warehouse below tints a whole aisle-floor at once and is the clearest example to look
 at first if you want to <em>see</em> the effect from a distance.</p>
@@ -2210,7 +2352,55 @@ discipline the rest of this module follows:</p>
 <p><img alt="The CCTV mockup grid (6 tiles, no real feed) and the ERP billing table underneath — each sensor reading compiled as a billable order line with qty/UOM/net amount" src="../img/hba_iot_cctv.png" /></p>
 <p>This is the clearest illustration of the module's <strong>Spatial ERP</strong> idea: a sensor bound to a real element in
 the model is, at the same time, a line item a real ERP order can bill — one binding, two views (the 3D tint
-and the ledger line), off the same record.</p>
+and the ledger line), off the same record. Each billing row's <strong>open ↗</strong> deep-links straight to that
+<code>C_Order</code>/<code>C_OrderLine</code> in iDempiere — "here's a real billable document, ready for management's follow-up",
+not just a mockup number:</p>
+<p><img alt="The IoT billing table with an &quot;open ↗&quot; link on each row, deep-linking to the real C_Order in iDempiere" src="../img/hba_iot_billing_link.png" /></p>
+<h3 id="jump-straight-to-the-erp-record">Jump straight to the ERP record<a class="headerlink" href="#jump-straight-to-the-erp-record" title="Permanent link">&para;</a></h3>
+<p>Every pane above that shows data compiled onto a <strong>real AD table</strong> carries a small <strong>open ↗</strong> link per row —
+Dashboard's Resources, Payslip's concept lines, Leave's unpaid entries, Tenancy's subscriptions, and IoT's
+billing lines. Tapping it opens that exact record in <code>erp/idempiere.html</code> in a new tab — the <em>same</em> deep-link
+mechanism the Viewer's own <strong>Find</strong> panel already uses to reopen a pushed Project Order (<code>?client=garden&amp;
+window=&lt;id&gt;&amp;record=&lt;pk&gt;</code>), reused here rather than invented fresh. Every window number below was looked up
+from the real AD dictionary, never guessed:</p>
+<table>
+<thead>
+<tr>
+<th>Pane · row</th>
+<th>iDempiere window</th>
+<th>Native table</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dashboard → Resources</td>
+<td>Resource</td>
+<td><code>S_Resource</code></td>
+</tr>
+<tr>
+<td>Payslip → concept line</td>
+<td>Payroll Movement</td>
+<td><code>HR_Movement</code></td>
+</tr>
+<tr>
+<td>Leave → unpaid entry</td>
+<td>Payroll Concept Catalog</td>
+<td><code>HR_Concept</code> (the "Leave without pay" concept it feeds — Leave has no native table of its own)</td>
+</tr>
+<tr>
+<td>Tenancy → subscription</td>
+<td>Subscription</td>
+<td><code>C_Subscription</code></td>
+</tr>
+<tr>
+<td>IoT → billing line</td>
+<td>Sales Order</td>
+<td><code>C_Order</code></td>
+</tr>
+</tbody>
+</table>
+<p>No link appears on a row that doesn't (yet) resolve to a real record — the same non-invent discipline as
+everywhere else in this module: an absent link is honest, never a dead one.</p>
 <h3 id="classify-spaces">Classify spaces<a class="headerlink" href="#classify-spaces" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Open the drawer → tap <strong>Unit class</strong>.</li>
@@ -2232,6 +2422,61 @@ and the ledger line), off the same record.</p>
 <li><strong>Occupancy by storey</strong> — utilisation % per level (all storeys, not just the ground floor).</li>
 <li><strong>Open requests by age</strong> — the SLA doughnut, tickets bucketed <code>&lt;1d · 1–3d · 3–7d · &gt;7d</code>.</li>
 <li><strong>Room availability over time</strong> — a 12-month stacked trend of occupied / expiring / unavailable / vacant.</li>
+<li><strong>Resources</strong>, scrolled further down the same pane — one row per real room (name · storey · utilisation),
+   each a genuine <code>S_Resource</code> record ("a room is a bookable resource"). Every row carries an <strong>open ↗</strong> link
+   straight to that record in iDempiere — see <a href="#jump-straight-to-the-erp-record">Jump straight to the ERP record</a>
+   below.</li>
+</ol>
+<p><img alt="The Dashboard pane scrolled to its Resources list — one row per real room with storey, utilisation %, and an &quot;open ↗&quot; link into iDempiere's Resource window" src="../img/hba_dashboard_resources.png" /></p>
+<h3 id="payroll-payslip">Payroll — payslip<a class="headerlink" href="#payroll-payslip" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open the drawer → tap <strong>Payslip</strong>. An additive pane opens with an employee picker and that employee's
+   payslip — gross/net KPIs and a per-concept line trace (Base Salary, Allowance, EPF, PCB…), each line showing
+   the <strong>rule it came from</strong> (glass-box, not a black-box number).</li>
+</ol>
+<p><img alt="The Payslip pane — EMP001 selected, gross 5200 / net 4234, four concept lines (Base Salary, Allowance, EPF, PCB) each with its rule trace and an &quot;open ↗&quot; link into iDempiere's Payroll Movement window" src="../img/hba_payslip.png" /></p>
+<ol>
+<li>Every line is a real <code>HR_Movement</code> row — the native iDempiere payroll table (dormant everywhere else this
+   dictionary ships, first activated here). Each line's <strong>open ↗</strong> deep-links straight to that movement record.</li>
+</ol>
+<h3 id="leave-balance-statement">Leave — balance &amp; statement<a class="headerlink" href="#leave-balance-statement" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open the drawer → tap <strong>Leave</strong>. Balances (taken / unpaid / per-type) are <strong>replayed</strong> from a signed
+   accrue/take op-log — never a stored number — with a chain-integrity check shown inline.</li>
+</ol>
+<p><img alt="The Leave pane — EMP001, 10d taken, 4d unpaid, per-entry statement rows, with an &quot;open ↗&quot; link on unpaid rows into iDempiere's Payroll Concept Catalog" src="../img/hba_leave.png" /></p>
+<ol>
+<li>Leave itself has <strong>no native AD table anywhere</strong> in iDempiere (checked against the real dictionary) — it's a
+   genuine addition, not a reinvention of something that already existed. So an unpaid row's <strong>open ↗</strong> doesn't
+   point at a fabricated "leave record" window; it points at the real <strong>"Leave without pay" payroll concept</strong>
+   the unpaid days feed into once payroll runs — the honest, real thing an unpaid entry actually compiles onto.</li>
+</ol>
+<h3 id="tenancy-ad-compile">Tenancy — AD compile<a class="headerlink" href="#tenancy-ad-compile" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open the drawer → tap <strong>Tenancy / AD</strong>. Every lease and strata charge in the building compiled onto real
+   iDempiere tables — a unit is a <code>M_Locator</code> + <code>M_Product</code> under a <code>M_Warehouse</code>-as-building, a lease or strata
+   fee is a real <code>C_Subscription</code> (party · unit · cadence · term).</li>
+</ol>
+<p><img alt="The Tenancy pane — Warehouse/Units/Leases/Strata KPI tiles and a per-subscription row list (party, storey, cadence, term), each row with an &quot;open ↗&quot; link into iDempiere's Subscription window, plus a skipped-record footer" src="../img/hba_tenancy.png" /></p>
+<ol>
+<li>Row click flies the camera to that unit (the same shared fly-to used by the Presence roster above); the
+   <strong>open ↗</strong> link is separate and deep-links straight to the <code>C_Subscription</code> record. A record whose unit
+   doesn't resolve to a real room in this building is <strong>skipped</strong>, never fabricated — the footer says so.</li>
+</ol>
+<h3 id="bim-bom-assembly-recipe">BIM BOM — assembly &amp; recipe<a class="headerlink" href="#bim-bom-assembly-recipe" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open the drawer → tap <strong>BOM</strong>. Every room in the building is an <strong>assembly</strong>: the room itself plus
+   every element physically contained in it, compiled onto iDempiere's native Bill of Materials tables
+   — the same recipe structure iDempiere uses for manufacturing, not a bolt-on BIM-only concept.</li>
+</ol>
+<p><img alt="The BIM BOM pane over the HHS office model — assembly/component KPI tiles, then a per-room assembly list (RM_Level_1_1, RM_Level_1_2, …) with each room's contained elements listed underneath with quantities, an &quot;open ↗&quot; link on every assembly, and the SAMPLE — NOT OFFICIAL watermark" src="../img/hba_bom.png" /></p>
+<ol>
+<li>Each assembly lists its component lines right underneath — one row per contained element, with the
+   recipe quantity carried over from the model. Click an assembly row and the camera flies to that room.
+   The <strong>open ↗</strong> link deep-links to the real <strong>"Bill of
+   Materials and Formula"</strong> window, the same one a manufacturing user would use for a physical product's
+   recipe — a room's contents are read through the identical lens, not a parallel BIM-only screen.</li>
+<li>This pane has no 3D wash — it's a compiled list, like Tenancy and Dashboard.</li>
 </ol>
 <hr />
 <h2 id="a-building-with-no-rooms-aisle-zones">A building with no rooms? Aisle-zones<a class="headerlink" href="#a-building-with-no-rooms-aisle-zones" title="Permanent link">&para;</a></h2>
@@ -2276,9 +2521,29 @@ above). Nothing is invented to make this work: the aisle labels and the element 
 <td>ok <code>#2e7d32</code> · due <code>#f9a825</code> · overdue <code>#c62828</code></td>
 </tr>
 <tr>
+<td><strong>Tenancy / AD</strong></td>
+<td><em>What's the AD-compiled lease/strata detail?</em></td>
+<td>opens the AD-compile pane (no 3D wash)</td>
+</tr>
+<tr>
+<td><strong>BOM</strong></td>
+<td><em>What's this room's assembly recipe?</em></td>
+<td>opens the BOM pane (no 3D wash)</td>
+</tr>
+<tr>
 <td><strong>Dashboard</strong></td>
 <td><em>Give me the numbers.</em></td>
 <td>opens the charts pane (no 3D wash)</td>
+</tr>
+<tr>
+<td><strong>Payslip</strong></td>
+<td><em>What did this employee actually get paid, and why?</em></td>
+<td>opens the payslip pane (no 3D wash)</td>
+</tr>
+<tr>
+<td><strong>Leave</strong></td>
+<td><em>What's this employee's leave balance and statement?</em></td>
+<td>opens the leave pane (no 3D wash)</td>
 </tr>
 </tbody>
 </table>

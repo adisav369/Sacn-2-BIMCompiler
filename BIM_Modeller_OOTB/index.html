@@ -392,6 +392,8 @@
       
         
       
+        
+      
     
     
     
@@ -461,6 +463,34 @@
     
   
     📖 User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WhatsNew/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    🆕 What's New
   
 
     
@@ -2795,7 +2825,7 @@ Geometry is a materialized view of the operation log — a cache of evaluated re
 <p>The performance problem was solved by the schema (geometry BLOBs as pre-computed GPU buffers, instancing via hash deduplication). Modelling reuses that infrastructure — it does not replace it.</p>
 <hr />
 <h2 id="what-this-means-for-the-open-bim-community">What This Means for the Open BIM Community<a class="headerlink" href="#what-this-means-for-the-open-bim-community" title="Permanent link">&para;</a></h2>
-<p>The <a href="../MANIFESTO/#the-open-bim-question--where-the-community-got-stuck">osArch community</a> debates which geometry kernel, which file format, which desktop application. The question this project asks is: <strong>what if the modelling session is the database transaction log?</strong></p>
+<p>The <a href="../MANIFESTO/#the-open-bim-question-where-the-community-got-stuck">osArch community</a> debates which geometry kernel, which file format, which desktop application. The question this project asks is: <strong>what if the modelling session is the database transaction log?</strong></p>
 <p>IFC export becomes what glTF export is to a game engine — a delivery format for other tools, not the primary artefact. The primary artefact is the <code>kernel_ops</code> log in SQLite, offline, in the browser, owned by the architect without a server, a license, or a Blender install.</p>
 <p>That is the inversion.</p>
 <hr />
