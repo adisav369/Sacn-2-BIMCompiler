@@ -18,37 +18,16 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
-## Unified docs pass leftovers (2026-07-03, Fable5) — ✅ CLOSED (bc #35)
-- Real HBA BOM pane screenshot (`docs/img/hba_bom.png`, live cdp harness, `§DIAG_BOM_SHOT … bomAsmRows=13
-  bomLineRows=88 openLinks=13`) + 4 anchor-slug fixes (`--strict` 0 anchor notices) + 15 remote / 17 local
-  superseded `docs/*` branches deleted after per-branch diff verification. Trail: `prompts/RESUME_UNIFIED_DOCS_PASS_2026-07-03.md`.
+## Pills consolidation review (2026-07-03, Fable5) — ✅ DECIDED + EXECUTED (bim-ootb #635)
+- The forked `erp/`+`viewer/` `pill_builder.js` → ONE canonical `common/pill_builder.js`; decisions D1-D4
+  (universal no-outside-close decree, `title||name||id` hover, viewer-only `layout:'rail'`, common/ home) +
+  §ICON MAP: 5 glyph collisions de-collided (shieldCheck/scale/locateFixed/footprints/orbit/waypoints, Lucide
+  verbatim); anti-re-fork witness `witness_pill_canonical.js` ALL PASS; `test_pills_manifest.js` repaired
+  (was silently red). Full record: `prompts/PILLS_CONSOLIDATION_REVIEW_2026-07-03.md §DECISIONS`.
 
-## HBA ERP-governed Stage 3 + C_Attendance retirement (2026-07-03, Fable5) — ✅ SHIPPED
-- Prereq (watchdog): invented `C_Attendance` RETIRED (Ninja rollback + physical DROP); attendance retargeted
-  onto native `S_Resource`/`S_ResourceAssignment` (Mary-Consultant pattern); zone stays BIM op-log fact
-  (spatial view-trace). Stage 3: Presence drawer reads governed rows; NEW BIM BOM pane (FAMILY 9th, deep-link
-  AD_Window 53006); live headless-Chrome smoke GREEN (`§HBA_GOVERN … S_ResourceAssignment=7/7 BOM=13`, 0 errors).
-- Live-smoke finding FIXED: #628 regression — `ad_payroll.js` needs `mock_rates.js` loaded first or its IIFE
-  dies silently (payslip/leave panes dead). viewer.html + fm_panel.html fixed; witness F8 pins script order.
-- bim-ootb **PR #632** (lane/hba-attendance-native), suite 40/40. Spec: `prompts/RESUME_HBA_ERP_STAGE3.md` (all ✅).
-
-## Modeller §NEEDS-DESIGN batch (2026-07-03, watchdog→Fable5) — ✅ SHIPPED
-- Items 1,2,4,5,6,7 (eye-toggle, filter→scene dim, auto-expand-on-pick, Outliner windowing+O(k) pick,
-  selection edge outline, real shadows+perf guard) — bim-ootb **PR #625** MERGED; item 8 (floating drag
-  dims) — **PR #627** MERGED. Spec+decisions+DONE log: bim-ootb `prompts/RESUME_MODELLER_POLISH3.md`.
-  New witnesses 30/30 (OLVIRT/OLEYE/OLFILTER/SELOUTLINE/SHADOWS/FLOATDIM); regression 7 suites green.
-- Item 10 ✅ BUILT 2026-07-03 (Fable5): T=arm rotate ring / S=arm scale cubes (R kept Insert) — bim-ootb
-  **PR #631 MERGED** (squash `8d73fb0`, verified on main), W-E2E-RSARM 8/8 + regression 36/36 green.
-  First-RED fix: gizmo arrow shaft+tip share one material → arm-dim base opacity recorded on material.
+## Modeller §NEEDS-DESIGN batch (2026-07-03) — ✅ SHIPPED (bim-ootb #625/#627/#631)
+- Items 1-8+10 shipped, witnesses 30/30 + W-E2E-RSARM 8/8. Spec+DONE log: bim-ootb `prompts/RESUME_MODELLER_POLISH3.md`.
 - OPEN (unassigned): item 9 PBR textures; SSAO (needs EffectComposer vendored); per-instance hide (§DECISIONS-2).
-
-## HBA lane/hr-overlay sync+PR handoff (2026-07-03, Fable5) — ✅ DONE
-- Queued task from `bim-ootb prompts/RESUME_HR_BIM_ASSET.md ⏭ NEXT` executed: merged origin/main (12 squash
-  add/add conflicts re-merged 3-way vs PR #609 head `cc67ed3`, union kept — S2 `_regovern` #622 + BOM #626
-  intact alongside P10b/E-Invoice), witness suite **39/39 green** post-merge (AD1 gross=5200/net=4234 held,
-  W-HBA-EINVOICE 19/19, main's W-HBA-ERP-GOVERNED 9/9 + BOM-GOVERNED 6/6 + GOVERN-WIRE 5/5 green in-branch),
-  **PR #628 MERGED** (`e42a96b`, verified landed) + doc closeout PR #629. `lane/hr-overlay` now squash-merged —
-  do NOT reuse; next HBA slice (Stage 3 pane read-through-lens + live smoke) starts off fresh origin/main.
 
 ## Kernel op-log timebomb audit (2026-07-03) — 3-agent scalability/macro/security sweep
 - Findings: `prompts/KERNEL_TIMEBOMB_AUDIT_2026-07-03.md` (13 defects, root cause: sound at op-CREATION,
@@ -77,6 +56,8 @@
   Full triage: `prompts/CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- Unified docs pass leftovers — bc #35/#36, HBA BOM shot + anchors + branch dedupe (2026-07-03; `prompts/RESUME_UNIFIED_DOCS_PASS_2026-07-03.md`)
+- HBA Stage 3 + C_Attendance retirement — bim-ootb PR #632, suite 40/40, §HBA_GOVERN live smoke (2026-07-03; `prompts/RESUME_HBA_ERP_STAGE3.md`)
 - HBA lane/hr-overlay sync+PR handoff — bim-ootb PR #628 `e42a96b` + closeout #629, 39/39 (2026-07-03; memory [[project_hba_erp_governed_display]])
 - Ninja Create two-way engine + live export — `prompts/NINJA_MODE_PILL.md # DONE`, W-NINJA-{EXTRACT,CALLOUT,EXPORT,EXPORT-LIVE} + W-ASSET-STATUS (bim-ootb PR #301/#309, sw v673/v681, 2026-06-14)
 - Reflexive AD self-edit — W-AD-{OPLOG-DISTRIB,SELFEDIT,SELFEDIT-LIVE} (bim-ootb PR #312 sw v683, 2026-06-14)
