@@ -18,18 +18,14 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
-## Fable5 wrap-up — ALL 6 ITEMS ✅ DONE (2026-07-04) — spec `prompts/FABLE5_WRAPUP_2026-07-03.md` (per-item witness statuses inline)
-- Item 1 CI WARN tier (bc #37): CI-only WARN for live-fingerprint/sync + browser-E2E in test_all.js; real debt still gates.
-- Item 3 kernel T1 PIN attribution (ootb #634, W-T1-ATTRIB 16/16): PIN = content-signed audit metadata; device key stays sole signer; cosign refuses same-PIN + same-device.
-- Item 4+4b kernel T7 (ootb #636, W-T7-INC 35 🟢): incremental seal/verify/tip-folds (2254ms→3ms per sale) + signed SHARD_SNAPSHOT boundary (boot verify 3422ms→1ms, archive-confirm-before-delete, default-off); pre-merge adversarial review closed 3 findings (race/anchor/injection).
-- Item 5 per-instance hide (ootb #637, W-E2E-INSTHIDE 14/14) · Item 6 Export menu + native .db (ootb #633, round-trip sha-identical) · Item 2 docs leftovers (bc #35/#36, other session).
-
-## Pills consolidation review (2026-07-03, Fable5) — ✅ DECIDED + EXECUTED (bim-ootb #635)
-- The forked `erp/`+`viewer/` `pill_builder.js` → ONE canonical `common/pill_builder.js`; decisions D1-D4
-  (universal no-outside-close decree, `title||name||id` hover, viewer-only `layout:'rail'`, common/ home) +
-  §ICON MAP: 5 glyph collisions de-collided (shieldCheck/scale/locateFixed/footprints/orbit/waypoints, Lucide
-  verbatim); anti-re-fork witness `witness_pill_canonical.js` ALL PASS; `test_pills_manifest.js` repaired
-  (was silently red). Full record: `prompts/PILLS_CONSOLIDATION_REVIEW_2026-07-03.md §DECISIONS`.
+## Fable5 follow-up (2026-07-04) — 3 items spec'd, NOT yet assigned (awaiting Graph Modeller review comment first)
+- `prompts/FABLE5_FOLLOWUP_2026-07-04.md`: (1) **`ErpShard.maybeShard` has zero callers** — T7 sharding infra
+  shipped but unwired, the scale-cliff risk it fixes is still live in prod — highest priority; (2) `teams_pill.js`
+  standalone-fallback close button; (3) `pos_lens.js` `.pos-pill-btn` witness.
+- ARC-mesh/readPixels stranded branch (bim-ootb #638): ported the non-redundant STR/canopy render +
+  readPixels harness onto `main`, correctly discarded the branch's now-redundant mesh rewrite (`real_geometry.js`
+  already superseded it); stranded branch deleted. One honest miss: `W-DW-DENSITY-TE` 8/8→7/8 (ARC occupancy
+  99%→92-95%, unrelated pre-existing drift, low-priority follow-up).
 
 ## Kernel op-log timebomb lane — T1/T2/T3/T6/T7 ✅ SHIPPED; T4+T5 remain
 - Findings: `prompts/KERNEL_TIMEBOMB_AUDIT_2026-07-03.md`. Shipped: T3+T6 (#623, kernel v10,
@@ -49,6 +45,7 @@
   Full triage: `prompts/CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- Fable5 wrap-up, all 6 items + pills consolidation — bc #37, ootb #633/#634/#635/#636/#637, bc #38 (2026-07-04; `prompts/archive/FABLE5_WRAPUP_2026-07-03.md` + `prompts/archive/PILLS_CONSOLIDATION_REVIEW_2026-07-03.md`)
 - Unified docs pass leftovers — bc #35/#36, HBA BOM shot + anchors + branch dedupe (2026-07-03; `prompts/RESUME_UNIFIED_DOCS_PASS_2026-07-03.md`)
 - HBA Stage 3 + C_Attendance retirement — bim-ootb PR #632, suite 40/40, §HBA_GOVERN live smoke (2026-07-03; `prompts/RESUME_HBA_ERP_STAGE3.md`)
 - Modeller §NEEDS-DESIGN batch + item 10 T/S arms — bim-ootb #625/#627/#631, 30/30 + 8/8; spec bim-ootb `prompts/RESUME_MODELLER_POLISH3.md` (2026-07-03)
