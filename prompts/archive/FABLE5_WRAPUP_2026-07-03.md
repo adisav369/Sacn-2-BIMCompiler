@@ -260,3 +260,16 @@ change) — regression-test both existing witnesses (IFC re-import check, W-E2E-
 Each of the 6 items above is `✅ DONE (witness)` or `⛔ BLOCKED: <question>` — same WORK-TO-ZERO contract as
 the standing backlog. Update this file in place marking each item's status before ending. Push every
 branch before finishing — no committed-but-unpushed work at session close.
+
+## ✅ ALL 6 ITEMS DONE 2026-07-04 (Fable5 session A) — carried-forward follow-ups for a NEXT session
+Three real follow-ups surfaced, not yet assigned to anyone:
+1. **`ErpShard.maybeShard` has zero callers — highest priority of the three.** Item 4b built the
+   sharding/lazy-fetch infra (W-T7-INC 35 🟢, measured per-sale verify 2254→3ms) but **no host page opts into
+   it yet** — POS and Time-Machine both still read the old way. Until something calls it, the original
+   scale-cliff problem this was built to fix is still live in production; the feature exists but has zero
+   effect. Needs: POS host opt-in + a lazy-shard UI affordance for Time-Machine.
+2. ~~bim-ootb PR #638 still needs merging~~ — **✅ DONE 2026-07-04**: merged (`19721ff`), stranded
+   `lane/arc-mesh-readpixels` deleted (remote + local), see `project_arc_meshreadpixels_branch_unmerged.md`.
+3. **ARC occupancy density drifted 99%→92-95%** (W-DW-DENSITY-TE, surfaced incidentally by #638's port,
+   unrelated to the port itself) — small, non-urgent, real unexplained shift worth naming eventually.
+- Also unrelated to this file but still open: **bim-ootb PR #624** (`release-please` auto-PR) — trivial, one click.
