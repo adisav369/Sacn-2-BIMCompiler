@@ -1653,7 +1653,7 @@
   <span class="md-ellipsis">
     
   
-    SQLite-in-Browser Architecture (verified vs. code)
+    How the Database Works (big picture)
   
 
     
@@ -3208,7 +3208,7 @@ Fraud and overspend are <strong>not solvable</strong> (a CAP partition; the offl
 <p><strong>Sources / cross-refs:</strong> ERP.md §0.20 (phase + witnesses W-CHAIN/SIGN/PERSIST/OWNER) · <a href="../LocalFirstPriorArt/">LocalFirstPriorArt.md</a> (Replicache/ElectricSQL/PowerSync/LiveStore/CRDTs, per-system analysis) · <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/erp_kernel.js">scripts/erp_kernel.js</a> + <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_kernel.js">poc_kernel.js</a> + <a href="https://github.com/red1oon/BIMCompiler/blob/full/scripts/poc_longtail.js">poc_longtail.js</a> (<code>replay-hash == live-hash</code>, browser binding) · <a href="../SpatialERP_OOTB/">SpatialERP_OOTB.md §11.5</a> · iDempiere <code>M_Transaction</code> / <code>M_StorageOnHand</code> / <code>M_StorageReservation</code> / <code>M_Movement</code>.</p>
 <h3 id="111-the-disposable-host-paradigm-what-it-actually-costs-to-run">11.1 The Disposable-Host paradigm — what it actually costs to run<a class="headerlink" href="#111-the-disposable-host-paradigm-what-it-actually-costs-to-run" title="Permanent link">&para;</a></h3>
 <p>A standard corporate ERP install is <strong>three always-on tiers, per tenant, 24/7</strong>: an application server (ZK/OSGi/JVM), a database server (Postgres), and the surrounding cache / load-balancer / standby. That fleet is the dominant hosting line item, and it runs whether anyone is clicking or not.</p>
-<p>This architecture <em>deletes</em> that tier rather than renting it more cheaply. The compute moves <em>into the client</em> — the deterministic kernel over SQLite-WASM (§7, §0; <strong><a href="../SQLiteWasmArchitectureActual.html">verified layer-by-layer against the actual code</a></strong> — sql.js in-memory, main-thread, no OPFS/Promiser, durability carried by the signed log as this section claims) — so the server side reduces to two things, both of which the doc has already shown are <em>disposable</em> (reconstructible from the signed logs, §6/§11):</p>
+<p>This architecture <em>deletes</em> that tier rather than renting it more cheaply. The compute moves <em>into the client</em> — the deterministic kernel over SQLite-WASM (§7, §0; <strong><a href="../SQLiteWasmArchitectureActual.html">the big picture, plainly</a></strong>) — so the server side reduces to two things, both of which the doc has already shown are <em>disposable</em> (reconstructible from the signed logs, §6/§11):</p>
 <ol>
 <li><strong>Static object storage</strong> for the signed-log snapshot — a CDN/bucket object. Near-zero marginal cost, scales for free, no process to keep alive. <em>(Witnessed live: the same signed snapshot served interchangeably from GitHub raw, an OCI bucket, and localhost — <code>build/erp/replica_poc.html</code>, <code>scripts/test_kernel_replica.js</code>; any reachable host replays to an identical, controller-signed chain tip, so the host is genuinely interchangeable.)</em></li>
 <li><strong>A thin "dumb post office" relay</strong> (§6) — order + persist + relay only, no business logic — run <em>intermittently</em>, not 24/7, and itself reconstructible from the logs. <em>(Witnessed: <code>build/erp/erp_relay_server.js</code>, <code>scripts/test_kernel_relay.js</code> — idempotent ingest, convergence over HTTP, durable restart.)</em></li>
