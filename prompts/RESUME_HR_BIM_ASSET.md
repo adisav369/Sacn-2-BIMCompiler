@@ -1693,3 +1693,68 @@ resource-availability record, the same way a room's blackout does.
 
 Neither A, B, nor C is started. Log here, not in `MEMORY.md`'s per-session churn, so the next session that
 touches HBA finds this without re-deriving it.
+
+## ▶ 2026-07-04b — A/B/C ✅ ALL DONE (the fresh Sonnet-with-user design pass + build this section asked for)
+
+The design pass happened first (AskUserQuestion, 4 questions covering the real forks left open above), THEN
+implementation, in `/tmp/wt-hba-a2c` off fresh `origin/main`, branch `lane/hba-construction-clickthru`, bim-ootb
+PR **#645** (pushed, not yet merged — this repo's normal PR flow, `main` has required-status-checks).
+
+**Design answers that shaped the build (supersede the open questions above):**
+- A coexists with the floating panes (doesn't replace them). "Further BIM model tabs" was a misreading —
+  Construction is purely an **iDempiere-side** AD_Window; the Viewer-side click-through is the actual ask,
+  answered as "in Find, at a storey/room, zoom to iDempiere."
+- C: don't invent a new Viewer panel — the blackout must show up in the **standard iDempiere Resource
+  Schedule** (native tab 416 under window 236). This session's Leave-side scope = click-through only.
+- B: forward link only (Presence → AD_User). Reverse (ERP record flying back into the 3D model) explicitly
+  deferred — genuinely new mechanism, no precedent anywhere in the codebase, needs its own spec.
+
+**A — "Construction" AD_Window.** `scripts/seed_hba_construction.js` (NEW): proto-clones window 139's
+AD_Window + all 5 AD_Tab rows + all 60 AD_Field rows under a new id band (`CONSTR_BASE=7,800,000`), Name→
+'Construction', window 139 byte-identical/untouched. Idempotent (2nd run = 0 additions), self-witnessed (10
+checks: tab/field/column parity, `ad_parser.js getWindow()`'s own query resolves it — no manifest edit needed
+since it's a brand-new id). `hba_lens.js AD_WINDOWS.CONSTRUCTION=7800000`. `navigate_find.js` gained a second
+shared link element (`#find-construction-open`, mirrors the existing `#find-erp-open` Project-link pattern)
++ `_surfaceConstructionLink(guid,label)`, wired into both `_roomSelect`/`_roomGroupSelect` — building-grain
+honestly (every room/storey in one building shares the same warehouse record; HBA absent → honest no-op,
+never fabricates a warehouse id). Live smoke `viewer/tests/poc_construction_link_live.js` (NEW, Playwright,
+real HHS_Office_Federated + Find's Room-lens axis toggle + a real tree-row click): 8/8, confirms
+`window=7800000&record=990000` (the real seeded warehouse id), 0 pageerrors.
+
+**B — Presence forward link.** `viewer/hba_lens.js openPresenceDrawer`: each roster row (was a `<button>`,
+now a `<div>` so a nested `<a>` is valid) gains an "open ↗" to `AD_WINDOWS.USER=108` (AD_User), record=
+`official.ad_user_id` (always populated on every real `MODELS.Official` row, unlike the nullable
+`c_bpartner_id`) — `stopPropagation()` so the link doesn't also trigger the row's `flyToZone`. Witnessed:
+`witness_erp_govern_wire.js` WIRE6 (+1, 9/9 total). Live smoke (below, shared file with C): 9/9.
+
+**C — Leave-as-Resource.** NEW `hr_bim_asset/ad_leave.js`: `toUnavailableRow(takeOp, s_resource_id, seedId)`
+projects a signed `TAKE` op onto the real `S_ResourceUnAvailable` columns (datefrom=the TAKE's own date,
+dateto=datefrom+(days-1), pure arithmetic on the supplied ts — never `Date.now()`); `compileLeaveUnavailability`
++ `readUnavailability` (lens read, mirrors `ad_attendance.readPresence`'s JOIN shape). `scripts/seed_hba_erp.js`
+extended (§8, before the self-witness block): seeds 6 real rows (EMP001/EMP002 × 3 demoLog TAKE ops each),
+proto-cloned from the stock row (id=100 "Training class") for exact column parity; self-witness confirms the
+JOIN through Resource↔AD_User is lossless (6/6). `viewer/hba_leave.js renderStatement` gained a "Resource ↗"
+link to `AD_WINDOWS.RESOURCE=236`, record=`A._hbaEmpResourceMap[empId]` — a NEW standalone export off
+`hba_lens.js _regovern` (the same real-row-sourced map `_hbaAttendanceSpec` already builds internally, now
+also exposed for reuse); honest no-link when ungoverned (no ERP db loaded → no map → no fabricated id).
+Witnessed: `witness_ad_leave.js` (NEW, 10/10 — non-invent gate, date-range math, honest-skip, determinism) +
+`witness_leave_pane.js` LP5b-d (+3, 13/13 total — absent-when-ungoverned, present-with-correct-href-when-
+governed). Live smoke `viewer/tests/poc_presence_leave_link_live.js` (NEW, Playwright, `fm_panel.html`): 9/9 —
+Presence roster's 3 rows all link to `window=108`, Leave pane's "Resource ↗" links to `window=236&record=
+990109` (EMP001), 0 pageerrors.
+
+**Regression:** full 41-file HBA node witness suite (was 40 baseline + `witness_ad_leave.js`) — zero failures
+throughout the build, checked after every file edit.
+
+**Docs:** `docs/HRBIMAssetGuide.md` updated — the "Jump straight to the ERP record" table gained Leave→Resource
+and Presence→AD_User rows; new paragraphs in the Presence, Leave, and Tenancy sections explaining the
+Construction window / Resource-Unavailable / forward-link additions. **Not done:** no new screenshots this
+session (the 3 additions are click-through mechanics, not new visual panes — flagged rather than silently
+skipped, matching this doc's own established convention for partial doc passes).
+
+**Genuinely still open (not started, not this session's scope):**
+1. **B's reverse direction** (ERP record → fly back into the 3D model) — zero precedent anywhere in the
+   codebase; needs its own spec (what triggers it, cross-tab/window messaging or same-tab-only) before any code.
+2. Recapture `hba_fm_drawer.png`-style screenshots for the 3 new affordances (Construction link, Presence
+   open↗, Leave Resource↗) if this guide gets a fresh screenshot pass.
+3. bim-ootb PR #645 needs a human merge decision (branch protection + required status checks on `main`).

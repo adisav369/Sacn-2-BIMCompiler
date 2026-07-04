@@ -23,8 +23,13 @@
 - §PCLOSE-RACE (T7-RACE's TOCTOU shape found again in `erp_period_close.js`, fixed) — PR #640 MERGED.
 - W-HBA-CLICKTHRU: first REAL click-through witness for HBA's 6 deep-links (found 3/6 dead — PR #641 MERGED);
   fixed 2 of them (missing AD_Window seed rows, PR #643 open); Tenancy/316 left to the Construction-window spec.
-- Spec'd 3 HBA next-steps, NOT started: Construction AD_Window, Person bidirectional link, Leave-as-Resource.
-  Full spec `prompts/RESUME_HR_BIM_ASSET.md` §2026-07-04; memory `project_hba_construction_window_person_linkthrough.md`.
+- HBA §2026-07-04 A/B/C ✅ DONE (design pass + build, same session): "Construction" AD_Window minted over
+  M_Warehouse (proto-cloned from window 139) + Find-panel Room-lens "iDempiere ↗" link · Presence forward
+  link into AD_User(108) · Leave TAKE now also compiles a real `S_ResourceUnAvailable` row ("Resource ↗" into
+  window 236). Witnessed (10/10 new + 4 extended, full 41-file suite zero regression) + 2 live Playwright
+  smokes (8/8 real HHS building, 9/9 fm_panel.html), bim-ootb PR #645 (`lane/hba-construction-clickthru`,
+  awaiting merge). Doc updated: `docs/HRBIMAssetGuide.md`. Full detail: `prompts/RESUME_HR_BIM_ASSET.md`
+  §2026-07-04 (closeout appended).
 
 ## Kernel op-log timebomb lane — T1/T2/T3/T6/T7 ✅ SHIPPED; T4+T5 remain
 - Findings: `prompts/KERNEL_TIMEBOMB_AUDIT_2026-07-03.md`. Shipped: T3+T6 (#623 v10) · T2+T1 roster (#630 v11)
@@ -49,12 +54,21 @@
   `mo_ifc_<name>` key fork before `_openBuffer`; diag-proven before/after, no regression on the two pre-existing
   witnesses (W-E2E-WALK 8/8, W-E2E-WALK-ALL 10/10). Pushed `lane/modeller-ifc-open` (`e6acb56`, synced with
   origin/main), user approved → **PR #642 opened 2026-07-04** (bim-ootb, awaiting CI/merge).
-- NEXT (once #642 merges): continue `prompts/ARC_GEO_FETCH_SPEC.md §NEXT` item 2 — onboard
-  Hospital/Clinic/LTU/HHS_Office as Modeller residents + migrate SH/DX/SC into the canonical `IFC/` folder.
-  3DGrid (Move Grid / stretch-recompose) has its own coverage in `witness_e2e_move.js` (per
-  `feedback_test_real_user_path_not_seams.md`'s templates) — NOT re-verified this session (out of scope: this
-  session's walking tests targeted STR/MEP disc-walk only, not grid-move). If grid-move needs a fresh
-  cross-resident pass too, that's a separate follow-up, not covered by W-E2E-WALK-IFCOPEN.
+- 3D-Grid cross-resident pass DONE (2026-07-04, user follow-up question): `Bonsai.grid` is a DECOUPLED
+  authoring grid — no production code wires an opened building's own STR-walked grid into it (grepped clean),
+  so "test grid-stretch on building X's real structural grid" isn't meaningful; what generalizes IS the
+  author-a-grid→drag→recompose mechanism after a real (not just Duplex) open. New
+  `modeller/tests/witness_e2e_gridstretch_multi.js` — 20/21, **1 known RED**: on SampleCastle (`.db`-open),
+  `#b-clear` resets the scene+op-log but not `str_walker_outliner.js`'s own STR-walker module state, so a
+  later grid-drag on an unrelated synthetic wall still fires SampleCastle's real STR re-walk, whose ops
+  collide on `kernel_ops.id` and roll back (SAFE — all-or-none, no corruption, just a loud rejected toast +
+  console errors). Root cause traced (step-tagged diagnostic), confirmed reproducible 2×, NOT an async-timing
+  artifact. **NOT fixed** — the fix is a `#b-clear` state-reset-contract design call (reset every walker
+  module, not just THREE+oplog?), left open, pushed as-is (`834fbc4`) so the PR carries an honest red witness
+  rather than a silently-passing green one.
+- NEXT (once #642 merges): (1) decide + fix the `#b-clear`/STR-walker state-leak above; (2) continue
+  `prompts/ARC_GEO_FETCH_SPEC.md §NEXT` item 2 — onboard Hospital/Clinic/LTU/HHS_Office as Modeller residents
+  + migrate SH/DX/SC into the canonical `IFC/` folder.
 
 ## Codebase quality audit (2026-07-02) — TRIAGED 2026-07-03; §2/§5 DONE (bc #20, bim-ootb #618) → archived
 - ⛔ BLOCKED (user call): are `migration/DV_*_rules.sql` mined-rule files EXEMPT from append-only, or enforce?

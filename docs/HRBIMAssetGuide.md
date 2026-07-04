@@ -90,6 +90,10 @@ is variations on it.
    automatic level-of-detail ladder (dot → mini → full) so a full floor never turns to soup. The screenshot above
    catches the ladder mid-transition: a full-figure cluster close to camera, mini-dome clusters further back.
 4. Headcount comes from **signed check-ins** — a room with no check-in has no avatar (never a faked person).
+5. The **Presence roster** (the drawer's own list of every check-in for the period) carries an **open ↗** link
+   per person straight to their `AD_User` record — the first bidirectional click-through for a Person in this
+   module (every other pane already had one). No reverse direction (an ERP record flying you back into the 3D
+   model) exists yet — that's a genuinely new capability, tracked separately, not built here.
 
 ### Spot equipment that needs service
 1. Open the drawer → tap **Assets / IoT**.
@@ -139,8 +143,10 @@ from the real AD dictionary, never guessed:
 | Dashboard → Resources | Resource | `S_Resource` |
 | Payslip → concept line | Payroll Movement | `HR_Movement` |
 | Leave → unpaid entry | Payroll Concept Catalog | `HR_Concept` (the "Leave without pay" concept it feeds — Leave has no native table of its own) |
+| Leave → "Resource ↗" | Resource | `S_Resource` (a leave TAKE also compiles a real `S_ResourceUnAvailable` blackout on the employee's own resource — see [Leave — balance & statement](#leave--balance--statement)) |
 | Tenancy → subscription | Subscription | `C_Subscription` |
 | IoT → billing line | Sales Order | `C_Order` |
+| Presence → roster row | User | `AD_User` (the employee's own identity record — see [See who is physically here right now](#see-who-is-physically-here-right-now--with-people-you-can-walk-up-to)) |
 
 No link appears on a row that doesn't (yet) resolve to a real record — the same non-invent discipline as
 everywhere else in this module: an absent link is honest, never a dead one.
@@ -191,6 +197,11 @@ everywhere else in this module: an absent link is honest, never a dead one.
    genuine addition, not a reinvention of something that already existed. So an unpaid row's **open ↗** doesn't
    point at a fabricated "leave record" window; it points at the real **"Leave without pay" payroll concept**
    the unpaid days feed into once payroll runs — the honest, real thing an unpaid entry actually compiles onto.
+3. Leave is *also* a resource-availability fact, not just a payroll deduction — a taken leave marks the employee
+   unavailable the same way a room's maintenance blackout does, via the real native `S_ResourceUnAvailable` table
+   (the child "Unavailability" tab of the Resource window). A **Resource ↗** link at the top of the pane opens
+   the employee's own Resource record, where that blackout shows up in the standard iDempiere Resource Schedule
+   — no separate leave-record UI to maintain, the same window Dashboard's Resources already deep-link into.
 
 ### Tenancy — AD compile
 1. Open the drawer → tap **Tenancy / AD**. Every lease and strata charge in the building compiled onto real
@@ -202,6 +213,14 @@ everywhere else in this module: an absent link is honest, never a dead one.
 2. Row click flies the camera to that unit (the same shared fly-to used by the Presence roster above); the
    **open ↗** link is separate and deep-links straight to the `C_Subscription` record. A record whose unit
    doesn't resolve to a real room in this building is **skipped**, never fabricated — the footer says so.
+3. The building itself compiles onto `M_Warehouse` — but the only *stock* iDempiere window over that table is
+   139 "Warehouse and Locators", warehouse-industry language for what's conceptually a building. A second,
+   purpose-named window — **"Construction"** — now sits alongside it over the *identical* `M_Warehouse` row
+   (the same convention iDempiere itself already uses for `C_BPartner`, which has 10 distinct windows over one
+   table). Window 139 is untouched; "Construction" is just a role-appropriate second door onto the same record.
+   In the Viewer, tapping a room or storey in the **Find** panel's Room lens surfaces an **iDempiere ↗** link to
+   this building's Construction record (building-grain — every room in one building shares the same warehouse
+   record, there's no per-room window).
 
 ### BIM BOM — assembly & recipe
 1. Open the drawer → tap **BOM**. Every room in the building is an **assembly**: the room itself plus
