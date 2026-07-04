@@ -33,8 +33,16 @@
 - ⛔ BLOCKED (user call): are `migration/DV_*_rules.sql` mined-rule files EXEMPT from append-only, or enforce?
   Full triage: `prompts/CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` (§1 refactors, §3 shallow specs also open).
 - Modeller unassigned polish: item 9 PBR textures; SSAO (needs EffectComposer vendored).
+- ARC occupancy density drift (99%→92-95%, `W-DW-DENSITY-TE` D3) surfaced by PR #638 below — real, unexplained,
+  low-priority, not urgent. Memory: `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- **Modeller STR-into-ARC + canopy render + readPixels "EYES" harness — bim-ootb PR #638 MERGED** (2026-07-04
+  MYT): ported the non-redundant half of a stranded branch — STR skeleton + canopy render into the laid ARC,
+  plus a real pixel-level `readPixels` harness (verifies rendered geometry visually, not just by data
+  assertion). The redundant/regressive mesh-path half was correctly discarded, not merged (confirmed
+  byte-identical to main). W-STR-INTO-ARC 11/11, W-STR-CANOPY 8/8 + 3 more, all match pre-port counts.
+  Memory: `project_arc_meshreadpixels_branch_unmerged.md`.
 - Modeller Conformity Gate + SDG backprop slice 1, round-2 hardening — bim-ootb #644/#645/#646/#647/#648/#649/#650
   all merged (2026-07-04): clear-state-leak round 1+2, door-crush RED, abuts-realign ORANGE (first backprop
   slice), Conformity Gate user-guide doc, cross_edges.js real-per-element-AABB fix. Memory: `project_arc_editable_substrate.md`.
