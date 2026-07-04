@@ -2077,3 +2077,45 @@ before this session's LOD400/persistence work; `hba_iot.js` already paints CCTV 
 **Not started (explicitly queued for "a NEW session" with open design questions, §P10c above) — audio effects
 on the IoT panel.** 3 genuine user decisions still needed before building (live-tick vs click/hover trigger,
 tone-mapping design, mute/volume default+placement) — correctly not attempted without those answers.
+
+---
+
+## ▶ 2026-07-05c — §P10c audio ✅ DONE + zoom-distance + movement sensor (bim-ootb PR #653, `lane/hba-iot-audio-sirens`)
+
+Same session, continued live via dialogue (answers arrived one message at a time, folded in as they came —
+don't re-litigate, this IS the settled design):
+- **Live-tick question** → resolved by REUSE: the pane's existing 900ms bar-tick interval (already looping the
+  24h series while the pane is open) is the "bar movement" — no new live-data engine needed, tones just piggyback
+  on it.
+- **Tone-mapping** → "just simple tones but goes high pitch indicating danger": `iot.js toneFreqFor(value,min,max)`
+  — PURE, deterministic, maps a reading's position within its OWN observed range (the same bounds the bar's
+  headroom already uses) to 220Hz (calm) → 880Hz (danger). Never a fabricated threshold.
+- **"combi of sirens... identify by the sound right away"** → each of the 7 sensors gets a DISTINCT
+  waveform+blip-count (`viewer/hba_iot.js SENSOR_TONE`): sine/square/triangle/sawtooth × 1/2/3 quick blips —
+  the sound alone tells you WHICH sensor, independent of pitch.
+- **Mute/volume default** → OFF by default (opt-in, matches every other HBA additive surface's zero-impact-off
+  convention), one 🔇/🔊 button in the pane header; its click doubles as the required browser user-gesture to
+  create/resume the `AudioContext`.
+- **"There can also be a sensor for movement"** → 7th sensor, Motion (PIR), bound to a real (previously-unused)
+  HHS Level-1 entrance door guid — reuses the SAME deterministic sine generator with no special-casing (the
+  daytime-peak curve already produced is itself a plausible real motion-level pattern for an occupied office).
+  Auto-flows through `DEVICE_PRODUCTS`'s derived Product/UOM/billing persistence from the prior PR with zero
+  code changes there.
+- **"zooms to the device, not too near, surrounding"** → `hba_lens.js flyToZone(A, guid, opts)` gains an
+  optional `opts.dist` (default 8, byte-identical for every pre-existing caller); the IoT pane's device zoom
+  passes `dist:18` for an establishing shot that keeps the surrounding room/plant/entrance visible.
+
+**Witnesses:** `witness_p10b.js` 36→44 (I16-I19 `toneFreqFor` pure-function pitch checks; IP14 zoom-dist opts
+capture; IP15 audio-off-default plays zero tones; IP16 audio-on-after-mute-click plays the exact expected total
+blip count (11) across all 7 sensors; IP17 confirms ≥3 distinct waveforms). **Fixed a stale hardcoded
+"12 products / 6 lines" self-witness** in `scripts/seed_hba_erp.js` (would have silently passed-wrong once the
+7th sensor was added) — now derives the expected count from `DEVICE_PRODUCTS.length`/`iotBilling.lines.length`
+instead of a magic number, so it can't desync again if the catalog grows further. Full 41-file HBA suite zero
+regression; seed script re-run PASS then idempotent no-op; live CDP smoke in real Chrome confirmed the mute
+toggle (`§HBA_IOT_AUDIO on` logged) and the movement sensor's own distinct real fly target.
+
+**Branch note:** PR #652 (the prior session slice) was ALREADY squash-merged to `main` by the time this work was
+ready to push — correctly did NOT reuse the old (now-stale) branch/worktree; committed locally, then cherry-picked
+onto a fresh branch off `origin/main` per the CLAUDE.md squash-merge doctrine, and opened PR #653 from that.
+
+**Genuinely nothing left open in this IoT/CCTV lane** — §BUILD ORDER (items 1-6) and §P10c are both fully shipped.
