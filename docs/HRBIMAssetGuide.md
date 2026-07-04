@@ -36,6 +36,8 @@ You need nothing but the Viewer and a building that carries some operate data (t
    *(The drawer has since grown to 8 entries — the 4 lenses above plus Tenancy / AD, Dashboard, Payslip, and
    Leave; see [The lenses at a glance](#the-lenses-at-a-glance-reference) for the full current list.)*
 
+   ![Four panes open at once on the real HHS building — Occupancy (room utilization + request-age charts), Leave (balance & statement), Tenancy (partially behind, subscriptions list), and Payslip (gross/net breakdown) — with the Human-Asset drawer showing all 8 lenses on the right](img/hba_4panels.png)
+
 5. **Turn on a lens.** Tap **Occupancy**. Tapping a row applies the lens **and closes the drawer**; re-tap the
    pill to reopen it and see which lens is active (highlighted, "● on"). The status bar reads e.g.
    *“HR · occupancy · 11 units lit”* — that status line is the reliable readout of what's lit; on this sample
@@ -232,7 +234,11 @@ building loaded. That's the full loop this module has been building toward — p
 
    ![The Unit class lens on the HHS office — drawer showing "Unit class ● on" and "4 units lit"](img/hba_class_lens.png)
 
-2. Spaces tint **residential (green) · commercial (orange) · office (indigo) · unclassified (grey)**.
+2. Spaces tint **residential (green) · commercial (orange) · office (indigo) · unclassified (grey)** — same
+   caveat as Occupancy above: on the HHS sample the bound elements are small real fixtures (the small teal ticks
+   along the roofline in the screenshot), not a big room-sized colour wash, since this building's `IfcSpace`
+   rooms aren't drawn as their own filled mesh — zoom toward one of the 4 lit rooms to see its own tinted
+   element close up, or read the honest **"4 units lit"** status line rather than relying on the wide shot.
 3. The class is never guessed — see [How a space gets its class](#how-a-space-gets-its-class-non-invent).
 
 ### Read the numbers (Dashboard)
