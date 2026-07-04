@@ -1892,3 +1892,83 @@ Built exactly per §BUILD ORDER above, plus two discovered-and-fixed prerequisit
 **Still correctly out of scope** (per §BACKGROUND, unchanged): the Locator child-tab drill-down, and the
 AD_User exact-zone problem's ERP-side half. **PR #645 needs a human merge** (branch protection + required
 status checks on bim-ootb `main`, per this repo's normal flow) — not yet merged as of this session's close.
+
+---
+
+## ▶ 2026-07-04d — QUEUED, NOT STARTED (user ask, do in a NEW session): IoT/CCTV zoom+highlight, USD/RM costing, real Product+Order click-through
+
+**User ask (verbatim intent):** clicking a CCTV tile or a sensor should zoom the camera to that device AND
+tint its mesh orange (the same highlight idiom `flyToZone`'s pulse already uses elsewhere); the billing table
+should show costs in USD/RM (not a bare unlabeled number); clicking a billing line should zoom to the real
+`C_Order`/`C_OrderLine` record in iDempiere; the cameras/sensors themselves should also compile as real
+`M_Product` rows in iDempiere, same as every other compiled BIM element. Also asked: **where would LOD400
+geometry for CCTV cameras and sensors come from?**
+
+### §LOD400-CHECK — answered this session (don't re-search, the finding is below)
+**Genuine gap, checked exhaustively, nothing found:** `library/component_library.db` (23,888 `component_definitions`
++ mesh geometry) has an `IfcSensor`/SENSOR component *type* (id 13) but **zero** mesh rows under it — no
+temperature/pressure/sound/dust/solar/electrical-meter geometry anywhere. **Zero** matches for "camera"/"cctv"/
+"security" in any field, in this db or anywhere in either repo (`bim-compiler`, `bim-ootb`) — no `.glb/.gltf/
+.obj/.fbx/.blend/.stl` asset named camera/cctv/sensor exists. `ERP.db`'s `ad_element_mep` carries one
+`IfcSensor` classification row (`SMOKE_DETECTOR`, NFPA 72 placement rule) — a placement RULE, not geometry.
+The **closest real precedent** is `IfcAlarm`/type_id 11 (smoke/heat detectors, ~20 real mesh rows, e.g.
+`jkrME18_fir-al_smoke detector`) — same wall/ceiling-mount small-box form factor a CCTV dome/box camera or a
+wall sensor would need, and the same category `component_library.db` already knows how to hold. `docs/internal/
+WalkerDoctrine.md` §2 confirms LOD400 swap-in is explicitly a documented **future "finish state"** (POC uses
+primitive boxes) — this isn't a surprise gap, it's the same known boundary applied to a new device class.
+**Two honest paths for next session, pick one before building:** (a) source/purchase or model 6-8 real LOD400
+meshes (camera dome/box, thermostat, pressure gauge, sound-level meter, dust sensor, solar panel, electrical
+meter) and add them to `component_library.db` under new component_types — real work, not a mock; (b) ship a
+primitive-box placeholder per device (small labeled cube/cylinder at the device's real bound position) as the
+interim shape, same discipline as every other "primitive now, LOD400 later" element in this codebase — cheaper,
+consistent with the Walker Doctrine's own POC convention, and unblocks the click/zoom/highlight/Product work
+below without waiting on asset sourcing.
+
+### §PRODUCT-PERSISTENCE-CHECK — same bug class as this session's C_Subscription fix, confirmed present
+`hr_bim_asset/iot.js billingLines()`'s `m_product_id` is a **sequential in-memory mint** (`++prodSeq`, 1/2/3…)
+— never a real seeded `M_Product` row, same "compiled but never persisted" gap this session found and fixed
+for `C_Subscription`/`C_SubscriptionType`. Fixing the user's ask #4 ("Product of those cams/devices also in
+iDempiere") means: seed one real `M_Product` row per device (Value=a stable device id, e.g. `IOT-AHU03-TEMP`
+matching `models.js Asset.iot_device` already in use — reuse, don't invent a new id scheme), `m_locator_id`
+pointing at the SAME room/asset locator the bound BIM element already resolves to (mirrors `ad_tenancy.
+toProductRow`'s exact pattern), then `toOrderLineRow` reads the REAL seeded `m_product_id` via `erpQuery`
+match-or-create (the same `_one(erpQuery,...)` idiom `ad_tenancy.js` already uses) instead of minting one.
+Real window to click into: **`AD_WINDOWS.PRODUCT = 140`** ("Product", verified active in `ad_seed.db` —
+add this id to the shared registry alongside `RESOURCE`/`ORDER`/etc., `viewer/hba_lens.js:556`).
+
+### §CURRENCY-CHECK — USD/RM already real, no invention needed, just wire it
+`C_Order`/`C_OrderLine` both carry a real `c_currency_id` column (verified `ad_full.db` PRAGMA — already true,
+just unused by `iot.js` today). **Better still: MYR↔USD conversion is ALREADY seeded** —
+`scripts/seed_fin_currency.js` (a different feature, CIDB construction costing) already extracted a real
+`C_Currency` MYR row (id 301, ISO 4217 458, `CurSymbol`='RM') + a real `C_Conversion_Rate` row against the
+accounting-schema currency (USD, id 100) from a sourced CIDB exchange-rate pack. `iot.js toOrderLineRow`'s
+flat `priceactual = 0.5` (no currency, no sourced rate) should instead: set `c_currency_id` to MYR (the natural
+"local site cost" currency for a building's utility/security spend), and the billing pane display BOTH the RM
+line amount AND its USD equivalent via that SAME already-seeded conversion rate (never a second invented rate).
+
+### §BUILD ORDER for next session (spec-first, don't skip straight to code)
+1. **Decide the LOD400 path** (§LOD400-CHECK option a vs b) — this gates whether device meshes exist to zoom/
+   highlight at all; a primitive-box placeholder (option b) is the pragmatic default unless told otherwise.
+2. **Per-device position + Product persistence** — each of the 6 sensors + N camera tiles needs its OWN bound
+   position (today all 6 sensors share ONE asset's `bim_guid` — e.g. AHU-03 — not individual device positions;
+   check `models.js Asset` records for whether more IoT-bound assets already exist beyond AHU-03, extend the
+   fixture honestly if not) and a real seeded `M_Product` row (§PRODUCT-PERSISTENCE-CHECK).
+3. **Zoom + orange highlight on click** — reuse `HBALens.flyToZone(A, guid)` (camera fly) + `buildMeshPort(A).
+   setTint(guid, 0xff8800)` (the SAME tint primitive `flyToZone`'s own pulse-highlight already calls internally,
+   see `viewer/hba_lens.js` `flyToZone`'s `pulsePort.setTint(guid, 0xffcc00)` — reuse the pattern, pick a
+   distinct orange vs the existing yellow pulse so the two affordances stay visually distinguishable) per CCTV
+   tile / sensor row click, not just the existing asset-level flyToZone.
+4. **USD/RM costing display** — wire `c_currency_id` + the existing conversion rate (§CURRENCY-CHECK) into
+   `iot.billingLines()`'s output and `viewer/hba_iot.js`'s billing table render.
+5. **Order/Line click-through** — an "open ↗" per billing row into `AD_WINDOWS.ORDER=143` (already registered),
+   record=the REAL seeded `c_orderline_id` (needs `C_OrderLine` physically persisted too, same seeding pattern
+   as §PRODUCT-PERSISTENCE-CHECK — check whether `C_Order`/`C_OrderLine` are ALSO currently unpersisted/in-memory-
+   only before assuming only `M_Product` needs the fix).
+6. **Witnesses + live smoke** — same discipline as every prior HBA slice: node witness for the compile-layer
+   persistence + currency conversion, live Playwright smoke for click→zoom→orange-highlight and click→Order
+   window deep-link, full existing HBA suite re-run zero regression.
+
+**Not yet checked (flag for next session, don't assume):** whether `C_Order`/`C_OrderLine` themselves are
+persisted anywhere for IoT today (likely the SAME in-memory-only gap as `M_Product` — `toOrderRow`/
+`toOrderLineRow` use the identical `seedId ? seedId() : 1` mint pattern with no `erpQuery` match-or-create at
+all, unlike `ad_tenancy.js`'s fully-governed compile functions) — verify before building step 5.
