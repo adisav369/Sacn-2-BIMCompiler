@@ -22,24 +22,26 @@
 - `prompts/FABLE5_FOLLOWUP_2026-07-04.md`: (1) **`ErpShard.maybeShard` has zero callers** — T7 sharding infra
   shipped but unwired, the scale-cliff risk it fixes is still live in prod — highest priority; (2) `teams_pill.js`
   standalone-fallback close button; (3) `pos_lens.js` `.pos-pill-btn` witness.
-- ARC-mesh/readPixels stranded branch (bim-ootb #638): ported the non-redundant STR/canopy render +
-  readPixels harness onto `main`, correctly discarded the branch's now-redundant mesh rewrite (`real_geometry.js`
-  already superseded it); stranded branch deleted. One honest miss: `W-DW-DENSITY-TE` 8/8→7/8 (ARC occupancy
-  99%→92-95%, unrelated pre-existing drift, low-priority follow-up).
+- ARC-mesh/readPixels stranded branch — ✅ RESOLVED, ported+PR'd #638 (memory `project_arc_meshreadpixels_branch_unmerged.md`).
 
 ## Kernel op-log timebomb lane — T1/T2/T3/T6/T7 ✅ SHIPPED; T4+T5 remain
-- Findings: `prompts/KERNEL_TIMEBOMB_AUDIT_2026-07-03.md`. Shipped: T3+T6 (#623, kernel v10,
-  W-PCLOSE-ARCHIVE 10/10 + W-CROSS-TAB-PERSIST 9/9) · T2 content sigs + T1 roster/key-epochs (#630, v11,
-  W-CONTENT-SIGN 14/14 + W-ROSTER-VERIFY 17/17) · T1 employee PIN attribution (#634, W-T1-ATTRIB 16/16) ·
-  T7+4b incremental+shard (#636, v12, W-T7-INC 35 🟢, pre-merge adversarial review closed 3 findings).
-  Batch-1 spec: `prompts/KERNEL_HARDENING_BATCH1_SPEC.md`; detail: FABLE5_WRAPUP statuses + memory.
+- Findings: `prompts/KERNEL_TIMEBOMB_AUDIT_2026-07-03.md`. Shipped: T3+T6 (#623 v10) · T2+T1 roster (#630 v11)
+  · T1 PIN attrib (#634) · T7+4b incremental/shard (#636 v12, pre-merge adversarial review closed 3 findings).
+  Batch-1 spec: `prompts/KERNEL_HARDENING_BATCH1_SPEC.md`; witness counts: FABLE5_WRAPUP statuses + memory.
 - ⛔ T4+T5 (unify 3 kernel copies) BROWSER-GATED — analysis done (neither copy is a superset), needs the
   W-ONE-KERNEL building-load smoke. Deferred: commitGroup id-race retry. Lane status: batch-1 spec §STATUS.
 - Modeller OPEN (unassigned): item 9 PBR textures; SSAO (needs EffectComposer vendored).
 
-## Codebase quality audit (2026-07-02) — TRIAGED 2026-07-03
-- ✅ §5 self-XSS fixed BOTH repos (bim-ootb PR #618 sw v758 + bc PR #20; W-XSS-FILENAME 10/10 + 5/5, incl. the
-  download-link sink the audit missed) · ✅ §2 doc-vs-code drift fixed, every number re-verified (bc PR #20).
+## Modeller: IFC-direct-open + Outliner unification (2026-07-04) — bim-ootb `lane/modeller-ifc-open`, pushed not PR'd
+- Opens ARC-only `.ifc` directly (reuses Viewer's parse engine, always filtered to ARC — 0-mismatch parity
+  proven on a real 3504-elem multi-disc IFC); `IFC/` + `IFC/BimDB/` folders live (SH+DX populated). One Disc
+  tab (absent disciplines walk-clickable, no separate tab) + Find expands/highlights matches + always-visible
+  Teams pill. All Playwright-verified live. Detail: `prompts/ARC_GEO_FETCH_SPEC.md §3D` + memory
+  `project_modeller_arc_fetch_redesign.md`/`project_modeller_competitive_polish.md`.
+- NEXT (user, next session): walking tests — exercise STR/MEP walker behavior through the new IFC-open path
+  and the merged Disc tab (walk-if-absent) across more residents.
+
+## Codebase quality audit (2026-07-02) — TRIAGED 2026-07-03; §2/§5 DONE (bc #20, bim-ootb #618) → archived
 - ⛔ BLOCKED (user call): are `migration/DV_*_rules.sql` mined-rule files EXEMPT from append-only, or enforce?
 - OPEN: §1 refactors (spec-first, Sacred file), §2 dead-code removal, §3 shallow specs 27/29 (bim-ootb).
   Full triage: `prompts/CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
