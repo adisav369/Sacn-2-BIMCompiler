@@ -1583,10 +1583,10 @@ in this codebase — this is a seed-data-authoring gap before it's a code-wiring
 until §OPEN-QUESTIONS resolves. (Lane later shipped as native `S_Resource`/`S_ResourceAssignment` — see
 `project_hba_erp_governed_display.md` in memory; §OPEN-QUESTIONS were resolved by that redesign.)
 
-## ▶ 2026-07-04 — NEW THREAD: "Construction" window (M_Warehouse) + Person bidirectional link-through
+## ▶ 2026-07-04 — NEW THREAD: "Construction" window + Person bidirectional link-through + Leave-as-Resource
 ### (QUEUED, NOT STARTED — spec only, per user instruction; do not implement without a follow-up session)
 
-Two gaps surfaced during the 2026-07-04 watchdog docs-QA pass (user review of the HBA/Teams/POS guides "from a
+Three gaps surfaced during the 2026-07-04 watchdog docs-QA pass (user review of the HBA/Teams/POS guides "from a
 user's POV" — a direction check, not a correctness pass). Both confirmed against the real code/schema, not
 assumed. Both are genuinely unbuilt — this section is the spec, the backlog entry, and the non-invent grounding
 for whoever picks it up next.
@@ -1653,5 +1653,43 @@ ANY entity deep-link back ERP→BIM?
    form? only when a Viewer tab is already open in the same session? cross-tab/cross-window messaging?) before
    any code. Treat as a new capability, not a wire-up of something half-built.
 
-Neither A nor B is started. Log here, not in `MEMORY.md`'s per-session churn, so the next session that touches
-HBA finds this without re-deriving it.
+### C. Leave should ALSO mark the person unavailable as a Resource (S_ResourceUnAvailable) — not payroll-only
+
+**The observation (user):** "Leave is the unavailable status of the person as a Product/Resource? — the same
+way ResourceAssignment models Mary Consultant." I.e. shouldn't a Leave `TAKE` also show up as the person being
+an *unavailable resource*, the same way a room's maintenance blackout does — not just a payroll deduction?
+
+**Confirmed, and the fit is exact:**
+- The person-as-`S_Resource` identity already exists — Stage 3's "Mary Consultant" pattern (`ad_attendance.js`)
+  gives every employee a real `S_Resource` row, with attendance sessions as `S_ResourceAssignment` children.
+- A room's maintenance/renovation blackout is modeled as a real **`S_ResourceUnAvailable`** row
+  (`occupancy.js` — "an UNAVAIL is the S_ResourceUnAvailable blackout", `s_resource_id` + `datefrom`/`dateto`
+  + `description`). Verified in `ad_full.db`: `S_ResourceUnAvailable` is **tab 416 "Unavailability"**, a CHILD
+  TAB of window **236 "Resource"** — the exact same window Dashboard's `open ↗` already deep-links into. No
+  new window needed at all.
+- `leave.js` today is a fully separate, self-contained signed op-log (`ACCRUE`/`TAKE`, `cls:'LEAVE'`) that only
+  ever reaches payroll (unpaid days become an `HR_Concept` line, per Payslip's compile). It has **zero code
+  path** into `S_Resource`/`S_ResourceAssignment`/`S_ResourceUnAvailable` — a person on leave is invisible to
+  anything that reads resource availability (scheduling, an Occupancy-style "who's free" query), even though
+  the identical native mechanism for exactly that already exists and is already wired up for rooms.
+
+**Proposed next step (spec-first, needs a design pass before code):** on a `TAKE` op (or on payroll close,
+whichever is the more honest trigger point — see open question 1), also emit a signed `S_ResourceUnAvailable`
+row: `s_resource_id` = the employee's existing `S_Resource` (already resolved via the same `MODELS.Official`
+join `ad_attendance.js`/`ad_payroll.js` use), `datefrom`/`dateto` = the leave range, `description` = leave
+type (e.g. "Annual leave", "Unpaid leave"). This is additive to the payroll feed, not a replacement — Leave
+still needs its own paid/unpaid balance replay for payroll; this just ALSO surfaces the same fact as a
+resource-availability record, the same way a room's blackout does.
+
+**Open questions for whoever specs this properly:**
+1. Trigger point — emit the `S_ResourceUnAvailable` row at `TAKE` time (immediate, matches the room UNAVAIL
+   pattern exactly) or only once the leave is approved/processed (payroll-period-close time)? Rooms don't have
+   an approval step; leave usually does — this may not be a pure 1:1 copy of the room pattern.
+2. Does this change what the **Presence** lens shows during a person's leave (e.g. should Presence/Dashboard
+   grey out or explicitly flag someone on leave, the same way a room shows "unavailable · maintenance")? That's
+   a real UX question, not just a data-model one.
+3. Same non-invent discipline as everywhere else: a `TAKE` whose employee doesn't resolve to a real `S_Resource`
+   must be honestly skipped, never fabricate one.
+
+Neither A, B, nor C is started. Log here, not in `MEMORY.md`'s per-session churn, so the next session that
+touches HBA finds this without re-deriving it.
