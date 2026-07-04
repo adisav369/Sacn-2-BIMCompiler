@@ -992,6 +992,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The IoT sensor + CCTV cockpit (mockup)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-developers-interfacing-with-the-iotcctv-stubs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For developers — interfacing with the IoT/CCTV stubs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -1004,6 +1021,17 @@
     <span class="md-ellipsis">
       
         Jump straight to the ERP record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jump-back-from-erp-into-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jump back from ERP into the model
       
     </span>
   </a>
@@ -2052,6 +2080,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The IoT sensor + CCTV cockpit (mockup)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-developers-interfacing-with-the-iotcctv-stubs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For developers — interfacing with the IoT/CCTV stubs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -2064,6 +2109,17 @@
     <span class="md-ellipsis">
       
         Jump straight to the ERP record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jump-back-from-erp-into-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jump back from ERP into the model
       
     </span>
   </a>
@@ -2356,6 +2412,10 @@ replays each room's signed booking log (<code>ASSIGN</code> / <code>RELEASE</cod
    automatic level-of-detail ladder (dot → mini → full) so a full floor never turns to soup. The screenshot above
    catches the ladder mid-transition: a full-figure cluster close to camera, mini-dome clusters further back.</li>
 <li>Headcount comes from <strong>signed check-ins</strong> — a room with no check-in has no avatar (never a faked person).</li>
+<li>The <strong>Presence roster</strong> (the drawer's own list of every check-in for the period) carries an <strong>open ↗</strong> link
+   per person straight to their <code>AD_User</code> record — the first bidirectional click-through for a Person in this
+   module (every other pane already had one). No reverse direction (an ERP record flying you back into the 3D
+   model) exists yet — that's a genuinely new capability, tracked separately, not built here.</li>
 </ol>
 <h3 id="spot-equipment-that-needs-service">Spot equipment that needs service<a class="headerlink" href="#spot-equipment-that-needs-service" title="Permanent link">&para;</a></h3>
 <ol>
@@ -2368,24 +2428,107 @@ replays each room's signed booking log (<code>ASSIGN</code> / <code>RELEASE</cod
 </ol>
 <h4 id="the-iot-sensor-cctv-cockpit-mockup">The IoT sensor + CCTV cockpit (mockup)<a class="headerlink" href="#the-iot-sensor-cctv-cockpit-mockup" title="Permanent link">&para;</a></h4>
 <p>Tapping <strong>Assets / IoT</strong> does two things at once: it tints the asset in the model (above) <strong>and</strong> opens a
-supplementary pane for that asset — a small operate-cockpit showing what a real IoT feed would look like.
-This whole pane is an <strong>explicit mockup</strong> — every reading is a deterministic synthetic curve (same input,
-same output, always — never <code>Math.random</code>), watermarked, and never claimed as a real sensor value.</p>
-<p><strong>Six sensor channels, last 24 hours</strong> — temperature, boiler pressure, sound level, dust (PM2.5), solar
-output, and electrical load — each its own small trend chart:</p>
-<p><img alt="The IoT pane's six sensor charts — temperature, boiler pressure, sound level, dust, solar output, electrical load — each a 24h trend line, watermarked SAMPLE/CONTOH" src="../img/hba_iot_sensors.png" /></p>
-<p><strong>A CCTV mockup grid and the ERP billing table</strong>, scrolled further down the same pane — six camera tiles
-(explicitly captioned "MOCKUP — NO REAL FEED", no invented video), and underneath, each sensor's <em>latest</em>
-reading compiled into a <strong>billable line</strong> — a real <code>C_OrderLine</code> (quantity, unit of measure, net amount)
+supplementary pane — a small operate-cockpit showing what a real IoT feed would look like. This whole pane is
+an <strong>explicit mockup</strong> — every reading is a deterministic synthetic curve (same input, same output, always —
+never <code>Math.random</code>), watermarked, and never claimed as a real sensor value. It exists to <strong>stub out the
+finished shape</strong>: every reading, camera and tone already compiles onto a real ERP record, so wiring in an
+actual sensor feed later is a data-source swap, not a rebuild.</p>
+<p><strong>Seven sensor channels, last 24 hours</strong> — each with its own icon, colour and 24h trend bar, and <strong>each bound to
+its own real element in the model</strong> (not a shared placeholder):</p>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Sensor</th>
+<th>Bound to (a real element)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🌡️</td>
+<td>Temperature</td>
+<td>a supply-air diffuser</td>
+</tr>
+<tr>
+<td>🔧</td>
+<td>Boiler Pressure</td>
+<td>the rooftop mechanical plant</td>
+</tr>
+<tr>
+<td>🔊</td>
+<td>Sound Level</td>
+<td>a ceiling diffuser, open-plan floor</td>
+</tr>
+<tr>
+<td>🌫️</td>
+<td>Dust (PM2.5)</td>
+<td>a ceiling diffuser, open-plan floor</td>
+</tr>
+<tr>
+<td>☀️</td>
+<td>Solar Output</td>
+<td>the roof sun-shading structure</td>
+</tr>
+<tr>
+<td>⚡</td>
+<td>Electrical Load</td>
+<td>the Level 1 main distribution panel</td>
+</tr>
+<tr>
+<td>🚶</td>
+<td>Motion (PIR)</td>
+<td>a Level 1 entrance door</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="The IoT pane's seven sensor bars — temperature, boiler pressure, sound level, dust, solar output, electrical load, motion — each icon-labelled with a 24h value, a mute/unmute button top-right, watermarked SAMPLE/CONTOH" src="../img/hba_iot_sensors.png" /></p>
+<p>Clicking any bar flies the camera to <strong>that sensor's own real position</strong> — not a single shared spot — and
+briefly rings it orange, a wider "establishing" shot than a normal zoom so the surrounding room/plant/entrance
+stays visible (a deliberate "wow, here's where this actually is", not a nose-to-mesh close-up).</p>
+<p><strong>Alarm tones, muted by default.</strong> Each bar's 24h value loop can ALSO chime — click the 🔇 in the pane header to
+turn it on (🔊). Pitch rises the closer a reading sits to its own observed extreme (a calm low tone vs a
+higher, more urgent one — never a fabricated "danger threshold", just the same range already shown on the bar).
+Every sensor has its <strong>own distinct tone character</strong> (a different waveform, and 1–3 quick "blips") so you can
+tell <em>which</em> sensor is alarming by ear alone, without looking at the screen — muted by default so opening the
+pane is never noisy by surprise.</p>
+<p><strong>A CCTV mockup grid and the ERP billing table</strong>, scrolled further down the same pane — six 📷 camera tiles
+(explicitly captioned "MOCKUP — NO REAL FEED", no invented video, each bound to its own real entrance/corridor
+door and clickable the same way as a sensor bar), and underneath, each sensor's <em>latest</em> reading compiled into
+a <strong>billable line</strong> — a real <code>C_OrderLine</code> (quantity, unit of measure, RM amount <strong>plus its USD equivalent</strong>)
 under a <code>C_Order</code> header, the same "compile into the real ERP dictionary, don't invent a parallel one"
 discipline the rest of this module follows:</p>
-<p><img alt="The CCTV mockup grid (6 tiles, no real feed) and the ERP billing table underneath — each sensor reading compiled as a billable order line with qty/UOM/net amount" src="../img/hba_iot_cctv.png" /></p>
+<p><img alt="The CCTV mockup grid (6 tiles, no real feed, camera icon in the section header) and the ERP billing table underneath — each sensor reading compiled as a billable order line with qty/RM/≈USD/net amount" src="../img/hba_iot_cctv.png" /></p>
+<p><strong>The sensors and cameras "talk" to each other.</strong> Every sensor and camera already knows which <strong>storey</strong> it's
+on — so clicking a sensor also briefly rings the CCTV tile(s) on the <em>same floor</em>, a real (if simple) connection
+between two otherwise-separate stubs, not a coincidence:</p>
+<p><img alt="Clicking the Electrical Load bar (Level 1) rings CAM 1 and CAM 2 — the two cameras also on Level 1 — while CAM 3-6 on other floors stay untouched" src="../img/hba_iot_connect.png" /></p>
 <p>This is the clearest illustration of the module's <strong>Spatial ERP</strong> idea: a sensor bound to a real element in
 the model is, at the same time, a line item a real ERP order can bill — one binding, two views (the 3D tint
 and the ledger line), off the same record. Each billing row's <strong>open ↗</strong> deep-links straight to that
 <code>C_Order</code>/<code>C_OrderLine</code> in iDempiere — "here's a real billable document, ready for management's follow-up",
 not just a mockup number:</p>
 <p><img alt="The IoT billing table with an &quot;open ↗&quot; link on each row, deep-linking to the real C_Order in iDempiere" src="../img/hba_iot_billing_link.png" /></p>
+<h5 id="for-developers-interfacing-with-the-iotcctv-stubs">For developers — interfacing with the IoT/CCTV stubs<a class="headerlink" href="#for-developers-interfacing-with-the-iotcctv-stubs" title="Permanent link">&para;</a></h5>
+<p>Everything above is two small, additive files, meant to be extended rather than rewritten:</p>
+<ul>
+<li><strong><code>hr_bim_asset/iot.js</code></strong> — the engine, no DOM. <code>IoT.SENSORS</code> (7 entries: <code>key</code>/<code>label</code>/<code>icon</code>/<code>uom_name</code>/
+  <code>uom_symbol</code>/<code>baseline</code>/<code>amplitude</code>) and <code>IoT.CAMERAS</code> (6 entries: <code>bim_guid</code>/<code>element</code>/<code>storey</code>) are the two
+  catalogs to extend for a new device — each <code>DEVICES[key]</code>/<code>CAMERAS[i]</code> needs only a real bound <code>bim_guid</code>
+  already present in the loaded building (never invent one). <code>IoT.demoSeries(id, hours)</code> produces the
+  deterministic 24h curve; <code>IoT.billingLines(id, series, building, period, {erpQuery})</code> compiles it onto real
+  <code>C_UOM</code>/<code>M_Product</code>/<code>C_Order</code>/<code>C_OrderLine</code> rows (pass a real <code>erpQuery</code> reader — the same sync seam every
+  other governed pane uses — to resolve durable seeded ids instead of a session-local mint). <code>IoT.toneFreqFor
+  (value, min, max)</code> is the pure pitch-vs-range mapping behind the alarm tones — safe to call standalone to
+  preview a tone's frequency. <code>IoT.camerasOnStorey(storey)</code> / <code>IoT.camerasNearDevice(deviceKey)</code> are the
+  "ready-made connector" utilities behind the CCTV-ring behaviour above — a plain filter over the <code>storey</code> field
+  every device/camera already carries, reusable for any future "what else is near this thing" feature without
+  new geometry work.</li>
+<li><strong><code>viewer/hba_iot.js</code></strong> — the pane, additive/host-injected (imports nothing from the viewer, the host hands it
+  <code>A</code>). Public surface: <code>HBAIotPane.toggle(A)</code> / <code>.detect(A)</code> / <code>.isActive()</code>. A new sensor/camera needs zero
+  changes here — the bar/tile loops already iterate <code>IoT.SENSORS</code>/<code>IoT.CAMERAS</code>. The per-device zoom reuses
+  <code>HBALens.flyToZone(A, guid, {dist: 18})</code> — the <code>dist</code> option is generic (default 8 everywhere else), so any
+  other pane can request the same wider "establishing shot" framing.</li>
+</ul>
 <h3 id="jump-straight-to-the-erp-record">Jump straight to the ERP record<a class="headerlink" href="#jump-straight-to-the-erp-record" title="Permanent link">&para;</a></h3>
 <p>Every pane above that shows data compiled onto a <strong>real AD table</strong> carries a small <strong>open ↗</strong> link per row —
 Dashboard's Resources, Payslip's concept lines, Leave's unpaid entries, Tenancy's subscriptions, and IoT's
@@ -2418,6 +2561,11 @@ from the real AD dictionary, never guessed:</p>
 <td><code>HR_Concept</code> (the "Leave without pay" concept it feeds — Leave has no native table of its own)</td>
 </tr>
 <tr>
+<td>Leave → "Resource ↗"</td>
+<td>Resource</td>
+<td><code>S_Resource</code> (a leave TAKE also compiles a real <code>S_ResourceUnAvailable</code> blackout on the employee's own resource — see <a href="#leave--balance--statement">Leave — balance &amp; statement</a>)</td>
+</tr>
+<tr>
 <td>Tenancy → subscription</td>
 <td>Subscription</td>
 <td><code>C_Subscription</code></td>
@@ -2427,10 +2575,67 @@ from the real AD dictionary, never guessed:</p>
 <td>Sales Order</td>
 <td><code>C_Order</code></td>
 </tr>
+<tr>
+<td>Presence → roster row</td>
+<td>User</td>
+<td><code>AD_User</code> (the employee's own identity record — see <a href="#see-who-is-physically-here-right-now--with-people-you-can-walk-up-to">See who is physically here right now</a>)</td>
+</tr>
 </tbody>
 </table>
 <p>No link appears on a row that doesn't (yet) resolve to a real record — the same non-invent discipline as
 everywhere else in this module: an absent link is honest, never a dead one.</p>
+<h3 id="jump-back-from-erp-into-the-model">Jump back from ERP into the model<a class="headerlink" href="#jump-back-from-erp-into-the-model" title="Permanent link">&para;</a></h3>
+<p>The link above only ever pointed one way — BIM → ERP. Opening a record in <code>erp/idempiere.html</code> can now fly the
+<strong>same</strong> Viewer scene back to the exact spot that record describes, using the kernel's own <strong>Zoom Across</strong>
+mechanism (<code>erp/zoom_across.js</code>) — a generic "this record has a related surface" registry that already knew how
+to jump to a Project/Project-Line/Manufacturing-Order; it just didn't know about any HR_BIM_Asset table yet.</p>
+<ol>
+<li>Open a <strong>Warehouse</strong> (the building itself), a <strong>Subscription</strong> (a Tenancy lease/strata charge), a <strong>Resource</strong>
+   or its <strong>Unavailability</strong> row (a person or a room), or a <strong>User</strong> (an employee's identity) record in
+   <code>erp/idempiere.html</code>.</li>
+<li>The red <strong>Zoom Across</strong> pill lights up (same pill/shortcut <code>,</code> as every other cross-surface jump in this
+   kernel). Click it — the Viewer opens already scoped to that record's building, and where the record names a
+   specific unit or person, it flies straight to it, not just the building's default view.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>ERP record</th>
+<th>Lands the Viewer on</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>M_Warehouse</code> (a Building)</td>
+<td>The building, default view</td>
+<td>A Warehouse record isn't finer than the whole building.</td>
+</tr>
+<tr>
+<td><code>C_Subscription</code> (Tenancy/Strata)</td>
+<td>The leased <strong>unit</strong>, camera centred on that room</td>
+<td>The unit guid is re-derived via the same Product→Locator→Warehouse join the Project-Line jump already used — <code>C_Subscription</code> itself carries no guid column.</td>
+</tr>
+<tr>
+<td><code>S_Resource</code> — a <strong>room</strong></td>
+<td>That room</td>
+<td><code>S_Resource.Value</code> holds a room guid directly.</td>
+</tr>
+<tr>
+<td><code>S_Resource</code> / <code>S_ResourceUnAvailable</code> — a <strong>person</strong></td>
+<td>That person's <strong>current zone</strong>, if they're checked in</td>
+<td><code>S_Resource.Value</code> holds the employee's code (e.g. <code>EMP001</code>), not a guid — the Viewer resolves it to a room via that employee's open attendance session, the same spatial fact the Presence roster already reads. No open session → lands on the building only, honestly.</td>
+</tr>
+<tr>
+<td><code>AD_User</code></td>
+<td>The person's building</td>
+<td><strong>Honest gap:</strong> AD_User carries no zone column anywhere in the dictionary — their exact current room isn't derivable from ERP data alone, so this one never claims finer than the building.</td>
+</tr>
+</tbody>
+</table>
+<p>Watch it end to end: open the <strong>Resource</strong> window on EMP001 (or a Presence roster row's "open ↗"), hit Zoom
+Across — the Viewer lands you in the exact room they last checked into, camera already there, not just the
+building loaded. That's the full loop this module has been building toward — precise both ways.</p>
 <h3 id="classify-spaces">Classify spaces<a class="headerlink" href="#classify-spaces" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Open the drawer → tap <strong>Unit class</strong>.</li>
@@ -2480,6 +2685,11 @@ everywhere else in this module: an absent link is honest, never a dead one.</p>
    genuine addition, not a reinvention of something that already existed. So an unpaid row's <strong>open ↗</strong> doesn't
    point at a fabricated "leave record" window; it points at the real <strong>"Leave without pay" payroll concept</strong>
    the unpaid days feed into once payroll runs — the honest, real thing an unpaid entry actually compiles onto.</li>
+<li>Leave is <em>also</em> a resource-availability fact, not just a payroll deduction — a taken leave marks the employee
+   unavailable the same way a room's maintenance blackout does, via the real native <code>S_ResourceUnAvailable</code> table
+   (the child "Unavailability" tab of the Resource window). A <strong>Resource ↗</strong> link at the top of the pane opens
+   the employee's own Resource record, where that blackout shows up in the standard iDempiere Resource Schedule
+   — no separate leave-record UI to maintain, the same window Dashboard's Resources already deep-link into.</li>
 </ol>
 <h3 id="tenancy-ad-compile">Tenancy — AD compile<a class="headerlink" href="#tenancy-ad-compile" title="Permanent link">&para;</a></h3>
 <ol>
@@ -2492,6 +2702,14 @@ everywhere else in this module: an absent link is honest, never a dead one.</p>
 <li>Row click flies the camera to that unit (the same shared fly-to used by the Presence roster above); the
    <strong>open ↗</strong> link is separate and deep-links straight to the <code>C_Subscription</code> record. A record whose unit
    doesn't resolve to a real room in this building is <strong>skipped</strong>, never fabricated — the footer says so.</li>
+<li>The building itself compiles onto <code>M_Warehouse</code> — but the only <em>stock</em> iDempiere window over that table is
+   139 "Warehouse and Locators", warehouse-industry language for what's conceptually a building. A second,
+   purpose-named window — <strong>"Construction"</strong> — now sits alongside it over the <em>identical</em> <code>M_Warehouse</code> row
+   (the same convention iDempiere itself already uses for <code>C_BPartner</code>, which has 10 distinct windows over one
+   table). Window 139 is untouched; "Construction" is just a role-appropriate second door onto the same record.
+   In the Viewer, tapping a room or storey in the <strong>Find</strong> panel's Room lens surfaces an <strong>iDempiere ↗</strong> link to
+   this building's Construction record (building-grain — every room in one building shares the same warehouse
+   record, there's no per-room window).</li>
 </ol>
 <h3 id="bim-bom-assembly-recipe">BIM BOM — assembly &amp; recipe<a class="headerlink" href="#bim-bom-assembly-recipe" title="Permanent link">&para;</a></h3>
 <ol>
