@@ -33,12 +33,13 @@
   low-priority, not urgent. Memory: `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- **HBA IoT/CCTV lane §BUILD ORDER + §P10c — bim-ootb PR #652 + #653** (2026-07-05): 7 sensors (incl. new
-  Motion/PIR) + 6 cameras bound to real HHS elements (not the shared AHU-03 guid), real `M_Product`/`C_Order`/
-  `C_UOM` persistence (idempotent), orange zoom-highlight (wider "not too near" framing), USD/RM costing off
-  the already-seeded conversion rate, per-sensor siren tones (pitch=danger, distinct waveform per sensor,
-  mute-off-by-default). `witness_p10b.js` 44/44, full HBA suite zero regression, live CDP smoke in real Chrome.
-  Memory: `project_hba_iot_lod400_lane.md`.
+- **HBA IoT/CCTV lane §BUILD ORDER + §P10c + icons/connector/docs — bim-ootb PR #652/#653/#655** (2026-07-05):
+  7 sensors (incl. Motion/PIR, each with an icon) + 6 cameras bound to real HHS elements, real `M_Product`/
+  `C_Order`/`C_UOM` persistence (idempotent), wider "not too near" zoom, USD/RM costing, per-sensor siren tones
+  (mute-off-by-default), and a `camerasNearDevice` storey-connector (click a sensor -> rings the same-floor
+  CCTV tile). `docs/HRBIMAssetGuide.md` updated (7-sensor table + icons + a "for developers" API section,
+  screenshots recaptured) and pushed to master — not yet gh-pages-deployed. `witness_p10b.js` 47/47, full HBA
+  suite zero regression, live CDP smoke in real Chrome. Memory: `project_hba_iot_lod400_lane.md`.
 - **Modeller STR-into-ARC + canopy render + readPixels "EYES" harness — bim-ootb PR #638 MERGED** (2026-07-04
   MYT): ported the non-redundant half of a stranded branch — STR skeleton + canopy render into the laid ARC,
   plus a real pixel-level `readPixels` harness (verifies rendered geometry visually, not just by data
