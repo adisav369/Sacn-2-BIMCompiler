@@ -18,68 +18,33 @@
 
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
-## Fable5 follow-up + watchdog session 2026-07-04 — ALL MERGED/PUSHED
-- Fable5's 3 items (T7 host wiring, teams_pill close, pos-pill-btn witness) — bim-ootb PR #639 MERGED.
-- §PCLOSE-RACE (T7-RACE's TOCTOU shape found again in `erp_period_close.js`, fixed) — PR #640 MERGED.
-- W-HBA-CLICKTHRU: first REAL click-through witness for HBA's 6 deep-links (found 3/6 dead — PR #641 MERGED);
-  fixed 2 of them (missing AD_Window seed rows, PR #643 open); Tenancy/316 left to the Construction-window spec.
-- HBA §2026-07-04 A/B/C ✅ DONE (design pass + build, same session): "Construction" AD_Window minted over
-  M_Warehouse (proto-cloned from window 139) + Find-panel Room-lens "iDempiere ↗" link · Presence forward
-  link into AD_User(108) · Leave TAKE now also compiles a real `S_ResourceUnAvailable` row ("Resource ↗" into
-  window 236). Witnessed (10/10 new + 4 extended, full 41-file suite zero regression) + 2 live Playwright
-  smokes (8/8 real HHS building, 9/9 fm_panel.html), bim-ootb PR #645 (`lane/hba-construction-clickthru`,
-  awaiting merge) — PR gained a follow-up commit same session: added `compileBuilding()._governed` flag
-  (ad_tenancy.js) so the Construction link only shows once the REAL persisted warehouse id is known (was a
-  session-local mint pre-governance — a live correctness bug caught during design review, not just a nice-to-
-  have). Doc updated: `docs/HRBIMAssetGuide.md`.
-- ⛔ NEXT SESSION, SPEC READY — close the reverse "Zoom Across" loop for HBA entities: `erp/zoom_across.js`'s
-  `ZoomAcross` registry + the already-registered `'viewer'` destination in `idempiere.html` ALREADY do
-  ERP→Viewer reverse navigation (found this session, corrects an earlier "no precedent" claim) — but
-  `_zoomScope()` only recognizes `c_project`/`c_projectline`/`pp_order`, none of HBA's tables, and the Viewer
-  never reads the `find=` param it already receives (config.js gap). Full per-table plan + honest AD_User
-  caveat (exact-zone isn't resolvable from the ERP DB alone) in `prompts/RESUME_HR_BIM_ASSET.md`
-  §2026-07-04c — READ THIS, don't re-derive. User-confirmed "wow," build it directly next session.
-
-## Kernel op-log timebomb lane — T1/T2/T3/T6/T7 ✅ SHIPPED; T4+T5 remain
-- Findings: `prompts/KERNEL_TIMEBOMB_AUDIT_2026-07-03.md`. Shipped: T3+T6 (#623 v10) · T2+T1 roster (#630 v11)
-  · T1 PIN attrib (#634) · T7+4b incremental/shard (#636 v12, pre-merge adversarial review closed 3 findings).
-  Batch-1 spec: `prompts/KERNEL_HARDENING_BATCH1_SPEC.md`; witness counts: FABLE5_WRAPUP statuses + memory.
-- ⛔ T4+T5 (unify 3 kernel copies) BROWSER-GATED — analysis done (neither copy is a superset), needs the
-  W-ONE-KERNEL building-load smoke. Deferred: commitGroup id-race retry. Lane status: batch-1 spec §STATUS.
-- Modeller OPEN (unassigned): item 9 PBR textures; SSAO (needs EffectComposer vendored).
-
-## Modeller: IFC-direct-open + Outliner unification (2026-07-04) — ✅ MERGED, both PRs landed on main
-- Opens ARC-only `.ifc` directly (reuses Viewer's parse engine, always filtered to ARC — 0-mismatch parity
-  proven on a real 3504-elem multi-disc IFC); `IFC/` + `IFC/BimDB/` folders live (SH+DX populated). One Disc
-  tab (absent disciplines walk-clickable, no separate tab) + Find expands/highlights matches + always-visible
-  Teams pill. All Playwright-verified live. Detail: `prompts/ARC_GEO_FETCH_SPEC.md §3D` + memory
-  `project_modeller_arc_fetch_redesign.md`/`project_modeller_competitive_polish.md`.
-- Walking tests DONE: `modeller/tests/witness_e2e_walk_ifcopen.js` (W-E2E-WALK-IFCOPEN, 18/18) drives real
-  STR-surface + "▶▶ Walk ALL Disciplines" clicks across SampleHouse+Duplex (IFC-open) and SampleCastle
-  (.db-open, the "more residents" leg). Found + FIXED along the way: `openIfcFile` never forked its own
-  op-log key (unlike a `.db` resident's `_forkEditable`→`setModelKey`), so two IFC-opened buildings in the
-  same tab silently shared one signed op-log. Fixed with a `mo_ifc_<name>` key fork before `_openBuffer`.
-  **bim-ootb PR #642 MERGED to main.**
-- 3D-Grid cross-resident pass DONE: `Bonsai.grid` is a DECOUPLED authoring grid — no production code wires an
-  opened building's own STR-walked grid into it, so what generalizes IS the author-a-grid→drag→recompose
-  mechanism after a real (not just Duplex) open. New `modeller/tests/witness_e2e_gridstretch_multi.js` found
-  a real bug: on SampleCastle, `#b-clear` reset the scene+op-log but not `str_walker_outliner.js`'s own
-  STR-walker module state (`ready`/skeleton), so a later grid-drag on an unrelated synthetic wall still fired
-  SampleCastle's real STR re-walk, colliding on `kernel_ops.id` and rolling back (safe, but a spurious
-  rejected-toast). Spec'd the fix decision in `prompts/GRID_CLEAR_STATE_LEAK_FIX.md` (option B — narrow
-  reset: `STRWalkerOutliner.onClear()` resets `ready`/`lastEx`/`__dwBuf`/`__dwName`, wired into `#b-clear`).
-  **FIXED + MERGED: bim-ootb PR #644** (`lane/grid-clear-state-leak-fix`, commit `2f9bd04`→squashed `587622c`).
-  Independently re-verified (not just trusting the commit message): `witness_e2e_gridstretch_multi.js` 21/21,
-  `witness_e2e_gridstretch.js` 7/7, `witness_e2e_walk_ifcopen.js` 18/18 — all green, no regressions.
-- NEXT: continue `prompts/ARC_GEO_FETCH_SPEC.md §NEXT` item 2 — onboard Hospital/Clinic/LTU/HHS_Office as
-  Modeller residents + migrate SH/DX/SC into the canonical `IFC/` folder.
-
-## Codebase quality audit (2026-07-02) — TRIAGED 2026-07-03; §2/§5 DONE (bc #20, bim-ootb #618) → archived
+## OPEN — real work, not yet done (check these before starting a new session)
+- **HBA IoT/CCTV lane §2026-07-04d** — LOD400 sourcing POC done (bim-ootb PR #651, 4/6 real device IFCs from
+  NBS Source in `IFC/LOD/`), nothing placed into a building yet. Full build order: per-device bind position,
+  real `M_Product`/`C_Order` persistence, USD/RM costing (rate already seeded), zoom/highlight, click-through.
+  Spec: `prompts/RESUME_HR_BIM_ASSET.md §2026-07-04d`. Memory: `project_hba_iot_lod400_lane.md`.
+- **Modeller Spatial Dependency Graph, Phase 3 (backprop)** — accept/ignore UI for ORANGE suggestions is the
+  next unbuilt piece (a genuine UX design call, not mine to invent). Spec: `prompts/SPATIAL_DEPENDENCY_GRAPH.md`
+  §BUILD ORDER phase 3, `prompts/RESUME_SESSION_2026-07-04_GATE_BACKPROP.md`.
+- **Kernel op-log T4+T5** (unify 3 kernel copies) — BROWSER-GATED, needs W-ONE-KERNEL building-load smoke.
+  Deferred: `commitGroup` id-race retry. Spec: `prompts/KERNEL_HARDENING_BATCH1_SPEC.md §STATUS`.
+- **Modeller onboarding** — Hospital/Clinic/LTU/HHS_Office as Modeller residents + migrate SH/DX/SC into the
+  canonical `IFC/` folder. Spec: `prompts/ARC_GEO_FETCH_SPEC.md §NEXT` item 2.
 - ⛔ BLOCKED (user call): are `migration/DV_*_rules.sql` mined-rule files EXEMPT from append-only, or enforce?
-- OPEN: §1 refactors (spec-first, Sacred file), §2 dead-code removal, §3 shallow specs 27/29 (bim-ootb).
-  Full triage: `prompts/CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE`.
+  Full triage: `prompts/CODEBASE_QUALITY_AUDIT_2026-07-02.md §TRIAGE` (§1 refactors, §3 shallow specs also open).
+- Modeller unassigned polish: item 9 PBR textures; SSAO (needs EffectComposer vendored).
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- Modeller Conformity Gate + SDG backprop slice 1, round-2 hardening — bim-ootb #644/#645/#646/#647/#648/#649/#650
+  all merged (2026-07-04): clear-state-leak round 1+2, door-crush RED, abuts-realign ORANGE (first backprop
+  slice), Conformity Gate user-guide doc, cross_edges.js real-per-element-AABB fix. Memory: `project_arc_editable_substrate.md`.
+- Modeller IFC-direct-open + Outliner unification — bim-ootb #642, `witness_e2e_walk_ifcopen.js` 18/18,
+  `witness_e2e_gridstretch_multi.js` 21/21 (2026-07-04). Detail: `prompts/ARC_GEO_FETCH_SPEC.md §3D` + memory
+  `project_modeller_arc_fetch_redesign.md`/`project_modeller_competitive_polish.md`.
+- Fable5 follow-up + watchdog session — bim-ootb #639/#640/#641/#643/#645, kernel T1/T2/T3/T6/T7 (2026-07-04).
+  Reverse Zoom Across loop (HBA ERP→Viewer nav) done same day. Memory: `project_fable5_wrapup_2026-07-03.md` +
+  `project_hba_construction_window_person_linkthrough.md`.
+- Codebase quality audit §2/§5 — bc #20, bim-ootb #618 (2026-07-03).
 - Fable5 wrap-up, all 6 items + pills consolidation — bc #37, ootb #633/#634/#635/#636/#637, bc #38 (2026-07-04; `prompts/archive/FABLE5_WRAPUP_2026-07-03.md` + `prompts/archive/PILLS_CONSOLIDATION_REVIEW_2026-07-03.md`)
 - Unified docs pass leftovers — bc #35/#36, HBA BOM shot + anchors + branch dedupe (2026-07-03; `prompts/RESUME_UNIFIED_DOCS_PASS_2026-07-03.md`)
 - HBA Stage 3 + C_Attendance retirement — bim-ootb PR #632, suite 40/40, §HBA_GOVERN live smoke (2026-07-03; `prompts/RESUME_HBA_ERP_STAGE3.md`)
