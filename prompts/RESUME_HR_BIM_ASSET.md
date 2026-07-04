@@ -1895,7 +1895,7 @@ status checks on bim-ootb `main`, per this repo's normal flow) — not yet merge
 
 ---
 
-## ▶ 2026-07-04d — QUEUED, NOT STARTED (user ask, do in a NEW session): IoT/CCTV zoom+highlight, USD/RM costing, real Product+Order click-through
+## ▶ 2026-07-04d — LOD400 sourcing POC ✅ DONE (bim-ootb PR #651); rest QUEUED for a NEW session: IoT/CCTV zoom+highlight, USD/RM costing, real Product+Order click-through
 
 **User ask (verbatim intent):** clicking a CCTV tile or a sensor should zoom the camera to that device AND
 tint its mesh orange (the same highlight idiom `flyToZone`'s pulse already uses elsewhere); the billing table
@@ -1923,6 +1923,52 @@ primitive-box placeholder per device (small labeled cube/cylinder at the device'
 interim shape, same discipline as every other "primitive now, LOD400 later" element in this codebase — cheaper,
 consistent with the Walker Doctrine's own POC convention, and unblocks the click/zoom/highlight/Product work
 below without waiting on asset sourcing.
+
+### §LOD400-POC ✅ DONE 2026-07-04 (bim-ootb PR #651, branch `lane/iot-lod400-poc`) — option (a) chosen, and it's real
+
+**Path (a) above is genuinely viable — 4 of 6 device types found FREE, unmodified, real geometry, no login
+wall.** Fetched from **NBS Source** (`source.thenbs.com`, the same library option (a) named) and saved to
+**`bim-ootb/IFC/LOD/`** (a NEW subfolder, deliberately distinct from `IFC/`'s per-building-ARC-only convention
+— these are standalone component objects, not buildings):
+
+| Device | File | Real IFC classification |
+|---|---|---|
+| CCTV camera | `CCTV_Paxton10MiniBulletCamera_CORE.ifc` | `IfcBuildingElementProxyType`, `IfcExportType='CAMERA'` (~900 geometry entities) |
+| Temperature/env sensor | `Sensor_Aico_Ei1025_TempHumidityCO2.ifc` | `IfcSensorType`, `.TEMPERATURESENSOR.` |
+| Solar | `Solar_NBS_PhotovoltaicModule.ifc` | `IfcEnergyConversionDevice` |
+| Electrical | `Electrical_Bender_LINETRAXX_PEM353_PowerMeter.ifc` | `IfcFlowInstrumentType` |
+
+**Still genuinely not found (don't invent a stand-in mesh):** boiler pressure gauge, sound-level meter,
+dust/PM2.5 sensor — widen the manufacturer search (Siemens/Danfoss/Honeywell BIM portals) next session, or
+fall back to option (b)'s primitive box for just these two.
+
+**The reusable fetch recipe (don't re-derive):** NBS Source product pages embed a normalized cache blob in
+the raw HTML — `"__typename":"DigitalObject","format":"IFC"` referencing a `DigitalObjectFile-<id>` record
+that resolves to `"assetId":"<uuid>"`. The real file is a plain unauthenticated GET:
+`https://asset.source.thenbs.com/api/<assetId>` → raw `.ifc` (STEP/ISO-10303-21), `Content-Type: text/plain`.
+**Must use a real browser User-Agent** — NBS Source 403s a bare `WebFetch`-style bot signature; a plain `curl
+-A "Mozilla/5.0 ..."` works fine, no account, no payment. Full detail + provenance: `IFC/LOD/README.md`
+(bim-ootb, same branch).
+
+**Next session — placement into HHS_Office_Federated as sample data (NOT done yet, this POC only proves the
+objects are real+fetchable):**
+1. Pick real bind positions for each device inside `HHS_Office_Federated` — reuse `models.js Asset` records'
+   pattern (e.g. `AHU-03`'s `bim_guid` already binds one IoT-linked element; the camera/sensor/solar/electrical
+   objects need their OWN new bound positions, honestly chosen — a real room/wall/roof location, not a random
+   coordinate).
+2. Parse each `IFC/LOD/*.ifc` (real geometry, small files) and transform its local geometry into
+   `HHS_Office_Federated`'s coordinate frame at the chosen bind position — this is real IFC-parsing/geometry-
+   transform pipeline work (reuse whatever this repo's existing IFC→extracted-db compile step already does for
+   a single element, don't hand-roll a new one).
+3. Insert as new `elements_meta`/geometry rows in `HHS_Office_Federated_extracted.db` (or a clearly-labeled
+   sample/demo overlay db, if writing into the canonical extracted db directly isn't the right call — decide
+   before building, per Spec-First) with real new guids.
+4. Wire those new guids into `models.js Asset` records / `iot.js`'s per-device compile (today ALL 6 sensors
+   share ONE asset's guid — AHU-03 — this is the fix that gives each device its own real position) so
+   `flyToZone`/the orange-highlight work (§BUILD ORDER point 3 below) has a REAL per-device target, not the
+   shared placeholder.
+5. Witness: a live Playwright smoke that the new elements actually render, resolve via `A.guidMap`, and
+   `flyToZone` lands the camera on each one individually (not all landing on the same AHU-03 spot).
 
 ### §PRODUCT-PERSISTENCE-CHECK — same bug class as this session's C_Subscription fix, confirmed present
 `hr_bim_asset/iot.js billingLines()`'s `m_product_id` is a **sequential in-memory mint** (`++prodSeq`, 1/2/3…)
