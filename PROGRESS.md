@@ -28,8 +28,17 @@
   link into AD_User(108) · Leave TAKE now also compiles a real `S_ResourceUnAvailable` row ("Resource ↗" into
   window 236). Witnessed (10/10 new + 4 extended, full 41-file suite zero regression) + 2 live Playwright
   smokes (8/8 real HHS building, 9/9 fm_panel.html), bim-ootb PR #645 (`lane/hba-construction-clickthru`,
-  awaiting merge). Doc updated: `docs/HRBIMAssetGuide.md`. Full detail: `prompts/RESUME_HR_BIM_ASSET.md`
-  §2026-07-04 (closeout appended).
+  awaiting merge) — PR gained a follow-up commit same session: added `compileBuilding()._governed` flag
+  (ad_tenancy.js) so the Construction link only shows once the REAL persisted warehouse id is known (was a
+  session-local mint pre-governance — a live correctness bug caught during design review, not just a nice-to-
+  have). Doc updated: `docs/HRBIMAssetGuide.md`.
+- ⛔ NEXT SESSION, SPEC READY — close the reverse "Zoom Across" loop for HBA entities: `erp/zoom_across.js`'s
+  `ZoomAcross` registry + the already-registered `'viewer'` destination in `idempiere.html` ALREADY do
+  ERP→Viewer reverse navigation (found this session, corrects an earlier "no precedent" claim) — but
+  `_zoomScope()` only recognizes `c_project`/`c_projectline`/`pp_order`, none of HBA's tables, and the Viewer
+  never reads the `find=` param it already receives (config.js gap). Full per-table plan + honest AD_User
+  caveat (exact-zone isn't resolvable from the ERP DB alone) in `prompts/RESUME_HR_BIM_ASSET.md`
+  §2026-07-04c — READ THIS, don't re-derive. User-confirmed "wow," build it directly next session.
 
 ## Kernel op-log timebomb lane — T1/T2/T3/T6/T7 ✅ SHIPPED; T4+T5 remain
 - Findings: `prompts/KERNEL_TIMEBOMB_AUDIT_2026-07-03.md`. Shipped: T3+T6 (#623 v10) · T2+T1 roster (#630 v11)
