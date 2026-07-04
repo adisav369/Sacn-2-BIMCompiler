@@ -19,10 +19,6 @@
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
 ## OPEN — real work, not yet done (check these before starting a new session)
-- **HBA IoT/CCTV lane §2026-07-04d** — LOD400 sourcing POC done (bim-ootb PR #651, 4/6 real device IFCs from
-  NBS Source in `IFC/LOD/`), nothing placed into a building yet. Full build order: per-device bind position,
-  real `M_Product`/`C_Order` persistence, USD/RM costing (rate already seeded), zoom/highlight, click-through.
-  Spec: `prompts/RESUME_HR_BIM_ASSET.md §2026-07-04d`. Memory: `project_hba_iot_lod400_lane.md`.
 - **Modeller Spatial Dependency Graph, Phase 3 (backprop)** — accept/ignore UI for ORANGE suggestions is the
   next unbuilt piece (a genuine UX design call, not mine to invent). Spec: `prompts/SPATIAL_DEPENDENCY_GRAPH.md`
   §BUILD ORDER phase 3, `prompts/RESUME_SESSION_2026-07-04_GATE_BACKPROP.md`.
@@ -37,6 +33,11 @@
   low-priority, not urgent. Memory: `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- **HBA IoT/CCTV lane §BUILD ORDER — bim-ootb PR #652 (`lane/hba-iot-device-persistence`)** (2026-07-05): 6
+  sensors + 6 cameras bound to real HHS elements (not the shared AHU-03 guid), real `M_Product`/`C_Order`/
+  `C_UOM` persistence (`scripts/seed_hba_erp.js` §11, idempotent), orange zoom-highlight, USD/RM costing off
+  the already-seeded conversion rate. `witness_p10b.js` 36/36, full HBA suite zero regression, live CDP smoke
+  in real Chrome. Memory: `project_hba_iot_lod400_lane.md`.
 - **Modeller STR-into-ARC + canopy render + readPixels "EYES" harness — bim-ootb PR #638 MERGED** (2026-07-04
   MYT): ported the non-redundant half of a stranded branch — STR skeleton + canopy render into the laid ARC,
   plus a real pixel-level `readPixels` harness (verifies rendered geometry visually, not just by data

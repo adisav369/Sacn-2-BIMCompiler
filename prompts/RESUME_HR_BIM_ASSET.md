@@ -2018,3 +2018,62 @@ line amount AND its USD equivalent via that SAME already-seeded conversion rate 
 persisted anywhere for IoT today (likely the SAME in-memory-only gap as `M_Product` — `toOrderRow`/
 `toOrderLineRow` use the identical `seedId ? seedId() : 1` mint pattern with no `erpQuery` match-or-create at
 all, unlike `ad_tenancy.js`'s fully-governed compile functions) — verify before building step 5.
+
+---
+
+## ▶ 2026-07-05 — §BUILD ORDER items 1-6 ✅ ALL DONE (bim-ootb PR #652, branch `lane/hba-iot-device-persistence`)
+
+**Framing check mid-session (user):** this whole slice is a POC-stub — the point is preparing the underlying
+models so eventual real usage needs less migration work, and the demonstrative UI helps a future implementer
+see the shape. Confirms the approach taken: compile onto REAL AD tables now (M_Product/C_Order/C_UOM/
+C_Conversion_Rate), keep the UI honestly mockup-labeled (bars/CCTV stills/watermarks unchanged) — no
+over-building beyond that.
+
+**What shipped, all 6 §BUILD ORDER items in one pass (worktree `/tmp/wt-iot-persist`, fresh off `origin/main`
+`bd76e9d` — the old `lane/iot-lod400-poc` worktree/branch was squash-merged as `bd76e9d` per PR #651, correctly
+NOT reused per the CLAUDE.md squash-merge doctrine):**
+1. **Per-device positions** — `hr_bim_asset/iot.js` gained `DEVICES` (6 sensors) + `CAMERAS` (6) catalogs, each
+   bound to its OWN real HHS_Office_Federated element guid, queried live this session against
+   `buildings/HHS_Office_Federated_extracted.db` (`elements_meta`): `temp` reuses AHU-03 verbatim (unchanged);
+   `pressure`→a real rooftop "Outdoor AHU" plant unit; `sound`/`dust`→2 other real Level-2 supply diffusers;
+   `solar`→the real Roof Level sun-shading floor slab; `electrical`→the real Level-1 Main Distribution Panel
+   (MDP-1); 6 cameras→6 real entrance/circulation doors, 2 per storey (L1/L2/L3) — the standard CCTV placement
+   idiom, picked from real elements, never fabricated positions. `rel_contained_in_space` was checked for
+   per-room containment (would have set `M_Product.m_locator_id`) — sparse (88 rows total, none cover these
+   specific elements) — left honestly null, not forced.
+2. **Product/Order persistence** — `toUomRow`/`toProductRow`(NEW)/`toOrderRow`/`billingLines` gained the SAME
+   `_one(erpQuery,...)` match-or-create idiom `ad_tenancy.js` §STAGE2 already established; absent erpQuery →
+   byte-identical prior mint (every existing witness unaffected). `scripts/seed_hba_erp.js` §11 (two-phase,
+   same idiom as §2/§9): inserts C_UOM(6)/M_Product(12: 6 sensors+6 cameras)/C_Order(1) with proper
+   `MAX(id)+1` ids FIRST, then calls `IoT.billingLines(..., {erpQuery})` so its own match-or-create resolves
+   every id back to the just-inserted row (`_governed:true`, never the mint fallback), then persists 6
+   C_OrderLine rows. Self-witness PASS, 2nd run confirmed idempotent (0 additions).
+3. **Zoom + orange highlight** — `viewer/hba_iot.js`'s new `locateAndHighlight(A, guid)`: `flyToZone` + a
+   distinct 0xff8800 orange tint held 4s (self-restoring), deliberately different from `flyToZone`'s own
+   0xffcc00 arrival pulse. Wired to EVERY sensor bar (its own device guid, not the shared AHU-03) AND every
+   CCTV tile (its own camera guid) — new click handlers on the tiles (previously non-interactive).
+4. **USD/RM currency** — `iot.js toOrderLineRow` sets `c_currency_id`=the real already-seeded MYR row (301);
+   `usdRate(erpQuery)` reads the real already-seeded `C_Conversion_Rate` (301→100, `scripts/seed_fin_currency.js`)
+   — never a second invented rate. Billing table shows `RM <amt>` + a `≈ USD <amt>` sub-line when governed,
+   honestly RM-only when not (no rate to convert with).
+5. **Order/Line click-through** — the pane's pre-existing "open ↗" link (`AD_WINDOWS.ORDER=143`, shipped PR
+   #614) now resolves to a REAL persisted `C_Order` row once §11 has run — verified `AD_Window 143` is real+
+   active in `ad_seed.db`. No new UI needed, the wiring was already there; only the persistence was missing.
+6. **Witnesses + live smoke** — `witness_p10b.js` extended 22→36 checks (I9-I15 engine: distinct guids,
+   governed match-or-create, USD honest-null-when-ungoverned, camera Products; IP7-IP13 pane: per-device fly
+   target ≠ shared AHU-03, orange tint distinct from yellow pulse, RM/USD table rendering both branches).
+   Full 41-file HBA suite re-run zero regression. **Live CDP smoke** (`cdp_shot.js` against
+   `demo/fm_panel.html` in real headless Chrome, not just node stubs): clicking the pressure bar and CCTV tile
+   3 fired `§HBA_FLY` with the EXACT expected distinct real guids (39q4vWPDPE3QeBugdA373d /
+   0Z1xu3E5b8zPJTx3GNZg8Y), 6 bars/6 CCTV tiles/6 billing rows rendered, RM display correct, 0 console errors.
+   (Found+fixed a smoke-script-only selector bug along the way — a real browser normalizes `cssText` with
+   spaces after colons, a bare stub-DOM node witness doesn't — not a product bug.)
+
+**Corrects a stale note above:** the §P10d "swap CCTV mockup for a real still" item (line ~380-393) reads as
+NOT done — it actually WAS shipped, just in an earlier PR (#611/#614, verified via `git log -- viewer/hba_iot.js`)
+before this session's LOD400/persistence work; `hba_iot.js` already paints CCTV tiles from a real
+`hba_cctv_still.jpg`. Don't re-do it; the resume doc's own prose lagged the actual shipped code.
+
+**Not started (explicitly queued for "a NEW session" with open design questions, §P10c above) — audio effects
+on the IoT panel.** 3 genuine user decisions still needed before building (live-tick vs click/hover trigger,
+tone-mapping design, mute/volume default+placement) — correctly not attempted without those answers.
