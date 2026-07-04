@@ -151,6 +151,31 @@ from the real AD dictionary, never guessed:
 No link appears on a row that doesn't (yet) resolve to a real record — the same non-invent discipline as
 everywhere else in this module: an absent link is honest, never a dead one.
 
+### Jump back from ERP into the model
+The link above only ever pointed one way — BIM → ERP. Opening a record in `erp/idempiere.html` can now fly the
+**same** Viewer scene back to the exact spot that record describes, using the kernel's own **Zoom Across**
+mechanism (`erp/zoom_across.js`) — a generic "this record has a related surface" registry that already knew how
+to jump to a Project/Project-Line/Manufacturing-Order; it just didn't know about any HR_BIM_Asset table yet.
+
+1. Open a **Warehouse** (the building itself), a **Subscription** (a Tenancy lease/strata charge), a **Resource**
+   or its **Unavailability** row (a person or a room), or a **User** (an employee's identity) record in
+   `erp/idempiere.html`.
+2. The red **Zoom Across** pill lights up (same pill/shortcut `,` as every other cross-surface jump in this
+   kernel). Click it — the Viewer opens already scoped to that record's building, and where the record names a
+   specific unit or person, it flies straight to it, not just the building's default view.
+
+| ERP record | Lands the Viewer on | Notes |
+|---|---|---|
+| `M_Warehouse` (a Building) | The building, default view | A Warehouse record isn't finer than the whole building. |
+| `C_Subscription` (Tenancy/Strata) | The leased **unit**, camera centred on that room | The unit guid is re-derived via the same Product→Locator→Warehouse join the Project-Line jump already used — `C_Subscription` itself carries no guid column. |
+| `S_Resource` — a **room** | That room | `S_Resource.Value` holds a room guid directly. |
+| `S_Resource` / `S_ResourceUnAvailable` — a **person** | That person's **current zone**, if they're checked in | `S_Resource.Value` holds the employee's code (e.g. `EMP001`), not a guid — the Viewer resolves it to a room via that employee's open attendance session, the same spatial fact the Presence roster already reads. No open session → lands on the building only, honestly. |
+| `AD_User` | The person's building | **Honest gap:** AD_User carries no zone column anywhere in the dictionary — their exact current room isn't derivable from ERP data alone, so this one never claims finer than the building. |
+
+Watch it end to end: open the **Resource** window on EMP001 (or a Presence roster row's "open ↗"), hit Zoom
+Across — the Viewer lands you in the exact room they last checked into, camera already there, not just the
+building loaded. That's the full loop this module has been building toward — precise both ways.
+
 ### Classify spaces
 1. Open the drawer → tap **Unit class**.
 

@@ -1753,8 +1753,142 @@ session (the 3 additions are click-through mechanics, not new visual panes — f
 skipped, matching this doc's own established convention for partial doc passes).
 
 **Genuinely still open (not started, not this session's scope):**
-1. **B's reverse direction** (ERP record → fly back into the 3D model) — zero precedent anywhere in the
-   codebase; needs its own spec (what triggers it, cross-tab/window messaging or same-tab-only) before any code.
+1. ~~B's reverse direction has zero precedent~~ **CORRECTED same-day, see §2026-07-04c below** — it exists
+   (`erp/zoom_across.js`), just not wired for HBA's tables yet. Do NOT re-search for it; the finding + the exact
+   spec for finishing it is §2026-07-04c.
 2. Recapture `hba_fm_drawer.png`-style screenshots for the 3 new affordances (Construction link, Presence
    open↗, Leave Resource↗) if this guide gets a fresh screenshot pass.
 3. bim-ootb PR #645 needs a human merge decision (branch protection + required status checks on `main`).
+
+---
+
+## ▶ 2026-07-04c — SPEC, READY TO BUILD NEXT SESSION: close the Zoom Across loop for HBA entities
+
+**User verdict (2026-07-04, same-day follow-up):** confirmed this is a genuine "wow" — real reasons, not
+politeness: it reuses an existing, already-tested abstraction (no new mechanism, unlike the multi-grain idea
+below that was correctly killed); it's small (two additive wires, not a subsystem); it completes the
+bidirectional round-trip the whole A/B/C thread has been circling (BIM↔ERP, precise both ways, for Person/
+Room/Tenant/Resource, not just the one-way links shipped today). **Do not re-derive any of the findings below
+— they were checked against the real code this session, not assumed. Just build it.**
+
+### §BACKGROUND — two design mistakes made and corrected in this same session, don't repeat them
+1. **Multi-grain priority chain for Find's room tap (subscription → product/locator → building) — REJECTED.**
+   Considered, then killed: it makes the SAME gesture (tapping a room) produce 3 different, unpredictable
+   outcomes depending on invisible backend data (does this room have a lease? does it have its own compiled
+   Product?), it's redundant with the Tenancy pane's ALREADY-CORRECT per-room subscription link, and it barely
+   fires (3 tenant records in the whole demo). **Do not resurrect this.** Find's Room-lens tap stays
+   building-grain only (→ Construction window, `hba_lens.js`/`navigate_find.js`, already shipped PR #645).
+2. **Locator-grain deep-link ("why not just link to this room's own M_Locator row?") — genuinely hard, not
+   worth it.** `M_Locator` has NO top-level `AD_Window` of its own — it's only a CHILD TAB (178) of window
+   139/Construction. `erp/idempiere.html`'s `_landOnRecord(rid)` (the function `?window=&record=` deep-links
+   into) ONLY ever searches whichever tab is CURRENTLY ACTIVE (the header/main tab) — there is no `&tab=`
+   param, no child-tab switching, no "wait for lazy-loaded child rows then match" logic anywhere in the app.
+   Building that would be genuinely new plumbing (open window → land on parent row → switch to child tab →
+   wait for it to load → match the child row) — a real, non-trivial addition, unlike the trivial guid→locator
+   *data* lookup itself (`A._hbaTenancySpec.locators.find(l => l.value === guid)` is one line). **Not in scope
+   next session either** — flag if it ever becomes worth it, don't build it opportunistically.
+
+### §THE REAL MECHANISM — already built, verified this session, just under-populated
+`erp/zoom_across.js` — a generic, surface-agnostic registry:
+```
+ZoomAcross.register({ id, label, available(ctx)->bool, launch(ctx) })
+ZoomAcross.targets(ctx) -> the destinations whose available(ctx) is true
+```
+Its own header: "GENERALISES iDempiere's native Zoom-Across (record → related WINDOW) to record → related
+SURFACE (the BIM Viewer now; the Modeller etc. later)." `erp/idempiere.html` already registers a live `'viewer'`
+destination (search `if (window.ZoomAcross) window.ZoomAcross.register({ id: 'viewer'`) whose `launch(ctx)`
+opens `../viewer/viewer.html?db=...&bld=...&find=<scope>&home=<erp-url>` — this IS the red pill ("Zoom Across")
+the user recalled building earlier. **Two concrete gaps, both small, both additive:**
+
+**Gap 1 — `_zoomScope(ctx)` (erp/idempiere.html, ~line 4470) only recognizes 3 table names today:**
+`c_project` (→ `{bld: Value, find: null}`), `c_projectline` (→ `{bld, find: <ifc_class via M_Product join>}`),
+`pp_order` (→ `{bld, find: null, tm: {order}}`, TimeMachine mode). **None of today's HBA tables are wired in.**
+Extend with more `if (tn === '...')` branches, reusing the identical return shape + the SAME registered
+destination/launch (no new registration, no new URL scheme):
+
+| Table (`ctx.tab.tableName`) | `bld` | `find` | Notes / honesty caveats |
+|---|---|---|---|
+| `m_warehouse` | `Value` column (already = the building name, per `ad_tenancy.toWarehouseRow`) | `null` | Trivial — same shape as `c_project`'s branch. Lands on the building, no finer scope (a Warehouse record isn't finer than that). |
+| `c_subscription` | via `m_product_id` → `SELECT Value FROM M_Product WHERE M_Product_ID=?` → the room's guid → then join `M_Product.m_locator_id → M_Locator.m_warehouse_id → M_Warehouse.Value` for `bld` | the room's guid (from the M_Product join) | `C_Subscription` itself carries NO guid column (column-pure row, per `toSubscriptionRow`) — the guid only exists in `ad_tenancy.js`'s compile-time WRAPPER (`{row, unit_guid,...}`), never persisted. From the ERP DB alone you must re-derive it via the M_Product join — exactly the same join shape `c_projectline`'s branch already does for `M_Product_ID`. Real SQL work, but a proven pattern, not a new one. |
+| `s_resource` | via `m_warehouse_id` → `M_Warehouse.Value` | `Value` column IF it's a room (guid-shaped) — **ambiguous**, see caveat | `S_Resource.Value` holds EITHER a room guid (`occupancy.toResourceRow`) OR an employee code like `"EMP001"` (`ad_attendance.toPersonResourceRow`) — same column, two different meanings depending on which compile path made the row. Disambiguate via `ad_user_id IS NOT NULL` (a person) vs NULL (a room) before deciding what `find` means. |
+| `s_resourceunavailable` | via `s_resource_id` → same resolution as `s_resource` above | same as above | One extra join hop (`S_ResourceUnAvailable.s_resource_id → S_Resource`), then identical to the `s_resource` branch. |
+| `ad_user` | via the person's `S_Resource` (`ad_user_id` FK) → `m_warehouse_id` → `M_Warehouse.Value` | **HONEST GAP, do not invent**: this person's CURRENT zone/room is NOT a column on any AD table — it's a BIM-side view-trace fact (`ad_attendance.js` compileAttendance's `spatial` array, keyed by `s_resourceassignment_id`, explicitly documented as "never a fabricated FK" — see `hr_bim_asset/ad_attendance.js` header). From the ERP DB alone, an `AD_User` record can only resolve to "their building," never "their exact room right now." Ship `find: null` for this table honestly; do NOT fabricate a zone lookup that doesn't exist. |
+
+**Gap 2 — the Viewer never reads the `find=` param at all.** Checked `viewer/config.js` (the file that reads
+every other launch param into `A.*`: `A.DB_URL`, `A.RECORD_ID = _params.get('record')`, `A.HOME_URL =
+_params.get('home')`, etc.) — there is NO `_params.get('find')` anywhere. So even the ALREADY-WORKING
+`c_projectline` reverse path today only ever lands you on the right BUILDING, never the right ELEMENT — the
+loop was half-built and silently dropped its own finer scope. **This is the one wire that actually delivers
+"vice versa, precisely"** — without it, Gap 1's work only gets you building-grain (which the Construction link
+already does from the Viewer→ERP direction). Fix: read `A.FIND_GUID = _params.get('find')` in `config.js`
+(mirroring the existing `RECORD_ID`/`HOME_URL` pattern), then on boot (after streaming completes, same
+readiness gate `hba_lens.js`'s own `_poll` already uses — `A.guidMap` populated + `A.streaming` false), if
+`A.FIND_GUID` is set: open Find (`A.openFindPanel`), then either fly directly to that guid (if it resolves to
+a rendered mesh — reuse `HBALens.flyToZone`/the `_roomSelect`-style centroid logic already built for rooms) or
+select it in the Find tree if it's a non-mesh identifier (an employee code isn't a guid, so `s_resource`'s
+Value≠guid case needs a different resolution path — probably: look up that employee's OPEN attendance
+session's zone client-side via `A._hbaAttendanceLog`/`ad_attendance.js`'s own reader, the SAME BIM-side fact
+`ad_user`'s ERP-side branch above honestly couldn't reach — i.e. the fine landing for a PERSON may need to
+happen viewer-side using data ERP-side never had, not ERP-side passing a precise `find` value at all).
+
+### §BUILD ORDER (spec-first, witness after each step, same discipline as A/B/C)
+1. Extend `_zoomScope()` with the `m_warehouse`/`c_subscription`/`s_resource`/`s_resourceunavailable`/`ad_user`
+   branches per the table above (idempiere.html). Node/Playwright witness per table (mirror `poc_zoom_across.js`'s
+   existing shape — gate-true, correct `bld`/`find`, gate-false on an unrelated table).
+2. Wire `A.FIND_GUID` in `config.js` + the boot-time consumption (open Find + resolve/fly) in whichever file
+   owns Viewer boot sequencing (likely `main.js`, alongside the existing `wizard`/`diffdb` boot-param handling
+   pattern already there). Live smoke: launch from an ERP `s_resource`/`c_subscription` record, confirm the
+   Viewer lands on the SAME room/element, not just the building — this is the actual "vice versa" proof, not
+   just a URL shape assertion.
+3. Full existing suite (HBA's 41 node witnesses + `zoom_across`'s own existing witnesses) — zero regression,
+   same discipline as every prior HBA session.
+4. Doc: `docs/HRBIMAssetGuide.md` gets a new "Jump back from ERP into the model" section once built (screenshot
+   pass optional per the existing convention of flagging rather than skipping).
+
+**Not in scope even after this:** the Locator child-tab drill-down (§BACKGROUND point 2) and the AD_User exact-
+zone problem's ERP-side half (genuinely unsolvable from the AD dictionary alone, per the table above) — both
+correctly flagged as honest gaps, not silently invented workarounds.
+
+## ▶ 2026-07-04c ✅ BUILT — the reverse Zoom Across loop is CLOSED (bim-ootb `lane/hba-construction-clickthru`, PR #645)
+
+Built exactly per §BUILD ORDER above, plus two discovered-and-fixed prerequisites the spec didn't anticipate
+(both logged, not silently smoothed over):
+
+1. **`_zoomScope()` extended** (erp/idempiere.html) with all 5 branches from the Gap-1 table — m_warehouse,
+   c_subscription, s_resource (room+person disambiguation via `ad_user_id`), s_resourceunavailable, ad_user
+   (honest `find:null`). Same {bld,find} shape, same registered `'viewer'` destination — zero new mechanism.
+2. **Discovery: `C_Subscription`/`C_SubscriptionType` had ZERO physical rows anywhere** — `ad_tenancy.
+   compileBuilding()` only ever compiled them in memory; the Tenancy pane's existing "open ↗" link (window 316)
+   was pointing at a fabricated in-memory id with no real row behind it. Fixed by extending
+   `scripts/seed_hba_erp.js` §9 (mirrors the HR_Process/HR_Movement activation pattern exactly): minted the 2
+   real `C_SubscriptionType` rows, minted real `C_BPartner` rows for the 4 tenant/owner party codes (BP-TEN-1/5/6,
+   BP-OWN-1 — closing a second honest gap, AD_User.c_bpartner_id, along the way), persisted all 4 real
+   `C_Subscription` rows via the already-witnessed `compileBuilding()` output. Self-witnessed (`SUB-JOIN-LOSSLESS`)
+   and idempotent (2nd run = 0 additions).
+3. **Discovery: window 316 "Subscription" itself was silently dead** — real in upstream `ad_full.db` (Name=
+   "Subscription", Tab 621 + 12 fields already active in `ad_seed.db`) but IsActive='N' in stock iDempiere AND
+   entirely absent from `ad_seed.db`'s curated 374-window extract (vs 458 in the full dictionary) — `getWindow()`
+   requires a live `AD_Window` row, so the Tenancy pane's own forward link has been dead since it shipped.
+   Fixed: activated the real extracted row (byte-for-byte from `ad_full.db`, IsActive flipped Y) — same
+   "activate a dormant native window" precedent as the whole HR_Process/HR_Movement mission. Witnessed
+   (`WINDOW316-LIVE`).
+4. **`A.FIND_GUID` wired** (`viewer/config.js` `?find=` param) and consumed on boot (`viewer/hba_lens.js
+   _consumeFindGuid`, called from the existing `_poll` readiness gate): a rendered guid flies directly via
+   `flyToZone`; a bare employee code with no rendered mesh resolves via that person's OPEN attendance-session
+   zone (`A._hbaAttendanceLog`) and flies there instead; neither path fabricates a position — an unresolvable
+   code is logged, never dropped silently.
+5. **Witnesses, all GREEN, zero regression**: `hr_bim_asset/tests/witness_find_guid.js` (5/5, new) +
+   `erp/tests/poc_zoom_across_hba.js` (17/17, new, live Playwright — real click-through per table incl. a
+   real child-tab switch for `s_resourceunavailable`) + `viewer/tests/poc_find_guid_live.js` (15/15, new, live
+   Playwright against the REAL `HHS_Office_Federated_extracted.db` — asserts the ACTUAL live `camera.controls.
+   target` matches the logged centroid, not just a log line) + full existing 42-file HBA node suite + existing
+   `poc_zoom_across.js`/`poc_construction_link_live.js`/`poc_presence_leave_link_live.js` all still green.
+   **The `poc_find_guid_live.js` run is the actual "vice versa, precisely" proof**: `?find=EMP001` independently
+   cross-checked against `HbaAttendance.sessions()` resolves to `RM_Level_1_1`, and the live camera really lands
+   there (target within 0.05 of the logged centroid) — not just the building.
+6. **Docs**: `docs/HRBIMAssetGuide.md` gained the "Jump back from ERP into the model" section (after "Jump
+   straight to the ERP record"), with the same table shape as the rest of the guide.
+
+**Still correctly out of scope** (per §BACKGROUND, unchanged): the Locator child-tab drill-down, and the
+AD_User exact-zone problem's ERP-side half. **PR #645 needs a human merge** (branch protection + required
+status checks on bim-ootb `main`, per this repo's normal flow) — not yet merged as of this session's close.
