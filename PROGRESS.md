@@ -39,36 +39,31 @@
   W-ONE-KERNEL building-load smoke. Deferred: commitGroup id-race retry. Lane status: batch-1 spec §STATUS.
 - Modeller OPEN (unassigned): item 9 PBR textures; SSAO (needs EffectComposer vendored).
 
-## Modeller: IFC-direct-open + Outliner unification (2026-07-04) — bim-ootb `lane/modeller-ifc-open`, PR #642 open
+## Modeller: IFC-direct-open + Outliner unification (2026-07-04) — ✅ MERGED, both PRs landed on main
 - Opens ARC-only `.ifc` directly (reuses Viewer's parse engine, always filtered to ARC — 0-mismatch parity
   proven on a real 3504-elem multi-disc IFC); `IFC/` + `IFC/BimDB/` folders live (SH+DX populated). One Disc
   tab (absent disciplines walk-clickable, no separate tab) + Find expands/highlights matches + always-visible
   Teams pill. All Playwright-verified live. Detail: `prompts/ARC_GEO_FETCH_SPEC.md §3D` + memory
   `project_modeller_arc_fetch_redesign.md`/`project_modeller_competitive_polish.md`.
-- Walking tests DONE (2026-07-04): `modeller/tests/witness_e2e_walk_ifcopen.js` (W-E2E-WALK-IFCOPEN, 18/18)
-  drives real STR-surface + "▶▶ Walk ALL Disciplines" clicks across SampleHouse+Duplex (IFC-open) and
-  SampleCastle (.db-open, the "more residents" leg) — same merged Disc tab, both open modes converge cleanly.
-  Found + FIXED a real bug along the way: `openIfcFile` never forked its own op-log key (unlike a `.db`
-  resident's `_forkEditable`→`setModelKey`), so two IFC-opened buildings in the same tab silently shared one
-  signed op-log — opening Duplex after SampleHouse inherited SampleHouse's 80 walked-MEP ops. Fixed with a
-  `mo_ifc_<name>` key fork before `_openBuffer`; diag-proven before/after, no regression on the two pre-existing
-  witnesses (W-E2E-WALK 8/8, W-E2E-WALK-ALL 10/10). Pushed `lane/modeller-ifc-open` (`e6acb56`, synced with
-  origin/main), user approved → **PR #642 opened 2026-07-04** (bim-ootb, awaiting CI/merge).
-- 3D-Grid cross-resident pass DONE (2026-07-04, user follow-up question): `Bonsai.grid` is a DECOUPLED
-  authoring grid — no production code wires an opened building's own STR-walked grid into it (grepped clean),
-  so "test grid-stretch on building X's real structural grid" isn't meaningful; what generalizes IS the
-  author-a-grid→drag→recompose mechanism after a real (not just Duplex) open. New
-  `modeller/tests/witness_e2e_gridstretch_multi.js` — 20/21, **1 known RED**: on SampleCastle (`.db`-open),
-  `#b-clear` resets the scene+op-log but not `str_walker_outliner.js`'s own STR-walker module state, so a
-  later grid-drag on an unrelated synthetic wall still fires SampleCastle's real STR re-walk, whose ops
-  collide on `kernel_ops.id` and roll back (SAFE — all-or-none, no corruption, just a loud rejected toast +
-  console errors). Root cause traced (step-tagged diagnostic), confirmed reproducible 2×, NOT an async-timing
-  artifact. **NOT fixed** — the fix is a `#b-clear` state-reset-contract design call (reset every walker
-  module, not just THREE+oplog?), left open, pushed as-is (`834fbc4`) so the PR carries an honest red witness
-  rather than a silently-passing green one.
-- NEXT (once #642 merges): (1) decide + fix the `#b-clear`/STR-walker state-leak above; (2) continue
-  `prompts/ARC_GEO_FETCH_SPEC.md §NEXT` item 2 — onboard Hospital/Clinic/LTU/HHS_Office as Modeller residents
-  + migrate SH/DX/SC into the canonical `IFC/` folder.
+- Walking tests DONE: `modeller/tests/witness_e2e_walk_ifcopen.js` (W-E2E-WALK-IFCOPEN, 18/18) drives real
+  STR-surface + "▶▶ Walk ALL Disciplines" clicks across SampleHouse+Duplex (IFC-open) and SampleCastle
+  (.db-open, the "more residents" leg). Found + FIXED along the way: `openIfcFile` never forked its own
+  op-log key (unlike a `.db` resident's `_forkEditable`→`setModelKey`), so two IFC-opened buildings in the
+  same tab silently shared one signed op-log. Fixed with a `mo_ifc_<name>` key fork before `_openBuffer`.
+  **bim-ootb PR #642 MERGED to main.**
+- 3D-Grid cross-resident pass DONE: `Bonsai.grid` is a DECOUPLED authoring grid — no production code wires an
+  opened building's own STR-walked grid into it, so what generalizes IS the author-a-grid→drag→recompose
+  mechanism after a real (not just Duplex) open. New `modeller/tests/witness_e2e_gridstretch_multi.js` found
+  a real bug: on SampleCastle, `#b-clear` reset the scene+op-log but not `str_walker_outliner.js`'s own
+  STR-walker module state (`ready`/skeleton), so a later grid-drag on an unrelated synthetic wall still fired
+  SampleCastle's real STR re-walk, colliding on `kernel_ops.id` and rolling back (safe, but a spurious
+  rejected-toast). Spec'd the fix decision in `prompts/GRID_CLEAR_STATE_LEAK_FIX.md` (option B — narrow
+  reset: `STRWalkerOutliner.onClear()` resets `ready`/`lastEx`/`__dwBuf`/`__dwName`, wired into `#b-clear`).
+  **FIXED + MERGED: bim-ootb PR #644** (`lane/grid-clear-state-leak-fix`, commit `2f9bd04`→squashed `587622c`).
+  Independently re-verified (not just trusting the commit message): `witness_e2e_gridstretch_multi.js` 21/21,
+  `witness_e2e_gridstretch.js` 7/7, `witness_e2e_walk_ifcopen.js` 18/18 — all green, no regressions.
+- NEXT: continue `prompts/ARC_GEO_FETCH_SPEC.md §NEXT` item 2 — onboard Hospital/Clinic/LTU/HHS_Office as
+  Modeller residents + migrate SH/DX/SC into the canonical `IFC/` folder.
 
 ## Codebase quality audit (2026-07-02) — TRIAGED 2026-07-03; §2/§5 DONE (bc #20, bim-ootb #618) → archived
 - ⛔ BLOCKED (user call): are `migration/DV_*_rules.sql` mined-rule files EXEMPT from append-only, or enforce?
