@@ -105,22 +105,52 @@ is variations on it.
 
 #### The IoT sensor + CCTV cockpit (mockup)
 Tapping **Assets / IoT** does two things at once: it tints the asset in the model (above) **and** opens a
-supplementary pane for that asset — a small operate-cockpit showing what a real IoT feed would look like.
-This whole pane is an **explicit mockup** — every reading is a deterministic synthetic curve (same input,
-same output, always — never `Math.random`), watermarked, and never claimed as a real sensor value.
+supplementary pane — a small operate-cockpit showing what a real IoT feed would look like. This whole pane is
+an **explicit mockup** — every reading is a deterministic synthetic curve (same input, same output, always —
+never `Math.random`), watermarked, and never claimed as a real sensor value. It exists to **stub out the
+finished shape**: every reading, camera and tone already compiles onto a real ERP record, so wiring in an
+actual sensor feed later is a data-source swap, not a rebuild.
 
-**Six sensor channels, last 24 hours** — temperature, boiler pressure, sound level, dust (PM2.5), solar
-output, and electrical load — each its own small trend chart:
+**Seven sensor channels, last 24 hours** — each with its own icon, colour and 24h trend bar, and **each bound to
+its own real element in the model** (not a shared placeholder):
 
-![The IoT pane's six sensor charts — temperature, boiler pressure, sound level, dust, solar output, electrical load — each a 24h trend line, watermarked SAMPLE/CONTOH](img/hba_iot_sensors.png)
+| Icon | Sensor | Bound to (a real element) |
+|---|---|---|
+| 🌡️ | Temperature | a supply-air diffuser |
+| 🔧 | Boiler Pressure | the rooftop mechanical plant |
+| 🔊 | Sound Level | a ceiling diffuser, open-plan floor |
+| 🌫️ | Dust (PM2.5) | a ceiling diffuser, open-plan floor |
+| ☀️ | Solar Output | the roof sun-shading structure |
+| ⚡ | Electrical Load | the Level 1 main distribution panel |
+| 🚶 | Motion (PIR) | a Level 1 entrance door |
 
-**A CCTV mockup grid and the ERP billing table**, scrolled further down the same pane — six camera tiles
-(explicitly captioned "MOCKUP — NO REAL FEED", no invented video), and underneath, each sensor's *latest*
-reading compiled into a **billable line** — a real `C_OrderLine` (quantity, unit of measure, net amount)
+![The IoT pane's seven sensor bars — temperature, boiler pressure, sound level, dust, solar output, electrical load, motion — each icon-labelled with a 24h value, a mute/unmute button top-right, watermarked SAMPLE/CONTOH](img/hba_iot_sensors.png)
+
+Clicking any bar flies the camera to **that sensor's own real position** — not a single shared spot — and
+briefly rings it orange, a wider "establishing" shot than a normal zoom so the surrounding room/plant/entrance
+stays visible (a deliberate "wow, here's where this actually is", not a nose-to-mesh close-up).
+
+**Alarm tones, muted by default.** Each bar's 24h value loop can ALSO chime — click the 🔇 in the pane header to
+turn it on (🔊). Pitch rises the closer a reading sits to its own observed extreme (a calm low tone vs a
+higher, more urgent one — never a fabricated "danger threshold", just the same range already shown on the bar).
+Every sensor has its **own distinct tone character** (a different waveform, and 1–3 quick "blips") so you can
+tell *which* sensor is alarming by ear alone, without looking at the screen — muted by default so opening the
+pane is never noisy by surprise.
+
+**A CCTV mockup grid and the ERP billing table**, scrolled further down the same pane — six 📷 camera tiles
+(explicitly captioned "MOCKUP — NO REAL FEED", no invented video, each bound to its own real entrance/corridor
+door and clickable the same way as a sensor bar), and underneath, each sensor's *latest* reading compiled into
+a **billable line** — a real `C_OrderLine` (quantity, unit of measure, RM amount **plus its USD equivalent**)
 under a `C_Order` header, the same "compile into the real ERP dictionary, don't invent a parallel one"
 discipline the rest of this module follows:
 
-![The CCTV mockup grid (6 tiles, no real feed) and the ERP billing table underneath — each sensor reading compiled as a billable order line with qty/UOM/net amount](img/hba_iot_cctv.png)
+![The CCTV mockup grid (6 tiles, no real feed, camera icon in the section header) and the ERP billing table underneath — each sensor reading compiled as a billable order line with qty/RM/≈USD/net amount](img/hba_iot_cctv.png)
+
+**The sensors and cameras "talk" to each other.** Every sensor and camera already knows which **storey** it's
+on — so clicking a sensor also briefly rings the CCTV tile(s) on the *same floor*, a real (if simple) connection
+between two otherwise-separate stubs, not a coincidence:
+
+![Clicking the Electrical Load bar (Level 1) rings CAM 1 and CAM 2 — the two cameras also on Level 1 — while CAM 3-6 on other floors stay untouched](img/hba_iot_connect.png)
 
 This is the clearest illustration of the module's **Spatial ERP** idea: a sensor bound to a real element in
 the model is, at the same time, a line item a real ERP order can bill — one binding, two views (the 3D tint
@@ -129,6 +159,27 @@ and the ledger line), off the same record. Each billing row's **open ↗** deep-
 not just a mockup number:
 
 ![The IoT billing table with an "open ↗" link on each row, deep-linking to the real C_Order in iDempiere](img/hba_iot_billing_link.png)
+
+##### For developers — interfacing with the IoT/CCTV stubs
+Everything above is two small, additive files, meant to be extended rather than rewritten:
+
+- **`hr_bim_asset/iot.js`** — the engine, no DOM. `IoT.SENSORS` (7 entries: `key`/`label`/`icon`/`uom_name`/
+  `uom_symbol`/`baseline`/`amplitude`) and `IoT.CAMERAS` (6 entries: `bim_guid`/`element`/`storey`) are the two
+  catalogs to extend for a new device — each `DEVICES[key]`/`CAMERAS[i]` needs only a real bound `bim_guid`
+  already present in the loaded building (never invent one). `IoT.demoSeries(id, hours)` produces the
+  deterministic 24h curve; `IoT.billingLines(id, series, building, period, {erpQuery})` compiles it onto real
+  `C_UOM`/`M_Product`/`C_Order`/`C_OrderLine` rows (pass a real `erpQuery` reader — the same sync seam every
+  other governed pane uses — to resolve durable seeded ids instead of a session-local mint). `IoT.toneFreqFor
+  (value, min, max)` is the pure pitch-vs-range mapping behind the alarm tones — safe to call standalone to
+  preview a tone's frequency. `IoT.camerasOnStorey(storey)` / `IoT.camerasNearDevice(deviceKey)` are the
+  "ready-made connector" utilities behind the CCTV-ring behaviour above — a plain filter over the `storey` field
+  every device/camera already carries, reusable for any future "what else is near this thing" feature without
+  new geometry work.
+- **`viewer/hba_iot.js`** — the pane, additive/host-injected (imports nothing from the viewer, the host hands it
+  `A`). Public surface: `HBAIotPane.toggle(A)` / `.detect(A)` / `.isActive()`. A new sensor/camera needs zero
+  changes here — the bar/tile loops already iterate `IoT.SENSORS`/`IoT.CAMERAS`. The per-device zoom reuses
+  `HBALens.flyToZone(A, guid, {dist: 18})` — the `dist` option is generic (default 8 everywhere else), so any
+  other pane can request the same wider "establishing shot" framing.
 
 ### Jump straight to the ERP record
 Every pane above that shows data compiled onto a **real AD table** carries a small **open ↗** link per row —
