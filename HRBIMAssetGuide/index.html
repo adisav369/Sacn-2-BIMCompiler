@@ -2333,6 +2333,7 @@ If you want to know <em>how it works</em> (or you administer the data), read <st
 <p><img alt="The toolbar with the FM / Operate pill lit (blue, bottom-right rail) and its drawer open — five lenses: Occupancy, Presence, Unit class, Assets / IoT, Dashboard" src="../img/hba_fm_drawer.png" /></p>
 <p><em>(The drawer has since grown to 8 entries — the 4 lenses above plus Tenancy / AD, Dashboard, Payslip, and
    Leave; see <a href="#the-lenses-at-a-glance-reference">The lenses at a glance</a> for the full current list.)</em></p>
+<p><img alt="Four panes open at once on the real HHS building — Occupancy (room utilization + request-age charts), Leave (balance &amp; statement), Tenancy (partially behind, subscriptions list), and Payslip (gross/net breakdown) — with the Human-Asset drawer showing all 8 lenses on the right" src="../img/hba_4panels.png" /></p>
 <ol>
 <li><strong>Turn on a lens.</strong> Tap <strong>Occupancy</strong>. Tapping a row applies the lens <strong>and closes the drawer</strong>; re-tap the
    pill to reopen it and see which lens is active (highlighted, "● on"). The status bar reads e.g.
@@ -2642,7 +2643,11 @@ building loaded. That's the full loop this module has been building toward — p
 </ol>
 <p><img alt="The Unit class lens on the HHS office — drawer showing &quot;Unit class ● on&quot; and &quot;4 units lit&quot;" src="../img/hba_class_lens.png" /></p>
 <ol>
-<li>Spaces tint <strong>residential (green) · commercial (orange) · office (indigo) · unclassified (grey)</strong>.</li>
+<li>Spaces tint <strong>residential (green) · commercial (orange) · office (indigo) · unclassified (grey)</strong> — same
+   caveat as Occupancy above: on the HHS sample the bound elements are small real fixtures (the small teal ticks
+   along the roofline in the screenshot), not a big room-sized colour wash, since this building's <code>IfcSpace</code>
+   rooms aren't drawn as their own filled mesh — zoom toward one of the 4 lit rooms to see its own tinted
+   element close up, or read the honest <strong>"4 units lit"</strong> status line rather than relying on the wide shot.</li>
 <li>The class is never guessed — see <a href="#how-a-space-gets-its-class-non-invent">How a space gets its class</a>.</li>
 </ol>
 <h3 id="read-the-numbers-dashboard">Read the numbers (Dashboard)<a class="headerlink" href="#read-the-numbers-dashboard" title="Permanent link">&para;</a></h3>
