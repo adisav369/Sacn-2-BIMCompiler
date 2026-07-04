@@ -1580,4 +1580,78 @@ from a real iDempiere AD chain — HHS↔`M_Warehouse` (Name/Value), personnel�
 not assumed), implications, 3 open design questions, and a staged Fable5/Opus/Sonnet plan are in the dedicated
 spec: **`prompts/RESUME_HBA_ERP_GOVERNED_DISPLAY.md`**. Headline finding: `HR_Employee` has zero rows anywhere
 in this codebase — this is a seed-data-authoring gap before it's a code-wiring gap. Do not start Stage 1 there
-until §OPEN-QUESTIONS resolves.
+until §OPEN-QUESTIONS resolves. (Lane later shipped as native `S_Resource`/`S_ResourceAssignment` — see
+`project_hba_erp_governed_display.md` in memory; §OPEN-QUESTIONS were resolved by that redesign.)
+
+## ▶ 2026-07-04 — NEW THREAD: "Construction" window (M_Warehouse) + Person bidirectional link-through
+### (QUEUED, NOT STARTED — spec only, per user instruction; do not implement without a follow-up session)
+
+Two gaps surfaced during the 2026-07-04 watchdog docs-QA pass (user review of the HBA/Teams/POS guides "from a
+user's POV" — a direction check, not a correctness pass). Both confirmed against the real code/schema, not
+assumed. Both are genuinely unbuilt — this section is the spec, the backlog entry, and the non-invent grounding
+for whoever picks it up next.
+
+### A. "Construction" — a second native AD_Window over M_Warehouse (not a rename, not a new table)
+
+**The observation (user):** a Building currently compiles onto `M_Warehouse` (`docs/HRBIMAssetGuide.md` — "a
+unit is a `M_Locator` + `M_Product` under a `M_Warehouse`-as-building"). The only real window over that table
+today is native iDempiere window **139 "Warehouse and Locators"** (confirmed: `sqlite3 ad_full.db "SELECT
+ad_window_id, name FROM AD_Window WHERE name LIKE '%Warehouse%'"` → `139|Warehouse and Locators`, the only hit).
+That's warehouse-industry language leaking through into what is conceptually a **construction/building**
+context — the compile target (`M_Warehouse`) is correct per doctrine (ERP-one-base, real-table-not-invented),
+but the *window a user actually opens* still reads as a storage-facility screen, not a building one.
+
+**The proposed fix — NOT a rename of window 139, a second window:** iDempiere's own real dictionary already
+does exactly this pattern for other tables — confirmed: `C_BPartner` alone has **10** distinct native windows
+over the one table (`Business Partner`, `Vendor Details`, `Customer`, `Payroll Employee`, `Business Partner
+Info`, …). Adding a new `AD_Window` (+ its own `AD_Tab` rows) over `M_Warehouse`, named **"Construction"**, is
+the *same established iDempiere convention* — not inventing a new mechanism. Window 139 stays untouched (any
+existing user/report that opens it sees the same thing it always has); "Construction" is an additional,
+role-appropriate lens on the identical `M_Warehouse` row.
+
+**"...with further corresponding BIM model tabs" (user):** the new window's value-add over plain 139 is
+extra tabs that pull in the BIM-side facts already compiled elsewhere in this module — e.g. a rooms/BOM tab
+(reusing the existing `hba_bom.js` compile, §BOM above), an occupancy/utilisation tab (reusing `Dashboard`'s
+`S_Resource` fold), maybe a presence/headcount tab. None of these would be new compiles — they'd be the
+*existing* HBA panes' data, surfaced as native AD tabs instead of (or alongside) the additive floating panes.
+
+**Open questions for whoever specs this properly (Sonnet-with-user first, per
+[[feedback_model_allocation_mastermind_vs_execution]] — this is a data-model/UX call, not mechanical coding):**
+1. Does "Construction" replace the additive floating panes (Tenancy/BOM/Dashboard) as the primary UI, or
+   coexist as a second door onto the same facts (like Presence/Payslip/Leave do today)?
+2. Which BIM-sourced facts get their own **tab** (native AD grid) vs. stay a **floating pane** (richer/visual,
+   e.g. the 3D-camera-fly-to row click) — those are different UI shapes, not just a relabel.
+3. Real `AD_Window`/`AD_Tab` seed rows need minting into `ad_seed.db` (or wherever this demo's dictionary
+   additions live) with real, looked-up-not-guessed IDs, same discipline as every other window in this module.
+
+### B. Person — the one HBA entity with no bidirectional click-through
+
+**The observation (user):** "does a click-thru show up in ERP (true power of our singular kernel), and later
+vice versa" — i.e. does Person deep-link BIM→ERP the same way every other entity in this module does, and does
+ANY entity deep-link back ERP→BIM?
+
+**Confirmed against the real code (`viewer/hba_avatars.js`, `viewer/hba_lens.js`):**
+- Every other HBA pane's row carries a real **"open ↗"** deep-link into its native AD window — Dashboard→
+  `S_Resource` (236), Payslip→`HR_Movement` (53042), Leave→`HR_Concept` (53036), Tenancy→`C_Subscription`
+  (316), IoT→`C_Order` (143). **Presence does not** — `hba_avatars.js` only produces a hover card (name · room
+  · since when), no `erpLink()` call, no `AD_WINDOWS` entry for a person/employee record at all. Person is the
+  one entity in the whole module that doesn't compile bidirectionally through the kernel like its siblings.
+- **No reverse direction exists anywhere in this module, for any entity** — grepped `viewer/*.js` +
+  `erp/*.js` for a "jump from an open ERP record back into the 3D model" pattern (fly-to triggered *from* the
+  ERP side) and found none. Today the arrow only ever points BIM → ERP.
+
+**Proposed next steps (spec-first, do not implement without a fresh session + user sign-off on shape):**
+1. **Forward (Presence → ERP):** give the Presence hover card (and/or the existing Presence roster drawer row)
+   an `open ↗` into the real employee/party record — likely `AD_User` or `C_BPartner` (whichever the
+   check-in's `employee` field actually resolves to via `MODELS.Official`, per the existing non-invent
+   resolution already used for the name). No new `AD_Window` needed if a suitable one already exists in the
+   dictionary (check first — don't assume one needs minting).
+2. **Reverse (ERP → BIM), genuinely new territory:** from an open Business Partner / Employee window in
+   `erp/idempiere.html`, a way to jump back to "where is this person right now / where do they work" — a
+   fly-to into the loaded building, reusing `HBALens.flyToZone` from the other side. This has no precedent
+   anywhere in the codebase yet — it needs its own small spec (what triggers it — a button on the BPartner
+   form? only when a Viewer tab is already open in the same session? cross-tab/cross-window messaging?) before
+   any code. Treat as a new capability, not a wire-up of something half-built.
+
+Neither A nor B is started. Log here, not in `MEMORY.md`'s per-session churn, so the next session that touches
+HBA finds this without re-deriving it.
