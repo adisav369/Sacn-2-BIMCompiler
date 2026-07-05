@@ -19,6 +19,14 @@
 **Pipeline:** 11 stages. 77 verbs. 7403 products (ERP.db). 4-DB architecture.
 
 ## OPEN — real work, not yet done (check these before starting a new session)
+- **HBA IoT "wow" batch (3 items, bim-ootb PR #659 shipped item 4b)** — item 1: sensor-click should double the
+  matching CCTV tile + render a real in-scene capture facing the device (feasible, not yet built). Item 2:
+  clicking a CAM tile should fly the Viewer camera to assume that camera's POV — an Opus feasibility pass found
+  the facing AXIS is really extractable (door bbox thin-dimension) but the SIGN is not (rotation is uniformly
+  0 in this extraction, no reliable inside/outside signal) — needs one human-declared `facing` vector per
+  camera (⛔ needs a person to actually look at each door in the viewer and pick a side). Item 0: a mobile
+  swipeable-card-stack redesign of all HBA panes has a full written spec (`prompts/RESUME_HBA_MOBILE_CARD_STACK.md`
+  in bim-ootb, PR #659) — not yet implemented, phased build order included. Memory: `project_hba_iot_lod400_lane.md`.
 - **Modeller Spatial Dependency Graph, Phase 3 (backprop)** — accept/ignore UI for ORANGE suggestions is the
   next unbuilt piece (a genuine UX design call, not mine to invent). Spec: `prompts/SPATIAL_DEPENDENCY_GRAPH.md`
   §BUILD ORDER phase 3, `prompts/RESUME_SESSION_2026-07-04_GATE_BACKPROP.md`.
