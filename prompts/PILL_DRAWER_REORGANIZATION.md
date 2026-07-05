@@ -181,6 +181,53 @@ here; do not silently pick merge-or-variant. Revisit only when the user opens it
 7. § log evidence for every claim in STEPS §9, not screenshots alone.
 8. Save/Open format-expansion idea explicitly NOT touched, left parked per the note above.
 
+---
+
+## ▶ 2026-07-06 — REOPENED: user not satisfied with landed behavior, 3 items to review/fix
+
+**User's own framing:** what was asked and what landed don't fully match — review pill behavior properly,
+don't just re-confirm it shipped.
+
+### Item 1 — Master icon should DE-highlight when its panel is closed via ✕
+**Real lead found (checked `origin/main`, not guessed):** `_buildMasterDrawer()`'s panel `onClose` handler
+(`viewer/panels.js` ~line 1394) does **only** `console.log('§DRAWER_CLOSE id=' + masterId)` — it never
+triggers a re-sync of the master pill's own highlight state. Compare to `toggle()`'s "opening" path, which
+explicitly re-syncs sub-row states (`rows.forEach(r => r._sync())`) but has no equivalent for the MASTER
+icon itself, on either open or close. Likely fix: find whatever function actually repaints pill highlight
+state (probably in `common/pill_builder.js` or wherever `isActive()` gets periodically re-checked) and call
+it from `onClose` too — right now, closing via ✕ is a different code path than clicking the pill itself, and
+only the latter seems to trigger a repaint.
+
+### Item 2 — Space bar to accept/trigger the Tab/Arrow-focused item — NOT YET BUILT, a real feature ask
+**Checked:** no `tabindex`, no Space-bar handling, and no arrow-key navigation exists anywhere in the drawer
+row code (`viewer/panels.js`) — the only Arrow-key handling found in the file is for an unrelated list-nav
+feature (cursor movement in some other list, not the drawers). This is a genuine NEW keyboard-accessibility
+feature, not a bug — Tab-into-a-panel, Arrow-through-its-rows, and Space/Enter-to-activate the focused row
+would need real building (tabindex on rows, a keydown handler per open drawer panel, visual focus ring).
+Confirm with the user this is wanted as a real feature (not just this one question) before building — scope
+it as its own small piece, verify no conflict with existing single-key shortcuts (`h`/`n`/`f`/etc. currently
+fire directly without needing focus).
+
+### Item 3 — Shadow+Ground cloud-icon cycle "not working at all"
+**Real candidate causes found (not fixed, needs live browser confirmation — don't guess which one, verify):**
+1. `_buildShadowGroundRow()`'s `cloudBtn` click handler (`panels.js` ~line 1351) does
+   `if (act && act.fn) act.fn(); else if (typeof window.toggleShadow === 'function') window.toggleShadow();`
+   — but `toggleShadow` is ONLY ever assigned as `A.toggleShadow` (`tools.js` ~line 674), **never** as
+   `window.toggleShadow`. If `_actionById('shadow')` (`act`) is ever null/stale at click time for any reason
+   (registration-order issue), the fallback silently does nothing — no error, matching "not working at all."
+   Check first: log `act` at click time, confirm it's non-null and `act.fn` really calls `A.toggleShadow`.
+2. `A.setGroundTexture` (`tools.js` ~line 155) is called at the end of every `toggleShadow()` cycle, but its
+   own body is async (`A._loadGroundConfig().then(A._applyGroundTexture)`) — if `_loadGroundConfig()` ever
+   rejects or hangs (e.g. `ground_config.json` fetch failure), the cycle-state (`_shadowGroundKey`) and the
+   swatch border (`_paint()`, synchronous) would still update correctly while the ACTUAL 3D ground texture
+   never visually changes — which would look exactly like "selection not working" even though the button
+   itself is firing. Check the console for `§GROUND_MAP load FAIL` or a `_loadGroundConfig` rejection.
+3. Confirm `A.ground` (the ground mesh) actually exists for whatever building was tested — some extractions
+   may not have one.
+**Live-test order:** open devtools console, click the cloud icon once, check for `§SHADOW_GROUND cycle=...`
+and `§SHADOW_GROUND_SWATCH key=...` log lines (both should fire if `toggleShadow` ran at all) — their
+presence/absence immediately narrows which of the 3 candidates above is the real cause.
+
 ## WATCHDOG NOTE
 This spec had THREE rounds of user correction during design dialogue (2026-07-05): (1) the original
 mapping was incomplete, (2) Camera/View's grouping and Palette's exact members shifted, (3) Audio's

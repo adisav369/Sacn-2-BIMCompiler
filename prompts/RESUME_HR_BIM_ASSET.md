@@ -2177,6 +2177,96 @@ DOM directly (renders via innerHTML) — reuse its gesture math by reference, no
 touchscreen gate, drawer-as-bottom-sheet-or-not, animation timing) — read them before starting; they're
 UX-author's-call, not extract-vs-invent landmines.
 
+---
+
+## ▶ 2026-07-06 — QUEUED, NOT STARTED: Unit Class outline-box bug (user report) + Camera POV intent mismatch
+
+**Issue 1 — Unit Class lens draws room outline boxes OUTSIDE the building** (user report, mobile mode,
+HHS_Office). The perimeter-outline feature shipped above (PR #659, `_drawOutlines()`) has a grounded but
+UNCONFIRMED bug hypothesis: `viewer/hba_lens.js:418` sets `lines.position.set(fp.cx, fp.cy, fp.cz)` from the
+RAW extracted `spatial_structure` footprint center (`A._hbaRoomFootprint`, `hba_lens.js:199-205`), but never
+applies `A.modelOffset` — the real per-building recentring offset every other rendered element gets shifted by
+(confirmed real, logged at `viewer/streaming.js:1640`). If true, the box renders at the un-shifted coordinate
+while the real room geometry renders shifted — exactly "outside the building." **Verify before fixing**: log
+`A.modelOffset` + `fp.cx/cy/cz` next to a real member element's actual world position for a visibly-wrong room.
+`witness_class_outline.js` (9/9) passed when this shipped — likely asserts box existence/count, not real-world
+alignment; fix that blind spot too (assert against actual rendered member geometry, not just "a box exists"),
+per this project's whitebox-no-handwave standard. Check both desktop and mobile live, not just the witness.
+
+**Issue 2 — Dashboard cam / sensor POV "not to my expressed intent"** (user report). Confirmed from code
+(2026-07-06): Items 1/2 above are STILL exactly as scoped 2026-07-05e — never built. All 6 CCTV tiles today
+show cropped slices of ONE shared static photo (`hba_cctv_still.jpg`), honestly labeled mockup
+(`hba_iot.js:271`); clicking a tile flies-to+highlights the camera's position, does NOT render an in-scene
+capture or adopt the camera's POV. **First step is NOT to build — ask the user exactly which of these doesn't
+match their intent** (expected the mockup not to exist at all? expected Items 1/2 already shipped? the original
+ask was mis-scoped into "Item 1/Item 2" in the first place? something else?) before writing any code. Item 2 is
+still genuinely blocked on the same one human decision named above (declare 6 facing vectors by eyeballing each
+door in the real viewer — rotation data is uniformly zero in this extraction, can't be derived).
+
+**DONE WHEN:** Issue 1 — a real HHS_Office room's outline visibly wraps that room live (desktop + mobile),
+witness asserts real alignment. Issue 2 — the actual mismatch is named in the user's own terms and either
+fixed per confirmed intent or re-scoped honestly, never guessed-and-built.
+
+**✅ Issue 1 DONE 2026-07-06 — bim-ootb `#668` (`14154c8`, MERGED to main).** Root cause matched the hypothesis
+exactly: `_drawOutlines()` skipped `A.ifc2three` (the modelOffset-subtract + Y/Z-swap transform every other
+rendered element goes through) for both position AND box-size axes. Fixed + `witness_class_outline.js`'s blind
+spot closed (extended with a real non-zero modelOffset + a new F-ALIGN check that the box actually contains a
+real in-room point; reverting fails 2/10 now, confirming the witness has teeth) + a new real-browser witness
+(`witness_class_outline_live.js`, desktop+mobile viewports) added. Verified: both witnesses exist on `main`,
+0 regressions on the 43-file HBA suite.
+
+**✅ Issue 2 mostly DONE 2026-07-06 — bim-ootb `#671` (`a872078`, MERGED to main).** User clarified intent
+directly (sidestepping the need for a facing-vector decision entirely): sensor-bar click is now a 2-state
+toggle — 1st click = existing device establishing shot, 2nd click flies to the NEAREST real CCTV camera's
+position and looks AT the sensor (a known real point, no facing vector needed); CCTV tile click zooms close to
+the device (dist 4, was 18); IoT bars now jitter deterministically + flip red past an honest threshold (mirrors
+IfcOpenShell/Bonsai's own threshold-bar convention). **Still explicitly NOT built** (same blocker as before):
+a CAMERA tile's own click does not yet assume that camera's fixed POV, and CCTV thumbnails are still the shared
+static photo, not real in-scene captures — both still need the human-declared facing vector per camera.
+Verified: `witness_p10b.js` (67/67, 21 new checks) and `witness_iot_pov_live.js` (real click-path, real camera
+movement) both exist on `main`; 39/43 full suite, same 4 pre-existing unrelated failures.
+
+**Facing-vector recon attempted, inconclusive — the session's own honest call:** a screenshot recon this
+session (diagonal establishing shots per door) wasn't sharp enough to responsibly declare a facing direction
+for any of the 6 doors — flagged rather than guessed. **Next step is a real decision, not a build task:**
+either the user eyeballs the 6 doors live in the viewer directly, or a future session retries recon with a
+more targeted shot (top-down per-door, not the diagonal establishing shot already tried).
+
+**⚠ RE-CHECKED 2026-07-06 (user asked "isn't this just maths?"), attempt 1 FAILED but attempt 2 SOLVED IT —
+don't re-run attempt 1, use attempt 2's answer below:**
+- **Attempt 1 (sparse-room proximity) — genuinely failed, kept as the record of why:** only 14 `IfcSpace`
+  rooms exist for the whole 3-storey building (all "≈"-approximate, sparse). Nearest-room-side for the 4
+  corridor cameras (spread 48m apart, different floors) ALL came back "south" — a coincidence of sparse
+  clustering, not a real per-door signal. An `IsExternal` wall flag was also checked as an alternative — that
+  column doesn't exist anywhere in this extraction schema.
+- **Attempt 2 (structural-mass centroid direction) — WORKED, real answer, computed not guessed:** used the
+  building's actual structural/enclosure mass instead of sparse room labels — 500 real `IfcWallStandardCase/
+  IfcWall/IfcSlab/IfcColumn/IfcCurtainWall` elements per storey (not 14 sparse boxes). For each storey, computed
+  the mean (x,y) position of all that mass — a real, dense, per-floor "where the building's bulk actually is"
+  centroid. For each of the 6 doors, checked which side of its thin-axis (wall-normal) that centroid falls on.
+  **Every door's answer was unambiguous** (centroid sits 19.7–47.2m to one clear side, no borderline cases),
+  and the two same-(x,y)-different-floor door pairs (doors 3&5, both at (22.9,32.7)) gave IDENTICAL answers
+  across floors — a real internal-consistency check this heuristic passes. Computed facing vectors
+  (`declared via maths — structural-centroid direction, not a hard extracted fact, label it that way in code`):
+  | guid | element | facing (unit vector) |
+  |---|---|---|
+  | `0LmR_Oafz6LvpHnBLJOGi$` | Entrance L1 | `(0,-1,0)` |
+  | `1UDlgEuSLAZ9OyOKOB0RyW` | Entrance L1 | `(1,0,0)` |
+  | `0Z1xu3E5b8zPJTx3GNZg8Y` | Corridor L2 | `(0,-1,0)` |
+  | `0lKZdaAjTCjBh_cVCMRZrh` | Corridor L2 | `(0,1,0)` |
+  | `0TgQK$gCn8wu43pHf2VHup` | Corridor L3 | `(0,-1,0)` |
+  | `1Jil894uX328zr$s_sQLvj` | Corridor L3 | `(0,1,0)` |
+  **NEXT SESSION: wire these 6 vectors into `hr_bim_asset/iot.js`'s `CAMERAS` entries as `facing:[x,y,z]`
+  (comment: `// declared via maths — structural-centroid direction heuristic, 2026-07-06`), then build the
+  actual camera-POV-assume-flight** (position at the door, orient along `facing`, straightforward THREE.js
+  camera quaternion/lookAt) — this was the ONLY thing blocked on the facing vector; the flight mechanism itself
+  was never the hard part. A cheap sanity check before/while building: fly to one door and eyeball whether the
+  computed direction looks right — if the FIRST one looks wrong, stop and re-examine the heuristic rather than
+  wiring all 6 blind.
+
+**Net: this session's QUEUED item is CLOSED** except the one still-named blocker (camera-POV-assume-flight,
+needs a human to declare 6 facing vectors) — that remains a real, separate, not-yet-scheduled follow-up.
+
 **Session-routing note (2026-07-05e):** items 1 and (once item 2's one decision is made) 2 are now normal,
 well-scoped EXECUTION tasks — a Sonnet session building against a clear plan, no open research question left.
 Item 0 similarly has a full written spec to build against — also Sonnet-appropriate; Opus was used HERE only
