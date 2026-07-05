@@ -269,7 +269,12 @@ from any earlier draft, an earlier commit of this file, or assumptions about wha
 together.** If anything above seems to conflict with the live code once you start, that's a
 signal to re-check with the user, not to silently pick the reading that seems more sensible.
 
-## 🔍 2026-07-06 — REOPENED (not yet live-diagnosed): Alt-Z/X X-Ray↔Bbox "still comes on" below 50k, HHS_Office
+## ⛔ PARKED (user, 2026-07-06): Alt-Z/X X-Ray↔Bbox "still comes on" below 50k, HHS_Office
+
+**User, explicitly:** "ignore also or just leave as is <50k alt-x issue, will assign its own
+prompts/# need not revert if u solve.. it will find out and resume." Not investigated further or
+touched this session — the analysis below is groundwork for whoever picks this up next, not a live
+diagnosis. Do not re-open without a fresh ask; a future session/prompt-file owns this.
 
 **User report, verbatim intent:** "the alt-x bbxes repair before is still not solved. It still comes
 on for below 50k elements building ie HHS Office." — i.e. whatever the prior fix was meant to stop,
@@ -304,13 +309,14 @@ candidates, A fires plain `§XRAY`/no cycle tag, B fires `§XRAY_CYCLE`), `§GHO
 not reuse the >50k cheap-filter branch for <50k without confirming that's actually what the user wants
 (it may instead be "never auto-engage anything below 50k, only on explicit Alt+Z").
 
-**Adjacent-but-separate ask from the same round** (tracked in
-`prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md`, not here): move the "Z" per-page timeline icon out of
-the W-pill's long-press-only drawer (`_worldHistDrawer`, `viewer/panels.js:118-157`) into a directly
-one-tap-reachable spot — e.g. as its own row inside the existing `worldhist` child of the Navigate
-drawer (`viewer/panels.js:1414`) — while the bomb (`_clearHistoryWithWarning`, dangerous/irreversible)
-stays long-press-only, unchanged. User also suspects the per-page timeline "is not properly pushed":
-real triggers DO exist (`pushView` for Find-nav, `ELEMENT_PICK` on click, sniffed `§XRAY` on toggle —
-all real code in `viewer/universal_history.js`), but whether they visibly populate the bar during
-ordinary HHS_Office browsing was not live-tested this round — worth a quick check in the same session
-since it touches the same drawer-relocation work.
+**Adjacent-but-separate ask from the same round — ✅ DONE, same PR #673 (commit `d11263c`).** Moved
+the "Z" per-page timeline out of the W-pill's long-press-only drawer (`_worldHistDrawer`,
+`viewer/panels.js`) into its own always-visible row (new `docHist` action) inside the Navigate
+drawer, right next to `worldhist`. Bomb (`_clearHistoryWithWarning`, dangerous/irreversible) stays
+long-press-only, unchanged. The existing `z` keyboard shortcut (scene.js `_shortcuts`, unchanged) is
+now surfaced via the row's own label for the first time. Live-verified (Playwright): row exists +
+labeled "Page History · z", click opens/closes the real `#universal-hist-btns` bar, long-press
+mini-drawer now holds only the bomb. **User explicitly said to SKIP the "is it properly pushed"
+investigation this round** ("ignore tshooting if worldhistory is merged.. just focus on the icons
+arrangement") — whether the per-page timeline visibly populates during ordinary browsing is still an
+open question, deliberately not chased here.

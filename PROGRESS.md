@@ -30,19 +30,20 @@
   `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` § "▶ 2026-07-06". Status: PARTIAL — Part 2 (Viewer
   undo-spawns-dots) ✅ DONE 2026-07-06, bim-ootb #670 MERGED. Part 1 (Modeller World History wiring, 4 steps)
   RE-CONFIRMED still zero-built (user confirmed 2026-07-06: only testing Viewer, not Modeller — Part 1
-  stays parked, not urgent). NEW ask (2026-07-06, not started): move the "Z" page-timeline icon out of the
-  W-pill's long-press-only drawer into a one-tap-reachable row, bomb stays long-press-hidden; also verify
-  the per-page timeline is actually being populated by real browsing (user suspects it "is not properly
-  pushed"). Bomb-clear + tap-vs-long-press still not live-tested either.
+  stays parked, not urgent). The "Z" page-timeline icon relocation (out of the W-pill's long-press-only
+  drawer into a one-tap row, bomb stays hidden) ✅ DONE same session, bim-ootb PR #673 commit `d11263c` —
+  see `prompts/PILL_DRAWER_REORGANIZATION.md`. User explicitly told that session to SKIP the "is the
+  timeline actually being populated by real browsing" question this round — still genuinely open, not
+  chased. Bomb-clear + tap-vs-long-press dual behavior still not live-tested either.
 - **`prompts/PILL_DRAWER_REORGANIZATION.md`** — Status: PR #673 (`lane/pill-drawer-followup-fixes`) pushed,
   OPEN not yet merged — closes the 3 items reopened 2026-07-06 (master de-highlight-on-close,
-  Tab+Space drawer-row activation, Shadow+Ground CSS pointer-events bug), independently re-verified by
-  watchdog: witness re-run fresh from a clean checkout, all pass, 0 console errors, against real
-  HHS_Office_Federated. **REOPENED again same session:** Alt-Z/X X-Ray↔Bbox cycle "still comes on" for
-  buildings below 50k (HHS_Office) — NOT yet live-diagnosed, two candidate code paths written up in the
-  file's new `§2026-07-06 — REOPENED` section (`focusElement()`'s auto-xray-on-pick vs the manual
-  `cycleXrayBboxMode` toggle) with the exact `§`-tags to watch to tell them apart. Needs a fresh session
-  to actually open the building and get the repro before fixing.
+  Tab+Space drawer-row activation, Shadow+Ground CSS pointer-events bug) + a 4th (Z page-history row
+  promoted into the Navigate drawer, commit `d11263c`), all independently re-verified by watchdog: witness
+  re-run fresh from the shared worktree, all 4 items pass, 0 console errors, against real
+  HHS_Office_Federated. **Alt-Z/X X-Ray↔Bbox "still comes on" below 50k (HHS_Office)** — user directly told
+  that session to PARK it ("will assign its own prompts/#"), not touched further; 2 candidate root causes
+  (`focusElement()`'s auto-xray-on-pick vs the manual `cycleXrayBboxMode` toggle) written up in the file's
+  `⛔ PARKED` section with the `§`-tags to distinguish them, for whenever a future prompt file picks it up.
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch (3 items, bim-ootb PR #659 shipped item 4b)** — item 1: sensor-click should double the
