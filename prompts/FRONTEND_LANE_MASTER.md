@@ -89,6 +89,130 @@ _(append new dictated items below. NOTE: the TM/variance/shopfloor + Zoom-Across
  prompts — do NOT track it here: `prompts/ZOOM_ACROSS_SCOPE_SESSION.md`, `prompts/GW_HOSPITAL_SHOWCASE_SPEC.md`,
  `prompts/TM_SHOPFLOOR_COSTING_SPEC.md`.)_
 
+- [✅] **Landing-page Save/Merge/Grid-preview arc (5 items, 2026-07-05)** — ALL 5 ITEMS DONE same day, dictated
+  from a design dialogue, full reasoning trail in `prompts/GRID_PREDRAG_PREVIEW_SAVE_COMPLETEIT.md`. Built as
+  4 parallel/sequenced background sub-agents in isolated `/tmp/wt-*` worktrees (item 1 turned out to be an
+  already-landed false alarm; 2 and 4 fired once 1 confirmed landed). PRs: **#654** (item 1, regression witness
+  only, MERGED) · **#656** (item 3, grid green/orange, OPEN) · **#657** (item 2, version-merge popup, OPEN) ·
+  **#658** (item 4, Save clash+auto-heal, OPEN). Watchdog pass done: every DONE claim below has a matching `§`
+  log line, no exceptions. **⚠ 3 default design picks across items 2/4 still need real user confirmation —
+  see the callout right after item 4's entry**; none of them block the PRs from being reviewable/mergeable,
+  they're just not hard-confirmed yet.
+  1. [✅] `prompts/LANDING_MULTIMERGE_SAVEOPEN_RESURRECT.md` — DONE 2026-07-05, **false alarm**: `525eb18`
+     was already squash-merged to main as `56d401d` via PR #396 on 2026-06-19 (same day) — the stale
+     `origin/feat/landing-multimerge-viewer-saveopen` branch ref was just never deleted, making it LOOK
+     unlanded. Independently verified live on current main: `importMultiIFC()`, Save/Open pills
+     (`A.saveModelDb`/`A.openModelDb`), Doc Mode already removed from the pill registry by #396 (no new
+     dependents since), outside-tap-to-close matches a later independently-reconfirmed 2026-07-02 decree,
+     card/list constraint clean (`index.html` hub-card grid = fixed public sample catalog, not a user-import
+     list). Live E2E witnessed headless (`§MULTI_IMPORT_DONE`/`§SAVE_DONE`/`§OPEN_DB`, SQLite-verified
+     lossless round-trip 273 elements). Added a permanent regression witness (`tests/witness_landing_resurrect_e2e.js`)
+     since none existed to catch this from silently rotting again — PR #654, MERGED. Stale branch refs
+     (`origin/feat/landing-multimerge-viewer-saveopen`, `origin/lane/landing-multimerge-resurrect`) deleted.
+  2. [✅] `prompts/LANDING_VERSION_MERGE_PROMPT.md` — DONE 2026-07-05, PR #657 (OPEN, not yet merged).
+     Similarity rule (DEFAULT pick, flagged not user-confirmed): stem match ignoring a trailing
+     version-ish suffix (`_v2`, `(1)`, `-copy`, `_final`, etc — `_stripVersionSuffix()` in `import_own.js`),
+     deliberately NOT `_commonPrefix()` (spec flagged that as false-positive-risky). One native `confirm()`
+     popup, closest match only, no list/card. Accept pushes onto the EXISTING record's `versions[]`, bumps
+     `latestVersion`, reuses the exact same `openProject()` auto-launch call already used for a fresh
+     import (not a new path). Live headless-Chromium E2E (`witness_landing_version_merge_e2e.js`, real
+     `<input type=file>` drops) proved all 3 paths: `§VERSION_MERGE_ACCEPT existingKey=... versions=2
+     latestVersion=1`, `§VERSION_MERGE_NOMATCH`, `§VERSION_MERGE_DECLINE` (declined record left the merged
+     one untouched, IDB-verified). **⚠ CORRECTION 2026-07-05 (watchdog re-check, post-merge):** this entry
+     previously claimed a post-hoc fix replaced 2 duplicate 2.2MB IFC fixtures with in-memory Playwright
+     buffers, "real diff now +332/-9." **That fix was never verified against the actual merged commit and
+     did not land** — `gh pr view 657` + `git ls-tree origin/main` both confirm `tests/fixtures/
+     SampleHouse_ARC_final.ifc` and `_v2.ifc` are still on `main` right now, byte-identical, 47318 lines /
+     2,273,870 bytes each (headRefOid `f0b40975`, merged `2026-07-04T19:18:08Z`). **The 4.4MB duplicate
+     fixture cleanup is STILL OPEN, not done** — folded into the next backlog item below. Lesson: a
+     session's own written claim of a fix is not evidence either — the Log Mandate applies to prose in
+     this file exactly as much as to a chat summary.
+  3. [✅] `prompts/GRID_PREDRAG_GREENORANGE_PREVIEW.md` — DONE 2026-07-05, PR #656 (OPEN, not yet merged).
+     Fixed the known gap first (`gmTint` never called `stretchRide`, so a hosted opening could show the
+     WRONG tint mid-drag) by unifying preview+commit onto one shared `previewCommands()` pipeline
+     (`bonsai_gridmove.js`) — they can no longer disagree. Added GREEN tint state + per-drag-session
+     `GM._overrides` Set, ctrl+click toggles bidirectionally (`§GREEN-EXCLUDE toggle fid=2 -> green/orange`),
+     `commit()` genuinely skips excluded elements (`§GREEN-EXCLUDE commit skipped=1 fid(s)`, numeric
+     bbox-equal before/after). New real-browser E2E witness `witness_e2e_grid_greenorange.js` 12/12
+     (actual `pg.mouse`/`pg.keyboard`, incl. a synthetic hosted-opening rider case proving the tint fix).
+     All 4 named regression witnesses + the new one: 44/44 assertions, exit 0.
+  4. [✅] `prompts/MODELLER_SAVE_COMPLETEIT.md` — DONE 2026-07-05, PR #658 (OPEN, not yet merged). Two
+     DEFAULT picks (flagged, not user-confirmed): mirrors `ad_docfsm.js`'s `{ok,reason}` signal shape only
+     (never calls `DocumentEngine`/`processIt`, no ERP DocStatus coupling); writes into the SAME shared
+     landing-page IndexedDB catalog `versions[]`/`latestVersion`. New `sdg_save.js` (planning core) +
+     `save_catalog.js` (IDB writer). **Real bug found+fixed along the way:** the original heal-op moved
+     only the flagged wall, not its hosted doors riding along with it — would have manufactured a fresh
+     door-out RED on the very next re-verify; fixed by cascading the heal through `SdgCascade.ridersFor`
+     (mirrors `commitMove()`'s existing behavior). Live `§`-tagged evidence, 11/11 passing: RED blocks
+     (`§SAVE_BLOCKED reason=RED_CLASH count=3 healed=0`), auto-heal→Clean→real snapshot
+     (`§SAVE_AUTOHEAL fixed=1` → `§SAVE_REVERIFY red=0` → `§SAVE_SNAPSHOT ... created=true`), one-hop
+     cascade genuinely stops (`§SAVE_AUTOHEAL_ONEHOP stoppedAt=... newIssue=[...]`, new issue surfaced not
+     chased). No regression: 5 existing witnesses (gate/cascade/undo/move/export-db) all still green,
+     unmodified. Honesty note carried into code+PR: `sdg_gate.js` only ever attaches `proposedDelta` to
+     `abuts-realign` today, not `clearance` — heal checks for the field generically so it's forward-compat,
+     but only `abuts-realign` heals in practice right now.
+
+  **3 DEFAULT DESIGN PICKS ACROSS #2/#4 — RESOLVED 2026-07-05 in user dialogue, not re-opened as tasks:**
+  1. #2 similarity rule = stem-match-ignoring-version-suffix — ACCEPTED, low risk, matches spec intent.
+  2. #4 DocFSM reuse = mirror signal shape only, no real ERP DocStatus coupling — ACCEPTED, correct
+     conservative default (don't entangle two unproven systems before either is battle-tested).
+  3. #4 versioning = Modeller Save shares the SAME landing-page catalog — ACCEPTED on reflection: the
+     Modeller/Viewer separation doctrine is about not leaking domain concepts (4D/5D) into the authoring UI,
+     not a ban on shared infrastructure (a version catalog is closer to a shared filesystem than a shared
+     domain model). No follow-up needed.
+
+- [ ] **Next batch (2026-07-05) — split into 2 independent assignments, per user's own grouping (2026-07-05):**
+
+  **Assignment A — standalone session, Teams overlay is unrelated enough to the rest to run alone:**
+  1. [ ] `prompts/TEAMS_OVERLAY_LIVE_E2E_TEST.md` — now includes a mandatory §0 pre-flight: read the
+     Teams/HBA shared-seam doctrine + the in-app User Guide FIRST, because the guide has a real, user-confirmed
+     confusing overlap area between Teams and HBA — resolve/clarify that before touching the E2E test itself.
+
+  **Assignment B — one session, sequential (small unrelated cleanup, then the recon; NOT a parallel fan-out):**
+  2. [✅] `prompts/PR657_FIXTURE_CLEANUP.md` — DONE 2026-07-05, **PR #660** (bim-ootb, OPEN). Both duplicate
+     fixtures `git rm`'d (`-94636` lines, 4.4MB); `witness_landing_version_merge_e2e.js` now reads the real
+     corpus `IFC/SampleHouse_ARC.ifc` buffer ONCE and drops it under renamed in-memory Playwright file objects
+     `{name,mimeType,buffer}` for the `_v2`/`_final` cases (the §VERSION_MERGE similarity check keys on FILENAME
+     stem only, never content). Witness re-run GREEN, real §-log not exit-code (Log Mandate): `§E2E_RESULT
+     pass=true`, all 3 paths fired — `§VERSION_MERGE_NOMATCH`(base+Duplex) · `§VERSION_MERGE_ACCEPT versions=2
+     latestVersion=1` (with `§DISC_OVERRIDE file=SampleHouse_ARC_v2.ifc` proving the renamed buffer drove the
+     popup) · `§VERSION_MERGE_DECLINE key=SampleHouse_ARC_final.ifc` + `§E2E_STEP4_MERGED_UNCHANGED versions=2`.
+     Diff = fixtures deleted + witness +7/-3, zero new binary blobs.
+  3. [✅] `prompts/PARAMETRIC_DEPTH_RECON.md` — DONE 2026-07-05 (recon-only, no code). Findings written to
+     `prompts/PARAMETRIC_DEPTH_RECON_FINDINGS.md`; Sonnet single-pass as reassessed, and it DID catch a
+     UBBL-shape landmine. Answers: **Q1 BLOCKED-on-aggregation** (raw per-instance door bboxes 0.147–1.86m in
+     `component_definitions` (129 rows), but no min/max ever persisted — small GROUP BY pass owed before an LOD
+     variance axis is "real"). **Q2 MEASURABLE** (Building→Storey→Room populated corpus-wide in all 5 DBs;
+     `spatial_structure.type` only ever Storey/Space, nothing coarser incl. Terminal; `city_index*.db` are
+     0-byte stubs → free-lasso only adds value SUB-room). **Q3 MEASURABLE** (material real+populated:
+     `ad_element_placement` 62%, `material_layers`/`surface_styles`/`elements_meta.material_*` real) —
+     **⚠ LANDMINE:** `building_type` double-labels the Terminal (`SJTII_Terminal` 81% populated + registered vs
+     orphaned `TERMINAL` 1.6% + no `ad_building` row) → build any material gate against `SJTII_Terminal`, never
+     `TERMINAL`. **Q4 BLOCKED-on-group-linkage** (`placeAssembly` modeller.html:2690 commits each furniture leaf
+     as an unlinked `GEOM_INSERT`; the fix is the already-proven `commitSeedGroup` at modeller.html:3403 —
+     "dining set" tier stays skipped until applied). Build-scoping: §1 needs mining first · §2/§2a/§2b/§3-loose/§4a
+     buildable today · §3 dining-set + §4b need the two named gaps. See [[project_parametric_depth_recon_landmine]].
+     **Model reassessed 2026-07-05: Sonnet 5 was sufficient, not Opus** — — the prompt's own
+     rationale cited `UBBL_RULES_RECON.md` as needing Opus-grade judgment, but that recon was actually run
+     on a Sonnet-tier agent and still caught the 3-inconsistent-numbers/mislabeled-source finding. This
+     recon's 4 questions are internal schema/row-count/linkage checks (column exists? populated? shared
+     op-id?), not cross-source authority adjudication like UBBL's KPKT-vs-config reconciliation was — a
+     mechanical-verification task Sonnet already handles well. The load-bearing constraint is **sequential,
+     not parallel** (regardless of model) — keep that.
+  If any of these should be different, say so — each is an isolated, easy re-diff on its own PR (#657/#658).
+  5. [✅] `prompts/UBBL_RULES_RECON.md` — DONE 2026-07-05 (recon-only, no build, as scoped). User confirmed
+     demo/mockup depth (not real-compliance). Findings: `duplex_rules.db`/`terminal_rules.db` are 100%
+     empirical, zero UBBL content (clean). BUT found a real landmine the recon's own premise missed:
+     `library/component_library.db` + `config/spacetypes.yaml` + `config/profiles/malaysian_residential.yaml`
+     carry **3 mutually-inconsistent "UBBL bedroom min area" values already in the repo (6.5 / 9.0 / 9.3 m²)**,
+     one of them (6.5m²) actually cited to US IRC not UBBL — mislabeled. Verified real source: KPKT-hosted
+     UBBL 1984 text, cross-checked 2 clauses (By-Law 39 lighting/ventilation, By-Law 42 room min areas —
+     11/9.3/6.5/4.5m²) against an independent secondary source. Extraction-readiness: room area+height
+     measurable today (Duplex only); egress/setback/fire-rating all blocked on missing extraction (named
+     per-category in the recon). Follow-on build spec written: `prompts/UBBL_RULES_GATE.md` (single demo
+     check: room area/height vs. verified By-Law 39/42 thresholds, Duplex only, explicitly labeled
+     "indicator, not a compliance verdict"). See [[project_ubbl_recon_landmine]].
+
 - [✅] **Retire `viewer/2d.html`** — RESOLVED 2026-06-27 (user call): the viewer-side 2D/red-pill work is
   **DEPRECATED by the Modeller/3DGrid — leave it as-is** (dead-weight but harmless, lazy/new-tab only; nothing
   to learn from it). Do NOT spend effort on the mechanical retirement. Focus shifted to Modeller feature UI polish.
