@@ -2274,3 +2274,51 @@ because the spec/feasibility-research itself was open-ended (the "what's the rig
 "can this even be extracted" questions), not because the resulting BUILD needs Opus. If item 0's build hits one
 of its 5 flagged open UX questions and it gets genuinely gnarly, that specific sub-question could go back to
 Opus — but starting the build itself doesn't need it.
+
+## ▶ 2026-07-06b — Item 2 (camera-POV-assume-flight) ✅ BUILT, bim-ootb PR #674 (branch `feat/hba-camera-pov-flight`)
+
+The 6 declared facing vectors are wired into `iot.js CAMERAS` and the actual flight is built: `hba_lens.js`
+gained `flyToFacing(A, guid, facing, opts)`, and `hba_iot.js`'s CCTV tile click now assumes that camera's own
+POV instead of a plain locate-and-highlight. Per the "sanity check before wiring all 6 blind" instruction above
+— did exactly that, and it paid off: **a live screenshot of the FIRST door caught a real bug the node witnesses
+never would have** (a blank grey floor/ceiling plane instead of a door view). Root-caused and fixed 3 issues
+before calling it done, in order of discovery:
+
+1. **Coordinate-system mismatch (the screenshot catch).** The 6 facing vectors were computed in the RAW
+   extraction's own coordinate system (X=east/Y=north/Z=up — same space as the IfcWallStandardCase/IfcSlab
+   centroid maths that derived them), but `_zoneCentroid`'s `eye` is already Three.js WORLD space
+   (`A.ifc2three`, `scene.js:370`, swaps Y↔Z with a sign flip). Adding a raw-space direction straight onto a
+   world-space position silently aimed the camera along the WRONG axis — a facing with a raw Y-component
+   became a Three.js Y (straight up/down) instead of the intended horizontal direction. Fixed: rotate the
+   declared direction through the SAME rotational mapping (no translation half — a direction has no origin).
+   CAM1 (facing had a Y-component) went from a blank plane to a real symmetric door-ahead shot with visible
+   corridor; CAM2 (facing had none) was correct either way, unaffected — both confirmed by eyeballing the
+   actual screenshots, not just trusting the math.
+2. **Standoff too close.** `flyToPOV`'s existing tiny "avoid clipping the camera's own mount" standoff
+   (`dist*0.15`, ~0.45-0.6 units) put `flyToFacing`'s eye almost exactly ON the door's own centroid — inside
+   the door leaf/frame geometry, a clipped unusable close-up. `flyToFacing` now takes its own real-metres
+   standoff (`opts.dist` used directly, default 3m — a plausible "step back from the door and look down the
+   corridor" distance); `flyToPOV`'s own formula is untouched (byte-identical, its own witnesses still pass).
+3. **A genuine, pre-existing DLOD-binding race** (not caused by this feature — found because this feature
+   exercises "fly to something across the building" more aggressively than prior callers). Right after the
+   camera moves, an instanced/batched guid→meshId/slot lookup can transiently resolve to a reserved-but-
+   unwritten slot (THREE.js initialises it to the IDENTITY matrix) or a stale/uninitialised container whose
+   `matrixWorld` hasn't been refreshed — both silently resolved to the exact world origin `(0,0,0)` before this
+   fix, a "flew:true" that was actually a wrong flight to nowhere. Fixed in `_posForTarget`/`_zoneCentroid`,
+   scoped ONLY to the real instanced/batched (`slot != null`) resolution path — confirmed this can never
+   collide with a legitimate `(0,0,0)` stub position (e.g. `witness_find_guid.js`'s `RM-A` test room, which
+   sits at `(0,0,0)` by construction) by re-running that witness before/after (5/5 both times, no regression).
+
+**Not root-caused further (flagged, not chased):** the exact mechanism behind #3 — why a guid's binding
+transiently points at an unwritten/stale slot right after a camera move — is real but out of scope for this
+PR; the fix makes it fail SAFELY (an honest no-op, same convention as every other HBA fly-to no-op) rather than
+silently wrong. If a future session sees this land as a felt UX gap (a CCTV tile click that "does nothing" right
+after clicking a different one), that mechanism is the place to dig — `viewer/hba_lens.js` `_zoneCentroid`.
+
+**Witnesses:** new `hr_bim_asset/tests/witness_camera_pov.js` (6/6) — the ONLY new witness this session that
+drives its assertions off a REAL animation run to completion (a stub camera/controls + a synchronous
+`requestAnimationFrame`), specifically so a reverted fix genuinely fails the test — verified this by reverting
+the rotation fix locally and confirming 2 of 6 checks flip to FAIL before restoring. `witness_iot_pov_live.js`
+(real browser, real click path) updated for the new `§HBA_FACING` log line, still green. `witness_class_outline_live.js`
+(shares `_zoneCentroid`) re-run for regression, still green. Full 44-file HBA suite: only the 4 pre-existing
+`sql.js`-module failures (unrelated, present on `main`). PR #674 MERGED to main.

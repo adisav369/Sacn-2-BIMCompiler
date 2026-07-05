@@ -23,9 +23,11 @@
 ### 🔀 CURRENTLY JUGGLED (user runs these concurrently across terminals, shuts down/resumes cold — read this
 ### list FIRST, don't ask the user to restate status, it's kept current here)
 - **`prompts/HBA_UNITCLASS_OUTLINE_AND_CAMERA_POV_FIX.md`** (pointer) → full detail in
-  `prompts/RESUME_HR_BIM_ASSET.md` § "▶ 2026-07-06". Status: ✅ DONE 2026-07-06, bim-ootb #668+#671 MERGED.
-  Only remaining thread: camera-tile-assumes-own-POV + real in-scene captures, still blocked on a human
-  declaring 6 facing vectors (not a coding task).
+  `prompts/RESUME_HR_BIM_ASSET.md` § "▶ 2026-07-06b". Status: ✅ camera-POV-assume-flight BUILT 2026-07-06,
+  bim-ootb PR #674 MERGED — the 6 facing vectors wired + flyToFacing built + 3 bugs found/fixed
+  along the way (coordinate-system mismatch, too-close standoff, a DLOD-binding race). Remaining thread:
+  real in-scene CCTV captures (Item 1) still not built, and the DLOD-binding race's exact root cause is
+  flagged but not chased (fails safely now, not silently wrong).
 - **`prompts/WORLD_HISTORY_BROKEN_RECALL.md`** (pointer) → full detail in
   `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` § "▶ 2026-07-06". Status: PARTIAL — Part 2 (Viewer
   undo-spawns-dots) ✅ DONE 2026-07-06, bim-ootb #670 MERGED. Part 1 (Modeller World History wiring, 4 steps)
@@ -38,12 +40,13 @@
 - **`prompts/PILL_DRAWER_REORGANIZATION.md`** — Status: PR #673 (`lane/pill-drawer-followup-fixes`) pushed,
   OPEN not yet merged — closes the 3 items reopened 2026-07-06 (master de-highlight-on-close,
   Tab+Space drawer-row activation, Shadow+Ground CSS pointer-events bug) + a 4th (Z page-history row
-  promoted into the Navigate drawer, commit `d11263c`), all independently re-verified by watchdog: witness
-  re-run fresh from the shared worktree, all 4 items pass, 0 console errors, against real
-  HHS_Office_Federated. **Alt-Z/X X-Ray↔Bbox "still comes on" below 50k (HHS_Office)** — user directly told
-  that session to PARK it ("will assign its own prompts/#"), not touched further; 2 candidate root causes
-  (`focusElement()`'s auto-xray-on-pick vs the manual `cycleXrayBboxMode` toggle) written up in the file's
-  `⛔ PARKED` section with the `§`-tags to distinguish them, for whenever a future prompt file picks it up.
+  promoted into the Navigate drawer, `d11263c`) + a 5th, the Alt-Z/X "still comes on below 50k" item
+  (parked then reassigned same session): real bug was that a MANUALLY-toggled X-Ray/Bbox mode only ever
+  exited via another Alt+Z press, never on click-outside/deselect — fixed in `3f81202`, click-outside now
+  force-exits both modes (`A.clearFocusElement` + picking.js's guid-less-hit branch). ALL 5 items
+  independently re-verified by watchdog: both witnesses re-run fresh from the shared worktree
+  (`witness_pill_drawer_followup_2026-07-06.js` + `witness_shakeout_2026-07-06.js`), all pass, 0 console
+  errors, against real HHS_Office_Federated.
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch (3 items, bim-ootb PR #659 shipped item 4b)** — item 1: sensor-click should double the

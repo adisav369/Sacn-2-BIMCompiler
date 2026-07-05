@@ -269,12 +269,43 @@ from any earlier draft, an earlier commit of this file, or assumptions about wha
 together.** If anything above seems to conflict with the live code once you start, that's a
 signal to re-check with the user, not to silently pick the reading that seems more sensible.
 
-## ⛔ PARKED (user, 2026-07-06): Alt-Z/X X-Ray↔Bbox "still comes on" below 50k, HHS_Office
+## ✅ 2026-07-06 — Alt-Z/X X-Ray↔Bbox "still comes on" below 50k — CLOSED, same PR #673 (commit `3f81202`)
 
-**User, explicitly:** "ignore also or just leave as is <50k alt-x issue, will assign its own
-prompts/# need not revert if u solve.. it will find out and resume." Not investigated further or
-touched this session — the analysis below is groundwork for whoever picks this up next, not a live
-diagnosis. Do not re-open without a fresh ask; a future session/prompt-file owns this.
+Reassigned back mid-session by Watchdog (after being parked below). Live-diagnosed on
+`HHS_Office_Federated` across 4 separate repro attempts (real Playwright clicks + real Alt+Z
+keypresses, not just code reading):
+
+- **Candidate A (auto-engage on every pick) — confirmed NOT the bug.** The auto X-Ray-dim that
+  fires on every pick/Find-zoom/history-restore already reset correctly on deselect/click-outside,
+  proven via a real pick → re-click-same-spot-to-deselect → re-pick → click-empty-space cycle, all
+  4 steps toggling `xrayOn` exactly as expected.
+- **Candidate B (manual Alt+Z cycle stuck) — confirmed NOT the bug either.** Off→X-Ray→Bbox→Off
+  cycles cleanly every time in isolation.
+- **The real gap, found on a 3rd repro round:** a MANUALLY-toggled Alt+Z mode (X-Ray or Bbox/ghost)
+  only ever exited via another explicit Alt+Z press — by old, deliberate design
+  (`_highlightLensReset`'s comment: "the depth lens must not disturb the manual x-ray"). Clicking
+  outside the model, or deselecting, left it running forever. Confirmed with the user via a
+  clarifying question: **"Originally only Alt-Z happens during Find selected item, zooming to it.
+  But it got too slow for >50k so we switch to Alt-x. Both should shake out of their states upon
+  click outside or select again to deselect item."** — i.e. this was always the intended contract,
+  never fully implemented for the manual-toggle case.
+- **Bonus finding while fixing:** while Bbox/ghost mode is active, the real solids are hidden and
+  replaced by one merged ghost-box mesh — so almost every click lands on THAT mesh (no resolvable
+  guid) rather than a real element or true empty space, and the old code returned early without
+  ever reaching a clear/shake-out path. "Click outside" was effectively impossible to trigger while
+  Bbox mode was on, since the ghost mesh covers most of the screen.
+
+**Fix, scoped narrowly (not touching the shared `_highlightLensReset` helper's OTHER unrelated
+callers — room/phase/material lens switches keep their old manual-toggle-preserving behavior):**
+`A.clearFocusElement` (`viewer/navigate_find.js`) now force-exits `A.xrayOn`/`ghostXrayOn` after its
+existing reset call; `viewer/picking.js`'s "no guid resolved" branch now also calls
+`A.clearFocusElement()`, treating a guid-less hit (the ghost-mesh case) as equivalent to "clicked
+outside." Live-verified: manual Bbox + click-outside shakes out, manual X-Ray + click-outside
+shakes out, clicking the ghost mesh itself shakes out, original auto-engage-on-pick cycle
+unchanged. 0 console errors. Witness: `viewer/tests/witness_shakeout_2026-07-06.js`.
+
+The groundwork below (candidates A/B) is kept for the record — candidate A's "more likely" call
+turned out to be wrong; worth remembering that live testing overturned a code-reading-only guess.
 
 **User report, verbatim intent:** "the alt-x bbxes repair before is still not solved. It still comes
 on for below 50k elements building ie HHS Office." — i.e. whatever the prior fix was meant to stop,
