@@ -228,6 +228,37 @@ fire directly without needing focus).
 and `§SHADOW_GROUND_SWATCH key=...` log lines (both should fire if `toggleShadow` ran at all) — their
 presence/absence immediately narrows which of the 3 candidates above is the real cause.
 
+## ✅ 2026-07-06 — REOPENED items CLOSED, bim-ootb PR #673 (`lane/pill-drawer-followup-fixes`)
+
+All 3 items live-verified via `node viewer/tests/witness_pill_drawer_followup_2026-07-06.js`
+(real Playwright/chromium, real `HHS_Office_Federated` building, real pointer clicks + real
+keyboard Space press) — ALL PASS, 0 console errors.
+
+- **Item 1 (master de-highlight):** confirmed the diagnosis was right —
+  `_buildMasterDrawer`'s `onClose` only did `console.log`, never re-synced pill highlights.
+  Fixed: calls `_syncPillHighlights()`, matching the existing Palette/Settings `onClose` pattern.
+- **Item 2 (Space-to-activate):** did NOT need the new tabindex/keydown/arrow-nav infra the
+  original note worried about — drawer rows are already real `<button>` elements (native Tab
+  already reached them). The only gap: the row only listened for `pointerup`, not the synthetic
+  `click` the browser fires for Space/Enter on a focused button. Added a `click` listener gated
+  on `event.detail===0` (keyboard-only clicks; real pointer clicks always have `detail>=1`) so
+  Space/Enter now fires without double-firing on real mouse clicks. No PanelNav/arrow-traversal
+  built — out of scope, Tab+Space alone satisfied the literal ask.
+- **Item 3 (Shadow+Ground "not working"):** real root cause was CSS, not the candidates listed —
+  viewer.html's shared rule `.bim-drawer-row .bim-drawer-row-icon { pointer-events:none }` (meant
+  to let clicks on a purely-decorative icon span pass through to its parent row `<button>`) also
+  matched the shadow-ground row's `cloudBtn`, which is the ONE real interactive control in that
+  row — silently eating every click on it. Gave it a distinct class. Also hardened the `shadow`
+  action's `fn` to call `A.toggleShadow()` directly instead of a bare `toggleShadow` identifier
+  (the originally-suspected cause — turned out `window.toggleShadow` WAS correctly exported by
+  `main.js`, so that candidate wasn't the live blocker, but the direct call removes the
+  indirection regardless).
+
+Bonus (user ask, same session): Help panel (F1) footer — "Documentation" text link replaced with
+a lightbulb icon → real live Viewer User Guide (`red1oon.github.io/BIMCompiler/BIMUserGuide/`,
+confirmed reachable via fetch); "Report Bug" text replaced with a bare (?) icon, `title=` tooltip
+on hover. Both icon-only now, per request.
+
 ## WATCHDOG NOTE
 This spec had THREE rounds of user correction during design dialogue (2026-07-05): (1) the original
 mapping was incomplete, (2) Camera/View's grouping and Palette's exact members shifted, (3) Audio's
@@ -237,3 +268,49 @@ included, and Navigate/Inspect went from "just ordering labels" to "real drawers
 from any earlier draft, an earlier commit of this file, or assumptions about what "usually" goes
 together.** If anything above seems to conflict with the live code once you start, that's a
 signal to re-check with the user, not to silently pick the reading that seems more sensible.
+
+## 🔍 2026-07-06 — REOPENED (not yet live-diagnosed): Alt-Z/X X-Ray↔Bbox "still comes on" below 50k, HHS_Office
+
+**User report, verbatim intent:** "the alt-x bbxes repair before is still not solved. It still comes
+on for below 50k elements building ie HHS Office." — i.e. whatever the prior fix was meant to stop,
+it's still happening on a building well under the 50k-element line (HHS_Office_Federated — PR #672's
+own commit message cites "~6830 elements" for live-verification, presumably this same building).
+
+**This session only read code — did NOT open the building live — so this is a lead, not a diagnosis.
+Two distinct real code paths both touch "X-Ray/Bbox"; a fresh session must find out which one the
+user is actually hitting before fixing either. Do not guess-fix both.**
+
+**Candidate A — `focusElement()` auto-engages full X-Ray on every pick/Find-zoom/history-restore**
+(`viewer/navigate_find.js:3461-3487`). PR #672 (`5e70e9b`/`7408ada`, "fix(viewer): >50k selection uses
+cheap filter instead of heavy X-Ray") added `_bigBuilding = A.activeBuildingTotal > 50000`: ABOVE
+50k → obscure the rest via cheap `filterByGuids` (visibility-only). Its own commit message says BELOW
+50k is **"unchanged"** — meaning the pre-existing behaviour (`A.toggleXray()` auto-fires + rest dimmed
+to 0.1 on EVERY selection, no manual key needed) still fires exactly as before on HHS_Office. If the
+user's original ask was ever "don't auto-turn-on X-Ray/dimming just from picking something," #672 only
+ever fixed the >50k case — the <50k case was never touched. This reads as the more likely candidate.
+
+**Candidate B — the manual Alt+Z 3-state cycle itself** (`A.cycleXrayBboxMode`, `viewer/tools.js:235-253`;
+Bbox = `toggleMergedGhost`, `viewer/navigate_find.js:900-916`, the wireframe-box "envelope ghost"). This
+is a pure keypress/click toggle with **zero size branching** — it should behave identically at any
+scale. If the user means Bbox mode itself won't turn off, renders wrong, or is stuck ON for
+HHS_Office specifically (not "turns on when I didn't ask"), the bug is here instead.
+
+**DONE WHEN:** open `HHS_Office_Federated` live, get the user's EXACT repro (click one element with
+nothing else pressed? press Alt+Z once/twice/three times? does dimming appear with no input at all?),
+then watch console for these 4 tags — they cover both candidates and will show which path actually
+fires: `§FOCUS_ELEM ... xray=on/off` (candidate A), `§XRAY on=...` and `§XRAY_CYCLE ...` (both
+candidates, A fires plain `§XRAY`/no cycle tag, B fires `§XRAY_CYCLE`), `§GHOST_XRAY visible=...`
+(candidate B, Bbox specifically). Fix only the confirmed path — do not touch both on a guess, and do
+not reuse the >50k cheap-filter branch for <50k without confirming that's actually what the user wants
+(it may instead be "never auto-engage anything below 50k, only on explicit Alt+Z").
+
+**Adjacent-but-separate ask from the same round** (tracked in
+`prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md`, not here): move the "Z" per-page timeline icon out of
+the W-pill's long-press-only drawer (`_worldHistDrawer`, `viewer/panels.js:118-157`) into a directly
+one-tap-reachable spot — e.g. as its own row inside the existing `worldhist` child of the Navigate
+drawer (`viewer/panels.js:1414`) — while the bomb (`_clearHistoryWithWarning`, dangerous/irreversible)
+stays long-press-only, unchanged. User also suspects the per-page timeline "is not properly pushed":
+real triggers DO exist (`pushView` for Find-nav, `ELEMENT_PICK` on click, sniffed `§XRAY` on toggle —
+all real code in `viewer/universal_history.js`), but whether they visibly populate the bar during
+ordinary HHS_Office browsing was not live-tested this round — worth a quick check in the same session
+since it touches the same drawer-relocation work.

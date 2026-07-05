@@ -29,11 +29,20 @@
 - **`prompts/WORLD_HISTORY_BROKEN_RECALL.md`** (pointer) → full detail in
   `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` § "▶ 2026-07-06". Status: PARTIAL — Part 2 (Viewer
   undo-spawns-dots) ✅ DONE 2026-07-06, bim-ootb #670 MERGED. Part 1 (Modeller World History wiring, 4 steps)
-  RE-CONFIRMED still zero-built. Bomb-clear + tap-vs-long-press still not live-tested.
-- **`prompts/PILL_DRAWER_REORGANIZATION.md`** — Status: ✅ SUBSTANTIALLY DONE 2026-07-06, bim-ootb #667+#669
-  MERGED (4 drawers, Shadow+Ground merge, Alt-Z/X 3-state cycle). Small open item: a "Find box appears on its
-  own" bug reported but not yet reproduced (`§FIND_VIS_TRACE` added to catch it next time it happens).
-  `§DELETIONS`/`§NEW ICONS` sections written. No open design questions left.
+  RE-CONFIRMED still zero-built (user confirmed 2026-07-06: only testing Viewer, not Modeller — Part 1
+  stays parked, not urgent). NEW ask (2026-07-06, not started): move the "Z" page-timeline icon out of the
+  W-pill's long-press-only drawer into a one-tap-reachable row, bomb stays long-press-hidden; also verify
+  the per-page timeline is actually being populated by real browsing (user suspects it "is not properly
+  pushed"). Bomb-clear + tap-vs-long-press still not live-tested either.
+- **`prompts/PILL_DRAWER_REORGANIZATION.md`** — Status: PR #673 (`lane/pill-drawer-followup-fixes`) pushed,
+  OPEN not yet merged — closes the 3 items reopened 2026-07-06 (master de-highlight-on-close,
+  Tab+Space drawer-row activation, Shadow+Ground CSS pointer-events bug), independently re-verified by
+  watchdog: witness re-run fresh from a clean checkout, all pass, 0 console errors, against real
+  HHS_Office_Federated. **REOPENED again same session:** Alt-Z/X X-Ray↔Bbox cycle "still comes on" for
+  buildings below 50k (HHS_Office) — NOT yet live-diagnosed, two candidate code paths written up in the
+  file's new `§2026-07-06 — REOPENED` section (`focusElement()`'s auto-xray-on-pick vs the manual
+  `cycleXrayBboxMode` toggle) with the exact `§`-tags to watch to tell them apart. Needs a fresh session
+  to actually open the building and get the repro before fixing.
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch (3 items, bim-ootb PR #659 shipped item 4b)** — item 1: sensor-click should double the
