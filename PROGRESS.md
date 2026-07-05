@@ -23,11 +23,16 @@
 ### 🔀 CURRENTLY JUGGLED (user runs these concurrently across terminals, shuts down/resumes cold — read this
 ### list FIRST, don't ask the user to restate status, it's kept current here)
 - **`prompts/HBA_UNITCLASS_OUTLINE_AND_CAMERA_POV_FIX.md`** (pointer) → full detail in
-  `prompts/RESUME_HR_BIM_ASSET.md` § "▶ 2026-07-06b". Status: ✅ camera-POV-assume-flight BUILT 2026-07-06,
-  bim-ootb PR #674 MERGED — the 6 facing vectors wired + flyToFacing built + 3 bugs found/fixed
-  along the way (coordinate-system mismatch, too-close standoff, a DLOD-binding race). Remaining thread:
-  real in-scene CCTV captures (Item 1) still not built, and the DLOD-binding race's exact root cause is
-  flagged but not chased (fails safely now, not silently wrong).
+  `prompts/RESUME_HR_BIM_ASSET.md` § "▶ 2026-07-06b" + NEW "▶ 2026-07-06c". Status: camera-POV-assume-flight
+  ✅ BUILT+MERGED (bim-ootb PR #674). Live-testing on top of it surfaced 5 NEW items, researched not yet built:
+  (A) UnitClass room-outline doesn't shine through occluding geometry (plain depth-tested LineSegments, unlike
+  the OutlinePass-based pick highlight); (B) all 6 HBA side panels share the identical fixed position and fully
+  cover each other when 2+ are open (confirmed by grep, separate codepath from PR #669's panel-spread fix);
+  (C) IoT sensor bars still read as "too similar" — every sensor shares the same sine phase, only
+  baseline/amplitude differ, so all 7 rise/fall in lockstep despite #671's jitter; (D) cam snapshots being
+  stub photos is explicitly OK per user, no action; (E) HBA device LOD mesh was never built by design (tint-
+  on-existing-element, not a standing device mesh) — real geometry exists unparsed in `IFC/LOD/*.ifc` if ever
+  wanted. Real in-scene CCTV captures (old Item 1) still not built either.
 - **`prompts/WORLD_HISTORY_BROKEN_RECALL.md`** (pointer) → full detail in
   `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` § "▶ 2026-07-06". Status: PARTIAL — Part 2 (Viewer
   undo-spawns-dots) ✅ DONE 2026-07-06, bim-ootb #670 MERGED. Part 1 (Modeller World History wiring, 4 steps)

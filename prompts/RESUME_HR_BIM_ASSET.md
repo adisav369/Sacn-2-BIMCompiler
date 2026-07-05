@@ -2322,3 +2322,70 @@ the rotation fix locally and confirming 2 of 6 checks flip to FAIL before restor
 (real browser, real click path) updated for the new `§HBA_FACING` log line, still green. `witness_class_outline_live.js`
 (shares `_zoneCentroid`) re-run for regression, still green. Full 44-file HBA suite: only the 4 pre-existing
 `sql.js`-module failures (unrelated, present on `main`). PR #674 MERGED to main.
+
+## ▶ 2026-07-06c — NEW batch, live-testing feedback (research only, not yet built — 5 items)
+
+User was live-driving HBA on top of `main` (post-#674) and reported 5 things. Researched each (code-read only,
+not live-verified in a browser this round) so a fresh session has a real lead instead of a blind re-discovery.
+
+**Item A — UnitClass room-outline highlight does NOT "shine through" occluding geometry.** `hba_lens.js`
+`_drawOutlines()` (line ~406-430) draws each room's perimeter as a plain `THREE.LineSegments` +
+`LineBasicMaterial`, normally depth-tested — so it's occluded by any wall/slab in front of it, same as any
+ordinary mesh. Compare `navigate_find.js`'s pick/Find-zoom highlight (`focusElement`, the `§UNIFIED-SELECT`
+yellow silhouette), which explicitly uses `A._outlinePass`/`A.setOutline` (Three.js `OutlinePass`,
+`hiddenEdgeColor` set) — THAT one visibly "shines through" occluding geometry by design (its own comment says
+so verbatim). The UnitClass outline was never given the same treatment — it's a bare depth-tested wireframe.
+Likely fix: either route `_drawOutlines`'s lines through `A.setOutline`/`OutlinePass` too, or at minimum set
+`depthTest:false` + a high `renderOrder` on the `LineBasicMaterial` so it draws on top. Verify live on
+`HHS_Office_Federated` (Unit Class lens ON, rotate camera so a wall crosses in front of an outlined room) before
+picking an approach — the two fixes look different in a screenshot (true X-ray-style pass-through vs. simple
+always-on-top) and only a live look will show which matches what "shine through" means to the user here.
+
+**Item B — all 6 HBA side panels stack at the IDENTICAL fixed position, fully covering each other.**
+Confirmed by grep, not guessed: `hba_dashboard.js:41`, `hba_bom.js:35`, `hba_leave.js:95`, `hba_tenancy.js:39`,
+`hba_payslip.js:75`, `hba_iot.js:245` **all** use `position:fixed;top:54px;right:12px` (widths vary 340-420px,
+but the anchor corner is byte-identical everywhere) — opening any 2 of these simultaneously stacks them exactly
+on top of one another. This is a DIFFERENT codepath from PR #669's "spread floating panels" fix (that one only
+touched `panels.js`-owned Palette/Settings/JSON-editor/3 pill-drawer panels — it never reached these 6
+HBA-specific panes, which predate that fix and live in their own files). Fix should mirror #669's approach: give
+each of these 6 its own column/offset (or reuse `HbaPaneHost`/`hba_mobile_stack.js`'s existing desktop
+docking logic if it already has a slot system — check there first before inventing a new one). Verify live:
+open 2+ HBA panes at once (e.g. IoT dashboard + BOM), confirm both fully visible, no pairwise overlap.
+
+**Item C — IoT sensor bars still look "too similar growing long/short," not real independent 12hr fluctuation,
+despite PR #671's earlier attempt at this same ask.** Confirmed the fix code IS on `main` (`hr_bim_asset/iot.js`
+`jitterFor`/`dangerThresholdFor`, commit `a872078`) — so this is NOT a merge gap, the user is seeing the shipped
+code and it's still not convincing. Root cause candidate: `seriesFor(sensor, hours)` (`iot.js:126-135`) uses the
+literal SAME `phase = (h/24)*2π - π/2` sine for EVERY sensor — only `baseline`/`amplitude` differ per sensor, so
+all 7 bars rise and fall in perfect lockstep (identical peak/trough hour), which reads as "all bars doing the
+same growing/shrinking thing" even though `jitterFor`'s small ±12%-of-amplitude wiggle (a 12-entry fixed table,
+`iot.js:246-249`) is layered on top. A per-sensor PHASE OFFSET (still deterministic/fixed, e.g. a small fixed
+table of hour-offsets keyed by sensor, same non-invent discipline as `OFFSET`/`JITTER_TABLE` already there)
+would likely be the real fix — each sensor's peak lands at a different hour, which is what genuinely
+independent real-world sensors would do, rather than widening the existing jitter (that's already tuned per
+the #671 comment's own citation of the RiverIoT/Bonsai reference shape).
+
+**Item D — cam snapshots are the shared static stub photo, not real in-scene captures — user explicitly
+confirms this is OK for now** ("the rest is OK as POC as the narrative is that these are all stubs and will
+adapt to real use case"). No action item — do not "fix" this without a fresh ask. Guidance for whenever Item 1
+(real in-scene CCTV captures) IS picked up: user's own words, **"By cam u will know its the cam POV"** — i.e.
+the capture should be DERIVED from the camera's own declared position+`facing` vector (now real, wired in PR
+#674's `flyToFacing`/`iot.js CAMERAS[].facing`), not a generic screenshot — render (or at minimum frame) the
+scene FROM that camera's actual eye/facing so it's provably that camera's viewpoint, the same ground-truth
+`flyToFacing` already uses for the fly-to.
+
+**Item E — HBA IoT/CCTV device LOD mesh: user has "yet to catch sight of" any device geometry in-scene.**
+This is EXPECTED, not a bug — confirmed via memory (`project_hba_iot_lod400_lane.md`) and `library/
+component_library.db`: real LOD400 mesh geometry for camera/sensor device classes was deliberately never
+built. The shipped design (§LOD400-CHECK, PR #652) binds each of the 7 sensors + 6 cameras to an EXISTING real
+HHS_Office_Federated element (e.g. temp→AHU-03, cameras→6 real entrance doors) and represents them via a
+click-triggered orange tint-highlight (`locateAndHighlight`, 4s self-restoring) — NOT a persistent visible
+device mesh standing in the scene. 4 of 6 real device IFC files WERE sourced free from NBS Source
+(`bim-ootb/IFC/LOD/`, PR #651) but were never parsed/inserted into `elements_meta` — flagged at the time as "a
+separate, larger, not-yet-needed follow-up," never revisited since. If the user now wants real standing device
+meshes (not just tinted host-elements), that's the `IFC/LOD/*.ifc` → transform-into-building-frame → insert-
+new-`elements_meta`-rows pipeline named in the memory file — a real, scoped, not-yet-started build, not a bug
+fix. Needs a go/no-go: is "see the device" now a real want, or does the tint-on-host-element convey it well
+enough once Items A-C above are fixed and more visible?
+
+**DONE WHEN:** each item gets a live-verified fix (A/B/C) or an explicit user decision (E); D needs nothing.
