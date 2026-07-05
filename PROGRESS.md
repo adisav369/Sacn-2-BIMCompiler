@@ -42,16 +42,20 @@
   see `prompts/PILL_DRAWER_REORGANIZATION.md`. User explicitly told that session to SKIP the "is the
   timeline actually being populated by real browsing" question this round — still genuinely open, not
   chased. Bomb-clear + tap-vs-long-press dual behavior still not live-tested either.
-- **`prompts/PILL_DRAWER_REORGANIZATION.md`** — Status: PR #673 (`lane/pill-drawer-followup-fixes`) pushed,
-  OPEN not yet merged — closes the 3 items reopened 2026-07-06 (master de-highlight-on-close,
-  Tab+Space drawer-row activation, Shadow+Ground CSS pointer-events bug) + a 4th (Z page-history row
-  promoted into the Navigate drawer, `d11263c`) + a 5th, the Alt-Z/X "still comes on below 50k" item
-  (parked then reassigned same session): real bug was that a MANUALLY-toggled X-Ray/Bbox mode only ever
-  exited via another Alt+Z press, never on click-outside/deselect — fixed in `3f81202`, click-outside now
-  force-exits both modes (`A.clearFocusElement` + picking.js's guid-less-hit branch). ALL 5 items
-  independently re-verified by watchdog: both witnesses re-run fresh from the shared worktree
-  (`witness_pill_drawer_followup_2026-07-06.js` + `witness_shakeout_2026-07-06.js`), all pass, 0 console
-  errors, against real HHS_Office_Federated.
+- **`prompts/PILL_DRAWER_REORGANIZATION.md`** — Status: PR #673 **MERGED** (`953d1e4`, all 5 items — master
+  de-highlight, Tab+Space, Shadow+Ground CSS bug, Z-history row, Alt-Z/X shake-out — independently
+  re-verified by watchdog before merge). Watchdog also found+fixed a real CI failure the PR introduced
+  (`ICONS` undefined in `scene.js`, allowlisted in `eslint.globals.json`). **NEW, not yet built:** pill rail
+  flickers off-then-on on the FIRST touch — user pasted a real console log showing 2 `§PILL open=` flips
+  within ~2 render-loop cycles; traced `#mobile-trigger`'s binding (no duplicate listener found, that
+  hypothesis ruled out) but the double-flip itself is unexplained — needs a live single-tap repro with a
+  `console.trace()` in `_toggle()` to settle it. Full detail: `§2026-07-06 — NEW: pill rail flickers`.
+- **`prompts/OPEN_BUTTON_IFC_BCF_MERGE.md`** (NEW file, 2026-07-06) — user ask, previously discussed verbally
+  in another session but never written down (searched both repos' prompts/, found nothing): move the
+  landing-page's Drop-IFC-and-merge gesture onto the Viewer's Open button itself; Save As should support
+  IFC/BCF output, not just native `.db`. Flagged extensive/separate by the user. Cites Modeller's own
+  `EXPORT_MENU_NATIVE_DB.md` (PR #633) as directly relevant prior art (same DB/IFC/BCF chooser-menu shape,
+  different surface). 3 open design questions logged, not yet resolved with the user — not started.
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch (3 items, bim-ootb PR #659 shipped item 4b)** — item 1: sensor-click should double the
