@@ -2119,3 +2119,68 @@ ready to push — correctly did NOT reuse the old (now-stale) branch/worktree; c
 onto a fresh branch off `origin/main` per the CLAUDE.md squash-merge doctrine, and opened PR #653 from that.
 
 **Genuinely nothing left open in this IoT/CCTV lane** — §BUILD ORDER (items 1-6) and §P10c are both fully shipped.
+
+---
+
+## ▶ 2026-07-05e — "Wow" batch: perimeter fix ✅ SHIPPED, items 1/2/0 SCOPED not built (bim-ootb PR #659)
+
+User asked for 6 more things in one message: (0) mobile swipeable card-stack for HBA panes, (1) sensor-click
+should double the matching CCTV tile + render a real in-scene capture facing the device, (2) clicking a CAM
+tile should fly the Viewer camera to assume that camera's own POV, (3)/(4)/(5) doc-screenshot bugs — **3/4/5
+all fixed this session** (see the §2026-07-05 section above this one — recaptured against the REAL viewer, not
+the black-screen `demo/fm_panel.html`, plus an honest "small real fixtures" caveat added, plus swapped in the
+user's own `HBA_4panels.png`). A follow-up message added: "should make the spaces tint shine thru? at least
+their outer total perimeter" — **this shipped** (see below). Docs redeployed live, verified: `img/hba_4panels.png`
+200, guide text contains "small real fixtures".
+
+**✅ SHIPPED — perimeter outline (bim-ootb PR #659):** rejected a "tint nearby real walls" proximity fix
+(HHS's 4 classified rooms sit only 2.4-2.9m apart — closer than several real walls sit to any one room's own
+centre, so a radius guess would bleed one room's colour onto its neighbour's wall). Found `spatial_structure`
+already carries a REAL extracted IfcSpace footprint (center+size) per room — `bindStoreysFromModel` now stashes
+it as `A._hbaRoomFootprint`; the 'class' lens draws a real wireframe box per linked room at its own footprint,
+coloured to match its tint, zero-residue on toggle-off. `witness_class_outline.js` 9/9, live-verified (visible
+orange box on the commercial room). **Not yet extended to Occupancy/Tenancy/Presence** — same mechanism would
+work for those too if wanted (they're also room-guid-keyed), flagged not built.
+
+**⛔ Item 2 (camera POV-assume flight) — genuinely blocked on ONE decision, not effort.** An Opus feasibility
+pass (this session) found: `rotation_x/y/z` is uniformly `(0,0,0)` across ALL 6830 elements in this extraction
+— not just the 6 camera doors — so a real facing direction can NEVER be extracted here. The facing AXIS still
+IS derivable (each door's bbox has one unambiguously-thin dimension, ~0.19m vs ~1-2.5m on the other two) but the
+SIGN (which of the two directions) has no real signal within reach (nearest IfcSpace to any door is 10-45m away
+with the whole other side unaccounted for) — deriving it would be a guess dressed up as extraction, which this
+project's non-invent discipline forbids. **The one question:** someone needs to look at each of the 6 real
+doors in the actual 3D viewer once and declare which way it should face — a `facing:[x,y,z]` unit vector added
+to each `iot.js CAMERAS` entry, commented `// declared, not extracted` (so it's never confused with a hard
+fact). Either the user does this pass, or a future session does it by flying to each door
+(`HBALens.flyToZone(A, cameraGuid)`) and eyeballing the surroundings — NOT guessable from data alone. Once the
+6 facing vectors are declared, the actual camera-POV-assume flight (position at the door + orient along
+`facing`, a straightforward THREE.js camera quaternion/lookAt op) is a normal, un-blocked build.
+
+**◻ Item 1 (CCTV tile real in-scene capture) — feasible, not yet built.** Plan: on a sensor/camera click, after
+`locateAndHighlight` flies+tints, ALSO (a) double the matching CCTV tile's CSS size (grid layout already
+handles this — `grid-template-columns` reflow), (b) render an actual snapshot of the BIM scene from a SECOND
+THREE.js camera positioned near/facing the device (a temporary camera + `renderer.render(scene, tempCam)` into
+an offscreen canvas or render-target, then `toDataURL()`/`drawImage()` into the tile) — a real "here's what a
+camera there would see" stand-in, not the ContaCam stock photo, once real hardware doesn't exist yet. For
+CAMERA tiles specifically this ALSO needs the item-2 facing vector to aim the temp camera correctly — sensor
+tiles (not bound to a facing direction) can just look toward the device from a fixed nearby offset. Not started.
+
+**◻ Item 0 (mobile card-stack) — full spec written, not built.** `prompts/RESUME_HBA_MOBILE_CARD_STACK.md`
+(bim-ootb, this PR #659) — an Opus-authored spec: peek-deck (scrollable stack of collapsed cards) ↔ full-screen
+(tap to open, swipe to switch between open cards without returning to the deck, minimise-vs-close split so
+closing cascades back to the deck at the right spot). Grounded in REAL existing infra: `window._isMobile`
+already exists repo-wide; a pre-existing `swipe.js`/`SwipeStack` gesture engine exists but can't host live pane
+DOM directly (renders via innerHTML) — reuse its gesture math by reference, not as the container. New
+`hba_mobile_stack.js` (`HbaPaneHost.present(pane, head, A)`) is the ONLY per-pane code change needed (replaces
+2 lines in each of the 6 panes' `mount()`), phased build order: prove the mechanism on ONE pane (Leave) first.
+5 open UX questions flagged in the spec itself (fling-to-remove threshold, auto-focus-vs-deck-drop, large-
+touchscreen gate, drawer-as-bottom-sheet-or-not, animation timing) — read them before starting; they're
+UX-author's-call, not extract-vs-invent landmines.
+
+**Session-routing note (2026-07-05e):** items 1 and (once item 2's one decision is made) 2 are now normal,
+well-scoped EXECUTION tasks — a Sonnet session building against a clear plan, no open research question left.
+Item 0 similarly has a full written spec to build against — also Sonnet-appropriate; Opus was used HERE only
+because the spec/feasibility-research itself was open-ended (the "what's the right interaction model" and
+"can this even be extracted" questions), not because the resulting BUILD needs Opus. If item 0's build hits one
+of its 5 flagged open UX questions and it gets genuinely gnarly, that specific sub-question could go back to
+Opus — but starting the build itself doesn't need it.
