@@ -2389,3 +2389,48 @@ fix. Needs a go/no-go: is "see the device" now a real want, or does the tint-on-
 enough once Items A-C above are fixed and more visible?
 
 **DONE WHEN:** each item gets a live-verified fix (A/B/C) or an explicit user decision (E); D needs nothing.
+
+## ▶ 2026-07-06d — items A/B/C ✅ FIXED+LIVE-VERIFIED, D-followup ✅ BUILT+LIVE-VERIFIED, item E ⛔ BLOCKED (bim-ootb PR #677, branch `fix/hba-outline-panels-iot-phase`, worktree `/tmp/wt-hba-live-fixes`)
+
+Worked §2026-07-06c top-to-bottom. All in bim-ootb (viewer/hba_lens.js, viewer/hba_iot.js, hr_bim_asset/iot.js,
+viewer/hba_{bom,dashboard,leave,tenancy,payslip}.js), pushed as 2 commits on `fix/hba-outline-panels-iot-phase`,
+PR #677 open (not yet merged).
+
+- **Item A ✅ FIXED** — `hba_lens.js _drawOutlines`'s `LineBasicMaterial` now sets `depthTest:false` + `renderOrder:999`
+  (was a plain depth-tested material, occluded by any wall/slab in front). Live-verified: material props read back
+  off the actual THREE object in a running browser (`depthTest:false, renderOrder:999`), not just eyeballed.
+- **Item B ✅ FIXED** — the 6 HBA panes (dashboard/bom/leave/tenancy/payslip/iot) each moved off the shared
+  `right:12px` anchor onto their own cascade column (right:12/428/864/1260/1616/2012). Found + fixed a SECOND
+  bug while live-verifying: the family-drawer menu (z-index:10000) sat BELOW the panes (z-index:10050) — opening
+  the first pane hid the very menu needed to click the next row, blocking the "open 2+ panes" flow this item
+  targets. Bumped the drawer to z-index:10060. Live-verified: BOM+IoT panes open simultaneously, 0 pairwise
+  overlap (real `getBoundingClientRect()` check), screenshot confirms both fully visible side-by-side with the
+  drawer still on top and clickable.
+- **Item C ✅ FIXED** — `iot.js seriesFor()` used the literal same sine phase for every sensor (only
+  baseline/amplitude differed → all 7 peaked at hour 12). Added a fixed `PHASE_OFFSET_HOURS` table (never
+  random) so each sensor's peak lands at a different hour. Verified via direct `node -e` call: peaks now
+  temp=12 pressure=8 sound=17 dust=14 solar=5 electrical=16 movement=10 (7/7 distinct, was 1/7).
+- **Item D-followup ✅ BUILT** (user's own explicit next-ask, not just "OK as POC" anymore) — added
+  `HBALens.captureFacingSnapshot(A, guid, facing, ctx, opts)`: an offscreen `THREE.PerspectiveCamera` + cached
+  `WebGLRenderTarget` renders the REAL loaded scene from a camera's own declared eye/facing (same ground truth
+  `flyToFacing` flies to), reads pixels back into the CCTV tile's 2D canvas — never touches `A.camera`/
+  `A.controls`, so it never disturbs the user's live view. `hba_iot.js renderCctvTile` wires this in, throttled
+  to one real re-render per tile per 1.5s (`CAPTURE_REFRESH_MS`), honest fallback to the old static-photo crop
+  when engine/facing is unavailable. Watermark reads "IN-SCENE POV" (real capture) vs "STUB READY" (fallback) —
+  never overclaims a live video feed. Live-verified: all 6 tiles show real pixel variation (342-559 distinct
+  samples per tile, was a flat shared-photo crop) AND are pixel-DISTINCT from each other (6 unique renders for
+  6 cameras — the exact regression this targets), screenshot shows real greyscale in-scene geometry per tile
+  (one clearly showing an orange-tinted door/element), 0 console errors.
+- **Item E ⛔ BLOCKED** — asked the user (AskUserQuestion): keep tint-on-host-element (recommended, zero new
+  scope) vs. build real standing device meshes (parse the 4 already-sourced NBS Source IFC files in
+  `bim-ootb/IFC/LOD/` into `elements_meta`, a real multi-step pipeline). No response — genuinely needs the
+  user's own go/no-go, not something EXTRACT-able from the code. **The one open question:** now that A/B/C are
+  fixed and IoT/CCTV panes are more visible/usable, is "see the device itself" still a real want, or does the
+  tint-on-host-element convey it well enough?
+
+Witnesses: `viewer/tests/witness_hba_outline_panel_fixes.js` (PASS 0 fails) +
+`viewer/tests/witness_hba_cctv_inscene_capture.js` (PASS 0 fails). Screenshots:
+`viewer/tests/hba_outline_panel_fixes.png`, `viewer/tests/hba_cctv_inscene_capture.png`. Branch pushed, 0
+local-only commits. PR #677 still needs human merge.
+
+**DONE WHEN:** PR #677 merged + item E answered.

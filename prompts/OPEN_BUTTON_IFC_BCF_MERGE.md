@@ -38,20 +38,29 @@ user's own words per their explicit go-ahead ("if u cannot find it, it is straig
   writing a new one; Modeller's `exportBcf({})` (cited in EXPORT_MENU_NATIVE_DB.md) may already have a Viewer
   equivalent, or may be portable.
 
-## OPEN QUESTIONS (do not guess — ask before building)
-- "Open button accepts a drop" — does this mean a NEW drop-zone behavior on the existing Open button/pill
-  (drag files onto it), or does clicking Open now show a chooser that INCLUDES "import + merge multiple IFC"
-  as one of its options (alongside "open a single .db")? These are different UI shapes.
-- Does "Save As... IFC/BCF" mean a full re-export of the CURRENT model geometry to IFC (lossy, one-way,
-  Modeller's `exportModel` precedent), or something else specific to the Viewer's own data model?
-- Should the landing page's OWN drop-IFC gesture be REMOVED once it moves to Open (single home, no
-  duplication), or does it stay on the landing page too (two entry points to the same engine)? User's wording
-  ("move ... to entirely Open button feature") reads as a full move, not a duplication — confirm before
-  deleting the landing-page entry point.
+## ✅ ITEM 1 DONE (witness) — 2026-07-06, bim-ootb PR #676, `lane/open-button-ifc-merge`
+User resolved the shape question directly: the landing page's drop-zone "is not a good design, users
+suspect privacy issue" — Open button is the logical single home. Answer landed as: no new drop-zone
+behavior, no chooser menu either — the file EXTENSION already says what it is, so `A.openModelDb`'s
+native picker just widened its accept list (`.db`/`.sqlite`/`.ifc`, multi-select) and branches by
+extension. Landing page's `#m-import-zone` REMOVED (not duplicated), per "move ... to entirely Open
+button feature."
+- `viewer/scene.js` `A.openModelDb` widened + new `A._routeOpenPicks` branch (ifc→merge engine, else→
+  existing native-db path).
+- `import_own.js` (the actual multi-IFC-merge engine) loaded a SECOND time from `viewer/viewer.html` —
+  reused verbatim, not reinvented. Two real seams needed adapting for the new host: its `viewer/`-
+  relative asset paths (`_fromViewerHost`/`_viewerAssetPrefix`) and `openProject()`'s tab-opening tail
+  (new `opts.sameTab` → `location.assign` in place instead of `window.open`, so the Open button loads
+  the merge into the CURRENT tab, not a second one).
+- `viewer/tests/poc_open_button_ifc_merge.js` — new live witness, real ARC+MEP reference IFCs through
+  the real `APP._routeOpenPicks` entry point, full round trip (merge → same-tab nav → reload → rendered
+  scene). **10/10 PASS**, 0 page errors.
+- `viewer/tests/morpheus_import_live.js` — retired to a regression guard (zone/input/`wireImportZone`
+  confirmed gone, engine still loaded). **4/4 PASS**.
+- Landing-page (`index.html`) smoke-tested post-removal: catalog cards render, 0 console errors.
 
-## DONE WHEN
-Not yet scoped into concrete steps — this file exists to hold the ask so it isn't lost, per explicit user
-instruction. A future session should: (1) resolve the open questions above with the user, (2) write a real
-STEPS section (mirroring `LANDING_MULTIMERGE_SAVEOPEN_RESURRECT.md`'s structure — worktree, live-verify,
-`§`-tagged witness), (3) build in a fresh `/tmp/wt-*` worktree per project convention, never the shared
-`~/bim-ootb` checkout.
+## ⛔ ITEM 2 OPEN — Save As... IFC/BCF (untouched by PR #676, separate scope)
+Still needs: does "Save As... IFC/BCF" mean a full re-export of the CURRENT model geometry to IFC (lossy,
+one-way, Modeller's `exportModel`/`EXPORT_MENU_NATIVE_DB.md` precedent), or something Viewer-data-model-
+specific? Note from PR #676's research: the Viewer has NO existing BCF export module (Modeller has
+`modeller/bcf_export.js`; Viewer only has `ifc_export_worker.js` for IFC) — this is new work, not a port.
