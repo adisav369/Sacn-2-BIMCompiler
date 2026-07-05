@@ -102,6 +102,13 @@ Before ending, update PROGRESS.md with:
   a dated section) is ALWAYS in scope — see `feedback_prompt_file_organization.md` — it is not something to ask
   permission for, and it is not something to retract under pushback either. This is a DETERMINISM requirement:
   the whole project runs on documented, checkable rules, not per-session judgment calls that reset every drift.
+- **Housekeeping is a standing duty, done unprompted, every time — not a crisis cleanup (2026-07-06):** Every
+  session that adds to `MEMORY.md` or a `prompts/*.md` file checks, in that same turn: is this a NEW file when
+  a canonical one already owns the topic (merge it in, delete the new one)? Did the entry add prose to
+  `MEMORY.md` instead of a bare link (fix it now, don't wait to be told)? Is `PROGRESS.md`/`MEMORY.md` back over
+  their line budgets (compact now)? This is not something the user asks for — `MEMORY.md` itself has carried a
+  "links only, ≤80 lines" rule (`feedback_memory_links_only.md`) since 2026-06-04 and drifted back to 264 lines
+  of prose TWICE before this rule was written. Check after every edit, not when it's already a mess again.
 - **Deploy Flow (deploy/dev/ ONLY):** Edit → syntax check → verify all `§` tags exist → save test log → upload to dev bucket → smoke test URLs → fetch back and verify content → confirm file is loaded by viewer. ONE flow, never stop partway or ask user to check.
 - **OCI MIME Rule:** EVERY `oci os object put` MUST include `--content-type` — OCI does NOT infer it from the extension; omitting it → `X-Content-Type-Options: nosniff` block + silent script failure. Full MIME table: `deploy/OCI_UPLOAD.md §RULES`.
 - **Spec-First (ALL work):** Spec before code, spec before tests, spec before prompts. No implementation without a written spec section. New features: witness claim first, then implement.
