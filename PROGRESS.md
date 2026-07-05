@@ -22,51 +22,11 @@
 
 ### 🔀 CURRENTLY JUGGLED (user runs these concurrently across terminals, shuts down/resumes cold — read this
 ### list FIRST, don't ask the user to restate status, it's kept current here)
-- **`prompts/HBA_UNITCLASS_OUTLINE_AND_CAMERA_POV_FIX.md`** (pointer) → full detail in
-  `prompts/RESUME_HR_BIM_ASSET.md` § "▶ 2026-07-06b" + NEW "▶ 2026-07-06c". Status: camera-POV-assume-flight
-  ✅ BUILT+MERGED (bim-ootb PR #674). Live-testing on top of it surfaced 5 NEW items, researched not yet built:
-  (A) UnitClass room-outline doesn't shine through occluding geometry (plain depth-tested LineSegments, unlike
-  the OutlinePass-based pick highlight); (B) all 6 HBA side panels share the identical fixed position and fully
-  cover each other when 2+ are open (confirmed by grep, separate codepath from PR #669's panel-spread fix);
-  (C) IoT sensor bars still read as "too similar" — every sensor shares the same sine phase, only
-  baseline/amplitude differ, so all 7 rise/fall in lockstep despite #671's jitter; (D) cam snapshots being
-  stub photos is explicitly OK per user, no action; (E) HBA device LOD mesh was never built by design (tint-
-  on-existing-element, not a standing device mesh) — real geometry exists unparsed in `IFC/LOD/*.ifc` if ever
-  wanted. Real in-scene CCTV captures (old Item 1) still not built either.
-- **`prompts/WORLD_HISTORY_BROKEN_RECALL.md`** (pointer) → full detail in
-  `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` § "▶ 2026-07-06". Status: PARTIAL — Part 2 (Viewer
-  undo-spawns-dots) ✅ DONE 2026-07-06, bim-ootb #670 MERGED. Part 1 (Modeller World History wiring, 4 steps)
-  RE-CONFIRMED still zero-built (user confirmed 2026-07-06: only testing Viewer, not Modeller — Part 1
-  stays parked, not urgent). The "Z" page-timeline icon relocation (out of the W-pill's long-press-only
-  drawer into a one-tap row, bomb stays hidden) ✅ DONE same session, bim-ootb PR #673 commit `d11263c` —
-  see `prompts/PILL_DRAWER_REORGANIZATION.md`. User explicitly told that session to SKIP the "is the
-  timeline actually being populated by real browsing" question this round — still genuinely open, not
-  chased. Bomb-clear + tap-vs-long-press dual behavior still not live-tested either.
-- **`prompts/PILL_DRAWER_REORGANIZATION.md`** — Status: PR #673 **MERGED** (`953d1e4`, all 5 items — master
-  de-highlight, Tab+Space, Shadow+Ground CSS bug, Z-history row, Alt-Z/X shake-out — independently
-  re-verified by watchdog before merge). Watchdog also found+fixed a real CI failure the PR introduced
-  (`ICONS` undefined in `scene.js`, allowlisted in `eslint.globals.json`). **NEW, not yet built:** pill rail
-  flickers off-then-on on the FIRST touch — user pasted a real console log showing 2 `§PILL open=` flips
-  within ~2 render-loop cycles; traced `#mobile-trigger`'s binding (no duplicate listener found, that
-  hypothesis ruled out) but the double-flip itself is unexplained — needs a live single-tap repro with a
-  `console.trace()` in `_toggle()` to settle it. Full detail: `§2026-07-06 — NEW: pill rail flickers`.
-- **`prompts/OPEN_BUTTON_IFC_BCF_MERGE.md`** (NEW file, 2026-07-06) — user ask, previously discussed verbally
-  in another session but never written down (searched both repos' prompts/, found nothing): move the
-  landing-page's Drop-IFC-and-merge gesture onto the Viewer's Open button itself; Save As should support
-  IFC/BCF output, not just native `.db`. Flagged extensive/separate by the user. Cites Modeller's own
-  `EXPORT_MENU_NATIVE_DB.md` (PR #633) as directly relevant prior art (same DB/IFC/BCF chooser-menu shape,
-  different surface). 3 open design questions logged, not yet resolved with the user — not started.
-- **`prompts/MODELLER_GIT_FAITHFUL_HISTORY.md`** — Status: bim-ootb PR #675 MERGED (`9ff9a5a`+`6d9f906a`),
-  independently re-verified by watchdog (both witnesses re-run fresh, not trusted from recap):
-  Phase 1 `witness_modeller_redo_order.js` 6/6 — real `bonsai_oplog.js redo()` LIFO-order bug fixed.
-  Phase 2 `witness_modeller_git_history.js` 7/8 — Modeller now mounts the SAME `common/history_bar.js`
-  tree engine the Viewer uses (`modeller_history.js`); the user's core ask (undo → diverge → switch back to
-  the abandoned branch restores it exactly) is proven live on real SampleHouse. **The 1 failure (G6) is
-  genuinely, honestly left red** — confirmed myself, it fails with the exact `[KNOWN GAP, not fixed]` label
-  the session claimed, not faked green: switching directly between two non-trunk branches (skipping trunk)
-  picks the wrong row — a latent shared `history_bar.js`/kernel `redo()`-by-guess limitation that predates
-  this work and would equally hit the Viewer; needs a targeted `redo(id)` kernel primitive, scoped out of
-  this pass. Phase 3 (swap `#hist-slider` for the dot-strip UI) NOT started — engine is dormant until wired.
+- `prompts/RESUME_HR_BIM_ASSET.md` §2026-07-06c — camera-POV done (#674 `77f41b9`). Open: A/B/C bugs + E decision.
+- `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §2026-07-06 — Viewer Part2 done (#670 `d6bfb80`); Modeller
+  port Ph1-2 done (#675 `9ff9a5a`+`6d9f906a`), open: G6, Ph3. World-History Part1 parked.
+- `prompts/PILL_DRAWER_REORGANIZATION.md` §2026-07-06 — done (#673 `953d1e4`). Open: first-touch flicker.
+- `prompts/OPEN_BUTTON_IFC_BCF_MERGE.md` — not started.
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch (3 items, bim-ootb PR #659 shipped item 4b)** — item 1: sensor-click should double the

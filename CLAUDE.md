@@ -91,6 +91,17 @@ Before ending, update PROGRESS.md with:
 - Witnesses prove; SanityCheck is fallback
 - All geometry is a maths issue — verify numerically via pipeline logs, not manual DB queries
 - **Log Mandate:** After ANY run, save output to a log file, read the log before conclusions — exit code is not evidence. Never rely on inline terminal output. Improve FINE logging to reveal issues; extract insights from log only, never invent. Every prompt file opens with `# ⚠ DO NOT REMOVE` block stating scope + "read the log." Honour until DONE.
+- **Anti-Drift / No Self-Invented Rules (HARD RULE, non-negotiable — 2026-07-06):** Every role boundary, admin-scope
+  question, and workflow decision on this project is ALREADY DEFINED in this file + `MEMORY.md`'s feedback entries.
+  There is nothing left to improvise. When challenged ("aren't you supposed to X?", "isn't this already defined?")
+  or when unsure whether an action is in-scope: **STOP. Grep this file + the feedback memory files for the actual
+  rule FIRST. Never fabricate a plausible-sounding self-restriction on the spot** — inventing a NEW boundary under
+  pressure (e.g. "that's not my role" with no memory citation) is ITSELF the drift, not a correction. State the
+  verified rule with its source, then act — don't oscillate, don't ask a permission question a disciplined read
+  would have already resolved. Documenting findings/recommendations into a canonical `prompts/*.md` file (append
+  a dated section) is ALWAYS in scope — see `feedback_prompt_file_organization.md` — it is not something to ask
+  permission for, and it is not something to retract under pushback either. This is a DETERMINISM requirement:
+  the whole project runs on documented, checkable rules, not per-session judgment calls that reset every drift.
 - **Deploy Flow (deploy/dev/ ONLY):** Edit → syntax check → verify all `§` tags exist → save test log → upload to dev bucket → smoke test URLs → fetch back and verify content → confirm file is loaded by viewer. ONE flow, never stop partway or ask user to check.
 - **OCI MIME Rule:** EVERY `oci os object put` MUST include `--content-type` — OCI does NOT infer it from the extension; omitting it → `X-Content-Type-Options: nosniff` block + silent script failure. Full MIME table: `deploy/OCI_UPLOAD.md §RULES`.
 - **Spec-First (ALL work):** Spec before code, spec before tests, spec before prompts. No implementation without a written spec section. New features: witness claim first, then implement.
