@@ -56,6 +56,17 @@
   IFC/BCF output, not just native `.db`. Flagged extensive/separate by the user. Cites Modeller's own
   `EXPORT_MENU_NATIVE_DB.md` (PR #633) as directly relevant prior art (same DB/IFC/BCF chooser-menu shape,
   different surface). 3 open design questions logged, not yet resolved with the user — not started.
+- **`prompts/MODELLER_GIT_FAITHFUL_HISTORY.md`** — Status: bim-ootb PR #675 MERGED (`9ff9a5a`+`6d9f906a`),
+  independently re-verified by watchdog (both witnesses re-run fresh, not trusted from recap):
+  Phase 1 `witness_modeller_redo_order.js` 6/6 — real `bonsai_oplog.js redo()` LIFO-order bug fixed.
+  Phase 2 `witness_modeller_git_history.js` 7/8 — Modeller now mounts the SAME `common/history_bar.js`
+  tree engine the Viewer uses (`modeller_history.js`); the user's core ask (undo → diverge → switch back to
+  the abandoned branch restores it exactly) is proven live on real SampleHouse. **The 1 failure (G6) is
+  genuinely, honestly left red** — confirmed myself, it fails with the exact `[KNOWN GAP, not fixed]` label
+  the session claimed, not faked green: switching directly between two non-trunk branches (skipping trunk)
+  picks the wrong row — a latent shared `history_bar.js`/kernel `redo()`-by-guess limitation that predates
+  this work and would equally hit the Viewer; needs a targeted `redo(id)` kernel primitive, scoped out of
+  this pass. Phase 3 (swap `#hist-slider` for the dot-strip UI) NOT started — engine is dormant until wired.
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch (3 items, bim-ootb PR #659 shipped item 4b)** — item 1: sensor-click should double the
