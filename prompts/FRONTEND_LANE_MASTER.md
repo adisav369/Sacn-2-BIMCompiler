@@ -233,6 +233,194 @@ _(append new dictated items below. NOTE: the TM/variance/shopfloor + Zoom-Across
      check: room area/height vs. verified By-Law 39/42 thresholds, Duplex only, explicitly labeled
      "indicator, not a compliance verdict"). See [[project_ubbl_recon_landmine]].
 
+  **Watchdog cross-check 2026-07-05 (independent, not trust-on-recap):** re-verified #660/#661/#664 against
+  actual `gh pr view`/`git ls-tree`/`gh pr diff` output, and read `PARAMETRIC_DEPTH_RECON_FINDINGS.md` in full.
+  All claims above check out as written — no discrepancies this round (contrast the earlier #657 false
+  "already fixed" claim, which watchdog caught and this file now shows corrected above). PR #661 in particular
+  exceeds spec: real bug fix, honest scoping, a platform constraint documented rather than hidden.
+
+- [✅] **`prompts/SCALE_AND_UX_SWEEP.md`** — DONE 2026-07-05 (bim-ootb `lane/watchdog-scale-ux-sweep`, commit
+  `b914587`, **pushed, not merged** — 4 real follow-up findings need their own decisions before this should land
+  on `main`, see the hardened backlog items right after this entry). Renamed from `WATCHDOG_SCALE_AND_UX_SWEEP.md`
+  for role clarity ("watchdog" names a review role, not a task file); the background session was redirected
+  mid-flight and picked the rename up cleanly. **Watchdog re-check 2026-07-05 (independent, not trust-on-recap):**
+  panels.js diff confirms 7/7 claimed `R.register` removals real; all 4 claimed witness files exist on the
+  branch; the Q1 migration commit is real and correctly cites its recon source. **2 gaps found and fixed by this
+  watchdog pass:** (1) `SCALE_CHECK_TERMINAL_FINDINGS_2026-07-05.md` had only been written into the bim-ootb
+  worktree's own `prompts/`, unreachable from this file's `prompts/...` pointer — copied into bim-compiler
+  `prompts/` to match the `PARAMETRIC_DEPTH_RECON_FINDINGS.md` precedent. (2) the session's own writeup named
+  only 3 findings; reading the raw log directly (`modeller/tests/logs/scale_check_terminal.log`, Log Mandate)
+  surfaced a 4th, unflagged one — see Finding 4 below.
+  **2 governance decisions (both implemented, not just decided):**
+  1. Teams presence architecture — **(a)** shipped: guide text now documents the same-tab-multi-profile
+     `BroadcastChannel` limitation honestly; no server-relay built. `witness_guide_text_updates.js` 5/5 PASS.
+  2. UBBL indicator UI location — decision recorded (reuse the gate's toast+`_emis` highlight, bake the
+     disclaimer into the toast text); nothing built yet since `UBBL_RULES_GATE.md`'s actual check hasn't landed
+     anywhere in code (confirmed, not assumed).
+  **§1 scale checks — all 3 measured at real Terminal scale (~35k elements), 2 surfaced real unfixed findings
+  (full detail: `prompts/SCALE_CHECK_TERMINAL_FINDINGS_2026-07-05.md`):**
+  - Grid green/orange tint (#656): **degrades** — `§SCALE_CHECK feature=grid_tint elements=35000 ms=1513.8
+    avgMs=1175.4 frames=15`, ~1.2s/frame sustained during drag. Root-caused (rebuilds the whole attach-map from
+    scratch every pointermove frame) but NOT fixed — needs `bonsai_gridmove.js`'s `previewCommands()` restructured
+    to cache the attach-map once per drag-session, a real change not a threshold flip. **NEW backlog item, not
+    yet started.**
+  - Save/auto-heal (#658): **over budget + a genuine new failure mode** — `§SCALE_CHECK feature=save_autoheal
+    elements=35000 ms=57033 findings=5`. The heal itself is correctly batched (one `commitGesture`); the 57s is
+    2 full-scene gate evaluates + the fold. Worse: at Terminal density, one heal move landed in new contact with
+    an unrelated 3rd element, escalating to a fresh RED and blocking Save anyway (`§SAVE_BLOCKED reason=RED_CLASH
+    detail=clash(129,34451) healed=5`) — small fixtures never have enough neighbour density to hit this. Needs a
+    real design call on `runSave()`'s escalation behavior. **NEW backlog item, not yet started.**
+  - Teams presence (#661): confirmed fine, peer-bounded not element-bounded (`§SCALE_CHECK feature=teams_presence
+    elements=35000 peers=300 ms=1.40`).
+  - **Incidental Finding 3:** the same run surfaced a real TOCTOU-shaped id-collision race (27x `UNIQUE constraint
+    failed: kernel_ops.id`) during grid-drag→STR-rewalk — matches this project's own standing pattern (memory
+    `feedback_toctou_race_scrutiny_pattern`, 2 prior confirmed hits). Not fixed, needs a read-the-code pass on
+    the STR-rewalk commit path. **NEW backlog item, not yet started.**
+  **§3 UX items:** discoverability hint ✅, Save-blocked-UX now selects+flies to the offending element ✅
+  (`witness_e2e_save_blocked_focus.js` 3/3, no regression on the 11/11 save suite), UBBL decision ✅ (above),
+  HBA CCTV rAF bug ✅ fixed (`witness_hba_iot_scanline_fix.js` 3/3, dead→39 rAF calls), Terminal double-label ✅
+  reconciled with root cause (superseded legacy extraction pass, confirmed dormant — zero code references the
+  orphan string — documented in `PARAMETRIC_DEPTH_RECON_FINDINGS.md`, deliberately not bulk-deleted from the
+  shared db), duplicate pill registration ✅ (all 7 dead pre-#S280 `R.register` calls removed, not just `shadow`
+  — `§PILL_AUDIT ids_checked=7 collisions=[xray,section,sunglass,fly,shadow,bg,grid2d]`) — **this unblocks
+  `PILL_DRAWER_REORGANIZATION.md` below.**
+  **§4 aggregation fixes:** Q1 ✅ bim-compiler `migration/W024_component_dimension_range.sql`, pushed as branch
+  `lane/q1-component-dimension-range` (**not merged** — the main working tree's `library/component_library.db`
+  already carries an unrelated uncommitted edit from 2026-07-04, needs manual reconciliation before merge, not
+  conflated here). Q4 ✅ bim-ootb `placeAssembly()` now uses `commitSeedGroup`, `witness_e2e_placeassembly_group_commit.js` 5/5 PASS.
+  **Net: both branches pushed for backup/review, neither merged — 4 new real findings (grid_tint perf,
+  save_autoheal escalation, id-collision race, autosave-quota data loss) need their own follow-up sessions before
+  this work is considered fully closed out.**
+
+  **HARDENED FOLLOW-UP ITEMS (converted from prose above into real tracked `[ ]` entries so WORK-TO-ZERO doesn't
+  skip them — full detail in `prompts/SCALE_CHECK_TERMINAL_FINDINGS_2026-07-05.md`):**
+  - [✅] **Grid-tint perf restructure** — DONE 2026-07-05 (`0dcbe8a`). `bonsai_gridmove.js` now caches the built
+    `GridKinematicEngine` + attach-map + mesh/box-by-fid maps ONCE per drag-session (`beginDragSession()`/
+    `endDragSession()`, wired at gridline-grab/`exitGridMove()`) instead of rebuilding on every pointermove frame.
+    **Independently re-verified (fresh re-run by this watchdog pass, not just the fix agent's own report):**
+    `§SCALE_CHECK feature=grid_tint elements=35818 ms=14.4 avgMs=7.2 frames=15` — was `avgMs=1175.4`, a real
+    ~163x speedup, confirmed on a full fresh Terminal-scale run, not trusted from the recap alone. Correctness
+    unchanged per `witness_e2e_gridstretch(_multi).js` (21/21), `witness_e2e_grid_greenorange.js` (12/12).
+  - [✅] **Save/auto-heal over-budget + escalation design call** — DONE 2026-07-05 (message-clarity part only,
+    code in `0dcbe8a`, witness in `f13e4bf`). **Design question asked twice, timed out both times (no user
+    response):** keep block-whole-Save vs. roll back just the offending heal. **Default applied (flagged, not
+    hard-confirmed): KEPT blocking** (lower-risk, no unproven partial-rollback complexity) — `runSave()` now
+    tracks which elements the heal itself moved and distinguishes heal-induced RED from pre-existing RED in both
+    the `§SAVE_BLOCKED_REASON heal_induced=true/false` log and the user-facing toast (`"⛔ Save blocked —
+    auto-heal fixed N issue(s) but created a new clash while doing so (X vs Y) — please resolve manually"`
+    instead of a generic message). Witnessed `witness_e2e_save_blocked_heal_induced.js` 7/7 PASS, no regression
+    on `witness_e2e_save.js` 11/11 (independently re-run by this watchdog pass) or `witness_e2e_save_blocked_focus.js` 3/3.
+    **STILL OPEN, not done:** the 57s wall-clock itself (2 full-scene `SdgGate.evaluate` calls + one fold) was
+    never profiled down to WHERE the time goes — this needs its own follow-up session if the wall-clock budget
+    itself (not just the messaging) needs to come down.
+  - [✅] **STR-rewalk id-collision race (TOCTOU-shaped)** — DONE 2026-07-05 (`ce61f2f`). `str_walker_outliner.js`'s
+    `wrapGridMove()` used to fire the STR-rewalk's ~30 ops as individual unawaited `oplog.commit()` calls inside
+    a synchronous `forEach` (never batched), racing `commitGroup`'s optimistic `nextId` snapshot. Now collects
+    the ops and commits them as ONE signed group via `commitGesture` — the same shape `bonsai_gridmove.js`'s own
+    stretch-ride commit and `_commitDiscWalk` already use. **Independently re-verified** (fresh re-run):
+    `§STRWALK_RACE_FIX ops=31 collisions_before=27 collisions_after=0` — zero `UNIQUE constraint failed`/
+    `§KRN_GROUP ROLLBACK` lines anywhere in a full fresh Terminal-scale run (was 27).
+  - [✅] **Autosave silently fails at Terminal scale (data-loss risk) — WATCHDOG-ADDED, not in the original
+    session writeup** — DONE 2026-07-05 (`c846f5f`). `bonsai_oplog.js`'s `_save()` now falls back to IndexedDB
+    (new `oplog_fallback` store, reusing the existing `bim_ootb_cache` IDB pattern) when `localStorage.setItem`
+    throws `QuotaExceededError`, with a one-time toast on first fallback and length-based restore precedence on
+    boot (never silently drops the more-complete copy). Witnessed `witness_e2e_autosave_idb_fallback.js` 8/8
+    PASS (real round-trip: edit → simulated reload → op-log length matches, `source=idb` in the restore log) —
+    **independently re-run by this watchdog pass**, all 8 assertions confirmed real. Also fired naturally
+    throughout a full fresh Terminal-scale re-run (`§AUTOSAVE_FIX path=idb_fallback bytes=25579520+ key=mo_Terminal`,
+    repeated correctly across dozens of real commits, not a one-off).
+  **Watchdog note on this whole 4-item follow-up batch:** did NOT just trust the fix agent's own reported
+  numbers — independently re-ran the Terminal-scale witness suite fresh (`witness_e2e_scale_check_terminal.js`,
+  `witness_e2e_save.js`, `witness_e2e_autosave_idb_fallback.js`) myself and confirmed the exact same evidence
+  from a clean run. One pre-existing, unrelated `RangeError: Too many properties to enumerate` reproduces
+  identically in both the pre-fix and post-fix logs at the same point in a later, unrelated test step — confirmed
+  NOT a regression from these fixes (present before any of this session's changes), left un-investigated as
+  genuinely out of scope for this batch — flag if picked up later.
+  - [✅] **Merge decision — bim-ootb `lane/watchdog-scale-ux-sweep` (`b914587`):** DECIDED — opened as
+    **bim-ootb PR #665** for human review/merge (not auto-merged). The 6 shipped UX/audit fixes are independent
+    of the 3 unfixed perf/race findings, don't regress anything, and unblock `PILL_DRAWER_REORGANIZATION.md` —
+    no reason to hold the PR open pending the follow-up fixes above (those are landing as NEW commits on the
+    same branch, which the open PR will pick up automatically).
+  - [✅] **Merge decision — bim-compiler `lane/q1-component-dimension-range` (`3e50bc7c9`):** RESOLVED — the
+    "needs manual reconciliation" concern turned out to be a non-issue. The main working tree's unrelated
+    pending 2026-07-04 edit only renames `ad_geometry_map`→`I_Geometry_Map` and adds `M_Product_Image` —
+    orthogonal tables. Verified directly: copied the live dirty `component_library.db`, re-ran the Q1 migration
+    against it, got the identical correct result (`§Q1_RECONCILE_CHECK door=(129, 0.147, 1.86)`, both the old
+    and new table names coexist cleanly). No actual reconciliation work needed — ready to merge whenever the
+    other pending edit itself gets committed, in either order.
+
+- [✅] **`prompts/PILL_DRAWER_REORGANIZATION.md`** — DONE 2026-07-06. Grew well past the original spec through
+  a live design dialogue with the user (superseded 3 rounds of correction, fully reconciled in-file) — final
+  shape is **4 real drawers**, not the 2 first scoped here: Visual FX (Palette-hosted: Night/Shadow+Ground-merge/
+  Reverse-bg/Audio), Camera/View (new camera-icon host: Feather/Reset/Pivot), Navigate (new Sailboat-icon host:
+  Find/World-History/Home/Walk), Inspect (new drafting-compass-icon host: Measure+Clash/X-Ray(now Bone icon)/
+  Section/Time-Machine/4D-5D/Fly). Rail cut from 20 standalone icons to 9. Plus, folded in during the same
+  session: Alt+X retired into a 3-state Alt+Z cycle (Off→X-Ray→Bbox→Off), Screenshot/Record/2D deleted (dead,
+  confirmed unreferenced), 6 pre-existing `isActive` state mismatches fixed (icons that could never highlight —
+  e.g. X-Ray checked `A._xrayOn`, its own toggle set `A.xrayOn`), floating-panel overlap fixed (5 panels were
+  all hardcoded to the same top-right spot, covering the pill rail itself), pill-rail auto-reshuffle-on-click
+  killed (`_bumpAction` removed + a version-stamped localStorage migration so already-scrambled browsers self-heal
+  on next load), and a real perf fix the user flagged mid-session: `focusElement()`'s auto-obscure-on-select
+  always ran full per-material X-Ray — now routes through the cheap `filterByGuids` (visibility-only, same
+  primitive Alt+X's ghost mode already used) above `activeBuildingTotal > 50000`, matching `time_machine.js`'s
+  own existing perf-cliff threshold.
+  **Shipped as bim-ootb PR #667 → auto-merged after only its FIRST commit** (this repo's CI has an
+  auto-merge-on-green step that fired immediately — a real process trap, not a false alarm: every commit pushed
+  to that branch AFTER the auto-merge landed on a branch whose PR had already closed, never reaching `main`).
+  **Caught and reconciled same-session**: all 4 orphaned commits cherry-picked cleanly onto fresh `main` →
+  **PR #669** (merged), then the perf-fix + auto-reshuffle-kill round → **PR #672** (merged). Net: nothing lost,
+  but flag this CI behavior for any future multi-commit branch on this repo — check `gh pr view <n> --json
+  mergedAt` before assuming a branch is still open to push more commits to.
+  Live-verified throughout (headless Playwright, real clicks/keypresses, not code-reading alone) — rail count,
+  drawer open/close/no-dual-fire, all 6 `isActive` fixes on/off, Alt+Z 3-state cycle incl. real keypress + the
+  lazy-loaded ghost-mode async path, 5-panel no-overlap, Shadow+Ground's 3 static sample-image boxes + single-
+  box-highlight cycle, the `>50k` perf-fix branch (forced via `activeBuildingTotal` override — no real 50k+
+  fixture was loaded, branch logic confirmed via the `mode=filter-cheap(>50k)` log + a live selection-highlight-
+  overlay visibility check), 0 console errors across every check.
+  **Diagnostic-only, not yet resolved:** a long-reported "Find box appears on its own at onset" bug could not be
+  reproduced synthetically (cold load, simulated back/forward, reload all stayed clean) — added `§FIND_VIS_TRACE`
+  (a `MutationObserver` stack-trace logger on both `#find-panel` and the legacy `#search-box`) so the next real
+  occurrence in the field pins down the actual trigger instead of continuing to guess.
+
+- [✅] **Desktop/mobile "installer" — RESOLVED 2026-07-05, user accepted one-time online touch.** Real ask
+  (dialogue in `prompts/OFFLINE_GITHUB_RELEASE_BUNDLE.md`, superseded — see its corrected §THE REAL ASK note)
+  was a home-screen/desktop icon that launches app-like, with local Drop Import/Export working offline after.
+  That IS the existing PWA install flow (`viewer/scene.js` §S283 — `beforeinstallprompt`, full asset+building
+  download, cache verify, `navigator.storage.persist()`, native install prompt): Chromium's install already
+  plants a real desktop icon + standalone window, same mechanism covers mobile Add-to-Home-Screen. User
+  confirmed (2026-07-05): one-time online bootstrap is fine, "we can explain to users why." No
+  Electron/Tauri/zip-installer path needed — CANCELLED, not just deferred.
+  - Recon (background agent, sourced not assumed): NO evidence anywhere (git log, PROGRESS.md, docs) supports
+    an earlier "past attempts showed it's unreliable" claim — §S283 has a real `setOffline(true)` reload test
+    (`tests/specs/38-offline-pwa.spec.js`, 9/9 Playwright at authorship). The one real gap: those offline specs
+    weren't wired into CI (`ci.yml` only ran `s274-golden-path`) — still NOT wired in, see honest note below.
+  - **§OFFLINE-GATEWAY-LEAK found+fixed+PR'd** (user's own question: "why does it still leak online when DBs
+    are already in IndexedDB?"): 3 real bypasses of the sw.js cache-first gateway. **bim-ootb PR #666**
+    (`lane/offline-gateway-leak-fix`, commit `cd36c07`):
+    1. `viewer/sw.js` — `sfx.json` was hardcoded network-first ("during tuning" — stale debug carve-out).
+       Now precached like every other config file (`CACHE_VERSION` bumped v740→v741).
+    2/3. `viewer/streaming.js` (single-DB size check + split-DB detect) and `viewer/city.js` (archetype
+       split-DB detect) each fired an unconditional network HEAD probe *before* checking IndexedDB — now
+       check `A._checkCache()` first, only probing the network on an actual cache miss.
+    - **Witness (real, run twice — first attempt caught a false pass):** new
+      `tests/witness/witness_offline_gateway_leak.js` loads Duplex online, then uses `context.route()` to make
+      `sfx.json` network-unreachable and confirms the route handler NEVER fires (proves the SW never attempts
+      network for it once precached — `page.on('request')` alone was tried first and rejected as a metric,
+      since it also fires for pure-cache-served responses and would have under-proven the fix). §-log:
+      `PASS2_SFX_NETWORK_TOUCHED=false`, `§DB_SIZE_CHECK src=cache` (was always `src=network` pre-fix),
+      `PASS3_OFFLINE_RENDERED=true` after `context.setOffline(true)` + reload. Exit 0.
+    - **CI wiring — deliberately NOT added, flagged not faked:** tried wiring `38-offline-pwa`,
+      `s283-pwa-install`, `s284-offline-pwa-ifc` into `ci.yml`'s `e2e-tests` job, then reverted. Two pre-existing,
+      unrelated problems surfaced: (a) `38-offline-pwa.spec.js`'s `VIEWER_URL` hardcodes `/dev/index.html`, a
+      personal-machine deploy-layout path that doesn't exist in a normal checkout — already documented as
+      **Issue 4** in `GH_DEPLOY_ISSUES.md` (2026-05-27), predates this session; (b) `s283-pwa-install.spec.js`
+      uses the *correct* `/bim-ootb/viewer/viewer.html` path yet still fails on `S283.4 beforeinstallprompt
+      listener wired early` and others — looks like a headless-Chromium PWA-installability limitation, not
+      a path bug. Wiring broken specs in just to "close the gap" would make CI red for reasons unrelated to
+      this fix, so left undone. **Genuinely open follow-up:** fix `38-offline-pwa.spec.js`'s hardcoded path
+      (one-line, same fix GH_DEPLOY_ISSUES.md already prescribes) + investigate whether s283's failures are
+      fixable or need documented `test.skip`/xfail — then CI-wire all three.
+
 - [✅] **Retire `viewer/2d.html`** — RESOLVED 2026-06-27 (user call): the viewer-side 2D/red-pill work is
   **DEPRECATED by the Modeller/3DGrid — leave it as-is** (dead-weight but harmless, lazy/new-tab only; nothing
   to learn from it). Do NOT spend effort on the mechanical retirement. Focus shifted to Modeller feature UI polish.
