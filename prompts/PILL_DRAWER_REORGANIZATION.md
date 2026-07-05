@@ -351,3 +351,47 @@ mini-drawer now holds only the bomb. **User explicitly said to SKIP the "is it p
 investigation this round** ("ignore tshooting if worldhistory is merged.. just focus on the icons
 arrangement") — whether the per-page timeline visibly populates during ordinary browsing is still an
 open question, deliberately not chased here.
+
+## 🔍 2026-07-06 — NEW: pill rail flickers off-then-on on the FIRST touch (research only, not live-confirmed)
+
+**User report:** "there is a habit of when first touch of the pill list, it flicker off and on." Pasted a real
+console log excerpt (not requested by me — the user proactively grabbed it, a good sign this is genuinely
+hard to eyeball). The relevant lines, in order, with nothing else pill-related between them:
+
+```
+§PILL open=false
+§KRN_CHAIN sealed=18 ...
+§KRN_PERSIST url=...
+§RENDER_LOOP start total=7
+§IDLE_GATE wake / park
+§PILL_SYNC synced=6
+§PILL open=true
+```
+
+**Traced the code (not yet live-verified — this is a lead, not a diagnosis):** `#mobile-trigger`
+(`viewer.html:548`) has exactly ONE handler — a plain `onclick="toggleMobilePill();..."` — and
+`toggleMobilePill` is just an alias for `common/pill_builder.js`'s own `_toggle()` (`panels.js:2017`,
+`window.toggleMobilePill = _mainPill.toggle`). No duplicate `addEventListener` binding was found on the
+trigger anywhere (grepped `pill_builder.js`, `panels.js`, `wh_walk.js`) — so a classic "two listeners on one
+button" double-fire was RULED OUT as the mechanism, not confirmed as the cause. `§PILL_SYNC synced=6` is
+expected INSIDE a normal open (`_toggle()`'s `if (_pillOpen) {...; _sync(); ...}` branch, `pill_builder.js:304-306`)
+— that part of the sequence is NOT evidence of a second, separate process.
+
+**What's still unexplained:** the pasted excerpt shows `open=false` then, ~2 render-loop cycles later (roughly
+the time between two animation frames), `open=true` — two flips with NO intervening `§PILL action=` or
+`§KBD_ROUTE` line, i.e. nothing logged that looks like a second deliberate tap. Either (a) `_toggle()` really
+did fire twice from one physical touch (mechanism not yet found — check for a duplicate touch-emulated 'click'
+firing after a 'pointerup' already handled the same physical tap, the same double-fire shape already fixed once
+in `measure.js:1539-1540`'s `pointerup`+`click` pair — `pill_builder.js` itself only binds `pointerup` per
+button, but the TRIGGER's binding is a raw HTML `onclick`, a different code path, not yet audited the same way),
+or (b) the pasted log excerpt simply started mid-stream and an earlier `open=true`/`open=false` pair scrolled
+past before the paste began, making this look like a flicker when it's actually two unrelated real taps. **(b)
+cannot be ruled out from a log excerpt alone.**
+
+**DONE WHEN:** live-reproduce on a fresh page load with devtools open — do ONE single physical tap/click on the
+`#mobile-trigger` (real touch on a touch device is the priority repro, since "first touch" phrasing suggests
+touchscreen, not mouse), count exactly how many `§PILL open=` lines print and how many `_toggle()` calls have
+distinct stack traces (add a temporary `console.trace()` inside `_toggle()` if needed) for that ONE tap. If
+it's genuinely 2 calls per 1 tap, that's the real bug (find the second binding); if it's 1 call per tap and the
+visual "flicker" is a CSS/animation artifact instead (e.g. `_layoutRail()`'s transitionDelay staging, or the
+360ms roll-in/out timing racing the `pill-revealing` class), that's a different, CSS-side fix.
