@@ -93,8 +93,8 @@ _(append new dictated items below. NOTE: the TM/variance/shopfloor + Zoom-Across
   from a design dialogue, full reasoning trail in `prompts/GRID_PREDRAG_PREVIEW_SAVE_COMPLETEIT.md`. Built as
   4 parallel/sequenced background sub-agents in isolated `/tmp/wt-*` worktrees (item 1 turned out to be an
   already-landed false alarm; 2 and 4 fired once 1 confirmed landed). PRs: **#654** (item 1, regression witness
-  only, MERGED) · **#656** (item 3, grid green/orange, OPEN) · **#657** (item 2, version-merge popup, OPEN) ·
-  **#658** (item 4, Save clash+auto-heal, OPEN). Watchdog pass done: every DONE claim below has a matching `§`
+  only, MERGED) · **#656** (item 3, grid green/orange, MERGED) · **#657** (item 2, version-merge popup, MERGED) ·
+  **#658** (item 4, Save clash+auto-heal, MERGED). Watchdog pass done: every DONE claim below has a matching `§`
   log line, no exceptions. **⚠ 3 default design picks across items 2/4 still need real user confirmation —
   see the callout right after item 4's entry**; none of them block the PRs from being reviewable/mergeable,
   they're just not hard-confirmed yet.
@@ -109,7 +109,7 @@ _(append new dictated items below. NOTE: the TM/variance/shopfloor + Zoom-Across
      lossless round-trip 273 elements). Added a permanent regression witness (`tests/witness_landing_resurrect_e2e.js`)
      since none existed to catch this from silently rotting again — PR #654, MERGED. Stale branch refs
      (`origin/feat/landing-multimerge-viewer-saveopen`, `origin/lane/landing-multimerge-resurrect`) deleted.
-  2. [✅] `prompts/LANDING_VERSION_MERGE_PROMPT.md` — DONE 2026-07-05, PR #657 (OPEN, not yet merged).
+  2. [✅] `prompts/LANDING_VERSION_MERGE_PROMPT.md` — DONE 2026-07-05, PR #657 (MERGED `f0b40975`).
      Similarity rule (DEFAULT pick, flagged not user-confirmed): stem match ignoring a trailing
      version-ish suffix (`_v2`, `(1)`, `-copy`, `_final`, etc — `_stripVersionSuffix()` in `import_own.js`),
      deliberately NOT `_commonPrefix()` (spec flagged that as false-positive-risky). One native `confirm()`
@@ -127,7 +127,7 @@ _(append new dictated items below. NOTE: the TM/variance/shopfloor + Zoom-Across
      fixture cleanup is STILL OPEN, not done** — folded into the next backlog item below. Lesson: a
      session's own written claim of a fix is not evidence either — the Log Mandate applies to prose in
      this file exactly as much as to a chat summary.
-  3. [✅] `prompts/GRID_PREDRAG_GREENORANGE_PREVIEW.md` — DONE 2026-07-05, PR #656 (OPEN, not yet merged).
+  3. [✅] `prompts/GRID_PREDRAG_GREENORANGE_PREVIEW.md` — DONE 2026-07-05, PR #656 (MERGED).
      Fixed the known gap first (`gmTint` never called `stretchRide`, so a hosted opening could show the
      WRONG tint mid-drag) by unifying preview+commit onto one shared `previewCommands()` pipeline
      (`bonsai_gridmove.js`) — they can no longer disagree. Added GREEN tint state + per-drag-session
@@ -136,7 +136,7 @@ _(append new dictated items below. NOTE: the TM/variance/shopfloor + Zoom-Across
      bbox-equal before/after). New real-browser E2E witness `witness_e2e_grid_greenorange.js` 12/12
      (actual `pg.mouse`/`pg.keyboard`, incl. a synthetic hosted-opening rider case proving the tint fix).
      All 4 named regression witnesses + the new one: 44/44 assertions, exit 0.
-  4. [✅] `prompts/MODELLER_SAVE_COMPLETEIT.md` — DONE 2026-07-05, PR #658 (OPEN, not yet merged). Two
+  4. [✅] `prompts/MODELLER_SAVE_COMPLETEIT.md` — DONE 2026-07-05, PR #658 (MERGED). Two
      DEFAULT picks (flagged, not user-confirmed): mirrors `ad_docfsm.js`'s `{ok,reason}` signal shape only
      (never calls `DocumentEngine`/`processIt`, no ERP DocStatus coupling); writes into the SAME shared
      landing-page IndexedDB catalog `versions[]`/`latestVersion`. New `sdg_save.js` (planning core) +
@@ -161,15 +161,35 @@ _(append new dictated items below. NOTE: the TM/variance/shopfloor + Zoom-Across
      not a ban on shared infrastructure (a version catalog is closer to a shared filesystem than a shared
      domain model). No follow-up needed.
 
-- [ ] **Next batch (2026-07-05) — split into 2 independent assignments, per user's own grouping (2026-07-05):**
+- [✅] **Next batch (2026-07-05) — split into 2 independent assignments, per user's own grouping (2026-07-05):**
+  ALL 3 sub-items ✅ DONE 2026-07-05: A.1 Teams overlay E2E → **PR #661 MERGED**; B.2 PR657 fixture cleanup →
+  **PR #660 MERGED**; B.3 parametric-depth recon → findings in `prompts/PARAMETRIC_DEPTH_RECON_FINDINGS.md`.
 
   **Assignment A — standalone session, Teams overlay is unrelated enough to the rest to run alone:**
-  1. [ ] `prompts/TEAMS_OVERLAY_LIVE_E2E_TEST.md` — now includes a mandatory §0 pre-flight: read the
-     Teams/HBA shared-seam doctrine + the in-app User Guide FIRST, because the guide has a real, user-confirmed
-     confusing overlap area between Teams and HBA — resolve/clarify that before touching the E2E test itself.
+  1. [✅] `prompts/TEAMS_OVERLAY_LIVE_E2E_TEST.md` — DONE 2026-07-05, **PR #661** (bim-ootb, MERGED).
+     §0: clarified the Modeller `#b-guide` "Teams" line to explicitly distinguish it from HBA (a separate
+     Viewer-only overlay, doesn't exist in the Modeller) — the confusing overlap was under-specification,
+     not a doctrine drift; reconfirmed panels.js/Teams seam split still holds in code. Traced the real
+     dual-user workflow FIRST per spec: fork/edit/post-it/bundle/gate/merge has **zero clickable UI**
+     anywhere (`teams.html` renders a hardcoded static scenario; every S1-S12 "DONE" witness calls engine
+     functions directly in Node, never through rendered DOM) — scoped the E2E to the one piece with real
+     production UI, the live Modeller presence embed (`#b-teams`→`#teams-pill`). New
+     `witness_e2e_dual_presence_modeller.js` drove TWO real Playwright `BrowserContext`s through the actual
+     click path and found+fixed a real bug: `modeller/teams_embed.js` sent its own heartbeat but never
+     subscribed to the bus (`window.__teamsPeerBeats` read every render, written nowhere) — fixed via
+     `_conn.bus.on()` + live re-render. Also empirically proved+documented a platform fact (not a bug):
+     `BroadcastChannel` never crosses separate `BrowserContext`s, so two genuinely separate real users can
+     never see each other's presence this way (only two tabs of one profile) — and named a second real gap
+     left un-fixed: a peer who joined before your subscription stays invisible until they re-announce (no
+     periodic heartbeat/replay exists). 11/11 new witness green; full teams/ suite (26 files) +
+     wire_teams_pill/ui_consistent/tabs_consistent/find_placement_dom/wire_teams_embed_modeller unaffected.
+     Verdict: Teams overlay's **presence** sub-feature is now proven for the one real dual-user path it
+     actually supports (same-profile multi-tab); the branch/postit/gate/merge workflow LOOKS shipped but
+     has no real user path to test at all yet (engine-only).
 
   **Assignment B — one session, sequential (small unrelated cleanup, then the recon; NOT a parallel fan-out):**
-  2. [✅] `prompts/PR657_FIXTURE_CLEANUP.md` — DONE 2026-07-05, **PR #660** (bim-ootb, OPEN). Both duplicate
+  2. [✅] `prompts/PR657_FIXTURE_CLEANUP.md` — DONE 2026-07-05, **PR #660** (bim-ootb, **MERGED** `a05ea60`,
+     confirmed via `git ls-tree origin/main` — both fixtures gone from `main`). Both duplicate
      fixtures `git rm`'d (`-94636` lines, 4.4MB); `witness_landing_version_merge_e2e.js` now reads the real
      corpus `IFC/SampleHouse_ARC.ifc` buffer ONCE and drops it under renamed in-memory Playwright file objects
      `{name,mimeType,buffer}` for the `_v2`/`_final` cases (the §VERSION_MERGE similarity check keys on FILENAME
