@@ -2433,4 +2433,48 @@ Witnesses: `viewer/tests/witness_hba_outline_panel_fixes.js` (PASS 0 fails) +
 `viewer/tests/hba_outline_panel_fixes.png`, `viewer/tests/hba_cctv_inscene_capture.png`. Branch pushed, 0
 local-only commits. PR #677 still needs human merge.
 
-**DONE WHEN:** PR #677 merged + item E answered.
+## ▶ 2026-07-06e — item E ✅ BUILT (user corrected: the IFC/LOD download WAS the go-ahead, not an open
+question) — real device meshes live in PR #677, commit `798c8a0`
+
+User: "LOD device mesh was a done decision - already downloaded good ones." Picked the item back up same PR.
+
+- **New script `scripts/place_iot_lod_devices.py`** tessellates the 3 real-geometry devices (temp/solar/
+  electrical, sourced NBS Source) + the 1 real Paxton CCTV camera model (instanced 6x) via ifcopenshell, and
+  inserts them as genuine `elements_meta`/`element_transforms`/`element_instances`/`component_geometries` rows
+  into `HHS_Office_Federated_extracted.db` — real standing meshes, not just tint-on-host.
+- **Anchor-shim correction** (user pushback: "check the Sprinkler... how it is anchored to another part") —
+  found the REAL established pattern (`library/component_library.db` component_definitions' attachment_face
+  TOP/BOTTOM/CENTER + `DAGCompiler LibraryFactory.calculateWorldCenter()` + `disc_walker.js hostBind()`'s
+  host-face Z-offset math, real FP-sprinkler rows) and re-derived that offset math for this script's own
+  vertex-centering convention (copying the Java formula verbatim would have been wrong — it assumes a
+  different local-origin convention). Devices now sit properly offset from their host's real face
+  (BOTTOM_OF_HOST/TOP_OF_HOST/CENTER), never buried inside the host mesh.
+- **Rotation claim corrected** (user pushback #2: "sprinklers has no info... hand waving... trace Modeller
+  as told") — my first claim ("no live-tested nonzero-rotation precedent anywhere") was WRONG and overly
+  broad. The real mechanism is `disc_walker.js hostBind()`: a host-bound device INHERITS its host's own
+  `rotation_z` (never independently computed) — that's how sprinklers/outlets get correctly oriented in a
+  Modeller-AUTHORED building (real walls there carry real nonzero yaw). Checked: HHS_Office_Federated is a
+  STATIC IFC-extracted building where `rotation_z=0` for every element including these 6 host doors (a
+  different, valid convention — this extractor bakes orientation into vertex positions instead). Inheriting
+  the host's real value therefore still yields 0 here — a fact about this building's data, not an absence of
+  precedent. Correction logged in the script's own header comment.
+- **Real defect found + fixed via live screenshot** — close-up render caught the solar panel standing
+  bolt-upright like a signboard (its authored local Z is the 1.61m long edge, not "up"; identity-rotation
+  placement put the long edge vertical). Fixed with a real 90°-about-X vertex remap (matches this building's
+  own "bake orientation into vertices" convention) so it lies flat as actually installed; same fix applied to
+  the camera barrel (was standing on-end). Camera's exact compass-facing yaw remains a disclosed, deferred gap.
+- Sensors WITHOUT sourced real geometry (pressure/sound/dust/movement) stay tint-on-host-element only —
+  never a fabricated stand-in mesh.
+
+Also found + fixed a real LOCAL TEST harness bug along the way (not a product bug): the app fetches building
+dbs from `viewer/buildings/` (a gitignored, machine-local symlink farm → OCI in production), not the git-
+tracked `buildings/` at repo root — my witness's local http server was silently 404ing and the app was
+falling back to a stale IndexedDB cache. Fixed by mirroring the db into `viewer/buildings/` for local testing.
+
+Witness: `viewer/tests/witness_hba_iot_lod_device_meshes.js` — PASS 0 fails, all 9 devices resolve in the
+real `guidMap` AND an actual rendered mesh (instanced/batched-aware lookup). Close-up screenshots:
+`viewer/tests/hba_iot_lod_closeup_solar.png` (panel now flat), `hba_iot_lod_closeup_camera.png`. Pushed,
+0 local-only commits.
+
+**DONE WHEN:** PR #677 merged. (Camera compass-facing yaw is a real, scoped, not-yet-started follow-up if
+ever wanted — needs this pipeline's first-ever nonzero rotation_z / vertex-bake derivation, live-verified.)
