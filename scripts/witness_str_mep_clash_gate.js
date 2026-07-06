@@ -47,7 +47,9 @@ const http = require('http'), fs = require('fs'), path = require('path');
 const puppeteer = require(path.join(process.env.HOME, 'bim-compiler', 'node_modules', 'puppeteer'));
 const WG = require(path.join(__dirname, '..', 'deploy', 'dev', 'walker_guards.js'));
 
-const MODELLER_ROOT = '/tmp/wt-str-mep-clash';
+// Defaults to the shared ~/bim-ootb checkout (read-only serving here — the PreToolUse hook only blocks EDITS
+// to that tree, not http-serving it). Override with BIM_OOTB_ROOT=/path/to/checkout for a worktree/branch.
+const MODELLER_ROOT = process.env.BIM_OOTB_ROOT || path.join(process.env.HOME, 'bim-ootb');
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.json': 'application/json', '.css': 'text/css', '.db': 'application/octet-stream' };
 const server = http.createServer((q, r) => {
   let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/modeller/modeller.html';
