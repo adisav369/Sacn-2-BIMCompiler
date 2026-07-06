@@ -109,6 +109,12 @@ Before ending, update PROGRESS.md with:
   their line budgets (compact now)? This is not something the user asks for — `MEMORY.md` itself has carried a
   "links only, ≤80 lines" rule (`feedback_memory_links_only.md`) since 2026-06-04 and drifted back to 264 lines
   of prose TWICE before this rule was written. Check after every edit, not when it's already a mess again.
+- **A session working a `prompts/#.md` file updates ONLY that file, never `MEMORY.md` (2026-07-06):** this is the
+  root cause of the repeated `MEMORY.md` bloat above — task/builder sessions kept creating their own memory
+  entries duplicating what their own prompts file already recorded in full. Findings/status/proof go in the
+  prompts file's dated section, full stop. Writing to memory is a separate, deliberate synthesis pass for
+  durable cross-session lessons, not a byproduct of finishing a task — see `feedback_prompt_file_organization.md`
+  rule 0.
 - **Deploy Flow (deploy/dev/ ONLY):** Edit → syntax check → verify all `§` tags exist → save test log → upload to dev bucket → smoke test URLs → fetch back and verify content → confirm file is loaded by viewer. ONE flow, never stop partway or ask user to check.
 - **OCI MIME Rule:** EVERY `oci os object put` MUST include `--content-type` — OCI does NOT infer it from the extension; omitting it → `X-Content-Type-Options: nosniff` block + silent script failure. Full MIME table: `deploy/OCI_UPLOAD.md §RULES`.
 - **Spec-First (ALL work):** Spec before code, spec before tests, spec before prompts. No implementation without a written spec section. New features: witness claim first, then implement.
