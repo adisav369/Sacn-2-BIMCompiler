@@ -98,10 +98,9 @@ with ample context (regression risk on live walk paths is the reason, not contex
   BEFORE trusting `rotation_z`, not a blind switch-over. Every building this campaign has tested against so
   far (SampleHouse/Duplex/SampleCastle) is orthogonal, so M1-M3's results are unaffected by this — this is a
   forward-looking gap for the first non-orthogonal building this pipeline meets, not a retroactive bug.
-- [ ] **FOLLOW-UP (found by M2, not yet a milestone): 1 of 63 M1-bridged PLB segments penetrates a real STR
-  column by 2.6cm** — M1's bridge clash-gates only against ARC walls/slabs, never STR members. Reported
-  honestly by M2's witness, not fixed. Bounded, real, needs its own pass (likely: feed the same STR bus M2
-  already isolates into M1's own clash-gate check, not just the ARC one).
+- [x] **FOLLOW-UP — ✅ DONE (witness, bim-ootb `1185f20`, PR #684, branch `fix/mep-str-clash-gate`) — the
+  2.6cm STR-column penetration is closed.** See `## ▶ 2026-07-07 FOLLOW-UP FIXED` section below for the
+  full outcome (a deeper pre-existing box-orientation bug, not just a missing STR envelope).
 
 **Capability note:** each milestone is well-specified extension of already-proven, already-working code (not
 a novel-insight problem) — Sonnet can build these. The risk is regression on live walk paths across several
@@ -461,6 +460,45 @@ no-error. No bim-ootb code change needed (pure measurement witness); nothing pus
 **NEXT (a fresh session, not attempted here):** close the found gap — extend the pattern-bridge's clash check
 to include real STR members (not just ARC envelope), re-run this witness expecting 0/63. M4 (the construction
 animation over M1's network, reusing `seed_trunk.js`'s T2 reveal mechanism) is next per the campaign's own order.
+
+## ▶ 2026-07-07 FOLLOW-UP FIXED — the 2.6cm STR-column penetration is closed (bim-ootb `1185f20`, PR #684,
+`fix/mep-str-clash-gate`) — ✅ DONE (witness), done BEFORE M4/M5 per instruction (don't animate a network
+with a known real clash in it)
+
+Started from the obvious fix (feed the same STR bus M2 already isolates into M1's own clash-gate check) —
+added `_strEnvelope(bdb)` to `disc_walker.js` (real columns/beams/struts, same box shape as routewalker.js's
+own ARC query) and concatenated it into the envelope `routePattern` passes to `_rwPairSegments`. **That alone
+did NOT change the segment count** — re-ran `witness_route_pattern_bridge.js`/`witness_str_mep_clash_gate.js`
+and the 2.6cm penetration was still there. Didn't stop at "I added the fix, should be done" — traced further
+(the STANDING AGENDA's own "don't trust a PASS" applies to my own fix, not just witnesses) and found the REAL,
+deeper, pre-existing cause: `routewalker.js`'s own `_rwPairSegments` clash-skip calls `_rwClashesWithArc` with
+a box shaped `[crossSection, crossSection, LENGTH]` — it ALWAYS treats the THIRD (Z) axis as the pipe's long
+axis, regardless of whether the run is actually horizontal (the common case for a corridor/pattern run). A
+horizontal run's clash box is therefore a thin 0.075m column at its midpoint that never reaches sideways
+along the run's real path — the missing STR envelope was never the actual blocker.
+
+**Fix, NOT inside routewalker.js** (a separate file with its own witness suite, out of scope to widen into
+further this session): `disc_walker.js` gained `_envelopeClash(from, to, envelope, halfWidth)` — a correctly
+axis-aligned AABB check (safe because every `ad_mep_pattern` step declares an explicit `direction_axis`
+X/Y/Z — these runs are axis-aligned BY CONSTRUCTION, no OBB/rotation math needed) — applied as an
+authoritative POST-filter on `_rwPairSegments`' output inside `routePattern`, using routewalker.js's own
+measured pipe cross-section constant (`RW_PIPE_CROSS/1000/2`), not an invented tolerance.
+
+**Consequence, honestly reported, not hidden:** the corrected gate also catches real ARC-wall penetrations the
+SAME pre-existing box-orientation bug was hiding — the JUNCTION-waypoint nearest-neighbour pairing (dense
+corridor samples, not path-following) produces straight-line shortcuts that can cut through walls, not just
+the one STR column M2 found. Result is a STRICTER, SMALLER, but now genuinely non-clashing network (SampleCastle
+PLB: 63→40 segments; Duplex PLB: 55→34). This is a correctness improvement (refuse-beats-fabricate), not a
+regression — a smaller guaranteed-clean network beats a larger one with real penetrations in it.
+
+**Witnessed:** re-ran `witness_str_mep_clash_gate.js` (also fixed a durability bug in it — the modeller root
+was hardcoded to an ephemeral `/tmp` worktree; now `BIM_OOTB_ROOT`-overridable, defaults to `~/bim-ootb`) —
+MEP-vs-STR clash is now **0/40** (was 1/63). Regression: `witness_route_pattern_bridge.js` 10/10, `W-E2E-WALK`
+8/8, `W-E2E-WALK-ALL` 10/10, `W-E2E-WALK-IFCOPEN` 18/18, `W-SEED-TRUNK-RENDER` 8/8 — all green.
+
+**NEXT:** M4 (the animation) can now proceed — the network it will reveal is verified clash-clean against both
+ARC and STR. M5 (elbow/fitting orientation) and the newly-noted non-orthogonal-building rotation gap remain
+open, separately scoped, not blockers for M4.
 
 ## DON'T
 - Don't rebuild the Viewer's DLOD/Alt-X/cache — wire it into the modeller.
