@@ -26,6 +26,48 @@ dated sections in order, latest at the bottom, git-linked throughout.
    would actually FAIL a walk that violated the order (e.g. MEP walked before STR/ARC), or whether it's
    descriptive text nobody encodes as a check.
 
+## ⚑ THE CAMPAIGN — real MEP walked into the scene, verified, animated (2026-07-07, user: "handled long run till end, or in a series")
+
+Not a re-audit — a BUILD, in sequenced milestones. Each is its own session, folds its outcome into a dated
+`## ▶` section below with a real commit link, then hands off — don't attempt all of it in one sitting even
+with ample context (regression risk on live walk paths is the reason, not context size). Mark each `✅ DONE
+(witness, <commit>)` in place here as it lands; that's the checklist state, don't restate it in prose elsewhere.
+
+- [x] **M1 — ✅ DONE (witness, bim-ootb `03fa2f3`, PR #683, branch `feat/mep-seedtrunk-network`) — bridged to
+  `routewalker.js`, did not reinvent generation.** See `## ▶ 2026-07-07 M1 BUILT` section below for the full
+  outcome; checklist state only here per this file's own rule.
+  <!-- original REDIRECTED framing kept below for context, not restated as open -->
+  Traced both sides (Java + JS) this pass: `DAGCompiler/.../mep/RouteWalker.java`'s "MEP_RECIPE
+  architecture" (typed anchor pairs `ad_mep_anchor` + sequenced topology pattern `ad_mep_pattern`:
+  METER→FIXTURE→VALVE→JUNCTION→STACK) IS the real abstract DAG-placement-of-a-typical-set mechanism the user
+  built — and it WAS ported to JS verbatim as `modeller/routewalker.js` ("Port of RouteWalker.java", still
+  wired live in `modeller.html`), proven by `W-ROUTEWALKER-MEP 7/7` against a real building (Java side:
+  `RouteWalkerTest.java`, `HospitalAuckland`, PR #450/#456). It is NOT dead, NOT unwired — it's real and
+  standing. Its ceiling (why it returns 0 on Terminal) is that it needs PRE-MINED `ad_mep_anchor`/
+  `ad_mep_pattern` rows for a specific building — it never generalizes to an arbitrary ARC-only building.
+  `disc_walker.js`/`seed_trunk.js` is a SEPARATE, later engine built to solve exactly that generalization
+  problem, but it reinvented its own simpler generation (one seed + nearest-neighbor chain) instead of feeding
+  ARC-derived anchors into the already-proven `routewalker.js` pattern engine.
+  **M1, correctly scoped: derive a real ARC-grounded anchor SET (mains/risers from cores, mirroring
+  `defaultSeed()`'s door/stair-from-elements_meta technique) and feed it into `routewalker.js`'s existing
+  `ad_mep_pattern` topology walk — inherit its real 7/7 proof, don't build a second, less-tested generation
+  path in `disc_walker.js`/`seed_trunk.js`.** If a session already started the old "extend seed_trunk.js"
+  framing before this correction landed, STOP and re-read this section before continuing further.
+  Discipline-agnostic check still applies once bridged: confirm the SAME bridge also unblocks
+  `routeChains`/RouteWalker's pattern-walk for FP/ELEC/ACMV, not just MEP — measure it, don't assume it from
+  the parameterization alone.
+- [x] **M2 — ✅ DONE (witness, bim-compiler `scripts/witness_str_mep_clash_gate.js`) — joint STR+MEP quality
+  witness.** See `## ▶ 2026-07-07 M2+M3 BUILT` section below for the full outcome.
+- [x] **M3 — ✅ DONE (same witness, see below) — priority-order guard wired into a real live call.**
+- [ ] **M4 — The animation: MEP genuinely walking into the scene.** `seed_trunk.js`'s T2 animation (seed-
+  outward `draw-range` reveal, `prefers-reduced-motion` safe, gate-asserted to end exactly on the proven
+  geometry — `RESUME_SEED_TRUNK.md`, already shipped) is the real prior art. Once M1 produces the full
+  network, wire the SAME reveal mechanism over it — don't build a second animation system.
+
+**Capability note:** each milestone is well-specified extension of already-proven, already-working code (not
+a novel-insight problem) — Sonnet can build these. The risk is regression on live walk paths across several
+files, which is why this is milestones + fold, not one unbroken session.
+
 ## ▶ 2026-07-06 — "Modeller's 2nd principle" invoked: 1st pass overclaimed (checked `origin/main` only) — corrected below, per rules 9-10
 
 **CORRECTION (this file's own §0/STATE above is STALE — dated 2026-06-26, superseded by `#599` 2026-07-02;
@@ -280,6 +322,106 @@ shipped calibration keep it honest); we (dev) have the Terminal RosettaStone to 
 6. ~~(blocked) W-WALKBACK-MEP~~ — ✅ UNBLOCKED 2026-06-29 (see line 145 above / `Modeller/DISC_Walker/WALKER_GUARDS_ROSETTASTONE_SPEC.md`
    §5) — stale duplicate of this same file's own line 145, left unfixed until 2026-07-02. Don't re-list as blocked
    again. Remaining piece is render/deploy only: wire `routeChains` MEP net into modeller §8E-3 + `__dwPixelProbe`.
+
+## ▶ 2026-07-07 M1 BUILT — bridged to routewalker.js's pattern engine (bim-ootb `03fa2f3`, PR #683,
+`feat/mep-seedtrunk-network`) — ✅ DONE (witness)
+
+Built exactly the REDIRECTED scope above, not the earlier "extend seed_trunk.js" framing (a fresh clarifying
+question to the user went unanswered after 60s — proceeded on the file's own explicit redirect text, which was
+unambiguous and load-bearing enough to act on).
+
+**What shipped:** `disc_walker.js` gained `routePattern(disc, bdb, opts)` — derives METER (defaultSeed's door),
+STACK (defaultSeed's stair), FIXTURE (place()'s own measured output), JUNCTION (SeedTrunk.planTrunk's corridor
+backbone, sampled every 3m into waypoints) LIVE from an opened building's real substrate, then hands them to
+routewalker.js's own `_rwLoadPatternSteps`/`_rwPairSegments` — the SAME pairing/gradient/clash-skip code the
+Java-side `RouteWalkerTest.java` W-PATTERN-CW/W-PATTERN-SP tests exercise (verified: 7 `@Test`s, HospitalAuckland
+fixture, real). Wired as `dwWalk`'s fallback when `routeChains` returns 0. `_discWalkOne` (modeller.html)
+lazy-loads `mep_rw.db`'s pattern table (`rwInit`, gated to `disc==='PLB'` only) before the walk.
+
+**Measured, not assumed, scope (per the redirect's own "measure it, don't assume" instruction):** queried
+`ad_mep_pattern` directly — it carries rows for exactly TWO disciplines, `CW` (pressurised cold-water supply)
+and `SP` (gravity soil/waste drain), both PLUMBING sub-networks (routewalker.js's own `RW_DISC_TO_COORD` maps
+CW/SP/PLB all to DWATER/DRAIN). So the bridge covers disc_walker's `PLB` discipline (a CW pass + an SP pass).
+ELEC/ACMV have ZERO `ad_mep_pattern` rows — the bridge HONESTLY REFUSES for them (`routePattern('ELEC',…).refused
+=== true`, reason states no coverage) — verified live, not claimed from the parameterization. Covering them
+would need someone to mine+author their own pattern rows first (a data task, not a code generalization).
+
+**Two pre-existing latent bugs in `routewalker.js` found + fixed this pass** (not introduced by the bridge —
+just the first thing that ever exercised this code path in a context where `mep_rw.db` can 404, since the
+isolated modeller currently only ships `viewer/mep_rw.db`, not `modeller/mep_rw.db` — confirmed live 404 on
+`red1oon.github.io/bim-ootb/modeller/mep_rw.db`, a SEPARATE, still-open regression from the modeller/viewer
+isolation work, flagged here for a future session, not fixed — witnesses fixture-serve it locally):
+1. `_rwFetchCached`'s `idb.transaction('dbs',…)` threw an UNCATCHABLE pageerror (bypasses every `.catch()` in
+   the chain — it's a DOM event-handler throw, not a promise rejection) when `bim_ootb_cache` already existed
+   without a `'dbs'` store — real regression confirmed on a fresh IFC-open session (`W-E2E-WALK-IFCOPEN` dropped
+   to 12/18). Fixed: guarded in try/catch, falls back to a bare fetch.
+2. `rwInit` set `_rwReady = true` BEFORE validating the fetched DB via a real query — a failed/404 fetch left
+   `_rwReady` wrongly `true` over a dead handle, so the bridge's own readiness guard passed and then crashed
+   deep inside `_rwLoadPatternSteps`. Fixed: flip `_rwReady` only after the validating query succeeds.
+3. (minor, same fix) the two fallback fetch branches never checked `resp.ok` — a 404 body was silently accepted
+   as "the database" (confirmed: literal `"404"` bytes reached `new SQL.Database()`, throwing "file is not a
+   database"). Now guarded like the primary path always was.
+
+**Witnessed:** `witness_route_pattern_bridge.js` (new, bim-ootb `modeller/tests/`, 10/10) — on ARC-only Duplex
+(zero real MEP elements, confirmed): `routeChains('PLB',bdb)` stays 0 (the honest premise), the bridge flips
+`dwWalk`'s `chainSegs` 0→55 (13 CW + 42 SP), anchors are real (door guid, stair guid, 108 corridor junctions),
+ELEC/ACMV honestly refuse, the REAL production path (`window.discWalk`) renders the chain as tubes, commits,
+verifies, and reverses cleanly. **Regression, all re-run against the branch:** `W-E2E-WALK` 8/8, `W-E2E-WALK-ALL`
+10/10, `W-E2E-WALK-IFCOPEN` 18/18 (was 12/18 before the two routewalker.js fixes — traced to source, not just
+patched around), `W-SEED-TRUNK-RENDER` 8/8. `W-TERMINAL-WALKALL-PERF` (puppeteer DOM-detach on the Outliner row)
+fails IDENTICALLY on unpatched `origin/main` — confirmed pre-existing, unrelated, not this branch's fault.
+
+**NEXT (M2, a fresh session):** the joint STR+MEP quality witness — walk STR then this M1 PLB network on ONE
+building, check no clash against STR members, reusing `walker_guards.js`'s clash-gate. Also open: (a) the
+`modeller/mep_rw.db` 404 regression noted above (separate, pre-existing, not blocking M1/M2), (b) `assemble()`
+(catalog-part instantiation) was NOT wired to consume the bridge's segments — routePattern's segs use synthetic
+`from_kind`/`to_kind` ('RW_CW'/'RW_SP'), not real IFC classes, so `assemble()` would find no catalog match today;
+not attempted this session (M1 was scoped to the network existing, not full catalog-part instantiation).
+
+## ▶ 2026-07-07 M2+M3 BUILT — joint STR+MEP clash witness, priority-order guard wired live (bim-compiler
+`scripts/witness_str_mep_clash_gate.js`, new, 6/6) — ✅ DONE (witness)
+
+Built on M1 (bim-ootb `03fa2f3`/PR #683, merged to main as `a5a514c`). Building: SampleCastle (column-framed,
+duplex_rules.db → M1's PLB bridge applies, 23 REAL IfcColumn queried directly from `elements_meta`/
+`element_transforms`, same query `str_walker_bridge.js`'s own `_readColumns` uses).
+
+**Mechanism:** `walker_guards.js` (bim-compiler `deploy/dev/`) is NOT ported into bim-ootb's browser — it only
+ever existed as a bim-compiler node/browser dual-export file with its own witness suite. Rather than port it
+into modeller.html (a larger, separate architectural step this scope didn't ask for), the witness drives
+puppeteer against a real bim-ootb checkout to extract REAL STR columns + M1's real PLB `chainSegs`, then
+`require`s `deploy/dev/walker_guards.js` directly in Node and runs `wgClash`/`wgRunPass` on that real data.
+
+**First attempt was noisy — found + fixed a witness-design bug before trusting the numbers:** feeding all 63
+MEP corridor segments into ONE combined `wgRunPass` bus (STR then MEP) reported 31/63 MEP segments "hard
+clashed" — but reading the actual `withId` partners showed they were almost all MEP-vs-MEP (adjacent corridor
+segments sharing a joint — expected connectivity, not a clash; `wgClash`'s single-worst-partner report can't
+tell "touches its own network neighbour" from "touches real structure"). Fixed by calling `wgClash` directly
+against an **STR-only bus** for the MEP-vs-STR question (still walker_guards.js's own clash-gate function, just
+not routed through the mixed bus for this specific measurement) — this is exactly the "don't trust a PASS /
+verify the assertion code" discipline the STANDING AGENDA demands, applied to my own witness before reporting it.
+
+**Real finding, measured not assumed:** 1 of 63 M1-bridged PLB segments genuinely penetrates a real STR column
+by 2.6cm (`MEP-14` vs `STR-15`) — confirming M1's own bridge clash-gates ONLY against ARC walls/slabs/roof/
+covering (`_rwLoadArcEnvelope`'s WHERE clause), never STR members. This is a real, small, honestly-reported
+gap — NOT fixed in this session (a follow-up: extend the pattern-bridge's ARC-envelope query to also include
+STR columns/beams, or feed the real STR bus into `routePattern`'s own clash check — a bounded, separate task).
+
+**Order-matters proof (closes step-3's "prose not enforced" gap):** the SAME real overlap, checked with
+priority order REVERSED (MEP=10 "walked first", STR=60 "walked after"), refuses the REAL STR COLUMN instead of
+the generated MEP segment — a concrete, measurable, wrong outcome. Priority order is not decorative: getting it
+backwards makes the guard blame ground-truth structure for a generated route's overlap.
+
+**`wgRunPass` (the orchestration wrapper, not just `wgClash`) is now genuinely called** on real combined
+STR+MEP candidates, completes deterministically (86 candidates in, 52 placed + 34 refused, bus consistent) —
+this witness IS the first live call M3 found missing.
+
+**Witnessed:** 6/6 — C1 real STR members, C2 real M1 network (routeChains bare stays 0), C3 clean clash
+measurement (1/63, honest), C4 order-matters (symmetric 1/23 the wrong way), C5 wgRunPass live end-to-end, C6
+no-error. No bim-ootb code change needed (pure measurement witness); nothing pushed to bim-ootb for M2.
+
+**NEXT (a fresh session, not attempted here):** close the found gap — extend the pattern-bridge's clash check
+to include real STR members (not just ARC envelope), re-run this witness expecting 0/63. M4 (the construction
+animation over M1's network, reusing `seed_trunk.js`'s T2 reveal mechanism) is next per the campaign's own order.
 
 ## DON'T
 - Don't rebuild the Viewer's DLOD/Alt-X/cache — wire it into the modeller.
