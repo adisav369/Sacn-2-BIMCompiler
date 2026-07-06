@@ -63,6 +63,45 @@ with ample context (regression risk on live walk paths is the reason, not contex
   outward `draw-range` reveal, `prefers-reduced-motion` safe, gate-asserted to end exactly on the proven
   geometry — `RESUME_SEED_TRUNK.md`, already shipped) is the real prior art. Once M1 produces the full
   network, wire the SAME reveal mechanism over it — don't build a second animation system.
+  **Note before building:** M1's network is straight-line tube segments only (see M5) — the animation will
+  reveal a bending tube, not real elbow fittings, unless M5 lands first. Not a blocker, just don't overclaim
+  what the reveal shows.
+- [ ] **M5 — NEW 2026-07-07 (found while answering a direct question, not yet scoped as code): elbow/fitting
+  orientation.** Checked `_rwPairSegments()` (`routewalker.js`) directly — it produces straight `{from, to,
+  len}` line segments only. There is NO discrete elbow-fitting mesh anywhere, and NO rotation computed to
+  match two adjoining segment directions at a bend — a direction change today is just two straight segments
+  meeting at a shared anchor point, rendered as one continuous tube. Real device DOCKING (a sprinkler's
+  orientation onto its host) is already handled correctly by a separate, pre-existing mechanism —
+  `disc_walker.js`'s `hostBind()` for its CENTER/TOP/BOTTOM branch (computes BOTTOM/TOP/CENTER mount offset
+  off the host's real measured bbox height) — that part is NOT this gap. **Correction to an earlier claim in
+  this thread:** `hostBind()`'s SIDE-mount branch is NOT immune to M6 below — it uses the identical
+  dominant-AABB-axis heuristic (`horiz = w.bx >= w.by_ ? 0 : 1`) as `_rwPairSegments`/`_segLine`, so wall-face
+  device mounting shares the same π/2-rotation assumption, not a separately-safe mechanism as stated before.
+  This gap (M5) is specifically: placing a real elbow/tee fitting mesh AT a bend, rotated to match both
+  adjoining runs. Not scoped into a build plan yet — flag for the user before starting, this may or may not
+  matter depending on whether the product needs fitting-level fidelity or just a correct continuous path.
+- [ ] **M6 — NEW 2026-07-07: run-axis inference assumes π/2-rotation (Manhattan) buildings only — a real,
+  disclosed scope limit, not yet tested against a counter-example.** Both `_rwPairSegments`/`_segLine`
+  (`routewalker.js`) and `hostBind()`'s SIDE branch (`disc_walker.js`) infer a host/run's orientation from
+  WHICH AABB AXIS IS LONGER, never from actual rotation data — the code's own comment admits it:
+  *"rotations are π/2-multiples so the AABB long axis IS the run axis"* (`routewalker.js:501`). At any other
+  angle (a wall at 30°, say) the AABB approaches square and this heuristic misidentifies the run direction —
+  this is DIFFERENT from and BROADER than M5 (it affects pairing/mount correctness on any future
+  non-orthogonal building, not just fitting cosmetics). Not the same problem `LibraryFactory.
+  calculateWorldCenter()` (Java) solves either — Java never infers orientation from a bbox shape at all, it
+  offsets from an ALREADY-KNOWN attachment point + rotation supplied by the placement spec, so it was never
+  exposed to this failure mode. Real fix is likely narrower than "port Java": `element_transforms` already
+  has a real `rotation_z` column (used elsewhere in `disc_walker.js`) — prefer reading it directly over
+  inferring axis from bbox shape, WHERE a building's convention makes it trustworthy. **Caveat, not yet
+  resolved:** some extractors (confirmed on HHS_Office earlier this week) bake rotation into vertex positions
+  and always report `rotation_z=0` — so this fix needs a way to tell which convention a given building uses
+  BEFORE trusting `rotation_z`, not a blind switch-over. Every building this campaign has tested against so
+  far (SampleHouse/Duplex/SampleCastle) is orthogonal, so M1-M3's results are unaffected by this — this is a
+  forward-looking gap for the first non-orthogonal building this pipeline meets, not a retroactive bug.
+- [ ] **FOLLOW-UP (found by M2, not yet a milestone): 1 of 63 M1-bridged PLB segments penetrates a real STR
+  column by 2.6cm** — M1's bridge clash-gates only against ARC walls/slabs, never STR members. Reported
+  honestly by M2's witness, not fixed. Bounded, real, needs its own pass (likely: feed the same STR bus M2
+  already isolates into M1's own clash-gate check, not just the ARC one).
 
 **Capability note:** each milestone is well-specified extension of already-proven, already-working code (not
 a novel-insight problem) — Sonnet can build these. The risk is regression on live walk paths across several
