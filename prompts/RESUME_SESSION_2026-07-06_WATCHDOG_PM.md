@@ -48,16 +48,16 @@ zone). Everything else, apply the normal verify-before-trust bar.
    - Merge this PR's write-up into `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` as a dated section (it owns this
      topic) — do NOT let a new file get created for it.
 2. **bim-ootb PR #677 — "outline shine-through + panel cascade + IoT phase offset" (HBA, items A/B/C).**
-   Normal scrutiny. This is `RESUME_HR_BIM_ASSET.md §2026-07-06c`'s A/B/C batch. Verify each of the 3 fixes
+   Normal scrutiny. This is `Viewer/HBA/RESUME_HR_BIM_ASSET.md §2026-07-06c`'s A/B/C batch. Verify each of the 3 fixes
    against what that section actually asked for (OutlinePass-style shine-through, not just always-on-top;
    per-sensor phase OFFSET not just wider jitter; all 6 panels no longer sharing one fixed position) — re-run
    witnesses fresh. Update that file's dated section with real status, not a restated recap.
 
 **Also still open, lower priority, only if time remains (not urgent per prior sessions):**
-- `prompts/RESUME_HR_BIM_ASSET.md` — item D (LOD device mesh) needs a user go/no-go, not code.
+- `prompts/Viewer/HBA/RESUME_HR_BIM_ASSET.md` — item D (LOD device mesh) needs a user go/no-go, not code.
 - `prompts/PILL_DRAWER_REORGANIZATION.md` — first-touch pill-rail flicker, still unconfirmed (2 hypotheses
   written up, needs a live single-tap repro with `console.trace()`).
-- `prompts/OPEN_BUTTON_IFC_BCF_MERGE.md` — Item 1 (Drop-IFC→Open button) shipped PR #676; Item 2 (Save As
+- `prompts/Viewer/OPEN_BUTTON_IFC_BCF_MERGE.md` — Item 1 (Drop-IFC→Open button) shipped PR #676; Item 2 (Save As
   IFC/BCF) still open, needs a design answer before building (see file for the open questions).
 - `prompts/MODELLER_GIT_FAITHFUL_HISTORY.md` content now lives inside `RESUME_WORLD_HISTORY_DEDUP_RESTORE.md`
   — Phase 3 (visible dot-strip UI) recommended before chasing the G6 gap (watchdog's own recommendation,

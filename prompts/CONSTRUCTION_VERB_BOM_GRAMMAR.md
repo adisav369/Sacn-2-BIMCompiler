@@ -22,7 +22,7 @@ degrade). Plus the round-trip witness contract against `output.db`.
   layer in [[MODELLING_FROM_BOM_CASCADE]], gated on this grammar landing first.
 - MEP/FP/ACMV — NOT construction verbs; they stay parasitic routes ([[RESUME_MEP_COORDINATION]]). BOM = ARC/STR only.
   **EVOLVED 2026-06-26 → editable BOM = ARC ONLY; STR is now WALKED too** (a structural RouteWalker — see
-  `STR_ROUTEWALKING_SPEC.md`). Construction verbs apply to the ARC editable substrate; STR is generated (skeleton
+  `Modeller/DISC_Walker/STR_ROUTEWALKING_SPEC.md`). Construction verbs apply to the ARC editable substrate; STR is generated (skeleton
   f(grid) + tessellated systems), extracted STR = oracle. The grammar below still holds for ARC.
 
 ---

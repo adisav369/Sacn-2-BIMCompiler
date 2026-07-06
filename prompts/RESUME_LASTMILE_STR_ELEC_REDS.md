@@ -37,7 +37,7 @@ FILES: `build/bake_terminal_rules.py` (appliance rule re-mined), `build/terminal
 ```
 # ⚠ DO NOT REMOVE
 SCOPE: Close the two remaining RED disciplines in the Terminal rule round-trip (STR, ELEC). The mining +
-disc-walker + Router(nn) arc is DONE (see RESUME_TERMINAL_RULE_MINING.md §STATUS). This is the LAST MILE.
+disc-walker + Router(nn) arc is DONE (see Modeller/DISC_Walker/RESUME_TERMINAL_RULE_MINING.md §STATUS). This is the LAST MILE.
 PRIME GUARD: do NOT tune thresholds to pass. The fix is to REPLACE A WRONG MODEL with the MEASURED RIGHT
 model and EARN the green by re-measuring — exactly as pipes/ducts (routed) and FP IfcAlarm (host-attach) were
 earned. Read the §-log after every run; verdicts are proven by the witness log, never by inspection.
@@ -138,7 +138,7 @@ than grind.
   `NETWORK_CLASSES` (line 85) + the `mode=routed` branch (line 143) = the existing right-model precedent.
 - Engine: `build/disc_walker.js` — Placer `place()`, Router `route()`/`routeChains()`, SHIM `hostWalls()`.
 - Rules: `build/terminal_rules.db` (`rule_placement` z-bands, `rule_routing` grid/nn, `rule_space_bom`).
-- Arc context + all prior DONE moves: `prompts/RESUME_TERMINAL_RULE_MINING.md` (§ROUTER-NNCHAIN, §SHIM,
+- Arc context + all prior DONE moves: `prompts/Modeller/DISC_Walker/RESUME_TERMINAL_RULE_MINING.md` (§ROUTER-NNCHAIN, §SHIM,
   §WALKER-EQUIVALENCE, §PRIOR-ART RECONCILIATION). Memory: `project_terminal_rule_mining.md`.
 - Standing rule across this arc + memory: **measure-don't-whitelist, earn-don't-tune**. An honest RED is a
   correct answer.

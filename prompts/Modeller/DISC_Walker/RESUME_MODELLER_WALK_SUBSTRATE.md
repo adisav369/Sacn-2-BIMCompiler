@@ -2,7 +2,7 @@
 
 ## ⚠ STANDING AGENDA — invoked by the phrase "Modeller's 2nd principle" (2026-07-06)
 
-Companion to `prompts/ARC_GEO_FETCH_SPEC.md`'s "Modeller's first principle" (that one audits ARC INGESTION —
+Companion to `prompts/Modeller/DISC_Walker/ARC_GEO_FETCH_SPEC.md`'s "Modeller's first principle" (that one audits ARC INGESTION —
 does DDB-open and IFC-open land on the same geometry, does the disc walker see it identically). **This one
 picks up where that leaves off: POST-ARC PLACEMENT** — once ARC is loaded and trusted, is the WALK of the
 other disciplines onto it (STR first, then MEP) actually deterministic/verified truth, or claimed-but-unproven,
@@ -22,7 +22,7 @@ dated sections in order, latest at the bottom, git-linked throughout.
    actually been built since? Is there ONE building where STR walks first, THEN MEP walks using STR/ARC-derived
    anchors, verified together — or are STR's witnesses and MEP's witnesses run on separate, never-joint setups?
 3. **Priority placement order (ARC→STR→MEP/CW/SP→FP/ELEC/ACMV) — enforced or just prose?**
-   `WALKER_GUARDS_ROSETTASTONE_SPEC.md` §2B rule 6 states this ordering as doctrine. Check whether any guard
+   `Modeller/DISC_Walker/WALKER_GUARDS_ROSETTASTONE_SPEC.md` §2B rule 6 states this ordering as doctrine. Check whether any guard
    would actually FAIL a walk that violated the order (e.g. MEP walked before STR/ARC), or whether it's
    descriptive text nobody encodes as a check.
 
@@ -39,7 +39,7 @@ no joint STR+MEP witness." Both claims were wrong or overbroad — real work exi
 - **A real ARC-derived MEP entry point DOES exist and ships**: `disc_walker.js` `defaultSeed()`
   (W-SEED-TRUNK/W-SEED-DEFAULT) picks the most-external door/stair on the lowest storey straight from real
   `elements_meta`/`element_transforms` (human-confirms, never fabricated) → feeds `seed_trunk.js`'s corridor
-  trunk. Shipped + closed: `prompts/RESUME_SEED_TRUNK.md` ("✅ DONE+LIVE 2026-06-30," bim-ootb `#580`/`#582`/
+  trunk. Shipped + closed: `prompts/Modeller/DISC_Walker/RESUME_SEED_TRUNK.md` ("✅ DONE+LIVE 2026-06-30," bim-ootb `#580`/`#582`/
   `#583`). Still true, unchanged: `routeChains()` itself (pipe-to-pipe chaining) is "real on MEP-rich
   buildings, 0 on residents" per its own code comment — full from-scratch MEP generation on an ARC-only
   building is still not proven, just less-absent than first reported.
@@ -63,7 +63,7 @@ corrected state, not the pre-#599 framing above):**
 2. Confirm/deny whether `W-E2E-WALK-ALL` actually checks MEP placement quality jointly with STR, or only loop
    completion — if only the latter, that joint-quality witness still needs building.
 3. Either wire `wgRunPass` into live walk paths (checked across `--all` branches first, per rule 10, in case
-   this was already done elsewhere) or downgrade §2B rule 6 in `WALKER_GUARDS_ROSETTASTONE_SPEC.md` from
+   this was already done elsewhere) or downgrade §2B rule 6 in `Modeller/DISC_Walker/WALKER_GUARDS_ROSETTASTONE_SPEC.md` from
    "doctrine" to "not yet enforced." Update this section with the real commit link once resolved — append
    the outcome, don't re-litigate the agenda text above.
 
@@ -74,7 +74,7 @@ PRISTINE bbox substrate, guarded + with RosettaStone-calibrated confidence. This
 NOT the 0.000mm exact-reconstruction mission (that is separate + still simple-set-first; do NOT conflate).
 INVARIANTS: non-invent (measure/cite, refuse beats fabricate) · oracle = pristine extraction NEVER cooked
 output.db · confidence CALIBRATED before shown · WITNESS-FIRST · reuse the Viewer's machinery, don't rebuild.
-ANCHORS: prompts/WALKER_GUARDS_ROSETTASTONE_SPEC.md · prompts/STR_ROUTEWALKING_SPEC.md ·
+ANCHORS: prompts/Modeller/DISC_Walker/WALKER_GUARDS_ROSETTASTONE_SPEC.md · prompts/Modeller/DISC_Walker/STR_ROUTEWALKING_SPEC.md ·
 prompts/SPATIAL_DEPENDENCY_GRAPH.md · memory project_walker_guards_rosettastone + project_modeller_vision_lock.
 Read the §-log after every run. prompts/ is gitignored — this doc is local; code+witnesses are committed.
 ```
@@ -277,7 +277,7 @@ shipped calibration keep it honest); we (dev) have the Terminal RosettaStone to 
    edges, already derived in extractIFCtoDB.py + witnessed house+bridge in bim-compiler) DERIVED in JS over meta.db,
    rendered Find-style ON the containment backbone. That is the "graph" half (this slice shipped the tree half).
 5. (lower) RTree over bboxes for instant clash/adjacency at 48k (optional perf; `CREATE VIRTUAL TABLE … USING rtree`).
-6. ~~(blocked) W-WALKBACK-MEP~~ — ✅ UNBLOCKED 2026-06-29 (see line 145 above / `WALKER_GUARDS_ROSETTASTONE_SPEC.md`
+6. ~~(blocked) W-WALKBACK-MEP~~ — ✅ UNBLOCKED 2026-06-29 (see line 145 above / `Modeller/DISC_Walker/WALKER_GUARDS_ROSETTASTONE_SPEC.md`
    §5) — stale duplicate of this same file's own line 145, left unfixed until 2026-07-02. Don't re-list as blocked
    again. Remaining piece is render/deploy only: wire `routeChains` MEP net into modeller §8E-3 + `__dwPixelProbe`.
 

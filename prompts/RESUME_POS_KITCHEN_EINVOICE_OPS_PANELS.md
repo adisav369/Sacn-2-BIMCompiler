@@ -130,7 +130,7 @@ trying the cheap path first.
 
 ## §THREAD 3 — E-Invoice: stays blocked, do not build yet
 
-Design-only, and **deliberately gated already** — not merely unbuilt. `prompts/RESUME_HR_BIM_ASSET.md:1047-1091`
+Design-only, and **deliberately gated already** — not merely unbuilt. `prompts/Viewer/HBA/RESUME_HR_BIM_ASSET.md:1047-1091`
 "§PILLAR 3 — Malaysian RegTech" is explicitly marked "Free demo only," "NOT a certified LHDN filer," and sits
 behind a `§RESEARCH GATE ⛔ OPEN` with 7 unchecked boxes (MyInvois mandate state, UBL 2.1 schema, legal
 proof-of-issue requirements, PCB/EPF/SOCSO tables, IFRS/MFRS clauses, PDPA constraints) and an explicit rule:

@@ -398,7 +398,7 @@ visual "flicker" is a CSS/animation artifact instead (e.g. `_layoutRail()`'s tra
 
 ## ⚠ 2026-07-06 — CROSS-REF: `common/pill_builder.js` changed underneath this open flicker item, PR #682 merged (`01d8932`)
 
-Full write-up owned by `RESUME_HR_BIM_ASSET.md §2026-07-06d` (Human-Asset pill desync fix) — pointer only, not
+Full write-up owned by `Viewer/HBA/RESUME_HR_BIM_ASSET.md §2026-07-06d` (Human-Asset pill desync fix) — pointer only, not
 duplicated here per one-owner-per-fact. Flagging here because it touches the SAME file and SAME `_sync()`
 mechanism as the still-open flicker item directly above:
 

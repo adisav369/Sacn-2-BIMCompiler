@@ -7,7 +7,7 @@ post-process-checks each discipline walks back correctly + a CALIBRATED confiden
 "will the walk generalise to all disciplines / all ARC buildings?" — NOT by making the walk always correct
 (unprovable), but by: generate within HARD guards → measure against the RosettaStone where ground truth exists →
 REFUSE-and-flag where it doesn't → NEVER hide uncertainty. Oracle to CALIBRATE, guards to GENERALISE.
-ANCHORS (read first): prompts/STR_ROUTEWALKING_SPEC.md (the first walker — its §2A/§2B handlers are lifted here),
+ANCHORS (read first): prompts/Modeller/DISC_Walker/STR_ROUTEWALKING_SPEC.md (the first walker — its §2A/§2B handlers are lifted here),
 prompts/SPATIAL_DEPENDENCY_GRAPH.md, prompts/RESUME_GRAPH_MODELLER_INTEGRATION.md §VISION-LOCK (every non-ARC
 discipline is a WALKER; the Outliner Disc-tab shows the walked followers + their confidence).
 INVARIANTS: signed ops (kernel_ops) · NON-INVENT (measured/cited, never guessed; REFUSE beats fabricate) ·
@@ -185,7 +185,7 @@ Confidence:
   signal).
   **NOTE the walk-back harness, guard pass, and confidence calibration are already discipline-agnostic — the moment a
   MEP walker emits candidates in the oracle frame, W-WALKBACK-MEP scores with the SAME `witness_walkback_str.js` metric.**
-- Companion: this is the safety/measurement layer the STR walker (`STR_ROUTEWALKING_SPEC.md`) and the §VISION-LOCK
+- Companion: this is the safety/measurement layer the STR walker (`Modeller/DISC_Walker/STR_ROUTEWALKING_SPEC.md`) and the §VISION-LOCK
   walker-followers ride on. It does not change the walks — it guards, scores, and confidence-marks them.
 ```
 

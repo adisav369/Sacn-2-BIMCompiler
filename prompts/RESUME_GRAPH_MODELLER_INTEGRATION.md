@@ -29,7 +29,7 @@ WITNESS-FIRST, spec-first, oracle = pristine extracted.db / raw extraction (neve
    prototype walker. **Remodel the ARC → every walker RE-WALKS into the changed space** (signed op, non-invent).
    ⚠ This SUPERSEDES the older "ARC/STR transform *together*, only MEP walks" seam — **STR is now a walker, not a
    transform-partner of ARC.** (User-confirmed 2026-06-25 c. Spine §227/§295/§312 patched to match.)
-   **STR-walks PROVEN on Terminal data + spec'd (2026-06-26): `prompts/STR_ROUTEWALKING_SPEC.md`.** Empirical: 158 STR
+   **STR-walks PROVEN on Terminal data + spec'd (2026-06-26): `prompts/Modeller/DISC_Walker/STR_ROUTEWALKING_SPEC.md`.** Empirical: 158 STR
    columns sit on a 16×11 emergent grid (skeleton = f(grid), deterministic, RS-clean); 32,203/33,324 space-frame plates
    share one unit-bbox (0.5×0.2) = `instanced-by n` tessellation (system = generative, oracle'd not bit-exact). STR is
    MORE walkable than MEP (its anchors = grid/surface, DERIVED from ARC+SDG; no hand-seed). Handler set MIRRORS MEP RW's
@@ -48,7 +48,7 @@ these two, saying why each is not done, then discussing how to resume + fill the
 is **ARC (render exact) → walk STR → walk other DISCs**; both gaps are at the very first step (render ARC exact).
 
 > **▶ SESSION HANDOFF 2026-06-29 — GAP 1 + GAP 2 CLOSED + STR-into-ARC done. Full protocol + proofs =
-> `prompts/WALKER_GUARDS_ROSETTASTONE_SPEC.md §8` (§8A exactness/tolerance table · §8B two-stage ablation + before/
+> `prompts/Modeller/DISC_Walker/WALKER_GUARDS_ROSETTASTONE_SPEC.md §8` (§8A exactness/tolerance table · §8B two-stage ablation + before/
 > after interim records · §8C two log layers · §8D GREEN report · §8E TE suite progress). Code on bim-ootb branch
 > `lane/arc-mesh-readpixels` (2 commits, PUSHED), NOT yet merged/PR'd.**
 > - **GAP 1 (real ARC mesh) ✅** — `arc_editable` emits LOD-300 hash-ops rendering real `component_geometries`
@@ -217,11 +217,11 @@ mesh on all buildings. THEN proceed down the spine: walk STR, then the other DIS
   the STR-oracle columns → emergent `datum_plane`), then it is the editable dimension-driver; ARC binds re-fold and all
   walkers re-walk onto it. (Chicken-and-egg resolved: oracle seeds the grid once; thereafter grid → ARC + walkers.)
 - **One re-walk chain on every ARC edit (the dependency/clash bus):** ARC substrate → STR walks (clash vs ARC) →
-  services walk (clash vs ARC+STR) → 4D/5D re-roll. One signed op chain; deterministic replay. = `STR_ROUTEWALKING_SPEC.md` §3.
+  services walk (clash vs ARC+STR) → 4D/5D re-roll. One signed op chain; deterministic replay. = `Modeller/DISC_Walker/STR_ROUTEWALKING_SPEC.md` §3.
 - **RosettaStone after the split:** editor RS = ARC reconstruction; STR skeleton = f(grid) deterministic (checkable);
   STR systems = generative (oracle'd, never bit-exact). Each walker output is signed + non-invent (cited rule / measured edge).
 
-**WALKER SAFETY/MEASUREMENT LAYER (spec'd 2026-06-26, for a new session):** `prompts/WALKER_GUARDS_ROSETTASTONE_SPEC.md`
+**WALKER SAFETY/MEASUREMENT LAYER (spec'd 2026-06-26, for a new session):** `prompts/Modeller/DISC_Walker/WALKER_GUARDS_ROSETTASTONE_SPEC.md`
 — a universal guard pass every walker passes through (containment · surface · orientation · clash · source · priority ·
 refuse-to-place), a RosettaStone walk-back harness (Terminal = the multi-discipline oracle: STR/MEP/FP/ELEC/ACMV) that
 post-checks each discipline walks back element-for-element, and a CALIBRATED confidence marker (earned on the

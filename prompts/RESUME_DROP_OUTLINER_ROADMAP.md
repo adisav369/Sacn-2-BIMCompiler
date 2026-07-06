@@ -93,7 +93,7 @@ trusted). Full clause: [[CONSTRUCTION_VERB_BOM_GRAMMAR]] §6a. Don't drift when 
    PASS (recon 3576 vs 3582, −6 within tol); `schependomlaan.db` **compiled (14MB, 3516 instances) = the oracle**.
    SC **2/4 → 7/10 gates**. Regression-checked: SH 65/65, DX 265/265 still PASS (auto-discover untouched, tol
    default 0). Logs: `logs/sc_final_*.txt`, `logs/run_RosettaStones_20260623_054144.txt`.
-   - **EVOLVED 2026-06-26: editable BOM = ARC ONLY; STR ALSO WALKED (structural RouteWalker, `STR_ROUTEWALKING_SPEC.md`); extracted STR = oracle. The Disc tab begins with ARC, the rest are walked.**
+   - **EVOLVED 2026-06-26: editable BOM = ARC ONLY; STR ALSO WALKED (structural RouteWalker, `Modeller/DISC_Walker/STR_ROUTEWALKING_SPEC.md`); extracted STR = oracle. The Disc tab begins with ARC, the rest are walked.**
    - **MEP DROPPED at IFC2BOM ✅ (user decree 2026-06-23: "BOM = ARC/STR only for modelling; MEP/FP/ACMV → RouteWalking;
      MEP confined to ERP.db as minimal templates applied by RouteWalker"). GENERALIZED by discipline field (user choice).**
      SC's 60 `IfcFlowSegment` (discipline=MEP) leaked because `StructuralBomBuilder` dropped MEP only by the per-building

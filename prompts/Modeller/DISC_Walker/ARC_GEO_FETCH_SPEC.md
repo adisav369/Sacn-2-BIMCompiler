@@ -21,7 +21,7 @@ enough yet, or haven't looked hard enough at whether it already is.
    and would actually FAIL on a real defect, not just confirm "it ran without throwing."
 2. **ARC rendering parity across ingestion paths** — DDB (native `.db`) vs IFC-open (raw `.ifc` parsed
    client-side: Modeller's `openIfcFile()` §3D below, or the Viewer's Drop-IFC→Open button PR #676,
-   `prompts/OPEN_BUTTON_IFC_BCF_MERGE.md` item 1 — check both are accounted for, add a third if one appears).
+   `prompts/Viewer/OPEN_BUTTON_IFC_BCF_MERGE.md` item 1 — check both are accounted for, add a third if one appears).
    Is parity actually PROVEN (real comparative witness, same building, both paths, vertex/hash-level diff) or
    just assumed from "the same downstream function gets called"? State which, don't conflate them.
 3. **DISC walking consumes the SAME geometry, not a divergent copy** — once ARC is loaded by either path,

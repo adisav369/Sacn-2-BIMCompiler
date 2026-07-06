@@ -96,7 +96,7 @@ hunt — flag if touched.
 fan-out, 21/25 claims confirmed via 3-vote adversarial verification): boxes 2 (format/transport) and 7 (PDPA)
 are fully sourced from primary official sources; boxes 1/4/5 (MyInvois dates, PCB brackets, EPF/SOCSO rates)
 are structurally confirmed but missing exact numeric tables; **boxes 3 (legal clearance mandate — the
-load-bearing one) and 6 (MFRS 15) are still genuinely open.** Full citations: `RESUME_HR_BIM_ASSET.md`
+load-bearing one) and 6 (MFRS 15) are still genuinely open.** Full citations: `Viewer/HBA/RESUME_HR_BIM_ASSET.md`
 §RESEARCH GATE. My advice given this session: box 6 is a normal re-fetch (wrong document was pulled). **Box 3
 may not be closeable by another research pass alone** — the doc's own words say it needs either a direct
 statute read or "a qualified Malaysian tax lawyer's opinion." Don't let "run research again" become an

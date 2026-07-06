@@ -3,7 +3,7 @@
 > (1) **the discipline seam** — STR is **no longer** a transform-partner of ARC; **STR is a WALKER** (it crawls the ARC
 > and regenerates to *strengthen* it, like MEP services it). Read every "ARC/STR transform" below as "ARC transforms;
 > STR walks." (2) **BOM membership** ("ARC/STR only, dropped verbatim") is RESOLVED 2026-06-26: **editable BOM = ARC
-> ONLY; STR moved fully to the walker side** (`STR_ROUTEWALKING_SPEC.md`), extracted STR kept as oracle. Read "drop
+> ONLY; STR moved fully to the walker side** (`Modeller/DISC_Walker/STR_ROUTEWALKING_SPEC.md`), extracted STR kept as oracle. Read "drop
 > ARC/STR verbatim" below as "drop ARC verbatim; STR is walked." The *handle/overlay* mechanics below still hold.
 
 # 💭 IDEA CAPTURE — "BOM as an abstract overlay over the ARC/STR substrate"

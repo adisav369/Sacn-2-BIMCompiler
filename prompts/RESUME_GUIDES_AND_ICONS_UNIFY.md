@@ -115,7 +115,7 @@ avatar-LOD · Chart.js dashboard fix. 22 witnesses green, regression clean, 0 lo
 ## D. Where things are
 - **Teams guide spec + witnesses:** bim-ootb `lane/teams-overlay` — `prompts/RESUME_TEAMS_UI_CONSISTENCY.md`
   (R1–R6 · §1b dashboard · §3b.2 PERT gate all ✅), `teams/UI_CONSISTENCY_GUIDE.md` (the §-witness evidence map).
-- **HR spec:** `prompts/RESUME_HR_BIM_ASSET.md`.
+- **HR spec:** `prompts/Viewer/HBA/RESUME_HR_BIM_ASSET.md`.
 - **Docs branch:** `bim-compiler` `docs/hba-guide-rewrite` (both guides + images live here; use an isolated
   worktree, never disrupt a live shared checkout). Deploy ONLY via `scripts/safe_gh_deploy.sh` — never bare `mkdocs gh-deploy`.
 

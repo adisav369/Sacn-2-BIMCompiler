@@ -10,7 +10,7 @@ house. The fix is the RIGHT-CLASS rules, MINED, not tuned. METHOD = mirror the T
 NON-INVENT. The oracle is DX's REAL MEP (round-trip = walk mined rules back onto DX ARC/STR, land on the
 real MEP). An honest RED/WEAK is correct; never tune a clearance/band to pass. Read the §-log after every run.
 ENGINE = build/disc_walker.js (shared Placer/Router/Gate — disc=data filter, do NOT fork per building).
-PRECEDENT to copy: prompts/RESUME_TERMINAL_RULE_MINING.md (mine→bake→reconcile) + the §TRM-RT round-trip
+PRECEDENT to copy: prompts/Modeller/DISC_Walker/RESUME_TERMINAL_RULE_MINING.md (mine→bake→reconcile) + the §TRM-RT round-trip
 oracle build/witness_terminal_rules.py. Today's clash-gate work: build/disc_walker.js gate() + G4 in
 witness_disc_walk_generalize.js (iterate-in-envelope + FLAG, no silent clash).
 ```
@@ -177,7 +177,7 @@ drift confusion (today's stale `modeller/terminal_rules.db` vs the rebaked one w
 - "if unexpected issues, return to the blueprint discussion" (user standing rule) — surface, don't grind.
 
 ## POINTERS
-- Terminal precedent: `prompts/RESUME_TERMINAL_RULE_MINING.md`, `build/{bake,reconcile,witness}_terminal_rules.py`.
+- Terminal precedent: `prompts/Modeller/DISC_Walker/RESUME_TERMINAL_RULE_MINING.md`, `build/{bake,reconcile,witness}_terminal_rules.py`.
 - Engine + today's gate fix: `build/disc_walker.js` gate() (iterate+flag), `build/witness_disc_walk_generalize.js` G4.
 - DX MEP source: `reference/residential/Ifc2x3_Duplex_MEP.ifc`. Huge complex: `~/bim-ootb/buildings/{Clinic,Hospital}_*.db`.
 - Memory: [[feedback_whitebox_no_handwave_geometry]], project_terminal_rule_mining, project_modeller_rosettastone_mission (SIMPLE-set-first doctrine — DX/SH/SC before huge complex).

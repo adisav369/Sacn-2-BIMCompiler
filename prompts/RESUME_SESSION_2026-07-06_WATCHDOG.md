@@ -28,7 +28,7 @@ vision** — not to build features yourself unless explicitly assigned. Concrete
 | HBA sensor/camera POV UX (2-state toggle, closer zoom, IoT jitter) | bim-ootb `a872078`/#671 | Commit message + witnesses (`witness_p10b.js` 67/67, `witness_iot_pov_live.js`) checked, both exist on `main` |
 | Pill rail → 4 real drawers (Visual FX/Camera-View/Navigate/Inspect) + 6 isActive bugs + Alt-Z/X 3-state cycle | bim-ootb `409a445`→`e433ac4`/#667→#669, plus a bim-compiler prompts-file gotcha fixed (`7993d34e2`) | Commits + `FRONTEND_LANE_MASTER.md` entry verified real and correctly self-housekept by that session |
 | World History undo-spawns-dots (real bug, found live-driving not from a code read) | bim-ootb `a1c56af`/squash `d6bfb80`/#670 | Root cause (fork-don't-wipe gate only checks true tip) + `witness_undo_dot_spawn.js` 8/8, both confirmed on `main` |
-| **Camera facing-vectors — SOLVED via maths, not left to manual eyeballing** | `prompts/RESUME_HR_BIM_ASSET.md` § 2026-07-06 | User correctly pushed back on "needs a human" — attempt 1 (sparse room proximity, only 14 rooms) genuinely failed, but attempt 2 (500 real wall/slab/column elements' per-storey mass centroid, door-vs-centroid side test) gave a clean, internally-consistent answer for all 6 doors. Vectors computed and written into the canonical file, ready to wire into `iot.js CAMERAS` + build the actual POV-assume-flight. |
+| **Camera facing-vectors — SOLVED via maths, not left to manual eyeballing** | `prompts/Viewer/HBA/RESUME_HR_BIM_ASSET.md` § 2026-07-06 | User correctly pushed back on "needs a human" — attempt 1 (sparse room proximity, only 14 rooms) genuinely failed, but attempt 2 (500 real wall/slab/column elements' per-storey mass centroid, door-vs-centroid side test) gave a clean, internally-consistent answer for all 6 doors. Vectors computed and written into the canonical file, ready to wire into `iot.js CAMERAS` + build the actual POV-assume-flight. |
 
 ## §STILL OPEN
 - **Modeller World History wiring** — RE-CONFIRMED still zero-built as of this session (4-step handoff from
@@ -46,7 +46,7 @@ vision** — not to build features yourself unless explicitly assigned. Concrete
 ## §PROCESS NOTES worth repeating (see `feedback_prompt_file_organization.md` + `feedback_specific_session_naming.md` in memory for full detail)
 - One canonical `RESUME_<Feature>.md` per topic. No new files for a topic that already has one. No
   pointer/stub files either — that middle layer was invented, never asked for, and is its own clutter.
-- Name new topics specifically (`RESUME_HR_BIM_ASSET.md`), never a broad umbrella ("`_LANE_MASTER`"-style).
+- Name new topics specifically (`Viewer/HBA/RESUME_HR_BIM_ASSET.md`), never a broad umbrella ("`_LANE_MASTER`"-style).
 - Compact a finished dated section to one-line status + git commit link, not a bare link alone (commit
   messages are usually detailed here, but squash-merges can silently drop that — keep one summary line as
   insurance).

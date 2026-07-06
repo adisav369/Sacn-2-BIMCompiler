@@ -3,7 +3,7 @@
 ```
 # ⚠ DO NOT REMOVE
 SCOPE: Continuation card for the Terminal-rule-mining + Modeller-trilogy arc. Read this first, then the
-canonical detail in prompts/RESUME_TERMINAL_RULE_MINING.md. NON-INVENT + read-the-log rules still apply.
+canonical detail in prompts/Modeller/DISC_Walker/RESUME_TERMINAL_RULE_MINING.md. NON-INVENT + read-the-log rules still apply.
 ```
 
 ## ⚠ ANTI-AMBIGUITY (user-mandated 2026-06-27) — the TRILOGY
@@ -59,6 +59,6 @@ Three OWN top-level app folders in `bim-ootb/`: **`viewer/` · `erp/` · `modell
 ## HOUSEKEEPING / FLAGS
 - ⚠ bim-ootb local main has an UNPUSHED commit from ANOTHER session: `b261b64 feat(viewer): three r184→r185`
   (viewer-only). main is PR-protected → it needs its OWN PR from that session; do not direct-push.
-- Canonical detail: `prompts/RESUME_TERMINAL_RULE_MINING.md` (§PRIOR-ART RECON / §WALKER-EQUIVALENCE / §SHIM all
+- Canonical detail: `prompts/Modeller/DISC_Walker/RESUME_TERMINAL_RULE_MINING.md` (§PRIOR-ART RECON / §WALKER-EQUIVALENCE / §SHIM all
   marked DONE there). Modeller vision: `prompts/RESUME_GRAPH_MODELLER_INTEGRATION.md §VISION-LOCK`.
 ```

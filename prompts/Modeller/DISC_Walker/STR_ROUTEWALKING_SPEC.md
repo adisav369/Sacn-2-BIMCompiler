@@ -8,7 +8,7 @@ ANCHOR: prompts/RESUME_GRAPH_MODELLER_INTEGRATION.md §VISION-LOCK ("STR is a WA
 NON-INVENT: skeleton = f(grid) (deterministic, RS-checkable); systems = generative (oracle'd vs extracted STR, NOT
 bit-exact); every member SIZE cites a regulatory rule (span/load) — never an invented constant. Read the §-log.
 WITNESS-FIRST: the W-STR-* claims below are written BEFORE code. Oracle = pristine extracted.db / raw extraction.
-SAFETY/MEASUREMENT LAYER ABOVE THIS WALK: prompts/WALKER_GUARDS_ROSETTASTONE_SPEC.md (universal guard pass +
+SAFETY/MEASUREMENT LAYER ABOVE THIS WALK: prompts/Modeller/DISC_Walker/WALKER_GUARDS_ROSETTASTONE_SPEC.md (universal guard pass +
 RosettaStone walk-back + calibrated confidence — the answer to "does the walk generalise?"). STR is its first walker.
 ```
 

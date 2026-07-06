@@ -12,7 +12,7 @@ hosting, never OCI/viewer). WITNESS-FIRST (§-log + a node/headless witness per 
 viewer's Find pattern + DLOD, don't rebuild. Read the §-log after every run. prompts/ is gitignored (local).
 ⚠ ORPHAN-TRAP: the repo AUTO-MERGES PRs (bot) on CI green. Push EVERYTHING before opening the PR; NEVER push a
 2nd commit to an auto-merge-armed branch (it gets squashed-out → orphaned; happened on #542, recovered in #543).
-ANCHORS: RESUME_MODELLER_WALK_SUBSTRATE.md (the substrate/engines handoff) · SPATIAL_DEPENDENCY_GRAPH.md ·
+ANCHORS: Modeller/DISC_Walker/RESUME_MODELLER_WALK_SUBSTRATE.md (the substrate/engines handoff) · SPATIAL_DEPENDENCY_GRAPH.md ·
 memory project_modeller_vision_lock + project_walker_guards_rosettastone + feedback_no_admin_questions.
 ```
 
@@ -65,7 +65,7 @@ KEY TIE-IN: 33 324 plate faces on a clean pattern are a large regular
 measurement. NOT yet verified numerically (one-shot: measure plate-centre spacing for array-uniformity before building
 the per-element walker). "more tooling later" (user). Don't whitelist 'roof' by class — MEASURE the pattern.
 
-### 🟦 APPROVED BIG PROGRAM (own prompt): Terminal rule-mining en masse → `prompts/RESUME_TERMINAL_RULE_MINING.md`
+### 🟦 APPROVED BIG PROGRAM (own prompt): Terminal rule-mining en masse → `prompts/Modeller/DISC_Walker/RESUME_TERMINAL_RULE_MINING.md`
 User approved (2026-06-27) a multi-agent workflow to MINE measured placement+routing+place-order/avoidance rules
 from Terminal (all disciplines: PLB/ACMV/FP/ELEC/STR/roof) into `terminal_rules.db`, feeding ALL discipline
 walkers (supersedes #2 below — the MEP walker gets its recipes from this). Scope=all en masse; ~14 agents.
