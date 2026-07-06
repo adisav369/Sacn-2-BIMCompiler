@@ -1,0 +1,115 @@
+# 2D_004 — Java: DrawingWriter.writeFloorPlan() — section cut + styled SVG output
+# TRIAGE ORDER: #9 — After 2D_003 (SVGBuilder + classifier done) and 2D_002 (SectionCut done).
+# SEPARATION OF CONCERN: 2D_Layout module only. Closes W-2D-DIGEST for floor plan.
+
+**Spec:** 2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §5 (steps 2-6), §12.1-12.3
+**Prereq:** 2D_002 DONE (SectionCut.java), 2D_003 DONE (SVGBuilder + element classifier)
+**Reference:** `2D_Layout/python/drawing_writer.py` draw_floor_plan() lines 989-1370
+**Witness:** W-2D-PLAN, W-2D-DIGEST (floor plan half)
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+Port draw_floor_plan() from Python exactly. No new features. Annotations (grid, dims,
+labels, title block) are deferred to 2D_006. This prompt: CUT contours + BELOW projections only.
+
+## Read first
+
+1. `2D_Layout/PROGRESS.md`
+2. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §5 steps 2–6
+3. `2D_Layout/python/drawing_writer.py` draw_floor_plan() lines 989–1150 (section cut render only —
+   stop before grid/dimension/label code which starts around line 1150)
+4. 2D_002 output — SectionCut.java API (Contour, Point2D)
+5. 2D_003 output — SVGBuilder.java, BimElement, CutClass, LayoutConstants
+6. This prompt fully
+
+## Tasks
+
+### Task 1 — DrawingWriter.writeFloorPlan()
+
+```java
+/**
+ * Generate floor plan SVG for one storey.
+ * Implementing 2D_ARCHITECTURAL_LAYOUT.md §5 steps 2–6
+ * Witness: W-2D-PLAN
+ */
+public void writeFloorPlan(Path dbPath, String storey, Path outSvg) throws IOException;
+```
+
+Algorithm:
+1. `readElements(dbPath, storey)` — load elements
+2. Compute cutZ = storey_FFL + 1.0m (get storey_FFL from spatial_structure or default 0.0)
+3. For each element: `classify(el, cutZ)` → CUT | BELOW | ABOVE
+4. For CUT elements: `SectionCut.cut(el.vertices, el.faces, cutZ, 0.5)` → contours
+   - Render each contour as SVG path in layer "cut_{ifcClass.toLowerCase()}"
+   - Line weight + colour from LayoutConstants.strokeWidth/Colour
+5. For BELOW elements: project bounding box top face onto XY (light grey, 0.15mm)
+   - AABB from elements_rtree: rect from (minX,minY) to (maxX,maxY)
+   - Render as SVG rect in layer "below"
+6. ABOVE elements: skip
+7. World-to-paper coordinate transform: fit building extents into content area (A3 minus
+   title block margin). Port `world_to_paper()` from Python (scale + translate).
+8. Write SVG to outSvg
+
+Tight-fit sheet height: compute min height from content + margin (port from Phase 3d).
+
+### Task 2 — DrawingWriterFloorPlanTest.java
+
+```
+W-2D-PLAN-1: writeFloorPlan(SH, "Ground Floor", out.svg) → file created, > 5KB
+W-2D-PLAN-2: SVG contains path elements count == IfcWall count for storey (5 for SH)
+W-2D-PLAN-3: IfcWall paths use stroke-width 0.50mm (exterior) or 0.35mm (partition)
+W-2D-PLAN-4: IfcFurnishingElement rendered as grey rect in "below" layer
+W-2D-DIGEST-FLOOR: run Python draw_floor_plan, compare wall path bounding boxes → within 1mm
+```
+
+For W-2D-DIGEST-FLOOR: add `--floor-plan --measure` to Python (from 2D_000), compare CSV
+lengths to Java SVG path bounds. Assert max deviation < 1mm for all walls.
+
+## Done criteria
+
+- DrawingWriterFloorPlanTest 4/4 PASS
+- W-2D-DIGEST for floor plan PASS (Java matches Python within 1mm)
+- Output SVG renders correctly in browser (visual check)
+- No annotations required — that is 2D_006
+
+# DONE
+<!-- Coder appends findings here -->
+
+## PROFESSIONAL READABILITY STANDARDS (added 2026-04-06, ref §14.7)
+
+All SVG output must meet ISO 128 / TB-LKTN pen scale before marking DONE.
+Read `2D_ARCHITECTURAL_LAYOUT.md §14.7` for the full table. Summary:
+
+**Line weights (SVG stroke-width in mm):**
+- LW_GROUND = 0.70   — ground line only (boldest — visual base)
+- LW_WALL_EXT = 0.50 — section-cut exterior walls, roof outline
+- LW_WALL_INT = 0.35 — partitions, doors, apron step
+- LW_OPENING  = 0.35 — window/door outlines
+- LW_WALL_GLASS = 0.25 — glazing / curtain wall
+- LW_DIMENSION = 0.18 — dims, extension lines, hatching, grid (ISO hairline)
+- **0.15 mm is BANNED** — prints as 1px, invisible on A3; use 0.18 minimum
+
+**Text heights (mm on paper at 1:100):**
+- Drawing title: 5.0, Room label: 3.5, Grid bubble: 3.0, Dims/levels: 2.5
+
+**Label spacing:**
+- Minimum gap between adjacent level markers: 3 × TXT_DIM (= 7.5mm)
+- When markers are closer, use leader line offset — marker triangle at true level,
+  text box shifted with a thin (0.18) vertical leader
+
+**Grid bubbles:**
+- Radius = 4.0mm (8mm diameter) — do not reduce
+
+**Dash patterns (scale-aware — currently hardcoded, must fix in Java):**
+- CENTER (grid): `(4s, 1s, 1s, 1s)` where s = SCALE/100
+- HIDDEN: `(4s, 2s)` — at 1:100 s=1.0, at 1:50 s=0.5
+
+**Mirror rule for rear/right elevations:**
+- 'rear': h = -x (viewer sees X reversed — west on right, east on left)
+- 'right': h = -y (viewer sees Y reversed)
+- Grid positions: multiply by h_sign before mapping to paper
+- Roof hull: negate h_vals for mirrored faces
+- Without this, front/rear elevations show identical roof tilt (wrong)
+

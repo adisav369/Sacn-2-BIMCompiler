@@ -1,0 +1,84 @@
+# 2D_003 — Java Port: DrawingWriter.java + SVGBuilder.java (floor plan + elevations)
+# TRIAGE ORDER: #7 — Final 2D_Layout Java port. Prereq: 2D_002 DONE.
+# SEPARATION OF CONCERN: 2D_Layout module only. Reads output.db read-only.
+# No DAGCompiler or IFCtoBOM changes. W-2D-DIGEST closes the Synthetic Rosetta loop.
+
+**Spec:** 2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §1–§7
+**Prereq:** 2D_002 DONE — SectionCut.java working and tested
+**Reference:** `2D_Layout/python/drawing_writer.py` — port floor plan + elevation output
+**Witness to pass:** W-2D-DIGEST — Java SVG output matches Python for SH (within 1mm)
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+Port the Python output exactly. Annotations, title block, and roof plan are deferred.
+Focus: floor plan section cut + 4 elevations. Matching, not improving.
+
+## Read first
+
+1. `2D_Layout/PROGRESS.md`
+2. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §2 (floor plan per storey), §4 (annotations),
+   §6 (approach), §7 (styling)
+3. `2D_Layout/python/drawing_writer.py` — READ draw_floor_plan() and draw_elevation() only
+4. `2D_Layout/src/main/java/com/bim/layout/SVGBuilder.java` — current stub
+5. `2D_Layout/src/main/java/com/bim/layout/DrawingWriter.java` — current stub
+6. This prompt fully
+
+## Tasks
+
+### Task 1 — SVGBuilder.java
+
+Minimal SVG document builder. No dependencies beyond Java standard library:
+```java
+public class SVGBuilder {
+    public SVGBuilder(double widthMm, double heightMm);
+    public void addPath(String d, String stroke, double strokeWidth, String fill);
+    public void addText(double x, double y, String text, double fontSize);
+    public void addGroup(String id, Consumer<SVGBuilder> content);
+    public String toSVG();
+}
+```
+
+### Task 2 — DrawingWriter.java
+
+Orchestrator — reads from compiled output.db, writes SVG:
+
+```java
+public class DrawingWriter {
+    public void writeFloorPlan(Path dbPath, String storey, Path outSvg);
+    public void writeElevation(Path dbPath, String face, Path outSvg); // face: N|S|E|W
+}
+```
+
+`writeFloorPlan`:
+- Load elements_meta + base_geometries from output.db
+- Classify: CUT (minZ < cutZ < maxZ), BELOW (maxZ ≤ cutZ), ABOVE (minZ ≥ cutZ)
+- SectionCut.cut() for CUT elements → contours
+- Project top face for BELOW elements (bbox XY)
+- Render: heavy lines for CUT (0.5mm exterior, 0.35mm interior), light for BELOW (0.15mm)
+- Apply line weights from 2D_ARCHITECTURAL_LAYOUT.md §7
+
+`writeElevation`:
+- Load mesh vertices from base_geometries
+- Project onto XZ (N/S face) or YZ (E/W face)
+- Convex hull for roof elements (port _convex_hull_2d from Python)
+- Render with level markers at FFL/CLG/RIDGE
+
+### Task 3 — DrawingWriterTest.java
+
+```
+W-DW-1: writeFloorPlan(SH, "Ground Floor", out.svg) → SVG file created, non-empty
+W-DW-2: SVG contains path elements for each CUT wall (count = IfcWall count at storey)
+W-DW-3: writeElevation(SH, "N", out.svg) → SVG created with roof silhouette
+W-2D-DIGEST: run Python drawing_writer.py on same DB, compare wall path lengths → within 1mm
+```
+
+## Done criteria
+
+- DrawingWriterTest 3/3 PASS
+- W-2D-DIGEST PASS for floor plan wall paths
+- Java output.svg opens correctly in browser, visually matches Python output
+
+# DONE
+<!-- Coder appends findings here -->

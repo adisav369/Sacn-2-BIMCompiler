@@ -1,0 +1,170 @@
+# 00s — W-PATTERN-CW + W-PATTERN-SP Gate Tests
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.3 §4 (witness claims)
+**Prereq:** 00r DONE — RouteWalker generates CW/SP c_orderline rows in hospitalauckland.db
+**Test Stones:** RM (HospitalAuckland)
+**Witness claims:** W-PATTERN-CW, W-PATTERN-SP
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**No new logic invented.** Gate tests assert what §6.12.3 §4 specifies. Read the witness
+claims exactly. Each assertion in the test maps 1:1 to a claim in the spec.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.3 §4 — W-PATTERN-CW and W-PATTERN-SP claim text
+3. `DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java`
+   (gate test pattern, G1-G6 structure, how tests read from compiled output DB)
+4. `DAGCompiler/lib/output/hospitalauckland.db` — c_orderline post-RouteWalker (verify rows exist)
+5. `library/ERP.db` — ad_mep_anchor (anchor counts to set test expectations)
+6. This prompt fully
+
+## Background
+
+W-PATTERN-CW claim (§6.12.3 §4):
+> For HospitalAuckland, RouteWalker with CW_TERMINAL_01 pattern applied to METER+FIXTURE anchors
+> produces a connected CW network: all FIXTURE anchors reachable from at least one METER anchor,
+> zero CW pipes intersecting ARC AABB (clash=0), all generated segments horizontal or vertical
+> (no diagonal), pipe count within 20% of TE CW segment count scaled by floor area ratio.
+
+W-PATTERN-SP claim (§6.12.3 §4):
+> For HospitalAuckland, RouteWalker with SP_TERMINAL_01 pattern applied to FIXTURE+STACK anchors
+> produces a connected SP network: all FIXTURE anchors drain to at least one STACK anchor,
+> all generated GRADIENT segments have dz/dx ≥ 0.025 (MS 1228 §5.3), zero SP pipes intersecting
+> ARC AABB (clash=0), STACK anchor count ≥ 1 per storey.
+
+Anchor counts from 00q (library/ERP.db):
+- FIXTURE: 11, METER: 154, GENERIC: 1482
+
+## Task A — New test class: RouteWalkerTest
+
+Create `DAGCompiler/src/test/java/com/bim/compiler/contract/RouteWalkerTest.java`.
+
+Follow the existing test pattern (read from hospitalauckland.db, assert counts and properties).
+
+```java
+package com.bim.compiler.contract;
+// Witness: W-PATTERN-CW, W-PATTERN-SP — DISC_VALIDATION_DB_SRS.md §6.12.3 §4
+class RouteWalkerTest {
+```
+
+### A1. W-PATTERN-CW: CW network exists and is non-empty
+
+```java
+@Test void w_pattern_cw_rows_generated()
+```
+
+Query: `SELECT COUNT(*) FROM c_orderline WHERE Discipline='CW' AND family_ref='MEP_ROUTE'`
+Assert: count > 0 (RouteWalker emitted at least one CW line)
+
+### A2. W-PATTERN-CW: all FIXTURE anchors served
+
+```java
+@Test void w_pattern_cw_fixture_coverage()
+```
+
+From `library/ERP.db`: count of FIXTURE anchors for source_building='HospitalAuckland' = F.
+From `hospitalauckland.db` c_orderline WHERE Discipline='CW' AND family_ref='MEP_ROUTE': count = N.
+Assert: N ≥ F (at least one CW line per fixture anchor — each fixture has a supply pipe)
+
+Note: F=11 from 00q. If RouteWalker paired each FIXTURE with a METER step, N ≥ 11.
+
+### A3. W-PATTERN-CW: no diagonal segments
+
+```java
+@Test void w_pattern_cw_no_diagonal()
+```
+
+For each CW MEP_ROUTE c_orderline row, read dx, dy, dz.
+A segment is axis-aligned if at most one of |dx|, |dy|, |dz| is non-zero
+(tolerance: ≤ 0.001m in the two non-dominant axes — floating point).
+Assert: ALL CW MEP_ROUTE rows are axis-aligned. Count violations; fail with count if > 0.
+
+### A4. W-PATTERN-CW: clash = 0
+
+```java
+@Test void w_pattern_cw_no_arc_clash()
+```
+
+For each CW MEP_ROUTE row, construct pipe AABB (centre from dx/dy/dz accumulation from
+parent, width/depth from aabb_width_mm/aabb_depth_mm, height from aabb_height_mm).
+For each ARC c_orderline row, construct ARC AABB similarly.
+Assert: zero AABB intersections (use a tolerance of -10mm — pipes may touch walls but
+not penetrate). Log any clashes found before failing.
+
+### A5. W-PATTERN-SP: SP network exists with gradient
+
+```java
+@Test void w_pattern_sp_gradient_compliant()
+```
+
+For each SP MEP_ROUTE c_orderline row WHERE offset_rule includes 'GRADIENT' context
+(or: WHERE dz != 0 and the horizontal extent > 0):
+  Compute slope = |dz| / sqrt(dx² + dy²)
+  Assert: slope ≥ 0.024 (allow 4% below 0.025 for floating-point — MS 1228 §5.3)
+Log any segments with slope < 0.025. Fail if any gradient segment has slope < 0.024.
+
+Note: DIRECT segments (Z-axis drops for stacks) are excluded — only GRADIENT steps checked.
+
+### A6. W-PATTERN-SP: STACK anchor coverage per storey
+
+```java
+@Test void w_pattern_sp_stack_per_storey()
+```
+
+From `library/ERP.db`: SELECT DISTINCT storey FROM ad_mep_anchor
+  WHERE source_building='HospitalAuckland' AND anchor_type='METER' — these are STACK candidates.
+Assert: at least 1 METER/STACK anchor exists per storey (minimum 1 drainage stack per floor).
+This is a data assertion (00q extracted 154 METER anchors) — if 0 per storey, flag WARNING not FAIL.
+
+### A7. W-PATTERN-SP: FIXTURE anchors drain to STACK
+
+```java
+@Test void w_pattern_sp_fixture_connected()
+```
+
+From compileDb: trace SP MEP_ROUTE rows. Count FIXTURE anchors that have at least one
+outbound SP segment (i.e., appear as a segment start in c_orderline).
+Assert: connected_fixtures ≥ F × 0.8 (80% coverage — some fixtures may be on upper storeys
+with no stack in immediate storey, deferred to 00t).
+Log unconnected FIXTURE anchor IDs.
+
+## Task B — Register test in Maven/test suite
+
+Ensure `RouteWalkerTest` is picked up by the standard test runner (no extra config needed
+if it follows JUnit 5 conventions matching other test classes in the package).
+
+Run: `mvn test -pl DAGCompiler -Dtest=RouteWalkerTest -q`
+
+All 7 tests must pass. If any fail, diagnose root cause — do NOT relax assertions without
+writing the finding to PROGRESS.md §DONE.
+
+## Scope boundary
+
+- **RM only.** No SH, TE, or other buildings in these tests.
+- **No new RouteWalker code.** If a test fails because RouteWalker didn't emit the right
+  rows, write the finding back here (# DONE section) for watchdog review — do NOT fix
+  RouteWalker within this prompt scope.
+- **No RosettaStoneGateTest modification.** These are standalone witness tests.
+
+## Verification
+
+```
+mvn compile -q
+mvn test -pl DAGCompiler -Dtest=RouteWalkerTest
+./scripts/run_RosettaStones.sh classify_rm.yaml   # RM must still be 8/8
+```
+
+## Commit
+
+```
+[S104-DISC] 00s: W-PATTERN-CW + W-PATTERN-SP gate tests — RouteWalkerTest 7/7
+```
+
+---
+
+# DONE
+

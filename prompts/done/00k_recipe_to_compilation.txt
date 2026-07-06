@@ -1,0 +1,156 @@
+# 00k — MEP Recipe Bridge: ERP.db archetypes → c_orderline DISC LEAF placement
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.2
+**Prereq:** 00i DONE (W-J1-GEO — 838 TE archetypes, 783 RM recipes in ERP.db)
+**Test Stones:** TE (coverage topology, 838 archetypes) + RM (routing topology, 783 recipes)
+**Scope:** Wire ERP.db M_BOM MEP_RECIPE archetypes into c_orderline DISC LEAF placement
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `prompts/00i_chain_geometry_correctness.txt` §DONE (archetypes, dz standoffs, rotation)
+3. `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoERP.java` — `buildMepBomRecipes()`
+4. `DAGCompiler/src/main/java/com/bim/compiler/DisciplineBomBuilder.java` — where DISC LEAF rows are written
+5. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.2 (recipe consumption)
+6. This prompt fully
+
+## Context — the gap
+
+00i built MEP_RECIPE archetypes in ERP.db:
+- TE (coverage topology): 838 archetypes, dz = element_cz − ceiling_Z (actual standoff)
+- RM (routing topology): 783 chain recipes, dx/dy/dz = centroid deltas per chain
+
+Current state of c_orderline DISC LEAF rows (TE output):
+```
+Discipline  recipe_linked  unlinked  total_LEAF
+ACMV        0              143       143
+CW          0              187       187
+ELEC        0              106       106
+FP          6              106       112
+SP          0              417       417
+```
+
+The `M_BOM_Line_ID` FK in c_orderline is almost entirely NULL for DISC LEAFs.
+DISC LEAF positions come from raw IFC element centroids (factorized by product type),
+not from the recipe. The recipe exists but is not consumed.
+
+**The improvement:** recipe-driven placement means:
+- DISC LEAF dz is set from the archetype standoff (not raw IFC centroid offset)
+- When an archetype changes (e.g., FP sprinkler standoff −0.3m → −0.5m), all 6863
+  instances update on rebuild — no per-element editing
+- `M_BOM_Line_ID` is populated, proving the LEAF is recipe-sourced
+
+## Diagnosis — what to check first
+
+In `DisciplineBomBuilder.java`, find where DISC LEAF rows are inserted.
+Check the INSERT statement for `dz` and `M_BOM_Line_ID`:
+- Is `dz` taken from the IFC element centroid offset (raw) or from a recipe lookup?
+- Is `M_BOM_Line_ID` ever set for DISC LEAF rows?
+
+Then check ERP.db: does a lookup path exist to match a DISC LEAF element
+(by disc + ifcClass + building) to its M_BOM archetype row?
+
+## Fix
+
+### Step 1: Recipe lookup helper (IFCtoERP.java or new helper)
+
+```java
+/**
+ * Look up the M_BOM_Line_ID and dz_standoff for a DISC LEAF element
+ * from the MEP_RECIPE archetype in ERP.db.
+ * Returns null if no matching archetype exists.
+ */
+public static RecipePlacement lookupArchetype(
+        Connection erpConn, String buildingType, String disc, String ifcClass)
+        throws SQLException {
+    // SELECT l.M_BOM_Line_ID, l.dz, l.rotation_rule
+    // FROM M_BOM_Line l JOIN M_BOM b ON l.M_BOM_ID = b.M_BOM_ID
+    // WHERE b.source_building = ? AND b.bom_type = 'MEP_RECIPE'
+    //   AND b.bom_id LIKE ?   -- prefix_disc_ARCH_%
+    //   AND l.sequence = 20   -- element line (not shim at 10)
+    //   AND l.child_product_id = ?  -- match product type if possible
+    // ORDER BY ABS(l.dz) ASC  -- closest standoff
+    // LIMIT 1
+}
+
+public record RecipePlacement(int mBomLineId, double dz, double rotationRule) {}
+```
+
+For coverage topology buildings (TE): match by (source_building, disc) and nearest dz band.
+For routing topology buildings (RM): match by (source_building, disc, storey).
+
+### Step 2: Apply in DisciplineBomBuilder
+
+When writing a DISC LEAF row, call `lookupArchetype`. If found:
+- Override `dz` with `recipe.dz()` (standardized standoff)
+- Set `M_BOM_Line_ID = recipe.mBomLineId()`
+- Set `rotation_rule` on the output row if non-zero
+
+If not found: keep current behaviour (raw IFC centroid offset) — do NOT break
+buildings that have no MEP_RECIPE yet.
+
+### Step 3: Verify link count
+
+After compilation, the count of DISC LEAF rows with `M_BOM_Line_ID != NULL`
+must be > 0 for TE and RM.
+
+## Witness claim
+
+**W-J1-RECIPE-LINK:** After running IFCtoBOMPipeline + DAGCompiler on TE and RM:
+- `SELECT COUNT(*) FROM c_orderline WHERE Discipline IN ('FP','ACMV','CW','ELEC','SP') AND host_type='LEAF' AND M_BOM_Line_ID IS NOT NULL` > 0
+- DISC LEAF dz values match ERP.db archetype dz (within 50mm band tolerance)
+- No regression: DISC Qty totals unchanged (FP=6863, ACMV=1621, etc.)
+
+Write at top of modified section:
+```java
+// MEP recipe bridge — Witness: W-J1-RECIPE-LINK
+// Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 recipe consumption
+```
+
+## Report back — findings only
+
+1. Where in DisciplineBomBuilder are DISC LEAF dz values currently set?
+   Is it raw centroid offset or something else?
+2. How many DISC LEAF rows get M_BOM_Line_ID populated after the fix (TE + RM)?
+3. Before/after dz sample: 3 FP LEAF rows — old dz vs new dz from archetype
+4. Any disciplines where no matching archetype exists → fallback to raw?
+5. Gate results: TE and RM gate pass/fail unchanged?
+
+## Verification
+
+```bash
+./scripts/run_RosettaStones.sh classify_rm.yaml classify_te.yaml classify_sh.yaml
+```
+
+Then:
+```sql
+-- TE: DISC LEAF recipe linkage
+SELECT Discipline,
+  SUM(CASE WHEN M_BOM_Line_ID IS NOT NULL THEN 1 ELSE 0 END) recipe_linked,
+  COUNT(*) total_leaf
+FROM c_orderline
+WHERE host_type='LEAF' AND Discipline IN ('FP','ACMV','CW','ELEC','SP')
+GROUP BY Discipline;
+
+-- Qty totals unchanged
+SELECT Discipline, SUM(Qty) total_qty
+FROM c_orderline WHERE host_type='DISCIPLINE'
+GROUP BY Discipline;
+```
+
+Expected: recipe_linked > 0 per discipline; Qty totals identical to pre-fix.
+
+## Commit
+
+`[S104-J1] DAGCompiler: DISC LEAF dz from ERP.db MEP_RECIPE archetypes (W-J1-RECIPE-LINK)`
+
+---
+
+# DONE
+

@@ -1,0 +1,209 @@
+# ⚠ DO NOT REMOVE — MANDATORY PREAMBLE
+# Scope: SH and DX both. Every fix verified on both buildings.
+# After every run: read the log before any conclusion. Exit code is not evidence.
+# This prompt stays ACTIVE until OPEN_ISSUES.txt is empty. Do not archive.
+# Context: when context reaches ~10% remaining, wrap up cleanly — commit any open fix, update # DONE, and exit to a new session.
+# ---
+
+# 2D_018 — Triage Open Issues
+
+## Prime Directive
+Work through OPEN_ISSUES.txt top to bottom, one issue per task.
+Do not close this session until all High issues have a § log line proving them fixed
+and Watchdog has confirmed each one.
+
+## Permanent Rules (always apply, every session)
+
+**Log-first rule:** Do NOT run fresh when recent log files exist. Read the latest
+log in `2D_Layout/output/` first. Only rerun if the logs are stale (older than
+your changes) or absent. Running for the sake of running wastes context.
+
+**Log self-sufficiency rule:** Every §-tagged log line must be self-explanatory
+without manual SVG/DXF inspection. Include all values needed to verify the claim:
+  `§GRID_BUBBLE_Y FLOOR: bubble=42mm tier_1=18mm tier_2=10mm building_edge=0 (True)`
+  not just `§GRID_BUBBLE_Y done`. A developer reading only the log must be able to
+  confirm or refute any claim. If a log line needs "look at the SVG to verify" —
+  add more logging instead.
+
+## Pre-flight (every session start)
+1. Read `2D_Layout/OPEN_ISSUES.txt` — this is the only issue list
+2. Read `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §spec section cited in the issue
+3. Read recent log files in `2D_Layout/output/` (log-first rule above)
+4. Only run buildings fresh if logs are absent or stale:
+   ```
+   cd 2D_Layout/python
+   python3 drawing_writer_dxf.py --all --proof ../input/SH_extracted.db
+   python3 drawing_writer_dxf.py --all --proof ../input/DX_extracted.db
+   ```
+
+## I-22 Clarification (2026-04-09)
+One code path, template-driven, spec-defined, building-agnostic.
+SH floor plan complies; elevations (all faces, all buildings) do not — find the deviation, fix it.
+Do NOT add building-specific branches. Do NOT invent parametric abstractions.
+The template and spec define the rule. Any building fed in must produce the same structure.
+Concrete gaps found (2026-04-09 audit):
+  - All elevations: title block MISS, level label text MISS, bay dims MISS
+  - DX elevations: roof silhouette MISS
+  - Roof plan completeness check: incorrectly applies floor-plan checks (rooms/furniture/doors)
+
+## Working Rule
+- One issue per task. Fix it. Rerun. Read the log. Find the § line that proves it.
+- If no § line exists proving the fix — add logging first, rerun, then fix.
+- Do not move to next issue until Watchdog confirms current one via § evidence.
+
+## Watchdog (runs in same session after each fix)
+- Read § log lines from the run
+- For the issue just fixed: find the exact § line proving it resolved
+- If no § line → coder adds logging, reruns, produces evidence
+- Only then: remove issue from OPEN_ISSUES.txt and note § proof in # DONE
+
+## Verification per issue
+Each issue closed requires:
+- [ ] § log line cited verbatim proving the fix
+- [ ] Both SH and DX pass (where applicable)
+- [ ] Removed from OPEN_ISSUES.txt by Watchdog only
+
+## Session closeout
+- Commit only after Watchdog confirms at least one issue closed with § evidence
+- Commit message: `[2D_018] Fix I-## description`
+- This prompt file is NOT moved to done until OPEN_ISSUES.txt is empty
+
+# DONE
+<!-- Watchdog appends confirmed fixes here with § log line evidence -->
+
+## I-13 — MEP plan blank (VERIFIED ALREADY FIXED 2026-04-09)
+**§ Evidence:** `§D MEP plan discipline=PLUMBING: 16 terminals drawn` + `§D MEP segments: 407 flow segments drawn` + DXF entity count=587. Not blank. Pre-existing fix from 2D_017 session.
+
+## I-03 — DX Level 2 floor plan missing (FIXED 2026-04-09)
+**Fix:** `_detect_floor_storeys()` + per-storey loop in `main()` + `storey_name/storey_floor_z` params in `write_floor_plan_dxf()` + storey filter on elements and cut_results + `section_cut.py` element transform applied (local cut_z + world XY translation).
+**§ Evidence (log_DX_FLOOR_Level1/Level2_20260409_1624.txt):**
+- `§STOREY_PLAN storey='Level 1' code=GF floor_z=-0.00m → DX_FLOOR_GF_*.dxf`
+- `§STOREY_PLAN storey='Level 2' code=FF floor_z=3.10m → DX_FLOOR_FF_*.dxf`
+- `§STOREY_FILTER storey='Level 1': 21 walls, 6 doors, 4 windows, 41 furniture after filter`
+- `§STOREY_FILTER storey='Level 2': 25 walls, 8 doors, 18 windows, 20 furniture after filter`
+- `§2.5 Section cut Z=1.20m storey=Level 1: 27 CUT, 43 BELOW, 21 ABOVE`
+- `§2.5 Section cut Z=4.30m storey=Level 2: 43 CUT, 26 BELOW, 24 ABOVE`
+- `§2.8 Floor plan: 89 cut polylines, 4 grids, 4 dims, 1 rooms, 10 tags` (Level 1)
+- `§2.8 Floor plan: 183 cut polylines, 4 grids, 4 dims, 1 rooms, 26 tags` (Level 2)
+- `[PASS] FLOOR PLAN` for both (7/7 views pass)
+
+## I-18 — FULLY FIXED 2026-04-09
+**Root cause:** `section_cut.py` was slicing in LOCAL element space but using WORLD cut_z. For Level 1, this accidentally worked (world 1.2m ≈ local 1.2m). Fix: apply `element_transforms.center_z` → local_cut_z; translate contour XY by center_xy to world space.
+**Side effect:** PROOF_NO_OVERSHOOT now passes for both SH and DX (SVG min_y = 0.00, no negative coords).
+**§ Evidence (both buildings):**
+- `§STOREY_FILTER storey='Level 1': 21 walls... after filter` (Level 2 walls excluded from Level 1 plan)
+- SH FLOOR SVG: `min_y=0.00` — no overshoot
+- DX FLOOR_GF SVG: `min_y=0.00` — no overshoot
+- `test_conformity.py`: PROOF_NO_OVERSHOOT PASS (only remaining FAIL is GRID_LINES on FRONT ELEV — pre-existing)
+
+## I-19, I-01 — Window tag stacking/duplicates (FIXED 2026-04-09)
+**Fix:** Tag loop now uses storey-filtered `doors`/`windows` (was `elements['doors/windows']` — wrong source).
+**§ Evidence:** `§2.8 Floor plan: 89 cut polylines, 4 grids, 4 dims, 1 rooms, 10 tags` (Level 1 has 6D+4W=10 tags, no cross-storey stacking)
+
+## I-20, I-02 — Room label overlap/duplicate centroids (FIXED 2026-04-09)
+**Fix:** Room labels inferred from storey-filtered `furniture` and `walls`.
+**§ Evidence:**
+- Level 1: `§2.6 Room LIVING at (4.44,-8.83) area=136.7m²` (LIVING only)
+- Level 2: `§2.6 Room BEDROOM at (4.45,-8.91) area=134.0m²` (BEDROOM only)
+
+## I-23 — Tier-2 dim redundant when single bay (FIXED 2026-04-09)
+**Fix:** `generate_dimensions()` in `drawing_writer.py`: skip bay dims when `len(axis_grids) == 2` (only 1 bay). Applied to both x and y axes. Completeness check threshold lowered from 3 to 2 to allow 1-bay buildings with 2 overall dims.
+**§ Evidence:**
+- SH: `§I-23 FLOOR tier-2 suppressed y-axis: single bay 1→2`
+- DX: `§I-23 FLOOR tier-2 suppressed x-axis: single bay A→B` + `§I-23 FLOOR tier-2 suppressed y-axis: single bay 1→2`
+- SH completeness 16/16, DX (both storeys) 16/16
+
+## I-22 — Elevations missing title block / level labels / bay dims (FIXED 2026-04-09)
+**Root cause:** 3 completeness check bugs: (a) Title block hardcoded `False`; (b) level label regex matched 'LEVEL' not 'LVL'; (c) bay dims counted DIMENSION entities (always 0) instead of LINE+TEXT. Also: DX roof silhouette missing — `roof_silhouette()` only queried IfcRoof; DX uses IfcSlab with 'Roof' in name (§5.3a rule 2). Roof plan check incorrectly used `is_plan` ('PLAN' in view_type catches ROOF PLAN). IfcPlate curtain wall used A-GLAZ layer (same as window) causing false MISS on louvre check — moved to A-CURT.
+**§ Evidence (SH 6/6, DX 7/7 — all 100%):**
+- `§RENDER TITLE_BLOCK revision_no value=0 src=2d_title_block.default_value`
+- `§2.7 Level GRD at -0.150m → GRD. LVL  -0.150` (+ 6 more level label entries)
+- `§2.4 Bay dim A→B = 4900mm`, `§2.4 Bay dim B→C = 9200mm`
+- All SH: ELEV FRONT/REAR/LEFT/RIGHT 12/12 (100%), ROOF PLAN 9/9 (100%)
+- All DX: ELEV FRONT/REAR/LEFT/RIGHT 12/12 (100%), ROOF PLAN 9/9 (100%)
+
+## I-25 — Level marker solid triangles → 45° oblique ticks (FIXED 2026-04-09)
+**Fix:** `msp.add_solid(tri, ...)` → 2× `msp.add_line(tick_dx, tick_dy, ...)` using same tick_angle/tick_len template params as dimension ticks. IfcPlate curtain wall moved from A-GLAZ to A-CURT layer so louvre check only triggers for true IfcWindow. Completeness check updated from `n_solid >= 3` → `n_line >= 3`.
+**§ Evidence (both buildings):**
+- `§I-25 Level GRD marker: 45° tick at (-10235,-150)` (7× per elevation face, SH)
+- `§I-25 Level GRD marker: 45° tick at ...` (5× per elevation face, DX)
+- SH: ALL 6/6 12/12 (100%). DX: ALL 7/7 12/12 (100%)
+
+## I-26 — Spurious closing line + missing shell thickness on roof silhouette (FIXED 2026-04-09)
+**Fix 1 (spurious close):** `roof_silhouette()` now returns `(hull, thickness_m)`. DXF hull drawn with `close=False`. SVG renderer updated: `<polygon>` only for `is_closed=True`, `<polyline>` for `is_closed=False` (no auto-close). **Fix 2 (shell thickness):** `roof_silhouette()` measures slab thickness from boundary edge Z-span. Inner slab face drawn as second LWPOLYLINE shifted down by `thickness_m`. IfcSlab '%Roof%' fallback also extended for DX flat roof.
+**§ Evidence (SH, all 4 faces):**
+- `§I-26 Roof silhouette: 7 pts, close=False (no spurious close)` (front/rear)
+- `§I-26 Roof silhouette: 45 pts, close=False (no spurious close)` (left/right curved)
+- `§I-26 Inner slab face: thickness=0.141m` (SH)
+- `§I-26 Inner slab face: thickness=0.457m` (DX)
+- SH 6/6 100%, DX 7/7 100%
+
+## I-29 — Grid bubbles inside dim tiers (FIXED 2026-04-09)
+**Root cause:** Bubble center placed at `bld_max_y + grid_ext + bubble_r` (19mm) while tier_1 dim at 18mm — barely 1mm gap. Elevation dims placed BEYOND bubble rather than before it.
+**Fix:** Floor/roof plan: bubble at `bld_max_y + DIM_OFFSET_2*scale + grid_ext + bubble_r` (42mm). Elevation: bubble at `grid_above + tier_1_off + bubble_r + grid_gap`, dim at `grid_above + tier_2_off`. Template `tier_1_offset_mm=18`, `tier_2_offset_mm=10`. Extracted `_draw_grid_bubble()` helper reused across all three code paths.
+**§ Evidence (both buildings):**
+- `§GRID_BUBBLE_Y FLOOR x-axis: bubble=42mm tier_1=18mm tier_2=10mm building_edge=0 (bubble>t1>t2>edge: True)` (SH + DX)
+- `§GRID_BUBBLE_Y ELEV: bubble_y=78.8mm tier_1_y=72.8mm tier_2_y=64.8mm grid_above=54.8mm (bubble>t1>t2>grid_above: True)` (SH)
+- SH 6/6 100%, DX 7/7 100%
+
+## I-24 — Tick marks doubled at shared bay endpoints (FIXED 2026-04-09)
+**Fix:** Dedup set `_drawn_ticks` tracks (dim_row, pos) pairs; skip tick if already drawn. Applied in floor plan, elevation bay, and roof plan dim loops.
+**§ Evidence:**
+- SH: `§I-24 FLOOR tick dedup: 1 duplicate ticks suppressed at shared endpoints` (x-axis shared point B between bays A-B and B-C)
+- DX: `§I-24 FLOOR tick dedup: 0 duplicate ticks suppressed` (correct — 1 bay per axis, no shared inner endpoints)
+- All views PASS both buildings
+
+## I-10 — REVISION_NO row in title block (FIXED 2026-04-09)
+**Fix:** DB keys renamed from Malay (PINDAAN_NO) to English (REVISION_NO). Template `drawing_template.json` fields updated to match. Code key comparisons updated. `_FIELD_LABEL_EN` translation dict removed. Default value '0' applied via `REVISION_NO` key check.
+**§ Evidence (both buildings):**
+- `§RENDER TITLE_BLOCK revision_no value=0 src=2d_title_block.default_value` (6×SH, 7×DX)
+- SH FLOOR completeness: 16/16 (100%) — was 15/16 (93%)
+- DX FLOOR completeness: 16/16 (100%) both storeys
+
+## I-07 — JKR logo in title block header (FIXED 2026-04-10)
+**Root cause:** Logo was already being inserted (§RENDER TITLE_BLOCK jkr_logo inserted), but lacked a `§I-07` tag and no completeness feature verified the IMAGE entity.
+**Fix:** Renamed log to `§I-07 JKR logo inserted ...`. Added "JKR logo (IMAGE entity)" feature to floor plan (17th), elevation (13th), and roof plan (10th) completeness checklists. The IMAGE entity count proves presence without visual inspection.
+**§ Evidence (both buildings, all views):**
+- `§I-07 JKR logo inserted w=15.0mm h=12.0mm layer=A-TTLB src=template.title_block.logo_file` (6×SH, 7×DX)
+- `[HAVE] JKR logo (IMAGE entity): actual=1, ref=jkr.png raster in title block` (every view)
+- SH: FLOOR 17/17, ELEV ×4 13/13, ROOF 10/10. DX: FLOOR ×2 17/17, ELEV ×4 13/13, ROOF 10/10
+- OPEN_ISSUES.txt now empty — all issues resolved
+
+## I-27 — Storey-qualified floor plan title (FIXED 2026-04-10)
+**Fix:** Added `_STOREY_TITLES` map (`GF→'GROUND FLOOR PLAN'`, `FF→'FIRST FLOOR PLAN'`, etc.). Added `drawing_title`/`drawing_no` params to `write_floor_plan_dxf()`. Multi-storey loop in `main()` now computes `_stitle`/`_sno` per storey code and passes them.
+**§ Evidence (DX):**
+- `§STOREY_PLAN storey='Level 1' code=GF ... title='GROUND FLOOR PLAN' sheet='A-01-GF'`
+- `§I-27 floor plan title='GROUND FLOOR PLAN' sheet='A-01-GF' storey='Level 1'`
+- `§STOREY_PLAN storey='Level 2' code=FF ... title='FIRST FLOOR PLAN' sheet='A-01-FF'`
+- `§I-27 floor plan title='FIRST FLOOR PLAN' sheet='A-01-FF' storey='Level 2'`
+- SH: `§I-27 floor plan title='FLOOR PLAN' sheet='A-01' storey=None` (single-storey unchanged)
+- DX 7/7 PASS, SH 6/6 PASS
+
+## I-28 — MEP plan drawing title from page table (FIXED 2026-04-10)
+**Fix:** Added `drawing_title`/`drawing_no` params to `write_mep_plan_dxf()`. Updated `DX_2D.json` M-01 sheet: `title='GROUND FL PLUMBING'`, `sheet='M-01-GF'`. `main()` passes `page['title']`/`page['sheet']` to `write_mep_plan_dxf()`. Added `§I-28` log.
+**§ Evidence (DX):**
+- `§I-28 MEP plan title='GROUND FL PLUMBING' sheet='M-01-GF' src=page_json`
+- DX 7/7 PASS
+
+## I-30 — MEP IFC classes in 2d_drawing_style + 2d_drawing_symbol (FIXED 2026-04-10)
+**Fix:** Created migration `2D_020_mep_drawing_styles.sql`. Added 6 `2d_drawing_style` rows: IfcPipeSegment, IfcPipeFitting, IfcDuctSegment, IfcDuctFitting, IfcSwitchingDevice, IfcElectricAppliance. Added 4 `2d_drawing_symbol` rows. Applied to both input/2D.db and lib/input/2D.db. Added `check_mep_symbol_coverage()` to test_conformity.py pre-flight.
+**§ Evidence (conformity_log.txt):**
+- `§I-30 test_mep_symbol_coverage: all 5 MEP IFC classes have 2d_drawing_style rows`
+
+## I-21 — MEP terminal symbols from elements_rtree footprint (FIXED 2026-04-10)
+**Fix:** Terminal loop now queries `guid, element_name, minX, maxX, minY, maxY` from elements_rtree. Draws LWPOLYLINE `(minX,minY)→(maxX,minY)→(maxX,maxY)→(minX,maxY)→close` per terminal. Fallback circle only if bbox < 10mm. Legend keyed by `element_name.split(':')[0]`. Removed `_draw_mep_symbol()`/`_lookup_symbol_code()` calls for terminals.
+**§ Evidence (DX):**
+- 16× `§SYMBOL_FOOTPRINT guid=... element='...' bbox=(NNN×NNNmm) layer=A-MEP-PLMB at (x,y)`
+- `§D MEP plan discipline=PLUMBING: 16 terminals drawn, 0 SYMBOL_FALLBACK (no_rtree)`
+- Zero circles on MEP layer — all rendered as LWPOLYLINE from real IFC footprint
+- DX 7/7 PASS, SH 6/6 PASS
+
+## I-21 — MEP symbols from 2d_drawing_symbol (FIXED 2026-04-09)
+**Fix:** `_lookup_symbol_code()` (longest-match keyword_to_symbol in template) → symbol_code.
+`_draw_mep_symbol()` now draws per-code geometry (CEILING_FAN=6-line asterisk §14.3, CEILING_LIGHT=circle_dot, SWITCH=line+dot, POWER_POINT=circle_cross, etc.).
+`write_mep_plan_dxf()` loads 2d_drawing_symbol at runtime, logs §SYMBOL_LOOKUP per terminal, builds legend with symbol_name+qty from library. `drawing_template.json` gets `mep.keyword_to_symbol` (30-entry longest-match map).
+**§ Evidence (DX):**
+- `§I-21 symbol library loaded: 19 entries from 2d_drawing_symbol src=.../input/2D.db`
+- `§SYMBOL_LOOKUP element='M_Water Closet...' → symbol_code=WC_SEAT name='Water Closet (Seating type)' r=2.0mm`
+- `§D MEP plan discipline=PLUMBING: 16 terminals drawn, 0 SYMBOL_GAP`
+- All views PASS both buildings

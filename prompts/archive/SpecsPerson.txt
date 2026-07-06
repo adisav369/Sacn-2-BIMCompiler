@@ -1,0 +1,100 @@
+You are the specs writer for bim-compiler. No code. Docs only.
+
+## Role
+- Proofread, coherence-check, and update documentation across docs/ and internal/
+- Ensure cross-doc consistency (terminology, architecture claims)
+- Keep docs/ clean for public github.io site
+- Move internal content to internal/ when it shouldn't be public
+- Prune stale references, remove dead concepts cleanly (no "deprecated" labels)
+- Sync coder prompt findings into specs after each batch of commits
+
+## Numbers Policy
+**PROGRESS.md is the single source of truth for volatile counts.** Don't chase
+number updates across docs during dev. Save for release-prep coherence passes.
+
+## Periodic Checks (run each session)
+1. Terminology: "compilation model" not "gospel", "ERP.db" not "validation.db", no "5-DB"
+2. Removed concepts: no work_output.db, no doc_base_type, no CO_EmptySpaceLine, no ESLine
+3. YAML framing: YAML = Order input only. IFC drives extraction. No "YAML→BOM"
+4. IFCtoBOM: produces BOM recipe (m_bom + m_bom_line). No C_Order, no C_OrderLine, no callouts
+5. Cross-references: docs/ links to internal/ use GitHub URLs
+6. Zero "deprecated" labels in docs/
+
+## File Layout
+- docs/     → public (github.io via mkdocs)
+- internal/ → internal (pricing, audit, strategies, research)
+- prompts/  → gitignored, not committed
+
+## Standing Rules
+- Read CLAUDE.md first (session protocol)
+- Read PROGRESS.md §Current State
+- One bounded task per session
+- Specs before code. Findings before fixes.
+- iDempiere model governs (AD_Org, Callout, DocEvent, M_BOM)
+
+## Last Reviewed
+- Commit: a5a8eb8f (S102-docs: §10.4.6.1 Discipline Separation, 2026-03-31)
+
+## Current State (resume from here)
+
+**Fleet (S102):** 212/238 PASS, 19 ALL GREEN. 34 buildings (DM excluded). GEO ON, PATTERN ON.
+**Commits this session:** 813a0a98, 7d0e2604, a5a8eb8f (+ coder commits 77e8aa8d..82fe2847)
+
+### Specs written/updated this session
+- DISC_VALIDATION_DB_SRS §10.4.6.1: Discipline Separation — two-class architecture (smoking gun: DisciplineBomBuilder flat writes, corrective: IFCtoBOM ARC+STR only, DAGCompiler Callout from ERP.db recipes)
+- DISC_VALIDATION_DB_SRS §10.4.12: Gap 1 CLOSED (P118 ceiling void), Gap 4 insulation CLOSED (P121), Gap 4 LPG wall thickness CLOSED (P121)
+- WorkOrderGuide Step 5: ScopeBomBuilder IFC-driven (P125), StructuralBomBuilder rel_aggregates (P129), storey auto-discovery (P127)
+- WorkOrderGuide Step 6: References 12-stage pipeline
+
+### Internal docs committed
+- 5 research docs from S101 SpecsPerson session (dimensional folding, extraction efficiency, IFC gaps, standards compilation, vocabulary strategy)
+
+### Prompts written
+- `00-supplement.txt` — S102 fleet forensics: 7 recommendations (R1-R7), YAML audit, verified FK/IN IfcSpace data
+- `00b_discipline_separation.txt` — Two-class corrective (IFCtoBOM + DAGCompiler), references §10.4.6.1
+
+### Key findings this session
+- **Discipline smoking gun:** DisciplineBomBuilder.java:130-147 writes ALL elements flat under FLOOR. MEP should NOT be in BOM — should come from ERP.db shared recipes via Callout/DocEvent. §10.4.6 describes target but §10.4.4 contradicts it (flat was a tack overflow fix). §10.4.6.1 now resolves the contradiction.
+- **GEO coverage gap:** GEO only checks elements with IFC GUID format (22-char base64). 5 buildings have <10% coverage. "Zero drift" on 0.3% is meaningless. PATTERN is the honest extraction signal.
+- **GEO tautology for extracted buildings:** BOM encodes extraction positions, compiler decodes them. Pairwise drift = 0 by construction. Real test is route-generated positions (RouteBuilder), which are at 3% coverage (258 edges for TE's 8,056 MEP elements).
+- **YAML audit:** 3 violations found — geometry_fail_threshold (TE, MO), origin_m/aabb_mm (FK 7, IN 73, DM 5). IN has 253 IfcSpace rows (dead scope boxes). FK has 0 (legitimate fallback). DM is generative (legitimate).
+- **CE drift was misdiagnosed:** DRIFT=39,900 was stale extraction, not routing bug. Fresh re-extraction → ALL GREEN. P134 likely unnecessary.
+- **PATTERN logging:** 3 call sites, all write-only. No runtime influence. Storey-oriented by accident (coder placed log lines at floor creation). Should be abstract (spatialContainer).
+
+### Open items
+- bim_architecture_viz.html: CO_EmptySpaceLine/ESLine legacy names
+- mkdocs ~15 stale anchor warnings
+- §10.4.4 vs §10.4.6 contradiction partially resolved by §10.4.6.1 — §10.4.4 "BUILDING→FLOOR→LEAF is correct" needs qualifier (correct for ARC+STR only, MEP via Callout)
+- P00a (compilation) DONE section still empty — coder didn't write back
+- PROGRESS.md needs fleet count update (187→212/238)
+- ACTION_ROADMAP "What Exists Today" table needs update
+
+### Prompt pipeline
+1. **P00b** discipline_separation — ready for coder (spec + prompt written)
+2. **P00-supplement R1-R7** — fleet convergence fixes
+3. **P133** fleet triage — scope narrower than written (R1-R7 cover most)
+4. **P134** CE multi-leg ROUTE — likely unnecessary (CE already GREEN)
+
+---
+
+## Logbook
+
+### 2026-03-31 — S102 SpecsPerson Session
+
+**Duration:** Extended session. Forensic analysis + spec corrections.
+**Commits:** 813a0a98 (internal docs), 7d0e2604 (spec sync P118/P121/P125), a5a8eb8f (§10.4.6.1 discipline separation)
+**Deployed:** 3× to github.io
+
+**What was done:**
+1. Periodic checks — clean except known bim_architecture_viz.html
+2. P00 fleet results analysis — 212/238 PASS, 19 ALL GREEN
+3. PATTERN log forensics — storey assignment quality across 35 buildings
+4. Deep audit: discipline separation smoking gun (DisciplineBomBuilder flat writes)
+5. GEO coverage gap identified (GUID regex filter → 5 buildings <10% coverage)
+6. GEO tautology for extracted buildings documented (encode/decode = 0 by construction)
+7. YAML dependency audit — 3 violations (geometry_fail_threshold, origin_m/aabb_mm)
+8. Verified FK/IN IfcSpace data (FK=0, IN=253 — IN scope boxes are dead code)
+9. §10.4.6.1 written — two-class discipline separation architecture
+10. Prompt 00b written — references §10.4.6.1, fails allowed
+11. 00-supplement.txt — R1-R7 recommendations with watchdog YAML corrections
+12. Spec sync: Gap 1/4 closed (P118/P121), WorkOrderGuide Step 5-6 updated

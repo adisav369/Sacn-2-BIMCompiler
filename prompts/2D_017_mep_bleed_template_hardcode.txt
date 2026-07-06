@@ -1,0 +1,162 @@
+# ⚠ DO NOT REMOVE — MANDATORY PREAMBLE
+# Scope: SH and DX only. Execute every verification for BOTH buildings.
+# After every script or test run: read the output log before drawing any conclusion.
+# Exit code alone is not evidence. SKIP and partial results only appear in the log.
+# ---
+
+# 2D_017 — MEP Bleed + Template Gap + Hardcode Fix
+
+## What this session does
+
+Fix three related High issues from §18.1:
+- I-11: MEP bleed on floor plan (IfcFlow* render as furniture on DX A-01)
+- I-12: MEP template gap (all MEP rendering may still use hardcoded values)
+- I-14: Hardcoded symbols in code (violates §1 R5)
+
+**Pre-read before touching code:**
+1. Read `2D_ARCHITECTURAL_LAYOUT.md` §1 R5, §5.1, §17
+2. Read `2D_ARCHITECTURAL_LAYOUT.md` §18.1 issues I-11, I-12, I-14
+
+## Pre-flight — discover actual state first
+
+### Step 1: Run both buildings, read logs
+
+```
+cd 2D_Layout/python
+python3 drawing_writer_dxf.py --all --proof ../input/SH_extracted.db
+# Read: output/DXF/log_SH_FLOOR_*.txt — search for IfcFlow, BELOW, SKIP
+
+python3 drawing_writer_dxf.py --all --proof ../input/DX_extracted.db
+# Read: output/DXF/log_DX_FLOOR_*.txt — search for IfcFlow, BELOW, SKIP
+```
+
+### Step 2: Verify _BELOW_SKIP is active
+
+In `drawing_writer_dxf.py` grep for `_BELOW_SKIP` — confirm IfcFlowTerminal/
+Segment/Fitting/Controller are in the set (dxf:1972-1974). If present, I-11
+may already be fixed. Confirm from log: `§2.5` BELOW count should not include
+IfcFlow* elements. If BELOW count includes them → not fixed.
+
+### Step 3: Audit conformity test filename bug
+
+The conformity test groups files by `f.split('_')[0]` → gives 'SH' or 'DX',
+not 'FLOOR'. This means ALL floor plan DXFs are SKIPPED — NO_MEP_BLEED never
+runs against a real floor plan. This must be fixed before I-11 can be verified.
+
+Fix: `test_conformity.py` grouping key must be the view token, not the prefix.
+`DX_FLOOR_20260409_0920.dxf` → key should be `DX_FLOOR`, not `DX`.
+
+### Step 4: Audit template for MEP keys
+
+```
+grep -i "mep\|flow\|terminal\|segment" drawing_template.json
+```
+List which MEP keys exist vs which are still hardcoded in `drawing_writer_dxf.py`.
+For each hardcoded value: what template key should it read from?
+
+### Step 5: Audit hardcoded symbols (I-14)
+
+```
+python3 test_no_hardcode.py
+# Read the output — does it catch MEP-specific hardcodes?
+```
+If `test_no_hardcode.py` doesn't scan MEP rendering functions, extend it.
+
+## Tasks (only after pre-flight confirms the gap)
+
+### Task 1: Fix conformity test grouping (prerequisite for I-11 verification)
+
+In `test_conformity.py` main(), fix the view grouping key:
+```python
+# Current (wrong): groups ALL DX_* files under key 'DX'
+view = f.split('_')[0]
+
+# Fix: use building_prefix + view_type as key
+parts = f.replace('.dxf', '').split('_')
+# DX_FLOOR_20260409_0920 → key = 'DX_FLOOR'
+view = '_'.join(parts[:2]) if len(parts) >= 2 else parts[0]
+```
+After fix: run conformity for SH and DX, read `output/conformity_log.txt`.
+Expect: FLOOR_PLAN, FRONT_ELEV, REAR_ELEV, LEFT_ELEV, RIGHT_ELEV, ROOF_PLAN
+all checked (not SKIPPED).
+
+### Task 2: Verify / fix I-11 MEP bleed
+
+After Task 1, if NO_MEP_BLEED FAIL appears:
+- Confirm `_BELOW_SKIP` contains all four IfcFlow* classes
+- If missing → add them
+- If present but still bleeding → check if elements are being routed through
+  a different code path (MEP page writer calling floor plan functions)
+- Re-run DX, read log, confirm `§2.5 BELOW` count excludes IfcFlow*
+
+### Task 3: Fill I-12 MEP template gap
+
+For each hardcoded MEP value found in Step 4:
+- Add the key to `drawing_template.json` under `mep.*`
+- Replace the hardcode with `tpl.get('mep', {}).get('key', fallback)`
+- Log: `§VALUE mep.key_name=value (from template.mep.key_name)`
+- Run `test_no_hardcode.py`, read output — must pass
+
+### Task 4: Verify I-14 hardcode gate covers MEP
+
+Extend `test_no_hardcode.py` to scan MEP rendering functions if not already.
+After fix: `test_no_hardcode.py` → exit 0, read output log.
+
+## Verification
+
+- [ ] `test_conformity.py` no longer SKIPs floor plan DXFs — all 6 view types checked
+- [ ] `test_conformity.py --db ../input/SH_extracted.db` → exit 0, read log
+- [ ] `test_conformity.py --db ../input/DX_extracted.db` → exit 0, read log
+- [ ] NO_MEP_BLEED: PASS on DX_FLOOR (282 IfcFlow* not on A-01)
+- [ ] `test_no_hardcode.py` → exit 0, read output — MEP functions scanned
+- [ ] `drawing_template.json` has all MEP keys used by rendering code
+- [ ] §18.1 I-11, I-12, I-14 marked DONE in spec
+
+## Session closeout
+
+- Commit: `[2D_017] MEP bleed fix + template keys + hardcode gate`
+- Update §18.1 → §18.2 for resolved issues
+- Append findings after `# DONE`
+
+# DONE
+
+## Findings — 2D_017
+
+### Pre-flight state
+- `_BELOW_SKIP` (dxf:1972-1974) already contained all 4 IfcFlow* classes — I-11 code fix was in place before this session.
+- `drawing_template.json` already had `mep` section with major keys — I-12 was partially done.
+- Conformity test grouping bug: `f.split('_')[0]` collapsed all `DX_*` files to one key → only one DXF per building was ever checked. NO_MEP_BLEED was never verified on any floor plan.
+- `_identify_drawing_type` had matching bug: `base.split('_')[0]` = `'DX'` for `DX_FLOOR_...` → no match in `_SHORT_TO_ID` → returned `None` → SKIP.
+
+### Fixes applied
+
+**Task 1 — Conformity test grouping (prerequisite for I-11 verification)**
+- `test_conformity.py:672`: key = `'_'.join(parts[:2])` → `DX_FLOOR`, `DX_ROOF`, etc.
+- `test_conformity.py:102`: `_identify_drawing_type` now iterates all parts to find match in `_SHORT_TO_ID`.
+- Result: conformity test now checks 13 DXF files (was effectively 2).
+
+**Task 2 — I-11 verified**
+- DX FLOOR: 0 MEP entities on MEP layers (direct ezdxf count).
+- Conformity log: `[PASS] A-01 NO_MEP_BLEED: 0 entities on MEP layers` ✓
+
+**Task 3 — I-12 MEP template gap**
+- Remaining hardcodes: `r * 0.25` (inner dot, dxf:3224) and `'○'`/`'●'` legend chars (dxf:3334).
+- Added to template: `mep.inner_dot_radius_factor=0.25`, `mep.symbols.*.legend_char`.
+- Code now reads both from template with `§VALUE` logs.
+
+**Task 4 — I-14 hardcode gate covers MEP**
+- Added `'def write_mep_plan_dxf'` and `'def _draw_mep_symbol'` to `SCAN_FUNCTIONS`.
+- `test_no_hardcode.py` → ALL PASS (colors, dasharray, labels, numbers).
+
+### New issue exposed — I-18
+Conformity test grouping fix exposed a pre-existing DX floor plan bug:
+- `PROOF_NO_OVERSHOOT FAIL`: SVG has elements at Y≈-44.7mm (above viewBox top).
+- Content max Y=268.5 in vh=278.5, but min_y negative → `uy=43.7`.
+- Added as I-18 in §18.1. Not fixed in this session — out of scope.
+
+### Verification status
+- ✓ `test_no_hardcode.py` → ALL PASS
+- ✓ NO_MEP_BLEED: PASS on DX_FLOOR (0 MEP entities)
+- ✓ §18.1 I-11, I-12, I-14 moved to §18.2 DONE
+- ✓ 13 DXF files now checked (was ~2 effective)
+- ✗ `test_conformity.py → exit 0` blocked by I-18 (pre-existing DX centering bug, not in this session's scope)

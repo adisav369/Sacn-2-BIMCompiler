@@ -1,0 +1,80 @@
+# ⚠ DO NOT REMOVE — MANDATORY PREAMBLE
+# Scope: SH and DX only. Execute every verification for BOTH buildings.
+# After every script or test run: read the output log before drawing any conclusion.
+# Exit code alone is not evidence. SKIP and partial results only appear in the log.
+# ---
+
+# 2D_016 — Coder Discipline Audit
+
+## What this session does
+
+Audit and fix process violations found in 2D_015. Rules are now in spec.
+This session verifies compliance and updates `internal/2DSpecToCode.md`.
+
+## Pre-flight
+
+1. Read `2D_ARCHITECTURAL_LAYOUT.md` §1 R8-R10 (new rules from 2D_015)
+2. Read `2D_ARCHITECTURAL_LAYOUT.md` §18 (issue-tracking + agent rules)
+3. Read `internal/2DSpecToCode.md` (stale — needs full re-audit, I-17)
+
+## Tasks
+
+### 1. Re-audit `internal/2DSpecToCode.md`
+File line refs are broken (dxf grew 2334→3722 lines). For each Y row:
+- Verify the function/line still exists at the cited location
+- Update line numbers to current code
+- Add rows for: R8 (shared code), R9 (extract not invent), R10 (abstract gates)
+- Add row for ROOF_NOT_INVENTED, NO_MEP_BLEED, LANGUAGE conformity checks
+
+### 2. Verify `_inward_offset_hull` uses extracted data
+- Check: does `_inward_offset_hull` rely on invented geometry or extracted vertices?
+- If it computes synthetic points not in the mesh → flag for replacement with `section_cut`
+- If all points trace to actual mesh boundaries → acceptable under R9
+
+### 3. Verify no concrete per-feature conformity checks
+- `grep` test_conformity.py for check function names
+- All must be abstract (ROOF_NOT_INVENTED, NO_MEP_BLEED, LANGUAGE, etc.)
+- None should be feature-specific (no ROOF_THICKNESS, ROOF_NO_ENDCAP, etc.)
+
+## Verification
+
+- [ ] `internal/2DSpecToCode.md` line refs current
+- [ ] R8, R9, R10 rows present in SpecToCode
+- [ ] ROOF_NOT_INVENTED, NO_MEP_BLEED, LANGUAGE rows present in SpecToCode
+- [ ] `python3 test_conformity.py --db ../input/SH_extracted.db` → exit 0
+- [ ] `python3 test_conformity.py --db ../input/DX_extracted.db` → exit 0
+
+## Session closeout
+- Commit: `[2D_016] SpecToCode re-audit + R8-R10 traceability`
+- Append findings after `# DONE`
+
+# DONE
+
+## Task 1: SpecToCode re-audit
+
+- Line refs updated throughout for 3722-line dxf file (was 2334)
+- Key ref corrections: §0 1080→1854-1860; §1.1 1153→1945; §1.4 184→421; §2.2 1100→1874-1880; §2.3 1248→2071; §2.5 1121→1901; §2.6 1344→2238; §2.8 1477→1078/2337; §5.1a 1121→1900; §5.2a 1542→2412; §5.3a 1882→3241; §7.2 286→592; §7.3d 1524→2390; §9.6.R3b 2143→3494; §9.6.R5/R6 2296/2265→3409/3664
+- R8 row (1.7): `_inward_offset_hull` dxf:166 + `_mesh_hulls` dxf:2729
+- R9 row (1.8): `_mesh_hulls` queries `base_geometries.vertices` — outer hull traces to actual vertices
+- R10 row (1.9): conformity checks are ROOF_NOT_INVENTED/NO_MEP_BLEED/LANGUAGE (all abstract, all confirmed)
+
+## Task 2: _inward_offset_hull assessment
+
+- `_mesh_hulls` (dxf:2729): queries real vertices from `base_geometries` — outer_hull traces to actual data ✓
+- `thickness_m`: measured from Z-span of actual boundary vertices ✓
+- `_inward_offset_hull` (dxf:166): computes inner hull via geometric offset — inner points are SYNTHETIC (not traced to `base_geometries.vertices`)
+- **FLAG (R9)**: inner hull is an offset polygon. Per R9, inner boundary should come from `section_cut` at Z=roof_min_z+ε. Low priority: the inner surface is typically invisible in roof plan top view, and no mesh inner surface extraction is currently verified.
+
+## Task 3: Conformity check abstraction
+
+- All check function labels are abstract: ROOF_NOT_INVENTED, NO_MEP_BLEED, LANGUAGE
+- No per-feature checks (ROOF_THICKNESS, ROOF_NO_ENDCAP, etc.) present
+- Task 3: PASS ✓
+
+## Verification
+
+- [x] `internal/2DSpecToCode.md` line refs current (3722-line file)
+- [x] R8, R9, R10 rows present in SpecToCode (rows 1.7, 1.8, 1.9)
+- [x] ROOF_NOT_INVENTED, NO_MEP_BLEED, LANGUAGE rows present (rows 10.5p/q/r)
+- [x] `python3 test_conformity.py --db ../input/SH_extracted.db` → exit 0
+- [x] `python3 test_conformity.py --db ../input/DX_extracted.db` → exit 0

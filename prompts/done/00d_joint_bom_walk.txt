@@ -1,0 +1,162 @@
+# 00d — MEP Recipes + Shim Matching
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.2 §4 — Shim First, Then Chain
+**Prereq:** 00c DONE (J1+J2 — joint pieces + shims in ERP.db)
+**Test Stones:** TE (48K, 8 discs), RM (6787, FP+ACMV+plumbing)
+**Scope:** Phase J3+J4 — M_BOM recipes in ERP.db + shim matching at compile time
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.2 §2-§4 (shim matching, recipes)
+3. Results from 00c (`# DONE` section — joint piece + shim types found)
+4. This prompt fully
+
+## Context
+
+### After 00c
+
+ERP.db has:
+- Joint piece M_Products (~30-50 types: PIPE_STRAIGHT, PIPE_TEE, etc.)
+- Shim M_Products (~10-15 types: FP_CEILING_SHIM, ELEC_WALL_SHIM, etc.)
+
+### This prompt builds two things
+
+1. **MEP recipes (M_BOM)** — shim first, then chain of joint pieces
+2. **Shim matching** — the only new code: walker matches shim to ARC element
+
+### Shim matching is the ONLY new code
+
+Everything after the match is standard BOM walk. PlacementCollectorVisitor
+reads m_bom_line.dx/dy/dz and accumulates. Same as ARC. Same as furniture.
+
+## Task
+
+### 1. MEP recipes in ERP.db (M_BOM)
+
+Create M_BOM entries for each discipline assembly. Each starts with a shim:
+
+```
+FP_SPRINKLER_BRANCH:
+  line 1: FP_CEILING_SHIM        dz=0      ← shim locks to ceiling
+  line 2: PIPE_STRAIGHT_50MM     dx=L      ← header run (L = param)
+  line 3: PIPE_TEE_50_25MM       dx=0      ← branch tee
+  line 4: PIPE_STRAIGHT_25MM     dy=S      ← branch (S = spacing param)
+  line 5: SPRINKLER_HEAD_K56     dz=-300   ← terminal drop
+
+FP_SYSTEM:
+  line 1: FP_RISER_ASSEMBLY      qty=1
+  line 2: FP_FLOOR_HEADER        qty=N     ← per floor
+  line 3: FP_SPRINKLER_BRANCH    qty=M     ← per room needing FP
+```
+
+Same for CW, SP, ELEC, ACMV, LPG — each with discipline-appropriate shim
+and joint piece chain. The recipes express HOW pieces chain — the walker
+recurses them like any BOM tree.
+
+### 2. Shim matching in walker
+
+New code in CompileStage or RouteStage: when the walker encounters a shim
+M_BOM_Line, it matches to an ARC element:
+
+```java
+// Shim matching: find ARC host element for this shim
+if (product.isShim()) {
+    String hostClass = product.getHostIfcClass();  // e.g., "IfcCovering"
+    String mount = product.getMount();              // BOTTOM/SIDE/TOP
+    // Query ARC c_orderline for matching host in this room/floor
+    Point3D hostPos = findHostElement(compileDb, hostClass, roomRef);
+    // Shim position = host position + mount offset
+    shimPos = applyMountOffset(hostPos, mount, product.getOffsetMm());
+}
+```
+
+The match is by `ifc_class` + position containment. ARC doesn't know MEP
+exists. MEP doesn't reference ARC BOM directly. The shim is the interface.
+
+### 3. BomDropper walks MEP recipes
+
+No changes to BomDropper or PlacementCollectorVisitor needed.
+- Callout creates DISC OrderLine (existing, from S103)
+- BomDropper explodes FP_SYSTEM → FP_SPRINKLER_BRANCH → shim + pieces
+- Shim matching resolves tack origin
+- Everything after is standard dx/dy/dz accumulation
+
+## Verification
+
+```bash
+./scripts/run_RosettaStones.sh classify_te.yaml
+./scripts/run_RosettaStones.sh classify_rm.yaml
+```
+
+Check:
+- MEP recipes exist in ERP.db (FP_SYSTEM chain, CW_SYSTEM chain, etc.)
+- Shim matching fires at compile time (log: "SHIM FP_CEILING_SHIM → IfcCovering at ...")
+- MEP elements appear in output.db elements_rtree
+- TE: element count increases from ~36K toward 48K
+- GEO: drift for MEP elements (shim + small offsets should be low)
+- No ARC regression: SH 7/7 baseline
+
+## Commit
+
+`[S104-J3] MEP recipes (shim + joint pieces) + shim matching at compile time`
+
+---
+
+# DONE
+
+**S104-J3 — Architecture aligned, code scaffolded, GAP FOUND**
+
+## Design session findings (spec rewrite 7099bd1c)
+
+1. **Tack point is just a point** — not AABB, not LBD. Parent tack + dx/dy/dz = child tack.
+   For MEP, tack = pipe-end centre (connection face), not LBD corner.
+
+2. **Shim IS the root BOM** — no FP_SYSTEM wrapper. Callout points directly to shim.
+   One shim per room per discipline. Base plate first.
+
+3. **Tack offsets must be extracted at IFCtoERP time** — child position minus parent
+   position. Only moment both positions are available from IFC.
+
+4. **Joint pieces pair face-to-face** — coplanar mating faces, matching diameter.
+   The dx/dy/dz on M_BOM_Line IS the vector from parent tack to child tack.
+
+## Code committed (fdc65b4f)
+
+- m_bom: host_ifc_class/mount/offset_mm columns (shim properties on BOM header)
+- DisciplineBomBuilder: MEP elements now in BOM (was deferred to callout)
+  MEP sub-BOMs per storey x discipline with shim properties
+- ShimMatcher.java: loads shim attributes, GEO logging on shim detection
+- PlacementCollectorVisitor: MEP BOM walk with GEO forensics
+- X_M_BOM: isShim()/getHostIfcClass()/getMount()/getOffsetMm() accessors
+- BomDropper: CREATE TABLE IF NOT EXISTS (test path fix)
+- Reconciliation: MEP in BOM, full 48K count
+
+SH 8/8 PASS (zero regression).
+
+## CRITICAL GAP — blocks J3 completion
+
+**00c extracted piece types + dimensions but NOT inter-piece tack offsets.**
+
+IFCtoERP currently classifies ifc_class -> piece_type and estimates diameter from
+AABB. It does NOT compute the dx/dy/dz between connected pieces (child pos - parent
+pos). Without these offsets, the M_BOM_Line has extraction-relative positions (from
+VerbFactorizer) but not the piece-to-piece chain offsets that 6.12.2 requires.
+
+The tack offset extraction is J1 proper — the foundation. Must be done in IFCtoERP
+while reading *_extracted.db (only moment both pieces' positions are available).
+
+## Next session scope
+
+**J1 tack extraction** — extend IFCtoERP to extract inter-piece tack offsets:
+1. For each MEP element pair on same storey + discipline, compute dx/dy/dz = child - parent
+2. Chain detection: identify connected sequences (pipe -> tee -> pipe -> sprinkler)
+3. Store tack offsets on M_BOM_Line (the recipe chain)
+4. Test on RM first (smaller, 3568 MEP elements vs TE 11634)
+5. GEO proof: walked positions must match original IFC positions (drift = 0)

@@ -1,0 +1,112 @@
+# 2D_002 — Java Port: SectionCut.java (mesh-plane intersection)
+# TRIAGE ORDER: #7 — Java port of SectionCut. Prereq: 2D_000 DONE (confirms Python output to compare against).
+# SEPARATION OF CONCERN: New 2D_Layout Maven module only. Zero touch to DAGCompiler,
+# BuildingCompiler, or any pipeline class. Reads output.db read-only.
+
+**Spec:** 2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §5, §12.3
+**Prereq:** 2D_001 DONE — W_BOM_Variance schema in place; SH output.db has base_geometries
+**Reference:** `2D_Layout/python/section_cut.py` — port this exactly
+**Witness to pass:** W-2D-DIGEST — Java SectionCut produces same contours as Python prototype
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+Port the Python algorithm exactly. No new geometry logic. No invention.
+
+## Read first
+
+1. `2D_Layout/PROGRESS.md` — current Java stub state
+2. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §5 (section cut approach), §12.3 (algorithm)
+3. `2D_Layout/python/section_cut.py` — READ FULLY, this is the reference
+4. `2D_Layout/src/main/java/com/bim/layout/SectionCut.java` — current stub
+5. This prompt fully
+
+## Concept
+
+The section cut slices triangle meshes at a given Z height, producing 2D line segments.
+These are chained into closed contours (wall outlines with window/door gaps).
+
+The algorithm (from Python reference):
+```
+For each triangle (v0, v1, v2):
+  For each edge straddling cut_z:
+    t = (cut_z - va.z) / (vb.z - va.z)
+    px = va.x + t*(vb.x-va.x)
+    py = va.y + t*(vb.y-va.y)
+  Two intersection points → one LineSegment2D
+Chain segments by endpoint proximity (tolerance=0.5mm) → List<Contour>
+```
+
+## Tasks
+
+### Task 1 — SectionCut.java implementation
+
+Fill the stub. Key types needed:
+```java
+record Point2D(double x, double y) {}
+record LineSegment2D(Point2D a, Point2D b) {}
+record Contour(List<Point2D> points, boolean closed) {}
+
+public class SectionCut {
+    public List<Contour> cut(float[] vertices, int[] faces, double cutZ, double tolerance);
+}
+```
+
+Load mesh from `base_geometries` BLOB (same format as Python — interleaved float32 XYZ).
+
+### Task 2 — SectionCutTest.java
+
+```
+W-SC-1: cut a simple box mesh at Z=1.0 → 4 segments → 1 closed contour (rectangle)
+W-SC-2: cut a wall mesh with window void → contour has gap at window position
+W-SC-3: cut at Z above all geometry → empty contour list
+W-SC-4: Java contours match Python contours for SH wall W1 within 0.5mm tolerance
+```
+
+For Task 4: run Python section_cut.py on the same mesh, dump to CSV, compare.
+
+## Done criteria
+
+- SectionCutTest 4/4 PASS
+- W-2D-DIGEST partial: Java matches Python for SH wall meshes
+
+# DONE
+<!-- Coder appends findings here -->
+
+## PROFESSIONAL READABILITY STANDARDS (added 2026-04-06, ref §14.7)
+
+All SVG output must meet ISO 128 / TB-LKTN pen scale before marking DONE.
+Read `2D_ARCHITECTURAL_LAYOUT.md §14.7` for the full table. Summary:
+
+**Line weights (SVG stroke-width in mm):**
+- LW_GROUND = 0.70   — ground line only (boldest — visual base)
+- LW_WALL_EXT = 0.50 — section-cut exterior walls, roof outline
+- LW_WALL_INT = 0.35 — partitions, doors, apron step
+- LW_OPENING  = 0.35 — window/door outlines
+- LW_WALL_GLASS = 0.25 — glazing / curtain wall
+- LW_DIMENSION = 0.18 — dims, extension lines, hatching, grid (ISO hairline)
+- **0.15 mm is BANNED** — prints as 1px, invisible on A3; use 0.18 minimum
+
+**Text heights (mm on paper at 1:100):**
+- Drawing title: 5.0, Room label: 3.5, Grid bubble: 3.0, Dims/levels: 2.5
+
+**Label spacing:**
+- Minimum gap between adjacent level markers: 3 × TXT_DIM (= 7.5mm)
+- When markers are closer, use leader line offset — marker triangle at true level,
+  text box shifted with a thin (0.18) vertical leader
+
+**Grid bubbles:**
+- Radius = 4.0mm (8mm diameter) — do not reduce
+
+**Dash patterns (scale-aware — currently hardcoded, must fix in Java):**
+- CENTER (grid): `(4s, 1s, 1s, 1s)` where s = SCALE/100
+- HIDDEN: `(4s, 2s)` — at 1:100 s=1.0, at 1:50 s=0.5
+
+**Mirror rule for rear/right elevations:**
+- 'rear': h = -x (viewer sees X reversed — west on right, east on left)
+- 'right': h = -y (viewer sees Y reversed)
+- Grid positions: multiply by h_sign before mapping to paper
+- Roof hull: negate h_vals for mirrored faces
+- Without this, front/rear elevations show identical roof tilt (wrong)
+

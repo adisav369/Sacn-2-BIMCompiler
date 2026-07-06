@@ -1,0 +1,37 @@
+# 2D_009 — Hospital Proof Run
+# TRIAGE ORDER: After 2D_008 (DXF writer fixed on SH).
+# SEPARATION OF CONCERN: 2D_Layout module only. Same code, different DB.
+
+**Spec:** 2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md
+**Prereq:** 2D_008 DONE (all three tests passing on SH)
+
+You are a coder for bim-compiler. One bounded task.
+
+## Task
+
+Run the 2D pipeline on Hospital to prove the spec works at scale.
+Same code, same template, same tests — different building DB.
+
+1. Ensure Hospital extracted DB exists and has the same schema as SH
+2. Run drawing_writer_dxf.py on Hospital DB with --all
+3. Run all three tests against Hospital output
+4. Log output proves every entity traces to DB or template
+5. Compare: does Hospital produce sensible grid lines from its 208 columns?
+6. Compare: do room labels, dimensions, level markers appear correctly?
+
+## Done criteria
+
+- Hospital floor plan DXF generated
+- Hospital elevation DXFs generated (at least front)
+- Forensic log shows grid axes derived from column positions
+- Dimensions are arithmetic, numbers add up
+- No hardcoded SH-specific values in the code (the code is building-agnostic)
+
+## Out of scope
+
+- Changing the code to handle Hospital-specific quirks
+- Curve2D integration (mesh section cut already works)
+- Adding new features
+
+# DONE
+<!-- Coder appends findings here -->

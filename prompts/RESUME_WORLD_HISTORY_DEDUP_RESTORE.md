@@ -187,3 +187,45 @@ branches) is genuinely left red, confirmed myself, not faked green — a latent 
 `redo(id)` kernel primitive, out of scope for this pass. Phase 3 (swap Modeller's `#hist-slider` for the
 dot-strip UI) NOT started — engine dormant until wired; watchdog recommends Phase 3 before chasing G6 (G6 is
 unreachable without a UI to trigger it), not yet confirmed by the user.
+
+---
+
+## PART 1 NOW DONE — 2026-07-06, bim-ootb PR #678
+
+`modeller_history.js` (PR #675, above) is a DIFFERENT engine (git-faithful undo/redo tree) from THIS file's
+Part 1 ask (the cross-page World-History log/pill). Re-confirmed before starting: `grep -rn
+"WholeHistory|worldhist" modeller/*.js modeller/*.html` on current main still returned only a comment, and
+`common/whole_history.js` was never `<script>`-loaded in `modeller.html` — so `modeller_history.js`'s existing
+`recordBuildingOpen()` call (which forwards through `history_bar.js`'s internal `WholeHistory.record()` mirror)
+was a silent no-op with nowhere to write.
+
+Did the 4 steps from `RESUME_MODELLER_UX_OUTLINER_PILL.md §WORLD HISTORY wiring`: loaded
+`common/whole_history.js` in `modeller.html` (before `history_bar.js`), called
+`WholeHistory.mount({page:'modeller', rootPrefix:'../', launcher:false})` at boot, added a new `#b-worldhist`
+pill (auto-joins the rail/help-registry — confirmed those are generic `#bar button` iterators, zero extra
+wiring) wired to `WholeHistory.toggleOpen()`, and registered `modeller` in `PATHS`/`PAGE_LABEL`. Step 3 was
+already wired, just needed a live target.
+
+**Bonus bug found live (not a code-read):** `whole_history.js`'s `_ensureDom()` idempotency guard checked
+`_launch`, which every `launcher:false` surface (idempiere/glassbowl/gravity, now modeller) never sets — so
+`open()` silently rebuilt a duplicate `#whole-hist-panel` on every toggle. Invisible to a real user (closures
+always pointed at the newest panel) but real unbounded DOM/style bloat, and it broke `getElementById` lookups
+— caught by the new witness's W3 check. Fixed the guard to check `_panel` instead (idempotent regardless of
+`launcher`).
+
+**Witness:** `modeller/tests/witness_modeller_worldhist_pill.js` 7/7 PASS — opens a real SampleHouse resident,
+confirms exactly ONE deduped `modeller` row lands in the shared `bim.docHistory` log, panel renders it, pill
+open + panel's-own-X-button close both work (re-clicking the covered pill does NOT close it — correct, same
+contract as the other 3 surfaces; closing is by design via `#whole-hist-x`/backdrop).
+
+**Regression check:** re-ran all 5 existing `poc_whole_*.js` witnesses (still PASS) +
+`witness_modeller_redo_order.js` (6/6) + `witness_modeller_git_history.js` (7/8, G6 unchanged, pre-documented)
++ `witness_modeller_pill_verbs.js` (8/9 — the 1 fail, D5 section-count, confirmed via a throwaway
+`origin/main` worktree to be pre-existing drift unrelated to this change).
+
+**Shipped:** bim-ootb PR **#678** (`lane/worldhist-modeller-pill`), pushed — needs human merge.
+
+Remaining open in this file: Part 2's bomb-clear-world-history path and tap-vs-long-press dual behavior were
+never live-exercised on Modeller — but Modeller has no such long-press pill-drawer framework at all (by design,
+LANE PARTITION: W-only, no fork/refold/bomb-clear), so that checklist item only ever applied to
+Viewer/iDempiere/Glassbowl.

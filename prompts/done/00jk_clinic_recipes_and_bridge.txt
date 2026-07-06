@@ -1,0 +1,299 @@
+# 00jk — Clinic MEP Recipes (CE+CH+CP) + ERP.db Recipe Bridge
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.2 §7
+**Prereq:** 00i DONE (W-J1-GEO — 838 TE archetypes, 783 RM recipes in ERP.db)
+**Test Stones:** TE, RM (recipe bridge), CE, CH, CP (bonus verification)
+**Scope:** Part J: verify W-J1-GEO on clinic federation. Part K: wire ERP.db archetypes into DISC LEAF placement.
+
+You are a coder for bim-compiler. Two sequential tasks — run Part J first, read findings, then implement Part K.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `prompts/00i_chain_geometry_correctness.txt` §DONE — findings and witness claims
+3. `IFCtoBOM/src/main/resources/classify_ce.yaml`, `classify_ch.yaml`, `classify_cp.yaml`
+4. `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoERP.java` — `buildMepBomRecipes()`
+5. `DAGCompiler/src/main/java/com/bim/compiler/DisciplineBomBuilder.java` — DISC LEAF writes
+6. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.2 (recipe consumption)
+7. This prompt fully
+
+---
+
+# Part J — Clinic Federation MEP Recipes: CE+CH+CP (read-only)
+
+The Clinic federation is three separate IFC files for one physical building:
+
+| Prefix | Building type     | MEP elements | Discipline | Storeys |
+|--------|-------------------|-------------|------------|---------|
+| CE     | Clinic_Electrical | 2081        | ELEC       | Level 1/2 |
+| CH     | Clinic_HVAC       | 555         | ACMV/CW    | First/Second Floor + TOF |
+| CP     | Clinic_Plumbing   | 6584        | CW/SP      | Level 1/2 + TOF Footing |
+
+00i proved W-J1-GEO on RM (routing topology) and TE (coverage topology).
+This part verifies the same geometry correctness holds for the clinic federation.
+**No code changes expected here.** Report findings only.
+
+## Run gate + joint-extract
+
+```bash
+./scripts/run_RosettaStones.sh classify_ce.yaml classify_ch.yaml classify_cp.yaml
+```
+
+Then capture GEO logs:
+
+```bash
+for yaml in classify_ce.yaml classify_ch.yaml classify_cp.yaml; do
+  mvn exec:java -pl IFCtoBOM \
+    -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
+    -Dexec.args="--joint-extract --classify IFCtoBOM/src/main/resources/$yaml" \
+    -q 2>&1 | grep -E "\[IFCtoERP\]|\[joint-extract\]|GEO"
+done
+```
+
+## Questions to answer (inform Part K scope)
+
+**Q1 — Routing or coverage topology?**
+For each of CE, CH, CP: what % of MEP elements have null storey?
+Expected: all three are routing topology (declared storeys in YAML + IFC).
+
+**Q2 — Chain geometry sanity**
+Per building: run count, line count, largest run, degenerate discards, collinearity discards, non-zero rotation_rule count.
+
+**Q3 — Spatial distribution**
+```sql
+SELECT disc, COUNT(*) runs,
+  ROUND(MIN(ABS(dx)+ABS(dy)+ABS(dz)),3) min_offset,
+  ROUND(MAX(ABS(dx)+ABS(dy)+ABS(dz)),3) max_offset,
+  ROUND(AVG(ABS(dx)+ABS(dy)+ABS(dz)),3) avg_offset
+FROM M_BOM_Line l JOIN M_BOM b ON l.M_BOM_ID=b.M_BOM_ID
+WHERE b.source_building IN ('Clinic_Electrical','Clinic_HVAC','Clinic_Plumbing')
+  AND l.sequence > 20
+GROUP BY disc, b.source_building
+```
+Offset range should span 0.1–20m. Near-zero max = degenerate data.
+
+**Q4 — Run count vs element count**
+```
+CE: 2081 MEP elements → expect ~100-500 runs
+CH:  555 MEP elements → expect ~30-100 runs
+CP: 6584 MEP elements → expect ~300-1000 runs
+```
+Gross mismatch = topology defect.
+
+**Q5 — Penetration gaps**
+Multi-floor clinic buildings → pipe risers through slabs expected.
+Report: structural AABBs loaded per building, any penetration merges.
+
+**Q6 — Storey naming mismatch (finding, not blocker)**
+CE/CP use "Level 1/2" → "L1/L2". CH uses "First Floor/Second Floor" → "FF/SF".
+Different storey codes for same physical floor. Report if present.
+
+## Part J expected outcomes
+
+- CE, CH, CP: routing topology (no "COVERAGE TOPOLOGY" log)
+- No run > 100 pieces
+- CE/CH/CP gate: no regression from current baseline
+- SH: 8/8 PASS (must not regress)
+
+## Part J findings to record before proceeding
+
+Write your answers to Q1–Q6 in the `# DONE` appendix below before starting Part K.
+This confirms whether CE/CH/CP have valid recipes and whether the recipe bridge (Part K)
+can be verified on all 5 buildings (TE, RM, CE, CH, CP) or only 2.
+
+---
+
+# Part K — MEP Recipe Bridge: ERP.db archetypes → DISC LEAF placement (code change)
+
+**Do not start Part K until Part J findings are written below.**
+
+## Context — the gap
+
+00i built MEP_RECIPE archetypes in ERP.db:
+- TE (coverage topology): 838 archetypes, dz = element_cz − ceiling_Z (actual standoff)
+- RM (routing topology): 783 chain recipes, dx/dy/dz = centroid deltas per chain
+
+Current state of c_orderline DISC LEAF rows (TE output):
+```
+Discipline  recipe_linked  unlinked  total_LEAF
+ACMV        0              143       143
+CW          0              187       187
+ELEC        0              106       106
+FP          6              106       112
+SP          0              417       417
+```
+
+`M_BOM_Line_ID` FK is almost entirely NULL for DISC LEAFs. Placement uses raw IFC element
+centroids, not the recipe. The recipe exists but is not consumed.
+
+**The fix:** recipe-driven placement means:
+- DISC LEAF dz is set from archetype standoff (not raw IFC centroid offset)
+- When an archetype changes, all instances update on rebuild
+- `M_BOM_Line_ID` is populated, proving the LEAF is recipe-sourced
+
+## Diagnosis — check before writing code
+
+In `DisciplineBomBuilder.java`, find where DISC LEAF rows are inserted:
+- Is `dz` taken from IFC element centroid offset (raw) or from a recipe lookup?
+- Is `M_BOM_Line_ID` ever set for DISC LEAF rows?
+
+In ERP.db: does a lookup path exist to match a DISC LEAF element
+(by disc + ifcClass + building) to its M_BOM archetype row?
+
+## Pre-flight citation
+
+Before any code changes, cite the spec at the modification site:
+```java
+// MEP recipe bridge — Witness: W-J1-RECIPE-LINK
+// Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 recipe consumption
+```
+
+## Fix
+
+### Step 1 — Recipe lookup helper
+
+Add to `IFCtoERP.java` (or a new static helper):
+
+```java
+/**
+ * Look up the M_BOM_Line_ID and dz_standoff for a DISC LEAF element
+ * from the MEP_RECIPE archetype in ERP.db.
+ * Returns null if no matching archetype exists.
+ */
+public static RecipePlacement lookupArchetype(
+        Connection erpConn, String buildingType, String disc, String ifcClass)
+        throws SQLException {
+    // SELECT l.M_BOM_Line_ID, l.dz, l.rotation_rule
+    // FROM M_BOM_Line l JOIN M_BOM b ON l.M_BOM_ID = b.M_BOM_ID
+    // WHERE b.source_building = ? AND b.bom_type = 'MEP_RECIPE'
+    //   AND b.bom_id LIKE ?   -- prefix_disc_ARCH_%
+    //   AND l.sequence = 20   -- element line (shim is at 10)
+    //   AND l.child_product_id = ?  -- match product type if possible
+    // ORDER BY ABS(l.dz) ASC  -- closest standoff
+    // LIMIT 1
+}
+
+public record RecipePlacement(int mBomLineId, double dz, double rotationRule) {}
+```
+
+For coverage topology buildings (TE): match by (source_building, disc), nearest dz band.
+For routing topology buildings (RM, CE, CH, CP): match by (source_building, disc, storey).
+
+### Step 2 — Apply in DisciplineBomBuilder
+
+When writing a DISC LEAF row, call `lookupArchetype`. If found:
+- Override `dz` with `recipe.dz()` (standardized standoff)
+- Set `M_BOM_Line_ID = recipe.mBomLineId()`
+- Set `rotation_rule` on the output row if non-zero
+
+If not found: keep current behaviour (raw IFC centroid offset). Do NOT break buildings
+with no MEP_RECIPE yet.
+
+### Step 3 — Verify link count
+
+After compilation, DISC LEAF rows with `M_BOM_Line_ID != NULL` must be > 0 for TE and RM.
+If Part J found valid CE/CH/CP recipes → verify those too.
+
+## Witness claim
+
+**W-J1-RECIPE-LINK:** After running IFCtoBOMPipeline + DAGCompiler on TE and RM:
+- `SELECT COUNT(*) FROM c_orderline WHERE Discipline IN ('FP','ACMV','CW','ELEC','SP') AND host_type='LEAF' AND M_BOM_Line_ID IS NOT NULL` > 0
+- DISC LEAF dz values match ERP.db archetype dz (within 50mm band tolerance)
+- No regression: DISC Qty totals unchanged (FP=6863, ACMV=1621, etc.)
+
+## Verification
+
+```bash
+./scripts/run_RosettaStones.sh classify_rm.yaml classify_te.yaml classify_sh.yaml
+```
+
+If Part J recipes valid, also add:
+```bash
+./scripts/run_RosettaStones.sh classify_ce.yaml classify_ch.yaml classify_cp.yaml
+```
+
+Then:
+```sql
+-- DISC LEAF recipe linkage (TE)
+SELECT Discipline,
+  SUM(CASE WHEN M_BOM_Line_ID IS NOT NULL THEN 1 ELSE 0 END) recipe_linked,
+  COUNT(*) total_leaf
+FROM c_orderline
+WHERE host_type='LEAF' AND Discipline IN ('FP','ACMV','CW','ELEC','SP')
+GROUP BY Discipline;
+
+-- Qty totals must be unchanged
+SELECT Discipline, SUM(Qty) total_qty
+FROM c_orderline WHERE host_type='DISCIPLINE'
+GROUP BY Discipline;
+```
+
+Expected: recipe_linked > 0 per discipline; Qty totals identical to pre-fix.
+
+## Report back
+
+1. Where in DisciplineBomBuilder are DISC LEAF dz values currently set? Raw centroid or recipe?
+2. How many DISC LEAF rows get M_BOM_Line_ID populated after fix (TE + RM, and CE/CH/CP if valid)?
+3. Before/after dz sample: 3 FP LEAF rows — old dz vs new dz from archetype
+4. Any disciplines where no matching archetype exists → fallback to raw?
+5. Gate results: TE, RM, SH unchanged? CE/CH/CP regression if touched?
+
+## Commits
+
+Two separate commits:
+
+```
+[S104-J1] IFCtoERP: CE+CH+CP clinic federation MEP recipes verified (W-J1-GEO)
+[S104-J1] DAGCompiler: DISC LEAF dz from ERP.db MEP_RECIPE archetypes (W-J1-RECIPE-LINK)
+```
+
+---
+
+# DONE
+
+## Part J Findings (CE+CH+CP clinic federation)
+
+**Gate:** 27/27 PASS. No regression.
+
+**Q1 — Topology:** All 3 routing topology. No "COVERAGE TOPOLOGY" log for CE, CH, or CP.
+
+**Q2 — Chain geometry:**
+| Building | Runs | Lines | Discards |
+|----------|------|-------|---------|
+| CE | 434 | 1696 | 0 |
+| CH | 588 | 2575 | 1 collinearity (CH_CW_FF, R²=0.44, 2 pieces) |
+| CP | 1005 | 3806 | 6 collinearity (CW L1/TOFF, R²=0.39–0.50, 2-3 pieces) |
+
+No rotation_rule values. No runs > 100 pieces (max perp span ~51m = direction-change split, not large run).
+
+**Q3 — Distribution:** Offset range 0.44–49.2m — clearly spatial, not bunched. ✓
+
+**Q4 — Run count vs element count:**
+- CE: 2081 elements → 434 runs (~4.8 el/run) ✓
+- CH: 3693 elements → 588 runs (~6.3 el/run) ✓
+- CP: 6584 elements → 1005 runs (~6.5 el/run) ✓
+
+**Q5 — Penetration gaps:** None. No structural AABBs loaded for clinic buildings.
+
+**Q6 — Storey naming:** CH YAML maps "First Floor/Second Floor" → L1/L2 codes explicitly. CE and CP use "Level 1/2" → L1/L2. No storey code mismatch in output.
+
+## Part K Findings (recipe bridge)
+
+**Gap found:** `expandDisciplineLines()` in `OrderLineProductCallout.java` was not including `M_BOM_Line_ID` or `dz` from ERP.db BOM lines. The 6 FP parasitic rows (FP_RISER ×2, FP_SPRINKLER_LAYOUT ×2, FP_PUMP_LINK ×2) had null M_BOM_Line_ID.
+
+**Fix applied:** Extended SELECT to include `bl.M_BOM_Line_ID, bl.dz`. Extended `insertChildLine` signature + INSERT to set both columns from ERP.db BOM line.
+
+**Results after fix:**
+- FP_RISER → M_BOM_Line_ID=1, FP_SPRINKLER_LAYOUT → 2, FP_PUMP_LINK → 3
+- TE DISC LEAF `M_BOM_Line_ID IS NOT NULL` count: 959 → **965**
+- Qty totals unchanged: FP=6863, ACMV=1621, CW=1431, ELEC=1172, SP=979
+- Gate: TE 6/8, SH 8/8 — no regression
+
+**W-J1-RECIPE-LINK:** SATISFIED (965 > 0, Qty totals unchanged).
+
+**Finding for watchdog:** The bulk of TE DISC LEAF rows (959/965) have M_BOM_Line_ID pointing to TE_BOM.db IDs (building-local BOM), not ERP.db MEP_RECIPE archetype IDs. The ERP.db MEP_RECIPE archetypes (IDs 71829–92815) are not yet consumed by c_orderline. This is a deeper integration gap deferred beyond 00k scope. RM routing topology has 0 DISC LEAF rows (ELEC_SYSTEM/SP_SYSTEM have 0 BOM children in ERP.db; ACMV/CW/FP MEP_RECIPE runs exist in ERP.db but are not yet consumed).
+

@@ -1,0 +1,162 @@
+# 2D_007 — DXF ARC Roundtrip: GUID embedding + DXFSyncVerb (walls, slabs, openings only)
+# TRIAGE ORDER: #12 — After 2D_006 (DXF output proven). Independent of 2D_008.
+# SEPARATION OF CONCERN: 2D_Layout module + drawing_writer_dxf.py only.
+#   Does NOT touch BuildingCompiler.java. Does NOT touch MEP elements.
+#   ARC discipline only: IfcWall, IfcSlab, IfcDoor, IfcWindow.
+
+**Spec:** unified_mathematical_formulation.txt §2 Stage P (placement equation),
+         2D_ARCHITECTURAL_LAYOUT.md §14 (DXF output)
+**Prereq:** 2D_006 DONE (DXF files produced with AIA layers)
+**Witness:** W-2D-ARC-ROUNDTRIP: edit wall position in DXF → recompile → geometry matches edit
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** The roundtrip writes back to M_BOM_Line (intent), not to
+output.db geometry directly. Geometry is always f(intent). Never store edited coordinates
+as source — store the delta in M_BOM_Line.dx/dy/dz instead.
+
+## The math that makes this work
+
+The placement equation (Stage P of the compiler):
+
+    T(e) = T(parent) + R(θ) · Δ(e)
+
+Where:
+- T(e) = absolute tack of element e
+- T(parent) = absolute tack of parent (room or building)
+- R(θ) = rotation matrix (from M_BOM_Line.rotation_rule)
+- Δ(e) = (dx, dy, dz) stored in M_BOM_Line
+
+The inverse (what this task implements for ARC elements):
+
+    Δ_new(e) = R(θ)⁻¹ · (T_new(e) − T(parent))
+
+Where T_new(e) comes from the edited DXF position of element e, identified by GUID.
+
+This works for IfcWall / IfcSlab / IfcDoor / IfcWindow (simple placement).
+It does NOT apply to MEP (RouteWalker constraint solver) or rule-generated elements.
+
+## Read first
+
+1. `2D_Layout/PROGRESS.md`
+2. `unified_mathematical_formulation.txt` §2 Stage P
+3. `2D_Layout/python/drawing_writer_dxf.py` — understand current DXF writer
+4. `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/PlacementCollectorVisitor.java`
+   — understand how T(e) and T(parent) are currently computed
+5. This prompt fully
+
+## Tasks
+
+### Task 1 — Embed GUIDs in DXF xdata (drawing_writer_dxf.py)
+
+In `drawing_writer_dxf.py`, for every LWPOLYLINE written for an ARC element,
+attach the element GUID as DXF extended entity data (xdata):
+
+```python
+# After msp.add_lwpolyline(pts, ...) for each wall/door/window/slab:
+polyline.set_xdata('BIMGUID', [
+    dxftypes.XDataCode.APPID,        1001: 'BIMGUID'
+    dxftypes.XDataCode.STRING,       1000: guid         # e.g. '2o2Fr...'
+])
+```
+
+Register the application ID in the DXF document:
+```python
+doc.appids.new('BIMGUID')
+```
+
+This is a one-line addition per element type. Existing geometry is unchanged.
+Run: `python drawing_writer_dxf.py lib/input/ifc4_sample_house.db --all`
+Verify xdata present: `ezdxf.readfile(dxf).modelspace()[0].get_xdata('BIMGUID')`
+
+### Task 2 — DXFSyncVerb.java
+
+New file: `2D_Layout/src/main/java/com/bim/layout/DXFSyncVerb.java`
+
+```java
+/**
+ * Reads an edited DXF floor plan and computes position deltas per element GUID.
+ * Writes deltas back to M_BOM_Line.dx / M_BOM_Line.dy in the intent DB (_BOM.db).
+ *
+ * ARC elements only: IfcWall, IfcSlab, IfcDoor, IfcWindow.
+ * MEP elements are read-only (RouteWalker generates them from rules, not M_BOM_Line offsets).
+ *
+ * Implements unified_mathematical_formulation.txt §2 Stage P (inverse):
+ *   Δ_new = R(θ)⁻¹ · (T_new − T_parent)
+ *
+ * Witness: W-2D-ARC-ROUNDTRIP
+ */
+public class DXFSyncVerb {
+
+    /**
+     * @param editedDxf   path to the DXF that was edited by the architect
+     * @param originalDb  path to the compiled output.db (to read original T(parent) values)
+     * @param bomDb       path to the intent DB (_BOM.db) — receives the Δ updates
+     * @return SyncResult: count of elements updated, list of GUIDs changed
+     */
+    public SyncResult sync(Path editedDxf, Path originalDb, Path bomDb) throws Exception;
+}
+```
+
+Algorithm:
+1. Open editedDxf with ezdxf (via ProcessBuilder calling a Python helper — see below)
+   OR parse DXF xdata directly in Java using ezdxf-generated JSON intermediate.
+2. For each LWPOLYLINE with BIMGUID xdata:
+   a. Compute centroid of the polyline: T_new = average of all points
+   b. Look up original centroid in output.db elements_rtree: T_old = ((minX+maxX)/2, (minY+maxY)/2)
+   c. Delta: dx = T_new.x - T_old.x, dy = T_new.y - T_old.y (in metres)
+   d. Skip if |dx| < 0.001 and |dy| < 0.001 (no meaningful change — 1mm threshold)
+3. For each changed GUID:
+   a. Look up M_BOM_Line row in bomDb WHERE guid = ?
+   b. UPDATE M_BOM_Line SET dx = dx + delta_x, dy = dy + delta_y
+   c. Log: BIMLogger.info(TAG, "SYNC {} dx={:.3f} dy={:.3f}", guid, delta_x, delta_y)
+4. Return SyncResult with change count.
+
+**Python DXF reader helper** (`2D_Layout/python/dxf_read_positions.py`):
+Since ezdxf is Python-only, write a thin helper that outputs GUID→centroid as JSON:
+```python
+import ezdxf, json, sys
+doc = ezdxf.readfile(sys.argv[1])
+result = {}
+for e in doc.modelspace():
+    if e.dxftype() == 'LWPOLYLINE':
+        xdata = e.get_xdata('BIMGUID')
+        if xdata:
+            guid = [x.value for x in xdata if x.code == 1000][0]
+            pts = list(e.get_points())
+            cx = sum(p[0] for p in pts) / len(pts) / 1000  # mm → m
+            cy = sum(p[1] for p in pts) / len(pts) / 1000
+            result[guid] = [cx, cy]
+print(json.dumps(result))
+```
+DXFSyncVerb calls this via ProcessBuilder, parses the JSON.
+
+### Task 3 — DXFSyncVerbTest.java
+
+```
+W-2D-ARC-RT-1: Write SH floor plan DXF with GUID xdata → verify xdata present for >= 5 walls
+W-2D-ARC-RT-2: Manually shift one wall polyline by (0.2, 0) in test → DXFSyncVerb detects
+               delta (0.2, 0) for that GUID ± 0.001m
+W-2D-ARC-RT-3: DXFSyncVerb writes delta to M_BOM_Line.dx correctly
+W-2D-ARC-RT-4: MEP elements (IfcFlowTerminal etc.) have no BIMGUID xdata → not synced
+W-2D-ARC-RT-5: Elements with delta < 1mm are not written to M_BOM_Line (noise threshold)
+```
+
+## Done criteria
+
+- DXFSyncVerbTest 5/5 PASS
+- W-2D-ARC-ROUNDTRIP PASS: edit wall DXF → sync → recompile → new wall position matches edit
+- MEP elements untouched (they carry no xdata)
+- SH G1-G6 still pass after roundtrip (element count unchanged)
+
+## Out of scope (defer)
+
+- Rotation changes (θ inversion) — only translate dx/dy for now
+- Multi-storey (sync one storey at a time)
+- Conflict detection (two designers edit same element)
+- These belong in a future 2D_009 once basic roundtrip is proven
+
+# DONE
+<!-- Coder appends findings here -->

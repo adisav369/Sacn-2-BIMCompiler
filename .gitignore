@@ -1,6 +1,3 @@
-# Session prompts (local working files)
-prompts/
-
 # Build output
 target/
 
@@ -69,7 +66,7 @@ backup/
 .venv/
 
 # Archive (local docs, binaries, translations)
-archive/
+/archive/
 site/
 .aider*
 

@@ -1,0 +1,202 @@
+# 00r — RouteWalker: Pattern Apply + ARC Envelope Clash
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.3 §3 (RouteWalker algorithm)
+**Prereq:** 00q DONE — ad_mep_anchor (154 METER, 11 FIXTURE, 1482 GENERIC for RM),
+            ad_mep_pattern (CW_TERMINAL_01 4 steps, SP_TERMINAL_01 5 steps in ERP.db)
+**Test Stones:** RM (HospitalAuckland) — CW + SP networks generated
+**Witness claims:** W-PATTERN-CW, W-PATTERN-SP (defined in §6.12.3 §4)
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing. RouteWalker is NOT a routing
+engine — no A*, no pathfinding, no graph search. It is a pattern applier: match anchor pairs
+per pattern step, emit c_orderline rows. The pattern encodes all intelligence.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.3 §3 (RouteWalker algorithm) and §4 (witness claims)
+3. `DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java` lines ~450-490
+   (where expandDisciplineLines is called — RouteWalker hooks in after step 4)
+4. `DAGCompiler/src/main/java/com/bim/compiler/callout/OrderLineProductCallout.java`
+   (expandDisciplineLines signature and c_orderline write pattern)
+5. `library/ERP.db` schema: ad_mep_anchor, ad_mep_pattern (from 00q)
+6. `DAGCompiler/lib/output/hospitalauckland.db` c_orderline schema (full column list)
+7. This prompt fully
+
+## Background
+
+00q produced:
+- `ad_mep_anchor` in ERP.db: RM anchors — 154 METER, 11 FIXTURE, 1482 GENERIC, 0 VALVE
+- `ad_mep_pattern` in ERP.db: CW_TERMINAL_01 (4 steps), SP_TERMINAL_01 (5 steps)
+
+RM's generic MEP elements have `discipline='MEP'` (undifferentiated — G2). RouteWalker
+assigns CW/SP discipline to generated pipe network rows by pattern.
+
+## Task A — New class: RouteWalker
+
+Create `DAGCompiler/src/main/java/com/bim/compiler/mep/RouteWalker.java`.
+
+```java
+package com.bim.compiler.mep;
+// Implementing DISC_VALIDATION_DB_SRS.md §6.12.3 §3 — Witness: W-PATTERN-CW, W-PATTERN-SP
+public class RouteWalker {
+    public static WalkResult walk(Connection compileDb, Connection erpDb,
+                                  String buildingType, String orderId) throws SQLException
+```
+
+### A1. Pattern selection
+
+```sql
+-- Select patterns for CW and SP. Match building_type exactly; fall back to any if no match.
+SELECT pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
+       direction_axis, piece_type, offset_rule, gradient
+FROM ad_mep_pattern
+WHERE discipline IN ('CW','SP')
+ORDER BY discipline, sequence
+```
+
+No exact RESIDENTIAL match exists yet — the fallback selects TERMINAL patterns. Log which
+pattern_id was selected per discipline.
+
+### A2. Anchor loading
+
+```sql
+SELECT anchor_id, anchor_type, x_m, y_m, z_m, storey
+FROM ad_mep_anchor
+WHERE source_building = ?
+```
+
+Map anchor_type → node_type for pattern matching:
+- `METER`   → node_type `METER` (CW) or `STACK` (SP — boundary element = stack point)
+- `FIXTURE` → node_type `FIXTURE`
+- `VALVE`   → node_type `VALVE`
+- `GENERIC` → node_type `JUNCTION`
+
+### A3. Pattern application (per discipline, per storey)
+
+For each discipline (CW, SP):
+  For each storey (group anchors by storey):
+    Walk pattern steps in `sequence` order:
+    1. Collect from_anchors = anchors WHERE node_type == step.from_node_type
+    2. Collect to_anchors   = anchors WHERE node_type == step.to_node_type AND not yet used
+    3. Pair each from_anchor with its nearest unmatched to_anchor (Euclidean distance XY only)
+    4. Skip pairs where distance = 0 or > 50m (sanity guard — no cross-building links)
+    5. For GRADIENT steps: dz = gradient × horizontal_distance (MS 1228 §5.3 min 0.025)
+    6. Clash check: pipe AABB vs ARC envelope (§A4)
+    7. If no clash: emit c_orderline row (§A5); mark to_anchor as used
+
+### A4. ARC envelope clash check
+
+```sql
+-- ARC envelope: walls, slabs, ceilings from compile DB
+SELECT dx, dy, dz, aabb_width_mm, aabb_depth_mm, aabb_height_mm
+FROM c_orderline WHERE Discipline = 'ARC' AND IsActive = 1
+```
+
+Generated pipe AABB: centre = midpoint of anchor pair, dims = (pipe_diameter_mm × 1.5) in
+cross-section, length in dominant axis direction. Use nominal diameter 50mm (default) until
+piece_type lookup is implemented.
+
+Clash: pipe AABB intersects ARC AABB → skip this pair, log WARNING with anchor IDs. Do NOT
+throw — some penetrations may be legitimate. Count skipped pairs.
+
+### A5. Emit c_orderline row
+
+```sql
+INSERT INTO c_orderline
+(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type,
+ M_Product_ID, Discipline, AD_Org_ID, Qty, dx, dy, dz,
+ aabb_width_mm, aabb_depth_mm, aabb_height_mm, IsActive)
+VALUES (?, NULL, ?, 'MEP_ROUTE', 'GENERATED',
+        ?, ?, ?, 1, ?, ?, ?,
+        50.0, 50.0, ?, 1)
+```
+
+- `C_Order_ID`: same as orderId parameter
+- `Line`: sequential (max existing Line + 10 per discipline block)
+- `M_Product_ID`: resolve from `_import_joint_piece_types` WHERE piece_type = step.piece_type
+  AND source_building matches; if not found use piece_type string directly (placeholder)
+- `Discipline`: step.discipline ('CW' or 'SP')
+- `AD_Org_ID`: 6 for CW, 7 for SP (from Discipline enum)
+- `dx,dy,dz`: anchor_end.x - anchor_start.x, etc. (metres)
+- `aabb_height_mm` (length): Euclidean distance × 1000
+
+### A6. Log summary
+
+After all disciplines:
+```
+[RouteWalker] {buildingType}: CW={cwLines} lines, SP={spLines} lines,
+              clashSkipped={n}, METER_anchors_used={n}, FIXTURE_anchors_used={n}
+```
+
+### A7. WalkResult record
+
+```java
+public record WalkResult(int cwLines, int spLines, int clashSkipped) {}
+```
+
+## Task B — Wire into CompilationPipeline
+
+In `CompilationPipeline.java`, after `expandDisciplineLines()` (step 4), add:
+
+```java
+// 4b. RouteWalker: generate CW/SP for G2 buildings (§6.12.3)
+if (erpDb != null) {
+    RouteWalker.WalkResult rw = RouteWalker.walk(compileDb, erpDb, buildingType, orderId);
+    if (rw.cwLines() > 0 || rw.spLines() > 0) {
+        BIMLogger.info("ROUTE", "RouteWalker: CW={}, SP={}, clash_skipped={}",
+                rw.cwLines(), rw.spLines(), rw.clashSkipped());
+    }
+}
+```
+
+// Implementing DISC_VALIDATION_DB_SRS.md §6.12.3 §3 — Witness: W-PATTERN-CW, W-PATTERN-SP
+
+## Task C — Pre-witness log check
+
+After the pipeline runs for RM, the log MUST contain:
+```
+[RouteWalker] HospitalAuckland: CW=N lines, SP=N lines, ...
+```
+
+If CW=0 or SP=0 → log WARNING (not exception) citing which anchor type was missing.
+The anchor log from 00q already showed FIXTURE=11, METER=154 — RouteWalker should
+produce at minimum 11 CW lines (one per FIXTURE anchor) and 11 SP lines.
+
+## Scope boundary
+
+- **RM only.** No other buildings.
+- **No gate test code.** W-PATTERN-CW/SP gate tests are 00s.
+- **No gradient enforcement in routing code** — RouteWalker computes dz from gradient
+  in pattern row; validation that dz/dx ≥ 0.025 is 00s gate test.
+- No modification to existing ARC walk, shim walk, or GEO proof path.
+
+## Verification
+
+After implementation:
+```
+mvn compile -q                                    # must be clean
+./scripts/run_RosettaStones.sh classify_rm.yaml   # RM 8/8 (no regression)
+./scripts/run_RosettaStones.sh classify_sh.yaml   # SH 8/8 (no regression)
+```
+
+Check log output for RouteWalker lines. Check hospitalauckland.db c_orderline:
+```sql
+SELECT Discipline, COUNT(*) FROM c_orderline WHERE family_ref='MEP_ROUTE' GROUP BY Discipline;
+-- Must show CW=N, SP=N (N ≥ 1)
+```
+
+## Commit sequence
+
+```
+[S104-DISC] 00r-A: RouteWalker class — pattern select + anchor match + emit
+[S104-DISC] 00r-B: CompilationPipeline wires RouteWalker after expandDisciplineLines
+```
+
+---
+
+# DONE
+

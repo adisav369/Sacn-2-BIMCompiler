@@ -1,0 +1,359 @@
+# 00f — InterimWorkshop: Variable-Length MEP Pieces via UOM
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.2 §6 — InterimWorkshop
+**Prereq:** 00d DONE (shim+joint piece BOM walk), component_library.db LOD metadata
+**Test Stones:** TE (pipe segments, duct segments), SH (regression)
+**Scope:** J4 (M_BOM_Line model extension) + J5 (InterimWorkshop primitive recomputation)
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** The library piece is the template. The workshop
+recomputes the primitive at the required length. No invention.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.2 §6 (InterimWorkshop spec)
+3. `component_library.db` schema: `component_definitions` (forward_axis, up_axis, face_count)
+4. `X_M_BOMLine.java` — current model (qty, qty_type, component_type, verb_ref)
+5. `PlacementCollectorVisitor.java` — onLeaf(), expandVerb()
+6. `docs/MANIFESTO.md` — iDempiere model governance (AD_Org, Callout, M_BOM)
+7. This prompt fully
+
+## Context: Compiere/e-Evolution BOM Model
+
+In standard Compiere (Red1's original BOM Drop), M_BOM_Line has:
+- **BOMQty** (DECIMAL) + **C_UOM_ID** — qty interpreted through UOM lens
+- **ComponentType** — Component/Phantom/Option/Variant
+- BOM Drop interprets qty=2345 + UOM=MM as "2345mm of this material"
+
+Our M_BOM_Line currently has qty (INTEGER) and qty_type (VARIABLE/FIXED)
+but no UOM. The UOM is the missing signal that tells the walker whether
+qty is a count (EA) or a length (MM/M).
+
+## Task
+
+### 1. M_BOM_Line Model Extension (Phase J4)
+
+Migration file: `migration/J4_001_bom_line_uom.sql`
+
+```sql
+-- §6.12.2 J4: BOM line UOM for variable-length MEP pieces
+-- Follows Compiere/iDempiere convention: BOMQty + C_UOM_ID
+
+-- c_uom_id: unit of measure (EA=each, MM=millimetres, M=metres)
+-- When UOM is a length unit, qty is the dimension along forward_axis.
+-- The walker calls InterimWorkshop instead of expandVerb().
+ALTER TABLE m_bom_line ADD COLUMN c_uom_id TEXT DEFAULT 'EA'
+    CHECK(c_uom_id IN ('EA','MM','M','KG','M2','M3'));
+```
+
+Note: qty stays INTEGER for now — all current data is EA counts. Future
+migration can widen to REAL when length-based lines are written.
+
+### 2. X_M_BOMLine.java — Add UOM accessor
+
+```java
+public static final String COLUMNNAME_c_uom_id = "c_uom_id";
+
+/** Unit of Measure — EA (each, default), MM, M, KG, M2, M3.
+ *  When UOM is a length unit (MM/M), qty is the dimension along forward_axis.
+ *  Follows iDempiere C_UOM_ID convention from Compiere BOM Drop. */
+public String getUomId()  { return get_ValueAsString(COLUMNNAME_c_uom_id); }
+public void setUomId(String v) { set_Value(COLUMNNAME_c_uom_id, v); }
+
+/** True if this line's qty represents a length (MM or M), not a count. */
+public boolean isLengthBased() {
+    String uom = getUomId();
+    return "MM".equals(uom) || "M".equals(uom);
+}
+```
+
+### 3. InterimWorkshop.java (new class)
+
+Location: `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/InterimWorkshop.java`
+
+```java
+/**
+ * Runtime mesh computation for variable-length MEP pieces.
+ *
+ * <p>Like a contractor's workshop: takes a standard piece template from
+ * component_library.db, recomputes the mathematical primitive (cylinder,
+ * box, torus arc) at the required length. LOD (face count, tessellation)
+ * from the library template. Dimensions from the BOM line (qty + c_uom_id).
+ *
+ * <p>This is NOT parametric mesh generation. MEP pieces are mathematical
+ * primitives — their shape is fully determined by diameter + length.
+ * Materials are flat RGBA per face (no UV mapping). A shorter cylinder
+ * has shorter side faces with the same uniform colour. No distortion.
+ *
+ * <p>Results are ephemeral — not stored back to library or BOM.
+ *
+ * <p>Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 §6 — Witness: W-WORKSHOP-1
+ */
+public class InterimWorkshop {
+
+    /**
+     * Recompute half-extents for a variable-length piece.
+     *
+     * @param product       M_Product (carries width/depth/height in metres)
+     * @param forwardAxis   from component_library.db (X, Y, or Z)
+     * @param targetLengthM target length in metres (from BOM line qty + UOM)
+     * @return [halfW, halfD, halfH] with forward axis replaced, or null if invalid
+     */
+    public static double[] recompute(MProduct product, String forwardAxis,
+                                     double targetLengthM) {
+        double w = product.getWidth();
+        double d = product.getDepth();
+        double h = product.getHeight();
+
+        return switch (forwardAxis) {
+            case "X" -> new double[]{ targetLengthM / 2.0, d / 2.0, h / 2.0 };
+            case "Y" -> new double[]{ w / 2.0, targetLengthM / 2.0, h / 2.0 };
+            case "Z" -> new double[]{ w / 2.0, d / 2.0, targetLengthM / 2.0 };
+            default  -> null;
+        };
+    }
+
+    /**
+     * Convert BOM line qty to metres based on c_uom_id.
+     */
+    public static double qtyToMetres(double qty, String uomId) {
+        return switch (uomId) {
+            case "MM" -> qty / 1000.0;
+            case "M"  -> qty;
+            default   -> qty; // EA, KG, M2, M3 — not a length, should not reach here
+        };
+    }
+}
+```
+
+### 4. Wire UOM check into PlacementCollectorVisitor.onLeaf()
+
+In `onLeaf()`, BEFORE the half-extent calculation (lines ~330-347),
+add UOM dispatch:
+
+```java
+// §6.12.2: UOM-driven InterimWorkshop for variable-length pieces
+// UOM is the signal — no CUT verb needed (Compiere BOMQty+C_UOM_ID convention)
+if (line.isLengthBased()) {
+    String fwdAxis = resolveForwardAxis(product);  // from component_library.db cache
+    double targetM = InterimWorkshop.qtyToMetres(line.getQty(), line.getUomId());
+    double[] trimmed = InterimWorkshop.recompute(product, fwdAxis, targetM);
+    if (trimmed != null) {
+        halfW = trimmed[0];
+        halfD = trimmed[1];
+        halfH = trimmed[2];
+        BIMLogger.geo("WORKSHOP", "RECOMPUTE {} axis={} target={:.3f}m → halfExtents=({:.4f},{:.4f},{:.4f})",
+                productId, fwdAxis, targetM, halfW, halfD, halfH);
+    }
+}
+```
+
+This goes BEFORE expandVerb() — UOM modifies dimensions, verb modifies
+positions. They don't overlap. A length-based line always has qty=1
+instance count (the length IS the qty).
+
+**Rotation note:** InterimWorkshop recomputes along the **library's**
+forward_axis (e.g. Y). If the BOM line has rotation_rule (e.g. 90° to
+run along X), the walker applies rotation AFTER recompute. The half-extents
+are in local frame; the rotation transforms them to world frame. This is
+already how the walker works — no MEP-specific rotation handling needed.
+
+### 5. GEO Forensic Logging
+
+Every InterimWorkshop decision must be traceable via GEO debug log.
+The existing GEO TACK channel covers anchor accumulation; add a
+WORKSHOP channel for recomputation forensics:
+
+```java
+// On entry — proves UOM dispatch fired
+BIMLogger.geo("WORKSHOP", "ENTER {} uom={} qty={} qty_type={} fwd_axis={}",
+        productId, line.getUomId(), line.getQty(), line.getQtyType(), fwdAxis);
+
+// On recompute — proves dimensions were modified
+BIMLogger.geo("WORKSHOP", "RECOMPUTE {} axis={} original=({:.4f},{:.4f},{:.4f}) → target={:.3f}m → half=({:.4f},{:.4f},{:.4f})",
+        productId, fwdAxis, product.getWidth()/2, product.getDepth()/2, product.getHeight()/2,
+        targetM, halfW, halfD, halfH);
+
+// On guard rejection — proves FIXED piece was NOT modified
+BIMLogger.geo("WORKSHOP", "REJECT {} qty_type=FIXED — using library dimensions", productId);
+
+// On tack output — proves outlet position for next sibling verification
+double outletAlongFwd = targetM;  // outlet = inlet + length along forward axis
+BIMLogger.geo("WORKSHOP", "TACK_IO {} inlet=({:.4f},{:.4f},{:.4f}) outlet_offset={:.4f}m along {}",
+        productId, anchor[0], anchor[1], anchor[2], outletAlongFwd, fwdAxis);
+```
+
+The TACK_IO line is critical — it lets forensics verify that the next
+sibling's dx matches this piece's outlet. If they don't match, there's
+a gap or overlap. The GEO log proves chain integrity without runtime
+assertions.
+
+For rotation forensics, the existing TACK ROT log already covers:
+```
+[GEO] TACK ROT 1.5708rad: line=(0.0000,2.3450) → rotated=(2.3450,0.0000)
+```
+This proves a Y-axis piece was rotated 90° to run along X. Combined
+with WORKSHOP RECOMPUTE, the full chain is auditable:
+1. WORKSHOP ENTER — UOM dispatch
+2. WORKSHOP RECOMPUTE — dimension override
+3. WORKSHOP TACK_IO — outlet position
+4. TACK ROT — rotation applied
+5. TACK LEAF — final placed position
+
+Any session or coder can `grep "WORKSHOP\|TACK" log` and trace every
+MEP piece placement decision from UOM to final centroid.
+
+### 6. Forward axis cache
+
+Add `forward_axis` to M_Product in ERP.db (IFCtoERP already reads
+component_library.db for classification — add forward_axis to the
+M_Product INSERT). PlacementCollectorVisitor reads from MProduct.
+
+Migration: `migration/J4_002_product_forward_axis.sql`
+
+```sql
+ALTER TABLE M_Product ADD COLUMN forward_axis TEXT DEFAULT 'Y';
+```
+
+IFCtoERP populates from component_library.db:
+```java
+// In promoteToProduct() — add forward_axis from library
+UPDATE M_Product SET forward_axis = (
+    SELECT cd.forward_axis FROM component_definitions cd
+    JOIN component_types ct ON cd.type_id = ct.id
+    WHERE ct.ifc_class = M_Product.ifc_class
+    LIMIT 1
+) WHERE forward_axis IS NULL;
+```
+
+### 6. Type safety — Java enum for qty_type guard
+
+```java
+/** BOM line variability type — prevents rogue code from workshop-modifying
+ *  fixed-geometry pieces (tees, elbows, sprinklers). */
+public enum QtyType {
+    FIXED,    // Tack i/o predetermined. Workshop rejected. (tee, elbow, terminal)
+    VARIABLE  // Outlet shifts with length. Workshop allowed. (pipe straight, duct straight)
+}
+```
+
+Guard in InterimWorkshop:
+```java
+if (!"VARIABLE".equals(line.getQtyType())) {
+    BIMLogger.warn("WORKSHOP", "REJECT {} — qty_type={} is not VARIABLE, skipping recompute",
+            productId, line.getQtyType());
+    return; // Use default product dimensions
+}
+```
+
+### 8. Code Documentation Standard
+
+Every class and method in this task MUST carry Javadoc that another coder
+can read cold. Specifically:
+
+**InterimWorkshop.java class header must state:**
+- What it does (recomputes mathematical primitives, not parametric)
+- Why UOM drives it (Compiere BOMQty + C_UOM_ID convention)
+- What it does NOT do (no mesh stretching, no stored results, no parametric)
+- The contractor analogy (cut pipe from stock to fit gap)
+- Spec citation with witness
+
+**PlacementCollectorVisitor UOM block must state:**
+- Why UOM check is BEFORE expandVerb() (dimensions before positions)
+- Why rotation is AFTER recompute (local frame → world frame)
+- The guard: qty_type=FIXED → workshop rejected
+- GEO logging contract (5 log points per workshop piece)
+
+**X_M_BOMLine.isLengthBased() must state:**
+- iDempiere lineage (C_UOM_ID from Compiere BOM Drop)
+- What VARIABLE vs FIXED means for tack i/o
+- That EA is the default — all existing data unchanged
+
+## What NOT to do
+
+- Do NOT modify component_library.db geometry blobs — read-only template
+- Do NOT store recomputed meshes back to ERP.db or _BOM.db — ephemeral only
+- Do NOT create parametric mesh generation — this is mathematical primitive recomputation
+- Do NOT modify existing migration files
+- Do NOT change existing verb handling (TILE/ROUTE/CLUSTER/FRAME/SPRAY)
+- Do NOT add a CUT verb — UOM is the signal (Compiere convention)
+- **All logging via BIMLogger — no System.out.println**
+
+## Verification
+
+```bash
+./scripts/run_RosettaStones.sh classify_sh.yaml   # regression: 7/7+ PASS
+./scripts/run_RosettaStones.sh classify_te.yaml   # MEP pieces with UOM=MM
+```
+
+Check:
+- Migration applies cleanly (c_uom_id column, forward_axis column)
+- X_M_BOMLine.isLengthBased() returns true for MM/M, false for EA
+- InterimWorkshop.recompute() returns correct half-extents for X/Y/Z axes
+- QtyType guard rejects FIXED lines from workshop
+- GEO log shows WORKSHOP RECOMPUTE entries for variable-length pieces
+- SH: zero regression (all EA lines, workshop never fires)
+
+## Gate
+
+- SH 7/7+ PASS (regression)
+- TE: WORKSHOP RECOMPUTE lines in GEO log
+- No new test class needed — GEO log is the proof
+- `qty_type=FIXED` lines NEVER trigger workshop (guard log proves it)
+
+## Spec citation
+
+```java
+// Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 §6 — InterimWorkshop
+// iDempiere convention: BOMQty + C_UOM_ID (Compiere BOM Drop, Red1)
+// Witness: W-WORKSHOP-1 (UOM-driven primitive recomputation)
+```
+
+## Commit
+
+`[S104-J4J5] M_BOM_Line c_uom_id + InterimWorkshop: variable-length MEP primitives`
+
+---
+
+# DONE — Coder findings (2026-03-31)
+
+## What was implemented
+
+- `migration/J4_001_bom_line_uom.sql` — ADD COLUMN c_uom_id TEXT DEFAULT 'EA' to m_bom_line
+- `migration/J4_002_product_forward_axis.sql` — ADD COLUMN forward_axis TEXT DEFAULT 'Y' to M_Product
+- `X_M_BOMLine.java` — COLUMNNAME_c_uom_id, getUomId(), setUomId(), isLengthBased() (with full Javadoc per §8)
+- `X_MProduct.java` — COLUMNNAME_forward_axis, getForwardAxis(), setForwardAxis()
+- `InterimWorkshop.java` (new) — QtyType enum, recompute(), qtyToMetres(), full Javadoc per §8
+- `PlacementCollectorVisitor.java` — UOM dispatch block before expandVerb(), resolveForwardAxis() helper
+
+## Gate results
+
+- SH: **8/8 PASS** — zero regression (all EA lines, WORKSHOP never fires as expected)
+- RM: 3/7 PASS — SQLITE_BUSY on RM_BOM.db (database is locked). Pre-existing. Not caused by J4/J5.
+  - Joint piece extraction: PASS
+  - BOM.db not found (pipeline aborted): FAIL — pre-existing
+  - Cheating Maxim check: N/A (no BOM.db) — pre-existing
+- TE: 3/7 PASS — TE_BOM.db not found (IFCtoBOM pipeline never run for TE). Pre-existing from S104 00d PARTIAL.
+
+## WORKSHOP GEO log
+
+No WORKSHOP RECOMPUTE entries yet — expected. No BOM lines with UOM=MM/M have been written.
+The code path is wired and guarded. Once IFCtoERP writes MEP lines with c_uom_id=MM,
+the GEO log will show the full 5-point chain: ENTER → RECOMPUTE → TACK_IO → (existing TACK ROT) → (existing TACK LEAF).
+
+## Gate summary after re-run (stale 0-byte RM_BOM.db deleted, extraction re-run)
+
+- SH: **8/8 PASS** — zero regression
+- RM: **6/8 PASS** — 6787 elements, 5 storeys extracted correctly
+  - 1 FAIL: `BuildingRegistryTest.compilationPipeline` — `no such table: C_DocType`
+    C_DocType is in ERP.db, not BOM.db. Pre-existing failure, unrelated to J4/J5.
+- TE: 3/7 PASS — TE_BOM.db still missing (IFCtoBOM not run for TE). Pre-existing.
+
+## WORKSHOP GEO log
+
+No WORKSHOP RECOMPUTE entries yet — expected. No BOM lines with c_uom_id=MM/M written yet.
+InterimWorkshop is wired and guarded. Population of MEP lines with UOM=MM is the next step (IFCtoERP side).

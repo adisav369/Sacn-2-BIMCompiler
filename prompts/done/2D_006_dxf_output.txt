@@ -1,0 +1,182 @@
+# 2D_006 — DXF Output: drawing_writer_dxf.py + W-2D-ROUNDTRIP
+# TRIAGE ORDER: #11 — After 2D_005 (all SVG views working). Independent of Java port.
+# SEPARATION OF CONCERN: New file `2D_Layout/python/drawing_writer_dxf.py` only.
+#   Zero touch to drawing_writer.py (SVG stays as-is).
+#   Zero touch to compiler pipeline.
+
+**Spec:** 2D_ARCHITECTURAL_LAYOUT.md §14 (DXF Output), §12.5 (W-2D-ROUNDTRIP)
+**Prereq:** 2D_000 DONE (drawing_writer.py proven on SH); ezdxf in dependency stack
+**Witness to pass:** W-2D-ROUNDTRIP (partial — derived DXF exists, overlay diff runnable)
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** Coordinates come from output.db. No invented geometry.
+Port drawing_writer.py logic to DXF. Do not touch drawing_writer.py.
+
+## Read first
+
+1. `2D_Layout/PROGRESS.md`
+2. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §14 (DXF spec — all subsections)
+3. `2D_Layout/python/drawing_writer.py` — understand element reading, section cut call,
+   coordinate transform. Note: DXF must NOT apply PAPER_FACTOR (model-space mm).
+4. `2D_Layout/python/section_cut.py` — section_cut() returns ElementSection list
+5. This prompt fully
+
+## Background: Why DXF matters
+
+SVG is a browser sidecar. DXF is the professional deliverable:
+- Opens in AutoCAD, ArchiCAD, FreeCAD, QCAD without conversion
+- Coordinates in model-space mm → W-2D-ROUNDTRIP overlay diff is direct
+- AIA layer names → architects freeze/thaw layers as expected
+- LTSCALE + DIMSTYLE → annotations auto-scale at any scale
+
+## Task 1 — drawing_writer_dxf.py: floor plan DXF
+
+File: `2D_Layout/python/drawing_writer_dxf.py`
+
+```python
+"""
+DXF output for 2D architectural drawings.
+Reads compiled BIM database, writes professional DXF using ezdxf.
+
+Coordinates: model-space mm (NO PAPER_FACTOR applied — DXF handles scale via DIMSCALE).
+Layers:      AIA standard (A-WALL-FULL, A-GRID, A-ANNO-DIMS, etc.)
+Line types:  ISO 128 via LTSCALE-scaled standard DXF linetypes.
+
+See: 2D_ARCHITECTURAL_LAYOUT.md §14
+"""
+
+SCALE = 100   # drawing scale — drives DIMSCALE, LTSCALE, text heights
+
+def write_floor_plan_dxf(db_path: str, out_dxf: str, scale: int = SCALE):
+    """Generate floor plan DXF from compiled output.db.
+    Implements 2D_ARCHITECTURAL_LAYOUT.md §14.5
+    Witness: W-2D-ROUNDTRIP (partial)
+    """
+    ...
+```
+
+### Setup (from §14.5):
+```python
+doc = ezdxf.new('R2010')
+doc.header['$INSUNITS'] = 4          # mm
+doc.header['$LTSCALE']  = scale / 100.0
+msp = doc.modelspace()
+
+# AIA layers (§14.2)
+layers = [
+    ('A-WALL-FULL', 7, 'CONTINUOUS'),
+    ('A-WALL-PRTN', 7, 'CONTINUOUS'),
+    ('A-WALL-PATT', 254, 'CONTINUOUS'),
+    ('A-GLAZ',      5,  'CONTINUOUS'),
+    ('A-DOOR',      3,  'CONTINUOUS'),
+    ('A-GRID',      8,  'CENTER'),
+    ('A-ANNO-DIMS', 7,  'CONTINUOUS'),
+    ('A-ANNO-TEXT', 7,  'CONTINUOUS'),
+    ('A-FURN',      9,  'CONTINUOUS'),
+]
+for name, color, ltype in layers:
+    doc.layers.add(name=name, color=color, linetype=ltype)
+
+# DIMSTYLE (§14.4): ARCHTICK, DIMSCALE, text height
+dimstyle = doc.dimstyles.new('ARCH_JKR')
+dimstyle.dxf.dimscale  = scale
+dimstyle.dxf.dimtxt    = 2.5    # 2.5mm on paper = 250 in model at 1:100
+dimstyle.dxf.dimblk    = 'ARCHTICK'
+dimstyle.dxf.dimtxsty  = 'Standard'
+```
+
+### Geometry — model-space mm (no PAPER_FACTOR):
+```python
+# CUT elements: section contours → LWPOLYLINE on A-WALL-FULL / A-WALL-PRTN
+# Each contour point: (x_world_m * 1000, y_world_m * 1000) in mm
+for es in cut_elements:
+    layer = 'A-WALL-FULL' if es.ifc_class == 'IfcWall' and 'Ext' in es.element_name \
+            else 'A-WALL-PRTN'
+    for contour in es.contours:
+        pts = [(p[0] * 1000, p[1] * 1000) for p in contour.points]
+        msp.add_lwpolyline(pts, close=True, dxfattribs={'layer': layer,
+                            'lineweight': 50})  # 0.50mm = DXF lineweight 50
+
+# BELOW elements: bounding box rect on A-FURN
+for es in below_elements:
+    bx0, by0, bx1, by1 = [v * 1000 for v in es.bbox_2d]
+    msp.add_lwpolyline([(bx0,by0),(bx1,by0),(bx1,by1),(bx0,by1)],
+                       close=True, dxfattribs={'layer': 'A-FURN', 'lineweight': 18})
+
+# Grid lines: CENTER linetype, A-GRID layer, extend beyond building
+for g in grids:
+    if g.axis == 'x':
+        msp.add_line((g.position*1000, y_min-500), (g.position*1000, y_max+500),
+                     dxfattribs={'layer': 'A-GRID', 'lineweight': 18})
+        # Bubble: circle + text
+        msp.add_circle((g.position*1000, y_max+700), 400,
+                        dxfattribs={'layer': 'A-GRID'})
+        msp.add_text(g.label, dxfattribs={'layer': 'A-ANNO-TEXT',
+                     'height': 2.5*scale}).set_placement((g.position*1000, y_max+700))
+    # (similar for y-axis grids)
+```
+
+## Task 2 — Elevation DXF
+
+```python
+def write_elevation_dxf(db_path: str, face: str, out_dxf: str, scale: int = SCALE):
+    """DXF elevation — model-space, AIA layers.
+    face: 'front'|'rear'|'left'|'right' — apply h_sign mirror (§14.5)
+    Witness: W-2D-ROUNDTRIP (elevation leg)
+    """
+```
+
+- Use same `h_sign` mirror as SVG elevation (rear=-1, right=-1)
+- Roof silhouette: LWPOLYLINE on new layer `A-ROOF` (lineweight 50)
+- Level markers: horizontal lines + TEXT on `A-ANNO-TEXT`
+- Height dimensions: `add_aligned_dim()` on `A-ANNO-DIMS` using ARCH_JKR dimstyle
+- Ground line: `A-WALL-FULL`, lineweight 70
+
+## Task 3 — CLI + test
+
+```bash
+cd 2D_Layout
+python python/drawing_writer_dxf.py \
+  lib/input/ifc4_sample_house.db --floor-plan --all
+# Expected: SH_floor_plan.dxf, SH_front_elevation.dxf etc.
+# Open in FreeCAD or QCAD — verify layers, line weights, text readable at 1:100
+```
+
+### W-2D-ROUNDTRIP-PARTIAL test (DxfOutputTest.py or manual):
+```python
+import ezdxf
+doc = ezdxf.readfile('output/ifc4_sample_house_floor_plan.dxf')
+msp = doc.modelspace()
+walls = [e for e in msp if e.dxftype()=='LWPOLYLINE'
+         and e.dxf.layer=='A-WALL-FULL']
+assert len(walls) >= 5, f"Expected >= 5 walls, got {len(walls)}"
+# Check coordinates are in mm (not m): first wall point x > 100 (not < 10)
+pt = list(walls[0].get_points())[0]
+assert abs(pt[0]) > 100, f"Looks like meters not mm: {pt[0]}"
+print(f"W-2D-ROUNDTRIP-PARTIAL: {len(walls)} wall polylines in model-space mm")
+```
+
+## Done criteria
+
+- `drawing_writer_dxf.py --all` produces 6 DXF files (floor plan + 4 elevations + roof plan)
+- Files open in FreeCAD/QCAD with correct AIA layer names visible
+- Wall polylines are in model-space mm (coordinate magnitudes ~7000..14000 for SH)
+- `$INSUNITS=4` confirmed in DXF header
+- W-2D-ROUNDTRIP-PARTIAL PASS (wall count + coordinate range assertions)
+
+## Professional readability checklist (verify visually in FreeCAD)
+
+From §14.7 — check all before marking DONE:
+- [ ] Ground line visibly bolder than walls (0.70 vs 0.50)
+- [ ] Grid lines clearly thinner than walls (hairline 0.18)
+- [ ] Text at 2.5mm paper height readable at arm's length on A3
+- [ ] Dimension tick marks (ARCHTICK) not arrows — matches JKR convention
+- [ ] Grid bubbles 8mm diameter, label centred
+- [ ] LTSCALE = 1.0 (1:100 drawing): CENTER dash pattern legible
+- [ ] No 0.15mm lines — minimum is 0.18mm (ISO hairline)
+
+# DONE
+<!-- Coder appends findings here -->

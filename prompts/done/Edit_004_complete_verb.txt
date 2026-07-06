@@ -1,0 +1,121 @@
+# Edit_004 — COMPLETE Verb: Place Missing Walls Along IfcSpace Perimeter
+# TRIAGE ORDER: #6 — Requires Edit_002 (detection) AND Edit_003 (ifc_spaces table).
+# SEPARATION OF CONCERN: Writes to output.db only. Never touches extracted.db.
+# New walls go into element_instances/element_transforms/elements_rtree in output.db.
+# Do NOT add to extracted.db elements_meta — that is the Rosetta Stone reference.
+
+**Spec:** FINISH_WALLS_SRS.md §5 | BIM_Designer_SRS.md §28.17.2 | SPATIAL_VARIANCE_SRS.md §4.2
+**Prereq:** Edit_002 DONE (detection), Edit_003 DONE (IfcSpace AABB in elements_rtree)
+**Witnesses to pass:** W-FW-COMPILE, W-FW-AABB, W-COMPLETE-WALLS
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** Wall positions come from IfcSpace AABB. Wall dimensions come
+from M_Product in component_library.db. Never invent either.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/FINISH_WALLS_SRS.md` §5 (placement algorithm)
+3. `docs/BIM_Designer_SRS.md` §28.17.2 (COMPLETE verb spec)
+4. `docs/SPATIAL_VARIANCE_SRS.md` §5.2 (W_BOM_Variance schema)
+5. `docs/unified_mathematical_formulation.txt` §2 Stage P — placement formula
+6. Verify Edit_003 output:
+   ```
+   sqlite3 DAGCompiler/lib/input/SampleHouse_extracted.db \
+     "SELECT COUNT(*) FROM elements_rtree er JOIN elements_meta em ON er.id=em.id
+      WHERE em.ifc_class='IfcSpace'"
+   ```
+   Must return > 0 before proceeding.
+7. This prompt fully
+
+## Concept
+
+COMPLETE(ifc_class, storey, product_id) places walls along the four faces of each IfcSpace
+that has a deficit. Uses:
+- `T(p(space))` = IfcSpace centroid from element_transforms
+- AABB from elements_rtree → face positions (N/S/E/W)
+- Product dimensions from component_library.db M_Product (length, thickness, height)
+- Output: new element rows in output.db + W_BOM_Variance record
+
+## Tasks
+
+### Task 1 — CompleteVerbService.java
+
+```java
+/**
+ * Places missing walls along IfcSpace perimeter faces.
+ * Implementing BIM_Designer_SRS.md §28.17.2, FINISH_WALLS_SRS.md §5
+ * Witness: W-COMPLETE-WALLS, W-FW-COMPILE
+ */
+public class CompleteVerbService {
+    public CompleteResult complete(
+        String buildingId,
+        String storey,
+        String ifcClass,    // "IfcWall"
+        String productId,   // from component_library.db
+        String face         // "N"|"S"|"E"|"W"|null (null = all deficit faces)
+    );
+}
+```
+
+### Task 2 — Placement algorithm
+
+For each IfcSpace with deficit at the target storey:
+
+1. Load AABB from `ifc_spaces` table (NOT elements_rtree — see Edit_003):
+   SELECT min_x, max_x, min_y, max_y, min_z, max_z, center_x, center_y, center_z
+   FROM ifc_spaces WHERE guid=space_guid
+2. Load product dims from component_library.db: (thickness_mm, height_mm)
+3. For each face (N/S/E/W) where no IfcWall exists within snap_tolerance=50mm:
+   - N face: centre = (midX, maxY, midZ), length = maxX-minX, θ=0°
+   - S face: centre = (midX, minY, midZ), length = maxX-minX, θ=180°
+   - E face: centre = (maxX, midY, midZ), length = maxY-minY, θ=90°
+   - W face: centre = (minX, midY, midZ), length = maxY-minY, θ=270°
+4. Insert element_instances (guid=UUID, ifc_class=ifcClass)
+5. Insert element_transforms (center_x/y/z from step 3)
+6. Insert elements_rtree (AABB from centre + product dims)
+7. Insert W_BOM_Variance (gesture_type=PANEL or ADD, resolved_type=LINE_ADD,
+   resolution_level=2, verb_sequence="COMPLETE IfcWall <storey> FACE <face> PRODUCT <pid>")
+
+### Task 3 — Existing wall check
+
+Before placing a wall on a face, check if one already exists within snap_tolerance:
+```
+existing = COUNT(*) FROM element_transforms et
+           JOIN elements_meta em ON em.guid=et.guid
+           WHERE em.ifc_class='IfcWall'
+           AND ABS(et.center_x - face_cx) < snap_tolerance
+           AND ABS(et.center_y - face_cy) < snap_tolerance
+```
+If existing > 0: skip that face (wall already there).
+
+### Task 4 — CompleteVerbTest.java
+
+Use SH building (has 5 walls, test with a space that is missing one face):
+
+```
+W-COMPLETE-1: complete(SH, "Ground Floor", "IfcWall", "BRICK_200", null)
+              → IfcWall count increases by deficit amount
+W-COMPLETE-2: all new element AABB within parent IfcSpace AABB
+W-COMPLETE-3: W_BOM_Variance rows created with resolution_level=2
+W-COMPLETE-4: existing walls not duplicated (idempotent)
+```
+
+## Anti-Drift
+
+- New elements go to output.db ONLY. Never write to extracted.db (Rosetta Stone — read-only).
+- Wall dimensions from M_Product only. Never compute from IfcSpace dimensions directly
+  (that would be parametric generation — forbidden).
+- Length = IfcSpace face length (from AABB) — this is a TACK position, not a dimension override.
+
+## Done criteria
+
+- CompleteVerbTest 4/4 PASS
+- W-COMPLETE-WALLS witness passes for SH test case
+- W-FW-AABB: containment check PASS for all new walls
+
+# DONE
+<!-- Coder appends findings here -->

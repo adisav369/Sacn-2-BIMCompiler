@@ -1,0 +1,200 @@
+# 00u — TE Critical Proof Fix + GEO Forensics Ceiling Documentation
+
+**Spec:** EYES_SRS.md §P05/§P06 · DISC_VALIDATION_DB_SRS.md §6.12.3 §GEO-ceiling
+**Prereq:** 00t DONE — TE discipline G3 fix. TE 7/8. 71 critical violations pre-existing.
+**Test Stone:** TE (Terminal)
+**Target:** TE 8/8. BuildingRegistryTest.compilationPipeline PASS.
+**Witness:** W-TE-PROOF — Terminal critical proof violations = 0
+
+You are a coder for bim-compiler. One bounded task. Two parts: spec update, then code fix.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Diagnose first, fix only what diagnosis shows.
+Do NOT relax proof thresholds. Do NOT change element count.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/EYES_SRS.md` §P05 (NO_DUPLICATE_POSITION), §P06 (NO_SAME_CLASS_OVERLAP)
+3. `BIMEyes/src/main/java/com/bim/eyes/proof/tier2/DuplicatePositionProof.java`
+4. `BIMEyes/src/main/java/com/bim/eyes/proof/tier2/SameClassOverlapProof.java`
+5. `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/PlacementCollectorVisitor.java`
+   lines 918–960 (emitGeoSummary — note GUID filter: only IFC GUIDs enter GEO comparison)
+6. Query `DAGCompiler/lib/output/terminal.db`:
+   ```sql
+   -- Candidate P05 violations (duplicate centroid within 1mm):
+   SELECT ifc_class, storey,
+          ROUND(cx_m,3) as cx, ROUND(cy_m,3) as cy, ROUND(cz_m,3) as cz,
+          COUNT(*) as cnt
+   FROM element_instances
+   GROUP BY ifc_class, storey, ROUND(cx_m,3), ROUND(cy_m,3), ROUND(cz_m,3)
+   HAVING cnt > 1 ORDER BY cnt DESC LIMIT 20;
+   ```
+   ```sql
+   -- Total element count (must stay 48428 after fix):
+   SELECT COUNT(*) FROM element_instances;
+   ```
+7. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.3 §4 (W-PATTERN-CW/SP) for GEO ceiling context
+8. This prompt fully
+
+## Background — GEO Forensic Ceiling (analyst finding, confirmed from code)
+
+`emitGeoSummary()` only processes placements where `elementRef` matches an IFC GUID.
+RouteWalker-generated rows (`family_ref='MEP_ROUTE'`) have no IFC GUID — they are
+excluded from GEO comparison. This defines the forensic ceiling per building class:
+
+| Building | GEO scope | Discipline proof | Route proof |
+|----------|-----------|-----------------|-------------|
+| SH (G1) | All 58 GUIDs | N/A (no MEP) | — |
+| TE (G1) | All 48,428 GUIDs, 0.025mm worst | W-TE-DISC (elements_meta.discipline) | — (no RouteWalker) |
+| RM (G2) | IFC-extracted GUIDs only; RouteWalker rows excluded | Typed classes only | W-PATTERN-CW/SP |
+
+**G2 rule:** Pattern+connectivity proofs (W-PATTERN-CW/SP, P16/P17) are the primary
+validation for generated routes. GEO comparison is secondary, covers extracted elements only.
+
+## Task A — Update spec (watchdog task)
+
+Append the GEO forensic ceiling table to `docs/DISC_VALIDATION_DB_SRS.md` §6.12.3 §4
+(after the W-PATTERN-SP claim, before §5 phase table):
+
+```markdown
+#### GEO Forensic Ceiling — G1 vs G2
+
+`emitGeoSummary()` compares compiled placements against source extraction positions
+by IFC GUID. RouteWalker-generated rows have no IFC GUID and are excluded.
+
+| Class | Example | GEO scope | Discipline proof | Generated-route proof |
+|-------|---------|-----------|-----------------|----------------------|
+| G1 | TE (IFC4) | All extracted GUIDs | W-TE-DISC (elements_meta.discipline) | — |
+| G2 | RM (IFC2x3) | Extracted GUIDs only; routes excluded | Typed classes only | W-PATTERN-CW/SP |
+
+**G2 invariant:** For G2 buildings, pattern+connectivity proofs are the primary validation
+mechanism for generated pipe routes. GEO comparison covers extraction-origin elements only.
+```
+
+## Task B — Diagnose P05/P06 violations
+
+Run the candidate query (read step 6). Write findings to `# DONE` before implementing.
+
+Likely causes (diagnose, do not assume):
+- **B1. MEP_RECIPE shim emits duplicate LEAF positions** — the shim walk may place two
+  archetypes at the same XY position for different disciplines (pre-00t all were CW,
+  post-00t split into CW+SP but same physical centroid). Same ifc_class at same position
+  → P05 violation.
+- **B2. CLUSTER representative positions collide** — 33,324 roof sprinkler/pipe elements
+  may share centroids after CLUSTER grouping.
+- **B3. IfcPipeSegment extraction dedup missed** — 00n's sameDims guard was applied to RM
+  but not to TE extraction. Check if TE has duplicate guids in element_instances.
+
+## Task C — Fix
+
+Fix depends on B diagnosis. Implement only what diagnosis confirms.
+
+**Pre-flight citation before any code change:**
+```
+// Implementing EYES_SRS.md §P05/§P06 — Witness: W-TE-PROOF
+```
+
+**If B1 (shim discipline collision):** After 00t, discipline groups are now correctly split,
+but the shim placement position for CW and SP archetypes at the same storey may be identical
+(both shimmed to ceiling at same XY). The fix: ensure each discipline archetype is placed at
+a unique representative position (offset by discipline sequence number × 0.1m in Z, or
+select the archetype's actual element centroid rather than a fixed shim point).
+
+**If B2 (CLUSTER collision):** Add a position-jitter guard in the CLUSTER verb output:
+if two CLUSTER representatives land within 1mm of each other in the same ifc_class, offset
+the second by a nominal 1mm. This is position disambiguation, not position invention.
+
+**If B3 (dedup):** Apply the same `sameDims guard` from 00n's DuplicatePositionProof to TE:
+elements at same centroid with identical W/D/H dimensions → keep one, skip others.
+
+## Task D — Verification
+
+```bash
+mvn compile -q
+./scripts/run_RosettaStones.sh classify_te.yaml    # TE must be 8/8
+./scripts/run_RosettaStones.sh classify_rm.yaml    # RM 8/8 (no regression)
+./scripts/run_RosettaStones.sh classify_sh.yaml    # SH 8/8 (no regression)
+```
+
+Post-fix checks:
+```sql
+-- Element count must not change:
+SELECT COUNT(*) FROM element_instances;  -- must = 48428
+-- Violations must be 0:
+SELECT COUNT(*) FROM W_Validation_Result WHERE severity='CRITICAL';  -- target = 0
+```
+
+## Scope boundary
+
+- **TE only.** No SH/RM changes (unless fix is in shared code — then prove no regression).
+- **Do NOT relax P05/P06 thresholds or isCritical() definitions.**
+- **Element count must remain 48428.**
+- **Write diagnosis to # DONE before any code change.**
+
+## Commit sequence
+
+```
+[S104-DISC] 00u-A: GEO forensic ceiling spec — G1 vs G2 documented in §6.12.3 §4
+[S104-DISC] 00u-B: TE P05/P06 fix — W-TE-PROOF: critical violations 71 → 0
+```
+
+---
+
+# DONE
+
+## Task A — Spec Update
+DONE. GEO Forensic Ceiling table already present in DISC_VALIDATION_DB_SRS.md §6.12.3 §4 (appended in previous session, lines 1748-1759).
+
+## Task B — Diagnosis (complete)
+
+**Finding: 35 duplicate groups → 71 critical violations (35 P05 + 36 P06)**
+
+Two distinct root causes found:
+
+### Root Cause 1 — B3: Genuine IFC source duplicates (19 pairs, same discipline)
+- All pairs: consecutive ordinal GUIDs (gap=1), same ifc_class, same discipline, same element_name, same position+dims
+- Disciplines affected: ACMV (16 pairs, IfcAirTerminal), ELEC (1, IfcBuildingElementProxy), FP (1, IfcCovering), CW (1, IfcPipeFitting)
+- Cause: IFC source model has two instances of the same element at identical physical positions (Revit modeling error)
+- Example: ACMV_MD_AIRTERMINAL_LEVEL_1_4248 vs _4249 — "Ceiling Mounted Return Air Grille:1200 x 600" at cx=49.519, cy=15.673, cz=37.328
+
+### Root Cause 2 — Cross-discipline: IfcFlowTerminal in both CW and SP (16 pairs)
+- classify_te.yaml maps IfcFlowTerminal to BOTH CW and SP disciplines
+- BOM walk emits each IfcFlowTerminal TWICE: once with CW context, once with SP context
+- Each pair has DIFFERENT IFC GUIDs (element_ref) — two distinct IFC entities at same physical position
+- Example: CW_MD_FLOWTERMINAL_GROUND_FLOOR_3077 (IFC: 2080wA0Ff3kAhMQBfyYCTK) vs SP_MD_FLOWTERMINAL_GROUND_FLOOR_3841 (IFC: 072V$pOI10mQV4H5mGLwqZ)
+- These are physically the same fixture (a sink) with separate IFC entities in CW supply and SP drainage systems
+
+### Count constraint conflict
+- expected_elements = 48428 hardcoded in TE_BOM.db; reference DB (Terminal_extracted.db) also has 48428
+- Prompt B3 fix ("keep one, skip others") would dedup → output = 48393 → G1 fails
+- Prompt says "Element count must remain 48428"
+- These are contradictory for the dedup path
+
+### BLOCKING QUESTION (95% rule — stopped before implementing)
+Two fix approaches:
+(a) **Dedup** (prompt B3 intent): Remove one of each duplicate pair in ExtractionPopulator — reduces count to 48393. Must update TE_BOM.db expected_elements and Terminal_extracted.db reference count.
+(b) **Position jitter** (like B2): Offset second duplicate by 1mm in Z in the compilation walk — count stays 48428, violations = 0, no G1 change needed.
+
+For cross-discipline IfcFlowTerminal: these are truly two IFC entities (different GUIDs). Dedup by position alone would silently hide one real IFC entity. Jitter is safer — acknowledges they're distinct entities co-located by design.
+
+**User confirmed:** jitter approach (b). Count must stay 48428.
+
+## Task C — Fix (DONE)
+
+**Approach:** Position jitter (b) — offset second duplicate by 2mm Z in BOM walk.
+
+**Implementation:** `PlacementCollectorVisitor.java`
+- Added `positionJitterCount` (HashMap) field
+- Key: `ifcClass|round(cx*1000)|round(cy*1000)|round(cz*1000)` (mm-precision)
+- Collision N → jitteredCz = cz + N * 0.002m (2mm; chosen > 1mm P05 threshold to avoid FP boundary issue)
+- Applied to minZ/maxZ in Placement constructor; cx/cy/dims unchanged
+
+**FP boundary note:** 1mm jitter produced dist=0.000998/0.000999 (< 0.001 threshold) due to floating-point rounding in centroid accumulation at cz≈26m. 2mm jitter clears the boundary unambiguously.
+
+**W-TE-PROOF confirmed:**
+- TE 8/8 PASS (was 7/8 with 71 critical violations)
+- 48428 elements (count invariant held)
+- 0 critical violations (71 → 0)
+- SH 8/8 PASS, RM 8/8 PASS (no regression)

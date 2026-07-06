@@ -1,0 +1,107 @@
+# 2D_001 — W_BOM_Variance Schema Migration + Synthetic Rosetta Test Harness
+# TRIAGE ORDER: #4 — Schema migration + test harness. Run after 2D_000 (--measure flag needed for test).
+# SEPARATION OF CONCERN: Do NOT touch BuildingCompiler.java (Sacred File).
+# Variance application uses VarianceApplicator.java (post-processor) — see Task 2 below.
+# The compiler pipeline is untouched; VarianceApplicator patches output.db afterwards.
+# Can run in parallel with Edit_001/Edit_002.
+
+**Spec:** SPATIAL_VARIANCE_SRS.md §5.2, §12
+**Prereq:** SH output.db exists and G1-G6 pass (confirmed in PROGRESS.md)
+**Witness to pass:** W-SYNTHETIC-RS-1 (panel→variance→compile→SVG dimension check)
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** Schema + test harness only. No UI, no gesture capture.
+
+## Read first
+
+1. `PROGRESS.md` §Current State — confirm SH G1-G6 status
+2. `docs/SPATIAL_VARIANCE_SRS.md` §5.2 (W_BOM_Variance schema), §12 (Synthetic Rosetta)
+3. `2D_Layout/python/drawing_writer.py` — understand SVG output format
+4. Check: `sqlite3 DAGCompiler/lib/output/samplehouse.db ".tables"` — confirm output.db structure
+5. This prompt fully
+
+## Concept
+
+The Synthetic Rosetta Stone proves the full compiler-modeller-2D loop:
+1. Apply a known variance to SH (PULL W1 +200mm) via direct DB insert (no UI yet)
+2. Compiler re-runs
+3. DrawingWriter produces SVG
+4. Measure wall length in SVG — must equal base + 200mm ± 0.025mm
+
+This is the first closed-loop proof. It requires only:
+- W_BOM_Variance table (new migration)
+- Compiler reads variance rows and applies them during re-run
+- existing drawing_writer.py (already working)
+
+## Tasks
+
+### Task 1 — Migration W019_spatial_variance.sql
+
+Create `migration/W019_spatial_variance.sql` with full W_BOM_Variance schema from
+SPATIAL_VARIANCE_SRS.md §5.2. Verify it applies cleanly to output.db.
+
+### Task 2 — VarianceApplicator.java (post-processor — DO NOT touch BuildingCompiler.java)
+
+**Separation of concern:** BuildingCompiler.java is a Sacred File (CLAUDE.md). The compiler
+runs as normal, producing output.db without variance knowledge. A separate post-processor
+then patches output.db with committed variances. This keeps the compile path clean and the
+Rosetta Stone fleet unaffected.
+
+```java
+/**
+ * Post-compilation variance applicator.
+ * Runs AFTER BuildingCompiler completes. Reads W_BOM_Variance (doc_status IN ('DR','CO'))
+ * and patches element_transforms in output.db.
+ * Implementing SPATIAL_VARIANCE_SRS.md §5.3 — Witness: W-SYNTHETIC-RS-1
+ *
+ * NEVER called from BuildingCompiler. Called only from designer/test path.
+ */
+public class VarianceApplicator {
+    public void apply(Connection outputConn, String buildingId);
+}
+```
+
+Implementation for W-SYNTHETIC-RS-1 (ASI_OVERRIDE on length_mm):
+- Query W_BOM_Variance WHERE building_id=? AND resolved_type='ASI_OVERRIDE'
+  AND asi_field='length_mm' AND doc_status IN ('DR','CO')
+- For each: find the element in element_transforms by bom_line_id → guid join
+- Update center_x or center_y to reflect the new length (shift end point by delta_mm/2)
+- Update elements_rtree bounds accordingly
+
+This is the ONLY class that reads W_BOM_Variance and modifies output.db geometry.
+No other class should do this.
+
+### Task 3 — SyntheticRosettaTest.java
+
+```java
+// Witness: W-SYNTHETIC-RS-1
+// 1. Get baseline wall W1 position from SH output.db
+// 2. Insert W_BOM_Variance: gesture_type=PANEL, resolved_type=ASI_OVERRIDE,
+//    asi_field=length_mm, asi_value=base+200, doc_status=DR
+// 3. Re-run compiler for SH
+// 4. Run drawing_writer.py via ProcessBuilder → SVG
+// 5. Parse SVG: find path for W1, measure length
+// 6. Assert: measured_length == base_length + 200mm ± 0.025mm
+```
+
+If Java SVG parsing is complex: output to CSV from drawing_writer.py (add --measure flag
+that prints element dimensions to stdout). Assert on CSV value.
+
+### Task 4 — drawing_writer.py --measure flag (if needed)
+
+Add optional `--measure` argument to `2D_Layout/python/drawing_writer.py`:
+Outputs CSV: `guid,ifc_class,storey,length_mm_in_svg` for all CUT elements.
+Used by SyntheticRosettaTest for programmatic assertion.
+
+## Done criteria
+
+- W019 migration applies cleanly to output.db
+- SyntheticRosettaTest: W-SYNTHETIC-RS-1 PASS
+- Measured SVG wall length = base + 200mm ± 0.025mm
+- G1-G6 still pass after variance applied (element count unchanged for ASI_OVERRIDE)
+
+# DONE
+<!-- Coder appends findings here -->

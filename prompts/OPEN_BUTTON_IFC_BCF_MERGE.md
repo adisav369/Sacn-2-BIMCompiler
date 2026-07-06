@@ -59,8 +59,28 @@ button feature."
   confirmed gone, engine still loaded). **4/4 PASS**.
 - Landing-page (`index.html`) smoke-tested post-removal: catalog cards render, 0 console errors.
 
-## ⛔ ITEM 2 OPEN — Save As... IFC/BCF (untouched by PR #676, separate scope)
-Still needs: does "Save As... IFC/BCF" mean a full re-export of the CURRENT model geometry to IFC (lossy,
-one-way, Modeller's `exportModel`/`EXPORT_MENU_NATIVE_DB.md` precedent), or something Viewer-data-model-
-specific? Note from PR #676's research: the Viewer has NO existing BCF export module (Modeller has
-`modeller/bcf_export.js`; Viewer only has `ifc_export_worker.js` for IFC) — this is new work, not a port.
+## ✅ ITEM 2 DONE (witness) — 2026-07-06, bim-ootb PR #676 (2nd commit, same branch), `viewer/bcf_export.js`
+User resolved the source question directly: "in old IfcOpenShell/Federation python did that" — real prior
+art found and extracted, not invented — `~/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/bcf/
+bcf_generator.py` + `viewpoint_manager.py` (a maintained local Bonsai/BlenderBIM fork's custom clash-
+coordination module). Landed as a BCF 2.1 exporter, NOT a model re-export: one BCF Topic per saved
+`viewer/issues.js` Issue (clashes AND freeform notes), not a lossy full-geometry IFC-shaped dump — a
+better fit for the Viewer's actual data model (issue-tracking/coordination, matching what BCF is FOR)
+than Modeller's `exportModel`/`EXPORT_MENU_NATIVE_DB.md` precedent would have given.
+- Zip/XML engine: verbatim port of Modeller's already-shipped `modeller/bcf_export.js` (same repo).
+- Domain mapping (status→BCF-status, severity→BCF-priority, topic/description shape): ported from the
+  Federation Python module's `_map_status_to_bcf`/`_calculate_priority`/`_generate_markup_xml`, re-keyed
+  onto the Viewer's REAL vocab — `A._clashStatuses` lifecycle (''/Reviewed/Resolved/Accepted, not the
+  Python's NEW/ACTIVE/REVIEWED/RESOLVED) and real overlap-based `severity` labels (Hard/Soft/Clearance,
+  not the Python's discipline-pair guess).
+- Viewpoint/snapshot: uses the issue's OWN real stored camera + PNG (viewer/clash_snag.js already
+  captures both per issue) — the Python module's isometric-from-bbox math is kept ONLY as the fallback
+  for issues saved without a live viewpoint.
+- New "Export BCF" button in the existing Issues panel toolbar (next to Export Excel) — `A.exportBcf()`,
+  wired via the house `setupX(A)` convention like every other viewer/ module.
+- `viewer/tests/poc_bcf_export.js` — seeds real Issue records into the real IndexedDB, drives the real
+  `APP.exportBcf()`, validates the produced `.bcfzip` with the INDEPENDENT `unzip` CLI (not self-checking):
+  archive integrity, per-topic XML content, snapshot separately confirmed a genuine PNG via `file`.
+  **20/20 PASS**.
+
+Both items of this file are now DONE — nothing left open here.

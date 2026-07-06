@@ -1,0 +1,132 @@
+# 2D_005 — Java: DrawingWriter.writeElevation() + writeRoofPlan() — mesh projection + convex hull
+# TRIAGE ORDER: #10 — After 2D_004. Parallel with Edit_004 (different module).
+# SEPARATION OF CONCERN: 2D_Layout module only. Closes W-2D-ELEV.
+
+**Spec:** 2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §1 (elevation def), §12.2 (projection table)
+**Prereq:** 2D_003 DONE (SVGBuilder + infrastructure), 2D_004 DONE (floor plan path established)
+**Reference:** `2D_Layout/python/drawing_writer.py`
+  draw_elevation() lines 1371–1629, draw_roof_plan() lines 1629+, _convex_hull_2d() line 396
+**Witness:** W-2D-ELEV
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+Port _convex_hull_2d, draw_elevation, draw_roof_plan from Python exactly.
+Level markers and ceiling line are required (Phase 3b was DONE in Python).
+Annotations (title block) deferred to 2D_006.
+
+## Read first
+
+1. `2D_Layout/PROGRESS.md`
+2. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §12.2 (elevation projection table)
+3. `2D_Layout/python/drawing_writer.py`:
+   - `_convex_hull_2d()` lines 396–497 — Andrew's monotone chain
+   - `draw_elevation()` lines 1371–1629 — face projection + hull + level markers
+   - `draw_roof_plan()` lines 1629+ — top-down roof view
+   - `detect_levels()` — FFL/CLG/RIDGE detection from element Z ranges
+4. 2D_003 output — SVGBuilder, BimElement, LayoutConstants
+5. This prompt fully
+
+## Tasks
+
+### Task 1 — ConvexHull2D.java
+
+Port Andrew's monotone chain from Python. Pure geometry, no dependencies:
+
+```java
+public class ConvexHull2D {
+    // Returns hull points in CCW order
+    public static List<Point2D> compute(List<Point2D> points);
+}
+```
+
+### Task 2 — DrawingWriter.writeElevation()
+
+```java
+/**
+ * Generate elevation SVG for one face.
+ * face: "N" | "S" | "E" | "W"
+ * Witness: W-2D-ELEV
+ */
+public void writeElevation(Path dbPath, String face, Path outSvg) throws IOException;
+```
+
+Algorithm:
+1. Load all elements (no storey filter — elevation shows full building height)
+2. Project mesh vertices onto elevation plane:
+   - N/S face: project to XZ (x → paper X, z → paper Y inverted)
+   - E/W face: project to YZ (y → paper X, z → paper Y inverted)
+3. For roof elements (IfcRoof, IfcSlab at top): compute convex hull of projected vertices
+   → draw as polygon (bold eave line at lowest hull edge)
+4. For wall/column elements: project AABB onto plane → rect outlines
+5. Level markers (left side): detect_levels() → FFL, CLG, RIDGE
+   - Horizontal dash-dot lines at each level
+   - Triangle pointer + label + elevation value ("+0.000", "+2.300", "+3.500")
+6. Ceiling line: dashed line at CLG height, label "CLG +{height}m"
+7. Tight-fit sheet height (port Phase 3d logic)
+
+### Task 3 — DrawingWriter.writeRoofPlan()
+
+```java
+public void writeRoofPlan(Path dbPath, Path outSvg) throws IOException;
+```
+
+Port draw_roof_plan(): section cut at roof_peak - 0.1m, slope direction arrows, overhang
+dimensions, ridge line (dashed), eave outline (bold). Grids optional (defer to 2D_006).
+
+### Task 4 — ElevationTest.java
+
+```
+W-2D-ELEV-1: writeElevation(SH, "N", out.svg) → file created
+W-2D-ELEV-2: SVG contains polygon/path for roof silhouette
+W-2D-ELEV-3: SVG contains level marker text "FFL", "CLG", "RIDGE"
+W-2D-ELEV-4: writeRoofPlan(SH, out.svg) → file created with ridge line
+W-2D-ELEV-5: ConvexHull2D.compute matches Python _convex_hull_2d for SH roof vertices
+```
+
+## Done criteria
+
+- ElevationTest 5/5 PASS
+- W-2D-ELEV PASS
+- All 6 SVGs produceable from Java: floor plan + 4 elevations + roof plan (matching Python Phase 3f)
+
+# DONE
+<!-- Coder appends findings here -->
+
+## PROFESSIONAL READABILITY STANDARDS (added 2026-04-06, ref §14.7)
+
+All SVG output must meet ISO 128 / TB-LKTN pen scale before marking DONE.
+Read `2D_ARCHITECTURAL_LAYOUT.md §14.7` for the full table. Summary:
+
+**Line weights (SVG stroke-width in mm):**
+- LW_GROUND = 0.70   — ground line only (boldest — visual base)
+- LW_WALL_EXT = 0.50 — section-cut exterior walls, roof outline
+- LW_WALL_INT = 0.35 — partitions, doors, apron step
+- LW_OPENING  = 0.35 — window/door outlines
+- LW_WALL_GLASS = 0.25 — glazing / curtain wall
+- LW_DIMENSION = 0.18 — dims, extension lines, hatching, grid (ISO hairline)
+- **0.15 mm is BANNED** — prints as 1px, invisible on A3; use 0.18 minimum
+
+**Text heights (mm on paper at 1:100):**
+- Drawing title: 5.0, Room label: 3.5, Grid bubble: 3.0, Dims/levels: 2.5
+
+**Label spacing:**
+- Minimum gap between adjacent level markers: 3 × TXT_DIM (= 7.5mm)
+- When markers are closer, use leader line offset — marker triangle at true level,
+  text box shifted with a thin (0.18) vertical leader
+
+**Grid bubbles:**
+- Radius = 4.0mm (8mm diameter) — do not reduce
+
+**Dash patterns (scale-aware — currently hardcoded, must fix in Java):**
+- CENTER (grid): `(4s, 1s, 1s, 1s)` where s = SCALE/100
+- HIDDEN: `(4s, 2s)` — at 1:100 s=1.0, at 1:50 s=0.5
+
+**Mirror rule for rear/right elevations:**
+- 'rear': h = -x (viewer sees X reversed — west on right, east on left)
+- 'right': h = -y (viewer sees Y reversed)
+- Grid positions: multiply by h_sign before mapping to paper
+- Roof hull: negate h_vals for mirrored faces
+- Without this, front/rear elevations show identical roof tilt (wrong)
+

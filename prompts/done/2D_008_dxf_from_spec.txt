@@ -1,0 +1,141 @@
+# 2D_008 — DXF Output from Spec
+# TRIAGE ORDER: Next after 2D_007 (roundtrip done). Depends on 2D_007 DXF writer.
+# SEPARATION OF CONCERN: 2D_Layout module only. Does NOT touch DAGCompiler or BIM_COBOL.
+
+**Spec:** 2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md (read fully before coding)
+**Template:** 2D_Layout/drawing_template.json (all formatting values)
+**Template DB:** 2D_Layout/lib/input/2D.db (17 tables, 2d_* prefix, label content)
+**Archive reference:** 2D_Layout/archive/*.svg (proven output — match this)
+**Tests:** test_no_invention.py, test_no_hardcode.py, test_dxf_vs_svg.py
+
+You are a coder for bim-compiler. One bounded task.
+
+## LESSONS FROM PRIOR SESSION (do not repeat these mistakes)
+
+1. **Do not search for external references.** No downloading DXF samples,
+   no analysing HITOS IFC, no web searches. Everything needed is in the
+   spec and template already.
+
+2. **Do not hardcode numeric values.** Every layout number (offsets, radii,
+   font sizes, spacing) must be read from drawing_template.json at runtime.
+   The test_no_hardcode.py test catches violations.
+
+3. **Do not invent entities.** If a circle, line, or text appears in the DXF,
+   the spec must say where it comes from (DB or template). If the spec
+   doesn't mention it, don't draw it.
+
+4. **Do not change the SVG writer or archive.** The SVG outputs in archive/
+   are the proven reference. The SVG writer (drawing_writer.py) produced
+   them. Port its logic to the DXF writer — don't redesign.
+
+5. **Follow the spec process (§2) step by step.** Load template first,
+   query DB second, detect alignment third, etc. Log at every step.
+   The log is the proof — no external visual checking.
+
+6. **Line quality matters.** The template values are calibrated to TB-LKTN
+   professional standard. Bold cuts, thin annotations, dash-dot grids.
+   Preserve the visual hierarchy.
+
+7. **The SH floor plan, roof plan, and elevations are already correct.**
+   Do not rebuild them. Only fix what test_no_hardcode.py reports and
+   add missing features (sheet border, title block panel, north arrow).
+
+## PRIME RULE
+
+Read the spec §1 and §2. Follow §2 Process step by step. Every value
+traces to DB or template. No invention. Code logs every derivation.
+
+## Read first (in order)
+
+1. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` — full spec, start to end
+2. `2D_Layout/drawing_template.json` — every layout value lives here
+3. `2D_Layout/python/drawing_writer.py` — SVG writer (reference implementation)
+4. `2D_Layout/python/drawing_writer_dxf.py` — DXF writer (your working file)
+5. `2D_Layout/archive/ifc4_sample_house_floor_plan.svg` — reference output
+6. This prompt fully
+
+## Task
+
+Make the DXF writer produce output that matches the archive SVG reference.
+Follow spec §2 Process exactly. Every step logs its output.
+
+The DXF writer currently has hardcoded values that must come from the template.
+Run `python3 python/test_no_hardcode.py` first to see them. Fix each one by
+reading from `drawing_template.json`. No bare numeric literals >= 100 in
+drawing functions.
+
+Then run all three tests:
+```
+python3 python/test_no_hardcode.py
+python3 python/test_no_invention.py
+python3 python/test_dxf_vs_svg.py
+```
+
+All must pass before done.
+
+## What exists (do not break)
+
+The archive SVGs are the proven reference:
+- Floor plan: walls, grids A-D/1-3, bubbles, dimensions, room labels,
+  door/window tags, title block panel, north arrow, drawing title, scale
+- Roof plan: ridge line, slope arrows, eave labels, overhang dimension
+- Elevations: level markers, height dimensions, bay dimensions, roof silhouette
+
+These are correct. The DXF must match them in content and layout.
+
+## What needs fixing
+
+1. Hardcoded values in drawing_writer_dxf.py → read from drawing_template.json
+2. Forensic logging at each step per spec §2 Process
+3. Regenerate all output, run all tests, all must pass
+
+## Output
+
+- DXF files in 2D_Layout/python/output/
+- Diagnostic log with forensic trail per spec §2
+- All three tests passing
+
+## Done criteria
+
+- `test_no_hardcode.py` — 0 violations
+- `test_no_invention.py` — ALL PASS
+- `test_dxf_vs_svg.py` — ALL PASS on floor plan and elevation
+- Every DXF entity traceable via log to DB coordinate or template field
+
+## Out of scope
+
+- Changing the SVG writer (it works, don't touch it)
+- Changing the archive reference files
+- Adding new features not in the spec
+- Section view (spec says GAP, leave it)
+
+# DONE — 2D_008 Session Progress
+
+## What was done
+- Hardcoded constants removed → all line weights, colors, text heights, dim offsets from template
+- Layer table built dynamically from template colors + line styles
+- Grid line style corrected: DASHDOT from template (was hardcoded CENTER)
+- Cut height corrected to 1.2m per spec §5.1 (was hardcoded 1.0m)
+- Level labels from template level_markers.defaults[] (was hardcoded dict)
+- Forensic logging added: §2 Steps 1-8 all logged
+- TBLKLTN audit fixed: reads 2D.db (2d_* tables) with correct reference counts
+- Door swing arcs implemented (3 arcs, §5.1)
+- Window double-line symbols implemented (4 windows × 3 lines, §5.1)
+- Wall solid fill on A-WALL-PATT layer (§5.1)
+- DXF→SVG proof output (--proof flag, spec §10.0)
+- Proof SVG white background (spec §10.0 R5)
+- Tests: 25/25 floor plan, 6/6 elevation, 6/6 invention, 12/12 template, 5/5 proof
+
+## What STILL FAILS — visual comparison proof vs archive
+The automated tests pass but the proof SVG does NOT match the archive visually.
+The proof shows what the DXF actually contains. Gaps remain. The coder declared
+tests passing without seriously resolving the visual output quality.
+
+## What's next → `prompts/2D_009_proof_parity.txt`
+
+Key issues for 2D_009:
+- Tests too weak — passing ≠ visual match. Strengthen tests.
+- Proof SVG must visually match archive — open both, list every difference
+- Grid detection §4.2 still walls-only
+- Roof plan DXF not implemented
+- TBLKLTN audit still shows [MISS] items that need resolution

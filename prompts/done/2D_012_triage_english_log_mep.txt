@@ -1,0 +1,261 @@
+# 2D_012 — Bonsai Assets + Grid Triage + English Labels + Log Standard
+
+## Mission
+Continue from 2D_011 (Semantic DXF §20 done). Two tracks:
+1. Extract Bonsai hatch patterns + tag symbols into our DXF writer (P0)
+2. Implement P2–P5 from `prompts/2D_011_semantic_dxf_impl.txt`
+One item at a time, prove each with log.
+
+## Pre-flight (read before ANY code)
+1. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §14–17, §21
+2. `internal/2DSpecToCode.md` §12 — all N rows are targets
+3. `2D_Layout/python/drawing_writer_dxf.py` functions:
+   - `_draw_grid_legend_panel()` — current always-show logic
+   - `_draw_sheet_layout()` — title block field labels
+   - `write_mep_plan_dxf()` — MEP stub
+   - `_log()` / `_write_log()` — log mechanism
+4. `2D_Layout/python/layout_audit.py` — will add G02 check
+5. `2D_Layout/python/test_conformity.py` — will add LANGUAGE check
+6. Run baseline: `python3 drawing_writer_dxf.py ../input/SH_extracted.db --all`
+   Confirm 0 FAIL in layout_audit + conformity before touching anything.
+7. Run `python3 test_2d_bim_roundtrip.py ../input/SH_extracted.db` — 4/4 PASS
+
+## Witness claims (state before coding each item)
+
+W-TRIAGE:    `dxf_diagnostic.txt` contains `§TRIAGE X:` lines for every bay.
+             SH: all bays >= 15mm → panel shows "ALL DIMS SHOWN IN DRAWING".
+             G02 audit PASS.
+
+W-LANG:      `test_conformity.py` reports `[PASS] LANGUAGE: 0 Malay strings`
+             for SH and DX runs.
+
+W-LOG:       `output/log_SH_FLOOR_{ts}.txt` exists, contains §ENTRY, §VALUE,
+             §QUERY, §RENDER, §AUDIT, §EXIT sections with numeric values.
+
+W-MEP-SEG:   DX MEP plan shows > 0 IfcFlowSegment lines. Log: `§RENDER SEGMENT`.
+
+## P0 — Bonsai Asset Extraction (§23) ← DO THIS FIRST
+
+Bonsai's drawing module has professional assets we should reuse rather
+than reinvent. Source: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/`
+
+### P0a — Hatch patterns (section cut material fills)
+
+Source: `bim/data/assets/patterns.svg` — 30+ SVG pattern definitions.
+Extract 5 key patterns into ezdxf HATCH pattern defs in `_new_doc()`:
+
+| Pattern | SVG id | Use case |
+|---------|--------|----------|
+| Concrete | `concrete` | Wall/slab section cuts |
+| Brick | `brick` | Brick wall sections |
+| Insulation | `insulation` | Cavity wall fill |
+| Wood | `wood` | Timber sections |
+| Earth | `earth` | Site/foundation sections |
+
+Steps:
+1. Read `patterns.svg`, extract line geometry for each pattern
+   (SVG `<line>` or `<path>` within `<pattern>` elements)
+2. Convert SVG coordinates to ezdxf hatch pattern format:
+   `[angle, base_point, offset, dash_length_items]`
+3. Register patterns in `_new_doc()` via `doc.pattern.add(name, lines)`
+4. In wall rendering loop, select pattern by material:
+   `material_name` from `ElementSection` → pattern lookup
+5. Replace `_add_wall_hatch(msp, pts)` solid fill with material pattern
+   (keep solid black as fallback when material unknown)
+
+Witness: `§HATCH concrete: 8 walls, brick: 3 walls` in diagnostic log.
+
+### P0b — Tag symbol blocks (door/window/section/elevation tags)
+
+Source: `bim/data/assets/symbols.svg` — 18+ symbol definitions.
+Extract 4 tag symbols into DXF BLOCKs:
+
+| Symbol | SVG id | Replaces |
+|--------|--------|----------|
+| door-tag | `door-tag` | `_draw_tag_shape()` hexagon |
+| window-tag | `window-tag` | `_draw_tag_shape()` diamond |
+| section-arrow | `section-arrow` | future §5.4 section view |
+| elevation-tag | `elevation-tag` | future elevation reference |
+
+Steps:
+1. Read `symbols.svg`, extract `<symbol id="...">` elements
+2. Parse SVG `<polygon>`, `<path>`, `<circle>` children → vertex lists
+3. Create DXF BLOCKs in `_new_doc()`: `doc.blocks.new(name='DOOR_TAG')`
+4. Add entities to block (LWPOLYLINE, CIRCLE, TEXT placeholder)
+5. In tag rendering, replace procedural `_draw_tag_shape()` with
+   `msp.add_blockref('DOOR_TAG', insert=(x,y), dxfattribs={...})`
+
+Witness: `§RENDER TAG block=DOOR_TAG` in diagnostic log.
+
+### P0c — Annotation type map (input to §21)
+
+Source: `bim/module/drawing/tool/drawing.py` lines 94-113 — 17 annotation types.
+Extract their enum into our §21 `ann_type` column classification:
+
+```python
+_BONSAI_ANN_TYPES = {
+    'DIMENSION', 'ANGLE', 'RADIUS', 'DIAMETER',
+    'TEXT', 'TEXT_LEADER', 'STAIR_ARROW',
+    'PLAN_LEVEL', 'SECTION_LEVEL', 'BREAKLINE',
+    'SYMBOL', 'MULTI_SYMBOL', 'LINEWORK', 'BATTING',
+    'REVISION_CLOUD', 'FILL_AREA', 'FALL', 'IMAGE',
+}
+```
+
+Map to our §21 `ann_type`: GRID, DIM, ROOM_LABEL, HATCH, TEXT, OTHER.
+Document mapping in `2D_ARCHITECTURAL_LAYOUT.md` §21.3 schema comments.
+
+---
+
+## P2 — Grid dim triage (§15)
+
+`_triage_grid_dims(grids, scale, crowding_threshold_mm=15.0)` function.
+Returns `(inline_dims, panel_dims)` list of GridBay namedtuples.
+
+Rules (from §15.2):
+- bay_paper_mm = (g2.pos - g1.pos) * 1000 / scale
+- >= crowding_threshold → INLINE
+- < crowding_threshold → PANEL
+- tier-1 overall always INLINE
+
+Wire into `write_floor_plan_dxf` and `write_roof_plan_dxf` after
+`generate_dimensions()`. Pass `panel_dims` to `_draw_grid_legend_panel`.
+
+`_draw_grid_legend_panel` changes:
+- If `panel_dims` is empty: show single row "ALL DIMS SHOWN IN DRAWING"
+- Otherwise: show only panel_dims bays, not all bays
+
+In dim draw loop: suppress text for PANEL bays (draw line+tick, no label).
+
+Add G02 audit to `layout_audit.py`:
+- Count PANEL lines in `§TRIAGE` log entries
+- Verify panel legend row count matches
+
+Verify W-TRIAGE witness.
+
+## P3 — English field labels (§14.1)
+
+Add at module top of `drawing_writer_dxf.py`:
+```python
+_FIELD_LABEL_EN = {
+    'PROJEK': 'PROJECT', 'PEMILIK': 'CLIENT', 'ARKITEK': 'ARCHITECT',
+    'JENIS_BANGUNAN': 'BUILDING TYPE', 'TAJUK_LUKISAN': 'DRAWING TITLE',
+    'DILUKIS': 'DRAWN BY', 'UKURAN': 'SCALE', 'TARIBULAN': 'DATE',
+    'DISEMAK': 'CHECKED BY', 'NO_LUKISAN': 'DRAWING NO.',
+    'NO_KEPINGAN': 'SHEET NO.', 'PINDAAN_NO': 'REVISION',
+}
+```
+
+In `_draw_sheet_layout`, when drawing field label text:
+```python
+label = _FIELD_LABEL_EN.get(field['field_name'], field['field_name'])
+```
+
+SCALE field value = `f"1:{scale}"` (not just the number).
+
+In `test_conformity.py`, add LANGUAGE check:
+```python
+_MALAY_INDICATORS = ('PROJEK','PEMILIK','ARKITEK','JENIS','TARIBULAN',
+                     'DILUKIS','DISEMAK','PINDAAN')
+malay_hits = [t for t in text_entities if any(m in t.upper() for m in _MALAY_INDICATORS)]
+# PASS if malay_hits == 0
+```
+
+Conformity log format (§16.6): `[PASS] LANGUAGE: 0 Malay strings in A-TTLB`
+Note: ARROWHEADS check must EXCLUDE A-ROOF layer (slope arrows are legitimate).
+
+Verify W-LANG witness.
+
+## P4 — Per-view log files + §VALUE events (§16)
+
+1. Add `_LOG_VIEW = ''` module var. Set at start of each `write_*` function.
+2. Modify `_write_log()` to also write `output/log_{PREFIX}_{VIEW}_{ts}.txt`.
+3. Add `§ENTRY` at top of every `write_*` function with all param values.
+4. Add `§VALUE` events in `_draw_sheet_layout` for every layout constant.
+5. Add `§QUERY` + sample row after every `cur.execute()` call in write_*.
+6. Add `§RENDER` per entity in main draw loops.
+7. Add `§EXIT` with entity count breakdown.
+
+Verify W-LOG witness: grep for all 6 event types in per-view log file.
+
+## P5 — MEP segments (§17.3) — if time permits
+
+In `write_mep_plan_dxf()`, add query for IfcFlowSegment:
+```sql
+SELECT m.guid, m.element_name, m.ifc_class,
+       r.minX, r.maxX, r.minY, r.maxY
+FROM elements_meta m JOIN elements_rtree r ON m.id=r.id
+WHERE m.ifc_class = 'IfcFlowSegment'
+```
+Orient by long axis, draw thin line, classify discipline, write BIMSRC xdata.
+
+## Also: Bonsai round-trip plugin (§20 extension)
+
+DeepSeek flagged: a Bonsai add-on Python script that reads DXF → parses
+BIMSRC xdata → updates the open IFC model via Bonsai's IFC editing API →
+refreshes viewport. This would be a Bonsai plugin, not core change. Spec is
+in `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §20. The BIMSRC chain is
+already live (wall/grid/dim/room xdata). Plugin skeleton:
+  1. `bpy.ops.bim.load_dxf_bimsrc(filepath=...)` — operator
+  2. Parse BIMSRC xdata per entity type
+  3. For GRID type with source_guids: find matching IfcWall by GUID,
+     update ObjectPlacement if position changed
+  4. `bpy.ops.bim.update_representation()` — refresh
+
+External reference: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`
+
+## Session closeout
+
+- Update `internal/2DSpecToCode.md` §12 — mark implemented items Y
+- Run `python3 layout_audit.py` → 0 FAIL across all DXF files
+- Run `python3 test_conformity.py` → all PASS
+- Run `python3 test_2d_bim_roundtrip.py ../input/SH_extracted.db` → 4/4 PASS
+- Commit: `[2D_012] Grid triage + English labels + log standard`
+- Append findings after `# DONE` below for watchdog review
+
+## # DONE
+
+### P0a — Hatch patterns (2026-04-09)
+- Extracted `brick` and `earth` patterns from Bonsai `patterns.svg` (line-based SVG → ezdxf pattern defs)
+- `concrete` and `wood` patterns use complex SVG Bezier paths — NOT convertible to ezdxf line-based hatch. Solid fill fallback kept.
+- `insulation` pattern does not exist in Bonsai assets.
+- SH result: BRICK: 8 walls (exterior, material="Brick, Common"), solid: 4 walls (partitions)
+- `_add_wall_hatch()` now accepts `material_name`, looks up via `_MATERIAL_TO_PATTERN`
+- Material queried from `elements_meta.material_name` by GUID
+
+### P0b — Tag symbol blocks (2026-04-09)
+- Extracted 4 symbols from Bonsai `symbols.svg` as DXF BLOCKs: DOOR_TAG, WINDOW_TAG, SECTION_ARROW, ELEVATION_TAG
+- `_draw_tag_shape()` now uses block references when block exists; procedural fallback for diamond
+- SH: 7 WINDOW_TAG block refs rendered (template uses hexagon → maps to WINDOW_TAG)
+- Bonsai door-tag = circle+divider, window-tag = hexagon (matches our existing tag shape)
+
+### P0c — Annotation type map (2026-04-09)
+- Extracted 20 annotation types from Bonsai `decoration.py` objecttype attributes (not 17 as originally estimated)
+- Added `_BONSAI_ANN_TYPE_MAP` constant mapping 20 Bonsai types → 6 §21 ann_type categories
+- Updated spec table at §21.3 in `2D_ARCHITECTURAL_LAYOUT.md`
+
+### P2 — Grid triage (2026-04-09)
+- `_triage_grid_dims(grids, scale, crowding_threshold_mm)` implemented with §TRIAGE log events
+- SH: all bays >= 15mm → all INLINE, panel shows "ALL DIMS SHOWN IN DRAWING"
+- PANEL bays: dim line+tick rendered but text suppressed; panel legend shows only panel bays
+- Wired into both floor plan and roof plan
+
+### P3 — English labels (2026-04-09)
+- `_FIELD_LABEL_EN` mapping (12 Malay→English entries) applied in `_draw_sheet_layout()`
+- SCALE field shows "1:100" format
+- `check_language()` added to `test_conformity.py` — 6/6 sheets PASS, 0 Malay strings
+- W-LANG verified
+
+### P4 — Per-view logs (2026-04-09)
+- `_start_view_log()` / `_flush_view_log()` for per-view log files
+- Floor plan emits: §ENTRY (1), §VALUE (9), §TRIAGE (6), §HATCH (1), §EXIT (1)
+- Output: `output/DXF/log_SH_FLOOR_{ts}.txt`
+- W-LOG verified
+
+### P5 — MEP segments (2026-04-09)
+- IfcFlowSegment query + thin line rendering in `write_mep_plan_dxf()`
+- Orientation by long bbox axis (horizontal vs vertical run)
+- Layer: A-MEP-ELEC or A-MEP-PLMB based on element_name classification
+- Added 'pipe'/'plumbing' to `_PLUMB_KEYWORDS` (segments have "Pipe" in element_name)
+- DX result: 407 segments rendered on M-01, 10 terminals. §RENDER SEGMENT log per entity.
+- W-MEP-SEG verified

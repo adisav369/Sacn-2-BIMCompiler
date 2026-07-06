@@ -395,3 +395,27 @@ distinct stack traces (add a temporary `console.trace()` inside `_toggle()` if n
 it's genuinely 2 calls per 1 tap, that's the real bug (find the second binding); if it's 1 call per tap and the
 visual "flicker" is a CSS/animation artifact instead (e.g. `_layoutRail()`'s transitionDelay staging, or the
 360ms roll-in/out timing racing the `pill-revealing` class), that's a different, CSS-side fix.
+
+## ⚠ 2026-07-06 — CROSS-REF: `common/pill_builder.js` changed underneath this open flicker item, PR #682 merged (`01d8932`)
+
+Full write-up owned by `RESUME_HR_BIM_ASSET.md §2026-07-06d` (Human-Asset pill desync fix) — pointer only, not
+duplicated here per one-owner-per-fact. Flagging here because it touches the SAME file and SAME `_sync()`
+mechanism as the still-open flicker item directly above:
+
+`common/pill_builder.js` gained a `MutationObserver` on `document.body` (`§PILL-AUTOSYNC`) that now calls
+`_sync()` on the next animation frame after ANY DOM node add/remove, app-wide — not just on a deliberate pill
+tap. This is a NEW source of `§PILL_SYNC`/highlight-recompute activity that did not exist when the flicker
+repro above was written. Before running that repro again: re-verify the "2 calls per 1 tap" vs. "1 call, CSS
+artifact" split fresh against POST-#682 code — the observer could itself now be firing an extra resync around
+first paint/first panel mount that reads like a second `_toggle()` in a log excerpt, without actually being one.
+Do not assume the old trace/repro plan still isolates the same variables untouched.
+
+**Cross-surface blast-radius check (2026-07-06, self-initiated — PR #682's own commit message only names
+viewer/HBA, but `pill_builder.js` is the ONE canonical builder loaded by all 6 surfaces: erp.html,
+idempiere.html, glassbowl.html, glassbowl_gravity.html, index.html, viewer.html — see this module's own
+header).** Ran `erp/tests/witness_pill_canonical.js` fresh against post-#682 `origin/main` (not trusting the
+PR's own scope claim): **36/36 checks, `ALL PASS`, 0 fails** — W1 single-source integrity confirmed statically
+on all 6 surfaces, W2/W3/W4 (open/close decree, hover labels, icon-map) live-reverified in a real headless
+browser on `erp.html`/`idempiere.html`/`glassbowl.html`, all unaffected by the new observer. Pre-existing gap,
+NOT introduced by #682: `glassbowl_gravity.html` and `index.html` have no live pill-behavior witness at all —
+this witness's own scope note limits W2-W4 to the 3 surfaces above.

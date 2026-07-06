@@ -1,0 +1,781 @@
+# FUSED 4D/5D WEDGE LANE — the visual editor whose every drag is a signed fact
+
+# ⚠ DO NOT REMOVE
+
+## ★ REVIEW CARD — for the next session (closeout 2026-06-23 → review 2026-06-24)
+The **§SCHEDULE-EDITOR arc is COMPLETE and LIVE** — this session built the MSP-grade Gantt editor end
+to end and shipped its UI entry point + published the User Guide. Nothing is committed-but-unpushed;
+every PR is merged to main and verified on the live sites. **What to review:**
+
+- **The shipped surface** — open the live viewer, press the Time Machine clock pill (`t`), then **`↗
+  Editor`** (next to ✎ Author / ⑂ What-if) → the full Schedule Editor opens in its own tab on the model.
+  Try: expand the WBS, add/retype/lag a dependency, **Compute CPM** (critical path goes red), drag a bar
+  to reschedule, drag a bar's ▸ handle onto another to link. Open it in TWO tabs to watch live sync.
+- **What merged (bim-ootb, all on main, sw v711→v716):** PR #503 step1+2 (WBS + view/edit deps) · #504
+  step3+4 (CPM + critical-path) · #505 step5 (interactive drag-Gantt) · #506 §SE-D live cross-surface
+  sync · #508 the `↗ Editor` entry button. Files: `viewer/schedule_editor.html`,
+  `viewer/schedule_editor_ui.js`, `viewer/schedule_sync.js`, additions in `viewer/schedule_author.js`,
+  `viewer/main.js` (S240 consumes `4D_SCHED_EDIT`), `viewer/time_machine.js` (the button).
+- **Witnesses to re-run (node, real SampleHouse; the proof):** `erp/tests/schedule_editor_witness.js`
+  (W-SCHED-EDIT 19/19) · `schedule_cpm_witness.js` (W-SCHED-CPM 10/10, hand-computed diamond) ·
+  `schedule_move_witness.js` (7/7) · `schedule_sync_witness.js` (W-SCHED-SYNC 11/11 convergence). Plus
+  headless smokes §SE-SMOKE/CPM/GANTT/SYNC/BTN all green this session.
+- **Docs LIVE:** ERPUserGuide §"Schedule Editor — the advanced Gantt" + fig `figs/sched_editor_gantt.png`
+  + the `↗ Editor` how-to-open line — published via `scripts/safe_gh_deploy.sh` (guard PASS; deploy
+  MUST run from the main working tree, which is the live-docs superset — a *clean* checkout is THINNER
+  than live because `archive/*` + the enlarged `custom.css` live only in the working tree, not git;
+  bless `.nojekyll` with `ALLOW_SHRINK=1 paths=".nojekyll"`).
+- **NOTE on `is_critical` after edits:** any graph edit nulls the CPM columns (no stale critical path);
+  recompute with the button. This is intended, not a bug.
+
+**NEXT after review (open arcs, pick any — no user fact needed):** fold the authored schedule INTO the
+ERP `C_Project` (the natural next wedge); real-Hospital blank-authoring demo; `kernel_ops` signed-op
+mirror; OPFS cross-reload persistence; a full editor→viewer-TM live re-fold demo on a captured-schedule
+building (viewer side is wired via main.js, applyOp-proven). **Refused/out of scope:** resource leveling
+/ schedule optimisation (§SE-B rabbit hole). Full per-slice detail + specs §SE-1..§SE-4 are below.
+
+## ▶ RESUME HERE (next session, opened 2026-06-23)
+Architecture is LOCKED (read §ARCH-OWNERSHIP + §MAIN-INTENT + §MI-FLOW + §AUTHOR-1 first). Shipped:
+P0 ✅, P2 ✅ (W-LINK-SURVIVES-RENAME 8/8), P1.a ✅, **P1.b ✅ LIVE** (PR #495, drag-to-slip),
+**§AUTHOR-1 slice-1 ✅ + slice-2 ✅ LIVE** (PR #496 MERGED→main `0c3faae`, sw v704 deployed; viewer
+serves the ✎ authoring wizard + ⑂ what-if on the TM clock-pill; W-AUTHOR-4D-BLANK 16/16 +
+W-AUTHOR-WIZARD-WIRE 14/14). **+ step ④ 5D cost ✅ LIVE** (W-AUTHOR-5D-COST 10/10,
+**PR #499 MERGED→main `15eac54`, deployed sw v707**).
+  - engine `viewer/schedule_author.js`: `materializeDefault`+`assignElement`+`matchRule`+`foldCost`.
+  - UI `viewer/schedule_author_ui.js`: wizard ① draft ② assign ③ dates ④ 5D cost; what-if re-homed.
+**§MI-FLOW true-blank ✅ + ZoomAcross TM-routing ✅** (W-AUTHOR-BLANK-START 11/11 + W-ZOOM-TM-ROUTE 9/9,
+PR #500, sw v708) — the two follow-on items DONE. See §LOG.
+**DEPLOY-VERIFY ✅ DONE (2026-06-23, live headless Chromium via Playwright `~/bim-ootb/tests/node_modules`,
+local server of merged main + real SampleHouse):** ALL FOUR capabilities confirmed end-to-end —
+✎ wizard opens from TM; Generate first draft → 3 organized phases (Superstructure 28 / Architecture 15
+/ Finishes 17) + per-phase 5D cost + total (sums correctly); **header layout OK** (counter "DAY 10 │
+HR 5" 92px readable in the 376px panel — NOT cramped); Start blank → "unscheduled" + amber banner +
+"Schedule now ▶" → originates dates; ZoomAcross with TM open → `§ZOOM-SCOPE route=tm` → `§TM_PINPOINT_JUMP`
+jumped to the wall's construction moment; **zero page errors**. Screenshots `~/Pictures/Screenshots/
+author4d_{draft,blank}_live.png`. ONE honest note: the live 5D total (59,234) < the headless witness
+(172,327) because the LIVE `window.RATES` is a different (lower) active rate pack than the rates.js
+source literal the witness extracts — the FOLD is correct (sum-of-phases checks), the rates are
+whatever pack is loaded. Not snapped: the post-"Apply to 4D" gantt re-fold visual (proven headless by
+W-AUTHOR-4D-BLANK).
+**ALSO SHIPPED THIS SESSION (2026-06-23, all LIVE):** **#501** draggable Author+What-if panels +
+honest "no editable schedule yet" copy (W-PANEL-DRAG 8/8, sw v709); **#502** captured-aware — the
+wizard ADOPTS a schedule IMPORTED from Bonsai/Revit instead of clobbering it (W-AUTHOR-CAPTURED 11/11,
+sw v710, `b195103`). **ERPUserGuide published** (§"Author the 4D/5D schedule" + 2 live figs, What-if
+re-pointed Find→TM, `b796513f`) → LIVE red1oon.github.io/BIMCompiler/ERPUserGuide/.
+
+**§SCHEDULE-EDITOR step 1+2 ✅ DONE (2026-06-23, PR #503 OPEN — branch `lane/schedule-editor` off
+fresh origin/main, sw v710→v711).** The MSP-grade Gantt arc's first slice, on a SEPARATE surface
+(§SE-C new tab). User chose new-tab + view AND edit deps (§SE-1 SPEC below).
+  - engine `viewer/schedule_author.js` (+143 lines): `wbsTree` (collapsible WBS from
+    `wbs_parent`/`is_summary` + per-leaf element counts) · `listDependencies`/`addDependency`/
+    `removeDependency`/`updateDependency` over IFC-native `task_sequences` (written DIRECTLY, as
+    `assignElement` writes `task_elements`; kernel_ops signing still deferred) · `wouldCycle` DFS
+    guard — a back-edge closing a directed cycle is REFUSED (data integrity, NOT optimisation = the
+    §SE-B rabbit-hole line; self-loop/dup/unknown-task also refused).
+  - surface `viewer/schedule_editor.html` + `schedule_editor_ui.js`: standalone tab, resolves DB like
+    config.js (`?db=`→OCI→Duplex), `activeSchedule()` or seeds default, LEFT collapsible WBS outline +
+    RIGHT dep list with add / retype FS·SS·FF·SF / lag / delete; cycle refusal INLINE (no silent drop);
+    each edit → `BroadcastChannel('bim_4d')` `{type:'4D_SCHED_EDIT'}` = §SE-D edit→watch rail (viewer
+    already listens; live re-fold = later slice).
+  - witnesses: **W-SCHED-EDIT 19/19** (`erp/tests/schedule_editor_witness.js`, node, REAL SampleHouse)
+    + **§SE-SMOKE 10/10** (headless Chromium: scripts load, DB opens, WBS root+3 leaves+badges, add-dep
+    via UI, cycle refused in status). §-log proof first per CLAUDE.md.
+**§SCHEDULE-EDITOR step 3+4 ✅ DONE (2026-06-23, PR #504 auto-merge armed SQUASH off fresh main, sw
+v711→v712; spec §SE-2).** Bounded CPM over the authored DAG = the §SE-B "DO IT" half (deterministic
+forward/backward pass; STOPS before resource leveling/optimisation = the refuse).
+  - engine `computeCpm(db,schedId,opts)`: Kahn topo-sort leaf DAG → forward ES/EF → backward LS/LF →
+    total+free float → is_critical, honouring ALL FOUR seq types (FS/SS/FF/SF)+lag via `_fwdES`/`_bwdLF`;
+    writes early_*/late_* (ISO dates)+float+is_critical to the columns schema already carries (baseline
+    schedule_* untouched). `wbsTree` now surfaces is_critical+total_float.
+  - UI: "▶ Compute CPM" → red critical rail on WBS leaves + per-leaf float + bold critical dep links +
+    "project Nd · critical k/n" readout; ANY graph edit INVALIDATES (nulls the computed cols) so a stale
+    critical path never lingers.
+  - witnesses: **W-SCHED-CPM 10/10** (HAND-COMPUTED diamond A→B FS / A→C FS+2lag / B→D FS / C→D SS+1lag,
+    dur 2/4/3/2 → EXACT ES/EF/LS/LF/float/critical, CP=A,B,D, C float=1; + real SampleHouse FS chain
+    all-critical PF=90=Σdur) + **§SE-CPM-SMOKE 6/6** (headless: rail+bold+float+readout, edit clears
+    stale) + W-SCHED-EDIT 19/19 still green.
+**§SCHEDULE-EDITOR step 5 ✅ DONE (2026-06-23, PR #505 auto-merge armed SQUASH off fresh main, sw
+v712→v713; spec §SE-3) = the INTERACTIVE drag-Gantt = the §SE-B WEDGE SURFACE (Bonsai LACKS #5).**
+  - engine `moveTask(db,taskId,newStart)`: reschedule one leaf PRESERVING duration → writes
+    schedule_start/finish; refuses summary/unknown. drag-to-link REUSES addDependency (cycle guard).
+  - UI: full-width Timeline (Gantt) pane below WBS/Deps — bars on a shared day-axis+ticks, critical=red
+    post-CPM; **drag a bar** → snap deltaDays=round(dx/pxPerDay) → moveTask (day-snapped, duration-locked)
+    → re-render+invalidate CPM+broadcast; **drag the ▸ handle onto another bar** → addDependency(FS),
+    cycle refused inline.
+  - witnesses: **W-SCHED-MOVE 7/7** (real SampleHouse: +7d shift, dur preserved, summary/unknown refused)
+    + **§SE-GANTT-SMOKE 9/9** (headless Chromium REAL mouse: bars render, drag reschedules+re-renders,
+    drag-to-link creates dep, reverse drag refused=cycle) + W-SCHED-EDIT 19/19 + W-SCHED-CPM 10/10 green.
+
+**§SCHEDULE-EDITOR §SE-D LIVE SYNC ✅ DONE (2026-06-23, PR #506 auto-merge armed SQUASH off fresh main,
+sw v713→v714; spec §SE-4) = the cross-surface payoff: "both are folds of ONE log".**
+  - mechanism: each surface has its OWN in-mem db (no shared store) → REPLAY the broadcast op on the
+    receiver's db via the SAME ScheduleAuthor verb the sender used (broadcast IS the signed op).
+  - module `viewer/schedule_sync.js`: `applyOp(db,op)` PURE dispatch (move→moveTask, add→addDependency,
+    remove→removeDependency, retype/lag→updateDependency, cpm→computeCpm); `create()`→{tabId,emit,listen,
+    close} over `BroadcastChannel('bim_4d')` type `4D_SCHED_EDIT`, echo-guarded by tabId.
+  - wiring: editor emits+listens (2nd editor tab re-folds live); VIEWER (viewer.html loads sync; main.js
+    S240 handles 4D_SCHED_EDIT) replays on APP.db + re-folds TM via shipped `toggleTimeMachine()` off→on
+    (wizard Apply-to-4D path), safe-additive no-op if task absent.
+  - witnesses: **W-SCHED-SYNC 11/11** (node, 2 real SH dbs → byte-identical CONVERGENCE per op + cpm;
+    unknown fails closed) + **§SE-SYNC-SMOKE 5/5** (TWO headless tabs REAL BroadcastChannel: drag bar in
+    A → B's bar moves live Jan01→Jan21; drag-to-link in A → dep in B).
+
+**§SE ARC COMPLETE** — steps 1-5 (WBS→deps→CPM→critical-path→interactive Gantt) + §SE-D live cross-
+surface sync, ALL SHIPPED+MERGED (PR #503-506, sw v711→v714). A real interactive web Gantt on ONE signed
+op-log where every edit folds live across surfaces = what Bonsai (not signed) + MS Project (no model/
+cost/ERP) lack. NEXT (open arcs, lower priority): fold authored schedule→ERP C_Project; real-Hospital
+blank-authoring demo; kernel_ops signed-op mirror; persistence (OPFS cross-reload for httpvfs builds).
+Refused/out-of-scope: resource leveling / schedule optimisation (§SE-B rabbit hole).
+
+**§SCHEDULE-EDITOR (the MSP-grade Gantt arc) — ✅ COMPLETE 2026-06-23** (PR #503-506, sw v711→v714; see
+the per-slice blocks above + §SE-1..§SE-4 specs below). ERPUserGuide §"Schedule Editor — the advanced
+Gantt" PUBLISHED (source + fig `docs/figs/sched_editor_gantt.png`; deploy via `scripts/safe_gh_deploy.sh`
+when ready). **NEXT (open sibling arcs — pick any; lower priority, no user fact needed):**
+- Fold the authored BIM schedule INTO the ERP `C_Project` (today they're separate stores) — the natural
+  next wedge: the schedule you author here becomes the project the enterprise bills from.
+- §0/§MAIN-INTENT: real **Hospital** blank-authoring demo (DB git-LFS) + mirror authoring writes as
+  signed `kernel_ops` ops (git-for-data layer, deferred from slice-1).
+- Persistence: authored writes land in the in-memory model DB — cross-reload persistence (OPFS save)
+  NOT yet verified for httpvfs-loaded buildings (open question, flagged to user 2026-06-23).
+- Viewer-side §SE-D live re-fold is WIRED (main.js replays + toggles TM) but only smoke-proven at the
+  applyOp + 2-editor-tab level; a full editor→viewer-TM live demo on a captured-schedule building is the
+  obvious confirmation step.
+
+**Scope:** Plan + build "our own 4D/5D + IFC editor that is better than the field" by going
+all-in on the ONE unfair advantage no incumbent has: a single signed, immutable, replayable
+op-log (`kernel_ops`) that geometry + 4D schedule + 5D cost + ERP postings all fold from.
+**Strategic target (user, 2026-06-22):** pick the unfair-advantage wedge, all four axes
+(IFC authoring, 4D sim, 5D/EVM, integration). **Design law (user, 2026-06-22):** edit in ONE
+spot; the **front visual is dominant** (drag the bar / move the wall / drag the cost grid =
+the gesture); the schedule/cost **JSON editor is a backstage power/audit tool**, never the
+primary authoring path.
+**Honour until DONE:** read the §-log after every run (exit code is not evidence). Spec before
+code, spec before tests. Non-invent — every claim traces to a `§` log line on REAL data.
+
+---
+
+## §MAIN-INTENT (user, 2026-06-23 — read BEFORE §0; this anchors WHAT we build)
+The editor's PRIMARY job is to **build the 4D/5D/IFC information UP, organized, FROM THE START** —
+ORIGINATE and ORGANIZE the project plan, not merely edit a pre-existing one. "Organized" = the
+BOM/WBS recipe (building→storey→element; project→phase→task→cost), recursive + atomic per level
+(CLAUDE.md BOM PRINCIPLE). "From start" = greenfield: a user builds the schedule + cost + model up
+from the model (or from nothing), each authoring action a signed `kernel_ops` op.
+- ⚠ DRIFT WE CAUGHT: every surface so far operates on AUTO-GENERATED (`injectGantt` rules) or
+  PRE-BAKED (Hospital 990000 seed) data. There is NO front-visual surface to *construct* the
+  WBS/phases/cost from the model up. P1.b drag-to-slip edits a FIXTURE; the main intent is the
+  AUTHORING of the organizing structure itself.
+- So "Finish the 4D/5D front-visual" (user pick) RE-SCOPED = build the surface that AUTHORS the
+  WBS/phases (organized) + ASSIGNS elements to them (the assignment IS the P2 identity-link) +
+  builds the cost breakdown — drag-to-slip becomes one verb on an AUTHORED structure, not a seed.
+
+### §MI-FLOW (user, 2026-06-23 — the canonical greenfield path to build):
+1. Load the **Hospital MODEL** — real IFC elements present, but **ZERO 4D/5D metadata** (no
+   `kernel_ops` schedule, no `C_ProjectPhase`, no cost). A blank 4D/5D slate ON a real model.
+2. **See the default elements** in the visual editor (geometry/list visible — the raw material).
+3. **Start crafting** — author the 4D/5D UP: create phases (organized WBS), assign elements to
+   them (binds element GUID→phase = the P2 identity-link), give dates/cost. Each = a signed op.
+- ⚠ "Blank Hospital" = the model WITHOUT the pre-baked 990000 schedule. Today loading a building
+  AUTO-runs `injectGantt` (rules) → never blank. The build must support a TRUE blank start (no
+  auto-schedule) so the USER originates it; auto-generate becomes an optional "suggest a start".
+- New signed op types this implies (design): `PHASE_CREATE` (a WBS node) + `ELEMENT_ASSIGN`
+  (guid→phase, the link) — alongside existing `ELEMENT_PLACE`/`SCHEDULE_SLIP`. All on `kernel_ops`.
+
+## §ARCH-OWNERSHIP (user, 2026-06-23 — TM is the hub)
+**Time Machine OWNS the 4D/5D. Find and Project Order are SATELLITES.**
+- TM = the hub: the authoring wizard + what-if + 4D/5D playback are all TM-owned surfaces.
+- Find = satellite: *pinpoints what to contract out* → hands a selection to a Project Order.
+- Project Order (ERP) = satellite: *takes a stake in the TM* — its cost/dates fold FROM TM.
+- ⇒ **What-if MOVES OUT of the Find box** → launched from TM (the clock pill / long-press), NOT Find.
+  (navigate_find §S6 `WhatIfPanel.open()` is the OLD satellite-owns-it wiring — re-home it to TM.)
+- **ZoomAcross consumer routing (nuance + RATIONALE, user 2026-06-23):** ZoomAcross calls **Find
+  FIRST BY DEFAULT** — and that default is intentional: many users care about **COSTING and WHERE
+  things are, NOT scheduling**; Find serves them (shows what the PO item IS + cost/location).
+  **TM-as-consumer is the ADVANCED opt-in** — the scheduling-minded user deliberately opens TM
+  BEFORE ZoomAcross, then TM consumes (shows the item at its moment). Mechanism = **TM-if-open,
+  else Find**; but do NOT force the timeline on cost/location users — Find-first is the floor.
+
+## §0 DOCTRINE — the wedge (read first, every session)
+
+**The op-log IS the link.** Where Synchro/Navisworks re-match a schedule task to an element by
+*name every time*, in our model the element and its schedule/cost edits are the **same signed
+row**. The link is identity by construction — immutable, signed, replayable, branchable.
+
+This single stance collapses the three documented incumbent weaknesses at once:
+- kills the **#1 4D pain** (manual, re-resolving task↔element linking — cited as the most
+  time-consuming, non-automatable part of 4D BIM);
+- kills the **5D actual-cost gap** (line-to-line AC is named "unsolved/future work" — ours folds
+  from the same log as ERP postings);
+- delivers **git-for-data on a building** (diff / blame / branch) that no separate-store
+  architecture can retrofit.
+
+**The visual editor is NOT the wedge — it is table stakes.** (Synchro Pro, Bexel Manager, Bonsai
+all have visual editors; Synchro's 4D visuals are arguably ahead of ours today.) The wedge is
+what the visual gesture *produces*: in theirs the visual is a front-end onto a separate store;
+in ours **the visual gesture and the system-of-record are the same `kernel_ops` row.** Their
+visual is a *window onto* a model; ours *is* the model. The headline is therefore:
+**"the only visual editor where every drag is a signed fact the whole enterprise folds from."**
+
+### How the field actually works (verified — deep-research wf_b7165700-3cc, 20/25 claims confirmed)
+| Tool | Edit/link mechanism | Structural weakness |
+|---|---|---|
+| Bonsai + IfcOpenShell | 3 *separate* in-memory undo systems bracketed at runtime | session-scoped, **not immutable, not signed**; close app → history gone |
+| web-ifc / That Open | native-speed IFC read/write in browser | **zero history/undo/versioning** at library layer; fragment-history lossy on IFC round-trip; writes pre-alpha |
+| Navisworks TimeLiner / Synchro | schedule imported from P6/MSP; task→element by **name / selection-set / layer matching** | link is a **re-resolved derived match, not stored identity**; rename → rebind/break; manual linking = most time-consuming part of 4D |
+| iTWO / Vico / CostX / Bexel / COST-BIM | quantity→cost fold semi-manual; AC + %-complete **typed by hand per activity** | automated **line-to-line AC tracking named as unsolved gap** (ITcon 2024); integration is xlsx/csv/txt |
+| BCF / blockchain-BIM frontier | issue metadata + GUID refs over *separately-shared* IFC; blockchain = provenance/payments/handover | **no tool fuses model edits + 4D + 5D + ERP postings into one ledger** (confirmed vs BIMSSoT, BIM Ledger, 5D-payment frameworks) |
+
+### CLAIM WORDING (use exactly this — P0 sharpened it)
+✅ Claim: **No tool fuses model edits + 4D + 5D + ERP postings into a single signed/immutable
+op-log.** ❌ Do NOT claim "no CDE has an immutable log" — **Oracle Aconex genuinely does** (an
+"unalterable audit trail"), so that phrasing is false. The survivable, true claim is the *fusion
+across all four domains in one signed op-log*, which none of them do.
+
+### Honest caveats
+- Named commercial 5D tools (iTWO/Vico/CostX/Bexel) were **not** confirmed by vendor docs — those
+  findings rest on workflow literature. Synchro's internal data model is an **open question**.
+- web-ifc/fragments history is evolving and could narrow the "no history" gap over time (still not
+  signed/immutable, still lossy IFC round-trip).
+
+### P0 RESULT — CDE blind spot CLOSED ✅ (focused research, agent afe08c13a7e6, 19 sources)
+Every major CDE family is **separate modules/products glued by iPaaS/API sync + IFC/BCF exchange**,
+with two-store cost mirroring — NOT a unified signed store:
+- **Autodesk Construction Cloud** — Cost / Model Coordination / Schedule are distinct API services;
+  actuals arrive from external ERP (Sage/Vista/SAP/CMiC…) via ACC Connect (Boomi) iPaaS. No signed log.
+- **Trimble Connect + ProjectSight + Vista** — three separate products over App Xchange; Vista↔
+  ProjectSight job-cost sync is **explicitly periodic (every 60 min), maintained in BOTH systems**.
+- **Catenda Hub** — an openBIM *exchange* hub (IFC + BCF + version history), no native 5D/cost store;
+  "connect your existing tools via open API."
+- **Oracle Aconex / Primavera / Procore** — Aconex (docs/correspondence) ↔ P6 (schedule) ↔ Connected
+  Cost/Unifier (cost) tied by CBS→WBS mapping + API; Procore↔CMiC = budgets export / **posted actuals
+  import**, two databases, BIM "does not sync into accounting…without altering the ledger."
+- **Strongest counterexample (and why it fails):** Aconex's *unalterable audit trail* is a real
+  immutable, legally-defensible record — but scoped to **documents/approvals/correspondence only**
+  (Oracle's own Apr-2026 announcement makes no mention of model/schedule/cost/postings), and the
+  postings live in a separate ERP synced by API. → **Our wedge claim survives.**
+
+### What our code already proves (grounding, not aspiration)
+- `deploy/dev/kernel_ops.js` — the signed log: `commitOp` append, `undone` flag (undo-as-data),
+  `replayOps`, branch overlay, OPFS persist. Schema is invariant.
+- `deploy/dev/time_machine.js:56-67` — every op row carries `output_guid` (element identity) AND
+  `start_ts`/`end_ts` (schedule) on the **same row**; mesh bound by `userData.guid === output_guid`
+  (`:421`, `:591`). **No name-matching step exists** → identity binding is already real.
+- `viewer/whatif.js` (W-WHATIF 13/13) — schedule edits land as `SCHEDULE_SLIP` ops, ripple in blue.
+- `erp/tests/earn_gw_hospital_actual.js` (W-PC-EARN 8/8) — AC emerges from atomic `PP_Order_Cost`
+  rows, not a ×factor hash.
+- `deploy/dev/bonsai_kernel.js` — geometry authoring as `GEOM_*` ops → mesh fold (occt-wasm).
+
+---
+
+## §1 PHASES (spine = P0→P1→P2; P3 = highest-value wow; P4 = headline; P5 = interop insurance)
+
+- **P0 — Doctrine + close the CDE blind spot. ✅ DONE** (see §0 P0 RESULT). Claim survives,
+  sharpened to "fusion across all four domains in one signed op-log." Do NOT claim "no CDE has an
+  immutable log" (Aconex does, for documents).
+- **P1 — One edit gesture, front-visual dominant.** Every direct-manipulation lands as a
+  `kernel_ops` row; JSON editor demoted to a "backstage log inspector" that renders the op for the
+  selected bar/wall/cell. Have: `GEOM_MOVE/ROTATE`, `SCHEDULE_SLIP`. **Gaps:** Gantt-bar *direct
+  drag* → `SCHEDULE_SLIP` (today stepper-driven); cost-grid edit → a `COST_*` op (today
+  `cost_panel.js` is read-only QTO). Witness: one inspector shows the op-log row for the selection.
+  - **P1.a gesture math ✅ DONE** (§LOG W-GANTT-DRAG-SLIP 5/5) — drag→slip mapping proven WYSIWYG +
+    dpr-safe on real Gantt geometry.
+  - **P1.b live UI wiring ✅ DONE — PR red1oon/bim-ootb#495** (`lane/p1b-gantt-drag-slip` off
+    origin/main; worktree `/tmp/wt-p1b-gantt-drag`). Phase bars in `viewer/whatif_panel.js` are now
+    directly draggable → `WhatIf.pxToDays` → same `_slips` path as the ± steppers (kept as fine tool)
+    → live blue ripple. Witness W-WHATIF-DRAG 8/8 (§LOG). sw v702→v703, whatif `?v=1→?v=2`.
+    fast-checks ✅; e2e in progress; auto-merge squash armed. ⚠ sw.js is the conflict magnet + a
+    concurrent session is on `feat/mfg-shopfloor-seed` — if PR goes BEHIND/DIRTY, sync (keep BOTH
+    precache adds, higher CACHE_VERSION), do NOT drop the other hunk.
+  - **P1.c backstage inspector** — one panel renders the op-log row for the selected bar/wall/cell.
+- **P2 — Link-by-identity (kill the 4D #1 pain).** Prove schedule↔element is `output_guid`
+  identity, not a name match. **Witness `W-LINK-SURVIVES-RENAME`** — see §2. *First buildable cut.*
+- **P3 — Live actuals fold (kill the 5D AC gap).** Make `W-PC-EARN` *live*: an ERP posting moves
+  the 5D S-curve in `time_machine.js` with no import step (both fold one log). Witness: post in ERP
+  → S-curve + EVM variance shift, §-logged to the cent.
+- **P4 — Git-for-data as headline demo.** Surface `replayOps`/`undone`/branch as **diff / blame /
+  branch on a building**: "who moved this wall, when, what did the slip cost." Mostly a viewer over
+  existing substrate.
+- **P5 — IFC round-trip honesty.** Modeller authors to `kernel_ops`/our DB, **not back to IFC**.
+  Add IFC *export* of the authored chain with a **fidelity gate** (do not claim full bidirectional
+  IFC editing — web-ifc writes are pre-alpha). Last, scoped tight.
+
+---
+
+## §2 P2 SPEC — `W-LINK-SURVIVES-RENAME` (FIRST CUT)
+
+### Issue this witness proves or disproves
+> **Is our 4D schedule↔element link identity-bound (survives an element rename) or name-bound
+> (breaks on rename)?** Incumbents (Navisworks/Synchro) bind task→element by matching task name to
+> item name / selection set / layer — so a rename re-resolves or breaks the link. We claim ours is
+> bound on the immutable `output_guid` carried by the same signed op as the schedule window, so a
+> rename CANNOT break it. This test names that claim and either proves it on real data or kills it.
+
+### Pre-flight citation
+`// Implementing FUSED_4D5D_WEDGE_LANE.md §2 — Witness: W-LINK-SURVIVES-RENAME`
+Grounded in `time_machine.js:56-67` (op row carries `output_guid` + `start_ts`/`end_ts`) and
+`:421`/`:591` (mesh bound by `userData.guid === output_guid`). VERIFY these line refs still hold
+before coding (file drifts).
+
+### Data (REAL, non-invent)
+- Real SampleHouse (or Duplex) `kernel_ops` rows from a re-extracted `*_extracted.db` — the same
+  canonical DBs used by `scripts/witness_drop_facing.js`. NO synthetic ops.
+- Pick a real element with a 4D window: an op with `output_guid = G`, `start_ts = S`, `end_ts = E`.
+- A display label for that element (`elements_meta.ifc_class` / name) — the thing a name-matcher
+  would key on.
+
+### Procedure (whitebox §-log, per `feedback_whitebox_deduce_not_browser`)
+1. **Baseline bind.** Load ops; pick cursor `T` with `S ≤ T < E`. Assert element `G` is in the
+   *frontier* set at `T` (`renderAtTime`/`_frontierAt` logic). `§LINK-BASELINE guid=G frontier@T=1`.
+2. **Rename.** Change `G`'s display label (`elements_meta.ifc_class` / name) to a new string.
+   **Do NOT touch `output_guid`.** `§LINK-RENAME old=<x> new=<y> guid-unchanged=G`.
+3. **Re-fold (ours).** Recompute frontier at `T`. **Assert `G` still frontier** → identity binding
+   held. `§LINK-OURS guid=G frontier@T=1 PASS`.
+4. **Simulate incumbent (control arm in the same test).** Build a name-keyed task map
+   `{ name → window }` from the *pre-rename* labels; after the rename, look up `G`'s window by its
+   *new* name. **Assert the lookup MISSES** (binding broken) → reproduces the documented failure.
+   `§LINK-NAMEMATCH lookup(new-name)=MISS broken=1`.
+5. **Contrast line.** `§LINK-VERDICT ours=HELD namematch=BROKEN` — the one line that proves the
+   wedge on real data.
+
+### Pass criteria (binary; names the issue)
+- Ours: rename → frontier binding at `T` **unchanged** (GUID identity held).
+- Control: name-match lookup after rename **misses** (reproduces incumbent breakage).
+- Both arms run on the **same real element**, in one test, so the contrast is apples-to-apples.
+- If ours ever breaks on rename → the wedge claim is FALSE; stop and fix the binding, not the test.
+
+### File
+`scripts/witness_link_survives_rename.js` (JS, real DB via sql.js — mirrors
+`scripts/witness_drop_facing.js` harness). Run, save log, read the §-lines before concluding.
+
+### Out of scope for P2 (do NOT build here)
+- Gantt-bar drag UI (that is P1), cost ops (P1), live ERP posting (P3), IFC export (P5).
+- No browser/Playwright run — §-log is the proof.
+
+---
+
+## §SCHEDULE-EDITOR — the MSP-grade Gantt arc (STRATEGY, user direction 2026-06-23)
+The user wants to know if the schedule editor can become "powerful like MS Project" (expand items,
+create dependencies, allow/forbid parallel tasks). Verdict from the discussion below: **yes, and we
+already own the hard half** — the IFC scheduling DATA MODEL is extracted and in our tables; the gap
+is UI + a bounded compute. Capture of the whole discussion so a new session resumes with full context.
+
+### §SE-A — the 5-step path (each step its own "wow", all on data we ALREADY extract)
+1. **Expandable WBS outline** — render `tasks.wbs_parent` + `is_summary` as a collapsible tree. DATA
+   READY; pure UI.
+2. **Show + edit dependencies** — draw `task_sequences(predecessor_id, successor_id, sequence_type,
+   lag_days)` (real `IfcRelSequence`, FS/SS/FF/SF + lag) as links; let the user add/retype/lag one.
+   DATA READY (we extract it; nothing reads/edits it yet — the what-if ripple is currently LINEAR
+   by SeqNo, NOT the real graph).
+3. **Bounded CPM forward-pass** — replace the linear assumption with a forward/backward pass over the
+   real dependency DAG → early/late dates, then float. A few hundred lines of JS over a DAG; NOT
+   research (Bonsai/IfcOpenShell prove it's tractable on exactly our IFC data). Schema already has
+   `early_start/late_start/free_float/total_float/is_critical` (extracted verbatim today).
+4. **Critical-path highlight** — compute + show `is_critical`/float. Falls out of step 3.
+5. **Interactive Gantt** — drag bars, drag-to-link, indent/outdent (the MS-Project feel). UI
+   engineering; we already shipped the hardest gesture (P1.b drag-to-slip).
+
+### §SE-B — Bonsai mapping + the RABBIT-HOLE boundary (verified via web search 2026-06-23)
+Bonsai/IfcOpenShell ALREADY has **1,2,3,4** ("create construction schedules, perform critical path
+analysis, generate sequence animations" — extensions.blender.org/add-ons/bonsai; IfcOpenShell API has
+critical-path analysis). Bonsai LACKS **5** — its Gantt is a generated *visualization/animation*; you
+edit via Blender property-panels, not on the chart. ⇒ The differentiator is NOT reinventing CPM (open-
+source proves it tractable) — it is **#5 (a real interactive web editor) on our SIGNED op-log + ERP
+fold**, which neither Bonsai (session-based, not signed) nor MS Project (no model/cost/ERP) has.
+**RABBIT HOLE = everything PAST 5: resource leveling + schedule OPTIMIZATION** (auto-reschedule to
+resolve resource over-allocation, auto-crash CP). Resource-constrained scheduling is NP-hard; it's
+where MSP/Primavera sink decades; it is NOT the wedge. The line: deterministic forward-pass (compute
+from a graph the USER authored) = bounded, DO IT. Auto-optimize/level (machine rearranges the plan) =
+REFUSE. **Target 5, stop at 5.** (Matches the lane's standing `TRAP=don't build CPM/leveling` caution.)
+
+### §SE-C — TWO-SURFACE architecture (user's "new tab" idea — ENDORSED)
+- **TM / what-if** stays the present **intuitive front-visual** (drag a bar → blue ripple). Light, the
+  showpiece. Do NOT bloat it with the serious editor.
+- **MSP-grade Gantt editor = a SEPARATE SURFACE (new tab/window)** — WBS + dependencies + CPM, where
+  you want screen real estate + focus. This honors the **Design law** (front visual dominant; the
+  power tool is separate/backstage).
+
+### §SE-D — REALTIME cross-tab broadcast (user's idea — feasible, rails EXIST)
+We already have the bus: the **Connect Scene broker** over the ONE signed op-log (P0–P3 shipped:
+one-log-two-folds, live cross-surface re-fold, witnessed; see [[project_connect_scene]]). Mechanism:
+an edit in the **Gantt tab** → a **signed op** → `BroadcastChannel` (same-origin tabs) → the **Viewer
+TM tab, IF open**, re-folds the affected phases LIVE. One-way (edit→watch) is the clean MVP; because
+both are folds of the same log, bidirectional comes for free later. (Connect uses postMessage for
+iframes; cross-TAB transport = `BroadcastChannel`/storage events.)
+
+### §SE-E — "Gantt ↔ actual-geometry tagging — has anyone done it?" (user Q 2026-06-23)
+YES — that IS 4D BIM (Synchro Pro, Navisworks TimeLiner, Bexel, Bonsai via `IfcRelAssignsToProcess`
+all tag tasks→geometry). BUT in every one the link is a **re-resolved derived match (by name/selection-
+set/layer)** → rename rebinds/breaks; manual re-linking is the cited **#1 4D pain** (deep-research
+wf_b7165700-3cc). **OUR wedge: the tag is a SIGNED `task_elements` row (guid identity), rename-proof**
+(W-LINK-SURVIVES-RENAME 8/8) — and it's LIVE today (wizard: click element→3D light; reassign→5D cost
+moves; TM plays each element at its task moment). The correlation is old hat; doing it as a **signed,
+rename-proof fact on one log the model+4D+5D+ERP fold from** is what nobody has. A drag-to-link Gantt
+(#5) where every link is that signed tag, broadcasting live into the 4D viewer, is the genuinely new thing.
+
+### §SE-NEXT — recommended first slice
+**Step 1+2** (expandable WBS outline + view/edit dependencies from `task_sequences`) — low-risk, all
+data exists, visibly "wow", and it de-risks the new-tab Gantt before any CPM. Spec it, then build.
+
+### §SE-1 SPEC — step 1+2 = WBS outline + view/EDIT dependencies, on a NEW TAB (user dir 2026-06-23)
+User chose: **new tab + view AND edit deps** (the bigger of the offered scopes). Spec-First.
+
+**Issue this slice proves/disproves**
+> Can a user, on a SEPARATE surface (new tab — §SE-C), see the schedule's WBS as a collapsible
+> outline AND author its dependencies (add / retype FS·SS·FF·SF / set lag / remove a link) — with the
+> graph written to the IFC-native `task_sequences` table (the source of truth, exactly how
+> `assignElement` writes `task_elements`), and an invalid CYCLE refused deterministically (data
+> integrity, NOT optimisation — §SE-B boundary)?
+
+**Engine (pure, DOM-free, node-testable — added to `viewer/schedule_author.js`)**
+- `wbsTree(db, scheduleId)` — fold `tasks.wbs_parent`/`is_summary` into a nested tree (roots = rows
+  whose `wbs_parent` is null/absent from the id set). Each node: `{id,name,isSummary,start,finish,
+  guidCount,children[]}`. Pure read; the collapsible UI renders this. DATA READY.
+- `listDependencies(db, scheduleId)` — read `task_sequences` (pred→succ, type, lag) joined to task
+  names, scoped to the schedule via `predecessor_id`'s `tasks.schedule_id`. Returns
+  `[{predId,predName,succId,succName,type,lag}]`.
+- `addDependency(db, predId, succId, type, lag)` — INSERT one IfcRelSequence edge. Refuses: self-loop;
+  unknown task id; and any edge that would create a **cycle** (`wouldCycle` DFS from `succ` reaching
+  `pred`). `type` ∈ {FS,SS,FF,SF} (default FS), `lag` days (default 0). Returns `{ok, reason}`.
+- `removeDependency(db, predId, succId)` / `updateDependency(db, predId, succId, {type?, lag?})` — the
+  retype + lag verbs. All four mutate `task_sequences` DIRECTLY (kernel_ops signing still DEFERRED,
+  consistent with `assignElement`; the §SE-D signed-broadcast is a later slice).
+
+**Source-of-truth note (NON-DRIFT):** `task_sequences` IS the 4D dependency truth (per
+import_db_builder DDL). The "signed op-log" framing from the scope question is the §SE-D follow-up;
+this slice matches the shipped engine — direct table writes, witnessed by §-log.
+
+**UI (the new surface — `viewer/schedule_editor.html` + `viewer/schedule_editor_ui.js`)**
+- Standalone page; resolves a building DB the same way `config.js` does (`?db=` param → OCI base →
+  `buildings/Duplex_extracted.db`), loads it via sql.js, picks `activeSchedule(db)` (or materialises a
+  default if blank), renders: LEFT = collapsible WBS outline (▸/▾ expand, indent by depth, element
+  count per leaf); RIGHT = dependency list with add (pred▸succ + type + lag), retype, lag-edit, delete.
+- Cycle-refusal surfaces as an inline error (no silent drop). Each successful edit posts on the
+  ALREADY-LIVE `BroadcastChannel('bim_4d')` (main.js S240 listens) a `{type:'4D_SCHED_EDIT', ...}`
+  message — the §SE-D rail riding an existing rail (an open viewer clears stale 4D highlights on it;
+  a later slice teaches it to re-fold). One-way edit→watch MVP.
+
+**Witness — `erp/tests/schedule_editor_witness.js` = `W-SCHED-EDIT` (node, REAL SampleHouse)**
+Whitebox §-log only (CLAUDE.md: prove the engine, don't boot a browser). On real
+`SampleHouse_extracted.db`: materialise default → `wbsTree` shape (1 summary root, N leaves nested) →
+`addDependency` an FS chain across the phase leaves → `listDependencies` returns the chain with names →
+`wouldCycle`/`addDependency` REFUSES a back-edge (last→first) → `updateDependency` retypes SS + sets
+lag → `removeDependency` drops one and the count falls. Each assertion names its issue.
+
+### §SE-2 SPEC — step 3 = bounded CPM forward/backward pass (the deterministic compute, NOT leveling)
+With the dependency DAG now authored (§SE-1), replace the LINEAR-by-SeqNo assumption with a real
+**critical-path forward/backward pass**. This is the §SE-B "DO IT" half — a deterministic compute over
+a graph the USER authored. It STOPS before resource leveling / auto-optimisation (the NP-hard refuse).
+
+**Issue this slice proves/disproves**
+> Given leaf tasks with durations + an authored `task_sequences` DAG, can the engine compute, by exact
+> CPM, each task's early/late dates, total + free float, and `is_critical` — honouring all four
+> sequence types (FS/SS/FF/SF) and lag — and write them to the columns the schema already carries
+> (`early_start/early_finish/late_start/late_finish/free_float/total_float/is_critical`), so the editor
+> can highlight the critical path? (Today nothing computes CPM; the what-if ripple is linear.)
+
+**Engine — `computeCpm(db, scheduleId, opts)` in `viewer/schedule_author.js` (pure, node-testable)**
+- INPUT: leaf tasks (`is_summary=0`) with duration = parse(`schedule_duration` `P{n}D`/`P{n}W`) else
+  `(schedule_finish − schedule_start)` days else 1; edges from `task_sequences` among those tasks.
+- TOPO sort (Kahn). The §SE-1 cycle guard already forbids cycles → a clean DAG (bail + log if not).
+- FORWARD pass → ES/EF (day offsets, ES of a no-predecessor task = 0). Per edge the candidate succ ES:
+  FS `pred.EF+lag` · SS `pred.ES+lag` · FF `pred.EF+lag−succ.dur` · SF `pred.ES+lag−succ.dur`;
+  `succ.ES = max(0, max candidates)`, `EF = ES+dur`.
+- BACKWARD pass → LS/LF (project finish PF = max EF; no-successor task LF = PF). Per edge candidate
+  pred LF mirrors the forward formula; `pred.LF = min candidates`, `LS = LF−dur`.
+- `total_float = LS−ES`; `is_critical = total_float ≤ 0`. `free_float` = min over successor edges of
+  `(succ.ES − thisPredContribution)`, clamped ≥0 (slip without delaying any successor's ES).
+- WRITE-BACK: `early_*`/`late_*` as ISO dates off a project-start (`opts.start` || min existing
+  `schedule_start` || `2026-01-01`); `free_float`/`total_float` as day counts (TEXT cols); `is_critical`
+  0/1. Leaves `schedule_start/finish` (the baseline) UNTOUCHED. Returns
+  `{projectDuration, tasks:[{id,es,ef,ls,lf,totalFloat,freeFloat,critical}], criticalIds[]}`.
+
+**UI follow-on (`schedule_editor_ui.js`)**: a "Compute CPM" action → run `computeCpm`, then mark
+critical leaves in the WBS outline (red rail) + show each leaf's total float; the dependency rows on a
+critical link render bold. No drag yet (that is step 5).
+
+**Witness — `erp/tests/schedule_cpm_witness.js` = `W-SCHED-CPM` (node)**
+TWO graphs, §-log only: (1) a HAND-COMPUTED diamond `A→B,A→C,B→D,C→D` with known durations + a lag +
+one non-FS edge → assert EXACT ES/EF/LS/LF/float/critical against the by-hand numbers (the proof the
+maths is right, not just runs). (2) REAL SampleHouse: materialise default → author an FS chain → run
+CPM → assert the whole chain is critical (linear ⇒ zero float) and `projectDuration = Σ durations`.
+
+### §SE-3 SPEC — step 5 = the INTERACTIVE drag-Gantt (the MS-Project feel; THE wedge surface)
+The differentiator (§SE-B): Bonsai/IfcOpenShell have steps 1–4 but their Gantt is a generated
+*visualisation* you edit via property panels — they LACK #5. A real **drag-on-the-chart** web editor on
+our signed log + ERP fold is the genuinely new thing. RABBIT-HOLE GUARD unchanged: drag = the user
+moving a bar they authored (deterministic); NO auto-reschedule/leveling.
+
+**Issue this slice proves/disproves**
+> Can a user drag a task BAR on a time-axis to RESCHEDULE it (duration preserved, snapped to whole
+> days), with the move written to `schedule_start/finish` as a signed edit — and drag from one bar to
+> another to LINK them (= `addDependency`, cycle-guarded) — the chart re-rendering with the critical
+> path coloured? (Today the editor lists WBS + deps + CPM but draws no bars; nothing is draggable.)
+
+**Engine — `moveTask(db, taskId, newStart)` in `viewer/schedule_author.js` (pure, node-testable)**
+- Reschedule one leaf: `schedule_start = newStart`, `schedule_finish = newStart + duration` (duration
+  PRESERVED, parsed from `schedule_duration` else old finish−start). Returns `{ok, start, finish, days}`.
+  Refuses unknown/summary task. The ONLY new verb; drag-to-link REUSES the shipped `addDependency`
+  (cycle guard intact). (CPM invalidation on a move stays the UI's `refreshFold` concern, as for deps.)
+
+**Surface — Gantt strip in `schedule_editor.html` + `schedule_editor_ui.js`**
+- A full-width **timeline** below the WBS/Deps panes: one row per leaf, a bar from `schedule_start` to
+  `schedule_finish` on a shared day-axis (pxPerDay = width/Σspan); month/week ticks; critical bars red
+  (post-CPM), else blue; the bar label = task name.
+- **Drag-to-reschedule:** mousedown on a bar → track dx → on release `deltaDays = round(dx/pxPerDay)`,
+  `moveTask(start+deltaDays)` → re-render + `refreshFold` (invalidate stale CPM) + broadcast
+  `4D_SCHED_EDIT{op:'move'}`. Day-snapped, duration-locked.
+- **Drag-to-link:** drag from a bar's right handle onto another bar → `addDependency(FS)` (inline cycle
+  refusal). Bounded extra; if the gesture risks scope, ship reschedule first + note link as the micro
+  follow-up.
+
+**Witness — `erp/tests/schedule_move_witness.js` = `W-SCHED-MOVE` (node) + §SE-GANTT-SMOKE (headless)**
+W-SCHED-MOVE: real SampleHouse default → `moveTask` a phase +7 days → assert start/finish both shifted
++7, duration UNCHANGED, summary/unknown refused. §SE-GANTT-SMOKE: bars render (≥3), simulate a
+mouse-drag on a bar → its `schedule_start` advanced by the dragged days, chart re-rendered; drag-to-link
+creates a dep (and a cycle-making drag is refused inline).
+
+### §SE-4 SPEC — the §SE-D payoff: LIVE cross-tab re-fold ("both are folds of ONE log")
+Steps 1–5 shipped. The §SE-D promise: an edit in the editor tab propagates LIVE to any other open
+surface. Architectural truth: each tab has its OWN in-memory sql.js db (no shared store). So the clean
+mechanism is **REPLAY THE OP on the receiver's db via the SAME ScheduleAuthor verb** — the broadcast IS
+the signed op, re-folded on the receiver. One-way edit→watch MVP; bidirectional comes for free (both are
+symmetric folds). RABBIT-HOLE guard unchanged (no leveling).
+
+**Issue this slice proves/disproves**
+> Does broadcasting each editor op (`move`/`add`/`remove`/`retype`/`lag`/`cpm`) on `BroadcastChannel
+> ('bim_4d')` and REPLAYING it on a second surface's db (via `moveTask`/`addDependency`/… — the exact
+> verbs the sender used) make the two surfaces CONVERGE to identical schedule state — so a drag in
+> editor-tab-A is mirrored live in tab-B (and, when wired, the Viewer's 4D Time Machine)?
+
+**Module — `viewer/schedule_sync.js` (pure replay core, node-testable + browser bus)**
+- `applyOp(db, op)` — PURE: dispatch one op to the matching ScheduleAuthor verb (`move`→moveTask,
+  `add`→addDependency, `remove`→removeDependency, `retype`/`lag`→updateDependency, `cpm`→computeCpm).
+  Returns the verb's result. THIS is the witnessed core — replay = convergence.
+- `create({tabId?})` → `{tabId, emit(op), listen(db,onApplied), close()}` over `BroadcastChannel('bim_4d')`
+  with `type:'4D_SCHED_EDIT'`. `emit` tags `from:tabId`; `listen` IGNORES own ops (echo guard) and
+  replays inbound ops on `db`, then calls `onApplied(op,result)` for the surface to re-render.
+
+**Wiring**
+- Editor (`schedule_editor_ui.js`): route the existing `broadcast()` through `sync.emit`; add
+  `sync.listen(db, onApplied)` so a SECOND editor tab re-folds live (graph op → refreshFold; `cpm` op →
+  adopt the synced critical set). Same surface, real cross-tab proof.
+- Viewer (`viewer.html` + a small listener): load `schedule_sync.js`; `sync.listen(APP.db, …)` replays
+  inbound ops on the viewer's db and, if Time Machine is open, RE-FOLDS via the SHIPPED
+  `toggleTimeMachine()` off→on (same path the authoring wizard's "Apply to 4D" uses). Safe-additive:
+  an op whose task isn't in the viewer db is a no-op (graceful), never throws.
+
+**Witness — `erp/tests/schedule_sync_witness.js` = `W-SCHED-SYNC` (node) + §SE-SYNC-SMOKE (2-tab headless)**
+W-SCHED-SYNC: TWO dbs from the SAME SampleHouse default; replay each op (move/add/remove/retype/lag) from
+sender→receiver via `applyOp` → assert the receiver CONVERGES to the sender's exact rows; `cpm` replays to
+the same critical set; echo-guard drops own ops; unknown op → `{ok:false}`. §SE-SYNC-SMOKE: open the editor
+in TWO headless tabs on the same building → drag a bar in tab-A → tab-B's matching bar/`schedule_start`
+updates live (BroadcastChannel across tabs).
+
+---
+
+## §AUTHOR-1 SPEC — "Build the 4D up from a blank Hospital" (FIRST authoring slice; §MAIN-INTENT)
+The keystone of the main intent: originate the schedule on a real-but-bare model. Spec BEFORE code.
+
+### Issue this slice proves/disproves
+> Can a user start from the Hospital MODEL with ZERO 4D metadata, SEE its elements, and BUILD a
+> schedule UP — organized as phases (WBS) with elements assigned — entirely from signed ops, with
+> NO rule-based auto-generation? (Today `injectGantt` auto-builds from rules → there is no
+> user-authored, build-from-blank path. This slice creates it.)
+
+### Data model — REUSE the IFC-native 4D tables (NOT a new kernel_ops op; corrected 2026-06-23)
+The repo ALREADY has the right substrate (`viewer/import_db_builder.js`, consumed by injectGantt's
+`_cap` overlay) — author into it, don't invent:
+- `tasks(task_id, schedule_id, wbs_parent, name, predefined_type, is_summary, schedule_start,
+  schedule_finish, schedule_duration, …, resource, status)` — IfcTask. `wbs_parent`+`is_summary`
+  = the ORGANIZED WBS tree. A "phase" = a task row.
+- `task_elements(task_id, guid, PK(task_id,guid))` — the assignment. `task→guid` IS the P2
+  identity-link (survives rename).
+- READ PATH UNCHANGED: injectGantt `_cap` (time_machine.js:2405) reads dated leaf `tasks` + maps
+  `guidTask`, overlays real task window+name onto covered ELEMENT_PLACE; uncovered → generative.
+- WEDGE follow-up (later): mirror each authoring write as a signed `kernel_ops` op (the git-for-data
+  layer); slice-1 keeps the IFC-native tables as the 4D source of truth.
+
+### SMART WIZARD model (user, 2026-06-23 — resolves blank-vs-autogen)
+DON'T suppress the auto-schedule — USE it. The default simple schedule we ALREADY have
+(`injectGantt`'s rule-based fold) is the wizard's **prebaked FIRST DRAFT** (fast start). The user
+then CRAFTS it up — organized, front-visual. "Smart wizard" = a guided flow with sensible DEFAULTS
+the user accepts or overrides at each step; every override is a signed op. So:
+- Fast start: `injectGantt` seeds the default schedule from the model (what we have today).
+- Craft: the wizard surfaces it ORGANIZED (phases = WBS tree, elements nested), and offers smart
+  steps to refine — rename/merge/split phases, REASSIGN elements (`ELEMENT_ASSIGN`), set/drag dates
+  (reuse shipped P1.b drag), add cost. Each edit = a signed `kernel_ops` op layered on the default.
+- The truly-blank manual path is a corner case, NOT the default — speed first, then craft.
+
+### Front-visual wizard (the surface — front dominant, per design law)
+Stepped, with smart defaults pre-filled: ① Phases (auto-suggested from rules; rename/merge/split)
+② Assign elements (default by rule; multi-select in 3D/list → reassign → `ELEMENT_ASSIGN`)
+③ Dates (default contiguous; drag bars — P1.b) ④ Cost (later). User can accept defaults and finish
+fast, or refine any step. Organized = phases are the WBS tree; elements nest under.
+
+### Witness `W-AUTHOR-4D-BLANK` (headless §-log, real elements)
+Real SampleHouse (local; has elements, NO `tasks`/`task_elements` = genuinely blank 4D; Hospital is
+the demo target but its DB is git-LFS). Chain via the REAL injectGantt + `_cap` overlay:
+1. Blank: `tasks=0` → injectGantt → `§GANTT_SOURCE generated` (the smart default we have).
+2. Materialize the default: fold the generative ELEMENT_PLACE rows → one `tasks` row per phase
+   (name, min/max dates) + `task_elements` per element. Now native 4D exists, editable.
+3. Craft: REASSIGN one element's `task_elements` row to a different phase-task (the user override).
+4. Re-fold: injectGantt → `_cap` active → `§GANTT_SOURCE captured` — reassigned element now carries
+   the TARGET task's window+name, bound by `output_guid` (P2); other elements keep their phases.
+- Asserts: blank→default→materialized tasks>0→reassign honored on re-fold→binding by guid.
+
+### ⚠ Decision / checkpoint before I implement (lands in bim-ootb deploy repo)
+NEW subsystem (1 new op `ELEMENT_ASSIGN` + a wizard panel reading `injectGantt`'s default), so it's
+a green-light checkpoint. Smallest meaningful first slice = the CRAFT verb on the smart default:
+load model → `injectGantt` default → wizard shows phases organized → user REASSIGNS an element to a
+different phase (`ELEMENT_ASSIGN`) → 4D re-folds. Witness `W-AUTHOR-4D-BLANK` proves: default seeded,
+reassign overrides it (signed op), fold reflects the override, binding by `output_guid` (P2).
+
+### §AUTHOR-1 IMPLEMENTATION SPEC (slice-1 build, 2026-06-23 — traces the code below)
+Two pure functions in `viewer/schedule_author.js` (no DOM, node-testable; dual export
+`window.ScheduleAuthor` + `module.exports`). Source of truth = the IFC-native 4D tables ONLY
+(per §AUTHOR-1 "NOT a new kernel_ops op; corrected 2026-06-23"); kernel_ops mirroring deferred.
+- `matchRule(cls, rules, dflt)` — longest-substring containment, REPLICATES `time_machine.js`
+  `matchRule` exactly (so authored phases == what injectGantt's `_cap` would group). Returns the rule.
+- `materializeDefault(db, rules, opts)` — read `elements_meta(guid,ifc_class)` → group by phase via
+  matchRule → order phases by min `sequence`. Writes one IFC-native `schedules` row (`SCH_AUTHORED`),
+  one `is_summary=1` ROOT task spanning all, one `is_summary=0` dated LEAF task per phase
+  (`task_id=TASK_<slug>`, `wbs_parent=ROOT`, contiguous windows from `opts.start` default `2026-01-01`,
+  `opts.phaseDays` default 30), `wbs_parent`/`is_summary` = the ORGANIZED WBS tree. `task_elements`:
+  every element guid → its phase task (the assignment = P2 identity-link). Idempotent: clears the
+  `SCH_AUTHORED` schedule's rows first, then rebuilds. Returns `{scheduleId, rootId, phases[], taskCount, assignmentCount}`.
+- `assignElement(db, guid, taskId)` — the CRAFT verb (reassign/override): guard `taskId` exists →
+  `DELETE FROM task_elements WHERE guid=?` → `INSERT (taskId, guid)`. One element re-homed to a
+  different phase. Returns `{ok, guid, taskId}`.
+Witness `erp/tests/author_4d_witness.js` extracts the REAL `_cap` IIFE VERBATIM from
+`time_machine.js` (string-slice → `new Function('db', src+'return _cap')`) so the consumer under test
+is the shipped code, not a re-type. Real `SampleHouse_extracted.db` (60 elements, `tasks=0` blank).
+
+### §AUTHOR-1 COST-STEP SPEC (slice-3 = step ④ 5D, 2026-06-23 — traces the code below)
+The cost breakdown is a **FOLD, not hand-entry** (Holy-Grail declarative-fold law + §0 5D wedge):
+phase cost = Σ of its assigned elements' 5D cost, so reassigning an element (step ②) MOVES its cost
+between phases — the WBS the user authored organizes the cost. NON-INVENT: reuses the shipped 5D
+model verbatim (`analysis_sidecar.js compute5D` quantity expressions + `rates.js` `RATES`/`RATES_DEFAULT`,
+unit EA/M/M2/M3). New pure fn `foldCost(db, scheduleId, RATES, ratesDefault, currency)` in
+`viewer/schedule_author.js`: one join `task_elements→tasks(schedule, leaf)→elements_meta→element_transforms`
+(same bbox filter `bbox_x>0` as compute5D), per element `rt=RATES[cls]||ratesDefault`,
+`qty=byUnit(rt.unit)` (M→length, M2→dominant-face area, M3→bbox vol, else→1), `cost=rt.rate*qty`,
+accumulate per task → roll up `total`. Seeds every leaf phase (cost 0 if its elements lack bbox) and
+reports `unmappedClasses` (classes that fell to `ratesDefault` = honesty, no silent fabrication).
+Returns `{currency, total, phases:[{taskId,name,cost,elements}], unmappedClasses}`. UI: wizard render
+shows per-phase cost + a project total footer (recomputed after draft/reassign); `window.RATES` pack.
+Witness `erp/tests/author_5d_cost_witness.js` (W-AUTHOR-5D-COST): real SampleHouse → total>0 ==
+Σ phase costs == independent per-element apply5DRates sum (fold == direct compute); reassign moves
+exactly one element's cost A→B, total INVARIANT.
+
+## §LOG (append witness results here as built)
+- (user 2026-06-23, Bonsai/Revit IFC) **W-AUTHOR-CAPTURED ✅ 11/11 LIVE** (PR #502 → main `b195103`,
+  sw v710). Dropped IFC can carry a schedule crafted in **Bonsai/Revit** — `import_worker` already
+  captures `IfcWorkSchedule`/`IfcTask`/`IfcRelSequence`/`IfcRelAssignsToProcess` into the same tables
+  (GlobalId-keyed, dates verbatim, `§4D_FOUND`). The wizard was `SCH_AUTHORED`-only → wrongly said
+  "no schedule" + would create a COMPETING schedule (and `_cap` reads ALL schedule_ids → doubled
+  timeline). Fix: new `ScheduleAuthor.activeSchedule(db)` (authored-draft-else-imported); wizard
+  ADOPTS + edits the active schedule in place; `generateDraft` bails on a captured one (Generate/blank
+  controls hidden). Live-confirmed: adopts "Bonsai Programme", Generate hidden, 0 errs.
+  - ⚠ **Data model ALREADY supports dependencies + WBS** (next-step relevance): `task_sequences`
+    (predecessor_id, successor_id, sequence_type, lag_days) from `IfcRelSequence` + `wbs_parent`/
+    `is_summary` tree — the future "schedule editor" EXPOSES these, doesn't invent them.
+- (UX, user 2026-06-23) **W-PANEL-DRAG ✅ 8/8 LIVE** (PR #501 → main `8b767bf`, sw v709). Author 4D +
+  What-if panels now **draggable by their header** (pointer-events; What-if by its `<h3>`, separate
+  from the `.wi-track` slip-drag; TM panel was already draggable). Live-proven on real SampleHouse
+  (Author moved exactly −260,+120; What-if −200,−150; 0 page errors). **Also fixed the misleading
+  "No schedule yet"**: on a building with a *playing* timeline (Hospital), the wizard correctly had
+  nothing to edit because the TM timeline is **generative** (`injectGantt`, computed on the fly) and
+  the what-if reads the **baked ERP project phases** — NEITHER is an editable authored IFC `tasks`
+  schedule (`SCH_AUTHORED`, the only thing the wizard edits). Reworded to say exactly that.
+- (§MI-FLOW true-blank) **W-AUTHOR-BLANK-START ✅ 11/11** + (§ARCH-OWNERSHIP) **W-ZOOM-TM-ROUTE ✅ 9/9**
+  (`bim-ootb erp/tests/author_blank_start_witness.js` + `zoom_tm_route_witness.js`, **PR #500**, sw v708).
+  - **True-blank start:** `materializeDefault opts.blank` organizes phases (WBS) + assignments but
+    leaves dates NULL → the VERBATIM `_cap` sees nothing (TM stays blank) until the user clicks
+    "Schedule now" → `scheduleContiguous` dates them → same `_cap` maps all 60 guids, user's start
+    honored. UI: "Start blank" checkbox + "unscheduled" phases + "Schedule now ▶". The auto-schedule
+    becomes an optional "suggest a start" (the §SMART-WIZARD corner case, now supported).
+  - **ZoomAcross routing:** `applyFindScope` checks `tmGetState().active` → TM-open CONSUMES the
+    pinpoint (`tmJumpToElement` → the element's construction moment, guid + class scopes), else Find
+    is the default floor. `§ZOOM-SCOPE route=tm|route=find` logs it. Witness = wiring + the
+    `tmJumpToElement`/`tmGetState` consumer API; value proof = live `§ZOOM-SCOPE route=` (deploy).
+  - Regressions green (16/16 · 10/10 · 14/14). Live browser smoke deferred to deploy.
+- (§AUTHOR-1 step ④ / slice-3) **W-AUTHOR-5D-COST ✅ 10/10** (`bim-ootb erp/tests/author_5d_cost_witness.js`,
+  log `/tmp/author5d.log`, **PR #499 MERGED→main `15eac54`, LIVE sw v707** — viewer serves the cost
+  step; verified live foldCost=1 + sw v707 + viewer.html `schedule_author.js?v=2`). The cost
+  step is a **FOLD, not hand-entry**: new `ScheduleAuthor.foldCost(db, scheduleId, RATES, ratesDefault,
+  currency)` rolls each leaf phase's cost = Σ its assigned elements' 5D cost (NON-INVENT: shipped
+  `compute5D` bbox-quantity exprs + `rates.js` `RATES`/`RATES_DEFAULT`, unit EA/M/M2/M3). Wizard shows
+  per-phase cost + project-total footer (recomputed after draft/reassign).
+  - `§AUTHOR_COST total=172327` on real SampleHouse == Σ phase costs == an INDEPENDENT per-element sum
+    computed in the witness (fold == direct compute).
+  - **Reassign moves cost**: IfcWall (cost 5074) Architecture→Superstructure → src −5074, dst +5074,
+    **total INVARIANT** — the authored WBS organizes the 5D cost (the §0 wedge in miniature).
+  - `unmappedClasses` surfaced (=0 for SampleHouse's bbox'd classes) = honest default-rate reporting.
+  - Live browser smoke deferred to deploy (no sandbox browser), as with #496.
+- (§AUTHOR-1 slice-1) **W-AUTHOR-4D-BLANK ✅ 16/16** (`bim-ootb erp/tests/author_4d_witness.js`,
+  log `/tmp/author4d.log`, branch `lane/author-4d-wizard` @ `05fcad9`, pushed; not yet PR'd/deployed
+  — node-engine slice, no UI). Real `SampleHouse_extracted.db` (60 elements, `tasks=0` = genuinely
+  blank 4D). New `viewer/schedule_author.js` (`materializeDefault` + `assignElement` + `matchRule`,
+  pure/DOM-free). The `_cap` consumer is **extracted VERBATIM** from `time_machine.js`
+  (1615-byte slice → `new Function`); `SEQUENCE_RULES`=49 extracted verbatim from `rates.js`.
+  - `§AUTHOR_MATERIALIZE` blank → 3 ORGANIZED phases `[Superstructure:28, Architecture:15,
+    Finishes:17]`, one summary ROOT + 3 dated leaves (WBS tree, 0 orphan leaves), all 60 elements
+    assigned (`task→guid` = P2 link).
+  - `§AUTHOR_MIGRATE tasks→widened` — shipped building DBs carry a LEGACY-thin `tasks` table the
+    read-path can't consume (why they read as blank-4D today); materialize migrates it forward
+    (0 data loss) to the widened import_db_builder DDL.
+  - shipped `_cap` reads the authored schedule: `taskCount=3`, all 60 guids mapped,
+    `IfcFurniture guid→TASK_Finishes` (rule-correct binding).
+  - **CRAFT**: reassign one `IfcMember` `TASK_Superstructure→TASK_Architecture` → re-fold honours
+    it (`guidTask` flips), control element unchanged, moved element carries the TARGET task window
+    — bound by guid (survives, P2). Whitebox §-log only.
+- (§AUTHOR-1 slice-2) **W-AUTHOR-WIZARD-WIRE ✅ 14/14** (`bim-ootb erp/tests/author_wizard_wiring.js`,
+  log `/tmp/authorwire.log`, branch `lane/author-4d-wizard` @ `d9d55d3`, **PR #496** open). New
+  `viewer/schedule_author_ui.js` = the TM-owned front-visual wizard (launched from the TM clock-pill
+  surface): ① Generate first draft (`materializeDefault`) ② rename phases + expand/assign elements
+  (click=3D `focusElement` highlight, dropdown=`assignElement` reassign) ③ tune dates (per-phase
+  duration steppers + project start) ④ Apply to 4D (toggles TM off/on → `_cap` overlays authored
+  windows). TM panel gains `tm-author`(✎)+`tm-whatif`(⑂) buttons (panel widened 340→376px for the
+  extra toolbar items). **What-if RE-HOMED off Find → TM** (§ARCH-OWNERSHIP): `find-whatif-btn` +
+  handler removed from `navigate_find.js`; pill `tm` children updated. `viewer.html` loads both
+  scripts (`time_machine.js?v=57`); `sw.js` precache + `v703→v704`.
+  - Witness asserts: UI module exposes `openScheduleAuthorWizard`/`ScheduleAuthorUI.toggle`;
+    `tm-author`→ScheduleAuthorUI + `tm-whatif`→WhatIfPanel.open wired; Find what-if fully removed;
+    both scripts registered; the engine calls the handlers make (`materializeDefault`→`assignElement`)
+    fold a valid schedule + bind a reassign on real SampleHouse (value-correctness = slice-1 16/16).
+  - Live browser smoke (click→panel renders→draft) DEFERRED to deploy (no browser/jsdom in sandbox).
+    ⚠ VERIFY ON DEPLOY: TM header layout with the 2 new buttons (counter not truncated); wizard
+    renders + draft/reassign/dates round-trip in the live viewer; what-if still opens from TM.
+  - NEXT after merge/deploy = §MI-FLOW true-blank toggle (load model WITHOUT auto-injectGantt, then
+    "materialize default" as the FIRST DRAFT the user crafts up) + ZoomAcross TM-if-open-else-Find.
+- (P1.b) **W-WHATIF-DRAG ✅ 8/8** (`bim-ootb erp/tests/whatif_drag_witness.js`, log `/tmp/wdragui.log`,
+  PR #495). Real `C_Project 990000` (Hospital, 7 F-S phases, span 1080d). New front-visual edit:
+  drag a phase track → `WhatIf.pxToDays(Δpx, trackPx, spanDays)` → whole-day `_slips.startDelta`.
+  - `§DRAG-PX` 100px→262d deterministic; `§DRAG-GRAIN` 2.62 d/px (drag=fast/coarse, ±=fine, both kept).
+  - `§DRAG-PARITY` drag-delta & equal stepper-delta → IDENTICAL blue schedule = ONE `_slips` path
+    (the "edit in one spot" law).
+  - `§DRAG-RIPPLE` drag +105d on seq=2 → finish +105d, official UNTOUCHED, BAC Δ=0 (dates/PV only).
+  - `§DRAG-DPR` device-px under-slips (131d vs 262d) — `pxToDays` takes `clientWidth` (CSS px) = dpr-safe.
+  Whitebox §-log only; engine path (commit/accept) already covered by shipped W-WHATIF 13/13.
+- (P2) **W-LINK-SURVIVES-RENAME ✅ 8/8** (`scripts/witness_link_survives_rename.js`, log `/tmp/wlink.log`).
+  Real SampleHouse (58 ELEMENT_PLACE ops generated by the REAL `injectGantt` sliced verbatim from
+  `time_machine.js:2239-2517` + real `rates.js` rules: SEQUENCE_RULES=49, LABOR_RATES=10). Test
+  element `3cUkl32yn9qRSPvBJVyWY1` ("Basic Wall:Wall-Partn_12P-70MStd-12P:285846"), frontier at
+  cursor mid-install.
+  - `§LINK-OURS frontier@T=1 ... HELD` — after renaming `element_name`, the GUID-bound frontier
+    binding holds AND the schedule window is **byte-identical** (`[1781558307682,1781570148841]`)
+    because sequencing keys `ifc_class`, never the display name.
+  - `§LINK-NAMEMATCH lookup(new-name)=MISS broken=1` — the incumbent name-keyed control arm BREAKS
+    on the same rename, same element.
+  - `§LINK-VERDICT ours=HELD namematch=BROKEN → wedge PROVEN on real SampleHouse`.
+  NON-INVENT: real GUIDs, real generator (not reimplemented), real rules; in-memory DB copy so the
+  canonical `*_extracted.db` is untouched. Whitebox §-log only (no browser).
+- (P1.a) **W-GANTT-DRAG-SLIP ✅ 5/5** (`scripts/witness_gantt_drag_slip.js`, log `/tmp/wdrag.log`).
+  Real SampleHouse bars (58, from the real `injectGantt`) + the **real `findBarAtClick`** sliced
+  verbatim (`time_machine.js:2686-2705`) confirms our bar geometry matches production.
+  - `§DRAG-WYSIWYG dPx=90 Δt=140278259ms drift=0.0000px` — a 90px drag slips the bar so it lands
+    EXACTLY under the drop point (CSS-px mapping Δt = Δpx·range/barW).
+  - `§DRAG-DPR-TRAP device-px ... drift=47.4px` — the control (device-px / `canvas.width`=CSS×dpr)
+    drifts 47px on a 2× display = the retina bug the CSS-px path kills.
+  - `§DRAG-VERDICT css-px=WYSIWYG device-px=DRIFTS → gesture math PROVEN dpr-safe`.
+  Scope: proves the gesture→slip-delta math ONLY; the `SCHEDULE_SLIP` op + ripple is consumed by
+  bim-ootb `whatif.js` (P1.b, not asserted here). Whitebox §-log only.

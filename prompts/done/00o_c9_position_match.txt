@@ -1,0 +1,126 @@
+# 00o — C9: position-based spatial matching (replace rank-match)
+
+**Spec:** TestArchitecture.md §C9 (updated S104-closeout)
+**Prereq:** 00n DONE (W-RM-DEDUP)
+**Test Stones:** RM, SH
+**Scope:** Fix C9 WARN for RM (160 false positives) → RM 8/8
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `scripts/rosetta_fidelity.sh` — full file, especially `_c9_query()`
+3. `docs/TestArchitecture.md` §C9 note (rank-match artifact explanation)
+4. This prompt fully
+
+## Context — the problem
+
+C9 in `rosetta_fidelity.sh` uses `ROW_NUMBER()` rank-based matching:
+
+```sql
+-- Current (broken for count mismatches):
+ROW_NUMBER() OVER (PARTITION BY ifc_class, element_name ORDER BY cx, cy, cz) AS rn
+-- then: JOIN ref r ON r.ifc_class = o.ifc_class AND r.rn = o.rn
+```
+
+When ref and output have different element counts (e.g., after Fix-B dedup removed
+one duplicate slab), rank-i in ref no longer corresponds to rank-i in output.
+Result: 160 false WARN for RM (flat slabs compared against stairs, etc.).
+
+**Why GUID-based matching is blocked:** The output DB uses synthetic GUIDs
+(`STR_MD_WALL_LEVEL_2_1746`). For factored products (STACK/CLUSTER verb expansion),
+the BOMWalker assigns ordinals without threading per-instance IFC GUIDs. No
+ref-GUID → output-GUID mapping exists for factored elements.
+
+## Fix — position-based spatial matching
+
+Replace the rank join with a centroid-proximity join. For each reference element,
+find the nearest output element of the same `(ifc_class, element_name)` within
+a centroid window (50mm = 0.05m). Compare dims at that matched pair.
+
+Deduped elements (present in ref but removed from output) simply have no output
+partner within the window — they are skipped, not counted as violations.
+
+The SQL shape (adapt to the actual `_c9_query` structure you find):
+
+```sql
+WITH ref_el AS (
+    SELECT em.ifc_class, em.element_name,
+           (r.minX+r.maxX)/2 AS cx, (r.minY+r.maxY)/2 AS cy, (r.minZ+r.maxZ)/2 AS cz,
+           ROUND((r.maxX-r.minX)*1000) AS W,
+           ROUND((r.maxY-r.minY)*1000) AS D,
+           ROUND((r.maxZ-r.minZ)*1000) AS H
+    FROM elements_meta em JOIN elements_rtree r ON em.id=r.id
+    -- ref DB
+),
+out_el AS (
+    -- same shape, output DB
+),
+matched AS (
+    SELECT r.ifc_class, r.element_name,
+           r.W AS ref_W, o.W AS out_W,
+           r.D AS ref_D, o.D AS out_D,
+           r.H AS ref_H, o.H AS out_H
+    FROM ref_el r
+    JOIN out_el o ON r.ifc_class = o.ifc_class
+                 AND r.element_name = o.element_name
+                 AND ABS(r.cx - o.cx) < 0.05   -- 50mm window
+                 AND ABS(r.cy - o.cy) < 0.05
+                 AND ABS(r.cz - o.cz) < 0.05
+)
+SELECT COUNT(*) FROM matched
+WHERE ABS(ref_W - out_W) > 1   -- 1mm tolerance
+   OR ABS(ref_D - out_D) > 1
+   OR ABS(ref_H - out_H) > 1
+```
+
+**Guard:** The proximity join may produce multiple matches for dense element clusters
+(e.g., identical walls in a grid). Add `LIMIT 1` on the nearest neighbor, or use
+`MIN(ABS(r.cx-o.cx)+ABS(r.cy-o.cy)+ABS(r.cz-o.cz))` to pick the closest. Verify
+SH still PASS (was 0 mismatches) — if it regresses, the window is too wide.
+
+## Scope boundary
+
+- **Only** `scripts/rosetta_fidelity.sh` — the `_c9_query()` function
+- Do NOT touch `GeometryFidelityTest.java` — the Maven C9 test already passes for RM
+  (axis swaps are excluded from violations count). Shell WARN fix only.
+- Do NOT touch `ExtractionPopulator.java` or any Java source
+
+## Witness claim
+
+**W-RM-C9:** After running pipeline on RM + SH:
+- RM C9: `VERDICT: PASS` (was `WARN — 160 axis mismatch(es)`)
+- RM gates: 8/8 (was 7/8)
+- SH C9: `VERDICT: PASS` — no regression (was 0 mismatches)
+
+## Verification
+
+```bash
+./scripts/run_RosettaStones.sh classify_rm.yaml classify_sh.yaml
+```
+
+Check log for:
+- `VERDICT: PASS — 0 axis dimension mismatches` for both RM and SH
+- `▸ RM   ... 8/8 gates`
+- No `WARN` on C9 line
+
+## Report back
+
+1. What does `_c9_query()` currently look like? (paste the key SELECT)
+2. Does the query use attached DBs or temp tables for ref vs output?
+3. After fix: RM C9 PASS? SH still PASS?
+4. Any dense-cluster false-match issue observed?
+
+## Commit
+
+`[S104-J1] rosetta_fidelity: C9 position-based spatial match (W-RM-C9)`
+
+---
+
+# DONE
+

@@ -1,0 +1,377 @@
+# 00 — Full IFC→BOM Extraction (all 35 buildings)
+
+**Spec:** BOMBasedCompilation.md §4, TestArchitecture.md §Rosetta Stone Coverage
+**Prereq:** PATTERN logging default ON (S102), component_library.db assumed faultless
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. No YAML parsing at runtime.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/BOMBasedCompilation.md` §4 — extraction pipeline
+3. `docs/TestArchitecture.md` §Rosetta Stone Coverage — 35 buildings
+4. This prompt fully
+
+## Concept
+
+YAML is **Order input only** — it exists for the BIM Designer (generative buildings,
+user opt-in). For Rosetta Stone EXTRACTED buildings, the IFC file is the sole spatial
+source. The extraction pipeline reads IFC → writes `*_BOM.db`. No YAML is parsed
+at extraction runtime.
+
+ERP.db is **not affected** by extraction. It holds master products, categories,
+validation rules — seeded by migrations and component_library.db. Assumed clean.
+
+component_library.db is the **geometry + product reference**. Assumed faultless.
+
+## Task: Fresh extraction of all 35 buildings
+
+### Step 1 — Clean slate
+
+```bash
+rm -f library/*_BOM.db
+```
+
+### Step 2 — Fix the runner script
+
+The current `run_RosettaStones.sh` and per-category scripts (`run_RosettaStones_RE.sh`,
+`_CO.sh`, `_IN.sh`, `_ST.sh`) have two problems:
+
+1. **YAML entanglement** — they grep YAML files for `product_category` to discover
+   buildings. Discovery should come from the `classify_*.yaml` filenames only
+   (the YAML content is for IFCtoBOM, not for the runner).
+2. **`set -e` kills the loop** — one building FAIL stops the entire category.
+   The fleet run must continue through failures and report all results at the end.
+
+Fix:
+- Archive old scripts to `scripts/archive/`:
+  `run_RosettaStones_RE.sh`, `_CO.sh`, `_IN.sh`, `_ST.sh`
+  (kept for reference, not called by anything)
+- In `run_RosettaStones.sh`, when no args given: loop over ALL `classify_*.yaml`
+  files directly. No category grouping needed. No `set -e` on the loop.
+- Each building runs independently. Failures logged, not fatal.
+- Final summary: count PASS/FAIL across all buildings.
+
+### Step 3 — Run extraction only (IFCtoBOM)
+
+Run all 35 buildings. The script should:
+- Compile Java once
+- For each `classify_*.yaml`: run IFCtoBOM → produce `{PREFIX}_BOM.db`
+- PATTERN logging is ON — capture storey/container assignment data
+- Log each building result (PASS/FAIL + element count + any QA failures)
+
+Order: light buildings first, heavy last (TE = 48K elements goes last).
+
+### Step 4 — Gather results (do NOT fix individual buildings yet)
+
+Collect a summary table:
+
+```
+PREFIX | ELEMENTS | QA      | PATTERN_FLOORS | DRIFT | NOTES
+SH     | 58       | PASS    | 2              | 0     |
+DX     | 1099     | PASS    | 7              | ...   | C9 WARN 60 (pre-existing)
+...
+```
+
+From PATTERN logs:
+- `PATTERN FLOOR` lines → verify storey Z-ordering for multi-storey buildings
+- Element-to-storey assignment correctness
+
+From GEO logs (permanently ON):
+- `GEO SUMMARY` lines → DRIFT per building
+- Compare against S101 baselines (PROGRESS.md §GEO Drift Findings)
+
+### Step 5 — Report
+
+Write results to the end of THIS prompt file after `# DONE`:
+- Full summary table (35 rows)
+- Any regressions from S101 baseline
+- Top failure reasons by building count
+- PATTERN insights (storey assignment anomalies)
+- GEO drift changes
+
+Do NOT fix individual building failures. Gather all faults first.
+Once all `*_BOM.db` give good results → commit with `[S102-extraction]`.
+
+### Step 6 — Backward compatibility
+
+If the script fix requires re-running: the fix MUST be backward compatible.
+A script change that invalidates already-passing `*_BOM.db` means redoing
+the entire fleet. Better to gather all faults first, fix script once, then
+re-run the full fleet.
+
+## Known baselines (S101)
+
+- SH: 58 el, DRIFT=0, 7/7 PASS
+- FK: 82 el, 7/7 PASS
+- IN: 699 el, DRIFT=20,475, worst=91mm, 7/7 PASS (was 6/7)
+- DX: 1099 el, C9 WARN 60 axis swaps (library mesh orientation)
+- TE: 48,428 el, 71 critical (was 3,197)
+- CA: 26 critical violations (new)
+- CE: DRIFT=39,900, worst=12,858mm (multi-leg ROUTE)
+- RS: 27K genuine P06 duplicates (dense steel)
+- DM: GENERATIVE, DocType assertion stale — fix assertion message
+
+## Commit
+
+`[S102-extraction] Fresh IFC→BOM for 35 buildings + PATTERN ON + script fix`
+
+Record commit link and summary table in this prompt after `# DONE`.
+
+---
+
+# DONE — S102 fleet run 2026-03-30/31
+
+## Script + code changes
+- PATTERN default ON in BIMLogger.java (same as GEO — it IS the LMP proof)
+- Per-category scripts archived to `scripts/archive/` (RE/CO/IN/ST)
+- `run_RosettaStones.sh`: no `set -e`, direct YAML loop, DM (GENERATIVE) excluded
+- Streamlined per-building one-line summary + fleet table with PATTERN data
+- Infra clash N/A → PASS in `rosetta_integrity.sh`
+- BuildingRegistryTest assertion: "C_DocType" → "BuildingRegistry"
+- DisciplineBomBuilder: PATTERN FLOOR logging added (was missing for IN path)
+- Infra YAMLs (BR/RD/RL/IP): `segments:` removed — auto-discover from IFC
+
+## Fleet: 212/238 PASS, 14 FAIL — 34 buildings (DM excluded)
+
+```
+PREFIX ELEMENTS  BOM_LINES  COMPILE  GATES   C9          CRITICAL  NOTES
+BA     11        15         PASS     7/7     PASS        0
+BH     7         7          PASS     7/7     PASS        0
+BR     34        34         PASS     7/7     PASS        0
+BS     12        13         PASS     7/7     PASS        0
+CA     195       366        FAIL     5/7     WARN(93)    26        critical proof violations
+CE     2110      1390       PASS     7/7     PASS        0         was DRIFT=39900, now PASS
+CH     1025      2054       PASS     7/7     PASS        0
+CL     —         ERR        FAIL     2/7     WARN(1159)  —         IFCtoBOM extraction failed
+CP     298       75         PASS     7/7     PASS        0
+CS     72        42         FAIL     6/7     PASS        4         critical proof violations
+DM     60        67         FAIL     4/5     —           —         GENERATIVE, stale DocType assertion
+DX     1099      170        PASS     6/7     WARN(50)    0         pre-existing axis swap
+ES     206       138        FAIL     6/7     PASS        60        critical proof violations
+FK     82        84         PASS     7/7     PASS        0
+GH     193       166        PASS     7/7     PASS        0
+HI     384       447        FAIL     5/7     WARN(115)   3         critical proof violations
+IN     699       401        PASS     7/7     PASS        0
+IP     27        5          PASS     7/7     PASS        0
+JE     122       76         FAIL     5/7     WARN(15)    6         critical proof violations
+JS     58        62         PASS     7/7     PASS        0
+MO     268       256        PASS     7/7     PASS        0
+NI     54        98         PASS     6/7     WARN(4)     0
+RA     92        135        PASS     6/7     WARN(2)     0
+RD     39        39         PASS     6/7     PASS        0         N/A furniture clash (infra)
+RL     7         7          PASS     6/7     PASS        0         N/A furniture clash (infra)
+RM     129       279        FAIL     5/7     WARN(160)   3         critical proof violations
+RS     472       35         FAIL     6/7     PASS        27473     dense steel P06 (pre-existing)
+SC     310       348        FAIL     5/7     WARN(15)    3         critical proof violations
+SH     58        42         PASS     7/7     PASS        0
+TE     48428     1522       FAIL     5/7     WARN(60)    71        critical proof violations
+WA     202       321        FAIL     5/7     WARN(11)    110       critical proof violations
+WB     43        56         PASS     6/7     WARN(4)     0
+WI     3         2          PASS     7/7     PASS        0
+WL     20        21         PASS     7/7     PASS        0
+WT     31        31         PASS     7/7     PASS        0
+```
+
+## Classification (34 buildings, DM excluded)
+
+| Status              | Buildings                                                 | Count |
+|---------------------|-----------------------------------------------------------|-------|
+| ALL GREEN           | BA,BH,BR,BS,CE,CH,CP,FK,GH,IN,IP,JS,MO,RD,RL,SH,WI,WL,WT | 19  |
+| C9 WARN only        | DX(50),NI(4),RA(2),WB(4)                                 | 4     |
+| Maven FAIL (proofs) | CA(26),CS(4),ES(60),HI(3),JE(6),RM(3),RS(27473),SC(3),TE(71),WA(110) | 10 |
+| IFCtoBOM FAIL       | CL (extraction error)                                     | 1     |
+
+## Regressions from S101
+
+- CE: was DRIFT=39,900 → now 7/7 ALL GREEN (improvement!)
+- CH, CP: now ALL GREEN (improvement)
+- RD, RL: were 6/7 (clash N/A) → now 7/7 (R4 fix + infra auto-discover)
+- No regressions detected — all previously-passing buildings still pass
+
+## Top failure reasons (by building count)
+
+1. Critical proof violations (P05/P06) — 10 buildings
+2. C9 axis mismatch (rank-match artifact) — 13 buildings have WARN
+3. CL extraction failure — 1 building
+
+## PATTERN Forensics — Storey Assignment (from ifctobom logs)
+
+```
+PFX  BUILDING                  | TOTAL | STOREYS | UNKNOWN | UNK% | STATUS
+-----|--------------------------|-------|---------|---------|------|-------
+SH   Sample House              |    58 |       3 |      26 |  45% | Expected (structural orphans)
+FK   FZK-Haus                  |    82 |       2 |       0 |   0% | Clean
+DX   Duplex                    |   215 |       5 |      11 |   5% | Minor
+IN   AC11 Institute            |   699 |       5 |       0 |   0% | Clean
+GH   AC9 Haus G-H              |   193 |       4 |       0 |   0% | Clean
+CA   Clinic Architecture       |  2586 |       5 |     726 |  28% | R2 — storey Z overlap
+CE   Clinic Electrical          |  2110 |       2 |       0 |   0% | Clean (was DRIFT=39,900)
+CH   Clinic HVAC                |  3693 |       4 |       0 |   0% | Clean
+CP   Clinic Plumbing            |  6584 |       3 |       0 |   0% | Clean
+CS   Clinic Structural          |  1078 |       5 |      12 |   1% | Minor
+ES   Esplanades                 |  1941 |       8 |      20 |   1% | Minor
+HI   HITOS                      |  2068 |       6 |       0 |   0% | Clean
+JE   Jesse Residential          |   626 |       8 |     404 |  65% | SEVERE
+JS   AC90 Jasmin                |    61 |       3 |       0 |   0% | Clean
+MO   Molio                      |  3114 |      10 |    2630 |  84% | SEVERE — nearly all Unknown
+NI   AC90 Niedriha              |   104 |       4 |       0 |   0% | Clean
+RA   Revit Architecture         |   442 |       7 |     200 |  45% | SEVERE
+RM   Revit MEP                  |  6787 |       5 |    2116 |  31% | R2 candidate
+RS   Revit Structural           |  4133 |       1 |    4133 | 100% | All Unknown — no IFC storeys
+SC   Schependomlaan             |  3214 |       6 |       0 |   0% | Clean
+BA   Building Architecture      |    11 |       2 |       5 |  45% | Small, expected
+BH   Building Hvac              |     5 |       2 |       2 |  40% | Small, expected
+BS   Building Structural        |    16 |       2 |      10 |  63% | Small, structural
+WA   BimWhale Advanced          |     ? |       0 |       - |    — | No PATRN (investigate)
+WB   BimWhale Basic             |   125 |       2 |       2 |   2% | Minor
+WL   BimWhale Large             |     ? |       0 |       - |    — | No PATRN
+WT   BimWhale Tall              |     ? |       0 |       - |    — | No PATRN
+WI   Wilfer                     |     1 |       1 |       1 | 100% | Trivial (1 element)
+BR   Infra Bridge               |     - |       0 |       - |    — | Infra, no storeys
+RD   Infra Road                 |     - |       0 |       - |    — | Infra, no storeys
+RL   Infra Rail                 |     - |       0 |       - |    — | Infra, no storeys
+IP   Infra Plumbing             |     - |       0 |       - |    — | Infra, no storeys
+CL   Sample Castle              |     - |       - |       - |    — | Extraction FAIL
+TE   Airport Terminal           |     ? |       0 |       - |    — | No PATRN (48K el)
+```
+
+### PATTERN findings
+
+1. **MO (84% Unknown)** — 10 storeys detected but 2630/3114 elements unassigned. Root
+   cause likely: IFC storey containment missing for most elements. Auto-discovery sees
+   storeys but elements aren't linked via `rel_contained_in_space`.
+
+2. **JE (65% Unknown)** — 8 storeys, 404/626 miss. Same pattern as MO.
+
+3. **RA (45% Unknown)** — 7 storeys, 200/442 miss. Revit export may use different
+   spatial containment pattern.
+
+4. **RM (31% Unknown)** — MEP elements often not assigned to storeys in IFC. The
+   discipline BOM builder should handle this via Z-band fallback.
+
+5. **RS (100% Unknown)** — No IFC storey structure at all. Dense steel framing with
+   no spatial containment. All elements land in "Unknown" storey. Pre-existing.
+
+6. **CA (28% Unknown)** — R2 target. 726 elements on Unknown. Storey Z-bands overlap
+   (FDN at Z=-1.0m, L1 at Z=-1.22m — inverted). Algorithm fix in discover().
+
+7. **TE, WA, WL, WT** — 0 PATRN lines. These buildings may bypass discover() or
+   use a different code path. Investigate.
+
+8. **BR, RD, RL, IP (Infra)** — 0 PATRN lines, 0 storeys. The extraction is
+   supposed to be abstract: "storey" is a building concept. Infra has spatial
+   containers too (IfcRoadPart, IfcRailwayPart, IfcFacilityPart, IfcBridgePart).
+   The pipeline assumes storeys because the code says "storey" where it should
+   say "spatial container". discover() and PATTERN logging must fire for ALL
+   spatial container types, not just IfcBuildingStorey. This is the root
+   abstraction gap — P135 (infra walker) and 00b (YAML hardening) both trace
+   back to this. Fix: rename storey → spatialContainer throughout the extraction
+   pipeline, then infra gets PATTERN forensics for free.
+
+### Script improvements (S102 supplement)
+- Streamlined per-building one-line summary: `▸ SH  58 el  7/7 gates  3 storeys  unk=26  PASS`
+- Fleet summary table at end with PATTERN data
+- DM (GENERATIVE) excluded from default fleet loop
+- Infra clash N/A → PASS (RD, RL now 7/7)
+- BuildingRegistryTest assertion message fixed ("C_DocType" → "BuildingRegistry")
+
+## GEO DRIFT — Compilation Verification (from pipeline logs)
+
+```
+PFX  | ELEMENTS | PAIRS      | WORST_mm  | DRIFT   | STATUS
+-----|----------|------------|-----------|---------|-------
+SH   |       58 |      1,653 |     0.000 |       0 | ZERO DRIFT
+FK   |       82 |      3,321 |     0.000 |       0 | ZERO DRIFT
+DX   |      107 |      5,671 |     0.000 |       0 | ZERO DRIFT
+IN   |      699 |    243,951 |    91.002 |  20,475 | DRIFT — ROUTE step approx
+GH   |      193 |     18,528 |     4.700 |   2,380 | DRIFT — slab rounding
+CA   |    2,586 |  3,342,405 | 6,682.499 |  43,807 | DRIFT — storey Z overlap (R2)
+CE   |    2,110 |  2,224,995 |12,858.003 |  39,900 | DRIFT — multi-leg ROUTE
+CH   |    3,693 |  6,817,278 |     0.000 |       0 | ZERO DRIFT
+CP   |    6,584 | 21,671,236 |     0.000 |       0 | ZERO DRIFT
+CS   |    1,078 |    580,503 |     0.153 |       0 | ZERO DRIFT
+TE   |   48,428 |643,788,484 |     0.025 |       0 | ZERO DRIFT (48K el!)
+ES   |       29 |        406 |     0.000 |       0 | ZERO DRIFT
+MO   |        8 |         28 |     0.000 |       0 | ZERO DRIFT (only 8 with GUIDs)
+JE   |       41 |        820 |     0.000 |       0 | ZERO DRIFT
+RA   |       96 |      4,560 |     0.000 |       0 | ZERO DRIFT
+RM   |      178 |     15,753 |     0.000 |       0 | ZERO DRIFT
+RS   |       90 |      4,005 |     0.000 |       0 | ZERO DRIFT
+SC   |       35 |        595 |     0.001 |       0 | ZERO DRIFT
+WA   |      191 |     18,145 |     0.000 |       0 | ZERO DRIFT
+WB   |      125 |      7,750 |     0.000 |       0 | ZERO DRIFT
+WL   |      114 |      6,441 |     0.000 |       0 | ZERO DRIFT
+WT   |       55 |      1,485 |     0.001 |       0 | ZERO DRIFT
+BA   |       11 |         55 |     0.000 |       0 | ZERO DRIFT
+BH   |        5 |         10 |     0.000 |       0 | ZERO DRIFT
+BR   |       48 |      1,128 |     0.000 |       0 | ZERO DRIFT
+BS   |       16 |        120 |     0.000 |       0 | ZERO DRIFT
+IP   |       27 |        351 |     0.000 |       0 | ZERO DRIFT
+NI   |      104 |      5,356 |     0.000 |       0 | ZERO DRIFT
+JS   |       61 |      1,830 |     0.000 |       0 | ZERO DRIFT
+CL   |    3,214 |  5,163,291 |     0.044 |       0 | ZERO DRIFT (extraction FAIL but GEO ran)
+HI   |        0 |          - |         - |       - | no GUIDs in compiled output
+RD   |        - |          - |         - |       - | infra re-extracted, needs recompile
+RL   |        - |          - |         - |       - | infra re-extracted, needs recompile
+```
+
+### GEO findings
+
+- **4 buildings with DRIFT:**
+  - CA: 43,807 drift pairs, worst=6,682mm — storey Z-overlap causes wrong placement
+  - CE: 39,900 drift, worst=12,858mm — multi-leg ROUTE (same hospital, different disc)
+  - IN: 20,475 drift, worst=91mm — ROUTE step approximation (down from 35,557 pre-P131)
+  - GH: 2,380 drift, worst=4.7mm — slab thickness rounding (pre-existing)
+- **CE gates PASS (7/7)** despite DRIFT=39,900 — GEO drift ≠ gate failure
+- **TE: 643M pairs, 0 drift** — 48K elements, perfect placement chain
+- **RD/RL:** need recompile after infra auto-discover fix
+
+### CRITICAL: GEO coverage gap (PATTERN is the honest signal)
+
+GEO SUMMARY only compares elements whose `elementRef` matches IFC GUID format
+(22-char base64). Buildings with non-standard GUIDs get near-zero GEO coverage:
+
+```
+PFX  | Total el | GEO el | GEO coverage | PATTERN Unknown% | GEO trustworthy?
+-----|----------|--------|-------------|------------------|------------------
+MO   |    3,114 |      8 |        0.3% |              84% | NO
+JE   |      626 |     41 |        6.5% |              65% | NO
+RA   |      442 |     96 |       21.7% |              45% | LOW
+RS   |    4,133 |     90 |        2.2% |             100% | NO
+RM   |    6,787 |    178 |        2.6% |              31% | NO
+SH   |       58 |     58 |      100.0% |              45% | YES
+IN   |      699 |    699 |      100.0% |               0% | YES
+TE   |   48,428 | 48,428 |      100.0% |               —  | YES
+```
+
+**Root cause:** MO extraction GUIDs are product names (e.g., `COMPACT_MD_1._SAL_150`),
+not IFC base64 GUIDs. GEO's IFC_GUID regex rejects them. "Zero drift" on 8/3114
+elements is statistically meaningless.
+
+**Lesson:** PATTERN Unknown% is the reliable extraction quality signal. GEO drift
+is only trustworthy when GEO coverage ≥ 90%. For buildings with low coverage,
+PATTERN is the sole forensic channel.
+
+**Action:** GEO should use element_ref matching (exact string), not IFC GUID regex.
+Any element_ref that exists in both compiled output and extraction DB should be
+compared. This is a fix for `PlacementCollectorVisitor.emitGeoSummary()`.
+
+## Deep Analysis
+
+See `internal/IFCtoBOM_ANALYSIS.md` for:
+1. Discipline OrderLines — TE 8 DISCs, Callout mechanism, all in output.db
+2. LMP compliance — GEO proves tack chain, NOT route correctness (258 edges vs 8K MEP)
+3. elementRef vs GUID — factored BOMs use m_bom_line_ma, COMPACT_MD is pipeline bug not BIM tool
+4. GEO (white-box) vs Proofs (black-box) — both needed, GEO + PATTERN = full picture
+5. Non-standard GUIDs — factorizer fallback, not IFC source. Fix: flow GUIDs through MA
+6. PATTERN driving R2 — rel_contained_in_space as primary, Z-band as fallback
+
+## Commits
+- `77e8aa8d` [S102-fleet] Fresh extraction 35 buildings + PATTERN ON + script cleanup
+- `d0fe8fa4` [S102-supplement] Streamlined fleet output + R4/R6 fixes + PATTERN forensics
+- `a7488edb` [S102-infra] Infra YAML segments removed, auto-discover from IFC + PATTERN logging

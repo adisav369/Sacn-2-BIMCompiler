@@ -1,0 +1,29 @@
+# 00b — YAML Hardening: Remove rule dependency from extraction
+
+**Status:** DEFERRED — noted S102, implement after fleet is GREEN
+
+## Principle
+
+YAML is **Order input only**. Three concerns:
+1. **Extraction (IFCtoBOM):** IFC file is sole spatial source. YAML currently
+   provides building identity (prefix, building_type) — acceptable. But YAML
+   must NOT provide extraction rules (storey assignments, room mappings,
+   discipline config). Those come from the IFC + component_library.db.
+2. **Compilation (DAGCompiler):** YAML provides rootBOM identity only.
+   Product.Callout generates DISC OrderLines. No YAML-derived rules.
+3. **Rosetta Stone runner:** discovers buildings from classify_*.yaml filenames.
+   Acceptable for now. Future: discover from library/*_BOM.db.
+
+## What to harden
+
+- `ClassificationYaml.java`: audit every field. Which are pure identity (OK)
+  vs extraction rules (must move to DB)?
+- `static_children` in YAML → should come from component_library.db or extraction
+- `mep_disciplines` in YAML → already moved to Callout defaults (P117)
+- `composition` in YAML → architectural, OK as Order input
+- Storey/room discovery already auto from IFC (P125/P127) — verify no fallback to YAML
+
+## Gate
+
+After hardening: `grep -r "parse_yaml\|ClassificationYaml" IFCtoBOM/` should show
+only identity fields (prefix, building_type, name, building_bom_id, provenance).

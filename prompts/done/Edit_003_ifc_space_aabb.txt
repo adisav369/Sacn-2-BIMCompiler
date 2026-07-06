@@ -1,0 +1,113 @@
+# Edit_003 — IfcSpace AABB Extraction
+# TRIAGE ORDER: #5 — Extends placement_extractor.py. Prereq: Edit_002 DONE.
+# SEPARATION OF CONCERN: IfcSpace MUST go into a new table `ifc_spaces`, NOT elements_meta.
+# G1-COUNT gates count rows in elements_meta. Adding IfcSpace there inflates counts
+# and breaks the Rosetta Stone fleet (212/238 PASS would regress silently).
+# The 35 buildings are Rosetta Stones — extracted.db is effectively read-only from G1 perspective.
+
+**Spec:** FINISH_WALLS_SRS.md §5, §7 | SPATIAL_VARIANCE_SRS.md §12 (Synthetic Rosetta prereq)
+**Prereq:** Edit_002 DONE — ad_completion_rule + CompletionAuditService working
+**Witness to pass:** W-FW-AABB — IfcSpace rows appear in elements_rtree with valid AABB
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** Extend extraction only. No placement, no compiler changes.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/FINISH_WALLS_SRS.md` §5 (COMPLETE verb — needs T(p(space)))
+3. `docs/SPATIAL_VARIANCE_SRS.md` §12 (Synthetic Rosetta — needs IfcSpace AABB)
+4. `DAGCompiler/python/placement_extractor.py` — current extraction logic
+5. Check current state:
+   ```
+   sqlite3 DAGCompiler/lib/input/SampleHouse_extracted.db \
+     "SELECT em.ifc_class, COUNT(*) FROM elements_meta em GROUP BY em.ifc_class"
+   ```
+   Confirm: IfcSpace absent from elements_rtree. spatial_structure has IfcSpace entries.
+6. This prompt fully
+
+## Concept
+
+The placement formula `T(wall) = T(p(space)) + R(θ) · Δ(face)` requires IfcSpace centroid
+and AABB. Currently `placement_extractor.py` skips IfcSpace geometry — only structural/MEP
+elements get AABB. This task extends extraction to include IfcSpaces.
+
+IfcSpace geometry is available from the IFC file as `IfcRelSpaceBoundary` or directly from
+the IfcSpace's geometry representation. IfcOpenShell can extract it.
+
+## Tasks
+
+### Task 1 — Inspect current extraction
+
+Read `DAGCompiler/python/placement_extractor.py` fully. Identify:
+- Where elements are iterated (look for `ifc_file.by_type(...)`)
+- Where AABB is computed and written to `elements_rtree`
+- Whether IfcSpace is explicitly excluded or just not included
+
+### Task 2 — Extend to IfcSpace (new table — NOT elements_meta)
+
+**CRITICAL:** Do NOT write IfcSpace rows to `elements_meta` or `elements_rtree`.
+G1-COUNT gates count those tables. Instead, create a dedicated `ifc_spaces` table.
+
+First, add the table if it doesn't exist (idempotent — safe to run on existing DBs):
+
+```sql
+CREATE TABLE IF NOT EXISTS ifc_spaces (
+    guid      TEXT PRIMARY KEY,
+    name      TEXT,
+    storey    TEXT,
+    min_x     REAL, max_x REAL,
+    min_y     REAL, max_y REAL,
+    min_z     REAL, max_z REAL,
+    center_x  REAL, center_y REAL, center_z REAL
+);
+```
+
+For each IfcSpace in the IFC file:
+1. Get geometry via IfcOpenShell (`space.Representation` → vertices)
+2. Compute AABB and centroid from vertices
+3. INSERT into `ifc_spaces` (not elements_meta, not elements_rtree)
+4. Get storey from `spatial_structure` WHERE guid=space.GlobalId → parent
+
+If IfcSpace has no geometry: use AABB of all elements in `rel_contained_in_space`
+where space_guid = this space. Log: `[SPACE_APPROX] Space X: using contained envelope`.
+
+### Task 3 — Verify on SH
+
+```bash
+python DAGCompiler/python/placement_extractor.py \
+  --ifc DAGCompiler/lib/input/SampleHouse.ifc \
+  --db  DAGCompiler/lib/input/SampleHouse_extracted.db
+
+sqlite3 DAGCompiler/lib/input/SampleHouse_extracted.db \
+  "SELECT guid, name, storey, min_x, max_x, min_y, max_y FROM ifc_spaces;"
+
+# Also verify elements_meta count UNCHANGED (G1 must not regress):
+sqlite3 DAGCompiler/lib/input/SampleHouse_extracted.db \
+  "SELECT COUNT(*) FROM elements_meta;"  -- must match pre-extraction count
+```
+
+Expected: rows for each IfcSpace (SH has: Living room, Bedroom, Kitchen, Bathroom, etc.)
+
+### Task 4 — SpaceExtractionTest (if Java test harness covers Python)
+
+If no Python test path exists: manual verification is sufficient. Document findings in §DONE.
+
+## Anti-Drift
+
+- Modify ONLY `placement_extractor.py`. Do not touch BuildingCompiler.java or any SQL migration.
+- IfcSpace rows must use the same `guid` as in `spatial_structure` (for join integrity).
+- Do NOT invent space geometry — use IfcOpenShell extraction or contained-element envelope only.
+
+## Done criteria
+
+- `elements_rtree` has rows WHERE ifc_class='IfcSpace' for SH building
+- Each row has valid non-zero AABB (minX < maxX, minY < maxY, minZ < maxZ)
+- `element_transforms` has centre coordinates for each IfcSpace
+- W-FW-AABB claim verifiable
+
+# DONE
+<!-- Coder appends findings here -->

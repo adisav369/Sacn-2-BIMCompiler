@@ -1,0 +1,139 @@
+# 00j — Clinic Federation MEP Recipes: CE+CH+CP (ELEC+ACMV+CW/SP)
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.2 §7
+**Prereq:** 00i DONE (W-J1-GEO — penetration gaps, collinearity, rotation, coverage topology)
+**Test Stones:** CE (Clinic Electrical, 2081 ELEC), CH (Clinic HVAC, 555 ACMV/CW), CP (Clinic Plumbing, 6584 CW/SP)
+**Scope:** Verify W-J1-GEO correctness on 3-discipline federated clinic building. Report only — no code changes expected.
+
+You are a coder for bim-compiler. One bounded task: run and report.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `prompts/00i_chain_geometry_correctness.txt` §DONE — findings and witness claims
+3. `IFCtoBOM/src/main/resources/classify_ce.yaml`, `classify_ch.yaml`, `classify_cp.yaml`
+4. This prompt fully
+
+## Context
+
+00i proved W-J1-GEO on RM (routing topology) and TE (coverage topology).
+The Clinic federation is a new case: 3 separate IFC files for one building,
+each covering a single discipline:
+
+| Prefix | Building type     | MEP elements | Discipline | Storeys |
+|--------|-------------------|-------------|------------|---------|
+| CE     | Clinic_Electrical | 2081        | ELEC       | Level 1/2 |
+| CH     | Clinic_HVAC       | 555         | ACMV       | First/Second Floor + TOF |
+| CP     | Clinic_Plumbing   | 6584        | CW/SP      | Level 1/2 + TOF Footing |
+
+Each is an EXTRACTED building with its own `*_extracted.db`. All have real storeys
+→ routing topology expected (not coverage topology). Together they cover 3 disciplines
+(ELEC + ACMV + CW/SP) from a single clinic building.
+
+## Questions to answer
+
+### Q1: Routing topology or coverage topology?
+
+For each of CE, CH, CP: what % of MEP elements have null storey?
+If >80% null → coverage topology triggered. Expected: all three are routing topology
+(they have declared storeys in YAML and IFC).
+
+### Q2: Chain geometry — do runs make sense?
+
+For each building:
+- How many MEP runs? How many lines?
+- Largest run size? Any runs > 50 pieces?
+- Any degenerate discards (total offset < 10mm)?
+- Any collinearity discards (R² < 0.5)?
+- How many non-zero rotation_rule values?
+
+### Q3: Distribution — not bunched
+
+Key check from user requirement: are elements spread across space or all in one spot?
+
+```sql
+SELECT disc, COUNT(*) runs,
+  ROUND(MIN(ABS(dx)+ABS(dy)+ABS(dz)),3) min_offset,
+  ROUND(MAX(ABS(dx)+ABS(dy)+ABS(dz)),3) max_offset,
+  ROUND(AVG(ABS(dx)+ABS(dy)+ABS(dz)),3) avg_offset
+FROM M_BOM_Line l JOIN M_BOM b ON l.M_BOM_ID=b.M_BOM_ID
+WHERE b.source_building IN ('Clinic_Electrical','Clinic_HVAC','Clinic_Plumbing')
+  AND l.sequence > 20
+GROUP BY disc, b.source_building
+```
+
+Offset range should span 0.1–20m. If all offsets are near-zero → degenerate data slipped through.
+If max = min → all elements at same position → spatial defect in source IFC.
+
+### Q4: DISC qty alignment
+
+Check whether the recipe run count aligns with element count from extraction:
+```
+CE: 2081 MEP elements → expect ~100-500 runs (2-20 pieces/run typical)
+CH:  555 MEP elements → expect ~30-100 runs
+CP: 6584 MEP elements → expect ~300-1000 runs
+```
+Gross mismatch (e.g., 1 run for 6584 elements) = topology defect.
+
+### Q5: Penetration gaps
+
+Any cross-floor gaps (50-600mm) merged via structural AABB?
+These are multi-floor clinic buildings — pipe risers through slabs are expected.
+Report: how many structural AABBs loaded per building? Any penetration merges?
+
+### Q6: IFC storey naming mismatch
+
+CE uses "Level 1/2", CH uses "First Floor/Second Floor", CP uses "Level 1/2".
+All are part of the same physical building but in separate IFC files.
+`toStoreyCode()` maps:
+- "Level 1" → "L1"
+- "First Floor" → "FF" (uppercase initial letters)
+
+If CH produces storey codes "FF/FS/FDN" vs CE/CP "L1/L2/FDN" — different codes for the
+same physical floor. This is a finding to report, not a blocker.
+
+## Verification
+
+```bash
+./scripts/run_RosettaStones.sh classify_ce.yaml classify_ch.yaml classify_cp.yaml
+```
+
+After the gate run, run joint-extract explicitly to capture GEO logs:
+
+```bash
+for yaml in classify_ce.yaml classify_ch.yaml classify_cp.yaml; do
+  mvn exec:java -pl IFCtoBOM \
+    -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
+    -Dexec.args="--joint-extract --classify IFCtoBOM/src/main/resources/$yaml" \
+    -q 2>&1 | grep -E "\[IFCtoERP\]|\[joint-extract\]|GEO"
+done
+```
+
+Expected:
+- CE, CH, CP: routing topology (not coverage) — no "COVERAGE TOPOLOGY" log
+- No run > 100 pieces
+- CE/CH/CP gate: at minimum no regression from current baseline
+- SH: 8/8 PASS (must not regress)
+
+## Report back — findings only
+
+1. Topology detected per building (routing/coverage)?
+2. Run counts and line counts per building
+3. Distribution check result (offset range per discipline)
+4. Any DISCARD lines (degenerate or collinearity)?
+5. Penetration gaps merged?
+6. Storey naming mismatch finding (Q6)
+7. Any surprise: element types not classified, runs with all-zero offsets
+
+## Commit
+
+`[S104-J1] IFCtoERP: CE+CH+CP clinic federation MEP recipes verified (W-J1-GEO)`
+
+---
+
+# DONE
+

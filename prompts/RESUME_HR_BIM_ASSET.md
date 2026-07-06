@@ -2478,3 +2478,157 @@ real `guidMap` AND an actual rendered mesh (instanced/batched-aware lookup). Clo
 
 **DONE WHEN:** PR #677 merged. (Camera compass-facing yaw is a real, scoped, not-yet-started follow-up if
 ever wanted — needs this pipeline's first-ever nonzero rotation_z / vertex-bake derivation, live-verified.)
+
+## ▶ 2026-07-06f — user asked to re-review §2026-07-06c: found item D-followup + item E were ORPHANED
+(never on `main` despite this file claiming "live in PR #677") — RECOVERED, bim-ootb PR #679 open
+
+The "item E ✅ BUILT... live in PR #677" claim above was **wrong**. PR #677 was squash-merged at
+2026-07-05T23:41:39Z (merge commit `89f5aa6`, contains ONLY items A/B/C). Commits `f0e99b6` (D-followup) and
+`798c8a0` (item E) were pushed to the SAME branch *after* that merge — exactly the orphaned-commit landmine
+CLAUDE.md already documents (precedent PR #138, 2026-06-05: squash-merge + late push on the same branch
+orphans the new commits, since the PR is already closed). Verified directly: `origin/main`'s
+`hr_bim_asset/iot.js` has item C's `PHASE_OFFSET_HOURS` (correctly merged), but `viewer/hba_iot.js` has zero
+`captureFacingSnapshot` and `scripts/place_iot_lod_devices.py` doesn't exist on `main` at all.
+
+**Second, deeper problem found the same way:** the actual DB mutation from item E's script (9 new
+`elements_meta` rows: 6 `IOTDEV-CAM*-HHS` + `IOTDEV-{TEMP,SOLAR,ELEC}-HHS`) only existed in the *scratch*
+worktree `/tmp/wt-hba-live-fixes/viewer/buildings/HHS_Office_Federated_extracted.db` (6880 rows) — never
+copied to canonical `bim-compiler/deploy/buildings/` (still the stale 6871-row, May-7 copy) nor uploaded to
+OCI (confirmed by downloading the live `bim-ootb` bucket object — 75550720 bytes, same pre-item-E size as
+`origin/main`'s own git-tracked `buildings/` copy). So even a correct merge of the code would have shown
+nothing new in the running app.
+
+**Fixed both:**
+1. Fresh branch off `origin/main` (`fix/hba-iot-lod-devices-recover`), cherry-picked `f0e99b6`+`798c8a0` —
+   clean, no conflicts. Pushed, opened **PR #679** (open, needs human merge).
+2. Copied the scratch worktree's mutated DB to canonical `deploy/buildings/HHS_Office_Federated_extracted.db`,
+   uploaded to OCI bucket `bim-ootb` (`--content-type application/octet-stream`, per `OCI_UPLOAD.md §RULES`).
+   Verified live: downloaded the object back, `PRAGMA integrity_check` = ok, all 9 `IOTDEV-*` guids present,
+   row count 6871→6880 confirmed on the actual served bytes (not just the local file).
+
+**DONE WHEN:** PR #679 merged (code). DB is already live on OCI as of this session — no further action needed
+for the data side. ✅ PR #679 merged 2026-07-06T02:48Z.
+
+## ▶ 2026-07-06g — user's STANDING ASK (repeats until done, log here so it's never re-discovered from scratch):
+"clicking the IoT sensor a 2nd time must be the exact same POV as clicking its covering camera's own webcam
+tile — a real fly-to-and-turn-into-that-POV animation, not a different shot" + "the sensor bars must fluctuate
+realistically around normal values, not lean one-sided/linear." Both confirmed as REAL, provable-by-maths bugs
+(no browser needed — user's own instruction: "this is all maths... no user will help verify") and FIXED,
+bim-ootb PR #681 (merged).
+
+1. **POV mismatch — FIXED.** 2nd sensor click used `flyToPOV` (stand ~0.15×dist from the covering camera —
+   effectively at the lens — look AT the device). The CCTV tile's own click used `flyToFacing` (stand back a
+   real few metres, look along the camera's OWN declared facing). Different function, different standoff,
+   different look-target — provably not the same shot. `viewer/hba_iot.js`'s 2nd-click handler now calls the
+   SAME `flyToFacing(A, cam.bim_guid, cam.facing, {dist: CAMERA_ZOOM_DIST})` the tile itself uses — `flyToPOV`
+   kept only as an honest fallback if a covering camera somehow lacks a declared facing (shouldn't happen
+   today — all 6 real CAMERAS have one).
+2. **One-sided jitter — FIXED.** `hr_bim_asset/iot.js jitterFor()`'s index `(hourIdx*3+tickCounter) % 12` —
+   since `hba_iot.js`'s `setInterval` increments both by 1 every tick, the index only ever advanced by 4 mod
+   12, a period-3 orbit hitting JUST indices {0,4,8} = JITTER_TABLE's three POSITIVE entries. The bar could
+   only ever bump ABOVE its smooth curve, never below — proven by hand-tracing the modulus, not by eyeballing
+   the UI. Decoupled the index from `hourIdx` (now `tickCounter` alone, which walks the FULL 12-entry table)
+   plus a new fixed `SENSOR_JITTER_OFFSET` table (same discipline as `PHASE_OFFSET_HOURS`) so the 7 bars don't
+   share the identical table entry every tick. Verified via direct `node` call: 12/12 distinct values over 24
+   ticks, 12 positive/12 negative (was 3/3, all positive).
+
+**Live-verified (real browser, not just node math):** `viewer/tests/witness_iot_pov_live.js` (updated) proves
+the 2nd sensor click and that SAME camera's own CCTV-tile click resolve the byte-identical `(guid, eye,
+facing)` — the deterministic proof, since raw camera.position pixel-comparison is unreliable here (OrbitControls
+damping keeps nudging position for an indeterminate time after the explicit fly animation completes — a
+rendering-loop artifact, not a routing bug). `witness_p10b.js` (67/67), `witness_camera_pov.js` (6/6),
+`witness_hba_iot_lod_device_meshes.js`, `witness_hba_outline_panel_fixes.js` all still PASS unchanged.
+
+Separately, user asked me to verify a WATCHDOG report on `scripts/place_iot_lod_devices.py`'s mechanics
+(sourcing/tessellation/anchoring/rotation/instancing) against the real script+`IFC/LOD/README.md` — **agreed,
+9/10 points confirmed byte-for-byte accurate.** One precision gap flagged: the "rotation inherits the host's
+own rotation_z" framing is a comment-level rationalization, not actual code — `host_row()`'s own SQL SELECT
+doesn't even fetch `rotation_z`, so `insert_row()` hardcodes literal `0,0,0` and simply ASSUMES it matches the
+host (true today, verified for this specific building's data) — no code-level guard would catch a future
+re-run against a building where host `rotation_z` isn't 0. Not a live bug, but a silent-drift risk if this
+script is ever reused elsewhere.
+
+**DONE WHEN:** PR #681 merged. ✅ Merged 2026-07-06T03:11Z (auto-merge after CI green).
+
+---
+
+## ▶ 2026-07-06d — Human-Asset pill "doesn't go off when pressed again" — FOUND + GENERALIZED FIX, not just patched
+
+**User report:** the Human-Asset (`hbaFM`) pill icon stays highlighted after closing its drawer, and pressing
+it again doesn't clear it. **User's explicit ask, after seeing a first narrow patch:** don't patch this one
+pill — investigate how the whole pill/panel registry framework is used or broken, fix it so a FUTURE icon
+never goes through the same class of bug.
+
+### Root cause
+`viewer/panels.js`'s `hbaFM` pill's `isActive()` reads `HBALens.familyActive()` (`viewer/hba_lens.js`), which
+is true while `#hba-fm-drawer` exists in the DOM. Re-tapping the PILL itself already worked —
+`common/pill_builder.js`'s click handler does `act.fn(); _sync();`, so the highlight correctly re-reads state
+right after every pill click. The bug was the drawer's OWN ✕ button: `d.remove(); _closePresenceDrawer();`
+with **no resync call at all** — the exact same bug class `PILL_DRAWER_REORGANIZATION.md`'s Item 1 already
+fixed for the Navigate/Inspect/Camera-View master drawers (their shared `_buildMasterDrawer()` calls
+`_syncPillHighlights()` in `onClose`) — just never back-ported to this older, hand-rolled drawer. Confirmed via
+grep: `_syncPillHighlights()` was called from exactly 3 places, all in `panels.js`, none in `hba_lens.js` — a
+scattered, easy-to-forget manual convention, not a structural guarantee.
+
+### The generalized fix (not a per-pill patch)
+1. **`common/pill_builder.js` — §PILL-AUTOSYNC.** A `MutationObserver` on `document.body`
+   (`childList+subtree`, no `attributes` — stays silent on the noisy per-frame style/class churn from camera
+   moves etc., only fires on real element add/remove, which is how every panel/drawer in this codebase opens
+   and closes) resyncs ALL pill highlights on the next animation frame, regardless of who created the panel or
+   whether its author remembered to call anything. This is the actual "never again" fix — future drawers get
+   correct highlight behavior for free.
+2. **`viewer/panels.js` — `A.createPanel()` extended (§PANEL-ABSTRACTION):** Tab (native)/Arrow-key row
+   traversal auto-wired via the existing-but-under-used `viewer/panel_nav.js` (built for Find, unused
+   elsewhere); `A._placePanel()` — new nearest-free-slot desktop placement, replacing what would otherwise
+   become another hand-picked magic-number column (found live: `hba_bom.js`/`hba_iot.js`/`hba_dashboard.js`
+   already hardcode `right:12/428/864` — the exact "hell" pattern repeating, a 4th pane would silently collide).
+3. **`viewer/hba_lens.js`'s `openFamilyDrawer` migrated onto this infrastructure** (draggable, arrow-nav,
+   no-overlap placement) as the flagship instance — proves the abstraction on the real reported bug, not just
+   in the abstract.
+4. **Mobile card-stack — tried, then deliberately reverted for this drawer.** `viewer/hba_mobile_stack.js`
+   (`HbaPaneHost`) already generalizes swipeable-card-stack behavior for the 6 HBA panes. First attempt folded
+   the drawer itself into that same stack. Live-testing (`viewer/tests/poc_hba_mobile_stack.js`, the
+   pre-existing regression suite) surfaced a real design conflict: the drawer is the PICKER used to open more
+   panes, so it can never legitimately reach "zero cards" alongside its own content, and swiping through the
+   deck would displace the very picker needed to browse the rest. This also matches a pre-existing, deliberate
+   choice already in the code (`syncLauncher()` treats `hba-fm-drawer`/`hba-presence-drawer` as persistent
+   launcher chips, z-ordered above/behind the stack, never as stack content). Reverted to a plain floating
+   overlay on mobile too — correct generalization is keeping picker/content structurally separate, not forcing
+   everything into one mechanism. Two bugs found+fixed along the way while this was still wired in (kept fixed
+   even after the revert, since they're general CSS-inheritance traps future stack integrations will hit again):
+   - a leftover inline `transform:translateY(-50%)` (for the drawer's desktop vertical-centering) survives
+     re-parenting into the stack's static-flow layout and pushes the element off-screen — the stack's CSS
+     resets position/top/left/right/width but not `transform`.
+   - `HbaPaneHost`'s full-screen CSS gives cards `padding-top:40px` (non-`!important`) to clear its fixed
+     topbar; an inline `padding` SHORTHAND (even `padding:0 8px 8px`, which still explicitly sets
+     `padding-top:0`) wins over that and silently cancels it, hiding the topbar-adjacent controls underneath
+     the topbar. Fix: never declare `padding-top` inline at all (individual longhands, omit that one side) so
+     the external rule can supply it.
+
+### Witnesses (all real Playwright/chromium, real HHS_Office_Federated, read the § logs, not just exit code)
+- `viewer/tests/witness_hba_pill_desync_fix.js` — the original bug: open → ✕ close → pill goes off → reopens
+  cleanly. **NEW.**
+- `viewer/tests/witness_panel_abstraction.js` — draggable, Arrow-key row traversal (2 presses, row0 then row1),
+  `A._placePanel` firing, and mobile: drawer opens as a floating overlay (not a stack card) and ✕ still cleans
+  up. **NEW.**
+- `viewer/tests/witness_hba_outline_panel_fixes.js` — pre-existing regression (BOM/IoT pane no-overlap,
+  Unit Class outline) — unaffected, still 0 fails.
+- `viewer/tests/poc_hba_mobile_stack.js` — pre-existing 6-pane mobile card-stack regression suite (P0-P5) —
+  unaffected, still 0 fails (this is the one that caught the "drawer joining the stack" design conflict above).
+- `hr_bim_asset/tests/witness_family.js` — node-level family API, unaffected, 10/10.
+
+### Branch
+`lane/hba-pill-desync-fix` off fresh `origin/main`, worktree `/tmp/wt-hba-pill-desync`. Pushed, PR #682 opened,
+`gh pr merge 682 --auto --squash` enabled (mergeable, will land once CI is green). Verify it actually landed
+next session per CLAUDE.md's squash-merge-orphan caution — `gh pr view 682` first.
+
+**✅ VERIFIED MERGED** — `gh pr view 682`: `state=MERGED`, squashed to `origin/main` as commit `01d8932`
+(`2026-07-06T03:34:07Z`). Local `bim-ootb` checkout confirmed 0 commits behind/ahead of `origin/main`, clean
+tree — nothing orphaned. **DONE.**
+
+**Not attempted this pass, documented not silently skipped:** generalizing the OTHER existing panels that use
+a toggle-visibility lifecycle (Settings, Palette/sunglass panel, the 3 `_buildMasterDrawer` masters) onto
+`A._placePanel`/mobile-stack needs its own regression pass — `A.createPanel()`'s toggle model
+(`display:none`↔`''`) and `HbaPaneHost`'s mount/unmount model (element added/removed) are different lifecycles
+and merging them for those panels risks regressing already-shipped behavior without dedicated testing. This
+write-up + the design reasoning above is the seed for that follow-up if picked up later.

@@ -1,0 +1,204 @@
+# 2D_015 — Curved Roof: Mesh Outline + Thickness (No Invention)
+
+## Prime Rule (read before touching code)
+**No inventing geometry.** Every line drawn must trace to actual building data.
+If the data does not contain it, do not draw it.
+All visual parameters (line weights, layers, labels) come from
+`drawing_template.json` or `2D.db`. No literals in geometry code.
+
+---
+
+## Problem (proven by conformity gate)
+
+`test_conformity.py --db ../input/SH_extracted.db` exits 1 with:
+
+```
+[FAIL] A-06 ROOF_NOT_INVENTED: expected non-rectangular outline
+       (roof has 197 mesh vertices), 1 bbox rectangle on A-ROOF
+       — end caps are invented
+```
+
+The SH `IfcRoof` (197 vertices, 390 faces) is a curved shell.
+`write_roof_plan_dxf` draws it as `min_x/max_x/min_y/max_y` — a
+4-corner rectangle whose two short sides (Y-min and Y-max edges) do
+not correspond to any face of the actual mesh. They are invented.
+
+The user also noted: the roof should show **thickness** in plan, just
+as walls show thickness in the floor plan — two concentric outlines
+(outer eave boundary + inner soffit boundary), not a single line.
+
+---
+
+## Pre-flight (read before ANY code)
+
+1. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §1 R1 (no invention)
+2. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §5.3 (roof plan spec)
+3. `2D_Layout/python/drawing_writer.py`:
+   - `parse_vertices_blob()` — already proven blob parser
+   - `_convex_hull_2d()` — already proven convex hull
+   - `roof_silhouette()` — already proven for elevation (XZ/YZ projection)
+4. `2D_Layout/python/drawing_writer_dxf.py` — `write_roof_plan_dxf()`,
+   the lines that draw `ro_pts` (the 4-corner rectangle, the bug)
+5. `drawing_template.json` — `line_weights`, `roof_plan` section
+6. Run baseline: `python3 drawing_writer_dxf.py ../input/SH_extracted.db --all`
+   Confirm 6/6 PASS (DXF output passes, conformity will fail — that's expected).
+7. Run gate: `python3 test_conformity.py --db ../input/SH_extracted.db`
+   Confirm exit 1 with ROOF_NOT_INVENTED FAIL — this is the starting state.
+
+---
+
+## Data source — no invention permitted
+
+The vertex blob is in `base_geometries`:
+
+```sql
+SELECT bg.vertices, bg.vertex_count
+FROM elements_meta m
+JOIN element_instances ei ON m.guid = ei.guid
+JOIN base_geometries bg   ON ei.geometry_hash = bg.geometry_hash
+WHERE m.ifc_class = 'IfcRoof'
+```
+
+`parse_vertices_blob(blob, vertex_count)` → numpy array shape (N, 3).
+Columns: [X, Y, Z] in world metres.
+
+**Do not query this at test time — query it at draw time in
+`write_roof_plan_dxf`. The function already has `db_path`.**
+
+---
+
+## Step 1 — Extract roof mesh vertices at draw time
+
+In `write_roof_plan_dxf`, before the `# ── Roof outline ──` block,
+add a helper that loads the actual XY projection:
+
+```python
+def _roof_mesh_hulls(db_path):
+    """Return (outer_hull, inner_hull) for IfcRoof elements.
+    outer_hull: XY convex hull of ALL mesh vertices (top-down eave boundary).
+    inner_hull: XY convex hull of BOTTOM-FACE vertices (soffit boundary).
+    Both are lists of (x_m, y_m) in world metres.
+    Returns ([], []) if no mesh data.
+    """
+```
+
+Implementation rules (no invention):
+- Load vertices via `parse_vertices_blob` — same function as `roof_silhouette`
+- Project to XY: `xy_all = verts[:, :2]`  (columns 0 and 1)
+- `outer_hull = _convex_hull_2d([(x, y) for x, y in xy_all])`
+- For inner hull: filter vertices where Z ≤ `z_mean - z_span * 0.2`
+  (bottom fifth of the Z range) → `xy_inner` → `_convex_hull_2d(xy_inner)`
+- If `len(outer_hull) < 3` → return `([], [])`
+- Log vertex counts: `§DATA roof mesh: N_all vertices, N_inner bottom vertices`
+- Log hull sizes: `§DATA outer hull: K points, inner hull: J points`
+
+Witness: `§DATA` lines appear in log for SH run.
+
+---
+
+## Step 2 — Replace the bbox rectangle with the mesh hull
+
+Find and remove:
+
+```python
+# ── Roof outline (bold) ──
+ro_pts = [(_mh(roof_min_x), _mh(roof_min_y)), (_mh(roof_max_x), _mh(roof_min_y)),
+          (_mh(roof_max_x), _mh(roof_max_y)), (_mh(roof_min_x), _mh(roof_max_y))]
+msp.add_lwpolyline(ro_pts, close=True,
+                   dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_wall})
+```
+
+Replace with:
+
+```python
+# ── Roof outline: mesh hull (§1 R1 — no bbox invention) ──
+outer_hull, inner_hull = _roof_mesh_hulls(db_path)
+if len(outer_hull) >= 3:
+    outer_pts = [(_mh(x), _mh(y)) for x, y in outer_hull]
+    msp.add_lwpolyline(outer_pts, close=True,
+                       dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_wall})
+    _log(f"§RENDER ROOF_OUTER hull={len(outer_pts)} pts src=base_geometries.vertices")
+else:
+    # Fallback: only if no mesh data at all (not an excuse to invent)
+    _log("§WARN ROOF_OUTER no mesh data — skipping outline (R1: no invention)")
+
+if len(inner_hull) >= 3:
+    inner_pts = [(_mh(x), _mh(y)) for x, y in inner_hull]
+    msp.add_lwpolyline(inner_pts, close=True,
+                       dxfattribs={'layer': 'A-ROOF', 'lineweight': lw_part})
+    _log(f"§RENDER ROOF_INNER hull={len(inner_pts)} pts src=base_geometries.vertices")
+```
+
+Line weights from template:
+- Outer hull → `lw_wall` (wall_exterior_cut, already read)
+- Inner hull → `lw_part` (wall_partition_cut, already read)
+- No new line weight literals
+
+Witness: log shows `§RENDER ROOF_OUTER hull=K pts src=base_geometries.vertices`.
+
+---
+
+## Step 3 — Verify from log, not by eye
+
+Run: `python3 drawing_writer_dxf.py ../input/SH_extracted.db --all`
+
+Read the log. Confirm:
+- `§DATA roof mesh: 197 vertices, N_inner bottom vertices` — mesh loaded
+- `§RENDER ROOF_OUTER hull=K pts src=base_geometries.vertices` — not a rectangle
+- `§RENDER ROOF_INNER hull=J pts src=base_geometries.vertices` — soffit drawn
+- 6/6 PASS (DXF still valid)
+
+Confirm NO line in the log says `ro_pts` or 4-corner rectangle.
+
+---
+
+## Step 4 — Conformity gate must PASS
+
+Run: `python3 test_conformity.py --db ../input/SH_extracted.db`
+
+Must exit 0. The `check_roof_outline_not_invented` check verifies that
+no LWPOLYLINE on A-ROOF is a perfect axis-aligned rectangle.
+The mesh-derived hull will have enough points (K > 4) to pass.
+
+Also run: `python3 test_conformity.py --db ../input/DX_extracted.db`
+DX must still exit 0 (pitched rectangular roof → K=4 axis-aligned rectangle
+is now allowed because DX IfcRoof has ≤ 20 vertices).
+
+Wait — DX has a real rectangular roof. If DX IfcRoof has ≤ 20 vertices
+it bypasses the check (the gate only fires for vertex_count > 20). Verify.
+If DX IfcRoof also has > 20 vertices but IS legitimately rectangular,
+the test needs a refinement: the is_rect_aligned check should allow the
+mesh to confirm the rectangle is real (hull of mesh vertices IS a rect).
+Do NOT change the DX drawing — only investigate if the gate is wrong.
+
+---
+
+## Step 5 — Also run layout_audit
+
+`python3 layout_audit.py` → 0 FAIL
+
+---
+
+## Session closeout
+
+- DX 6/6 PASS, SH 6/6 PASS
+- `test_conformity.py --db SH_extracted.db` → exit 0
+- `test_conformity.py --db DX_extracted.db` → exit 0
+- `test_conformity.py` (no --db) → exit 0 (skips ROOF_NOT_INVENTED gracefully)
+- `layout_audit.py` → 0 FAIL
+- Commit: `[2D_015] Curved roof mesh outline — R1 no-invention proof`
+- Append findings after `# DONE`
+
+## Strict rules for this session
+
+- `parse_vertices_blob` and `_convex_hull_2d` are the ONLY permitted geometry
+  primitives. Do not write your own convex hull or vertex parser.
+- Do not add any line weight, layer name, or dimension literal.
+  Every visual parameter from `drawing_template.json` key or `2D.db` row.
+- Do not fall back to bbox if mesh data is present. Absent mesh = skip + warn.
+- The `§DATA` and `§RENDER` logs are the only evidence. Read logs, not DXF files.
+- One change at a time. Run after each. Read the log diff.
+
+
+# DONE
+DX 6/6 PASS, SH 6/6 PASS. Committed [2D_015] + [2D_015b]. Findings in SpecToCode §5.3a. _inward_offset_hull R9 flag logged in 2D_016.

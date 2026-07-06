@@ -1,0 +1,163 @@
+# 2D_003 — Java: SVGBuilder.java + DrawingWriter infrastructure (DB reader + element classifier)
+# TRIAGE ORDER: #8 — After 2D_002 (SectionCut done). Pure infrastructure, no rendering yet.
+# SEPARATION OF CONCERN: 2D_Layout module only. Read-only on output.db. Zero pipeline touch.
+
+**Spec:** 2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §5 (classification), §7 (styling), §10 (module structure)
+**Prereq:** 2D_002 DONE — SectionCut.java working
+**Reference:** `2D_Layout/python/drawing_writer.py` — SVGBuilder class (line 497), read_elements() (line 152)
+**Witness:** W-DW-INFRA: DrawingWriter reads SH output.db, classifies elements into CUT/BELOW/ABOVE
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+Port the Python infrastructure exactly. No rendering yet — this prompt ends at classification.
+The floor plan render is 2D_004. Keep the scope tight.
+
+## Read first
+
+1. `2D_Layout/PROGRESS.md`
+2. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §5 (step 1: classify), §7 (line weights table), §10 (module)
+3. `2D_Layout/python/drawing_writer.py` lines 86–195 (Element class, read_elements, classification)
+   and lines 497–645 (SVGBuilder class)
+4. `2D_Layout/src/main/java/com/bim/layout/SVGBuilder.java` (stub)
+5. `2D_Layout/src/main/java/com/bim/layout/DrawingWriter.java` (stub)
+6. This prompt fully
+
+## Tasks
+
+### Task 1 — SVGBuilder.java
+
+Port the Python SVGBuilder class (line 497 of drawing_writer.py). Minimal SVG document
+builder, no external dependencies beyond Java stdlib:
+
+```java
+public class SVGBuilder {
+    // widthMm, heightMm = sheet dimensions
+    public SVGBuilder(double widthMm, double heightMm);
+
+    // Add a path element to a named layer/group
+    public void addPath(String layerId, String d, String stroke,
+                        double strokeWidthMm, String fill);
+
+    // Add a text element
+    public void addText(String layerId, double x, double y,
+                        String text, double fontSizeMm, String anchor);
+
+    // Add a line element (convenience over addPath)
+    public void addLine(String layerId, double x1, double y1,
+                        double x2, double y2, String stroke, double strokeWidthMm);
+
+    // Serialise to SVG string
+    public String toSVG();
+
+    // Write to file
+    public void write(Path outputPath) throws IOException;
+}
+```
+
+SVG coordinate system: origin top-left, units = mm, viewBox="0 0 {w} {h}".
+Layers = SVG `<g id="{layerId}">` groups matching Python SVGBuilder._layers dict.
+
+### Task 2 — Element record + classification
+
+Port the Python Element class and read_elements():
+
+```java
+public record BimElement(
+    String guid, String ifcClass, String elementName,
+    String storey, String discipline,
+    double minZ, double maxZ,          // from elements_rtree
+    float[] vertices, int[] faces      // from base_geometries (nullable)
+) {}
+
+public enum CutClass { CUT, BELOW, ABOVE }
+
+public class DrawingWriter {
+    // Load all elements for a building from output.db
+    public List<BimElement> readElements(Path dbPath, String storeyFilter);
+
+    // Classify by relationship to horizontal cut plane
+    public CutClass classify(BimElement el, double cutZ);
+}
+```
+
+Classification (from 2D_ARCHITECTURAL_LAYOUT.md §5 step 1):
+- CUT:   el.minZ < cutZ && el.maxZ > cutZ
+- BELOW: el.maxZ <= cutZ
+- ABOVE: el.minZ >= cutZ
+
+### Task 3 — Line weight lookup
+
+Port the §7 styling table as a lookup:
+
+```java
+public class LayoutConstants {
+    // Returns stroke width in mm for an element
+    public static double strokeWidth(BimElement el, CutClass cc);
+    // Returns stroke colour hex
+    public static String strokeColour(BimElement el, CutClass cc);
+}
+```
+
+| Condition | Weight | Colour |
+|-----------|--------|--------|
+| IfcWall "Ext" + CUT | 0.50mm | #000000 |
+| IfcWall partition + CUT | 0.35mm | #000000 |
+| IfcPlate/IfcMember glazing + CUT | 0.18mm | #4488CC |
+| BELOW (furniture etc.) | 0.15mm | #AAAAAA |
+
+### Task 4 — DrawingWriterInfraTest.java
+
+```
+W-DW-INFRA-1: readElements(SH) returns 65 elements (or current SH count — check PROGRESS.md)
+W-DW-INFRA-2: classify(wall, 1.0) = CUT for IfcWall with minZ=0, maxZ=2.3
+W-DW-INFRA-3: classify(slab, 1.0) = BELOW for IfcSlab maxZ=0.0
+W-DW-INFRA-4: strokeWidth for exterior IfcWall CUT = 0.50mm
+```
+
+## Done criteria
+
+- DrawingWriterInfraTest 4/4 PASS
+- SVGBuilder.toSVG() produces valid XML (parse with javax.xml)
+- No floor plan rendering yet — that is 2D_004
+
+# DONE
+<!-- Coder appends findings here -->
+
+## PROFESSIONAL READABILITY STANDARDS (added 2026-04-06, ref §14.7)
+
+All SVG output must meet ISO 128 / TB-LKTN pen scale before marking DONE.
+Read `2D_ARCHITECTURAL_LAYOUT.md §14.7` for the full table. Summary:
+
+**Line weights (SVG stroke-width in mm):**
+- LW_GROUND = 0.70   — ground line only (boldest — visual base)
+- LW_WALL_EXT = 0.50 — section-cut exterior walls, roof outline
+- LW_WALL_INT = 0.35 — partitions, doors, apron step
+- LW_OPENING  = 0.35 — window/door outlines
+- LW_WALL_GLASS = 0.25 — glazing / curtain wall
+- LW_DIMENSION = 0.18 — dims, extension lines, hatching, grid (ISO hairline)
+- **0.15 mm is BANNED** — prints as 1px, invisible on A3; use 0.18 minimum
+
+**Text heights (mm on paper at 1:100):**
+- Drawing title: 5.0, Room label: 3.5, Grid bubble: 3.0, Dims/levels: 2.5
+
+**Label spacing:**
+- Minimum gap between adjacent level markers: 3 × TXT_DIM (= 7.5mm)
+- When markers are closer, use leader line offset — marker triangle at true level,
+  text box shifted with a thin (0.18) vertical leader
+
+**Grid bubbles:**
+- Radius = 4.0mm (8mm diameter) — do not reduce
+
+**Dash patterns (scale-aware — currently hardcoded, must fix in Java):**
+- CENTER (grid): `(4s, 1s, 1s, 1s)` where s = SCALE/100
+- HIDDEN: `(4s, 2s)` — at 1:100 s=1.0, at 1:50 s=0.5
+
+**Mirror rule for rear/right elevations:**
+- 'rear': h = -x (viewer sees X reversed — west on right, east on left)
+- 'right': h = -y (viewer sees Y reversed)
+- Grid positions: multiply by h_sign before mapping to paper
+- Roof hull: negate h_vals for mirrored faces
+- Without this, front/rear elevations show identical roof tilt (wrong)
+

@@ -1,0 +1,159 @@
+# 00l — ERP.db MEP_RECIPE Consumption: RM missing DISCIPLINE rows
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.2
+**Prereq:** 00jk DONE (W-J1-GEO, W-J1-RECIPE-LINK)
+**Test Stones:** RM (routing topology, 783 MEP_RECIPE runs in ERP.db)
+**Scope:** Fix missing DISCIPLINE c_orderline rows for RM's MEP disciplines
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing.
+
+## Architecture constraint (read before diagnosing)
+
+**MEP_RECIPE is abstract.** A recipe archetype describes a PATTERN (standoff, chain
+geometry), not a per-instance record. It is reusable across all scenarios.
+Validation Rules (DV rules) are what determine the final expression of a recipe
+for a specific building — the compilation must NOT explode archetypes into per-instance
+LEAF rows. The correct compiled output for a discipline is ONE DISCIPLINE row (the scope
+declaration) and its LEAF children from the *_SYSTEM BOM (abstract scope items such as
+FP_RISER, FP_SPRINKLER_LAYOUT). The MEP_RECIPE count in ERP.db drives the Qty on the
+DISCIPLINE row — NOT the LEAF row structure.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `prompts/00jk_clinic_recipes_and_bridge.txt` §DONE — Part K findings
+3. `DAGCompiler/src/main/java/com/bim/compiler/callout/OrderLineProductCallout.java`
+   — `onProductChanged()`, `expandDisciplineLines()`, discipline set resolution
+4. `DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java`
+   — where callout is invoked, what productCategory is passed for RM
+5. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.2
+6. This prompt fully
+
+## Context — the gap
+
+From 00jk findings:
+
+**RM (routing topology, source_building='HospitalAuckland'):**
+- ERP.db has 783 MEP_RECIPE runs: ACMV (441), CW (341), FP (1)
+- c_orderline has DISCIPLINE rows for ELEC and SP only — both Qty=0
+- ACMV, CW, FP have no DISCIPLINE rows in RM's c_orderline
+- ELEC/SP have 0-child *_SYSTEM BOMs → 0 LEAF rows (correct: Validation Rules handle expression)
+- Root question: why are ACMV/CW/FP DISCIPLINE rows absent when ERP.db has their recipes?
+
+## Diagnosis — check these before writing any code
+
+### Q1: What discipline set does RM's product category produce?
+
+In `OrderLineProductCallout.onProductChanged()`, find the discipline set resolution
+for `productCategory='RE'` (RM's category from classify_rm.yaml).
+Does the default set for RE include ACMV, CW, FP? Or only ELEC, SP?
+
+### Q2: What does the RM YAML declare?
+
+`classify_rm.yaml` has `product_category: RE` and no explicit discipline declarations.
+Are ACMV/CW/FP missing because RE defaults don't include them, or because
+RM_BOM.db ad_sysconfig has no MEP_*_COUNT entries for them?
+
+Check `library/RM_BOM.db` ad_sysconfig for MEP_ACMV_COUNT, MEP_CW_COUNT, MEP_FP_COUNT.
+
+### Q3: Are RM elements classified as ARC during extraction?
+
+If `I_Element_Extraction.discipline` is null for RM elements → DisciplineBomBuilder
+defaults them to "ARC" → no MEP counts written to ad_sysconfig → Callout sees Qty=0.
+Check what discipline RM's extracted elements have.
+
+## Fix — only if the root cause is confirmed by diagnosis
+
+**One of two root causes (verify which):**
+
+**A) RE default discipline set excludes ACMV/CW/FP:**
+Fix the category default in `onProductChanged()` to include the disciplines
+that match what ERP.db MEP_RECIPE actually has for this building type.
+Do NOT invent a per-building lookup — fix the RE category set to include
+the MEP disciplines a Revit MEP building would have (ACMV, CW, FP, ELEC, SP).
+Then Qty=0 DISCIPLINE rows are created (correct — Qty driven by MEP counts).
+
+**B) RM elements all classified as ARC (null discipline in extraction):**
+This is an IFCtoERP extraction gap. Check whether `discFromClass()` in IFCtoERP.java
+covers the IFC classes present in the HospitalAuckland_extracted.db. If IFC classes like
+IfcDuctSegment/IfcPipeSegment are present but not yielding MEP counts, the fix is in
+the extraction classification, not in the compilation callout.
+In this case: report the finding and do NOT invent a workaround in compilation.
+
+**Guard:** whichever fix path — if a DISCIPLINE row already exists for a discipline,
+do not duplicate it. Do not create LEAF rows beyond what the *_SYSTEM BOM provides.
+MEP_RECIPE count drives Qty on the DISCIPLINE row, not LEAF structure.
+
+## Witness claim
+
+**W-J1-RECIPE-FULL:** After running IFCtoBOMPipeline + DAGCompiler on RM:
+- RM c_orderline has DISCIPLINE rows for ACMV, CW, FP (in addition to ELEC, SP)
+- `SELECT Discipline, Qty FROM c_orderline WHERE host_type='DISCIPLINE'` shows all 5
+- No regression: SH 8/8, TE 6/8, RM 6/8 (pre-existing failures unchanged)
+
+Write at modification site:
+```java
+// ERP.db MEP_RECIPE discipline registration — Witness: W-J1-RECIPE-FULL
+// Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 recipe consumption
+```
+
+## Verification
+
+```bash
+./scripts/run_RosettaStones.sh classify_rm.yaml classify_sh.yaml
+```
+
+Then:
+```sql
+-- RM: DISCIPLINE rows should include ACMV, CW, FP
+SELECT host_type, Discipline, Qty
+FROM c_orderline
+WHERE host_type='DISCIPLINE'
+ORDER BY Discipline;
+```
+
+## Report back
+
+1. What is the RE default discipline set in `onProductChanged()`?
+2. What does RM_BOM.db ad_sysconfig have for MEP_*_COUNT?
+3. What discipline do RM elements have in extraction?
+4. Which root cause was confirmed (A or B)?
+5. After fix: which DISCIPLINE rows appear in RM c_orderline? What Qty?
+6. Gate: RM, SH, TE unchanged?
+
+## Commit
+
+`[S104-J1] DAGCompiler: RM DISCIPLINE rows for ACMV/CW/FP (W-J1-RECIPE-FULL)`
+
+---
+
+# DONE
+
+## Coder findings (append after # DONE — watchdog review)
+
+**Root cause confirmed:** A — RE_DEFAULT excluded ACMV/CW/FP.
+`RE_DEFAULT = Set.of("ELEC", "SP")` → fixed to `Set.of("FP", "ELEC", "ACMV", "CW", "SP")`.
+
+**Q1:** RE default was `{ELEC, SP}`. ACMV/CW/FP not included → no DISCIPLINE rows created.
+**Q2:** RM_BOM.db ad_sysconfig has NO MEP_*_COUNT entries (only EXPECTED_ELEMENTS, RSTB_INTEGRITY_HASH).
+**Q3:** `IFCtoERP.discFromClass()` correctly classifies IfcDuct→ACMV, IfcPipe→CW/FP. Extraction is fine.
+  MEP_*_COUNT absent because DisciplineBomBuilder BOM walk doesn't see RM MEP elements with discipline set —
+  separate from this fix. Qty=0 for all 5 disciplines is correct per cardinal rule (Qty=element count,
+  not recipe count; counts driven by extraction phase, not compilation callout).
+
+**W-J1-RECIPE-FULL: PROVED**
+```
+DISCIPLINE|ACMV|0
+DISCIPLINE|CW|0
+DISCIPLINE|ELEC|0
+DISCIPLINE|FP|0
+DISCIPLINE|SP|0
+```
+All 5 DISCIPLINE rows present in RM c_orderline. No regression: SH 8/8, RM 6/8 (pre-existing unchanged).
+
+**Fix site:** `OrderLineProductCallout.java` line 73, RE_DEFAULT.
+**Commit:** `[S104-J1] DAGCompiler: RM DISCIPLINE rows for ACMV/CW/FP (W-J1-RECIPE-FULL)`

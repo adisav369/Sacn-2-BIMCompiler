@@ -1,0 +1,206 @@
+# 00c — IFCtoERP: Joint Piece + Shim Vocabulary Extraction
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.2 — Shim + Joint Piece Architecture
+**Prereq:** S103 discipline separation DONE (`abc1a233`)
+**Test Stones:** TE (48K, 8 discs), RM (6787, FP+ACMV+plumbing — 5 MEP classes)
+**Scope:** Phase J1+J2 — extract joint piece M_Products + define shim products in ERP.db
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.2 — full section (7 subsections)
+3. `docs/MANIFESTO.md` — ERP world view
+4. This prompt fully
+
+## Architecture (non-negotiable — read §6.12.2 before coding)
+
+### MEP = same BOM walk as ARC. No special engine.
+
+The walker reads M_BOM → M_BOM_Line → dx/dy/dz and places. Same code path
+as placing furniture in a room. No canvas. No pathfinding. No walk-to-cover.
+
+### The Shim — MEP's first piece
+
+A shim is an M_Product in ERP.db. It represents a small adapter that bridges
+MEP to an ARC host surface (ceiling, wall, floor). The walker matches it to
+an ARC element by `ifc_class`, and the shim's position becomes the MEP tack
+origin.
+
+```
+FP_CEILING_SHIM:  host_ifc_class=IfcCovering  mount=BOTTOM  offset=5mm
+ELEC_WALL_SHIM:   host_ifc_class=IfcWall      mount=SIDE    offset=0  height=1200mm
+SP_FLOOR_SHIM:    host_ifc_class=IfcSlab       mount=TOP     offset=0
+```
+
+**Why the shim prevents geometry hell:** It absorbs the building-specific
+position lookup ONCE. Every piece after it uses small relative offsets.
+Without it, every MEP piece computes `floor_z + storey_height - slab -
+clearance - drop` individually — thousands of chances to drift.
+
+### Joint pieces — Lego bricks from RosettaStones
+
+Each joint piece is an M_Product with connection properties. Extracted from
+IFC element geometry and `ifc_class` / `PredefinedType` — NOT from
+`IfcRelConnectsPorts` (our IFCs don't carry port data).
+
+A pipe segment IS a straight piece. An `IfcPipeFitting` IS a tee or elbow
+(identified by `PredefinedType`). The RosettaStones teach vocabulary by
+example.
+
+### MEP recipe = shim first, then chain
+
+```
+FP_SPRINKLER_BRANCH (M_BOM in ERP.db):
+  line 1: FP_CEILING_SHIM        dz=0     ← matches ceiling, becomes tack origin
+  line 2: PIPE_STRAIGHT_50MM     dx=0     ← header along ceiling
+  line 3: PIPE_TEE_50_25MM       dx=L     ← tee at branch point
+  line 4: PIPE_STRAIGHT_25MM     dy=S     ← branch from tee
+  line 5: SPRINKLER_HEAD_K56     dz=-300  ← terminal drop
+```
+
+Walker recurses same as BUILDING → FLOOR → ROOM → FURNITURE.
+
+## Task
+
+### Phase 1: Python — extract joint piece types from RosettaStones
+
+In `RosettaStoneExtract.py`, for each building with MEP elements:
+
+1. Query `elements_meta` for MEP IFC classes:
+   - `IfcPipeSegment` → PIPE_STRAIGHT (diameter from geometry)
+   - `IfcPipeFitting` → TEE/ELBOW/REDUCER (from `PredefinedType` or shape)
+   - `IfcDuctSegment` → DUCT_STRAIGHT
+   - `IfcDuctFitting` → DUCT_TEE/DUCT_ELBOW
+   - `IfcFlowTerminal` → SPRINKLER/DIFFUSER/FIXTURE (from class)
+   - `IfcFireSuppressionTerminal` → SPRINKLER
+   - `IfcAirTerminal` → AIR_DIFFUSER
+2. Extract typical dimensions (diameter, length, angle) from element geometry
+3. Pass classified types to Java via stdout or temp CSV (Python → Java handoff)
+
+### Phase 2: Java — IFCtoERP writes directly to ERP.db
+
+New class `IFCtoERP.java` in IFCtoBOM module. Reads `*_extracted.db`
+(read-only — never modify extraction DBs) and writes to ERP.db:
+
+1. Read `elements_meta` from `*_extracted.db` for MEP IFC classes
+2. Classify: ifc_class + predefined_type → piece type + dimensions
+3. Write to ERP.db staging table `_import_joint_piece_types`:
+   ```sql
+   CREATE TABLE IF NOT EXISTS _import_joint_piece_types (
+       id INTEGER PRIMARY KEY,
+       ifc_class TEXT NOT NULL,
+       predefined_type TEXT,
+       piece_type TEXT,
+       diameter_mm REAL,
+       length_mm REAL,
+       angle_deg REAL,
+       source_building TEXT,
+       count INTEGER DEFAULT 1
+   );
+   ```
+4. Promote from staging to M_Product: `INSERT OR IGNORE`
+5. Toolbox grows across fleet — each building may add new types
+
+### Phase 3: Define shim products in ERP.db
+
+Create shim M_Products — one per discipline × host surface:
+
+```
+FP_CEILING_SHIM, CW_CEILING_SHIM, ELEC_CEILING_SHIM, ELEC_WALL_SHIM,
+SP_FLOOR_SHIM, ACMV_CEILING_SHIM, LPG_WALL_SHIM
+```
+
+Each shim has: `host_ifc_class`, `mount` (BOTTOM/SIDE/TOP), `offset_mm`,
+optional `height_mm` for wall mounts.
+
+## Verification
+
+```bash
+./scripts/run_RosettaStones.sh classify_te.yaml
+./scripts/run_RosettaStones.sh classify_rm.yaml
+```
+
+Check:
+- `_import_joint_piece_types` rows in ERP.db (staging — TE: hundreds, RM: dozens)
+- Distinct joint piece M_Products in ERP.db (expect ~30-50 types)
+- Shim M_Products in ERP.db (~10-15 types)
+- No regression: SH 7/7, TE 5/7 baseline
+
+## Commit
+
+`[S104-J1] IFCtoERP: joint piece + shim vocabulary from RosettaStone IFCs`
+
+Key metrics: distinct joint types, shim count. Report in `# DONE`.
+
+---
+
+# DONE
+
+**S104-J1 — IFCtoERP: Joint piece + shim vocabulary extraction**
+
+New class: `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoERP.java`
+
+## Phase J1: Joint piece extraction
+
+Reads `*_extracted.db` (elements_meta + elements_rtree, read-only). Classifies 11
+MEP IFC classes into 31 piece types via element_type pattern matching:
+
+| IFC class | Piece types |
+|-----------|------------|
+| IfcPipeSegment | PIPE_STRAIGHT |
+| IfcPipeFitting | PIPE_TEE, PIPE_ELBOW, PIPE_REDUCER, PIPE_CROSS, PIPE_COUPLING, PIPE_FLANGE |
+| IfcDuctSegment | DUCT_STRAIGHT |
+| IfcDuctFitting | DUCT_TEE, DUCT_ELBOW, DUCT_TRANSITION, DUCT_CROSS, DUCT_TAKEOFF, DUCT_WYE |
+| IfcFireSuppressionTerminal | SPRINKLER_HEAD, HOSE_REEL, SMOKE_DETECTOR |
+| IfcAirTerminal | AIR_DIFFUSER, AIR_GRILLE, AIR_TERMINAL |
+| IfcFlowTerminal | TOILET, URINAL, SINK, SHOWER, TAP, FLOOR_TRAP, BIDET_SPRAY, GREASE_TRAP, INSPECTION_CHAMBER, PLUMBING_FIXTURE |
+| IfcFlowController | VALVE |
+| IfcLightFixture | LIGHT_FIXTURE |
+| IfcFlowSegment/IfcFlowFitting | FLOW_SEGMENT, FLOW_FITTING (IFC2x3 generic) |
+
+Dimensions estimated from AABB (diameter = avg of 2 smallest dims, length = largest).
+Material extracted from element_type pattern (after colon). Diameter rounded to 5mm.
+
+Staging: `_import_joint_piece_types` table in ERP.db (UNIQUE on piece_type+diameter+material).
+Promotion: INSERT OR IGNORE into M_Product — toolbox grows across fleet.
+
+## Phase J2: Shim products
+
+11 shim M_Products (discipline x host surface):
+```
+FP_CEILING_SHIM, FP_WALL_SHIM, ELEC_CEILING_SHIM, ELEC_WALL_SHIM,
+CW_CEILING_SHIM, CW_WALL_SHIM, SP_FLOOR_SHIM, SP_WALL_SHIM,
+ACMV_CEILING_SHIM, LPG_WALL_SHIM, LPG_FLOOR_SHIM
+```
+
+Each has `_shim_attributes` row: host_ifc_class, mount (BOTTOM/SIDE/TOP), offset_mm, height_mm.
+
+## Metrics
+
+| Building | MEP elements | Staged types | New M_Products | Shims |
+|----------|-------------|-------------|----------------|-------|
+| TE (Terminal) | 11,634 | 618 | 618 | 11 |
+| RM (HospitalAuckland) | 3,568 | 210 | 167 (43 reused) | 0 (already exist) |
+| SH (Sample House) | 0 | 0 | 0 | 0 |
+
+Total distinct joint M_Products in ERP.db: **785**
+Total shim M_Products: **11**
+
+## Verification
+
+- SH: 8/8 PASS (zero regression, 0 MEP elements)
+- TE: 6/8 PASS (baseline -- FAIL is pre-existing compilation critical violations)
+- RM: 6/8 PASS (JOINT_EXTRACT PASS)
+- JOINT_EXTRACT gate: PASS on all 3 buildings
+
+## Files changed
+
+- `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoERP.java` -- NEW (joint piece + shim extraction)
+- `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMMain.java` -- `--joint-extract` CLI flag
+- `scripts/run_RosettaStones.sh` -- JOINT_EXTRACT gate after IFCtoBOM pipeline

@@ -1,0 +1,83 @@
+# 00e — Post-Walk Validation (AD_Val_Rule + P15/P16/P17)
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.2 §6 — Standards Confirm the Walk
+**Prereq:** 00d DONE (J3+J4 — recipes + shim matching, MEP elements in output)
+**Test Stones:** TE (48K, 8 discs), RM (6787, FP+ACMV+plumbing)
+**Scope:** Phase J5 — AD_Val_Rule post-walk checks + P15/P16/P17 proof activation
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.2 §6 (validation confirms walk)
+3. Results from 00d (`# DONE` section — MEP elements placed, shim matching)
+4. This prompt fully
+
+## Context
+
+### Standards do NOT drive the walk. They confirm it.
+
+The BOM IS the walk. The MEP recipe (shim + joint pieces) determines
+placement. NFPA 13, MS 1228, ASHRAE 62.1 validate the result AFTER.
+
+### After 00d
+
+MEP elements exist in output.db via standard BOM walk (shim → joint pieces).
+system_edges from the walk chain. Now validate.
+
+## Task
+
+### 1. AD_Val_Rule entries for MEP standards
+
+Populate `AD_Val_Rule` + `AD_Val_Rule_Param` in ERP.db:
+
+| Rule code | Standard | Check | Threshold |
+|-----------|----------|-------|-----------|
+| FP_SPACING | NFPA 13 §8.6 | Sprinkler spacing ≤ max | 4600mm (LH) / 4000mm (OH) |
+| SP_GRADIENT | MS 1228 §5 | Waste pipe slopes downward | Gradient ≥ 1:40 |
+| ACMV_COVERAGE | ASHRAE 62.1 | Diffuser coverage per room | ACH per room type |
+| CW_FIXTURE_UNIT | MS 1228 §4 | Fixture unit capacity | Per fixture type |
+| LPG_CLEARANCE | MS 830 §4 | Gas pipe clearance | 150mm minimum |
+
+Each rule queries output.db placed elements by discipline (AD_Org_ID),
+checks constraint, reports PASS/FAIL per element.
+
+### 2. Wire into ValidationStage (Step 8)
+
+ValidationStage already runs AD_Val_Rule. Add MEP check methods:
+- `SPACING_CHECK`: query element positions, compute pairwise distances
+- `GRADIENT_CHECK`: query pipe Z values along system_edges, verify slope
+- `COVERAGE_CHECK`: count elements per room vs demand
+
+### 3. P15/P16/P17 proof activation
+
+With system_edges from MEP BOM walk, ProveStage gate should open:
+- P15 PIPE_IN_HOST: pipe bbox within host room bbox
+- P16 WASTE_GRADIENT: fromZ ≥ toZ along SP edges
+- P17 SYSTEM_CONNECTED: BFS from terminals to source
+
+## Verification
+
+```bash
+./scripts/run_RosettaStones.sh classify_te.yaml
+./scripts/run_RosettaStones.sh classify_rm.yaml
+```
+
+Check:
+- AD_Val_Rule fires for MEP elements
+- Validation report: PASS/FAIL per rule per room
+- P15/P16/P17 fire (no longer gated)
+- Violations are findings about placement quality — report them
+
+## Commit
+
+`[S104-J5] AD_Val_Rule post-walk validation + P15/P16/P17 activation`
+
+---
+
+# DONE

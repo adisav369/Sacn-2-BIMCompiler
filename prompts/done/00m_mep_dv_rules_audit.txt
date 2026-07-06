@@ -1,0 +1,126 @@
+# 00m — MEP Validation Rules Audit: hardcoded vs metadata
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.3 (Three-Stage Validation)
+**Prereq:** 00l DONE or in progress
+**Scope:** Diagnosis only — audit MEP DV rule coverage, write gap into spec. No code changes.
+
+You are a coder for bim-compiler. One bounded task: read and report.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §6.3 (Three-Stage Validation iDempiere model)
+3. `docs/LAST_MILE_PROBLEM.md` §3 (Compiler Only — MEP_RECIPE cardinal rules)
+4. This prompt fully
+
+## Context
+
+§6.3 declares a three-stage validation model:
+- **Stage 1 (DocEvent per Org):** blanket discipline rules + government standards (NFPA 13, UBBL)
+- **Stage 2 (AttributeSet):** per-product/per-instance resolution
+- **Stage 3 (AD_Val_Rule):** user override on specific lines
+
+The claim is that validation logic lives in metadata (ERP.db), not hardcoded in Java.
+This is true for structural dimension rules (415 ad_val_rule rows mined from output DBs).
+It is NOT yet verified for MEP.
+
+## Audit — run these queries, report findings
+
+### Q1: What AD_DocEvent_Rule rows exist?
+
+```sql
+SELECT r.rule_id, r.rule_name, r.AD_Org_ID, r.trigger_event,
+       COUNT(p.param_id) params
+FROM AD_DocEvent_Rule r
+LEFT JOIN AD_DocEvent_Rule_Param p ON r.rule_id = p.rule_id
+GROUP BY r.rule_id
+ORDER BY r.AD_Org_ID;
+```
+
+Are these MEP discipline registration hooks, or actual code requirement rules?
+Do any reference NFPA, UBBL, spacing, pipe sizing, clearance?
+
+### Q2: What ad_val_rule rows exist for MEP disciplines?
+
+```sql
+SELECT rule_type, rule_subtype, AD_Org_ID, COUNT(*) cnt
+FROM ad_val_rule
+WHERE AD_Org_ID >= 3   -- MEP: FP=3, ELEC=4, ACMV=5, CW=6, SP=7
+GROUP BY rule_type, rule_subtype, AD_Org_ID
+ORDER BY AD_Org_ID, rule_type;
+```
+
+If 0 rows for AD_Org_ID >= 3: MEP has no DV rules in metadata. Gap confirmed.
+
+### Q3: Any hardcoded MEP thresholds in Java?
+
+```bash
+grep -rn "sprinkler\|spacing\|clearance\|nfpa\|ubbl\|pipe.*dia\|MIN_PIPE\|MAX_PIPE" \
+  DAGCompiler/src/main/java/ IFCtoBOM/src/main/java/ \
+  --include="*.java" | grep -v "test\|Test\|//.*comment" | head -20
+```
+
+Report any hardcoded numeric thresholds that should live in ad_val_rule instead.
+
+### Q4: RoutingConstraints.java
+
+Read `DAGCompiler/src/main/java/com/bim/compiler/topology/RoutingConstraints.java`.
+List every numeric constant. Are any of these MEP code requirements that belong
+in metadata? (Known: 50mm wall clearance tolerance — is that a code requirement
+or a geometric heuristic?)
+
+### Q5: ad_code_requirement table
+
+```sql
+SELECT discipline, code_ref, description, COUNT(*) FROM ad_code_requirement
+GROUP BY discipline, code_ref LIMIT 20;
+```
+
+What is this table? Is it populated? Does it feed into DV rule generation?
+
+## Report back — findings into spec, not code
+
+After running the audit, append findings to `docs/DISC_VALIDATION_DB_SRS.md`
+under a new subsection `### 6.3.1 Current DV Rule Coverage — MEP Gap`:
+
+- What Stage 1 rules exist (DocEvent) vs what §6.3 declares should exist
+- What Stage 3 rules exist (ad_val_rule) for MEP vs ARC/STR
+- Any hardcoded Java values that belong in metadata (list with file:line)
+- Whether `ad_code_requirement` is the intended home for NFPA/UBBL entries
+
+**Do NOT write any new rules or code.** Finding → spec only. The next session
+decides whether a migration prompt is warranted.
+
+## Commit
+
+`[S104-closeout] DISC_VALIDATION_DB_SRS: §6.3.1 MEP DV rule coverage gap (audit findings)`
+
+---
+
+# DONE
+
+## Coder findings (append after # DONE — watchdog review)
+
+**Q1 AD_DocEvent_Rule:** 8 rows. 7 at AD_Org_ID=0 (UBBL blanket ARC rules).
+1 at AD_Org_ID=3 (FP): UBBL_PVII_SPRINKLER_SPACING. ACMV/CW/ELEC/SP/LPG: 0 DocEvent rules.
+
+**Q2 ad_val_rule:** 415 rows, all DIMENSION_RANGE by ifc_class. No AD_Org_ID column.
+~67 rows cover MEP IFC classes (dimension observations). No code requirement checks.
+
+**Q3 Hardcoded Java:** RoutingConstraints.java has clearance values by discipline
+(extracted from PATTERN G3 IFC data, geometric heuristics). FederationConstants.java:94
+has MEP-to-structure clearance. These are geometric, not code requirements.
+
+**Q4 RoutingConstraints.java:** All constants are IFC-extracted routing heuristics.
+50mm wall tolerance + 10mm ceiling tolerance are geometric, not codified.
+
+**Q5 ad_code_requirement:** 23 rows. NFPA_13, NEC_2020, IMC_2021, IPC_2021, MS_1184,
+MS_1228, NFPA_101. Right structure, right data — NOT yet connected to DV rule generation.
+
+**Gap written to:** DISC_VALIDATION_DB_SRS.md §6.3.1 (new subsection).
+**Next step for watchdog:** Decide if a migration prompt is warranted to bridge
+ad_code_requirement → AD_DocEvent_Rule for ACMV/CW/ELEC/SP disciplines.

@@ -1,0 +1,88 @@
+# Edit_001 — CHANGE Verb: Product Swap on Existing Walls
+# TRIAGE ORDER: #2 — New service + migration only. No BuildingCompiler touch.
+# Can run in parallel with Edit_002 (different files, different concern).
+# Prereq: W_BOM_Variance schema (included in Task 1 here, or from 2D_001).
+
+**Spec:** BIM_Designer_SRS.md §28.17.3 | SPATIAL_VARIANCE_SRS.md §4.2 (Level 2 resolution)
+**Prereq:** W_BOM_Variance table migrated (Edit_002 FW-0 stage or standalone migration)
+**Witness to pass:** W-SVA-PROMOTE — promoting a CHANGE variance updates C_OrderLine product_id
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Follow specs exactly.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/BIM_Designer_SRS.md` §28.17.3 — Change The Walls verb
+3. `docs/SPATIAL_VARIANCE_SRS.md` §4.2, §5.2, §5.3 — W_BOM_Variance schema + lifecycle
+4. `docs/TestArchitecture.md` §Traceability Matrix
+5. This prompt fully
+
+## Concept
+
+CHANGE(element_filter, new_product_id) replaces existing wall products with a different
+library item. This is Level 2 (PRODUCT_SWAP) on the Type Resolution Ladder — the new
+product is in the library, the position stays fixed. No geometry inference. No variance.
+
+The operation:
+1. Identifies IfcWall elements matching element_filter (storey, ifc_class, current product)
+2. Creates W_BOM_Variance (gesture_type=PANEL, resolved_type=PRODUCT_SWAP, resolution_level=2)
+3. verb_sequence = "SWAP ROOM <parent_bom> <line_id> PRODUCT <new_product_id>"
+4. Compiler re-runs → new wall geometry from new product dimensions
+5. On promote (AP): C_OrderLine.M_Product_ID updated
+
+## Tasks
+
+### Task 1 — W_BOM_Variance migration (if not already done)
+Create `migration/W019_spatial_variance.sql` with the W_BOM_Variance table from
+SPATIAL_VARIANCE_SRS.md §5.2. Append-only migration. Run via standard migration path.
+
+### Task 2 — ChangeVerbService.java
+New class in `IFCtoBOM/src/main/java/com/bim/designer/`:
+
+```java
+public class ChangeVerbService {
+    /**
+     * Swap product on existing IfcWall elements.
+     * Implementing BIM_Designer_SRS.md §28.17.3 — Witness: W-SVA-PROMOTE
+     *
+     * @param buildingId target building
+     * @param storey     null = all storeys
+     * @param newProductId replacement product from component_library.db
+     * @return count of elements changed
+     */
+    public int changeWalls(String buildingId, String storey, String newProductId);
+}
+```
+
+Implementation:
+- Query `elements_meta` for IfcWall elements matching filter
+- Validate `newProductId` exists in `component_library.db M_Product`
+- For each element: INSERT W_BOM_Variance (doc_status=DR, resolved_type=PRODUCT_SWAP)
+- verb_sequence: "SWAP ROOM <parentBom> <lineId> PRODUCT <newProductId>"
+- Return count
+
+### Task 3 — ChangeVerbTest.java
+```
+W-CHANGE-1: changeWalls(SH, null, BRICK_200) creates W_BOM_Variance rows for each IfcWall
+W-CHANGE-2: promoting (doc_status=AP) updates C_OrderLine.M_Product_ID
+W-CHANGE-3: changeWalls with unknown product_id throws ProductNotFoundException
+```
+
+## Anti-Drift
+
+- No geometry code. Product swap only — let the compiler re-run produce new geometry.
+- Do NOT modify BuildingCompiler.java. CHANGE creates variance rows; compiler reads them.
+- Only modifies Ω (C_OrderLine on promote), never Ψ (M_BOMLine).
+
+## Done criteria
+
+- W_BOM_Variance migration runs cleanly
+- ChangeVerbTest 3/3 PASS
+- W-SVA-PROMOTE claim verified: C_OrderLine product_id matches newProductId after AP
+
+# DONE
+<!-- Coder appends findings here -->

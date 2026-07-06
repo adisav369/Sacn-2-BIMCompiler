@@ -1,0 +1,224 @@
+# 00q — RouteWalker Spec: Schema + Pattern Mining + Anchor Extraction
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.3
+**Prereq:** 00p DONE (W-RM-C9). G1/G2/G3 documented. §6.12.3 written and committed.
+**Test Stones:** RM (HospitalAuckland), TE (Terminal)
+**Witness claims:** W-PATTERN-CW, W-PATTERN-SP (defined in §6.12.3 §4)
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §6.12.3 (full — hybrid pattern architecture)
+3. `docs/DISC_VALIDATION_DB_SRS.md` §11.5 (gaps G1/G2/G3)
+4. `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoERP.java` — classifyPieceType(), discFromClass(), readMepElements()
+5. `migration/DV_RM_rules.sql` and `migration/DV_SH_rules.sql` — append-only migration pattern
+6. This prompt fully
+
+## Background
+
+00p established three gaps:
+- **G1:** `_import_joint_piece_types` has no `discipline` column
+- **G2:** RM CW/SP unresolvable at element level (IFC2x3 generic classes)
+- **G3:** `IFCtoERP.discFromClass()` ignores `elements_meta.discipline`
+
+§6.12.3 resolves G2 via the hybrid pattern architecture:
+- Anchors (source/terminal XYZ points) extracted from RM by IFCtoERP → `ad_mep_anchor`
+- Patterns (topology step sequences) mined from TE (CW+SP) → `ad_mep_pattern`
+- RouteWalker (00r) applies pattern to anchors within ARC envelope → CW/SP BOM lines
+
+This session (00q) covers the three foundation steps: schema, pattern mining, anchor extraction.
+RouteWalker implementation is 00r.
+
+## Task A — DDL: New tables + G1 schema fix
+
+### A1. G1 fix — add `discipline` to `_import_joint_piece_types`
+
+Migration file: `migration/DV_RM_rules.sql` (append only, never modify existing rows).
+
+```sql
+-- G1 fix: add discipline column to _import_joint_piece_types
+ALTER TABLE _import_joint_piece_types ADD COLUMN discipline TEXT;
+```
+
+After migration, IFCtoERP.classifyElements() must populate `discipline` per row
+using the element's `elements_meta.discipline` if present, else `discFromClass()`.
+Update `writeStagingRows()` to write the discipline value.
+
+### A2. New table: `ad_mep_anchor`
+
+Per §6.12.3 §1 schema. Add to migration file:
+
+```sql
+CREATE TABLE IF NOT EXISTS ad_mep_anchor (
+    anchor_id    TEXT PRIMARY KEY,
+    source_building TEXT NOT NULL,
+    anchor_type  TEXT NOT NULL CHECK(anchor_type IN ('METER','FIXTURE','VALVE','GENERIC')),
+    x_m          REAL NOT NULL,
+    y_m          REAL NOT NULL,
+    z_m          REAL NOT NULL,
+    storey       TEXT,
+    ifc_guid     TEXT
+);
+```
+
+### A3. New table: `ad_mep_pattern`
+
+Per §6.12.3 §2 schema. Add to migration file:
+
+```sql
+CREATE TABLE IF NOT EXISTS ad_mep_pattern (
+    pattern_id       TEXT NOT NULL,
+    discipline       TEXT NOT NULL,
+    building_type    TEXT NOT NULL,
+    sequence         INTEGER NOT NULL,
+    from_node_type   TEXT NOT NULL,
+    to_node_type     TEXT NOT NULL,
+    direction_axis   TEXT NOT NULL,
+    piece_type       TEXT NOT NULL,
+    offset_rule      TEXT,
+    gradient         REAL,
+    notes            TEXT,
+    source_building  TEXT,
+    PRIMARY KEY (pattern_id, sequence)
+);
+```
+
+**Commit A alone before proceeding to B.**
+`[S104-DISC] 00q-A: DDL — ad_mep_anchor, ad_mep_pattern, G1 discipline column`
+
+## Task B — Pattern Mining: TE → ad_mep_pattern
+
+Read `DAGCompiler/lib/input/Terminal_Extracted.db` (read-only). Mine CW and SP topology patterns.
+
+### B1. CW pattern — mine from TE
+
+Query the 619 CW IfcPipeSegment elements and 638 CW IfcPipeFitting elements:
+
+```sql
+SELECT em.ifc_class, em.element_type, em.discipline, em.storey,
+       r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+       (r.maxX+r.minX)/2 as cx, (r.maxY+r.minY)/2 as cy, (r.maxZ+r.minZ)/2 as cz
+FROM elements_meta em
+JOIN elements_rtree r ON em.id = r.id
+WHERE em.discipline = 'CW'
+ORDER BY em.storey, cy, cx;
+```
+
+Determine dominant topology: are CW pipes predominantly horizontal (X/Y runs) or mixed?
+Identify: meter/valve endpoints (IfcFlowController CW=7), fixture terminations (IfcFlowTerminal CW=106).
+
+Write INSERT rows for `ad_mep_pattern` with `pattern_id='CW_TERMINAL_01'`, `building_type='TERMINAL'`,
+`source_building='Terminal'`. Steps must be derived from the data — cite the query result
+that supports each step. No invented steps.
+
+### B2. SP pattern — mine from TE
+
+Query the 455 SP IfcPipeSegment + 372 SP IfcPipeFitting + 150 SP IfcFlowTerminal elements.
+Determine gradient: compute actual dz/dx ratios from consecutive Z-sorted pipe centroids.
+Compare against MS 1228 §5.3 (min 0.025).
+
+Write INSERT rows for `ad_mep_pattern` with `pattern_id='SP_TERMINAL_01'`, `building_type='TERMINAL'`.
+
+**Witness pre-check:** for each mined step, state which TE elements support it and the count.
+If a step has fewer than 5 supporting elements, mark it as TENTATIVE in `notes`.
+
+**Commit B alone.**
+`[S104-DISC] 00q-B: ad_mep_pattern — CW_TERMINAL_01 + SP_TERMINAL_01 mined from TE`
+
+## Task C — Anchor Extraction: RM → ad_mep_anchor
+
+Update `IFCtoERP.java` to extract anchor points from RM's generic MEP elements.
+
+### C1. New method: `extractAnchors(Connection erpConn, String buildingType)`
+
+Read from `DAGCompiler/lib/input/HospitalAuckland_extracted.db` (read-only, same pattern as `readMepElements`).
+
+Anchor classification rules (from §6.12.3 §1, applied to element_name keywords):
+- `IfcFlowController` → VALVE
+- `IfcFlowTerminal` with "toilet"/"wc"/"urinal"/"basin"/"sink"/"shower"/"trap" → FIXTURE
+- `IfcFlowTerminal` with "light"/"fixture"/"lamp" → skip (ELEC, not a pipe anchor)
+- `IfcFlowSegment` or `IfcFlowFitting` at storey boundary Z (within 200mm of floor/ceiling slab Z) → METER candidate
+- All remaining → GENERIC
+
+For each element, emit anchor(s):
+- If AABB length (max dim) > 3× min dim (elongated = pipe): emit two anchors at AABB ends
+- Otherwise: emit one anchor at AABB centre
+
+Write to `ad_mep_anchor` with `source_building='HospitalAuckland'`.
+
+### C2. Log anchor counts
+
+After extraction, log:
+```
+[IFCtoERP] HospitalAuckland: anchors extracted — METER=N, FIXTURE=N, VALVE=N, GENERIC=N, SKIPPED=N
+```
+
+This log line is the pre-witness for W-PATTERN-CW / W-PATTERN-SP: if FIXTURE=0 or METER=0,
+the RouteWalker has nothing to connect. Flag as WARNING, do not throw.
+
+**Commit C alone.**
+`[S104-DISC] 00q-C: IFCtoERP anchor extraction — ad_mep_anchor for HospitalAuckland`
+
+## Task D — G3 Partial Fix: read elements_meta.discipline in discFromClass
+
+Update `readMepElements()` and `readMepElementsWithPositions()` to pass the `discipline` column
+through to the element record. Update `discFromClass()` signature to accept an optional
+`extractedDiscipline` parameter:
+
+```java
+static String discFromClass(String ifcClass, String elementType, String extractedDiscipline) {
+    // If extraction DB already classified it, trust it
+    if (extractedDiscipline != null && !extractedDiscipline.isBlank()
+            && !extractedDiscipline.equalsIgnoreCase("MEP")) {
+        return extractedDiscipline; // CW, SP, FP, ACMV, ELEC, LPG from elements_meta
+    }
+    // Fallback: keyword heuristic (existing logic)
+    return discFromClass(ifcClass, elementType);
+}
+```
+
+Also add to `classifyFlowTerminal()` keyword check: light fixture names → return null (caller skips
+as ELEC, does not write CW row). Keeps CE/CH/CP CW recipe count honest.
+
+// Implementing DISC_VALIDATION_DB_SRS.md §6.12.3 §5 — G3 fix — Witness: W-G3-FIX
+
+**Commit D alone.**
+`[S104-DISC] 00q-D: G3 fix — discFromClass reads elements_meta.discipline first`
+
+## Scope boundary
+
+- **RM + TE only.** No other buildings.
+- **No RouteWalker code.** That is 00r.
+- **No new witness gate tests.** W-PATTERN-CW/SP gate tests are 00s.
+- Only the four tasks above. Stop at D.
+
+## Verification
+
+After all four commits, run:
+```
+./scripts/run_RosettaStones.sh classify_rm.yaml
+./scripts/run_RosettaStones.sh classify_sh.yaml
+```
+
+RM and SH gates must not regress. The new tables being empty does not affect existing gates.
+Log must show anchor extraction counts for RM.
+
+## Commit sequence
+
+```
+[S104-DISC] 00q-A: DDL — ad_mep_anchor, ad_mep_pattern, G1 discipline column
+[S104-DISC] 00q-B: ad_mep_pattern — CW_TERMINAL_01 + SP_TERMINAL_01 mined from TE
+[S104-DISC] 00q-C: IFCtoERP anchor extraction — ad_mep_anchor for HospitalAuckland
+[S104-DISC] 00q-D: G3 fix — discFromClass reads elements_meta.discipline first
+```
+
+---
+
+# DONE
+

@@ -1,0 +1,280 @@
+# 00p — DISC BOM Audit: CW/SP disambiguation + discipline archetype map
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.2, §10.4.11
+**Prereq:** 00o DONE (W-RM-C9). GEO DRIFT=0 for RM+TE confirmed.
+**Test Stones:** RM (HospitalAuckland), TE (Terminal)
+**Scope:** Read-only forensics. No code. No SQL. Findings → spec only.
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §6.2 (Discipline as sub-BOM) + §10.4.11
+3. `docs/BOMBasedCompilation.md` §6.12.1 (Compilation Isolation Invariant)
+4. `DAGCompiler/src/main/java/com/bim/compiler/library/FireSuppressionPlacer.java` — full file
+5. `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/ShimMatcher.java` — full file
+6. `DAGCompiler/src/main/java/com/bim/compiler/dsl/RouteExecutor.java` — full file
+7. This prompt fully
+
+## Background — why this audit exists
+
+The current MEP compilation uses two bypass paths:
+
+- **RM**: `ERP.db._import_joint_piece_types` → `ShimMatcher` → output
+- **TE**: `TE_BOM.db` MEP sub-BOMs (TE_GF_FP, TE_GF_ACMV, etc.) → BOM walk → output
+
+Neither path flows through the abstract DISC BOM layer in `ERP.db`
+(Fire Protection System / HVAC System / etc.). That layer has:
+- FP: 3 ROUTE lines (FP_RISER, FP_SPRINKLER_LAYOUT, FP_PUMP_LINK)
+- ELEC/HVAC/CW/SP/GAS: 0 lines — empty shells
+
+The target architecture (future 00q–00t) is:
+  `IFCtoERP → ERP.db (DISC BOM + joint pieces, AD_Org_ID set) → DAGCompiler → output`
+
+**No fallback. Hard fail if compilation cannot flow through this path.**
+
+Before any code can be written, this audit must answer 6 questions.
+The most critical: CW and SP share the same IFC classes
+(`IfcPipeSegment`, `IfcPipeFitting`, `IfcFlowTerminal`, `IfcValve`).
+If disambiguation cannot happen at IFCtoERP extraction time,
+the single-source-of-truth architecture is blocked.
+
+## Amendment (confirmed by watchdog)
+
+**Disambiguation MUST happen at IFCtoERP, not in the Placer.**
+
+The `_import_joint_piece_types` table must carry `AD_Org_ID` per row
+(CW=6, SP=7) so the Placer receives already-classified data.
+A Placer that filters by "context" or "connected fixtures" is a
+hidden extractor inside the compiler — violates §6.12.1.
+
+If no IFC attribute can drive the rule, that is a spec failure.
+Document it and stop. Do not invent a workaround.
+
+## Audit questions — answer all 6
+
+### Q1: Does _import_joint_piece_types carry AD_Org_ID per row?
+
+Query ERP.db:
+```sql
+PRAGMA table_info(_import_joint_piece_types);
+SELECT DISTINCT source_building, piece_type, COUNT(*)
+FROM _import_joint_piece_types GROUP BY source_building, piece_type ORDER BY source_building;
+```
+
+Does each row have an `AD_Org_ID` or `discipline` column?
+If not: the table schema needs extension — note this as gap G1.
+
+### Q2: Does the extraction DB carry IfcSystem membership per MEP element?
+
+Query `IFCtoBOM/src/main/resources/HospitalAuckland_extracted.db`
+and `backup/db_snapshot_20260323_014819/input/Terminal_extracted.db`:
+
+```sql
+-- Check element_properties for system names
+SELECT ep.property_name, ep.property_value, em.ifc_class, COUNT(*)
+FROM element_properties ep
+JOIN elements_meta em ON em.id = ep.element_id
+WHERE em.ifc_class IN ('IfcPipeSegment','IfcPipeFitting','IfcFlowTerminal','IfcValve')
+  AND (ep.property_name LIKE '%System%' OR ep.property_name LIKE '%service%'
+       OR ep.property_name LIKE '%discipline%')
+GROUP BY ep.property_name, ep.property_value, em.ifc_class
+ORDER BY COUNT(*) DESC LIMIT 30;
+
+-- Check IfcSystem assignments via spatial_structure
+SELECT ss.type, ss.name, em.ifc_class, COUNT(*)
+FROM spatial_structure ss
+JOIN elements_meta em ON em.parent_guid = ss.guid
+WHERE em.ifc_class IN ('IfcPipeSegment','IfcPipeFitting','IfcFlowTerminal','IfcValve')
+GROUP BY ss.type, ss.name, em.ifc_class
+ORDER BY COUNT(*) DESC LIMIT 30;
+```
+
+Result: are system names present and consistent enough to disambiguate CW vs SP?
+
+### Q3: If IfcSystem absent — does PredefinedType or diameter discriminate?
+
+```sql
+-- PredefinedType on pipe elements
+SELECT em.ifc_class, ep.property_name, ep.property_value, COUNT(*)
+FROM elements_meta em
+JOIN element_properties ep ON ep.element_id = em.id
+WHERE em.ifc_class IN ('IfcPipeSegment','IfcPipeFitting')
+  AND ep.property_name IN ('PredefinedType','ObjectType','FlowDirection')
+GROUP BY em.ifc_class, ep.property_value ORDER BY COUNT(*) DESC LIMIT 20;
+
+-- Diameter distribution (CW ≤25mm, SP ≥50mm typical)
+SELECT em.ifc_class,
+       ROUND((r.maxX-r.minX)*1000) AS dim_X,
+       ROUND((r.maxY-r.minY)*1000) AS dim_Y,
+       COUNT(*) cnt
+FROM elements_meta em
+JOIN elements_rtree r ON em.id=r.id
+WHERE em.ifc_class = 'IfcPipeSegment'
+GROUP BY ROUND((r.maxX-r.minX)*1000), ROUND((r.maxY-r.minY)*1000)
+ORDER BY cnt DESC LIMIT 20;
+```
+
+### Q4: What IFC attributes does IFCtoERP currently use to assign piece_type?
+
+Read `IFCtoBOM/src/main/java/` — find `IFCtoERP.java` or equivalent.
+Identify the logic that assigns PIPE_ELBOW vs DUCT_STRAIGHT vs SPRINKLER_HEAD.
+Does it already branch on discipline? Or does it classify by geometry alone?
+
+### Q5: For each piece_type in _import_joint_piece_types — what discipline does it belong to?
+
+Build the full map. The rules must come from IFC attributes found in Q2/Q3,
+not from geometry heuristics:
+
+```
+piece_type           → discipline (AD_Org_ID)   source attribute
+─────────────────────────────────────────────────────────────────
+DUCT_STRAIGHT        → ACMV (5)                 ?
+DUCT_FITTING         → ACMV (5)                 ?
+PIPE_ELBOW           → FP or CW or SP           ← AMBIGUOUS — needs rule
+PIPE_TEE             → FP or CW or SP           ← AMBIGUOUS — needs rule
+FLOW_SEGMENT         → CW or SP                 ← AMBIGUOUS — needs rule
+SPRINKLER_HEAD       → FP (3)                   IfcFireSuppressionTerminal
+LIGHT_FIXTURE        → ELEC (4)                 IfcLightFixture
+AIR_TERMINAL         → ACMV (5)                 IfcAirTerminal
+TOILET/SINK/URINAL   → SP (7)                   fixture type
+... (complete for all 27 TE piece types and 7 RM piece types)
+```
+
+For every row marked AMBIGUOUS: state whether Q2/Q3 provides a rule.
+If no rule: mark as gap G2.
+
+### Q6: What archetypes does FP_RISER / FP_SPRINKLER_LAYOUT / FP_PUMP_LINK map to in joint pieces?
+
+This establishes the pattern for 00q (adding ROUTE lines for ELEC/ACMV/CW/SP/GAS).
+
+```sql
+SELECT piece_type, COUNT(*) FROM _import_joint_piece_types
+WHERE source_building = 'HospitalAuckland' -- or Terminal
+GROUP BY piece_type ORDER BY COUNT(*) DESC;
+```
+
+For FP: which piece types correspond to FP_RISER (riser pipe segments),
+FP_SPRINKLER_LAYOUT (sprinkler heads + branch pipes), FP_PUMP_LINK (pump connections)?
+Then: what are the equivalent archetypes for ELEC, ACMV, CW, SP?
+
+## Scope boundary
+
+- **Read only.** No code changes. No SQL migrations. No Java edits.
+- **Two extraction DBs only:** HospitalAuckland_extracted.db and Terminal_extracted.db.
+- **No generalization** beyond RM and TE. Other buildings are out of scope.
+
+## Stop conditions
+
+If Q2 + Q3 both return empty or ambiguous for CW/SP:
+- Write `G2: CW/SP_UNRESOLVABLE` in findings
+- **Stop immediately.** Do not attempt Q5 completion or Q6.
+- Document what IFC model change would be needed to resolve it.
+
+If IFCtoERP (Q4) assigns piece_type by geometry only with no discipline context:
+- Write `G3: IFCtoERP_DISCIPLINE_BLIND` in findings
+- This is a gap in the extractor, not the compiler. Scope of fix = IFCtoERP only.
+
+## Write findings to spec
+
+Append a new section to `docs/DISC_VALIDATION_DB_SRS.md`:
+
+```
+## §11 — DISC BOM Single Source of Truth — Audit Findings (S104)
+
+### §11.1 — CW/SP Disambiguation Rule
+[Q2/Q3 result + the rule, or G2 gap]
+
+### §11.2 — Piece-Type to Discipline Map (RM + TE)
+[Full table from Q5]
+
+### §11.3 — FP Archetype Pattern + ELEC/ACMV/CW/SP equivalents
+[Q6 result — drives 00q SQL migration]
+
+### §11.4 — IFCtoERP discipline assignment (current state)
+[Q4 result — drives 00r IFCtoERP fix if G3 found]
+
+### §11.5 — Gaps blocking 00q–00t
+[List G1/G2/G3 if present, with resolution path]
+```
+
+## Report back (append after # DONE)
+
+1. Is AD_Org_ID present in _import_joint_piece_types? (G1?)
+2. CW/SP disambiguation: which attribute, what rule, or G2?
+3. Is IFCtoERP currently discipline-aware? (G3?)
+4. Piece-type → discipline map: how many AMBIGUOUS rows remain?
+5. FP archetype pattern: confirmed match to joint piece types?
+6. Is 00q safe to proceed, or is a gap blocking it?
+
+## Commit
+
+`[S104-DISC] 00p audit: piece-type→discipline map + CW/SP rule (DISC_VALIDATION_DB_SRS §11)`
+
+---
+
+# DONE
+
+## Findings (S104 coder report)
+
+### 1. AD_Org_ID in _import_joint_piece_types? → NO — G1
+
+Schema confirmed (library/ERP.db): id, ifc_class, element_type, piece_type, diameter_mm,
+length_mm, angle_deg, material, source_building, count. No discipline or AD_Org_ID column.
+**G1: staging table schema missing discipline/AD_Org_ID.**
+
+### 2. CW/SP disambiguation → TE resolved, RM G2
+
+**TE:** `elements_meta.discipline` carries CW/SP/FP/LPG per row (authoritative).
+  IfcPipeSegment: FP=2672, CW=619, SP=455, LPG=75. No keyword heuristic needed.
+  Rule: read `elements_meta.discipline` → AD_Org_ID (CW=6, SP=7, FP=3, LPG=8).
+
+**RM:** IFC2x3 generic classes only (IfcFlowSegment/IfcFlowFitting), all `discipline='MEP'`.
+  mep_systems=0 rows, system_nodes=0 rows, element_properties=Reference-only (FITTING/FRAME).
+  No PredefinedType/SystemType properties exist. `Pipe Types:Standard` (~491 elements) has
+  no IFC attribute distinguishing CW from SP.
+  **G2: CW/SP_UNRESOLVABLE for RM.** Model must be re-exported from Revit with IfcDistributionSystem.
+
+### 3. Is IFCtoERP discipline-aware? → PARTIAL — G3
+
+`discFromClass()` at IFCtoERP.java:698 re-derives discipline from IFC class + keywords.
+Does NOT read `elements_meta.discipline`.
+
+Two concrete failures:
+- RM `IfcFlowTerminal` light fixtures → misclassified as CW (should be ELEC). Causes CE/CH/CP
+  to produce 434/588/1005 CW MEP_RECIPE BOMs from light fixtures.
+- `IfcFlowSegment`/`IfcFlowFitting` → default CW, wrong for RM's mixed pipe+conduit types.
+- LPG pipe (IfcPipeSegment in TE) → defaults to CW (no "soil/drain/sp_" keyword).
+
+**G3: IFCtoERP_DISCIPLINE_BLIND.** Fix scope: IFCtoERP.java only — read `discipline` column first.
+
+### 4. Piece-type → discipline map: AMBIGUOUS rows
+
+14 piece types require `elements_meta.discipline` to resolve (PIPE_STRAIGHT/ELBOW/TEE/REDUCER/
+CROSS/COUPLING/FLANGE/FITTING, VALVE, SINK/SHOWER/TAP, PLUMBING_FIXTURE + FLOW_SEGMENT/FLOW_FITTING).
+For TE: all 14 resolvable via discipline column. For RM: 14 remain ambiguous (G2).
+Fixed types (10): DUCT_*, AIR_*, SPRINKLER_HEAD, HOSE_REEL, LIGHT_FIXTURE, TOILET, URINAL,
+FLOOR_TRAP, BIDET_SPRAY, INSPECTION_CHAMBER.
+
+### 5. FP archetype pattern confirmed
+
+DISC BOM FP_SYSTEM: FP_RISER(seq=10), FP_SPRINKLER_LAYOUT(seq=20), FP_PUMP_LINK(seq=30).
+MEP_RECIPE BOMs: only FP_SPRINKLER_LAYOUT is populated (CEILING_SHIM + SPRINKLER_HEAD).
+FP_RISER (2672 TE IfcPipeSegment FP elements) and FP_PUMP_LINK (VALVE) not yet in recipes.
+ELEC/ACMV/CW/SP equivalents: see §11.3 table.
+
+### 6. 00q status: BLOCKED on G1+G3; RM further blocked by G2
+
+00q can proceed for TE after G1 (schema) + G3 (discipline read fix) are done.
+RM CW/SP ROUTE lines require G2 resolution (model re-export) — out of 00q scope.
+
+Full findings in: `docs/DISC_VALIDATION_DB_SRS.md §11`
+
+## Commits
+- `f52c937c` — [S104-DISC] 00p audit: piece-type→discipline map + CW/SP rule (DISC_VALIDATION_DB_SRS §11)
+- `0fb61c62` — [S104-DISC] §6.12.3 hybrid pattern architecture — RouteWalker spec + W-PATTERN-CW/SP

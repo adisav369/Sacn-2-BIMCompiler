@@ -1,0 +1,108 @@
+# 00a — Full Order→Output Compilation (all 35 buildings)
+
+**Spec:** BOMBasedCompilation.md §5-§8, TestArchitecture.md §Rosetta Stone Coverage
+**Prereq:** 00_FullIFCtoBOM DONE — all 35 `*_BOM.db` files produced and committed
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. YAML says rootBOM only.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/BOMBasedCompilation.md` §5 — compilation pipeline
+3. `docs/WorkOrderGuide.md` §Step 5-6 — pipeline flow
+4. Results from `prompts/00_FullIFCtoBOM.txt` §DONE — extraction summary
+5. This prompt fully
+
+## Concept
+
+Compilation reads `*_BOM.db` (produced by 00_FullIFCtoBOM). The YAML's only role
+at compile time is to name the **rootBOM** (`building_bom_id`). That rootBOM becomes
+`C_OrderLine.M_Product_ID`. The Product Callout then generates DISC OrderLines
+automatically from the BOM's discipline metadata.
+
+Pipeline: `rootBOM → C_OrderLine → Product.Callout → DISC OrderLines → BOM explosion → elements → output.db`
+
+No YAML fields are parsed during compilation except:
+- `building_bom_id` — the root BOM to compile
+- `prefix` — output file naming
+- `product_category` — passed as `-Dproduct.category` to Java
+
+Everything else (storeys, rooms, disciplines, MEP routing) comes from the BOM
+and ERP.db, not from YAML.
+
+## Task: Full fleet compilation
+
+### Step 1 — Compile all 35 buildings
+
+For each `*_BOM.db` produced by 00_FullIFCtoBOM:
+- Create `_{PREFIX}_compile.db` (temp copy)
+- Run DAGCompiler: `C_OrderLine → BOM explosion → elements`
+- Product Callout fires: generates DISC OrderLines from `ad_sysconfig` defaults
+- RouteStage fires: MEP routing from `DisciplineRouteRegistry`
+- VerbStage fires: BOM-driven defaults + script overrides (if `.bimcobol` exists)
+- ProveStage fires: BIMEyes placement proofs (P04-P06, P10, P15-P17)
+- WriteStage: persist to `output/{building_type}.db`
+
+### Step 2 — Run contract tests (G1-G6) + fidelity (C8/C9)
+
+Per building:
+- G1-COUNT: element count matches extraction
+- G2-VOLUME: AABB containment
+- G3-DIGEST: integrity hash
+- G4-TAMPER: no post-compilation mutation
+- G5-PROVENANCE: EXTRACTED tag preserved
+- G6-ISOLATION: no cross-building leakage
+- C8: geometry diversity preserved
+- C9: per-element axis dimensions within 1mm
+
+### Step 3 — Gather results
+
+Summary table:
+
+```
+PREFIX | ELEMENTS | COMPILE | G1-G6 | C8  | C9       | CRITICAL | NOTES
+SH     | 58       | PASS    | 6/6   | PASS | PASS    | 0        |
+DX     | 1099     | PASS    | 6/6   | PASS | WARN 60 | 0        | axis swap
+TE     | 48428    | FAIL    | ...   | ...  | ...     | 71       | proof violations
+...
+```
+
+From pipeline logs:
+- VERB CLUSTER fallback lines → top 5 reasons by element count
+- Route edge/node counts per discipline
+- Critical proof violations breakdown (P04/P05/P06)
+
+### Step 4 — Report
+
+Write results to the end of THIS prompt file after `# DONE`:
+- Full compilation summary table (35 rows)
+- Regressions from S101 baseline
+- CLUSTER diagnostic: top fallback reasons
+- Critical violations triage (real vs threshold)
+- Fleet count: X/208 PASS (target: 188+)
+
+Do NOT fix individual compilation failures in this prompt.
+Once fleet gives stable results → commit with `[S102-compilation]`.
+
+## Known compilation issues
+
+- TE: 71 critical (down from 3,197 — P04 storey Z-band fix working, residual P05/P06)
+- CA: 26 critical (new — investigate which proof)
+- DX: C9 WARN 60 (pre-existing library mesh orientation, not compilation bug)
+- DM: GENERATIVE — BuildingRegistryTest assertion message says "C_DocType", stale
+- CE: multi-leg ROUTE drift (deferred P124)
+- RS: 27K P06 duplicates (dense steel, pre-existing)
+
+## Commit
+
+`[S102-compilation] Full fleet compilation post-extraction + fleet summary`
+
+Record commit link and summary table in this prompt after `# DONE`.
+
+---
+
+# DONE

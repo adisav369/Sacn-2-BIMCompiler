@@ -1,0 +1,149 @@
+# 00t — IFCtoERP G3 Fix: discFromClass reads elements_meta.discipline
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §11.4 (G3 bug) + §11.5 (W-TE-DISC witness)
+**Prereq:** 00r/00s DONE — RM 8/8 (G2 solved via RouteWalker). G3 now the live gap.
+**Test Stones:** TE (Terminal) — multi-discipline IFC4 with 8 sub-disciplines
+**Witness claim:** W-TE-DISC (defined in §11.5)
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing.
+Two concrete lines to fix. Read the spec and code before touching anything.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §11.4 (G3 bug analysis) + §11.5 (W-TE-DISC claim)
+3. `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoERP.java` lines 795–830
+   (ROUTING TOPOLOGY BRANCH — the 2-arg discFromClass call at line 799)
+4. `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoERP.java` lines 978–1006
+   (discFromClass 3-arg and 2-arg implementations — understand both)
+5. `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoERP.java` lines 530–560
+   (classifyElements — already uses 3-arg correctly for comparison)
+6. `DAGCompiler/lib/input/Terminal_extracted.db`:
+   `SELECT ifc_class, discipline, COUNT(*) FROM elements_meta
+    WHERE ifc_class IN ('IfcPipeSegment','IfcPipeFitting','IfcFlowTerminal','IfcFlowController')
+    GROUP BY ifc_class, discipline ORDER BY ifc_class, COUNT(*) DESC;`
+   (expected output: CW/SP/FP/LPG per class — your witness baseline)
+7. This prompt fully
+
+## Background
+
+The G3 bug has two manifestations:
+
+**Bug A (line 799) — routing topology branch ignores elements_meta.discipline:**
+```java
+// IFCtoERP.java line 799 — ROUTING TOPOLOGY BRANCH
+String disc = discFromClass(e.ifcClass, e.elementType);   // BUG: 2-arg, ignores e.discipline
+```
+The COVERAGE TOPOLOGY branch at line 759 already does it correctly:
+```java
+String disc = discFromClass(e.ifcClass, e.elementType, e.discipline);  // CORRECT
+```
+Effect on TE: all IfcPipeSegment (CW=619, SP=455, FP=2672, LPG=75) are collapsed to CW
+because the keyword heuristic defaults everything without "soil/drain" to CW.
+
+**Bug B (2-arg discFromClass, line 994–997) — IfcFlowTerminal light fixtures → CW:**
+```java
+case "IfcFlowTerminal" -> {
+    String et = elementType != null ? elementType.toLowerCase() : "";
+    yield (et.contains("drain") || ... ) ? "SP" : "CW";   // BUG: no ELEC path
+}
+```
+Effect on CE/CH/CP: RM light fixtures (IfcFlowTerminal, no drain keyword) → CW.
+Generates hundreds of spurious CW MEP_RECIPE BOMs for lighting elements.
+Note: the anchor code (extractAnchors()) already skips light fixtures correctly —
+this fix only affects discFromClass used in recipe building and routing.
+
+## MepPosElement record
+
+Confirm `MepPosElement` has a `discipline` field (it was added in 00q-D).
+Search: `record MepPosElement` or `class MepPosElement` in IFCtoERP.java.
+
+## Task A — Fix Bug A: routing topology branch (1-line change)
+
+In `IFCtoERP.java` line ~799, in the ROUTING TOPOLOGY BRANCH:
+
+```java
+// BEFORE:
+String disc = discFromClass(e.ifcClass, e.elementType);
+// AFTER (// Implementing DISC_VALIDATION_DB_SRS.md §11.4 G3 — Witness: W-TE-DISC):
+String disc = discFromClass(e.ifcClass, e.elementType, e.discipline);
+```
+
+That is the complete change for Bug A.
+
+## Task B — Fix Bug B: light fixture keyword in 2-arg discFromClass
+
+In the 2-arg `discFromClass` method, extend the `IfcFlowTerminal` case:
+
+```java
+case "IfcFlowTerminal" -> {
+    String et = elementType != null ? elementType.toLowerCase() : "";
+    // Light fixtures misclassified as CW — §11.4 G3 fix
+    if (et.contains("light") || et.contains("lamp") || et.contains("fixture")
+            || et.contains("luminaire") || et.contains("pendant")) yield "ELEC";
+    yield (et.contains("drain") || et.contains("waste") || et.contains("soil")
+           || et.contains("inspection") || et.contains("interceptor")) ? "SP" : "CW";
+}
+```
+
+// Implementing DISC_VALIDATION_DB_SRS.md §11.4 G3 — Witness: W-TE-DISC
+
+**Scope note:** `classifyPieceType()` for IfcFlowTerminal still returns PLUMBING_FIXTURE
+(not LIGHT_FIXTURE) — that is a separate classification. Task D of 00q added
+`classifyPieceType` returning null for ELEC to skip them in classifyElements.
+Do not change classifyPieceType here. Only discFromClass is in scope.
+
+## Task C — Verification
+
+```bash
+mvn compile -q                                      # must be clean
+./scripts/run_RosettaStones.sh classify_te.yaml     # TE must not regress
+./scripts/run_RosettaStones.sh classify_rm.yaml     # RM 8/8 (no regression)
+./scripts/run_RosettaStones.sh classify_sh.yaml     # SH 8/8 (no regression)
+```
+
+After run, check TE discipline breakdown in _import_joint_piece_types:
+```sql
+-- In library/ERP.db after TE compilation:
+SELECT discipline, COUNT(*) FROM _import_joint_piece_types
+WHERE source_building='Terminal' GROUP BY discipline ORDER BY COUNT(*) DESC;
+-- Must show CW, SP, FP, LPG — not all collapsed to CW
+```
+
+Also check TE routing topology groups in log:
+```
+[IFCtoERP] Terminal: N runs, M lines (routing topology)
+```
+Before fix: all groups would be CW_* or FP_* only.
+After fix: groups should include SP_*, LPG_*, CW_*, FP_* per storey.
+
+## Scope boundary
+
+- **IFCtoERP.java only.** No DAGCompiler changes.
+- **No new routing logic.** Only discipline assignment fixed.
+- **No 00s test changes.** RouteWalkerTest is RM-only.
+- **No classifyPieceType changes.** Piece type classification is separate.
+- **TE Rosetta Stone gates must not regress.** If they do, diagnose and write to # DONE.
+
+## Pre-flight citation
+
+Before any code change:
+```
+// Implementing DISC_VALIDATION_DB_SRS.md §11.4 G3 — Witness: W-TE-DISC
+```
+
+## Commit sequence
+
+```
+[S104-DISC] 00t-A: discFromClass 3-arg in routing topology branch (G3 fix)
+[S104-DISC] 00t-B: IfcFlowTerminal light fixture → ELEC (not CW) in discFromClass
+```
+
+---
+
+# DONE
+

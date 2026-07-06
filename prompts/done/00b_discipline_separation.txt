@@ -1,0 +1,228 @@
+# 00b — Discipline Separation (IFCtoBOM + DAGCompiler)
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §10.4.6 + §10.4.6.1
+**Prereq:** P00 extraction DONE (S102, `82fe2847`), P00a compilation DONE
+**Scope:** Two classes — (A) IFCtoBOM, (B) DAGCompiler
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `internal/IFCtoBOM_ANALYSIS.md` — S102 forensics (code paths, GEO findings)
+3. `docs/DISC_VALIDATION_DB_SRS.md` §10.4.6 — Shared Discipline Recipes
+4. `docs/DISC_VALIDATION_DB_SRS.md` §10.4.6.1 — Discipline Separation
+5. This prompt fully
+
+## Context from S102 (critical — read before coding)
+
+### Current state (empirically verified)
+
+1. **DisciplineBomBuilder.java:130-147** writes ALL elements (ARC+STR+MEP) flat
+   under FLOOR BOM with AD_Org_ID as a tag. This violates §10.4.6 — MEP should
+   NOT be in the BOM. BOM = ARC+STR spatial structure only.
+
+2. **OrderLineProductCallout already exists** (`OrderLineProductCallout.java:43-134`).
+   It fires in `CompilationPipeline.java:446` during RouteStage. It already:
+   - Reads hardcoded defaults: CO={FP,ELEC,ACMV,CW,SP,LPG}, RE={ELEC,SP}, IN={}
+   - Queries `M_BOM WHERE AD_Org_ID > 0` from ERP.db for shared discipline recipes
+   - Inserts DISCIPLINE OrderLines with `host_type='DISCIPLINE'`
+   - `expandDisciplineLines()` adds LEAF children from ERP.db BOM recipes
+   - `applyYamlOverrides()` reads `REMOVE_DISCIPLINES`/`ADD_DISCIPLINES` from ad_sysconfig
+   **This code is LIVE and working for TE (8 DISCs in output.db).** Don't rewrite it.
+
+3. **RouteBuilders exist** — 6 concrete builders in BIM_COBOL
+   (`FpRouteBuilder`, `ElecRouteBuilder`, `CwRouteBuilder`, `SpRouteBuilder`,
+   `AcmvRouteBuilder`, `LpgRouteBuilder`). They produce skeleton routes:
+   TE has 258 edges / 264 nodes for 8,056 MEP elements (3% coverage).
+   **Ride and continue — don't rewrite.**
+
+4. **PATTERN logging** is ON by default (`BIMLogger.java:60`). Both
+   `StructuralBomBuilder.java:257` and `DisciplineBomBuilder.java:163` emit
+   `[PATRN] FLOOR` lines. Use PATTERN to verify storey assignment after changes.
+
+5. **GEO logging** is ON by default. `PlacementCollectorVisitor.java:844`
+   emits `GEO SUMMARY`. BUT: GEO only checks elements with IFC GUID format
+   (22-char base64). 5 buildings have <10% coverage due to non-standard GUIDs
+   in extraction DB. See `internal/IFCtoBOM_ANALYSIS.md` §5 for details.
+   **GEO zero drift does NOT mean routing is correct** — it proves tack chain
+   placement only.
+
+6. **TE has 48,428 elements across 8 disciplines.** ARC=34,731, STR=1,430,
+   FP=6,866, ELEC=1,172, ACMV=1,621, CW=1,431, SP=979, LPG=209. ARC+STR
+   come from BOM walk. 6 MEP DISCs come from Callout. Verified in
+   `c_orderline.Discipline` + `c_orderline.AD_Org_ID` in output.db.
+
+### Known issues to preserve (don't fix these — separate prompts)
+
+- **PATTERN Unknown%:** MO 84%, JE 65%, RA 45%, RM 31%, CA 28%. These are
+  storey assignment gaps from extraction, not discipline issues. Fix = R2
+  (`discover()` rel_contained_in_space fallback). Don't touch in this prompt.
+- **GEO GUID coverage:** 5 buildings have <10% coverage. Fix = relax IFC_GUID
+  regex. Separate task.
+- **RS 27K P06:** Dense steel. Separate threshold fix (R3).
+
+## Problem — The Smoking Gun
+
+`DisciplineBomBuilder.java:130-147` writes ALL elements (ARC + MEP) flat
+under FLOOR BOM with AD_Org_ID as a tag. This violates §10.4.6.
+
+The correct architecture:
+- **BOM (IFCtoBOM):** ARC+STR elements only. Spatial structure.
+- **MEP (Callout/DocEvent):** Discipline quantities from extraction stats,
+  stored in `ad_sysconfig` in `*_BOM.db`. Callout reads them at compile time.
+- **RouteBuilders:** Compute MEP positions from engineering rules, not from
+  IFC tack positions. Currently skeleton only — ride and extend.
+
+## Task A — IFCtoBOM (DisciplineBomBuilder.java)
+
+Per §10.4.6.1 Class A:
+1. `DisciplineBomBuilder.build()` should write only ARC+STR elements to FLOOR BOM
+2. MEP element counts per discipline → write to `ad_sysconfig` in `*_BOM.db`
+   (e.g., `MEP_FP_COUNT=6866`, `MEP_ELEC_COUNT=1172`, etc.)
+3. PATTERN logging must still fire for ALL elements (ARC+STR+MEP) — don't
+   lose extraction visibility. Log MEP elements as "MEP deferred to Callout".
+
+**Key file:** `IFCtoBOM/src/main/java/com/bim/ifctobom/DisciplineBomBuilder.java`
+
+## Task B — DAGCompiler (OrderLineProductCallout / DocEvent)
+
+Per §10.4.6.1 Class B:
+1. `OrderLineProductCallout.onProductChanged()` already creates DISC OrderLines —
+   **ride this code**, don't rewrite
+2. Callout should read MEP counts from `ad_sysconfig` (written by Task A) to
+   set `Qty` on DISCIPLINE OrderLines (currently `Qty=0` fill-all directive)
+3. `expandDisciplineLines()` already reads ERP.db shared recipes — ride this
+4. RouteBuilders fire after Callout — they use DISC OrderLines as input.
+   Currently skeleton (258 edges). Extend coverage when possible but don't
+   break the skeleton.
+
+**Key files:**
+- `DAGCompiler/src/main/java/com/bim/compiler/callout/OrderLineProductCallout.java`
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java:446-458`
+
+## Verification
+
+Run after each task:
+```bash
+./scripts/run_RosettaStones.sh classify_sh.yaml   # RE: 7/7 PASS baseline
+./scripts/run_RosettaStones.sh classify_te.yaml   # CO: heavy MEP test
+```
+
+Check:
+- SH: ARC+STR BOM only. ELEC+SP from Callout. 7/7 PASS. GEO DRIFT=0.
+- TE: ARC+STR BOM (~36K elements). 6 DISC OrderLines with qty from ad_sysconfig.
+  GEO may change (MEP positions now from RouteBuilder, not tack chain).
+- Fleet one-liner: `▸ SH  58 el  7/7 gates  3 storeys  unk=26  PASS`
+- PATTERN: verify storey assignment unchanged (`grep "[PATRN]" logs/pipeline_*`)
+- GEO: verify DRIFT for SH stays 0, note any TE DRIFT changes
+
+## Backward compatibility
+
+**Critical:** If Task A changes BOM content (removes MEP from BOM), ALL
+`*_BOM.db` files must be re-extracted. Run full fleet after Task A:
+```bash
+rm -f library/*_BOM.db
+./scripts/run_RosettaStones.sh 2>&1 | tee /tmp/fleet_s103.log
+```
+The fleet run skips DM (GENERATIVE). 34 buildings. TE takes ~5 min.
+Current baseline: 212/238 PASS, 19 ALL GREEN.
+
+If Task A breaks backward compat, do NOT also do Task B in the same session.
+Stabilize Task A first, commit, then Task B in a follow-up.
+
+## Commit
+
+Two commits (or one if tightly coupled):
+- `[S103-A] IFCtoBOM: discipline separation — ARC+STR in BOM, MEP counts to ad_sysconfig`
+- `[S103-B] DAGCompiler: Callout reads MEP counts from ad_sysconfig`
+
+Fails are allowed — report findings to `# DONE` section for review.
+Use `internal/IFCtoBOM_ANALYSIS.md` as reference for code paths.
+
+---
+
+# DONE
+
+**Session:** S103 | **Date:** 2026-03-31 | **Commit:** pending
+
+## Task A — DisciplineBomBuilder (IFCtoBOM)
+
+**Changed:** `DisciplineBomBuilder.java:130-155`
+- MEP disciplines (AD_Org 3-8: FP/ELEC/ACMV/CW/SP/LPG) no longer written to FLOOR BOM
+- MEP element counts accumulated per discipline across all storeys
+- Counts written to `ad_sysconfig` as `MEP_FP_COUNT`, `MEP_ELEC_COUNT`, etc.
+- PATTERN logging: `[PATRN] MEP` tag for deferred elements (separate from `[PATRN] FLOOR` to avoid double-counting in fleet script)
+- `isMep()` helper: AD_Org_ID 3-8
+
+**Changed:** `IFCtoBOMPipeline.java:336+, 428+`
+- `reconcileCount = extractionCount - SUM(MEP_*_COUNT)` for CO/IN buildings
+- BomValidator reconciliation uses `reconcileCount` (was `extractionCount`)
+- `EXPECTED_ELEMENTS` in ad_sysconfig and C_DocType uses `reconcileCount`
+
+**TE result:** 538 BOM lines -> 36,160 instances (was 48,428). Reconciliation delta=+0. QA all PASS.
+
+## Task B — OrderLineProductCallout (DAGCompiler)
+
+**Changed:** `OrderLineProductCallout.java:110-140`
+- When DISC line already exists (created by BomDropper Add mutation), UPDATE Qty from `MEP_{DISC}_COUNT`
+- When inserting new DISC line, pass Qty from ad_sysconfig
+- `insertDisciplineLine()` now accepts `qty` parameter (was hardcoded 0)
+- `updateDisciplineQty()` new helper for existing DISC lines
+
+**TE output.db:** 6 DISCIPLINE OrderLines with correct Qty:
+  FP=6863, ELEC=1172, ACMV=1621, CW=1431, SP=979, LPG=209
+
+## Verification
+
+- **SH: 7/7 PASS** (zero regression, no MEP elements in RE building)
+- **TE: 5/7 PASS, 1 FAIL** (same as S102 baseline)
+  - G1-COUNT: PASS (36,153 expected = 36,153 output)
+  - C9: WARN (60 axis swaps, pre-existing)
+  - Critical violations: 2 (down from S102 baseline of 71)
+
+## Finding: PATTERN double-count trap
+
+Initial run showed TE as "60,703 el / 43 storeys" because the script greps `[PATRN] FLOOR`. Adding `[PATRN] FLOOR` lines for MEP deferred elements caused double-counting. Fix: changed MEP deferred tag to `[PATRN] MEP`.
+
+## Finding: BomDropper creates DISC lines before Callout
+
+BomDropper.java:126 creates DISCIPLINE OrderLines via Add mutations (Qty=0) during CompileStage. Callout runs later in RouteStage and originally skipped them (idempotent). Fix: Callout now UPDATEs Qty on existing DISC lines instead of skipping.
+
+## YAML write-back (§10.4.6.1 — YAML is primary source of truth)
+
+**Changed:** `IFCtoBOMPipeline.java:writeDisciplineCountsToYaml()`
+- After extraction, MEP counts written back to YAML as `discipline_counts:` section
+- YAML is the "Order equivalent" for RosettaStone builds
+- Designer can edit YAML discipline_counts to reduce scope (partial wing, etc.)
+- In production, BIM Designer populates OrderLine.Qty directly (no YAML)
+- ad_sysconfig retains MEP counts for compile-time Callout access
+
+**TE YAML after extraction:**
+```yaml
+  discipline_counts:
+    ACMV: 1621
+    CW: 1431
+    ELEC: 1172
+    FP: 6863
+    LPG: 209
+    SP: 979
+```
+
+## Issue for spec review: YAML → ad_sysconfig → Callout round-trip
+
+Currently: IFCtoBOM writes to BOTH YAML and ad_sysconfig. Callout reads ad_sysconfig.
+If designer edits YAML discipline_counts AFTER extraction (without re-extracting), the
+ad_sysconfig in BOM.db still has the old values. Need to decide: should the compile
+pipeline re-read YAML discipline_counts into ad_sysconfig at compile time? This would
+require the DAGCompiler RouteStage to have the YAML path (currently only IFCtoBOM has it).
+
+## Issue for spec review: REB (AD_Org=9) classification
+
+`isMep()` classifies AD_Org 3-8 as MEP. REB (AD_Org=9, rebar) stays in the BOM as
+structural. Confirm this is correct per discipline taxonomy — rebar is spatial (placed
+by tack chain) not routed (like MEP pipes/ducts).

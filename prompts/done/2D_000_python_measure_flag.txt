@@ -1,0 +1,68 @@
+# 2D_000 — Python drawing_writer.py: --measure flag for Synthetic Rosetta test
+# TRIAGE ORDER: #3 — Trivial 30-min task. No prereqs. Enables W-SYNTHETIC-RS-1 immediately.
+# SEPARATION OF CONCERN: 2D_Layout/python only. Zero touch to Java, compiler, or pipeline.
+# Run this BEFORE 2D_001 so the test harness in 2D_001 can call it.
+
+**Spec:** 2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §12.4 (round-trip proof), SPATIAL_VARIANCE_SRS.md §12
+**Prereq:** None — drawing_writer.py already produces correct SVGs (Phase 3f DONE)
+**Witness to pass:** W-SYNTHETIC-RS-1 (partial — measurement side only)
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+Minimal addition to existing working Python. No refactor, no restructure.
+
+## Read first
+
+1. `2D_Layout/PROGRESS.md`
+2. `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md` §12.4 (round-trip proof concept)
+3. `2D_Layout/python/drawing_writer.py` — read main() and draw_floor_plan() signatures only
+4. This prompt fully
+
+## Concept
+
+The Synthetic Rosetta Stone test (SPATIAL_VARIANCE_SRS.md §12) needs to programmatically
+measure element dimensions in the generated SVG — specifically wall lengths at section cut
+height. Rather than parsing SVG XML, the simpler path is to add a `--measure` flag to
+drawing_writer.py that prints element measurements to stdout as CSV.
+
+The test (in 2D_001) calls drawing_writer.py with --measure and reads the CSV output.
+
+## Task — Add --measure flag to drawing_writer.py
+
+In `main()`, add argument: `parser.add_argument('--measure', action='store_true')`
+
+In `draw_floor_plan()` (or a wrapper), after computing CUT element contours:
+- For each CUT element: compute the length of the longest contour segment
+  (approximation of wall face length in plan)
+- Print to stdout as CSV:
+  ```
+  guid,ifc_class,element_name,storey,contour_length_mm
+  abc123,IfcWall,Ext_Wall_N,Ground Floor,4200.0
+  ...
+  ```
+- Only print when `--measure` is passed. Normal SVG output unchanged.
+
+Length calculation for a contour: max distance between any two consecutive points,
+or sum of all segment lengths for open contours. Use the section_cut contour already
+computed — do not re-cut.
+
+## Done criteria
+
+```bash
+cd 2D_Layout
+python python/drawing_writer.py \
+  --db lib/input/samplehouse.db \
+  --floor-plan --measure 2>/dev/null
+
+# Expected: CSV rows, one per CUT element, with contour_length_mm > 0
+# SH has 5 IfcWall elements — expect ~5 rows
+```
+
+- CSV output present, non-empty
+- IfcWall rows have contour_length_mm matching known SH wall lengths (visually verify)
+- Normal SVG output (`--all`) unchanged by this addition
+
+# DONE
+<!-- Coder appends findings here -->

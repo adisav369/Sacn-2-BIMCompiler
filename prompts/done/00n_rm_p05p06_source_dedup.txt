@@ -1,0 +1,147 @@
+# 00n — RM P05/P06: source slab duplicate + P05 false positive (wall co-location)
+
+**Spec:** TestArchitecture.md §Traceability Matrix, BOMBasedCompilation.md §4 (Proofs)
+**Prereq:** 00l DONE (W-J1-RECIPE-FULL)
+**Test Stones:** RM, SH
+**Scope:** Fix 3 critical proof violations → RM Maven gate passes
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No invention. Read before writing.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `BIMEyes/src/main/java/com/bim/eyes/proof/tier2/DuplicatePositionProof.java` — P05 logic
+3. `BIMEyes/src/main/java/com/bim/eyes/proof/tier2/SameClassOverlapProof.java` — P06 logic
+4. `IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java` — where elements are loaded
+5. This prompt fully
+
+## Context — the 3 violations
+
+From log forensics (`logs/run_RosettaStones_20260401_193040.txt`):
+
+```
+[VIOLATED] P05_NO_DUPLICATE_POSITION — STR_MD_SLAB_LEVEL_2_1726 — duplicate centroid
+            with STR_MD_SLAB_LEVEL_2_1727 dist=0.000000
+[VIOLATED] P05_NO_DUPLICATE_POSITION — STR_MD_WALL_LEVEL_2_1747 — duplicate centroid
+            with STR_MD_WALL_LEVEL_2_1782 dist=0.000015
+[VIOLATED] P06_NO_SAME_CLASS_OVERLAP — STR_MD_SLAB_LEVEL_2_1726 — DUPLICATE
+            STR_MD_SLAB_LEVEL_2_1727 pos=same dims=same vol=6.317339 m³
+```
+
+**Verified in HospitalAuckland_extracted.db:**
+
+Slab (true source duplicate):
+- `STR_MD_SLAB_LEVEL_2_1726`: Floor:FB 15.0 - Holzdielen, centroid (7.131, 6.654, 3.875), dims 7521×5600×150mm
+- `STR_MD_SLAB_LEVEL_2_1727`: Floor:FB 15.0 - Holzdielen, centroid (7.131, 6.654, 3.875), dims 7521×5600×150mm
+→ Exact copy-paste duplicate in the Revit source. Both same element_name, same AABB. Fix: deduplicate in extraction.
+
+Wall (P05 false positive):
+- `STR_MD_WALL_LEVEL_2_1747`: Basic Wall:MW 11.5 (masonry, 115mm thick)
+- `STR_MD_WALL_LEVEL_2_1782`: Basic Wall:WC Trennwand 5.0 (partition, 50mm thick)
+→ Different element types, different dims — co-located walls at the same centroid (architectural reality:
+  partition wall superimposed on masonry wall zone). P05 checks same ifc_class + centroid only.
+  P06 correctly skips this (it checks samePos AND sameDims). P05 is inconsistent with P06.
+
+## Fix A — P05: add sameDims guard (consistency with P06)
+
+In `DuplicatePositionProof.prove()`, after the centroid distance check, add a dims check:
+
+```java
+// Only flag if dims also match — different-dims co-location is architecturally valid.
+// (P06 already requires samePos AND sameDims for VIOLATED. P05 must be consistent.)
+boolean sameDims = Math.abs(a.dx() - b.dx()) < 0.001
+        && Math.abs(a.dy() - b.dy()) < 0.001
+        && Math.abs(a.dz() - b.dz()) < 0.001;
+if (dist < EyesConstants.CENTROID_TOLERANCE_M && sameDims) { VIOLATED }
+```
+
+Write at modification site:
+```java
+// P05 sameDims guard — Witness: W-RM-DEDUP
+// Same-class centroid proximity with different dims = architecturally valid co-location.
+// Implementing TestArchitecture.md §P05 — consistent with P06 DUPLICATE criterion.
+```
+
+## Fix B — Extraction: skip exact-duplicate elements
+
+In `ExtractionPopulator.java`, before inserting an element into the BOM, check for exact
+duplicates: same ifc_class + same element_name + same AABB (minX/maxX/minY/maxY/minZ/maxZ
+within 1mm) → skip, log a DEDUP warning.
+
+Find where elements are iterated from the extracted DB. Add a Set<String> seen to track
+`ifc_class + "|" + ROUND(minX,3) + "|" + ROUND(maxX,3) + ...`. If the key is already in seen,
+skip the element and log:
+
+```java
+BIMLogger.warn("EXTRACTION", "DEDUP: skipping exact-duplicate {} {} at ({:.3f},{:.3f},{:.3f})",
+    ifc_class, element_name, cx, cy, cz);
+```
+
+Write at modification site:
+```java
+// Extraction-side exact-duplicate filter — Witness: W-RM-DEDUP
+// Implementing PRIME RULE §EXTRACT — identical position+dims = source model error, keep one.
+```
+
+**Guard:** Only skip if ALL of ifc_class + element_name + AABB match within 1mm. Do NOT skip
+based on centroid alone (that would incorrectly deduplicate co-located different elements).
+
+## Witness claim
+
+**W-RM-DEDUP:** After running pipeline on RM:
+- `critical proof violations = 0` in BuildingRegistryTest (was 3)
+- RM Maven test PASSES
+- RM gates: 7/8 (C9 rank-match artifact remains — separate issue)
+- No regression: SH 8/8
+
+## Verification
+
+```bash
+./scripts/run_RosettaStones.sh classify_rm.yaml classify_sh.yaml
+```
+
+Check log for:
+- No `[VIOLATED] P05` or `[VIOLATED] P06` lines
+- `[WARN] DEDUP: skipping exact-duplicate Floor:FB 15.0 - Holzdielen IfcSlab`
+- `HospitalAuckland: critical proof violations 0` (not 3)
+- Maven test PASS
+
+## Report back
+
+1. Does ExtractionPopulator load elements in a loop where a dedup Set can be maintained?
+   (Or is it batch-inserted from SQL? If batch SQL, dedup can be in a WHERE NOT EXISTS sub-query.)
+2. After Fix A: wall violation gone? How many P05 violations remain?
+3. After Fix B: slab duplicate skipped? DEDUP log line present?
+4. Gate: RM Maven PASS, SH 8/8?
+
+## Commit
+
+`[S104-J1] BIMEyes+ExtractionPopulator: RM P05 sameDims guard + source dedup (W-RM-DEDUP)`
+
+---
+
+# DONE
+
+## Coder findings
+
+**Witness CONFIRMED:** RM 7/8, SH 8/8. 0 critical proof violations (was 3). Commit `b76218bc`.
+
+**Root cause discovered:** Fix A compiled correctly but used a STALE BIMEyes jar in `.m2`
+(March 30). The DAGCompiler Maven test picks up `.m2/bim-eyes-1.0-SNAPSHOT.jar`, not
+`BIMEyes/target/classes/`. Fix: `mvn install -pl BIMEyes -DskipTests` required after
+editing BIMEyes source. Future sessions: always install BIMEyes when editing proof classes.
+
+**Fix A detail:** Wall pair 1746/1781 — MW 11.5 (dx=115mm, dy=1735mm) vs WC Trennwand 5.0
+(dx=3115mm, dy=50mm). centroid dist=0.00005m, clearly different dims. sameDims=false →
+correctly not flagged after jar update.
+
+**Fix B detail:** Slab dedup key uses raw `element_name` from DB. Slab pair had identical
+element_names (`Floor:FB 15.0 - Holzdielen`, no instance ID) → dedup fired. If element_names
+include instance IDs (e.g., `Basic Wall:MW 11.5:285330`), dedup would miss them. RM walls
+do NOT have instance IDs in element_name, so dedup is safe. Ordinal shift (1747→1746) was
+from removing one IfcSlab before the wall pair in the global BOM walk counter.
+
