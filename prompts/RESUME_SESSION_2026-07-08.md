@@ -116,7 +116,46 @@ session, all 6 PRs independently confirmed `MERGED` via `gh pr view` (not just t
    `seedtrunk-trunk.png` recaptured via real `e2e_harness.js` `runE2E` driver reusing existing witness
    selectors, every frame assertion-backed (not eyeballed) — commit `3ec99e8b5`. Deployed via
    `scripts/safe_gh_deploy.sh` (guard PASS, superset, no shrink), live bytes fetched back and `cmp`-verified
-   against local, not just HTTP 200. Do not re-open unless a NEW build changes the app's visual style again.
+   against local, not just HTTP 200. **⚠ CORRECTED below — "guide now clean" was about stale/wrong
+   CONTENT, not about visual QUALITY; a real, deeper gap survived this pass, see next item.**
+5b. **⚠ NEW 2026-07-08, found by direct user inspection of the deployed guide, not self-surfaced —
+   28/29 guide screenshots (everything except `samplecastle-arc-open.png`) are honest, assertion-backed,
+   CORRECTLY captured... and visually plain: flat gray box, no window frames/glass, blob-shaped roof
+   fixtures, generic flat-rectangle door/window fill. Confirmed by direct visual inspection (`Read` on the
+   PNG), not assumed. This is NOT the stale-screenshot defect item 5 already fixed — it's a different,
+   deeper property of the demo building itself, and recapturing it again will NOT change it.**
+   **Root-caused, with a wrong hypothesis caught and corrected before it became a bad instruction:** first
+   guess was "Duplex has zero real product-catalog matches" (`§LOD300-MATCH building=Duplex matched=0
+   unmatched=253`, freshly re-measured, not the stale `0/204` citation) — plausible, but WRONG as the
+   differentiator: `SampleCastle` (the one screenshot that DOES look rich) measures **`matched=0
+   unmatched=3225`** — identically zero. So catalog-matching is not what makes SampleCastle look better;
+   both buildings get zero real catalog meshes. The actual driver must be the RAW EXTRACTED geometry's own
+   baked-in detail — `Duplex` is the standard buildingSMART "Ifc2x3_Duplex" sample file, a deliberately
+   minimal massing-level model (flat walls, no window-frame/glass geometry, blocky furniture) at the IFC
+   source itself; `SampleCastle`'s source IFC apparently has real detail (frames, dormers, roof shingles)
+   modeled directly into its geometry, independent of any catalog-matching stage. **This was not
+   independently confirmed at the IFC-source level** (inferred from the LOD-audit ruling out the other
+   candidate cause, not from directly diffing the two IFC files' own geometric detail) — treat as
+   well-evidenced, not fully proven, if it matters before a big content decision.
+   **The corrected rule to carry forward — do NOT re-derive the wrong one:** no single log/audit metric
+   (LOD300-MATCH included) predicts a building's guide-screenshot visual quality — it does not correlate
+   with catalog-match rate at all, both a plain and a rich building can show identical `matched=0`. The
+   only reliable check is DIRECT VISUAL INSPECTION of a candidate building's actual rendered frame before
+   trusting it for a guide screenshot — read the PNG (or a fresh capture), don't infer from a console line.
+   **Real open decision, NOT decided here (content/positioning call, not a mechanical fix):** whether to
+   (a) keep Duplex as the guide's primary demo building — plain-looking but the recognized, standard
+   industry test file, and EVERY interactive screenshot's click-targets/selectors are built around its
+   specific wall/grid layout (gridstretch, sketch, delete, insert, route, cut — none of these are a blind
+   swap, each would need its own equivalent target verified against a new building before re-capturing),
+   or (b) swap some/all guide screenshots to a visually richer building (`SampleCastle` confirmed to look
+   good; `samplecastle-arc-open.png` already proves the capture PATTERN works for a static/no-interaction
+   shot). **Bounded, low-risk first step if (b) is chosen:** only the static "hero" shots with no
+   interaction-target dependency (`workspace-open.png`, the very first image on the page) are a cheap,
+   safe swap — the interactive feature shots are a real, separately-scoped follow-up each, not a batch
+   rename. Full detail + this session's own verification commands: `SCALE_CHECK_TERMINAL_FINDINGS_2026-07-05.md`
+   is the wrong file for this (unrelated topic) — log it fresh in `docs/ModellerGuide.md`'s own history or a
+   new small `prompts/GUIDE_VISUAL_QUALITY.md` if picked up, don't bury it in this resume doc's next
+   rewrite.
 6. **SampleCastle streaming UX, ARC LOD-mesh witness generalization, MEP product survey (CW/SP/ACMV/ELEC),
    IFC write coverage gaps, coaxial MEP diameter-transition detection** — unchanged from 07-07 doc, still
    open, still real, still not urgent. Full detail there, not restated here.
