@@ -50,6 +50,19 @@ self-corrections) — the value is in the lessons and the open items below, not 
 | SampleCastle "boxes" | Resolved — not a render bug, a slow streaming window with no strong mid-load visual cue | `BONSAI_KERNEL_RESEARCH.md` / see git log `676c04991` |
 | Deploy pipeline | Real bug fixed in `scripts/safe_gh_deploy.sh` (missing `.nojekyll`, would've blocked every future deploy); `StrategicIndustryPositioning.md` updated + deployed live | commit `e8a0f570d`, `c20cc9faa` |
 
+## §FABLE-SUITED — small, decisive, dispatch directly (`Agent`, `model: "fable"`)
+
+**`viewer/routewalker.js` has a duplicate, untouched copy of the fixture-box bug already fixed in
+`modeller/routewalker.js` (PR #693, `resolveRealPlacement()` gate).** Real, live, disclosed bug — same
+class as the invented-diameter/invented-fixture-box violations found and fixed everywhere else today
+(hardcoded `0.15×0.15×0.15` boxes standing in for real product dimensions). The fix pattern is 100%
+proven already: port the identical `resolveRealPlacement()` wiring from `modeller/routewalker.js` to its
+`viewer/` twin, same real-dims-or-honest-refuse behavior, same witness shape. This is exactly the
+"repeat an already-proven recipe in a new location" shape Fable is for — no open design question, no new
+primitive, no new architecture, just apply a known-good patch to a sibling file and prove it the same way.
+Don't hand it anything from the numbered list below — those all carry a real open decision or need a
+survey first.
+
 ## §OPEN — NEXT SESSION'S JOB, prioritized
 
 **User directive standing: finish the Modeller in full, real UX review as the acceptance bar (not
