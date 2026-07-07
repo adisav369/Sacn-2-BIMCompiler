@@ -141,6 +141,37 @@ tests/investigate_samplecastle_boxfallback.js` + `investigate_samplecastle_viewe
   get a real mesh/triangle count and see if boxFallback actually reproduces there. This is real, unfinished
   work — flagging it honestly rather than either faking a fix or quietly dropping the thread.
 
+**✅ RESOLVED (reframed), same day 2026-07-07 — corrected census (`window.APP`, reusing Leg V2's exact
+`extractViewer`/`openViewer` from `witness_e2e_mv_parity.js` instead of a hand-rolled traverse) against the
+REAL Viewer path, using the ACTUAL dev-deployed file (`deploy/dev/buildings/SampleCastle_extracted.db` —
+confirmed byte-different from `deploy/buildings/SampleCastle_extracted.db`, different md5/size/mtime,
+checked directly since a stale-vs-live file mismatch was the live hypothesis):**
+- Steady-state (fully streamed, `A.streaming===false`) census on BOTH file copies: **`rendered=3504
+  joined=3504 triExact=3504 boxFallback=0 placeholders=0 batchedUnresolved=0`** — a clean, fully-resolved
+  render on the ACTUAL live-served file. This is NOT a permanent wrong-LOD-choice bug — it does not exist
+  in the settled state.
+- **Root cause found by sampling mid-load instead of only at rest:** at t=8s into a fresh open,
+  `streaming=true streamedCount=2500 placeholders=3504` — **every single element is a box placeholder
+  simultaneously**, even though 2500/3504 have already streamed by DB-fetch count (the per-element bbox
+  placeholder layer isn't cleared/thinned in step with streaming progress, all-or-nothing). By t=12s:
+  `streaming=false streamedCount=3504 placeholders=0` — fully resolved. **This is exactly "silhouette right,
+  boxes all round"** — a scene of only bbox placeholders reproduces the true building silhouette (each box
+  approximates its element's real footprint) while carrying none of the real mesh detail yet.
+- **So the real finding is UX/performance, not a render-path defect:** SampleCastle (3504 elements, ~13×
+  Duplex's 265) takes long enough to progressively stream (8-12s locally on instant-localhost swiftshader —
+  plausibly much longer on a real network/weaker device) that a user looking at it mid-load sees a scene
+  that is ENTIRELY box placeholders for several seconds, with no strong visual cue that this is transient.
+  A real status-bar progress indicator already exists (`streaming.js` §S280: `"{building} — {streamed}/
+  {total} ({pct}%)"`) but is easy to miss while the 3D view itself looks like nothing is happening (all
+  boxes, silhouette static). **Genuinely open, smaller-scoped follow-up (not done, correctly scoped down
+  from "fix a broken LOD choice" to a real but narrower UX gap):** either make the streaming progress more
+  visually prominent than a small status-bar string, or thin the placeholder layer progressively in step
+  with `streamedCount` instead of all-or-nothing, so a large building never reads as "fully stuck on boxes."
+  If the user's original sighting was of a session that ACTUALLY stalled forever (never reaching
+  `streaming=false`) rather than just a slow-but-completing load, that would be a different, real hang bug
+  — not reproduced in this pass; worth them re-checking with the status-bar percentage visible to tell
+  the two apart.
+
 ## §ALSO OPEN — carried forward, not urgent but don't lose them
 
 - **Coaxial MEP diameter-transition detection** — investigated and found genuinely bigger than a quick
