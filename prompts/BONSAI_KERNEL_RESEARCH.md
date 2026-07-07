@@ -569,10 +569,54 @@ the diagonal-opposite/adjacent-supplementary corner relationships both check out
 regression clean: `witness_e2e_sketch.js` 8/8, `witness_e2e_numrot.js` 7/7, `witness_e2e_scalerot.js` 6/6,
 `witness_e2e_rsarm.js` 8/8, `witness_e2e_route.js` 8/8, `bonsai_points_recovery_live.js` 4/4.
 
-**Not yet done (disclosed, not silently deferred):** `tangent`/`circle_radius`/`p2p_coincident` remain
-unwired — `tangent` and `circle_radius` both need a circle/arc primitive the sketch tool doesn't have at
-all yet (a bigger lift: new primitive type + new click-to-place UI, not just a new constraint on the
-existing point/line model), scoped separately from this increment's point/line-reachable work.
+**✅ THIRD INCREMENT DONE 2026-07-07 — `p2p_coincident` vertex-weld wired (bim-ootb
+`feat/bonsai-sketch-p2p-coincident`):** a click landing within `WELD_TOL` (0.4m, same value as
+`bonsai_grid.js`'s own `snapTol`) of an EARLIER point in the SAME sketch now pins the new point
+`p2p_coincident` to it (`bonsai_sketch.js`'s `addPointWeld()` + `_weldConstraints()`, applied uniformly
+across axis/rect/square mode) instead of adding a near-duplicate point a few cm off — the standard
+CAD-sketch "click near an existing vertex to weld onto it" convention (FreeCAD Sketcher does the same).
+Same recipe as the first two increments: existing point primitives, no new architecture — explicitly NOT
+the circle/arc primitive `tangent`/`circle_radius` need (see the new follow-up spec section below, filed
+rather than built improvised per this round's directive).
+
+**Acceptance bar met the same way — real interaction, then hand-derived exact invariants:**
+`witness_e2e_sketch_weld.js` (new), 6/6. The test is deliberately built so the weld's target point (`p1`)
+is FIRST relocated by a real, non-trivial amount by the existing H/V auto-cleanup (clicked 0.3m off-axis,
+solved back to exactly on-axis — independently confirmed the move is real, `K2`, not a vacuous test), THEN
+proves the welded point lands EXACTLY on the target's SOLVED position (drift `0.00e+0`), not the target's
+raw click position or a static copy taken at click time — proving this is a live solver constraint, not
+sugar for `Object.assign`. Also confirms unrelated points are untouched by the weld (`K4`) and that a
+profile containing a welded (repeated-position) point still authors a real solid via Extrude with no error
+(`K5`). Full regression clean (all 6 pre-existing suites + the dims witness, 20/20).
+
+**Not yet done (disclosed, not silently deferred):** `tangent`/`circle_radius` remain unwired — both need
+a circle/arc primitive the sketch tool doesn't have at all yet. Per this round's explicit directive, this
+follow-up is now SPECCED (not built improvised):
+
+#### Follow-up spec — circle/arc sketch primitive (unlocks `tangent` + `circle_radius`, NOT started)
+- **Geometry representation:** planegcs already has a native `circle` primitive (`push_circle`,
+  `gcs_wrapper.js`) — a center point `{x,y}` + radius, separate from the `point`/`line` primitives the
+  quad/polygon path uses today. `Sketch.circles: [{ id, cx, cy, r }]` alongside the existing `points`
+  array, not a repurposing of the point-ring model (a circle isn't a closed point loop).
+- **Placement UI convention — the standard CAD one, not invented:** click center, then a SECOND click (or
+  typed radius, reusing the exact `#dim-w`-style toolbar-field pattern already established) sets the
+  radius — this is the universal AutoCAD/SolidWorks/FreeCAD Sketcher convention; planegcs comes from
+  FreeCAD, so following FreeCAD Sketcher's own circle tool keeps the third-party-sourced solver and the
+  authoring UI coherent, per the standing "don't trash third-party code without UI coherence" directive.
+  Needs a mode/tool distinct from the current "click N points for a polygon" flow (e.g. a `Circle` sibling
+  to the existing `Sketch` button, not an overload of the point-ring `MODES` array), since a circle isn't a
+  4-point-quad-or-n-gon shape — a real, separate design decision, not a quick constraint wire.
+- **Constraints this actually unlocks, once the primitive exists:** `circle_radius` (typed radius, direct
+  `#dim-radius` reuse of the existing edit-a-number UX), `tangent` (line-to-circle or circle-to-circle —
+  e.g. a rounded corner or a circular column touching a wall face), `p2c_distance`/`c2c_distance` (already
+  in `constraint_param_index.js`, same family, free once a circle primitive exists to reference).
+- **How it composes with the existing model:** `Extrude`'s profile format (`{points:[[x,y],...]}`) has no
+  representation for a curved segment — extruding a profile that includes a circle/arc needs either a
+  tessellated-into-line-segments fallback (simple, but loses the exact curve — same "computed not
+  extracted" caution this project applies elsewhere) or a real `GEOM_EXTRUDE_CIRCLE`/profile-with-arcs op
+  type in the kernel (a bigger lift, likely its OWN short spec once scoped). Flagging this explicitly so a
+  future build doesn't discover it mid-implementation — the primitive's solver-side existence and its
+  EXTRUDE-side representation are two separate open questions, not one.
 
 ### Tier 3 — structural, cross-cutting (this doc's own §5 already calls these "months")
 IFC write coverage beyond `GEOM_EXTRUDE_POLY` parents (array/loft/insert exports are currently scoped
