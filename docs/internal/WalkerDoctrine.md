@@ -287,3 +287,60 @@ updating to assert the new correct behavior, not reverted toward the old one.
 an identical stale copy of the same fixture-box bug (a separate file, untouched); the repo's resident
 `.db` building files lack an `elements_meta.building` column, independently breaking room-detection on
 those exact files (pre-existing, unrelated to this fix).
+
+## §11 — FIRST PRINCIPLE, MANDATORY, UNBREAKABLE, NO EXCEPTION: no non-LOD400 content may be presented
+## as an element's real geometry, in the Viewer OR the Modeller — for ANY building (user directive, 2026-07-08)
+
+**This section broadens §4/§8/§9/§10's non-invent rule beyond its original scope.** Everything above this
+line governs WALKER-GENERATED content (fixtures/pipes/fittings the walker itself places). This section
+states the SAME principle applies to the base ARC-EXTRACTED geometry too — the walls/windows/doors/
+furniture that come straight from a building's own IFC extraction, not from a walker at all. Investigated
+2026-07-08 after the public `ModellerGuide.md`'s screenshots were found visually plain (flat walls, no
+window-frame/glass detail, blocky furniture) — the investigation confirmed this specific instance is
+**honest** (Duplex's real source IFC genuinely only contains this much detail — verified both by `M3`
+witness `boxFallback=0 triExact=253/253` AND by direct IFC-content inspection, `IFCEXTRUDEDAREASOLID`/
+`IFCMAPPEDITEM` swept-profile geometry, zero `IFCFACETEDBREP`), not a pipeline bug. But that same
+investigation surfaced the actual gap this section is written to close:
+
+**No existing gate anywhere in either app's pipeline enforces a MINIMUM detail/richness floor on the base
+extracted geometry itself — only that (a) the renderer faithfully displays whatever the geo DB already
+contains (`witness_e2e_mv_parity.js` M3, `boxFallback===0`), and (b) IFC extraction aborts on TOTAL
+tessellation failure (`extractIFCtoDB.py`'s `§ILLEGAL_PARAMETRIC_FALLBACK`, a hard-fail, but only for
+zero-geometry, not low-detail geometry). A building whose source IFC is genuinely simple (any building,
+not just Duplex) can be extracted, stored, and rendered indefinitely with NO signal beyond the honest
+`§LOD300-MATCH`/`boxFallback` counters already logged — which, critically, only prove faithful DISPLAY of
+whatever is in the DB, never that the DB's own content clears an LOD400 bar. This is a genuine, currently
+real gap, not a manufactured one — confirmed by direct code search, not assumed.**
+
+**The rule, stated plainly:** neither app may present non-LOD400 geometry to the user AS IF it were the
+real, finished representation of an element — not silently, not by default, not because a source IFC
+happened to be simple. If real LOD400 detail isn't available, the element must be shown in a way that is
+HONESTLY DISTINGUISHABLE as not-real-detail, never dressed up as finished geometry.
+
+**The proof this is achievable without a performance/practicality tradeoff already exists — in the
+Viewer, not yet in the Modeller.** Alt+X ghost/X-ray mode (`viewer/navigate_find.js`,
+`toggleGhostXray`/`_buildMergedGhost`, memory `project_altx_ghost`) already demonstrates the correct
+pattern: real elements render as real mesh; when the Viewer needs a cheap, honest way to represent
+presence/position WITHOUT claiming detail, it uses an EXPLICITLY SEPARATE, clearly-distinguished
+representation — instanced bbox WIREFRAMES, sourced directly from `element_transforms.bbox_*` (free,
+instant, no invented detail), discipline-colored, never conflated visually with "this is the real
+building." **Selection, hit-testing, and interaction do not need or use full detailed mesh either** — an
+RTree/bbox-based spatial index is the proven, already-available mechanism for that, fully decoupled from
+what gets rendered as "the building." **Conclusion: there is no valid performance or practicality excuse
+for the PRIMARY render to compromise on this** — the tools that make selection/interaction cheap
+(RTree + bbox) are separate from, and do not require, compromising the primary visual representation.
+The Modeller must inherit this SAME standard the Viewer already has. There is no exception class for "this
+particular building's IFC happened to be simple" — the rule governs what is ALLOWED to be presented as
+real, not what any given source file happens to contain.
+
+**Status: doctrine stated, NOT yet enforced by any gate — this is the concrete next step, not done here.**
+Nothing in this section should be read as claiming the enforcement mechanism has been built; it has not.
+A real design pass is needed before building it (out of scope for a same-day doc entry): where the
+LOD400 detail-floor threshold is actually drawn (vertex/face count? a real catalog-provenance requirement,
+extending `§10`'s `resolveRealPlacement()` gate from walker-placed leaf components to base-extracted
+elements too?), what the honest non-detail visual treatment looks like in the Modeller specifically (does
+it borrow the Viewer's bbox-wireframe pattern directly, per-element, mixed with real mesh in the same
+scene?), and whether this applies per-element or gates a whole building from being served at all below
+some aggregate bar. Do not improvise an implementation without that design pass — but do not lose this
+principle either; it is now the doctrine of record, cite it (`WalkerDoctrine.md §11`) rather than
+re-deriving or re-litigating it in a future session.
