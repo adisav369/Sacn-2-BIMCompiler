@@ -144,6 +144,38 @@ The solved polygon is swept to depth and committed as one signed operation.
 
 ![Extrude — the profile pushed into a B-rep wall solid](img/modeller/sketch-wall.png)
 
+#### Type an exact dimension (rect / square)
+
+Cycle **Constrain** to **Rect** or **Square** before or during your 4 clicks — once the profile closes,
+**W / H / ∠** fields appear showing the sketch's current width, height, and corner angle. Type a new
+number into any of them and press **Enter**: the WHOLE profile re-solves from that one value, not just
+the one edge — a rectangle at 90°, or a true parallelogram at any other typed angle.
+
+![A closed 4-point sketch in Rect mode — W/H/∠ fields read the current shape (3.00m × 3.00m, 90°)](img/modeller/sketch-dims-square.png)
+
+![The same sketch after typing a new width, height, and a 70° corner angle — one number changes the whole shape](img/modeller/sketch-dims-angled.png)
+
+A click that lands near an **earlier point in the same sketch** welds the new point exactly onto it
+(the status line reads `welded to p«N»`) instead of adding a near-duplicate point a few centimetres off —
+useful for closing a hand-drawn polygon precisely back onto its own start.
+
+![A 5-click L-shape where the last click landed near the 2nd point — welded exactly onto it, not a stray near-duplicate](img/modeller/sketch-weld.png)
+
+### Circle → Extrude — draw a cylinder
+*Commits `GEOM_EXTRUDE_POLY` with a `circle` profile (a real occt cylinder, not a tessellated polygon).*
+
+1. Cycle **Constrain** to **Circle**.
+2. Click a **centre** point, then click a second point to set the **radius** — or type an exact radius
+   into the field that appears.
+3. Set the **depth**, then tap **Extrude**.
+
+![Circle mode — centre clicked, radius set to 1.75m either by the second click or by typing it](img/modeller/sketch-circle.png)
+
+The circle sweeps into a genuine cylindrical solid (`makeCircleEdge` → a real curved B-rep face), the same
+signed-op path as a polygon extrude.
+
+![Extrude on a circle profile — a real cylinder standing next to the building, not an approximated polygon](img/modeller/sketch-circle-extruded.png)
+
 ### Route → Sweep-Run — lay a run / duct
 *Commits `GEOM_SWEEP`.*
 
@@ -203,6 +235,23 @@ mid-drag instead of only after.
 3. Release to commit. A moved host **drags its hosted fillings** (a door rides its wall); undo is exact to the micron.
 
 ![Move engaged on a selected element — dragging the X arrow moves it on that axis only (the commit is X-only, exact, reversible)](img/modeller/move-gizmo.png)
+
+### Snap-to-geometry
+
+While dragging the ground-plane hub (not a single axis arrow), the handle also snaps to nearby
+**vertices, edge-midpoints, and face-centers of OTHER elements** — not just the grid. A small marker
+appears at the candidate point, and the status line reads `snap-to-geometry`; releasing commits the exact
+snapped coordinate, read from the other element's own real bounding box (never invented).
+
+![Dragging one wall toward another — the ground-plane hub snapped exactly onto the neighbour's corner, a marker shows the snap point, the status line reads snap-to-geometry](img/modeller/snap-to-geometry.png)
+
+### Multi-select
+
+**Shift-drag** an empty-space marquee to select every element whose on-screen footprint falls inside the
+box (shift-click adds/removes one at a time). The transform gizmo then acts on the WHOLE set — a group
+move/rotate/scale commits the same delta to every selected element about their shared centre.
+
+![Shift-drag marquee over three elements — all three highlight and the status line reads the new selection count](img/modeller/multiselect-marquee.png)
 
 ### Scale
 *Commits `GEOM_SCALE {fx,fy,fz}`.*
