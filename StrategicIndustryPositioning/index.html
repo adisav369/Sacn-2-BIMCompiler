@@ -1683,6 +1683,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#adjacent-layers-interop-and-governance-not-authoring-not-competing-directly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adjacent layers — interop and governance (not authoring, not competing directly)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1693,6 +1704,17 @@
     <span class="md-ellipsis">
       
         Moats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#honest-risks-kept-current-not-just-moats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest risks (kept current, not just moats)
       
     </span>
   </a>
@@ -2031,6 +2053,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#adjacent-layers-interop-and-governance-not-authoring-not-competing-directly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adjacent layers — interop and governance (not authoring, not competing directly)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2041,6 +2074,17 @@
     <span class="md-ellipsis">
       
         Moats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#honest-risks-kept-current-not-just-moats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest risks (kept current, not just moats)
       
     </span>
   </a>
@@ -2378,6 +2422,35 @@ from intent, or verify the round-trip.</p>
 </table>
 <p>They parse and display IFC. They do not abstract intent, compile from recipes, or prove
 round-trip fidelity — and <strong>none connect BIM to a transaction ERP over one signed log.</strong></p>
+<h3 id="adjacent-layers-interop-and-governance-not-authoring-not-competing-directly">Adjacent layers — interop and governance (not authoring, not competing directly)<a class="headerlink" href="#adjacent-layers-interop-and-governance-not-authoring-not-competing-directly" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Example</th>
+<th>What it does</th>
+<th>What it doesn't</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Geometry interop</td>
+<td><a href="https://speckle.systems/">Speckle</a></td>
+<td>Git-like versioning for geometry across tools</td>
+<td>Needs a server; stops at geometry — no cost/schedule/ERP</td>
+</tr>
+<tr>
+<td>Governance/CDE</td>
+<td>AWARO, Trimble Connect, ACC</td>
+<td>WIP→Shared→Published workflow, roles, sign-off</td>
+<td>Manages artifacts, not derived data — computes nothing</td>
+</tr>
+</tbody>
+</table>
+<p>Neither is a competitor — both could sit upstream or downstream of this pipeline. The
+versioning half (Speckle's job) is already native here as the signed op-log (Moat #6, no
+server needed); the governance half (AWARO's job) is a state machine that could ride on top
+of this pipeline's merge gate rather than replace it.</p>
 <hr />
 <h2 id="moats">Moats<a class="headerlink" href="#moats" title="Permanent link">&para;</a></h2>
 <ol>
@@ -2398,6 +2471,21 @@ round-trip fidelity — and <strong>none connect BIM to a transaction ERP over o
 </ol>
 <p><strong>The asymmetry:</strong> adding a GUI to a compilation foundation takes weeks. Adding spatial
 compilation — or a to-the-cent ERP fold — to a GUI-first tool takes years.</p>
+<hr />
+<h2 id="honest-risks-kept-current-not-just-moats">Honest risks (kept current, not just moats)<a class="headerlink" href="#honest-risks-kept-current-not-just-moats" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Adoption is structurally harder for an intersection than a point solution.</strong> Needs a
+   modeler, a scheduler, and a cost/ERP owner to all find it worthwhile at once.</li>
+<li><strong>Generality is claimed, not yet proven externally.</strong> Every capability measured so far
+   was built and tuned in-house; a genuinely foreign file is still an open test.</li>
+<li><strong>Distribution is currently bespoke, not repeatable.</strong> Real signal so far has cost real
+   founder-hours per contact — not yet a growth motion.</li>
+<li><strong>Credibility currently rests on one person</strong> across communities that don't normally
+   talk to each other (BIM, ERP, open-source/local-first) — coherent, but earned per
+   conversation, not yet institutional.</li>
+</ol>
+<p>None of these block using or trying the project — they're the risks worth tracking as it
+scales, stated plainly rather than smoothed over.</p>
 <hr />
 <h2 id="who-uses-this-and-what-theyd-pay-for">Who uses this, and what they'd pay for<a class="headerlink" href="#who-uses-this-and-what-theyd-pay-for" title="Permanent link">&para;</a></h2>
 <table>
