@@ -150,20 +150,25 @@ session, all 6 PRs independently confirmed `MERGED` via `gh pr view` (not just t
    with catalog-match rate at all, both a plain and a rich building can show identical `matched=0`. The
    only reliable check is DIRECT VISUAL INSPECTION of a candidate building's actual rendered frame before
    trusting it for a guide screenshot — read the PNG (or a fresh capture), don't infer from a console line.
-   **Real open decision, NOT decided here (content/positioning call, not a mechanical fix):** whether to
-   (a) keep Duplex as the guide's primary demo building — plain-looking but the recognized, standard
-   industry test file, and EVERY interactive screenshot's click-targets/selectors are built around its
-   specific wall/grid layout (gridstretch, sketch, delete, insert, route, cut — none of these are a blind
-   swap, each would need its own equivalent target verified against a new building before re-capturing),
-   or (b) swap some/all guide screenshots to a visually richer building (`SampleCastle` confirmed to look
-   good; `samplecastle-arc-open.png` already proves the capture PATTERN works for a static/no-interaction
-   shot). **Bounded, low-risk first step if (b) is chosen:** only the static "hero" shots with no
-   interaction-target dependency (`workspace-open.png`, the very first image on the page) are a cheap,
-   safe swap — the interactive feature shots are a real, separately-scoped follow-up each, not a batch
-   rename. Full detail + this session's own verification commands: `SCALE_CHECK_TERMINAL_FINDINGS_2026-07-05.md`
-   is the wrong file for this (unrelated topic) — log it fresh in `docs/ModellerGuide.md`'s own history or a
-   new small `prompts/GUIDE_VISUAL_QUALITY.md` if picked up, don't bury it in this resume doc's next
-   rewrite.
+   **✅ DECIDED 2026-07-08 (user, asked directly by the concurrent session): swap to SampleCastle.** First
+   step landed same-day: `workspace-open.png` (the page's very first image) re-captured against
+   SampleCastle-ARC, commit `bfb443096`. Remaining interactive shots (gridstretch, sketch, delete, insert,
+   route, cut) are still the real, separately-scoped follow-up flagged above — each needs its own
+   equivalent click-target verified against SampleCastle's layout before re-capturing, not a batch rename.
+   **⚠ SEPARATE, DEEPER finding surfaced by the SAME investigation, do not conflate the two:** the user
+   then asked directly whether a stricter standing principle was actually being upheld — pushed back
+   correctly when an early "well SampleCastle just happens to look pristine" framing wasn't good enough.
+   Elevated to CORE DOCTRINE, not just a guide-content note: **`WalkerDoctrine.md §11`** — no non-LOD400
+   content may be presented as an element's real geometry, Viewer OR Modeller, no exception, citing the
+   Viewer's Alt+X ghost-bbox mode as proof this doesn't require compromising the primary render (RTree +
+   bbox already carry selection/interaction cheaply, fully decoupled). Confirmed via M3 + direct IFC
+   inspection: Duplex's plainness is honest, not a bug — but confirmed via the SAME investigation that NO
+   gate anywhere requires extracted geometry to clear an LOD400 floor in the first place, only that
+   whatever's already in the geo DB is faithfully rendered. **Doctrine is written; the enforcement gate
+   is explicitly NOT built** — needs its own design pass (where the detail floor is drawn, what the honest
+   non-detail visual treatment looks like in the Modeller, per-element vs per-building) before anyone
+   improvises an implementation. Read `WalkerDoctrine.md §11` in full before touching this — do not
+   re-derive or re-litigate it from scratch.
 6. **SampleCastle streaming UX, ARC LOD-mesh witness generalization, MEP product survey (CW/SP/ACMV/ELEC),
    IFC write coverage gaps, coaxial MEP diameter-transition detection** — unchanged from 07-07 doc, still
    open, still real, still not urgent. Full detail there, not restated here.
