@@ -218,6 +218,18 @@ Design exploration. No BOM, no compilation, no verification.
 They parse and display IFC. They do not abstract intent, compile from recipes, or prove
 round-trip fidelity — and **none connect BIM to a transaction ERP over one signed log.**
 
+### Adjacent layers — interop and governance (not authoring, not competing directly)
+
+| Layer | Example | What it does | What it doesn't |
+|---|---|---|---|
+| Geometry interop | [Speckle](https://speckle.systems/) | Git-like versioning for geometry across tools | Needs a server; stops at geometry — no cost/schedule/ERP |
+| Governance/CDE | AWARO, Trimble Connect, ACC | WIP→Shared→Published workflow, roles, sign-off | Manages artifacts, not derived data — computes nothing |
+
+Neither is a competitor — both could sit upstream or downstream of this pipeline. The
+versioning half (Speckle's job) is already native here as the signed op-log (Moat #6, no
+server needed); the governance half (AWARO's job) is a state machine that could ride on top
+of this pipeline's merge gate rather than replace it.
+
 ---
 
 ## Moats
@@ -239,6 +251,23 @@ round-trip fidelity — and **none connect BIM to a transaction ERP over one sig
 
 **The asymmetry:** adding a GUI to a compilation foundation takes weeks. Adding spatial
 compilation — or a to-the-cent ERP fold — to a GUI-first tool takes years.
+
+---
+
+## Honest risks (kept current, not just moats)
+
+1. **Adoption is structurally harder for an intersection than a point solution.** Needs a
+   modeler, a scheduler, and a cost/ERP owner to all find it worthwhile at once.
+2. **Generality is claimed, not yet proven externally.** Every capability measured so far
+   was built and tuned in-house; a genuinely foreign file is still an open test.
+3. **Distribution is currently bespoke, not repeatable.** Real signal so far has cost real
+   founder-hours per contact — not yet a growth motion.
+4. **Credibility currently rests on one person** across communities that don't normally
+   talk to each other (BIM, ERP, open-source/local-first) — coherent, but earned per
+   conversation, not yet institutional.
+
+None of these block using or trying the project — they're the risks worth tracking as it
+scales, stated plainly rather than smoothed over.
 
 ---
 
