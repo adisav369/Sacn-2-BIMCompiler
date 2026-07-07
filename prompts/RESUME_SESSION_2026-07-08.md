@@ -68,35 +68,55 @@ session, all 6 PRs independently confirmed `MERGED` via `gh pr view` (not just t
 | **`bonsai_oplog.js` autosave — 2 real bugs, 1 PR** | (a) `clear()` now purges the IDB `§AUTOSAVE_FIX` fallback entry too (was silently resurrectable on reopen); (b) sticky `_useIdbOnly` flag stops re-attempting a doomed `localStorage.setItem` every commit for the rest of a Terminal-scale session (found by a concurrent session, folded in). 10/10 new witness, proven to fail pre-fix on both bugs independently before passing post-fix | **#703** |
 | **STR-rewalk TOCTOU race — regression witness** | the standing priority item. Root-caused: **already fixed** (`ce61f2f`/#665, 2026-07-05) — `_commitDiscWalk`'s `commitSeedGroup` batching pattern was already applied to the grid-drag STR-rewalk path. No code fix needed; built the missing small-scale automated guard instead (prior evidence was manual-log-reading from one heavy 35k-element run only). 9/9, double-proven (DB truth + log truth), zero `§KRN_GROUP ROLLBACK` asserted directly | **#704** |
 | Housekeeping | 6 fully-merged feature branches deleted from `origin` (`lane/viewer-real-placement-port`, `lane/sketch-circle-primitive`, `lane/sketch-arc-primitive`, `lane/sketch-tangent-gridline`, `fix/oplog-clear-idb-purge`, `test/str-rewalk-race-witness`) | — |
+| **`bonsai_oplog.js` load paths no longer autosave** | user caught it by direct question ("opening a file... should not autoSave yet?") — confirmed real via `Explore`: `restore()`/`reload()`/`setModelKey()` all re-persisted just-loaded, unmodified bytes back to storage before any edit (same lineage as Finding 4/#703 quota work). `_emit(persist)` now defaults `true` (unchanged for all real edits); the 3 load-only sites pass `false`. RED-then-GREEN witness (`witness_e2e_oplog_load_no_autosave.js`, 8/11 fail pre-fix → 11/11 pass post-fix) | **#705** |
 
 ## §OPEN — next session's job, prioritized, with commentary (not decided for you)
 
-1. **Finding 2 — Save/auto-heal wall-clock (57s at Terminal scale) + a genuine new failure mode: a heal
-   that succeeds can still cause the overall Save to report `RED_CLASH` and block, because the heal move
-   landed in new real contact with an UNRELATED third element.** `SCALE_CHECK_TERMINAL_FINDINGS_2026-07-05.md`
-   Finding 2. **My recommendation (advisory, not a call I made unilaterally):** decide this ONE first, even
-   before Finding 1 below — it's a correctness/trust question ("what does a blocked Save actually mean at
-   real scale"), not a performance number, and design decisions age worse sitting in a backlog than perf
-   numbers do (the exact tradeoff — roll back just the offending heal vs. block the whole Save — is fresh and
-   well-scoped right now from someone who's read the real `runSave()` code path). Deciding it is a short
-   conversation, not an engineering task; building the decided behavior can happen anytime after.
-2. **Finding 1 — grid green/orange live-tint recompute is O(n) per drag FRAME, ~1.2-1.5 SECONDS/frame at
-   Terminal scale, sustained not just cold-start.** Same finding doc, Finding 1. Root cause and preferred fix
-   are both already fully diagnosed (cache `attachGridToElements()`'s output once per drag-session instead of
-   rebuilding from scratch every `pointermove`) — genuinely severe live-UX pain, but explicitly flagged as "a
-   real restructuring of `bonsai_gridmove.js`'s `previewCommands()`/`GM._map` contract, not a threshold flip,"
-   real regression risk against the already-shipped #656 tint feature. Pick up when ready for that risk; not
-   blocked on Finding 2, just lower urgency per the reasoning above.
+1. ✅ **DONE 2026-07-08 — Finding 2 decision:** user decided keep current behavior — a heal-induced RED still
+   blocks the whole Save, same as any pre-existing RED. No `runSave()` code change. Recorded in
+   `SCALE_CHECK_TERMINAL_FINDINGS_2026-07-05.md` Finding 2, closed, do not re-litigate.
+2. ✅ **ALREADY DONE (this item was STALE) — Finding 1 grid-tint perf:** verified 2026-07-08 against
+   `origin/main` tip `1c14e1f` before dispatching any build — the fix had already shipped in PR #665, commit
+   `0dcbe8a`, merged 2026-07-05, predating this very resume doc. All 3 candidate fixes landed (cached
+   attach-map + cached `meshByFid()` in `gmTint()`). See `SCALE_CHECK_TERMINAL_FINDINGS_2026-07-05.md`
+   Finding 1 for the resolution note. Do not re-open — verify-before-build caught this one for free.
 3. **`circle_radius`/`tangent_cc`/`tangent_ca`** — still correctly low priority, reasoning unchanged from
    07-07 doc (`circle_radius`'s value is already delivered by the direct radius-set UI; `tangent_cc`/`_ca`
    need a pick-an-existing-entity UI this codebase doesn't have yet, a real separate increment).
 4. **Direct-manipulation UI** — still mostly done per 07-07's correction (P1-P3/H2-H3/M1 real and shipped).
-   One open thread: confirm H1 ("Z-handle visibility from non-top camera angles") is fine or fix it, then a
-   SHORT fresh "be the user" walk — Sonnet-dialogue-with-user territory, not a solo background dispatch.
-5. **Guide screenshots — 6 still unchecked** (`fillet-edges2`, `fillet-rounded`, `samplecastle-arc-open`,
-   `seedtrunk-entry`, `seedtrunk-trunk`, `walk-fixtures`) before the guide can be called clean; 3 more
-   confirmed stale but not yet fixed (`move-gizmo.png`, `gridstretch-after.png`, `delete-gone.png`) — recipe
-   proven, reuse it (see 07-07 doc for the exact recapture steps).
+   ✅ **H1 CLOSED 2026-07-08 (code-read only, no live walk needed for this sub-item):** confirmed-fine, not a
+   bug. The real degeneracy was pure TOP-DOWN Z-drag (not "non-top" as the label suggested) — already fixed
+   `269a694`/PR #569 2026-06-28 (`_camTopDown()` detects it, switches to `screenZ` pixel-drag mode), witnessed
+   4/4 (`bonsai_ztop_live.js`). Non-top/iso/side views were never affected (gizmo always renders on top,
+   `depthTest:false`+`renderOrder=1000`, real 3D raycast).
+   **⚠ CORRECTED 2026-07-08 — do NOT park the remaining thread as "needs a human live walk."** Standing
+   project principle (do not re-litigate — same reason a screenshot was never accepted as proof anywhere
+   else this session): verification is whitebox geometry math + `§`-tagged log reading by the session
+   itself, not a human sitting down to eyeball whether something "feels right." Re-scope the remaining
+   thread as a normal dispatchable build/verify task: for each already-shipped direct-manip feature
+   (P1-P3 multi-select, H2 snap-to-geometry, H3 rotate/scale, M1 grid-undo-fix, H1 Z-drag), drive REAL
+   interaction through the existing `e2e_harness.js`/Playwright pattern already proven all session (real
+   `pg.mouse`/`pg.keyboard` events, not calling internal functions directly), and assert exact hand-derived
+   numeric invariants (position deltas, rotation angles in the kernel's actual radians/CCW convention,
+   scale factors, snap-tolerance hits) plus the real `§`-tagged console log lines each feature already
+   emits — same rigor bar as every circle/arc/tangent witness this session (`witness_e2e_sketch_*.js`).
+   If every invariant checks out numerically and every expected log line fires with no unexpected error/
+   warn lines, the batch is proven — no separate "does it feel right" pass needed. Only escalate back to a
+   live human check if a witness genuinely CANNOT express some claim numerically (e.g. a pure aesthetic/
+   feel judgment with no geometric or log-observable correlate) — don't assume that in advance, verify it's
+   true for a specific claim before treating it as the exception.
+5. ✅ **DONE 2026-07-08 — guide screenshots, all 9 checked, guide now clean.** Personally viewed all 9 before
+   dispatching anything (verify-before-build): `fillet-edges2`/`fillet-rounded`/`samplecastle-arc-open`/
+   `seedtrunk-entry` were already fine, no action. Found `seedtrunk-trunk.png` was a NEW stale hit not on the
+   original list — near-pixel-identical to `walk-fixtures.png`, contradicting its own "routed corridor trunk"
+   caption (root cause: the trunk renders as 1px `LineSegments`, invisible at the wrong camera framing — fixed
+   by iterating to a steep close-up where the corridor is legible). `gridstretch-after.png` fixed for free —
+   an unused orphaned `gridstretch-stretched.png` already had the exact right content, just swapped in, no
+   capture needed (commit `51f8caa0b`). `move-gizmo.png`/`delete-gone.png`/`walk-fixtures.png`/
+   `seedtrunk-trunk.png` recaptured via real `e2e_harness.js` `runE2E` driver reusing existing witness
+   selectors, every frame assertion-backed (not eyeballed) — commit `3ec99e8b5`. Deployed via
+   `scripts/safe_gh_deploy.sh` (guard PASS, superset, no shrink), live bytes fetched back and `cmp`-verified
+   against local, not just HTTP 200. Do not re-open unless a NEW build changes the app's visual style again.
 6. **SampleCastle streaming UX, ARC LOD-mesh witness generalization, MEP product survey (CW/SP/ACMV/ELEC),
    IFC write coverage gaps, coaxial MEP diameter-transition detection** — unchanged from 07-07 doc, still
    open, still real, still not urgent. Full detail there, not restated here.
