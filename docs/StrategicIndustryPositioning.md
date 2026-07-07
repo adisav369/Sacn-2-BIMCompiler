@@ -81,6 +81,14 @@ ERP — is a projection of the same verified BOM.
 
 These work now, in a browser tab, no install. Each carries a witness you can run.
 
+**Currency note, 2026-07-07:** the Viewer/IFC-handoff row below was independently RE-VERIFIED this
+session, not just carried forward — `W-MV-PARITY` (Modeller ≡ Viewer on the same real building,
+re-run fresh) confirmed 12/12 PASS, max residual 1.44e-5m across 215 shared real elements, after
+finding+fixing a real 18m displacement bug. Full detail: `docs/internal/WalkerDoctrine.md`, Tier 3
+below. **The ERP rows (BIM↔ERP fold, EVM, POS, iDempiere extraction) received no new work or
+re-verification this session** — stated here plainly so the table isn't read as freshly confirmed
+when only the Viewer/geometry half was actually touched today.
+
 | Capability | What it does | Witness |
 |---|---|---|
 | **IFC handoff** | Drop IFC/OBJ/STL/DAE/GLB/glTF/3DS/FBX → queryable DB → view, classify, export back to IFC. Geometry hell resolved at import. | Rosetta gates; `import.js` round-trip |
@@ -134,14 +142,45 @@ evident), and **IFC4 export that round-trips** (`IfcWall` + profile + `IfcOpenin
 re-imports exact). A user can *today* author a few walls, a door, an opening, and MEP runs,
 and export usable IFC — without Revit.
 
-Honest distance to the mountain top: **~35%** — but the 35% that's done is the part that
-takes others decades. The gaps are UX/performance, not physics: dimension-driven parametric
-edit, a regen cache (so a 50-wall model stays instant), multi-select + properties panel,
-native wall/door/window tools, and snap-to-geometry. The read: **weeks, not years**, because
-kernel fidelity, signed history, and IFC round-trip are already proven.
+**Update 2026-07-07 — real movement, correcting a stale gap and adding what actually shipped:**
+the incremental regen cache listed below as a gap was WRONG — it landed same-cycle as the rest
+of the depth track (`W-BONSAI-REGEN`, op_hash-keyed, re-confirmed live this session) and should
+not be re-flagged as open. Since then, real, witnessed progress on both halves of what "author
+a building" needs:
+- **Kernel breadth** — 6 more occt shoulders wired in one session (`GEOM_REVOLVE`/`SHELL`/
+  `OFFSET`/`FILLET_VARIABLE`/`CHAMFER_DIST_ANGLE`/`DRAFT`, `W-BONSAI-TIER1` 20/20), plus
+  `GEOM_ARRAY`/`GEOM_LOFT` (formula-driven instancing, real curve-following). `GEOM_REVOLVE` is
+  the first axisymmetric-solid authoring path this tool has ever had.
+- **MEP domain fidelity, the harder half** — fitting rotation and pipe/duct cross-section are
+  now EXTRACTED from real IFC/catalog data (RosettaStone mini-BOM method), not computed — a
+  same-day audit found and fixed a bisector-computed rotation that was ~135° wrong on real data,
+  and an invented pipe diameter that was 2.3× oversized and the wrong shape. A shared
+  `resolveRealPlacement()` gate now HARD-FAILS rather than silently substituting invented
+  geometry anywhere in the leaf-placement path — a structural fix, not a point patch. Full
+  detail: `docs/internal/WalkerDoctrine.md §7-§10`.
+- **Cross-app trust, independently re-verified, not assumed** — `W-MV-PARITY` (Modeller ≡ Viewer
+  on the same real building) re-run fresh this session: 12/12 PASS, max residual **1.44e-5m
+  (14 microns)** across 215 shared real elements on Duplex, after finding+fixing a real 18m
+  displacement bug in an earlier pass. The two apps provably agree on where every element sits.
+- **Dimension-driven parametric edit — first real increment, not yet the whole gap.** `p2p_distance`
+  (width) is wired and PROVEN by exact numeric position assertion (not a screenshot) — real
+  Playwright interaction, hand-computed expected geometry, `witness_e2e_sketch_dims.js` 10/10.
+  Only ~5 of ~60 real planegcs constraints are wired; this is genuinely the gap between
+  "constraint-solving on fixed hand-drawn geometry" and Grasshopper/Dynamo-class "geometry as a
+  function of parameters" — most of it still open.
+
+**Honest distance to the mountain top: ~40-45%** (up from the prior ~35% estimate, reasoned not
+rounded — kernel breadth and MEP domain trust both moved concretely; the still-open gap is
+dominated by constraint-solving depth and the direct-manipulation UI, both explicitly scoped as
+their own separate tracks in `prompts/BONSAI_KERNEL_RESEARCH.md §GAP-TO-COMPETITIVE`, not vague
+remaining work). The read stands: **weeks-to-months, not years** for the remaining Tier-2/3 gap —
+kernel fidelity, signed history, IFC round-trip, and now real-vs-invented geometry trust are all
+proven; what's left is UX depth (constraint richness, manipulation), not new physics.
 
 Witnesses: `W-BONSAI-*` (`bonsai_signed_live.js`, `bonsai_ifc_live.js`, `bonsai_sweep_live.js`,
-`bonsai_fillet_live.js`, `bonsai_move_live.js`). See [`ModellerKernelFold.md`](ModellerKernelFold.md).
+`bonsai_fillet_live.js`, `bonsai_move_live.js`, `bonsai_tier1_live.js`), `W-MV-PARITY`
+(`witness_e2e_mv_parity.js`), `W-BONSAI-ROSETTASTONE`/`witness_mep_rosettastone_lookup.js`. See
+[`ModellerKernelFold.md`](ModellerKernelFold.md) and `docs/internal/WalkerDoctrine.md`.
 
 ---
 
