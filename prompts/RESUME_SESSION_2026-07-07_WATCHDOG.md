@@ -72,7 +72,19 @@ survey first.
 headless-witness-passing alone), care not to trash third-party-sourced code (`planegcs`, `occt-wasm`,
 Chili3D/ifc5cad study references) without UI coherence.**
 
-0. **In-flight, scope locked, don't re-litigate:** `tangent_lc` (circle tangent to a GRID LINE, not an
+0. **Guide screenshots — 3 MORE stale ones found, same "old build" signature as the 4 already fixed
+   (`workspace-open`/`insert-catalog`/`insert-placed`/`sketch-wall`, commit `2702e530f`), NOT yet fixed:**
+   `docs/img/modeller/move-gizmo.png`, `gridstretch-after.png`, `delete-gone.png` — all show the same dull
+   flat-gray Duplex render with no roof/detail (vs the current app's actual rich rendering). Checked, NOT
+   broken (leave as-is): `scale-stretched`, `rotate-yaw`, `gridstretch-before`, `route-run`, `cut-open`,
+   `gizmo`, `route-spine`, `cut-select`, `sketch-profile` — all match current quality. Still unchecked (ran
+   out of context before finishing the full sweep): `fillet-edges2`, `fillet-rounded`, `samplecastle-arc-open`,
+   `seedtrunk-entry`, `seedtrunk-trunk`, `walk-fixtures` — check these too before calling the guide clean.
+   Recapture recipe (proven, reuse it): a real Playwright drive via `modeller/tests/e2e_harness.js`
+   (`t.open('Duplex')`, drive the real UI, `t.shot()`), copy into `docs/img/modeller/`, then
+   `ALLOW_SHRINK=1 paths="img/modeller/<files>"` on `scripts/safe_gh_deploy.sh` (new captures are smaller/
+   cleaner than the old bloated stale ones — that's expected, bless it explicitly, don't fight the guard).
+1. **In-flight, scope locked, don't re-litigate:** `tangent_lc` (circle tangent to a GRID LINE, not an
    arbitrary entity — reuses the weld proximity-trigger gesture, center fixed/radius solved, `push_circle`
    finally enters the solver). Circle-to-circle/arc tangent deliberately deferred, not built here.
    **Also flagged, small, disclosed, not yet built:** `bonsai_oplog.js:144-165`'s autosave retries a
