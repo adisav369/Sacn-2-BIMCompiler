@@ -111,6 +111,36 @@ gitignored, present in the canonical dev checkouts but not this fresh worktree) 
 witness-logic change. **This witness is a trustworthy, working baseline to extend for SampleCastle** — the
 generalization task above is now building on verified-solid ground, not an unverified claim.
 
+**⚠ First real investigation pass, 2026-07-07 — did NOT reproduce "boxes," found something more severe on
+the Modeller side, real repro likely lives on the Viewer side instead. Diagnostic scripts left in place
+(untracked, not committed — this is someone else's active lane) at `/tmp/wt-arc-source-parity/modeller/
+tests/investigate_samplecastle_boxfallback.js` + `investigate_samplecastle_viewer.js`:**
+- SampleCastle is **not a registered Modeller resident** (`modeller.html:3702`'s own comment: "NOT yet:
+  SampleCastle/Hospital/Clinic/LTU/Terminal"). Opened it instead via the Modeller's REAL local-file path
+  (`pickLocal()` → `_openStrDb()`, Puppeteer `elementHandle.uploadFile()` on `#m-open-file` — no OS dialog,
+  same code a user's drag-drop uses). The DB loads correctly (`§BOMTREE seeded "SampleCastle" elements=3621`,
+  `§STRWALK-INIT column-framed: columns=23 grid=8×9 girders=13` — real numbers, not stalled) but
+  **`window.Bonsai.group()` never gets a single mesh child — 0 rendered, not 12-tri boxes.** Waited up to
+  60s (`children.length > 100` never true). This is a DIFFERENT, more severe symptom than "boxes render" —
+  possibly `_openStrDb()`'s local-open path has a real gap vs `_openResident()` (which Duplex uses) in
+  actually instantiating ARC meshes, separate from the box-fallback bug reported.
+- Given SampleCastle IS a registered **Viewer** resident (`viewer/city_bench.html` lists it, `viewer/
+  panels.js` has SampleCastle-specific BOM-name mapping) unlike the Modeller, **the user's actual sighting
+  almost certainly happened via the Viewer, not the Modeller** — redirect the next attempt there, not
+  back into Leg M's Modeller-side generalization the way this note originally scoped it.
+- Tried the Viewer next (`viewer.html?db=buildings/SampleCastle_extracted.db#bld=SampleCastle`, DB copied
+  from `deploy/buildings/` since this worktree's `viewer/buildings/` didn't have it). Loaded for real
+  (`§KERNEL_OP committed ... type=BUILDING_OPEN params={"name":"Ifc2x3_SampleCastle","count":3504}`) but my
+  first census attempt used the WRONG global (`window.A`, the Modeller's convention) — the Viewer uses
+  `APP` (`viewer/main.js`), so `ready:false` was my own script bug, not a finding. **Also chased then
+  correctly ruled out a false lead:** `§RENDER_LOOP start total=4` looked like "only 4 things rendered" but
+  is actually just a re-entrancy guard counter (`main.js:657-667`, counts how many times the render loop's
+  own start function fired, unrelated to mesh/geometry count) — confirmed by reading the source before
+  trusting the number, not after.
+- **Genuine next step, not yet done:** re-run the Viewer census with the correct `window.APP` global to
+  get a real mesh/triangle count and see if boxFallback actually reproduces there. This is real, unfinished
+  work — flagging it honestly rather than either faking a fix or quietly dropping the thread.
+
 ## §ALSO OPEN — carried forward, not urgent but don't lose them
 
 - **Coaxial MEP diameter-transition detection** — investigated and found genuinely bigger than a quick
