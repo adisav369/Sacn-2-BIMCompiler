@@ -112,6 +112,20 @@ the existing `kernel_ops` IDB path (used elsewhere in this project, e.g. `kanban
 probable fix pattern — needs its own read-the-code pass on whatever calls `mo_Terminal`'s `setItem`, not guessed.
 **NOT fixed here — 4th follow-up item, same STOP condition as 1-3.**
 
+## Finding 4 — UPDATE 2026-07-07: the fallback landed and works, but repeats the doomed attempt every commit
+Finding 4's fix DID land since this was written — `bonsai_oplog.js:144-165` now catches the
+`QuotaExceededError`, falls back to `_idbPut()`, and shows a one-time `window.toast` (`_idbFallbackNotified`
+guards the toast, confirmed real via a live Terminal open: `§AUTOSAVE_FIX path=idb_fallback` + the toast
+both fired). Data safety is real, not a leftover gap. **What's still real:** `_save()` tries
+`localStorage.setItem` FIRST on every call with no memory of a prior failure — since `_save()` fires on
+every `_emit()` (every commit), a Terminal-scale session throws and catches a real `QuotaExceededError` on
+EVERY edit for the rest of that session, not just once. Small, same-recipe fix (no design decision, not
+worth its own STOP condition): add `this._useIdbOnly = false` in the constructor, set it `true` inside the
+existing `catch` block on the first quota failure, and check it at the top of `_save()` to skip straight to
+`_idbPut()` on every later call this session — same fallback, same one-time toast, just stops repeating the
+doomed attempt. Not fixed here; a real, small, disclosed follow-up for whoever picks up the tangent/Tier-2
+lane next.
+
 ## Net for the backlog
 All 4 are real, `§`-logged, Terminal-scale-only findings — none were silently patched. None were fixed in this
 session per the STOP condition (each needs either a real restructuring decision or a deeper read-the-code pass,

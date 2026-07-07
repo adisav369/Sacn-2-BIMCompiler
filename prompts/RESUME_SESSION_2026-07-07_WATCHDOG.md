@@ -72,6 +72,14 @@ survey first.
 headless-witness-passing alone), care not to trash third-party-sourced code (`planegcs`, `occt-wasm`,
 Chili3D/ifc5cad study references) without UI coherence.**
 
+0. **In-flight, scope locked, don't re-litigate:** `tangent_lc` (circle tangent to a GRID LINE, not an
+   arbitrary entity — reuses the weld proximity-trigger gesture, center fixed/radius solved, `push_circle`
+   finally enters the solver). Circle-to-circle/arc tangent deliberately deferred, not built here.
+   **Also flagged, small, disclosed, not yet built:** `bonsai_oplog.js:144-165`'s autosave retries a
+   doomed `localStorage.setItem` on EVERY commit for a Terminal-scale session (not just once) — the
+   IndexedDB fallback + toast are real and correct, just not remembered. Concrete fix + exact lines in
+   `SCALE_CHECK_TERMINAL_FINDINGS_2026-07-05.md`'s new "Finding 4 — UPDATE" section — a `_useIdbOnly` flag,
+   same recipe, no design call needed.
 1. **✅ DONE — Circle/arc primitive** shipped (#699/#701, see table above). **Next call, already made —
    build `tangent`, NOT `circle_radius`:** `circle_radius`'s practical value (type an exact radius) is
    ALREADY delivered by the direct radius-set mechanism #699 shipped — a real planegcs `circle_radius`
