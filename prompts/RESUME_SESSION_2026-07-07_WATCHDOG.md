@@ -105,7 +105,15 @@ Chili3D/ifc5cad study references) without UI coherence.**
    ("Z-handle visibility from non-top camera angles") is fine or fix it, then do a SHORT fresh "be the
    user" walk (not a from-scratch competitor survey) to see if anything reads as friction now, several
    features later. Small, hour-scale, not a multi-session lane anymore.
-3. **SampleCastle streaming UX** — genuinely open, smaller-scoped than originally feared: either make the
+3. **⚠ PRIORITY, user directive 2026-07-08: check the TOCTOU race on STR-rewalk FIRST, before
+   `circle_radius`/`tangent_cc`/`tangent_ca` or anything else on this list.** One of 3 open items from the
+   session's own SCALE_CHECK_TERMINAL_FINDINGS work (alongside grid-tint perf + the save/auto-heal
+   wall-clock design call). Reasoning: this project has ALREADY confirmed 2 real hits of this exact race
+   shape (T7 shard-vs-archive, period-close — `prompts/FABLE5_FOLLOWUP_2026-07-04.md` §T7-RACE: an await
+   spanning a read-cutoff-then-delete-by-it window, a commit landing mid-window gets silently lost, never
+   archived) — "grep for the shape, it pays off" is a validated pattern here, not a hunch. A silent-until-
+   triggered correctness bug outranks feature completeness; do this before more sketch-constraint work.
+4. **SampleCastle streaming UX** — genuinely open, smaller-scoped than originally feared: either make the
    loading-progress indicator more visually prominent, or thin the box-placeholder layer progressively
    with `streamedCount` instead of all-or-nothing. Not urgent, real when picked up.
 4. **ARC LOD-mesh witness generalization** — `witness_e2e_mv_parity.js`'s `M3 boxFallback=0` check is
