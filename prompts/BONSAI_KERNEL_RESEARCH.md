@@ -655,6 +655,21 @@ follow-up is now SPECCED (not built improvised):
 IFC write coverage beyond `GEOM_EXTRUDE_POLY` parents (array/loft/insert exports are currently scoped
 narrower than their engine ops), multi-user distributed op-log, broader IFC entity coverage.
 
+**⚠ CORRECTION 2026-07-07 — "no dormant plumbing for this one" was wrong, don't repeat it: `docs/
+DistributedERP.md` already has the doctrine, not from scratch.** The Modeller's `kernel_ops` is ALREADY a
+signed, hash-chained log (`verifyChain`, `op_hash`) — same primitive `DistributedERP.md` builds its whole
+argument on (§0: "the signed op-log; state = its deterministic fold"). Two things carry over directly,
+not invented: (1) **owner-gate + CAS** (reject a conflicting op, surface it to the user to redo) over
+plain **last-writer-wins** (silently discards one user's edit) — LWW is real and simpler (closer to a git
+merge-strategy config than a new system) but costs the same "silently substitute instead of refuse"
+tradeoff this project has refused everywhere else today (invented fixture dims, hardcoded diameters — same
+shape, applied to a person's edit instead of a geometry value). (2) Op-log "merge" across two divergent
+edit sessions is **NOT git's 3-way text merge** — each op's hash depends on the prior op's hash, so
+reconciling two branches means picking a **total order and replaying** (closer to a git *rebase* than a
+merge), exactly `DistributedERP.md §6`'s "dumb async post office." Whoever picks up multi-user next should
+port that doctrine, not redesign it — this is a reuse job, not a from-scratch one, even though it's still
+correctly "months" of real integration work, not a same-recipe wire like Tier 2.
+
 ### ETA, honestly — not one number
 **Tier 1 (kernel op-count parity on cheap shoulders): days, not weeks** — the measured 20-30 min/op
 pattern from today generalizes directly, this doc already flagged these as zero-binding-work in June.
