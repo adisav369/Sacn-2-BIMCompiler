@@ -536,6 +536,44 @@ a shared-gate fix for the whole family, not a point-fix for just the 2 new field
 remain unwired; height (`#dim-h`) is shown/editable but not yet independently proven the same way (only
 width was driven through the full real-interaction + invariant-proof cycle this pass).
 
+**✅ SECOND INCREMENT DONE 2026-07-07 — height independently proven + `l2l_angle_ll` corner-angle wired
+(bim-ootb `feat/bonsai-sketch-p2p-angle`):** closed the height gap above (`witness_e2e_sketch_dims.js`
+extended to edit `#dim-h` on top of the already-pinned width, same invariant rigor, proves the two
+dimensions compose — pinning one doesn't silently break the other). Then generalized `rect`/`square`
+mode's hardcoded `perpendicular_ll` (rigidly 90° only) into `l2l_angle_ll` with a typed override
+(`#dim-angle`, default 90°) — unlocks skewed/parallelogram profiles, not just rectangles; a rectangle is
+now just the 90° special case, matching how a real parametric CAD sketch tool treats a corner angle.
+
+**Real bug found+fixed BEFORE the witness was even written, by actually typing a non-90° value and
+measuring independently rather than trusting the constraint by name:** `l2l_angle_ll`'s own "angle"
+parameter measures the TURN between L0/L1's direction vectors (as drawn, `p0→p1` then `p1→p2`), not the
+polygon's INTERIOR corner angle a user means by "70° corner" — they're supplementary (`turn = 180 -
+interior`), and identical only at exactly 90° (why this was invisible through the whole width/height pass:
+every test so far used the untouched 90° default). Typing 70° first produced a MEASURED 110° corner —
+caught because the witness recomputes the interior angle itself via `atan2(|cross|,-dot)` on the actual
+solved points, not by reading back the app's own log line. Fixed by complementing internally
+(`bonsai_sketch.js` now passes `180 - angleDeg` to `l2l_angle_ll`), so the user-facing meaning stays the
+intuitive one. A second, milder version of the same mistake was caught inside the new witness itself: the
+first draft asserted the corner at `p2` was the parallelogram's "opposite" angle to `p1` and equal to the
+typed value — it failed with exactly 110° (the supplement), which is correct: `p2` is ADJACENT to `p1`
+(shares edge L1), not diagonally opposite (`p3` is) — adjacent corners are supplementary, diagonal-opposite
+corners are equal. The exact-supplement failure value made the labeling error obvious rather than a real
+bug; fixed the assertion, not the geometry.
+
+**Acceptance bar met the same way as the first increment — real interaction, then hand-derived exact
+invariants, not a screenshot or threshold:** `witness_e2e_sketch_dims.js` now 20/20 (was 10/10) — adds
+independently-measured interior angle == typed value exactly (not its supplement), width+height survive an
+angle edit, the fixed anchor stays bit-identical through all three edits (width+height+angle), the
+parallelogram-equal-opposite-sides consequence holds at 70° (not just the 90°-rectangle special case), and
+the diagonal-opposite/adjacent-supplementary corner relationships both check out independently. Full
+regression clean: `witness_e2e_sketch.js` 8/8, `witness_e2e_numrot.js` 7/7, `witness_e2e_scalerot.js` 6/6,
+`witness_e2e_rsarm.js` 8/8, `witness_e2e_route.js` 8/8, `bonsai_points_recovery_live.js` 4/4.
+
+**Not yet done (disclosed, not silently deferred):** `tangent`/`circle_radius`/`p2p_coincident` remain
+unwired — `tangent` and `circle_radius` both need a circle/arc primitive the sketch tool doesn't have at
+all yet (a bigger lift: new primitive type + new click-to-place UI, not just a new constraint on the
+existing point/line model), scoped separately from this increment's point/line-reachable work.
+
 ### Tier 3 — structural, cross-cutting (this doc's own §5 already calls these "months")
 IFC write coverage beyond `GEOM_EXTRUDE_POLY` parents (array/loft/insert exports are currently scoped
 narrower than their engine ops), multi-user distributed op-log, broader IFC entity coverage.
