@@ -11,12 +11,33 @@ NON-INVENT: every move is a SIGNED op-log entry (GEOM_MOVE), re-folded determini
 select seam + grid.snap + kernel_ops. No fabricated transforms — the gizmo edits the placement, the op-log records it.
 WITNESS-FIRST: claim per leg before code; whitebox §-log is the proof (à la W-BONSAI-*), Playwright for wiring only.
 LOG MANDATE: read the witness log before conclusions. Spec-first.
-STATUS 2026-06-19: §0 SURVEY ✅ DONE (ranked punch-list in §0-RESULTS). **P1 GEOM_MOVE ✅ DONE — W-BONSAI-MOVE
-12/12 PASS headless; PR #423 (feat/modeller-move-gizmo, auto-merge squash armed, fast-checks green, e2e pending →
-goes LIVE on bim-ootb main+GH-Pages on merge).** Designed via a 3-proposal judge panel (verdict: HYBRID fold +
-delta op + custom axis-handle gizmo, NOT-LEAF, zero-edit undo) + adversarial review (no fold bug; 2 cosmetic UI
-risks fixed). P1 also delivered the P2 numeric-entry seam (typed step + arrow-nudge). NEXT: P3 multi-select →
-H1 gizmo polish (Z-handle from non-top views) / H2 snap-to-geometry / H3 free-rotate; M1 grid-undo bug.
+STATUS 2026-06-19 (superseded — see 2026-07-07 correction below): §0 SURVEY ✅ DONE (ranked punch-list in
+§0-RESULTS). **P1 GEOM_MOVE ✅ DONE — W-BONSAI-MOVE 12/12 PASS headless; PR #423**, merged, live on main.
+Designed via a 3-proposal judge panel (verdict: HYBRID fold + delta op + custom axis-handle gizmo, NOT-LEAF,
+zero-edit undo) + adversarial review (no fold bug; 2 cosmetic UI risks fixed). P1 also delivered the P2
+numeric-entry seam (typed step + arrow-nudge).
+
+**⚠ CORRECTION 2026-07-07 — this STATUS line went stale for 3+ weeks and was nearly repeated as current fact
+without re-checking (the exact "verify before repeating a citation" lesson from this same day's Boolean-
+robustness investigation).** Grepped current `bim-ootb main` directly rather than trusting this card's own
+"NEXT" line: **P3, H2, H3, and M1 are ALL already shipped too**, not still-open as this stale status implied —
+- **P3 MULTI-SELECT** — real marquee-drag + shift-add, `selectedIds` a real `Set` (`modeller.html:774-823`,
+  tagged `W-BONSAI-MULTISELECT` in the code itself), witness `bonsai_multiselect_live.js` exists.
+- **H2 SNAP-TO-GEOMETRY** — real, tagged `W-BONSAI-SNAPGEOM` in the code (`modeller.html:1886-2146`), marker
+  + commit log (`§SNAPGEOM commit kind=... marker=...`).
+- **H3 ROTATE/SCALE HANDLES** — real rotate ring (Shift=free, else 15° snap) + edge-anchored scale cubes,
+  `GEOM_SCALE`/`GEOM_ROTATE` folding on the correct local axes (`modeller.html:1974-2416`).
+- **M1 GRID-UNDO BUG** — fixed (`bonsai_grid.js:41-42`: grid coords now re-derive from the op-log on every
+  change instead of being imperatively mutated, so undo/redo/scrub revert them deterministically).
+
+**What's NOT yet confirmed either way (not verified DONE, not verified still-open — genuinely unchecked this
+pass):** H1's specific named polish item, "Z-handle visibility/usability from non-top camera angles." No
+code reference to that specific fix was found, but the base gizmo clearly works (P1's witness is real and
+green) — this is a narrower question than "is direct manipulation built," and the only real open item found.
+**Bottom line: the direct-manipulation lane is NOT the untouched, hold-for-a-survey item it had been
+carried as — nearly the whole original punch-list already shipped.** What's left is verifying H1's one
+narrow sub-item and then a fresh "be the user" walk to see if anything ELSE now reads as friction 3+ weeks
+and several features later — not a from-scratch survey.
 Parent roadmap: prompts/BONSAI_KERNEL_RESEARCH.md §OPERABILITY v5 (this is the missing "manipulation" half of v5;
 vertex/edge SNAP-TO-GEOMETRY is already noted there as v5-advanced — leg 3 here subsumes it).
 ```
