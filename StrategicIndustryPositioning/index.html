@@ -2167,6 +2167,13 @@ ERP — is a projection of the same verified BOM.</p>
 <hr />
 <h2 id="tier-1-landed-use-as-is-where-is-witnessed-today">Tier 1 — Landed: use-as-is, where-is (witnessed today)<a class="headerlink" href="#tier-1-landed-use-as-is-where-is-witnessed-today" title="Permanent link">&para;</a></h2>
 <p>These work now, in a browser tab, no install. Each carries a witness you can run.</p>
+<p><strong>Currency note, 2026-07-07:</strong> the Viewer/IFC-handoff row below was independently RE-VERIFIED this
+session, not just carried forward — <code>W-MV-PARITY</code> (Modeller ≡ Viewer on the same real building,
+re-run fresh) confirmed 12/12 PASS, max residual 1.44e-5m across 215 shared real elements, after
+finding+fixing a real 18m displacement bug. Full detail: <code>docs/internal/WalkerDoctrine.md</code>, Tier 3
+below. <strong>The ERP rows (BIM↔ERP fold, EVM, POS, iDempiere extraction) received no new work or
+re-verification this session</strong> — stated here plainly so the table isn't read as freshly confirmed
+when only the Viewer/geometry half was actually touched today.</p>
 <table>
 <thead>
 <tr>
@@ -2258,13 +2265,43 @@ as a pure <code>ops → mesh</code> fold, the signed op-log <strong>as the featu
 evident), and <strong>IFC4 export that round-trips</strong> (<code>IfcWall</code> + profile + <code>IfcOpeningElement</code>,
 re-imports exact). A user can <em>today</em> author a few walls, a door, an opening, and MEP runs,
 and export usable IFC — without Revit.</p>
-<p>Honest distance to the mountain top: <strong>~35%</strong> — but the 35% that's done is the part that
-takes others decades. The gaps are UX/performance, not physics: dimension-driven parametric
-edit, a regen cache (so a 50-wall model stays instant), multi-select + properties panel,
-native wall/door/window tools, and snap-to-geometry. The read: <strong>weeks, not years</strong>, because
-kernel fidelity, signed history, and IFC round-trip are already proven.</p>
+<p><strong>Update 2026-07-07 — real movement, correcting a stale gap and adding what actually shipped:</strong>
+the incremental regen cache listed below as a gap was WRONG — it landed same-cycle as the rest
+of the depth track (<code>W-BONSAI-REGEN</code>, op_hash-keyed, re-confirmed live this session) and should
+not be re-flagged as open. Since then, real, witnessed progress on both halves of what "author
+a building" needs:
+- <strong>Kernel breadth</strong> — 6 more occt shoulders wired in one session (<code>GEOM_REVOLVE</code>/<code>SHELL</code>/
+  <code>OFFSET</code>/<code>FILLET_VARIABLE</code>/<code>CHAMFER_DIST_ANGLE</code>/<code>DRAFT</code>, <code>W-BONSAI-TIER1</code> 20/20), plus
+  <code>GEOM_ARRAY</code>/<code>GEOM_LOFT</code> (formula-driven instancing, real curve-following). <code>GEOM_REVOLVE</code> is
+  the first axisymmetric-solid authoring path this tool has ever had.
+- <strong>MEP domain fidelity, the harder half</strong> — fitting rotation and pipe/duct cross-section are
+  now EXTRACTED from real IFC/catalog data (RosettaStone mini-BOM method), not computed — a
+  same-day audit found and fixed a bisector-computed rotation that was ~135° wrong on real data,
+  and an invented pipe diameter that was 2.3× oversized and the wrong shape. A shared
+  <code>resolveRealPlacement()</code> gate now HARD-FAILS rather than silently substituting invented
+  geometry anywhere in the leaf-placement path — a structural fix, not a point patch. Full
+  detail: <code>docs/internal/WalkerDoctrine.md §7-§10</code>.
+- <strong>Cross-app trust, independently re-verified, not assumed</strong> — <code>W-MV-PARITY</code> (Modeller ≡ Viewer
+  on the same real building) re-run fresh this session: 12/12 PASS, max residual <strong>1.44e-5m
+  (14 microns)</strong> across 215 shared real elements on Duplex, after finding+fixing a real 18m
+  displacement bug in an earlier pass. The two apps provably agree on where every element sits.
+- <strong>Dimension-driven parametric edit — first real increment, not yet the whole gap.</strong> <code>p2p_distance</code>
+  (width) is wired and PROVEN by exact numeric position assertion (not a screenshot) — real
+  Playwright interaction, hand-computed expected geometry, <code>witness_e2e_sketch_dims.js</code> 10/10.
+  Only ~5 of ~60 real planegcs constraints are wired; this is genuinely the gap between
+  "constraint-solving on fixed hand-drawn geometry" and Grasshopper/Dynamo-class "geometry as a
+  function of parameters" — most of it still open.</p>
+<p><strong>Honest distance to the mountain top: ~40-45%</strong> (up from the prior ~35% estimate, reasoned not
+rounded — kernel breadth and MEP domain trust both moved concretely; the still-open gap is
+dominated by constraint-solving depth and the direct-manipulation UI, both explicitly scoped as
+their own separate tracks in <code>prompts/BONSAI_KERNEL_RESEARCH.md §GAP-TO-COMPETITIVE</code>, not vague
+remaining work). The read stands: <strong>weeks-to-months, not years</strong> for the remaining Tier-2/3 gap —
+kernel fidelity, signed history, IFC round-trip, and now real-vs-invented geometry trust are all
+proven; what's left is UX depth (constraint richness, manipulation), not new physics.</p>
 <p>Witnesses: <code>W-BONSAI-*</code> (<code>bonsai_signed_live.js</code>, <code>bonsai_ifc_live.js</code>, <code>bonsai_sweep_live.js</code>,
-<code>bonsai_fillet_live.js</code>, <code>bonsai_move_live.js</code>). See <a href="../ModellerKernelFold/"><code>ModellerKernelFold.md</code></a>.</p>
+<code>bonsai_fillet_live.js</code>, <code>bonsai_move_live.js</code>, <code>bonsai_tier1_live.js</code>), <code>W-MV-PARITY</code>
+(<code>witness_e2e_mv_parity.js</code>), <code>W-BONSAI-ROSETTASTONE</code>/<code>witness_mep_rosettastone_lookup.js</code>. See
+<a href="../ModellerKernelFold/"><code>ModellerKernelFold.md</code></a> and <code>docs/internal/WalkerDoctrine.md</code>.</p>
 <hr />
 <h2 id="the-landscape-nobody-else-compiles-nobody-else-connects">The landscape — nobody else compiles, nobody else connects<a class="headerlink" href="#the-landscape-nobody-else-compiles-nobody-else-connects" title="Permanent link">&para;</a></h2>
 <h3 id="tier-1-incumbents-geometry-authoring">Tier 1 — Incumbents (geometry authoring)<a class="headerlink" href="#tier-1-incumbents-geometry-authoring" title="Permanent link">&para;</a></h3>
