@@ -106,6 +106,10 @@ if [ -n "${GUARD_NEW_DIR:-}" ]; then
 else
   _log "§STEP2 mkdocs build -> $WORK/site_new"
   ( cd "$REPO" && mkdocs build -q -d "$WORK/site_new" ) >>"$LOG" 2>&1 || _abort "mkdocs build failed"
+  # Native `mkdocs gh-deploy` auto-creates .nojekyll on every publish (tells GitHub Pages not to
+  # run Jekyll over the mkdocs output); a plain `mkdocs build` does not. Without it here, this guard
+  # would abort EVERY future deploy as a false "would delete .nojekyll" — not a one-off content issue.
+  touch "$WORK/site_new/.nojekyll"
   _manifest_from_dir "$WORK/site_new" > "$NEW_MAN"
 fi
 
