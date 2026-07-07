@@ -637,13 +637,19 @@ follow-up is now SPECCED (not built improvised):
   `#dim-radius` reuse of the existing edit-a-number UX), `tangent` (line-to-circle or circle-to-circle —
   e.g. a rounded corner or a circular column touching a wall face), `p2c_distance`/`c2c_distance` (already
   in `constraint_param_index.js`, same family, free once a circle primitive exists to reference).
-- **How it composes with the existing model:** `Extrude`'s profile format (`{points:[[x,y],...]}`) has no
-  representation for a curved segment — extruding a profile that includes a circle/arc needs either a
-  tessellated-into-line-segments fallback (simple, but loses the exact curve — same "computed not
-  extracted" caution this project applies elsewhere) or a real `GEOM_EXTRUDE_CIRCLE`/profile-with-arcs op
-  type in the kernel (a bigger lift, likely its OWN short spec once scoped). Flagging this explicitly so a
-  future build doesn't discover it mid-implementation — the primitive's solver-side existence and its
-  EXTRUDE-side representation are two separate open questions, not one.
+- **How it composes with the existing model — ✅ RESOLVED 2026-07-07, smaller than feared, checked not
+  guessed:** the ORIGINAL fear here (tessellate-to-lines vs a new `GEOM_EXTRUDE_CIRCLE` kernel op) assumed
+  the kernel binding had no curved-edge support. Checked `modeller/lib/kernel/index.js:357-370` directly —
+  it already exports `makeCircleEdge(center, normal, radius)`, `makeArcEdge(start, mid, end)`, and
+  `makeEllipseEdge(center, normal, majorRadius, minorRadius)`, the SAME class of primitive as the
+  `makeLineEdge` that `GEOM_EXTRUDE_POLY`'s own handler already uses (`bonsai_kernel_worker.js:36-49`: build
+  an array of edges → `makeWire` → `makeFace` → `extrude`). **No WASM/kernel work needed, no new op type
+  needed** — extending `GEOM_EXTRUDE_POLY`'s existing handler with one new branch (profile carries a
+  `circle:{cx,cy,r}` instead of `points:[...]`; build ONE `makeCircleEdge` edge instead of an array of line
+  edges; same `makeWire`→`makeFace`→`extrude` calls, unchanged) is the same size of change as the last three
+  Tier 2 increments, not a separately-scoped bigger lift. This REVISES the priority: circle/arc is now a
+  same-recipe build, not a design-decision-gated one — only the placement-UI mode question above still
+  needs a call before starting.
 
 ### Tier 3 — structural, cross-cutting (this doc's own §5 already calls these "months")
 IFC write coverage beyond `GEOM_EXTRUDE_POLY` parents (array/loft/insert exports are currently scoped
