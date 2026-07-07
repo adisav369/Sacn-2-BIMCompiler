@@ -503,6 +503,39 @@ one session, confirming the pattern generalizes past just `GEOM_LOFT`.
   proves the mechanism on exactly ONE real run (2 joint pieces: a tee + a transition) from one building.
   Genuine production coverage needs many more real mined runs, not a wiring task.
 
+**✅ FIRST INCREMENT DONE 2026-07-07 — `p2p_distance` wired, real UX-verified (bim-ootb
+`feat/bonsai-sketch-p2p-distance`):** the first of the `tangent`/`p2p_distance`/`p2p_angle`/`circle_radius`/
+`p2p_coincident` family above — `p2p_distance` pins an edge's endpoint distance to a user-typed value,
+`bonsai_sketch.js`'s `dims{}` map + `_buildConstraints()`. A real, previously-user-editable dimension:
+after a rect/square 4-point sketch, typed `#dim-w`/`#dim-h` toolbar fields (Enter commits) re-solve the
+WHOLE quad from one changed number — the actual drag-one-dimension-everything-updates behavior, not the
+narrower `GEOM_ARRAY` formula evaluator.
+
+**Acceptance bar met per this doc's own directive — real interaction, not headless-witness-alone:** driven
+via real Playwright mouse+keyboard (click→type→Enter, not calling `solve()` from a harness) in the running
+Modeller, THEN proven via hand-derived exact numeric invariants (not a screenshot, not a movement
+threshold) — `witness_e2e_sketch_dims.js` (bim-ootb `modeller/tests/`), 10/10: pinned edge length exact,
+the fixed anchor point bit-identical before/after, perpendicularity/parallelism proven via normalized
+dot/cross products computed independently in the test (≈1e-16, not assumed), the rectangle-equal-sides
+consequence verified, and the authored solid's bbox matching a hand-computed bbox of the same solved
+points (isolates "did Extrude carry the profile faithfully" from "is the profile axis-aligned" — it need
+not be, since rect mode pins angles+one length, not orientation). Same rigor as M5's 90°-to-135.0000°-yaw
+proof (`WalkerDoctrine.md §7`) — recomputed independently, not eyeballed. First pass of this witness had
+leaned on screenshots + a movement-threshold check; corrected same-day per a sharpened directive before
+being called done.
+
+**Real bug found+fixed live while proving this, bigger than the feature itself:** every toolbar `dim-*`
+numeric field (rotate/scale/move/depth/profile/radius — not just the new W/H) rendered at the DOM flow
+origin (0,0) — invisible under the Outliner panel and unfocusable by a genuine mouse click (`#bar`'s
+`pointer-events:none` is inherited by `<input>`, only `<button>` got the override back; confirmed on the
+pre-existing `#dim-depth`, not just the new fields). Fixed with a dedicated `#dim-row` fixed-position
+container reusing the SAME "clear the Outliner" `left:252px` convention already used by `#hist`/`#stat` —
+a shared-gate fix for the whole family, not a point-fix for just the 2 new fields.
+
+**Not yet done (disclosed, not silently deferred):** `tangent`/`p2p_angle`/`circle_radius`/`p2p_coincident`
+remain unwired; height (`#dim-h`) is shown/editable but not yet independently proven the same way (only
+width was driven through the full real-interaction + invariant-proof cycle this pass).
+
 ### Tier 3 — structural, cross-cutting (this doc's own §5 already calls these "months")
 IFC write coverage beyond `GEOM_EXTRUDE_POLY` parents (array/loft/insert exports are currently scoped
 narrower than their engine ops), multi-user distributed op-log, broader IFC entity coverage.

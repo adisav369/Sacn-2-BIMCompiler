@@ -46,9 +46,26 @@ what Tier 1 already closed (all 6 ops, PR #691), and exactly what's left:
    `perpendicular_ll`/`equal_length`/`p2p_symmetric_ppp`/H-V). This is the actual gap between "constraint-
    solving on fixed hand-drawn geometry" and Grasshopper/Dynamo-class "geometry as a function of
    parameters" — not the array/loft formula evaluator, which is a narrower, already-shipped thing.
-   **UX review requirement:** don't just wire a constraint and witness it headlessly — actually drag a
-   dimension in the running Modeller and confirm dependent geometry updates the way a user would expect;
-   that's the real acceptance bar per the user's directive, not a passing assertion alone.
+   **UX review requirement — CORRECTED same day, don't repeat the lapse:** actually drive a dimension edit
+   with real Playwright mouse/keyboard (click→type→Enter — not calling `solve()` from a harness) — that
+   part is right. But the CHECK after is a `§`-tagged numeric assertion, NOT a screenshot/visual
+   comparison — a screenshot only proves "looks plausible to a human eye," which is weaker than a numeric
+   check, not a substitute for one (it can't catch an exact-position bug a human eye would miss). Log the
+   EXACT position of every affected point/edge before and after the edit; assert the edited dimension
+   matches the typed value exactly, every solver-moved point/edge lands at a HAND-COMPUTED expected
+   position (same rigor as M5's 90°-bend-to-135.0000°-yaw proof, `WalkerDoctrine.md §7` — not eyeballed),
+   and untouched points/edges stay exactly fixed. This IS "the real acceptance bar" — a passing headless
+   witness with no live interaction is still not enough, but neither is a screenshot; it's exact numbers
+   driven by a real interaction, both halves required.
+   **✅ FIRST INCREMENT DONE 2026-07-07 (`p2p_distance`, width only)** — real Playwright click+type+Enter
+   in the running Modeller, then re-verified per the corrected bar above (not the first, screenshot-leaning
+   pass): `witness_e2e_sketch_dims.js` 10/10, anchor bit-identical, perpendicularity/parallelism via
+   normalized dot/cross ≈1e-16, bbox == hand-computed bbox of the solved points. Found+fixed a bigger,
+   pre-existing bug live: every toolbar `dim-*` field (not just the new ones) was unfocusable/invisible
+   under the Outliner (`pointer-events` inheritance + no real screen position) — shared-gate CSS fix, not a
+   point-fix. Full detail: `BONSAI_KERNEL_RESEARCH.md §GAP-TO-COMPETITIVE`. **Not done:** height's own
+   independent proof, `tangent`/`p2p_angle`/`circle_radius`/`p2p_coincident` (4 of the 5 named constraints
+   still unwired).
 2. **Boolean robustness** (OCCT BOP mangles coincident/misaligned cuts — FreeCAD's own tracked issue
    #17705). Real risk at scale (every opening is a cut). Mitigation path already scoped: fuzzy-tolerance
    BOP, then a Manifold-mesh fallback — neither built yet.
@@ -61,6 +78,38 @@ what Tier 1 already closed (all 6 ops, PR #691), and exactly what's left:
 4. **IFC write coverage gaps** — array/loft export currently only handles `GEOM_EXTRUDE_POLY` parents;
    array-of-sweep/array-of-insert export is a disclosed, not-yet-built follow-up (`BONSAI_ARRAY_PATTERN_
    SPEC.md`).
+
+## §NEW — ARC LOD-mesh box-fallback, SampleCastle (user-sighted, confirmed real, not yet fixed)
+
+User visually confirmed SampleCastle's ARC render "has bbxes all round" despite the building silhouette
+looking right overall. **Checked directly, not assumed:** `deploy/buildings/SampleCastle_extracted.db`'s
+source data is 100% complete — all 3,504 `element_instances` resolve to a real `component_geometries` row,
+zero unresolved hashes. So this is NOT a missing-data gap (unlike everything else found today) — it's a
+render-path bug: something chooses the 12-tri box proxy even though the real mesh is correctly linked.
+Not yet traced to root cause (Modeller-side, Viewer-side, an LOD-tier default, or an element-count-
+triggered downgrade) — that's the first step for whoever picks this up.
+
+**The standard test to extend, not invent:** `modeller/tests/witness_e2e_mv_parity.js`'s `M3 LOD400
+(boxFallback=0, triExact=n/n)` assertion (line ~292) is exactly the "no fallback from a real LOD component"
+rule, already expressed as a hard witness check — `boxFallback` = count of elements whose rendered tri
+count is exactly 12 (the box-proxy signature) when the DB says otherwise. **It is hardcoded to Duplex
+throughout** (file paths, panel selectors, log labels, and even the geometry table name — `base_geometries`
+for Duplex vs `component_geometries` for SampleCastle, a real schema difference already confirmed today).
+Generalizing it to take a building parameter and running it against SampleCastle is the concrete next
+step — gate hard on `boxFallback === 0`, per the same hard-fail-no-fallback doctrine as `WalkerDoctrine.md
+§8-10`, don't leave it informational. This witness itself lives in the still-unmerged worktree
+`/tmp/wt-arc-source-parity` (branch `lane/modeller-ifc-open`, 52 commits ahead of `main`) — confirm that
+worktree still exists before starting, and check whether merging it first is a prerequisite.
+
+**✅ Independently re-run and CONFIRMED fresh, 2026-07-07 (not just trusted from the file's own header
+comments)** — `12/12 PASS`, real numbers reproduced almost to the last digit: `maxDC=18.0301` (claimed
+"18.03m pre-fix") · `residualMax=1.441e-5` across 215 shared elements (claimed "1.44e-5m") ·
+`triExact=253/253 boxFallback=0` (the M3 claim, literally confirmed). Full log:
+`/tmp/wt-arc-source-parity/mv_parity_fresh_run.log`. One environment gap found+fixed to get it running: a
+missing local symlink (`viewer/buildings/Duplex_extracted.db` → `deploy/buildings/Duplex_extracted.db`,
+gitignored, present in the canonical dev checkouts but not this fresh worktree) — a fixture gap, not a
+witness-logic change. **This witness is a trustworthy, working baseline to extend for SampleCastle** — the
+generalization task above is now building on verified-solid ground, not an unverified claim.
 
 ## §ALSO OPEN — carried forward, not urgent but don't lose them
 
