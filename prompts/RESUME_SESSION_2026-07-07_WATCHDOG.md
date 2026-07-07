@@ -1,3 +1,8 @@
+**⚠ SUPERSEDED 2026-07-08 — see `prompts/RESUME_SESSION_2026-07-08.md` for the current entry point** (tangent
+shipped #702, 2 real autosave bugs fixed #703, the TOCTOU-race priority item resolved #704 — found already
+fixed, missing regression coverage added). This file stays as historical record; §DONE below is compacted
+to one line each in the new file, not restated.
+
 # ⚠ DO NOT REMOVE — Session resume: watchdog role, 2026-07-07 CLOSE (Modeller/Bonsai authoring + MEP RosettaStone)
 
 **Read this doc in full before touching code — it's short on purpose, everything DONE compacts to a link,
