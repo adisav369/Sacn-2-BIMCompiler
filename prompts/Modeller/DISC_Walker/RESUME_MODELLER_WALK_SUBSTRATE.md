@@ -59,13 +59,9 @@ with ample context (regression risk on live walk paths is the reason, not contex
 - [x] **M2 — ✅ DONE (witness, bim-compiler `scripts/witness_str_mep_clash_gate.js`) — joint STR+MEP quality
   witness.** See `## ▶ 2026-07-07 M2+M3 BUILT` section below for the full outcome.
 - [x] **M3 — ✅ DONE (same witness, see below) — priority-order guard wired into a real live call.**
-- [ ] **M4 — The animation: MEP genuinely walking into the scene.** `seed_trunk.js`'s T2 animation (seed-
-  outward `draw-range` reveal, `prefers-reduced-motion` safe, gate-asserted to end exactly on the proven
-  geometry — `RESUME_SEED_TRUNK.md`, already shipped) is the real prior art. Once M1 produces the full
-  network, wire the SAME reveal mechanism over it — don't build a second animation system.
-  **Note before building:** M1's network is straight-line tube segments only (see M5) — the animation will
-  reveal a bending tube, not real elbow fittings, unless M5 lands first. Not a blocker, just don't overclaim
-  what the reveal shows.
+- [x] **M4 — ✅ DONE (witness, bim-ootb `feat/mep-seed-reveal`, PR #686) — construction reveal wired over M1's
+  PLB network.** See `## ▶ 2026-07-07 M4 BUILT` section below for the full outcome, incl. a real ordering-design
+  correction (BFS tried, measured wrong, replaced) and a self-cancel bug found+fixed while proving it live.
 - [ ] **M5 — NEW 2026-07-07 (found while answering a direct question, not yet scoped as code): elbow/fitting
   orientation.** Checked `_rwPairSegments()` (`routewalker.js`) directly — it produces straight `{from, to,
   len}` line segments only. There is NO discrete elbow-fitting mesh anywhere, and NO rotation computed to
@@ -499,6 +495,119 @@ MEP-vs-STR clash is now **0/40** (was 1/63). Regression: `witness_route_pattern_
 **NEXT:** M4 (the animation) can now proceed — the network it will reveal is verified clash-clean against both
 ARC and STR. M5 (elbow/fitting orientation) and the newly-noted non-orthogonal-building rotation gap remain
 open, separately scoped, not blockers for M4.
+
+## ▶ 2026-07-07 M4 BUILT — construction reveal wired over M1's PLB network (bim-ootb `feat/mep-seed-reveal`,
+PR #686) — ✅ DONE (witness), a real design correction found+applied inline, not shipped wrong
+
+Scope per the campaign: reuse `seed_trunk.js`'s T1/T2 reveal mechanism (`_renderSeedTrunk`'s `drawRange`
+animation, seed-outward ordered, `prefers-reduced-motion` safe, ends EXACTLY on the proven geometry) over M1's
+now clash-clean PLB pattern-bridge network (modeller.html `_renderDiscChains`) — not a second animation system.
+`InstancedMesh.count` is the instancing analogue of `drawRange` (both are a draw-count the renderer respects;
+verified live, not assumed).
+
+**Ordering design corrected mid-session, measured not assumed (this is the "don't trust a PASS" discipline
+applied to my OWN first design, per the STANDING AGENDA):** first attempt ported `_renderSeedTrunk`'s own
+technique verbatim — a BFS over the segment graph (nodes = endpoint coords, edges = the segs) rooted at
+routePattern's real METER(CW)/STACK(SP) anchor. Running the new witness against a REAL Duplex PLB walk found
+**100% of segments (34/34) unreachable from the anchor** — not a coding bug (key-matching was correct), a real
+structural fact about this network: the FOLLOW-UP fix's own `_envelopeClash` post-filter (closes the STR/wall
+penetration gap) removes the anchor-ADJACENT pairs on this building (10/13 CW, 9/40 SP candidates dropped), and
+the survivors turn out to be **mostly-disconnected short fragments** (measured: CW's 3 segs = 3 isolated pairs;
+SP's 31 segs reach only 4/56 nodes from an arbitrary start) — nothing like SeedTrunk's guaranteed-connected
+corridor polylines. A graph BFS has nothing to walk on data shaped like that. **Corrected `_seedOutwardChainOrder`
+to order by straight-line distance from each segment's own real anchor instead** — still "invents no order
+beyond distances the pattern-bridge's own topology encodes" (the invariant that mattered), just measured
+point-to-point rather than assuming a walkable backbone this network doesn't have. Documented the wrong-then-
+right path directly in the code comment, not silently swapped.
+
+**Self-cancel bug found + fixed while proving this live (not a hypothetical — the first live run showed
+`chainTubes=0`):** the SAME walk flow that starts the reveal also `await`s `_commitDiscChains` right after,
+which folds the op-log and calls `_redrawAllDiscWalks()` — that redraw rebuilds every chain's InstancedMesh
+fresh (necessary in general: `commitSeedGroup` replaces the editable THREE group), which was either tearing
+down the just-started animation (an early "skip if animating" attempt left the disc unrendered entirely — worse)
+or restarting it from 0. Fixed by keying the ease curve off a **stored wall-clock start timestamp**
+(`window.__dwChainRevealMeta[disc] = {start, gen}`) instead of a local closure `t0` — a fold-triggered rebuild
+mid-reveal now seeds the fresh InstancedMesh's `.count` at the correct current progress and continues the SAME
+timeline (no flash-to-0, no early full-reveal); a generation token lets any now-orphaned rAF loop from a
+superseded render call detect it and quietly stop instead of touching a detached mesh.
+
+**Witnessed:** `witness_seed_outward_reveal.js` (new, bim-ootb `modeller/tests/`, 9/9) — real Duplex PLB walk via
+the production `window.discWalk` path: R1 every segment has a real anchor (unreached=0), R2 independent
+recompute confirms distance-from-anchor is non-decreasing along the returned order (not a re-run of the same
+function's internals), R3 animated reveal (mid-flight count < full, ends EXACT==net, >1 frame), R4
+reduced-motion instant fallback, R5 `opts.instant` fallback (the redraw-after-scrub path), R6 a real nn-chain
+network (no patternBridge) renders full count immediately with no reveal engaged — proves the change is scoped
+to the pattern-bridged network only. Regression, all re-run against the branch: `witness_route_pattern_bridge.js`
+10/10, `W-E2E-WALK` 8/8, `W-E2E-WALK-ALL` 10/10, `W-E2E-WALK-IFCOPEN` 18/18, `W-SEED-TRUNK-RENDER` 8/8 — all
+green (confirmed the reveal engages ONLY for PLB's pattern-bridge network; Terminal's real MEP nn-chains and
+seed_trunk's own trunk render are untouched). `witness_modeller_router_nnchain.js` NOT re-run this pass — this
+environment is missing the `playwright` module it requires (pre-existing tooling gap, unrelated to this change;
+it targets Terminal's real MEP chains, which structurally cannot engage the reveal per R6's own proof).
+
+**NEXT:** M5 (elbow/fitting orientation) and the non-orthogonal-building rotation gap (M6) remain open,
+separately scoped. A secondary, honestly-flagged limitation from this session: during a "Walk ALL Disciplines"
+run, a LATER discipline's own commit still calls `_redrawAllDiscWalks()` for an EARLIER discipline's in-flight
+PLB reveal — the resume-fix handles this correctly (same timeline continues on the rebuilt mesh), so it is not
+a correctness bug, just not separately witnessed in a multi-discipline sequence this session (single-discipline
+walk — the primary "MEP genuinely walking into the scene" moment — is what R1-R8 above prove).
+
+## ▶ M5 SPEC — elbow/tee fitting placement at bends (2026-07-07, user decision: build real fitting meshes,
+not just a continuous tube — dispatched as its own session, kept in THIS file per one-topic-one-file convention)
+
+Grounded against the real code before writing this (non-invent), not assumed:
+
+1. **Fitting meshes already exist but are gated off.** `viewer/dagevu_catalog.json` (loaded by
+   `bonsai_library.js:34-42`) has real `IfcPipeFitting` entries with real mesh geometry in
+   `dagevu_geometries.json` — `FITTING_ELBOW_GENERIC`, `FITTING_TEE_GENERIC`, `FITTING_BEND_PVC_DWV`,
+   `CONDUIT_ELBOW_STEEL`, each with ~10-15 size variants. **All carry `asmOnly: true`**
+   (`bonsai_library.js:38`) and `asmOnly` has NO consumer anywhere except BOM-assembly child roles
+   (`expandAssembly()`, `bonsai_library.js:157-190`) — today they're unreachable by a general
+   "place at this computed point" call. `ad_mep_pattern.piece_type` (driving RouteWalker) has only
+   ever been seen as `'PIPE_STRAIGHT'` in real data — confirmed by direct query, no elbow/tee rows
+   exist in the walked pattern data itself.
+2. **Placement mechanism to reuse, not invent:** `Bonsai.library.foldInsert(op, mv, gridCmds)`
+   (`bonsai_library.js:395`) reads `op.parameters.placement = {x,y,z,rot}` and renders via `place()`
+   (`bonsai_library.js:67-99`, yaw-about-+Z in degrees, or full quaternion when `rotX/rotY` present).
+   Real call-site shape to mirror: `{op_type:'GEOM_INSERT', params:{hash, placement:{x,y,z,rot}},
+   outputGuid}` (`arc_editable.js:229-231`). A fitting placement is a normal `GEOM_INSERT` — no new
+   placement path needed, only a new caller.
+3. **Bend detection does not exist yet — real new logic.** `_rwPairSegments()`
+   (`routewalker.js:426-475`) → `rwSweepOps()` (`routewalker.js:251-266`) maps EACH segment
+   independently to its own `GEOM_SWEEP`, with no adjacency/merge logic between segments today. A
+   bend-finder must walk `rwRouteSegments()`'s (`routewalker.js:213-243`) segment list and group
+   entries whose `from`/`to` COINCIDE (shared anchor) but whose `axis`/direction differ — that
+   grouping is new code, not a wire-up.
+4. **Fitting rotation math is genuinely new — the real risk item, not a copy job.** Searched for
+   existing bisector/miter/`atan2` two-vector-to-rotation logic anywhere in this project
+   (`disc_walker.js`'s SIDE/TOP/BOTTOM mount branches, `arc_editable.js`'s rotation handling) — NONE
+   found; every existing rotation in this codebase is either a stored single `rotation_z` or a
+   dominant-AABB-axis pick (0 or π/2 only, the same M6 heuristic). **This task must write real
+   angle-bisector trig between two adjoining run direction vectors** — this is the one part of M5
+   that is actual new engineering, not reuse; scope and test it as such, don't assume it's as cheap
+   as the placement/detection halves.
+
+**Task breakdown:**
+1. Bend-finder: group `rwRouteSegments()` output by shared anchor + differing axis (item 3).
+2. Fitting-type pick: 2-way bend → elbow, 3-way junction → tee, matched against real catalog hashes
+   from item 1 (lift or bypass the `asmOnly` gate — decide explicitly which, don't silently ignore it;
+   bypassing needs a documented reason since the gate exists for BOM-assembly integrity elsewhere).
+3. Rotation: real bisector math between the two (or three) adjoining direction vectors (item 4) →
+   feed into the same `{x,y,z,rot}` placement shape as any other `GEOM_INSERT` (item 2).
+4. Commit as signed `GEOM_INSERT` ops riding the same op-log as every other component placement —
+   no new persistence mechanism.
+5. Witness: at minimum — a 90°-bend Duplex/SampleCastle case places a real elbow mesh oriented to
+   BOTH adjoining runs (checked against hand-calculated bisector angle, not eyeballed); a 3-way
+   junction places a tee; straight-through (non-bend) anchors get NO fitting (regression: M4's
+   continuous-tube rendering must be unaffected where there's no real bend); tamper/determinism
+   follow the same signed-op-log discipline as every other op in this project.
+
+**Non-invent guardrails:** fitting mesh choice comes from the real catalog (item 1), never a
+placeholder box; rotation is computed from the real adjoining segment vectors, never a fixed/assumed
+angle; the `asmOnly` bypass decision (if taken) is stated with its reasoning, not silently done.
+
+**Status: SPEC WRITTEN, dispatched 2026-07-07** — background session, isolated worktree, to be
+created same pattern as M1-M4 (fresh worktree off current `origin/main`, PR back to bim-ootb on
+completion).
 
 ## DON'T
 - Don't rebuild the Viewer's DLOD/Alt-X/cache — wire it into the modeller.

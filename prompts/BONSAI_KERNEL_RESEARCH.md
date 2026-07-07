@@ -96,9 +96,10 @@ Built leg-by-leg, witness-first, on the mapped shoulders. **15 in-viewer witness
   Move-Grid mode drags a gridline (controls off during grab) → ATTACH walls TRANSLATE, EDGE/SPAN walls STRETCH (non-uniform
   via `generalTransform`/gp_GTrsf — plain `transform`/gp_Trsf collapses an axis stretch to a uniform det^(1/3) scale!).
   Outliner Grid Moves category; oplog leaf-detection now a positive whitelist (CUT/FILLET/GRID_MOVE take the authoritative re-fold).
-- **REGEN CACHE = STILL NOT BUILT (decision pending user go).** The only responsiveness mechanism shipped is the O(1)
-  OPTIMISTIC-APPEND in `bonsai_oplog.js` commit() (LEAF path) — explicitly NOT the op_hash-keyed incremental regen cache
-  (§4#1 "real core", Onshape-patent-adjacent §6). No file implements the cache; it needs a deliberate go.
+- **REGEN CACHE — CORRECTION, this line was stale:** actually DONE/LIVE same day (PR #382, `W-BONSAI-REGEN`, see §4#1
+  below — op_hash-keyed `shapeCache`, verified live in `bonsai_kernel_worker.js` as of 2026-07-07). This line
+  originally said "still not built, decision pending" — that was written before §4#1 landed later the same day and
+  was never updated. Don't re-flag the regen cache as an open decision; it's shipped.
 - NOT YET DEPLOYED: these legs are on the branch, not merged to bim-ootb main → not live on GH Pages (see [[feedback_modeller_deploy_branch]]).
 
 ## ▶▶ NEXT SESSION = CONNECT SCENE → `prompts/CONNECT_SCENE_SPEC.md` (user idea + agreed take, 2026-06-18)
@@ -447,3 +448,74 @@ Geometry is the fold; the op-log is the truth. Authors walls / slabs / columns /
 - Event-sourced CAD architecture: https://novedge.com/blogs/design-news/deterministic-event-sourced-architecture-for-real-time-collaborative-cad
 - Chili3D (AGPL, study only): https://github.com/xiangechen/chili3d
 - ifc5cad (AGPL, study only): https://github.com/louistrue/ifc5cad
+
+## §GAP-TO-COMPETITIVE — remaining authoring feature gap + ETA, spec-first (2026-07-07)
+
+**§5's "Item 3 — REAL (months)" list is now stale** — it names `fillet/sweep/loft` as still-pending; all
+three shipped since (depth track above), plus `GEOM_ARRAY`/`GEOM_LOFT` (`prompts/BONSAI_ARRAY_PATTERN_SPEC.md`)
+and MEP fitting placement (`prompts/Modeller/DISC_Walker/RESUME_MODELLER_WALK_SUBSTRATE.md` M5) landed
+today. This section replaces that stale list with the real remaining gap, tiered by genuine cost — not
+by re-probing, by reading this file's OWN already-mapped inventory (§"NEXT-SESSION DIRECTIVE" above).
+
+### Tier 1 — cheap occt shoulders, ZERO binding work (same shape as `GEOM_LOFT`, ~20-30 min each measured today)
+Already exported in `lib/kernel/index.js`, confirmed unwired:
+- `revolve(shape,axis,angleRad)` :257 — **highest value of this tier**: axisymmetric solids (round columns,
+  tanks/vessels, turned parts) have no authoring path today at all.
+- `shell`/`makeThickSolid` :286 — hollow a solid to a wall thickness (cast-then-hollow modeling).
+- `draft(shape,face,angleRad,dir)` :301 — draft angle (lower AEC value, real for precast/formwork).
+- `offset` :298, `filletVariable` :1096, `chamferDistAngle` :272 — variants of ops already wired.
+Each is a worker-only `applyFeature()` case + LEAF-set entry + Outliner category + witness — the EXACT
+recipe `GEOM_LOFT` just proved end-to-end. **Measured today, not estimated:** `GEOM_ARRAY` (genuinely new
+worker math + formula parser + IFC research) = ~25 min one session; `GEOM_LOFT` (existing binding, this
+tier's shape) = ~25 min. All ~6 Tier 1 ops are plausibly a **single day** if dispatched as parallel
+sessions (the pattern used today), not a bottleneck.
+
+**✅ DONE 2026-07-07 — all 6 shipped in one dispatched session, PR #691 (`feat/bonsai-tier1-shoulders`,
+`0cc3875`), auto-merge armed, `W-BONSAI-TIER1` witness 20/20 checks PASS.** `GEOM_REVOLVE` (LEAF — fresh
+solid from profile+axis+angle, same class as `GEOM_SWEEP`/`GEOM_LOFT`); `GEOM_SHELL`/`GEOM_OFFSET`/
+`GEOM_FILLET_VARIABLE`/`GEOM_CHAMFER_DIST_ANGLE`/`GEOM_DRAFT` all non-LEAF (mutate a referenced parent
+solid, same class as `GEOM_CUT`/`GEOM_FILLET`). Real determinism proof: revolve 208 tris @2π vs 60 tris
+@π/2; `filletVariable` 44 tris vs 40 for an equal constant-radius fillet on the same edge.
+**Harder-than-"free-shoulder" in practice, honestly reported by the build session, not hidden:**
+`GEOM_DRAFT` needed direct probing to discover `direction` must equal the picked face's own outward
+normal (an unrelated direction is silently a no-op, no exception — undocumented in the binding itself);
+`GEOM_CHAMFER_DIST_ANGLE`'s angle parameter didn't produce a triangle-count-visible difference on the
+test case used (topology-invariant there), so its angle-sensitivity wasn't independently proven the way
+revolve/filletVariable's was. IFC mapping intentionally not built (optional per scope): `GEOM_REVOLVE` →
+`IfcRevolvedAreaSolid` is a real, named target; shell/offset/fillet-variants have no dedicated IFC entity
+beyond the base solid's boundary rep. **Net: Tier 1's "days not weeks" estimate held** — all 6 landed in
+one session, confirming the pattern generalizes past just `GEOM_LOFT`.
+
+### Tier 2 — real engineering, not free shoulders (weeks-scale, per this doc's own §5 tiering)
+- **planegcs constraint richness**: ~60 constraints exist in `planegcs_dist/constraint_param_index.js`,
+  only ~5 wired (`parallel`, `perpendicular_ll`, `equal_length`, `p2p_symmetric_ppp`, H/V). This is the
+  actual gap between "constraint-solving on fixed hand-drawn geometry" (current state) and Grasshopper/
+  Dynamo-class "geometry as a function of parameters" — `tangent`/`p2p_distance`/`p2p_angle`/
+  `circle_radius`/`p2p_coincident` unlock drag-one-dimension-everything-updates behavior the sketch layer
+  doesn't have yet. `GEOM_ARRAY`'s formula evaluator is a DIFFERENT, narrower thing (per-instance
+  numeric variation) — it does not substitute for real sketch-level parametrics.
+- **Boolean robustness** (§4#2) — OCCT BOP mangles coincident/misaligned cuts; every opening is a cut.
+  Real risk at scale, mitigation (fuzzy-tolerance BOP, Manifold fallback) not built.
+- **Direct-manipulation UI** (`prompts/MODELLER_DIRECT_MANIPULATION.md`, flagged "the UI-competitive
+  spine") — axis-drag MOVE gizmo+snap, marquee multi-select, snap-to-geometry, rotate/scale handles.
+  Separate track from kernel ops entirely; own spec, not started per that card.
+- **MEP fitting library depth** — today's real mini-BOM RosettaStone (`DISC_ROSETTASTONE_MEP_MINISET.md`)
+  proves the mechanism on exactly ONE real run (2 joint pieces: a tee + a transition) from one building.
+  Genuine production coverage needs many more real mined runs, not a wiring task.
+
+### Tier 3 — structural, cross-cutting (this doc's own §5 already calls these "months")
+IFC write coverage beyond `GEOM_EXTRUDE_POLY` parents (array/loft/insert exports are currently scoped
+narrower than their engine ops), multi-user distributed op-log, broader IFC entity coverage.
+
+### ETA, honestly — not one number
+**Tier 1 (kernel op-count parity on cheap shoulders): days, not weeks** — the measured 20-30 min/op
+pattern from today generalizes directly, this doc already flagged these as zero-binding-work in June.
+**Tier 2/3 (the actual Grasshopper/Dynamo-class differentiator — true sketch parametrics, robust
+booleans, UI-competitive manipulation): this doc's own §5 already scoped these as MONTHS before today's
+session, and nothing found today changes that** — each is a real, separately-scoped engineering effort
+with its own design risk (planegcs richness could surface solver-convergence issues; boolean robustness
+is an open OCCT-upstream issue, not just wiring). **"Full challenge to the BIM Modeller world" is not a
+single ETA** — kernel breadth closes fast, true parametric depth + UI competitiveness does not, and this
+file already said so before today; today's work didn't shorten that, it just closed a different, cheaper
+part of the gap (kernel op count) while sharpening evidence for why the harder part stays hard (e.g. the
+same-day proof that computed-not-extracted geometry is unverifiable, `WalkerDoctrine.md §7`).

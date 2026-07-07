@@ -1,0 +1,32 @@
+{
+  "grid_labels": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "A",
+    "B",
+    "C",
+    "D",
+    "N"
+  ],
+  "grid_line_count": 7,
+  "grid_bubble_count": 14,
+  "room_labels": [
+    "BILIK",
+    "RUANG TAMU",
+    "RUANG MAKAN"
+  ],
+  "has_areas": true,
+  "door_tag_count": 3,
+  "window_tag_count": 4,
+  "drawing_title": "1.  PELAN LANTAI / FLOOR PLAN",
+  "has_scale": false,
+  "has_border": true,
+  "has_title_block": true,
+  "has_north_arrow": true,
+  "background_color": "#FFFFFF",
+  "dimension_count": 7,
+  "has_dimensions": true,
+  "has_furniture": true
+}

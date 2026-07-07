@@ -306,11 +306,14 @@ immediate unlock for the RosettaStone mission's "scale to complex" step
 (`project_modeller_rosettastone_mission.md`); §3C serves a different, later goal (any building, not just the
 reference set) and would compete for the same execution attention.
 
-1. **W-ARC-SOURCE-PARITY (§7)** — ⚠ **§3D leg BUILT+RUN 2026-07-06 (`witness_arc_source_parity.js`, bim-ootb
-   `5caa69f`) — RED, not clean: IFC-open renders ZERO ARC geometry (real bug, see the bottom-of-file dated
-   section for root cause + the fresh-session fix). NOT "✅ DONE (witness)" — re-run after the `openIfcFile`/
-   `_forkEditable` wiring fix lands; only then does this item close.** The gating witness. Nothing else here is
-   safe to build on until §3A is proven, not just argued, on real data. **Scope widened 2026-07-06 (see dated
+1. **W-ARC-SOURCE-PARITY (§7)** — ✅ **DONE (witness) 2026-07-07** — §3D leg built 2026-07-06 (`witness_arc_
+   source_parity.js`, bim-ootb `5caa69f`), found G2 RED (IFC-open rendered ZERO ARC geometry); fix landed
+   2026-07-07 (`b8f0be6`, `openIfcFile()` now wired to `_seedArcEditable` — see bottom-of-file dated sections
+   for both). G2 now ✅ both residents, screenshot-confirmed. G3/G4/G5 (render-count/bbox/tri-count vs a
+   different element SET between the two pipelines) remain a separate, lower-priority, NOT-yet-picked-up
+   follow-up — this item's own scope (does IFC-open render at all) is closed. §3A (Terminal/LTU large-building
+   ingestion, not yet built) is still gated separately: nothing there is safe to build on until §3A is proven,
+   not just argued, on real data. **Scope widened 2026-07-06 (see dated
    section at file bottom): this witness must ALSO cover the ALREADY-SHIPPED §3D (SH/Duplex DDB-vs-IFC-open),
    not only gate the not-yet-built §3A large-building path (Terminal/LTU) — §3D shipped without ever proving
    that comparison, a real gap, not
@@ -402,3 +405,27 @@ step, passing a resident-shaped object since `_forkEditable`/`_fetchGeoDb` curre
 `res` with `.key`/`.geoDb` fields — an IFC-opened building isn't in that array). Re-run
 `witness_arc_source_parity.js` after — G2 should flip green for both residents; re-triage G4/G5's remaining
 misses and the GUID-set mismatch only after G2 is real.
+
+## ▶ 2026-07-07 — G2 FIX BUILT + RUN + PUSHED (bim-ootb `b8f0be6`, `lane/modeller-ifc-open`) — ✅ DONE (witness)
+
+Wired `openIfcFile()`'s `openIt` callback (str_walker_outliner.js, inside the `O.setModelKey('mo_ifc_'+name)
+.then(...)` chain) to call `_replayEdits(); _seedArcEditable(O, name, null)` after a successful `_openBuffer` —
+**not** a call to `_forkEditable(res)` itself, since that re-runs `setModelKey('mo_'+res.key)` and would stomp
+the `mo_ifc_`-prefixed key §IFC-OPEN-KEY-FIX already set (re-colliding with a same-named `.db` resident's own
+instance, the exact bug that fix prevents). No `res` object exists for an ad-hoc IFC-opened file, so `_fetchGeoDb`
+(Terminal's split-geo-db fetch) is skipped — `geoBuf=null`, identical to every non-Terminal `.db` resident already.
+
+**Re-ran `witness_arc_source_parity.js`:** G2 RENDER-SEEDED now ✅ for both residents — SampleHouse
+`groupChildren` 0→58, Duplex 0→215 (matches each side's own ARC substrate count). Screenshotted Duplex-via-IFC:
+a real building renders (walls/doors/windows/slab visible), not a blank scene — confirmed by eye, not just a
+nonzero mesh-count proxy. **Also re-ran `witness_e2e_walk_ifcopen.js`** (the pre-existing IFC-open walk gate) to
+check for regression: 18/18 PASS, unchanged — its `§BEFORE oplogLen` now correctly starts at 58/215 (the ARC
+seed count) instead of 0, a MORE truthful baseline than before, not a break.
+
+**Still RED, unchanged from 2026-07-06, deliberately NOT touched by this fix** (separate question, lower
+priority, not re-triaged): G3 render-count parity (mirrors the substrate GUID-set mismatch, SampleHouse
+db=39/ifc=58, Duplex db=253/ifc=215 — `_seedArcEditable` vs `_filterArc` likely classify a different element
+set), G4 bbox (2/32 SampleHouse elements exceed TOL_M), G5 tri-count (24/32 SampleHouse, 194/203 Duplex —
+plausible IfcOpenShell-vs-web-ifc tessellation differences). **§NEXT item 1 above is now genuinely closeable**
+for the "does IFC-open render at all" question this whole 2026-07-06/07 thread was chasing; the GUID-set/
+tessellation questions are a new, distinct, lower-priority follow-up if picked up later.

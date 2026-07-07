@@ -52,7 +52,7 @@ A BOM is a recipe: one parent, N children, each with a quantity. Each child can 
 ERP / secured-distributed / serverless work → **`docs/ERP.md`** is the overarching blueprint; its Companion-docs map fans out to `docs/DistributedERP.md` (the doctrine + edge suite) + the `scripts/poc_*.js` witnesses. Read it first for ERP-side sessions.
 
 ## Walker Doctrine (ANTI-DRIFT — read before ANY disc-walker / MEP-walk / rules-DB work)
-**`docs/WalkerDoctrine.md`** is the LOCKED core doc. The settled fundamentals (do NOT re-litigate or override): small/residential
+**`docs/internal/WalkerDoctrine.md`** is the LOCKED core doc. The settled fundamentals (do NOT re-litigate or override): small/residential
 buildings (SH/DX/**SC**) walk **`duplex_rules.db`** — they do NOT use Terminal rules in production; the walk axis is BUILDING-CLASS,
 discipline is a `WHERE` column (never a per-building file). Terminal = the LOD400 reference + a BORROW source for disciplines ABSENT
 from residential (e.g. FP/sprinkler) rendered as a SEPARATE class with LOD400-mesh priority — borrowing a discipline's measured rows,

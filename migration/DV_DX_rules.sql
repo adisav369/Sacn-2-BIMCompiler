@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- DX: Duplex (Duplex)
 -- Source: DAGCompiler/lib/output/duplex.db
--- Generated: 2026-06-22 23:00
+-- Generated: 2026-07-07 07:51
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
