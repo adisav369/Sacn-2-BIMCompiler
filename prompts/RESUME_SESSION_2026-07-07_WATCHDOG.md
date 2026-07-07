@@ -49,6 +49,9 @@ self-corrections) — the value is in the lessons and the open items below, not 
 | Boolean robustness | Investigated, stood down — theoretical risk didn't reproduce; real fix blocked on inaccessible WASM source | `BONSAI_KERNEL_RESEARCH.md §4#2` |
 | SampleCastle "boxes" | Resolved — not a render bug, a slow streaming window with no strong mid-load visual cue | `BONSAI_KERNEL_RESEARCH.md` / see git log `676c04991` |
 | Deploy pipeline | Real bug fixed in `scripts/safe_gh_deploy.sh` (missing `.nojekyll`, would've blocked every future deploy); `StrategicIndustryPositioning.md` updated + deployed live | commit `e8a0f570d`, `c20cc9faa` |
+| Circle + Arc primitives | `#699` circle (center+radius, real `makeCircleEdge` cylinder extrude, not tessellated) · `#701` arc (FreeCAD "Arc by center" 3-click, sector-closure disclosed in PR body, K4/K6 independently proved radius-ignored-on-click-3 and CCW sweep empirically). Both same-recipe builds once the kernel was checked (`makeCircleEdge`/`makeArcEdge` already existed — re-scoped smaller than the original spec feared) | `BONSAI_KERNEL_RESEARCH.md §GAP-TO-COMPETITIVE`, PRs #699/#701 |
+| In-app + public User Guide | In-app overlay (`#700`): added Move & Manipulate + sketch-dims/weld/Circle mentions (was missing an entire shipped capability). Public `docs/ModellerGuide.md`: same new sections (with real captured screenshots incl. 2 newly-driven ones for snap-to-geometry + multi-select, previously undocumented at all) + replaced 4 STALE/malformed screenshots from an old build (518-feature ghost count, one with genuinely broken cut-off Outliner text) | bim-ootb PR #700; bim-compiler commits `7a5b61b27`/`2702e530f`, live at `https://red1oon.github.io/BIMCompiler/ModellerGuide/` |
+| Direct-manipulation status CORRECTED | The `MODELLER_DIRECT_MANIPULATION.md` STATUS line had gone stale 3+ weeks past P1 and was nearly repeated as "not started" — grepped `bim-ootb main` directly instead: P3 multi-select, H2 snap-to-geometry, H3 rotate/scale, M1 grid-undo-fix are ALL real and already shipped. Only H1's named sub-item ("Z-handle from non-top views") is genuinely unconfirmed either way | `MODELLER_DIRECT_MANIPULATION.md` (corrected in place) |
 
 ## §FABLE-SUITED — small, decisive, dispatch directly (`Agent`, `model: "fable"`)
 
@@ -69,14 +72,19 @@ survey first.
 headless-witness-passing alone), care not to trash third-party-sourced code (`planegcs`, `occt-wasm`,
 Chili3D/ifc5cad study references) without UI coherence.**
 
-1. **Circle/arc primitive** — now a filed, scoped spec (`BONSAI_KERNEL_RESEARCH.md §GAP-TO-COMPETITIVE`),
-   NOT built. Needed to unlock `tangent`/`circle_radius` (the 2 remaining named Tier-2 constraints). Real
-   design decision (new primitive type, placement UI, Extrude representation for curves) — not a
-   same-recipe increment like the last three. Build only after the spec is reviewed, not improvised.
-2. **Direct-manipulation UI** (`MODELLER_DIRECT_MANIPULATION.md`) — "START WITH §0 SURVEY," its own
-   explicit instruction. Benchmark real shipped tools (Chili3D/ifc5cad/SketchUp/Blender/FreeCAD) before
-   building anything. This is Sonnet-dialogue territory (taste/judgment), not a background-agent build
-   task — hold this thread WITH the user, don't delegate the survey itself.
+1. **✅ DONE — Circle/arc primitive** shipped (#699/#701, see table above). **Next call, already made —
+   build `tangent`, NOT `circle_radius`:** `circle_radius`'s practical value (type an exact radius) is
+   ALREADY delivered by the direct radius-set mechanism #699 shipped — a real planegcs `circle_radius`
+   CONSTRAINT only earns its keep once a circle must solve simultaneously against something else, which
+   doesn't exist yet. `tangent` unlocks genuinely NEW capability instead (circle-to-line / circle-to-circle
+   touching — a column against a wall face, two circles kissing). Same "pick the one that's actually new"
+   logic as the circle-before-arc call. If a session is mid-flight on this when you read this, don't
+   re-litigate — the call is made, just verify the finish.
+2. **Direct-manipulation UI — mostly ✅ DONE, corrected same day (see table above).** Do NOT restart a
+   fresh §0 survey — P1-P3/H2-H3/M1 are real and shipped. The one genuinely open thread: confirm H1
+   ("Z-handle visibility from non-top camera angles") is fine or fix it, then do a SHORT fresh "be the
+   user" walk (not a from-scratch competitor survey) to see if anything reads as friction now, several
+   features later. Small, hour-scale, not a multi-session lane anymore.
 3. **SampleCastle streaming UX** — genuinely open, smaller-scoped than originally feared: either make the
    loading-progress indicator more visually prominent, or thin the box-placeholder layer progressively
    with `streamedCount` instead of all-or-nothing. Not urgent, real when picked up.
@@ -99,6 +107,10 @@ Chili3D/ifc5cad study references) without UI coherence.**
 
 #685 `GEOM_ARRAY` · #688 `GEOM_LOFT` · #689 M5 fitting placement · #690 real MEP rotation lookup · #691
 Tier 1 (6 ops) · #692 real pipe cross-section · #693 shared placement gate · #694/#695/#696 Tier 2
-constraints (`p2p_distance`/`l2l_angle_ll`/`p2p_coincident`). bim-compiler: docs/deploy fixes on `master`,
-`StrategicIndustryPositioning.md` live and independently content-verified at
-`https://red1oon.github.io/BIMCompiler/StrategicIndustryPositioning/`.
+constraints (`p2p_distance`/`l2l_angle_ll`/`p2p_coincident`) · #697 viewer routewalker fixture-box port ·
+#699 circle primitive · #700 in-app User Guide update · #701 arc primitive. bim-compiler `master`:
+docs/deploy fixes, `StrategicIndustryPositioning.md` live, plus this session's `BONSAI_KERNEL_RESEARCH.md`/
+`MODELLER_DIRECT_MANIPULATION.md` corrections and 2 `docs/ModellerGuide.md` deploys (new sections +
+4-screenshot stale-image fix, commits `7a5b61b27`/`2702e530f`) — live at
+`https://red1oon.github.io/BIMCompiler/ModellerGuide/`, independently content-verified (Last-Modified +
+image references checked post-CDN-propagation, not just HTTP 200).
