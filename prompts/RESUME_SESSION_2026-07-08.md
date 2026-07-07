@@ -133,10 +133,18 @@ session, all 6 PRs independently confirmed `MERGED` via `gh pr view` (not just t
    baked-in detail — `Duplex` is the standard buildingSMART "Ifc2x3_Duplex" sample file, a deliberately
    minimal massing-level model (flat walls, no window-frame/glass geometry, blocky furniture) at the IFC
    source itself; `SampleCastle`'s source IFC apparently has real detail (frames, dormers, roof shingles)
-   modeled directly into its geometry, independent of any catalog-matching stage. **This was not
-   independently confirmed at the IFC-source level** (inferred from the LOD-audit ruling out the other
-   candidate cause, not from directly diffing the two IFC files' own geometric detail) — treat as
-   well-evidenced, not fully proven, if it matters before a big content decision.
+   modeled directly into its geometry, independent of any catalog-matching stage. **UPGRADED TO PROVEN, not
+   just evidenced, 2026-07-08 (same session, user directly asked "is the LOD400-only rule actually broken,
+   or does someone need to check" — checked immediately rather than handed off):** ran the ALREADY-EXISTING
+   `witness_e2e_mv_parity.js` M3 gate (`boxFallback===0` — detects a 12-triangle box silently substituted
+   for real geometry) fresh against Duplex — **`boxFallback=0 triExact=253/253`, clean pass.** Every one of
+   Duplex's 253 rendered elements is exact real triangulated geometry matching `base_geometries`, not a
+   proxy box. So this is NOT a pipeline defect anywhere (catalog-match ruled out per above, box-fallback
+   now directly ruled out too) — Duplex's plainness is a genuine, faithfully-rendered property of its own
+   source data. Nothing to fix in the pipeline; this is 100% the content/positioning decision below, not an
+   engineering task. (Aside, not chased: the witness's second check, Leg T, crashed on an unrelated local
+   `better-sqlite3` path error in the `/tmp/wt-viewer-rpr-port` worktree — before Leg T does any comparison,
+   doesn't touch the M3 result above.)
    **The corrected rule to carry forward — do NOT re-derive the wrong one:** no single log/audit metric
    (LOD300-MATCH included) predicts a building's guide-screenshot visual quality — it does not correlate
    with catalog-match rate at all, both a plain and a rich building can show identical `matched=0`. The
