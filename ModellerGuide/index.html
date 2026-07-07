@@ -946,6 +946,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Sketch → Extrude — draw a wall">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#type-an-exact-dimension-rect-square" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Type an exact dimension (rect / square)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#circle-extrude-draw-a-cylinder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Circle → Extrude — draw a cylinder
+      
+    </span>
+  </a>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1003,6 +1031,28 @@
     <span class="md-ellipsis">
       
         Move
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#snap-to-geometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snap-to-geometry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-select" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-select
       
     </span>
   </a>
@@ -2150,6 +2200,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Sketch → Extrude — draw a wall">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#type-an-exact-dimension-rect-square" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Type an exact dimension (rect / square)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#circle-extrude-draw-a-cylinder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Circle → Extrude — draw a cylinder
+      
+    </span>
+  </a>
+  
 </li>
         
           <li class="md-nav__item">
@@ -2207,6 +2285,28 @@
     <span class="md-ellipsis">
       
         Move
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#snap-to-geometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snap-to-geometry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-select" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-select
       
     </span>
   </a>
@@ -2544,6 +2644,29 @@ facing automatically. Undo removes it exactly.</p>
 <p><img alt="Sketch — a closed profile laid on the grid, ready to extrude" src="../img/modeller/sketch-profile.png" /></p>
 <p>The solved polygon is swept to depth and committed as one signed operation.</p>
 <p><img alt="Extrude — the profile pushed into a B-rep wall solid" src="../img/modeller/sketch-wall.png" /></p>
+<h4 id="type-an-exact-dimension-rect-square">Type an exact dimension (rect / square)<a class="headerlink" href="#type-an-exact-dimension-rect-square" title="Permanent link">&para;</a></h4>
+<p>Cycle <strong>Constrain</strong> to <strong>Rect</strong> or <strong>Square</strong> before or during your 4 clicks — once the profile closes,
+<strong>W / H / ∠</strong> fields appear showing the sketch's current width, height, and corner angle. Type a new
+number into any of them and press <strong>Enter</strong>: the WHOLE profile re-solves from that one value, not just
+the one edge — a rectangle at 90°, or a true parallelogram at any other typed angle.</p>
+<p><img alt="A closed 4-point sketch in Rect mode — W/H/∠ fields read the current shape (3.00m × 3.00m, 90°)" src="../img/modeller/sketch-dims-square.png" /></p>
+<p><img alt="The same sketch after typing a new width, height, and a 70° corner angle — one number changes the whole shape" src="../img/modeller/sketch-dims-angled.png" /></p>
+<p>A click that lands near an <strong>earlier point in the same sketch</strong> welds the new point exactly onto it
+(the status line reads <code>welded to p«N»</code>) instead of adding a near-duplicate point a few centimetres off —
+useful for closing a hand-drawn polygon precisely back onto its own start.</p>
+<p><img alt="A 5-click L-shape where the last click landed near the 2nd point — welded exactly onto it, not a stray near-duplicate" src="../img/modeller/sketch-weld.png" /></p>
+<h3 id="circle-extrude-draw-a-cylinder">Circle → Extrude — draw a cylinder<a class="headerlink" href="#circle-extrude-draw-a-cylinder" title="Permanent link">&para;</a></h3>
+<p><em>Commits <code>GEOM_EXTRUDE_POLY</code> with a <code>circle</code> profile (a real occt cylinder, not a tessellated polygon).</em></p>
+<ol>
+<li>Cycle <strong>Constrain</strong> to <strong>Circle</strong>.</li>
+<li>Click a <strong>centre</strong> point, then click a second point to set the <strong>radius</strong> — or type an exact radius
+   into the field that appears.</li>
+<li>Set the <strong>depth</strong>, then tap <strong>Extrude</strong>.</li>
+</ol>
+<p><img alt="Circle mode — centre clicked, radius set to 1.75m either by the second click or by typing it" src="../img/modeller/sketch-circle.png" /></p>
+<p>The circle sweeps into a genuine cylindrical solid (<code>makeCircleEdge</code> → a real curved B-rep face), the same
+signed-op path as a polygon extrude.</p>
+<p><img alt="Extrude on a circle profile — a real cylinder standing next to the building, not an approximated polygon" src="../img/modeller/sketch-circle-extruded.png" /></p>
 <h3 id="route-sweep-run-lay-a-run-duct">Route → Sweep-Run — lay a run / duct<a class="headerlink" href="#route-sweep-run-lay-a-run-duct" title="Permanent link">&para;</a></h3>
 <p><em>Commits <code>GEOM_SWEEP</code>.</em></p>
 <ol>
@@ -2589,6 +2712,17 @@ mid-drag instead of only after.</p>
 <li>Release to commit. A moved host <strong>drags its hosted fillings</strong> (a door rides its wall); undo is exact to the micron.</li>
 </ol>
 <p><img alt="Move engaged on a selected element — dragging the X arrow moves it on that axis only (the commit is X-only, exact, reversible)" src="../img/modeller/move-gizmo.png" /></p>
+<h3 id="snap-to-geometry">Snap-to-geometry<a class="headerlink" href="#snap-to-geometry" title="Permanent link">&para;</a></h3>
+<p>While dragging the ground-plane hub (not a single axis arrow), the handle also snaps to nearby
+<strong>vertices, edge-midpoints, and face-centers of OTHER elements</strong> — not just the grid. A small marker
+appears at the candidate point, and the status line reads <code>snap-to-geometry</code>; releasing commits the exact
+snapped coordinate, read from the other element's own real bounding box (never invented).</p>
+<p><img alt="Dragging one wall toward another — the ground-plane hub snapped exactly onto the neighbour's corner, a marker shows the snap point, the status line reads snap-to-geometry" src="../img/modeller/snap-to-geometry.png" /></p>
+<h3 id="multi-select">Multi-select<a class="headerlink" href="#multi-select" title="Permanent link">&para;</a></h3>
+<p><strong>Shift-drag</strong> an empty-space marquee to select every element whose on-screen footprint falls inside the
+box (shift-click adds/removes one at a time). The transform gizmo then acts on the WHOLE set — a group
+move/rotate/scale commits the same delta to every selected element about their shared centre.</p>
+<p><img alt="Shift-drag marquee over three elements — all three highlight and the status line reads the new selection count" src="../img/modeller/multiselect-marquee.png" /></p>
 <h3 id="scale">Scale<a class="headerlink" href="#scale" title="Permanent link">&para;</a></h3>
 <p><em>Commits <code>GEOM_SCALE {fx,fy,fz}</code>.</em></p>
 <ol>
