@@ -406,6 +406,30 @@ Geometry is the fold; the op-log is the truth. Authors walls / slabs / columns /
 2. **Boolean robustness.** OCCT BOP drops/mangles shapes on coincident/misaligned inputs
    (FreeCAD #17705). Openings = many cuts = high exposure. Mitigate: fuzzy-tolerance BOP, then
    Manifold mesh fallback.
+   **⚠ INVESTIGATED 2026-07-07, STOOD DOWN — real effort to reproduce, none found; the scoped fix is also
+   technically inaccessible.** This item had been repeated as a risk statement in 3 places since first
+   written, never once checked against this project's own occt-wasm build or real building data — checked
+   directly this pass. Ran 5 real `kernel.cut()` calls on an actual Duplex wall via the real op-log path
+   (`GEOM_CUT`, not a synthetic isolated test): a full-cross-section trim, a realistic door-hole (narrow,
+   full-depth through-cut, bottom face EXACTLY coincident with the wall's own floor face — the single most
+   realistic "coincident face" case, since every real door does this), two sequential adjacent cuts flush
+   against each other on an ALREADY-CUT (non-primitive) solid, and a bisecting cut that splits one wall
+   into two disconnected pieces. **All 5 produced correct, sane results** — right triangle counts for the
+   resulting topology (a plain-trim box genuinely IS 12 tris, correctly; a door-hole genuinely needs ~28;
+   two disconnected box halves genuinely tessellate to 24 = 2×12), right bboxes, zero errors. No FreeCAD
+   #17705-style mangling reproduced despite specifically targeting the configurations that concern names.
+   **The scoped mitigation is ALSO not buildable as originally imagined:** `occt-wasm.wasm` is a vendored
+   binary with NO accompanying C++ source in either repo and no `.d.ts` — `cut()`/`fuse()` take no tolerance
+   parameter at all in the JS binding (`modeller/lib/kernel/index.js`), unlike `shell`/`offset`/`sew` which
+   do. Real fuzzy-tolerance BOP (`SetFuzzyValue()`) needs a WASM rebuild from OCCT C++ source that isn't in
+   this repo — not a JS-wiring task like Tier 2's first three increments. **Conclusion, not a fix:** this
+   is a real, upstream-documented OCCT risk in the abstract, but UNVERIFIED against this project's actual
+   build after genuine targeted effort to find it, and its named first mitigation is currently out of
+   reach. Manifold-mesh fallback (the SECOND named mitigation) remains a real, separate option — it
+   doesn't need WASM source, but is a genuine new-dependency integration decision (evaluate/vendor a new
+   library, design a trigger condition for "when did OCCT actually fail," since none has been observed
+   yet), correctly NOT started improvised. Standing down here rather than building a fix for an unverified
+   problem, or force-integrating a new dependency with no failure case to test it against.
 3. **IFC write coverage + browser gap.** Map fold → IFC entities (start extruded-area-solid family).
    occt-wasm = **Chrome 114+/Safari 17.2+, NO Firefox** (WASM tail calls) — product decision:
    accept it / no-tail-call build / fall back to bigger opencascade.js for reach.
@@ -494,8 +518,11 @@ one session, confirming the pattern generalizes past just `GEOM_LOFT`.
   `circle_radius`/`p2p_coincident` unlock drag-one-dimension-everything-updates behavior the sketch layer
   doesn't have yet. `GEOM_ARRAY`'s formula evaluator is a DIFFERENT, narrower thing (per-instance
   numeric variation) — it does not substitute for real sketch-level parametrics.
-- **Boolean robustness** (§4#2) — OCCT BOP mangles coincident/misaligned cuts; every opening is a cut.
-  Real risk at scale, mitigation (fuzzy-tolerance BOP, Manifold fallback) not built.
+- **Boolean robustness** (§4#2) — **✅ INVESTIGATED 2026-07-07, STOOD DOWN, see §4#2's own note above for
+  the full evidence.** 5 targeted real-data reproduction attempts (full trim, realistic floor-coincident
+  door-hole, adjacent flush cuts on an already-cut solid, a bisecting cut) — none reproduced the named
+  FreeCAD #17705 mangling. The first named mitigation (fuzzy-tolerance BOP) also turned out to need WASM
+  C++ source this project doesn't have — not a JS-wiring task. Not a fix; a real, cited negative result.
 - **Direct-manipulation UI** (`prompts/MODELLER_DIRECT_MANIPULATION.md`, flagged "the UI-competitive
   spine") — axis-drag MOVE gizmo+snap, marquee multi-select, snap-to-geometry, rotate/scale handles.
   Separate track from kernel ops entirely; own spec, not started per that card.
