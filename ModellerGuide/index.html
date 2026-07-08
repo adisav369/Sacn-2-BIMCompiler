@@ -1132,6 +1132,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#walk-all-disciplines-every-absent-trade-in-one-pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Walk ALL Disciplines — every absent trade in one pass
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-a-walk-actually-places" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2386,6 +2397,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#walk-all-disciplines-every-absent-trade-in-one-pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Walk ALL Disciplines — every absent trade in one pass
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-a-walk-actually-places" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2752,7 +2774,7 @@ to disarm. <code>R</code> is reserved for Insert, so it doesn't arm anything her
 <ol>
 <li>Tap <strong>Move Grid</strong>.</li>
 <li>Drag a <strong>gridline</strong>.</li>
-<li>Release to commit. Walls attached to that line <strong>recompose</strong> — a span stretches, an attached wall translates — as one signed operation.</li>
+<li>Release to commit. Walls attached to that line <strong>recompose</strong> — a span stretches, an attached wall translates — as one signed operation. A hosted door or window <strong>rides</strong> its wall rather than stretching or divorcing from it, same as Move.</li>
 </ol>
 <p><img alt="Before — a wall spanning two gridlines" src="../img/modeller/gridstretch-before.png" />
 <img alt="After — dragging the gridline stretched the attached wall by exactly the drag distance" src="../img/modeller/gridstretch-after.png" /></p>
@@ -2777,6 +2799,21 @@ mined from a real building), but its <strong>mesh</strong> is still a stand-in �
 measured median dimensions, not a finished fixture model. That's a deliberate, honest choice, not a bug:
 the alternative would be guessing at a fixture's real shape, which this project's non-invent rule forbids.
 A finer mesh swap for these is on the roadmap; today, trust the placement and count, not the silhouette.</p>
+<h3 id="walk-all-disciplines-every-absent-trade-in-one-pass">Walk ALL Disciplines — every absent trade in one pass<a class="headerlink" href="#walk-all-disciplines-every-absent-trade-in-one-pass" title="Permanent link">&para;</a></h3>
+<p>Walking one discipline at a time is fine for a single trade, but a bare ARC building is usually missing
+<em>all</em> of them. The Outliner's <strong>▶▶ Walk ALL Disciplines</strong> row runs the same walk for every discipline the
+building is missing, in one composed pass — one entry point instead of clicking each trade in turn.</p>
+<ol>
+<li>Open a bare <strong>ARC</strong> building.</li>
+<li>In the Outliner, under "Not extracted — walk from <code>duplex_rules.db</code>", tap <strong>▶▶ Walk ALL Disciplines</strong>.</li>
+<li>Each discipline reveals in turn — an X-ray glass tint on the structure while it places, an orange
+   flash-then-settle per element — then commits, real colour, as one signed run.</li>
+</ol>
+<p><img alt="Walk ALL Disciplines — ACMV/ELEC/PLB/FP walked in one pass on the Duplex (10/267/81/166 placed), each discipline its own colour" src="../img/modeller/walk-all-disciplines.png" /></p>
+<p>Every discipline still obeys its own rules independently — a trade with nothing to hang on still refuses
+honestly, it just does so as part of the one pass instead of a separate click. On a very large building
+(tens of thousands of elements) the per-element reveal batches into a single hold-and-settle instead of
+animating one at a time — the placement and count are unaffected, only the reveal animation coarsens.</p>
 <p><strong>One engine, two standards.</strong> A single walker drives every discipline; the discipline is just a data
 filter. It carries two measured rule-sets and auto-selects by building class:</p>
 <table>
@@ -3046,7 +3083,7 @@ score: of the joins the walker drew, how many land on a real pipe touch.</p>
 <p><img alt="Route trunk — choose the service entry (a real door / stair) from the popup, then Route ▶" src="../img/modeller/seedtrunk-entry.png" /></p>
 <p>A corridor-aware trunk is routed from that entry through the walked fixtures — around walls, through real
 doors, up risers between storeys.</p>
-<p><img alt="The walked ELEC fixtures the trunk routes through — same 267-placed, pre-route state as the popup above; the routed trunk itself isn't captured here yet" src="../img/modeller/seedtrunk-trunk.png" /></p>
+<p><img alt="The routed ELEC trunk (5,546 segments) threading through the walked fixtures — recoloured hot-pink for this capture so it reads against the fixtures' own gold, its real in-app colour matches the discipline" src="../img/modeller/seedtrunk-trunk.png" /></p>
 <blockquote>
 <p><strong>Deeper proof.</strong> The full mining, round-trip, boundary and generalization analysis lives in the resume
 cards <code>prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md</code>, <code>RESUME_TERMINAL_RULE_MINING.md</code> and
