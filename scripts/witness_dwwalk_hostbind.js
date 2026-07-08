@@ -45,11 +45,16 @@ function assert(claim, cond, detail) { if (cond) { pass++; log('  ✅ ' + claim 
 function rows(db, sql) { var r = db.exec(sql); if (!r.length) return []; return r[0].values.map(function (v) { var o = {}; r[0].columns.forEach(function (c, i) { o[c] = v[i]; }); return o; }); }
 function loadDb(SQL, f) { return new SQL.Database(new Uint8Array(fs.readFileSync(f))); }
 function median(a) { if (!a.length) return Infinity; var s = a.slice().sort(function (x, y) { return x - y; }); return s[Math.floor(s.length / 2)]; }
-function distToWalls(p, walls) {
+// §BUG-A-TRUE-MIDPOINT: element_transforms.center is NOT a reliable wall midpoint (RESUME_DISC_WALKER_
+// ENVELOPE_BOUND.md) -- ground truth here must use the TRUE (mesh-reconstructed) midpoint via
+// DW._trueMidpoint, same as hostBind() itself now does, or this checker stale-compares the FIXED code's
+// output against the OLD/wrong wall line (verify-the-checker, not just the code under test).
+function distToWalls(p, walls, bdb) {
   var best = Infinity;
   for (var i = 0; i < walls.length; i++) {
     var w = walls[i], horiz = w.bx >= w.by_ ? 0 : 1, hlen = (horiz === 0 ? w.bx : w.by_) / 2;
-    var a = [w.x, w.y], b = [w.x, w.y]; a[horiz] -= hlen; b[horiz] += hlen;
+    var mid = (bdb && DW._trueMidpoint) ? DW._trueMidpoint(bdb, w.g, w) : { x: w.x, y: w.y };
+    var a = [mid.x, mid.y], b = [mid.x, mid.y]; a[horiz] -= hlen; b[horiz] += hlen;
     var abx = b[0] - a[0], aby = b[1] - a[1], l2 = abx * abx + aby * aby;
     var t = l2 > 0 ? ((p.x - a[0]) * abx + (p.y - a[1]) * aby) / l2 : 0; t = t < 0 ? 0 : (t > 1 ? 1 : t);
     var d = Math.hypot(p.x - (a[0] + t * abx), p.y - (a[1] + t * aby));
@@ -73,13 +78,13 @@ function distToWalls(p, walls) {
 
   var rdb = loadDb(SQL, RULES), sh = loadDb(SQL, SH);
   DW.dwOpen(rdb);
-  var walls = rows(sh, "SELECT t.center_x x, t.center_y y, t.bbox_x bx, t.bbox_y by_ FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%Wall%'");
+  var walls = rows(sh, "SELECT m.guid g, t.center_x x, t.center_y y, t.bbox_x bx, t.bbox_y by_ FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%Wall%'");
   var wallThick = median(walls.map(function (w) { return Math.min(w.bx, w.by_); }));
   var wallGuids = {}; rows(sh, "SELECT guid g FROM elements_meta WHERE ifc_class LIKE '%Wall%'").forEach(function (r) { wallGuids[r.g] = 1; });
 
   // ── RAW floating generation = {noHostBind:true} (the layer host-bind refines; restores pre-§SHIM-SELECT walk) ──
   var raw = DW.dwWalk('ELEC', sh, 'SampleHouse', { noHostBind: true });
-  var rawFloat = raw.placements.map(function (p) { return distToWalls(p, walls); }).filter(function (d) { return d > 0.6; }).length;
+  var rawFloat = raw.placements.map(function (p) { return distToWalls(p, walls, sh); }).filter(function (d) { return d > 0.6; }).length;
   log('§DWHB RAW dwWalk ELEC {noHostBind}: placed=' + raw.placed + ' float=' + rawFloat + ' hostBind=' + raw.hostBind);
 
   // ── W1 RAW-FLOAT: {noHostBind:true} restores the raw floating generation (the defect the live walk now fixes) ──
@@ -90,12 +95,12 @@ function distToWalls(p, walls) {
 
   // ── W2 DEFAULT-HOSTBIND: dwWalk('ELEC', SH) with NO opts now anti-floats BY DEFAULT (§SHIM-SELECT default-on) ──
   var def = DW.dwWalk('ELEC', sh, 'SampleHouse');
-  var defFloat = def.placements.map(function (p) { return distToWalls(p, walls); }).filter(function (d) { return d > 0.6; }).length;
+  var defFloat = def.placements.map(function (p) { return distToWalls(p, walls, sh); }).filter(function (d) { return d > 0.6; }).length;
   var bound = def.placements.filter(function (p) { return p.host; });
   var badHost = bound.filter(function (p) { return !wallGuids[p.host] || p.snapDist > 6; }).length;
   log('§DWHB DEFAULT dwWalk ELEC (no opts): placed=' + def.placed + ' bound=' + (def.hostBind && def.hostBind.bound) +
     ' refused=' + (def.hostBind && def.hostBind.refused) + ' float=' + defFloat + ' median-bound-dist=' +
-    median(bound.map(function (p) { return distToWalls(p, walls); })).toFixed(3) + 'm');
+    median(bound.map(function (p) { return distToWalls(p, walls, sh); })).toFixed(3) + 'm');
   assert('W2 DEFAULT-HOSTBIND',
     !!def.hostBind && def.hostBind.bound > 0 && defFloat < rawFloat && badHost === 0,
     'the LIVE walk host-binds by default: ' + def.hostBind.bound + ' bound to real walls (0 bad), float ' + rawFloat + '→' + defFloat +

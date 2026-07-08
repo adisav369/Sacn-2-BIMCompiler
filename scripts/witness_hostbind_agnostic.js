@@ -56,11 +56,16 @@ function rows(db, sql) {
 function loadDb(SQL, f) { return new SQL.Database(new Uint8Array(fs.readFileSync(f))); }
 function median(a) { if (!a.length) return Infinity; var s = a.slice().sort(function (x, y) { return x - y; }); return s[Math.floor(s.length / 2)]; }
 function mad(a) { var m = median(a); return median(a.map(function (v) { return Math.abs(v - m); })); }
-function distToWalls(p, walls) {
+// §BUG-A-TRUE-MIDPOINT: element_transforms.center is NOT a reliable wall midpoint (RESUME_DISC_WALKER_
+// ENVELOPE_BOUND.md) -- ground truth here must use the TRUE (mesh-reconstructed) midpoint via
+// DW._trueMidpoint, same as hostBind() itself now does, or this checker stale-compares the FIXED code's
+// output against the OLD/wrong wall line (verify-the-checker, not just the code under test).
+function distToWalls(p, walls, bdb) {
   var best = Infinity;
   for (var i = 0; i < walls.length; i++) {
     var w = walls[i], horiz = w.bx >= w.by_ ? 0 : 1, hlen = (horiz === 0 ? w.bx : w.by_) / 2;
-    var a = [w.x, w.y], b = [w.x, w.y]; a[horiz] -= hlen; b[horiz] += hlen;
+    var mid = (bdb && DW._trueMidpoint) ? DW._trueMidpoint(bdb, w.g, w) : { x: w.x, y: w.y };
+    var a = [mid.x, mid.y], b = [mid.x, mid.y]; a[horiz] -= hlen; b[horiz] += hlen;
     var abx = b[0] - a[0], aby = b[1] - a[1], l2 = abx * abx + aby * aby;
     var t = l2 > 0 ? ((p.x - a[0]) * abx + (p.y - a[1]) * aby) / l2 : 0; t = t < 0 ? 0 : (t > 1 ? 1 : t);
     var d = Math.hypot(p.x - (a[0] + t * abx), p.y - (a[1] + t * aby));
@@ -91,12 +96,12 @@ function distToWalls(p, walls) {
   var sub = DW.substrate(sh);
   var storeyZ = {}; sub.forEach(function (st) { storeyZ[st.name] = st.z; });
   var placedElec = DW.place('ELEC', sub, sh).map(function (p) { p.storeyZ = storeyZ[p.storey]; return p; });
-  var shWalls = rows(sh, "SELECT t.center_x x, t.center_y y, t.bbox_x bx, t.bbox_y by_ FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%Wall%'");
+  var shWalls = rows(sh, "SELECT m.guid g, t.center_x x, t.center_y y, t.bbox_x bx, t.bbox_y by_, t.rotation_x rx, t.rotation_y ry, t.rotation_z rot FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%Wall%'");
   var wallThick = median(shWalls.map(function (w) { return Math.min(w.bx, w.by_); }));
-  var beforeD = placedElec.map(function (p) { return distToWalls(p, shWalls); });
+  var beforeD = placedElec.map(function (p) { return distToWalls(p, shWalls, sh); });
   var beforeFloat = beforeD.filter(function (d) { return d > 0.6; }).length;
   var hbW = DW.hostBind(placedElec, sh, shimWall);
-  var afterD = hbW.bound.map(function (p) { return distToWalls(p, shWalls); });
+  var afterD = hbW.bound.map(function (p) { return distToWalls(p, shWalls, sh); });
   var afterFloat = afterD.filter(function (d) { return d > 0.6; }).length;
   var afterMedW = median(afterD);
   var shWallGuids = {};

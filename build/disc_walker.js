@@ -342,15 +342,91 @@
   // is supplied (sourced from ERP.db `_shim_attributes`), never guessed. A placement with no host within
   // `reach_m` is REFUSED (kept floating + counted) — REFUSE beats fabricate. host_ifc_class matches as a
   // substring so 'IfcWall' still picks up IfcWallStandardCase (backward-compatible with the wall-only path).
+  // §BUG-A-TRUE-MIDPOINT (RESUME_DISC_WALKER_ENVELOPE_BOUND.md): element_transforms.center is the raw IFC
+  // placement-line origin, NOT a bbox midpoint -- proven off by up to a wall's own half-length on real,
+  // non-centred walls (measured: Duplex wall 2O2Fr$t4X7Zf8NOew3FNqI, Y off by 0.81m; bbox_x/y/z themselves ARE
+  // reliable, computed as maxXYZ-minXYZ by the extractor -- only the CENTRE is suspect). Recover the TRUE
+  // world-bbox midpoint from the host's OWN real mesh (component_geometries via element_instances, mirroring
+  // scripts/test_orientation_proof.py's proven P2 BBOX_RECONSTRUCT: R(rotation) @ local_mesh_bbox_corners +
+  // centre = world bbox). Available today on Duplex/SampleHouse/SampleCastle (100% wall coverage measured);
+  // Terminal has neither this nor elements_rtree -- falls back to the raw (unverified) centre rather than
+  // inventing one; callers get `verified:false` and log the uncertainty once per host, never silently trusting
+  // an unmeasured number as ground truth (mirrors the existing §DW-NONCARDINAL refuse-and-log precedent).
+  function _eulerMat3(rx, ry, rz) {
+    var ca = Math.cos(rx), sa = Math.sin(rx), cb = Math.cos(ry), sb = Math.sin(ry), cc = Math.cos(rz), sc = Math.sin(rz);
+    return [
+      [cb * cc, sa * sb * cc - ca * sc, ca * sb * cc + sa * sc],
+      [cb * sc, sa * sb * sc + ca * cc, ca * sb * sc - sa * cc],
+      [-sb, sa * cb, ca * cb]
+    ];
+  }
+  // §BUG-A CORRECTION (found by an independent reviewer session, re-verified here before touching code): the
+  // LIVE building DBs (e.g. ~/bim-ootb/modeller/Duplex_extracted.db, the actual 65/267-outside evidence DB) name
+  // this table `base_geometries`, NOT `component_geometries` -- this repo's own committed `deploy/buildings/*`
+  // copies happen to use the other name, which is why the fix "worked" there and did NOTHING on the real evidence
+  // DB (confirmed: live Duplex has 0 `component_geometries` rows, 170/170 populated `base_geometries` rows).
+  // `scripts/measure_narrowphase.js` already carries this exact two-name fallback precedent for the same reason
+  // -- mirrored here, not invented.
+  var _GEOM_TABLES = ['component_geometries', 'base_geometries'];
+  function _geomRow(bdb, ghash) {
+    for (var i = 0; i < _GEOM_TABLES.length; i++) {
+      try {
+        var r = _rows(bdb, "SELECT vertices vb FROM " + _GEOM_TABLES[i] + " WHERE geometry_hash='" + _esc(ghash) + "'")[0];
+        if (r && r.vb && r.vb.length) return r;
+      } catch (e) { /* table doesn't exist on this DB -- try the next name */ }
+    }
+    return null;
+  }
+  function _trueMidpoint(bdb, guid, w) {
+    var fallback = { x: w.x, y: w.y, z: w.z, verified: false };
+    var inst, geo;
+    try { inst = _rows(bdb, "SELECT geometry_hash gh FROM element_instances WHERE guid='" + _esc(guid) + "'")[0]; }
+    catch (e) { return fallback; }                                // no element_instances table on this DB
+    if (!inst || !inst.gh) return fallback;
+    geo = _geomRow(bdb, inst.gh);
+    if (!geo || !geo.vb || !geo.vb.length) return fallback;
+    var u8 = (geo.vb instanceof Uint8Array) ? geo.vb : new Uint8Array(geo.vb);
+    var n3 = Math.floor(u8.byteLength / 4 / 3) * 3;
+    var f32 = new Float32Array(u8.buffer, u8.byteOffset, n3);
+    if (f32.length < 3) return fallback;
+    var lMin = [Infinity, Infinity, Infinity], lMax = [-Infinity, -Infinity, -Infinity];
+    for (var i = 0; i + 2 < f32.length; i += 3) {
+      for (var k = 0; k < 3; k++) { var v = f32[i + k]; if (v < lMin[k]) lMin[k] = v; if (v > lMax[k]) lMax[k] = v; }
+    }
+    var R = _eulerMat3(w.rx || 0, w.ry || 0, w.rot || 0);
+    var wMin = [Infinity, Infinity, Infinity], wMax = [-Infinity, -Infinity, -Infinity];
+    [0, 1].forEach(function (xi) { [0, 1].forEach(function (yi) { [0, 1].forEach(function (zi) {
+      var c = [xi ? lMax[0] : lMin[0], yi ? lMax[1] : lMin[1], zi ? lMax[2] : lMin[2]];
+      var wx = R[0][0] * c[0] + R[0][1] * c[1] + R[0][2] * c[2] + w.x;
+      var wy = R[1][0] * c[0] + R[1][1] * c[1] + R[1][2] * c[2] + w.y;
+      var wz = R[2][0] * c[0] + R[2][1] * c[1] + R[2][2] * c[2] + w.z;
+      if (wx < wMin[0]) wMin[0] = wx; if (wx > wMax[0]) wMax[0] = wx;
+      if (wy < wMin[1]) wMin[1] = wy; if (wy > wMax[1]) wMax[1] = wy;
+      if (wz < wMin[2]) wMin[2] = wz; if (wz > wMax[2]) wMax[2] = wz;
+    }); }); });
+    return { x: (wMin[0] + wMax[0]) / 2, y: (wMin[1] + wMax[1]) / 2, z: (wMin[2] + wMax[2]) / 2, verified: true };
+  }
+
   function hostBind(placements, bdb, shim) {
     shim = shim || {};
     var reach = shim.reach_m != null ? shim.reach_m : 6;
     var hostClass = shim.host_ifc_class || 'IfcWall';
     var mount = (shim.mount || 'SIDE').toUpperCase();
     var hosts = _rows(bdb,
-      "SELECT m.guid g, m.storey st, t.center_x x, t.center_y y, t.center_z z, t.bbox_x bx, t.bbox_y by_, t.bbox_z bz " +
+      "SELECT m.guid g, m.storey st, t.center_x x, t.center_y y, t.center_z z, t.bbox_x bx, t.bbox_y by_, t.bbox_z bz, " +
+      "t.rotation_x rx, t.rotation_y ry, t.rotation_z rot " +
       "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%" + _esc(hostClass) + "%'");
     if (!hosts.length) return { bound: [], refused: placements.length, noHost: true, hostClass: hostClass };
+    var unverifiedHosts = 0;
+    hosts.forEach(function (h) {
+      var mid = _trueMidpoint(bdb, h.g, h);
+      h.tx = mid.x; h.ty = mid.y; h.tz = mid.z; h.midVerified = mid.verified;
+      if (!mid.verified) {
+        unverifiedHosts++;
+        console.log(TAG + ' §DW-UNVERIFIED-MIDPOINT host=' + h.g + ' ifc=' + hostClass +
+          ' (no mesh geometry on this DB -- raw center used, may be off up to half the host length; RESUME_DISC_WALKER_ENVELOPE_BOUND.md §BUG-A)');
+      }
+    });
     var off = shim.offset_m || 0;
     var bound = [], refused = 0, refusedList = [];
 
@@ -359,7 +435,7 @@
       var lines = hosts.map(function (w) {
         var horiz = w.bx >= w.by_ ? 0 : 1;                       // dominant horizontal axis = host run
         var hlen = (horiz === 0 ? w.bx : w.by_) / 2, thick = (horiz === 0 ? w.by_ : w.bx);
-        var a = [w.x, w.y], b = [w.x, w.y]; a[horiz] -= hlen; b[horiz] += hlen;
+        var a = [w.tx, w.ty], b = [w.tx, w.ty]; a[horiz] -= hlen; b[horiz] += hlen;   // §BUG-A: TRUE midpoint, not raw centre
         return { a: a, b: b, horiz: horiz, thick: thick, w: w };
       });
       placements.forEach(function (p) {
@@ -383,9 +459,9 @@
         var pz = (shim.height_m != null && p.storeyZ != null) ? (p.storeyZ + shim.height_m) : p.z;
         bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: fx, y: fy, z: pz, yaw: bl.horiz === 0 ? 0 : Math.PI / 2,
           storey: p.storey, host: bl.w.g, mount: 'SIDE', prov: 'shim:host-' + hostClass + '-side',
-          bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4) });
+          bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4), midVerified: bl.w.midVerified });
       });
-      return { bound: bound, refused: refused, refusedList: refusedList, hostCount: hosts.length, hostClass: hostClass, mount: mount };
+      return { bound: bound, refused: refused, refusedList: refusedList, hostCount: hosts.length, hostClass: hostClass, mount: mount, unverifiedHosts: unverifiedHosts };
     }
 
     // ── TOP / BOTTOM / CENTER: nearest host by XY, bind to its top/bottom/centre face ──
@@ -393,6 +469,14 @@
     // the host centre (e.g. SC vent grilles sit 0.415m above their same-storey window centre). TOP/BOTTOM add a
     // half-extent to reach the named face. `shim.same_storey` constrains host selection to the placement's own
     // storey — required for vertically STACKED hosts (windows stack floor-on-floor; nearest-XY alone is ambiguous).
+    // §BUG-A SCOPE NOTE: deliberately uses the RAW host x/y/z here, NOT `tx/ty/tz`. The true-midpoint defect was
+    // proven (measured, up to 8.69m) on WALL SIDE-mount hosts, where the placement-line origin sits at an
+    // arbitrary point along a long run. No such defect was ever measured on point-like hosts (windows) bound via
+    // nearest-XY. Applying the correction here anyway regressed the SC grille→window H3 self-consistency witness
+    // (max |Δz| 0.05m→0.084m) because the MINED offset (VENT_WINDOW_SHIM, §HBA-GRILLE) was measured against the
+    // RAW window centre — correcting only the apply side, not the mining side, introduces a fresh mismatch on a
+    // case with no proven defect. Per this project's "score is arbiter, don't overfit past the evidence" rule
+    // (RosettaStone Rules 2+7): scope the fix to where it's proven, not everywhere the same helper could reach.
     var sign = mount === 'BOTTOM' ? -1 : 1;                       // TOP=+half above, BOTTOM=−half below, CENTER=face 0
     var faceHalf = mount === 'CENTER' ? 0 : 1;                    // CENTER rides the centre; TOP/BOTTOM the face
     var sameStorey = !!shim.same_storey;
@@ -409,9 +493,9 @@
       var pz = bh.z + sign * faceHalf * (bh.bz / 2) + sign * off; // named face of the REAL host + offset
       bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: bh.x, y: bh.y, z: pz, yaw: horiz === 0 ? 0 : Math.PI / 2,
         storey: p.storey, host: bh.g, mount: mount, prov: 'shim:host-' + hostClass + '-' + mount.toLowerCase(),
-        bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4) });
+        bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4), midVerified: bh.midVerified });
     });
-    return { bound: bound, refused: refused, refusedList: refusedList, hostCount: hosts.length, hostClass: hostClass, mount: mount };
+    return { bound: bound, refused: refused, refusedList: refusedList, hostCount: hosts.length, hostClass: hostClass, mount: mount, unverifiedHosts: unverifiedHosts };
   }
 
   // ── ROUTER ────────────────────────────────────────────────────────────────────────
@@ -1026,6 +1110,7 @@
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
     hostWalls: hostWalls, countPer: countPer, occupancy: occupancy, defaultSeed: defaultSeed,
     _shimForDisc: _shimForDisc, _shimForFixture: _shimForFixture, _loadRuleShims: _loadRuleShims,
+    _trueMidpoint: _trueMidpoint,
     disciplines: disciplines, loadedFile: loadedFile, _ready: function () { return _ready; } };
   ROOT.DiscWalker = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
