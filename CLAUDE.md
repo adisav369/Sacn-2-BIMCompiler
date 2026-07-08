@@ -6,13 +6,18 @@
 **NEVER TOUCH PRODUCTION.** `deploy/live/` is the production snapshot — do not edit directly. All dev work goes to `deploy/dev/` ONLY. Read `deploy/OCI_UPLOAD.md` §RULES before any OCI upload.
 
 ## WORK-TO-ZERO (the backlog contract — enforced every session)
-There is ONE standing backlog: `prompts/FRONTEND_LANE_MASTER.md §NEW BACKLOG`. A dictated item, once given,
-**STICKS until ✅ DONE or ⛔ BLOCKED — it is never re-parked, never re-asked if the answer is in the code.**
-(The old `§OUTSTANDING` band ran to ZERO and was RETIRED 2026-06-20 → archived to
-`prompts/archive/FRONTEND_LANE_MASTER_OUTSTANDING_drained_2026-06-20.md`. Do NOT re-walk it; its 3 still-⛔ items
-were carried forward into the master file's `§OUTSTANDING — RETIRED` block.)
-- After the session's explicit task (or immediately if none is given), **work §NEW BACKLOG top-to-bottom to zero**:
-  take the top open item → spec → implement → witness/§-log → mark it `✅ DONE (witness)` in the list → next item.
+**No standing backlog file right now — `prompts/FRONTEND_LANE_MASTER.md §NEW BACKLOG` DRAINED 2026-07-08 (every
+top-level item `✅`; same retirement treatment as the earlier `§OUTSTANDING` band, RETIRED 2026-06-20 → archived
+to `prompts/archive/FRONTEND_LANE_MASTER_OUTSTANDING_drained_2026-06-20.md`). Do NOT re-walk either band, and
+do NOT re-derive "is it still stale" by re-reading that 523-line file — it's settled. Two small real items were
+found buried in its already-✅ prose (not lost, just not worth their own file): (1) bim-ootb `runSave()`'s 57s
+wall-clock never profiled to WHERE the time goes (message-clarity was fixed, the budget wasn't); (2) bim-ootb
+`38-offline-pwa.spec.js`'s hardcoded `VIEWER_URL` path blocks CI-wiring 3 offline/PWA specs (fix named in
+`GH_DEPLOY_ISSUES.md` Issue 4). Pick either up directly if ever prioritized — no rediscovery needed.**
+
+**The RULE stays live even with no active list** — the next time a dictated multi-item job is given, work it
+top-to-bottom to zero in whatever file it lives:
+- take the top open item → spec → implement → witness/§-log → mark it `✅ DONE (witness)` in the list → next item.
 - **Do NOT stop and report "it's parked."** Keep going through the list. The default is *continue*, not *hand back*.
 - **Stop only when:** (a) the user interrupts (their call, any time), or (b) an item genuinely needs a user
   fact/decision you cannot EXTRACT — then mark it `⛔ BLOCKED: <the one question>` and **move to the next item**

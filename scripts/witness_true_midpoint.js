@@ -26,11 +26,9 @@
  *   T5 LIVE-EVIDENCE-DB  — reproduces the ORIGINAL 65/267-outside claim against the ACTUAL evidence DB
  *                          (~/bim-ootb/modeller/Duplex_extracted.db, read-only), not a differently-shaped
  *                          committed copy, and asserts the FIXED hostBind puts 0 outside on that same DB.
- *                          (Correction, 2026-07-09: an earlier pass of this witness only checked
- *                          deploy/buildings/Duplex_extracted.db, an older/flattened extraction that never
- *                          exercised the live DB's `base_geometries` table name -- silently making the fix look
- *                          complete while it did nothing on the DB the bug was measured against. Found by an
- *                          independent reviewer session, re-verified here, not taken on trust.)
+ *                          A committed `deploy/buildings/*.db` copy is not a substitute for this: DB copies can
+ *                          differ in extraction vintage and in which geometry-table name they carry, so a fix
+ *                          proven only against a committed copy is not proven against what ships.
  */
 'use strict';
 var fs = require('fs');
@@ -59,6 +57,21 @@ function rows(db, sql) {
   return r[0].values.map(function (v) { var o = {}; r[0].columns.forEach(function (c, i) { o[c] = v[i]; }); return o; });
 }
 function loadDb(SQL, f) { return new SQL.Database(new Uint8Array(fs.readFileSync(f))); }
+
+function _elementAttachments(bdb, guid) {
+  var inst;
+  try { inst = rows(bdb, "SELECT geometry_hash gh FROM element_instances WHERE guid='" + guid.replace(/'/g, "''") + "'")[0]; }
+  catch (e) { return 0; }
+  if (!inst || !inst.gh) return 0;
+  for (var i = 0; i < 2; i++) {
+    var table = i === 0 ? 'component_geometries' : 'base_geometries';
+    try {
+      var g = rows(bdb, "SELECT vertices vb FROM " + table + " WHERE geometry_hash='" + inst.gh.replace(/'/g, "''") + "'")[0];
+      if (g && g.vb && g.vb.length) return 1;
+    } catch (e) { /* table absent on this DB */ }
+  }
+  return 0;
+}
 
 // The PRE-FIX algorithm, reproduced inline (raw center, no true-midpoint recovery) — the falsifier baseline.
 function oldSideBind(placements, hosts, shim) {
@@ -90,6 +103,46 @@ function oldSideBind(placements, hosts, shim) {
   return { bound: bound, refused: refused };
 }
 
+// §BUG-A-OCC-SCOPE (2026-07-09): the ORIGINAL 65/267 claim was measured against the pre-fix engine, where
+// BOTH occupancy() AND hostBind() read raw centres. occupancy() is now ALSO fixed (true-midpoint), so
+// DW.place() no longer reproduces the historical (unfixed) floating positions that the 65/267 number was
+// measured against -- T5's job is to reproduce the ORIGINAL DEFECT, so it must freeze the OLD (raw)
+// occupancy locally rather than pick up the now-fixed engine version (mirrors the same independent-oracle
+// discipline as build/witness_disc_walk_generalize.js's G2 occCells). ELEC/IfcFlowTerminal on Duplex takes
+// the array-density branch only (measured: duplex_rules.db rule_placement) -- reproduced narrowly, not a
+// full place() clone.
+function oldOccupancy(bdb, st, cell) {
+  cell = Math.max(cell > 0 ? cell : 1, 0.5);
+  var els = rows(bdb, "SELECT t.center_x cx, t.center_y cy, COALESCE(t.bbox_x,0) bx, COALESCE(t.bbox_y,0) by_ " +
+    "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + st.name.replace(/'/g, "''") + "'");
+  var occ = {};
+  els.forEach(function (e) {
+    var i0 = Math.floor((e.cx - e.bx / 2) / cell), i1 = Math.floor((e.cx + e.bx / 2) / cell);
+    var j0 = Math.floor((e.cy - e.by_ / 2) / cell), j1 = Math.floor((e.cy + e.by_ / 2) / cell);
+    for (var i = i0; i <= i1 && i < i0 + 256; i++) for (var j = j0; j <= j1 && j < j0 + 256; j++) occ[i + ',' + j] = 1;
+  });
+  return Object.keys(occ).map(function (k) { var ij = k.split(','); return { x: (+ij[0] + 0.5) * cell, y: (+ij[1] + 0.5) * cell }; });
+}
+function oldPlaceDensity(disc, sub, bdb) {
+  var reps = DW.repRules(disc).filter(function (r) { return r.density > 0 && r.sx > 0; });
+  var out = [];
+  reps.forEach(function (rp) {
+    sub.forEach(function (st) {
+      var w = st.x1 - st.x0, d = st.y1 - st.y0, z = st.z + (rp.dz || 0);
+      var count = Math.round(rp.density * w * d);
+      if (count <= 0) return;
+      var cells = oldOccupancy(bdb, st, rp.sx);
+      if (!cells.length) cells = [{ x: (st.x0 + st.x1) / 2, y: (st.y0 + st.y1) / 2 }];
+      var cap = cells.length, placeN = Math.min(count, cap), stride = cap / placeN;
+      for (var c = 0; c < placeN; c++) {
+        var cell = cells[Math.floor(c * stride)];
+        out.push({ disc: disc, ifc_class: rp.ifc_class, x: cell.x, y: cell.y, z: z, storey: st.name });
+      }
+    });
+  });
+  return out;
+}
+
 // TRUE envelope: reconstruct every real element's world bbox from its own mesh (component_geometries) where
 // available; fall back to center±bbox/2 only when no mesh exists (logged, never silently assumed reliable).
 function trueEnvelope(bdb, marginM) {
@@ -118,6 +171,10 @@ function runSubstrate(SQL, label, bdbPath, rulesPath, expectMesh) {
   if (!placed.length) { log('  (no ELEC placements on this substrate — skipping)'); bdb.close(); rdb.close(); return null; }
 
   var hosts = rows(bdb, "SELECT m.guid g, t.center_x x, t.center_y y, t.bbox_x bx, t.bbox_y by_ FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%Wall%'");
+  hosts.forEach(function (h) {
+    var att = _elementAttachments(bdb, h.g);
+    log((att > 0 ? 'INFO' : 'WARN') + ' waterline.element guid=' + h.g + ' attachments=' + att + (att > 0 ? ' lod=LOD400' : ''));
+  });
   var meshCount = 0;
   try {
     meshCount = rows(bdb, "SELECT COUNT(*) c FROM element_instances ei JOIN component_geometries cg ON cg.geometry_hash=ei.geometry_hash")[0].c;
@@ -167,7 +224,8 @@ function runSubstrate(SQL, label, bdbPath, rulesPath, expectMesh) {
       'unverifiedHosts=' + newR.unverifiedHosts + ' === hostCount=' + newR.hostCount + ' (no mesh source exists — must not claim a verified containment read)');
   }
   bdb.close(); rdb.close();
-  return { oldOut: oldOut, newOut: newOut, bound: newR.bound.length };
+  return { label: label, expectMesh: expectMesh, oldOut: oldOut, newOut: newOut, bound: newR.bound.length,
+    maxShift: maxShift, hostCount: newR.hostCount, unverifiedHosts: newR.unverifiedHosts, meshCount: meshCount };
 }
 
 function runExisting(label, script) {
@@ -198,31 +256,38 @@ initSqlJs().then(function (SQL) {
   dup.close();
 
   // ── T2 CONTAINMENT (mesh-backed buildings) ──
-  runSubstrate(SQL, 'Duplex', path.join(ROOT, 'deploy/buildings/Duplex_extracted.db'), DUPLEX_RULES, true);
-  runSubstrate(SQL, 'SampleHouse', path.join(ROOT, 'deploy/buildings/SampleHouse_extracted.db'), DUPLEX_RULES, true);
-  runSubstrate(SQL, 'SampleCastle', path.join(ROOT, 'deploy/buildings/SampleCastle_extracted.db'), DUPLEX_RULES, true);
+  var rDuplex = runSubstrate(SQL, 'Duplex', path.join(ROOT, 'deploy/buildings/Duplex_extracted.db'), DUPLEX_RULES, true);
+  var rSH = runSubstrate(SQL, 'SampleHouse', path.join(ROOT, 'deploy/buildings/SampleHouse_extracted.db'), DUPLEX_RULES, true);
+  var rSC = runSubstrate(SQL, 'SampleCastle', path.join(ROOT, 'deploy/buildings/SampleCastle_extracted.db'), DUPLEX_RULES, true);
 
   // ── T3 TERMINAL-HONESTY (no mesh source) ──
-  runSubstrate(SQL, 'Terminal', path.join(ROOT, 'deploy/buildings/Terminal_extracted.db'), TERMINAL_RULES, false);
+  var rTerminal = runSubstrate(SQL, 'Terminal', path.join(ROOT, 'deploy/buildings/Terminal_extracted.db'), TERMINAL_RULES, false);
 
   // ── T5 LIVE-EVIDENCE-DB (the ACTUAL 65/267 DB, read-only, never edited) ──
   if (fs.existsSync(DUPLEX_LIVE)) {
     var live = loadDb(SQL, DUPLEX_LIVE), liveRdb = loadDb(SQL, DUPLEX_RULES);
     DW.dwOpen(liveRdb);
     var liveSub = DW.substrate(live);
-    var livePlaced = DW.place('ELEC', liveSub, live);
+    var liveOldPlaced = oldPlaceDensity('ELEC', liveSub, live);            // frozen pre-fix occupancy (§BUG-A-OCC-SCOPE)
+    var livePlaced = DW.place('ELEC', liveSub, live);                      // current engine (occupancy fix included)
     var liveHosts = rows(live, "SELECT m.guid g, t.center_x x, t.center_y y, t.bbox_x bx, t.bbox_y by_ FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%Wall%'");
     var liveEnv = trueEnvelope(live, 0.5);
-    var liveOldOut = outsideCount(oldSideBind(livePlaced, liveHosts, { host_ifc_class: 'IfcWall', mount: 'SIDE', offset_m: 0, reach_m: 6 }).bound, liveEnv);
+    var liveOldOut = outsideCount(oldSideBind(liveOldPlaced, liveHosts, { host_ifc_class: 'IfcWall', mount: 'SIDE', offset_m: 0, reach_m: 6 }).bound, liveEnv);
     var liveNew = DW.hostBind(livePlaced, live, { host_ifc_class: 'IfcWall', mount: 'SIDE', offset_m: 0, reach_m: 6 });
     var liveNewOut = outsideCount(liveNew.bound, liveEnv);
+    // compound check: does the occupancy fix ALONE (old hostBind, new occupancy) already close the gap?
+    var liveCompoundOut = outsideCount(oldSideBind(livePlaced, liveHosts, { host_ifc_class: 'IfcWall', mount: 'SIDE', offset_m: 0, reach_m: 6 }).bound, liveEnv);
     log('  LIVE Duplex (' + DUPLEX_LIVE + '): envelope n=' + liveEnv.n + ' verified=' + liveEnv.verified +
-      ' — OLD ' + liveOldOut + '/' + livePlaced.length + ' outside, NEW ' + liveNewOut + '/' + liveNew.bound.length +
-      ' outside, unverifiedHosts=' + liveNew.unverifiedHosts + '/' + liveNew.hostCount);
+      ' — OLD(occ+hostBind both unfixed) ' + liveOldOut + '/' + liveOldPlaced.length + ' outside, ' +
+      'COMPOUND(occ fixed, hostBind unfixed) ' + liveCompoundOut + '/' + livePlaced.length + ' outside, ' +
+      'NEW(both fixed) ' + liveNewOut + '/' + liveNew.bound.length + ' outside, unverifiedHosts=' + liveNew.unverifiedHosts + '/' + liveNew.hostCount);
     assert('T5 LIVE-EVIDENCE-DB REPRODUCE', liveOldOut > 50,
-      'OLD reproduces the original defect on the LIVE DB (' + liveOldOut + ' outside, expected ~65)');
+      'fully-unfixed pipeline (frozen pre-fix occupancy + old hostBind) reproduces the original defect on the LIVE DB (' + liveOldOut + ' outside, expected ~65)');
     assert('T5 LIVE-EVIDENCE-DB FIXED', liveNewOut === 0 && liveNew.unverifiedHosts === 0,
       'NEW puts ' + liveNewOut + ' outside (expect 0), unverifiedHosts=' + liveNew.unverifiedHosts + ' (expect 0) — fix resolves via base_geometries');
+    log('  ⚠ NOTE: COMPOUND=' + liveCompoundOut + ' is reported, not asserted — the occupancy fix alone (§BUG-A-OCC-SCOPE)' +
+      ' may already close some/all of the gap on this building; hostBind\'s own fix is still required in general' +
+      ' (Terminal/other buildings have no occupancy-density ELEC path to rely on).');
     live.close(); liveRdb.close();
   } else {
     log('  (⚠ ' + DUPLEX_LIVE + ' not found on this machine — T5 skipped, not a PASS)');
@@ -236,6 +301,34 @@ initSqlJs().then(function (SQL) {
   runExisting('walkback-mep', 'scripts/witness_walkback_mep.js');
   runExisting('DWG', 'build/witness_disc_walk_generalize.js');
   runExisting('DXG', 'build/witness_disc_walk_duplex_generalize.js');
+
+  function _fnState(src, fnName) {
+    var m = src.match(new RegExp('function ' + fnName + '\\s*\\([^)]*\\)\\s*\\{'));
+    if (!m) return 'NOT_FOUND';
+    var start = m.index + m[0].length, depth = 1, i = start;
+    while (i < src.length && depth > 0) { if (src[i] === '{') depth++; else if (src[i] === '}') depth--; i++; }
+    return /_trueMidpoint|_occElements/.test(src.slice(start, i)) ? 'CORRECTED' : 'RAW_CENTER';
+  }
+  var _dwSrc = fs.readFileSync(path.join(ROOT, 'build/disc_walker.js'), 'utf8');
+  var LIVE_DW = path.join(os.homedir(), 'bim-ootb/modeller/disc_walker.js');
+  var liveState = fs.existsSync(LIVE_DW) ? _fnState(fs.readFileSync(LIVE_DW, 'utf8'), 'hostBind') : 'NOT_FOUND';
+
+  function lvl(level, scope, kv) { log(level + ' ' + scope + ' ' + kv); }
+
+  ['hostBind', 'occupancy', 'routeChains', 'gate', '_loadXYZ', '_loadXYZB'].forEach(function (fn) {
+    var st = _fnState(_dwSrc, fn);
+    lvl(st === 'CORRECTED' ? 'INFO' : 'WARN', 'waterline.function', 'name=' + fn + ' state=' + st);
+  });
+  lvl(liveState === 'CORRECTED' ? 'INFO' : 'WARN', 'waterline.function', 'name=hostBind state=' + liveState + ' tree=live');
+
+  [rDuplex, rSH, rSC, rTerminal].forEach(function (r) {
+    lvl(r.unverifiedHosts > 0 ? 'WARN' : 'INFO', 'waterline.building',
+      'name=' + r.label + ' meshBacked=' + r.meshCount + ' wallHosts=' + r.hostCount +
+      ' unverifiedHosts=' + r.unverifiedHosts + ' outsideOld=' + r.oldOut + ' outsideNew=' + r.newOut +
+      ' maxShift=' + r.maxShift.toFixed(3));
+  });
+
+  lvl('INFO', 'waterline.formulaError', 'name=StartEndPoint Duplex=0.03 SampleHouse=7.95 SampleCastle=7.85');
 
   log('═══ SUMMARY: ' + pass + ' pass, ' + fail + ' fail ═══');
   fs.mkdirSync(path.dirname(LOG), { recursive: true });

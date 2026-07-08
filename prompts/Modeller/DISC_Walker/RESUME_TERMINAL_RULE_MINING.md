@@ -375,3 +375,9 @@ Launch next session via the Workflow tool (opt-in given): confirm Terminal_geo p
 (6 disc agents) → Phase 3 avoidance manager → Phase 4 adversarial verify → Phase 5 bake+round-trip on Terminal →
 Phase 6 wire to the Outliner DISC end-point + GENERALIZE-walk on SH/DX/SC.
 ```
+
+
+## 2026-07-08 — ARC-only resident cleanup + Terminal self-walk-back + PLB cross-section — moved to its own doc
+
+Full spec, findings, decisions, and conduct lessons for this thread now live in a dedicated file — read that
+one, not this pointer: `prompts/Modeller/DISC_Walker/RESUME_ARC_ONLY_RESIDENT_AND_CROSSSECTION.md`.

@@ -302,20 +302,26 @@ witness `boxFallback=0 triExact=253/253` AND by direct IFC-content inspection, `
 `IFCMAPPEDITEM` swept-profile geometry, zero `IFCFACETEDBREP`), not a pipeline bug. But that same
 investigation surfaced the actual gap this section is written to close:
 
-**No existing gate anywhere in either app's pipeline enforces a MINIMUM detail/richness floor on the base
-extracted geometry itself — only that (a) the renderer faithfully displays whatever the geo DB already
-contains (`witness_e2e_mv_parity.js` M3, `boxFallback===0`), and (b) IFC extraction aborts on TOTAL
-tessellation failure (`extractIFCtoDB.py`'s `§ILLEGAL_PARAMETRIC_FALLBACK`, a hard-fail, but only for
-zero-geometry, not low-detail geometry). A building whose source IFC is genuinely simple (any building,
-not just Duplex) can be extracted, stored, and rendered indefinitely with NO signal beyond the honest
-`§LOD300-MATCH`/`boxFallback` counters already logged — which, critically, only prove faithful DISPLAY of
-whatever is in the DB, never that the DB's own content clears an LOD400 bar. This is a genuine, currently
-real gap, not a manufactured one — confirmed by direct code search, not assumed.**
+**Scope, stated precisely (user correction, 2026-07-08 — GIGO is not this rule's concern):** this rule
+governs PIPELINE FIDELITY ONLY — does the pipeline render what it actually extracted, or does it invent/
+substitute something else when a real match is missing? It does NOT police how rich or plain a building's
+OWN source IFC happens to be. A plain source file honestly rendered plain is GIGO, not a violation, and
+needs no guard, no threshold, no design pass. **The guard is binary, not graduated:** either the pipeline
+shows real extracted content, or it honestly refuses/blocks — there is no third state where it is allowed
+to quietly substitute invented content and call it real. `witness_e2e_mv_parity.js` M3 (`boxFallback===0`)
+already proves faithful DISPLAY of whatever is in the DB; `extractIFCtoDB.py`'s `§ILLEGAL_PARAMETRIC_FALLBACK`
+already hard-fails on total tessellation failure rather than inventing a substitute. The concrete gap this
+section closes is narrower than a first draft of it implied: individual code paths that DO have a real vs.
+no-match branch (e.g. a walker or fixture-placement routine picking a catalog box) must resolve the
+no-match case the SAME way — refuse, count, log — never a flat invented stand-in. First fix under this
+rule: `modeller.html`'s MEP fixture placement (`fix/mep-fixture-no-invented-box`, bim-ootb) — an unmatched
+fixture used to fall back to a hardcoded generic box; now it refuses and logs instead, matching the
+cross-section check right next to it in the same function (§8, already correct).
 
 **The rule, stated plainly:** neither app may present non-LOD400 geometry to the user AS IF it were the
-real, finished representation of an element — not silently, not by default, not because a source IFC
-happened to be simple. If real LOD400 detail isn't available, the element must be shown in a way that is
-HONESTLY DISTINGUISHABLE as not-real-detail, never dressed up as finished geometry.
+real, finished representation of an element — not silently, not by default. If real LOD400 detail isn't
+available, the element must be shown in a way that is HONESTLY DISTINGUISHABLE as not-real-detail (or the
+code path refuses outright), never dressed up as finished geometry.
 
 **The proof this is achievable without a performance/practicality tradeoff already exists — in the
 Viewer, not yet in the Modeller.** Alt+X ghost/X-ray mode (`viewer/navigate_find.js`,
@@ -333,14 +339,12 @@ The Modeller must inherit this SAME standard the Viewer already has. There is no
 particular building's IFC happened to be simple" — the rule governs what is ALLOWED to be presented as
 real, not what any given source file happens to contain.
 
-**Status: doctrine stated, NOT yet enforced by any gate — this is the concrete next step, not done here.**
-Nothing in this section should be read as claiming the enforcement mechanism has been built; it has not.
-A real design pass is needed before building it (out of scope for a same-day doc entry): where the
-LOD400 detail-floor threshold is actually drawn (vertex/face count? a real catalog-provenance requirement,
-extending `§10`'s `resolveRealPlacement()` gate from walker-placed leaf components to base-extracted
-elements too?), what the honest non-detail visual treatment looks like in the Modeller specifically (does
-it borrow the Viewer's bbox-wireframe pattern directly, per-element, mixed with real mesh in the same
-scene?), and whether this applies per-element or gates a whole building from being served at all below
-some aggregate bar. Do not improvise an implementation without that design pass — but do not lose this
-principle either; it is now the doctrine of record, cite it (`WalkerDoctrine.md §11`) rather than
-re-deriving or re-litigating it in a future session.
+**Status (corrected 2026-07-08 — no design pass needed, the guard is simple):** an earlier draft of this
+section called for "a real design pass" to draw an LOD400 detail-floor threshold before anything could be
+built. That overstated it — there is no threshold to calibrate. The guard is just: at any code path with a
+real-match-or-not branch, resolve "not" by refusing + counting + logging, never by substituting invented
+content. `§8`'s cross-section refusal already does this; the fixture-placement fix above (`fix/mep-
+fixture-no-invented-box`) is the same pattern applied a second time. **Enforcement is per-site, added as
+each real-vs-invented branch is found** (grep for fallback/default/placeholder patterns near catalog or
+geometry lookups), not a single central gate to design in advance. Cite `WalkerDoctrine.md §11` rather than
+re-deriving or re-litigating the principle; do not re-open the "needs a design pass" framing.

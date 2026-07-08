@@ -23,7 +23,15 @@ axis by axis) — an O(n) reclassification pass that does not change between fra
 delta changes). `gmTint()` (`modeller.html:1513`) then does an additional `g.children.find()` **per command**
 — an O(n) lookup per command, so effectively another O(n·commands) pass layered on top.
 
-**Why this session didn't fix it inline:** the existing threshold doctrine (`DW_ALL_PROXY_THRESHOLD`,
+**RESOLVED — landed in PR #665, commit `0dcbe8a` ("perf(modeller): cache grid-drag attach-map per session, not
+per frame (Finding 1)"), merged 2026-07-05 — same day as this finding, predating the 07-08 resume doc that
+still listed this as open.** All 3 candidate fixes below landed: (1) attach-map cached in `GM.beginDragSession()`/
+`endDragSession()` (`modeller/bonsai_gridmove.js`), (2) N/A — stopgap not needed since (1) shipped, (3) `gmTint()`
+now reads the same cached `meshByFid()` map instead of `g.children.find()` per command (`modeller/modeller.html:
+1700-1708`). Verified live against `origin/main` tip `1c14e1f` 2026-07-08 before any further work was dispatched
+— confirmed via `Explore` from now every future session. Do not re-open.
+
+**Why this session didn't fix it inline (historical, pre-#665):** the existing threshold doctrine (`DW_ALL_PROXY_THRESHOLD`,
 `SHADOW_MAX_ELEMENTS`) is a **disable-above-N** guard — it does not fit this problem cleanly, because
 disabling the live tint above N elements would silently remove the exact UX feature (#656) this session was
 verifying, not just a decoration. The CORRECT fix is almost certainly to **separate attach from compute**:
@@ -75,6 +83,10 @@ this is a genuinely Terminal-scale-only failure mode. Worth a real design decisi
 heal-induced RED the same as ANY other pre-existing RED (block, full stop, as it does today) — or since the
 heal pass itself caused it, should it roll back JUST that one heal and re-report it as unhealed-orange instead
 of escalating the whole Save to blocked? Not decided here — flag for the next session that touches `runSave()`.
+
+**DECIDED 2026-07-08 (user call, via `prompts/RESUME_SESSION_2026-07-08.md` §OPEN item 1):** keep current
+behavior — a heal-induced RED still blocks the whole Save, same as any pre-existing RED. No `runSave()` code
+change. Closed, do not re-litigate.
 
 ## Finding 3 — Incidental: a real id-collision race surfaced during grid-drag → STR rewalk (TOCTOU-shaped)
 **Not something this witness set out to test** — surfaced because the C1 grid-drag test used a REAL pointerup
