@@ -318,24 +318,6 @@ measured median dimensions, not a finished fixture model. That's a deliberate, h
 the alternative would be guessing at a fixture's real shape, which this project's non-invent rule forbids.
 A finer mesh swap for these is on the roadmap; today, trust the placement and count, not the silhouette.
 
-### Walk ALL Disciplines — every absent trade in one pass
-
-Walking one discipline at a time is fine for a single trade, but a bare ARC building is usually missing
-*all* of them. The Outliner's **▶▶ Walk ALL Disciplines** row runs the same walk for every discipline the
-building is missing, in one composed pass — one entry point instead of clicking each trade in turn.
-
-1. Open a bare **ARC** building.
-2. In the Outliner, under "Not extracted — walk from `duplex_rules.db`", tap **▶▶ Walk ALL Disciplines**.
-3. Each discipline reveals in turn — an X-ray glass tint on the structure while it places, an orange
-   flash-then-settle per element — then commits, real colour, as one signed run.
-
-![Walk ALL Disciplines — ACMV/ELEC/PLB/FP walked in one pass on the Duplex (10/267/81/166 placed), each discipline its own colour](img/modeller/walk-all-disciplines.png)
-
-Every discipline still obeys its own rules independently — a trade with nothing to hang on still refuses
-honestly, it just does so as part of the one pass instead of a separate click. On a very large building
-(tens of thousands of elements) the per-element reveal batches into a single hold-and-settle instead of
-animating one at a time — the placement and count are unaffected, only the reveal animation coarsens.
-
 **One engine, two standards.** A single walker drives every discipline; the discipline is just a data
 filter. It carries two measured rule-sets and auto-selects by building class:
 
@@ -432,7 +414,7 @@ After walking a discipline, route its **service trunk** from a real entry.
 A corridor-aware trunk is routed from that entry through the walked fixtures — around walls, through real
 doors, up risers between storeys.
 
-![The routed ELEC trunk (5,546 segments) threading through the walked fixtures — recoloured hot-pink for this capture so it reads against the fixtures' own gold, its real in-app colour matches the discipline](img/modeller/seedtrunk-trunk.png)
+![The walked ELEC fixtures the trunk routes through — same 267-placed, pre-route state as the popup above; the routed trunk itself isn't captured here yet](img/modeller/seedtrunk-trunk.png)
 
 > **Deeper proof.** The full mining, round-trip, boundary and generalization analysis lives in the resume
 > cards `prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md`, `RESUME_TERMINAL_RULE_MINING.md` and
