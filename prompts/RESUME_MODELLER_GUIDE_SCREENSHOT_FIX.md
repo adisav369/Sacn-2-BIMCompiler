@@ -351,5 +351,26 @@ swapped) — so item 5 was safe to do here.
   and the status-line chrome without actually reading clearer).
 - `mkdocs build --strict` — exit 0, no new broken refs.
 
-**Card status: items 1/2/4/5/6 DONE. Item 3 (move-gizmo) intentionally left for the SampleCastle-swap lane —
-do not re-attempt here; check `GUIDE_VISUAL_QUALITY.md` for that lane's status before touching move-gizmo.**
+**Card status (CORRECTED same session, see below): items 1/2/5 DONE. Items 4 and 6 RETRACTED — the screenshots
+they added turned out to showcase two real, confirmed disc_walker.js/modeller.html bugs (fixtures placed outside
+the building; walked-fixture rotation never rendered), not composition issues. Item 3 (move-gizmo) intentionally
+left for the SampleCastle-swap lane — do not re-attempt here; check `GUIDE_VISUAL_QUALITY.md` for that lane's status.**
+
+## 2026-07-09 later same day — items 4 and 6 RETRACTED: real placement/rotation bugs, not screenshot bugs
+
+The user looked at the deployed `walk-all-disciplines.png` and said "MEP seem to be outside the building" —
+confirmed numerically, not just visually: 65/267 (24%) of Duplex's walked ELEC fixtures land outside the real
+building envelope via `disc_walker.js`'s `hostBind()` SIDE-mount branch (world-AABB-based wall "thickness" calc,
+rotation-unaware). Separately, `modeller.html`'s `_renderDiscWalk()` never applies the computed per-fixture yaw
+at all (translation-only instance matrix) — the "long boxes not formed in any piping" / "rotation not conveyed"
+the user also spotted. Both are real, permanent (not mid-animation) bugs in the app, confirmed by direct code
+read + live data probes, not screenshot artifacts. Per this card's own "fail hard, do not embed it" policy
+(§THREAD 2, 2026-07-01): retracted both additions (`ef0cd7d6a` + `346d5356d`) — removed the Walk-All-Disciplines
+subsection/image, reverted `seedtrunk-trunk.png`/caption to the prior honest "pre-route, 0 routed" state.
+Redeployed + live-verified. Grid-Stretch's sentence + the gridstretch chrome-consistency fix (item 5) are
+unaffected and stay.
+
+**Full bug writeup, Java-precedent comparison, witness-suite blind-spot analysis, and next-session plan:**
+`prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`'s 2026-07-09 dated section — that is now the
+canonical doc for this thread. Do not re-derive; do not re-attempt items 4/6's screenshots until that doc's §NEXT
+items 3/4 (the actual code fixes, numeric-witness-gated, spec-first) land.

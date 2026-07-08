@@ -580,3 +580,170 @@ PipeFitting↔PipeSegment) + Duplex (PLB FlowFitting↔FlowSegment).
 faithful); the lift is the honest correction, the two falsifiers are why it is not faked. Bim-compiler witness; the
 engine `gapSurface` field is additive and opt-in (live dwWalk unchanged) → no deploy required for the finding (a later
 slice can render faithful gaps / feed assemble).
+
+---
+
+## 🚨 2026-07-09 — TWO NEW CONFIRMED BUGS (hostBind SIDE-mount + render rotation-drop), guide screenshots RETRACTED
+
+**Context: this was found by accident, not by design.** A guide-screenshot session (bim-compiler
+`prompts/RESUME_MODELLER_GUIDE_SCREENSHOT_FIX.md`) added a "Walk ALL Disciplines" section + recaptured
+`seedtrunk-trunk.png` showing a real routed ELEC trunk. The user looked at the deployed screenshot and said
+**"MEP seem to be outside the building"** — a plain visual read, not a witness failure, is what caught this.
+That itself is the headline finding: **every existing disc-walker witness in this file (§DWG/§DXG/W-DWWALK-HOSTBIND/
+W-HOSTBIND-AGNOSTIC/W-ELEC-HOSTBIND/W-SHIM-SELECT/W-WALKBACK-MEP — dozens of green runs, on Duplex, the walker's OWN
+mining source) never once asserted "is this point inside the building." Self-consistency on the mining source is the
+EASIEST case there is, and it still slipped through — same failure shape as the LOD400 box-fallback saga
+([[project_modeller_lod400_real_geometry]], 32 witnesses, 0 flagged mesh-shape) and
+[[feedback_test_real_user_path_not_seams]]: the suite asserts something real but NARROWER than the property that
+actually matters. **User's framing, keep it verbatim for the next session:** *"thus that is the source of truth, no
+longer need visual which clearly fails and ongoing blindness is expected"* — the fix's acceptance gate must be a
+NUMERIC containment/rotation assertion, not eyeballing a render. See §NEXT below for the concrete sandbox to add it to.
+
+### Bug A — `hostBind()` SIDE-mount wall "thickness" is world-AABB, rotation-unaware (`disc_walker.js:368-399`)
+```js
+var horiz = w.bx >= w.by_ ? 0 : 1;                       // dominant horizontal axis = host run
+var hlen = (horiz === 0 ? w.bx : w.by_) / 2, thick = (horiz === 0 ? w.by_ : w.bx);
+...
+var faceOff = bl.thick / 2 + off;
+var fx = bpt[0] + (perpx / pl) * faceOff, fy = bpt[1] + (perpy / pl) * faceOff;
+```
+Picks "thickness" by comparing the host wall's **world-space** `bx`/`by_` extents. For a wall that is NOT axis-aligned
+with global X/Y, its world AABB does not equal its true local thickness (a rotated rectangle's AABB captures a
+diagonal extent) — `thick` can come out many times too large, and the SIDE push (`centreline + thick/2 + offset`)
+shoves the fixture correspondingly far outside the real wall face.
+
+**Measured (not guessed), fresh probe against `~/bim-ootb` main, live Duplex, real `discWalk('ELEC', {building:'Duplex'})`:**
+- Real ARC envelope (253 real elements): x∈[-0.24, 9.04], y∈[-22.18, 4.38].
+- 65/267 (24%) of walked ELEC fixtures land outside that envelope (0.5m margin) via exactly the
+  `prov:"shim:host-IfcWall-side"` path — e.g. x=-4.59 (4.35m past the west wall), x=10.57 (1.53m past the east wall),
+  y=-24.455/-23.73/-22.995 (past the south end). 0 land above the roof or below ground (z is untouched by this bug —
+  it's purely an XY/plan problem). `ifc_class` breakdown: `IfcFlowTerminal` 58, `IfcFlowController` 7 — ordinary
+  outlets/valves, nothing exotic.
+- **No containment gate exists anywhere in `hostBind()` to catch this.** The only guard is `best > reach` (refuse if
+  no host wall within `reach_m`, default 6m) — there is nothing checking the COMPUTED result afterward. A general
+  `_envelopeClash()` helper already exists in this same file (line ~693) but is wired ONLY into route clash-skipping
+  (`routewalker`-style chain building), never into `hostBind`'s fixture output.
+- **⚠ Checked before writing this up (don't re-derive): this is NOT the same gap as the `D-ENVELOPE` witness above.**
+  `build/witness_disc_walk_density.js`'s `D-ENVELOPE` check IS built and DOES run — but it explicitly filters
+  `placed.filter(p => p.prov === 'placed:array-density')` (the array/density-tiling branch this file's original
+  "THE FIX" section targeted). `hostBind`'s SIDE-mount output carries `prov: 'shim:host-IfcWall-side'` — a
+  structurally different tag, excluded from that filter entirely. D-ENVELOPE has never once looked at a host-bound
+  fixture. So this is a genuinely uncovered adjacent gap, not a regression of something already checked — verified
+  by reading `witness_disc_walk_density.js`'s actual filter, not assumed from this doc's prose.
+
+**Java precedent (checked, per user direction — "reference old Java supposedly resolved... see where is the gap"):**
+dispatched a research agent into `/home/red1/bim-compiler`'s Java sources. Findings (verify file:line yourself before
+trusting — this is a summary, not a re-read):
+- `DAGCompiler/src/main/java/com/bim/compiler/builder/WallSpec.java` (~32-91): the FORWARD/authoring path never has
+  this bug — walls are stored as explicit `start`/`end` centerline points + a `thickness` enum, and
+  `toBoundingBox()`'s perpendicular offset comes from the wall's own true direction vector (`perpX=-dir.y(),
+  perpY=dir.x()`), never a world-AABB comparison.
+- **BUT** `WallSpec.extractFrom(...)` (~100-153) — the REVERSE-extraction method (closest Java analogue to what
+  `disc_walker.js` does, walking already-built/scanned geometry) — has the **identical trap**: `if (w > d) ... else
+  ...` off the bbox width/depth. Java just never exercises this path on a rotated wall in practice (its walls are
+  always authored with explicit centerlines). This raises confidence the root-cause hypothesis is right (a
+  recognized failure mode of this exact pattern), not just a one-off guess.
+- Java DOES have a containment gate this JS walker lacks: `BIMEyes/src/main/java/com/bim/eyes/proof/tier2/
+  FixtureOnSurfaceProof.java` (proof id `P09_FIXTURE_ON_SURFACE`) checks every wall-hosted fixture's gap to its host
+  wall's centerline against `EyesConstants.CONTAINMENT_TOLERANCE_M = 0.050` (50mm) and flags a violation — this is
+  exactly the missing check. `OpeningPlacementValidator` (Java) does the analogous thing for openings-in-walls.
+  `BIMEyes/.../proof/RelationalData.java`'s `WallFaceData` stores wall orientation as an explicit flag/centerline
+  rather than inferring it from a bbox — the safest of the patterns found, worth copying the SHAPE of (not
+  necessarily the Java code itself).
+
+### Bug B — `_renderDiscWalk()` never applies the computed yaw (`modeller.html:3605-3611`, this is the "long boxes /
+rotation not conveyed" the user spotted independently, unprompted, from the same screenshot)
+```js
+function _mesh(sub, mat) {
+  if (!sub.length) return;
+  var im = new THREE.InstancedMesh(geo, mat, sub.length);
+  sub.forEach(function (p, i) { m.makeTranslation(p.x, p.y, p.z); im.setMatrixAt(i, m); });   // ← TRANSLATION ONLY
+  ...
+```
+`disc_walker.js` computes and stores a real per-placement `yaw` (e.g. `bl.horiz === 0 ? 0 : Math.PI/2` in `hostBind`,
+or a rule-derived value elsewhere) — but the renderer that draws every walked fixture ignores it completely. Every
+walked fixture box renders axis-aligned in world space regardless of its intended orientation along its host
+wall/run. **This is not a mid-animation artifact or a screenshot fluke** — `_renderDiscWalk` is the function called
+on every fold (`_redrawAllDiscWalks`, called from the main oplog-fold path, not a one-off preview), so this is what
+ships permanently, not just what's visible for a moment after walking.
+
+The correct pattern already exists elsewhere in the SAME file, just not applied here — `_renderDiscAssembly()` (a
+sibling function, ~3772-3808, for the "assemble catalog parts at routed nodes" feature) properly does
+`q.setFromUnitVectors(up, dir); m.compose(pos, q, sc)`. Also, when a walked placement is later promoted to a real
+committed feature, `rot: p.yaw` IS threaded through correctly (line ~3849) — so `p.yaw` is good data, it's just
+dropped specifically in this one preview/fold render path.
+
+**Dimension sanity check (rules out one theory):** probed `window.__dwWalks` box dims across ALL 4 disciplines after
+a real `discWalkAll` on Duplex — every class's `bx/by/bz` is small and sane (0.03–0.15m, e.g. `IfcFlowTerminal`
+0.070×0.070×0.114, `IfcFireSuppressionTerminal` 0.032×0.027×0.058) — **the "long pillar" look in the screenshot is
+NOT an oversized-box data bug**, it reads that way because ~500 tiny unrotated boxes densely cluster/stack without
+any orientation cue, not because any single box is actually large. Don't waste time chasing a scale bug — there
+isn't one; it's Bug A (mis-placement) + Bug B (no rotation) compounding visually.
+
+### SampleCastle "rooms seem empty of any DISC" (user observation, distinct from Bugs A/B — a coverage/integration
+gap, not a placement-math bug)
+Confirmed: `modeller/SampleCastle_extracted.db` (the modeller's own ARC-only copy) has **zero** `IfcSpace`, **zero**
+`IfcSanitaryTerminal`/`IfcFlow*` rows — pure architecture (walls/slabs/windows/doors/railings/stairs/coverings) only,
+as expected for an "ARC-only resident." Two PRE-EXISTING, already-documented facts explain why this isn't a new
+finding, just newly-felt:
+- `RESUME_MEP_SAMPLECASTLE.md` (2026-06-22, Viewer-side lane, different app/code path — `viewer/routewalker.js`) already
+  recorded **SampleCastle has NO baked `building_room` sidecar** — the room-based MEP fixture-placement demo (bathroom/
+  kitchen wet-recipe rooms) has been blocked on this since that date, never resolved.
+- `disc_walker.js` (the MODELLER's own walker, this file's subject) has **zero** references to `IfcSpace`, `geomap`,
+  or any room/space table anywhere — grepped clean. `hostBind()`/`place()` are pure "nearest wall of a matching class
+  within `reach_m`" — there is no room-TYPE concept at all, so there is no way today to specifically target "put a
+  sink in the restroom." This was never wired in, on any building, not just SampleCastle.
+- **But the capability to detect rooms already EXISTS and is SHIPPED, just never connected**: [[project_ifc_bom_geomapping]]
+  (memory; LANE CONCLUDED 2026-07-02) found `IfcRelSpaceBoundary` really exists in SampleCastle's own source IFC (1675
+  relations) and `tools/rooms_from_topology.py`/`rooms_from_boundaries.py` already solve room-polygon recovery (13/21
+  IoU≥0.5 on Duplex via topology alone, 21/21 via the sidecar rung). **Nobody has ever wired that room output into
+  `disc_walker.js`'s placement decisions.** This is a real, distinct integration gap — worth a session of its own,
+  separate from Bugs A/B, and should NOT be conflated with them (don't try to "fix rooms" as part of fixing the
+  rotation/containment bugs — different code, different owners, different specs).
+
+### What was done about it THIS session (guide-scope only — no disc_walker.js/modeller.html code touched)
+Per this project's "fail hard, do not embed it" precedent (established 2026-07-01 for the SampleCastle tilt saga,
+same card) and explicit user instruction ("beware of bandaid fix not based on well worked out specs"): **no code fix
+was attempted.** Only the guide was touched:
+- `bim-compiler` `65605fd9c` added a "Walk ALL Disciplines" section + recaptured `seedtrunk-trunk.png` (both showcased
+  the bugs above, unknowingly, at capture time).
+- `ef0cd7d6a` + `346d5356d` retracted both: removed the Walk-All-Disciplines subsection + image, reverted
+  `seedtrunk-trunk.png`/caption to the prior honest "pre-route, 0 routed" state. Redeployed via
+  `scripts/safe_gh_deploy.sh` (guard correctly caught both as shrinks/deletions; blessed by exact path via
+  `ALLOW_SHRINK`, nothing else touched). Live-verified via direct URL fetch, not just deploy-exit-code.
+- Grid-Stretch's hosted-fill sentence + the `gridstretch-before/after.png` chrome-consistency recapture (unrelated to
+  Bugs A/B) were KEPT. Full detail: `prompts/RESUME_MODELLER_GUIDE_SCREENSHOT_FIX.md`'s 2026-07-09 section.
+- The move-gizmo item (a THIRD, unrelated thread from that same guide card) was deferred to the in-progress
+  SampleCastle demo-swap lane (`prompts/GUIDE_VISUAL_QUALITY.md`) — not touched here, no collision.
+
+### §NEXT — for a fresh session, spec-first (do NOT bandaid — write the spec section before touching engine code)
+1. **Reuse the existing NON-BROWSER sandbox, don't build new scaffolding.** `scripts/witness_hostbind_agnostic.js` +
+   `scripts/witness_shim_select.js` (bim-compiler) already load `build/disc_walker.js` + the real `*_rules.db`/meta
+   DBs directly in plain Node — no puppeteer, no screenshots, exactly the numeric/whitebox shape this needs (user:
+   "no longer need visual which clearly fails"; "perhaps have a sandbox... that can work"). Add the containment +
+   rotation assertions there (or a new sibling witness alongside them), not as a browser/visual check.
+2. **Check Terminal too, not just Duplex** (user: "similar with Terminal") — `hostBind()`'s SIDE-mount branch is
+   shared code across every discipline/building; a rotated wall in Terminal's real extraction would trigger the
+   identical bug. Re-run whatever containment probe gets built against BOTH `duplex_rules`/Duplex substrate AND
+   `terminal_rules`/Terminal substrate before calling it fixed.
+3. **Bug A fix direction (spec it first):** replace the world-AABB `w.bx >= w.by_` comparison with a rotation-aware
+   local thickness — either (a) if `element_transforms` carries a rotation column for walls, use it to get the wall's
+   true local frame (mirrors Java's `WallSpec.direction()`/perpendicular-via-direction-vector pattern), or (b) derive
+   the wall's run direction from its OWN long-axis via a rotated-rect fit (min-area-rect / PCA on its footprint),
+   not its axis-aligned bbox. Add a `_envelopeClash()`-style containment assertion on `hostBind`'s OUTPUT (mirrors
+   Java's `FixtureOnSurfaceProof`/P09 tolerance-gate design, adapted to JS) so this class of bug fails LOUD next time,
+   not silently.
+4. **Bug B fix direction (spec it first):** thread `p.yaw` into `_renderDiscWalk`'s `_mesh()` instance matrix —
+   mirror the already-correct pattern in `_renderDiscAssembly` (`q.setFromUnitVectors`/quaternion) or the simpler
+   `m.makeRotationZ(p.yaw)` composed before translation, whichever matches the yaw convention `hostBind`/`place`
+   actually use (yaw is currently always 0 or π/2 — confirm nothing downstream assumes translation-only matrices
+   before changing this, e.g. `_dwPrimGeo`/instance-pick code that reads `im.getMatrixAt`).
+5. **Room-awareness (SampleCastle empty-rooms) is a SEPARATE follow-on, not part of 3/4 above** — spec it
+   independently: wire `tools/rooms_from_topology.py`'s (or the sidecar rung's) room-polygon output into
+   `disc_walker.js`'s host selection so a fixture can be room-TYPE-aware, not just nearest-wall-aware. Needs its own
+   acceptance criteria (e.g. "every detected restroom-type room gets ≥1 sink candidate") — don't fold it into the
+   Bug A/B fix's acceptance gate, they're independent claims.
+6. Only AFTER 3/4 pass their own numeric witnesses (not before) should the guide screenshots be recaptured — and even
+   then, re-apply the SAME "open the PNG, eyeball it, don't trust witness-green alone" discipline from
+   `RESUME_MODELLER_GUIDE_SCREENSHOT_FIX.md`'s §ORIGINAL CARD "THE LESSON" section, since a passing containment/
+   rotation witness proves those TWO properties, not "looks right" in general.
