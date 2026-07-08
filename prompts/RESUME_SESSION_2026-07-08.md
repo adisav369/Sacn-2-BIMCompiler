@@ -232,3 +232,27 @@ the Disc-walk tab showing PRESENT disciplines' real elements alongside ABSENT on
 roster registered disciplines=ACMV,ELEC,FP,PLB,STR,roof` seen live earlier this session — this roster read
 requires the non-ARC rows to already be present in the same file)? Not answered here — recorded as a real
 discrepancy between stated intent and actual file contents, for a decision, not a fix.
+
+**UPDATE 2026-07-08 — resolved by the main session, not by this thread:** `#712` (`fix(modeller): strip all 4
+residents to ARC-only + repair mep_rw.db copy`) landed and answers the open question above — resident `.db`
+files are now stripped to ARC-only. Cited here for continuity; full detail lives in that PR, not restated.
+
+## §NEW FINDING — `witness_e2e_olsync.js` is broken on `origin/main`, pre-existing, confirmed independently
+## twice, not caused by anything shipped this session
+
+Found while verifying PR #713 (Outliner group-select) — its regression sweep initially showed
+`witness_e2e_olsync.js` failing 4/6, which looked like a real regression from the new `dblclick` wiring.
+**Root-caused, not assumed:** ran the identical witness on a genuinely pristine `origin/main` checkout
+(detached HEAD, zero diff, verified via `git status --short` showing nothing) — **byte-identical failure**,
+same 4 assertions fail the same way (`S1 CANVAS-MULTI`, `S2 OL-SECONDARY`, `S4 OL-CTRL-TOGGLE`, `S5
+WALKED-ROW-FRAMES`), same `§MODELLER select featureId=182 → null → 182 → null` oscillation pattern
+repeating 5× during what should be a single shift-click multi-select. Confirmed TWICE independently (once
+by the build agent on its own detached-worktree comparison, once by me directly on a fresh pristine
+checkout) before trusting the "pre-existing, not a regression" conclusion — this is exactly the kind of
+claim that gets accepted too easily without a second check, so it got one.
+`witness_e2e_instpick.js` (2 fail) and `witness_e2e_instance_hide.js` (2 fail) show the same pattern —
+pre-existing on `origin/main`, confirmed via the same baseline-comparison method, not this session's
+changes. **Not fixed here — a real, live, currently-broken test suite worth its own follow-up**, not
+something to leave silently broken because "it was already like that." The oscillating `182→null→182→null`
+selection pattern during a shift-click sequence is a real clue for whoever picks this up — smells like a
+selection-state or event-timing issue independent of the Outliner work done tonight.
