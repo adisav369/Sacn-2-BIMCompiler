@@ -297,3 +297,67 @@ is unavailable, never falls back to a bbox reconstruction); Tier 2 delegates all
 rotated element with real geometry across SampleHouse (14) and Duplex (184): residual = 0.00000000 in
 every case. The seam-healing engine itself does not need to wait on this fix — only anything that
 consumes `placeInWorld`'s output does.
+
+## §10 — §9's BUGS FIXED, RE-VERIFIED (2026-07-09, same day, seam-healing session picks up this lane —
+main session closed out cleanly, handed off via §9)
+
+**1. `placeInWorld` (mesh_graft.js) — FIXED.** Now adds `R·anchorOffset` (a constant per-mesh rotated
+translation, alongside `center_xyz`) — the exact missing term §9 identified. `applyMeshTransform`'s own
+`anchorOffset` field gained a doc-comment clarifying it is NOT the same thing as `real_geometry.js`'s (it's
+internal recentre bookkeeping from the template's own arbitrary raw coordinate origin, not a real IFC
+placement anchor) — a fresh graft is placed BY its own bbox centre, `anchorOffset` deliberately NOT
+propagated for that case (see `witness_mesh_graft_placement.js` CASE2/CASE3's own comments for the full
+reasoning — this is a real, easy-to-miss distinction worth re-reading before touching this code again).
+
+**2. The witness's ground truth — FIXED, same root cause as §7/§9's own pattern (a checker sharing the
+code's blind spot).** `witness_mesh_graft_placement.js` CASE1 now gets its `anchorOffset` from
+`real_geometry.js`'s own `recenter()` (not a hand-rolled recentre that silently dropped it) and checks
+`placeInWorld`'s output against `cross_edges.js`'s `readBoxes` — a GENUINELY independent, already-proven
+computation (different code path: direct raw-vertex rotate+envelope, not `placeInWorld`'s own recentre/
+anchor-add-back/rotate chain), not a second implementation sharing the same assumption. CASE2's own
+comparison was ALSO wrong in its first corrected draft — it initially expected the graft to land on CASE1's
+real element's own true bbox centre, which is definitionally impossible (a graft cannot know or reproduce a
+SPECIFIC real mesh's own arbitrary anchorOffset quirk) — corrected to the actually-true claim: a graft lands
+its own bbox centre exactly at the target's `center_xyz`, at the recovered real LOCAL size. All 3 cases
+(CASE1 real-measured, CASE2 GRAFTED, CASE3 synthetic-tilted) now PASS against real, correct ground truth —
+`maxDelta` in the 1e-7 range across the board, not a coincidental agreement.
+
+**3. `arc_editable.js`'s box-fallback double-rotation — FIXED.** New `_localBoxSizeFromWorldYawOnly(wx,wy,
+wz,rx,ry,rz)` recovers the LOCAL (pre-rotation) size by un-permuting X/Y before building the box `place()`
+is about to rotate — exact and invertible only for yaw-only at a clean 90°-multiple (an oblique/tilted
+rotation's world AABB has no unique local-box inverse, same limitation §8 already names; left unchanged for
+that case, not a regression). Witnessed two ways: (a) `witness_arc_boxfallback_rotation.js` — a new,
+explicitly-SYNTHETIC witness (no onboarded building has a real rotated+box-fallback element yet, per §7's own
+note) using the REAL confirmed Duplex numbers (bbox=(0.417,17.383,3.1), rotation_z=-90°) with geometry tables
+removed to force the box-fallback path — confirms the world footprint is now (0.417,17.383) not the old
+(17.383,0.417) swap, and separately re-derives the OLD formula's output to confirm it really would have
+failed (a real regression test, not just a forward check). (b) Ad hoc verification against Duplex's own 72
+real clean-90°-yaw ARC elements (all real, not synthetic): 72/72 now report the correct world footprint.
+
+**Found + fixed a second-order issue while verifying (b): `witness_arc_editable.js`'s own A4/A10 checks
+shared the exact same wrong assumption the code bug did** (that `bbox_x/y/z` is a local pre-rotation size) —
+A4 asserted the seed box's LOCAL extent equals `bx/by/bz` directly (now correctly FALSE for a clean-90°
+element, since the fix deliberately un-permutes it), and A10's "analytic true-angle AABB" formula fed
+world-space `bx/by` into a rotate-a-local-rectangle formula. Both corrected to the now-true expectations —
+and this incidentally closed a REAL pre-existing blind spot: the original A4 excluded every rotated element
+from AABB-fidelity checking entirely ("only axis-aligned rot≈0"); the corrected version extends that check
+to clean-90°-yaw elements too (SampleHouse: 19/19 → 36/36 elements now actually verified end-to-end, not
+just the unrotated ones). Full re-run: `witness_arc_editable.js` 10/10 PASS (was passing 8/10 immediately
+after the arc_editable.js fix and BEFORE the test correction — the 2 failures were the test's own stale
+assumption, not a fix regression, confirmed by checking the exact 10 elements involved were precisely the
+10 at odd-90°-multiple yaw). Also caught and fixed one real self-inflicted bug while writing these fixes:
+an `Edit` on `mesh_graft.js` accidentally dropped the `bbox:` field from `applyMeshTransform`'s return object
+— caught immediately by the very next witness run (`grafted.bbox` undefined), fixed same turn.
+
+**Full regression sweep, same worktree, after all fixes above:** `witness_cross_edges_real_aabb.js` 9/9,
+`witness_meshfit_thirdtier.js` PASS, `witness_mesh_graft_terminal.js` PASS (383/383 within 1%),
+`witness_sdg_cascade.js` 7/7, `witness_sdg_gate.js` 11/11 — all clean, `cross_edges.js`'s `readBoxes` export
+(added here too, mirroring the seam-healing worktree's own identical additive change) caused no behavior
+change anywhere. (`witness_arc_editable_smoke.js`/`witness_str_into_arc.js`/`witness_mesh_graft.js` don't run
+in this environment — missing `playwright`/a data file not present in this worktree — pre-existing,
+unrelated to anything touched this session.)
+
+**Status: §9's "NOT SAFE TO TRUST OR WIRE YET" is LIFTED** — `placeInWorld`/`compareToGroundTruth` are now
+verified against genuinely independent ground truth, not a shared blind spot. `arc_editable.js`'s
+box-fallback path is fixed for the well-defined (yaw-only, clean-90°-multiple) case; the genuinely
+unsolvable oblique/tilted case is unchanged and separately flagged, not silently left ambiguous.
