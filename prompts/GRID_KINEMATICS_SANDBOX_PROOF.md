@@ -174,7 +174,60 @@ isolated coverage today.
   `witness_grid_insert.js`, `witness_gridmove_smart_scope.js`) all still green throughout — this spec ADDS
   lower-level proof, it does not replace or weaken what already passes.
 
-## §5 — NOT YET BUILT
+## §5 — ✅ DONE (2026-07-09, same day) — all four tiers + §3's gap BUILT + WITNESSED
 
-Nothing in this file is implemented. This is the spec only, per the user's explicit "should be spec'd
-before" pattern already established this session (see `GRID_SMART_ELEMENT_SCOPE.md`'s own §0/§1 split).
+Built in `/tmp/wt-gridmove-arming` (branch `fix/gridmove-arming-duplex`, the worktree already carrying
+`GRID_SMART_ELEMENT_SCOPE.md`'s own class-allowlist/grab-locality commit — the code this spec proves).
+
+**Tier 1 — `modeller/tests/witness_grid_kinematics_pure.js` (98/98 PASS).** Not new work: found an EXISTING,
+already-comprehensive hand-computed suite (`tests/test_grid_kinematics.js`, S268-S270's own 36-fixture test,
+ATTACH/SPAN/EDGE/roof/bay-proportional/purity all covered with worked arithmetic in the comments) that had
+silently bit-rotted — a repo restructure moved `grid_kinematics.js` under `modeller/`+`viewer/` and its
+`require('../grid_kinematics.js')` became a dangling `MODULE_NOT_FOUND`, so it had not actually run since
+that migration despite looking complete. Revived: fixed the require path, relocated to `modeller/tests/`
+alongside this system's other witnesses, targeting `modeller/grid_kinematics.js` (confirmed byte-identical
+to `viewer/grid_kinematics.js`, so this also proves the shared engine). Content otherwise untouched.
+
+**Tier 2 — `modeller/tests/witness_gridmove_adapter_fakes.js` (4/4 PASS).** New. Hand-built fake
+`window.Bonsai.group()`/`.oplog.db`/`.grid.xs/ys` (5 fake meshes, 3 hand-inserted `GEOM_INSERT` rows), zero
+browser, zero real building. Proves `_buildClassByFid()` exact map, `_localityRadius('x')` exact (`6.0` from
+a hand-picked `ys=[0,2,6]` unambiguous max-gap), and `elementData()`'s combined class+locality output exactly
+`{1,4}` from a 5-fid fixture engineered to isolate each filter (a class-eligible-but-far fid and a
+class-unknown-but-far fid both correctly excluded by locality alone; boundary fids at radius±0.1 both land
+on the correct side).
+
+**Tier 3 — `modeller/tests/witness_grid_kinematics_real_duplex.js` (8/8 PASS).** New. Real
+`Duplex_extracted.db` via sql.js, fed DIRECTLY into Tier 1's engine (bypasses `bonsai_gridmove.js`/THREE/
+browser entirely). **Axis mapping verified from the real code before use, not assumed** — `bonsai_grid.js`
+`render()` draws X-gridlines as `Vector3(x,y0,0)→(x,y1,0)` (Y sweeps full range at fixed x) and Y-gridlines
+as `Vector3(x0,y,0)→(x1,y,0)` (fixed y=storey height, X sweeps the building) — an ELEVATION-view grid
+(`xs`=column positions, `ys`=STOREY HEIGHTS), matching `grid_kinematics.js`'s own "Y=height" convention; the
+DB's `center_z`/`bbox_z` (real values cluster at 0/3.1/6, matching the product's own default `ys=[0,3,6]`)
+map to the engine's `y`/`bboxY`, and DB `center_y`/`bbox_y` map to the engine's `z`/`bboxZ` — documented
+inline in the witness so this isn't re-derived wrong next time. Part A: 5 real guids (found via a fresh
+query, not invented) hand-verified as ATTACH×2/EDGE_LEFT×2/SPAN×1 against gridline x=4. Part B: independently
+RE-DERIVED the mass-sweep count `GRID_SMART_ELEMENT_SCOPE.md` cited (~50-100 real elements, "~54" in its own
+S2 comment) from a fresh query + the pure engine on the EXACT repro grid (`xs=[0,4,8] ys=[0,3]`, dragged line
+`gx1`/x=4) — got **43**, same order of magnitude (dozens, confirming the bug's real scale) but not identical,
+honestly explained as raw local DB bbox vs the real browser path's live world-space post-rotation THREE.js
+mesh bbox — a genuine cross-check, not a re-citation.
+
+**§3's gap — `modeller/tests/witness_gridmove_fold_pure.mjs` (12/12 PASS).** New, the highest-value single
+addition this spec named. Checked first whether `bonsai_kernel_worker.js`'s fold is isolatable: confirmed
+empirically (probed `OcctKernel.init()`/`kernel.translate`/`kernel.generalTransform` directly in plain node —
+no browser/Worker-specific API involved). Drives the REAL, UNMODIFIED `bonsai_kernel_worker.js` — copies its
+current on-disk source (read fresh every run) plus its real `lib/kernel/` dependency into a throwaway
+ESM-scoped temp dir (only harness plumbing — `self`/`postMessage` stubbed, zero fold-math reimplementation)
+and sends real `{ops:[...]}` messages through its real `self.onmessage`. T0 proves the fixture baseline
+before trusting any delta; T1/T2 prove TRANSLATE on two different axes; T3/T4 prove SCALE far-edge
+(min-fixed) vs near-edge (min-shifts-by-translateDelta) on X; T5 proves the third (Z) axis-matrix branch —
+every expected AABB hand-computed from the worker's own formula (`tx = boundMin*(1-f) + translateDelta`)
+before running, all landed exactly.
+
+**No regression** — the full named Tier-4 suite still 100% green, unchanged: `witness_e2e_gridstretch.js`
+7/7, `witness_e2e_stretch_ride.js` 9/9, `witness_e2e_grid_greenorange.js` 12/12, `witness_e2e_dm_gridundo.js`
+8/8, `witness_e2e_gridstretch_multi.js` 21/21, `witness_grid_insert.js` 6/6, `witness_gridmove_smart_scope.js`
+6/6 (69/69 total).
+
+**Grand total: 122 new/revived numeric assertions across the 4 tiers + §3's gap, all PASS, zero regression
+across 69 pre-existing assertions.**
