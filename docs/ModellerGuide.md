@@ -7,7 +7,7 @@ operation** folded into a verifiable hash-chain. The 3D you see is a pure *fold*
 so **every edit is exact, reversible, and provable** — never invented. The same signed-log engine drives
 the Kernel-ERP.
 
-**Open it:** [red1oon.github.io/bim-ootb/viewer/modeller.html](https://red1oon.github.io/bim-ootb/viewer/modeller.html)
+**Open it:** [red1oon.github.io/bim-ootb/modeller/modeller.html](https://red1oon.github.io/bim-ootb/modeller/modeller.html)
 (desktop — the B-rep kernel is heavy). The **Home** pill returns to the Matrix landing.
 
 > **Every tool on this page is proven by a real-user, end-to-end test** — the tool is driven through the
@@ -75,7 +75,7 @@ retreat across every tool below.
 
 ## Getting started — your first five minutes
 
-1. **Open the app** — [red1oon.github.io/bim-ootb/viewer/modeller.html](https://red1oon.github.io/bim-ootb/viewer/modeller.html)
+1. **Open the app** — [red1oon.github.io/bim-ootb/modeller/modeller.html](https://red1oon.github.io/bim-ootb/modeller/modeller.html)
    (desktop; the B-rep kernel is heavy). Tap **⋯** at the bottom-right to fan the pill toolbar open.
 2. **Open a building** — tap **📂 Open** and pick a resident building (e.g. *Duplex*). Its **ARC** model loads
    onto the grid and its BOM tree fills the Outliner on the left. You're now editing a real building, not a
@@ -312,6 +312,12 @@ on. Nothing is invented — every placement uses a spacing/clearance rule *mined
 
 ![Walk · ELEC — the walker placed 267 electrical fixtures across the Duplex at the measured residential cadence](img/modeller/walk-fixtures.png)
 
+*Why the fixtures render as plain blocks:* a walked placement is real (its position and count are exact,
+mined from a real building), but its **mesh** is still a stand-in — a box sized to that fixture class's own
+measured median dimensions, not a finished fixture model. That's a deliberate, honest choice, not a bug:
+the alternative would be guessing at a fixture's real shape, which this project's non-invent rule forbids.
+A finer mesh swap for these is on the roadmap; today, trust the placement and count, not the silhouette.
+
 **One engine, two standards.** A single walker drives every discipline; the discipline is just a data
 filter. It carries two measured rule-sets and auto-selects by building class:
 
@@ -408,7 +414,7 @@ After walking a discipline, route its **service trunk** from a real entry.
 A corridor-aware trunk is routed from that entry through the walked fixtures — around walls, through real
 doors, up risers between storeys.
 
-![The routed corridor trunk over the walked ELEC fixtures](img/modeller/seedtrunk-trunk.png)
+![The walked ELEC fixtures the trunk routes through — same 267-placed, pre-route state as the popup above; the routed trunk itself isn't captured here yet](img/modeller/seedtrunk-trunk.png)
 
 > **Deeper proof.** The full mining, round-trip, boundary and generalization analysis lives in the resume
 > cards `prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md`, `RESUME_TERMINAL_RULE_MINING.md` and
