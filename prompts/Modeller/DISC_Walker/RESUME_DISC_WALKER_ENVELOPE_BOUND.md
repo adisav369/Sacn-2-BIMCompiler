@@ -27,18 +27,52 @@ analogue is n_measured scaled by floor-area ratio.
 >   to 2.25m on SampleCastle** (not vacuous). 18/18 witnesses green (`scripts/witness_true_midpoint.js`,
 >   `build/logs/witness_true_midpoint_2026-07-08T2201.log`) — 2 other witnesses found sharing the same
 >   raw-center ground-truth bug were fixed along the way (`witness_elec_hostbind.js`, `witness_dwwalk_hostbind.js`).
+> - **✅ item 1 (MEP-wide scope) DONE 2026-07-09 (W-OCC-TRUE-MIDPOINT 17/17, `scripts/witness_occ_true_midpoint.js`,
+>   commit pending):** measured (not assumed) each site named in the open item, per-site:
+>   - `routeChains`/`_loadXYZ(B)` (PLB/ACMV nn-pairing classes IfcFlowSegment/IfcFlowFitting) — true-midpoint
+>     delta max **0.21m** on real evidence (Duplex/SampleCastle), an order of magnitude below the wall defect —
+>     **NOT fixed**, same "don't overfit past the evidence" precedent already applied to hostBind's point-host
+>     branch (no proven defect at this site = scope creep, not rigor).
+>   - `occupancy()` (the fixture-placement footprint mask, reads EVERY element incl. walls) — true-midpoint
+>     delta max **3.12m** (Duplex) / **1.03m** (SampleCastle), dominated by IfcWall* — a REAL, proven risk —
+>     **FIXED** (`disc_walker.js` `_occElements`/`occupancy`, same `_trueMidpoint` recovery as hostBind, cached
+>     per (bdb,storey) since occupancy() is called once per placement rule × storey). Ripples into 3 witnesses'
+>     independent-oracle mirrors (which deliberately re-derive occupancy locally so the check grades the engine,
+>     not itself) — all re-baselined in the same commit: `build/witness_disc_walk_generalize.js` G2's `occCells`,
+>     `build/witness_disc_walk_density.js` D-ENVELOPE's `occCells`, `scripts/witness_hostbind_agnostic.js` H1's
+>     hardcoded bound-count (36→37, count-preserved, 0 fabricated — one previously out-of-reach ELEC fixture
+>     landed within reach of a real corrected wall). `scripts/witness_true_midpoint.js` T5 also updated: the
+>     original 65/267 claim now needs a FROZEN pre-fix occupancy reproduction (`oldPlaceDensity`) since the live
+>     engine's `DW.place()` no longer generates the old (buggy) floating positions — reveals a bonus finding:
+>     the occupancy fix ALONE (old hostBind + new occupancy) already closes 65→0 outside on LIVE Duplex; hostBind's
+>     own fix remains necessary for buildings without an ELEC density path (e.g. Terminal).
+>   - `gate()` — **not actually a raw-DB reader** (operates on already-placed `p.x/y/z`, downstream of
+>     place()/hostBind); the open item's framing was imprecise here. No fix applicable, nothing to scope.
+>   Full regression: 11 existing DW witness files, 0 fail (§DWG 49, §DXG 12, density 43, hostbind-agnostic 6,
+>   true-midpoint 21, shim-select 6, elec-hostbind 5, dwwalk-hostbind 6, walkback-mep 9, generalize-xbuild 7,
+>   rule-connector 4). `scripts/witness_hostbind_rotation.js`'s 4 fails are PRE-EXISTING (Bug B, unrelated —
+>   confirmed via `git stash` baseline before touching this item) — not a regression from this fix.
+> - **✅ item 2 (VENT_WINDOW_SHIM raw-artifact check) DONE 2026-07-09 (part of the same W-OCC-TRUE-MIDPOINT pass):**
+>   confirmed — it WAS an artifact. SampleCastle is mesh-backed (unlike Terminal), so the check didn't need a
+>   Terminal mesh recovery. All 7 grille-associated windows carry a consistent, tight (MAD=0) true-midpoint Z
+>   defect: `true_z = raw_z − 0.0835m`. Re-mined `scripts/witness_hostbind_agnostic.js` H0 off `DW._trueMidpoint`
+>   for both grille and window (previously raw `center_z` both sides): offset moves **0.415m → 0.498m** (median,
+>   MAD still 0.000m — an exact rule, not looser). `hostBind`'s CENTER/TOP/BOTTOM apply branch (`disc_walker.js`
+>   ~line 493-518) now ALSO uses the true host `tz` (was deliberately RAW before, per the old §BUG-A SCOPE NOTE —
+>   that note is now superseded: it was scoped-out only because mining and apply sides disagreed; fixing BOTH
+>   together keeps them self-consistent, H3 REPRODUCE still |Δz|=0.000m). The promoted `library/ERP.db
+>   _shim_attributes` row (`VENT_WINDOW_SHIM | IfcWindow | TOP | −513mm`, the CENTER+415 equivalent) corrected to
+>   **−429mm** (CENTER+498 equivalent, all 7 samples agree exactly) — gitignored local artifact, not a tracked
+>   file, no commit needed for that row; disc-mapping into `rule_shim` is still deferred (product_value prefix
+>   "VENT" doesn't match any real discipline code, so this percept was never live-wired — inert until that's done).
+>   XY was NOT touched (no XY defect ever measured on point-hosts — same non-overfit scope discipline, now
+>   explicit in the code comment). Regression: same 11-file suite, 0 fail.
 > - **⛔ STILL OPEN, do not report as done:**
->   1. **MEP-wide scope** — `routeChains`/`_loadXYZ(B)`/`occupancy()`/`gate()` all still read raw `center_x/y/z`
->      uncorrected; proven to be UNBOUNDED per-element risk (asymmetry isn't predictable even within one
->      building's own wall set — see §START-END-THEORY-TESTED), not an estimable error. Not scoped, not started.
->   2. **Terminal containment is now a data-recovery problem, not a walker-code one** — no mesh payload exists in
+>   1. **Terminal containment is now a data-recovery problem, not a walker-code one** — no mesh payload exists in
 >      any live/committed Terminal DB (`base_geometries`/`component_geometries` either absent or NULL-vertices
 >      everywhere checked); the one candidate mesh-free shortcut (Start/End formula) is FALSIFIED, don't re-try
 >      it without new evidence. Only path forward: recover/regenerate the mesh payload.
->   3. **VENT_WINDOW_SHIM (0.415m mined offset) may be measuring a raw-center artifact, not a true offset** —
->      unverified either way; check against a mesh-recovered true center BEFORE generalizing that constant to a
->      different building's windows.
->   4. **Nothing ported to `~/bim-ootb/modeller/disc_walker.js` yet** — bim-compiler only, per this file's own
+>   2. **Nothing ported to `~/bim-ootb/modeller/disc_walker.js` yet** — bim-compiler only, per this file's own
 >      sequencing rule (fix + witness here first, port after review).
 > - **Don't re-litigate:** the Start/End (BOM Tack-chain) reconstruction shortcut was tested rigorously across
 >   all 3 mesh-backed buildings and falsified on 2 of them (SampleHouse 7.95m error, SampleCastle 7.85m error) —

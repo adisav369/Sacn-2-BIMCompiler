@@ -236,13 +236,34 @@
   // occupied only where a real element's XY footprint covers it. Per-element cell span is
   // bounded so one giant slab can't blow up the grid (it still marks its own footprint).
   var _OCC_SPAN = 256;                                       // max cells one element marks per axis
+  // §BUG-A-OCC-SCOPE (RESUME_DISC_WALKER_ENVELOPE_BOUND.md ⛔ item 1, MEASURED 2026-07-09): occupancy() reads
+  // EVERY element on a storey to build the footprint mask that density/single fixture placement snaps to —
+  // and unlike routing classes (pipes/fittings/ducts, measured max delta 0.21m — negligible, left uncorrected),
+  // it's dominated by IfcWall*, which carries the SAME raw-placement-line-origin defect proven in hostBind
+  // (measured true-midpoint delta up to 3.12m on Duplex, 1.03m SampleCastle). Corrected here the same way.
+  // Cached per (bdb,storey) since occupancy() is called once per placement RULE for the same storey (place()
+  // loops rules×storeys) — recomputing _trueMidpoint per element on every call would be O(rules) redundant work.
+  var _occMidCache = (typeof WeakMap !== 'undefined') ? new WeakMap() : null;
+  function _occElements(bdb, st) {
+    var byStorey = _occMidCache ? _occMidCache.get(bdb) : null;
+    if (!byStorey) { byStorey = {}; if (_occMidCache) _occMidCache.set(bdb, byStorey); }
+    if (byStorey[st.name]) return byStorey[st.name];
+    var raw = _rows(bdb,
+      "SELECT m.guid g, t.center_x cx, t.center_y cy, t.center_z cz, COALESCE(t.bbox_x,0) bx, COALESCE(t.bbox_y,0) by_, " +
+      "COALESCE(t.rotation_x,0) rx, COALESCE(t.rotation_y,0) ry, COALESCE(t.rotation_z,0) rot " +
+      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + _esc(st.name) + "'");
+    var out = raw.map(function (e) {
+      var mid = _trueMidpoint(bdb, e.g, { x: e.cx, y: e.cy, z: e.cz, rx: e.rx, ry: e.ry, rot: e.rot });
+      return { cx: mid.verified ? mid.x : e.cx, cy: mid.verified ? mid.y : e.cy, bx: e.bx, by_: e.by_ };
+    });
+    byStorey[st.name] = out;
+    return out;
+  }
   function occupancy(bdb, st, cell) {
     cell = Math.max(cell > 0 ? cell : 1, 0.5);
-    var rows = _rows(bdb,
-      "SELECT t.center_x cx, t.center_y cy, COALESCE(t.bbox_x,0) bx, COALESCE(t.bbox_y,0) by_ " +
-      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + _esc(st.name) + "'");
+    var els = _occElements(bdb, st);
     var occ = {};
-    rows.forEach(function (e) {
+    els.forEach(function (e) {
       var i0 = Math.floor((e.cx - e.bx / 2) / cell), i1 = Math.floor((e.cx + e.bx / 2) / cell);
       var j0 = Math.floor((e.cy - e.by_ / 2) / cell), j1 = Math.floor((e.cy + e.by_ / 2) / cell);
       for (var i = i0; i <= i1 && i < i0 + _OCC_SPAN; i++)
@@ -466,17 +487,17 @@
 
     // ── TOP / BOTTOM / CENTER: nearest host by XY, bind to its top/bottom/centre face ──
     // CENTER (z = host centre + signed offset) is the natural anchor when the device rides at a fixed rise off
-    // the host centre (e.g. SC vent grilles sit 0.415m above their same-storey window centre). TOP/BOTTOM add a
+    // the host centre (e.g. SC vent grilles sit above their same-storey window centre). TOP/BOTTOM add a
     // half-extent to reach the named face. `shim.same_storey` constrains host selection to the placement's own
     // storey — required for vertically STACKED hosts (windows stack floor-on-floor; nearest-XY alone is ambiguous).
-    // §BUG-A SCOPE NOTE: deliberately uses the RAW host x/y/z here, NOT `tx/ty/tz`. The true-midpoint defect was
-    // proven (measured, up to 8.69m) on WALL SIDE-mount hosts, where the placement-line origin sits at an
-    // arbitrary point along a long run. No such defect was ever measured on point-like hosts (windows) bound via
-    // nearest-XY. Applying the correction here anyway regressed the SC grille→window H3 self-consistency witness
-    // (max |Δz| 0.05m→0.084m) because the MINED offset (VENT_WINDOW_SHIM, §HBA-GRILLE) was measured against the
-    // RAW window centre — correcting only the apply side, not the mining side, introduces a fresh mismatch on a
-    // case with no proven defect. Per this project's "score is arbiter, don't overfit past the evidence" rule
-    // (RosettaStone Rules 2+7): scope the fix to where it's proven, not everywhere the same helper could reach.
+    // §BUG-A-OCC-SCOPE (2026-07-09, supersedes the earlier "deliberately RAW" note): the earlier scope-out was
+    // because the MINED offset (VENT_WINDOW_SHIM) was measured against the window's RAW centre_z, so correcting
+    // only the apply side introduced a fresh mismatch. MEASURED (scripts/witness_hostbind_agnostic.js H0): the
+    // 7 SC grille-associated windows carry a REAL, consistent Z true-midpoint defect (true_z = raw_z − 0.0835m,
+    // MAD≈0 — not noise), so VENT_WINDOW_SHIM's 0.415m raw-measured offset was itself contaminated (true rise
+    // is 0.498m). Now BOTH sides use the true midpoint (`tz`, mining re-measured accordingly) — self-consistent.
+    // XY uses `bh.x/bh.y` still (no window XY defect was ever measured; §BUG-A's proven defect is wall-linear,
+    // not point-host XY — same "don't overfit past the evidence" scope discipline as before, now for X/Y only).
     var sign = mount === 'BOTTOM' ? -1 : 1;                       // TOP=+half above, BOTTOM=−half below, CENTER=face 0
     var faceHalf = mount === 'CENTER' ? 0 : 1;                    // CENTER rides the centre; TOP/BOTTOM the face
     var sameStorey = !!shim.same_storey;
@@ -490,7 +511,7 @@
       }
       if (!bh || best > reach) { refused++; refusedList.push(p); return; }  // no host in reach → honest refuse
       var horiz = bh.bx >= bh.by_ ? 0 : 1;                        // host run axis (for yaw)
-      var pz = bh.z + sign * faceHalf * (bh.bz / 2) + sign * off; // named face of the REAL host + offset
+      var pz = bh.tz + sign * faceHalf * (bh.bz / 2) + sign * off; // named face of the TRUE host + offset
       bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: bh.x, y: bh.y, z: pz, yaw: horiz === 0 ? 0 : Math.PI / 2,
         storey: p.storey, host: bh.g, mount: mount, prov: 'shim:host-' + hostClass + '-' + mount.toLowerCase(),
         bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4), midVerified: bh.midVerified });

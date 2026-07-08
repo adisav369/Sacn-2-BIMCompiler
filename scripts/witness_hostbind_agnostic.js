@@ -110,10 +110,15 @@ function distToWalls(p, walls, bdb) {
   log('§HBA-WALL host=' + shimWall.host_ifc_class + ' mount=' + shimWall.mount + ' · ELEC placed=' + placedElec.length +
     ' float=' + beforeFloat + ' → bound=' + hbW.bound.length + ' refused=' + hbW.refused +
     ' afterFloat=' + afterFloat + ' median=' + afterMedW.toFixed(3) + 'm (wall½=' + (wallThick / 2).toFixed(3) + 'm)');
+  // §BUG-A-OCC-SCOPE (2026-07-09): re-baselined 36→37 bound. disc_walker.occupancy() now corrects element
+  // centres via true-midpoint (the same fix as hostBind's own SIDE branch), which moves the floating ELEC
+  // density-placement positions; one fixture that previously fell >6m from any TRUE wall line now falls
+  // within reach of a real one. count-preserved (bound+refused=placed, 37+1=38 same as 36+2=38 before) and
+  // still 0 fabricated (badW===0) — a real host newly in reach, not a broken invariant.
   assert('H1 WALL-REGRESSION',
-    hbW.bound.length === 36 && afterFloat === 0 && afterMedW <= wallThick && badW === 0 &&
+    hbW.bound.length === 37 && afterFloat === 0 && afterMedW <= wallThick && badW === 0 &&
     (hbW.bound.length + hbW.refused) === placedElec.length,
-    'generalized hostBind reproduces wall/SIDE: ' + hbW.bound.length + ' bound (=36), float ' + beforeFloat + '→0, median ' +
+    'generalized hostBind reproduces wall/SIDE: ' + hbW.bound.length + ' bound (=37), float ' + beforeFloat + '→0, median ' +
     afterMedW.toFixed(3) + 'm ≤ wall thickness ' + wallThick.toFixed(3) + 'm, 0 fabricated, bound+refused=placed');
   rdb.close(); sh.close();
 
@@ -121,20 +126,28 @@ function distToWalls(p, walls, bdb) {
   // (B) SC VENT GRILLES → WINDOW (CENTER) — class-2 host-bound PLACEMENT walk-back
   // ════════════════════════════════════════════════════════════════════════════════════
   var sc = loadDb(SQL, SC);
-  var grilles = rows(sc, "SELECT m.guid g, m.storey st, t.center_x x, t.center_y y, t.center_z z " +
+  var grilles = rows(sc, "SELECT m.guid g, m.storey st, t.center_x x, t.center_y y, t.center_z z, " +
+    "COALESCE(t.rotation_x,0) rx, COALESCE(t.rotation_y,0) ry, COALESCE(t.rotation_z,0) rot " +
     "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class='IfcDistributionElement'");
-  var scWins = rows(sc, "SELECT m.guid g, m.storey st, t.center_x x, t.center_y y, t.center_z z, t.bbox_z bz " +
+  var scWins = rows(sc, "SELECT m.guid g, m.storey st, t.center_x x, t.center_y y, t.center_z z, t.bbox_z bz, " +
+    "COALESCE(t.rotation_x,0) rx, COALESCE(t.rotation_y,0) ry, COALESCE(t.rotation_z,0) rot " +
     "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class='IfcWindow'");
+  // §BUG-A-OCC-SCOPE (2026-07-09): MEASURED the raw center_z is NOT reliable even on point-like hosts (windows) --
+  // the 7 SC grille-associated windows carry a real, consistent true-midpoint Z defect (true_z = raw_z-0.0835m,
+  // MAD≈0). Mine off the TRUE z (same DW._trueMidpoint recovery hostBind's CENTER branch now applies) so the
+  // mined VENT_WINDOW_SHIM offset and its apply-side consumer stay self-consistent.
+  grilles.forEach(function (g) { var m = DW._trueMidpoint(sc, g.g, g); g.tz = m.verified ? m.z : g.z; });
+  scWins.forEach(function (w) { var m = DW._trueMidpoint(sc, w.g, w); w.tz = m.verified ? m.z : w.z; });
   var winGuids = {}; scWins.forEach(function (w) { winGuids[w.g] = w; });
   log('§HBA-GRILLE SC grilles(vent. rooster)=' + grilles.length + ' · windows=' + scWins.length);
 
-  // ── H0 MINE the rule from the real grilles: nearest SAME-STOREY window in plan, measure dz to its centre ──
+  // ── H0 MINE the rule from the real grilles: nearest SAME-STOREY window in plan, measure dz to its TRUE centre ──
   var REACH = 0.6;
   var assoc = [], dzC = [], xySnap = [];
   grilles.forEach(function (gr) {
     var best = Infinity, bw = null;
     scWins.forEach(function (w) { if (w.st !== gr.st) return; var d = Math.hypot(gr.x - w.x, gr.y - w.y); if (d < best) { best = d; bw = w; } });
-    if (bw && best <= REACH) { assoc.push({ gr: gr, w: bw, xy: best }); dzC.push(gr.z - bw.z); xySnap.push(best); }
+    if (bw && best <= REACH) { assoc.push({ gr: gr, w: bw, xy: best }); dzC.push(gr.tz - bw.tz); xySnap.push(best); }
   });
   var offCenter = median(dzC), spread = mad(dzC);
   log('§HBA-GRILLE MINED rule: host=IfcWindow mount=CENTER same_storey · ' + assoc.length + '/' + grilles.length +

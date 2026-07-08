@@ -54,14 +54,21 @@ const ok = (c, m) => { (c ? PASS++ : FAIL++); console.log('  ' + (c ? '✅' : '�
 
 // INDEPENDENT occupancy re-derivation (mirrors disc_walker.occupancy) — the G2 count oracle,
 // computed HERE so the count-transfer check grades the engine, not itself.
+// §BUG-A-OCC-SCOPE (2026-07-09): disc_walker.occupancy() now corrects each element's centre via
+// DW._trueMidpoint (measured wall raw-centre defect, up to 3.12m) before building the grid — mirrored
+// here the same way (own independent re-derivation, not a call into DW.occupancy) so this stays an
+// oracle that grades the engine, not a copy of it.
 function occCells(bdb, st, cell) {
   cell = Math.max(cell > 0 ? cell : 1, 0.5);
-  const r = bdb.exec("SELECT t.center_x,t.center_y,COALESCE(t.bbox_x,0),COALESCE(t.bbox_y,0) " +
+  const r = bdb.exec("SELECT m.guid,t.center_x,t.center_y,t.center_z,COALESCE(t.bbox_x,0),COALESCE(t.bbox_y,0)," +
+    "COALESCE(t.rotation_x,0),COALESCE(t.rotation_y,0),COALESCE(t.rotation_z,0) " +
     "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + String(st.name).replace(/'/g, "''") + "'");
   const occ = new Set();
   if (r.length) r[0].values.forEach(v => {
-    const i0 = Math.floor((v[0] - v[2] / 2) / cell), i1 = Math.floor((v[0] + v[2] / 2) / cell);
-    const j0 = Math.floor((v[1] - v[3] / 2) / cell), j1 = Math.floor((v[1] + v[3] / 2) / cell);
+    const mid = DW._trueMidpoint(bdb, v[0], { x: v[1], y: v[2], z: v[3], rx: v[6], ry: v[7], rot: v[8] });
+    const cx = mid.verified ? mid.x : v[1], cy = mid.verified ? mid.y : v[2];
+    const i0 = Math.floor((cx - v[4] / 2) / cell), i1 = Math.floor((cx + v[4] / 2) / cell);
+    const j0 = Math.floor((cy - v[5] / 2) / cell), j1 = Math.floor((cy + v[5] / 2) / cell);
     for (let i = i0; i <= i1 && i < i0 + 256; i++) for (let j = j0; j <= j1 && j < j0 + 256; j++) occ.add(i + ',' + j);
   });
   return occ;

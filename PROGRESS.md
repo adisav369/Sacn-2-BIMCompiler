@@ -27,23 +27,14 @@
   port Ph1-2 done (#675 `9ff9a5a`+`6d9f906a`), open: G6, Ph3. World-History Part1 parked.
 - `prompts/PILL_DRAWER_REORGANIZATION.md` §2026-07-06 — done (#673 `953d1e4`). Open: first-touch flicker.
 - `prompts/OPEN_BUTTON_IFC_BCF_MERGE.md` — not started.
+- `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §ROTATION-BOUND 2026-07-09 — Bug B shipped
+  (PR #717, unmerged). Bug A (hostBind) + items 1-2 (occupancy() fix, VENT_WINDOW_SHIM 415→498mm) all fixed+witnessed
+  (W-OCC-TRUE-MIDPOINT 17/17, 0 regressions). Open: Terminal mesh-recovery, port to bim-ootb (after review).
 
 ### Other open work (lower/no current juggling priority)
-- **HBA IoT "wow" batch (3 items, bim-ootb PR #659 shipped item 4b)** — item 1: sensor-click should double the
-  matching CCTV tile + render a real in-scene capture facing the device (feasible, not yet built). Item 2:
-  clicking a CAM tile should fly the Viewer camera to assume that camera's POV — an Opus feasibility pass found
-  the facing AXIS is really extractable (door bbox thin-dimension) but the SIGN is not (rotation is uniformly
-  0 in this extraction, no reliable inside/outside signal) — needs one human-declared `facing` vector per
-  camera (⛔ needs a person to actually look at each door in the viewer and pick a side). Item 0: a mobile
-  swipeable-card-stack redesign of all HBA panes has a full written spec (`prompts/RESUME_HBA_MOBILE_CARD_STACK.md`
-  in bim-ootb, PR #659) — not yet implemented, phased build order included. Memory: `project_hba_iot_lod400_lane.md`.
-- **✅ DONE, pending merge:** `prompts/SCALE_AND_UX_SWEEP.md` (bim-ootb PR #665, `lane/watchdog-scale-ux-sweep`) —
-  Terminal-scale checks + 6 UX/audit fixes + 2 recon aggregation fixes, ALL 4 follow-up findings also fixed +
-  independently re-verified. Only the human merge decision is left.
-- **✅ RESOLVED, pending merge:** offline-gateway cache leak (bim-ootb `lane/offline-gateway-leak-fix`,
-  commit `cd36c07`) — 3 real fixes (sw.js/streaming.js/city.js), independently verified live. Desktop/mobile
-  installer question closed as: native PWA install is sufficient, no Electron/zip build needed. See
-  `prompts/OFFLINE_GITHUB_RELEASE_BUNDLE.md` for the full closure record.
+- **HBA IoT "wow" batch** (bim-ootb PR #659 shipped item 4b) — items 1/2/0 (CCTV double-click capture, camera-POV
+  fly-to ⛔ needs human-declared facing vector, mobile card-stack redesign) not yet built. Full detail + phased
+  build order: `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb) + memory `project_hba_iot_lod400_lane.md`.
 - **Held, not yet built (user's own call — prove smallest piece first):** Modeller prefab design dialogue —
   DAG-guided lasso, escalating selection, macro-capture — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
 - **Spec ready, not built:** `prompts/UBBL_RULES_GATE.md` (room area/height vs. 2 verified By-Law thresholds).
@@ -58,15 +49,18 @@
   low-priority, not urgent. Memory: `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- **✅ pending merge only:** `prompts/SCALE_AND_UX_SWEEP.md` (bim-ootb PR #665) — Terminal-scale checks + 6 UX/audit
+  fixes, independently re-verified. `OFFLINE_GITHUB_RELEASE_BUNDLE.md` (bim-ootb `lane/offline-gateway-leak-fix`,
+  `cd36c07`) — cache-leak fix, independently verified live. Both just need the human merge action.
 - **2026-07-05 arc: landing Save/Open+multimerge resurrect+versioning, grid green/orange, Save/auto-heal,
   Teams E2E, HBA mobile stack, UBBL+parametric recon** — bim-ootb #654/#656/#657/#658/#660/#661/#662/#664, ALL
   MERGED, watchdog-verified against real diffs (not trust-on-recap — caught 1 false "already fixed" fixture
   claim, corrected). Full detail: `prompts/FRONTEND_LANE_MASTER.md §NEW BACKLOG` + `prompts/
   GRID_PREDRAG_PREVIEW_SAVE_COMPLETEIT.md` (design dialogue) + memory `project_teams_e2e_no_ui_finding.md` /
   `project_ubbl_recon_landmine.md`.
-- Pre-2026-07-05 DONE items (13 lines) → `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-05.md`
-- Pre-2026-06-14 DONE items (21 lines) → `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-06-14.md`
-- Viewer S-series (S188–S286): browser viewer, DLOD, mobile perf, find/nav, multi-format import, cinematic — see MEMORY.md "Project — Shipped"
+- Pre-2026-07-05 DONE (13 lines) → `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-05.md`; pre-2026-06-14 (21
+  lines) → `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-06-14.md`. Viewer S-series/2D Layout/DAGCompiler
+  (S104-S286): see MEMORY.md "Project — Shipped".
 
 ## OCI Deployment
 
@@ -74,15 +68,6 @@
 - Single DB per building: `buildings/{Name}_extracted.db` (metadata + geometry + bbox).
 - `deploy/sandbox/` stale (last ~S225) — not used for deploy. `deploy/dev/` is canonical.
 - Deploy SOP: `deploy/OCI_UPLOAD.md`
-
-## Earlier Work (compressed)
-
-- **S200-S210:** BIM OOTB browser viewer, OCI deployment, BOQ charts, health checks
-- **S195-S198:** Direct DB streaming (replaced Blender .blend pipeline)
-- **S188-S193:** RTree, nD engine, DLOD — all Blender-era, superseded by browser viewer
-- **S165-S186:** GN instances, chunked loading, cockpit UI — GN HALTED, RTree won
-- **2D Layout:** Phase A closed, Java pipeline 5/5, 13/13 conformity. Browser DXF viewer (S236).
-- **DAGCompiler:** S190 fleet 21 buildings. S104 IFCtoERP complete.
 
 ## Reference
 
