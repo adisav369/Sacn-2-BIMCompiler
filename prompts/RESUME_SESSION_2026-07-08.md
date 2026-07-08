@@ -186,3 +186,49 @@ to `origin/main`, tip confirmed at `f855902` (#704). 6 stale feature branches de
 `master`: `prompts/BONSAI_KERNEL_RESEARCH.md` (Tier-3 distributed op-log doctrine correction),
 `prompts/SCALE_CHECK_TERMINAL_FINDINGS_2026-07-05.md` (Finding 4 UPDATE, now fully resolved by #703), this
 file.
+
+## §DISCREPANCY — recorded only, NOT fixed, no agent dispatched (user directive 2026-07-08: "record any
+## discrepancy in prompts/#, do not fix or launch any agent to run again, ask if need to")
+
+**User's stated model: "we are using only ARC discipline" for Terminal. Checked directly against the real
+resident files (`modeller/Terminal_meta.db`, `modeller/Terminal_geo.db`) — this is NOT what they contain.**
+
+`Terminal_meta.db`'s `elements_meta`, grouped by `discipline` (queried directly, 2026-07-08):
+```
+ARC|35552
+PLB|8175
+ACMV|1570
+STR|1032
+FP|989
+ELEC|833
+MEP|277
+```
+Total 48,428 — matches the `§BOMTREE seeded "Terminal" elements=48428` console line seen live earlier this
+session. **ARC is the majority (35552/48428, ~73%) but 6 other disciplines' real elements (PLB/ACMV/STR/
+FP/ELEC/MEP, ~27%) are present in the same resident `.db` file**, not filtered out.
+
+`Terminal_geo.db` (261MB) is the per-building raw extracted geometry (`component_geometries`, keyed by
+`geometry_hash` — deduplicated by unique shape, not one row per element, 9,394 unique geometry rows) for
+ALL of the above, not ARC-only.
+
+**Separately, and NOT the same thing — a real, genuinely small dataset does exist and matches what the user
+recalled:** `viewer/dagevu_geometries.json`, 2.39MB (close to "1.9mb," possibly a smaller prior version or an
+approximate recollection — not re-verified against history). Confirmed **DIFFERENT in purpose and scope**
+from `Terminal_geo.db`: it's the **BOM/library CATALOG's own real geometry payload** (referenced by
+`modeller/bonsai_library.js:352`, `fetch('dagevu_geometries.json?v=7', ...)`) — i.e. real meshes for
+droppable catalog PRODUCTS a user inserts into a building, keyed by a totally different id space
+(`c.gh`/`geometry_hash` in the catalog sense) than a specific building's own per-element geometry. It is
+building-agnostic and small precisely because it's a curated product library, not a per-building extraction.
+**These are two unrelated numbers that should not be conflated:** "1.9-2.4MB" (the library catalog) is not a
+smaller/filtered version of "261MB" (Terminal's own per-building, all-discipline extracted geometry) — they
+answer different questions (what real products can I insert? vs. what does THIS specific real building's own
+geometry look like?).
+
+**The open question, NOT decided here, NOT investigated further per instruction:** should the Modeller's own
+resident `.db` files for a building (like Terminal) be filtered/scoped to ARC-only at rest, given the
+Modeller's authoring surface is ARC (per `WalkerDoctrine.md §1`, "ARC = trunk")? Or is carrying all 7
+disciplines' real elements in the same resident file intentional/load-bearing for existing features (e.g.
+the Disc-walk tab showing PRESENT disciplines' real elements alongside ABSENT ones it walks, `§DISC-WALK
+roster registered disciplines=ACMV,ELEC,FP,PLB,STR,roof` seen live earlier this session — this roster read
+requires the non-ARC rows to already be present in the same file)? Not answered here — recorded as a real
+discrepancy between stated intent and actual file contents, for a decision, not a fix.
