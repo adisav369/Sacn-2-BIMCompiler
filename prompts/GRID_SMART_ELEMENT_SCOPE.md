@@ -96,11 +96,41 @@ SampleHouse), not assumed.
   as SEEDING this same override set with furniture featureIds pre-flipped to green at drag-session start,
   not a parallel mechanism.
 
-## §4 — NOT YET BUILT, NOT YET WITNESSED
+## §4 — ✅ DONE (2026-07-09, same day) — §2's open question decided + built + witnessed
 
-Nothing in this spec is implemented. `bonsai_gridmove.js`'s `elementData()` is currently reverted to its
-original (over-broad) form — the only landed change from this investigation is the independent
-`str_walker_outliner.js` `onClear()` staleness fix (§0). Pick up §2's open question, get a direction, then
-build + witness against: `witness_e2e_gridstretch.js`, `witness_e2e_stretch_ride.js`,
-`witness_e2e_grid_greenorange.js` (all must stay green) plus a NEW witness proving the Duplex mass-sweep
-(§0) no longer occurs.
+**Decided:** neither face-coincidence (§2 item 1) nor nearest-N (§2 item 2) — a THIRD option, found while
+reading `grid_kinematics.js` before implementing (per this file's own §3 warning not to assume that engine
+needs changing without reading it first): the shared engine's gridlines are otherwise **infinite** — its
+`_findBestGrid` classifies purely by along-axis centerline distance (`ATTACH_TOL=0.5m`), with zero awareness
+of an element's position along the line's own length. That's fine for a small authored test scene; it's
+exactly why a real, dense building (Duplex) sweeps broadly — dozens of walls at completely different rooms
+can each independently have a centerline within 0.5m of the same x or y coordinate. Building 3's ifc-class
+allowlist (still applied, item 3) narrows the CLASS but not the SPATIAL scope, and doesn't touch the actual
+mechanism.
+
+**Built, both in `bonsai_gridmove.js` (modeller-adapter layer only — the shared, Viewer-used
+`grid_kinematics.js` engine itself is untouched):**
+1. **Ifc-class allowlist** (`_STRUCTURAL_CLASSES`: Wall/WallStandardCase/Slab/Footing/Column/Beam/Railing/
+   StairFlight/Roof) — `_buildClassByFid()` reads the REAL `ifc_class` already stored on every ARC-seeded
+   `GEOM_INSERT` op's `parameters` (`arc_editable.js`'s own `buildSeedOps`, extracted not invented). A
+   synthetic/hand-authored wall has no recorded class at all — stays eligible (unchanged for the tool's
+   actual primary use case). This alone answers §1's furniture requirement.
+2. **Grab-locality** — `beginDragSession(draggedAxis, orthoAt)` now takes the gripped line's axis + the
+   pointerdown hit's ORTHOGONAL coordinate (`modeller.html`'s existing raycast hit already had this data on
+   hand; only new work was passing it through). `_localityRadius(draggedAxis)` derives the window from the
+   grid's own ORTHOGONAL-axis line spacing (one bay × 1.5 margin) — extracted from the real grid definition,
+   not an invented constant. Direct `computeCommands()` callers outside a session (e.g. a discovery sweep)
+   get `draggedAxis=null` ⇒ locality filtering skipped, unchanged/global — this is deliberate, not a gap: a
+   pre-drag discovery probe isn't simulating a real grab point, only an actual interactive drag has one.
+
+**Witnessed** (`witness_gridmove_smart_scope.js`, new, 6/6 PASS): a real furniture element is confirmed
+excluded from `elementData()`; the exact confirmed-broken scenario (Duplex open, not cleared, overlapping
+synthetic grid, gridline drag) now commits **3 commands** (the synthetic wall + 1 genuinely nearby real
+wall + implicitly its own recompose), not the ~54 the unfixed code produced; the op-log grows by exactly 1
+(not 9); every real element that DOES end up governed is directly checked to sit within the derived bay
+radius of the grab point (not assumed). **Zero regression**: `witness_e2e_gridstretch.js` 7/7,
+`witness_e2e_stretch_ride.js` 9/9, `witness_e2e_grid_greenorange.js` 12/12, `witness_e2e_dm_gridundo.js` 8/8,
+`witness_e2e_gridstretch_multi.js` 21/21, `witness_grid_insert.js` 6/6 — all confirmed real ARC elements
+(SampleHouse's rel_fills_host-hosted door, Duplex's green/orange scenarios) still participate in grid
+governance exactly as before; only the SCOPE of who's eligible narrowed, not whether ARC content can
+participate at all (the first, reverted fix attempt's mistake, §0).
