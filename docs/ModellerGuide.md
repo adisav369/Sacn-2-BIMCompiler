@@ -324,7 +324,7 @@ On open you'll see `§DW-PROV` print the standard and its provenance, so you alw
 driving the walk. The tables below are the **evidence** that the walk produces sensible numbers — every
 figure traces to a witnessed `§`-log (no estimates).
 
-![SampleCastle opened as its bare ARC twin — the largest of the residential-class buildings the tables below cover, 7 storeys / 3225 elements, real per-element geometry (dormers, window frames, skylights), before any walk](img/modeller/samplecastle-arc-open.png)
+![SampleCastle opened as its bare ARC twin — the largest of the residential-class buildings the tables below cover, 7 storeys / 3,621 features in the Outliner's BOM tree, real per-element geometry (dormers, window frames, skylights), before any walk](img/modeller/samplecastle-arc-open.png)
 
 ### What a walk actually places
 
