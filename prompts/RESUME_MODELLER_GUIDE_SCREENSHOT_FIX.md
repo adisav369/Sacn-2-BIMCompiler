@@ -316,3 +316,40 @@ question, **all Fable5**):
 Everything else (workspace-open, insert-catalog/placed, sketch-profile/wall, route-spine/run, cut-select/open,
 fillet-edges2/rounded, samplecastle-arc-open, seedtrunk-entry) re-confirmed legible, correctly cropped, matches
 its caption — no further action needed there. **This card stays open until items 1-6 land; archive only then.**
+
+## 2026-07-09 — items 1/2/4/5/6 DONE, item 1 (orphans) already independently done, item 3 DEFERRED
+
+Picked this card back up. Found `prompts/GUIDE_VISUAL_QUALITY.md` (uncommitted, same working tree) mid-flight:
+a 2026-07-08 decision to swap the WHOLE guide's demo building Duplex→SampleCastle, Batch A/B dispatched to a
+background agent in `/tmp/wt-viewer-rpr-port` (bim-ootb, branch touching `witness_e2e_move.js` etc. — idle, no
+running process, but claimed territory). Batch A explicitly names `move-gizmo` — **item 3 is deliberately
+DEFERRED to that lane, not done here**, to avoid duplicate/colliding recaptures (coordinate, don't collide, per
+this card's own header). `gridstretch` is explicitly OUT of that lane's scope (kept isolated/synthetic, not
+swapped) — so item 5 was safe to do here.
+
+- **Item 6 (orphans)**: already done by another session (bim-compiler `620d8f7cc`, same 10 files) before I
+  applied mine — no conflict, reconciled for free.
+- **Item 2 (Grid-Stretch hosted-fill sentence)**: added — confirmed true first via `bonsai_gridmove.js`'s
+  `§STRETCH-RIDE` (a hosted opening rides its wall, never divorces/scales, on grid-stretch too).
+- **Item 4 (Walk-All-Disciplines undocumented)**: new "Walk ALL Disciplines" subsection added (after the
+  walk-fixtures paragraph, before "One engine, two standards"), with a fresh real capture
+  (`walk-all-disciplines.png` — Outliner "▶▶ Walk ALL Disciplines" row clicked for real, `window.__dwAllDone`
+  awaited; Duplex result ACMV=10/ELEC=267/PLB=81/FP=166, 524 total, matches the on-screen Outliner readout).
+- **Item 5 (gridstretch before/after mismatch)**: recaptured BOTH from the same session so they're internally
+  consistent (full app chrome on both, not "after" chrome vs "before" bare panel). Used the existing tested
+  `#b-clear`-first recipe (`witness_e2e_gridstretch.js`'s own proven X1-X6), not a real-Duplex-context variant —
+  see `GUIDE_VISUAL_QUALITY.md`'s 2026-07-09 status entry for why (a no-clear attempt mis-picked and committed a
+  stray `GEOM_MOVE` instead of `GEOM_GRID_MOVE`; root cause not chased, out of this card's scope, flagged there
+  instead for whoever next touches grid-move arming).
+- **Item 6 (seedtrunk-trunk low visibility)**: recaptured showing the ACTUAL routed trunk (5,546 segments; the
+  previously-embedded image was honestly re-captioned by an earlier session as pre-route/"0 routed" but never
+  re-shot). Hiding the ELEC fixtures via `Bonsai.setDiscVisible('ELEC', false)` had no visible effect (only 4 of
+  presumably-more InstancedMesh buckets toggled — not chased further). Fixed the actual complaint instead by
+  recolouring the trunk `LineSegments` hot-pink for the capture only (no op committed, no app-code change) —
+  its default colour (`DW_COLOR.ELEC`, gold) is the same family as the ELEC fixture boxes, which is exactly why
+  it read as low-contrast. An overhead/plan-view alternate was tried and rejected (lost full-building context
+  and the status-line chrome without actually reading clearer).
+- `mkdocs build --strict` — exit 0, no new broken refs.
+
+**Card status: items 1/2/4/5/6 DONE. Item 3 (move-gizmo) intentionally left for the SampleCastle-swap lane —
+do not re-attempt here; check `GUIDE_VISUAL_QUALITY.md` for that lane's status before touching move-gizmo.**
