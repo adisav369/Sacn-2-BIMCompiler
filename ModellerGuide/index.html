@@ -2527,7 +2527,7 @@ dead file — every action (drop a component, cut a window, route a duct, move a
 operation</strong> folded into a verifiable hash-chain. The 3D you see is a pure <em>fold</em> of that operation log,
 so <strong>every edit is exact, reversible, and provable</strong> — never invented. The same signed-log engine drives
 the Kernel-ERP.</p>
-<p><strong>Open it:</strong> <a href="https://red1oon.github.io/bim-ootb/viewer/modeller.html">red1oon.github.io/bim-ootb/viewer/modeller.html</a>
+<p><strong>Open it:</strong> <a href="https://red1oon.github.io/bim-ootb/modeller/modeller.html">red1oon.github.io/bim-ootb/modeller/modeller.html</a>
 (desktop — the B-rep kernel is heavy). The <strong>Home</strong> pill returns to the Matrix landing.</p>
 <blockquote>
 <p><strong>Every tool on this page is proven by a real-user, end-to-end test</strong> — the tool is driven through the
@@ -2587,7 +2587,7 @@ retreat across every tool below.</p>
 <hr />
 <h2 id="getting-started-your-first-five-minutes">Getting started — your first five minutes<a class="headerlink" href="#getting-started-your-first-five-minutes" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Open the app</strong> — <a href="https://red1oon.github.io/bim-ootb/viewer/modeller.html">red1oon.github.io/bim-ootb/viewer/modeller.html</a>
+<li><strong>Open the app</strong> — <a href="https://red1oon.github.io/bim-ootb/modeller/modeller.html">red1oon.github.io/bim-ootb/modeller/modeller.html</a>
    (desktop; the B-rep kernel is heavy). Tap <strong>⋯</strong> at the bottom-right to fan the pill toolbar open.</li>
 <li><strong>Open a building</strong> — tap <strong>📂 Open</strong> and pick a resident building (e.g. <em>Duplex</em>). Its <strong>ARC</strong> model loads
    onto the grid and its BOM tree fills the Outliner on the left. You're now editing a real building, not a
@@ -2772,6 +2772,11 @@ it: it places that trade's elements at the <strong>measured cadence</strong> of 
 runs it can, gates the clashes, and <strong>honestly refuses</strong> when the building has nothing to hang the trade
 on. Nothing is invented — every placement uses a spacing/clearance rule <em>mined from a real IFC model</em>.</p>
 <p><img alt="Walk · ELEC — the walker placed 267 electrical fixtures across the Duplex at the measured residential cadence" src="../img/modeller/walk-fixtures.png" /></p>
+<p><em>Why the fixtures render as plain blocks:</em> a walked placement is real (its position and count are exact,
+mined from a real building), but its <strong>mesh</strong> is still a stand-in — a box sized to that fixture class's own
+measured median dimensions, not a finished fixture model. That's a deliberate, honest choice, not a bug:
+the alternative would be guessing at a fixture's real shape, which this project's non-invent rule forbids.
+A finer mesh swap for these is on the roadmap; today, trust the placement and count, not the silhouette.</p>
 <p><strong>One engine, two standards.</strong> A single walker drives every discipline; the discipline is just a data
 filter. It carries two measured rule-sets and auto-selects by building class:</p>
 <table>
@@ -3041,7 +3046,7 @@ score: of the joins the walker drew, how many land on a real pipe touch.</p>
 <p><img alt="Route trunk — choose the service entry (a real door / stair) from the popup, then Route ▶" src="../img/modeller/seedtrunk-entry.png" /></p>
 <p>A corridor-aware trunk is routed from that entry through the walked fixtures — around walls, through real
 doors, up risers between storeys.</p>
-<p><img alt="The routed corridor trunk over the walked ELEC fixtures" src="../img/modeller/seedtrunk-trunk.png" /></p>
+<p><img alt="The walked ELEC fixtures the trunk routes through — same 267-placed, pre-route state as the popup above; the routed trunk itself isn't captured here yet" src="../img/modeller/seedtrunk-trunk.png" /></p>
 <blockquote>
 <p><strong>Deeper proof.</strong> The full mining, round-trip, boundary and generalization analysis lives in the resume
 cards <code>prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md</code>, <code>RESUME_TERMINAL_RULE_MINING.md</code> and
