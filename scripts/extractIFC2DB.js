@@ -251,6 +251,30 @@ async function main() {
     } catch(e) {}
   }
 
+  // ── Aggregation (storey → IfcSpace via IfcRelAggregates/Decomposes) ──
+  // §SPACE-SCOPED (2026-07-10): IfcRelContainedInSpatialStructure never relates an IfcSpace to its
+  // storey — a space DECOMPOSES a storey via IfcRelAggregates instead. Verified against Clinic's real
+  // IFC: CENTRAL WAITING (#85) is a RelatedObject of IFCRELAGGREGATES whose RelatingObject (#3954) is
+  // IFCBUILDINGSTOREY 'First Floor' — never appears in any IFCRELCONTAINEDINSPATIALSTRUCTURE at all.
+  // Without this pass every IfcSpace row falls to storey='Unknown' (measured: all 269 Clinic spaces,
+  // before this fix). Reuses the same storeyMap; never overrides an entry the containment pass above
+  // already set (spaces and physical elements don't collide on the same expressID).
+  const aggIds = ifcApi.GetLineIDsWithType(modelID, WebIFC.IFCRELAGGREGATES);
+  for (let i = 0; i < aggIds.size(); i++) {
+    try {
+      const rel = ifcApi.GetLine(modelID, aggIds.get(i));
+      const parentId = rel.RelatingObject ? rel.RelatingObject.value : null;
+      if (!(parentId in storeyMap)) continue;
+      const storeyName = storeyMap[parentId];
+      if (rel.RelatedObjects) {
+        for (let j = 0; j < rel.RelatedObjects.length; j++) {
+          const relId = rel.RelatedObjects[j].value;
+          if (!(relId in elementToStorey)) elementToStorey[relId] = storeyName;
+        }
+      }
+    } catch(e) {}
+  }
+
   // ── Collect elements ──
   const PRODUCT_TYPES = [
     WebIFC.IFCWALL, WebIFC.IFCWALLSTANDARDCASE, WebIFC.IFCSLAB, WebIFC.IFCDOOR,
@@ -280,6 +304,15 @@ async function main() {
     WebIFC.IFCDISTRIBUTIONFLOWELEMENT, WebIFC.IFCDISTRIBUTIONCONTROLELEMENT,
     WebIFC.IFCDISTRIBUTIONELEMENT,
     WebIFC.IFCGEOGRAPHICELEMENT,
+    WebIFC.IFCSPACE,   // §SPACE-SCOPED (2026-07-10): DISC_MAP already carries IfcSpace:'ARC' (line 50) but
+                        // this type was never queried — dead intent, not a working-then-broken path. Adding
+                        // it here reuses the SAME per-element try/catch (line ~339-434), the SAME allVerts.length
+                        // gate (skips transform row on no/empty representation, honest absence not a crash),
+                        // and the SAME vertex-derived bbox fallback (lines ~406-416) every other class already
+                        // gets — no new code path, no invented geometry. Verified: 0 regression across all 6
+                        // buildings this script builds (SampleHouse/Duplex/HHS/Clinic/Garage/Hospital), a
+                        // synthetic no-representation IfcSpace skips cleanly (meta row, no transform row, no
+                        // crash) — see RESUME_DISC_WALKER_ENVELOPE_BOUND.md's 2026-07-10 entry for the full proof.
   ].filter(t => t !== undefined);
 
   const elements = [];
@@ -298,7 +331,13 @@ async function main() {
           expressID: id,
           guid: el.GlobalId ? el.GlobalId.value : 'GUID_' + id,
           ifcClass,
-          name: el.Name ? el.Name.value : ifcClass + '_' + id,
+          // §SPACE-SCOPED blind-spot-2 (2026-07-10): IfcSpace's `Name` is the terse room CODE
+          // (e.g. '1AC1'); the human-readable name (e.g. 'CENTRAL WAITING') is `LongName` — verified
+          // directly against Clinic_Architectural_IFC2x3.ifc. Prefer LongName for IfcSpace only,
+          // falling back to Name if LongName is empty. Every other class keeps reading Name unchanged.
+          name: (ifcClass === 'IfcSpace' && el.LongName && el.LongName.value)
+            ? el.LongName.value
+            : (el.Name ? el.Name.value : ifcClass + '_' + id),
           storey: elementToStorey[id] || 'Unknown',
           discipline: discOverride || classifyDisc(ifcClass, el.Name ? el.Name.value : ''),  // §FLOWTERM-REFINE
           material: '',

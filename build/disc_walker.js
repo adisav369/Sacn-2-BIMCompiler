@@ -170,6 +170,20 @@
     return storeys.filter(function (st) { return (st.x1 - st.x0) > 0.5 && (st.y1 - st.y0) > 0.5 && st.n >= 2; });
   }
 
+  // §SPACE-SCOPED piece 2 (SPACE_SCOPED_DISC_INSTALL_VISION.md, 2026-07-10): a real IfcSpace's own bbox,
+  // reshaped into the EXACT same {name,z,x0,x1,y0,y1} shape substrate() already produces per storey — so
+  // place()/occupancy() need NO new math, just a narrower input. NON-INVENT: the boundary is the space's
+  // own measured bbox (elements_meta/element_transforms), nothing inferred or drawn. Returns null (honest
+  // REFUSE upstream in dwWalk) if the guid isn't a real IfcSpace row with a resolved transform.
+  function spaceAsStorey(bdb, spaceGuid) {
+    var r = _rows(bdb, "SELECT m.storey s, t.center_x cx, t.center_y cy, t.center_z cz, " +
+      "COALESCE(t.bbox_x,0) bx, COALESCE(t.bbox_y,0) by_ FROM elements_meta m JOIN element_transforms t " +
+      "ON m.guid=t.guid WHERE m.guid='" + _esc(spaceGuid) + "' AND m.ifc_class='IfcSpace'")[0];
+    if (!r || !r.bx || !r.by_) return null;
+    return { name: r.s, z: r.cz, x0: r.cx - r.bx / 2, x1: r.cx + r.bx / 2, y0: r.cy - r.by_ / 2,
+      y1: r.cy + r.by_ / 2, n: 1, spaceGuid: spaceGuid };
+  }
+
   // Reduce a discipline's rule_placement rows to ONE representative per ifc_class
   // (median spacing + dz) — on a new building we have no storey mapping, so we apply
   // the measured cadence once per target storey rather than the Terminal's per-storey rows.
@@ -218,11 +232,20 @@
   // ref_kind='host' rule, the device tacks onto a REAL wall in the target storey —
   // position=wall centre, z=floor+measured dz, yaw=wall rotation_z (the host normal = the
   // SHIM facing). NON-INVENT: every position is a real wall; height + count are measured.
-  function hostWalls(bdb, storeyName) {
-    return _rows(bdb,
-      "SELECT t.center_x cx, t.center_y cy, t.rotation_z rot, m.guid guid " +
+  function hostWalls(bdb, storeyName, spaceBBox) {
+    var sql = "SELECT t.center_x cx, t.center_y cy, t.rotation_z rot, m.guid guid " +
       "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid " +
-      "WHERE m.storey='" + _esc(storeyName) + "' AND m.ifc_class LIKE '%Wall%'");
+      "WHERE m.storey='" + _esc(storeyName) + "' AND m.ifc_class LIKE '%Wall%'";
+    // §SPACE-SCOPED piece 2: the ref_kind='host' placement path (wall-tacked fixtures, e.g. FP alarms) is a
+    // SEPARATE code path from occupancy()/place()'s density branch — it doesn't go through occupancy() at
+    // all, so it needs its OWN space-scoping. Same shape as _occElements' narrowing: restrict to walls whose
+    // CENTER falls inside the space's own real bbox, when one is given. Storey-wide calls (spaceBBox omitted)
+    // are unchanged.
+    if (spaceBBox) {
+      sql += " AND t.center_x BETWEEN " + spaceBBox.x0 + " AND " + spaceBBox.x1 +
+        " AND t.center_y BETWEEN " + spaceBBox.y0 + " AND " + spaceBBox.y1;
+    }
+    return _rows(bdb, sql);
   }
   // Measured per-storey count for a host class (rule_space_bom); 0 = unknown -> one per host.
   function countPer(disc, cls) {
@@ -250,18 +273,33 @@
   // with the same geoDb within one walk, so this doesn't need a second cache dimension.
   var _occMidCache = (typeof WeakMap !== 'undefined') ? new WeakMap() : null;
   function _occElements(bdb, st, geoDb) {
+    // §SPACE-SCOPED piece 2: a space-scoped "storey" (from spaceAsStorey) carries the SAME name as its
+    // real storey, so it needs its OWN cache slot — key on name+spaceGuid, not name alone.
+    var cacheKey = st.spaceGuid ? (st.name + '::' + st.spaceGuid) : st.name;
     var byStorey = _occMidCache ? _occMidCache.get(bdb) : null;
     if (!byStorey) { byStorey = {}; if (_occMidCache) _occMidCache.set(bdb, byStorey); }
-    if (byStorey[st.name]) return byStorey[st.name];
-    var raw = _rows(bdb,
-      "SELECT m.guid g, t.center_x cx, t.center_y cy, t.center_z cz, COALESCE(t.bbox_x,0) bx, COALESCE(t.bbox_y,0) by_, " +
+    if (byStorey[cacheKey]) return byStorey[cacheKey];
+    // §SPACE-SCOPED blind-spot-1 (SPACE_SCOPED_DISC_INSTALL_VISION.md, MEASURED 2026-07-10): IfcSpace rows
+    // are open floor area, not solid mass — piece 1's extractor fix made them real rows in elements_meta for
+    // 5/8 buildings, so without this exclusion the footprint mask would treat empty room area as a no-go
+    // obstruction, wrongly starving fixture placement inside the very spaces it's meant to serve.
+    var sql = "SELECT m.guid g, t.center_x cx, t.center_y cy, t.center_z cz, COALESCE(t.bbox_x,0) bx, COALESCE(t.bbox_y,0) by_, " +
       "COALESCE(t.rotation_x,0) rx, COALESCE(t.rotation_y,0) ry, COALESCE(t.rotation_z,0) rot " +
-      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + _esc(st.name) + "'");
+      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + _esc(st.name) +
+      "' AND m.ifc_class<>'IfcSpace'";
+    // §SPACE-SCOPED piece 2: when scoped to one space (st.spaceGuid set via spaceAsStorey), further narrow
+    // to elements whose CENTER falls inside that space's own real bbox — same query shape, one more AND.
+    // Reuses st's own x0/x1/y0/y1 (the space's measured boundary, set by spaceAsStorey), no new math.
+    if (st.spaceGuid) {
+      sql += " AND t.center_x BETWEEN " + st.x0 + " AND " + st.x1 +
+        " AND t.center_y BETWEEN " + st.y0 + " AND " + st.y1;
+    }
+    var raw = _rows(bdb, sql);
     var out = raw.map(function (e) {
       var mid = _trueMidpoint(bdb, e.g, { x: e.cx, y: e.cy, z: e.cz, rx: e.rx, ry: e.ry, rot: e.rot }, geoDb);
       return { cx: mid.verified ? mid.x : e.cx, cy: mid.verified ? mid.y : e.cy, bx: e.bx, by_: e.by_ };
     });
-    byStorey[st.name] = out;
+    byStorey[cacheKey] = out;
     return out;
   }
   function occupancy(bdb, st, cell, geoDb) {
@@ -274,9 +312,19 @@
       for (var i = i0; i <= i1 && i < i0 + _OCC_SPAN; i++)
         for (var j = j0; j <= j1 && j < j0 + _OCC_SPAN; j++) occ[i + ',' + j] = 1;
     });
-    return Object.keys(occ).map(function (k) {
+    var cells = Object.keys(occ).map(function (k) {
       var ij = k.split(','); return { x: (+ij[0] + 0.5) * cell, y: (+ij[1] + 0.5) * cell };
     });
+    // §SPACE-SCOPED piece 2: _occElements already restricts to elements CENTERED inside the space (when
+    // st.spaceGuid is set), but a straddling element's own bbox can still generate a cell that pokes past
+    // the space's real boundary (e.g. a slab/covering whose center is barely inside the room). Clip the
+    // returned candidate cells to the space's own bbox so every fixture position this feeds into place()
+    // stays inside the real boundary the user picked. Storey-wide (non-scoped) calls are BYTE-IDENTICAL —
+    // this only fires when a space is the input, never for the existing whole-storey path.
+    if (st.spaceGuid) {
+      cells = cells.filter(function (c) { return c.x >= st.x0 && c.x <= st.x1 && c.y >= st.y0 && c.y <= st.y1; });
+    }
+    return cells;
   }
 
   // ── PLACER ──────────────────────────────────────────────────────────────────────
@@ -319,7 +367,7 @@
               y: st.y0 + (j + 0.5) * (d / ny), z: z, storey: st.name, prov: 'placed:array', src: rp.src }, rp);
           }
         } else if (rp.ref_kind === 'host' && bdb) {         // SHIM → tack onto real host walls
-          var walls = hostWalls(bdb, st.name);
+          var walls = hostWalls(bdb, st.name, st.spaceGuid ? st : null);
           if (walls.length) {
             var cap = countPer(disc, rp.ifc_class);
             var nP = (cap > 0) ? Math.min(cap, walls.length) : walls.length;
@@ -476,15 +524,28 @@
   // `geoDb` (optional, §GEO-SPLIT): a SEPARATE sql.js handle carrying the geometry table for residents where
   // it can't live in `bdb` itself (Terminal_geo.db, 250MB, kept apart from Terminal_meta.db). Omitted → old
   // single-file behaviour, unchanged (SampleHouse/Duplex/SampleCastle all embed their own geometry).
-  function hostBind(placements, bdb, shim, geoDb) {
+  function hostBind(placements, bdb, shim, geoDb, spaceBBox) {
     shim = shim || {};
     var reach = shim.reach_m != null ? shim.reach_m : 6;
     var hostClass = shim.host_ifc_class || 'IfcWall';
     var mount = (shim.mount || 'SIDE').toUpperCase();
-    var hosts = _rows(bdb,
-      "SELECT m.guid g, m.storey st, t.center_x x, t.center_y y, t.center_z z, t.bbox_x bx, t.bbox_y by_, t.bbox_z bz, " +
+    var hostSql = "SELECT m.guid g, m.storey st, t.center_x x, t.center_y y, t.center_z z, t.bbox_x bx, t.bbox_y by_, t.bbox_z bz, " +
       "t.rotation_x rx, t.rotation_y ry, t.rotation_z rot " +
-      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%" + _esc(hostClass) + "%'");
+      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%" + _esc(hostClass) + "%'";
+    // §SPACE-SCOPED piece 2 — EXTENDS the vision doc's original "hostBind needs no change" note (revised,
+    // not silently overridden — see SPACE_SCOPED_DISC_INSTALL_VISION.md): the TOP/BOTTOM/CENTER mount branch
+    // below re-snaps a placement's x/y to the HOST's own centroid (bh.x/bh.y), not the fixture's original
+    // position. Measured on real Clinic data: without this, an ACMV diffuser generated correctly inside
+    // CENTER WAITING's own bbox got re-snapped to a same-storey IfcCovering panel centered ~1m OUTSIDE the
+    // room — the density/occupancy scoping alone does not guarantee the FINAL bound position stays inside
+    // the space the user picked, because hostBind's host search is storey/building-wide by design. This
+    // optional 5th param (spaceBBox) narrows host CANDIDATES to the space when the caller opts in — every
+    // EXISTING caller (4-arg calls) is byte-identical; only dwWalk's own space-scoped path passes it.
+    if (spaceBBox) {
+      hostSql += " AND t.center_x BETWEEN " + spaceBBox.x0 + " AND " + spaceBBox.x1 +
+        " AND t.center_y BETWEEN " + spaceBBox.y0 + " AND " + spaceBBox.y1;
+    }
+    var hosts = _rows(bdb, hostSql);
     if (!hosts.length) return { bound: [], refused: placements.length, noHost: true, hostClass: hostClass };
     var unverifiedHosts = 0;
     hosts.forEach(function (h) {
@@ -1057,7 +1118,23 @@
   function dwWalk(disc, bdb, buildingName, opts) {
     if (!_ready) { console.warn(TAG + ' not initialised'); return { disc: disc, refused: true, reason: 'engine not initialised', placed: 0 }; }
     var reps = repRules(disc);
-    var sub = substrate(bdb);
+    // §SPACE-SCOPED piece 2: opts.spaceGuid narrows the walk to ONE real IfcSpace's own boundary instead
+    // of the whole building's storeys — same place()/occupancy() pipeline, just a 1-element "storeys" list
+    // shaped by spaceAsStorey(). Honest REFUSE (not a crash, not a silent whole-building fallback) if the
+    // guid doesn't resolve to a real space with a measured bbox.
+    var sub;
+    if (opts && opts.spaceGuid) {
+      var spaceSt = spaceAsStorey(bdb, opts.spaceGuid);
+      if (!spaceSt) {
+        console.log(TAG + ' §WALK disc=' + disc + ' bldg=' + buildingName + ' REFUSE space-not-found guid=' + opts.spaceGuid);
+        return { disc: disc, refused: true, reason: 'spaceGuid does not resolve to a real IfcSpace bbox', placed: 0 };
+      }
+      sub = [spaceSt];
+      console.log(TAG + ' §WALK-SPACE disc=' + disc + ' bldg=' + buildingName + ' space=' + opts.spaceGuid +
+        ' storey=' + spaceSt.name + ' bbox=' + (spaceSt.x1 - spaceSt.x0).toFixed(2) + 'x' + (spaceSt.y1 - spaceSt.y0).toFixed(2));
+    } else {
+      sub = substrate(bdb);
+    }
     if (!reps.length && !_rows(_dbFor(disc), "SELECT 1 FROM rule_routing WHERE disc='" + _esc(disc) + "' LIMIT 1").length) {
       console.log(TAG + ' §WALK disc=' + disc + ' bldg=' + buildingName + ' REFUSE no-measured-rule');
       return { disc: disc, refused: true, reason: 'no measured rule for ' + disc, placed: 0 };
@@ -1097,7 +1174,7 @@
         var grp = byCls[cls];
         var shim = _shimForFixture(shimSrc, disc, cls);
         if (!shim) { rebuilt = rebuilt.concat(grp); totRefused += 0; return; }   // no shim for class → leave floating
-        var hb = hostBind(grp, bdb, shim, geoDb);
+        var hb = hostBind(grp, bdb, shim, geoDb, (opts && opts.spaceGuid) ? sub[0] : null);
         if (hb.noHost) {
           rebuilt = rebuilt.concat(grp);                                          // host class absent in bldg → kept floating
           console.log(TAG + ' §WALK-HOSTBIND disc=' + disc + '/' + cls + ' percept=' + shim.product_value +
@@ -1178,7 +1255,7 @@
 
   var API = { dwInit: dwInit, dwOpen: dwOpen, dwBorrow: dwBorrow, dwBorrowFile: dwBorrowFile, dwWalk: dwWalk, assemble: assemble, connectorFor: connectorFor, connectorEnrich: connectorEnrich, substrate: substrate, place: place, hostBind: hostBind,
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
-    hostWalls: hostWalls, countPer: countPer, occupancy: occupancy, defaultSeed: defaultSeed,
+    hostWalls: hostWalls, countPer: countPer, occupancy: occupancy, defaultSeed: defaultSeed, spaceAsStorey: spaceAsStorey,
     _shimForDisc: _shimForDisc, _shimForFixture: _shimForFixture, _loadRuleShims: _loadRuleShims,
     _trueMidpoint: _trueMidpoint,
     disciplines: disciplines, loadedFile: loadedFile, _ready: function () { return _ready; } };

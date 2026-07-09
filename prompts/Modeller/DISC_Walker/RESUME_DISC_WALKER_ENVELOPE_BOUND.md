@@ -1,5 +1,37 @@
 # RESUME — disc_walker: area-scaled n_measured + envelope-bound placement (RouteWalker alignment)
 
+# ⏸ PAUSED 2026-07-10 — read this block FIRST if you are Fable5 or any new session near this area
+**This thread is PAUSED, not abandoned, so a Fable5 execution session can pick up prepared work
+(`prompts/G1_COUNT_INDEPENDENT_ORACLE.md`, `prompts/Modeller/DISC_Walker/BIMEYES_NAVIGABILITY_CHECK.md`,
+both committed at `e26406727`) without stepping on this thread. Both those specs were deliberately scoped
+to NOT need anything below — G1-COUNT is Java/RSS-side, zero JS/Modeller file overlap; BIMEyes reads
+`dwWalk()`'s existing output read-only and works off a fresh worktree from `master`, never touching
+`occupancy()`/`place()`/`hostBind()`. If you're executing either of those specs, this section is FYI, not a
+blocker — proceed per your own spec.**
+
+**If you are about to touch `build/disc_walker.js`, `scripts/extractIFC2DB.js`, or anything named
+`space_scoped`/`space_occupancy` — STOP and read this first, real collision risk:**
+- **The shared working tree (NOT a worktree — the actual `~/bim-compiler` checkout) currently has
+  UNCOMMITTED changes**, verified DONE and Watchdog-reviewed (see the ✅ WATCHDOG VERIFICATION entry further
+  down): `build/disc_walker.js` (+113/-19 lines — space-scoped `place()`/`occupancy()`/`hostBind()`,
+  piece 2), `scripts/extractIFC2DB.js` (+41/-1 — real `IfcSpace` extraction, `LongName` fix, storey-
+  aggregates fix, piece 1), plus two untracked witness files (`scripts/witness_space_occupancy_exclusion.js`,
+  `scripts/witness_space_scoped_walk.js`). **None of this is committed to `master` yet.**
+- **A fresh `git worktree` branched off `master` (as both Fable5 specs correctly instruct) will NOT see any
+  of the above** — that's fine for both specs as scoped (neither needs it), but don't be surprised if
+  `IfcSpace` rows / space-scoped `dwWalk({spaceGuid})` aren't present in a clean worktree; that's expected,
+  not a regression.
+- **The real risk is only if something works in the SHARED tree directly** (not an isolated worktree) —
+  any `git stash`/`git checkout .`/`git reset` there would affect this uncommitted, verified work. Neither
+  prepared Fable5 spec does this (both mandate isolated worktrees), but this is the one thing that would
+  actually collide.
+- **Recommendation, not yet acted on (user's call):** commit piece 1+2 now, before Fable5 work starts, to
+  remove this ambiguity entirely — the work is verified (11/11 + 4/4 + 5/5 witnesses, full regression 0-fail,
+  Watchdog-reviewed, see below) and has been sitting reviewed-but-uncommitted for one full round already.
+- **What's still genuinely open after piece 1+2** (unaffected by pausing): piece 3 (UI trigger) not started;
+  `mesh.db` re-consolidation not run; live-importer (`viewer/`) parity not done; Clinic's non-clean-ARC-only
+  contamination unaddressed. None of these block Fable5's two specs.
+
 ```
 # ⚠ DO NOT REMOVE
 SCOPE: Fix the array-placer density explosion (SampleCastle residential PLB = 708k placements) by
@@ -33,6 +65,193 @@ analogue is n_measured scaled by floor-area ratio.
    already being told to use the real one, then had to be corrected a second time before landing on the
    right file. All three were avoidable with a 30-second border-control check before the first edit attempt,
    not after. **Next session: run this checklist BEFORE opening any file, not as damage control after.**
+
+---
+
+# ▶▶▶▶ ENTRY POINT (2026-07-10, LATEST — WORKER session, pillar 4 piece 2 DONE) — supersedes the
+# "GROUNDING + ROADMAP + WATCHDOG HANDOFF" block immediately below as the first thing to read.
+**That block's roadmap/grounding content is still accurate and worth reading — only its own "next work"
+pointer (pillar 4 pieces 2/3) is now stale, since piece 2 is done. Full evidence trail lives in
+`SPACE_SCOPED_DISC_INSTALL_VISION.md`'s own dated 2026-07-10 section — this is the compact pointer.**
+
+Picked up the prior WATCHDOG handoff's own priority order (pillar 4, pieces 2/3, listed just below this
+block). Closed, in order, with a witness for each and the full pre-existing 12-file DW regression suite
+re-run 0-fail after every change:
+- **Blind spot 2 (`element_name` LongName)** — done, 269/269 Clinic spaces now show real names.
+- **NEW finding (not in the original blind-spot list): IfcSpace storey resolution was fully broken** — all
+  269 Clinic spaces landed in `storey='Unknown'` because `elementToStorey` only read
+  `IfcRelContainedInSpatialStructure`, never `IfcRelAggregates` (the actual space→storey relation). Fixed;
+  verified against the real IFC's own STEP-entity trace, not guessed.
+- **Blind spot 1 (occupancy exclusion)** — done, `scripts/witness_space_occupancy_exclusion.js` 4/4 pass.
+- **Piece 2 (space-scoped place()/occupancy())** — done, `scripts/witness_space_scoped_walk.js` 5/5 pass.
+  Found + fixed a real complication the vision doc's own checklist didn't anticipate: `hostBind`'s
+  TOP/BOTTOM/CENTER mount re-snaps x/y to the HOST's own centroid, un-scoped to the space — closed with two
+  small, additive, opt-in parameters (`occupancy()`'s cell-clip, `hostWalls`/`hostBind`'s optional
+  `spaceBBox`), byte-identical for every pre-existing (non-scoped) caller.
+- **NOT done this session**: piece 3 (UI trigger), `mesh.db` re-consolidation, the screenshot/visual proof
+  (numeric ground-truth was produced instead, per the doc's own "number first, screenshot second" framing).
+- Changed files: `scripts/extractIFC2DB.js`, `build/disc_walker.js` — both UNCOMMITTED, left for review (no
+  commit requested this session). Two new witnesses added: `scripts/witness_space_occupancy_exclusion.js`,
+  `scripts/witness_space_scoped_walk.js`.
+
+---
+
+# ▶▶▶ ENTRY POINT (2026-07-10) — GROUNDING + ROADMAP + WATCHDOG HANDOFF
+**Supersedes the "▶▶ RESUME HERE (2026-07-10...)" block below as the first thing to read — that block's
+evidence trail is still accurate and worth reading for depth, just not the starting point anymore. Written
+by the session closing out item 1/2/3-investigation + the IfcSpace extractor fix, handing off to a FRESH
+WORKER session. This session now holds the WATCHDOG role for whatever the next session builds — see the
+closing checklist at the bottom of this block; no worker claim gets accepted without a `§`-tagged log line
+proving it, per CLAUDE.md's Watchdog Protocol.**
+
+## GROUNDING — this is not a new project; it's the Java-era compiler's fundamentals renewed in the browser
+Every fix in this file, going back to the original density-explosion bug this file is named for, is the
+SAME doctrine the Java-side BIM Intent Compiler has run since day one — carried onto a different substrate
+(browser/JS/WebGL, offline static files instead of a live server gate), not reinvented:
+- **Invention Boundary (Java-era, `docs/archive/WorkOrderGuide.md §Invention Boundary`):** the classification
+  YAML is the ONLY human-authored artifact in the whole pipeline — extraction, product-link, BOM, geometry
+  gap-fill are all deterministic, read data, never invent. **Renewed here:** `disc_patterns.db`
+  (`library/ERP.db`)'s mined rows (`_shim_attributes`, `rule_placement.n_measured`, `ad_assembly_connector`)
+  are this thread's classification-YAML equivalent — measured once from a real building, then every
+  downstream reader (`project_rule_shim.py`, `disc_walker.js`) reads them verbatim. **This session's
+  VENT→ACMV fix was literally an Invention-Boundary violation** (a disc label with no measured
+  correspondence to anything real) — caught and corrected, the exact bug class that table exists to prevent.
+- **BOM PRINCIPLE (`CLAUDE.md`):** one parent, N children, each with a quantity, recursive, atomic. **Renewed:**
+  THE FIX at the top of this very file — `n_measured` (a per-storey child quantity) × `area_ratio` — is the
+  same recipe-not-formula idea, count from a measured quantity, never from bbox geometry.
+- **RosettaStone / "Compile not Model":** never hand-author a placement or a rule; mine it from a real,
+  already-built building, then reconstruct/generalize with a held-out check. **Renewed:** every fix this
+  session (rotation-convention, hostBind generalization, VENT→ACMV, IfcSpace extraction) was proven against
+  REAL extracted buildings + a REAL or independently-coded oracle + a baseline diff — never "this formula
+  looks right on inspection." `docs/internal/WalkerDoctrine.md` is this side's canonical doctrine doc, the
+  Modeller-side analogue of `RosettaStoneGateTest.java`'s G1-G6 gates.
+- **Discipline = a `WHERE` column, never a file (both eras):** `duplex_rules.db`/`terminal_rules.db` route by
+  BUILDING CLASS; discipline lives as a column inside (`rule_placement.disc`, `rule_shim.disc`) — never a
+  separate compiled artifact per discipline. Same rule, same reason, both sides of the codebase.
+
+## THE MODELLER ROADMAP — 4 pillars (user-named; do not reorder, drop, or drift from this list)
+1. **Embedded 8 ARC buildings + shared `mesh.db` — ✅ DONE** (`feat/embed-8-arc-buildings`, bim-ootb, pushed
+   not merged). The OFFLINE, FULLY-CONTAINED substrate — the modern analogue of the Java compiler's reference
+   DB, except it ships as static files the browser fetches once. `extractIFC2DB.js`'s own header states the
+   mission literally: *"Frictionless BIM. Two DBs. One browser. Zero install."* No server round-trip, no
+   live IFC parse at use-time — everything needed to walk/edit/render lives in the 8 `*_ARC.db` + `mesh.db`
+   + `*_rules.db` files alone.
+2. **3D Grid edit** — the Modeller's direct-manipulation authoring surface (gizmos, move/rotate,
+   `arc_editable.js`). PROVEN, EXISTING, not part of this thread's build — every placement this thread
+   produces is meant to LAND INTO this tool (`SPACE_SCOPED_DISC_INSTALL_VISION.md`'s own vision: "user
+   refines with the existing gizmo/move tools"). Do not rebuild or touch this layer from this thread.
+3. **Walk DISCs** — `disc_walker.js`, the JS-side renewal of the Java RosettaStone-mined placement/routing/
+   shim doctrine, walking IN-BROWSER against pillar 1's offline substrate. MOST MATURE pillar — this
+   session's work (rotation-convention fix, hostBind generalization, rule_shim projection, VENT→ACMV
+   relabel across BOTH `*_rules.db`) all landed here. Full ledger immediately below.
+4. **Craft out facade** — the NEWEST pillar, `SPACE_SCOPED_DISC_INSTALL_VISION.md`: a real ARC space
+   boundary → pick a heavy DISC (FP/ACMV) → a real, conformant, non-invented placement lands inside that
+   space → user refines via pillar 2's tools. **Piece 1 (extract real `IfcSpace`) is DONE this session.**
+   Pieces 2 (scope `occupancy()`/`place()` to a space boundary) and 3 (UI trigger) are NOT STARTED — this is
+   where the next worker session's real work begins. Read `SPACE_SCOPED_DISC_INSTALL_VISION.md`'s 5 named
+   blind spots FIRST, especially #1 (a NEW risk piece 1 itself introduces).
+
+**"Offline able, fully contained" is pillar 1's whole point, not a footnote** — anything built for pieces 2/3
+must keep working from the 8 `*_ARC.db` + `mesh.db` + `*_rules.db` files alone, no live network call, no
+server dependency. Verify this holds for whatever gets built next; don't assume it by default.
+
+## ✅/⛔ LEDGER — this session's verified work (every claim below has a witness or log, see the detailed
+## entries further down this file for the full evidence trail; this is the compact pointer, not a repeat)
+- **Item 1 ✅ CLOSED (both projections):** `VENT_WINDOW_SHIM` relabeled to its real discipline (`ACMV`) in
+  `library/ERP.db`, re-projected into BOTH `build/duplex_rules.db` AND `build/terminal_rules.db` (the second
+  DB was missed on the first pass, found by an independent review, then fixed the same way — see full detail
+  below). `scripts/witness_hostbind_agnostic.js` H6-H10, **11/11 PASS**. Full 11-file regression: 0 fail.
+- **Item 2 ✅ CLOSED:** Duplex's FP walk with `dwBorrow('FP', terminal_rules)` wired — 93 real fixtures place
+  cleanly (50 sprinklers + 43 alarms), confirming the earlier REFUSE was a test-script gap, not an engine bug.
+- **Item 3 investigation ✅ CLOSED, build NOT started (correctly):** identified `scripts/extractIFC2DB.js` as
+  the real, byte-confirmed producer of `Clinic_ARC.db` (and 5 of the other 7 embed-8 residents); found the
+  root cause of 0 `IfcSpace` rows (`WebIFC.IFCSPACE` absent from `PRODUCT_TYPES`, despite `DISC_MAP` already
+  carrying a dead `IfcSpace:'ARC'` entry) via direct code inspection, not guessing.
+- **✅ NEW 2026-07-10 — piece 1 of the space-scoped vision APPLIED + verified, on top of the investigation:**
+  one line added to `scripts/extractIFC2DB.js`'s `PRODUCT_TYPES` (`WebIFC.IFCSPACE`). Proven BEFORE landing:
+  dry-run diff across all 6 affected buildings (SampleHouse/Duplex/HHS/Clinic/Garage/Hospital) — 0 diff lines
+  on every pre-existing class in `elements_meta`/`element_transforms`, every pre-existing geometry hash
+  preserved; new `IfcSpace` counts match independently-grepped source counts EXACTLY (SH 4, DX 21, HHS 33,
+  Clinic 269, Garage 5, Hospital 0). A synthetic no-representation `IfcSpace` (built by hand-editing a real
+  IFC to null out one space's `Representation`) skips cleanly — meta row present, no transform row, no crash
+  — reproduced independently by the reviewing session too, not just asserted. Applied to the tracked file
+  (`scripts/extractIFC2DB.js`), then Clinic genuinely re-extracted: **269/269 real `IfcSpace` rows resolve a
+  real bbox.** Output is the full single-file shape (`Clinic_all.db`, embedded `component_geometries`) — the
+  embed-8 split-into-`Clinic_ARC.db`+shared-`mesh.db` consolidation step (`finalize_all_8.js`) has NOT been
+  re-run, deliberately — that touches all 8 buildings' shared mesh file at once and needs its own review.
+- **⚠ 5 blind spots named and written into `SPACE_SCOPED_DISC_INSTALL_VISION.md`, not discovered later:**
+  (1) `occupancy()` must exclude `IfcSpace` from its obstruction mask — a NEW risk this session's own fix
+  introduces, not pre-existing; (2) `IfcSpace.element_name` uses the terse room CODE (`Name`), not the human
+  name (`LongName`) — found + verified against real IFC text during the Clinic re-extraction, NOT yet fixed;
+  (3) this fix lives only in the offline `extractIFC2DB.js` path, NOT the live browser importer
+  (`viewer/import_worker.js`+`import_db_builder.js`) — don't assume live-import parity; (4) `Clinic_ARC.db`
+  is not cleanly ARC-only (534 STR + 102 MEP leaked in) — piece 2 shouldn't trust the filename; (5) the
+  `mesh.db` consolidation re-run is a separate, deliberate next step, not done as a side effect of this fix.
+
+## WATCHDOG CLOSING — this session's sign-off, and the contract for the next (worker) session
+Every claim in the ledger above was verified with a real witness/log/diff before being written down here —
+not asserted, and in two cases (H10 cross-projection sync, the terminal_rules.db staleness) an earlier
+"done" claim was independently re-checked and found genuinely incomplete, then closed for real. That's the
+standard the next session's work gets held to as well:
+- **No claim without a `§`-tagged log line or an equivalent real diff/count.** If the next session says
+  "piece 2 is done," it must show the occupancy-exclusion behavior on real data (a space's footprint is
+  NOT in the obstruction mask, proven by a real placement that would have been wrongly blocked before the
+  fix and isn't after) — not just "I added the filter."
+  - **Before piece 2 lands:** blind spot 1 (occupancy exclusion) must be handled — this is not optional
+    polish, it changes whether fixture placement is correct at all once `IfcSpace` rows exist.
+  - **Before piece 3 (UI) lands:** blind spot 2 (`LongName` fix) should land first, or the space-picker will
+    show room codes — small, cheap, do it first not last.
+  - **`mesh.db` consolidation** (blind spot 5) is a distinct, reviewable step — don't fold it silently into
+    piece 2/3's commit.
+  - **Offline/fully-contained constraint** (roadmap note above) — verify explicitly, don't assume.
+- **This session's own work is left uncommitted on purpose where noted** (the `Clinic_all.db` re-extraction
+  is a scratch artifact for review, not yet folded into the embed-8 consolidated shape) — the next session
+  should confirm with the user whether/how to fold it in before treating it as "the" Clinic data.
+
+## ✅ WATCHDOG VERIFICATION 2026-07-10 (independent re-check of the worker session's piece-2 report — every
+## claim below was RE-RUN by the Watchdog, not trusted from the summary)
+The worker session reported 4 items done: blind spot 2 (LongName), a NEW storey-resolution bug found+fixed,
+blind spot 1 (occupancy exclusion), and piece 2 (space-scoped place/occupancy/hostBind). All four
+independently verified, not re-trusted:
+- **`git diff scripts/extractIFC2DB.js` + `build/disc_walker.js` read in full** — both changes are additive,
+  gated behind new optional params/conditions (`spaceBBox`, `st.spaceGuid`, `ifc_class==='IfcSpace'`), every
+  existing call site confirmed unaffected (only ONE internal `hostBind()` call site in the whole file,
+  already correctly updated; every witness's 4-arg external call is untouched since the 5th param defaults
+  falsy).
+- **Storey-resolution bug — verified with my OWN SQL queries against both the before/after scratch DBs**
+  (not the worker's own witness output): `Clinic_test_piece1only.db` → all 269 `IfcSpace` rows genuinely
+  `storey='Unknown'` (confirms the bug was real, not invented to justify a fix); `Clinic_test_storeyfix.db`
+  → 154+109+6=269, ZERO `Unknown`, `CENTRAL WAITING` → `'First Floor'` correctly. The `IfcRelAggregates`
+  constant (`WebIFC.IFCRELAGGREGATES`) confirmed to actually exist in the installed `web-ifc` version.
+- **Both new witnesses (`witness_space_occupancy_exclusion.js`, `witness_space_scoped_walk.js`) re-run by the
+  Watchdog independently: 4/4 and 5/5 PASS.** Read `witness_space_scoped_walk.js`'s M2 check in full to rule
+  out a circular self-check — confirmed CENTRAL WAITING's bbox is pulled via a FRESH SQL query on
+  `element_transforms`, not derived from the placement results being checked, so "0/24 outside" and "0/15
+  outside" are real independent geometric checks, not tautologies.
+- **Full existing regression suite (11 pre-existing files) RE-RUN by the Watchdog: 0 fail, exact same as
+  before this round** (§DWG 49, §DXG 12, §DWD 43, W-DWWALK-HOSTBIND 6, W-ELEC-HOSTBIND 5, true-midpoint 18,
+  W-SHIM-SELECT 6, W-WALKBACK-MEP 8, W-GENERALIZE-XBUILD 7, W-RULE-CONNECTOR 4, W-OCC-TRUE-MIDPOINT 17,
+  W-HOSTBIND-AGNOSTIC 11). `witness_hostbind_rotation.js`'s pre-existing crash (`DW._hostAxis` absent)
+  confirmed unchanged (same crash, same reason, not a new regression). 13 files 0-fail total, matching the
+  "12→14" figure in the worker's own report (11 old + 1 known-crash + 2 new).
+- **Noted, not acted on:** `prompts/G1_COUNT_INDEPENDENT_ORACLE.md` and `prompts/GRID_ROTATION_GUARD.md`
+  appeared untracked in the same window — unrelated topics (RSS G1-COUNT gate, `grid_kinematics.js` rotation
+  guard), a different worktree (`/tmp/wt-fable-g1count`) — almost certainly a different concurrent terminal's
+  work per the N-terminal doctrine, not this thread's. Left untouched, flagged only so it isn't mistaken for
+  drift.
+- **VERDICT: piece 2 is genuinely done, to the same evidence standard as everything else in this file.**
+  Nothing overstated in the worker's summary. Remaining open items unchanged from before this round: piece 3
+  (UI trigger) NOT started, `viewer/import_worker.js` parity NOT done (correctly out of scope, `viewer/`
+  never touched), `mesh.db` re-consolidation NOT done, Clinic's non-clean-ARC-only contamination unaddressed
+  (didn't block piece 2 — the space-scoped queries filter correctly regardless). ACMV's disc-level
+  `IfcCovering`-over-`IfcWindow` tie (H9) observed again during the ACMV space-scoped walk
+  (`§SHIM-AMBIG`) — unchanged, still a named, open, non-blocking gap, not a new one.
+- **Next worker session, in order:** (1) piece 3 UI trigger (user selects a rendered space → picks FP/ACMV →
+  `dwWalk(disc, bdb, name, {spaceGuid})`) — the engine side is now fully proven, this is the remaining UI
+  wiring; (2) decide with the user whether/how to fold `Clinic_all.db`'s real-space extraction into the
+  embed-8 consolidated shape (`Clinic_ARC.db`+shared `mesh.db`) before piece 3 needs it live in the modeller.
+
+---
 
 > ▶▶ **RESUME HERE (2026-07-10 — supersedes the 07-09 PM pointer below as the entry point; that one's detail
 > is still real and worth reading for depth, just not where to start). Written as a handoff to a FRESH
