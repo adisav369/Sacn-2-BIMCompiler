@@ -34,6 +34,53 @@ analogue is n_measured scaled by floor-area ratio.
    right file. All three were avoidable with a 30-second border-control check before the first edit attempt,
    not after. **Next session: run this checklist BEFORE opening any file, not as damage control after.**
 
+> ▶▶ **RESUME HERE (2026-07-10 — supersedes the 07-09 PM pointer below as the entry point; that one's detail
+> is still real and worth reading for depth, just not where to start). Written as a handoff to a FRESH
+> session — you do not need to read this whole 700+-line file top to bottom, this block is self-contained.**
+>
+> **The mission, stated plainly:** this whole thread is the project's sharpest concrete case of the general
+> problem — an AI-authored geometry engine will confidently apply a PLAUSIBLE-LOOKING mathematical convention
+> (an Euler order, an axis mapping, a rotation formula) that is subtly wrong, and nothing about the code
+> LOOKS wrong. The only defense that has actually worked here, twice now, is refusing to trust reasoning
+> about geometry and instead computing against REAL measured data through the REAL renderer (real THREE.js,
+> real extracted buildings) and diffing against a REAL baseline before believing a result. See
+> [[feedback_verify_branch_conditions_before_applying_convention_fix]] (bim-compiler auto-memory) for the
+> concrete near-miss this produced THIS session — a fix that looked right, wasn't, and was only caught by
+> diffing regression output against `git stash`, not by re-reading the math. Carry that discipline forward
+> literally, not as a platitude: any new geometry/rotation/placement work in this file gets the SAME
+> treatment — real data, real renderer or an independently-coded oracle, baseline diff — before it's reported
+> done.
+>
+> **State as of 2026-07-10 (all verified, not assumed — see item 3's ✅ block and item 5's ▶ STATUS block
+> below for the full evidence trail):**
+> - ✅ The 8-building embed (`EMBED_8_ARC_BUILDINGS_MESH_DB.md`) is DONE, committed, and PUSHED —
+>   `feat/embed-8-arc-buildings` on `origin` (bim-ootb), not yet merged to main (no PR opened, by design —
+>   open one when told to, not before). `mesh.db` (114MB) is now LFS-tracked (`.gitattributes`); it wasn't
+>   before and would have hard-failed the push (>100MB) — check LFS coverage before adding any new large
+>   binary to this repo, don't assume the existing patterns cover it.
+> - ✅ Item 3 (rotation-convention bug in `_eulerMat3`) is FIXED, in BOTH bim-compiler (`build/disc_walker.js`,
+>   commit `2a36bb313`) and bim-ootb (merged into `feat/embed-8-arc-buildings`, pushed). Proven against real
+>   data + the real renderer twice over: node-side (`scripts/witness_rotation_convention.js`, 30/30) AND
+>   real-browser (`modeller/tests/witness_residents_anchor_sweep.js`, 32/32 across all 8 buildings incl.
+>   Terminal's 325 tilted elements, ≤1e-5m vs independently-computed ground truth).
+> - ✅ Black-box STR+MEP walks run on BOTH Terminal and Duplex against the new consolidated data (item 5's
+>   ▶ STATUS block has the numbers). **Named, concrete, carry-forward finding — not a vague caveat:**
+>   `hostBind` has never actually selected one of the rotation-tilted hosts (IfcDoor/IfcWindow/IfcFurniture/
+>   IfcBuildingElementProxy) on EITHER building tested, because neither `terminal_rules.db` nor
+>   `duplex_rules.db`'s `rule_shim` table hosts any MEP class to those IFC classes today (only IfcWall/
+>   IfcCovering). The fix's `occupancy()`-path is proven; its `hostBind`-path is not, and won't be until a
+>   real, MEASURED window/door/furniture-hosted shim exists to mine — don't build one speculatively just to
+>   close this gap, that would be inventing a rule, not fixing one.
+> - ⛔ Still open, in priority order: (1) re-run Duplex's FP walk WITH the `dwBorrow('FP', terminal_rules)`
+>   percept wired (the current REFUSE there is a script-scope gap in this session's quick test, not a
+>   verified engine defect — don't report it as either fixed or broken without re-checking); (2) STR
+>   per-storey containment scoping (item 2 below, ~20% outside own-storey footprint) — DEFERRED by explicit
+>   user call, 80% is Pareto-acceptable for now, do not re-open as urgent; (3) whatever `WalkerDoctrine.md
+>   §13`'s oracle-vacuousness finding (`witness_disc_density.js` D3/D4/D4b) implies for future mesh-to-mesh
+>   comparison work — read that section before building one, it's a real, named trap, not boilerplate.
+>
+> ---
+>
 > ▶ **RESUME HERE (2026-07-09 PM — supersedes the pointer below; that one is still valid history/context,
 > just not the entry point). Goal for the next session, stated by the user verbatim: "finish the DISC walk
 > correctly on DX/TE extracting/refining further the present rules, resolving issues of still breaking from
@@ -133,6 +180,36 @@ analogue is n_measured scaled by floor-area ratio.
 > to confirm nothing already-proven silently broke from the mesh-consolidation changes themselves — this has
 > NOT been done yet, existing witnesses still point at the OLD Terminal_meta.db/Terminal_geo.db pair (deleted
 > from the worktree) and would need repointing at the new `Terminal_ARC.db`/`mesh.db` shared-file shape.
+>
+> ▶ **STATUS 2026-07-10 — item 5(a)/(d) DONE on Terminal, (b)/(c) DONE on Terminal only (Duplex not yet run):**
+> (a) decided rotation-convention (item 3) first — DONE, fixed+ported+pushed (see item 3's own ✅ block above).
+> (d) DONE: `feat/embed-8-arc-buildings` (bim-ootb, pushed) repoints the regression suite at the new
+> `Terminal_ARC.db`+`mesh.db` — 3 witnesses were crashing outright on the removed old filenames (fixed), full
+> 8-building anchor-sweep 32/32 PASS (every building's rendered AABB matches ground truth ≤1e-5m, incl.
+> Terminal's 325 rotation-tilted elements — the first REAL-BROWSER confirmation of the item-3 fix, stronger
+> than the original node-side-only proof). (c) PARTIAL: ran a black-box MEP walk (ELEC/PLB/ACMV/FP) on
+> **Terminal only** — all 4 placed cleanly (2067/28/1831/1195), no crashes. **Concrete, narrower-than-expected
+> finding, worth carrying forward:** `hostedOnTiltedHost=0` for every discipline — Terminal's live
+> `rule_shim` table only hosts to `IfcWall`(SIDE)/`IfcCovering`(BOTTOM) today, so `hostBind` never actually
+> selected one of the 325 rotation-tilted hosts (IfcDoor/IfcWindow/IfcFurniture/IfcBuildingElementProxy) in
+> this walk — **the item-3 fix's `hostBind`-path coverage is still unproven**, only its `occupancy()`-path
+> coverage is (occupancy reads every element on a storey regardless of class, so it did exercise the fix).
+> **The fix isn't dormant, but this specific consumer of it is untested. Named, checkable trigger condition
+> for whoever picks this up: it becomes testable the moment `rule_shim` grows a window/door/furniture-hosted
+> MEP class** (none exist today — this is not an invitation to mine one speculatively, just the fact that
+> would make it testable if one is ever measured). (b)/(c) on **Duplex** — DONE 2026-07-10, same black-box
+> method, real `Duplex_ARC.db`+`mesh.db`: **STR REFUSE** (`duplex_rules.db` genuinely has zero STR
+> `rule_placement` rows — honest, matches doctrine, not a bug); **FP REFUSE** (no measured FP rule either —
+> Duplex was never called with the `dwBorrow('FP', terminal_rules)` percept in this quick script, so this
+> REFUSE is a script-scope gap, not proof FP-borrow is broken on Duplex specifically — that mechanism is
+> already proven elsewhere for SC, just not re-verified here for DX); **ELEC 115 placed (0 outside), PLB 38
+> placed (1 outside), ACMV 10 placed (0 outside)** — all clean. Duplex has 18 tilted elements (3 IfcDoor/3
+> IfcFurnishingElement/12 IfcWindow, matches the embed-8 rotation-consolidation count exactly) — **same
+> `hostedOnTiltedHost=0` finding as Terminal**: `duplex_rules.db`'s `rule_shim` also only hosts to
+> IfcWall/IfcCovering, so the item-3 fix's `hostBind`-path remains unexercised on BOTH buildings tested so
+> far, generalizing the "named, checkable trigger condition" above across residential AND Terminal-scale.
+> **NEXT (not yet done, whoever picks this up):** re-run FP on Duplex WITH the borrow percept wired (verify,
+> don't assume); the STR-per-storey item (2) stays deferred; no other open item in this file.
 >
 > **6. ⚠ READ `WalkerDoctrine.md §13` BEFORE building any mesh-to-mesh or count-vs-oracle comparison work
 > (added 2026-07-09 PM, user-requested foresight write-up).** Real instance found THIS session, not
