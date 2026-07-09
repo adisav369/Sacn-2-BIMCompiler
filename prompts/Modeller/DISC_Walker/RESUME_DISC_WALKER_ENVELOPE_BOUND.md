@@ -1,5 +1,65 @@
 # RESUME — disc_walker: area-scaled n_measured + envelope-bound placement (RouteWalker alignment)
 
+# ▶▶▶▶▶▶ ENTRY POINT (2026-07-10 PM, LATEST — Fable5 worker closeout; read this FIRST, supersedes every
+# block below as the starting point). GEOMETRY-HELL LANE: DELIVERED ON BRANCH, AWAITING WATCHDOG REVIEW +
+# USER SIGN-OFF. NOT merged. Branch `fable/bimeyes-coherence-checker`, PUSHED to origin, 5 commits on top
+# of `e544a39f4`: `fcff07293` (Step 1 MINE) → `8700d7187` (scope-boundary fix + rule_shim restore) →
+# `f25cb841e` (Steps 2+3 PLACE+PROVE) → 2 docs commits (prompt closeouts; fossil README).
+#
+# **Mandate evolution this session (user-directed, mid-execution — the original two-spec handover morphed):**
+# `prompts/G1_COUNT_INDEPENDENT_ORACLE.md` DROPPED (Java rested as fossil — see its own closeout note);
+# `prompts/Modeller/DISC_Walker/BIMEYES_NAVIGABILITY_CHECK.md` REPURPOSED into the pass/fail bar for the
+# real mission: fix the Modeller DISC-walk fixture scatter ("geometry hell", ModellerGuide screenshots) by
+# mining the PROVEN Java-era placement semantics into the JS walker, with a JS-era RosettaStone walkback
+# gate (generate blind → diff vs the building's own real MEP) as proof.
+#
+# **What is DONE (all witnessed, logs in the branch's logs/ + commit messages):**
+# 1. MINE — `build/project_rule_space_schedule.py`: ad_space_type_mep_bom (188 rows) + ad_placement_offset
+#    + LOD400 mesh hashes → `rule_space_schedule/_type/_alias` + `rule_code_spacing` in duplex_rules.db,
+#    **residential class ONLY** (Watchdog leak-catch closed; witness M6 pins it; terminal_rules.db carries
+#    NO schedule until one is mined from real Terminal-class data). `witness_rule_space_schedule.js` 6/6 —
+#    re-derives the real Java compile blindfolded (LIVING 15 + BEDROOM 9 + CORRIDOR 19 = 43).
+# 2. PLACE — `dwWalk(disc, bdb, name, {schedule:true})` in build/disc_walker.js (OPT-IN; every legacy path
+#    byte-identical — 25-file DW suite vs git-stash baseline: delta 0): per-real-space schedule×offset
+#    placement; spacesOf() reads elements_meta.IfcSpace OR spatial_structure (synthetic RM_/≈ rows
+#    excluded); wall fixtures mount on REAL wall faces (_trueMidpoint-corrected, bbox-intersect, z-band-
+#    valid; open-boundary anchors relocate to the nearest real wall, §SCHED-RELOC); meshless devices
+#    REFUSE (§LOD400-REFUSE — DATA_POINT, EMERGENCY_LIGHT, WASHING_TAP have no real mesh, never faked).
+# 3. PROVE — `scripts/witness_dx_walkback_rsgt.js` **10/10** on real Duplex: W1 qty ELEC 102/89 PLB 18/16
+#    (band [0.5,2.0]); W2 containment 139/139 + falsifier; W3 wall-host/facing/ceiling/floor (this gate
+#    caught 3 real placement flaws mid-session, each fixed at source); W4 LOD400 139/139 real meshes;
+#    W5 fidelity DIAL vs real MEP: ELEC @0.5m 18% @1m 49% @2m 94% (mean offset 0.08/0.04/-0.11m), PLB
+#    @1m 78% @2m 94%, + shift-falsifier. ACMV reported not graded (0 real terminals — no vacuous oracle).
+#    Anti-cheating is STRUCTURAL: walker reads rules+ARC only; the witness alone reads the real MEP.
+#
+# **REPRODUCIBILITY (worktree-env facts a fresh session must know before re-running witnesses):**
+# - Work lives in worktree `/tmp/wt-fable-bimeyes` (disposable; branch is the artifact). Gitignored inputs
+#   were copied in from the shared checkout: deploy/buildings/{Duplex,SampleCastle,Terminal,Clinic,
+#   HHS_Office_Federated}_extracted.db, build/Duplex_mep_{extracted,meta}.db, node_modules symlink;
+#   library/ERP.db rebuilt via scripts/rebuild_erp.sh; complib repaired (M_Product from _pre_s173 backup +
+#   I_Geometry_Map rename + restore_generative_meshes.py 14/14) — complib change is UNCOMMITTED by design.
+# - The worktree's Duplex_extracted.db has space LongNames STAMPED (scripts/stamp_space_longnames.py,
+#   21/21 from the source IFC). **The shared tree's copy is NOT stamped** — run the stamp script first if
+#   re-running the walkback witness outside the worktree.
+# - Pre-existing suite failures (identical with the change stashed — NOT this lane's): corridor_trunk 5/1,
+#   seedtrunk_engine 5/1, occ_true_midpoint 16/1, rotation_convention 27/3, terminal_geosplit 14/2, and
+#   assemble/generalize_curve/generalize_xbuild/hostbind_rotation/route_face_surface (env/known crashes).
+#
+# **OPEN — the next ratchet (in rough priority):**
+# 1. Watchdog review + user sign-off of the branch; then the DEFAULT-FLIP decision (schedule walk is
+#    opt-in today — flipping the Modeller default is a one-line change, deliberately deferred until the
+#    numbers were seen). Live-browser wiring (~/bim-ootb/modeller disc_walker.js sync) is AFTER merge.
+# 2. Terminal (the ultimate: 8 DISCs, no real spaces): schedule walk REFUSEs there by design; its fix is
+#    the no-spaces path (n_measured×area bound + host-conformant placement) measured by the same W-checks
+#    minus W5 (no ground truth). NOT started.
+# 3. BIMEyes remainder: Navigability flood-fill (connectedFraction) + pairwise fixture-collision counts —
+#    fold into the walkback witness as additional claims.
+# 4. W5 ratchet toward RSS-exact (per-room offset nuance is most of the remaining gap); real per-instance
+#    routing geometry lives ONLY in build/Duplex_mep_extracted.db element_transforms (Duplex-only).
+# 5. Device meshes to the browser (mesh.db consolidation) — SEPARATE deliberate step, still not folded in.
+# - Java era: fossils untouched, deprecation + verified repair recipe (fresh worktree → SH 9/9 gates) in
+#   `docs/internal/JavaEra_FOSSIL_README.md`; /tmp/wt-fable-g1count worktree is disposable.
+
 # ⏸ PAUSED 2026-07-10 — read this block FIRST if you are Fable5 or any new session near this area
 **This thread is PAUSED, not abandoned, so a Fable5 execution session can pick up prepared work
 (`prompts/G1_COUNT_INDEPENDENT_ORACLE.md`, `prompts/Modeller/DISC_Walker/BIMEYES_NAVIGABILITY_CHECK.md`,
