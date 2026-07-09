@@ -44,6 +44,14 @@
 # - Pre-existing suite failures (identical with the change stashed — NOT this lane's): corridor_trunk 5/1,
 #   seedtrunk_engine 5/1, occ_true_midpoint 16/1, rotation_convention 27/3, terminal_geosplit 14/2, and
 #   assemble/generalize_curve/generalize_xbuild/hostbind_rotation/route_face_surface (env/known crashes).
+# - ⚠ HARD-RESET ACCIDENT (2026-07-10, Fable worker, own goal — recorded so it never repeats): running
+#   `git reset --hard origin/master` inside the worktree to sync a branch DESTROYED the worktree's
+#   uncommitted-by-design env repairs (library/component_library.db: M_Product + M_Product_Image +
+#   I_Geometry_Map rename + 14 restored mesh bindings) — witnesses silently degraded to the shared-tree
+#   failure signature (M2 "2 dangling", W4 mesh fails) until re-repaired per JavaEra_FOSSIL_README.md.
+#   RULE: in a worktree carrying deliberately-uncommitted repairs, sync with `git fetch` + branch off the
+#   fetched SHA (or stash-free checkout of tracked files EXCEPT library/) — never `reset --hard`/`checkout .`
+#   across the whole tree. Same failure family as feedback_git_stash_shared_across_worktrees.
 #
 # **OPEN — the next ratchet (in rough priority):**
 # 1. ✅ DONE 2026-07-10 — Watchdog SIGNED OFF (independently re-ran W-DX-WALKBACK-RSGT 10/10 +
