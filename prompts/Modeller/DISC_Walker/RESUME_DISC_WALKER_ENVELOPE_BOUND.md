@@ -55,9 +55,12 @@
 #    STILL OPEN from this item: the DEFAULT-FLIP decision (schedule walk is opt-in today — flipping the
 #    Modeller default is a one-line change, deliberately deferred until the numbers were seen) and
 #    live-browser wiring (~/bim-ootb/modeller disc_walker.js sync), both post-merge follow-ups.
-# 1b. ✅ DONE 2026-07-10 (branch fable/space-type-category-label, W-SCHED-MINE 7/7 incl. new M7
-#    CATEGORY-VERBATIM; regression W-DX-WALKBACK-RSGT 10/10 + W-SHIM-SELECT 6/6 + W-DWWALK-HOSTBIND 6/6
-#    on the re-projected DBs; local commit only — Watchdog pushes/merges.)
+# 1b. ✅ DONE + MERGED + PUSHED 2026-07-10 (`efa575896`, Watchdog-verified: W-SCHED-MINE 7/7 incl. new M7
+#    CATEGORY-VERBATIM, W-DX-WALKBACK-RSGT still 10/10 post re-projection, independently re-run before
+#    merge, not just trusted). Shared-tree smoke shows 5/7 (not 7/7) — a PRE-EXISTING, documented env gap
+#    (unrebuilt library/ERP.db + complib in the shared tree vs the worktree's repaired copies), not a
+#    regression — confirmed by reading the actual M2/M3 failure detail, matches this file's own
+#    REPRODUCIBILITY section prediction exactly.
 #    Original item — Watchdog follow-up, non-blocking: rule_space_type tags all 41 mined space types
 #    building_class='residential' but several are clearly non-residential vocabulary (CONCOURSE, GATE,
 #    DEPARTURE_LOUNGE, ASSEMBLY_HALL, CLASSROOM). Doesn't affect what shipped (Duplex exercises 4 real
