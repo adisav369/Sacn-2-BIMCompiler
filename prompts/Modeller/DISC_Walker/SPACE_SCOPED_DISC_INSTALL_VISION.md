@@ -2,21 +2,24 @@
 
 # ⏸ PAUSED 2026-07-10 — this thread is paused (not abandoned) to let Fable5 run
 `prompts/G1_COUNT_INDEPENDENT_ORACLE.md` + `prompts/Modeller/DISC_Walker/BIMEYES_NAVIGABILITY_CHECK.md`
-(both committed `e26406727`, both deliberately scoped to NOT touch anything below — see
+ONLY (both committed, both deliberately scoped to NOT touch anything below — see
 `RESUME_DISC_WALKER_ENVELOPE_BOUND.md`'s own ⏸ PAUSED block for the full collision-risk read, not repeated
-here). Short version: pieces 1+2 below are DONE + Watchdog-verified but **UNCOMMITTED, sitting in the shared
-tree** — a fresh worktree off `master` (what both Fable5 specs correctly use) won't see them, which is fine
-and expected for both specs as scoped.
+here). Pieces 1+2 below are now **COMMITTED to master at `e544a39f4`** (no longer sitting uncommitted).
+**Piece 3 is explicitly RETRACTED from Fable's mandate** — see its own section below for 4 real,
+previously-unpriced gaps found this round; it needs a proper Sonnet-planning pass, not an execution handoff.
 
 ```
 # ⚠ DO NOT REMOVE
 SCOPE (updated 2026-07-10, Watchdog-verified): pieces 1 AND 2 (extract real IfcSpace; scope occupancy()/
-place()/hostBind to a space boundary) are DONE, applied, independently re-verified — see their own sections
-below. Piece 3 (UI trigger) is NOT STARTED — that is where the next session's real work begins. Blind spots
+place()/hostBind to a space boundary) are DONE, applied, independently re-verified, and COMMITTED
+(`e544a39f4`) — see their own sections below. Piece 3 (UI trigger) is NOT STARTED and NOT a bounded task
+yet — 4 real gaps found (engine not synced to the live browser Modeller, no space-mesh rendering exists, the
+live importer still doesn't extract IfcSpace, the BOM-tree discards the space guid) — read piece 3's own
+section before anyone (Fable or otherwise) picks it up; it needs scoping, not just execution. Blind spots
 1+2 are FIXED; a NEW one (IfcSpace storey resolution, 100% broken, now fixed) was found+closed along the
-way; 3 remain open (live-importer parity, Clinic ARC-only contamination, mesh.db re-consolidation) — read
-them before starting piece 3. Read RESUME_DISC_WALKER_ENVELOPE_BOUND.md first for the disc_walker/hostBind
-machinery this leans on entirely — this file does not repeat that engine detail, only cites it.
+way; 3 remain open (live-importer parity, Clinic ARC-only contamination, mesh.db re-consolidation). Read
+RESUME_DISC_WALKER_ENVELOPE_BOUND.md first for the disc_walker/hostBind machinery this leans on entirely —
+this file does not repeat that engine detail, only cites it.
 ```
 
 ## The vision (user, 2026-07-10)
@@ -171,10 +174,31 @@ Three pieces, each individually small, each reusing something already proven —
    `hostWalls` without a 3rd arg, `dwWalk` without `opts.spaceGuid`) is byte-identical — proven by the full
    existing regression suite staying 0-fail. Proven on real Clinic data: FP 24/24 inside CENTRAL WAITING,
    ACMV 15/15 inside (`scripts/witness_space_scoped_walk.js`, 5/5, Watchdog-reproduced independently).
-3. **Wire a UI trigger** (NOT STARTED): user selects a rendered space → picks FP or ACMV from existing disc
-   controls → `dwWalk(disc, bdb, name, {spaceGuid: ...})` (the engine side, proven above) → renders via the
-   already-proven `hostBind` conformance layer → user refines with the existing gizmo/move tools (already
-   built, per `project_modeller_direct_manip` memory — not part of this initiative, just the landing point).
+3. **Wire a UI trigger** (NOT STARTED — and NOT a bounded task yet, 4 real gaps found 2026-07-10, priced in
+   before this is ever handed to an execution model): user selects a rendered space → picks FP or ACMV from
+   existing disc controls → `dwWalk(disc, bdb, name, {spaceGuid: ...})` (the engine side, proven above) →
+   renders via the already-proven `hostBind` conformance layer → user refines with the existing gizmo/move
+   tools (already built, per `project_modeller_direct_manip` memory — not part of this initiative, just the
+   landing point). **The one-paragraph framing above understates the real gap — confirmed by direct
+   investigation, not assumed:**
+   1. **`~/bim-ootb/modeller/disc_walker.js` (the live browser copy) does NOT have `spaceGuid`/
+      `spaceAsStorey` at all** — it has genuinely diverged from this repo's `build/disc_walker.js` (which
+      also carries an unrelated IDB-timeout fix the bim-ootb copy lacks). Syncing the two, preserving both
+      sides' independent additions, is real work on its own, before any UI exists to call it.
+   2. **`IfcSpace` renders as no mesh anywhere** (`bonsai_ifc.js`/`real_geometry.js` — zero references) —
+      "user selects a rendered space" assumes a visualization capability that doesn't exist. This isn't a
+      UI-wiring task, it's a new rendering feature.
+   3. **The live Drop-IFC importer (`viewer/import_worker.js`/`import_db_builder.js`, off-limits per border
+      control) still never extracts `IfcSpace`** — so even once wired, this only works for the one
+      hand-extracted building (Clinic) that got the offline extractor fix, not anything a user actually
+      drops into the Modeller themselves.
+   4. **The BOM-tree Outliner's room grouping (`bom_tree.js`) already derives room names for its tree nodes
+      but discards the space's own guid** (`seedFromDb`'s `roomList` is `{name, storey}` only) — the data
+      plumbing to even know "which space guid is this UI row" isn't there.
+   **Given this, piece 3 is a multi-step, cross-repo design problem, not a narrow execution task — it needs
+   a proper Sonnet-mastermind scoping pass (with these 4 gaps priced in) before anyone picks it up, Fable or
+   otherwise. Explicitly pulled from Fable's mandate 2026-07-10 for exactly this reason** (see
+   `RESUME_DISC_WALKER_ENVELOPE_BOUND.md`'s own retraction note).
 
 ## What this is NOT
 Not a call to fabricate room boundaries where none exist (buildings with 0 real `IfcSpace` in source stay

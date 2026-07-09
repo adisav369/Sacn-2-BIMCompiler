@@ -609,6 +609,91 @@ angle; the `asmOnly` bypass decision (if taken) is stated with its reasoning, no
 created same pattern as M1-M4 (fresh worktree off current `origin/main`, PR back to bim-ootb on
 completion).
 
+## ▶ RESUME HERE (2026-07-10, NEW bounded follow-up — independent of the disc_walker MEP-schedule branch;
+do NOT block that branch's Watchdog sign-off on this, the two lanes don't intersect)
+
+**Origin: surfaced as a byproduct of Watchdogging `fable/bimeyes-coherence-checker`, not this file's own
+thread.** Re-running that branch's 25-file DW regression tally, this file's own `scripts/witness_resident_open.js`
+(W-RESIDENT-OPEN, §2.5 above, originally 13/13 on 2026-06-26) came back **3 PASS / 4 FAIL** —
+SampleHouse/Duplex/Schependomlaan `_meta.db` all now **404 on the live OCI bucket**; only Terminal still
+fetches+walks clean. Confirmed unrelated to the disc_walker branch (it never touches `deploy/dev/str_walker*.js`)
+— standalone production drift, found only because the branch's sweep happened to run it.
+
+**Two separate items here, different urgency — don't conflate them into one task:**
+1. **⛔ LIVE-BROKEN, higher priority — 3 of 4 STR-Walker resident buttons are dead in prod today.** A real user
+   opening the STR Walker's "▾ Open building…" picker and choosing SampleHouse/Duplex/Schependomlaan gets a
+   404, not a building. Root cause not yet diagnosed (bucket path change? object deleted? — check the OCI
+   bucket directly, don't assume). Regression against the PR #536 baseline (13/13 → 3/4) — needs its own
+   bounded fix-and-reverify pass.
+2. **Design debt, lower priority, no rush — the STR-Walker resident picker still cloud-fetches 4 residents
+   one-by-one, never reconciled with the embedded 8-building `mesh.db` substrate this project already shipped**
+   (`EMBED_8_ARC_BUILDINGS_MESH_DB.md`, DONE). User direction (2026-07-10): end state is NOT "keep 4, make them
+   embedded" — it should converge with the already-embedded 8 (SH/DX/SampleCastle/Terminal/Clinic/HHS/Garage/+1),
+   and eventually carry DISC (MEP) meshes alongside the STR/ARC meshes already in `mesh.db`. **Naming collision
+   to watch for:** this witness's "SC" = Schependomlaan (column-framed steel case) — NOT SampleCastle, which is
+   what "SC" means everywhere in the disc_walker lane. If the two resident lists ever merge, that needs an
+   explicit rename, not a silent overwrite.
+
+**Scope for whoever picks this up:** bounded to items 1+2, both live in `str_walker*.js`/OCI-bucket territory,
+NOT `disc_walker.js` — does not touch or gate the `fable/bimeyes-coherence-checker` branch, which proceeds to
+Watchdog sign-off independently. Fix item 1 first (it's a live regression, not just debt); item 2 can follow in
+the same session or a later one.
+
+## ▶ 2026-07-10 RESOLVED — item 1 was a FALSE ALARM (stale witness, not a live break); item 2's premise
+was also stale — both corrected, not just re-diagnosed
+
+**Item 1, real root cause found (checked the OCI bucket directly, per the file's own instruction — did NOT
+assume):** `oci os object list` confirmed `SampleHouse_meta.db`/`Duplex_meta.db`/`Schependomlaan_meta.db`
+genuinely don't exist in `bim-ootb`'s `buildings/` prefix (bucket versioning is Disabled, no recovery trail).
+**But this never mattered to a real user** — `~/bim-ootb` synced to `origin/main` and `modeller/
+str_walker_outliner.js` read directly: `openResident()` fetches `_modellerBase() + res.db` where
+`_modellerBase() = './'` — a SAME-DIR GH-Pages fetch, `OCI_BASE` is never referenced anywhere in the live
+code. Verified live: `curl` on all 4 real GH-Pages URLs (`red1oon.github.io/bim-ootb/modeller/
+{SampleHouse,Duplex,SampleCastle,Terminal_meta}...`) → **200 on all 4**, today. The "▾ Open building…"
+picker was never broken. `witness_resident_open.js` was testing a RETIRED architecture end-to-end: OCI
+`buildings/*_meta.db` fetch + a resident literally named "Schependomlaan" — both superseded THE SAME DAY
+they were built, by the "SESSION 2026-06-26b" isolation decision documented earlier in this very file (GH-
+Pages `modeller/` playground, zero OCI, SampleCastle replacing Schependomlaan). The witness just never got
+updated to track that pivot, so when the 3 orphaned OCI objects later 404'd (unrelated bucket drift, cause
+not chased further — nothing live depends on them) it read as "3/4 residents dead in prod."
+
+**Fixed the actual defect — the witness, not the (already-working) product:** rewrote
+`scripts/witness_resident_open.js` to fetch from the real `red1oon.github.io/bim-ootb/modeller/` base
+against the CURRENT 4 residents (SampleHouse/Duplex/SampleCastle/Terminal, all `_extracted.db` or
+`_meta.db` per the live `RESIDENTS` array), and dropped the "0 cooked tables" pristine assertion (C4) —
+these GH-embedded files are legitimately self-contained bundles (`m_bom`/`component_geometries` by design,
+confirmed by direct query on `SampleCastle_extracted.db`), not the split pristine-meta convention that
+assertion was written for.
+
+**A second, real (not invented) finding surfaced while re-deriving C3's expected values, then corrected
+before landing — exactly the "don't trust your own first pass" discipline this file's STANDING AGENDA
+demands of every session:** first attempt kept "column-framed / 8x9 / 23 cols / 13 girders" for SampleCastle,
+assuming it inherited Schependomlaan's numbers (per a memory note calling them "the same source building").
+Direct query proved that assumption WRONG — `SampleCastle_extracted.db`'s `elements_meta` is 100% `ARC`
+discipline, 0 STR/MEP rows, confirmed by `git log` to be **deliberate**: bim-ootb `b93ca13` (PR #712,
+2026-07-08, "strip all 4 residents to ARC-only") cascade-deleted every non-ARC row from ALL FOUR Modeller
+residents — SampleCastle and Terminal used to carry real STR (column-framed), but as of #712 they legitimately
+auto-pick **wall-bearing** now too (0 STR columns → `swDeriveSemiGrid` from ARC walls, no frame imposed),
+same as SampleHouse/Duplex always did. This is the dev/user-split doctrine working as designed (users get
+ARC-only, no oracle; STR/MEP are DERIVED live by the walker) — not a bug. Updated the witness's expectations
+to the MEASURED post-#712 reality (SampleCastle wall-bearing/13x12, Terminal wall-bearing/38x32) instead of
+the pre-#712 numbers a stale memory note nearly caused to be re-baked in. Re-ran: **13/13 PASS.**
+
+**Item 2's premise also corrected while investigating item 1 (same evidence, no extra work):** "still
+cloud-fetches... never reconciled with the embedded 8" was already wrong on its own first clause — the
+picker does not cloud-fetch OCI at all (see above). The real state of the EMBED_8 convergence: per
+`EMBED_8_ARC_BUILDINGS_MESH_DB.md`'s own text, the 8-building/`mesh.db` consolidation is verified-complete
+but **NOT pushed** — it lives only in an abandoned/parked worktree (`/tmp/wt-embed-8-arc`, branch
+`feat/embed-8-arc-buildings` off `origin/main`), so calling it "already shipped" was premature. Still lower
+priority / no rush per the user's own 2026-07-10 framing — not picked up this pass, just corrected so the
+next session doesn't start from "it's live" and get confused when `RESIDENTS` still shows the old 4-6 entries.
+
+**Housekeeping:** the 3 orphaned OCI objects were harmlessly restored from the still-good local
+`deploy/buildings/*_meta.db` artifacts (dated 2026-06-26, pristine, byte-sane) before this root cause was
+found — doesn't help or hurt production (nothing reads them), left in place since re-deleting them adds risk
+for zero benefit. `scripts/witness_resident_open.js` fix is uncommitted (working-tree only) — commit is the
+user's call per this project's git policy.
+
 ## DON'T
 - Don't rebuild the Viewer's DLOD/Alt-X/cache — wire it into the modeller.
 - Don't claim Terminal reconstruction — Terminal is the walk-back ORACLE for the generative walk.
