@@ -68,16 +68,37 @@ analogue is n_measured scaled by floor-area ratio.
 >   `hostBind` has never actually selected one of the rotation-tilted hosts (IfcDoor/IfcWindow/IfcFurniture/
 >   IfcBuildingElementProxy) on EITHER building tested, because neither `terminal_rules.db` nor
 >   `duplex_rules.db`'s `rule_shim` table hosts any MEP class to those IFC classes today (only IfcWall/
->   IfcCovering). The fix's `occupancy()`-path is proven; its `hostBind`-path is not, and won't be until a
->   real, MEASURED window/door/furniture-hosted shim exists to mine — don't build one speculatively just to
->   close this gap, that would be inventing a rule, not fixing one.
-> - ⛔ Still open, in priority order: (1) re-run Duplex's FP walk WITH the `dwBorrow('FP', terminal_rules)`
->   percept wired (the current REFUSE there is a script-scope gap in this session's quick test, not a
->   verified engine defect — don't report it as either fixed or broken without re-checking); (2) STR
->   per-storey containment scoping (item 2 below, ~20% outside own-storey footprint) — DEFERRED by explicit
->   user call, 80% is Pareto-acceptable for now, do not re-open as urgent; (3) whatever `WalkerDoctrine.md
->   §13`'s oracle-vacuousness finding (`witness_disc_density.js` D3/D4/D4b) implies for future mesh-to-mesh
->   comparison work — read that section before building one, it's a real, named trap, not boilerplate.
+>   IfcCovering). The fix's `occupancy()`-path is proven; its `hostBind`-path is not.
+> - **⚠ CORRECTION 2026-07-10 (user caught this, don't re-miss it): a real, MEASURED, non-invented
+>   window-hosted shim ALREADY EXISTS — `VENT_WINDOW_SHIM`** (`library/ERP.db._shim_attributes`:
+>   `host_ifc_class='IfcWindow'`, `mount=TOP`, `offset=-429mm`; also present as a `duplex_rules.db.rule_shim`
+>   row, SC uses `duplex_rules.db`). It's DEAD today only because its `disc='VENT'` doesn't match any
+>   walkable MEP discipline (ELEC/PLB/ACMV/FP) — `dwWalk('VENT',...)` just refuses, no rule_placement exists
+>   for that label. **This is a mislabeling bug to FIX, not a gap to fill by inventing a rule.** SC's real
+>   source elements are `IfcDistributionElement`(13)/`IfcFlowSegment`(60), both tagged generic `'MEP'` in
+>   SC's own extracted data (`deploy/buildings/SampleCastle_extracted.db`) — almost certainly ACMV
+>   ductwork/grilles; confirm which, then re-project the shim under its REAL discipline instead of `'VENT'`.
+>   **BUT — verified 2026-07-10, do not conflate this with the tilted-hostBind gap:** SC's 259 real windows
+>   have ZERO non-zero rotation_x/rotation_y (all upright). Wiring this shim proves hostBind can select an
+>   `IfcWindow` host AT ALL (genuinely new coverage, worth doing) but takes the plain cardinal-Z branch, not
+>   the `rx||ry` branch the rotation-convention fix changed — it does NOT close the tilted-rotation-hostBind
+>   gap. No known building+shim combination currently has both a real tilt AND a real shim on the same class;
+>   that gap stays open and must be reported as open even after the VENT fix lands.
+> - ⛔ Still open, in priority order: (0) **wire VENT_WINDOW_SHIM to its real discipline + prove IfcWindow
+>   hostBind selection on real SC data** (see correction above) — Watchdog checklist for whoever does this:
+>   (i) the disc relabel must be justified by SC's actual measured IFC/product evidence, not picked just to
+>   make a walk succeed; (ii) grep for OTHER `rule_shim`/`_shim_attributes` rows sharing this same
+>   orphaned-disc-label defect shape before calling the bug class closed, not just this one row; (iii) reuse
+>   the existing projection pipeline, don't add new machinery; (iv) real data + real renderer/independent
+>   oracle + baseline diff, same as every fix in this file; (v) report "IfcWindow hostBind proven" and
+>   "tilted-hostBind still unproven" as TWO SEPARATE claims, never one green checkmark implying the other.
+>   (1) re-run Duplex's FP walk WITH the `dwBorrow('FP', terminal_rules)` percept wired (the current REFUSE
+>   there is a script-scope gap in this session's quick test, not a verified engine defect — don't report it
+>   as either fixed or broken without re-checking); (2) STR per-storey containment scoping (item 2 below,
+>   ~20% outside own-storey footprint) — DEFERRED by explicit user call, 80% is Pareto-acceptable for now, do
+>   not re-open as urgent; (3) whatever `WalkerDoctrine.md §13`'s oracle-vacuousness finding
+>   (`witness_disc_density.js` D3/D4/D4b) implies for future mesh-to-mesh comparison work — read that section
+>   before building one, it's a real, named trap, not boilerplate.
 >
 > ---
 >
@@ -194,10 +215,13 @@ analogue is n_measured scaled by floor-area ratio.
 > selected one of the 325 rotation-tilted hosts (IfcDoor/IfcWindow/IfcFurniture/IfcBuildingElementProxy) in
 > this walk — **the item-3 fix's `hostBind`-path coverage is still unproven**, only its `occupancy()`-path
 > coverage is (occupancy reads every element on a storey regardless of class, so it did exercise the fix).
-> **The fix isn't dormant, but this specific consumer of it is untested. Named, checkable trigger condition
-> for whoever picks this up: it becomes testable the moment `rule_shim` grows a window/door/furniture-hosted
-> MEP class** (none exist today — this is not an invitation to mine one speculatively, just the fact that
-> would make it testable if one is ever measured). (b)/(c) on **Duplex** — DONE 2026-07-10, same black-box
+> **The fix isn't dormant, but this specific consumer of it is untested.**
+> ⚠ **CORRECTION (same day, caught by user question): a real window-hosted shim (`VENT_WINDOW_SHIM`) DOES
+> already exist, mislabeled `disc='VENT'` (not a walkable discipline) — see item 5's ▶ STATUS block's own
+> correction above for the full finding + Watchdog checklist. Even once fixed, it does NOT close this gap:
+> SC's real windows are never tilted (0/259), so it only proves IfcWindow hostBind selection works at all,
+> not the rotation branch.** The tilted-hostBind gap itself stays open until a real tilted element AND a
+> real shim exist on the SAME class — not proven to be achievable, just not yet found. (b)/(c) on **Duplex** — DONE 2026-07-10, same black-box
 > method, real `Duplex_ARC.db`+`mesh.db`: **STR REFUSE** (`duplex_rules.db` genuinely has zero STR
 > `rule_placement` rows — honest, matches doctrine, not a bug); **FP REFUSE** (no measured FP rule either —
 > Duplex was never called with the `dwBorrow('FP', terminal_rules)` percept in this quick script, so this
