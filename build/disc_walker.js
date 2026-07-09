@@ -372,6 +372,10 @@
     var orderQty = (opts.orderQty == null) ? 99 : opts.orderQty;
     var all = spacesOf(bdb);
     if (opts.spaceGuid) all = all.filter(function (s) { return s.guid === opts.spaceGuid; });
+    // §W7-COLLISION cross-disc coordination: opts.avoid = prior discs' placements. Checked in FULL
+    // (not per-space): adjacent space bboxes overlap (Hallway×Stair), so a same-space scan misses
+    // real cross-space overlaps.
+    var avoidAll = opts.avoid || [];
     var out = [], refused = {}, skipped = [], used = 0;
     all.forEach(function (sp) {
       var stype = _spaceTypeFor(disc, sp.label);
@@ -383,6 +387,7 @@
       var area = (sp.x1 - sp.x0) * (sp.y1 - sp.y0);
       var perAxisCount = {};                          // co-location spreader (Java GAP-10 port)
       var spWalls = null;                             // real walls near this space (lazy, once)
+      var spaceStart = out.length;                    // §W7-COLLISION: this space's own placements
       sched.forEach(function (e) {
         var qty = _resolveQty(orderQty, e, area);
         if (qty <= 0) return;
@@ -422,6 +427,48 @@
             if ((sp.x1 - sp.x0) >= (sp.y1 - sp.y0)) pos[0] = Math.min(pos[0] + idx * step, sp.x1 - 0.05);
             else pos[1] = Math.min(pos[1] + idx * step, sp.y1 - 0.05);
           }
+          // §W7-COLLISION (BIMEyes item 3, found by the pairwise check 2026-07-10): the code-spacing
+          // step alone doesn't clear WIDE co-located devices (CEILING_FAN 1.2m × 0.5m step → 48 real
+          // bbox overlaps), and separate per-disc walks can't see each other (fan×diffuser, outlet×
+          // sink). Every device slides in 0.1m steps until its MEASURED bbox clears (a) fixtures
+          // already placed in this space this walk and (b) the caller-passed `opts.avoid` list
+          // (prior discs' placements — cross-disc coordination). Direction: wall-anchored devices
+          // slide ALONG their wall run (yaw+90°, staying mounted); free devices along the room's
+          // spread axis. Dims are measured; the Java code-spacing base/step semantics are unchanged.
+          var dirx, diry;
+          if (wallAnchored) { dirx = Math.cos((yaw || 0) + Math.PI / 2); diry = Math.sin((yaw || 0) + Math.PI / 2); }
+          else if ((sp.x1 - sp.x0) >= (sp.y1 - sp.y0)) { dirx = 1; diry = 0; } else { dirx = 0; diry = 1; }
+          function _clashAt(px, py, pz2) {
+            var q, o;
+            for (q = 0; q < out.length; q++) {
+              o = out[q];
+              if (Math.abs(pz2 - o.z) >= ((e.dim_z_m || 0.2) + (o.bz || 0.2)) / 2) continue;
+              if (Math.abs(px - o.x) < ((e.dim_x_m || 0.2) + (o.bx || 0.2)) / 2 &&
+                  Math.abs(py - o.y) < ((e.dim_y_m || 0.2) + (o.by || 0.2)) / 2) return true;
+            }
+            for (q = 0; q < avoidAll.length; q++) {
+              o = avoidAll[q];
+              if (Math.abs(pz2 - o.z) >= ((e.dim_z_m || 0.2) + (o.bz || 0.2)) / 2) continue;
+              if (Math.abs(px - o.x) < ((e.dim_x_m || 0.2) + (o.bx || 0.2)) / 2 &&
+                  Math.abs(py - o.y) < ((e.dim_y_m || 0.2) + (o.by || 0.2)) / 2) return true;
+            }
+            return false;
+          }
+          var basePos = pos.slice(), movedClear = 0, cleared = !_clashAt(pos[0], pos[1], pos[2]);
+          [1, -1].forEach(function (sgn) {                     // try +dir first, then −dir from base
+            if (cleared) return;
+            pos[0] = basePos[0]; pos[1] = basePos[1];
+            for (var guard = 0; guard < 200; guard++) {
+              var nxp = Math.min(Math.max(pos[0] + 0.1 * sgn * dirx, sp.x0 + 0.05), sp.x1 - 0.05);
+              var nyp = Math.min(Math.max(pos[1] + 0.1 * sgn * diry, sp.y0 + 0.05), sp.y1 - 0.05);
+              if (Math.abs(nxp - pos[0]) < 1e-9 && Math.abs(nyp - pos[1]) < 1e-9) break;   // clamped
+              pos[0] = nxp; pos[1] = nyp; movedClear += 0.1;
+              if (!_clashAt(pos[0], pos[1], pos[2])) { cleared = true; break; }
+            }
+          });
+          if (!cleared) { pos[0] = basePos[0]; pos[1] = basePos[1]; console.log(TAG + ' §SCHED-CLASH ' + disc + '/' + e.device_id + ' in ' + sp.label + ' — no clear position in this space (kept rule position, residual overlap reported)'); }
+          else if (movedClear > 0.05) console.log(TAG + ' §SCHED-CLEAR ' + disc + '/' + e.device_id + ' in ' +
+            sp.label + ' — slid to clear a co-located fixture bbox' + (wallAnchored ? ' (along its wall run)' : ''));
           out.push({ disc: disc, ifc_class: 'IfcFlowTerminal', device: e.device_id,
             x: pos[0], y: pos[1], z: pos[2], storey: sp.storey, spaceGuid: sp.guid,
             space: sp.label, rot: yaw,

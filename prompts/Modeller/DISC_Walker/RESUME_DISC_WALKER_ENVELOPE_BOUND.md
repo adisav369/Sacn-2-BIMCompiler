@@ -79,6 +79,19 @@
 #    minus W5 (no ground truth). NOT started.
 # 3. BIMEyes remainder: Navigability flood-fill (connectedFraction) + pairwise fixture-collision counts —
 #    fold into the walkback witness as additional claims.
+#    ✅ DELIVERED ON BRANCH 2026-07-10 (fable/bimeyes-navcollide, off master, local commit only —
+#    Watchdog reviews/pushes; INDEPENDENT of item 2's branch, both touch disc_walker.js in disjoint
+#    regions). W-DX-WALKBACK-RSGT now 14/14: W6 NAVIGABILITY (per-space 0.25m flood-fill, walking band
+#    floor→+1.8m, person-scale regions ≥0.5×0.5m; min connectedFraction 0.963, worst Kitchen, bar 0.95;
+#    falsifier: synthetic fixture wall → 0.500) + W7 COLLISION (9591 pairs, method=bbox disclosed, 0
+#    collisions; falsifier: near-duplicate flagged). THE CHECKS BIT: first run found 48 REAL bbox
+#    overlaps (code-spacing step < device widths — fan 1.2m vs 0.5m step; per-disc walks blind to each
+#    other — outlet×sink, fan×diffuser; Hallway×Stair bbox overlap). Fixed AT SOURCE in placeSchedule:
+#    measured-bbox clearance slide (wall-anchored devices slide ALONG their wall run, yaw+90°),
+#    NEW opts.avoid = prior discs' placements (cross-disc coordination — walk-all-disciplines callers
+#    should pass the accumulated list), ± direction reversal, honest §SCHED-CLASH residual log (0 today).
+#    Regression in fresh worktree /tmp/wt-fable-item3: W-SCHED-MINE 7/7, shim_select 6/6,
+#    dwwalk_hostbind 6/6, hostbind_agnostic 11/11, space_scoped_walk 5/5.
 # 4. W5 ratchet toward RSS-exact (per-room offset nuance is most of the remaining gap); real per-instance
 #    routing geometry lives ONLY in build/Duplex_mep_extracted.db element_transforms (Duplex-only).
 # 5. Device meshes to the browser (mesh.db consolidation) — SEPARATE deliberate step, still not folded in.
