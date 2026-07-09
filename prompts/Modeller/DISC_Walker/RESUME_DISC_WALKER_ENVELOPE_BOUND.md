@@ -84,21 +84,31 @@ analogue is n_measured scaled by floor-area ratio.
 >   the `rx||ry` branch the rotation-convention fix changed — it does NOT close the tilted-rotation-hostBind
 >   gap. No known building+shim combination currently has both a real tilt AND a real shim on the same class;
 >   that gap stays open and must be reported as open even after the VENT fix lands.
-> - ⛔ Still open, in priority order: (0) **wire VENT_WINDOW_SHIM to its real discipline + prove IfcWindow
->   hostBind selection on real SC data** (see correction above) — Watchdog checklist for whoever does this:
->   (i) the disc relabel must be justified by SC's actual measured IFC/product evidence, not picked just to
->   make a walk succeed; (ii) grep for OTHER `rule_shim`/`_shim_attributes` rows sharing this same
->   orphaned-disc-label defect shape before calling the bug class closed, not just this one row; (iii) reuse
->   the existing projection pipeline, don't add new machinery; (iv) real data + real renderer/independent
->   oracle + baseline diff, same as every fix in this file; (v) report "IfcWindow hostBind proven" and
->   "tilted-hostBind still unproven" as TWO SEPARATE claims, never one green checkmark implying the other.
->   (1) re-run Duplex's FP walk WITH the `dwBorrow('FP', terminal_rules)` percept wired (the current REFUSE
->   there is a script-scope gap in this session's quick test, not a verified engine defect — don't report it
->   as either fixed or broken without re-checking); (2) STR per-storey containment scoping (item 2 below,
->   ~20% outside own-storey footprint) — DEFERRED by explicit user call, 80% is Pareto-acceptable for now, do
->   not re-open as urgent; (3) whatever `WalkerDoctrine.md §13`'s oracle-vacuousness finding
->   (`witness_disc_density.js` D3/D4/D4b) implies for future mesh-to-mesh comparison work — read that section
->   before building one, it's a real, named trap, not boilerplate.
+> **⛔ PROMPTS PRIORITY (organized 2026-07-10 — this IS the priority order across every open thread in this
+> file, no need to re-derive one from the history below):**
+> 1. **Wire `VENT_WINDOW_SHIM` to its real discipline + prove IfcWindow hostBind selection on real SC data**
+>    (see correction above). Small, bounded, real data already mined — just a mislabeling fix. Watchdog
+>    checklist: (i) the disc relabel must be justified by SC's actual measured IFC/product evidence, not
+>    picked just to make a walk succeed; (ii) grep for OTHER `rule_shim`/`_shim_attributes` rows sharing this
+>    same orphaned-disc-label defect shape before calling the bug class closed, not just this one row; (iii)
+>    reuse the existing projection pipeline, don't add new machinery; (iv) real data + real renderer/
+>    independent oracle + baseline diff, same as every fix in this file; (v) report "IfcWindow hostBind
+>    proven" and "tilted-hostBind still unproven" as TWO SEPARATE claims, never one green checkmark implying
+>    the other.
+> 2. **Re-run Duplex's FP walk WITH the `dwBorrow('FP', terminal_rules)` percept wired** — the current REFUSE
+>    there is a script-scope gap in this session's quick test, not a verified engine defect. Small, quick.
+> 3. **`SPACE_SCOPED_DISC_INSTALL_VISION.md` (NEW, 2026-07-10, same directory)** — the bigger initiative:
+>    real `IfcSpace` extraction (Clinic confirmed as the POC target — 269 real named spaces, e.g. `CENTRAL
+>    WAITING`/`CORRIDOR`, currently 0 extracted; Hospital confirmed NOT viable, genuinely 0 space entities in
+>    either ARC source) + a space-scoped `dwWalk`/`occupancy()` boundary + a UI trigger, reusing `hostBind`
+>    entirely unchanged. User-directed small-isolated-test-first approach ("no rush, a proven thesis is
+>    gold") — read that file before starting, it has the full plan + a Watchdog checklist of its own. Bigger
+>    than items 1-2, deliberately sequenced after them (finish the small bounded fixes first).
+> 4. **STR per-storey containment scoping** (item 2 below, ~20% outside own-storey footprint) — DEFERRED by
+>    explicit user call, 80% is Pareto-acceptable for now, do not re-open as urgent.
+> 5. Whatever `WalkerDoctrine.md §13`'s oracle-vacuousness finding (`witness_disc_density.js` D3/D4/D4b)
+>    implies for future mesh-to-mesh comparison work — read that section before building one, it's a real,
+>    named trap, not boilerplate, not an active task on its own.
 >
 > ---
 >
