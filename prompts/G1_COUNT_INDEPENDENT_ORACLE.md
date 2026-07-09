@@ -1,5 +1,15 @@
 # G1-COUNT: give the generative-device count a real independent oracle
 
+> **⚠ DROPPED 2026-07-10 (user directive, mid-execution).** Java is deprecated as runtime —
+> "rest the Java, don't dig further into the M_Product drift." Executed BEFORE the drop:
+> environment reconstruction proved the Java oracle end-to-end (fresh worktree, SH 9/9 gates,
+> G1-COUNT PASS 65+43=108; independent recomputation reproduces gen=43 exactly) — that
+> verification became the ground truth for the JS-era replacement. The spirit of this spec
+> (independent oracle, no self-grading) lives on in `scripts/witness_dx_walkback_rsgt.js`
+> (walker reads rules+ARC only; witness alone reads real MEP). Repo-HEAD breakage found while
+> executing + the full repair recipe: `docs/internal/JavaEra_FOSSIL_README.md`. Pieces 1/2
+> below were NOT implemented — no Java file was changed.
+
 ```
 # ⚠ DO NOT REMOVE
 SCOPE: this file is fully self-contained — everything you need is cited below with file:line, from two
