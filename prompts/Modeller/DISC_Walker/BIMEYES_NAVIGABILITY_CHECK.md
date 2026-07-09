@@ -1,5 +1,18 @@
 # BIMEyes v1 — coherence checker: Collision + Navigability + Quantity-bounds
 
+> **✅ REPURPOSED + LARGELY DELIVERED 2026-07-10 (user directive, mid-execution):** instead of
+> a standalone checker over the OLD scatter placement, the checks became the pass/fail bar for
+> the geometry-hell fix itself — `scripts/witness_dx_walkback_rsgt.js` (W-DX-WALKBACK-RSGT,
+> **10/10** on branch `fable/bimeyes-coherence-checker`): W1 quantity-bound (ELEC 102/89,
+> PLB 18/16), W2 containment 139/139 + falsifier, W3 host+orientation, W4 LOD400 (no-fallback
+> law, meshless devices REFUSE), W5 position-fidelity dial vs DX's REAL MEP (ELEC @1m 49%,
+> @2m 94%; PLB @1m 78%) + falsifier. Delivered on the NEW schedule-driven per-space walk
+> (`dwWalk {schedule:true}`, mined from the Java era — see commits `fcff07293`→`f25cb841e`).
+> NOT delivered from the original sketch: the Navigability flood-fill (connectedFraction) and
+> pairwise fixture-collision counts — still worth building as a follow-up over the same
+> witness, and Terminal remains the legacy-walk path (no real spaces; schedule walk REFUSEs
+> honestly there by design).
+
 ```
 # ⚠ DO NOT REMOVE
 SCOPE: THREE new, independent, read-only check functions + ONE combined witness that runs all three against

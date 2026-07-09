@@ -1,257 +1,191 @@
 # RESUME — disc_walker: area-scaled n_measured + envelope-bound placement (RouteWalker alignment)
 
-# ▶▶▶▶ ENTRY POINT (2026-07-10, latest — read this block first, it supersedes everything below as the
-# starting point). Worker session PAUSED (user directive); this session (Sonnet, Watchdog) checkpointed and
-# retires after this update — a FRESH Watchdog reviews this block before anything below is released/executed.
+# ▶▶▶▶▶▶ ENTRY POINT (2026-07-10 PM, LATEST — Fable5 worker closeout; read this FIRST, supersedes every
+# block below as the starting point). GEOMETRY-HELL LANE: DELIVERED ON BRANCH, AWAITING WATCHDOG REVIEW +
+# USER SIGN-OFF. NOT merged. Branch `fable/bimeyes-coherence-checker`, PUSHED to origin, 5 commits on top
+# of `e544a39f4`: `fcff07293` (Step 1 MINE) → `8700d7187` (scope-boundary fix + rule_shim restore) →
+# `f25cb841e` (Steps 2+3 PLACE+PROVE) → 2 docs commits (prompt closeouts; fossil README).
+#
+# **Mandate evolution this session (user-directed, mid-execution — the original two-spec handover morphed):**
+# `prompts/G1_COUNT_INDEPENDENT_ORACLE.md` DROPPED (Java rested as fossil — see its own closeout note);
+# `prompts/Modeller/DISC_Walker/BIMEYES_NAVIGABILITY_CHECK.md` REPURPOSED into the pass/fail bar for the
+# real mission: fix the Modeller DISC-walk fixture scatter ("geometry hell", ModellerGuide screenshots) by
+# mining the PROVEN Java-era placement semantics into the JS walker, with a JS-era RosettaStone walkback
+# gate (generate blind → diff vs the building's own real MEP) as proof.
+#
+# **What is DONE (all witnessed, logs in the branch's logs/ + commit messages):**
+# 1. MINE — `build/project_rule_space_schedule.py`: ad_space_type_mep_bom (188 rows) + ad_placement_offset
+#    + LOD400 mesh hashes → `rule_space_schedule/_type/_alias` + `rule_code_spacing` in duplex_rules.db,
+#    **residential class ONLY** (Watchdog leak-catch closed; witness M6 pins it; terminal_rules.db carries
+#    NO schedule until one is mined from real Terminal-class data). `witness_rule_space_schedule.js` 6/6 —
+#    re-derives the real Java compile blindfolded (LIVING 15 + BEDROOM 9 + CORRIDOR 19 = 43).
+# 2. PLACE — `dwWalk(disc, bdb, name, {schedule:true})` in build/disc_walker.js (OPT-IN; every legacy path
+#    byte-identical — 25-file DW suite vs git-stash baseline: delta 0): per-real-space schedule×offset
+#    placement; spacesOf() reads elements_meta.IfcSpace OR spatial_structure (synthetic RM_/≈ rows
+#    excluded); wall fixtures mount on REAL wall faces (_trueMidpoint-corrected, bbox-intersect, z-band-
+#    valid; open-boundary anchors relocate to the nearest real wall, §SCHED-RELOC); meshless devices
+#    REFUSE (§LOD400-REFUSE — DATA_POINT, EMERGENCY_LIGHT, WASHING_TAP have no real mesh, never faked).
+# 3. PROVE — `scripts/witness_dx_walkback_rsgt.js` **10/10** on real Duplex: W1 qty ELEC 102/89 PLB 18/16
+#    (band [0.5,2.0]); W2 containment 139/139 + falsifier; W3 wall-host/facing/ceiling/floor (this gate
+#    caught 3 real placement flaws mid-session, each fixed at source); W4 LOD400 139/139 real meshes;
+#    W5 fidelity DIAL vs real MEP: ELEC @0.5m 18% @1m 49% @2m 94% (mean offset 0.08/0.04/-0.11m), PLB
+#    @1m 78% @2m 94%, + shift-falsifier. ACMV reported not graded (0 real terminals — no vacuous oracle).
+#    Anti-cheating is STRUCTURAL: walker reads rules+ARC only; the witness alone reads the real MEP.
+#
+# **REPRODUCIBILITY (worktree-env facts a fresh session must know before re-running witnesses):**
+# - Work lives in worktree `/tmp/wt-fable-bimeyes` (disposable; branch is the artifact). Gitignored inputs
+#   were copied in from the shared checkout: deploy/buildings/{Duplex,SampleCastle,Terminal,Clinic,
+#   HHS_Office_Federated}_extracted.db, build/Duplex_mep_{extracted,meta}.db, node_modules symlink;
+#   library/ERP.db rebuilt via scripts/rebuild_erp.sh; complib repaired (M_Product from _pre_s173 backup +
+#   I_Geometry_Map rename + restore_generative_meshes.py 14/14) — complib change is UNCOMMITTED by design.
+# - The worktree's Duplex_extracted.db has space LongNames STAMPED (scripts/stamp_space_longnames.py,
+#   21/21 from the source IFC). **The shared tree's copy is NOT stamped** — run the stamp script first if
+#   re-running the walkback witness outside the worktree.
+# - Pre-existing suite failures (identical with the change stashed — NOT this lane's): corridor_trunk 5/1,
+#   seedtrunk_engine 5/1, occ_true_midpoint 16/1, rotation_convention 27/3, terminal_geosplit 14/2, and
+#   assemble/generalize_curve/generalize_xbuild/hostbind_rotation/route_face_surface (env/known crashes).
+#
+# **OPEN — the next ratchet (in rough priority):**
+# 1. ✅ DONE 2026-07-10 — Watchdog SIGNED OFF (independently re-ran W-DX-WALKBACK-RSGT 10/10 +
+#    W-SCHED-MINE 6/6 + confirmed the 25-file tally: 17 green + 6 pre-existing fails [corridor_trunk 5/1,
+#    occ_true_midpoint 16/1, rotation_convention 27/3, seedtrunk_engine 5/1, terminal_geosplit 14/2,
+#    resident_open 3/4 = OCI-bucket drift, NOT this lane] + 2 pre-existing crashes [hostbind_rotation,
+#    route_face_surface]; assemble/generalize_curve/generalize_xbuild fail only as NESTED sub-regressions
+#    inside occ_true_midpoint/rotation_convention, not top-level suite files). BRANCH MERGED to master.
+#    STILL OPEN from this item: the DEFAULT-FLIP decision (schedule walk is opt-in today — flipping the
+#    Modeller default is a one-line change, deliberately deferred until the numbers were seen) and
+#    live-browser wiring (~/bim-ootb/modeller disc_walker.js sync), both post-merge follow-ups.
+# 1b. Watchdog follow-up, non-blocking: rule_space_type tags all 41 mined space types
+#    building_class='residential' but several are clearly non-residential vocabulary (CONCOURSE, GATE,
+#    DEPARTURE_LOUNGE, ASSEMBLY_HALL, CLASSROOM). Doesn't affect what shipped (Duplex exercises 4 real
+#    room types; terminal_rules.db carries zero schedule tables) — clean the label in
+#    build/project_rule_space_schedule.py + re-project whenever convenient.
+# 2. Terminal (the ultimate: 8 DISCs, no real spaces): schedule walk REFUSEs there by design; its fix is
+#    the no-spaces path (n_measured×area bound + host-conformant placement) measured by the same W-checks
+#    minus W5 (no ground truth). NOT started.
+# 3. BIMEyes remainder: Navigability flood-fill (connectedFraction) + pairwise fixture-collision counts —
+#    fold into the walkback witness as additional claims.
+# 4. W5 ratchet toward RSS-exact (per-room offset nuance is most of the remaining gap); real per-instance
+#    routing geometry lives ONLY in build/Duplex_mep_extracted.db element_transforms (Duplex-only).
+# 5. Device meshes to the browser (mesh.db consolidation) — SEPARATE deliberate step, still not folded in.
+# - Java era: fossils untouched, deprecation + verified repair recipe (fresh worktree → SH 9/9 gates) in
+#   `docs/internal/JavaEra_FOSSIL_README.md`; /tmp/wt-fable-g1count worktree is disposable.
 
-**State, verified not assumed (every number below independently reproduced by this session, not trusted
-from the worker's own report):** piece 1 (real `IfcSpace` extraction, `LongName` fix, `IfcRelAggregates`
-storey-resolution fix) AND piece 2 (`occupancy()`/`place()`/`hostBind()` scoped to a real space boundary) are
-DONE and **NOW COMMITTED to master at `e544a39f4`** (was sitting reviewed-but-uncommitted; committed this
-round specifically so Fable5 worktrees have clean, complete ground with no ambiguity). Proof: 4/4
-(`witness_space_occupancy_exclusion.js`) + 5/5 (`witness_space_scoped_walk.js`) + full 12-file existing DW
-regression suite, 0 fail, all independently re-run. Two ready Fable5 specs also committed, at `e26406727`
-then rebased onto `e544a39f4`:
-- `prompts/G1_COUNT_INDEPENDENT_ORACLE.md` — Java/RSS-side, zero JS/Modeller file overlap, worktree
-  `/tmp/wt-fable-g1count` (branch `fable/g1-count-independent-oracle`) ready off `abcb079ab`.
-- `prompts/Modeller/DISC_Walker/BIMEYES_NAVIGABILITY_CHECK.md` — Collision + Navigability + Quantity-bound
-  coherence checks, worktree `/tmp/wt-fable-bimeyes` (branch `fable/bimeyes-coherence-checker`) now includes
-  `e544a39f4`, so its "re-run against a space-scoped walk for comparison" bonus proof (see that file's own
-  §4) is available immediately, not gated on a future commit.
+# ▶▶▶▶▶ ENTRY POINT (2026-07-10, superseded by the block above — kept for evidence trail). This
+# session (Sonnet) is closing out; the user is now iterating directly with a Fable5 session in their own
+# words and will paste Fable's results into a fresh session. **Read `prompts/WATCHDOG.md` for that fresh
+# session's role (verify, don't author) — this file only carries the task-specific constraints below.**
 
-**Broadened mandate (user directive, 2026-07-10 — "let it use momentum to cover more broadly on Walker
-task"):** since the worker has paused and piece 1+2 are committed and clean, whoever picks this up next is
-NOT limited to the two specs above — **piece 3 (wire a UI trigger: user selects a rendered space, picks a
-heavy DISC, `dwWalk({spaceGuid})` renders via the proven `hostBind` conformance layer, user refines via
-existing gizmo tools)** is real, scoped (see `SPACE_SCOPED_DISC_INSTALL_VISION.md`'s own piece-3 note), and
-can now be picked up too — branch a fresh worktree off `e544a39f4`, same isolation discipline as the other
-two specs, same Watchdog review standard before anything merges.
+## Big reframe this round — read before anything else, it changes what "done" means for older items above
+**The Java compiler (DAGCompiler/RosettaStoneGateTest) is SETTLED as a legacy reference system, not an active
+one — do not re-litigate this.** Verified this session, not assumed: the Modeller's own most-active pipeline
+(`extractIFC2DB.js`, everything built this session) has zero BOM tables and zero Java dependency; the
+2026-06-29 naming decision already moved pattern work away from "ERP"/Java framing; a real, previously
+unnoticed break (`library/component_library.db` missing `M_Product` at HEAD, found by Fable while trying to
+run the Java pipeline at all) sat undetected for who knows how long — evidence nobody's been depending on it
+day to day. Fable's own framing, endorsed: **Java is "a data quarry and behavioral oracle, never as runtime"**
+— mine real, proven data/formulas out of it, then walk away; never re-wire it as a live dependency.
+- **G1-COUNT (the Java self-grading gate fix) is DROPPED, not paused.** The `M_Product`/`component_library.db`
+  schema-drift hole is a dead end to stop digging into, not a puzzle to solve — reconciling old (`M_Product`)
+  vs. current (`component_definitions`, 23,888 rows and growing) schemas is legacy-reconciliation work, not
+  worth the time. `/tmp/wt-fable-g1count` retires with a deprecation README Fable is writing there
+  ("repaired + mined into JS, do not develop further here") — don't resurrect this thread later.
+- **BIMEyes is REPURPOSED, not dropped.** It's no longer a standalone side-task — its three checks
+  (Collision, Navigability, Quantity-bound, now +1: a Z-sanity/containment check) are the actual PROOF
+  criteria for the real fix below. `/tmp/wt-fable-bimeyes` stays active for this.
+- **The real, live problem — finally correctly diagnosed, not "piece 3" (retracted) or "G1-COUNT" (dropped):**
+  the Modeller's "geometry hell" (real, user-observed, been at it for days) is `disc_walker.js`'s `place()`
+  fixture-scatter path — cell-centre scatter onto occupancy-grid cells (no per-room schedule, no offset
+  semantics, no snap-to-real-ARC-surface Z, no collision/containment check) — **and it separately violates
+  the LOD400 no-fallback law** (`feedback_no_fake_lod_unbreakable` memory / `WalkerDoctrine.md §11`):
+  generated fixtures render as plain boxes even though real meshes for those same device classes already sit
+  in `mesh.db`, reachable in the browser right now. **`witness_walkback_mep.js` (8/8, still green) does NOT
+  test this path and its green does NOT certify any fix to it** — it tests `routeChains` (pipe/duct
+  connectivity), a completely different code path. Don't conflate the two ever again.
+- **The mining source, confirmed real and proven, not just plausible:** `ad_space_type_mep_bom` (188 rows, 37
+  space types) + `ad_placement_offset` (x_ref/y_ref MIN/MAX/CENTER + edge offsets, z_rule FLOOR/CEILING/MID) —
+  verified this session to reproduce a REAL Java compile exactly (LIVING 15 + BEDROOM 9 + CORRIDOR 19 = 43,
+  zero breaches). Plus **14 real generative-device mesh bindings** Fable restored (product_id → geometry_hash:
+  sprinkler, diffuser, outlets, lights) — the actual LOD400 render seam so generated fixtures can render real
+  meshes instead of boxes, once wired.
 
-**What's still genuinely open, honestly, not silently dropped:** this fix lives only in the offline
-`extractIFC2DB.js` path, not the live browser importer (`viewer/import_worker.js`/`import_db_builder.js` —
-still explicitly off-limits per border control below); `Clinic_ARC.db` is not cleanly ARC-only (534 STR +
-102 MEP leaked in from unfiltered extraction — piece 3 should not trust the filename); `mesh.db`
-re-consolidation for the new Clinic extraction with real spaces has NOT been run — a separate, deliberate
-step touching all 8 buildings' shared geometry file, don't fold it silently into anything else.
+## Fable's plan (MINE → PLACE → PROVE), Watchdog-reviewed before Step 1, in progress as this session closes
+1. **MINE** — one deterministic script projects schedule + offsets (+ max_spacing) into
+   `duplex_rules.db`/`terminal_rules.db` as new rule tables, same projection pattern already proven this
+   session for `_shim_attributes`→`rule_shim`; carries each device class's real mesh `geometry_hash` for
+   LOD400-binding. Witness requirement: the projected tables independently re-derive 15+9+19=43.
+2. **PLACE** — rewrite `place()`'s fixture path in `disc_walker.js`:
+   - Space exists (5/8 buildings — Duplex/SampleHouse/HHS/Clinic/Garage): per-space schedule qty × offset
+     placement inside the space bbox, Z from the real host surface via the EXISTING `hostBind`/`_trueMidpoint`
+     machinery (piece 1+2, already committed `e544a39f4` — REUSE, do not rebuild), collision/containment checks.
+   - No real spaces (Terminal, Hospital): keep the already-proven `n_measured × area-ratio` count bound (THE
+     FIX at the top of this file), but placement becomes host-conformant — real walls/ceilings, never
+     wall-interior grid cells, never mid-void.
+   - Every placement carries its real mesh hash or honestly REFUSES — no fallback shape, ever, per the
+     unbreakable LOD rule.
+3. **PROVE** — repurposed BIMEyes (Collision + Navigability + Quantity-bound + Z-sanity/containment) run on
+   **Terminal ELEC (primary — the hardest, no-real-space case), Duplex FP + Clinic space-scoped (secondary/
+   tertiary)**, each with a falsifier. `witness_walkback_mep.js` stays as the separate routing witness only.
 
-```
-# ⚠ DO NOT REMOVE
-SCOPE: Fix the array-placer density explosion (SampleCastle residential PLB = 708k placements) by
-aligning it with RouteWalker's doctrine: GENERATION IS BOUNDED BY MEASURED QUANTITY + REAL ARC
-SUBSTRATE, never by bbox area. NON-INVENT: count = measured n_measured × measured area-ratio; position
-= measured pitch inside the building's own ARC occupancy envelope. Read the log after every run.
-ROOT CAUSE (measured, build/duplex_rules.db): the placer IGNORES rule_placement.n_measured (the real
-per-storey count, e.g. PLB IfcFlowController n_measured=8) and tiles the storey bbox at the local cluster
-pitch (~0.208m) → (W/sx)·(D/sy) = area/pitch² → 178k/storey. pitch is a WITHIN-CLUSTER spacing, not a
-floor cadence. RouteWalker's rwPlaceFixtures already does it right: count = measured BOM qty per room,
-pitch only arranges locally. We have no rooms (IfcSpace=0 in ALL extracted.db), so the per-storey
-analogue is n_measured scaled by floor-area ratio.
-```
+**Watchdog constraints given before this pause — hold the next session to these, don't relax them:**
+- **Checkpoint after Step 1**, before Step 2 touches `disc_walker.js` — Step 2 is the highest-risk step in
+  this plan because it rewrites shared code in the SAME file carrying this session's already-committed,
+  independently-verified space-scoping work (`spaceAsStorey`, `occupancy()`'s `IfcSpace` exclusion,
+  `hostBind`'s `spaceBBox` param). That work must be REUSED, never regressed or quietly undone.
+- **Full existing regression suite (all ~13 DW witness files) must stay green THROUGHOUT Step 2**, not
+  checked once at the end — re-run it after each meaningful change, the way every fix in this file has been
+  verified all session, not as a final formality.
+- **Verify (don't assume) that `ad_space_type_mep_bom`'s 37 space types are residential-typed** (bedroom/
+  bathroom/kitchen-shaped) before treating Terminal's fix as needing any of that mined schedule data — per
+  the plan, Terminal's fix should ONLY reuse `hostBind`/`_trueMidpoint` for host-conformant positioning, NOT
+  consume the room-schedule data at all (Terminal has no real rooms to schedule against). Confirm this
+  boundary holds in whatever Fable actually built; don't let it blur.
+- **The screenshot-diagnosed failure mode itself was never independently confirmed by Sonnet** (a WebFetch
+  check only saw captions/alt-text describing things as working — it cannot see pixel content). The user's
+  own direct observation is the real evidence here, not anything Sonnet verified visually. Don't cite "the
+  screenshots show X" as Sonnet-confirmed; it's user-reported, which is a legitimate but different kind of
+  evidence — treat it that way.
 
-**⚠ BORDER CONTROL — do this check FIRST, before any other step, every session that touches this card
-(user directive, 2026-07-09 PM, written after real repeated confusion this same session — see below):**
-1. **In-scope files, full stop: the 8 `<Building>_ARC.db` files + the shared `mesh.db`, all living under
-   `modeller/` space only.** Nothing else is this task's business.
-2. **Never touch anything under `viewer/`** — not `viewer/import_worker.js`, not
-   `viewer/import_db_builder.js`, not `viewer/streaming.js`, nothing in that tree. The Modeller and Viewer
-   are permanently separate surfaces (existing doctrine, `project_bonsai_kernel` memory) — this task doubles
-   down on it: zero drift into Viewer code, even to "borrow" or "reference" its engine.
-3. **Never touch already-working Modeller loader code either** (`real_geometry.js`, `bonsai_library.js`,
-   `arc_editable.js`, `str_walker_outliner.js`'s fetch/render logic) unless a check PROVES it's broken —
-   these are the proven, working substrate; USE them, don't "fix" them on spec.
-4. **If a real code change is ever needed on any file this task doesn't own outright: COPY IT FIRST, edit
-   only the copy, never the original** — no exceptions, no "just this once."
-5. **Why this is written down, not assumed:** this exact session drifted THREE times before catching itself
-   — attempted to edit `viewer/import_db_builder.js` in place (caught, copy made instead), then made the
-   copy of the WRONG file (`extractIFC2DB.js`, a parallel Node reimplementation, not the real importer) after
-   already being told to use the real one, then had to be corrected a second time before landing on the
-   right file. All three were avoidable with a 30-second border-control check before the first edit attempt,
-   not after. **Next session: run this checklist BEFORE opening any file, not as damage control after.**
+## Also carry forward — settled facts from this session, don't re-derive from scratch
+- **RSGT/ERP.db/BOM.db/Bonsai architecture (verified via direct code trace, cited file:line):**
+  `RosettaStoneGateTest` reads pre-compiled `output.db` files via a registry sourced from a `*_BOM.db` file —
+  it NEVER touches `library/ERP.db` at all. `IFCtoBOM` produces TWO separate outputs: per-building
+  `*_BOM.db` files (classification/BOM) and, separately, `library/ERP.db` (written by `IFCtoERP.java`) — not
+  one unified file. "Reload in Bonsai" is real (a `BonsaiBIMDesigner/` Python/Blender addon exists) but loads
+  `output.db` (post-compile), not `BOM.db` directly. The old monolithic `library/BOM.db` is explicitly
+  archived/dead (0 bytes). The JS `bonsai_*.js` Modeller files are an unrelated, coincidental naming overlap.
+- **The graph-BOM method (pillar 2, "3D Grid edit") is the documented BOM→Graph evolution, not a parallel
+  invention:** a BOM is a tree (one parent, N children) that can't hold typed cross-edges
+  (`hosted-by`/`abuts`/`spans`/`anchored-to`/`instanced-by n`) editing needs. The FORWARD-fold half (drag a
+  gridline, connected things cascade) ALREADY SHIPS in the Modeller (`GEOM_GRID_MOVE`, grid-drag, 106/106
+  tests green) — real, working, not aspirational. The BACKWARD half ("pegging"/Spatial MRP — did this edit
+  break something downstream) is genuinely thin, only one slice shipped (`abuts-realign`). The doc that
+  states this ALSO explicitly says RosettaStone/G1-G6 is "retired on first edit" — a one-time import proof,
+  not an ongoing gate — consistent with, not contradicting, the Java-is-legacy conclusion above.
+- **Piece 3 (space-scoped UI trigger) status UNCHANGED — still retracted, still not bounded.** 4 real gaps
+  (engine not synced to the live browser Modeller, no `IfcSpace` mesh rendering exists anywhere, the live
+  Drop-IFC importer still never extracts `IfcSpace`, the BOM-tree Outliner discards the space guid it would
+  need) — needs a proper Sonnet-planning pass before ANYONE (Fable or otherwise) picks it up. Don't confuse
+  this with the MINE/PLACE/PROVE plan above — different problem, still open, still not started.
+- **Still genuinely open, unaffected by this round:** `mesh.db` re-consolidation for the real-space Clinic
+  extraction (not run); Clinic's non-clean-ARC-only contamination (534 STR + 102 MEP leaked in); the live
+  browser importer's `IfcSpace` gap (same as piece 3's blocker #3, still real).
 
----
+## The Modeller roadmap, 4 pillars (condensed pointer — user-named, don't reorder or drop)
+1. **Embedded 8 ARC buildings + shared `mesh.db`** — ✅ DONE, offline/fully-contained substrate.
+2. **3D Grid edit** — direct-manipulation authoring (gizmos, grid-drag). PROVEN, EXISTING, not this thread's
+   build — every placement here is meant to land into this tool.
+3. **Walk DISCs** — `disc_walker.js`. MOST MATURE pillar, everything above lives here.
+4. **Craft out facade** (`SPACE_SCOPED_DISC_INSTALL_VISION.md`) — piece 1+2 DONE, piece 3 retracted (not
+   bounded yet), and the MINE/PLACE/PROVE plan above is now the active thread within this pillar.
 
-# ▶▶▶▶ ENTRY POINT (2026-07-10, LATEST — WORKER session, pillar 4 piece 2 DONE) — supersedes the
-# "GROUNDING + ROADMAP + WATCHDOG HANDOFF" block immediately below as the first thing to read.
-**That block's roadmap/grounding content is still accurate and worth reading — only its own "next work"
-pointer (pillar 4 pieces 2/3) is now stale, since piece 2 is done. Full evidence trail lives in
-`SPACE_SCOPED_DISC_INSTALL_VISION.md`'s own dated 2026-07-10 section — this is the compact pointer.**
-
-Picked up the prior WATCHDOG handoff's own priority order (pillar 4, pieces 2/3, listed just below this
-block). Closed, in order, with a witness for each and the full pre-existing 12-file DW regression suite
-re-run 0-fail after every change:
-- **Blind spot 2 (`element_name` LongName)** — done, 269/269 Clinic spaces now show real names.
-- **NEW finding (not in the original blind-spot list): IfcSpace storey resolution was fully broken** — all
-  269 Clinic spaces landed in `storey='Unknown'` because `elementToStorey` only read
-  `IfcRelContainedInSpatialStructure`, never `IfcRelAggregates` (the actual space→storey relation). Fixed;
-  verified against the real IFC's own STEP-entity trace, not guessed.
-- **Blind spot 1 (occupancy exclusion)** — done, `scripts/witness_space_occupancy_exclusion.js` 4/4 pass.
-- **Piece 2 (space-scoped place()/occupancy())** — done, `scripts/witness_space_scoped_walk.js` 5/5 pass.
-  Found + fixed a real complication the vision doc's own checklist didn't anticipate: `hostBind`'s
-  TOP/BOTTOM/CENTER mount re-snaps x/y to the HOST's own centroid, un-scoped to the space — closed with two
-  small, additive, opt-in parameters (`occupancy()`'s cell-clip, `hostWalls`/`hostBind`'s optional
-  `spaceBBox`), byte-identical for every pre-existing (non-scoped) caller.
-- **NOT done this session**: piece 3 (UI trigger), `mesh.db` re-consolidation, the screenshot/visual proof
-  (numeric ground-truth was produced instead, per the doc's own "number first, screenshot second" framing).
-- Changed files: `scripts/extractIFC2DB.js`, `build/disc_walker.js` — both UNCOMMITTED, left for review (no
-  commit requested this session). Two new witnesses added: `scripts/witness_space_occupancy_exclusion.js`,
-  `scripts/witness_space_scoped_walk.js`.
-
----
-
-# ▶▶▶ ENTRY POINT (2026-07-10) — GROUNDING + ROADMAP + WATCHDOG HANDOFF
-**Supersedes the "▶▶ RESUME HERE (2026-07-10...)" block below as the first thing to read — that block's
-evidence trail is still accurate and worth reading for depth, just not the starting point anymore. Written
-by the session closing out item 1/2/3-investigation + the IfcSpace extractor fix, handing off to a FRESH
-WORKER session. This session now holds the WATCHDOG role for whatever the next session builds — see the
-closing checklist at the bottom of this block; no worker claim gets accepted without a `§`-tagged log line
-proving it, per CLAUDE.md's Watchdog Protocol.**
-
-## GROUNDING — this is not a new project; it's the Java-era compiler's fundamentals renewed in the browser
-Every fix in this file, going back to the original density-explosion bug this file is named for, is the
-SAME doctrine the Java-side BIM Intent Compiler has run since day one — carried onto a different substrate
-(browser/JS/WebGL, offline static files instead of a live server gate), not reinvented:
-- **Invention Boundary (Java-era, `docs/archive/WorkOrderGuide.md §Invention Boundary`):** the classification
-  YAML is the ONLY human-authored artifact in the whole pipeline — extraction, product-link, BOM, geometry
-  gap-fill are all deterministic, read data, never invent. **Renewed here:** `disc_patterns.db`
-  (`library/ERP.db`)'s mined rows (`_shim_attributes`, `rule_placement.n_measured`, `ad_assembly_connector`)
-  are this thread's classification-YAML equivalent — measured once from a real building, then every
-  downstream reader (`project_rule_shim.py`, `disc_walker.js`) reads them verbatim. **This session's
-  VENT→ACMV fix was literally an Invention-Boundary violation** (a disc label with no measured
-  correspondence to anything real) — caught and corrected, the exact bug class that table exists to prevent.
-- **BOM PRINCIPLE (`CLAUDE.md`):** one parent, N children, each with a quantity, recursive, atomic. **Renewed:**
-  THE FIX at the top of this very file — `n_measured` (a per-storey child quantity) × `area_ratio` — is the
-  same recipe-not-formula idea, count from a measured quantity, never from bbox geometry.
-- **RosettaStone / "Compile not Model":** never hand-author a placement or a rule; mine it from a real,
-  already-built building, then reconstruct/generalize with a held-out check. **Renewed:** every fix this
-  session (rotation-convention, hostBind generalization, VENT→ACMV, IfcSpace extraction) was proven against
-  REAL extracted buildings + a REAL or independently-coded oracle + a baseline diff — never "this formula
-  looks right on inspection." `docs/internal/WalkerDoctrine.md` is this side's canonical doctrine doc, the
-  Modeller-side analogue of `RosettaStoneGateTest.java`'s G1-G6 gates.
-- **Discipline = a `WHERE` column, never a file (both eras):** `duplex_rules.db`/`terminal_rules.db` route by
-  BUILDING CLASS; discipline lives as a column inside (`rule_placement.disc`, `rule_shim.disc`) — never a
-  separate compiled artifact per discipline. Same rule, same reason, both sides of the codebase.
-
-## THE MODELLER ROADMAP — 4 pillars (user-named; do not reorder, drop, or drift from this list)
-1. **Embedded 8 ARC buildings + shared `mesh.db` — ✅ DONE** (`feat/embed-8-arc-buildings`, bim-ootb, pushed
-   not merged). The OFFLINE, FULLY-CONTAINED substrate — the modern analogue of the Java compiler's reference
-   DB, except it ships as static files the browser fetches once. `extractIFC2DB.js`'s own header states the
-   mission literally: *"Frictionless BIM. Two DBs. One browser. Zero install."* No server round-trip, no
-   live IFC parse at use-time — everything needed to walk/edit/render lives in the 8 `*_ARC.db` + `mesh.db`
-   + `*_rules.db` files alone.
-2. **3D Grid edit** — the Modeller's direct-manipulation authoring surface (gizmos, move/rotate,
-   `arc_editable.js`). PROVEN, EXISTING, not part of this thread's build — every placement this thread
-   produces is meant to LAND INTO this tool (`SPACE_SCOPED_DISC_INSTALL_VISION.md`'s own vision: "user
-   refines with the existing gizmo/move tools"). Do not rebuild or touch this layer from this thread.
-3. **Walk DISCs** — `disc_walker.js`, the JS-side renewal of the Java RosettaStone-mined placement/routing/
-   shim doctrine, walking IN-BROWSER against pillar 1's offline substrate. MOST MATURE pillar — this
-   session's work (rotation-convention fix, hostBind generalization, rule_shim projection, VENT→ACMV
-   relabel across BOTH `*_rules.db`) all landed here. Full ledger immediately below.
-4. **Craft out facade** — the NEWEST pillar, `SPACE_SCOPED_DISC_INSTALL_VISION.md`: a real ARC space
-   boundary → pick a heavy DISC (FP/ACMV) → a real, conformant, non-invented placement lands inside that
-   space → user refines via pillar 2's tools. **Piece 1 (extract real `IfcSpace`) is DONE this session.**
-   Pieces 2 (scope `occupancy()`/`place()` to a space boundary) and 3 (UI trigger) are NOT STARTED — this is
-   where the next worker session's real work begins. Read `SPACE_SCOPED_DISC_INSTALL_VISION.md`'s 5 named
-   blind spots FIRST, especially #1 (a NEW risk piece 1 itself introduces).
-
-**"Offline able, fully contained" is pillar 1's whole point, not a footnote** — anything built for pieces 2/3
-must keep working from the 8 `*_ARC.db` + `mesh.db` + `*_rules.db` files alone, no live network call, no
-server dependency. Verify this holds for whatever gets built next; don't assume it by default.
-
-## ✅/⛔ LEDGER — this session's verified work (every claim below has a witness or log, see the detailed
-## entries further down this file for the full evidence trail; this is the compact pointer, not a repeat)
-- **Item 1 ✅ CLOSED (both projections):** `VENT_WINDOW_SHIM` relabeled to its real discipline (`ACMV`) in
-  `library/ERP.db`, re-projected into BOTH `build/duplex_rules.db` AND `build/terminal_rules.db` (the second
-  DB was missed on the first pass, found by an independent review, then fixed the same way — see full detail
-  below). `scripts/witness_hostbind_agnostic.js` H6-H10, **11/11 PASS**. Full 11-file regression: 0 fail.
-- **Item 2 ✅ CLOSED:** Duplex's FP walk with `dwBorrow('FP', terminal_rules)` wired — 93 real fixtures place
-  cleanly (50 sprinklers + 43 alarms), confirming the earlier REFUSE was a test-script gap, not an engine bug.
-- **Item 3 investigation ✅ CLOSED, build NOT started (correctly):** identified `scripts/extractIFC2DB.js` as
-  the real, byte-confirmed producer of `Clinic_ARC.db` (and 5 of the other 7 embed-8 residents); found the
-  root cause of 0 `IfcSpace` rows (`WebIFC.IFCSPACE` absent from `PRODUCT_TYPES`, despite `DISC_MAP` already
-  carrying a dead `IfcSpace:'ARC'` entry) via direct code inspection, not guessing.
-- **✅ NEW 2026-07-10 — piece 1 of the space-scoped vision APPLIED + verified, on top of the investigation:**
-  one line added to `scripts/extractIFC2DB.js`'s `PRODUCT_TYPES` (`WebIFC.IFCSPACE`). Proven BEFORE landing:
-  dry-run diff across all 6 affected buildings (SampleHouse/Duplex/HHS/Clinic/Garage/Hospital) — 0 diff lines
-  on every pre-existing class in `elements_meta`/`element_transforms`, every pre-existing geometry hash
-  preserved; new `IfcSpace` counts match independently-grepped source counts EXACTLY (SH 4, DX 21, HHS 33,
-  Clinic 269, Garage 5, Hospital 0). A synthetic no-representation `IfcSpace` (built by hand-editing a real
-  IFC to null out one space's `Representation`) skips cleanly — meta row present, no transform row, no crash
-  — reproduced independently by the reviewing session too, not just asserted. Applied to the tracked file
-  (`scripts/extractIFC2DB.js`), then Clinic genuinely re-extracted: **269/269 real `IfcSpace` rows resolve a
-  real bbox.** Output is the full single-file shape (`Clinic_all.db`, embedded `component_geometries`) — the
-  embed-8 split-into-`Clinic_ARC.db`+shared-`mesh.db` consolidation step (`finalize_all_8.js`) has NOT been
-  re-run, deliberately — that touches all 8 buildings' shared mesh file at once and needs its own review.
-- **⚠ 5 blind spots named and written into `SPACE_SCOPED_DISC_INSTALL_VISION.md`, not discovered later:**
-  (1) `occupancy()` must exclude `IfcSpace` from its obstruction mask — a NEW risk this session's own fix
-  introduces, not pre-existing; (2) `IfcSpace.element_name` uses the terse room CODE (`Name`), not the human
-  name (`LongName`) — found + verified against real IFC text during the Clinic re-extraction, NOT yet fixed;
-  (3) this fix lives only in the offline `extractIFC2DB.js` path, NOT the live browser importer
-  (`viewer/import_worker.js`+`import_db_builder.js`) — don't assume live-import parity; (4) `Clinic_ARC.db`
-  is not cleanly ARC-only (534 STR + 102 MEP leaked in) — piece 2 shouldn't trust the filename; (5) the
-  `mesh.db` consolidation re-run is a separate, deliberate next step, not done as a side effect of this fix.
-
-## WATCHDOG CLOSING — this session's sign-off, and the contract for the next (worker) session
-Every claim in the ledger above was verified with a real witness/log/diff before being written down here —
-not asserted, and in two cases (H10 cross-projection sync, the terminal_rules.db staleness) an earlier
-"done" claim was independently re-checked and found genuinely incomplete, then closed for real. That's the
-standard the next session's work gets held to as well:
-- **No claim without a `§`-tagged log line or an equivalent real diff/count.** If the next session says
-  "piece 2 is done," it must show the occupancy-exclusion behavior on real data (a space's footprint is
-  NOT in the obstruction mask, proven by a real placement that would have been wrongly blocked before the
-  fix and isn't after) — not just "I added the filter."
-  - **Before piece 2 lands:** blind spot 1 (occupancy exclusion) must be handled — this is not optional
-    polish, it changes whether fixture placement is correct at all once `IfcSpace` rows exist.
-  - **Before piece 3 (UI) lands:** blind spot 2 (`LongName` fix) should land first, or the space-picker will
-    show room codes — small, cheap, do it first not last.
-  - **`mesh.db` consolidation** (blind spot 5) is a distinct, reviewable step — don't fold it silently into
-    piece 2/3's commit.
-  - **Offline/fully-contained constraint** (roadmap note above) — verify explicitly, don't assume.
-- **This session's own work is left uncommitted on purpose where noted** (the `Clinic_all.db` re-extraction
-  is a scratch artifact for review, not yet folded into the embed-8 consolidated shape) — the next session
-  should confirm with the user whether/how to fold it in before treating it as "the" Clinic data.
-
-## ✅ WATCHDOG VERIFICATION 2026-07-10 (independent re-check of the worker session's piece-2 report — every
-## claim below was RE-RUN by the Watchdog, not trusted from the summary)
-The worker session reported 4 items done: blind spot 2 (LongName), a NEW storey-resolution bug found+fixed,
-blind spot 1 (occupancy exclusion), and piece 2 (space-scoped place/occupancy/hostBind). All four
-independently verified, not re-trusted:
-- **`git diff scripts/extractIFC2DB.js` + `build/disc_walker.js` read in full** — both changes are additive,
-  gated behind new optional params/conditions (`spaceBBox`, `st.spaceGuid`, `ifc_class==='IfcSpace'`), every
-  existing call site confirmed unaffected (only ONE internal `hostBind()` call site in the whole file,
-  already correctly updated; every witness's 4-arg external call is untouched since the 5th param defaults
-  falsy).
-- **Storey-resolution bug — verified with my OWN SQL queries against both the before/after scratch DBs**
-  (not the worker's own witness output): `Clinic_test_piece1only.db` → all 269 `IfcSpace` rows genuinely
-  `storey='Unknown'` (confirms the bug was real, not invented to justify a fix); `Clinic_test_storeyfix.db`
-  → 154+109+6=269, ZERO `Unknown`, `CENTRAL WAITING` → `'First Floor'` correctly. The `IfcRelAggregates`
-  constant (`WebIFC.IFCRELAGGREGATES`) confirmed to actually exist in the installed `web-ifc` version.
-- **Both new witnesses (`witness_space_occupancy_exclusion.js`, `witness_space_scoped_walk.js`) re-run by the
-  Watchdog independently: 4/4 and 5/5 PASS.** Read `witness_space_scoped_walk.js`'s M2 check in full to rule
-  out a circular self-check — confirmed CENTRAL WAITING's bbox is pulled via a FRESH SQL query on
-  `element_transforms`, not derived from the placement results being checked, so "0/24 outside" and "0/15
-  outside" are real independent geometric checks, not tautologies.
-- **Full existing regression suite (11 pre-existing files) RE-RUN by the Watchdog: 0 fail, exact same as
-  before this round** (§DWG 49, §DXG 12, §DWD 43, W-DWWALK-HOSTBIND 6, W-ELEC-HOSTBIND 5, true-midpoint 18,
-  W-SHIM-SELECT 6, W-WALKBACK-MEP 8, W-GENERALIZE-XBUILD 7, W-RULE-CONNECTOR 4, W-OCC-TRUE-MIDPOINT 17,
-  W-HOSTBIND-AGNOSTIC 11). `witness_hostbind_rotation.js`'s pre-existing crash (`DW._hostAxis` absent)
-  confirmed unchanged (same crash, same reason, not a new regression). 13 files 0-fail total, matching the
-  "12→14" figure in the worker's own report (11 old + 1 known-crash + 2 new).
-- **Noted, not acted on:** `prompts/G1_COUNT_INDEPENDENT_ORACLE.md` and `prompts/GRID_ROTATION_GUARD.md`
-  appeared untracked in the same window — unrelated topics (RSS G1-COUNT gate, `grid_kinematics.js` rotation
-  guard), a different worktree (`/tmp/wt-fable-g1count`) — almost certainly a different concurrent terminal's
-  work per the N-terminal doctrine, not this thread's. Left untouched, flagged only so it isn't mistaken for
-  drift.
-- **VERDICT: piece 2 is genuinely done, to the same evidence standard as everything else in this file.**
-  Nothing overstated in the worker's summary. Remaining open items unchanged from before this round: piece 3
-  (UI trigger) NOT started, `viewer/import_worker.js` parity NOT done (correctly out of scope, `viewer/`
-  never touched), `mesh.db` re-consolidation NOT done, Clinic's non-clean-ARC-only contamination unaddressed
-  (didn't block piece 2 — the space-scoped queries filter correctly regardless). ACMV's disc-level
-  `IfcCovering`-over-`IfcWindow` tie (H9) observed again during the ACMV space-scoped walk
-  (`§SHIM-AMBIG`) — unchanged, still a named, open, non-blocking gap, not a new one.
-- **Next worker session, in order:** (1) piece 3 UI trigger (user selects a rendered space → picks FP/ACMV →
-  `dwWalk(disc, bdb, name, {spaceGuid})`) — the engine side is now fully proven, this is the remaining UI
-  wiring; (2) decide with the user whether/how to fold `Clinic_all.db`'s real-space extraction into the
-  embed-8 consolidated shape (`Clinic_ARC.db`+shared `mesh.db`) before piece 3 needs it live in the modeller.
+## Housekeeping note for whoever picks this up
+As of this handoff: `library/component_library.db`'s modified state (pre-existing, present since before this
+whole session started) is now EXPLAINED (missing `M_Product`) but still uncommitted/unresolved in the shared
+tree — a real, separate item, not urgent (Java is legacy), but worth a deliberate note or fix at some point,
+not silent indefinite drift. Two of this session's own doc edits (this file + `SPACE_SCOPED_DISC_INSTALL_
+INSTALL_VISION.md`) were sitting uncommitted at close — commit/push status should be confirmed explicitly at
+the start of the next session, not assumed either way.
 
 ---
 
