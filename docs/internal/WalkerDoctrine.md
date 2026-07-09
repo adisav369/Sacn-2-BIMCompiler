@@ -348,3 +348,42 @@ fixture-no-invented-box`) is the same pattern applied a second time. **Enforceme
 each real-vs-invented branch is found** (grep for fallback/default/placeholder patterns near catalog or
 geometry lookups), not a single central gate to design in advance. Cite `WalkerDoctrine.md §11` rather than
 re-deriving or re-litigating the principle; do not re-open the "needs a design pass" framing.
+
+## §12 — ARC is Viewer-equivalent (no separate gate); every walked DISC needs a POST-WALK,
+## INDEPENDENTLY-CODED oracle — never the engine grading itself (user directive, 2026-07-09)
+
+**Two different disciplines, two different correctness questions — do not conflate them.**
+
+**ARC:** the base extracted mesh (walls/windows/doors/furniture straight from the building's own IFC) is
+rendered by the SAME method as the Viewer — both `real_geometry.js` (Modeller) and `viewer/streaming.js`
+(Viewer) read the identical tables (`component_geometries`/`base_geometries`) and do the identical decode
+(`vertices`/`faces` BLOB → `Float32Array` → `THREE.BufferGeometry`). If the Viewer is trusted — and it is,
+it's the baseline everything else is checked against — then ARC rendered through this same method needs NO
+separate correctness gate. Parsing/extraction happens TO the data beforehand; it does not touch the render
+method itself. This is §VISION-LOCK sentence 1 (`RESUME_GRAPH_MODELLER_INTEGRATION.md` — "ARC is the SOLE
+edited substrate") stated as a testable claim, not a new rule.
+
+**Every non-ARC discipline (§VISION-LOCK sentence 4 — "EVERY non-ARC discipline is a WALKER that FILLS the
+ARC space") is different: it has no real captured mesh of its own to compare against** — it's PLACED by
+`disc_walker.js` from mined rules. The only honest correctness check is: did the walk's OUTPUT match an
+INDEPENDENTLY-DERIVED ground truth (real geometric touch, real measured host positions, an independently
+re-implemented count formula) — computed by code that shares NO state with the walk itself, run AFTER the
+walk completes, never during it. **This is a hard boundary, not a style preference: the walk (browser-side
+JS, `disc_walker.js`) and the compiler's own RosettaStone/RSS gate (`RosettaStoneGateTest.java`, a completely
+separate Java system) must never share a data path or a self-report — a gate that reads a number the system
+under test wrote about itself is not independent, it's the system grading its own homework.** ⚠ A concrete
+instance of this failure mode was found 2026-07-09 in RSS's own G1-COUNT gate (`readGenerativeCount()` reads
+`MAX(GenerativeCount) FROM c_order` — a self-reported count written by the SAME generator run being tested,
+from the SAME output database) — **noted here as a known gap, NOT to be fixed by touching Java.** The
+approach for disc_walker/Modeller-side discipline correctness is, and stays, a SEPARATE JS witness layer with
+independently-coded oracles — never patching the Java gate to close this shape of hole.
+
+**Proof this is already the live, working pattern (not a new proposal) — three independent-oracle mirrors,
+found and kept in sync 2026-07-09 while fixing the `occupancy()` true-midpoint defect:**
+`witness_disc_walk_generalize.js`'s G2 `occCells`, `witness_disc_walk_density.js`'s D-ENVELOPE `occCells`, and
+`witness_hostbind_agnostic.js`'s H1 hardcoded bound-count all deliberately RE-DERIVE the engine's own logic
+locally instead of calling `disc_walker.js`'s functions directly — each carries a comment to that effect
+("computed HERE so the count check is a genuine oracle, not the engine grading itself"). When `occupancy()`
+changed, all three had to be updated by hand to stay in sync — that friction is the PROOF the independence is
+real (a witness that silently auto-tracked the engine would never have needed re-baselining). Cite
+`WalkerDoctrine.md §12` for this principle rather than re-deriving it.

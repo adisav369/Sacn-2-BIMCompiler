@@ -3,6 +3,8 @@
 // loaded locally from ../modeller/terminal_rules.db (NO OCI). The discipline is a DATA filter
 // (WHERE disc=?), never a code fork — grep-clean, like the SDG builders.
 //
+// ⚠ READ docs/internal/WalkerDoctrine.md FIRST — it indexes every sibling spec this file must obey.
+//
 // prompts/RESUME_TERMINAL_RULE_MINING.md §CONVERGENCE + §ELEGANT SHARED ABSTRACTION:
 //   Placer — rule_placement/rule_space_bom → array-on-a-datum (FP sprinklers, ELEC lights,
 //            STR columns, roof plates are ALL "measured cadence on a datum", one code path).
@@ -243,8 +245,11 @@
   // (measured true-midpoint delta up to 3.12m on Duplex, 1.03m SampleCastle). Corrected here the same way.
   // Cached per (bdb,storey) since occupancy() is called once per placement RULE for the same storey (place()
   // loops rules×storeys) — recomputing _trueMidpoint per element on every call would be O(rules) redundant work.
+  // `geoDb` (optional, §GEO-SPLIT): threaded through to `_trueMidpoint` for residents whose geometry table
+  // lives in a separate handle (Terminal_geo.db). Cache is keyed by `bdb` only — a given bdb is always paired
+  // with the same geoDb within one walk, so this doesn't need a second cache dimension.
   var _occMidCache = (typeof WeakMap !== 'undefined') ? new WeakMap() : null;
-  function _occElements(bdb, st) {
+  function _occElements(bdb, st, geoDb) {
     var byStorey = _occMidCache ? _occMidCache.get(bdb) : null;
     if (!byStorey) { byStorey = {}; if (_occMidCache) _occMidCache.set(bdb, byStorey); }
     if (byStorey[st.name]) return byStorey[st.name];
@@ -253,15 +258,15 @@
       "COALESCE(t.rotation_x,0) rx, COALESCE(t.rotation_y,0) ry, COALESCE(t.rotation_z,0) rot " +
       "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.storey='" + _esc(st.name) + "'");
     var out = raw.map(function (e) {
-      var mid = _trueMidpoint(bdb, e.g, { x: e.cx, y: e.cy, z: e.cz, rx: e.rx, ry: e.ry, rot: e.rot });
+      var mid = _trueMidpoint(bdb, e.g, { x: e.cx, y: e.cy, z: e.cz, rx: e.rx, ry: e.ry, rot: e.rot }, geoDb);
       return { cx: mid.verified ? mid.x : e.cx, cy: mid.verified ? mid.y : e.cy, bx: e.bx, by_: e.by_ };
     });
     byStorey[st.name] = out;
     return out;
   }
-  function occupancy(bdb, st, cell) {
+  function occupancy(bdb, st, cell, geoDb) {
     cell = Math.max(cell > 0 ? cell : 1, 0.5);
-    var els = _occElements(bdb, st);
+    var els = _occElements(bdb, st, geoDb);
     var occ = {};
     els.forEach(function (e) {
       var i0 = Math.floor((e.cx - e.bx / 2) / cell), i1 = Math.floor((e.cx + e.bx / 2) / cell);
@@ -276,7 +281,7 @@
 
   // ── PLACER ──────────────────────────────────────────────────────────────────────
   var _MAX_PER_STOREY = 50000;                               // legacy spacing-tile backstop (never silent)
-  function place(disc, storeys, bdb) {
+  function place(disc, storeys, bdb, geoDb) {
     var reps = repRules(disc), out = [];
     // §PRIM: attach the class's MEASURED bbox (or null) to every placement so the modeller
     // sizes its GENERATED-fixture box per class. SIZE only — count/position untouched.
@@ -292,7 +297,7 @@
         if (rp.density > 0 && rp.sx > 0) {                  // AREA-SCALED measured count, envelope-placed (FIXTURES only)
           var count = Math.round(rp.density * w * d);       // n_measured × (target_area / src_area)
           if (count > 0) {
-            var cells = occupancy(bdb, st, rp.sx);
+            var cells = occupancy(bdb, st, rp.sx, geoDb);
             if (!cells.length) cells = [{ x: (st.x0 + st.x1) / 2, y: (st.y0 + st.y1) / 2 }];
             var cap = cells.length, placeN = Math.min(count, cap), stride = cap / placeN;
             for (var c = 0; c < placeN; c++) {
@@ -330,7 +335,7 @@
           // void at the raw bbox centre. Snap the centre to the nearest occupied cell (same envelope as the array
           // path). NON-INVENT: the cell is a real ARC footprint cell; no occupancy (bare DB) → keep the centre.
           var scx = (st.x0 + st.x1) / 2, scy = (st.y0 + st.y1) / 2;
-          var scells = occupancy(bdb, st, rp.sx > 0 ? rp.sx : 1);
+          var scells = occupancy(bdb, st, rp.sx > 0 ? rp.sx : 1, geoDb);
           if (scells.length) {
             var sbest = scells[0], sbd = Infinity;
             for (var sc = 0; sc < scells.length; sc++) {
@@ -389,22 +394,28 @@
   // `scripts/measure_narrowphase.js` already carries this exact two-name fallback precedent for the same reason
   // -- mirrored here, not invented.
   var _GEOM_TABLES = ['component_geometries', 'base_geometries'];
-  function _geomRow(bdb, ghash) {
+  // §GEO-SPLIT (2026-07-09, mirrors real_geometry.js's buildGeometryIndex(db,geoDb), already proven live for
+  // Terminal in the modeller): `geoDb` is an OPTIONAL second sql.js handle carrying the geometry table, for
+  // residents where element_instances (in `bdb`) and component_geometries (250MB, in a SEPARATE file --
+  // Terminal_geo.db) can't be sql.js-JOINed because they're independently-opened databases. Defaults to `bdb`
+  // (single-file residents: SampleHouse/Duplex/SampleCastle) -- byte-identical old behaviour when omitted.
+  function _geomRow(bdb, ghash, geoDb) {
+    var g = geoDb || bdb;
     for (var i = 0; i < _GEOM_TABLES.length; i++) {
       try {
-        var r = _rows(bdb, "SELECT vertices vb FROM " + _GEOM_TABLES[i] + " WHERE geometry_hash='" + _esc(ghash) + "'")[0];
+        var r = _rows(g, "SELECT vertices vb FROM " + _GEOM_TABLES[i] + " WHERE geometry_hash='" + _esc(ghash) + "'")[0];
         if (r && r.vb && r.vb.length) return r;
       } catch (e) { /* table doesn't exist on this DB -- try the next name */ }
     }
     return null;
   }
-  function _trueMidpoint(bdb, guid, w) {
+  function _trueMidpoint(bdb, guid, w, geoDb) {
     var fallback = { x: w.x, y: w.y, z: w.z, verified: false };
     var inst, geo;
     try { inst = _rows(bdb, "SELECT geometry_hash gh FROM element_instances WHERE guid='" + _esc(guid) + "'")[0]; }
     catch (e) { return fallback; }                                // no element_instances table on this DB
     if (!inst || !inst.gh) return fallback;
-    geo = _geomRow(bdb, inst.gh);
+    geo = _geomRow(bdb, inst.gh, geoDb);
     if (!geo || !geo.vb || !geo.vb.length) return fallback;
     var u8 = (geo.vb instanceof Uint8Array) ? geo.vb : new Uint8Array(geo.vb);
     var n3 = Math.floor(u8.byteLength / 4 / 3) * 3;
@@ -428,7 +439,10 @@
     return { x: (wMin[0] + wMax[0]) / 2, y: (wMin[1] + wMax[1]) / 2, z: (wMin[2] + wMax[2]) / 2, verified: true };
   }
 
-  function hostBind(placements, bdb, shim) {
+  // `geoDb` (optional, §GEO-SPLIT): a SEPARATE sql.js handle carrying the geometry table for residents where
+  // it can't live in `bdb` itself (Terminal_geo.db, 250MB, kept apart from Terminal_meta.db). Omitted → old
+  // single-file behaviour, unchanged (SampleHouse/Duplex/SampleCastle all embed their own geometry).
+  function hostBind(placements, bdb, shim, geoDb) {
     shim = shim || {};
     var reach = shim.reach_m != null ? shim.reach_m : 6;
     var hostClass = shim.host_ifc_class || 'IfcWall';
@@ -440,7 +454,7 @@
     if (!hosts.length) return { bound: [], refused: placements.length, noHost: true, hostClass: hostClass };
     var unverifiedHosts = 0;
     hosts.forEach(function (h) {
-      var mid = _trueMidpoint(bdb, h.g, h);
+      var mid = _trueMidpoint(bdb, h.g, h, geoDb);
       h.tx = mid.x; h.ty = mid.y; h.tz = mid.z; h.midVerified = mid.verified;
       if (!mid.verified) {
         unverifiedHosts++;
@@ -1018,7 +1032,8 @@
       console.log(TAG + ' §WALK disc=' + disc + ' bldg=' + buildingName + ' REFUSE no-substrate');
       return { disc: disc, refused: true, reason: 'no habitable storeys', placed: 0 };
     }
-    var placements = place(disc, sub, bdb);
+    var geoDb = opts && opts.geoDb;                                              // §GEO-SPLIT (Terminal_geo.db)
+    var placements = place(disc, sub, bdb, geoDb);
     // ── HOST-BIND from the PROJECTION: snap floating host-bound placements onto a real host (anti-float),
     // count-preserving. Source = caller opts.shims (override) ELSE the projected `rule_shim` table (the
     // first-class §SHIM flow — same as routing/placement). §SHIM-SELECT made this DEFAULT-ON (2026-06-30): the
@@ -1048,7 +1063,7 @@
         var grp = byCls[cls];
         var shim = _shimForFixture(shimSrc, disc, cls);
         if (!shim) { rebuilt = rebuilt.concat(grp); totRefused += 0; return; }   // no shim for class → leave floating
-        var hb = hostBind(grp, bdb, shim);
+        var hb = hostBind(grp, bdb, shim, geoDb);
         if (hb.noHost) {
           rebuilt = rebuilt.concat(grp);                                          // host class absent in bldg → kept floating
           console.log(TAG + ' §WALK-HOSTBIND disc=' + disc + '/' + cls + ' percept=' + shim.product_value +
