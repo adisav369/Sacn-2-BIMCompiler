@@ -86,17 +86,68 @@ analogue is n_measured scaled by floor-area ratio.
 >   that gap stays open and must be reported as open even after the VENT fix lands.
 > **⛔ PROMPTS PRIORITY (organized 2026-07-10 — this IS the priority order across every open thread in this
 > file, no need to re-derive one from the history below):**
-> 1. **Wire `VENT_WINDOW_SHIM` to its real discipline + prove IfcWindow hostBind selection on real SC data**
->    (see correction above). Small, bounded, real data already mined — just a mislabeling fix. Watchdog
->    checklist: (i) the disc relabel must be justified by SC's actual measured IFC/product evidence, not
->    picked just to make a walk succeed; (ii) grep for OTHER `rule_shim`/`_shim_attributes` rows sharing this
->    same orphaned-disc-label defect shape before calling the bug class closed, not just this one row; (iii)
->    reuse the existing projection pipeline, don't add new machinery; (iv) real data + real renderer/
->    independent oracle + baseline diff, same as every fix in this file; (v) report "IfcWindow hostBind
->    proven" and "tilted-hostBind still unproven" as TWO SEPARATE claims, never one green checkmark implying
->    the other.
-> 2. **Re-run Duplex's FP walk WITH the `dwBorrow('FP', terminal_rules)` percept wired** — the current REFUSE
->    there is a script-scope gap in this session's quick test, not a verified engine defect. Small, quick.
+> 1. **✅ DONE 2026-07-10 — Wire `VENT_WINDOW_SHIM` to its real discipline + prove IfcWindow hostBind
+>    selection on real SC data.** Watchdog checklist, all 5 items closed:
+>    (i) **relabel justified by real evidence, not convenience:** SC's 13 `IfcDistributionElement` are named
+>    `"vent. rooster"` (Dutch: ventilation grille) in `deploy/buildings/SampleCastle_extracted.db` — a real
+>    ACMV (ventilation) fixture, not a fabricated label; `library/ERP.db._shim_attributes`
+>    `VENT_WINDOW_SHIM→ACMV_WINDOW_SHIM` (UPDATE, product_value is the only PK, no schema change).
+>    (ii) **grepped for the SAME defect shape, none found:** `library/ERP.db.ad_discipline_capability` is the
+>    project's own real discipline taxonomy — `CW/SP/ELEC/FP/ACMV/LPG`, no `VENT` — confirming VENT was the
+>    ONLY orphaned label (`CW`/`SP`/`LPG` shims are real, recognized disciplines simply not yet MINED into any
+>    `rule_placement`, a "not yet walked" gap, not a mislabeling — different bug shape, correctly left alone).
+>    (iii) **reused the existing pipeline, no new machinery:** re-ran `build/project_rule_shim.py` standalone
+>    (`project_shims('duplex_rules.db','residential',source_db='Duplex_mep_meta.db')`, the same invocation
+>    `bake_duplex_rules.py` uses) — `rule_shim` now carries `disc=ACMV|host=IfcWindow|mount=TOP|offset_m=
+>    -0.429` (was inert under `disc=VENT`, matched by no walkable rule ever).
+>    (iv) **real data + independent oracle + baseline diff:** extended `scripts/witness_hostbind_agnostic.js`
+>    with H6-H9 (**10/10 PASS**, was 5/5 before this session's B-block additions) — H6 confirms the row is
+>    reachable under `disc=ACMV`; H7 cross-checks the STORED offset against a FRESH independent re-mine off
+>    the real grilles/windows (caught + fixed a real near-miss: raw diff Δ=0.927m looked like drift, was
+>    actually a TOP-vs-CENTER mount-convention unit mismatch — converted via the windows' own measured
+>    half-height (0.9275m, exact) before comparing, Δ=0.000m once apples-to-apples); H8 proves `hostBind`
+>    driven by the PROJECTED row (not a hand-built percept) reproduces the same 7-bound/6-refused result; H9
+>    explicitly NAMES (not hides) a newly-surfaced real gap (below). Full 11-file existing regression suite
+>    re-run, **0 fail** (§DWG 49, §DXG 12, §DWD 43, W-DWWALK-HOSTBIND 6, W-ELEC-HOSTBIND 5,
+>    witness_true_midpoint 18, W-SHIM-SELECT 6, W-WALKBACK-MEP 8, W-GENERALIZE-XBUILD 7, W-RULE-CONNECTOR 4,
+>    W-OCC-TRUE-MIDPOINT 17) — the relabel + re-projection changed nothing else.
+>    (v) **two separate claims, not one:** "IfcWindow hostBind is PROVEN REACHABLE + CORRECT when selected"
+>    (H6-H8) is TRUE. "dwWalk selects it BY DEFAULT" is FALSE — **new named gap (H9):** `rule_shim`'s
+>    disc-level fallback for ACMV now has TWO tied-priority candidates (`IfcCovering/BOTTOM` for real ducts,
+>    `IfcWindow/TOP` for grilles); the tie-break (stable sort, insertion order) resolves to `IfcCovering` —
+>    unchanged from before this fix (ACMV ducts still bind correctly), but `IfcWindow` is only reached via an
+>    explicit caller percept (as the witness does) or a future per-fixture `rule_shim` row keyed
+>    `(ACMV,IfcDistributionElement)`, which the pipeline's `walkable` gate currently blocks (Duplex — the
+>    `rule_placement` mining source for `duplex_rules.db` — has no grille class to make it walkable; SC's
+>    grilles were deliberately never mined into `rule_placement`, per the existing "no vent extraction, no
+>    fabricated ducts" doctrine). **"Tilted-hostBind" (rotation_y hosts) remains a SEPARATE, still-open gap**
+>    (0/259 SC windows are tilted — this fix does not touch it either way). Changed/tracked files:
+>    `build/duplex_rules.db` + `build/terminal_rules.db` (both re-projected `rule_shim`),
+>    `scripts/witness_hostbind_agnostic.js` (H6-H10 added). `library/ERP.db` is gitignored/untracked — the
+>    `product_value` rename there is not a commit, same as the prior session's offset correction.
+>    **⚠ CORRECTION (independent review, same session): checklist item (ii)'s original grep only checked
+>    `library/ERP.db.ad_discipline_capability` (the source taxonomy) for orphaned labels — it did NOT check
+>    whether `terminal_rules.db`, a SEPARATE projection of the same `disc_patterns.db` source, had actually
+>    been re-projected. It hadn't: `terminal_rules.db.rule_shim` still carried `disc='VENT'` AND the
+>    pre-correction `offset_m=-0.513` (stale on two axes, not just the label) — the duplex-only re-projection
+>    never touched it. Fixed the same way (`project_shims('terminal_rules.db','terminal',source_db=
+>    'deploy/buildings/Terminal_extracted.db')`, the exact invocation `bake_terminal_rules.py` already uses)
+>    → `disc=ACMV, offset_m=-0.429`, matching duplex's row exactly. Added **H10 CROSS-PROJECTION-SYNC** to
+>    the witness so a future re-mine can't silently drift the two `*_rules.db` files apart again — checks
+>    both files' `rule_shim` in one run, not just one. Full suite re-run after this second fix: **11/11**
+>    (witness_hostbind_agnostic.js) + the same 11-file regression, **0 fail**, plus confirmed
+>    `witness_hostbind_rotation.js`'s pre-existing crash (`DW._hostAxis` absent, a reverted, unrelated thread)
+>    is byte-identical before/after via `git stash` — not a regression from this fix. Item 1 is NOW fully
+>    closed on both projections, not just one.
+> 2. **✅ DONE 2026-07-10 — Re-ran Duplex's FP walk WITH `dwBorrow('FP', terminal_rules)` wired.** Confirmed:
+>    the earlier REFUSE WAS a script-scope gap, not an engine defect. `dwOpen(duplex_rules.db); dwBorrow('FP',
+>    terminal_rules.db); dwWalk('FP', Duplex_ARC.db, 'Duplex', {geoDb: mesh.db})` (against the consolidated
+>    `/tmp/wt-embed-8-arc` substrate) → **placed=93** (50 `IfcFireSuppressionTerminal` + 43 `IfcAlarm`), 5
+>    storeys, no REFUSE, no crash. HostBind: 44/50 sprinklers bound to `IfcCovering`/BOTTOM (real ceilings, 6
+>    honestly refused — no host in reach, not forced), 43 alarms tacked to real Duplex walls via the
+>    pre-existing `ref_kind='host'` placement path (`prov='shim:host-wall'`, a DIFFERENT, older, already-proven
+>    mechanism than the anti-float `hostBind()` group loop — both fire correctly on their own class, no
+>    collision). No further action needed on this item.
 > 3. **`SPACE_SCOPED_DISC_INSTALL_VISION.md` (NEW, 2026-07-10, same directory)** — the bigger initiative:
 >    real `IfcSpace` extraction (Clinic confirmed as the POC target — 269 real named spaces, e.g. `CENTRAL
 >    WAITING`/`CORRIDOR`, currently 0 extracted; Hospital confirmed NOT viable, genuinely 0 space entities in

@@ -56,6 +56,13 @@ verified, not assumed:
   entity-definition pattern, to rule out the STEP-line-wrap concern raised for Terminal above) — Hospital is
   NOT a viable candidate for this, full stop, don't re-check it later expecting a different answer.
 - **Clinic is the confirmed POC target.**
+- **✅ RESOLVED 2026-07-10 — Terminal's IfcSpace count checked properly (Watchdog item 5), not left assumed.**
+  Found the real source (`~/Downloads/TerminalMerged.ifc`, the federated Terminal IFC) and grepped with the
+  SAME bare-substring method used to rule out the STEP-line-wrap concern for Hospital (not just the
+  entity-definition pattern): **0 occurrences of `IFCSPACE` anywhere in the file, bare substring included.**
+  Terminal is confirmed NOT viable for space-scoping, same conclusion as Hospital, genuinely (not a grep
+  artifact) — joins Hospital as a building with no real IfcSpace source data. Does not change the POC target
+  (Clinic, already confirmed) or any other finding in this file.
 
 **Small isolated test, per user direction ("no rush, a proven thesis is gold")**: don't extract all 269
 spaces for a first pass. Pick 1-2 real, named, visually distinctive spaces (`CENTRAL WAITING` is a good
@@ -67,6 +74,25 @@ screenshot compared by eye against the space's real footprint, not a numeric ass
 ground-truth (space boundary polygon vs. rendered fixture positions, same discipline as every other proof in
 this thread) comes first; the screenshot is the presentation layer on top of a real number, not a substitute
 for one.
+
+## ✅ NARROWED 2026-07-10 — piece 1's gap is smaller than first stated, verified not assumed
+The "the extractor simply never pulls in IfcSpace" framing above is TRUE for the Modeller-facing
+`elements_meta`/`Clinic_ARC.db` schema specifically, but checked further: **`DAGCompiler/python/
+extractIFCtoDB.py` (lines ~1070-1109, `extract_reference`) ALREADY tessellates `IfcSpace` AABBs** —
+world-coord bbox (center_x/y/z, size_x/y/z), parent-storey resolution via `Decomposes`, graceful
+no-Representation handling — into a `spatial_structure` table, for the SDG/RosettaStone reference-DB
+consumer. This is REAL, PROVEN, already-written code, not a proposal. **Confirmed `Clinic_ARC.db`
+(`/tmp/wt-embed-8-arc/modeller/`) has no `spatial_structure` table at all** — it was built by a
+DIFFERENT pipeline than this extractor's `extract_reference` path, so this capability was never
+exercised for Clinic. **Revised minimal path for piece 1: reuse this exact tessellation logic (don't
+rewrite it) — either (a) run `extractIFCtoDB.py --ifc Clinic_Architectural_IFC2x3.ifc -o <ref.db>` to
+get a real `spatial_structure.IfcSpace` table and have disc_walker.js read THAT table (new, small
+read-only query, no extractor change), or (b) port the same tessellation block into whatever pipeline
+actually produced `Clinic_ARC.db`'s `elements_meta` (not yet identified — `Clinic_ARC.db` is not
+referenced by name in any bim-compiler script; likely built the same way as the other 7 embed-8
+buildings, via bim-ootb-side tooling, not this repo's DAGCompiler).** Whoever picks this up: identify
+Clinic_ARC.db's actual build pipeline FIRST (grep bim-ootb / the embed8_scripts lineage) before writing
+any new extraction code — the tessellation math itself doesn't need to be re-derived, it exists.
 
 ## The minimal, non-invented path (proposed, NOT started)
 Three pieces, each individually small, each reusing something already proven — not a rebuild:

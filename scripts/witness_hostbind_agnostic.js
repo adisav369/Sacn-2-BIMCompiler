@@ -37,6 +37,7 @@ var ROOT = path.join(__dirname, '..');
 var DW = require(path.join(ROOT, 'build/disc_walker.js'));
 var DISC_PATTERNS = path.join(ROOT, 'library/ERP.db'); // disc_patterns.db (physically library/ERP.db until rename slice)
 var RULES = path.join(ROOT, 'build/duplex_rules.db');
+var TERMINAL_RULES = path.join(ROOT, 'build/terminal_rules.db');
 var SH = path.join(ROOT, 'deploy/buildings/SampleHouse_extracted.db');
 var SC = path.join(ROOT, 'deploy/buildings/SampleCastle_extracted.db');
 var LOG = path.join(ROOT, 'logs', 'witness_hostbind_agnostic_' +
@@ -204,11 +205,94 @@ function distToWalls(p, walls, bdb) {
     (grilles.length - assoc.length) + '), never fabricated');
   sc.close();
 
+  // ════════════════════════════════════════════════════════════════════════════════════
+  // (C) §DE-VENT — the mislabeled VENT_WINDOW_SHIM (RESUME_DISC_WALKER_ENVELOPE_BOUND.md's
+  //   2026-07-10 correction) is now a real ACMV_WINDOW_SHIM row, PROJECTED into duplex_rules.db's
+  //   first-class `rule_shim` table (not just a caller-passed percept as (B) mines/applies above).
+  //   NON-INVENT: read the row exactly as project_rule_shim.py wrote it — no re-derivation here.
+  // ════════════════════════════════════════════════════════════════════════════════════
+  var rdb2 = loadDb(SQL, RULES);
+  var acmvShims = rows(rdb2, "SELECT * FROM rule_shim WHERE disc='ACMV' ORDER BY rowid");
+  rdb2.close();
+  var winRow = acmvShims.filter(function (r) { return r.host_ifc_class === 'IfcWindow'; })[0];
+  log('§HBA-DEVENT rule_shim(disc=ACMV): ' + acmvShims.map(function (r) { return r.host_ifc_class + '/' + r.mount + '(prio=' + r.priority + ')'; }).join(', '));
+  assert('H6 RELABEL',
+    !!winRow && winRow.offset_m != null,
+    'ACMV_WINDOW_SHIM is reachable under its REAL discipline (disc=ACMV, was orphaned disc=VENT — no walkable rule ever matched it) — row: host=' +
+    (winRow && winRow.host_ifc_class) + ' mount=' + (winRow && winRow.mount) + ' offset_m=' + (winRow && winRow.offset_m));
+
+  // H7 PROJECTION-CONSISTENCY — the STORED offset (mined+corrected in a prior session, projected here) must still
+  // agree with a FRESH re-mine off the same real grilles/windows (H0 above) — catches drift between the pattern
+  // store and its projection, not just a label typo. NOT a same-unit diff: the stored row is mount=TOP
+  // (offset from the window's TOP FACE, per hostBind's `pz = tz + bz/2 + off` for TOP), while H0 mines
+  // mount=CENTER (offset from the window CENTRE). Convert TOP→CENTER via the associated windows' own REAL
+  // half-height (measured, not assumed) before comparing — an apples-to-oranges raw diff would falsely FAIL a
+  // correct row (caught by first running this straight, Δ=0.927m ≈ the real window half-height, not drift).
+  var winBzMed = median(assoc.map(function (a) { return a.w.bz; }));
+  var winRowAsCenter = winRow ? winRow.offset_m + winBzMed / 2 : null;
+  assert('H7 PROJECTION-CONSISTENCY',
+    !!winRow && Math.abs(winRowAsCenter - offCenter) <= 0.005,
+    'projected rule_shim offset_m=' + (winRow && winRow.offset_m.toFixed(3)) + 'm(TOP) + window half-height ' +
+    (winBzMed / 2).toFixed(3) + 'm = ' + (winRowAsCenter && winRowAsCenter.toFixed(3)) + 'm(CENTER-equiv) vs fresh re-mine=' +
+    offCenter.toFixed(3) + 'm (Δ=' + (winRowAsCenter != null ? Math.abs(winRowAsCenter - offCenter).toFixed(3) : 'n/a') +
+    'm ≤ 0.005) — no store/projection drift once the mount-convention (TOP vs CENTER) is accounted for');
+
+  // APPLY hostBind using the PROJECTED row verbatim (not the hand-built shimWin from (B)) — proves the FIRST-CLASS
+  // table, not just the caller-passed percept, drives a correct IfcWindow bind end-to-end.
+  var shimWinProjected = { host_ifc_class: winRow.host_ifc_class, mount: winRow.mount, offset_m: winRow.offset_m, same_storey: !!winRow.same_storey, reach_m: REACH };
+  var sc2 = loadDb(SQL, SC);
+  var placementsP = grilles.map(function (gr) { return { disc: 'ACMV', ifc_class: 'IfcDistributionElement', x: gr.x, y: gr.y, z: null, storey: gr.st, _truth: gr }; });
+  var hbGP = DW.hostBind(placementsP, sc2, shimWinProjected);
+  sc2.close();
+  assert('H8 PROJECTED-APPLY',
+    hbGP.bound.length === hbG.bound.length && hbGP.refused === hbG.refused,
+    'hostBind driven by the PROJECTED rule_shim row reproduces the hand-mined-shim result exactly: ' +
+    hbGP.bound.length + ' bound / ' + hbGP.refused + ' refused (same as (B)) — the projection, not just the caller override, now resolves IfcWindow correctly');
+
+  // H9 NAMED GAP (do not overstate H6-H8) — the disc-LEVEL fallback (no per-fixture rule_shim row exists for
+  // (ACMV, IfcDistributionElement) because Duplex — the mining source for duplex_rules.db's rule_placement — has
+  // no grille class to make it WALKABLE, see project_rule_shim.py's `walkable` gate) is AMBIGUOUS: ACMV now has
+  // TWO disc-level candidates tied at priority=1 (CEILING for real ducts, WINDOW for grilles). `_shimForDisc`'s
+  // stable sort keeps insertion order on a tie → CEILING wins. This means dwWalk('ACMV', ...) does NOT
+  // automatically route a floating IfcDistributionElement to the window shim today — H6-H8 prove the row is
+  // correctly labeled and functionally correct WHEN SELECTED (by a caller, as here), not that dwWalk selects it
+  // by default. Closing this needs a real measured (disc,IfcDistributionElement)→walkable rule_placement row
+  // (none exists — SC's grilles were never mined into rule_placement, by design, no fabricated ducts) — not
+  // something to invent to make the default path "work".
+  var ceilRow = acmvShims.filter(function (r) { return r.host_ifc_class === 'IfcCovering'; })[0];
+  var tieWins = acmvShims.slice().sort(function (a, b) { return (a.priority != null ? a.priority : 9) - (b.priority != null ? b.priority : 9); })[0];
+  log('§HBA-DEVENT H9 disc-level fallback tie: CEILING prio=' + (ceilRow && ceilRow.priority) + ', WINDOW prio=' +
+    (winRow && winRow.priority) + ' → default pick=' + (tieWins && tieWins.host_ifc_class) +
+    ' (dwWalk only reaches IfcWindow via an explicit caller percept or a future per-fixture row, NOT by default yet)');
+  assert('H9 NAMED-GAP-NOT-CLOSED',
+    tieWins.host_ifc_class === 'IfcCovering',
+    'confirms (not hides) the open gap: disc-level fallback still resolves to ' + tieWins.host_ifc_class +
+    ' on a tie — IfcWindow hostBind is PROVEN REACHABLE (H6-H8) but NOT yet dwWalk-default-selected (separate claims, per Watchdog checklist)');
+
+  // H10 CROSS-PROJECTION SYNC (added after an independent review caught this exact gap 2026-07-10: H6-H9 above
+  // only checked duplex_rules.db — terminal_rules.db is a SEPARATE projection of the SAME disc_patterns.db
+  // source and was found still carrying the stale disc='VENT'/offset=-0.513 row, unfixed by the duplex-only
+  // re-projection). Checks BOTH *_rules.db projections stay in sync with the source — this is what would have
+  // caught the gap the first time, not just this one row's re-check.
+  var trdb = loadDb(SQL, TERMINAL_RULES);
+  var termAcmvShims = rows(trdb, "SELECT * FROM rule_shim WHERE disc='ACMV' ORDER BY rowid");
+  var termVentRows = rows(trdb, "SELECT * FROM rule_shim WHERE disc='VENT' OR product_value LIKE '%VENT%'");
+  trdb.close();
+  var termWinRow = termAcmvShims.filter(function (r) { return r.host_ifc_class === 'IfcWindow'; })[0];
+  log('§HBA-DEVENT H10 terminal_rules.db rule_shim(disc=ACMV): ' + termAcmvShims.map(function (r) { return r.host_ifc_class + '/' + r.mount + '(offset=' + r.offset_m + ')'; }).join(', ') +
+    (termVentRows.length ? ' · STALE disc=VENT rows still present: ' + termVentRows.length : ''));
+  assert('H10 CROSS-PROJECTION-SYNC',
+    termVentRows.length === 0 && !!termWinRow && Math.abs(termWinRow.offset_m - winRow.offset_m) <= 1e-6,
+    'terminal_rules.db carries the SAME correction as duplex_rules.db: 0 stale disc=VENT rows, ACMV/IfcWindow offset_m=' +
+    (termWinRow && termWinRow.offset_m) + ' (== duplex\'s ' + winRow.offset_m + ') — both projections of disc_patterns.db in sync');
+
   log('───────────────────────────────────────────────');
   log('§HBA SUMMARY: hostBind is HOST-AGNOSTIC. (A) ELEC→IfcWall/SIDE reproduces the anti-float fix UNCHANGED (' +
     hbW.bound.length + ' bound, float→0). (B) SC 13 grilles→IfcWindow/CENTER: ' + hbG.bound.length +
     ' bound to real same-storey windows reproducing position (XY ' + medXY.toFixed(3) + 'm, |Δz| ≤ ' + maxDZ.toFixed(3) +
-    'm), ' + hbG.refused + ' honestly refused. SC = class-2 host-bound PLACEMENT oracle (NOT class-1 networked). No vent extraction, no fabricated ducts.');
+    'm), ' + hbG.refused + ' honestly refused. SC = class-2 host-bound PLACEMENT oracle (NOT class-1 networked). No vent extraction, no fabricated ducts.' +
+    ' (C) §DE-VENT: ACMV_WINDOW_SHIM relabeled from orphaned disc=VENT → real disc=ACMV, projected row proven functionally correct (H6-H8), disc-level' +
+    ' default-selection gap named not closed (H9), both *_rules.db projections confirmed in sync (H10) — tilted-hostBind (rotation_y hosts) remains a SEPARATE, still-open gap (0/259 SC windows tilted).');
   log('W-HOSTBIND-AGNOSTIC: ' + pass + ' PASS / ' + fail + ' FAIL');
   try { fs.mkdirSync(path.dirname(LOG), { recursive: true }); fs.writeFileSync(LOG, _lines.join('\n')); log('§LOG ' + LOG); } catch (e) {}
   process.exit(fail ? 1 : 0);
