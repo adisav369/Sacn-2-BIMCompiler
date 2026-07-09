@@ -114,6 +114,31 @@ def _resolve_hash(lib, erp, device):
 
 def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONENT_LIB,
             log=print):
+    # §SCOPE BOUNDARY (Watchdog catch, 2026-07-10): ad_space_type_mep_bom is RESIDENTIAL-
+    # provenance data (the residential space program: BEDROOM, WET_KITCHEN, VERANDAH...).
+    # It must NOT sit in a non-residential class DB waiting to misapply residential
+    # quantities the day that class gains real spaces (Terminal today has none, so a
+    # leaked table would be dormant — a landmine, not a bug yet; we remove the landmine).
+    # There is no per-class column in the source to filter by — any subset list would be
+    # INVENTED — so non-residential classes get NO schedule tables at all, and the
+    # walker's placeSchedule() no-table guard REFUSEs honestly. A Terminal-class schedule
+    # becomes projectable only when mined from real Terminal-class data.
+    if building_class != "residential":
+        con = sqlite3.connect(rules_db)
+        cur = con.cursor()
+        dropped = []
+        for t in ("rule_space_schedule", "rule_space_type", "rule_space_alias",
+                  "rule_code_spacing"):
+            if cur.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                           (t,)).fetchone():
+                cur.execute(f"DROP TABLE {t}")
+                dropped.append(t)
+        con.commit()
+        con.close()
+        log(f"§SCHED-PROJ {os.path.basename(rules_db)}: class '{building_class}' is not "
+            f"residential — schedule NOT projected (residential-provenance data)"
+            + (f"; healed leak, dropped: {dropped}" if dropped else ""))
+        return 0
     for p in (patterns_db, comp_db):
         if not os.path.exists(p):
             log(f"§SCHED-PROJ SKIP — {p} missing")

@@ -26,6 +26,11 @@
  *                       column; Java CW/SP fold to the walker's PLB).
  *   M5 FALSIFIER      — tampering one qty_normal in a COPY changes the recomputed total ≠ 43:
  *                       the oracle genuinely measures the data, it is not vacuously true.
+ *   M6 SCOPE-BOUNDARY — terminal_rules.db carries NO rule_space_schedule table (Watchdog catch
+ *                       2026-07-10): the schedule is RESIDENTIAL-provenance data; leaking it into
+ *                       Terminal's class DB would sit as a landmine ready to misapply residential
+ *                       quantities the day Terminal gains real spaces. The walker REFUSEs honestly
+ *                       via its no-table guard; this claim keeps the boundary from re-blurring.
  */
 'use strict';
 var fs = require('fs');
@@ -34,6 +39,7 @@ var initSqlJs = require('sql.js');
 
 var ROOT = path.join(__dirname, '..');
 var RULES = path.join(ROOT, 'build/duplex_rules.db');
+var TE_RULES = path.join(ROOT, 'build/terminal_rules.db');
 var COMPLIB = path.join(ROOT, 'library/component_library.db');
 var PATTERNS = path.join(ROOT, 'library/disc_patterns.db');
 var LOG = path.join(ROOT, 'logs', 'witness_rule_space_schedule_' +
@@ -137,6 +143,15 @@ var KNOWN_NO_MESH = ['DATA_POINT', 'EMERGENCY_LIGHT', 'WASHING_TAP'];
     'tampering LIVING/OUTLET qty_normal (+3) in a COPY → oracle recomputes ' + tTotal +
     ' ≠ 43 — the count check genuinely measures the data (not vacuously true)');
   tampered.close();
+
+  log(''); log('─── M6 SCOPE-BOUNDARY ───');
+  var te = loadDb(SQL, TE_RULES);
+  var leak = rows(te, "SELECT name FROM sqlite_master WHERE type='table' AND name IN " +
+    "('rule_space_schedule','rule_space_type','rule_space_alias','rule_code_spacing')");
+  assert('M6 SCOPE-BOUNDARY', leak.length === 0,
+    'terminal_rules.db has ' + leak.length + ' schedule tables — residential-provenance schedule ' +
+    'stays OUT of the terminal class DB (walker no-table guard REFUSEs honestly; no dormant landmine)');
+  te.close();
 
   log('');
   log('§SM SUMMARY: the Java-era measured schedule (188 rows, 37+ space types) + offset semantics are now');
