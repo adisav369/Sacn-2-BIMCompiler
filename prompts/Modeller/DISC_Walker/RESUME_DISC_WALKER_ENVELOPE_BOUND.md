@@ -72,8 +72,23 @@ analogue is n_measured scaled by floor-area ratio.
 > `n_measured × area_ratio` pattern above, just needs a PER-STOREY area term instead of one global one), or
 > clip placements to their own storey's occupancy envelope as a backstop (cheaper, less correct).
 >
-> **3. ⛔ OPEN — A genuine, PRE-EXISTING rotation-convention mismatch in `_trueMidpoint()`/`_eulerMat3()`,
-> found this session by numeric verification (not reasoning), NOT YET FIXED, relevant to MEP not STR.**
+> **3. ✅ DONE 2026-07-09 PM (bim-compiler `2a36bb313`, bim-ootb worktree `/tmp/wt-terminal-geosplit-port` commit
+> `144943b`, NOT pushed/merged) — rotation-convention mismatch in `_trueMidpoint()`/`_eulerMat3()`, FIXED.**
+> ⚠ **Near-miss, recorded so it isn't repeated:** the first fix attempt applied the render's `Euler(rotX,
+> rotZRad, -rotY)` remap UNCONDITIONALLY — but the render only takes that path `if (rx||ry)`
+> (`bonsai_library.js:76`, mirrored by `arc_editable.js:211`); for the COMMON case (rx=ry=0, ordinary wall
+> yaw — ALL of Duplex/SampleHouse/SampleCastle, most of Terminal), the render uses a SEPARATE plain-Z-axis-yaw
+> path instead. The unconditional remap silently rotated every ordinary yawed wall about Y instead of Z —
+> caught by `scripts/witness_true_midpoint.js`'s T5 regression (65→33 outside on real Duplex), confirmed a
+> genuine regression (not a flake) via a `git stash` baseline diff before concluding anything. Fixed by
+> branching on `rx||ry` (matching the render's own condition exactly) — rx=ry=0 now reduces to the ORIGINAL
+> cardinal-Z formula, byte-identical to pre-fix behaviour. **Final proof:** `scripts/witness_rotation_convention.js`
+> drives the REAL browser-side `three.core.min.js` via puppeteer against real `/tmp/wt-embed-8-arc/modeller/
+> Terminal_ARC.db` elements (the ONLY Terminal DB with non-zero rotation — `~/bim-ootb/modeller/Terminal_meta.db`
+> has ALL-ZERO rotations and can't exercise this at all) — old formula diverged up to 1.1569m, fix matches the
+> real renderer to 0.00000000m, full 13-file existing regression suite 0-fail (30/30 total). Ported to bim-ootb
+> and independently re-verified there too (17/17 real-data + both bim-ootb regression witnesses unchanged).
+> Superseded text below kept for the original finding's detail:
 > `_eulerMat3(rx,ry,rz)` (disc_walker.js's own world-bbox-midpoint reconstruction, used by `hostBind`'s
 > SIDE-mount branch and `occupancy()`) computes a DIFFERENT rotation than the ACTUAL production renderer
 > (`arc_editable.js`/`bonsai_library.js`'s `place()`, confirmed via direct source read at
@@ -118,6 +133,20 @@ analogue is n_measured scaled by floor-area ratio.
 > to confirm nothing already-proven silently broke from the mesh-consolidation changes themselves — this has
 > NOT been done yet, existing witnesses still point at the OLD Terminal_meta.db/Terminal_geo.db pair (deleted
 > from the worktree) and would need repointing at the new `Terminal_ARC.db`/`mesh.db` shared-file shape.
+>
+> **6. ⚠ READ `WalkerDoctrine.md §13` BEFORE building any mesh-to-mesh or count-vs-oracle comparison work
+> (added 2026-07-09 PM, user-requested foresight write-up).** Real instance found THIS session, not
+> hypothetical: `witness_disc_density.js`'s count oracle (`Terminal_meta.db`) is 100% ARC — its D4/D4b checks
+> are structurally vacuous for Terminal (always divide-by-zero/fail regardless of walker correctness), yet a
+> "3 pre-existing fails, unchanged before/after" report read as if it were a validated result. §13's rule:
+> verify an oracle's OWN reference data is real/non-trivial for the specific (building, discipline) pair
+> BEFORE trusting its verdict — assert it, fail loud (`§ORACLE-VACUOUS`) if not, never let a vacuous
+> reference silently produce a pass/fail that gets counted as meaningful. Also settles the "true RSS" scope
+> question from the same discussion: mesh-to-mesh fidelity is only buildable/provable where a REAL mesh
+> reference exists (SampleCastle's real STR, Duplex's real MEP via `W-WALKBACK-MEP`) — Terminal's generated
+> STR/MEP has no such reference anywhere in this project's data and never will without a real re-extraction,
+> so it stays in the GENERATED bucket (count-exact, envelope-plausible, never claimed mesh-verified) by
+> design, not as an unfinished gap.
 >
 > ---
 >
@@ -201,10 +230,21 @@ analogue is n_measured scaled by floor-area ratio.
 >   ⚠ Scope discipline: this is disc_walker/Modeller-side ONLY — `RosettaStoneGateTest.java`/RSS was NOT touched
 >   (a real self-report collusion shape WAS found there, `G1-COUNT`'s `readGenerativeCount()`, but per explicit
 >   user direction it's noted as a known gap, not fixed by editing Java — the JS witness layer is the answer).
-> - **⛔ STILL OPEN, do not report as done:**
->   1. **Nothing ported to `~/bim-ootb/modeller/disc_walker.js` yet** — bim-compiler only, per this file's own
->      sequencing rule (fix + witness here first, port after review). Now covers 3 fixes: hostBind SIDE-mount
->      true-midpoint, occupancy() true-midpoint + VENT_WINDOW_SHIM re-mine, and the `geoDb` Terminal split.
+> - **✅ item 1 (port to bim-ootb) DONE 2026-07-09 PM, worktree only, NOT pushed/merged:** `/tmp/wt-terminal-geosplit-port`
+>   (branch `feat/terminal-geosplit-port` off fresh `origin/main`, commit `8d161fa`) — surgical merge (not a wholesale
+>   overwrite) of `_trueMidpoint`/`_eulerMat3`/`_geomRow`/occupancy-true-midpoint/hostBind-true-midpoint/`geoDb` onto
+>   the CURRENT live `modeller/disc_walker.js`, preserving that file's own MEP-RosettaStone additions (bendFittings/
+>   routePattern/IDB-timeout-guard) which don't exist in bim-compiler's copy at all. VENT_WINDOW_SHIM re-mine was
+>   NOT ported — it's a DB-row correction (`library/component_library.db`, gitignored) that was never live-wired
+>   anyway ("VENT" prefix doesn't match any real discipline code, per the original commit message), inert either side.
+>   PROOF: real numbers reproduced exactly against `~/bim-ootb/modeller/Terminal_meta.db`+`Terminal_geo.db` (333/333
+>   walls resolve, delta 12.6856m, hostBind shift 53.46m/124>1m — same as bim-compiler's own witness); existing
+>   bim-ootb witnesses re-run before/after the port on the SAME file (`modeller/tests/witness_disc_density.js`:
+>   5 PASS/3 FAIL both times, identical shape, the 3 fails are pre-existing/unrelated; `witness_route_pattern_bridge.js`:
+>   10/10 PASS). ⚠ Bundled with this port is a genuine caveat, NOT closed by it: a SEPARATE rotation-convention
+>   mismatch in this same `_trueMidpoint`/`_eulerMat3` machinery (item 3 above) still gives a WRONG midpoint for any
+>   host with non-zero rotation_y — 325 real Terminal elements qualify. Do not report Terminal containment as fully
+>   fixed on the strength of this port alone.
 > - **Don't re-litigate:** the Start/End (BOM Tack-chain) reconstruction shortcut was tested rigorously across
 >   all 3 mesh-backed buildings and falsified on 2 of them (SampleHouse 7.95m error, SampleCastle 7.85m error) —
 >   it only matched Duplex (0.03m) because of that file's specific authoring history, not a general IFC rule.

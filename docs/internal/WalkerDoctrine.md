@@ -387,3 +387,48 @@ locally instead of calling `disc_walker.js`'s functions directly — each carrie
 changed, all three had to be updated by hand to stay in sync — that friction is the PROOF the independence is
 real (a witness that silently auto-tracked the engine would never have needed re-baselining). Cite
 `WalkerDoctrine.md §12` for this principle rather than re-deriving it.
+
+## §13 — an oracle's VERDICT is only as trustworthy as its own reference data being real: verify the
+## oracle BEFORE trusting what it reports, every time, not just once (user directive, 2026-07-09 PM)
+
+**§12 established that every walked discipline needs an independent, post-walk oracle. This section closes
+the gap §12 didn't cover: an "independent" oracle can still be WRONG in a way that never shows up as a code
+bug — its own REFERENCE DATA can be empty, vacuous, or not the ground truth it claims to be, and the oracle
+will keep reporting a verdict (pass or fail) that reads as meaningful when it structurally can't be.** This
+is a DIFFERENT failure mode than the self-grading problem §12 fixes: the oracle can be genuinely independent
+(different code, computed after the walk, sharing no state with the engine) and STILL be measuring nothing,
+if what it's comparing against isn't real for the case under test.
+
+**Concrete, real instance found 2026-07-09 (not hypothetical — this is why the rule exists):**
+`modeller/tests/witness_disc_density.js`'s D4/D4b checks compare each discipline's walked COUNT against
+`realCount(disc)`, queried from `Terminal_meta.db`. That file is confirmed (direct query, this session)
+**100% `discipline='ARC'`** — zero rows for ELEC/PLB/FP/ACMV, by design (it's the ARC-only substrate the
+walker fills). So `realCount('ELEC')` etc. are ALWAYS 0 for this building, making the walked/real ratio
+Infinity or NaN — the check will FAIL (or divide-by-zero) regardless of whether the walker's generated count
+is good or garbage. A "3 pre-existing fails, unchanged before/after a port" report is TECHNICALLY true and
+STILL misleading — it confirms a broken oracle stayed equally broken, not that the walker's count-fidelity
+was validated. Nobody would notice this from the pass/fail numbers alone; it only surfaces by asking "does
+this reference file actually contain what the oracle assumes it contains" and checking directly.
+
+**The rule, stated plainly: before trusting ANY oracle-based witness's verdict — pass or fail — verify the
+oracle's OWN reference data is non-trivial for the specific case being tested.** Concretely, for a
+count-vs-real-data oracle: assert the reference count is `> 0` (or otherwise meaningfully populated) BEFORE
+computing the comparison ratio, and FAIL LOUD with a distinct, named signal (e.g. `§ORACLE-VACUOUS`) if it
+isn't — never let a vacuous reference silently produce a pass, a fail, or an Infinity/NaN that then gets
+counted as if it were a real result. This mirrors the project's own "refuse beats fabricate" doctrine (§4,
+§8, §11) applied one layer up: to the TEST layer, not just the generation layer. A witness that can't tell
+the difference between "the walker got it wrong" and "there was nothing real to compare against" is not
+foolproof, no matter how many times it's re-run.
+
+**Concrete requirement for ANY future mesh-to-mesh or count-vs-oracle comparison work (the actual "true RSS"
+mechanism this section was requested for, 2026-07-09 PM foresight discussion):** before building or trusting
+a geometry/mesh-fidelity comparison for a discipline on a specific building, first confirm — and assert,
+not assume — that a REAL, populated reference exists for that exact (building, discipline) pair. Where it
+doesn't (Terminal's MEP/STR today: no real MEP/STR mesh payload exists anywhere in this project's data,
+confirmed exhaustively across every DB checked), the correct outcome is an HONEST REFUSAL to claim
+mesh-fidelity was tested — falling back to the GENERATED-class bar (§4: count-exact, envelope-plausible,
+never claimed landed) — not a silently-vacuous "pass." Where a real reference DOES exist (SampleCastle's
+real 23 columns/174 beams/9 members, Duplex's real MEP network via the already-proven `W-WALKBACK-MEP`
+geometric-touch oracle), build the mesh/geometry-level comparison there FIRST — that is where "true RSS"
+(mesh-to-mesh, not just count/position) is actually achievable, and where it should be proven before ever
+being assumed to generalize to a building (like Terminal) that has no such reference at all.
