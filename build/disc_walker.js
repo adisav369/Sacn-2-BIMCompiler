@@ -435,6 +435,107 @@
     return { placements: out, spaces: all.length, spacesUsed: used, skippedSpaces: skipped, refused: refused };
   }
 
+  // ── §NOSPACES (item 2, RESUME_DISC_WALKER_ENVELOPE_BOUND.md, 2026-07-10): measured-band placement
+  // for buildings with NO real IfcSpace rows (Terminal-class). Each rule_placement row IS the zone: its
+  // ABSOLUTE measured z-band + n_measured + src_storey_area_m2. Count = n_measured × bandArea/srcArea
+  // (the walked building's own rules ⇒ ratio≈1; envelope is the ceiling, §DW-CAP style). Position =
+  // envelope-bound grid cells from real ARC elements whose vertical EXTENT intersects the band (true
+  // geometric overlap, no invented pad); pitch = the row's own measured mean spacing √(srcArea/n);
+  // z = the measured band midpoint. ANTI-CHEAT: the cell query EXCLUDES every rules-generatable class
+  // (derived from rule_placement itself, no hand list) — the walker never consults MEP rows even when
+  // the caller hands it a full extraction. LOD400 law (WalkerDoctrine §11): each class carries its
+  // MINED dominant real mesh hash (rule_mesh_binding, projected by build/project_rule_mesh_binding.py)
+  // or the whole class REFUSEs — never a fallback shape.
+  function placeMeasured(disc, bdb, opts) {
+    var db = _dbFor(disc);
+    if (!_rows(db, "SELECT 1 FROM sqlite_master WHERE type='table' AND name='rule_placement'").length)
+      return { noRules: 'rules DB has no rule_placement' };
+    var rows = _rows(db, "SELECT * FROM rule_placement WHERE disc='" + _esc(disc) +
+      "' AND n_measured>0 AND z_band_lo IS NOT NULL AND z_band_hi IS NOT NULL AND src_storey_area_m2>0");
+    if (!rows.length) return { noRules: 'no measured z-band rule_placement rows for ' + disc };
+    var bind = {};
+    if (_rows(db, "SELECT 1 FROM sqlite_master WHERE type='table' AND name='rule_mesh_binding'").length)
+      _rows(db, "SELECT ifc_class, geometry_hash FROM rule_mesh_binding WHERE disc='" + _esc(disc) + "'")
+        .forEach(function (b) { bind[b.ifc_class] = b.geometry_hash; });
+    var genCls = _rows(db, 'SELECT DISTINCT ifc_class FROM rule_placement')
+      .map(function (r) { return "'" + _esc(r.ifc_class) + "'"; }).join(',');
+    // §NOSPACES frame reconciliation: the bands were baked in the 2026-06-28 building-datum frame;
+    // the extraction was later re-datumed to site coords. The MEASURED offset (median of each rule
+    // row's own src_guids' site z − band mid, stamped by project_rule_mesh_binding.py) converts
+    // band → the walked db's frame. Missing key → 0 (bands already in the db's frame).
+    var zOffRow = _rows(db, "SELECT value FROM rules_meta WHERE key='z_datum_offset'");
+    var zOff = zOffRow.length ? parseFloat(zOffRow[0].value) || 0 : 0;
+    var out = [], refused = {}, zones = 0;
+    rows.forEach(function (r) {
+      r = Object.assign({}, r);
+      r.z_band_lo += zOff; r.z_band_hi += zOff;               // site-frame band from here on
+      var ghash = bind[r.ifc_class] || null;
+      if (!ghash) {                                           // LOD400 REFUSE — no mined real mesh
+        refused[r.ifc_class] = (refused[r.ifc_class] || 0) + r.n_measured;
+        console.log(TAG + ' §LOD400-REFUSE ' + disc + '/' + r.ifc_class + ' ×' + r.n_measured +
+          ' band=[' + r.z_band_lo + ',' + r.z_band_hi + '] (no rule_mesh_binding row — no real mesh, never a fallback shape)');
+        return;
+      }
+      var pitch = Math.max(0.5, Math.sqrt(r.src_storey_area_m2 / r.n_measured));
+      var els = _rows(bdb,
+        'SELECT t.center_x cx, t.center_y cy, t.bbox_x bx, t.bbox_y by_ FROM elements_meta em ' +
+        'JOIN element_transforms t ON t.guid = em.guid ' +
+        'WHERE em.ifc_class NOT IN (' + genCls + ",'IfcSpace') " +
+        'AND t.center_z + t.bbox_z/2 >= ' + r.z_band_lo + ' AND t.center_z - t.bbox_z/2 <= ' + r.z_band_hi);
+      var seen = {}, cells = [];
+      var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      els.forEach(function (e) {
+        x0 = Math.min(x0, e.cx - e.bx / 2); x1 = Math.max(x1, e.cx + e.bx / 2);
+        y0 = Math.min(y0, e.cy - e.by_ / 2); y1 = Math.max(y1, e.cy + e.by_ / 2);
+        var k = Math.round(e.cx / pitch) + '_' + Math.round(e.cy / pitch);
+        if (!seen[k]) { seen[k] = 1; cells.push({ x: Math.round(e.cx / pitch) * pitch, y: Math.round(e.cy / pitch) * pitch }); }
+      });
+      // cell quantization can round an edge cell past the measured envelope — clamp back inside
+      // (envelope-bound by definition; the envelope itself is measured, not invented).
+      cells.forEach(function (c) {
+        c.x = Math.min(Math.max(c.x, x0), x1); c.y = Math.min(Math.max(c.y, y0), y1);
+      });
+      if (!cells.length) {                                    // no ARC envelope in the band → honest skip
+        console.log(TAG + ' §NOSPACES-NOCELLS ' + disc + '/' + r.ifc_class + ' band=[' + r.z_band_lo + ',' + r.z_band_hi + '] 0 ARC cells — skipped');
+        return;
+      }
+      // bandArea: SAME XY-bbox footprint formula the mining side used to stamp src_storey_area_m2
+      // (stamp_terminal_src_area.py band_area(): min/max of center ± bbox/2) — parity keeps the
+      // ratio ≈1 when a building walks its own measured rules; cells stay the position sampler.
+      var bandArea = (x1 - x0) * (y1 - y0);
+      var count = Math.round(r.n_measured * bandArea / r.src_storey_area_m2);
+      // a thin band (ceiling grids: 0.14–1.6 m) holds few ARC elements — when the area-bound count
+      // exceeds the ARC cells, TOP UP from a uniform grid at the row's own MEASURED cadence
+      // (spacing_x/y_m mined with the rule) across the measured band bbox. Logged, never silent.
+      if (count > cells.length) {
+        var gx = r.spacing_x_m > 0 ? r.spacing_x_m : pitch, gy = r.spacing_y_m > 0 ? r.spacing_y_m : pitch;
+        var added = 0;
+        for (var ux = x0 + gx / 2; ux <= x1 && cells.length < count; ux += gx) {
+          for (var uy = y0 + gy / 2; uy <= y1 && cells.length < count; uy += gy) {
+            var uk = Math.round(ux / pitch) + '_' + Math.round(uy / pitch);
+            if (!seen[uk]) { seen[uk] = 1; cells.push({ x: ux, y: uy }); added++; }
+          }
+        }
+        if (added) console.log(TAG + ' §NOSPACES-TOPUP ' + disc + '/' + r.ifc_class + ' band=[' + r.z_band_lo.toFixed(2) + ',' + r.z_band_hi.toFixed(2) + '] +' + added + ' measured-cadence grid positions (ARC cells ' + (cells.length - added) + ' < count ' + count + ')');
+      }
+      var placeN = Math.min(count, cells.length), stride = cells.length / Math.max(1, placeN);
+      if (count > cells.length) console.log(TAG + ' §DW-CAP ' + disc + '/' + r.ifc_class + ' band=[' + r.z_band_lo + ',' + r.z_band_hi + '] placed=' + placeN + ' of ' + count + ' (envelope is the ceiling)');
+      var z = (r.z_band_lo + r.z_band_hi) / 2;
+      for (var c = 0; c < placeN; c++) {
+        var cell = cells[Math.floor(c * stride)];
+        out.push({ disc: disc, ifc_class: r.ifc_class, x: cell.x, y: cell.y, z: z,
+          storey: r.storey_scope, band: [r.z_band_lo, r.z_band_hi],
+          bx: r.bbox_dx || null, by: r.bbox_dy || null, bz: r.bbox_dz || null,
+          geometry_hash: ghash, prim: _primFor(r.ifc_class),
+          prov: 'placed:measured-band', src: r.provenance || '' });
+      }
+      zones++;
+      console.log(TAG + ' §NOSPACES-ZONE ' + disc + '/' + r.ifc_class + ' band=[' + r.z_band_lo + ',' + r.z_band_hi +
+        '] n_measured=' + r.n_measured + ' ratio=' + (bandArea / r.src_storey_area_m2).toFixed(2) + ' placed=' + placeN);
+    });
+    return { placements: out, zones: zones, refused: refused };
+  }
+
   // Reduce a discipline's rule_placement rows to ONE representative per ifc_class
   // (median spacing + dz) — on a new building we have no storey mapping, so we apply
   // the measured cadence once per target storey rather than the Terminal's per-storey rows.
@@ -823,6 +924,9 @@
         var best = Infinity, bl = null, bpt = null;
         for (var i = 0; i < lines.length; i++) {
           var L = lines[i], abx = L.b[0] - L.a[0], aby = L.b[1] - L.a[1];
+          // §NOSPACES stacked-host disambiguation (see TOP/BOTTOM path): band-carrying placements
+          // only bind walls that vertically intersect their own measured z-band.
+          if (p.band && (L.w.tz + L.w.bz / 2 < p.band[0] || L.w.tz - L.w.bz / 2 > p.band[1])) continue;
           var l2 = abx * abx + aby * aby;
           var t = l2 > 0 ? ((p.x - L.a[0]) * abx + (p.y - L.a[1]) * aby) / l2 : 0;
           t = t < 0 ? 0 : (t > 1 ? 1 : t);
@@ -840,7 +944,8 @@
         var pz = (shim.height_m != null && p.storeyZ != null) ? (p.storeyZ + shim.height_m) : p.z;
         bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: fx, y: fy, z: pz, yaw: bl.horiz === 0 ? 0 : Math.PI / 2,
           storey: p.storey, host: bl.w.g, mount: 'SIDE', prov: 'shim:host-' + hostClass + '-side',
-          bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4), midVerified: bl.w.midVerified });
+          bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4), midVerified: bl.w.midVerified,
+          band: p.band, geometry_hash: p.geometry_hash });      // §NOSPACES carry-through (undefined on legacy walks)
       });
       return { bound: bound, refused: refused, refusedList: refusedList, hostCount: hosts.length, hostClass: hostClass, mount: mount, unverifiedHosts: unverifiedHosts };
     }
@@ -866,6 +971,10 @@
       for (var i = 0; i < hosts.length; i++) {
         var h = hosts[i];
         if (sameStorey && p.storey != null && h.st !== p.storey) continue;  // stacked-host disambiguation
+        // §NOSPACES stacked-host disambiguation for measured-band placements (no storey names to match):
+        // a candidate host must VERTICALLY INTERSECT the placement's own measured z-band — nearest-XY
+        // alone binds a ground-floor light to a level-3 covering. No-band placements are untouched.
+        if (p.band && (h.tz + h.bz / 2 < p.band[0] || h.tz - h.bz / 2 > p.band[1])) continue;
         var d = Math.hypot(p.x - h.x, p.y - h.y);                 // XY proximity = host association
         if (d < best) { best = d; bh = h; }
       }
@@ -874,7 +983,8 @@
       var pz = bh.tz + sign * faceHalf * (bh.bz / 2) + sign * off; // named face of the TRUE host + offset
       bound.push({ disc: p.disc, ifc_class: p.ifc_class, x: bh.x, y: bh.y, z: pz, yaw: horiz === 0 ? 0 : Math.PI / 2,
         storey: p.storey, host: bh.g, mount: mount, prov: 'shim:host-' + hostClass + '-' + mount.toLowerCase(),
-        bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4), midVerified: bh.midVerified });
+        bx: p.bx, by: p.by, bz: p.bz, prim: p.prim, src: p.src, snapDist: +best.toFixed(4), midVerified: bh.midVerified,
+        band: p.band, geometry_hash: p.geometry_hash });        // §NOSPACES carry-through (undefined on legacy walks)
     });
     return { bound: bound, refused: refused, refusedList: refusedList, hostCount: hosts.length, hostClass: hostClass, mount: mount, unverifiedHosts: unverifiedHosts };
   }
@@ -1374,14 +1484,43 @@
     // byte-identical (this returns before any legacy placement code is touched).
     if (opts && opts.schedule) {
       var ps = placeSchedule(disc, bdb, opts);
-      if (ps.noRules) {
-        console.log(TAG + ' §WALK-SCHED disc=' + disc + ' bldg=' + buildingName + ' REFUSE ' + ps.noRules);
-        return { disc: disc, refused: true, reason: ps.noRules, placed: 0 };
-      }
-      if (!ps.spaces) {
-        console.log(TAG + ' §WALK-SCHED disc=' + disc + ' bldg=' + buildingName +
-          ' REFUSE no-real-spaces (schedule walk needs extracted IfcSpace rows — Terminal-class fallback is the legacy walk)');
-        return { disc: disc, refused: true, reason: 'no real spaces for schedule walk', placed: 0 };
+      // §NOSPACES (item 2): a building the schedule walk cannot serve (no schedule tables in its class
+      // DB — Terminal by design, M6 — or no real IfcSpace rows) falls through to the measured-band walk
+      // instead of a flat REFUSE. Residential schedule data is NEVER consumed here (placeMeasured reads
+      // rule_placement/rule_mesh_binding only); a building with BOTH schedule tables AND real spaces is
+      // byte-identical to before (this branch is unreachable there).
+      if (ps.noRules || !ps.spaces) {
+        var pm = placeMeasured(disc, bdb, opts);
+        if (pm.noRules) {
+          var why = (ps.noRules || 'no real spaces for schedule walk') + '; measured-band: ' + pm.noRules;
+          console.log(TAG + ' §WALK-SCHED disc=' + disc + ' bldg=' + buildingName + ' REFUSE ' + why);
+          return { disc: disc, refused: true, reason: why, placed: 0 };
+        }
+        // same grouped host-bind flow as the legacy walk: measured-band floats snap to real hosts via
+        // the projected rule_shim; refused stay envelope-bound at the measured z (honest §NOSPACES-FLOAT).
+        var mPlaced = pm.placements, mBound = 0, mFloat = 0;
+        if (!(opts.noHostBind || opts.hostBind === false)) {
+          var mShim = (opts && opts.shims) || _loadRuleShims(disc);
+          var mByCls = {}; mPlaced.forEach(function (p) { (mByCls[p.ifc_class] = mByCls[p.ifc_class] || []).push(p); });
+          var mOut = [];
+          Object.keys(mByCls).forEach(function (cls) {
+            var grp = mByCls[cls], shim = _shimForFixture(mShim, disc, cls);
+            if (!shim) { mOut = mOut.concat(grp); mFloat += grp.length; return; }
+            var hb = hostBind(grp, bdb, shim, opts && opts.geoDb, null);
+            if (hb.noHost) { mOut = mOut.concat(grp); mFloat += grp.length; return; }
+            mOut = mOut.concat(hb.bound, hb.refusedList || []);
+            mBound += hb.bound.length; mFloat += hb.refused;
+          });
+          mPlaced = mOut;
+        } else mFloat = mPlaced.length;
+        var mChains = route(disc, bdb), mSrc = routeChains(disc, bdb);
+        var mRefN = Object.keys(pm.refused).reduce(function (a, k) { return a + pm.refused[k]; }, 0);
+        console.log(TAG + ' §WALK-NOSPACES disc=' + disc + ' bldg=' + buildingName + ' placed=' + mPlaced.length +
+          ' zones=' + pm.zones + ' hostBound=' + mBound + ' floats=' + mFloat + ' lod400Refused=' + mRefN +
+          (Object.keys(pm.refused).length ? ' [' + Object.keys(pm.refused).map(function (k) { return k + '×' + pm.refused[k]; }).join(' ') + ']' : ''));
+        return { disc: disc, refused: false, mode: 'measured-band', placed: mPlaced.length, placements: mPlaced,
+          measured: { zones: pm.zones, hostBound: mBound, floats: mFloat, lod400Refused: pm.refused },
+          chains: mChains, chainSegs: mSrc.segs, chainByRule: mSrc.byRule, storeys: 0 };
       }
       var schains = route(disc, bdb), src2 = routeChains(disc, bdb);
       var refusedN = Object.keys(ps.refused).reduce(function (a, k) { return a + ps.refused[k]; }, 0);
