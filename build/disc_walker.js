@@ -184,6 +184,257 @@
       y1: r.cy + r.by_ / 2, n: 1, spaceGuid: spaceGuid };
   }
 
+  // ── SPACE-SCHEDULE PLACEMENT (Step 2 PLACE of the geometry-hell fix, 2026-07-10) ──────────
+  // The Java-era generative placer solved fixture placement in Oct-Dec (schedule per space type ×
+  // offset semantics × real room bbox — reproduced a real compile EXACTLY, 43/43, W-SCHED-MINE).
+  // Step 1 mined that MEASURED data into rule_space_schedule/rule_space_type/rule_space_alias/
+  // rule_code_spacing (projected, verbatim). This section is the JS transcription of the PROVEN
+  // Java semantics (SpaceScheduleDAO.resolveQty/computePosition + MEPDevicePlacer.distributeInstance
+  // + PlacementCollectorVisitor's FLOOR half-height lift and co-location spacing) — not a new design.
+  // OPT-IN via dwWalk(..., {schedule:true}) so every pre-existing walk path stays byte-identical;
+  // the default flips only after the DX walkback RSGT (W1-W5) numbers are reviewed.
+  // LOD400 LAW (WalkerDoctrine §11, UNBREAKABLE): a schedule device with NO real mesh
+  // (geometry_hash NULL, stamped by the miner) is REFUSED with a §-log — never a fallback shape.
+
+  // All REAL spaces of a building. Two real sources, tried in order:
+  //  (a) elements_meta IfcSpace rows (piece-1 re-extraction path, e.g. Clinic — 269 spaces);
+  //  (b) spatial_structure IfcSpace rows WITH measured center/size (older DAGCompiler tessellation
+  //      path, e.g. Duplex — 21 real rooms). Synthetic flood-fill rows (guid 'RM_%' / name '≈',
+  //      compile_rooms.py heuristic, ~5/21 recall) are EXCLUDED — they are guesses, not extraction.
+  // LongName (the space-TYPE key, e.g. 'Bathroom 1') rides in element_name for (a) and in
+  // object_type for (b) (stamped verbatim from the source IFC by scripts/stamp_space_longnames.py).
+  function spacesOf(bdb) {
+    var out = _rows(bdb, "SELECT m.guid guid, COALESCE(m.element_name, m.guid) label, m.storey storey, " +
+      "t.center_x cx, t.center_y cy, t.center_z cz, COALESCE(t.bbox_x,0) bx, COALESCE(t.bbox_y,0) by_, " +
+      "COALESCE(t.bbox_z,0) bz FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid " +
+      "WHERE m.ifc_class='IfcSpace'").filter(function (s) { return s.bx > 0.1 && s.by_ > 0.1; });
+    if (!out.length) {
+      out = _rows(bdb, "SELECT guid, COALESCE(NULLIF(object_type,''), name) label, name room_no, " +
+        "parent_guid, center_x cx, center_y cy, center_z cz, COALESCE(size_x,0) bx, " +
+        "COALESCE(size_y,0) by_, COALESCE(size_z,0) bz FROM spatial_structure WHERE type='IfcSpace' " +
+        "AND guid NOT LIKE 'RM\\_%' ESCAPE '\\' AND name NOT LIKE '%≈%'")
+        .filter(function (s) { return s.bx > 0.1 && s.by_ > 0.1; });
+      var storeyName = {};
+      _rows(bdb, "SELECT guid, name FROM spatial_structure WHERE type='IfcBuildingStorey'")
+        .forEach(function (r) { storeyName[r.guid] = r.name; });
+      out.forEach(function (s) { s.storey = storeyName[s.parent_guid] || 'Unknown'; });
+    }
+    return out.map(function (s) {
+      return { guid: s.guid, label: s.label, storey: s.storey,
+        x0: s.cx - s.bx / 2, x1: s.cx + s.bx / 2, y0: s.cy - s.by_ / 2, y1: s.cy + s.by_ / 2,
+        z0: s.cz - s.bz / 2, z1: s.cz + s.bz / 2 };
+    });
+  }
+
+  // LongName → schedule space_type: normalize (upper, spaces→_, strip trailing numbering — the
+  // same normalization H6's deriveSpaceType applied), then direct rule_space_type match, then
+  // rule_space_alias ('LIVING_ROOM'→LIVING, 'HALLWAY'→CORRIDOR, ...). null = no schedule (skip).
+  function _spaceTypeFor(disc, label) {
+    if (!label) return null;
+    var norm = String(label).toUpperCase().replace(/[\s]+/g, '_').replace(/[_\s]*\d+$/, '').trim();
+    if (!norm) return null;
+    var db = _dbFor(disc);
+    if (_rows(db, "SELECT 1 FROM rule_space_type WHERE value='" + _esc(norm) + "'").length) return norm;
+    var a = _rows(db, "SELECT space_type_id st FROM rule_space_alias WHERE alias='" + _esc(norm) + "'");
+    return a.length ? a[0].st : null;
+  }
+
+  // Ported VERBATIM from SpaceScheduleDAO.resolveQty (§6.12.4 §8): per_area first;
+  // orderQty 99/blank → qty_normal, 0 → qty_max, N → budget cap; always ≥ qty_min.
+  function _resolveQty(orderQty, e, areaM2) {
+    var qty;
+    if (e.per_area_normal > 0) qty = Math.ceil(areaM2 * e.per_area_normal);
+    else if (orderQty === 0) qty = e.qty_max;
+    else if (orderQty === 99 || orderQty < 0) qty = e.qty_normal;
+    else qty = orderQty;
+    return Math.max(e.qty_min, qty);
+  }
+
+  // Ported from SpaceScheduleDAO.computePosition: x by x_ref (MIN edge / MAX edge / CENTER),
+  // y by y_ref, z by z_rule (FLOOR: z0+off, CEILING: z1-off, MID: middle).
+  function _schedBasePos(sp, e) {
+    var px = (sp.x0 + sp.x1) / 2, py = (sp.y0 + sp.y1) / 2, pz = (sp.z0 + sp.z1) / 2;
+    if (e.x_ref === 'MIN') px = sp.x0 + (e.edge_x_m || 0);
+    else if (e.x_ref === 'MAX') px = sp.x1 - (e.edge_x_m || 0);
+    if (e.y_ref === 'MIN') py = sp.y0 + (e.edge_y_m || 0);
+    else if (e.y_ref === 'MAX') py = sp.y1 - (e.edge_y_m || 0);
+    if (e.z_rule === 'FLOOR') pz = sp.z0 + (e.z_offset_m || 0);
+    else if (e.z_rule === 'CEILING') pz = sp.z1 - (e.z_offset_m || 0);
+    return [px, py, pz];
+  }
+
+  // Ported from MEPDevicePlacer.distributeInstance (qty>1 spreads evenly, spacing len/(n+1))
+  // with ONE deliberate correction the DX walkback witness caught on first run (W3 WALL-HOST/
+  // FACING, 2026-07-10): Java spread along the space's DOMINANT axis, which drags a wall-anchored
+  // rule (x_ref/y_ref MIN|MAX, e.g. WALL_SPACED outlets) OFF its wall into mid-room — Java then
+  // compensated post-hoc with collision-shift + ShimMatcher wall-snap. Here the fixture stays ON
+  // its anchored wall at source: spread runs ALONG the wall (perpendicular to the anchored edge);
+  // only non-anchored rules (CENTER/CENTER, e.g. ceiling grids) use the dominant axis.
+  function _schedDistribute(sp, base, i, total, e) {
+    var wallX = e && (e.x_ref === 'MIN' || e.x_ref === 'MAX');   // anchored to a ±X wall
+    var wallY = e && (e.y_ref === 'MIN' || e.y_ref === 'MAX');   // anchored to a ±Y wall
+    var alongX;
+    if (wallX && !wallY) alongX = false;                          // spread along the wall (Y)
+    else if (wallY && !wallX) alongX = true;                      // spread along the wall (X)
+    else alongX = (sp.x1 - sp.x0) >= (sp.y1 - sp.y0);             // corner/centre → dominant axis
+    var min = alongX ? sp.x0 : sp.y0, len = alongX ? (sp.x1 - sp.x0) : (sp.y1 - sp.y0);
+    var pos = min + (len / (total + 1)) * (i + 1);
+    return alongX ? [pos, base[1], base[2]] : [base[0], pos, base[2]];
+  }
+
+  // Wall-mounted fixtures face INTO the room: yaw from the edge the offset rule anchored to.
+  // Convention: yaw = atan2(dir_y, dir_x) of the facing direction (radians, world XY).
+  function _schedFacing(e) {
+    if (e.x_ref === 'MIN') return 0;                 // on -X wall → faces +X
+    if (e.x_ref === 'MAX') return Math.PI;           // on +X wall → faces -X
+    if (e.y_ref === 'MIN') return Math.PI / 2;       // on -Y wall → faces +Y
+    if (e.y_ref === 'MAX') return -Math.PI / 2;      // on +Y wall → faces -Y
+    return 0;
+  }
+
+  // ── REAL-WALL SNAP for wall-anchored schedule rules (DX walkback W3 finding, 2026-07-10) ──
+  // A space's bbox edge is NOT always a wall (open-plan boundaries, irregular rooms) — anchoring
+  // to the bbox edge left switches/fans floating on wall-less sides. Same doctrine as Java's
+  // ShimMatcher and hostBind: mount on the NEAREST REAL WALL FACE. The fixture keeps its
+  // rule-driven along-wall spread + z; only the mount is corrected to real geometry:
+  //   pos'  = nearest wall's inner face + (device_depth/2 + 10mm) toward the room centre,
+  //   yaw   = the face normal pointing INTO the room, clamped inside the space bbox.
+  // Honest REFUSE-to-snap: no real wall within REACH (1.5m) of the space → keep the bbox-edge
+  // position, return snapped:false (caller logs §SCHED-NOWALL) — never an invented wall.
+  var _SNAP_REACH = 1.5;
+  function _spaceWalls(bdb, sp, geoDb) {
+    // BBOX-INTERSECT selection (a long perimeter wall's CENTER can sit far outside this space —
+    // filtering by center missed real bordering walls) + _trueMidpoint correction (the measured
+    // raw-placement-origin defect on walls, up to 3.12m on Duplex — same fix occupancy() uses).
+    var pad = 0.5;
+    var raw = _rows(bdb, "SELECT m.guid g, t.center_x x, t.center_y y, t.center_z z, " +
+      "COALESCE(t.bbox_x,0) bx, COALESCE(t.bbox_y,0) by_, COALESCE(t.bbox_z,0) bz, " +
+      "COALESCE(t.rotation_x,0) rx, COALESCE(t.rotation_y,0) ry, COALESCE(t.rotation_z,0) rot " +
+      "FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid WHERE m.ifc_class LIKE '%Wall%' " +
+      "AND (t.center_x + COALESCE(t.bbox_x,0)/2) >= " + (sp.x0 - pad) +
+      " AND (t.center_x - COALESCE(t.bbox_x,0)/2) <= " + (sp.x1 + pad) +
+      " AND (t.center_y + COALESCE(t.bbox_y,0)/2) >= " + (sp.y0 - pad) +
+      " AND (t.center_y - COALESCE(t.bbox_y,0)/2) <= " + (sp.y1 + pad));
+    return raw.map(function (w) {
+      var mid = _trueMidpoint(bdb, w.g, { x: w.x, y: w.y, z: w.z, rx: w.rx, ry: w.ry, rot: w.rot }, geoDb);
+      return { x: mid.verified ? mid.x : w.x, y: mid.verified ? mid.y : w.y, bx: w.bx, by_: w.by_,
+        z: w.z, bz: w.bz };
+    });
+  }
+  function _snapToWall(spWalls, sp, pos, halfDepth) {
+    var best = null, bestD = Infinity;
+    spWalls.forEach(function (w) {
+      // the wall must EXIST at the fixture's mounting height — a downstand/bulkhead segment
+      // whose z-band misses the fixture is not a mount (W3 finding: switches snapped to
+      // above-door wall segments that stop 1.5m over their heads).
+      if (w.bz > 0 && (pos[2] < w.z - w.bz / 2 - 0.05 || pos[2] > w.z + w.bz / 2 + 0.05)) return;
+      var dx = Math.max(Math.abs(pos[0] - w.x) - w.bx / 2, 0);
+      var dy = Math.max(Math.abs(pos[1] - w.y) - w.by_ / 2, 0);
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < bestD) { bestD = d; best = w; }
+    });
+    // No wall in reach of the rule's anchor point = the rule anchored to an OPEN boundary
+    // (open-plan edge). A wall-mounted device still needs A wall: relocate to the nearest
+    // REAL z-valid wall of the room (any distance inside it), reported via moved. Refuse
+    // only when the room has no z-valid wall at all — never an invented mount.
+    if (!best) return { snapped: false, pos: pos, yaw: null };
+    var moved = bestD > _SNAP_REACH ? bestD : 0;
+    var cx = (sp.x0 + sp.x1) / 2, cy = (sp.y0 + sp.y1) / 2;
+    var standoff = (halfDepth || 0.05) + 0.01;
+    var p = pos.slice(), yaw;
+    if (best.bx >= best.by_) {                       // wall runs along X → mount on a ±Y face
+      var faceY = (cy >= best.y) ? (best.y + best.by_ / 2) : (best.y - best.by_ / 2);
+      var dirY = (cy >= best.y) ? 1 : -1;
+      p[1] = faceY + dirY * standoff;
+      p[0] = Math.min(Math.max(p[0], Math.max(best.x - best.bx / 2, sp.x0)), Math.min(best.x + best.bx / 2, sp.x1));
+      yaw = dirY > 0 ? Math.PI / 2 : -Math.PI / 2;
+    } else {                                          // wall runs along Y → mount on a ±X face
+      var faceX = (cx >= best.x) ? (best.x + best.bx / 2) : (best.x - best.bx / 2);
+      var dirX = (cx >= best.x) ? 1 : -1;
+      p[0] = faceX + dirX * standoff;
+      p[1] = Math.min(Math.max(p[1], Math.max(best.y - best.by_ / 2, sp.y0)), Math.min(best.y + best.by_ / 2, sp.y1));
+      yaw = dirX > 0 ? 0 : Math.PI;
+    }
+    p[0] = Math.min(Math.max(p[0], sp.x0 + 0.02), sp.x1 - 0.02);
+    p[1] = Math.min(Math.max(p[1], sp.y0 + 0.02), sp.y1 - 0.02);
+    return { snapped: true, pos: p, yaw: yaw, moved: moved };
+  }
+
+  // Place one discipline's scheduled devices into every REAL space (or one space via
+  // opts.spaceGuid). Returns { placements, spaces, skippedSpaces, refused } — refused =
+  // LOD400-law refusals (no real mesh), honest and counted, never substituted.
+  function placeSchedule(disc, bdb, opts) {
+    opts = opts || {};
+    if (!_rows(_dbFor(disc), "SELECT 1 FROM sqlite_master WHERE type='table' AND name='rule_space_schedule'").length) {
+      return { placements: [], spaces: -1, spacesUsed: 0, skippedSpaces: [], refused: {},
+        noRules: 'rules DB has no rule_space_schedule (run build/project_rule_space_schedule.py)' };
+    }
+    var orderQty = (opts.orderQty == null) ? 99 : opts.orderQty;
+    var all = spacesOf(bdb);
+    if (opts.spaceGuid) all = all.filter(function (s) { return s.guid === opts.spaceGuid; });
+    var out = [], refused = {}, skipped = [], used = 0;
+    all.forEach(function (sp) {
+      var stype = _spaceTypeFor(disc, sp.label);
+      if (!stype) { skipped.push(sp.label); return; }
+      var sched = _rows(_dbFor(disc), "SELECT * FROM rule_space_schedule WHERE disc='" + _esc(disc) +
+        "' AND space_type_id='" + _esc(stype) + "'");
+      if (!sched.length) return;
+      used++;
+      var area = (sp.x1 - sp.x0) * (sp.y1 - sp.y0);
+      var perAxisCount = {};                          // co-location spreader (Java GAP-10 port)
+      var spWalls = null;                             // real walls near this space (lazy, once)
+      sched.forEach(function (e) {
+        var qty = _resolveQty(orderQty, e, area);
+        if (qty <= 0) return;
+        if (!e.geometry_hash) {                       // LOD400 LAW: no real mesh → REFUSE
+          refused[e.device_id] = (refused[e.device_id] || 0) + qty;
+          console.log(TAG + ' §LOD400-REFUSE ' + disc + '/' + e.device_id + ' ×' + qty + ' in ' +
+            sp.label + ' — no real mesh in the catalog; refused, never a fallback shape');
+          return;
+        }
+        var base = _schedBasePos(sp, e);
+        var hz = (e.dim_z_m || 0.1) / 2;
+        var wallAnchored = (e.x_ref === 'MIN' || e.x_ref === 'MAX' || e.y_ref === 'MIN' || e.y_ref === 'MAX');
+        for (var i = 0; i < qty; i++) {
+          var pos = (qty === 1) ? base.slice() : _schedDistribute(sp, base, i, qty, e);
+          var yaw = _schedFacing(e);
+          if (wallAnchored) {                          // W3 finding: mount on a REAL wall face,
+            if (spWalls === null) spWalls = _spaceWalls(bdb, sp, opts.geoDb);   // not the space bbox edge
+            var snap = _snapToWall(spWalls, sp, pos, (e.dim_y_m || e.dim_x_m || 0.1) / 2);
+            if (snap.snapped) {
+              pos = snap.pos; yaw = snap.yaw;
+              if (snap.moved) console.log(TAG + ' §SCHED-RELOC ' + disc + '/' + e.device_id + ' in ' +
+                sp.label + ' — rule anchored to an OPEN boundary; mounted on the nearest REAL wall ' +
+                snap.moved.toFixed(2) + 'm away (real geometry, never an invented mount)');
+            } else console.log(TAG + ' §SCHED-NOWALL ' + disc + '/' + e.device_id + ' in ' + sp.label +
+              ' — room has no z-valid real wall; kept rule position (never an invented wall)');
+          }
+          if (e.host_surface === 'FLOOR') pos[2] += hz;      // W-FRIDGE-Z: bottom on floor
+          // co-located same-position devices (e.g. two CEILING_CENTER classes): spread by the
+          // measured code spacing (rule_code_spacing max_spacing/2), 0.5m fallback — Java GAP-10.
+          var key = pos[0].toFixed(2) + '_' + pos[1].toFixed(2) + '_' + pos[2].toFixed(2);
+          var idx = (perAxisCount[key] = (perAxisCount[key] || 0) + 1) - 1;
+          if (idx > 0) {
+            var spc = _rows(_dbFor(disc), "SELECT max_spacing_m m FROM rule_code_spacing WHERE " +
+              "element_type='" + _esc(e.device_id) + "' AND (space_type='" + _esc(stype) + "' OR space_type='ANY') " +
+              "ORDER BY CASE WHEN space_type='" + _esc(stype) + "' THEN 0 ELSE 1 END LIMIT 1");
+            var step = (spc.length && spc[0].m > 0) ? spc[0].m / 2 : 0.5;
+            if ((sp.x1 - sp.x0) >= (sp.y1 - sp.y0)) pos[0] = Math.min(pos[0] + idx * step, sp.x1 - 0.05);
+            else pos[1] = Math.min(pos[1] + idx * step, sp.y1 - 0.05);
+          }
+          out.push({ disc: disc, ifc_class: 'IfcFlowTerminal', device: e.device_id,
+            x: pos[0], y: pos[1], z: pos[2], storey: sp.storey, spaceGuid: sp.guid,
+            space: sp.label, rot: yaw,
+            bx: e.dim_x_m || null, by: e.dim_y_m || null, bz: e.dim_z_m || null,
+            geometry_hash: e.geometry_hash, element_name: e.element_name,
+            prim: _primFor('IfcFlowTerminal'),
+            prov: 'sched:space-schedule:' + e.placement_rule, src: e.standard || '' });
+        }
+      });
+    });
+    return { placements: out, spaces: all.length, spacesUsed: used, skippedSpaces: skipped, refused: refused };
+  }
+
   // Reduce a discipline's rule_placement rows to ONE representative per ifc_class
   // (median spacing + dz) — on a new building we have no storey mapping, so we apply
   // the measured cadence once per target storey rather than the Terminal's per-storey rows.
@@ -1117,6 +1368,31 @@
   }
   function dwWalk(disc, bdb, buildingName, opts) {
     if (!_ready) { console.warn(TAG + ' not initialised'); return { disc: disc, refused: true, reason: 'engine not initialised', placed: 0 }; }
+    // §SCHED-WALK (Step 2 PLACE, opt-in): schedule-driven per-space placement — the transcribed
+    // Java semantics over the Step-1 mined rules. Fixture generation ONLY; routing (route/
+    // routeChains) still runs below-shape via the same calls. Every non-schedule call path is
+    // byte-identical (this returns before any legacy placement code is touched).
+    if (opts && opts.schedule) {
+      var ps = placeSchedule(disc, bdb, opts);
+      if (ps.noRules) {
+        console.log(TAG + ' §WALK-SCHED disc=' + disc + ' bldg=' + buildingName + ' REFUSE ' + ps.noRules);
+        return { disc: disc, refused: true, reason: ps.noRules, placed: 0 };
+      }
+      if (!ps.spaces) {
+        console.log(TAG + ' §WALK-SCHED disc=' + disc + ' bldg=' + buildingName +
+          ' REFUSE no-real-spaces (schedule walk needs extracted IfcSpace rows — Terminal-class fallback is the legacy walk)');
+        return { disc: disc, refused: true, reason: 'no real spaces for schedule walk', placed: 0 };
+      }
+      var schains = route(disc, bdb), src2 = routeChains(disc, bdb);
+      var refusedN = Object.keys(ps.refused).reduce(function (a, k) { return a + ps.refused[k]; }, 0);
+      console.log(TAG + ' §WALK-SCHED disc=' + disc + ' bldg=' + buildingName + ' placed=' + ps.placements.length +
+        ' spaces=' + ps.spacesUsed + '/' + ps.spaces + ' lod400Refused=' + refusedN +
+        (Object.keys(ps.refused).length ? ' [' + Object.keys(ps.refused).map(function (k) { return k + '×' + ps.refused[k]; }).join(' ') + ']' : '') +
+        ' skippedSpaces=' + ps.skippedSpaces.length);
+      return { disc: disc, refused: false, placed: ps.placements.length, placements: ps.placements,
+        schedule: { spaces: ps.spaces, spacesUsed: ps.spacesUsed, skippedSpaces: ps.skippedSpaces, lod400Refused: ps.refused },
+        chains: schains, chainSegs: src2.segs, chainByRule: src2.byRule, storeys: 0 };
+    }
     var reps = repRules(disc);
     // §SPACE-SCOPED piece 2: opts.spaceGuid narrows the walk to ONE real IfcSpace's own boundary instead
     // of the whole building's storeys — same place()/occupancy() pipeline, just a 1-element "storeys" list
@@ -1256,6 +1532,7 @@
   var API = { dwInit: dwInit, dwOpen: dwOpen, dwBorrow: dwBorrow, dwBorrowFile: dwBorrowFile, dwWalk: dwWalk, assemble: assemble, connectorFor: connectorFor, connectorEnrich: connectorEnrich, substrate: substrate, place: place, hostBind: hostBind,
     route: route, routeChains: routeChains, gate: gate, repRules: repRules, order: order, clearance: clearance,
     hostWalls: hostWalls, countPer: countPer, occupancy: occupancy, defaultSeed: defaultSeed, spaceAsStorey: spaceAsStorey,
+    spacesOf: spacesOf, placeSchedule: placeSchedule,
     _shimForDisc: _shimForDisc, _shimForFixture: _shimForFixture, _loadRuleShims: _loadRuleShims,
     _trueMidpoint: _trueMidpoint,
     disciplines: disciplines, loadedFile: loadedFile, _ready: function () { return _ready; } };
