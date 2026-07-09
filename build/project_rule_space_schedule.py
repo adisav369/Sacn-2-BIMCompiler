@@ -36,6 +36,15 @@ NON-INVENT: every quantity/offset/dim/hash is copied or measured from real sourc
 devices without connector rows fall back to the SAME anchor_end mapping Java used; nothing
 is fabricated, meshless devices are surfaced as a REFUSE list, never silently defaulted.
 
+BUILDING_CLASS SEMANTICS (Watchdog follow-up 1b, 2026-07-10): the building_class column stamped
+on every projected row is the PROJECTION-TARGET class DB (duplex_rules.db = 'residential'), i.e.
+provenance of the projection run — it is NOT a per-space-type classification claim. The source has
+no residential/non-residential axis; the only per-type class signal is ad_space_type.category
+(CIRCULATION/EXTERIOR/HABITABLE/SERVICE/UTILITY/UNKNOWN), carried VERBATIM into
+rule_space_type.category. Space types with non-residential vocabulary (CONCOURSE, GATE, ...) sit
+in the projection because ad_space_type carries them; they stay dormant unless a real room's
+LongName resolves to them via rule_space_alias.
+
 Usage: project_rule_space_schedule.py <rules_db> <building_class>
 """
 import array
@@ -179,7 +188,7 @@ def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONE
             building_class TEXT, provenance TEXT);
         DROP TABLE IF EXISTS rule_space_type;
         CREATE TABLE rule_space_type(value TEXT PRIMARY KEY, ceiling_m REAL,
-            building_class TEXT, provenance TEXT);
+            category TEXT, building_class TEXT, provenance TEXT);
         DROP TABLE IF EXISTS rule_space_alias;
         CREATE TABLE rule_space_alias(alias TEXT, space_type_id TEXT,
             building_class TEXT, provenance TEXT);
@@ -218,11 +227,13 @@ def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONE
         n += 1
 
     n_types = 0
-    for value, mm in erp.execute(
-            "SELECT Value, COALESCE(default_ceiling_height_mm, 0) FROM ad_space_type "
+    for value, mm, category in erp.execute(
+            "SELECT Value, COALESCE(default_ceiling_height_mm, 0), category FROM ad_space_type "
             "WHERE is_active=1"):
-        cur.execute("INSERT INTO rule_space_type VALUES (?,?,?,?)",
-                    (value, (mm / 1000.0) if mm and mm > 0 else 2.7, building_class,
+        # category = ad_space_type.category VERBATIM (incl. NULL) — the source's only per-type
+        # class signal; building_class = projection target only (see module docstring).
+        cur.execute("INSERT INTO rule_space_type VALUES (?,?,?,?,?)",
+                    (value, (mm / 1000.0) if mm and mm > 0 else 2.7, category, building_class,
                      "projected:disc_patterns.ad_space_type"))
         n_types += 1
 

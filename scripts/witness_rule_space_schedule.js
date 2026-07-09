@@ -31,6 +31,15 @@
  *                       Terminal's class DB would sit as a landmine ready to misapply residential
  *                       quantities the day Terminal gains real spaces. The walker REFUSEs honestly
  *                       via its no-table guard; this claim keeps the boundary from re-blurring.
+ *   M7 CATEGORY-VERBATIM — (Watchdog follow-up 1b, 2026-07-10: rule_space_type tagged all 41
+ *                       space types building_class='residential' though several are non-residential
+ *                       vocabulary.) Proves the fix: every rule_space_type.category byte-equals the
+ *                       source ad_space_type.category (the source's ONLY per-type class signal —
+ *                       no residential/airport axis exists to copy), >1 distinct category present,
+ *                       and the 5 flagged types (CONCOURSE, GATE, DEPARTURE_LOUNGE, ASSEMBLY_HALL,
+ *                       CLASSROOM) each carry their source category. building_class remains the
+ *                       PROJECTION-TARGET class (see project_rule_space_schedule.py docstring),
+ *                       not a per-type claim.
  */
 'use strict';
 var fs = require('fs');
@@ -152,6 +161,29 @@ var KNOWN_NO_MESH = ['DATA_POINT', 'EMERGENCY_LIGHT', 'WASHING_TAP'];
     'terminal_rules.db has ' + leak.length + ' schedule tables — residential-provenance schedule ' +
     'stays OUT of the terminal class DB (walker no-table guard REFUSEs honestly; no dormant landmine)');
   te.close();
+
+  log(''); log('─── M7 CATEGORY-VERBATIM ───');
+  var srcCat = {};
+  rows(erp, 'SELECT Value, category FROM ad_space_type WHERE is_active=1')
+    .forEach(function (r) { srcCat[r.Value] = r.category; });
+  var typeRows = rows(rules, 'SELECT value, category FROM rule_space_type');
+  var catBad = [], catSet = {};
+  typeRows.forEach(function (r) {
+    if (!(r.value in srcCat)) { catBad.push(r.value + ':not-in-source'); return; }
+    if (r.category !== srcCat[r.value]) { catBad.push(r.value + ':' + r.category + '≠' + srcCat[r.value]); }
+    catSet[r.category] = true;
+  });
+  var FLAGGED = ['CONCOURSE', 'GATE', 'DEPARTURE_LOUNGE', 'ASSEMBLY_HALL', 'CLASSROOM'];
+  var flaggedOk = FLAGGED.every(function (v) {
+    var row = typeRows.filter(function (r) { return r.value === v; })[0];
+    if (row) log('§SM flagged ' + v + ' → category=' + row.category + ' (source-verbatim)');
+    return row && row.category === srcCat[v];
+  });
+  assert('M7 CATEGORY-VERBATIM', catBad.length === 0 && flaggedOk && Object.keys(catSet).length > 1,
+    typeRows.length + ' rule_space_type rows carry category VERBATIM from ad_space_type.category (' +
+    catBad.length + ' drift' + (catBad.length ? ': ' + catBad.join(', ') : '') + '); ' +
+    Object.keys(catSet).sort().join('/') + ' present; the 5 Watchdog-flagged types carry their source ' +
+    'category — building_class stays the projection-target label, never a per-type class claim');
 
   log('');
   log('§SM SUMMARY: the Java-era measured schedule (188 rows, 37+ space types) + offset semantics are now');
