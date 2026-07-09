@@ -14,6 +14,113 @@ pitch only arranges locally. We have no rooms (IfcSpace=0 in ALL extracted.db), 
 analogue is n_measured scaled by floor-area ratio.
 ```
 
+**⚠ BORDER CONTROL — do this check FIRST, before any other step, every session that touches this card
+(user directive, 2026-07-09 PM, written after real repeated confusion this same session — see below):**
+1. **In-scope files, full stop: the 8 `<Building>_ARC.db` files + the shared `mesh.db`, all living under
+   `modeller/` space only.** Nothing else is this task's business.
+2. **Never touch anything under `viewer/`** — not `viewer/import_worker.js`, not
+   `viewer/import_db_builder.js`, not `viewer/streaming.js`, nothing in that tree. The Modeller and Viewer
+   are permanently separate surfaces (existing doctrine, `project_bonsai_kernel` memory) — this task doubles
+   down on it: zero drift into Viewer code, even to "borrow" or "reference" its engine.
+3. **Never touch already-working Modeller loader code either** (`real_geometry.js`, `bonsai_library.js`,
+   `arc_editable.js`, `str_walker_outliner.js`'s fetch/render logic) unless a check PROVES it's broken —
+   these are the proven, working substrate; USE them, don't "fix" them on spec.
+4. **If a real code change is ever needed on any file this task doesn't own outright: COPY IT FIRST, edit
+   only the copy, never the original** — no exceptions, no "just this once."
+5. **Why this is written down, not assumed:** this exact session drifted THREE times before catching itself
+   — attempted to edit `viewer/import_db_builder.js` in place (caught, copy made instead), then made the
+   copy of the WRONG file (`extractIFC2DB.js`, a parallel Node reimplementation, not the real importer) after
+   already being told to use the real one, then had to be corrected a second time before landing on the
+   right file. All three were avoidable with a 30-second border-control check before the first edit attempt,
+   not after. **Next session: run this checklist BEFORE opening any file, not as damage control after.**
+
+> ▶ **RESUME HERE (2026-07-09 PM — supersedes the pointer below; that one is still valid history/context,
+> just not the entry point). Goal for the next session, stated by the user verbatim: "finish the DISC walk
+> correctly on DX/TE extracting/refining further the present rules, resolving issues of still breaking from
+> their extracted DB reference." DX=Duplex, TE=Terminal. Read `EMBED_8_ARC_BUILDINGS_MESH_DB.md`'s own new
+> resume pointer FIRST — this session's mesh-consolidation work changed BOTH Duplex's and Terminal's
+> underlying `component_geometries`/`element_transforms` data (true-dup + rotation-consolidation + orphan
+> removal), so any disc_walker/str_walker test from here on must run against the NEW consolidated
+> `Duplex_ARC.db`/`Terminal_ARC.db` + shared `mesh.db` (in `/tmp/wt-embed-8-arc`, or rebuilt via
+> `embed8_scripts/finalize_all_8.js` if that worktree is gone), not the old single-file/split-pair originals.**
+>
+> **1. ✅ Real black-box STR walk RUN on Terminal (`embed8_scripts/str_walk_terminal_blackbox.js`) — first
+> actual disc_walker test against the NEW consolidated substrate, no ground-truth peeking during the walk
+> (user's explicit "RosettaStoneStrategy" black-box rule — never forget it, applies to every future walk
+> test too, not just this one).** Real, substantial result: `dwWalk('STR', Terminal_ARC.db, 'Terminal',
+> {geoDb: mesh.db})` against `terminal_rules.db`'s measured STR `rule_placement` rows (columns `ref_kind=
+> 'grid'` 30/56/30/30 per storey, beams `ref_kind='storey'` 20/119/126/146, roof/canopy members `ref_kind=
+> 'datum'` 284 — all measured, not invented) placed **1,700 STR elements** (330 IfcColumn, 685 IfcBeam, 685
+> IfcMember) across the real 14 storeys (genuine names: "Aras 02", "GROUND FLOOR LEVEL", etc. — confirms it
+> read the real ARC substrate). `§DW-CAP` backstop fired as designed (logs `placed=N of M, envelope is the
+> ceiling` per storey/class — the documented THE-FIX behavior, not a bug).
+>
+> **2. ⛔ OPEN — STR per-storey containment gap, ~20%, root cause understood, NOT fixed.** Global-envelope
+> check (all storeys combined): 162/1700 outside. The METHODOLOGICALLY CORRECT check — per-storey envelope
+> (only compare a placement against its OWN storey's real ARC footprint, mirroring this file's own
+> D-ENVELOPE witness pattern) — is actually WORSE: **335/1700 (~20%) outside their own storey's footprint**
+> (e.g. a column at x=153 on "Aras 02" whose real footprint only spans x∈[101.1,150.1]). Root cause: the
+> column/beam GRID is derived globally/aggregately then applied UNIFORMLY to every storey, but Terminal is a
+> real stepped/tiered building (upper floors set back, wings that don't exist on every level) — a one-size
+> grid inevitably overshoots on a storey smaller than whatever it was derived from. **This is NOT the
+> rotation-convention bug (item 3 below), NOT corrupted data, NOT the already-fixed hostBind/occupancy
+> true-midpoint bugs** — it's a new, distinct scoping gap in STR's array-density placement specifically.
+> **User's call: 80% in-footprint clears the Pareto bar for now ("refinement later") — do NOT re-open this
+> as urgent, but it IS the concrete target when "refining the present rules" is picked up**, per this
+> session's closing instruction. Fix direction (not yet speced in detail): derive/scale the grid PER-STOREY
+> from that storey's own real ARC footprint area-ratio (mirrors THE FIX section's own established
+> `n_measured × area_ratio` pattern above, just needs a PER-STOREY area term instead of one global one), or
+> clip placements to their own storey's occupancy envelope as a backstop (cheaper, less correct).
+>
+> **3. ⛔ OPEN — A genuine, PRE-EXISTING rotation-convention mismatch in `_trueMidpoint()`/`_eulerMat3()`,
+> found this session by numeric verification (not reasoning), NOT YET FIXED, relevant to MEP not STR.**
+> `_eulerMat3(rx,ry,rz)` (disc_walker.js's own world-bbox-midpoint reconstruction, used by `hostBind`'s
+> SIDE-mount branch and `occupancy()`) computes a DIFFERENT rotation than the ACTUAL production renderer
+> (`arc_editable.js`/`bonsai_library.js`'s `place()`, confirmed via direct source read at
+> `modeller/arc_editable.js:135` — `_euler.set(el.rotX, el.rotZ, -el.rotY)`, i.e. THREE's Euler(rotX,
+> rotZRad, -rotY) XYZ-order convention). **The two conventions happen to agree** for (a) a locally-symmetric
+> mesh bbox under ANY rotation (trivial/degenerate — most real extracted elements are NOT locally symmetric,
+> their local origin is the IFC placement ANCHOR not the centroid, confirmed by `real_geometry.js`'s own
+> `recenter()`/`anchorOffset` comments), and (b) an ASYMMETRIC bbox under Z-ONLY cardinal rotation
+> specifically (proven: this is why the existing `witness_true_midpoint.js` T1 passed — it only ever tested
+> a Z-rotated wall). **They MATERIALLY DIVERGE (several metres on realistic geometry) for any real rotation_y
+> or rotation_x case with an asymmetric bbox** — verified numerically both synthetically and against REAL
+> Terminal data: **325 real Terminal elements carry non-zero rotation_y** (`IfcBuildingElementProxy` 242,
+> `IfcDoor` 36, `IfcFurniture` 43, `IfcWindow` 4 — confirmed NOT the roof/canopy IfcPlate mass, which per user
+> direction is out-of-scope as a "single signed action, Terminal-centric, unlikely-to-generalize" case, not
+> a walker concern). **Scope: this is a disc_walker.js defect (MEP hostBind/occupancy), separate from item 2
+> above (STR) — it was NOT exercised by the STR walk just run (STR array-density placement doesn't call
+> hostBind/occupancy the same way), but WILL be exercised the moment a Terminal MEP walk runs `hostBind`
+> against a window/door/furniture host with non-zero rotation_y.** Test methodology for whoever fixes this:
+> reconstruct BOTH conventions' world-bbox-corner-midpoint for a realistic ASYMMETRIC local bbox (NOT a
+> synthetic symmetric one — that degenerately agrees under any rotation and will falsely look fixed) at the
+> real measured rotation_y values above; the render convention (`arc_editable.js`'s, confirmed correct via
+> direct production-code read) is the one to converge `_eulerMat3` toward, not the reverse.
+>
+> **4. Cross-building STR "science" check (user requested, Pareto-satisfied, not exhaustive) —
+> SampleCastle's REAL STR data** (`deploy/buildings/SampleCastle_extracted.db`, NOT the ARC-only resident —
+> 23 real IfcColumn, 174 IfcBeam, 9 IfcMember, genuinely independent of Terminal's mined rules): columns hug
+> walls tightly (median 0.03m, max 0.26m from nearest wall centreline — real load-path/space-efficiency
+> convention, columns embedded in wall thickness), beams span more freely in-plan (max 3.12m from any wall —
+> correct, beams connect supports across open space) but track slab elevation tightly (median 0.14m). This
+> independently confirms (not just Terminal's own mined pattern) `terminal_rules.db`'s own `ref_kind='grid'`
+> (columns) vs `ref_kind='storey'` (beams) distinction is measuring something real, not an artifact. Two
+> buildings agreeing was judged sufficient (Pareto) — no further cross-building check requested or needed.
+>
+> **5. NEXT (in order, per user's "STR then MEP" sequencing + the closing ask):** (a) when picked back up,
+> decide whether to fix item 2 (STR per-storey scoping) or item 3 (rotation-convention) first — item 3 has
+> the larger blast radius (any MEP hostBind/occupancy call on a rotation_y host) so is likely higher-value;
+> (b) run the SAME black-box STR walk methodology against **Duplex** (`Duplex_ARC.db`, the NEWLY-consolidated
+> copy — Duplex's own rotation-consolidation touched 18 elements/15 rows, verify the walk still behaves
+> correctly against that changed data, not assumed); (c) THEN start MEP (ELEC/PLB/ACMV/FP) black-box walks on
+> both DX and TE, which is where item 3's rotation gap actually bites; (d) re-run the existing regression
+> suite (§DWG/§DXG/W-DWWALK-HOSTBIND/etc., all listed earlier in this file) against the NEW consolidated data
+> to confirm nothing already-proven silently broke from the mesh-consolidation changes themselves — this has
+> NOT been done yet, existing witnesses still point at the OLD Terminal_meta.db/Terminal_geo.db pair (deleted
+> from the worktree) and would need repointing at the new `Terminal_ARC.db`/`mesh.db` shared-file shape.
+>
+> ---
+>
 > ▶ **RESUME HERE (2026-07-09, supersedes the 2026-06-30 pointer below — that work is old/settled, see §BUG-A
 > sections near the end of this file for full detail):**
 > - **Bug B (render never applied hostBind's yaw) — SHIPPED, bim-ootb PR #717, OPEN NOT MERGED.** Confirm merge
@@ -50,8 +157,12 @@ analogue is n_measured scaled by floor-area ratio.
 >     place()/hostBind); the open item's framing was imprecise here. No fix applicable, nothing to scope.
 >   Full regression: 11 existing DW witness files, 0 fail (§DWG 49, §DXG 12, density 43, hostbind-agnostic 6,
 >   true-midpoint 21, shim-select 6, elec-hostbind 5, dwwalk-hostbind 6, walkback-mep 9, generalize-xbuild 7,
->   rule-connector 4). `scripts/witness_hostbind_rotation.js`'s 4 fails are PRE-EXISTING (Bug B, unrelated —
->   confirmed via `git stash` baseline before touching this item) — not a regression from this fix.
+>   rule-connector 4). `scripts/witness_hostbind_rotation.js`'s 4 fails are PRE-EXISTING and UNRELATED (confirmed
+>   via `git stash` baseline before touching this item) — CORRECTION (independent reviewer session, 2026-07-09):
+>   NOT Bug B/PR #717 as first attributed here. `DW._hostAxis` (the cardinal-swap world-run-axis fix this witness
+>   tests, R1-R4) does not exist in `disc_walker.js` at all — a separate same-day thread attempted it, found it
+>   disproven, and correctly reverted it, leaving this witness failing against the reverted (absent) function.
+>   Same topic (rotation/yaw), different mechanism/file than PR #717 (render-side, never applies hostBind's yaw).
 > - **✅ item 2 (VENT_WINDOW_SHIM raw-artifact check) DONE 2026-07-09 (part of the same W-OCC-TRUE-MIDPOINT pass):**
 >   confirmed — it WAS an artifact. SampleCastle is mesh-backed (unlike Terminal), so the check didn't need a
 >   Terminal mesh recovery. All 7 grille-associated windows carry a consistent, tight (MAD=0) true-midpoint Z
@@ -67,13 +178,33 @@ analogue is n_measured scaled by floor-area ratio.
 >   "VENT" doesn't match any real discipline code, so this percept was never live-wired — inert until that's done).
 >   XY was NOT touched (no XY defect ever measured on point-hosts — same non-overfit scope discipline, now
 >   explicit in the code comment). Regression: same 11-file suite, 0 fail.
+> - **✅ item 1 (Terminal "data-recovery problem") FALSIFIED + FIXED 2026-07-09 (W-TERMINAL-GEOSPLIT 16/16,
+>   `scripts/witness_terminal_geosplit.js`):** the "no mesh payload exists in any live/committed Terminal DB"
+>   conclusion was reached by testing `deploy/buildings/Terminal_extracted.db` (this repo's own committed copy,
+>   used by the SEPARATE RosettaStone/RSS compiler-gate system — genuinely mesh-free, confirmed exhaustively:
+>   every table checked, cross-referenced against `library/component_library.db` and against
+>   `~/bim-ootb/modeller/Terminal_geo.db` itself, 0 hash overlap with either — that RSS-side file really has no
+>   mesh anywhere) — **but that's the wrong file for the walker.** The LIVE Modeller resident
+>   (`~/bim-ootb/modeller/Terminal_meta.db` + `Terminal_geo.db`, confirmed the current source) splits geometry
+>   across two files because sql.js can't JOIN two independently-opened DB handles — the exact reason
+>   `real_geometry.js`'s `buildGeometryIndex(db, geoDb)` already exists, proven live for Terminal's OWN rendering
+>   since 2026-07-02. `disc_walker.js` never got the same treatment. Fixed: `_trueMidpoint`/`_geomRow`/
+>   `hostBind`/`occupancy`/`_occElements`/`place`/`dwWalk` all take a new OPTIONAL trailing `geoDb` param
+>   (omitted everywhere else → byte-identical old behaviour, confirmed via full regression). With it: **333/333
+>   Terminal walls resolve real mesh** (were 0/333 unverified before); true-midpoint delta reaches **12.69m**
+>   (worse than Duplex's 3.12m or SampleCastle's 1.03m); end-to-end `hostBind` real per-placement shift reaches
+>   **53.46m**, 124/751 placements moved >1m — not a vacuous flag-flip (envelope-outside-count alone doesn't
+>   catch it on a building this size, 75m×57m bbox — same "measure the shift, not just containment" lesson
+>   already on record in `witness_true_midpoint.js`). **Doctrine written:** `docs/internal/WalkerDoctrine.md §12`
+>   — ARC needs no separate gate (same render method as the Viewer, verified); every walked discipline needs a
+>   POST-WALK, INDEPENDENTLY-CODED oracle, never the engine (or a self-reporting Java RSS gate) grading itself.
+>   ⚠ Scope discipline: this is disc_walker/Modeller-side ONLY — `RosettaStoneGateTest.java`/RSS was NOT touched
+>   (a real self-report collusion shape WAS found there, `G1-COUNT`'s `readGenerativeCount()`, but per explicit
+>   user direction it's noted as a known gap, not fixed by editing Java — the JS witness layer is the answer).
 > - **⛔ STILL OPEN, do not report as done:**
->   1. **Terminal containment is now a data-recovery problem, not a walker-code one** — no mesh payload exists in
->      any live/committed Terminal DB (`base_geometries`/`component_geometries` either absent or NULL-vertices
->      everywhere checked); the one candidate mesh-free shortcut (Start/End formula) is FALSIFIED, don't re-try
->      it without new evidence. Only path forward: recover/regenerate the mesh payload.
->   2. **Nothing ported to `~/bim-ootb/modeller/disc_walker.js` yet** — bim-compiler only, per this file's own
->      sequencing rule (fix + witness here first, port after review).
+>   1. **Nothing ported to `~/bim-ootb/modeller/disc_walker.js` yet** — bim-compiler only, per this file's own
+>      sequencing rule (fix + witness here first, port after review). Now covers 3 fixes: hostBind SIDE-mount
+>      true-midpoint, occupancy() true-midpoint + VENT_WINDOW_SHIM re-mine, and the `geoDb` Terminal split.
 > - **Don't re-litigate:** the Start/End (BOM Tack-chain) reconstruction shortcut was tested rigorously across
 >   all 3 mesh-backed buildings and falsified on 2 of them (SampleHouse 7.95m error, SampleCastle 7.85m error) —
 >   it only matched Duplex (0.03m) because of that file's specific authoring history, not a general IFC rule.
