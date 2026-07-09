@@ -55,11 +55,22 @@
 #    STILL OPEN from this item: the DEFAULT-FLIP decision (schedule walk is opt-in today — flipping the
 #    Modeller default is a one-line change, deliberately deferred until the numbers were seen) and
 #    live-browser wiring (~/bim-ootb/modeller disc_walker.js sync), both post-merge follow-ups.
-# 1b. Watchdog follow-up, non-blocking: rule_space_type tags all 41 mined space types
+# 1b. ✅ DONE 2026-07-10 (branch fable/space-type-category-label, W-SCHED-MINE 7/7 incl. new M7
+#    CATEGORY-VERBATIM; regression W-DX-WALKBACK-RSGT 10/10 + W-SHIM-SELECT 6/6 + W-DWWALK-HOSTBIND 6/6
+#    on the re-projected DBs; local commit only — Watchdog pushes/merges.)
+#    Original item — Watchdog follow-up, non-blocking: rule_space_type tags all 41 mined space types
 #    building_class='residential' but several are clearly non-residential vocabulary (CONCOURSE, GATE,
 #    DEPARTURE_LOUNGE, ASSEMBLY_HALL, CLASSROOM). Doesn't affect what shipped (Duplex exercises 4 real
 #    room types; terminal_rules.db carries zero schedule tables) — clean the label in
 #    build/project_rule_space_schedule.py + re-project whenever convenient.
+#    SPEC (2026-07-10, this branch): the SOURCE has no residential/non-residential axis —
+#    ad_space_type.category is the only class signal (CIRCULATION/EXTERIOR/HABITABLE/SERVICE/UTILITY/
+#    UNKNOWN; HABITABLE mixes BEDROOM with GATE/CLASSROOM), so inventing 'airport'/'school' labels would
+#    breach non-invent. Fix: (a) rule_space_type gains `category` copied VERBATIM from
+#    ad_space_type.category; (b) building_class stays but is DOCUMENTED as the projection-target class DB
+#    (duplex=residential), never a per-space-type claim; (c) W-SCHED-MINE gains M7 CATEGORY-VERBATIM —
+#    every rule_space_type.category byte-equals the source, incl. the 5 Watchdog-flagged types. Walker
+#    unaffected (reads rule_space_type only as an existence check, no building_class filter).
 # 2. Terminal (the ultimate: 8 DISCs, no real spaces): schedule walk REFUSEs there by design; its fix is
 #    the no-spaces path (n_measured×area bound + host-conformant placement) measured by the same W-checks
 #    minus W5 (no ground truth). NOT started.
