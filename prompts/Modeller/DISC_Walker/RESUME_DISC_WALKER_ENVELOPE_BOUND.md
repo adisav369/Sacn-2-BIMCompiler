@@ -1,36 +1,38 @@
 # RESUME — disc_walker: area-scaled n_measured + envelope-bound placement (RouteWalker alignment)
 
-# ⏸ PAUSED 2026-07-10 — read this block FIRST if you are Fable5 or any new session near this area
-**This thread is PAUSED, not abandoned, so a Fable5 execution session can pick up prepared work
-(`prompts/G1_COUNT_INDEPENDENT_ORACLE.md`, `prompts/Modeller/DISC_Walker/BIMEYES_NAVIGABILITY_CHECK.md`,
-both committed at `e26406727`) without stepping on this thread. Both those specs were deliberately scoped
-to NOT need anything below — G1-COUNT is Java/RSS-side, zero JS/Modeller file overlap; BIMEyes reads
-`dwWalk()`'s existing output read-only and works off a fresh worktree from `master`, never touching
-`occupancy()`/`place()`/`hostBind()`. If you're executing either of those specs, this section is FYI, not a
-blocker — proceed per your own spec.**
+# ▶▶▶▶ ENTRY POINT (2026-07-10, latest — read this block first, it supersedes everything below as the
+# starting point). Worker session PAUSED (user directive); this session (Sonnet, Watchdog) checkpointed and
+# retires after this update — a FRESH Watchdog reviews this block before anything below is released/executed.
 
-**If you are about to touch `build/disc_walker.js`, `scripts/extractIFC2DB.js`, or anything named
-`space_scoped`/`space_occupancy` — STOP and read this first, real collision risk:**
-- **The shared working tree (NOT a worktree — the actual `~/bim-compiler` checkout) currently has
-  UNCOMMITTED changes**, verified DONE and Watchdog-reviewed (see the ✅ WATCHDOG VERIFICATION entry further
-  down): `build/disc_walker.js` (+113/-19 lines — space-scoped `place()`/`occupancy()`/`hostBind()`,
-  piece 2), `scripts/extractIFC2DB.js` (+41/-1 — real `IfcSpace` extraction, `LongName` fix, storey-
-  aggregates fix, piece 1), plus two untracked witness files (`scripts/witness_space_occupancy_exclusion.js`,
-  `scripts/witness_space_scoped_walk.js`). **None of this is committed to `master` yet.**
-- **A fresh `git worktree` branched off `master` (as both Fable5 specs correctly instruct) will NOT see any
-  of the above** — that's fine for both specs as scoped (neither needs it), but don't be surprised if
-  `IfcSpace` rows / space-scoped `dwWalk({spaceGuid})` aren't present in a clean worktree; that's expected,
-  not a regression.
-- **The real risk is only if something works in the SHARED tree directly** (not an isolated worktree) —
-  any `git stash`/`git checkout .`/`git reset` there would affect this uncommitted, verified work. Neither
-  prepared Fable5 spec does this (both mandate isolated worktrees), but this is the one thing that would
-  actually collide.
-- **Recommendation, not yet acted on (user's call):** commit piece 1+2 now, before Fable5 work starts, to
-  remove this ambiguity entirely — the work is verified (11/11 + 4/4 + 5/5 witnesses, full regression 0-fail,
-  Watchdog-reviewed, see below) and has been sitting reviewed-but-uncommitted for one full round already.
-- **What's still genuinely open after piece 1+2** (unaffected by pausing): piece 3 (UI trigger) not started;
-  `mesh.db` re-consolidation not run; live-importer (`viewer/`) parity not done; Clinic's non-clean-ARC-only
-  contamination unaddressed. None of these block Fable5's two specs.
+**State, verified not assumed (every number below independently reproduced by this session, not trusted
+from the worker's own report):** piece 1 (real `IfcSpace` extraction, `LongName` fix, `IfcRelAggregates`
+storey-resolution fix) AND piece 2 (`occupancy()`/`place()`/`hostBind()` scoped to a real space boundary) are
+DONE and **NOW COMMITTED to master at `e544a39f4`** (was sitting reviewed-but-uncommitted; committed this
+round specifically so Fable5 worktrees have clean, complete ground with no ambiguity). Proof: 4/4
+(`witness_space_occupancy_exclusion.js`) + 5/5 (`witness_space_scoped_walk.js`) + full 12-file existing DW
+regression suite, 0 fail, all independently re-run. Two ready Fable5 specs also committed, at `e26406727`
+then rebased onto `e544a39f4`:
+- `prompts/G1_COUNT_INDEPENDENT_ORACLE.md` — Java/RSS-side, zero JS/Modeller file overlap, worktree
+  `/tmp/wt-fable-g1count` (branch `fable/g1-count-independent-oracle`) ready off `abcb079ab`.
+- `prompts/Modeller/DISC_Walker/BIMEYES_NAVIGABILITY_CHECK.md` — Collision + Navigability + Quantity-bound
+  coherence checks, worktree `/tmp/wt-fable-bimeyes` (branch `fable/bimeyes-coherence-checker`) now includes
+  `e544a39f4`, so its "re-run against a space-scoped walk for comparison" bonus proof (see that file's own
+  §4) is available immediately, not gated on a future commit.
+
+**Broadened mandate (user directive, 2026-07-10 — "let it use momentum to cover more broadly on Walker
+task"):** since the worker has paused and piece 1+2 are committed and clean, whoever picks this up next is
+NOT limited to the two specs above — **piece 3 (wire a UI trigger: user selects a rendered space, picks a
+heavy DISC, `dwWalk({spaceGuid})` renders via the proven `hostBind` conformance layer, user refines via
+existing gizmo tools)** is real, scoped (see `SPACE_SCOPED_DISC_INSTALL_VISION.md`'s own piece-3 note), and
+can now be picked up too — branch a fresh worktree off `e544a39f4`, same isolation discipline as the other
+two specs, same Watchdog review standard before anything merges.
+
+**What's still genuinely open, honestly, not silently dropped:** this fix lives only in the offline
+`extractIFC2DB.js` path, not the live browser importer (`viewer/import_worker.js`/`import_db_builder.js` —
+still explicitly off-limits per border control below); `Clinic_ARC.db` is not cleanly ARC-only (534 STR +
+102 MEP leaked in from unfiltered extraction — piece 3 should not trust the filename); `mesh.db`
+re-consolidation for the new Clinic extraction with real spaces has NOT been run — a separate, deliberate
+step touching all 8 buildings' shared geometry file, don't fold it silently into anything else.
 
 ```
 # ⚠ DO NOT REMOVE
