@@ -76,7 +76,40 @@
 #    unaffected (reads rule_space_type only as an existence check, no building_class filter).
 # 2. Terminal (the ultimate: 8 DISCs, no real spaces): schedule walk REFUSEs there by design; its fix is
 #    the no-spaces path (n_measured×area bound + host-conformant placement) measured by the same W-checks
-#    minus W5 (no ground truth). NOT started.
+#    minus W5 (no ground truth). ✅ DELIVERED ON BRANCH 2026-07-10 (fable/terminal-no-spaces, local
+#    commit only — Watchdog reviews/pushes): W-TERM-NOSPACES 5/5 (T1-T5 below); ELEC graded
+#    LightFixture 710/814 (0.87) + Appliance 34/19 (1.79); reported FP sprinklers 893/909 (0.98!),
+#    alarms 70/80 (0.88), ACMV terminals 339/289 (1.17), duct fittings 616/713 (0.86); falsifier
+#    n_measured×0.2 → 744→145. Full regression: W-SCHED-MINE 7/7, W-DX-WALKBACK-RSGT 10/10 + 14
+#    legacy DW witnesses 0-fail. TWO extra mined facts this build: rule_mesh_binding (13 class
+#    bindings) AND rules_meta z_datum_offset=14.593 (MAD 0.33) — the 2026-06-28 bands are in the old
+#    building-datum frame, the extraction was re-datumed to site coords since; offset measured from
+#    each rule row's own src_guids, stamped at projection, applied by the walker (no constant in code).
+#    ⚠ REPRO NOTE: `git reset --hard` in the worktree DESTROYED the uncommitted-by-design complib
+#    repair mid-session (2 dangling hashes returned) — re-applied per JavaEra_FOSSIL_README.md recipe
+#    (M_Product + M_Product_Image from _pre_s173 + rename + restore_generative_meshes 14/14, 7/7 again).
+#    SPEC §NOSPACES (measured this session, worktree probe): legacy dwWalk('ELEC',Terminal) emits 3003 vs
+#    833 real (LightFixture 2670/814, ElectricAppliance 333/19) — substrate() z-clusters 22 pseudo-storeys
+#    and re-applies the median density on each; 798 lights stay floating mid-void after hostBind REFUSE;
+#    placements carry no real mesh ref; dwWalk({schedule:true}) flatly REFUSEs. The mined rule_placement
+#    already carries the fix's data: 37 rows with per-zone n_measured + ABSOLUTE measured z-bands +
+#    src_storey_area_m2 (e.g. ELEC LightFixture datum 115/178/152/193 per Ceiling Level; Appliance host
+#    8/9/2 = exactly the real 19). FIX (opt-in, same {schedule:true} flag — no-spaces branch replaces the
+#    flat REFUSE; every legacy path byte-identical):
+#    N1 COUNT — per rule_placement row: count = round(n_measured × bandArea/src_storey_area_m2), zone =
+#       the row's OWN measured z-band (no re-derived pseudo-storeys); Terminal-on-itself ⇒ ratio≈1.
+#    N2 PLACE — envelope-bound: occupancy cells from ARC elements inside the row's z-band, z = measured
+#       band midpoint; then the EXISTING default-on hostBind (rule_shim) snaps host-bound classes onto
+#       real host faces; hostBind-refused stay envelope-bound at measured z, logged honest (§NOSPACES-FLOAT).
+#    N3 LOD400 — new mined table rule_mesh_binding (build/project_rule_mesh_binding.py): dominant REAL
+#       geometry_hash per (disc,ifc_class) mined from the building's own element_instances (9 real light
+#       hashes exist); walker reads RULES ONLY (anti-cheat); class with no binding → REFUSE, no fallback.
+#    N4 BOUNDARY — residential schedule NOT consumed (terminal_rules.db has zero schedule tables; M6).
+#    PROVE — scripts/witness_terminal_nospaces.js (W-TERM-NOSPACES), Terminal ELEC primary, walker walks
+#    an ARC-ONLY COPY (witness strips MEP-class rows; witness alone reads real MEP): T1 path-engaged +
+#    boundary, T2 qty band [0.5,2.0] + n_measured falsifier, T3 containment + z-in-measured-band,
+#    T4 host-conformance (count preserved, honest floats), T5 LOD400 hash resolves to the class's real
+#    hash set. No W5 (per this list). ACMV/FP reported, graded only where non-vacuous.
 # 3. BIMEyes remainder: Navigability flood-fill (connectedFraction) + pairwise fixture-collision counts —
 #    fold into the walkback witness as additional claims.
 # 4. W5 ratchet toward RSS-exact (per-room offset nuance is most of the remaining gap); real per-instance
