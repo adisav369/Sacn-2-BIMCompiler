@@ -120,9 +120,10 @@
 #    hash set. No W5 (per this list). ACMV/FP reported, graded only where non-vacuous.
 # 3. BIMEyes remainder: Navigability flood-fill (connectedFraction) + pairwise fixture-collision counts —
 #    fold into the walkback witness as additional claims.
-#    ✅ DELIVERED ON BRANCH 2026-07-10 (fable/bimeyes-navcollide, off pre-item-2 master, local commit
-#    only — Watchdog reviews/pushes; touches disc_walker.js in regions DISJOINT from item 2's merge).
-#    W-DX-WALKBACK-RSGT now 14/14: W6 NAVIGABILITY (per-space 0.25m flood-fill, walking band
+#    ✅ DELIVERED + MERGED + PUSHED 2026-07-10 (fable/bimeyes-navcollide, cut off pre-item-2 master;
+#    Watchdog-verified before merge, disc_walker.js auto-merged cleanly against item 2 — confirms both
+#    branches' edits are disjoint, item 2 in placeMeasured, this one in placeSchedule). W-DX-WALKBACK-RSGT
+#    now 14/14: W6 NAVIGABILITY (per-space 0.25m flood-fill, walking band
 #    floor→+1.8m, person-scale regions ≥0.5×0.5m; min connectedFraction 0.963, worst Kitchen, bar 0.95;
 #    falsifier: synthetic fixture wall → 0.500) + W7 COLLISION (9591 pairs, method=bbox disclosed, 0
 #    collisions; falsifier: near-duplicate flagged). THE CHECKS BIT: first run found 48 REAL bbox

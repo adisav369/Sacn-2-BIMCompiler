@@ -26,6 +26,15 @@
  *   W4 LOD400 (HARD, UNBREAKABLE — WalkerDoctrine §11) — every placement binds a real mesh
  *      (hash resolves in component_geometries); meshless devices appear ONLY in the refused
  *      list, never as placements.
+ *   W6 NAVIGABILITY (BIMEyes item 3, 2026-07-10) — per real space, 0.25m flood-fill of free floor
+ *      (fixtures block cells inside the walking band, floor→+1.8m): min connectedFraction ≥ 0.95
+ *      over person-scale regions (pockets < 0.5×0.5m aren't fragmentation). + falsifier (synthetic
+ *      fixture wall). Found nothing broken at first run only AFTER W7's fixes landed.
+ *   W7 COLLISION (BIMEyes item 3, 2026-07-10) — pairwise strict AABB overlap (method=bbox, disclosed)
+ *      across ALL discs = 0. FOUND 48 REAL overlaps at first run (code-spacing step < device widths;
+ *      per-disc walks blind to each other; overlapping Hallway×Stair bboxes) → fixed at source:
+ *      placeSchedule bbox-clearance slide (wall devices slide along their wall run), opts.avoid
+ *      cross-disc coordination, ±direction reversal, honest §SCHED-CLASH residual log. + falsifier.
  *   W5 POSITION FIDELITY (DIAL, not hard) — NN match rate generated↔real at 0.5/1/2m bands +
  *      mean signed offset direction, per disc — the honest "by how much and which way" number
  *      to ratchet. + falsifier: shifting generated positions +3m collapses the 2m match rate.
@@ -67,9 +76,12 @@ function loadDb(SQL, f) { return new SQL.Database(new Uint8Array(fs.readFileSync
     ' (mep_subdisc guid-join; walker never reads these)');
 
   // ── the walk (generation side — rules DB + ARC substrate only) ──
-  var walks = {}, spacesInfo = null;
+  var walks = {}, spacesInfo = null, prior = [];
   ['ELEC', 'PLB', 'ACMV'].forEach(function (d) {
-    walks[d] = DW.dwWalk(d, dx, 'Duplex', { schedule: true });
+    // §W7-COLLISION: each disc avoids the previous discs' placements (cross-disc coordination) —
+    // the same accumulation a walk-all-disciplines caller does.
+    walks[d] = DW.dwWalk(d, dx, 'Duplex', { schedule: true, avoid: prior });
+    if (!walks[d].refused) prior = prior.concat(walks[d].placements || []);
     if (!spacesInfo && !walks[d].refused) spacesInfo = walks[d].schedule;
   });
   var spaces = DW.spacesOf(dx);
@@ -221,6 +233,91 @@ function loadDb(SQL, f) { return new SQL.Database(new Uint8Array(fs.readFileSync
   assert('W5 FALSIFIER', w5.ELEC && s20 < w5.ELEC.b20,
     'shifting every generated ELEC fixture +3m drops @2m matches ' + w5.ELEC.b20 + ' → ' + s20 +
     ' — the fidelity dial genuinely measures position, not vacuous');
+
+  // ── W6 NAVIGABILITY (BIMEYES_NAVIGABILITY_CHECK.md, folded in 2026-07-10 — item 3): does fixture
+  // placement fragment a room's free floor into unreachable pockets? Per real space: 0.25m grid over
+  // the space bbox, a cell BLOCKED when a generated fixture's AABB intersects it inside the walking
+  // band (floor → +1.8m); connectedFraction = largest 4-connected free region / total free cells.
+  log(''); log('─── W6 NAVIGABILITY (flood-fill, per real space) ───');
+  var CELL = 0.25, WALK_H = 1.8;
+  function connectedFraction(sp, fixtures) {
+    var nx = Math.max(1, Math.round((sp.x1 - sp.x0) / CELL)), ny = Math.max(1, Math.round((sp.y1 - sp.y0) / CELL));
+    var blocked = new Uint8Array(nx * ny), freeN = 0;
+    for (var i = 0; i < nx; i++) for (var j = 0; j < ny; j++) {
+      var cx = sp.x0 + (i + 0.5) * CELL, cy = sp.y0 + (j + 0.5) * CELL, blk = false;
+      for (var k = 0; k < fixtures.length && !blk; k++) {
+        var f = fixtures[k];
+        if (f.z - (f.bz || 0.2) / 2 > sp.z0 + WALK_H) continue;            // above the walking band
+        if (Math.abs(cx - f.x) <= (f.bx || 0.2) / 2 + CELL / 2 && Math.abs(cy - f.y) <= (f.by || 0.2) / 2 + CELL / 2) blk = true;
+      }
+      if (blk) blocked[j * nx + i] = 1; else freeN++;
+    }
+    if (!freeN) return { cf: 0, freeN: 0 };
+    // PERSON-SCALE: free regions smaller than 4 cells (< 0.5×0.5 m) can't hold a person —
+    // a 6cm² pocket behind a corner fixture is physically real in any bathroom, not
+    // fragmentation. connectedFraction is computed over person-reachable cells only.
+    var PERSON_CELLS = 4;
+    var seen2 = new Uint8Array(nx * ny), bestR = 0, reachN = 0;
+    for (var s0 = 0; s0 < nx * ny; s0++) {
+      if (blocked[s0] || seen2[s0]) continue;
+      var stack = [s0], size = 0; seen2[s0] = 1;
+      while (stack.length) {
+        var c = stack.pop(); size++;
+        var ci = c % nx, cj = (c - ci) / nx;
+        [[ci - 1, cj], [ci + 1, cj], [ci, cj - 1], [ci, cj + 1]].forEach(function (nb) {
+          if (nb[0] < 0 || nb[0] >= nx || nb[1] < 0 || nb[1] >= ny) return;
+          var idx = nb[1] * nx + nb[0];
+          if (!blocked[idx] && !seen2[idx]) { seen2[idx] = 1; stack.push(idx); }
+        });
+      }
+      if (size >= PERSON_CELLS) reachN += size;
+      if (size > bestR) bestR = size;
+    }
+    if (!reachN) return { cf: 0, freeN: freeN };
+    return { cf: bestR / reachN, freeN: freeN };
+  }
+  var bySpace = {};
+  allGen.forEach(function (p) { (bySpace[p.spaceGuid] = bySpace[p.spaceGuid] || []).push(p); });
+  var minCF = 1, minSp = '-';
+  Object.keys(bySpace).forEach(function (g) {
+    var sp = spaceByGuid[g]; if (!sp) return;
+    var r = connectedFraction(sp, bySpace[g]);
+    log('§RS W6 space=' + (bySpace[g][0].space || g) + ' fixtures=' + bySpace[g].length +
+      ' connectedFraction=' + r.cf.toFixed(3) + ' freeCells=' + r.freeN);
+    if (r.cf < minCF) { minCF = r.cf; minSp = bySpace[g][0].space || g; }
+  });
+  assert('W6 NAVIGABILITY', minCF >= 0.95,
+    'every occupied real space keeps ONE walkable region: min connectedFraction=' + minCF.toFixed(3) +
+    ' (worst: ' + minSp + ', bar ≥0.95) — placement does not fragment the free floor');
+  // falsifier: a synthetic fixture WALL spanning the widest space at floor level must fragment it
+  var wide = null;
+  Object.keys(bySpace).forEach(function (g) { var s = spaceByGuid[g]; if (s && (!wide || (s.x1 - s.x0) > (wide.x1 - wide.x0))) wide = s; });
+  var midY = (wide.y0 + wide.y1) / 2, fakeWall = [];
+  for (var fx = wide.x0; fx <= wide.x1; fx += 0.2) fakeWall.push({ x: fx, y: midY, z: wide.z0 + 0.5, bx: 0.3, by: 0.3, bz: 1.0 });
+  var rF = connectedFraction(wide, fakeWall);
+  assert('W6 FALSIFIER', rF.cf < 0.95,
+    'a synthetic floor-level fixture wall across the widest space drops connectedFraction to ' + rF.cf.toFixed(3) +
+    ' — the flood-fill genuinely detects fragmentation');
+
+  // ── W7 COLLISION (BIMEYES spec, folded in 2026-07-10 — item 3): no two generated fixtures may
+  // physically intersect. Pairwise strict AABB overlap (method=bbox — meshes not loaded node-side
+  // here; reported honestly per the spec's method-disclosure rule).
+  log(''); log('─── W7 COLLISION (pairwise, method=bbox) ───');
+  function aabbHit(a, b) {
+    return Math.abs(a.x - b.x) < ((a.bx || 0.2) + (b.bx || 0.2)) / 2 - 1e-6 &&
+           Math.abs(a.y - b.y) < ((a.by || 0.2) + (b.by || 0.2)) / 2 - 1e-6 &&
+           Math.abs(a.z - b.z) < ((a.bz || 0.2) + (b.bz || 0.2)) / 2 - 1e-6;
+  }
+  var hits = [];
+  for (var a1 = 0; a1 < allGen.length; a1++) for (var b1 = a1 + 1; b1 < allGen.length; b1++) {
+    if (aabbHit(allGen[a1], allGen[b1])) hits.push(allGen[a1].device + '@' + allGen[a1].space + '×' + allGen[b1].device + '@' + allGen[b1].space);
+  }
+  assert('W7 COLLISION', hits.length === 0,
+    allGen.length + ' fixtures, ' + (allGen.length * (allGen.length - 1) / 2) + ' pairs tested (bbox): ' +
+    hits.length + ' collisions' + (hits.length ? ' — ' + hits.slice(0, 5).join(', ') : ' — no two generated fixtures intersect'));
+  var dup = Object.assign({}, allGen[0]); dup.x += 0.01;
+  assert('W7 FALSIFIER', aabbHit(allGen[0], dup) === true,
+    'an injected near-duplicate fixture IS flagged by the same bbox test — the check can catch a real overlap');
 
   log('');
   log('§RS SUMMARY: bare DX ARC + mined residential rules reconstructed ' + allGen.length + ' fixtures across ' +
