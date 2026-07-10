@@ -192,7 +192,7 @@ var KNOWN_NO_MESH = ['DATA_POINT', 'EMERGENCY_LIGHT', 'WASHING_TAP'];
   log('§SM disc_walker.js — space-scoped schedule×offset placement; meshless devices REFUSE.');
   log('');
   log('W-SCHED-MINE: ' + pass + ' PASS / ' + fail + ' FAIL');
-  fs.writeFileSync(LOG, _lines.join('\n') + '\n');
+  fs.mkdirSync(path.dirname(LOG), { recursive: true }); fs.writeFileSync(LOG, _lines.join('\n') + '\n');   // fresh checkout has no logs/ (Watchdog round-2)
   log('§LOG ' + LOG);
   rules.close(); lib.close(); erp.close();
   process.exit(fail ? 1 : 0);

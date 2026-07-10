@@ -162,7 +162,7 @@ var GRADED = ['IfcLightFixture', 'IfcElectricAppliance'];      // ELEC — the p
   log('§TN real ARC, every fixture carrying its class\'s mined REAL mesh hash or refusing honestly.');
   log('');
   log('W-TERM-NOSPACES: ' + pass + ' PASS / ' + fail + ' FAIL');
-  fs.writeFileSync(LOG, _lines.join('\n') + '\n');
+  fs.mkdirSync(path.dirname(LOG), { recursive: true }); fs.writeFileSync(LOG, _lines.join('\n') + '\n');   // fresh checkout has no logs/ (Watchdog round-2)
   log('§LOG ' + LOG);
   process.exit(fail ? 1 : 0);
 })();

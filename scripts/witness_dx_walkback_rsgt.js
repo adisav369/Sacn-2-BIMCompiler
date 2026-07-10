@@ -148,7 +148,7 @@ function loadDb(SQL, f) { return new SQL.Database(new Uint8Array(fs.readFileSync
   if (!ps) {
     assert('W2 FALSIFIER', false, 'no generated fixture available to probe (walk produced 0) — cannot exercise the falsifier');
     log('W-DX-WALKBACK-RSGT: ' + pass + ' PASS / ' + fail + ' FAIL (aborted: nothing generated, later gates unreachable)');
-    fs.writeFileSync(LOG, _lines.join('\n') + '\n');
+    fs.mkdirSync(path.dirname(LOG), { recursive: true }); fs.writeFileSync(LOG, _lines.join('\n') + '\n');   // fresh checkout has no logs/ (Watchdog round-2)
     dx.close(); mm.close(); lib.close();
     process.exit(1);
   }
@@ -350,7 +350,7 @@ function loadDb(SQL, f) { return new SQL.Database(new Uint8Array(fs.readFileSync
     'this witness alone read the real MEP.');
   log('');
   log('W-DX-WALKBACK-RSGT: ' + pass + ' PASS / ' + fail + ' FAIL');
-  fs.writeFileSync(LOG, _lines.join('\n') + '\n');
+  fs.mkdirSync(path.dirname(LOG), { recursive: true }); fs.writeFileSync(LOG, _lines.join('\n') + '\n');   // fresh checkout has no logs/ (Watchdog round-2)
   log('§LOG ' + LOG);
   dx.close(); mm.close(); lib.close();
   process.exit(fail ? 1 : 0);
