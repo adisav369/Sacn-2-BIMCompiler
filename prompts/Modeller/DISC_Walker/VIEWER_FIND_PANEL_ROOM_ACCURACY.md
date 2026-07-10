@@ -95,8 +95,9 @@ primary proof is `§`-tagged console log output read directly, not a new Playwri
 type-grouping counts) belongs in a `§`-logged whitebox check, same discipline as `witness_room_hab.js`.
 
 ### Task 5 — THE BIGGER GAP: a user's OWN dropped IFC gets NO room data at all, today
-**Status: NOT STARTED, genuinely separate scope from Tasks 1-4 above (those are display fixes on
-top of EXISTING data; this is about DATA that doesn't exist yet).**
+**Status: SPECCED as its own dedicated doc — `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md`
+(2026-07-11). Read that doc for the actual task breakdown; this section stays as the finding that
+triggered it.**
 Confirmed directly: `viewer/import_db_builder.js` (the schema builder for the live "drop your own
 IFC" import path, confirmed active — most recent commit "capture native IFC 4D in Drop-IFC
 importer") creates `elements_meta` / `element_transforms` / `element_instances` / `component_geometries`

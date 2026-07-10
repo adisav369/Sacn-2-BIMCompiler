@@ -230,12 +230,19 @@ that caused Task 6's SampleHouse gap, via `6068fab`'s finalize_all_8.js never ca
 forward) can silently wipe this same data again.
 
 ### Task 3 — New Modeller Outliner "Rooms" category (the display/wow-factor surface)
-**Status: NOT STARTED, NOT YET SPECCED.** No existing room display anywhere in the Modeller (checked —
-`grep -rl room` across `modeller/*.js` only matches `disc_walker.js` itself). Pattern to follow: the
-existing Disc-tab-follower shape already used for STR and walked-fixtures categories
-(`bom_tree_outliner.js` / `dw_instances_outliner.js` / `str_walker_outliner.js`) — a "Rooms" category would
-sit alongside those, sourced from whichever rooms (real or `≈`-tagged) exist in the open building's
-`spatial_structure` table.
+**Status: NOT STARTED, NOW SPECCED with a concrete trigger — see
+`prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` (2026-07-11).** This category's DATA source
+was originally left open ("whichever rooms exist in `spatial_structure`") — the JS-port doc gives
+it an explicit ACTION too: a "Room Walker" Outliner trigger (parallel to the existing Disc Walker
+convention) that runs the ported compile-rooms algorithm on demand for buildings with no room data
+yet (a user's own imported IFC), never automatically on open. Read that doc for the actual task
+breakdown before starting this one — it supersedes the vague "sit alongside those" note below with
+a real design.
+No existing room display anywhere in the Modeller (checked — `grep -rl room` across `modeller/*.js`
+only matches `disc_walker.js` itself). Pattern to follow: the existing Disc-tab-follower shape
+already used for STR and walked-fixtures categories (`bom_tree_outliner.js` / `dw_instances_outliner.js`
+/ `str_walker_outliner.js`) — a "Rooms" category would sit alongside those, sourced from whichever
+rooms (real or `≈`-tagged) exist in the open building's `spatial_structure` table.
 
 ### Task 4 — Carry real `IfcSpace`/`spatial_structure` through the ARC-only strip step
 **Status: NOT STARTED.** The strip (`b93ca13`, "cascade-deleted to discipline='ARC' only") never explicitly
