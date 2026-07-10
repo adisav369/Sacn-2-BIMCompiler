@@ -303,14 +303,30 @@ write-time db disagrees (simulates drift/a future bug) → gate correctly fires,
 9/9 checks, log read not inferred: `/tmp/claude-1000/-home-red1-bim-compiler/885d136b-04e3-4b17-8666-279c6b28f522/
 scratchpad/w_spatial_carry.log`.
 
-**Deliberately NOT done (out of this task's scope, named so it isn't mistaken for forgotten):** this
-hardens the SCRIPT so a FUTURE re-embed can't silently regress `spatial_structure` again — it does not,
-by itself, re-run the full embed-8 pipeline against bim-ootb `main` today (main itself still lacks the
-data on 6 of 8 buildings; only `fable/modeller-lod400-livewire` has it, per §2). Actually re-running
-`finalize_all_8.js` end-to-end and pushing regenerated `*_ARC.db`/`mesh.db` to bim-ootb needs the vanished
-`_all.db` merge step rebuilt too (a separate, larger task) AND is LFS-blocked until 2026-08-01 regardless
-(`CLAUDE.md` §LFS QUOTA EXHAUSTED — these files are LFS-tracked binaries). Committed here: the script fix
-+ witness only, both non-LFS, safe to push now.
+**Follow-up — main's data gap closed WITHOUT a binary push (user directive, 2026-07-11: "don't touch
+mesh.db/ARC.db as a binary commit — write a migration-style SQL script, repo convention `migration/DV_*_
+rules.sql`/`CL002_name_value_component_library.sql`, pick a fitting prefix").** bim-ootb `main`'s 6 empty
+residents + Duplex's unfiltered 26th row (the actual data gap left after the script hardening above) are
+now closable via 7 committed SQL scripts in this dir — `ROOM001`–`ROOM006_{Name}_spatial_structure_carry.sql`
+(full `spatial_structure` dump — DDL + `INSERT` rows — read straight off `fable/modeller-lod400-livewire`'s
+real, already-verified data via `sqlite3 .mode insert`, no BLOB columns in this table so no hex-literal
+complexity) and `ROOM007_Duplex_strip_roof.sql` (single `DELETE` — confirmed by direct diff that main's 26
+rows differ from livewire's 25 by exactly the R301 Roof row, nothing else). Terminal needs no script —
+confirmed byte-identical between main and livewire already.
+
+Each script applies via `sqlite3 modeller/{Name}_ARC.db < ROOM00N_....sql` against anyone's existing local
+main checkout — text only, no LFS fetch, no binary ever crosses the network. **Witness
+`witness_room_migration_apply.sh` (W-ROOM-MIGRATION-APPLY, committed, re-runnable) 7/7:** copies each real
+main `_ARC.db`, applies its script, diffs the FULL resulting `spatial_structure` table (not just row
+count) against `fable/modeller-lod400-livewire`'s real data — byte-identical on all 7. Log:
+`/tmp/claude-1000/-home-red1-bim-compiler/885d136b-04e3-4b17-8666-279c6b28f522/scratchpad/
+w_room_migration_apply.log`.
+
+**Still NOT done, correctly out of scope:** this gets `main`'s LOCAL checkout on par with the livewire
+branch's room data (for anyone who pulls this commit and applies the scripts) — it does not deploy to the
+live GitHub Pages site (needs the actual `git commit` of the mutated `*_ARC.db`, still LFS-blocked until
+2026-08-01) and does not re-run the full embed-8 pipeline end-to-end (the vanished `_all.db` merge step
+would still need rebuilding for a genuine from-source re-embed — a separate, larger task).
 
 ### Task 5 — Room RECOGNITION: real IfcSpace still needs a habitability filter before it's trusted
 **Status: ✅ DONE 2026-07-10 (Fable) — `spaceHabitable()` shared classifier in bim-ootb
