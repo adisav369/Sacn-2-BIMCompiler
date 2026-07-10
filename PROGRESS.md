@@ -29,7 +29,20 @@
 - `prompts/OPEN_BUTTON_IFC_BCF_MERGE.md` — not started.
 - `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §ROTATION-BOUND 2026-07-09 — Bug B shipped
   (PR #717, unmerged). Bug A (hostBind) + items 1-2 (occupancy() fix, VENT_WINDOW_SHIM 415→498mm) all fixed+witnessed
-  (W-OCC-TRUE-MIDPOINT 17/17, 0 regressions). Open: Terminal mesh-recovery, port to bim-ootb (after review).
+  (W-OCC-TRUE-MIDPOINT 17/17, 0 regressions). §TE-ARC-DATUM DONE 2026-07-11: bim-compiler merged (`b202eb44b`,
+  PR #40), bim-ootb ported+verified+pushed (PR #726, open, not merged — heals live Terminal collapse once landed).
+- `prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md` 2026-07-10/11 — Tasks 1+5 DONE (habitability classifier,
+  Duplex 20 real rooms, bim-ootb `fable/modeller-lod400-livewire`@`2821b8e`, unmerged). Task 6 (SampleHouse
+  extraction bug, 3 usable rooms) assigned Sonnet, NOT STARTED. §2's Terminal-43-rooms claim corrected (was
+  wrongly "real," is 100% synthetic). Tasks 2-4 NOT STARTED. 4 more bim-ootb branches (grid-tilt-guard,
+  dw-rot-units, dwprobe-dedup, terminal-oracle-source) MANAGER-verified+pushed, PRs #722-725 open, unmerged.
+- `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` 2026-07-11 — NEW, all 5 tasks NOT STARTED (JS port of
+  `compile_rooms.py`, explicit-trigger "Room Walker" Outliner action). Progress report pending from user.
+- ⛔ **GitHub LFS bandwidth quota EXHAUSTED (2026-07-11), resets 2026-08-01.** See `CLAUDE.md` §LFS QUOTA
+  EXHAUSTED — any push may hang regardless of LFS content; don't retry blindly, don't create fresh worktrees
+  for uncached branches. Cleaned up: duplicate `~/Projects/bim-ootb` clone removed, 25 stale worktrees pruned.
+- Two live Viewer UI bugs found, unfixed: Find panel renders above browser top border (root cause diagnosed,
+  not fixed — `deploy/dev/navigate_find.js`); mobile pill flyouts don't open (prompt handed off, not started).
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch** (bim-ootb PR #659 shipped item 4b) — items 1/2/0 (CCTV double-click capture, camera-POV
