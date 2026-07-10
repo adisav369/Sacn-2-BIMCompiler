@@ -42,24 +42,38 @@ question.
 
 ## §2 — Current state, verified directly (sqlite3, this session, not inferred)
 
-| Shipped `modeller/*_ARC.db` (bim-ootb, 8 total) | rooms |
-|---|---|
-| Terminal | **43 real rooms already baked in** |
-| Duplex, SampleCastle, SampleHouse, Clinic, Garage, HHS, Hospital | **0** — no `spatial_structure` table |
+**⚠ CORRECTION (2026-07-10, later same day, MANAGER review):** Terminal's 43 rows were originally recorded
+below as "real rooms already baked in" — that was WRONG, caught by direct query. `SELECT object_type,
+COUNT(*) FROM spatial_structure WHERE type='IfcSpace' GROUP BY object_type` on the shipped `Terminal_ARC.db`
+returns `COMPILED|43` — every row is `compile_rooms.py` synthetic flood-fill output (name pattern `≈ Aras
+01 R1` etc.), not a real `IfcSpace`. Harmless in practice (`spacesOf()`'s `≈`/synthetic exclusion already
+keeps them out of placement, same as HHS's 14), but the record was factually wrong and is fixed here.
+
+| Shipped `modeller/*_ARC.db` (bim-ootb, 8 total) | rooms | real or synthetic |
+|---|---|---|
+| Terminal | 43 | **ALL synthetic** (`object_type=COMPILED`, `≈`-named) — never real, corrected above |
+| Duplex | 0 on `main`; **20** on unmerged branch `fable/modeller-lod400-livewire` @ `2821b8e` | real, habitability-filtered (Task 5 done — R301 Roof stripped) |
+| SampleCastle, SampleHouse, Clinic, Garage, HHS, Hospital | 0 | no `spatial_structure` table |
 
 Canonical `deploy/buildings/*_extracted.db` (bim-compiler, 32 total) — only 2 carry real, portable room
-data not yet ported into their shipped `_ARC.db`: **Duplex (21 real `IfcSpace` rows)**, **HHS_Office_Federated
-(14 real `IfcSpace` rows)**. Every other canonical extract (SampleCastle included) has none — SampleCastle's
+data: **Duplex (21 real `IfcSpace` rows, now 20 post-filter on the branch above)**, **HHS_Office_Federated
+(14 rows — ALSO corrected here: these are 100% synthetic `compile_rooms.py` output, not real; see Task 5's
+own finding in §3 below, which superseded this section's original wrong count but this table hadn't been
+fixed to match until now)**. Every other canonical extract (SampleCastle included) has none — SampleCastle's
 own true source IFC is untraceable (see the superseded SC doc §3); the only "real rooms" ever produced
 under the SampleCastle name were mislabeled Schependomlaan data (same doc §2) — not reused here, would
-reintroduce a known mislabel.
+reintroduce a known mislabel. **Bottom line: of 8 shipped buildings, only Duplex has real, filtered room
+data, and it isn't merged to `main` yet — the other 6 (excluding Terminal/HHS's synthetic-only sets) have
+zero room data at the SOURCE, which is a data-availability gap, not something the habitability classifier
+can fix.**
 
 ## §3 — Task log
 
 ### Task 1 — Port Duplex real rooms into shipped `_ARC.db`, verify schedule-mode engages, strip non-habitable rows
-**Status: AGENT KILLED MID-TASK by user 2026-07-10 (task was proceeding on stale premises — user's call, not
-a technical failure). Needs a fresh session/agent (Fable) to pick up from the exact state below — do not
-restart from scratch, do not re-verify things already confirmed.**
+**Status: ✅ DONE 2026-07-10 (Fable, combined with Task 5 — see §6 results). Witness: W-ROOM-HAB 5/5 +
+W-DW-LIVEWIRE 12/12, bim-ootb `fable/modeller-lod400-livewire` @ `2821b8e` (pushed, not merged; the Roof
+row is stripped so the branch's earlier merge-blocker is cleared). Historical resume-state below kept for
+the record.**
 
 **Original scope (given to the killed agent):** port `spatial_structure` from canonical
 `Duplex_extracted.db`/`HHS_Office_Federated_extracted.db` into shipped `Duplex_ARC.db`/`HHS_ARC.db`
@@ -122,7 +136,12 @@ re-embed — `spatial_structure` needs to be an explicit survivor of that cascad
 table, or this whole rule regresses again the next time a resident gets re-baked.
 
 ### Task 5 — Room RECOGNITION: real IfcSpace still needs a habitability filter before it's trusted
-**Status: NOT STARTED. Assigned to Fable (execution lane) — see §5.**
+**Status: ✅ DONE 2026-07-10 (Fable) — `spaceHabitable()` shared classifier in bim-ootb
+`modeller/disc_walker.js`, wired into `spacesOf()` (both real-source paths) and exported for port/injection
+steps. Proven on Duplex's hand-verified known-21: 20/20 habitable kept, exactly R301 Roof excluded
+(`label:ROOF`; independent `zband:8.91>6.67` geometry signal verified by falsifier). W-ROOM-HAB 5/5 —
+see §6 results. Follow-up (named, not done): port to the diverged source copy bim-compiler
+`build/disc_walker.js`, and into the Viewer (separately-scoped per this doc).**
 
 Found live, this session, by direct query (not theoretical): "real" `spatial_structure` data is not
 automatically safe to treat as "a room."
@@ -202,8 +221,76 @@ is a distinct, future, separately-scoped task — do not fold it into Task 5's M
 
 Task 5 (room recognition/habitability classification) is assigned to **Fable** (execution lane — per this
 project's model-allocation convention, Fable executes, Sonnet keeps the mastermind/memory-writing role).
-Tasks 1-4 stay as logged above; Task 1 is currently being corrected mid-flight (see this doc's own Task 5
-findings — HHS dropped, Duplex needs the Roof-type row filtered before porting).
+Tasks 1+5 were executed as one assignment and are ✅ DONE 2026-07-10 (see §6 RESULTS); Tasks 2–4 remain
+NOT STARTED as logged above.
+
+## §6 — Execution spec: Task 1 + Task 5 as one assignment (2026-07-10, Fable session — spec-first)
+
+**Deliverable:** new commit(s) on top of bim-ootb `fable/modeller-lod400-livewire` @ `670bf0f`
+(existing worktree `/tmp/wt-fable-livewire`, verified clean this session), pushed NOT merged.
+Ground truth re-verified directly before speccing: `Duplex_ARC.db` `spatial_structure` = 26 rows
+(1 IfcBuilding + 4 IfcBuildingStorey + 21 IfcSpace); among the 21, exactly one non-habitable:
+`0pNy6pOyf7JPmXRLgxs3sW | R301 | object_type='Roof'`. Substrate envelope (element_transforms):
+x −2.42..11.22, y −22.31..4.51, z −1.55..6.67.
+
+**S1 — Shared classifier `spaceHabitable(space, env)`** in worktree `modeller/disc_walker.js`
+(exported on the API so port/injection scripts and `spacesOf()` call the SAME function — the single
+enforcement point Task 5 requires):
+- Input: `{label, x0..z1}` (the `spacesOf()` shape); `env` = substrate bbox from `element_transforms`.
+- **Signal A (label, primary):** normalize label same as `_spaceTypeFor` (UPPER, spaces→`_`, strip
+  trailing numbering), word-match against the maintained exclude-list taken verbatim from Task 5's
+  starting points: ROOF, SHAFT, VOID, PLANT/PLANT_ROOM, EXTERNAL, PODIUM, SILL, PARAPET, BALCONY.
+  List grows only by review against real extractions — never guessed further.
+- **Signal B (geometry, secondary):** space `z1 > env.z1 + 0.25` → non-habitable. Verified against
+  the known-21 BEFORE coding: R301 z1=8.91 vs envelope 6.67 (fires, +2.24 m); all 20 genuine rooms
+  z1 ≤ 5.61 (never fires). The spec's suggested footprint-vs-envelope signal was measured and
+  REJECTED for now: R301's footprint is only 0.37 of the envelope — no threshold provable on real
+  data; not shipped (non-invent).
+- Returns `{ok:true}` or `{ok:false, why:'label:ROOF' | 'zband:8.91>6.67'}`. Real-vs-synthetic
+  (`RM_`/`≈`) handling untouched.
+- `spacesOf()` applies it to BOTH real sources (elements_meta path and spatial_structure path) and
+  §-logs every exclusion (`§SPACE-NONHAB`) — defense stays live even if a tainted DB ever ships.
+
+**S2 — Data strip (Task 1a):** delete non-habitable IfcSpace rows from worktree
+`modeller/Duplex_ARC.db`, selected BY the classifier verdicts (not a hand-coded guid), expected =
+exactly R301. The IfcBuildingStorey row also named "Roof" stays (it's a storey, not a space). HHS
+untouched everywhere, per Task 1.
+
+**S3 — Witness `modeller/tests/witness_room_hab.js` (W-ROOM-HAB, node-side, §-log-first).** Issues
+each check exposes: **H1 PRECISION/RECALL** — classifier on the pre-strip known-21 → exactly 20 ok +
+R301 excluded, which signal fired logged (proves Task 5 on the hand-verified answer). **H2 FALSIFIER**
+— rerun with the exclude-list emptied → R301 must classify habitable via label (only zband may still
+catch it), proving H1's pass depends on the real list, not harness bias. **H3 GUID-OVERLAP (Task 1d)**
+— no duplicate guids inside spatial_structure; no collision with elements_meta guids. **H4
+COORD-OVERLAP (Task 1d)** — every habitable room bbox intersects the substrate bbox in x, y AND z.
+**H5 STRIP** — after `--strip`, DB holds exactly 20 IfcSpace rows, no Roof space, storey rows intact.
+
+**S4 — Live proof (Task 1b):** update `witness_dw_livewire.js` L0's expected space count 21→20
+(cites this §), rerun the FULL W-DW-LIVEWIRE suite — L1 SCHED-LIVE must engage `placeSchedule` on
+the cleaned 20-room set with placements > 0, all checks green, zero pageerror; log saved and read.
+
+**S5 — Push** the commit(s) and verify `git rev-list --count origin/fable/modeller-lod400-livewire..HEAD` = 0.
+
+**Out of scope (explicit):** all Viewer files (`deploy/dev/**`); HHS in every branch; Tasks 2–4;
+the diverged bim-compiler `build/disc_walker.js` copy (1731 vs 2188 lines — porting `spaceHabitable`
+there is a named follow-up, not part of this branch's commit).
+
+**RESULTS (2026-07-10, same session, logs read not inferred — `/tmp/wt-fable-livewire/logs/
+w_room_hab_proof.log`, `w_room_hab_strip.log`, `w_dw_livewire_rerun.log`):**
+- **W-ROOM-HAB 5/5** — H1: known-21 → 20 ok + exactly R301 excluded (`label:ROOF`). H2 falsifier:
+  exclude-list emptied → label signal vanishes, independent `zband:8.91>6.67` still fires; both signals
+  disarmed → R301 classifies ok (H1's pass is the list's, not the harness's). H3: 0 duplicate guids,
+  0 elements_meta collisions. H4: 20/20 habitable bboxes ∩ substrate bbox in x,y,z. H5 (post `--strip`,
+  delete driven by classifier verdicts): 20 IfcSpace / 0 Roof spaces / 4 storeys + 1 building intact
+  (the IfcBuildingStorey named "Roof" survived, as specced).
+- **W-DW-LIVEWIRE 12/12** on the cleaned DB — L0 20/20; L1 SCHED-LIVE Duplex ELEC `placeSchedule`
+  engaged: placed=102, spaces=19/20, skippedSpaces=0, lod400Refused=2 (EMERGENCY_LIGHT — honest
+  LOD400-LAW refusals, pre-existing); L6 PLB placed=18 (6/20 spaces, avoid live); L2/L5/L7 and
+  Terminal (L3 placed=390) / SampleCastle (L4 fallback placed=325) all green, zero pageerror.
+- **Shipped:** bim-ootb `fable/modeller-lod400-livewire` @ `2821b8e` (parent `670bf0f`), pushed,
+  `rev-list origin..HEAD` = 0. Files: `modeller/disc_walker.js` (+`spaceHabitable`/`_substrateEnv`,
+  `spacesOf()` filter + `§SPACE-NONHAB` log, API export), `modeller/Duplex_ARC.db` (R301 stripped),
+  `modeller/tests/witness_room_hab.js` (new), `modeller/tests/witness_dw_livewire.js` (L0 21→20).
 
 ## §4 — Guardrails
 
