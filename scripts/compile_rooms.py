@@ -43,6 +43,17 @@ STAIR_OVERLAP_REJECT = 0.35   # drop a pocket if a stair footprint covers ≥35%
 #     by construction, regardless of which building produced it), not a threshold tuned to this data.
 NOISE_FLOOR_DIM = 3 * RES   # m — a pocket narrower than this in x OR y is a grid artefact, not a room
 DOOR_BUFFER_SLACK = RES     # m — rasterization slack added on top of each door's own real footprint
+# §DOOR-NOT-ROOM: a door that leads to a SHAFT, not a habitable room, must not be used as the
+# §DOOR-RESCUE "this pocket is a room" signal — same shape of problem as §STAIR-EXCLUDE (a real,
+# correctly-classified element that still isn't evidence of a room). Found on real data (SampleCastle):
+# 28 IfcDoor rows named 'liftdeur' (Dutch: lift/elevator door), width 0.5m — real doors, but 2 of them
+# were rescuing actual elevator-shaft fragments as fake "rooms". Name-keyword match (multi-language,
+# reviewed against real extractions, same discipline as NONHAB_TYPES) — not a width cutoff, since a
+# lift door's width alone isn't reliably distinct from a narrow single-leaf door's.
+NON_ROOM_DOOR_NAMES = ("liftdeur", "lift", "elevator", "aufzug", "fahrstuhl", "hoist")
+def _is_room_door(name):
+    n = (name or "").lower()
+    return not any(k in n for k in NON_ROOM_DOOR_NAMES)
 # §APPROX: these rooms are COMPILED from wall enclosure (flood-fill), NOT extracted IfcSpace.
 # Validated ~5/21 recall on ground-truth Duplex → treat as APPROXIMATE. Labelled '≈' + COMPILED.
 
@@ -73,11 +84,12 @@ def storey_doors(c):
     """Per-storey door (cx,cy,bx,by) — the §DOOR-RESCUE clue for genuine small rooms. Each door's
     OWN real footprint is carried through so adjacency self-scales to that door, not a guessed metre."""
     rows = c.execute(
-        "SELECT m.storey, t.center_x,t.center_y, COALESCE(t.bbox_x,0), COALESCE(t.bbox_y,0) "
+        "SELECT m.storey, m.element_name, t.center_x,t.center_y, COALESCE(t.bbox_x,0), COALESCE(t.bbox_y,0) "
         "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
         "WHERE m.ifc_class LIKE 'IfcDoor%' AND t.center_x IS NOT NULL").fetchall()
     by = {}
-    for st, cx, cy, bx, by_ in rows:
+    for st, name, cx, cy, bx, by_ in rows:
+        if not _is_room_door(name): continue  # §DOOR-NOT-ROOM: lift/elevator doors aren't room evidence
         by.setdefault(st or "Unknown", []).append((cx, cy, bx, by_))
     return by
 
