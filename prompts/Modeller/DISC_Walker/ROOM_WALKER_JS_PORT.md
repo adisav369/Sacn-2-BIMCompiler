@@ -74,12 +74,23 @@ pattern (CommonJS/ES modules/plain script-global) applies before picking one ad 
 ### Task 3 — Node CLI mode: replace `compile_rooms.py` for the 8 shipped residents
 **Status: NOT STARTED. BLOCKED on Task 2.** Same CLI shape as today (`<db> [--write]`), same
 output semantics, run via Node (this repo already has this exact pattern for offline DB
-manipulation — `embed8_scripts/finalize_all_8.js`, `sandbox_loader_proof.js`). Witness (mandatory,
-not optional): re-run against all 8 buildings and PROVE identical counts to this session's Python
-run — SampleHouse 3, Duplex 20, Terminal 43, SampleCastle 51, HHS 105, Clinic 197, Garage 5,
-Hospital 201, same tagging (`RM_`/`≈`/`COMPILED`/`predefined_type` values). Any discrepancy is a
-porting bug to fix, not a "close enough" to wave through — the Python version is the checked
-ground truth here. Do NOT retire `compile_rooms.py` until this witness is 100% green.
+manipulation — `embed8_scripts/finalize_all_8.js`, `sandbox_loader_proof.js`).
+
+**Two distinct bars, both required — "tested against" is NOT the same as "injected into," do both:**
+1. **Test bar:** run the ported tool (no `--write`, or against a scratch COPY) against all 8
+   real shipped `modeller/*_ARC.db` files and PROVE identical counts to this session's Python run
+   — SampleHouse 3, Duplex 20, Terminal 43, SampleCastle 51, HHS 105, Clinic 197, Garage 5,
+   Hospital 201, same tagging (`RM_`/`≈`/`COMPILED`/`predefined_type` values). Any discrepancy is a
+   porting bug to fix, not a "close enough" to wave through — the Python version is the checked
+   ground truth here.
+2. **Injection bar (the actual deliverable, not optional once #1 is green):** re-run the ported
+   tool with `--write` against the REAL shipped `modeller/*_ARC.db` files themselves (the same 8
+   showcase files this session's Python work populated) so their `spatial_structure` data
+   provably becomes JS-sourced going forward — not left as a Python-verified-once, JS-verified-
+   separately split state. Commit the re-injected showcase DBs alongside the new tool, same
+   worktree/push discipline as every DB change this session.
+
+Do NOT retire `compile_rooms.py` until BOTH bars are 100% green on all 8 real showcase files.
 
 ### Task 4 — "Room Walker" Outliner action (browser mode)
 **Status: NOT STARTED. BLOCKED on Task 1 (UI pattern) + Task 2 (the module).** Wire the SAME JS
