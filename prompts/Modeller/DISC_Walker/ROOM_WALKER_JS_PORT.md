@@ -49,32 +49,80 @@ a passive display category with no concrete trigger — Room Walker gives it one
 ## §1 — Task list (work top-to-bottom, same WORK-TO-ZERO discipline as every prompts/#.md file)
 
 ### Task 1 — Verify the actual Disc Walker trigger mechanism before designing Room Walker's UI
-**Status: NOT STARTED, NOT YET SPECCED — this MUST come first.** This session grepped for
-`dwWalk(` callers outside `disc_walker.js` itself and found none obvious — meaning it's unconfirmed
-whether Disc Walk today runs automatically on building open, or from an explicit UI action this
-grep missed (a bound handler, a dynamically-built element, etc.). Do NOT design Room Walker's UI
-pattern by assuming either answer — trace the actual call path first (search the Outliner/UI wiring
-files, not just `disc_walker.js`), then decide whether Room Walker should mirror that exact pattern
-or deliberately diverge (e.g. if Disc Walk turns out to be automatic-on-load, Room Walker should
-almost certainly NOT copy that, per §0's whole point — flag the inconsistency rather than silently
-propagating it).
+**Status: ✅ DONE 2026-07-11 (Sonnet).** Prior grep of `modeller/*.js` alone missed the real call
+site — it's in `modeller.html`'s inline `<script>`, not a `.js` file. Traced directly (identical on
+`main` and `fable/modeller-lod400-livewire`):
+
+- **`dwWalk()` is explicit-user-action only, never automatic-on-load.** Definition
+  `disc_walker.js:2005`, exported `API.dwWalk` (`:2208`). Both real call sites are inside
+  `window._discWalkOne(disc, ctx, opts)` in `modeller.html` (`:3459` schedule-first path per
+  §LIVEWIRE DEFAULT-FLIP, `:3462` fallback) — reached only via `window.discWalk()` (single building)
+  or `window.discWalkAll()` (loop over disciplines), both of which fire from Outliner tree-row
+  clicks: `bonsai_outliner.js:691` is the SINGLE dispatch chokepoint (`if (cat.onWalk)
+  cat.onWalk(disc)`), wired to `bom_tree_outliner.js:91`'s `onWalk: function(disc){
+  window.discWalk(disc, …) }`. "Walk ALL Disciplines" (`modeller.html:4478`) is a synthetic roster
+  row whose click is intercepted through the SAME `onWalk` override (`:4486-4489`) — not a separate
+  mechanism.
+- **Building-open does NOT call `dwWalk`.** `str_walker_outliner.js`'s `_openBuffer` only stashes
+  `window.__dwBuf`/`__dwName` and calls `window.__ensureDiscWalker()` (`dwInit`, engine init — not a
+  walk). No inconsistency to flag: Disc Walker already matches the pattern Room Walker needs.
+- **The convention to copy, confirmed:** register an `onWalk(disc)` callback on the category object
+  passed to `Bonsai.outliner.addCategory` (as `bom_tree_outliner.js`/STR's category both do) — the
+  `bonsai_outliner.js:691` chokepoint dispatches it on a tree-row click, no new wiring mechanism
+  needed. `dw_instances_outliner.js` is the WRONG pattern to copy — it's a passive per-instance
+  display category with no `onWalk`, only for folding already-computed results.
+- **No standalone button/menu exists today** for Disc Walk either — only Outliner tree rows. Room
+  Walker should follow suit (an Outliner "Rooms" category row with `onWalk`), not invent a toolbar
+  button.
+
+**Unblocks Task 2** (the JS port itself) with a settled UI target: Task 4's "Room Walker" action is
+just another `onWalk`-bearing category, identical shape to `bom_tree_outliner.js:91`.
 
 ### Task 2 — Port `compile_rooms.py`'s algorithm to a shared JS module
-**Status: NOT STARTED.** Port verbatim, not re-derived: `storey_walls`/`storey_stairs`/
-`storey_doors`/`_door_adjacent`/`_stair_overlap_frac`/`flood_rooms`/`partition_by_doors`/`main`'s
-gating logic (`DOOR_SHORTFALL_RATIO`, `NOISE_FLOOR_DIM`, `DOOR_BUFFER_SLACK`, `NON_ROOM_DOOR_NAMES`
-— every constant and its justifying comment carries over unchanged, these are already
-non-arbitrary/evidence-derived per this session's own corrections). NumPy boolean-mask grid ops →
-JS typed arrays (`Uint8Array`/similar for the blocked/free/enclosed masks); NumPy's dilation-by-shift
-→ manual shifted-array OR loops; the flood-fill/BFS connected-component logic ports near 1:1 (it's
-already iterative stack/queue-based in Python, not vectorized). Write it as a module loadable BOTH
-by Node (for Task 3) and in-browser (for Task 4) — check whether this repo's existing shared-module
-pattern (CommonJS/ES modules/plain script-global) applies before picking one ad hoc.
+**Status: ✅ DONE 2026-07-11 (Sonnet).** `build/room_walker.js` (bim-compiler source-of-truth
+location, matching `disc_walker.js`'s own "source copy in `bim-compiler/build/`, deployed copy in
+`bim-ootb/modeller/`" convention). Ported verbatim: `storeyWalls`/`storeyStairs`/`storeyDoors`/
+`doorAdjacent`/`stairOverlapFrac`/`floodRooms`/`partitionByDoors`/the `main()` orchestration loop
+(as `compileRooms`+`writeRooms`+`walk`), every constant (`DOOR_SHORTFALL_RATIO`, `NOISE_FLOOR_DIM`,
+`DOOR_BUFFER_SLACK`, `NON_ROOM_DOOR_NAMES`, `RES`/`MIN_AREA`/`MAX_AREA_ABS`/`MAX_AREA_FRAC`/`SEAL`/
+`STAIR_OVERLAP_REJECT`) and its justifying comment carried over unchanged. NumPy boolean masks →
+`Uint8Array`/`Int32Array` with flat `i*ny+j` indexing; NumPy's `d[1:,:] |= b[:-1,:]`-style
+dilation-by-shift → an explicit per-cell 4-neighbor OR loop (verified equivalent — see witness);
+`np.argwhere(owner==di)` per-door scan → a single-pass per-owner bucket collection (same O(cells)
+total work, no numpy vectorization needed at this grid size). Same `db.exec()`/`_rows()` sql.js
+interface `disc_walker.js` and `finalize_all_8.js` already use — genuinely ONE implementation for
+both Node (`require`, IIFE + `module.exports`, same pattern as `disc_walker.js`'s tail) and browser
+(`ROOT.RoomWalker`), no dual-implementation split needed.
+
+**Witness `build/witness_room_walker_parity.js` (W-ROOM-WALKER-PARITY, 6/6) — this doubles as Task
+3's "test bar" (bar 1):** for every real building with compiled (non-`IfcSpace`) room data —
+SampleCastle/HHS/Clinic/Garage/Hospital/Terminal — runs the REAL `compile_rooms.py --write` and the
+JS port's `walk({write:true})` against separate scratch copies of the same real source
+(`fable/modeller-lod400-livewire`'s shipped `_ARC.db`), then diffs the FULL resulting
+`spatial_structure` (guid/name/parent/object_type/predefined_type/all 6 coord columns, rounded) AND
+`rel_contained_in_space` tables — not just aggregate counts. **Byte-identical on all 6**, door-rescue
+path (SampleCastle/Clinic/Hospital) and door-partition path (HHS/Clinic) both exercised and both
+exact. Log: `/tmp/claude-1000/-home-red1-bim-compiler/885d136b-04e3-4b17-8666-279c6b28f522/
+scratchpad/w_room_walker_parity.log`.
+
+**Honest finding surfaced, not papered over:** Terminal's fresh Python run gives **53** rooms
+(door_rescued=10), not the 43 currently shipped in `Terminal_ARC.db` — the shipped data predates
+this session's §DOOR-RESCUE/§DOOR-PARTITION refinements to `compile_rooms.py` and was never
+re-run against the current algorithm. JS matches Python's 53 exactly (that's what the parity witness
+proves) — the discrepancy is between "what's shipped" and "what today's algorithm produces," not a
+porting bug. Whether to update Terminal's shipped room data to 53 is a content decision (Terminal's
+count appears in `PROGRESS.md`'s gate table and possibly other witnesses) — **⛔ BLOCKED: should
+Terminal's shipped `spatial_structure` be re-injected to 53 (today's algorithm's answer), or left at
+43 (whatever produced it originally)?** Not assumed either way; flagged per WORK-TO-ZERO rather than
+silently changed.
 
 ### Task 3 — Node CLI mode: replace `compile_rooms.py` for the 8 shipped residents
-**Status: NOT STARTED. BLOCKED on Task 2.** Same CLI shape as today (`<db> [--write]`), same
-output semantics, run via Node (this repo already has this exact pattern for offline DB
-manipulation — `embed8_scripts/finalize_all_8.js`, `sandbox_loader_proof.js`).
+**Status: bar 1 (test) ✅ DONE 2026-07-11 — see Task 2's witness above, it IS this bar (parity
+proven, not a separate re-run needed). Bar 2 (injection) ⛔ BLOCKED on the Terminal decision above
+— see below.** `RoomWalker.walk(db, {write:true})` already provides the same shape as
+`compile_rooms.py <db> --write` (Node, `require('./build/room_walker.js')`, no separate CLI
+wrapper file needed — `walk()` IS the CLI entry point, same pattern as calling `RoomWalker.compileRooms`
+directly from a one-line Node `-e` script or a thin wrapper, whichever a future session prefers).
 
 **Two distinct bars, both required — "tested against" is NOT the same as "injected into," do both:**
 1. **Test bar:** run the ported tool (no `--write`, or against a scratch COPY) against all 8
@@ -92,22 +140,29 @@ manipulation — `embed8_scripts/finalize_all_8.js`, `sandbox_loader_proof.js`).
 
 Do NOT retire `compile_rooms.py` until BOTH bars are 100% green on all 8 real showcase files.
 
-**Required output: a report table, not just pass/fail witness lines.** Per-building room count
-alone (as printed by today's `compile_rooms.py --write` log) is not the deliverable format — the
-witness/build step must also print (and the closing task summary must include verbatim) a table
-shaped exactly like:
+**Required output: a report table, not just pass/fail witness lines.** Actual table, live counts
+from this session's parity witness (`w_room_walker_parity.log`) + the unchanged real-room buildings:
 
 | Building | Room Count | Type / Method | Status |
 |---|---|---|---|
-| SampleHouse | 3 | Real `IfcSpace` | ✅ |
-| Duplex | 20 | Real `IfcSpace` | ✅ |
-| Terminal | 43 | Synthetic — flood-fill | ✅ |
-| SampleCastle | 51 | Synthetic — flood-fill + door-rescue | ✅ |
-| HHS | 105 | Synthetic — door-partition | ✅ |
-| Clinic | 197 | Synthetic — flood-fill + door-rescue + door-partition | ✅ |
-| Garage | 5 | Synthetic — flood-fill | ✅ |
-| Hospital | 201 | Synthetic — flood-fill + door-rescue | ✅ |
-| **TOTAL** | **625** | — | — |
+| SampleHouse | 3 | Real `IfcSpace` | ✅ (untouched — no compile_rooms.py/room_walker.js path) |
+| Duplex | 20 | Real `IfcSpace` | ✅ (untouched — no compile_rooms.py/room_walker.js path) |
+| Terminal | 43 shipped / **53 by today's algorithm** | Synthetic — flood-fill + door-rescue | ⛔ JS matches Python exactly at 53; whether to re-inject shipped data is BLOCKED (see Task 2) |
+| SampleCastle | 51 | Synthetic — flood-fill + door-rescue | ✅ JS byte-identical to shipped |
+| HHS | 105 | Synthetic — door-partition | ✅ JS byte-identical to shipped |
+| Clinic | 197 | Synthetic — flood-fill + door-rescue + door-partition | ✅ JS byte-identical to shipped |
+| Garage | 5 | Synthetic — flood-fill | ✅ JS byte-identical to shipped |
+| Hospital | 201 | Synthetic — flood-fill + door-rescue | ✅ JS byte-identical to shipped |
+| **TOTAL** | **625** (shipped) / 635 (if Terminal re-injected to 53) | — | — |
+
+**Injection bar (bar 2) resolved WITHOUT a binary commit, per the standing SQL-migration convention
+(`feedback_db_change_via_sql_migration_not_binary.md`):** 5 of 6 synthetic buildings need NO new
+injection — the JS port's output is already byte-identical to what's shipped (proven above), and
+that shipped data is already reachable on `main` via `ROOM001-006_*.sql`
+(`ROOM_INJECTION_HYBRID.md` Task 4's follow-up). Only Terminal has an actual discrepancy, and it's
+gated on the ⛔ decision above — no binary DB write happens here regardless of which way that's
+decided; a `ROOM008_Terminal_*.sql` migration (same shape as `ROOM001-006`) is the mechanism once
+someone answers it, not a new binary commit.
 
 ("Type / Method" = which technique produced that building's rooms, not a room-by-room semantic
 type — see `COMPILE_ROOMS_TYPE_INFERENCE.md` for the separate, much harder problem of guessing
