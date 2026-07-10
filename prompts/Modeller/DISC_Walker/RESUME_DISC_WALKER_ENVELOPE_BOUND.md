@@ -651,6 +651,65 @@
 # - REGRESSION (exit 0 AND log-read): W-SCHED-MINE 7/7 (M3 13 override rows incl. 2 rule swaps, 0
 #   drift), W-DX-WALKBACK-RSGT 14/14, W-TERM-NOSPACES 7/7, W-SHIM-SELECT 6/6, W-DWWALK-HOSTBIND 6/6,
 #   W-HOSTBIND-AGNOSTIC 11/11, W-ELEC-HOSTBIND 5/5, space_scoped 5/5. Syntax checks clean.
+#
+# **SPEC §WALL-SLOT (2026-07-11, same session — the which-wall half of the xy follow-up. THE MEASURED
+# FACT THAT RESHAPES IT: no (space_type, device) pool in the real Duplex has ONE dominant wall — every
+# pool splits (bathroom's two sconces sit on OPPOSITE walls XMIN+XMAX in BOTH mirrored bathrooms
+# [CORRECTED in the closeout below: label-merge artifact — it's ONE sconce per bathroom, wall flips
+# with the unit mirror];
+# kitchen receptacles split YMIN×6/YMAX×6; bedroom outlets spread over all four sides and DISAGREE
+# between mirrored bedrooms). A single mined x_ref/y_ref per row would be invention and would worsen
+# half the fixtures. The honest signal is the per-room SIDE MULTISET, minable only where every room
+# of the type carries the SAME multiset:**
+# - MINE ad_placement_wall_slots (space_type_id, device_id, slot_idx, x_ref, edge_x, y_ref, edge_y,
+#   n_measured, source, provenance): for wall-anchored (incl. §WALL-LIGHT-swapped) pools, group real
+#   fixtures per ROOM GUID (labels duplicate across the two mirrored units), classify each fixture's
+#   nearest side (XMIN/XMAX/YMIN/YMAX + perpendicular distance); emit slots ONLY when all rooms of the
+#   type agree on the multiset (n≥2; single-room types allowed — no cross-check exists, said in
+#   provenance). Slot = side ref (perpendicular axis: MIN/MAX + median distance), along-axis stays the
+#   generic rule's CENTER (along-wall position = named residual, not mined here). Inconsistent pools
+#   → §SLOT-SKIP, honest REFUSE (bedroom outlets/switches, toilet, bathroom sinks expected to refuse).
+# - PROJECT → rule_place_slots (disc, space_type_id, device_id, slot_idx, refs; probe-guarded).
+# - WALKER (first placeSchedule seam of this lane, small + probe-guarded): in the qty loop, fixture i
+#   takes slot i's base refs when a slot exists (same _schedBasePos semantics, then the normal
+#   wall-snap/facing/clash pipeline); i ≥ slot-count falls back to today's distribute path. §SCHED-SLOT
+#   log line per slotted fixture. No slots table / no slots for the row → byte-identical walk.
+# - M3 grows a slot-verbatim clause (projection slots byte-equal source slots). Witness bar:
+#   sconce per-fixture NN (scratchpad sconce_delta.js) drops further; W5 wall-anchored families hold
+#   or improve; 14/14 + 7/7 + sibling suite 0-fail; the 3.52m outlier re-measured and explained
+#   (surplus-qty fixture, already named).
+#
+# **§WALL-SLOT CLOSEOUT (2026-07-11, same session — INFRASTRUCTURE DELIVERED; ZERO slots emitted on
+# Duplex, BY MEASUREMENT, and that refusal is the finding):**
+# - CORRECTION to the spec paragraph above (and to §WALL-LIGHT's "B2 sconce pair on opposite walls"
+#   phrasing): that read came from grouping fixtures by room LABEL — but the Duplex has TWO mirrored
+#   units with duplicate labels ('Bathroom 1' exists twice). At true room-GUID granularity each
+#   bathroom has ONE sconce; unit A mounts them on XMIN, unit B on XMAX (mirror). Same shape
+#   everywhere: kitchen counter outlets are 6-on-one-wall per kitchen, YMAX in one unit, YMIN in the
+#   other; toilets/sinks/switches all flip sides with the unit.
+# - CONSEQUENCE (measured, §SLOT-SKIP ×13 in the miner log): NO wall-anchored (space_type, device)
+#   pool has a room-consistent side multiset — the real wall choice is MIRROR-DEPENDENT, and the
+#   schema's absolute MIN/MAX refs cannot express it. Emitting any fixed ref would better half the
+#   units and worsen the other half. Honest REFUSE across the board, exactly per the task's own guard.
+# - DELIVERED ANYWAY (the seam, probe-guarded, byte-inert at 0 rows — ready for any building/pool
+#   whose multiset IS consistent): miner §SLOT-MINE/§SLOT-SKIP derivation (room-guid grouping,
+#   cross-room multiset equality, per-side median distance, single-room types flagged in provenance);
+#   ad_placement_wall_slots (+empty-seeded); projection → rule_place_slots; walker placeSchedule slot
+#   seam (fixture i takes slot i's base refs then the normal snap/facing/clash pipeline — first
+#   walker change of this lane, §SCHED-SLOT logged); M3 slot-verbatim clause (slot-without-source /
+#   slot-drift classes).
+# - PROOF (logs in session scratchpad): (a) INERTNESS — with 0 slots the full walkback reproduces the
+#   §WALL-LIGHT state byte-for-byte (W5 ELEC 22/51/96 covered 82/89, PLB 2/14/17; zero §SCHED-SLOT
+#   lines; 14/14). (b) FALSIFIER — a synthetic slot row (LOBBY/LIGHT y_ref=MAX) injected into a COPY
+#   of duplex_rules engages the seam (§SCHED-SLOT fixture 1/3 ... CENTER/MAX in both foyers) and the
+#   fixture provably moves to the specified wall. The seam works; the data honestly refuses.
+# - REGRESSION: W-SCHED-MINE 7/7 (M3 incl. slot clause), W-DX-WALKBACK-RSGT 14/14, W-TERM-NOSPACES
+#   7/7, W-SHIM-SELECT 6/6, W-DWWALK-HOSTBIND 6/6, W-HOSTBIND-AGNOSTIC 11/11, W-ELEC-HOSTBIND 5/5,
+#   space_scoped 5/5 — all exit 0, log-read. Syntax ×5 clean.
+# - FOLLOW-UP (named, the real shape of the remaining xy gap): MIRROR-INVARIANT anchors — "the wall
+#   the counter/door/lavatory is on", derivable from ARC adjacency, not from absolute axis refs. New
+#   schema semantics + mining, a full item of its own. Also still open: along-wall position, per-room
+#   qty (surplus-fixture NN outliers, e.g. the 3.52m foyer light).
 
 # ▶▶▶▶▶ ENTRY POINT (2026-07-10, superseded by the block above — kept for evidence trail). This
 # session (Sonnet) is closing out; the user is now iterating directly with a Fable5 session in their own

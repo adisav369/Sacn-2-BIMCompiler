@@ -152,9 +152,25 @@ var KNOWN_NO_MESH = ['DATA_POINT', 'EMERGENCY_LIGHT', 'WASHING_TAP'];
     if (!ov && tagged) { offBad.push(key + ':tag-without-source'); return; }
     if (ov) nOverridden++;
   });
+  // §WALL-SLOT verbatim clause: every projected rule_place_slots row byte-equals its source
+  // ad_placement_wall_slots row, and no slot appears without a source (0 rows on Duplex BY
+  // MEASUREMENT — every pool §SLOT-SKIPped; the clause still guards the seam for future pools).
+  var srcSlots = {};
+  if (rows(erp, "SELECT 1 n FROM sqlite_master WHERE name='ad_placement_wall_slots'").length)
+    rows(erp, 'SELECT space_type_id, device_id, slot_idx, x_ref, edge_x, y_ref, edge_y FROM ad_placement_wall_slots')
+      .forEach(function (s) { srcSlots[s.space_type_id + '|' + s.device_id + '|' + s.slot_idx] = s; });
+  var projSlots = rows(rules, "SELECT 1 n FROM sqlite_master WHERE name='rule_place_slots'").length ?
+    rows(rules, 'SELECT space_type_id, device_id, slot_idx, x_ref, edge_x_m, y_ref, edge_y_m FROM rule_place_slots') : [];
+  projSlots.forEach(function (s) {
+    var src2 = srcSlots[s.space_type_id + '|' + s.device_id + '|' + s.slot_idx];
+    if (!src2) { offBad.push(s.space_type_id + '/' + s.device_id + ':slot-without-source'); return; }
+    if (s.x_ref !== src2.x_ref || s.edge_x_m !== src2.edge_x || s.y_ref !== src2.y_ref || s.edge_y_m !== src2.edge_y)
+      offBad.push(s.space_type_id + '/' + s.device_id + ':slot-drift');
+  });
   assert('M3 OFFSET-VERBATIM', offBad.length === 0,
     offRows.length + ' schedule rows two-level verbatim: xy byte-equal ad_placement_offset, z byte-equal ' +
-    'its mined space override (' + nOverridden + ' rows, ad_placement_offset_space) else the generic row' +
+    'its mined space override (' + nOverridden + ' rows, ad_placement_offset_space) else the generic row; ' +
+    projSlots.length + ' wall slots byte-equal source' +
     (offBad.length ? ' EXCEPT: ' + offBad.slice(0, 8).join(', ') : ' (0 drift)'));
 
   log(''); log('─── M4 DISC-ROSTER ───');

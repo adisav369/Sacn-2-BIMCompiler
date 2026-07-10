@@ -37,6 +37,15 @@ ROWS = [
     ('LOBBY', 'LIGHT', 'WALL_HIGH', 'CEILING', 0.6103, 2, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=2 family=LIGHT wall-mounted median-edge=0.09m'),
 ]
 
+# §WALL-SLOT: per-fixture which-wall refs. EMPTY ON DUPLEX BY MEASUREMENT (2026-07-11): at true
+# room-guid granularity every wall-anchored pool REFUSED — each mirrored unit mounts the same device
+# class on the OPPOSITE absolute wall (unit A bathrooms XMIN, unit B XMAX; kitchen counter wall YMAX
+# vs YMIN), and the schema's absolute MIN/MAX refs cannot express a mirror-dependent choice. See the
+# miner's §SLOT-SKIP lines. The table+seam stay committed (probe-guarded, byte-inert at 0 rows) for
+# any future pool that yields a consistent multiset; mirror-invariant anchors = named follow-up.
+SLOTS = [
+]
+
 db = sqlite3.connect(DB)
 db.execute("DROP TABLE IF EXISTS ad_placement_offset_space")
 db.execute("CREATE TABLE ad_placement_offset_space ("
@@ -44,7 +53,16 @@ db.execute("CREATE TABLE ad_placement_offset_space ("
            "z_rule TEXT NOT NULL, z_offset REAL NOT NULL, n_measured INTEGER NOT NULL, "
            "source TEXT NOT NULL, provenance TEXT, PRIMARY KEY (space_type_id, device_id))")
 db.executemany("INSERT INTO ad_placement_offset_space VALUES (?,?,?,?,?,?,?,?)", ROWS)
+db.execute("DROP TABLE IF EXISTS ad_placement_wall_slots")
+db.execute("CREATE TABLE ad_placement_wall_slots ("
+           "space_type_id TEXT NOT NULL, device_id TEXT NOT NULL, slot_idx INTEGER NOT NULL, "
+           "x_ref TEXT NOT NULL, edge_x REAL NOT NULL, y_ref TEXT NOT NULL, edge_y REAL NOT NULL, "
+           "n_measured INTEGER NOT NULL, source TEXT NOT NULL, provenance TEXT, "
+           "PRIMARY KEY (space_type_id, device_id, slot_idx))")
+db.executemany("INSERT INTO ad_placement_wall_slots VALUES (?,?,?,?,?,?,?,?,?,?)", SLOTS)
 db.commit()
 n = db.execute("SELECT COUNT(*) FROM ad_placement_offset_space").fetchone()[0]
-print('§OFFSET-SEED %s: inserted %d, table now %d rows (%d expected)' % (DB, len(ROWS), n, len(ROWS)))
-sys.exit(0 if n == len(ROWS) else 1)
+ns = db.execute("SELECT COUNT(*) FROM ad_placement_wall_slots").fetchone()[0]
+print('§OFFSET-SEED %s: inserted %d offsets + %d wall slots, tables now %d + %d rows (%d + %d expected)'
+      % (DB, len(ROWS), len(SLOTS), n, ns, len(ROWS), len(SLOTS)))
+sys.exit(0 if (n == len(ROWS) and ns == len(SLOTS)) else 1)
