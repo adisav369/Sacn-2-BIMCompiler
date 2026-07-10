@@ -7,8 +7,12 @@
 # PROVENANCE: every row mined 2026-07-11 by scripts/mine_placement_offset_space.py from
 # build/Duplex_mep_extracted.db element_transforms (median real device center per space_type × device
 # family, ad_element_mep_alias DX_MINED classification, M_Product.source_element_ref device bridge,
-# n>=2 + W2-containment + W3-ceiling-band guards, FLOOR-host rows hz-compensated for the walker's
-# half-height lift). To re-derive: run the miner and diff its printed seed block against ROWS below.
+# n>=2 + W2-containment + W3-ceiling-band + W6-walking-band guards, FLOOR-host rows hz-compensated for
+# the walker's half-height lift). Rows with a placement_rule are MEASURED wall-mounted lights (sconces,
+# median edge distance 0.09m) — the rule swaps to the generic wall-anchored WALL_HIGH at projection
+# time so the walker snaps them to a real wall face; pendants (centre xy, bottom inside the 0-1.8m
+# walking band) are deliberately absent — see the miner's §OFFSET-SKIP lines.
+# To re-derive: run the miner and diff its printed seed block against ROWS below.
 import sqlite3, os, sys
 
 DB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'library/disc_patterns.db')
@@ -18,26 +22,28 @@ if not os.path.exists(DB):
     sys.exit(1)
 
 ROWS = [
-    ('BATHROOM', 'OUTLET_GFCI', 'FLOOR', 1.2985, 4, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=4 family=OUTLET'),
-    ('BATHROOM', 'SINK', 'FLOOR', 0.8954, 6, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=6 family=SINK'),
-    ('BATHROOM', 'SWITCH', 'FLOOR', 1.2995, 2, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=2 family=SWITCH'),
-    ('BATHROOM', 'TOILET', 'FLOOR', 0.0204, 4, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=4 family=TOILET hz-compensated dim_z=0.7684'),
-    ('BEDROOM', 'OUTLET', 'FLOOR', 0.5315, 17, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=17 family=OUTLET'),
-    ('BEDROOM', 'SWITCH', 'FLOOR', 1.2935, 4, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=4 family=SWITCH'),
-    ('CORRIDOR', 'SWITCH', 'FLOOR', 1.2935, 2, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=2 family=SWITCH'),
-    ('KITCHEN', 'OUTLET_20A', 'FLOOR', 1.1475, 12, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=12 family=OUTLET'),
-    ('KITCHEN', 'OUTLET_GFCI', 'FLOOR', 1.1475, 12, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=12 family=OUTLET'),
-    ('KITCHEN', 'SINK', 'FLOOR', 0.9117, 2, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=2 family=SINK'),
-    ('LIVING', 'OUTLET', 'FLOOR', 0.5315, 4, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=4 family=OUTLET'),
+    ('BATHROOM', 'LIGHT', 'WALL_HIGH', 'CEILING', 0.6103, 4, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=4 family=LIGHT wall-mounted median-edge=0.09m'),
+    ('BATHROOM', 'OUTLET_GFCI', None, 'FLOOR', 1.2985, 4, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=4 family=OUTLET'),
+    ('BATHROOM', 'SINK', None, 'FLOOR', 0.8954, 6, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=6 family=SINK'),
+    ('BATHROOM', 'SWITCH', None, 'FLOOR', 1.2995, 2, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=2 family=SWITCH'),
+    ('BATHROOM', 'TOILET', None, 'FLOOR', 0.0204, 4, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=4 family=TOILET hz-compensated dim_z=0.7684'),
+    ('BEDROOM', 'OUTLET', None, 'FLOOR', 0.5315, 17, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=17 family=OUTLET'),
+    ('BEDROOM', 'SWITCH', None, 'FLOOR', 1.2935, 4, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=4 family=SWITCH'),
+    ('CORRIDOR', 'SWITCH', None, 'FLOOR', 1.2935, 2, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=2 family=SWITCH'),
+    ('KITCHEN', 'OUTLET_20A', None, 'FLOOR', 1.1475, 12, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=12 family=OUTLET'),
+    ('KITCHEN', 'OUTLET_GFCI', None, 'FLOOR', 1.1475, 12, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=12 family=OUTLET'),
+    ('KITCHEN', 'SINK', None, 'FLOOR', 0.9117, 2, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=2 family=SINK'),
+    ('LIVING', 'OUTLET', None, 'FLOOR', 0.5315, 4, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=4 family=OUTLET'),
+    ('LOBBY', 'LIGHT', 'WALL_HIGH', 'CEILING', 0.6103, 2, 'roster=build/Duplex_mep_extracted.db centers=Duplex_extracted.db(oracle frame) 2026-07-11', 'DX_MINED element_transforms n=2 family=LIGHT wall-mounted median-edge=0.09m'),
 ]
 
 db = sqlite3.connect(DB)
-db.execute("CREATE TABLE IF NOT EXISTS ad_placement_offset_space ("
-           "space_type_id TEXT NOT NULL, device_id TEXT NOT NULL, z_rule TEXT NOT NULL, "
-           "z_offset REAL NOT NULL, n_measured INTEGER NOT NULL, source TEXT NOT NULL, "
-           "provenance TEXT, PRIMARY KEY (space_type_id, device_id))")
-db.execute("DELETE FROM ad_placement_offset_space")
-db.executemany("INSERT INTO ad_placement_offset_space VALUES (?,?,?,?,?,?,?)", ROWS)
+db.execute("DROP TABLE IF EXISTS ad_placement_offset_space")
+db.execute("CREATE TABLE ad_placement_offset_space ("
+           "space_type_id TEXT NOT NULL, device_id TEXT NOT NULL, placement_rule TEXT, "
+           "z_rule TEXT NOT NULL, z_offset REAL NOT NULL, n_measured INTEGER NOT NULL, "
+           "source TEXT NOT NULL, provenance TEXT, PRIMARY KEY (space_type_id, device_id))")
+db.executemany("INSERT INTO ad_placement_offset_space VALUES (?,?,?,?,?,?,?,?)", ROWS)
 db.commit()
 n = db.execute("SELECT COUNT(*) FROM ad_placement_offset_space").fetchone()[0]
 print('§OFFSET-SEED %s: inserted %d, table now %d rows (%d expected)' % (DB, len(ROWS), n, len(ROWS)))

@@ -130,7 +130,7 @@ var KNOWN_NO_MESH = ['DATA_POINT', 'EMERGENCY_LIGHT', 'WASHING_TAP'];
     .forEach(function (o) { src[o.placement_rule] = o; });
   var spaceZ = {};
   if (rows(erp, "SELECT 1 n FROM sqlite_master WHERE name='ad_placement_offset_space'").length)
-    rows(erp, 'SELECT space_type_id, device_id, z_rule, z_offset FROM ad_placement_offset_space')
+    rows(erp, 'SELECT space_type_id, device_id, z_rule, z_offset, placement_rule FROM ad_placement_offset_space')
       .forEach(function (o) { spaceZ[o.space_type_id + '|' + o.device_id] = o; });
   var offRows = rows(rules, 'SELECT space_type_id, device_id, placement_rule, edge_x_m, edge_y_m, ' +
     'z_offset_m, z_rule, x_ref, y_ref, provenance FROM rule_space_schedule WHERE placement_rule IS NOT NULL');
@@ -140,6 +140,9 @@ var KNOWN_NO_MESH = ['DATA_POINT', 'EMERGENCY_LIGHT', 'WASHING_TAP'];
     var ov = spaceZ[o.space_type_id + '|' + o.device_id];
     var key = o.space_type_id + '/' + o.device_id;
     if (!s) { if (!(o.edge_x_m === 0 && o.edge_y_m === 0 && (ov ? o.z_offset_m === ov.z_offset : o.z_offset_m === 0))) offBad.push(key + ':no-source'); return; }
+    // measured wall-mounted lights: the override names the generic rule the row MUST have swapped
+    // to (xy then verbatim to THAT rule's entry, checked below via src[o.placement_rule])
+    if (ov && ov.placement_rule && o.placement_rule !== ov.placement_rule) { offBad.push(key + ':rule-not-swapped'); return; }
     if (o.edge_x_m !== s.from_edge_x || o.edge_y_m !== s.from_edge_y ||
         o.x_ref !== s.x_ref || o.y_ref !== s.y_ref) { offBad.push(key + ':xy-drift'); return; }
     var wantZ = ov ? ov.z_offset : s.z_offset, wantZR = ov ? ov.z_rule : s.z_rule;

@@ -161,14 +161,16 @@ def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONE
     offsets = {r[0]: r[1:] for r in erp.execute(
         "SELECT placement_rule, from_edge_x, from_edge_y, z_offset, z_rule, x_ref, y_ref, "
         "standard FROM ad_placement_offset")}
-    # §W5-RATCHET (item 4): per-room Z overrides mined from the real Duplex MEP transforms
-    # (ad_placement_offset_space, seeded by scripts/seed_placement_offset_space.py). Z only —
-    # x/y stay generic (wall-snap owns them). Probe first: an older disc_patterns.db without
-    # the table must project unchanged.
+    # §W5-RATCHET (item 4): per-room overrides mined from the real Duplex MEP transforms
+    # (ad_placement_offset_space, seeded by scripts/seed_placement_offset_space.py). Z always;
+    # rows carrying a placement_rule are MEASURED wall-mounted lights — the rule swaps to that
+    # generic wall-anchored rule and xy comes verbatim from ITS ad_placement_offset entry (the
+    # walker's wall-snap owns the final xy). Probe first: an older disc_patterns.db without the
+    # table must project unchanged.
     space_z = {}
     if erp.execute("SELECT 1 FROM sqlite_master WHERE name='ad_placement_offset_space'").fetchone():
-        space_z = {(r[0], r[1]): (r[2], r[3], r[4]) for r in erp.execute(
-            "SELECT space_type_id, device_id, z_rule, z_offset, n_measured "
+        space_z = {(r[0], r[1]): (r[2], r[3], r[4], r[5]) for r in erp.execute(
+            "SELECT space_type_id, device_id, z_rule, z_offset, n_measured, placement_rule "
             "FROM ad_placement_offset_space")}
     dims = {r[0]: (r[1], r[2], r[3]) for r in erp.execute(
         "SELECT product_id, width, depth, height FROM M_Product "
@@ -231,6 +233,10 @@ def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONE
         if sz:
             z_rule, z_off = sz[0], sz[1]
             prov += "+space-z:DX n=%d" % sz[2]
+            if sz[3]:  # measured wall-mounted: swap to the generic wall-anchored rule (xy verbatim)
+                rule, host = sz[3], "WALL"
+                off = offsets.get(rule) or off
+                prov += "+space-rule:%s" % rule
         cur.execute(
             "INSERT INTO rule_space_schedule VALUES "
             "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

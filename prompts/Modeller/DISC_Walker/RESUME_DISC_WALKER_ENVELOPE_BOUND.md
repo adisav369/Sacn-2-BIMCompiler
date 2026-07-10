@@ -589,8 +589,10 @@
 # 2. WALL-LIGHTS-ARE-NOT-CEILING-LIGHTS: the real BATHROOM/LOBBY "LIGHT" fixtures are wall sconces
 #    (0.81 below ceiling); a z-only override under CEILING_CENTER xy parked a fixture at head height
 #    mid-room → W6 NAVIGABILITY failed 0.543 (Bathroom 1). NEW walking-band guard in the miner: a
-#    lowered CEILING-rule fixture whose bbox enters the 0→1.8m band is SKIPPED (§OFFSET-SKIP, 6 rows) —
-#    wall-light xy+z mining is the named follow-up; z-only cannot honestly take it.
+#    lowered CEILING-rule fixture whose bbox enters the 0→1.8m band is SKIPPED (§OFFSET-SKIP, 5 rows —
+#    the closeout below originally miscounted 6) — wall-light xy+z mining is the named follow-up;
+#    z-only cannot honestly take it. [RESOLVED same day for the 2 genuinely wall-mounted rows —
+#    §WALL-LIGHT block below.]
 # DELIVERED: scripts/mine_placement_offset_space.py (miner, guards: n≥2, W2-containment, W3-band,
 # W6-walking-band, FLOOR-host hz compensation), scripts/seed_placement_offset_space.py (11 mined rows'
 # committed verbatim home, rebuild_erp.sh tail-wired after §SHIM-SEED), projection z-override in
@@ -616,9 +618,39 @@
 # rows, 0 drift), W-DX-WALKBACK-RSGT 14/14 (W6 back to 1.000/0.963 after the band guard),
 # W-TERM-NOSPACES 7/7, W-SHIM-SELECT 6/6, W-DWWALK-HOSTBIND 6/6, W-HOSTBIND-AGNOSTIC 11/11,
 # W-ELEC-HOSTBIND 5/5, space_scoped 5/5. Syntax: node --check ×2, py_compile ×3, bash -n ×1 clean.
-# FOLLOW-UPS (named, not taken): wall-light xy+z mining (sconces/pendants — needs edge mining, 6
-# skipped rows documented in §OFFSET-SKIP); edge_x/edge_y per-room mining; FRIDGE alias
-# (M_Refrigerator absent from ad_element_mep_alias — separate migration).
+# FOLLOW-UPS (named, not taken): wall-light xy+z mining (sconces/pendants — needs edge mining, 5
+# skipped rows documented in §OFFSET-SKIP; sconce half RESOLVED same day, §WALL-LIGHT below);
+# edge_x/edge_y per-room mining; FRIDGE alias (M_Refrigerator absent from ad_element_mep_alias —
+# separate migration).
+#
+# **§WALL-LIGHT CLOSEOUT (2026-07-11, same session — the sconce half of the wall-light follow-up,
+# DELIVERED; the pendant half measured UNFIXABLE within honest bounds, documented below):**
+# - DETECTOR (measured, not assumed): real Duplex light fixtures split cleanly on median distance to
+#   the space edge — sconces 0.094m (BATHROOM n=4, FOYER/LOBBY n=2), pendants 0.96–2.28m
+#   (HALLWAY/BEDROOM/LIVING). Miner rule: CEILING_* schedule row whose measured pool hugs the edge
+#   (median ≤0.3m) is a WALL-MOUNTED light → override placement_rule to the EXISTING generic
+#   wall-anchored WALL_HIGH (x_ref MIN → walker snaps to a REAL wall face) + mined z (CEILING 0.6103,
+#   n=4/2). ad_placement_offset_space gains a nullable placement_rule column; projection swaps
+#   rule+host and takes xy VERBATIM from WALL_HIGH's generic entry (M3 two-level intact, now also
+#   verifies the swap: ':rule-not-swapped' drift class). Walker: still zero change.
+# - THIRD REAL DEFECT CAUGHT (fixed at source): re-mining compared against rule_space_schedule's
+#   CURRENT z — which already carried the projected overrides → every row read "no delta" and the
+#   override set silently emptied. Miner baseline now reads the PRISTINE sources
+#   (ad_space_type_mep_bom + ad_placement_offset); the projection is read only for dims/disc.
+# - MEASURED DELTA (scratchpad sconce_delta.js, per-fixture NN distance to the 6 real sconces,
+#   no-sconce-override projection vs delivered): median 1.347m → 1.102m, gen z now 1.90 vs real 1.98
+#   (offset is CEILING-exact; residual 8cm = per-room height variation vs the pooled median).
+#   Suite-level: W5 ELEC @0.5m 20→22 @1m 46→51 covered 79→82/89 (vs z-only state); W6 NAVIGABILITY
+#   min connectedFraction 0.963→**1.000** (wall-hugging sconces fragment nothing); W3 WALL-HOST/FACING
+#   70/70 incl. the 6 sconce fixtures. HONEST LIMITS, named: (a) NN max is 3.52m — the schedule
+#   generates 10 lights where reality has 6 sconces; surplus fixtures have no real counterpart (qty
+#   nuance, not mount geometry); (b) WHICH wall is the walker's nearest-wall choice, not mined —
+#   which-wall refs = the edge_x/edge_y follow-up; (c) the 3 PENDANT rows (BEDROOM/CORRIDOR/LIVING)
+#   stay §OFFSET-SKIP: genuinely centre-xy (median edge 0.96–2.28m), measured bottoms 1.788–1.789m sit
+#   1.2cm inside the W6 walking band — no honest z-only or wall fix exists; REFUSED, not fudged.
+# - REGRESSION (exit 0 AND log-read): W-SCHED-MINE 7/7 (M3 13 override rows incl. 2 rule swaps, 0
+#   drift), W-DX-WALKBACK-RSGT 14/14, W-TERM-NOSPACES 7/7, W-SHIM-SELECT 6/6, W-DWWALK-HOSTBIND 6/6,
+#   W-HOSTBIND-AGNOSTIC 11/11, W-ELEC-HOSTBIND 5/5, space_scoped 5/5. Syntax checks clean.
 
 # ▶▶▶▶▶ ENTRY POINT (2026-07-10, superseded by the block above — kept for evidence trail). This
 # session (Sonnet) is closing out; the user is now iterating directly with a Fable5 session in their own
