@@ -36,41 +36,18 @@
   commit unpushed by design/LFS block). bim-ootb `mesh.db` 26 device-mesh payloads already pushed 2026-07-10
   (`670bf0f`, ancestor of current HEAD `790b069`, 0 unpushed) — predates today's hard block, nothing new to push.
   `component_library.db` confirmed zero live Modeller/Viewer fetch path (build-time mining source only, by design).
-- `prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md` 2026-07-10/11 — Tasks 1/5/6 DONE (habitability
-  classifier + Duplex 20 real rooms + SampleHouse 3 real rooms, bim-ootb `fable/modeller-lod400-livewire`
-  @`790b069`, unmerged). Task 2 DATA-EFFECT DONE, AUTOMATION half still open. Task 4 DONE (`finalize_all_8.js`
-  hardened, W-SPATIAL-CARRY 9/9) + its SQL-migration follow-up DONE (`ROOM001-007_*.sql`, W-ROOM-MIGRATION-APPLY
-  7/7). **Self-heal loader DONE 2026-07-11 (Sonnet)**: ported those scripts + `migration/MDB001_livewire_
-  device_meshes.sql` into bim-ootb `modeller/patches/*.sql`; `str_walker_outliner.js` now fetches+`db.run()`s
-  the matching patch on every resident/geoDb open (cache-hit or fresh) before use — closes the "still needs a
-  manual sqlite3 step" gap, live GH-Pages/OCI opens self-heal automatically, binary DBs never cross the
-  network. W-PATCH-SELFHEAL 43/43 (puppeteer, all 8 residents + a deliberately-staled mesh.db falsifier,
-  0/26→26/26). Shipped bim-ootb `fix/meshdb-selfheal-loader` @ `a1aeab7`, pushed, PR open, unmerged. Task 3
-  (Modeller Outliner "Rooms" category) superseded by ROOM_WALKER_JS_PORT.md. 4 more bim-ootb branches
-  (grid-tilt-guard, dw-rot-units, dwprobe-dedup, terminal-oracle-source) MANAGER-verified+pushed, PRs
-  #722-725 open, unmerged.
-- `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` 2026-07-11 — **ALL 5 TASKS DONE (Sonnet).**
-  Task 1: `dwWalk()` confirmed explicit-user-action only. Task 2: `build/room_walker.js` ports
-  `compile_rooms.py` verbatim (W-ROOM-WALKER-PARITY 6/6 byte-identical). Task 3 both bars DONE —
-  Terminal's stale 43→53 correction shipped via `ROOM008_Terminal_correction_43_to_53.sql`
-  (user-confirmed: precision over staleness for display-only data), W-ROOM008-TERMINAL 4/4. Task 4:
-  "Rooms" Outliner category wired into bim-ootb (`room_walker_outliner.js` + `window.roomWalk()`,
-  same `addCategory`/`onWalk` convention as STR/BOM-tree), W-ROOM-WALKER-LIVEWIRE 12/12 (real click
-  through the Outliner DOM, caught + fixed a real porting bug the node witness couldn't reach —
-  `compileRooms()` crashing on a not-yet-existent table). Task 5: `compile_rooms.py` retired from
-  room-injection duty (NOT deleted — `witness_geomap_tier3.py` has a real unrelated dependency on
-  importing it); `ROOM_INJECTION_HYBRID.md` Task 2 + `COMPILE_ROOMS_TYPE_INFERENCE.md` updated to
-  point at `room_walker.js`. Shipped bim-ootb `fable/modeller-lod400-livewire` @ `a5c6435` (pushed,
-  0 unpushed) + bim-compiler `fable/meshdb-livewire` @ `e292bba7d` (pushed, 0 unpushed).
+- `prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md` — Tasks 1-6 DONE incl. self-heal patch loader
+  (bim-ootb `fix/meshdb-selfheal-loader` @ `a1aeab7`, PR open unmerged, W-PATCH-SELFHEAL 43/43); full task
+  log + witnesses in the doc. 4 more bim-ootb branches pushed, PRs #722-725 open, unmerged.
+- `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` — ALL 5 TASKS DONE (JS port + Outliner "Rooms"
+  action, W-ROOM-WALKER-PARITY 6/6, W-ROOM-WALKER-LIVEWIRE 12/12); details + Task 3 table in the doc.
   **§7 ROOM WELL-FORMEDNESS DONE 2026-07-11 (Fable, from user's live HHS visual review):** corridor-as-room +
-  rect-through-wall root-caused (§WALL-VERT curtain children missing from raster / §STOREY-Z 'Unknown'-storey
-  enclosure / §RECT-HONESTY bbox overshoot) + user doctrine "well formed, fully enclosed, has door" → SUSPECT_*
-  '⚠' review rows. Both ports in lockstep; W-ROOM-WALKER-PARITY 6/6, W-ROOM-WELLFORMED 19/19 (new falsifier),
-  ROOM009-014 migrations apply-identical 6/6. HHS 105 door-partition blobs → 33 flood-fill rooms (2⚠); totals
-  SC 51(9⚠)/Clinic 209(26⚠)/Garage 5(3⚠)/Hospital 213(66⚠)/Terminal 53(10⚠). Spec: ROOM_INJECTION_HYBRID.md §7.
-  Local inspect server: :8098 (viewer + re-walked extracted DBs). Follow-up open: port ROOM009-014 into
-  bim-ootb `modeller/patches/` (self-heal loader branch `fix/meshdb-selfheal-loader`, unmerged) + ship the
-  Viewer's `buildings/*_extracted.db` re-walk (served locally only so far).
+  rect-through-wall root-caused and fixed generally (§WALL-VERT/§STOREY-Z/§RECT-HONESTY/§ROOM-FORM SUSPECT_*
+  '⚠' review rows) — spec `ROOM_INJECTION_HYBRID.md §7`. Both ports lockstep; W-ROOM-WALKER-PARITY 6/6,
+  W-ROOM-WELLFORMED 19/19 (new falsifier), `ROOM009-014_*_wellformed.sql` apply-identical 6/6. HHS 105
+  door-partition blobs → 33 flood-fill rooms (2⚠). Local inspect server :8098 (viewer + re-walked extracted
+  DBs). Follow-up open: port ROOM009-014 into bim-ootb `modeller/patches/` (self-heal branch, unmerged) +
+  ship the Viewer's `buildings/*_extracted.db` re-walk (served locally only so far).
 - ⛔ **GitHub LFS bandwidth quota EXHAUSTED (2026-07-11), resets 2026-08-01.** See `CLAUDE.md` §LFS QUOTA
   EXHAUSTED — any push may hang regardless of LFS content; don't retry blindly, don't create fresh worktrees
   for uncached branches. Cleaned up: duplicate `~/Projects/bim-ootb` clone removed, 25 stale worktrees pruned.
