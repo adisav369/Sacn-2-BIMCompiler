@@ -47,11 +47,18 @@
   unfiltered Roof row) closed via 7 SQL migration scripts (`ROOM001-007_*.sql`, repo convention, real
   data dumped off `fable/modeller-lod400-livewire`) — apply via `sqlite3 modeller/{Name}_ARC.db <
   ROOM00N_*.sql`, W-ROOM-MIGRATION-APPLY 7/7 byte-identical to source. Gets any local `main` checkout on
-  par with the branch without a binary push; live-site deploy still LFS-blocked until 2026-08-01. Task 3 NOT STARTED (superseded by ROOM_WALKER_JS_PORT.md). 4 more
-  bim-ootb branches (grid-tilt-guard, dw-rot-units, dwprobe-dedup, terminal-oracle-source)
-  MANAGER-verified+pushed, PRs #722-725 open, unmerged.
-- `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` 2026-07-11 — NEW, all 5 tasks NOT STARTED (JS port of
-  `compile_rooms.py`, explicit-trigger "Room Walker" Outliner action). Progress report pending from user.
+  par with the branch without a binary push; live-site deploy still LFS-blocked until 2026-08-01. Task 3
+  (Modeller Outliner "Rooms" category) superseded by ROOM_WALKER_JS_PORT.md. 4 more bim-ootb branches
+  (grid-tilt-guard, dw-rot-units, dwprobe-dedup, terminal-oracle-source) MANAGER-verified+pushed, PRs
+  #722-725 open, unmerged.
+- `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` 2026-07-11 — **Tasks 1+2 DONE (Sonnet).** Task 1:
+  `dwWalk()` confirmed explicit-user-action only (Outliner row click, never auto-on-load) — Room Walker
+  can copy the convention. Task 2: `build/room_walker.js` ports `compile_rooms.py` verbatim (W-ROOM-
+  WALKER-PARITY 6/6, byte-identical to Python on real SampleCastle/HHS/Clinic/Garage/Hospital/Terminal
+  data). Task 3 bar 1 (test) DONE via that same witness; bar 2 (injection) mostly moot — 5/6 buildings'
+  JS output already matches shipped data. **⛔ BLOCKED: Terminal's fresh algorithm run gives 53 rooms,
+  not the 43 shipped — re-inject or leave as-is?** Tasks 4 (Outliner "Room Walker" action, browser-side)
+  + 5 (retire compile_rooms.py) NOT STARTED, both need bim-ootb Modeller UI work in a worktree.
 - ⛔ **GitHub LFS bandwidth quota EXHAUSTED (2026-07-11), resets 2026-08-01.** See `CLAUDE.md` §LFS QUOTA
   EXHAUSTED — any push may hang regardless of LFS content; don't retry blindly, don't create fresh worktrees
   for uncached branches. Cleaned up: duplicate `~/Projects/bim-ootb` clone removed, 25 stale worktrees pruned.
