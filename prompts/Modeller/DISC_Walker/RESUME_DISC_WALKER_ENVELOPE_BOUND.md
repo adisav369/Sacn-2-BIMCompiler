@@ -525,8 +525,15 @@
 # **W-SCHED-MINE 7 PASS / 0 FAIL** (M2 LOD400-BIND 14/17 bind real mesh, 0 dangling, NULL-hash set =
 # exactly the known no-mesh REFUSE trio) · **W-DX-WALKBACK-RSGT 14 PASS / 0 FAIL, no crash** (139 fixtures
 # / 19 rooms, W5 ELEC gen=102 real=89 @2m 94%, PLB gen=18 real=16 @2m 94%, W7 collision 0/9591 pairs).
-# The claim holds against committed state. NOT pushed this session (LFS hard block 2026-07-11 — any push
-# may hang); this note is a local-only docs commit on the already-pushed branch.
+# The claim holds against committed state. Same day, user-directed: **migration/MDB001_livewire_device_
+# meshes.sql** (NEW, non-LFS, ~870KB) carries the 26 §LIVEWIRE mesh.db rows as idempotent INSERT OR IGNORE
+# hex-literal statements — the no-LFS-traffic channel for stale local mesh.db copies while the quota is
+# exhausted (the repaired mesh.db itself is already on bim-ootb main via merge 29519e4 of 670bf0f, but a
+# fresh LFS fetch of it is blocked until 2026-08-01; GH-Pages deploy equally stays blocked until then).
+# PROOF: extracted the genuinely stale pre-livewire mesh.db (blob a8f887b4 @ 6068fab, from local LFS cache,
+# 9172 rows) → W-MESHDB-RESOLVE 2/5 FAIL (negative control) → applied MDB001 → ALL 9198 rows byte-identical
+# to the repaired mesh.db → W-MESHDB-RESOLVE 5/5 PASS → re-apply = no-op. Push of this .sql attempted once
+# per the ~30s rule — result recorded in the session report.
 
 # ▶▶▶▶▶ ENTRY POINT (2026-07-10, superseded by the block above — kept for evidence trail). This
 # session (Sonnet) is closing out; the user is now iterating directly with a Fable5 session in their own
