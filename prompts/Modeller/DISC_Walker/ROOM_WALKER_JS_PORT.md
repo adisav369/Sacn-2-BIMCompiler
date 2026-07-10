@@ -253,3 +253,15 @@ future session doesn't rediscover it the hard way.
   `predefined_type` values (`INTERNAL`/`INTERNAL_SMALL`/`INTERNAL_DOORPART`), never feeding
   `spacesOf()`/schedule placement. The JS port changes WHERE and WHEN this runs, never WHAT it
   produces or how it's labeled.
+
+## §3 — 2026-07-11 (later): Task 3's table counts SUPERSEDED by ROOM_INJECTION_HYBRID.md §7
+
+User visual review on HHS localhost found two algorithmic defects (corridor accepted as a room;
+room rect crossing through a wall). Root causes + fix are specced/derived in
+`ROOM_INJECTION_HYBRID.md §7` (§WALL-VERT / §STOREY-Z / §RECT-HONESTY / §ROOM-FORM SUSPECT_*
+classification) and implemented in BOTH `scripts/compile_rooms.py` and `build/room_walker.js` in
+lockstep. New counts (W-ROOM-WALKER-PARITY re-run 6/6 byte-identical; W-ROOM-WELLFORMED 19/19):
+SampleCastle 51 (9 ⚠suspect), HHS 33 (2⚠ — flood-fill on all 3 levels now, door-partition no longer
+triggers), Clinic 209 (26⚠), Garage 5 (3⚠), Hospital 213 (66⚠), Terminal 53 (10⚠). Ship channel:
+`embed8_scripts/ROOM009-014_*_wellformed.sql` (verified apply-identical, 6/6). The Task 3 table
+above (Terminal 53, HHS 105 etc.) is the HISTORY of the first port, not the current data.

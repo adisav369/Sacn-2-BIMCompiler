@@ -540,3 +540,73 @@ w_room_hab_proof.log`, `w_room_hab_strip.log`, `w_dw_livewire_rerun.log`):**
 - `compile_rooms.py` output must never lose its `≈`/`RM_` tagging on the way into any shipped DB — that
   tag is the only thing keeping `spacesOf()`'s exclusion correct. Any wiring work (Task 2) must preserve it.
 - Related memory: `project_room_injection_split_decision.md`, `project_disc_walker_grid_guard_marathon_2026-07-10.md`.
+
+## §7 — ROOM WELL-FORMEDNESS (2026-07-11, Fable session — spec-first, from user's live HHS visual review)
+
+**Trigger (user, visual inspection on HHS localhost):** (1) a corridor accepted as a room — doors on one
+side, an open non-wall edge on another; (2) a room's floor rect crossing THROUGH a wall into the next
+room. Both algorithmic, both confirmed present beyond HHS by a measurement harness over all 8 buildings'
+real ARC data (scratchpad `diag_room_smells.log`/`diag_v5.log`). User doctrine for the fix, verbatim:
+**"A room must be well formed, fully enclosed, has door"** — pockets failing that are NOT silently
+dropped, they become a `SUSPECT_*` type for a later user-review feature. All rules below are derived from
+ARC-discipline data alone (walls/doors/windows/columns/curtain-wall children), per user direction.
+
+### Root causes found (measured, not guessed)
+1. **§WALL-VERT — curtain walls rasterized as NOTHING.** `IfcCurtainWall` rows exist (HHS 33, Hospital
+   178, Clinic 31, Garage 19) but ALL have `center_x IS NULL` (assembly parents, no transform) — the
+   WALL_LIKE query silently drops them. Their real geometry lives in the children: `IfcMember` (mullions,
+   HHS names "Rechteckiger Pfosten", Hospital literally "Curtain Wall:…") + `IfcPlate` (glazing, "Verglasung"/
+   "System Panel:Glazed") — present WITH transforms, absent from WALL_LIKE. HHS has only 112 real wall
+   rows for a 3-storey office: without the curtain children its flood-fill structurally failed →
+   door-partition fallback → the corridor blobs + wall-crossing rects the user saw. Blanket inclusion is
+   WRONG (Terminal's 33,324 IfcPlate are flat "Metal Deck" roof pieces, bbox_z<0.3; Clinic's IfcMember
+   include stair parts): include member/plate iff **vertical: `bbox_z >= 0.5 × median real door height`**
+   of the building (self-scaling, same §DOOR-RESCUE discipline — a barrier shorter than half this
+   building's own doors is deck/transom/furniture, not enclosure). Measured split is clean: wall-height
+   pieces sit at 1.5-3.5m, deck/transoms at <0.5m; no doors in a building → skip inclusion (conservative,
+   = today's behavior).
+2. **§STOREY-Z — 'Unknown'-storey enclosure never reaches its floor's raster.** HHS's 716 vertical
+   curtain children ALL carry storey 'Unknown'; their center_z clusters (1.3 / 5.0 / 9.0) match Level
+   1/2/3's wall z-bands exactly. Hospital: 3,760 such rows; Clinic 228; Garage 168. They currently form a
+   bogus standalone 'Unknown' grid. Fix: reassign wall-like elements AND doors whose storey is
+   NULL/'Unknown' to the nearest storey by |center_z − anchor|, anchor = mean center_z of that storey's
+   explicitly-assigned IfcWall% rows (ties → first in sorted storey-name order; no anchors at all →
+   'Unknown' stays, = today). Stairs stay union-across-storeys (unchanged, §STAIR-EXCLUDE).
+   **Result (measured): HHS flood-fill recovers on all 3 levels (9/13/11 enclosed rooms, every one
+   door-adjacent) — door-partition no longer triggers on HHS at all.**
+3. **§RECT-HONESTY — the "floor through the wall" was the room RECT, not the flood-fill.** Pockets/claims
+   are non-rectangular (L-shapes, corridor snakes); the emitted rect was the region's BOUNDING BOX, which
+   paints across real walls into neighboring rooms (measured: bboxFill down to 0.15, up to 45% raw wall
+   cells inside the rect). Fix: emit the **largest inscribed axis-aligned rectangle** of the claimed cells
+   (deterministic maximal-rectangle scan, identical loop order in both ports), then expand each side
+   outward while raw-free, max SEAL cells (recovers the dilation erosion so rooms meet their walls; no
+   expansion on the door-partition path — no dilation there). `area` stays cells×cellArea (true region
+   area). By construction the rect can no longer cross a raw wall.
+4. **§ROOM-FORM — well-formedness classification (the SUSPECT type).** Per accepted pocket/claim:
+   - `openM` = unsealed perimeter metres: boundary contacts marched outward through the dilation band
+     (≤SEAL+1 cells, 3-wide probe: straight + both perpendicular neighbors, so curved/diagonal wall
+     stair-steps don't read as open — measured to collapse SampleCastle's false-opens from 7.4m to ≤1m
+     while keeping Clinic's true corridor blob at 8.2m); contact is open iff it re-enters free space
+     without meeting a raw wall cell. Door-partition claims: same test with no dilation band.
+   - `hasDoor` = existing doorAdjacent (each door's own footprint + RES slack), now computed for EVERY
+     room, not just sub-MIN_AREA rescues.
+   - Classify: `!hasDoor` → **SUSPECT_NO_DOOR** (voids/shafts/light-wells — Hospital has 56, Garage 3);
+     else `openM > 2 × median real door width` (two doorways' worth of unsealed edge; a room may
+     legitimately have a doorless archway or two, more is not "fully enclosed") → **SUSPECT_OPEN**
+     (corridors, open-plan mergers); else the existing INTERNAL/INTERNAL_SMALL/INTERNAL_DOORPART.
+   - SUSPECT rows keep guid scheme `RM_…`, object_type 'COMPILED', get name prefix **'⚠ '** (vs '≈ '),
+     and are EXCLUDED from rel_contained_in_space (no element containment through a suspect room).
+     They stay in spatial_structure so the Find Panel Room Lens shows them, honestly labeled, until the
+     future review feature disposes of them. Sub-MIN_AREA doorless slivers stay dropped as today (grid
+     noise, not reviewable rooms).
+
+### Acceptance/witness bar
+- W-ROOM-WALKER-PARITY re-run: JS and Python stay byte-identical on all 6 synthetic buildings (both
+  implement every rule above in lockstep — same scan orders, same medians, same tie-breaks).
+- New falsifiers (all 8 buildings, real ARC data): (a) no non-SUSPECT room's rect contains a raw wall
+  cell; (b) every non-SUSPECT room is door-adjacent and has openM within its building's limit; (c) HHS
+  compiles via flood-fill (no door-partition fallback) with >0 rooms per level — the exact failure the
+  user saw cannot re-form silently.
+- Constants carried: OPEN_PERIM_FACTOR=2 (×building median door width), VERT_FACTOR=0.5 (×building
+  median door height) — both self-scaling to the building's own extracted doors, no fixed metres; the
+  3-wide probe span and ≤SEAL+1 march depth are grid-resolution properties, not tuned numbers.

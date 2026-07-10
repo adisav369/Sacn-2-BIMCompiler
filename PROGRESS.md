@@ -62,6 +62,15 @@
   importing it); `ROOM_INJECTION_HYBRID.md` Task 2 + `COMPILE_ROOMS_TYPE_INFERENCE.md` updated to
   point at `room_walker.js`. Shipped bim-ootb `fable/modeller-lod400-livewire` @ `a5c6435` (pushed,
   0 unpushed) + bim-compiler `fable/meshdb-livewire` @ `e292bba7d` (pushed, 0 unpushed).
+  **§7 ROOM WELL-FORMEDNESS DONE 2026-07-11 (Fable, from user's live HHS visual review):** corridor-as-room +
+  rect-through-wall root-caused (§WALL-VERT curtain children missing from raster / §STOREY-Z 'Unknown'-storey
+  enclosure / §RECT-HONESTY bbox overshoot) + user doctrine "well formed, fully enclosed, has door" → SUSPECT_*
+  '⚠' review rows. Both ports in lockstep; W-ROOM-WALKER-PARITY 6/6, W-ROOM-WELLFORMED 19/19 (new falsifier),
+  ROOM009-014 migrations apply-identical 6/6. HHS 105 door-partition blobs → 33 flood-fill rooms (2⚠); totals
+  SC 51(9⚠)/Clinic 209(26⚠)/Garage 5(3⚠)/Hospital 213(66⚠)/Terminal 53(10⚠). Spec: ROOM_INJECTION_HYBRID.md §7.
+  Local inspect server: :8098 (viewer + re-walked extracted DBs). Follow-up open: port ROOM009-014 into
+  bim-ootb `modeller/patches/` (self-heal loader branch `fix/meshdb-selfheal-loader`, unmerged) + ship the
+  Viewer's `buildings/*_extracted.db` re-walk (served locally only so far).
 - ⛔ **GitHub LFS bandwidth quota EXHAUSTED (2026-07-11), resets 2026-08-01.** See `CLAUDE.md` §LFS QUOTA
   EXHAUSTED — any push may hang regardless of LFS content; don't retry blindly, don't create fresh worktrees
   for uncached branches. Cleaned up: duplicate `~/Projects/bim-ootb` clone removed, 25 stale worktrees pruned.
