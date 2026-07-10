@@ -92,6 +92,31 @@ manipulation — `embed8_scripts/finalize_all_8.js`, `sandbox_loader_proof.js`).
 
 Do NOT retire `compile_rooms.py` until BOTH bars are 100% green on all 8 real showcase files.
 
+**Required output: a report table, not just pass/fail witness lines.** Per-building room count
+alone (as printed by today's `compile_rooms.py --write` log) is not the deliverable format — the
+witness/build step must also print (and the closing task summary must include verbatim) a table
+shaped exactly like:
+
+| Building | Room Count | Type / Method | Status |
+|---|---|---|---|
+| SampleHouse | 3 | Real `IfcSpace` | ✅ |
+| Duplex | 20 | Real `IfcSpace` | ✅ |
+| Terminal | 43 | Synthetic — flood-fill | ✅ |
+| SampleCastle | 51 | Synthetic — flood-fill + door-rescue | ✅ |
+| HHS | 105 | Synthetic — door-partition | ✅ |
+| Clinic | 197 | Synthetic — flood-fill + door-rescue + door-partition | ✅ |
+| Garage | 5 | Synthetic — flood-fill | ✅ |
+| Hospital | 201 | Synthetic — flood-fill + door-rescue | ✅ |
+| **TOTAL** | **625** | — | — |
+
+("Type / Method" = which technique produced that building's rooms, not a room-by-room semantic
+type — see `COMPILE_ROOMS_TYPE_INFERENCE.md` for the separate, much harder problem of guessing
+per-room function.) "Status" = ✅ once that building's JS-ported count matches the Python-verified
+number exactly (Task 3 bar 1) AND the real showcase file has been re-injected (bar 2); otherwise
+❌ with the actual vs. expected counts shown, never silently rounded to ✅. This exact table (with
+a live TOTAL row, not a static copy of the one above) is what gets pasted into the task's closing
+report — reusing today's session's own reporting shape, not inventing a new one.
+
 ### Task 4 — "Room Walker" Outliner action (browser mode)
 **Status: NOT STARTED. BLOCKED on Task 1 (UI pattern) + Task 2 (the module).** Wire the SAME JS
 module into the Modeller Outliner as an explicit, user-triggered action (never automatic — see
