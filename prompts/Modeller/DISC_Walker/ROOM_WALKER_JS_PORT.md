@@ -170,22 +170,69 @@ a live TOTAL row, not a static copy of the one above) is what gets pasted into t
 report — reusing today's session's own reporting shape, not inventing a new one.
 
 ### Task 4 — "Room Walker" Outliner action (browser mode)
-**Status: NOT STARTED. BLOCKED on Task 1 (UI pattern) + Task 2 (the module).** Wire the SAME JS
-module into the Modeller Outliner as an explicit, user-triggered action (never automatic — see
-§2 guardrail). Behavior: if `spatial_structure` already has data (baked-in for a shipped resident,
-or previously walked for a user import), the Outliner's "Rooms" category just displays it — no
-recompute, no cost. If it's empty (a freshly-imported building with no prior walk), show the Room
-Walker action explicitly rather than silently computing on open. Witness: on a building with no
-`spatial_structure`, confirm zero automatic compute happens on open (no CPU/time cost paid until
-the user actually triggers Room Walker), then confirm triggering it produces the same room set the
-Node CLI mode (Task 3) would for the same source data.
+**Status: ✅ DONE 2026-07-11 (Sonnet).** New `modeller/room_walker_outliner.js` (bim-ootb, worktree
+`/tmp/wt-fable-livewire`) registers a "Rooms" category via `window.Bonsai.outliner.addCategory` —
+same seam/convention as `bom_tree_outliner.js`/`str_walker_outliner.js` (`bonsai_outliner.js:70`,
+"seam for Room/Phase/ERP"), closest small-scale template was the `disctrunk` category
+(`modeller.html:4494-4504`): the category's `tree()` re-derives from `window.__dwBuf` every call
+(cheap, always-fresh, no separate cache to go stale) — a populated building renders a browse-only
+node list with NO `disc` field (so it can never re-trigger a walk via
+`bonsai_outliner.js`'s `data-disc` → `cat.onWalk(disc)` chokepoint at `:691`); an empty building
+renders exactly ONE row carrying `disc:'ROOM'`, the only thing that produces the `▶ walk` glyph and
+click-dispatch. `onWalk` forwards to a new page-level `window.roomWalk()` (`modeller.html`, same
+separation-of-concerns convention as `bom_tree_outliner.js`'s `onWalk` forwarding to
+`window.discWalk` — the outliner-wiring file stays a pure view) which reopens `window.__dwBuf`,
+runs `RoomWalker.walk(db,{write:true})`, and re-stashes the mutated buffer (`window.__dwBuf =
+db.export()`) — compute-once, persisted into the session's own building buffer, same mechanism
+`str_walker_outliner.js`'s own comment documents for re-opening it elsewhere.
+
+**Witness `witness_room_walker_livewire.js` (W-ROOM-WALKER-LIVEWIRE, puppeteer, mirrors
+`witness_dw_livewire.js`'s harness exactly) 12/12:** Block A opens Duplex (real, already-populated
+IfcSpace rooms) — confirms the category displays all 20 browse-only (no `disc` field) with **zero**
+`§ROOM-WALK ` log lines (no auto-compute on open). Block B opens HospitalGarage, strips
+`spatial_structure` in-page to simulate a never-walked building, confirms the `▶ walk` trigger row
+renders with zero auto-compute, then drives the REAL click path through
+`document.querySelector('[data-tcat="roomwalk"][data-disc="ROOM"]').click()` (not calling
+`window.roomWalk()` directly) — the chokepoint dispatch fires, `§ROOM-WALK placed=5` matches Task
+3's known Garage answer exactly, and the category correctly becomes browse-only afterward (no
+re-trigger possible). Zero pageerrors both blocks. Log:
+`/tmp/claude-1000/-home-red1-bim-compiler/885d136b-04e3-4b17-8666-279c6b28f522/scratchpad/
+w_room_walker_livewire.log`; screenshots `modeller/logs/room_walker_{duplex_populated,
+garage_after_walk}.png`.
+
+**A real porting bug this witness caught, that the earlier node-side parity witness (Task 2/3)
+could not:** `compileRooms()` unconditionally queried `spatial_structure` for storey guids —
+Python's `compile_rooms.py` wraps that specific query in `try/except` because a truly fresh
+building has no such table yet; the JS port initially missed this guard (crashed with `no such
+table: spatial_structure` on first click). The Task 2/3 parity witness never exercised this path
+because every real shipped `_ARC.db` it compared against already HAD a `spatial_structure` table
+(even if empty of rooms) — only a live browser test against a building with the table dropped
+entirely surfaced it. Fixed in `build/room_walker.js` (table-existence check before the query,
+mirroring Python's try/except), re-verified: node parity witness still 6/6, browser witness 12/12.
 
 ### Task 5 — Retire `compile_rooms.py` and update every doc/task that references it
-**Status: NOT STARTED. BLOCKED on Task 3's witness passing 100%.** Once the JS Node-CLI mode is
-proven byte-for-byte equivalent, remove the Python script and update
-`ROOM_INJECTION_HYBRID.md`'s Task 2 (currently describes wiring `compile_rooms.py` into extraction/
-import — rewrite to describe wiring the JS module instead) and this doc's own §0. Don't leave two
-"how to compile rooms" instructions pointing at different, now-inconsistent tools.
+**Status: ✅ DONE 2026-07-11 (Sonnet), with one finding that changed the scope of "retire":**
+`scripts/compile_rooms.py` is NOT deleted from the repo — `scripts/witness_geomap_tier3.py` has a
+real, unrelated dependency on importing it directly (`import compile_rooms as cr`, calling
+`cr.storey_walls`/`cr.storey_stairs`/`cr.flood_rooms` as a Python baseline-scoring library for a
+DIFFERENT geomapping-accuracy witness, nothing to do with room injection). Deleting the file would
+have broken that witness for no benefit — "retire" here correctly means **stop being the canonical
+tool for room injection**, not **delete the file**, and that distinction is now recorded so a
+future session doesn't rediscover it the hard way.
+- `ROOM_INJECTION_HYBRID.md` Task 2 updated: automation-half status now points at `room_walker.js`
+  + the Outliner "Room Walker" action as the closure, explicitly framed as SUPERSEDING the original
+  "wire it in automatically" plan (rejected design, see §0 above), not implementing it as originally
+  specced.
+- `prompts/Modeller/DISC_Walker/COMPILE_ROOMS_TYPE_INFERENCE.md` (a separate, NOT-YET-STARTED future
+  task whose own SCOPE line named `scripts/compile_rooms.py` as "the file to modify") — anchor
+  updated to point at `build/room_walker.js` instead, so a future session picking that task up
+  doesn't edit the now-superseded Python file by mistake.
+- This doc's own §0/Task list: all 5 tasks now read DONE end-to-end (Task 1 trigger-pattern trace →
+  Task 2 port → Task 3 both bars → Task 4 browser wiring → Task 5 this closure). No second,
+  inconsistent "how to compile rooms" instruction left standing — `room_walker.js` is the one
+  canonical implementation for both the Node CLI path and the browser Outliner path, and
+  `compile_rooms.py`'s remaining role (geomap-tier3 baseline import) is explicitly out-of-scope for
+  room injection, documented as such here.
 
 ## §2 — Guardrails (do not re-litigate)
 

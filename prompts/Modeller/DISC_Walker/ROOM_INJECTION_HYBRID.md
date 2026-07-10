@@ -128,7 +128,8 @@ where noted):**
   as one assignment, not sequence them as two.
 
 ### Task 2 — Wire `compile_rooms.py` into extraction/import as an automatic step (tagged `≈`, display-only)
-**Status: DATA-EFFECT DONE 2026-07-10 (Sonnet), AUTOMATION still NOT STARTED.** Ran
+**Status: ✅ DONE — DATA-EFFECT 2026-07-10 (Sonnet), AUTOMATION half superseded+closed 2026-07-11 via
+`ROOM_WALKER_JS_PORT.md` (explicit-trigger "Room Walker," not silent automation — see below).** Ran
 `compile_rooms.py --write` manually (a one-time repair, same treatment level as Tasks 1/6's manual ports)
 against the 5 shipped residents that had ZERO `spatial_structure` at all: SampleCastle, HHS, Clinic,
 Garage, Hospital — each compiled from that building's OWN real wall/door geometry already in its
@@ -220,14 +221,23 @@ Good enough for the Outliner "Rooms" display category (still 100% excluded from 
 verified above); a real fix for HHS's actual wall/room geometry would need re-extraction with the
 partition walls properly captured, not attempted here.
 
-**Still NOT DONE — this task's own automation half:** wiring `compile_rooms.py` as a step INSIDE
-`extractIFC2DB.js` (or whichever path runs it) so a FUTURE re-extraction or a user's live IFC import gets
-this for free, instead of needing another manual repair pass like this one. Currently a manual script
-(`compile_rooms.py <db> --write`), never called from any build/embed/import path (confirmed via grep —
-zero automatic callers, still true after this session's manual run). This is the regression risk Task 4
-already named for the strip cascade, generalized: without automation, ANY future re-embed (the exact kind
-that caused Task 6's SampleHouse gap, via `6068fab`'s finalize_all_8.js never carrying `spatial_structure`
-forward) can silently wipe this same data again.
+**Automation half — SUPERSEDED 2026-07-11, not built as originally framed.** This task's original
+plan (wire `compile_rooms.py` as a silent, automatic step inside the extraction/import path) was
+reconsidered and deliberately rejected during `ROOM_WALKER_JS_PORT.md` spec work: running the
+flood-fill on EVERY open/import "costs time" (HHS's grid alone is ~90k cells/floor) and "always
+baked ahead of time" vs "always recomputed live" was a false choice — the shipped answer is
+**compute-once, on demand**, not compute-automatically. See `ROOM_WALKER_JS_PORT.md` Tasks 2-5
+(✅ ALL DONE 2026-07-11): `build/room_walker.js` (verbatim JS port, W-ROOM-WALKER-PARITY 6/6
+byte-identical to `compile_rooms.py`) is now wired into the real Modeller as an explicit "Rooms"
+Outliner category — auto-displays existing room data with zero recompute cost, shows a "▶ walk"
+trigger only when a building genuinely has none yet (W-ROOM-WALKER-LIVEWIRE 12/12, real click
+through the Outliner DOM proven end-to-end). This closes the exact regression risk named above
+(a future re-embed silently losing `spatial_structure`) from the OTHER direction: even if a
+future embed pipeline regresses again, a user/dev can always recover a building's rooms with one
+Outliner click, no manual `sqlite3`/Python step required. `compile_rooms.py` itself is NOT deleted
+— `scripts/witness_geomap_tier3.py` has a real, unrelated dependency on importing it as a Python
+baseline-scoring library (`import compile_rooms as cr`) — but it is no longer the canonical tool
+for THIS (room-injection) purpose; `room_walker.js` is.
 
 ### Task 3 — New Modeller Outliner "Rooms" category (the display/wow-factor surface)
 **Status: NOT STARTED, NOW SPECCED with a concrete trigger — see

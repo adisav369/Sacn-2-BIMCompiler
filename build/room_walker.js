@@ -365,8 +365,14 @@
   // name; this function reports per-storey).
   function compileRooms(db) {
     var stGuid = {};
-    _rows(db, "SELECT guid, name FROM spatial_structure WHERE type='IfcBuildingStorey'")
-      .forEach(function (r) { stGuid[r.name] = r.guid; });
+    // compile_rooms.py wraps this in try/except: a never-walked building (fresh import, or this
+    // table intentionally dropped) has no spatial_structure table at all yet — that's not an error,
+    // just "no known storey guids to reuse for parent_guid" (writeRooms falls back to a synthetic
+    // STC_ guid per storey either way, see the `r.parent = stGuid[st] || ('STC_'+st)...` line below).
+    if (db.exec("SELECT 1 FROM sqlite_master WHERE type='table' AND name='spatial_structure'").length) {
+      _rows(db, "SELECT guid, name FROM spatial_structure WHERE type='IfcBuildingStorey'")
+        .forEach(function (r) { stGuid[r.name] = r.guid; });
+    }
 
     var wallsBy = storeyWalls(db);
     var stairsBy = storeyStairs(db);

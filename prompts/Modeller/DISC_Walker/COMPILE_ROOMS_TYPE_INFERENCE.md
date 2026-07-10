@@ -3,13 +3,16 @@
 
 ```
 # ⚠ DO NOT REMOVE
-SCOPE: scripts/compile_rooms.py only. Read ROOM_INJECTION_HYBRID.md in full first — this task
-extends the room-COUNT work already done there (§DOOR-RESCUE, §DOOR-PARTITION) into room-TYPE
-guessing, a strictly harder, lower-confidence problem. Read the log of whichever step is IN
-PROGRESS below before concluding anything about its status — a "confidence" number is not evidence
-until it's been checked against real ground truth (§2 Task 0).
+SCOPE: build/room_walker.js only (2026-07-11: ROOM_WALKER_JS_PORT.md retired scripts/compile_rooms.py
+as the canonical room-injection tool — compile_rooms.py itself still exists in the repo, but only as
+an unrelated import for scripts/witness_geomap_tier3.py's baseline scoring, NOT as a target for new
+room-compile work; port any change here into room_walker.js, not the Python file). Read
+ROOM_INJECTION_HYBRID.md in full first — this task extends the room-COUNT work already done there
+(§DOOR-RESCUE, §DOOR-PARTITION) into room-TYPE guessing, a strictly harder, lower-confidence problem.
+Read the log of whichever step is IN PROGRESS below before concluding anything about its status — a
+"confidence" number is not evidence until it's been checked against real ground truth (§2 Task 0).
 ANCHORS: prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md (§DOOR-RESCUE/§DOOR-PARTITION, the
-compile techniques this extends) · scripts/compile_rooms.py (the file to modify) ·
+compile techniques this extends) · build/room_walker.js (the file to modify) ·
 scripts/stamp_space_longnames.py (why SampleHouse/Duplex alone HAVE real types — read this before
 assuming any inference technique below is needed for them; it isn't) · Duplex_ARC.db / SampleHouse
 _ARC.db `spatial_structure.object_type` (the ONLY real, ground-truth room-type data in this repo —
