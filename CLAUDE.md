@@ -129,6 +129,28 @@ Before ending, update PROGRESS.md with:
 - **Pre-Flight Citation:** Before code changes, cite the spec: `// Implementing BBC.md §X.Y — Witness: W-NAME`
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
 
+## ⛔ LFS QUOTA EXHAUSTED — HARD BLOCK, ALL LOCAL, NO EXCEPTIONS (2026-07-11)
+**GitHub confirmed the LFS bandwidth quota is now at 0 — not "approaching the cap," actually exhausted.**
+This supersedes the softer "reduce usage" framing of the two sections below (still read them for the
+mechanism/cleanup already done — this section is the escalation on top). Any git operation that needs to
+push or fetch an LFS object against the remote will now fail or risk further billing exposure until the
+user confirms the quota has reset or been topped up — **do not assume, ask before any LFS-touching push/
+fetch.** Until then:
+- **NEVER push a commit whose diff touches ANY already-LFS-tracked file's content** — not just new `.db`
+  additions (already banned below), but ANY change to an existing tracked binary (a rules-DB update, a
+  regenerated mesh/geo file, anything matching `.gitattributes`' `filter=lfs` patterns). If a task needs to
+  change one, commit it LOCALLY only and stop there — do not `git push` that commit. Say so explicitly when
+  reporting the work, don't push-and-hope.
+- **NEVER create a worktree/checkout a branch whose LFS blobs aren't already in the local cache**
+  (`.git/lfs/objects`) — that triggers a fetch against the exhausted quota. Before `git worktree add` or
+  `git checkout` of a branch you haven't already worked with locally, check whether its LFS content is
+  already cached; if unsure, ask rather than risk a failed/quota-consuming fetch. Branches already checked
+  out in an existing worktree are safe to keep using (their blobs are already local).
+- **This applies to every Agent-tool prompt that touches git** — spawned verification/build agents must be
+  told explicitly not to push LFS-touching commits and not to fetch new LFS content, same as this session.
+- **Non-LFS-tracked files (code, docs, most everything) are unaffected** — normal commit/push continues for
+  anything that isn't itself an LFS-tracked binary or doesn't modify one.
+
 ## DB Storage Policy — GitHub LFS bandwidth (2026-07-10)
 **GitHub emailed a 10GB/month LFS bandwidth-cap warning.** `.gitattributes` has a blanket `*.db filter=lfs`
 rule and 59+ `.db` files are already LFS-tracked (`deploy/buildings/*_extracted.db`/`*_library.db`,
