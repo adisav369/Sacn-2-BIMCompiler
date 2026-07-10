@@ -49,14 +49,19 @@
   (Modeller Outliner "Rooms" category) superseded by ROOM_WALKER_JS_PORT.md. 4 more bim-ootb branches
   (grid-tilt-guard, dw-rot-units, dwprobe-dedup, terminal-oracle-source) MANAGER-verified+pushed, PRs
   #722-725 open, unmerged.
-- `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` 2026-07-11 — **Tasks 1+2 DONE (Sonnet).** Task 1:
-  `dwWalk()` confirmed explicit-user-action only (Outliner row click, never auto-on-load) — Room Walker
-  can copy the convention. Task 2: `build/room_walker.js` ports `compile_rooms.py` verbatim (W-ROOM-
-  WALKER-PARITY 6/6, byte-identical to Python on real SampleCastle/HHS/Clinic/Garage/Hospital/Terminal
-  data). Task 3 bar 1 (test) DONE via that same witness; bar 2 (injection) mostly moot — 5/6 buildings'
-  JS output already matches shipped data. **⛔ BLOCKED: Terminal's fresh algorithm run gives 53 rooms,
-  not the 43 shipped — re-inject or leave as-is?** Tasks 4 (Outliner "Room Walker" action, browser-side)
-  + 5 (retire compile_rooms.py) NOT STARTED, both need bim-ootb Modeller UI work in a worktree.
+- `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` 2026-07-11 — **ALL 5 TASKS DONE (Sonnet).**
+  Task 1: `dwWalk()` confirmed explicit-user-action only. Task 2: `build/room_walker.js` ports
+  `compile_rooms.py` verbatim (W-ROOM-WALKER-PARITY 6/6 byte-identical). Task 3 both bars DONE —
+  Terminal's stale 43→53 correction shipped via `ROOM008_Terminal_correction_43_to_53.sql`
+  (user-confirmed: precision over staleness for display-only data), W-ROOM008-TERMINAL 4/4. Task 4:
+  "Rooms" Outliner category wired into bim-ootb (`room_walker_outliner.js` + `window.roomWalk()`,
+  same `addCategory`/`onWalk` convention as STR/BOM-tree), W-ROOM-WALKER-LIVEWIRE 12/12 (real click
+  through the Outliner DOM, caught + fixed a real porting bug the node witness couldn't reach —
+  `compileRooms()` crashing on a not-yet-existent table). Task 5: `compile_rooms.py` retired from
+  room-injection duty (NOT deleted — `witness_geomap_tier3.py` has a real unrelated dependency on
+  importing it); `ROOM_INJECTION_HYBRID.md` Task 2 + `COMPILE_ROOMS_TYPE_INFERENCE.md` updated to
+  point at `room_walker.js`. Shipped bim-ootb `fable/modeller-lod400-livewire` @ `a5c6435` (pushed,
+  0 unpushed) + bim-compiler `fable/meshdb-livewire` @ `e292bba7d` (pushed, 0 unpushed).
 - ⛔ **GitHub LFS bandwidth quota EXHAUSTED (2026-07-11), resets 2026-08-01.** See `CLAUDE.md` §LFS QUOTA
   EXHAUSTED — any push may hang regardless of LFS content; don't retry blindly, don't create fresh worktrees
   for uncached branches. Cleaned up: duplicate `~/Projects/bim-ootb` clone removed, 25 stale worktrees pruned.
