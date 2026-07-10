@@ -18,7 +18,14 @@
 # verification trail: MANAGER session transcript 2026-07-10 (this doc's job isn't to re-paste it — trust the
 # merge, don't re-verify from scratch).
 #
-# **⛔ ONE TASK LEFT: this fix is bim-compiler-ONLY. The bug is STILL LIVE in the actual Modeller app
+# **✅ PORTED, VERIFIED, PUSHED, PR OPEN (2026-07-11).** bim-ootb `fix/dw-datum-port` @ `4ff22c0` →
+# https://github.com/red1oon/bim-ootb/pull/726 (not merged — user's call). MANAGER-verified: §DW-DATUM
+# ported byte-identical, terminal_rules.db re-stamp touched only rule_frame_ref (checksummed), new
+# W-DW-DATUM witness 4/4 exact-matching numbers, no regression (pre-existing fails reproduce identically
+# on unpatched origin/main). The Terminal collapse bug (ELEC 744→390, PLB 888→252) heals once this merges.
+# Below kept as the original task brief for the record — task is DONE, not open.
+#
+# **⛔ ORIGINAL TASK (now done, see above): this fix is bim-compiler-ONLY. The bug is STILL LIVE in the actual Modeller app
 # (bim-ootb) today** — bim-ootb has its OWN diverged copy of `disc_walker.js` (`modeller/disc_walker.js`,
 # not `build/disc_walker.js`) and its OWN shipped `terminal_rules.db`, neither touched by `b202eb44b`.
 # Walking the real `~/bim-ootb/modeller/Terminal_ARC.db` today still collapses (ELEC 744→390, PLB 888→252)
