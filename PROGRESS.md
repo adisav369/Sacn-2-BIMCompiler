@@ -43,8 +43,11 @@
   (the embed-8 pipeline), NOT the `b93ca13` strip Task 4 originally named; script hardened with an
   explicit spatial_structure carry-forward + regression gate (W-SPATIAL-CARRY 9/9), replacing the need
   for Fable's per-building manual-port workaround on future re-embeds. Script+witness committed, pushed
-  (non-LFS). Actually re-running the pipeline against bim-ootb `main` + pushing regenerated `*_ARC.db`
-  still LFS-blocked until 2026-08-01. Task 3 NOT STARTED (superseded by ROOM_WALKER_JS_PORT.md). 4 more
+  (non-LFS). **Follow-up also DONE 2026-07-11**: main's actual data gap (6 empty residents + Duplex's
+  unfiltered Roof row) closed via 7 SQL migration scripts (`ROOM001-007_*.sql`, repo convention, real
+  data dumped off `fable/modeller-lod400-livewire`) — apply via `sqlite3 modeller/{Name}_ARC.db <
+  ROOM00N_*.sql`, W-ROOM-MIGRATION-APPLY 7/7 byte-identical to source. Gets any local `main` checkout on
+  par with the branch without a binary push; live-site deploy still LFS-blocked until 2026-08-01. Task 3 NOT STARTED (superseded by ROOM_WALKER_JS_PORT.md). 4 more
   bim-ootb branches (grid-tilt-guard, dw-rot-units, dwprobe-dedup, terminal-oracle-source)
   MANAGER-verified+pushed, PRs #722-725 open, unmerged.
 - `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` 2026-07-11 — NEW, all 5 tasks NOT STARTED (JS port of
