@@ -105,24 +105,22 @@ path (SampleCastle/Clinic/Hospital) and door-partition path (HHS/Clinic) both ex
 exact. Log: `/tmp/claude-1000/-home-red1-bim-compiler/885d136b-04e3-4b17-8666-279c6b28f522/
 scratchpad/w_room_walker_parity.log`.
 
-**Honest finding surfaced, not papered over:** Terminal's fresh Python run gives **53** rooms
-(door_rescued=10), not the 43 currently shipped in `Terminal_ARC.db` — the shipped data predates
-this session's §DOOR-RESCUE/§DOOR-PARTITION refinements to `compile_rooms.py` and was never
-re-run against the current algorithm. JS matches Python's 53 exactly (that's what the parity witness
-proves) — the discrepancy is between "what's shipped" and "what today's algorithm produces," not a
-porting bug. Whether to update Terminal's shipped room data to 53 is a content decision (Terminal's
-count appears in `PROGRESS.md`'s gate table and possibly other witnesses) — **⛔ BLOCKED: should
-Terminal's shipped `spatial_structure` be re-injected to 53 (today's algorithm's answer), or left at
-43 (whatever produced it originally)?** Not assumed either way; flagged per WORK-TO-ZERO rather than
-silently changed.
+**Resolved 2026-07-11 (user decision): ship 53, not 43** — display-only data (never feeds schedule
+placement, `spacesOf()` already excludes `COMPILED`/`RM_` rows), more precision has no downside.
+Closed via `embed8_scripts/ROOM008_Terminal_correction_43_to_53.sql` (same SQL-migration convention
+as `ROOM001-007`, not a binary commit) — full replace is safe because Terminal's ENTIRE
+`spatial_structure` table is synthetic (0 real `IfcBuilding`/storey/space rows, verified directly).
+Witness `witness_room008_terminal_correction.js` (W-ROOM008-TERMINAL, 4/4): the migration-applied
+result is byte-identical to `room_walker.js` computed fresh from the same real source geometry right
+now (the algorithm itself is the ground truth here — no frozen snapshot dependency), and
+`elements_meta` is confirmed untouched. Apply: `sqlite3 modeller/Terminal_ARC.db < ROOM008_*.sql`.
 
 ### Task 3 — Node CLI mode: replace `compile_rooms.py` for the 8 shipped residents
-**Status: bar 1 (test) ✅ DONE 2026-07-11 — see Task 2's witness above, it IS this bar (parity
-proven, not a separate re-run needed). Bar 2 (injection) ⛔ BLOCKED on the Terminal decision above
-— see below.** `RoomWalker.walk(db, {write:true})` already provides the same shape as
-`compile_rooms.py <db> --write` (Node, `require('./build/room_walker.js')`, no separate CLI
-wrapper file needed — `walk()` IS the CLI entry point, same pattern as calling `RoomWalker.compileRooms`
-directly from a one-line Node `-e` script or a thin wrapper, whichever a future session prefers).
+**Status: ✅ DONE 2026-07-11, both bars.** Bar 1 (test): see Task 2's witness, it IS this bar
+(parity proven). Bar 2 (injection): resolved via `ROOM001-008_*.sql` migration scripts, not a
+binary commit — see the report table below. `RoomWalker.walk(db, {write:true})` provides the same
+shape as `compile_rooms.py <db> --write` (Node, `require('./build/room_walker.js')`, no separate
+CLI wrapper file needed — `walk()` IS the CLI entry point).
 
 **Two distinct bars, both required — "tested against" is NOT the same as "injected into," do both:**
 1. **Test bar:** run the ported tool (no `--write`, or against a scratch COPY) against all 8
@@ -147,22 +145,21 @@ from this session's parity witness (`w_room_walker_parity.log`) + the unchanged 
 |---|---|---|---|
 | SampleHouse | 3 | Real `IfcSpace` | ✅ (untouched — no compile_rooms.py/room_walker.js path) |
 | Duplex | 20 | Real `IfcSpace` | ✅ (untouched — no compile_rooms.py/room_walker.js path) |
-| Terminal | 43 shipped / **53 by today's algorithm** | Synthetic — flood-fill + door-rescue | ⛔ JS matches Python exactly at 53; whether to re-inject shipped data is BLOCKED (see Task 2) |
+| Terminal | 53 (corrected from stale 43, `ROOM008_*.sql`) | Synthetic — flood-fill + door-rescue | ✅ |
 | SampleCastle | 51 | Synthetic — flood-fill + door-rescue | ✅ JS byte-identical to shipped |
 | HHS | 105 | Synthetic — door-partition | ✅ JS byte-identical to shipped |
 | Clinic | 197 | Synthetic — flood-fill + door-rescue + door-partition | ✅ JS byte-identical to shipped |
 | Garage | 5 | Synthetic — flood-fill | ✅ JS byte-identical to shipped |
 | Hospital | 201 | Synthetic — flood-fill + door-rescue | ✅ JS byte-identical to shipped |
-| **TOTAL** | **625** (shipped) / 635 (if Terminal re-injected to 53) | — | — |
+| **TOTAL** | **635** | — | — |
 
 **Injection bar (bar 2) resolved WITHOUT a binary commit, per the standing SQL-migration convention
-(`feedback_db_change_via_sql_migration_not_binary.md`):** 5 of 6 synthetic buildings need NO new
-injection — the JS port's output is already byte-identical to what's shipped (proven above), and
+(`feedback_db_change_via_sql_migration_not_binary.md`):** 5 of 6 synthetic buildings needed NO new
+injection — the JS port's output was already byte-identical to what's shipped (proven above), and
 that shipped data is already reachable on `main` via `ROOM001-006_*.sql`
-(`ROOM_INJECTION_HYBRID.md` Task 4's follow-up). Only Terminal has an actual discrepancy, and it's
-gated on the ⛔ decision above — no binary DB write happens here regardless of which way that's
-decided; a `ROOM008_Terminal_*.sql` migration (same shape as `ROOM001-006`) is the mechanism once
-someone answers it, not a new binary commit.
+(`ROOM_INJECTION_HYBRID.md` Task 4's follow-up). Terminal's actual discrepancy is closed by
+`ROOM008_Terminal_correction_43_to_53.sql` (W-ROOM008-TERMINAL 4/4) — no binary DB write, same
+migration-script mechanism as `ROOM001-007`. **Task 3 fully ✅ DONE** (both bars).
 
 ("Type / Method" = which technique produced that building's rooms, not a room-by-room semantic
 type — see `COMPILE_ROOMS_TYPE_INFERENCE.md` for the separate, much harder problem of guessing
