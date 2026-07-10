@@ -163,10 +163,18 @@ def main():
             restored.append(f"{prod} <- {os.path.basename(srcdb)} hash={h} v={vcount} f={fcount}")
 
     # Drop dangling M_Product_Image (mesh deleted by the resync) so CL_001 re-seeds them.
-    cur.execute("SELECT M_Product_ID FROM M_Product_Image mi "
-                "WHERE NOT EXISTS (SELECT 1 FROM component_geometries g WHERE g.geometry_hash=mi.geometry_hash)")
-    dangling = [r[0] for r in cur.fetchall()]
-    cur.execute("DELETE FROM M_Product_Image WHERE geometry_hash NOT IN (SELECT geometry_hash FROM component_geometries)")
+    # §SELF-HEAL round 2 (Watchdog fresh-worktree verification, 2026-07-10): a pristine LFS complib has
+    # NO M_Product_Image at all — this cleanup crashed there and python-sqlite3 rolled back the ENTIRE
+    # restore transaction (the 14 meshes above included). Probe first; an absent table has nothing
+    # dangling to drop. scripts/seed_dangling_meshes.py creates the (empty) table on fresh checkouts.
+    dangling = []
+    if cur.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='M_Product_Image'").fetchone():
+        cur.execute("SELECT M_Product_ID FROM M_Product_Image mi "
+                    "WHERE NOT EXISTS (SELECT 1 FROM component_geometries g WHERE g.geometry_hash=mi.geometry_hash)")
+        dangling = [r[0] for r in cur.fetchall()]
+        cur.execute("DELETE FROM M_Product_Image WHERE geometry_hash NOT IN (SELECT geometry_hash FROM component_geometries)")
+    else:
+        print("  §RESTORE M_Product_Image absent (pristine complib) — cleanup skipped; run scripts/seed_dangling_meshes.py")
 
     con.commit()
     # §RESTORE whitebox log
