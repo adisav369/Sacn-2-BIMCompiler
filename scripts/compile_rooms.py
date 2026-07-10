@@ -28,17 +28,21 @@ WALL_LIKE = ("IfcWall%", "IfcDoor%", "IfcCurtainWall%", "IfcColumn%", "IfcWindow
 # overlaps. IfcStair% LIKE also covers IfcStairFlight. (User: "staircase is also marked as room".)
 STAIR_LIKE = ("IfcStair%", "IfcRamp%")
 STAIR_OVERLAP_REJECT = 0.35   # drop a pocket if a stair footprint covers ≥35% of its area
-# §DOOR-RESCUE: a pocket under MIN_AREA is usually a wall-joint/cavity artefact of the grid flood-fill
-# (measured: on real buildings these cluster <1.0 m^2). But a genuine small room — a toilet, riser,
-# store, utility closet — is real even at 1.5-3.9 m^2, and the one structural clue a wall-cavity never
-# has is a DOOR: every enclosed room a person uses has one, a cavity doesn't. So a pocket in
-# [DOOR_RESCUE_MIN_AREA, MIN_AREA) is accepted ONLY if a real IfcDoor centre sits on/against its
-# rectangle (never invented — same real extracted door positions already used as WALL_LIKE blockers).
-# Verified on real data before shipping (HHS/Clinic/Hospital/SampleCastle): area<1.0 m^2 pockets are
-# door-adjacent in only a handful of cases (noise); 1.0-4.0 m^2 pockets are door-adjacent in the large
-# majority (real small rooms) — the two bands are not the same population.
-DOOR_RESCUE_MIN_AREA = 1.0   # m^2 — below this, even a door-adjacent pocket is treated as noise
-DOOR_RESCUE_BUFFER = 1.0     # m — how far a door centre may sit from the pocket rect and still count
+# §DOOR-RESCUE (abstract rule, not a fitted band): the definition of "room" is architectural, not a
+# size threshold — an enclosed pocket is a room IFF it has a DOOR (how a person enters/exits it). A
+# wall cavity, duct or structural void never has one. MIN_AREA alone is a blunt proxy for this that
+# only works by accident when small rooms happen to be rare; it wrongly drops real small rooms
+# (toilets, risers, store/utility closets) that a strict area cutoff can't tell apart from noise.
+# So below MIN_AREA, door presence — not a second area number picked by eyeballing any one building —
+# is the actual test. Two supporting checks are geometry-derived, not observed-data-fitted:
+#   - the adjacency buffer is each DOOR's OWN extracted footprint (half its real leaf/frame span) plus
+#     one grid cell of rasterization slack — self-scaling to whatever doors this building actually has,
+#     never a fixed metre guess;
+#   - NOISE_FLOOR_DIM rejects a pocket whose rect is narrower than a few grid cells in EITHER axis —
+#     that is a property of the flood-fill's own resolution (a 1-2 cell sliver is rasterization noise
+#     by construction, regardless of which building produced it), not a threshold tuned to this data.
+NOISE_FLOOR_DIM = 3 * RES   # m — a pocket narrower than this in x OR y is a grid artefact, not a room
+DOOR_BUFFER_SLACK = RES     # m — rasterization slack added on top of each door's own real footprint
 # §APPROX: these rooms are COMPILED from wall enclosure (flood-fill), NOT extracted IfcSpace.
 # Validated ~5/21 recall on ground-truth Duplex → treat as APPROXIMATE. Labelled '≈' + COMPILED.
 
@@ -66,18 +70,23 @@ def storey_stairs(c):
     return by
 
 def storey_doors(c):
-    """Per-storey door centres (cx,cy) — the §DOOR-RESCUE clue for genuine small rooms."""
+    """Per-storey door (cx,cy,bx,by) — the §DOOR-RESCUE clue for genuine small rooms. Each door's
+    OWN real footprint is carried through so adjacency self-scales to that door, not a guessed metre."""
     rows = c.execute(
-        "SELECT m.storey, t.center_x,t.center_y FROM elements_meta m "
-        "JOIN element_transforms t ON t.guid=m.guid WHERE m.ifc_class LIKE 'IfcDoor%' "
-        "AND t.center_x IS NOT NULL").fetchall()
+        "SELECT m.storey, t.center_x,t.center_y, COALESCE(t.bbox_x,0), COALESCE(t.bbox_y,0) "
+        "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
+        "WHERE m.ifc_class LIKE 'IfcDoor%' AND t.center_x IS NOT NULL").fetchall()
     by = {}
-    for st, cx, cy in rows:
-        by.setdefault(st or "Unknown", []).append((cx, cy))
+    for st, cx, cy, bx, by_ in rows:
+        by.setdefault(st or "Unknown", []).append((cx, cy, bx, by_))
     return by
 
-def _door_adjacent(rx0, ry0, rx1, ry1, doors, buf=DOOR_RESCUE_BUFFER):
-    return any(rx0 - buf <= dx <= rx1 + buf and ry0 - buf <= dy <= ry1 + buf for dx, dy in doors)
+def _door_adjacent(rx0, ry0, rx1, ry1, doors):
+    for dx, dy, dbx, dby in doors:
+        buf = max(dbx, dby) / 2 + DOOR_BUFFER_SLACK  # this door's own span, not a fixed guess
+        if rx0 - buf <= dx <= rx1 + buf and ry0 - buf <= dy <= ry1 + buf:
+            return True
+    return False
 
 def _stair_overlap_frac(rx0, ry0, rx1, ry1, stairs):
     """Largest fraction of room rect [rx0,ry0,rx1,ry1] covered by any single stair footprint."""
@@ -157,11 +166,14 @@ def flood_rooms(walls, stairs=None, doors=None):
             if area > MAX_AREA_ABS or area > plan_area * MAX_AREA_FRAC: continue
             wx0 = xs0 + mni * RES; wx1 = xs0 + (mxi + 1) * RES
             wy0 = ys0 + mnj * RES; wy1 = ys0 + (mxj + 1) * RES
+            # §DOOR-RESCUE (abstract test, applies uniformly — not a size band): a pocket is a room if
+            # it is big enough to obviously be one on its own (area >= MIN_AREA, the original rule,
+            # unchanged for the common case) OR it has a real door AND isn't a bare rasterization sliver
+            # (NOISE_FLOOR_DIM, a grid-resolution property, not a fitted area number).
             door_rescued = False
             if area < MIN_AREA:
-                # §DOOR-RESCUE: below MIN_AREA, only a door-adjacent pocket in the small-room band
-                # survives — everything else this small is a wall-joint/cavity artefact, dropped.
-                if area < DOOR_RESCUE_MIN_AREA or not _door_adjacent(wx0, wy0, wx1, wy1, doors):
+                dims_ok = (wx1 - wx0) >= NOISE_FLOOR_DIM and (wy1 - wy0) >= NOISE_FLOOR_DIM
+                if not (dims_ok and _door_adjacent(wx0, wy0, wx1, wy1, doors)):
                     continue
                 door_rescued = True
             # §STAIR-EXCLUDE: a stair/ramp footprint covering this pocket → it's a circulation
