@@ -363,6 +363,43 @@
 # cleanup block in `restore_generative_meshes.py` with `CREATE TABLE IF NOT EXISTS` + honestly report
 # 0 dangling-mesh restores as a known gap instead of silently inheriting the shared tree's manual state.
 
+# ✅ ROUND 3 (2026-07-10, Watchdog — RESOLVED + PUSHED). Independent verification method: brand-new
+# `git worktree add --detach /tmp/wt-watchdog-round3-verify f02121904` (never touched `/tmp/wt-livewire-
+# verify`, `/tmp/wt-fable-bimeyes`, or any worker worktree). Confirmed pristine BEFORE running anything:
+# no `M_Product_Image`, no dangling hashes, no `library/disc_patterns.db`, no `logs/` dir. Copied in ONLY
+# the gitignored building inputs (Duplex/SampleCastle/Terminal/Clinic/HHS_Office_Federated `_extracted`
+# + `Terminal_library` + `Duplex_library`/`_meta` + `build/Duplex_mep_{extracted,meta}.db` + node_modules
+# symlink) — all legitimate gitignored copies, none manually patched.
+# - Read the diff of all 3 commits (`61dd84963`, `997acdda8`, `f02121904`): all 3 claimed fixes are real —
+#   `seed_dangling_meshes.py` exists and matches its description; `restore_generative_meshes.py`'s
+#   `sqlite_master` probe on `M_Product_Image` is real (no more rollback-on-crash); `mkdirSync(recursive)`
+#   is present at all 3 sites that needed it (`witness_dx_walkback_rsgt.js` ×2, `witness_rule_space_
+#   schedule.js`, `witness_terminal_nospaces.js`) — the other suite witnesses (shim_select, dwwalk_
+#   hostbind, hostbind_agnostic, elec_hostbind) already had the guard pre-existing, confirmed by grep.
+# - Ran ONLY the committed generators in the claimed order: `seed_dangling_meshes.py` **2/2**,
+#   `restore_generative_meshes.py` **14/14** (0 unresolved), `rebuild_erp.sh` incl. its `§SHIM-SEED` tail
+#   **12/12** rows — all exact-matched the claim.
+# - Full witness suite, every tally exact-matched the claim: W-SCHED-MINE **7/7**, W-DX-WALKBACK-RSGT
+#   **14/14**, W-TERM-NOSPACES **5/5**, W-SHIM-SELECT **6/6**, W-DWWALK-HOSTBIND **6/6**,
+#   W-HOSTBIND-AGNOSTIC **11/11**, W-ELEC-HOSTBIND **5/5**, space-scoped **5/5**.
+# - Explicitly re-tested the ENOENT/mkdirSync claim by `rm -rf logs/` before each of the 3 fixed witnesses
+#   and re-running with NO pre-created `logs/` dir (no manual `mkdir -p logs` help) — all 3 exit 0, log
+#   written cleanly (`witness_rule_space_schedule.js`, `witness_dx_walkback_rsgt.js`,
+#   `witness_terminal_nospaces.js`). Confirms the false-positive-prone failure mode is genuinely fixed.
+# - W-MESHDB-RESOLVE: FAILED 2/5 on its default target (`~/bim-ootb/modeller/mesh.db`, the SHARED checkout
+#   on `main` — its mesh.db is the documented-stale one, 0/26 by design, see §LIVEWIRE spec). NOT a
+#   regression — the witness takes an explicit path arg; pointed at the worker's ACTUAL bim-ootb branch
+#   worktree (`/tmp/wt-fable-livewire` @ `670bf0f`, `fable/modeller-lod400-livewire`) it is **5/5**,
+#   matching the claim exactly. (Watchdog note for next session: the witness's default arg silently
+#   targets `main`, not the feature branch — worth a comment in the script so this isn't re-alarming.)
+# - bim-ootb `670bf0f` merge-tree check against current `origin/main` (fetched fresh, `c32692e`):
+#   CLEAN, no conflicts (670bf0f 1 commit ahead / 2 behind — disjoint changes, grid-rotation-guard on
+#   main vs modeller/disc_walker.js on this branch, consistent with earlier item-3 auto-merge note).
+# **PUSHED**: bim-compiler `fable/meshdb-livewire` → `origin` (HEAD `ad50af603`, includes the docs-only
+# round-2 closeout commit on top of `f02121904` — reviewed, no functional change). bim-ootb
+# `fable/modeller-lod400-livewire` → `origin` (`670bf0f`, LFS mesh.db 120MB uploaded). Neither merged to
+# main/master — branches only, PRs not opened, per convention (worker commits, Watchdog pushes).
+
 # ▶▶▶▶▶ ENTRY POINT (2026-07-10, superseded by the block above — kept for evidence trail). This
 # session (Sonnet) is closing out; the user is now iterating directly with a Fable5 session in their own
 # words and will paste Fable's results into a fresh session. **Read `prompts/WATCHDOG.md` for that fresh
