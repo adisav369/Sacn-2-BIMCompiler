@@ -2247,3 +2247,93 @@ the extraction z-datum, (b) make dwWalk normalize bands to the substrate's own s
 offsets per-storey — verify why that didn't absorb a global shift), or (c) re-mine rules per-substrate (worst,
 violates one-rules-db-per-class). Then W-TERM-NOSPACES gains a T8 that walks the SHIPPED Terminal_ARC.db, not
 only the stripped copy — the witness substrate must be the Modeller's production substrate.
+
+## 📐 §TE-ARC-DATUM-FIX — SPEC (2026-07-10, fix session; spec-first per standing rule)
+
+**New measurements (per-GUID join, extraction guid = `T0_Terminal_` + ARC guid, 35,552/35,552 matched):**
+- The two substrates differ by a PURE TRANSLATION: extraction = ARC + (545.61, 51.22, **14.66**) — 94% of
+  elements at exactly dz=+14.66, the rest recompute noise (no rotation: dz is xy-invariant across bins).
+  Plan offset √(545.61²+51.22²)≈548 m = the known ≈547 m site offset (§START-END-THEORY-TESTED):
+  **Terminal_ARC.db is in the raw-IFC building frame; the extraction is in the re-datumed site frame.**
+- terminal_rules.db bands are stored in the 2026-06-28 building-datum frame; `rules_meta.z_datum_offset`
+  = **14.593** (measured, MAD 0.33) converts band→site frame. So the stored bands are ALREADY within
+  **0.067 m** of Terminal_ARC.db's frame (sanity: roof band hi 27.09 == Terminal_ARC.db max center_z) —
+  the bug is that `placeMeasured()` adds +14.593 UNCONDITIONALLY, i.e. it bakes ONE target frame
+  (the extraction's) at mine time and applies it to whatever substrate it walks.
+- "Normalize to storey elevations" (option b as originally phrased) is NOT viable: 94% of
+  Terminal_ARC.db's elements sit on storey `Unknown` — storeys are not a reliable datum anchor there.
+- The membership-stable anchor IS measurable: every non-generatable ifc_class shared by the two
+  substrates has IDENTICAL element counts and per-class mean-z deltas of 14.62–14.74 (12 classes:
+  IfcSlab 705, IfcBuildingElementProxy 486, IfcWall 333, IfcWindow 236, IfcFurniture 176, IfcDoor 135,
+  IfcCovering 82, IfcRailing 34, IfcStairFlight 32, IfcController 6, IfcRoof 2, IfcRampFlight 1).
+
+**DECISION — the datum fix belongs in the WALKER, as walk-time MEASURED reconciliation (option b,
+refined from "storey elevations" to "per-class reference stats"). Extends the existing measured
+`z_datum_offset` doctrine ("no constant lives in code") from mine-time-one-frame to walk-time-any-frame.**
+- (a) REJECTED — making the ARC fetch replicate the extraction's site frame couples the shipped Modeller
+  artifact to a bim-compiler pipeline constant that is itself a re-datum artifact; it breaks any saved
+  op-log placements keyed to the shipped file's current coordinates; and it re-breaks the moment either
+  artifact is regenerated in a different frame. Frame is a property of each substrate, not a contract.
+- (c) REJECTED — per-substrate re-mining violates one-rules-db-per-class (WalkerDoctrine, LOCKED).
+- The walker is the ONLY consumer that mixes the two frames (rules bands × substrate transforms), so the
+  reconciliation belongs at the mix point, measured from the walked substrate itself.
+
+**IMPLEMENTATION (3 pieces, all bim-compiler side; port to the diverged bim-ootb modeller/disc_walker.js
+is a named follow-up, same as the room-injection lane's port):**
+1. `build/project_rule_mesh_binding.py` — after stamping `z_datum_offset`, ALSO stamp a
+   `rule_frame_ref(ifc_class PK, n, mean_z)` table: per non-generatable class (NOT IN rule_placement
+   classes, != IfcSpace, n≥5 in the source extraction), n + AVG(center_z) expressed in the BAND frame
+   (source site mean − the just-measured z_datum_offset). Measured, per-class, no constants.
+2. `build/disc_walker.js placeMeasured()` — if the rules db carries `rule_frame_ref`: for each ref class
+   present in the walked db with count≥5, delta = walked AVG(center_z) − ref.mean_z; if ≥3 such classes,
+   zOff = median(deltas), log `§DW-DATUM zOff=… (K classes, MAD=…)`. Fewer than 3 → legacy z_datum_offset
+   + `§DW-DATUM-FALLBACK` log. No rule_frame_ref table → legacy path unchanged (duplex_rules.db etc.
+   byte-identical). Walking the extraction itself: every delta == +14.593 exactly (same db the refs were
+   mined from) → behavior identical to today, T1–T7 stay green. Walking Terminal_ARC.db: median delta
+   ≈ −0.07 → bands land in the shipped file's own frame.
+3. `scripts/witness_terminal_nospaces.js` — **T8 SHIPPED-SUBSTRATE**: walk the SHIPPED
+   `~/bim-ootb/modeller/Terminal_ARC.db` (absolute path + existsSync ⚠SKIP precedent from
+   W-ROTATION-CONVENTION), ELEC + PLB, `{schedule:true}`:
+   - per-class placed/n_measured ∈ [0.5, 2.0] (T6 bar) — the collapse this section opens with
+     (ELEC 744→390, PLB 888→252) must be GONE on the real substrate;
+   - conformance: 0 placements outside Terminal_ARC.db's OWN XY envelope, 0 outside their own
+     (reconciled) z-band, all hashes REAL hashes of their own class (hash oracle = the full extraction —
+     hashes are frame-independent; the ARC db carries no MEP instances);
+   - FALSIFIER (names the issue): DROP `rule_frame_ref` in a COPY of the rules → walker falls back to
+     the baked +14.593 → the walk must collapse (placed < 0.6× reconciled walk) — proves T8 detects the
+     datum bug and that the walk-time reconciliation is what closes it.
+   `build/terminal_rules.db` is re-stamped by re-running the projection script (in-place regeneration is
+   this artifact class's normal lifecycle, decided 2026-07-03).
+
+**Claim → witness:** W-TERM-NOSPACES grows to 8 asserts; T8 is the "witness substrate must be the
+Modeller's production substrate" gate this section demanded. Follow-ups (named, not this session):
+port piece 2 to bim-ootb `modeller/disc_walker.js` + re-stamp its shipped `terminal_rules.db` copy so the
+LIVE Modeller walk heals; regenerate/ship nothing in `deploy/live/`.
+
+### ✅ §TE-ARC-DATUM-FIX RESULTS (2026-07-10, same session — implemented to the spec above, W-TERM-NOSPACES 8/8)
+
+Branch `fix/te-arc-datum` (worktree /tmp/wt-te-arc-datum off origin/master c1ebcee35). Log:
+`logs/witness_terminal_nospaces_*.log` (final run 8 PASS / 0 FAIL; scratchpad copies kept per run).
+- **T8 SHIPPED-SUBSTRATE PASS on the real `~/bim-ootb/modeller/Terminal_ARC.db`:** walker measured
+  `§DW-DATUM zOff=-0.060 (10 ref classes, MAD=0.024)` — matching the predicted −0.067. Quantities
+  recovered from the collapse: ELEC IfcLightFixture 860/638 (1.35), IfcElectricAppliance 36/19 (1.89),
+  PLB IfcPipeSegment 869/739 (1.18), IfcValve 100/111 (0.90) — all in [0.5,2.0]; 0 XY-envelope /
+  0 z-band / 0 hash violations. FALSIFIER: DROP rule_frame_ref → placed **1865→642** — 642 is exactly
+  the pre-fix probe collapse (ELEC 390 + PLB 252), proving T8 detects the original bug and the
+  walk-time reconciliation is what closes it.
+- **Stripped-copy walks byte-identical:** `§DW-DATUM zOff=14.593 (8 ref classes, MAD=0.000)` — the
+  measured path reproduces the legacy constant exactly on the mining frame; T1–T7 all green with the
+  same placed counts as before the change (744 ELEC / 888 PLB).
+- **Regression attribution clean:** the only witnesses reaching `{schedule:true}` are this one and
+  W-DX-WALKBACK-RSGT (Duplex → placeSchedule path + duplex_rules.db has no rule_frame_ref → guarded
+  out). Ran witness_{rule_space_schedule, terminal_geosplit, dwwalk_hostbind} changed-vs-reverted in
+  the same worktree (file-copy revert, NOT git stash — cross-worktree stash landmine): assert lines
+  IDENTICAL both states (6/1, 7/5, 6/0 — pre-existing/env fails, attribution delta 0).
+- Files: build/disc_walker.js (placeMeasured §DW-DATUM block), build/project_rule_mesh_binding.py
+  (rule_frame_ref stamp), build/terminal_rules.db (re-stamped in place — normal lifecycle for this
+  artifact class), scripts/witness_terminal_nospaces.js (T8 + header claim), this file (spec+results).
+- **NOT pushed — worker role (feedback_worker_no_push_watchdog_pushes): committed locally, Watchdog
+  publishes after sign-off.** Named follow-ups (next session, not started): port the placeMeasured
+  §DW-DATUM block to the diverged bim-ootb `modeller/disc_walker.js` + re-stamp the shipped
+  `~/bim-ootb/modeller/terminal_rules.db` copy so the LIVE Modeller walk heals (the bug is live on
+  origin/main today); then the Modeller's own smoke can assert a §DW-DATUM line on Terminal load.
