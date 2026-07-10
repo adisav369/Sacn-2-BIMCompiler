@@ -75,6 +75,20 @@ function loadDb(SQL, f) { return new SQL.Database(new Uint8Array(fs.readFileSync
   log('§RS real DX terminals: ' + Object.keys(realBy).sort().map(function (d) { return d + '=' + realBy[d].length; }).join(' ') +
     ' (mep_subdisc guid-join; walker never reads these)');
 
+  // ── PRECONDITION (Watchdog correction 2026-07-10): this witness needs the SHARED-TREE env prepared —
+  // Duplex_extracted.db's spaces STAMPED with LongNames (gitignored input; committed generator). Unstamped,
+  // the schedule walk skips every space (labels are room NUMBERS like 'A101'), W1 reports 0 generated and
+  // the old code then CRASHED on allGen[0].spaceGuid — a confusing TypeError instead of the actionable
+  // one-line fix. Fail FAST and say exactly what to run.
+  var stamped = rows(dx, "SELECT COUNT(*) n FROM spatial_structure WHERE type='IfcSpace' " +
+    "AND COALESCE(object_type,'')!=''")[0];
+  if (!stamped || !(stamped.n > 0)) {
+    log('❌ PRECONDITION — deploy/buildings/Duplex_extracted.db spaces are NOT stamped (0 object_type). Run:');
+    log('   python3 scripts/stamp_space_longnames.py deploy/buildings/Duplex_extracted.db reference/residential/Ifc2x3_Duplex_Architecture.ifc');
+    log('W-DX-WALKBACK-RSGT: 0 PASS / 1 FAIL (env precondition)');
+    process.exit(1);
+  }
+
   // ── the walk (generation side — rules DB + ARC substrate only) ──
   var walks = {}, spacesInfo = null, prior = [];
   ['ELEC', 'PLB', 'ACMV'].forEach(function (d) {
@@ -123,11 +137,21 @@ function loadDb(SQL, f) { return new SQL.Database(new Uint8Array(fs.readFileSync
     var inEnv = p.x >= env.x0 - 1 && p.x <= env.x1 + 1 && p.y >= env.y0 - 1 && p.y <= env.y1 + 1;
     if (!inSpace || !inEnv) out2.push(p.device + '@' + p.space);
   });
-  assert('W2 CONTAINMENT', out2.length === 0,
+  // Watchdog correction 2026-07-10: W2 must NOT pass vacuously — 0 generated fixtures is a failure of
+  // the walk (or the env), not a containment success (the old 0/0 "pass" masked the unstamped-env break).
+  assert('W2 CONTAINMENT', allGen.length > 0 && out2.length === 0,
     allGen.length + '/' + allGen.length + ' generated fixtures inside their own REAL space bbox (±5cm) and the envelope' +
+    (allGen.length === 0 ? ' — VACUOUS (0 generated): failed' : '') +
     (out2.length ? ' — BREACHES: ' + out2.slice(0, 5).join(', ') : ''));
   // falsifier: inject one fixture 10m outside its space → must be caught by the same check
-  var probe = allGen[0], ps = spaceByGuid[probe.spaceGuid];
+  var probe = allGen[0], ps = probe ? spaceByGuid[probe.spaceGuid] : null;
+  if (!ps) {
+    assert('W2 FALSIFIER', false, 'no generated fixture available to probe (walk produced 0) — cannot exercise the falsifier');
+    log('W-DX-WALKBACK-RSGT: ' + pass + ' PASS / ' + fail + ' FAIL (aborted: nothing generated, later gates unreachable)');
+    fs.writeFileSync(LOG, _lines.join('\n') + '\n');
+    dx.close(); mm.close(); lib.close();
+    process.exit(1);
+  }
   var caught = !((ps.x1 + 10) <= ps.x1 + TOL);
   assert('W2 FALSIFIER', caught === true,
     'an injected fixture at x=space.x1+10m IS flagged by the same containment test — the check can catch a real breach');

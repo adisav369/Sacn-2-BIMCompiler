@@ -367,6 +367,12 @@ fi
 ln -sf "$(basename "$DB")" "library/ERP.db"
 echo "  Back-compat symlink: library/ERP.db → $(basename "$DB")"
 
+# §SHIM-SEED (Watchdog correction 2026-07-10): `_shim_attributes` is measured mined data whose only
+# home used to be THIS regenerated (gitignored) db — every rebuild silently dropped it, crashing the
+# hostbind witnesses + build/project_rule_shim.py on a fresh checkout. Its committed home is the
+# seeder; re-seed on every rebuild so the artifact stays complete.
+python3 scripts/seed_shim_attributes.py "$DB"
+
 echo ""
 echo "═══ rebuild_erp.sh: DONE ═══"
 echo "  Database: $DB ($(du -h "$DB" | cut -f1))"

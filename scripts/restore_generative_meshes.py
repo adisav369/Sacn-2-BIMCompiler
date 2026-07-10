@@ -88,6 +88,27 @@ def main():
     if not os.path.exists(LIB):
         print(f"[RESTORE] FATAL: {LIB} missing"); sys.exit(1)
     con = sqlite3.connect(LIB); cur = con.cursor()
+    # §SELF-HEAL (Watchdog correction 2026-07-10): after the ad_geometry_map → I_Geometry_Map rename this
+    # script CRASHED unless the back-compat VIEW had been created by hand (JavaEra_FOSSIL_README.md recipe
+    # step 3) — the one manual step keeping the complib repair from being a single committed command.
+    # Create it here (pure alias, no data): the repair is now `python3 scripts/restore_generative_meshes.py`.
+    cur.execute("SELECT 1 FROM sqlite_master WHERE name='ad_geometry_map'")
+    if not cur.fetchone():
+        cur.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='I_Geometry_Map'")
+        if cur.fetchone():
+            cur.execute("CREATE VIEW ad_geometry_map AS SELECT * FROM I_Geometry_Map")
+            print("[RESTORE] §SELF-HEAL created back-compat view ad_geometry_map → I_Geometry_Map")
+    else:
+        # Recipe step 3's OTHER half: a pre-rename complib (ad_geometry_map still a TABLE, e.g. the
+        # pristine LFS checkout) gets the rename + view, verbatim from the fossil README. NOTE a fully
+        # pristine checkout ALSO lacks M_Product_Image (recipe step 2, pre_s173 restore) — that Java-era
+        # path stays the README's documented manual recipe, deliberately not automated here (fossil).
+        cur.execute("SELECT type FROM sqlite_master WHERE name='ad_geometry_map'")
+        if cur.fetchone()[0] == 'table' and not cur.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='I_Geometry_Map'").fetchone():
+            cur.execute("ALTER TABLE ad_geometry_map RENAME TO I_Geometry_Map")
+            cur.execute("CREATE VIEW ad_geometry_map AS SELECT * FROM I_Geometry_Map")
+            print("[RESTORE] §SELF-HEAL renamed ad_geometry_map → I_Geometry_Map + back-compat view")
     restored, skipped, unresolved = [], [], []
 
     for prod, (element_ref, source) in RESTORE.items():
