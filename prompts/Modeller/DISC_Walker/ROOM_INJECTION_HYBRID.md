@@ -187,22 +187,38 @@ fix: a real small room always has a door, a wall cavity never does.
   — fixed with a maintained, multi-language door-name exclusion list (`liftdeur/lift/elevator/
   aufzug/fahrstuhl/hoist`), not a width cutoff (a lift door's width isn't reliably distinct from a
   narrow single-leaf door's). SampleCastle 53→51 (the 2 fakes removed); other 4 buildings unchanged.
-- Final counts (bim-compiler `scripts/compile_rooms.py` @ `520829907`): SampleCastle 25→**51**,
-  HHS 2→**6**, Clinic 113→**195**, Hospital 142→**201**, Garage unchanged at 5.
+- **Fifth pass — user would not let the HHS number go ("how many times must i tell you", "each door
+  must be to a room", "and told u not to stop until u solved it") — correctly: 6 rooms for 3 floors
+  averaging ~39 real doors each was never a defensible answer, it was a symptom of flood-fill's
+  precondition (wall enclosure) not being satisfiable from HHS's data, not a size/threshold problem
+  door-rescue could patch further. Built §DOOR-PARTITION: where flood-fill (with door-rescue applied)
+  finds far fewer rooms than the storey has real doors, partition the storey's FREE space by NEAREST
+  DOOR — multi-source BFS through free cells, real walls still block, each door claims whatever space
+  no other door reaches first (literally "every door leads to a room," not a proxy for it). Gate
+  (`DOOR_SHORTFALL_RATIO=0.15`) is measured, not fitted per-building: HHS's floors find 0-11% of their
+  door count via flood-fill; every other building's WORKING floors find 20-100%+ (Garage's sparsest:
+  5/8=62%; Hospital's sparsest: 1/5=20%) — the ratio sits cleanly between "failing" and "working,"
+  verified directly so it never overrides an already-functioning floor. `predefined_type=
+  'INTERNAL_DOORPART'` marks these rows for traceability.
+- Final counts (bim-compiler `scripts/compile_rooms.py` @ `f87f41ed7`): SampleCastle 25→51,
+  HHS 2→**105** (36/31/29/9 per floor — the "10s × floors" range the user predicted from door counts
+  alone), Clinic 113→197, Hospital 142→201, Garage unchanged at 5 (its one working floor's 5 real
+  rooms correctly preserved, not overridden).
 
 Witness `witness_room_injection_all8.js` (W-ROOM-INJECT-ALL8) 32/32 (rerun after every pass): coverage,
 tag-purity (no partial RM_/≈/COMPILED tagging on any of the 5), zero `elements_meta` guid collisions, and
 — the one that matters most — the REAL `spacesOf()` runtime filter returns 0 placement-eligible rows for
-all 5 synthetic-only buildings (proves display-only rooms, door-rescued or not, can never leak into
-schedule placement). Shipped bim-ootb `fable/modeller-lod400-livewire` @ `6880a3c` (parent `a8955f2`,
-pushed, `rev-list origin..HEAD`=0) + bim-compiler `fable/meshdb-livewire` @ `520829907` (pushed).
+all 5 synthetic-only buildings, HHS's 105 door-partitioned rows included (proves display-only rooms,
+however they were compiled, can never leak into schedule placement). Shipped bim-ootb
+`fable/modeller-lod400-livewire` @ `790b069` (parent `a8955f2`, pushed, `rev-list origin..HEAD`=0) +
+bim-compiler `fable/meshdb-livewire` @ `f87f41ed7` (pushed).
 
-**Known open gap, on record (not silently dropped):** HHS's WC/restroom block is still not compiled
-as a room — its stall partitions are real (`WC Trennwand`) but the block's own enclosing walls aren't
-in this extraction, and the stall gaps are narrower than the flood-fill's grid resolution can resolve
-even at minimum safe dilation. A real fix needs either a finer grid `RES` (cost: much slower flood-fill
-on large floors) or a different technique entirely (e.g. door-density-driven space partitioning) — not
-attempted here; flagged as a named follow-up, not silently left looking "done."
+**Still open, on record:** the door-partition technique gives HHS a plausible per-door room COUNT and
+rough footprint, but not a true wall-bounded shape (no walls exist in the data to bound it with) — it's
+a Voronoi-style nearest-door claim, one step more approximate than flood-fill's wall-enclosed rooms.
+Good enough for the Outliner "Rooms" display category (still 100% excluded from schedule placement,
+verified above); a real fix for HHS's actual wall/room geometry would need re-extraction with the
+partition walls properly captured, not attempted here.
 
 **Still NOT DONE — this task's own automation half:** wiring `compile_rooms.py` as a step INSIDE
 `extractIFC2DB.js` (or whichever path runs it) so a FUTURE re-extraction or a user's live IFC import gets
