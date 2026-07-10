@@ -38,16 +38,14 @@
   `component_library.db` confirmed zero live Modeller/Viewer fetch path (build-time mining source only, by design).
 - `prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md` 2026-07-10/11 — Tasks 1/5/6 DONE (habitability
   classifier + Duplex 20 real rooms + SampleHouse 3 real rooms, bim-ootb `fable/modeller-lod400-livewire`
-  @`790b069`, unmerged). Task 2 DATA-EFFECT DONE (all 8 residents carry room data on that branch),
-  AUTOMATION half still open. **Task 4 DONE 2026-07-11 (Sonnet)** — root cause was `finalize_all_8.js`
-  (the embed-8 pipeline), NOT the `b93ca13` strip Task 4 originally named; script hardened with an
-  explicit spatial_structure carry-forward + regression gate (W-SPATIAL-CARRY 9/9), replacing the need
-  for Fable's per-building manual-port workaround on future re-embeds. Script+witness committed, pushed
-  (non-LFS). **Follow-up also DONE 2026-07-11**: main's actual data gap (6 empty residents + Duplex's
-  unfiltered Roof row) closed via 7 SQL migration scripts (`ROOM001-007_*.sql`, repo convention, real
-  data dumped off `fable/modeller-lod400-livewire`) — apply via `sqlite3 modeller/{Name}_ARC.db <
-  ROOM00N_*.sql`, W-ROOM-MIGRATION-APPLY 7/7 byte-identical to source. Gets any local `main` checkout on
-  par with the branch without a binary push; live-site deploy still LFS-blocked until 2026-08-01. Task 3
+  @`790b069`, unmerged). Task 2 DATA-EFFECT DONE, AUTOMATION half still open. Task 4 DONE (`finalize_all_8.js`
+  hardened, W-SPATIAL-CARRY 9/9) + its SQL-migration follow-up DONE (`ROOM001-007_*.sql`, W-ROOM-MIGRATION-APPLY
+  7/7). **Self-heal loader DONE 2026-07-11 (Sonnet)**: ported those scripts + `migration/MDB001_livewire_
+  device_meshes.sql` into bim-ootb `modeller/patches/*.sql`; `str_walker_outliner.js` now fetches+`db.run()`s
+  the matching patch on every resident/geoDb open (cache-hit or fresh) before use — closes the "still needs a
+  manual sqlite3 step" gap, live GH-Pages/OCI opens self-heal automatically, binary DBs never cross the
+  network. W-PATCH-SELFHEAL 43/43 (puppeteer, all 8 residents + a deliberately-staled mesh.db falsifier,
+  0/26→26/26). Shipped bim-ootb `fix/meshdb-selfheal-loader` @ `a1aeab7`, pushed, PR open, unmerged. Task 3
   (Modeller Outliner "Rooms" category) superseded by ROOM_WALKER_JS_PORT.md. 4 more bim-ootb branches
   (grid-tilt-guard, dw-rot-units, dwprobe-dedup, terminal-oracle-source) MANAGER-verified+pushed, PRs
   #722-725 open, unmerged.
