@@ -307,3 +307,79 @@ yet, this file's original §RESUME steps 1-7 below still apply as-is.
    "the 12 E2E + ARC witnesses were green" means walkers are unaffected — they weren't in this session's scope, so
    they haven't been checked since these substrate files changed.
 7. Same Log Mandate / non-invent / witness-first discipline as the rest of this repo. Don't touch `deploy/live/`.
+
+## §DW-ROT-UNIT — the §ARC-ROT-UNIT bug class's disc-walk sibling, found + fixed (2026-07-10)
+
+The radians-as-degrees class this file fixed at the ARC seed boundary had ONE more unfixed instance: the legacy
+disc-walk fixture commit. `disc_walker.js` produces placement `yaw` in RADIANS (`hostBind`'s `Math.PI/2`
+vertical-run branch, `yaw: wl.rot` = wall `rotation_z` in the shim host-wall branch); the preview markers render
+it correctly as radians (`makeRotationZ`, §ROTATION-BOUND Bug B), but `_commitDiscWalk` (modeller.html) poured
+`p.yaw` RAW into `parameters.placement.rot` — the field every fold consumer reads as DEGREES
+(`bonsai_library.js place(): rot*π/180`; `bonsai_gridmove.js` `yawRadByFid`).
+
+**Confirmed in the REAL renderer before fixing** (per the standing "diff against a real baseline, don't trust the
+math" discipline): W-DW-ROT-UNITS (`modeller/tests/witness_dw_rot_units.js`) drives the production SampleHouse
+ELEC walk (6 `shim:host-IfcWall-side` placements at yaw=π/2) and measures the live scene. Unfixed: preview
+instance-matrix yaw **90.00°**, committed `placement.rot` **1.5707963** (raw radians), folded authored mesh painted
+at **1.57°** — Δ**88.43°** on a non-square (aspect 1.78) fixture, and per §I5b-TWIN the folded mesh draws OVER the
+marker and wins the raycast, so the wrong rotation is what the user sees and what persists in the signed log.
+Nothing downstream cancels it. (SampleCastle shows no signal — all 879 walls have `rotation_z=0`; FP's shim
+fixtures also land on 0-rotation walls there and on SampleHouse.)
+
+**Fix** (same pattern as §ARC-ROT-UNIT / `arc_editable.js:229`): convert at the commit boundary —
+`rot: (p.yaw || 0) * 180 / Math.PI` in `_commitDiscWalk`. Witness BEFORE 4/6 (R3+R4 fail as designed) → AFTER 6/6
+(rot=90.0000, folded ≡ preview, Δ=0.00°). Regressions green: W-DW-OPLOG 6/6, W-E2E-WALK 8/8. The fittings/schedule
+path (`fittingOrientation`, `rot` already degrees per its own contract comment) is a separate commit path — untouched,
+no double conversion. NOTE: signed op-log rows committed by OLDER sessions keep their raw-radian `rot` (immutable
+rows; no migration attempted). Committed locally on `fix/dw-rot-units` (worktree `/tmp/wt-dwrot`, NOT pushed —
+Watchdog pushes per feedback_worker_no_push_watchdog_pushes).
+
+### Watchdog verification (2026-07-10) — independently reproduced, PUSHED
+
+Re-ran every claim from a clean read of `2a02de8` rather than trusting the report. All confirmed:
+- **Diff**: one line in `_commitDiscWalk` (`rot: (p.yaw||0)*180/Math.PI`), exactly as described. Preview path
+  (`makeRotationZ`, radians) and the fittings/schedule commit path are untouched — no double-conversion risk.
+- **Downstream "nothing compensates" claim**: read `bonsai_library.js` `place()` (`rad = (pl.rot||0)*Math.PI/180`,
+  2 call sites) and `bonsai_gridmove.js:82` (`yawRadByFid[...] = p.placement.rot*Math.PI/180`, comment literally
+  says "DEGREES at this boundary") myself — both genuinely treat `rot` as degrees. Confirmed.
+- **Witness re-run independently** (reverted the one-line fix via a scripted patch, not trusting the committed
+  BEFORE log): BEFORE 4/6 (`rot=1.5708`, R3+R4 fail, `Δ=88.43°`) → restored fix → AFTER 6/6 (`rot=90.0000`,
+  `Δ=0.00°`, R4's Δ computed mod 180 since a rectangle's principal-axis extraction can't distinguish 90° from
+  −90° — folded=−90.00° vs preview=90.00° is the SAME axis, not a bug). Numbers match the worker's claim exactly.
+  The witness's twin-match (`_dw.disc` + placement xyz `toFixed(4)`) is a byte-for-byte copy of production
+  `_dwTwinFids()` (modeller.html:1165) — it measures the real §I5b-TWIN contract, not a weaker stand-in.
+- **SampleCastle claim**: queried `deploy/buildings/SampleCastle_extracted.db` directly — 879/879 walls have
+  `rotation_z=0`. "No symptom because of data, not because fixed" confirmed, not just asserted.
+- **Regressions re-run independently**: `witness_modeller_dw_oplog.js` (W-DW-OPLOG) 6/6, `witness_e2e_walk.js`
+  (W-E2E-WALK) 8/8 — both green.
+- **Item 2 collision check**: `fable/dwprobe-dedup` (`43d713a`, `3367afb`, `52fea0e`) is a SEPARATE bim-ootb branch
+  pushed to origin but **not yet merged to `main`** (`git merge-base --is-ancestor 43d713a origin/main` → false).
+  `fix/dw-rot-units`'s merge-base with `origin/main` IS `origin/main`'s current tip (`64623ef`) — i.e. the branch
+  is fully current, not stale, nothing to rebase. The two branches' edits are 400+ lines apart in `modeller.html`
+  (`_commitDiscWalk` ~3843-3866 vs `__dwPixelProbe`/`__dwOcclusionProbe` ~4287/4683) — no overlap, will apply
+  cleanly whenever `dwprobe-dedup` merges later. Verdict: **safe to push as-is, no rebase needed.**
+- **Item 7 (this file's uncommitted state)**: `~/bim-compiler` was on `fable/meshdb-livewire`, already pushed to
+  origin at `d75d76e09` (matches local HEAD) — so nothing here was at risk of being silently dropped by a reset.
+  But leaving a real edit as loose uncommitted state in a shared working tree is still against this repo's own
+  "push before you finish" discipline, and mixing an unrelated DW-ROT-UNIT doc note into the LIVEWIRE lane's
+  history is the wrong home for it. Verdict: **neither "leave uncommitted" nor "commit into fable/meshdb-livewire"
+  was right** — split this file's change onto its own small branch (`docs/dw-rot-unit-note`, off the same HEAD)
+  and pushed it there, leaving `fable/meshdb-livewire`'s working tree exactly as the worker/other lanes left it
+  (component_library.db + other lanes' untracked prompt files untouched).
+- **Item 8 (residual old-data caveat) — needs louder surfacing, not just a buried NOTE**: the caveat as worded
+  ("old rows keep raw-radian rot, no migration attempted") is mechanically accurate but understates it. This is a
+  **live, currently user-visible residual bug on any EXISTING browser session/building** that ran a legacy
+  disc-walk commit with a rotated host BEFORE `2a02de8` — not a dormant/inert data-shape note. It cannot be
+  verified against repo-tracked data (the signed op-log lives in per-user IndexedDB, not a repo file), so its
+  real-world blast radius is unknown and unbounded by this session. It is also **not safely auto-migratable**:
+  a byte-level fix (multiply stored `rot` by 180/π when it "looks like radians") is ambiguous — a legitimate
+  small DEGREES value (e.g. a 1.57° trim rotation) is indistinguishable from an old bogus RADIANS value that
+  was meant to be 90°. Any real fix would have to re-derive `rot` from the walk's authoritative source
+  (`_dw.host`'s `element_transforms.rotation_z`, already in degrees) and re-commit/replace the affected ops, not
+  transform the stored number blind. **Recommend a named follow-up** (not blocking this push): a small audit
+  witness that scans a session's signed op-log for `_dw`-tagged `GEOM_INSERT` rows and flags any where `rot` is
+  numerically ambiguous, so a human/session can decide whether to re-walk affected discs. Filed here rather than
+  actioned — out of this session's scope, but should not be left as a footnote.
+
+**Pushed**: `fix/dw-rot-units` → `origin/fix/dw-rot-units` at `2a02de8` (bim-ootb). Not merged, no PR opened, per
+task scope.
