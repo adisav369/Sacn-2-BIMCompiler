@@ -151,6 +151,28 @@ route it through LFS.** Most DB paths are already `.gitignore`d (`/library/*`, `
   separate, disruptive history-rewrite decision, not taken here). This rule only stops the bleeding going
   forward: no NEW `.db` commits.
 
+## Worktree Hygiene — the OTHER LFS bandwidth drain (2026-07-10, same root cause, different mechanism)
+**Committing new DBs (above) was only half the bandwidth story.** The other half: bim-ootb's
+`modeller/mesh.db` (120MB) + `modeller/*_geo.db` are LFS-tracked, and DOZENS of parallel worktrees
+(peaked at 49 in bim-ootb, 20 in bim-compiler) each pull a fresh 100–250MB blob from GitHub the moment a
+branch whose mesh/geo data isn't already in the local LFS cache gets checked out. **Real end users never
+cost LFS bandwidth at all** — they hit the deployed static site (GH Pages / OCI), never `git clone` — so
+100% of the quota is dev/agent-side worktree churn. A second, fully separate clone (`~/Projects/bim-ootb`,
+its own independent LFS cache) doubled bandwidth on any overlapping blob and has been removed (2026-07-10,
+confirmed clean + 100+ commits stale first). Rules going forward:
+- **Before `git worktree add`, always run `git worktree list` first.** If a worktree already exists for
+  the branch/commit you need, reuse it (`cd` in, `git fetch`/`pull` if needed) — do NOT create a second one
+  at a different path. This applies to Agent-tool prompts too: any prompt that spawns a verification/build
+  agent must instruct it to check for and reuse an existing worktree before creating a fresh one.
+- **One local clone per repo, no exceptions** — never `git clone` a second copy of `bim-ootb` or
+  `bim-compiler` alongside the primary checkout.
+- **Prune on sight, not on a schedule.** When a worktree's branch is fully pushed (`git rev-list --count
+  origin/<branch>..<branch>` = 0) AND clean (`git status --short` empty), remove it
+  (`git worktree remove <path>`) — don't let dozens accumulate "just in case." A worktree with unpushed
+  commits or uncommitted changes is NOT safe to prune — leave those alone, they're someone's in-progress work.
+- **`.claude/worktrees/agent-*` are harness-managed** — never manually `git worktree remove` these; they're
+  the Claude Code tool's own isolation mechanism, not dev-created clutter.
+
 ## Sacred Files (edit with extreme care)
 - `deploy/live/*` — PRODUCTION snapshot, never edit (see PRIME RULE)
 - `migration/*.sql` — append only, never modify existing migrations. EXEMPT: `DV_<prefix>_rules.sql` — regenerated
