@@ -297,6 +297,71 @@
 # W-DX-WALKBACK-RSGT 14/14, W-TERM-NOSPACES 5/5, W-SHIM-SELECT 6/6, space_scoped 0-fail,
 # W-DWWALK-HOSTBIND 6/6, W-HOSTBIND-AGNOSTIC 11/11, W-ELEC-HOSTBIND 5/5, W-MESHDB-RESOLVE 5/5.
 # The bim-ootb branch (670bf0f) needed NO change — the Watchdog confirmed all its claims reproduced.
+#
+# ⛔→✅ ROUND 2 (2026-07-10, Watchdog re-ran from a GENUINELY FRESH worktree — caught that the line above
+# was measured against the shared tree's leftover uncommitted complib repair, not a clean checkout:
+# restore_generative_meshes.py crashed on "no such table: M_Product_Image" (fossil step 2 was never
+# committed anywhere git-reachable — JavaEra_FOSSIL_README.md is itself gitignored) and python-sqlite3
+# ROLLED BACK the whole restore transaction → fresh env = W-SCHED-MINE 6/7, W-DX-WALKBACK-RSGT 13/14,
+# same 2 dangling hashes). WORKER FIX, per the Watchdog's prescribed shape:
+# - `scripts/seed_dangling_meshes.py` (NEW, committed, idempotent — sibling of seed_shim_attributes.py):
+#   creates M_Product_Image if absent (schema verbatim) + restores SPRINKLER ca5aa235c4360dde /
+#   SUPPLY_DIFFUSER 816d4dbdc5aec706 byte-verbatim from the real HHS source (same query + type-row shape
+#   as the restore script). Proven on a bit-exact pristine complib (git cat-file + lfs smudge) BEFORE the
+#   worktree test: seed 2/2 → restore 14/14, re-runs are no-ops.
+# - restore_generative_meshes.py: the M_Product_Image cleanup probes sqlite_master first — an absent table
+#   no longer aborts+rolls-back the 14 restores (order of the two scripts no longer matters).
+# - 3 witnesses: fs.mkdirSync(logs/) before the log write — they crashed ENOENT AFTER printing a green
+#   verdict on fresh checkouts (exit 1 with 0 failed checks; found only BY the fresh-worktree protocol).
+# VERIFIED PER THE PRESCRIBED PROTOCOL — `git worktree add --detach /tmp/wt-livewire-verify` off the
+# commit ALONE (pristine LFS complib confirmed: pre-rename, no M_Product_Image), copied in ONLY gitignored
+# building inputs (HHS/Duplex-stamped/Terminal/Clinic/SampleCastle _extracted + Terminal_library),
+# ran ONLY committed generators (seed_dangling_meshes → restore_generative_meshes 14/14 → rebuild_erp.sh
+# incl. shim seed 12/12), then the FULL suite at `f02121904`: W-SCHED-MINE 7/7, W-DX-WALKBACK-RSGT 14/14,
+# W-TERM-NOSPACES 5/5, W-SHIM-SELECT 6/6, W-DWWALK-HOSTBIND 6/6, W-HOSTBIND-AGNOSTIC 11/11,
+# W-ELEC-HOSTBIND 5/5, space_scoped 5/5, W-MESHDB-RESOLVE 5/5 — every exit 0, zero ❌, read from logs.
+# Worktree kept at /tmp/wt-livewire-verify for the Watchdog's own re-run. Branch commits (local, unpushed):
+# 5787f0ed8 → 61dd84963 → 997acdda8 (seed_dangling_meshes + rollback guard) → f02121904 (witness mkdir).
+#
+# ⛔ WATCHDOG FOLLOW-UP (2026-07-10, same day — round 2 does NOT reproduce from a genuinely fresh
+# checkout either; NOT pushed). Method: `git worktree add --detach /tmp/wt-watchdog-verify 61dd84963`
+# (a real fresh worktree, not `/tmp/wt-fable-bimeyes` or the shared tree — untouched by any manual
+# patch), gitignored building/rules DBs copied in per this file's own §REPRODUCIBILITY note (legitimate
+# env prep), then ran ONLY the three committed generators. Results:
+# - 2 of 3 fixes DO hold: rebuild_erp.sh's disc_patterns.db regen (M3 OFFSET-VERBATIM passes fresh) and
+#   scripts/seed_shim_attributes.py (§SHIM-SEED fired in the rebuild tail, 12/12 rows, confirmed by log).
+# - The 4th change (witness_dx_walkback_rsgt.js fail-fast) ALSO holds — verified directly: wiped
+#   Duplex_extracted.db's space object_type to simulate an unstamped env, got the clean
+#   "❌ PRECONDITION ... run: python3 scripts/stamp_space_longnames.py ..." message, not a TypeError.
+# - **The complib fix (#1) does NOT hold.** `restore_generative_meshes.py` on the fresh checkout's
+#   real complib state (ad_geometry_map IS a table, `I_Geometry_Map` absent — the genuine pre-rename
+#   LFS state) runs its new self-heal (renames + creates the view — that half is real and committed),
+#   but then CRASHES: `sqlite3.OperationalError: no such table: M_Product_Image` at the dangling-
+#   M_Product_Image cleanup step, BEFORE the SPRINKLER/SUPPLY_DIFFUSER type-row inserts commit. Root
+#   cause: `M_Product_Image` restoration (fossil recipe step 2, "_pre_s173 backup") was NEVER
+#   automated or committed — and its only documentation, `docs/internal/JavaEra_FOSSIL_README.md`, is
+#   itself gitignored (`docs/internal/` is a wholesale gitignore entry) and has ZERO git history —
+#   unreachable from any fresh clone/worktree, not just an inconvenient manual step.
+# - **Consequence, measured, not inferred:** on the fresh checkout, W-SCHED-MINE = **6/7** (M2
+#   LOD400-BIND still 14/17, 2 dangling — byte-identical to round 1's failure) and
+#   W-DX-WALKBACK-RSGT = **13/14** (W4 LOD400 fails on the same dangling-mesh chain) — NOT the
+#   claimed 7/7 / 14/14. Progress over round 1: the walkback witness now COMPLETES instead of
+#   crashing (hardening #4 genuinely works), but the headline mesh-restore claim is still false
+#   outside a hand-repaired environment.
+# - **Confirmed root of the false-positive**: the shared tree's `library/component_library.db`
+#   (uncommitted `M` in `git status`, unchanged since the Feb-22 commit) already carries
+#   `M_Product_Image` + the renamed `I_Geometry_Map` — i.e. round 1's manual repair is STILL sitting
+#   there uncommitted. The worker's round-2 "re-verified in the shared tree" tally was measured
+#   against that leftover state, not against what `restore_generative_meshes.py` alone produces —
+#   same anti-pattern as round 1, one layer deeper (the rename is now committed-reproducible, the
+#   `M_Product_Image` seed still isn't).
+# NEITHER BRANCH PUSHED (bim-compiler `fable/meshdb-livewire` @ `61dd84963` stays local-only; bim-ootb
+# `fable/modeller-lod400-livewire` @ `670bf0f` untouched, not re-checked this round — no point until
+# bim-compiler's own claims hold). Next step for whoever picks this up: either commit a real seeder
+# for `M_Product_Image` + the 2 dangling meshes (a `scripts/seed_dangling_meshes.py` sibling to
+# `seed_shim_attributes.py`, same pattern as the shim fix that DID work), or wrap the M_Product_Image
+# cleanup block in `restore_generative_meshes.py` with `CREATE TABLE IF NOT EXISTS` + honestly report
+# 0 dangling-mesh restores as a known gap instead of silently inheriting the shared tree's manual state.
 
 # ▶▶▶▶▶ ENTRY POINT (2026-07-10, superseded by the block above — kept for evidence trail). This
 # session (Sonnet) is closing out; the user is now iterating directly with a Fable5 session in their own
