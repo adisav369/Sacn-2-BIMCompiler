@@ -1,5 +1,48 @@
 # RESUME — disc_walker: area-scaled n_measured + envelope-bound placement (RouteWalker alignment)
 
+# ▶▶▶▶▶▶▶▶▶ ENTRY POINT (2026-07-10 LATER STILL — supersedes every block below, including the one right
+# under it). MANAGER-verified + MERGED. Read this first, one task remains.
+#
+# **§TE-ARC-DATUM: FIXED, VERIFIED, MERGED.** bim-compiler `master` @ `b202eb44b` (PR #40, squash-merged).
+# Fix: `build/project_rule_mesh_binding.py` now stamps `rule_frame_ref` (per-class mean-z refs in the band
+# frame); `build/disc_walker.js`'s `placeMeasured()` measures `zOff` at WALK TIME as the median per-class
+# delta vs whatever substrate it's actually walking (≥3 shared classes, else legacy-fallback, logged) —
+# instead of unconditionally adding the old baked constant `z_datum_offset=14.593`, which only fit the
+# extraction's own site frame. Root cause was a pure translation between `Terminal_ARC.db` and
+# `Terminal_extracted.db` (dx=545.6, dy=51.2, dz=14.66, 35,552/35,552 GUIDs matched, 94%+ within 0.01 of
+# dz=14.66) — not a rotation, not per-storey drift. Independently re-verified from a fresh worktree before
+# merge: mining-copy unchanged (744/888 placed, zOff reproduces 14.593 MAD=0.000), new T8 proof on the REAL
+# shipped substrate (ELEC 860/638 ratio 1.35 + 36/19 ratio 1.89, PLB 869/739 ratio 1.18 + 100/111 ratio
+# 0.90, zero envelope/z-band/hash violations), falsifier (drop `rule_frame_ref`) collapses 1865→642 exactly
+# matching the old broken numbers, 3 sibling witnesses unchanged, clean merge, no regressions. Full
+# verification trail: MANAGER session transcript 2026-07-10 (this doc's job isn't to re-paste it — trust the
+# merge, don't re-verify from scratch).
+#
+# **⛔ ONE TASK LEFT: this fix is bim-compiler-ONLY. The bug is STILL LIVE in the actual Modeller app
+# (bim-ootb) today** — bim-ootb has its OWN diverged copy of `disc_walker.js` (`modeller/disc_walker.js`,
+# not `build/disc_walker.js`) and its OWN shipped `terminal_rules.db`, neither touched by `b202eb44b`.
+# Walking the real `~/bim-ootb/modeller/Terminal_ARC.db` today still collapses (ELEC 744→390, PLB 888→252)
+# exactly as before this fix, because the Modeller never got it.
+#
+# **Task: port `§DW-DATUM` to bim-ootb.**
+# 1. Port the same two changes to bim-ootb's own copies: `project_rule_mesh_binding.py` (or wherever
+#    bim-ootb's rule-mining lives — check if it shares the script via a build step, or has its own copy) to
+#    stamp `rule_frame_ref` into bim-ootb's shipped `terminal_rules.db`; `modeller/disc_walker.js`'s
+#    `placeMeasured()` to measure `zOff` at walk time, mirroring `build/disc_walker.js`'s `b202eb44b` diff
+#    exactly (diff it first: `git show b202eb44b -- build/disc_walker.js build/project_rule_mesh_binding.py`
+#    in bim-compiler) — don't reimplement from the description above, port the actual code.
+# 2. Re-stamp bim-ootb's shipped `terminal_rules.db` with the new `rule_frame_ref` table/columns (re-run the
+#    mining step against bim-ootb's own data, or copy the stamped table across if the underlying rule data
+#    is identical — check which is correct before assuming).
+# 3. Add the T8-equivalent witness in bim-ootb (mirror `scripts/witness_terminal_nospaces.js`'s T8, or find
+#    bim-ootb's own equivalent witness file) proving the SHIPPED `Terminal_ARC.db` now places correctly —
+#    same numbers as the bim-compiler proof (ELEC ~860/638, PLB ~869/739) are a reasonable target, but
+#    re-measure on bim-ootb's actual data rather than assuming identical output.
+# 4. Worktree-only (bim-ootb shared checkout is hook-blocked), push not merge, MANAGER re-verifies from a
+#    fresh worktree before merge same as this fix was.
+#
+# Scope: bim-ootb `modeller/` only, this specific datum-fix port — not a broader disc_walker refactor.
+#
 # ▶▶▶▶▶▶▶▶ ENTRY POINT (2026-07-10 NIGHT, LATEST — supersedes every block below). Full context in ONE read.
 # THE GOAL, stated plainly by the user: get the Modeller actually working — not "verify branches" as an end
 # in itself. See bim-compiler memory `project_modeller_vision_lock.md` for the product NORTH STAR this serves.
