@@ -373,6 +373,11 @@ echo "  Back-compat symlink: library/ERP.db → $(basename "$DB")"
 # seeder; re-seed on every rebuild so the artifact stays complete.
 python3 scripts/seed_shim_attributes.py "$DB"
 
+# §OFFSET-SEED (item 4 §W5-RATCHET, 2026-07-11): per-room Z placement offsets mined from the real
+# Duplex MEP transforms — same committed-verbatim-home pattern as the shim seed above (mining inputs
+# are gitignored; re-seed on every rebuild so regeneration converges complete).
+python3 scripts/seed_placement_offset_space.py "$DB"
+
 echo ""
 echo "═══ rebuild_erp.sh: DONE ═══"
 echo "  Database: $DB ($(du -h "$DB" | cut -f1))"

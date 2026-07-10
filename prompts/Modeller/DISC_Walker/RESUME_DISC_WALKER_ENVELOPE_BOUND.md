@@ -248,6 +248,8 @@
 #    dwwalk_hostbind 6/6, hostbind_agnostic 11/11, space_scoped_walk 5/5.
 # 4. W5 ratchet toward RSS-exact (per-room offset nuance is most of the remaining gap); real per-instance
 #    routing geometry lives ONLY in build/Duplex_mep_extracted.db element_transforms (Duplex-only).
+#    ✅ DONE 2026-07-11 (witness: §W5-RATCHET spec+closeout below — per-room Z offsets mined, every
+#    guard-allowed family median-EXACT to ground truth; W-SCHED-MINE 7/7 M3 two-level, walkback 14/14).
 # 5. Device meshes to the browser (mesh.db consolidation) — SEPARATE deliberate step, still not folded in.
 #    UNBLOCKED 2026-07-10 PM (supersedes the earlier same-day "no mesh.db anywhere" scoping finding —
 #    that was measured true at the time but resolved hours later): ~/bim-ootb main `c63939a` now ships
@@ -534,6 +536,89 @@
 # 9172 rows) → W-MESHDB-RESOLVE 2/5 FAIL (negative control) → applied MDB001 → ALL 9198 rows byte-identical
 # to the repaired mesh.db → W-MESHDB-RESOLVE 5/5 PASS → re-apply = no-op. Push of this .sql attempted once
 # per the ~30s rule — result recorded in the session report.
+
+# **SPEC §W5-RATCHET (2026-07-11, Fable — item 4: per-room offset nuance toward RSS-exact. Measured facts
+# driving the spec, all extracted this session BEFORE writing it (scratchpad mine_offsets.log):**
+# - 93/105 real Duplex IfcFlowTerminals classified via the COMMITTED ad_element_mep_alias DX_MINED
+#   element_name patterns + located in their containing space (Duplex_extracted spatial_structure bbox);
+#   per-instance centers from build/Duplex_mep_extracted.db element_transforms (item 4's named source).
+# - The generic per-placement_rule z offsets are measurably wrong PER ROOM TYPE: receptacles real median
+#   z−floor = 0.529m in BEDROOM(n=16)/LIVING(n=6) vs rule 0.30; KITCHEN receptacles 1.145 (n=14) vs
+#   COUNTER_BACK 0.85 / COUNTER_SINK 1.0; BATHROOM receptacles 1.295 (n=5) vs WALL_SINK 1.0; switches
+#   1.29 (n=3/4/2/2 across BATHROOM/BEDROOM/CORRIDOR/LIVING) vs 1.2; BATHROOM/LOBBY sconce LIGHT sits
+#   0.812 below ceiling (n=4/2) vs CEILING 0.05; CORRIDOR LIGHT 0.210 (n=2); PLB SINK 0.790 (n=6
+#   BATHROOM) / 0.764 (n=2 KITCHEN) vs 0.85; TOILET real center z−floor = 0.077 (n=4) vs WALL_BACK 0.20
+#   + the walker's FLOOR-host half-height lift (dim_z 0.768 → +0.384) — needs hz-COMPENSATED override.
+# - SCOPE = Z ONLY. x/y for wall devices is decided by wall-snap/distribute/clash logic, not the offset
+#   columns; z is the clean walker-final axis and W5's mean-dz signature (ELEC −0.11) is exactly this
+#   defect. edge_x/edge_y per-room mining = named follow-up, not taken here.
+# - GUARDS (honesty + suite preservation): override only where n≥2 measured; override must keep W2
+#   containment (center inside space bbox ±5cm) and W3 CEILING-BAND (top half). CONSEQUENCE, named: real
+#   BEDROOM/LIVING pendant lights hang ABOVE the IfcSpace bbox top (median 0.09 over) — RSS-exact there
+#   would break W2; SKIPPED, recorded as observation. FRIDGE unmined (no committed alias for
+#   M_Refrigerator in ad_element_mep_alias) — alias addition = separate migration, named follow-up.
+# - SHAPE (same committed-generator discipline as §LIVEWIRE rounds 2-3):
+#   1. scripts/mine_placement_offset_space.py (NEW, committed MINER) — recomputes the medians from the
+#      gitignored inputs, applies guards + FLOOR-host hz compensation, writes ad_placement_offset_space
+#      (space_type_id, device_id PK; z_rule; z_offset; n_measured; source; provenance) into
+#      library/disc_patterns.db, prints rows in seed format. Receptacle family→OUTLET_20A/OUTLET_GFCI
+#      bridge is COMMITTED DATA (M_Product.source_element_ref = 'M_Duplex Receptacle:*'), not invention.
+#   2. scripts/seed_placement_offset_space.py (NEW, committed VERBATIM HOME of the mined rows, sibling of
+#      seed_shim_attributes.py, idempotent, provenance-commented) wired into rebuild_erp.sh tail — fresh
+#      env converges without the gitignored mep db.
+#   3. build/project_rule_space_schedule.py — exact-key (space_type_id, device_id) override of
+#      z_rule/z_offset_m at projection time, provenance suffixed '+space-z:DX'; probe sqlite_master so a
+#      disc_patterns without the table projects unchanged (back-compat).
+#   4. scripts/witness_rule_space_schedule.js M3 OFFSET-VERBATIM evolves to the TWO-LEVEL verbatim check:
+#      every row's z must byte-equal its space override when one exists, else the generic
+#      ad_placement_offset row; edge_x/edge_y/x_ref/y_ref stay generic-verbatim. Still 0-drift semantics.
+#   5. Walker: ZERO change (offsets already live per schedule row).
+# - WITNESS BAR: W-SCHED-MINE 7/7 (with evolved M3), W-DX-WALKBACK-RSGT 14/14 (W2/W3/W6/W7 must survive),
+#   and W5's before/after numbers LOGGED AS THE DELTA (baseline this morning's clean-room run: ELEC
+#   @0.5m=18 @1m=47 @2m=96 covered 79/89 mean dz=−0.11; PLB @0.5m=5 @1m=14 @2m=17 mean dx=0.23 dz=0.09)
+#   — "closer" is claimed only by the printed numbers moving.
+# - Commit/push: scripts+docs only, no DB binaries; single push attempt, ~30s stop rule.
+#
+# **§W5-RATCHET CLOSEOUT (2026-07-11, same session — item 4 DELIVERED, all witnessed, logs in the
+# session scratchpad + logs/). TWO REAL DEFECTS the first run caught (the checks bit, not reasoning):**
+# 1. FRAME MISMATCH: build/Duplex_mep_extracted.db center_z is insertion-point-like; the W5 oracle
+#    (deploy/buildings/Duplex_extracted.db, same 105 guids — asserted) is bbox-center. Per-family gaps
+#    up to 0.54m (WC +0.33, sconce +0.20, pendant −0.54). First-pass offsets mined in the mep frame made
+#    PLB WORSE and put the toilet override at −0.31; re-mined with mep as ROSTER + oracle frame CENTERS
+#    (miner §4 comment) — toilet override became +0.02, all values sane.
+# 2. WALL-LIGHTS-ARE-NOT-CEILING-LIGHTS: the real BATHROOM/LOBBY "LIGHT" fixtures are wall sconces
+#    (0.81 below ceiling); a z-only override under CEILING_CENTER xy parked a fixture at head height
+#    mid-room → W6 NAVIGABILITY failed 0.543 (Bathroom 1). NEW walking-band guard in the miner: a
+#    lowered CEILING-rule fixture whose bbox enters the 0→1.8m band is SKIPPED (§OFFSET-SKIP, 6 rows) —
+#    wall-light xy+z mining is the named follow-up; z-only cannot honestly take it.
+# DELIVERED: scripts/mine_placement_offset_space.py (miner, guards: n≥2, W2-containment, W3-band,
+# W6-walking-band, FLOOR-host hz compensation), scripts/seed_placement_offset_space.py (11 mined rows'
+# committed verbatim home, rebuild_erp.sh tail-wired after §SHIM-SEED), projection z-override in
+# build/project_rule_space_schedule.py (probe-guarded, provenance '+space-z:DX n=%d'), M3 evolved to
+# TWO-LEVEL verbatim (witness_rule_space_schedule.js), W5 gained the §RS W5-ZFAM diagnostic LOG line
+# (per-family median z-above-floor gen vs real + @0.5m same/cross-family split — LOG only, dial stays
+# not-hard). Walker: zero change (offsets ride the schedule rows).
+# THE DELTA (before = overrides-table dropped + reprojected, byte-reproduces the 2026-07-11 AM
+# clean-room numbers; after = seeded + reprojected; same witness, same session):
+#   §RS W5-ZFAM [ELEC] OUTLET gen 0.30→0.53 = real 0.53 EXACT (n=34/51) · SWITCH 1.20→1.29 = real
+#     1.29 EXACT (n=20/14) · LIGHT unchanged 2.53 vs real 2.13 (the named follow-up, guards refused it)
+#   §RS W5-ZFAM [PLB] SINK 0.85→0.90 = real 0.90 EXACT (n=6/8) · TOILET 0.58→0.40 = real 0.40 EXACT
+#   §RS W5 [ELEC] @0.5m 18→20 @1m 47→46 @2m 96=96 covered 79/89=79/89 | mean dz −0.11→−0.18
+#   §RS W5 [PLB] @0.5m 5→2 @1m 14→14 @2m 17=17 covered 16/16 | mean dz +0.09→+0.13
+#   READ HONESTLY: every family the guards allowed is now MEDIAN-EXACT to ground truth (the actual
+#   per-room ratchet); the pooled NN buckets barely move because @0.5m was part accidental
+#   cross-family pairing (measured: ELEC 6/18 cross, PLB 2/5 cross at baseline) — exact z BREAKS fake
+#   pairs (PLB @0.5m 5→2) and the clash-slide reshuffles xy at the margin. Mean dz moving −0.11→−0.18
+#   is the outlet/switch positive errors vanishing so the LIGHT family's −0.40 now dominates — the
+#   dial finally points at the real remaining defect instead of averaging it away. Remaining W5 gap =
+#   xy scatter (wall-snap/distribute) + wall-light xy+z: both named follow-ups, not z work.
+# REGRESSION (all this session, exit 0 AND log-read): W-SCHED-MINE 7/7 (M3 two-level, 11 overridden
+# rows, 0 drift), W-DX-WALKBACK-RSGT 14/14 (W6 back to 1.000/0.963 after the band guard),
+# W-TERM-NOSPACES 7/7, W-SHIM-SELECT 6/6, W-DWWALK-HOSTBIND 6/6, W-HOSTBIND-AGNOSTIC 11/11,
+# W-ELEC-HOSTBIND 5/5, space_scoped 5/5. Syntax: node --check ×2, py_compile ×3, bash -n ×1 clean.
+# FOLLOW-UPS (named, not taken): wall-light xy+z mining (sconces/pendants — needs edge mining, 6
+# skipped rows documented in §OFFSET-SKIP); edge_x/edge_y per-room mining; FRIDGE alias
+# (M_Refrigerator absent from ad_element_mep_alias — separate migration).
 
 # ▶▶▶▶▶ ENTRY POINT (2026-07-10, superseded by the block above — kept for evidence trail). This
 # session (Sonnet) is closing out; the user is now iterating directly with a Fable5 session in their own

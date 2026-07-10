@@ -161,6 +161,15 @@ def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONE
     offsets = {r[0]: r[1:] for r in erp.execute(
         "SELECT placement_rule, from_edge_x, from_edge_y, z_offset, z_rule, x_ref, y_ref, "
         "standard FROM ad_placement_offset")}
+    # §W5-RATCHET (item 4): per-room Z overrides mined from the real Duplex MEP transforms
+    # (ad_placement_offset_space, seeded by scripts/seed_placement_offset_space.py). Z only —
+    # x/y stay generic (wall-snap owns them). Probe first: an older disc_patterns.db without
+    # the table must project unchanged.
+    space_z = {}
+    if erp.execute("SELECT 1 FROM sqlite_master WHERE name='ad_placement_offset_space'").fetchone():
+        space_z = {(r[0], r[1]): (r[2], r[3], r[4]) for r in erp.execute(
+            "SELECT space_type_id, device_id, z_rule, z_offset, n_measured "
+            "FROM ad_placement_offset_space")}
     dims = {r[0]: (r[1], r[2], r[3]) for r in erp.execute(
         "SELECT product_id, width, depth, height FROM M_Product "
         "WHERE width>0 AND depth>0 AND height>0")}
@@ -216,14 +225,19 @@ def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONE
         conn_to = connects.get(dev)
         disc = (CONNECTS_TO_DISC.get(conn_to)
                 or ANCHOR_END_DISC.get(anchor or "") or "ELEC")
+        z_off, z_rule = off[2], off[3]
+        prov = "projected:disc_patterns.ad_space_type_mep_bom+ad_placement_offset"
+        sz = space_z.get((st, dev))
+        if sz:
+            z_rule, z_off = sz[0], sz[1]
+            prov += "+space-z:DX n=%d" % sz[2]
         cur.execute(
             "INSERT INTO rule_space_schedule VALUES "
             "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (disc, st, dev, rule, host, anchor, qn, qmin, qmax, per_area,
-             off[0], off[1], off[2], off[3], off[4], off[5], off[6],
+             off[0], off[1], z_off, z_rule, off[4], off[5], off[6],
              d[0], d[1], d[2], dim_src, ghash, mesh_src,
-             name_ref.get(dev, dev), building_class,
-             "projected:disc_patterns.ad_space_type_mep_bom+ad_placement_offset"))
+             name_ref.get(dev, dev), building_class, prov))
         n += 1
 
     n_types = 0

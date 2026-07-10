@@ -121,20 +121,38 @@ var KNOWN_NO_MESH = ['DATA_POINT', 'EMERGENCY_LIGHT', 'WASHING_TAP'];
     'no-mesh devices, stamped for walker REFUSE (no fallback shape, WalkerDoctrine §11)');
 
   log(''); log('─── M3 OFFSET-VERBATIM ───');
+  // §W5-RATCHET (item 4): TWO-LEVEL verbatim. edge_x/edge_y/x_ref/y_ref must byte-equal the generic
+  // ad_placement_offset row, always. z_rule/z_offset must byte-equal the per-room mined override
+  // (ad_placement_offset_space, keyed space_type×device) when one exists, else the generic row —
+  // and the row's provenance must say which level it took. Still 0-drift semantics, no third source.
   var src = {};
   rows(erp, 'SELECT placement_rule, from_edge_x, from_edge_y, z_offset, z_rule, x_ref, y_ref FROM ad_placement_offset')
     .forEach(function (o) { src[o.placement_rule] = o; });
-  var offRows = rows(rules, 'SELECT DISTINCT placement_rule, edge_x_m, edge_y_m, z_offset_m, z_rule, x_ref, y_ref FROM rule_space_schedule WHERE placement_rule IS NOT NULL');
-  var offBad = [];
+  var spaceZ = {};
+  if (rows(erp, "SELECT 1 n FROM sqlite_master WHERE name='ad_placement_offset_space'").length)
+    rows(erp, 'SELECT space_type_id, device_id, z_rule, z_offset FROM ad_placement_offset_space')
+      .forEach(function (o) { spaceZ[o.space_type_id + '|' + o.device_id] = o; });
+  var offRows = rows(rules, 'SELECT space_type_id, device_id, placement_rule, edge_x_m, edge_y_m, ' +
+    'z_offset_m, z_rule, x_ref, y_ref, provenance FROM rule_space_schedule WHERE placement_rule IS NOT NULL');
+  var offBad = [], nOverridden = 0;
   offRows.forEach(function (o) {
     var s = src[o.placement_rule];
-    if (!s) { if (!(o.edge_x_m === 0 && o.edge_y_m === 0 && o.z_offset_m === 0)) offBad.push(o.placement_rule + ':no-source'); return; }
-    if (o.edge_x_m !== s.from_edge_x || o.edge_y_m !== s.from_edge_y || o.z_offset_m !== s.z_offset ||
-        o.z_rule !== s.z_rule || o.x_ref !== s.x_ref || o.y_ref !== s.y_ref) offBad.push(o.placement_rule);
+    var ov = spaceZ[o.space_type_id + '|' + o.device_id];
+    var key = o.space_type_id + '/' + o.device_id;
+    if (!s) { if (!(o.edge_x_m === 0 && o.edge_y_m === 0 && (ov ? o.z_offset_m === ov.z_offset : o.z_offset_m === 0))) offBad.push(key + ':no-source'); return; }
+    if (o.edge_x_m !== s.from_edge_x || o.edge_y_m !== s.from_edge_y ||
+        o.x_ref !== s.x_ref || o.y_ref !== s.y_ref) { offBad.push(key + ':xy-drift'); return; }
+    var wantZ = ov ? ov.z_offset : s.z_offset, wantZR = ov ? ov.z_rule : s.z_rule;
+    if (o.z_offset_m !== wantZ || o.z_rule !== wantZR) { offBad.push(key + ':z-drift'); return; }
+    var tagged = /\+space-z:DX/.test(o.provenance || '');
+    if (ov && !tagged) { offBad.push(key + ':override-untagged'); return; }
+    if (!ov && tagged) { offBad.push(key + ':tag-without-source'); return; }
+    if (ov) nOverridden++;
   });
   assert('M3 OFFSET-VERBATIM', offBad.length === 0,
-    offRows.length + ' distinct placement_rules in the projection, all byte-equal to source ad_placement_offset' +
-    (offBad.length ? ' EXCEPT: ' + offBad.join(', ') : ' (0 drift)'));
+    offRows.length + ' schedule rows two-level verbatim: xy byte-equal ad_placement_offset, z byte-equal ' +
+    'its mined space override (' + nOverridden + ' rows, ad_placement_offset_space) else the generic row' +
+    (offBad.length ? ' EXCEPT: ' + offBad.slice(0, 8).join(', ') : ' (0 drift)'));
 
   log(''); log('─── M4 DISC-ROSTER ───');
   var discs = rows(rules, 'SELECT DISTINCT disc FROM rule_space_schedule ORDER BY disc').map(function (r) { return r.disc; });
