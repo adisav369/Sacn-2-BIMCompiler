@@ -130,16 +130,49 @@ where noted):**
 ### Task 2 — Wire `compile_rooms.py` into extraction/import as an automatic step (tagged `≈`, display-only)
 **Status: DATA-EFFECT DONE 2026-07-10 (Sonnet), AUTOMATION still NOT STARTED.** Ran
 `compile_rooms.py --write` manually (a one-time repair, same treatment level as Tasks 1/6's manual ports)
-against the 5 shipped residents that had ZERO `spatial_structure` at all: SampleCastle (25), HHS (2),
-Clinic (113), Garage (5), Hospital (142) — each compiled from that building's OWN real wall/door geometry
-already in its `elements_meta`/`element_transforms` (deterministic flood-fill, not invented). Combined with
-Duplex (20 real) + SampleHouse (3 real) + Terminal (43 synthetic, pre-existing), **all 8 shipped
-`*_ARC.db` now carry room data — §1's "every ARC, always" bar is met for the current data.** Witness
-`witness_room_injection_all8.js` (W-ROOM-INJECT-ALL8) 32/32: coverage, tag-purity (no partial RM_/≈/COMPILED
-tagging on any of the 5), zero elements_meta guid collisions, and — the one that matters most — the REAL
-`spacesOf()` runtime filter returns 0 placement-eligible rows for all 5 synthetic-only buildings (proves
-display-only rooms can never leak into schedule placement). Shipped bim-ootb
-`fable/modeller-lod400-livewire` @ `a8955f2` (pushed, `rev-list origin..HEAD`=0).
+against the 5 shipped residents that had ZERO `spatial_structure` at all: SampleCastle, HHS, Clinic,
+Garage, Hospital — each compiled from that building's OWN real wall/door geometry already in its
+`elements_meta`/`element_transforms` (deterministic flood-fill, not invented). Combined with Duplex (20
+real) + SampleHouse (3 real) + Terminal (43 synthetic, pre-existing), **all 8 shipped `*_ARC.db` now
+carry room data — §1's "every ARC, always" bar is met for the current data.**
+
+**§DOOR-RESCUE (user-flagged, fixed twice this session — record both passes so the reasoning isn't
+lost):** user checked HHS ("large U-shape office block, lots of office rooms with doors") against the
+first pass's count and correctly called it wrong — 2 rooms for a whole office floor. Root cause verified
+(not assumed): NOT a mis-tuned `MIN_AREA=4.0` hiding detected-but-rejected rooms — instrumenting the
+flood-fill to log every candidate (not just accepted ones) showed HHS's floors are ~91% "exterior-
+reachable" in the flood-fill; there's genuinely very little enclosing wall data to divide the floor with
+(76-84 wall-like elements over a ~66×54m floor, vs. Hospital's 582 producing 32 real rooms on a
+comparable floor). Separately, restrooms/utility rooms were being dropped by the SAME blanket
+`MIN_AREA` cutoff on every building, not just HHS — the user's hint ("rooms has doors") pointed at the
+fix: a real small room always has a door, a wall cavity never does.
+- **First pass (superseded):** added a fixed `DOOR_RESCUE_MIN_AREA=1.0` / `1.0m` buffer band — picked by
+  eyeballing HHS/Clinic/Hospital's specific candidate-pocket data. User pushback (correct): "we suppose
+  to be abstract rules based room generation, not hard-coded."
+- **Second pass (shipped):** replaced the fitted band with an architectural rule applied uniformly, not
+  size-banded — a pocket is a room if big enough alone (`area >= MIN_AREA`, unchanged) **OR** it has a
+  real door and clears a grid-resolution noise floor. Both supporting numbers are now geometry-derived,
+  not observed-data-fitted: the door-adjacency buffer is each door's OWN extracted footprint (half its
+  real leaf/frame span) + one grid cell of rasterization slack (`RES`), and the noise floor
+  (`NOISE_FLOOR_DIM = 3×RES = 0.6m`) rejects any pocket narrower than a few grid cells in either axis —
+  a property of the flood-fill's own resolution, true for any building, not a number reverse-engineered
+  from this one's rooms. `predefined_type='INTERNAL_SMALL'` marks door-rescued rows for traceability;
+  `object_type='COMPILED'` (what every tag-purity/placement-exclusion check keys on) is unchanged.
+- **MEP-fixture clue considered, rejected:** checked whether sanitary/plumbing fixture presence (a more
+  direct "this is a toilet" signal) could help — found only Clinic still carries `IfcFlowTerminal`
+  (102 rows); HHS/Hospital/Garage/SampleCastle have zero MEP fixture data at all (already stripped by the
+  ARC-only discipline strip, `b93ca13`). Not usable as a general signal — door adjacency is the one clue
+  that survives ARC-only extraction on every building.
+- Final counts (bim-compiler `scripts/compile_rooms.py` @ `0cc6f8e3a`): SampleCastle 25→53, HHS 2→6,
+  Clinic 113→195, Hospital 142→201, Garage unchanged at 5 (no door-adjacent small pockets found there).
+
+Witness `witness_room_injection_all8.js` (W-ROOM-INJECT-ALL8) 32/32 (rerun after both passes): coverage,
+tag-purity (no partial RM_/≈/COMPILED tagging on any of the 5), zero `elements_meta` guid collisions, and
+— the one that matters most — the REAL `spacesOf()` runtime filter returns 0 placement-eligible rows for
+all 5 synthetic-only buildings (proves display-only rooms, door-rescued or not, can never leak into
+schedule placement). Shipped bim-ootb `fable/modeller-lod400-livewire` @ `18fc9bc` (parent `a8955f2`,
+pushed, `rev-list origin..HEAD`=0) + bim-compiler `fable/meshdb-livewire` @ `0cc6f8e3a` (pushed).
+
 **Still NOT DONE — this task's own automation half:** wiring `compile_rooms.py` as a step INSIDE
 `extractIFC2DB.js` (or whichever path runs it) so a FUTURE re-extraction or a user's live IFC import gets
 this for free, instead of needing another manual repair pass like this one. Currently a manual script
