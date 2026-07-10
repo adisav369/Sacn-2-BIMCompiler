@@ -46,8 +46,30 @@
   '⚠' review rows) — spec `ROOM_INJECTION_HYBRID.md §7`. Both ports lockstep; W-ROOM-WALKER-PARITY 6/6,
   W-ROOM-WELLFORMED 19/19 (new falsifier), `ROOM009-014_*_wellformed.sql` apply-identical 6/6. HHS 105
   door-partition blobs → 33 flood-fill rooms (2⚠). Local inspect server :8098 (viewer + re-walked extracted
-  DBs). Follow-up open: port ROOM009-014 into bim-ootb `modeller/patches/` (self-heal branch, unmerged) +
-  ship the Viewer's `buildings/*_extracted.db` re-walk (served locally only so far).
+  DBs). **Follow-up 1 DONE 2026-07-11:** ROOM009-014 ported into bim-ootb `modeller/patches/`
+  (`fix/meshdb-selfheal-loader` @ `e7384f4`, pushed, W-PATCH-SELFHEAL 43/43 incl. new Terminal patch).
+  **Follow-up 2 (Viewer OCI re-walk) IN PROGRESS:** found+fixed a real algorithm gap first —
+  `WALL_LIKE`/door/stair queries had no `discipline` filter (`compile_rooms.py`+`room_walker.js`, both
+  lockstep) — a raw multi-discipline `deploy/buildings/*_extracted.db` (unlike bim-ootb's ARC-only
+  `_ARC.db`) carries STR-tagged IfcColumn/IfcMember/IfcPlate/IfcWallStandardCase rows that also match
+  those ifc_class patterns, polluting the raster. Fixed with `discipline='ARC'`; W-ROOM-WELLFORMED stays
+  19/19. **⚠ Terminal-specific finding, NOT a room-injection bug — its own open item:** bim-compiler's
+  canonical `deploy/buildings/Terminal_extracted.db` and bim-ootb's `modeller/Terminal_ARC.db` disagree
+  on coordinate origin by ~(546m, 51m) for the SAME element guids (prefix-stripped) — a real
+  extraction/consolidation defect between the two files, discovered while trying to carry room data
+  across them. Re-walking Terminal fresh against the canonical file (post discipline-fix) also doesn't
+  converge to the already-shipped 53(10) count (gives 60/9) — so Terminal's OCI room data is LEFT
+  UNTOUCHED for now (neither path verified safe); Hospital/SampleCastle/Garage/SampleHouse/Clinic (fresh
+  walk, self-consistent) shipped via OCI instead. Investigate the coordinate mismatch as its own task
+  before touching Terminal's OCI data again.
+  **§8 MULTI-RECT DONE 2026-07-11 (Fable):** confirmed rooms now a SET of non-overlapping rects (grown
+  region + repeated constrained maximal-rect scan, room_guid grouping column, lettered sub-rect guids) —
+  closes the "doesn't fully form the inner room space" gap (Hospital coverage med 0.74→0.86, worst
+  0.32→0.67). Spec ROOM_INJECTION_HYBRID.md §8; both ports lockstep (incl. Sonnet's same-day §DISC-ARC
+  filter, merged not overwritten); consumers: hba_lens groups by room_guid (W-HBA-MULTIRECT 6/6 — 71
+  logical rooms from 94 rows), spacesOf verified no-change-needed (RM_ exclusion covers sub-rects).
+  W-ROOM-WALKER-PARITY 6/6 · W-ROOM-WELLFORMED 19/19 · NEW W-ROOM-FILL 18/18 · ROOM015-020_multirect.sql
+  apply-identical 6/6 (supersede ROOM009-014). :8098 serve refreshed (all 11 extracted DBs multi-rect).
 - ⛔ **GitHub LFS bandwidth quota EXHAUSTED (2026-07-11), resets 2026-08-01.** See `CLAUDE.md` §LFS QUOTA
   EXHAUSTED — any push may hang regardless of LFS content; don't retry blindly, don't create fresh worktrees
   for uncached branches. Cleaned up: duplicate `~/Projects/bim-ootb` clone removed, 25 stale worktrees pruned.

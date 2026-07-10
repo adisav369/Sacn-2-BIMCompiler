@@ -610,3 +610,44 @@ ARC-discipline data alone (walls/doors/windows/columns/curtain-wall children), p
 - Constants carried: OPEN_PERIM_FACTOR=2 (×building median door width), VERT_FACTOR=0.5 (×building
   median door height) — both self-scaling to the building's own extracted doors, no fixed metres; the
   3-wide probe span and ≤SEAL+1 march depth are grid-resolution properties, not tuned numbers.
+
+## §8 — MULTI-RECT ROOM REPRESENTATION (2026-07-11, Fable session — spec-first, user-directed)
+
+**Trigger (user):** confirmed rooms "don't fully form the inner room space" — measured single-rect
+coverage as low as 0.23–0.26 across buildings (real, not perception). §7's single inscribed
+rectangle is honest about walls but lossy about area.
+
+**Design (user's own 3-step shape):**
+1. **Fill-ratio preprocessor:** per confirmed room, coverage = |emitted rect ∩ region| ÷ |region|
+   (region = flood-filled cells GROWN back ≤SEAL layers through raw-free/dilation-blocked band cells
+   only — recovers the seal erosion without ever annexing exterior or a neighbor pocket). A room
+   whose first rect covers ≥ RECT_COVER_TARGET stays single-row (cheapest path — measured: 59-120
+   of each building's confirmed rooms, the majority).
+2. **Room space set:** below the bar, decompose the region into non-overlapping rectangles by
+   REPEATED CONSTRAINED maximal-rectangle scan (same deterministic histogram scan + strict-'>'
+   tie-break as §RECT-HONESTY): each sub-rect must be ≥ NOISE_FLOOR_DIM in BOTH axes (a thinner
+   strip is rasterization fringe, not room space — grid-derived, not tuned); stop at
+   RECT_COVER_TARGET=0.95 coverage (remainder past that is sub-noise-floor stair-step fringe) or
+   MAX_SUBRECTS=8 (pure safety bound — measured max actually used: 7). No wall-crossing by
+   construction: every sub-rect ⊆ raw-free region cells. Curved-wall rooms (SampleCastle) keep
+   honest residues — their crescent remainders are all sub-noise-floor, reported not hidden.
+3. **Shared room identity:** one row per sub-rect in spatial_structure; primary keeps the room's
+   guid (RM_<st>_<k>), extras get a letter suffix (RM_<st>_<k>b, c, …) so 'RM\_%' patterns still
+   match every row; NEW room_guid column (= primary guid) on ALL compiled room rows groups the set.
+   name/predefined_type identical across the set. rel_contained_in_space: contained iff inside ANY
+   rect, keyed to the LOGICAL room guid only. SUSPECT rooms stay single-rect (orthogonal to §ROOM-FORM).
+
+**Consumers (the two confirmed ones, checked/updated):**
+- `modeller/disc_walker.js spacesOf()` — NO change needed, verified: it excludes ALL compiled rows
+  by `guid NOT LIKE 'RM\_%'`, and every sub-rect row is RM_-prefixed. Documented in-code.
+- `viewer/hba_lens.js bindStoreysFromModel/_drawOutlines` — groups by room_guid (guarded fallback
+  query for pre-§8 DBs without the column): storey map/class map/_hbaRooms/footprints all keyed by
+  LOGICAL room; footprint carries rects[]; outlines draw one box per sub-rect, count one per room.
+
+**Witnesses:** W-ROOM-WALKER-PARITY 6/6 byte-identical (dump now includes room_guid) ·
+W-ROOM-WELLFORMED 19/19 zero regression (sub-rect rows included in the wall-crossing oracle) ·
+NEW W-ROOM-FILL 18/18 (before/after coverage: Hospital med 0.74→0.86 worst 0.32→0.67, Terminal
+0.81→0.87 / 0.42→0.69, Clinic 0.78→0.81 / 0.45→0.57; per-room monotone; N rects = ONE logical room
+via room_guid; rel keys logical guids only) · W-HBA-MULTIRECT 6/6 (real viewer, re-walked HHS
+building DB: §HBA_FOOTPRINT/§HBA_MEMBERS report 71 logical rooms from 94 rect rows, 18 multi-rect
+rooms grouped, no letter-guid leak).

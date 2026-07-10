@@ -71,6 +71,19 @@ CW_CHILD_CLASSES = ("IfcMember", "IfcPlate")
 #     than OPEN_PERIM_FACTOR × median door width is not "fully enclosed" → SUSPECT_OPEN. No adjacent
 #     door at all → SUSPECT_NO_DOOR (voids/shafts/light-wells).
 OPEN_PERIM_FACTOR = 2.0
+# §MULTI-RECT (ROOM_INJECTION_HYBRID.md §8, 2026-07-11): ONE inscribed rectangle under-covers a
+# non-rectangular room (measured single-rect coverage down to 0.23 on real Hospital/Clinic/Terminal
+# rooms — the "doesn't fully form the inner room space" gap the user saw). A confirmed room is now
+# a SET of non-overlapping rectangles carved from its (seal-band-recovered) region by a repeated
+# constrained maximal-rectangle scan. All three knobs are grid-derived, not tuned:
+#   RECT_COVER_TARGET: stop once this fraction of the region is covered — the remainder past 0.95
+#     is stair-step fringe smaller than the noise floor (measured across all 8 buildings).
+#   sub-rect minimum dimension = NOISE_FLOOR_DIM (the existing grid-resolution floor): a rect
+#     thinner than 3 cells in either axis is rasterization fringe, not room space.
+#   MAX_SUBRECTS: pure safety bound (measured: no real room needed >5).
+# SUSPECT rooms stay single-rect (decomposition is for confirmed rooms only — orthogonal to §ROOM-FORM).
+RECT_COVER_TARGET = 0.95
+MAX_SUBRECTS = 8
 
 def _median(vals):
     s = sorted(vals)
@@ -82,7 +95,7 @@ def door_stats(c):
     rows = c.execute(
         "SELECT COALESCE(t.bbox_x,0), COALESCE(t.bbox_y,0), COALESCE(t.bbox_z,0) "
         "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
-        "WHERE m.ifc_class LIKE 'IfcDoor%' AND t.center_x IS NOT NULL").fetchall()
+        "WHERE m.ifc_class LIKE 'IfcDoor%' AND m.discipline='ARC' AND t.center_x IS NOT NULL").fetchall()
     ws = [max(bx, by_) for bx, by_, bz in rows if max(bx, by_) > 0]
     hs = [bz for bx, by_, bz in rows if bz > 0]
     return _median(ws), _median(hs)
@@ -93,7 +106,7 @@ def storey_z_anchors(c):
     vertical curtain children carry storey 'Unknown'; their z clusters match Level 1/2/3 exactly)."""
     rows = c.execute(
         "SELECT m.storey, t.center_z FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
-        "WHERE m.ifc_class LIKE 'IfcWall%' AND t.center_x IS NOT NULL "
+        "WHERE m.ifc_class LIKE 'IfcWall%' AND m.discipline='ARC' AND t.center_x IS NOT NULL "
         "AND m.storey IS NOT NULL AND m.storey <> 'Unknown'").fetchall()
     acc = {}
     for st, cz in rows:
@@ -115,11 +128,17 @@ def _assign_by_z(st, cz, anchors, anchor_names):
 # Validated ~5/21 recall on ground-truth Duplex → treat as APPROXIMATE. Labelled '≈' + COMPILED.
 
 def storey_walls(c, vert_min=0.0, anchors=None):
+    # §DISC-ARC: room enclosure is an ARCHITECTURAL concept — discipline='ARC' on every element
+    # query here, not just ifc_class LIKE. WalkerDoctrine.md: "discipline is a WHERE column."
+    # Real gap found (2026-07-11): a raw multi-discipline extract (deploy/buildings/*_extracted.db,
+    # not ARC-only stripped) carries STR-discipline IfcColumn/IfcWallStandardCase/IfcMember/IfcPlate
+    # rows that also match WALL_LIKE/CW_CHILD_CLASSES ifc_class patterns — structural framing, not
+    # room-enclosing walls — and without this filter they silently pollute the raster.
     cond = " OR ".join("m.ifc_class LIKE ?" for _ in WALL_LIKE)
     rows = c.execute(
         f"SELECT m.storey, t.center_x,t.center_y,t.center_z, t.bbox_x,t.bbox_y,t.bbox_z "
         f"FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
-        f"WHERE ({cond}) AND t.center_x IS NOT NULL", WALL_LIKE).fetchall()
+        f"WHERE ({cond}) AND m.discipline='ARC' AND t.center_x IS NOT NULL", WALL_LIKE).fetchall()
     # §WALL-VERT: curtain-wall children (IfcMember/IfcPlate) that stand wall-height — the enclosure
     # the bare WALL_LIKE query misses because IfcCurtainWall parents have no transform of their own.
     if vert_min > 0:
@@ -127,7 +146,7 @@ def storey_walls(c, vert_min=0.0, anchors=None):
         rows = rows + c.execute(
             f"SELECT m.storey, t.center_x,t.center_y,t.center_z, t.bbox_x,t.bbox_y,t.bbox_z "
             f"FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
-            f"WHERE m.ifc_class IN ({ph}) AND t.center_x IS NOT NULL AND t.bbox_z >= ?",
+            f"WHERE m.ifc_class IN ({ph}) AND m.discipline='ARC' AND t.center_x IS NOT NULL AND t.bbox_z >= ?",
             CW_CHILD_CLASSES + (vert_min,)).fetchall()
     anchors = anchors or {}
     anchor_names = sorted(anchors)
@@ -143,7 +162,7 @@ def storey_stairs(c):
     rows = c.execute(
         f"SELECT m.storey, t.center_x,t.center_y, t.bbox_x,t.bbox_y "
         f"FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
-        f"WHERE ({cond}) AND t.center_x IS NOT NULL", STAIR_LIKE).fetchall()
+        f"WHERE ({cond}) AND m.discipline='ARC' AND t.center_x IS NOT NULL", STAIR_LIKE).fetchall()
     by = {}
     for st, cx, cy, bx, by_ in rows:
         by.setdefault(st or "Unknown", []).append((cx, cy, bx, by_))
@@ -156,7 +175,7 @@ def storey_doors(c, anchors=None):
     rows = c.execute(
         "SELECT m.storey, m.element_name, t.center_x,t.center_y, t.center_z, COALESCE(t.bbox_x,0), COALESCE(t.bbox_y,0) "
         "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
-        "WHERE m.ifc_class LIKE 'IfcDoor%' AND t.center_x IS NOT NULL").fetchall()
+        "WHERE m.ifc_class LIKE 'IfcDoor%' AND m.discipline='ARC' AND t.center_x IS NOT NULL").fetchall()
     anchors = anchors or {}
     anchor_names = sorted(anchors)
     by = {}
@@ -274,23 +293,87 @@ def _inscribed_rect(in_set, ny, mni, mxi, mnj, mxj):
             stk.append(j)
     return bi0, bi1, bj0, bj1
 
-def _expand_rect(raw, nx, ny, i0, i1, j0, j1, steps):
-    """§RECT-HONESTY: grow the inscribed rect back to its real walls — each side extends while the
-    next full line is raw-free, max `steps` cells (the dilation erosion bound). x sides first (using
-    the original j span), then y sides (using the expanded i span) — fixed order for parity."""
+def _grow_region(cells, in_set, raw, dil, nx, ny, steps):
+    """§MULTI-RECT: recover the SEAL erosion — grow the region up to `steps` layers into cells that
+    are raw-free but dilation-blocked (the band between the region and its real walls). Never grows
+    into other free space (exterior / another pocket), so every grown cell is this room's own floor.
+    Mutates in_set; returns (added_cells, mni, mxi, mnj, mxj) with bounds covering the growth."""
+    frontier = cells
+    added = []
+    mni = mxi = cells[0] // ny; mnj = mxj = cells[0] % ny
+    for k in cells:
+        i, j = k // ny, k % ny
+        mni = min(mni, i); mxi = max(mxi, i); mnj = min(mnj, j); mxj = max(mxj, j)
     for _ in range(steps):
-        if i0 > 0 and all(raw[(i0 - 1) * ny + j] == 0 for j in range(j0, j1 + 1)): i0 -= 1
-        else: break
-    for _ in range(steps):
-        if i1 < nx - 1 and all(raw[(i1 + 1) * ny + j] == 0 for j in range(j0, j1 + 1)): i1 += 1
-        else: break
-    for _ in range(steps):
-        if j0 > 0 and all(raw[i * ny + (j0 - 1)] == 0 for i in range(i0, i1 + 1)): j0 -= 1
-        else: break
-    for _ in range(steps):
-        if j1 < ny - 1 and all(raw[i * ny + (j1 + 1)] == 0 for i in range(i0, i1 + 1)): j1 += 1
-        else: break
-    return i0, i1, j0, j1
+        nxt = []
+        for k in frontier:
+            i, j = k // ny, k % ny
+            for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                a, b = i + di, j + dj
+                if 0 <= a < nx and 0 <= b < ny:
+                    kk = a * ny + b
+                    if not in_set[kk] and not raw[kk] and dil[kk]:
+                        in_set[kk] = 1; nxt.append(kk); added.append(kk)
+                        mni = min(mni, a); mxi = max(mxi, a); mnj = min(mnj, b); mxj = max(mxj, b)
+        frontier = nxt
+    return added, mni, mxi, mnj, mxj
+
+def _inscribed_rect_min(in_set, ny, mni, mxi, mnj, mxj, min_cells):
+    """§MULTI-RECT: constrained maximal rectangle — both dims >= min_cells (the NOISE_FLOOR in
+    cells; a thinner rect is rasterization fringe, not room space). None if no such rect exists.
+    Same deterministic scan order / strict '>' tie-break as _inscribed_rect."""
+    w = mxi - mni + 1; h = mxj - mnj + 1
+    hist = [0] * h
+    best_area = 0; best = None
+    for i in range(w):
+        for j in range(h):
+            hist[j] = hist[j] + 1 if in_set[(mni + i) * ny + (mnj + j)] else 0
+        stk = []
+        for j in range(h + 1):
+            cur = hist[j] if j < h else 0
+            while stk and hist[stk[-1]] >= cur:
+                top = stk.pop()
+                height = hist[top]
+                left = stk[-1] + 1 if stk else 0
+                width = j - left
+                if height >= min_cells and width >= min_cells:
+                    area = height * width
+                    if area > best_area:
+                        best_area = area
+                        best = (mni + i - height + 1, mni + i, mnj + left, mnj + j - 1)
+            stk.append(j)
+    return best
+
+def _decompose_region(in_set, ny, mni, mxi, mnj, mxj, total_cells, single):
+    """§MULTI-RECT: carve the region into non-overlapping rectangles — repeated constrained
+    maximal-rectangle scan, stopping at RECT_COVER_TARGET coverage / MAX_SUBRECTS / no rect left
+    above the noise floor. `single` (SUSPECT rooms) emits the first rect only. Clears carved cells
+    from in_set (caller resets the full region afterwards). Falls back to the unconstrained
+    single rect when the region is too small/thin for a 3x3 (door-rescued slivers).
+    Returns (rects, covered_cells)."""
+    min_cells = int(round(NOISE_FLOOR_DIM / RES))
+    rects = []
+    covered = 0
+    for _ in range(MAX_SUBRECTS):
+        r = _inscribed_rect_min(in_set, ny, mni, mxi, mnj, mxj, min_cells)
+        if r is None:
+            break
+        i0, i1, j0, j1 = r
+        rects.append(r)
+        for i in range(i0, i1 + 1):
+            base = i * ny
+            for j in range(j0, j1 + 1):
+                in_set[base + j] = 0
+        covered += (i1 - i0 + 1) * (j1 - j0 + 1)
+        if single:
+            break
+        if covered >= RECT_COVER_TARGET * total_cells:
+            break
+    if not rects:
+        r = _inscribed_rect(in_set, ny, mni, mxi, mnj, mxj)
+        rects.append(r)
+        covered = (r[1] - r[0] + 1) * (r[3] - r[2] + 1)
+    return rects, covered
 
 def _classify(has_door, open_m, door_w_med):
     """§ROOM-FORM: user doctrine 'a room must be well formed, fully enclosed, has door'.
@@ -381,19 +464,29 @@ def flood_rooms(walls, stairs=None, doors=None, door_w_med=0.0):
             sf = _stair_overlap_frac(wx0, wy0, wx1, wy1, stairs)
             if sf >= STAIR_OVERLAP_REJECT:
                 print(f"    skip stair-shaft pocket area={round(area)} stair_overlap={sf:.0%}"); continue
-            # §ROOM-FORM + §RECT-HONESTY (ROOM_INJECTION_HYBRID.md §7)
+            # §ROOM-FORM + §RECT-HONESTY + §MULTI-RECT (ROOM_INJECTION_HYBRID.md §7/§8)
             for k in comp: in_set[k] = 1
             open_m = _open_perimeter_m(comp, in_set, raw, dil, nx, ny, SEAL)
-            ri0, ri1, rj0, rj1 = _inscribed_rect(in_set, ny, mni, mxi, mnj, mxj)
+            suspect = _classify(has_door, open_m, door_w_med)
+            grown, gmni, gmxi, gmnj, gmxj = _grow_region(comp, in_set, raw, dil, nx, ny, SEAL)
+            total_cells = len(comp) + len(grown)
+            grects, covered = _decompose_region(in_set, ny, gmni, gmxi, gmnj, gmxj, total_cells,
+                                                bool(suspect))
             for k in comp: in_set[k] = 0
-            ri0, ri1, rj0, rj1 = _expand_rect(raw, nx, ny, ri0, ri1, rj0, rj1, SEAL)
-            rx0 = xs0 + ri0 * RES; rx1 = xs0 + (ri1 + 1) * RES
-            ry0 = ys0 + rj0 * RES; ry1 = ys0 + (rj1 + 1) * RES
+            for k in grown: in_set[k] = 0
+            rects = []
+            for (ri0, ri1, rj0, rj1) in grects:
+                rx0 = xs0 + ri0 * RES; rx1 = xs0 + (ri1 + 1) * RES
+                ry0 = ys0 + rj0 * RES; ry1 = ys0 + (rj1 + 1) * RES
+                rects.append({"cx": (rx0 + rx1) / 2, "cy": (ry0 + ry1) / 2,
+                              "sx": rx1 - rx0, "sy": ry1 - ry0})
+            r0 = grects[0]
+            cover1 = ((r0[1] - r0[0] + 1) * (r0[3] - r0[2] + 1)) / total_cells
             rooms.append({
-                "cx": (rx0 + rx1) / 2, "cy": (ry0 + ry1) / 2, "cz": cz,
-                "sx": rx1 - rx0, "sy": ry1 - ry0, "sz": max(bz, 2.0), "area": area,
-                "door_rescued": door_rescued, "open_m": open_m,
-                "suspect": _classify(has_door, open_m, door_w_med)})
+                "cx": rects[0]["cx"], "cy": rects[0]["cy"], "cz": cz,
+                "sx": rects[0]["sx"], "sy": rects[0]["sy"], "sz": max(bz, 2.0), "area": area,
+                "door_rescued": door_rescued, "open_m": open_m, "suspect": suspect,
+                "rects": rects, "cover1": cover1, "cover_n": covered / total_cells})
     return rooms
 
 # §DOOR-PARTITION: on some real buildings (HHS confirmed) wall-enclosure flood-fill structurally
@@ -482,19 +575,27 @@ def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
         if (wx1 - wx0) < NOISE_FLOOR_DIM or (wy1 - wy0) < NOISE_FLOOR_DIM: continue
         if area > MAX_AREA_ABS or area > plan_area * MAX_AREA_FRAC: continue
         if _stair_overlap_frac(wx0, wy0, wx1, wy1, stairs) >= STAIR_OVERLAP_REJECT: continue
-        # §ROOM-FORM + §RECT-HONESTY (ROOM_INJECTION_HYBRID.md §7). No dilation on this path →
-        # seal_steps=0 for the openM march, no outward expansion (claims already touch raw walls).
+        # §ROOM-FORM + §RECT-HONESTY + §MULTI-RECT (ROOM_INJECTION_HYBRID.md §7/§8). No dilation on
+        # this path → seal_steps=0 for the openM march, no seal band to grow back into.
         for k in cells: in_set[k] = 1
         open_m = _open_perimeter_m(cells, in_set, raw, raw, nx, ny, 0)
-        ri0, ri1, rj0, rj1 = _inscribed_rect(in_set, ny, mni, mxi, mnj, mxj)
-        for k in cells: in_set[k] = 0
-        rx0 = xs0 + ri0 * RES; rx1 = xs0 + (ri1 + 1) * RES
-        ry0 = ys0 + rj0 * RES; ry1 = ys0 + (rj1 + 1) * RES
         has_door = _door_adjacent(wx0, wy0, wx1, wy1, doors)
-        rooms.append({"cx": (rx0 + rx1) / 2, "cy": (ry0 + ry1) / 2, "cz": cz,
-                      "sx": rx1 - rx0, "sy": ry1 - ry0, "sz": max(bz, 2.0), "area": area,
+        suspect = _classify(has_door, open_m, door_w_med)
+        grects, covered = _decompose_region(in_set, ny, mni, mxi, mnj, mxj, len(cells), bool(suspect))
+        for k in cells: in_set[k] = 0
+        rects = []
+        for (ri0, ri1, rj0, rj1) in grects:
+            rx0 = xs0 + ri0 * RES; rx1 = xs0 + (ri1 + 1) * RES
+            ry0 = ys0 + rj0 * RES; ry1 = ys0 + (rj1 + 1) * RES
+            rects.append({"cx": (rx0 + rx1) / 2, "cy": (ry0 + ry1) / 2,
+                          "sx": rx1 - rx0, "sy": ry1 - ry0})
+        r0 = grects[0]
+        cover1 = ((r0[1] - r0[0] + 1) * (r0[3] - r0[2] + 1)) / len(cells)
+        rooms.append({"cx": rects[0]["cx"], "cy": rects[0]["cy"], "cz": cz,
+                      "sx": rects[0]["sx"], "sy": rects[0]["sy"], "sz": max(bz, 2.0), "area": area,
                       "door_rescued": False, "door_partitioned": True, "open_m": open_m,
-                      "suspect": _classify(has_door, open_m, door_w_med)})
+                      "suspect": suspect, "rects": rects, "cover1": cover1,
+                      "cover_n": covered / len(cells)})
     return rooms
 
 def main():
@@ -569,7 +670,7 @@ def main():
         except sqlite3.OperationalError: pass  # already exists — fine
     for col in ("center_x","center_y","center_z","size_x","size_y","size_z"):
         _addcol("spatial_structure", col, "REAL")
-    for col in ("object_type","predefined_type"):
+    for col in ("object_type","predefined_type","room_guid"):
         _addcol("spatial_structure", col, "TEXT")
     # §APPROX: compiled storey rows (only where the DB has none) so the Room lens can group
     # rooms per floor via parent_guid → IfcBuildingStorey.name. Idempotent on the STC_ prefix.
@@ -591,10 +692,15 @@ def main():
         ptype = ("SUSPECT_" + r["suspect"]) if r.get("suspect") else \
                 "INTERNAL_DOORPART" if r.get("door_partitioned") else \
                 "INTERNAL_SMALL" if r.get("door_rescued") else "INTERNAL"
-        c.execute("INSERT INTO spatial_structure (guid,type,name,parent_guid,object_type,predefined_type,"
-                  "center_x,center_y,center_z,size_x,size_y,size_z) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                  (r["guid"], "IfcSpace", r["name"], r["parent"], "COMPILED", ptype,
-                   r["cx"], r["cy"], r["cz"], r["sx"], r["sy"], r["sz"]))
+        # §MULTI-RECT: one row per sub-rect, ALL sharing room_guid (= the primary rect's guid) and
+        # the same name/type — N rects, ONE logical room. Sub-rect guids get a letter suffix
+        # (RM_..._5, RM_..._5b, RM_..._5c) so 'RM\_%' patterns keep matching every row.
+        for ri, rc in enumerate(r.get("rects") or [{"cx": r["cx"], "cy": r["cy"], "sx": r["sx"], "sy": r["sy"]}]):
+            g = r["guid"] if ri == 0 else r["guid"] + chr(ord('a') + ri)
+            c.execute("INSERT INTO spatial_structure (guid,type,name,parent_guid,object_type,predefined_type,"
+                      "center_x,center_y,center_z,size_x,size_y,size_z,room_guid) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                      (g, "IfcSpace", r["name"], r["parent"], "COMPILED", ptype,
+                       rc["cx"], rc["cy"], r["cz"], rc["sx"], rc["sy"], r["sz"], r["guid"]))
     # rel_contained_in_space: elements whose XY centre falls inside a room (compiled)
     if not c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='rel_contained_in_space'").fetchall():
         c.execute("CREATE TABLE rel_contained_in_space (space_guid TEXT, element_guid TEXT)")
@@ -610,11 +716,18 @@ def main():
         byst.setdefault(r["storey"], []).append(r)
     for g, st, ex, ey in els:
         for r in byst.get(st, []):
-            if abs(ex - r["cx"]) <= r["sx"]/2 and abs(ey - r["cy"]) <= r["sy"]/2:
+            # §MULTI-RECT: contained iff inside ANY of the room's rects; the rel row keys the
+            # LOGICAL room guid so downstream still sees one room, not N.
+            hit = False
+            for rc in (r.get("rects") or [r]):
+                if abs(ex - rc["cx"]) <= rc["sx"]/2 and abs(ey - rc["cy"]) <= rc["sy"]/2:
+                    hit = True; break
+            if hit:
                 c.execute("INSERT INTO rel_contained_in_space (space_guid, element_guid) VALUES (?,?)", (r["guid"], g)); rel += 1
                 break
     con.commit()
-    print(f"WROTE {len(allrooms)} IfcSpace rows + {rel} rel_contained_in_space rows")
+    rect_rows = sum(len(r.get("rects") or [None]) for r in allrooms)
+    print(f"WROTE {len(allrooms)} rooms as {rect_rows} IfcSpace rect rows + {rel} rel_contained_in_space rows")
 
 if __name__ == "__main__":
     main()

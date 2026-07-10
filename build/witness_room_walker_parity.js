@@ -18,7 +18,7 @@ const BUILDINGS = ['SampleCastle', 'HHS', 'Clinic', 'Garage', 'Hospital', 'Termi
 function dumpSpatialStructure(dbPath, SQL) {
   const db = new SQL.Database(new Uint8Array(fs.readFileSync(dbPath)));
   const r = db.exec("SELECT guid,type,name,parent_guid,object_type,predefined_type," +
-    "round(center_x,4),round(center_y,4),round(center_z,4),round(size_x,4),round(size_y,4),round(size_z,4) " +
+    "round(center_x,4),round(center_y,4),round(center_z,4),round(size_x,4),round(size_y,4),round(size_z,4),room_guid " +
     "FROM spatial_structure WHERE guid LIKE 'RM\\_%' ESCAPE '\\' OR guid LIKE 'STC\\_%' ESCAPE '\\' ORDER BY guid");
   db.close();
   if (!r.length) return [];
