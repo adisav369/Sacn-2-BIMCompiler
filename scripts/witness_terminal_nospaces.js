@@ -32,6 +32,16 @@
  *   T5 LOD400        — every placement carries a geometry_hash that is a REAL hash of its own
  *                      class in the building's element_instances (the mined dominant mesh, never
  *                      a fallback shape); a class with no real mesh appears ONLY in lod400Refused.
+ *   T6 PLB-QTY       — PLB, the last walkable disc never graded (2026-07-10 gap-close): per class,
+ *                      generated/n_measured ∈ [0.5, 2.0] against terminal_rules.db's mined counts.
+ *                      Oracle is n_measured, NOT the full real count: real IfcPipeSegment=3821 spans
+ *                      ALL pipe systems, the rules mined only the ceiling-void-main band (739) —
+ *                      real-vs-generated is REPORTED honestly, not graded. IfcValve n_measured==real
+ *                      ==111, so its grade IS a real-count grade. Same falsifier: n_measured×0.2 in
+ *                      a COPY must collapse the placed count below half.
+ *   T7 PLB-CONFORM   — every PLB placement XY-inside the real envelope, z inside its OWN rule row's
+ *                      measured band, and carrying a REAL mesh hash of its own class (T3+T5 pattern
+ *                      applied to PLB; classes with no real mesh only in lod400Refused).
  */
 'use strict';
 var fs = require('fs');
@@ -144,6 +154,55 @@ var GRADED = ['IfcLightFixture', 'IfcElectricAppliance'];      // ELEC — the p
   assert('T5 LOD400', noHash === 0 && badHash === 0,
     (w.placements || []).length + ' placements all carry a geometry_hash (' + noHash + ' missing, ' + badHash +
     ' not a REAL hash of their own class); classes with no real mesh: ' + refusedN + ' (REFUSED only, never a fallback shape)');
+
+  log(''); log('─── T6 PLB QTY-BOUND (last ungraded walkable disc) ───');
+  var wp = dw.dwWalk('PLB', arc, 'Terminal', { schedule: true });
+  var pByCls = {};
+  (wp.placements || []).forEach(function (p) { pByCls[p.ifc_class] = (pByCls[p.ifc_class] || 0) + 1; });
+  var nmRows = rows(rules, "SELECT ifc_class, SUM(n_measured) nm FROM rule_placement WHERE disc='PLB' GROUP BY ifc_class");
+  var plbOk = !wp.refused && wp.mode === 'measured-band' && nmRows.length > 0;
+  var plbDetail = [];
+  nmRows.forEach(function (r) {
+    var gen3 = pByCls[r.ifc_class] || 0, ratio = r.nm ? gen3 / r.nm : 0;
+    plbOk = plbOk && ratio >= 0.5 && ratio <= 2.0;
+    plbDetail.push(r.ifc_class + ' ' + gen3 + '/' + r.nm + ' (' + ratio.toFixed(2) + ')');
+    log('§TN qty PLB/' + r.ifc_class + ' generated=' + gen3 + ' n_measured=' + r.nm + ' ratio=' + ratio.toFixed(2));
+    var realP = rows(full, "SELECT COUNT(*) n FROM elements_meta WHERE ifc_class='" + r.ifc_class + "'")[0].n;
+    log('§TN report PLB/' + r.ifc_class + ' generated=' + gen3 + ' real=' + realP +
+      (realP ? ' ratio=' + (gen3 / realP).toFixed(2) : ' (no real oracle)'));
+  });
+  var tamperedP = loadDb(SQL, RULES);
+  tamperedP.exec("UPDATE rule_placement SET n_measured = CAST(n_measured*0.2 AS INTEGER) WHERE disc='PLB'");
+  dw.dwOpen(tamperedP);
+  var wpT = dw.dwWalk('PLB', arc, 'Terminal', { schedule: true });
+  dw.dwOpen(rules);
+  tamperedP.close();
+  assert('T6 PLB-QTY', plbOk && wpT.placed < wp.placed * 0.5,
+    "mode='" + wp.mode + "' " + plbDetail.join('; ') + ' — all in band [0.5,2.0] vs mined n_measured' +
+    ' (pipes graded vs the mined ceiling-void band, real 3821 spans ALL pipe systems — reported above);' +
+    ' falsifier n_measured×0.2 → placed ' + wp.placed + '→' + wpT.placed + ' (the bound measures the mined data)');
+
+  log(''); log('─── T7 PLB CONTAINMENT + LOD400 ───');
+  var pOut = 0, pzBad = 0, pNoHash = 0, pBadHash = 0;
+  var plbHash = {};
+  nmRows.forEach(function (r) {
+    rows(full, "SELECT DISTINCT ei.geometry_hash h FROM element_instances ei JOIN elements_meta em ON em.guid=ei.guid WHERE em.ifc_class='" + r.ifc_class + "'")
+      .forEach(function (x) { plbHash[r.ifc_class + '|' + x.h] = 1; });
+  });
+  (wp.placements || []).forEach(function (p) {
+    if (p.x < env.x0 - 0.5 || p.x > env.x1 + 0.5 || p.y < env.y0 - 0.5 || p.y > env.y1 + 0.5) pOut++;
+    var band = p.band; if (!band) { pzBad++; } else {
+      var tol = (p.bz || 0.5) + 0.75;
+      if (p.z < band[0] - tol || p.z > band[1] + tol) pzBad++;
+    }
+    if (!p.geometry_hash) { pNoHash++; return; }
+    if (!plbHash[p.ifc_class + '|' + p.geometry_hash]) pBadHash++;
+  });
+  var pRefusedN = Object.keys((wp.measured || {}).lod400Refused || {}).length;
+  assert('T7 PLB-CONFORM', pOut === 0 && pzBad === 0 && pNoHash === 0 && pBadHash === 0,
+    (wp.placements || []).length + ' PLB placements: ' + pOut + ' outside the real XY envelope, ' + pzBad +
+    ' outside their own measured z-band, ' + pNoHash + ' missing a hash, ' + pBadHash +
+    ' not a REAL hash of their own class; no-real-mesh classes: ' + pRefusedN + ' (REFUSED only)');
 
   log(''); log('─── REPORTED (not graded — secondary discs) ───');
   ['FP', 'ACMV'].forEach(function (d) {

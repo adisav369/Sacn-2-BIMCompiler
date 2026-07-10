@@ -2169,3 +2169,47 @@ this same three-stone test while the formula-based shortcut didn't — the robus
 refusing to generalize a placement convention across instances, per this project's core non-invent discipline.
 No code change from this finding (the existing mesh-based fix stands, unmodified) — recorded so nobody re-tries
 this shortcut later without re-deriving why it failed.
+
+## ✅ §PLB-GAP-CLOSED + 🛑 §TE-ARC-DATUM — PLB graded green; but NO disc walk had ever run on the Modeller's real Terminal_ARC.db, and on it ALL discs collapse (2026-07-10)
+
+**PLB gap (the last walkable disc never graded) — CLOSED.** Added T6/T7 to `scripts/witness_terminal_nospaces.js`
+(W-TERM-NOSPACES, same file per the no-parallel-witness rule). Log: `logs/witness_terminal_nospaces_2026-07-10T0605.log`
+— **7 PASS / 0 FAIL**.
+- **T6 PLB-QTY** — oracle is the mined `n_measured`, NOT the full real count: real IfcPipeSegment=3821 spans ALL
+  pipe systems while the rules mined only the ceiling-void-main band (Σ739), so real-vs-generated is REPORTED
+  honestly, not graded. IfcValve n_measured==real==111, so its grade IS a real-count grade.
+  `§TN qty PLB/IfcPipeSegment 788/739 (1.07)` · `§TN qty PLB/IfcValve 100/111 (0.90)` — both in [0.5,2.0].
+  Falsifier n_measured×0.2 → placed **888→174** (the bound measures the mined data).
+  Reported real ratios: pipes 788/3821=**0.21** (band-only mining, expected), valves 100/111=**0.90**.
+- **T7 PLB-CONFORM** — 888 placements: 0 outside the real XY envelope, 0 outside their own measured z-band,
+  0 missing/fake mesh hashes (every hash a REAL hash of its own class), lod400Refused=0.
+
+**🛑 THE REAL FINDING (user-prompted: "Modeller has TE_ARC.db supposed to run DISC WALK — has any disc run on
+it?"): NO.** Grepped every witness: all W-TERM-NOSPACES walks (ELEC graded, FP/ACMV reported, PLB now graded) run
+on an in-memory ARC-stripped copy of `deploy/buildings/Terminal_extracted.db` — never on the shipped
+`~/bim-ootb/modeller/Terminal_ARC.db` (13MB, regenerated 2026-07-10 08:12 by the ARC-fetch lane). The only
+witness touching Terminal_ARC.db is W-ROTATION-CONVENTION (transforms, not a walk). STR has NO Terminal grade
+anywhere — the 2026-06-26 STR logs are the str_walker SC/bridge lane.
+
+**Probe (diagnosis only, no fix attempted — walked the REAL Terminal_ARC.db with terminal_rules.db, graded vs the
+extraction oracle):** every disc engages measured-band but placements COLLAPSE vs the stripped-copy results:
+```
+disc   Terminal_ARC.db (real substrate)              stripped-copy witness (same rules)
+ELEC   390 placed  LightFixture 0.48, Appliance 0.16   744 placed  0.87 / 1.79   (graded green)
+PLB    252 placed  PipeSegment 0.05, Valve 0.59        888 placed  1.07 / 0.90 vs n_measured (graded green)
+FP     336 placed  FireSuppr 0.33, Alarm 0.49          963 placed  0.98 / 0.88   (reported)
+ACMV   140 placed  AirTerm 0.29, DuctFit 0.05, Duct 0.04  1312 placed 1.17 / 0.86 / 0.63 (reported)
+```
+**First-order cause (measured, not guessed): the two substrates sit in DIFFERENT z-datums.** Same ~35.5k ARC
+elements each, but `element_transforms.center_z` spans **−15.66…27.09** in Terminal_ARC.db vs **−1.01…42.10** in
+Terminal_extracted.db — a ≈**−15m vertical shift** introduced by the ARC fetch. `rule_placement.z_band_lo/hi`
+were mined in the EXTRACTION frame, so on the shipped ARC db the bands misalign with the ARC cells/storeys and
+most zones starve. (Echoes the known ≈547m site-offset between raw TerminalMerged.ifc and the extraction —
+§START-END-THEORY-TESTED — frame normalization is this pipeline's recurring landmine.)
+
+**§NEXT (fix is a SEPARATE session, spec-first — this section is diagnosis per the standing
+diagnose-in-session/fix-in-other-session rule):** decide WHERE the datum belongs: (a) make the ARC fetch preserve
+the extraction z-datum, (b) make dwWalk normalize bands to the substrate's own storey elevations (it already
+offsets per-storey — verify why that didn't absorb a global shift), or (c) re-mine rules per-substrate (worst,
+violates one-rules-db-per-class). Then W-TERM-NOSPACES gains a T8 that walks the SHIPPED Terminal_ARC.db, not
+only the stripped copy — the witness substrate must be the Modeller's production substrate.
