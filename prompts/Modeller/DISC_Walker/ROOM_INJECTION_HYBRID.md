@@ -55,6 +55,18 @@ keeps them out of placement, same as HHS's 14), but the record was factually wro
 | Duplex | 0 on `main`; **20** on unmerged branch `fable/modeller-lod400-livewire` @ `2821b8e` | real, habitability-filtered (Task 5 done — R301 Roof stripped) |
 | SampleCastle, SampleHouse, Clinic, Garage, HHS, Hospital | 0 | no `spatial_structure` table |
 
+**Source IFCs on disk (`internal/sources/`) — note: the ARC is a DERIVED artifact of IFC metadata, so
+knowing the path alone fixes nothing; it only matters if it turns up an EXTRACTION bug (source has real
+rooms, ARC doesn't) vs a genuine SOURCE gap (no rooms exist to extract). Checked directly, this session:**
+- `Ifc2x3_Duplex_Architecture.ifc` — 21 `IFCSPACE` entities (matches the 21 already ported/filtered).
+- `Ifc4_SampleHouse.ifc` — **4 real `IFCSPACE` entities** (Living room, Bedroom, Entrance hall, Roof) —
+  but shipped `SampleHouse_ARC.db` has 0. **This is an EXTRACTION bug, not a data gap** — the source has
+  real rooms and they were dropped somewhere in the pipeline. Small enough (4 rooms, 1 of them a Roof the
+  habitability filter would exclude anyway → 3 usable) to be a cheap next win once someone re-runs
+  extraction on this source with `spatial_structure` capture verified.
+- Clinic, Garage, Hospital, HHS — **no source IFC present in this checkout's `internal/sources/` at all** —
+  can't be checked either way locally; the "0 rooms" state for these is unverified-source, not confirmed-no-data.
+
 Canonical `deploy/buildings/*_extracted.db` (bim-compiler, 32 total) — only 2 carry real, portable room
 data: **Duplex (21 real `IfcSpace` rows, now 20 post-filter on the branch above)**, **HHS_Office_Federated
 (14 rows — ALSO corrected here: these are 100% synthetic `compile_rooms.py` output, not real; see Task 5's
