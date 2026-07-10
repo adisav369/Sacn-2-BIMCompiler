@@ -27,5 +27,10 @@ U ARE TO REVIEW OTHER SESSIONS PUT BEFORE U BY THE USER. MANAGE AND HOUSEKEEP.
 Get the actual thing working — not branch hygiene, not verification as an end in itself. Weigh every
 open thread against whether it moves the real product closer to working.
 
+**"Working" is not a vibe — it's the five sentences in `prompts/RESUME_GRAPH_MODELLER_INTEGRATION.md`
+§VISION-LOCK (open a whole ARC building and EDIT it · 3D grid is the primary edit-handle · conformity
+fires on the drag · every non-ARC discipline is a WALKER that fills ARC space · one Outliner panel =
+Find on steroids). Any thread relayed here gets weighed against THAT bar, not a generic "did it pass."
+
 ## ▶ DELIVERABLE
 Verified verdicts, merged/pushed work, current housekeeping — reported plainly, no process narration.
