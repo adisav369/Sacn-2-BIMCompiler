@@ -1,5 +1,39 @@
 # RESUME — disc_walker: area-scaled n_measured + envelope-bound placement (RouteWalker alignment)
 
+# ▶▶▶▶▶▶▶ ENTRY POINT (2026-07-10 EVENING, LATEST — supersedes every block below, including the §LIVEWIRE
+# one right under this). Full context in ONE read, no need to walk the rest of this 1900+ line file first.
+#
+# **State: 6 branches built, independently re-verified (not trusted on report), and PUSHED. ZERO merged to
+# `origin/main` in either repo.** That's the actual next gate, not a code gap:
+# - bim-ootb `fable/modeller-lod400-livewire` @ `670bf0f` + bim-compiler `fable/meshdb-livewire` @ `d75d76e09`
+#   — schedule-walk DEFAULT-FLIP + LOD400 device meshes. Took 3 verification rounds to actually reproduce
+#   from a clean checkout — rounds 1-2's green claims leaned on an uncommitted scratch-worktree repair.
+# - bim-ootb `fix/grid-tilt-guard` @ `c485560` — PR #720/#721's rotation guard extended to X/Y tilt AND the
+#   Modeller's real second plan axis (`'y'`, not `'z'` — Z-up vs the guards' original Y-up assumption).
+# - bim-ootb `fix/dw-rot-units` @ `2a02de8` — legacy disc-walk commit path wrote yaw in radians into a
+#   degrees field (confirmed live-visible, 88° error on a real SampleHouse fixture, before fixing).
+# - bim-ootb `fable/dwprobe-dedup` @ `52fea0e` — `__dwPixelProbe` was defined twice in `modeller.html`
+#   (silently shadowed), + a witness crash-on-uncaught-rejection fix, + a NODE_PATH env dependency removed.
+# - bim-ootb `fix/terminal-oracle-source` @ `c1b4f9e` — 2 witnesses fetched the wrong file for their real-MEP
+#   oracle (`Terminal_ARC.db`, 0 MEP rows since the deliberate embed-8 ARC-only strip) instead of the file
+#   their OWN header comments already named (`Terminal_meta.db`, untouched, real data) — stale path, not a
+#   data gap. 5/3→7/1, 9/1→10/10.
+#
+# **SampleCastle rooms: CLOSED, not a gap** — see `SAMPLECASTLE_REAL_ROOMS_RECONCILE.md`'s own closure note.
+# disc_walker needs zero room/`IfcSpace` data on SC; runs clean via `duplex_rules.db` + `substrate()`'s
+# direct storey derivation from `elements_meta`. The whole prior investigation was the wrong branch of the
+# problem. If the live app fails on SC, suspect rules-file wiring (dwInit defaulting to `terminal_rules.db`),
+# not missing data.
+#
+# **Genuinely still open:** Terminal PLB disc-walk untested (ELEC/FP/ACMV/STR all graded, PLB wasn't — in
+# progress); old signed op-log rows still carry pre-fix wrong-radians values (unsafe to blind-migrate, needs
+# per-row re-derivation from source data); `cat[0]` legacy-commit fallback for hash-less placements; W5
+# ratchet toward RSS-exact; pillar 4's space-scoped UI trigger (piece 3, never bounded, needs a real Sonnet
+# planning pass before anyone picks it up).
+#
+# Full detail + the "verify from a genuinely fresh worktree" lesson (learned 3 times this session): bim-compiler
+# memory `project_disc_walker_grid_guard_marathon_2026-07-10.md`.
+
 # ▶▶▶▶▶▶ ENTRY POINT (2026-07-10 PM, LATEST — Fable5 worker closeout; read this FIRST, supersedes every
 # block below as the starting point). GEOMETRY-HELL LANE: DELIVERED ON BRANCH, AWAITING WATCHDOG REVIEW +
 # USER SIGN-OFF. NOT merged. Branch `fable/bimeyes-coherence-checker`, PUSHED to origin, 5 commits on top
