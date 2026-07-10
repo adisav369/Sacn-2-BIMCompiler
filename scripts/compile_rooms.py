@@ -199,6 +199,81 @@ def flood_rooms(walls, stairs=None, doors=None):
                 "door_rescued": door_rescued})
     return rooms
 
+# §DOOR-PARTITION: on some real buildings (HHS confirmed) wall-enclosure flood-fill structurally
+# can't find rooms — most of the floor floods as one exterior-reachable blob regardless of area/door
+# filtering, because the walls that would divide individual rooms simply aren't in this extraction.
+# The gate for "walls can't do this, fall back" is the DIRECT, abstract test the user named: compare
+# what flood-fill (with door-rescue already applied) actually found against how many real doors this
+# storey has — every door leads to a room, so a storey whose flood-fill result is a small fraction of
+# its door count has failed, full stop, regardless of which building it is. Measured before picking
+# the ratio: HHS's floors find 0-11% of their door count via flood-fill; every other building's
+# working floors find 25-100%+ (Garage's sparsest working floor: 5 rooms / 8 doors = 62%; Hospital's
+# sparsest: 1 room / 5 doors = 20%) — DOOR_SHORTFALL_RATIO=0.15 sits below every working floor's own
+# ratio and above every one of HHS's, so it never overrides an already-functioning floor (verified:
+# Garage's genuine 5-room floor and Hospital's genuine 1-room floor both correctly keep flood-fill's
+# result, not door-partition's coarser one). Where flood-fill DOES fail this test, partition the
+# storey's free space by NEAREST DOOR (multi-source BFS through real free cells, real walls still
+# block) — each door claims whatever space no other door reaches first, same as how a real occupant
+# would experience the floor from that door. Fully derived from real door + wall positions, still
+# deterministic and reproducible; a different compile technique for where enclosure-based compiling
+# structurally cannot work, not an invention.
+DOOR_SHORTFALL_RATIO = 0.15  # flood-fill finding fewer rooms than this fraction of doors = has failed
+
+def partition_by_doors(walls, doors, stairs):
+    if not doors: return []
+    from collections import deque
+    xs0 = min(w[0] - w[3] / 2 for w in walls); xs1 = max(w[0] + w[3] / 2 for w in walls)
+    ys0 = min(w[1] - w[4] / 2 for w in walls); ys1 = max(w[1] + w[4] / 2 for w in walls)
+    pad = RES * 2; xs0 -= pad; ys0 -= pad; xs1 += pad; ys1 += pad
+    nx = max(4, int(math.ceil((xs1 - xs0) / RES))); ny = max(4, int(math.ceil((ys1 - ys0) / RES)))
+    blocked = np.zeros((nx, ny), dtype=bool)
+    def ix(x): return min(nx - 1, max(0, int((x - xs0) / RES)))
+    def iy(y): return min(ny - 1, max(0, int((y - ys0) / RES)))
+    for cx, cy, cz, bx, by_, bz in walls:
+        i0, i1 = ix(cx - bx / 2), ix(cx + bx / 2); j0, j1 = iy(cy - by_ / 2), iy(cy + by_ / 2)
+        blocked[i0:i1 + 1, j0:j1 + 1] = True
+    free = ~blocked
+    cz = float(np.mean([w[2] for w in walls])); bz = float(np.mean([w[5] for w in walls]))
+
+    owner = -np.ones((nx, ny), dtype=int)
+    q = deque()
+    for di, (dcx, dcy, dbx, dby) in enumerate(doors):
+        ci, cj = ix(dcx), iy(dcy)
+        seed = None
+        for r in range(7):  # expand outward (~1.4m) to find a free cell to seed this door from
+            ring = [(ci + da, cj + db) for da in range(-r, r + 1) for db in range(-r, r + 1)
+                    if max(abs(da), abs(db)) == r]
+            for a, b in ring:
+                if 0 <= a < nx and 0 <= b < ny and free[a, b] and owner[a, b] == -1:
+                    seed = (a, b); break
+            if seed: break
+        if seed is None: continue
+        owner[seed] = di; q.append(seed)
+
+    while q:
+        i, j = q.popleft()
+        for di_, dj_ in ((1,0),(-1,0),(0,1),(0,-1)):
+            a, b = i + di_, j + dj_
+            if 0 <= a < nx and 0 <= b < ny and free[a, b] and owner[a, b] == -1:
+                owner[a, b] = owner[i, j]; q.append((a, b))
+
+    cell_area = RES * RES; plan_area = nx * ny * cell_area
+    rooms = []
+    for di in range(len(doors)):
+        cells = np.argwhere(owner == di)
+        if len(cells) == 0: continue
+        area = len(cells) * cell_area
+        mni, mnj = cells.min(axis=0); mxi, mxj = cells.max(axis=0)
+        wx0 = xs0 + mni * RES; wx1 = xs0 + (mxi + 1) * RES
+        wy0 = ys0 + mnj * RES; wy1 = ys0 + (mxj + 1) * RES
+        if (wx1 - wx0) < NOISE_FLOOR_DIM or (wy1 - wy0) < NOISE_FLOOR_DIM: continue
+        if area > MAX_AREA_ABS or area > plan_area * MAX_AREA_FRAC: continue
+        if _stair_overlap_frac(wx0, wy0, wx1, wy1, stairs) >= STAIR_OVERLAP_REJECT: continue
+        rooms.append({"cx": (wx0 + wx1) / 2, "cy": (wy0 + wy1) / 2, "cz": cz,
+                      "sx": wx1 - wx0, "sy": wy1 - wy0, "sz": max(bz, 2.0), "area": area,
+                      "door_rescued": False, "door_partitioned": True})
+    return rooms
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__); return
@@ -218,25 +293,36 @@ def main():
     # CONTINUOUS vertical shaft anyway — so test every room pocket against the UNION of all stair
     # footprints by XY (not per-storey). A staircase at an XY is circulation on whatever floor it cuts.
     all_stairs = [s for lst in stairs_by.values() for s in lst]
-    total = 0; door_rescued_total = 0; allrooms = []; st_z = {}
+    total = 0; door_rescued_total = 0; door_partition_total = 0; allrooms = []; st_z = {}
     for st in sorted(by):
         ws = by[st]
         if len(ws) < 3:
             print(f"  storey {st!r}: walls={len(ws)} (too few — skip)"); continue
-        rooms = flood_rooms(ws, all_stairs, doors_by.get(st, []))
+        doors = doors_by.get(st, [])
+        rooms_flood = flood_rooms(ws, all_stairs, doors)
+        # §DOOR-PARTITION gate: flood-fill found far fewer rooms than this storey has real doors —
+        # it has structurally failed here, fall back to nearest-door partitioning (never overrides
+        # an already-working floor — see the ratio derivation above).
+        if doors and len(rooms_flood) < DOOR_SHORTFALL_RATIO * len(doors):
+            rooms = partition_by_doors(ws, doors, all_stairs)
+            method = f"door-partition (flood-fill only found {len(rooms_flood)}/{len(doors)} doors)"
+        else:
+            rooms = rooms_flood
+            method = "flood-fill"
         total += len(rooms)
         rescued = sum(1 for r in rooms if r.get('door_rescued'))
-        door_rescued_total += rescued
+        partitioned = sum(1 for r in rooms if r.get('door_partitioned'))
+        door_rescued_total += rescued; door_partition_total += partitioned
         st_z[st] = sum(w[2] for w in ws) / len(ws)  # storey z = mean wall centre-z
-        print(f"  storey {st!r}: walls={len(ws)} doors={len(doors_by.get(st, []))} → rooms={len(rooms)} "
-              f"(door_rescued={rescued})  areas={[round(r['area']) for r in rooms]}")
+        print(f"  storey {st!r}: walls={len(ws)} doors={len(doors)} [{method}] → rooms={len(rooms)} "
+              f"(door_rescued={rescued} door_partitioned={partitioned})  areas={[round(r['area']) for r in rooms]}")
         for k, r in enumerate(rooms):
             r["storey"] = st; r["guid"] = f"RM_{st}_{k+1}".replace(" ", "_")
             # §APPROX: '≈' marks the room as compiled/approximate in the lens label.
             # parent_guid → a compiled storey row (created below) so the Room lens groups per floor.
             r["name"] = f"≈ {st} R{k+1}"; r["parent"] = st_guid.get(st) or ("STC_" + st).replace(" ", "_")
             allrooms.append(r)
-    print(f"TOTAL compiled rooms = {total} (door_rescued={door_rescued_total})")
+    print(f"TOTAL compiled rooms = {total} (door_rescued={door_rescued_total} door_partitioned={door_partition_total})")
     if not write:
         print("(dry run — pass --write to inject)"); return
     # ensure spatial_structure has bbox columns
@@ -265,13 +351,14 @@ def main():
     # remove any prior compiled rooms (idempotent)
     c.execute("DELETE FROM spatial_structure WHERE type='IfcSpace' AND guid LIKE 'RM_%'")
     for r in allrooms:
-        # predefined_type distinguishes wall-enclosure rooms from §DOOR-RESCUE small rooms (toilets/
-        # closets/utility) for traceability — object_type stays 'COMPILED' either way (the tag
-        # spacesOf()'s exclusion filter and every witness's tag-purity check actually key on).
+        # predefined_type distinguishes which compile technique found each room (wall-enclosure vs
+        # §DOOR-RESCUE small room vs §DOOR-PARTITION) for traceability — object_type stays 'COMPILED'
+        # either way (the tag spacesOf()'s exclusion filter and every tag-purity check key on).
+        ptype = "INTERNAL_DOORPART" if r.get("door_partitioned") else \
+                "INTERNAL_SMALL" if r.get("door_rescued") else "INTERNAL"
         c.execute("INSERT INTO spatial_structure (guid,type,name,parent_guid,object_type,predefined_type,"
                   "center_x,center_y,center_z,size_x,size_y,size_z) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                  (r["guid"], "IfcSpace", r["name"], r["parent"], "COMPILED",
-                   "INTERNAL_SMALL" if r.get("door_rescued") else "INTERNAL",
+                  (r["guid"], "IfcSpace", r["name"], r["parent"], "COMPILED", ptype,
                    r["cx"], r["cy"], r["cz"], r["sx"], r["sy"], r["sz"]))
     # rel_contained_in_space: elements whose XY centre falls inside a room (compiled)
     if not c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='rel_contained_in_space'").fetchall():
