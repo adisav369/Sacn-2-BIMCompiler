@@ -28,6 +28,17 @@ WALL_LIKE = ("IfcWall%", "IfcDoor%", "IfcCurtainWall%", "IfcColumn%", "IfcWindow
 # overlaps. IfcStair% LIKE also covers IfcStairFlight. (User: "staircase is also marked as room".)
 STAIR_LIKE = ("IfcStair%", "IfcRamp%")
 STAIR_OVERLAP_REJECT = 0.35   # drop a pocket if a stair footprint covers ≥35% of its area
+# §DOOR-RESCUE: a pocket under MIN_AREA is usually a wall-joint/cavity artefact of the grid flood-fill
+# (measured: on real buildings these cluster <1.0 m^2). But a genuine small room — a toilet, riser,
+# store, utility closet — is real even at 1.5-3.9 m^2, and the one structural clue a wall-cavity never
+# has is a DOOR: every enclosed room a person uses has one, a cavity doesn't. So a pocket in
+# [DOOR_RESCUE_MIN_AREA, MIN_AREA) is accepted ONLY if a real IfcDoor centre sits on/against its
+# rectangle (never invented — same real extracted door positions already used as WALL_LIKE blockers).
+# Verified on real data before shipping (HHS/Clinic/Hospital/SampleCastle): area<1.0 m^2 pockets are
+# door-adjacent in only a handful of cases (noise); 1.0-4.0 m^2 pockets are door-adjacent in the large
+# majority (real small rooms) — the two bands are not the same population.
+DOOR_RESCUE_MIN_AREA = 1.0   # m^2 — below this, even a door-adjacent pocket is treated as noise
+DOOR_RESCUE_BUFFER = 1.0     # m — how far a door centre may sit from the pocket rect and still count
 # §APPROX: these rooms are COMPILED from wall enclosure (flood-fill), NOT extracted IfcSpace.
 # Validated ~5/21 recall on ground-truth Duplex → treat as APPROXIMATE. Labelled '≈' + COMPILED.
 
@@ -54,6 +65,20 @@ def storey_stairs(c):
         by.setdefault(st or "Unknown", []).append((cx, cy, bx, by_))
     return by
 
+def storey_doors(c):
+    """Per-storey door centres (cx,cy) — the §DOOR-RESCUE clue for genuine small rooms."""
+    rows = c.execute(
+        "SELECT m.storey, t.center_x,t.center_y FROM elements_meta m "
+        "JOIN element_transforms t ON t.guid=m.guid WHERE m.ifc_class LIKE 'IfcDoor%' "
+        "AND t.center_x IS NOT NULL").fetchall()
+    by = {}
+    for st, cx, cy in rows:
+        by.setdefault(st or "Unknown", []).append((cx, cy))
+    return by
+
+def _door_adjacent(rx0, ry0, rx1, ry1, doors, buf=DOOR_RESCUE_BUFFER):
+    return any(rx0 - buf <= dx <= rx1 + buf and ry0 - buf <= dy <= ry1 + buf for dx, dy in doors)
+
 def _stair_overlap_frac(rx0, ry0, rx1, ry1, stairs):
     """Largest fraction of room rect [rx0,ry0,rx1,ry1] covered by any single stair footprint."""
     room_area = max(1e-6, (rx1 - rx0) * (ry1 - ry0))
@@ -66,8 +91,9 @@ def _stair_overlap_frac(rx0, ry0, rx1, ry1, stairs):
         best = max(best, (ox * oy) / room_area)
     return best
 
-def flood_rooms(walls, stairs=None):
+def flood_rooms(walls, stairs=None, doors=None):
     stairs = stairs or []
+    doors = doors or []
     xs0 = min(w[0] - w[3] / 2 for w in walls); xs1 = max(w[0] + w[3] / 2 for w in walls)
     ys0 = min(w[1] - w[4] / 2 for w in walls); ys1 = max(w[1] + w[4] / 2 for w in walls)
     pad = RES * 2
@@ -128,9 +154,16 @@ def flood_rooms(walls, stairs=None):
                     if 0 <= a < nx and 0 <= b < ny and enclosed[a, b] and not seen[a, b]:
                         seen[a, b] = True; st.append((a, b))
             area = len(comp) * cell_area
-            if area < MIN_AREA or area > MAX_AREA_ABS or area > plan_area * MAX_AREA_FRAC: continue
+            if area > MAX_AREA_ABS or area > plan_area * MAX_AREA_FRAC: continue
             wx0 = xs0 + mni * RES; wx1 = xs0 + (mxi + 1) * RES
             wy0 = ys0 + mnj * RES; wy1 = ys0 + (mxj + 1) * RES
+            door_rescued = False
+            if area < MIN_AREA:
+                # §DOOR-RESCUE: below MIN_AREA, only a door-adjacent pocket in the small-room band
+                # survives — everything else this small is a wall-joint/cavity artefact, dropped.
+                if area < DOOR_RESCUE_MIN_AREA or not _door_adjacent(wx0, wy0, wx1, wy1, doors):
+                    continue
+                door_rescued = True
             # §STAIR-EXCLUDE: a stair/ramp footprint covering this pocket → it's a circulation
             # shaft, not a room. Drop it (the lens was showing staircases as rooms).
             sf = _stair_overlap_frac(wx0, wy0, wx1, wy1, stairs)
@@ -138,7 +171,8 @@ def flood_rooms(walls, stairs=None):
                 print(f"    skip stair-shaft pocket area={round(area)} stair_overlap={sf:.0%}"); continue
             rooms.append({
                 "cx": (wx0 + wx1) / 2, "cy": (wy0 + wy1) / 2, "cz": cz,
-                "sx": wx1 - wx0, "sy": wy1 - wy0, "sz": max(bz, 2.0), "area": area})
+                "sx": wx1 - wx0, "sy": wy1 - wy0, "sz": max(bz, 2.0), "area": area,
+                "door_rescued": door_rescued})
     return rooms
 
 def main():
@@ -155,26 +189,30 @@ def main():
         pass
     by = storey_walls(c)
     stairs_by = storey_stairs(c)
+    doors_by = storey_doors(c)
     # §STAIR-EXCLUDE: stair storey is often 'Unknown'/unassigned in the extract, and a stair is a
     # CONTINUOUS vertical shaft anyway — so test every room pocket against the UNION of all stair
     # footprints by XY (not per-storey). A staircase at an XY is circulation on whatever floor it cuts.
     all_stairs = [s for lst in stairs_by.values() for s in lst]
-    total = 0; allrooms = []; st_z = {}
+    total = 0; door_rescued_total = 0; allrooms = []; st_z = {}
     for st in sorted(by):
         ws = by[st]
         if len(ws) < 3:
             print(f"  storey {st!r}: walls={len(ws)} (too few — skip)"); continue
-        rooms = flood_rooms(ws, all_stairs)
+        rooms = flood_rooms(ws, all_stairs, doors_by.get(st, []))
         total += len(rooms)
+        rescued = sum(1 for r in rooms if r.get('door_rescued'))
+        door_rescued_total += rescued
         st_z[st] = sum(w[2] for w in ws) / len(ws)  # storey z = mean wall centre-z
-        print(f"  storey {st!r}: walls={len(ws)} → rooms={len(rooms)}  areas={[round(r['area']) for r in rooms]}")
+        print(f"  storey {st!r}: walls={len(ws)} doors={len(doors_by.get(st, []))} → rooms={len(rooms)} "
+              f"(door_rescued={rescued})  areas={[round(r['area']) for r in rooms]}")
         for k, r in enumerate(rooms):
             r["storey"] = st; r["guid"] = f"RM_{st}_{k+1}".replace(" ", "_")
             # §APPROX: '≈' marks the room as compiled/approximate in the lens label.
             # parent_guid → a compiled storey row (created below) so the Room lens groups per floor.
             r["name"] = f"≈ {st} R{k+1}"; r["parent"] = st_guid.get(st) or ("STC_" + st).replace(" ", "_")
             allrooms.append(r)
-    print(f"TOTAL compiled rooms = {total}")
+    print(f"TOTAL compiled rooms = {total} (door_rescued={door_rescued_total})")
     if not write:
         print("(dry run — pass --write to inject)"); return
     # ensure spatial_structure has bbox columns
@@ -203,9 +241,13 @@ def main():
     # remove any prior compiled rooms (idempotent)
     c.execute("DELETE FROM spatial_structure WHERE type='IfcSpace' AND guid LIKE 'RM_%'")
     for r in allrooms:
+        # predefined_type distinguishes wall-enclosure rooms from §DOOR-RESCUE small rooms (toilets/
+        # closets/utility) for traceability — object_type stays 'COMPILED' either way (the tag
+        # spacesOf()'s exclusion filter and every witness's tag-purity check actually key on).
         c.execute("INSERT INTO spatial_structure (guid,type,name,parent_guid,object_type,predefined_type,"
                   "center_x,center_y,center_z,size_x,size_y,size_z) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                  (r["guid"], "IfcSpace", r["name"], r["parent"], "COMPILED", "INTERNAL",
+                  (r["guid"], "IfcSpace", r["name"], r["parent"], "COMPILED",
+                   "INTERNAL_SMALL" if r.get("door_rescued") else "INTERNAL",
                    r["cx"], r["cy"], r["cz"], r["sx"], r["sy"], r["sz"]))
     # rel_contained_in_space: elements whose XY centre falls inside a room (compiled)
     if not c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='rel_contained_in_space'").fetchall():

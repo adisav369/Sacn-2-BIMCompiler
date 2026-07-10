@@ -53,7 +53,8 @@ keeps them out of placement, same as HHS's 14), but the record was factually wro
 |---|---|---|
 | Terminal | 43 | **ALL synthetic** (`object_type=COMPILED`, `≈`-named) — never real, corrected above |
 | Duplex | 0 on `main`; **20** on unmerged branch `fable/modeller-lod400-livewire` @ `2821b8e` | real, habitability-filtered (Task 5 done — R301 Roof stripped) |
-| SampleCastle, SampleHouse, Clinic, Garage, HHS, Hospital | 0 | no `spatial_structure` table |
+| SampleHouse | 0 on `main`; **3** on unmerged branch `fable/modeller-lod400-livewire` @ `06b6605` | real, habitability-filtered (Task 6 done — "4 - Roof" stripped) |
+| SampleCastle, Clinic, Garage, HHS, Hospital | 0 | no `spatial_structure` table |
 
 **Source IFCs on disk (`internal/sources/`) — note: the ARC is a DERIVED artifact of IFC metadata, so
 knowing the path alone fixes nothing; it only matters if it turns up an EXTRACTION bug (source has real
@@ -127,11 +128,26 @@ where noted):**
   as one assignment, not sequence them as two.
 
 ### Task 2 — Wire `compile_rooms.py` into extraction/import as an automatic step (tagged `≈`, display-only)
-**Status: NOT STARTED.** Currently a manual script (`compile_rooms.py <db> --write`), never called from any
-build/embed/import path (confirmed via grep this session — zero automatic callers). Needs wiring into
-whichever step runs `extractIFC2DB.js` (both the embed/"ready-made" build step for our own residents, and
-whatever live path handles a user's IFC import) so it runs automatically whenever a source IFC has no real
-`IfcSpace`.
+**Status: DATA-EFFECT DONE 2026-07-10 (Sonnet), AUTOMATION still NOT STARTED.** Ran
+`compile_rooms.py --write` manually (a one-time repair, same treatment level as Tasks 1/6's manual ports)
+against the 5 shipped residents that had ZERO `spatial_structure` at all: SampleCastle (25), HHS (2),
+Clinic (113), Garage (5), Hospital (142) — each compiled from that building's OWN real wall/door geometry
+already in its `elements_meta`/`element_transforms` (deterministic flood-fill, not invented). Combined with
+Duplex (20 real) + SampleHouse (3 real) + Terminal (43 synthetic, pre-existing), **all 8 shipped
+`*_ARC.db` now carry room data — §1's "every ARC, always" bar is met for the current data.** Witness
+`witness_room_injection_all8.js` (W-ROOM-INJECT-ALL8) 32/32: coverage, tag-purity (no partial RM_/≈/COMPILED
+tagging on any of the 5), zero elements_meta guid collisions, and — the one that matters most — the REAL
+`spacesOf()` runtime filter returns 0 placement-eligible rows for all 5 synthetic-only buildings (proves
+display-only rooms can never leak into schedule placement). Shipped bim-ootb
+`fable/modeller-lod400-livewire` @ `a8955f2` (pushed, `rev-list origin..HEAD`=0).
+**Still NOT DONE — this task's own automation half:** wiring `compile_rooms.py` as a step INSIDE
+`extractIFC2DB.js` (or whichever path runs it) so a FUTURE re-extraction or a user's live IFC import gets
+this for free, instead of needing another manual repair pass like this one. Currently a manual script
+(`compile_rooms.py <db> --write`), never called from any build/embed/import path (confirmed via grep —
+zero automatic callers, still true after this session's manual run). This is the regression risk Task 4
+already named for the strip cascade, generalized: without automation, ANY future re-embed (the exact kind
+that caused Task 6's SampleHouse gap, via `6068fab`'s finalize_all_8.js never carrying `spatial_structure`
+forward) can silently wipe this same data again.
 
 ### Task 3 — New Modeller Outliner "Rooms" category (the display/wow-factor surface)
 **Status: NOT STARTED, NOT YET SPECCED.** No existing room display anywhere in the Modeller (checked —
@@ -238,15 +254,39 @@ were executed as one assignment, ✅ DONE 2026-07-10 (see §6 RESULTS) — that 
 directive — no reason logged, just apply it).** Tasks 2–4 remain NOT STARTED. New:
 
 ### Task 6 — SampleHouse extraction bug: 3 real, usable rooms exist in source but never reached the ARC
-**Status: NOT STARTED. Assigned to Sonnet.**
-Found this session (§2): `internal/sources/Ifc4_SampleHouse.ifc` contains 4 real `IFCSPACE` entities
-(`Living room`, `Bedroom`, `Entrance hall`, `Roof`) but shipped `SampleHouse_ARC.db` has 0 rows in
-`spatial_structure` — the extraction pipeline dropped them somewhere between source and shipped ARC. This
-is an EXTRACTION gap, not a source-data gap (unlike Clinic/Garage/Hospital/HHS, which have no source IFC
-in this checkout to check either way). Scope: find where `extractIFC2DB.js` (or whichever step runs on
-this source) fails to carry `IfcSpace` through to `spatial_structure` for this specific file, fix it, run
-Task 5's `spaceHabitable()` classifier on the result (expect Roof excluded, 3 kept), re-embed. Small blast
-radius — one building, 4 rows.
+**Status: ✅ DONE 2026-07-10 (Sonnet). Witness: W-ROOM-HAB-SH 6/6, bim-ootb
+`fable/modeller-lod400-livewire` @ `06b6605` (parent `2821b8e`, pushed, `rev-list origin..HEAD`=0).**
+
+**Root cause — checked directly before writing any code, per this task's own instruction:** NOT the same
+cause as Task 4's `b93ca13` cascade. Direct diff of `modeller/SampleHouse_extracted.db` across `b93ca13`
+(`git show b93ca13^:...` vs `git show b93ca13:...`) shows `spatial_structure` UNCHANGED — 7 rows (1
+`IfcBuilding` + 2 `IfcBuildingStorey` + 4 `IfcSpace`) both before and after that commit. The strip did not
+touch rooms for SampleHouse at all. The actual cause is the LATER commit `6068fab` ("embed 8 ARC-only
+buildings + shared mesh.db resident registry", one day after `b93ca13`) — its consolidation pipeline
+(`embed8_scripts/finalize_all_8.js`, fed by an intermediate `_all.db` merge step that ran only in `/tmp`
+and was never preserved, per `74c27b371`'s own commit note) produced every shipped `*_ARC.db` WITHOUT a
+`spatial_structure` table at all — confirmed a general embed-pipeline gap, not SampleHouse-specific:
+`main`'s `Duplex_ARC.db` has the identical 0-row gap (matching this doc's own §2 table, pre-Task-1). So
+Task 4 (hardening the strip cascade) would NOT have fixed this — the table survived that cascade fine and
+was only lost one commit later, in the ARC.db schema the embed step writes.
+
+**Fix:** ported `spatial_structure` verbatim from `SampleHouse_extracted.db` (source is intact, verified
+above) into the shipped `SampleHouse_ARC.db` (had none), ran Task 5's `spaceHabitable()` against the known-4
+— `4 - Roof` excluded (`label:ROOF`), 3 kept (`1 - Living room`, `2 - Bedroom`, `3 - Entrance hall`) —
+stripped the Roof space by classifier verdict (the `IfcBuildingStorey` named "Roof" survives, same
+convention as Duplex's R301). Notable, reported honestly rather than assumed: unlike Duplex, this
+building's independent zband geometry signal does NOT also fire for the Roof space — SampleHouse_ARC.db's
+own real ARC roof members/plates reach z1=4.50, taller than the Roof space's z1=3.50 — so the label signal
+alone is what excludes it here. `witness_room_hab_samplehouse.js` (W-ROOM-HAB-SH): PORT 0→7, H1
+precision/recall (3 ok + exactly 1 excluded), H2 falsifier (reports the zband asymmetry above, not forced
+to match Duplex's pattern), H3 guid-overlap, H4 coord-overlap, H5 strip (3 IfcSpace/0 Roof/2 storeys+1
+building) — 6/6, logs read at `/tmp/wt-fable-livewire/logs/w_room_hab_sh_proof.log` and
+`w_room_hab_sh_strip.log`.
+
+**Not done (explicitly out of this task's small scope):** re-running the full W-DW-LIVEWIRE browser suite
+to prove `dwWalk(..., {schedule:true})` engages placement on SampleHouse specifically — the task's stated
+witness bar was the before/after room counts, which is met; live-engagement proof would need the puppeteer
+harness and wasn't asked for here.
 
 ## §6 — Execution spec: Task 1 + Task 5 as one assignment (2026-07-10, Fable session — spec-first)
 
