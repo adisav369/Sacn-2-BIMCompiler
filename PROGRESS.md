@@ -31,18 +31,32 @@
   (PR #717, unmerged). Bug A (hostBind) + items 1-2 (occupancy() fix, VENT_WINDOW_SHIM 415→498mm) all fixed+witnessed
   (W-OCC-TRUE-MIDPOINT 17/17, 0 regressions). §TE-ARC-DATUM DONE 2026-07-11: bim-compiler merged (`b202eb44b`,
   PR #40), bim-ootb ported+verified+pushed (PR #726, open, not merged — heals live Terminal collapse once landed).
-- `prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md` 2026-07-10/11 — Tasks 1+5 DONE (habitability classifier,
-  Duplex 20 real rooms, bim-ootb `fable/modeller-lod400-livewire`@`2821b8e`, unmerged). Task 6 (SampleHouse
-  extraction bug, 3 usable rooms) assigned Sonnet, NOT STARTED. §2's Terminal-43-rooms claim corrected (was
-  wrongly "real," is 100% synthetic). Tasks 2-4 NOT STARTED. 4 more bim-ootb branches (grid-tilt-guard,
-  dw-rot-units, dwprobe-dedup, terminal-oracle-source) MANAGER-verified+pushed, PRs #722-725 open, unmerged.
+  §LIVEWIRE CLOSED 2026-07-11 (Fable, MANAGER-verified): stale Round-1 Watchdog challenge re-answered clean-room
+  — W-SCHED-MINE 7/7 + W-DX-WALKBACK-RSGT 14/14 on committed state (bim-compiler `e0388e66d`, docs-only, 1
+  commit unpushed by design/LFS block). bim-ootb `mesh.db` 26 device-mesh payloads already pushed 2026-07-10
+  (`670bf0f`, ancestor of current HEAD `790b069`, 0 unpushed) — predates today's hard block, nothing new to push.
+  `component_library.db` confirmed zero live Modeller/Viewer fetch path (build-time mining source only, by design).
+- `prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md` 2026-07-10/11 — Tasks 1/5/6 DONE (habitability
+  classifier + Duplex 20 real rooms + SampleHouse 3 real rooms, bim-ootb `fable/modeller-lod400-livewire`
+  @`790b069`, unmerged). Task 2 DATA-EFFECT DONE (all 8 residents carry room data on that branch),
+  AUTOMATION half still open. **Task 4 DONE 2026-07-11 (Sonnet)** — root cause was `finalize_all_8.js`
+  (the embed-8 pipeline), NOT the `b93ca13` strip Task 4 originally named; script hardened with an
+  explicit spatial_structure carry-forward + regression gate (W-SPATIAL-CARRY 9/9), replacing the need
+  for Fable's per-building manual-port workaround on future re-embeds. Script+witness committed, pushed
+  (non-LFS). Actually re-running the pipeline against bim-ootb `main` + pushing regenerated `*_ARC.db`
+  still LFS-blocked until 2026-08-01. Task 3 NOT STARTED (superseded by ROOM_WALKER_JS_PORT.md). 4 more
+  bim-ootb branches (grid-tilt-guard, dw-rot-units, dwprobe-dedup, terminal-oracle-source)
+  MANAGER-verified+pushed, PRs #722-725 open, unmerged.
 - `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` 2026-07-11 — NEW, all 5 tasks NOT STARTED (JS port of
   `compile_rooms.py`, explicit-trigger "Room Walker" Outliner action). Progress report pending from user.
 - ⛔ **GitHub LFS bandwidth quota EXHAUSTED (2026-07-11), resets 2026-08-01.** See `CLAUDE.md` §LFS QUOTA
   EXHAUSTED — any push may hang regardless of LFS content; don't retry blindly, don't create fresh worktrees
   for uncached branches. Cleaned up: duplicate `~/Projects/bim-ootb` clone removed, 25 stale worktrees pruned.
-- Two live Viewer UI bugs found, unfixed: Find panel renders above browser top border (root cause diagnosed,
-  not fixed — `deploy/dev/navigate_find.js`); mobile pill flyouts don't open (prompt handed off, not started).
+- One live Viewer UI bug left, unfixed: Find panel renders above browser top border (root cause diagnosed,
+  not fixed — `deploy/dev/navigate_find.js`, uncommitted local fix in progress this session, unverified).
+  Mobile pill flyouts (Navigate/Inspect/Camera-View) fixed — bim-ootb PR #727 MERGED 2026-07-10, CI green
+  (fast-checks+e2e-tests), MANAGER-verified against real witness log (mobile 390px: left 928→148, all 3
+  drawers on-screen; desktop unaffected; regression witness also passed).
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch** (bim-ootb PR #659 shipped item 4b) — items 1/2/0 (CCTV double-click capture, camera-POV

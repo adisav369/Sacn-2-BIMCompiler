@@ -245,10 +245,72 @@ already used for STR and walked-fixtures categories (`bom_tree_outliner.js` / `d
 rooms (real or `≈`-tagged) exist in the open building's `spatial_structure` table.
 
 ### Task 4 — Carry real `IfcSpace`/`spatial_structure` through the ARC-only strip step
-**Status: NOT STARTED.** The strip (`b93ca13`, "cascade-deleted to discipline='ARC' only") never explicitly
-targeted rooms for removal, but the loss is a real, live regression path for any FUTURE re-strip or
-re-embed — `spatial_structure` needs to be an explicit survivor of that cascade, same as any other ARC
-table, or this whole rule regresses again the next time a resident gets re-baked.
+**Status: ✅ DONE 2026-07-11 (Sonnet). Witness: W-SPATIAL-CARRY 9/9 checks across 6 scenarios.**
+
+**Reframed before coding, per Task 6's own finding (checked, not re-guessed):** the original brief named
+`b93ca13` (the discipline strip) as the regression source — Task 6 already disproved that directly
+(`spatial_structure` was UNCHANGED across `b93ca13`, 7 rows before/after for SampleHouse). The real,
+confirmed regression path is one commit later: `6068fab` ("embed 8 ARC-only buildings + shared mesh.db
+registry"), specifically its consolidation pipeline `prompts/Modeller/DISC_Walker/embed8_scripts/
+finalize_all_8.js`. That script's per-building meta-split (`SELECT name, sql FROM sqlite_master WHERE
+type='table' AND name != 'component_geometries'...`) copies whatever tables exist in the fresh source —
+generic, not a table allowlist — so it never explicitly DROPS `spatial_structure`; it silently SHIPS
+EMPTY whenever the fresh source (built from an ephemeral `/tmp` merge step, `_all.db`, never preserved —
+confirmed gone, not on any branch) happens to lack the table. This is confirmed the actual mechanism
+for 7 of 8 buildings' room-data loss (only Duplex/Terminal survived, both non-`_all.db` special cases).
+Fable's `fable/modeller-lod400-livewire` branch worked around this per-building (Task 1/2/6, manual
+`--write`/port passes into the shipped `_ARC.db` after the fact) — real, verified data, but the pipeline
+itself stays fragile: the next re-embed silently regresses it again exactly the same way, same as it did
+the first time (2026-07-11 user directive: fix the pipeline, don't keep re-patching one building at a time).
+
+**Fix — `finalize_all_8.js` hardened, not the ephemeral merge step (that source is unrecoverable this
+session; hardening the one script that DOES run for every future re-embed is the tractable, in-scope
+fix):**
+- `hasTable(db, name)` / `countRows(db, table)` helpers (schema-safe — sql.js throws on `SELECT` against
+  a missing table, so a presence check must precede any count).
+- `carrySpatialStructureForward(freshDb, metaDb, priorArcPath, SQL)`: if the fresh source's
+  `spatial_structure` is empty (table missing OR 0 rows), and a prior shipped `{Name}_ARC.db` exists at
+  `priorArcPath` with rows, copies that table's DDL + full row set verbatim into `metaDb` — schema-driven,
+  not a hand-typed column list, so it can't drift from whichever columns the source table actually has.
+  If the fresh source already has rows, fresh wins (assumed newer/more authoritative) and carry-forward is
+  a no-op. Every building logs `§SPATIAL-STRUCTURE-CARRY building=X fresh_rows=N final_rows=M source=...`
+  — the loud, explicit survivor-check this task's brief asked for, replacing the prior silent behavior.
+- Each `buildings[]` entry (+ Terminal's special-cased load) now carries a `priorArc: HOME +
+  '/{Name}_ARC.db'` fallback — "whatever this working tree's currently-shipped resident already has" is
+  the correct floor for a re-embed to never regress below, regardless of which branch/session produced it.
+- Final regression gate before any file is written: any building whose `spatial_structure` ends at 0 rows
+  despite EITHER source having had rows available is logged `§SPATIAL-STRUCTURE-REGRESSION` and the run
+  aborts non-zero — a genuine data-availability gap (a building nobody has ever produced room data for)
+  still logs 0 and proceeds, since that's not a regression, just an unmet Task 2 prerequisite.
+- `module.exports` + `require.main` guard added so the new functions are unit-witnessable without needing
+  the vanished `/tmp` scratch inputs to run the full pipeline end-to-end.
+
+**Witness `witness_spatial_structure_carry.js` (W-SPATIAL-CARRY, node-side, §-log-first), reproducing the
+exact historical failure and proving the fix, run against REAL data
+(`/tmp/wt-fable-livewire`'s shipped `_ARC.db` files — read-only, no LFS fetch, already-local worktree):**
+W1 fresh-has-data → fresh wins, no carry, metaDb correctly untouched (21/21 — 2 checks). W2 reproduces
+`6068fab`'s exact Duplex regression shape (fresh source built with NO `spatial_structure` table at all,
+same as the real ephemeral `_all.db` must have been) → carried forward verbatim from real
+`wt-fable-livewire/modeller/Duplex_ARC.db`'s FULL `spatial_structure` table (25 rows — 21 `IfcSpace` +
+4 storeys, not the IfcSpace-only 21/20 count quoted elsewhere in this doc; carry-forward copies the whole
+table schema-driven, correctly including non-space rows) — 2 checks. W3 same for SampleHouse (Task 6's
+real post-strip case) → carried forward, 6 rows (3 kept `IfcSpace` + 2 storeys + 1 building, matches Task
+6's own H5 strip result exactly), guid-level content match against source, not just count — 2 checks.
+W4 neither source has data (legitimate gap, not a regression) → logs 0, no crash, no false-positive
+abort. W5 `priorArc` path undefined/unreadable → degrades to 0 gracefully, defensive. W6 the
+regression-gate itself, reproduced in miniature → a case where `carry()` reported data available but the
+write-time db disagrees (simulates drift/a future bug) → gate correctly fires, proving it isn't a no-op.
+9/9 checks, log read not inferred: `/tmp/claude-1000/-home-red1-bim-compiler/885d136b-04e3-4b17-8666-279c6b28f522/
+scratchpad/w_spatial_carry.log`.
+
+**Deliberately NOT done (out of this task's scope, named so it isn't mistaken for forgotten):** this
+hardens the SCRIPT so a FUTURE re-embed can't silently regress `spatial_structure` again — it does not,
+by itself, re-run the full embed-8 pipeline against bim-ootb `main` today (main itself still lacks the
+data on 6 of 8 buildings; only `fable/modeller-lod400-livewire` has it, per §2). Actually re-running
+`finalize_all_8.js` end-to-end and pushing regenerated `*_ARC.db`/`mesh.db` to bim-ootb needs the vanished
+`_all.db` merge step rebuilt too (a separate, larger task) AND is LFS-blocked until 2026-08-01 regardless
+(`CLAUDE.md` §LFS QUOTA EXHAUSTED — these files are LFS-tracked binaries). Committed here: the script fix
++ witness only, both non-LFS, safe to push now.
 
 ### Task 5 — Room RECOGNITION: real IfcSpace still needs a habitability filter before it's trusted
 **Status: ✅ DONE 2026-07-10 (Fable) — `spaceHabitable()` shared classifier in bim-ootb
