@@ -1,38 +1,66 @@
 # RESUME — disc_walker: area-scaled n_measured + envelope-bound placement (RouteWalker alignment)
 
-# ▶▶▶▶▶▶▶ ENTRY POINT (2026-07-10 EVENING, LATEST — supersedes every block below, including the §LIVEWIRE
-# one right under this). Full context in ONE read, no need to walk the rest of this 1900+ line file first.
+# ▶▶▶▶▶▶▶▶ ENTRY POINT (2026-07-10 NIGHT, LATEST — supersedes every block below). Full context in ONE read.
+# THE GOAL, stated plainly by the user: get the Modeller actually working — not "verify branches" as an end
+# in itself. See bim-compiler memory `project_modeller_vision_lock.md` for the product NORTH STAR this serves.
 #
-# **State: 6 branches built, independently re-verified (not trusted on report), and PUSHED. ZERO merged to
-# `origin/main` in either repo.** That's the actual next gate, not a code gap:
-# - bim-ootb `fable/modeller-lod400-livewire` @ `670bf0f` + bim-compiler `fable/meshdb-livewire` @ `d75d76e09`
-#   — schedule-walk DEFAULT-FLIP + LOD400 device meshes. Took 3 verification rounds to actually reproduce
-#   from a clean checkout — rounds 1-2's green claims leaned on an uncommitted scratch-worktree repair.
-# - bim-ootb `fix/grid-tilt-guard` @ `c485560` — PR #720/#721's rotation guard extended to X/Y tilt AND the
-#   Modeller's real second plan axis (`'y'`, not `'z'` — Z-up vs the guards' original Y-up assumption).
-# - bim-ootb `fix/dw-rot-units` @ `2a02de8` — legacy disc-walk commit path wrote yaw in radians into a
-#   degrees field (confirmed live-visible, 88° error on a real SampleHouse fixture, before fixing).
-# - bim-ootb `fable/dwprobe-dedup` @ `52fea0e` — `__dwPixelProbe` was defined twice in `modeller.html`
-#   (silently shadowed), + a witness crash-on-uncaught-rejection fix, + a NODE_PATH env dependency removed.
-# - bim-ootb `fix/terminal-oracle-source` @ `c1b4f9e` — 2 witnesses fetched the wrong file for their real-MEP
-#   oracle (`Terminal_ARC.db`, 0 MEP rows since the deliberate embed-8 ARC-only strip) instead of the file
-#   their OWN header comments already named (`Terminal_meta.db`, untouched, real data) — stale path, not a
-#   data gap. 5/3→7/1, 9/1→10/10.
+# **MERGED TO MAIN TODAY (the room-mode core is now live, not just verified-on-a-branch):**
+# - bim-ootb `main` @ `29519e4` ← `fable/modeller-lod400-livewire` (schedule-walk DEFAULT-FLIP + LOD400 meshes)
+# - bim-compiler `master` @ `06fa5613e` ← `fable/meshdb-livewire` (same lane's engine/rules side)
+# Both independently re-verified 3 rounds deep before merge (rounds 1-2's green claims leaned on an
+# uncommitted scratch-worktree repair — see the marathon memory for the full "verify from a genuinely fresh
+# worktree" lesson). Merge itself was clean, no conflicts, confirmed cheap before landing.
 #
-# **SampleCastle rooms: CLOSED, not a gap** — see `SAMPLECASTLE_REAL_ROOMS_RECONCILE.md`'s own closure note.
-# disc_walker needs zero room/`IfcSpace` data on SC; runs clean via `duplex_rules.db` + `substrate()`'s
-# direct storey derivation from `elements_meta`. The whole prior investigation was the wrong branch of the
-# problem. If the live app fails on SC, suspect rules-file wiring (dwInit defaulting to `terminal_rules.db`),
-# not missing data.
+# **STILL UNMERGED, verified+pushed, no known blocker other than nobody's opened the PR yet:**
+# `fix/grid-tilt-guard` @ `c485560` (rotation guard now covers X/Y tilt + the Modeller's real y-axis) ·
+# `fix/dw-rot-units` @ `2a02de8` (radians-in-degrees fixture-rotation bug, confirmed live-visible before fix) ·
+# `fable/dwprobe-dedup` @ `52fea0e` (3 commits: probe dedup, crash-on-uncaught-rejection fix, NODE_PATH removal) ·
+# `fix/terminal-oracle-source` @ `c1b4f9e` (2 witnesses were reading the wrong oracle file, not a data gap).
 #
-# **Genuinely still open:** Terminal PLB disc-walk untested (ELEC/FP/ACMV/STR all graded, PLB wasn't — in
-# progress); old signed op-log rows still carry pre-fix wrong-radians values (unsafe to blind-migrate, needs
-# per-row re-derivation from source data); `cat[0]` legacy-commit fallback for hash-less placements; W5
-# ratchet toward RSS-exact; pillar 4's space-scoped UI trigger (piece 3, never bounded, needs a real Sonnet
-# planning pass before anyone picks it up).
+# **NEW, SIGNIFICANT, NOT YET FIXED — §TE-ARC-DATUM:** every disc-walk number quoted all session for
+# Terminal (ELEC/FP/ACMV/PLB/STR) was graded against the WRONG substrate — an in-memory copy of
+# `deploy/buildings/Terminal_extracted.db`, not the actual shipped `~/bim-ootb/modeller/Terminal_ARC.db`.
+# Walking the REAL shipped file collapses every discipline 2-20× (e.g. ELEC 744→390, PLB 888→252) because
+# the two files sit ~15m apart on the z-axis (`Terminal_ARC.db` spans −15.66…27.09, the extraction spans
+# −1.01…42.10) — rule z-bands were mined in the extraction's frame and don't line up with the shipped file's
+# cells. Independently reproduced exactly, including the collapse numbers from a from-scratch probe script.
+# **This bug is ALREADY LIVE on `origin/main` today** (embed-8 shipped the shifted `Terminal_ARC.db` earlier)
+# — merging the room-mode branches above did NOT introduce or worsen it. Full diagnosis + 3-option fix
+# proposal in this file's own `§TE-ARC-DATUM` section (added by the same investigation) — not started.
 #
-# Full detail + the "verify from a genuinely fresh worktree" lesson (learned 3 times this session): bim-compiler
-# memory `project_disc_walker_grid_guard_marathon_2026-07-10.md`.
+# **Screenshot/visual-correctness check: RE-ATTEMPTED, mostly SUCCEEDED.** Local-only branch
+# `fable/combined-guide-shots` (worktree `/tmp/wt-combined-guide`, still not pushed) went through 2 rounds —
+# the first (found by proactively checking git activity, never explicitly reported) produced broken shots
+# (washed-out/zoomed wrong, camera-inside-a-dome); a SECOND, later pass (properly reported, capture script
+# committed as `modeller/tests/guide_shots_combined.js`) fixed this. Both final PNGs independently reviewed
+# (real pixel bytes, not the caption): `duplex_elec_lod400_walk.png` shows a real, legible LOD400 ceiling-fan
+# mesh (visible blades/canopy/rod, not a box) — one caveat, only ONE fixture is clearly visible, not the
+# "two distinct fixtures" claimed, worth a note not a blocker. `samplehouse_elec_rotation_fix.png` (plan
+# view) shows fixtures elongated flush along the wall's diagonal run, consistent with the rot-units fix
+# (pre-fix they'd sit crossways) — credible though not pixel-measured. **Net: visual correctness is real and
+# mostly confirmed for these 2 cases, not the earlier "confirmed FAILED" verdict** — that verdict was based
+# on the first round's now-superseded broken attempt at the same file path; don't cite it as still current.
+# Regression across all 4 merged branches in this worktree: clean (12/12, 6/6, 29/29, 6/6, 34/34, 21/21, 8/8).
+# New, separate, named-not-fixed finding from this pass: `xrayReveal` in `modeller.html` only glasses a
+# group's DIRECT mesh children, so ARC-fetch residents report `glass=0` — fixtures glow but structure never
+# actually goes glass; the capture script worked around it with a full-traverse pass, the app itself has the gap.
+#
+# **SampleCastle rooms: CLOSED, not a gap.** disc_walker needs zero room/`IfcSpace` data on SC — runs clean
+# via `duplex_rules.db` + `substrate()`'s direct storey derivation from `elements_meta`. See
+# `SAMPLECASTLE_REAL_ROOMS_RECONCILE.md`'s own closure note. **BUT: a separate, NEW "room injection feature"
+# is being spec'd right now** (a different Sonnet session, direct with the user, spec not yet delivered as of
+# this writing) — do not assume this is the same closed thread; read whatever spec doc that session produces
+# before touching anything room-related.
+#
+# **Genuinely still open, smaller:** Terminal PLB disc-walk now graded (`witness_terminal_nospaces.js` T6/T7,
+# 7/7 — but see §TE-ARC-DATUM above, it's graded on the wrong substrate too); old signed op-log rows still
+# carry pre-fix wrong-radians values (unsafe to blind-migrate); `cat[0]` legacy-commit fallback for hash-less
+# placements; W5 ratchet toward RSS-exact; pillar 4's space-scoped UI trigger (piece 3, never bounded).
+#
+# Full detail, exact commit chain, and the "verify from a genuinely fresh worktree" lesson (learned 3 times
+# this session): bim-compiler memory `project_disc_walker_grid_guard_marathon_2026-07-10.md`. Management/
+# collaboration style for whoever picks this up: bim-compiler memory `feedback_act_autonomously_dont_ask.md`
+# (consolidated 2026-07-10 — read it once, it's the definitive version).
 
 # ▶▶▶▶▶▶ ENTRY POINT (2026-07-10 PM, LATEST — Fable5 worker closeout; read this FIRST, supersedes every
 # block below as the starting point). GEOMETRY-HELL LANE: DELIVERED ON BRANCH, AWAITING WATCHDOG REVIEW +
