@@ -163,15 +163,46 @@ fix: a real small room always has a door, a wall cavity never does.
   (102 rows); HHS/Hospital/Garage/SampleCastle have zero MEP fixture data at all (already stripped by the
   ARC-only discipline strip, `b93ca13`). Not usable as a general signal — door adjacency is the one clue
   that survives ARC-only extraction on every building.
-- Final counts (bim-compiler `scripts/compile_rooms.py` @ `0cc6f8e3a`): SampleCastle 25→53, HHS 2→6,
-  Clinic 113→195, Hospital 142→201, Garage unchanged at 5 (no door-adjacent small pockets found there).
+- **Third pass — user found HHS's doors/walls are German-named (Revit export), e.g. `Türelement
+  2-flg - Drehflügel - Glas` (2-leaf glazed swing-door) and `WC Trennwand 5.0` (WC partition wall,
+  50mm) — real evidence the building genuinely has a restroom, checked directly. But the specific
+  WC block (walls at x 9.8-10.5, y 35.5-37.4) turned out NOT to be among the compiled rooms even
+  after door-rescue: instrumenting the flood-fill grid cell-by-cell showed the ENTIRE region comes
+  back fully wall-blocked pre-flood — the individual stall gaps (~0.9-1.0m between 50mm partitions)
+  are real but too narrow for `SEAL=2`'s 0.4m dilation to leave any free cell for the flood-fill to
+  find, let alone enclose. Tested `SEAL=1` (0.2m) as the fix, per user's chosen path (re-verify all
+  5, no regression before shipping) — **rejected on direct evidence**: it did NOT recover HHS's WC
+  (still 6 rooms — the WC block's own walls separating it from the general office floor, not just
+  its internal stall partitions, are simply absent from this extraction; a data-completeness gap,
+  not a dilation-tuning one) AND it fragmented real rooms elsewhere into spurious 1-2 m² splinters
+  (Hospital 142→253 mostly noise, SampleCastle inflated too) — reverted to `SEAL=2`, unchanged.
+  HHS's WC gap stays open; the honest cause is now on record instead of papered over.
+- **Fourth pass — user asked whether doors have standard real-world dimensions usable as a "smell
+  test."** Checked door-width distributions across all 5 buildings against known hinged-door
+  conventions (~0.7-1.1m single leaf, ~1.2-2.7m double leaf/wide entrance) — all 4 buildings with
+  door data are clean and consistent with this range, EXCEPT SampleCastle: 28 `IfcDoor` rows at
+  0.5m, all named `liftdeur` (Dutch: elevator door) — real, correctly-classified doors, but they
+  lead to a lift shaft, not a room. Verified directly: 2 of them were rescuing actual elevator-shaft
+  fragments as fake compiled "rooms." Same shape of problem as the existing §STAIR-EXCLUDE pattern
+  — fixed with a maintained, multi-language door-name exclusion list (`liftdeur/lift/elevator/
+  aufzug/fahrstuhl/hoist`), not a width cutoff (a lift door's width isn't reliably distinct from a
+  narrow single-leaf door's). SampleCastle 53→51 (the 2 fakes removed); other 4 buildings unchanged.
+- Final counts (bim-compiler `scripts/compile_rooms.py` @ `520829907`): SampleCastle 25→**51**,
+  HHS 2→**6**, Clinic 113→**195**, Hospital 142→**201**, Garage unchanged at 5.
 
-Witness `witness_room_injection_all8.js` (W-ROOM-INJECT-ALL8) 32/32 (rerun after both passes): coverage,
+Witness `witness_room_injection_all8.js` (W-ROOM-INJECT-ALL8) 32/32 (rerun after every pass): coverage,
 tag-purity (no partial RM_/≈/COMPILED tagging on any of the 5), zero `elements_meta` guid collisions, and
 — the one that matters most — the REAL `spacesOf()` runtime filter returns 0 placement-eligible rows for
 all 5 synthetic-only buildings (proves display-only rooms, door-rescued or not, can never leak into
-schedule placement). Shipped bim-ootb `fable/modeller-lod400-livewire` @ `18fc9bc` (parent `a8955f2`,
-pushed, `rev-list origin..HEAD`=0) + bim-compiler `fable/meshdb-livewire` @ `0cc6f8e3a` (pushed).
+schedule placement). Shipped bim-ootb `fable/modeller-lod400-livewire` @ `6880a3c` (parent `a8955f2`,
+pushed, `rev-list origin..HEAD`=0) + bim-compiler `fable/meshdb-livewire` @ `520829907` (pushed).
+
+**Known open gap, on record (not silently dropped):** HHS's WC/restroom block is still not compiled
+as a room — its stall partitions are real (`WC Trennwand`) but the block's own enclosing walls aren't
+in this extraction, and the stall gaps are narrower than the flood-fill's grid resolution can resolve
+even at minimum safe dilation. A real fix needs either a finer grid `RES` (cost: much slower flood-fill
+on large floors) or a different technique entirely (e.g. door-density-driven space partitioning) — not
+attempted here; flagged as a named follow-up, not silently left looking "done."
 
 **Still NOT DONE — this task's own automation half:** wiring `compile_rooms.py` as a step INSIDE
 `extractIFC2DB.js` (or whichever path runs it) so a FUTURE re-extraction or a user's live IFC import gets
