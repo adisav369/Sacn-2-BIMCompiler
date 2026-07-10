@@ -512,6 +512,22 @@
 # `fable/modeller-lod400-livewire` → `origin` (`670bf0f`, LFS mesh.db 120MB uploaded). Neither merged to
 # main/master — branches only, PRs not opened, per convention (worker commits, Watchdog pushes).
 
+# ✅ RE-VERIFY (2026-07-11, in response to a re-challenge quoting the ROUND-1 correction — that challenge
+# was STALE: the three fix commits (61dd84963 → 997acdda8 → f02121904) are ancestors of branch HEAD
+# f37b52afa, already pushed at ad50af603 per ROUND 3. The literal "commit the complib" remains Gate-1-hook
+# blocked by design; the committed artifact is the generators. Re-proven anyway, clean-room, this date:
+# reused /tmp/wt-livewire-verify @ f02121904 (worktree-hygiene reuse, no new LFS fetch — pristine complib
+# blob 7e5df6e1 confirmed in local LFS cache), `git checkout -- library/component_library.db` → verified
+# genuinely pristine (ad_geometry_map table only, NO M_Product_Image, NO I_Geometry_Map), then ONLY
+# committed generators: seed_dangling_meshes.py 2/2 → restore_generative_meshes.py 14/14 (0 unresolved)
+# → rebuild_erp.sh incl. §SHIM-SEED 12/12 (stale gitignored disc_patterns.db moved aside per the script's
+# own refusal message). Witnesses, exit 0, tallies read from saved logs (session scratchpad):
+# **W-SCHED-MINE 7 PASS / 0 FAIL** (M2 LOD400-BIND 14/17 bind real mesh, 0 dangling, NULL-hash set =
+# exactly the known no-mesh REFUSE trio) · **W-DX-WALKBACK-RSGT 14 PASS / 0 FAIL, no crash** (139 fixtures
+# / 19 rooms, W5 ELEC gen=102 real=89 @2m 94%, PLB gen=18 real=16 @2m 94%, W7 collision 0/9591 pairs).
+# The claim holds against committed state. NOT pushed this session (LFS hard block 2026-07-11 — any push
+# may hang); this note is a local-only docs commit on the already-pushed branch.
+
 # ▶▶▶▶▶ ENTRY POINT (2026-07-10, superseded by the block above — kept for evidence trail). This
 # session (Sonnet) is closing out; the user is now iterating directly with a Fable5 session in their own
 # words and will paste Fable's results into a fresh session. **Read `prompts/WATCHDOG.md` for that fresh
