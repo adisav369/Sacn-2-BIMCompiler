@@ -130,12 +130,19 @@ Before ending, update PROGRESS.md with:
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
 
 ## ⛔ LFS QUOTA EXHAUSTED — HARD BLOCK, ALL LOCAL, NO EXCEPTIONS (2026-07-11)
-**GitHub confirmed the LFS bandwidth quota is now at 0 — not "approaching the cap," actually exhausted.**
+**GitHub confirmed the LFS bandwidth quota is now at 0 — not "approaching the cap," actually exhausted.
+Resets on the 1st of every month (user-confirmed) — next reset 2026-08-01.** Until that date (or an
+explicit user confirmation it topped up early), treat ALL git push/fetch against `bim-ootb` and
+`bim-compiler` as at risk — **confirmed empirically 2026-07-11: a push whose diff touched ZERO LFS-tracked
+files still hung for 2+ minutes and never landed** (`bim-ootb` branch `fix/dw-datum-port` @ `4ff22c0` — the
+`git-lfs` pre-push hook appears to probe the LFS endpoint regardless of whether the push actually needs to
+upload anything, and that probe stalls against an exhausted quota). **So the rule is NOT "only pushes that
+touch LFS content are blocked" — it's "any push to either repo may hang until reset."** Don't retry a
+hung push repeatedly (each attempt risks re-triggering the same stall); if a push doesn't return within
+~30s, stop and report it rather than let it sit.
+
 This supersedes the softer "reduce usage" framing of the two sections below (still read them for the
-mechanism/cleanup already done — this section is the escalation on top). Any git operation that needs to
-push or fetch an LFS object against the remote will now fail or risk further billing exposure until the
-user confirms the quota has reset or been topped up — **do not assume, ask before any LFS-touching push/
-fetch.** Until then:
+mechanism/cleanup already done — this section is the escalation on top). Until reset:
 - **NEVER push a commit whose diff touches ANY already-LFS-tracked file's content** — not just new `.db`
   additions (already banned below), but ANY change to an existing tracked binary (a rules-DB update, a
   regenerated mesh/geo file, anything matching `.gitattributes`' `filter=lfs` patterns). If a task needs to
