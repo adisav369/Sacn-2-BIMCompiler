@@ -231,10 +231,22 @@ is a distinct, future, separately-scoped task — do not fold it into Task 5's M
 
 ## §5 — Assignment
 
-Task 5 (room recognition/habitability classification) is assigned to **Fable** (execution lane — per this
-project's model-allocation convention, Fable executes, Sonnet keeps the mastermind/memory-writing role).
-Tasks 1+5 were executed as one assignment and are ✅ DONE 2026-07-10 (see §6 RESULTS); Tasks 2–4 remain
-NOT STARTED as logged above.
+Task 5 (room recognition/habitability classification) WAS assigned to Fable (execution lane) and Tasks 1+5
+were executed as one assignment, ✅ DONE 2026-07-10 (see §6 RESULTS) — that history stands as-is.
+
+**⚠ FROM 2026-07-10 (later same day), ALL FURTHER WORK ON THIS DOC GOES TO SONNET, NOT FABLE (user
+directive — no reason logged, just apply it).** Tasks 2–4 remain NOT STARTED. New:
+
+### Task 6 — SampleHouse extraction bug: 3 real, usable rooms exist in source but never reached the ARC
+**Status: NOT STARTED. Assigned to Sonnet.**
+Found this session (§2): `internal/sources/Ifc4_SampleHouse.ifc` contains 4 real `IFCSPACE` entities
+(`Living room`, `Bedroom`, `Entrance hall`, `Roof`) but shipped `SampleHouse_ARC.db` has 0 rows in
+`spatial_structure` — the extraction pipeline dropped them somewhere between source and shipped ARC. This
+is an EXTRACTION gap, not a source-data gap (unlike Clinic/Garage/Hospital/HHS, which have no source IFC
+in this checkout to check either way). Scope: find where `extractIFC2DB.js` (or whichever step runs on
+this source) fails to carry `IfcSpace` through to `spatial_structure` for this specific file, fix it, run
+Task 5's `spaceHabitable()` classifier on the result (expect Roof excluded, 3 kept), re-embed. Small blast
+radius — one building, 4 rows.
 
 ## §6 — Execution spec: Task 1 + Task 5 as one assignment (2026-07-10, Fable session — spec-first)
 
