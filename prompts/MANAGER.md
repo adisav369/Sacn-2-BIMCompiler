@@ -32,5 +32,23 @@ open thread against whether it moves the real product closer to working.
 fires on the drag · every non-ARC discipline is a WALKER that fills ARC space · one Outliner panel =
 Find on steroids). Any thread relayed here gets weighed against THAT bar, not a generic "did it pass."
 
+**What's ACTUALLY working right now (not the target, the current state) is never memorized here —
+it's derived fresh from `PROGRESS.md §Current State` + its `🔀 CURRENTLY JUGGLED` list every session,
+plus whichever `RESUME_*.md`/`prompts/Modeller/DISC_Walker/*.md` a juggled thread points at. Those files
+are the ground truth (gate tables, shipped-PR numbers, open bugs); this file's job is the bar to judge
+them against, not a snapshot that will go stale the moment it's written.**
+
+**The tangible target all of this serves: `https://red1oon.github.io/BIMCompiler/ModellerGuide/` — the
+published user guide.** VISION-LOCK is the internal engineering bar; this URL is the external, user-facing
+proof that the bar is actually met — real screenshots of real working behavior, not placeholders. Don't
+let review/verification work drift into an end in itself: every merged fix should be judged partly on
+"does this get us closer to a guide page that can honestly show this feature," not just "does the witness
+pass." As of 2026-07-10/11: NOT there yet for several concrete, named reasons (Terminal's disc-walk was
+graded on the wrong substrate until today's §TE-ARC-DATUM fix — bim-compiler side merged, bim-ootb port
+verified but stuck local behind the LFS quota block until 2026-08-01; room-mode placement only has real
+data on 1 of 8 buildings, unmerged; a live x-ray/glass-reveal bug in `modeller.html`; two live Viewer UI
+bugs found this session, unfixed). Full detail: this session's own transcript / whichever memory captures
+it — don't re-derive from scratch, but don't assume it's stale either, re-check `PROGRESS.md` first.
+
 ## ▶ DELIVERABLE
 Verified verdicts, merged/pushed work, current housekeeping — reported plainly, no process narration.
