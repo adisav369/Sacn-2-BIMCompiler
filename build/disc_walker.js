@@ -208,7 +208,10 @@
       "t.center_x cx, t.center_y cy, t.center_z cz, COALESCE(t.bbox_x,0) bx, COALESCE(t.bbox_y,0) by_, " +
       "COALESCE(t.bbox_z,0) bz FROM elements_meta m JOIN element_transforms t ON m.guid=t.guid " +
       "WHERE m.ifc_class='IfcSpace'").filter(function (s) { return s.bx > 0.1 && s.by_ > 0.1; });
-    if (!out.length) {
+    // §LIVEWIRE hardening (2026-07-10, caught by W-DW-LIVEWIRE L4 on real SampleCastle_ARC.db): the
+    // shipped ARC residents mostly carry NO spatial_structure table at all — probe sqlite_master first
+    // (same idiom as placeMeasured's rule_placement probe) instead of throwing out of the whole walk.
+    if (!out.length && _rows(bdb, "SELECT 1 FROM sqlite_master WHERE type='table' AND name='spatial_structure'").length) {
       out = _rows(bdb, "SELECT guid, COALESCE(NULLIF(object_type,''), name) label, name room_no, " +
         "parent_guid, center_x cx, center_y cy, center_z cz, COALESCE(size_x,0) bx, " +
         "COALESCE(size_y,0) by_, COALESCE(size_z,0) bz FROM spatial_structure WHERE type='IfcSpace' " +

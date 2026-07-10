@@ -137,8 +137,114 @@
 # 4. W5 ratchet toward RSS-exact (per-room offset nuance is most of the remaining gap); real per-instance
 #    routing geometry lives ONLY in build/Duplex_mep_extracted.db element_transforms (Duplex-only).
 # 5. Device meshes to the browser (mesh.db consolidation) — SEPARATE deliberate step, still not folded in.
+#    UNBLOCKED 2026-07-10 PM (supersedes the earlier same-day "no mesh.db anywhere" scoping finding —
+#    that was measured true at the time but resolved hours later): ~/bim-ootb main `c63939a` now ships
+#    `modeller/mesh.db` (114MB, LFS-tracked, VERIFIED on disk) + all 8 `_ARC.db` files; the target-store
+#    decision is MADE. Item 5 is now a concrete execution task: project the 14 restored device meshes
+#    (bim-compiler library/component_library.db component_geometries — complib still uncommitted-by-
+#    design) + verify Terminal's 13 rule_mesh_binding hashes resolve, INTO/AGAINST modeller/mesh.db, so
+#    schedule-generated fixtures render real meshes (the LOD400 render seam). bim-ootb side = /tmp/wt-*
+#    worktree + PR flow; still sensible to bundle with live-browser disc_walker.js sync once the
+#    default-flip decision lands. Witness bar: every geometry_hash carried by rule_space_schedule +
+#    rule_mesh_binding resolves to >0-vertex mesh in the SHIPPED mesh.db, REFUSE-list devices excepted.
 # - Java era: fossils untouched, deprecation + verified repair recipe (fresh worktree → SH 9/9 gates) in
 #   `docs/internal/JavaEra_FOSSIL_README.md`; /tmp/wt-fable-g1count worktree is disposable.
+#
+# **SPEC §LIVEWIRE (2026-07-10 PM, Fable worker — item-1 leftover [default-flip + live disc_walker.js sync]
+# BUNDLED with item 5 [device meshes → shipped mesh.db], per this file's own bundling note. Measured facts
+# driving the spec, all verified this session before writing it:**
+# - bim-ootb main `c63939a` modeller/: disc_walker.js is STALE (1642 lines, no placeSchedule vs build/'s
+#   1728); duplex_rules.db/terminal_rules.db are STALE (no rule_space_schedule/_type/_alias, no
+#   rule_code_spacing, no rule_mesh_binding, pre-ACMV rule_shim); mesh.db resolves 0/26 rule-carried hashes.
+# - The embed-8 consolidation RE-KEYED every geometry hash (same element, guid ...29tlUnxYrDDfZmPyOHoW2$:
+#   extracted 7759c52513f88549 vs shipped 169dc2e47423f3d9) — rule hashes can never resolve by key without
+#   projection. Sources located, all 26 resolve with real payloads: 13 DX device meshes in the REPAIRED
+#   complib (/tmp/wt-fable-bimeyes copy — shared tree still lacks SPRINKLER+SUPPLY_DIFFUSER), 13 TE binding
+#   meshes in deploy/buildings/Terminal_library.db (pre-consolidation payload store, byte-exact hash match).
+# - NO shipped _ARC.db carries ANY space row (elements_meta IfcSpace=0 ×8; spatial_structure table absent ×7,
+#   Terminal's has only synthetic rows) → placeSchedule can NEVER engage in the live browser today. Real
+#   space data exists ONLY for Duplex (21 real IfcSpace in Duplex_extracted.db spatial_structure; worktree
+#   copy stamped 21/21 object_type from the source IFC). HHS's 14 typed rows are all synthetic (RM_/≈).
+# - DEFAULT-FLIP shape (the honest one, decided from the data above): _discWalkOne walks
+#   dwWalk(disc,bdb,name,{schedule:true, geoDb, avoid}) FIRST; if refused/0-placed → legacy dwWalk retry,
+#   logged §SCHED-FALLBACK. Duplex→schedule engages; Terminal/Hospital→measured-band engages (proven
+#   W-TERM-NOSPACES); SH/SC/HHS/Clinic/Garage→fallback = TODAY'S walk byte-identical (no building loses
+#   placements; flipping those 5 to hard-refusal would kill demos and is NOT taken unilaterally).
+#   opts.avoid = other discs' live placements (window.__dwWalks, item 3's cross-disc coordination note);
+#   opts.geoDb = transient sql.js open of the mesh.db buffer (stashed window.__dwGeoBuf at resident-open) —
+#   ALSO fixes a live gap: legacy walks currently pass NO geoDb, so hostBind/_trueMidpoint run uncorrected
+#   on all 8 split-geometry residents.
+# - LOD400 render seam: _renderDiscWalk buckets by (ifc_class, geometry_hash); a hash bucket resolves
+#   vertices/faces from the mesh.db buffer (cached per hash), BufferGeometry recentred to bbox centre
+#   (same centre semantics as the measured box), userData.lod400; no hash / no payload → measured box,
+#   honest §DW-PRIM-LOD lod400/lod300/lod200 tally. Never a fabricated shape.
+# - Cache plumbing (all three, or returning users silently keep stale data): __dwRulesVer v21→v22;
+#   str_walker_outliner mesh.db geoV 1→2 + Duplex_ARC.db v 1→2; sw.js CACHE_VERSION bump.
+# - Witnesses: bim-compiler scripts/witness_meshdb_resolve.js (W-MESHDB-RESOLVE = item 5's stated bar:
+#   every rule_space_schedule + rule_mesh_binding hash resolves >0-vertex in the SHIPPED mesh.db,
+#   REFUSE-list excepted, + fake-hash falsifier); bim-ootb browser witness (real chromium, §-log first):
+#   Duplex ELEC §WALK-SCHED placed>0 + §DW-PRIM-LOD lod400>0, Terminal ELEC §WALK-NOSPACES placed>0,
+#   SC ELEC §SCHED-FALLBACK → legacy placed unchanged; existing modeller witness suite re-run 0-fail.
+# - Branches: bim-compiler `fable/meshdb-livewire` (scripts+docs), bim-ootb `fable/modeller-lod400-livewire`
+#   (worktree /tmp/wt-fable-livewire). Worker commits locally, does NOT push (Watchdog publishes).
+#
+# **§LIVEWIRE CLOSEOUT (2026-07-10 PM, same session — DELIVERED ON BRANCH, all witnessed, logs in the
+# session scratchpad + /tmp/wt-fable-livewire/logs/). Item-1 leftover (DEFAULT-FLIP + live wiring) and
+# item 5 (device meshes → shipped mesh.db) are both CLOSED on branch, pending Watchdog review + push.**
+# WITNESSES (all re-run to green, read from logs not exit codes):
+# - W-MESHDB-RESOLVE 5/5 (new, bim-compiler scripts/witness_meshdb_resolve.js) — 13+13 rule hashes resolve
+#   >0-vertex in the branch's mesh.db; REFUSE-list intact; fake-hash falsifier; provenance tags. NEGATIVE
+#   CONTROL: same witness on the UNPATCHED shipped mesh.db fails 2/5 — proves it detects the original defect.
+# - W-DW-LIVEWIRE 12/12 (new, bim-ootb modeller/tests/witness_dw_livewire.js, real chromium, real user path):
+#   L0 frame 21/21; L1 Duplex ELEC §WALK-SCHED placed=102 spaces=19/21 (matches node W1's ELEC 102 exactly);
+#   L2 lod400=102/102 real meshes; L5 fake-hash falsifier → honest boxes; L6 PLB placed=18 after ELEC with
+#   avoid live (matches node PLB 18); L7 FOLD-PARITY 120/120 committed fixtures fold centred at walker xyz
+#   maxD=5e-5m; L3/L3b Terminal ELEC §WALK-NOSPACES placed=390 zones=6 lod400=390; L4 SC §SCHED-FALLBACK →
+#   legacy placed=325 (pre-flip byte-identical); zero pageerror ×3 pages.
+# - Engine regression (bim-compiler, run in /tmp/wt-fable-bimeyes with the repaired env + master code +
+#   this session's one engine fix): W-SCHED-MINE 7/7, W-DX-WALKBACK-RSGT 14/14, W-TERM-NOSPACES 5/5,
+#   W-DWWALK-HOSTBIND 6/6, W-HOSTBIND-AGNOSTIC 11/11, W-SHIM-SELECT 6/6, space_scoped_walk M1-M5 — ZERO fail.
+# - bim-ootb regression: W-E2E-WALK 8/8 (W7 amended, see below), W-E2E-WALK-ALL 10/10.
+#   witness_modeller_dw_oplog (playwright not installed) + witness_dw_pixelprobe (3/6 — DOUBLE
+#   window.__dwPixelProbe definition in modeller.html, the later one lacks the fields the witness reads)
+#   fail IDENTICALLY on pristine origin/main (verified in a clean baseline worktree) — PRE-EXISTING, not
+#   this lane's; the pixelprobe double-definition is a real small bug for whoever owns that thread.
+# TWO REAL DEFECTS FOUND + FIXED AT SOURCE THIS SESSION (both caught by the new witness, not by reasoning):
+# 1. spacesOf() queried spatial_structure UNGUARDED → dwWalk({schedule:true}) THREW "no such table" on any
+#    ARC db without that table (7 of 8 shipped residents!) — the fallback never got a chance. Fixed with a
+#    sqlite_master probe (build/disc_walker.js + the synced modeller copy); this was invisible to every
+#    bim-compiler witness because all extracted test DBs carry the table.
+# 2. _commitDiscWalk's cat[0] FALLBACK folded every unmatched fixture as the catalog's FIRST item — a
+#    full-height COLUMN per outlet in the signed op-log (the yellow towers in the pre-fix screenshot; the
+#    OP-LOG half of "geometry hell", pre-existing, violates the LOD400 law at the commit seam). Fixed for
+#    hash-carrying placements: commit measured bbox + realGeomHash (foldInsert's EXISTING §REAL-GEOM seam,
+#    meshes registered at render time); fold convention honoured (placement.z = seat ⇒ centre−bz/2; rot in
+#    DEGREES — note the legacy path commits yaw RADIANS into that field, a separate latent bug, left
+#    byte-identical). Hash-less legacy placements keep the old path INCLUDING the cat[0] fallback —
+#    flagged as a named follow-up, not silently changed.
+# W7 AMENDMENT (witness_e2e_walk.js, behavior-change honesty): whole-frame checksum only ever detected the
+# walk because mis-placed giant fixtures poked through the roof. Honest interior fixtures are occluded from
+# the exterior camera. Same claim, occlusion-free mechanics: frame with only the walked layer visible vs
+# hidden must differ (8/8 after amendment; baseline main was 8/8 with the old mechanics).
+# NAMED OBSERVATION (not a regression, carry forward): Terminal ELEC in the LIVE browser places 390 vs the
+# witness worktree's 744 — the shipped Terminal_ARC.db is the CONSOLIDATED ARC-only substrate (different
+# element set feeding bandArea/occupancy than the witness's extracted-frame ARC copy). Honest §-logged
+# placement either way; re-mining src_storey_area against the consolidated substrate is a future ratchet.
+# COMMITS (local only, Watchdog publishes):
+# - bim-ootb branch fable/modeller-lod400-livewire (worktree /tmp/wt-fable-livewire, cut at c63939a):
+#   engine sync (disc_walker.js = build/ + browser-only IDB-timeout-guard + routePattern/M5 bridge blocks,
+#   merge VERIFIED no ootb-only code lost), duplex_rules.db + terminal_rules.db (all mined tables),
+#   mesh.db +26 payloads (LFS), Duplex_ARC.db +spatial_structure (21 stamped spaces), default-flip +
+#   geoDb threading + avoid accumulation (_discWalkOne), LOD400 render seam (_renderDiscWalk +
+#   RealGeometry.resolveHashes) + registerRealGeometry fold wiring + honest commit, cache bumps
+#   (__dwRulesVer v22, geoV 2 ×8, Duplex v2, sw.js v34), witness. ⚠ origin/main advanced to c32692e
+#   (grid-scale lane) while this branch was cut at c63939a — standard fetch+merge sync at PR time.
+# - bim-compiler branch fable/meshdb-livewire: spacesOf guard (build/disc_walker.js),
+#   scripts/project_device_meshes_to_meshdb.py, scripts/project_spaces_to_arcdb.py,
+#   scripts/witness_meshdb_resolve.js, this file's §LIVEWIRE spec+closeout.
+# STILL OPEN after this session: item 4 (W5 ratchet toward RSS-exact) — untouched, next open item in this
+# file; the cat[0] legacy-commit fallback + the pixelprobe double-definition + the legacy radians-rot
+# commit field (all named above) as small follow-ups; Terminal live-count observation above.
 
 # ▶▶▶▶▶ ENTRY POINT (2026-07-10, superseded by the block above — kept for evidence trail). This
 # session (Sonnet) is closing out; the user is now iterating directly with a Fable5 session in their own
