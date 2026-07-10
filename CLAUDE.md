@@ -129,6 +129,28 @@ Before ending, update PROGRESS.md with:
 - **Pre-Flight Citation:** Before code changes, cite the spec: `// Implementing BBC.md §X.Y — Witness: W-NAME`
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
 
+## DB Storage Policy — GitHub LFS bandwidth (2026-07-10)
+**GitHub emailed a 10GB/month LFS bandwidth-cap warning.** `.gitattributes` has a blanket `*.db filter=lfs`
+rule and 59+ `.db` files are already LFS-tracked (`deploy/buildings/*_extracted.db`/`*_library.db`,
+`build/*.db`, etc.) — every clone/fetch/checkout of a branch touching these re-downloads them through the
+capped quota. **From now on: do NOT commit/force-add a `.db` file to git, even if `.gitattributes` would
+route it through LFS.** Most DB paths are already `.gitignore`d (`/library/*`, `deploy/buildings/`,
+`database/*.db`, `/build/erp/*.db`, etc. — see `.gitignore`) — that's correct, keep it that way, don't
+`git add -f` past it. Two channels replace committing the binary:
+- **Schema/rules/pattern DBs** (small, structurally regenerable — `duplex_rules.db`, `terminal_rules.db`,
+  `ERP.db` seed data): migration scripts in `migration/*.sql` (see Sacred Files below — `DV_<prefix>_rules.sql`
+  is already this pattern for mined rules) or the mining scripts that generate them
+  (`run_RosettaStones.sh`/`onboard_ifc.sh`/`project_rule_mesh_binding.py` etc.) — regenerate on demand, don't
+  version the binary.
+- **Extracted/derived building DBs** (`deploy/buildings/*_extracted.db`/`*_library.db`, mesh/geo DBs — NOT
+  reproducible from a short SQL script, only from re-running extraction on the source IFC): distribute via
+  **OCI** (`deploy/OCI_UPLOAD.md` §RULES — the existing dev/live snapshot channel), not git/LFS. If a building
+  needs to travel with a branch for local dev, keep it gitignored and hand it off out-of-band (OCI, or a
+  read-only copy), never commit it.
+- **Already-LFS-tracked files are sunk cost** — not retroactively purged as part of this rule (that's a
+  separate, disruptive history-rewrite decision, not taken here). This rule only stops the bleeding going
+  forward: no NEW `.db` commits.
+
 ## Sacred Files (edit with extreme care)
 - `deploy/live/*` — PRODUCTION snapshot, never edit (see PRIME RULE)
 - `migration/*.sql` — append only, never modify existing migrations. EXEMPT: `DV_<prefix>_rules.sql` — regenerated
