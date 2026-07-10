@@ -27,14 +27,18 @@
   port Ph1-2 done (#675 `9ff9a5a`+`6d9f906a`), open: G6, Ph3. World-History Part1 parked.
 - `prompts/PILL_DRAWER_REORGANIZATION.md` §2026-07-06 — done (#673 `953d1e4`). Open: first-touch flicker.
 - `prompts/OPEN_BUTTON_IFC_BCF_MERGE.md` — not started.
-- `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md` — 2026-07-10 marathon: 6 branches built,
-  independently re-verified (3 caught false-green reports, see memory), and pushed — schedule-walk DEFAULT-FLIP
-  + LOD400 meshes (`fable/meshdb-livewire`/`fable/modeller-lod400-livewire`), grid rotation-guard extended to
-  X/Y-tilt + the Modeller's real y-axis (`fix/grid-tilt-guard`), rot-units radians/degrees bug
-  (`fix/dw-rot-units`), `__dwPixelProbe` dedup + harness fixes (`fable/dwprobe-dedup`), Terminal MEP-oracle
-  stale-path fix (`fix/terminal-oracle-source`). **NONE merged to main yet** — that's the next gate before any
-  "UI is screenshot-ready for the user guide" claim holds. SampleCastle rooms: CLOSED, not a gap (disc_walker
-  needs none, works via `duplex_rules.db`+`substrate()`). Open: Terminal PLB walk untested (in progress),
+- `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md` — 2026-07-10 marathon, 6 branches built +
+  independently re-verified (3 caught false-green reports, see memory). **Room-mode MERGED to main/master**
+  (schedule-walk DEFAULT-FLIP + LOD400 meshes). Still unmerged (verified+pushed, no PR yet): grid rotation-guard
+  X/Y-tilt extension (`fix/grid-tilt-guard`), rot-units radians/degrees bug (`fix/dw-rot-units`), `__dwPixelProbe`
+  dedup+harness fixes (`fable/dwprobe-dedup`), Terminal MEP-oracle stale-path fix (`fix/terminal-oracle-source`).
+  **New, bigger, unfixed:** Terminal's real disc-walk numbers collapse 2-20x on the actual shipped
+  `Terminal_ARC.db` (§TE-ARC-DATUM, ~15m z-datum mismatch — already live on main regardless of any merge, not
+  newly introduced). **Guide screenshots attempted, both FAILED** on direct review (washed-out framing / broken
+  camera-inside-mesh capture) — visual correctness is a confirmed NO, not unverified. SampleCastle rooms:
+  CLOSED, not a gap (disc_walker needs none, works via `duplex_rules.db`+`substrate()`) — but a SEPARATE "room
+  injection feature" spec is in progress with the user directly, don't conflate. Open: Terminal PLB walk now
+  graded (T6/T7, same substrate caveat as above),
   old op-log rot-units data unmigrated (unsafe to blind-fix), `cat[0]` legacy fallback, W5 RSS-exact ratchet.
   Full detail: `project_disc_walker_grid_guard_marathon_2026-07-10.md` (memory).
 
