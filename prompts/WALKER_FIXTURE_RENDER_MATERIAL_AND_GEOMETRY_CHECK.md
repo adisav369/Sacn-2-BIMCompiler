@@ -101,3 +101,68 @@ ELEC-specific or systemic, and if a real placement defect exists, exactly where 
 not fixed. Findings appended to this file. If Task 1 concludes it's a pure framing illusion, name
 that plainly too — a "no real bug, here's why it photographs badly" verdict is a valid, complete
 answer, not an incomplete one.
+
+## FINDINGS — 2026-07-12 (Sonnet, investigation only, nothing fixed, nothing pushed per PUSH PAUSE)
+
+### Task 1 verdict: **PLACEMENT/COMMIT bug — real, but already FIXED on bim-ootb `main` (commit `670bf0f`,
+2026-07-10, §LIVEWIRE). The deployed screenshot is simply STALE — captured 2 days before the fix.**
+
+**Exact defect, named + cited (pre-fix code, no longer on `main`):** the OLD `_commitDiscWalk`
+(`modeller/modeller.html`) folded any placement whose `ifc_class` had no catalog match using
+`cat.find(...) || cat[0]` — i.e. it silently substituted the catalog's FIRST entry. For Duplex ELEC,
+`cat[0]` resolved to a full-height `IfcColumn` mesh, so every unmatched outlet/fixture got stamped as a
+full-height structural column at that fixture's XY position. That is *exactly* what the deployed image
+shows: dozens of tall khaki columns, several piercing the roofline. The fix commit's own message names
+this precisely: *"NEVER the old cat[0] fallback, which folded every unmatched fixture as the catalog's
+first item — a full-height Column per outlet (the op-log half of 'geometry hell', W-DW-LIVEWIRE L7 pins
+the fix)"* (`modeller.html` ~3930-3937, current `main`). The replacement path commits the placement's own
+`geometry_hash`-bound measured bbox (or an honest measured box), never `cat[0]`.
+
+**Live-reproduced on current `main` (fresh puppeteer probe, not a screenshot guess — real dumped z's):**
+```
+§ENVELOPE {"minZ":-1.25,"maxZ":6.63}   (Duplex's real built envelope, from element_transforms bboxes)
+§ELEC  n=102  z∈[0.229, 5.860]
+§PLB   n=18   z∈[-0.002, 3.607]
+§FP    n=46   z∈[-1.257, 5.953]
+§ACMV  n=19   z∈[1.423, 5.860]
+```
+Every discipline's z-range sits inside the real envelope — no fixture exceeds the roofline. This is the
+Task-1-mandated "real z-values vs. real envelope" comparison; it confirms the CURRENT placement math is
+sane. This is a placement/commit-path bug, not a render bug (`_renderDiscWalk` never touched the fold —
+confirmed pre-dispatch, see this file's own "Confirmed from source" section) and not a framing illusion.
+
+**Provenance of the stale image, nailed down:**
+- `docs/img/modeller/walk-fixtures.png` (the live deployed one) → committed by bim-compiler `3ec99e8b5`
+  ("W-GUIDE-RESHOT", **2026-07-08**), predating the fix by 2 days.
+- The fix → bim-ootb `670bf0f` (**2026-07-10** 10:43+08), on `main`.
+- Visual confirmation (real image bytes): the deployed PNG shows the tall-column chaos exactly as
+  described; a byte-for-byte match does not exist for a corrected recapture yet (see Task-3-shaped
+  follow-up below) — the bim-ootb repo's own `modeller/tests/e2e_shots/W-E2E-WALK-fixtures.png`
+  committed alongside `670bf0f` is a DIFFERENT frame (`298/298 · Component`, "framed all", no MEP
+  fixtures visible — looks like a pre-walk/base-building capture, not the post-walk ELEC frame the
+  witness's own `shot('fixtures')` call should have produced). This inconsistency is noted but NOT
+  load-bearing for the verdict above — the verdict rests on the live z-dump (this session, current
+  `main`) and the source diff, both direct evidence, not on that archived PNG's content.
+
+### Task 2 verdict: **the pre-fix bug was SYSTEMIC (any discipline placing an unmatched `ifc_class`), not
+ELEC-specific — but it is moot going forward, because every relevant witness this repo currently trusts
+already runs on the fixed code.**
+- The `cat[0]` fallback was discipline-agnostic (pure "no catalog match → first catalog row"), so PLB/FP/
+  ACMV were equally exposed pre-fix, not just ELEC — confirmed structurally (the fallback sat in the
+  shared commit path, no `if (disc==='ELEC')` branch anywhere near it) and empirically (this session's
+  probe shows all 4 disciplines placing sanely post-fix, none showing the old symptom).
+- **No re-scrutiny needed for the recently re-verified density/clash suite:** `670bf0f` (2026-07-10
+  10:43+08) is an ancestor of both `#741` (`fix(tests): repoint Terminal density/clash witness oracle`,
+  2026-07-11) and `#722` (`§AXIS-SCOPE`, 2026-07-11) — confirmed via
+  `git merge-base --is-ancestor 670bf0f a4c61eb` → yes. Those witnesses, and this session's own
+  Plant-Room/DiscWalk correlation work (`DISCWALK_PLANT_ROOM_INDUSTRIAL_TAXONOMY.md`), already sit on
+  top of the fixed placement code — not resting on a bad baseline.
+
+### Named follow-up (report only, not actioned here per this file's scope)
+The ONE real remaining action: **re-capture `docs/img/modeller/walk-fixtures.png`** from current
+`main` (post-`670bf0f`) and re-deploy the guide page. This is a pure docs-recapture task (same family
+as `DISC_WALKER_BRANCH_CLOSEOUT.md` Task 2's guide-shot work) — no app code changes needed, the fix is
+already live in bim-ootb `main`. Out of this file's scope (investigation only); hand to a dedicated
+docs-recapture prompt if prioritized. The bim-ootb-committed `W-E2E-WALK-fixtures.png` at `670bf0f`
+is NOT a usable drop-in replacement (see provenance note above — wrong frame captured); a fresh,
+verified capture is needed, not a copy of that file.
