@@ -47,24 +47,63 @@ published user guide.** VISION-LOCK is the internal engineering bar; this URL is
 proof that the bar is actually met — real screenshots of real working behavior, not placeholders. Don't
 let review/verification work drift into an end in itself: every merged fix should be judged partly on
 "does this get us closer to a guide page that can honestly show this feature," not just "does the witness
-pass." **As of 2026-07-11 (updated, don't re-derive — re-check `PROGRESS.md` first if this reads stale):**
-real, MANAGER-verified progress on the "every non-ARC discipline is a WALKER" + "Outliner = Find on
-steroids" prongs specifically — room data went from 1-of-8-buildings-real to all 8 well-formed +
-multi-rect-shaped (`ROOM_INJECTION_HYBRID.md` §7/§8), a Room Walker Outliner action shipped, W5 placement
-precision advanced several rounds (per-room Z, wall-light, wall-slot, all honestly witnessed). The other
-three VISION-LOCK sentences (open+edit whole ARC building, 3D grid as primary edit-handle, conformity
-fires on the drag) were **not touched this session** — don't read the room/precision progress as overall
-VISION-LOCK progress, it's one prong. Concrete remaining blockers, all named: (1) Room Lens renders
-inferred wall faces, not an actual volume box from the room data — blocks shipping any of today's room
-work to a live user, by explicit user directive; (2) a Terminal-specific coordinate-frame mismatch between
-its canonical and ARC-only files, unrelated to room logic, own investigation; (3) HHS's GH-served file
-still ships stale room data, migration not started; (4) §TE-ARC-DATUM's bim-ootb port (PR #726) and the
-whole room/precision lane's self-heal-patch branches are still unmerged, and any GH-Pages binary deploy
-stays LFS-blocked until 2026-08-01 — the SQL-migration + self-heal-loader pattern (new this session) is
-the one channel that bypasses that block, but even that loader's own branch isn't merged yet; (5) the
-x-ray/glass-reveal bug in `modeller.html` — untouched, status unknown, unverified this session. Two
-Viewer UI bugs from the prior snapshot ARE now fixed and verified (mobile pill flyouts PR #727 merged;
-Find-panel-too-high root-caused and fixed, bim-ootb `91cd2da`).
+pass." **Updated 2026-07-11 (this entry, don't re-derive — re-check `PROGRESS.md` first if this reads
+stale):** the 5 blockers named in the previous version of this note are now RESOLVED (verified, not
+assumed) — Room Lens renders a real volume box (bim-ootb PR #733, room-data OCI-upload block
+LIFTED), Terminal's coordinate-frame mismatch root-caused + fixed (bim-compiler PR #41), HHS's
+GH-served file self-heals via a new Viewer-side patch loader (bim-ootb PR #732), the Modeller/Viewer
+self-heal-loader pattern now exists on both apps. Still open: x-ray/glass-reveal bug in
+`modeller.html`, status unverified. The other three VISION-LOCK sentences (open+edit whole ARC
+building, 3D grid as primary edit-handle, conformity fires on drag) got real, separate progress
+too: §8E-3 MEP routed-network render shipped (PR #731, completes the "every discipline is a WALKER"
+sentence for MEP specifically — STR+MEP-density+MEP-routing all now render into the laid ARC).
+
+## ▶ EXECUTION PLAN — Room Intelligence lane (2026-07-11, strategy session synthesis)
+**The competitive bet, stated plainly:** every other BIM tool (Revit, ArchiCAD, FM platforms) either
+requires a human to author room/space data, or trusts whatever IfcSpace came in the file — and real
+IFC exports are notoriously bad at populating it. Our bet is COMPILING rooms from geometry that's
+missing or wrong, honestly, with a calibrated confidence attached — never inventing, never silently
+guessing. Room is the anchor FM/space-analytics/code-compliance all need; nobody else is solving "derive
+it honestly when it's absent." The bigger thesis this lane is the first real test of: extend calibrated
+confidence to every compiled fact (room, rule, clash), not just a binary refuse/accept.
+
+**Shipped this session (verified, not just claimed):**
+1. Room habitability filter (`common/room_habitability.js`, shared Modeller+Viewer) — PR #732.
+2. Room Lens real volume-box render (`room_guid` grouping, multi-rect union) — PR #733.
+3. Terminal coordinate-frame fix (two stacked bugs, root-caused to real code, not guessed) — PR #41.
+4. UBBL room-size demo gate (2 verified By-Law 42 thresholds only, honestly labeled) — PR #729.
+5. Find-panel visibility bug (two-part root cause) — PR #728.
+
+**In progress:** Room TYPE template classifier (`ROOM_TYPE_TEMPLATE_CLASSIFIER.md`) — the concrete
+next piece of the confidence-everywhere thesis. Key finding mid-flight: `Duplex_extracted.db`'s
+`object_type` column already carries REAL human-authored room-type labels (`Living Room`, `Kitchen`,
+`Bedroom 1/2`, `Bathroom 1/2`, etc., straight from the source IFC's `LongName`) — a genuine
+RosettaStone-quality reference, not an external guess. Fit templates from this real N=21 sample,
+require ≥2 real occurrences before trusting a signature (Duplex's own mirror A/B-unit structure
+already gives natural repeat-confirmation for every type), apply elsewhere as low-confidence
+inference only. Config-editable (`config/room_templates.yaml`, same convention-default-with-citation
+shape as `config/profiles/malaysian_residential.yaml`) — same "default by convention, human can
+edit" pattern already accepted for other config surfaces.
+
+**Named next axes, NOT yet built (logged, don't lose track):**
+- **Grid/containment signal** — which walls bound a space, grid-cell alignment — a third
+  classification axis beyond size/aspect-ratio. Ties into existing SEMI-GRID/emergent-datum work.
+- **Door-access signal** — door count + adjacency (hallway ≥2 doors, bedroom exactly 1) as a
+  discriminator; door-rescue/door-partition (`compile_rooms.py`) already computes adjacency, cheap
+  to add.
+- **Disqualifier categories** beyond the existing Roof/z-band check — space below a lift (shaft/pit
+  void), the exterior void under a hanging roof overhang. Needs real geometric/label signals (lift
+  adjacency, envelope-boundary test), not a hardcoded name match. Logged:
+  `VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §6.
+- **Outliner wiring + correction flywheel** — once the classifier lands in the Modeller Outliner
+  (VISION-LOCK sentence 5), a user correcting a room's type becomes a REAL measured label, signed
+  as a `kernel_ops` op, feeding back to refine the template over time. This is what turns a
+  small-sample fit into something genuinely calibrated — the actual differentiator, not a side effect.
+
+## ▶ STANDING MODE — Push Pause (2026-07-11, until lifted)
+See `CLAUDE.md` §⏸ PUSH PAUSE. New dispatched work commits locally, verifies on localhost, does NOT
+push/open a PR, until the user names a "major breakthrough" or lifts the pause explicitly. Already-
+merged work today is not being rolled back — forward-only pause.
 
 ## ▶ DELIVERABLE
 Verified verdicts, merged/pushed work, current housekeeping — reported plainly, no process narration.
