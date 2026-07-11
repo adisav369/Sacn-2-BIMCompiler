@@ -196,14 +196,14 @@ has that kind of data (no data, no empty axis):
 | **Phase** | Only if a construction timeline can be generated for the building | Elements grouped by construction phase/task, generated on the fly (a short "Timeline generating…" message appears first). |
 | **Parts** *(new)* | Only if the building has stairway, lift-shaft, or plant-room elements | Elements grouped into up to three building-part categories: **Stairway** (stair/ramp classes), **Lift Shaft** (elements named for lifts/elevators), **Plant Room** (HVAC-plant elements — vents, ducts, fans, AHUs, dampers, chillers, pumps). Each category is itself data-gated — it only appears if the building actually has a match. Tapping a category, or a single item inside it, isolates it in the 3D view (hides the rest of the model). |
 
-  ![The axis toggle cycled to Parts on Duplex ("6/6 Parts"), Stairway expanded to its 4 real stair-flight elements, with the data-gated Plant Room group below it (Duplex has no Lift Shaft matches, so that group is correctly absent)](img/viewer/find-axis-parts.png)
+  ![The axis toggle cycled to Parts on HHS Office ("6/6 Parts"), a real institutional-scale building showing all three categories at once: Stairway (20), Lift Shaft (3), and Plant Room (1769) — Plant Room only appears on complex-class buildings like this one, never on a residential building like Duplex](img/viewer/find-axis-parts.png)
 
 > The Parts axis is the newest addition (bim-ootb `d04ddd5`) — see
 > `prompts/VIEWER_FIND_PANEL_PARTS_VERIFICATION.md` for its live verification on Duplex/SampleCastle data.
-> A separate, filed finding (`prompts/FIND_PANEL_PLANT_ROOM_GATE_FIX.md`, not yet fixed as of this
-> writing) notes the live Plant Room group can currently include false-positive matches on some
-> buildings and isn't yet gated to complex-class buildings the way the offline taxonomy checker is —
-> the count shown for Plant Room may not be 100% precise until that fix lands.
+> A false-positive/missing-class-gate bug found after that verification (`prompts/FIND_PANEL_PLANT_ROOM_GATE_FIX.md`)
+> is now fixed (bim-ootb PR #740/#742) — Plant Room only shows on `complex`-class buildings (Terminal,
+> Clinic, Hospital, HHS), never on residential ones, and its keyword match is word-boundary-checked to
+> avoid substring false positives like "Backflow Preventer" matching "vent".
 
 *Not yet confirmed from source, flagged rather than guessed:* the exact on-screen wording of the axis
 toggle's next-axis hint on narrow/mobile screens, and whether the typed-language decoder mentioned above
