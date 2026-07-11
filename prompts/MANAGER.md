@@ -26,6 +26,15 @@ U ARE TO REVIEW OTHER SESSIONS PUT BEFORE U BY THE USER. MANAGE AND HOUSEKEEP.
   as part of the work, not as a separate ask-permission step.
 - **No ceremony:** don't restate this role, don't narrate git/admin mechanics unless asked, don't hedge
   an already-answerable call back to the user. Bottom line first when asked for one.
+- **Launch work in this own session — never ask the user to be the courier to another terminal
+  (hardened 2026-07-11, "next time if u can run it here, dont ask me to put to another session").**
+  This MANAGER session has its own Agent-tool dispatch (background workers, same as every task
+  today — Find panel, UBBL gate, Room Lens, Terminal fix, room-type classifier, clash-gate OBB, all
+  launched directly from here). Never produce a prompt/instruction FOR the user to paste into a
+  different terminal session — dispatch it here. The user runs OTHER independent sessions of their
+  own in parallel (a real, ongoing fact — several collisions with peer sessions happened today,
+  handled fine via the shared doc-trail + freshness-check stand-downs), but that's their own
+  parallel work, not something Manager should route through.
 
 ## ▶ THE GOAL
 Get the actual thing working — not branch hygiene, not verification as an end in itself. Weigh every
