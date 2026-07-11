@@ -133,9 +133,27 @@ building may differ from this repo's own taxonomy witness for the same building 
 which extracted-DB variant is actually live. Not fixed here — flagging so a future session doesn't
 mistake it for a regression.
 
+## Modeller Outliner wiring — DONE 2026-07-11 (bim-ootb, same day as the Find panel)
+New standalone `modeller/building_parts_outliner.js`, mirroring the existing `dw_instances_outliner.js`
+extension-seam pattern (`Bonsai.outliner.addCategory`) — bonsai_outliner.js itself untouched.
+Constants/query ported verbatim from the Find-panel commit. Registered in `modeller.html` alongside
+the other outliner categories. Verified via Playwright against real Duplex data (6/6 assertions);
+caught and fixed a real bug in the process — a `'bp|TYPE|'+guid` compound leaf id silently broke the
+existing click-to-frame-camera path (`frameElementByGuid`'s raw `WHERE guid=...` match), switched to
+the raw guid per `bom_tree_outliner.js`'s own stated convention. Commit `f10c5295` on
+`feat/parts-outliner`, local-only (push pause), MANAGER-verified independently (diff read).
+
+**Third Duplex Stairway count, same session — now a 3-way divergence, not just 2:** bim-compiler
+witness (`Duplex_ARC.db`) = 4; Viewer's served DB (`Duplex_extracted.db`) = 2; Modeller's live
+substrate (`window.__dwBuf`, this task) = 4 — matching bim-compiler's own witness, not the Viewer's.
+Reinforces `project_db_snapshot_divergence_landmine` (memory): the Viewer's specific served copy is
+the outlier here, not a universal "every copy disagrees" problem — worth knowing before assuming
+any single number is "the" count for a building.
+
+Both UI halves of VISION-LOCK sentence 5 ("one Outliner panel = Find on steroids") now carry the
+same building-parts data — Find panel (Viewer) and Outliner (Modeller) are in parity.
+
 ## Still out of scope, explicitly (per WORK-TO-ZERO — don't silently drop these, name them)
-- Modeller Outliner wiring (VISION-LOCK sentence 5's OTHER half — "one Outliner panel", separate
-  from the Find panel done above) — not started.
 - `required_spaces`-style HARD gating for STAIRWAY/LIFT_SHAFT/PLANT_ROOM — these stay advisory
   ticks (`min_count: 0`) until cross-building evidence is stronger; promoting them to a shortfall
   gate is a future call, not made here.

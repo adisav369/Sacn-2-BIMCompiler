@@ -54,12 +54,11 @@
   derived thresholds; (2) harder signal-fusion room inference (grid+door+slab+envelope) to recover
   room structure when walls alone aren't enough — the general "most real-world IFC" problem, not
   HHS-specific. Quiet until it lands — do not duplicate, do not chase.
-- **Building Parts Taxonomy → Modeller Outliner wiring dispatched (2026-07-11), same session as
-  the Find-panel wiring above (bim-ootb `d04ddd5`, already landed).** New standalone
-  `modeller/building_parts_outliner.js` mirroring the existing `dw_instances_outliner.js`
-  extension-seam pattern (`Bonsai.outliner.addCategory`) — not yet reported back, check before
-  assuming done. Closes VISION-LOCK sentence 5's OTHER half (Find panel done, Outliner in
-  progress).
+- **Building Parts Taxonomy: BOTH VISION-LOCK sentence-5 UI halves landed 2026-07-11** — Find panel
+  (bim-ootb `d04ddd5`) + Modeller Outliner (bim-ootb `f10c5295`), both MANAGER-verified
+  independently against real diffs, both local-only (push pause). See
+  `prompts/BUILDING_PARTS_TAXONOMY.md` for the full trail incl. a 3-way Duplex-count DB-divergence
+  finding and a real leaf-id click-path bug the Outliner task caught and fixed.
 - **MANAGER housekeeping pass, 2026-07-11 (this session):** 6 stale local branches + their worktrees
   (fable/g1-count-independent-oracle, fable/meshdb-device-consolidation, fable/terminal-no-spaces,
   merge-staging-docs, fix/te-arc-datum, lane/q1-component-dimension-range) verified fully-superseded-
