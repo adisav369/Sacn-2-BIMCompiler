@@ -111,6 +111,37 @@ canvas shows, especially on a large building.
 - The tree stays responsive on large buildings — rows render only as you scroll near them, so opening a
   building with thousands of elements doesn't stall the panel.
 
+### Building Parts — Stairway / Lift Shaft / Plant Room
+
+Below the BOM tree, a **Building Parts** row appears in the Outliner whenever the open building actually
+contains one of three part types — it's the Modeller-side twin of the Viewer's Find-panel **Parts** axis
+(same building, same categories, same underlying match rules), so a building looks the same way in both
+tools. Each category is independently gated: a building with stairs but no lift shows only **Stairway**;
+a small house typically shows Stairway and, if the ARC data has HVAC-plant elements, Plant Room — no
+empty categories, no clutter.
+
+- **Stairway** — every `IfcStair`/`IfcRamp` element.
+- **Lift Shaft** — elements named for a lift/elevator (works across a few languages — e.g. "liftdeur").
+- **Plant Room** — HVAC-plant elements (ducts, fans, air-handling units, dampers, chillers, pumps).
+
+Click **Building Parts** to select and zoom to every real element across all three categories at once,
+which also expands the tree to show them; click **Stairway** (or Lift Shaft / Plant Room) the same way to
+zoom to just that category; click one specific item inside a category to fly the camera to that exact
+element, same as any other Outliner row.
+
+![The Outliner's Building Parts category expanded on Duplex — Stairway holding its 2 real IfcStair elements plus their 2 IfcStairFlight children](img/modeller/outliner-building-parts.png)
+
+---
+
+## Realistic glass
+
+Windows render as real glass now — see-through, not a solid opaque panel the same colour as the wall
+around them. The Modeller reads each element's real material transparency (the same `material_rgba` alpha
+value the Viewer already used) and renders it faithfully: an element with real glass data gets a
+transparent material at its true opacity, everything else is unaffected.
+
+![A Duplex window rendered as real transparent glass, recessed into its wall opening — not an opaque panel](img/modeller/glass-window-transparent.png)
+
 ---
 
 ## Assemble & draw

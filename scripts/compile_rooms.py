@@ -85,6 +85,109 @@ OPEN_PERIM_FACTOR = 2.0
 RECT_COVER_TARGET = 0.95
 MAX_SUBRECTS = 8
 
+# ============================================================================
+# §PHASE0-HEALTH — Data Health Guard (SPARSE_WALL_ROOM_INFERENCE.md Phase 0, 2026-07-11).
+# Runs BEFORE flood-fill. Real-schema queries only (elements_meta.ifc_class / .discipline —
+# verified live against Hospital/Clinic/HHS_extracted.db, not assumed: real wall class is
+# 'IfcWallStandardCase', not bare 'IfcWall'). Thresholds below are DERIVED from these 3
+# buildings' own measured numbers (not asserted round numbers) — see each derivation comment.
+# This guard INFORMS, it does not block: flood-fill still runs on every building regardless of
+# the flag — its job is to tell the truth about how much the result should be trusted, before
+# the room count is read, not to silently degrade or refuse to compile.
+#
+# Why "wall / DOOR count", not "wall / SPACE count" (the spec's literal wording): IfcSpace is
+# ABSENT from all 3 raw federated extracts (0 rows, confirmed by direct COUNT(*) on all three
+# DBs, 2026-07-11) — there is no ground-truth room count to divide by pre-flood-fill. Using
+# flood-fill's OWN output as the denominator would be circular (this guard runs BEFORE it) — and
+# provably unstable: HHS's flood-fill room count went from failing to 71 honest rooms from a
+# single same-day commit (§7 WALL-VERT, 7133bbe06), which would have silently moved this guard's
+# threshold under it. Door count (IfcDoor%, discipline='ARC') is real, independently extracted,
+# and every habitable room conventionally has >=1 door, so wall-count/door-count is the closest
+# real, stable proxy available for "true partitions per expected room".
+def wall_door_ratio(c):
+    """Architectural Completeness Ratio: TRUE wall entities (ifc_class LIKE 'IfcWall%', discipline
+    ='ARC' — narrower than flood-fill's own WALL_LIKE raster set, which also counts doors/
+    curtainwall/columns/windows) divided by real ARC door count."""
+    walls = c.execute(
+        "SELECT COUNT(*) FROM elements_meta WHERE ifc_class LIKE 'IfcWall%' AND discipline='ARC'"
+    ).fetchone()[0]
+    doors = c.execute(
+        "SELECT COUNT(*) FROM elements_meta WHERE ifc_class LIKE 'IfcDoor%' AND discipline='ARC'"
+    ).fetchone()[0]
+    ratio = (walls / doors) if doors else (float('inf') if walls else 0.0)
+    return walls, doors, ratio
+
+# Measured 2026-07-11 (direct COUNT(*), elements_meta, discipline='ARC'):
+#   Hospital: 1440 walls / 440 doors = 3.27
+#   Clinic:   1080 walls / 254 doors = 4.25
+#   HHS:       160 walls / 133 doors = 1.20   (NOTE: HHS's flood-fill currently recovers 71 rooms
+#              anyway — via §WALL-VERT counting curtain-wall GLAZING panels as vertical enclosure,
+#              not because the building has enough true interior walls. The ratio stays low
+#              regardless of that downstream rescue, which is exactly why this is a useful
+#              independent, upstream signal rather than a duplicate of flood-fill's own success.)
+# WALL_DOOR_SPARSE_THRESHOLD = midpoint between HHS's 1.20 and Hospital's 3.27 (the two NEAREST
+# measured points straddling the line) = (1.20 + 3.27) / 2 = 2.235 — anchored to real data on
+# both sides, not a round guess.
+WALL_DOOR_SPARSE_THRESHOLD = 2.235
+
+def discipline_fingerprint(c):
+    """Component Discipline Fingerprint: STR-discipline share of ALL elements_meta rows. Uses the
+    discipline COLUMN, not ifc_class alone — raw ifc_class counts are misleading on their own:
+    Hospital has 7127 IfcMember rows but ALL of them are discipline='ARC' (curtain-wall mullions),
+    while HHS's 1450 IfcMember rows are ALL discipline='STR' (real structural steel connection
+    detail) — confirmed by direct GROUP BY discipline query, 2026-07-11. discipline is the
+    correct filter (WalkerDoctrine.md: "discipline is a WHERE column")."""
+    total = c.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
+    str_rows = c.execute("SELECT COUNT(*) FROM elements_meta WHERE discipline='STR'").fetchone()[0]
+    frac = (str_rows / total) if total else 0.0
+    return str_rows, total, frac
+
+# Measured 2026-07-11: Hospital STR%=4.46% (2828/63415), Clinic STR%=10.06% (1621/16114),
+# HHS STR%=24.81% (1707/6880). STR_DOMINANCE_THRESHOLD = midpoint between Clinic's 10.06%
+# (the higher of the two healthy buildings) and HHS's 24.81% = 17.4% — same derivation discipline.
+STR_DOMINANCE_THRESHOLD = 0.174
+
+def circulation_completeness(c):
+    """Multi-storey building with ZERO real IfcStair/IfcRamp entities anywhere = a structural/MEP
+    federation missing its architectural circulation model entirely — a hard flag, not a ratio.
+    Storeys counted from real (non-'Unknown') storey names; stairs counted across ALL disciplines
+    (a stair modeled under any discipline still proves circulation was captured)."""
+    storeys = c.execute(
+        "SELECT COUNT(DISTINCT storey) FROM elements_meta WHERE storey IS NOT NULL AND storey <> 'Unknown'"
+    ).fetchone()[0]
+    stairs = c.execute(
+        "SELECT COUNT(*) FROM elements_meta WHERE ifc_class LIKE 'IfcStair%' OR ifc_class LIKE 'IfcRamp%'"
+    ).fetchone()[0]
+    return storeys, stairs
+
+def data_health_guard(c, building_label=""):
+    """§PHASE0-HEALTH: pre-flood-fill sparsity check. Prints an honest flag, returns a dict —
+    never raises, never blocks (flood-fill still runs regardless, see module comment above)."""
+    walls, doors, ratio = wall_door_ratio(c)
+    str_rows, total, str_frac = discipline_fingerprint(c)
+    storeys, stairs = circulation_completeness(c)
+    flags = []
+    if doors > 0 and ratio < WALL_DOOR_SPARSE_THRESHOLD:
+        flags.append(f"SPARSE_WALLS (wall/door ratio {ratio:.2f} < {WALL_DOOR_SPARSE_THRESHOLD:.2f} "
+                      f"— insufficient architectural partitions to compute true spatial boundaries)")
+    if str_frac > STR_DOMINANCE_THRESHOLD:
+        flags.append(f"STRUCTURAL_ONLY_FEDERATION (STR discipline = {str_frac*100:.1f}% of all "
+                      f"elements, > {STR_DOMINANCE_THRESHOLD*100:.1f}% — reads like a structural/MEP "
+                      f"federation with a thin or absent architectural model)")
+    if storeys > 1 and stairs == 0:
+        flags.append(f"NO_CIRCULATION (multi-storey [{storeys} storeys] with ZERO IfcStair/IfcRamp "
+                      f"entities — architectural circulation model appears entirely absent)")
+    status = "FLAGGED" if flags else "OK"
+    print(f"§PHASE0-HEALTH [{building_label or 'building'}]: {status}  "
+          f"walls={walls} doors={doors} wall/door={ratio:.2f}  "
+          f"STR%={str_frac*100:.1f} storeys={storeys} stairs={stairs}")
+    for f in flags:
+        print(f"  ⚠ {f}")
+    if not flags:
+        print("  no sparsity/structural-only/circulation flags — architectural data looks sufficient")
+    return {"walls": walls, "doors": doors, "wall_door_ratio": ratio, "str_frac": str_frac,
+            "storeys": storeys, "stairs": stairs, "flags": flags, "status": status}
+
 def _median(vals):
     s = sorted(vals)
     return s[len(s) // 2] if s else 0.0
@@ -603,6 +706,7 @@ def main():
         print(__doc__); return
     db = sys.argv[1]; write = "--write" in sys.argv
     con = sqlite3.connect(db); c = con.cursor()
+    data_health_guard(c, building_label=db.rsplit("/", 1)[-1])  # §PHASE0-HEALTH, runs first, never blocks
     # storey guid map (for parent_guid)
     st_guid = {}
     try:

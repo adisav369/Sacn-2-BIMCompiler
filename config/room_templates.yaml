@@ -1,0 +1,252 @@
+# Room Type Template Classifier — size + aspect-ratio templates
+# prompts/ROOM_TYPE_TEMPLATE_CLASSIFIER.md (2026-07-11, MANAGER-assigned, strategy session)
+# Classifier module: build/room_type_classifier.js · Witness: build/witness_room_type_classifier.js
+#
+# §PRIMARY-VS-SUPPLEMENTARY (ROOM_TYPE_TEMPLATE_CLASSIFIER.md "Follow-up — dwelling set", added
+# 2026-07-11): every template carries a `tier: primary|supplementary` field. SUPPLEMENTARY =
+# circulation/connective-tissue rooms (HALLWAY, FOYER) — the measured signal supporting this is
+# real, not asserted: both have the highest door_count (3-4, vs 0-2 for every other template) and
+# the most elongated aspect_ratio (2.70, 4.26, vs 1.2-2.6 for the rest) of all 7 promoted
+# templates. PRIMARY = everything else (BEDROOM/BATHROOM/KITCHEN/LIVING_ROOM, plus UTILITY — see
+# UTILITY's own tier comment below for why it's the one non-obvious call and how it was decided).
+# Consumer: build/check_required_spaces.js filters to tier=primary before counting a dwelling's
+# rooms against config/profiles/malaysian_residential.yaml's `required_spaces` recipe —
+# supplementary rooms are real, present, but never part of that required-quantity count.
+# NON-INVENT DISCIPLINE (read before editing this file):
+#   confidence: measured  -> mean/std FITTED from this project's own compiled room geometry.
+#                            n = real occurrence count, source.buildings = where it came from.
+#   confidence: prior     -> NOT used anywhere in this file today (see "why no prior templates"
+#                            below). If you ever add one: cite the EXACT external source and mark
+#                            it `prior` — never blur a prior into a `measured` number. This is the
+#                            discipline that was violated once already for BEDROOM min_area (3
+#                            conflicting values already exist in this repo: 9.0 in
+#                            config/profiles/malaysian_residential.yaml, 6.5 (IRC) and 9.3
+#                            (MASTER_BEDROOM) in config/spacetypes.yaml — see
+#                            prompts/UBBL_RULES_GATE.md §1b/§1c / prompts/UBBL_RULES_RECON.md).
+#                            Do not add a 4th number under a different filename.
+#
+# WHY NO `prior` TEMPLATES HERE: the only in-repo "external standard" numbers for room SIZE
+# (config/spacetypes.yaml `validation.min_area`, config/profiles/malaysian_residential.yaml) are
+# themselves the flagged-uncorroborated numbers above — MEP/legal MINIMUMS, not a shape/size
+# statistical distribution, and they already disagree with each other. Reusing them here as a
+# classifier prior would repeat the exact landmine this task was told to avoid. Until a genuinely
+# independent, citable external size-distribution source is found and reviewed, an unmeasured
+# room type simply has NO template here — it classifies as `(unclassified)`, which is correct
+# behavior (refuse-to-guess), not a gap to paper over with an invented number.
+#
+# BOOTSTRAP STORY (corrected 2026-07-11 mid-task — see prompts/ROOM_TYPE_TEMPLATE_CLASSIFIER.md
+# "Why this, why now"): Duplex's `spatial_structure.object_type` column carries REAL human-authored
+# labels straight from the source IFC's LongName (`Living Room`, `Kitchen`, `Bathroom 1/2`,
+# `Bedroom 1/2`, `Foyer`, `Hallway`, `Utility`, `Stair`, `Roof` — 21 rows before the habitability
+# filter drops Roof). SampleHouse independently carries 3 real labeled rows in `name` (its
+# `object_type` is the generic `SPACE`). Every OTHER shipped building's `IfcSpace` rows are
+# `object_type='COMPILED'` — synthetic, room_walker.js-generated, no semantic label. So: this file
+# is fit from REAL measured data (Duplex + SampleHouse), not an external prior — a genuine
+# RosettaStone-quality anchor, just a SMALL one (see `n` per template — 2 to 5 real occurrences).
+# Report that sample size honestly wherever these templates are used; do not present N=2..5 as a
+# large-sample statistical fit.
+#
+# METHODOLOGY (prompts/ROOM_TYPE_TEMPLATE_CLASSIFIER.md "Methodology addition", 2026-07-11):
+#   - A template is PROMOTED only from >=2 real occurrences of its normalized label. A signature
+#     seen exactly once is a named EXCEPTION (see `exceptions:` below), not a template — Duplex's
+#     own data demonstrates the bar is right: it is a mirrored twin unit (A-side/B-side), so every
+#     real room type in it already appears exactly twice.
+#   - Label normalization (build/room_type_classifier.js `normalizeLabel()`): uppercase; strip a
+#     leading ordinal prefix ("1 - ", "2. " — SampleHouse's LongName convention); strip a trailing
+#     mirrored-unit digit ("Bedroom 1"/"Bedroom 2" -> BEDROOM — same trailing-digit-strip
+#     convention as bim-ootb `common/room_habitability.js`'s `spaceHabitable()` label
+#     normalization, applied consistently here, NOT re-derived). This merges same-semantic labels
+#     across mirrored units/buildings; it does NOT invent a synonym dictionary across different
+#     words — e.g. "Foyer" is never merged into "Hallway" even though both are circulation, they
+#     stay distinct measured groups. `canonical_type` below is a SEPARATE, explicit cross-
+#     reference to config/spacetypes.yaml's existing alias vocabulary, for future integration only
+#     — it does not change which rows get grouped together for fitting.
+#   - std floor: n=2..5 samples routinely produce std=0 (identical mirrored rooms, e.g. BEDROOM's
+#     two Duplex pairs share exact dimensions) or a std too tight to be a believable classifier
+#     band. `std_floor_fraction` below smooths this to `max(measured_std, std_floor_fraction *
+#     mean)` AT CLASSIFY TIME (build/room_type_classifier.js) — a numerical-stability CONSTANT
+#     (Laplace-smoothing-style convention), not a measured fact. The `area_std`/`aspect_ratio.std`
+#     values stored below are the RAW measured values, unfloored — the floor is applied by the
+#     classifier, never baked into this file, so the raw numbers stay auditable.
+#
+# SOURCE DBs used to fit this file (witness log has the exact command):
+#   Duplex:      /tmp/wt-fable-livewire/modeller/Duplex_ARC.db (20 real rows post-habitability;
+#                same 20 also in deploy/buildings/Duplex_extracted.db, bim-ootb modeller/Duplex_ARC.db)
+#   SampleHouse: /tmp/wt-fable-livewire/modeller/SampleHouse_ARC.db (3 real rows)
+#
+# `door_count` band (prompts/ROOM_TYPE_DOOR_ACCESS_SIGNAL.md, 2026-07-11 — SECOND signal, added
+# alongside area/aspect, same 2 buildings, same >=2-occurrence promotion bar, same
+# `confidence: measured` discipline). Source: build/measure_door_counts.js (run it to reproduce —
+# it prints the exact per-room counts transcribed below; log: logs/measure_door_counts_*.log).
+# Door count = build/room_type_classifier.js `countAdjacentDoors()`, which reuses
+# scripts/compile_rooms.py's own `_door_adjacent()` buffer test (each real door's own footprint +
+# DOOR_BUFFER_SLACK=0.20m, compile_rooms.py's own constant, not a new number), applied PER STOREY
+# (a door on a different floor that merely overlaps in XY must not count — an earlier un-storey-
+# filtered attempt over-counted badly, see countAdjacentDoors()'s comment). Two honest findings,
+# reported as measured, not smoothed away:
+#   - KITCHEN measures door_count=0 (both Duplex kitchens) — this Duplex model's kitchen is open-
+#     plan off the Foyer/Living space with no door leaf placed at all. That is what the source IFC
+#     actually contains; a "real kitchens always have a door" assumption would have been invented,
+#     not measured, and would be WRONG on this real building.
+#   - UTILITY measures door_count=3 for a ~1.4m^2 closet (both Duplex utility rooms) — plausible
+#     over-count: DOOR_BUFFER_SLACK is a fixed 0.20m radius-ish buffer, which is large relative to
+#     a room this small, so it likely also catches a neighboring Hallway door that isn't really
+#     UTILITY's own. Reported as-is (real, reproducible measurement) rather than hand-tuned to look
+#     cleaner — narrowing the buffer just for this one template would be curve-fitting, not fixing
+#     a bug. Flagged here so a future session knows this specific band is the least trustworthy one.
+
+std_floor_fraction: 0.15        # methodology constant, see header — NOT a measured value
+unclassified_z_threshold: 2.0   # refuse-to-classify gate: the BEST template's combined quadrature
+                                 # z-distance sqrt(z_area^2 + z_aspect^2) must be <= this, or the
+                                 # room stays (unclassified). Methodology constant (N too small to
+                                 # fit a threshold from data) — config-editable like everything else
+                                 # in this file; change it, re-run the witness, confirm the effect.
+
+templates:
+  BEDROOM:
+    confidence: measured
+    source: "measured, buildings: [Duplex, SampleHouse]"
+    tier: primary          # §PRIMARY-VS-SUPPLEMENTARY, see header
+    canonical_type: BEDROOM       # exact match, config/spacetypes.yaml
+    n: 5
+    examples: ["Duplex:A202(Bedroom 1)", "Duplex:B202(Bedroom 1)", "Duplex:A203(Bedroom 2)",
+               "Duplex:B203(Bedroom 2)", "SampleHouse:2 - Bedroom"]
+    area_m2:       { mean: 21.620, std: 3.102, min: 15.42, max: 23.17 }
+    aspect_ratio:  { mean: 1.605,  std: 0.160, min: 1.29,  max: 1.69 }
+    door_count:    { mean: 1.000, std: 0.000, n: 5 }  # §DOOR-ACCESS, measured
+
+  BATHROOM:
+    confidence: measured
+    source: "measured, buildings: [Duplex]"
+    tier: primary          # §PRIMARY-VS-SUPPLEMENTARY, see header
+    canonical_type: BATHROOM      # exact match, config/spacetypes.yaml
+    n: 4
+    examples: ["Duplex:A104(Bathroom 1)", "Duplex:B104(Bathroom 1)", "Duplex:A204(Bathroom 2)",
+               "Duplex:B204(Bathroom 2)"]
+    area_m2:       { mean: 3.952, std: 0.791, min: 3.16, max: 4.75 }
+    aspect_ratio:  { mean: 1.767, std: 0.276, min: 1.49, max: 2.05 }
+    door_count:    { mean: 2.000, std: 1.000, n: 4 }  # §DOOR-ACCESS, measured
+
+  KITCHEN:
+    confidence: measured
+    source: "measured, buildings: [Duplex]"
+    tier: primary          # §PRIMARY-VS-SUPPLEMENTARY, see header
+    canonical_type: KITCHEN       # exact match, config/spacetypes.yaml
+    n: 2
+    examples: ["Duplex:A103(Kitchen)", "Duplex:B103(Kitchen)"]
+    area_m2:       { mean: 12.954, std: 0.0, min: 12.95, max: 12.95 }
+    aspect_ratio:  { mean: 2.605,  std: 0.0, min: 2.60,  max: 2.61 }
+    door_count:    { mean: 0.000, std: 0.000, n: 2 }  # §DOOR-ACCESS, measured
+
+  LIVING_ROOM:
+    confidence: measured
+    source: "measured, buildings: [Duplex, SampleHouse]"
+    tier: primary          # §PRIMARY-VS-SUPPLEMENTARY, see header
+    canonical_type: LIVING        # config/spacetypes.yaml key is LIVING, alias LIVING_ROOM
+    n: 3
+    examples: ["Duplex:A102(Living Room)", "Duplex:B102(Living Room)", "SampleHouse:1 - Living room"]
+    area_m2:       { mean: 35.985, std: 11.773, min: 27.66, max: 52.63 }
+    aspect_ratio:  { mean: 1.355,  std: 0.206,  min: 1.21,  max: 1.65 }
+    door_count:    { mean: 1.333, std: 0.471, n: 3 }  # §DOOR-ACCESS, measured
+
+  FOYER:
+    confidence: measured
+    source: "measured, buildings: [Duplex]"
+    tier: supplementary          # §PRIMARY-VS-SUPPLEMENTARY, see header
+    canonical_type: LOBBY          # config/spacetypes.yaml key is LOBBY, alias FOYER
+    n: 2
+    examples: ["Duplex:A101(Foyer)", "Duplex:B101(Foyer)"]
+    area_m2:       { mean: 20.319, std: 0.0, min: 20.32, max: 20.32 }
+    aspect_ratio:  { mean: 4.264,  std: 0.0, min: 4.26,  max: 4.26 }
+    door_count:    { mean: 3.000, std: 0.000, n: 2 }  # §DOOR-ACCESS, measured
+
+  HALLWAY:
+    confidence: measured
+    source: "measured, buildings: [Duplex]"
+    tier: supplementary          # §PRIMARY-VS-SUPPLEMENTARY, see header
+    canonical_type: CORRIDOR       # config/spacetypes.yaml key is CORRIDOR, alias HALLWAY
+    n: 2
+    examples: ["Duplex:A201(Hallway)", "Duplex:B201(Hallway)"]
+    area_m2:       { mean: 10.415, std: 0.0, min: 10.41, max: 10.41 }
+    aspect_ratio:  { mean: 2.697,  std: 0.0, min: 2.70,  max: 2.70 }
+    door_count:    { mean: 4.000, std: 0.000, n: 2 }  # §DOOR-ACCESS, measured
+
+  UTILITY:
+    confidence: measured
+    source: "measured, buildings: [Duplex]"
+    tier: primary          # §PRIMARY-VS-SUPPLEMENTARY: NOT explicitly named by the coordinator's
+                            # framing (only Hallway/Foyer named supplementary, only Bedroom/Kitchen/
+                            # Bathroom/Living named primary) — decided here from the SAME measured
+                            # shape signal: aspect_ratio=1.65 is compact/square, nothing like
+                            # Hallway(2.70)/Foyer(4.26)'s elongated circulation shape, and
+                            # architecturally a utility closet is a destination (connective-tissue
+                            # rooms are, by definition, pass-through). door_count=3 alone would
+                            # suggest supplementary, but that band is already flagged above (in the
+                            # door_count comment block) as the LEAST trustworthy measurement — a
+                            # buffer-overreach artifact on a ~1.4m^2 room, not real evidence of 3
+                            # genuine doors — so aspect_ratio (the more reliable signal here) wins
+                            # the tie-break. CAVEAT: `primary` here means "non-circulation,
+                            # programmatic room", NOT "UBBL-habitable" — a utility/storage room is
+                            # NOT one of UBBL's habitable-room categories either. A future UBBL
+                            # By-Law 42 consumer must NOT treat tier=primary as a synonym for
+                            # "habitable" — canonical_type=null already keeps UTILITY out of
+                            # required_spaces (below) regardless of tier, so this ambiguity has no
+                            # live consequence today.
+    canonical_type: null           # NO match in config/spacetypes.yaml today (STORAGE's aliases
+                                    # are STORE/STOR/PANTRY, WET_KITCHEN's are DAPUR_BASUH/LAUNDRY/
+                                    # BASUH — neither covers "Utility"). Named gap, not fixed here;
+                                    # a future session should decide whether UTILITY is a new
+                                    # spacetypes.yaml key or an alias of one of the above.
+    n: 2
+    examples: ["Duplex:A205(Utility)", "Duplex:B205(Utility)"]
+    area_m2:       { mean: 1.408, std: 0.012, min: 1.40, max: 1.42 }
+    aspect_ratio:  { mean: 1.650, std: 0.014, min: 1.64, max: 1.66 }
+    door_count:    { mean: 3.000, std: 0.000, n: 2 }  # §DOOR-ACCESS, measured
+
+# n=1 real labels — genuine evidence, but below the >=2 promotion bar (see METHODOLOGY above).
+# The classifier does NOT score against these; kept for audit trail / future corroboration only.
+exceptions:
+  ENTRANCE_HALL:
+    building: SampleHouse
+    example: "3 - Entrance hall"
+    area_m2: 8.69
+    aspect_ratio: 2.28
+    note: >
+      Not merged into FOYER or HALLWAY despite semantic proximity — different word, no
+      invented synonym mapping. Would promote to a template on a second real occurrence.
+
+  STAIR:
+    building: Duplex
+    example: "A105 (Stair)"
+    area_m2: 3.80
+    aspect_ratio: 3.70
+    note: >
+      z-height 5.68m (spatial_structure.size_z), well above every real room's ~2.6-2.9m —
+      almost certainly a stairwell shaft, not a floor-level room. Kept as an exception so a
+      future TYPE classifier revision can special-case tall-and-narrow footprints rather than
+      folding STAIR into the size/aspect templates above.
+
+  ROOM:
+    building: Duplex
+    example: "B105 (Room)"
+    area_m2: 3.80
+    aspect_ratio: 3.70
+    note: >
+      Identical footprint AND z-height to STAIR above (near-certainly the mirrored B-side
+      stairwell, generically labeled "Room" instead of "Stair" in the source IFC — a labeling
+      inconsistency in the source data, not a compiler bug). Kept SEPARATE from STAIR per its
+      own label — merging same-dimension-different-label rows would be exactly the "invented
+      synonym mapping" this file's discipline forbids. Flagged for manual review, not corrected.
+
+# Documented follow-up axes — see prompts/ROOM_TYPE_TEMPLATE_CLASSIFIER.md "Methodology addition"
+# for the full original framing:
+#   1. grid/containment (which walls bound the space, grid-cell alignment) — ties to SEMI-GRID.
+#      Still NOT built.
+#   2. door access (door count + adjacency) — BUILT 2026-07-11, see
+#      prompts/ROOM_TYPE_DOOR_ACCESS_SIGNAL.md + the `door_count` band on each template above +
+#      build/measure_door_counts.js (measurement) + build/room_type_classifier.js
+#      countAdjacentDoors()/scoreTemplate() (scoring, 3rd quadrature dimension, additive not a
+#      replacement of area/aspect).
+# Also NOT built (Step 4 of the parent spec, a separate larger follow-up): Modeller Outliner
+# wiring + the user-correction flywheel that would promote a `confidence: prior`/small-n
+# `measured` template toward genuinely calibrated status over time.

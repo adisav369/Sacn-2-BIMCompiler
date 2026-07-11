@@ -371,3 +371,161 @@ hanging/cantilevered roof overhang (outside the building envelope, not enclosed 
 Not built, not specced in detail — needs the same measured, non-invent treatment as the existing
 Roof check (find the real geometric/label signal — e.g. `IfcTransportElement` adjacency for lift
 shafts, envelope-boundary test for roof-overhang exteriors — don't hardcode a name-string match).
+
+## §7 — Corridor/circulation pathway routing in the Find panel (2026-07-11, MANAGER-assigned)
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: bim-ootb `viewer/navigate_find.js`. User directive: "rope in our Find panel 'corridors'
+pathways, whatever of character, meaningful to user... to include in the algorithm and pattern set."
+Now that circulation spaces are a real, tier-tagged classification (`tier: supplementary` in
+`config/room_templates.yaml` — Hallway/Foyer, high door-count, elongated shape, both measured not
+guessed), build a REAL room-to-room pathway feature: route from room A to room B through the actual
+circulation network. Read the log after every run. PUSH PAUSE IN EFFECT — commit locally, verify on
+localhost, do NOT push, do NOT open a PR.
+```
+
+## Why this is genuinely new, not a relabel
+Checked directly: no room-to-room adjacency graph exists anywhere in this pipeline today
+(`compile_rooms.py`'s door-rescue computes PER-ROOM door adjacency, never room-to-room connectivity).
+This is real, buildable, ungrounded-until-now work — not a cosmetic Find-panel addition.
+
+## Task
+1. **Build the room-adjacency graph** (new, real): two rooms are adjacent if they share a real door
+   (same door guid bounds both spaces, or both spaces' footprints touch the same door's opening —
+   check which is actually measurable from the compiled data, don't assume). Supplementary-tier
+   rooms (Hallway/Foyer/corridor) are the natural graph HUBS (high door-count, by design connects
+   multiple spaces) — primary-tier rooms (Bedroom/Kitchen/etc.) are typically graph LEAVES (1-2
+   doors). Verify this hub/leaf pattern holds on real data before assuming it architecturally.
+2. **Real pathfinding**: BFS/Dijkstra from room A to room B over this graph — report the actual path
+   (sequence of rooms/corridors traversed), not just "reachable yes/no."
+3. **Surface it meaningfully in the Find panel** — your call on the exact UI (a new Room-to-Room
+   query mode? highlight the path in the 3D view reusing existing highlight/navigate machinery? —
+   state your choice and why), but it needs to be a real, usable feature, not just a console-log
+   proof. Reuse `A.openFindPanel`/existing navigate/highlight functions where they fit, don't rebuild
+   navigation from scratch.
+
+## Witness
+Real path found + verified correct on a real multi-room building (Duplex or HHS — pick one with a
+genuine, checkable corridor structure). Prove the path is REAL (walks through actual shared doors,
+not a straight-line guess) — assert door-guid continuity along the reported path, not just visual
+plausibility. Also report: does every primary-tier room in the test building actually have SOME path
+to every other (a disconnected room would be a real, worth-reporting finding, not a bug to hide).
+
+## Non-goals
+- Do not build a full turn-by-turn walking-directions UI — a real graph path + a way to see/use it
+  is the deliverable, not a polished wayfinding product.
+- Do not touch the DISC_WALK_ROOM_TYPE_AWARE.md task (parallel, different repo file, disc_walker.js
+  not navigate_find.js) — no coordination needed, but don't duplicate its room-type work, reuse the
+  classifier's existing output.
+
+## DONE WHEN
+Room-adjacency graph built from real door-sharing data, real pathfinding proven on a real building
+with door-guid-verified path continuity, surfaced as a usable Find-panel feature.
+
+## §7 EXECUTION 2026-07-11 (Sonnet, background session) — ✅ DONE, committed locally, NOT pushed
+
+Worked in bim-ootb worktree `/tmp/wt-room-pathfind`, branch `feat/room-pathfind-graph` off
+`origin/main` @ `032224b`. **PUSH PAUSE in effect — committed locally only (`b6bef80`), not pushed,
+no PR.** No collision with the concurrent `disc_walker.js` session (different files entirely:
+`common/`, `viewer/main.js`, `viewer/navigate_find.js`).
+
+### The graph — `common/room_graph.js` (new, UMD, same convention as `common/room_habitability.js`)
+Confirmed the gap first (per the task brief): grepped `scripts/compile_rooms.py` — its door-rescue
+(`_door_adjacent`) computes PER-ROOM adjacency only ("is a door near THIS room's pocket, for
+classification"), never room-to-room connectivity. Nothing else in the pipeline builds one either.
+
+`buildGraph(dbQuery)` reuses `compile_rooms.py`'s own door-adjacency constants verbatim
+(`DOOR_BUFFER_SLACK=0.20`, `_is_room_door` lift/elevator name-exclusion) but had to fix ONE thing
+that didn't transfer: matching doors to rooms by **buffered-box containment** (the original per-room
+test) produces WRONG room-to-room edges once you ask "which 2 rooms does this door connect" instead
+of "is this door near my room" — measured directly on real Duplex data. Door `150478` (Level 2)
+sits literally inside Bedroom A203's rect (distance 0) and 0.07m off Hallway A201's edge; the
+buffered-containment version matched 3 rooms (Hallway, Bathroom A204, Bedroom A203) and its
+center-distance tiebreak picked the WRONG pair (Bathroom+Bedroom, dropping the real Hallway
+connection) — verified by hand before fixing. Fix: rank candidate rooms by **point-to-AABB distance**
+(0 if the door center is inside the room's rect, else distance to its nearest edge) instead of
+"is it inside the buffered box"; the two true neighbours are always at ~0 distance, a merely-nearby
+third room is farther. Ambiguous doors (3+ candidates within the buffer radius) still occur (4 of
+14 on Duplex) — resolved to the 2 closest-by-distance candidates, logged `§ROOM_GRAPH_AMBIGUOUS_DOOR`,
+never invented. `shortestPath()` = Dijkstra weighted by real room-center-to-room-center distance
+(metres), returns the room sequence + the real door guid/name for every hop.
+
+### Surfaced in the Find panel — `viewer/navigate_find.js`
+Room axis sub-toggle (`_subToggleRow`, generalized from a fixed 2-pill signature to an options array)
+grows a 3rd pill: **Storey | Type | Path**. Path mode renders a From/To `<select>` (every real room,
+labelled `name · label (storey)`) + a Find Path button. A found path renders as tappable room rows
+(reuses `_treeNode` → `_roomSelect`, the SAME tap-to-focus every other lens uses — not a new nav
+primitive) with the real door name printed between hops (`title` = door guid, for inspection) — plus
+a 3D highlight: path-room shells brighten, all others dim to 0.04, a `THREE.Line` is drawn through
+the path's room centers, camera zooms to fit the path's bounding box. No path found → an honest
+message ("disconnected parts of the building"), never a fabricated route. `common/room_graph.js` is
+lazy-loaded alongside `navigate_find.js` in `viewer/main.js`'s `loadNavigate()` chain (same rationale
+as `room_habitability.js`); the graph itself is built lazily on first entering Path mode, not on
+every Room-axis open, and cached per `A.activeBuilding`.
+
+### Witness — real Duplex Apartment sample, 21 real IfcSpace rows / 14 real IfcDoor rows
+Used `modeller/Duplex_ARC.db` (real human-authored room labels — Foyer/Living Room/Kitchen/
+Bathroom/Hallway/Bedroom/Utility/Stair/Roof, mirrored A/B twin unit) rather than the Viewer's
+production `buildings/Duplex_extracted.db`, which is OCI-only (not in this git worktree, per the DB
+Storage Policy) and — confirmed by fetching it live in the browser witness — is currently a
+DIFFERENT, older 5-room synthetic extraction. The graph module is pure `dbQuery`-in, no file I/O, so
+this is the same code path/schema either way, just richer real data, exactly the "genuine, checkable
+corridor structure" the task asked for.
+
+**`witness_room_graph_path.js`** (node, direct module test, ground truth read independently from
+`elements_meta`/`element_transforms`/`spatial_structure`, not via the module under test) — **15/15
+pass**:
+- G1: every graph edge's door guid is a real `elements_meta` IfcDoor guid (0 bad out of 12 edges).
+- G2 HUB/LEAF, verified not assumed: Hallway/Foyer (`config/room_templates.yaml` tier:supplementary)
+  degrees `[2,3,2,3]` avg **2.50** vs Bedroom/Bathroom/Utility (tier:primary) degrees
+  `[1,2,1,1,1,2,1,1,1,1]` avg **1.20** — every individual hub room's degree (min 2) >= every
+  individual leaf room's degree (max 2), a strict split on real data.
+- G3: `A202(Bedroom1) → A205(Utility)` finds a real 3-hop path (`A202→A201→A204→A205`, 9.50m) through
+  the Hallway hub; each of the 3 doors independently re-verified (fresh distance calc, not reusing
+  the module's own verdict) to sit within its buffer radius of BOTH claimed rooms — door-guid
+  continuity proven, not assumed.
+- G4 honest disconnection: Kitchen (`A103`, 0 measured doors — this real IFC's kitchen is open-plan,
+  cross-validates `ROOM_TYPE_TEMPLATE_CLASSIFIER.md`'s prior door_count=0 finding) has NO path to
+  anywhere; Level 1 and Level 2 are in different connected components (no door object at the
+  stairwell in this real sample) — `shortestPath()` returns `null` for both, not a fabricated route.
+  Primary-tier room connectivity reported as **14/91 pairs (15.4%)** reachable — genuinely mostly
+  disconnected in this particular real building (open-plan kitchens + doorless stairwell), reported
+  honestly per the task's own instruction, not hidden or asserted 100%.
+
+**`witness_room_path_ui.js`** (Puppeteer, real `viewer.html`, real user path) — **13/13 pass**: opens
+the building, opens Find, cycles the axis toggle to Room, clicks the Path pill, picks
+`A202`→`A205` by real option text, clicks Find Path — gets the **identical** path/door-guids the
+node-side witness proves independently (`§ROOM_PATH from=A202 to=A205 hops=3
+rooms=[A202,A201,A204,A205] doors=[2OBrcmyk58NupXoVOHUvVV,2OBrcmyk58NupXoVOHUvPL,
+1aj$VJZFn2TxepZUBcKpac]`), confirms the result list renders room names + door hints, and confirms
+the honest "no path" message renders for the disconnected `A103→A104` (Kitchen→Bathroom) pair.
+Zero pageerror across the whole flow.
+
+### Non-regression check
+Temporarily removed the local Duplex fixture and re-ran the pre-existing `witness_room_lens_hab.js`
+— it errors immediately (`SQLITE_CANTOPEN`) because its OWN ground-truth step requires a local
+`buildings/Duplex_extracted.db` to exist at all (this worktree ships none by default — OCI-only).
+With my local copy present it partially fails, but only because that specific real 21-room file
+carries its habitability label in `object_type` (`'Roof'`), not `name` (`'R301'`) — a property of
+*which* Duplex dataset happens to be on disk locally, unrelated to any code touched by this task
+(confirmed via `git diff --stat`: only `common/room_graph.js` (new), `viewer/main.js`,
+`viewer/navigate_find.js` changed — `scene.js`/`streaming.js`/the self-heal patch loader untouched).
+Not fixed here — out of §7's scope, flagged for whoever next touches the Duplex production fixture.
+
+### Shipped / not shipped
+- bim-ootb branch `feat/room-pathfind-graph` @ `b6bef80` (**local commit only, not pushed**):
+  `common/room_graph.js` (new), `viewer/main.js`, `viewer/navigate_find.js`,
+  `witness_room_graph_path.js` (new), `witness_room_path_ui.js` (new).
+  `viewer/navigate_find.js?v=44→v=45` cache-bust bump in `main.js`'s module list.
+- Local-only, untracked, gitignored test fixtures (NOT committed, NOT part of the diff): a copy of
+  the real 21-room `Duplex_extracted.db` (sourced from `~/bim-compiler/deploy/buildings/
+  Duplex_extracted.db`) placed at both `buildings/Duplex_extracted.db` and
+  `viewer/buildings/Duplex_extracted.db` in the worktree — the latter because the Viewer's
+  `A.cachedFetch` resolves a relative `db=` URL against the current page's own directory
+  (`/viewer/…`), not site root; discovered by instrumenting `page.on('response')` in the browser
+  witness after the naive root-relative copy silently 404'd and fell through to a live OCI fetch.
+- Not built (non-goal, explicitly out of scope per the task): a full turn-by-turn walking-directions
+  UI. A separate, pre-existing `navigate_path.js`/`navigate_engine.js` grid-based A* system already
+  does free-space camera-flythrough routing (point-to-point, not room-to-room semantic graph) for a
+  DIFFERENT feature (walk-to-target camera tours) — confirmed distinct in purpose, not duplicated.
