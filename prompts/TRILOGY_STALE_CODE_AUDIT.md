@@ -328,3 +328,34 @@ that exact profile. Report-only — no fixes applied in this pass.
   review; (2) decide the 10 STALE CANDIDATEs; (3) kernel_ops.js unification (production finding #1);
   (4) precache generation from reachability; (5) deploy-side cleanup of the retired 2d.html set in
   bim-compiler deploy/dev + OCI dev bucket (bim-ootb-side removal does not touch deploys).
+
+### 2026-07-12 — FOLLOW-UP EXECUTED: orphan sweep (user go-ahead: "U go ahead to do it")
+2d.html retirement merged as bim-ootb #750 (squash 375bf32). Orphan sweep executed off fresh main
+as `fable/orphan-sweep` → PR #751 (auto-merge enabled): removed the CONFIRMED ORPHAN set (29 files)
++ **viewer/lib/kernel/ — a 22MB occt-wasm copy byte-identical to modeller's, referenced by NOTHING
+in viewer** (subdir find, caught while sizing; modeller's working copy untouched). Wiring: viewer
+sw v743→v744 (-3 precache entries), erp sw v763→v764 (-3), poc_overlay_kit + witness_xss_filename
+updated to drop their retired migrate_showme halves.
+
+**Two audit corrections found by executing (reachability is the wrong test for these classes):**
+- `viewer/mep_qto_populate.js` KEPT — real node CLI (MEP_5D_QTO.md §2.1–2.3, W-QTO_CACHE_WRITE);
+  CLI tools, like docs, are never page-reachable. Reclassified LIVE (dev CLI).
+- `modeller/room_templates.json` KEPT — `witness_disc_room_type_weight.js:38` still reads it;
+  retire json+witness together only after confirming config/room_templates.yaml is the sole source.
+- False-alarm worth recording: erp/tests/test_idempiere_login.js has a var literally named `VIEWER`
+  that resolves to `erp/` — read the code, don't trust the grep.
+
+**Size ledger (tracked bytes per git ls-tree; LFS pointers count as pointers in all columns so
+deltas are honest):**
+| app | before audit (b83c791) | after 2d.html (#750) | after sweep (#751) | Δ total |
+|---|---|---|---|---|
+| viewer | 51.9 MB | 50.1 MB | **28.4 MB** | **−23.5 MB (−45%)** |
+| erp | 40.4 MB | 40.4 MB | 40.3 MB | −0.1 MB |
+| modeller | 172.5 MB | 172.5 MB | 172.5 MB | 0 (data-heavy: tracked .db fixtures — separate lane, production finding #5) |
+
+Verification: spec 28 4/4 green; witness_xss_filename 5/5 PASS; audit_sw_precache 106/0 missing;
+eslint 0 errors (10 warnings pre-exist on main); spec 21.3/21.4 and poc_overlay_kit's live section
+fail IDENTICALLY on untouched main (pre-existing env-fit, verified side-by-side, not regressions).
+Still open from the marking table: the 10 STALE CANDIDATEs (user call), kernel_ops.js 3-way
+unification (needs its own spec'd session — divergent code, not a mechanical merge), sql-wasm/
+qrcode vendor dedupe, modeller tracked-.db relocation, deploy-side (OCI dev bucket) cleanup.
