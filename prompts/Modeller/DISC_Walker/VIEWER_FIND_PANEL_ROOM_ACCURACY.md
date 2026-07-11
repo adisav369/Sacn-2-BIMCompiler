@@ -362,3 +362,12 @@ executes, then is queried directly — not hardcoded literals). **11/11 pass:**
   to `window.RoomHabitability` instead of keeping a second copy (flagged in the new module's own
   header comment too, not actioned here — out of this task's scope, `disc_walker.js` on `main`
   doesn't have the function to refactor yet).
+
+## §6 — Habitability disqualifiers, named follow-up (2026-07-11, strategy session, NOT built)
+User-named additional disqualifier categories `spaceHabitable()`/`common/room_habitability.js`
+should refuse as rooms, beyond the existing Roof/z-band check: space below a lift (lift-shaft/pit
+void — human cannot stay in it, structurally a shaft not a room), and the exterior void under a
+hanging/cantilevered roof overhang (outside the building envelope, not enclosed interior space).
+Not built, not specced in detail — needs the same measured, non-invent treatment as the existing
+Roof check (find the real geometric/label signal — e.g. `IfcTransportElement` adjacency for lift
+shafts, envelope-boundary test for roof-overhang exteriors — don't hardcode a name-string match).

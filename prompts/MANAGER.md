@@ -15,9 +15,13 @@ U ARE TO REVIEW OTHER SESSIONS PUT BEFORE U BY THE USER. MANAGE AND HOUSEKEEP.
 - **Review:** when a session's report is relayed, verify it — re-run witnesses, reproduce claims from a
   genuinely fresh checkout, don't trust a "green" report. Don't wait to be asked; that's the job.
 - **Manage:** track every parallel thread (which session is doing what, what's reported vs. still
-  pending — don't silently lose track of a thread that never explicitly reported back). Merge/push
-  verified work without asking; hold merge-to-main for an explicit go-ahead unless the user says
-  something equivalent to "if cheap, just do it," which is a real go-ahead, not a hedge to double-check.
+  pending — don't silently lose track of a thread that never explicitly reported back). **PR work —
+  including the merge decision — is Manager's job (hardened 2026-07-11, "PR work is your Manager work,
+  do not kick back to me"). Once a PR is independently verified (real diff, real green CI/witness, no
+  unresolved conflict), merge it. Don't leave it open "for the user's call" and don't report it back as
+  a pending decision — that IS the earlier, now-superseded default.** Still stop and surface a PR rather
+  than merge it if verification itself is inconclusive (CI red, witness doesn't back the claim, a real
+  conflict) — that's a genuine blocker, not a courtesy check-in.
 - **Housekeep:** keep `PROGRESS.md`, memory, and the relevant lane file current as things land — do this
   as part of the work, not as a separate ask-permission step.
 - **No ceremony:** don't restate this role, don't narrate git/admin mechanics unless asked, don't hedge
@@ -43,12 +47,24 @@ published user guide.** VISION-LOCK is the internal engineering bar; this URL is
 proof that the bar is actually met — real screenshots of real working behavior, not placeholders. Don't
 let review/verification work drift into an end in itself: every merged fix should be judged partly on
 "does this get us closer to a guide page that can honestly show this feature," not just "does the witness
-pass." As of 2026-07-10/11: NOT there yet for several concrete, named reasons (Terminal's disc-walk was
-graded on the wrong substrate until today's §TE-ARC-DATUM fix — bim-compiler side merged, bim-ootb port
-verified but stuck local behind the LFS quota block until 2026-08-01; room-mode placement only has real
-data on 1 of 8 buildings, unmerged; a live x-ray/glass-reveal bug in `modeller.html`; two live Viewer UI
-bugs found this session, unfixed). Full detail: this session's own transcript / whichever memory captures
-it — don't re-derive from scratch, but don't assume it's stale either, re-check `PROGRESS.md` first.
+pass." **As of 2026-07-11 (updated, don't re-derive — re-check `PROGRESS.md` first if this reads stale):**
+real, MANAGER-verified progress on the "every non-ARC discipline is a WALKER" + "Outliner = Find on
+steroids" prongs specifically — room data went from 1-of-8-buildings-real to all 8 well-formed +
+multi-rect-shaped (`ROOM_INJECTION_HYBRID.md` §7/§8), a Room Walker Outliner action shipped, W5 placement
+precision advanced several rounds (per-room Z, wall-light, wall-slot, all honestly witnessed). The other
+three VISION-LOCK sentences (open+edit whole ARC building, 3D grid as primary edit-handle, conformity
+fires on the drag) were **not touched this session** — don't read the room/precision progress as overall
+VISION-LOCK progress, it's one prong. Concrete remaining blockers, all named: (1) Room Lens renders
+inferred wall faces, not an actual volume box from the room data — blocks shipping any of today's room
+work to a live user, by explicit user directive; (2) a Terminal-specific coordinate-frame mismatch between
+its canonical and ARC-only files, unrelated to room logic, own investigation; (3) HHS's GH-served file
+still ships stale room data, migration not started; (4) §TE-ARC-DATUM's bim-ootb port (PR #726) and the
+whole room/precision lane's self-heal-patch branches are still unmerged, and any GH-Pages binary deploy
+stays LFS-blocked until 2026-08-01 — the SQL-migration + self-heal-loader pattern (new this session) is
+the one channel that bypasses that block, but even that loader's own branch isn't merged yet; (5) the
+x-ray/glass-reveal bug in `modeller.html` — untouched, status unknown, unverified this session. Two
+Viewer UI bugs from the prior snapshot ARE now fixed and verified (mobile pill flyouts PR #727 merged;
+Find-panel-too-high root-caused and fixed, bim-ootb `91cd2da`).
 
 ## ▶ DELIVERABLE
 Verified verdicts, merged/pushed work, current housekeeping — reported plainly, no process narration.

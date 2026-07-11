@@ -6,7 +6,7 @@
 **NEVER TOUCH PRODUCTION.** `deploy/live/` is the production snapshot — do not edit directly. All dev work goes to `deploy/dev/` ONLY. Read `deploy/OCI_UPLOAD.md` §RULES before any OCI upload.
 
 ## WORK-TO-ZERO (the backlog contract — enforced every session)
-**No standing backlog file right now — `prompts/FRONTEND_LANE_MASTER.md §NEW BACKLOG` DRAINED 2026-07-08 (every
+**No standing backlog file right now — `prompts/archive/FRONTEND_LANE_MASTER.md §NEW BACKLOG` (archived 2026-07-11, prompts-audit) DRAINED 2026-07-08 (every
 top-level item `✅`; same retirement treatment as the earlier `§OUTSTANDING` band, RETIRED 2026-06-20 → archived
 to `prompts/archive/FRONTEND_LANE_MASTER_OUTSTANDING_drained_2026-06-20.md`). Do NOT re-walk either band, and
 do NOT re-derive "is it still stale" by re-reading that 523-line file — it's settled. Two small real items were
@@ -26,6 +26,12 @@ top-to-bottom to zero in whatever file it lives:
   and you weren't interrupted, you stopped too early — that is the failure this rule exists to kill.
 - Shared working tree: editing `~/bim-ootb/` is now **BLOCKED by a PreToolUse hook** (verified 2026-06-06) —
   work in a `/tmp/wt-*` worktree, never the shared checkout. See `~/.claude/hooks/block-shared-tree.sh`.
+  **⚠ `bim-compiler` has NO equivalent hook** — this checkout (`/home/red1/bim-compiler`) is fully editable
+  by any concurrent session. Confirmed live 2026-07-11: two parallel sessions both directly edited
+  `build/room_walker.js`/`scripts/compile_rooms.py` in this shared tree at the same time — non-destructive
+  only by luck (verified after the fact, nothing lost). Prefer a `/tmp/wt-*` worktree here too when a task
+  might overlap with concurrent work on the same files; if editing the shared tree directly, expect this
+  risk and verify post-hoc (diff/syntax-check) rather than assume no collision occurred.
 - **Concurrent branches (N-terminal workflow):** with multiple terminals, `main` advances under you.
   - A PR showing **`BEHIND`/`DIRTY` is *sync*, NOT a redo** — `git fetch origin && git merge origin/main`,
     re-run witnesses, push. Your commits are preserved (you layer main's in).
@@ -129,56 +135,41 @@ Before ending, update PROGRESS.md with:
 - **Pre-Flight Citation:** Before code changes, cite the spec: `// Implementing BBC.md §X.Y — Witness: W-NAME`
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
 
-## ⛔ LFS QUOTA EXHAUSTED — HARD BLOCK, ALL LOCAL, NO EXCEPTIONS (2026-07-11)
-**GitHub confirmed the LFS bandwidth quota is now at 0 — not "approaching the cap," actually exhausted.
-Resets on the 1st of every month (user-confirmed) — next reset 2026-08-01.** Until that date (or an
-explicit user confirmation it topped up early), treat ALL git push/fetch against `bim-ootb` and
-`bim-compiler` as at risk — **confirmed empirically 2026-07-11: a push whose diff touched ZERO LFS-tracked
-files still hung for 2+ minutes and never landed** (`bim-ootb` branch `fix/dw-datum-port` @ `4ff22c0` — the
-`git-lfs` pre-push hook appears to probe the LFS endpoint regardless of whether the push actually needs to
-upload anything, and that probe stalls against an exhausted quota). **So the rule is NOT "only pushes that
-touch LFS content are blocked" — it's "any push to either repo may hang until reset."** Don't retry a
-hung push repeatedly (each attempt risks re-triggering the same stall); if a push doesn't return within
-~30s, stop and report it rather than let it sit.
-
-This supersedes the softer "reduce usage" framing of the two sections below (still read them for the
-mechanism/cleanup already done — this section is the escalation on top). Until reset:
-- **NEVER push a commit whose diff touches ANY already-LFS-tracked file's content** — not just new `.db`
-  additions (already banned below), but ANY change to an existing tracked binary (a rules-DB update, a
-  regenerated mesh/geo file, anything matching `.gitattributes`' `filter=lfs` patterns). If a task needs to
-  change one, commit it LOCALLY only and stop there — do not `git push` that commit. Say so explicitly when
-  reporting the work, don't push-and-hope.
-- **NEVER create a worktree/checkout a branch whose LFS blobs aren't already in the local cache**
-  (`.git/lfs/objects`) — that triggers a fetch against the exhausted quota. Before `git worktree add` or
-  `git checkout` of a branch you haven't already worked with locally, check whether its LFS content is
-  already cached; if unsure, ask rather than risk a failed/quota-consuming fetch. Branches already checked
-  out in an existing worktree are safe to keep using (their blobs are already local).
-- **This applies to every Agent-tool prompt that touches git** — spawned verification/build agents must be
-  told explicitly not to push LFS-touching commits and not to fetch new LFS content, same as this session.
-- **Non-LFS-tracked files (code, docs, most everything) are unaffected** — normal commit/push continues for
-  anything that isn't itself an LFS-tracked binary or doesn't modify one.
-
-## DB Storage Policy — GitHub LFS bandwidth (2026-07-10)
-**GitHub emailed a 10GB/month LFS bandwidth-cap warning.** `.gitattributes` has a blanket `*.db filter=lfs`
-rule and 59+ `.db` files are already LFS-tracked (`deploy/buildings/*_extracted.db`/`*_library.db`,
-`build/*.db`, etc.) — every clone/fetch/checkout of a branch touching these re-downloads them through the
-capped quota. **From now on: do NOT commit/force-add a `.db` file to git, even if `.gitattributes` would
-route it through LFS.** Most DB paths are already `.gitignore`d (`/library/*`, `deploy/buildings/`,
-`database/*.db`, `/build/erp/*.db`, etc. — see `.gitignore`) — that's correct, keep it that way, don't
-`git add -f` past it. Two channels replace committing the binary:
+## DB CHANGES = MIGRATION SCRIPT + SELF-HEAL LOADER, ALWAYS (hardened 2026-07-11 — read this FIRST)
+**This is the PERMANENT architecture, not a workaround for LFS bandwidth.** Every DB content change —
+schema/rules DB or a shipped extracted/library DB — ships as a small SQL script (`migration/*.sql`, or
+`<app>/patches/<dbfile>.sql` for the self-heal convention below) plus, where the target is a live-served
+app, a runtime loader that applies it client-side on load. **We would do this even with unlimited LFS
+bandwidth** — it's smaller, reviewable as text, and reaches a live user without a binary ever moving.
+**NEVER cite "LFS block"/"LFS quota" as the reason a DB fix isn't live.** That framing is WRONG — it
+implies binary-push is the normal path and LFS is what's stopping it. It is not: binary `.db` commits are
+banned outright, unconditionally, regardless of LFS quota status (see `.gitignore` — most DB paths are
+already excluded on purpose, keep it that way). The only real reasons a DB fix isn't live are: (a) the
+patch script hasn't been written yet, or (b) the consuming app's self-heal loader hasn't been wired yet
+(Modeller has one — `str_walker_outliner.js` `_applyPendingPatch()`; Viewer got its own port 2026-07-11 —
+`viewer/scene.js` `A._applyPendingPatch()` + `buildings/patches/*.sql`, mirror this pattern for any new
+target). Report status in those terms, not "blocked by LFS."
 - **Schema/rules/pattern DBs** (small, structurally regenerable — `duplex_rules.db`, `terminal_rules.db`,
-  `ERP.db` seed data): migration scripts in `migration/*.sql` (see Sacred Files below — `DV_<prefix>_rules.sql`
-  is already this pattern for mined rules) or the mining scripts that generate them
-  (`run_RosettaStones.sh`/`onboard_ifc.sh`/`project_rule_mesh_binding.py` etc.) — regenerate on demand, don't
-  version the binary.
+  `ERP.db` seed data): `migration/*.sql` (Sacred Files below — `DV_<prefix>_rules.sql` is this pattern for
+  mined rules) or the mining scripts that generate them (`run_RosettaStones.sh`/`onboard_ifc.sh`/
+  `project_rule_mesh_binding.py`) — regenerate on demand, don't version the binary.
 - **Extracted/derived building DBs** (`deploy/buildings/*_extracted.db`/`*_library.db`, mesh/geo DBs — NOT
-  reproducible from a short SQL script, only from re-running extraction on the source IFC): distribute via
-  **OCI** (`deploy/OCI_UPLOAD.md` §RULES — the existing dev/live snapshot channel), not git/LFS. If a building
-  needs to travel with a branch for local dev, keep it gitignored and hand it off out-of-band (OCI, or a
-  read-only copy), never commit it.
-- **Already-LFS-tracked files are sunk cost** — not retroactively purged as part of this rule (that's a
-  separate, disruptive history-rewrite decision, not taken here). This rule only stops the bleeding going
-  forward: no NEW `.db` commits.
+  reproducible from a short SQL script, only from re-running extraction on the source IFC): distribute the
+  FULL rebuilt binary via **OCI** (`deploy/OCI_UPLOAD.md` §RULES), never git/LFS; ship an incremental FIX
+  to an already-distributed one via the patch+self-heal-loader pattern above.
+- **Deliverable = patch AND loader together, not the patch alone.** A committed-but-unapplied migration
+  script is not "done" — the loader wiring is part of the same task, not a follow-up.
+- **A `git push` may still hang regardless of DB policy** — this is a separate, purely mechanical git-ops
+  fact, unrelated to the DB rule above: the `git-lfs` pre-push hook probes the LFS endpoint on every push
+  to `bim-ootb`/`bim-compiler` regardless of whether the diff touches LFS content, and that probe can hang
+  against a capped quota (confirmed empirically 2026-07-11, `bim-ootb` `fix/dw-datum-port` @ `4ff22c0`,
+  2+ min hang on a zero-LFS-diff push). If a push doesn't return within ~30s, stop and report — don't retry
+  in a loop. This can affect a normal code push same as anyone else's; it is NOT a reason to fall back to
+  committing a DB binary — the DB rule above holds regardless of whether pushes are currently fast or slow.
+- **Worktree/checkout caution, same mechanical cause:** don't `git worktree add`/`checkout` a branch whose
+  LFS blobs aren't already in the local cache (`.git/lfs/objects`) without expecting a possible hang; branches
+  already checked out in an existing worktree are safe (blobs already local). Applies to spawned Agent-tool
+  workers too — tell them the same caution, not "don't touch DB binaries" (that's unconditional anyway).
 
 ## Worktree Hygiene — the OTHER LFS bandwidth drain (2026-07-10, same root cause, different mechanism)
 **Committing new DBs (above) was only half the bandwidth story.** The other half: bim-ootb's
