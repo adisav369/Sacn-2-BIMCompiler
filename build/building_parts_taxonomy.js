@@ -40,6 +40,41 @@
     return words.map(function (w) { return "LOWER(" + col + ") LIKE '%" + w + "%'"; }).join(' OR ');
   }
 
+  // §PLANT_ROOM_GATE_FIX (prompts/FIND_PANEL_PLANT_ROOM_GATE_FIX.md) — ported byte-identical from
+  // bim-ootb viewer/navigate_find.js's fix on the same session (do not re-derive). _keywordCond
+  // above is a broad SQL substring pre-filter (superset, real hits never excluded — SQLite has no
+  // REGEXP/word-boundary builtin); this JS pass rejects false positives like "Preventer" (contains
+  // "vent" mid-token) while keeping real camelCase compounds ("BottomDuct") and prefix hits
+  // ("Ventilated"). Confirmed against real element_name templates across Duplex/Terminal/Hospital/
+  // Clinic/HHS (59 distinct templates surveyed, see the Viewer commit for the full citation).
+  function _splitNameTokens(name) {
+    var raw = String(name || '').split(/[^A-Za-z]+/).filter(Boolean);
+    var out = [];
+    raw.forEach(function (tok) {
+      var start = 0;
+      for (var i = 1; i < tok.length; i++) {
+        if (/[a-z]/.test(tok.charAt(i - 1)) && /[A-Z]/.test(tok.charAt(i))) {
+          out.push(tok.slice(start, i));
+          start = i;
+        }
+      }
+      out.push(tok.slice(start));
+    });
+    return out;
+  }
+  function _keywordTokenMatch(name, words) {
+    var tokens = _splitNameTokens(name);
+    return tokens.some(function (t) {
+      var tl = t.toLowerCase();
+      return words.some(function (w) { return tl.indexOf(w) === 0; });
+    });
+  }
+  function _filterWordBoundary(extracted, words) {
+    var all = extracted.all.filter(function (r) { return _keywordTokenMatch(r.element_name, words); });
+    var positioned = extracted.positioned.filter(function (r) { return _keywordTokenMatch(r.element_name, words); });
+    return { all: all, positioned: positioned, length: all.length };
+  }
+
   // §PARENT-NO-TRANSFORM (found running this module's own witness against real Duplex/Clinic/
   // Hospital data, 2026-07-11): an assembly parent (IfcStair) frequently carries NO transform of
   // its own — only its child geometry (IfcStairFlight) does. A transform-requiring JOIN silently
@@ -60,9 +95,9 @@
   // Bottom-up: extract real STAIRWAY / LIFT_SHAFT / PLANT_ROOM evidence from one building's DB.
   function extractParts(db) {
     var stairCond = STAIR_LIKE.map(function (p) { return "ifc_class LIKE '" + p + "'"; }).join(' OR ');
-    var stairways = _extract(db, stairCond);
-    var liftRows = _extract(db, _keywordCond('element_name', LIFT_KEYWORDS));
-    var plantRows = _extract(db, _keywordCond('element_name', PLANT_KEYWORDS));
+    var stairways = _extract(db, stairCond); // ifc_class match, not a name keyword — no false-positive mechanism to fix
+    var liftRows = _filterWordBoundary(_extract(db, _keywordCond('element_name', LIFT_KEYWORDS)), LIFT_KEYWORDS);
+    var plantRows = _filterWordBoundary(_extract(db, _keywordCond('element_name', PLANT_KEYWORDS)), PLANT_KEYWORDS);
 
     // Which compiled room (spatial_structure IfcSpace) contains the densest cluster of plantRows —
     // density signal, not identity: no single element IS a plant room, a ROOM containing a real
