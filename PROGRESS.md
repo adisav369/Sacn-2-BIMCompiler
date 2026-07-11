@@ -32,56 +32,43 @@
   (W-OCC-TRUE-MIDPOINT 17/17, 0 regressions). §TE-ARC-DATUM DONE 2026-07-11: bim-compiler merged (`b202eb44b`,
   PR #40), bim-ootb ported+verified+pushed (PR #726, open, not merged — heals live Terminal collapse once landed).
   §LIVEWIRE CLOSED 2026-07-11 (Fable, MANAGER-verified) — W-SCHED-MINE 7/7 + W-DX-WALKBACK-RSGT 14/14, 0 unpushed.
-- **Room Intelligence lane — canonical status: `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md`
-  (2026-07-11).** 13 features shipped/verified in one session (scored 0-10 + WORKS/GAP each), 8
-  buildings' room coverage measured fresh. 6 PRs merged (bim-ootb #728/#731/#732/#733, bim-ootb
-  #729 UBBL gate, plus room-habitability/Room-Lens/MEP-render/Find-panel), 1 open (bim-compiler #41
-  Terminal coordinate fix), 7 threads committed locally under the push pause (OBB clash-gate,
-  room-type classifier, door-access signal, tier+BOM wiring, DISC-walk room-type-aware, corridor
-  pathway routing, prior-art analysis). Weakest links named plainly: door-access signal (4/10, net
-  regression if defaulted on), classifier sample size (5/10, real ground truth = Duplex+SampleHouse
-  only). Open proposals (not dispatched, priority is the user's call): scale-tiered templates
-  (HHS's corridors are real but invisible to the residential-fit classifier, confirmed), fixture-
-  in-room recognition (`IfcFurnishingElement` data already extracted, unused), graph-joint-inference,
-  external RoomGraph/SAGC-A68 datasets, OmniClass/Uniclass naming-convention mapping. Don't re-derive
-  any of this in prose here — refresh the scoreboard doc instead, it IS the current state.
-- ⏸ **PUSH PAUSE in effect (2026-07-11, until lifted)** — new work commits locally, verifies on
-  localhost, does not push/open a PR. See `CLAUDE.md` §⏸ PUSH PAUSE + `prompts/MANAGER.md`.
-- **`prompts/SPARSE_WALL_ROOM_INFERENCE.md` (2026-07-11, parallel thread, MANAGER-assigned) —
-  dispatched, not yet landed.** Two phases: (1) data-health guard for sparse-wall federated models
-  (HHS: 1.06 walls/room vs Hospital 7.16/Clinic 5.48 — flood-fill fails universally, falls back to
-  weakest INTERNAL_DOORPART method), corrected from an initial round-numbers version to real
-  derived thresholds; (2) harder signal-fusion room inference (grid+door+slab+envelope) to recover
-  room structure when walls alone aren't enough — the general "most real-world IFC" problem, not
-  HHS-specific. Quiet until it lands — do not duplicate, do not chase.
-- **Building Parts Taxonomy: BOTH VISION-LOCK sentence-5 UI halves landed 2026-07-11** — Find panel
-  (bim-ootb `d04ddd5`) + Modeller Outliner (bim-ootb `f10c5295`), both MANAGER-verified
-  independently against real diffs, both local-only (push pause). See
-  `prompts/BUILDING_PARTS_TAXONOMY.md` for the full trail incl. a 3-way Duplex-count DB-divergence
-  finding and a real leaf-id click-path bug the Outliner task caught and fixed.
-- **MANAGER housekeeping pass, 2026-07-11 (this session):** 6 stale local branches + their worktrees
-  (fable/g1-count-independent-oracle, fable/meshdb-device-consolidation, fable/terminal-no-spaces,
-  merge-staging-docs, fix/te-arc-datum, lane/q1-component-dimension-range) verified fully-superseded-
-  by-origin/master (content already landed via other paths/squash-merges) or genuinely stale, then
-  pruned — nothing lost, each checked commit-by-commit first. One real exception found and landed:
-  `lane/q1-component-dimension-range`'s W024 (component_dimension_range aggregate migration, §Q1_AGG
-  witness re-confirmed match=True) was never merged anywhere — cherry-picked onto
-  `fable/meshdb-livewire` (`c254cb271`). Also committed 2 pre-existing uncommitted regen artifacts
-  (`build/duplex_rules.db` rule_placement rows, `deploy/dev/navigate_find.js` find-panel position-
-  fixed fallback) that were sitting dirty from a prior session. `library/component_library.db` stays
-  intentionally uncommitted (Sacred Files gate blocks direct binary commit; regenerates from the SQL
-  migration). ERP PR #8 (5 weeks stale, `feat/erp-write-path-ik-ij`) dispatched for independent
-  re-verify+merge-decide — not yet reported back, check before assuming still open.
-- **From the 2026-07-10 marathon (master), still real, not superseded by the above:** 4 more branches
-  verified+pushed, no PR yet — grid rotation-guard X/Y-tilt (`fix/grid-tilt-guard`), rot-units
-  radians/degrees bug (`fix/dw-rot-units`), `__dwPixelProbe` dedup+harness fixes (`fable/dwprobe-dedup`),
-  Terminal MEP-oracle stale-path fix (`fix/terminal-oracle-source`). **Guide screenshots FAILED on
-  direct review** (washed-out framing / broken camera-inside-mesh capture) — confirmed NO, not
-  unverified, status unknown since. SampleCastle rooms CLOSED (disc_walker needs none, works via
-  `duplex_rules.db`+`substrate()`) — the room-injection feature above is separate, don't conflate.
-  Open: Terminal PLB walk graded (T6/T7), old op-log rot-units data unmigrated, `cat[0]` legacy
-  fallback, W5 RSS-exact ratchet. Full detail: `project_disc_walker_grid_guard_marathon_2026-07-10.md`
-  (memory).
+- **Room Intelligence lane — canonical status: `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md`.**
+  User's verdict 2026-07-11: building taxonomy is **good enough, no more perfection work there.**
+  15 features shipped/verified. Weakest links unchanged: door-access signal (4/10), classifier
+  sample size (5/10, Duplex+SampleHouse only). Open proposals not dispatched (user's call):
+  fixture-in-room recognition, graph-joint-inference, external RoomGraph/SAGC-A68 datasets,
+  OmniClass/Uniclass mapping. Refresh the scoreboard doc, don't re-derive in prose here.
+- ⏸ **PUSH PAUSE in effect (2026-07-11, until lifted)** — commits locally, verifies on localhost,
+  does not push/open a PR. See `CLAUDE.md` §⏸ PUSH PAUSE + `prompts/MANAGER.md`.
+- **`prompts/SPARSE_WALL_ROOM_INFERENCE.md`** — Phase 0 (data-health guard) DONE+witnessed, merged
+  into bim-compiler `fable/meshdb-livewire`. Phase 1 (grid+door+slab+envelope fusion for
+  sparse-wall federated buildings, e.g. HHS) scoped as a ready-to-pick-up 4-step follow-up, not
+  built — genuinely substantial new engineering, deserves its own session.
+- **Building Parts Taxonomy (STAIRWAY/LIFT_SHAFT/PLANT_ROOM) — DONE, both VISION-LOCK sentence-5 UI
+  halves merged into bim-ootb `main` (local, 6 commits ahead of `origin/main`, not pushed):** Find
+  panel (`d04ddd5`) + Modeller Outliner (`f10c5295`) + disc-walk room-type-aware placement
+  (`20ad5c4`, PLB/FP real measured signal — BATHROOM/UTILITY→PLB, FOYER→FP; ELEC/ACMV honestly
+  refused, no signal). Full trail incl. the DB-snapshot-divergence landmine (now saved as
+  `project_db_snapshot_divergence_landmine.md`, memory) and a real leaf-id click-path bug caught+
+  fixed: `prompts/BUILDING_PARTS_TAXONOMY.md`.
+- **Guide blocked on ONE thing, named and spec'd, not fire-fought:** `docs/ModellerGuide.md` (29
+  real screenshots, otherwise complete) can't get a Building Parts entry yet — user's own live
+  review: LOD is fine now, but Modeller glass/window material isn't see-through like the Viewer's.
+  Spec: `prompts/MODELLER_RENDER_MATERIAL_PARITY.md` (also folds in a named quirk: Outliner panel's
+  collapse control isn't discoverable). Companion spec, Viewer side (evidence gap, not a code
+  gap): `prompts/VIEWER_FIND_PANEL_PARTS_VERIFICATION.md` — needs one real driven-from-fresh-load
+  screenshot, 3 known dead-ends already named so it isn't re-attempted blind.
+- **`prompts/MANAGER.md` hardened this session** — anti-ad-hoc-debugging conduct rule (stop after
+  a 2nd failed quick-check, write a spec + dispatch instead of trial-and-erroring in-turn). Read it
+  before picking up either spec above.
+- **MANAGER housekeeping this session:** 6 stale bim-compiler branches/worktrees verified
+  fully-superseded and pruned (nothing lost); one real orphan found+landed (W024
+  `component_dimension_range` migration, cherry-picked `c254cb271`). ERP PR #8 (5wk stale)
+  independently re-verified and correctly left open — real merge conflict found (Blue Future vs.
+  I-D checkpoint), not a courtesy hedge.
+- **From the 2026-07-10 marathon, still unmerged, not superseded:** `fix/grid-tilt-guard`,
+  `fix/dw-rot-units`, `fable/dwprobe-dedup`, `fix/terminal-oracle-source` (bim-ootb, all verified+
+  pushed, no PR). Full detail: `project_disc_walker_grid_guard_marathon_2026-07-10.md` (memory).
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch** (bim-ootb PR #659 shipped item 4b) — items 1/2/0 (CCTV double-click capture, camera-POV
@@ -101,18 +88,12 @@
   low-priority, not urgent. Memory: `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- **✅ pending merge only:** `prompts/SCALE_AND_UX_SWEEP.md` (bim-ootb PR #665) — Terminal-scale checks + 6 UX/audit
-  fixes, independently re-verified. `OFFLINE_GITHUB_RELEASE_BUNDLE.md` (bim-ootb `lane/offline-gateway-leak-fix`,
-  `cd36c07`) — cache-leak fix, independently verified live. Both just need the human merge action.
-- **2026-07-05 arc: landing Save/Open+multimerge resurrect+versioning, grid green/orange, Save/auto-heal,
-  Teams E2E, HBA mobile stack, UBBL+parametric recon** — bim-ootb #654/#656/#657/#658/#660/#661/#662/#664, ALL
-  MERGED, watchdog-verified against real diffs (not trust-on-recap — caught 1 false "already fixed" fixture
-  claim, corrected). Full detail: `prompts/archive/FRONTEND_LANE_MASTER.md §NEW BACKLOG` (archived 2026-07-11) + `prompts/
-  GRID_PREDRAG_PREVIEW_SAVE_COMPLETEIT.md` (design dialogue) + memory `project_teams_e2e_no_ui_finding.md` /
-  `project_ubbl_recon_landmine.md`.
-- Pre-2026-07-05 DONE (13 lines) → `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-05.md`; pre-2026-06-14 (21
-  lines) → `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-06-14.md`. Viewer S-series/2D Layout/DAGCompiler
-  (S104-S286): see MEMORY.md "Project — Shipped".
+- **✅ pending merge only:** `SCALE_AND_UX_SWEEP.md` (bim-ootb PR #665), `OFFLINE_GITHUB_RELEASE_BUNDLE.md`
+  (`lane/offline-gateway-leak-fix`) — both independently re-verified, just need the human merge click.
+- **2026-07-05 arc** (landing Save/Open, grid, Teams E2E, HBA mobile, UBBL recon) — ALL MERGED
+  (bim-ootb #654-664), watchdog-verified. Detail: `prompts/archive/FRONTEND_LANE_MASTER.md`.
+- Pre-2026-07-05: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-05.md` /
+  `_pre_2026-06-14.md`. Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".
 
 ## OCI Deployment
 
