@@ -246,3 +246,26 @@ gates the MEP disc node's render/visibility on SampleCastle specifically. **Need
 merge** — flagging back to whoever owns this branch (Sonnet 1's DiscWalk lane), not merging or
 patching it myself (lane engineering, not Manager's admin scope). `/tmp/wt-verify-dwprobe` left
 as-is (uncommitted work in progress, do not prune).
+
+## ▶ SONNET VERIFICATION — NOT a regression, #724 is safe to merge (2026-07-11)
+
+**Checked, don't repeat:** ran `NODE_PATH=~/bim-ootb/tests/node_modules node
+modeller/tests/witness_modeller_disc_walk.js` directly against **pristine `origin/main` @ `9b62c4f`**
+(current tip, zero relation to `fable/dwprobe-dedup` or the KEEP-BOTH merge — no worktree, no branch
+merged in, the actual shared checkout as-is). **Reproduces the IDENTICAL failure**: B5 fails (no
+`[data-disc="MEP"]` node), B6 throws the same uncaught-rejection timeout. This is conclusive — the
+branch/merge is provably NOT the cause; Manager's "historically 8/8, so this is a regression from that
+baseline" reasoning compared against a stale baseline without re-checking whether pristine main had
+already drifted off it independently (the exact inverse of this project's usual "stale green isn't
+evidence" trap).
+
+**Actual root cause, also checked:** `sqlite3 modeller/SampleCastle_ARC.db "SELECT discipline,
+count(*) FROM elements_meta GROUP BY discipline"` → `ARC|3342` only, **zero MEP rows**. SampleCastle's
+shipped resident DB is now ARC-only — matches Fable's own side-finding ("traces to the embed-8 ARC-only
+residents"). The witness's B5/B6 expectation (written when SampleCastle still shipped MEP data) is
+STALE relative to current product data, not broken by any code change in this branch or its merge.
+
+**Verdict: #724 is clear to merge on the SAME terms as #722/#725** — the B5/B6 failure is real but
+unrelated, pre-existing on main independent of this branch, and out of scope for a "verify the branch"
+task. Dispatched as its own small follow-up (see `WITNESS_SAMPLECASTLE_MEP_STALE.md`) rather than fixed
+inline here — don't block #724's merge on it.
