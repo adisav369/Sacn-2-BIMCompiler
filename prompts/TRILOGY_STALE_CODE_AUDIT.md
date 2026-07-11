@@ -95,3 +95,111 @@ orphan, not assertions). Task 2's full 3-tier marking table committed, covering 
 trilogy. **No files deleted in this pass** — the marking table is the deliverable; removal is
 explicitly a separate, later, per-item follow-up (this file's own scope guard, re-stated: report,
 don't act).
+
+---
+
+## 2026-07-12 — EXECUTION (Fable one-shot). Task 0 + Task 1 results
+
+### Scope corrections found during execution (report-first, per this file's own rules)
+- Depth-1 trilogy file count at `origin/main` b83c791 is **352**, not 277 (repo grew since the count).
+  Classification below covers all 352 depth-1 files; subdirs (`tests/`, `lib/`, assets) traced for
+  reachability but not individually marked.
+- The 54-spec suite navigates THREE URL universes (`/dev/…` = bim-compiler deploy layout,
+  `/bim-ootb/…` = home-dir-root layout, `/landing2.html` = deploy root). No single server root
+  satisfies all as-checked-out — audit runs used a symlink root (dev→viewer + index.html→viewer.html,
+  buildings→bim-compiler/deploy/buildings, bim-ootb→repo). This layout drift is itself a finding
+  (see spec 38 below and the production-readiness section).
+
+### Task 0 — 2d.html pilot, RE-STEERED mid-run by user (2026-07-12)
+User: *"2D html is no longer used and Modeller 3DGrid has taken over.. so i wana remove it, but
+check first any prior art or learning there"* + *"otherwise it be just archived without risk as no
+icon calls it."* This supersedes the split-and-keep-DXF plan for this one file. Verified before
+acting: the 2D Plans button toggles `grid_overlay.js`; `2d.html` survived only as a degraded
+fallback branch in `main.js open2DPlans()` that spec 28 (T_INIT_02/04) proves never fires.
+
+**Prior-art check (the requested deliverable) — what 2d.html contained, where it lives now:**
+- **DB→DXF sheet synthesis** (`generateFromDb`, `sectionToEntities`, `annotationEntities`,
+  `elevationToEntities`, `gridToEntities`, `exportDxf`) — the only trilogy code that generated CAD
+  deliverables from the extracted DB. The generation pipeline proper lives in **bim-compiler**
+  (`2D_Layout/python/*` ezdxf + `DAGCompiler …/drawing2d/dxf/`), unaffected by this removal.
+- **BIMSRC xdata GUID round-trip** — DXF entities tagged with source-BIM GUIDs surviving parse
+  (spec 14.4/14.9). Locked @sacred baseline for SH_FLOOR.dxf: **entities=292, layers=12,
+  bimsrc=93** — recorded here since the spec retires with its subject.
+- **Canvas2D DXF renderer** (bulge polylines, splines, dimensions, INSERT, xdata panel) +
+  `dxf-parser.js`/`dxf_export.js`/`title_block.js`.
+- 46,970 of the file's 48,307 lines were an inline pre-baked SH DXF baseline string (data, not code).
+- All of it remains in git history at the parent of the removal commit.
+
+**Removal executed** (bim-ootb branch `fable/trilogy-stale-audit`, commit `f94d930`, LOCAL —
+not pushed): deleted `viewer/2d.html`, `viewer/dxf_export.js`, `viewer/dxf-parser.js`,
+`viewer/title_block.js`, `viewer/dxf/*.dxf` (14 sheets), `tests/specs/14-2d-plans.spec.js`;
+kept shared satellites `section_cut.js`/`grid_dims.js`/`elevation.js` (live consumers verified);
+`main.js` fallback now reports "2D unavailable" instead of opening a dead link; `sw.js` precache
+pruned + CACHE_VERSION v742→v743; `project_technical.md` stale entries pruned.
+**Witness:** spec 28 → 4/4 green post-removal (13.4s); `audit_sw_precache.js` → 109 found /
+0 missing; `eslint viewer` → clean. `audit_specs.js` flags `38-sh-dx-2d-runtime.spec.js` (5 SKIP
+paths) — PRE-EXISTING on main (reproduced in the untouched checkout), caused by its hardcoded
+`../../../../deploy/buildings/…` path assumption; unrelated to this change, left as a finding.
+
+### Task 1 — trilogy-wide static reachability (committed as its own checkpoint)
+**Method:** BFS from 7 entry points (`index.html`, `index2.html`, `gallery.html`, `LargeCity.html`,
+`modeller/modeller.html`, `viewer/viewer.html`, `erp/idempiere.html`); edges = every path-like
+string literal + src/href attribute that resolves to a repo file (deliberately over-approximating,
+so "unreachable" is a strong claim). Every orphan candidate below was then adjudicated by repo-wide
+basename grep with the actual reference sites read — comment/doc mentions do NOT count as reachability.
+Tracer: session scratchpad `reach.js`; raw map `reach_out.json`. Numbers: 1,660 repo files scanned,
+438 reachable from entries, 352 depth-1 trilogy files → **310 reachable, 42 static-orphan candidates**,
+adjudicated below. A second BFS with sw.js precache edges REMOVED isolates the **precache-only** class
+(13 files reachable through a service-worker precache list and nothing else).
+
+**CONFIRMED ORPHAN — code/pages, zero non-comment references anywhere (evidence: basename grep hits
+listed; "NOTHING" = no hit outside the file itself):**
+| file | evidence |
+|---|---|
+| viewer/2D_Editor.html | NOTHING |
+| viewer/2D.png | NOTHING |
+| viewer/city_bench.html | NOTHING (contrast dlod_bench.html, driven by tests/run_bench.js) |
+| viewer/s210_test.js, s211_test.js, s220_test.js | NOTHING — S-era dev scripts at depth-1 |
+| viewer/test_all.js (+ walk_math_test.js) | walk_math_test referenced ONLY by test_all; test_all by NOTHING |
+| viewer/bom_tree.js | superseded — viewer.html loads `bom_engine/bom_tree.js`; modeller has own copy |
+| viewer/idmp_session.js | superseded — erp/idempiere.html loads erp/idmp_session.js (erp-relative) |
+| viewer/manifest.json | stale copy — root manifest.json is fetched (index.html:552); sw precaches manifest.webmanifest |
+| viewer/swipe.js | no loader; gestures COPIED into hba_mobile_stack.js ("adopted from swipe.js") |
+| viewer/contribute.js | no loader; share.js absorbed its validation ("same as contribute.js") |
+| viewer/category_loader.js, viewer/doc_engine.js | no html loads them; only legacy node tests + erp_panel.js header comment (erp_panel itself dead, below) |
+| viewer/mep_qto_populate.js | only eslint.config.js lists it |
+| viewer/route_walker.js | viewer/sw.js precache ONLY — no loader anywhere |
+| viewer/erp.html, viewer/idempiere.html | precache-only; superseded by erp/erp.html + erp/idempiere.html |
+| viewer/specs.jpg, viewer/submit.png, viewer/sunglass.png | NOTHING (icons are inline SVG now; pills manifests don't list them) |
+| erp/erp_panel.js, erp/role_band.js, erp/menu_seed.js | precache-only chain; NO html loads any of them |
+| erp/migrate_showme.js | superseded — overlay_kit.js extracted it "byte-for-byte"; sw comment: about_diy.js "replaces migrate_showme.js here" |
+| erp/spike_writepath_browser.log | tracked LOG FILE in the app dir (junk; prompts/COMBINED_ERP_LANE.md mention is historical) |
+| modeller/room_templates.json | superseded by config/room_templates.yaml (room_type_classifier.js); only a test witness reads the json |
+
+**STALE CANDIDATE — unwired but with documented intent; user/Manager call per item:**
+| file | reasoning |
+|---|---|
+| erp/chat_lens.html + chat_lens.js + feed_fold.js | documented in README.md:139 as a component, but NO page/pill links or loads any of the trio — feature parked, not shipped |
+| erp/kanban_lens.html | comment-only references; kanban_lens.js itself IS live via idempiere seam — the standalone page looks superseded by embedding |
+| erp/spike_writepath.html | spike harness, driven only by tests/drive_spike.js + prompt docs |
+| erp/ad_table_map.js | dormant-by-design bridge ("behavior-preserving until turned on", ad_data.js:12) — never activated anywhere |
+| erp/erp_key_epochs.js | precached + witness W-ROSTER-VERIFY exists, but no page loads it — #630 roster design not yet wired |
+| erp/migrate_agent.js (depth-1 copy) | duplicated by erp/idempiere_agent/migrate_agent.js (the zip's source); user-facing download points at the ZIP (about_diy.js:199) |
+| viewer/construction_seed.sql, viewer/schema_5table.sql | read only by legacy node tests; erp_kernel.js embeds its own runtime copy of the schema |
+| erp/preview_demo.db | tracked binary; referenced only by a poc test + comment (also a DB-policy violation, see below) |
+
+**LIVE despite looking dead (kept, with the why on record):**
+- viewer/offline.html — sw.js offline navigation fallback (runtime-served, not just precached).
+- erp/ninja_sample.xlsx — ninja_pill.js `grab('ninja_sample.xlsx')` local-first + GH fallback.
+- erp/idempiere_agent.zip — About/DIY download artifact (about_diy.js) — but flag: a tracked binary zip duplicating erp/idempiere_agent/.
+- erp/sfx.json — panels.js settings registry + sfx.js/wh_walk.js consumers.
+- viewer/dlod_bench.html — dev bench driven by tests/run_bench.js + run_bench_mobile.js.
+- modeller/Terminal_meta.db, modeller/SampleCastle_ARC_extracted.db — runtime data fetched via
+  COMPUTED names (`${prefix}_meta.db` / `${name}_extracted.db` — real_geometry.js §GEO-SPLIT); LIVE
+  as data, but tracked multi-MB binaries in git (policy flag below).
+- Depth-1 .md docs (erp/ERP.md, HolyGrail.md, OpLogERP.md, BIMERPPaper.md, DistributedERP.md,
+  migrate_compare.md, viewer/NLP_QUERIES.md, viewer/project_technical.md) — docs class, heavily
+  cross-referenced from code comments; reachability is the wrong test for docs. Kept.
+
+**Remaining 310 depth-1 files: LIVE (reachable from an entry point; per-file referrer recorded in
+reach_out.json `reachedFrom`).**
