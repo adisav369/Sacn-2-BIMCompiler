@@ -21,6 +21,12 @@
 // otherwise. Depends only on a pre-parsed templates object (see loadTemplateConfig below); no
 // direct file/DB I/O here so it can run identically in-browser (fetch+js-yaml) or in Node (fs+
 // js-yaml, see build/witness_room_type_classifier.js for the Node-side loader).
+//
+// §DOOR-ACCESS (prompts/ROOM_TYPE_DOOR_ACCESS_SIGNAL.md, 2026-07-11): a SECOND signal —
+// countAdjacentDoors() + an optional 3rd quadrature dimension in scoreTemplate()/classifyRoom() —
+// added alongside the original area+aspect scorer (unchanged math when door data isn't supplied).
+// See build/measure_door_counts.js for how config/room_templates.yaml's `door_count` bands were
+// measured from Duplex/SampleHouse ground truth, same non-invent discipline as area/aspect.
 (function () {
   'use strict';
   var TAG = '§ROOM-TYPE';
@@ -60,6 +66,42 @@
     return { area: area, aspect: aspect, envX: envX, envY: envY };
   }
 
+  // §DOOR-ACCESS (prompts/ROOM_TYPE_DOOR_ACCESS_SIGNAL.md, 2026-07-11): count of real doors
+  // adjacent to a room's rect-set — the SECOND discriminating signal, alongside area+aspect.
+  // Reuses scripts/compile_rooms.py's own door-adjacency buffer test (_door_adjacent: buf =
+  // max(door.bbox_x, door.bbox_y)/2 + DOOR_BUFFER_SLACK), extended from a boolean "has-door" check
+  // to a COUNT — this does NOT rebuild compile_rooms.py's door-rescue/door-partition DECISION logic
+  // (which walls get rasterized into which pocket, §4 non-goal); it only reads the already-decided
+  // room footprint + real IfcDoor geometry. DOOR_BUFFER_SLACK below is PORTED as-is (0.20m =
+  // compile_rooms.py's RES constant), not a new invented number.
+  //
+  // Caller contract (this module stays DB/file-I/O-free, same convention as featuresFromRects):
+  // `doors` must already be pre-filtered to the room's OWN STOREY (mirrors compile_rooms.py's
+  // storey_doors() grouping doors by storey before testing adjacency — an un-storey-filtered test
+  // was measured to badly over-count on Duplex, see build/measure_door_counts.js log). A door
+  // counts once even if it touches multiple sub-rects of a §MULTI-RECT room.
+  var DOOR_BUFFER_SLACK = 0.20; // ported from scripts/compile_rooms.py DOOR_BUFFER_SLACK/RES
+  function countAdjacentDoors(rects, doors) {
+    if (!rects || !rects.length || !doors || !doors.length) return 0;
+    var count = 0;
+    for (var i = 0; i < doors.length; i++) {
+      var d = doors[i];
+      if (d.center_x == null || d.center_y == null) continue;
+      var buf = Math.max(d.bbox_x || 0, d.bbox_y || 0) / 2 + DOOR_BUFFER_SLACK;
+      var hit = false;
+      for (var j = 0; j < rects.length && !hit; j++) {
+        var r = rects[j];
+        if (r.center_x == null || r.center_y == null || r.size_x == null || r.size_y == null) continue;
+        var rx0 = r.center_x - r.size_x / 2, rx1 = r.center_x + r.size_x / 2;
+        var ry0 = r.center_y - r.size_y / 2, ry1 = r.center_y + r.size_y / 2;
+        if (rx0 - buf <= d.center_x && d.center_x <= rx1 + buf && ry0 - buf <= d.center_y && d.center_y <= ry1 + buf)
+          hit = true;
+      }
+      if (hit) count++;
+    }
+    return count;
+  }
+
   // Effective std at classify time: smooths a degenerate/underestimated measured std toward
   // std_floor_fraction * mean. See config/room_templates.yaml header — the stored std is always
   // the RAW measured value; this floor is applied here only, never baked into the config.
@@ -69,14 +111,27 @@
   }
 
   // Independent-feature Gaussian likelihood (unnormalized) + combined quadrature z-distance.
+  // §DOOR-ACCESS: a 3rd dimension (zDoor) joins the quadrature IFF the template carries a measured
+  // `door_count` stat AND the caller supplied `features.doorCount` — graceful degradation to the
+  // original 2D area+aspect score otherwise (e.g. a caller that hasn't wired door adjacency, or a
+  // template with no promoted door_count band). Never a hard filter/veto — same soft-likelihood
+  // shape as the existing 2 dimensions, per ROOM_TYPE_DOOR_ACCESS_SIGNAL.md §2's "second dimension
+  // in the confidence score" option (picked over a hard filter: see that doc's write-up for why).
   function scoreTemplate(features, tmpl, floorFraction) {
     var aStd = effStd(tmpl.area_m2.std, tmpl.area_m2.mean, floorFraction);
     var pStd = effStd(tmpl.aspect_ratio.std, tmpl.aspect_ratio.mean, floorFraction);
     var zArea = (features.area - tmpl.area_m2.mean) / aStd;
     var zAspect = (features.aspect - tmpl.aspect_ratio.mean) / pStd;
-    var z = Math.sqrt(zArea * zArea + zAspect * zAspect);
-    var likelihood = Math.exp(-0.5 * (zArea * zArea + zAspect * zAspect));
-    return { z: z, zArea: zArea, zAspect: zAspect, likelihood: likelihood };
+    var zSq = zArea * zArea + zAspect * zAspect;
+    var zDoor = null;
+    if (tmpl.door_count && features.doorCount != null) {
+      var dStd = effStd(tmpl.door_count.std, tmpl.door_count.mean, floorFraction);
+      zDoor = (features.doorCount - tmpl.door_count.mean) / dStd;
+      zSq += zDoor * zDoor;
+    }
+    var z = Math.sqrt(zSq);
+    var likelihood = Math.exp(-0.5 * zSq);
+    return { z: z, zArea: zArea, zAspect: zAspect, zDoor: zDoor, likelihood: likelihood };
   }
 
   // classifyRoom(features, config) -> { type, confidence, z, scores:[{type,likelihood,z,posterior}],
@@ -118,6 +173,8 @@
   var API = {
     normalizeLabel: normalizeLabel,
     featuresFromRects: featuresFromRects,
+    countAdjacentDoors: countAdjacentDoors,
+    DOOR_BUFFER_SLACK: DOOR_BUFFER_SLACK,
     scoreTemplate: scoreTemplate,
     classifyRoom: classifyRoom,
     loadTemplateConfig: loadTemplateConfig,
