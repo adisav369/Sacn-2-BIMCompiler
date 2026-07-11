@@ -135,3 +135,19 @@ resolved with real evidence. Combined with Task 2, both items in this file are D
 (guide-writing) can proceed. PUSH PAUSE in effect: bim-ootb commit `2fc3964` on
 `fix/modeller-render-material-parity` is LOCAL ONLY in `/tmp/wt-render-material-parity`, not pushed, no
 PR opened, per CLAUDE.md §⏸.
+
+## UPDATE 2026-07-11 — pushed, merged, NOT yet on user's localhost
+PUSH PAUSE lifted for this thread (user: "good enough to push all"). Pushed `fix/modeller-render-
+material-parity`, opened bim-ootb PR #735, auto-merge armed — merged clean, both CI checks (`e2e-
+tests`, `fast-checks`) passed. `origin/main` @ `924d434`.
+
+**User reported the fix not visible on localhost ("still at Sonnet 1").** Root cause: the shared
+`~/bim-ootb` checkout on `main` was still on `424fd7a` (1 commit behind `origin/main`) at the time
+of the report, AND has uncommitted local changes (`buildings/HHS_Office_Federated_extracted.db`
+modified + untracked `modeller/Terminal_meta.db`/`viewer/buildings/`) — not pulled automatically,
+left for the user to reconcile since those may be in-progress local state, not safe to silently
+discard. **Lesson for next time:** verifying a fix via an isolated worktree's own headless-Chrome
+run (real evidence, not in question) is NOT the same claim as "visible on your live localhost" —
+those only converge once the branch is actually merged AND whatever checkout serves localhost has
+pulled it. Should have flagged this distinction explicitly in the original DONE report instead of
+letting it surface as a user-side surprise.
