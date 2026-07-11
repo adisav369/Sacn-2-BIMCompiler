@@ -56,3 +56,89 @@ mechanism.
 Real discipline×room-type density correlations are measured and reported (found or not-found,
 honestly either way), any real signal is wired in as a cited weight, corridors/supplementary spaces
 are explicitly checked (not assumed), zero regression on existing disc-walk witnesses.
+
+## RESULT (2026-07-11) — measured, wired, witnessed
+
+### §SUBSTRATE — only ONE real substrate exists in this repo
+Checked BOTH candidate buildings before measuring anything:
+- **Terminal** (`deploy/buildings/Terminal_extracted.db`): 0 rows in `elements_meta WHERE
+  ifc_class='IfcSpace'`, NO `spatial_structure` table at all. It has real per-discipline MEP element
+  counts but **zero real per-room space geometry** — cannot contribute a room-type×discipline
+  measurement. **Refused as a substrate, not silently skipped** (WalkerDoctrine's own §NOSPACES
+  comment already says shipped ARC residents mostly carry no spatial_structure table — this confirms
+  it live for Terminal specifically).
+- **Duplex** is the ONLY building with BOTH real per-room labels+geometry
+  (`deploy/buildings/Duplex_extracted.db` spatial_structure, `object_type` = real Revit LongName:
+  Living Room/Kitchen/Bathroom 1-2/Bedroom 1-2/Foyer/Hallway/Utility/Stair) AND real placed MEP
+  fixtures (`build/Duplex_mep_extracted.db`, 904 real elements). Every number below is measured on
+  Duplex only — n is small (a mirrored twin unit, 2-4 real occurrences per room type) and reported as
+  such throughout, never inflated.
+
+### Method (script: `build/measure_disc_room_type_density.js`, log: `logs/measure_disc_room_type_density_2026-07-11T0210.log`)
+1. 20 habitable real IfcSpace rows classified by `build/room_type_classifier.js` +
+   `config/room_templates.yaml` (area+aspect only) — 18/20 classified with high confidence
+   (70.7%-100%), matching their real labels; A105/B105 ("Stair"/"Room") correctly refused
+   (`unclassified`, no template covers a stairwell shaft).
+2. `elements_meta.discipline='MEP'` in Duplex_mep_extracted.db is a COARSE bucket (904 elements, no
+   PLB/ELEC/FP/ACMV split). Fine discipline came from `library/disc_patterns.db`'s
+   `ad_element_mep_alias` (element_name LIKE patterns, `source='DX_MINED'` = mined off this exact
+   Duplex model, `migration/DV003_element_mep_alias.sql`) → `ad_element_mep.discipline`, folded
+   SP→PLB / HVAC→ACMV (same fold `build/project_rule_space_schedule.py` applies for `duplex_rules.db`).
+   101/904 elements matched a real alias (83 ELEC, 12 PLB, 6 FP); the other 803 are routing
+   fittings/segments/pipe-type rows plus a handful of terminal types DV003 doesn't yet cover
+   (Refrigerator/Range/Microwave/Shower Stall/Bath Tub/Roof Drain/valves) — **honestly excluded, not
+   guessed into a bucket** (real gap in DV003's alias coverage, flagged, not silently patched here).
+3. Spatial join: element center inside a room's bbox (+0.30m pad for wall-mounted fixtures), nearest
+   centroid as tiebreak. 99/101 classified elements landed in a real room; 2 unassigned (routing
+   pieces between rooms, expected).
+
+### Significance bar (named, per the spec's ask)
+Given n=2-4 per room type (mirrored A/B twin), a numeric density comparison alone is not trustworthy.
+Bar used: a discipline×type pair counts as a REAL signal only if (a) presence/absence is CONSISTENT
+across every real occurrence of that type (no 0-vs-nonzero split within the same type), AND (b) that
+pattern actually DISCRIMINATES — differs from at least one other type (universal presence/absence
+doesn't count).
+
+### Found
+| disc | signal | evidence |
+|---|---|---|
+| **PLB** | BATHROOM + UTILITY nonzero in **every** real occurrence (BATHROOM 2,3,2,3 across 4 rooms; UTILITY 1,1); **zero** in every occurrence of BEDROOM/FOYER/HALLWAY/KITCHEN/LIVING_ROOM | passes the bar — real, replicated |
+| **FP** | FOYER nonzero in both real occurrences (2,2); zero in every occurrence of BATHROOM/KITCHEN/LIVING_ROOM/HALLWAY/UTILITY | passes the bar — real, replicated. **BEDROOM is a borderline miss** (A202:1 B202:1 but A203:0 B203:0 — inconsistent within the same classified type, likely a spatial-join edge case on a room-boundary sprinkler) — reported honestly, NOT counted as a signal |
+
+### Not found (honestly refused, not wired)
+| disc | finding |
+|---|---|
+| **ELEC** | present in EVERY room type, all real occurrences nonzero (BATHROOM 1.63/m² down to LIVING_ROOM 0.18/m²) — a density gradient, not a presence/absence discriminator; with n=2 per type the magnitude differences are not separable from noise. No categorical signal, refused. |
+| **ACMV** | **zero** real ACMV elements anywhere in Duplex_mep_extracted.db, in every room type. Real Malaysian residential Duplex uses split-unit A/C (installed post-construction, not IFC-modeled ducted diffusers) — `duplex_rules.db`'s `rule_space_schedule` ACMV/SUPPLY_DIFFUSER rows are NOT grounded in this real building's own MEP data. No signal to measure; refused. |
+
+### §CORRIDOR-CHECK — explicit, not assumed (both directions checked)
+- **FP**: supplementary tier (HALLWAY+FOYER) mean = 1.000/room vs primary tier mean = 0.143/room — but
+  this is driven ENTIRELY by FOYER (HALLWAY itself = 0). The tier-level number would be misleading
+  read alone; the per-type breakdown is what's real.
+- **ELEC**: supplementary tier mean = 4.250/room vs primary tier mean = 4.500/room — **no meaningful
+  difference**. Refutes both a "corridors get less ELEC" and a "corridors concentrate ELEC" assumption
+  on this building.
+
+### Wired (bim-ootb, `feat/disc-walk-room-type-aware`, commit `20ad5c4`)
+`modeller/disc_walker.js`'s `_spaceTypeFor(disc, sp)` gets an opt-in geometry-classifier FALLBACK,
+gated to `ROOM_TYPE_MEASURED_DISCS = {PLB, FP}` only (ELEC/ACMV excluded per the table above) —
+fires ONLY when the space's real label already fails the existing `rule_space_type`/`rule_space_alias`
+match, and only after `dwSetRoomTypeConfig()` is called (default off, zero behavior change for every
+existing caller). Ported `build/room_type_classifier.js` → `modeller/room_type_classifier.js` +
+`config/room_templates.yaml` → `modeller/room_templates.json` (mechanical JSON transcription, cited).
+Witness: `modeller/tests/witness_disc_room_type_weight.js`, **7/7 PASS** (off-by-default, fallback
+fires for PLB, gated off for ELEC on the same space, label always wins over geometry, FOYER/FP case,
+ACMV correctly refused, placeSchedule end-to-end identical with/without the config loaded on an
+all-labeled substrate).
+
+### Regression
+- `witness_disc_room_type_weight.js` (new): 7/7 PASS.
+- bim-compiler `scripts/witness_walkback_mep.js` (untouched file, not on the edited path): 8/8 PASS.
+- `modeller/tests/witness_disc_density.js`: 3/8 checks fail (D3/D4/D4b) — **confirmed pre-existing**,
+  byte-identical failure signature with `disc_walker.js` reverted to `HEAD` (git stash test). Root
+  cause: `realCount()` reads 0 for ELEC/FP/ACMV from the local gitignored `Terminal_ARC.db` fixture
+  (stale relative to `Terminal_arcstr_proof.db`), unrelated to this change — not fixed here, flagged
+  for whoever owns that fixture pair next.
+
+**PUSH PAUSE was in effect** — bim-ootb commit `20ad5c4` on `feat/disc-walk-room-type-aware` is local
+only, not pushed, no PR opened.
