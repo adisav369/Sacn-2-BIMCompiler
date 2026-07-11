@@ -31,53 +31,60 @@
   (PR #717, unmerged). Bug A (hostBind) + items 1-2 (occupancy() fix, VENT_WINDOW_SHIM 415→498mm) all fixed+witnessed
   (W-OCC-TRUE-MIDPOINT 17/17, 0 regressions). §TE-ARC-DATUM DONE 2026-07-11: bim-compiler merged (`b202eb44b`,
   PR #40), bim-ootb ported+verified+pushed (PR #726, open, not merged — heals live Terminal collapse once landed).
-  §LIVEWIRE CLOSED 2026-07-11 (Fable, MANAGER-verified): stale Round-1 Watchdog challenge re-answered clean-room
-  — W-SCHED-MINE 7/7 + W-DX-WALKBACK-RSGT 14/14 on committed state (bim-compiler `e0388e66d`, docs-only, 1
-  commit unpushed by design/LFS block). bim-ootb `mesh.db` 26 device-mesh payloads already pushed 2026-07-10
-  (`670bf0f`, ancestor of current HEAD `790b069`, 0 unpushed) — predates today's hard block, nothing new to push.
-  `component_library.db` confirmed zero live Modeller/Viewer fetch path (build-time mining source only, by design).
+  §LIVEWIRE CLOSED 2026-07-11 (Fable, MANAGER-verified) — W-SCHED-MINE 7/7 + W-DX-WALKBACK-RSGT 14/14, 0 unpushed.
 - `prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md` — Tasks 1-6 DONE incl. self-heal patch loader
   (bim-ootb `fix/meshdb-selfheal-loader` @ `a1aeab7`, PR open unmerged, W-PATCH-SELFHEAL 43/43); full task
   log + witnesses in the doc. 4 more bim-ootb branches pushed, PRs #722-725 open, unmerged.
-- `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` — ALL 5 TASKS DONE (JS port + Outliner "Rooms"
-  action, W-ROOM-WALKER-PARITY 6/6, W-ROOM-WALKER-LIVEWIRE 12/12); details + Task 3 table in the doc.
-  **§7 ROOM WELL-FORMEDNESS DONE 2026-07-11 (Fable, from user's live HHS visual review):** corridor-as-room +
-  rect-through-wall root-caused and fixed generally (§WALL-VERT/§STOREY-Z/§RECT-HONESTY/§ROOM-FORM SUSPECT_*
-  '⚠' review rows) — spec `ROOM_INJECTION_HYBRID.md §7`. Both ports lockstep; W-ROOM-WALKER-PARITY 6/6,
-  W-ROOM-WELLFORMED 19/19 (new falsifier), `ROOM009-014_*_wellformed.sql` apply-identical 6/6. HHS 105
-  door-partition blobs → 33 flood-fill rooms (2⚠). Local inspect server :8098 (viewer + re-walked extracted
-  DBs). **Follow-up 1 DONE 2026-07-11:** ROOM009-014 ported into bim-ootb `modeller/patches/`
-  (`fix/meshdb-selfheal-loader` @ `e7384f4`, pushed, W-PATCH-SELFHEAL 43/43 incl. new Terminal patch).
-  **Follow-up 2 (Viewer OCI re-walk) IN PROGRESS:** found+fixed a real algorithm gap first —
-  `WALL_LIKE`/door/stair queries had no `discipline` filter (`compile_rooms.py`+`room_walker.js`, both
-  lockstep) — a raw multi-discipline `deploy/buildings/*_extracted.db` (unlike bim-ootb's ARC-only
-  `_ARC.db`) carries STR-tagged IfcColumn/IfcMember/IfcPlate/IfcWallStandardCase rows that also match
-  those ifc_class patterns, polluting the raster. Fixed with `discipline='ARC'`; W-ROOM-WELLFORMED stays
-  19/19. **⚠ Terminal-specific finding, NOT a room-injection bug — its own open item:** bim-compiler's
-  canonical `deploy/buildings/Terminal_extracted.db` and bim-ootb's `modeller/Terminal_ARC.db` disagree
-  on coordinate origin by ~(546m, 51m) for the SAME element guids (prefix-stripped) — a real
-  extraction/consolidation defect between the two files, discovered while trying to carry room data
-  across them. Re-walking Terminal fresh against the canonical file (post discipline-fix) also doesn't
-  converge to the already-shipped 53(10) count (gives 60/9) — so Terminal's OCI room data is LEFT
-  UNTOUCHED for now (neither path verified safe); Hospital/SampleCastle/Garage/SampleHouse/Clinic (fresh
-  walk, self-consistent) shipped via OCI instead. Investigate the coordinate mismatch as its own task
-  before touching Terminal's OCI data again.
-  **§8 MULTI-RECT DONE 2026-07-11 (Fable):** confirmed rooms now a SET of non-overlapping rects (grown
-  region + repeated constrained maximal-rect scan, room_guid grouping column, lettered sub-rect guids) —
-  closes the "doesn't fully form the inner room space" gap (Hospital coverage med 0.74→0.86, worst
-  0.32→0.67). Spec ROOM_INJECTION_HYBRID.md §8; both ports lockstep (incl. Sonnet's same-day §DISC-ARC
-  filter, merged not overwritten); consumers: hba_lens groups by room_guid (W-HBA-MULTIRECT 6/6 — 71
-  logical rooms from 94 rows), spacesOf verified no-change-needed (RM_ exclusion covers sub-rects).
-  W-ROOM-WALKER-PARITY 6/6 · W-ROOM-WELLFORMED 19/19 · NEW W-ROOM-FILL 18/18 · ROOM015-020_multirect.sql
-  apply-identical 6/6 (supersede ROOM009-014). :8098 serve refreshed (all 11 extracted DBs multi-rect).
-- ⛔ **GitHub LFS bandwidth quota EXHAUSTED (2026-07-11), resets 2026-08-01.** See `CLAUDE.md` §LFS QUOTA
-  EXHAUSTED — any push may hang regardless of LFS content; don't retry blindly, don't create fresh worktrees
-  for uncached branches. Cleaned up: duplicate `~/Projects/bim-ootb` clone removed, 25 stale worktrees pruned.
-- One live Viewer UI bug left, unfixed: Find panel renders above browser top border (root cause diagnosed,
-  not fixed — `deploy/dev/navigate_find.js`, uncommitted local fix in progress this session, unverified).
-  Mobile pill flyouts (Navigate/Inspect/Camera-View) fixed — bim-ootb PR #727 MERGED 2026-07-10, CI green
-  (fast-checks+e2e-tests), MANAGER-verified against real witness log (mobile 390px: left 928→148, all 3
-  drawers on-screen; desktop unaffected; regression witness also passed).
+- `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` — ALL 5 TASKS DONE. `ROOM_INJECTION_HYBRID.md`
+  §7 (well-formedness: corridor/wall-crossing fix, SUSPECT_* review rows) and §8 (MULTI-RECT: rooms as a
+  rectangle set, closes "doesn't fully form room space", room_guid grouping) both DONE + MANAGER-verified
+  2026-07-11 (W-ROOM-WALKER-PARITY 6/6, W-ROOM-WELLFORMED 19/19, W-ROOM-FILL 18/18, all re-run independently).
+  Self-heal patches at `ROOM015-020` (supersede `ROOM009-014`) on bim-ootb `fix/meshdb-selfheal-loader`
+  @ `e7384f4`/`fd7da67`, W-PATCH-SELFHEAL 43/43 verified. Full detail in the spec doc, not here.
+  **⛔ OPEN — blocks all further OCI room-data uploads (user directive):** Viewer's Room Lens
+  (`navigate_find.js`) renders ~6 nearby wall elements around a room instead of an actual volume box from
+  `spatial_structure`'s own center/size — "hugs the border," doesn't fill the real interior, even though
+  the compiled rects are falsifier-proven correct. Needs a real room-volume-box layer (union of `§MULTI-RECT`
+  sub-rects). No OCI upload of room data until this ships.
+  **✅ Terminal coordinate-frame mismatch — ROOT-CAUSED + FIXED LOCALLY, 2026-07-11** (own investigation,
+  NOT a room-injection bug — full evidence in `prompts/TERMINAL_COORDINATE_FRAME_MISMATCH.md`). Cause:
+  bim-compiler's `deploy/buildings/Terminal_extracted.db` was a carve-out of the multi-building
+  `sandbox_1M` city demo (`scripts/extract_per_building.py` reading `T0_Terminal_` rows verbatim from
+  `build_sandbox_1M.py`'s tile-placement output) stacked on the extractor's own S169 centroid-normalize
+  — both uncorrected, giving a constant (545.6m, 51.2m, 14.7m) offset vs raw-IFC ground truth. bim-ootb's
+  `Terminal_ARC.db` was already correct (matches ground truth <2cm). Fixed in place with a proven-constant
+  SQL offset correction (backed up, integrity-checked, re-verified against ground truth <6mm) — Terminal's
+  OCI room-data gate can now move to the separate `ROOM_INJECTION_HYBRID.md` decision (not made here).
+  Flagged, not verified: other `CBD_BUILDINGS` sharing the same carve-out path (Hospital/HospitalGarage/
+  LTU_AHouse) may carry the same class of bug — unchecked this session. Hospital/SampleCastle/Garage/
+  SampleHouse/Clinic already shipped via OCI (fresh, self-consistent walk).
+  **HHS room data + Viewer self-heal loader — DONE+MERGED 2026-07-11** (Sonnet, MANAGER-verified, bim-ootb
+  PR #732 auto-merged `f60bfb7`, CI green): Room habitability filter (shared `common/room_habitability.js`,
+  both apps) + Type-toggle COMPILED-fallthrough fix + a NEW `buildings/patches/*.sql` Viewer-side self-heal
+  loader (`viewer/scene.js A._applyPendingPatch`, ported 1:1 from the Modeller's proven `_applyPendingPatch`
+  convention — fetches+applies an idempotent SQL patch client-side on every DB open, fails safe, no binary
+  push needed). `buildings/patches/HHS_Office_Federated_extracted.db.sql` ships the 14→105-row fix this way,
+  per standing policy (patch+loader, never a binary push) — closes the gap bim-compiler
+  `ROOM021_HHS_buildings_extracted_carry.sql` (`cf3ea28ea`) named as missing. Witness 11/11 (independent
+  node ground-truth, not hardcoded). Full detail:
+  `VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §5.
+  **W5 precision lane (Fable, same `fable/meshdb-livewire` branch) DONE through §WALL-SLOT:** per-room Z
+  offsets, wall-light sconce fix, which-wall slot seam (honestly 0 slots on Duplex — mirror-unit geometry
+  has no absolute wall-side signal, proven not guessed). All witnessed (W-SCHED-MINE 7/7, W-DX-WALKBACK-RSGT
+  14/14 throughout). Next named follow-up, not yet assigned: mirror-invariant wall-anchor mining (relative
+  to ARC adjacency, e.g. "the wall the door is on," not absolute XMIN/XMAX).
+- `git push`/worktree-checkout may hang (LFS pre-push probe against the capped quota, resets 2026-08-01) —
+  a pure git-ops caution, unrelated to DB policy (DB binaries are never pushed regardless). See `CLAUDE.md`
+  §DB CHANGES = MIGRATION SCRIPT + SELF-HEAL LOADER, ALWAYS.
+- Find panel visible-at-onset + rendered-above-top-border — FIXED 2026-07-11 (Fable, MANAGER-verified):
+  `display:none` default + top/transform fix in `#find-panel` CSS (`viewer/navigate_find.js`), W-FIND-PANEL-VIS
+  28/28. bim-ootb PR #728 @ `4de186d`, OPEN/mergeable, **not merged (user's call)**.
+- §8E-3 MEP routed-network render — DONE+MERGED 2026-07-11 (Sonnet, MANAGER-verified, bim-ootb PR #731
+  auto-merged `9abb845`, CI green): render machinery already shipped (PR #555/#686) — real gaps were
+  `__dwPixelProbe` missing routed-tube tag + no dedicated witness. `witness_mep_route_render.js` 12/12
+  (Terminal PLB 4315+ACMV 1002=5317, Duplex PLB 358, readPixels-proven, matches W-WALKBACK-MEP oracle).
+  Found: shipped Terminal resident now ARC-only (0 MEP data) — substrate regression, out of scope, named
+  in `RESUME_GRAPH_MODELLER_INTEGRATION.md` §8E-3.
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch** (bim-ootb PR #659 shipped item 4b) — items 1/2/0 (CCTV double-click capture, camera-POV
@@ -85,7 +92,12 @@
   build order: `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb) + memory `project_hba_iot_lod400_lane.md`.
 - **Held, not yet built (user's own call — prove smallest piece first):** Modeller prefab design dialogue —
   DAG-guided lasso, escalating selection, macro-capture — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
-- **Spec ready, not built:** `prompts/UBBL_RULES_GATE.md` (room area/height vs. 2 verified By-Law thresholds).
+- **UBBL room-size demo gate — SHIPPED 2026-07-11** (Fable, MANAGER-verified): `SdgGate.ubblRoomSizeDemo()`
+  in bim-ootb `modeller/sdg_gate.js`, 5th gate case, only the 2 verified By-Law 42 thresholds (area≥6.5m²,
+  headroom≥2.5m), every row labeled "not a compliance verdict" per spec. Witness 9/9 (8 of Duplex's 21
+  real rooms flagged, e.g. A104 1.456×2.171=3.161m², witness queries live DB not hardcoded) + regression
+  `witness_sdg_gate.js` 11/11. bim-ootb PR #729, branch `feat/ubbl-room-size-demo` @ `4433dad`,
+  OPEN/mergeable, **not merged (user's call)**. Full detail: `prompts/UBBL_RULES_GATE.md`.
 - **Kernel op-log T4+T5** (unify 3 kernel copies) — BROWSER-GATED, needs W-ONE-KERNEL building-load smoke.
   Deferred: `commitGroup` id-race retry. Spec: `prompts/KERNEL_HARDENING_BATCH1_SPEC.md §STATUS`.
 - **Modeller onboarding** — Hospital/Clinic/LTU/HHS_Office as Modeller residents + migrate SH/DX/SC into the
@@ -103,7 +115,7 @@
 - **2026-07-05 arc: landing Save/Open+multimerge resurrect+versioning, grid green/orange, Save/auto-heal,
   Teams E2E, HBA mobile stack, UBBL+parametric recon** — bim-ootb #654/#656/#657/#658/#660/#661/#662/#664, ALL
   MERGED, watchdog-verified against real diffs (not trust-on-recap — caught 1 false "already fixed" fixture
-  claim, corrected). Full detail: `prompts/FRONTEND_LANE_MASTER.md §NEW BACKLOG` + `prompts/
+  claim, corrected). Full detail: `prompts/archive/FRONTEND_LANE_MASTER.md §NEW BACKLOG` (archived 2026-07-11) + `prompts/
   GRID_PREDRAG_PREVIEW_SAVE_COMPLETEIT.md` (design dialogue) + memory `project_teams_e2e_no_ui_finding.md` /
   `project_ubbl_recon_landmine.md`.
 - Pre-2026-07-05 DONE (13 lines) → `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-05.md`; pre-2026-06-14 (21
