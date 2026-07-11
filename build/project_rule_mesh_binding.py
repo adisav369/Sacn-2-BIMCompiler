@@ -26,6 +26,12 @@ MEASURED per rule row as median(current site z of the row's own src_guids) − b
 then the median across rows is stamped (this run: 14.593, MAD 0.33 over 37 rows). The walker
 adds it to every band it uses — no constant lives in code.
 
+ALSO STAMPS `rule_frame_ref` (§TE-ARC-DATUM-FIX, RESUME_DISC_WALKER_ENVELOPE_BOUND.md, 2026-07-10):
+per-class reference z-stats (n, mean center_z in the BAND frame) for every non-generatable class —
+the walker measures the band→substrate z-offset at WALK time (median of per-class deltas vs the
+walked db) so shipped substrates in a different frame (Terminal_ARC.db = raw-IFC building frame,
+−14.66 m from the extraction's site frame) reconcile without baking any one target frame.
+
 Usage: project_rule_mesh_binding.py <rules_db> <building_extracted_db>
 """
 import os
@@ -94,6 +100,29 @@ def project(rules_db, bdb_path, log=print):
         cur.execute("INSERT OR REPLACE INTO rules_meta VALUES ('z_datum_offset_prov', ?)",
                     (f"measured:median(src_guids site z - band mid) over {len(offs)} rows, MAD={mad}, src={src_name}",))
         log(f"§MESHBIND-PROJ z_datum_offset={z_off} (MAD={mad}, {len(offs)} rows) stamped into rules_meta")
+    # rule_frame_ref (§TE-ARC-DATUM-FIX): per-class reference z-stats in the BAND frame, so the walker
+    # can MEASURE the band→substrate offset at walk time from whatever copy/frame it is handed, instead
+    # of applying the one mine-time z_datum_offset to every substrate. Classes: non-generatable (never
+    # in rule_placement — same anti-cheat set the walker's envelope query uses), != IfcSpace, n≥5.
+    z_off_used = round(statistics.median(offs), 3) if offs else 0.0
+    gen_cls = [c for (_, c) in pairs] + [r[0] for r in cur.execute(
+        "SELECT DISTINCT ifc_class FROM rule_placement").fetchall()]
+    ph = ",".join("?" * len(set(gen_cls)))
+    refs = bdb.execute(
+        "SELECT em.ifc_class, COUNT(*) n, AVG(t.center_z) mz FROM elements_meta em"
+        " JOIN element_transforms t ON t.guid = em.guid"
+        f" WHERE em.ifc_class NOT IN ({ph}) AND em.ifc_class != 'IfcSpace'"
+        " GROUP BY em.ifc_class HAVING COUNT(*) >= 5", sorted(set(gen_cls))).fetchall()
+    cur.executescript("""
+        DROP TABLE IF EXISTS rule_frame_ref;
+        CREATE TABLE rule_frame_ref(
+            ifc_class TEXT PRIMARY KEY, n INTEGER, mean_z REAL, provenance TEXT);
+    """)
+    for cls, cnt, mz in refs:
+        cur.execute("INSERT INTO rule_frame_ref VALUES (?,?,?,?)",
+                    (cls, cnt, round(mz - z_off_used, 4),
+                     f"measured:AVG(center_z)-z_datum_offset({z_off_used}):{src_name}"))
+    log(f"§MESHBIND-PROJ rule_frame_ref: {len(refs)} non-generatable class refs stamped (band frame)")
     con.commit()
     log(f"§MESHBIND-PROJ {os.path.basename(rules_db)} ← {src_name}: {n} class bindings "
         f"from {len(pairs)} (disc,ifc_class) pairs"

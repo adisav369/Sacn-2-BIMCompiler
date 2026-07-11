@@ -94,6 +94,16 @@
   (Terminal PLB 4315+ACMV 1002=5317, Duplex PLB 358, readPixels-proven, matches W-WALKBACK-MEP oracle).
   Found: shipped Terminal resident now ARC-only (0 MEP data) — substrate regression, out of scope, named
   in `RESUME_GRAPH_MODELLER_INTEGRATION.md` §8E-3.
+- **From the 2026-07-10 marathon (master), still real, not superseded by the above:** 4 more branches
+  verified+pushed, no PR yet — grid rotation-guard X/Y-tilt (`fix/grid-tilt-guard`), rot-units
+  radians/degrees bug (`fix/dw-rot-units`), `__dwPixelProbe` dedup+harness fixes (`fable/dwprobe-dedup`),
+  Terminal MEP-oracle stale-path fix (`fix/terminal-oracle-source`). **Guide screenshots FAILED on
+  direct review** (washed-out framing / broken camera-inside-mesh capture) — confirmed NO, not
+  unverified, status unknown since. SampleCastle rooms CLOSED (disc_walker needs none, works via
+  `duplex_rules.db`+`substrate()`) — the room-injection feature above is separate, don't conflate.
+  Open: Terminal PLB walk graded (T6/T7), old op-log rot-units data unmigrated, `cat[0]` legacy
+  fallback, W5 RSS-exact ratchet. Full detail: `project_disc_walker_grid_guard_marathon_2026-07-10.md`
+  (memory).
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch** (bim-ootb PR #659 shipped item 4b) — items 1/2/0 (CCTV double-click capture, camera-POV

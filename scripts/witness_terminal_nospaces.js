@@ -42,6 +42,14 @@
  *   T7 PLB-CONFORM   — every PLB placement XY-inside the real envelope, z inside its OWN rule row's
  *                      measured band, and carrying a REAL mesh hash of its own class (T3+T5 pattern
  *                      applied to PLB; classes with no real mesh only in lod400Refused).
+ *   T8 SHIPPED-SUBSTRATE — §TE-ARC-DATUM-FIX (2026-07-10): walk the SHIPPED
+ *                      ~/bim-ootb/modeller/Terminal_ARC.db (raw-IFC building frame, −14.66 m below
+ *                      the extraction's site frame — pre-fix every disc collapsed there: ELEC
+ *                      744→390, PLB 888→252). ELEC+PLB per-class placed/n_measured ∈ [0.5,2.0],
+ *                      conformance vs the shipped file's OWN envelope + reconciled z-bands + real
+ *                      hashes. FALSIFIER: DROP rule_frame_ref (walker back on the baked one-frame
+ *                      z_datum_offset) → the walk must collapse <0.6× — proves the walk-time
+ *                      measured datum reconciliation is what makes the production substrate walkable.
  */
 'use strict';
 var fs = require('fs');
@@ -203,6 +211,63 @@ var GRADED = ['IfcLightFixture', 'IfcElectricAppliance'];      // ELEC — the p
     (wp.placements || []).length + ' PLB placements: ' + pOut + ' outside the real XY envelope, ' + pzBad +
     ' outside their own measured z-band, ' + pNoHash + ' missing a hash, ' + pBadHash +
     ' not a REAL hash of their own class; no-real-mesh classes: ' + pRefusedN + ' (REFUSED only)');
+
+  log(''); log('─── T8 SHIPPED-SUBSTRATE (§TE-ARC-DATUM-FIX — the Modeller\'s REAL Terminal_ARC.db) ───');
+  // The stripped-copy walks above run in the extraction's site frame; the SHIPPED substrate
+  // (~/bim-ootb/modeller/Terminal_ARC.db) is in the raw-IFC building frame, −14.66 m below it.
+  // Pre-fix, the baked z_datum_offset starved every band there (ELEC 744→390, PLB 888→252).
+  // T8 proves the walk-time rule_frame_ref reconciliation closes exactly that: same quantity bar
+  // as T6 on the shipped file, conformance vs the shipped file's OWN envelope, and a falsifier
+  // that removes rule_frame_ref (back to the baked offset) and must collapse.
+  var ARC_SHIPPED = path.join(process.env.HOME, 'bim-ootb/modeller/Terminal_ARC.db');
+  if (!fs.existsSync(ARC_SHIPPED)) {
+    log('  (⚠ ' + ARC_SHIPPED + ' not found on this machine — T8 SKIPPED, not a false pass)');
+  } else {
+    var shipped = loadDb(SQL, ARC_SHIPPED);
+    var sEnv = rows(shipped, 'SELECT MIN(center_x-bbox_x/2) x0, MAX(center_x+bbox_x/2) x1, MIN(center_y-bbox_y/2) y0, MAX(center_y+bbox_y/2) y1 FROM element_transforms')[0];
+    var sPlaced = 0, sDetail = [], sOk = true, sOut = 0, szBad = 0, sNoHash = 0, sBadHash = 0;
+    var sHash = {};
+    ['ELEC', 'PLB'].forEach(function (d) {
+      var wd = dw.dwWalk(d, shipped, 'Terminal', { schedule: true });
+      sOk = sOk && !wd.refused && wd.mode === 'measured-band';
+      sPlaced += wd.placed || 0;
+      var bc = {}; (wd.placements || []).forEach(function (p) { bc[p.ifc_class] = (bc[p.ifc_class] || 0) + 1; });
+      rows(rules, "SELECT ifc_class, SUM(n_measured) nm FROM rule_placement WHERE disc='" + d + "' GROUP BY ifc_class")
+        .forEach(function (r) {
+          var gen4 = bc[r.ifc_class] || 0, ratio = r.nm ? gen4 / r.nm : 0;
+          sOk = sOk && ratio >= 0.5 && ratio <= 2.0;
+          sDetail.push(d + '/' + r.ifc_class + ' ' + gen4 + '/' + r.nm + ' (' + ratio.toFixed(2) + ')');
+          log('§TN shipped qty ' + d + '/' + r.ifc_class + ' generated=' + gen4 + ' n_measured=' + r.nm + ' ratio=' + ratio.toFixed(2));
+          rows(full, "SELECT DISTINCT ei.geometry_hash h FROM element_instances ei JOIN elements_meta em ON em.guid=ei.guid WHERE em.ifc_class='" + r.ifc_class + "'")
+            .forEach(function (x) { sHash[r.ifc_class + '|' + x.h] = 1; });
+        });
+      (wd.placements || []).forEach(function (p) {
+        if (p.x < sEnv.x0 - 0.5 || p.x > sEnv.x1 + 0.5 || p.y < sEnv.y0 - 0.5 || p.y > sEnv.y1 + 0.5) sOut++;
+        var band = p.band; if (!band) { szBad++; } else {
+          var tol = (p.bz || 0.5) + 0.75;
+          if (p.z < band[0] - tol || p.z > band[1] + tol) szBad++;
+        }
+        if (!p.geometry_hash) { sNoHash++; return; }
+        if (!sHash[p.ifc_class + '|' + p.geometry_hash]) sBadHash++;
+      });
+    });
+    // FALSIFIER (names the issue): drop rule_frame_ref in a COPY → walker falls back to the baked
+    // one-frame z_datum_offset → on the shipped substrate the walk must collapse again.
+    var tampered8 = loadDb(SQL, RULES);
+    tampered8.exec('DROP TABLE rule_frame_ref');
+    dw.dwOpen(tampered8);
+    var falsPlaced = 0;
+    ['ELEC', 'PLB'].forEach(function (d) { falsPlaced += dw.dwWalk(d, shipped, 'Terminal', { schedule: true }).placed || 0; });
+    dw.dwOpen(rules);
+    tampered8.close();
+    assert('T8 SHIPPED-SUBSTRATE', sOk && sOut === 0 && szBad === 0 && sNoHash === 0 && sBadHash === 0 && falsPlaced < sPlaced * 0.6,
+      'shipped Terminal_ARC.db (building frame, −14.66 m vs extraction): ' + sDetail.join('; ') +
+      ' — all in band [0.5,2.0]; ' + sOut + ' outside the SHIPPED file\'s own XY envelope, ' + szBad +
+      ' outside their own reconciled z-band, ' + sNoHash + '+' + sBadHash + ' hash violations;' +
+      ' falsifier DROP rule_frame_ref (baked offset only) → placed ' + sPlaced + '→' + falsPlaced +
+      ' (<0.6× — the walk-time datum reconciliation is what makes the production substrate walkable)');
+    shipped.close();
+  }
 
   log(''); log('─── REPORTED (not graded — secondary discs) ───');
   ['FP', 'ACMV'].forEach(function (d) {
