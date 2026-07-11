@@ -111,3 +111,70 @@ correlation measured on HHS + Terminal and reported honestly, whether the result
 or absent. Update `ROOM_INTELLIGENCE_SCOREBOARD.md` row 15 (and add a DiscWalk row/note if the
 correlation is real) once both tasks report — same standard-reporting-format discipline as every
 other thread this session, don't revert to prose.
+
+---
+
+## FINDINGS — 2026-07-12 (Fable, both tasks executed; disc_walker placement logic untouched per Task 2 rule 3)
+
+### Task 1 — Plant Room: n=2 → **n=4** (yaml updated, W-BUILDING-PARTS re-run 13/13 green)
+Surveyed the FULL extractions (`~/bim-ootb/buildings/*_extracted.db`) via `build/building_parts_taxonomy.js
+extractParts()` itself (word-boundary pass included — no parallel query built). Every count below is
+class-checked, not raw `LIKE`:
+| Building | keyword elements | real classes behind them | densest room |
+|---|---|---|---|
+| Terminal | 644 (74 in the ARC resident) | 568 IfcDuctSegment + 68 proxy + 2 IfcValve + **6 walls literally typed `A_Wall_Ext_230mm_AHU_V1`** (a designated AHU-room enclosure in the real professional model) | ≈ Aras 02 R2 (40) |
+| Hospital | 5391 | 4816 IfcDuctSegment + 575 proxy (AHU-2, centrifugal fans, balancing dampers) | ≈ Level 2 R20 (263) |
+| Clinic | 1881 | 1759 IfcFlowSegment + 115 IfcFlowController + 5 IfcFlowMovingDevice (fans/pumps) + 2 IfcEnergyConversionDevice (**chillers**) | ≈ First Floor R20 (317) |
+| HHS | 1769 | 933 IfcFlowFitting + 834 IfcFlowSegment + 2 proxy (AHU/rooftop fan) — reproduces the prompt's citation exactly | ≈ Level 1 R5 (18) |
+
+- `config/building_taxonomy.yaml` PLANT_ROOM `buildings:` list now carries all 4 with class breakdowns,
+  BOTH scopes labeled (resident vs full extraction — residents are ARC-stripped by design, so
+  HHS/Clinic/Hospital legitimately read 0 there; do not "correct" either number into the other).
+- **Hospital_3_extracted.db = duplicate, not a variant**: same model re-imported as "HospitalMerged"
+  (identical 63,415 elements / 30 classes / identical plant byClass 575+4816). Surveyed canonical
+  `Hospital_extracted.db`; Hospital_3 used only as the agreement spot-check.
+- Regression: `build/witness_building_parts_taxonomy.js` re-run after the yaml edit — **13/13 PASS**
+  (word-boundary + class-gate fixes #740/#742 hold; Terminal resident 74 unchanged).
+
+### Task 1 — Air Well: **honest zero, with the named reason the geometric route is blocked**
+- Name evidence: **zero across all 5 DBs** — no airwell/light-well/atrium/luftraum/schacht/shaft hit in
+  `elements_meta.element_name` OR `spatial_structure.name`, any building (even "shaft" is absent).
+- Geometric signature (the prompt's suggested route): **cannot be measured from current data.** The
+  tall-void query (z>5m and z>1.8×footprint) did return candidates (Terminal ×2, Hospital ×6), but they
+  are GIGO: `spatial_structure.size_z` is a per-STOREY constant, not a per-space measured height —
+  verified by distribution (Hospital: 31 spaces share z=5.874 exactly, the rest bucket into 4 other
+  per-storey values; Terminal: 23 share z=5.396). The "tall voids" are just small-footprint rooms on
+  tall storeys. `IfcOpeningElement`/void classes: zero rows in every extraction (voids are subtracted
+  pre-extraction). A real air-well signature would need per-space measured vertical extent or
+  multi-storey void detection from geometry — neither exists in the extracted schema today.
+  `config/building_taxonomy.yaml` left unchanged for this category, per the prompt's own rule.
+
+### Task 1 — Storage: **honest zero, and label-search is structurally blind here**
+- `spatial_structure.name` values are synthetic (`≈ Level N Rk`) in every extraction — compiled room
+  names, no semantic labels survive, so storage/lager/abstell/janitor/closet/archiv matches are
+  impossible BY CONSTRUCTION, not merely absent. (Room-type inference is the classifier lane's seam —
+  out of scope here per this file's own boundary.)
+- Secondary signal: no shelving/rack/regal/schrank classes anywhere. Clinic's only furnishing hits are
+  10 `M_Base Cabinet` casework rows (millwork, not a storage room signal). `room_templates.yaml` has no
+  STORAGE template to extend (checked before building anything parallel — nothing exists).
+
+### Task 2 — ACMV↔Plant-Room proximity: **calibration PASSED, correlation WEAK(Terminal)/NONE(HHS) — not a placement signal**
+Method (spec'd before running, decision rule pre-stated): plant clusters = the SAME room-containment
+counting `plantRoomDensity` uses, over ALL rooms (n≥10 threshold → Terminal 17 clusters, HHS 5);
+metric = per-fixture nearest-cluster distance; ACMV population = Terminal `discipline='ACMV'` (289
+IfcAirTerminal, all positioned) / HHS IfcFlowTerminal with air vocabulary (309); verdict from
+ACMV/contrast median-XY ratio: ≤0.5 strong · 0.5–0.9 weak · ≥0.9 none, strong required on BOTH.
+- **Terminal-as-anchor falsifier PASSED:** the 6 `A_Wall_Ext_230mm_AHU_V1` walls sit **0.76m** median
+  from a found cluster — the clustering genuinely locates the real, labeled AHU enclosure, so the
+  method is trusted on the less-certain buildings.
+- **Terminal:** ACMV medXY=4.50m vs ELEC 5.70m / FP 6.09m / ARC 6.27m → ratios **0.79 / 0.74 / 0.72 = WEAK**.
+- **HHS:** ACMV medXY=16.48m vs non-air IfcFlowTerminal 16.55m / ARC 15.64m → ratios **1.00 / 1.05 = NONE**.
+- **Verdict: weak-to-none — reported, NOT wired into disc_walker** (Task 2 rule 3: only an unambiguous,
+  strong signal earns a weighting change). The physics agrees: air terminals distribute across the
+  rooms they SERVE; it's the duct trunk that thickens toward plant, not the fixtures. Same honest-negative
+  standard as the door-access signal (scoreboard row 9).
+
+Scripts + logs: `survey_parts.js` / `measure_acmv_plant_corr.js` + their `.log`s in the session
+scratchpad; every number above read from the logs, not recalled. `ROOM_INTELLIGENCE_SCOREBOARD.md`
+row 15 + the building table's Plant Room cells updated same commit (no new DiscWalk row — the
+correlation did not qualify as real under the pre-stated rule).

@@ -40,4 +40,11 @@ building_classes:
         source: mep_density
         evidence: measured
         min_count: 0
-        buildings: ["Terminal only (74 MEP-keyword elements, 10/74 concentrated in one room) — n=1 building, advisory only"]
+        # n=4 real buildings as of 2026-07-12 (DISCWALK_PLANT_ROOM_INDUSTRIAL_TAXONOMY.md survey,
+        # class-checked on the FULL *_extracted.db data — the ARC-only residents are MEP-stripped
+        # by design, so resident-side counts are 0 for HHS/Clinic/Hospital and 74 for Terminal;
+        # both scopes cited so neither number gets "corrected" into the other).
+        buildings: ["Terminal (74 keyword elements in Terminal_ARC.db resident, 10/74 in one room; 644 in Terminal_extracted.db full data: 568 IfcDuctSegment + 68 proxy + 2 IfcValve, plus 6 walls literally typed A_Wall_Ext_230mm_AHU_V1 — a designated AHU room enclosure)",
+                    "Hospital (5391: 4816 IfcDuctSegment + 575 proxy AHU/fan/damper — densest room 263 elements)",
+                    "Clinic (1881: 1759 IfcFlowSegment + 115 IfcFlowController + 5 IfcFlowMovingDevice fans/pumps + 2 IfcEnergyConversionDevice chillers — densest room 317 elements)",
+                    "HHS (1769: 933 IfcFlowFitting + 834 IfcFlowSegment + 2 proxy AHU/rooftop-fan — densest room 18 elements)"]
