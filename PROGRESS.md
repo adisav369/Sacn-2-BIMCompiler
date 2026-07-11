@@ -64,12 +64,7 @@
   build order: `prompts/RESUME_HBA_MOBILE_CARD_STACK.md` (bim-ootb) + memory `project_hba_iot_lod400_lane.md`.
 - **Held, not yet built (user's own call — prove smallest piece first):** Modeller prefab design dialogue —
   DAG-guided lasso, escalating selection, macro-capture — `prompts/PREFAB_LASSO_MACRO_LIBRARY_DIALOGUE.md`.
-- **UBBL room-size demo gate — SHIPPED 2026-07-11** (Fable, MANAGER-verified): `SdgGate.ubblRoomSizeDemo()`
-  in bim-ootb `modeller/sdg_gate.js`, 5th gate case, only the 2 verified By-Law 42 thresholds (area≥6.5m²,
-  headroom≥2.5m), every row labeled "not a compliance verdict" per spec. Witness 9/9 (8 of Duplex's 21
-  real rooms flagged, e.g. A104 1.456×2.171=3.161m², witness queries live DB not hardcoded) + regression
-  `witness_sdg_gate.js` 11/11. bim-ootb PR #729, branch `feat/ubbl-room-size-demo` @ `4433dad`,
-  OPEN/mergeable, **not merged (user's call)**. Full detail: `prompts/UBBL_RULES_GATE.md`.
+- UBBL room-size demo gate — SHIPPED+MERGED 2026-07-11, see `ROOM_INTELLIGENCE_SCOREBOARD.md` row 3.
 - **Kernel op-log T4+T5** (unify 3 kernel copies) — BROWSER-GATED, needs W-ONE-KERNEL building-load smoke.
   Deferred: `commitGroup` id-race retry. Spec: `prompts/KERNEL_HARDENING_BATCH1_SPEC.md §STATUS`.
 - **Modeller onboarding** — Hospital/Clinic/LTU/HHS_Office as Modeller residents + migrate SH/DX/SC into the
