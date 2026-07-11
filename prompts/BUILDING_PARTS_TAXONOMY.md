@@ -116,9 +116,26 @@ recon table exactly (regression guard against the recon numbers drifting silentl
 top-down checklist report per building. Log-only for PLANT_ROOM's room-concentration number (n=1,
 not asserted as a hard pass/fail — reported honestly as a single-building finding).
 
-## Out of scope, explicitly (per WORK-TO-ZERO — don't silently drop these, name them)
-- Find-panel / Modeller Outliner wiring (VISION-LOCK sentence 5) — this spec produces the DATA the
-  panel needs; wiring it into bim-ootb's UI is a separate, follow-up dispatch (different repo).
+## Find panel wiring — DONE 2026-07-11 (bim-ootb, separate repo)
+`viewer/navigate_find.js` gained a new data-gated `parts` axis (Stairway/Lift Shaft/Plant Room),
+mirroring the existing Room/Material/Phase axis pattern exactly (`_probeLenses()`/`_axes()`/
+`_buildPartsTree()`/`_isolatePartsGroup()`) — `STAIR_LIKE`/`LIFT_KEYWORDS`/`PLANT_KEYWORDS` ported
+verbatim from this repo's `build/building_parts_taxonomy.js`. Verified via Playwright against real
+Duplex + SampleCastle data; commit `d04ddd5` on `feat/parts-axis`, local-only (push pause), MANAGER-
+verified independently (diff read, not just the report trusted).
+
+**DB-variant nuance found during verification, worth knowing:** bim-ootb's served
+`modeller/Duplex_extracted.db` carries only 2×`IfcStairFlight` (no parent `IfcStair` rows) —
+DIFFERENT from this repo's witness source `modeller/Duplex_ARC.db` (2×`IfcStair`+2×`IfcStairFlight`
+= 4, per §PARENT-NO-TRANSFORM above). Same building, two DB snapshots that have genuinely diverged
+across repos — not a bug in either query, but means the Find panel's live Stairway count for a given
+building may differ from this repo's own taxonomy witness for the same building name, depending on
+which extracted-DB variant is actually live. Not fixed here — flagging so a future session doesn't
+mistake it for a regression.
+
+## Still out of scope, explicitly (per WORK-TO-ZERO — don't silently drop these, name them)
+- Modeller Outliner wiring (VISION-LOCK sentence 5's OTHER half — "one Outliner panel", separate
+  from the Find panel done above) — not started.
 - `required_spaces`-style HARD gating for STAIRWAY/LIFT_SHAFT/PLANT_ROOM — these stay advisory
   ticks (`min_count: 0`) until cross-building evidence is stronger; promoting them to a shortfall
   gate is a future call, not made here.
