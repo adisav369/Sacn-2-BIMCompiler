@@ -40,21 +40,33 @@ the pointer that makes this the default.
 | 12 | DISC-walk room-type-aware placement | 8 | PLB→Bathroom/Utility + FP→Foyer real signal wired; ELEC/ACMV honestly refused | Only Duplex has real MEP+room data to measure from |
 | 13 | Corridor pathway routing (Find panel) | 9 | MANAGER-reran 15/15 independently; door-guid continuity re-measured, not trusted | Duplex-only proof so far; real disconnections found, not yet resolved |
 | 14 | Prior-art analysis + citations | — | Found near-exact academic match (Buruzs et al. 2022) + 2 usable public datasets (RoomGraph, SAGC-A68) | Not yet acted on — still a proposal |
+| 15 | Building parts taxonomy (STAIRWAY/LIFT_SHAFT/PLANT_ROOM) | 7 | Real multi-building ground truth for STAIRWAY (5 buildings, Hospital=60 strongest) + LIFT_SHAFT (4 buildings); top-down/bottom-up checklist walks the SAME config either direction; W-BUILDING-PARTS 13/13 PASS | PLANT_ROOM is Terminal-only (n=1); STORAGE/AIR_LIGHT_WELL explicitly refused (zero real evidence anywhere) — not wired into Find panel/Outliner yet |
 
 **Weakest links, name them plainly every time this table is refreshed:** door-access signal (4) and
 classifier sample size (5) — both honestly reported, neither hidden or inflated.
 
 ## Building coverage (real numbers, queried 2026-07-11 — re-run before trusting after this date)
-| Building | Storeys | Rooms | Classified | Avg Confidence | Corridor/Circulation | Restrooms | Ground Truth |
-|---|---|---|---|---|---|---|---|
-| **Duplex** | 4 | 20 | 18 (90%) | 89.6% | 4 | 4 | **Real** (human-labeled IFC) |
-| **SampleHouse** | 2 | 3 | 3 (100%) | 86.1% | 1 | 0 | **Real** (human-labeled IFC) |
-| Terminal | 6 | 43 | 27 (63%) | 80.8% | 1 | 0 | Inferred (COMPILED) |
-| SampleCastle | 4 | 51 | 21 (41%) | 93.6% | 0 | 5 | Inferred (COMPILED) |
-| HHS | 4 | 105 | 26 (25%) | 95.8% | 0 | 1 | Inferred (COMPILED) |
-| Clinic | 3 | 197 | 64 (32%) | 92.9% | 5 | 38 | Inferred (COMPILED) |
-| Garage | 1 | 5 | 1 (20%) | 52.8% | 1 | 0 | Inferred (COMPILED) — weakest row, N=1, treat with suspicion |
-| Hospital | 7 | 201 | 85 (42%) | 85.5% | 6 | 9 | Inferred (COMPILED) |
+| Building | Storeys | Rooms | Classified | Avg Confidence | Corridor/Circulation | Restrooms | Stairway | Lift Shaft | Plant Room | Ground Truth |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **Duplex** | 4 | 20 | 18 (90%) | 89.6% | 4 | 4 | 4 (2 positioned) | 0 | 0 | **Real** (human-labeled IFC) |
+| **SampleHouse** | 2 | 3 | 3 (100%) | 86.1% | 1 | 0 | 0 | 0 | 0 | **Real** (human-labeled IFC) |
+| Terminal | 6 | 43 | 27 (63%) | 80.8% | 1 | 0 | 33 | 5 | 74 (advisory, n=1 building) | Inferred (COMPILED) |
+| SampleCastle | 4 | 51 | 21 (41%) | 93.6% | 0 | 5 | 9 | 67 | 0 | Inferred (COMPILED) |
+| HHS | 4 | 105 | 26 (25%) | 95.8% | 0 | 1 | 0 | 3 | 0 | Inferred (COMPILED) |
+| Clinic | 3 | 197 | 64 (32%) | 92.9% | 5 | 38 | 9 | 1 | 0 | Inferred (COMPILED) |
+| Garage | 1 | 5 | 1 (20%) | 52.8% | 1 | 0 | 0 | 0 | 0 | Inferred (COMPILED) — weakest row, N=1, treat with suspicion |
+| Hospital | 7 | 201 | 85 (42%) | 85.5% | 6 | 9 | 60 (30 positioned) | 0 | 0 | Inferred (COMPILED) |
+
+**Stairway/Lift Shaft/Plant Room columns** are from `build/building_parts_taxonomy.js`
+(W-BUILDING-PARTS 13/13, MANAGER-verified independently 2026-07-11) — a SEPARATE, entity-based
+extraction (`IfcStair`/`IfcRamp`, lift name-keyword match, MEP-density-near-plant-keyword), not the
+Gaussian room-type classifier above; these counts are not gated by the "Classified" column. "4 (2
+positioned)" etc. means: 4 real entities exist, only 2 carry their own placement transform (an
+`IfcStair` assembly parent often has none — only its `IfcStairFlight` children do, a real bug found
+and fixed this session, not a missing-data artifact). Plant Room is honestly Terminal-only (n=1
+building, advisory not general) — 0 elsewhere means "no evidence found," not "confirmed absent."
+HHS's Stairway=0 is suspicious for a 4-storey building — likely the same class of gap as its
+corridor false-negative above, not yet investigated for stairs specifically.
 
 **Read honestly, not optimistically:** low classify-rates on the 6 inferred-only buildings (20-63%)
 are the classifier correctly REFUSING to force a residential-shaped label onto institutional/
