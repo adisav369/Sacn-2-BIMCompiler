@@ -138,3 +138,83 @@ back — not merged, not pushed. Task 2: the guide-screenshot bug's root cause i
 rendering defect) and either fixed+re-screenshotted or clearly reported as blocked with what's known.
 Findings appended to this file (a fresh dated section) so the next session — Sonnet reviewing, or whoever
 picks up the actual merge/push decision — has the real current state, not a day-old memory snapshot.
+
+---
+
+## FINDINGS — 2026-07-11 (Fable, this file executed; nothing merged, nothing pushed, PUSH PAUSE honoured)
+
+**Context that moved under the run:** `main` advanced TWICE during the session (f0f0994 `#738` → 9b62c4f
+`#740` — a concurrent session is actively merging). Task-1 verifies ran off f0f0994; the Task-2 combined
+worktree ran off 9b62c4f. All logs saved in the session scratchpad; durable artifacts are on local branches
+`verify/dwprobe` and `verify/guide` (objects in `~/bim-ootb/.git`, survive `/tmp` cleanup).
+
+### Task 1 — 3 stale PRs re-verified fresh (worktree off current origin/main, branch merged IN)
+
+**1. `fix/grid-tilt-guard` (PR #722) — ✅ PASS, merge clean.**
+`W-GRID-TILT-GUARD` **29/29** (`witness_grid_tilt_guard.js`, fresh worktree `/tmp/wt-verify-grid-tilt`,
+branch `verify/grid-tilt`). No regressions. Mergeable as-is.
+
+**2. `fable/dwprobe-dedup` (PR #724) — ✅ verifies to its own documented tallies, BUT the merge is NO
+LONGER CLEAN and needs a semantic resolution (worked out + proven here, on branch `verify/dwprobe`):**
+- **Conflict:** `modeller/modeller.html` — main's §8E-3 fix (`_dwProbeMatch`) edited the same second
+  `__dwPixelProbe` definition the branch renames to `__dwOcclusionProbe`. The prompt's "dry-run ran
+  clean" note is stale.
+- **Resolution (KEEP BOTH, committed as `79acdb0` on `verify/dwprobe`):** keep §8E-3's `_dwProbeMatch` +
+  comment, apply the rename, AND repoint `modeller/tests/witness_mep_route_render.js` (new on main,
+  landed AFTER the branch was cut) from `__dwPixelProbe` → `__dwOcclusionProbe` — it asserts the
+  occlusion shape (`dwPainted`), which the rename would otherwise silently take away (R9–R11 would fail).
+- **Witnesses on the resolved merge:** `W-DW-PIXELPROBE` **6/6** (census probe reachable again — on
+  current main it is still shadowed and that witness asserts fields the shadowing probe doesn't return);
+  `W-UX-DISC` **6/2** — EXACTLY the branch's documented expected tally
+  (`WITNESS_HARNESS_HYGIENE_DWPROBE.md` §2): B5/B6 red = SampleCastle exposes no `[data-disc="MEP"]`
+  node, **pre-existing on pristine main** (reproduced: pure-main run also fails B5 and additionally
+  CRASHES with the uncaught rejection the branch fixes); `§MEP-ROUTE-RENDER` **12/12** with the repoint.
+- **Two side-findings:** (a) `witness_mep_route_render.js` has a bare `require('playwright')` — the same
+  NODE_PATH disease the branch cured in 3 other witnesses, freshly reintroduced on main; had to run it
+  with `NODE_PATH=~/bim-ootb/tests/node_modules`. (b) B5's "SC has no MEP disc node" traces to the
+  embed-8 ARC-only residents (disc nodes seed from the resident meta rows) — witness expectation vs.
+  product direction is a Sonnet call, not fixed here.
+
+**3. `fix/terminal-oracle-source` (PR #725) — ✅ PASS, merge clean, tallies match its commit message
+EXACTLY.** `W-DW-DENSITY-TE` **7/1** (D4 ELEC 1988/833=2.39×, FP 1.14×, ACMV 1.07× — real ratios; the
+one red is D3 ENVELOPE 93–94% vs ≥99%, the commit's own documented separate placement-accuracy finding)
+and `W-DW-CLASH-TE` **10/0** (S8 stage2=0.06% vs real-TE=2.17%, 40/1845 sampled). Worktree
+`/tmp/wt-verify-oracle`. **Run prerequisite discovered:** both witnesses also fetch
+`modeller/Terminal_arcstr_proof.db`, which is deliberately gitignored — a fresh worktree 404s it and
+sql.js dies with "file is not a database"; copy it from `~/bim-ootb/modeller/` first. Note the branch
+commits `Terminal_meta.db` (18MB, plain non-LFS binary) — consistent with existing resident-DB practice
+in this repo (`Terminal_ARC.db` is likewise tracked), flagged for awareness only.
+
+### Task 2 — guide-screenshot bug: **(a) capture-script camera/styling bug. NOT a rendering defect. Fixed.**
+
+Capture script found: `modeller/tests/guide_shots_combined.js` (committed only on
+`fable/combined-guide-shots`). Reproduced fresh off current main + all 3 branches (worktree
+`/tmp/wt-verify-guide`, branch `verify/guide`):
+- `samplehouse_elec_rotation_fix.png` **no longer reproduces as broken** — the same script now yields a
+  clean top-down plan shot (no dome, no browser UI). The 2026-07-10 capture came from the stale combined
+  branch's state.
+- `duplex_elec_lod400_walk.png` still reproduced exactly as described. Discriminating probe
+  (`guide_shot_probe.js`, committed on `verify/guide`): **P1** wide/no-xray = clean render, 102 LOD400
+  devices — content provably fine; **P2** wide + the script's xray override = whole frame washes milky →
+  the wash follows the OVERRIDE (`opacity 0.05` on every ARC mesh + `depthWrite=false`, layers stack);
+  **P3** the shot's own `dist=12` close-up, no xray = camera parked OUTSIDE the shell staring at a
+  frame-filling wall (fixtures are interior). Original bad shot = P3's wall turned into P2's 5%-opacity
+  veil with one ceiling fan behind it.
+- **Fix (`guide_shots_combined_fixed.js`, committed on `verify/guide`):** replace the glass veil with a
+  CUTAWAY (hide non-disc meshes above the subject hood — shot 2's own proven technique; 69 meshes), camera
+  steeper into the interior (`dir [0.7,-0.7,1.15] dist 15`), clip margin 70→150, and hide the `#hist`/
+  `#stat` fixed-position chrome (it overlays the canvas and leaks into bottom-edge clips — this was shot
+  2's "scrubber in frame" mechanism). Result verified by eye (real image bytes, not the log):
+  `guide_shots/duplex_elec_lod400_walk_fixed.png` = crisp dollhouse cutaway, ~15 gold LOD400 ELEC devices
+  (fans/pendants/panels) in full room context, zero console errors. Both final candidates committed on
+  `verify/guide`.
+
+### For Sonnet's merge/push decision (when PUSH PAUSE lifts)
+- #722 and #725: green, conflict-free — straight merges.
+- #724: use `verify/dwprobe`'s resolution (`79acdb0`) or redo it per the bullet above — do NOT let a
+  naive conflict resolution drop either the rename or `_dwProbeMatch`, and do NOT forget the
+  `witness_mep_route_render.js` repoint.
+- Cleanup after review: `verify/grid-tilt`, `verify/dwprobe`, `verify/oracle`, `verify/guide` branches +
+  their `/tmp/wt-verify-*` worktrees are this session's; safe to remove once their evidence is consumed.
+- Unassigned follow-ups surfaced: bare `require('playwright')` in `witness_mep_route_render.js`;
+  W-UX-DISC B5/B6 expectation vs ARC-only SC residents.
