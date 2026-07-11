@@ -371,3 +371,54 @@ hanging/cantilevered roof overhang (outside the building envelope, not enclosed 
 Not built, not specced in detail — needs the same measured, non-invent treatment as the existing
 Roof check (find the real geometric/label signal — e.g. `IfcTransportElement` adjacency for lift
 shafts, envelope-boundary test for roof-overhang exteriors — don't hardcode a name-string match).
+
+## §7 — Corridor/circulation pathway routing in the Find panel (2026-07-11, MANAGER-assigned)
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: bim-ootb `viewer/navigate_find.js`. User directive: "rope in our Find panel 'corridors'
+pathways, whatever of character, meaningful to user... to include in the algorithm and pattern set."
+Now that circulation spaces are a real, tier-tagged classification (`tier: supplementary` in
+`config/room_templates.yaml` — Hallway/Foyer, high door-count, elongated shape, both measured not
+guessed), build a REAL room-to-room pathway feature: route from room A to room B through the actual
+circulation network. Read the log after every run. PUSH PAUSE IN EFFECT — commit locally, verify on
+localhost, do NOT push, do NOT open a PR.
+```
+
+## Why this is genuinely new, not a relabel
+Checked directly: no room-to-room adjacency graph exists anywhere in this pipeline today
+(`compile_rooms.py`'s door-rescue computes PER-ROOM door adjacency, never room-to-room connectivity).
+This is real, buildable, ungrounded-until-now work — not a cosmetic Find-panel addition.
+
+## Task
+1. **Build the room-adjacency graph** (new, real): two rooms are adjacent if they share a real door
+   (same door guid bounds both spaces, or both spaces' footprints touch the same door's opening —
+   check which is actually measurable from the compiled data, don't assume). Supplementary-tier
+   rooms (Hallway/Foyer/corridor) are the natural graph HUBS (high door-count, by design connects
+   multiple spaces) — primary-tier rooms (Bedroom/Kitchen/etc.) are typically graph LEAVES (1-2
+   doors). Verify this hub/leaf pattern holds on real data before assuming it architecturally.
+2. **Real pathfinding**: BFS/Dijkstra from room A to room B over this graph — report the actual path
+   (sequence of rooms/corridors traversed), not just "reachable yes/no."
+3. **Surface it meaningfully in the Find panel** — your call on the exact UI (a new Room-to-Room
+   query mode? highlight the path in the 3D view reusing existing highlight/navigate machinery? —
+   state your choice and why), but it needs to be a real, usable feature, not just a console-log
+   proof. Reuse `A.openFindPanel`/existing navigate/highlight functions where they fit, don't rebuild
+   navigation from scratch.
+
+## Witness
+Real path found + verified correct on a real multi-room building (Duplex or HHS — pick one with a
+genuine, checkable corridor structure). Prove the path is REAL (walks through actual shared doors,
+not a straight-line guess) — assert door-guid continuity along the reported path, not just visual
+plausibility. Also report: does every primary-tier room in the test building actually have SOME path
+to every other (a disconnected room would be a real, worth-reporting finding, not a bug to hide).
+
+## Non-goals
+- Do not build a full turn-by-turn walking-directions UI — a real graph path + a way to see/use it
+  is the deliverable, not a polished wayfinding product.
+- Do not touch the DISC_WALK_ROOM_TYPE_AWARE.md task (parallel, different repo file, disc_walker.js
+  not navigate_find.js) — no coordination needed, but don't duplicate its room-type work, reuse the
+  classifier's existing output.
+
+## DONE WHEN
+Room-adjacency graph built from real door-sharing data, real pathfinding proven on a real building
+with door-guid-verified path continuity, surfaced as a usable Find-panel feature.
