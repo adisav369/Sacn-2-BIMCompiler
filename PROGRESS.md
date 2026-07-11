@@ -32,68 +32,21 @@
   (W-OCC-TRUE-MIDPOINT 17/17, 0 regressions). §TE-ARC-DATUM DONE 2026-07-11: bim-compiler merged (`b202eb44b`,
   PR #40), bim-ootb ported+verified+pushed (PR #726, open, not merged — heals live Terminal collapse once landed).
   §LIVEWIRE CLOSED 2026-07-11 (Fable, MANAGER-verified) — W-SCHED-MINE 7/7 + W-DX-WALKBACK-RSGT 14/14, 0 unpushed.
-- `prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md` — Tasks 1-6 DONE incl. self-heal patch loader
-  (bim-ootb `fix/meshdb-selfheal-loader` @ `a1aeab7`, PR open unmerged, W-PATCH-SELFHEAL 43/43); full task
-  log + witnesses in the doc. 4 more bim-ootb branches pushed, PRs #722-725 open, unmerged.
-- `prompts/Modeller/DISC_Walker/ROOM_WALKER_JS_PORT.md` — ALL 5 TASKS DONE. `ROOM_INJECTION_HYBRID.md`
-  §7 (well-formedness: corridor/wall-crossing fix, SUSPECT_* review rows) and §8 (MULTI-RECT: rooms as a
-  rectangle set, closes "doesn't fully form room space", room_guid grouping) both DONE + MANAGER-verified
-  2026-07-11 (W-ROOM-WALKER-PARITY 6/6, W-ROOM-WELLFORMED 19/19, W-ROOM-FILL 18/18, all re-run independently).
-  Self-heal patches at `ROOM015-020` (supersede `ROOM009-014`) on bim-ootb `fix/meshdb-selfheal-loader`
-  @ `e7384f4`/`fd7da67`, W-PATCH-SELFHEAL 43/43 verified. Full detail in the spec doc, not here.
-  **✅ CLOSED 2026-07-11 (Sonnet, §9) — OCI room-data upload block LIFTED.** `_allRoomVolumes()`/
-  `_roomLensOn()` now group `spatial_structure` by `room_guid` and render one shell box per §8
-  sub-rect (union = real footprint); ported `hba_lens.js`'s proven grouping shape but fixed a
-  latent bug the direct copy would've inherited (`A.dbQuery` never throws on a bad column ref,
-  so the try/catch fallback never fired — replaced with a `PRAGMA table_info` probe). Witness
-  `witness_room_lens_volbox.js` 8/8: rendered box footprint-area SUM = spatial_structure's own
-  rect-union area SUM, diff=0.000m² (real multi-rect data, 33 rooms/43 sub-rects, from running
-  the proven `room_walker.js` against real HHS wall/door geometry); existing
-  `witness_room_lens_hab.js` reruns 11/11, zero regression. bim-ootb PR
-  https://github.com/red1oon/bim-ootb/pull/733 (`fix/room-lens-volume-box` @ `8cb7c49`, pushed).
-  Follow-up (not blocking, not done): `_roomSelect()`/`_buildRoomTree()` still aren't
-  `room_guid`-aware — likely the ACTUAL source of the original "~6 nearby wall elements" report
-  (a different function, `_roomBoundingGuids`, from the one this fix targeted). Full detail
-  `ROOM_INJECTION_HYBRID.md` §9 RESULTS.
-  **✅ Terminal coordinate-frame mismatch — ROOT-CAUSED + FIXED LOCALLY, 2026-07-11** (own investigation,
-  NOT a room-injection bug — full evidence in `prompts/TERMINAL_COORDINATE_FRAME_MISMATCH.md`). Cause:
-  bim-compiler's `deploy/buildings/Terminal_extracted.db` was a carve-out of the multi-building
-  `sandbox_1M` city demo (`scripts/extract_per_building.py` reading `T0_Terminal_` rows verbatim from
-  `build_sandbox_1M.py`'s tile-placement output) stacked on the extractor's own S169 centroid-normalize
-  — both uncorrected, giving a constant (545.6m, 51.2m, 14.7m) offset vs raw-IFC ground truth. bim-ootb's
-  `Terminal_ARC.db` was already correct (matches ground truth <2cm). Fixed in place with a proven-constant
-  SQL offset correction (backed up, integrity-checked, re-verified against ground truth <6mm) — Terminal's
-  OCI room-data gate can now move to the separate `ROOM_INJECTION_HYBRID.md` decision (not made here).
-  Flagged, not verified: other `CBD_BUILDINGS` sharing the same carve-out path (Hospital/HospitalGarage/
-  LTU_AHouse) may carry the same class of bug — unchecked this session. Hospital/SampleCastle/Garage/
-  SampleHouse/Clinic already shipped via OCI (fresh, self-consistent walk).
-  **HHS room data + Viewer self-heal loader — DONE+MERGED 2026-07-11** (Sonnet, MANAGER-verified, bim-ootb
-  PR #732 auto-merged `f60bfb7`, CI green): Room habitability filter (shared `common/room_habitability.js`,
-  both apps) + Type-toggle COMPILED-fallthrough fix + a NEW `buildings/patches/*.sql` Viewer-side self-heal
-  loader (`viewer/scene.js A._applyPendingPatch`, ported 1:1 from the Modeller's proven `_applyPendingPatch`
-  convention — fetches+applies an idempotent SQL patch client-side on every DB open, fails safe, no binary
-  push needed). `buildings/patches/HHS_Office_Federated_extracted.db.sql` ships the 14→105-row fix this way,
-  per standing policy (patch+loader, never a binary push) — closes the gap bim-compiler
-  `ROOM021_HHS_buildings_extracted_carry.sql` (`cf3ea28ea`) named as missing. Witness 11/11 (independent
-  node ground-truth, not hardcoded). Full detail:
-  `VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §5.
-  **W5 precision lane (Fable, same `fable/meshdb-livewire` branch) DONE through §WALL-SLOT:** per-room Z
-  offsets, wall-light sconce fix, which-wall slot seam (honestly 0 slots on Duplex — mirror-unit geometry
-  has no absolute wall-side signal, proven not guessed). All witnessed (W-SCHED-MINE 7/7, W-DX-WALKBACK-RSGT
-  14/14 throughout). Next named follow-up, not yet assigned: mirror-invariant wall-anchor mining (relative
-  to ARC adjacency, e.g. "the wall the door is on," not absolute XMIN/XMAX).
-- `git push`/worktree-checkout may hang (LFS pre-push probe against the capped quota, resets 2026-08-01) —
-  a pure git-ops caution, unrelated to DB policy (DB binaries are never pushed regardless). See `CLAUDE.md`
-  §DB CHANGES = MIGRATION SCRIPT + SELF-HEAL LOADER, ALWAYS.
-- Find panel visible-at-onset + rendered-above-top-border — FIXED 2026-07-11 (Fable, MANAGER-verified):
-  `display:none` default + top/transform fix in `#find-panel` CSS (`viewer/navigate_find.js`), W-FIND-PANEL-VIS
-  28/28. bim-ootb PR #728 @ `4de186d`, OPEN/mergeable, **not merged (user's call)**.
-- §8E-3 MEP routed-network render — DONE+MERGED 2026-07-11 (Sonnet, MANAGER-verified, bim-ootb PR #731
-  auto-merged `9abb845`, CI green): render machinery already shipped (PR #555/#686) — real gaps were
-  `__dwPixelProbe` missing routed-tube tag + no dedicated witness. `witness_mep_route_render.js` 12/12
-  (Terminal PLB 4315+ACMV 1002=5317, Duplex PLB 358, readPixels-proven, matches W-WALKBACK-MEP oracle).
-  Found: shipped Terminal resident now ARC-only (0 MEP data) — substrate regression, out of scope, named
-  in `RESUME_GRAPH_MODELLER_INTEGRATION.md` §8E-3.
+- **Room Intelligence lane — canonical status: `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md`
+  (2026-07-11).** 13 features shipped/verified in one session (scored 0-10 + WORKS/GAP each), 8
+  buildings' room coverage measured fresh. 6 PRs merged (bim-ootb #728/#731/#732/#733, bim-ootb
+  #729 UBBL gate, plus room-habitability/Room-Lens/MEP-render/Find-panel), 1 open (bim-compiler #41
+  Terminal coordinate fix), 7 threads committed locally under the push pause (OBB clash-gate,
+  room-type classifier, door-access signal, tier+BOM wiring, DISC-walk room-type-aware, corridor
+  pathway routing, prior-art analysis). Weakest links named plainly: door-access signal (4/10, net
+  regression if defaulted on), classifier sample size (5/10, real ground truth = Duplex+SampleHouse
+  only). Open proposals (not dispatched, priority is the user's call): scale-tiered templates
+  (HHS's corridors are real but invisible to the residential-fit classifier, confirmed), fixture-
+  in-room recognition (`IfcFurnishingElement` data already extracted, unused), graph-joint-inference,
+  external RoomGraph/SAGC-A68 datasets, OmniClass/Uniclass naming-convention mapping. Don't re-derive
+  any of this in prose here — refresh the scoreboard doc instead, it IS the current state.
+- ⏸ **PUSH PAUSE in effect (2026-07-11, until lifted)** — new work commits locally, verifies on
+  localhost, does not push/open a PR. See `CLAUDE.md` §⏸ PUSH PAUSE + `prompts/MANAGER.md`.
 - **From the 2026-07-10 marathon (master), still real, not superseded by the above:** 4 more branches
   verified+pushed, no PR yet — grid rotation-guard X/Y-tilt (`fix/grid-tilt-guard`), rot-units
   radians/degrees bug (`fix/dw-rot-units`), `__dwPixelProbe` dedup+harness fixes (`fable/dwprobe-dedup`),

@@ -67,6 +67,57 @@ building, 3D grid as primary edit-handle, conformity fires on drag) got real, se
 too: §8E-3 MEP routed-network render shipped (PR #731, completes the "every discipline is a WALKER"
 sentence for MEP specifically — STR+MEP-density+MEP-routing all now render into the laid ARC).
 
+## 🚩 THE FLAG ON THE HILL — next session's mission, pursue to completion (2026-07-11)
+**User, closing this session: "we should make this template include more parts of buildings - a
+true plan.. stairways, air wells.. ventilation etc.. so the Find panel and equally the Modeller
+Outliner is complete where DISC Walk be truly equipped... new session pursue this till end. We done
+so much all round, this is one flag we have to plant on the hill."** This is not one more item in
+the open-proposals list below — it is THE named objective for whatever session picks this up next.
+Read this section FIRST, before the scoreboard, before the rest of this plan.
+
+**The mission, stated precisely:** today's 7 promoted room templates (BEDROOM/BATHROOM/KITCHEN/
+LIVING_ROOM/FOYER/HALLWAY/UTILITY) cover only habitable + basic circulation space. A real building
+has MORE parts than that — stairways (already an n=1 exception, never promoted), air wells/light
+wells, ventilation shafts, lift shafts (currently only a named DISQUALIFIER, not a positive
+category), plant/mechanical rooms, storage, and whatever else a real floor plan actually contains.
+**"A true plan"** means the room/space taxonomy stops being room-type-only and becomes a COMPLETE
+building-part index — every enclosed or semi-enclosed space in a compiled building gets a real,
+measured, confidence-scored classification (or an honest, named refusal), not just the subset that
+happens to look like a residential room.
+
+**Why this closes the loop on all three fronts, not just one:**
+1. **Find panel** — the Room axis becomes a genuine complete index of the building, not a partial
+   one that silently drops stairs/shafts/plant rooms into "unclassified."
+2. **Modeller Outliner (VISION-LOCK sentence 5)** — "one panel = Find on steroids" can't be true
+   while the underlying taxonomy is incomplete; this is the actual blocker on that VISION-LOCK
+   sentence, not a separate UI task.
+3. **DISC Walker (VISION-LOCK sentence 4, "every non-ARC discipline is a WALKER that fills ARC
+   space")** — today's DISC-walk work (item 12 in the scoreboard) only found real signal for
+   PLB→Bathroom/Utility and FP→Foyer because those were the only real, complete room types available
+   to measure against. A ventilation shaft, an air well, a lift shaft each have their OWN real
+   discipline correlations (ACMV almost certainly concentrates near air wells/shafts in a way this
+   session never got to test — Duplex simply doesn't have one) — the walker cannot be "truly
+   equipped" until the taxonomy it walks against is complete. This is the real reason DISC-walk's
+   signal coverage today is thin (2 disciplines, 1 building) — not a modeling weakness, a DATA
+   coverage gap this mission directly closes.
+
+**How to pursue it (apply everything already learned this session, don't restart from zero):**
+- Same non-invent discipline throughout (`§EXECUTION PLAN` below) — every new category must be
+  measured from real geometry/labels or explicitly refused, never hardcoded by assumption.
+- Check every shipped building for real examples of each missing part BEFORE assuming residential
+  Duplex/SampleHouse have them — a stairway/air-well/plant-room signature likely needs an
+  institutional-scale building (HHS/Clinic/Hospital/Terminal) as its real ground truth anchor, same
+  lesson as the HHS-corridor scale-mismatch finding this session (`ROOM_INTELLIGENCE_SCOREBOARD.md`).
+- Reuse the room-adjacency graph (`common/room_graph.js`, already built) and the tier system
+  (primary/supplementary, already built) rather than inventing a third parallel structure — new
+  building-part categories should slot into these, not sit beside them.
+- Refresh `ROOM_INTELLIGENCE_SCOREBOARD.md` as this work lands — it stays the standard reporting
+  format, don't revert to prose status updates.
+- **Session-end discipline stays the same as this one:** verify every dispatched worker's claim
+  independently (rerun the witness, don't trust the report), keep the push pause until told
+  otherwise, keep MANAGER.md and the scoreboard current so the NEXT session after that one can also
+  hit the ground running.
+
 ## ▶ EXECUTION PLAN — Room Intelligence lane (2026-07-11, strategy session synthesis)
 **Standing discipline for every task in this lane (user, 2026-07-11): "maintain abstract general
 rules not hardcoded to any particular" + "maths has all the approaches to resolve any scenario so
@@ -88,43 +139,62 @@ guessing. Room is the anchor FM/space-analytics/code-compliance all need; nobody
 it honestly when it's absent." The bigger thesis this lane is the first real test of: extend calibrated
 confidence to every compiled fact (room, rule, clash), not just a binary refuse/accept.
 
-**Shipped this session (verified, not just claimed):**
-1. Room habitability filter (`common/room_habitability.js`, shared Modeller+Viewer) — PR #732.
-2. Room Lens real volume-box render (`room_guid` grouping, multi-rect union) — PR #733.
-3. Terminal coordinate-frame fix (two stacked bugs, root-caused to real code, not guessed) — PR #41.
-4. UBBL room-size demo gate (2 verified By-Law 42 thresholds only, honestly labeled) — PR #729.
-5. Find-panel visibility bug (two-part root cause) — PR #728.
+**STATUS: see `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md` for the full scored table — 13 features
+shipped/verified today (score 0-10 + WORKS/GAP each), 8 buildings' room coverage measured fresh.
+Don't re-derive this list in prose here; the scoreboard IS the current state, refresh it, don't
+duplicate it.** Headline: 6 PRs merged, 1 open (bim-compiler #41), 7 threads committed locally under
+the push pause (below). Weakest links named plainly in the scoreboard: door-access signal (4/10,
+net-regression if defaulted on) and classifier sample size (5/10, real ground truth = Duplex +
+SampleHouse only, 2 of 8 shipped buildings).
 
-**In progress:** Room TYPE template classifier (`ROOM_TYPE_TEMPLATE_CLASSIFIER.md`) — the concrete
-next piece of the confidence-everywhere thesis. Key finding mid-flight: `Duplex_extracted.db`'s
-`object_type` column already carries REAL human-authored room-type labels (`Living Room`, `Kitchen`,
-`Bedroom 1/2`, `Bathroom 1/2`, etc., straight from the source IFC's `LongName`) — a genuine
-RosettaStone-quality reference, not an external guess. Fit templates from this real N=21 sample,
-require ≥2 real occurrences before trusting a signature (Duplex's own mirror A/B-unit structure
-already gives natural repeat-confirmation for every type), apply elsewhere as low-confidence
-inference only. Config-editable (`config/room_templates.yaml`, same convention-default-with-citation
-shape as `config/profiles/malaysian_residential.yaml`) — same "default by convention, human can
-edit" pattern already accepted for other config surfaces.
-
-**Named next axes, NOT yet built (logged, don't lose track):**
-- **Grid/containment signal** — which walls bound a space, grid-cell alignment — a third
-  classification axis beyond size/aspect-ratio. Ties into existing SEMI-GRID/emergent-datum work.
-- **Door-access signal** — door count + adjacency (hallway ≥2 doors, bedroom exactly 1) as a
-  discriminator; door-rescue/door-partition (`compile_rooms.py`) already computes adjacency, cheap
-  to add.
-- **Disqualifier categories** beyond the existing Roof/z-band check — space below a lift (shaft/pit
-  void), the exterior void under a hanging roof overhang. Needs real geometric/label signals (lift
-  adjacency, envelope-boundary test), not a hardcoded name match. Logged:
-  `VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §6.
+**Named next axes, NOT yet built (also in the scoreboard's "Open proposals" — check there first):**
+- **Fixture-in-room recognition** — `IfcFurnishingElement` data already extracted (61 rows,
+  confirmed) and completely unused. Most human-like signal available, zero new extraction needed.
+  Highest-leverage next POC per the 2026-07-11 strategy discussion.
+- **Graph-joint-inference (label propagation)** over the now-built room-adjacency graph
+  (`common/room_graph.js`, bim-ootb) — bootstraps from existing small ground truth via measured
+  co-occurrence, no external dataset required.
+- **External dataset integration** — RoomGraph (224 apartments) + SAGC-A68 (275 apartments), both
+  public/licensed, found and verified this session. Real scope decision, not a quick dispatch.
+- **OmniClass Table 13 / Uniclass 2015 SL naming-convention mapping** — `config/room_templates.yaml`
+  already has a `canonical_type` stub anticipating this.
+- **Grid/containment signal** — which walls bound a space — third classification axis, not built.
+- **Disqualifier categories** beyond Roof/z-band (lift-shaft void, roof-overhang exterior) — logged
+  `VIEWER_FIND_PANEL_ROOM_ACCURACY.md` §6, not built.
 - **Outliner wiring + correction flywheel** — once the classifier lands in the Modeller Outliner
-  (VISION-LOCK sentence 5), a user correcting a room's type becomes a REAL measured label, signed
-  as a `kernel_ops` op, feeding back to refine the template over time. This is what turns a
-  small-sample fit into something genuinely calibrated — the actual differentiator, not a side effect.
+  (VISION-LOCK sentence 5), a user correction becomes a real measured label feeding back into the
+  template. The actual differentiator, not a side effect — still not built.
 
-## ▶ STANDING MODE — Push Pause (2026-07-11, until lifted)
-See `CLAUDE.md` §⏸ PUSH PAUSE. New dispatched work commits locally, verifies on localhost, does NOT
-push/open a PR, until the user names a "major breakthrough" or lifts the pause explicitly. Already-
-merged work today is not being rolled back — forward-only pause.
+## ▶ STANDING RULES — present, in force, read before dispatching anything (2026-07-11)
+1. **Localhost when demoing/verifying.** Every dispatched worker verifies its own claim by driving
+   the real feature on a local dev server, not by trusting a witness exit code alone — real browser,
+   real UI path, per this project's own whitebox-first + "start the dev server" standing rule.
+2. **Local commits only, until the pause lifts.** `CLAUDE.md` §⏸ PUSH PAUSE: commit locally as
+   normal, do NOT `git push`, do NOT open a PR, for any NEW work. Lifted only when the user says so
+   or names the "major breakthrough" worth it. Already-merged work today is NOT rolled back — this
+   is forward-only.
+3. **DB changes = migration script + self-heal loader, always.** `CLAUDE.md` §DB CHANGES — this is
+   the PERMANENT architecture, not an LFS workaround. Never commit a binary `.db`. Ship a small SQL
+   patch + a runtime loader (Modeller: `str_walker_outliner.js _applyPendingPatch()`; Viewer:
+   `scene.js A._applyPendingPatch()` + `buildings/patches/*.sql`, both proven this session).
+
+## ▶ KEY DOCUMENTS — one-stop navigation for a fresh session
+- **Mission:** this file, §🚩 THE FLAG ON THE HILL (above) — read first.
+- **Status:** `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md` — scored feature table + per-building
+  coverage table, the standard reporting format, refresh don't rebuild.
+- **Competitive positioning:** `prompts/COMPETITIVE_PRIOR_ART_ANALYSIS.md` — verified citations,
+  what's genuinely novel vs. established prior art.
+- **Per-thread specs/results** (each carries its own DONE/RESULT section, read before re-dispatching
+  the same work): `prompts/ROOM_TYPE_TEMPLATE_CLASSIFIER.md` · `prompts/ROOM_TYPE_DOOR_ACCESS_SIGNAL.md`
+  · `prompts/CLASH_GATE_OBB_NARROWPHASE.md` · `prompts/DISC_WALK_ROOM_TYPE_AWARE.md` ·
+  `prompts/TERMINAL_COORDINATE_FRAME_MISMATCH.md` · `prompts/UBBL_RULES_GATE.md` ·
+  `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md` (§5 habitability/HHS-loader,
+  §6 disqualifier follow-up, §7 corridor pathway routing) · `prompts/Modeller/DISC_Walker/
+  ROOM_INJECTION_HYBRID.md` (§9 Room Lens volume-box) · `prompts/RESUME_GRAPH_MODELLER_INTEGRATION.md`
+  (§8E-3 MEP render) · `prompts/PROMPTS_ARCHIVE_AUDIT_2026-07-11.md` (housekeeping trail).
+- **Memory:** `project_room_intelligence_lane.md` (links-only pointer back here, doesn't duplicate).
 
 ## ▶ DELIVERABLE
-Verified verdicts, merged/pushed work, current housekeeping — reported plainly, no process narration.
+Verified verdicts (rerun the witness, don't trust the report), merged/pushed work, current
+housekeeping, reported via `ROOM_INTELLIGENCE_SCOREBOARD.md`'s scored-table format — plainly, no
+process narration.

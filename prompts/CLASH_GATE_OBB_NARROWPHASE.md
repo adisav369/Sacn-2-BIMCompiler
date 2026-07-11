@@ -76,3 +76,58 @@ the cheap first filter — do not remove or slow down the common (no-candidate-o
 OBB-SAT narrow-phase exists, proven to correct a real AABB false-positive case, zero regression on
 existing witness, performance measured and reported honestly (even if it's a real cost, say so —
 don't hide a slowdown to claim a clean win).
+
+---
+
+## ✅ RESULT — 2026-07-11 (Fable session): built, witnessed, committed LOCALLY (PUSH PAUSE honoured)
+**Branch `feat/clash-obb-narrowphase` @ `1f54cd1`, worktree `/tmp/wt-clash-obb` — NOT pushed, no PR
+(per §⏸ PUSH PAUSE). Files: `modeller/sdg_gate.js` (§OBB SAT), `modeller/modeller.html` (`_gateObb()`
+live-op-log wiring, all 3 `evaluate()` call sites), new `modeller/tests/witness_sdg_gate_obb.js` +
+`witness_sdg_gate_obb_smoke.js`.**
+
+### §1-landmines — VERIFIED against real data before any math (both were live):
+- **`bbox_x/y/z` = WORLD-AABB FULL extent, NOT local dims and NOT half-extents.** Proof: the −90° wall
+  (`…VyWx4`) stores (0.29, 5.8) vs its base_geometries local mesh (5.80, 0.29) — swapped; the 37°
+  furniture (`…VyY1R`, rotZ=0.6458 rad) stores exactly `|L·cosθ|+|W·sinθ|` = (1.477, 1.449) vs local
+  (1.116, 0.973) — matches to 3 decimals (witness W4 locks this at <0.01mm). ⇒ OBB local half-extents
+  must come from the element's own local mesh box, never `bbox/2` on a rotated element.
+- **Rotation = RADIANS** (values are exact ±π/2, π); `obbAxes()` mirrors `bonsai_library.js place()`'s
+  two production branches exactly: yaw-only ⇒ Rz(rz); rotX/rotY ⇒ Rx(rx)·Ry(rz)·Rz(−ry) (THREE
+  `Euler(rotX, rotZRad, −rotY)` order 'XYZ' — viewer parity, including that branch seam).
+- **NEW recon fact (matters for wiring):** the resident `*_ARC.db` flow PRE-BAKES yaw into
+  world-oriented real meshes (op `placement.rot=0`) — those elements ARE axis-aligned boxes to the
+  op-log and are honestly ABSENT from the OBB map (AABB already exact; nothing invented). The narrow
+  phase's live customers: gizmo `GEOM_ROTATE`d elements, the §ARC-3AXIS tilted ones (SH_ARC 3 /
+  Hospital 422 / Terminal 325), catalog drops with yaw, and `*_extracted.db` local-file opens (real
+  non-90° yaw params). Grid-stretched fids are omitted (world-axis stretch ≠ local-axis op → AABB
+  fallback); `GEOM_SCALE` multiplies local h (fold scales local geometry).
+- Epsilon: cross axes skipped when |Ai×Bj| < 1e-6 (sin of edge angle ≈ 6e-5°) — Ericson, Real-Time
+  Collision Detection §4.4.1; conservative direction (can only keep an AABB-era flag, never fabricate
+  a separation).
+
+### §3-witness numbers (logs read, all saved to session scratchpad):
+1. **False positive, real data (W-SDG-OBB 11/11 PASS):** W2 — the two real non-90° SampleHouse
+   elements (±37°/−35° furniture, measured local h + measured rotations): AABBs interpenetrate
+   **0.0428m** (> 2×CLASH_TOL, old gate = RED clash) while real OBBs are disjoint → new gate CLEAR.
+   Hand-derived W1/W7 known answers exact (45° pair: AABB 0.2142 vs SAT 0; penetrating pair: AABB
+   claims 0.914m, true MTV depth 0.2929m). W5 proves the 9 cross axes are load-bearing (pair
+   separable ONLY edge×edge). **Browser, real user path (§OBB-SMOKE 5/5):** gizmo-rotate 45° →
+   commitMove → old path phantom RED **0.0224m**, live obb-fed gate clean.
+2. **Zero regression:** `witness_sdg_gate.js` **11/11 PASS** (no `opts.obb` ⇒ byte-identical path);
+   pre-existing browser `witness_sdg_gate_smoke.js` **6/6 PASS** with the wiring live.
+3. **Performance (measured on real DBs, not assumed):** SAT **535 ns/pair** (Terminal) /
+   **401 ns/pair** (Hospital). Full census: ALL 41,226 Terminal AABB-overlapping pairs = **22.1ms**;
+   Hospital 47,679 pairs = 19.1ms. Realistic gate workload (rotated-side pairs only: 419 TE / 1,494
+   HO) = **0.25ms / 0.54ms per full sweep**. Honest cost statement: SAT is ~5× the AABB test per pair
+   (4.3ms baseline for the same 41K pairs) — but it only ever runs on broad-phase survivors with a
+   rotated side, so a real gate call (~170 candidates, W-DW-CLASH-TE scale) adds well under 0.1ms.
+4. `_gateObb()` map build is cached by op-log length (§GATE-OBB log line: `entries=N builtAtOps=M`).
+
+### Follow-ups (named, not hidden):
+- `faceGap`/clearance (ORANGE) stays AABB-based per §4 non-goals — a rotated pair's gap remains the
+  conservative AABB approximation (stated in the code header).
+- Pre-baked-yaw resident elements can't be OBB-refined from the op-log (orientation lost at ARC-db
+  bake time); recovering it would need the source `element_transforms` threaded through Open — a
+  separate, deliberate substrate decision, not done here.
+- PUSH PENDING: when PUSH PAUSE lifts, push `feat/clash-obb-narrowphase` from `/tmp/wt-clash-obb`
+  (plain js/html, no LFS content) and open the PR.
