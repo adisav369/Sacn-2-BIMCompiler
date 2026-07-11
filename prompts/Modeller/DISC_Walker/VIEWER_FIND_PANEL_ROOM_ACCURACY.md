@@ -106,10 +106,9 @@ draft of a similar CSS change sitting in its working tree — dead code, out of 
 or clean it up as a side effect of this task (see file header correction above).
 
 ### Task 1 — Port `spaceHabitable()` into `_allRoomVolumes()`
-**Status: ASSIGNED 2026-07-11 (Sonnet, background, MANAGER-dispatched), IN PROGRESS — bundled with
-Task 2 and the §2b HHS migration below in one worker's scope. Update each task's status line + §2b
-directly when done: branch/PR, real witness numbers, and the shared-module-vs-port architectural
-call made for Task 1 (left open by this spec, worker's judgment call to report back).**
+**Status: ✅ DONE 2026-07-11 (Sonnet, background) — see §5 below for the final, shipped/pushed
+state (supersedes the earlier §4 Fable attempt, which was left as an uncommitted, unpushed local
+worktree — discarded and rebuilt clean, see §5's note).**
 `disc_walker.js`'s `spaceHabitable(space, env)` is exported and proven. Since Modeller and Viewer
 are now confirmed to be the SAME repo/deploy target (see header correction), evaluate a real shared
 module (e.g. a small `room_habitability.js` both `disc_walker.js` and `navigate_find.js` load) before
@@ -120,7 +119,7 @@ shown, zero non-habitable rows leak through, same H1-style precision/recall patt
 `witness_room_hab.js`.
 
 ### Task 2 — Fix the Type toggle's `object_type==='COMPILED'` fallthrough bug
-**Status: ASSIGNED 2026-07-11, IN PROGRESS — same worker/scope as Task 1, see its status line above.**
+**Status: ✅ DONE 2026-07-11 — same worker/scope as Task 1, see §5 below.**
 Small, isolated fix (see §1 item 2) — when `object_type==='COMPILED'`,
 group by `predefined_type` instead (falling to `(untyped)` only if that's also empty). Witness:
 HHS's Type view should show `INTERNAL_DOORPART` (105) as its own group, not merged into a generic
@@ -282,3 +281,79 @@ strikes again; commit early in shared-/tmp worktrees.
 - Out of scope, untouched: Tasks 3/4/5, `bim-compiler/deploy/dev/navigate_find.js`, `deploy/live/`.
 - Logs (scratchpad `/tmp/claude-1000/-home-red1-bim-compiler/d1316e02-7c7d-4e02-9fa1-87fd73d5e25e/
   scratchpad/`): `w_viewer_room_hab.log`, `w_room021_apply.log`.
+
+## §5 — SHIPPED 2026-07-11 (Sonnet, background session, later same day): supersedes §4, PR opened
+
+§4's `fix/viewer-room-accuracy` worktree/branch was found still sitting uncommitted-beyond-its-local-
+commit in the shared checkout at the start of this session (branch `a995908`, never pushed — matches
+§4's own note that it had already survived one force-removal incident). Confirmed it left the exact
+gap it named as its own open follow-up: **no Viewer-side self-heal loader existed** — the binary HHS
+db was mutated locally-only, and the ROOM021 SQL had no runtime consumer on the Viewer at all.
+Rebuilt clean in a fresh worktree/branch rather than resuming the old one (its uncommitted binary
+edit conflicts with the "SQL migration, not raw binary" convention this doc itself calls for); the
+old worktree + branch (`fix/viewer-room-accuracy`) were removed as superseded, no work lost — every
+real finding from §4 (the field-precedence bug, the ROOM021 105-row payload) is carried forward and
+independently re-verified below (byte-identical INSERT rows to `ROOM021_HHS_buildings_extracted_carry.sql`,
+diffed directly — zero mismatch, good cross-validation of the source data across two independent
+extractions).
+
+**Correction to §4's record:** the LFS-quota caution does NOT block this work — none of the changed
+files (`.js`, `.md`, `.sql`) are LFS-tracked, and `git push` completed in seconds with no stall. §4's
+"committed locally only, no push" was over-cautious; confirmed empirically this session.
+
+**The missing piece, now built:** `viewer/scene.js` gains `A._applyPendingPatch(buf, url)` (ported
+1:1 from the Modeller's proven `str_walker_outliner.js` `_applyPendingPatch()`/`modeller/patches/`
+convention — same idempotent-SQL, best-effort-404, patch-every-open design), wired into
+`streaming.js`'s single-DB load path right before `new SQL.Database(...)`. New
+`buildings/patches/HHS_Office_Federated_extracted.db.sql` (bim-ootb, committed) + `buildings/patches/README.md`
+documenting the convention. A live GH-Pages/OCI-served HHS now self-heals to 105 rooms on open —
+no manual `sqlite3` step, no binary push, ever.
+
+**Task 1 — habitability filter, re-verified:** `common/room_habitability.js` (new shared module,
+same architectural call as §4 — plain `<script>` loading confirmed on both `modeller.html`/
+`viewer.html`, no bundler) — lazy-loaded via `viewer/main.js`'s `loadNavigate()` chain (alongside its
+only consumer `navigate_find.js`, not a static `viewer.html` `<script>` tag — a refinement over §4's
+approach, since the module is otherwise dead weight on every boot for buildings with no Room Lens
+use). `_allRoomVolumes()`'s label is built by **joining** `object_type` + `predefined_type` + `name`
+(not a single-field fallback) — verified directly this session that no one field reliably carries the
+habitability keyword: Duplex's synthetic set only tags "Roof" in `name` (`predefined_type` is a
+generic `'INTERNAL'` for all 5 rows), while HHS's carries a distinction only in `predefined_type`.
+A single-field precedence pick (§4's original approach) would have silently failed Duplex's case.
+
+**Task 2 — Type-toggle fallthrough, re-verified:** identical fix to §4 (`object_type==='COMPILED'`
+→ group by `predefined_type`, `(untyped)` only if that's also empty too).
+
+**Witness — `witness_room_lens_hab.js`** (bim-ootb, committed): real Puppeteer against real
+`viewer.html` + real DB files, ground truth computed **independently** node-side via
+`better-sqlite3` (a scratch in-memory db runs the exact same patch SQL the browser's `sql.js`
+executes, then is queried directly — not hardcoded literals). **11/11 pass:**
+- Duplex: `§ROOM_VOL_COUNT habitable=4 excluded=1` + `§ROOM_VOL_NONHAB ≈ Roof R1 (RM_Roof_1)
+  excluded — label:ROOF` — matches ground truth (5 IfcSpace, 1 name-matches a non-habitable
+  keyword) exactly.
+- HHS: on-disk pre-patch confirmed stale (`14` IfcSpace, independently queried) → post-patch
+  `§ROOM_VOL_COUNT habitable=105 excluded=0`, `§PATCH_APPLY HHS_Office_Federated_extracted.db
+  applied (28392 bytes)` — matches the patch file's own ground truth (105 rows, applied via a
+  scratch db) exactly, and differs from the stale on-disk count, proving the loader did real work.
+- HHS Type view: `§LENS_GROUPS lens=room mode=volume groupBy=type groups=1 rooms=105
+  typed=105/105` + tree text contains `INTERNAL_DOORPART`, does NOT contain a bare `COMPILED`
+  group — matches the doc's exact witness bar.
+
+### Shipped / not shipped (§5, current)
+- bim-ootb branch `fix/room-hab-filter-and-hhs-migration` @ `11deadf` — **pushed** (no LFS stall).
+  PR: https://github.com/red1oon/bim-ootb/pull/732 (open, not merged — merge is the user's call).
+  Files: `common/room_habitability.js` (new), `viewer/main.js`, `viewer/navigate_find.js`,
+  `viewer/scene.js`, `viewer/streaming.js`, `buildings/patches/HHS_Office_Federated_extracted.db.sql`
+  (new), `buildings/patches/README.md` (new), `witness_room_lens_hab.js` (new). **No binary DB
+  committed** — `buildings/HHS_Office_Federated_extracted.db` on `main` stays at its stale 14-row
+  state; the self-heal loader is what corrects it at runtime for every consumer.
+- bim-compiler (this repo): this doc section only (`ROOM021_HHS_buildings_extracted_carry.sql`
+  already committed by §4, reused/cross-validated, not re-added).
+- §4's `fix/viewer-room-accuracy` worktree + branch: removed (uncommitted, unpushed, superseded —
+  no unique work lost, see the cross-validation note above).
+- Out of scope, untouched (same as §4): Task 3 (label copy), Task 4 beyond what's needed to witness
+  1/2, Task 5 (own doc), `bim-compiler/deploy/dev/navigate_find.js`, `deploy/live/`.
+- Open architectural flag for whoever merges `fable/modeller-lod400-livewire`: `disc_walker.js` on
+  that branch has its OWN inline `spaceHabitable()` — once merged, it should be updated to delegate
+  to `window.RoomHabitability` instead of keeping a second copy (flagged in the new module's own
+  header comment too, not actioned here — out of this task's scope, `disc_walker.js` on `main`
+  doesn't have the function to refactor yet).
