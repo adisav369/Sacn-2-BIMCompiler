@@ -269,3 +269,21 @@ STALE relative to current product data, not broken by any code change in this br
 unrelated, pre-existing on main independent of this branch, and out of scope for a "verify the branch"
 task. Dispatched as its own small follow-up (see `WITNESS_SAMPLECASTLE_MEP_STALE.md`) rather than fixed
 inline here — don't block #724's merge on it.
+
+## ▶ CORRECTION (2026-07-11, Manager) — #724 verdict above was WRONG, now merged
+
+**My earlier "real regression" verdict on #724 was a mistake, corrected here rather than silently
+edited away.** Sonnet 1 disputed it with a concrete counter-test (pristine `origin/main` @ `9b62c4f`,
+zero relation to the branch, reproduces the identical B5/B6 failure). I independently re-verified
+both parts before accepting the correction: (1) `sqlite3 modeller/SampleCastle_ARC.db "SELECT
+discipline, COUNT(*) FROM elements_meta GROUP BY discipline"` → `ARC|3342` only, zero MEP rows,
+confirmed directly; (2) ran `witness_modeller_disc_walk.js` on the shared `~/bim-ootb` checkout at
+`main` (confirmed via `git branch --contains fable/dwprobe-dedup` that `main` does NOT contain the
+branch) — B5 fails identically, `#bo-tree [data-disc="MEP"]` times out, same as in the branch's own
+worktree. Root cause: `SampleCastle_ARC.db` is genuinely ARC-only (data staleness, likely the
+embed-8 ARC-only strip mentioned elsewhere this session), not the KEEP-BOTH merge. My mistake was
+comparing against a remembered "8/8 historically" baseline without checking whether pristine main
+had already drifted off it independently — the same shortcut named earlier this session ("your
+review was not strong"), now a second confirmed instance of the same pattern: flag a symptom,
+under-verify before asserting a cause. **#724 merged** (auto-merge armed) on the same terms as
+#722/#741. All 3 branches from Task 1 are now resolved.
