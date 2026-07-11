@@ -218,3 +218,31 @@ Capture script found: `modeller/tests/guide_shots_combined.js` (committed only o
   their `/tmp/wt-verify-*` worktrees are this session's; safe to remove once their evidence is consumed.
 - Unassigned follow-ups surfaced: bare `require('playwright')` in `witness_mep_route_render.js`;
   W-UX-DISC B5/B6 expectation vs ARC-only SC residents.
+
+## ▶ MANAGER VERIFICATION RESULT (2026-07-11, git-admin mandate — witnesses run, merge decisions made)
+
+**#722 (`fix/grid-tilt-guard`) — MERGED.** Synced with current origin/main in `/tmp/wt-grid-tilt-guard`
+(clean merge), re-ran both witnesses post-sync: `witness_grid_tilt_guard.js` 29/29,
+`witness_grid_rotation_guard.js` 34/34. Pushed, auto-merge armed and completed.
+
+**#725 (`fix/terminal-oracle-source`) — MERGED as #741 (superseded, #725 closed).** Used the
+already-built `/tmp/wt-verify-oracle` (had its fixture files generated correctly; a fresh worktree
+I tried first was missing `Terminal_arcstr_proof.db`, a generated fixture not a code bug — don't
+repeat that path, reuse the existing worktree). `witness_disc_clash.js` 10/10 clean.
+`witness_disc_density.js` 7/8 — the 1 fail (D3 envelope, 91-93% vs ≥99%) is a **pre-existing**,
+already-documented finding (PROGRESS.md archive, surfaced by PR #638, unrelated to this branch's
+own job of repointing the oracle DB, which is confirmed working). Pushed as `verify/oracle` →
+PR #741, auto-merge armed.
+
+**#724 (`fable/dwprobe-dedup`) — NOT MERGED, real regression found in the KEEP-BOTH resolution.**
+`witness_modeller_disc_walk.js` in `/tmp/wt-verify-dwprobe`: 6/8, with **B5 (SampleCastle exposes
+an MEP disc node) and B6 (click MEP → honest refusal) both failing** — the MEP disc node is now
+**absent from the UI entirely** (click times out, node not found), not just failing to refuse
+honestly. This witness historically scored 8/8 per `prompts/RESUME_MODELLER_UX_OUTLINER_PILL.md`
+line 26 ("SampleCastle MEP → no anchors → refuse, 0 fabricated. Witness W-UX-DISC 8/8") — so this
+is a real regression from that baseline, not a pre-existing gap. Very likely caused by the
+`_dwProbeMatch`/`__dwOcclusionProbe` rename in the KEEP-BOTH conflict resolution breaking whatever
+gates the MEP disc node's render/visibility on SampleCastle specifically. **Needs a real fix before
+merge** — flagging back to whoever owns this branch (Sonnet 1's DiscWalk lane), not merging or
+patching it myself (lane engineering, not Manager's admin scope). `/tmp/wt-verify-dwprobe` left
+as-is (uncommitted work in progress, do not prune).
