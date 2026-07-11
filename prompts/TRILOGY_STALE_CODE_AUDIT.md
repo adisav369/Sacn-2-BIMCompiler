@@ -381,3 +381,17 @@ hygiene (panels.js precache staleness + navigate_find.js ?v pin) from a PRE-#750
 CACHE_VERSION is v742, but main is at v744 after #750/#751. Its bump must land as v745 (sw.js
 conflict rule: keep both, take the HIGHER version). This session's PR #753 touches erp/sw.js only,
 deliberately avoiding the viewer/sw.js line while that fix is in flight.
+
+### 2026-07-12 — low-cost savings pass (user: "any further low cost savings?") — PR #754
+GH Pages LIVE confirmation: Pages serves `main` at `/` — build completed 21:13:27Z, seconds after
+#753 merged. All audit removals are live on the GH surface; OCI buckets still carry old copies
+(deploy-flow cleanup remains the named follow-up).
+**Executed:** untracked 193 witness/e2e evidence artifacts (~55MB — modeller/tests/e2e_shots 44MB
+of 125 shots + viewer/erp tests .png/.log). Verified per file: every in-repo reference is the
+writer's own screenshot()/log call (zero readers; the one prompts-doc mention is prose). Harnesses
+regenerate on each run; git history keeps all past evidence; .gitignore blocks re-tracking.
+**Checked and KEPT (candidates that looked fat but are live):** `test/` 8.1MB (4 Playwright specs
+use its harness pages + OBJ fixtures); `modeller/Ifc4_Revit_extracted.db` 38.8MB (gallery/index
+building card + smoke_ifc4revit + mep_qto CLI); `buildings/HHS_Office_Federated_extracted.db` 72MB
+(HBA lane data). Remaining tracked weight is deliberate data per settled doctrine (modeller data
+GH-served; mesh.db LFS).
