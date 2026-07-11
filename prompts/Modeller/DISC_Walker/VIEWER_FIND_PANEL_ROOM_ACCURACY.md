@@ -340,7 +340,12 @@ executes, then is queried directly — not hardcoded literals). **11/11 pass:**
 
 ### Shipped / not shipped (§5, current)
 - bim-ootb branch `fix/room-hab-filter-and-hhs-migration` @ `11deadf` — **pushed** (no LFS stall).
-  PR: https://github.com/red1oon/bim-ootb/pull/732 (open, not merged — merge is the user's call).
+  PR: https://github.com/red1oon/bim-ootb/pull/732 — opened un-merged (per the task's "merge is the
+  user's call"), but the repo's own `github-actions` auto-merge bot squash-merged it seconds later
+  (standard for this repo, not a manual merge by this session) — now live on `main` @ `f60bfb7`.
+  ⚠ A concurrent session was found re-populating `/tmp/wt-viewer-room-accuracy` (the superseded §4
+  worktree/branch this session removed) minutes AFTER this PR merged — flagged, not touched (may be
+  live in-progress work unaware this task already shipped; worth the coordinator checking in on it).
   Files: `common/room_habitability.js` (new), `viewer/main.js`, `viewer/navigate_find.js`,
   `viewer/scene.js`, `viewer/streaming.js`, `buildings/patches/HHS_Office_Federated_extracted.db.sql`
   (new), `buildings/patches/README.md` (new), `witness_room_lens_hab.js` (new). **No binary DB
