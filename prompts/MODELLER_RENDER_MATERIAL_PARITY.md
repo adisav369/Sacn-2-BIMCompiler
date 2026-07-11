@@ -183,6 +183,35 @@ same click. Proposed options (ranked by risk, not yet built — awaiting the use
    no such per-mesh dim mechanism outside the unrelated 4D ghost-glass feature; would need new code, not a
    port. Recommend deferring until 1 or 2 is tried and judged insufficient on its own.
 
+## FOLLOW-UP 2 — option 1 IMPLEMENTED, user-directed (2026-07-11)
+
+Built option 1: single-click a higher-level Outliner row now selects+zooms its section. Top-level
+categories/flat groups use the existing `selectGroup()` (promoted from dblclick-only, dblclick wiring
+REMOVED as redundant, not left as a dead alias). Deeper branch nodes (Level 1, ARC, IfcWindow(24), …) use
+a new `selectSubtree(catKey, nodeId)` + `_findNode()` depth-first search, scoped to just that node's own
+subtree. Discipline rows (data-disc) are deliberately excluded — their click already dispatches a real
+walker run (W-UX-4), and adding select+zoom on top would double up two competing actions with no way to
+tell them apart in the log.
+
+**Real design wrinkle, found and resolved:** tried combining the new select+zoom with the row's existing
+manual collapse-toggle on the same click. Empirically confirmed this can't work: `setActive()`'s
+pre-existing auto-expand-on-pick (§V3) unconditionally re-reveals any row containing the just-selected
+content — a toggle-to-collapsed on that row gets silently undone by the very `_paint()` needed to render
+the toggle itself (the repaint re-applies `setActive`, finds the row it just hid, re-expands it). No click
+ordering avoids this — it's a structural conflict between "select this" and "hide this" in one gesture, not
+a bug to patch around. Final, shipped design: header clicks are select+zoom ONLY, which is actually a more
+faithful port of the Viewer Find panel's own real pattern anyway (it uses separate label-tap/arrow-tap
+zones, never combines them either). Folding a specific branch is now via the tree's own auto-expand/-collapse
+flow or the bulk Collapse All button, not a per-row toggle-on-select.
+
+Updated `witness_e2e_outliner_group_select.js` K2-K4 for the new contract (8/8 pass). No regression:
+`witness_e2e_outliner_collapseall.js` (7/7), `smoke_arc_only.js`, `witness_arc_editable.js`,
+`witness_glass_parity_e2e.js` all pass unchanged. Merged into `~/bim-ootb` main + `CACHE_VERSION` bumped
+(v36→v37) and verified live against the actual port-8080 server the user tests against (not just the
+throwaway worktree server) — clicking "Level 1" live selects 46 elements + zooms, collapse-all button
+confirmed present. Both this session's user-reported issues (glass transparency, collapse-all
+discoverability) plus this option-1 addition are now genuinely live, not just committed.
+
 ## UPDATE 2026-07-11 — pushed, merged, NOT yet on user's localhost
 PUSH PAUSE lifted for this thread (user: "good enough to push all"). Pushed `fix/modeller-render-
 material-parity`, opened bim-ootb PR #735, auto-merge armed — merged clean, both CI checks (`e2e-
