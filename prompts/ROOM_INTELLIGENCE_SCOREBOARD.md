@@ -65,12 +65,23 @@ positioned)" etc. means: 4 real entities exist, only 2 carry their own placement
 `IfcStair` assembly parent often has none — only its `IfcStairFlight` children do, a real bug found
 and fixed this session, not a missing-data artifact). Plant Room is honestly Terminal-only (n=1
 building, advisory not general) — 0 elsewhere means "no evidence found," not "confirmed absent."
-HHS's Stairway=0 is suspicious for a 4-storey building — likely the same class of gap as its
-corridor false-negative above. **Root-caused, not just suspected (parallel thread,
-`prompts/SPARSE_WALL_ROOM_INFERENCE.md`, 2026-07-11): HHS's `elements_meta` has ZERO
-`IfcStair`/`IfcRamp` entities at all** — same federated-model sparsity that breaks its wall-based
-flood-fill (112 walls/105 rooms = 1.06 walls/room, vs Hospital's 7.16 and Clinic's 5.48). Confirmed
-absence in the source data, not an extraction miss on this taxonomy's side.
+**CORRECTED, same day, later than the paragraph above (2026-07-11) — HHS's Stairway=0 was a
+DB-snapshot artifact, not a real absence.** The `sparse-wall-room-inference` branch's Phase 0
+checkpoint re-verified directly against `deploy/buildings/HHS_Office_Federated_extracted.db` and
+found **12 IfcStair + 8 IfcStairFlight = 20 real stair rows**, all `discipline='ARC'`, across 4
+real storeys. Re-checked here independently: `/tmp/wt-fable-livewire/modeller/HHS_ARC.db` (this
+taxonomy's own source, "LIVEWIRE") genuinely has 0 matching rows — both files are real, on-disk,
+non-corrupt SQLite DBs, they have just DIVERGED (deploy/buildings/ dated Jul 6, LIVEWIRE's copy
+dated Jul 10, so this isn't simply "the newer one is right" either). **Same landmine already found
+once this session on Duplex** (bim-ootb's served `Duplex_extracted.db` vs this repo's
+`Duplex_ARC.db` — see `prompts/BUILDING_PARTS_TAXONOMY.md`'s Find-panel-wiring note) — now confirmed
+on a SECOND building, meaning this is a standing pattern, not a one-off: **the same building name
+resolves to materially different `elements_meta` contents depending on which DB copy/path is
+queried.** Every "zero"/absence finding in this lane going forward should name its exact source
+path and be treated as "absent from that specific snapshot," never "confirmed absent from the
+building" — this scoreboard's own STAIRWAY=0 numbers above (HHS, and any other building) inherit
+this caveat. Not re-run against `deploy/buildings/*` for all 8 buildings this session (scope/time);
+flagged as a real follow-up, not silently dropped.
 
 **Read honestly, not optimistically:** low classify-rates on the 6 inferred-only buildings (20-63%)
 are the classifier correctly REFUSING to force a residential-shaped label onto institutional/
