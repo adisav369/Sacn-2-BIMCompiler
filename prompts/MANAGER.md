@@ -68,6 +68,18 @@ too: §8E-3 MEP routed-network render shipped (PR #731, completes the "every dis
 sentence for MEP specifically — STR+MEP-density+MEP-routing all now render into the laid ARC).
 
 ## ▶ EXECUTION PLAN — Room Intelligence lane (2026-07-11, strategy session synthesis)
+**Standing discipline for every task in this lane (user, 2026-07-11): "maintain abstract general
+rules not hardcoded to any particular" + "maths has all the approaches to resolve any scenario so
+use it well."** Not a new rule — this IS `RESUME_GRAPH_MODELLER_INTEGRATION.md`'s prime constraint
+("ABSTRACT, never custom... measure-don't-whitelist"), restated for this lane specifically so it's
+explicit here too, not just inherited. Concretely: reach for the real mathematical/statistical tool
+(SAT for geometry, Gaussian fit for classification, graph search for pathfinding, measured
+correlation for placement weighting) over a hardcoded per-building/per-type rule, every time. Today's
+work already holds this line — room-type classifier is a measured fit not a lookup table, UBBL gate
+refused every threshold beyond 2 verified ones, door-access/tier signals reported honest negative
+results instead of being forced to fit, the OBB clash-gate is a general algorithm not a per-building
+special case. Keep it that way for every future task dispatched from here.
+
 **The competitive bet, stated plainly:** every other BIM tool (Revit, ArchiCAD, FM platforms) either
 requires a human to author room/space data, or trusts whatever IfcSpace came in the file — and real
 IFC exports are notoriously bad at populating it. Our bet is COMPILING rooms from geometry that's
