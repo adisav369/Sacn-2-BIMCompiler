@@ -2,6 +2,16 @@
 # prompts/ROOM_TYPE_TEMPLATE_CLASSIFIER.md (2026-07-11, MANAGER-assigned, strategy session)
 # Classifier module: build/room_type_classifier.js · Witness: build/witness_room_type_classifier.js
 #
+# §PRIMARY-VS-SUPPLEMENTARY (ROOM_TYPE_TEMPLATE_CLASSIFIER.md "Follow-up — dwelling set", added
+# 2026-07-11): every template carries a `tier: primary|supplementary` field. SUPPLEMENTARY =
+# circulation/connective-tissue rooms (HALLWAY, FOYER) — the measured signal supporting this is
+# real, not asserted: both have the highest door_count (3-4, vs 0-2 for every other template) and
+# the most elongated aspect_ratio (2.70, 4.26, vs 1.2-2.6 for the rest) of all 7 promoted
+# templates. PRIMARY = everything else (BEDROOM/BATHROOM/KITCHEN/LIVING_ROOM, plus UTILITY — see
+# UTILITY's own tier comment below for why it's the one non-obvious call and how it was decided).
+# Consumer: build/check_required_spaces.js filters to tier=primary before counting a dwelling's
+# rooms against config/profiles/malaysian_residential.yaml's `required_spaces` recipe —
+# supplementary rooms are real, present, but never part of that required-quantity count.
 # NON-INVENT DISCIPLINE (read before editing this file):
 #   confidence: measured  -> mean/std FITTED from this project's own compiled room geometry.
 #                            n = real occurrence count, source.buildings = where it came from.
@@ -96,6 +106,7 @@ templates:
   BEDROOM:
     confidence: measured
     source: "measured, buildings: [Duplex, SampleHouse]"
+    tier: primary          # §PRIMARY-VS-SUPPLEMENTARY, see header
     canonical_type: BEDROOM       # exact match, config/spacetypes.yaml
     n: 5
     examples: ["Duplex:A202(Bedroom 1)", "Duplex:B202(Bedroom 1)", "Duplex:A203(Bedroom 2)",
@@ -107,6 +118,7 @@ templates:
   BATHROOM:
     confidence: measured
     source: "measured, buildings: [Duplex]"
+    tier: primary          # §PRIMARY-VS-SUPPLEMENTARY, see header
     canonical_type: BATHROOM      # exact match, config/spacetypes.yaml
     n: 4
     examples: ["Duplex:A104(Bathroom 1)", "Duplex:B104(Bathroom 1)", "Duplex:A204(Bathroom 2)",
@@ -118,6 +130,7 @@ templates:
   KITCHEN:
     confidence: measured
     source: "measured, buildings: [Duplex]"
+    tier: primary          # §PRIMARY-VS-SUPPLEMENTARY, see header
     canonical_type: KITCHEN       # exact match, config/spacetypes.yaml
     n: 2
     examples: ["Duplex:A103(Kitchen)", "Duplex:B103(Kitchen)"]
@@ -128,6 +141,7 @@ templates:
   LIVING_ROOM:
     confidence: measured
     source: "measured, buildings: [Duplex, SampleHouse]"
+    tier: primary          # §PRIMARY-VS-SUPPLEMENTARY, see header
     canonical_type: LIVING        # config/spacetypes.yaml key is LIVING, alias LIVING_ROOM
     n: 3
     examples: ["Duplex:A102(Living Room)", "Duplex:B102(Living Room)", "SampleHouse:1 - Living room"]
@@ -138,6 +152,7 @@ templates:
   FOYER:
     confidence: measured
     source: "measured, buildings: [Duplex]"
+    tier: supplementary          # §PRIMARY-VS-SUPPLEMENTARY, see header
     canonical_type: LOBBY          # config/spacetypes.yaml key is LOBBY, alias FOYER
     n: 2
     examples: ["Duplex:A101(Foyer)", "Duplex:B101(Foyer)"]
@@ -148,6 +163,7 @@ templates:
   HALLWAY:
     confidence: measured
     source: "measured, buildings: [Duplex]"
+    tier: supplementary          # §PRIMARY-VS-SUPPLEMENTARY, see header
     canonical_type: CORRIDOR       # config/spacetypes.yaml key is CORRIDOR, alias HALLWAY
     n: 2
     examples: ["Duplex:A201(Hallway)", "Duplex:B201(Hallway)"]
@@ -158,6 +174,24 @@ templates:
   UTILITY:
     confidence: measured
     source: "measured, buildings: [Duplex]"
+    tier: primary          # §PRIMARY-VS-SUPPLEMENTARY: NOT explicitly named by the coordinator's
+                            # framing (only Hallway/Foyer named supplementary, only Bedroom/Kitchen/
+                            # Bathroom/Living named primary) — decided here from the SAME measured
+                            # shape signal: aspect_ratio=1.65 is compact/square, nothing like
+                            # Hallway(2.70)/Foyer(4.26)'s elongated circulation shape, and
+                            # architecturally a utility closet is a destination (connective-tissue
+                            # rooms are, by definition, pass-through). door_count=3 alone would
+                            # suggest supplementary, but that band is already flagged above (in the
+                            # door_count comment block) as the LEAST trustworthy measurement — a
+                            # buffer-overreach artifact on a ~1.4m^2 room, not real evidence of 3
+                            # genuine doors — so aspect_ratio (the more reliable signal here) wins
+                            # the tie-break. CAVEAT: `primary` here means "non-circulation,
+                            # programmatic room", NOT "UBBL-habitable" — a utility/storage room is
+                            # NOT one of UBBL's habitable-room categories either. A future UBBL
+                            # By-Law 42 consumer must NOT treat tier=primary as a synonym for
+                            # "habitable" — canonical_type=null already keeps UTILITY out of
+                            # required_spaces (below) regardless of tier, so this ambiguity has no
+                            # live consequence today.
     canonical_type: null           # NO match in config/spacetypes.yaml today (STORAGE's aliases
                                     # are STORE/STOR/PANTRY, WET_KITCHEN's are DAPUR_BASUH/LAUNDRY/
                                     # BASUH — neither covers "Utility"). Named gap, not fixed here;
