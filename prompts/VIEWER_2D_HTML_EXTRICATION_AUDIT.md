@@ -37,16 +37,35 @@ not just eyeballing), push + PR with auto-merge once done.
   whether they share state/canvas/helpers in a way that makes a clean split nontrivial. Don't assume
   either way — trace it for real.
 
-## Task 1 — map the file's actual structure (read it, don't grep-guess)
-1. Go through the file's 10 `<script>` blocks and ~69 top-level functions, and classify each as:
-   GRID-ONLY (dead, safe to remove/archive), DXF-ONLY (live, must stay), or SHARED (canvas setup,
-   coordinate transforms, UI chrome, event wiring — used by both, must stay regardless).
-2. Produce a real map (function/block → classification + one-line reason) before touching anything —
-   same "reviewable checkpoint before bulk work" discipline as `BIMUSERGUIDE_PILL_COVERAGE_AUDIT.md`
-   used this session (commit the map on its own first).
-3. If GRID-ONLY code turns out to be deeply intertwined with SHARED code (e.g. one giant function
-   doing both grid AND canvas setup), name that honestly rather than forcing an artificial split —
-   report it as a harder case, don't hack around it.
+## Task 1 — map the file's actual structure via REAL code coverage, not naming guesses
+**Higher-leverage method (user's own steer, 2026-07-12) — use this as the PRIMARY evidence, not a
+manual read-and-guess-from-function-names pass:**
+1. Run `tests/specs/14-2d-plans.spec.js` (all 9 tests — this IS the real, current, exhaustive-as-we-
+   have-it exercise of the live DXF flow) against `2d.html` with Playwright's V8 JS coverage collector
+   on (`page.coverage.startJSCoverage()` before the test flow, `stopJSCoverage()` after — Chromium-
+   only, matches this project's existing headless-chromium convention). This gives an EXECUTION-BASED
+   map of exactly which lines/functions the real DXF flow actually touches, not a guess from what a
+   function's name suggests.
+2. Cross-reference: everything with **zero coverage** across the full 9-test run is a strong
+   candidate for GRID-ONLY/dead code — but zero coverage isn't automatic proof of safety-to-remove
+   (the 9 tests may not exercise every edge case, e.g. error paths, uncommon drag-drop scenarios).
+   Before removing a zero-coverage block, do a QUICK manual sanity check (read just that block, not
+   the whole file) to confirm it's plausibly grid-related and not, say, an error-handler or rare-path
+   DXF code the tests simply don't happen to trigger. This is a much smaller manual-review burden
+   than reading all 48K lines cold.
+3. Everything WITH coverage from the DXF test run is SHARED-or-DXF by definition (it ran during a
+   pure DXF exercise) — must stay, no further classification needed for those lines.
+4. Produce the real map (coverage-derived: covered vs uncovered, with the quick sanity-check verdict
+   on each uncovered block) before touching anything — same "reviewable checkpoint before bulk work"
+   discipline as `BIMUSERGUIDE_PILL_COVERAGE_AUDIT.md` used this session (commit the map on its own
+   first, cite the actual coverage numbers/tool output, not a summary claim).
+5. If coverage tooling turns out to be impractical here for a real reason (report exactly why, don't
+   silently fall back) — THEN fall back to a manual read of the file's 10 `<script>` blocks and ~69
+   top-level functions, classifying each as GRID-ONLY/DXF-ONLY/SHARED. Coverage is the preferred
+   method; manual reading is the fallback, not the default.
+6. If GRID-ONLY code (by either method) turns out to be deeply intertwined with SHARED code (e.g. one
+   giant function doing both grid AND canvas setup), name that honestly rather than forcing an
+   artificial split — report it as a harder case, don't hack around it.
 
 ## Task 2 — extricate: keep DXF+SHARED live, archive GRID-ONLY
 1. If Task 1 finds a clean split: create the trimmed live file (DXF+SHARED only) — either in-place
