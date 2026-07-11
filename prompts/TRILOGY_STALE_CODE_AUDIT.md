@@ -203,3 +203,128 @@ listed; "NOTHING" = no hit outside the file itself):**
 
 **Remaining 310 depth-1 files: LIVE (reachable from an entry point; per-file referrer recorded in
 reach_out.json `reachedFrom`).**
+
+### Task 2 — dynamic coverage sweep + final 3-tier marking
+**Run:** full suite, 458 tests (desktop project), V8 JS coverage per test via an auto-fixture patch
+in the worktree's throwaway @playwright/test install → 445 coverage captures, 23.7 min.
+**Results: 168 passed / 252 failed / 38 skipped.** The failures are dominated by environment fit
+(the suite addresses the bim-compiler deploy layout; see layout-drift finding) — for THIS audit the
+coverage signal is what matters: a page/script that LOADED counts as executed regardless of later
+assertion failures. Raw log: session scratchpad `run_full_suite.log`; aggregation `agg_full.json`.
+
+**Honesty bounds of the coverage evidence (state before the verdicts):**
+- **Zero specs drive modeller/ or erp/** (grepped: no spec references modeller, idempiere, or
+  erp.html). The prompt's assumption that the 54-spec suite exercises "the live apps" holds for
+  viewer only. Modeller/erp markings therefore rest on static reachability + adjudication + their
+  own node/witness harnesses (modeller/tests/witness_*, erp/tests/poc_*), NOT Playwright coverage.
+- Page JS coverage cannot see: Web Workers (ifc_export_worker/import_worker/mesh_import_worker),
+  the service worker itself, JSON/image/db assets, or popup tabs (window.open surfaces). Files in
+  those classes are never "condemned by zero coverage" here.
+
+**Viewer (136 reachable depth-1+lib files in the coverage frame): 105 LOADED by the suite
+(LIVE-covered, per-file load counts in agg_full.json). The 31 reachable-but-never-loaded, each
+sanity-checked:**
+- Coverage-corroborated orphans (already CONFIRMED in Task 1): viewer/erp.html,
+  viewer/idempiere.html, viewer/route_walker.js — precache-only AND never loaded across 458 tests.
+- Popup/new-tab surfaces the suite never followed (LIVE): clash_report.html (opened by
+  clash_report.js), schedule_editor.html + schedule_editor_ui.js + foreign_schedule.js (opened by
+  time_machine.js §SE-C; editor page script-tags the other two).
+- Lazy-loaded feature modules with a verified loader in main.js (LIVE): navigate.js,
+  navigate_controls/engine/find/grid/path.js (deliberate lazy-load, main.js:137-147), wizard.js.
+- Coverage-blind classes (LIVE, evidence = verified consumer): workers (3 above), sw.js,
+  offline.html (sw fallback), manifest.webmanifest, data/assets (clash_rules.json, grid_rules.json,
+  ground_config.json, corporate.json, sfx.json, dagevu_*.json ⇐ modeller/bonsai_library.js,
+  mep_rw.db ⇐ routewalker.js, help.png, YT.png, hba_cctv_still.jpg).
+**Net: the coverage sweep produced NO new stale candidates in viewer beyond Task 1's static
+findings — and corroborated all three it could see.** That is itself the pilot-method result: the
+conservative static tracer + per-file adjudication was accurate; dynamic coverage confirmed rather
+than contradicted it.
+
+**Modeller (52 reachable) / ERP (122 reachable): marked LIVE-static.** Static reachability from
+their entry pages is the operative evidence; the Playwright suite contributes nothing here (bound
+stated above). Their orphans/stale candidates are already itemized in Task 1's tables.
+
+**FINAL 3-TIER TALLY (352 depth-1 trilogy files @ b83c791):**
+- CONFIRMED ORPHAN: 24 files (Task 1 table; 3 of them additionally corroborated by zero loads
+  across 458 tests) + the 6-file 2d.html set already removed in Task 0 (commit f94d930).
+- STALE CANDIDATE: 10 files (Task 1 table — each carries its reasoning; user/Manager call).
+- LIVE: everything else — 105 viewer files with direct execution evidence, the rest by verified
+  reference chains (reachedFrom map in reach_out.json).
+**No files deleted in Task 1/2** (per this file's scope guard). The only removal this session is
+Task 0's 2d.html set, which the user directed explicitly mid-run.
+
+### Task 4 (user-added mid-run) — high-level production-readiness review
+User steer (2026-07-12): *"look at possible high level code issues that this is heading production
+level as SQLite WASM browser based, offline mode, local first app."* Findings ranked by risk to
+that exact profile. Report-only — no fixes applied in this pass.
+
+1. **The op-log kernel is forked 3 ways.** `kernel_ops.js` exists in erp/ (51,421 B), modeller/
+   (36,270 B), viewer/ (32,470 B) — all three DIVERGENT (md5-verified). For a local-first system
+   whose durability story is op-log replay, three drifting kernels is the #1 structural risk:
+   an op recorded on one surface may replay differently (or not at all) on another. Same fork
+   pattern, smaller blast radius: `grid_kinematics.js`, `real_placement_resolver.js`,
+   `routewalker.js`, `teams_embed.js` (modeller vs viewer, all divergent), `idmp_session.js`
+   (erp live vs viewer stale), `bom_tree.js` (identical twin, viewer copy orphaned). `common/`
+   already exists and works (about_diy, pill_builder, whole_history) — the pattern is established,
+   these modules just never moved. Recommendation: kernel first (single `common/kernel_ops.js` or
+   an explicit op-schema version stamp + cross-surface replay witness), the rest opportunistically.
+2. **Same-app service worker registered under different URLs per page.** erp/idempiere.html
+   registers `sw.js?v=683`, erp/erp.html `sw.js?v=600`, glassbowl pages bare `sw.js`; viewer.html
+   `sw.js?v=527` vs boq_charts.html `sw.js?v=594`. The registration URL (query included) identifies
+   the SW — alternating between pages of the SAME app flips the registration back and forth,
+   re-running install/activate and re-fetching the precache (113–126 entries) for zero benefit.
+   Offline correctness survives (same CACHE_NAME) but update churn + bandwidth is real. Fix: one
+   canonical registration URL per app (drop `?v=` — SW updates are byte-diff driven; CACHE_VERSION
+   already handles cache turnover).
+3. **Hand-maintained precache lists ship confirmed-dead files to every offline user.** Before this
+   audit, viewer/sw.js precached the orphaned viewer/erp.html, viewer/idempiere.html,
+   route_walker.js (and 2d.html + 3 DXF satellites, now removed); erp/sw.js precaches the unwired
+   erp_panel.js/role_band.js/menu_seed.js/erp_key_epochs.js chain plus .md docs
+   (DistributedERP.md, migrate_compare.md). Every CACHE_VERSION bump makes every offline user
+   re-download dead bytes. `tests/audit_sw_precache.js` checks existence, not liveness — the gap
+   this audit's reachability tracer closes. Recommendation: generate precache lists from the
+   reachability set (or at minimum prune the entries named here after review).
+4. **~4.3 MB of identical sql.js WASM vendored 5×.** sql-wasm.wasm (631 KB) ×3 (viewer/lib,
+   modeller/lib, erp/sqljs — byte-identical) + sql-wasm-fts5.wasm (1.2 MB) ×2 (viewer/lib, erp/lib).
+   Per-app scopes mean a user touching all three surfaces downloads the same engine 3–5×, and an
+   upgrade must be repeated in five places to avoid version skew (none today — copies are in
+   lockstep). One shared `common/lib/` copy fixes both. Related version-hygiene note:
+   project_technical.md says sql.js 1.10.3, root package.json declares ^1.14.1, tests pin 1.14.1 —
+   the doc is stale and there is no single pinned source of truth.
+5. **Tracked binaries + a committed browser log in the app tree.** modeller/Terminal_meta.db,
+   modeller/SampleCastle_ARC_extracted.db, erp/preview_demo.db, erp/idempiere_agent.zip,
+   erp/ninja_sample.xlsx are git-tracked (several also .gitignore-listed — ignore rules don't
+   untrack); erp/spike_writepath_browser.log is a committed debug log. Contradicts the standing
+   DB-distribution policy (runtime data → OCI; content fixes → SQL migration + self-heal loader)
+   and feeds the LFS/clone-weight problem. The .zip additionally duplicates erp/idempiere_agent/
+   (its own source dir) — two things to keep in sync by hand.
+6. **The test suite cannot run against the repo's own layout.** Specs address three URL universes
+   (`/dev/…` = bim-compiler deploy tree, `/bim-ootb/…` = home-dir root, `/landing2.html` = deploy
+   root); the checked-in playwright.config serves the repo's PARENT directory. As checked out,
+   `/dev/…` resolves to nothing — this audit had to synthesize a symlink root to run at all.
+   Meanwhile spec 38 hardcodes `../../../../deploy/buildings/…`, silently SKIPs 5 of its tests when
+   absent (audit_specs.js RULE 2 FAIL — pre-existing on main), and CI runs only the s274 golden
+   path. For a production-bound offline app, the suite must run green from a bare clone in CI, and
+   a SKIPped test must be loud, not green-looking.
+7. **Near-duplicate filenames invite wrong-file edits.** viewer/routewalker.js (live, script-tag'd
+   by viewer.html + modeller.html) vs viewer/route_walker.js (orphan, precache-only) differ by one
+   underscore. Same shape: viewer/bom_tree.js (orphan) vs viewer/bom_engine/bom_tree.js (live).
+   Removing the orphans (Task 1 table) eliminates the trap.
+8. **Memory headroom on mobile is untested against real DB sizes.** buildings/ ships a 75 MB
+   extracted DB (HHS_Office_Federated); sql.js loads whole DBs into the WASM heap. viewer has the
+   httpvfs lazy-range path and modeller's bonsai_library uses it, but the import/self-heal paths
+   are full-load. No witness exercises a large-DB open on a mobile profile — worth one before
+   calling offline production-ready (ties to the existing Import-IDB-limit lane).
+
+### DONE — status against DONE WHEN (2026-07-12)
+- Task 0 pilot: executed in re-steered form (user's own mid-run directive: remove, after prior-art
+  check) — prior art recorded above, removal committed LOCALLY as bim-ootb `fable/trilogy-stale-audit`
+  @ f94d930 with witnesses. NOT pushed (code, not report — pushing/merging is the Manager's call,
+  and spec 14 retirement includes an @sacred test, which deserves an explicit human ack).
+- Task 1: reachability map committed as its own checkpoint (bim-compiler 0d72920df).
+- Task 2: 3-tier marking above, committed with this section.
+- Added mid-run by user: production-readiness review (previous section).
+- Suggested follow-ups, strictly separate passes: (1) delete/park the CONFIRMED ORPHAN set after
+  review; (2) decide the 10 STALE CANDIDATEs; (3) kernel_ops.js unification (production finding #1);
+  (4) precache generation from reachability; (5) deploy-side cleanup of the retired 2d.html set in
+  bim-compiler deploy/dev + OCI dev bucket (bim-ootb-side removal does not touch deploys).
