@@ -359,3 +359,25 @@ fail IDENTICALLY on untouched main (pre-existing env-fit, verified side-by-side,
 Still open from the marking table: the 10 STALE CANDIDATEs (user call), kernel_ops.js 3-way
 unification (needs its own spec'd session — divergent code, not a mechanical merge), sql-wasm/
 qrcode vendor dedupe, modeller tracked-.db relocation, deploy-side (OCI dev bucket) cleanup.
+
+### 2026-07-12 — STALE CANDIDATE resolution (user: "Ok proceed") — PR #753
+Removed (2): `erp/migrate_agent.js` (byte-identical dup of idempiere_agent/'s copy — the zip source;
+its download UI died with migrate_showme in #751; erp sw v764→v765) and
+`viewer/construction_seed.sql` (all consumers removed in #751).
+**Kept — resolved OFF the stale list with reasons on record (8):** chat_lens.js/feed_fold.js/
+chat_lens.html (PARKED Lens-lane feature, live §-witnesses poc_chat_chrome + poc_feed — deleting
+would sabotage a parked lane, not remove dead code); spike_writepath.html (write-path spine witness
+surface, drive_spike.js); kanban_lens.html (harness for LIVE kanban_lens.js — 3 pocs drive it);
+ad_table_map.js (dormant-by-design bridge); erp_key_epochs.js (#630 roster, W-ROSTER-VERIFY);
+viewer/schema_5table.sql (reference schema — spec-class, not code); erp/preview_demo.db (poc fixture).
+**Vendor dedupe DEFERRED to its own spec'd lane** after mapping the load sites: sql-wasm has ~10
+heterogeneous loaders across 3 apps with DIFFERENT builds (viewer=rtree-sql.js, erp=sql.js-fts5)
+and different CDN fallbacks, zero erp/modeller boot coverage — kernel_ops-class risk. Load-site map:
+viewer loader.js/wizard.js/mep_report.html/boq_charts.html (lib/sql-wasm, rtree CDN fallback),
+clash_report.html (CDN-only), erp period_close_ui.js (sqljs/), overlay_kit.js + kanban_lens.html
+(lib/sql-wasm-fts5, fts5 CDN). qrcode dedupe skipped: 50KB not worth touching share-critical pages.
+**Concurrent-session note:** an Outliner-Viewer session is concurrently fixing viewer cache-bust
+hygiene (panels.js precache staleness + navigate_find.js ?v pin) from a PRE-#750 base — it believes
+CACHE_VERSION is v742, but main is at v744 after #750/#751. Its bump must land as v745 (sw.js
+conflict rule: keep both, take the HIGHER version). This session's PR #753 touches erp/sw.js only,
+deliberately avoiding the viewer/sw.js line while that fix is in flight.
