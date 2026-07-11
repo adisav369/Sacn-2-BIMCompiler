@@ -66,7 +66,11 @@ positioned)" etc. means: 4 real entities exist, only 2 carry their own placement
 and fixed this session, not a missing-data artifact). Plant Room is honestly Terminal-only (n=1
 building, advisory not general) — 0 elsewhere means "no evidence found," not "confirmed absent."
 HHS's Stairway=0 is suspicious for a 4-storey building — likely the same class of gap as its
-corridor false-negative above, not yet investigated for stairs specifically.
+corridor false-negative above. **Root-caused, not just suspected (parallel thread,
+`prompts/SPARSE_WALL_ROOM_INFERENCE.md`, 2026-07-11): HHS's `elements_meta` has ZERO
+`IfcStair`/`IfcRamp` entities at all** — same federated-model sparsity that breaks its wall-based
+flood-fill (112 walls/105 rooms = 1.06 walls/room, vs Hospital's 7.16 and Clinic's 5.48). Confirmed
+absence in the source data, not an extraction miss on this taxonomy's side.
 
 **Read honestly, not optimistically:** low classify-rates on the 6 inferred-only buildings (20-63%)
 are the classifier correctly REFUSING to force a residential-shaped label onto institutional/

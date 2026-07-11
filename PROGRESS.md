@@ -47,6 +47,26 @@
   any of this in prose here — refresh the scoreboard doc instead, it IS the current state.
 - ⏸ **PUSH PAUSE in effect (2026-07-11, until lifted)** — new work commits locally, verifies on
   localhost, does not push/open a PR. See `CLAUDE.md` §⏸ PUSH PAUSE + `prompts/MANAGER.md`.
+- **`prompts/SPARSE_WALL_ROOM_INFERENCE.md` (2026-07-11, parallel thread, MANAGER-assigned) —
+  dispatched, not yet landed.** Two phases: (1) data-health guard for sparse-wall federated models
+  (HHS: 1.06 walls/room vs Hospital 7.16/Clinic 5.48 — flood-fill fails universally, falls back to
+  weakest INTERNAL_DOORPART method), corrected from an initial round-numbers version to real
+  derived thresholds; (2) harder signal-fusion room inference (grid+door+slab+envelope) to recover
+  room structure when walls alone aren't enough — the general "most real-world IFC" problem, not
+  HHS-specific. Quiet until it lands — do not duplicate, do not chase.
+- **MANAGER housekeeping pass, 2026-07-11 (this session):** 6 stale local branches + their worktrees
+  (fable/g1-count-independent-oracle, fable/meshdb-device-consolidation, fable/terminal-no-spaces,
+  merge-staging-docs, fix/te-arc-datum, lane/q1-component-dimension-range) verified fully-superseded-
+  by-origin/master (content already landed via other paths/squash-merges) or genuinely stale, then
+  pruned — nothing lost, each checked commit-by-commit first. One real exception found and landed:
+  `lane/q1-component-dimension-range`'s W024 (component_dimension_range aggregate migration, §Q1_AGG
+  witness re-confirmed match=True) was never merged anywhere — cherry-picked onto
+  `fable/meshdb-livewire` (`c254cb271`). Also committed 2 pre-existing uncommitted regen artifacts
+  (`build/duplex_rules.db` rule_placement rows, `deploy/dev/navigate_find.js` find-panel position-
+  fixed fallback) that were sitting dirty from a prior session. `library/component_library.db` stays
+  intentionally uncommitted (Sacred Files gate blocks direct binary commit; regenerates from the SQL
+  migration). ERP PR #8 (5 weeks stale, `feat/erp-write-path-ik-ij`) dispatched for independent
+  re-verify+merge-decide — not yet reported back, check before assuming still open.
 - **From the 2026-07-10 marathon (master), still real, not superseded by the above:** 4 more branches
   verified+pushed, no PR yet — grid rotation-guard X/Y-tilt (`fix/grid-tilt-guard`), rot-units
   radians/degrees bug (`fix/dw-rot-units`), `__dwPixelProbe` dedup+harness fixes (`fable/dwprobe-dedup`),
