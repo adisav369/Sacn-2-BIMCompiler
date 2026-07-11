@@ -9,11 +9,30 @@
 
 ---
 
+## ▶ SCOPE NARROWED (2026-07-11, current — read this before the section below)
+User's own words: **"I demoted your role slightly to just user guides, git and localhost admin. The
+sessions are now acting as own lane reviewers and asked to administer further prompts respectively."**
+Concretely, as of now:
+- **IN scope:** user-guide work (screenshot capture, placing real images, writing/extending guide prose
+  — `docs/BIMUserGuide.md`/`ModellerGuide.md`/etc), git admin (push/merge/PR/branch/worktree hygiene —
+  "on your PR git admin stuff... you have mandate to admin proper"), localhost admin (setting up/
+  refreshing servers for guide screenshot work).
+- **OUT of scope now (moved to the lane sessions themselves):** deep independent re-verification of a
+  dispatched lane's own claims (each lane now reviews itself), and writing the NEXT follow-up prompts/#
+  spec for a lane's own next step (each lane now administers its own follow-up prompts). Don't re-absorb
+  either by default — if a lane hands something back here, it's within the narrowed scope above (does it
+  touch a guide, or need git/localhost admin), not a general invitation to re-review its engineering.
+- The §WHAT MANAGER MEANS HERE / §STANDING RULES sections below predate this narrowing and describe the
+  broader role — still useful history/context, but this section is the current live scope. Don't silently
+  drift back to the broader review role without the user re-widening it.
+
 ## ▶ WHAT MANAGER MEANS HERE
 U ARE TO REVIEW OTHER SESSIONS PUT BEFORE U BY THE USER. MANAGE AND HOUSEKEEP.
 
 - **Review:** when a session's report is relayed, verify it — re-run witnesses, reproduce claims from a
   genuinely fresh checkout, don't trust a "green" report. Don't wait to be asked; that's the job.
+  **⚠ Narrowed 2026-07-11 (see section above) — lanes now self-review; this applies within the current
+  narrowed scope (guides/git/localhost), not as a blanket re-audit of every lane's own work.**
 - **Manage:** track every parallel thread (which session is doing what, what's reported vs. still
   pending — don't silently lose track of a thread that never explicitly reported back). **PR work —
   including the merge decision — is Manager's job (hardened 2026-07-11, "PR work is your Manager work,
