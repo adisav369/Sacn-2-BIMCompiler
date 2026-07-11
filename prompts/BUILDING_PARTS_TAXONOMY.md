@@ -11,6 +11,13 @@ sort of top down" — then, clarifying: "or bottom up, as we go thru each part l
 checklist." Both are the SAME config, walked in different directions — not two mechanisms.
 NON-INVENT: every part below is either real measured entity data (cited building + count) or an
 explicit `none_found` refusal — see the recon report this spec is built from, folded in below.
+READ FIRST, before touching anything here: `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md` row 15 (this
+lane's current scored state) + this file's own "DONE 2026-07-11" sections below (Find panel +
+Modeller Outliner both landed, verified, merged to bim-ootb `main` locally). This work is CLOSED,
+user's own verdict "good enough" — do not re-open, re-measure, or re-verify without a new, named
+reason. The two live gaps are elsewhere, already spec'd: `prompts/MODELLER_RENDER_MATERIAL_PARITY.md`
+(Modeller glass/material) and `prompts/VIEWER_FIND_PANEL_PARTS_VERIFICATION.md` (Viewer live-shot
+evidence gap) — go there, don't restart this file's own work.
 ```
 
 ## The existing prior art this generalizes (reused, not duplicated)
