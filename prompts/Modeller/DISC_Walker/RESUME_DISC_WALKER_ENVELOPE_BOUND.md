@@ -1,38 +1,116 @@
 # RESUME — disc_walker: area-scaled n_measured + envelope-bound placement (RouteWalker alignment)
 
-# ▶▶▶▶▶▶▶ ENTRY POINT (2026-07-10 EVENING, LATEST — supersedes every block below, including the §LIVEWIRE
-# one right under this). Full context in ONE read, no need to walk the rest of this 1900+ line file first.
+# ▶▶▶▶▶▶▶▶▶ ENTRY POINT (2026-07-10 LATER STILL — supersedes every block below, including the one right
+# under it). MANAGER-verified + MERGED. Read this first, one task remains.
 #
-# **State: 6 branches built, independently re-verified (not trusted on report), and PUSHED. ZERO merged to
-# `origin/main` in either repo.** That's the actual next gate, not a code gap:
-# - bim-ootb `fable/modeller-lod400-livewire` @ `670bf0f` + bim-compiler `fable/meshdb-livewire` @ `d75d76e09`
-#   — schedule-walk DEFAULT-FLIP + LOD400 device meshes. Took 3 verification rounds to actually reproduce
-#   from a clean checkout — rounds 1-2's green claims leaned on an uncommitted scratch-worktree repair.
-# - bim-ootb `fix/grid-tilt-guard` @ `c485560` — PR #720/#721's rotation guard extended to X/Y tilt AND the
-#   Modeller's real second plan axis (`'y'`, not `'z'` — Z-up vs the guards' original Y-up assumption).
-# - bim-ootb `fix/dw-rot-units` @ `2a02de8` — legacy disc-walk commit path wrote yaw in radians into a
-#   degrees field (confirmed live-visible, 88° error on a real SampleHouse fixture, before fixing).
-# - bim-ootb `fable/dwprobe-dedup` @ `52fea0e` — `__dwPixelProbe` was defined twice in `modeller.html`
-#   (silently shadowed), + a witness crash-on-uncaught-rejection fix, + a NODE_PATH env dependency removed.
-# - bim-ootb `fix/terminal-oracle-source` @ `c1b4f9e` — 2 witnesses fetched the wrong file for their real-MEP
-#   oracle (`Terminal_ARC.db`, 0 MEP rows since the deliberate embed-8 ARC-only strip) instead of the file
-#   their OWN header comments already named (`Terminal_meta.db`, untouched, real data) — stale path, not a
-#   data gap. 5/3→7/1, 9/1→10/10.
+# **§TE-ARC-DATUM: FIXED, VERIFIED, MERGED.** bim-compiler `master` @ `b202eb44b` (PR #40, squash-merged).
+# Fix: `build/project_rule_mesh_binding.py` now stamps `rule_frame_ref` (per-class mean-z refs in the band
+# frame); `build/disc_walker.js`'s `placeMeasured()` measures `zOff` at WALK TIME as the median per-class
+# delta vs whatever substrate it's actually walking (≥3 shared classes, else legacy-fallback, logged) —
+# instead of unconditionally adding the old baked constant `z_datum_offset=14.593`, which only fit the
+# extraction's own site frame. Root cause was a pure translation between `Terminal_ARC.db` and
+# `Terminal_extracted.db` (dx=545.6, dy=51.2, dz=14.66, 35,552/35,552 GUIDs matched, 94%+ within 0.01 of
+# dz=14.66) — not a rotation, not per-storey drift. Independently re-verified from a fresh worktree before
+# merge: mining-copy unchanged (744/888 placed, zOff reproduces 14.593 MAD=0.000), new T8 proof on the REAL
+# shipped substrate (ELEC 860/638 ratio 1.35 + 36/19 ratio 1.89, PLB 869/739 ratio 1.18 + 100/111 ratio
+# 0.90, zero envelope/z-band/hash violations), falsifier (drop `rule_frame_ref`) collapses 1865→642 exactly
+# matching the old broken numbers, 3 sibling witnesses unchanged, clean merge, no regressions. Full
+# verification trail: MANAGER session transcript 2026-07-10 (this doc's job isn't to re-paste it — trust the
+# merge, don't re-verify from scratch).
 #
-# **SampleCastle rooms: CLOSED, not a gap** — see `SAMPLECASTLE_REAL_ROOMS_RECONCILE.md`'s own closure note.
-# disc_walker needs zero room/`IfcSpace` data on SC; runs clean via `duplex_rules.db` + `substrate()`'s
-# direct storey derivation from `elements_meta`. The whole prior investigation was the wrong branch of the
-# problem. If the live app fails on SC, suspect rules-file wiring (dwInit defaulting to `terminal_rules.db`),
-# not missing data.
+# **✅ PORTED, VERIFIED, PUSHED, PR OPEN (2026-07-11).** bim-ootb `fix/dw-datum-port` @ `4ff22c0` →
+# https://github.com/red1oon/bim-ootb/pull/726 (not merged — user's call). MANAGER-verified: §DW-DATUM
+# ported byte-identical, terminal_rules.db re-stamp touched only rule_frame_ref (checksummed), new
+# W-DW-DATUM witness 4/4 exact-matching numbers, no regression (pre-existing fails reproduce identically
+# on unpatched origin/main). The Terminal collapse bug (ELEC 744→390, PLB 888→252) heals once this merges.
+# Below kept as the original task brief for the record — task is DONE, not open.
 #
-# **Genuinely still open:** Terminal PLB disc-walk untested (ELEC/FP/ACMV/STR all graded, PLB wasn't — in
-# progress); old signed op-log rows still carry pre-fix wrong-radians values (unsafe to blind-migrate, needs
-# per-row re-derivation from source data); `cat[0]` legacy-commit fallback for hash-less placements; W5
-# ratchet toward RSS-exact; pillar 4's space-scoped UI trigger (piece 3, never bounded, needs a real Sonnet
-# planning pass before anyone picks it up).
+# **⛔ ORIGINAL TASK (now done, see above): this fix is bim-compiler-ONLY. The bug is STILL LIVE in the actual Modeller app
+# (bim-ootb) today** — bim-ootb has its OWN diverged copy of `disc_walker.js` (`modeller/disc_walker.js`,
+# not `build/disc_walker.js`) and its OWN shipped `terminal_rules.db`, neither touched by `b202eb44b`.
+# Walking the real `~/bim-ootb/modeller/Terminal_ARC.db` today still collapses (ELEC 744→390, PLB 888→252)
+# exactly as before this fix, because the Modeller never got it.
 #
-# Full detail + the "verify from a genuinely fresh worktree" lesson (learned 3 times this session): bim-compiler
-# memory `project_disc_walker_grid_guard_marathon_2026-07-10.md`.
+# **Task: port `§DW-DATUM` to bim-ootb.**
+# 1. Port the same two changes to bim-ootb's own copies: `project_rule_mesh_binding.py` (or wherever
+#    bim-ootb's rule-mining lives — check if it shares the script via a build step, or has its own copy) to
+#    stamp `rule_frame_ref` into bim-ootb's shipped `terminal_rules.db`; `modeller/disc_walker.js`'s
+#    `placeMeasured()` to measure `zOff` at walk time, mirroring `build/disc_walker.js`'s `b202eb44b` diff
+#    exactly (diff it first: `git show b202eb44b -- build/disc_walker.js build/project_rule_mesh_binding.py`
+#    in bim-compiler) — don't reimplement from the description above, port the actual code.
+# 2. Re-stamp bim-ootb's shipped `terminal_rules.db` with the new `rule_frame_ref` table/columns (re-run the
+#    mining step against bim-ootb's own data, or copy the stamped table across if the underlying rule data
+#    is identical — check which is correct before assuming).
+# 3. Add the T8-equivalent witness in bim-ootb (mirror `scripts/witness_terminal_nospaces.js`'s T8, or find
+#    bim-ootb's own equivalent witness file) proving the SHIPPED `Terminal_ARC.db` now places correctly —
+#    same numbers as the bim-compiler proof (ELEC ~860/638, PLB ~869/739) are a reasonable target, but
+#    re-measure on bim-ootb's actual data rather than assuming identical output.
+# 4. Worktree-only (bim-ootb shared checkout is hook-blocked), push not merge, MANAGER re-verifies from a
+#    fresh worktree before merge same as this fix was.
+#
+# Scope: bim-ootb `modeller/` only, this specific datum-fix port — not a broader disc_walker refactor.
+#
+# ▶▶▶▶▶▶▶▶ ENTRY POINT (2026-07-10 NIGHT, LATEST — supersedes every block below). Full context in ONE read.
+# THE GOAL, stated plainly by the user: get the Modeller actually working — not "verify branches" as an end
+# in itself. See bim-compiler memory `project_modeller_vision_lock.md` for the product NORTH STAR this serves.
+#
+# **MERGED TO MAIN TODAY (the room-mode core is now live, not just verified-on-a-branch):**
+# - bim-ootb `main` @ `29519e4` ← `fable/modeller-lod400-livewire` (schedule-walk DEFAULT-FLIP + LOD400 meshes)
+# - bim-compiler `master` @ `06fa5613e` ← `fable/meshdb-livewire` (same lane's engine/rules side)
+# Both independently re-verified 3 rounds deep before merge (rounds 1-2's green claims leaned on an
+# uncommitted scratch-worktree repair — see the marathon memory for the full "verify from a genuinely fresh
+# worktree" lesson). Merge itself was clean, no conflicts, confirmed cheap before landing.
+#
+# **STILL UNMERGED, verified+pushed, no known blocker other than nobody's opened the PR yet:**
+# `fix/grid-tilt-guard` @ `c485560` (rotation guard now covers X/Y tilt + the Modeller's real y-axis) ·
+# `fix/dw-rot-units` @ `2a02de8` (radians-in-degrees fixture-rotation bug, confirmed live-visible before fix) ·
+# `fable/dwprobe-dedup` @ `52fea0e` (3 commits: probe dedup, crash-on-uncaught-rejection fix, NODE_PATH removal) ·
+# `fix/terminal-oracle-source` @ `c1b4f9e` (2 witnesses were reading the wrong oracle file, not a data gap).
+#
+# **NEW, SIGNIFICANT, NOT YET FIXED — §TE-ARC-DATUM:** every disc-walk number quoted all session for
+# Terminal (ELEC/FP/ACMV/PLB/STR) was graded against the WRONG substrate — an in-memory copy of
+# `deploy/buildings/Terminal_extracted.db`, not the actual shipped `~/bim-ootb/modeller/Terminal_ARC.db`.
+# Walking the REAL shipped file collapses every discipline 2-20× (e.g. ELEC 744→390, PLB 888→252) because
+# the two files sit ~15m apart on the z-axis (`Terminal_ARC.db` spans −15.66…27.09, the extraction spans
+# −1.01…42.10) — rule z-bands were mined in the extraction's frame and don't line up with the shipped file's
+# cells. Independently reproduced exactly, including the collapse numbers from a from-scratch probe script.
+# **This bug is ALREADY LIVE on `origin/main` today** (embed-8 shipped the shifted `Terminal_ARC.db` earlier)
+# — merging the room-mode branches above did NOT introduce or worsen it. Full diagnosis + 3-option fix
+# proposal in this file's own `§TE-ARC-DATUM` section (added by the same investigation) — not started.
+#
+# **Screenshot/visual-correctness check: RE-ATTEMPTED, mostly SUCCEEDED.** Local-only branch
+# `fable/combined-guide-shots` (worktree `/tmp/wt-combined-guide`, still not pushed) went through 2 rounds —
+# the first (found by proactively checking git activity, never explicitly reported) produced broken shots
+# (washed-out/zoomed wrong, camera-inside-a-dome); a SECOND, later pass (properly reported, capture script
+# committed as `modeller/tests/guide_shots_combined.js`) fixed this. Both final PNGs independently reviewed
+# (real pixel bytes, not the caption): `duplex_elec_lod400_walk.png` shows a real, legible LOD400 ceiling-fan
+# mesh (visible blades/canopy/rod, not a box) — one caveat, only ONE fixture is clearly visible, not the
+# "two distinct fixtures" claimed, worth a note not a blocker. `samplehouse_elec_rotation_fix.png` (plan
+# view) shows fixtures elongated flush along the wall's diagonal run, consistent with the rot-units fix
+# (pre-fix they'd sit crossways) — credible though not pixel-measured. **Net: visual correctness is real and
+# mostly confirmed for these 2 cases, not the earlier "confirmed FAILED" verdict** — that verdict was based
+# on the first round's now-superseded broken attempt at the same file path; don't cite it as still current.
+# Regression across all 4 merged branches in this worktree: clean (12/12, 6/6, 29/29, 6/6, 34/34, 21/21, 8/8).
+# New, separate, named-not-fixed finding from this pass: `xrayReveal` in `modeller.html` only glasses a
+# group's DIRECT mesh children, so ARC-fetch residents report `glass=0` — fixtures glow but structure never
+# actually goes glass; the capture script worked around it with a full-traverse pass, the app itself has the gap.
+#
+# **SampleCastle rooms: CLOSED, not a gap.** disc_walker needs zero room/`IfcSpace` data on SC — runs clean
+# via `duplex_rules.db` + `substrate()`'s direct storey derivation from `elements_meta`. See
+# `SAMPLECASTLE_REAL_ROOMS_RECONCILE.md`'s own closure note. **BUT: a separate, NEW "room injection feature"
+# is being spec'd right now** (a different Sonnet session, direct with the user, spec not yet delivered as of
+# this writing) — do not assume this is the same closed thread; read whatever spec doc that session produces
+# before touching anything room-related.
+#
+# **Genuinely still open, smaller:** Terminal PLB disc-walk now graded (`witness_terminal_nospaces.js` T6/T7,
+# 7/7 — but see §TE-ARC-DATUM above, it's graded on the wrong substrate too); old signed op-log rows still
+# carry pre-fix wrong-radians values (unsafe to blind-migrate); `cat[0]` legacy-commit fallback for hash-less
+# placements; W5 ratchet toward RSS-exact; pillar 4's space-scoped UI trigger (piece 3, never bounded).
+#
+# Full detail, exact commit chain, and the "verify from a genuinely fresh worktree" lesson (learned 3 times
+# this session): bim-compiler memory `project_disc_walker_grid_guard_marathon_2026-07-10.md`. Management/
+# collaboration style for whoever picks this up: bim-compiler memory `feedback_act_autonomously_dont_ask.md`
+# (consolidated 2026-07-10 — read it once, it's the definitive version).
 
 # ▶▶▶▶▶▶ ENTRY POINT (2026-07-10 PM, LATEST — Fable5 worker closeout; read this FIRST, supersedes every
 # block below as the starting point). GEOMETRY-HELL LANE: DELIVERED ON BRANCH, AWAITING WATCHDOG REVIEW +
@@ -170,6 +248,8 @@
 #    dwwalk_hostbind 6/6, hostbind_agnostic 11/11, space_scoped_walk 5/5.
 # 4. W5 ratchet toward RSS-exact (per-room offset nuance is most of the remaining gap); real per-instance
 #    routing geometry lives ONLY in build/Duplex_mep_extracted.db element_transforms (Duplex-only).
+#    ✅ DONE 2026-07-11 (witness: §W5-RATCHET spec+closeout below — per-room Z offsets mined, every
+#    guard-allowed family median-EXACT to ground truth; W-SCHED-MINE 7/7 M3 two-level, walkback 14/14).
 # 5. Device meshes to the browser (mesh.db consolidation) — SEPARATE deliberate step, still not folded in.
 #    UNBLOCKED 2026-07-10 PM (supersedes the earlier same-day "no mesh.db anywhere" scoping finding —
 #    that was measured true at the time but resolved hours later): ~/bim-ootb main `c63939a` now ships
@@ -433,6 +513,203 @@
 # round-2 closeout commit on top of `f02121904` — reviewed, no functional change). bim-ootb
 # `fable/modeller-lod400-livewire` → `origin` (`670bf0f`, LFS mesh.db 120MB uploaded). Neither merged to
 # main/master — branches only, PRs not opened, per convention (worker commits, Watchdog pushes).
+
+# ✅ RE-VERIFY (2026-07-11, in response to a re-challenge quoting the ROUND-1 correction — that challenge
+# was STALE: the three fix commits (61dd84963 → 997acdda8 → f02121904) are ancestors of branch HEAD
+# f37b52afa, already pushed at ad50af603 per ROUND 3. The literal "commit the complib" remains Gate-1-hook
+# blocked by design; the committed artifact is the generators. Re-proven anyway, clean-room, this date:
+# reused /tmp/wt-livewire-verify @ f02121904 (worktree-hygiene reuse, no new LFS fetch — pristine complib
+# blob 7e5df6e1 confirmed in local LFS cache), `git checkout -- library/component_library.db` → verified
+# genuinely pristine (ad_geometry_map table only, NO M_Product_Image, NO I_Geometry_Map), then ONLY
+# committed generators: seed_dangling_meshes.py 2/2 → restore_generative_meshes.py 14/14 (0 unresolved)
+# → rebuild_erp.sh incl. §SHIM-SEED 12/12 (stale gitignored disc_patterns.db moved aside per the script's
+# own refusal message). Witnesses, exit 0, tallies read from saved logs (session scratchpad):
+# **W-SCHED-MINE 7 PASS / 0 FAIL** (M2 LOD400-BIND 14/17 bind real mesh, 0 dangling, NULL-hash set =
+# exactly the known no-mesh REFUSE trio) · **W-DX-WALKBACK-RSGT 14 PASS / 0 FAIL, no crash** (139 fixtures
+# / 19 rooms, W5 ELEC gen=102 real=89 @2m 94%, PLB gen=18 real=16 @2m 94%, W7 collision 0/9591 pairs).
+# The claim holds against committed state. Same day, user-directed: **migration/MDB001_livewire_device_
+# meshes.sql** (NEW, non-LFS, ~870KB) carries the 26 §LIVEWIRE mesh.db rows as idempotent INSERT OR IGNORE
+# hex-literal statements — the no-LFS-traffic channel for stale local mesh.db copies while the quota is
+# exhausted (the repaired mesh.db itself is already on bim-ootb main via merge 29519e4 of 670bf0f, but a
+# fresh LFS fetch of it is blocked until 2026-08-01; GH-Pages deploy equally stays blocked until then).
+# PROOF: extracted the genuinely stale pre-livewire mesh.db (blob a8f887b4 @ 6068fab, from local LFS cache,
+# 9172 rows) → W-MESHDB-RESOLVE 2/5 FAIL (negative control) → applied MDB001 → ALL 9198 rows byte-identical
+# to the repaired mesh.db → W-MESHDB-RESOLVE 5/5 PASS → re-apply = no-op. Push of this .sql attempted once
+# per the ~30s rule — result recorded in the session report.
+
+# **SPEC §W5-RATCHET (2026-07-11, Fable — item 4: per-room offset nuance toward RSS-exact. Measured facts
+# driving the spec, all extracted this session BEFORE writing it (scratchpad mine_offsets.log):**
+# - 93/105 real Duplex IfcFlowTerminals classified via the COMMITTED ad_element_mep_alias DX_MINED
+#   element_name patterns + located in their containing space (Duplex_extracted spatial_structure bbox);
+#   per-instance centers from build/Duplex_mep_extracted.db element_transforms (item 4's named source).
+# - The generic per-placement_rule z offsets are measurably wrong PER ROOM TYPE: receptacles real median
+#   z−floor = 0.529m in BEDROOM(n=16)/LIVING(n=6) vs rule 0.30; KITCHEN receptacles 1.145 (n=14) vs
+#   COUNTER_BACK 0.85 / COUNTER_SINK 1.0; BATHROOM receptacles 1.295 (n=5) vs WALL_SINK 1.0; switches
+#   1.29 (n=3/4/2/2 across BATHROOM/BEDROOM/CORRIDOR/LIVING) vs 1.2; BATHROOM/LOBBY sconce LIGHT sits
+#   0.812 below ceiling (n=4/2) vs CEILING 0.05; CORRIDOR LIGHT 0.210 (n=2); PLB SINK 0.790 (n=6
+#   BATHROOM) / 0.764 (n=2 KITCHEN) vs 0.85; TOILET real center z−floor = 0.077 (n=4) vs WALL_BACK 0.20
+#   + the walker's FLOOR-host half-height lift (dim_z 0.768 → +0.384) — needs hz-COMPENSATED override.
+# - SCOPE = Z ONLY. x/y for wall devices is decided by wall-snap/distribute/clash logic, not the offset
+#   columns; z is the clean walker-final axis and W5's mean-dz signature (ELEC −0.11) is exactly this
+#   defect. edge_x/edge_y per-room mining = named follow-up, not taken here.
+# - GUARDS (honesty + suite preservation): override only where n≥2 measured; override must keep W2
+#   containment (center inside space bbox ±5cm) and W3 CEILING-BAND (top half). CONSEQUENCE, named: real
+#   BEDROOM/LIVING pendant lights hang ABOVE the IfcSpace bbox top (median 0.09 over) — RSS-exact there
+#   would break W2; SKIPPED, recorded as observation. FRIDGE unmined (no committed alias for
+#   M_Refrigerator in ad_element_mep_alias) — alias addition = separate migration, named follow-up.
+# - SHAPE (same committed-generator discipline as §LIVEWIRE rounds 2-3):
+#   1. scripts/mine_placement_offset_space.py (NEW, committed MINER) — recomputes the medians from the
+#      gitignored inputs, applies guards + FLOOR-host hz compensation, writes ad_placement_offset_space
+#      (space_type_id, device_id PK; z_rule; z_offset; n_measured; source; provenance) into
+#      library/disc_patterns.db, prints rows in seed format. Receptacle family→OUTLET_20A/OUTLET_GFCI
+#      bridge is COMMITTED DATA (M_Product.source_element_ref = 'M_Duplex Receptacle:*'), not invention.
+#   2. scripts/seed_placement_offset_space.py (NEW, committed VERBATIM HOME of the mined rows, sibling of
+#      seed_shim_attributes.py, idempotent, provenance-commented) wired into rebuild_erp.sh tail — fresh
+#      env converges without the gitignored mep db.
+#   3. build/project_rule_space_schedule.py — exact-key (space_type_id, device_id) override of
+#      z_rule/z_offset_m at projection time, provenance suffixed '+space-z:DX'; probe sqlite_master so a
+#      disc_patterns without the table projects unchanged (back-compat).
+#   4. scripts/witness_rule_space_schedule.js M3 OFFSET-VERBATIM evolves to the TWO-LEVEL verbatim check:
+#      every row's z must byte-equal its space override when one exists, else the generic
+#      ad_placement_offset row; edge_x/edge_y/x_ref/y_ref stay generic-verbatim. Still 0-drift semantics.
+#   5. Walker: ZERO change (offsets already live per schedule row).
+# - WITNESS BAR: W-SCHED-MINE 7/7 (with evolved M3), W-DX-WALKBACK-RSGT 14/14 (W2/W3/W6/W7 must survive),
+#   and W5's before/after numbers LOGGED AS THE DELTA (baseline this morning's clean-room run: ELEC
+#   @0.5m=18 @1m=47 @2m=96 covered 79/89 mean dz=−0.11; PLB @0.5m=5 @1m=14 @2m=17 mean dx=0.23 dz=0.09)
+#   — "closer" is claimed only by the printed numbers moving.
+# - Commit/push: scripts+docs only, no DB binaries; single push attempt, ~30s stop rule.
+#
+# **§W5-RATCHET CLOSEOUT (2026-07-11, same session — item 4 DELIVERED, all witnessed, logs in the
+# session scratchpad + logs/). TWO REAL DEFECTS the first run caught (the checks bit, not reasoning):**
+# 1. FRAME MISMATCH: build/Duplex_mep_extracted.db center_z is insertion-point-like; the W5 oracle
+#    (deploy/buildings/Duplex_extracted.db, same 105 guids — asserted) is bbox-center. Per-family gaps
+#    up to 0.54m (WC +0.33, sconce +0.20, pendant −0.54). First-pass offsets mined in the mep frame made
+#    PLB WORSE and put the toilet override at −0.31; re-mined with mep as ROSTER + oracle frame CENTERS
+#    (miner §4 comment) — toilet override became +0.02, all values sane.
+# 2. WALL-LIGHTS-ARE-NOT-CEILING-LIGHTS: the real BATHROOM/LOBBY "LIGHT" fixtures are wall sconces
+#    (0.81 below ceiling); a z-only override under CEILING_CENTER xy parked a fixture at head height
+#    mid-room → W6 NAVIGABILITY failed 0.543 (Bathroom 1). NEW walking-band guard in the miner: a
+#    lowered CEILING-rule fixture whose bbox enters the 0→1.8m band is SKIPPED (§OFFSET-SKIP, 5 rows —
+#    the closeout below originally miscounted 6) — wall-light xy+z mining is the named follow-up;
+#    z-only cannot honestly take it. [RESOLVED same day for the 2 genuinely wall-mounted rows —
+#    §WALL-LIGHT block below.]
+# DELIVERED: scripts/mine_placement_offset_space.py (miner, guards: n≥2, W2-containment, W3-band,
+# W6-walking-band, FLOOR-host hz compensation), scripts/seed_placement_offset_space.py (11 mined rows'
+# committed verbatim home, rebuild_erp.sh tail-wired after §SHIM-SEED), projection z-override in
+# build/project_rule_space_schedule.py (probe-guarded, provenance '+space-z:DX n=%d'), M3 evolved to
+# TWO-LEVEL verbatim (witness_rule_space_schedule.js), W5 gained the §RS W5-ZFAM diagnostic LOG line
+# (per-family median z-above-floor gen vs real + @0.5m same/cross-family split — LOG only, dial stays
+# not-hard). Walker: zero change (offsets ride the schedule rows).
+# THE DELTA (before = overrides-table dropped + reprojected, byte-reproduces the 2026-07-11 AM
+# clean-room numbers; after = seeded + reprojected; same witness, same session):
+#   §RS W5-ZFAM [ELEC] OUTLET gen 0.30→0.53 = real 0.53 EXACT (n=34/51) · SWITCH 1.20→1.29 = real
+#     1.29 EXACT (n=20/14) · LIGHT unchanged 2.53 vs real 2.13 (the named follow-up, guards refused it)
+#   §RS W5-ZFAM [PLB] SINK 0.85→0.90 = real 0.90 EXACT (n=6/8) · TOILET 0.58→0.40 = real 0.40 EXACT
+#   §RS W5 [ELEC] @0.5m 18→20 @1m 47→46 @2m 96=96 covered 79/89=79/89 | mean dz −0.11→−0.18
+#   §RS W5 [PLB] @0.5m 5→2 @1m 14→14 @2m 17=17 covered 16/16 | mean dz +0.09→+0.13
+#   READ HONESTLY: every family the guards allowed is now MEDIAN-EXACT to ground truth (the actual
+#   per-room ratchet); the pooled NN buckets barely move because @0.5m was part accidental
+#   cross-family pairing (measured: ELEC 6/18 cross, PLB 2/5 cross at baseline) — exact z BREAKS fake
+#   pairs (PLB @0.5m 5→2) and the clash-slide reshuffles xy at the margin. Mean dz moving −0.11→−0.18
+#   is the outlet/switch positive errors vanishing so the LIGHT family's −0.40 now dominates — the
+#   dial finally points at the real remaining defect instead of averaging it away. Remaining W5 gap =
+#   xy scatter (wall-snap/distribute) + wall-light xy+z: both named follow-ups, not z work.
+# REGRESSION (all this session, exit 0 AND log-read): W-SCHED-MINE 7/7 (M3 two-level, 11 overridden
+# rows, 0 drift), W-DX-WALKBACK-RSGT 14/14 (W6 back to 1.000/0.963 after the band guard),
+# W-TERM-NOSPACES 7/7, W-SHIM-SELECT 6/6, W-DWWALK-HOSTBIND 6/6, W-HOSTBIND-AGNOSTIC 11/11,
+# W-ELEC-HOSTBIND 5/5, space_scoped 5/5. Syntax: node --check ×2, py_compile ×3, bash -n ×1 clean.
+# FOLLOW-UPS (named, not taken): wall-light xy+z mining (sconces/pendants — needs edge mining, 5
+# skipped rows documented in §OFFSET-SKIP; sconce half RESOLVED same day, §WALL-LIGHT below);
+# edge_x/edge_y per-room mining; FRIDGE alias (M_Refrigerator absent from ad_element_mep_alias —
+# separate migration).
+#
+# **§WALL-LIGHT CLOSEOUT (2026-07-11, same session — the sconce half of the wall-light follow-up,
+# DELIVERED; the pendant half measured UNFIXABLE within honest bounds, documented below):**
+# - DETECTOR (measured, not assumed): real Duplex light fixtures split cleanly on median distance to
+#   the space edge — sconces 0.094m (BATHROOM n=4, FOYER/LOBBY n=2), pendants 0.96–2.28m
+#   (HALLWAY/BEDROOM/LIVING). Miner rule: CEILING_* schedule row whose measured pool hugs the edge
+#   (median ≤0.3m) is a WALL-MOUNTED light → override placement_rule to the EXISTING generic
+#   wall-anchored WALL_HIGH (x_ref MIN → walker snaps to a REAL wall face) + mined z (CEILING 0.6103,
+#   n=4/2). ad_placement_offset_space gains a nullable placement_rule column; projection swaps
+#   rule+host and takes xy VERBATIM from WALL_HIGH's generic entry (M3 two-level intact, now also
+#   verifies the swap: ':rule-not-swapped' drift class). Walker: still zero change.
+# - THIRD REAL DEFECT CAUGHT (fixed at source): re-mining compared against rule_space_schedule's
+#   CURRENT z — which already carried the projected overrides → every row read "no delta" and the
+#   override set silently emptied. Miner baseline now reads the PRISTINE sources
+#   (ad_space_type_mep_bom + ad_placement_offset); the projection is read only for dims/disc.
+# - MEASURED DELTA (scratchpad sconce_delta.js, per-fixture NN distance to the 6 real sconces,
+#   no-sconce-override projection vs delivered): median 1.347m → 1.102m, gen z now 1.90 vs real 1.98
+#   (offset is CEILING-exact; residual 8cm = per-room height variation vs the pooled median).
+#   Suite-level: W5 ELEC @0.5m 20→22 @1m 46→51 covered 79→82/89 (vs z-only state); W6 NAVIGABILITY
+#   min connectedFraction 0.963→**1.000** (wall-hugging sconces fragment nothing); W3 WALL-HOST/FACING
+#   70/70 incl. the 6 sconce fixtures. HONEST LIMITS, named: (a) NN max is 3.52m — the schedule
+#   generates 10 lights where reality has 6 sconces; surplus fixtures have no real counterpart (qty
+#   nuance, not mount geometry); (b) WHICH wall is the walker's nearest-wall choice, not mined —
+#   which-wall refs = the edge_x/edge_y follow-up; (c) the 3 PENDANT rows (BEDROOM/CORRIDOR/LIVING)
+#   stay §OFFSET-SKIP: genuinely centre-xy (median edge 0.96–2.28m), measured bottoms 1.788–1.789m sit
+#   1.2cm inside the W6 walking band — no honest z-only or wall fix exists; REFUSED, not fudged.
+# - REGRESSION (exit 0 AND log-read): W-SCHED-MINE 7/7 (M3 13 override rows incl. 2 rule swaps, 0
+#   drift), W-DX-WALKBACK-RSGT 14/14, W-TERM-NOSPACES 7/7, W-SHIM-SELECT 6/6, W-DWWALK-HOSTBIND 6/6,
+#   W-HOSTBIND-AGNOSTIC 11/11, W-ELEC-HOSTBIND 5/5, space_scoped 5/5. Syntax checks clean.
+#
+# **SPEC §WALL-SLOT (2026-07-11, same session — the which-wall half of the xy follow-up. THE MEASURED
+# FACT THAT RESHAPES IT: no (space_type, device) pool in the real Duplex has ONE dominant wall — every
+# pool splits (bathroom's two sconces sit on OPPOSITE walls XMIN+XMAX in BOTH mirrored bathrooms
+# [CORRECTED in the closeout below: label-merge artifact — it's ONE sconce per bathroom, wall flips
+# with the unit mirror];
+# kitchen receptacles split YMIN×6/YMAX×6; bedroom outlets spread over all four sides and DISAGREE
+# between mirrored bedrooms). A single mined x_ref/y_ref per row would be invention and would worsen
+# half the fixtures. The honest signal is the per-room SIDE MULTISET, minable only where every room
+# of the type carries the SAME multiset:**
+# - MINE ad_placement_wall_slots (space_type_id, device_id, slot_idx, x_ref, edge_x, y_ref, edge_y,
+#   n_measured, source, provenance): for wall-anchored (incl. §WALL-LIGHT-swapped) pools, group real
+#   fixtures per ROOM GUID (labels duplicate across the two mirrored units), classify each fixture's
+#   nearest side (XMIN/XMAX/YMIN/YMAX + perpendicular distance); emit slots ONLY when all rooms of the
+#   type agree on the multiset (n≥2; single-room types allowed — no cross-check exists, said in
+#   provenance). Slot = side ref (perpendicular axis: MIN/MAX + median distance), along-axis stays the
+#   generic rule's CENTER (along-wall position = named residual, not mined here). Inconsistent pools
+#   → §SLOT-SKIP, honest REFUSE (bedroom outlets/switches, toilet, bathroom sinks expected to refuse).
+# - PROJECT → rule_place_slots (disc, space_type_id, device_id, slot_idx, refs; probe-guarded).
+# - WALKER (first placeSchedule seam of this lane, small + probe-guarded): in the qty loop, fixture i
+#   takes slot i's base refs when a slot exists (same _schedBasePos semantics, then the normal
+#   wall-snap/facing/clash pipeline); i ≥ slot-count falls back to today's distribute path. §SCHED-SLOT
+#   log line per slotted fixture. No slots table / no slots for the row → byte-identical walk.
+# - M3 grows a slot-verbatim clause (projection slots byte-equal source slots). Witness bar:
+#   sconce per-fixture NN (scratchpad sconce_delta.js) drops further; W5 wall-anchored families hold
+#   or improve; 14/14 + 7/7 + sibling suite 0-fail; the 3.52m outlier re-measured and explained
+#   (surplus-qty fixture, already named).
+#
+# **§WALL-SLOT CLOSEOUT (2026-07-11, same session — INFRASTRUCTURE DELIVERED; ZERO slots emitted on
+# Duplex, BY MEASUREMENT, and that refusal is the finding):**
+# - CORRECTION to the spec paragraph above (and to §WALL-LIGHT's "B2 sconce pair on opposite walls"
+#   phrasing): that read came from grouping fixtures by room LABEL — but the Duplex has TWO mirrored
+#   units with duplicate labels ('Bathroom 1' exists twice). At true room-GUID granularity each
+#   bathroom has ONE sconce; unit A mounts them on XMIN, unit B on XMAX (mirror). Same shape
+#   everywhere: kitchen counter outlets are 6-on-one-wall per kitchen, YMAX in one unit, YMIN in the
+#   other; toilets/sinks/switches all flip sides with the unit.
+# - CONSEQUENCE (measured, §SLOT-SKIP ×13 in the miner log): NO wall-anchored (space_type, device)
+#   pool has a room-consistent side multiset — the real wall choice is MIRROR-DEPENDENT, and the
+#   schema's absolute MIN/MAX refs cannot express it. Emitting any fixed ref would better half the
+#   units and worsen the other half. Honest REFUSE across the board, exactly per the task's own guard.
+# - DELIVERED ANYWAY (the seam, probe-guarded, byte-inert at 0 rows — ready for any building/pool
+#   whose multiset IS consistent): miner §SLOT-MINE/§SLOT-SKIP derivation (room-guid grouping,
+#   cross-room multiset equality, per-side median distance, single-room types flagged in provenance);
+#   ad_placement_wall_slots (+empty-seeded); projection → rule_place_slots; walker placeSchedule slot
+#   seam (fixture i takes slot i's base refs then the normal snap/facing/clash pipeline — first
+#   walker change of this lane, §SCHED-SLOT logged); M3 slot-verbatim clause (slot-without-source /
+#   slot-drift classes).
+# - PROOF (logs in session scratchpad): (a) INERTNESS — with 0 slots the full walkback reproduces the
+#   §WALL-LIGHT state byte-for-byte (W5 ELEC 22/51/96 covered 82/89, PLB 2/14/17; zero §SCHED-SLOT
+#   lines; 14/14). (b) FALSIFIER — a synthetic slot row (LOBBY/LIGHT y_ref=MAX) injected into a COPY
+#   of duplex_rules engages the seam (§SCHED-SLOT fixture 1/3 ... CENTER/MAX in both foyers) and the
+#   fixture provably moves to the specified wall. The seam works; the data honestly refuses.
+# - REGRESSION: W-SCHED-MINE 7/7 (M3 incl. slot clause), W-DX-WALKBACK-RSGT 14/14, W-TERM-NOSPACES
+#   7/7, W-SHIM-SELECT 6/6, W-DWWALK-HOSTBIND 6/6, W-HOSTBIND-AGNOSTIC 11/11, W-ELEC-HOSTBIND 5/5,
+#   space_scoped 5/5 — all exit 0, log-read. Syntax ×5 clean.
+# - FOLLOW-UP (named, the real shape of the remaining xy gap): MIRROR-INVARIANT anchors — "the wall
+#   the counter/door/lavatory is on", derivable from ARC adjacency, not from absolute axis refs. New
+#   schema semantics + mining, a full item of its own. Also still open: along-wall position, per-room
+#   qty (surplus-fixture NN outliers, e.g. the 3.52m foyer light).
 
 # ▶▶▶▶▶ ENTRY POINT (2026-07-10, superseded by the block above — kept for evidence trail). This
 # session (Sonnet) is closing out; the user is now iterating directly with a Fable5 session in their own

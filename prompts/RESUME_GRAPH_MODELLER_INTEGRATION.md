@@ -318,6 +318,78 @@ dialogue CONVERGED:
 3. **Backprop exceptions (ORANGE/RED)** over the edges — thresholded, clamped, user-gated hop-by-hop; each accept = one
    signed op. The differentiator. (`SPATIAL_DEPENDENCY_GRAPH.md` Phase 3, W-SDG-BACKPROP.)
 
+## ✅ DONE 2026-07-11 — §8E-3 (routeChains MEP network render), background worker (Sonnet), MANAGER-dispatched
+**bim-ootb PR #731** (`feat/mep-route-render-8e3`) — https://github.com/red1oon/bim-ootb/pull/731 — opened
+un-merged per instruction; the repo's own github-actions auto-merge bot squash-merged it into `main`
+seconds later (`2026-07-11T00:36:47Z`, standing repo automation, not a manual merge by this session).
+
+**CORRECTION to this section's own framing** (found while starting the task, before writing any code —
+re-grepping "`routeChains` referenced nowhere outside `disc_walker.js`" is TRUE but was the wrong test):
+the render-into-modeller wiring was **already shipped and merged**, just never called via `routeChains`
+directly — `disc_walker.js`'s own `dwWalk()` calls `routeChains` internally and returns the segments as
+`chainSegs`; `modeller.html`'s `_renderDiscChains`/`_commitDiscChains` (§ROUTER-NNCHAIN PR #555,
+§CAMPAIGN M4/M5 PR #686) already turn that into cylinder-tube `InstancedMesh`es at the real endpoints
++ fold a signed `GEOM_SWEEP` sample to the op-log, complete with a whitebox endpoint-drift self-check
+(§DW-TUBE), reveal animation, and undo/redo. A witness for this already existed too
+(`modeller/tests/witness_modeller_router_nnchain.js`, W-ROUTER-NNCHAIN, merged). So "render wiring not
+started" (line ~119/126 above) was stale by the time this task was dispatched — the actual remaining gap
+was narrower and different, found only by re-running that existing witness before writing anything new:
+
+1. **`witness_modeller_router_nnchain.js` is currently RED on `main`** (5/8 FAIL, re-run before this PR) —
+   not a render-code fault. The shipped "Open Terminal" resident (`modeller/Terminal_ARC.db`, the file the
+   real "Open" UI flow actually serves) is **ARC-only** (35552 elements, 0 MEP) — a data/extraction-pipeline
+   drift since the witness last passed, not something touched by this PR. `routeChains('PLB', Terminal_ARC.db)`
+   legitimately returns 0 (no `IfcPipeFitting`/`IfcPipeSegment` rows exist in that substrate), so the render
+   never gets non-empty segments to draw when a real user opens the shipped Terminal resident today. **This
+   is now the actual §8E-3 gap** (substrate wiring, not render wiring) — reported here, not fixed (out of
+   this task's scope: reconnecting a real MEP-bearing extraction to the production "Open Terminal" flow is a
+   data-pipeline decision, and no new binary can be committed under the LFS-quota-exhausted rule anyway).
+2. **`window.__dwPixelProbe`'s A/B-isolation only matched `userData.dwDisc`** (fixture-box meshes from
+   `_renderDiscWalk`) — the routed network's own tubes (`userData.dwChain`, `_renderDiscChains`) were
+   silently excluded from both the hide-set and the mesh/inFrustum census, so probing a routed disc
+   under-counted: the tubes stayed visible in BOTH A/B frames (never hidden) and contributed 0 to the diff
+   even while painting real pixels. **Fixed** in `modeller.html` (one predicate, `_dwProbeMatch`, matches
+   `dwDisc` OR `dwChain`) — additive only, verified no regression (`witness_disc_density.js`'s D1/D2, the
+   two checks that call `__dwPixelProbe`, still PASS; its D3/D4 failures are the already-documented
+   ELEC/FP/ACMV density-drift finding from line ~118 above, untouched by this change).
+
+**Deliverable**: `modeller/tests/witness_mep_route_render.js` (new, 12/12 PASS) — since the shipped
+Terminal resident carries no MEP (gap 1 above), this witness drives the proven render+probe functions
+directly via their existing witness seam (`window.DiscWalker.routeChains`, `window.__dwChainRender` =
+`_renderDiscChains`, `window.__dwPixelProbe`) fed by the REAL MEP-bearing fixtures the engine-side witness
+already proved (bim-compiler `scripts/witness_walkback_mep.js`, W-WALKBACK-MEP 8/8) — same non-invent
+pattern as `witness_str_into_arc.js` using the purpose-built `Terminal_arcstr_proof.db` instead of the
+live resident. No binary committed to bim-ootb (LFS quota exhausted); the two fixtures
+(`deploy/buildings/Terminal_extracted.db`, `build/Duplex_mep_extracted.db`) are read from the sibling
+bim-compiler checkout at a fixed absolute path, and the witness honestly SKIPS (exit 1, explicit log,
+no fabricated substitute) if that checkout is absent.
+
+**Real witness numbers** (log inspected, not just exit code):
+- Terminal PLB routeChains segs = **4315** (`IfcPipeFitting→IfcPipeSegment`:4208 + `IfcValve→IfcPipeFitting`:107)
+- Terminal ACMV routeChains segs = **1002** (`IfcDuctSegment→IfcDuctFitting`:713 + `IfcDuctFitting→IfcAirTerminal`:289)
+- Terminal PLB+ACMV = **5317** — exact match to W-WALKBACK-MEP's own `totalSegs`
+- Duplex PLB routeChains segs = **358** (`IfcFlowFitting→IfcFlowSegment`:358) — exact match to W-WALKBACK-MEP's Duplex `totalSegs`
+- Rendered tube count == segment count on all three (4315/1002/358 — no silent drop)
+- Whitebox endpoint drift: PLB/ACMV 6.1e-5m (n=300 sampled), Duplex 1.9e-6m — float32 `Matrix4`
+  precision noise scaling with absolute coordinate magnitude (Terminal ~700m vs Duplex ~6m), not a
+  logic bug; bound relaxed from an unrealistic 1e-6m to 1mm to reflect this
+- §READPIXELS (A/B-isolated, `__dwPixelProbe` post-fix): Terminal PLB 232px, Terminal ACMV 310px,
+  Duplex PLB 6px — all real, non-background, isolated-to-the-chain-layer pixels (Duplex's small count is
+  consistent with plumbing runs mostly occluded by the ARC shell from an exterior camera, same effect
+  the STR witness already documented for interior columns)
+
+**Rendering-approach decision**: reused the SHIPPED cylinder-tube `InstancedMesh` approach unchanged (one
+`InstancedMesh` per discipline, unit cylinder scaled+oriented per segment via `Matrix4.compose`) — it
+already handles Terminal's 5317-segment scale the same way `swbCanopyOps` handles STR's 33K-plate scale
+(one instanced draw call, not per-segment mesh objects), so no new instancing scheme was needed; this
+task's own "design decision that's genuinely yours" turned out to already be made and proven correct by
+the prior PR. Tube radius per discipline (`DW_TUBE_R`: PLB 0.04m, ACMV 0.12m) is a pre-existing
+"representative LOD radii" constant (existing code, not touched here) — distinct from the signed
+`GEOM_SWEEP` commit path (`_commitDiscChains`/`rwCrossSectionFor`), which already hard-refuses (no
+invented cross-section) per WalkerDoctrine §8 when a discipline has no verified `component_library.db`
+entry (today: FP only) — so a PLB/ACMV commit attempt would honestly refuse-all, a known, correct,
+pre-existing behavior not exercised by this witness (out of scope: it proves the RENDER layer).
+
 ## RETIRE / IGNORE (this session's redundant viewer-track detour)
 `deploy/dev/sdg_fold.js`, `sdg_fold_ui.js`, `scripts/bake_sdg_edges.py`, `scripts/smoke_sdg_fold_live.js`,
 `scripts/witness_sdg_fold_ui.js`, `scripts/witness_sdg_forward.js`, the `deploy/dev/index.html` SDG edits + baked

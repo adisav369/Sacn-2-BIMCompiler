@@ -250,6 +250,65 @@ function loadDb(SQL, f) { return new SQL.Database(new Uint8Array(fs.readFileSync
       ' | mean offset dx=' + (sdx / gen.length).toFixed(2) + 'm dy=' + (sdy / gen.length).toFixed(2) +
       'm dz=' + (sdz / gen.length).toFixed(2) + 'm — the deviation dial, direction included');
   });
+  // §W5-RATCHET diagnostic (item 4, 2026-07-11 — LOG ONLY, the dial stays "reported, not hard"):
+  // the pooled NN buckets can move on ACCIDENTAL cross-family pairings (a gen toilet matching a real
+  // lavatory), hiding whether per-device z actually improved. Decompose: (a) per-family median
+  // z-above-floor, generated vs real — the direct read of the mined per-room offsets; (b) the @0.5m
+  // bucket split into same-family vs cross-family pairs. Families via the SAME committed
+  // ad_element_mep_alias patterns the miner used (witness-side oracle read, walker never sees it).
+  var pat = loadDb(SQL, path.join(ROOT, 'library/disc_patterns.db'));
+  var famPats = rows(pat, "SELECT canonical_type c, match_value v FROM ad_element_mep_alias " +
+    "WHERE match_field='element_name' AND is_active=1 ORDER BY priority");
+  var canonSet = {};
+  rows(pat, 'SELECT Value v FROM ad_element_mep').forEach(function (r) { canonSet[r.v] = 1; });
+  function famOf(name) {
+    for (var i = 0; i < famPats.length; i++)
+      if ((name || '').toUpperCase().indexOf(famPats[i].v.replace(/%/g, '').toUpperCase()) >= 0) return famPats[i].c;
+    return null;
+  }
+  var rulesDb = loadDb(SQL, path.join(ROOT, 'build/duplex_rules.db'));
+  var devFam = {};
+  rows(rulesDb, 'SELECT DISTINCT device_id d, element_name e FROM rule_space_schedule').forEach(function (r) {
+    devFam[r.d] = famOf(r.e) || (canonSet[r.d] ? r.d : null);
+  });
+  var realName = {};
+  rows(dx, "SELECT guid g, element_name e FROM elements_meta WHERE ifc_class='IfcFlowTerminal'")
+    .forEach(function (r) { realName[r.g] = r.e; });
+  function zRelFloor(p) {
+    for (var i = 0; i < spaces.length; i++) {
+      var s = spaces[i];
+      if (p.x >= s.x0 - 0.3 && p.x <= s.x1 + 0.3 && p.y >= s.y0 - 0.3 && p.y <= s.y1 + 0.3 &&
+          p.z >= s.z0 - 0.5 && p.z <= s.z1 + 0.5) return p.z - s.z0;
+    }
+    return null;
+  }
+  function median(a) { a = a.slice().sort(function (x, y) { return x - y; }); return a.length ? a[(a.length - 1) >> 1] : null; }
+  ['ELEC', 'PLB'].forEach(function (d) {
+    var gen = walks[d].placements || [], real = realBy[d] || [];
+    if (!gen.length || !real.length) return;
+    var same05 = 0, cross05 = 0, fams = {};
+    gen.forEach(function (p) {
+      var gf = devFam[p.device];
+      var m = nn(p, real);
+      if (m.d <= 0.5) { (gf && famOf(realName[real[m.i].g]) === gf) ? same05++ : cross05++; }
+      if (!gf) return;
+      var zr = zRelFloor(p);
+      if (zr === null) return;
+      (fams[gf] = fams[gf] || { g: [], r: [] }).g.push(zr);
+    });
+    real.forEach(function (q) {
+      var rf = famOf(realName[q.g]), zr = zRelFloor(q);
+      if (rf && zr !== null && fams[rf]) fams[rf].r.push(zr);
+    });
+    var parts = Object.keys(fams).sort().filter(function (f) { return fams[f].g.length && fams[f].r.length; })
+      .map(function (f) {
+        return f + ' gen=' + median(fams[f].g).toFixed(2) + 'm real=' + median(fams[f].r).toFixed(2) +
+          'm (n=' + fams[f].g.length + '/' + fams[f].r.length + ')';
+      });
+    log('§RS W5-ZFAM [' + d + '] median z-above-floor per family: ' + parts.join(' | ') +
+      ' | @0.5m pairs: same-family=' + same05 + ' cross-family=' + cross05);
+  });
+
   // falsifier: +3m shift must collapse the @2m rate — the dial measures real geometry, not noise
   var shifted = (walks.ELEC.placements || []).map(function (p) { return { x: p.x + 3, y: p.y + 3, z: p.z }; });
   var s20 = 0;

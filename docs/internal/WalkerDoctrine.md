@@ -432,3 +432,18 @@ real 23 columns/174 beams/9 members, Duplex's real MEP network via the already-p
 geometric-touch oracle), build the mesh/geometry-level comparison there FIRST — that is where "true RSS"
 (mesh-to-mesh, not just count/position) is actually achievable, and where it should be proven before ever
 being assumed to generalize to a building (like Terminal) that has no such reference at all.
+
+## §14 — Rooms are auto-infused into every ARC, always (2026-07-10)
+
+**Rule:** every building we extract (embedded/"ready-made") or a user imports must get real room data
+(`spatial_structure`/`IfcSpace`) baked in automatically, as a normal step of extraction — not a manual
+follow-up script, not optional.
+
+- If the source IFC has real `IfcSpace` entities: extract them for real (`extractIFC2DB.js` already reads
+  `IfcSpace` into `elements_meta` — the gap is downstream steps like the ARC-only strip dropping them before
+  shipping). Fix: carry `spatial_structure` through every strip/consolidate step, same as any other ARC table.
+- If the source IFC has none: fall back to `compile_rooms.py` (wall-enclosure flood-fill, already built,
+  currently a manual script) and label those rooms `≈`/approximate — never presented as real, never fed to
+  `disc_walker.js`'s schedule-mode `spacesOf()` (which already correctly excludes `≈` rows).
+- Applies to every building, no exceptions: 7 of today's 8 embedded `_ARC.db` have zero rooms (only Terminal
+  has real ones baked in) — this rule closes that gap going forward, for extraction and import alike.

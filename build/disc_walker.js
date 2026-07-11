@@ -403,8 +403,27 @@
         var base = _schedBasePos(sp, e);
         var hz = (e.dim_z_m || 0.1) / 2;
         var wallAnchored = (e.x_ref === 'MIN' || e.x_ref === 'MAX' || e.y_ref === 'MIN' || e.y_ref === 'MAX');
+        // §WALL-SLOT (mined per-fixture which-wall refs — rule_place_slots, probe-guarded): the real
+        // building mounts same-class fixtures on DIFFERENT walls of one room (both bathroom sconces
+        // on OPPOSITE walls); fixture i takes slot i's base refs, extras fall back to distribute.
+        var slots = null;
+        if (wallAnchored && _rows(_dbFor(disc), "SELECT 1 FROM sqlite_master WHERE type='table' AND name='rule_place_slots'").length) {
+          slots = _rows(_dbFor(disc), "SELECT slot_idx, x_ref, edge_x_m, y_ref, edge_y_m FROM rule_place_slots WHERE disc='" +
+            _esc(disc) + "' AND space_type_id='" + _esc(stype) + "' AND device_id='" + _esc(e.device_id) + "' ORDER BY slot_idx");
+          if (!slots.length) slots = null;
+        }
         for (var i = 0; i < qty; i++) {
-          var pos = (qty === 1) ? base.slice() : _schedDistribute(sp, base, i, qty, e);
+          var pos;
+          if (slots && i < slots.length) {
+            var sl = slots[i];
+            pos = _schedBasePos(sp, { x_ref: sl.x_ref, edge_x_m: sl.edge_x_m, y_ref: sl.y_ref,
+              edge_y_m: sl.edge_y_m, z_rule: e.z_rule, z_offset_m: e.z_offset_m });
+            console.log(TAG + ' §SCHED-SLOT ' + disc + '/' + e.device_id + ' in ' + sp.label +
+              ' — fixture ' + (i + 1) + '/' + qty + ' takes mined wall slot ' + sl.slot_idx +
+              ' (' + sl.x_ref + '/' + sl.y_ref + ')');
+          } else {
+            pos = (qty === 1) ? base.slice() : _schedDistribute(sp, base, i, qty, e);
+          }
           var yaw = _schedFacing(e);
           if (wallAnchored) {                          // W3 finding: mount on a REAL wall face,
             if (spWalls === null) spWalls = _spaceWalls(bdb, sp, opts.geoDb);   // not the space bbox edge

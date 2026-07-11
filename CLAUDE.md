@@ -6,7 +6,7 @@
 **NEVER TOUCH PRODUCTION.** `deploy/live/` is the production snapshot — do not edit directly. All dev work goes to `deploy/dev/` ONLY. Read `deploy/OCI_UPLOAD.md` §RULES before any OCI upload.
 
 ## WORK-TO-ZERO (the backlog contract — enforced every session)
-**No standing backlog file right now — `prompts/FRONTEND_LANE_MASTER.md §NEW BACKLOG` DRAINED 2026-07-08 (every
+**No standing backlog file right now — `prompts/archive/FRONTEND_LANE_MASTER.md §NEW BACKLOG` (archived 2026-07-11, prompts-audit) DRAINED 2026-07-08 (every
 top-level item `✅`; same retirement treatment as the earlier `§OUTSTANDING` band, RETIRED 2026-06-20 → archived
 to `prompts/archive/FRONTEND_LANE_MASTER_OUTSTANDING_drained_2026-06-20.md`). Do NOT re-walk either band, and
 do NOT re-derive "is it still stale" by re-reading that 523-line file — it's settled. Two small real items were
@@ -26,6 +26,12 @@ top-to-bottom to zero in whatever file it lives:
   and you weren't interrupted, you stopped too early — that is the failure this rule exists to kill.
 - Shared working tree: editing `~/bim-ootb/` is now **BLOCKED by a PreToolUse hook** (verified 2026-06-06) —
   work in a `/tmp/wt-*` worktree, never the shared checkout. See `~/.claude/hooks/block-shared-tree.sh`.
+  **⚠ `bim-compiler` has NO equivalent hook** — this checkout (`/home/red1/bim-compiler`) is fully editable
+  by any concurrent session. Confirmed live 2026-07-11: two parallel sessions both directly edited
+  `build/room_walker.js`/`scripts/compile_rooms.py` in this shared tree at the same time — non-destructive
+  only by luck (verified after the fact, nothing lost). Prefer a `/tmp/wt-*` worktree here too when a task
+  might overlap with concurrent work on the same files; if editing the shared tree directly, expect this
+  risk and verify post-hoc (diff/syntax-check) rather than assume no collision occurred.
 - **Concurrent branches (N-terminal workflow):** with multiple terminals, `main` advances under you.
   - A PR showing **`BEHIND`/`DIRTY` is *sync*, NOT a redo** — `git fetch origin && git merge origin/main`,
     re-run witnesses, push. Your commits are preserved (you layer main's in).
@@ -128,6 +134,64 @@ Before ending, update PROGRESS.md with:
 - **Anti-Drift Policy:** Read `docs/TestArchitecture.md` §Anti-Drift before adding BOMs, products, or geometry paths
 - **Pre-Flight Citation:** Before code changes, cite the spec: `// Implementing BBC.md §X.Y — Witness: W-NAME`
 - **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
+
+## DB CHANGES = MIGRATION SCRIPT + SELF-HEAL LOADER, ALWAYS (hardened 2026-07-11 — read this FIRST)
+**This is the PERMANENT architecture, not a workaround for LFS bandwidth.** Every DB content change —
+schema/rules DB or a shipped extracted/library DB — ships as a small SQL script (`migration/*.sql`, or
+`<app>/patches/<dbfile>.sql` for the self-heal convention below) plus, where the target is a live-served
+app, a runtime loader that applies it client-side on load. **We would do this even with unlimited LFS
+bandwidth** — it's smaller, reviewable as text, and reaches a live user without a binary ever moving.
+**NEVER cite "LFS block"/"LFS quota" as the reason a DB fix isn't live.** That framing is WRONG — it
+implies binary-push is the normal path and LFS is what's stopping it. It is not: binary `.db` commits are
+banned outright, unconditionally, regardless of LFS quota status (see `.gitignore` — most DB paths are
+already excluded on purpose, keep it that way). The only real reasons a DB fix isn't live are: (a) the
+patch script hasn't been written yet, or (b) the consuming app's self-heal loader hasn't been wired yet
+(Modeller has one — `str_walker_outliner.js` `_applyPendingPatch()`; Viewer got its own port 2026-07-11 —
+`viewer/scene.js` `A._applyPendingPatch()` + `buildings/patches/*.sql`, mirror this pattern for any new
+target). Report status in those terms, not "blocked by LFS."
+- **Schema/rules/pattern DBs** (small, structurally regenerable — `duplex_rules.db`, `terminal_rules.db`,
+  `ERP.db` seed data): `migration/*.sql` (Sacred Files below — `DV_<prefix>_rules.sql` is this pattern for
+  mined rules) or the mining scripts that generate them (`run_RosettaStones.sh`/`onboard_ifc.sh`/
+  `project_rule_mesh_binding.py`) — regenerate on demand, don't version the binary.
+- **Extracted/derived building DBs** (`deploy/buildings/*_extracted.db`/`*_library.db`, mesh/geo DBs — NOT
+  reproducible from a short SQL script, only from re-running extraction on the source IFC): distribute the
+  FULL rebuilt binary via **OCI** (`deploy/OCI_UPLOAD.md` §RULES), never git/LFS; ship an incremental FIX
+  to an already-distributed one via the patch+self-heal-loader pattern above.
+- **Deliverable = patch AND loader together, not the patch alone.** A committed-but-unapplied migration
+  script is not "done" — the loader wiring is part of the same task, not a follow-up.
+- **A `git push` may still hang regardless of DB policy** — this is a separate, purely mechanical git-ops
+  fact, unrelated to the DB rule above: the `git-lfs` pre-push hook probes the LFS endpoint on every push
+  to `bim-ootb`/`bim-compiler` regardless of whether the diff touches LFS content, and that probe can hang
+  against a capped quota (confirmed empirically 2026-07-11, `bim-ootb` `fix/dw-datum-port` @ `4ff22c0`,
+  2+ min hang on a zero-LFS-diff push). If a push doesn't return within ~30s, stop and report — don't retry
+  in a loop. This can affect a normal code push same as anyone else's; it is NOT a reason to fall back to
+  committing a DB binary — the DB rule above holds regardless of whether pushes are currently fast or slow.
+- **Worktree/checkout caution, same mechanical cause:** don't `git worktree add`/`checkout` a branch whose
+  LFS blobs aren't already in the local cache (`.git/lfs/objects`) without expecting a possible hang; branches
+  already checked out in an existing worktree are safe (blobs already local). Applies to spawned Agent-tool
+  workers too — tell them the same caution, not "don't touch DB binaries" (that's unconditional anyway).
+
+## Worktree Hygiene — the OTHER LFS bandwidth drain (2026-07-10, same root cause, different mechanism)
+**Committing new DBs (above) was only half the bandwidth story.** The other half: bim-ootb's
+`modeller/mesh.db` (120MB) + `modeller/*_geo.db` are LFS-tracked, and DOZENS of parallel worktrees
+(peaked at 49 in bim-ootb, 20 in bim-compiler) each pull a fresh 100–250MB blob from GitHub the moment a
+branch whose mesh/geo data isn't already in the local LFS cache gets checked out. **Real end users never
+cost LFS bandwidth at all** — they hit the deployed static site (GH Pages / OCI), never `git clone` — so
+100% of the quota is dev/agent-side worktree churn. A second, fully separate clone (`~/Projects/bim-ootb`,
+its own independent LFS cache) doubled bandwidth on any overlapping blob and has been removed (2026-07-10,
+confirmed clean + 100+ commits stale first). Rules going forward:
+- **Before `git worktree add`, always run `git worktree list` first.** If a worktree already exists for
+  the branch/commit you need, reuse it (`cd` in, `git fetch`/`pull` if needed) — do NOT create a second one
+  at a different path. This applies to Agent-tool prompts too: any prompt that spawns a verification/build
+  agent must instruct it to check for and reuse an existing worktree before creating a fresh one.
+- **One local clone per repo, no exceptions** — never `git clone` a second copy of `bim-ootb` or
+  `bim-compiler` alongside the primary checkout.
+- **Prune on sight, not on a schedule.** When a worktree's branch is fully pushed (`git rev-list --count
+  origin/<branch>..<branch>` = 0) AND clean (`git status --short` empty), remove it
+  (`git worktree remove <path>`) — don't let dozens accumulate "just in case." A worktree with unpushed
+  commits or uncommitted changes is NOT safe to prune — leave those alone, they're someone's in-progress work.
+- **`.claude/worktrees/agent-*` are harness-managed** — never manually `git worktree remove` these; they're
+  the Claude Code tool's own isolation mechanism, not dev-created clutter.
 
 ## Sacred Files (edit with extreme care)
 - `deploy/live/*` — PRODUCTION snapshot, never edit (see PRIME RULE)

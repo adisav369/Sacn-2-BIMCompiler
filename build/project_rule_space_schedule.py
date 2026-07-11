@@ -161,6 +161,17 @@ def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONE
     offsets = {r[0]: r[1:] for r in erp.execute(
         "SELECT placement_rule, from_edge_x, from_edge_y, z_offset, z_rule, x_ref, y_ref, "
         "standard FROM ad_placement_offset")}
+    # §W5-RATCHET (item 4): per-room overrides mined from the real Duplex MEP transforms
+    # (ad_placement_offset_space, seeded by scripts/seed_placement_offset_space.py). Z always;
+    # rows carrying a placement_rule are MEASURED wall-mounted lights — the rule swaps to that
+    # generic wall-anchored rule and xy comes verbatim from ITS ad_placement_offset entry (the
+    # walker's wall-snap owns the final xy). Probe first: an older disc_patterns.db without the
+    # table must project unchanged.
+    space_z = {}
+    if erp.execute("SELECT 1 FROM sqlite_master WHERE name='ad_placement_offset_space'").fetchone():
+        space_z = {(r[0], r[1]): (r[2], r[3], r[4], r[5]) for r in erp.execute(
+            "SELECT space_type_id, device_id, z_rule, z_offset, n_measured, placement_rule "
+            "FROM ad_placement_offset_space")}
     dims = {r[0]: (r[1], r[2], r[3]) for r in erp.execute(
         "SELECT product_id, width, depth, height FROM M_Product "
         "WHERE width>0 AND depth>0 AND height>0")}
@@ -195,9 +206,13 @@ def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONE
         DROP TABLE IF EXISTS rule_code_spacing;
         CREATE TABLE rule_code_spacing(element_type TEXT, space_type TEXT,
             max_spacing_m REAL, building_class TEXT, provenance TEXT);
+        DROP TABLE IF EXISTS rule_place_slots;
+        CREATE TABLE rule_place_slots(disc TEXT, space_type_id TEXT, device_id TEXT,
+            slot_idx INTEGER, x_ref TEXT, edge_x_m REAL, y_ref TEXT, edge_y_m REAL,
+            building_class TEXT, provenance TEXT);
     """)
 
-    hash_cache, refuse = {}, set()
+    hash_cache, refuse, row_disc = {}, set(), {}
     n = 0
     for (st, dev, rule, host, anchor, qn, qmin, qmax, per_area) in schedule:
         if dev not in hash_cache:
@@ -216,15 +231,40 @@ def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONE
         conn_to = connects.get(dev)
         disc = (CONNECTS_TO_DISC.get(conn_to)
                 or ANCHOR_END_DISC.get(anchor or "") or "ELEC")
+        z_off, z_rule = off[2], off[3]
+        prov = "projected:disc_patterns.ad_space_type_mep_bom+ad_placement_offset"
+        sz = space_z.get((st, dev))
+        if sz:
+            z_rule, z_off = sz[0], sz[1]
+            prov += "+space-z:DX n=%d" % sz[2]
+            if sz[3]:  # measured wall-mounted: swap to the generic wall-anchored rule (xy verbatim)
+                rule, host = sz[3], "WALL"
+                off = offsets.get(rule) or off
+                prov += "+space-rule:%s" % rule
         cur.execute(
             "INSERT INTO rule_space_schedule VALUES "
             "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (disc, st, dev, rule, host, anchor, qn, qmin, qmax, per_area,
-             off[0], off[1], off[2], off[3], off[4], off[5], off[6],
+             off[0], off[1], z_off, z_rule, off[4], off[5], off[6],
              d[0], d[1], d[2], dim_src, ghash, mesh_src,
-             name_ref.get(dev, dev), building_class,
-             "projected:disc_patterns.ad_space_type_mep_bom+ad_placement_offset"))
+             name_ref.get(dev, dev), building_class, prov))
+        row_disc[(st, dev)] = disc
         n += 1
+
+    # §WALL-SLOT: mined per-fixture which-wall refs (ad_placement_wall_slots, probe-guarded — a
+    # disc_patterns without the table, or one whose miner REFUSED every pool, projects 0 slots and
+    # the walker's slot seam stays byte-inert).
+    n_slots = 0
+    if erp.execute("SELECT 1 FROM sqlite_master WHERE name='ad_placement_wall_slots'").fetchone():
+        for st, dev, idx, xr, ex, yr, ey, nm, src_, prov_ in erp.execute(
+                "SELECT space_type_id, device_id, slot_idx, x_ref, edge_x, y_ref, edge_y, "
+                "n_measured, source, provenance FROM ad_placement_wall_slots"):
+            if (st, dev) not in row_disc:
+                continue
+            cur.execute("INSERT INTO rule_place_slots VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        (row_disc[(st, dev)], st, dev, idx, xr, ex, yr, ey, building_class,
+                         "projected:disc_patterns.ad_placement_wall_slots n=%d" % nm))
+            n_slots += 1
 
     n_types = 0
     for value, mm, category in erp.execute(
@@ -257,8 +297,8 @@ def project(rules_db, building_class, patterns_db=DISC_PATTERNS, comp_db=COMPONE
     erp.close()
     lib.close()
     log(f"§SCHED-PROJ {os.path.basename(rules_db)} ← ad_space_type_mep_bom: "
-        f"{n} schedule rows, {n_types} space types, {n_alias} aliases, {n_sp} spacing rules "
-        f"(building_class={building_class})")
+        f"{n} schedule rows, {n_types} space types, {n_alias} aliases, {n_sp} spacing rules, "
+        f"{n_slots} wall slots (building_class={building_class})")
     if refuse:
         log(f"§SCHED-PROJ LOD400-REFUSE list (no real mesh, hash=NULL — walker MUST refuse, "
             f"never fallback): {sorted(refuse)}")

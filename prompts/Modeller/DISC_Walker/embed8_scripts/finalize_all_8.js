@@ -131,20 +131,68 @@ function consolidateBuilding(db, label) {
 const SCRATCH = '/tmp/claude-1000/-home-red1-bim-compiler/05a18b83-c49c-404d-872a-460f5c924747/scratchpad/embed8';
 const HOME = '/home/red1/bim-ootb/modeller';
 
-(async () => {
+// §TASK4-SPATIAL-CARRY (ROOM_INJECTION_HYBRID.md Task 4): finalize_all_8.js's per-building meta-split
+// copies whatever tables the fresh source has -- generic, not an allowlist, so it never explicitly DROPS
+// spatial_structure, but it silently SHIPS EMPTY whenever the fresh (ephemeral /tmp-built) source lacks
+// the table. Confirmed root cause of 6068fab's 7/8-building room-data loss. These helpers make the
+// survivor-check explicit and loud instead of implicit and silent.
+function hasTable(db, name) {
+  const r = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name=?", [name]);
+  return r.length > 0 && r[0].values.length > 0;
+}
+function countRows(db, table) {
+  if (!hasTable(db, table)) return 0;
+  return db.exec('SELECT COUNT(*) FROM ' + table)[0].values[0][0];
+}
+
+// If freshDb's spatial_structure is empty (missing or 0 rows), carry it forward verbatim from
+// priorArcPath's shipped copy (schema-driven: reads the source's own CREATE TABLE + column list, never
+// a hand-typed allowlist that could drift). Fresh data always wins when present. Returns a §-loggable
+// result describing what happened -- callers log it, this function never logs directly (unit-testable).
+function carrySpatialStructureForward(freshDb, metaDb, priorArcPath, SQL, fs) {
+  const freshRows = countRows(freshDb, 'spatial_structure');
+  if (freshRows > 0) return { source: 'fresh', freshRows, finalRows: freshRows };
+  if (!priorArcPath || !fs.existsSync(priorArcPath)) {
+    return { source: 'none', freshRows: 0, finalRows: 0 };
+  }
+  let priorDb;
+  try {
+    priorDb = new SQL.Database(new Uint8Array(fs.readFileSync(priorArcPath)));
+  } catch (e) {
+    return { source: 'none', freshRows: 0, finalRows: 0, error: String(e) };
+  }
+  const priorRows = countRows(priorDb, 'spatial_structure');
+  if (priorRows === 0) { priorDb.close(); return { source: 'none', freshRows: 0, finalRows: 0 }; }
+  if (!hasTable(metaDb, 'spatial_structure')) {
+    const ddl = priorDb.exec(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='spatial_structure'")[0].values[0][0];
+    metaDb.run(ddl);
+  }
+  const rowsR = priorDb.exec('SELECT * FROM spatial_structure');
+  const cols = rowsR[0].columns, ph = cols.map(() => '?').join(',');
+  const stmt = metaDb.prepare('INSERT INTO spatial_structure VALUES (' + ph + ')');
+  rowsR[0].values.forEach(v => stmt.run(v));
+  stmt.free();
+  priorDb.close();
+  return { source: 'carried-forward:' + priorArcPath, freshRows: 0, finalRows: priorRows };
+}
+
+module.exports = { hasTable, countRows, carrySpatialStructureForward, consolidateBuilding };
+
+if (require.main === module) (async () => {
   const SQL = await initSqlJs();
   const buildings = [
-    { name: 'SampleHouse', src: SCRATCH + '/SampleHouse_all.db' },
-    { name: 'Duplex',      src: SCRATCH + '/Duplex_all.db' },
-    { name: 'HHS',         src: SCRATCH + '/HHS_all.db' },
-    { name: 'Clinic',      src: SCRATCH + '/Clinic_all.db' },
-    { name: 'Garage',      src: SCRATCH + '/Garage_all.db' },
-    { name: 'Hospital',    src: SCRATCH + '/Hospital_all.db' },
-    { name: 'SampleCastle',src: HOME + '/SampleCastle_ARC_extracted.db' },
+    { name: 'SampleHouse', src: SCRATCH + '/SampleHouse_all.db', priorArc: HOME + '/SampleHouse_ARC.db' },
+    { name: 'Duplex',      src: SCRATCH + '/Duplex_all.db',      priorArc: HOME + '/Duplex_ARC.db' },
+    { name: 'HHS',         src: SCRATCH + '/HHS_all.db',         priorArc: HOME + '/HHS_ARC.db' },
+    { name: 'Clinic',      src: SCRATCH + '/Clinic_all.db',      priorArc: HOME + '/Clinic_ARC.db' },
+    { name: 'Garage',      src: SCRATCH + '/Garage_all.db',      priorArc: HOME + '/Garage_ARC.db' },
+    { name: 'Hospital',    src: SCRATCH + '/Hospital_all.db',    priorArc: HOME + '/Hospital_ARC.db' },
+    { name: 'SampleCastle',src: HOME + '/SampleCastle_ARC_extracted.db', priorArc: HOME + '/SampleCastle_ARC.db' },
   ];
 
   const results = [];
-  const metaDbs = {}, geoRowsByBuilding = {};
+  const metaDbs = {}, geoRowsByBuilding = {}, carryResults = {};
 
   for (const b of buildings) {
     const buf = fs.readFileSync(b.src);
@@ -166,6 +214,12 @@ const HOME = '/home/red1/bim-ootb/modeller';
     });
     metaDbs[b.name] = metaDb;
 
+    // §SPATIAL-STRUCTURE-CARRY (Task 4) — explicit, loud survivor-check instead of the prior implicit one.
+    const carry = carrySpatialStructureForward(db, metaDb, b.priorArc, SQL, fs);
+    carryResults[b.name] = carry;
+    console.log('§SPATIAL-STRUCTURE-CARRY building=' + b.name + ' fresh_rows=' + carry.freshRows +
+      ' final_rows=' + carry.finalRows + ' source=' + carry.source);
+
     const geoR = db.exec('SELECT * FROM component_geometries');
     geoRowsByBuilding[b.name] = geoR.length ? geoR[0] : { columns: ['geometry_hash','vertices','faces','building'], values: [] };
     db.close();
@@ -174,10 +228,32 @@ const HOME = '/home/red1/bim-ootb/modeller';
   // Terminal is already finalized (rotation + orphan applied) — load its FINAL files directly.
   const termMeta = new SQL.Database(new Uint8Array(fs.readFileSync(SCRATCH + '/Terminal_meta_FINAL.db')));
   const termGeoDb = new SQL.Database(new Uint8Array(fs.readFileSync(SCRATCH + '/Terminal_geo_FINAL.db')));
+  const termCarry = carrySpatialStructureForward(termMeta, termMeta, HOME + '/Terminal_ARC.db', SQL, fs);
+  carryResults['Terminal'] = termCarry;
+  console.log('§SPATIAL-STRUCTURE-CARRY building=Terminal fresh_rows=' + termCarry.freshRows +
+    ' final_rows=' + termCarry.finalRows + ' source=' + termCarry.source);
   metaDbs['Terminal'] = termMeta;
   const termGeoR = termGeoDb.exec('SELECT * FROM component_geometries')[0];
   geoRowsByBuilding['Terminal'] = termGeoR;
   results.push({ label: 'Terminal', after: termGeoR.values.length, note: '(already finalized: rotation+orphan applied earlier)' });
+
+  // §SPATIAL-STRUCTURE-REGRESSION gate — a building landing at 0 rows is only a "real" regression if
+  // carry() itself reported a nonzero source for it but the metaDb that actually gets WRITTEN disagrees
+  // (drift between what carry() computed and what's in the db at write-time — a genuine sanity re-check,
+  // not just re-deriving the same number). A building with no room data anywhere yet correctly logs 0
+  // and proceeds — that's a data-availability gap (Task 2's scope), not a pipeline regression.
+  let anyRegression = false;
+  for (const [name, mdb] of Object.entries(metaDbs)) {
+    const n = countRows(mdb, 'spatial_structure');
+    console.log('§SPATIAL-STRUCTURE-FINAL building=' + name + ' rows=' + n);
+    const expected = carryResults[name] ? carryResults[name].finalRows : 0;
+    if (expected > 0 && n === 0) {
+      console.error('§SPATIAL-STRUCTURE-REGRESSION building=' + name +
+        ' expected_rows=' + expected + ' actual_rows=0 — carry-forward reported data but write-time db has none');
+      anyRegression = true;
+    }
+  }
+  if (anyRegression) { console.error('FATAL: spatial_structure regression detected — aborting before write'); process.exit(1); }
 
   // ── Build the ONE shared mesh.db, deduping identical hashes ACROSS buildings too ──
   const sharedMesh = new SQL.Database();
