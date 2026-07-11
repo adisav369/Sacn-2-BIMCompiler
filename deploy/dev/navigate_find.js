@@ -19,8 +19,13 @@
     // ── S275: CSS — slim accordion layout ──
     var style = document.createElement('style');
     style.textContent = [
-      '#find-panel { top: 50%; right: 70px; transform: translateY(-50%);',
-      '  width: 280px; max-width: 35vw; padding: 0; max-height: 70vh; overflow: hidden; }',
+      // §find-panel-fix: self-contained position:fixed + display:none — do NOT drop these.
+      // Removed in ae1cd738b in favour of inheriting from .bim-panel (index.html); that made
+      // #find-panel the only panel in the Viewer with no fallback if the shared class ever
+      // fails to apply (every sibling panel — wizard.js #wizard-panel, panels.js
+      // A.createPanel() — either self-declares position or is explicitly hidden on creation).
+      '#find-panel { position: fixed; top: 50%; right: 70px; transform: translateY(-50%);',
+      '  width: 280px; max-width: 35vw; padding: 0; max-height: 70vh; overflow: hidden; display: none; }',
       // Search bar
       '#find-panel .find-search-bar {',
       '  display: flex; align-items: center; gap: 4px; padding: 8px 10px 6px;',
