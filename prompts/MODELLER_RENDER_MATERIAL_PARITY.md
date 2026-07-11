@@ -80,3 +80,58 @@ built and demonstrably discoverable/working, both committed locally with clear c
 this file, and a findings note added here (or a fresh dated section below) reporting exactly what was
 found/fixed/still-open — so the NEXT session (possibly the guide-writing session) knows whether the
 guide is now unblocked.
+
+## FINDINGS — 2026-07-11 (worktree /tmp/wt-render-material-parity, branch fix/modeller-render-material-parity, bim-ootb commit 2fc3964)
+
+**Task 1 — DONE.** Root cause: `arc_editable.js`'s ARC seed only ever stamped a class-based COSMETIC
+hex colour (`PALETTE`, no alpha) onto each `GEOM_INSERT`, and `bonsai_kernel.js`'s `_buildMesh` never
+set `transparent`/`opacity` on the THREE material regardless of class. The real per-element
+`elements_meta.material_rgba` column — the SAME column `viewer/streaming.js`'s `A._getMaterial(rgba,
+ifcClass)` reads (confirmed by citation: `if (parts.length >= 4 && parts[3] < 1.0) { opts.transparent =
+true; opts.opacity = a; }`) — was never queried by the Modeller at all. Duplex has 22 real `IfcWindow`
+rows with `material_rgba` alpha=0.100 (confirmed via `sqlite3 buildings/Duplex_extracted.db`) that
+rendered fully opaque pre-fix.
+
+Fix: `arc_editable.js` now selects `m.material_rgba`, parses alpha via a new `alphaFor()`, and stamps
+`params.opacity`; `bonsai_library.js foldInsert()` threads it through in its return object alongside the
+existing `color`; `bonsai_kernel.js _buildMesh()` sets `transparent:true, opacity:<a>` when `<1.0` —
+mirroring the Viewer's own gate exactly, not inventing a new scheme. Colour stays the existing cosmetic
+PALETTE (unchanged) — only opacity was missing, so only opacity was added; no expansion into full
+colour-parity (that would be a bigger, separate behaviour change — named here as a friction point, not
+fixed, per scope discipline).
+
+Verified in REAL headless Chrome (puppeteer via `modeller/tests/e2e_harness.js`, not just whitebox)
+against the real Duplex resident: 22/24 `IfcWindow` meshes now `transparent=true, opacity=0.1`. The
+remaining 2 (guids `1Eo2$BaHX42AEkDvQQDocD`/`…Doy2`) have NULL/empty `material_rgba` in the source DB
+itself — no alpha data exists for them, so they honestly stay opaque (the Viewer would render them
+identically opaque for the same reason — no invented transparency). Walls/every other class: opacity
+stays `undefined`, unchanged opaque path, zero regression. Before/after screenshots: real visible
+see-through (interior floor tiles visible through window openings) vs solid blue panels pre-fix. New
+regression witness: `modeller/tests/witness_glass_parity_e2e.js` (4/4 pass). Existing suites unaffected:
+`smoke_arc_only.js`, `witness_e2e_outliner_collapseall.js`, `witness_e2e_outliner_group_select.js` all
+pass unchanged post-fix.
+
+**Task 2 — DONE.** The `#ol-collapse` button (`modeller.html`) was NOT functionally broken — clicking it
+always correctly toggled `body.ol-collapsed` (verified directly via puppeteer `.click()` + body.className
+assertion, both pre- and post-fix). The bug was pure discoverability: `background:transparent; border:0`
+gave it zero visual weight at rest, so next to the equally-muted "OUTLINER" label it read as decoration
+fused into the header text, not a clickable control — unlike every OTHER icon button in this app (`#bar
+button`, `#ol-show`) which all carry a visible chip (background+border) at rest, not just on hover. Fixed
+by matching that established convention (`background:#232733; border:1px solid #39404f`, same as
+`#ol-show`) — no JS/behaviour change, the handler was already correct. Before/after close-up screenshots
+included in the commit.
+
+**Still-open / named friction (not fixed, per scope discipline — flagged for a future session):**
+- Full colour-parity (Viewer trusts real per-element RGB from `material_rgba` when present; Modeller
+  still always uses its own cosmetic `PALETTE` regardless of real colour data) was NOT touched — only
+  opacity was ported. If a future guide screenshot needs true-to-life colour (not just transparency),
+  that is a separate, larger change (touches every rendered class's colour, not just glass).
+- `smoke_arc_only.js`'s SampleCastle iteration produced no output/screenshot in this session's run
+  (Duplex iteration passed cleanly) — not investigated further, orthogonal to both named tasks; flagging
+  so it isn't silently lost.
+
+**Guide unblock status:** Task 1 (the user's named blocker — "still not fitting for the guide") is
+resolved with real evidence. Combined with Task 2, both items in this file are DONE — the next session
+(guide-writing) can proceed. PUSH PAUSE in effect: bim-ootb commit `2fc3964` on
+`fix/modeller-render-material-parity` is LOCAL ONLY in `/tmp/wt-render-material-parity`, not pushed, no
+PR opened, per CLAUDE.md §⏸.
