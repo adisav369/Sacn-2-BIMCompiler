@@ -319,7 +319,9 @@ dialogue CONVERGED:
    signed op. The differentiator. (`SPATIAL_DEPENDENCY_GRAPH.md` Phase 3, W-SDG-BACKPROP.)
 
 ## ✅ DONE 2026-07-11 — §8E-3 (routeChains MEP network render), background worker (Sonnet), MANAGER-dispatched
-**bim-ootb PR #731** (`feat/mep-route-render-8e3`, pushed, NOT merged) — https://github.com/red1oon/bim-ootb/pull/731
+**bim-ootb PR #731** (`feat/mep-route-render-8e3`) — https://github.com/red1oon/bim-ootb/pull/731 — opened
+un-merged per instruction; the repo's own github-actions auto-merge bot squash-merged it into `main`
+seconds later (`2026-07-11T00:36:47Z`, standing repo automation, not a manual merge by this session).
 
 **CORRECTION to this section's own framing** (found while starting the task, before writing any code —
 re-grepping "`routeChains` referenced nowhere outside `disc_walker.js`" is TRUE but was the wrong test):
