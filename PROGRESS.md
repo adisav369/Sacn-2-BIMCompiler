@@ -29,8 +29,10 @@
 - `prompts/OPEN_BUTTON_IFC_BCF_MERGE.md` — not started.
 - `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §ROTATION-BOUND 2026-07-09 — Bug B shipped
   (PR #717, unmerged). Bug A (hostBind) + items 1-2 (occupancy() fix, VENT_WINDOW_SHIM 415→498mm) all fixed+witnessed
-  (W-OCC-TRUE-MIDPOINT 17/17, 0 regressions). §TE-ARC-DATUM DONE 2026-07-11: bim-compiler merged (`b202eb44b`,
-  PR #40), bim-ootb ported+verified+pushed (PR #726, open, not merged — heals live Terminal collapse once landed).
+  (W-OCC-TRUE-MIDPOINT 17/17, 0 regressions). §TE-ARC-DATUM DONE+MERGED both repos 2026-07-11 (bim-compiler
+  `b202eb44b` PR #40; bim-ootb PR #726 squash `3d09ad6`, confirmed ancestor of `main` — NOT still-open, correcting
+  a stale note). Remaining: `prompts/DISC_WALKER_BRANCH_CLOSEOUT.md` (Fable-assigned) — 3 small stale PRs
+  (#722/#724/#725) need fresh re-verify before merge, + the undiagnosed guide-screenshot camera bug.
   §LIVEWIRE CLOSED 2026-07-11 (Fable, MANAGER-verified) — W-SCHED-MINE 7/7 + W-DX-WALKBACK-RSGT 14/14, 0 unpushed.
 - **Room Intelligence lane — canonical status: `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md`.**
   User's verdict 2026-07-11: building taxonomy is **good enough, no more perfection work there.**
