@@ -122,7 +122,8 @@ All panels collapse with **−/+**.
 - Click any element → IFC class, GUID, storey, discipline, material
 - Fly-tour — auto-orbits rendered buildings, click to stop
 - Indoor walk-through — follows IfcSpace/door graph through the building
-- X-Ray mode (Alt+Z) — transparent view, see structure through walls
+- X-Ray mode (Alt+Z) — a 3-state cycle: **Off → X-Ray → Bounding Boxes → Off**. X-Ray is the transparent
+  see-through-walls view; Bounding Boxes swaps that for each element's envelope box instead — press again to cycle
 - Measure tool — tap two points, get distance in metres
 - Section cut — horizontal clip plane, slider to cut through floors
 - Storey filter — isolate a single floor
@@ -217,6 +218,118 @@ height) is only added by the plain-search code path, not the NL-query path — s
 actually appears while typing a recognized phrase; the query still runs correctly on **Enter**. The guide
 text above describes the observed (silent) behavior, not an invented visible hint.
 
+### The rest of the Navigate drawer — World History, Page History & Home
+
+The **Navigate** drawer (sailboat icon — see [Find panel](#find-panel-search-voice-query-and-axis-lenses)
+above for how to open it) has three more rows besides Find / Navigate:
+
+- **World History** (shortcut **W**) — a cross-page timeline: every significant action across *every*
+  page — Viewer, ERP, Gravity — in one place. Opens a card with a **Whole / This page** toggle, day-by-day
+  navigation (**‹ day** / **day ›**), and one entry per action (what happened, where, and when).
+  ![The World History card open — "Whole" scope, Jul 12 selected, one "Opened Ifc2x3_Duplex_Federated" entry from the Viewer](img/viewer/pill-world-history.png)
+- **Page History** (shortcut **Z**) — this page's own compact dot-timeline, a small step-back/step-forward
+  bar. It only lights up once you've made edits in this session — a fresh session shows an empty strip
+  (the pair of arrows either side of a single dot), as captured here.
+  ![The Page History bar — a fresh session, no edits yet to step through](img/viewer/pill-page-history.png)
+- **Home** — returns to the front-door hub (the same page the [Quick Start](#quick-start-your-first-building)
+  walkthrough starts from). Installed as a standalone app (PWA), it opens the live hub online, or falls
+  back to the cached hub offline.
+
+### Inspect drawer — Measure, Clash, X-Ray, Section, Time Machine, 4D/5D, Fly Tour
+
+The **Inspect** drawer (compass icon, next to Navigate on the toolbar rail) bundles seven tools behind
+one icon:
+
+![The Inspect drawer open — Measure, Clash Matrix, X-Ray / Bbox (currently "Off"), Section Cut, Time Machine, 4D / 5D, and Fly Tour, each with its shortcut key](img/viewer/pill-inspect-drawer.png)
+
+- **Measure**, **X-Ray / Bbox**, **Section Cut**, and **Fly Tour** are covered above, under
+  [Viewer Features](#viewer-features).
+- **Clash Matrix** (key **C**) opens the clash-detection engine (discipline-pair grid, tolerance, Review /
+  Resolve / Accept status, HTML + CSV export) — full coverage: **[Clash Detection guide](CLASH_DETECTION.md)**.
+- **Time Machine** (key **T**) opens the 4D construction timeline — author a schedule, play it back,
+  try a What-if slip, share a `?tm=play` link. Full authoring/playback walkthrough already lives in
+  **[Kernel-ERP User Guide → Time Machine](ERPUserGuide.md)** (not re-documented here — same building,
+  same feature, reached from either app).
+- **4D / 5D** (key **4**) opens the analytics dashboard (`boq_charts.html`) for the loaded building in a
+  new tab — full coverage: **[4D/5D Analysis guide](4D5DAnalysis.md)**.
+
+### Camera / View drawer
+
+The **Camera / View** drawer (camera icon) bundles three camera-control toggles:
+
+![The Camera / View drawer open — Precision (Fine), Reset Camera, and Auto-Pivot, each with its shortcut key](img/viewer/pill-camview-drawer.png)
+
+- **Precision (Fine)** (Caps Lock) — slows orbit/pan/zoom for fine, deliberate camera moves (e.g. lining
+  up a screenshot or a measurement).
+- **Reset Camera** (key **A**) — snaps the camera back to its default orbit position.
+- **Auto-Pivot** (key **Q**) — toggles automatic pivot-point recentring as you orbit, so the camera keeps
+  turning around whatever's in view instead of a fixed point.
+
+### Display options — Palette, Night, Shadow + Ground, Background, Sound FX
+
+The **Palette** pill (key **P**) opens one panel for every visual-appearance control — five lighting
+sliders, plus four more toggles appended below them:
+
+![The Display options panel — Ambience/Sun/Exposure/Ambient/Hemisphere sliders, then Night, Shadow + Ground (3 texture swatches), Background, and Sound FX rows](img/viewer/pill-display-options.png)
+
+| Control | Shortcut | What it does |
+|---|---|---|
+| Ambience / Sun / Exposure / Ambient / Hemisphere | — | Five sliders — overall scene lighting, sun intensity, camera exposure, ambient fill light, and sky/ground hemisphere light. |
+| **Night** | **N** | Toggles a night lighting preset. |
+| **Shadow + Ground** | **H** | Cycles **Off → Grass → Earth → Paved** — a real ground-texture swatch under the building, with matching shadows. |
+| **Background** | **B** | Reverses the background (dark ↔ light/white). |
+| **Sound FX** | **V** | Toggles synthesized UI/Time-Machine/Fly-Tour sound cues — no audio files, off by default. |
+
+### Settings
+
+The **Settings** pill (key **=**) opens a panel with four sections:
+
+![The Settings panel's "Edit Project JSON" section expanded — Corporate/Branding, Grid Rules, Clash Rules, ERP Globe Bubbles, Sound Effects, and 4D Schedule (this building), plus the collapsed 5D Rate Pack and Cache Info sections below](img/viewer/pill-settings-json-hub.png)
+
+- **Pill Icons** — show/hide/reorder every toolbar action, and see each one's current shortcut key at a
+  glance (this is also how a hidden action like a data-gated drawer row becomes visible once its data
+  exists). A **Reset Pill Icons** button restores the defaults.
+- **Edit Project JSON** — a power-user hub: open and edit any of the project's config files directly
+  in-browser (auto-inferred form fields, not raw text), then **Download** the edited file to commit back
+  to the repo, or **Reset** to discard the override. Six files are registered: **Corporate / Branding**,
+  **Grid Rules**, **Clash Rules**, **ERP Globe Bubbles**, **Sound Effects** (the audio *parameters* file —
+  distinct from the Display-options Sound FX on/off toggle above), and a **read-only** view of the
+  **4D Schedule** captured for the currently-open building (the same data Time Machine authors).
+- **5D Rate Pack** — pick which cost-rate pack is active (the same rate pack the Find panel's
+  `total cost` query and the 4D/5D dashboard both price against).
+- **Cache Info** — see how much this building's data is using in IndexedDB, and clear it.
+
+  ![The full Settings panel, Pill Icons section open — every toolbar action listed with its visibility and shortcut](img/viewer/pill-settings-panel.png)
+
+### Save & Open a building
+
+Two toolbar pills, both native-dialog verbs — distinct from the Hub's building-open flow in
+[Quick Start](#quick-start-your-first-building):
+
+![The Save and Open pill icons on the toolbar rail](img/viewer/pill-save-open.png)
+
+- **Save Building** (**Ctrl+S**) — saves the currently open building, including any session edits
+  (clash resolutions, captured 4D schedule, etc.), to a `.db` file via the browser's native Save As dialog.
+- **Open Building** (**Ctrl+O**) — opens a previously-saved `.db` file via a native Open dialog, replacing
+  the current scene.
+
+### Share
+
+The **Share** pill (key **/**) is a step up from the plain deep-link URL: on mobile, it hands the current
+view to the device's native share sheet with a snapshot photo attached; on desktop (no native share API),
+it shows a preview card — a live snapshot, the building name, the same deep-link URL described above, and
+**Copy Link** / **Cancel** buttons. If a clash is open when you tap Share, the shared text and photo are
+about that specific clash instead of the general view.
+
+![The desktop Share preview card — a live canvas snapshot, the building name, the shareable deep-link URL, and Copy Link / Cancel](img/viewer/pill-share-preview.png)
+
+### Pick Walk — warehouse / logistics buildings
+
+A data-gated pill (only appears when the loaded building carries locator-GUID bins, e.g. a warehouse
+building like GardenWorld) that walks a picking route over the bins: fly to the next bin in order, scan
+a bin's QR/type code, and record a signed pick group per bin. Not covered further here — it needs a
+warehouse-class building loaded to demonstrate, outside this general viewer guide's scope.
+
 <a id="find-lenses-tenancy"></a>
 ### FM / Operate lenses — HR_BIM_Asset  *(ALPHA)*
 
@@ -256,6 +369,7 @@ and dashboard graphs — off by default, pixel-identical until you turn it on.
 | **Roof** | Roof plan view |
 | **Alt+Z** | Toggle X-ray mode |
 | **F11** | Toggle fullscreen |
+| **F1** | Help — the full, live list of every toolbar action and its shortcut key |
 
 > Authoring — editing the structural grid, sketching, extruding — lives in the **[DAGeVu Modeller](ModellerGuide.md)**, not the Viewer.
 
