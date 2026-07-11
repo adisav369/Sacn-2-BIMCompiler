@@ -912,6 +912,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Outliner — find, focus, and manage what&#39;s shown">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#building-parts-stairway-lift-shaft-plant-room" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building Parts — Stairway / Lift Shaft / Plant Room
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#realistic-glass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Realistic glass
+      
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2166,6 +2194,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Outliner — find, focus, and manage what&#39;s shown">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#building-parts-stairway-lift-shaft-plant-room" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building Parts — Stairway / Lift Shaft / Plant Room
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#realistic-glass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Realistic glass
+      
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2620,6 +2676,30 @@ canvas shows, especially on a large building.</p>
 <li>The tree stays responsive on large buildings — rows render only as you scroll near them, so opening a
   building with thousands of elements doesn't stall the panel.</li>
 </ul>
+<h3 id="building-parts-stairway-lift-shaft-plant-room">Building Parts — Stairway / Lift Shaft / Plant Room<a class="headerlink" href="#building-parts-stairway-lift-shaft-plant-room" title="Permanent link">&para;</a></h3>
+<p>Below the BOM tree, a <strong>Building Parts</strong> row appears in the Outliner whenever the open building actually
+contains one of three part types — it's the Modeller-side twin of the Viewer's Find-panel <strong>Parts</strong> axis
+(same building, same categories, same underlying match rules), so a building looks the same way in both
+tools. Each category is independently gated: a building with stairs but no lift shows only <strong>Stairway</strong>;
+a small house typically shows Stairway and, if the ARC data has HVAC-plant elements, Plant Room — no
+empty categories, no clutter.</p>
+<ul>
+<li><strong>Stairway</strong> — every <code>IfcStair</code>/<code>IfcRamp</code> element.</li>
+<li><strong>Lift Shaft</strong> — elements named for a lift/elevator (works across a few languages — e.g. "liftdeur").</li>
+<li><strong>Plant Room</strong> — HVAC-plant elements (ducts, fans, air-handling units, dampers, chillers, pumps).</li>
+</ul>
+<p>Click <strong>Building Parts</strong> to select and zoom to every real element across all three categories at once,
+which also expands the tree to show them; click <strong>Stairway</strong> (or Lift Shaft / Plant Room) the same way to
+zoom to just that category; click one specific item inside a category to fly the camera to that exact
+element, same as any other Outliner row.</p>
+<p><img alt="The Outliner's Building Parts category expanded on Duplex — Stairway holding its 2 real IfcStair elements plus their 2 IfcStairFlight children" src="../img/modeller/outliner-building-parts.png" /></p>
+<hr />
+<h2 id="realistic-glass">Realistic glass<a class="headerlink" href="#realistic-glass" title="Permanent link">&para;</a></h2>
+<p>Windows render as real glass now — see-through, not a solid opaque panel the same colour as the wall
+around them. The Modeller reads each element's real material transparency (the same <code>material_rgba</code> alpha
+value the Viewer already used) and renders it faithfully: an element with real glass data gets a
+transparent material at its true opacity, everything else is unaffected.</p>
+<p><img alt="A Duplex window rendered as real transparent glass, recessed into its wall opening — not an opaque panel" src="../img/modeller/glass-window-transparent.png" /></p>
 <hr />
 <h2 id="assemble-draw">Assemble &amp; draw<a class="headerlink" href="#assemble-draw" title="Permanent link">&para;</a></h2>
 <h3 id="insert-assemble-from-the-catalog">Insert — assemble from the catalog<a class="headerlink" href="#insert-assemble-from-the-catalog" title="Permanent link">&para;</a></h3>

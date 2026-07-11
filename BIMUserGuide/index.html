@@ -888,6 +888,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#find-panel-search-voice-query-and-axis-lenses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find panel — search, voice query, and axis lenses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fm-operate-lenses-hr_bim_asset-alpha" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1877,6 +1888,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#find-panel-search-voice-query-and-axis-lenses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find panel — search, voice query, and axis lenses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fm-operate-lenses-hr_bim_asset-alpha" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2162,6 +2184,118 @@ python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class=
 <li>IndexedDB cache — download once, instant on revisit</li>
 <li>City mode — 786 building bboxes, click to download + stream on demand</li>
 </ul>
+<h3 id="find-panel-search-voice-query-and-axis-lenses">Find panel — search, voice query, and axis lenses<a class="headerlink" href="#find-panel-search-voice-query-and-axis-lenses" title="Permanent link">&para;</a></h3>
+<p>The <strong>Find</strong> panel is the Viewer's search/navigate surface: a text or voice query box up top, and a
+single axis toggle underneath that re-groups the whole element tree (by storey, discipline, room,
+material, phase, or the newest axis, building <strong>Parts</strong>).</p>
+<p><strong>How to open it</strong> (with a building already loaded — see <a href="#quick-start-your-first-building">Quick Start</a>):</p>
+<ol>
+<li>On the right edge of the screen, find the toolbar rail (desktop) or the scrollable pill strip
+   (mobile) — tap the <strong>···</strong> button if the rail isn't already showing. Find the <strong>Navigate</strong> icon
+   (a sailboat glyph) among the rail's icons.
+   <img alt="The toolbar rail, with the Navigate (sailboat) icon centred between Inspect (compass) above and Open (folder) below" src="../img/viewer/find-panel-navigate-icon.png" /></li>
+<li>Tap <strong>Navigate</strong>. The <strong>Navigate</strong> drawer opens, listing <strong>Find / Navigate</strong>, <strong>World History</strong>,
+   <strong>Page History</strong>, and <strong>Home</strong> (a fifth row, <strong>Walk</strong>, is mobile-only and won't appear on desktop).
+   Tap the <strong>Find / Navigate</strong> row (magnifying-glass icon, shortcut <strong>F</strong>).
+   <img alt="The Navigate drawer open, showing the Find / Navigate row at the top with its &quot;f&quot; shortcut" src="../img/viewer/find-panel-navigate-drawer.png" /></li>
+<li>The <strong>Find panel</strong> opens on the right side of the screen, with the search bar focused and ready to
+   type. On desktop you can also press <strong>F</strong> to open it directly, from anywhere in the viewer.
+   <img alt="The Find panel just opened on Duplex — &quot;Search elements…&quot; search bar, three example query chips, and the axis toggle reading &quot;1/6 Storey&quot;" src="../img/viewer/find-panel-open.png" /></li>
+<li>Tap the <strong>×</strong> in the top corner of the panel, or press <strong>F</strong> again, to close it.</li>
+</ol>
+<p><strong>The search / query box.</strong> The input (placeholder <em>"Search elements…"</em>) does two different things
+depending on what you type:</p>
+<ul>
+<li><strong>Plain text</strong> (e.g. a product name, or an IFC class like "door") filters the element tree live as
+  you type — a normal name/class search.</li>
+<li><strong>A natural-language query</strong> — anything starting with a recognized verb (<code>count</code>, <code>how many</code>,
+  <code>number of</code>, <code>total</code>, <code>cost</code>, <code>show</code>, <code>list</code>, <code>what</code>, <code>find</code>, <code>search</code>) is detected as you type.
+  Recognized phrases don't filter the tree live like a plain search does — type the phrase, then press
+  <strong>Enter</strong> to run it. Recognized query shapes include:</li>
+<li><code>count doors</code> / <code>how many beams</code> / <code>number of windows</code> — element count by IFC class.</li>
+<li><code>total cost</code> — an indicative 5D cost breakdown by IFC class, using the active rate pack.</li>
+<li><code>cost of &lt;discipline or class&gt;</code> — cost narrowed to one discipline (e.g. "cost of electrical") or class.</li>
+<li><code>total area</code> / <code>total length</code> / <code>total volume</code> [<code>of &lt;class&gt;</code>] — element count as a proxy quantity
+    (the loaded DB does not carry IFC quantity-takeoff dimensions, so this is a count, not a measured
+    area/length/volume).</li>
+<li><code>floor area</code> — a slab count (same caveat: no measured floor-area dimension in the DB).</li>
+<li><code>show &lt;discipline&gt;</code> / <code>list &lt;discipline&gt;</code> — every element in that discipline, grouped by class.</li>
+<li><code>what disciplines</code> — every discipline present in the building, with element counts.</li>
+<li><code>find &lt;term&gt;</code> / <code>search &lt;term&gt;</code> — routes back into this same Find panel as a plain search for <code>&lt;term&gt;</code>.</li>
+<li><code>floor &lt;n&gt; &lt;class&gt;</code> / <code>ground floor &lt;class&gt;</code> — a storey-scoped count (e.g. "floor 2 beams").</li>
+<li>A more general typed-language decoder is tried first and understands a broader range of phrasing;
+    the patterns above are the documented fallback when that decoder doesn't recognize the phrase.</li>
+<li>Three example chips below the box — <strong>count doors</strong>, <strong>total cost</strong>, <strong>show structure</strong> — run a
+    query immediately when tapped, no typing required.
+  <img alt="The query box with &quot;count doors&quot; typed — this recognized phrase does not filter the tree below it; pressing Enter runs the query" src="../img/viewer/find-nl-query.png" /></li>
+<li><strong>Voice search</strong> — tap the microphone icon to the left of the text box and speak a query using the
+  same phrasing as above (e.g. "count doors"). The recognized text fills the box live while you speak
+  (shown in italics until finalized), and the finished phrase runs automatically — no need to press Enter.</li>
+</ul>
+<p><strong>The axis toggle.</strong> Below the search bar, one button shows the current axis and how many are
+available (e.g. "1/6 Storey" on a building where all six axes are present) — tap it to cycle to the
+next axis. Two axes are always present; up to four more appear only when the loaded building actually
+has that kind of data (no data, no empty axis):</p>
+<table>
+<thead>
+<tr>
+<th>Axis</th>
+<th>Always shown?</th>
+<th>What it shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Storey</strong></td>
+<td>Always</td>
+<td>Elements grouped by building level/storey. Expand a storey to see the rooms/spaces on it (or, if the building has no room data, its most common IFC classes). Tapping a storey or room isolates it in the 3D view.</td>
+</tr>
+<tr>
+<td><strong>Discipline</strong></td>
+<td>Always</td>
+<td>Elements grouped by discipline (ARC/STR/MEP/ELEC, etc). Expand a discipline to see its IFC classes; tap a class to highlight just those elements.</td>
+</tr>
+<tr>
+<td><strong>Room</strong></td>
+<td>Only if the building has volumetric room (IfcSpace) data</td>
+<td>A highlight lens: the model is X-rayed and a translucent box is drawn over each room; tap a room to zoom to it. Has its own <strong>Storey / Type</strong> sub-toggle to group rooms by floor or by room type. (On a building without volume data, this falls back to a plain isolate-by-room list instead.)</td>
+</tr>
+<tr>
+<td><strong>Material</strong></td>
+<td>Only if material data is present</td>
+<td>Elements grouped by material name, or — via a <strong>Material / Category</strong> sub-toggle — by a derived construction category (Concrete, Metal, Wood, Glass, Drywall/Partition, Masonry, Insulation, Tile, Finish, Membrane, Flooring, Generic, Other). Categories are a keyword-derived heuristic, not an extracted IFC property, and are labelled accordingly in the panel. Highlight lens, same X-ray-and-box behavior as Room.</td>
+</tr>
+<tr>
+<td><strong>Phase</strong></td>
+<td>Only if a construction timeline can be generated for the building</td>
+<td>Elements grouped by construction phase/task, generated on the fly (a short "Timeline generating…" message appears first).</td>
+</tr>
+<tr>
+<td><strong>Parts</strong> <em>(new)</em></td>
+<td>Only if the building has stairway, lift-shaft, or plant-room elements</td>
+<td>Elements grouped into up to three building-part categories: <strong>Stairway</strong> (stair/ramp classes), <strong>Lift Shaft</strong> (elements named for lifts/elevators), <strong>Plant Room</strong> (HVAC-plant elements — vents, ducts, fans, AHUs, dampers, chillers, pumps). Each category is itself data-gated — it only appears if the building actually has a match. Tapping a category, or a single item inside it, isolates it in the 3D view (hides the rest of the model).</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="The axis toggle cycled to Parts on HHS Office (&quot;6/6 Parts&quot;), a real institutional-scale building showing all three categories at once: Stairway (20), Lift Shaft (3), and Plant Room (1769) — Plant Room only appears on complex-class buildings like this one, never on a residential building like Duplex" src="../img/viewer/find-axis-parts.png" /></p>
+<blockquote>
+<p>The Parts axis is the newest addition (bim-ootb <code>d04ddd5</code>) — see
+<code>prompts/VIEWER_FIND_PANEL_PARTS_VERIFICATION.md</code> for its live verification on Duplex/SampleCastle data.
+A false-positive/missing-class-gate bug found after that verification (<code>prompts/FIND_PANEL_PLANT_ROOM_GATE_FIX.md</code>)
+is now fixed (bim-ootb PR #740/#742) — Plant Room only shows on <code>complex</code>-class buildings (Terminal,
+Clinic, Hospital, HHS), never on residential ones, and its keyword match is word-boundary-checked to
+avoid substring false positives like "Backflow Preventer" matching "vent".</p>
+</blockquote>
+<p><em>Not yet confirmed from source, flagged rather than guessed:</em> the exact on-screen wording of the axis
+toggle's next-axis hint on narrow/mobile screens, and whether the typed-language decoder mentioned above
+recognizes any further phrasing beyond the regex patterns documented — both would need a dedicated read of
+<code>decoder.js</code>, which was out of scope for this pass.</p>
+<p><em>Also discovered while capturing these screenshots (reported, not fixed here — this task is docs-only):</em>
+the natural-language query hint text described above is written into the DOM by <code>navigate_find.js</code>
+<code>_handleInput()</code>, but the panel's <code>results-expanded</code> CSS class (which gives <code>#find-results</code> its visible
+height) is only added by the plain-search code path, not the NL-query path — so, live, no visible hint
+actually appears while typing a recognized phrase; the query still runs correctly on <strong>Enter</strong>. The guide
+text above describes the observed (silent) behavior, not an invented visible hint.</p>
 <p><a id="find-lenses-tenancy"></a></p>
 <h3 id="fm-operate-lenses-hr_bim_asset-alpha">FM / Operate lenses — HR_BIM_Asset  <em>(ALPHA)</em><a class="headerlink" href="#fm-operate-lenses-hr_bim_asset-alpha" title="Permanent link">&para;</a></h3>
 <p>The viewer carries one <strong><code>FM / Operate</code></strong> toolbar pill (a building glyph) that opens a wake-aware drawer of
