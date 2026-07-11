@@ -1,0 +1,43 @@
+# Building Parts Taxonomy — top-down checklist / bottom-up lookup, same table.
+# Spec: prompts/BUILDING_PARTS_TAXONOMY.md — read it first, has the full recon citations.
+# Module: build/building_parts_taxonomy.js · Witness: build/witness_building_parts_taxonomy.js
+#
+# min_count: 0 means ADVISORY (tick found/not-found, never a shortfall failure) — distinct from
+# config/profiles/malaysian_residential.yaml's required_spaces (min_count >= 1 = hard gate).
+# STORAGE and AIR_LIGHT_WELL are deliberately ABSENT from this file — recon found zero real
+# evidence for either in any of the 8 shipped buildings. See the spec doc's own table before
+# adding either back; do not re-derive that search.
+
+building_classes:
+  residential:            # WalkerDoctrine.md §1 LOCKED: SampleHouse, Duplex, SampleCastle
+    parts:
+      - type: STAIRWAY
+        source: ifc_entity
+        evidence: measured
+        min_count: 0
+        buildings: ["Duplex (2 IfcStair+2 IfcStairFlight)", "SampleCastle (9 IfcStair)"]
+      - type: LIFT_SHAFT
+        source: name_keyword
+        evidence: measured
+        min_count: 0
+        buildings: ["SampleCastle (67 elements: liftdeur/liftputvloer/lifttop/liftwand)"]
+
+  complex:                # WalkerDoctrine.md §1 LOCKED: Terminal, Clinic, Hospital, HHS (office-scale)
+    parts:
+      - type: STAIRWAY
+        source: ifc_entity
+        evidence: measured
+        min_count: 0
+        buildings: ["Hospital (60 IfcStair, strongest anchor)", "Clinic (3 IfcStair+6 IfcStairFlight)",
+                    "Terminal (32 IfcStairFlight+1 IfcRampFlight)"]
+      - type: LIFT_SHAFT
+        source: name_keyword
+        evidence: measured
+        min_count: 0
+        buildings: ["HHS (3x \"Aufzug 2-flg\")", "Clinic (1x M_Elevator-Hydraulic)",
+                    "Terminal (5x ElevatorLift_Door)"]
+      - type: PLANT_ROOM
+        source: mep_density
+        evidence: measured
+        min_count: 0
+        buildings: ["Terminal only (74 MEP-keyword elements, 10/74 concentrated in one room) — n=1 building, advisory only"]
