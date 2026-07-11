@@ -137,6 +137,16 @@ a clean `LIVING_ROOM@100%` self-match on area+aspect alone; adding its door_coun
 fitted LIVING_ROOM mean of 1.33, mostly from Duplex's 1-door living rooms) pushes it to
 `(unclassified)` — a real, named regression, not hidden.
 
+### Cross-check against the specific case that motivated this task
+The parent task's own DONE section named one concrete miss: SampleHouse's real Bedroom (15.42m²,
+aspect 1.29) misclassifying as `LIVING_ROOM@75.1%` instead of `BEDROOM`. Checked directly in the
+witness log — door_count does **not** fix it: the room's measured doorCount=1 matches BEDROOM's
+own band exactly (mean=1.0, std=0) but the confidence only nudges to `LIVING_ROOM@70.6%` (still
+wrong), because LIVING_ROOM's door_count band (mean=1.33, std=0.47, floored) is loose enough that
+doorCount=1 barely penalizes it relative to how far its area/aspect already overshoot. So: the
+signal doesn't help on the one case this whole task was framed around, on top of the net regression
+above — consistent with, not contradicting, the "don't wire this on by default yet" recommendation.
+
 ### Recommendation (named, not built — stays in scope discipline of "smaller, cleaner change")
 Do NOT wire door_count as an always-on default for held-out inference at today's n=2..5 sample
 size — the 3 concrete wins above are real, but blending unconditionally currently loses more than
