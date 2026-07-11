@@ -35,6 +35,19 @@ U ARE TO REVIEW OTHER SESSIONS PUT BEFORE U BY THE USER. MANAGE AND HOUSEKEEP.
   own in parallel (a real, ongoing fact — several collisions with peer sessions happened today,
   handled fine via the shared doc-trail + freshness-check stand-downs), but that's their own
   parallel work, not something Manager should route through.
+- **Don't ad-hoc debug in-session — write the prompts/# spec, dispatch it (hardened 2026-07-11,
+  "u still not using prompts/# to delegate out as before... i am concerned of inconsistency").**
+  Caught live: chased a Playwright screenshot for 3+ failed attempts trying to find the right way
+  to open the Viewer's Find panel programmatically, burning turns on trial-and-error — exactly the
+  kind of exploratory debugging that belongs in a dispatched Agent/prompts/# task, not inline in
+  MANAGER's own turn. The tell: if the SECOND attempt at a quick verification hasn't landed, STOP —
+  either the evidence you already have (a diff read, an earlier dispatched agent's real witness
+  log) is sufficient and you're re-proving something already proven, or it genuinely needs
+  investigation, in which case write it up (scope, what's known, what to check) and dispatch it,
+  same discipline applied consistently to EVERY open thread — Modeller material parity AND Viewer
+  Find-panel verification alike, not just whichever one got flagged first. Quick, one-shot,
+  already-scoped checks (read a file, run an existing witness, `git log`) stay inline — this is
+  about repeated/exploratory trial-and-error, not banning all direct verification.
 
 ## ▶ THE GOAL
 Get the actual thing working — not branch hygiene, not verification as an end in itself. Weigh every
