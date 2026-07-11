@@ -37,6 +37,29 @@ undiagnosed bug (the guide screenshots).
 - **Room-mode (schedule-driven per-room walk, `fable/modeller-lod400-livewire`/`fable/meshdb-livewire`):
   MERGED** to both repos' mains 2026-07-10, independent of the above.
 
+## ▶ IN-PROGRESS UPDATE (2026-07-11, Sonnet, same day — checked before any Fable dispatch)
+**Task 1 is partially done already — do NOT redo the merges, only finish the verification.** Found three
+worktrees already built exactly per the Method below, each with the target branch already merged into a
+fresh checkout off current main:
+- `/tmp/wt-verify-grid-tilt` (branch `verify/grid-tilt`) — `fix/grid-tilt-guard` merged in clean.
+- `/tmp/wt-verify-oracle` (branch `verify/oracle`) — `fix/terminal-oracle-source` merged in clean.
+- `/tmp/wt-verify-dwprobe` (branch `verify/dwprobe`) — `fable/dwprobe-dedup` merged in, but hit a REAL
+  conflict (main had moved further than my dry-run check caught) — resolved KEEP-BOTH (§8E-3
+  `_dwProbeMatch` + `__dwOcclusionProbe` rename coexist) + repointed `witness_mep_route_render` to the
+  renamed probe. Two untracked PNGs sit in this worktree (`mep_route_render_duplex.png`/`_terminal.png`) —
+  leftover from running THAT witness, harmless, can be ignored or cleaned up.
+
+**What's NOT done yet in any of the three: the actual witness re-run + logged PASS/FAIL.** No fresh log
+evidence found for any of them as of this check. **Remaining work is exactly steps 2-3 of the Method
+below, nothing earlier** — cd into each existing worktree (do NOT rebuild it), run that branch's own named
+witness, log the real output, report per-branch PASS/FAIL. If `wt-verify-dwprobe`'s KEEP-BOTH resolution
+introduced anything unexpected, that's exactly the kind of regression this step exists to catch — check it
+for real, don't assume the conflict resolution was correct just because it applied cleanly.
+
+Once all 3 report green: this is a call for whoever holds Manager's git-admin mandate
+(`prompts/MANAGER.md` — "PR work, including the merge decision, is Manager's job... once independently
+verified, merge it") — not something to merge from inside this task.
+
 ## What's ACTUALLY still open — Task 1: verify + report on 3 stale PRs (no merge, no push)
 Three branches are pushed, have OPEN GitHub PRs, and per the 2026-07-10 memory were "independently
 verified+pushed" — but main has moved on since (each is 17-21 commits behind current `main` as of
