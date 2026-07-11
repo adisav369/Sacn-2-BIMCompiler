@@ -41,11 +41,20 @@
   2026-07-11 (W-ROOM-WALKER-PARITY 6/6, W-ROOM-WELLFORMED 19/19, W-ROOM-FILL 18/18, all re-run independently).
   Self-heal patches at `ROOM015-020` (supersede `ROOM009-014`) on bim-ootb `fix/meshdb-selfheal-loader`
   @ `e7384f4`/`fd7da67`, W-PATCH-SELFHEAL 43/43 verified. Full detail in the spec doc, not here.
-  **⛔ OPEN — blocks all further OCI room-data uploads (user directive):** Viewer's Room Lens
-  (`navigate_find.js`) renders ~6 nearby wall elements around a room instead of an actual volume box from
-  `spatial_structure`'s own center/size — "hugs the border," doesn't fill the real interior, even though
-  the compiled rects are falsifier-proven correct. Needs a real room-volume-box layer (union of `§MULTI-RECT`
-  sub-rects). No OCI upload of room data until this ships.
+  **✅ CLOSED 2026-07-11 (Sonnet, §9) — OCI room-data upload block LIFTED.** `_allRoomVolumes()`/
+  `_roomLensOn()` now group `spatial_structure` by `room_guid` and render one shell box per §8
+  sub-rect (union = real footprint); ported `hba_lens.js`'s proven grouping shape but fixed a
+  latent bug the direct copy would've inherited (`A.dbQuery` never throws on a bad column ref,
+  so the try/catch fallback never fired — replaced with a `PRAGMA table_info` probe). Witness
+  `witness_room_lens_volbox.js` 8/8: rendered box footprint-area SUM = spatial_structure's own
+  rect-union area SUM, diff=0.000m² (real multi-rect data, 33 rooms/43 sub-rects, from running
+  the proven `room_walker.js` against real HHS wall/door geometry); existing
+  `witness_room_lens_hab.js` reruns 11/11, zero regression. bim-ootb PR
+  https://github.com/red1oon/bim-ootb/pull/733 (`fix/room-lens-volume-box` @ `8cb7c49`, pushed).
+  Follow-up (not blocking, not done): `_roomSelect()`/`_buildRoomTree()` still aren't
+  `room_guid`-aware — likely the ACTUAL source of the original "~6 nearby wall elements" report
+  (a different function, `_roomBoundingGuids`, from the one this fix targeted). Full detail
+  `ROOM_INJECTION_HYBRID.md` §9 RESULTS.
   **✅ Terminal coordinate-frame mismatch — ROOT-CAUSED + FIXED LOCALLY, 2026-07-11** (own investigation,
   NOT a room-injection bug — full evidence in `prompts/TERMINAL_COORDINATE_FRAME_MISMATCH.md`). Cause:
   bim-compiler's `deploy/buildings/Terminal_extracted.db` was a carve-out of the multi-building

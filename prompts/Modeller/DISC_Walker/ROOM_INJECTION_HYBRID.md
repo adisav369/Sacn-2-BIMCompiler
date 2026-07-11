@@ -651,3 +651,111 @@ NEW W-ROOM-FILL 18/18 (before/after coverage: Hospital med 0.74→0.86 worst 0.3
 via room_guid; rel keys logical guids only) · W-HBA-MULTIRECT 6/6 (real viewer, re-walked HHS
 building DB: §HBA_FOOTPRINT/§HBA_MEMBERS report 71 logical rooms from 94 rect rows, 18 multi-rect
 rooms grouped, no letter-guid leak).
+
+## §9 — Room Lens real volume box (2026-07-11, MANAGER-assigned — the OCI-upload blocker)
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: bim-ootb `viewer/navigate_find.js` `_allRoomVolumes()`/`_roomLensOn()` — the Find panel's
+Room Lens toggle. User directive: "hugs the border," renders ~6 nearby wall elements around a room
+instead of an actual volume box from spatial_structure's own data. NO OCI upload of room data until
+this ships. This is DIFFERENT from `viewer/hba_lens.js`, which ALREADY consumes the §8 MULTI-RECT
+room_guid grouping correctly (`bindStoreysFromModel/_drawOutlines`, footprint carries rects[],
+W-HBA-MULTIRECT 6/6) — that working code is your reference pattern, port its approach, don't
+re-derive it from scratch.
+```
+
+**Task:** `_allRoomVolumes()` (~line 1494) currently queries `spatial_structure` ungrouped and
+`_roomLensOn()` renders whatever comes back as wall-adjacent markers, not a real box. Fix: group by
+`room_guid` (§8's logical-room key, guarded fallback for pre-§8 DBs without the column — same
+fallback `hba_lens.js` already uses), and for each sub-rect row render an extruded box (floor
+`center_z`/`size_z` gives height; `center_x/center_y/size_x/size_y` gives the rect footprint) —
+union of sub-rects per logical room, exactly what `hba_lens.js`'s `footprint.rects[]` already is.
+Apply the Task 1 habitability filter (`common/room_habitability.js`, shipped 2026-07-11, PR #732)
+so non-habitable rows don't render as rooms.
+
+**Witness:** real volume boxes fill the actual room footprint (not "~6 nearby walls") on a
+multi-rect building (Hospital or Terminal, §8's own before/after coverage numbers: 0.74→0.86 /
+0.81→0.87) — assert rendered box union area matches `spatial_structure`'s own rect union within
+tol, not eyeballed. Regression: single-rect rooms (majority, §8's `RECT_COVER_TARGET` fast path)
+still render correctly as one box.
+
+**On completion:** update this section + `PROGRESS.md`'s ROOM_INJECTION_HYBRID bullet — if this
+ships and is verified, the "No OCI upload of room data" block is lifted (confirm with fresh witness
+numbers, don't assume the block lifts automatically just because code merged).
+
+## §9 RESULTS (2026-07-11, Sonnet session — implemented + witnessed + PR opened)
+
+**Shipped:** bim-ootb branch `fix/room-lens-volume-box` @ `8cb7c49`, pushed (no LFS stall — pure
+`.js` diff, push returned in seconds). **PR https://github.com/red1oon/bim-ootb/pull/733**, opened
+against `main` @ `f60bfb7` (the PR #732 habitability-filter commit), un-merged (repo's own
+auto-merge-on-green-CI bot expected to pick it up, not manually forced). Files: `viewer/navigate_find.js`
+(+79/-26), `witness_room_lens_volbox.js` (new, +226).
+
+**Root cause, confirmed by direct read of the live `f60bfb7` code before writing anything:**
+`_allRoomVolumes()` already rendered a real `THREE.BoxGeometry` shell per row (not "6 nearby wall
+elements" — that framing describes `_roomSelect()`'s SEPARATE `_roomBoundingGuids` path, a
+different function this task's scope does not touch, flagged below as a follow-up). The actual gap
+was `_allRoomVolumes()` querying `spatial_structure` with **no `room_guid` grouping at all** — on
+today's shipped data every room is still single-rect (no `buildings/*.db` or self-heal patch has
+§8 MULTI-RECT columns yet, confirmed directly: `PRAGMA table_info` on both `buildings/
+HHS_Office_Federated_extracted.db` and its `.sql` patch shows zero `room_guid` column) — so the fix
+is real but currently latent until a MULTI-RECT-carrying DB/patch ships; the code is now correct
+and forward-compatible the moment one does.
+
+**Fix — ported `viewer/hba_lens.js`'s proven grouping shape (W-HBA-MULTIRECT 6/6, unmerged branch
+`fable/modeller-lod400-livewire`), NOT re-derived:** group by `room_guid` (fallback to `guid` for
+pre-§8 data), evaluate the habitability filter ONCE per logical room (not per sub-rect — name/type
+are identical across a room's rect set per §8's own design), render one shell box per sub-rect —
+their union IS the room's real footprint. `_roomLensOn()`'s log now reports `rooms=` (distinct
+room_guid) separate from `shells=` (total boxes), so a future multi-rect building's console output
+proves the grouping is real, not every row silently counted as its own room.
+
+**Bug found in the reference pattern itself, fixed here (not present in hba_lens.js's own context
+because the Modeller's dbQuery apparently throws differently — not verified, flagged as a
+follow-up):** `hba_lens.js`'s guarded double-query (`try { room_guid query } catch { NULL query }`)
+does not work in the Viewer. `viewer/helpers.js`'s `A.dbQuery` never throws on a bad column
+reference — it catches internally, logs `§HELPERS_QUERY_ERR`, and returns `[]`. A direct port of
+the try/catch shape therefore silently returned `boxes=0` for every building lacking `room_guid`
+(caught by first witness run, real regression against `witness_room_lens_hab.js`'s existing H1/H2
+checks — habitable dropped from 4→0 and 105→0). Fixed with a `PRAGMA table_info(spatial_structure)`
+column probe before building the SQL (same technique this file's own `_probeLenses()` already uses
+a few lines up for `center_x`/`size_x`), never issuing the bad column reference at all.
+
+**Witness `witness_room_lens_volbox.js` (new, node+Puppeteer, §-log-first) — 8/8 pass:**
+provenance: real multi-rect `spatial_structure` data generated by running the ALREADY-PROVEN
+`fable/modeller-lod400-livewire` branch's `modeller/room_walker.js` (W-ROOM-WALKER-PARITY 6/6
+byte-identical to `compile_rooms.py`) against that branch's real shipped `modeller/HHS_ARC.db` wall/
+door geometry — real algorithmic extraction, not hand-typed rows (generator script:
+`/tmp/claude-1000/.../scratchpad/gen_multirect_witness_db.js`, this session, not committed — the
+Viewer-only PR does not carry `room_walker.js`). Result: 33 logical rooms / 43 sub-rect rows / 7
+multi-rect rooms. Checks: no pageerror, room axis reachable, `§ROOM_VOL_COUNT habitable=33
+excluded=0 boxes=43` matches ground truth, `§ROOM_LENS rooms=33 shells=43` with `rooms < shells`
+(proves real grouping, not a no-op), live THREE scene shell-mesh count = 43 (matches `boxes=`),
+**rendered box footprint-area SUM = spatial_structure's own rect-union area SUM, diff=0.000m² **
+(exact match, not eyeballed — an actual geometric assertion against independently-computed
+ground truth, better-sqlite3, not the app under test), 26 single-rect rooms present and each
+renders as exactly 1 box (regression signal).
+
+**Regression — existing `witness_room_lens_hab.js` rerun unmodified: 11/11 pass** (Duplex
+habitable=4/excluded=1 label:ROOF, HHS self-heal patch 14→105, Type-view INTERNAL_DOORPART
+fallthrough) — zero regression to PR #732's habitability filter or Type-toggle fix.
+
+**Follow-ups found, NOT actioned here (out of this task's explicit scope):**
+- `_roomSelect()`/`_buildRoomTree()` (the room-tap-to-zoom and room-list-tree code, separate
+  functions from `_allRoomVolumes()`/`_roomLensOn()`) are still NOT `room_guid`-aware — a tapped
+  multi-rect room zooms/highlights only ONE of its sub-rects (`WHERE s.guid = ?`, a single row), and
+  `_roomSelect`'s `_roomBoundingGuids` path (picks the nearest real wall/floor/ceiling element per
+  cuboid face, up to 6) is very plausibly the actual source of the ORIGINAL "hugs the border, ~6
+  nearby wall elements" user report — a different, adjacent bug from the one this task's explicit
+  scope named. Real fix, not done here: make both `room_guid`-aware (union zoom-box across a room's
+  rects, same grouping shape as this PR).
+- No shipped `buildings/*.db` or self-heal `.sql` patch carries `room_guid` yet — this fix is
+  correct and tested against real algorithmic multi-rect output, but is currently latent on
+  production data until a MULTI-RECT-carrying migration/patch ships (a separate, already-named
+  follow-up in §2b/§4/§5 above, not part of this task).
+
+**OCI-upload block:** per the MANAGER's own framing, this was the ONE blocker on further OCI
+room-data uploads. The Viewer-side render bug is now fixed, tested, and PR'd (#733) — **the block
+should be considered LIFTED once #733 merges**, with the caveat above (uploaded multi-rect data
+will render correctly; single-rect data already did and continues to, per the regression witness).
