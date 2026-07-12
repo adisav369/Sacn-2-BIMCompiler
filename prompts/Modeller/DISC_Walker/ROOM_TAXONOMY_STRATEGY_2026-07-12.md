@@ -327,3 +327,26 @@ is the highest-value merge target there too.
 Order: R-MERGE → R-REJECT → R-DOOR-SCORE → R-SPINE. Both mirrors (`scripts/compile_rooms.py` +
 `build/room_walker.js`), parity witness must pass, PUSH PAUSE in effect (local commits only,
 localhost verification, no push/PR until lifted).
+
+## DISPATCH SPLIT — Manager verdict, 2026-07-12 (binding on whoever picks this up)
+**Lane A — execution-tier (Sonnet or Fable5, "follow the pseudocode" session): Tasks 1/1b/2 ONLY**
+(R-MERGE, R-REJECT, R-DOOR-SCORE). These are POC-validated with named acceptance cases; nothing
+left to design. Port into BOTH mirrors, run `build/witness_room_walker_parity.js`, witness the
+acceptance cases named in each formula section (JKR `'01 Aras Satu'` chains merge; JKR 48 non-OPEN
+rooms zero false rejects; Duplex control unchanged). Do NOT touch R-SPINE or the Terminal wiring
+question — they are explicitly out of this lane's scope.
+
+**Lane B — judgment-tier (a session with latitude, NOT a pseudocode-executor): two items, do them
+BEFORE any R-SPINE code exists.**
+1. **Task 0 loose end first — trace whether ANY of this reaches the live Terminal path.** The
+   served `Terminal_extracted.db` has ZERO room rows (F4); `Terminal_rooms.db` (the room source
+   found above) may not be on the Viewer's load path at all. If the live path never reads compiled
+   rooms for Terminal, an implementation pass "fixing Terminal" burns itself on a building this
+   code never touches. Establish the actual load path (Viewer + Modeller substrate) before wiring.
+2. **R-SPINE validation — it was NOT POC'd (unlike 1/1b/2).** Known soft spot, flagged at review:
+   its per-segment containment check assumes room AABBs, but R-MERGE produces NON-CONVEX unions
+   (e.g. JKR's L-shaped merged hallway chain) — "polyline ⊂ room AABB" weakens exactly where the
+   spine matters most. Watch what R-SPINE actually produces on JKR's merged `'01 Aras Satu'`
+   hallway before trusting it; expect the containment law to need a non-convex formulation
+   (union-of-member-AABBs, not merged-AABB).
+Lane A may start immediately; Lane B gates R-SPINE. Neither lane pushes (PUSH PAUSE).
