@@ -900,6 +900,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#room-health-the-type-sub-toggle-verified-live-on-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Room health — the Type sub-toggle (verified live on Terminal)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#room-to-room-paths-escape-routes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2005,6 +2016,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#room-health-the-type-sub-toggle-verified-live-on-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Room health — the Type sub-toggle (verified live on Terminal)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#room-to-room-paths-escape-routes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2469,7 +2491,7 @@ has that kind of data (no data, no empty axis):</p>
 <tr>
 <td><strong>Room</strong></td>
 <td>Only if the building has volumetric room (IfcSpace) data</td>
-<td>A highlight lens: the model is X-rayed and a translucent box is drawn over each room. Has its own <strong>Storey / Type</strong> sub-toggle to group rooms by floor or by room type. (On a building without volume data, this falls back to a plain isolate-by-room list instead.)</td>
+<td>A highlight lens: the model is X-rayed and a translucent box is drawn over each room. Has its own <strong>Storey / Type / Path</strong> sub-toggle: group rooms by floor, by the compiler's own confidence tier (see <a href="#room-health-the-type-sub-toggle-verified-live-on-terminal">Room health</a> below), or route between two rooms the way a person walks. (On a building without volume data, this falls back to a plain isolate-by-room list instead.)</td>
 </tr>
 <tr>
 <td><strong>Material</strong></td>
@@ -2517,11 +2539,40 @@ the natural-language query hint text described above is written into the DOM by 
 height) is only added by the plain-search code path, not the NL-query path — so, live, no visible hint
 actually appears while typing a recognized phrase; the query still runs correctly on <strong>Enter</strong>. The guide
 text above describes the observed (silent) behavior, not an invented visible hint.</p>
+<h4 id="room-health-the-type-sub-toggle-verified-live-on-terminal">Room health — the Type sub-toggle (verified live on Terminal)<a class="headerlink" href="#room-health-the-type-sub-toggle-verified-live-on-terminal" title="Permanent link">&para;</a></h4>
+<p>Switch the Room axis's grouping from <strong>Storey</strong> to <strong>Type</strong> and rooms are grouped by the compiler's
+own confidence in them, not by a floor: <strong>INTERNAL</strong> / <strong>INTERNAL_SMALL</strong> (ordinary enclosed rooms,
+split by size) and <strong>SUSPECT_OPEN</strong> / <strong>SUSPECT_NO_DOOR</strong> (rooms the compiler could bound
+geometrically but flags for a human rather than silently accepting). This is the compile-with-honesty
+principle made visible — a low-confidence room is <em>shown</em> as low-confidence, never quietly promoted
+to "room" just because it fits inside walls.</p>
+<p><strong>Terminal, the hard case, verified live.</strong> A user-reported screenshot showed a stairwell counted as
+a room — the compiler doesn't know "stairwell" as a concept, only geometry, and a tall vertical shaft
+can look room-shaped from a single floor's footprint alone. The fix (<strong>STAIRWELL-STACK reject</strong>)
+rejects a room candidate whose footprint recurs, stacked, through multiple storeys with a real stair
+inside it — the signature of a shaft, not a room — checked against both compiler mirrors, 6/6 parity.
+Reloading Terminal applies the healed patch over whatever the browser had cached already: <strong>59 rooms →
+40 rooms, 73 rects, no room anywhere near the shaft threshold</strong> — the stairwell is gone from both the
+Room list and the 3D view.</p>
+<p><img alt="Terminal, Type grouping open: INTERNAL (30), INTERNAL_SMALL (15), SUSPECT_OPEN (22), SUSPECT_NO_DOOR (6) — &quot;Aras 02 R3&quot; selected, an empty doorless pocket beside a stair flight, flagged rather than guessed into being a room" src="../img/viewer/type-suspect-no-door-terminal.png" /></p>
+<p>That SUSPECT_NO_DOOR pick is the demo frame: an empty pocket next to the stair, no door found
+bounding it, so the compiler says exactly what it knows and stops — it doesn't invent a door to make
+the room look finished.</p>
+<p><em>Known gap, named not hidden:</em> Type is a <strong>health</strong> taxonomy (how sure the compiler is this is a
+room), not a <strong>semantic</strong> one — it doesn't yet know "corridor" from "office." Terminal's concourses
+show no CORRIDOR band today because the only measured corridor template on file is Duplex's 10.4m²
+hallway (n=2 samples), and stretching that onto a terminal concourse would be inventing, not
+compiling. The room-path routing below already produces a building-relative, <em>measurable</em> definition
+of a corridor — the elongated, many-doored room every route keeps passing through — scoped as a
+future CIRCULATION_DISPLAY pass, not built yet.</p>
 <h4 id="room-to-room-paths-escape-routes">Room-to-room paths &amp; escape routes<a class="headerlink" href="#room-to-room-paths-escape-routes" title="Permanent link">&para;</a></h4>
 <p>With the <strong>Room</strong> axis selected, the <strong>Path</strong> sub-mode routes between any two rooms the way a
 person actually walks — out the door, along the corridor or concourse, and up or down the stairs
 when the two rooms are on different floors. The route draws as a line through the real doors and
 stair flights it uses, and the rooms along the way stay highlighted.</p>
+<p><em>Verified live (2026-07-12):</em> a real route across Terminal's floors returns several stair-crossing
+legs in sequence, not a single best-guess hop — each leg names the room and the door or stair flight
+it passes through.</p>
 <p><em>Future feature — fire escape:</em> the same routing will pin a <strong>Fire Escape</strong> entry at the top of the
 path list — one tap from any room to the nearest building exit.</p>
 <p><em>Future feature — mobile:</em> scan a QR code posted beside a door to fetch that building's lightweight
