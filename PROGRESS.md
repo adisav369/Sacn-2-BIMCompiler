@@ -34,29 +34,27 @@
   §TE-ARC-DATUM DONE+MERGED both repos 2026-07-11 (bim-compiler `b202eb44b` PR #40; bim-ootb PR #726). Remaining:
   `prompts/DISC_WALKER_BRANCH_CLOSEOUT.md` — 3 stale PRs (#722/#724/#725) need re-verify + the undiagnosed
   guide-screenshot camera bug. §LIVEWIRE CLOSED 2026-07-11 — W-SCHED-MINE 7/7 + W-DX-WALKBACK-RSGT 14/14, 0 unpushed.
-- **Room Intelligence lane — canonical status: `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md`.**
-  User's verdict 2026-07-11: building taxonomy is **good enough, no more perfection work there.**
-  15 features shipped/verified. Weakest links unchanged: door-access signal (4/10), classifier
-  sample size (5/10, Duplex+SampleHouse only). Open proposals not dispatched (user's call):
-  fixture-in-room recognition, graph-joint-inference, external RoomGraph/SAGC-A68 datasets,
-  OmniClass/Uniclass mapping. Refresh the scoreboard doc, don't re-derive in prose here.
 - ⏸ **PUSH PAUSE in effect (2026-07-11, until lifted)** — commits locally, verifies on localhost,
   does not push/open a PR. See `CLAUDE.md` §⏸ PUSH PAUSE + `prompts/MANAGER.md`.
 - **`prompts/SPARSE_WALL_ROOM_INFERENCE.md`** — Phase 0 (data-health guard) DONE+witnessed, merged
   into bim-compiler `fable/meshdb-livewire`. Phase 1 (grid+door+slab+envelope fusion for
   sparse-wall federated buildings, e.g. HHS) scoped as a ready-to-pick-up 4-step follow-up, not
   built — genuinely substantial new engineering, deserves its own session.
-- **✅ Modeller glass parity — DONE, guide caught up 2026-07-13.** `MODELLER_RENDER_MATERIAL_PARITY.md`
-  shipped 2026-07-11 (bim-ootb PR #735). `docs/ModellerGuide.md` got the Building Parts + glass sections
-  same day; the 3 remaining screenshots that still showed the pre-fix opaque window (`gizmo.png`,
-  `rotate-yaw.png`, `scale-stretched.png`) recaptured + deployed live 2026-07-13. `delete-gone.png` and
-  `insert-catalog/placed.png` named as open gaps (re-running their witness scripts blind would pick a
-  different element / regress a building swap) — not blocking, not silently dropped.
-  `GUIDE_VISUAL_QUALITY.md`'s separate Duplex→SampleCastle visual-richness lane retired same session
-  (dispatch worktree never started, zero unique commits — see that doc's §RETIRED).
-- **`prompts/MANAGER.md` hardened this session** — anti-ad-hoc-debugging conduct rule (stop after
-  a 2nd failed quick-check, write a spec + dispatch instead of trial-and-erroring in-turn). Read it
-  before picking up either spec above.
+- **✅ Modeller glass parity + guide-quality pass — DONE, multi-round, 2026-07-13.**
+  `MODELLER_RENDER_MATERIAL_PARITY.md` shipped 2026-07-11 (bim-ootb PR #735); `docs/ModellerGuide.md` caught
+  up across several live-review rounds same day: `gizmo`/`rotate-yaw`/`scale-stretched`/`delete-gone`/
+  `samplecastle-arc-open` recaptured (opaque→real glass), `seedtrunk-entry.png` fixed (was showing stale
+  pre-fix 267-fixture low-LOD geometry behind the dialog), `walk-fixtures.png` X-ray-reveal added then
+  re-cropped for legibility, `seedtrunk-trunk.png` recoloured magenta (was low-contrast gold-on-gold).
+  `docs/ModellerKernelFold.md` extended with the graph-cascade conformity disclosure (verified live against
+  `sdg_gate.js`, not stale memory) + a Bonsai/FreeCAD comparison, folded into the existing Feature
+  Comparison section; gap-timeline moved to `prompts/BONSAI_KERNEL_RESEARCH.md §GAP-TO-COMPETITIVE` Tier 2b.
+  **New, ready to assign:** `prompts/Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` —
+  `xrayReveal()` misclassifies SampleCastle's structural walls as glowing fixtures (root-caused to exact
+  file:line, POC-gated, SampleCastle set as primary test building per user call). `GUIDE_VISUAL_QUALITY.md`'s
+  separate Duplex→SampleCastle visual-richness lane retired same session (dispatch worktree never started,
+  zero unique commits — see that doc's §RETIRED). `prompts/MANAGER.md`'s GUIDE STALENESS METHOD hardened
+  with 2 lessons from this pass: test novel captures before shipping, expect a second review round.
 - **From the 2026-07-10 marathon, still unmerged, not superseded:** `fix/grid-tilt-guard`,
   `fix/dw-rot-units`, `fable/dwprobe-dedup`, `fix/terminal-oracle-source` (bim-ootb, all verified+
   pushed, no PR). Full detail: `project_disc_walker_grid_guard_marathon_2026-07-10.md` (memory).
@@ -79,10 +77,17 @@
   low-priority, not urgent. Memory: `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- **✅ Room Intelligence lane CLOSED 2026-07-11** — user verdict "good enough, no more perfection work
+  there," 15 features shipped/verified. Canonical status + open (undispatched) proposals:
+  `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md`.
 - **✅ Building Parts Taxonomy** (STAIRWAY/LIFT_SHAFT/PLANT_ROOM, Find panel + Outliner + disc-walk
   room-type-aware placement) — merged bim-ootb `main` local (not pushed). Detail: `prompts/BUILDING_PARTS_TAXONOMY.md`.
 - **✅ MANAGER housekeeping 2026-07-11:** 6 stale branches/worktrees pruned, 1 orphan landed (`c254cb271`),
   ERP PR #8 re-verified (real conflict, correctly left open).
+- **✅ MANAGER housekeeping 2026-07-13:** audited all 32 bim-ootb `/tmp/wt-*` worktrees — 1 safe to prune
+  (`wt-terminal-verify`, detached HEAD, clean, commit already an `origin/main` ancestor) removed; the other
+  31 all carry real unpushed commits or uncommitted changes, correctly left alone (not blindly swept for a
+  tidy count). Own session's throwaway capture worktrees (5 total) cleaned as each was finished with.
 - **✅ pending merge only:** `SCALE_AND_UX_SWEEP.md` (bim-ootb PR #665), `OFFLINE_GITHUB_RELEASE_BUNDLE.md`
   (`lane/offline-gateway-leak-fix`) — both independently re-verified, just need the human merge click.
 - **2026-07-05 arc** (landing Save/Open, grid, Teams E2E, HBA mobile, UBBL recon) — ALL MERGED
