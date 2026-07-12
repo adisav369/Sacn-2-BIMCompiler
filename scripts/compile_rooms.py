@@ -571,6 +571,10 @@ def flood_rooms(walls, stairs=None, doors=None, door_w_med=0.0):
             for k in comp: in_set[k] = 1
             open_m = _open_perimeter_m(comp, in_set, raw, dil, nx, ny, SEAL)
             suspect = _classify(has_door, open_m, door_w_med)
+            # §SUSPECT-ELONGATED: a wall-bounded pocket can still be an absurdly long undivided
+            # span (real walls on the long sides, none dividing it) — same test as door-partition.
+            if not suspect and _is_elongated(wx0, wy0, wx1, wy1):
+                suspect = "ELONGATED"
             grown, gmni, gmxi, gmnj, gmxj = _grow_region(comp, in_set, raw, dil, nx, ny, SEAL)
             total_cells = len(comp) + len(grown)
             grects, covered = _decompose_region(in_set, ny, gmni, gmxi, gmnj, gmxj, total_cells,
@@ -615,17 +619,51 @@ DOOR_SHORTFALL_RATIO = 0.15  # flood-fill finding fewer rooms than this fraction
 # §SUSPECT-ELONGATED (ROOM_INTELLIGENCE_SCOREBOARD.md "Confirmed case in point" / R9, 2026-07-13):
 # door-partition's nearest-door BFS has no wall to stop it when a storey is missing dividing walls
 # (the same SPARSE_WALLS condition §PHASE0-HEALTH already flags) — it then assigns one door whatever
-# long, undivided free-floor span it reaches first. Scoped to door-PARTITION only (predefined_type
-# INTERNAL_DOORPART): flood-fill rooms are wall-bounded on every side by construction and don't share
-# this failure mode, so this test never runs against them. Threshold measured, not eyeballed: HHS's
-# own 105 door-partitioned rooms (2026-07-13 direct query, /tmp/wt-fable-livewire/modeller/HHS_ARC.db)
-# have a clean bimodal aspect-ratio spread — 98 rooms climb smoothly 1.00→7.50 (the same shape every
-# other building's genuine rooms show), then a hard gap to 7 outliers at 13.64→37.25 (R9 = 13.64, the
+# long, undivided free-floor span it reaches first. Threshold measured, not eyeballed: HHS's own 105
+# door-partitioned rooms (2026-07-13 direct query, /tmp/wt-fable-livewire/modeller/HHS_ARC.db) have a
+# clean bimodal aspect-ratio spread — 98 rooms climb smoothly 1.00→7.50 (the same shape every other
+# building's genuine rooms show), then a hard gap to 7 outliers at 13.64→37.25 (R9 = 13.64, the
 # smallest of the 7). SUSPECT_ELONGATED_ASPECT_MIN = midpoint of that gap, same derivation discipline
-# as WALL_DOOR_SPARSE_THRESHOLD above: (7.50 + 13.64) / 2 = 10.57. A flagged room still compiles (never
+# as WALL_DOOR_SPARSE_THRESHOLD above: (7.50 + 13.64) / 2 = 10.57.
+# EXTENDED to flood-fill too (2026-07-13, same session): a live recompile of HHS's own canonical
+# source (deploy/buildings/HHS_Office_Federated_extracted.db) showed door-partition no longer fires
+# at all on today's data (wall coverage has improved since whatever run produced the 105-row result
+# above) — but ONE flood-fill room still came out 24.2m x 2.0m (aspect 12.1), proving wall-bounded
+# rooms aren't immune to this failure mode either (a real corridor with real walls on the long sides
+# but none dividing it can still flood-fill as one absurdly long pocket). So this test runs against
+# BOTH compile paths now, same threshold, same reasoning. A flagged room still compiles (never
 # invented away) — same §ROOM-FORM treatment as SUSPECT_OPEN/SUSPECT_NO_DOOR: no element containment,
 # review candidate, geometry untouched.
 SUSPECT_ELONGATED_ASPECT_MIN = 10.57
+
+def _is_elongated(wx0, wy0, wx1, wy1):
+    span_x = wx1 - wx0; span_y = wy1 - wy0
+    aspect = max(span_x, span_y) / max(min(span_x, span_y), 0.01)
+    return aspect > SUSPECT_ELONGATED_ASPECT_MIN
+
+def _flood_exterior(free, nx, ny):
+    """§DOOR-PARTITION-EXT-EXCLUDE (2026-07-13): same exterior-flood test flood_rooms already uses
+    (border-seeded 4-connected flood over free cells) — factored out so partition_by_doors can reuse
+    it. Returns the ext mask (1 = reachable from outside the building)."""
+    ext = bytearray(nx * ny)
+    stack = []
+    for i in range(nx):
+        for j in (0, ny - 1):
+            k = i * ny + j
+            if free[k] and not ext[k]: ext[k] = 1; stack.append(k)
+    for j in range(ny):
+        for i in (0, nx - 1):
+            k = i * ny + j
+            if free[k] and not ext[k]: ext[k] = 1; stack.append(k)
+    while stack:
+        k0 = stack.pop()
+        i, j = k0 // ny, k0 % ny
+        for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            a, b = i + di, j + dj
+            if 0 <= a < nx and 0 <= b < ny:
+                k = a * ny + b
+                if free[k] and not ext[k]: ext[k] = 1; stack.append(k)
+    return ext
 
 def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
     if not doors: return []
@@ -636,7 +674,19 @@ def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
     raw = _rasterize(walls, nx, ny, xs0, ys0)
     def ix(x): return min(nx - 1, max(0, int((x - xs0) / RES)))
     def iy(y): return min(ny - 1, max(0, int((y - ys0) / RES)))
-    free = bytearray(0 if raw[m] else 1 for m in range(nx * ny))
+    # §DOOR-PARTITION-EXT-EXCLUDE (2026-07-13, real HHS finding: R9's own footprint sampled 93%
+    # exterior-reachable): the door-BFS must never claim exterior space as a room. Determine exterior
+    # topology on the DILATED (SEAL-sealed) wall footprint — same band flood_rooms uses — so a
+    # hairline rasterization gap can't leak the exterior flood through; but apply the resulting ext
+    # mask against the RAW (undilated) free cells for the room's own shape, so the seal band is
+    # "given back" (same net effect as flood_rooms's dilate-then-_grow_region, without a separate
+    # grow step: the ext flood never reaches raw-free/dilation-blocked cells in the first place, since
+    # it only ever traverses free_dil, so they're never marked exterior).
+    free_raw = bytearray(0 if raw[m] else 1 for m in range(nx * ny))
+    dil = _dilate(raw, nx, ny, SEAL) if SEAL > 0 else raw
+    free_dil = bytearray(0 if dil[m] else 1 for m in range(nx * ny))
+    ext = _flood_exterior(free_dil, nx, ny)
+    free = bytearray(1 if free_raw[m] and not ext[m] else 0 for m in range(nx * ny))
     cz = sum(w[2] for w in walls) / len(walls); bz = sum(w[5] for w in walls) / len(walls)
 
     owner = [-1] * (nx * ny)
@@ -699,14 +749,10 @@ def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
         open_m = _open_perimeter_m(cells, in_set, raw, raw, nx, ny, 0)
         has_door = _door_adjacent(wx0, wy0, wx1, wy1, doors)
         suspect = _classify(has_door, open_m, door_w_med)
-        # §SUSPECT-ELONGATED: door-partition-only test (see constant derivation above) — an
-        # already-suspect room's existing reason (NO_DOOR/OPEN) is left untouched, same rule
-        # §R-REJECT already follows for its own suspect-priority ordering.
-        if not suspect:
-            span_x = wx1 - wx0; span_y = wy1 - wy0
-            aspect = max(span_x, span_y) / max(min(span_x, span_y), 0.01)
-            if aspect > SUSPECT_ELONGATED_ASPECT_MIN:
-                suspect = "ELONGATED"
+        # §SUSPECT-ELONGATED: an already-suspect room's existing reason (NO_DOOR/OPEN) is left
+        # untouched, same rule §R-REJECT already follows for its own suspect-priority ordering.
+        if not suspect and _is_elongated(wx0, wy0, wx1, wy1):
+            suspect = "ELONGATED"
         grects, covered = _decompose_region(in_set, ny, mni, mxi, mnj, mxj, len(cells), bool(suspect))
         for k in cells: in_set[k] = 0
         rects = []

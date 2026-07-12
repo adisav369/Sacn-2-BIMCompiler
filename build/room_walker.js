@@ -589,14 +589,58 @@
     return rooms;
   }
 
+  // §DOOR-PARTITION-EXT-EXCLUDE (compile_rooms.py port, 2026-07-13): returns ONLY the ext mask
+  // (reachable-from-border), unlike _floodExterior above which returns the final intersected
+  // enclosed set — kept separate so partitionByDoors can compute ext on the DILATED footprint but
+  // apply it against the RAW free cells (recovering the seal band), without touching floodRooms'
+  // already-working _floodExterior call.
+  function _exteriorMask(free, nx, ny) {
+    var ext = new Uint8Array(nx * ny);
+    var stack = [];
+    for (var i = 0; i < nx; i++) {
+      [0, ny - 1].forEach(function (j) {
+        var k = i * ny + j;
+        if (free[k] && !ext[k]) { ext[k] = 1; stack.push(k); }
+      });
+    }
+    for (var j = 0; j < ny; j++) {
+      [0, nx - 1].forEach(function (i) {
+        var k = i * ny + j;
+        if (free[k] && !ext[k]) { ext[k] = 1; stack.push(k); }
+      });
+    }
+    while (stack.length) {
+      var k0 = stack.pop();
+      var i0 = Math.floor(k0 / ny), j0 = k0 % ny;
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+        var a = i0 + d[0], b = j0 + d[1];
+        if (a >= 0 && a < nx && b >= 0 && b < ny) {
+          var k = a * ny + b;
+          if (free[k] && !ext[k]) { ext[k] = 1; stack.push(k); }
+        }
+      });
+    }
+    return ext;
+  }
+
   function partitionByDoors(walls, doors, stairs, doorWMed) {
     if (!doors.length) return [];
     doorWMed = doorWMed || 0.0;
-    var ext = _gridExtent(walls);
-    var nx = ext.nx, ny = ext.ny, xs0 = ext.xs0, ys0 = ext.ys0;
-    var raw = _rasterizeWalls(walls, ext);
+    var extent = _gridExtent(walls);
+    var nx = extent.nx, ny = extent.ny, xs0 = extent.xs0, ys0 = extent.ys0;
+    var raw = _rasterizeWalls(walls, extent);
+    // §DOOR-PARTITION-EXT-EXCLUDE (real HHS finding: R9's own footprint sampled 93% exterior-
+    // reachable): the door-BFS must never claim exterior space as a room. ext determined on the
+    // dilated (sealed) footprint, applied against RAW free cells — the ext flood never reaches a
+    // raw-free/dilation-blocked cell, so the seal band is "given back" automatically.
+    var freeRaw = new Uint8Array(nx * ny);
+    for (var m0 = 0; m0 < nx * ny; m0++) freeRaw[m0] = raw[m0] ? 0 : 1;
+    var dil = SEAL > 0 ? _dilate(raw, nx, ny, SEAL) : raw;
+    var freeDil = new Uint8Array(nx * ny);
+    for (var m1 = 0; m1 < nx * ny; m1++) freeDil[m1] = dil[m1] ? 0 : 1;
+    var extMask = _exteriorMask(freeDil, nx, ny);
     var free = new Uint8Array(nx * ny);
-    for (var m = 0; m < nx * ny; m++) free[m] = raw[m] ? 0 : 1;
+    for (var m = 0; m < nx * ny; m++) free[m] = (freeRaw[m] && !extMask[m]) ? 1 : 0;
     var cz = walls.reduce(function (s, w) { return s + w[2]; }, 0) / walls.length;
     var bz = walls.reduce(function (s, w) { return s + w[5]; }, 0) / walls.length;
     var ix = function (x) { return Math.min(nx - 1, Math.max(0, Math.floor((x - xs0) / RES))); };
