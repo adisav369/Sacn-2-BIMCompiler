@@ -230,3 +230,24 @@ the check. Recommendation for a follow-up (not performed — `witness_room_graph
   real fire exits" data is not resolved by this task.
 - `witness_room_graph_path.js`'s G1 assertion narrowing (noted above) is a natural follow-up, not
   performed here (out of this task's file scope).
+
+---
+
+# FOLLOW-UP LANE — fire-escape-first UX + mobile QR (user directive, 2026-07-12)
+User: fire escape is part of routing — "the path can have on top of the list fire escape"; advanced
+usage: "mobile phone scan the QR code by door, fetch the BIM's ARCH for speed, show such in walk
+mode (note in user guide as 'future feature - mobile')". Guide note added (docs/BIMUserGuide.md,
+Find panel section). Implementation order for whoever picks this up:
+1. **Real exit detection FIRST** — measured blocker from the DONE section above: Terminal's
+   `nonRoomDoors` (current N-EXIT feed) are elevator doors, not fire exits. An escape route that
+   ends at an elevator is worse than none. Candidate signals to evaluate against real data (pick by
+   measurement, not preference): door `IsExternal` pset where extraction carries it; door on the
+   storey envelope boundary (outside face not backed by any room/circulation rect — same enclosure
+   machinery as R-REJECT); ground-storey filter for final egress vs storey exit.
+2. **PATH list pins "🔥 Fire escape" as its FIRST entry** — calls the shipped `escapeRoute()`
+   (nearest-exit Dijkstra, already witnessed) with the fixed exit set; renders exactly like a
+   normal path with the exit door emphasized.
+3. **Mobile QR (future, guide-noted, do NOT build yet):** QR at a door encodes building + door
+   guid → phone fetches the lightweight ARC-only db (the `<Building>_ARC.db` convention,
+   `scripts/extract_arc_discipline.py`) → Walk mode starting AT that door, escape route pre-drawn.
+   Depends on 1+2 and on mobile Walk mode maturity — parked deliberately.

@@ -231,6 +231,19 @@ height) is only added by the plain-search code path, not the NL-query path — s
 actually appears while typing a recognized phrase; the query still runs correctly on **Enter**. The guide
 text above describes the observed (silent) behavior, not an invented visible hint.
 
+#### Room-to-room paths & escape routes
+
+With the **Room** axis selected, the **Path** sub-mode routes between any two rooms the way a
+person actually walks — out the door, along the corridor or concourse, and up or down the stairs
+when the two rooms are on different floors. The route draws as a line through the real doors and
+stair flights it uses, and the rooms along the way stay highlighted.
+
+*Future feature — fire escape:* the same routing will pin a **Fire Escape** entry at the top of the
+path list — one tap from any room to the nearest building exit.
+
+*Future feature — mobile:* scan a QR code posted beside a door to fetch that building's lightweight
+architecture model on your phone and see the escape route in Walk mode from exactly where you stand.
+
 ### The rest of the Navigate drawer — World History, Page History & Home
 
 The **Navigate** drawer (sailboat icon — see [Find panel](#find-panel-search-voice-query-and-axis-lenses)
