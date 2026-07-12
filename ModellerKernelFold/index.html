@@ -1490,17 +1490,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#why-this-is-a-second-independent-axis-not-a-restatement-of-the-fold" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why this is a second, independent axis, not a restatement of the fold
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#reference-implementation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1966,17 +1955,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#why-this-is-a-second-independent-axis-not-a-restatement-of-the-fold" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why this is a second, independent axis, not a restatement of the fold
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#reference-implementation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2156,6 +2134,57 @@ implementation (below).</p>
 </table>
 <p>The distinguishing intersection — <strong>signed log + geometry-as-fold + unified ERP+BIM substrate + fully
 client-side</strong> — is held by no prior system in the row above.</p>
+<p><strong>A second, independent axis</strong> — added 2026-07-13, same disclosure lineage, full detail in the Extension
+section below — is whether a system can open a <em>complete, real, production</em> IFC and safely edit <em>part</em> of
+it via a dependency graph recovered from real IFC relations, not a generic parametric-feature DAG:</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th style="text-align: center;"><strong>BIM OOTB (this work)</strong></th>
+<th style="text-align: center;">Bonsai / IfcOpenShell</th>
+<th style="text-align: center;">FreeCAD</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Opens a <strong>complete, real, production</strong> IFC and edits it in place</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">partial (BIM workbench, IFC import)</td>
+</tr>
+<tr>
+<td>Dependency graph <strong>recovered from real IFC relations / measured geometry</strong> (not a generic parametric-feature DAG)</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+</tr>
+<tr>
+<td><strong>Delta-based</strong> conformity check (flags only what an edit changed, not pre-existing conditions)</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+</tr>
+<tr>
+<td>RED (hard) / ORANGE (soft) <strong>gated exception on every edit</strong>, not a silent accept</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+</tr>
+<tr>
+<td>Cascade runs <strong>within the same signed, replayable operation log</strong> as the fold mechanism above</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">n/a (no signed log)</td>
+<td style="text-align: center;">n/a (in-memory undo, no signed log)</td>
+</tr>
+</tbody>
+</table>
+<p>FreeCAD's own Dependency Graph is a real, related idea — a DAG of document objects so a parametric change
+propagates to its dependents — but it is a <em>general CAD</em> feature graph (sketch → pad → boolean, within one
+authored document), not derived from a real building's IFC relations, and it carries no delta-based
+RED/ORANGE gate. Bonsai edits real IFC entities directly via IfcOpenShell inside Blender with no
+graph-cascade or signed provenance at all — closer to a direct-mesh editor with IFC awareness than a
+dependency-aware one.</p>
 <h2 id="reference-implementation-enabling-disclosure">Reference implementation (enabling disclosure)<a class="headerlink" href="#reference-implementation-enabling-disclosure" title="Permanent link">&para;</a></h2>
 <p>The mechanism is demonstrated, not merely asserted. The reference reuses the open-source <strong>occt-wasm</strong> kernel
 (OpenCASCADE compiled to WebAssembly) as a stateless pure function and our own signed operation-log engine as
@@ -2202,58 +2231,6 @@ condition the building already shipped with is never flagged — against the sam
 hard constraint the edit broke (a hosted opening crushed by a shrunk host, a real volumetric clash),
 <strong>ORANGE</strong> for a soft, user-acceptable side effect (an abutting wall that now wants to realign). The gate
 runs live during the drag (a green/orange/red preview before commit) and again on the committed result.</p>
-<h3 id="why-this-is-a-second-independent-axis-not-a-restatement-of-the-fold">Why this is a second, independent axis, not a restatement of the fold<a class="headerlink" href="#why-this-is-a-second-independent-axis-not-a-restatement-of-the-fold" title="Permanent link">&para;</a></h3>
-<p>The comparison above (2026-06-18) distinguishes the signed-log/fold mechanism from Onshape, Chili3D,
-ifc5cad, Speckle, and Bonsai on whether geometry is <em>derived</em> rather than stored. This extension adds an
-axis none of those, nor FreeCAD's own dependency-graph kernel, combine with the first:</p>
-<table>
-<thead>
-<tr>
-<th>Capability</th>
-<th style="text-align: center;"><strong>BIM OOTB (this work)</strong></th>
-<th style="text-align: center;">Bonsai / IfcOpenShell</th>
-<th style="text-align: center;">FreeCAD</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Opens a <strong>complete, real, production</strong> IFC and edits it in place</td>
-<td style="text-align: center;">✅</td>
-<td style="text-align: center;">✅</td>
-<td style="text-align: center;">partial (BIM workbench, IFC import)</td>
-</tr>
-<tr>
-<td>Dependency graph <strong>recovered from real IFC relations / measured geometry</strong> (not a generic parametric-feature DAG)</td>
-<td style="text-align: center;">✅</td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">❌</td>
-</tr>
-<tr>
-<td><strong>Delta-based</strong> conformity check (flags only what an edit changed, not pre-existing conditions)</td>
-<td style="text-align: center;">✅</td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">❌</td>
-</tr>
-<tr>
-<td>RED (hard) / ORANGE (soft) <strong>gated exception on every edit</strong>, not a silent accept</td>
-<td style="text-align: center;">✅</td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">❌</td>
-</tr>
-<tr>
-<td>Cascade runs <strong>within the same signed, replayable operation log</strong> as the fold mechanism above</td>
-<td style="text-align: center;">✅</td>
-<td style="text-align: center;">n/a (no signed log)</td>
-<td style="text-align: center;">n/a (in-memory undo, no signed log)</td>
-</tr>
-</tbody>
-</table>
-<p>FreeCAD's Dependency Graph is a real, related idea — a DAG of document objects so a parametric change
-propagates to its dependents — but it is a <em>general CAD</em> feature graph (sketch → pad → boolean, within
-one authored document), not derived from a real building's IFC relations, and it carries no delta-based
-RED/ORANGE gate. Bonsai edits real IFC entities directly via IfcOpenShell inside Blender with no
-graph-cascade or signed provenance at all — closer to a direct-mesh editor with IFC awareness than a
-dependency-aware one.</p>
 <h3 id="reference-implementation">Reference implementation<a class="headerlink" href="#reference-implementation" title="Permanent link">&para;</a></h3>
 <p><code>sdg_gate.js</code> (§GATE-1) evaluates <code>{red:[...], orange:[...]}</code> from before/after axis-aligned bounding
 boxes, the recovered relations, and which elements the fold actually moved — pure geometry over measured
@@ -2263,24 +2240,13 @@ evaluator live, before commit. Handlers shipped and witnessed to date: hosted-op
 RED, abuts-realign ORANGE, an OBB-SAT narrow-phase clash upgrade, and a UBBL-bylaw-shaped demo case. Full
 build log: <code>prompts/SPATIAL_DEPENDENCY_GRAPH.md</code> and the project's <code>RESUME_MODELLER_CONFORMITY_GATE.md</code>.</p>
 <h3 id="named-gaps-real-extensions-the-substrate-makes-possible-not-yet-built">Named gaps — real extensions the substrate makes possible, not yet built<a class="headerlink" href="#named-gaps-real-extensions-the-substrate-makes-possible-not-yet-built" title="Permanent link">&para;</a></h3>
-<p>Stated plainly so the disclosure above isn't read as claiming more than it does:</p>
-<ul>
-<li><strong>No general graph-query API.</strong> The relations are plain SQL tables (<code>rel_adjacency</code>, <code>rel_anchored</code>,
-  <code>rel_fills_host</code>, <code>rel_spans</code>), read with raw SQL — there is no <code>graph.query({source, edgeType})</code>-style
-  traversal method today.</li>
-<li><strong>The cascade is one hop, directional, single-purpose</strong> — a host drags its fillings (wall → door), never
-  the reverse, and never chains further (<code>sdg_cascade.js</code>, explicitly commented "ONE HOP"). There is no
-  multi-hop traversal, so "select everything in this zone" or "select everything downstream of this
-  column" is not a query you can run yet.</li>
-<li><strong>No MEP flow/connectivity graph.</strong> Nothing tracks which duct or pipe segment connects to which — a
-  <code>flows-into</code> edge type does not exist. "What's connected to this riser" is not answerable today.</li>
-<li><strong>No assembly clone/duplicate-with-reconnect.</strong> Selecting a functional group (a bathroom pod's walls +
-  fixtures + MEP stub-outs) and placing a working copy elsewhere, with connections re-resolved against the
-  new context, is not built — Insert places one catalog component at a time; there is no multi-element
-  "copy this assembly" primitive yet.</li>
-</ul>
-<p>Each of these is a plausible extension of the same recovered, non-invented relations — not a different
-architecture — but none of them are shipped, and none should be read into the claims above.</p>
+<p>Stated plainly so the disclosure above isn't read as claiming more than it does: no general graph-query
+API, no multi-hop traversal (the cascade is one hop, directional, wall→door only), no MEP flow/
+connectivity graph (no <code>flows-into</code> edge type exists), no assembly clone/duplicate-with-reconnect. Each is
+a plausible extension of the same recovered, non-invented relations — not a different architecture — but
+none are shipped, and none should be read into the claims above. This is a fast-moving build, not a
+finished one; the tiered gap-and-sequencing plan is tracked internally, not restated here each time it
+moves — see <code>prompts/BONSAI_KERNEL_RESEARCH.md §GAP-TO-COMPETITIVE</code>.</p>
 <hr />
 <h2 id="provenance">Provenance<a class="headerlink" href="#provenance" title="Permanent link">&para;</a></h2>
 <p>This disclosure is timestamped by its publication to the project's public documentation site and by the
