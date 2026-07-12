@@ -460,7 +460,7 @@ After walking a discipline, route its **service trunk** from a real entry.
 A corridor-aware trunk is routed from that entry through the walked fixtures — around walls, through real
 doors, up risers between storeys.
 
-![The Duplex after Route ▶ — a real ELEC trunk is now rendered (0→3,922 segments, verified by framebuffer diff), threaded through the walked fixtures; from this angle the trunk itself is a thin line hugging the interior wall, but the important thing this corrected view proves is that nothing renders outside the building anymore](img/modeller/seedtrunk-trunk.png)
+![The Duplex after Route ▶ — a real ELEC trunk is now rendered (0→3,922 segments, verified by framebuffer diff), threaded through the walked fixtures and recoloured magenta for this shot (its real default is gold, the same family as the ELEC fixture boxes, which read as low-contrast clutter against the wall in a static frame); the important thing this proves is that nothing renders outside the building anymore](img/modeller/seedtrunk-trunk.png)
 
 > **Deeper proof.** The full mining, round-trip, boundary and generalization analysis lives in the resume
 > cards `prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md`, `RESUME_TERMINAL_RULE_MINING.md` and
