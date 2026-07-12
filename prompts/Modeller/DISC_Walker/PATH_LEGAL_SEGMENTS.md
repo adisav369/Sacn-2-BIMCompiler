@@ -120,3 +120,35 @@ require a room-adjacent check too (a point only counts walkable if slab-covered 
 distance of a real room boundary) — untested, no numbers run for it. Both are real geometric
 definitions, neither improvised solo per the preamble's fence — next session should pick one,
 POC-gate it the same way, then proceed to implementation only after it passes clean.
+
+## §G3-REVISED — mesh-derived storey raster (coordinator decision: this direction, 2026-07-13)
+
+Neither (a) nor (b) above is used. **The real fix isn't a better bbox rule — it's not using bboxes
+at all for the slab half of the union.** `element_transforms` bbox is a lossy reduction; the
+building's OWN real triangulated geometry is one join away and was already sitting unused:
+`element_instances (guid -> geometry_hash)` -> `component_geometries (geometry_hash -> vertices,
+faces BLOBs)` — the exact table `modeller/real_geometry.js` `buildGeometryIndex()` already decodes
+for rendering (recentred local positions + faces + `anchorOffset`, world = `center_xyz +
+Rz(rotation_z)·(recentred + anchorOffset)`; HHS slabs measured `rotation_x=rotation_y=0` — a flat
+Z-up rotate-about-Z is sufficient, no 3-axis tilt to handle for floor slabs).
+
+**Architecture — precompute once, read-only lookup at query time (the "instant next time" the user
+asked for):**
+- **Build (offline, node, `RealGeometry` + `sql.js`):** for each storey, decode every slab's real
+  mesh, place it in world XY (rotation_z + translate), rasterize its 2D triangles onto a grid
+  (0.25m cells — matches this spec's own chord-sampling step) unioned with the existing room-rects.
+  Pack as a bitset. Ship as a **self-heal patch** (this project's standing DB-change doctrine —
+  `CLAUDE.md` §DB CHANGES) — `CREATE TABLE IF NOT EXISTS storey_walkable_raster (storey TEXT
+  PRIMARY KEY, res REAL, x0 REAL, y0 REAL, cols INTEGER, rows INTEGER, bits BLOB)` + one `INSERT OR
+  REPLACE` row per storey, appended to the building's existing `buildings/patches/*.sql`.
+- **Read (room_graph.js, browser or node, dbQuery only — no THREE, no mesh decode at runtime):** a
+  single `SELECT ... FROM storey_walkable_raster WHERE storey=?`, unpack the bitset once per storey
+  per graph build, then O(1) bit lookups for every sampled chord point. Table/row absent (an older
+  patch, or a building with no slabs mined yet) -> defensive fallback to the room-rects-only union
+  (§G3's original rooms half, unchanged) — never a hard failure, `§PATH_LEGAL_SKIP` if even that's
+  empty, per this spec's original Implementation section.
+- Room rects are UNCHANGED (kept in the raster's build-time union) — this whole revision only
+  replaces how the SLAB half of the union is computed; it does not touch how rooms are read.
+
+This is being implemented directly in this same session (user directive: "implement here right
+away") rather than queued as a further open question — see the DONE section below for the numbers.
