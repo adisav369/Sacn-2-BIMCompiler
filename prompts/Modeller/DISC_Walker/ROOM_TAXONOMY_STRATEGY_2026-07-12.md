@@ -558,3 +558,57 @@ POC's own "2 changed cases redirect to real Hallway" claim AND `witness_room_gra
 G3a/G4 path checks together, not either alone. Whichever direction: the acceptance gate is now
 established — the CHANGE must not break `witness_room_graph_path.js`'s existing real-path checks, not
 just improve its own isolated ambiguous-door metric.
+
+---
+
+# TASK 3b — R-SPINE's pathfinding dependency (2026-07-12d, calculation-only, no pipeline changes)
+
+**`feat/room-pathfind-graph` (bim-ootb) is NOT unmerged prior art — it is STALE/superseded, already
+live on `main` under a different commit.** Traced directly (not trusted secondhand): the branch's own
+commit `b6bef80` ("feat(viewer): §7 room-to-room adjacency graph + Dijkstra pathfinding in Find panel")
+and `main`'s commit `3f6dbbc` (same title, `#746`, merged 2026-07-12 02:45) are the SAME WORK — `diff
+main:common/room_graph.js branch:common/room_graph.js` is **byte-identical** (239 lines); the only
+`viewer/navigate_find.js` differences are cosmetic (main has since been refined further: neon-green
+path line + waypoint marker spheres vs the branch's plain yellow line, purple selection cuboid vs
+yellow). `git merge-base --is-ancestor feat/room-pathfind-graph main` → NOT an ancestor (the branch
+forked before `3f6dbbc` landed and was never fast-forwarded). **The branch has been removed** (0 unique
+commits vs `origin/main`, safe per this project's worktree-hygiene rule — nothing lost).
+
+**`common/room_graph.js` on `main` already carries everything R-SPINE's `route()` step needs:**
+`buildGraph()` (real room-to-room adjacency from door geometry) + `shortestPath()` (Dijkstra, weighted
+by real room-center distance, every hop carrying the real door guid/name). Verified directly (real
+Duplex_ARC.db, plain-Node, `common/room_graph.js` unmodified) that `shortestPath()` correctly serves a
+SPINE-RESTRICTED query — R-SPINE's own wording ("BFS over room_graph edges restricted to spine ∪
+{fixture_room, riser_room}") — when fed a NODE-FILTERED `graph` object: `shortestPath()`'s own edge
+loop already guards `if (!adj[e.a] || !adj[e.b]) return;`, so passing the full edge list with only
+`.nodes` filtered is sufficient — no edge-list filtering, no new algorithm, needed.
+```
+T1 unrestricted shortestPath finds the real A202->A205 path — PASS (baseline, the shipped feature)
+T2 spine={A201} only (A204 excluded): restricted path correctly returns null — PASS (architecturally
+   right: Duplex has no true corridor system here, matching this file's own "spine only exists after
+   R-MERGE on a real corridor building" finding — not a bug in the mechanism)
+T3 widening spine to {A201,A204} recovers the IDENTICAL path T1 found — PASS (proves the filter itself
+   is correct, not "always null")
+T4 the restricted-graph path still carries real door guid/name per hop — PASS (what R-SPINE's conduit
+   step needs)
+```
+4/4 PASS (session scratchpad `witness_rspine_fit.js`, not committed — calculation-only per this task's
+own scope).
+
+**Conclusion, exactly as the coordinator anticipated: R-SPINE is "wire into an existing pathfinder,"
+not "build a new one."** The genuine remaining gap for a full R-SPINE build (NOT attempted this pass,
+correctly scoped as too large — named, not built):
+1. **Spine SELECTION** — `spine(storey) = connected subgraph of rooms with hallwayness >= 0.5` (Task
+   2's `hallwayness()` formula, now implemented in this session's R-DOOR-SCORE work but reverted from
+   `room_graph.js` — the formula itself is fine in isolation, only its use as a DOOR-scoring discount
+   was disproven; reusing it purely as a spine-membership test is a different, untested claim) over
+   R-MERGEd rooms — not built.
+2. **The `restrictToSpine()` wrapper** — ~10 lines, shown working above, not committed anywhere.
+3. **Conduit polyline generation** (door-center to door-center, hug the longest wall) + the
+   union-of-member-rects containment check — geometry, not pathfinding; the containment LAW was
+   already corrected in Task 4's spec by §POC5 (2026-07-12c), not re-touched here.
+4. Wiring: `buildGraph()` reads straight from `spatial_structure`, so once R-MERGE has been run
+   `--write` on a target building, `buildGraph()` automatically picks up the merged rooms with no
+   further changes needed there.
+
+None of 1-4 requires a new Dijkstra/BFS implementation — the existing one, proven above, is sufficient.
