@@ -350,3 +350,57 @@ BEFORE any R-SPINE code exists.**
    hallway before trusting it; expect the containment law to need a non-convex formulation
    (union-of-member-AABBs, not merged-AABB).
 Lane A may start immediately; Lane B gates R-SPINE. Neither lane pushes (PUSH PAUSE).
+
+---
+
+# PROMPT — Lane B as geometry-grind (2026-07-12c): compute, don't judge
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: Lane B above is stated as judgment ("trace," "watch," "expect") — that's the wrong shape for this
+project's determinism rule. Both items resolve to a NUMBER computed from real DB geometry, not a read.
+Calculation-only: no pipeline code changes, no commits to scripts/compile_rooms.py or build/room_walker.js
+in this pass — that's still the Lane A/implementing session's job. Read the log after every run. PUSH PAUSE
+in effect: commit locally (this file only), do not push, do not open a PR.
+```
+
+## Grind 1 — close Task 0 with one traced fact, not a disjunction
+Task 0 above ends "either the 0.207 case… or a live runtime compile." Resolve which by tracing the code
+path mechanically:
+1. Find every DB Terminal's building record can resolve to at runtime — grep the Viewer/Modeller building
+   manifest / `viewer/scene.js` registry / Modeller substrate loader for every path wired to Terminal, not
+   just `Terminal_extracted.db`.
+2. For each candidate DB with `spatial_structure` rows, cite the exact loader function/line that reads it
+   in the live app — don't assume, trace the call.
+3. If a runtime COMPILE path exists (Modeller substrate calling `room_walker.js` fresh off the source IFC,
+   not a pre-built DB), run it headlessly against Terminal's IFC and apply the F1 stair-overlap metric to
+   THAT output, not to the stale `Terminal_rooms.db`.
+4. Log the single traced answer:
+   ```
+   §POC0c SOURCE=<exact file, or "runtime:<function>"> STAIR_EXCLUSION_APPLIED=<yes/no>
+   §POC0c MAX_STAIR_OVERLAP=<value> ROOM=<id>
+   ```
+
+## Grind 2 — prove or disprove R-SPINE's AABB-containment gap on real merged rooms
+Don't "watch and expect" — compute it:
+1. For every JKR merge cluster in §POC2b (R2+R3+R8, R21-R23, R24-R27, R28-R31, etc.), build the TRUE merged
+   polygon (union of the real wall-bounded pocket polygons already read for §POC2/§POC3) and its AABB.
+2. `slack_area = area(AABB) − area(true_polygon)` per cluster. Log every value.
+3. Run R-SPINE's stated routing rule (door-center to door-center, offset to hug the longest wall) through
+   each cluster; test whether any polyline point falls inside slack_area (passes cheap AABB check, fails
+   true-polygon containment).
+4. Log:
+   ```
+   §POC5 JKR cluster=<ids> slack_area=<m2> polyline_violations=<count>
+   §POC5 JKR total_clusters=<n> total_violations=<count>
+   ```
+5. Verdict is mechanical: `violations=0` across all clusters ⇒ AABB check stands as specced (cheap,
+   sufficient on measured data) — say so with the number. `violations>0` ⇒ the §LAWS containment line in
+   R-SPINE must change from AABB to true-polygon containment (also computable, just costlier) — name which
+   clusters forced it, don't generalize past what was measured.
+
+## DONE WHEN
+Task 0 above has one §POC0c-backed answer, no "either/or" left. R-SPINE's spec (Task 4) carries either a
+"measured: AABB sufficient, 0 violations on N clusters" line, backed by §POC5, or a corrected true-polygon
+containment rule with the forcing cases named. Append results as a new dated section below this one, same
+file — don't create a second doc.
