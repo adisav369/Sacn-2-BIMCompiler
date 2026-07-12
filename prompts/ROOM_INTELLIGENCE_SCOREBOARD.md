@@ -157,6 +157,35 @@ compiled room as suspect if its SIZE (not just aspect ratio) is a wild outlier a
 building's own room-size distribution, same self-scaling-to-real-data discipline as every other
 threshold in this file, just extended beyond aspect ratio.
 
+**Both investigated with real data same day — one built, two honest negatives:**
+- **Slab-based envelope signal: NOT built, real evidence it would give FALSE CONFIDENCE.** HHS's
+  main Level 2 slab bbox spans `x:[-26.3,31.4] y:[-7.9,36.9]` — R9's entire footprint falls inside
+  it, even though 93% of R9 is real exterior space (above). Slab data here is bbox-only, not real
+  polygon footprints, and a large slab's axis-aligned bbox spans right across the building's own
+  courtyard/notch. A bbox-based slab check would have VALIDATED R9 as legitimate, not caught it —
+  worse than no check. Doing this properly needs real mesh polygons (`component_geometries`), a
+  much heavier lift than this session's scope.
+- **Uniformity/size-outlier: NOT built, real evidence of false-positive risk.** Computed area ÷
+  building's-own-median across all 350 rooms in 6 buildings (SampleCastle/HHS/Clinic/Garage/
+  Hospital/Terminal) — the single largest outlier by ratio is Clinic's `First Floor R48` at 92.9m²,
+  15x that building's own median (6.2m²). Checked directly: Clinic is mostly small exam
+  rooms/closets, and a 93m² room is very plausibly a real waiting hall, not a defect. Unlike the
+  elongation test (clean gap, 0 false positives across every building), real facilities legitimately
+  mix small rooms with a few large halls — a naive ratio threshold would misflag genuine common
+  spaces. Not reliable enough as a standalone trigger without a much more careful multi-signal design.
+- **Overlap check: BUILT** (user's specific request — "rooms are stacked to each other, not
+  overlapping") as a permanent regression guard, `_verify_no_overlap()` in both `compile_rooms.py`
+  and `build/room_walker.js`. Checked 773 real compiled rect rows across all 6 buildings: 0
+  violations — both compile paths already guarantee disjointness by construction (flood-fill =
+  disjoint connected components, door-partition = disjoint BFS ownership). Doesn't surface new
+  defects today, but is a precise, zero-threshold invariant worth locking in against a future
+  R-MERGE/§MULTI-RECT regression, unlike the two fuzzy ideas above.
+- **Also directly verified (user asked "did you miss any potential rooms"):** A/B tested the
+  ext-exclusion fix across all 6 buildings by guid — 0 lost, 0 gained, 0 shrunk >50%, on any
+  building. Confirms (again) that fix currently has zero observable effect on live data — none of
+  today's 6 buildings still trigger door-partition — consistent with the earlier finding, not a
+  new gap.
+
 **Do not confuse with (2026-07-13, same screenshot, different bug, already fixed):** the
 screenshot also showed a SECOND, larger, stale wireframe box alongside the correctly-sized purple
 one — that was a pure rendering bug (`viewer/navigate_find.js` `_drawRoomCuboid()` never disposed
