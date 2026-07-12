@@ -1467,6 +1467,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#extension-a-graph-cascade-conformity-layer-on-the-same-substrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension — a graph-cascade conformity layer on the same substrate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extension — a graph-cascade conformity layer on the same substrate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-is-disclosed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is disclosed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-is-a-second-independent-axis-not-a-restatement-of-the-fold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this is a second, independent axis, not a restatement of the fold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference implementation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#provenance" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1882,6 +1932,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#extension-a-graph-cascade-conformity-layer-on-the-same-substrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension — a graph-cascade conformity layer on the same substrate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extension — a graph-cascade conformity layer on the same substrate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-is-disclosed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is disclosed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-is-a-second-independent-axis-not-a-restatement-of-the-fold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this is a second, independent axis, not a restatement of the fold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference implementation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#provenance" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1916,9 +2016,14 @@
 <p><em><a href="../USER_GUIDE/">← Back to the <strong>User Guide</strong></a> · <a href="../">Home</a></em></p>
 <blockquote>
 <p><strong>Defensive publication / authorship record.</strong> First published <strong>2026-06-18</strong> by the BIM OOTB project
-(red1oon). This page is a dated, public, enabling disclosure of the architecture described below so that
-it stands as prior art. It is the geometry-side companion to the <strong><a href="../FeatureComparison/">Feature Comparison</a></strong>
-(BIM viewer) and <strong><a href="../MigrateComparisonPaper/">Migrate &amp; Compare (ERP)</a></strong> (the WASM event-sourced browser ERP).</p>
+(red1oon), extended <strong>2026-07-13</strong> with a second, related disclosure. This page is a dated, public,
+enabling disclosure of the architecture described below so that it stands as prior art. It is the
+geometry-side companion to the <strong><a href="../FeatureComparison/">Feature Comparison</a></strong> (BIM viewer) and
+<strong><a href="../MigrateComparisonPaper/">Migrate &amp; Compare (ERP)</a></strong> (the WASM event-sourced browser ERP).</p>
+<p>Two things are disclosed, dated separately below: (1) geometry as a deterministic fold over a signed
+operation log, and (2) a typed dependency graph over real IFC relations that gates every edit's cascade
+against that same log — the combination that lets the Modeller open a <em>complete, real, production</em> IFC
+and safely edit <em>part</em> of it.</p>
 </blockquote>
 <h2 id="what-is-disclosed">What is disclosed<a class="headerlink" href="#what-is-disclosed" title="Permanent link">&para;</a></h2>
 <p>A single <strong>cryptographically hash-chained operation log</strong> (an append-only, tamper-evident event log — "git
@@ -2055,11 +2160,92 @@ establishes that the geometry is fully determined by the log row — i.e. geomet
 <li>The reused kernel is embedded as a <strong>separately-loadable WebAssembly module</strong>, preserving the open-source
   kernel's licence terms while the surrounding application remains independently licensed.</li>
 </ul>
+<hr />
+<h2 id="extension-a-graph-cascade-conformity-layer-on-the-same-substrate">Extension — a graph-cascade conformity layer on the same substrate<a class="headerlink" href="#extension-a-graph-cascade-conformity-layer-on-the-same-substrate" title="Permanent link">&para;</a></h2>
+<p><em>Published 2026-07-13, same disclosure lineage as above.</em></p>
+<h3 id="what-is-disclosed_1">What is disclosed<a class="headerlink" href="#what-is-disclosed_1" title="Permanent link">&para;</a></h3>
+<p>Alongside the fold mechanism above, the same client-side substrate carries a second layer: a <strong>typed
+dependency graph recovered from real IFC relations (or derived from measured geometry, never guessed),
+driving a delta-based conformity gate on every committed edit</strong> — so that opening a <em>complete, real,
+production</em> IFC building and editing <em>only the part touched</em> is provably safe, not merely possible.</p>
+<p>On import, the tree already used for the BOM (parent→child <code>contains</code>) is extended with typed lateral
+edges: <code>hosted-by</code> (an opening's real host wall, recovered from <code>IfcRelFillsElement</code>), <code>abuts</code> (real
+face-touch adjacency, geometry-derived), <code>anchored-to</code> (element-to-datum-plane by measured face cadence,
+no <code>IfcGrid</code> required), <code>spans</code> (an element's bounding box reaching between two distinct datums). A drag
+on one datum/gridline folds forward through this graph as <strong>one signed operation</strong> (<code>GEOM_GRID_MOVE</code>) —
+hosted openings ride their host wall rather than stretch or divorce from it, spans stretch with sizes
+held, <code>contains</code> cascades en-bloc.</p>
+<p>After the fold, a <strong>delta-based conformity gate</strong> evaluates only what the edit changed — a pre-existing
+condition the building already shipped with is never flagged — against the same graph: <strong>RED</strong> for a
+hard constraint the edit broke (a hosted opening crushed by a shrunk host, a real volumetric clash),
+<strong>ORANGE</strong> for a soft, user-acceptable side effect (an abutting wall that now wants to realign). The gate
+runs live during the drag (a green/orange/red preview before commit) and again on the committed result.</p>
+<h3 id="why-this-is-a-second-independent-axis-not-a-restatement-of-the-fold">Why this is a second, independent axis, not a restatement of the fold<a class="headerlink" href="#why-this-is-a-second-independent-axis-not-a-restatement-of-the-fold" title="Permanent link">&para;</a></h3>
+<p>The comparison above (2026-06-18) distinguishes the signed-log/fold mechanism from Onshape, Chili3D,
+ifc5cad, Speckle, and Bonsai on whether geometry is <em>derived</em> rather than stored. This extension adds an
+axis none of those, nor FreeCAD's own dependency-graph kernel, combine with the first:</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th style="text-align: center;"><strong>BIM OOTB (this work)</strong></th>
+<th style="text-align: center;">Bonsai / IfcOpenShell</th>
+<th style="text-align: center;">FreeCAD</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Opens a <strong>complete, real, production</strong> IFC and edits it in place</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">partial (BIM workbench, IFC import)</td>
+</tr>
+<tr>
+<td>Dependency graph <strong>recovered from real IFC relations / measured geometry</strong> (not a generic parametric-feature DAG)</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+</tr>
+<tr>
+<td><strong>Delta-based</strong> conformity check (flags only what an edit changed, not pre-existing conditions)</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+</tr>
+<tr>
+<td>RED (hard) / ORANGE (soft) <strong>gated exception on every edit</strong>, not a silent accept</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+</tr>
+<tr>
+<td>Cascade runs <strong>within the same signed, replayable operation log</strong> as the fold mechanism above</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">n/a (no signed log)</td>
+<td style="text-align: center;">n/a (in-memory undo, no signed log)</td>
+</tr>
+</tbody>
+</table>
+<p>FreeCAD's Dependency Graph is a real, related idea — a DAG of document objects so a parametric change
+propagates to its dependents — but it is a <em>general CAD</em> feature graph (sketch → pad → boolean, within
+one authored document), not derived from a real building's IFC relations, and it carries no delta-based
+RED/ORANGE gate. Bonsai edits real IFC entities directly via IfcOpenShell inside Blender with no
+graph-cascade or signed provenance at all — closer to a direct-mesh editor with IFC awareness than a
+dependency-aware one.</p>
+<h3 id="reference-implementation">Reference implementation<a class="headerlink" href="#reference-implementation" title="Permanent link">&para;</a></h3>
+<p><code>sdg_gate.js</code> (§GATE-1) evaluates <code>{red:[...], orange:[...]}</code> from before/after axis-aligned bounding
+boxes, the recovered relations, and which elements the fold actually moved — pure geometry over measured
+data, with exactly one tunable parameter (a residential clearance figure, itself mined from a real
+building's own MEP separations, not asserted). <code>bonsai_gridmove.js</code>'s <code>§PREDRAG</code> pipeline runs the same
+evaluator live, before commit. Handlers shipped and witnessed to date: hosted-opening ride, door-crush
+RED, abuts-realign ORANGE, an OBB-SAT narrow-phase clash upgrade, and a UBBL-bylaw-shaped demo case. Full
+build log: <code>prompts/SPATIAL_DEPENDENCY_GRAPH.md</code> and the project's <code>RESUME_MODELLER_CONFORMITY_GATE.md</code>.</p>
+<hr />
 <h2 id="provenance">Provenance<a class="headerlink" href="#provenance" title="Permanent link">&para;</a></h2>
 <p>This disclosure is timestamped by its publication to the project's public documentation site and by the
 project's version-control history. It is intended to establish the date and authorship of the combination
 described, and to serve as prior art against later claims to that combination.</p>
-<p><em>BIM OOTB — red1oon — first published 2026-06-18.</em></p>
+<p><em>BIM OOTB — red1oon — first published 2026-06-18, extended 2026-07-13.</em></p>
 
 
 
