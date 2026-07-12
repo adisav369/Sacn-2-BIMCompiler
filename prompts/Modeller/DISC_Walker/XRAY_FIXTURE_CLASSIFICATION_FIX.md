@@ -93,3 +93,69 @@ glow, no spikes); Duplex regression-checked; both witnesses green. Once done, th
 `walk-fixtures.png` X-ray demo can be redone on SampleCastle (325 fixtures across 7 storeys — the dramatic
 depiction originally asked for) instead of Duplex — that guide-image swap is a natural follow-up once this
 lands, not part of this spec's own DONE bar.
+
+# DONE (2026-07-13)
+
+**Premise revised mid-session, with user sign-off, before implementing.** POC gate confirmed G2/G3 exactly
+(walls: `hasColorParam=true, hasDwDisc=false, class=IfcWall`, identical PALETTE fallback hex `0xb9c4cf` on
+both buildings — the "coincidence" in G3 is scale, not colour: 879 walls on SampleCastle vs 57 on Duplex,
+not a colour difference). But G4's premise didn't hold as written: walked ELEC fixtures render as
+`InstancedMesh` buckets nested one level inside a `dwRoot` marker group (`modeller.html:3684-3697`), NOT
+direct children of `g` — `xrayReveal()`'s original `g.children.forEach` never visited them at all, and they
+carry no `userData.featureId`, so `dwDisc` alone (as originally specced) would have (a) not reached DiscWalker
+fixtures, and (b) broken an existing, currently-passing internal regression control
+(`?routewalk=xray`/`bonsai_xray_reveal_live.js`, `BUILDING_SH_STD` via `placeAssembly`+`autoRouteMEP`, 23
+individually-placed fixtures that carry NO `dwDisc` — they're a third, separate fixture-placement path).
+
+Root-caused instead via the signed op-log's own data (already present, no invention): every DiscWalker
+placement commits with `parameters._dw: {disc, ifc, ...}` (`modeller.html:3945/3958`) and every
+`autoRouteMEP` fixture commits with `parameters._rw: {fixture:true, disc, ...}` (`modeller.html:3010`) —
+both real fixture-placing paths self-tag in the signed log; ARC-seeded structure (`arc_editable.js:191`) and
+raw `placeAssembly` leaves carry neither. Implemented:
+- `_fixtureColorMap()` eligibility test changed from bare `parameters.color != null` to
+  `parameters._dw != null || (parameters._rw && parameters._rw.fixture === true)` (still requires `color`
+  present too) — narrows to true fixture ops regardless of discipline/placement path.
+- `xrayReveal()` gained a second pass over `dwRoot.children` (previously unreached) — every InstancedMesh
+  bucket with `userData.dwDisc != null` now gets glow treatment using its own current material colour
+  (buckets are already one colour per discipline, no per-instance featureId to key through).
+
+**Witnesses (`modeller/tests/`, all puppeteer, real headless Chrome via SwiftShader):**
+- `witness_xray_poc.js` — POC gate, both buildings, `§XRAYPOC` lines confirm G2/G3 numerically.
+- `witness_xray_sc_duplex.js` — `W-XRAY-SC-LIVE` + `W-XRAY-DUPLEX-REGRESSION`, both **PASS**:
+  `§XRAY-ASSERT SampleCastle structureGlassOK=3225 structureLeaked=0 fixtureGlowOK=325/325 bucketGlow=4/4`
+  `§XRAY-RESTORE SampleCastle matchedPreXrayState=3550/3550`
+  `§XRAY-ASSERT Duplex structureGlassOK=196 structureLeaked=0 fixtureGlowOK=102/102 bucketGlow=6/6`
+  `§XRAY-RESTORE Duplex matchedPreXrayState=298/298`
+  Restore assertion compares exact pre-xray material state (transparent/opacity/colour) per mesh rather than
+  assuming universal opacity — SampleCastle has real transparent glazing (`arc_editable.js` §MAT-PARITY),
+  so "restored" means "matches its own prior state," not "opaque."
+  Also verified directly: the 8 tallest meshes in SampleCastle's scene (5+ m walls) are each
+  `opacity=0.06, color=0xaabbcc, depthTest=true` post-reveal — zero leakage, checked at the material level,
+  not just aggregate counts.
+- The pre-existing external `bonsai_xray_reveal_live.js` (`?routewalk=xray` control) fails on unmodified
+  `origin/main` HEAD too (`git stash` confirmed) — a stale/broken serving-path bug in that test file itself,
+  unrelated to this fix. Not fixed here (out of scope); a corrected-serving-root variant
+  (`witness_xray_regression_sh.js`) was written but hit the same pre-existing in-app crash
+  (`TypeError: Cannot read properties of null (reading 'exec')` inside the `routewalk=xray` self-test path,
+  reproducible on unmodified HEAD, unrelated to this fix) — not chased further, flagged here for whoever
+  picks up `bonsai_xray_reveal_live.js` next.
+
+**Two things found outside this spec's scope, filed separately, not fixed here (user directive: "look into
+it separately," don't block this fix):**
+1. `prompts/Modeller/DISC_Walker/DW_FIXTURE_DOUBLE_RENDER_FINDING.md` (bim-ootb repo) — every DiscWalker
+   fixture folds BOTH as an individual top-level mesh (standard op-log fold, own featureId) AND as an
+   instance inside its discipline's `InstancedMesh` bucket, both `visible:true`, likely same position.
+   Confirmed pre-existing (unmodified HEAD). Not investigated further — visual impact unmeasured.
+2. Alpha-accumulation: SampleCastle's guide screenshot still reads visually dense despite 100%-correct glass
+   classification, because ~3225 stacked semi-transparent (6%) structural surfaces compound
+   (`1-(0.94)^N`) to 70-85%+ visual opacity at typical overlap depths — a rendering-tuning question, not a
+   misclassification. Noted in the same finding file's "related observation" section.
+
+**Guide-image swap** (`walk-fixtures.png` → SampleCastle) intentionally NOT done — named in DONE WHEN as a
+follow-up, not part of this bar, and the alpha-accumulation finding above means the swap should probably
+wait for that visual-tuning question to be resolved first or the "dramatic" demo will look muddier than
+intended.
+
+**Commits:** local only in `/tmp/wt-xray-fixture-fix` (branch `fix/xray-fixture-classification`,
+bim-ootb) — standing PUSH PAUSE (`CLAUDE.md` §⏸) applies, not pushed/PR'd. This file (bim-compiler) has no
+equivalent lock; committed directly in the primary checkout.
