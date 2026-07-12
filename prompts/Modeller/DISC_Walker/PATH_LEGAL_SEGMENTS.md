@@ -81,3 +81,42 @@ Node script against real HHS db (+patch applied to a scratch copy):
 Gate passed with the named numbers; engine shipped API-compatible; all witnesses green; PR merged
 (auto-merge); DONE section appended. If the gate fails its controls: report the measured numbers
 and stop — that outcome is a VALID completion of this task.
+
+# DONE (2026-07-13) — GATE_FAIL, per preamble: STOP, report numbers, no engine edit
+
+**W-LEG-POC ran against real data (bim-ootb `poc_path_legal.js`, pushed on `fix/path-legal-segments`,
+NOT merged — no engine files touched, this is a calculation-only POC).**
+
+- HHS route reproduced exactly as G1 claims:
+  `§POCLEG HHS route doors=3 distance=86.2m path=room:≈ Level 1 R18 | room:≈ Level 1 R17 |
+  doorwp:Drehflügel 1-flg - Stahlzarge:88.5 x 2.26:88.5 x 2.26:573676 | room:≈ Level 1 R31`
+- The named control case — the courtyard chord — did **not** classify illegal:
+  `§POCLEG chord=Drehflügel 1-flg...573676->≈ Level 1 R31 len=48.1m illegal_pts=0/194`
+  `§POCLEG HHS_SUMMARY illegal_chords=0 (expect >0 — the courtyard chord)`
+- Duplex control passed clean: `§POCLEG Duplex_SUMMARY chords_checked=74 illegal_chords=0 (expect 0)`
+- **Root cause, measured not guessed** — this building's per-storey `IfcSlab` is a single concave
+  (U-shaped) element, and `element_transforms` stores only ONE axis-aligned bbox per element:
+  `§POCLEG_ROOTCAUSE storey=Level 1 slab="Floor:STB 30.0:573302" bbox=65.8x53.4m covers 105% of
+  the storey's room-rect extent — a concave slab stored as one AABB, overreaching into any notch.`
+  Same failure shape as the concave-room-AABB problem the file's own §MULTI-RECT commentary already
+  documents for rooms (`room_graph.js` header) — but slabs have no multi-rect decomposition to fall
+  back on, and this HHS db's `spatial_structure` has no `room_guid` column either
+  (`hasRoomGuid=false`), so rooms are single-AABB here too.
+- **Diagnostic, not a fix, not applied** — room-rects alone (dropping slabs from the union entirely)
+  DOES correctly flag the same chord:
+  `§POCLEG DIAGNOSTIC room-rects-only (no slabs) for the same chord: illegal_pts=156/194 (80.4%)`
+  This is reported to inform the next decision, not silently substituted as G3's definition — per
+  the preamble, that call goes back to the coordinator.
+
+**Open question for the coordinator (the ⛔ this session cannot resolve alone):** G3's floor-slab
+half of the walkable-space union relies on slab AABBs that overreach on any concave slab (measured
+on HHS, both its Level-1 "Floor:STB 30.0" AND "Floor:FB 15.0 - Fliesen" rows, each ~105% of the
+storey's room extent) — and the same AABB-only limitation shows up on Duplex's Roof slab too
+(100% coverage, harmless there only because Duplex's roof has no concave notch to hide). Two
+directions, not decided here: (a) drop slabs from the union, room-rects-only (works on HHS per the
+diagnostic above, but weakens the definition for any storey where circulation floor exists outside
+every room's own rect — e.g. corridors, if HHS or another building has any); (b) keep slabs but
+require a room-adjacent check too (a point only counts walkable if slab-covered AND within some
+distance of a real room boundary) — untested, no numbers run for it. Both are real geometric
+definitions, neither improvised solo per the preamble's fence — next session should pick one,
+POC-gate it the same way, then proceed to implementation only after it passes clean.
