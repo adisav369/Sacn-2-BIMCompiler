@@ -612,6 +612,21 @@ def flood_rooms(walls, stairs=None, doors=None, door_w_med=0.0):
 # structurally cannot work, not an invention.
 DOOR_SHORTFALL_RATIO = 0.15  # flood-fill finding fewer rooms than this fraction of doors = has failed
 
+# §SUSPECT-ELONGATED (ROOM_INTELLIGENCE_SCOREBOARD.md "Confirmed case in point" / R9, 2026-07-13):
+# door-partition's nearest-door BFS has no wall to stop it when a storey is missing dividing walls
+# (the same SPARSE_WALLS condition §PHASE0-HEALTH already flags) — it then assigns one door whatever
+# long, undivided free-floor span it reaches first. Scoped to door-PARTITION only (predefined_type
+# INTERNAL_DOORPART): flood-fill rooms are wall-bounded on every side by construction and don't share
+# this failure mode, so this test never runs against them. Threshold measured, not eyeballed: HHS's
+# own 105 door-partitioned rooms (2026-07-13 direct query, /tmp/wt-fable-livewire/modeller/HHS_ARC.db)
+# have a clean bimodal aspect-ratio spread — 98 rooms climb smoothly 1.00→7.50 (the same shape every
+# other building's genuine rooms show), then a hard gap to 7 outliers at 13.64→37.25 (R9 = 13.64, the
+# smallest of the 7). SUSPECT_ELONGATED_ASPECT_MIN = midpoint of that gap, same derivation discipline
+# as WALL_DOOR_SPARSE_THRESHOLD above: (7.50 + 13.64) / 2 = 10.57. A flagged room still compiles (never
+# invented away) — same §ROOM-FORM treatment as SUSPECT_OPEN/SUSPECT_NO_DOOR: no element containment,
+# review candidate, geometry untouched.
+SUSPECT_ELONGATED_ASPECT_MIN = 10.57
+
 def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
     if not doors: return []
     xs0 = min(w[0] - w[3] / 2 for w in walls); xs1 = max(w[0] + w[3] / 2 for w in walls)
@@ -684,6 +699,14 @@ def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
         open_m = _open_perimeter_m(cells, in_set, raw, raw, nx, ny, 0)
         has_door = _door_adjacent(wx0, wy0, wx1, wy1, doors)
         suspect = _classify(has_door, open_m, door_w_med)
+        # §SUSPECT-ELONGATED: door-partition-only test (see constant derivation above) — an
+        # already-suspect room's existing reason (NO_DOOR/OPEN) is left untouched, same rule
+        # §R-REJECT already follows for its own suspect-priority ordering.
+        if not suspect:
+            span_x = wx1 - wx0; span_y = wy1 - wy0
+            aspect = max(span_x, span_y) / max(min(span_x, span_y), 0.01)
+            if aspect > SUSPECT_ELONGATED_ASPECT_MIN:
+                suspect = "ELONGATED"
         grects, covered = _decompose_region(in_set, ny, mni, mxi, mnj, mxj, len(cells), bool(suspect))
         for k in cells: in_set[k] = 0
         rects = []

@@ -103,12 +103,33 @@ ground truth to fit against.
 
 **Another concrete instance, same root cause (2026-07-13, user screenshot `RoomOverSize.png`):**
 HHS `≈ Level 2 R9` measures `size_x=2.2m size_y=30.0m` in `spatial_structure` — aspect 13.6:1,
-squarely inside the elongated-slivers range already named above. Same `compile_rooms.py` door-
-rescue flood-fill behavior (open doorways leaking a corridor-shaped region into one bbox), just a
-second real building/room confirming it — not a new bug class, not investigated further this
-session (out of scope; this session's actual fix was unrelated — see next paragraph). Still open:
-the fix directions this doc already lists (`_roomBoundingGuids` wall-snap, per-face cuboid
-fallback, or the true-cell-outline option in `HANDOFF_ghost_xray_rooms.md`) apply here too.
+squarely inside the elongated-slivers range already named above.
+
+**CLOSED, 2026-07-13.** R9 is NOT flood-fill/door-rescue (the paragraph above mischaracterized
+it) — direct query (`/tmp/wt-fable-livewire/modeller/HHS_ARC.db`, 105 IfcSpace rows) shows R9 and
+every other elongated sliver carry `predefined_type='INTERNAL_DOORPART'` — i.e. the
+`§DOOR-PARTITION` nearest-door BFS fallback, which only fires when flood-fill structurally fails
+(HHS already carries the `SPARSE_WALLS` `§PHASE0-HEALTH` flag — dividing walls are genuinely
+missing from this extraction). The 3 old fix directions this doc + `HANDOFF_ghost_xray_rooms.md`
+named (wall-inner-face snap, per-face cuboid fallback, cell-outline polygon) all target the
+flood-fill bbox path, which no longer has this bug (superseded by `§MULTI-RECT` decomposition) —
+they do not apply to `partition_by_doors`'s BFS, which is the actual culprit. **Root cause:**
+absent dividing walls, nearest-door BFS assigns one door whatever long undivided free-floor span
+it reaches first. Measured HHS's own 105 door-partitioned rooms: clean bimodal aspect spread — 98
+climb smoothly 1.00→7.50 (same shape as every other building's genuine rooms), then a hard gap to
+7 outliers at 13.64→37.25 (R9 = smallest of the 7). **Fix shipped:** `§SUSPECT-ELONGATED`
+(`compile_rooms.py`, user go given 2026-07-13) — new suspect reason scoped ONLY to
+`INTERNAL_DOORPART` rooms, threshold `SUSPECT_ELONGATED_ASPECT_MIN=10.57` (measured gap midpoint,
+same derivation discipline as every other constant in the file). Zero geometry change — flagged
+rooms still compile, just lose element-containment trust the same way `SUSPECT_OPEN`/
+`SUSPECT_NO_DOOR` already do. Verified via deterministic synthetic witness (R9-shaped sliver →
+flagged; normal room → not flagged; HHS's own real R7 shape, aspect 6.9, below threshold → not
+flagged) — could not re-verify against a live re-compile of HHS's own DB because the source that
+produced the current 105-row/all-doorpart result has since diverged from `HHS_ARC.db`'s own
+`elements_meta` (re-running `compile_rooms.py` fresh against it now yields flood-fill, 33 rooms,
+0 door-partitioned) — this is the SAME standing `project_db_snapshot_divergence_landmine` already
+documented above, not a new issue. Re-running the fix against whichever snapshot is authoritative
+next time HHS is recompiled is the remaining step, not a code gap.
 
 **Do not confuse with (2026-07-13, same screenshot, different bug, already fixed):** the
 screenshot also showed a SECOND, larger, stale wireframe box alongside the correctly-sized purple
