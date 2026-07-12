@@ -14,7 +14,7 @@ Usage:
   compile_rooms.py <db>            # DRY: print detected rooms per storey, write nothing
   compile_rooms.py <db> --write    # inject spatial_structure + rel_contained_in_space
 """
-import sqlite3, sys, math
+import sqlite3, sys, math, itertools
 
 RES = 0.20          # grid cell size (m)
 MIN_AREA = 4.0      # m^2 — drop slivers / wall cavities
@@ -701,6 +701,257 @@ def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
                       "cover_n": covered / len(cells)})
     return rooms
 
+# ============================================================================
+# §R-MERGE / §R-REJECT (ROOM_TAXONOMY_STRATEGY_2026-07-12.md Tasks 1/1b — POC-validated:
+# JKR 79->51 rooms, split-hallway chains R2+R3+R8/R21-R23/R24-R27/R28-R31 merged; Duplex control
+# 0 false merges; JKR 48 non-OPEN rooms (24 INTERNAL + 10 INTERNAL_SMALL + 14 SUSPECT_NO_DOOR)
+# 0 false rejects, 16/31 SUSPECT_OPEN correctly rejected). Parameters/formulas are the spec file's
+# own Task 1/1b pseudocode, taken verbatim — not re-derived here. Runs AFTER flood_rooms/
+# partition_by_doors produce a storey's room list, BEFORE guid/name assignment: R-MERGE first
+# (a merge only removes a synthetic dividing line between two already-real pockets, never invents
+# geometry), then R-REJECT (merging raises enclosure of legitimate unions, so reject must see the
+# post-merge shape).
+MERGE_GAP_TOL_FACTOR = 2.0    # x median real-wall thickness = seam-adjacency search band
+MERGE_SHARE_MIN = 0.50        # shared edge >= 50% of the smaller room's parallel side
+MERGE_WALL_COVER_MAX = 0.25   # same family as STAIR_OVERLAP_REJECT: measured-overlap threshold
+MERGE_DOOR_TOL = 0.60         # m — door center within this of the seam blocks the merge (safety)
+WALL_TOL = 0.45               # m — band around a seam/perimeter side within which a wall AABB
+                               # counts as backing it (shared by R-MERGE's wall_cover and
+                               # R-REJECT's enclosure — same constant, same physical meaning)
+REJECT_ENCLOSURE = 0.25       # enclosure < this => REJECT (not a room — unbounded/exterior pocket)
+SUSPECT_OPEN_ENCLOSURE = 0.50 # enclosure < this (and >= REJECT_ENCLOSURE) => KEEP + SUSPECT_OPEN
+# §STAIRWELL-STACK (user report 2026-07-12: "still staircase well as a room", Terminal, screenshot
+# ≈ Aras 01 R1): a stair SHAFT's per-storey flight footprint covers only ~0.22 of the shaft pocket
+# (measured, Terminal) — under STAIR_OVERLAP_REJECT=0.35, which STAYS for the single-flight case —
+# but flights STACKED through the same XY across storeys cover it 1.30–2.23x cumulatively, while
+# the highest legitimate room measures 0.37 (clean gap). Controls: Duplex 0/21, JKR 0/79 false
+# hits; Terminal exactly the 12 shaft rects on both variants (§STACK log, 2026-07-12). A shaft is
+# a VERTICAL object — this is the vertical test the horizontal per-flight threshold cannot be.
+STAIRWELL_STACK_REJECT = 0.50   # cumulative all-storey stair overlap >= this x pocket area…
+STAIRWELL_STACK_MIN_LEVELS = 3  # …across at least this many distinct stair z-levels (~2m buckets)
+
+def all_walls_raw(c):
+    """§R-MERGE/§R-REJECT: whole-building real wall list (ifc_class LIKE 'IfcWall%' only — NOT the
+    wider WALL_LIKE raster set flood-fill uses for enclosure — with z, for the seam/perimeter
+    wall-coverage tests). (cx,cy,cz,bx,by,bz) tuples."""
+    rows = c.execute(
+        "SELECT t.center_x,t.center_y,t.center_z,COALESCE(t.bbox_x,0),COALESCE(t.bbox_y,0),COALESCE(t.bbox_z,0) "
+        "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
+        "WHERE m.ifc_class LIKE 'IfcWall%' AND m.discipline='ARC' AND t.center_x IS NOT NULL").fetchall()
+    return [tuple(r) for r in rows]
+
+def all_stairs_z(c):
+    """§STAIRWELL-STACK: whole-building stair/ramp footprints WITH z (cx,cy,cz,bx,by) — the
+    vertical-stack test needs distinct z-levels, which storey_stairs' per-storey XY list drops."""
+    cond = " OR ".join("m.ifc_class LIKE ?" for _ in STAIR_LIKE)
+    rows = c.execute(
+        f"SELECT t.center_x,t.center_y,t.center_z,COALESCE(t.bbox_x,0),COALESCE(t.bbox_y,0) "
+        f"FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
+        f"WHERE ({cond}) AND m.discipline='ARC' AND t.center_x IS NOT NULL", STAIR_LIKE).fetchall()
+    return [tuple(r) for r in rows]
+
+def _reject_stairwell(rooms, stairs_z):
+    """§STAIRWELL-STACK: drop pockets that are vertical stair shafts (see constants above)."""
+    out = []
+    for r in rooms:
+        x0, y0, x1, y1 = _room_bbox(r)
+        area = max(1e-6, (x1 - x0) * (y1 - y0))
+        cum = 0.0; levels = set()
+        for scx, scy, scz, sbx, sby in stairs_z:
+            ox = max(0.0, min(x1, scx + sbx / 2) - max(x0, scx - sbx / 2))
+            oy = max(0.0, min(y1, scy + sby / 2) - max(y0, scy - sby / 2))
+            o = ox * oy
+            if o > 0.01:
+                cum += o; levels.add(round((scz or 0.0) / 2))
+        if cum / area >= STAIRWELL_STACK_REJECT and len(levels) >= STAIRWELL_STACK_MIN_LEVELS:
+            print(f"    skip stairwell-stack pocket area={round(area)} stack={cum / area:.2f} levels={len(levels)}")
+            continue
+        out.append(r)
+    return out
+
+def all_doors_raw(c):
+    """§R-MERGE: whole-building real door centers (with z) for the seam door-block test."""
+    rows = c.execute(
+        "SELECT t.center_x,t.center_y,t.center_z "
+        "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
+        "WHERE m.ifc_class LIKE 'IfcDoor%' AND m.discipline='ARC' AND t.center_x IS NOT NULL").fetchall()
+    return [tuple(r) for r in rows]
+
+def _wall_thickness(walls):
+    ts = sorted(min(w[3], w[4]) for w in walls if min(w[3], w[4]) > 0.01)
+    return ts[len(ts) // 2] if ts else 0.0
+
+def _union_len(segs):
+    if not segs: return 0.0
+    segs = sorted(segs)
+    tot = 0.0; lo, hi = segs[0]
+    for a, b in segs[1:]:
+        if a > hi:
+            tot += hi - lo; lo, hi = a, b
+        else:
+            hi = max(hi, b)
+    return tot + (hi - lo)
+
+def _room_bbox(r):
+    xs0 = min(rc["cx"] - rc["sx"] / 2 for rc in r["rects"])
+    xs1 = max(rc["cx"] + rc["sx"] / 2 for rc in r["rects"])
+    ys0 = min(rc["cy"] - rc["sy"] / 2 for rc in r["rects"])
+    ys1 = max(rc["cy"] + rc["sy"] / 2 for rc in r["rects"])
+    return xs0, ys0, xs1, ys1
+
+def _shared_edge(ax0, ay0, ax1, ay1, bx0, by0, bx1, by1, gap_tol):
+    ox = min(ax1, bx1) - max(ax0, bx0)
+    oy = min(ay1, by1) - max(ay0, by0)
+    gapy = max(ay0, by0) - min(ay1, by1)
+    gapx = max(ax0, bx0) - min(ax1, bx1)
+    if ox > 0 and 0 <= gapy <= gap_tol:
+        lo, hi = max(ax0, bx0), min(ax1, bx1)
+        ymid = (min(ay1, by1) + max(ay0, by0)) / 2
+        return ("x", lo, hi, ymid, ox, ox / min(ax1 - ax0, bx1 - bx0))
+    if oy > 0 and 0 <= gapx <= gap_tol:
+        lo, hi = max(ay0, by0), min(ay1, by1)
+        xmid = (min(ax1, bx1) + max(ax0, bx0)) / 2
+        return ("y", lo, hi, xmid, oy, oy / min(ay1 - ay0, by1 - by0))
+    return None
+
+def _merge_rooms(rooms, walls, doors_xyz):
+    """§R-MERGE: union same-storey pockets whose shared seam is wall-free (no real wall backing the
+    boundary => a synthetic flood-fill/door-partition split, not an architectural wall). `walls`/
+    `doors_xyz` are whole-building lists (thickness + coverage measured across the building, per
+    the spec); the pairwise test itself only ever compares same-storey rooms (the caller passes one
+    storey's room list at a time)."""
+    n = len(rooms)
+    if n < 2:
+        return rooms
+    wall_t = _wall_thickness(walls)
+    gap_tol = MERGE_GAP_TOL_FACTOR * wall_t
+    boxes = [_room_bbox(r) for r in rooms]
+    parent = list(range(n))
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]; x = parent[x]
+        return x
+    merges = 0
+    for i, j in itertools.combinations(range(n), 2):
+        if find(i) == find(j):
+            continue
+        ax0, ay0, ax1, ay1 = boxes[i]; bx0, by0, bx1, by1 = boxes[j]
+        se = _shared_edge(ax0, ay0, ax1, ay1, bx0, by0, bx1, by1, gap_tol)
+        if not se:
+            continue
+        axis, lo, hi, mid, slen, frac = se
+        if frac < MERGE_SHARE_MIN:
+            continue
+        zlo = min(rooms[i]["cz"] - rooms[i]["sz"] / 2, rooms[j]["cz"] - rooms[j]["sz"] / 2)
+        zhi = zlo + 3.0
+        segs = []
+        for (wcx, wcy, wcz, wbx, wby, wbz) in walls:
+            if not (zlo - 1 <= wcz <= zhi + 1):
+                continue
+            wx0, wx1 = wcx - wbx / 2, wcx + wbx / 2
+            wy0, wy1 = wcy - wby / 2, wcy + wby / 2
+            if axis == "x":
+                if wy0 - WALL_TOL <= mid <= wy1 + WALL_TOL:
+                    s0, s1 = max(wx0, lo), min(wx1, hi)
+                    if s1 > s0: segs.append((s0, s1))
+            else:
+                if wx0 - WALL_TOL <= mid <= wx1 + WALL_TOL:
+                    s0, s1 = max(wy0, lo), min(wy1, hi)
+                    if s1 > s0: segs.append((s0, s1))
+        cover = _union_len(segs) / slen if slen > 0 else 1.0
+        if cover > MERGE_WALL_COVER_MAX:
+            continue
+        door_here = False
+        for (dcx, dcy, dcz) in doors_xyz:
+            if not (zlo - 0.3 <= dcz <= zlo + 2.5):
+                continue
+            if axis == "x" and lo <= dcx <= hi and abs(dcy - mid) <= MERGE_DOOR_TOL:
+                door_here = True; break
+            if axis == "y" and lo <= dcy <= hi and abs(dcx - mid) <= MERGE_DOOR_TOL:
+                door_here = True; break
+        if door_here:
+            continue
+        parent[find(i)] = find(j); merges += 1
+    if not merges:
+        return rooms
+    groups = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+    out = []
+    for members in groups.values():
+        if len(members) == 1:
+            out.append(rooms[members[0]]); continue
+        merged_rects = []
+        for m in members: merged_rects.extend(rooms[m]["rects"])
+        total_area = sum(rooms[m]["area"] for m in members)
+        rep = max(members, key=lambda m: rooms[m]["area"])  # largest member = provenance base
+        merged = dict(rooms[rep])
+        merged["rects"] = merged_rects
+        merged["area"] = total_area
+        merged["cx"] = merged_rects[0]["cx"]; merged["cy"] = merged_rects[0]["cy"]
+        merged["sx"] = merged_rects[0]["sx"]; merged["sy"] = merged_rects[0]["sy"]
+        merged["door_rescued"] = any(rooms[m].get("door_rescued") for m in members)
+        merged["door_partitioned"] = any(rooms[m].get("door_partitioned") for m in members)
+        merged["merged_from"] = len(members)
+        out.append(merged)
+    return out
+
+def _rect_enclosure(rx0, ry0, rx1, ry1, walls):
+    per = 2 * ((rx1 - rx0) + (ry1 - ry0))
+    if per <= 0:
+        return 0.0
+    covered = 0.0
+    for side in ("N", "S", "E", "W"):
+        segs = []
+        if side in ("N", "S"):
+            y = ry1 if side == "N" else ry0
+            for (wcx, wcy, wcz, wbx, wby, wbz) in walls:
+                wy0, wy1 = wcy - wby / 2, wcy + wby / 2
+                if wy0 - WALL_TOL <= y <= wy1 + WALL_TOL:
+                    wx0, wx1 = wcx - wbx / 2, wcx + wbx / 2
+                    lo, hi = max(wx0, rx0), min(wx1, rx1)
+                    if hi > lo: segs.append((lo, hi))
+        else:
+            x = rx1 if side == "E" else rx0
+            for (wcx, wcy, wcz, wbx, wby, wbz) in walls:
+                wx0, wx1 = wcx - wbx / 2, wcx + wbx / 2
+                if wx0 - WALL_TOL <= x <= wx1 + WALL_TOL:
+                    wy0, wy1 = wcy - wby / 2, wcy + wby / 2
+                    lo, hi = max(wy0, ry0), min(wy1, ry1)
+                    if hi > lo: segs.append((lo, hi))
+        covered += _union_len(segs)
+    return covered / per
+
+def _room_enclosure(r, walls):
+    zlo = r["cz"] - r["sz"] / 2 - 1.5; zhi = r["cz"] + r["sz"] / 2 + 1.5
+    ws = [w for w in walls if zlo <= w[2] <= zhi]
+    rects = r["rects"]
+    tot_area = sum(rc["sx"] * rc["sy"] for rc in rects) or 1.0
+    e = 0.0
+    for rc in rects:
+        rx0, rx1 = rc["cx"] - rc["sx"] / 2, rc["cx"] + rc["sx"] / 2
+        ry0, ry1 = rc["cy"] - rc["sy"] / 2, rc["cy"] + rc["sy"] / 2
+        e += (rc["sx"] * rc["sy"]) * _rect_enclosure(rx0, ry0, rx1, ry1, ws)
+    return e / tot_area
+
+def _reject_rooms(rooms, walls):
+    """§R-REJECT: drop pockets whose enclosure (wall-backed fraction of their own perimeter) falls
+    below REJECT_ENCLOSURE — an unbounded/exterior pocket, not a room. Only ever REMOVES rooms
+    (containment trivially preserved). Rooms in [REJECT_ENCLOSURE, SUSPECT_OPEN_ENCLOSURE) that were
+    NOT already flagged suspect for another reason (§ROOM-FORM's NO_DOOR/OPEN test) get newly
+    flagged SUSPECT_OPEN here — an already-suspect room's existing reason is left untouched (never
+    invents a priority ordering between two different suspect causes the spec didn't specify)."""
+    out = []
+    for r in rooms:
+        enc = _room_enclosure(r, walls)
+        r["enclosure"] = enc
+        if enc < REJECT_ENCLOSURE:
+            continue
+        if enc < SUSPECT_OPEN_ENCLOSURE and not r.get("suspect"):
+            r["suspect"] = "OPEN"
+        out.append(r)
+    return out
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__); return
@@ -726,7 +977,13 @@ def main():
     # CONTINUOUS vertical shaft anyway — so test every room pocket against the UNION of all stair
     # footprints by XY (not per-storey). A staircase at an XY is circulation on whatever floor it cuts.
     all_stairs = [s for lst in stairs_by.values() for s in lst]
+    # §R-MERGE/§R-REJECT: whole-building wall/door lists (not the per-storey raster set) — the
+    # thickness/coverage measurements are building-wide, per the spec.
+    all_walls_raw_list = all_walls_raw(c)
+    all_doors_raw_list = all_doors_raw(c)
+    all_stairs_z_list = all_stairs_z(c)   # §STAIRWELL-STACK
     total = 0; door_rescued_total = 0; door_partition_total = 0; allrooms = []; st_z = {}
+    merged_total = 0; rejected_total = 0
     for st in sorted(by):
         ws = by[st]
         if len(ws) < 3:
@@ -742,6 +999,18 @@ def main():
         else:
             rooms = rooms_flood
             method = "flood-fill"
+        # §R-MERGE then §R-REJECT (ordering per spec: merge first, reject sees the post-merge shape).
+        pre_merge_n = len(rooms)
+        rooms = _merge_rooms(rooms, all_walls_raw_list, all_doors_raw_list)
+        merged_n = pre_merge_n - len(rooms)
+        pre_reject_n = len(rooms)
+        rooms = _reject_rooms(rooms, all_walls_raw_list)
+        rooms = _reject_stairwell(rooms, all_stairs_z_list)   # §STAIRWELL-STACK, after R-REJECT
+        rejected_n = pre_reject_n - len(rooms)
+        merged_total += merged_n; rejected_total += rejected_n
+        if merged_n or rejected_n:
+            print(f"    R-MERGE merged {merged_n} pocket(s) → {pre_reject_n} rooms; "
+                  f"R-REJECT dropped {rejected_n} non-room pocket(s)")
         total += len(rooms)
         rescued = sum(1 for r in rooms if r.get('door_rescued'))
         partitioned = sum(1 for r in rooms if r.get('door_partitioned'))
@@ -759,7 +1028,8 @@ def main():
             r["name"] = f"{mark} {st} R{k+1}"; r["parent"] = st_guid.get(st) or ("STC_" + st).replace(" ", "_")
             allrooms.append(r)
     suspect_total = sum(1 for r in allrooms if r.get('suspect'))
-    print(f"TOTAL compiled rooms = {total} (door_rescued={door_rescued_total} door_partitioned={door_partition_total} suspect={suspect_total})")
+    print(f"TOTAL compiled rooms = {total} (door_rescued={door_rescued_total} door_partitioned={door_partition_total} "
+          f"suspect={suspect_total} merged={merged_total} rejected={rejected_total})")
     if not write:
         print("(dry run — pass --write to inject)"); return
     # ensure spatial_structure has bbox columns

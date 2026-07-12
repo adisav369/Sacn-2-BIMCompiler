@@ -51,3 +51,36 @@
 - `prompts/MOBILE_PERF.md` (parent strategy, lever #1) · `docs/MOBILE_DEPLOY.md` (split strategy)
 - `deploy/OCI_UPLOAD.md §RULES` (MIME + bucket) · `scripts/extract_per_building.py` (the slicer)
 - boq_charts.html / mep_report.html `§QTO_SPLIT_HIT` / `§MEP_SPLIT_HIT` (the split consumers)
+
+## 2026-07-13 — the OTHER half of this landmine: the 3D Viewer trusted meta.db ALONE, wrongly
+
+This file's own design (above) already establishes that `_meta.db` is a legitimate STANDALONE
+artifact for metadata-only consumers (BOQ/MEP report pages) — it never needed a `_geo.db`
+companion for that use case. A second, independent producer does the same thing for a different
+consumer: `bim-compiler/scripts/make_resident_meta.sh` (committed 2026-07-03, `2d330e381`)
+generates `<Building>_meta.db` for the **Modeller's resident bbox substrate** (`W-RESIDENT-OPEN`)
+— its own comment says "DROPS the mesh blobs" by design, same shape, same OCI path
+(`buildings/<Name>_meta.db`), same legitimate reason to never have a matching geo.db. Its default
+building list includes `Duplex` by name.
+
+The landmine: `bim-ootb/viewer/streaming.js`'s split-DB detection (present unchanged since the
+repo's initial migration commit — `git log -S"_meta.db"` shows exactly one hit, ever) reads ANY
+`<Name>_meta.db` sighting as proof of a full mesh-streaming split pair, and unconditionally
+attempts to fetch `<Name>_geo.db` next. For a building whose `_meta.db` was uploaded by EITHER of
+the two legitimate standalone producers above (not by the Viewer's own split-DB path, which is a
+THIRD, different code path — see TASK 2/3 above — that writes both halves together), the geo.db
+fetch 404s. There was a fallback (load `_extracted.db` as the geometry source instead) that DID
+recover visually, but noisily (failed request, console errors, one wasted round-trip) — this is
+the "still resolves but looks broken" symptom reported for Duplex 2026-07-13, root-caused during
+an unrelated JKR Drop-IFC georef fix session (see `RESUME_FLATTRANSFORMATION_POSITION_BUG.md`
+2026-07-13 sections) when the user recognized this as a recurring, months-known pattern.
+
+**Fixed at the Viewer consumer, not by touching either legitimate producer**: `streaming.js` now
+requires a successful HEAD on `_geo.db` as well as `_meta.db` before committing to split mode
+(bim-ootb PR #764, `359a86f`; SW `CACHE_VERSION` bump to ship it, PR #765, `v746`). This is the
+right layer to fix — neither `make_resident_meta.sh` nor the BOQ/MEP meta-split producer did
+anything wrong; the Viewer's assumption that "meta.db implies geo.db" was always false for two
+already-legitimate use cases, and would recur for any THIRD future meta-only producer sharing the
+same OCI namespace convention. If this pattern resurfaces: check `§DB_SPLIT_DETECT ... found=`
+in the Viewer console — `found=true` with a subsequent `§SPLIT_GEO_FAIL`/404 means a NEW producer
+has appeared that also needs auditing here, not that the streaming.js fix regressed.

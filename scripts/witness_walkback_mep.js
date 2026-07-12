@@ -53,7 +53,11 @@ var path = require('path');
 var initSqlJs = require('sql.js');
 
 var ROOT = path.join(__dirname, '..');
-var DW = require(path.join(ROOT, 'build/disc_walker.js'));
+// WALKBACK_DW (optional env): absolute path to an ALTERNATE disc_walker.js build — lets this witness score a
+// historical engine (e.g. the pre-§BUG-A-TRUE-MIDPOINT build) against the SAME oracle for a before/after
+// attribution run. Default (unset) is byte-identical to before: the repo's own build/disc_walker.js.
+var DW = require(process.env.WALKBACK_DW || path.join(ROOT, 'build/disc_walker.js'));
+if (process.env.WALKBACK_DW) console.log('§MEP-WB ENGINE-OVERRIDE ' + process.env.WALKBACK_DW);
 var LOG = path.join(ROOT, 'logs', 'witness_walkback_mep_' +
   new Date().toISOString().replace(/[:.]/g, '').slice(0, 15) + '.log');
 

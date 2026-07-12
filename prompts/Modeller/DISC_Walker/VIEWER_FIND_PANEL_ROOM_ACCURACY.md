@@ -529,3 +529,54 @@ Not fixed here — out of §7's scope, flagged for whoever next touches the Dupl
   UI. A separate, pre-existing `navigate_path.js`/`navigate_engine.js` grid-based A* system already
   does free-space camera-flythrough routing (point-to-point, not room-to-room semantic graph) for a
   DIFFERENT feature (walk-to-target camera tours) — confirmed distinct in purpose, not duplicated.
+
+## §8 — Room highlight default: box shine-through, not fragmented real-element seams (2026-07-12)
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: bim-ootb `viewer/navigate_find.js` `_roomSelect()` (~line 1793) + `_drawRoomCuboid()`
+(~line 1517) + `_drawRoomShell()` (~line 1502). User-reported (2026-07-12, live screenshot):
+selecting a room shows visible "cuts and pieces" instead of one clean volume. Traced to source
+before writing this — read this section before touching the code.
+```
+
+**Root cause, confirmed from source (don't re-derive):** `_roomSelect()` has three paths. The one
+that fires whenever `_roomBoundingGuids()` finds real adjacent geometry (the common case — line
+1822, `if (bound.size && zoomBox)`) calls `_drillSelect(bound, ...)`, which lights the room's REAL
+wall/floor/ceiling elements solid + an `OutlinePass` yellow (`0xffd400`) silhouette. A real room is
+usually bounded by several separate real elements (multiple wall segments, floor/ceiling plates) —
+each gets its own silhouette outline, and where two adjacent real elements meet, their outlines
+double up, reading as a brighter yellow seam. **This is not the `§MULTI-RECT` sub-rect mechanism** —
+checked every deployed building DB (`grep room_guid` across all of `deploy/buildings/*_extracted.db`
+schemas) and NONE currently populate it, so that code path never fires on any live building today;
+ruled out, don't chase it. The abstract single-box highlight the user wants already exists —
+`_drawRoomCuboid()` (yellow fill 0.10 opacity + bright wireframe edges, ONE mesh, no seams — line
+1830) — but today it only fires as the FALLBACK, `else if (bound.size)` / `else` branch, i.e. only
+when NO real bounding elements are found. Priority is backwards from what's wanted.
+
+## Task
+1. **Swap `_roomSelect()`'s default:** make the abstract cuboid shine-through (`_drawRoomCuboid`)
+   the PRIMARY highlight for a selected room, not the real-bounding-element yellow silhouette. The
+   real-element highlight (`_drillSelect(bound, ...)` path) should not be the default any more —
+   your call whether to drop it entirely or keep it reachable as a secondary/debug mode, but it
+   must not be what a normal room tap shows.
+2. **Recolor to a softer purple.** Both `_drawRoomCuboid`'s fill (`0xffd400`) and wire
+   (`0xffe83a`) colors, AND `_drawRoomShell`'s room-map fill (`0x4fc3f7`, the "every room" blue
+   shown on Room-lens-open) are candidates — confirm with a screenshot which one(s) the user meant
+   before recoloring both; the selected-room highlight is the one directly discussed this session.
+   Keep opacity in the same low range (fill ~0.10, wire brighter) unless the screenshot shows it
+   needs adjusting — this is a color swap, not a re-design of the translucency model.
+3. Keep `_roomBoundingGuids()`/the real-element lookup itself untouched — only its role in
+   `_roomSelect()`'s priority changes. Do not touch `_allRoomVolumes()`, the habitability filter, or
+   any Task 0-7 machinery above — out of scope.
+
+## Witness
+Whitebox first (`§ROOM_CUBOID_FALLBACK`/`§ROOM_CLIP` log lines already exist — extend/rename as
+needed so the log states which highlight mode actually rendered), then a live screenshot on a
+multi-wall-segment room (HHS or Duplex) showing ONE clean purple volume, no visible seams, where the
+old code would have shown the fragmented yellow-silhouette look from the reported screenshot.
+
+## DONE WHEN
+A room tap shows the single translucent purple box/wireframe by default (no real-element seam
+artifacts), verified live on a building where the old path previously showed fragmented real
+geometry, § log confirms which highlight mode fired.

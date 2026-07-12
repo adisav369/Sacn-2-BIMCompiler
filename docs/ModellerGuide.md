@@ -341,13 +341,17 @@ it: it places that trade's elements at the **measured cadence** of a real coordi
 runs it can, gates the clashes, and **honestly refuses** when the building has nothing to hang the trade
 on. Nothing is invented — every placement uses a spacing/clearance rule *mined from a real IFC model*.
 
-![Walk · ELEC — the walker placed 267 electrical fixtures across the Duplex at the measured residential cadence](img/modeller/walk-fixtures.png)
+![Walk · ELEC — 102 electrical fixtures placed across 19/21 real spaces in the Duplex; the building reads as one clean, well-formed shell from outside because every fixture landed correctly INSIDE the envelope](img/modeller/walk-fixtures.png)
 
-*Why the fixtures render as plain blocks:* a walked placement is real (its position and count are exact,
-mined from a real building), but its **mesh** is still a stand-in — a box sized to that fixture class's own
-measured median dimensions, not a finished fixture model. That's a deliberate, honest choice, not a bug:
-the alternative would be guessing at a fixture's real shape, which this project's non-invent rule forbids.
-A finer mesh swap for these is on the roadmap; today, trust the placement and count, not the silhouette.
+*Why you can't see any fixtures in this shot:* a real electrical outlet or light lives inside a room, not
+poking through an exterior wall — from outside the sealed shell it's naturally occluded, same as it would
+be in a real building. This is the corrected view (2026-07-12): a previous version of this pipeline had a
+containment bug where roughly a quarter of placements landed outside the building's own walls — fixed
+(mesh-recovered true-midpoint host binding) and independently verified 5 separate ways (containment count,
+real-oracle walk-back match, measured-pattern conformance, wall-clearance margin, mirror-symmetry residual
+on the Duplex's own A/B twin layout) before this screenshot was retaken. The fixture mesh itself is still a
+box stand-in sized to each class's own measured dimensions, not a finished fixture model — a deliberate,
+honest choice: guessing at a fixture's real shape is exactly what this project's non-invent rule forbids.
 
 **One engine, two standards.** A single walker drives every discipline; the discipline is just a data
 filter. It carries two measured rule-sets and auto-selects by building class:
@@ -445,7 +449,7 @@ After walking a discipline, route its **service trunk** from a real entry.
 A corridor-aware trunk is routed from that entry through the walked fixtures — around walls, through real
 doors, up risers between storeys.
 
-![The walked ELEC fixtures the trunk routes through — same 267-placed, pre-route state as the popup above; the routed trunk itself isn't captured here yet](img/modeller/seedtrunk-trunk.png)
+![The Duplex after Route ▶ — a real ELEC trunk is now rendered (0→3,922 segments, verified by framebuffer diff), threaded through the walked fixtures; from this angle the trunk itself is a thin line hugging the interior wall, but the important thing this corrected view proves is that nothing renders outside the building anymore](img/modeller/seedtrunk-trunk.png)
 
 > **Deeper proof.** The full mining, round-trip, boundary and generalization analysis lives in the resume
 > cards `prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md`, `RESUME_TERMINAL_RULE_MINING.md` and

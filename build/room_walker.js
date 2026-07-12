@@ -670,6 +670,274 @@
     return rooms;
   }
 
+  // ==========================================================================================
+  // §R-MERGE / §R-REJECT (ROOM_TAXONOMY_STRATEGY_2026-07-12.md Tasks 1/1b — POC-validated: JKR
+  // 79->51 rooms, split-hallway chains merged; Duplex control 0 false merges; JKR 48 non-OPEN
+  // rooms 0 false rejects, 16/31 SUSPECT_OPEN correctly rejected). Verbatim port of
+  // scripts/compile_rooms.py's own port (same file, same section header) — not re-derived.
+  // Runs AFTER floodRooms/partitionByDoors produce a storey's room list, BEFORE guid/name
+  // assignment: R-MERGE first (removes only synthetic dividing lines, never invents geometry),
+  // then R-REJECT (merging raises enclosure of legitimate unions, so reject must see the
+  // post-merge shape).
+  var MERGE_GAP_TOL_FACTOR = 2.0;   // x median real-wall thickness = seam-adjacency search band
+  var MERGE_SHARE_MIN = 0.50;       // shared edge >= 50% of the smaller room's parallel side
+  var MERGE_WALL_COVER_MAX = 0.25;  // same family as STAIR_OVERLAP_REJECT
+  var MERGE_DOOR_TOL = 0.60;        // m -- door center within this of the seam blocks the merge
+  var WALL_TOL = 0.45;              // m -- band around a seam/perimeter side within which a wall
+                                     // AABB counts as backing it (shared by merge + reject)
+  var REJECT_ENCLOSURE = 0.25;      // enclosure < this => REJECT (not a room)
+  var SUSPECT_OPEN_ENCLOSURE = 0.50; // enclosure < this (and >= REJECT_ENCLOSURE) => SUSPECT_OPEN
+  // §STAIRWELL-STACK (mirror of compile_rooms.py, user report 2026-07-12): a shaft's per-storey
+  // flight covers only ~0.22 of its pocket (under STAIR_OVERLAP_REJECT=0.35, which stays), but the
+  // STACK across storeys covers 1.30-2.23x vs 0.37 max for any legitimate room — measured gap.
+  var STAIRWELL_STACK_REJECT = 0.50;    // cumulative all-storey stair overlap >= this x area...
+  var STAIRWELL_STACK_MIN_LEVELS = 3;   // ...across >= this many distinct ~2m z-buckets => shaft
+
+  // §R-MERGE/§R-REJECT: whole-building real wall list (ifc_class LIKE 'IfcWall%' only -- NOT the
+  // wider WALL_LIKE raster set floodRooms uses -- with z). [cx,cy,cz,bx,by,bz] arrays.
+  function allWallsRaw(db) {
+    var rows = _rows(db, "SELECT t.center_x cx,t.center_y cy,t.center_z cz,COALESCE(t.bbox_x,0) bx," +
+      "COALESCE(t.bbox_y,0) by2,COALESCE(t.bbox_z,0) bz " +
+      "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid " +
+      "WHERE m.ifc_class LIKE 'IfcWall%' AND m.discipline='ARC' AND t.center_x IS NOT NULL");
+    return rows.map(function (r) { return [r.cx, r.cy, r.cz, r.bx, r.by2, r.bz]; });
+  }
+
+  // §STAIRWELL-STACK: whole-building stair/ramp footprints WITH z ([cx,cy,cz,bx,by]) — the
+  // vertical-stack test needs distinct z-levels, which the per-storey stairs list drops.
+  function allStairsZ(db) {
+    var cond = STAIR_LIKE.map(function (p) { return "m.ifc_class LIKE '" + p + "'"; }).join(' OR ');
+    var rows = _rows(db, "SELECT t.center_x cx,t.center_y cy,t.center_z cz," +
+      "COALESCE(t.bbox_x,0) bx,COALESCE(t.bbox_y,0) by2 " +
+      "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid " +
+      "WHERE (" + cond + ") AND m.discipline='ARC' AND t.center_x IS NOT NULL");
+    return rows.map(function (r) { return [r.cx, r.cy, r.cz, r.bx, r.by2]; });
+  }
+
+  // §STAIRWELL-STACK: drop pockets that are vertical stair shafts (see constants above).
+  function rejectStairwell(rooms, stairsZ) {
+    var out = [];
+    rooms.forEach(function (r) {
+      var bb = _roomBbox(r);
+      var x0 = bb[0], y0 = bb[1], x1 = bb[2], y1 = bb[3];
+      var area = Math.max(1e-6, (x1 - x0) * (y1 - y0));
+      var cum = 0, levels = {};
+      stairsZ.forEach(function (s) {
+        var ox = Math.max(0, Math.min(x1, s[0] + s[3] / 2) - Math.max(x0, s[0] - s[3] / 2));
+        var oy = Math.max(0, Math.min(y1, s[1] + s[4] / 2) - Math.max(y0, s[1] - s[4] / 2));
+        var o = ox * oy;
+        if (o > 0.01) { cum += o; levels[Math.round((s[2] || 0) / 2)] = 1; }
+      });
+      if (cum / area >= STAIRWELL_STACK_REJECT &&
+          Object.keys(levels).length >= STAIRWELL_STACK_MIN_LEVELS) return;
+      out.push(r);
+    });
+    return out;
+  }
+
+  // §R-MERGE: whole-building real door centers (with z) for the seam door-block test.
+  function allDoorsRaw(db) {
+    var rows = _rows(db, "SELECT t.center_x cx,t.center_y cy,t.center_z cz " +
+      "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid " +
+      "WHERE m.ifc_class LIKE 'IfcDoor%' AND m.discipline='ARC' AND t.center_x IS NOT NULL");
+    return rows.map(function (r) { return [r.cx, r.cy, r.cz]; });
+  }
+
+  function _wallThickness(walls) {
+    var ts = [];
+    walls.forEach(function (w) { var t = Math.min(w[3], w[4]); if (t > 0.01) ts.push(t); });
+    ts.sort(function (a, b) { return a - b; });
+    return ts.length ? ts[Math.floor(ts.length / 2)] : 0.0;
+  }
+
+  function _unionLen(segs) {
+    if (!segs.length) return 0.0;
+    var s = segs.slice().sort(function (a, b) { return a[0] - b[0]; });
+    var tot = 0.0, lo = s[0][0], hi = s[0][1];
+    for (var i = 1; i < s.length; i++) {
+      var a = s[i][0], b = s[i][1];
+      if (a > hi) { tot += hi - lo; lo = a; hi = b; }
+      else { hi = Math.max(hi, b); }
+    }
+    return tot + (hi - lo);
+  }
+
+  function _roomBbox(r) {
+    var xs0 = Infinity, xs1 = -Infinity, ys0 = Infinity, ys1 = -Infinity;
+    r.rects.forEach(function (rc) {
+      xs0 = Math.min(xs0, rc.cx - rc.sx / 2); xs1 = Math.max(xs1, rc.cx + rc.sx / 2);
+      ys0 = Math.min(ys0, rc.cy - rc.sy / 2); ys1 = Math.max(ys1, rc.cy + rc.sy / 2);
+    });
+    return [xs0, ys0, xs1, ys1];
+  }
+
+  function _sharedEdge(ax0, ay0, ax1, ay1, bx0, by0, bx1, by1, gapTol) {
+    var ox = Math.min(ax1, bx1) - Math.max(ax0, bx0);
+    var oy = Math.min(ay1, by1) - Math.max(ay0, by0);
+    var gapy = Math.max(ay0, by0) - Math.min(ay1, by1);
+    var gapx = Math.max(ax0, bx0) - Math.min(ax1, bx1);
+    if (ox > 0 && gapy >= 0 && gapy <= gapTol) {
+      var lo = Math.max(ax0, bx0), hi = Math.min(ax1, bx1);
+      var ymid = (Math.min(ay1, by1) + Math.max(ay0, by0)) / 2;
+      return { axis: 'x', lo: lo, hi: hi, mid: ymid, slen: ox, frac: ox / Math.min(ax1 - ax0, bx1 - bx0) };
+    }
+    if (oy > 0 && gapx >= 0 && gapx <= gapTol) {
+      var lo2 = Math.max(ay0, by0), hi2 = Math.min(ay1, by1);
+      var xmid = (Math.min(ax1, bx1) + Math.max(ax0, bx0)) / 2;
+      return { axis: 'y', lo: lo2, hi: hi2, mid: xmid, slen: oy, frac: oy / Math.min(ay1 - ay0, by1 - by0) };
+    }
+    return null;
+  }
+
+  // §R-MERGE: union same-storey pockets whose shared seam is wall-free (no real wall backing the
+  // boundary => a synthetic flood-fill/door-partition split, not an architectural wall). `walls`/
+  // `doorsXyz` are whole-building lists; the pairwise test itself only ever compares same-storey
+  // rooms (the caller passes one storey's room list at a time).
+  function mergeRooms(rooms, walls, doorsXyz) {
+    var n = rooms.length;
+    if (n < 2) return rooms;
+    var wallT = _wallThickness(walls);
+    var gapTol = MERGE_GAP_TOL_FACTOR * wallT;
+    var boxes = rooms.map(_roomBbox);
+    var parent = []; for (var p = 0; p < n; p++) parent.push(p);
+    function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+    var merges = 0;
+    for (var i = 0; i < n; i++) {
+      for (var j = i + 1; j < n; j++) {
+        if (find(i) === find(j)) continue;
+        var ab = boxes[i], bb = boxes[j];
+        var se = _sharedEdge(ab[0], ab[1], ab[2], ab[3], bb[0], bb[1], bb[2], bb[3], gapTol);
+        if (!se) continue;
+        if (se.frac < MERGE_SHARE_MIN) continue;
+        var zlo = Math.min(rooms[i].cz - rooms[i].sz / 2, rooms[j].cz - rooms[j].sz / 2);
+        var zhi = zlo + 3.0;
+        var segs = [];
+        for (var w = 0; w < walls.length; w++) {
+          var wl = walls[w], wcz = wl[2];
+          if (!(zlo - 1 <= wcz && wcz <= zhi + 1)) continue;
+          var wx0 = wl[0] - wl[3] / 2, wx1 = wl[0] + wl[3] / 2;
+          var wy0 = wl[1] - wl[4] / 2, wy1 = wl[1] + wl[4] / 2;
+          if (se.axis === 'x') {
+            if (wy0 - WALL_TOL <= se.mid && se.mid <= wy1 + WALL_TOL) {
+              var s0 = Math.max(wx0, se.lo), s1 = Math.min(wx1, se.hi);
+              if (s1 > s0) segs.push([s0, s1]);
+            }
+          } else {
+            if (wx0 - WALL_TOL <= se.mid && se.mid <= wx1 + WALL_TOL) {
+              var s0b = Math.max(wy0, se.lo), s1b = Math.min(wy1, se.hi);
+              if (s1b > s0b) segs.push([s0b, s1b]);
+            }
+          }
+        }
+        var cover = se.slen > 0 ? _unionLen(segs) / se.slen : 1.0;
+        if (cover > MERGE_WALL_COVER_MAX) continue;
+        var doorHere = false;
+        for (var d = 0; d < doorsXyz.length; d++) {
+          var dd = doorsXyz[d], dcx = dd[0], dcy = dd[1], dcz = dd[2];
+          if (!(zlo - 0.3 <= dcz && dcz <= zlo + 2.5)) continue;
+          if (se.axis === 'x' && se.lo <= dcx && dcx <= se.hi && Math.abs(dcy - se.mid) <= MERGE_DOOR_TOL) { doorHere = true; break; }
+          if (se.axis === 'y' && se.lo <= dcy && dcy <= se.hi && Math.abs(dcx - se.mid) <= MERGE_DOOR_TOL) { doorHere = true; break; }
+        }
+        if (doorHere) continue;
+        parent[find(i)] = find(j); merges++;
+      }
+    }
+    if (!merges) return rooms;
+    // §DETERMINISM: build groups keyed by find()-root, but iterate in FIRST-SEEN order (matching
+    // Python 3.7+ dict insertion-order semantics exactly) — plain Object.keys() would silently
+    // reorder to ASCENDING NUMERIC key order for integer-like string keys (JS's own property-
+    // enumeration rule for array-index-like keys), which is NOT the same as insertion order and
+    // was measured to desync guid assignment from the Python mirror (Hospital/Terminal parity
+    // witness caught it: same room COUNT, wrong room per guid).
+    var groups = {}, groupOrder = [];
+    for (var k = 0; k < n; k++) {
+      var f = find(k);
+      if (!groups[f]) { groups[f] = []; groupOrder.push(f); }
+      groups[f].push(k);
+    }
+    var out = [];
+    groupOrder.forEach(function (gk) {
+      var members = groups[gk];
+      if (members.length === 1) { out.push(rooms[members[0]]); return; }
+      var mergedRects = [];
+      members.forEach(function (m) { mergedRects = mergedRects.concat(rooms[m].rects); });
+      var totalArea = members.reduce(function (s, m) { return s + rooms[m].area; }, 0);
+      var rep = members.reduce(function (best, m) { return rooms[m].area > rooms[best].area ? m : best; }, members[0]);
+      var merged = {}; Object.keys(rooms[rep]).forEach(function (kk) { merged[kk] = rooms[rep][kk]; });
+      merged.rects = mergedRects;
+      merged.area = totalArea;
+      merged.cx = mergedRects[0].cx; merged.cy = mergedRects[0].cy;
+      merged.sx = mergedRects[0].sx; merged.sy = mergedRects[0].sy;
+      merged.door_rescued = members.some(function (m) { return rooms[m].door_rescued; });
+      merged.door_partitioned = members.some(function (m) { return rooms[m].door_partitioned; });
+      merged.merged_from = members.length;
+      out.push(merged);
+    });
+    return out;
+  }
+
+  function _rectEnclosure(rx0, ry0, rx1, ry1, walls) {
+    var per = 2 * ((rx1 - rx0) + (ry1 - ry0));
+    if (per <= 0) return 0.0;
+    var covered = 0.0;
+    ['N', 'S', 'E', 'W'].forEach(function (side) {
+      var segs = [];
+      if (side === 'N' || side === 'S') {
+        var y = side === 'N' ? ry1 : ry0;
+        walls.forEach(function (wl) {
+          var wy0 = wl[1] - wl[4] / 2, wy1 = wl[1] + wl[4] / 2;
+          if (wy0 - WALL_TOL <= y && y <= wy1 + WALL_TOL) {
+            var wx0 = wl[0] - wl[3] / 2, wx1 = wl[0] + wl[3] / 2;
+            var lo = Math.max(wx0, rx0), hi = Math.min(wx1, rx1);
+            if (hi > lo) segs.push([lo, hi]);
+          }
+        });
+      } else {
+        var x = side === 'E' ? rx1 : rx0;
+        walls.forEach(function (wl) {
+          var wx0 = wl[0] - wl[3] / 2, wx1 = wl[0] + wl[3] / 2;
+          if (wx0 - WALL_TOL <= x && x <= wx1 + WALL_TOL) {
+            var wy0 = wl[1] - wl[4] / 2, wy1 = wl[1] + wl[4] / 2;
+            var lo = Math.max(wy0, ry0), hi = Math.min(wy1, ry1);
+            if (hi > lo) segs.push([lo, hi]);
+          }
+        });
+      }
+      covered += _unionLen(segs);
+    });
+    return covered / per;
+  }
+
+  function _roomEnclosure(r, walls) {
+    var zlo = r.cz - r.sz / 2 - 1.5, zhi = r.cz + r.sz / 2 + 1.5;
+    var ws = walls.filter(function (w) { return zlo <= w[2] && w[2] <= zhi; });
+    var totArea = 0; r.rects.forEach(function (rc) { totArea += rc.sx * rc.sy; });
+    if (!totArea) totArea = 1.0;
+    var e = 0.0;
+    r.rects.forEach(function (rc) {
+      var rx0 = rc.cx - rc.sx / 2, rx1 = rc.cx + rc.sx / 2;
+      var ry0 = rc.cy - rc.sy / 2, ry1 = rc.cy + rc.sy / 2;
+      e += (rc.sx * rc.sy) * _rectEnclosure(rx0, ry0, rx1, ry1, ws);
+    });
+    return e / totArea;
+  }
+
+  // §R-REJECT: drop pockets whose enclosure (wall-backed fraction of their own perimeter) falls
+  // below REJECT_ENCLOSURE — an unbounded/exterior pocket, not a room. Only ever REMOVES rooms.
+  // Rooms in [REJECT_ENCLOSURE, SUSPECT_OPEN_ENCLOSURE) not already flagged suspect get newly
+  // flagged SUSPECT_OPEN here — an already-suspect room's existing reason is left untouched.
+  function rejectRooms(rooms, walls) {
+    var out = [];
+    rooms.forEach(function (r) {
+      var enc = _roomEnclosure(r, walls);
+      r.enclosure = enc;
+      if (enc < REJECT_ENCLOSURE) return;
+      if (enc < SUSPECT_OPEN_ENCLOSURE && !r.suspect) r.suspect = 'OPEN';
+      out.push(r);
+    });
+    return out;
+  }
+
   // Per-storey compile pass (compile_rooms.py's main() loop, minus DB write). Returns
   // { report: [...], rooms: [...] } — report matches ROOM_WALKER_JS_PORT.md Task 3's required table
   // shape (building/count/method/status/total is assembled by the CALLER, which knows the building
@@ -699,6 +967,11 @@
     // footprints by XY (not per-storey).
     var allStairs = [];
     Object.keys(stairsBy).forEach(function (st) { allStairs = allStairs.concat(stairsBy[st]); });
+    // §R-MERGE/§R-REJECT: whole-building wall/door lists (not the per-storey raster set).
+    var allWallsRawList = allWallsRaw(db);
+    var allDoorsRawList = allDoorsRaw(db);
+    var allStairsZList = allStairsZ(db);   // §STAIRWELL-STACK
+    var mergedTotal = 0, rejectedTotal = 0;
 
     var allrooms = [], report = [], stZ = {};
     Object.keys(wallsBy).sort().forEach(function (st) {
@@ -719,6 +992,15 @@
         rooms = roomsFlood;
         method = 'flood-fill';
       }
+      // §R-MERGE then §R-REJECT (ordering per spec: merge first, reject sees the post-merge shape).
+      var preMergeN = rooms.length;
+      rooms = mergeRooms(rooms, allWallsRawList, allDoorsRawList);
+      var mergedN = preMergeN - rooms.length;
+      var preRejectN = rooms.length;
+      rooms = rejectRooms(rooms, allWallsRawList);
+      rooms = rejectStairwell(rooms, allStairsZList);   // §STAIRWELL-STACK, after R-REJECT
+      var rejectedN = preRejectN - rooms.length;
+      mergedTotal += mergedN; rejectedTotal += rejectedN;
       var rescued = rooms.filter(function (r) { return r.door_rescued; }).length;
       var partitioned = rooms.filter(function (r) { return r.door_partitioned; }).length;
       var suspects = rooms.filter(function (r) { return r.suspect; }).length;
@@ -743,7 +1025,9 @@
     var doorRescuedTotal = allrooms.filter(function (r) { return r.door_rescued; }).length;
     var doorPartitionTotal = allrooms.filter(function (r) { return r.door_partitioned; }).length;
     var suspectTotal = allrooms.filter(function (r) { return r.suspect; }).length;
-    return { report: report, rooms: allrooms, stZ: stZ, total: total, doorRescuedTotal: doorRescuedTotal, doorPartitionTotal: doorPartitionTotal, suspectTotal: suspectTotal };
+    return { report: report, rooms: allrooms, stZ: stZ, total: total, doorRescuedTotal: doorRescuedTotal,
+      doorPartitionTotal: doorPartitionTotal, suspectTotal: suspectTotal,
+      mergedTotal: mergedTotal, rejectedTotal: rejectedTotal };
   }
 
   // Persist a compileRooms() result into spatial_structure + rel_contained_in_space (the --write
@@ -836,7 +1120,7 @@
     var compiled = compileRooms(db);
     var result = { report: compiled.report, total: compiled.total,
       doorRescuedTotal: compiled.doorRescuedTotal, doorPartitionTotal: compiled.doorPartitionTotal,
-      suspectTotal: compiled.suspectTotal };
+      suspectTotal: compiled.suspectTotal, mergedTotal: compiled.mergedTotal, rejectedTotal: compiled.rejectedTotal };
     if (opts.write) {
       var w = writeRooms(db, compiled);
       result.roomsWritten = w.roomsWritten; result.rectRowsWritten = w.rectRowsWritten; result.relWritten = w.relWritten;
@@ -849,9 +1133,13 @@
     doorStats: doorStats, storeyZAnchors: storeyZAnchors,
     doorAdjacent: doorAdjacent, stairOverlapFrac: stairOverlapFrac,
     floodRooms: floodRooms, partitionByDoors: partitionByDoors,
+    mergeRooms: mergeRooms, rejectRooms: rejectRooms, allWallsRaw: allWallsRaw, allDoorsRaw: allDoorsRaw,
     compileRooms: compileRooms, writeRooms: writeRooms, walk: walk,
     RES: RES, MIN_AREA: MIN_AREA, DOOR_SHORTFALL_RATIO: DOOR_SHORTFALL_RATIO,
-    VERT_FACTOR: VERT_FACTOR, OPEN_PERIM_FACTOR: OPEN_PERIM_FACTOR
+    VERT_FACTOR: VERT_FACTOR, OPEN_PERIM_FACTOR: OPEN_PERIM_FACTOR,
+    MERGE_GAP_TOL_FACTOR: MERGE_GAP_TOL_FACTOR, MERGE_SHARE_MIN: MERGE_SHARE_MIN,
+    MERGE_WALL_COVER_MAX: MERGE_WALL_COVER_MAX, MERGE_DOOR_TOL: MERGE_DOOR_TOL, WALL_TOL: WALL_TOL,
+    REJECT_ENCLOSURE: REJECT_ENCLOSURE, SUSPECT_OPEN_ENCLOSURE: SUSPECT_OPEN_ENCLOSURE
   };
   ROOT.RoomWalker = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

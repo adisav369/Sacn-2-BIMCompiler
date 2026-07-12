@@ -2632,3 +2632,102 @@ a toggle-visibility lifecycle (Settings, Palette/sunglass panel, the 3 `_buildMa
 (`display:none`↔`''`) and `HbaPaneHost`'s mount/unmount model (element added/removed) are different lifecycles
 and merging them for those panels risks regressing already-shipped behavior without dedicated testing. This
 write-up + the design reasoning above is the seed for that follow-up if picked up later.
+
+## ▶ 2026-07-12 — Safety/Egress guide (QR emergency escape + capacity/occupancy + evacuation-time) — SPECCED, NOT BUILT
+
+```
+# ⚠ DO NOT REMOVE
+User's ask, verbatim intent: "imagine with the HBA IoT overlay we can also mockup clear escape route
+as such BIM can be on mobile it can be used with the Walk thru feature where an emergency QR code at
+the door can be scanne to pick up right away that location and escape route available by virtue of
+sensor clearance... describe in special HBA guide covering Safety... every visitor must be told."
+This section is a SPEC ONLY (per Spec-First discipline) — nothing below is built. Other prompts/specs
+should link here for the safety-guide design rather than re-deriving it. Read the NON-INVENT GATE
+lines before building any of this — several pieces need a sourced number that doesn't exist in this
+repo yet, and several pieces reuse infrastructure that's already real, just not yet aimed this way.
+```
+
+### What already exists that this can be built FROM (checked directly, not assumed)
+- **Room-to-room pathfinding, real, door-guid-verified**: `common/room_graph.js` (§7 of
+  `prompts/Modeller/DISC_Walker/VIEWER_FIND_PANEL_ROOM_ACCURACY.md`) — Dijkstra over a real
+  shared-door adjacency graph, already surfaced as a Find-panel "Path" mode. **Status: real code, on
+  bim-ootb branch `feat/room-pathfind-graph`, committed locally only, NOT pushed/merged.** This is
+  the exact substrate an escape-route feature needs — reuse it, don't rebuild a second graph.
+- **Guid-deep-link-by-URL, already shipped and proven**: the Zoom-Across mechanism
+  (`viewer/config.js A.FIND_GUID` + `hba_lens.js _consumeFindGuid`, §2026-07-04c above) already
+  lands a page directly on a given guid's zone from a URL parameter. A door-side QR code encoding
+  `.../viewer.html?find=<door-or-zone-guid>` is a small, precedented extension of infrastructure that
+  already exists — not a new mechanism.
+- **A "safety brief" acknowledgment already has a named slot**: the signed-edge chain table (line
+  ~932 above) already lists "safety brief" alongside payslip-ack/leave/permit-to-work as a
+  `sealChain`/`verifyChain`-style signed op. Never wired to a real UI, but the mechanism a visitor
+  "must be told and acknowledge" safety info through already exists in the kernel op-log, not a new
+  invention.
+- **Occupied/vacant, live, today**: HBA Presence's "open attendance session resolves to a zone"
+  signal (§2026-07-04c) already answers occupied-vs-vacant for staff, no new data needed.
+- **7 IoT sensor types exist, but NONE are fire/smoke/gas detection** (`iot.js`
+  temp/pressure/sound/dust/solar/electrical/motion-PIR, §2026-07-04d/2026-07-05c above) — "escape
+  route available by virtue of sensor clearance" needs either a genuinely new sensor type (mocked the
+  same deterministic way the existing 7 are, clearly labeled MOCKUP, bound to a real element like the
+  others) or an honest note that no current sensor answers "is this corridor clear of smoke/fire"
+  — don't silently repurpose e.g. the dust sensor as a smoke proxy without saying so.
+
+### NON-INVENT GATE — the two numbers this needs that are NOT yet sourced in this repo
+1. **Occupant-load factor (people per m², by space type)** — DIFFERENT from the UBBL bedroom-minimum-
+   area figures already found+verified (`prompts/UBBL_RULES_RECON.md`, 9.3/6.5/11 m² — those are
+   room-SIZE minimums for habitability, By-Law 42). Egress capacity needs the separate occupant-LOAD
+   table (UBBL By-Law 40/Means-of-Escape schedule, or a Fire Certificate schedule) — not yet located
+   or sourced from Bomba/KPKT. **User's resolution this session: "pick the most universal one, or
+   follow the country locale JSON."** Checked for an existing locale-keyed standards file first (per
+   that instruction) — no such JSON exists (`deploy/*/locales/` is UI text/currency i18n only, a
+   different thing). What DOES already exist and fits the ask: `library/component_library.db`'s
+   `ad_jurisdiction_codes`(jurisdiction, code_id) → `ad_code_requirement`(clause, element_type,
+   space_type, qty_per_area, ...) schema — already populated with 23 real US rows (NEC_2020/
+   NFPA_13/IPC_2021), with a `UBBL_FIRE` Malaysia jurisdiction row present but 0-populated. This is
+   the real "country locale" mechanism, a DB table not a JSON file — **recommend**: populate it
+   properly (element_type='OCCUPANT_LOAD', qty_per_area = the sourced factor, space_type = room type)
+   using NFPA 101 Table 7.3.1.2 (a real, internationally-referenced, genuinely "most universal"
+   occupant-load-factor table) as the default row when no Malaysia-specific figure is sourced, with a
+   Malaysia-specific row added once verified from Bomba/KPKT the same way the room-area figures were
+   — don't invent a number for either jurisdiction, cite before populating.
+2. **Door/stair CLEAR width vs total leaf/flight width** — real evacuation-time formulas (see below)
+   need effective egress width, not raw geometry bbox width. Not yet checked whether the extracted
+   `element_transforms` bbox for `IfcDoor`/`IfcStair` already represents clear width or needs a
+   standard deduction — verify against real data before computing anything, don't assume.
+
+### "Mins to clear the building, by floor" — real standard concept, not this project's invention
+User's own framing: "i wonder if safety stds do need or we are prior art... i am just imagining
+things." Answered directly: this is a well-established fire-engineering concept — **Required Safe
+Egress Time (RSET)**, computed from occupant load ÷ effective egress width × a standard flow-rate
+constant (SFPE Handbook / NFPA 101 / BS 9999 methods), typically done per floor/stair. **Not
+something this project invents or is "prior art" for as a concept** — engineers already do this as a
+one-off design-time calculation. What WOULD be a genuine differentiator: computing it **continuously,
+live, from real extracted BIM geometry (real door/stair widths already in `element_transforms`) and
+real-time HBA occupancy telemetry** instead of a static design-time assumption — most real-world RSET
+calcs use assumed/worst-case occupancy, not live sensor-fed numbers. That automation angle is real
+and not something located elsewhere in this repo or field — but it is gated on both NON-INVENT items
+above being sourced first; do not compute or display a "minutes to clear" number until they are.
+
+### UI — capacity as an icon, not a label (folds into the Outliner-friendly-naming discussion)
+Per the same-session Outliner/taxonomy discussion (bim-compiler conversation, not yet its own doc):
+user wants capacity shown as a grey person-silhouette avatar, an occupied count overlain in blue, and
+a `×N` compact notation for multiples — consistent with this project's existing icon-not-label
+convention for the Viewer facet axis (`viewer/panels.js` `ICONS` registry — Storey `layers`/Disc
+`wrench`/Material `contrast`/Tenancy `users`/IoT `cpu`/Team `share`, per
+`project_teams_people_dimension_architecture` memory's UI-consistency pass). A capacity/occupancy
+badge is a natural new `ICONS` entry (e.g. a person-glyph + count), not a new UI pattern — reuse the
+registry, don't invent a second icon mechanism.
+
+### Open questions before this can move from spec to build
+1. Is a genuinely new "smoke/fire" mock sensor wanted (same deterministic-mockup discipline as the
+   existing 7), or should escape-route "clearance" stay purely topological (the room graph only, no
+   sensor-conditioning) until real detection hardware/data exists?
+2. Who sources the Malaysia occupant-load figure (Bomba/KPKT), and is the NFPA 101 universal default
+   acceptable to ship as a labeled fallback in the meantime, clearly marked as non-Malaysia-specific?
+3. Where does the QR code itself get generated/printed from — a Viewer admin tool, a static per-door
+   export, something else? Not yet designed.
+
+### DONE WHEN (for a future build session — not this one)
+Nothing here is started. A future session picks ONE slice (e.g. "QR-to-Find-panel landing" alone is
+buildable today with zero new sourcing, since it only reuses existing `FIND_GUID` deep-linking) rather
+than attempting the full escape-route+capacity+RSET stack in one pass.

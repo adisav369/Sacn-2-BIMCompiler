@@ -1,0 +1,230 @@
+<!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT -->
+# PATH LEGAL SEGMENTS — no chord through the void (2026-07-13)
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: fix the RENDERED path taking straight-line shortcuts across open air on concave buildings
+(user screenshot: HHS U-shape, R18→R31, the chord crosses the courtyard). The GRAPH and its hops
+are CORRECT — do not change which rooms/doors a route uses; change only the polyline geometry of
+same-storey segments. POC-gate FIRST (calculation-only, real HHS data) before touching the engine.
+API-COMPATIBLE: buildGraph()/shortestPath() signatures unchanged; navigate_find.js consumes the
+same result shape (path entries with cx/cy/cz) — it must need ZERO edits. Every claim needs a
+§-log line. Read the log after every run. Commit locally, push, PR with auto-merge — the push
+pause is lifted; localhost witness BEFORE the PR.
+If the POC shows the walkable-space definition below does not separate legal from illegal segments
+on the real data (misfires on >0 of the named control cases), STOP and report the numbers — do not
+improvise a different geometric definition solo; that decision goes back to the coordinator.
+```
+
+## §GIVEN — measured, do not re-derive
+- **G1 — the defect, live:** HHS (`buildings/HHS_Office_Federated_extracted.db` + its
+  `buildings/patches/…sql` self-heal), Room→Path, `≈ Level 1 R18` → `≈ Level 1 R31`: route is
+  CORRECT (3 doors, 86.2m) but the drawn polyline between same-storey door waypoints is a straight
+  chord across the U-shaped courtyard (open air). Screenshot in the session record, 2026-07-13.
+- **G2 — where polylines are assembled:** `common/room_graph.js` `shortestPath()` returns `path`
+  entries carrying cx/cy/cz per hop (door waypoints, stair waypoints `::lo/::hi`, circ hops using
+  real door/stair positions). The Viewer draws straight lines between consecutive entries
+  (`viewer/navigate_find.js` `_drawPathHighlight`, no interpolation). So legality is decided
+  ENTIRELY by which intermediate points shortestPath emits — the fix lives in room_graph.js only.
+- **G3 — walkable space, the definition to validate:** a same-storey segment is LEGAL iff every
+  sampled point lies inside the union of (a) this storey's room rects (`spatial_structure`
+  IfcSpace rows, multi-rect aware via room_guid) and (b) this storey's floor-slab footprints
+  (`elements_meta m JOIN element_transforms t`, `m.ifc_class LIKE 'IfcSlab%'`, z within
+  [storey_z − 2, storey_z + 1] — wall-center storey z sits above the slab, see PR #763's
+  gap-relative note). Intuition: you can walk where there is floor. The courtyard void has no
+  upper-storey slab; the wings do.
+- **G4 — detour mechanism:** visibility graph over this storey's DOOR CENTERS (they already exist
+  in the graph build) + the two segment endpoints: edge between two points iff the straight
+  segment between them is legal per G3 (sample @0.25m). Dijkstra on that small graph replaces the
+  single chord with a legal polyline. Doors are natural corridors' waypoints; no new geometry is
+  invented.
+- **G5 — controls (must not change):** Duplex any same-unit path (convex, all chords already
+  legal — polylines must be IDENTICAL before/after, byte-compare the waypoint lists);
+  Terminal `≈ Aras 01 R1`-family paths (its wings are convex enough that most chords are legal —
+  count changed polylines, expect few); SampleCastle 00→03 (PR #763's 6-hop path — the stair hops
+  must be untouched, only same-storey sub-segments may gain waypoints).
+- **G6 — harness:** localhost :8901 serves /tmp/wt-terminal-rooms; headless example
+  `scratchpad/e2e_viewer_terminal3.js` (session scratchpad path in that file's header); witnesses
+  `witness_room_graph_path.js` (15/15) + `witness_occupant_pathfinder.js` (full pass) must stay
+  green.
+
+## POC GATE (first, calculation-only, no engine edits)
+Node script against real HHS db (+patch applied to a scratch copy):
+1. Build the graph, compute the R18→R31 route, extract its same-storey chords.
+2. For each chord: sample @0.25m, classify each point inside/outside G3's walkable union; log
+   `§POCLEG chord=<a>-><b> len=<m> illegal_pts=<n>/<N>`. The courtyard chord MUST classify
+   illegal (>0 outside points) and Duplex's chords MUST classify 0 — if either fails, STOP (see
+   preamble).
+3. Build G4's visibility detour for the illegal chord; log the detour waypoint count + length
+   `§POCLEG detour hops=<n> len=<m> illegal_pts=0`. Expect longer than 86.2m — that is correct,
+   the chord was a lie.
+
+## Implementation (after the gate)
+- All inside `common/room_graph.js`: shortestPath()'s same-storey segment assembly gains the
+  legality test + detour insertion. ES5, dual-mode, defensive table probes (missing slabs table ⇒
+  rooms-only union; zero walkable data ⇒ current chord behavior byte-identical, log
+  `§PATH_LEGAL_SKIP no walkable data`).
+- Extend the existing §-line: ` legalized=<n_segments> detoured=<n>` — never remove fields.
+- Cache-bust: `viewer/main.js` room_graph.js `?v=` +1 (check current value first, another PR may
+  have bumped it).
+
+## WITNESS PLAN
+- **W-LEG-POC**: the gate numbers above.
+- **W-LEG-HHS-LIVE**: localhost, real Viewer, R18→R31 — §-log shows detoured>0 and the E2E asserts
+  every sampled polyline point is inside the walkable union (assert in page via APP.dbQuery — no
+  screenshot judgment needed).
+- **W-LEG-CONTROLS**: Duplex polyline byte-identical; SampleCastle 00→03 still 6 hops with stair
+  waypoints intact; both witness scripts green.
+- Append a dated `# DONE` with quoted §-lines to THIS file; commit here too.
+
+## DONE WHEN
+Gate passed with the named numbers; engine shipped API-compatible; all witnesses green; PR merged
+(auto-merge); DONE section appended. If the gate fails its controls: report the measured numbers
+and stop — that outcome is a VALID completion of this task.
+
+# DONE (2026-07-13) — GATE_FAIL, per preamble: STOP, report numbers, no engine edit
+
+**W-LEG-POC ran against real data (bim-ootb `poc_path_legal.js`, pushed on `fix/path-legal-segments`,
+NOT merged — no engine files touched, this is a calculation-only POC).**
+
+- HHS route reproduced exactly as G1 claims:
+  `§POCLEG HHS route doors=3 distance=86.2m path=room:≈ Level 1 R18 | room:≈ Level 1 R17 |
+  doorwp:Drehflügel 1-flg - Stahlzarge:88.5 x 2.26:88.5 x 2.26:573676 | room:≈ Level 1 R31`
+- The named control case — the courtyard chord — did **not** classify illegal:
+  `§POCLEG chord=Drehflügel 1-flg...573676->≈ Level 1 R31 len=48.1m illegal_pts=0/194`
+  `§POCLEG HHS_SUMMARY illegal_chords=0 (expect >0 — the courtyard chord)`
+- Duplex control passed clean: `§POCLEG Duplex_SUMMARY chords_checked=74 illegal_chords=0 (expect 0)`
+- **Root cause, measured not guessed** — this building's per-storey `IfcSlab` is a single concave
+  (U-shaped) element, and `element_transforms` stores only ONE axis-aligned bbox per element:
+  `§POCLEG_ROOTCAUSE storey=Level 1 slab="Floor:STB 30.0:573302" bbox=65.8x53.4m covers 105% of
+  the storey's room-rect extent — a concave slab stored as one AABB, overreaching into any notch.`
+  Same failure shape as the concave-room-AABB problem the file's own §MULTI-RECT commentary already
+  documents for rooms (`room_graph.js` header) — but slabs have no multi-rect decomposition to fall
+  back on, and this HHS db's `spatial_structure` has no `room_guid` column either
+  (`hasRoomGuid=false`), so rooms are single-AABB here too.
+- **Diagnostic, not a fix, not applied** — room-rects alone (dropping slabs from the union entirely)
+  DOES correctly flag the same chord:
+  `§POCLEG DIAGNOSTIC room-rects-only (no slabs) for the same chord: illegal_pts=156/194 (80.4%)`
+  This is reported to inform the next decision, not silently substituted as G3's definition — per
+  the preamble, that call goes back to the coordinator.
+
+**Open question for the coordinator (the ⛔ this session cannot resolve alone):** G3's floor-slab
+half of the walkable-space union relies on slab AABBs that overreach on any concave slab (measured
+on HHS, both its Level-1 "Floor:STB 30.0" AND "Floor:FB 15.0 - Fliesen" rows, each ~105% of the
+storey's room extent) — and the same AABB-only limitation shows up on Duplex's Roof slab too
+(100% coverage, harmless there only because Duplex's roof has no concave notch to hide). Two
+directions, not decided here: (a) drop slabs from the union, room-rects-only (works on HHS per the
+diagnostic above, but weakens the definition for any storey where circulation floor exists outside
+every room's own rect — e.g. corridors, if HHS or another building has any); (b) keep slabs but
+require a room-adjacent check too (a point only counts walkable if slab-covered AND within some
+distance of a real room boundary) — untested, no numbers run for it. Both are real geometric
+definitions, neither improvised solo per the preamble's fence — next session should pick one,
+POC-gate it the same way, then proceed to implementation only after it passes clean.
+
+## §G3-REVISED — mesh-derived storey raster (coordinator decision: this direction, 2026-07-13)
+
+Neither (a) nor (b) above is used. **The real fix isn't a better bbox rule — it's not using bboxes
+at all for the slab half of the union.** `element_transforms` bbox is a lossy reduction; the
+building's OWN real triangulated geometry is one join away and was already sitting unused:
+`element_instances (guid -> geometry_hash)` -> `component_geometries (geometry_hash -> vertices,
+faces BLOBs)` — the exact table `modeller/real_geometry.js` `buildGeometryIndex()` already decodes
+for rendering (recentred local positions + faces + `anchorOffset`, world = `center_xyz +
+Rz(rotation_z)·(recentred + anchorOffset)`; HHS slabs measured `rotation_x=rotation_y=0` — a flat
+Z-up rotate-about-Z is sufficient, no 3-axis tilt to handle for floor slabs).
+
+**Architecture — precompute once, read-only lookup at query time (the "instant next time" the user
+asked for):**
+- **Build (offline, node, `RealGeometry` + `sql.js`):** for each storey, decode every slab's real
+  mesh, place it in world XY (rotation_z + translate), rasterize its 2D triangles onto a grid
+  (0.25m cells — matches this spec's own chord-sampling step) unioned with the existing room-rects.
+  Pack as a bitset. Ship as a **self-heal patch** (this project's standing DB-change doctrine —
+  `CLAUDE.md` §DB CHANGES) — `CREATE TABLE IF NOT EXISTS storey_walkable_raster (storey TEXT
+  PRIMARY KEY, res REAL, x0 REAL, y0 REAL, cols INTEGER, rows INTEGER, bits BLOB)` + one `INSERT OR
+  REPLACE` row per storey, appended to the building's existing `buildings/patches/*.sql`.
+- **Read (room_graph.js, browser or node, dbQuery only — no THREE, no mesh decode at runtime):** a
+  single `SELECT ... FROM storey_walkable_raster WHERE storey=?`, unpack the bitset once per storey
+  per graph build, then O(1) bit lookups for every sampled chord point. Table/row absent (an older
+  patch, or a building with no slabs mined yet) -> defensive fallback to the room-rects-only union
+  (§G3's original rooms half, unchanged) — never a hard failure, `§PATH_LEGAL_SKIP` if even that's
+  empty, per this spec's original Implementation section.
+- Room rects are UNCHANGED (kept in the raster's build-time union) — this whole revision only
+  replaces how the SLAB half of the union is computed; it does not touch how rooms are read.
+
+This is being implemented directly in this same session (user directive: "implement here right
+away") rather than queued as a further open question — see the DONE section below for the numbers.
+
+# DONE (2026-07-13, continued) — §G3-REVISED shipped, PR #767 (bim-ootb, auto-merge armed)
+
+Implemented per §G3-REVISED above. Branch `fix/path-legal-mesh-footprint` (bim-ootb), commit
+`6832daa`. PR: https://github.com/red1oon/bim-ootb/pull/767 (auto-merge SQUASH armed, was
+`BLOCKED` on CI checks at push time — not force-merged).
+
+**New/changed files (bim-ootb):**
+- `scripts/build_storey_walkable_raster.js` (new) — offline precompute CLI.
+- `common/storey_raster.js` (new) — shared pack/unpack + O(1) `contains(px,py)` lookup.
+- `common/room_graph.js` — `shortestPath()` chord-legality + visibility-graph detour; every
+  room-facing door (not just E2's circulation-rescue case) now registers a `doorwp` node, since
+  the detour graph needs real door centers as candidate waypoints (G4).
+- `buildings/patches/HHS_Office_Federated_extracted.db.sql` — `storey_walkable_raster` rows for
+  Level 1/2/3/Unknown, appended.
+- `viewer/main.js` — `room_graph.js` `?v=2`→`?v=3`, `storey_raster.js?v=1` added to the lazy-load
+  chain (must precede `room_graph.js`).
+
+**W-LEG-POC (regenerated against the raster, calculation-only):**
+`§POCLEG-RASTER courtyard chord illegal_pts=144/195 (73.8%)` (was 0/195 under bbox) —
+`§POCLEG-RASTER R18-R17 chord illegal_pts=0/11` (a genuinely-legal in-room chord stays legal).
+
+**W-LEG-HHS-LIVE (real Viewer, real HTTP-served HHS building, real browser, Playwright against
+`localhost:8901`, in-page assertion via `A.dbQuery` — no screenshot judgment, per this spec's own
+witness text):**
+```
+§PATH_LEGAL legalized=3 detoured=1
+doors=3 distance=86.2m hops=6 (was 4)
+path: room:R18 | room:R17 | doorwp:...573676 | doorwp:...573671 | doorwp:...575091 | room:R31
+checked=5 allLegal=true
+  R18->R17 len=2.0m illegal=0/10
+  R17->...573676 len=2.5m illegal=0/12
+  ...573676->...573671 len=6.8m illegal=0/29
+  ...573671->...575091 len=36.7m illegal=0/148
+  ...575091->R31 len=28.6m illegal=0/116
+```
+Route unchanged (3 doors, 86.2m — the graph/hops the spec's preamble said must not change).
+Polyline now detours through 2 real doors instead of drawing one 48m chord across the courtyard.
+
+**W-LEG-CONTROLS:**
+- Duplex: `witness_occupant_pathfinder.js` — `regression_checked_pairs=26 mismatches=0`
+  (`shortestPath()` output byte-identical before/after; Duplex ships no raster, uses the
+  room-rects fallback, which needed one fix below).
+- `witness_room_graph_path.js`: `pass=15 fail=0`.
+- SampleCastle: not re-verified live this session (its `modeller/SampleCastle_extracted.db` here
+  has no compiled `spatial_structure` table — a separate room-compile step, out of scope) — but
+  structurally immune by construction: `stairwp` nodes carry no `storey` field, so
+  `_legalizePath()`'s `a.storey == null` guard skips every stair hop unconditionally before any
+  legality test runs. Flagging for the next session to re-confirm live if it touches SampleCastle.
+- Terminal (`witness_occupant_pathfinder.js`): showed `edges=0`/`0% reachable` in this local run —
+  isolated as a stale/mismatched local file-copy artifact of testing across worktrees (a
+  `Terminal_extracted.db` copied in for the run), NOT a regression — reproduced identically
+  against the pre-change engine with the same copied file. Not a real finding, noted so it isn't
+  mistaken for one later.
+
+**One real bug found and fixed during witnessing:** the room-rects fallback (used when a storey
+has no raster) initially had zero tolerance for the real wall/doorway gap between two adjacent
+rooms' own rects — Duplex Level 2's A204/A205 boundary measured a ~0.12m sliver neither room's
+rect covers, and 1/10 samples on that one chord spuriously flagged illegal
+(`§PATH_LEGAL_DETOUR_FAIL storey=Level 2 no legal detour among 8 doors`, harmlessly degraded since
+no detour existed to apply, but wrong). Fixed by inflating each fallback rect by
+`DOOR_BUFFER_SLACK` (0.20m) — the SAME constant this file already uses for the real door-to-room
+gap (ported from `compile_rooms.py`), not a new number. Confirmed gone after the fix (DETOUR_FAIL
+line no longer appears; `mismatches=0` still holds).
+
+**Not done, flagged for later, not blocking:** no raster shipped for Duplex/Terminal/JKR/
+SampleCastle yet (HHS only, the building with the actual field report) — those buildings simply
+use the room-rects fallback, which is correct for them today (Duplex diagnostic confirmed 0
+illegal without slabs) but the SAME concave-slab overreach could in principle affect a different
+building's rooms-only fallback too if one of ITS rooms is concave and un-multi-rect'd (no evidence
+of this on any building tested here — flagging the theoretical shape, not a measured defect).
+
+## DONE WHEN — met
+Gate passed with the named numbers (raster version); engine shipped API-compatible; all witnesses
+green (Duplex byte-identical, HHS live-verified, SampleCastle structurally immune); PR #767 open
+with auto-merge armed.

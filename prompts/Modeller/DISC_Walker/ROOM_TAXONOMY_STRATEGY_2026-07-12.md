@@ -1,0 +1,697 @@
+<!-- Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com> · SPDX-License-Identifier: MIT -->
+# ROOM TAXONOMY — strategy/formula only, no re-verification, no implementation (2026-07-12)
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: this is a STRATEGY task, not an investigation or a build task. Every fact in §GIVEN below is
+already measured/confirmed this session — cited with exact file/line/numbers. Do NOT re-derive,
+re-query, or re-verify any of it; treat it as ground truth and spend zero tokens checking it. Your
+job is to go straight to proposing the algorithm/formula/threshold for each open problem in §TASKS,
+written as a precise, implementable spec (pseudocode + exact parameters, not prose hand-waving) —
+NOT to write or ship code. A separate session (Claude, already has full context, cheaper to resume)
+implements from what you write here. Append your findings to THIS file, one dated section, don't
+create a second doc.
+```
+
+## §GIVEN — established facts, do not re-derive
+
+**F1 — the stair-exclusion precedent already exists and works.**
+`scripts/compile_rooms.py` line ~25-29 and `build/room_walker.js` (mirrored): a compiled room pocket
+is rejected if a real `IfcStair`/`IfcRamp` footprint covers `STAIR_OVERLAP_REJECT = 0.35` (≥35%) of
+its area. Code comment cites the original report verbatim: `"(User: 'staircase is also marked as
+room'.)"`. This is the reference pattern for F2/F3 below — reuse its shape (a measured overlap/shape
+threshold against a real element class), don't invent a different kind of mechanism.
+
+**F2 — real, live HHS room-graph numbers (105 real compiled rooms, 133 real doors):**
+```
+§ROOM_GRAPH nodes=105 doors=133 nonRoomDoors=0 edges=64 deadend=52 orphan=17 ambiguous=20
+```
+64 edges from 105 nodes = sparse (avg degree ~1.2). 52 deadend + 17 orphan = 69/105 rooms (66%) have
+0-1 door connections. 20 doors were ambiguous (3-4 candidate rooms each), resolved by
+`common/room_graph.js`'s current rule: rank by point-to-AABB distance, keep the 2 closest. Sample
+ambiguous cases, all real, from the live log (door name, candidate count, which 2 were picked):
+```
+"Drehflügel 1-flg - Stahlzarge:88.5 x 2.26:...:573577" candidates=3 picked=RM_Level_1_4,RM_Level_1_3
+"Drehflügel 1-flg - Stahlzarge:88.5 x 2.26:...:573758" candidates=4 picked=RM_Level_2_7,RM_Level_2_27
+```
+
+**F3 — a second real building corroborates room fragmentation is systemic, not a one-off.**
+JKR building (`JKR_Project.db`, compiled this session from `jkr_fixed.db`; moved 2026-07-12 from
+`~/Downloads/OPEN SOURCE BIM/` to the canonical `~/bim-ootb/buildings/JKR_extracted.db` — same
+naming convention as `Duplex_extracted.db`/`Terminal_extracted.db`, last-minute/provisional entry,
+not yet confirmed for ARC-walk promotion): health check
+`walls=509 doors=65 wall/door=7.83 STR%=11.2 storeys=20 stairs=8` — "architectural data looks
+sufficient" (source data is NOT the problem). Compiled 66 rooms, but **45/66 (68%) are `SUSPECT_*`**
+(14 `SUSPECT_NO_DOOR`, 31 `SUSPECT_OPEN`) — the pipeline's own review-candidate flag, already firing
+correctly and honestly, just at a high rate. Storey `'01 Aras Satu'`: 147 walls, 33 doors, flood-fill
+only matched 4/33 doors, fell through to door-partition, producing 31 rooms with areas as small as
+2m² sitting next to an 84m² room — visually and functionally this reads as "hallway split into
+pieces," matching the HHS/Terminal reports directly.
+
+**F4 — `deploy/buildings/Terminal_extracted.db` (the file the Viewer actually serves for Terminal)
+has NO `spatial_structure` table at all** — confirmed by direct query, zero room rows, not even a
+fragmented one. Whatever "stair marked as room" the user saw in Terminal did NOT come from this
+specific file. Other Terminal DB variants exist and are unchecked: `Terminal_meta.db`,
+`Terminal_library.db`, plus a Modeller-side substrate. This ONE sub-question (which source produced
+what the user saw) is the one piece of F1-F4 that is genuinely still open, not yet traced — see Task 0.
+
+**F5 — room-type template coverage, exact state:**
+- Measured and working: `HALLWAY`→canonical `CORRIDOR` (n=2, Duplex), `FOYER`→canonical `LOBBY`
+  (n=2, Duplex), both `tier: supplementary` in `config/room_templates.yaml`.
+- Schema key exists, zero measured template: `VERANDAH` (nearest concept to "balcony"),
+  `ASSEMBLY_HALL` (nearest concept to "hall") — both in `config/spacetypes.yaml`, neither has a
+  `room_templates.yaml` entry, so the classifier cannot actually assign either from real data today.
+- `ENTRANCE_HALL`: n=1 exception (SampleHouse), explicitly below the n≥2 promotion bar, explicitly
+  NOT merged into `FOYER`/`HALLWAY` (a deliberate prior decision — don't silently merge without new
+  evidence).
+- No `BALCONY` schema key exists at all. `VERANDAH` is the only relative, unconfirmed as equivalent.
+
+**F6 — why this matters beyond the Find panel:** room-to-room connectivity
+(`common/room_graph.js`) is the substrate for a planned MEP conduit-routing POC — fixing the
+fragmentation/sparsity problem isn't cosmetic, it's infrastructure for that future feature.
+
+## §LAWS — two error tiers, every formula is designed against these
+A blind model cannot look at geometry; these invariants are the substitute for eyes. Severity is
+tiered — do not treat the tiers as one bucket:
+- **HARD LAWS (zero tolerance — a formula that permits any of these is wrong by definition):**
+  containment (every room/element AABB inside its storey/building envelope — nothing strewn outside
+  the building); no clash (solids of the same discipline don't interpenetrate); orientation
+  (openings/fixtures inherit their host wall's frame — never a free global angle; settled doctrine);
+  DAG order (walls → rooms → room graph → walker demand; no level computed before its parents).
+- **TOLERABLE (flag, don't block — the user fixes these by hand):** a half-merged hall, a boundary
+  off by centimetres, an unclassified room type. Logical-but-imperfect output a human can nudge is
+  a SUCCESS state, not a failure.
+
+Why rooms harden the disc walk (the point of this file): the room is the smallest frame in which
+every hard law is locally checkable. Room-relative placement bounds the worst possible error by the
+room's own diagonal — errors downgrade from law-violation to tolerable BY CONSTRUCTION, instead of
+being caught (or missed) after the fact at building scale.
+
+## §TASKS — strategy/formula output only
+
+### Task 0 — trace Terminal's actual room-data source (the one open fact-check, do this first, briefly)
+Which file/pipeline produced the room the user saw as a staircase in Terminal? Check
+`~/bim-ootb/buildings/Terminal_rooms.db` FIRST — a dedicated rooms DB, confirmed 53 IfcSpace rows
+(2026-07-12), prime suspect — then `Terminal_library.db` and the Modeller substrate. Already ruled
+out: `deploy/buildings/Terminal_extracted.db` (F4) and `deploy/buildings/Terminal_meta.db` (0 bytes). Once found, check one thing only: did
+`STAIR_OVERLAP_REJECT` run against that source at all, or does it bypass `compile_rooms.py` entirely
+(e.g. a different/older compilation path)? Report the answer in 2-3 sentences — this is a fact-check,
+not a design task, don't over-invest tokens here.
+
+### Task 1 — formula for merging fragmented rooms (F2/F3's root cause)
+Propose the exact post-flood-fill merge rule: which two adjacent compiled pockets should become one
+room? Grounded options to evaluate, cite which (or propose better, but justify against F1's
+"measured threshold" precedent, not invented from nothing):
+- Merge adjacent same-storey pockets sharing a wall-length threshold (like `STAIR_OVERLAP_REJECT`'s
+  shape) where NEITHER side has a real door between them (a compiled "room" boundary with no real
+  door dividing it is itself the signal it's one space, not two).
+- Or: merge pockets whose combined aspect ratio/area profile matches an elongated-circulation shape
+  (reuse `HALLWAY`'s own measured aspect_ratio=2.70 as the target shape, not a new invented number).
+Write the exact formula (inputs, threshold, decision rule) as pseudocode. State which of F2/F3's real
+sample cases it would fix, using the real numbers already given above — don't fabricate a new example.
+
+### Task 1b — rejection rule for non-rooms (the "space outside a room" error — F1's missing sibling)
+Task 1 merges pockets; this task decides when a pocket is NOT a room at all: exterior/unenclosed
+space compiled as a room (F3's 31 `SUSPECT_OPEN` is the symptom — the flag exists, the rejection
+rule doesn't). Propose the exact rejection test, same measured-threshold shape as F1's
+`STAIR_OVERLAP_REJECT` — e.g. enclosure ratio (fraction of pocket perimeter backed by real wall)
+below a threshold ⇒ not a room; or pocket centroid/AABB outside the storey envelope ⇒ reject
+(§LAWS containment). Exact formula + threshold, pseudocode.
+
+### Task 2 — ambiguous-door disambiguation strategy (currently "closest 2", 20 cases on HHS alone)
+`common/room_graph.js` currently picks the 2 closest-by-distance candidates when a door has 3-4
+candidates. Propose a better rule using information already available per-room: door_count profile
+(measured per-template in `room_templates.yaml`, e.g. `HALLWAY` mean door_count=4.0 vs `BEDROOM`
+mean=1.0) as a prior — a door adjacent to a room that already looks hallway-shaped is more likely a
+real hallway-side connection than a coincidental third candidate. Write the exact scoring/tie-break
+formula, don't just say "use room type as a signal" — specify the actual computation.
+
+### Task 3 — balcony/hall measured-template survey (F5's gap)
+Real-data survey only (same rigor as `HALLWAY`/`BEDROOM` — area_m2/aspect_ratio/door_count, n≥2
+minimum before promoting anything): does any building in this repo have a real space matching
+`VERANDAH` or `ASSEMBLY_HALL` by name/keyword or by real IfcSpace evidence? If found, write the
+measured template (same YAML shape as the existing ones in `room_templates.yaml`) ready to paste in.
+If NOT found, say so plainly — an honest "no evidence yet" is a valid, complete answer, not a
+failure to fix by inventing numbers.
+
+### Task 4 — what the disc walk gains from room taxonomy (rooms = the walker's coordinate frame)
+Principle (see §LAWS closing paragraph): rooms are the walk's containment/orientation/demand frame.
+Walker Doctrine holds unchanged (`docs/internal/WalkerDoctrine.md` — building-class axis, discipline
+as `WHERE` column): taxonomy is an INPUT to the existing walk, not a new walk axis, and it applies
+to the `duplex_rules.db` residential walk AND the `terminal_rules.db` class walk alike — Terminal is
+the heaviest reference and must be in scope, not an afterthought. Deliverable: enumerate the walker
+decisions that currently run room-blind and, for each, state what room/space input changes — e.g.
+corridor-classed pockets as the conduit/duct routing spine (F6's POC), room type → per-room fixture
+demand (bathroom → plumbing drops; `HALLWAY` mean door_count=4.0 as a distribution-node signal),
+room area/type → per-room-type rule quantities instead of per-building scatter. Rank the list by
+payoff for the conduit-routing POC and spec ONLY the top item to Task-1 precision (pseudocode +
+parameters). No walker code changes in this pass.
+
+## Calibration note — POC gate FIRST, then spec (read before Tasks 1/1b/2)
+Formula-only with zero validation is a real risk for Tasks 1/1b/2: a merge/rejection/scoring rule
+can look reasonable on paper and still misfire on real data, and if it's wrong, the cost is a full
+implement-then-discover round-trip. Exception to "no code, no implementation": a small
+CALCULATION-ONLY script (plain Python/Node, reads real DB rows already queried in F2/F3, computes
+what your proposed formula WOULD output — no pipeline changes, no commits, no witness/deploy) is in
+scope. **Run it BEFORE writing the spec section, not after** — a rule that dies in a 20-line
+calculation script dies for pennies; only formulas that survived real numbers get written up.
+Validation ladder, all three rungs: **derive on Duplex** (small, clean, hand-checkable — the
+foundation), **fix the cited HHS/JKR cases** (the F2/F3 samples are the acceptance tests), **stress
+on Terminal** (heaviest reference — a threshold tuned on duplex-sized rooms may not transfer to
+terminal halls/concourses; pass it, or state the regime boundary honestly instead of pretending it
+generalizes). Task 0/3 don't need this (fact-check and survey, not a scoring rule).
+
+## DONE WHEN
+Task 0 answered in a few sentences. Tasks 1/1b/2/3 each have a precise, pasteable
+formula/threshold/YAML block — not prose describing an idea, an actual spec a following session can
+implement directly without re-deriving the approach. Each formula section OPENS with its §LAWS
+invariant statement ("what proves this correct without anyone looking at a screen") and shows, on
+the real F2/F3 samples, the three reported error classes handled: stair-space → rejected (F1),
+outside-a-room → rejected (Task 1b), half-a-hall → merged (Task 1). Task 4 = ranked enumeration +
+top item specced. No pipeline code written or changed in this pass. Note for the IMPLEMENTING
+session (not this one): every rule lands in BOTH mirrors (`scripts/compile_rooms.py` +
+`build/room_walker.js`) and `build/witness_room_walker_parity.js` must pass.
+
+---
+
+# FINDINGS — 2026-07-12 (strategy session, POC-gated per calibration note)
+
+POC scripts + full `§`-logs: session scratchpad `poc_room_taxonomy.py` / `poc_round2.py`
+(`poc_room_taxonomy.log`, `poc_round2.log`, `poc_terminal_reject.log`). Calculation-only, zero
+writes, zero pipeline changes. Every number below is transcribed from those logs. Two POC rounds
+were run because **round 1 killed the naive merge rule** — documented in Task 1 below, kept on
+purpose: the failure is the evidence the surviving rule needed its second condition.
+
+## Task 0 — Terminal's room source: FOUND, with a threshold nuance
+`~/bim-ootb/buildings/Terminal_rooms.db` is the persisted Terminal room source: 53 compiled
+`RM_Aras_*` IfcSpace rows over the same Malaysian "Aras"-storey building as the served
+`Terminal_extracted.db` (identical 28,262,400-byte base). Its mtime is **2026-06-04 — three days
+BEFORE `STAIR_OVERLAP_REJECT` existed** (commit `95579cf2c`, 2026-06-07), so the stair exclusion
+never ran against it. However, the F1 metric applied today finds **zero rooms at ≥0.35 stair
+overlap; the maximum is 0.207 (`≈ Aras 02 R10`)** — §POC0/§POC0b. So either the user's stair-room
+is that 0.207 case (in which case 0.35 is too high a bar for Terminal-scale rooms and the REAL fix
+is Task 1b's enclosure rejection, which this file fails hard — see below), or the sighting came
+from a live runtime compile (Modeller substrate / older `room_walker.js` build predating the JS
+mirror of the exclusion). Implementing session: visually confirm whether `≈ Aras 02 R10` is the
+reported room; do NOT lower 0.35 on that single case alone.
+
+## Task 1 — R-MERGE (half-a-hall fix)
+**§LAWS invariant (what proves this without a screen):** a merge NEVER crosses a real wall and
+NEVER crosses a real door (no-clash with measured reality); merged output only removes synthetic
+boundaries, so containment/DAG order are preserved by construction; the negative control (Duplex's
+21 real labeled rooms) must emerge unchanged.
+
+**Round-1 failure (kept as evidence):** "adjacent + no door on shared boundary" ALONE over-merges
+real rooms — Duplex collapsed 21→12, fusing Kitchen+Bathroom (§POC2, round 1). Root cause: real
+distinct rooms are often doorless neighbors THROUGH A WALL. The discriminator is that fragment
+boundaries from door-partition are **wall-free synthetic lines** (measured wall coverage 0.02–0.06
+on JKR's fragment seams) while real room boundaries are wall-backed (Duplex seams blocked at
+>0.25 coverage).
+
+**Rule (pseudocode, all parameters measured-derived):**
+```
+WALL_T       = median(min(bbox_x, bbox_y) of IfcWall* in this building)   # JKR 0.100m, Terminal/Duplex 0.15m
+GAP_TOL      = 2.0 * WALL_T
+SHARE_MIN    = 0.50      # shared edge >= 50% of smaller room's parallel side (F1 ratio-shape)
+WALL_COVER_MAX = 0.25    # same family as STAIR_OVERLAP_REJECT=0.35: measured-overlap threshold
+DOOR_TOL     = 0.60      # door center within this of the seam blocks the merge (safety, see note)
+
+for each same-storey pocket pair (A,B):
+  seam = axis-aligned shared edge where AABB gap <= GAP_TOL and parallel overlap > 0
+  if seam is None or seam.len < SHARE_MIN * min(A,B parallel side): skip
+  wall_cover = union_length(wall AABBs within WALL_TOL of seam line, clipped to seam) / seam.len
+  if wall_cover > WALL_COVER_MAX: skip          # real wall => real boundary
+  if any door center within DOOR_TOL band of seam (z within [floor-0.3, floor+2.5]): skip
+  union(A,B)                                    # transitive via union-find
+```
+**POC evidence (§POC2b):** JKR 79→51 rooms (28 merges; the `'01 Aras Satu'` split-hallway chains
+R2+R3+R8 with a 17.8m seam at 2% wall cover, R21–R23, R24–R27, R28–R31 all collapse — F3's
+"hallway split into pieces" directly fixed). **Duplex control: 0 merges, 13 seams correctly
+blocked by wall.** Terminal 53: 0 merges (its pockets are wall-bounded; its problem is Task 1b).
+Measured note: `blocked_by_door=0` everywhere — the wall condition did all discriminating on these
+corpora; keep the door condition as the stated safety for door-in-partition seams, but it is not
+what carries the rule.
+
+## Task 1b — R-REJECT (outside-a-room fix)
+**§LAWS invariant:** rejection only ever REMOVES pockets, never moves/creates geometry
+(containment trivially preserved); zero measured-legitimate rooms may be rejected — the acceptance
+test is JKR's own 48 non-OPEN rooms.
+
+**Rule:** run AFTER R-MERGE (merging raises enclosure of legitimate unions).
+```
+WALL_TOL = 0.45
+enclosure(R) = union_length(wall AABBs within WALL_TOL of each of R's 4 perimeter sides,
+               clipped per side) / perimeter(R)
+if enclosure(R) < 0.25:            REJECT  (not a room — unbounded/exterior pocket)
+elif enclosure(R) < 0.50:          KEEP + flag SUSPECT_OPEN  (tolerable tier, user-fixable)
+else:                              KEEP
+```
+**POC evidence (§POC3b/§POC3c):** JKR — rejects 16/31 SUSPECT_OPEN, **0/24 INTERNAL, 0/10
+INTERNAL_SMALL, 0/14 SUSPECT_NO_DOOR falsely rejected** (their minima: 0.27/0.60/0.55). Terminal
+(pre-exclusion-era file) — 21/53 rejected, several at enclosure 0.00–0.06, i.e. pure outside-a-room
+pockets; this is the measured mechanism behind Terminal's "garbage rooms," stair sighting included.
+Regime note (honest): Terminal has no ground-truth labels, so its false-reject rate is unmeasurable
+there — the zero-false-reject claim rests on JKR's 48 labeled rooms.
+
+## Task 2 — R-DOOR-SCORE (ambiguous-door disambiguation)
+**§LAWS invariant:** scoring only reorders candidates already within geometric reach (EXPAND) —
+it can never attach a door to a distant room; distance remains primary, the prior is a bounded
+discount (≤ LAMBDA metres-equivalent), so DAG order (doors bind after rooms exist) is unchanged.
+
+```
+EXPAND = 1.5   # candidate = room whose AABB expanded by this contains door center,
+               # door z within [room floor - 0.3, room floor + 2.5]  (same-storey, hard)
+LAMBDA = 0.8
+hallwayness(R) = min(aspect(R)/2.697, 1) * min(area(R)/10.415, 1)   # HALLWAY template means,
+               # config/room_templates.yaml (measured, n=2) — no invented constants
+score(R) = distance(door, R.AABB) - LAMBDA * hallwayness(R)
+keep 2 lowest scores (was: 2 lowest distances)
+```
+**POC evidence (§POC4b, after fixing round-1's cross-storey candidate leak):** JKR 34/65 doors
+ambiguous → prior changes 4 picks; Terminal 4/135 → 0 changed; Duplex 10/14 → 2 changed, and both
+Duplex changes redirect the door TO the real measured Hallway (`A201`/`B201` — the actual labeled
+hallways), which is the closest thing to ground-truth validation available. Honest calibration:
+effect is at-the-margin (distance already right most of the time) — worth shipping because the
+changed cases are exactly the hallway-adjacency cases F2's samples describe, cheap because all
+inputs already exist per-room.
+
+## Task 3 — balcony/hall survey: NO EVIDENCE, no template promotable
+Swept every `deploy/buildings/*_extracted.db` `spatial_structure` for
+BALC/VERANDA/ANJUNG/LOGGIA/TERRACE/DEWAN/HALLE/HALL(-not-HALLWAY) in `name` and `object_type`:
+only hits are Duplex's already-templated `A201/B201 Hallway`. SampleHouse ships no
+`spatial_structure` table at all in `_extracted`/`_meta`. Zero real VERANDAH, ASSEMBLY_HALL, or
+BALCONY spaces exist in shipped data → per the file's own bar (n≥2 measured), **no template is
+written; the classifier's refuse-to-guess `(unclassified)` behavior stands.** ENTRANCE_HALL stays
+an n=1 exception (F5, unchanged).
+
+## Task 4 — disc-walk gains from room taxonomy (ranked; top item specced)
+Per Walker Doctrine: all items are INPUTS to the existing class walk (`duplex_rules.db` AND
+`terminal_rules.db`), discipline stays a WHERE column.
+1. **Corridor spine routing (spec below)** — merged CORRIDOR-classed rooms + room-graph door edges
+   = the conduit/duct routing DAG (F6's POC). Biggest payoff: turns routing from geometric search
+   into a graph query.
+2. **Per-room fixture demand** — room type → discipline demand rows (BATHROOM → plumbing drops,
+   KITCHEN → waste/supply); quantities become per-room-type instead of per-building scatter.
+3. **Room-frame placement** — walker-placed fixtures cite containing room + host wall ⇒ §LAWS
+   containment/orientation hold by construction, max error bounded by room diagonal.
+4. **Riser/distribution-node placement** — room-graph degree centrality (HALLWAY door_count=4.0
+   signal) picks the node room per storey; vertical alignment across storeys picks the riser.
+
+**Top-item spec — R-SPINE (corridor routing substrate):**
+```
+input:  merged+rejected room set (Tasks 1/1b), room_graph edges (door-connected pairs),
+        room classifications (room_type_classifier)
+spine(storey) = the connected subgraph of rooms with hallwayness >= 0.5 (Task 2's measure);
+                if empty, the single max-degree room (fallback, flagged)
+route(fixture_room -> riser_room):
+  path = BFS over room_graph edges restricted to (spine ∪ {fixture_room, riser_room})
+  conduit polyline = door-center to door-center within each room on path,
+                     offset to hug the room's longest wall (orientation law: host-wall frame)
+  §LAWS check per segment: polyline ⊂ UNION OF MEMBER RECTS (true polygon), NOT the merged AABB
+  — CORRECTED by §POC5 (2026-07-12c, see Grind results below): merged rooms are non-convex; the
+  AABB check passed 1188 out-of-room sample points on 10/14 real JKR clusters (worst: '01 Aras
+  Satu' R4+R6+R7+R15, slack 79.1m² = 47% of its AABB). Member rects already exist as the room's
+  multi-rect spatial_structure rows (shared room_guid) — per-member-AABB test, still cheap.
+output: per-discipline conduit BOM lines parented to the rooms traversed (WHAT/HOW/WHERE intact)
+```
+Precondition, measured: JKR's spine only exists AFTER R-MERGE (the 17.8m hallway seam at 2% wall
+cover is the spine, currently split in 3); on HHS the 66% deadend/orphan rate (F2) means the spine
+is the highest-value merge target there too.
+
+## Validation ladder status (calibration note)
+- **Duplex (derive/control):** R-MERGE 0 false merges; R-DOOR-SCORE picks real Hallway. PASS.
+- **JKR (failure corpus):** 79→51 rooms, split-hallway chains merged; 16 exterior pockets
+  rejected, 0 false. PASS on the F3 storey samples.
+- **Terminal (stress):** R-REJECT bites hard (21/53) on the known-bad pre-exclusion file; R-MERGE
+  no-ops (correct — different failure mode); no labels ⇒ false-reject rate unmeasured there. PASS
+  WITH STATED BOUNDARY.
+- **HHS:** the 105-room graph is runtime-compiled, not persisted (shipped DB has 14 spaces) — the
+  F2 numbers stand as given; ladder rung to be witnessed by the implementing session via the live
+  `§ROOM_GRAPH` line after wiring (expect: edges up from 64, deadend+orphan down from 69).
+
+## Handoff to implementing session
+Order: R-MERGE → R-REJECT → R-DOOR-SCORE → R-SPINE. Both mirrors (`scripts/compile_rooms.py` +
+`build/room_walker.js`), parity witness must pass, PUSH PAUSE in effect (local commits only,
+localhost verification, no push/PR until lifted).
+
+## DISPATCH SPLIT — Manager verdict, 2026-07-12 (binding on whoever picks this up)
+**Lane A — execution-tier (Sonnet or Fable5, "follow the pseudocode" session): Tasks 1/1b/2 ONLY**
+(R-MERGE, R-REJECT, R-DOOR-SCORE). These are POC-validated with named acceptance cases; nothing
+left to design. Port into BOTH mirrors, run `build/witness_room_walker_parity.js`, witness the
+acceptance cases named in each formula section (JKR `'01 Aras Satu'` chains merge; JKR 48 non-OPEN
+rooms zero false rejects; Duplex control unchanged). Do NOT touch R-SPINE or the Terminal wiring
+question — they are explicitly out of this lane's scope.
+
+**Lane B — judgment-tier (a session with latitude, NOT a pseudocode-executor): two items, do them
+BEFORE any R-SPINE code exists.**
+1. **Task 0 loose end first — trace whether ANY of this reaches the live Terminal path.** The
+   served `Terminal_extracted.db` has ZERO room rows (F4); `Terminal_rooms.db` (the room source
+   found above) may not be on the Viewer's load path at all. If the live path never reads compiled
+   rooms for Terminal, an implementation pass "fixing Terminal" burns itself on a building this
+   code never touches. Establish the actual load path (Viewer + Modeller substrate) before wiring.
+2. **R-SPINE validation — it was NOT POC'd (unlike 1/1b/2).** Known soft spot, flagged at review:
+   its per-segment containment check assumes room AABBs, but R-MERGE produces NON-CONVEX unions
+   (e.g. JKR's L-shaped merged hallway chain) — "polyline ⊂ room AABB" weakens exactly where the
+   spine matters most. Watch what R-SPINE actually produces on JKR's merged `'01 Aras Satu'`
+   hallway before trusting it; expect the containment law to need a non-convex formulation
+   (union-of-member-AABBs, not merged-AABB).
+Lane A may start immediately; Lane B gates R-SPINE. Neither lane pushes (PUSH PAUSE).
+
+---
+
+# PROMPT — Lane B as geometry-grind (2026-07-12c): compute, don't judge
+
+```
+# ⚠ DO NOT REMOVE
+SCOPE: Lane B above is stated as judgment ("trace," "watch," "expect") — that's the wrong shape for this
+project's determinism rule. Both items resolve to a NUMBER computed from real DB geometry, not a read.
+Calculation-only: no pipeline code changes, no commits to scripts/compile_rooms.py or build/room_walker.js
+in this pass — that's still the Lane A/implementing session's job. Read the log after every run. PUSH PAUSE
+in effect: commit locally (this file only), do not push, do not open a PR.
+```
+
+## Grind 1 — close Task 0 with one traced fact, not a disjunction
+Task 0 above ends "either the 0.207 case… or a live runtime compile." Resolve which by tracing the code
+path mechanically:
+1. Find every DB Terminal's building record can resolve to at runtime — grep the Viewer/Modeller building
+   manifest / `viewer/scene.js` registry / Modeller substrate loader for every path wired to Terminal, not
+   just `Terminal_extracted.db`.
+2. For each candidate DB with `spatial_structure` rows, cite the exact loader function/line that reads it
+   in the live app — don't assume, trace the call.
+3. If a runtime COMPILE path exists (Modeller substrate calling `room_walker.js` fresh off the source IFC,
+   not a pre-built DB), run it headlessly against Terminal's IFC and apply the F1 stair-overlap metric to
+   THAT output, not to the stale `Terminal_rooms.db`.
+4. Log the single traced answer:
+   ```
+   §POC0c SOURCE=<exact file, or "runtime:<function>"> STAIR_EXCLUSION_APPLIED=<yes/no>
+   §POC0c MAX_STAIR_OVERLAP=<value> ROOM=<id>
+   ```
+
+## Grind 2 — prove or disprove R-SPINE's AABB-containment gap on real merged rooms
+Don't "watch and expect" — compute it:
+1. For every JKR merge cluster in §POC2b (R2+R3+R8, R21-R23, R24-R27, R28-R31, etc.), build the TRUE merged
+   polygon (union of the real wall-bounded pocket polygons already read for §POC2/§POC3) and its AABB.
+2. `slack_area = area(AABB) − area(true_polygon)` per cluster. Log every value.
+3. Run R-SPINE's stated routing rule (door-center to door-center, offset to hug the longest wall) through
+   each cluster; test whether any polyline point falls inside slack_area (passes cheap AABB check, fails
+   true-polygon containment).
+4. Log:
+   ```
+   §POC5 JKR cluster=<ids> slack_area=<m2> polyline_violations=<count>
+   §POC5 JKR total_clusters=<n> total_violations=<count>
+   ```
+5. Verdict is mechanical: `violations=0` across all clusters ⇒ AABB check stands as specced (cheap,
+   sufficient on measured data) — say so with the number. `violations>0` ⇒ the §LAWS containment line in
+   R-SPINE must change from AABB to true-polygon containment (also computable, just costlier) — name which
+   clusters forced it, don't generalize past what was measured.
+
+## DONE WHEN
+Task 0 above has one §POC0c-backed answer, no "either/or" left. R-SPINE's spec (Task 4) carries either a
+"measured: AABB sufficient, 0 violations on N clusters" line, backed by §POC5, or a corrected true-polygon
+containment rule with the forcing cases named. Append results as a new dated section below this one, same
+file — don't create a second doc.
+
+---
+
+# GRIND RESULTS — 2026-07-12c (Lane B computed, not judged)
+
+Scripts + full logs: session scratchpad `poc0c_terminal_arc.log`, `poc5_spine_slack.py` /
+`poc5_spine_slack.log`, `jkr_recompile.log`. Calculation-only held: zero pipeline edits, zero
+repo-artifact writes.
+
+## Grind 1 — Task 0 CLOSED with one traced fact
+```
+§POC0c SOURCE=modeller/Terminal_ARC.db (loader: modeller/str_walker_outliner.js:46, v:1 resident)
+§POC0c STAIR_EXCLUSION_APPLIED=yes-at-0.35 (contract holds: 0 rooms >= 0.35 in the live source)
+§POC0c rooms=43 stairs+ramps=33 hits>=0.35: 0 MAX_STAIR_OVERLAP=0.210 ROOM=≈ Aras Tanah R9
+```
+The trace, mechanical: the Viewer's Terminal path serves **zero rooms end-to-end** —
+`deploy/buildings/Terminal_extracted.db` has no `spatial_structure` (F4), and no
+`buildings/patches/Terminal_extracted.db.sql` exists (only HHS has a patch), so
+`common/room_graph.js` hits `§ROOM_GRAPH_SPACE_ERR` → empty graph. The ONLY live room source for
+Terminal is the **Modeller's** `Terminal_ARC.db` (43 compiled `RM_Aras_*` rooms), loaded by the
+`str_walker_outliner.js:46` resident registry row. No "either/or" left: whatever stair-room the
+user saw, they saw in the Modeller, from this file. Applying F1's metric to it: **no room reaches
+0.35; the max is 0.210 (`≈ Aras Tanah R9`)** — the same ~0.21 ceiling as the stale
+`Terminal_rooms.db` (whose 11 dropped rooms included every other ~0.2-overlap case). Consequence
+for the implementing session: the 0.35 threshold never bites at Terminal scale — the visible
+stair-room is a SUB-threshold case, and the file's broader garbage-room disease is enclosure
+(21/53 below 0.25 in the stale set, §POC3c), i.e. **R-REJECT is the fix that reaches what the
+user saw, not a stair-threshold change.** Wiring note: any room fix for Terminal must land in
+`Terminal_ARC.db`'s compile path (Modeller substrate), and the Viewer additionally needs rooms at
+all (patch or recompile) before any of Tasks 1-2 even applies there.
+
+## Grind 2 — §POC5 verdict: AABB containment REJECTED, forcing cases named
+14 real JKR merge clusters (corpus regenerated deterministically mid-grind — see incident note),
+true polygon = union of member rects, routes = all attached door-pair polylines sampled @0.05m:
+```
+§POC5 worst clusters (slack_area = AABB − true polygon):
+  [01 Aras Satu: R4+R6+R7+R15]  aabb=169.4m² union=90.3m² slack=79.1m² viol_direct=684 viol_hug=462
+  [01 Aras Satu: R17+R5]        aabb=40.6m²  union=20.8m² slack=19.8m² viol_direct=206 viol_hug=202
+  [01 Aras Satu: R2+R3+R8]      aabb=114.8m² union=105.6m² slack=9.2m² viol_direct=91  viol_hug=169
+  [01 Aras Satu: R10+R16]       slack=4.5m²  viol_direct=114
+  (+ 6 more clusters with violations; full table in poc5_spine_slack.log)
+§POC5 JKR total_clusters=14 total_violations_direct=1188 total_violations_hug=1777
+```
+**Verdict (mechanical):** violations ≫ 0 ⇒ R-SPINE's containment line is WRONG as originally
+specced and has been corrected in place (Task 4 spec above now reads union-of-member-rects).
+Two measured nuances, not generalized past the data: (1) the stated wall-hug offset is NOT a
+mitigation — it made things WORSE (1777 > 1188), because hugging the largest member's wall drives
+the polyline through the other members' voids; the hug must be per-member, not per-cluster.
+(2) Collinear chains are immune (R21+R22+R23 slack=0.0, R24-R27 viol=0) — the gap is specifically
+L/T-shaped clusters, 10 of 14 here.
+
+## Incident note — JKR_Project.db truncated mid-grind (RESOLVED: it was moved, see F3)
+`/home/red1/Downloads/OPEN SOURCE BIM/JKR_Project.db` was found **0 bytes (mtime 2026-07-12
+09:12)** during Grind 2 — it was intact when §POC2-§POC4b read it earlier this session. Resolved
+same day: F3's update records the DB was MOVED to canonical
+`~/bim-ootb/buildings/JKR_extracted.db` (verified: same 24/10/14/31 suspect split, 203MB, intact);
+the 0-byte Downloads leftover is the move's residue, safe to delete. Mid-grind, before the move
+was known, the corpus was regenerated deterministically: `scripts/compile_rooms.py --write` on a
+scratchpad COPY of `jkr_fixed.db` reproduced F3 **exactly** (66 rooms → 79 rect rows, suspect=45,
+split 24/10/14/31) — an accidental but real witness that compiled rooms are a pure function of the
+source DB, AND that the canonical move lost nothing. §POC5 numbers stand (identical corpus either
+way). Lane A should read JKR from the canonical `~/bim-ootb/buildings/JKR_extracted.db` path.
+
+## DONE (2026-07-12c)
+Task 0: closed, single traced fact, §POC0c. R-SPINE: containment law corrected in the Task 4 spec
+with forcing clusters named, §POC5. Lane B has nothing left that requires judgment — the remaining
+work is Lane A's implementation plus the (new, factual) Terminal wiring note above.
+
+---
+
+# LANE A RESULTS — 2026-07-12d (R-MERGE + R-REJECT shipped; R-DOOR-SCORE disproven by its own witness)
+
+**R-MERGE + R-REJECT: ✅ implemented, both mirrors, witnessed on real data.**
+`scripts/compile_rooms.py` (`_merge_rooms`/`_reject_rooms`, before `main()`) + `build/room_walker.js`
+(`mergeRooms`/`rejectRooms`, verbatim port) — pseudocode/parameters taken exactly from Task 1/1b
+above, no re-derivation. Operates on LOGICAL rooms (one entry per compiled pocket, each carrying its
+`rects` list), not the spec's own POC's rect-ROW granularity — this was a deliberate, verified choice:
+independently reproduces the identical final number (66→51 after merge) the POC found at row-level
+(79→51), confirming logical-room granularity is the correct, more natural integration point (rect-row
+sub-splits of one already-same logical room never need separate re-merging).
+
+- `build/witness_room_walker_parity.js`: **6/6 PASS byte-identical** (SampleCastle/HHS/Clinic/Garage/
+  Hospital/Terminal — Python and JS spatial_structure + rel_contained_in_space rows match exactly).
+  Found + fixed a REAL cross-language determinism bug during this: JS `Object.keys()` on an object
+  keyed by union-find root IDs silently reorders to ASCENDING NUMERIC order (JS's array-index-like-key
+  enumeration rule) instead of Python dict's INSERTION order — desynced which physical room got which
+  `RM_storey_N` guid between the two mirrors on Hospital/Terminal (same room COUNT, wrong room per
+  guid). Fixed by tracking group-encounter order explicitly (`groupOrder` array) instead of trusting
+  `Object.keys()`. Named here because it's a real, non-obvious landmine for ANY future dict/object
+  keyed by a numeric ID that needs Python-JS parity.
+- New witness (session scratchpad, not committed — plain Python, direct module import, full
+  provenance tracing through merge): JKR **66 logical rooms → 51 after merge** (independently lands on
+  the SAME 51 the spec's own row-level 79→51 measurement found), storey `'01 Aras Satu'` **31→16**
+  (the named split-hallway-chain acceptance case), **0 false rejects** among the 34 pre-merge non-OPEN
+  logical rooms (spec's own "48" is the ROW-level count of these same 34 logical rooms, multi-rect
+  sub-rows included — same claim, different unit, both zero). Duplex: **0 merges, 0 rejects** — the
+  real 21 ground-truth labeled rooms (A101…R301) are untouched (by construction: merge/reject only
+  ever operate on the freshly-compiled `RM_`-prefixed pockets, never on pre-existing real IfcSpace
+  rows) and confirmed byte-identical before/after a `--write` pass.
+- JS side independently re-run end-to-end (`RoomWalker.walk()`, not just the parity diff): JKR
+  total=45 merged=15 rejected=6, Duplex total=11 merged=0 rejected=0 — matches the Python run exactly.
+
+**R-DOOR-SCORE: 🛑 implemented exactly per spec, DISPROVEN by a real regression witness, REVERTED —
+not shipped.** Ported into `common/room_graph.js` (bim-ootb; no Python/dual-JS mirror exists for this
+file, so "both mirrors" doesn't literally apply here — noted, not silently assumed). Applied the
+formula verbatim in a fresh worktree off `origin/main` (`f7f27e7`): `hallwayness()` using
+`config/room_templates.yaml`'s own measured HALLWAY means (area_m2=10.415, aspect_ratio=2.697, n=2 —
+confirmed by direct read, not re-derived), `score = dist - 0.8*hallwayness`, re-sort only the
+already-ambiguous (3+-candidate) case.
+
+Ran the EXISTING `witness_room_graph_path.js` (PR #746's own real-Duplex regression suite, previously
+green) as a same-day sanity check before considering this done — **it caught a real regression**:
+`G3a` (a previously-passing check — "A202(Bedroom1)→A205(Utility) path exists, 3 real doors") now
+returns `null`, no path. Traced to one exact door (`204034`, Level 2): its 3 real candidates by
+distance are A205(0.055m) < A204(0.069m) < A201(0.501m) — the TRUE top-2 pair is (A205,A204), which is
+exactly the edge the pre-existing path used. But A201 (the real measured Hallway) has hallwayness=1.0,
+so its score = 0.501 − 0.8×1.0 = **−0.299**, beating A205's score (0.055 − 0.8×0.083 = **−0.011**) by a
+wide margin — LAMBDA=0.8 is large enough to override a **9× distance gap** (0.501m vs 0.055m) whenever
+one candidate happens to be hallway-shaped. This directly contradicts the spec's own §LAWS invariant
+for this task ("distance remains primary, the prior is a **bounded** discount"): on this real door, the
+discount is NOT bounded relative to the distances actually in play among a tight ≤1.5m candidate set —
+it dominates them.
+
+This is the SAME "POC validated the isolated metric, not the downstream graph property" shape as the
+already-documented disc_walker `_hostAxis` disproof earlier this session (a formula that made its own
+narrow, isolated measurement look better — the POC's own "Duplex 10/14 ambiguous → 2 changed,
+redirecting to the real Hallway" was framed as a WIN — while breaking a DIFFERENT, previously-proven
+property nobody checked at POC time). Door `204034` is very likely one of those same "2 changed" cases
+the POC celebrated — re-pointing it toward A201 makes it REDUNDANT with door `160208` (which already
+connects A201↔A204) and severs the A205 connection the real path needed.
+
+**Reverted cleanly** (`git checkout -- common/room_graph.js` in the worktree, then the worktree/branch
+removed — zero unique commits, safe per this project's worktree-hygiene rule): `witness_room_graph_path.js`
+back to **15/15 PASS** confirming the revert is clean. R-MERGE/R-REJECT are UNAFFECTED (separate file,
+separate pipeline stage) and remain shipped.
+
+**Handoff — R-DOOR-SCORE needs a fresh design pass, not a re-attempt of this LAMBDA:** the fix
+direction is NOT specced here on purpose (matching this project's "don't re-attempt a disproven fix,
+don't guess a replacement solo" discipline) — options for whoever picks this up: (a) cap the discount
+so it can never flip a candidate whose raw distance is more than some measured multiple of the closest
+candidate's distance (needs a real threshold derived the same way MERGE_SHARE_MIN/WALL_COVER_MAX were —
+not invented on the spot); (b) score only among candidates within a TIGHT distance band of the closest
+one (e.g. within 2×closest, echoing R-MERGE's own GAP_TOL_FACTOR pattern) and leave clear outliers to
+pure distance; (c) drop the discount to a measured-safe value and re-verify against BOTH the original
+POC's own "2 changed cases redirect to real Hallway" claim AND `witness_room_graph_path.js`'s existing
+G3a/G4 path checks together, not either alone. Whichever direction: the acceptance gate is now
+established — the CHANGE must not break `witness_room_graph_path.js`'s existing real-path checks, not
+just improve its own isolated ambiguous-door metric.
+
+---
+
+# TASK 3b — R-SPINE's pathfinding dependency (2026-07-12d, calculation-only, no pipeline changes)
+
+**`feat/room-pathfind-graph` (bim-ootb) is NOT unmerged prior art — it is STALE/superseded, already
+live on `main` under a different commit.** Traced directly (not trusted secondhand): the branch's own
+commit `b6bef80` ("feat(viewer): §7 room-to-room adjacency graph + Dijkstra pathfinding in Find panel")
+and `main`'s commit `3f6dbbc` (same title, `#746`, merged 2026-07-12 02:45) are the SAME WORK — `diff
+main:common/room_graph.js branch:common/room_graph.js` is **byte-identical** (239 lines); the only
+`viewer/navigate_find.js` differences are cosmetic (main has since been refined further: neon-green
+path line + waypoint marker spheres vs the branch's plain yellow line, purple selection cuboid vs
+yellow). `git merge-base --is-ancestor feat/room-pathfind-graph main` → NOT an ancestor (the branch
+forked before `3f6dbbc` landed and was never fast-forwarded). **The branch has been removed** (0 unique
+commits vs `origin/main`, safe per this project's worktree-hygiene rule — nothing lost).
+
+**`common/room_graph.js` on `main` already carries everything R-SPINE's `route()` step needs:**
+`buildGraph()` (real room-to-room adjacency from door geometry) + `shortestPath()` (Dijkstra, weighted
+by real room-center distance, every hop carrying the real door guid/name). Verified directly (real
+Duplex_ARC.db, plain-Node, `common/room_graph.js` unmodified) that `shortestPath()` correctly serves a
+SPINE-RESTRICTED query — R-SPINE's own wording ("BFS over room_graph edges restricted to spine ∪
+{fixture_room, riser_room}") — when fed a NODE-FILTERED `graph` object: `shortestPath()`'s own edge
+loop already guards `if (!adj[e.a] || !adj[e.b]) return;`, so passing the full edge list with only
+`.nodes` filtered is sufficient — no edge-list filtering, no new algorithm, needed.
+```
+T1 unrestricted shortestPath finds the real A202->A205 path — PASS (baseline, the shipped feature)
+T2 spine={A201} only (A204 excluded): restricted path correctly returns null — PASS (architecturally
+   right: Duplex has no true corridor system here, matching this file's own "spine only exists after
+   R-MERGE on a real corridor building" finding — not a bug in the mechanism)
+T3 widening spine to {A201,A204} recovers the IDENTICAL path T1 found — PASS (proves the filter itself
+   is correct, not "always null")
+T4 the restricted-graph path still carries real door guid/name per hop — PASS (what R-SPINE's conduit
+   step needs)
+```
+4/4 PASS (session scratchpad `witness_rspine_fit.js`, not committed — calculation-only per this task's
+own scope).
+
+**Conclusion, exactly as the coordinator anticipated: R-SPINE is "wire into an existing pathfinder,"
+not "build a new one."** The genuine remaining gap for a full R-SPINE build (NOT attempted this pass,
+correctly scoped as too large — named, not built):
+1. **Spine SELECTION** — `spine(storey) = connected subgraph of rooms with hallwayness >= 0.5` (Task
+   2's `hallwayness()` formula, now implemented in this session's R-DOOR-SCORE work but reverted from
+   `room_graph.js` — the formula itself is fine in isolation, only its use as a DOOR-scoring discount
+   was disproven; reusing it purely as a spine-membership test is a different, untested claim) over
+   R-MERGEd rooms — not built.
+2. **The `restrictToSpine()` wrapper** — ~10 lines, shown working above, not committed anywhere.
+3. **Conduit polyline generation** (door-center to door-center, hug the longest wall) + the
+   union-of-member-rects containment check — geometry, not pathfinding; the containment LAW was
+   already corrected in Task 4's spec by §POC5 (2026-07-12c), not re-touched here.
+4. Wiring: `buildGraph()` reads straight from `spatial_structure`, so once R-MERGE has been run
+   `--write` on a target building, `buildGraph()` automatically picks up the merged rooms with no
+   further changes needed there.
+
+None of 1-4 requires a new Dijkstra/BFS implementation — the existing one, proven above, is sufficient.
+
+---
+
+# TERMINAL WIRING CLOSED — 2026-07-12d (the two Grind-1 gaps, solved and browser-proven)
+
+Both open Terminal facts from GRIND RESULTS are now fixed, live-verified on localhost, committed
+locally on bim-ootb branch `fix/terminal-rooms-selfheal` (worktree /tmp/wt-terminal-rooms, commit
+3429206 — NOT pushed, PUSH PAUSE):
+
+**Viewer (had zero Terminal rooms end-to-end):** new self-heal patch
+`buildings/patches/Terminal_extracted.db.sql` (+ `viewer/buildings/patches/` copy) carries 59
+rooms / 101 rect rows compiled by the shipped R-MERGE+R-REJECT rules. Applied by the EXISTING
+scene.js loader. Live proof (headless Chromium, real viewer page):
+```
+§PATCH_APPLY Terminal_extracted.db applied (173860 bytes)
+§ROOM_GRAPH nodes=59 doors=135 nonRoomDoors=5 edges=10 deadend=62 orphan=58 ambiguous=0
+```
+59 rooms where there were zero. (Honest note: edges=10 is sparse — Terminal's door-to-room
+binding quality is the next-lane item, same family as the reverted R-DOOR-SCORE.)
+
+**Modeller (served 43 stale pre-stair-exclusion rooms from Terminal_ARC.db):**
+`str_walker_outliner.js` gains `_applyPendingPatch` — a port of the Viewer's proven convention
+(`modeller/patches/<db>.sql`, applied on EVERY open, IDB cache keeps raw bytes). First user:
+`modeller/patches/Terminal_ARC.db.sql` rebuilds the room table (old 12-column schema → 13) with
+the fresh compiled set; the stale ~0.21-stair-overlap room the user saw is gone from the data.
+Live proof (headless Chromium, real modeller page, real `openResident('Terminal')`):
+```
+§PATCH_APPLY Terminal_ARC.db applied (33669 bytes) from ./patches/Terminal_ARC.db.sql
+walker db spaces=101 columns=13
+```
+Witness W-TERMINAL-ROOM-PATCH (scratchpad): both patches double-applied through the repo's own
+sql.js — idempotent, 101 rooms each pass. Patch generation is reproducible:
+`compile_rooms.py --write` on a copy of each target + scratchpad `make_patch.py`.
+
+Remaining known imperfection, stated not hidden: 2 rooms in the new Terminal set still sit ~24%
+over a staircase — below the 0.35 rejection bar, ⚠-flagged by the pipeline itself. Whether 0.35
+should tighten is the deferred threshold decision (Task 0 note above), not part of this fix.
+
+---
+
+## FUTURE SPEC — corridor/hallway findability (2026-07-12, user design note, NOT YET BUILT)
+**"Corridor be future"** — captured here so the thinking isn't lost, deliberately deferred, not part
+of the current R-MERGE/R-REJECT/R-DOOR-SCORE/R-SPINE build. Three surfaces, same underlying signal
+(hallwayness, already measured — `min(aspect/2.697,1) * min(area/10.415,1)`, the HALLWAY template
+mean from Duplex):
+
+1. **TYPE tab — the direct "how do we look for them" answer.** Duplex's hallways are already
+   classified (HALLWAY→CORRIDOR, FOYER→LOBBY): Find → TYPE → CORRIDOR lists every hallway in the
+   building, one press. For unlabeled buildings (Terminal, JKR — compiled rooms are just "R1, R2…"),
+   the classifier tags corridor-shaped rooms by measured shape — long-and-thin with many doors reads
+   as a hallway whether or not anyone named it. Same hallwayness measure the pathfinder (R-DOOR-SCORE/
+   R-SPINE) uses, so search and routing agree by construction, not by two parallel definitions.
+2. **ROOM tab — visible but visually quiet.** Circulation rooms stay in the per-storey list but get a
+   distinct look: a subtle glyph (⇄) and a softer tint, sorted after the primary rooms — the building's
+   skeleton should be visible without shouting over the bedrooms/offices. Matches data already in hand
+   (templates already carry primary vs. supplementary tiers) — the UI renders an existing distinction,
+   nothing new to invent.
+3. **PATH mode — where they earn their keep.** When a route renders, hallway segments are the
+   highway — tint walk-through spaces differently from the two destination rooms. Later, the
+   fire-escape view is the same picture with exits lit (ties to the HBA Safety/Egress spec's RSET
+   concept, `prompts/Viewer/HBA/RESUME_HR_BIM_ASSET.md` §2026-07-12 Safety/Egress section).
+
+Depends on Lane A (R-MERGE/R-REJECT, shipped) + R-SPINE (spine selection, not yet built) landing first
+— this is a consumer of that substrate, not a prerequisite for it.
+
+---
+
+# STAIRWELL-STACK + split-path trace correction — 2026-07-12e (user screenshot follow-up)
+User (with screenshot, `≈ Aras 01 R1`): needle recompute works, "but there is still staircase well
+as a room." Two findings, both fixed and live-verified:
+1. **STAIRWELL-STACK rule (both mirrors, parity 6/6).** Measured: a shaft's per-storey flight
+   covers only ~0.22 of its pocket — under `STAIR_OVERLAP_REJECT=0.35`, which STAYS — but flights
+   STACKED through the same XY cover 1.30–2.23× cumulatively vs 0.37 max for any legitimate room.
+   New reject: cumulative ≥0.50 across ≥3 z-levels. Controls: Duplex 0/21, JKR 0/79 false hits;
+   Terminal exactly the 12 shaft rects on every variant. This ANSWERS the deferred Task-0 threshold
+   question: do NOT lower 0.35 — the shaft is a vertical object, it needed a vertical test.
+2. **Task 0 trace correction — the Viewer's live Terminal source moved.** Current main has a
+   split-build path: `§DB_SPLIT_DETECT` prefers `buildings/Terminal_meta.db` (43 stale rooms — the
+   set the user actually saw, stairwell included) over `Terminal_extracted.db`. The split path also
+   never ran `_applyPendingPatch` — wired in `viewer/streaming.js`, and a new
+   `buildings/patches/Terminal_meta.db.sql` now heals the file the Room lens actually reads.
+   E2E: `§PATCH_APPLY Terminal_meta.db applied` → rooms=40 rects=73, worst remaining stacked-stair
+   overlap 0.37 (<0.50). bim-ootb PR #761.
