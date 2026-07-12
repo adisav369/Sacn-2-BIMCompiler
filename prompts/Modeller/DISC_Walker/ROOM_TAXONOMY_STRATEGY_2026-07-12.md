@@ -477,3 +477,84 @@ way). Lane A should read JKR from the canonical `~/bim-ootb/buildings/JKR_extrac
 Task 0: closed, single traced fact, §POC0c. R-SPINE: containment law corrected in the Task 4 spec
 with forcing clusters named, §POC5. Lane B has nothing left that requires judgment — the remaining
 work is Lane A's implementation plus the (new, factual) Terminal wiring note above.
+
+---
+
+# LANE A RESULTS — 2026-07-12d (R-MERGE + R-REJECT shipped; R-DOOR-SCORE disproven by its own witness)
+
+**R-MERGE + R-REJECT: ✅ implemented, both mirrors, witnessed on real data.**
+`scripts/compile_rooms.py` (`_merge_rooms`/`_reject_rooms`, before `main()`) + `build/room_walker.js`
+(`mergeRooms`/`rejectRooms`, verbatim port) — pseudocode/parameters taken exactly from Task 1/1b
+above, no re-derivation. Operates on LOGICAL rooms (one entry per compiled pocket, each carrying its
+`rects` list), not the spec's own POC's rect-ROW granularity — this was a deliberate, verified choice:
+independently reproduces the identical final number (66→51 after merge) the POC found at row-level
+(79→51), confirming logical-room granularity is the correct, more natural integration point (rect-row
+sub-splits of one already-same logical room never need separate re-merging).
+
+- `build/witness_room_walker_parity.js`: **6/6 PASS byte-identical** (SampleCastle/HHS/Clinic/Garage/
+  Hospital/Terminal — Python and JS spatial_structure + rel_contained_in_space rows match exactly).
+  Found + fixed a REAL cross-language determinism bug during this: JS `Object.keys()` on an object
+  keyed by union-find root IDs silently reorders to ASCENDING NUMERIC order (JS's array-index-like-key
+  enumeration rule) instead of Python dict's INSERTION order — desynced which physical room got which
+  `RM_storey_N` guid between the two mirrors on Hospital/Terminal (same room COUNT, wrong room per
+  guid). Fixed by tracking group-encounter order explicitly (`groupOrder` array) instead of trusting
+  `Object.keys()`. Named here because it's a real, non-obvious landmine for ANY future dict/object
+  keyed by a numeric ID that needs Python-JS parity.
+- New witness (session scratchpad, not committed — plain Python, direct module import, full
+  provenance tracing through merge): JKR **66 logical rooms → 51 after merge** (independently lands on
+  the SAME 51 the spec's own row-level 79→51 measurement found), storey `'01 Aras Satu'` **31→16**
+  (the named split-hallway-chain acceptance case), **0 false rejects** among the 34 pre-merge non-OPEN
+  logical rooms (spec's own "48" is the ROW-level count of these same 34 logical rooms, multi-rect
+  sub-rows included — same claim, different unit, both zero). Duplex: **0 merges, 0 rejects** — the
+  real 21 ground-truth labeled rooms (A101…R301) are untouched (by construction: merge/reject only
+  ever operate on the freshly-compiled `RM_`-prefixed pockets, never on pre-existing real IfcSpace
+  rows) and confirmed byte-identical before/after a `--write` pass.
+- JS side independently re-run end-to-end (`RoomWalker.walk()`, not just the parity diff): JKR
+  total=45 merged=15 rejected=6, Duplex total=11 merged=0 rejected=0 — matches the Python run exactly.
+
+**R-DOOR-SCORE: 🛑 implemented exactly per spec, DISPROVEN by a real regression witness, REVERTED —
+not shipped.** Ported into `common/room_graph.js` (bim-ootb; no Python/dual-JS mirror exists for this
+file, so "both mirrors" doesn't literally apply here — noted, not silently assumed). Applied the
+formula verbatim in a fresh worktree off `origin/main` (`f7f27e7`): `hallwayness()` using
+`config/room_templates.yaml`'s own measured HALLWAY means (area_m2=10.415, aspect_ratio=2.697, n=2 —
+confirmed by direct read, not re-derived), `score = dist - 0.8*hallwayness`, re-sort only the
+already-ambiguous (3+-candidate) case.
+
+Ran the EXISTING `witness_room_graph_path.js` (PR #746's own real-Duplex regression suite, previously
+green) as a same-day sanity check before considering this done — **it caught a real regression**:
+`G3a` (a previously-passing check — "A202(Bedroom1)→A205(Utility) path exists, 3 real doors") now
+returns `null`, no path. Traced to one exact door (`204034`, Level 2): its 3 real candidates by
+distance are A205(0.055m) < A204(0.069m) < A201(0.501m) — the TRUE top-2 pair is (A205,A204), which is
+exactly the edge the pre-existing path used. But A201 (the real measured Hallway) has hallwayness=1.0,
+so its score = 0.501 − 0.8×1.0 = **−0.299**, beating A205's score (0.055 − 0.8×0.083 = **−0.011**) by a
+wide margin — LAMBDA=0.8 is large enough to override a **9× distance gap** (0.501m vs 0.055m) whenever
+one candidate happens to be hallway-shaped. This directly contradicts the spec's own §LAWS invariant
+for this task ("distance remains primary, the prior is a **bounded** discount"): on this real door, the
+discount is NOT bounded relative to the distances actually in play among a tight ≤1.5m candidate set —
+it dominates them.
+
+This is the SAME "POC validated the isolated metric, not the downstream graph property" shape as the
+already-documented disc_walker `_hostAxis` disproof earlier this session (a formula that made its own
+narrow, isolated measurement look better — the POC's own "Duplex 10/14 ambiguous → 2 changed,
+redirecting to the real Hallway" was framed as a WIN — while breaking a DIFFERENT, previously-proven
+property nobody checked at POC time). Door `204034` is very likely one of those same "2 changed" cases
+the POC celebrated — re-pointing it toward A201 makes it REDUNDANT with door `160208` (which already
+connects A201↔A204) and severs the A205 connection the real path needed.
+
+**Reverted cleanly** (`git checkout -- common/room_graph.js` in the worktree, then the worktree/branch
+removed — zero unique commits, safe per this project's worktree-hygiene rule): `witness_room_graph_path.js`
+back to **15/15 PASS** confirming the revert is clean. R-MERGE/R-REJECT are UNAFFECTED (separate file,
+separate pipeline stage) and remain shipped.
+
+**Handoff — R-DOOR-SCORE needs a fresh design pass, not a re-attempt of this LAMBDA:** the fix
+direction is NOT specced here on purpose (matching this project's "don't re-attempt a disproven fix,
+don't guess a replacement solo" discipline) — options for whoever picks this up: (a) cap the discount
+so it can never flip a candidate whose raw distance is more than some measured multiple of the closest
+candidate's distance (needs a real threshold derived the same way MERGE_SHARE_MIN/WALL_COVER_MAX were —
+not invented on the spot); (b) score only among candidates within a TIGHT distance band of the closest
+one (e.g. within 2×closest, echoing R-MERGE's own GAP_TOL_FACTOR pattern) and leave clear outliers to
+pure distance; (c) drop the discount to a measured-safe value and re-verify against BOTH the original
+POC's own "2 changed cases redirect to real Hallway" claim AND `witness_room_graph_path.js`'s existing
+G3a/G4 path checks together, not either alone. Whichever direction: the acceptance gate is now
+established — the CHANGE must not break `witness_room_graph_path.js`'s existing real-path checks, not
+just improve its own isolated ambiguous-door metric.
