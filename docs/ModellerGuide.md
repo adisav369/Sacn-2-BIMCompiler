@@ -350,20 +350,19 @@ it: it places that trade's elements at the **measured cadence** of a real coordi
 runs it can, gates the clashes, and **honestly refuses** when the building has nothing to hang the trade
 on. Nothing is invented — every placement uses a spacing/clearance rule *mined from a real IFC model*.
 
-![Walk · ELEC, X-ray reveal — 325 electrical fixtures placed across all 7 storeys of SampleCastle; structure goes near-transparent glass and every fixture glows through the shell as a point of light](img/modeller/walk-fixtures.png)
+![Walk · ELEC, X-ray reveal — 102 electrical fixtures placed across 19/21 real spaces in the Duplex; structure goes near-transparent glass and every fixture glows in its discipline colour through the shell, on both floors](img/modeller/walk-fixtures.png)
 
 A normal (non-X-ray) view of this same walk is honestly near-empty: a real electrical outlet or light
 lives inside a room, not poking through an exterior wall, so from outside the sealed shell it's naturally
 occluded — same as it would be in a real building. Tap **X-ray** (or press `X`) to see the walk actually
-landed, as captured here on SampleCastle: structure fades to near-transparent glass and all 325 fixtures
-glow through it at once, spread across every storey of a real 3,225-element building. This is the corrected
-placement too (2026-07-12): a previous version of this pipeline had a containment bug where roughly a
-quarter of placements landed outside the building's own walls — fixed (mesh-recovered true-midpoint host
-binding) and independently verified 5 separate ways (containment count, real-oracle walk-back match,
-measured-pattern conformance, wall-clearance margin, mirror-symmetry residual on the Duplex's own A/B twin
-layout). The fixture mesh itself is still a box stand-in sized to each class's own measured dimensions, not
-a finished fixture model — a deliberate, honest choice: guessing at a fixture's real shape is exactly what
-this project's non-invent rule forbids.
+landed, as captured here: structure fades to near-transparent glass and the fixtures glow through it in
+their discipline colour, room by room. This is the corrected placement too (2026-07-12): a previous
+version of this pipeline had a containment bug where roughly a quarter of placements landed outside the
+building's own walls — fixed (mesh-recovered true-midpoint host binding) and independently verified 5
+separate ways (containment count, real-oracle walk-back match, measured-pattern conformance, wall-clearance
+margin, mirror-symmetry residual on the Duplex's own A/B twin layout). The fixture mesh itself is still a
+box stand-in sized to each class's own measured dimensions, not a finished fixture model — a deliberate,
+honest choice: guessing at a fixture's real shape is exactly what this project's non-invent rule forbids.
 
 **One engine, two standards.** A single walker drives every discipline; the discipline is just a data
 filter. It carries two measured rule-sets and auto-selects by building class:
