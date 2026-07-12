@@ -46,13 +46,14 @@
   into bim-compiler `fable/meshdb-livewire`. Phase 1 (grid+door+slab+envelope fusion for
   sparse-wall federated buildings, e.g. HHS) scoped as a ready-to-pick-up 4-step follow-up, not
   built — genuinely substantial new engineering, deserves its own session.
-- **Guide blocked on ONE thing, named and spec'd, not fire-fought:** `docs/ModellerGuide.md` (29
-  real screenshots, otherwise complete) can't get a Building Parts entry yet — user's own live
-  review: LOD is fine now, but Modeller glass/window material isn't see-through like the Viewer's.
-  Spec: `prompts/MODELLER_RENDER_MATERIAL_PARITY.md` (also folds in a named quirk: Outliner panel's
-  collapse control isn't discoverable). Companion spec, Viewer side (evidence gap, not a code
-  gap): `prompts/VIEWER_FIND_PANEL_PARTS_VERIFICATION.md` — needs one real driven-from-fresh-load
-  screenshot, 3 known dead-ends already named so it isn't re-attempted blind.
+- **✅ Modeller glass parity — DONE, guide caught up 2026-07-13.** `MODELLER_RENDER_MATERIAL_PARITY.md`
+  shipped 2026-07-11 (bim-ootb PR #735). `docs/ModellerGuide.md` got the Building Parts + glass sections
+  same day; the 3 remaining screenshots that still showed the pre-fix opaque window (`gizmo.png`,
+  `rotate-yaw.png`, `scale-stretched.png`) recaptured + deployed live 2026-07-13. `delete-gone.png` and
+  `insert-catalog/placed.png` named as open gaps (re-running their witness scripts blind would pick a
+  different element / regress a building swap) — not blocking, not silently dropped.
+  `GUIDE_VISUAL_QUALITY.md`'s separate Duplex→SampleCastle visual-richness lane retired same session
+  (dispatch worktree never started, zero unique commits — see that doc's §RETIRED).
 - **`prompts/MANAGER.md` hardened this session** — anti-ad-hoc-debugging conduct rule (stop after
   a 2nd failed quick-check, write a spec + dispatch instead of trial-and-erroring in-turn). Read it
   before picking up either spec above.
