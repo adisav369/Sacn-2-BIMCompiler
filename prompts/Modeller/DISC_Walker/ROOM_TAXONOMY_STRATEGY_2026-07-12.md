@@ -307,8 +307,11 @@ route(fixture_room -> riser_room):
   path = BFS over room_graph edges restricted to (spine ∪ {fixture_room, riser_room})
   conduit polyline = door-center to door-center within each room on path,
                      offset to hug the room's longest wall (orientation law: host-wall frame)
-  §LAWS check per segment: polyline ⊂ room AABB (containment, locally checkable — the room IS
-  the coordinate frame; a routing error is bounded by one room's diagonal, tolerable tier)
+  §LAWS check per segment: polyline ⊂ UNION OF MEMBER RECTS (true polygon), NOT the merged AABB
+  — CORRECTED by §POC5 (2026-07-12c, see Grind results below): merged rooms are non-convex; the
+  AABB check passed 1188 out-of-room sample points on 10/14 real JKR clusters (worst: '01 Aras
+  Satu' R4+R6+R7+R15, slack 79.1m² = 47% of its AABB). Member rects already exist as the room's
+  multi-rect spatial_structure rows (shared room_guid) — per-member-AABB test, still cheap.
 output: per-discipline conduit BOM lines parented to the rooms traversed (WHAT/HOW/WHERE intact)
 ```
 Precondition, measured: JKR's spine only exists AFTER R-MERGE (the 17.8m hallway seam at 2% wall
@@ -407,3 +410,68 @@ Task 0 above has one §POC0c-backed answer, no "either/or" left. R-SPINE's spec 
 "measured: AABB sufficient, 0 violations on N clusters" line, backed by §POC5, or a corrected true-polygon
 containment rule with the forcing cases named. Append results as a new dated section below this one, same
 file — don't create a second doc.
+
+---
+
+# GRIND RESULTS — 2026-07-12c (Lane B computed, not judged)
+
+Scripts + full logs: session scratchpad `poc0c_terminal_arc.log`, `poc5_spine_slack.py` /
+`poc5_spine_slack.log`, `jkr_recompile.log`. Calculation-only held: zero pipeline edits, zero
+repo-artifact writes.
+
+## Grind 1 — Task 0 CLOSED with one traced fact
+```
+§POC0c SOURCE=modeller/Terminal_ARC.db (loader: modeller/str_walker_outliner.js:46, v:1 resident)
+§POC0c STAIR_EXCLUSION_APPLIED=yes-at-0.35 (contract holds: 0 rooms >= 0.35 in the live source)
+§POC0c rooms=43 stairs+ramps=33 hits>=0.35: 0 MAX_STAIR_OVERLAP=0.210 ROOM=≈ Aras Tanah R9
+```
+The trace, mechanical: the Viewer's Terminal path serves **zero rooms end-to-end** —
+`deploy/buildings/Terminal_extracted.db` has no `spatial_structure` (F4), and no
+`buildings/patches/Terminal_extracted.db.sql` exists (only HHS has a patch), so
+`common/room_graph.js` hits `§ROOM_GRAPH_SPACE_ERR` → empty graph. The ONLY live room source for
+Terminal is the **Modeller's** `Terminal_ARC.db` (43 compiled `RM_Aras_*` rooms), loaded by the
+`str_walker_outliner.js:46` resident registry row. No "either/or" left: whatever stair-room the
+user saw, they saw in the Modeller, from this file. Applying F1's metric to it: **no room reaches
+0.35; the max is 0.210 (`≈ Aras Tanah R9`)** — the same ~0.21 ceiling as the stale
+`Terminal_rooms.db` (whose 11 dropped rooms included every other ~0.2-overlap case). Consequence
+for the implementing session: the 0.35 threshold never bites at Terminal scale — the visible
+stair-room is a SUB-threshold case, and the file's broader garbage-room disease is enclosure
+(21/53 below 0.25 in the stale set, §POC3c), i.e. **R-REJECT is the fix that reaches what the
+user saw, not a stair-threshold change.** Wiring note: any room fix for Terminal must land in
+`Terminal_ARC.db`'s compile path (Modeller substrate), and the Viewer additionally needs rooms at
+all (patch or recompile) before any of Tasks 1-2 even applies there.
+
+## Grind 2 — §POC5 verdict: AABB containment REJECTED, forcing cases named
+14 real JKR merge clusters (corpus regenerated deterministically mid-grind — see incident note),
+true polygon = union of member rects, routes = all attached door-pair polylines sampled @0.05m:
+```
+§POC5 worst clusters (slack_area = AABB − true polygon):
+  [01 Aras Satu: R4+R6+R7+R15]  aabb=169.4m² union=90.3m² slack=79.1m² viol_direct=684 viol_hug=462
+  [01 Aras Satu: R17+R5]        aabb=40.6m²  union=20.8m² slack=19.8m² viol_direct=206 viol_hug=202
+  [01 Aras Satu: R2+R3+R8]      aabb=114.8m² union=105.6m² slack=9.2m² viol_direct=91  viol_hug=169
+  [01 Aras Satu: R10+R16]       slack=4.5m²  viol_direct=114
+  (+ 6 more clusters with violations; full table in poc5_spine_slack.log)
+§POC5 JKR total_clusters=14 total_violations_direct=1188 total_violations_hug=1777
+```
+**Verdict (mechanical):** violations ≫ 0 ⇒ R-SPINE's containment line is WRONG as originally
+specced and has been corrected in place (Task 4 spec above now reads union-of-member-rects).
+Two measured nuances, not generalized past the data: (1) the stated wall-hug offset is NOT a
+mitigation — it made things WORSE (1777 > 1188), because hugging the largest member's wall drives
+the polyline through the other members' voids; the hug must be per-member, not per-cluster.
+(2) Collinear chains are immune (R21+R22+R23 slack=0.0, R24-R27 viol=0) — the gap is specifically
+L/T-shaped clusters, 10 of 14 here.
+
+## Incident note — JKR_Project.db truncated mid-grind (data landmine, not this session)
+`/home/red1/Downloads/OPEN SOURCE BIM/JKR_Project.db` was found **0 bytes (mtime 2026-07-12
+09:12)** during Grind 2 — it was intact when §POC2-§POC4b read it earlier this session; something
+external truncated it. Not touched further. The corpus was regenerated deterministically:
+`scripts/compile_rooms.py --write` on a scratchpad COPY of `jkr_fixed.db` reproduced F3 **exactly**
+(66 rooms → 79 rect rows, suspect=45, split 24/10/14/31) — itself a live witness that compiled
+rooms are a pure function of the source DB (the DB-as-migration doctrine holding in practice).
+`jkr_output.db` (31 spaces) is a different, partial artifact — not a substitute. If JKR_Project.db
+is wanted back, one `compile_rooms.py --write` run on a fresh copy of `jkr_fixed.db` recreates it.
+
+## DONE (2026-07-12c)
+Task 0: closed, single traced fact, §POC0c. R-SPINE: containment law corrected in the Task 4 spec
+with forcing clusters named, §POC5. Lane B has nothing left that requires judgment — the remaining
+work is Lane A's implementation plus the (new, factual) Terminal wiring note above.
