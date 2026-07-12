@@ -572,6 +572,115 @@ updates live (BroadcastChannel across tabs).
 
 ---
 
+## §SE-5 — Freeze fix + MS-Project-grade polish (user direction 2026-07-13)
+User compared the two 4D surfaces (✎ Author wizard vs ↗ Editor tab), picked the **Editor as the surface to
+invest in** (more organized: WBS+deps+CPM+Gantt vs Author's lighter first-draft wizard), reported the
+generate/materialize path "crashes the browser", and asked for (a) a fix so Generate never holds the tab,
+(b) a more MS-Project-like professional design for the Editor. Diagnosed BEFORE this section (this session):
+reproduced via headless Chromium against real building DBs (Duplex/Hospital/LTU_AHouse) — no memory blowup,
+no infinite loop; the real cause is `materializeDefault` (`viewer/schedule_author.js`) running one INSERT/
+DELETE statement per element with NO explicit SQL transaction — sql.js pays per-statement commit overhead
+per call. Measured in-page (`performance.now()` around the real engine call, not a guess):
+`materializeDefault` alone = **4.0s on Hospital (63,415 els)**, **7.2s on LTU_AHouse (122,667 els)**; the
+full button click (incl. `foldCost`+render) = **4.3s / 10.4s** of unbroken main-thread block — long enough
+for Chrome's own "Page Unresponsive" prompt, and exactly what a user would describe as a crash, especially
+if they click Regenerate again mid-freeze (queues a second block on top). Same unwrapped function is called
+by the Editor's own auto-seed-on-blank path (`schedule_editor_ui.js:421-426`), so it inherits the freeze too.
+
+### §SE-5a SPEC — wrap the bulk writes in one transaction (the actual fix)
+**Issue this proves/disproves:** does wrapping `materializeDefault`'s idempotent-rebuild delete loop +
+per-element insert loop in a single `BEGIN`/`COMMIT` eliminate the multi-second main-thread block on a
+real large building, with byte-identical output to the unwrapped version?
+- Engine: `viewer/schedule_author.js` `materializeDefault` — add `db.run('BEGIN TRANSACTION')` right after
+  the idempotent-delete block, `db.run('COMMIT')` right before the `return`. No logic change — same rows,
+  same order, same `§AUTHOR_MATERIALIZE` log line. Standard SQLite bulk-write practice (sql.js pays
+  transaction/journal overhead per implicit statement-commit; batching amortizes it — this is *why* 63k
+  single-row inserts took seconds instead of the tens-of-ms SQLite bulk inserts are known for).
+- Also fixes `scheduleContiguous`'s per-task UPDATE loop (§MI-FLOW "Schedule now") and `foldCost`'s query
+  path stays read-only (no write cost there — leave as is).
+- **Witness (this session, real DBs, `performance.now()` before/after, headless Chromium) — DONE, PASS:**
+  re-ran the exact in-page timing probe used to diagnose this, pre/post the transaction wrap:
+  `materializeDefault` Hospital 63,415 els **4040ms → 467ms** (8.6x); LTU_AHouse 122,667 els
+  **7174ms → 1131ms** (6.3x); full click-equivalent (materialize+foldCost) LTU_AHouse **10.4s → ~1.7s**.
+  Assignment/phase counts UNCHANGED (63,415/6 and 122,667/6 both runs) = no data-correctness regression.
+  Re-running `materializeDefault` a 2nd time (the idempotent-rebuild/"Regenerate" path, which now also
+  runs its delete-loop under the same transaction) showed NO further slowdown (601ms, same order as the
+  1st run) — ruling out unbounded DB-bloat-from-repeated-regenerate as a compounding risk.
+  **Honest correction to the pre-implementation estimate above:** actual post-fix times are ~500ms-1.1s
+  on the two largest local buildings, not "<200ms" — still a decisive fix (crossed from "trips Chrome's
+  Page-Unresponsive prompt" to "sub-2s, no freeze risk"), just not as dramatic as a bare SQLite-transaction
+  napkin estimate suggested; the remaining cost is per-element JS work (`matchRule`'s O(rules) substring
+  scan × elements, plus WASM/JS marshalling), not transaction overhead — a smaller, separate optimization
+  if ever needed, out of scope for this fix.
+- **Also added (this session, not in the original spec, cheap + real UX win):** the Editor's own
+  auto-seed-on-blank-load path (`schedule_editor_ui.js init()`) now paints a "Materializing default
+  schedule… please wait" status BEFORE running the heavy call (a `setTimeout` yield lets the status text
+  render first) — so even the residual ~1-2s on a huge building visibly acknowledges the load instead of
+  looking frozen, and a user can't stack up repeat clicks against an apparently-dead tab.
+- Non-invent: this is the standard, well-known SQLite fix for "many small writes are slow" — not a novel
+  algorithm, not a guess.
+
+### §SE-5b SPEC — MS-Project-style Editor polish (first slice, scoped)
+Full MSP parity is out of scope for one slice (per §SE-B rabbit-hole discipline — polish, not leveling).
+First slice picks the highest-visible-value, lowest-risk affordances, all on data the schema ALREADY
+carries (no invented columns):
+1. **Indent/Outdent** — WBS rows get ⇥/⇤ buttons that reparent a task (`wbs_parent`) up/down one level.
+   New engine verb `reparentTask(db, taskId, newParentId)` (validates: not self, not a cycle in the WBS
+   tree, target exists or null=root) in `schedule_author.js`, wired the same signed-op way as `addTask`/
+   `breakdownByAttribute` (broadcasts `{op:'reparent', taskId, wbsParent}` on the existing §SE-D rail).
+2. **Gantt zoom** — Day/Week/Month scale toggle (changes `pxPerDay`/tick granularity in `renderGantt`;
+   pure UI, no engine change — the existing day-axis math already parameterizes on `stepDays`).
+3. **Today marker** — a vertical line on the Gantt at the current date (if inside the project span);
+   pure UI/CSS, no engine change.
+4. **Milestone diamonds** — a task with `schedule_start === schedule_finish` (0-day duration) renders as
+   a ◆ marker instead of a bar; pure UI branch in `renderGantt`, no engine/schema change (0-day tasks
+   already possible via `moveTask`/manual dates).
+5. **Toolbar/chrome polish** — group existing buttons into a ribbon-style header (View: zoom controls ·
+   Edit: add/indent/outdent/import · Compute: CPM), consistent icon sizing, row striping + sticky
+   WBS/Gantt row alignment (visual only, `schedule_editor.html` CSS + minor DOM restructuring).
+- Out of scope this slice (next, lower priority, no user fact needed): resource histogram/leveling view
+  (§SE-B rabbit-hole — refuse leveling, a READ-ONLY resource column is fine later), baseline-vs-actual
+  comparison bars, print/export, single-pane WBS+Gantt merge (MSP's actual split-view — bigger
+  rearchitecture, flag as the natural NEXT slice once this one is live).
+- Witness: headless Chromium smoke on real SampleHouse — indent/outdent changes `wbs_parent` + WBS
+  re-nests correctly + cycle refused; zoom toggle changes rendered tick count/spacing; today-line present
+  when today falls in span; a 0-day task renders `.g-milestone` not `.g-bar`.
+
+**§SE-5b IMPLEMENTED + WITNESSED (this session).** New engine verb `reparentTask(db, scheduleId, taskId,
+newParentId)` in `schedule_author.js` (self/cycle/unknown-task/unknown-parent guards, DFS ancestor-walk
+cycle check mirroring `wouldCycle`'s style) + `reparent` case added to `schedule_sync.js applyOp` (so
+indent/outdent converges cross-tab like every other edit). UI: `schedule_editor_ui.js` renders ⇤/⇥
+buttons per WBS row (`_findNode`/`_siblingsAndIndex` locate a node + its ordered siblings from the
+already-fetched `wbsTree`), wired to `doIndent`/`doOutdent`; Gantt `renderGantt` gained zoom-aware tick
+density (`_zoom` day/week/month via `ZOOM_MIN_STEP`, `setZoom()`), a today-line (`.g-today-line`, drawn
+when "now" falls inside the rendered span), and milestone-diamond rendering (`.g-milestone` for any
+`start===finish` leaf, in place of a bar). `schedule_editor.html` restructured into a grouped ribbon
+toolbar (Import / Compute / Zoom clusters) + row striping + moved the lone CPM button out of the
+Dependencies pane into the ribbon (was duplicated, now singular).
+- **W-SCHED-REPARENT 11/11** (node, real SampleHouse, whitebox §-log): materialize → indent (reparent
+  onto a real sibling) → wbs_parent updated correctly → outdent back to root → re-nest → cycle attempt
+  (parent onto its own child) REFUSED + tree left unchanged → self-parent refused → unknown task/parent
+  refused → outdent-to-root (null parent) works.
+- **Headless Chromium smoke (real Duplex_extracted.db, this session), 10/10 checks green:** "please wait"
+  status paints before the heavy call resolves; editor loads+seeds with no crash/page-error; total
+  load+seed time <8s; WBS rows + indent/outdent buttons render; a live indent click fires `§SE_REPARENT`
+  and re-renders; all 3 zoom buttons present, clicking one applies `.active` + emits `§SE_ZOOM`; Gantt
+  renders non-empty. Today-line correctly ABSENT for this schedule's span (Jan-Jun 2026, ends before the
+  session's "now") — asserted as the correct negative, not a false claim of presence.
+- **Full Editor-tab end-to-end on the largest local building** (LTU_AHouse, 122,667 elements): open →
+  fetch+parse the 71MB DB → auto-seed the default schedule → WBS/Gantt rendered, **total elapsed 2.0s**,
+  no crash, no page error — down from the original bug's projected 10s+ freeze on this same building.
+- All new/changed files syntax-checked (`node -c`); `sw.js` `CACHE_VERSION` bumped v746→v747 and the 3
+  changed script tags in `schedule_editor.html` version-bumped (author v8→v9, sync v2→v3, editor_ui
+  v6→v7) so a real deployed tab actually picks up the fix instead of serving a stale SW-cached copy.
+- **Work done in `/tmp/wt-schedule-editor-mspro` (branch `fix/schedule-editor-mspro`, off fresh
+  origin/main)** per the shared-tree worktree hook + hygiene rule — `~/bim-ootb` itself untouched.
+  Committed locally only — **PUSH PAUSE stands, not pushed, no PR.**
+- **Next (open, lower priority, no user fact needed):** resource column (read-only), baseline-vs-actual
+  bars, print/export, the single-pane WBS+Gantt merge (MSP's real split-view — bigger rearchitecture).
+
+---
+
 ## §AUTHOR-1 SPEC — "Build the 4D up from a blank Hospital" (FIRST authoring slice; §MAIN-INTENT)
 The keystone of the main intent: originate the schedule on a real-but-bare model. Spec BEFORE code.
 
