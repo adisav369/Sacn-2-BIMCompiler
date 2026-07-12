@@ -249,6 +249,15 @@ restores it.
 
 ## Transform
 
+Every transform below — move, scale, rotate, grid-stretch, delete — commits as one signed operation in
+the same tamper-evident log that drives undo/redo/history-scrub, and a move or stretch is checked against
+the building's own recovered relationships before it settles: a hosted door rides its host wall rather
+than divorcing from it, and a delta-based conformity gate flags only what the edit actually broke (RED)
+or softly disturbed (ORANGE) — never a pre-existing condition the building already shipped with. That
+combination — open a *complete, real, production* IFC and safely edit *part* of it — is what a
+Bonsai/FreeCAD-style direct editor doesn't do. Full dated disclosure:
+**[Event-Sourced Geometry & the Graph-Cascade Conformity Layer](ModellerKernelFold.md)**.
+
 Select an element and tap **Move** to raise the **transform gizmo** — the shared handle for moving,
 scaling and rotating.
 
