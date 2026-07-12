@@ -101,6 +101,22 @@ above, now confirmed with real evidence for a specific building — treat every 
 institutional building's row with this same suspicion until the classifier has non-residential
 ground truth to fit against.
 
+**Another concrete instance, same root cause (2026-07-13, user screenshot `RoomOverSize.png`):**
+HHS `≈ Level 2 R9` measures `size_x=2.2m size_y=30.0m` in `spatial_structure` — aspect 13.6:1,
+squarely inside the elongated-slivers range already named above. Same `compile_rooms.py` door-
+rescue flood-fill behavior (open doorways leaking a corridor-shaped region into one bbox), just a
+second real building/room confirming it — not a new bug class, not investigated further this
+session (out of scope; this session's actual fix was unrelated — see next paragraph). Still open:
+the fix directions this doc already lists (`_roomBoundingGuids` wall-snap, per-face cuboid
+fallback, or the true-cell-outline option in `HANDOFF_ghost_xray_rooms.md`) apply here too.
+
+**Do not confuse with (2026-07-13, same screenshot, different bug, already fixed):** the
+screenshot also showed a SECOND, larger, stale wireframe box alongside the correctly-sized purple
+one — that was a pure rendering bug (`viewer/navigate_find.js` `_drawRoomCuboid()` never disposed
+the PREVIOUS selection's highlight mesh before drawing a new one), unrelated to room DATA accuracy.
+Fixed + shipped: bim-ootb PR #768 (merged). The room's stored SIZE (R9's 30m sliver above) is
+untouched by that fix and remains this doc's open gap.
+
 ## Open proposals (named, not yet dispatched — priority is the user's call)
 - **OmniClass Table 13 / Uniclass 2015 SL naming-convention mapping** — `config/room_templates.yaml`
   already has a `canonical_type` stub anticipating this. See `COMPETITIVE_PRIOR_ART_ANALYSIS.md`.
