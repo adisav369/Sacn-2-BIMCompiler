@@ -152,6 +152,27 @@ evaluator live, before commit. Handlers shipped and witnessed to date: hosted-op
 RED, abuts-realign ORANGE, an OBB-SAT narrow-phase clash upgrade, and a UBBL-bylaw-shaped demo case. Full
 build log: `prompts/SPATIAL_DEPENDENCY_GRAPH.md` and the project's `RESUME_MODELLER_CONFORMITY_GATE.md`.
 
+### Named gaps — real extensions the substrate makes possible, not yet built
+
+Stated plainly so the disclosure above isn't read as claiming more than it does:
+
+- **No general graph-query API.** The relations are plain SQL tables (`rel_adjacency`, `rel_anchored`,
+  `rel_fills_host`, `rel_spans`), read with raw SQL — there is no `graph.query({source, edgeType})`-style
+  traversal method today.
+- **The cascade is one hop, directional, single-purpose** — a host drags its fillings (wall → door), never
+  the reverse, and never chains further (`sdg_cascade.js`, explicitly commented "ONE HOP"). There is no
+  multi-hop traversal, so "select everything in this zone" or "select everything downstream of this
+  column" is not a query you can run yet.
+- **No MEP flow/connectivity graph.** Nothing tracks which duct or pipe segment connects to which — a
+  `flows-into` edge type does not exist. "What's connected to this riser" is not answerable today.
+- **No assembly clone/duplicate-with-reconnect.** Selecting a functional group (a bathroom pod's walls +
+  fixtures + MEP stub-outs) and placing a working copy elsewhere, with connections re-resolved against the
+  new context, is not built — Insert places one catalog component at a time; there is no multi-element
+  "copy this assembly" primitive yet.
+
+Each of these is a plausible extension of the same recovered, non-invented relations — not a different
+architecture — but none of them are shipped, and none should be read into the claims above.
+
 ---
 
 ## Provenance
