@@ -486,6 +486,22 @@
     return null;
   }
 
+  // §SUSPECT-ELONGATED (compile_rooms.py port, 2026-07-13): a wall-bounded or door-partitioned
+  // pocket can still be an absurdly long undivided span (real walls/doors on the enclosing sides,
+  // nothing dividing the middle). Threshold measured, not eyeballed: HHS's own 105 door-partitioned
+  // rooms had a clean bimodal aspect spread — 98 climb smoothly 1.00->7.50, then a hard gap to 7
+  // outliers at 13.64->37.25 (R9 = 13.64, the smallest of the 7). SUSPECT_ELONGATED_ASPECT_MIN =
+  // midpoint of that gap: (7.50 + 13.64) / 2 = 10.57. Runs against BOTH floodRooms and
+  // partitionByDoors (a real HHS flood-fill room also came out 24.2m x 2.0m, aspect 12.1, proving
+  // wall-bounded rooms aren't immune either). A flagged room still compiles (never invented away) —
+  // same §ROOM-FORM treatment as SUSPECT_OPEN/SUSPECT_NO_DOOR.
+  var SUSPECT_ELONGATED_ASPECT_MIN = 10.57;
+  function _isElongated(wx0, wy0, wx1, wy1) {
+    var spanX = wx1 - wx0, spanY = wy1 - wy0;
+    var aspect = Math.max(spanX, spanY) / Math.max(Math.min(spanX, spanY), 0.01);
+    return aspect > SUSPECT_ELONGATED_ASPECT_MIN;
+  }
+
   function floodRooms(walls, stairs, doors, doorWMed) {
     stairs = stairs || []; doors = doors || []; doorWMed = doorWMed || 0.0;
     var ext = _gridExtent(walls);
@@ -547,6 +563,7 @@
         for (c2 = 0; c2 < comp.length; c2++) inSet[comp[c2]] = 1;
         var openM = _openPerimeterM(comp, inSet, raw, dil, nx, ny, SEAL);
         var suspect = _classify(hasDoor, openM, doorWMed);
+        if (!suspect && _isElongated(wx0, wy0, wx1, wy1)) suspect = 'ELONGATED';
         var gr = _growRegion(comp, inSet, raw, dil, nx, ny, SEAL);
         var totalCells = comp.length + gr.added.length;
         var dec = _decomposeRegion(inSet, ny, gr.mni, gr.mxi, gr.mnj, gr.mxj, totalCells, !!suspect);
@@ -649,6 +666,7 @@
       var openM = _openPerimeterM(cells, inSet, raw, raw, nx, ny, 0);
       var hasDoor = doorAdjacent(wx0, wy0, wx1, wy1, doors);
       var suspect = _classify(hasDoor, openM, doorWMed);
+      if (!suspect && _isElongated(wx0, wy0, wx1, wy1)) suspect = 'ELONGATED';
       var dec = _decomposeRegion(inSet, ny, mni, mxi, mnj, mxj, cells.length, !!suspect);
       for (c2 = 0; c2 < cells.length; c2++) inSet[cells[c2]] = 0;
       var rects = [];
@@ -1139,7 +1157,8 @@
     VERT_FACTOR: VERT_FACTOR, OPEN_PERIM_FACTOR: OPEN_PERIM_FACTOR,
     MERGE_GAP_TOL_FACTOR: MERGE_GAP_TOL_FACTOR, MERGE_SHARE_MIN: MERGE_SHARE_MIN,
     MERGE_WALL_COVER_MAX: MERGE_WALL_COVER_MAX, MERGE_DOOR_TOL: MERGE_DOOR_TOL, WALL_TOL: WALL_TOL,
-    REJECT_ENCLOSURE: REJECT_ENCLOSURE, SUSPECT_OPEN_ENCLOSURE: SUSPECT_OPEN_ENCLOSURE
+    REJECT_ENCLOSURE: REJECT_ENCLOSURE, SUSPECT_OPEN_ENCLOSURE: SUSPECT_OPEN_ENCLOSURE,
+    SUSPECT_ELONGATED_ASPECT_MIN: SUSPECT_ELONGATED_ASPECT_MIN
   };
   ROOT.RoomWalker = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
