@@ -36,7 +36,10 @@ ambiguous cases, all real, from the live log (door name, candidate count, which 
 ```
 
 **F3 — a second real building corroborates room fragmentation is systemic, not a one-off.**
-JKR building (`JKR_Project.db`, compiled this session from `jkr_fixed.db`): health check
+JKR building (`JKR_Project.db`, compiled this session from `jkr_fixed.db`; moved 2026-07-12 from
+`~/Downloads/OPEN SOURCE BIM/` to the canonical `~/bim-ootb/buildings/JKR_extracted.db` — same
+naming convention as `Duplex_extracted.db`/`Terminal_extracted.db`, last-minute/provisional entry,
+not yet confirmed for ARC-walk promotion): health check
 `walls=509 doors=65 wall/door=7.83 STR%=11.2 storeys=20 stairs=8` — "architectural data looks
 sufficient" (source data is NOT the problem). Compiled 66 rooms, but **45/66 (68%) are `SUSPECT_*`**
 (14 `SUSPECT_NO_DOOR`, 31 `SUSPECT_OPEN`) — the pipeline's own review-candidate flag, already firing
