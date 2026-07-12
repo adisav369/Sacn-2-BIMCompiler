@@ -192,12 +192,25 @@ has that kind of data (no data, no empty axis):
 |------|----------------|----------------|
 | **Storey** | Always | Elements grouped by building level/storey. Expand a storey to see the rooms/spaces on it (or, if the building has no room data, its most common IFC classes). Tapping a storey or room isolates it in the 3D view. |
 | **Discipline** | Always | Elements grouped by discipline (ARC/STR/MEP/ELEC, etc). Expand a discipline to see its IFC classes; tap a class to highlight just those elements. |
-| **Room** | Only if the building has volumetric room (IfcSpace) data | A highlight lens: the model is X-rayed and a translucent box is drawn over each room; tap a room to zoom to it. Has its own **Storey / Type** sub-toggle to group rooms by floor or by room type. (On a building without volume data, this falls back to a plain isolate-by-room list instead.) |
+| **Room** | Only if the building has volumetric room (IfcSpace) data | A highlight lens: the model is X-rayed and a translucent box is drawn over each room. Has its own **Storey / Type** sub-toggle to group rooms by floor or by room type. (On a building without volume data, this falls back to a plain isolate-by-room list instead.) |
 | **Material** | Only if material data is present | Elements grouped by material name, or — via a **Material / Category** sub-toggle — by a derived construction category (Concrete, Metal, Wood, Glass, Drywall/Partition, Masonry, Insulation, Tile, Finish, Membrane, Flooring, Generic, Other). Categories are a keyword-derived heuristic, not an extracted IFC property, and are labelled accordingly in the panel. Highlight lens, same X-ray-and-box behavior as Room. |
 | **Phase** | Only if a construction timeline can be generated for the building | Elements grouped by construction phase/task, generated on the fly (a short "Timeline generating…" message appears first). |
 | **Parts** *(new)* | Only if the building has stairway, lift-shaft, or plant-room elements | Elements grouped into up to three building-part categories: **Stairway** (stair/ramp classes), **Lift Shaft** (elements named for lifts/elevators), **Plant Room** (HVAC-plant elements — vents, ducts, fans, AHUs, dampers, chillers, pumps). Each category is itself data-gated — it only appears if the building actually has a match. Tapping a category, or a single item inside it, isolates it in the 3D view (hides the rest of the model). |
 
   ![The axis toggle cycled to Parts on HHS Office ("6/6 Parts"), a real institutional-scale building showing all three categories at once: Stairway (20), Lift Shaft (3), and Plant Room (1769) — Plant Room only appears on complex-class buildings like this one, never on a residential building like Duplex](img/viewer/find-axis-parts.png)
+
+**Room highlight, verified live on HHS Office.** Level 2 alone compiles 31 real rooms (105 across the
+whole building) — tapping one X-rays the model and draws a clean, correctly-bounded translucent box
+over just that room, confirming the room's geometry is well-formed and doesn't overlap its neighbours.
+On a larger building, the biggest rooms on a floor stand in for a "hall"-scale space until a real
+labelled corridor/hall example is captured (HHS's own rooms carry no such label yet — a future guide
+pass).
+
+![A single real room on HHS Office Level 2, X-rayed and highlighted as a clean translucent purple box against the surrounding structure — SAMPLE, HHS_Office_Federated data](img/viewer/find-room-highlight-hhs.png)
+
+*Known gap, not glossed over:* tapping a room does not currently reframe the camera to it (confirmed
+live, 2026-07-12) — the highlight is accurate, but you may need to manually orbit/zoom to see a small
+room clearly on a large building. Tracked for a future fix.
 
 > The Parts axis is the newest addition (bim-ootb `d04ddd5`) — see
 > `prompts/VIEWER_FIND_PANEL_PARTS_VERIFICATION.md` for its live verification on Duplex/SampleCastle data.

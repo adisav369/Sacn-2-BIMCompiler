@@ -649,3 +649,30 @@ sql.js — idempotent, 101 rooms each pass. Patch generation is reproducible:
 Remaining known imperfection, stated not hidden: 2 rooms in the new Terminal set still sit ~24%
 over a staircase — below the 0.35 rejection bar, ⚠-flagged by the pipeline itself. Whether 0.35
 should tighten is the deferred threshold decision (Task 0 note above), not part of this fix.
+
+---
+
+## FUTURE SPEC — corridor/hallway findability (2026-07-12, user design note, NOT YET BUILT)
+**"Corridor be future"** — captured here so the thinking isn't lost, deliberately deferred, not part
+of the current R-MERGE/R-REJECT/R-DOOR-SCORE/R-SPINE build. Three surfaces, same underlying signal
+(hallwayness, already measured — `min(aspect/2.697,1) * min(area/10.415,1)`, the HALLWAY template
+mean from Duplex):
+
+1. **TYPE tab — the direct "how do we look for them" answer.** Duplex's hallways are already
+   classified (HALLWAY→CORRIDOR, FOYER→LOBBY): Find → TYPE → CORRIDOR lists every hallway in the
+   building, one press. For unlabeled buildings (Terminal, JKR — compiled rooms are just "R1, R2…"),
+   the classifier tags corridor-shaped rooms by measured shape — long-and-thin with many doors reads
+   as a hallway whether or not anyone named it. Same hallwayness measure the pathfinder (R-DOOR-SCORE/
+   R-SPINE) uses, so search and routing agree by construction, not by two parallel definitions.
+2. **ROOM tab — visible but visually quiet.** Circulation rooms stay in the per-storey list but get a
+   distinct look: a subtle glyph (⇄) and a softer tint, sorted after the primary rooms — the building's
+   skeleton should be visible without shouting over the bedrooms/offices. Matches data already in hand
+   (templates already carry primary vs. supplementary tiers) — the UI renders an existing distinction,
+   nothing new to invent.
+3. **PATH mode — where they earn their keep.** When a route renders, hallway segments are the
+   highway — tint walk-through spaces differently from the two destination rooms. Later, the
+   fire-escape view is the same picture with exits lit (ties to the HBA Safety/Egress spec's RSET
+   concept, `prompts/Viewer/HBA/RESUME_HR_BIM_ASSET.md` §2026-07-12 Safety/Egress section).
+
+Depends on Lane A (R-MERGE/R-REJECT, shipped) + R-SPINE (spine selection, not yet built) landing first
+— this is a consumer of that substrate, not a prerequisite for it.
