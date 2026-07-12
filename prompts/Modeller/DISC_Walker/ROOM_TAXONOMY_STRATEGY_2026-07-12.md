@@ -612,3 +612,40 @@ correctly scoped as too large — named, not built):
    further changes needed there.
 
 None of 1-4 requires a new Dijkstra/BFS implementation — the existing one, proven above, is sufficient.
+
+---
+
+# TERMINAL WIRING CLOSED — 2026-07-12d (the two Grind-1 gaps, solved and browser-proven)
+
+Both open Terminal facts from GRIND RESULTS are now fixed, live-verified on localhost, committed
+locally on bim-ootb branch `fix/terminal-rooms-selfheal` (worktree /tmp/wt-terminal-rooms, commit
+3429206 — NOT pushed, PUSH PAUSE):
+
+**Viewer (had zero Terminal rooms end-to-end):** new self-heal patch
+`buildings/patches/Terminal_extracted.db.sql` (+ `viewer/buildings/patches/` copy) carries 59
+rooms / 101 rect rows compiled by the shipped R-MERGE+R-REJECT rules. Applied by the EXISTING
+scene.js loader. Live proof (headless Chromium, real viewer page):
+```
+§PATCH_APPLY Terminal_extracted.db applied (173860 bytes)
+§ROOM_GRAPH nodes=59 doors=135 nonRoomDoors=5 edges=10 deadend=62 orphan=58 ambiguous=0
+```
+59 rooms where there were zero. (Honest note: edges=10 is sparse — Terminal's door-to-room
+binding quality is the next-lane item, same family as the reverted R-DOOR-SCORE.)
+
+**Modeller (served 43 stale pre-stair-exclusion rooms from Terminal_ARC.db):**
+`str_walker_outliner.js` gains `_applyPendingPatch` — a port of the Viewer's proven convention
+(`modeller/patches/<db>.sql`, applied on EVERY open, IDB cache keeps raw bytes). First user:
+`modeller/patches/Terminal_ARC.db.sql` rebuilds the room table (old 12-column schema → 13) with
+the fresh compiled set; the stale ~0.21-stair-overlap room the user saw is gone from the data.
+Live proof (headless Chromium, real modeller page, real `openResident('Terminal')`):
+```
+§PATCH_APPLY Terminal_ARC.db applied (33669 bytes) from ./patches/Terminal_ARC.db.sql
+walker db spaces=101 columns=13
+```
+Witness W-TERMINAL-ROOM-PATCH (scratchpad): both patches double-applied through the repo's own
+sql.js — idempotent, 101 rooms each pass. Patch generation is reproducible:
+`compile_rooms.py --write` on a copy of each target + scratchpad `make_patch.py`.
+
+Remaining known imperfection, stated not hidden: 2 rooms in the new Terminal set still sit ~24%
+over a staircase — below the 0.35 rejection bar, ⚠-flagged by the pipeline itself. Whether 0.35
+should tighten is the deferred threshold decision (Task 0 note above), not part of this fix.
