@@ -71,3 +71,31 @@ need it too), verified live (tap an off-screen Stairway item, confirm the camera
 it, not just visibility-filters) — or, if no primitive exists and building one is out of the
 immediate appetite, a clear written finding + effort estimate so the user can decide whether to
 proceed, without code changes forced prematurely.
+
+## Task 1 + 2 findings (2026-07-12) — primitive confirmed to exist, not built yet
+**A camera-fit primitive already exists in the Viewer itself, in this SAME file** — no need to reuse
+Modeller's `zoomToSelection` cross-repo, it's closer than that:
+- `_bboxOfGuids(set)` (~line 2186) — world-space bbox of a guid set from `element_transforms`.
+- `_zoomToGroup(set)` / `_zoomToGuids(set, factor)` (~line 1786/2205) — call `_bboxOfGuids` then
+  `_zoomToBoxFill`/`_zoomToBox` to fly the camera to frame it. Both already exist, already tested by
+  use (see next point), zero new code needed for the math.
+- `A.focusElement(guids, opts)` (~line 3711) — the higher-level "neutral shared focus primitive":
+  ghosts the rest, highlights the target, and (unless `opts.frame === false`) calls `_zoomToGuids`/
+  `_zoomToGroup` to reframe. Already wired to 3D tap-to-pick (picking.js), the Find **drill**
+  (`_drillSelect`, line ~2340), and history-restore.
+
+**`_emitIsolate` (line 2527) is the one path in this file that was never connected to any of them** —
+confirmed it's still just `A.filterByGuids(set)` + a console log, exactly as originally traced.
+
+**Task 2 answered:** Room/Material's GROUP-header tap in the Find tree (`_isolateLensGroup`, line 807)
+ALSO calls `_emitIsolate` directly — same non-zoom illusion as Parts/Stairs, not special-cased. But
+Room has a SEPARATE interaction people may be thinking of — `_roomSelect` (tapping a room to see its
+*contents*, the x-ray drill path) — which DOES zoom, via `_zoomToBoxFill`. So "does Room zoom on tap"
+depends on WHICH room tap: content-drill zooms today, group-isolate (the tree header) does not. Not a
+blanket claim to correct — a real split in current behavior.
+
+**Effort, now that the primitive is confirmed to exist:** small — wiring, not building. `_emitIsolate`
+would call `_zoomToGroup(set)` (or `_zoomToGuids`) right after `A.filterByGuids(set)`, reusing the
+exact function `_drillSelect`/`focusElement` already call in this same file. No new bbox math, no new
+camera code. Left unimplemented per this doc's original handoff note (user's own item to iterate) —
+this section is findings only, no code changed.

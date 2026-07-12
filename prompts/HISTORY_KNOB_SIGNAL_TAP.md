@@ -280,3 +280,49 @@ WITNESS (node, on the REAL history_tap.js — `build/erp` style whitebox, §-log
 - `sw.js` cache-bump + `?v=` on every touched file; sw.js is the conflict magnet (take higher, keep both precache hunks).
 - This supersedes the read-only-tier half of `universal_history`'s PROFILES — verify nothing else depends on them
   before deleting (the `event`/`view`/`op` bucket significance moves into the tap STOP sets).
+
+## ▶ BUG — back-arrow snaps forward instead of stepping back (diagnosed 2026-07-12, NOT YET FIXED)
+User repro: press the ‹ back arrow once → instead of showing the older view, a NEW dot mints at the tip and
+the scrubber ends up pointing at it (looks like "back produces a dot forward"). Manually clicking a specific
+OLDER dot "works" — but only because that path masks the same bug, see below. Root-caused from a real
+browser log (`§HIST_VIEWNAV`/`§HIST_PUSH`/`§HIST_TAP_DOT` sequence), not reproduced fresh — verify against
+live code before landing the fix.
+
+**Root cause — a gate asymmetry between `_drainTap` and `feedCrumb`, plus one missing DENY tag:**
+1. `common/history_bar.js` `_viewApply(idx)` (~L275) drives `_cfg.restoreView(entry)` → `universal_history.js`
+   `_restoreView` → `_tapApply` → `HistoryTap.applyView(view)`. Inside `applyView` (`common/history_tap.js`
+   L136-147), each `field.write()` calls the REAL setter (e.g. `A.toggleXray()`), which itself prints a
+   `§XRAY on=… ` line — while `_applyingView` (the `isApplying()` flag) is `true`.
+2. That `§XRAY` line passes through the sniffed `console.log` → `feedCrumb()` (`history_tap.js` L105-112).
+   **`feedCrumb` never checks `isApplying()`** — it queues the crumb into `all[]` and calls `_notify()`
+   regardless of whether a restore is in progress. This is the asymmetry: `recordEvent()` in
+   `universal_history.js` L110 explicitly gates on `isApplying()`; the generic sniffer path does not, even
+   though the comment at `history_tap.js` L133-134 states the general contract ("must NOT mint a new dot
+   during a restore… gate on isApplying()").
+3. `_notify()` calls the subscriber `_drainTap()` (`universal_history.js` L315). It DOES check `isApplying()`
+   (L317) and bails — correctly refusing to drain WHILE mid-restore. But it bails BEFORE advancing `_tapHW`
+   (the high-water mark), so the queued crumb is never marked consumed — it just sits in `all[]`.
+4. `applyView()` finishes, `_applyingView` resets to `false`. Back in `_viewApply`, `console.log('§HIST_VIEWNAV
+   idx=… ')` fires (`history_bar.js` L282). **`HIST_VIEWNAV` is missing from `DENY_TAG`** in `history_tap.js`
+   (L29-38) — every OTHER `HIST_*` control tag is denied (`HIST_PUSH`, `HIST_UNDO`, `HIST_REDO`,
+   `HIST_TAP_DOT`, `HIST_DEPTH`) but this one was left out. So this line itself gets sniffed, `_notify()`
+   fires again, and THIS TIME `isApplying()` is false → `_drainTap()` proceeds → drains the stuck XRAY crumb
+   from step 2 → `HB.push()` mints a genuine new tip dot (`§HIST_PUSH n=110 idx=109`) → `_push()`
+   (`history_bar.js` L205) sets `_viewCursor = _cursor` (the NEW tip).
+5. Why arrow ≠ dot-click: `viewStepBack()` steps RELATIVE to `_viewCursor`; once step 4 silently snaps
+   `_viewCursor` back to the tip, the next back-press steps -1 from the (moved) tip again — net effect looks
+   like back-arrow can't make progress / "produces a dot forward". `viewJumpTo(idx)` (dot click) sets
+   `_viewCursor` to an ABSOLUTE idx and the scene already shows the correct restored look, so the same
+   tip-snap happens invisibly right after — it only *looks* like dot-click is unaffected.
+
+**Proposed fix (both in `common/history_tap.js`, not yet applied):**
+1. `feedCrumb()` (L105) — add `if (_applyingView) return;` as a first check, alongside DENY_TAG/LIFECYCLE/
+   NOISE_LABEL, so restore-driven setter logs never enter `all[]` in the first place (symmetric with
+   `recordEvent()`'s existing gate).
+2. `DENY_TAG` (L29-38) — add `HIST_VIEWNAV: 1`, closing the one gap in the otherwise-complete `HIST_*`
+   control-tag denial (anti-recursion for the sniffer, same intent as the other 5).
+Both are small, additive, non-invasive — no restructuring of the tap/bar contract. Witness after fixing:
+drive a real back-arrow press on a moment that flips a real toggle (xray/section/ghost), confirm NO
+`§HIST_PUSH`/`§HIST_TAP_DOT` follows the `§HIST_VIEWNAV` line, and `_viewCursor` stays at the pressed idx
+(verify by pressing back-arrow twice in a row and reading successive `§HIST_VIEWNAV idx=` values — they must
+decrement, not oscillate back to the tip).

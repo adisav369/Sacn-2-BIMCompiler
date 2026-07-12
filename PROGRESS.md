@@ -23,17 +23,17 @@
 ### 🔀 CURRENTLY JUGGLED (user runs these concurrently across terminals, shuts down/resumes cold — read this
 ### list FIRST, don't ask the user to restate status, it's kept current here)
 - `prompts/RESUME_HR_BIM_ASSET.md` §2026-07-06c — camera-POV done (#674 `77f41b9`). Open: A/B/C bugs + E decision.
-- `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §2026-07-06 — Viewer Part2 done (#670 `d6bfb80`); Modeller
-  port Ph1-2 done (#675 `9ff9a5a`+`6d9f906a`), open: G6, Ph3. World-History Part1 parked.
+- `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §2026-07-06 — Viewer Pt2 + Modeller Ph1-2 done, open: G6, Ph3, Pt1 parked.
 - `prompts/PILL_DRAWER_REORGANIZATION.md` §2026-07-06 — done (#673 `953d1e4`). Open: first-touch flicker.
 - `prompts/OPEN_BUTTON_IFC_BCF_MERGE.md` — not started.
-- `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §ROTATION-BOUND 2026-07-09 — Bug B shipped
-  (PR #717, unmerged). Bug A (hostBind) + items 1-2 (occupancy() fix, VENT_WINDOW_SHIM 415→498mm) all fixed+witnessed
-  (W-OCC-TRUE-MIDPOINT 17/17, 0 regressions). §TE-ARC-DATUM DONE+MERGED both repos 2026-07-11 (bim-compiler
-  `b202eb44b` PR #40; bim-ootb PR #726 squash `3d09ad6`, confirmed ancestor of `main` — NOT still-open, correcting
-  a stale note). Remaining: `prompts/DISC_WALKER_BRANCH_CLOSEOUT.md` (Fable-assigned) — 3 small stale PRs
-  (#722/#724/#725) need fresh re-verify before merge, + the undiagnosed guide-screenshot camera bug.
-  §LIVEWIRE CLOSED 2026-07-11 (Fable, MANAGER-verified) — W-SCHED-MINE 7/7 + W-DX-WALKBACK-RSGT 14/14, 0 unpushed.
+- **DiscWalk containment (Bug A) — RESOLVED+VERIFIED 2026-07-12 (5-axis proof, DX+SC; Terminal honestly
+  unmeasurable, data gap). Bug B merged. D3/D4/D4b fixed. Room-taxonomy Lane A (R-MERGE+R-REJECT) also
+  SHIPPED both mirrors, 6/6 parity verified; R-DOOR-SCORE tried+cleanly reverted (broke a real witness).
+  Read `[[project_discwalk_containment_utmost]]` memory for detail — do NOT re-attempt the `_hostAxis`
+  cardinal-swap patch (disproven) or R-DOOR-SCORE's hallwayness formula (also disproven) unbuilt.**
+  §TE-ARC-DATUM DONE+MERGED both repos 2026-07-11 (bim-compiler `b202eb44b` PR #40; bim-ootb PR #726). Remaining:
+  `prompts/DISC_WALKER_BRANCH_CLOSEOUT.md` — 3 stale PRs (#722/#724/#725) need re-verify + the undiagnosed
+  guide-screenshot camera bug. §LIVEWIRE CLOSED 2026-07-11 — W-SCHED-MINE 7/7 + W-DX-WALKBACK-RSGT 14/14, 0 unpushed.
 - **Room Intelligence lane — canonical status: `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md`.**
   User's verdict 2026-07-11: building taxonomy is **good enough, no more perfection work there.**
   15 features shipped/verified. Weakest links unchanged: door-access signal (4/10), classifier
@@ -46,13 +46,6 @@
   into bim-compiler `fable/meshdb-livewire`. Phase 1 (grid+door+slab+envelope fusion for
   sparse-wall federated buildings, e.g. HHS) scoped as a ready-to-pick-up 4-step follow-up, not
   built — genuinely substantial new engineering, deserves its own session.
-- **Building Parts Taxonomy (STAIRWAY/LIFT_SHAFT/PLANT_ROOM) — DONE, both VISION-LOCK sentence-5 UI
-  halves merged into bim-ootb `main` (local, 6 commits ahead of `origin/main`, not pushed):** Find
-  panel (`d04ddd5`) + Modeller Outliner (`f10c5295`) + disc-walk room-type-aware placement
-  (`20ad5c4`, PLB/FP real measured signal — BATHROOM/UTILITY→PLB, FOYER→FP; ELEC/ACMV honestly
-  refused, no signal). Full trail incl. the DB-snapshot-divergence landmine (now saved as
-  `project_db_snapshot_divergence_landmine.md`, memory) and a real leaf-id click-path bug caught+
-  fixed: `prompts/BUILDING_PARTS_TAXONOMY.md`.
 - **Guide blocked on ONE thing, named and spec'd, not fire-fought:** `docs/ModellerGuide.md` (29
   real screenshots, otherwise complete) can't get a Building Parts entry yet — user's own live
   review: LOD is fine now, but Modeller glass/window material isn't see-through like the Viewer's.
@@ -63,11 +56,6 @@
 - **`prompts/MANAGER.md` hardened this session** — anti-ad-hoc-debugging conduct rule (stop after
   a 2nd failed quick-check, write a spec + dispatch instead of trial-and-erroring in-turn). Read it
   before picking up either spec above.
-- **MANAGER housekeeping this session:** 6 stale bim-compiler branches/worktrees verified
-  fully-superseded and pruned (nothing lost); one real orphan found+landed (W024
-  `component_dimension_range` migration, cherry-picked `c254cb271`). ERP PR #8 (5wk stale)
-  independently re-verified and correctly left open — real merge conflict found (Blue Future vs.
-  I-D checkpoint), not a courtesy hedge.
 - **From the 2026-07-10 marathon, still unmerged, not superseded:** `fix/grid-tilt-guard`,
   `fix/dw-rot-units`, `fable/dwprobe-dedup`, `fix/terminal-oracle-source` (bim-ootb, all verified+
   pushed, no PR). Full detail: `project_disc_walker_grid_guard_marathon_2026-07-10.md` (memory).
@@ -90,6 +78,10 @@
   low-priority, not urgent. Memory: `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- **✅ Building Parts Taxonomy** (STAIRWAY/LIFT_SHAFT/PLANT_ROOM, Find panel + Outliner + disc-walk
+  room-type-aware placement) — merged bim-ootb `main` local (not pushed). Detail: `prompts/BUILDING_PARTS_TAXONOMY.md`.
+- **✅ MANAGER housekeeping 2026-07-11:** 6 stale branches/worktrees pruned, 1 orphan landed (`c254cb271`),
+  ERP PR #8 re-verified (real conflict, correctly left open).
 - **✅ pending merge only:** `SCALE_AND_UX_SWEEP.md` (bim-ootb PR #665), `OFFLINE_GITHUB_RELEASE_BUNDLE.md`
   (`lane/offline-gateway-leak-fix`) — both independently re-verified, just need the human merge click.
 - **2026-07-05 arc** (landing Save/Open, grid, Teams E2E, HBA mobile, UBBL recon) — ALL MERGED

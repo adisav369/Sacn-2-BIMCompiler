@@ -251,3 +251,31 @@ Find panel section). Implementation order for whoever picks this up:
    guid → phone fetches the lightweight ARC-only db (the `<Building>_ARC.db` convention,
    `scripts/extract_arc_discipline.py`) → Walk mode starting AT that door, escape route pre-drawn.
    Depends on 1+2 and on mobile Walk mode maturity — parked deliberately.
+
+---
+
+# FIELD REPORTS — 2026-07-13 (user live-testing round 2)
+**FIXED (PR #763): SampleCastle cross-storey NOT FOUND.** Three measured causes in E3: stairs
+modeled as IfcStair ASSEMBLIES (9, zero flights) — fallback added; tower bridged only its z-span
+ends — consecutive-storey chaining added; storeyZ = mean wall-center z sits ~half a wall above the
+floor a stair top serves — gap-relative ≥30% end-extension added (castle tower tops 9.11 vs
+storey-03 z 10.02, extension = 70% of gap). Witness: 00→03 = 6 hops 39.3m (was refused);
+Duplex 15/15; occupant witness full pass.
+
+**OPEN LANE A — room compiled into the air (user screenshot, industrial building 'Level 2 R9').**
+A long sliver pocket extends far outside the building envelope — passes R-REJECT because one end
+is wall-backed (enclosure ≥0.25) but violates §LAWS containment. Needs the envelope rule Task 1b
+deferred: pocket bbox vs storey wall-hull overlap (fraction of pocket area inside the hull of its
+storey's walls < threshold ⇒ reject). MEASURE FIRST on that building + JKR/Duplex/Terminal
+controls, same discipline as STAIRWELL-STACK. Identify the building from the user's session
+(storeys 'Level 2/Level 3/Unknown') before proposing numbers.
+
+**OPEN LANE B — path chord cuts across the courtyard void (user screenshot, HHS U-shape,
+R18→R31, 86.2m, 3 doors).** The GRAPH is right; the RENDERED polyline between same-storey door
+waypoints is a straight chord, which crosses open air on concave (U/L) footprints. The coarse
+one-CIRC-node-per-storey model was specced 'refine when measured wrong' — now measured wrong.
+Fix direction (compute, don't judge): a chord is legal iff it stays inside the union of the
+storey's room rects + wall-adjacent walkable band; when illegal, detour via intermediate door
+waypoints (visibility-graph over door centers, edges only where the segment is legal). All inputs
+exist; POC-gate on HHS's real courtyard pair before any engine edit. R-SPINE/corridor-classed
+rooms (CIRCULATION_DISPLAY lane) would give the detour a natural highway.
