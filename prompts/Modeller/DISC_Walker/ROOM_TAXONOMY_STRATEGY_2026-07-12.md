@@ -461,15 +461,17 @@ the polyline through the other members' voids; the hug must be per-member, not p
 (2) Collinear chains are immune (R21+R22+R23 slack=0.0, R24-R27 viol=0) — the gap is specifically
 L/T-shaped clusters, 10 of 14 here.
 
-## Incident note — JKR_Project.db truncated mid-grind (data landmine, not this session)
+## Incident note — JKR_Project.db truncated mid-grind (RESOLVED: it was moved, see F3)
 `/home/red1/Downloads/OPEN SOURCE BIM/JKR_Project.db` was found **0 bytes (mtime 2026-07-12
-09:12)** during Grind 2 — it was intact when §POC2-§POC4b read it earlier this session; something
-external truncated it. Not touched further. The corpus was regenerated deterministically:
-`scripts/compile_rooms.py --write` on a scratchpad COPY of `jkr_fixed.db` reproduced F3 **exactly**
-(66 rooms → 79 rect rows, suspect=45, split 24/10/14/31) — itself a live witness that compiled
-rooms are a pure function of the source DB (the DB-as-migration doctrine holding in practice).
-`jkr_output.db` (31 spaces) is a different, partial artifact — not a substitute. If JKR_Project.db
-is wanted back, one `compile_rooms.py --write` run on a fresh copy of `jkr_fixed.db` recreates it.
+09:12)** during Grind 2 — it was intact when §POC2-§POC4b read it earlier this session. Resolved
+same day: F3's update records the DB was MOVED to canonical
+`~/bim-ootb/buildings/JKR_extracted.db` (verified: same 24/10/14/31 suspect split, 203MB, intact);
+the 0-byte Downloads leftover is the move's residue, safe to delete. Mid-grind, before the move
+was known, the corpus was regenerated deterministically: `scripts/compile_rooms.py --write` on a
+scratchpad COPY of `jkr_fixed.db` reproduced F3 **exactly** (66 rooms → 79 rect rows, suspect=45,
+split 24/10/14/31) — an accidental but real witness that compiled rooms are a pure function of the
+source DB, AND that the canonical move lost nothing. §POC5 numbers stand (identical corpus either
+way). Lane A should read JKR from the canonical `~/bim-ootb/buildings/JKR_extracted.db` path.
 
 ## DONE (2026-07-12c)
 Task 0: closed, single traced fact, §POC0c. R-SPINE: containment law corrected in the Task 4 spec
