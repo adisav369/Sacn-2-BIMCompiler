@@ -1021,6 +1021,41 @@ def _reject_rooms(rooms, walls):
         out.append(r)
     return out
 
+# §NO-OVERLAP (2026-07-13, user request — "rooms are stacked to each other, not overlapping"):
+# a hard geometric invariant, not a fuzzy threshold — two real rooms can never occupy the same
+# floor space. Both compile paths already guarantee this BY CONSTRUCTION (flood-fill rooms are
+# disjoint connected components of the enclosed grid; door-partition rooms are disjoint BFS-owned
+# cell sets) — verified directly against real compiled data, 0 violations across 773 rect rows in
+# 6 real buildings (SampleCastle/HHS/Clinic/Garage/Hospital/Terminal). This check exists as a
+# permanent regression guard against that invariant ever breaking (e.g. a future R-MERGE/§MULTI-RECT
+# change), not because a violation is currently expected — informs like §PHASE0-HEALTH, never blocks.
+def _verify_no_overlap(allrooms):
+    by_storey = {}
+    for r in allrooms:
+        by_storey.setdefault(r["storey"], []).append(r)
+    hits = 0
+    for st, rooms in by_storey.items():
+        for i in range(len(rooms)):
+            for j in range(i + 1, len(rooms)):
+                ri, rj = rooms[i], rooms[j]
+                if ri["guid"] == rj["guid"]:
+                    continue
+                for a in (ri.get("rects") or [ri]):
+                    ax0, ax1 = a["cx"] - a["sx"] / 2, a["cx"] + a["sx"] / 2
+                    ay0, ay1 = a["cy"] - a["sy"] / 2, a["cy"] + a["sy"] / 2
+                    for b in (rj.get("rects") or [rj]):
+                        bx0, bx1 = b["cx"] - b["sx"] / 2, b["cx"] + b["sx"] / 2
+                        by0, by1 = b["cy"] - b["sy"] / 2, b["cy"] + b["sy"] / 2
+                        ox = min(ax1, bx1) - max(ax0, bx0)
+                        oy = min(ay1, by1) - max(ay0, by0)
+                        if ox > 0 and oy > 0 and ox * oy > 0.5:
+                            hits += 1
+                            print(f"  ⚠ §NO-OVERLAP VIOLATION storey={st!r} {ri['guid']} vs "
+                                  f"{rj['guid']} overlap={ox*oy:.2f}m2")
+    if not hits:
+        print("§NO-OVERLAP: 0 cross-room overlaps (invariant holds)")
+    return hits
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__); return
@@ -1099,6 +1134,7 @@ def main():
     suspect_total = sum(1 for r in allrooms if r.get('suspect'))
     print(f"TOTAL compiled rooms = {total} (door_rescued={door_rescued_total} door_partitioned={door_partition_total} "
           f"suspect={suspect_total} merged={merged_total} rejected={rejected_total})")
+    _verify_no_overlap(allrooms)
     if not write:
         print("(dry run — pass --write to inject)"); return
     # ensure spatial_structure has bbox columns

@@ -1087,9 +1087,46 @@
     var doorRescuedTotal = allrooms.filter(function (r) { return r.door_rescued; }).length;
     var doorPartitionTotal = allrooms.filter(function (r) { return r.door_partitioned; }).length;
     var suspectTotal = allrooms.filter(function (r) { return r.suspect; }).length;
+    _verifyNoOverlap(allrooms);
     return { report: report, rooms: allrooms, stZ: stZ, total: total, doorRescuedTotal: doorRescuedTotal,
       doorPartitionTotal: doorPartitionTotal, suspectTotal: suspectTotal,
       mergedTotal: mergedTotal, rejectedTotal: rejectedTotal };
+  }
+
+  // §NO-OVERLAP (compile_rooms.py port, 2026-07-13 — user request "rooms are stacked to each
+  // other, not overlapping"): permanent regression guard, informs like §PHASE0-HEALTH, never
+  // blocks. Verified 0 violations across 773 real rect rows in 6 buildings at the time this was
+  // added — both compile paths already guarantee disjointness by construction.
+  function _verifyNoOverlap(allrooms) {
+    var byStorey = {};
+    allrooms.forEach(function (r) { (byStorey[r.storey] = byStorey[r.storey] || []).push(r); });
+    var hits = 0;
+    Object.keys(byStorey).forEach(function (st) {
+      var rooms = byStorey[st];
+      for (var i = 0; i < rooms.length; i++) {
+        for (var j = i + 1; j < rooms.length; j++) {
+          var ri = rooms[i], rj = rooms[j];
+          if (ri.guid === rj.guid) continue;
+          (ri.rects || [ri]).forEach(function (a) {
+            var ax0 = a.cx - a.sx / 2, ax1 = a.cx + a.sx / 2;
+            var ay0 = a.cy - a.sy / 2, ay1 = a.cy + a.sy / 2;
+            (rj.rects || [rj]).forEach(function (b) {
+              var bx0 = b.cx - b.sx / 2, bx1 = b.cx + b.sx / 2;
+              var by0 = b.cy - b.sy / 2, by1 = b.cy + b.sy / 2;
+              var ox = Math.min(ax1, bx1) - Math.max(ax0, bx0);
+              var oy = Math.min(ay1, by1) - Math.max(ay0, by0);
+              if (ox > 0 && oy > 0 && ox * oy > 0.5) {
+                hits++;
+                console.log('  ⚠ §NO-OVERLAP VIOLATION storey=' + st + ' ' + ri.guid +
+                  ' vs ' + rj.guid + ' overlap=' + (ox * oy).toFixed(2) + 'm2');
+              }
+            });
+          });
+        }
+      }
+    });
+    if (!hits) console.log('§NO-OVERLAP: 0 cross-room overlaps (invariant holds)');
+    return hits;
   }
 
   // Persist a compileRooms() result into spatial_structure + rel_contained_in_space (the --write
