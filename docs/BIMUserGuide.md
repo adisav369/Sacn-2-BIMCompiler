@@ -192,7 +192,7 @@ has that kind of data (no data, no empty axis):
 |------|----------------|----------------|
 | **Storey** | Always | Elements grouped by building level/storey. Expand a storey to see the rooms/spaces on it (or, if the building has no room data, its most common IFC classes). Tapping a storey or room isolates it in the 3D view. |
 | **Discipline** | Always | Elements grouped by discipline (ARC/STR/MEP/ELEC, etc). Expand a discipline to see its IFC classes; tap a class to highlight just those elements. |
-| **Room** | Only if the building has volumetric room (IfcSpace) data | A highlight lens: the model is X-rayed and a translucent box is drawn over each room. Has its own **Storey / Type** sub-toggle to group rooms by floor or by room type. (On a building without volume data, this falls back to a plain isolate-by-room list instead.) |
+| **Room** | Only if the building has volumetric room (IfcSpace) data | A highlight lens: the model is X-rayed and a translucent box is drawn over each room. Has its own **Storey / Type / Path** sub-toggle: group rooms by floor, by the compiler's own confidence tier (see [Room health](#room-health-the-type-sub-toggle-verified-live-on-terminal) below), or route between two rooms the way a person walks. (On a building without volume data, this falls back to a plain isolate-by-room list instead.) |
 | **Material** | Only if material data is present | Elements grouped by material name, or — via a **Material / Category** sub-toggle — by a derived construction category (Concrete, Metal, Wood, Glass, Drywall/Partition, Masonry, Insulation, Tile, Finish, Membrane, Flooring, Generic, Other). Categories are a keyword-derived heuristic, not an extracted IFC property, and are labelled accordingly in the panel. Highlight lens, same X-ray-and-box behavior as Room. |
 | **Phase** | Only if a construction timeline can be generated for the building | Elements grouped by construction phase/task, generated on the fly (a short "Timeline generating…" message appears first). |
 | **Parts** *(new)* | Only if the building has stairway, lift-shaft, or plant-room elements | Elements grouped into up to three building-part categories: **Stairway** (stair/ramp classes), **Lift Shaft** (elements named for lifts/elevators), **Plant Room** (HVAC-plant elements — vents, ducts, fans, AHUs, dampers, chillers, pumps). Each category is itself data-gated — it only appears if the building actually has a match. Tapping a category, or a single item inside it, isolates it in the 3D view (hides the rest of the model). |
@@ -231,12 +231,48 @@ height) is only added by the plain-search code path, not the NL-query path — s
 actually appears while typing a recognized phrase; the query still runs correctly on **Enter**. The guide
 text above describes the observed (silent) behavior, not an invented visible hint.
 
+#### Room health — the Type sub-toggle (verified live on Terminal)
+
+Switch the Room axis's grouping from **Storey** to **Type** and rooms are grouped by the compiler's
+own confidence in them, not by a floor: **INTERNAL** / **INTERNAL_SMALL** (ordinary enclosed rooms,
+split by size) and **SUSPECT_OPEN** / **SUSPECT_NO_DOOR** (rooms the compiler could bound
+geometrically but flags for a human rather than silently accepting). This is the compile-with-honesty
+principle made visible — a low-confidence room is *shown* as low-confidence, never quietly promoted
+to "room" just because it fits inside walls.
+
+**Terminal, the hard case, verified live.** A user-reported screenshot showed a stairwell counted as
+a room — the compiler doesn't know "stairwell" as a concept, only geometry, and a tall vertical shaft
+can look room-shaped from a single floor's footprint alone. The fix (**STAIRWELL-STACK reject**)
+rejects a room candidate whose footprint recurs, stacked, through multiple storeys with a real stair
+inside it — the signature of a shaft, not a room — checked against both compiler mirrors, 6/6 parity.
+Reloading Terminal applies the healed patch over whatever the browser had cached already: **59 rooms →
+40 rooms, 73 rects, no room anywhere near the shaft threshold** — the stairwell is gone from both the
+Room list and the 3D view.
+
+![Terminal, Type grouping open: INTERNAL (30), INTERNAL_SMALL (15), SUSPECT_OPEN (22), SUSPECT_NO_DOOR (6) — "Aras 02 R3" selected, an empty doorless pocket beside a stair flight, flagged rather than guessed into being a room](img/viewer/type-suspect-no-door-terminal.png)
+
+That SUSPECT_NO_DOOR pick is the demo frame: an empty pocket next to the stair, no door found
+bounding it, so the compiler says exactly what it knows and stops — it doesn't invent a door to make
+the room look finished.
+
+*Known gap, named not hidden:* Type is a **health** taxonomy (how sure the compiler is this is a
+room), not a **semantic** one — it doesn't yet know "corridor" from "office." Terminal's concourses
+show no CORRIDOR band today because the only measured corridor template on file is Duplex's 10.4m²
+hallway (n=2 samples), and stretching that onto a terminal concourse would be inventing, not
+compiling. The room-path routing below already produces a building-relative, *measurable* definition
+of a corridor — the elongated, many-doored room every route keeps passing through — scoped as a
+future CIRCULATION_DISPLAY pass, not built yet.
+
 #### Room-to-room paths & escape routes
 
 With the **Room** axis selected, the **Path** sub-mode routes between any two rooms the way a
 person actually walks — out the door, along the corridor or concourse, and up or down the stairs
 when the two rooms are on different floors. The route draws as a line through the real doors and
 stair flights it uses, and the rooms along the way stay highlighted.
+
+*Verified live (2026-07-12):* a real route across Terminal's floors returns several stair-crossing
+legs in sequence, not a single best-guess hop — each leg names the room and the door or stair flight
+it passes through.
 
 *Future feature — fire escape:* the same routing will pin a **Fire Escape** entry at the top of the
 path list — one tap from any room to the nearest building exit.
