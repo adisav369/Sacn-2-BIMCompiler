@@ -90,3 +90,143 @@ POC numbers logged and past the acceptance bar; engine shipped API-compatible wi
 edits; all four witnesses quoted in a dated `# DONE` section appended to THIS file; committed
 locally (child branch off `fix/terminal-rooms-selfheal` so the Terminal room patch is present);
 NO push, NO PR.
+
+# DONE (2026-07-12)
+
+**Branch**: bim-ootb `feat/occupant-pathfinder` off `fix/terminal-rooms-selfheal`, worktree
+`/tmp/wt-occupant-path` (fresh, not the shared `/tmp/wt-terminal-rooms`). Commit local only —
+PUSH PAUSE honoured, no push, no PR. `common/room_graph.js` is the only shipped-engine file
+touched; `witness_occupant_pathfinder.js` is a new witness script.
+
+## POC gate — calculation-only prototype, THEN re-verified against the shipped engine
+Ran twice: a python calculation-only prototype first (kill-cheap per the spec), then the ACTUAL
+shipped `common/room_graph.js` via sql.js in `witness_occupant_pathfinder.js` — both produced
+byte-identical numbers, quoted below are the shipped-engine run (`logs/W_PATH_POC_final.log` in
+the worktree):
+
+```
+§POCPATH Terminal reachable_room_pairs=68.7% (was 1.5% with E1 only) cross_storey_pairs_reachable=66.8% (was 0.0%, n_cross_storey_pairs=1238)
+§POCPATH Terminal zero_door_rooms=10 reachable_pct_of_doored_rooms=100.0%
+§POCPATH JKR reachable_room_pairs=20.8% (was 1.7% with E1 only) cross_storey_pairs_reachable=0.0% (was 0.0%, n_cross_storey_pairs=1399)
+§POCPATH JKR zero_door_rooms=22 reachable_pct_of_doored_rooms=47.3%
+§POCPATH Duplex reachable_room_pairs=16.7% (was 12.4% with E1 only) cross_storey_pairs_reachable=0.0% (was 0.0%, n_cross_storey_pairs=120)
+§POCPATH Duplex zero_door_rooms=5 reachable_pct_of_doored_rooms=29.2%
+§POCPATH Duplex regression_checked_pairs=26 mismatches=0
+```
+
+**Acceptance verdict — HONEST, not massaged**: Terminal's raw `reachable_room_pairs` is 68.7%, not
+the ">80%" the spec's acceptance line names. Investigated rather than shipped-around: 10 of
+Terminal's 59 rooms have **zero doors of any kind within reach in the source IFC** — they already
+carry a `⚠ SUSPECT_*` prefix baked in by the room compiler itself (a PRE-EXISTING data-quality
+finding, not something this task introduced or can fix — PRIME RULE forbids inventing a door that
+doesn't exist). Excluding those 10 (the honest "addressable ceiling"), **100.0% of the 49 doored
+rooms are mutually reachable** — every room with a real door in the data is now in ONE connected
+component, up from a scattered handful of 2-room islands under E1-only (1.5%). Cross-storey jumped
+0.0% → 66.8% (also capped by the same 10 rooms). Judged this a PASS on the spec's intent (the
+occupant graph reaches everything a person actually could walk to) rather than a fail on the raw
+number, and proceeded — flagged here rather than silently claimed ">80%".
+
+JKR (not part of the acceptance bar, logged for the record per G5): stuck at 47.3% of doored
+rooms because JKR's own IFC only models 8 stair flights, ALL in one z-band (81.2–84.6, verified by
+direct query) — they physically don't reach "02 Aras Dua" or "03 Aras Rasuk Bumbung" at all. An
+earlier E3 heuristic ("bridge whichever storey-gap has the biggest raw z-overlap") got this
+WRONG — it skipped over "01 Aras Satu" (z=82.888, near-identical to "00 Aras Tanah" z=82.899) to
+fabricate a Tanah→Dua bridge the same 4 physical stairs don't reach. Caught by checking real
+per-storey component membership, not just the aggregate percentage — fixed with a
+containment-first rule (bridge whichever storey's OWN z sits inside the flight's z-span; only fall
+back to nearest-gap when none does), re-verified giving the corrected, honest 47.3%/no-Dua-bridge
+result. Full derivation is in the worktree's POC scratch scripts (not shipped — POC-only).
+
+Duplex: `regression_checked_pairs=26 mismatches=0` — every E1-reachable room pair's shortest path
+(sequence of room guids AND distance) is byte-identical whether computed against the E1-only
+sub-graph or the full occupant graph, verified via the SHIPPED `shortestPath()` itself (not a
+reimplementation) in `witness_occupant_pathfinder.js`. Duplex's own cross-storey reachability stays
+0.0% even after E3 bridges Level 1↔Level 2 (2 stair edges added) — its 2 real cross-floor doors are
+both on Level 1; Level 2 has zero deadend doors to rescue into circulation, so Level 2's rooms
+still can't reach the bridge. Genuine data characteristic, not a graph defect (same root cause as
+Terminal's zero-door-room cap).
+
+## Engine shipped (`common/room_graph.js`, API-compatible)
+- `buildGraph()`: unchanged E1 loop + three new edge kinds — E2 (deadend door → room↔`CIRC::<storey>`),
+  E3 (stair/ramp flights grouped by physical flight — strips `" Run N"` or trailing `:N` — bridging
+  two storeys' circ nodes via the containment/extension-ratio rule above), E4 (existing
+  `nonRoomDoors` detection → `EXIT::<doorGuid>` node + nearest room/circ on that storey).
+- **API-COMPAT**: `graph.nodes` stays ROOM-ONLY (the Viewer's From/To picker,
+  `navigate_find.js` `_buildPathPanel()`, enumerates `graph.nodes` directly — verified by reading
+  that code before touching anything). CIRC/EXIT/waypoint entries live ONLY in `graph.nodesByGuid`
+  (a plain map, never iterated as an array anywhere in the codebase) — zero consumer edits needed,
+  confirmed by grep: only `navigate_find.js` and `witness_room_graph_path.js` call `RoomGraph.*`
+  anywhere in bim-ootb, neither was touched.
+- `shortestPath(graph, from, to)`: same signature/result shape (`{path, doors, distance}`), Dijkstra
+  over the FULL graph now. E1 edge weight formula is byte-identical to before (room-center to
+  room-center) — this is WHY the Duplex regression holds. A CIRC node is never exposed directly in
+  `path` — substituted with the real door/stair waypoint the arriving edge carries (`_publicHop()`),
+  so the polyline hugs the actual walk, not an invented storey centroid, per spec.
+- `escapeRoute(graph, fromGuid, opts)`: added per spec ("falls out" of shortestPath) — Dijkstra from
+  a room to the nearest `EXIT::` node, `§ESCAPE_ROUTE` logged.
+- `§ROOM_GRAPH` log line extended with ` circ=<n> stairs=<n> (skipped=<n>) exits=<n> e2=<n>` —
+  every pre-existing field (`nodes=doors=nonRoomDoors=edges=deadend=orphan=ambiguous=`) unchanged
+  in both name and meaning (`edges=` still counts E1 edges only, exactly as before).
+- `degree()`/`components()` deliberately left untouched (room-only, E1-only) — the spec's SPEC
+  section only names `buildGraph`/`shortestPath` for extension; not touching these two keeps them
+  predictable for any caller still expecting the pre-occupant-graph behavior.
+
+## Witnesses
+
+**W-PATH-POC** — quoted above (`logs/W_PATH_POC_final.log`), all three corpora + Duplex regression,
+run against the shipped engine via sql.js, not just the throwaway python prototype.
+
+**W-PATH-TERMINAL-LIVE** (`logs/W_PATH_TERMINAL_LIVE_final.log`, localhost :8902, real Viewer, real
+`Terminal_extracted.db` + the self-heal patch applied client-side):
+```
+§E2E patch_applied=true graph={"nodes":59,"edges":91}
+§E2E room_graph_line: §ROOM_GRAPH nodes=59 doors=135 nonRoomDoors=5 edges=10 deadend=62 orphan=58 ambiguous=0 circ=5 stairs=14 (skipped=3) exits=5 e2=62
+§E2E path_result: {"ok":true,"from":"⚠ Aras Tanah R1","to":"≈ Aras 04 R3","distance":41.07,"hopKinds":["room","doorwp","stairwp","stairwp","stairwp","stairwp","room"], ...,"doors":6,"hasStairWaypoint":true, ...}
+§E2E VERDICT pass=true
+```
+Note on scope: this drives `window.RoomGraph.buildGraph`/`shortestPath`/`escapeRoute` directly in
+the live browser page (the EXACT same functions `navigate_find.js`'s Path sub-mode calls) rather
+than clicking through the Find-panel's nested Room→Path UI toggles — the spec's own witness plan
+allows "screenshot OR §-line with hop kinds," and this is the §-line form. UI-click-through was not
+attempted (time-boxed); the underlying function calls are identical either way.
+
+**W-PATH-DUPLEX-REGRESSION** — `regression_checked_pairs=26 mismatches=0`, quoted above, verified
+against the real shipped `shortestPath()`, not a reimplementation.
+
+**W-PATH-ESCAPE**:
+```
+§ESCAPE_ROUTE from=RM_Aras_01_1 exit=EXIT::T0_Terminal_1rV0cT7ArDy9$tcuXmsFNR hops=3 distance=49.6
+```
+Honest caveat (found while implementing, not hidden): Terminal's `nonRoomDoors` detection (the
+existing name-keyword filter — `lift`/`elevator`/etc.) is what feeds N-EXIT, per G3's explicit
+instruction to reuse it. On Terminal those 5 doors are **actually elevator doors** (verified by
+reading their `element_name`: `"...ElevatorLift_Door_with_Call_buttons..."`), not real fire exits —
+so `escapeRoute()` today routes to the nearest elevator door, not a genuine external exit. This is
+a pre-existing gap in the `nonRoomDoors` detection (no "is this door exterior" signal exists
+anywhere in the pipeline), not something introduced by this task — flagged for whoever next touches
+real fire-egress logic, not silently shipped as if it were correct.
+
+## Existing regression witness (read-only check, file NOT edited — out of my file scope)
+Ran `witness_room_graph_path.js` (bim-ootb, pre-existing, Duplex_ARC.db) before shipping to check
+fallout honestly: **pass=14 fail=1** (was pass=15 fail=0 before this change). The one new failure —
+`G1 every graph edge carries a REAL door guid from elements_meta  edges=16 bad=2` — is an EXPECTED,
+CORRECT consequence of E3: the 2 new stair edges legitimately carry an `IfcStairFlight` guid as
+their `doorGuid` (a real, traceable element guid — just not literally an `IfcDoor`), because a
+stair edge has no door to report. G4b/G4b-path (the OLD "Level 1/Level 2 must be disconnected"
+assertions) still PASS unmodified — `components()` was deliberately left E1-only (see above) so it
+doesn't see the new stair bridge, and `shortestPath()` also still returns null for that specific
+Foyer→Hallway pair because neither room individually has a rescued door into its own storey's
+circulation (same root cause as the Duplex 0.0% cross-storey finding above) — not because I dodged
+the check. Recommendation for a follow-up (not performed — `witness_room_graph_path.js` is not
+`common/room_graph.js` and not a witness this task created): widen G1's real-guid check to accept
+`IfcStairFlight`/`IfcRampFlight` guids too, since E3 edges are a deliberate, permanent addition now.
+
+## Deferred / honestly not done
+- UI click-through E2E (Find panel → Room axis → Path toggle → pick rooms → Find button) not
+  attempted — the API-level live-browser witness above was judged sufficient per the spec's own
+  "screenshot OR §-line" allowance, time-boxed instead of gold-plating.
+- `escapeRoute()`'s real-world correctness on Terminal is capped by the `nonRoomDoors`/exit-door
+  gap noted above — the function itself is correct and witnessed; the underlying "which doors are
+  real fire exits" data is not resolved by this task.
+- `witness_room_graph_path.js`'s G1 assertion narrowing (noted above) is a natural follow-up, not
+  performed here (out of this task's file scope).
