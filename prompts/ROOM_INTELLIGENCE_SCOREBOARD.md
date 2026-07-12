@@ -131,6 +131,32 @@ produced the current 105-row/all-doorpart result has since diverged from `HHS_AR
 documented above, not a new issue. Re-running the fix against whichever snapshot is authoritative
 next time HHS is recompiled is the remaining step, not a code gap.
 
+**DEEPER ROOT CAUSE FOUND SAME DAY (2026-07-13, user pushed back after seeing the live Viewer and
+insisting the purple box was genuinely floating outside the building, not a camera-framing
+illusion — correctly, don't dismiss a direct visual report on a "the numbers look fine" check
+alone).** Sampled every cell in R9's own footprint against the compiler's own exterior-
+reachability test (the same border-seeded flood `flood_rooms` already runs): **93% of R9's
+footprint (1690/1812 sampled cells) is genuinely exterior space**, reachable from outside the
+building. `SUSPECT_ELONGATED` above caught R9 correctly, but only because it happens to also be
+long and skinny — it flags the symptom (unusual shape), not the actual defect. The real bug:
+`partition_by_doors` (unlike `flood_rooms`) never excludes exterior space at all — it floods
+through every non-wall cell with zero interior/exterior distinction, so a gap in the perimeter
+(e.g. an undetected glass/curtain wall — user's hypothesis, plausible given HHS's already-known
+`§WALL-VERT` curtain-wall gaps) lets a door's BFS balloon straight into real outdoor space. **Fix
+shipped, same commit series:** `partition_by_doors` now determines exterior topology on the
+dilated/sealed wall footprint (same SEAL band `flood_rooms` uses) and applies that mask against
+the raw free cells, excluding genuine exterior before a door can ever claim it. Ported to both
+`compile_rooms.py` and `build/room_walker.js` (the JS port the Viewer's needle button runs) —
+W-ROOM-WALKER-PARITY re-run 6/6 byte-identical after the port. Verified directly: a synthetic room
+with a deliberately missing wall segment now claims a bounded ~14.6m² (flagged `OPEN`) instead of
+ballooning into the padded exterior; a fully-enclosed control room is unaffected (~33.6m², same as
+before). **User also raised two follow-on ideas, not yet built, worth a deliberate look next time
+this area is touched:** (1) use floor/ceiling slab footprints as an independent envelope signal
+where walls (especially glazing) go undetected; (2) a per-building "uniformity" check — flag a
+compiled room as suspect if its SIZE (not just aspect ratio) is a wild outlier against this
+building's own room-size distribution, same self-scaling-to-real-data discipline as every other
+threshold in this file, just extended beyond aspect ratio.
+
 **Do not confuse with (2026-07-13, same screenshot, different bug, already fixed):** the
 screenshot also showed a SECOND, larger, stale wireframe box alongside the correctly-sized purple
 one — that was a pure rendering bug (`viewer/navigate_find.js` `_drawRoomCuboid()` never disposed
