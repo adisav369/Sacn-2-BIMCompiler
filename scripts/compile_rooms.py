@@ -720,6 +720,15 @@ WALL_TOL = 0.45               # m — band around a seam/perimeter side within w
                                # R-REJECT's enclosure — same constant, same physical meaning)
 REJECT_ENCLOSURE = 0.25       # enclosure < this => REJECT (not a room — unbounded/exterior pocket)
 SUSPECT_OPEN_ENCLOSURE = 0.50 # enclosure < this (and >= REJECT_ENCLOSURE) => KEEP + SUSPECT_OPEN
+# §STAIRWELL-STACK (user report 2026-07-12: "still staircase well as a room", Terminal, screenshot
+# ≈ Aras 01 R1): a stair SHAFT's per-storey flight footprint covers only ~0.22 of the shaft pocket
+# (measured, Terminal) — under STAIR_OVERLAP_REJECT=0.35, which STAYS for the single-flight case —
+# but flights STACKED through the same XY across storeys cover it 1.30–2.23x cumulatively, while
+# the highest legitimate room measures 0.37 (clean gap). Controls: Duplex 0/21, JKR 0/79 false
+# hits; Terminal exactly the 12 shaft rects on both variants (§STACK log, 2026-07-12). A shaft is
+# a VERTICAL object — this is the vertical test the horizontal per-flight threshold cannot be.
+STAIRWELL_STACK_REJECT = 0.50   # cumulative all-storey stair overlap >= this x pocket area…
+STAIRWELL_STACK_MIN_LEVELS = 3  # …across at least this many distinct stair z-levels (~2m buckets)
 
 def all_walls_raw(c):
     """§R-MERGE/§R-REJECT: whole-building real wall list (ifc_class LIKE 'IfcWall%' only — NOT the
@@ -730,6 +739,35 @@ def all_walls_raw(c):
         "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
         "WHERE m.ifc_class LIKE 'IfcWall%' AND m.discipline='ARC' AND t.center_x IS NOT NULL").fetchall()
     return [tuple(r) for r in rows]
+
+def all_stairs_z(c):
+    """§STAIRWELL-STACK: whole-building stair/ramp footprints WITH z (cx,cy,cz,bx,by) — the
+    vertical-stack test needs distinct z-levels, which storey_stairs' per-storey XY list drops."""
+    cond = " OR ".join("m.ifc_class LIKE ?" for _ in STAIR_LIKE)
+    rows = c.execute(
+        f"SELECT t.center_x,t.center_y,t.center_z,COALESCE(t.bbox_x,0),COALESCE(t.bbox_y,0) "
+        f"FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid "
+        f"WHERE ({cond}) AND m.discipline='ARC' AND t.center_x IS NOT NULL", STAIR_LIKE).fetchall()
+    return [tuple(r) for r in rows]
+
+def _reject_stairwell(rooms, stairs_z):
+    """§STAIRWELL-STACK: drop pockets that are vertical stair shafts (see constants above)."""
+    out = []
+    for r in rooms:
+        x0, y0, x1, y1 = _room_bbox(r)
+        area = max(1e-6, (x1 - x0) * (y1 - y0))
+        cum = 0.0; levels = set()
+        for scx, scy, scz, sbx, sby in stairs_z:
+            ox = max(0.0, min(x1, scx + sbx / 2) - max(x0, scx - sbx / 2))
+            oy = max(0.0, min(y1, scy + sby / 2) - max(y0, scy - sby / 2))
+            o = ox * oy
+            if o > 0.01:
+                cum += o; levels.add(round((scz or 0.0) / 2))
+        if cum / area >= STAIRWELL_STACK_REJECT and len(levels) >= STAIRWELL_STACK_MIN_LEVELS:
+            print(f"    skip stairwell-stack pocket area={round(area)} stack={cum / area:.2f} levels={len(levels)}")
+            continue
+        out.append(r)
+    return out
 
 def all_doors_raw(c):
     """§R-MERGE: whole-building real door centers (with z) for the seam door-block test."""
@@ -943,6 +981,7 @@ def main():
     # thickness/coverage measurements are building-wide, per the spec.
     all_walls_raw_list = all_walls_raw(c)
     all_doors_raw_list = all_doors_raw(c)
+    all_stairs_z_list = all_stairs_z(c)   # §STAIRWELL-STACK
     total = 0; door_rescued_total = 0; door_partition_total = 0; allrooms = []; st_z = {}
     merged_total = 0; rejected_total = 0
     for st in sorted(by):
@@ -966,6 +1005,7 @@ def main():
         merged_n = pre_merge_n - len(rooms)
         pre_reject_n = len(rooms)
         rooms = _reject_rooms(rooms, all_walls_raw_list)
+        rooms = _reject_stairwell(rooms, all_stairs_z_list)   # §STAIRWELL-STACK, after R-REJECT
         rejected_n = pre_reject_n - len(rooms)
         merged_total += merged_n; rejected_total += rejected_n
         if merged_n or rejected_n:

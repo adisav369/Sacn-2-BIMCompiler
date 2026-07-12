@@ -687,6 +687,11 @@
                                      // AABB counts as backing it (shared by merge + reject)
   var REJECT_ENCLOSURE = 0.25;      // enclosure < this => REJECT (not a room)
   var SUSPECT_OPEN_ENCLOSURE = 0.50; // enclosure < this (and >= REJECT_ENCLOSURE) => SUSPECT_OPEN
+  // §STAIRWELL-STACK (mirror of compile_rooms.py, user report 2026-07-12): a shaft's per-storey
+  // flight covers only ~0.22 of its pocket (under STAIR_OVERLAP_REJECT=0.35, which stays), but the
+  // STACK across storeys covers 1.30-2.23x vs 0.37 max for any legitimate room — measured gap.
+  var STAIRWELL_STACK_REJECT = 0.50;    // cumulative all-storey stair overlap >= this x area...
+  var STAIRWELL_STACK_MIN_LEVELS = 3;   // ...across >= this many distinct ~2m z-buckets => shaft
 
   // §R-MERGE/§R-REJECT: whole-building real wall list (ifc_class LIKE 'IfcWall%' only -- NOT the
   // wider WALL_LIKE raster set floodRooms uses -- with z). [cx,cy,cz,bx,by,bz] arrays.
@@ -696,6 +701,38 @@
       "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid " +
       "WHERE m.ifc_class LIKE 'IfcWall%' AND m.discipline='ARC' AND t.center_x IS NOT NULL");
     return rows.map(function (r) { return [r.cx, r.cy, r.cz, r.bx, r.by2, r.bz]; });
+  }
+
+  // §STAIRWELL-STACK: whole-building stair/ramp footprints WITH z ([cx,cy,cz,bx,by]) — the
+  // vertical-stack test needs distinct z-levels, which the per-storey stairs list drops.
+  function allStairsZ(db) {
+    var cond = STAIR_LIKE.map(function (p) { return "m.ifc_class LIKE '" + p + "'"; }).join(' OR ');
+    var rows = _rows(db, "SELECT t.center_x cx,t.center_y cy,t.center_z cz," +
+      "COALESCE(t.bbox_x,0) bx,COALESCE(t.bbox_y,0) by2 " +
+      "FROM elements_meta m JOIN element_transforms t ON t.guid=m.guid " +
+      "WHERE (" + cond + ") AND m.discipline='ARC' AND t.center_x IS NOT NULL");
+    return rows.map(function (r) { return [r.cx, r.cy, r.cz, r.bx, r.by2]; });
+  }
+
+  // §STAIRWELL-STACK: drop pockets that are vertical stair shafts (see constants above).
+  function rejectStairwell(rooms, stairsZ) {
+    var out = [];
+    rooms.forEach(function (r) {
+      var bb = _roomBbox(r);
+      var x0 = bb[0], y0 = bb[1], x1 = bb[2], y1 = bb[3];
+      var area = Math.max(1e-6, (x1 - x0) * (y1 - y0));
+      var cum = 0, levels = {};
+      stairsZ.forEach(function (s) {
+        var ox = Math.max(0, Math.min(x1, s[0] + s[3] / 2) - Math.max(x0, s[0] - s[3] / 2));
+        var oy = Math.max(0, Math.min(y1, s[1] + s[4] / 2) - Math.max(y0, s[1] - s[4] / 2));
+        var o = ox * oy;
+        if (o > 0.01) { cum += o; levels[Math.round((s[2] || 0) / 2)] = 1; }
+      });
+      if (cum / area >= STAIRWELL_STACK_REJECT &&
+          Object.keys(levels).length >= STAIRWELL_STACK_MIN_LEVELS) return;
+      out.push(r);
+    });
+    return out;
   }
 
   // §R-MERGE: whole-building real door centers (with z) for the seam door-block test.
@@ -933,6 +970,7 @@
     // §R-MERGE/§R-REJECT: whole-building wall/door lists (not the per-storey raster set).
     var allWallsRawList = allWallsRaw(db);
     var allDoorsRawList = allDoorsRaw(db);
+    var allStairsZList = allStairsZ(db);   // §STAIRWELL-STACK
     var mergedTotal = 0, rejectedTotal = 0;
 
     var allrooms = [], report = [], stZ = {};
@@ -960,6 +998,7 @@
       var mergedN = preMergeN - rooms.length;
       var preRejectN = rooms.length;
       rooms = rejectRooms(rooms, allWallsRawList);
+      rooms = rejectStairwell(rooms, allStairsZList);   // §STAIRWELL-STACK, after R-REJECT
       var rejectedN = preRejectN - rooms.length;
       mergedTotal += mergedN; rejectedTotal += rejectedN;
       var rescued = rooms.filter(function (r) { return r.door_rescued; }).length;

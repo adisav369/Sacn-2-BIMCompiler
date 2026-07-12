@@ -676,3 +676,22 @@ mean from Duplex):
 
 Depends on Lane A (R-MERGE/R-REJECT, shipped) + R-SPINE (spine selection, not yet built) landing first
 — this is a consumer of that substrate, not a prerequisite for it.
+
+---
+
+# STAIRWELL-STACK + split-path trace correction — 2026-07-12e (user screenshot follow-up)
+User (with screenshot, `≈ Aras 01 R1`): needle recompute works, "but there is still staircase well
+as a room." Two findings, both fixed and live-verified:
+1. **STAIRWELL-STACK rule (both mirrors, parity 6/6).** Measured: a shaft's per-storey flight
+   covers only ~0.22 of its pocket — under `STAIR_OVERLAP_REJECT=0.35`, which STAYS — but flights
+   STACKED through the same XY cover 1.30–2.23× cumulatively vs 0.37 max for any legitimate room.
+   New reject: cumulative ≥0.50 across ≥3 z-levels. Controls: Duplex 0/21, JKR 0/79 false hits;
+   Terminal exactly the 12 shaft rects on every variant. This ANSWERS the deferred Task-0 threshold
+   question: do NOT lower 0.35 — the shaft is a vertical object, it needed a vertical test.
+2. **Task 0 trace correction — the Viewer's live Terminal source moved.** Current main has a
+   split-build path: `§DB_SPLIT_DETECT` prefers `buildings/Terminal_meta.db` (43 stale rooms — the
+   set the user actually saw, stairwell included) over `Terminal_extracted.db`. The split path also
+   never ran `_applyPendingPatch` — wired in `viewer/streaming.js`, and a new
+   `buildings/patches/Terminal_meta.db.sql` now heals the file the Room lens actually reads.
+   E2E: `§PATCH_APPLY Terminal_meta.db applied` → rooms=40 rects=73, worst remaining stacked-stair
+   overlap 0.37 (<0.50). bim-ootb PR #761.
