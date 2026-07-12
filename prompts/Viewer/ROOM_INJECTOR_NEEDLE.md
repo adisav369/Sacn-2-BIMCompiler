@@ -90,3 +90,23 @@ All three witnesses pass with quoted §-lines; commit locally on `fix/terminal-r
 (or a child branch off it) with the witness log paths in the message; NO push, NO PR. Append a
 dated `# DONE` section to THIS file with: what shipped, the § evidence, anything honestly
 unreachable/deferred.
+
+---
+
+## STANDARDIZATION (user directive, 2026-07-12 — supersedes S1/S2 where they differ)
+Verbatim intent: "standardised no auto inject. Our embeds and landed buildings are preprocessed.
+Any new IFC or DB can be 'needle' manually, which remove previous if present. Then when user
+saved, its there."
+- **S1 amended:** the needle is not only for zero-room buildings. Rooms present but COMPILED
+  (`RM_*` rows) → facets work normally AND the needle stays available (un-greyed, subtle) as the
+  explicit RECOMPUTE action. Zero rooms → greyed facets + needle, as before. Buildings with REAL
+  extracted rooms (non-RM_ IfcSpace rows) → NO needle at all; never overwrite real extraction.
+- **S2 amended — replace semantics:** injection always DELETES previous compiled rooms first
+  (`RM_*`/`STC_*` rows + their rel rows — the patch files already do DROP+CREATE; the walker path
+  must do the same delete before insert). Idempotent by construction: press twice = same result.
+- **No auto-compute anywhere, standing policy:** the app never computes rooms at load. Shipped
+  embeds are "preprocessed" — their rooms arrive via the file itself or its self-heal patch (the
+  sanctioned delivery for fixed embeds under the no-binary-commit rule); that plumbing is NOT the
+  needle and never extends to user-opened IFC/DB. User data gets rooms ONLY on explicit needle
+  press (Viewer) / Room Walker action (Modeller — same policy, same verb, different app).
+- **S3 unchanged:** press → live db + IDB persist; user save/export carries the rooms.
