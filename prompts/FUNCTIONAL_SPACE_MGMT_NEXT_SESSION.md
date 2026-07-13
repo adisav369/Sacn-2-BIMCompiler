@@ -47,6 +47,21 @@ orphan=47` matches NEITHER the claimed before (16/73/44) nor after (27/66/40); `
 #779's own commit message says the raster was regenerated for a 71-room compile. **Fix: stop treating
 `room_walker.js` as an immutable lib (move it out of `/lib/`, or carve a narrow exception in
 `isNetworkFirst()`), bump `CACHE_VERSION`, verify a fresh load actually pulls new bytes, redeploy.**
+**FIXED + MERGED + DEPLOYED 2026-07-14** — bim-ootb PR #780 (`fix/sw-lib-cache-room-walker`), merged
+`8895234a9`, both CI checks green, `deploy-pages` run `29266972074` succeeded. Fix: exempted
+`room_walker.js` explicitly from the `/lib/` blanket rule in `isNetworkFirst()` (network-first now,
+same as any other project JS) + bumped `CACHE_VERSION` v748→v749. Verified pre-merge by extracting
+`isNetworkFirst()` verbatim and unit-testing it in isolation (room_walker.js → network-first; real
+vendor libs three.module.min.js/sql-wasm.wasm → unaffected, still cache-first) — a real browser
+before/after wasn't run pre-merge, so **the user must still confirm with a genuinely clean load**
+(DevTools → Application → Clear storage → Clear site data, or a private window) that: (a) the
+`RoomOverSize.png` elongated `≈ Level 2 R9`-shaped defect (room box stretching outside the building
+envelope) is gone, and (b) `§ROOM_GRAPH` now reads close to the claimed 27 edges/66 dead-ends/40
+orphans, not the stale `edges=11/deadend=75/orphan=47` seen live 2026-07-14. This same pattern
+(room_graph.js/CACHE_VERSION never bumped, fixes never reaching browsers) recurred once before —
+see the stale, never-merged `fix/room-graph-cache-bust` branch — worth a five-minute check next
+session that nothing else in `viewer/lib/` is a same-mistake project file mislabeled as vendor-immutable.
+
 Do this BEFORE trusting any of §SHIPPED is actually live for a real user, and before starting §OPEN #1
 below — no point measuring Level 1/2 connectivity against code that isn't running.
 
