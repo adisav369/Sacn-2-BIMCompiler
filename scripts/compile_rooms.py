@@ -421,6 +421,43 @@ def _grow_region(cells, in_set, raw, dil, nx, ny, steps):
         frontier = nxt
     return added, mni, mxi, mnj, mxj
 
+# §WALL-SNAP (2026-07-13, real HHS finding: user-reported "room box doesn't reach the real wall"):
+# raster quantization (RES=0.20m) plus _grow_region's seal-band recovery cap (SEAL=2 cells=0.4m)
+# leave a compiled room's rect short of its TRUE (continuous-coordinate) wall face. Measured across
+# 208 real non-suspect room-sides fleet-wide (HHS): 0/208 ever overshoot a wall (no invented
+# overlap risk) — every side is short by 0.003-0.599m, mean 0.303m. SNAP_MAX_GAP is the measured
+# worst case (0.599m) plus one RES step of headroom, not an arbitrary round number.
+SNAP_MAX_GAP = 0.8  # m
+
+def _snap_rect_to_walls(x0, y0, x1, y1, walls):
+    """Move each of the 4 sides OUT (never in) to the nearest real wall's own measured near face,
+    only when the gap is real and <= SNAP_MAX_GAP. Each side only ever reads the wall's NEAR face
+    (xmin reads a wall's right face, xmax reads a wall's left face, etc.), so two rooms sharing one
+    real wall each stop at their own side of it and can never be made to overlap by this function —
+    same non-invent discipline as R-MERGE/R-REJECT: it only ever reveals more of an already-real
+    wall-bounded space, never guesses a boundary where no wall exists."""
+    best = {}
+    for (wcx, wcy, wcz, wbx, wby_, wbz) in walls:
+        wx0, wx1 = wcx - wbx / 2, wcx + wbx / 2
+        wy0, wy1 = wcy - wby_ / 2, wcy + wby_ / 2
+        ovY = min(y1, wy1) - max(y0, wy0)
+        if ovY > 0:
+            g = x0 - wx1
+            if 0 <= g <= SNAP_MAX_GAP and (best.get('xmin') is None or g < best['xmin']): best['xmin'] = g
+            g = wx0 - x1
+            if 0 <= g <= SNAP_MAX_GAP and (best.get('xmax') is None or g < best['xmax']): best['xmax'] = g
+        ovX = min(x1, wx1) - max(x0, wx0)
+        if ovX > 0:
+            g = y0 - wy1
+            if 0 <= g <= SNAP_MAX_GAP and (best.get('ymin') is None or g < best['ymin']): best['ymin'] = g
+            g = wy0 - y1
+            if 0 <= g <= SNAP_MAX_GAP and (best.get('ymax') is None or g < best['ymax']): best['ymax'] = g
+    if 'xmin' in best: x0 -= best['xmin']
+    if 'xmax' in best: x1 += best['xmax']
+    if 'ymin' in best: y0 -= best['ymin']
+    if 'ymax' in best: y1 += best['ymax']
+    return x0, y0, x1, y1
+
 def _inscribed_rect_min(in_set, ny, mni, mxi, mnj, mxj, min_cells):
     """§MULTI-RECT: constrained maximal rectangle — both dims >= min_cells (the NOISE_FLOOR in
     cells; a thinner rect is rasterization fringe, not room space). None if no such rect exists.
@@ -585,6 +622,7 @@ def flood_rooms(walls, stairs=None, doors=None, door_w_med=0.0):
             for (ri0, ri1, rj0, rj1) in grects:
                 rx0 = xs0 + ri0 * RES; rx1 = xs0 + (ri1 + 1) * RES
                 ry0 = ys0 + rj0 * RES; ry1 = ys0 + (rj1 + 1) * RES
+                rx0, ry0, rx1, ry1 = _snap_rect_to_walls(rx0, ry0, rx1, ry1, walls)
                 rects.append({"cx": (rx0 + rx1) / 2, "cy": (ry0 + ry1) / 2,
                               "sx": rx1 - rx0, "sy": ry1 - ry0})
             r0 = grects[0]
@@ -759,6 +797,7 @@ def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
         for (ri0, ri1, rj0, rj1) in grects:
             rx0 = xs0 + ri0 * RES; rx1 = xs0 + (ri1 + 1) * RES
             ry0 = ys0 + rj0 * RES; ry1 = ys0 + (rj1 + 1) * RES
+            rx0, ry0, rx1, ry1 = _snap_rect_to_walls(rx0, ry0, rx1, ry1, walls)
             rects.append({"cx": (rx0 + rx1) / 2, "cy": (ry0 + ry1) / 2,
                           "sx": rx1 - rx0, "sy": ry1 - ry0})
         r0 = grects[0]
