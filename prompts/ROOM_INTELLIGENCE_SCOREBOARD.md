@@ -206,9 +206,39 @@ untouched by that fix and remains this doc's open gap.
   normalized feature instead of raw area) would likely recover a real chunk of HHS/Clinic/Hospital's
   unclassified rooms. Not built — the external-dataset proposal below is one path in, but note
   RoomGraph/SAGC-A68 are apartment-focused too and may not close this specific gap.
-- **Fixture-in-room recognition** — `IfcFurnishingElement` data already extracted (61 rows,
-  confirmed this session) and completely unused by the classifier. Most human-like signal available,
-  zero new extraction needed.
+- ~~**Fixture-in-room recognition**~~ **BUILT 2026-07-13** — `classifyRoomWithFixtures()`, see
+  `COMPILE_ROOMS_TYPE_INFERENCE.md`'s dated update. 18/18 Duplex ground-truth forward-replay match.
 - **Graph-joint-inference (label propagation)** over the now-built room-adjacency graph — bootstraps
   from the same small ground truth via measured co-occurrence statistics, no external dataset
   required. Natural stepping stone toward a real GNN once external data lands.
+
+## Gaps & next-to-investigate (2026-07-13 session close, prioritized)
+
+1. **Terminal's restroom room-compile-coverage gap — NOT YET INVESTIGATED, highest priority next.**
+   4 real `Asian_Toilet` fixtures exist in Terminal's own extraction; all 4 sit outside every
+   currently-compiled room (nearest ~4m off) — that physical restroom area was never captured as a
+   room at all by flood-fill or door-partition. Unlike every other gap this session (which was a
+   classification/labeling problem on top of correctly-compiled geometry), this is a genuine
+   room-COMPILE miss. Next step: pull Terminal's real walls/doors in that specific XY neighborhood
+   (~149.5, -10.5/-11.0 on Aras 01/02) and check why neither compile path enclosed it — missing
+   walls (matching HHS's known pattern) or a rejection (R-REJECT/stair-overlap) firing wrongly.
+2. **Wall/door NAME keyword mining** — `COMPILE_ROOMS_TYPE_INFERENCE.md` §1 signal #1, ranked
+   STRONGEST of 5 candidate signals, real evidence already found (HHS's German wall names: `WC
+   Trennwand 5.0`) — still not built. Natural pairing with the now-built fixture signal (#3, that
+   section) for a combined confidence score.
+3. **Scale-tiered templates (residential vs institutional)** — open since 2026-07-11, reinforced
+   twice more this session (HHS corridor false-negatives, Terminal toilet false-negatives both trace
+   to the same residential-only n=2-5 template set). The single highest-leverage remaining gap in
+   the classifier — most institutional unclassified rooms trace to this one cause.
+4. **Getting today's HHS room-compile fix to actually reach a served building** — the canonical
+   bim-compiler source is fixed and verified (70 rooms, `SUSPECT_ELONGATED` working); the file
+   bim-ootb's Viewer/Modeller actually serve is still the older/different snapshot (the standing
+   `project_db_snapshot_divergence_landmine`). Deliberately NOT pushed to a served copy this
+   session — needs a user deploy-direction decision (OCI re-upload vs modeller ARC-strip re-run),
+   named here so it isn't silently forgotten.
+5. **Slab-based envelope signal** — tested, rejected (bbox-only slab data would have validated R9 as
+   legitimate, not caught it). Would need real mesh polygon data (`component_geometries`) to do
+   properly — a heavier, separate undertaking, not started.
+6. **Uniformity/size-outlier check** — tested, rejected (would misflag legitimate large common rooms
+   like Clinic's 93m² hall). Not built; would need a more careful multi-signal design (e.g. gated to
+   only corroborate an already-suspect room) to be safe, per this session's finding.
