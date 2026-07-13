@@ -18,8 +18,19 @@ import sqlite3, sys, math, itertools
 
 RES = 0.20          # grid cell size (m)
 MIN_AREA = 4.0      # m^2 — drop slivers / wall cavities
-MAX_AREA_ABS = 150.0  # m^2 — drop exterior-leak blobs (a real room is rarely bigger)
-MAX_AREA_FRAC = 0.92  # also drop anything ~the whole storey plan
+# §SUSPECT-LARGE (2026-07-14, real bug found live: HHS Level 3's genuine 456m^2 corridor was
+# silently dropped, never compiled, never flagged — 73/70 room-graph dead-ends traced to this).
+# MAX_AREA_ABS used to be a hard drop threshold, calibrated to residential room sizes ("a real room
+# is rarely bigger"). That reasoning predates §DOOR-PARTITION-EXT-EXCLUDE, which is now the real,
+# precise leak detector (walks the actual exterior-reachability flood before this check ever runs) —
+# measured fleet-wide: SampleHouse/Duplex/SampleCastle/HospitalGarage/Clinic/Terminal/Hospital's real
+# biggest ext-excluded (confirmed-interior) pockets range 38-1544 m^2, so ANY fixed absolute drop
+# threshold is wrong for some real building — including SampleCastle (315 m^2) despite being
+# "residential"-classed for rules purposes. Repurposed: still compiles, just flagged for review
+# (same §ROOM-FORM treatment as SUSPECT_OPEN/SUSPECT_ELONGATED) instead of silently vanishing.
+MAX_AREA_ABS = 150.0  # m^2 — SUSPECT_LARGE flag threshold, no longer a drop threshold
+MAX_AREA_FRAC = 0.92  # still a hard drop — self-scaling (% of THIS building's own storey plan),
+                       # catches a genuinely undivided/uncompiled floor regardless of building size
 SEAL = 2            # dilate walls this many cells (×RES) to close hairline corner/door gaps
 WALL_LIKE = ("IfcWall%", "IfcDoor%", "IfcCurtainWall%", "IfcColumn%", "IfcWindow%")
 # §STAIR-EXCLUDE: a stairwell is a wall-enclosed pocket, so the flood-fill flags it as a "room".
@@ -585,7 +596,7 @@ def flood_rooms(walls, stairs=None, doors=None, door_w_med=0.0):
                         if enclosed[kk] and not seen[kk]:
                             seen[kk] = 1; st.append(kk)
             area = len(comp) * cell_area
-            if area > MAX_AREA_ABS or area > plan_area * MAX_AREA_FRAC: continue
+            if area > plan_area * MAX_AREA_FRAC: continue   # §SUSPECT-LARGE: MAX_AREA_ABS flags below, never drops
             wx0 = xs0 + mni * RES; wx1 = xs0 + (mxi + 1) * RES
             wy0 = ys0 + mnj * RES; wy1 = ys0 + (mxj + 1) * RES
             # §DOOR-RESCUE (abstract test, applies uniformly — not a size band): a pocket is a room if
@@ -612,6 +623,10 @@ def flood_rooms(walls, stairs=None, doors=None, door_w_med=0.0):
             # span (real walls on the long sides, none dividing it) — same test as door-partition.
             if not suspect and _is_elongated(wx0, wy0, wx1, wy1):
                 suspect = "ELONGATED"
+            # §SUSPECT-LARGE: real but unusually big for a residential-calibrated eye — compiles,
+            # flagged for review, never silently dropped (see MAX_AREA_ABS comment above).
+            if not suspect and area > MAX_AREA_ABS:
+                suspect = "LARGE"
             grown, gmni, gmxi, gmnj, gmxj = _grow_region(comp, in_set, raw, dil, nx, ny, SEAL)
             total_cells = len(comp) + len(grown)
             grects, covered = _decompose_region(in_set, ny, gmni, gmxi, gmnj, gmxj, total_cells,
@@ -779,7 +794,7 @@ def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
         wx0 = xs0 + mni * RES; wx1 = xs0 + (mxi + 1) * RES
         wy0 = ys0 + mnj * RES; wy1 = ys0 + (mxj + 1) * RES
         if (wx1 - wx0) < NOISE_FLOOR_DIM or (wy1 - wy0) < NOISE_FLOOR_DIM: continue
-        if area > MAX_AREA_ABS or area > plan_area * MAX_AREA_FRAC: continue
+        if area > plan_area * MAX_AREA_FRAC: continue   # §SUSPECT-LARGE: MAX_AREA_ABS flags below, never drops
         if _stair_overlap_frac(wx0, wy0, wx1, wy1, stairs) >= STAIR_OVERLAP_REJECT: continue
         # §ROOM-FORM + §RECT-HONESTY + §MULTI-RECT (ROOM_INJECTION_HYBRID.md §7/§8). No dilation on
         # this path → seal_steps=0 for the openM march, no seal band to grow back into.
@@ -791,6 +806,9 @@ def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
         # untouched, same rule §R-REJECT already follows for its own suspect-priority ordering.
         if not suspect and _is_elongated(wx0, wy0, wx1, wy1):
             suspect = "ELONGATED"
+        # §SUSPECT-LARGE: real but unusually big — compiles, flagged for review, never dropped.
+        if not suspect and area > MAX_AREA_ABS:
+            suspect = "LARGE"
         grects, covered = _decompose_region(in_set, ny, mni, mxi, mnj, mxj, len(cells), bool(suspect))
         for k in cells: in_set[k] = 0
         rects = []
