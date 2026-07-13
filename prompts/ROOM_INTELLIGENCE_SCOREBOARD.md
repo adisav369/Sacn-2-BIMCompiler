@@ -33,7 +33,7 @@ the pointer that makes this the default.
 | 5 | Room habitability + Viewer self-heal | 9 | HHS 14→105 rooms, ships via SQL patch not binary, merged (PR #732) | — |
 | 6 | Room Lens volume-box render | 8 | Box-area exact match to ground truth (diff=0.000m²), merged (PR #733) | `_roomSelect()` sibling function still not room_guid-aware |
 | 7 | Terminal coordinate-frame fix | 9 | Root-caused to 2 cited pipeline bugs, <6mm accuracy | PR #41 open, unmerged (branch-sync conflict, unrelated) |
-| 8 | Room-type classifier | 5 | Real Gaussian fit, honest confidence, self-consistency miss disclosed | Only 2 buildings (Duplex+SampleHouse) have ground truth |
+| 8 | Room-type classifier | 6 | Real Gaussian fit + fixture-evidence signal (2026-07-13, `classifyRoomWithFixtures`), 18/18 Duplex ground-truth forward-replay match, symbiotic with size (evidence must agree with physical size, not override it) | Only 2 buildings (Duplex+SampleHouse) have ground truth; fixture signal can't recover a room that was never compiled (Terminal's real toilets exist but sit outside every compiled room) |
 | 9 | Door-access signal | 4 | 3 genuine real-data wins (Kitchen 0-door correction ×2, Entrance Hall false-match refused) | Net regression if defaulted on — correctly left off, not finished |
 | 10 | Primary/supplementary tier + BOM wiring | 7 | Duplex units A/B genuinely satisfy `required_spaces`, reused existing Java validator pattern | SampleHouse fails it honestly (sparse data, not a bug) |
 | 11 | OBB clash-gate narrow-phase | 8 | Real 0.0428m false-positive cleared, MANAGER-reran 22/22 independently, 535ns/pair | ~5× per-pair cost vs AABB (small absolute, real regardless) |

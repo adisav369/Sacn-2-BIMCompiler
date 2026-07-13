@@ -3,14 +3,29 @@
 
 ```
 # ⚠ DO NOT REMOVE
-SCOPE: build/room_walker.js only (2026-07-11: ROOM_WALKER_JS_PORT.md retired scripts/compile_rooms.py
-as the canonical room-injection tool — compile_rooms.py itself still exists in the repo, but only as
-an unrelated import for scripts/witness_geomap_tier3.py's baseline scoring, NOT as a target for new
-room-compile work; port any change here into room_walker.js, not the Python file). Read
-ROOM_INJECTION_HYBRID.md in full first — this task extends the room-COUNT work already done there
-(§DOOR-RESCUE, §DOOR-PARTITION) into room-TYPE guessing, a strictly harder, lower-confidence problem.
-Read the log of whichever step is IN PROGRESS below before concluding anything about its status — a
-"confidence" number is not evidence until it's been checked against real ground truth (§2 Task 0).
+EXTRACT-FIRST CHECKLIST (added 2026-07-13, standing — read before adding ANY room-type signal):
+this task exists because a session reached for a Gaussian statistical template (inference, n=2-5
+samples) before checking whether the answer was already sitting in the extraction as a named,
+real element (a passenger-complex building showing "1 toilet" when its own IFC has 4 real
+`Asian_Toilet`-named fixtures). That is backwards for THIS repo's PRIME RULE priority order, every
+time, not just once: (1) is there a real named element/label/fixture that answers this directly —
+EXTRACT it; (2) only if genuinely absent, is there a deterministic geometric derivation — COMPILE
+it; (3) only if both are exhausted, a confidence-scored statistical INFERENCE, clearly labeled as
+such and never presented as ground truth. Check (1) and (2) FIRST, in that order, before writing
+any template/threshold/classifier — don't discover step (1) existed only after a user catches an
+implausible inferred result. See `build/room_type_classifier.js` `classifyRoomWithFixtures()` for
+the reference implementation of this priority order (fixture EXTRACT beats Gaussian INFER, but
+only when the extracted evidence doesn't contradict the room's own measured size — evidence and
+inference must AGREE, neither one silently overrides the other).
+
+SCOPE: build/room_walker.js AND scripts/compile_rooms.py (2026-07-11's ROOM_WALKER_JS_PORT.md
+retirement note below is STALE — see the 2026-07-13 update further down: the two files are
+maintained in lockstep parity via build/witness_room_walker_parity.js, port every change both
+ways). Read ROOM_INJECTION_HYBRID.md in full first — this task extends the room-COUNT work already
+done there (§DOOR-RESCUE, §DOOR-PARTITION) into room-TYPE guessing, a strictly harder,
+lower-confidence problem. Read the log of whichever step is IN PROGRESS below before concluding
+anything about its status — a "confidence" number is not evidence until it's been checked against
+real ground truth (§2 Task 0).
 ANCHORS: prompts/Modeller/DISC_Walker/ROOM_INJECTION_HYBRID.md (§DOOR-RESCUE/§DOOR-PARTITION, the
 compile techniques this extends) · build/room_walker.js (the file to modify) ·
 scripts/stamp_space_longnames.py (why SampleHouse/Duplex alone HAVE real types — read this before
@@ -90,6 +105,58 @@ signal because the ARC-only discipline strip (`b93ca13`) already removed this da
 synthetic buildings; only Clinic still has it. If Clinic-specific fixture-based labeling is ever
 wanted, scope it as a Clinic-only enhancement, not a shared technique — don't build a general path
 that silently no-ops on 4 of 5 buildings.
+
+**UPDATE 2026-07-13 — signal #1's family BUILT (furniture variant, not the wall/door-name
+variant), with the new evidence this section asked for before revisiting fixture-based signals.**
+User pushed back on a Terminal room-type census showing "1 toilet" for a passenger complex —
+correctly identified as a RosettaStone-priority violation: a Gaussian statistical template (n=2-5
+residential samples) was used before checking for direct extractable evidence, when Terminal's own
+extraction has 4 real `Asian_Toilet`-named `IfcBuildingElementProxy` fixtures sitting right there.
+**The new evidence that supersedes the rejection above:** that rejection was specifically about
+`IfcFlowTerminal` (an MEP-discipline class, stripped to 1/5 buildings). `IfcFurnishingElement`
+(Duplex)/`IfcFurniture`+`IfcBuildingElementProxy` (Terminal) are a DIFFERENT, ARC/furniture-side
+class family — checked fresh across all 8 buildings, present in EVERY ONE (14-1971 elements each,
+never discipline-stripped to zero). Different signal, different availability profile — the
+IfcFlowTerminal rejection stands for that specific class, not as a blanket ban on all fixture
+signals.
+
+**Built:** `build/room_type_classifier.js` `classifyRoomWithFixtures()` — a room containing a
+named fixture matching a keyword list (keywords extracted from REAL element names, not invented:
+`vanity`/`toilet`/`urinal`/`bidet` from Duplex's "Vanity Cabinet...Sink Unit" + Terminal's
+"Asian_Toilet"; `sink hole`/`hob`/`cooktop`/`stove top` for kitchen) gets that type confirmed —
+but ONLY if the Gaussian area/aspect score for that SAME type is still plausible for the room's
+actual measured size (symbiotic, not a one-sided override — see room_type_classifier.js's own
+`§FIXTURE-SIGNAL` comment for the real bug this caught: a naive first draft mislabeled 2 real
+Duplex UTILITY rooms as KITCHEN because both contain a "Counter Top w Sink Hole", i.e. a laundry
+sink — "sink hole" alone isn't kitchen-exclusive). **Reverse-engineered from the Stones (Duplex
+ground truth), forward-replayed against the same Stones before use** (the methodology this whole
+doc's §2 Task 0 already called for): 18/18 real Duplex rooms with fixture data classified
+correctly, 0 mismatches, after the symbiotic correction.
+
+**Applied to Terminal, honest result:** the fixture-room correlation mechanism itself works
+(123/662 real Terminal fixtures land inside a compiled room — not a coordinate-frame problem). But
+the 4 known `Asian_Toilet` fixtures specifically sit OUTSIDE every currently-compiled room (nearest
+~4m off) — that restroom area was never captured as a room at all by `compile_rooms.py`/
+`room_walker.js`. The fixture signal can only confirm a type for a room that already exists as
+compiled geometry; it cannot recover a room that was never compiled. **Named as a separate,
+real, NOT-yet-investigated gap** (why didn't flood-fill/door-partition capture that restroom area?
+— out of this task's scope, flagging for whoever picks up room-compile-coverage work next).
+
+**Signal #1's ORIGINAL proposal (wall/door NAME keyword mining — "WC Trennwand", "Basic Wall:MW
+11.5") is STILL NOT BUILT.** Today's work is the furniture-fixture sibling of the same idea, not a
+replacement for it — wall/door name mining remains open, and per this section's own ranking is
+still the STRONGEST signal (higher confidence, since walls are near-universal) once built.
+
+**Also worth flagging here (not fixed, doc-accuracy note):** this doc's own header says
+`scripts/compile_rooms.py` was "retired... NOT a target for new room-compile work" as of
+2026-07-11 (ROOM_WALKER_JS_PORT.md). That appears stale — `build/witness_room_walker_parity.js`
+(the current parity harness) explicitly treats `compile_rooms.py` as "the checked ground truth"
+that `room_walker.js` must match byte-for-byte, and 2026-07-13's session (`SUSPECT_ELONGATED`,
+exterior-leak fix, no-overlap guard — see `ROOM_INTELLIGENCE_SCOREBOARD.md`) edited
+`compile_rooms.py` FIRST and ported to `room_walker.js` second, verified via that same parity
+harness both ways. The two files are maintained in lockstep parity today, not with Python retired
+— whoever next reads this doc's header should not take the 2026-07-11 retirement note at face
+value without checking the parity harness first.
 
 ## §2 — Task list (work top-to-bottom, same WORK-TO-ZERO discipline as every prompts/#.md file)
 
