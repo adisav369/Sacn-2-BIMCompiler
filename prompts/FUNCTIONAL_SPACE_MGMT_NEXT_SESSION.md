@@ -86,6 +86,105 @@ working `room_guid` column, the `RoomOverSize.png` elongated-room defect gone, a
 Do this BEFORE trusting any of §SHIPPED is actually live for a real user, and before starting §OPEN #1
 below — no point measuring Level 1/2 connectivity against code that isn't running.
 
+## §HALLWAY-BACKBONE (2026-07-14, investigation session, NOTHING COMMITTED — read before touching #2)
+User's ask: cheaply find ALL long hallways fleet-wide, chained with stairs into one continuous
+structure ("main entrance till all doors"), for Modeller + path routing (+ incidentally, a flythrough
+camera path — same structure serves both, keep the eventual output an ORDERED path, not just a graph).
+Everything below ran in scratch scripts (`node`, `sql.js`, local `deploy/buildings/*.db`) and was
+DELETED after each run per housekeeping — **none of this is committed code yet**, it's a verified
+algorithm sketch. Next session's job (if picking this up) is to actually build it as real code.
+
+**Dead end, correctly ruled out — don't re-try:** column-fragmented-corridor theory. `WALL_LIKE`
+(`compile_rooms.py`/`room_walker.js`) does treat `IfcColumn` as a wall obstacle, so the mechanism is
+real, but Hospital's 604 columns + 10 proximity-based "chains" turned out, on rigorous check (does a
+real column actually sit in the touch-gap?), to be real individually-walled small rooms (bathrooms,
+real `IfcDoor`+`IfcWallStandardCase` partitions) — only 18 genuinely column-verified touching pairs
+exist in the whole building, none chaining ≥3. Proximity alone is not corridor evidence.
+
+**Live lead, not yet acted on:** `rejectRooms()` (`compile_rooms.py`/`room_walker.js`) silently DROPS
+any pocket with `enclosure < REJECT_ENCLOSURE` — no row, no flag, same shape as the `SUSPECT_LARGE`
+bug §SUSPECT-LARGE already fixed, except this gate is enclosure-based not size-based and is still live.
+Hospital dropped 7 pockets this way. A wide-open corridor/atrium (long, barely enclosed, few doors) is
+exactly the shape that would score low enclosure and vanish. Worth instrumenting `rejectRooms` to
+report what it drops (size/shape/enclosure score) before deciding whether to repurpose it
+compile-but-flag, same treatment as `SUSPECT_LARGE`.
+
+**Working result — door+wall+crossing backbone, verified on Clinic:**
+1. `doorEdge(door)` — wall-run-axis from the door's OWN bbox aspect ratio (wide-in-X ⇒ its wall runs
+   along X ⇒ cluster by shared Y). `rotation_z` is unusable — always 0 in this extracted data, checked
+   before relying on it.
+2. `correlateDoorEdges(edges)` — bucket-matrix keyed by `(storey, axis, roundedRunCoord)` — the
+   "matrix array, harnessed by the door wall" the user specified.
+3. `joinDoorways(buckets)` — buckets with ≥3 aligned doors = hallway-candidate ("join with other
+   doorways forms it").
+4. `growToWall(bucket)` — extend the bucket's span along its axis, both directions, until a REAL wall
+   (`IfcWall%` only — columns/beams deliberately excluded per user, "ignore supporting columns/beams
+   for convenience") caps it.
+5. `terminateAtStair(bucket)` — an un-capped (open) end near a stair = a connecting space, not a
+   dead-end. **Stair detection is the unresolved piece** — see below.
+6. `walkBackbone()` — union-find merge of buckets whose grown spans cross (an x-run bucket's runCoord
+   falls inside a y-run bucket's span and vice versa = a T-junction/crossing).
+
+**Result on Clinic:** 41 joined buckets → 9 chains after crossing-merge. The two big ones: First Floor
+24 segments/116 door-touches merged into ONE connected backbone; Second Floor 10 segments/58
+door-touches into another. Cross-validated three independent ways without pointing one at the other:
+graph door-degree (R36 deg=10, top of Clinic), raw-coordinate clustering, and this wall-harnessed
+version all converge on the same rooms (R36, R96, R41, R34, R9, R59) — R36/R96 each appear in *two*
+different axis-buckets, correctly reflecting real corridor T-junctions. Separately, door-degree was
+also validated against REAL ground truth: Duplex's rooms are literally named "Hallway A201"/"Hallway
+B201" in the source IFC, and rank #1 by door-degree with zero shape-based flagging.
+
+**Unresolved: stair-termination, 0/41 buckets connected to a stair.** Root-caused TWO layers deep, not
+just tolerance-tuned:
+- First bug (fixed in the scratch check): stair elements report `storey='Unknown'` — same landmine
+  class as the existing `§STOREY-UNKNOWN` fix elsewhere in this codebase, unaddressed for Clinic's
+  stairs specifically. Dropped the storey-string filter, matched by real XY instead.
+- Second bug (fixed): was using point-to-centroid distance; switched to real contour (bbox-rect)
+  distance with a ~2m movement-clearance tolerance, per user's steer ("stairs movement space can be of
+  say 2 meter height flow onto the stairs contour").
+- Even after both fixes: still 0. The 2 actually-open bucket-ends are 11-18m from the nearest stair —
+  not a near-miss. `IfcRailing` was tried as a corroborating signal (stairs themselves may be
+  unclickable/ungeometried, same "unclickable parent" shape as the HHS curtain-wall bug — use the
+  reliable neighbor instead) — but every railing cluster sits on a stair I'd ALREADY found, so it
+  didn't reveal anything new. The 2 open ends genuinely aren't stair-adjacent by any signal tried.
+- Separately flagged by the user and NOT yet resolved: three different ad-hoc `ifc_class LIKE
+  'IfcStair%'` queries in this session returned 7, 8, and 13 — the trusted, shipped answer (Building
+  Parts Taxonomy's `Part.Stairs` in the live Viewer) is **4**. Any real implementation MUST reuse the
+  existing trusted stair extractor (`BUILDING_PARTS_TAXONOMY.md`'s `STAIRWAY` logic and/or
+  `room_graph.js`'s own `§STAIR-CLASS-FALLBACK`), not a fresh ad-hoc query — WalkerDoctrine §10, one
+  function not a new one. This is very likely why stair-termination hasn't matched anything: it may
+  simply be counting/locating the wrong 7 "stairs" instead of the real 4.
+- Next concrete step if resumed: swap in the trusted stair extractor, re-run `terminateAtStair`, THEN
+  decide whether the 2 open ends are a real remaining gap or resolve themselves.
+
+**Parked, not needed given the above works:** floor-slab/`IfcCovering` footprint as an alternative
+"complete base for the space" signal (Clinic has 16 `IfcSlab` + 250 `IfcCovering`) — raised from a
+screenshot showing one continuous unbroken floor surface spanning a stair-flanked landing. Not tested
+before the session converged on the door+wall approach instead. Also parked: per-area ceiling-height
+as a join signal — checked, currently NON-discriminating (`room_walker.js` assigns one flattened
+`center_z`/`size_z` per whole storey, all 168 First-Floor Clinic rooms report the identical value) —
+would need real per-area slab/covering Z pulled directly, not the compiled room's flattened value.
+
+**Design principle (user, 2026-07-14):** the correlation matrix (`correlateDoorEdges`) shouldn't be
+hard-wired to doors only — ANY element that supports/corroborates a space's identity (railings, stairs,
+walls, doors) should be roll-in-able to the same bucket/array-set arbitrarily. `IfcRailing`-as-stair-
+corroborator above is one instance of this, not a one-off — when building for real, keep the bucket
+keyed generically (storey, axis, runCoord) and let multiple element types contribute edges into it,
+rather than writing a separate parallel structure per element type.
+
+**Verbs, for whoever builds this for real:** checked the actual Java `BIM_COBOL` verb catalog (77
+verbs) for a precedent — `JoinVerb` (MEP connector, not spatial), `FollowVerb` (MEP pipe crawl via a
+`CrawlRouter`/`CrawlState` engine — closest structural analog to "grow until stopped"),
+`RouteSprinklersVerb` (per-room only), `WalkThruVerb` (BOM-tree walk, unrelated domain). None fit —
+this is JS-side (`room_walker.js`/`room_graph.js` territory, where the live per-browser compile
+already runs), not a BIM_COBOL/Java concern. Suggested names, verb-styled per that catalog's
+discipline even though not literally Java: `doorEdge`, `correlateDoorEdges`, `joinDoorways`,
+`growToWall`, `terminateAtStair`, `walkBackbone` — matches steps 1-6 above 1:1.
+
+**Also raised, genuinely minor, parked:** some Clinic rooms' compiled Z-extent runs up through a
+raised/soft ceiling's ACMV plenum void instead of stopping at the real ceiling line. User: "small, not
+urgent... only if room doesn't clearly cross a boarded ceiling." No action taken.
+
 ## §OPEN — real, unfinished, named plainly
 1. **HHS Level 1/2 connectivity is still weak** (66 dead-ends, 40 orphans remain) and NOT yet
    root-caused the way Level 3's corridor was. Hypothesis, unverified: smaller, fragmented gaps
@@ -99,10 +198,11 @@ below — no point measuring Level 1/2 connectivity against code that isn't runn
      large AND long AND touches many rooms = hallway signature. Supersedes the single global
      area-ratio test already tried once and rejected as too crude (`ROOM_INTELLIGENCE_SCOREBOARD.md`
      — Clinic's real 93m² hall got flagged by a naive global ratio; a per-floor cluster test wouldn't).
-   - **Hallwayness + R-SPINE** — ALREADY SPEC'D, not built: `ROOM_TAXONOMY_STRATEGY_2026-07-12.md`
-     Task 4's `hallwayness(R) = min(aspect/2.697,1) * min(area/10.415,1)` (measured from real Duplex
-     hallway ground truth) + `spine(storey) = connected subgraph of rooms with hallwayness >= 0.5`.
-     Read that file's Task 4 spec before building this — don't re-derive.
+   - **Hallwayness + R-SPINE — SUPERSEDED by §HALLWAY-BACKBONE above (2026-07-14).** The room-shape-
+     based `hallwayness()` formula undercounts badly (missed Clinic and Hospital's real corridors
+     entirely — see §HALLWAY-BACKBONE's dead-end note). The door+wall+crossing backbone approach is
+     the validated replacement direction — read §HALLWAY-BACKBONE in full before building this, don't
+     start from the old formula.
    - **Z-band container consistency** (new, 2026-07-14) — a room's Z-placement should sit inside its
      OWN storey's measured slab-to-slab band (`§STOREY-ZBAND`, built earlier for a different bug — a
      disc-walker placement issue, not rooms). A room that doesn't fit its storey's real Z-band is
