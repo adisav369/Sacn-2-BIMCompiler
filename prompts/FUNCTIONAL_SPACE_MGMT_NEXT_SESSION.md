@@ -62,6 +62,23 @@ orphans, not the stale `edges=11/deadend=75/orphan=47` seen live 2026-07-14. Thi
 see the stale, never-merged `fix/room-graph-cache-bust` branch — worth a five-minute check next
 session that nothing else in `viewer/lib/` is a same-mistake project file mislabeled as vendor-immutable.
 
+**SECOND, DEEPER BUG found right after — the sw.js fix alone was not enough.** User did a real full
+storage clear + reload post-#780: HHS came back showing **105 raw rooms** (not ~71), console threw
+`§HELPERS_QUERY_ERR no such column: room_guid` and `NEEDLE_INJECT ... rooms=0 rects=0`. Root cause:
+`_needleInject()` (`viewer/navigate_find.js` ~line 892) set `source='patch'` — skipping the
+`RoomWalker.walk()` compile fallback entirely — whenever the fetched patch SQL executed without
+throwing. HHS's current patch is only 4 lines (regenerates `storey_walkable_raster`; PR #775 retired
+the old patch that used to carry compiled room rows), so on a truly fresh DB `applied=true` but no
+room was ever compiled: `spatial_structure` kept raw, uncompiled `IfcSpace` rows, no `room_guid`, none
+of WALL-SNAP/SUSPECT-LARGE/§MULTI-RECT. `§NEEDLE_PERSIST` then wrote that regressed state back into
+IDB, so every later reload reproduced it — this is what looked like "reverted to the old condition."
+**FIXED + PUSHED 2026-07-14** — bim-ootb PR #781 (`fix/needle-inject-trusts-patch-without-compile`),
+auto-merge armed, CI running at time of writing. Fix reuses the exact same-file precedent already
+established at `_roomsFromSpatialStructure` (~line 1887, its own "§MULTI-RECT guard" comment,
+itself a fix for this identical missing-column bug class): probe `PRAGMA table_info(spatial_structure)`
+for a `room_guid` column as evidence rooms were actually compiled, don't trust a successful patch exec
+alone. **Not yet confirmed by a real post-merge browser check — user must re-verify once #781 deploys.**
+
 Do this BEFORE trusting any of §SHIPPED is actually live for a real user, and before starting §OPEN #1
 below — no point measuring Level 1/2 connectivity against code that isn't running.
 
