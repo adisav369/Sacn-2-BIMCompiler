@@ -2,7 +2,7 @@
 
 # ⚠ DO NOT REMOVE
 
-## ▶ LATEST (2026-07-13): §SE-5 freeze-fix + MSP-polish MERGED (bim-ootb PR #769 → main `e644b1a`, CI green). NEXT UP: neither Author nor Editor persists schedule edits anywhere (confirmed by code read, not assumed) — a closed tab loses all work. Fix before more polish: `db.export()` → write back to the SAME IndexedDB cache key (`bim_ootb_cache`/`dbs`, keyed by building URL) that `cachedFetch` already reads — no new infra needed. See §SE-5 below for full detail.
+## ▶ LATEST (2026-07-13): §SE-5 freeze-fix + MSP-polish MERGED (bim-ootb PR #769 → main `e644b1a`, CI green). §SE-6 persistence fix DONE (branch `fix/schedule-persist`, see §SE-6 below) — neither ✎ Author nor ↗ Editor discards schedule edits anymore; both write back to the shared IndexedDB building cache, witnessed with a REAL close+reopen (not mocked). NEXT UP: fold the authored schedule into ERP `C_Project`, real-Hospital blank-authoring demo, kernel_ops signed-op mirror, resource column/baseline bars/print/export, single-pane WBS+Gantt merge.
 
 ## ★ REVIEW CARD — for the next session (closeout 2026-06-23 → review 2026-06-24)
 The **§SCHEDULE-EDITOR arc is COMPLETE and LIVE** — this session built the MSP-grade Gantt editor end
@@ -677,9 +677,55 @@ Dependencies pane into the ribbon (was duplicated, now singular).
   v6→v7) so a real deployed tab actually picks up the fix instead of serving a stale SW-cached copy.
 - **Work done in `/tmp/wt-schedule-editor-mspro` (branch `fix/schedule-editor-mspro`, off fresh
   origin/main)** per the shared-tree worktree hook + hygiene rule — `~/bim-ootb` itself untouched.
-  Committed locally only — **PUSH PAUSE stands, not pushed, no PR.**
+  **MERGED same session** (user explicit go-ahead) — bim-ootb PR #769 → main `e644b1a`, CI green
+  (fast-checks + e2e-tests both pass). Worktree pruned after clean push.
 - **Next (open, lower priority, no user fact needed):** resource column (read-only), baseline-vs-actual
   bars, print/export, the single-pane WBS+Gantt merge (MSP's real split-view — bigger rearchitecture).
+
+## §SE-6 — persist authored schedule edits (user, 2026-07-13: "discarding edits... is no accomplishment")
+**Issue this proves/disproves:** does an authored/edited schedule (phases, dependencies, dates, WBS
+reparenting) survive a REAL tab close + reopen, from EITHER surface?
+- **Root cause (verified by reading kernel_ops.js, not assumed):** `_persistToIdb(db)` — the ONLY
+  existing IDB-persistence path for the building db — fires exclusively from `commitOp()` (a signed
+  kernel_ops row). Schedule-table writes (`materializeDefault`/`assignElement`/`addDependency`/
+  `moveTask`/`reparentTask`/…) never call `commitOp` (kernel_ops mirroring is explicitly deferred, per
+  this file's own §AUTHOR-1 header) — so NEITHER surface persisted anything, including ✎ Author even
+  though it edits `APP.db` directly inside the main viewer tab.
+- **Fix:** one shared `ScheduleAuthor.persistDb(db, url, opts)` (debounced 1.2s, or `{immediate:true}`)
+  in `schedule_author.js` — ONE implementation, not two divergent per-UI copies. Writes `db.export()`
+  back to the exact IndexedDB slot (`bim_ootb_cache`/`dbs`, keyed by the building URL) that
+  `cachedFetch`/`_idbGetDb` already read from, so a reopened tab (Editor OR a fresh viewer load) picks
+  up the edited bytes automatically — no new read-path needed.
+  - Editor (`schedule_editor_ui.js`): hooked into `refreshFold()` + `onComputeCpm()` (the two mutation
+    choke points essentially every edit already funnels through) + the initial auto-seed + P6 import +
+    a `visibilitychange`-triggered immediate flush (safety net alongside the debounce).
+  - Author (`schedule_author_ui.js`): hooked into `render()`'s end (the wizard's own single choke
+    point — generateDraft/reassign/renamePhase/duration-steppers/scheduleNow ALL call render()) + an
+    immediate flush in `applyTo4D()` (a deliberate "commit" action) + the same `visibilitychange` flush.
+- **Second bug FOUND AND FIXED while proving this (not assumed, caught by the first witness run
+  failing):** the ↗ Editor tab never loads `scene.js`, so it has no `APP.openCacheDB()`. The naive
+  fallback — a bare unversioned `indexedDB.open('bim_ootb_cache')` — silently creates a STORE-LESS
+  database if the Editor is the FIRST surface to ever touch that IDB in a fresh profile (worse than
+  the landmine `kernel_ops.js`'s own comment already documents: at least that one just skipped a
+  mismatched version; this one creates a permanently broken v1 db with zero object stores). New
+  `ScheduleAuthor.openBuildingCache()` self-heals: version-opens at 2 with the SAME `onupgradeneeded`
+  schema as scene.js `A.openCacheDB` (`dbs` + `timestamps` stores) — usable from ANY surface, whichever
+  one runs first now creates a schema fully compatible with the other. `_idbGetDb` (the Editor's read
+  path) was routed through the same opener for consistency.
+- **Witness — REAL close+reopen, Playwright `launchPersistentContext` (NOT a mocked IndexedDB) —
+  DONE, PASS:**
+  - **Editor 7/7:** page A seeds Duplex, indents a task (a real edit, not just the pristine default),
+    `§SCHED_PERSIST` fires within the debounce window, page A closes. Page B (fresh page, same
+    profile) opens the SAME url → `§SE_DB_CACHE_HIT` (no re-download) → finds the EXISTING schedule
+    (no `§AUTHOR_MATERIALIZE` re-seed) → the specific indent survives (WBS row renders at the nested
+    depth, not root).
+  - **Author-in-viewer 5/5:** page A opens the viewer, opens ✎ Author, Generate first draft, `§SCHED_
+    PERSIST` fires. Page A closes. Page B — a FRESH viewer load, same url — `§CACHE_HIT` (not a fresh
+    fetch) and `ScheduleAuthor.activeSchedule(APP.db)` immediately finds `SCH_AUTHORED` with 6 tasks
+    (survived the reload it would previously NOT have survived).
+  - **All prior regressions re-run green** on the same build: W-SCHED-REPARENT 11/11, MSP-polish
+    headless smoke 10/10, LTU_AHouse (122,667 elements) end-to-end 1.58s total, no crash.
+- Work done in `/tmp/wt-schedule-persist` (branch `fix/schedule-persist`, off fresh origin/main).
 
 ---
 
