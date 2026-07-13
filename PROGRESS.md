@@ -31,14 +31,11 @@
   SHIPPED both mirrors, 6/6 parity verified; R-DOOR-SCORE tried+cleanly reverted (broke a real witness).
   Read `[[project_discwalk_containment_utmost]]` memory for detail — do NOT re-attempt the `_hostAxis`
   cardinal-swap patch (disproven) or R-DOOR-SCORE's hallwayness formula (also disproven) unbuilt.**
-  **NEW 2026-07-13, item 6 in that same memory's case map — NOT closed:** `substrate()`
-  (`disc_walker.js:185`) walked the literal `'Unknown'` storey value (a data-extraction artifact, not a
-  real floor — 282 SampleCastle elements, 72 Duplex) as a fake pseudo-storey; fixed (excluded), cut
-  SampleCastle's nearest-host-wall outliers 23→11 (worst case 3.6m→2.3m), no regression (Duplex 102/102
-  unchanged). Residual 11/270 fixtures on REAL storeys still >2m from any wall — separate, narrower,
-  NOT YET SPECCED; a live `hostBind()` Z-fallback patch was tried and reverted (fixed one case, broke
-  another — dak fixtures pushed above the roof). `walk-fixtures.png` guide swap deliberately NOT shipped
-  per this same item's "no same-day recapture" rule — reverted (bim-compiler `da27f8598`).
+  **NEW 2026-07-13, NOT closed — read `prompts/Modeller/DISC_Walker/RESUME_DISC_WALKER_ENVELOPE_BOUND.md`
+  §STOREY-UNKNOWN first, this is the source of truth, not the memory link above.** One-liner: `substrate()`
+  walked the data-artifact storey value `'Unknown'` as a real floor (fixed, SampleCastle outliers 23→11,
+  Duplex unaffected); a `hostBind()` Z-fallback to close the rest was tried+reverted (made dak-storey
+  fixtures worse). `walk-fixtures.png` guide swap deliberately not shipped — reverted `da27f8598`.
   §TE-ARC-DATUM DONE+MERGED both repos 2026-07-11 (bim-compiler `b202eb44b` PR #40; bim-ootb PR #726). Remaining:
   `prompts/DISC_WALKER_BRANCH_CLOSEOUT.md` — 3 stale PRs (#722/#724/#725) need re-verify + the undiagnosed
   guide-screenshot camera bug. §LIVEWIRE CLOSED 2026-07-11 — W-SCHED-MINE 7/7 + W-DX-WALKBACK-RSGT 14/14, 0 unpushed.

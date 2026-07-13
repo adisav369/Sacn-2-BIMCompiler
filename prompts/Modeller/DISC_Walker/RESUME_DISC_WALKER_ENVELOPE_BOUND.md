@@ -2614,3 +2614,84 @@ Branch `fix/te-arc-datum` (worktree /tmp/wt-te-arc-datum off origin/master c1ebc
   §DW-DATUM block to the diverged bim-ootb `modeller/disc_walker.js` + re-stamp the shipped
   `~/bim-ootb/modeller/terminal_rules.db` copy so the LIVE Modeller walk heals (the bug is live on
   origin/main today); then the Modeller's own smoke can assert a §DW-DATUM line on Terminal load.
+
+## §STOREY-UNKNOWN — 'Unknown' pseudo-storey walked as real; PARTIAL FIX, residual open (2026-07-13)
+
+**Found by:** chasing a `docs/ModellerGuide.md` `walk-fixtures.png` swap to SampleCastle in
+`prompts/Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` (an X-ray classification session,
+unrelated repo bim-ootb). User spotted fixture "dots outside the building" in the X-ray render,
+rejected an invented "courtyard" explanation on sight, and pushed for a numeric root cause instead of
+a plausible-sounding guess. **Distinct bug from §BUG-A/§ROTATION-BOUND above** — different mechanism,
+same file (`bim-ootb/modeller/disc_walker.js`), do not conflate with the already-CLOSED true-midpoint fix.
+
+**Root cause:** `substrate(bdb)` (`disc_walker.js:185`, the function that enumerates which storeys
+`place()` walks) groups `elements_meta` rows by `m.storey` verbatim, with no exclusion for the literal
+string `'Unknown'`. That value is a data-extraction artifact — elements (mostly `IfcBuildingElementPart`
+sub-parts) whose storey never got inherited from a parent during extraction, NOT a real floor: 282 rows
+on SampleCastle, 72 on Duplex (checked both; measured via direct sqlite query on `SampleCastle_ARC.db`/
+`Duplex_ARC.db`, `SELECT DISTINCT storey, COUNT(*) FROM elements_meta GROUP BY storey`). Ungrouped, this
+synthesizes a FAKE storey record: median Z from elements scattered z=1.4–13.0 (avg 9.2, spanning 4+ real
+floors) and a bogus XY footprint from unrelated elements across the whole building. `place()` then walks
+ELEC fixtures onto this fictional "floor," and `hostWalls()`/`hostBind()` find no real `IfcWall` tagged
+`storey='Unknown'` to bind to — the drifting-fixture symptom the user saw.
+
+**Fix applied (bim-ootb, uncommitted-to-main, branch `fix/xray-fixture-classification` — should be its
+own branch/PR when picked up, currently riding the X-ray branch since that's where it was found):**
+```js
+// disc_walker.js substrate(), was: els.forEach(function (e) { if (e.s == null) return; ... });
+els.forEach(function (e) { if (e.s == null || e.s === 'Unknown') return; (by[e.s] = by[e.s] || []).push(e); });
+```
+One line + comment. **Verified, both buildings, real headless-browser walks (puppeteer, not a stub):**
+- SampleCastle ELEC walk: 325→270 placements (55 bogus ones on the fake storey removed). Nearest-real-
+  structure-distance outliers (>2m from any wall/slab/etc, measured via world-space AABB proximity over
+  every non-fixture mesh) dropped 23→11, worst case 3.6m→2.3m, fixtures-above-roof 0 (unmeasured before,
+  but the worst offender pre-fix was AT the fake storey's bogus z=9.2, not above the roof — genuinely
+  different failure shape, not just a smaller number).
+- Duplex: 102/102 unchanged — its own 72-row 'Unknown' bucket wasn't feeding ELEC placements there, so
+  zero regression risk confirmed empirically, not assumed.
+- Witness: `modeller/tests/witness_xray_sc_duplex.js` (X-ray classification witness, doubles as a coarse
+  regression check here) + one-off diagnostic scripts in that session's scratchpad (not committed —
+  `diag_nearest_wall.js`, `diag_host_offset.js`, ad hoc, reproduce via the SQL query above + a world-space
+  nearest-mesh-AABB scan over `window.Bonsai.group()` post-walk if picked up again).
+
+**NOT fixed — residual, explicitly NOT bandaided, read before attempting:** 11/270 SampleCastle
+fixtures on GENUINELY-NAMED real storeys (not the fake one) still land >2m from any real structure.
+Traced to `hostBind()`'s SIDE-mount branch (`disc_walker.js:1030-1097`): `hostSql` (line 1035-1037) has
+**no storey filter at all** — it queries every `IfcWall` in the whole building, building-wide by design.
+The only Z-discrimination is the guard at line ~1080 (`if (p.band && (...)) continue;`), which **only
+fires when the placement object carries an explicit `.band` property** — for placements without one
+(apparently the common case for the legacy/non-schedule walk path SampleCastle uses), wall selection is
+PURE 2D (X/Y nearest-line-distance), so a wall a full floor away can win purely by being close in plan.
+Confirmed concretely: fixtures at z=8.21 on real storey `02 tweede verdieping` were host-bound to a wall
+whose own record is `storey='01 eerste verdieping'`, z-center 4.4, bbox_z 2.75 (real Z-top ≈5.77) —
+2.4m below the fixture, with genuinely NO wall on floor 02 near that XY at all (checked directly,
+`SELECT ... WHERE m.storey='02 tweede verdieping' AND ifc_class LIKE '%Wall%' AND center_y BETWEEN 15
+AND 25` returned rows only at y≈15.5-15.7, none near the fixture's y≈21).
+- **A same-storey Z-proximity fallback WAS tried and REVERTED same session** — `zlo = p.band ? p.band[0]
+  : p.z - 1.5, zhi = p.band ? p.band[1] : p.z + 1.5` (skip a wall candidate if its Z-range doesn't
+  overlap this window). Result: fixed the 02-tweede-verdieping cluster (11→ fewer), but pushed 4 dak
+  (roof) fixtures to z=17.74/15.89 — **4+ metres ABOVE the actual roof** (`04 dak` real zmax=13.36),
+  worse than the original symptom, for a reason NOT fully chased: changing which wall gets selected as
+  `bl` cascades into the Z computation at line 1104 (`var pz = (shim.height_m != null && p.storeyZ !=
+  null) ? (p.storeyZ + shim.height_m) : p.z;`) — some other branch of this function (TOP/BOTTOM mount,
+  starts line ~1126) may derive Z from the CHOSEN host's own geometry, so a different host choice can
+  produce a wildly different Z, not just a different XY. **Do not re-attempt the flat ±1.5m fallback
+  without first instrumenting exactly which code path computes z=17.74 for the dak-storey case and
+  why.** Confirmed via `project_discwalk_containment_utmost.md` (Claude memory, mirrors this file's own
+  §BUG-A history) this is NOT the already-closed true-midpoint bug re-surfacing — different mechanism,
+  different code path, genuinely new.
+- **Checked and ruled out before touching code:** room-taxonomy scoping (SampleCastle has 0 real rooms,
+  `spacesOf()` returns empty — confirmed via `§BOMTREE seeded "SampleCastle" ... rooms=0` log line and
+  a direct `spacesOf()` trace) is not an available signal here; this residual can only be closed via
+  storey/Z-aware host selection in `hostBind()` itself, not by borrowing real room boundaries.
+
+**`docs/ModellerGuide.md`'s `walk-fixtures.png` was NOT swapped to SampleCastle** despite the classifier
+fix being ready — reverted (bim-compiler `da27f8598`) per this file's own established discipline
+(§BUG-A/B section above: "do not recapture until fully closed... a same-day recapture would still be
+wrong"). Still shows the original Duplex X-ray shot. Swap it once this residual is closed, not before.
+
+**Next-session entry point:** read this section first (not just `project_discwalk_containment_utmost.md`
+— that's a session-continuity mirror, this file is the source of truth). Instrument
+`disc_walker.js:1104`'s `pz` branch and the TOP/BOTTOM mount code (~1126+) for the specific dak-storey
+case before writing any fix. The `'Unknown'`-storey exclusion fix (verified, low-risk) should be its own
+clean commit/PR independent of the X-ray branch it currently rides on.
