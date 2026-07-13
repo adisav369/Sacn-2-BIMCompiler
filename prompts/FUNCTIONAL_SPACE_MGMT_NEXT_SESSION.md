@@ -77,7 +77,11 @@ auto-merge armed, CI running at time of writing. Fix reuses the exact same-file 
 established at `_roomsFromSpatialStructure` (~line 1887, its own "§MULTI-RECT guard" comment,
 itself a fix for this identical missing-column bug class): probe `PRAGMA table_info(spatial_structure)`
 for a `room_guid` column as evidence rooms were actually compiled, don't trust a successful patch exec
-alone. **Not yet confirmed by a real post-merge browser check — user must re-verify once #781 deploys.**
+alone. **MERGED + DEPLOYED 2026-07-14** — `09008f7166`, both CI checks green, `deploy-pages` run
+`29267526459` succeeded. **Still not yet confirmed by a real post-merge browser check** — user must
+re-verify with one more full storage clear + reload: rooms should come back to ~71 (not 105) with a
+working `room_guid` column, the `RoomOverSize.png` elongated-room defect gone, and `§ROOM_GRAPH` near
+`edges=27 deadend=66 orphan=40`.
 
 Do this BEFORE trusting any of §SHIPPED is actually live for a real user, and before starting §OPEN #1
 below — no point measuring Level 1/2 connectivity against code that isn't running.
