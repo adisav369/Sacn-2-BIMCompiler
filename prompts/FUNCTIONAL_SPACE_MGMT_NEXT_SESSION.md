@@ -34,6 +34,22 @@
 **Net effect on HHS, measured, not assumed:** room-graph edges 16→27, dead-ends 73→66, orphans 44→40.
 **This is a real step, not the finish line** — see §OPEN below.
 
+## §CACHE-LANDMINE (found 2026-07-14, blocks §SHIPPED from actually reaching a browser) — READ FIRST
+User reloaded HHS after PR #779 merged and did NOT see the claimed changes. Root cause confirmed from
+`viewer/sw.js` source, not guesswork: `isNetworkFirst()` (line ~218-222) hard-codes `if (base.includes
+('/lib/')) return false` — cache-first, no revalidation, EVER — for anything under `/lib/`. That rule
+was meant for true vendor libs (three.js, sql-wasm, chart.js). But `viewer/lib/room_walker.js` — the
+exact file PR #773/#776/#779 all changed — lives under `/lib/` by folder placement only, not because
+it's immutable. A `CACHE_VERSION` bump wouldn't even have saved it; the `/lib/` check short-circuits
+before that logic runs. Confirmed live: `CACHE_VERSION` also never bumped across #775→#779 (stayed
+`'v748'`) — a second, separate omission. Live console evidence: `§ROOM_GRAPH edges=11 deadend=75
+orphan=47` matches NEITHER the claimed before (16/73/44) nor after (27/66/40); `habitable=70` when
+#779's own commit message says the raster was regenerated for a 71-room compile. **Fix: stop treating
+`room_walker.js` as an immutable lib (move it out of `/lib/`, or carve a narrow exception in
+`isNetworkFirst()`), bump `CACHE_VERSION`, verify a fresh load actually pulls new bytes, redeploy.**
+Do this BEFORE trusting any of §SHIPPED is actually live for a real user, and before starting §OPEN #1
+below — no point measuring Level 1/2 connectivity against code that isn't running.
+
 ## §OPEN — real, unfinished, named plainly
 1. **HHS Level 1/2 connectivity is still weak** (66 dead-ends, 40 orphans remain) and NOT yet
    root-caused the way Level 3's corridor was. Hypothesis, unverified: smaller, fragmented gaps
@@ -60,6 +76,9 @@
    - **Sequencing note (settled in conversation):** none of these 3 signals can classify a room that
      was never compiled — §SUSPECT-LARGE (shipped) was the prerequisite doorway, not a substitute for
      this system.
+   - **UX ask (user, 2026-07-14):** once corridor/hallway is detected (hallwayness/R-SPINE), surface it
+     as a `Type` label on the room (Find panel / room card), not just an internal flag — so a corridor
+     is filterable/findable by name, same as any other room type.
 3. **HHS curtain-wall glass elements are unclickable in the Viewer** (`§PICK ... g=?`, real bug,
    confirmed cause: all 33 `IfcCurtainWall` PARENT elements have zero `element_transforms` — only
    their `IfcMember`/`IfcPlate` children carry real positions). **Deliberately deprioritized as noise
