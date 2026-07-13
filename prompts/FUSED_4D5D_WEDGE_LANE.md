@@ -2,6 +2,8 @@
 
 # ⚠ DO NOT REMOVE
 
+## ▶ LATEST (2026-07-13): §SE-5 freeze-fix + MSP-polish MERGED (bim-ootb PR #769 → main `e644b1a`, CI green). NEXT UP: neither Author nor Editor persists schedule edits anywhere (confirmed by code read, not assumed) — a closed tab loses all work. Fix before more polish: `db.export()` → write back to the SAME IndexedDB cache key (`bim_ootb_cache`/`dbs`, keyed by building URL) that `cachedFetch` already reads — no new infra needed. See §SE-5 below for full detail.
+
 ## ★ REVIEW CARD — for the next session (closeout 2026-06-23 → review 2026-06-24)
 The **§SCHEDULE-EDITOR arc is COMPLETE and LIVE** — this session built the MSP-grade Gantt editor end
 to end and shipped its UI entry point + published the User Guide. Nothing is committed-but-unpushed;
