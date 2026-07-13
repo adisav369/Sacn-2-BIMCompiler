@@ -291,3 +291,139 @@ dwWalk paths, API-exported), `modeller/modeller.html` (`_dwSceneEnvelope()` + op
 both dwWalk calls), `modeller/tests/witness_dw_space_gate.js` (W-DW-SPACE-GATE),
 `modeller/tests/witness_dw_storey_band.js` (copied verbatim from the xray worktree so the BEFORE
 baseline is reproducible on this branch).
+
+## 2026-07-13 — §OPENING-EXCL (Task A) + spacing-path audit (Task B) + device-facing (Task C)
+
+Same worktree (`/tmp/wt-functional-spaces`, branch `fix/samplecastle-spatial-carry`), same file
+family (`modeller/disc_walker.js`'s `hostBind()`), continuing directly on top of §SPACE-GATE.
+
+### Task A — axis-based opening-exclusion (switches/outlets must be on solid wall)
+
+**Ground truth first (POC, not the fix).** `modeller/tests/poc_opening_exclusion_duplex.py`
+(logs/poc_opening_duplex.log) replays hostBind's OWN geometry math (P2 BBOX_RECONSTRUCT true
+midpoint, SIDE centreline projection) in Python against Duplex's 18 REAL wall devices (14
+`M_Lighting Switches`, 4 `M_Telephone Outlet`, `deploy/buildings/Duplex_extracted.db`) and 38 real
+door/window openings: **18/18 on solid wall** (negative control holds) — 2 outlets sit inside a
+window's RUN interval but ABOVE its z-extent (window z=[0.10,2.52], outlet z=3.85), proving the
+check must be 2D (run-axis AND z), not run-only (a run-only test would false-flag those 2 real,
+correctly-placed outlets).
+
+**Fix.** New `_onSolidWall(p, wallLine, openings)` (WalkerDoctrine §10 shape — one named function,
+not per-site patches) + `_wallOpenings(bdb, geoDb)` (real door/window world bboxes, true-midpoint
+corrected, cached per DB handle) + `_slideToSolid(...)` (candidate solid positions = the blocking
+intervals' own measured edges ± the device's measured half-extent, no invented pad). Wired into
+hostBind's SIDE branch only (the wall-mount path) — after the face position is finalized, before
+`bound.push`: blocked → slide along the wall's own run axis to the nearest measured-solid
+position; no solid span at that z → honest REFUSE (kept floating, counted, never fabricated).
+Escape hatch `opts.noOpeningCheck=true` (spaceGate-style). Exported: `_onSolidWall`,
+`_wallOpenings`, `_slideToSolid`.
+
+**Fleet witness — W-DW-OPENING-EXCL, `modeller/tests/witness_dw_opening_excl.js`,
+`logs/wdwoe_FLEET_FINAL.log`, PASS 8/8 + DuplexLegacy leg, errors=0.** Stratified, not pooled:
+
+| Building | committed | side-mounts | flagged (slid/refused) | recheck-inside |
+|---|---|---|---|---|
+| SampleHouse | 24 | 24 | 0 | 0 |
+| HHS | 545 | 12 | 1 (1/0) | 0 |
+| Duplex (production, schedule path) | 102 | 0 | 0 | 0 |
+| SampleCastle | 325 | 325 | 4 (4/0) | 0 |
+| Terminal | 896 | 33 | 10 (10/0) | 0 |
+| Clinic | 406 | 29 | 0 | 0 |
+| HospitalGarage | 2756 | 49 | 1 (1/0) | 0 |
+| Hospital | 3190 | 80 | 0 | 0 |
+
+"recheck-inside" is an INDEPENDENT re-verification — a fresh DB handle, `_wallOpenings`/
+`_onSolidWall` called again on the FINAL committed positions, not trusting the walk's own log
+lines — zero committed placements land inside a real opening on any building. Every committed
+count equals its §SPACE-GATE baseline exactly (slides preserve count; zero opening-REFUSALs
+occurred fleet-wide, so nothing was dropped either — real slide distances measured 0.08m–4.89m,
+each to a real interval edge, logged via `§DW-OPENING-SLIDE`). Duplex — the ground-truth
+building — takes the SCHEDULE path in production (0 side-mounts there), so a second leg
+(`§DWOE-DuplexLegacy`) forces the LEGACY walk (hostBind SIDE directly) on Duplex to exercise the
+check on the building whose real devices were POC-measured: placed=100, hostBound=115,
+flagged=2 (2 slid, 0 refused) — consistent with the fix working on real Duplex geometry too.
+
+### Task B — spacing-rule path audit (measured, not fixed — this alone is bigger than this task)
+
+Grepped `disc_walker.js` for `rule_code_spacing`/`SCHED-CLASH`/clearance-slide (`_clashAt`):
+**every single occurrence lives inside `placeSchedule()` (lines ~492–544) — none exist in
+`placeMeasured()` (§NOSPACES) or the legacy `place()`.** `dwWalk` only reaches `placeSchedule()`
+via the `opts.schedule` branch; `placeMeasured()`/`place()` are the fallback when schedule data
+is absent (§NOSPACES) or both paths fail (legacy). So the rule_code_spacing co-location spread +
+the §W7 pairwise measured-bbox clearance-slide are **schedule-path-only** — the measured-band and
+legacy paths have neither.
+
+**Actual walk-mode per building** (from `§WALK-SCHED`/`§WALK-NOSPACES`/`§WALK` lines,
+`logs/wdwoe_OPENING_FACING.log`): only **Duplex** takes `WALK-SCHED` successfully in production
+(real IfcSpace + real schedule rows). SampleHouse and SampleCastle attempt `WALK-SCHED`/
+`WALK-NOSPACES` first but both yield 0 and fall through to the **legacy** `place()`. HHS,
+Terminal, Clinic, HospitalGarage, Hospital all walk via `WALK-NOSPACES` (measured-band). That is
+**7 of 8 fleet buildings on an unprotected path.**
+
+**Cost, measured** (pairwise measured-bbox overlap over the FINAL committed set, same semantics
+as placeSchedule's own `_clashAt`, stratified by prov pair, `§TASKB` lines in
+`logs/wdwoe_FLEET_FINAL.log`):
+
+| Building | path | pairwise bbox overlaps |
+|---|---|---|
+| Duplex | schedule (protected) | **0** |
+| SampleHouse | legacy (unprotected) | 4 (IfcWall-side × IfcWall-side) |
+| HHS | measured-band (unprotected) | 0 |
+| SampleCastle | legacy (unprotected) | 14 (IfcWall-side × IfcWall-side) |
+| Terminal | measured-band (unprotected) | 117 (IfcCovering-bottom × IfcCovering-bottom) |
+| Clinic | measured-band (unprotected) | 49 (IfcCovering-bottom × IfcCovering-bottom) |
+| HospitalGarage | measured-band (unprotected) | 1 (IfcWall-side × IfcWall-side) |
+| Hospital | measured-band (unprotected) | 344 (IfcCovering-bottom × IfcCovering-bottom) |
+
+Duplex — the only schedule-protected building — is the only one measuring 0. Every unprotected
+building has real, non-zero measured-bbox overlap among its own committed fixtures (co-located
+ceiling coverings mostly: LIGHT+diffuser+alarm at the same array-density cell, exactly the
+scenario `rule_code_spacing`/§W7 were built to spread). **Gap named, not fixed** — porting the
+spacing+clearance-slide logic to `placeMeasured()`/`place()` is a real, separate build (both paths
+lack per-space bounds and a `stype` to key `rule_code_spacing` against — `placeSchedule`'s
+`_clashAt` bounds slide movement to `sp.x0..sp.x1`, which doesn't exist outside a real IfcSpace),
+correctly out of scope for this session per the brief.
+
+### Task C — wall-device orientation: real signal found in the catalog, wired
+
+**Signal found**, not absent. `library/component_library.db`'s `component_definitions` (the same
+real catalog `§7` cites for pipe fittings) has NO switch/outlet-named rows directly, but its
+`ad_product_dim` table has the real class rows: `ELEC_SWITCH`/`ELEC_OUTLET`,
+`conn_points='[{"face":"BACK","type":"ELEC"}]'` — back connects into the wall, so the plate faces
+the room. Every `component_definitions` row with `attachment_face='SIDE'` (wall-mounted class,
+36 rows fleet-wide: alarms, controllers, wall furniture, wall-mount fixtures) carries
+`up_axis='Z', forward_axis='Y'` uniformly — 36/36, no MIXED/exception. That is the real signal:
+local +Y (forward) maps onto the ROOM-SIDE perpendicular.
+
+**Wired into hostBind's SIDE branch**, replacing the old run-axis-only yaw
+(`bl.horiz===0 ? 0 : Math.PI/2` — room-side AGNOSTIC, so roughly half of all wall devices faced
+INTO the wall): yaw is now `atan2(perp) - π/2` where `perp` is the wall-face-normal direction
+toward the device's own room-side position — same perpendicular the SIDE mount already computes
+to push the device onto the wall face, just also used for facing.
+
+**Bug found and fixed during witnessing, not shipped silently:** the first wiring computed yaw
+from the PRE-slide perpendicular (before §OPENING-EXCL's run-axis slide). W-DW-OPENING-EXCL's own
+facing recheck caught 1 SampleCastle device (`host=2A$7uUIbP13B7P0LW_wNaR`) where the pre-slide
+point's wall-line projection clamped to a corner (giving a diagonal 30.4° facing), but after the
+0.15m opening-exclusion slide the same point's TRUE nearest-wall relationship was no longer
+clamped (true facing 90°) — the pre-slide yaw was stale. Fixed by recomputing the facing
+perpendicular from the FINAL (post-slide) position, not the pre-push floating point. Re-run
+confirmed `facingBad=0` fleet-wide after the fix.
+
+**Fleet witness result (same `witness_dw_opening_excl.js` run, `§FACING` lines,
+`logs/wdwoe_FLEET_FINAL.log`): facingBad=0 on all 8 buildings.** Non-cardinal yaw values in the
+histograms (e.g. SampleCastle: 1°, 6°, 30°, 63°...) are NOT noise — they occur when a device's
+nearest point on hostBind's axis-aligned wall-line approximation clamps to a wall-segment
+endpoint (near a corner/doorway), which correctly blends the facing direction toward the
+device's actual position rather than forcing a false cardinal snap; this is unchanged
+pre-existing hostBind line-approximation behavior, not something this task introduced.
+
+### Files (this session, `/tmp/wt-functional-spaces`, committed locally — PUSH PAUSE, no push, no PR)
+`modeller/disc_walker.js` (`_onSolidWall`/`_wallOpenings`/`_slideToSolid` + SIDE-branch wiring for
+Task A; SIDE-branch yaw rewrite for Task C, computed post-slide), `modeller/tests/
+poc_opening_exclusion_duplex.py` (Task A ground-truth POC), `modeller/tests/
+witness_dw_opening_excl.js` (W-DW-OPENING-EXCL, Tasks A/B/C combined witness). Logs:
+`logs/poc_opening_duplex.log`, `logs/wdwoe_OPENING.log` (first fleet pass, pre-facing-fix),
+`logs/wdwoe_OPENING_FACING.log` (facing wired, 1 SampleCastle FAIL caught), `logs/
+wdwoe_SC_DEBUG.log` / `logs/wdwoe_SC_RECHECK.log` (isolation + fix verification),
+`logs/wdwoe_FLEET_FINAL.log` (final fleet pass, all green, errors=0).
