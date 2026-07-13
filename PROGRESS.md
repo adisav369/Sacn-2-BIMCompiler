@@ -82,9 +82,13 @@
   low-priority, not urgent. Memory: `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- **✅ Room Intelligence lane CLOSED 2026-07-11** — user verdict "good enough, no more perfection work
-  there," 15 features shipped/verified. Canonical status + open (undispatched) proposals:
-  `prompts/ROOM_INTELLIGENCE_SCOREBOARD.md`.
+- **Room Intelligence / Functional Spaces lane, ACTIVE — read `prompts/FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md`
+  first, it supersedes `FUNCTIONAL_SPACES_ENSEMBLE.md` and `ROOM_INTELLIGENCE_SCOREBOARD.md` as of
+  2026-07-14.** Latest: bim-ootb PR #780/#781 shipped+deployed (sw.js `/lib/` cache trap +
+  needle-inject trusting an unproven-empty patch — both were silently blocking every room fix from
+  reaching a browser). `§HALLWAY-BACKBONE` section = a verified-but-uncommitted door+wall+crossing
+  algorithm for hallway/corridor detection (Clinic-tested), superseding the old shape-only
+  `hallwayness()` formula; one open gap (stair-termination) named plainly with its exact next step.
 - **✅ Building Parts Taxonomy** (STAIRWAY/LIFT_SHAFT/PLANT_ROOM, Find panel + Outliner + disc-walk
   room-type-aware placement) — merged bim-ootb `main` local (not pushed). Detail: `prompts/BUILDING_PARTS_TAXONOMY.md`.
 - **✅ MANAGER housekeeping 2026-07-11:** 6 stale branches/worktrees pruned, 1 orphan landed (`c254cb271`),
