@@ -173,3 +173,121 @@ element_instances hashes resolved against shared modeller/mesh.db, all slabs mes
   `fix/meshdb-selfheal-loader` (user decision, post-PUSH-PAUSE).
 - Open POC follow-ups, honestly parked: wall/door name-mining signal (Step 2 conclusion);
   boundary-clip or re-walk for the 2 heavy leak rooms (Step 3) — spec first if picked up.
+
+## 2026-07-13 — §SPACE-GATE: no-MEP-outside-space refuse gate (post-placement sanity gate)
+
+### Spec (written BEFORE code, per protocol)
+**Ask (user's framing):** "now that we have the rooms, just put a simple no-MEP-outside-space
+guard." NOT a root-cause fix for why a stratum floats above the roof — a post-placement REFUSE
+gate on placements the existing mechanisms already generated, applied inside `dwWalk` after
+`hostBind()`/`placeMeasured()`/`placeSchedule()` finalize a placement, before it reaches the
+commit path (`window.__dwWalks[disc]` → `_commitDiscWalk`).
+
+**Settled boundary (do not cross):** `spacesOf()`'s exclusion of `RM_`/`≈` COMPILED rows from
+feeding NEW placement generation (project_room_injection_split_decision, 2026-07-10) stays
+untouched. The gate only ever REFUSES an already-computed placement post-hoc — it never uses room
+data to decide WHERE to place something. Using compiled-room geometry as a coarse
+"is this obviously outside all known real space" containment check is a much weaker, more
+defensible use than driving placement with it — that distinction is the design.
+
+**Two containment signals, precedence room → envelope, refuse only when BOTH fail:**
+1. **Room-level (precise, rescue-only):** placement (x,y,z) inside the AABB of ANY room —
+   `elements_meta` IfcSpace rows ∪ `spatial_structure` IfcSpace rows INCLUDING compiled `RM_`/`≈`
+   rows (gate-only reader `_gateRooms`, separate from `spacesOf`), inclusive bounds
+   `center ± size/2`, no invented tolerance pad. Same interval-overlap primitive as
+   `_zOverlaps`/`_mountBand`, generalized to 3 axes.
+2. **Structural Z-envelope (coarse fallback, always available):** placement z within
+   `[min(center_z), max(center_z)]` over all `elements_meta` (≠IfcSpace) ⋈ `element_transforms`.
+   **Why element CENTERS, not bbox tops:** the shipped `bbox_z` carries the known local-axis
+   defect — SampleHouse's rotated roof IfcMember/IfcPlate rows claim ztop=4.503 while the real
+   scene-measured structural top is 3.475; a bbox-top envelope would PASS the known-bad z=4.11
+   stratum. `center_z` is a measured point guaranteed on the element regardless of bbox axes.
+   Measured verification against the 2026-07-12 fleet log (`wdwsb_FLEET_AFTER.log`, xray worktree):
+   max(center_z) catches BOTH known-bad strata (SampleHouse 4.11 > 3.307; HHS 11.01 > 10.645) and
+   keeps EVERY legit stratum fleet-wide (worst margin: HHS 9.56 vs 10.645). A fixture above every
+   real structural element's center is above the building's real fabric.
+   Note the scene-based witness measurement could not cover Terminal (structBoxes=0 — ARC meshes
+   not loaded in that run); the gate is DB-based so Terminal is covered by real numbers
+   (fixtures 0.5–15.61 vs envelope [-15.663, 27.091]).
+
+**Shape (WalkerDoctrine §10):** ONE named function `spaceGate(placements, bdb, disc, bldg)` in
+`modeller/disc_walker.js`; every dwWalk return path (schedule / measured-band §NOSPACES / legacy)
+routes through it. Refused placements are REMOVED from the committed set, returned in
+`result.spaceGate.refusedList`, and §-logged per stratum (`§DW-SPACEGATE-REFUSE`) + summary
+(`§DW-SPACEGATE`) — never silently dropped, never silently kept. Escape hatch
+`opts.noSpaceGate=true` (same pattern as `noHostBind`). No rooms + no envelope (empty DB) → gate
+no-ops honestly (cannot refuse without a measured bound).
+
+### Witness — W-DW-SPACE-GATE (`modeller/tests/witness_dw_space_gate.js`, bim-ootb worktree)
+ISSUE IT PROVES/DISPROVES: does the gate refuse exactly the measured floating-above-structure
+strata (SampleHouse "Roof" stratum, all z=4.11; HHS "Ceiling Level 02" stratum, all z=11.01,
+counts taken from THIS branch's own BEFORE fleet run — the 13/177 reference counts are from the
+xray branch which additionally carries §STOREY-ZBAND) with ZERO refusals on every
+already-inside-space placement (Duplex, SampleCastle, Terminal, Clinic, HospitalGarage, Hospital)?
+Fleet pass shape = witness_dw_storey_band.js runOne (stratified per building — pooled numbers hide
+subgroup breaks). BEFORE log then AFTER log, same buildings, read the logs not the exit codes.
+
+### Spec revision 1 (same day, BEFORE wiring — measured, not guessed)
+BEFORE-baseline on THIS branch (`logs/wdwsb_GATE_BEFORE.log`, fix/samplecastle-spatial-carry — no
+§STOREY-ZBAND here, so counts differ from the xray log): SampleHouse placed=38 with **14** bad
+(13 Roof|side @ z=4.11 + 1 Ground Floor|float @ z=5.23), HHS placed=722 with **177** bad
+(Ceiling Level 02 @ 11.01) — same shape, branch-measured counts. Regression legs measured:
+Duplex 102, SampleCastle 325 (NB 23 legit dak|side @ z=13.24), Terminal 896, Clinic 406,
+HospitalGarage 2756, Hospital 3190 — all aboveRoof=0 (Terminal scene-skip, structBoxes=0).
+**A DB-centers-only envelope FALSE-REFUSES SampleCastle's 23 dak fixtures** (13.24 > max
+center_z 13.012, real scene top 13.356; no room tops above 11.19 to rescue). Rotation-corrected
+bbox extents do NOT fix SampleHouse (its defective members carry rotation=0 with inflated
+bbox_z=3.3 → corrected envelope still 4.503 > bad 4.11). Measured resolution: the envelope is the
+UNION of two real measurements — `max(DB max center_z, scene structural zmax)` /
+`min(DB min center_z, scene structural zmin)`, where the scene envelope is the SAME world-space
+Box3 sweep the storey-band witness already computes (non-fixture meshes, op-log fixture-tag
+exclusion), passed by the caller (`modeller.html _discWalkOne → opts.sceneEnv`, new helper
+`_dwSceneEnvelope()`). Union-of-measured is conservative: it can only ever KEEP more than either
+measurement alone, and each bound traces to real geometry. Verified against every measured
+stratum: catches SH 4.11/5.23 (>3.475) + HHS 11.01 (>10.789), keeps SC 13.24 (<13.356), and a
+scene-absent building (Terminal) falls back to DB centers [-15.663, 27.091] which keeps all its
+strata (0.5–15.61). Known residual: a PARTIALLY-loaded scene at walk time lower-bounds at the DB
+center envelope — same exposure as DB-centers-only, never worse.
+
+### §SPACE-GATE RESULTS — W-DW-SPACE-GATE 8/8 PASS, errors=0 (2026-07-13)
+Built + wired + witnessed in `/tmp/wt-functional-spaces` (branch fix/samplecastle-spatial-carry).
+Logs: `logs/wdwsb_GATE_BEFORE.log` (baseline, storey-band witness fleet pass) and
+`logs/wdwsg_GATE_AFTER.log` (W-DW-SPACE-GATE) — read, not exit-coded.
+
+| Building | placed BEFORE | gate refused | placed AFTER | scene aboveRoof AFTER |
+|---|---|---|---|---|
+| SampleHouse | 38 | **14** (13 Roof\|shim:host-IfcWall-side @4.11 + 1 GroundFloor\|placed:array-density @5.23) | 24 | 0 |
+| HHS | 722 | **177** (Ceiling Level 02\|placed:measured-band @11.01) | 545 | 0 |
+| Duplex | 102 | 0 | 102 | 0 |
+| SampleCastle | 325 | 0 (23 dak @13.24 KEPT via union env ≤13.356 — the false-refusal the DB-centers-only design would have caused) | 325 | 0 |
+| Terminal | 896 | 0 (scene absent → db-centers fallback [-15.663,27.091]) | 896 | SCENE-SKIP (structBoxes=0) |
+| Clinic | 406 | 0 | 406 | 0 |
+| HospitalGarage | 2756 | 0 | 2756 | 0 |
+| Hospital | 3190 | 0 | 3190 | 0 |
+
+Both known-bad populations refused exactly, stratified §DW-SPACEGATE-REFUSE logged per
+storey/cls/prov; zero refusals on every already-inside-space building. Rescue-path split visible
+per building in §DW-SPACEGATE (`via room=/env=`): Duplex 102/102 via rooms; HHS 6 via rooms;
+Terminal 66 via rooms.
+
+**Honest residual notes:**
+- SampleHouse's Roof-storey root cause (storey's own measured Z) is NOT fixed — the gate refuses
+  the symptom, exactly per the ask. Same for HHS's Ceiling Level 02 band.
+- Terminal's scene half was absent at walk time (its meshes stream late) → db-centers-only bound;
+  its strata (0.5–15.61) sit comfortably inside, so no missed refusal is plausible there today,
+  but a Terminal-shaped building with a genuinely floating stratum INSIDE [-15.663,27.091] would
+  not be caught until its scene loads. Named, not forced.
+- The gate is fixtures-only (placements). Routed chain segs/fittings are not gated — routePattern
+  now anchors on the POST-gate placement set (refused fixtures can't seed segments), which is the
+  intended containment for routing today.
+- Baseline placed counts on THIS branch (SH 38, SC 325) differ from the xray branch's (28, 270) —
+  that branch additionally carries §STOREY-ZBAND + the 'Unknown'-storey substrate exclusion; the
+  two known-bad populations exist on both branches (13+1 here vs 13 there; 177 both). When the
+  branches merge, W-DW-SPACE-GATE's EXPECT table must be re-baselined against the merged walk.
+
+Files (bim-ootb worktree, committed locally — PUSH PAUSE, no push, no PR):
+`modeller/disc_walker.js` (spaceGate + _gateRooms/_gateEnvelope/_spaceContains, wired into all 3
+dwWalk paths, API-exported), `modeller/modeller.html` (`_dwSceneEnvelope()` + opts.sceneEnv on
+both dwWalk calls), `modeller/tests/witness_dw_space_gate.js` (W-DW-SPACE-GATE),
+`modeller/tests/witness_dw_storey_band.js` (copied verbatim from the xray worktree so the BEFORE
+baseline is reproducible on this branch).
