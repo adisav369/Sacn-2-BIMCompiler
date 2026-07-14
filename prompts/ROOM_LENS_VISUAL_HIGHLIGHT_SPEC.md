@@ -373,3 +373,99 @@ seconds on a large building — a live-interaction cost, not a one-time load cos
   so a large building gets the light shell by default — a much smaller, already-proven-code change
   than optimizing mesh transfer/decode itself. Separate from the tab-switch question above (this
   one's about INITIAL load weight, not per-tab-switch cost) but related enough to consider together.
+
+## §14 UPDATE 2026-07-15h — session picking up §12/§13's punch list, all 4 items closed
+
+bim-ootb worktree `/tmp/wt-room-lens-next`, branch `fix/room-lens-path-perf` (off `origin/main` post-
+PR #795), 5 commits, **committed locally only** (standing PUSH PAUSE — not pushed, no PR).
+
+**Item 2 — path x-crossing, FIXED (`room_graph.js`).** Root cause pinned down via code-read then
+proven live, not guessed: E6 (`§CIRC-PER-CHAIN-BRIDGE`) edges — the same-storey bridge from a real
+corridor spine chain onto the per-storey `CIRC::<storey>` hub — never carried a `wp` field, so
+`_publicHop()`'s circ-substitution (its only defence against exposing an internal bookkeeping node)
+fell through to the raw `CIRC::<storey>` guid whenever a route arrived there via E6. That guid's own
+`(cx,cy)` is just whichever physical stair group's AVERAGED flight position happened to create the
+node first (`circNode()`, called from E3) — unrelated to the corridor chain actually being crossed.
+Fix: E6 edges now carry `wpA = sp.guid` (the real spine point this edge bridges from), same
+closeby-verb shape E3 already uses for stair hops. **Proven on real HHS data**: built the graph
+before/after via `git stash`, ran the SAME query (`RM_Level_1_1 -> RM_Level_1_5`, the only pair
+whose sole connection is through CIRC, confirmed by BFS with circ nodes excluded) — pre-fix hop 9
+resolved to the raw `CIRC::Level 1 (-0.90,12.12)`; post-fix it resolves to
+`SPINE::Level 1|y|-4.80`, a real corridor point. Scanned 2145 Clinic room-pairs post-fix: zero raw
+CIRC exposures. `witness_room_graph_path.js` 15/15, `witness_backbone_routing.js` 10/10 (incl. the
+real cross-floor stair path, unchanged).
+
+**Item 4 — desktop bbox-shell threshold, BUILT (`navigate_find.js`).** Extended
+`_MOBILE-BBOX-DEFAULT` to fire on desktop too via a new `_isLargeBuilding()` — cached
+`COUNT(*) FROM elements_meta` against a 25000-element threshold, grounded in this session's own
+measurement of the real fleet (`buildings/*_extracted.db`): Clinic=16114, HHS=6880 vs.
+Terminal=48428, Hospital=63415 — clear margin either side, not a guessed round number. **Verified
+live** (Playwright against the real dev server, §-log first): Terminal logs
+`§LARGE_BUILDING_CHECK large=true` + `§BBOX_SHELL_DEFAULT` on a Storey-group Find drill; HHS logs
+`large=false` and keeps the rich x-ray path.
+
+**Item 3 — door markers, real box instead of sphere, BUILT (`navigate_find.js`).** The brown
+"door lights" `_revealCategoryGroup()` draws for a Type-tree category tap (Restrooms/Utilities/
+Hall-Corridor) now draw a `BoxGeometry` sized to the door's own real `bbox_x`/`bbox_y`/`bbox_z` +
+yawed by its real `rotation_z` (one batched `element_transforms` query per reveal, same discipline
+as `classifyUtilityRooms` below) instead of a fixed-radius sphere — falls back to the sphere per-
+marker only if a door is missing dims, never fabricates a size. **Verified live** on HHS's
+Hall/Corridor category: `§DOOR_MARKER_SHAPE boxes=17 spheres(fallback)=0`.
+
+**A genuine, unrelated regression found and fixed along the way**: `§12`'s own perf fix
+(`classifyUtilityRooms()`, batching the Hospital-hang N+1 query bug down to 2 queries total) was
+committed as `a26c51c` on the OLD `feat/room-lens-taxonomy-reveal` branch — but PR #795 had already
+squash-merged an EARLIER commit on that same branch (`388a585`) before `a26c51c` was pushed, so
+`a26c51c` was never an ancestor of the merge and never reached `main` (confirmed:
+`git merge-base --is-ancestor a26c51c f82333d` → false). Exactly the squash-merge-orphan landmine
+this project's own CLAUDE.md already names (PR #138, 2026-06-05). **The Hospital-hang bug §12
+reported as fixed was still live in production this whole time.** Recovered by cherry-picking
+`a26c51c` cleanly onto this branch (`06d6454`) — `classifyUtilityRooms` now genuinely exists in
+`common/room_habitability.js` and both `navigate_find.js` call sites use it.
+
+**Item 1 — Find-panel per-tab-switch heaviness, INVESTIGATED, one real fix shipped, full Hospital
+number not captured (sandbox limit, not a code question).**
+- Code-read found and fixed a confirmed redundancy: a single axis-toggle tap called `_axes()` (→
+  `_probeLenses()`, ~4 real COUNT queries against `A.db`) TWICE — once in the toggle button's own
+  handler (to compute the next axis), again inside `_setTreeMode()`'s `_renderAxes()` (to redraw
+  the button). Collapsed into one real probe per tap via a 50ms TTL memo (`§PROBE-DEDUP`),
+  invalidated on data changes exactly like the existing `_phaseCache` reset on a fresh
+  `openFindPanel()`. **Verified live on Terminal**: `§LENS_PROBE_DEDUP_HIT` fires on the second
+  `_axes()` call every single tap; the real probe itself costs 9-49ms (small but non-zero, now
+  paid once instead of twice).
+- Added permanent `§PERF_PROBE` timing (real `performance.now()`, not estimated) around
+  `_setTreeMode()`, `_probeLenses()`, `_allRoomVolumes()`, and `_roomLensOn()` — the exact four
+  functions this file's own §13 named as candidates. These ship in the code now, so the next
+  session (or the user, live) gets real numbers the instant the Room axis is entered — no more
+  guessing.
+- **Real numbers captured live on Terminal** (48428 elements, 75 real rooms — Room axis WAS
+  present; an earlier attempt this session wrongly concluded Terminal "has no room data" because
+  the test queried before `window.APP.db` was populated — `window.APP.dbQuery` alone was ready
+  much earlier and is a DIFFERENT handle; corrected once caught):
+  - `_allRoomVolumes()`: 61.5ms cold-tab-entry, 30.0ms on re-entry — the SQL query + JS
+    room-descriptor build, not the mesh creation.
+  - `_roomLensOn()` (the full shell-mesh rebuild, wrapping the above): 65.4ms / 33.1ms — confirms
+    `_allRoomVolumes()` IS ~93% of `_roomLensOn()`'s own cost; the THREE.Mesh construction loop
+    itself is cheap (~3-4ms for 75 rooms).
+  - `_setTreeMode('room')` end-to-end (probe + lens rebuild + tree DOM build): 107.5ms first entry,
+    35.9ms second entry — on a 75-room/48k-element building this is NOT multi-second; it's
+    sub-150ms, with the first-entry number likely inflated by JIT/cold-cache effects rather than a
+    different code path.
+  - Storey/Disc/Material/Phase entries: 1-60ms, no outliers — Phase's own `_phaseCache` (checked-
+    before-recompute, only reset on a fresh panel open) is confirmed NOT a repeat-cost contributor
+    within one session, settling the open question this file's own §13 text raised about it.
+  - **Extrapolation, not measured**: Hospital has ~4x Terminal's room count (311 vs 75). If
+    `_allRoomVolumes()` scales roughly linearly with room count (plausible — it's a single query +
+    a flat JS loop, no evident quadratic step), Hospital's Room-axis entry would land somewhere
+    around 150-260ms — still not obviously "several seconds" on its own. **This means
+    `_roomLensOn()`/`_allRoomVolumes()` alone may not fully explain a multi-second complaint at
+    Hospital's real scale** — worth treating as an open question for whoever next has a real
+    Hospital session, not a closed one.
+  - **What was NOT captured**: the live Hospital number itself. `buildings/Hospital_extracted.db`
+    is 263MB (combined mesh+meta, not metadata-only) — streamed too slowly/inconsistently (85s in
+    one isolated run, 150s+ timeout in another, same server, same file, no code change between
+    runs) over a single-threaded local `python3 -m http.server` for a stable measurement in this
+    sandbox. This is a serving-path/sandbox limitation (the real OCI/CDN production path is a
+    different, likely much faster story), not a code question — and it's exactly why the permanent
+    `§PERF_PROBE` lines above matter: the next real Hospital session gets the number for free from
+    the console, first Room-axis tap, no re-instrumentation needed.
