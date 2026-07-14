@@ -3,6 +3,9 @@
 # walkability, bim-ootb Viewer + Modeller). REPLACES the 2026-07-14 (earlier) version — that one's
 # §SHIPPED work is superseded by this session's much larger §HALLWAY-BACKBONE build-out. Read this
 # file first, don't re-derive what's already here.
+# 2026-07-15 UPDATE: §TOP PRIORITY (island-gap closure) DONE — see §ISLAND-BRIDGE-SHIPPED at the
+# bottom of this file (new, read it first if picking this up next). PR #794 open (bim-ootb
+# `fix/island-connectivity-bridge`), not yet merged.
 
 # FUNCTIONAL_SPACE_MGMT_NEXT_SESSION — 2026-07-14 (§HALLWAY-BACKBONE session)
 
@@ -377,3 +380,52 @@ Once (or alongside) this: the §OPEN items below (Hospital R13→R46, two-stairs
 drop, HHS connectivity re-measure) are the SAME underlying question at different granularity —
 `fullConnectivity()` may subsume/answer several of them directly rather than needing separate
 investigation.
+
+## §ISLAND-BRIDGE-SHIPPED (2026-07-15, §TOP PRIORITY closed) — PR #794, open, not yet merged
+Both island shapes named above were diagnosed by measurement (never guessed) and fixed in
+`common/room_graph.js`, worktree `/tmp/wt-island-bridge`, branch `fix/island-connectivity-bridge`:
+1. **Ambiguous-residual-rescue (E9)**: Clinic's 5 real-door-but-isolated rooms (R31/R40/R42/R45/
+   R58) were each the 3rd candidate at a 3-way door junction — `buildGraph()` only ever wired the
+   2 closest candidates, silently dropping every candidate beyond that even at sub-0.25m distances.
+   Fix: every residual candidate now wires to the door's own real waypoint instead of being
+   dropped. Recovers exactly the 5 predicted rooms, zero over-connection.
+2. **Circ-per-chain bridge (E6)**: HHS's 3 multi-node islands (components sized 5/11/13) were each
+   a real corridor chain (`hallway_backbone.js`'s own union-find grouping) on a storey that DOES
+   have a real stair, but the old CIRC→spine bridge only ever picked the single globally-nearest
+   chain — every other chain on the same floor stayed stranded. Fix: bridge one real-distance edge
+   per distinct chain present on the storey, not just one overall.
+**Verified**: `witness_full_connectivity.js` Clinic 71.8%→95.7%, HHS 49.4%→85.2%; all existing
+hallway/corridor witnesses+sandboxes still green (byte-identical B3 Clinic cross-floor path modulo
+a slightly shorter real route now available); **live Playwright check against the real Clinic
+building** (not just Node) — `window.RoomGraph.fullConnectivity()` in-browser matches the offline
+witness exactly (185 nodes, 9 components, 95.7%) — the exact class of "witness green but browser
+inert" mistake from the PR #788 lesson above was checked for and did NOT recur here.
+**Remaining gaps, deliberately NOT force-bridged** (measured, not guessed):
+- **Clinic's 8 residual islands are real MEP/ACMV service voids**, confirmed by element-composition
+  query (not just door-proximity): First Floor R26/Second Floor R25/26/30/37/43 are all
+  ACMV-`IfcFlowSegment`-dominated duct risers (First Floor R56 is a duct chase with no live run,
+  STR beam only); TOF Footing R1 is pure `IfcFooting`/wall — a structural void. Zero real door
+  within 1.3-5m of any of them because there's genuinely nothing for a door to serve. This is NOT
+  caught by `common/room_habitability.js`'s existing label-keyword exclusion (these carry generic
+  "COMPILED INTERNAL" labels, not descriptive space names) — the real signal is element
+  composition, not label text. **Open decision, asked of the user, not yet answered**: add an
+  ACMV/footing-content-dominated + no-real-door signal to `room_habitability.js` as a new exclusion
+  class (bounded, same file/pattern, just content- instead of label-based), or leave
+  `fullConnectivity()`'s report as-is (already honest, needs a human reading it to know this
+  context). Do this FIRST if picking this thread back up — don't re-measure, the composition query
+  is in this session's PR #794 conversation history if needed again.
+- **HHS's 2 remaining islands ("Unknown" storey Hall/Corridor 1 & 2) are the SAME storey='Unknown'
+  landmine already fixed once elsewhere** (Modeller's `disc_walker.js`, see memory
+  `project_discwalk_containment_utmost` / `RESUME_DISC_WALKER_ENVELOPE_BOUND.md` §STOREY-UNKNOWN).
+  Measured: 17 doors tagged `storey='Unknown'` in HHS's `elements_meta` have their own real z
+  spanning 1.23-8.43m — matching Level 1 (z 1.14-1.76), Level 2 (z 4.80-5.17), Level 3 (z 8.30-8.43)
+  EXACTLY. A correct fix is a z-based storey reassignment for any 'Unknown'-tagged door/wall row
+  (map to the nearest real storey by z, same real data already used elsewhere in this file) —
+  bounded, but touches BOTH `common/hallway_backbone.js`'s doorRows/wallRows queries (wallRows
+  currently doesn't even SELECT center_z — needs adding) AND `room_graph.js`'s own doorRows query,
+  consistently, so a corridor bucket and its room-matching see the SAME reassigned storey. Not
+  attempted this session (cross-cutting data-normalization change, wanted its own sandbox coverage
+  before touching two already-heavily-tuned files) — named precisely so the next session doesn't
+  need to re-derive the root cause, just implement + verify it.
+- Duplex's Roof/T-FDN islands are the already-known expected-isolated structural voids (unchanged).
+**Not yet done**: merge PR #794 (open, CI pending as of session end).

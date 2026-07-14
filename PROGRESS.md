@@ -63,11 +63,24 @@
 - **From the 2026-07-10 marathon, still unmerged, not superseded:** `fix/grid-tilt-guard`,
   `fix/dw-rot-units`, `fable/dwprobe-dedup`, `fix/terminal-oracle-source` (bim-ootb, all verified+
   pushed, no PR). Full detail: `project_disc_walker_grid_guard_marathon_2026-07-10.md` (memory).
-- **`prompts/FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` §HALLWAY-BACKBONE (2026-07-14/15) — 4 corridor
-  fixes + `RoomGraph.fullConnectivity()` shipped (bim-ootb PR #792, #793, both merged to main).
-  §TOP PRIORITY for next session: close the disconnected-island gaps `fullConnectivity()` now
-  quantifies (Clinic 71.8% connected, HHS 49.4%) — user called this a show-stopper blocking
-  dependent value. Read that file's §TOP PRIORITY section first, don't re-derive.**
+- **`prompts/FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` §ISLAND-BRIDGE-SHIPPED (2026-07-15) — the
+  §TOP PRIORITY island-gap closure is DONE + MERGED: Clinic 71.8%→95.7%, HHS 49.4%→85.2% connected
+  (bim-ootb PR #794, merged). One follow-up left: HHS's 2 remaining islands are the known
+  storey='Unknown' landmine (see that file's own section for the exact z-based fix needed).
+  **`prompts/ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §11-13 (2026-07-15, BUILT + 2 live-found bugs
+  fixed, pushed)** — Room Lens visual overhaul: Rooms=habitable-only/purple, Types absorbs
+  Hall-Corridor/Restrooms/Stairs/Lift-Shaft/Plant-Room(moved OUT of the now-retired Parts axis)/
+  Utilities(ACMV/footing content classifier), orange door-to-door path, a new non-drilling
+  "headline reveal" toggle alongside the unchanged zoom-in leaf tap. bim-ootb worktree
+  `/tmp/wt-room-lens-taxonomy`, branch `feat/room-lens-taxonomy-reveal`, PR #795 (open, auto-merge
+  armed, 2 commits: `388a585` build + `a26c51c` fixing a real Hospital-scale query-perf hang
+  (utilityContentClass batched 600+→2 queries) and Stairs/Plant-Room's missing toggle-off, both
+  found via live user testing and verified). **§13 NEXT SESSION FOCUS (user's own ask)**: Find
+  panel per-TAB-SWITCH heaviness on large buildings (Hospital/Terminal) — distinct from initial
+  load weight (Alt-X bbox-shell already mitigates that) — needs real profiling next session, not
+  guessed; see that file's §13 for exactly what's already known/ruled out. Also open, unrelated:
+  a real path-rendering "x-crossing" root cause (CIRC::storey's averaged-not-real stair position)
+  with a proposed `closeby`-verb fix shape — see §12.**
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch** (bim-ootb PR #659 shipped item 4b) — items 1/2/0 (CCTV double-click capture, camera-POV
