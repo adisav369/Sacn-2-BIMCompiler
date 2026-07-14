@@ -316,13 +316,18 @@ centroid falls inside it) AND a visibly-wrong shell box for whichever bucket has
   a plain merge/pull, to avoid clobbering it. Keep doing this every time `~/bim-ootb` needs sync.
 
 ## §TOP PRIORITY, NEXT SESSION — close the disconnected-island gaps (user, 2026-07-15)
-**Push-pause LIFTED for this branch specifically — user said "push" directly.**
-`fix/corridor-width-bounds` (5 commits: width bounds, common-sense filter, framework
-consolidation, shape guard, `fullConnectivity()`) and `fix/sfx-nan-guard` (1 commit, unrelated SFX
-crash fix) are both PUSHED to `origin` as of this session (not yet merged — no PR opened yet,
-just pushed; open one next session if ready). This does NOT reopen the rest of the standing
-PUSH PAUSE in `CLAUDE.md` — that section wasn't edited, only these two specific branches got an
-explicit go-ahead this turn.
+**Push-pause LIFTED for this work specifically — user said "push" directly, then asked for the
+PRs to be seen through to merge.** Status as of session end: `fix/corridor-width-bounds` (5
+commits: width bounds, common-sense filter, framework consolidation, shape guard,
+`fullConnectivity()`) → **PR #792, MERGED to `main`** (both CI checks green, auto-merge squash).
+`fix/sfx-nan-guard` (1 commit, unrelated SFX crash fix found via a live user error report) →
+**PR #793, MERGED to `main`**. Both feature branches + their `/tmp/wt-*` worktrees were pruned
+(fully merged + clean) — **next session starts a FRESH worktree off updated `origin/main`**, do
+NOT reuse or recreate either branch name (squash-merged history collides, see the standing
+Concurrent-branches doctrine in `CLAUDE.md`). This does NOT reopen the rest of the standing
+PUSH PAUSE in `CLAUDE.md` — that section wasn't edited, only this specific work got an explicit
+go-ahead this turn; a fresh session should still default to local/localhost unless told
+otherwise again.
 
 **User's framing, verbatim intent**: the island gaps `fullConnectivity()` just named (Clinic
 71.8% connected, HHS 49.4%) are a **show-stopper blocking real downstream value** (pathfinding,
