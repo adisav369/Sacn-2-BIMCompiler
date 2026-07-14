@@ -2,7 +2,16 @@
 
 # ⚠ DO NOT REMOVE
 
-## ▶ LATEST (2026-07-13): §SE-5 freeze-fix + MSP-polish MERGED (bim-ootb PR #769 → main `e644b1a`, CI green). §SE-6 persistence fix DONE (branch `fix/schedule-persist`, see §SE-6 below) — neither ✎ Author nor ↗ Editor discards schedule edits anymore; both write back to the shared IndexedDB building cache, witnessed with a REAL close+reopen (not mocked). NEXT UP: fold the authored schedule into ERP `C_Project`, real-Hospital blank-authoring demo, kernel_ops signed-op mirror, resource column/baseline bars/print/export, single-pane WBS+Gantt merge.
+## ▶ LATEST (2026-07-14): user reported TM/Author Generate/Apply **still hangs** after §SE-5+§SE-6 (both
+already merged to main). §SE-7 below: reproduced live in a real browser, root-caused to a DIFFERENT
+function than §SE-5 touched — `time_machine.js` `saveVisibility()`/`restoreVisibility()`'s per-instance
+`THREE.Matrix4` scene-traversal, not the SQL writes §SE-5 fixed. Diagnosed + evidenced this session;
+**fix NOT YET implemented** (real perf-surgery on shared TM state-machine code, scoped as its own next
+session per Spec-First). Also shipped this session (implemented + locally verified, worktree
+`/tmp/wt-tm-hang-fix`, branch `fix/tm-hang-diagnosis-editor-gen-export`, **committed but NOT pushed** —
+PUSH PAUSE standing): §SE-8 Editor tab gets its own ⚙ Generate button + ⤒ MS Project (MSPDI) export.
+
+## ▶ PRIOR (2026-07-13): §SE-5 freeze-fix + MSP-polish MERGED (bim-ootb PR #769 → main `e644b1a`, CI green). §SE-6 persistence fix MERGED (bim-ootb PR #770 → main). Neither ✎ Author nor ↗ Editor discards schedule edits anymore; both write back to the shared IndexedDB building cache, witnessed with a REAL close+reopen (not mocked). NEXT UP: fold the authored schedule into ERP `C_Project`, real-Hospital blank-authoring demo, kernel_ops signed-op mirror, resource column/baseline bars/print/export, single-pane WBS+Gantt merge.
 
 ## ★ REVIEW CARD — for the next session (closeout 2026-06-23 → review 2026-06-24)
 The **§SCHEDULE-EDITOR arc is COMPLETE and LIVE** — this session built the MSP-grade Gantt editor end
@@ -726,6 +735,117 @@ reparenting) survive a REAL tab close + reopen, from EITHER surface?
   - **All prior regressions re-run green** on the same build: W-SCHED-REPARENT 11/11, MSP-polish
     headless smoke 10/10, LTU_AHouse (122,667 elements) end-to-end 1.58s total, no crash.
 - Work done in `/tmp/wt-schedule-persist` (branch `fix/schedule-persist`, off fresh origin/main).
+
+## §SE-7 — Generate/Apply/TM STILL hangs after §SE-5+§SE-6 (user report 2026-07-14; root-caused, not yet fixed)
+**Issue this proves/disproves:** §SE-5 claimed the freeze was fixed (materializeDefault SQL-write
+transaction wrap, merged PR #769) and §SE-6 shipped persistence (PR #770) — both confirmed MERGED on
+`main` (bim-ootb HEAD `3f7386d`, 2026-07-14). User reports the tab still hangs on Generate/Apply and on
+Time Machine itself. Is this a regression, a stale-deploy issue, or a DIFFERENT bug §SE-5 never touched?
+
+**Method (per `feedback_diagnose_in_session_fix_in_other_session`'s companion technique — instrument the
+REAL code path, don't theorize):** headless Playwright against the real localhost server (bim-ootb repo
+root, `python3 -m http.server 8080`), driving the ACTUAL buttons (`toggleTimeMachine()`,
+`#sa-draft`/`#sa-apply` clicks) on the real `LTU_AHouse_extracted.db` (122,667 elements, the largest
+local building). A "heartbeat prober" — a tight loop of trivial `page.evaluate(() => 1)` CDP calls
+running concurrently — measures ACTUAL main-thread block duration: if the renderer's JS thread is busy,
+the evaluate() round-trip queues behind it, so its latency IS the block time (the same mechanism behind
+Chrome's real "Page Unresponsive" prompt). Scripts: `/tmp/claude-.../scratchpad/repro_hang2.js` (this
+session's scratchpad, not repo-committed — reproducible from the description above if needed again).
+
+**Finding — §SE-5's fix is NOT regressed** (materializeDefault alone still ~1s on LTU_AHouse, matching
+the prior claim) **but a SEPARATE, un-fixed hang dominates**, in a DIFFERENT file `§SE-5` never touched:
+- Isolating cold-cache noise first (waited for `§SPLIT_GEO_LOADED` before touching TM/Author, so the
+  379MB geo-db first-load fetch — a real but unrelated one-time cost — doesn't get misattributed):
+  Time Machine toggle-ON alone blocked the main thread for **~29s total** across 6 stalls (max single
+  stall 12.9s) before `_tmOn` actually flipped true. Generate (`#sa-draft`) added another **~10.3s**
+  (2 stalls). Apply (`#sa-apply`, with `_tmOn` true so it chains into `tmRefoldSchedule()`) added
+  **~17s** (2 stalls, the second one 11.8s). **Caveat, stated plainly:** this headless Chromium runs
+  WebGL through **SwiftShader software rendering** (`§RENDERER_CAPS ... SwiftShader Device (Subzero)`)
+  — a real user's GPU-accelerated browser will NOT see these exact absolute numbers, they are inflated.
+  The QUALITATIVE finding — multi-second continuous blocks survive on a 122k-element building, well past
+  Chrome's unresponsive threshold — is not an artifact of that caveat; it reproduced identically in
+  shape (not magnitude) across 3 separate runs.
+- **Root cause, file:line:** `viewer/time_machine.js` `saveVisibility()` (~line 1744) and
+  `restoreVisibility()` (~line 1777) — called from `_finishActivate()` (~3693, every TM activate/toggle)
+  and from `deactivate()` (~3754, every TM close, including the deactivate-half of `refoldSchedule()`'s
+  cycle). `saveVisibility()` does `app.scene.traverse(...)` over the WHOLE Three.js scene graph, and for
+  EVERY `InstancedMesh` loops `for (i=0;i<metas.length;i++) { obj.getMatrixAt(i,tmpM); matrices[i] =
+  tmpM.clone(); }` — one `THREE.Matrix4` read + allocation PER INSTANCE, synchronously, no yielding.
+  `restoreVisibility()` does the mirror-image `setMatrixAt` loop. On a 122,330-element building rendered
+  substantially via InstancedMesh/BatchedMesh, this is O(elements) real allocation+copy work with no
+  chunking — and it fires on EVERY toggle, EVERY Apply (which cycles deactivate→activate), confirmed via
+  `§MOBILE_TM_TOGGLE method=setVisibleAt|setMatrixAt` in the log at exactly the block boundaries.
+  Verified this IS necessary work in general (not a redundant-call bug to just skip): TM hides
+  not-yet-built elements by zeroing their instance matrix (`_zeroMatrix`, line ~810) during playback, so
+  it genuinely needs the real matrix saved somewhere to restore later — this is real, unavoidable-as-
+  currently-designed O(n) cost, not a silly duplicate call.
+- **Why §SE-5 didn't catch this:** that fix's whole scope was `schedule_author.js`'s SQL bulk-write
+  overhead (`materializeDefault`/`scheduleContiguous`) — a DIFFERENT file, DIFFERENT layer (sql.js
+  per-statement commit cost vs. this session's finding, which is pure JS/Three.js scene-graph traversal
+  cost in `time_machine.js`, never instrumented before now). §SE-5a's own write-up even flagged the gap
+  and scoped it out: *"the remaining cost is per-element JS work ... plus WASM/JS marshalling, not
+  transaction overhead — a smaller, separate optimization if ever needed, out of scope for this fix."*
+  That "if ever needed" is now confirmed needed — this session's finding.
+- **NOT YET IMPLEMENTED.** This is real perf-surgery on a shared, stateful subsystem (TM's
+  save/restore pairing is genuinely load-bearing for playback correctness, not a redundant call to
+  delete) — needs its own Spec-First session, not a rushed patch. Candidate directions, none built yet:
+  (a) chunk the traversal/clone loop across `requestAnimationFrame` slices so the MAIN THREAD stays
+  responsive even if total wall-clock work is similar (turns "one 15s freeze" into "many sub-frame
+  slices, no browser Page-Unresponsive prompt, no PERCEIVED hang") — directly answers the user's actual
+  complaint (the tab freezing), independent of raw speed; (b) avoid the defensive per-instance
+  Matrix4 clone by reading base positions from an already-in-memory authoritative source
+  (`element_transforms` table / instance meta) instead of round-tripping through live Three.js objects;
+  (c) extend the existing `§S259_TM_LITE`/`_isLargeBuilding` (>50K elements) principle — which already
+  disables "sparks" for big buildings — to also skip/cheapen the full-fidelity matrix snapshot above
+  that same threshold.
+- **Handoff:** per `feedback_diagnose_in_session_fix_in_other_session` — diagnosed fully, root-caused
+  to exact file:line, proposed fix directions, NOT implemented this session (scope/risk on shared TM
+  state machinery warrants its own dedicated session). Pick up here: implement direction (a) first
+  (lowest risk — doesn't change what gets saved, only WHEN, so playback correctness can't regress),
+  witness on LTU_AHouse with the same heartbeat-prober methodology (script pattern documented above),
+  confirm max single stall drops to sub-1s (below the ~1s where the tab visually reads as "hung" even
+  without hitting Chrome's own dialog threshold).
+
+## §SE-8 — Editor tab: ⚙ Generate button + ⤒ MS Project (MSPDI) export (user ask 2026-07-14, mid-session)
+User, while §SE-7 was in progress: *"the separate Editor tab, also should have its Generate process
+button? Can u make it export to MSProject format? It already has P6 import."*
+
+- **Generate button:** the Editor (`schedule_editor_ui.js`) only ever auto-seeded the rule-based default
+  schedule ONCE, silently, on first load of a truly blank model (`init()`'s fallback branch) — there was
+  no user-facing way to (re)trigger it. New `doGenerate()` mirrors the ✎ Author wizard's "Generate first
+  draft"/"Regenerate" button exactly: same captured-schedule guard (never overwrites an imported P6/
+  Bonsai/Revit programme — offers a status message instead), same `materializeDefault` call (§SE-5a's
+  idempotent-rebuild transaction wrap already makes it safe to re-run). New `⚙ Generate` ribbon button in
+  `schedule_editor.html`.
+- **MS Project export:** new `⤒ MS Project` button, `exportMSProject()` builds an MSPDI XML file — the
+  write-side counterpart to the EXISTING P6/MSPDI import (`foreign_schedule.js` `parseMSPDI`, merged PR
+  #519). **Non-invent:** the XML schema/units were not assumed from general MSPDI knowledge — read
+  DIRECTLY off our own parser's comments+code (`foreign_schedule.js:165-176`) so export and import agree:
+  OutlineLevel-encoded hierarchy (MSPDI has no parent-id field — hierarchy is walked pre-order from
+  `ScheduleAuthor.wbsTree()` and re-derived from OutlineLevel nesting on read), `Duration` =
+  `PT{hours}H0M0S`, `LinkLag` = integer TENTHS OF A MINUTE, `PredecessorLink/Type` = 0=FF/1=FS/2=SF/3=SS
+  (exact reverse of the importer's own `MSP_TYPE` map), `MinutesPerDay`=480 (8h/day, the importer's own
+  fallback default).
+- **Witness — round-trip through OUR OWN parser (not just "looks like XML"):** node script
+  (`/tmp/claude-.../scratchpad/test_msp_export.js`) materializes a real default schedule on
+  `SampleHouse_extracted.db` (60 elements, 3 phases), adds 2 real `FS` dependencies via
+  `ScheduleAuthor.addDependency`, builds the export XML with the SAME logic now in
+  `schedule_editor_ui.js`, feeds it back through `ForeignSchedule.parseForeign`/`parseMSPDI` — **PASS**:
+  detected format=MSPDI, WBS+activity count matches emitted row count exactly (4=4), relationship count
+  matches (2=2), and a spot-checked leaf's start/finish dates round-trip byte-identical
+  (`2026-01-01`/`2026-01-31` in, same out). XML also validated well-formed via `xml.dom.minidom`.
+- **Witness — real browser, real DOM, real file download** (`/tmp/claude-.../scratchpad/test_editor_ui.js`,
+  Playwright against a worktree-local server on `Duplex_extracted.db`, 1,119 elements): loads → auto-seeds
+  → click `⚙ Generate` → regenerates (6 phases, 1,119 elements, status updates, no error) → click
+  `⤒ MS Project` → a REAL `download` event fires, saved file is well-formed XML with the `Tasks` tag and
+  `schemas.microsoft.com/project` namespace present, named `Duplex_extracted_schedule.xml`.
+- **Implemented, NOT pushed** (PUSH PAUSE standing, 2026-07-11 — localhost/commit-only): worktree
+  `/tmp/wt-tm-hang-fix`, branch `fix/tm-hang-diagnosis-editor-gen-export`, commit `ab06f0d` off fresh
+  `origin/main`. `schedule_editor_ui.js` v8→v9, `sw.js` CACHE_VERSION v749→v750 (bump applied now per
+  deploy convention even though not deploying yet, so it's correct whenever this does ship).
+- **Out of scope, not built:** exporting an ALREADY-imported P6 schedule back to MSPDI is the same code
+  path (works on `tasks`/`task_sequences` regardless of origin) — not separately tested this session,
+  should be a quick follow-up witness before shipping, not a design change.
 
 ---
 
