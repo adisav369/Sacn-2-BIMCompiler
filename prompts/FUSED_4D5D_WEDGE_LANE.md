@@ -913,6 +913,41 @@ patched). `kernel_ops` (`CREATE TABLE ... id INTEGER PRIMARY KEY, ..., output_gu
   pending; no action needed, lands on green. `sw.js` CACHE_VERSION v750→v751, `time_machine.js`
   v59→v60.
 
+### §SE-7d — CORRECTION to §SE-7's "ambient render cost": it's NOT Time Machine, it's `streaming.js`'s initial mesh-load queue (user challenge 2026-07-14, same session)
+User, on being told the residual delay was "ambient per-frame rendering cost while TM is active":
+*"But why must it be rendering when it has stopped or not in play? User usually focus on the 4D first
+before playing."* Right challenge — checked `main.js`'s render-loop gate directly rather than assuming,
+and the codebase agrees with the user, not with §SE-7's framing:
+```
+// §S286: ... No TM exception: Time Machine self-renders via its own setTimeout timer →
+// renderAtTime() (markDirty + direct render), so the loop is redundant even for TM.
+var _awake = _needsRender || APP.streaming || APP.walkModeActive || ... ;
+if (!_awake) { _rafId = null; /* §IDLE_GATE park */ return; }
+```
+The main render loop (`animate()`) is EXPLICITLY self-parking and has NO Time-Machine-specific
+exception — a stopped/non-playing TM costs genuinely nothing, exactly as the user expected.
+- **What §SE-7's "idle baseline" test actually measured (mis-attributed):** `APP.streaming` — the
+  ONE-TIME initial mesh-geometry load queue in `streaming.js`, entirely separate from
+  `time_machine.js` — was still `true` during that "idle" window, which is ITSELF one of `_awake`'s
+  conditions, keeping the render loop from ever parking. Re-tested by polling `APP.streaming`/
+  `APP.streamedCount` directly every 5s on LTU_AHouse (headless, same environment): **after 116
+  seconds, only 40,500 of 122,330 elements (33%) had streamed** — genuinely still loading (network +
+  IndexedDB blob fetches, 500-element batches), not stuck, but slow enough on a building this large
+  that it can run for MULTIPLE MINUTES. `SPLIT_GEO_LOADED` (the 379MB geo.db FILE finishing download)
+  — which §SE-7's "settled" tests waited for — is NOT the same thing as streaming completing; the geo
+  DATA existing locally and the STREAMING QUEUE actually converting it into rendered meshes are two
+  different stages, and the second one is much slower for 100K+-element buildings.
+- **Correction, not a new bug:** this is a real, known, expected cost of loading a building this large
+  over the network for the FIRST time in a session (matches `§S192 §DS_QUEUED`'s own
+  "elements=122330" log already being explicit about the scale) — not a defect in Generate/Apply/TM
+  code. If a user acts on Author/Generate soon after opening a 100K+-element building (a very
+  reasonable workflow — "focus on 4D first, before playing"), that ongoing streaming is genuinely
+  still competing for the main thread, independent of anything §SE-7c's index fix or §SE-7's own
+  matrix-clone dedupe touch. **§SE-7's "chunk the render loop" candidate direction was aimed at the
+  wrong file (`time_machine.js`) — if this residual delay ever needs a real fix, the target is
+  `streaming.js`'s batch-fetch/flush pipeline, not Time Machine.** No code change made this session —
+  this is a corrected diagnosis, recorded so a future session doesn't re-chase TM code for it.
+
 ## §SE-8 — Editor tab: ⚙ Generate button + ⤒ MS Project (MSPDI) export (user ask 2026-07-14, mid-session)
 User, while §SE-7 was in progress: *"the separate Editor tab, also should have its Generate process
 button? Can u make it export to MSProject format? It already has P6 import."*
