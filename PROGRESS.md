@@ -63,6 +63,11 @@
 - **From the 2026-07-10 marathon, still unmerged, not superseded:** `fix/grid-tilt-guard`,
   `fix/dw-rot-units`, `fable/dwprobe-dedup`, `fix/terminal-oracle-source` (bim-ootb, all verified+
   pushed, no PR). Full detail: `project_disc_walker_grid_guard_marathon_2026-07-10.md` (memory).
+- **`prompts/FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` §HALLWAY-BACKBONE (2026-07-14/15) — 4 corridor
+  fixes + `RoomGraph.fullConnectivity()` shipped (bim-ootb PR #792, #793, both merged to main).
+  §TOP PRIORITY for next session: close the disconnected-island gaps `fullConnectivity()` now
+  quantifies (Clinic 71.8% connected, HHS 49.4%) — user called this a show-stopper blocking
+  dependent value. Read that file's §TOP PRIORITY section first, don't re-derive.**
 
 ### Other open work (lower/no current juggling priority)
 - **HBA IoT "wow" batch** (bim-ootb PR #659 shipped item 4b) — items 1/2/0 (CCTV double-click capture, camera-POV
