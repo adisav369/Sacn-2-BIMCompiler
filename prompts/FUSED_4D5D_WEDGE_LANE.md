@@ -2,14 +2,16 @@
 
 # ⚠ DO NOT REMOVE
 
-## ▶ LATEST (2026-07-14): user reported TM/Author Generate/Apply **still hangs** after §SE-5+§SE-6 (both
-already merged to main). §SE-7 below: reproduced live in a real browser, root-caused to a DIFFERENT
-function than §SE-5 touched — `time_machine.js` `saveVisibility()`/`restoreVisibility()`'s per-instance
-`THREE.Matrix4` scene-traversal, not the SQL writes §SE-5 fixed. Diagnosed + evidenced this session;
-**fix NOT YET implemented** (real perf-surgery on shared TM state-machine code, scoped as its own next
-session per Spec-First). Also shipped this session (implemented + locally verified, worktree
-`/tmp/wt-tm-hang-fix`, branch `fix/tm-hang-diagnosis-editor-gen-export`, **committed but NOT pushed** —
-PUSH PAUSE standing): §SE-8 Editor tab gets its own ⚙ Generate button + ⤒ MS Project (MSPDI) export.
+## ▶ LATEST (2026-07-14): §SE-7c FOUND + FIXED + MERGED — the REAL Generate/Apply hang. User corrected
+the framing mid-session (TM never hangs, only Generate/Apply, "a pure SQL write of schedule") — right
+call, and it led straight to it: `injectGantt()`'s T3 overlay pass ran one
+`UPDATE kernel_ops WHERE output_guid=?` PER ELEMENT (up to 122,667×) against an UNINDEXED column —
+O(n²) full-table-scan, measured **34,000–123,000ms**. One index (`idx_kernel_ops_guid`) → **1,273ms**
+for the same work (25–100x). **PR #791 → main, CI-gated auto-merge.** §SE-7 (TM's own
+`saveVisibility` matrix-clone dedupe, real but only ~13% of block time) and §SE-8 (Editor ⚙ Generate +
+⤒ MS Project export) also shipped this session — **PR #789 → main, MERGED.** Remaining, smaller, not
+this session's scope: ambient per-frame render cost when TM is ALREADY active while Apply fires still
+compounds on top of the now-fixed O(n²) bug (§SE-7's own candidate directions still apply there).
 
 ## ▶ PRIOR (2026-07-13): §SE-5 freeze-fix + MSP-polish MERGED (bim-ootb PR #769 → main `e644b1a`, CI green). §SE-6 persistence fix MERGED (bim-ootb PR #770 → main). Neither ✎ Author nor ↗ Editor discards schedule edits anymore; both write back to the shared IndexedDB building cache, witnessed with a REAL close+reopen (not mocked). NEXT UP: fold the authored schedule into ERP `C_Project`, real-Hospital blank-authoring demo, kernel_ops signed-op mirror, resource column/baseline bars/print/export, single-pane WBS+Gantt merge.
 
@@ -855,6 +857,61 @@ a slow SQL/export call either — both measured genuinely fast):
   LTU_AHouse 122K elements — severe; Duplex 1.1K elements — zero idle blocking in the same test). If
   the user's real hang is on a smaller/mid building, this diagnosis does NOT apply and the search
   should restart on THAT building specifically, not assume it's the same cause.
+
+### §SE-7c — THE ACTUAL BUG: `kernel_ops.output_guid` had no index → O(n²) in the T3 overlay pass (FOUND + FIXED + MERGED, 2026-07-14)
+§SE-7b measured `persistDb` (materializeDefault + `db.export()`) as genuinely fast, but the DELAY was
+real (15-20s) and unexplained. Traced it one level further: `applyTo4D()` (when `_tmOn` is true, the
+realistic case — a user authoring a schedule usually has Time Machine open to see it) calls
+`tmRefoldSchedule()`, which `deactivate()`s then `activate()`s TM — and `activate()` → `_activateAsync`
+→ (cache invalidated by the refold itself) → `injectGantt()`, the SAME full recompute §SE-7 already
+profiled as fast in isolation (~1.6s for query+sort+`ScheduleGate.computeSchedule`+the batched INSERT).
+**But that profiling stopped short of the LAST stage** — the T3 overlay pass (`time_machine.js` ~2701,
+`if (_cap) {...}`) that patches the just-computed generic schedule with the REAL authored task dates.
+This is the "smart resolved routine" the user recalled (the `_cap` JSON built from 2 cheap `tasks`/
+`task_elements` queries) — but APPLYING it runs:
+```
+UPDATE kernel_ops SET timestamp=?, parameters=? WHERE op_type='ELEMENT_PLACE' AND output_guid=?
+```
+**once per element** — up to 122,667 times on LTU_AHouse (Author's `materializeDefault` assigns
+100% of elements to a phase, so `_cap` covers everything → every single `ELEMENT_PLACE` op gets
+patched). `kernel_ops` (`CREATE TABLE ... id INTEGER PRIMARY KEY, ..., output_guid TEXT, ...`) had
+**no index on `output_guid`** — so every one of those 122,667 UPDATEs did a full table scan of
+`kernel_ops` itself (also up to 122,667 rows). O(n²): up to ~1.5×10¹⁰ row comparisons.
+- **Measured (real browser, isolated stage timing via `performance.now()` brackets around each of
+  injectGantt's stages, LTU_AHouse, `_cap` covering 122,667/122,667 = 100%):** query+bands 582ms,
+  map+sort 163ms, `ScheduleGate.computeSchedule` 146ms, the batched INSERT 832ms, `auditFloating`
+  126ms, scene-guid-count traverse 14ms — **all fast, summing to ~1.9s** — then the overlay pass:
+  **34,205ms one run, 123,072ms a second run** (highly variable — consistent with O(n²) contending
+  for CPU against everything else running concurrently, not a fixed cost).
+- **Fix:** `db.run('CREATE INDEX IF NOT EXISTS idx_kernel_ops_guid ON kernel_ops(output_guid)')`
+  added right after `injectGantt()`'s own `CREATE TABLE IF NOT EXISTS kernel_ops` (its one entry
+  point — the OTHER `CREATE TABLE kernel_ops` call site, in `_activateAsync`'s cache-HIT fast path,
+  never runs the vulnerable UPDATE loop, so doesn't need its own copy). **Re-measured with the index:
+  the SAME overlay pass, SAME 122,667 rows: 1,273ms.** 25-100x, turning an O(n²) bug into a normal
+  indexed O(n log n) operation.
+- **Correctness (non-invent — an index cannot change query results, only performance, per SQLite
+  semantics; verified anyway):** re-ran with the index in place — `§GANTT_SOURCE captured tasks=6
+  covered=122667 generated=0 total=122667 pct=100`, byte-identical coverage to what the unindexed
+  version produced (just 25-100x faster to get there). `W-AUTHOR-4D-BLANK` 16/16 and
+  `test_schedule_gate.js` PASS unchanged (neither touches this code path, both still green as a
+  broader regression check).
+- **Honest reconciliation with §SE-7/§SE-7b, not a retraction:** this was the DOMINANT, previously-
+  unmeasured cost specifically in the "schedule was just authored/changed, now Time Machine must
+  reflect it" step — exactly the user's own "1. schedule change, 2. regenerate Time Machine" framing.
+  It compounds with (doesn't replace) §SE-7's separate ambient per-frame render-cost finding: re-timed
+  the FULL user flow (TM already ON → author a schedule → Apply) with the index fix in place — the
+  overlay piece itself is now ~1.3s, but the end-to-end Apply-to-refold-complete time was still ~31s
+  in that specific TM-already-rendering scenario, because §SE-7's ambient cost (main thread saturated
+  by continuous per-frame rendering of 122K elements) still delays this (now-fast) work from getting a
+  turn — the SAME mechanism §SE-7b already documented delaying `persistDb`'s `setTimeout`. §SE-7's own
+  candidate fix directions (chunk the render loop, reduce per-frame cost above the 50K threshold)
+  remain the next lever if that residual delay still matters in practice.
+- **Shipped:** worktree `/tmp/wt-kernel-ops-index` (cherry-picked off fresh `origin/main`, per the
+  squash-merge branch-reuse hazard — the original `fix/tm-hang-diagnosis-editor-gen-export` branch was
+  already squash-merged as PR #789 and can't be reused). **bim-ootb PR #791, CI-gated auto-merge
+  enabled** (`gh pr merge --auto --squash`) — `fast-checks` green at time of writing, `e2e-tests`
+  pending; no action needed, lands on green. `sw.js` CACHE_VERSION v750→v751, `time_machine.js`
+  v59→v60.
 
 ## §SE-8 — Editor tab: ⚙ Generate button + ⤒ MS Project (MSPDI) export (user ask 2026-07-14, mid-session)
 User, while §SE-7 was in progress: *"the separate Editor tab, also should have its Generate process
