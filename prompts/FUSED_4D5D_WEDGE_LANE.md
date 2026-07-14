@@ -805,6 +805,56 @@ the prior claim) **but a SEPARATE, un-fixed hang dominates**, in a DIFFERENT fil
   witness on LTU_AHouse with the same heartbeat-prober methodology (script pattern documented above),
   confirm max single stall drops to sub-1s (below the ~1s where the tab visually reads as "hung" even
   without hitting Chrome's own dialog threshold).
+- **Fix committed + PR'd** (see §SE-8's PR #789, same commit): removed the ONE confirmed-redundant
+  cost — `saveVisibility()`'s duplicate `THREE.Matrix4` clone (`restoreVisibility()` now reads
+  `renderAtTime()`'s already-built lazy cache instead). Measured effect: total block time on
+  LTU_AHouse 60.9s → 52.8s (~13%). **This was real but NOT the dominant cost** — see §SE-7b below,
+  found later the SAME session after the user corrected the framing.
+
+### §SE-7b — CORRECTED root cause (user correction 2026-07-14, same session): it's Generate+Apply only, TM is fine, and it's the SQL/save path — not scene rendering
+User, after §SE-7's TM-rendering-cost fix was pushed: *"Time Machine has no hang issue ever. It is
+only the 4D generate and during Apply it hangs. Again, it is a pure SQL write of schedule."* This
+was right to push back on — re-tested with TM **never touched at all** (Author wizard only) and found
+the TRUE mechanism, which is neither of the two things §SE-7 chased (not TM's Matrix4 clone, and NOT
+a slow SQL/export call either — both measured genuinely fast):
+
+- **`materializeDefault`** (Generate's actual SQL work): 591ms-3s on LTU_AHouse (122,667 elements),
+  confirmed fast in Node AND in an isolated direct browser call — consistent with §SE-5's fix holding.
+- **`ScheduleAuthor.persistDb`** (`db.export()` + IndexedDB `put()` — the "save"): called DIRECTLY
+  and in isolation, resolves in **543ms** for a 42MB export. Also genuinely fast.
+- **But wired through the real UI (`schedule_author_ui.js`'s `persist()` wrapper, called from
+  `render()`'s end for Generate, and `applyTo4D()` with `{immediate:true}` for Apply), the SAME
+  `persistDb` call took 15,000-20,000+ ms to actually fire** — confirmed by monkey-patching
+  `ScheduleAuthor.persistDb` to log on ENTRY (fires immediately, correctly wired) vs. its own internal
+  `§SCHED_PERSIST` success log (didn't appear for 15-20+ seconds). This held even after a **45-second
+  idle settle** before ever touching Generate — ruling out "still catching up from initial load."
+- **Root cause: `persistDb` schedules its real work via `setTimeout`** (1200ms debounced for Generate,
+  0ms/"immediate" for Apply) — **a low-priority macrotask that must wait its turn behind LTU_AHouse's
+  continuous per-frame rendering cost** (the SAME ambient main-thread saturation §SE-7's idle-baseline
+  test proved exists independent of Time Machine — 8.7s blocked out of 8s idle on this building, 0ms
+  on a 1.1K-element building). The scheduled save isn't slow; it's **starved** — queued behind dozens
+  of seconds of unrelated per-frame work before the JS engine ever gives it a turn. Zero UI feedback
+  during that wait (`applyTo4D` shows "Applied." synchronously, then the ACTUAL save silently pends for
+  up to 20s with no indicator) — exactly what reads as "it hung."
+- **Reconciles §SE-7's finding, doesn't contradict it:** it's the SAME ambient per-frame rendering cost
+  (proportional to building size) — §SE-7 measured it blocking TM's OWN activation; this shows it ALSO
+  starves an unrelated background `setTimeout` (the schedule save), which is what the user actually
+  experiences as Generate/Apply hanging, while TM itself (once a building has settled and the user is
+  just scrubbing/viewing) genuinely doesn't hit this path the same way — explaining why the user sees
+  "TM is fine, only Generate/Apply hang" even though both symptoms trace to the same underlying cause.
+- **NOT YET FIXED.** Two directions, neither built this session:
+  (a) **Cheap, ships now, doesn't fix the delay:** show an explicit "Saving…" acknowledgment when
+  `persist()` is pending and confirm when `§SCHED_PERSIST` resolves, so a 15-20s wait is visibly a
+  save-in-progress, not silence that reads as a freeze — same idiom §SE-5a already used for
+  `materializeDefault`'s "please wait" status. Low risk, but honest: does not make the save faster.
+  (b) **Real fix, bigger scope:** reduce the ambient per-frame main-thread cost for 100K+-element
+  buildings so a scheduled macrotask doesn't have to wait 15-20s for a turn — this is the SAME
+  rendering-cost investigation §SE-7 already opened (candidate directions listed there), now confirmed
+  to matter for more than just TM's own responsiveness.
+- **Which building matters:** this entire mechanism is building-size-proportional (confirmed:
+  LTU_AHouse 122K elements — severe; Duplex 1.1K elements — zero idle blocking in the same test). If
+  the user's real hang is on a smaller/mid building, this diagnosis does NOT apply and the search
+  should restart on THAT building specifically, not assume it's the same cause.
 
 ## §SE-8 — Editor tab: ⚙ Generate button + ⤒ MS Project (MSPDI) export (user ask 2026-07-14, mid-session)
 User, while §SE-7 was in progress: *"the separate Editor tab, also should have its Generate process
