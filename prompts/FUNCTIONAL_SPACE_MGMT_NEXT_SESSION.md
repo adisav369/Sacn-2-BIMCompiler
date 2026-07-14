@@ -1,240 +1,374 @@
 # ⚠ DO NOT REMOVE — Scope guard
 # SCOPE: cross-session handoff for the "Functional Space Management" theme (room/space accuracy +
-# walkability, bim-ootb Viewer + Modeller). REPLACES the 2026-07-13 version — that one's work is
-# done and shipped (see §SHIPPED below). Read this file first, don't re-derive what's already here.
+# walkability, bim-ootb Viewer + Modeller). REPLACES the 2026-07-14 (earlier) version — that one's
+# §SHIPPED work is superseded by this session's much larger §HALLWAY-BACKBONE build-out. Read this
+# file first, don't re-derive what's already here.
 
-# FUNCTIONAL_SPACE_MGMT_NEXT_SESSION — 2026-07-14
+# FUNCTIONAL_SPACE_MGMT_NEXT_SESSION — 2026-07-14 (§HALLWAY-BACKBONE session)
 
-## §SHIPPED this session (bim-ootb, all merged to main, live)
-1. **PR #773/#776** — `viewer/lib/room_walker.js` (needle-button copy) synced with bim-compiler's
-   already-proven room fixes (SUSPECT_ELONGATED, §DOOR-PARTITION-EXT-EXCLUDE, §STAIRWELL-STACK,
-   no-overlap guard). Root lesson: the needle-button JS was a SEPARATE, silently-stale copy of the
-   canonical source — see memory `feedback_verify_runtime_copy_not_just_canonical_fix`.
-2. **PR #775** — retired the stale static `buildings/patches/HHS_Office_Federated_extracted.db.sql`
-   room data (105 pre-fix rows) that was shadowing the fixed code on every load/needle-press.
-3. **PR #776** — §WALL-SNAP: compiled room rects were systematically short of their real wall face
-   by up to 0.6m (0/208 sampled sides ever overshot — pure undersize, not overlap). Fixed in both
-   `scripts/compile_rooms.py` and `build/room_walker.js`.
-4. **PR #777** — path routing: (a) stair waypoint nodes never carried a `storey` field at all, so
-   `_legalizePath`'s same-storey gate silently skipped almost every chord touching a stair, not just
-   the genuinely cross-floor one — fleet-wide fix, any building with stairs; (b) HHS's real
-   mesh-derived `storey_walkable_raster` (accidentally dropped by #775) regenerated.
-5. **PR #778** — Find-panel room selection is now `room_guid`-aware. A §MULTI-RECT logical room (one
-   room split across N `spatial_structure` rows, e.g. L-shaped) was listed N times under the same
-   name, and clicking any entry bound to ONE sub-rect instead of the room's real extent — this is
-   what looked like "still too small" / "shifted into a wall." Fixed via one shared
-   `_roomUnionBBox()`, reused by both the list-builder and the selector (WalkerDoctrine §10).
-6. **PR #779** — §SUSPECT-LARGE: `MAX_AREA_ABS=150m²` used to silently DROP any compiled pocket
-   bigger than that — no row, no flag, no log — calibrated to residential room sizes, predating the
-   ext-exclusion leak fix. HHS's real 456m² Level-3 corridor was being discarded this way; every door
-   off it had only 1 room neighbor instead of 2, which is why the room graph measured 73 dead-ends/44
-   orphans out of 70 rooms. Repurposed: still compiles, flagged `SUSPECT_LARGE` for review, never
-   vanishes. Fleet-measured: every building gained rooms or stayed unchanged, none regressed.
+## §MOST IMPORTANT LESSON — READ THIS FIRST
+**Every fix in this session passed every Node-based witness while being COMPLETELY INACTIVE in the
+real browser**, for most of the session, because `common/hallway_backbone.js` was never added to
+`viewer/main.js`'s dynamic module-load list (fixed at the very end — see §SHIPPED PR #788). Node's
+`require()` resolves a file regardless of what any HTML/load-list references; the browser only
+loads what it's told to. **Witnesses proved the LOGIC was correct — they never proved the browser
+was actually RUNNING it.** Before declaring any browser-facing fix done next time: drive the real
+dev server with a headless browser (Playwright — see §HOW-TO-TEST-LIVE below) and confirm the
+new code's own console tag/log line actually appears, not just that the offline witness is green.
+This was only caught because the user asked directly "have u tested?" — that question should be
+asked of yourself before it's asked of you.
 
-**Net effect on HHS, measured, not assumed:** room-graph edges 16→27, dead-ends 73→66, orphans 44→40.
-**This is a real step, not the finish line** — see §OPEN below.
+## §HOW-TO-TEST-LIVE (added this session, use every time from now on)
+```bash
+cd ~/bim-ootb && python3 -m http.server 8000 &
+# Playwright is installed under ~/bim-ootb/tests/node_modules — require it from there:
+node -e "const {chromium} = require('/home/red1/bim-ootb/tests/node_modules/playwright'); ..."
+```
+- Direct building URL only, never the Hub picker: `http://localhost:8000/viewer/viewer.html?db=buildings/{Name}_extracted.db&ghost=1`
+  (see memory `feedback_localhost_full_building_url_testing.md` — Hub can silently fetch production for some buildings).
+- Find panel: press `f` (not a visible button by default). Axis toggle: `#find-axis-toggle`
+  (click cycles storey→disc→room→material→phase→parts). Sub-toggle (Storey/Type/Path): plain
+  `<button>` with the label text, no id — use `button:has-text("Type") >> visible=true` (Playwright's
+  bare `text=` selector matches hidden `<option>` elements first and hangs).
+- `window.HallwayBackbone` / `window.RoomGraph` are checkable directly via `page.evaluate()`.
+- **The live building's room compile does NOT match any static `.db` snapshot on disk.** HHS's
+  live compile (via `RoomWalker.compileRooms()`+`writeRooms()`, run either by needle-inject or
+  auto-recompute) produces **105 rooms**; the raw `spatial_structure` baked into the shipped
+  `.db` file has only 14; a plain offline `RoomWalker.compileRooms()` call (no patches applied)
+  gives yet a third number (71). **Always reproduce via the live compile path** (see the Node
+  snippet pattern used throughout this session — `sql.js` + `RoomWalker.compileRooms`/`writeRooms`
+  against the real `buildings/*_extracted.db`) before trusting any offline room count.
 
-## §CACHE-LANDMINE (found 2026-07-14, blocks §SHIPPED from actually reaching a browser) — READ FIRST
-User reloaded HHS after PR #779 merged and did NOT see the claimed changes. Root cause confirmed from
-`viewer/sw.js` source, not guesswork: `isNetworkFirst()` (line ~218-222) hard-codes `if (base.includes
-('/lib/')) return false` — cache-first, no revalidation, EVER — for anything under `/lib/`. That rule
-was meant for true vendor libs (three.js, sql-wasm, chart.js). But `viewer/lib/room_walker.js` — the
-exact file PR #773/#776/#779 all changed — lives under `/lib/` by folder placement only, not because
-it's immutable. A `CACHE_VERSION` bump wouldn't even have saved it; the `/lib/` check short-circuits
-before that logic runs. Confirmed live: `CACHE_VERSION` also never bumped across #775→#779 (stayed
-`'v748'`) — a second, separate omission. Live console evidence: `§ROOM_GRAPH edges=11 deadend=75
-orphan=47` matches NEITHER the claimed before (16/73/44) nor after (27/66/40); `habitable=70` when
-#779's own commit message says the raster was regenerated for a 71-room compile. **Fix: stop treating
-`room_walker.js` as an immutable lib (move it out of `/lib/`, or carve a narrow exception in
-`isNetworkFirst()`), bump `CACHE_VERSION`, verify a fresh load actually pulls new bytes, redeploy.**
-**FIXED + MERGED + DEPLOYED 2026-07-14** — bim-ootb PR #780 (`fix/sw-lib-cache-room-walker`), merged
-`8895234a9`, both CI checks green, `deploy-pages` run `29266972074` succeeded. Fix: exempted
-`room_walker.js` explicitly from the `/lib/` blanket rule in `isNetworkFirst()` (network-first now,
-same as any other project JS) + bumped `CACHE_VERSION` v748→v749. Verified pre-merge by extracting
-`isNetworkFirst()` verbatim and unit-testing it in isolation (room_walker.js → network-first; real
-vendor libs three.module.min.js/sql-wasm.wasm → unaffected, still cache-first) — a real browser
-before/after wasn't run pre-merge, so **the user must still confirm with a genuinely clean load**
-(DevTools → Application → Clear storage → Clear site data, or a private window) that: (a) the
-`RoomOverSize.png` elongated `≈ Level 2 R9`-shaped defect (room box stretching outside the building
-envelope) is gone, and (b) `§ROOM_GRAPH` now reads close to the claimed 27 edges/66 dead-ends/40
-orphans, not the stale `edges=11/deadend=75/orphan=47` seen live 2026-07-14. This same pattern
-(room_graph.js/CACHE_VERSION never bumped, fixes never reaching browsers) recurred once before —
-see the stale, never-merged `fix/room-graph-cache-bust` branch — worth a five-minute check next
-session that nothing else in `viewer/lib/` is a same-mistake project file mislabeled as vendor-immutable.
+## §SHIPPED this session (bim-ootb, all merged to main, live) — chronological
+1. **PR #782** — real corridor spine (`common/hallway_backbone.js`, new module): doorEdge →
+   correlateDoorEdges → joinDoorways → growToWall → terminateAtStair → walkBackbone. E2 door-rescue
+   switched from a single per-storey `CIRC` blob to the nearest real spine waypoint. Fixed a
+   detour-legality gap (spine/circ missing from `_detourForChord` candidates) and gave each
+   corridor bucket a real measured width (`bucketRect`) fed into `_pointWalkable`'s fallback.
+2. **PR #783** — backward-propagation: `§CORRIDOR-ROOM-BACKPROP` injects a real `room` node for
+   every backbone bucket with NO compiled room there (HHS: 12/15 buckets had none). Found+fixed a
+   same-session regression (corridor rect swallowing a real room's own doors — real
+   rect-overlap-AREA guard added, not just centroid-containment). Type-tree surfacing
+   (`classifyCorridorRooms`) + needle-inject cache-bust fix (PR #785) shipped alongside.
+3. **PR #784** — chord detour prefers LOCAL waypoints (chord bbox + 6m margin) over a legal-but-
+   distant one first, falling back to the full storey search only if no local detour exists. Fixed
+   a real "walks to the far end of a 13m room before turning back" artifact.
+4. **PR #786** — stair waypoints (`loWp`/`hiWp`) now use each END's own real position (nearest
+   flight row to that end's z), not one XY average across the whole stair — fixed a "vertical
+   elevator-shaft drop" rendering artifact (real stairs have horizontal run; averaging collapsed it).
+5. **PR #787** — `getStairGroups()` merges flight+assembly stair data instead of strict either/or.
+   Root cause of Hospital's **total** cross-floor routing failure: 1 orphan `IfcStairFlight`
+   (unrelated, 1.1m z-span) blocked the old either/or from ever reaching 61 real `IfcStair`
+   assembly rows. Hospital: stairGroups 1→10, real E3 edges 0→6. Verified Duplex (flight-only
+   building) triggers zero merge — no double-counting.
+6. **PR #788 — THE CRITICAL ONE.** `common/hallway_backbone.js` was never added to
+   `viewer/main.js`'s module list. Every feature in PRs #782-787 had been silently inert in every
+   real browser session, all week, despite every witness passing. See §MOST IMPORTANT LESSON above.
 
-**SECOND, DEEPER BUG found right after — the sw.js fix alone was not enough.** User did a real full
-storage clear + reload post-#780: HHS came back showing **105 raw rooms** (not ~71), console threw
-`§HELPERS_QUERY_ERR no such column: room_guid` and `NEEDLE_INJECT ... rooms=0 rects=0`. Root cause:
-`_needleInject()` (`viewer/navigate_find.js` ~line 892) set `source='patch'` — skipping the
-`RoomWalker.walk()` compile fallback entirely — whenever the fetched patch SQL executed without
-throwing. HHS's current patch is only 4 lines (regenerates `storey_walkable_raster`; PR #775 retired
-the old patch that used to carry compiled room rows), so on a truly fresh DB `applied=true` but no
-room was ever compiled: `spatial_structure` kept raw, uncompiled `IfcSpace` rows, no `room_guid`, none
-of WALL-SNAP/SUSPECT-LARGE/§MULTI-RECT. `§NEEDLE_PERSIST` then wrote that regressed state back into
-IDB, so every later reload reproduced it — this is what looked like "reverted to the old condition."
-**FIXED + PUSHED 2026-07-14** — bim-ootb PR #781 (`fix/needle-inject-trusts-patch-without-compile`),
-auto-merge armed, CI running at time of writing. Fix reuses the exact same-file precedent already
-established at `_roomsFromSpatialStructure` (~line 1887, its own "§MULTI-RECT guard" comment,
-itself a fix for this identical missing-column bug class): probe `PRAGMA table_info(spatial_structure)`
-for a `room_guid` column as evidence rooms were actually compiled, don't trust a successful patch exec
-alone. **MERGED + DEPLOYED 2026-07-14** — `09008f7166`, both CI checks green, `deploy-pages` run
-`29267526459` succeeded. **Still not yet confirmed by a real post-merge browser check** — user must
-re-verify with one more full storage clear + reload: rooms should come back to ~71 (not 105) with a
-working `room_guid` column, the `RoomOverSize.png` elongated-room defect gone, and `§ROOM_GRAPH` near
-`edges=27 deadend=66 orphan=40`.
+**Net effect, live-verified (not just offline) after PR #788**: HHS's Type-tree went from ONE group
+("INTERNAL_DOORPART 105") to TWO ("INTERNAL_DOORPART 74" + "Hall / Corridor 32") — screenshotted,
+saved to `~/Pictures/Screenshots/proof_2026-07-14_0{1,2,3}_*.png`.
 
-Do this BEFORE trusting any of §SHIPPED is actually live for a real user, and before starting §OPEN #1
-below — no point measuring Level 1/2 connectivity against code that isn't running.
+## §NEW BUG — corridor label false-positive rate — ✅ FIXED (2026-07-14, follow-up session)
+**Root cause confirmed exactly as suspect #1 below, on BOTH ends of the same bug**: `bucketWidth()`
+had no plausibility bounds on its flanking-wall search. Live dump (Clinic, better-sqlite3, no
+browser needed — user steered "review the maths deeply, sandbox-test a formula set" instead of a
+full live re-run): Second Floor's runCoord=45 bucket measured **halfWidthLo=halfWidthHi=0.00** — a
+literal zero-thickness line, because the bucket's OWN door-hosting wall (same axis as the corridor,
+so it always passes the "runs alongside" test) sits at ~0 offset from runCoord and the old
+`Math.max(d,0)` clamp let that self-match win as "nearest". This is the exact user report:
+"Second Floor Hall Corridor2 mis-IDs by taking the narrow wall next to it." Separately, on HHS,
+the SAME unbounded search accepted implausible far walls (~7.8m half-width), ballooning rects
+into false-positive matches (e.g. a 242m² room via centroid-inside alone, overlap-frac only 0.570).
+**Fix** (`common/hallway_backbone.js`, branch `fix/corridor-width-bounds`, committed locally per
+the standing push-pause — not pushed): `MIN_SIDE_OFFSET=0.5` / `MAX_SIDE_OFFSET=3.0` bound in
+`bucketWidth()` (reject candidates outside a plausible corridor-half-width window, fall back to
+`DEFAULT_HALF_WIDTH`); a new overlap-fraction guard in `classifyCorridorRooms()` (room's own area
+must be >=50% inside the matched bucket, not just its centroid — mirrors room_graph.js's existing
+CORRIDOR-ROOM-BACKPROP discipline). Also swapped `navigate_find.js`'s hardcoded 3.0m corridor-shell
+ceiling placeholder for a 2.0m movement-clearance height (user steer: this box is for
+path-of-movement, real ceiling height is Modeller's job later, "2 meter human height sufficient"
+even under a tall foyer/atrium ceiling).
+**Verified**: `sandbox_corridor_width.js` (new, synthetic geometry with known expected values —
+host-wall self-match rejection, far-wall rejection, in-window acceptance, overlap-fraction
+accept/reject) + all 3 existing witnesses (`witness_hallway_backbone.js`,
+`witness_corridor_room_backprop.js`, `witness_corridor_type_label.js` — the last one's own G2/G3
+ground-truth logic updated to check overlap-fraction instead of centroid-only, since that was the
+behavior being intentionally changed) all green. Clinic Second Floor's 15 buckets now measure a
+physically sane 1.6-4.2m width range (was 0.00 to unbounded). classifyCorridorRooms count on
+Clinic moved 9→17 under a clean git-stash A/B (not just eyeballed) — net INCREASE despite the
+stricter guard, because the width fix recovers real corridor-adjacent rooms that were previously
+invisible behind zero-width buckets, while the overlap-fraction guard separately rejects
+centroid-only false positives.
+**Second increment, same session — user distilled a "common sense filter"**: a real
+walkway/corridor (1) is not a room, (2) is not too wide, (3) is not floating in mid air, (4) is
+always connected to doors/stairs/walls. (1)+(2) are the fix above; this increment adds (3)+(4) as
+explicitly named, reusable verbs in `common/hallway_backbone.js` — matching the same shape
+established BIM/indoor-routing tools use (IFC 2nd-level space-boundary generation, Revit
+Room/Space resolution): a BOUNDED ray-cast to the nearest plausible surface, never an unbounded
+nearest-match search.
+- `wallLiesFlatAgainst(offset,min,max)` — the shared bounded-offset predicate, now used by BOTH
+  `bucketWidth()` (side walls) and `growToWall()` (end caps) instead of two separate ad hoc bounds.
+- `growToWall()` gets `MAX_END_REACH=8.0m` on its own end-cap search — same "nearest wall
+  regardless of distance" flaw as the width bug, but along the corridor's own axis. Confirmed on
+  real HHS data: two outlier end-caps (8.99m, 13.56m past the last door) now correctly left open;
+  every real value (<=6.98m) elsewhere unaffected.
+- `distanceToEnclosure()` + `buildingEnvelope()` — a per-storey wall-derived footprint check; a
+  bucket whose rect corner sits outside its storey's real envelope is dropped. Literal "floating
+  outside the building" backstop.
+- `isGrounded()` — reject a bucket open on BOTH ends with no stair anchor on either side.
+All four run in `buildBackbone()` right before chains are built, logging
+`§COMMON_SENSE_FILTER droppedUngrounded=N droppedOutsideEnvelope=N` when either fires (never
+silent). **Verified**: 12 new sandbox unit checks (`sandbox_corridor_width.js`, now 20 checks
+total) covering each verb's boundary shape directly, plus all 3 existing witnesses — all green.
+Zero buckets dropped on Clinic or HHS's CURRENT data (the filter is a verified-correct backstop
+that hasn't needed to fire yet on these two buildings, not something visibly changing their
+counts today).
+**Third increment, same session — consolidated into a framework (user ask: "review, consolidate,
+backward compatible")**. The two increments above left plausibility numbers scattered across 8
+separate `var` constants and the grounding/envelope check as an inline ad hoc block in
+`buildBackbone()`. Consolidated:
+- `DEFAULT_PROFILE` — every tunable number (door count, width bounds, end-cap reach, stair
+  clearance, overlap fraction, wall-cross slack, run-coord tolerance) now lives in ONE object.
+  Every step function takes an OPTIONAL trailing `profile` arg defaulting to it — every existing
+  call site omits it and reproduces today's exact numbers (verified: full witness re-run showed
+  byte-identical stats before/after — buckets=113 joined=38 chains=15 classifiedRooms=17/118).
+- `commonSenseFilter(buckets, envelopeByStorey, profile)` — the (3)+(4) gate (isGrounded +
+  distanceToEnclosure) is now ONE named, exported, independently-testable step ("5b" in the verb
+  chain), returning `{kept, dropped: [{bucket, reason}]}` — replacing the inline per-bucket filter
+  block that used to live directly in `buildBackbone()`.
+- Extension point (deliberately unused today, just placed): a future per-building-class corridor
+  profile (matching this project's existing WalkerDoctrine building-class parameterization) is
+  now `Object.assign({}, HallwayBackbone.DEFAULT_PROFILE, {...})` passed as `opts.profile` — a
+  caller-side change, not a structural one.
+Also dropped `terminateAtStair()`'s dead `storeyOf` param (grepped every call site first — never
+passed anywhere). **Verified**: `sandbox_corridor_width.js` now 26 checks (added G1-G4 for
+commonSenseFilter as one unit, H1-H2 proving the profile-override extension point actually works)
++ all 3 existing witnesses, all green, zero behavior drift.
 
-## §HALLWAY-BACKBONE (2026-07-14, investigation session, NOTHING COMMITTED — read before touching #2)
-User's ask: cheaply find ALL long hallways fleet-wide, chained with stairs into one continuous
-structure ("main entrance till all doors"), for Modeller + path routing (+ incidentally, a flythrough
-camera path — same structure serves both, keep the eventual output an ORDERED path, not just a graph).
-Everything below ran in scratch scripts (`node`, `sql.js`, local `deploy/buildings/*.db`) and was
-DELETED after each run per housekeeping — **none of this is committed code yet**, it's a verified
-algorithm sketch. Next session's job (if picking this up) is to actually build it as real code.
+**Fourth increment, same session — shape guard, user re-flagged**: "Type.Hall/Corridor are still
+non corridors but mere rooms." Real: of the 17 rooms classified before this fix, 11 were small
+near-square rooms (aspect ratio 1.08-1.44, area 4.7-11.4m², e.g. "First Floor R10" 2.4x2.2m) —
+closets/small-offices, not corridors, small enough to clear 50% overlap regardless of shape. Added
+`DEFAULT_PROFILE.minAspectRatio=1.8` + a new `unionAspectRatio(ownRects)` primitive (room's own
+union bbox across §MULTI-RECT sub-rects — a shape property checked once per room, not per
+candidate). `classifyCorridorRooms()` now requires BOTH the overlap-fraction bar AND this shape
+bar. Clinic's classifiedRooms moved 17→6, keeping exactly the 6 genuinely elongated ones (aspect
+1.88-3.86) and dropping exactly the 11 boxy ones. **Process note**: while diagnosing, an ad hoc
+(uncommitted) debug script had its own off-by-one column bug that initially misidentified
+"Second Floor R7" (real dims 16x4.6m, aspect 3.48 — a genuine corridor) as the offender — caught
+before committing by re-deriving with corrected indices; production code was never affected.
+Verified: sandbox grew to 30 checks (D3 + I1-I3), all witnesses green (witness_corridor_type_label
+'s own G2/G3 ground truth updated to require both bars, same pattern as the earlier overlap-
+fraction fix).
 
-**Dead end, correctly ruled out — don't re-try:** column-fragmented-corridor theory. `WALL_LIKE`
-(`compile_rooms.py`/`room_walker.js`) does treat `IfcColumn` as a wall obstacle, so the mechanism is
-real, but Hospital's 604 columns + 10 proximity-based "chains" turned out, on rigorous check (does a
-real column actually sit in the touch-gap?), to be real individually-walled small rooms (bathrooms,
-real `IfcDoor`+`IfcWallStandardCase` partitions) — only 18 genuinely column-verified touching pairs
-exist in the whole building, none chaining ≥3. Proximity alone is not corridor evidence.
+**Still not done** (deliberately, scoped out, real follow-up): the user's ask for "doors facing
+rooms along it" as a STRUCTURAL door-to-room-access validation (distinct from the grounding check
+above, which only checks the bucket's END termination, not whether the doors ALONG it actually
+serve rooms). `joinDoorways()` still only checks door COUNT (>=3). Re-open if a live re-check
+(HHS or another building) still shows false positives after all four increments land.
 
-**Live lead, not yet acted on:** `rejectRooms()` (`compile_rooms.py`/`room_walker.js`) silently DROPS
-any pocket with `enclosure < REJECT_ENCLOSURE` — no row, no flag, same shape as the `SUSPECT_LARGE`
-bug §SUSPECT-LARGE already fixed, except this gate is enclosure-based not size-based and is still live.
-Hospital dropped 7 pockets this way. A wide-open corridor/atrium (long, barely enclosed, few doors) is
-exactly the shape that would score low enclosure and vanish. Worth instrumenting `rejectRooms` to
-report what it drops (size/shape/enclosure score) before deciding whether to repurpose it
-compile-but-flag, same treatment as `SUSPECT_LARGE`.
+## §NEW TOOL — RoomGraph.fullConnectivity() — "is every door reachable from every other, no gap?"
+**User's own question, same session**: is there a simple test that every door can reach every
+other door via a covered path? No such test existed — `components()` (pre-existing) is
+deliberately room-only (E1/door edges, an honesty metric its own comment says not to extend); the
+existing witnesses only sample random room-PAIRS via `shortestPath` and report a percentage.
+**Added** `RoomGraph.fullConnectivity(graph)` (`common/room_graph.js`) — same union-find shape as
+`components()`, but over the FULL adjacency (`shortestPath`'s own Dijkstra graph: all edge kinds
+E1-E8). A door never has its own node (only ever edge metadata), so "every door reaches every
+other, no gap" IS exactly "is this graph one connected component."
+**Real bug found building it**: naively seeding the node universe from `graph.nodesByGuid`
+produced ~200 phantom size-1 "islands" on Clinic — `'doorwp'`/`'stairwp'` entries are pure
+position lookups for two unrelated on-demand systems (`_detourForChord`'s per-chord visibility
+graph; `shortestPath`'s path-render waypoint substitution), most never wired into `graph.edges`
+at all. Fixed: node universe = every room/circ/exit node (real destinations that MUST be
+reachable) UNION every guid that actually appears as a real edge endpoint (still counts a
+genuinely-doorless room as a real isolated island; still counts a bridging doorwp wired in via a
+real E7 edge; excludes the untouched majority).
+**Honest current answer** (not asserted as "should be 100%" — reported, per building):
+Clinic 71.8% connected (12 genuinely isolated rooms, named by storey — First Floor
+R26/R31/R40/R42/R45/R56/R58, Second Floor R25/R26/R30/R37/R43, TOF Footing R1); HHS 49.4% (raw
+pre-patch data — see §HOW-TO-TEST-LIVE); Duplex's 3 isolated rooms are EXPECTED non-habitable
+Roof/Foundation voids, not a bug. This directly quantifies, by name, the same gap already tracked
+below (HHS connectivity well under 100%, Hospital R13→R46 no path) — now with a reusable tool,
+not just a one-off sampled percentage.
+**Verified**: `sandbox_full_connectivity.js` (10 checks — fully-connected case, a real doorless-
+room gap correctly detected, the doorwp/stairwp phantom-island bug's exact shape reproduced then
+fixed, an edge-wired doorwp still correctly counted) + `witness_full_connectivity.js` (real report
+on Clinic/HHS/Duplex, pass bar = the function's own internal invariants hold, NOT "no gaps exist"
+— per "tests expose issues," this test's job is to NAME the gap honestly, not assert it away).
 
-**Working result — door+wall+crossing backbone, verified on Clinic:**
-1. `doorEdge(door)` — wall-run-axis from the door's OWN bbox aspect ratio (wide-in-X ⇒ its wall runs
-   along X ⇒ cluster by shared Y). `rotation_z` is unusable — always 0 in this extracted data, checked
-   before relying on it.
-2. `correlateDoorEdges(edges)` — bucket-matrix keyed by `(storey, axis, roundedRunCoord)` — the
-   "matrix array, harnessed by the door wall" the user specified.
-3. `joinDoorways(buckets)` — buckets with ≥3 aligned doors = hallway-candidate ("join with other
-   doorways forms it").
-4. `growToWall(bucket)` — extend the bucket's span along its axis, both directions, until a REAL wall
-   (`IfcWall%` only — columns/beams deliberately excluded per user, "ignore supporting columns/beams
-   for convenience") caps it.
-5. `terminateAtStair(bucket)` — an un-capped (open) end near a stair = a connecting space, not a
-   dead-end. **Stair detection is the unresolved piece** — see below.
-6. `walkBackbone()` — union-find merge of buckets whose grown spans cross (an x-run bucket's runCoord
-   falls inside a y-run bucket's span and vice versa = a T-junction/crossing).
+## §DEFERRED TO A NEW SESSION — meticulous path-of-movement rendering ("green dots")
+**User's own ask, same session, explicitly NOT for this session**: "the greendots... can they be
+really following path of walking, not jumping/crossing into space... even at stairs, a dot [can
+be] mid air of stairs. Should have more dot pairs, top and bottom of each flight." User's own
+framing: spec it out thoroughly first, attempt in a new session. Do NOT implement yet — this is a
+placeholder pointer, not a task to start.
+**What's already known, so the next session doesn't re-derive it**:
+- §OPEN #2 above (2026-07-14, earlier this session) already names the EXACT mechanism behind "a
+  dot mid-air at stairs": `terminateAtStair`/E3 stair-chain code already computes BOTH a lower and
+  upper real waypoint per flight (`loWp`/`hiWp` in `room_graph.js`'s `_e3Chain`) — the gap is in
+  `shortestPath()`'s `path[]` RECONSTRUCTION, which only substitutes ONE waypoint (the arriving
+  stair's) per intermediate node visit when two different stairs meet back-to-back at one floor,
+  dropping the departing stair's own entry point. The waypoint DATA already exists; the rendering
+  needs to surface both ends at every stair transfer, not just one per node.
+- The user's other complaint ("jumping/crossing into space") is the SAME class of issue
+  `_detourForChord`'s visibility-graph detour already targets (chord-legality + local-then-global
+  waypoint search) — likely needs its own re-audit once path[] reconstruction is fixed, since a
+  currently-"legal" chord might still not hug the corridor centerline even when it doesn't cross a
+  wall.
+- **Is this "done by others"?** Yes — this is a well-established pattern in indoor
+  routing/wayfinding (e.g. IndoorGML's explicit multi-level "Anchor" transition nodes with distinct
+  entry/exit points per level, or game-AI navmesh "off-mesh links" for stairs/elevators/ladders
+  with two explicit endpoints). Not unusual or exotic — the existing loWp/hiWp data model already
+  matches this pattern; it's the rendering/reconstruction layer that hasn't caught up to it yet.
+- **Is it hard?** Not conceptually — the waypoint DATA is already measured and real (per the
+  §STAIR-RUN-ENDS discipline). The work is a path[]-reconstruction change (surface both arrival AND
+  departure waypoints at a shared intermediate node) plus a fresh visibility-graph audit — bounded,
+  not a research problem, but real engineering worth its own spec'd session as the user asked.
 
-**Result on Clinic:** 41 joined buckets → 9 chains after crossing-merge. The two big ones: First Floor
-24 segments/116 door-touches merged into ONE connected backbone; Second Floor 10 segments/58
-door-touches into another. Cross-validated three independent ways without pointing one at the other:
-graph door-degree (R36 deg=10, top of Clinic), raw-coordinate clustering, and this wall-harnessed
-version all converge on the same rooms (R36, R96, R41, R34, R9, R59) — R36/R96 each appear in *two*
-different axis-buckets, correctly reflecting real corridor T-junctions. Separately, door-degree was
-also validated against REAL ground truth: Duplex's rooms are literally named "Hallway A201"/"Hallway
-B201" in the source IFC, and rank #1 by door-degree with zero shape-based flagging.
+## §NEW BUG (ORIGINAL WRITE-UP, kept for the diagnosis trail above) — corridor label false-positive rate
 
-**Unresolved: stair-termination, 0/41 buckets connected to a stair.** Root-caused TWO layers deep, not
-just tolerance-tuned:
-- First bug (fixed in the scratch check): stair elements report `storey='Unknown'` — same landmine
-  class as the existing `§STOREY-UNKNOWN` fix elsewhere in this codebase, unaddressed for Clinic's
-  stairs specifically. Dropped the storey-string filter, matched by real XY instead.
-- Second bug (fixed): was using point-to-centroid distance; switched to real contour (bbox-rect)
-  distance with a ~2m movement-clearance tolerance, per user's steer ("stairs movement space can be of
-  say 2 meter height flow onto the stairs contour").
-- Even after both fixes: still 0. The 2 actually-open bucket-ends are 11-18m from the nearest stair —
-  not a near-miss. `IfcRailing` was tried as a corroborating signal (stairs themselves may be
-  unclickable/ungeometried, same "unclickable parent" shape as the HHS curtain-wall bug — use the
-  reliable neighbor instead) — but every railing cluster sits on a stair I'd ALREADY found, so it
-  didn't reveal anything new. The 2 open ends genuinely aren't stair-adjacent by any signal tried.
-- Separately flagged by the user and NOT yet resolved: three different ad-hoc `ifc_class LIKE
-  'IfcStair%'` queries in this session returned 7, 8, and 13 — the trusted, shipped answer (Building
-  Parts Taxonomy's `Part.Stairs` in the live Viewer) is **4**. Any real implementation MUST reuse the
-  existing trusted stair extractor (`BUILDING_PARTS_TAXONOMY.md`'s `STAIRWAY` logic and/or
-  `room_graph.js`'s own `§STAIR-CLASS-FALLBACK`), not a fresh ad-hoc query — WalkerDoctrine §10, one
-  function not a new one. This is very likely why stair-termination hasn't matched anything: it may
-  simply be counting/locating the wrong 7 "stairs" instead of the real 4.
-- Next concrete step if resumed: swap in the trusted stair extractor, re-run `terminateAtStair`, THEN
-  decide whether the 2 open ends are a real remaining gap or resolve themselves.
+## §NEW BUG (ORIGINAL WRITE-UP, kept for the diagnosis trail above) — corridor label false-positive rate
+**User's own live check, same session, right after PR #788 shipped**: of the 32 rooms classified
+"Hall / Corridor" on HHS, only **1 is a genuine long corridor** — the other ~31 are false positives.
+Not investigated yet — prime suspect below, verify before changing anything (don't guess-fix).
 
-**Parked, not needed given the above works:** floor-slab/`IfcCovering` footprint as an alternative
-"complete base for the space" signal (Clinic has 16 `IfcSlab` + 250 `IfcCovering`) — raised from a
-screenshot showing one continuous unbroken floor surface spanning a stair-flanked landing. Not tested
-before the session converged on the door+wall approach instead. Also parked: per-area ceiling-height
-as a join signal — checked, currently NON-discriminating (`room_walker.js` assigns one flattened
-`center_z`/`size_z` per whole storey, all 168 First-Floor Clinic rooms report the identical value) —
-would need real per-area slab/covering Z pulled directly, not the compiled room's flattened value.
+**Also very likely the SAME root cause as a separate visual report** ("half corridor... drawn not
+along the corridor but perpendicular into mid air outside building", seen in
+`proof_2026-07-14_03_Type_mode_HallCorridor.png` — a large box floating outside the building
+envelope in the Room-lens shell view). An oversized/misoriented corridor rect would explain BOTH
+symptoms at once: over-classification (rect too generous, catches unrelated small rooms whose
+centroid falls inside it) AND a visibly-wrong shell box for whichever bucket has the worst
+`growToWall`/`bucketWidth` result.
 
-**Design principle (user, 2026-07-14):** the correlation matrix (`correlateDoorEdges`) shouldn't be
-hard-wired to doors only — ANY element that supports/corroborates a space's identity (railings, stairs,
-walls, doors) should be roll-in-able to the same bucket/array-set arbitrarily. `IfcRailing`-as-stair-
-corroborator above is one instance of this, not a one-off — when building for real, keep the bucket
-keyed generically (storey, axis, runCoord) and let multiple element types contribute edges into it,
-rather than writing a separate parallel structure per element type.
-
-**Verbs, for whoever builds this for real:** checked the actual Java `BIM_COBOL` verb catalog (77
-verbs) for a precedent — `JoinVerb` (MEP connector, not spatial), `FollowVerb` (MEP pipe crawl via a
-`CrawlRouter`/`CrawlState` engine — closest structural analog to "grow until stopped"),
-`RouteSprinklersVerb` (per-room only), `WalkThruVerb` (BOM-tree walk, unrelated domain). None fit —
-this is JS-side (`room_walker.js`/`room_graph.js` territory, where the live per-browser compile
-already runs), not a BIM_COBOL/Java concern. Suggested names, verb-styled per that catalog's
-discipline even though not literally Java: `doorEdge`, `correlateDoorEdges`, `joinDoorways`,
-`growToWall`, `terminateAtStair`, `walkBackbone` — matches steps 1-6 above 1:1.
-
-**Also raised, genuinely minor, parked:** some Clinic rooms' compiled Z-extent runs up through a
-raised/soft ceiling's ACMV plenum void instead of stopping at the real ceiling line. User: "small, not
-urgent... only if room doesn't clearly cross a boarded ceiling." No action taken.
+**Where to look first** (informed by this session's own data, not a fresh guess):
+1. `HallwayBackbone.growToWall()` has **no maximum distance cap** when searching for a perpendicular
+   capping wall — "any wall crossing this runCoord line, regardless of how far away" (see
+   `common/hallway_backbone.js`). A coincidentally-Y-aligned wall on the FAR side of the building
+   could become the chosen cap, stretching a bucket's span (and therefore `bucketRect()`'s box) far
+   beyond the real corridor. This session's own data dump (see the raw `bucketRect` measurements
+   taken mid-session) showed several HHS buckets with spans up to ~40-55m along one axis — plausible
+   for a real long corridor, but NOT independently verified against real wall positions to rule out
+   this exact failure mode. Re-run that same dump, then for the top 2-3 largest/most suspicious
+   buckets, manually check whether the wall `growToWall` actually picked is a REAL corridor end-wall
+   or a coincidental cross-building alignment.
+2. `classifyCorridorRooms()`'s match test is **centroid-of-room-inside-bucketRect** only — no
+   minimum-overlap-fraction requirement. A generously-sized (or wrongly-elongated) bucket rect can
+   swallow many small unrelated rooms whose centroid merely happens to fall inside it, without those
+   rooms actually BEING part of the corridor. Compare against the overlap-AREA guard already used
+   for `§CORRIDOR-ROOM-BACKPROP` injection (`room_graph.js`, >0.5m² threshold) — that fix exists
+   for exactly this class of "too permissive" bug in a sibling code path; `classifyCorridorRooms`
+   may need the same discipline (e.g. required minimum overlap fraction of the ROOM's own area, not
+   just a centroid point-test).
+3. Once diagnosed, verify BOTH bugs (false-positive rate AND the floating-box render) close together
+   with the SAME fix if they share a root cause — don't fix one and re-test the other separately if
+   the data shows one bucket is responsible for both.
 
 ## §OPEN — real, unfinished, named plainly
-1. **HHS Level 1/2 connectivity is still weak** (66 dead-ends, 40 orphans remain) and NOT yet
-   root-caused the way Level 3's corridor was. Hypothesis, unverified: smaller, fragmented gaps
-   rather than one big dropped pocket — needs the same measurement discipline (raw flood-fill
-   component sizes, walkable-raster-vs-room-coverage diff) applied to Level 1/2 specifically before
-   touching any code.
-2. **The 3-signal room-type/bucket system (user's own framing, 2026-07-14, "we need to think
-   together") — spec'd in conversation, NOT built:**
-   - **Size-bucket clustering** (per floor, not one global ratio): cluster a storey's own room areas;
-     a tight cluster of similar-sized rooms = one functional type (e.g. offices); an outlier that's
-     large AND long AND touches many rooms = hallway signature. Supersedes the single global
-     area-ratio test already tried once and rejected as too crude (`ROOM_INTELLIGENCE_SCOREBOARD.md`
-     — Clinic's real 93m² hall got flagged by a naive global ratio; a per-floor cluster test wouldn't).
-   - **Hallwayness + R-SPINE — SUPERSEDED by §HALLWAY-BACKBONE above (2026-07-14).** The room-shape-
-     based `hallwayness()` formula undercounts badly (missed Clinic and Hospital's real corridors
-     entirely — see §HALLWAY-BACKBONE's dead-end note). The door+wall+crossing backbone approach is
-     the validated replacement direction — read §HALLWAY-BACKBONE in full before building this, don't
-     start from the old formula.
-   - **Z-band container consistency** (new, 2026-07-14) — a room's Z-placement should sit inside its
-     OWN storey's measured slab-to-slab band (`§STOREY-ZBAND`, built earlier for a different bug — a
-     disc-walker placement issue, not rooms). A room that doesn't fit its storey's real Z-band is
-     mis-assigned to the wrong floor container, independent of XY size/shape. Not yet connected to
-     room compilation at all — worth checking whether `§STOREY-ZBAND`'s existing measured-band code
-     can be reused directly (WalkerDoctrine §10 — one function, not a new one) before writing fresh math.
-   - **Sequencing note (settled in conversation):** none of these 3 signals can classify a room that
-     was never compiled — §SUSPECT-LARGE (shipped) was the prerequisite doorway, not a substitute for
-     this system.
-   - **UX ask (user, 2026-07-14):** once corridor/hallway is detected (hallwayness/R-SPINE), surface it
-     as a `Type` label on the room (Find panel / room card), not just an internal flag — so a corridor
-     is filterable/findable by name, same as any other room type.
-3. **HHS curtain-wall glass elements are unclickable in the Viewer** (`§PICK ... g=?`, real bug,
-   confirmed cause: all 33 `IfcCurtainWall` PARENT elements have zero `element_transforms` — only
-   their `IfcMember`/`IfcPlate` children carry real positions). **Deliberately deprioritized as noise
-   by the user** for this round — not the same bug as room-wall snap accuracy (`compile_rooms.py`
-   already has a documented workaround using the children, not the untransformed parent). Revisit only
-   if curtain-wall-bounded room sides are later measured to snap worse than solid-wall sides — that
-   specific check was raised but never run.
-4. **DISC-walk `hostBind()` two-level room+wall surface sensing** — user's own idea (2026-07-13):
-   walk the room list first (even in a connecting/adjacency sense), THEN secure the exact real ARCH
-   wall; best-effort recognize secondary aligned surfaces (perpendicular partitions, fixture/sink
-   rows — real classes found: `IfcFurnishingElement`/`IfcFurniture`, matched on real Clinic/Duplex/
-   Hospital data) as valid mount candidates too. Investigation started, real ground-truth evidence
-   already gathered (Duplex: storey-wide nearest-wall picks the WRONG room's wall in 3/18 real cases,
-   16.7%) — but implementation was interrupted before any code was written. Needs: `_roomWallsFor()`-
-   style room-scoped candidate narrowing in `modeller/disc_walker.js`'s `hostBind()` SIDE branch,
-   opt-in (never default-on without a witness), respecting the settled `spacesOf()` compiled-room-
-   never-drives-placement boundary — using room data to pick WHICH wall, not WHERE to place, is the
-   same "weaker, more defensible use" §SPACE-GATE already established as acceptable. Not started.
+1. **Hospital: R13(Level 1)->R46(Level 3) still returns no path**, even after PR #787's stair-merge
+   fix (which DID enable real cross-floor connectivity elsewhere — 1/21 sampled cross-storey pairs
+   now resolve, was 0 before). These two specific rooms are in different connected components,
+   not near any of the 6 now-working stair bridges — a room-connectivity gap, not a stair-detection
+   one. Needs the same measurement discipline already proven this session (real fresh compile,
+   `RoomGraph.components()`, trace why R13/R46 specifically can't reach a spine/circ node).
+2. **Two-stairs-meeting-at-one-floor waypoint drop** (found while fixing PR #786, NOT fixed): when a
+   path passes through an intermediate CIRC node via two DIFFERENT stairs back-to-back (e.g.
+   Level1→Level2 via stair A, immediately Level2→Level3 via stair B), only the ARRIVING stair's
+   waypoint (`_publicHop`'s substitution) is exposed in the rendered `path[]` — the DEPARTING
+   stair's own entry point is dropped. Not visible on HHS (the two real stairs there happen to sit
+   0.08m apart) but will be a real "walks through a wall" artifact on any building where the two
+   stairwells are genuinely apart. Needs a `path[]`-reconstruction change: surface BOTH the arrival
+   and departure waypoint at a shared intermediate node, not just one substitution per node visit.
+3. **HHS Level 1/2/3 connectivity is still well under 100%** even after all this session's fixes
+   (was 17.6%→38.0% reachable room-pairs after PR #783's backprop; PR #787's stair-merge measured
+   separately, not re-combined with #783's number — re-measure the CURRENT combined reachable-pair
+   rate with all 6 PRs live, now that PR #788 makes them all actually active, before further work).
+4. **The §NEW BUG above** (corridor false-positive labeling) is the actual next priority — it's
+   what makes the whole feature currently look broken/untrustworthy to a user glancing at the Type
+   tree, even though the underlying mechanism (spine, backprop, stair fixes) is real and measured.
 
-## Where to start
-Pick #1 (Level 1/2 connectivity) if continuing THIS thread directly — same measurement method already
-proven on Level 3. Pick #2 if the user wants the bigger bucket-system built. Pick #4 if redirected back
-to DISC-walk. Don't re-derive any of the above — it's all measured or spec'd already.
+## §LESSONS LEARNT (process, not code — carry these into every future session on this feature)
+- **"Have you tested?" is a question to ask yourself unprompted.** An offline witness proves logic;
+  it does not prove the browser runs that logic. This cost most of a session's worth of user-facing
+  "still broken" reports that were actually "never loaded at all."
+- **A live building's data does NOT match its shipped `.db` file.** Client-side compile
+  (needle-inject / auto-recompute) can produce a wildly different room count than either the raw
+  extraction OR a naive offline re-run of the same compile function without whatever patches the
+  live session applies. Always reproduce via the SAME path the browser actually takes.
+- **When a user reports something looks "like an old bug"**, take that framing seriously — it may
+  be a pre-existing rendering issue made newly VISIBLE by a real data-coverage improvement (more
+  rooms now shown = more chances to see an existing edge case), not a regression from the immediate
+  fix. Don't assume it's new just because it was just reported.
+- **Squash-merge auto-fires on green CI** in this repo — pushing more commits to an already-open PR
+  after auto-merge has fired ORPHANS them silently (happened once this session, caught by chance
+  when the local worktree's `getStairGroups()` output didn't match what had supposedly shipped).
+  After opening a PR, check `gh pr view <n> --json state` before assuming later pushes are included;
+  if state flips to MERGED mid-session, start the next chunk of work as a FRESH branch off the new
+  `origin/main`, never keep pushing to the same (now-merged) branch.
+- **`gh pr view`/`gh pr merge` must run from inside the target repo's own checkout** (`~/bim-ootb`),
+  not from `bim-compiler` — `gh` resolves the PR against whatever repo the cwd's git remote points
+  to; running it from the wrong repo silently fails to resolve the PR number.
+- **`~/bim-ootb` (the shared, non-worktree checkout) is being actively edited by a concurrent
+  session** all through this one (`common/history_tap.js` + `viewer/viewer.html`, a `HIST_VIEWNAV`
+  guard + version bump, unrelated to this work) — every sync this session used
+  `git stash push -u -m "concurrent session WIP"` → `git merge --ff-only` → `git stash pop`, never
+  a plain merge/pull, to avoid clobbering it. Keep doing this every time `~/bim-ootb` needs sync.
+
+## §TOP PRIORITY, NEXT SESSION — close the disconnected-island gaps (user, 2026-07-15)
+**Push-pause LIFTED for this branch specifically — user said "push" directly.**
+`fix/corridor-width-bounds` (5 commits: width bounds, common-sense filter, framework
+consolidation, shape guard, `fullConnectivity()`) and `fix/sfx-nan-guard` (1 commit, unrelated SFX
+crash fix) are both PUSHED to `origin` as of this session (not yet merged — no PR opened yet,
+just pushed; open one next session if ready). This does NOT reopen the rest of the standing
+PUSH PAUSE in `CLAUDE.md` — that section wasn't edited, only these two specific branches got an
+explicit go-ahead this turn.
+
+**User's framing, verbatim intent**: the island gaps `fullConnectivity()` just named (Clinic
+71.8% connected, HHS 49.4%) are a **show-stopper blocking real downstream value** (pathfinding,
+escape-route, the whole occupant-graph story) — resolve them **right away**, next session, not
+deferred. User's own hypothesis: it may be "just one more step or routine" — a pass that uses the
+connectivity marker (`fullConnectivity()`'s `comp`/`sizes` output) to identify the islands and
+bridge them.
+
+**Grounded starting point (from this session's own data, not a fresh guess)** — the honest answer
+is "maybe genuinely small, but verify before assuming":
+1. **Two different shapes of island, likely two different fixes** — don't apply one blanket
+   "bridge everything" heuristic to both:
+   - **Size-1 islands** (Clinic: 12 of them — First Floor R26/R31/R40/R42/R45/R56/R58, Second
+     Floor R25/R26/R30/R37/R43, TOF Footing R1) have LITERALLY ZERO edges — not even an E2
+     lone-door rescue. First question: does each of these rooms have a REAL door in the IFC data
+     at all? If yes, why didn't E1 (room-to-room) or E2 (lone-door-to-circ) match it — a
+     threshold/matching gap in `buildGraph()`'s door-correlation logic (bounded, fixable, same
+     shape as this session's other diagnoses). If NO real door exists, it's not a graph bug at
+     all — some of these names ("TOF Footing" = Top-of-Footing, a structural/foundation space,
+     same pattern as Duplex's expected-isolated "Roof"/"T/FDN" rooms) may be genuinely
+     non-habitable and SHOULD stay excluded from the "must connect" universe, not bridged with an
+     invented door. Check `room_habitability.js`'s existing non-habitable filter FIRST — it may
+     already know which of these 12 don't belong in the connectivity requirement at all.
+   - **Multi-node islands** (e.g. HHS's "Hall/Corridor N + spine + several doorwp", sizes 4-13)
+     ARE internally connected corridor segments, just not bridged to the REST of the building's
+     graph — likely a `walkBackbone()` crossing that should exist between two chains but wasn't
+     detected (a T-junction the crossing-detection missed), or a segment near an exterior
+     door/stair whose bridge into the main network never got wired. This is closer to "one more
+     step" — likely a real, bounded gap in the SAME crossing/join logic this session already hardened.
+2. **Do NOT invent a connection.** Per this project's Prime Directive (extract/compile, never
+   invent), any "bridging pass" must be evidence-based — a real door, a real crossing, a real
+   nearby stair — using the SAME discipline as `§CORRIDOR-ROOM-BACKPROP` (room_graph.js) and this
+   session's own `commonSenseFilter`: only bridge where real geometry justifies it, and log
+   `§ISLAND_BRIDGE` (or similar) with the evidence per bridge — never a silent "just connect
+   nearest island" heuristic with no real basis, and never mark a genuinely non-habitable
+   structural space as "fixed" by inventing a door for it.
+3. **Method, same as this whole session**: for EACH size-1 island, dump its real door count/position
+   from the DB directly (same `better-sqlite3` + real query pattern used throughout this session)
+   BEFORE writing any fix — don't guess why it's isolated, measure it. Then decide per-room whether
+   it's (a) a real matching-gap bug to fix, or (b) a legitimately non-habitable space to exclude
+   from the connectivity requirement (not "fix" at all).
+4. Re-run `witness_full_connectivity.js` after each change — the `fullConnectivity()`/`sizes`/`comp`
+   output already exists precisely to prove whether an island closed for real reasons, not just to
+   report the starting number.
+
+Once (or alongside) this: the §OPEN items below (Hospital R13→R46, two-stairs-one-floor waypoint
+drop, HHS connectivity re-measure) are the SAME underlying question at different granularity —
+`fullConnectivity()` may subsume/answer several of them directly rather than needing separate
+investigation.
