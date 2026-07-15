@@ -570,3 +570,366 @@ patch again — ask what specifically is missing/wrong the same way this session
 
 **Nothing in this session has been pushed or deployed** except the PR #805 work (now live). The
 push-pause remains in effect for everything else until the user lifts it or names a breakthrough.
+
+## SESSION RECORD (2026-07-16, continued — strategic review, SW-cache question resolved)
+Per explicit instruction: no new constant-chasing. The previous RESUME BRIEF's "biggest open
+question" (was `v752` actually being served, or were the "still not there" reports reviewing stale
+cached code?) is checked FIRST, grounded in the user's own live browser console log (Hospital,
+89 `RENDER_LOOP` cycles, ~30 `Alt+S` triggers across many camera angles) cross-checked against the
+code on disk — not guessed, not re-tuned.
+
+**Step 1 — `v752` confirmed ACTIVE, not stale. Question CLOSED.** Three independent checks agree:
+- `curl localhost:8085/viewer/sw.js` → `CACHE_VERSION = 'v752'`. The dev server (`python3 -m
+  http.server 8085`, cwd `/tmp/wt-mobile-perf-fix`) is serving the feature-branch worktree, not the
+  main checkout (main's own `sw.js` is still `v749` — confirms the two trees really do differ and
+  the server is pointed at the right one).
+- `sw.js` calls `self.skipWaiting()` on install — no stuck-waiting-tab failure mode even if a
+  reinstall was needed.
+- Strongest evidence: the pasted console log carries FIVE behavioral fingerprints that only exist
+  in this session's `v752` code, none present pre-session — `§GROUND_MAP key=paved` (emissive hack
+  gone), `§PHOTO_ADDONS doors=6 trees=15` (capped door/tree addons), `§PHOTO_PROPS ... skylineBoxes=
+  40` (density fix), `§PHOTO_SHADOW enabled casters=11292 ...` firing on every one of ~30 triggers
+  with the caster count correctly growing as streaming completed (11252→11292), and `§PHOTO_FACING
+  facades=4 strengths=...` varying correctly across every angle tested. **The "still not there"
+  reports were not a stale-cache artifact — this log is genuinely running the fixed code.**
+
+**Step 2 — checklist vs. the 00:12 screenshot + the same log, item by item:**
+| Item | Verdict | Evidence |
+|---|---|---|
+| Ground: paved texture, no emissive hack | ✅ confirmed | `§GROUND_MAP key=paved` every cycle; revert is commit `931c4dc` |
+| Warm fog haze at distance | ✅ code confirmed | `effects.js` `PHOTO_FOG` block (0xc9a878, capped density) — runs in the same staging pass as the confirmed items, no dedicated log line |
+| Hemi/ambient dialed back 1.25×/1.15× | ✅ code confirmed | `effects.js:408-409` `PHOTO_HEMI/AMBIENT_INTENSITY_SCALE` |
+| Real cast shadow, re-asserted every frame | ✅ confirmed firing | `§PHOTO_SHADOW enabled casters=11292 sunDist=5022 env=151` on all ~30 triggers; screenshot shows a plausible cast-shadow silhouette left of the building |
+| Roof-corner twin spot + back-side ground boost | ⚠ code present, not visually isolated | no dedicated log tag for this sub-feature; the 00:12 shot is aerial and doesn't clearly isolate the least-camera-facing side |
+| Entry sconces (≤6) + tree uplights (≤15) | ✅ confirmed built | `§PHOTO_ADDONS doors=6 trees=15` every trigger |
+| Denser/closer/bigger skyline | ✅ confirmed | `§PHOTO_PROPS skylineBoxes=40`; screenshot shows large, close silhouette blocks near the horizon |
+| Specular hotspot, sun roughly behind camera | ⚠ code present (3.2× envMapIntensity boost, `effects.js:380`), not visible in THIS screenshot | the 00:12 frame doesn't put the sun roughly behind the camera — needs the right angle to judge |
+
+Net: 6 of 8 checklist items hard-confirmed from log + code; the remaining 2 are real code paths that
+simply weren't visible in the one aerial screenshot reviewed — not evidence of a problem, just an
+untested angle. Given the user's own read ("already good enough"), no further tuning is warranted
+from this review.
+
+**One unrelated, pre-existing item noticed in passing (not a photoreal issue, not touched):**
+`§HELPERS_QUERY_ERR no such table: m_bom_line` — the warehouse-bin (`WH PILL`) feature's helper
+query fails because `m_bom_line` doesn't exist in Hospital's `ad_seed.db`; the code already gates
+itself off cleanly (`WH PILL gate=off`), so this is cosmetic console noise, not a functional break.
+Flagged only so it isn't mistaken for a new photoreal regression later.
+
+## RESUME BRIEF (2026-07-16, supersedes the RESUME BRIEF above — SW-cache question is CLOSED)
+Do not re-ask "is v752 active" — confirmed (Step 1 above). Do not re-verify the 6 confirmed
+checklist items without a specific new complaint — that would be the same guessing-and-patching
+loop this file already warned against. The only two open visual questions are narrow and
+angle-specific, not systemic:
+1. One ground-level (not aerial) screenshot of specifically the LEAST-camera-facing side, to
+   confirm the roof-corner twin spot + back-side ground-wash boost is visible.
+2. One screenshot with the sun roughly behind the camera, to confirm the 3.2× specular hotspot
+   reads as intended on glass/metal.
+
+Everything else in the previous RESUME BRIEF's priority list (front-wash-vs-back-only decision,
+material reference library scoping, Cinema pill spec, combined grass+paved ground pattern) still
+stands as written above, unchanged — not re-litigated here.
+
+## SESSION RECORD (2026-07-16, continued — one deft touch, then stopped)
+User explicitly scoped down mid-review: asked for two small touches (sunlight bounce off metal/
+glass, brighter ground-with-visible-shadow), then on reflection said "sunlight bound back can be
+the highlight, free, and kill any further need for now" — dropping the ground-brightness ask.
+Agreed and did NOT touch ground/hemi/ambient this round — that lever already has a documented
+contrast-flattening landmine earlier in this file (1.6/1.3 killed shadow contrast once tonight;
+re-touching it without a fresh specific complaint would repeat the same guessing loop this file
+already warned against).
+
+**One change made:** `PHOTO_ENVMAP_BOOST` `effects.js:380` raised `3.2 → 4.5` (third bump tonight,
+after `2.2 → 3.2` earlier this session). Applies broadly to any material with a numeric
+`envMapIntensity` — already covers `IfcCurtainWall`/`IfcWindow` glass (STD_MAT `rough=0.08/0.05,
+metal=0.10/0.00` — already glossier than the metal-roughness-tightening floor, so glass gets the
+bounce from this boost alone, no separate code path needed) as well as true metal (`metalness>0.3`).
+`node --check` passed on both files. **`sw.js` `CACHE_VERSION` bumped `v752 → v753`** — required for
+this edit to actually reach the browser (same cache-first precache mechanism as the v752 finding
+above; confirmed via `curl localhost:8085/viewer/effects.js` that the served file now reads `4.5`).
+Committed locally only (`6f2a1da`, `feat/photoshoot-sun-dusk-reflection`,
+`/tmp/wt-mobile-perf-fix`) — push-pause remains in effect. Not yet visually confirmed by the user;
+next step is a hard-refresh (or new tab — `skipWaiting()` means no stuck-old-worker wait) + `Alt+S`
+on a facade angle with the sun roughly behind the camera.
+
+Also answered in passing: the "film icon, ~20s render" ask is the Cinema pill from the previous
+RESUME BRIEF — confirmed via grep still NOT built (spec only; `tour.js`/`time_machine.js` have an
+unrelated pre-existing drone/tour camera, not this feature). Scoped out for tonight per the user's
+"kill any further need for now."
+
+## SESSION RECORD (2026-07-16, continued — orbit test movie + a real envMap bug found and fixed)
+User then asked for a background test movie: orbit Hospital 360° from the reference camera (the
+same `cx/cy/cz/tx/ty/tz` hash already used in the reviewed screenshot, "fill up the frame"), pulling
+back in the final ~20% of the loop. Built via a throwaway headless-Chrome (puppeteer) script driving
+`APP.camera`/`APP.controls` directly frame-by-frame (not through real pointer/wheel events, so
+`stopStillRefine()`'s interaction hooks never fire) — reused `A.startStillRefine()` once for staging
++ the hero frame, then per-frame single-sample `A._composer.render()` (accumulate off, to avoid
+TAA-ghosting a moving camera), matching exactly how the user's own rapid multi-angle testing earlier
+tonight already looked (single-sample "cancelled" frames, not full 16x accumulation). 360 frames
+(1°/frame) @ 15fps = 24s, matching the original Cinema-pill spec. One real bug hit + fixed along the
+way: `page.$('canvas')` grabbed the WRONG element (`#site-cam-markup`, a hidden markup canvas, comes
+first in the DOM before the real `#canvas`) — fixed by selecting `#canvas` explicitly. Smoke-tested
+at 8 frames first (both ends visually confirmed: frame 0 matches the reviewed screenshot, frame ~4
+shows genuine long dusk shadows from the opposite side), then ran the full 360 in the background
+(~182s, ~0.5s/frame) and assembled with ffmpeg → `~/Pictures/Screenshots/
+PHOTOREAL_orbit_test_Hospital_2026-07-16.mp4` (24s, 12MB, H.264).
+
+**While that ran, investigated the user's separate, sharper observation: "sunlight bounce has not
+occurred even once" — correctly reasoned by the user as a narrow mirror-reflection-angle effect that
+should show up SOMEWHERE across a full 360° orbit if it worked at all. It doesn't, and not by bad
+luck — found a real, structural bug, not a tuning miss:** `streaming.js:414` assigns each material's
+`.envMap` ONCE, at streaming time, from whatever `A._envMap` was at that instant. Hospital's 63,182
+elements finish streaming almost immediately on page load, long before Alt+S — so every material is
+permanently locked to the DAYTIME env map baked at startup (`scene.js:225`, sun elevation 45°/azimuth
+180°). The dusk photoshoot repositions the real sun and regenerates a fresh env map (`A.updateSky`'s
+2s-throttled `_pmrem.fromScene`, `scene.js:204-212`) but never pushes that new texture back onto
+already-created materials — they kept reflecting a sun that isn't where the dusk scene visually put
+it, so no camera angle could ever line up a correct glint. This is exactly why "not once" — it's not
+a probability problem, the reflected sun and the visible dusk sun were simply two different lights.
+
+**Fix (`effects.js`):** new `_reassertPhotoEnvMap()` — refreshes `m.envMap = A._envMap` unconditionally
+on every cached material (cheap reference swap, `needsUpdate=true` only when it actually changed),
+called every accumulation-step tick alongside the existing shadow/roughness reasserts, PLUS one extra
+guaranteed call at `+2200ms` (`setTimeout`, only if still in photo mode) as a safety net for when a
+fast/cached accumulate finishes before the 2000ms-throttled env map regen lands — otherwise a quick
+run could stop calling the per-tick reassert before the fresh texture ever arrives. `node --check`
+passed. **`sw.js` `CACHE_VERSION` bumped `v753 → v754`** (same cache-first precache mechanism as
+before — confirmed via `curl localhost:8085/viewer/effects.js` that the served file now contains
+`_reassertPhotoEnvMap`). **The 360-frame test movie above was captured on the OLD (pre-fix) code** —
+it's a valid systems-check of the camera path/staging pipeline, but do not read it as evidence the
+glint is still missing; that run structurally could not have shown it. Not yet committed — still
+mid-edit when this entry was written; not yet visually re-confirmed by a fresh orbit or live
+interactive check.
+
+**Next step:** either re-run the same orbit script (now free, code's on disk) or have the user
+hard-refresh their live tab and manually orbit near a facade at a plausible mirror angle, to confirm
+the glint now actually appears somewhere in a full loop. If it still doesn't, the next place to look
+is whether `_pmrem.fromScene(_sky)` bakes a sun disc bright/small enough for a mirror reflection to
+read as a "wow" glint rather than a soft blob — untested, no evidence either way yet.
+
+**Update, same session — the envMap fix worked but overshot, then was corrected:** live on the
+user's own tab (v754), the glint DID appear — first real confirmation the mechanism works at all —
+but came with a real regression: "all shadows on building are gone." Root cause (found by reading,
+not guessing): `envMapIntensity` defaults to `1.0` — a number — on every `MeshStandardMaterial`
+regardless of roughness, so the boost's own gate (`typeof m.envMapIntensity !== 'number'`) never
+actually excluded plain concrete/plaster; ALL materials got the 4.5× boost. Env-map/IBL reflection
+is not shadow-map-occluded in three.js (same bug class as the ground-emissive landmine earlier in
+this file), so the whole building's shadow/lit contrast got washed out by a uniform reflective sheen.
+
+**Fixed (`e1e2e81`, SW `v754→v755`):** gated the envMapIntensity boost on actual glossiness
+(`roughness ≤ 0.5` or `metalness > 0.3` — matches STD_MAT's real values: glass 0.05-0.08, metal
+0.3-0.5, concrete/plaster 0.6-0.95), so only glass/metal reflect; dialed the boost itself back
+`4.5 → 3.0` per "glint is slightly too much." **Verified, not just theorized:** re-ran a 60-frame
+orbit slice with the fix in place — cropped close-ups of frames 30/32/34 (the sun-behind-camera
+region) show a warm glint tracking across the glass curtain-wall band, peaking at frame 32 and
+fading either side (a real angle-dependent reflection, not a static artifact), while the brick/
+concrete sections keep normal shadowed tonal variation throughout, no wash-out. Both the glint and
+the shadow contrast hold simultaneously now.
+
+**Deliberately not built:** the user separately described wanting the glint to read as "thin star
+light rays" (an anamorphic lens-flare/star-burst look, like the existing sun lensflare sprite) rather
+than a soft bright patch. That's a distinct visual feature (a screen-space sprite/streak spawned at
+the mirror point) — noted as a possible future refinement, not attempted this session; the actionable
+part of that message ("roll back... recover shadows... keep metallic/glass reflected light rays")
+is what was implemented and verified above.
+
+All of this is still local-commit-only on `feat/photoshoot-sun-dusk-reflection`
+(`/tmp/wt-mobile-perf-fix`) — push-pause remains in effect. Test movies saved to
+`~/Pictures/Screenshots/PHOTOREAL_orbit_test_Hospital_2026-07-16.mp4` (pre-envMap-fix, valid
+camera-path/shadow systems-check) — a post-fix full 360 movie was not re-rendered (60-frame slice
+was enough to verify both fixes; regenerate the full 24s clip on request).
+
+## SESSION RECORD (2026-07-16, continued — facade sparkle + skyline sun-gap, sandbox-verified)
+User confirmed the state above as "very nice now.. just lock that in" (no further tuning to the
+locked settings), then separately asked to research a "starlight reflection" sparkle at the real
+sun/camera mirror angle. Two reference photos supplied: `relfectsunlight.jpg` (soft warm glow
+reflected in a real glass tower — the actual target look, not a hard geometric shape) and
+`realreflect.jpg` (a "spark line" streak + noted the brick facade's realistic uneven tone — already
+present here via the existing real photographic triplanar textures, `textures/materials/*_color_
+1k.jpg`, no code change needed for that part).
+
+**Built (`e55eb57`):** one small additive sprite per facade-wash edge (reuses the exact technique
+already proven for the sun's own lensflare, `scene.js` §S277f — canvas radial gradient, no new
+shader/library), positioned at building mid-height, visibility/size/opacity driven every reassert
+tick by the Blinn-Phong half-vector test `dot(normalize(toSun+toCam), facadeNormal)` — the standard,
+physically-real specular-highlight condition ("the correct angle of attack", per user), applied to a
+real facade point instead of a per-pixel shader term. Soft warm glow dominant (matches
+`relfectsunlight.jpg`); a thin, subtle cross-streak layered on top per "we can have sharp spikes
+too." User also separately researched `THREE.Lensflare` + `UnrealBloomPass` as options — assessed
+and recommended against both for now: `Lensflare` is redundant with what's already hand-built for
+the sun, and doesn't fit a reflection-at-an-arbitrary-wall-point use case; `UnrealBloomPass` is a
+genuine full-screen multi-pass technique but blooms EVERY bright pixel (sun disc, night window-glow,
+skyline sparkle points) not just the facade glint, and threading a new pass into the existing custom
+`_composer`/`_taaPass` pipeline (which took this whole session to stabilize) is real risk for a
+cosmetic layer — filed as its own future session, not bolted on tonight.
+
+**Also fixed, same commit:** skyline silhouette boxes could land directly in front of the sun and
+block it ("too close, obscure the Sun"). Fixed via real vector comparison — each candidate box's
+actual THREE-space direction from the building center vs. the sun's actual THREE-space direction,
+skip if within an 18° cone — rather than hand-deriving the angle offset between the skyline loop's
+IFC-plane convention and the sun's azimuth convention (two different coordinate frames, fragile to
+map by hand; comparing real runtime vectors sidesteps that entirely). General to any building/sun
+angle, nothing hardcoded.
+
+**Sandbox-verified, not just eyeballed (per explicit user ask "do your sandbox test to confirm it
+works"):** exposed two read-only diagnostic accessors (`A._getPhotoSparkles()`, `A._getPhotoSkyline()`,
+alongside the already-exposed `A._reassertPhotoSparkles()`, commit `a947f46`) and drove the orbit
+programmatically while reading live sprite/box state each frame (`sparkle_diag.js`, 72-frame sweep):
+- Skyline gap: closest box's alignment dot `0.9397` vs. the `0.9511` (cos 18°) clearance threshold —
+  correctly excluded, 36/40 boxes kept.
+- Sparkle: clean bell-curve opacity across the orbit, peaking at exactly `1.0` at best alignment on
+  TWO different facades at different orbit points, fading symmetrically on both sides — confirms the
+  half-vector math is genuinely angle-driven, not a fluke or a stuck-on artifact.
+- Isolated close-up screenshot captured at the confirmed peak frame (`sparkle_diag.js` → frame 46/72)
+  shows a small, tasteful warm glow at the facade edge, matching the reference photo's soft-glow
+  character, not overpowering.
+
+Everything from this entry is local-commit-only (`e55eb57`, `a947f46`,
+`feat/photoshoot-sun-dusk-reflection`, `/tmp/wt-mobile-perf-fix`), SW cache now `v757`. Push-pause
+remains in effect.
+
+## SESSION RECORD (2026-07-16, continued — cinematic orbit strategy + sky drama, movie delivered)
+User specced the Cinema-pill camera strategy in detail: begin from wherever the user's own camera
+POV is (not a fixed hardcoded angle, "so he can spawn his preferred line of attack"); correct
+height/distance toward an ideal cinematic band (taper down if too high/looking-down, rise back up
+if too low, ease toward the ideal if too far); slightly elliptical path, not a perfect circle;
+ignore stray distant elements (LTU's scattered exterior piping) since a full 360 spin passes near
+them anyway — pivot stays at the real building bbox center, same as already implemented. Built into
+the orbit test-movie script (`orbit_capture.js`), not yet a real in-app UI feature (that's still the
+Cinema-pill spec from earlier — camcorder icon, own build session).
+
+**Real bug caught by smoke-testing before committing to the full run:** first attempt eased from
+the starting camera toward one FIXED ideal radius/tilt (reused tour.js's own `envelope*0.75`/`35°`
+convention) — smoke-tested at 12 frames and it wrenched the user's own already-good reference shot
+into an extreme close, steep top-down view by frame 3. Root cause: tour.js's numbers were tuned in
+a different context and don't transfer to Hospital's actual scale (151m envelope) — trusting a
+"reused convention" without checking it against this specific building's numbers was the mistake.
+**Fixed by using a BAND, not a fixed target** (tilt 8°-45°, radius 0.9×-2.5× envelope) — correction
+only fires if the start is genuinely outside the band, easing to the nearest edge; an already-
+reasonable starting shot (like the reference camera) gets NO correction at all, confirmed via a
+second smoke test showing clean, well-framed shots throughout. This is the same lesson as the
+envMap-boost overshoot earlier tonight: verify a fix at small scale before running the full 360.
+
+**Also this round:** dramatic dusk sky per "more dramatic sky... reddish clouds in the distance" —
+Preetham (`Sky.js`) has no cloud geometry/texture at all (a clear-sky atmospheric model only), so
+literal cloud shapes are a separate, unbuilt textured-layer feature. What's real: pushed the same
+turbidity/rayleigh/mie uniforms scene.js sets once at startup, scoped to photo-mode only (saved/
+restored around staging, normal daytime navigation untouched) — turbidity 4→8, rayleigh 2→3.2,
+mieCoefficient 0.005→0.012, mieDirectionalG 0.8→0.9, for a richer, more saturated horizon glow.
+
+**Delivered:** full 360-frame/15fps/24s cinematic orbit rendered with both fixes —
+`~/Pictures/Screenshots/PHOTOREAL_orbit_cinematic_Hospital_2026-07-16.mp4` (360 frames, 178s
+render time, ~15.6MB). Commits: `c9ae5ff` (sky drama, SW v758) on top of the earlier sparkle/
+skyline-gap work (`e55eb57`, `a947f46`). Local-commit-only, push-pause remains in effect. The orbit
+script itself (`orbit_capture.js` in the scratchpad) now embodies the full cinematic-strategy spec
+and can be reused for future test movies on any building — the band/ellipse/pivot logic is general,
+nothing Hospital-specific except the starting URL hash.
+
+## SESSION RECORD (2026-07-16, continued — Cinema Orbit shipped as a real feature, Terminal tested)
+**Cinema Orbit is now a real in-app feature, not just a test script** (`e1e2e81`→ actually
+`0fcc728`, SW `v759`): camcorder icon + "Cinema Orbit (24s)" row added to the Palette panel
+(`panels.js`), wired to `A.startCinemaOrbit()` in `effects.js` — records the LIVE canvas via
+`MediaRecorder`/`captureStream`, reusing the exact still-refine staging setup minus its own TAA-
+accumulate loop (a moving camera shouldn't accumulate supersamples), driving the same band/ellipse/
+pivot-preserving camera math built for the test script. Downloads a `.webm` on completion. **Verified
+end-to-end via a puppeteer functional test** (not just code review): triggered the real recorder in
+a live page, confirmed a valid 1.3MB VP9 webm was produced, `ffprobe`'d it, and pulled frames at
+t=1s/10s/20s — three genuinely different, well-composed angles, sparkle and dusk shadows both
+visible, no jarring jumps.
+
+**Tested on a second building (Terminal) per user request — surfaced two real, generalizable
+findings, both fixed:**
+1. Terminal has no known-good reference camera hash (unlike Hospital) — deliberately omitted
+   cx/cy/cz/tx/ty/tz from the URL and let the app's own default auto-fit framing become "frame 0,"
+   trusting the band-correction logic to normalize it. This worked exactly as designed.
+2. **Terminal's default auto-fit start is much steeper (near top-down) than Hospital's, and the
+   original `TILT_MAX_DEG=45` band ceiling wasn't tight enough to guarantee a visible horizon/sky
+   against the skyline ring at this building's smaller scale (68.8m envelope vs Hospital's 151m).**
+   Smoke-tested at 45°→still no sky visible, 32°→still cramped, **22°→correct, sky/horizon clearly
+   visible.** Tightened `TILT_MAX_DEG` to 22 in the script. This is a real, load-bearing tuning
+   difference between buildings of different scale relative to their surrounding skyline ring —
+   worth remembering if a THIRD building also looks "boxed in" by its skyline: check tilt band first,
+   not radius.
+
+**Delivered:** `~/Pictures/Screenshots/PHOTOREAL_orbit_cinematic_Terminal_2026-07-16.mp4` (360
+frames, 15fps, 24s).
+
+## RESUME BRIEF (2026-07-16 — sparkle needs a rebuild, user has already specced the fix)
+**Scope check, user's own words: "it is just effects, this is a presentation."** This is a
+heuristic visual polish item, not a physically-simulated render feature — don't gold-plate it.
+Keep the fix cheap and simple (a handful of extra query-sourced points + a wider dot-threshold for
+edge-classified ones), not a rigorous geometry pipeline. If the real-wall query turns out to be
+non-trivial (touches batching/grouping keys the way the material-reference-library item earlier in
+this file did), stop and re-scope smaller rather than expanding it — "few points," "simple
+trigonometry" was the user's own ceiling on effort here, twice now.
+
+**Do not re-attempt a quick patch on the current 4-point sparkle model as-is — it needs a small
+rebuild, already spec'd by the user, simple trig, not a new render technique.**
+
+**The problem, confirmed on Terminal (not just theorized):** the sparkle currently tests exactly 4
+points — the FLAT, INVENTED midpoints of the building's bounding-box rectangle (`_photoFacadeLights`,
+built in `effects.js` `_buildPhotoProps()`). This is a fine approximation for a simple rectangular
+footprint (Hospital, roughly) but Terminal has real curved/angled sections (visible dome, angled
+curtain-wall panels) that don't line up with 4 cardinal-direction bbox edges at all. User's own
+diagnosis, confirmed correct: "it moves opposite to the angle of attack" — because the 4 invented
+normals don't match Terminal's REAL facade orientations, so the half-vector test is checking the
+wrong surfaces entirely on this building.
+
+**The fix, per the user's own spec (2026-07-16) — build this next session:**
+1. **"Simple trigonometry should solve it"** — no new rendering technique needed, just extend the
+   SAME half-vector dot-product test already built (`_reassertPhotoSparkles`, `dot(normalize(toSun+
+   toCam), normal)`) — the only change needed is WHERE the candidate points + normals come from.
+2. **Source real points from actual geometry, not the bbox rectangle.** Query real wall/curtain-wall
+   segment positions + orientations (likely `element_transforms` joined to `elements_meta` filtered
+   to `IfcCurtainWall`/`IfcWindow`/`IfcWall*`, similar pattern to the tree/door queries already used
+   in `_buildPhotoProps()`) instead of deriving 4 points from `MIN/MAX(center_x/y)`.
+3. **"Have few points"** — user is explicit this should stay a SMALL, coarse sample (not per-triangle,
+   not even per-panel) — pick a modest number of representative candidate points (e.g. one per
+   distinct wall segment/orientation cluster, or a fixed small cap like today's addons use
+   — doors capped at 6, trees at 15 — same discipline, reuse it), not an expensive per-frame scan
+   of the whole building.
+4. **Real edges/hinges/frames are slightly ROUNDED, not perfectly flat — this is WHY they should
+   accept a WIDER range of angles than a flat panel.** User's physical intuition, worth honoring
+   directly: a flat mirror-like panel only reflects the sun within a narrow dot-product band (today's
+   `PHOTO_SPARKLE_DOT_MIN=0.90`), but a rounded edge (window mullion, structural hinge, frame corner)
+   reflects across a much wider arc because its surface normal sweeps continuously through a small
+   radius, not a single flat direction — model this as a LOWER/more-permissive dot threshold
+   specifically for edge/corner-classified points (vs. flat-panel points), not one universal
+   threshold for everything. This is also the direct answer to "shot out a bit as in real life" —
+   a wider acceptance angle IS the trig equivalent of a rounded reflector.
+5. Keep the glint's visual style (soft warm glow + subtle cross-streak, `_getSparkleTexture()`) —
+   nothing wrong with the LOOK, only the WHERE (candidate points) and the ACCEPTANCE ANGLE (flat vs.
+   rounded) need to change.
+
+Not started — spec only, captured here per explicit request ("update prompts/# for next session").
+Test on BOTH Hospital (rectangular, should look the same or better) and Terminal (curved/angled,
+should now track correctly) before considering it done — Terminal is the one that actually exposed
+the gap, don't declare victory on Hospital alone.
+
+Everything from this entry is local-commit-only (`0fcc728`, SW `v759`,
+`feat/photoshoot-sun-dusk-reflection`, `/tmp/wt-mobile-perf-fix`). Push-pause remains in effect.
+
+## RESUME BRIEF ADDENDUM (2026-07-16, end of session — two more notes, not yet actioned)
+1. **Cinema Orbit camera arc needs a push-in beat, not just ease→hold→pull-back.** Current arc
+   (`A.startCinemaOrbit` in `effects.js`, and `orbit_capture.js`): ease from start toward the tilt/
+   radius band over the first 25%, hold through the middle, pull back (draw OUT) in the final 20%.
+   User wants an added push-IN first — draw nearer until the building fills the whole frame — before
+   the existing draw-out reveal at the end. So the shape should be roughly: ease into band → push in
+   close/full-frame → hold or continue orbiting close → pull back out for the wide finish. Needs a
+   new radius phase inserted before `PULLBACK_START`, not a replacement of the existing pull-back.
+2. **Sky still reads too dark, and the ground is described as "reflecting off that also"** — i.e.
+   the user is linking ground darkness to sky darkness, not treating them as separate asks anymore.
+   This is a DIFFERENT framing than earlier tonight's "ground brightness" ask (which was explicitly
+   dropped mid-session in favor of the sunlight-bounce work) — worth treating as a fresh, connected
+   complaint next session, not re-litigating the earlier hemi/ambient landmine reflexively. Read the
+   actual mechanism again before touching anything: is ground brightness actually DERIVED from sky
+   uniforms/color in this pipeline (fog color already follows sky per `A.updateSky`'s dayT blend —
+   check if hemi light color/intensity is ALSO sky-coupled somewhere, which would make "sky too dark"
+   and "ground too dark" the same root cause, not two separate ones) — confirm before assuming
+   they're linked OR unlinked.
+
+Neither actioned this session — captured per explicit "note in prompt, close" instruction. Session
+closed here; everything above is local-commit-only, push-pause remains in effect.
+
+Still local-commit-only on `feat/photoshoot-sun-dusk-reflection` (`/tmp/wt-mobile-perf-fix`) — the
+push-pause remains in effect.
