@@ -469,3 +469,45 @@ number not captured (sandbox limit, not a code question).**
     different, likely much faster story), not a code question — and it's exactly why the permanent
     `§PERF_PROBE` lines above matter: the next real Hospital session gets the number for free from
     the console, first Room-axis tap, no re-instrumentation needed.
+
+## §15 UPDATE 2026-07-15i — Hospital corridor coverage is genuinely sparse, hampers room-to-room
+paths (user-reported live, relegated to a follow-up session, NOT fixed this pass)
+
+**Real data, not guessed** — `common/room_graph.js` + `common/hallway_backbone.js` run directly
+against `buildings/Hospital_extracted.db` (node, `RoomGraph.buildGraph`):
+```
+§HALLWAY_BACKBONE buckets=336 joined=15 chains=11 crossings=4 openEnds=2 stairTerminated=1 stairGroups=10
+§CORRIDOR_ROOM_BACKPROP injected=6 skippedOverlap=9 / 15 joined buckets
+```
+Only **15 of 336** candidate wall-bucket segments (4.5%) actually joined into a corridor chain.
+Distance comparison, same graph:
+- **E5 edges** (real hop between two points already inside ONE joined chain): min=2.4m,
+  median=2.4m, max=27.0m — only 4 of these exist at all.
+- **E6 edges** (the CIRC-hub bridge from a chain to the "nearest" other chain on the same
+  storey — see §12/§14's E6 closeby-render fix, already shipped): 17.8m up to **52.6m**, 11 of
+  them, e.g. `Level 4 dist=52.6m CIRC::Level 4 <-> SPINE::Level 4|x|63.60`.
+
+**Diagnosis**: this session's E6 render fix (§14) makes a route crossing one of these edges draw
+at the real bridge point instead of a fake averaged centroid — genuinely correct as far as it
+goes — but it can't shrink the underlying 20-50m gap, because that gap is REAL: so little of
+Hospital's wall geometry got recognized as corridor (15/336 buckets) that most inter-wing routes
+have no detected corridor to hug at all, only this one bridging edge. That's the mechanism behind
+the user's report: "Hospital corridors not accurate and hampers room to room paths."
+
+**Root cause, not yet located precisely**: `hallway_backbone.js`'s `walkBackbone()` bucket-joining
+criteria (span/width/alignment thresholds — see that file's own header for the verb chain
+`doorEdge → correlateDoorEdges → joinDoorways → growToWall → terminateAtStair → walkBackbone`) is
+either too strict for Hospital's real wall geometry, or Hospital's actual corridor walls have
+gaps/offsets the current join logic doesn't bridge. **Not fixed this pass** — tuning the join
+threshold is real algorithm work with real regression risk: HHS and Clinic currently pass their
+witnesses (`witness_backbone_routing.js` 10/10, `witness_room_graph_path.js` 15/15) against the
+CURRENT threshold — loosening it blind to fix Hospital could break those without a witness added
+FOR Hospital first to catch a regression the other two wouldn't reveal.
+
+**For the next session**: add a Hospital-specific join-ratio assertion to
+`witness_backbone_routing.js` (or a new witness) BEFORE touching `walkBackbone()`'s thresholds, so
+a threshold change is provably a net improvement on Hospital without silently regressing HHS/Clinic's
+already-passing numbers — same measure-first discipline this whole file's sessions have used
+throughout. Re-run the diagnostic script pattern above (`RoomGraph.buildGraph` + bucket/chain/E5/E6
+distance dump) after any threshold change to confirm the join ratio actually improved, not just
+that witnesses still pass.

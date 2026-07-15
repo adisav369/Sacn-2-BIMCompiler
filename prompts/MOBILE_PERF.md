@@ -44,6 +44,36 @@
 2. **[I/O] OPFS-resident DB** — persist the building DB to OPFS so REPEAT opens skip the
    network fetch entirely. OPFS is already proven in `analysis_sidecar.js` / `ANALYSIS_SIDECAR.md`
    (no COOP/COEP needed via the async API). Same idea, applied to the building buffer.
+   **This lever is bigger than mobile-only** (2026-07-15, user-reported "fly-thru/navigate feels
+   heavier on LTU, was smooth before" — real bim-ootb session, relegated here for a dedicated
+   session per user's own instruction, not fixed inline): `[[project_ltu_ahouse_memory_architecture]]`
+   (2026-07-13) already measured the root cause on DESKTOP, not just mobile — `sql.js` loads the
+   ENTIRE DB into WASM linear memory with no paging (`new SQL.Database(new Uint8Array(buf))`,
+   5 call sites: `main.js:812`, `streaming.js:1459/1519/1533/1605`, re-verified live 2026-07-15,
+   unchanged). LTU = ~440MB permanently resident (43MB meta + 397MB geo) for the tab's whole life.
+   **Fresh real-browser evidence (2026-07-15, user's own LTU load console log, not sandboxed)**:
+   `§SPLIT_GEO_LOADED src=cache size=379MB ms=2786` — 2.8 real seconds to load geo.db into memory
+   from CACHE alone (no network fetch involved) — this is the pure sql.js-parse-into-WASM cost,
+   the same cost pays on EVERY open regardless of mobile/desktop or cache-hit.
+   **What was checked 2026-07-15 and came back clean (do NOT re-derive)**: LTU's DB files are
+   byte-identical to the 2026-07-13 measurement (same 43,053,056/397,422,592 byte sizes, mtimes
+   unchanged since June — ruled out "the data grew"). A full code review of every `viewer/*.js`
+   commit between 2026-07-12 13:00 and 2026-07-15 found ZERO new `markDirty`/`requestAnimationFrame`/
+   `setInterval` calls and ZERO new `mousemove`/`pointermove`/`wheel` listeners — ruled out an
+   obvious discrete regressive commit in that window. **What could NOT be completed**: a live
+   before/after frame-time comparison (old commit `f7f27e7` 2026-07-12 vs current HEAD) — every
+   attempt timed out streaming LTU's 71MB `extracted.db`/397MB `geo.db` over a single-threaded
+   local `python3 -m http.server` in the dev sandbox (tried up to 400s budgets). **Next session
+   needs either**: real device/devtools Performance+Memory profiling (bypasses the sandbox
+   bottleneck entirely, per this file's own PRIME RULE), or a properly-resourced bisection
+   environment (parallel http server, or the real OCI-served URL instead of localhost).
+   **OPFS impact study needed before building it** (user's own ask, 2026-07-15, not yet scoped):
+   the real open question is API compatibility, not just "will it be faster" — every `A.db.exec()`/
+   `A.dbQuery()` call site across `viewer/*.js` (hundreds) currently assumes SYNCHRONOUS sql.js
+   calls; `@sqlite.org/sqlite-wasm`'s OPFS-backed VFS is ASYNC-only for real paged I/O (the sync
+   OPFS access handle API needs a dedicated Worker, per its own spec) — determine whether this is
+   a drop-in swap or requires converting every DB-touching call path to async/await before
+   estimating effort or committing to the migration.
 3. **[RAM] Dispose-before-navigate** — shipped for 4D5D on mobile (`a98fcbc`: same-tab,
    dispose renderer+scene, free GPU RAM). Extend the dispose pattern to other heavy
    transitions where two scenes would otherwise co-exist.
