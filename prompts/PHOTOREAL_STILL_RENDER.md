@@ -423,18 +423,150 @@ still restores the true original exactly).
   building set and the zoomed-in wall crop, all timestamped the same day.
 - Not merged/pushed — local commits only, per the standing push-pause.
 
-## RESUME BRIEF (2026-07-15, end of session — read this first, next session)
-**All three items from the previous RESUME BRIEF are done and verified — this feature is at a good
-stopping point, not mid-work.** Nothing is currently blocking; the items below are optional
-follow-ups, not carried-over gaps.
-- The honest ceiling is still whatever §HONEST VERDICT says at the top of this file — don't drift
-  past "good archviz render" into promising true photorealism.
-- Tuning constants chosen this session (contrastBoost 1.6/1.5/1.9, sun 0xffa55c×0.7, facade dim
-  fraction 0.3) are reasonable first passes, not measured-optimal — if a future session wants to
-  push further, re-run the SAME zoomed-crop-on-a-real-element discipline used here rather than
-  eyeballing a wide establishing shot (that's what caused the original "not evident enough" miss).
-- Still not pushed/merged/deployed anywhere — everything in this file remains local-only on
-  `fix/night-mode-window-glow`, gated behind the standing push-pause. Lifting that pause and
-  deciding whether/how to ship this POC (staging fabrication vs. real data boundary — see
-  §PHOTO_STAGING_PROPS comments in `viewer/effects.js`) is a product decision for the user, not
-  something to resolve unprompted next session.
+## SESSION RECORD (2026-07-15/16, continued — dusk sun/shadow/ground debugging, Hospital reference)
+Long, dense follow-on session, all on Hospital (the real stress-test building — 63,182 elements,
+101×151×43m, irregular multi-wing footprint). Net result: the wall-wash/contrast/tint work from
+the PREVIOUS record above (PR #805) shipped to production this session — user explicitly said
+"Deploy now" after confirming it looked right on localhost; cherry-picked the 9 not-yet-merged
+commits onto a fresh branch off `origin/main` (the old `fix/night-mode-window-glow` had already
+been squash-merged once before — same divergence trap the repo's own CLAUDE.md warns about),
+pushed, CI green, merged (bim-ootb PR #805, `94318d7`), GitHub Pages redeployed. **That part IS
+live.** Everything below is a SEPARATE, still-local-only branch
+(`feat/photoshoot-sun-dusk-reflection`, `/tmp/wt-mobile-perf-fix`) — explicitly NOT deployed, per
+direct instruction ("do this only in localhost... I shall do it and report back").
+
+**A real self-caught process failure, worth remembering:** a dark-side accent spotlight was
+built, then found broken specifically on Hospital (placed near/inside the already-lit side, not a
+genuine dark facade) — root cause: the facade-edge math assumes a rectangle, and Hospital's real
+footprint has an entire bbox corner with ZERO elements (confirmed via direct query — 30 elements
+in one corner, 0 in another, out of 63,182 total). User caught this live and asked "do you
+acknowledge you drifted" — yes. That spotlight code was stashed (not deleted — recoverable) and
+never shipped.
+
+**Sun/shadow/reflection work (all local, all on top of the shipped PR #805 work):**
+1. Found `A.updateSky()` already repositions the real sun + drives an existing lensflare
+   (`scene.js` §S277f) — the "sun reflection" was never broken, just undercut by the photoshoot's
+   own exposure cut also dimming the tone-mapped lensflare sprite. Fixed (`toneMapped=false`
+   during photoshoot only) + boosted per-material envMapIntensity/metal roughness for a sharper
+   specular "hotspot," per user's explicit ask reproducing real sun-behind-camera glint.
+2. Lowered dusk sun elevation 8°→6° and enabled REAL shadow-casting (reusing `time_machine.js`'s
+   own proven sun-cycle shadow mechanics, not reinvented) for the "long shadow, dramatic facade"
+   look — careful to compute the shadow frustum AFTER repositioning the sun (order matters — the
+   original `toggleShadow()` code computes frustum before repositioning, which would be wrong here).
+3. **Found and fixed a real bug born from my own earlier fix:** a "make ground whiter" emissive
+   add is NOT shadow-map-occluded in three.js at all — it flattened the contrast between shadowed/
+   lit ground, which is very likely why the user then reported "Shadows? None on the ground."
+   Reverted. Same root logic applied to dial back an over-aggressive hemi/ambient blanket boost
+   (1.6×/1.3× → 1.25×/1.15×) that likely diluted the discrete point-light addons' visibility too.
+4. **Found and fixed a likely root cause for the whole "still not there" pattern across THREE
+   separate rounds of real fixes:** `effects.js` AND `streaming.js` are both in `sw.js`'s
+   `PRECACHE_ASSETS`, served cache-first — `CACHE_VERSION` was never bumped after any of this
+   session's commits, so the service worker most likely kept serving stale cached copies
+   regardless of what was on disk. Bumped v751→v752. **Not confirmed whether the user's browser
+   had actually picked this up for any of the screenshots reviewed after — this is the single
+   biggest open question for next session, see RESUME BRIEF below.**
+5. **Found and fixed a real streaming-race bug**, same class already fixed once this session for
+   the triplanar shader uniform (§TRIPLANAR_RECOMPILE_FIX) but not applied here the first time:
+   the shadow-casting traversal and the material envMap/roughness boost were one-shot pushes at
+   Alt+S trigger time — Hospital's rooftop content (589 real trees, 1 helipad, 567 solar panels,
+   all confirmed via direct DB query, not guessed) could stream in AFTER that instant and never
+   get flagged. Fixed by re-asserting both, idempotently, every accumulation frame.
+6. Added atmospheric fog override (warm haze, was a dark blue-purple that darkened distant ground
+   further) and made the skyline silhouette denser/closer/bigger (was `envelope*4` radius — so far
+   the boxes subtended almost no visible angle, reading as tiny specks).
+
+**Reference-image-driven addons** (`RealistHospital.jpeg`, user-supplied target — analysis: the
+drama in that image comes from warm INTERIOR light through glass against a dark shell/cool sky,
+NOT sun/shadow drama — a real recalibration worth remembering next session):
+- Roof-corner twin spotlight — placed at whichever bbox corner is LEAST camera-facing (the "back
+  portion," per explicit correction — first instinct was nearest-camera, which was wrong).
+  Recomputed fresh every trigger, same discipline as the facade-facing math.
+- That back facade's existing ground/roof wash pair gets an extra 1.8× boost ("ground based
+  spotlights too") — reuses the existing fixture, no new light objects.
+- Entry-door sconces from real `IfcDoor` positions (capped to 6, lowest storeys first — a proxy
+  for "ground floor," not a real exterior-perimeter check).
+- Tree uplighting from real vegetation-named elements (capped to 15 for perf).
+- **Checked, not fabricated:** Hospital has zero person/human/staffage elements and zero
+  ground-level trees (all 589 real trees sit at ONE mid-building terrace, z≈179.5-179.9 of a
+  159.8-203.2 range — a rooftop garden, not street-level planting). Both "harvest people" and
+  "harvest ground trees" asks are genuinely not available in this building's data — nothing to
+  wire up, confirmed via query not assumed.
+
+**Deliberately deferred, not forgotten:**
+- **Material reference library** (fix flat-teal-fallback trees/solar-panels/helipad — they render
+  in the generic `IfcBuildingElementProxy` teal because they have no real IFC color). Turns out
+  bigger than first estimated: `element_name` isn't selected anywhere in the geometry-loading/
+  batching queries today, and elements are grouped into InstancedMesh/BatchedMesh by
+  `(rgba, ifcClass)` only — adding a name-pattern lookup means touching multiple SQL queries AND
+  the batching grouping keys in a performance-critical file, not just the material-creation
+  function. Too invasive to do blind without testing. User suggested ~20 curated starter
+  materials as reasonable scope when this is tackled properly, as its own session.
+- **Cinema pill (360° fly-around clip)** — user wants a camcorder-icon pill, offline/background
+  batch: pivot at building center, step camera 1°/frame around a full 360° loop, run a full
+  still-refine per frame, assemble into a clip. Target: 360 frames, 15fps = exactly 24 seconds
+  (matches the user's ask precisely). Estimated ~1-2 minutes of background production time at the
+  ~150ms/frame real-GPU cost already measured (caveat: only measured on a SMALL building — Hospital's
+  much heavier scene could cost noticeably more per frame, untested). **Not started — spec only,
+  no code written for this yet.**
+- Task 5's original framing ("drop front wash since sun handles it, back-only") was supersede by
+  the reference-image direction (roof-corner + back-boost instead) — the FRONT-facing wash was
+  never actually removed; it still runs at full strength unchanged. Worth a deliberate decision
+  next session: keep both hero-front-wash AND back-accent, or actually drop the front now that the
+  sun/lensflare/shadow work exists to carry that job. Not resolved, don't assume either way.
+- Ground grass+paver COMBINED pattern (grass base + paved rectangles, like a real site plan) —
+  user's simpler fallback ("why not just light it up," "use paved, add concrete look") is what
+  shipped; the fancier combined-pattern idea is still just an idea, not spec'd.
+
+**Everything in this section is local-commit-only** on `feat/photoshoot-sun-dusk-reflection`
+(`/tmp/wt-mobile-perf-fix`), stacked on top of the NOW-MERGED PR #805 work. None of it has been
+tested by the assistant in this session — the user explicitly and repeatedly instructed
+"don't test, I'll test and report back," which was honored throughout. All reasoning above is
+grounded in re-reading the actual code + direct read-only DB queries against Hospital's real data,
+not speculation — but zero browser-level confirmation exists yet for any of items 1-6 or the addons.
+
+## RESUME BRIEF (2026-07-16 — read this first; do a STRATEGIC REVIEW before writing any code)
+**Do not start tuning constants again on arrival.** This session's biggest lesson: three separate
+rounds of real, well-reasoned fixes each got reported as "still not there," and the actual causes
+turned out to be (a) a stale service-worker cache possibly serving old code the whole time, and
+(b) one of the assistant's OWN earlier fixes (ground emissive) directly undoing another goal
+(shadow visibility) — neither of which a fourth round of "increase the number more" would have
+found. Guessing-and-patching had run its course; reading the actual mechanism (sw.js precache
+list, `_setGroundColor`'s real branching logic, three.js's shadow-occlusion model) is what found
+both. Do the same kind of grounded reading before changing any constant further.
+
+**Step 1, before anything else:** confirm the browser is actually running current code. Open
+DevTools → Application → Service Workers, confirm the active worker is `v752` or later (bumped
+this session specifically because `effects.js`/`streaming.js` are both cache-first precached
+assets and every fix this session touched one or both). If it's still on an older version, a hard
+refresh (or closing all tabs of the app and reopening) is needed before ANY of this session's
+visual claims can be evaluated at all — everything reported as "still not there" may simply never
+have been loaded.
+
+**Step 2:** get ONE fresh, confirmed-current-code screenshot from the user on Hospital, at a
+camera angle showing at least two facades (so the facing-vs-back distinction is visible), before
+making further changes. Compare it point-by-point against what SHOULD now be true:
+- Ground: 'paved' texture, no emissive hack (reverted), warm fog haze at distance, hemi/ambient
+  at the dialed-back 1.25×/1.15× (not the earlier 1.6×/1.3× that likely flattened everything).
+- A real cast shadow from the building onto the ground (shadow-casting is enabled at the dusk sun
+  angle, re-asserted every accumulation frame — should no longer be silently skipped by the
+  emissive-washout bug).
+- Roof-corner twin spotlight + boosted ground wash specifically on the LEAST-camera-facing side
+  (not the front — that was an explicit correction mid-session, easy to mis-check).
+- Entry sconces near real door positions, tree uplights near the real rooftop-terrace trees.
+- A denser, closer, more visible skyline silhouette on the horizon.
+- A stronger, sharper metal/glass specular hotspot when the sun is roughly behind the camera.
+
+**If step 2 still looks wrong** after confirming step 1 is genuinely current: don't immediately
+patch again — ask what specifically is missing/wrong the same way this session's later rounds did
+(exact screenshot, exact complaint), and re-read the relevant mechanism before touching numbers.
+
+**Then, in priority order the user has already stated:**
+1. Decide the front-wash-vs-back-only question left open above (§Task 5 note).
+2. Scope the material reference library properly as noted (≥20 curated real-material starter set,
+   name-pattern lookup, touches SQL queries + batching keys — needs its OWN careful session, not a
+   quick add-on, since it's a real change to a performance-critical file).
+3. Spec + build the Cinema pill (360° fly-around, 360 frames @ 15fps = 24s, offline/background).
+4. Only then revisit the combined grass+paved-rectangle ground pattern, if still wanted.
+
+**Nothing in this session has been pushed or deployed** except the PR #805 work (now live). The
+push-pause remains in effect for everything else until the user lifts it or names a breakthrough.
