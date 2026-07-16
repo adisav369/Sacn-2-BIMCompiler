@@ -1532,3 +1532,21 @@ intact: `b365b32` (ghosting + review findings, previous record), `d7d41d1` (disp
 shadows; move → live view, staging stays, NO auto re-polish; re-press Alt+S when settled; tap an
 element → full exit; Alt+G → smooth navigable AO preview, no ghost after toggling it off; Alt+J →
 deliberately incomplete (black building, spike scaffold) — don't judge it, it's documented.
+
+## DEPLOYED (2026-07-16 — "push to live", PR #810 merged, verified live)
+User instruction "push to live" lifted the push-pause for this lane's work. Sequence: branch was
+BEHIND (main advanced 2 unrelated PRs → merged `origin/main` in, sw.js conflict resolved per the
+standing rule: higher CACHE_VERSION v766 kept), witnesses re-run green post-merge (syntax + full
+real-GPU smoke, zero pageerrors), pushed, PR #810 opened. CI failed once — pre-existing gap, NOT
+this lane's code: the no-undef eslint gate didn't know the `setupGIPoc` cross-file global
+(scene.js:327; the agent's earlier push had the same red X). Fixed by adding it to
+`eslint.globals.json` (same pattern as `setupEffects`), full `npx eslint viewer modeller` green
+locally, pushed → both checks SUCCESS → auto-squash-merged → Pages deployed. **Verified live by
+fetching the deployed files**: sw.js `CACHE_VERSION="v766"`, effects.js carries `PHOTO_AO`,
+effects_gi_poc.js carries `toggleSSGIPreview`. Everything from tonight's three worktree commits
+(`b365b32`/`d7d41d1`/`8feeae1`) is now in production, including the deliberately-incomplete Alt+J
+SSGI scaffold (§SSGI_SPIKE_INCOMPLETE — gated, inert unless pressed).
+⚠ Squash-merge trap now applies: `feat/ssgi-composer-poc` must NOT be reused for follow-up work —
+start the next branch fresh off `origin/main` (this file has hit that trap twice already).
+Next open items, unchanged: SSGI lighting-reconstruction port (its own lane, scaffold shipped);
+material reference library (~20 curated, own session); prior-art write-up after SSGI lands.
