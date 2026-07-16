@@ -1593,3 +1593,6 @@ radiance — expect it to rise).
 lookup, touches streaming SQL + batching keys — own session); prior-art write-up covering the
 complete system once GI lands (user intent confirmed 2026-07-16: MIT, defensive publication,
 outreach via the r/BIM5D lane).
+
+## ▶ PASTE THIS TO START THE NEXT SESSION (2026-07-16)
+Resume prompts/PHOTOREAL_STILL_RENDER.md — read §"RESUME BRIEF — SSGI LIGHTING PORT" plus the newest SESSION RECORD below it (a dispatched agent worked branch `feat/ssgi-lighting-port` in `/tmp/wt-ssgi-port`, bim-ootb, local commits only); watchdog its claims against its §-log/screenshot evidence, then push the branch if green — user authorized push (no PR, no deploy, unless said).
