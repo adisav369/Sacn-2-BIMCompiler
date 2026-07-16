@@ -1681,3 +1681,27 @@ still exclusion transitions all clean, zero errors. Alt+J after Alt+S = SSGI ove
 scene, works. Known cosmetics seen: /viewer/buildings/ 404 → OCI fallback (72MB fetch, then IDB-
 cached — works, slow first load only), favicon 404, §PILL_SYNC log spam (pre-existing, silence
 someday). Only open quality item remains the recorded SSGI noise+transparency tuning spec above.
+
+## ▶ NEXT SESSION MANDATE (2026-07-16, supersedes the earlier PASTE line — user pre-authorization)
+User's standing instruction for the next photoreal session, given 2026-07-16: **tune → verify →
+fold → DEPLOY LIVE, in one session, gated on verification.** Do not stop to ask for deploy
+permission if the gate passes — it is pre-authorized. Steps:
+1. **Continue on `feat/ssgi-lighting-port`** (pushed, NOT yet merged — safe to continue, no squash
+   trap yet; worktree `/tmp/wt-ssgi-port`, dev server may still be on :8189). If origin/main
+   advanced, sync per the BEHIND playbook (merge, higher CACHE_VERSION on sw.js conflicts).
+2. **TUNE per the "USER LIVE FEEDBACK" spec above**: transparency FIRST (`thickness` 5→10-20 —
+   light leaking through walls is a defect, not the effect), then noise (`denoiseIterations` 1→2-3,
+   `spp` 1→2 measured). Same-pose A/B CROPS per knob change, cost re-measured each step.
+3. **VERIFY with the judge's tells** (educated to the user this session, use the same ones):
+   (a) courtyard/inner-corner camera parked still, Alt+J off→on — shadow-side walls must go from
+   flat grey to visibly graded (lit by neighbors); (b) warm ground-bounce on the lower facade;
+   (c) noise settles within ~1-2s parked; (d) NO see-through walls. Plus full regressions: Alt+S
+   AO fold, Alt+G, ghosting suite, zero §AUTO_STAGE2, zero pageerrors.
+4. **FOLD into Alt+S at freeze-time** — same pattern as the §PHOTO_AO fold (still-only engagement,
+   zero nav cost; frozen still may use HIGHER quality settings than the navigable Alt+J preview,
+   cost is one-shot). Keep Alt+J as the standalone navigable preview.
+5. **DEPLOY GATE (pre-authorized)**: if 3(a-d) pass and regressions are green → push, open PR,
+   auto-merge on CI green, verify Pages serves the new SW version, done — report the live URL
+   result. If transparency/noise does NOT verify after the tuning pass → do NOT deploy; stay
+   localhost, record A/B evidence + verdict in this file, report back. "Leaky = localhost again"
+   is the user's own gate, verbatim intent.
