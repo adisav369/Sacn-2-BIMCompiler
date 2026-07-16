@@ -160,6 +160,30 @@ Worktree `/tmp/wt-fly-corridor` off origin/main 4c0f4a0. Files: `viewer/tour.js`
 copy (spec §R5). Needle Playwright wiring E2E not re-run (core proven via `fly_norooms.log`;
 UI shell is 10 lines). Possible polish: dedupe A-B-A backtrack triples in long legs.
 
+### Rounds 3–5 — live-review fixes (2026-07-16/17, @ 6f0f110 / 44c0ac8 / 0b3cf01 / 6ddb290)
+- **R3 (@6f0f110):** §STREAM-FIRST — tour waits for streaming to drain before take-off (the
+  first "Alt-X bboxes" report was placeholder boxes on a mid-stream take-off; `§FLY_STREAM_WAIT`).
+  Itinerary now LARGEST-first per storey (corridor cruise leads, rooms by descending area) —
+  "great opportunities from large hallways… large areas first".
+- **R4 (@44c0ac8):** §CONNECTED-STOPS — LTU report "same route, nothing major change": LTU has 0
+  exit nodes and its largest corridor node carries no edges → route anchored on an isolated node,
+  every leg failed, pts=1 → permanent legacy fallback. Stops now filtered to edge-set members
+  (`§FLY_ROUTE_ISOLATED`). LTU after fix: CINE-GRAPH 14/18 stops, illegalChords=0/72
+  (`fly_ltu3.log`). Plus @0b3cf01: `§TOUR_VERSION` boot banner — user was twice testing an
+  old-code tab on another port (:8188/:8189 serve main, branch unpushed); banner settles it at
+  a glance.
+- **R5 (@6ddb290):** §FLY-NO-AUTO-GHOST — SECOND "bboxes after some secs" report (user's own
+  console log, v9 confirmed): `ghost=1` URLs arm navigate_find.js's §MERGE-GHOST auto-build,
+  which used to load only when the Find panel opened; the Fly pre-step's `loadNavigate()` now
+  loads that module on every ✈ press → glass shell built mid-flight (`§SHELL_GHOST_AUTO` →
+  `§SHELL_GHOST_BBOX boxes=1549`). Auto-trigger now keeps polling while
+  walkMode/flyActive/_flyPreparing and builds after the tour ends. Witness `fly_ghostgate.log`:
+  ghost=1 + 60s tour → zero SHELL_GHOST lines. User's same log ALSO proved the R3 route live on
+  Clinic: `≈ First Floor Hall/Corridor 1` first interior stop, stair climb, 0/43 illegal.
+- Synced with origin/main twice (photoreal batch, then #811 find-select fix); sw.js
+  CACHE_VERSION conflict resolved KEEP-HIGHER → v772. Post-merge witness `fly_postmerge2.log`
+  green. Branch `feat/fly-corridor-tour` = 9 commits, local only (user: other session pushes).
+
 ### Round 2 — user live-review feedback applied (2026-07-16, @ b9310c4)
 User watched the tour on localhost (bbox/ghost mode) and asked for: full opening circle,
 softer track switches, a heads-up when crossing storeys, and a ground-level outside ending.
