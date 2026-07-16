@@ -1426,3 +1426,54 @@ accumulating over a moving camera (smear) until the next discrete pointerdown. D
    mutual exclusion).
 4. Finding 6 (re-arm timer on every interaction during soft-park — un-gate the soft callers).
 5. Finding 4 is a DECISION, not a fix: keep N8AO as experimental still-only preview, or park it.
+
+## SESSION RECORD (2026-07-16, continued — ghosting regression + review findings 1/3/5/6 FIXED)
+User confirmed the review, said proceed, and reported live: **"ghosting has returned when Alt-S."**
+Root cause was review finding 6 exactly as diagnosed: the Stage-2 auto-restage timer counted 3s
+from the FIRST camera move only (its reset path was dead code — every caller gated on
+`_stillRefineActive`, false during soft-park), so any drag/zoom longer than 3s re-fired
+`startStillRefine()` MID-MOTION; TAA accumulated 16 samples over a moving camera (the 500ms grace
+window swallowing any cancel) and froze on a fully smeared image. All fixes are ONE commit,
+**`b365b32` on `feat/ssgi-composer-poc` (`/tmp/wt-ssgi-composer-poc`), LOCAL ONLY — not pushed,
+per the standing push-pause. SW `v763→v764`.**
+
+**Fixed in that commit (each verified live — real GPU, headed Chrome, HHS):**
+1. **Stage-2 idle detection rebuilt** (finding 6 / the ghosting): OrbitControls `'change'`
+   tracking + a camera-POSE-SIGNATURE gate — Stage 2 may only fire when the pose is byte-identical
+   across a full 3s window, a hard guarantee independent of any event plumbing. Auto-fires are
+   backdated past the grace window so a real interaction cancels instantly. Soft/full cancel
+   callers un-gated for soft-park (`A._photoAutoStageOn` exposed to main.js).
+2. **§PHOTO_DOUBLE_APPLY_GUARD — a second real bug found DURING verification, worse than the
+   ghost:** a Stage-2 refire re-applied staging over the kept-alive staging and captured the
+   already-staged values as the restore baseline (log fingerprint `nightWasOn=true`) — after
+   exiting photo mode the scene PERMANENTLY kept dusk fog/tone (verified: fog stuck `c9a878`
+   after full teardown; now restores to true baseline `a6b3ba`). Staging applies once per photo
+   cycle; refires only restart the TAA polish (`§PHOTO_STAGING already on — skip re-apply`).
+3. **Canvas tap-select = full teardown** (finding 1): classification moved from pointerdown to
+   pointerup using picking.js's own ≤5px tap-vs-drag test — a tap (selection) fully exits photo
+   mode + disarms; a drag stays soft (staging kept). UI-chrome clicks during soft-park now also
+   disarm + revert (previously a silent no-op followed by an unwanted auto-refire).
+4. **GI toggle hygiene** (finding 5): `toggleGIPreview` saves/restores `_composerEnabled`
+   (verified: `true` again after Alt+G off — was stranded `false`, silently killing Shadow-SSAO/
+   frozen-TAA); `_ensureBuilt` no longer latches a transient bundle-load failure into a permanent
+   no-op; new `A.pauseStillRefineForGI()` — GI-on stops the accumulation RAF + disarms auto-restage
+   but KEEPS the staged scene + triplanar textures (uTriActive follows `_stillRefineActive`, so a
+   full stop would have stripped the textures out of the GI preview).
+5. **`lib/Pass.js` r185 ES-import rewrite committed** (finding 3) — pushed state now equals the
+   tree every live test actually served. **SW CACHE_VERSION bumped v764** (finding 2).
+
+**Verification (real-GPU headed Chrome on HHS, scripted suite):** 0 mid-drag Stage-2 fires across
+a 4.5s continuous drag (was 1, smeared — internal `idleForMs` sampled ~8ms throughout, timer
+correctly deferring); exactly 1 fire after genuine idle + skip-re-apply logged; tap → full
+teardown, disarm, fog restored to baseline; soft-park UI click → disarm, no refire; GI on/off →
+photo mode kept under GI, composer restored after. §-log + state-var assertions, not eyeballs.
+
+**For the user's next localhost test:** hard-refresh (SW v764, `skipWaiting()` — one reload is
+enough). Expect: orbiting after Alt+S drops to live view and STAYS live while you keep moving;
+the polished still re-applies only ~3-6s after you actually stop; tapping an element exits the
+photoshoot entirely; after exiting, daytime tone/fog must be exactly as before Alt+S (this was
+silently broken until now — worth checking specifically).
+
+**Still open from the review:** finding 4 is a DECISION, not a fix — N8AO at radius=8/intensity=6
+costs 317ms/frame (~3fps) on a RTX 4060 and reads as broad mottle at establishing distance; keep
+Alt+G as an experimental still-only preview or park it. Not building further on it without a call.
