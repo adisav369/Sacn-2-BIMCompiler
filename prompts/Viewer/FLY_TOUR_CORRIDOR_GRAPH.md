@@ -111,3 +111,51 @@ orbit/approach/finale structure is unchanged).
 - **W-FLY-REGRESSION (S5):** Duplex + a zero-walls DB → tour completes / falls back with no crash;
   `§FLYPATH_INIT len>0`; needle witnesses from ROOM_INJECTOR_NEEDLE.md re-run green after the
   `ensureRooms` refactor.
+
+---
+
+## ✅ DONE 2026-07-16 — implemented + witnessed (bim-ootb `feat/fly-corridor-tour` @ 99fe2ac, local only, PUSH PAUSE)
+Worktree `/tmp/wt-fly-corridor` off origin/main 4c0f4a0. Files: `viewer/tour.js` (v5),
+`viewer/navigate_find.js` (v49, `A.ensureRooms` single-flight + `A.getRoomGraph`),
+`common/room_graph.js` (v5, `chordIllegalCount` exposed), `viewer/main.js`, `viewer/viewer.html`,
+`viewer/sw.js` (v765). Harness: worktree served on :8901, headless chromium driver
+(scratchpad `fly_witness.js`), all claims from saved logs `fly_*.log`.
+
+**Witness results (every claim has its §-line in the named log):**
+- **W-FLY-CORRIDOR** ✅ `fly_terminal2.log`: Terminal (patch-healed, 55 room nodes) →
+  `§FLY_ROUTE storeys=6 stops=18 corridorStops=3 circWps=59 stairUp=…Aras_01::hi
+  stairDown=…Aras_03::lo pts=103 illegalChords=10/89` → `CINE-GRAPH(22acts,92pts)`; flyPts JSON
+  shows `≈ Aras 01 Hall/Corridor 1` waypoint + 4-stair climb (y −14.8→−5.8→−2→2→6.6) and a
+  4-stair descent on a DIFFERENT stair. Bonus `fly_hhs2.log`: HHS federated →
+  `stops=13/14 skipped=1 corridorStops=4 illegalChords=0/50` → CINE-GRAPH flying.
+- **W-FLY-STAIRS** ✅ same logs — stairwp (upper)/(lower) points with monotonic y ramps, ascent
+  stair guid ≠ descent stair guid (Terminal).
+- **W-FLY-INJECT** ✅ `fly_norooms.log`: `Terminal_norooms.db` (stripped copy, 0 IfcSpace) →
+  Fly press → `§PATCH_NONE (404)` → `§NEEDLE_INJECT source=walker rooms=51 rects=79` →
+  `§NEEDLE_PERSIST idb=ok bytes=26492928` → `§FLY_INJECT status=injected source=walker rooms=51`
+  → full CINE-GRAPH ran (`§FLYPATH_INIT` ×2) → reload: `RELOAD_ROOMS 79`, no re-inject.
+- **W-FLY-REGRESSION** ✅ `fly_duplex3.log`: local Duplex snapshot has a thin graph (5 approx
+  nodes — its real IfcSpaces lack center_x/size_x, DB-snapshot-divergence landmine) →
+  `§FLY_ROUTE_REJECT` → legacy CINE tour runs unchanged and ADVANCES. `fly_noheal.log`: copy
+  with baked-in stale RM_ rooms → state=recompute, NOT auto-recomputed (standing needle policy)
+  → stale graph rejected → legacy flies (`§FLYPATH_INIT pts=22 len=422.3`).
+
+**Deviations from the spec above (all measured, none invented):**
+1. **`illegalChords` is REPORTED, not gated.** Chords inside a `shortestPath` result are the
+   engine's own `_legalizePath` best-effort (kept when no detour exists — identical to what PATH
+   mode draws). Measured residual: Terminal 10/89, HHS 0/50. Gating on 0 rejected objectively
+   great routes.
+2. **Unreachable stops are SKIPPED, never straight-hopped** (HHS room island: 1/14). Gate =
+   `edges>0 && visitedStops≥2 && visitedStops≥50% of planned` — thin graphs fall back to legacy.
+3. **Corridor cruise = corridor-room stops** (backprop `Hall / Corridor` + SUSPECT_ELONGATED
+   nodes) + the route's own junction/door waypoints (circWps 29–59), not raw backbone chain
+   polylines — same geometry, one code path.
+4. **`markDirty()` revive added** to fly toggles — the rAF idle-park gate never wakes on a
+   programmatic `toggleFlyAround()` (found live in the harness: tour built but never ticked).
+5. **stairDown may be `-`** (HHS: no graph-reachable return-to-exit leg) — reported honestly.
+6. Headless swiftshader runs ~1fps → dt cap 0.1 makes tours 10× slow-mo in the harness; driver
+   uses a jump-to-flyPath to prove `§FLYPATH_INIT` in-window. Real browsers run full speed.
+
+**Not done / follow-ups:** deploy/dev (bim-compiler viewer) port still needs the 4-file stack
+copy (spec §R5). Needle Playwright wiring E2E not re-run (core proven via `fly_norooms.log`;
+UI shell is 10 lines). Possible polish: dedupe A-B-A backtrack triples in long legs.
