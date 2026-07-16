@@ -933,3 +933,405 @@ closed here; everything above is local-commit-only, push-pause remains in effect
 
 Still local-commit-only on `feat/photoshoot-sun-dusk-reflection` (`/tmp/wt-mobile-perf-fix`) — the
 push-pause remains in effect.
+
+## SESSION RECORD (2026-07-16, continued — sparkle rebuild, Cinema push-in, fog clobber bug found)
+All three items from the two RESUME BRIEFs above closed this session (commit `9088f93`, SW
+`v759→v760`). Verified via headless Chrome (puppeteer, real Terminal/Hospital data over the OCI
+fetch, `/tmp/wt-mobile-perf-fix` served on `:8085`) + direct `sqlite3` queries against the actual
+extracted DBs — not eyeballed. Real-GPU/visual confirmation not done this session (see caveat at
+end) — numeric/log verification only, per this file's own "verify a fix at small scale" discipline.
+
+**1. Sparkle rebuild (the spec from the last RESUME BRIEF, built as written).** `_buildSparklePoints()`
+replaces the 4 invented bbox-corner points with real geometry: FLAT classes (`IfcWall`/
+`IfcWallStandardCase`/`IfcWindow`) get a per-element outward normal via simple trig — local
+thickness axis (shorter of `bbox_x`/`bbox_y`) rotated by the element's own `rotation_z`. ROUNDED
+classes (`IfcCurtainWall`/`IfcPlate`/`IfcMember`) get the RADIAL direction from the building
+centroid instead — **a real, data-driven finding, not a design choice**: queried Terminal's actual
+`IfcPlate` rows (33,324 of them, the dome/curtain-wall shell) and found `rotation_x`/`y`/`z` are
+ALL constant across every single one — the curve is baked into the mesh geometry, not exposed via
+the rotation columns at all, so rotation-based trig is structurally unusable for that class on this
+building. This is also *why* the wider rounded-edge acceptance angle is correct, not arbitrary: a
+class whose true normal isn't exposed in the data at all needs the coarser tolerance.
+- **Rotation-sign convention verified empirically, not assumed** — the codebase has two
+  conflicting conventions in different files (`navigate_find.js`'s door-sconce code negates yaw;
+  `_buildShapeMeshes`/`streaming.js`, used 6× for the actual mesh-placement path, do NOT). Resolved
+  by raycasting the real rendered Terminal geometry and comparing against both candidate signs —
+  `THREE.rotation.y = +rotation_z` (the streaming.js convention) matched real face normals
+  consistently across ~20 sampled walls; the door code's negation is a one-off, not general.
+- 24-point cap via orientation-clustering (15°×20m buckets for flat, 20° buckets for round) — "few
+  points" per the user's own ceiling, confirmed at exactly 24 on Terminal (12 flat + 12 round), 8
+  on Hospital (0 round — Hospital's tested area has no matching curved-envelope classes, correct
+  fallback-free behavior, not a bug).
+- 72-frame orbit sweep on Terminal (`A._reassertPhotoSparkles()` driven directly, camera stepped
+  programmatically) shows the peak-glint point SHIFTING smoothly between different real facade
+  points as the angle changes, opacity rising/falling in a clean bell curve — the "moves opposite"
+  symptom is gone; this is what a curved surface's continuously-sweeping specular highlight should
+  look like, not a fixed/backwards point.
+
+**2. Cinema Orbit push-in, refined twice mid-session by direct user correction.** First spec (push
+in by 3s, hold to ~5s, then draw out) implemented as three explicit phases in `startCinemaOrbit`'s
+`step()` (radius-only push-in, holding tilt at the user's own starting line of attack; brief hold;
+then radius+tilt ease to the normal orbit band). User then corrected the fill-distance formula
+mid-session: **"some edges of the building may even momentarily be out of frame, in order to
+ensure it fills almost full screen"** — changed from the conservative tight-FOV-axis distance (fits
+both screen axes fully, leaves headroom) to the LOOSE-axis distance (`Math.max` of the two tans
+instead of `Math.min`), which pulls the camera closer and deliberately accepts the stricter axis
+clipping slightly. `CINEMA_FILL_MARGIN` dropped from 1.08 to 1.0 to match (padding was for avoiding
+clipping; that's no longer the goal).
+- **ARC-only framing ("ignore any non-ARC elements... solves LTU too far")**: new
+  `_buildingBBoxArc()` filters to `elements_meta.discipline='ARC'`, used for both the fill-frame
+  bounding sphere and the orbit radius/tilt band. Verified directly via `sqlite3` against Hospital's
+  real DB: ARC-only bbox is measurably tighter than the whole-building bbox (depth 147.4m vs
+  150.9m) — real effect, confirmed outside the flaky headless environment.
+- Verified via precise in-page `performance.now()` elapsed-time sampling (not Node-side wall-clock,
+  which drifts under heavy SwiftShader load) on Terminal: radius holds near the computed
+  fill-distance through ~5-6s, then rises smoothly toward the orbit band from ~6s on — matches the
+  intended push-in → hold → draw-out shape.
+
+**3. Sky/ground darkness — confirmed ONE root cause, and it's a real bug (RESUME BRIEF ADDENDUM
+item 2, "confirm before assuming linked or unlinked").** Traced `A.scene.fog.color` end to end:
+the warm `§PHOTO_FOG` override (`0xc9a878`) was being applied BEFORE two other things that *also*
+set `scene.fog.color` as a side effect — `A.updateSky()` (its own dim elevation-derived `dayT`
+blend) and `A.toggleNightMode()` (a near-black moonlight fog, `tools.js` §S277c) — both of which
+run later in `_applyPhotoStaging()` and silently clobbered the override every single time. Verified
+directly: before the fix, `A.scene.fog.color` after staging read `0x080817` (near-black, the
+night-mode value) regardless of the "fix" already in the code; after moving the override to run
+AFTER both clobbering calls (alongside the sun/ambient/hemi/exposure "undo the moonlight override"
+block it belonged with all along), it correctly lands on `0xc9a878` and restores exactly to the
+pre-photoshoot color on teardown. Since fog is the one shared medium touching both the sky's tone
+and any distant ground pixel, this single ordering bug is confirmed as the shared root cause behind
+both complaints — not two separate issues, not physical dusk dimness working as intended.
+
+**Caveat, read before trusting a screenshot claim next session:** the machine was under heavy
+memory pressure this session (1.2GB free, 6GB swap in use — a real, non-puppeteer Chrome tab from
+another concurrent session was also open on `:8093`, left untouched). Hospital's 263MB DB
+repeatedly failed to finish loading in headless Chrome under this pressure (confirmed via direct
+`sqlite3` queries against the file instead, bypassing the browser). A late-session screenshot on
+Terminal showed correct ground/sky/fog color but 0 real mesh elements rendered (streaming stalled
+under the same memory pressure) — not a regression from this session's changes (streaming.js itself
+wasn't touched), but it means the sparkle/material visual appearance was NOT confirmed by eye this
+session, only by the numeric/log verification described above. Get a fresh, memory-healthy
+real-GPU screenshot next session before considering the visual side fully closed.
+
+Not merged/pushed — local commit only (`9088f93`, `feat/photoshoot-sun-dusk-reflection`,
+`/tmp/wt-mobile-perf-fix`), per the standing push-pause.
+
+## SESSION RECORD (2026-07-16, continued — live-test feedback, 5 items closed)
+User confirmed the reflection/sparkle rebuild reads as "dramatic and correct" live, then gave five
+follow-up items from actual use. All five closed this session (commit `dfb2ebf`, SW `v760→v761`),
+verified via headless Chrome + direct uniform/state inspection — real-GPU visual confirmation still
+outstanding (same memory-pressure caveat as the prior entry; system freed up partway through this
+session and HHS rendered cleanly, but Terminal/Hospital's full mesh streaming stayed unreliable in
+headless SwiftShader throughout).
+
+**1. Cinema Orbit reflection swoop** ("camera angle has to be at building level to give best
+effect... pass in front of that reflection at building mid angle at least once"). Added a tilt dip
+timed to the ONE point in the 360° sweep where camera azimuth crosses the sun's own azimuth (the
+same sun-behind-camera condition the glint/lensflare math already uses) — a full sweep crosses that
+exactly once, guaranteed, general to any building/sun angle. Verified: tilt samples dip from ~43°
+(normal band) to ~4.6° right at the computed crossing time, then ease back out.
+
+**2. Tone-revert after interaction — verified, no bug found.** User reported a transient
+"whitewash" on cancel, called it OK, asked to confirm final state returns to original tone. Traced
+the full teardown path (`A.toggleNightMode()`'s own toggle-off restore, confirmed in `tools.js`) and
+verified empirically: captured every overridden property (sun/ambient/hemi color+intensity,
+exposure, fog color+density, sky/ground visibility, renderer clear color) before staging, during
+staging, and after `stopStillRefine()` — the after-snapshot was byte-identical to the before-
+snapshot on every field, zero diffs. The reported whitewash is a transient cancel-frame artifact,
+not a stuck/incomplete revert — nothing to fix here.
+
+**3. Skyline windows + sun-reactive silhouette.** Window-lights were a `THREE.Points` cloud using
+PointsMaterial's default round sprite ("ghostly"). Added `_getSkylineWindowTexture()` — a small
+square canvas with a rounded-rectangle glow drawn narrower than the canvas (transparent padding
+either side, since a Points sprite's footprint is always square) — same Points system, same single
+draw call, just a different `map`. Separately, "the silhouette if also react to the Sun" (user's own
+follow-on, full discretion given): reused the sun-direction dot product already computed for the
+existing gap-clearance check (skyline boxes near the sun get REMOVED to leave it visible) to give
+boxes on the sun-facing arc a subtle warm rim-brighten — verified boxes range from `0x111015`
+(far side, unchanged) up through `0x30282a` (near the gap edge, visibly warmer), confirming real
+variation, not a uniform tint.
+
+**4. Wet-ground puddles, not an even sheen.** User's own mid-session correction: "even the water on
+ground puddles rather than even wet, thus selective reflection... over selective areas." Implemented
+as a small fixed count (6) of randomly-placed circular patches via an `onBeforeCompile` injection on
+`A.ground.material` — same gated, still-render-only pattern already proven for the triplanar
+textures, including the same recompile-resets-uniforms self-heal fix found earlier this session.
+Inside each patch: roughness drops toward 0.08 (glossy) and diffuse darkens ~28% — deliberately
+reuses the ground's EXISTING `envMapIntensity` (scene.js, already 0.15) rather than boosting it, so
+a lower-roughness surface alone reads more reflective without re-touching the hemi/ambient
+contrast-flattening landmine documented earlier in this file. Verified live: 6 puddles with real
+world-space centers/radii scaled to the building envelope, uniform correctly gates 0→1→0 across
+stage/teardown. A real-GPU screenshot (HHS) shows a visibly darker/different ground patch appearing
+under one random seed and not another — the puddle mechanism is visually confirmed, not just logged.
+
+**5. Random "paint" surface variation, locked on Cinema press.** Unified with item 4 under one
+shared seed: `A._photoPaintSeed`, re-rolled on every Alt+S trigger while unlocked (so repeated
+triggers let the user browse different results — "each time it is done first time it returns a
+diff"), locked by `A.startCinemaOrbit()` so a capture doesn't re-roll mid-recording ("once user
+agrees, press cinema icon, it takes that persisted cache") and stays locked for the rest of the
+session. Drives: (a) the puddle placement in item 4, (b) a new coarse two-octave blotch/weathering
+tint layered onto the triplanar diffuse in `streaming.js` (a plain UV-offset alone would look
+near-identical on a seamlessly-tiled texture, so this uses seeded low-frequency hash noise instead
+— genuinely different-looking each roll). **No explicit clear-on-close/Home code was needed** —
+`A._photoPaintSeed` is plain in-memory JS state, and the existing Home button (`panels.js`) already
+does a real `location.href` page reload, which destroys it for free; matches "clears each time
+viewer closes or returns to Home" with zero extra plumbing. Verified on HHS (the one building that
+rendered reliably this session): 9 real triplanar materials all read the exact same shared seed
+value, re-triggering rolls a new shared value identically across all of them, and two screenshots
+at different seeds show a visibly shifted wall-texture blotch pattern plus a clearly different
+ground-puddle placement (tint range widened from an initial 0.86–1.10 to 0.72–1.22 after the first
+pass read as too subtle to notice against the base texture).
+
+**Also noted, no action needed:** user confirmed Cinema Orbit's current foreground-running behavior
+and recording resolution are fine as shipped ("wow i didn't know the Cinema Orbit runs foreground
+giving free excitement... a bit low res grainy but it is fine... Perfect! Lock that in") — nothing
+to change there.
+
+Not merged/pushed — local commit only (`dfb2ebf`, `feat/photoshoot-sun-dusk-reflection`,
+`/tmp/wt-mobile-perf-fix`), per the standing push-pause.
+
+## SESSION RECORD (2026-07-16, continued — pushed per explicit user instruction)
+User confirmed the reflection smoothness live ("seeing it on canvas same time... too perfect"),
+asked why (traced to two real facts: `A.controls`'s `'end'`-triggered `_cityRayBlast()`/eviction/
+restream in `city.js` never fires during Cinema Orbit since it drives the camera programmatically
+with no real pointer events — free-hand navigation pays that cost on every drag-release; TAA
+accumulate is also off during the moving shots), confirmed building window-glow + entry-door
+sconces are already built (`A.toggleNightMode()`'s reused glow mechanism + the `IfcDoor`-position
+sconces from earlier this session — nothing new needed), then said **"Push first."** — explicitly
+lifting the standing push-pause for this action only.
+
+**Real problem found before pushing:** `feat/photoshoot-sun-dusk-reflection` had drifted behind
+`origin/main` — main advanced to `94318d7` (PR #805) mid-session, which is a SQUASH of an earlier
+point in this same branch's own history (the exact divergence trap this repo's CLAUDE.md warns
+about). A direct `git merge origin/main` produced 12+ unresolvable-looking conflict hunks across
+`effects.js`/`streaming.js`. Per this repo's own established playbook (used twice already earlier
+in this feature's history), the fix is NOT to hand-resolve a merge — it's to verify whether
+`origin/main`'s content is a strict subset of the local branch's tip (it was: every line unique to
+`origin/main` was confirmed, line by line, to be an older/superseded version of something already
+improved locally — nothing independent would have been lost) and then take the local branch's
+files wholesale onto a fresh branch cut from `origin/main`. **A first attempt at this using a sed/
+regex-based conflict resolution actually corrupted the file** (mishandled the specific case where
+one side of a conflict hunk has zero lines, silently swallowing ~150 real lines of code into a
+discarded capture group) — caught before committing via a brace-balance check and a direct diff
+against the known-good source commit, not assumed correct. Recovered by aborting and redoing the
+resolution with exact line-number `sed` deletions instead of pattern matching, then finally
+confirmed the wholesale-file-copy approach was simpler and safer than either.
+
+**Result:** new branch `feat/photoreal-sparkle-cinema-fixes` off current `origin/main`, one
+consolidated commit (`4a7fa21`) carrying both of today's local commits' full content, verified
+`node --check` + a live headless re-run (HHS: same shared-seed triplanar paint mechanism confirmed
+working identically post-rebase, zero page errors) before pushing. **Pushed to GitHub** — branch
+only, no PR opened (kept to literally what "push" asked for, nothing more, per explicit "don't
+impact, nor invent further").
+
+## SESSION RECORD (2026-07-16, continued — post-push gap found + two real streaming/occlusion bugs)
+User (correctly) alarmed after the push, asking "did you revert all the work online" — investigated
+before answering, not assumed. **Confirmed nothing was lost or reverted anywhere real**: `origin/main`
+was untouched throughout (still `94318d7`, no force-push, deploy workflow only triggers on `main`
+so nothing ever deployed), and the old branch `feat/photoshoot-sun-dusk-reflection` was never
+deleted — fully intact locally the whole time. **But there WAS a real gap**: the rebase in the
+entry above only carried the 3 files touched by the two newest commits (`effects.js`/`streaming.js`/
+`sw.js`) — it missed that the Cinema Orbit UI BUTTON itself lives in `panels.js`, added by an
+*earlier* same-day commit (`0fcc728`) that was also never merged to main. Fixed by the same
+verify-strict-superset-then-take-wholesale discipline (commit `5bf83fa`, pushed) — a full
+branch-vs-branch file diff confirmed empty (nothing else missing) before closing this out.
+
+**Two more real, live-found bugs, both fixed this entry, both the SAME root-cause family already
+seen twice earlier this session (a one-shot action that misses content streamed in later):**
+
+1. **Window/fixture glow ("I cannot see the building lights yet")** — `A.toggleNightMode()`'s
+   emissive-glow loop over `A._matCache` (tools.js) only ever ran ONCE, at the instant it's called.
+   Since `A._matCache` fills in progressively as `streaming.js` decodes real geometry, and
+   Alt+S/Cinema Orbit routinely fires long before a large building finishes streaming (confirmed
+   this session: 20-30s+ under load), the glow only ever caught whichever handful of materials
+   existed at that one moment — verified live: 1 window-glow material at trigger time, never grew
+   even 15s later. Fixed by extracting the loop into `A._applyNightGlowToMatCache()` (tracks
+   already-processed keys, cheap no-op once nothing's new), called once at toggle-on plus every
+   accumulation/orbit frame via a new `_reassertPhotoGlow()`, plus a repeating 3s safety net for
+   buildings that keep streaming well past the point the 16-sample TAA loop itself stops running.
+   Verified the reassert mechanism directly (not just log-line trust): injected a synthetic
+   late-arriving window material into `A._matCache` mid-session, confirmed
+   `A._applyNightGlowToMatCache()` picks it up. Commit `a1e5a06`, pushed.
+
+2. **Skyline silhouette windows invisible ("lights not visible the silhouette buildings")** — NOT
+   a streaming-race bug this time, a genuine geometry-placement bug: window-light points were
+   scattered randomly through each skyline box's HORIZONTAL FOOTPRINT (both X/Z randomized within
+   the box width), landing most points INSIDE the box's own solid volume — depth-occluded by the
+   box's own nearest opaque wall from any outside viewing angle. The `Points` object existed,
+   `visible=true`, 4308 real points, and was STILL completely invisible — caught by taking an
+   actual screenshot at the app's own default camera framing and looking at it, not trusting the
+   diagnostic booleans alone (the same "log ≠ visual proof" discipline this file has invoked
+   before). Fixed by placing each point on one of the box's 4 vertical face planes instead (real
+   building-window-grid pattern, small outward epsilon to avoid z-fighting). Verified with a
+   before/after screenshot at the IDENTICAL camera position: zero visible dots before, a real
+   sprinkle of lit windows on every box after. Commit `e8b73d1`, pushed.
+
+All three fixes verified live via headless Chrome on HHS (the one building rendering reliably this
+session) before pushing each one. `origin/main` remains untouched throughout — everything is on
+`feat/photoreal-sparkle-cinema-fixes` only, no PR opened yet.
+
+## SESSION RECORD (2026-07-16, continued — what it takes to close the gap to Enscape/Twinmotion/Lumion, spec only, no code)
+User asked directly what it takes to reach leading-real-time-archviz quality, tied to a stalled
+attempt last month to get three.js r185's GI capability working together (with this assistant) that
+didn't pan out. This is a synthesis of the existing §LAYER 1-4 spec above (no new investigation) —
+answering "what does it take" honestly rather than re-scoping.
+
+**Where the r185 attempt actually hit a wall.** §LAYER 4/§OPEN QUESTIONS above already diagnosed
+this precisely: three.js r185 does ship an official SSGI node (`SSGINode`), but it lives in the
+newer TSL/WebGPU-node postprocessing system — architecturally separate from this app's classic
+`EffectComposer`+`Pass` pipeline (the same pipeline `TAARenderPass`/`SSAARenderPass` use). You
+cannot drop `SSGINode` into the classic composer; it's a different rendering path. Not a
+version/skill problem — an architecture mismatch, never resolved by a feasibility spike (still open
+at line ~156).
+
+**Already shipped, closing part of the gap:**
+- Layer 1 (TAA still-refine, `Alt+S`) — jaggies, some contact-shadow polish. Done.
+- Layer 3 (triplanar PBR — concrete/plaster/metal, diffuse+roughness, CC0 via ambientCG) — done,
+  verified across 9 materials, shared-seed paint confirmed post-rebase. This is most of why the
+  screenshots reviewed this session read as well as they do.
+
+**Cheap and still genuinely open — do this next:**
+- Layer 2 (real photographed HDRI sky, Poly Haven/ambientCG + `PMREMGenerator`) — spec'd, not
+  started, flagged in its own section as best effort:benefit ratio in this whole file. The envMap
+  work done later (§SESSION RECORD "orbit test movie + envMap bug") was a bug fix to the boost-
+  intensity logic on the EXISTING generic envMap, not a swap to a real HDRI — Layer 2 is still
+  untouched. Would directly improve the flat-gray glazing reflections flagged in this session's
+  screenshot review.
+
+**Hard — the actual Enscape/Twinmotion/Lumion gap:**
+- GI/bounce light (Layer 4). Baked lightmaps: blocked, no UV2/lightmap-unwrap anywhere in the IFC
+  extraction pipeline (a separate substantial project, not a tweak). Real path tracing: blocked,
+  incompatible with `InstancedMesh`/`BatchedMesh` — how this app renders every large building,
+  `MOBILE_PERF.md`'s whole perf stack depends on it. SSGI (screen-space, post-process, doesn't touch
+  mesh data so it doesn't care about instancing or UV): the one realistic path, but needs its own
+  feasibility spike into a classic-`EffectComposer`-compatible SSGI technique — NOT the TSL
+  `SSGINode` r185 ships, that's the dead end already hit. This is the one piece of real engineering
+  standing between "good archviz" and Enscape/Twinmotion-tier reflections+GI, and it is genuinely
+  unresearched, not just unbuilt.
+
+**Flythrough ("killer fly-thru").** Cinema Orbit (shipped, in-app) orbits a fixed pivot with
+push-in/hold/pull-back phases. A route-based flythrough — camera moving along a path through/past
+the building rather than circling one point — is a different camera-path problem. It would reuse
+the same staging/TAA/sparkle machinery, but needs a spline or waypoint path (candidates: derive from
+`elements_meta` ARC bbox + corridor/circulation data if available, or a simple user-placed waypoint
+list) in place of `startCinemaOrbit`'s fixed-radius orbit math. Not spec'd — new work, not an
+extension of what exists.
+
+**Bottom line, consistent with §HONEST VERDICT at the top of this file:** Layer 2 (HDRI swap) is the
+next cheap, real win. Layer 4 (SSGI) is the one genuine engineering gap separating this from
+Enscape/Twinmotion-tier quality, and it needs a dedicated research spike — a real session scoped to
+just that — before any implementation. That is the accurate answer to "what does it take," not a
+small tweak, and not something achievable by pointing the existing r185 build at the problem again.
+
+## SESSION RECORD (2026-07-16, continued — GI spike went from throwaway POC to real pushed feature;
+Layer 2 HDRI shipped; handing off to a Fable 5 session next)
+Started as a bounded "small sandbox test" of Layer 4's open SSGI question (per the RESUME note
+above) — ended up becoming real, pushed, working feature branch work in `bim-ootb` after live
+testing kept surfacing real bugs worth fixing on the spot. Everything below is on
+**`feat/ssgi-composer-poc`** (bim-ootb), 4 commits, all pushed, **no PR opened** — explicit user
+instruction was "push" not "merge." `origin/main` untouched throughout.
+
+**§LAYER 4 answer, now with a real implementation, not just a spec:** N8AO (pmndrs `postprocessing`
+package) IS technically usable on this app's real streamed `InstancedMesh` geometry — confirmed by
+building it, not just researching it. Alt+G toggles it (`viewer/effects_gi_poc.js`, new file),
+lazy-built on first press so normal sessions pay zero extra memory/GPU cost. Vendored
+`postprocessing`+`n8ao` as a `--external:three` esbuild bundle (`viewer/lib/postprocessing-n8ao.bundle.js`)
+so it shares the app's own THREE instance — repointed the previously-unused `"three"` importmap
+entry (`viewer/viewer.html`) from `three.webgpu.min.js` to `three.module.min.js` to make that work
+(safe: grepped first, zero existing bare `from 'three'` imports anywhere in the app before this).
+Also vendored `viewer/lib/HDRLoader.js` (r185's HDRLoader, RGBELoader is deprecated → this) and
+confirmed `viewer/lib/Pass.js` already existed byte-identical from earlier EffectComposer work — no
+new file needed there, just an importmap subpath entry.
+
+**Three real bugs found via live user testing on real buildings (HHS Office, Hospital, Terminal),
+not headless-only — this is the part worth re-verifying, see the ask at the end:**
+1. **"Motion shadow" ghosting on camera move.** N8AO's `accumulationRenderTarget` is only cleared
+   on camera-move when `configuration.accumulate=true` (read from N8AO's own source) — left at the
+   default `false`, it never cleared, any frame, so old frames visually smeared into new ones on
+   every orbit. Fix: `accumulate:true` — which per N8AO's own docs is ALSO the intended mode for a
+   refine-when-still use case ("if the camera is moving, accumulation is disabled automatically"),
+   matching this app's existing TAA discipline, not a workaround.
+2. **Ghosting persisted after fix #1, on non-camera-movement changes** (streaming, selection,
+   xray — user's own words: "streaming refresh getting caught"). Root cause: that same clear logic
+   is keyed ONLY to the camera view/projection matrix, so scene changes that aren't camera moves
+   never triggered it. Fix: N8AO exposes a public `firstFrame()` that forces the same clear-path a
+   camera move does — wrapped `A.markDirty()` (the app's existing single "something changed, render
+   again" choke point, already called by selection/xray/streaming) so any of those also force a
+   reset.
+3. **Alt+S could not be turned off once the new Stage 1/2 auto-cycle (below) began** — real user
+   report: "could not shake out of the shadow mode, to return to normal mode. Have to hard reset."
+   `toggleStillRefine()` only checked `A._stillRefineActive`, but the soft-cancel path (Stage 1)
+   sets that `false` while staging is still kept alive — Alt+S would see `false` and restart
+   instead of stopping. Fixed: toggle off whenever EITHER actively refining OR the auto-stage loop
+   is armed. Verified headless AND confirmed live by the user ("Ok the shadow can be shaken off").
+
+**New, NOT-in-original-spec experimental layer — an auto-staging system on top of Alt+S, built to
+the user's own spec ("auto stage: #1 when orbiting, #2 when static after 3 sec"):**
+- **Stage 1** (`A.softStopStillRefine()`, `effects.js`): pure camera movement (OrbitControls
+  `'start'`, `wheel`, and canvas-targeted `pointerdown` — distinguished from UI-panel clicks by
+  `e.target === APP.renderer.domElement`) now only drops the TAA supersample polish, KEEPS the
+  mood staging (dusk sky/ground/shadows) active — previously both were tied to the same interaction
+  signal and reverted together. Known limitation, not solved: a hypothetical direct 3D-canvas
+  click-to-select (distinct from the Find-panel-tree-driven selection seen in every example this
+  session) would be mis-classified as soft-cancel-only. No evidence that path is in active use;
+  flag if it turns out to matter.
+- **Stage 2** (`_autoStageArm`/`AUTO_STAGE_IDLE_MS=3000`): after 3s idle with staging still kept
+  alive, automatically re-triggers the full still-refine polish — no repeated Alt+S needed.
+  Verified: `§AUTO_STAGE2 idle-triggered` fires on its own.
+- Selection/UI-panel clicks still do the full teardown, unchanged — matches "of course when i
+  select an item it breaks to old nature."
+- **This is genuinely new scope beyond the original Alt+S feature**, built additively/gated —
+  nothing removed from existing behavior when the auto-stage system isn't engaged.
+
+**§LAYER 2 (HDRI) — finally implemented, not just spec'd.** Real CC0 HDRI from Poly Haven ("Belfast
+Sunset, Pure Sky" — clear dusk sky, no foreground objects to leak weird reflections into the
+building's own materials, matches this staging's existing dusk mood), 1k res (~1.2MB, plain git
+blob — matches the existing Layer-3-texture commit convention, not LFS, confirmed no policy
+violation). Lazy-loaded once on first Alt+S (`_ensureHdriEnvMap()`), cached after. Reuses the
+EXISTING `_reassertPhotoEnvMap()` per-accumulation-frame loop to push it onto materials — no new
+per-frame code, just a different source texture for a mechanism that already existed. Verified:
+`§LAYER2_HDRI_READY` fires, screenshot shows real reflective character on glazing that read flat
+gray before.
+
+**Honest gaps, not resolved this session:**
+- N8AO's denoise settings were tuned once on a user report ("still bit ghosting, may need
+  denoise") — `denoiseSamples` 1→4, `denoiseRadius` 0→6 — but NOT re-verified live after that
+  change. Unconfirmed whether it actually helped.
+- AO radius was bumped 1.5→8 and intensity 4→6 specifically to make ground contact-shadow visible
+  at exterior establishing-shot distance — confirmed visible but characterized honestly as "texture
+  breaking flatness" not "physically accurate contact AO" (broadly mottled, doesn't hug the
+  building base). This is a deliberately rough tuning pass, not a finished look — combined with the
+  new HDRI in the same shot it reads busy; may need dialing back rather than pushing further.
+  Perf cost measured once, headless SwiftShader only: 7.5ms→11.75ms (+57%) — real-GPU cost unknown.
+- Every fix above was verified against ONE building reliably (HHS Office, local DB, no OCI fetch
+  flakiness) — Hospital and Terminal were used for live user spot-checks but not systematically
+  re-run through the same headless verification scripts after each fix. The scripts exist
+  (`verify_*.js`, `test_*.js` in the worktree root, NOT committed — local/throwaway) if a future
+  session wants to re-run them on other buildings.
+- Stage 1's canvas-vs-UI pointerdown split is a first cut, not exhaustively tested against every
+  UI surface in the app (only Find-panel clicks were actually exercised).
+
+**⚠ ASK FOR THE NEXT SESSION (explicit user request, 2026-07-16): before building anything further
+on top of this, do a once-over of everything above for risk/breakage/landmines — this went from a
+"small sandbox test" to real pushed changes to shipped-adjacent files (`effects.js`, `main.js`,
+`scene.js`, `viewer.html`) across one long session, verified mostly via headless SwiftShader plus
+scattered live spot-checks, not the full systematic pass this codebase's own discipline normally
+expects.** Specifically worth checking cold, not just re-reading this record:
+1. Does the Stage 1 canvas-vs-UI pointerdown split (`main.js`) break any OTHER feature that relies
+   on `window.pointerdown`/`wheel` behaving the old (uniform) way — search for other listeners on
+   those same events, not just the still-refine ones touched here.
+2. Real-GPU (not SwiftShader) perf check on the N8AO composer, and on the new
+   `_autoStageArm` idle-timer's interaction with the existing `_startLoop`/idle-park render-loop
+   discipline (`§IDLE-PARK` in `main.js`) — does an armed-but-not-yet-fired auto-stage timer keep
+   the rAF loop alive when it should be parking, or vice versa cause the idle-triggered Stage 2 to
+   silently never fire because the loop already parked?
+3. The `importmap` "three" repoint (`viewer.html`) — confirm nothing ELSE in the app (not grepped
+   this session beyond a first-pass check) picks up a bare `from 'three'` import path and now
+   silently resolves to a different THREE build than intended.
+4. Whether the AO radius=8/intensity=6 tuning plus the new HDRI, viewed together on a real GPU
+   rather than headless screenshots, actually reads as an improvement or as visual noise — this
+   session's own honest characterization above says "reads busy," worth a real call before anyone
+   builds further on top of these specific numbers.
+5. General: `git log feat/ssgi-composer-poc` (bim-ootb) has the full commit-by-commit trail with
+   detailed bug-root-cause writeups in each message — read those before re-deriving anything above
+   from scratch.
