@@ -1550,3 +1550,46 @@ SSGI scaffold (§SSGI_SPIKE_INCOMPLETE — gated, inert unless pressed).
 start the next branch fresh off `origin/main` (this file has hit that trap twice already).
 Next open items, unchanged: SSGI lighting-reconstruction port (its own lane, scaffold shipped);
 material reference library (~20 curated, own session); prior-art write-up after SSGI lands.
+
+## RESUME BRIEF — SSGI LIGHTING PORT (2026-07-16, written at wrap; read this first, next session)
+**Start a FRESH branch off `origin/main`** (feat/ssgi-composer-poc is squash-merged — reuse trap).
+The scaffold is already LIVE in production, gated behind Alt+J: `viewer/effects_gi_poc.js`
+`toggleSSGIPreview` + the shared vendored bundle (`viewer/lib/postprocessing-n8ao.bundle.js`,
+carries postprocessing@6.39.2 + n8ao@2.0.0 + realism-effects@1.1.2 with 4 baked-in r185 patches —
+full patch recipe in commit `8feeae1`'s message; rebuild = npm-install those 3 packages, apply the
+4 patches to realism-effects' dist, esbuild entry re-exporting all three, --external:three).
+
+**State: machinery proven, lighting broken.** Runs 13.6ms/frame on real HHS geometry, zero errors,
+BatchedMesh shader compilation FIXED (batching_pars/batching_vertex injection) — but the building
+renders BLACK (`~/Pictures/Screenshots/SSGI_spike_black_building_2026-07-16.png`).
+
+**Root cause to attack (in order):**
+1. realism-effects' SSGI reconstructs radiance via its own gbuffer material (`MRTMaterial` in its
+   dist — writes diffuse/normal/roughness/emissive to an MRT). It builds per-object materials by
+   copying properties off scene materials. THIS APP's materials are (a) grouped by `(rgba,
+   ifcClass)` with color on `material.color` (no maps), (b) customized via onBeforeCompile
+   (triplanar), (c) rendered as InstancedMesh/BatchedMesh. Diagnose WHERE the diffuse goes black:
+   dump the gbuffer diffuse target to screen first (their SSGIEffect has debug/output modes — check
+   dist for an output switch) before touching any code. Suspects: their material-clone path not
+   copying `.color` for batched/instanced meshes, or vertex-color/instance-color defines mismatch.
+2. `scene.environment` is never set in this app (envMaps are per-material via `A._envMap`).
+   realism-effects uses env for miss-rays; setting it surfaced a further dead-API path
+   (`.length` on env mip data — likely its importance-sampling `getMaxMipLevel`/CubeUV data walk,
+   r152-era). Either patch that path for r185 PMREM layout or neutralize env sampling (black env =
+   screen-space-only bounce, still real GI from visible surfaces).
+3. Only then tune (distance/thickness/steps currently 30/5/12 — guesses).
+
+**Fallbacks if the port stalls (bounded, decided at spike time):** realism-effects' unfinished v2
+branch (github, never published), or a purpose-built minimal screen-space bounce pass reusing the
+N8AOPass depth/normal targets already proven working in the native chain (§PHOTO_AO adapter).
+
+**Definition of done:** Alt+J shows the building LIT with visible bounce (warm ground-bounce onto
+facades is the tell), stills verified same-pose A/B, then decide whether it joins the Alt+S fold
+the same way AO did (freeze-time only) — do NOT auto-bundle it into Alt+S before its cost and
+stability are measured (§SSGI cost was 13.6ms/frame BEFORE the lighting actually computes real
+radiance — expect it to rise).
+
+**Also queued after this lane (unchanged):** material reference library (~20 curated, name-pattern
+lookup, touches streaming SQL + batching keys — own session); prior-art write-up covering the
+complete system once GI lands (user intent confirmed 2026-07-16: MIT, defensive publication,
+outreach via the r/BIM5D lane).
