@@ -1596,3 +1596,67 @@ outreach via the r/BIM5D lane).
 
 ## ▶ PASTE THIS TO START THE NEXT SESSION (2026-07-16)
 Resume prompts/PHOTOREAL_STILL_RENDER.md — read §"RESUME BRIEF — SSGI LIGHTING PORT" plus the newest SESSION RECORD below it (a dispatched agent worked branch `feat/ssgi-lighting-port` in `/tmp/wt-ssgi-port`, bim-ootb, local commits only); watchdog its claims against its §-log/screenshot evidence, then push the branch if green — user authorized push (no PR, no deploy, unless said).
+
+## SESSION RECORD (2026-07-16, SSGI LIGHTING PORT — Alt+J now LIGHTS the building. Verdict: LIT)
+Executed the RESUME BRIEF — SSGI LIGHTING PORT above. Branch `feat/ssgi-lighting-port`
+(`/tmp/wt-ssgi-port`, bim-ootb, off origin/main 9de54d6), ONE local commit `ff29636` — NOT pushed,
+NOT PR'd, per the standing push-pause. sw.js `v766 → v767`.
+
+**Root cause: THREE stacked faults, none of them the one the spike suspected.** Diagnosed by
+float-probing every buffer of the live chain (playwright real-GPU, per-stage NaN detection) before
+touching any code. The spike's "gbuffer MRTMaterial doesn't carry batched material colors" theory
+was DISPROVEN by measurement — gbuffer depth/normal/diffuse were all correctly populated on real
+HHS BatchedMesh geometry:
+1. **`useDirectLight` never engages.** realism-effects sets that define only in
+   `updateUsingRenderPass()` on an `isUsingRenderPass` TRANSITION — but it constructs `true`, and
+   the "set false next frame" rAF is cancelled by every `update()` in a continuously-rendering
+   composer. Transition never fires → define never lands → with no `scene.environment` the only
+   light inputs are emissive (zero) + accumulated GI (starts black) → black forever. Fix (app-side,
+   `effects_gi_poc.js`): call `ssgi.updateUsingRenderPass()` once after construction.
+   `§SSGI_PORT_WIRED useDirectLight=true importanceSampling=false` witnesses it.
+2. **r185 REVERSED `packDepthToRGBA` byte order** (`.r` is now the MSB ≈ depth value; the lib
+   assumed the old LSB-in-r layout). The denoiser's hand-rolled far-plane check
+   `depthTexel.r>0.9999` discarded ~every building fragment at establishing distance, and with this
+   app's `renderer.autoClear=false` the denoise targets kept their initial ZEROS → hard-black
+   output wherever geometry exists, normal sky (compose fallback) — exactly the spike's black
+   silhouette. Fix (bundle patch #5): `unpackRGBAToDepth()`-based check, layout-agnostic.
+3. **Env importance sampling with no environment → NaNs.** `importanceSampling` defaults ON;
+   without `scene.environment` it sampled default 1×1 env-info textures and read UNINITIALIZED
+   GLSL bools (UB) → 1.1% NaN in raw GI poisoning temporal accumulation. Fix:
+   `importanceSampling:false` option (black env = screen-space-only bounce + direct light — the
+   brief's own accepted scope) + bundle patch #6 zero-initing the bools.
+
+**Bundle rebuilt from the 8feeae1 recipe** (postprocessing@6.39.2 + n8ao@2.0.0 +
+realism-effects@1.1.2, esbuild --external:three --minify): the 4 spike patches re-derived exactly
+(injection points verified against the shipped bundle's own strings) + new patches #5/#6, applied
+by a deterministic exact-string patch script that fails loudly on count mismatch (full recipe in
+`ff29636`'s message). Link-time contract re-verified: all 74 named `from"three"` imports exist in
+`three.module.min.js`+`three.core.min.js` exports.
+
+**Verification (real GPU RTX 4060, headed Chrome, HHS, zero pageerrors, all §-logged):**
+- Same-pose A/B: `~/Pictures/Screenshots/SSGI_port_{A_plain,B_ssgi_lit}_2026-07-16.png` — building
+  fully lit under Alt+J (was `SSGI_diag_B_altJ_black_2026-07-16.png`, saved same day, same pose).
+- **Bounce tell (definition of done):** dusk-staged close-up shows warm ground/light bounce on the
+  facade + interior slabs — `SSGI_bounce_{A_staged_noSSGI,B_staged_plus_SSGI}_2026-07-16.png`;
+  pre-compose GI accumulation buffer 70.1% non-zero, warm-dominant (51.2%), 0% NaN.
+- **Cost: 13.7 ms/frame avg** (p50 13.6 / max 15.3, gl.finish-synced, 1100×750) — real radiance now
+  computes for roughly the spike's black-output price (13.6). Well under Alt+G-nav budget.
+- Orbit: no smear trail across a 60-frame orbit; clean re-converge after settling
+  (`SSGI_port_{C_during_orbit,D_settled_after_orbit}_2026-07-16.png`).
+- Regressions on the shared rebuilt bundle: Alt+G `§GI_POC_INIT_OK` + clean on/off + composer state
+  recomputed; Alt+S `§STILL_REFINE done` + `§PHOTO_AO done frames=24 avgRenderMs=5.3`; tap exits
+  photo mode; `§AUTO_STAGE2` count 0 everywhere.
+
+**Open items (documented, deliberately not iterated further):**
+- Edge speckle noise while the camera moves (denoiseIterations=1, spp=1) — converges when still;
+  a tuning pass (denoiseIterations/radius/steps, currently 30/5/12 guesses) now has a LIT baseline
+  to tune against.
+- `scene.environment`/HDRI feed into SSGI miss-rays (sky contribution) left for a follow-up — the
+  lib's env importance-sampling path needs its own r185 work (that's fault 3's other half).
+- Do NOT auto-fold SSGI into Alt+S — user decision pending, per the brief.
+- Diag/verify scripts (`diag_ssgi_*.js`, `verify_ssgi_*.js`, `verify_altg_alts.js`) live in this
+  session's scratchpad + logs; patterns copyable from the commit message if needed again.
+
+**User localhost check:** serve `/tmp/wt-ssgi-port` (e.g. port 8189), hard-refresh once (SW v767),
+open HHS, Alt+J → building should be LIT (no more black); §SSGI_PORT_WIRED in console; Alt+G and
+Alt+S unchanged. Push authorized per the paste-block above once watchdogged — not done here.
