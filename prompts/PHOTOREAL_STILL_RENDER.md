@@ -1335,3 +1335,94 @@ expects.** Specifically worth checking cold, not just re-reading this record:
 5. General: `git log feat/ssgi-composer-poc` (bim-ootb) has the full commit-by-commit trail with
    detailed bug-root-cause writeups in each message — read those before re-deriving anything above
    from scratch.
+
+## REVIEW (2026-07-16, Fable 5 session — the once-over ASK above, executed. Findings, ranked)
+Cold review of `feat/ssgi-composer-poc` (bim-ootb, 3 commits `9f286c0`/`3ea5126`/`0e67115`, all
+pushed, worktree `/tmp/wt-ssgi-composer-poc`). Method: code reading against the real files + one
+real-GPU (RTX 4060 Laptop, headed Chrome, DISPLAY=:0) live run on HHS — not headless-only.
+Screenshots: `~/Pictures/Screenshots/SSGI_review_realgpu_{A_staging_only,B_staging_plus_ao,
+C_gi_toggled_off}_2026-07-16.png`. **Diagnose-only session — nothing fixed, per protocol.**
+
+### 1. Check 1 FAILED — canvas click-to-select is a LIVE core feature, not hypothetical
+`viewer/picking.js` (loaded unconditionally, `viewer.html:833`) does real element selection on a
+canvas tap: `pointerup` with ≤5px movement → raycast → select + info panel (§S250/§S260d/§S265
+lineage). The Stage-1 commit's "no evidence that path is in active use" is factually wrong — this
+is the app's PRIMARY direct-selection path. Consequence: tap-selecting an element on the 3D canvas
+during a photoshoot now soft-cancels (dusk staging KEPT, auto-restage armed) instead of the full
+teardown the user explicitly specified for selection ("when i select an item it breaks to old
+nature") — and §AUTO_STAGE2 re-fires the photoshoot 3s after the tap. Fix direction for the next
+session: classification can't happen at pointerdown (down on canvas is ambiguous between
+drag-start and tap-select); do the soft-vs-full decision at pointerup using the same ≤5px
+tap-vs-drag test picking.js itself already uses.
+
+### 2. Deploy landmine — no `sw.js` CACHE_VERSION bump in ANY of the 3 SSGI commits
+`CACHE_VERSION` is still `v763` (inherited from main's PR #806); `git log -- viewer/sw.js` shows
+no SSGI-branch touch. `effects.js`/`main.js`/`scene.js` are all in `PRECACHE_ASSETS` and
+`isNetworkFirst()` confirms precached files are CACHE-FIRST, refreshed only by a version bump —
+merging+deploying this branch as-is serves stale copies of all three to every returning browser.
+This is the exact landmine this file documented through v752→v761; every prior commit bumped,
+these three didn't. Also not in PRECACHE (minor): `effects_gi_poc.js` (network-first fallthrough —
+fine online, absent offline/PWA), `lib/postprocessing-n8ao.bundle.js`, `lib/HDRLoader.js`, the
+`.hdr` file. Must-do before any merge: bump CACHE_VERSION; decide precache additions for offline.
+
+### 3. Pushed branch ≠ tested tree — uncommitted `viewer/lib/Pass.js` rewrite in the worktree
+Committed `Pass.js` = the old r184 `window.THREE`-destructuring version; the worktree carries an
+UNCOMMITTED rewrite to r185's ES `import ... from 'three'` version — and every live/headless test
+this session served the worktree copy. The session record's "confirmed byte-identical, no new file
+needed" does not match reality. Both versions *should* work (same shared `three.core.min.js`
+classes, and `window.THREE` is set long before the lazy Alt+G import evaluates), but the pushed
+state's Alt+G path was never exercised as-pushed. Cheap close: commit the ES-import version (also
+removes the window.THREE eval-order dependency) and re-run one Alt+G smoke test.
+
+### 4. Real-GPU N8AO cost: 20.6ms → 317ms/frame (15×, ~3fps) — the headless "+57%" was meaningless
+Measured on RTX 4060 Laptop, HHS, continuous-nav pattern (markDirty per frame → `firstFrame()` AO
+reset per frame — exactly what real orbiting does): baseline 20.59ms/frame, GI-active 317.39ms/
+frame. At full-res/aoSamples=8/aoRadius=8/denoise 4+6 this is unusable during navigation on a good
+GPU, let alone mobile — strictly a still-frame effect. Visual A/B (shots A vs B): the AO reads as
+broad ground mottle + overall darkening, NOT base-hugging contact shadow — confirms the session's
+own "reads busy / texture breaking flatness" caveat on real GPU. Call: do NOT build further on
+radius=8/intensity=6; keep Alt+G experimental-preview-only, and any real pass should retest with
+halfRes + smaller radius. (Also noted: cold Alt+S ran 10.2s for 16 samples — includes one-time
+HDRI fetch+PMREM+staging build; earlier 144ms was a warm re-trigger, warm not re-measured here.)
+
+### 5. Confirmed live: Alt+G on→off strands `_composerEnabled=false` (TAA/SSAO silently lost)
+`toggleGIPreview()` forces `A._composerEnabled=false` when GI turns on and never restores it on
+turn-off. Verified in the live run: after Alt+G off, `{giActive:false, composerEnabled:false,
+stillActive:true}` — the frozen TAA still is gone (plain render path), and Shadow-mode SSAO/
+Outline would stay silently disabled too. Related, same family: Alt+S's own RAF renders
+`A._composer` while the main loop prefers `_giComposer` when active — both composers fight the
+canvas if both are on; there's no guard on the Alt+S side. And `_ensureBuilt()` latches
+`_built=true` BEFORE the await — one transient bundle-load failure leaves every later Alt+G a
+silent no-op (`toggle=true` logged, null composer, nothing rendered differently).
+
+### 6. Stage-2 idle timer never resets during soft-park — fires mid-gesture
+`softStopStillRefine()` has an "already soft-parked — just re-arm" branch, but both real callers
+(`main.js` `_cancelStillRefineSoft` and the controls-'start' handler) gate on
+`APP._stillRefineActive`, which is FALSE during soft-park — so that branch is dead code and no
+interaction after the first one resets the 3s timer. The timer measures 3s from the FIRST camera
+move, not the last: a drag/zoom sequence longer than 3s gets §AUTO_STAGE2 firing mid-motion, TAA
+accumulating over a moving camera (smear) until the next discrete pointerdown. Deviates from the
+"static after 3 sec" spec; the verified happy path (single move, then idle) masked it.
+
+### Cleared checks (no action)
+- **Check 2 (idle-park interplay): CLEAR.** An armed auto-stage timer is a plain setTimeout — it
+  neither keeps the rAF loop awake nor depends on it; Stage 2's `startStillRefine()` drives its
+  own RAF loop, so a parked main loop can't starve it. Neither failure mode exists.
+- **Check 3 (importmap repoint): CLEAR, but the stated safety reasoning was wrong.** It's safe
+  because BOTH `three.module.min.js` and `three.webgpu.min.js` import the same
+  `./three.core.min.js` (one shared module instance for all core classes) AND `scene.js:39-41`
+  merges the module build's exports over `window.THREE` anyway. However the commit comment's
+  "bare specifier previously unused anywhere" is false — `lib/OrbitControls.module.js` (loaded at
+  startup by loader.js) imports `'three'` and silently switched builds with this change. Benign
+  (shared core; all subsequent live testing ran through it), but it was luck, not the grep.
+- Live run also re-confirmed working: §LAYER2_HDRI_READY fires + HDRI applies, §GI_POC init/toggle
+  logs correct, zero pageerrors, streaming healthy (6839 elements), Alt+S freeze behavior intact.
+
+### Suggested fix order (next session, one bounded task each)
+1. Finding 2 (sw bump — one line, blocks any merge) + finding 3 (commit Pass.js, one smoke test).
+2. Finding 1 (move soft-vs-full classification to pointerup tap-vs-drag) — it breaks the user's
+   own stated selection contract today.
+3. Finding 5 (restore `_composerEnabled` on GI off + reset `_built` in catch + guard Alt+S/Alt+G
+   mutual exclusion).
+4. Finding 6 (re-arm timer on every interaction during soft-park — un-gate the soft callers).
+5. Finding 4 is a DECISION, not a fix: keep N8AO as experimental still-only preview, or park it.
