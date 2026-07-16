@@ -1780,3 +1780,95 @@ verified serving sw.js v773 + the patched bundle. Live URL result reported to th
 Open items after this lane (unchanged from before): material reference library (own session),
 prior-art write-up, sky/HDRI feed into SSGI miss-rays (env importance-sampling r185 work),
 optional TRAA port (see drop note above).
+
+## FOLLOW-UP MARATHON (2026-07-17, same day, PRs #816–#831 — bridge note)
+Extensive live-user-testing session after #813 shipped, all independently verified live on GH
+Pages (not just merged): SSGI ghosting root-caused twice (camera-pose guard + SVGF hard-reset,
+#816); Alt+S reverted to AO-only default, SSGI made Alt+J-opt-in (#817); a full live-tuning HUD
+built for Alt+J (Light/Noise groups, denoiseKernel, close button that doesn't kill the effect,
+#818/#820/#822/#826) — replacing blind guess→deploy→report cycles per user's own request; ground
+reflectivity contained to S+J only after two wrong turns (a toggle-tied preset, then a permanent
+base-material change — both reverted; final design: Alt+S auto-applies a mid-value wetness default,
+Alt+J's "reflect" dial adjusts it live, value persists per session, #821/#824–828/#830); selection
+x-ray-dim gate corrected twice (wrong signal `set.size`, then the right one, `opts.frame`
+zoom-vs-not, #819/#823); Cinema Orbit given a shortcut (Alt+C) + Help listing + a general
+panel-registry fix so any registered UI panel soft-cancels Alt+S instead of fully tearing it down
+(#831). Full PR list and reasoning: `bim-ootb` git log `#816..#831`. Session closed out with a
+LinkedIn post using this pipeline's own output (Hospital building, helipad/solar-roof shot +
+Cinema Orbit video) — https://lnkd.in/gd4tKGGt.
+
+## NEXT SESSION SPEC (2026-07-17, not implemented — user: "make a spec for that in new session")
+**Goal, user's own words:** bring Alt+S quality into the Time Machine's timeline playback/export —
+"not like present one rather low frame and low res... it holds each frame, apply the Alt-S
+effects, snap... it can even take an hour rendering." I.e. a proper offline BATCH render (patient,
+not real-time-constrained), reusing Alt+S's actual still-refine pipeline per frame — not a cheaper
+approximation, not Cinema Orbit's real-time capture approach (which this explicitly is NOT — see
+distinction below).
+
+### Current state (verified in code this session, `viewer/time_machine.js`, `viewer/effects.js`)
+- Time Machine's live playback (`playTick()` → `renderAtTime(cursorMs)`) already drives the
+  construction-sequence reveal + camera position at any timestamp, on a real-time ticking timer
+  (`TICK_MS()`, ~140-220ms/tick, adaptive to building size + twilight slowdown). This is the
+  correct, existing hook for "set the scene to time T" — the new batch export should call
+  `renderAtTime(cursorMs)` at each step, NOT reinvent construction-reveal logic.
+- `_cineStoryboard` (`computeStoryboard()`) already computes a camera-path/scene-beat schedule per
+  building (cached in IDB, key `movie:{building}`) — the existing "Movie Script" naming refers to
+  THIS camera-path data, not a video file. No literal video export exists in Time Machine today —
+  confirmed via grep, zero `MediaRecorder`/`captureStream` references in `time_machine.js`.
+- The "tiny share icon" (`#tm-share`, 🔗 Share, `viewer/time_machine.js` ~line 1844/1992) only
+  copies a shareable state URL to clipboard — it is NOT a movie export, and the user's read is
+  that it becomes low-value/redundant once a real high-quality movie export exists in the same UI
+  slot. Spec should PROPOSE replacing/absorbing this button's slot with "Export Movie", not assume
+  a conflicting feature already exists.
+- Cinema Orbit (`A.startCinemaOrbit`, `effects.js` ~line 1736, shipped #831 this session) is the
+  ONLY existing video-export precedent — but it is architecturally the wrong pattern to copy
+  directly: it uses `renderer.domElement.captureStream()` + `MediaRecorder` to capture the LIVE
+  canvas in REAL TIME as the camera continuously orbits, at whatever single-pass quality the
+  composer produces per frame (no per-frame TAA supersample — real-time interactivity requires
+  that). This spec's ask is the opposite: each frame gets the FULL multi-second Alt+S treatment
+  before advancing, so captureStream()'s real-time-frame-delivery assumption does not fit.
+
+### Proposed mechanism (for the next session to design in detail, not to blind-implement)
+For each step from `_projectStart` to `_projectEnd` (step size TBD — see open question below):
+1. `renderAtTime(cursorMs)` — set construction-reveal + camera state (existing, reuse as-is).
+2. Trigger the real `A.startStillRefine()` pipeline (existing Alt+S mechanism — 16-sample TAA +
+   AO fold + full staging) and wait for genuine completion (`_stillRefineActive` frozen +
+   `§PHOTO_AO done`), the same discipline already proven for a single manual Alt+S press.
+3. Capture the resulting canvas as a still image (`canvas.toBlob()`/`toDataURL()`), store it.
+4. Advance to the next timeline step, repeat. Patient — user has explicitly said up to an hour of
+   background processing is acceptable, so step 2's ~1.5-2s-per-frame cost (matching this
+   session's own measured Alt+S timings) is not a blocker in itself.
+5. After all frames captured: stitch the still sequence into a video file.
+
+### Open questions the next session must actually resolve, not invent an answer for here
+- **Step 5, frame-sequence → video encoding**: this is the one genuinely unsolved piece. Cinema
+  Orbit's real-time `captureStream()`+`MediaRecorder` pattern does not apply to a pre-rendered
+  still sequence. Candidates to research (not pre-selected): (a) draw each captured still onto a
+  proxy canvas held for N ticks, with `MediaRecorder` capturing THAT canvas's stream at a fixed
+  low real-time rate (turns the problem back into Cinema Orbit's pattern, cheap but re-introduces
+  a real-time constraint on the ENCODING step only, not the rendering step); (b) a client-side
+  frame-sequence muxer (e.g. a WebCodecs `VideoEncoder` + a webm/mp4 muxer library) — no such
+  library is vendored in this repo yet, would need sourcing/vetting the same way
+  `postprocessing-n8ao.bundle.js` was for SSGI; (c) ship the still sequence as a zip/frame-set and
+  let the user assemble it externally (ffmpeg) — simplest, lowest engineering risk, worst UX.
+- **Unique-frame rate vs output video length/smoothness**: does every OUTPUT video frame get its
+  own full Alt+S render (expensive, smooth), or does one Alt+S capture get HELD across several
+  output frames (cheaper, discrete/stop-motion look)? User's own framing ("hour rendering is
+  fine") leans toward feasible either way, but a construction 4D timelapse is traditionally
+  discrete/stop-motion in the industry anyway — worth deciding deliberately, not defaulting
+  silently. This also directly sets the total render-time budget for a given output duration.
+  Reuse `_cineStoryboard`'s existing beat/scene structure as the natural candidate for "one real
+  capture per storyboard beat," rather than a fixed wall-clock interval — grounds the step count
+  in data already computed for this building instead of an invented number.
+- **Progress UX during a potentially hour-long background render**: needs a visible progress
+  state (frame N/M, est. remaining) — the panel-registry soft-cancel fix (#831, this session)
+  means touching other UI panels while this runs won't kill it, which this feature will lean on
+  directly; confirm that holds for a render this long-running, not just a single Alt+S still.
+- **UI slot**: replace `#tm-share`'s button with "Export Movie," per user's own framing of it as
+  redundant once this exists — confirm nothing else currently depends on that specific button id
+  before removing/repurposing it.
+
+### Explicitly NOT in scope for this spec
+- Real-time smooth playback quality (Time Machine's live scrub/play stays as-is — this is an
+  EXPORT feature, not a live-playback upgrade).
+- Cinema Orbit itself — unrelated, already shipped, working, not being modified by this.
