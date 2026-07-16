@@ -1673,3 +1673,11 @@ Discipline: same-pose A/B CROPS per knob change (this file's anti-guessing doctr
 re-measured each step (baseline 13.7ms/frame). Do this TOGETHER with the fold-into-Alt+S decision
 session — for a frozen still, higher spp/denoise cost is fine (still-only), so the fold may want
 DIFFERENT (higher) quality settings than the navigable Alt+J preview. Next session = tune + fold.
+
+**Live-user confirmation (2026-07-16, user's own console log, their machine):** full state machine
+verified on real user hardware — §PHOTO_AO done avgRenderMs=8.7 (AO fold in the frozen still),
+§PHOTO_STAGING skip-re-apply on re-press, §STILL_REFINE_RESTART catching camera drift, SSGI/AO/
+still exclusion transitions all clean, zero errors. Alt+J after Alt+S = SSGI over staged dusk
+scene, works. Known cosmetics seen: /viewer/buildings/ 404 → OCI fallback (72MB fetch, then IDB-
+cached — works, slow first load only), favicon 404, §PILL_SYNC log spam (pre-existing, silence
+someday). Only open quality item remains the recorded SSGI noise+transparency tuning spec above.
