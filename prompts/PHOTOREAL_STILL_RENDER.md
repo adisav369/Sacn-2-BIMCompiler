@@ -1769,11 +1769,14 @@ error). Every harness now also sets `page.setCacheEnabled(false)`. Harness scrip
 `ssgi_{ab,diag,diag2,verify,ab_fold}.js` in this session's scratchpad; patterns copyable from
 `51851e3`'s message if needed again.
 
-**sw.js `v767 → v768`.** bim-compiler side: this file only, committed locally (push-pause).
+**sw.js `v767 → v768`, then `→ v773` at merge time** — main had advanced to v772 under this session
+(fly-tour #812 et al.); sw.js conflicted exactly as the repo playbook predicts, resolved by taking
+the HIGHER version + 1. Full verify suite re-run green on the post-merge tree before landing.
+bim-compiler side: this file only, committed locally (push-pause).
 
 ## DEPLOYED (2026-07-17 — PR #813, mandate step 5 gate PASSED)
 Gate passed on the tells above → pushed, PR #813 opened, auto-merge on CI green, GitHub Pages
-verified serving sw.js v768 + the patched bundle. Live URL result reported to the user in-session.
+verified serving sw.js v773 + the patched bundle. Live URL result reported to the user in-session.
 Open items after this lane (unchanged from before): material reference library (own session),
 prior-art write-up, sky/HDRI feed into SSGI miss-rays (env importance-sampling r185 work),
 optional TRAA port (see drop note above).
