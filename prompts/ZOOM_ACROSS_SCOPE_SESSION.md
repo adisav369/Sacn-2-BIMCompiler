@@ -106,6 +106,63 @@ same gesture:
 INVARIANT: adding a peer (a surface, a module, a window) = make it reachable by `_ID`/identity via Zoom Across —
 never a new bespoke link. One gesture, one mental model, scope-agnostic.
 
+## §GAP FOUND 2026-07-13 — header-level Zoom Across still lands whole-building, no Find zoom
+User report: red pill on a `C_Project`/Project-Order record zooms the Viewer to the right building
+(§KERNEL_OP BUILDING_OPEN confirmed in their F12) but the Find panel never lights the specific element
+set that generated the order — F12 shows ZERO `§ZOOM-SCOPE` lines at all (not even `skip=empty`), proving
+the launch URL carried no `&find=` param for that click.
+
+Traced (bim-ootb, both a direct read and an independent Explore-agent pass agree): the whole pipeline
+(`erp/idempiere.html` `_zoomScope`/`ZoomAcross.register('viewer')` → `viewer/main.js:98-118` boot poller
+→ `viewer/navigate_find.js:4210 A.applyFindScope`) is wired correctly and matches this card's §SPEC — NOT
+broken/regressed. The gap is a real, undocumented-until-now DESIGN LIMIT of the shipped v2:
+  1. `_zoomScope` on a `c_project` HEADER row (idempiere.html:4473-4477) returns `find: null` BY DESIGN —
+     "project header → whole building" is the documented floor (§SPEC step 1). A user clicking the Project
+     Order record itself (not a line under it) will always get whole-building-only, no Find zoom. Expected,
+     not a bug — but likely what the user actually clicked, per "Project Order for a related BIM record."
+  2. Deeper root cause even on a `c_projectline` row: the finest scope `_zoomScope` can ever produce is a
+     single IFC CLASS (`m_product.value`, idempiere.html:4484-4486) or a plain guid-list for a few tables
+     (s_resource/c_subscription) — never the actual arbitrary multi-element SELECTION that was active in
+     the Viewer when `_pushToErp` (viewer/navigate_find.js:1546) ran. Root: `_selectionPriced(set)`
+     (navigate_find.js:1551) aggregates the selection down to {ifc_class, qty, cost} rows BEFORE calling
+     `window.ProjFold.foldProjectOrder` (viewer/proj_fold.js) — `proj_fold.js` contains ZERO `guid`
+     references, so the original GUID set is discarded at fold time and never reaches `C_Project`/
+     `C_ProjectLine`. Zoom Across can only ever reconstruct what iDempiere's own tables still know
+     (building + IFC class), which is coarser than "the set of items selected to generate this order."
+  3. `erp/bim_orders_overlay.js` (the round-trip reader) plays no role here — confirmed dead end, not
+     worth re-checking again.
+
+**Not fixed this session** (diagnosis-only pass, no code touched — CLAUDE.md PUSH PAUSE + "diagnose in
+session, fix in other session" default). If picked up: the real fix is persisting the pushed GUID set
+somewhere `_zoomScope` can retrieve by `C_Project_ID` (or `C_ProjectLine_ID`) — e.g. a sidecar table/JSON
+column written by `foldProjectOrder` alongside the aggregated rows — then extending `_zoomScope`'s
+`c_project`/`c_projectline` branches to prefer that guid-set over the class-only fallback. `applyFindScope`
+already has a working guid-set consume path (navigate_find.js:4220-4230) — no Viewer-side change needed,
+only the ERP-side scope resolution + a new persistence write at push time.
+
+## §FIX 2026-07-13 — the Find-panel landing lit the 3D scene but never revealed the ERP drawer
+Follow-up to §GAP FOUND above (same session, same day). Separate report: "Back to the ERP Project to BIM
+Find Panel, the ERP drawer at the bottom does not appear. Only when exiting the building and back to it,
+it is." Confirmed + FIXED (bim-ootb worktree `/tmp/wt-zoom-find-erp`, branch `fix/zoom-across-find-erp-
+drawer`, commit e54fdb0, LOCALHOST ONLY — not pushed, PUSH-PAUSE standing):
+
+Root cause: `A.applyFindScope` (viewer/navigate_find.js, the boot-time `?find=` consumer) only called
+`A.focusElement` — the 3D highlight (ghost/outline/zoom). It never touched `#find-selected`, the bottom
+bar carrying the cost figure + "› ERP" push button + "open ↗"/"iDempiere ↗" deep-links. Every OTHER
+selection path already revealed that bar (single result-item click; storey/disc GROUP tap — the SAME
+class of bug, fixed once before under "reveal for GROUP scopes too", line ~3117) — `applyFindScope` was
+a third, later-added path that never got the same treatment. Re-entering the building hits one of the
+other two paths, which is exactly why a manual re-select "fixed" it — matches the user's own observation.
+
+Fix: `_revealSelectedBar(set, label)` mirrors the group-tap reveal (`elSelected.style.display='flex'` +
+`_updateSelCost`, which also sets `_lastSelSet` so push-to-ERP has something to push) — wired into both
+`applyFindScope` branches (guid-set + IFC-class). Also fixed a stale regex in `viewer/tests/
+poc_zoom_scope_live.js` (a `route=find|tm ` prefix was added to the `§ZOOM-SCOPE` log line later for the
+TM-ownership feature; the witness's regex never picked it up, so assertions A/A2/C were silently absent —
+confirmed failing identically on a clean origin/main checkout, unrelated to this fix). Extended with new
+D/E assertions (drawer visible+labeled after both scope types). W-ZOOM-ACROSS-SCOPE (viewer) 8/8;
+confirmed 2/8 fail (exactly D/E) against pre-fix code so the new assertions genuinely catch the regression.
+
 ## §STARTUP READS
   · this card · erp/zoom_across.js + idempiere.html (IdmpPillActions.zoomacross / _zoomCtx / IdmpPillZoomGate /
     the registered 'viewer' destination + native _zoomAcross/_zoomDestinations) · viewer/navigate_find.js (Find +

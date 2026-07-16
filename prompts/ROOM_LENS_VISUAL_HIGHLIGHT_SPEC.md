@@ -511,3 +511,540 @@ already-passing numbers — same measure-first discipline this whole file's sess
 throughout. Re-run the diagnostic script pattern above (`RoomGraph.buildGraph` + bucket/chain/E5/E6
 distance dump) after any threshold change to confirm the join ratio actually improved, not just
 that witnesses still pass.
+
+## §16 UPDATE 2026-07-15j — the baseline witness §15 asked for is now BUILT (still NOT a threshold
+fix — thresholds untouched, per the standing PUSH PAUSE this ran locally-only, no push/PR)
+
+**`bim-ootb/witness_hospital_corridor_baseline.js`, new file, branch
+`fix/hospital-corridor-baseline-witness` (worktree `/tmp/wt-hospital-corridor-baseline`, off
+`origin/main` @ `3675ec3`, so it already carries #795/#796/#797 — this matters, see below).
+Committed locally only, not pushed.** Re-measured fresh against the current code (not re-quoted
+from §15's numbers) via `HallwayBackbone.buildBackbone()` directly on all three real DBs:
+```
+§CORRIDOR_JOIN_RATIO building=Hospital buckets=336 joined=15 ratio=4.5% chains=11 crossings=4
+§CORRIDOR_JOIN_RATIO building=Clinic   buckets=113 joined=38 ratio=33.6% chains=15 crossings=39
+§CORRIDOR_JOIN_RATIO building=HHS      buckets=39  joined=15 ratio=38.5% chains=12 crossings=3
+```
+Hospital's `buckets=336 joined=15 chains=11` exactly reproduces §15's own numbers — confirms
+nothing drifted between sessions. 5 assertions, 5/5 pass: G1/G2 pin Hospital's CURRENT ratio+chain
+count as a floor (not a target — a threshold fix must push these UP, a run that still lands here
+did not help); G3/G4 pin Clinic (33.6%) and HHS (38.5%) as regression floors so a threshold change
+that helps Hospital by over-joining unrelated segments elsewhere gets caught; G5 asserts the actual
+finding (Hospital's ratio is <1/2 of either working building's — a real geometry gap, not noise).
+
+**One real landmine found and worked around while building this, worth recording**: the main
+`bim-ootb` checkout (`/home/red1/bim-ootb`) was stale at `3f7386d` (missing `d5ea49f`/`3675ec3`,
+i.e. PRs #796/#797) with two unrelated uncommitted local edits (`common/history_tap.js`,
+`viewer/viewer.html` — left untouched, not this session's). Running the diagnostic against THAT
+stale `hallway_backbone.js` gave DIFFERENT numbers for HHS (`chains=10 crossings=5` instead of the
+correct `chains=12 crossings=3`) — silently, no error, because #792's "corridor plausibility
+framework" (width bounds / common-sense filter / shape guard / full connectivity) landed on main
+between those two commits and changes `walkBackbone()`'s behavior. **A stale checkout doesn't just
+risk missing a fix — it can produce plausible-looking WRONG measurements with no signal that
+anything is off**, same category of landmine as this project's own `git -C ~/bim-ootb fetch &&
+merge --ff-only origin/main` Session-Startup rule exists to prevent, just hit on the bim-ootb side
+this time. Worked around by building in a fresh worktree off `origin/main` (per Worktree Hygiene:
+checked `git worktree list` first, none existed for this task, `buildings/*.db` gitignored
+data caches symlinked in rather than copied — Hospital is 263MB, Clinic 128MB, neither
+git-tracked at all, only HHS + warehouse are LFS-tracked).
+
+**Next session**: this witness is the regression net — go tune `walkBackbone()`'s join thresholds
+in `common/hallway_backbone.js` (span/width/alignment criteria, see that file's own header), re-run
+`node witness_hospital_corridor_baseline.js`, and confirm Hospital's ratio climbed past 4.5% while
+G3/G4 (Clinic/HHS floors) still hold. If Hospital's ratio moves, update G1/G2's asserted baseline
+numbers to the new measured values in the same commit as the threshold change — this file's numbers
+must always describe the CURRENT code, never a stale snapshot (exactly the landmine above).
+
+## §17 UPDATE 2026-07-15k — root cause found and fixed, NOT a threshold change: Hospital join
+ratio 4.5%→17.8% (pushed, branch `fix/hospital-corridor-baseline-witness`, PR not yet opened)
+
+**`correlateDoorEdges()`'s bucketing was a fixed-rounding grid** (`Math.round(runCoord/tol)*tol`)
+— two doors genuinely `tol` (0.6m) or closer in real space still landed in DIFFERENT buckets
+whenever their raw runCoords straddled a grid boundary (e.g. 10.36→10.2, 10.56→10.8 — 0.6m apart
+on the grid despite being only 0.20m apart in reality). A pure artifact of the grid's fixed phase,
+not a real geometric signal — and it disproportionately hurt Hospital because its much larger,
+more-boundary-crossing bucket count (336 vs 113/39) meant many more chances for a real cluster to
+straddle a boundary. Fixed with single-linkage gap clustering (per storey+axis, sort by runCoord,
+new bucket only when the gap to the PREVIOUS door exceeds `tol`) — same tolerance, no threshold
+loosened. Measured, no guessing:
+```
+Hospital: buckets 336->241, joined(>=3 doors) 15->43, ratio 4.5%->17.8%, chains 11->16, crossings 4->37
+Clinic:   buckets 113->97,  joined 38->41,            ratio 33.6%->42.3%
+HHS:      buckets 39->31,   joined 15->15,            ratio 38.5%->48.4%
+```
+All three improved or held — not a Hospital-vs-others trade-off, confirming the grid-boundary
+artifact theory rather than a lucky threshold tune. Deeper check against the actual user symptom
+(`RoomGraph.buildGraph` E5/E6 dump, same diagnostic as §15): Hospital's real-corridor-hop (E5)
+edges went **4→37** — far more room-to-room routes now traverse a real spine waypoint instead of
+falling through to the single long E6 CIRC bridge (17.8–52.6m) that directly caused "Hospital
+corridors not accurate and hampers room to room paths". E6's own worst-case distance (30-52m)
+didn't shrink — some wings are genuinely far apart with no detected corridor between them, a
+separate, real, still-open gap — but far fewer routes now need to use it at all.
+
+**Verification**: all 8 witnesses touching `hallway_backbone.js`/`room_graph.js` re-run green —
+`witness_backbone_routing` 10/10, `witness_hallway_backbone` 7/7, `witness_corridor_room_backprop`
+5/5, `witness_full_connectivity` 6/6, `witness_corridor_type_label` 3/3,
+`witness_stair_flight_assembly_merge` 4/4, `witness_room_graph_path` 15/15,
+`witness_hospital_corridor_baseline` 5/5 (its G1-G4 floors updated to the new numbers, same commit
+as the fix, per §16's own instruction not to bump the number without re-measuring). This was
+whitebox-verified (§-log discipline) via the node witness suite against real building DBs, not a
+live browser session — pure algorithm/data-module change, no UI touched.
+
+**Not yet done**: PR not opened (branch pushed only, per user's "push for me to check"). Hospital's
+17.8% ratio is still well below Clinic/HHS's ~45% — the deeper gap (wing-to-wing wall segments with
+genuinely no detected corridor between them) is real building geometry, not a bucketing artifact,
+and remains open for a future session.
+
+## §18 UPDATE 2026-07-15l — same session, room-cuboid shine-through fix (pushed) + two more
+live-testing findings scoped for next session (NOT fixed this pass)
+
+**Fixed, pushed (same branch `fix/hospital-corridor-baseline-witness`)**: room-select purple cuboid
+didn't shine through in solid/x-ray mode (only bbox), user-reported live. Root cause confirmed live
+via Playwright + console inspection: `_roomSelect()` always auto-enables X-Ray if it wasn't already
+on, and `A.toggleXray()` sets `A.renderer.sortObjects = !A.xrayOn` (a real perf optimization,
+`viewer/tools.js`). With `sortObjects=false`, three.js ignores `renderOrder` entirely and paints in
+raw scene-graph insertion order — `_drawRoomCuboid()` used to run BEFORE `_drillSelect()` (which
+builds the context/ghost overlay meshes), so the cuboid was added to the scene FIRST and the
+overlays painted over it. Fix: swap call order so `_drillSelect` runs first, cuboid last — always
+top-painted regardless of `sortObjects` state. Full click-through Playwright screenshot proof hit
+the same nested-row targeting friction PR #797's own commit already documented (not re-litigated);
+shipped on the confirmed mechanism + a minimal, low-risk 2-line reorder, same discipline #797 used.
+
+**Item 4 — Hall/Corridor Type-tree list is "mostly rooms" (LTU_AHouse, PRODUCTION site,
+`red1oon.github.io/bim-ootb`, screenshots `~/Pictures/Screenshots/HallCorridors.png` +
+`RoomsPath.png`)**: user's proposed fix is a boolean gate — real corridor = not a room itself, is
+larger, has doors from RESPECTIVE (distinct) neighboring rooms. Investigated `classifyCorridorRooms()`
+(`common/hallway_backbone.js`) against `LTU_AHouse_extracted.db` — **first pass wrongly concluded a
+"4187m² room" bug (a real column-indexing mistake in an ad hoc diagnostic script, since corrected)**.
+Corrected numbers: 36/369 rooms classified, real areas 4.6–111m², aspect ratios 2.4–13 — not
+obviously wrong by shape alone. Backbone data underneath is solid: 62 real door+wall-verified
+buckets, widths 1.2–5.9m, spans to 127m, 3–27 doors each. So the false positives (if real) are
+likely small rooms/closets that happen to satisfy the 50%-overlap-with-a-bucket test without
+actually being the shared through-space — exactly the gap the user's "doors from RESPECTIVE rooms"
+framing targets: today's algorithm never checks whether a candidate connects to MULTIPLE DISTINCT
+neighboring rooms via their own doors, only that 50%+ of its own area sits inside a real corridor
+bucket rect. **User's explicit instruction: measure the real per-room distinct-neighbor door count
+on LTU_AHouse FIRST, grounded, before changing `classifyCorridorRooms()`** — same discipline as the
+Hospital join-ratio fix (§16). Not started.
+
+**Item 5 — path cuts straight through open/illegal space instead of hugging a walkway (HHS
+Office, "L shaped... instead of along a walkway"; also visible in `RoomsPath.png`'s 181.7m detour on
+LTU_AHouse)**: root cause CONFIRMED live via instrumented `RoomGraph.shortestPath()` runs against
+`HHS_Office_Federated_extracted.db` (all 14×13/2=91 real room pairs) — `common/room_graph.js`'s own
+`_legalizePath()`/`_detourForChord()` mechanism (§PATH_LEGAL_SEGMENTS.md) IS running and DOES detect
+illegal (space-cutting) chords correctly (HHS has real per-storey `roomRectsByStorey` (10/7/4 rects)
++ `corridorRectsByStorey` (6/4/3 rects) from this session's own backbone fix, not the "no data at
+all" null-case) — but `§PATH_LEGAL_DETOUR_FAIL storey=Level 1/2/3 no legal detour among 38-50 doors`
+fires CONSTANTLY across room pairs (dozens of times in a 91-pair sweep). Mechanism: `_detourForChord`
+builds a small visibility graph from doorwp/spine/circ waypoints and only connects two waypoints if
+the chord BETWEEN THEM is also legal (same `_chordIllegalCount` sparse-rect test) — with HHS's real
+coverage this sparse (~10-15 rects covering a much larger real floor), most candidate-to-candidate
+edges in that small graph ALSO fail the legality test, so often NO legal multi-hop chain exists at
+all. Per `_legalizePath()`'s own documented "honest degrade" (never invents a waypoint that isn't a
+real door), the original straight illegal chord is then left AS-IS in the rendered path — exactly
+the visible symptom. **Real fix needs BROADER walkable-floor evidence** (more rect coverage, or a
+different real-geometry source e.g. floor/slab polygons) so the detour visibility graph has enough
+legal edges to route on, not a quick parameter tweak. Scoped, not started — pair with item 4's
+measurement pass, likely same investigative session since both stem from HHS/LTU's real coverage
+being thin relative to Clinic's (which has 4x the walls per real floor area, per this session's own
+§16 numbers).
+
+**Housekeeping note**: this file is now 630+ lines — candidates for archiving as single-line
+pointers once §14-§18's open items (Hospital's remaining gap, items 4/5 above) close out.
+
+## §19 UPDATE 2026-07-15m — items 4 and 5 both fixed and pushed (same branch), item 5 PARTIALLY
+closed — the deeper sparse-coverage gap is still open
+
+**Item 4 (Hall/Corridor false positives) — FIXED.** Measured the distinct-neighbor-room door count
+§18 called for, on LTU_AHouse: reused the SAME door-to-2-nearest-rooms resolution
+`room_graph.js`'s own E1 edges already trust (no new heuristic). Of the 36 rooms LTU_AHouse's old
+shape+overlap gate classified as corridor, 20 connect to 0-1 distinct other rooms via a real
+door — narrow dead-end slivers, not shared through-spaces; the 16 kept span neighbors=3..22,
+plausible real junctions. Added `minDistinctNeighborRooms: 2` to `classifyCorridorRooms()`,
+AND-combined with the existing aspect-ratio + overlap-fraction gates (never loosens what they
+already exclude). Verified against Clinic (where aspect-ratio was originally grounded, 2026-07-14):
+drops exactly its 6 zero/one-neighbor false positives, keeps "Second Floor R7" — the ORIGINAL doc
+comment's own canonical true-positive example (16x4.6m, 9 neighbors) — confirming the new signal
+agrees with the old one rather than fighting it. Measured effect: Clinic 9→3, HHS 2→0 (its real
+entries come from the separate `CORRIDOR_ROOM::` backprop mechanism, unaffected), LTU_AHouse 36→21.
+`witness_corridor_type_label.js` updated to independently re-derive the neighbor count from scratch
+and gained 2 new assertions proving the drop is real (5/5 pass, was 3/3).
+
+**One real mistake caught and corrected mid-investigation, worth remembering**: a first diagnostic
+script had a column-indexing bug that produced a bogus "4187m² room" false-positive claim — caught
+by re-deriving with correct indices before acting on it. Verify diagnostic scripts' own column
+mapping against a known-real value before trusting a surprising number, especially ad hoc ones
+written under time pressure.
+
+**Item 5 (path cuts through open space) — PARTIALLY fixed.** Root cause pinned to an EXACT chord
+via instrumented `RoomGraph.shortestPath()` runs (not a guess): `SPINE::Level 1|y|-4.65 ->
+SPINE::Level 1|y|10.56` (HHS, 18.3m, 58/75=77% of sampled points illegal). This is a same-storey
+chain-to-chain bridge via `CIRC::Level 1` (two real E6 edges, 3.8m + 15.5m) — but `_publicHop()`'s
+CIRC substitution only ever applied the ARRIVAL edge's own `wp` (for an E6 edge, just the arriving
+spine's own point — a redundant duplicate of the adjacent node already in the path) and silently
+discarded the DEPARTURE edge's real distance entirely. Fixed: when a CIRC node has edges on BOTH
+sides and both are kind `E6` (the specific chain-bridge case where neither side's `wp` carries a
+genuinely new coordinate), keep CIRC's own real (cx,cy) — measured, stair-flight-derived, not
+invented — instead of collapsing it away. **First attempt was too broad** (suppressed substitution
+for ANY circ node with a departure edge) and regressed the cross-floor stair case
+(`CIRC::First Floor <-> CIRC::Second Floor` via a real E3 edge, which DOES need its `stairwp`
+substitution) — caught immediately by `witness_backbone_routing.js` G0c and
+`witness_corridor_room_backprop.js` B3 both failing; narrowed the guard to E6-only-on-both-sides,
+both green again (8/8 witnesses).
+
+**Honest scope, not oversold**: this fixes the chain-bridge RENDERING (a real stairwell waypoint
+now shows instead of a misleading straight collapse) but does NOT resolve the underlying breadth
+problem — measured before AND after this fix: **173/253 (68%) of HHS room pairs still hit
+`§PATH_LEGAL_DETOUR_FAIL`**, unchanged by this fix, because HHS's real room/corridor rect coverage
+is too sparse for `_detourForChord`'s visibility graph to find ANY legal chain in most cases (not
+just the one specific chord this fix addressed). Also tried: adding the same wall-thickness slack
+`hallway_backbone.js`'s `wallCrossSlack` already uses to `_pointWalkable()`'s corridor-rect check
+(which had none, asymmetric with the room-rects check right above it) — kept as a real,
+independently-justified fix, but measured to have ZERO effect on the 173/253 figure (the real gaps
+are far larger than a rounding margin, so this alone can't be the whole story).
+
+**Next session, if picked up**: the remaining 68% needs BROADER walkable-floor evidence — more real
+rect coverage (finer-grained corridor buckets, or extending room rects), or a different real
+geometry source entirely (e.g. floor/slab polygons instead of AABB approximations) — a genuinely
+bigger task, not a parameter tweak. Re-run the same "sweep every real room pair, count
+`DETOUR_FAIL` occurrences" diagnostic (reusable, ~30 lines, see this session's own scratch scripts)
+before AND after any change to confirm it actually moves the 173/253 baseline, not just that
+witnesses still pass.
+
+## §22 UPDATE 2026-07-15p — "is it general?" answered: NO single mechanism, per-building survey +
+a real live-serving landmine found and fixed for HHS (bim-ootb branch `fix/hhs-walkable-raster-
+patch-sync`, worktree `/tmp/wt-walkable-coverage-survey`)
+
+User asked whether §21's HHS finding generalizes to all buildings. Ran the same DETOUR_FAIL sweep
++ floor-coverage measurement across all 7 real buildings:
+```
+Clinic:     coverage=109.2%  detourFailRate=4.7%   (7021/7021 pairs, full sweep)
+Duplex:     coverage=116.5%  detourFailRate=10.0%  (10/10 pairs, tiny building)
+LTU_AHouse: coverage=74.0%   detourFailRate=6.6%   (1205/68635 sampled)
+Terminal:   coverage=61.7%   detourFailRate=39.5%  (1596/1596, RAW db — see correction below)
+JKR:        coverage=39.7%   detourFailRate=34.2%  (2145/2145 pairs, full sweep)
+Hospital:   coverage=16.4%   detourFailRate=36.9%  (1209/12090 sampled)
+HHS:        coverage=24.1%   detourFailRate=68.4%  (253/253 pairs, RAW db — see correction below)
+```
+**Answer: no, not a single uniform problem** — Clinic/Duplex/LTU_AHouse are fine, Terminal/JKR/
+Hospital/HHS show real gaps, but chasing this further found the root causes are NOT the same
+mechanism, and that this raw-db-based measurement itself was misleading for exactly the buildings
+that matter most (HHS, Terminal) — see below.
+
+**§21's "no fix, needs a new subsystem" conclusion was WRONG — the subsystem already exists.**
+Found `common/storey_raster.js` + `scripts/build_storey_walkable_raster.js`
+(PATH_LEGAL_SEGMENTS.md §G3-REVISED, built 2026-07-13, PR #767/#777/#779): a per-storey walkable-
+space bitset rasterized OFFLINE from the building's OWN real triangulated slab mesh (not the crude
+full-floor-plate `IfcSlab` bbox §21 tested and rejected), shipped as a self-heal patch, and already
+wired as `_pointWalkable()`'s PRIMARY signal (room+corridor rects are the fallback for storeys with
+no raster). This is exactly the "different geometry source" §21 said would be needed — it was
+already built, just not applied to most buildings.
+
+**Landmine #1 — the HHS raster patch was never actually live.** It only existed in
+`buildings/patches/HHS_Office_Federated_extracted.db.sql`; `viewer/buildings/patches/`'s copy of
+the SAME filename (that file's own header comment: "the file the LIVE Viewer actually fetches for
+HHS, GH override per index.html") had a completely different, older fix (`spatial_structure`
+self-heal, PR #732/#744) and never got the raster added — a live instance of this project's own
+named `project_db_snapshot_divergence_landmine.md` pattern.
+
+**Landmine #2, more serious — the committed raster was ALSO stale, and shipping it as-is would
+have been a regression.** Testing against the raw, unpatched HHS db (23 compiled rooms) is not
+representative: applying HHS's own `spatial_structure` self-heal patch first (already required for
+correct production behavior) yields the TRUE room count of **105**, not 23. My first attempt at
+"just sync the existing raster over" measured great on the wrong baseline (68.4%→30.0%, the raw
+23-room db) but on the TRUE 105-room graph it made things WORSE (33.7%→40.5%) — the committed
+raster had been built from the smaller, pre-self-heal room set and was missing/misplacing coverage
+that the real 105-room graph now depends on. Root-caused via hybrid testing (swap old/fresh rasters
+storey-by-storey): isolated entirely to a Level-3 coverage shrink correlating with TODAY's own PR
+#800 (door-clustering fix changed HHS's corridor-bucket join set, which shifts the corridor-
+backprop virtual room rects the raster builder unions in).
+
+**Fix, verified**: rebuilt the raster CORRECTLY —
+`node scripts/build_storey_walkable_raster.js buildings/HHS_Office_Federated_extracted.db
+<spatial_structure-patch-only.sql> <outSqlPath>`, i.e. **always pass the db's own companion
+self-heal patch as `patchPathToApplyFirst` when (re)building a raster for a building that has
+one** — this is the one general, reusable lesson. Measured on the TRUE 105-room graph: 33.7%→28.7%
+DETOUR_FAIL rate, a real (smaller but genuine) improvement. Synced into BOTH
+`buildings/patches/` and `viewer/buildings/patches/` (the one actually served live), with the
+stale/wrong version explicitly called out in-file so it's never reintroduced. New
+`witness_hhs_walkable_raster.js` (4/4 pass) pins both the 33.7% no-raster floor and the 28.7%
+with-raster ceiling so a future raster rebuild can't silently regress this again — this exact class
+of near-miss (a "fix" that measures great on the wrong baseline) is why the floor is asserted
+against the TRUE patched room count, not the raw db. Full pre-existing suite re-run clean: 8
+witnesses, 57/57 assertions (`witness_backbone_routing` 10/10, `witness_corridor_room_backprop`
+5/5, `witness_corridor_type_label` 5/5, `witness_hallway_backbone` 7/7,
+`witness_hospital_corridor_baseline` 5/5, `witness_room_graph_path` 15/15,
+`witness_full_connectivity` 6/6, `witness_stair_flight_assembly_merge` 4/4).
+
+**Terminal's number was ALSO measured on the wrong baseline, and it's a DIFFERENT problem
+entirely.** Terminal has its own self-heal patch too (`Terminal_extracted.db.sql`, a full
+`spatial_structure` replacement, room count 57→59 once applied — a small delta, unlike HHS's
+23→105). Re-measured on the TRUE patched room set: **DETOUR_FAIL rate is only 0.6%, but 1694/1711
+(99%) of room pairs have NO PATH AT ALL** — not a chord-legality failure, a GRAPH CONNECTIVITY
+failure (missing edges, not missing walkable evidence). A walkable raster cannot fix this — it
+legalizes chords along an existing graph edge, it doesn't create edges. This is `fullConnectivity()`
+/graph-wiring territory, unrelated to §21/§22's raster mechanism, and not investigated further this
+pass.
+
+**Hospital and JKR's numbers were measured against their raw dbs, and NEITHER has a companion
+self-heal patch to apply first** (checked: only HHS and Terminal have one) — so unlike HHS/Terminal,
+their raw-db measurement is presumably already representative of production, though this wasn't
+independently re-confirmed by other means this pass. Not yet raster-built or root-caused — real
+candidates for a follow-up session, but should not be blindly raster-built without first checking
+(a) whether they have the same kind of connectivity-vs-legality split Terminal just revealed, and
+(b) whether patchPathToApplyFirst is genuinely a no-op for them (no committed patch = nothing to
+apply, so this specific landmine shouldn't recur, but worth confirming rather than assuming).
+
+**Bottom line for "is it general": the RASTER MECHANISM is real, already-built, and now correctly
+deployed for one building (HHS) with a genuine, witnessed improvement. It is NOT a general fix for
+all buildings' pathfinding complaints — Terminal's problem is categorically different (connectivity,
+not legality), and Hospital/JKR are unconfirmed. Each building needs its own root-cause check before
+assuming the same lever applies.**
+
+**Shipped**: bim-ootb PR #802, pushed, CI green (`fast-checks`/`e2e-tests`), merged to `main`.
+
+## §23 UPDATE 2026-07-15q — "cannot be generalised?" pushback answered for real: it DOES
+generalize, corrected §22's premature "Terminal is categorically different" claim, JKR shipped,
+Hospital investigated and correctly NOT shipped (bim-ootb branch, worktree
+`/tmp/wt-gap-breakdown`)
+
+§22 conflated two different failure signals into one `detourFailRate` number (whether a pair had
+ANY path at all vs. whether a found path hit an illegal chord) and drew a wrong conclusion from it.
+Split them properly via `RoomGraph.fullConnectivity()` (connected-component structure) vs. a
+DETOUR_FAIL sweep restricted to pairs WITHIN the same component (pure legality, no connectivity
+confound):
+```
+                connectivity   legality-fail (within largest component)
+Clinic (control)   95.7%          9.3%
+HHS                90.7%         38.4%
+Hospital           87.8%         90.0%
+JKR                72.1%         81.2%
+Terminal           28.2%        100.0% (n=10, tiny sample)
+```
+**Corrected finding: the legality/walkable-evidence gap generalizes to every non-Clinic building**
+— Hospital's legality-fail rate (90.0%) is worse than HHS's was pre-fix (38.4%/68.4% depending on
+measurement). §22's claim that Terminal was "categorically different, unrelated to the raster
+mechanism" was wrong — Terminal has BOTH a severe connectivity gap (28.2%, dominant) AND the same
+elevated legality-fail pattern on top; the two problems coexist rather than being mutually
+exclusive. What's actually different building-to-building is which problem DOMINATES: HHS/Hospital
+have decent connectivity so legality is their whole story; Terminal/JKR have a real connectivity
+gap layered on top (a different, `fullConnectivity()`/edge-wiring fix, which a raster cannot
+touch).
+
+**JKR — raster built, validated, SHIPPED.** No companion self-heal patch (unlike HHS), all 4
+storeys have real resolved `IfcSlab` geometry (none of Hospital's zero-slab-storey complication
+below) — the clean case. Measured: 34.2%→21.3% DETOUR_FAIL rate (full 2145-pair sweep). New
+`witness_jkr_walkable_raster.js` (4/4) pins both floors. Shipped to both patch locations.
+
+**Hospital — raster built, tested, REGRESSED, root-caused, partially fixed, still NOT shipped.**
+First attempt: 39.6%→44.1% (worse). Root cause: 5 of Hospital's 7 storeys have ZERO real resolved
+`IfcSlab` rows — `buildStoreyRaster()` only ever unioned slab triangles + ROOM rects, never
+`corridorRectsByStorey` (real, wall+door-verified `hallway_backbone.js` buckets) — but
+`_pointWalkable()`'s existing FALLBACK (the behavior a raster replaces once shipped) already
+trusts corridor rects. A raster built without them is strictly worse than the fallback on any
+storey where corridor evidence is the main signal, which is exactly Hospital's zero-slab storeys.
+**Fixed the actual bug** in `scripts/build_storey_walkable_raster.js`
+(`buildStoreyRaster()`, `§RASTER-CORRIDOR-PARITY`): now unions `corridorRectsByStorey` too — a
+real, generalizable correctness fix regardless of Hospital's outcome (a raster must never drop
+evidence its own fallback already had). Rebuilt Hospital's raster with the fix: 44.1%→40.8% —
+better, but still net worse than the 39.6% no-raster baseline. **Two attempts, two regressions —
+Hospital's raster is NOT shipped.** The remaining gap needs real investigation (candidates: the
+`DOOR_BUFFER_SLACK` inflation `_pointWalkable`'s room-rect fallback applies that the raster's flat
+`pointInRect` test does not, or something specific to Hospital's mesh/triangle resolution),
+not another guess-and-measure cycle — logged here so a future session doesn't re-derive this from
+scratch.
+
+**Shipped**: `scripts/build_storey_walkable_raster.js`'s corridor-parity fix + JKR's raster +
+`witness_jkr_walkable_raster.js`, full pre-existing suite re-run clean (9 witnesses, 61/61).
+Terminal's dominant connectivity gap and Hospital's still-open raster regression are both real,
+separate follow-up items — not fixed this pass, not blindly attempted further.
+
+---
+
+**Branch status**: `fix/hospital-corridor-baseline-witness` now carries 5 commits (baseline witness,
+Hospital join-ratio fix, room-cuboid shine-through fix, corridor distinct-neighbors fix, CIRC-dual-
+bridge fix), all pushed, no PR opened yet (per standing PUSH PAUSE + user's own "push for me to
+check" framing — a plain branch push, not a PR, satisfies that ask).
+
+## §20 UPDATE 2026-07-15n — PR opened, merged, worktrees pruned (user's own next-step pick + "push
+and proceed on the sound decision", same session)
+bim-ootb PR #800 opened, CI green (`fast-checks`/`e2e-tests` both pass), `mergeStateStatus=CLEAN`,
+**merged to `main`** (`7c548fa`) — independently verified (real diff, green CI, 8/8 witnesses named
+in the PR body), no unresolved question, so merge was in-scope per the standing "PR work is your
+Manager work" memory rather than left as a hedge. 3 stale worktrees pruned same pass (branches
+already merged, zero unpushed commits, one had only a gitignored data-cache dir untracked):
+`/tmp/wt-hospital-corridor-baseline`, `/tmp/wt-room-lens-volbox`, `/tmp/wt-room-glow`.
+
+## §21 UPDATE 2026-07-15o — HHS's 68% DETOUR_FAIL gap investigated, root cause GROUNDED, no fix
+attempted this pass — genuine architecture fork, not executed blind
+Re-ran §18/§19's own "sweep every real room pair" diagnostic against the CURRENT code (post PR
+#800) to check whether the Hospital corridor-join fix moved HHS's number: **it did not** —
+173/253 (68.4%) `§PATH_LEGAL_DETOUR_FAIL` pairs, identical to §19's pre-fix baseline. Expected:
+PR #800's fix targeted Hospital's specific bucket-grid-boundary artifact; HHS's own join ratio had
+already moved in an EARLIER fix (§17: 38.5%→48.4%), so there was nothing left in that lever for
+HHS to gain from PR #800 specifically.
+
+**New measurement, grounds WHY**: summed `graph.roomRectsByStorey`/`corridorRectsByStorey` real
+rect area against each storey's largest real `IfcSlab` bbox (a floor-footprint proxy) —
+`buildings/HHS_Office_Federated_extracted.db`:
+```
+Level 1: roomArea=234 + corridorArea=552  / slabBBoxArea=3518  = 22.4% covered
+Level 2: roomArea=355 + corridorArea=365  / slabBBoxArea=3529  = 20.4% covered
+Level 3: roomArea=299 + corridorArea=380  / slabBBoxArea=3537  = 19.2% covered
+```
+Only ~1/5 of each real floor's footprint is accounted for by a known room or known corridor rect
+— the other ~80% is simply unmapped to `_detourForChord`'s visibility graph, which is the real
+mechanism behind the 68% failure rate (not a threshold, not a bucketing artifact — a genuine data-
+coverage gap).
+
+**§19's own "different geometry source (floor/slab polygons)" idea investigated and ruled OUT as
+written**: HHS carries 83 real `IfcSlab` rows, but they're full-floor structural plates (e.g. one
+~57.6m×44.75m slab spanning nearly the whole Level 2 footprint) — undifferentiated floor extent,
+not navigable space. Using a slab bbox directly as "walkable" would route straight through
+wherever a wall actually stands; turning it into real navigable evidence needs a wall-footprint-
+subtraction step (a new floor-polygon extractor), not a rect-widening tweak to the existing
+`hallway_backbone.js`/`room_graph.js` machinery.
+
+**Not fixed this pass, on purpose**: both real paths forward are genuine new subsystems with real
+regression surface and no existing witness coverage —
+(a) a wall-subtracted floor-polygon navigable-area extractor (the correct fix, largest lift), or
+(b) improving upstream room compilation itself so more of HHS's federated IFC becomes real
+compiled rooms (moves the fix out of `room_graph.js` entirely, into `compile_rooms.py`'s domain).
+Per this file's own PRIME RULE (EXTRACT OR COMPILE ONLY, never invent) and the project's "no
+architecture-level fork gets picked blind" discipline, this is logged as a grounded finding + two
+real options rather than an implementation choice made unilaterally — worth a scoped session of
+its own once the user picks a direction. Diagnostic scripts used
+(`scratch_hhs_detour_sweep.js` + the rect-coverage measurement above) were scratch, not committed
+— reusable if either path is picked up, not needed as a permanent witness on their own.
+
+## §24 UPDATE 2026-07-15r — user's vision stated explicitly ("general accurate functional space
+layer... applicable to any building"), Hospital's raster tie root-caused for real, Terminal's
+connectivity gap found to be a coordinate bug and FIXED (bim-ootb branch
+`fix/hospital-walkable-raster`, worktree `/tmp/wt-hospital-raster-fix`, shipped as bim-ootb
+PR #804, CI green, merged to `main`)
+
+**Task 1 — Hospital's raster tie, fully root-caused, closed as "not a bug."** Two more real
+build-script fixes found and shipped: (a) `§RASTER-SLACK-PARITY` — the raster's `pointInRect` test
+had no margin at all, while `_pointWalkable()`'s own fallback inflates room rects by
+`DOOR_BUFFER_SLACK` (0.20m) and corridor rects by `CORRIDOR_RECT_SLACK` (0.30m); a raster must be a
+superset of what its own fallback already granted, never stricter. Fixed by inflating both rect
+types the same way before rasterizing. Verified as a true no-op (zero behavioral change, same
+exact numbers) on HHS/JKR — a pure correctness fix, no regression risk, not worth reshipping their
+already-good patches. On Hospital, it moved the raster from a REGRESSION (44.1%, after the
+corridor-parity fix alone) to an exact TIE with the 39.6% no-raster baseline — proven via pair-level
+identity (`witness_hospital_walkable_raster.js` G3): the SAME 1197/3023 sampled pairs fail before
+and after, zero pairs flipped either direction. Root cause of the remaining tie: Hospital's own
+`§PATH_LEGAL_DETOUR_FAIL` log shows failures like "no legal detour among 128 doors" — plenty of
+candidate waypoints exist, but Hospital's real floor-evidence coverage is still only 20-40% per
+storey even with both fixes (vs Clinic's ~65-75%), so a long cross-floor chord between two
+arbitrary doors almost always crosses at least one uncovered patch somewhere. This is the SAME
+already-tracked corridor-coverage gap `witness_hospital_corridor_baseline.js` guards (17.8% join
+ratio vs Clinic/HHS's ~45%) — a real geometry-recognition gap in `hallway_backbone.js`, not
+something a walkable-raster fix can touch. Shipped Hospital's raster anyway (most-accurate
+available walkable-floor ground truth — real value for this spec's own VISUAL rendering purpose,
+independent of the pathfinding metric it ties on), with `witness_hospital_walkable_raster.js`
+(3/3) permanently guarding against a future session re-attempting this as if it were still open.
+
+**Task 2 — Terminal's connectivity gap (28.2%, 51 components, 47 isolated singleton rooms out of
+59) was NOT a sparse-data problem — it was a stale coordinate-offset bug, found and fixed.**
+Measured directly: `Terminal_extracted.db.sql`'s compiler-owned rooms (its own v2 header: "every
+spatial_structure row... is compiler-owned") sat at x∈[91,149] y∈[-39,-1], while the building's own
+real doors sit at x∈[634,696] y∈[11,51] — a consistent ~(+543,+51)m offset, same footprint size,
+purely translated, not a rotation/scale bug. This patch had gone stale relative to the current
+`Terminal_extracted.db` — a live instance of the same "self-heal patch drifts from its source data"
+category as HHS's stale-raster bug (§21/§22), just manifesting as a coordinate shift instead of a
+room-count mismatch. Fix: reran `scripts/compile_rooms.py` (bim-compiler) fresh against the CURRENT
+`Terminal_extracted.db` — same rules, same code, zero manual edits — and the resulting rooms'
+x/y range matches the real doors almost exactly. Measured improvement: `fullConnectivity()`
+28.2%→94.2% (51 components→8, largest-component-size 40/142→113/120, isolated singletons 47→7) —
+now at Clinic-control quality (95.7%). `witness_terminal_room_coordinate_fix.js` (5/5) pins both
+the old broken baseline (proving the bug is real) and the new fixed floor.
+**Side effect, honestly reported**: fixing connectivity means far more room pairs now actually
+ATTEMPT real routing instead of failing outright with no path — so the within-graph legality-fail
+rate that was masked by the connectivity failure is now visible: 51.6% (same category of gap as
+HHS/JKR/Hospital). Built Terminal's own walkable raster too (patch-first, same discipline as HHS)
+— it ties the 51.6% baseline exactly, no improvement, because `component_geometries` slab
+resolution failed entirely for Terminal (0/174 slabs resolved across every storey — an unexplored,
+separate geometry-index gap, not investigated this pass). Raster NOT shipped for Terminal since it
+provides zero measured value unlike Hospital's (which at least resolved real triangles on 2 of 7
+storeys) — the coordinate fix alone is the real, validated win here.
+
+**Explicit vision context (verbatim, this session)**: "U have to proceed, that is my vision, to
+have a general accurate functional space layer. It is indeed complex but highly desired to be
+complete and applicable to any building." Persisted to
+`~/.claude/projects/-home-red1-bim-compiler/memory/project_room_intelligence_lane.md` so future
+sessions don't need this restated. Task #3 (confirm LTU_AHouse/Duplex are genuinely clean, not just
+assumed from a tiny/full sweep) still open, not started this pass.
+
+**Verification**: full pre-existing suite + all 4 new/updated raster-and-connectivity witnesses,
+70/70 green across 12 witness files.
+
+## §25 UPDATE 2026-07-16 — Find-panel tab freeze on large buildings ("Script terminated by
+timeout"), root cause found and fixed, committed locally (worktree `/tmp/wt-find-panel-freeze`,
+branch `fix/find-panel-shell-parentset-freeze`, off `origin/main` @ `57c0720`, commit `a00cfaf`,
+**not pushed — standing PUSH PAUSE**)
+
+**User-reported live on production** (`red1oon.github.io/bim-ootb`, Terminal building): tapping a
+room/corridor in the Find panel's Room axis froze the tab — Firefox's own "Script terminated by
+timeout" fired, real stack trace: `_buildShapeMeshes` (`navigate_find.js`) → `clone` → `copy` →
+`copy` in `three.core.min.js`, called from `_drillSelect`'s `_drillRAF1` callback.
+
+**Root cause, grounded via `git blame` + comment-vs-code contradiction, not guessed**:
+`_drillSelect`'s `_shell` branch (`§SLIDING-WINDOW`, dated `f19b385` 2026-06-06 — this exact code
+is over a month old, NOT new) unconditionally pushes `opts.parentSet` (a whole storey, capped at
+`_HL_CAP=4000` elements) as a SOLID ancestor layer — `layers.push({set: parentSet, op: 1.0})` —
+even though the block's own comment states the ghost shell alone "IS the far context" and the
+selection should only need "solid+highlighted on top." `_buildShapeMeshes` then clones a real
+`MeshStandardMaterial` (frequently carrying a custom `onBeforeCompile` normal-perturbation shader,
+see `streaming.js` `_getMaterial`) **per unique hash/class group, fresh on every tap, never
+cached/reused** — for a storey with many disciplines this is dozens+ of clones, and it's paid again
+on every single room/corridor click.
+
+**Why this surfaced now, not in June**: `_shell` mode used to be reached only via manual Alt+X or
+`window._isMobile`. `#796`/§14 (2026-07-15h, already merged) added `_isLargeBuilding()` —
+auto-triggers the ghost shell for any building over 25000 elements. Terminal (48428) and Hospital
+(63415) now hit `_shell` mode on EVERY Find-panel open, so this month-old latent parentSet-SOLID
+cost fires on every room/corridor tap on exactly the two biggest buildings in the fleet — the
+"recent Rooms/corridor/path work" the user pointed at is real (§14 IS what exposed it), but the
+actual defect predates all of it.
+
+**Fix** (`navigate_find.js`, `_drillSelect`'s `_shell` branch only): gate the parentSet-SOLID push
+on `parentSet.size <= 1500` — reusing the SAME fast-path cutoff `_buildShapeMeshes` already applies
+internally (line ~1667) rather than inventing a new threshold. Large parentSets (the freeze case)
+skip the push and rely on the already-active ghost shell, matching the block's own stated design.
+Small parentSets (mobile-bbox-shell manually toggled on a normal-size building) are byte-for-byte
+unchanged — zero behavior change outside the large-building freeze path. The parallel `else`
+(non-shell, x-ray) branch was deliberately left untouched — it's the smaller-building path, not
+what the user reported, and touching it would be an unrequested/unproven change.
+
+**Verified locally, honestly bounded**: `node --check` clean. Full Playwright run against a real
+local building (`buildings/HHS_Office_Federated_extracted.db`, small enough to load fast) — opened
+Find panel, cycled Storey→Disc→Room axis, force-clicked through 15 tree rows — zero page errors,
+zero hangs, on the FIXED code.
+
+**UPDATE, same session — the actual freeze WAS reproduced and disproven, on the real building**:
+found full-size Terminal split DBs already sitting locally from an earlier session
+(`~/bim-ootb/buildings/Terminal_{extracted,meta,geo}.db`, 28MB/18.9MB/261MB — matches the user's own
+production log byte-for-byte), symlinked them into the worktree's `buildings/`, and drove the EXACT
+reported scenario via Playwright (real `page.mouse.click`, not `.click()` — the axis-toggle button
+only listens for `pointerup`, DOM `.click()` never fires it): opened Terminal locally (`§LARGE_
+BUILDING_CHECK elems=48428 large=true` confirmed, matching production), cycled to the Room axis,
+expanded "Aras 01", and tapped `≈ Aras 01 R1` — the literal same room from the user's own freeze
+report. Result on the FIXED code: `§ROOM_HIGHLIGHT mode=cuboid guid=RM_Aras_01_1` fired immediately,
+page stayed alive through a 30s observation window, zero page errors, zero "Script terminated"
+dialog, mouse events kept firing throughout. **Direct proof the fix removed the exact hang path**:
+the original freeze log showed the click immediately followed by `§INSTROWS_CACHED rows=48428` (the
+full-building join `_buildShapeMeshes` falls back to for a >1500-element set) then dead silence —
+on the fixed code, that same click instead logs `§INSTROWS_SET rows=6 of set=6 (direct, no full
+join)`, i.e. the parentSet-size gate skipped the ancestor layer entirely and `_buildShapeMeshes` only
+ever ran on the tiny 6-element focus set. The expensive call this bug relied on no longer happens.
+
+**One unrelated, honestly-flagged observation from the same run, NOT part of this fix**:
+`§BVH_DEFERRED built=9394 ms=34769 (incremental)` — a separate, pre-existing background raycast-
+index build took ~35s wall-clock on Terminal. It's chunked/incremental by its own name and design
+(§258) and did not block input or the Find-panel interaction in this run, but it's a real number
+worth a future session's attention if large-building raycast responsiveness ever comes up — not
+touched or claimed fixed here.
+
+Local commit only (`a00cfaf`), standing PUSH PAUSE — ready to push once the user does their own
+live spot-check on production-equivalent conditions.

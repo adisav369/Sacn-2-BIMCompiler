@@ -108,8 +108,13 @@ WALKER that fills ARC space · one Outliner panel = Find on steroids) and, exter
 
 ## ▶ KEY DOCUMENTS
 - **Status:** `PROGRESS.md §Current State` + `🔀 CURRENTLY JUGGLED` — always the live ground truth.
-- **Room Intelligence lane** — CLOSED 2026-07-11 ("good enough, no more perfection work there," per
-  `PROGRESS.md`); history in `ROOM_INTELLIGENCE_SCOREBOARD.md`, don't re-open without user re-widening.
+- **Room Intelligence lane** — RE-OPENED 2026-07-13 (user-widened same day: fixture-classification session,
+  disc-walker `§STOREY-ZBAND` fix, fleet-wide `spatial_structure` regression found + being restored across
+  6/8 buildings, functional-space ensemble work in flight). The 2026-07-11 "CLOSED, good enough" verdict
+  and its `§🚩 THE FLAG ON THE HILL` mission section (removed same day as this file's own `79589eb6e`
+  rewrite) are both superseded — don't cite either as current. Live status: `prompts/FUNCTIONAL_SPACES_
+  ENSEMBLE.md` (new, in progress) + `project_narrow_ai_determinism_framework` memory (the session's dictionary-
+  of-fundamentals synthesis); history in `ROOM_INTELLIGENCE_SCOREBOARD.md`, refresh before trusting.
 - **Memory:** `project_room_intelligence_lane.md` (links-only pointer, doesn't duplicate).
 
 ## ▶ DELIVERABLE
