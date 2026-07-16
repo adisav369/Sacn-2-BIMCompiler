@@ -1660,3 +1660,16 @@ by a deterministic exact-string patch script that fails loudly on count mismatch
 **User localhost check:** serve `/tmp/wt-ssgi-port` (e.g. port 8189), hard-refresh once (SW v767),
 open HHS, Alt+J → building should be LIT (no more black); §SSGI_PORT_WIRED in console; Alt+G and
 Alt+S unchanged. Push authorized per the paste-block above once watchdogged — not done here.
+
+## USER LIVE FEEDBACK on Alt+J (2026-07-16, first look — tuning spec for the next session)
+User verbatim: **"It seems noise + slight transparent."** Confirms the agent's recorded
+edge-speckle open item and ADDS a transparency observation. Candidate knobs (all in
+`effects_gi_poc.js` `_ensureSSGIBuilt` options, currently guesses: distance 30 / thickness 5 /
+denoiseIterations 1 / radius 5 / steps 12 / refineSteps 4 / spp 1):
+- "Slight transparent" → `thickness` likely too thin (rays pass through walls, lighting what's
+  behind = translucent read). Try 5 → 10-20 first; also check denoise blurring across depth edges.
+- "Noise" → `denoiseIterations` 1 → 2-3, and/or `spp` 1 → 2 (cost doubles per spp — measure).
+Discipline: same-pose A/B CROPS per knob change (this file's anti-guessing doctrine), cost
+re-measured each step (baseline 13.7ms/frame). Do this TOGETHER with the fold-into-Alt+S decision
+session — for a frozen still, higher spp/denoise cost is fine (still-only), so the fold may want
+DIFFERENT (higher) quality settings than the navigable Alt+J preview. Next session = tune + fold.
