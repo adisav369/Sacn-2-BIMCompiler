@@ -160,6 +160,22 @@ Worktree `/tmp/wt-fly-corridor` off origin/main 4c0f4a0. Files: `viewer/tour.js`
 copy (spec §R5). Needle Playwright wiring E2E not re-run (core proven via `fly_norooms.log`;
 UI shell is 10 lines). Possible polish: dedupe A-B-A backtrack triples in long legs.
 
+### SHIPPED — PR #812 MERGED to bim-ootb main 2026-07-16 (squash; user authorized push, PUSH
+PAUSE lifted for this lane). Round 6 follow-up = PR #815 (auto-merge armed) off fresh main,
+branch `feat/fly-tour-corridor-spine` (old branch retired per squash-merge rule).
+
+### Round 6 — efficient tour (2026-07-17, PR #815) — user: Hospital "lingers too long on first
+floor… stick to long corridors… really go up stairs… not same type of rooms" (discussed first,
+then go)
+- §R6-BUDGET rooms/storey scale down with storey count (4+ → 2); §R6-CORRIDOR-SPINE up to 3
+  corridor cruises/storey (was 1); §R6-TYPE-DEDUPE real-name rooms dedupe tour-wide (compiled
+  R-names exempt — Hospital's graph rooms are compiled, so budget did the shortening there);
+  §R6-STAIR-FLIGHT measured mid-flight point per climb; §R6-PACE >300m → 4.5 m/s; §S3 beat
+  follows the largest PICKED room. tour.js v10, sw v774.
+- Witnesses: Hospital `fly_hospital3.log` 22 stops/7 storeys corridorStops=12; Terminal
+  `fly_regress6.log` 18→14 stops, corridors 3→5, pts 125→89; Clinic `fly_regress6c.log` 9→7,
+  illegal 0/33, ghost-gate still holding.
+
 ### Rounds 3–5 — live-review fixes (2026-07-16/17, @ 6f0f110 / 44c0ac8 / 0b3cf01 / 6ddb290)
 - **R3 (@6f0f110):** §STREAM-FIRST — tour waits for streaming to drain before take-off (the
   first "Alt-X bboxes" report was placeholder boxes on a mid-stream take-off; `§FLY_STREAM_WAIT`).
