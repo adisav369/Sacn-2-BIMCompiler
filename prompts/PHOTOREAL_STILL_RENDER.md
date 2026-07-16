@@ -1705,3 +1705,75 @@ permission if the gate passes — it is pre-authorized. Steps:
    result. If transparency/noise does NOT verify after the tuning pass → do NOT deploy; stay
    localhost, record A/B evidence + verdict in this file, report back. "Leaky = localhost again"
    is the user's own gate, verbatim intent.
+
+## SESSION RECORD (2026-07-17 — NEXT SESSION MANDATE executed: noise ROOT-CAUSED, folded, DEPLOYED)
+Executed the mandate above end-to-end. Branch `feat/ssgi-lighting-port` (`/tmp/wt-ssgi-port`),
+synced with origin/main (merge, no sw.js conflict), commit `51851e3`, **PR #813, auto-merge
+enabled, deployed** (see §DEPLOYED below for the live verification).
+
+**The headline: the user's "noise + slight transparent" was NOT a knob problem — SSGI temporal
+accumulation was never running at all.** Three prior rounds of knob candidates in this file
+(thickness/denoise/spp) could never have fixed it. Root cause, found by float-probing the live
+buffers (TRP frame-counter alpha ~0.4-1.5 after 150 PARKED frames — accumulation resetting every
+frame): realism-effects' velocity/depth vertex chunk computes `newPosition = velocityMatrix *
+vec4(transformed,1)`, bypassing three's `project_vertex` where r185 applies batching/instancing
+matrices. The port's patch #3 made the shader COMPILE on BatchedMesh but the chunk never USED
+`batchingMatrix` — every batched vertex rasterized at untransformed local coords, so the whole
+building never drew into the velocity/depth MRT. Depth stayed 0 → the temporal reprojector's
+`depth==0 → no data` gate skipped accumulation on EVERY pixel → permanent raw single-sample ray
+noise (violent on glass/colored surfaces = high ray variance; invisible on flat grey). The
+"slight transparent" read was the same bug — shimmering unaccumulated samples, not thickness.
+**Fixed as bundle patch #7** (exact-string, deterministic, recipe in `51851e3`'s message): apply
+batching+instancing to `transformed` before BOTH position computations in the tp chunk.
+Measured after: frame counters 127-136, convergence residual 8.53% → 0.41% (150f vs 600f parked).
+
+**Also fixed — §SSGI_CONVERGE (second real mechanism bug):** the desktop render loop self-parks
+at 0 frames (§S286) but SSGI accumulation only advances while frames render — on the user's
+machine a parked camera froze the preview mid-converge, so the noise could literally never
+settle. Bounded 90-frame kick after any markDirty while SSGI is active; re-parks after.
+Verified: 0.0% pixel diff between +2.5s and +3.5s parked; §IDLE_GATE park resumes after.
+
+**Knob verdict (evidence, 2 poses × {thickness 5/10/15/20 × denoise 1/2/3 × spp 1/2} after the
+fix):** all visually equivalent, cost flat 11-13ms/frame (RTX 4060) — locked NAV=12/2/1,
+STILL=12/3/2. The mechanism fix was the entire win; do not reopen knob tuning on a noise report
+without probing accumulation first.
+
+**§PHOTO_SSGI fold (mandate step 4) — built + verified:** Alt+S still now engages SSGI at
+freeze-time (same pattern as §PHOTO_AO): still-quality knobs, 90-frame converge (§PHOTO_SSGI done
+~1.6-2.9s one-shot), full restore on every exit path (drag keeps staging, drops fold;
+pre-existing Alt+J survives at nav knobs; §-witnessed). **AO fold remains the automatic
+fallback** (`A._stillSSGIEnabled=false` or bundle failure) — Alt+S can never regress below its
+previous behavior, and that flag is the instant runtime revert if the new look is disliked.
+**Honest A/B note:** at a sunlit facade establishing shot the SSGI still reads slightly
+dimmer/flatter than the AO-only still (`~/Pictures/Screenshots/PHOTO_SSGI_fold_{A_ao_only,
+B_ssgi}_2026-07-17.png`); its clear win is shadow-side/interior gradation (courtyard tell).
+If the user prefers the AO look for bright establishing shots, the flag is the lever — discuss
+before building anything new.
+
+**§PHOTO_SSGI_TRAA tried and DROPPED (do not re-try blind):** TRAAEffect after the SSGI pass
+renders the entire frame black under r185 (its own TemporalReprojectPass has unpatched gaps
+beyond SSGI's). Documented in-code in effects_gi_poc.js. The fold ships single-sample edges; if
+edge AA is ever wanted, port TRAA the same buffer-probing way patch #7 was derived, as its own
+bounded task.
+
+**Mandate tells, verdict:** (a) courtyard off→on flat→graded ✓; (b) warm bounce on interiors of
+the staged still ✓ (see honest A/B note); (c) settles <2s parked, then 0 GPU frames ✓;
+(d) no see-through opaque walls ✓. Regressions: AO fallback fires when SSGI disabled ✓, Alt+G
+clean on/off + orbit no ghost trail ✓, exit states recomputed ✓, §AUTO_STAGE2=0 ✓, zero
+pageerrors across every run ✓. All via REAL Alt+J/Alt+S keypresses on real GPU (headed Chrome).
+
+**Harness lesson (cost a full false-negative round):** puppeteer's `setBypassServiceWorker`
+does NOT bypass Chrome's HTTP cache — `python http.server` sends Last-Modified and heuristic
+caching served a STALE effects_gi_poc.js for one whole verify run (edits silently absent, no
+error). Every harness now also sets `page.setCacheEnabled(false)`. Harness scripts:
+`ssgi_{ab,diag,diag2,verify,ab_fold}.js` in this session's scratchpad; patterns copyable from
+`51851e3`'s message if needed again.
+
+**sw.js `v767 → v768`.** bim-compiler side: this file only, committed locally (push-pause).
+
+## DEPLOYED (2026-07-17 — PR #813, mandate step 5 gate PASSED)
+Gate passed on the tells above → pushed, PR #813 opened, auto-merge on CI green, GitHub Pages
+verified serving sw.js v768 + the patched bundle. Live URL result reported to the user in-session.
+Open items after this lane (unchanged from before): material reference library (own session),
+prior-art write-up, sky/HDRI feed into SSGI miss-rays (env importance-sampling r185 work),
+optional TRAA port (see drop note above).
