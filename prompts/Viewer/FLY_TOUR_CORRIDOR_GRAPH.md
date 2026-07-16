@@ -159,3 +159,16 @@ Worktree `/tmp/wt-fly-corridor` off origin/main 4c0f4a0. Files: `viewer/tour.js`
 **Not done / follow-ups:** deploy/dev (bim-compiler viewer) port still needs the 4-file stack
 copy (spec §R5). Needle Playwright wiring E2E not re-run (core proven via `fly_norooms.log`;
 UI shell is 10 lines). Possible polish: dedupe A-B-A backtrack triples in long legs.
+
+### Round 2 — user live-review feedback applied (2026-07-16, @ b9310c4)
+User watched the tour on localhost (bbox/ghost mode) and asked for: full opening circle,
+softer track switches, a heads-up when crossing storeys, and a ground-level outside ending.
+Shipped: orbit `fullCircle` (dur ×2, same angular speed); §HEADS-UP — a 180° look-around on
+arriving up a stair at each new storey (ascent only); flyPath gaze softened (look-ahead
+0.03→0.05, pan lerp 0.15→0.08) so spur-room walk-in/walk-out reversals sweep instead of whip;
+§ENDING — camera outside at entrance ground level, 90° pan with gaze tilted up to 40% of the
+building's measured top (`lookAround` gained `lookAtY`). tour.js v6, sw v766. Witness
+`fly_norooms2.log`: `CINE-GRAPH(34acts,92pts)`, orbit dur=12, 10 lookAround beats, route
+unchanged. NOTE for headless re-runs: geo sidecars are now symlinked in the worktree —
+Terminal/Hospital stream 10×+ slower under swiftshader; witness on the geo-less
+`Terminal_norooms.db` or wait for `!APP.streaming` before pressing Fly.
