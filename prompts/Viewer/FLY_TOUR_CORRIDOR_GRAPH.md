@@ -176,6 +176,28 @@ then go)
   `fly_regress6.log` 18→14 stops, corridors 3→5, pts 125→89; Clinic `fly_regress6c.log` 9→7,
   illegal 0/33, ghost-gate still holding.
 
+### FINDING 2026-07-17 — §WALKER-PHASE-SENSITIVITY (user live GIGO challenge, proven not-GIGO)
+User's drag-imported `TerminalMerged.ifc` never gets the graph tour (live: 52 nodes/9 E1 edges
+→ thin-path reject) while the extracted `Terminal_extracted.db` flies. User challenged the
+"import path differs" handwave ("data is data — I know about GIGO"). Controlled A/B (headless,
+scratchpad `diag_import.js`/`diag2.js`/`diag3.js`, logs kept): the two DBs are statistically
+IDENTICAL — doors 135 (63/29/27/9/7 per storey, bbox 0.53×0.78×2.2, 0 null), walls 333
+(3.07/2.82/6.01), windows 236, columns 158, same Unknown rows (33k curtain plates), hallway
+backbone byte-identical (buckets=52 joined=18 chains=10) — the ONLY difference is a constant
+translation (Δx≈−545.6, Δy≈−51.1, Δz≈−14.7; same spans, no mirror). Yet the SAME
+`room_walker.js` compiles **51 rooms → 26 E1 edges (orphan 36)** on extracted vs **45 rooms →
+16 E1 edges (orphan 50)** on imported. VERDICT: the room compiler is sensitive to absolute
+coordinate phase (raster grid / SEAL dilation / float rounding) — ~6 pockets fail to enclose in
+the translated frame and their ~14 doors orphan. The user's architectural point stands: the
+inject mechanism exists to CURE poor data; a cure that depends on which coordinate frame the
+same geometry arrives in is the bug. NEXT BOUNDED TASK: pocket-level diff of the two compiles
+(dump per-storey room rects from both, align by translation, find which enclosures diverge and
+why — grid origin snapping is the first suspect; the fix likely = quantize the raster origin to
+the data (translation-invariant grid), witnessed by walker-output equality across frames.
+Repro: import via `diag_import.js` on :8901 (persistent profile keeps the imported DB), then
+`diag3.js` runs ensureRooms+graph on it; baseline via sqlite3 on
+`~/bim-ootb/buildings/Terminal_extracted.db`.
+
 ### Rounds 3–5 — live-review fixes (2026-07-16/17, @ 6f0f110 / 44c0ac8 / 0b3cf01 / 6ddb290)
 - **R3 (@6f0f110):** §STREAM-FIRST — tour waits for streaming to drain before take-off (the
   first "Alt-X bboxes" report was placeholder boxes on a mid-stream take-off; `§FLY_STREAM_WAIT`).
