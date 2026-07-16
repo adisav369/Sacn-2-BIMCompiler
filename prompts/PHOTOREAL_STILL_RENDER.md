@@ -1477,3 +1477,58 @@ silently broken until now — worth checking specifically).
 **Still open from the review:** finding 4 is a DECISION, not a fix — N8AO at radius=8/intensity=6
 costs 317ms/frame (~3fps) on a RTX 4060 and reads as broad mottle at establishing distance; keep
 Alt+G as an experimental still-only preview or park it. Not building further on it without a call.
+
+## SESSION RECORD (2026-07-16, continued — AO folded into Alt+S (agent), ghost family killed, SSGI SPIKE run)
+Three local commits on `feat/ssgi-composer-poc` (`/tmp/wt-ssgi-composer-poc`), NOT pushed, push-pause
+intact: `b365b32` (ghosting + review findings, previous record), `d7d41d1` (dispatched agent's work),
+`8feeae1` (SSGI spike). SW now `v766`. All verified real-GPU on HHS unless stated.
+
+**Agent-built (d7d41d1) — reviewed and accepted:**
+- **AO folded into Alt+S**: the finished still now includes N8AO contact shadows, one keypress.
+  Native-chain `N8AOPass` (bundle rebuilt to export it) + a thin adapter that feeds the frozen
+  16-sample TAA image in as N8AO's beauty (autoRenderBeauty=false) — AO refines for 24 frames
+  AFTER the freeze, so it never touches the jittered sampling. Zero-cost gate when not frozen
+  (§PHOTO_AO on/off on every path). Alt+G untouched as the standalone navigable preview.
+- **Alt+G ghost family, 3 roots fixed** (user: "it happens after Alt-G"): pause now drops TAA
+  accumulation state; GI-off RECOMPUTES `_composerEnabled` (no more interleaved save/restore
+  stranding); `§STILL_REFINE_RESTART` pose-signature guard inside the accumulation loop catches
+  damping glides, in-grace drags, and Fly-mode/programmatic motion (21 restarts witnessed across
+  a scripted 2.2s fly, crisp freeze only after motion stopped).
+- **Auto-restage DISABLED per user decision** ("let user Alt-S manually") — `AUTO_STAGE2_DISABLED`,
+  §AUTO_STAGE2 can never fire; movement keeps staging (Stage 1), user re-presses Alt+S to re-polish
+  (double-apply guard makes that seamless — verified). Tap/UI-click still fully exits.
+- **Honest correction to the earlier review**: the 317ms/frame N8AO figure was a measurement
+  artifact (markDirty-per-frame forced a full AO reset every frame). Properly gl.finish-synced:
+  **9.3ms/frame full-res** — Alt+G navigation is genuinely smooth; the new cinema halfRes preset
+  (§GI_CINEMA_PRESET) is retained as insurance, not a necessity. Cinema Orbit now records
+  `_giComposer` when GI is active (was rendering the WRONG composer mid-recording — real fix).
+
+**SSGI SPIKE (8feeae1) — §LAYER 4's last open question, answered by building:**
+- Candidate: `realism-effects@1.1.2` (0beqz, MIT, unmaintained since 2023-05; SSGI for the SAME
+  pmndrs composer Alt+G uses). Vendored into the shared bundle (superset rebuild, one
+  postprocessing@6.39.2 — Alt+G + AO fold re-verified working on it). Alt+J = spike toggle,
+  mutually exclusive with Alt+G (shared `_giComposer` slot, handback verified both directions).
+- **4 mechanical r185 patches, each found by running not guessing** (baked into the bundled copy;
+  the patch script lives in this session's scratchpad, reproduce from the commit message):
+  WebGLMultipleRenderTargets compat subclass; copyFramebufferToTexture arg order (r165);
+  `batching_pars_vertex`/`batching_vertex` injection into their 2 custom vertex shaders — this
+  fixed the predicted make-or-break `batchingMatrix: undeclared identifier` failure on
+  BatchedMesh, CONFIRMED fixable; OptimizedCineonToneMapping→CineonToneMapping rename.
+- **Result: machinery fully works — lighting doesn't.** Runs clean at **13.6ms/frame** (RTX 4060),
+  zero page errors, real full-frame output — but the building renders BLACK
+  (`~/Pictures/Screenshots/SSGI_spike_black_building_2026-07-16.png`): the effect reconstructs
+  radiance through its own gbuffer MRTMaterial, which doesn't carry this app's
+  onBeforeCompile-customized / batched material colors; `scene.environment` (which this app never
+  sets — envMaps are per-material) surfaces yet another dead-API path when set. Alt+J logs
+  `§SSGI_SPIKE_INCOMPLETE` and stays in as scaffold.
+- **VERDICT for the next session on this**: SSGI-via-realism-effects is NOT a drop-in; the
+  remaining work is a real porting lane — adapt its gbuffer material capture to this app's
+  material architecture (diffuse/emissive per batched group), fix its env sampling for r185, THEN
+  tune. Bounded but genuinely its own session(s). Alternatives if that port stalls: the lib's
+  unfinished v2 branch, or a purpose-built minimal screen-space bounce pass reusing the N8AO
+  depth/normal buffers already proven working in the native chain.
+
+**User's next localhost test (hard refresh once, SW v766):** Alt+S → staged still WITH contact
+shadows; move → live view, staging stays, NO auto re-polish; re-press Alt+S when settled; tap an
+element → full exit; Alt+G → smooth navigable AO preview, no ghost after toggling it off; Alt+J →
+deliberately incomplete (black building, spike scaffold) — don't judge it, it's documented.
