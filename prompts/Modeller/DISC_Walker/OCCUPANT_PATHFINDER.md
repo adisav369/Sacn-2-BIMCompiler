@@ -411,3 +411,87 @@ and inherit the strategy table's PUBLIC/transit priority (they open onto corrido
 like a curtain-wall transit door. Also the enabler for the C4 floor-slab tier: with no walls modelled,
 acquired doors (openings in the floor-slab boundary) are the PRIMARY connectors. Encoded in
 `path_strategy.json` → `door_acquisition.sources.acquired`.
+
+---
+
+# OPEN LANE C — DONE: C2 wired as `opts.metric='doors'`, CORRIDOR-GATED (2026-07-18)
+
+**Branch**: bim-ootb `feat/lane-c-door-preference-metric` off `main`, worktree `/tmp/wt-lane-c-doorpref`.
+Committed locally; PUSH PAUSE is lifted project-wide (this file's own header, 2026-07-17) so pushed to
+`origin` after commit. Only `common/room_graph.js` touched in the shipped engine; two new scripts
+(`poc_lane_c_doorpref.js`, `witness_lane_c_door_preference.js`) + a snapshot copy of `path_strategy.json`
+(`prompts_path_strategy_snapshot.json`, since this JSON's source of truth lives in the bim-compiler repo
+and room_graph.js stays dual-mode Node/browser with no bundler to `require()` across repos).
+
+## POC gate (calc-only first, per this file's own law) — `poc_lane_c_doorpref.js`
+Ran against the REAL shipped `buildGraph()`/`shortestPath()` (not a reimplementation) on Clinic
+(`~/bim-ootb/buildings/Clinic_extracted.db`) + Duplex (no-corridor regression control). First pass
+(uniform door-count on every E1/E2/E7/E9 edge, no gating) fixed Clinic but broke **17/35** Duplex room
+pairs — a tie-break diagnostic proved **0 of the 17 were ties** (all genuine door-count-vs-distance
+divergences from Duplex's own ambiguous 3-way door junctions, nothing to do with a corridor). Per this
+file's own escape valve ("STOP and report if Duplex regresses at every λ — means the penalty model is
+wrong, not the λ"), stopped and presented the finding to the user rather than forcing it through.
+
+**User's resolution (2026-07-18): CORRIDOR-GATE the metric** — only price an edge by door-count when it
+actually TOUCHES a real spine/circ node (a genuine corridor alternative exists for that leg); a plain
+room↔room edge (E1, or E9's ambiguous-junction residual rescue — neither ever touches spine/circ) keeps
+EXACTLY today's real-distance weight. This matches the lane's own PRINCIPLE wording ("penalise room↔room
+transitions WHERE A CORRIDOR EDGE IS AVAILABLE", not everywhere) more precisely than raw C2. Re-ran:
+```
+§POCPATH-C Clinic sample_pair: "≈ First Floor R23" -> "≈ Second Floor R1"
+§POCPATH-C Clinic hops_before(distance-metric) doors=12 distance=74.5 kinds=room,room,spine,room,spine,...
+§POCPATH-C Clinic hops_after(C1+C2 door-count metric) doors=5 cost=21.79 kinds=room,room,spine,spine,spine,circ,circ,spine,room,room,room
+§POCPATH-C Duplex regression_pairs=35 mismatches=0
+```
+Acceptance MET: corridor-dominant route appears (CIRC/spine hops, fewer real doors) AND Duplex is
+byte-identical. Two real bugs found+fixed in the POC harness along the way (documented in the script's
+own comments, not engine bugs): `hallway_backbone.js` has door queries with a DIFFERENT column layout
+than `room_graph.js`'s own (no `center_z` — a naive substring-matched rescue wrapper silently corrupted
+those reads); and Clinic carries a 1-room "TOF Footing" storey whose lone sample's z coincidentally beat
+the real 67-room First Floor anchor in a raw nearest-z vote (fixed with a minimum-sample-size guard, not
+a hand-picked threshold).
+
+## Engine shipped (`common/room_graph.js`, API-compatible)
+- `shortestPath(graph, fromGuid, toGuid, opts)` — **NEW optional 4th argument**, every existing 3-arg
+  call keeps today's exact distance-weighted behavior byte-identical. `opts.metric='doors'` switches to
+  the corridor-gated door-count weighting; `distance` in the returned shape then holds that metric's own
+  cost units for that call only (not meters).
+- `escapeRoute(graph, fromGuid, opts)` — already had an `opts` param (for `log`); now also honours
+  `opts.metric='doors'`, free of charge (same `_buildAdjacency(graph, opts)` call).
+- New internal helpers: `_doorEdgeCost` (corridor-gated cost: 0 for circulation-internal E3/E5/E6/E8;
+  real distance for a plain room↔room E1/E9 edge; `1 * hostMult * privacyMult` for a corridor-touching
+  E1/E2/E7/E9 edge), `_touchesCorridor`, `_isCurtainWallDoor`, `_roomPrivacyMult`. `DOOR_PRIORITY`
+  constants mirror `path_strategy.json`'s `door_priority` table (host-class + adjacent-room-privacy
+  multipliers) — that JSON stays the spec source of truth; values marked `_calibrate` there are still
+  POC-tuned initial numbers, not hand-picked finals.
+- `_buildAdjacency(graph, opts)` — new optional 2nd argument, same default-preserving contract.
+
+## Witnesses
+**W-LANE-C-DOOR-PREFERENCE** (`witness_lane_c_door_preference.js`, calls `RoomGraph.shortestPath()`
+directly, not a reimplementation) — `pass=4 fail=0`:
+```
+§W_LANE_C Clinic default-metric doors=12 distance=74.5
+§W_LANE_C Clinic doors-metric doors=6 cost=21.79 names=...single-flush doors x5 | one stair flight...
+§W_LANE_C Duplex regression_pairs=35 mismatches=0
+```
+(Clinic's engine-reported `doors=6` vs the POC script's own `doors=5` is a labeling difference only —
+`shortestPath()`'s pre-existing `doors[]` convention already includes E3 stair-flight guids, as
+established when E3 first shipped; same 5 real doors + 1 stair crossing either way.)
+
+**Existing regression witness** (`witness_room_graph_path.js`, unrelated file, run read-only to check
+fallout): **pass=15 fail=0**, unchanged from before this session — the new optional `opts` parameters
+introduced no regression on the pre-existing suite.
+
+## Deferred / honestly not done
+- **C1 (Unknown-storey door rescue) was POC-verified again this session but NOT wired into
+  `buildGraph()`** — the Clinic sample collapse above (12→5/6 doors) happens via C2 alone, using
+  doors/spine already present in the shipped graph; C1's 5 rescued exterior doors (3 curtain-wall glass +
+  2 chain-link gates, all correctly z-rescued to First Floor once the two POC bugs above were fixed,
+  `edges baseline=332 after_c1=337 (+5)`) add real connectivity but weren't load-bearing for THIS demo.
+  Porting is mechanical — `poc_lane_c_doorpref.js`'s `buildRescueMap()` has the exact, already-verified
+  fix (compute a guid→storey map once via a dedicated query with real z, apply by GUID across every
+  door-query variant regardless of column layout) — left for a follow-up session rather than scope-creep
+  past what this session was asked to wire.
+- C3's collinearity tie-break, C4's degradation tiers, and C5's acquired-doors are still spec-only,
+  unchanged from before this session (see their own sections above).
+- Not tested on JKR/Terminal this session (Clinic + Duplex are this lane's own named acceptance corpora).
