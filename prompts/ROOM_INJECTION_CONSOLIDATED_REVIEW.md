@@ -97,8 +97,14 @@ after every run — exit code is not evidence.
 - **`deploy/dev` (bim-compiler's own viewer copy) has NONE of this stack** (item 9) — no
   `room_graph.js`, no `hallway_backbone.js`, no needle in its `navigate_find.js`. Flagged
   repeatedly across sessions as a separate, un-started port.
-- **Browser-importer wall-transform parity owed** (item 9) — imported vs extracted room counts
-  disagree (46 vs 54), named as an open follow-up after PR #835.
+- **Browser-importer wall-transform parity — ROOT-CAUSED 2026-07-17, fix spec written** (item 9):
+  imported vs extracted room counts disagree (45 vs 54) because element `center_x/y/z` is the
+  **vertex-MEAN** (tessellation-density-dependent, non-deterministic across wasm builds) in BOTH
+  `extractIFC2DB.js:422` and `import_worker.js:515`; bbox is invariant but center drifts up to
+  ±1.31 m (31/333 walls > 0.5 m → broken enclosure). NOT coordinate-phase (that was a separate,
+  already-#832-fixed bug). Fix = bbox-center `(min+max)/2` in both paths. Full diagnosis + fix +
+  regression plan: **`prompts/CENTROID_DETERMINISM_FIX.md`**. Pipeline-wide blast radius (re-extract
+  all DBs) → dedicated fix+regression session + architect sign-off, not a drive-by.
 
 ## Landmines — do NOT re-attempt (all previously tried and reverted/disproven)
 - `origin/feat/samplecastle-real-rooms` branch — mislabeled Schependomlaan data, never re-adopt.
