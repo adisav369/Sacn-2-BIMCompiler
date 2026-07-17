@@ -326,3 +326,20 @@ Acceptance: the Clinic sample route changes from room-threading to corridor-domi
 door hops, a CIRC hop appears) AND Duplex mismatches=0. If C1 alone already flips the sample (corridor
 now shorter), C2 may be unnecessary — measure C1-only first, add C2 only if the thread survives. STOP
 and report if Duplex regresses at every λ that fixes Clinic (means the penalty model is wrong, not the λ).
+
+### POC BASELINE (2026-07-17, calculation-only, `poc_lane_c_baseline.js`, `~/bim-ootb/buildings/Clinic_extracted.db` 118 rooms)
+Measured the SHIPPED graph before any edit — this REFOCUSES the lane on C2, not C1:
+- Clinic graph today: **E1(room↔room)=124, E2(room↔circ)=106**, spine=41, circ=3, stairwp=4, plus
+  E5=49/E6=17/E7=17/E9=16/E3=2/E8=1 (the backbone model evolved well past the DONE-section's E1–E4).
+  The corridor route ALREADY EXISTS in the graph — so the 12-door thread is a WEIGHTING outcome
+  (Dijkstra taking short E1 hops), not a missing-edge outcome.
+- **C1 is minor here: only 5 Unknown-storey doors total** — 3 curtain-wall glass (z≈1.02–1.06 → cleanly
+  reassign to First Floor, Δz≈1.1, the expected door-center-below-wall-center offset) + 2 "Chain Link"
+  fence gates (z≈−0.06, exterior). C1 rescues ≤3 corridor-relevant edges. Do it (cheap, correct) but it
+  is NOT what fixes the thread.
+- **⟹ C2 is the lever.** With 124 E1 room↔room edges in play, penalising them (λ>1) is what forces the
+  corridor. REVISED next POC step: (1) measure the screenshot's actual sample pair (First Floor R1 → the
+  Second Floor target) hop-by-hop on the shipped graph — count E1 vs E2 hops in the returned path; (2)
+  apply C2 λ to E1 weights only, re-measure the SAME pair, find the λ where E1 hops give way to spine/E2;
+  (3) Duplex 26-pair regression = 0 at that λ. C1 folded in as the door-storey pre-pass. Not yet built —
+  baseline only, per POC-first law.
