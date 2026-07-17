@@ -580,3 +580,25 @@ old code would have shown the fragmented yellow-silhouette look from the reporte
 A room tap shows the single translucent purple box/wireframe by default (no real-element seam
 artifacts), verified live on a building where the old path previously showed fragmented real
 geometry, § log confirms which highlight mode fired.
+
+## §8 CLOSEOUT — ✅ SHIPPED (recorded 2026-07-17, traceability backfill; code + live-test trail verified)
+Was previously un-closed in this file though the code shipped — this section resolves that gap.
+Verified in `~/bim-ootb/viewer/navigate_find.js` on the current branch:
+- The translucent cuboid is the PRIMARY highlight: `_drawRoomCuboid()` (`navigate_find.js:2041`)
+  is drawn whenever the room resolves, driven by `ROOM_CATEGORY_COLORS` (`:1975`) with the purple
+  fill/wire (`habitable: 0x6a1b9a / 0xd8b4fe`) the spec called for. `_drillSelect` still runs for
+  the storey-dim/x-ray/zoom side effects (`:2548`) but no longer IS the highlight — no fragmented
+  real-element seams by default.
+- The one real live-testing defect found after the initial ship was FIXED and is documented
+  in-code: `§CUBOID-PAINT-ORDER` (`navigate_find.js:2566-2581`, 2026-07-15) — user live report
+  "purple does not shine thru in solid or x-ray mode, only bbox mode"; root cause was
+  `renderer.sortObjects=false` + cuboid added before `_drillSelect`'s overlay meshes, so the cuboid
+  lost the depth race. Fix: call `_drillSelect` FIRST so the cuboid is added last and wins the
+  pixel in every mode. That user-live-testing round IS the live witness the DONE-WHEN asked for.
+- NOT re-captured this session: a fresh screenshot (the §-code trail + the dated user live-test
+  round above stand as the evidence; a new screenshot would only re-confirm the already-fixed state).
+- REMAINING colouring gaps (separate items, NOT part of §8, tracked in ROOM_INJECTION_CONSOLIDATED_
+  REVIEW §GAPS): (a) only 3 category buckets (habitable/corridor/utilities) — no per-room-TYPE
+  colour, now UNBLOCKABLE since the fixture classifier feeds live room types into disc_walker
+  (bim-ootb worktree `fix/room-type-fixture-parity`, 2026-07-17); (b) real vs synthetic (`RM_`/`≈`)
+  rooms get no colour distinction.
