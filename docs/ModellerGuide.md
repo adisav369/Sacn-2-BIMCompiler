@@ -350,7 +350,7 @@ it: it places that trade's elements at the **measured cadence** of a real coordi
 runs it can, gates the clashes, and **honestly refuses** when the building has nothing to hang the trade
 on. Nothing is invented — every placement uses a spacing/clearance rule *mined from a real IFC model*.
 
-![Walk · ELEC, X-ray reveal — 102 electrical fixtures placed across 19/21 real spaces in the Duplex; structure goes near-transparent glass and every fixture glows in its discipline colour through the shell, on both floors](img/modeller/walk-fixtures.png)
+![Walk · ELEC, X-ray reveal — 270 electrical fixtures placed across 6 storeys in SampleCastle; structure goes near-transparent glass and every fixture glows in its discipline colour through the shell](img/modeller/walk-fixtures.png)
 
 A normal (non-X-ray) view of this same walk is honestly near-empty: a real electrical outlet or light
 lives inside a room, not poking through an exterior wall, so from outside the sealed shell it's naturally

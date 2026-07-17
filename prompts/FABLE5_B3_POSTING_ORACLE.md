@@ -266,11 +266,15 @@ sqlite, runs the extended `doc_poster.derivePostings` per class per schema, inte
   integer cents. `doc_poster.derivePostings` gained the 6 manifests (fa-addition/fa-depreciation/fa-reval/
   fa-transfer/fa-disposal/project-issue), each line-citing its Doc_*.java source; accounts resolve
   a_asset_acct/c_project_acct/a_asset_change/depexp combos → `c_validcombination.account_id` (the MAccount hop).
-- **THE DIFF EARNED ITS KEEP (a real catch)** — first diff run: engine converted the addition's schema-200000 leg
-  at the 0.8006 SYSTEM rate; the real poster posts the 0.85 CLIENT-11 rate — `MConversionRate.getRate:243-252`
-  orders `AD_Client_ID DESC` (tenant rate outranks system). `fxRate` fixed to the verbatim pick; also the
-  Doc_AssetAddition currency finding: it is the ONLY B-3 poster that posts DOC-currency amounts (converted per
-  schema) — the other five pass the schema's own currency.
+- **THE DIFF EARNED ITS KEEP (a real catch; cause CORRECTED 2026-07-18)** — first diff run: engine converted
+  the addition's schema-200000 leg at 0.8006; the real poster posts 0.85. Initially attributed to
+  `AD_Client_ID DESC` ordering ("tenant beats system") — WRONG: both USD→EUR rows are client 11; the live
+  discriminator is `MConversionRate.getRate:251`'s **`IsActive='Y'`** clause (the 0.8006 twin is inactive).
+  Caught the day after by poc_alloc_fx §FALSIFIER-B when a capture-side isactive filter vacuated its
+  wrong-rate prop. Final state: the inactive row is CAPTURED (isactive column added), and `fxRate` carries
+  the verbatim `:243-252` clauses (BETWEEN valid dates, IsActive, client/org scope + ordering). Also the
+  Doc_AssetAddition currency finding stands: it is the ONLY B-3 poster that posts DOC-currency amounts
+  (converted per schema) — the other five pass the schema's own currency.
 - **§W-4 semantics arm** — no separate PostingOracle.java stdin-driver needed: the OSGi test harness IS the
   semantics arm (real Doc.getAccount/MAssetAcct/MConversionRate/MCost resolution ran inside the real engine).
   Named infra findings (in the card's §W-2 EXECUTION SPEC block): AD-dictionary-vs-code type skew (workfile

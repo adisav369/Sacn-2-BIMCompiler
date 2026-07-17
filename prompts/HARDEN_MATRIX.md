@@ -100,6 +100,43 @@ own OSGi test harness over a GardenWorld-model seed on a scratch clone (`scripts
 `build/erp/oracle/post_b3_fixture.json`; USER RULING 2026-07-17 sanctioned seed-INPUT prep). `derivePostings`
 gained the 6 per-class manifests. Matrix ledger = **49 oracle-equivalent**. Log: `build/erp/poc_post_b3.log`.
 
+### W-POST-TAIL — the LAST 6 Doc_* posters (spec 2026-07-18, Fable 5; sequel to B-3)
+The 20-poster factory now folds 14. The remaining 6 decompose by SEED REALITY (facts verified live 2026-07-18):
+- **C_BankStatement (392)** — REAL oracle in the seed: 13 fact rows for statement 100 (2 lines). Manifest
+  (Doc_BankStatement.createFacts:200-280): per line DR/CR {Bank.Asset}=+StmtAmt · {Bank.InTransit}=−TrxAmt ·
+  charge leg (>0→CR / <0→DR negate, {Charge.Expense}) · interest leg (<0→{Bank.InterestExp} else InterestRev,
+  −InterestAmt); clearing-equal branch n/a (asset 258/200052 ≠ intransit 257/200053, IsPostIfClearingEqual=Y);
+  DOC-currency legs → per-schema conversion + the Fact.balanceAccounting CurrencyBalancing residual (724, the
+  W-FOLD-ALLOC-FX rule — the 0.01 DR on schema 200000 in the real rows). Capture: additive widening of
+  c_bankstatementline (+trxamt/chargeamt/interestamt/c_charge_id) + c_bankaccount_acct (+interest accts).
+- **M_MatchPO (473)** — the REAL engine posted the EMPTY SET 37 times (37 docs posted='Y', 0 fact rows):
+  PPV block gated on COSTINGMETHOD_StandardCosting (Doc_MatchPO.java:429) and GardenWorld costs at 'A' Average
+  → ∅ is CONFIG-derived. Manifest = ∅ under 'A'; §FALSIFIER flips costingmethod→'S' → the PPV path opens.
+  Additive capture: m_matchpo.
+- **M_Requisition (702)** — 1 posted doc, 0 facts: Doc_Requisition.createFacts:130 gates on
+  MAcctSchema.isCreateReservation (commitmenttype 'B' POCommitmentReservation / 'A' POSOCommitmentReservation,
+  MAcctSchema.java:662-669; GardenWorld='N') → ∅ CONFIG-derived
+  (the W-MORDER-POST twin). §FALSIFIER flips commitmenttype→'B' → per-line {Product.Expense}=AmtSource +
+  CommitmentOffset. Additive capture: m_requisitionline.
+- **C_Cash (407)** — 2 real docs CO but NEVER posted (posted=N, 0 facts) → post the EXISTING docs on a scratch
+  clone (B-3 generator reuse, zero seed prep) → capture → fold. NEXT SESSION unless this one has room.
+- **M_Inventory (321)** — 3 real DRAFTS → complete+post on scratch clone (same move). NEXT SESSION likewise.
+- **M_Production (325)** — 0 docs AND component m_cost absent (the W-FOLD-PRODUCTION named-deferral) → stays
+  honestly ⛔ until a costed BOM seed exists; do NOT synthesize costs.
+Witness: `scripts/poc_post_tail.js` (W-POST-TAIL) — BankStatement per-doc/per-schema integer-cent diff vs
+fact_acct(392); MatchPO ∅==∅ over ALL 37 real docs + gate-flip; Requisition ∅==∅ + gate-flip; ≥2 falsifiers
+load-bearing. Extract bundle regressions must stay green after the additive widening.
+
+**✅ W-POST-TAIL first half DONE 2026-07-18 (same session as the spec):** `🟢 W-POST-TAIL PASS` —
+`§TAIL-POST C_BankStatement … maxDiff=0c oracle=real-fact_acct(392)` (13 rows incl. the schema-200000
+conversion + 0.01 CurrencyBalancing residual) · `§TAIL-POST M_MatchPO docs=37 … ∅-by-config` ·
+`§TAIL-POST M_Requisition … ∅-by-config` · 3 falsifiers load-bearing (req-flip N→B opens · mpo-flip A→S
++cost-scale opens · bs-scale 14850c→24650c). **Correction banked:** the B-3 fx-rate story was IsActive
+(:251), not client-rank — the inactive 0.8006 row is now CAPTURED and `fxRate` filters it verbatim
+(poc_alloc_fx §FALSIFIER-B prop restored, whole bundle re-green). Matrix ledger = **52 oracle-equivalent**;
+17/20 factory posters fold. Remaining: Cash (post 2 real CO docs on clone) · Inventory (complete 3 real
+drafts on clone) · Production ⛔ (no docs, no component costs). Log: `build/erp/poc_post_tail.log`.
+
 ### H-3 Spot-harden the declarative engines
 `ad_evaluator`/`ad_access`/`ad_valrule`/`ad_reference` are 🟡 on parse; oracle-diff a SAMPLE of each against
 `GridField`/`MRole`/`MValRule` outputs — confirm the verdict matches, not just that it parses. The master-data

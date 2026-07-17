@@ -279,3 +279,135 @@ storey's room rects + wall-adjacent walkable band; when illegal, detour via inte
 waypoints (visibility-graph over door centers, edges only where the segment is legal). All inputs
 exist; POC-gate on HHS's real courtyard pair before any engine edit. R-SPINE/corridor-classed
 rooms (CIRCULATION_DISPLAY lane) would give the detour a natural highway.
+
+---
+
+# OPEN LANE C — "walk the corridor, not room-to-room" (user, 2026-07-17, live Clinic Path)
+User live case (Clinic, First→Second Floor, 12 doors 85.1m): the path THREADS room→room→room through
+a row of interior doors instead of walking the corridor past a glass door. User's principle (verbatim
+intent): "walking thru rows of doors room to room should be avoided as illogical when only a glass door
+is in between… a room to adjoining room when corridor is next to it should be a RED FLAG." Cross-ref
+`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §9` (the two findings + the live GUID card `Storey: Unknown`).
+
+**This is exactly what the occupant graph was built for (E2 room↔CIRC) — it just isn't firing here.**
+Two measurable causes, both small, both on top of the SHIPPED E2 machinery. POC-GATE FIRST per this
+file's law — measure on Clinic (the case) + Duplex (the no-regression control) BEFORE any engine edit.
+
+### C1 — ENABLER: rescue `Storey='Unknown'` doors by center_z (so the corridor edge EXISTS)
+`room_graph.js:309` binds doors to `CIRC::<storey>` reading `m.storey` RAW. Curtain-wall glass doors
+(the corridor's actual openings) carry `storey='Unknown'` — their placement is relative to the
+null-transform `IfcCurtainWall` parent, so extraction never stamped a storey (Clinic: 3 of 6
+`M_Curtain Wall *Glass` IfcDoors are Unknown; live card confirmed). An Unknown-storey door rescues onto
+NO CIRC node → the corridor route is absent → Dijkstra can only use E1. Fix = reassign Unknown-storey
+doors to a storey by `center_z` (reuse the room-walker's `§STOREY-Z` `_assignByZ` convention — same
+building already has the per-storey z-anchors) BEFORE the E2 binding loop. Purely additive; a door that
+already has a real storey is untouched.
+
+### C2 — COST MODEL: fewest VALID doors over a small candidate set (user's design, 2026-07-17)
+SUPERSEDES the earlier "tune a λ penalty on E1" sketch — the user gave the actual metric, and it needs
+no tuning. Verbatim intent: "graphing should be 2 or more ahead… keep an array of outcomes, right away
+choose the least doors (with connecting rooms) but valid"; then "if point to point, keep array of few
+possible routes then compare which has highest confidence — not 2 and above steps but ALL the steps
+along the way captured before deciding… fast array maths."
+- **Metric = number of DOORS crossed (room transitions), NOT distance.** Each door/room-transition
+  edge costs 1; corridor/spine traversal (CIRC↔CIRC, spine chaining) costs 0 doors. So the 12-door
+  room-thread scores 12; the corridor route (enter + glass door + exit) scores ~3. Least-doors ⇒
+  corridor wins BY CONSTRUCTION — no λ, nothing to tune.
+- **Candidate-set, not single greedy path.** Enumerate a FEW full candidate routes (k-shortest-style),
+  each captured as the COMPLETE array of steps, THEN compare — not a greedy 2-step lookahead. Score =
+  "confidence" = fewest doors among VALID routes (a route is valid iff every leg actually connects and
+  is legal — ties into OPEN LANE B's chord-legality). Pick highest confidence. Cheap: a handful of
+  candidates, array math.
+- **Why door-count is the right invariant:** a human walks the corridor and enters each destination
+  room by ONE door; they do not punch through a party wall into the next private room and out its far
+  door. Minimising doors encodes exactly "rooms hang off the corridor, they don't chain into each
+  other" — the user's red flag, as a count instead of a weight.
+- **Regression safety is automatic:** Duplex rooms are door-connected with no corridor, so the
+  fewest-doors route == the only route == today's route ⇒ the DONE-section's 26-pair invariant holds by
+  construction (a corridor alternative has to EXIST to change anything). Confirm, don't assume.
+- Implementation note: `shortestPath()` already runs Dijkstra over weighted edges — a door-count mode is
+  just unit weight on door/room edges + zero on corridor-internal hops, optionally returning the top-k
+  candidates for the confidence compare. API-compatible (add an `opts.metric='doors'`), zero consumer
+  edits, per this file's law.
+
+### POC GATE (calculation-only, before touching the engine — this file's standing law)
+Node script on Clinic + Duplex, building C1's rescued-door set + C2's penalised weights, logging:
+```
+§POCPATH-C Clinic unknown_doors_rescued=<n> corridor_reachable_pairs=<pct> (was <pct>)
+§POCPATH-C Clinic sample R1->R? hops_before=[room,door,room,door,...] hops_after=[room,doorwp,CIRC,doorwp,room] doors_before=<n> doors_after=<n>
+§POCPATH-C Duplex regression_pairs=26 mismatches=<n>   # MUST be 0 at the chosen λ
+§POCPATH-C λ_sweep λ=1.0->threaded  λ=<chosen>->corridor-dominant
+```
+Acceptance: the Clinic sample route changes from room-threading to corridor-dominant (fewer interior
+door hops, a CIRC hop appears) AND Duplex mismatches=0. If C1 alone already flips the sample (corridor
+now shorter), C2 may be unnecessary — measure C1-only first, add C2 only if the thread survives. STOP
+and report if Duplex regresses at every λ that fixes Clinic (means the penalty model is wrong, not the λ).
+
+### POC BASELINE (2026-07-17, calculation-only, `poc_lane_c_baseline.js`, `~/bim-ootb/buildings/Clinic_extracted.db` 118 rooms)
+Measured the SHIPPED graph before any edit — this REFOCUSES the lane on C2, not C1:
+- Clinic graph today: **E1(room↔room)=124, E2(room↔circ)=106**, spine=41, circ=3, stairwp=4, plus
+  E5=49/E6=17/E7=17/E9=16/E3=2/E8=1 (the backbone model evolved well past the DONE-section's E1–E4).
+  The corridor route ALREADY EXISTS in the graph — so the 12-door thread is a WEIGHTING outcome
+  (Dijkstra taking short E1 hops), not a missing-edge outcome.
+- **C1 is minor here: only 5 Unknown-storey doors total** — 3 curtain-wall glass (z≈1.02–1.06 → cleanly
+  reassign to First Floor, Δz≈1.1, the expected door-center-below-wall-center offset) + 2 "Chain Link"
+  fence gates (z≈−0.06, exterior). C1 rescues ≤3 corridor-relevant edges. Do it (cheap, correct) but it
+  is NOT what fixes the thread.
+- **⟹ C1 + C2 together** (measured, see C1 result below). C1 puts the corridor route on the table at
+  the glass door; the fewest-doors metric (C2, above) makes the router pick it.
+
+### POC C1 RESULT (2026-07-17, `poc_lane_c1_fast.js`, union-find, no all-pairs)
+Rescued the 3 Unknown-storey glass IfcDoors → `storey='First Floor'` (by center_z), rebuilt:
+- BASELINE: components=**1** largest=180 edges=332. AFTER-C1: components=1 largest=181 edges=**335 (+3)**.
+- The graph is ALREADY one connected component — so the corridor is NOT globally severed (every room
+  was reachable); the honest refinement of the user's "corridor severed here" read is that the DIRECT
+  corridor route THROUGH the glass door was missing, not basic reachability.
+- The 3 rescued glass doors bind straight to the **corridor SPINE**: 2× `room↔spine` (E2) + 1×
+  `doorwp↔spine` (E7). So C1 correctly adds the local corridor option at the glass opening.
+- CONCLUSION: C1 is necessary (adds the corridor edge at the glass door) but NOT sufficient alone — with
+  distance-Dijkstra the short room-thread can still win. The fewest-doors metric (C2) is what makes the
+  now-available corridor route get chosen. Both, as the user designed.
+- NEXT POC (not yet built): implement the door-count metric (`opts.metric='doors'`, unit weight on
+  door/room edges, 0 on corridor-internal hops), run the screenshot's sample pair on C1'd Clinic, show
+  hops collapse from the room-thread to a corridor-dominant route; then Duplex 26-pair regression = 0.
+
+### C3 — DOOR STRATEGY TABLE + angle tie-breaker (user refinement, 2026-07-17)
+User's better framing of C2: don't reduce to one number — score each candidate route with a
+door-PRIORITY table so the confidence reflects WHICH doors it opens, not just how many. Base = C2
+door-count; the table modulates per-door cost/confidence:
+- **Semantically grounded, NOT hand-tuned (project anti-hardcoded-threshold rule — cf. the rejected
+  `DOOR_RESCUE_MIN_AREA` buffer).** Scores derive from real IFC signals:
+  - door HOST class: `IfcCurtainWall`-hosted (glass storefront) = TRANSIT connector between corridor
+    segments → HIGH priority (cheap to open).
+  - ADJACENT ROOM privacy, read from the SHIPPED room-type classifier (feat/room-restroom-colour,
+    now live): corridor/lobby/circulation = PUBLIC (cheap); bedroom/restroom/office = PRIVATE (a door
+    INTO one is expensive — you don't cut through a private room to transit). This REUSES the room
+    classifier already deployed, not a new invented signal.
+- **Angle/collinearity = TIE-BREAKER only, not primary.** Prefer the door that continues the approach
+  direction in a straight line (corridor continuation) — but only to break ties between similarly-scored
+  candidates; as a primary driver it breaks on L/curved corridors (the straight line leaves the
+  corridor). Layer it above door-count + the strategy table.
+- Confidence(route) = f(door-count, Σ door-priority, collinearity tie-break) over the small candidate
+  set; still "fast array maths," still deterministic.
+
+### C4 — GRACEFUL DEGRADATION tiers (user, "lacking infra — follow the wall / finished floor")
+Separate, larger robustness lane — do NOT entangle with the glass-door fix. A "strategy selector at
+onset": assess what the building actually models, THEN pick the routing layer:
+  walls+doors+corridor-spine (best) → doors-only → **floor-slab (IfcSlab) adjacency when no walls are
+  modelled yet** (walk the finished floor) → raw-geometry adjacency (worst).
+Real need: many IFC models are incomplete (no walls, ARCH not detailed). Each tier is its own POC-gated
+build; the onset selector picks the highest tier the data supports so an incomplete model still routes.
+Parked as a roadmap lane, not part of C1–C3.
+
+### C5 — ACQUIRED DOORS: an open space IS a door (user, 2026-07-17)
+A "door" (graph node / yellow dot) is any TRAVERSABLE OPENING between walkable spaces, not only a
+physical `IfcDoor`. Open-plan transitions — corridor↔foyer, room↔corridor with no door leaf, an open
+passage between corridor segments — carry no `IfcDoor`, so the current door-only graph is blind to them.
+Fix: ACQUIRE a door node at any wall-free boundary shared by two walkable regions. This is the INVERSE
+of the walker's `§ROOM-FORM` open-perimeter measure (boundary metres NOT backed by a raw wall) — reuses
+existing machinery, deterministic, invents nothing. Guard against noise: min passage width (~0.8m,
+`_calibrate`) + exclude window openings and sub-`NOISE_FLOOR` slivers. Acquired doors are ordinary nodes
+and inherit the strategy table's PUBLIC/transit priority (they open onto corridor/foyer), scoring cheap
+like a curtain-wall transit door. Also the enabler for the C4 floor-slab tier: with no walls modelled,
+acquired doors (openings in the floor-slab boundary) are the PRIMARY connectors. Encoded in
+`path_strategy.json` → `door_acquisition.sources.acquired`.

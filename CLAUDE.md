@@ -5,20 +5,14 @@
 
 **NEVER TOUCH PRODUCTION.** `deploy/live/` is the production snapshot — do not edit directly. All dev work goes to `deploy/dev/` ONLY. Read `deploy/OCI_UPLOAD.md` §RULES before any OCI upload.
 
-## ⏸ PUSH PAUSE (2026-07-11, standing until lifted) — local/localhost only
-**User directive: "we should test our workings localhost for now, may delay pushing until major
-breakthru."** A lot merged today in one burst (6+ PRs across bim-ootb/bim-compiler) — pause here to
-batch-verify it all actually works together before pushing more. Applies to every session/dispatched
-worker until explicitly lifted:
-- **Commit locally as normal** (checkpoints are fine, encouraged) — **do NOT `git push` and do NOT
-  open a PR** for new work started after this point. Work already pushed before this directive stood
-  (today's merged PRs) is not being un-pushed — this is forward-only, not a rollback.
-- **Verify via localhost, not CI.** Start the actual dev server, drive the real feature in a browser
-  (per this project's own standing rule — whitebox `§`-log first, but confirm it live too), don't
-  lean on a green CI run as the only proof.
-- **Every Agent-tool dispatch must carry this instruction explicitly** — a fresh worker has no memory
-  of this pause, tell it directly: commit locally, verify on localhost, do not push, do not open a PR.
-- **Lifted when:** the user says so, or names the "major breakthrough" that's worth pushing for.
+## ⏸ PUSH PAUSE — LIFTED 2026-07-17
+Stood 2026-07-11→2026-07-17 (local/localhost-only verification while a large merge burst got
+batch-verified). **User directive 2026-07-17: "now push permission is ON, ie always push to live
+until user decides to pause."** Push freely (normal fast-forward pushes / PRs — not force-push, not
+skipping the localhost/§-witness verification habit this project still runs on) until the user says
+to pause again. If they do, the same discipline as before applies: commit locally, verify on
+localhost, no push/PR, and every Agent-tool dispatch must carry that instruction explicitly since a
+fresh worker has no memory of it.
 
 ## WORK-TO-ZERO (the backlog contract — enforced every session)
 **No standing backlog file right now — `prompts/archive/FRONTEND_LANE_MASTER.md §NEW BACKLOG` (archived 2026-07-11, prompts-audit) DRAINED 2026-07-08 (every

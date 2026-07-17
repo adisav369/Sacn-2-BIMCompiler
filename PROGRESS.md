@@ -45,8 +45,9 @@ not push/open a PR unless the user explicitly lifts it for that session. `CLAUDE
   `W-DW-DENSITY-TE` D3) unexplained, low-priority — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
-- ✅ B-3 0-seed posting oracles (2026-07-17, Fable 5) — 6 G-seed classes `maxDiff=0c` vs real compiled
-  posters (OSGi harness, scratch clone); ledger 43→49; local only (PUSH PAUSE). `prompts/FABLE5_B3_POSTING_ORACLE.md`.
+- ✅ B-3 + W-POST-TAIL posting oracles (2026-07-17/18, Fable 5) — 6 G-seed classes + BankStatement/
+  MatchPO/Requisition `maxDiff=0c`; ledger 43→52; 17/20 posters fold; Cash/Inventory next, Production ⛔.
+  `prompts/FABLE5_B3_POSTING_ORACLE.md` + `prompts/HARDEN_MATRIX.md §W-POST-TAIL`.
 - ✅ 2026-07-10 marathon branches (2026-07-17 verify) — `fix/grid-tilt-guard`, `fix/dw-rot-units`,
   `fable/dwprobe-dedup`, `fix/terminal-oracle-source` all confirmed fully superseded (exact fix
   content already verbatim on main via other commits) and pruned, local+origin, bim-ootb.

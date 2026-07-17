@@ -607,3 +607,40 @@ Verified in `~/bim-ootb/viewer/navigate_find.js` on the current branch:
   W-ROOM-CATEGORY-COLOUR on Duplex: names 21/21, 0 cross-match, synthetic-rule 6/6. Detection
   confirmed corridors were all one uniform blue and restrooms were purple (habitable) before this.
   Still open: corridor main-vs-minor differentiation (needs a graph-centrality signal — deferred).
+
+## §9 — CURTAIN-WALL GLASS DOOR: two findings from a live Clinic Path case (2026-07-17, user, NOTED not fixed)
+User drove a First-Floor→Second-Floor Path on Clinic (12 doors, 85.1m) through a glazed corridor
+storefront. Two bugs + one routing PRINCIPLE, all confirmed against code+data (Clinic_extracted.db).
+Both roots trace to curtain-wall glass being a special assembly. **Per user: NOTE only, do NOT fix yet.**
+
+### Finding A — glass panels not selectable (picking, `viewer/picking.js:256`)
+`if (h.object.material && h.object.material.opacity < 0.3) continue;` discards every raycast hit
+under opacity 0.3 BEFORE guid resolution. Curtain-wall glass is `IfcPlate` panels whose material
+opacity = the IFC colour alpha (`streaming.js:405`) = **0.10 / 0.25** in Clinic → thrown away → the
+click falls through to the opaque wall behind (or nothing). Solid `IfcDoor` = alpha 1.0 → picks fine.
+Live proof: the user COULD click one curtain-wall glass door — because that specific `IfcDoor`
+(`M_Curtain Wall Sgl Glass:…:283068`, GUID `0bpfxAz3XBrAx$RjFuHvgA`) happens to have material alpha
+`1.000`; the 0.10-alpha IfcPlate glazing beside it stays unpickable. Fix when prioritized: make the
+skip INTENT-based (skip `_isOutline`/ghost/bbox via userData flags), not a blanket opacity threshold —
+because the 0.3 gate is also what lets you pick THROUGH x-ray-dimmed geometry (all drops to ~0.3 under
+x-ray, `streaming.js:594`), so glass and dimmed background are indistinguishable by opacity alone.
+This is the design fork to resolve before touching it.
+
+### Finding B — Path avoids the glass door → threads room→room instead (`common/room_graph.js:309`)
+The door query binds doors to a PER-STOREY corridor spine (`SPINE::<storey>`/`CIRC::<storey>`), reading
+`m.storey` RAW. Curtain-wall glass doors carry **`storey='Unknown'`** (placement is relative to the
+null-transform `IfcCurtainWall` parent, so extraction never assigned a storey — confirmed: Clinic has
+6 `M_Curtain Wall *Glass` IfcDoors, 3 First Floor + **3 Unknown**; the live card above showed
+`Storey: Unknown`). An Unknown-storey door binds to NO spine → no edge → the router cannot cross the
+glazed opening and detours through the solid-door rooms. `room_graph.js` does NOT apply the room-walker's
+`§STOREY-Z` z-reassignment (assign Unknown→storey by `center_z`) that would rescue these. Fix when
+prioritized: reassign Unknown-storey doors by `center_z` before binding (reuse the walker convention).
+
+### PRINCIPLE (user, the real point) — corridor-preference is a routing-quality invariant
+Walking through ROWS OF DOORS room→room→room is illogical when a glass door / corridor sits between the
+endpoints — the path should PREFER corridor circulation over cutting through adjoining rooms. A
+room→adjoining-room transition WHEN a corridor is next to it is a **RED FLAG** (route smell), not a valid
+leg. Finding B is the enabling bug (the corridor route is literally absent from the graph, so the router
+has no choice), but even with all doors present the cost model should penalise room↔room transitions where
+a corridor edge is available, so circulation is the default spine and rooms are leaves off it. This is the
+design target for the eventual fix, beyond just rescuing the Unknown-storey doors.
