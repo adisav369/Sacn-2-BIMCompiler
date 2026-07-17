@@ -1048,3 +1048,62 @@ touched or claimed fixed here.
 
 Local commit only (`a00cfaf`), standing PUSH PAUSE — ready to push once the user does their own
 live spot-check on production-equivalent conditions.
+
+**§25 UPDATE 2026-07-16 (later session) — user reports "still hanging in github live": EXPECTED,
+not a fix failure.** The fix exists ONLY in `/tmp/wt-find-panel-freeze` (`a00cfaf`, 1 commit ahead
+of `origin/main`, never pushed per PUSH PAUSE) — GitHub Pages serves un-fixed code, so live still
+freezing is the predicted state, not evidence against the fix. Two additions from this session:
+**RESOLVED same day:** the fix reached main as **PR #807** (`f8ef82f`, pushed by another session),
+and PR #808's sw `CACHE_VERSION v763→v764` bump closes the missing-cache-bust gap below — live
+`navigate_find.js` fetch-verified carrying the `parentSet≤1500` gate, and returning browsers get
+it via the v764 cache purge. `/tmp/wt-find-panel-freeze` worktree is now prunable (its commit is
+on main via #807; verify `git status` clean before removing). The DISC_SELECT second-path finding
+below remains OPEN.
+- **Deploy gap found in `a00cfaf` (must fix WHEN pushing):** the commit edits `navigate_find.js`
+  only — `viewer.html`'s `navigate_find.js?v=41` cache-bust was NOT bumped, so even a merged+
+  deployed fix would not reach returning browsers (they'd keep the cached v41). Bump `v=41→42`
+  (+ sw.js CACHE_VERSION per `feedback_sw_version`) as part of the deploy, or the user will
+  re-report "still hanging" a second time for a different reason.
+- **SECOND heavy path, NOT covered by `a00cfaf`, measured in the user's live 2026-07-16 Firefox/
+  Hospital log:** `[RP-TB] §DISC_SELECT "Architecture" GROUP focus=14641 solid=4000 hl=2113
+  anc=[] base=shell overlays=2113`. `anc=[]` proves the parentSet layer (what `a00cfaf` caps)
+  never ran on this tap — the cost is the FOCUS SET itself: `_drillSelect`'s RAF1 built 4000
+  solid clone-meshes for the group (navigate_find.js ~line 3347, same `_buildShapeMeshes` clone
+  storm, different call site) and then handed **2113 meshes to OutlinePass** (§YELLOW-SILHOUETTE
+  path) — a PER-FRAME cost thereafter, extra-heavy on this machine's Firefox (no `WEBGL_multi_draw`,
+  permanent per-draw fallback — see MOBILE_PERF.md §OPEN LEVERS 2 2026-07-16). This tap COMPLETED
+  in the log (slow, not frozen), so it's a lag source, not proven the freeze — but it's the
+  next cap candidate: for a large focus set, show the selection via `filterByGuids(focusSet)`
+  (real batched geometry, ~1 draw) instead of per-element solid overlays + outline, the same
+  `mode=filter-cheap(>50k)` idea `§FOCUS_ELEM` already uses. NOT implemented — needs its own
+  session (UX-visible change on group selects; wait for user go per feedback_wait_for_permission_ui).
+
+**§26 2026-07-16 — the REAL "hangs, was not the way before" regression FOUND, FIXED, LIVE
+(PR #811, sw v767).** User's fresh live LTU log: Find-panel tap "Plan 1" → `§INSTROWS_CACHED
+rows=122330` → `THREE.Texture: Unable to serialize Texture.` ×118 → hang. Root cause was a
+one-day-old regression from #805 (2026-07-15 22:46): `mat.userData.triplanarShader = shader`
+(the §TRIPLANAR_RECOMPILE_FIX) — three's `Material.copy()` deep-copies `userData` via
+`JSON.parse(JSON.stringify(...))`, so EVERY `material.clone()` — which `_buildShapeMeshes`
+does per unique material on every Find select — serialized the full GLSL source + all uniforms
+INCLUDING textures/envMap (the ×118 warnings = one per material's non-serializable envMap RTT).
+**Method (reusable):** grep found no `.toJSON(` caller anywhere in app code because
+`JSON.stringify` auto-invokes it — the caller was found by prototype-instrumenting
+`Material/Object3D/Texture.toJSON` with a stack print in a Playwright probe on Duplex
+(scratchpad probe, reproduced in one tap; stack: `Material.copy → JSON.stringify ←
+_buildShapeMeshes navigate_find.js:1756/3347`). **Fix:** plain properties
+`mat._triplanarShader`/`mat._puddleShader` (Material.copy never touches ad-hoc props; clones
+recompile fresh via their own onBeforeCompile). Witness on fixed tree: ZERO toJSON calls,
+`§STOREY_SELECT` output byte-identical (focus=50 solid=50 hl=47 overlays=47), `§FIND_COST`
+intact. Live fetch-verified: streaming.js?v=54 has `_triplanarShader`, zero
+`userData.triplanarShader`, sw v767. **Rule for all photoreal/shader work: NEVER store a
+shader (or any object holding textures) in `material.userData` — userData is JSON-round-tripped
+on every clone.** Note: §25's `a00cfaf` parentSet cap and this are BOTH needed — different call
+sites, same clone storm; §25's second-path (group-focus filter-cheap) item above remains open
+as a further large-group optimization, but the outright HANG was this §26 serialization bomb.
+
+**§26 CLOSED 2026-07-16 ✅ — USER-CONFIRMED ON LIVE:** user re-tested GitHub live LTU_AHouse
+after the v767 deploy: **Find Panel no longer hangs, prelim testing looks OK** (user verbatim,
+same day as the fix). Lane closed. Still open elsewhere (tracked, not blocking): §25's
+large-group filter-cheap optimization (whole-discipline taps still do per-element overlay
+work), and MOBILE_PERF.md §OPEN LEVERS 2's sql.js-residency baseline + lever 6 (HHS small-
+building stall) — those are perf polish, not hangs.

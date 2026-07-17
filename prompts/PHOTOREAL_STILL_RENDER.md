@@ -1872,3 +1872,314 @@ For each step from `_projectStart` to `_projectEnd` (step size TBD — see open 
 - Real-time smooth playback quality (Time Machine's live scrub/play stays as-is — this is an
   EXPORT feature, not a live-playback upgrade).
 - Cinema Orbit itself — unrelated, already shipped, working, not being modified by this.
+
+## SPEC (2026-07-17, not implemented — "advance realism" popup: staffage + material finish, background-captured)
+
+### Framing — this is a RESULT stage, not the compile stage
+**PRIME RULE clarification, settled this session (user correction, do not re-litigate):** the
+"extract or compile only, never invent" rule governs the BOM/geometry COMPILE stage — every
+quantity/position in `output.db` must trace to real IFC data. This feature operates entirely
+downstream of that, on an already-compiled scene, producing a presentation RESULT (a marketing/
+archviz-style still). That is a different stage with different rules, same standing as the
+already-shipped dusk-sky/uplight/skyline staging (`_applyPhotoStaging`, explicitly authorized as
+"presentation-only fabrication" earlier in this file) — not a new exception, an application of one
+already granted. §HONEST VERDICT's Twinmotion/Enscape/Lumion gap analysis (line ~1173) already
+names staffage and material variety as exactly what separates this app's current output from that
+tier — this spec is closing that named, already-diagnosed gap, not inventing new scope.
+
+### Goal
+After `Alt+S`, offer a second-tier opt-in: a popup asking whether to produce a "real-life finish."
+If accepted, the scene gets populated with fabricated presentation staffage (human figures,
+vehicles, decorative trees) and a fuller material treatment, rendered at full Alt+S quality, then
+auto-captured and saved — all without blocking the user from continuing to navigate the live canvas
+for the next shot.
+
+### Why a NEW popup, not a conflict with the existing "no dialog" decision
+The file already settled "no confirm dialog before generating" for base Alt+S (§SESSION RECORD,
+2026-07-15) — that covers the free polish-only pass (TAA/AO/lighting on real geometry, zero
+fabrication). This popup gates a DIFFERENT, separate action: adding fabricated content. It is the
+UI form of the same explicit-authorization step the user already gave verbally for the sky/lighting
+POC — formalized so it doesn't need to be re-asked in conversation every time.
+
+### Part A — Staffage (human figures, vehicles, decorative trees)
+**Technique: camera-facing billboard imposters, not 3D models.** A textured quad per figure,
+oriented to face the camera every frame (cheap — a few dozen extra draw calls, no new geometry
+loading/rigging pipeline). This is the standard technique Enscape/Twinmotion/Lumion themselves use
+for background staffage — not a compromise, the industry-normal approach.
+- **Placement, reusing math already proven in this file:**
+  - People: near real `IfcDoor` positions, same pattern already built for entry sconces
+    (`§PHOTO_ADDONS`, capped ≤6, lowest storeys first).
+  - Vehicles: on real hardstand/parking/driveway geometry if present in the IFC data (query
+    `element_transforms`/`elements_meta` for the relevant class before placing — don't guess a
+    location if the building has none).
+  - Decorative trees: on open ground clear of the building footprint bbox, distinct from the
+    EXISTING real-vegetation handling (Hospital's 589 real rooftop trees stay real-data-driven,
+    untouched — this is additive ground-level dressing where the source model has none, same
+    footing as the already-shipped fabricated skyline silhouette).
+- **Determinism, same hard constraint as the facade-facing lighting work:** placement rules must be
+  general (bbox + real-element-position derived), not hardcoded to one building. Cap counts per
+  category (reuse the ≤6/≤15 discipline already used elsewhere in this file) to keep draw-call cost
+  bounded regardless of building size.
+- **Sourcing:** CC0 cutout-people/tree/vehicle sprite sheets (same sourcing discipline as the Layer 3
+  CC0 PBR textures — ambientCG/Poly Haven or an equivalent CC0 sprite pack; source and note in
+  `viewer/textures/.../NOTICE.txt` the same way the Layer 3 textures were).
+
+### Part B — Material finish
+Not new architecture — this is the already-deferred "material reference library" item
+(§RESUME BRIEF, 2026-07-16: "~20 curated real-material starter set, name-pattern lookup") finally
+built out, and applied specifically during this advanced pass. Extends the existing
+`TRIPLANAR_MAT`/`STD_MAT` dispatch (`streaming.js:270-319`) rather than replacing it — same
+class→material pattern already proven for concrete/plaster/metal, just a bigger table plus the
+name-pattern lookup needed to stop `IfcBuildingElementProxy` fallbacks (trees, solar panels,
+helipad) rendering in flat teal. Per the earlier scoping note, this touches SQL queries + batching
+grouping keys (`(rgba, ifcClass)` today) in a performance-critical file — needs its own careful
+implementation pass, not a blind extension; this spec section only confirms it belongs inside the
+"advance realism" gate, not that it's trivial.
+
+### Part C — Cheap background capture (the "keep looking for photo opportunities" mechanism)
+**Do not build a second GPU context, OffscreenCanvas, or worker** — that is comparable new-
+architecture cost to the still-open SSGI research spike, disproportionate to this feature. Cheaper
+mechanism, extending machinery already shipped:
+1. Alt+S's still-refine already accumulates N samples across multiple rAF ticks rather than one
+   frame (`TAARenderPass`, 16-sample jittered accumulation). Extend that loop to optionally target
+   an **offscreen `WebGLRenderTarget`** instead of the screen — same `WebGLRenderer`/GL context, so
+   no duplicate texture uploads or GPU-memory doubling.
+2. **Time-slice the rAF loop**: each tick either advances one accumulation sample into the offscreen
+   target (the "advance realism" job), or draws the live nav frame to the visible canvas — whichever
+   the interaction state needs that tick. The enrichment job's camera pose is frozen at the moment
+   the popup is accepted (clone `A.camera.position`/quaternion once); the user's subsequent live
+   orbiting on the visible canvas never touches it.
+3. On completion, `offscreenTarget` → `canvas.toBlob()` (same primitive already spec'd for the Time
+   Machine movie-export item above) → save.
+4. **Auto-save target: an in-app gallery backed by IndexedDB**, not a silent filesystem download —
+   avoids browser download-permission friction, gives the user a thumbnail strip to review/export
+   later. Same storage primitive already planned for the Time Machine batch-export spec above; if
+   that lands first, this can reuse its gallery rather than building a second one.
+5. **Progress signal**: a small non-blocking indicator (thumbnail placeholder or spinner in a corner
+   pill) rather than a modal — the whole point is the user keeps working while it finishes. Reuse
+   the panel-registry soft-cancel behavior (#831) so switching panels doesn't kill an in-flight job.
+
+### Open questions, not invented here
+- Exact popup copy/placement (post-Alt+S toast vs. a small pill button) — UI detail, decide at
+  implementation time against the live app, not speculated in the spec.
+- Whether staffage should be regenerated fresh per shot (re-rolled placement each trigger) or fixed
+  once per session — affects whether repeated shots of the same framing look identical or vary.
+- Sprite-sheet CC0 source not yet picked (unlike Layer 3's textures, which named ambientCG
+  specifically) — first implementation step, same discipline as "source before wiring."
+- Interaction with Part B's SQL/batching-key change: if the material library lands as its own
+  session first (per its existing scoping note), this spec's Part A/C can be implemented
+  independently and Part B wired in after — not a hard dependency in either direction.
+
+### Explicitly NOT in scope for this spec
+- SSGI/real GI (Layer 4, already its own open research spike, untouched by this).
+- Any change to what counts as "real" for the compiled BOM/geometry data itself — staffage/material
+  dressing is presentation-layer only, never written back into `output.db` or any extracted table.
+- The Time Machine batch-movie-export feature above — related (shares the toBlob/IndexedDB-gallery
+  primitive) but a separate trigger (Alt+S popup vs. Time Machine's own export button).
+
+## UPDATE (2026-07-17, continued — "SuperLook?" naming, real-data-first priority, sourcing status)
+
+### Popup naming (tentative)
+Working name **"SuperLook?"** for the post-Alt+S popup — not finalized, the "?" is deliberate
+(user proposed it as a question, not a decision). Placeholder until a better name surfaces or this
+one sticks through actual use.
+
+### Reframed behavior: dynamic opportunity-scan, not fixed placement
+On accept, the pass should **inspect the currently-loaded building's own data and camera framing**
+and decide what to place, rather than always doing the same fixed thing.
+
+**Hard constraint, same as the facade-lighting work earlier in this file — do not violate it here
+either:** this must be a **single live query against whichever building is currently loaded**, run
+once at trigger time (reuse `A.dbQuery`, the pattern already in use elsewhere in this app), NOT a
+precomputed per-building lookup table baked into the code. The multi-building table below is a
+**one-time offline validation pass** (run this session, against the local DB files, to confirm the
+technique has real legs before speccing it — and to catch a real false-positive problem in the query
+pattern itself, see the car-census note) — it exists to inform the spec, not to be reproduced as
+runtime logic. The actual runtime check is: *for the one building open right now, does it have real
+RPC-people/RPC-tree/Logo elements? Query, branch, done* — general and deterministic, same as every
+other camera/building-derived feature in this codebase already has to be. This isn't just discipline
+for its own sake: **users load their own IFC files**, not just the 11 sample buildings censused this
+session — a hardcoded per-building table would silently do nothing (or guess wrong) for every
+user-uploaded building, which is the majority of real usage, not the exception.
+
+Concretely, for each prop category, check real data FIRST at runtime, fall back to sourced/fabricated
+staffage only where real data is absent for THAT building:
+
+| Category | Real data exists? (checked via DB query, not assumed) | Behavior |
+|---|---|---|
+| **People** | `RPC Male`/`RPC Female` proxy elements (real IFC entourage, real transforms+geometry) confirmed in **BimWhale_Advanced (33)** and **Ifc4_Revit (4)**; zero in the other 9 buildings checked (Clinic, Duplex, Esplanades, HHS_Office_Federated, HITOS, Hospital, LTU_AHouse, Schependomlaan, Terminal) | Real buildings: give the existing RPC proxies a proper material (currently flat cream `0.92,0.90,0.85`, off the `TRIPLANAR_MAT`/`STD_MAT` class-dispatch pattern already proven for concrete/plaster/metal — same mechanism, just extended by name-pattern, not new architecture). Everywhere else: place the 6 sourced Skalgubbar billboard cutouts (`viewer/textures/staffage/people/`). Both paths gated on camera pitch — see §Aerial-angle constraint below, it applies to the real RPC proxies too (same cross-billboard geometry, same foreshortening problem from above). |
+| **Trees** | Real `RPC Tree` entourage confirmed in **Hospital (20)**, **BimWhale_Advanced (27)**, **Ifc4_Revit (16)**; zero in Clinic, Duplex, Esplanades, HHS_Office_Federated, HITOS, LTU_AHouse, Schependomlaan, Terminal | Same pattern: material pass on real RPC trees where present; place the 6 sourced freecutout.com billboard trees (`viewer/textures/staffage/trees/`) on open ground clear of the footprint where absent. |
+| **Signage/posters** | Real `Model Text:Logo` elements confirmed: **HHS_Office_Federated** has a genuine large facade sign (6.6m × 0.88m, mounted 5.4m up — real scale, real position, not small). **Ifc4_Revit** has a smaller one (0.5m × 3.16m). Real `Exit Sign` fixtures also confirmed in Clinic/Hospital (small, functional, different use case). | Where a real logo/sign element exists: material pass only (make it read as an actual lit/printed sign instead of a flat pale slab) — no new geometry needed, it's already there. **"Hang a big poster" as fabricated dressing (blank-wall detection + a sourced poster/ad image) is a NEW, separate, not-yet-scoped idea** — unlike people/trees, there is no cheap existing asset or placement logic for this yet. Flagged as an open item, not started. |
+| **Cars** | Not checked in the DB pass done this session (only people/trees/signage were queried) — worth a quick census before assuming zero, same discipline as the rest of this table | Sourcing already tried and stalled — see §Vehicles below, unchanged. |
+| **Props (general)** | N/A — no specific search done | Not scoped yet; "props" as a category needs its own definition (what counts — furniture upgrades via material pass on already-real `IfcFurniture`? decorative additions?) before it can be a checklist item like the others. |
+
+### Why this reordering matters
+The original Part A spec (above) treated staffage sourcing as the first step for every building
+uniformly. The DB census this session shows that's backwards for 2 of the 11 buildings on hand —
+real, extracted, PRIME-RULE-clean entourage data already exists and just isn't rendered properly
+(same root cause as the already-known flat-teal-fallback problem for trees/solar-panels/helipad).
+**A material-dispatch extension (cheapest possible change, zero new assets, reuses proven mechanism)
+comes before relying on sourced sprites**, not after. Sourced sprites (Skalgubbar people, freecutout
+trees) remain the right tool for the majority of buildings that have no real entourage at all.
+
+### Aerial-angle constraint (carried over from live discussion, not yet resolved in code)
+Confirmed by direct comparison against this app's own screenshots (`SSGI_review_realgpu_B`,
+`PHOTOREAL_realgpu_staged_30` — both 30-45° elevated establishing shots, the app's actual typical
+"photoshoot" framing) vs. `SSGI_bounce_B_staged_plus_SSGI` (near-eye-level corridor shot, the angle
+staffage actually reads correctly at): a camera-facing billboard — real RPC proxy or sourced sprite,
+same limitation either way — foreshortens into a flat tilted sliver from a steep downward angle, or
+(if spherically billboarded) floats detached from the ground plane. Trees tolerate this reasonably
+(a real canopy seen from above is already blob-like); people do not. **Not yet implemented**: gate
+person-placement (real or sourced) on camera pitch vs. up-vector, reusing the dot-product technique
+already proven for facade-facing lights (`_updateFacadeFacingLights`). Trees/signage don't need this
+gate.
+
+### Sourcing status (unchanged from earlier this session, recorded here for one-place reference)
+- **People**: 6 curated Skalgubbar cutouts committed, `feat/photoreal-staffage-sprites` branch,
+  `/tmp/wt-photoreal-staffage` worktree (bim-ootb), local-only per the standing push-pause. License
+  not CC0 — restricted to populating architecture visualizations (matches this use case exactly).
+- **Trees**: 6 curated freecutout.com cutouts committed, same branch/worktree. License not CC0 —
+  free commercial+private, no resale as a standalone library. 2 of 8 original candidates rejected
+  after visual QC (genuine alpha channel, but background not actually removed — caught by viewing
+  every file, not trusting alpha stats alone).
+- **Vehicles**: unsourced. Kenney (CC0) only has wrong-angle/wrong-style sprites; freecutout.com
+  doesn't carry vehicles; MrCutout.com has the right content but its terms forbid redistributing the
+  file itself (blocks vendoring into a repo even though local use would be fine); generic stock-PNG
+  aggregators have no consistent per-image licensing. Genuinely unresolved, not just unresearched.
+
+### Runtime POC (2026-07-17, this session) — confirmed live, not just offline census
+Before handing this off, verified the actual runtime path works, not just the offline `sqlite3` CLI
+census above. Headless Chrome (puppeteer, `--use-gl=angle --use-angle=swiftshader`), read-only
+localhost server against the main `~/bim-ootb` checkout (no edits made there — serving only), loaded
+`Ifc4_Revit_extracted.db` via the real app (`viewer.html?db=buildings/Ifc4_Revit_extracted.db`), then
+called the app's own live `A.dbQuery` (`viewer/helpers.js` — the same wrapper already used elsewhere
+in this codebase, e.g. facade-lighting) from inside the loaded page. Result matched the offline
+census exactly: 4 real `RPC Male/Female` rows, 16 real `RPC Tree` rows, 1 real `Model Text:Logo` row,
+`activeBuilding = "Ifc4_Revit_Federated"`. **The runtime detection mechanism this spec depends on is
+confirmed real today**, on the actual app, not assumed from static file inspection.
+
+### Open items, not resolved here
+- ~~Car census against the real DBs~~ — **RUN.** First pass (loose `LIKE '%car%'` etc.) returned noisy
+  counts (Terminal 149, Hospital 13, BimWhale_Advanced 11...) that turned out to be false positives on
+  manual name inspection (`Carbon Steel` pipe material, `MetricCarDoor` hardware, `Healthcare` sofas,
+  `IfcTransportElement`-class elevators). Real result after checking actual names: **1 genuine vehicle
+  entourage element in all 11 buildings** — `Semi Truck` in Hospital. Confirms vehicles are NOT
+  available as a real-data fallback anywhere meaningful — the earlier conclusion (sourcing stalled,
+  no clean vendorable CC0/permissive cutout found) stands and isn't going to be rescued by real IFC
+  data the way people/trees were.
+- "Hang a big poster" fabricated-dressing idea — needs its own scope: blank-wall detection logic +
+  a sourced poster/ad-image asset. Nothing exists for this yet, unlike people/trees.
+- "Props" as a general category — undefined, needs its own scope before it's a checklist item.
+- ~~The material-dispatch extension for real RPC people/trees/logo/exit-sign classes — spec'd here,
+  not implemented.~~ **DONE for people/trees/logo (exit-sign deferred, see below) — 2026-07-17,
+  §SESSION RECORD below.**
+- Aerial-angle pitch gate — spec'd (carried over from discussion), not implemented.
+
+## SESSION RECORD (2026-07-17, continued — RPC entourage material-dispatch extension BUILT + verified)
+Implemented the real-data-first material-dispatch item above (the cheapest, zero-new-asset change
+the "Why this reordering matters" note prioritized). **Local commit only** (`0e7f284`,
+`feat/photoreal-staffage-sprites`, `/tmp/wt-photoreal-staffage`, bim-ootb) — NOT pushed, per the
+standing push-pause. One file: `viewer/streaming.js`.
+
+**What it does.** Revit RPC entourage (people, deciduous trees, `Model Text:Logo`) all export as
+`IfcBuildingElementProxy` with a generic cream placeholder rgba `0.920,0.900,0.850` (the RPC
+exporter default, not a design color) → they read as pale ghosts. New `A._entourageVariant(ifcClass,
+element_name)` (anchored-prefix match on the real names — `RPC Male`/`RPC Female`→`person`,
+`RPC Tree`→`tree`, `Model Text:Logo`→`logo`; `''` for everything else) drives a presentation
+material per variant (tree=foliage green, person=clothing mid-tone, logo=dark backing + warm
+emissive "lit sign").
+
+**Key doctrinal call (do not relitigate):** the cream IS an assigned IFC rgba, so per §S265c
+"trust IFC data" it is **never overridden always-on**. The entourage material is gated at RUNTIME
+by a `uEntActive` uniform, re-asserted every frame from `A._stillRefineActive` via `onBeforeRender`
+(self-heals across shader recompiles — same pattern as §TRIPLANAR_RECOMPILE_FIX). Normal navigation
+shows the real cream untouched; the treatment only appears during the Alt+S still-refine pass — same
+RESULT-stage standing as the already-shipped dusk staging. No `effects.js` change needed.
+
+**How it threads through the perf-critical batching (the part the spec kept flagging as needing a
+careful pass):** `element_name` added to BOTH stream SELECTs at a FIXED row index 12 (right after
+`ifc_class`); the only 3 bbox reads shifted 12/13/14→13/14/15. `matVariant` computed once at bucket
+time and folded into the batch bucket key as a 4th `|` field — inert for the positional
+`key.split('|')` consumers (they read parts[0..2]) but enough to split real entourage into its own
+BatchedMesh + own material instead of merging into a shared cream batch. All 6 `_getMaterial` call
+sites updated to pass `matVariant`. `mergeBuckets` confirmed dead code (declared, never populated).
+
+**Verified headless (SwiftShader puppeteer, this project's whitebox-first discipline):**
+- Ifc4_Revit (real entourage, waited for the full 11,339-element stream): `§ENTOURAGE_INIT` fires
+  for tree+person+logo (one material each — all 16 trees share one, correct); `uEntActive`=`[1,1,1]`
+  mid-Alt+S, `[0,0,0]` in nav (direct uniform inspection); **0 pageerrors**.
+- **Isolated pixel proof** (held triplanar OFF, toggled only the entourage uniform, aimed at a real
+  16-tree cluster queried from `element_transforms`): cream→foliage green — over changed pixels G
+  drops only 46 vs R 64 / B 69 (net green-dominant shift), building geometry untouched. Screenshots
+  `entourage_tree_{nav,altS}.png` show grey ghosts → green trees, building unchanged.
+- Duplex (no entourage): 0 `§ENTOURAGE_INIT`, 0 entourage materials, 1,119 elements, 0 pageerrors —
+  **non-regression on the streaming/batching core confirmed** (the whole reason this was flagged as a
+  careful pass).
+
+**Deferred within this item (not blockers, deliberately scoped out):**
+- **Exit signs** — real `Exit Sign` fixtures already carry proper classes + real rgba (Hospital
+  `IfcLightFixture` red `0.529,0,0`; Clinic `IfcFlowTerminal` black) — they are NOT ghost-cream, so
+  the "make it read right" motivation doesn't apply the way it does to the cream RPC proxies. Left
+  as-is; revisit only if a specific complaint appears.
+- **Material VALUES** (the green/clothing/sign tints) are tasteful presentation constants, tunable —
+  the mechanism is proven; a value-tuning pass on a real GPU is the natural next refinement if the
+  user wants a different look.
+- Aerial-angle pitch gate (people foreshorten from above) still open, unchanged — applies to these
+  real RPC proxies too once placement/visibility is tackled; this session only gave them a material,
+  not a placement gate. **(Now DONE for the sourced-sprite path — see next record.)**
+
+## SESSION RECORD (2026-07-17, continued — Part A sourced-sprite staffage BUILT; + BimWhale ground fix)
+User flagged (correctly) that the entourage material pass only helps the 2 census buildings with
+real RPC data — the sourced sprites were meant "for others." Built the sprite half (spec Part A).
+Both local commits only (`feat/photoreal-staffage-sprites`, `/tmp/wt-photoreal-staffage`, bim-ootb),
+NOT pushed, per the standing push-pause.
+
+**Sourced-sprite staffage (`viewer/effects.js`, commit `b0c8162`).** The 6 Skalgubbar people + 6
+freecutout tree cutouts (vendored earlier) now populate any building WITHOUT real entourage — the 9
+census buildings + every user-uploaded IFC. Camera-facing `THREE.Sprite` billboards, added on Alt+S
+in the existing `_buildPhotoProps`/`_showPhotoProps`/`_disposePhotoProps` lifecycle, auto-revert on
+teardown. **Real-data-first (the two-path design):** a building that already has real RPC people /
+any tree geometry gets ZERO sprites for that category — the streaming.js material pass owns them, no
+double-up. Detected per-building at runtime via `A.dbQuery`, not a hardcoded table. Placement from
+this building's own bbox + real `IfcDoor` rows: people stepped out of real doorways (≤6, lowest
+storeys), trees on a ring outside the footprint (8); bottom-anchored, sized from each cutout's real
+image aspect. **Aerial-angle pitch gate DONE** (the long-open spec item): people (spherical
+billboards) are hidden when the camera looks steeper than ~37° down (they float/foreshorten wrong);
+trees exempt. Verified headless: Duplex → `§PHOTO_STAFFAGE people=6 trees=8`, all 12 textures load,
+0 errors, framed screenshot shows real tree cutouts ringing the building in the dusk scene
+(`~/Pictures/Screenshots/Duplex_staffage_sprites_2026-07-17.png`); Ifc4_Revit → `people=0 trees=0`
+(suppressed, realPeople=4/realTrees=16 detected); pitch gate: side-on (down=0.19) people visible,
+straight-down (down=1.00) hidden.
+
+**Alt+P separate-step toggle + furniture-anchored placement (`viewer/effects.js` + `viewer/scene.js`,
+commit `e5edc7b`; floor-level fix `5b7c1b8`).** Per live user direction across the session:
+- **Separate step (Alt+P):** staffage decoupled from Alt+S into its own persistent toggle
+  `A.togglePopulate` (out of the `_buildPhotoProps`/`_showPhotoProps`/`_disposePhotoProps` bundle).
+  Alt+S stays a clean extract-only still; Alt+P adds/removes the fabricated people+trees layer,
+  stacking or standalone. Alt+P key + Help-palette row wired in scene.js (same pattern as Alt+C).
+  User rationale: "more silent ops, user remembers it once" — fits the Alt+S/G/J/C key family.
+- **Furniture-anchored (the confident, extract-based placement):** the door-centroid heuristic can't
+  reliably tell interior from exterior doors, and breaks on concave/L-shaped footprints (proven live
+  — a Duplex's 14 doors are mostly interior). So INSIDE figures (walking+sitting) now anchor to real
+  `IfcFurniture` positions (a chair IS a guaranteed indoor on-floor spot, extracted not guessed),
+  spread via `_spreadPick`; OUTSIDE figures (2 standing) only at PERIMETER doors (footprint-edge →
+  likely real entrances), else skipped rather than misplaced. Buildings with no furniture
+  (HHS/Esplanades) fall back to interior doors. Feet at furniture/door bottom z (floor). User bugs
+  fixed en route: figures were "hanging in the air" (anchored at door center_z ~1m up → now floor
+  level) and all outside (→ only the 2 standing go outside; walking+sitting inside). Live pitch gate
+  now recomputes on controls 'change' (Populate persists, isn't frozen to one Alt+S camera).
+  Verified: Duplex Alt+P-alone → `§PHOTO_STAFFAGE people=6 trees=8 pSrc=furniture`, 4/6 people within
+  3.5m of real furniture, feet 0.13-0.24m off ground, toggle-off clears, 0 errors, screenshot
+  `~/Pictures/Screenshots/Duplex_populate_altP_furniture_2026-07-17.png`; HHS (0 furniture) →
+  `pSrc=interior-door` fallback, 0 errors.
+
+**BimWhale ground-plane half-buried bug (`viewer/tools.js`, commit `3baafae`) — separate, user-
+reported mid-session.** `_calcGroundY` Step 1 picked the LARGEST-AREA ground-floor-named slab.
+BimWhale_Advanced is a federated/mixed-datum model whose "Level 1" storey (matched as ground-floor)
+has slabs at multiple elevations — its biggest at z=27.85, two-thirds up a building spanning z=-8..46
+— so the ground plane landed mid-building (`§GROUND_Y z=27.85`), rendering it half-buried. Fix: among
+the largest few GF-named slabs take the LOWEST (ground = lowest floor plate bearing a ground-floor
+name), mirroring Step 2's existing lowest-of-top5 selection. Identical for normal buildings (GF plate
+is both largest AND lowest), only differs — correctly — in the mixed-datum case. Witnessed: BimWhale
+z=27.85→-0.30 (sits on ground, screenshot `~/Pictures/Screenshots/BimWhale_ground_fixed_2026-07-17.png`);
+non-regression Duplex z=-0.13, Ifc4_Revit z=-1.80, 0 errors.

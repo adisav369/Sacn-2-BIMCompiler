@@ -74,6 +74,105 @@
    OPFS access handle API needs a dedicated Worker, per its own spec) — determine whether this is
    a drop-in swap or requires converting every DB-touching call path to async/await before
    estimating effort or committing to the migration.
+   **2026-07-16 follow-up sweep (code-side ruled-out set EXTENDED — do not re-derive):**
+   - **The 07-08 → 07-12 13:00 window (incl. the 07-11 merge burst, PRs #727–#757) is clean.**
+     Every viewer commit there is event-driven Find-panel/Room-Lens UI (CSS visibility, taxonomy,
+     Dijkstra-on-tap, role filter); a grep over the FULL `234d41c..HEAD` viewer diff found only
+     bounded/self-clearing timers (`_glowInterval` ≤20 tries, `pulseFrame` finite tween,
+     `_checkDone` self-clears) and gated `onBeforeRender` hooks — zero new unconditional per-frame
+     work. This extends the earlier 07-12→07-15 review both backward and forward.
+   - **TAA/still-refine (#801) gating VERIFIED in current code**: `A._composerEnabled=false` by
+     default, `main.js:786/798` bypasses the composer entirely during normal navigation; teardown
+     restores `accumulate=false` + prior composer flag. Photoreal shaders (#805/#806 triplanar/
+     night/puddles/sparkle/shadows) are all `uTriActive`-style gated or staged+torn-down inside
+     Alt+S/Cinema Orbit — and ALL post-date the first lag report (07-15 ~morning) anyway, so they
+     are not the origin (could only compound). `renderer.shadowMap.enabled=false` at startup
+     (scene.js:60) unchanged. three.js upgrades were 05-24 (r160→r184) and 06-27 (r184→r185) —
+     outside "this week."
+   - **NEW LEAD, environment not code — GPU identity during the laggy sessions (timeline matches
+     exactly):** this machine's Chrome launchers carried broken NVIDIA PRIME offload flags that
+     killed WebGL outright and were stripped on **2026-07-13** (`[[project_machine_chrome_firefox_
+     gpu_launchers]]`) — the lag was reported 07-15. Verified 07-16 live: X primary provider is
+     NVIDIA-0, and the RUNNING Chrome gpu-process has `libnvidia-glcore`+`/dev/nvidia0` mapped —
+     i.e. TODAY Chrome renders on the RTX 4060, no iGPU fallback active. But whether the 07-13→
+     07-15 laggy sessions ran on Intel/ANGLE-fallback is unknown — and **decidable retroactively**:
+     `scene.js:54` has printed `§RENDERER_CAPS multi_draw=... gpu=<UNMASKED_RENDERER>` at EVERY
+     viewer startup since S281b. → **Next action (user, 1 min): check the §RENDERER_CAPS line in
+     any saved laggy-session console log** (and in a fresh LTU load now). `gpu=Intel/llvmpipe` or
+     `multi_draw=off` during lag = environment cause, closed, no code chase. `gpu=NVIDIA` +
+     `multi_draw=on` = the sql.js-residency/GC baseline stands and a DevTools Performance+Memory
+     recording on a real LTU fly-thru is the only remaining instrument (sandbox cannot, twice
+     confirmed).
+   **2026-07-16 RESOLUTION of the GPU check + new suspects from the user's fresh LTU log
+   (real browser, OCI-served GH Pages viewer):**
+   - **GPU healthy in Chrome NOW**: `§RENDERER_CAPS multi_draw=on gpu=ANGLE (NVIDIA ... RTX 4060
+     Laptop GPU)` — this session ran on the dGPU with the fast batched path. Whether the 07-13→15
+     laggy sessions did is still unknown (check §RENDERER_CAPS in any SAVED log from those days).
+   - **Firefox answer (user asked "must have affected FF a bit?")**: NO — the 07-13 fix touched
+     only the two `google-chrome*.desktop` launchers; Firefox (snap) was untouched and re-asserts
+     its own GPU prefs anyway. BUT FF on this machine NEVER has `WEBGL_multi_draw` (Mesa/driver
+     gap, `[[project_machine_chrome_firefox_gpu_launchers]]`) → FF always runs the slow per-draw
+     BatchedMesh fallback → LTU is permanently heavier in FF than Chrome. Not new, not a
+     regression — if this week's testing mixed FF in, that alone explains "FF feels a bit off."
+   - **NEW CONFIRMED HITCH MECHANISM — per-op full-DB persist (`viewer/kernel_ops.js` v8,
+     `_persistToIdb` line ~100)**: EVERY committed kernel op — including a plain `ELEMENT_PICK`
+     that modifies nothing — schedules, 2s debounced, `sealChain()` + a **synchronous main-thread
+     `db.export()` of the ENTIRE 42MB LTU extracted.db** + a 42MB IndexedDB write. Fired twice in
+     the user's short log (`§KRN_PERSIST ... size=42056KB` ×2, after ELEMENT_PICK and
+     BUILDING_OPEN). Small buildings export a few MB → invisible; LTU pays a ~hundreds-of-ms
+     main-thread stall landing 2 SECONDS AFTER the interaction — exactly the "slight lag I can't
+     pin to anything" signature, and structurally invisible to every §PERF_PROBE (fires on a
+     timer, not in any probed path). Live since 06-08 (`df813ce` KRN_PERSIST_FIX revived a
+     silently-dead persist), so a month old, not this-week — but it is the biggest LTU-specific
+     interaction-hitch found so far. **Fix candidates (fix-session, PUSH PAUSE in effect)**:
+     (a) don't persist on read-only ops like ELEMENT_PICK (op-log row ≠ worth a 42MB export), or
+     (b) op-log in a small sidecar DB persisted alone, or (c) port erp/kernel_ops.js v12's
+     T7-incremental pattern — note the viewer page LOADS BOTH copies (`§KERNEL_OPS_LOADED v12`
+     then `v8` — v8 loads LAST and is 4 versions stale; dedupe/upgrade is part of the same fix).
+   **SPEC — fix (a) IMPLEMENTED 2026-07-16 (user go: "Then proceed"), branch
+   `fix/krn-persist-readonly-ops`, worktree /tmp/wt-krn-persist, LOCAL-ONLY (PUSH PAUSE):**
+   - `viewer/kernel_ops.js` (v8, the copy that wins `window.KernelOps` — viewer.html loads it
+     LAST at line 875) `commitOp()`: a conservative deny-list `READONLY_OPS = {ELEMENT_PICK,
+     BUILDING_OPEN}` — the two ops PROVEN firing full persists in the user's 07-16 LTU log, both
+     observational (a pick highlights, an open is a marker; neither mutates the model). For
+     those, skip `_persistToIdb()` and log **`§KRN_PERSIST_DEFER type=<op>`** instead. All other
+     types (GRID_MOVE/ADD/DELETE/CALIBRATE/DETECT, DISC_SWITCH, ENACT_MOVE, SECTION_CUT,
+     VIEW_FILTER, history replays) persist EXACTLY as before — grey-zone view-state ops stay on
+     the persisting side deliberately (no judgment calls beyond the proven two).
+   - Deferral is loss-bounded by design: persist exports the WHOLE db, so deferred rows ride
+     along in the next mutating op's export. Only a session with ZERO mutating ops loses its
+     pick/open log rows on refresh — acceptable (they're navigation events, and universal-history
+     keeps its own localStorage record regardless).
+   - Deliberately NOT gating inside `_persistToIdb` (its `clearTimeout` would let a read-only op
+     reset a pending mutating persist's debounce) — the gate is in `commitOp` BEFORE the call.
+   - **Witness (issue it proves): "read-only ops no longer trigger the 42MB export"** —
+     localhost §-log: (1) BUILDING_OPEN → `§KRN_PERSIST_DEFER`, no `§KRN_PERSIST` follows;
+     (2) console-driven GRID_MOVE → `§KRN_PERSIST` still fires. Cache-bust viewer.html
+     `kernel_ops.js?v=4→5`.
+   - **DONE 2026-07-16 ✅ (witness): `tests/probe_krn_persist_readonly.js` 7/7 PASS** — real
+     viewer on real Duplex (localhost :8149, SW blocked, real 3D tap): BUILDING_OPEN and
+     ELEMENT_PICK both → `§KRN_PERSIST_DEFER` with ZERO `§KRN_PERSIST`; GRID_MOVE →
+     `§KRN_PERSIST url=...Duplex_extracted.db size=14620KB` with `§KRN_CHAIN sealed=3` (the two
+     deferred rows rode along, loss-bounded design confirmed). Zero page errors. Log:
+     /tmp/wt-krn-persist-probe.log. **LIVE 2026-07-16 ✅ (user lifted PUSH PAUSE for this
+     session's work): PR #808 squash-merged (`4c0f4a0`), sw CACHE_VERSION v763→v764. Live
+     verified by fetch-back: kernel_ops.js?v=5 contains §KRN_PERSIST_DEFER, viewer.html
+     references v=5, sw.js serves v764. The v764 bump ALSO delivers #807 (the Find-panel
+     freeze fix, merged separately without its own bust) to returning browsers — live
+     navigate_find.js confirmed carrying the parentSet≤1500 gate. Worktree pruned, branch
+     deleted both ends.**
+   - **First-minute heaviness on LTU is structural, also visible in the log**: progressive
+     streaming runs the scene at up to **13,545 draw calls** (`§PROGRESSIVE_FLUSH at=102500`)
+     before the final `§BATCHED_FLUSH` collapses to 229; plus `§BVH_DEFERRED built=83537 ms=7381`
+     (7.4s incremental BVH build) and `§SHELL_GHOST_BBOX boxes=28569 build_ms=207` right after
+     load. Any fly-thru started in the first ~60s (e.g. pressing L immediately, as in this log)
+     runs against ALL of that concurrently — feels laggy, is not a regression.
+   - **Minor observation**: the log shows the L cinematic tour STARTING TWICE back-to-back
+     (`[WALK] START cinematic tour` ×2, no stop between) — `toggleFlyAround` should toggle, so a
+     second fire ought to cancel, not restart; two concurrent flyPath tweens fighting the camera
+     would read as stutter. Unconfirmed whether double-press or double-wired listener
+     (f7f27e7 07-12 touched keyboard wiring for touch-capable desktops — this machine is one).
+     Check §KBD_SEQ_ENGINE count per single press if tour fly-thru specifically feels jerky.
 3. **[RAM] Dispose-before-navigate** — shipped for 4D5D on mobile (`a98fcbc`: same-tab,
    dispose renderer+scene, free GPU RAM). Extend the dispose pattern to other heavy
    transitions where two scenes would otherwise co-exist.
