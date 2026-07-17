@@ -151,13 +151,23 @@ bug above is the dominant, order-of-magnitude driver of "built within an hour."
   `viewer.html`/`time_machine.js`. `locale_loader.js` (a completely separate code path) is the actual
   culprit, not the rate-template system the doc's original "where to start" hints pointed at.
 
-**Fix NOT implemented this session (Spec-First discipline — needs a decision, not invention):**
-the natural fix is changing `locale_loader.js:191-192`'s loop to merge into
-`LABOR_RATES[key].productivity` (only overriding classes the locale file actually lists) instead of
-replacing the whole trade object — mirrors the pattern already used correctly elsewhere. But whether
-locale files should be allowed to override productivity (schedule-affecting) at all, vs. only material
-cost/currency (display-affecting), is a product decision, not something to invent solo — flag for the
-user before implementing.
+**✅ FIXED 2026-07-18, PR bim-ootb#853 (`fix/locale-productivity-deep-merge`)** — user decision: locale
+files legitimately having different schedule/productivity conditions is correct (real construction
+productivity varies by region), so the feature stays; only the silent data-loss is fixed. Two commits:
+1. `locale_loader.js` `applyRateOverrides()`: scalar trade fields (rate_per_day/crew_size/trade name)
+   still replace wholesale (a locale's day-rate is a legitimate complete override), but `productivity`
+   now merges class-by-class — classes a locale doesn't mention keep their canonical value instead of
+   falling back to the generic 120s default. Verified live (Hospital, en_US): `IfcPlate`/`IfcMember`/
+   `IfcFooting`/`IfcPile` now retain canonical install times; en_US's own `IfcColumn:5`/`IfcBeam:6`
+   overrides still apply correctly. Corrected schedule: Superstructure span 145.4 → **370.2 days**;
+   whole-project 255.3 → **403.6 days**.
+2. **IndexedDB cache-staleness fix (user follow-up ask):** the code fix alone doesn't reach a browser
+   that already generated+cached a schedule under the old buggy logic — `§GANTT_CACHE_HIT` would keep
+   serving it forever, since nothing invalidates a cache entry just because the generation code changed.
+   Added `_GANTT_CACHE_VERSION` (bumped to 2) folded into the IDB key (`gantt:v{N}:{building}`) — a
+   pre-fix cached entry lives under the old unversioned key and is now unreachable, so `activate()`
+   gets a clean miss and regenerates correctly. Verified live: seeded a fake entry under the old key,
+   confirmed `activate()` (via `tmJumpToPhase`) ignored it and regenerated fresh.
 
 ### Original diagnosis brief (kept for the record — superseded by the findings above)
 User, live-observing Hospital's Time Machine playback: the Superstructure phase appears to
