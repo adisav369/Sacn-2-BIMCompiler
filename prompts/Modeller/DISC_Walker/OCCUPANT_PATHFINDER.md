@@ -370,3 +370,31 @@ Rescued the 3 Unknown-storey glass IfcDoors → `storey='First Floor'` (by cente
 - NEXT POC (not yet built): implement the door-count metric (`opts.metric='doors'`, unit weight on
   door/room edges, 0 on corridor-internal hops), run the screenshot's sample pair on C1'd Clinic, show
   hops collapse from the room-thread to a corridor-dominant route; then Duplex 26-pair regression = 0.
+
+### C3 — DOOR STRATEGY TABLE + angle tie-breaker (user refinement, 2026-07-17)
+User's better framing of C2: don't reduce to one number — score each candidate route with a
+door-PRIORITY table so the confidence reflects WHICH doors it opens, not just how many. Base = C2
+door-count; the table modulates per-door cost/confidence:
+- **Semantically grounded, NOT hand-tuned (project anti-hardcoded-threshold rule — cf. the rejected
+  `DOOR_RESCUE_MIN_AREA` buffer).** Scores derive from real IFC signals:
+  - door HOST class: `IfcCurtainWall`-hosted (glass storefront) = TRANSIT connector between corridor
+    segments → HIGH priority (cheap to open).
+  - ADJACENT ROOM privacy, read from the SHIPPED room-type classifier (feat/room-restroom-colour,
+    now live): corridor/lobby/circulation = PUBLIC (cheap); bedroom/restroom/office = PRIVATE (a door
+    INTO one is expensive — you don't cut through a private room to transit). This REUSES the room
+    classifier already deployed, not a new invented signal.
+- **Angle/collinearity = TIE-BREAKER only, not primary.** Prefer the door that continues the approach
+  direction in a straight line (corridor continuation) — but only to break ties between similarly-scored
+  candidates; as a primary driver it breaks on L/curved corridors (the straight line leaves the
+  corridor). Layer it above door-count + the strategy table.
+- Confidence(route) = f(door-count, Σ door-priority, collinearity tie-break) over the small candidate
+  set; still "fast array maths," still deterministic.
+
+### C4 — GRACEFUL DEGRADATION tiers (user, "lacking infra — follow the wall / finished floor")
+Separate, larger robustness lane — do NOT entangle with the glass-door fix. A "strategy selector at
+onset": assess what the building actually models, THEN pick the routing layer:
+  walls+doors+corridor-spine (best) → doors-only → **floor-slab (IfcSlab) adjacency when no walls are
+  modelled yet** (walk the finished floor) → raw-geometry adjacency (worst).
+Real need: many IFC models are incomplete (no walls, ARCH not detailed). Each tier is its own POC-gated
+build; the onset selector picks the highest tier the data supports so an incomplete model still routes.
+Parked as a roadmap lane, not part of C1–C3.
