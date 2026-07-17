@@ -597,8 +597,13 @@ Verified in `~/bim-ootb/viewer/navigate_find.js` on the current branch:
   pixel in every mode. That user-live-testing round IS the live witness the DONE-WHEN asked for.
 - NOT re-captured this session: a fresh screenshot (the §-code trail + the dated user live-test
   round above stand as the evidence; a new screenshot would only re-confirm the already-fixed state).
-- REMAINING colouring gaps (separate items, NOT part of §8, tracked in ROOM_INJECTION_CONSOLIDATED_
-  REVIEW §GAPS): (a) only 3 category buckets (habitable/corridor/utilities) — no per-room-TYPE
-  colour, now UNBLOCKABLE since the fixture classifier feeds live room types into disc_walker
-  (bim-ootb worktree `fix/room-type-fixture-parity`, 2026-07-17); (b) real vs synthetic (`RM_`/`≈`)
-  rooms get no colour distinction.
+- REMAINING colouring gaps — ✅ ADDRESSED 2026-07-17 (bim-ootb worktree `feat/room-restroom-colour`,
+  commits `9936f02`+amended): the 3-bucket cap and the real/synthetic blindness are both fixed.
+  `ROOM_CATEGORY_COLORS` now carries SIX buckets — habitable (purple), corridor (blue), **restroom
+  (brown)**, **kitchen (amber)**, **bedroom (teal)**, utilities (grey) — driven by deterministic
+  `RH.classifyRestroom/Kitchen/Bedroom(label)` name classifiers (order corridor→restroom→kitchen→
+  bedroom→utilities). Plus **§SYNTHETIC-HONESTY**: compiled `RM_`/`≈` rooms draw fainter (opacity
+  0.06 vs real 0.12) per WalkerDoctrine §14. Witness `common/witness_room_category_colour.js`
+  W-ROOM-CATEGORY-COLOUR on Duplex: names 21/21, 0 cross-match, synthetic-rule 6/6. Detection
+  confirmed corridors were all one uniform blue and restrooms were purple (habitable) before this.
+  Still open: corridor main-vs-minor differentiation (needs a graph-centrality signal — deferred).
