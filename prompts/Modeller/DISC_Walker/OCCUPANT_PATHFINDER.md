@@ -303,16 +303,32 @@ doors to a storey by `center_z` (reuse the room-walker's `§STOREY-Z` `_assignBy
 building already has the per-storey z-anchors) BEFORE the E2 binding loop. Purely additive; a door that
 already has a real storey is untouched.
 
-### C2 — PREFERENCE: penalise E1 room↔room legs so circulation wins (the "red flag" as a weight)
-Even with C1, Dijkstra picks by raw distance, so a short room→adjoining-room hop can still beat the
-corridor. The simple solution: multiply E1 (room↔room direct-door) edge weight by a penalty factor λ>1
-so a path only cuts room-to-room when there is no circulation alternative — "rooms hang off the
-corridor, they don't chain into each other." λ is TUNED FROM MEASUREMENT, not chosen: sweep λ on Clinic
-until the 12-door thread collapses to a corridor-dominant route, then CONFIRM Duplex's 26 regression
-pairs are unchanged (Duplex rooms are legitimately door-connected with no corridor — λ must not break
-those). Keep E1 weight byte-identical when no CIRC alternative exists (only penalise when the endpoints
-are ALSO E2-reachable), so no building that genuinely needs room-to-room is harmed. This preserves the
-DONE-section's Duplex-regression invariant by construction.
+### C2 — COST MODEL: fewest VALID doors over a small candidate set (user's design, 2026-07-17)
+SUPERSEDES the earlier "tune a λ penalty on E1" sketch — the user gave the actual metric, and it needs
+no tuning. Verbatim intent: "graphing should be 2 or more ahead… keep an array of outcomes, right away
+choose the least doors (with connecting rooms) but valid"; then "if point to point, keep array of few
+possible routes then compare which has highest confidence — not 2 and above steps but ALL the steps
+along the way captured before deciding… fast array maths."
+- **Metric = number of DOORS crossed (room transitions), NOT distance.** Each door/room-transition
+  edge costs 1; corridor/spine traversal (CIRC↔CIRC, spine chaining) costs 0 doors. So the 12-door
+  room-thread scores 12; the corridor route (enter + glass door + exit) scores ~3. Least-doors ⇒
+  corridor wins BY CONSTRUCTION — no λ, nothing to tune.
+- **Candidate-set, not single greedy path.** Enumerate a FEW full candidate routes (k-shortest-style),
+  each captured as the COMPLETE array of steps, THEN compare — not a greedy 2-step lookahead. Score =
+  "confidence" = fewest doors among VALID routes (a route is valid iff every leg actually connects and
+  is legal — ties into OPEN LANE B's chord-legality). Pick highest confidence. Cheap: a handful of
+  candidates, array math.
+- **Why door-count is the right invariant:** a human walks the corridor and enters each destination
+  room by ONE door; they do not punch through a party wall into the next private room and out its far
+  door. Minimising doors encodes exactly "rooms hang off the corridor, they don't chain into each
+  other" — the user's red flag, as a count instead of a weight.
+- **Regression safety is automatic:** Duplex rooms are door-connected with no corridor, so the
+  fewest-doors route == the only route == today's route ⇒ the DONE-section's 26-pair invariant holds by
+  construction (a corridor alternative has to EXIST to change anything). Confirm, don't assume.
+- Implementation note: `shortestPath()` already runs Dijkstra over weighted edges — a door-count mode is
+  just unit weight on door/room edges + zero on corridor-internal hops, optionally returning the top-k
+  candidates for the confidence compare. API-compatible (add an `opts.metric='doors'`), zero consumer
+  edits, per this file's law.
 
 ### POC GATE (calculation-only, before touching the engine — this file's standing law)
 Node script on Clinic + Duplex, building C1's rescued-door set + C2's penalised weights, logging:
