@@ -117,15 +117,16 @@ function assetAcctFor(db, assetId, schema, dateAcct) {
     [num(assetId), num(schema), String(dateAcct || '9999-12-31')]);
 }
 // MConversionRate.getRate:243-252 VERBATIM shape (default Spot type): date BETWEEN ValidFrom AND
-// ValidTo, client/org-scoped, ORDER BY AD_Client_ID DESC, AD_Org_ID DESC, ValidFrom DESC — the
-// TENANT rate outranks the system rate (this seed carries both, 0.85 vs 0.8006 — run-8 finding).
+// ValidTo, IsActive='Y' (:251 — THE discriminator in this seed: the 0.8006 row is the SAME client 11
+// but INACTIVE; the B-3 run-8 "tenant-vs-system" reading was wrong, corrected 2026-07-18),
+// client/org-scoped, ORDER BY AD_Client_ID DESC, AD_Org_ID DESC, ValidFrom DESC.
 function fxRate(db, curFrom, curTo, dateAcct, clientId, orgId) {
   if (num(curFrom) === num(curTo)) return 1;
   var r = getRow(db,
     "SELECT cr.multiplyrate AS rate FROM c_conversion_rate cr JOIN c_conversiontype ct" +
     " ON ct.c_conversiontype_id=cr.c_conversiontype_id AND ct.isdefault='Y'" +
     " WHERE cr.c_currency_id=? AND cr.c_currency_id_to=? AND ? BETWEEN cr.validfrom AND cr.validto" +
-    " AND cr.ad_client_id IN (0,?) AND cr.ad_org_id IN (0,?)" +
+    " AND cr.isactive='Y' AND cr.ad_client_id IN (0,?) AND cr.ad_org_id IN (0,?)" +
     " ORDER BY cr.ad_client_id DESC, cr.ad_org_id DESC, cr.validfrom DESC LIMIT 1",
     [num(curFrom), num(curTo), String(dateAcct || '9999-12-31'), num(clientId || 0), num(orgId || 0)]);
   return r ? Number(r.rate) : null;
@@ -298,6 +299,118 @@ function deriveProjectIssue(db, id, schema) {
   return d;
 }
 
+// ── W-POST-TAIL manifests (HARDEN_MATRIX.md §W-POST-TAIL, 2026-07-18) ───────────────────────────────
+
+// Doc_BankStatement.createFacts:200-280 — per line (clearing accounts differ + IsPostIfClearingEqual=Y
+// in this seed → the NORMAL branch): {Bank.Asset}=+StmtAmt · {Bank.InTransit}=−TrxAmt · charge leg
+// (>0→CR, else DR .negate(); only when a charge account resolves and the amount ≠ 0 — Fact.createLine
+// drops null-account/zero lines) · interest leg (<0→InterestExp else InterestRev, −InterestAmt).
+// Legs post in DOC currency → per-schema conversion (fxRate) + the Fact.balanceAccounting
+// CurrencyBalancing residual (c_acctschema_gl, the W-FOLD-ALLOC-FX rule).
+function deriveBankStatement(db, id, schema) {
+  var hdr = getRow(db, 'SELECT * FROM c_bankstatement WHERE c_bankstatement_id=?', num(id));
+  if (!hdr) return null;
+  var d = b3New();
+  var lines = allRows(db, 'SELECT * FROM c_bankstatementline WHERE c_bankstatement_id=? ORDER BY c_bankstatementline_id', num(id));
+  var ba = getRow(db, 'SELECT * FROM c_bankaccount_acct WHERE c_bankaccount_id=? AND c_acctschema_id=?', [num(hdr.c_bankaccount_id), num(schema)]);
+  if (!ba) { d.absent.push('c_bankaccount_acct#' + hdr.c_bankaccount_id + '/' + schema); return d; }
+  var as = schemaRow(db, schema);
+  var docCur = lines.length ? num(lines[0].c_currency_id) : (as ? num(as.c_currency_id) : 0);
+  var rate = fxRate(db, docCur, as ? as.c_currency_id : docCur, hdr.dateacct, hdr.ad_client_id, hdr.ad_org_id);
+  if (rate == null) { d.absent.push('fxrate#' + docCur + '->' + (as && as.c_currency_id)); return d; }
+  function conv(c) { return Math.round(c * rate); }
+  function leg(el, srcCents) {           // signed source cents → DR (+) / CR (−) accounted cents
+    if (!el || srcCents === 0) return;
+    if (srcCents > 0) d.add('DR', el, conv(srcCents)); else d.add('CR', el, conv(-srcCents));
+  }
+  var assetEl = elOf(db, vcAcct(db, ba.b_asset_acct), d.absent, '{Bank.Asset}');
+  var transitEl = elOf(db, vcAcct(db, ba.b_intransit_acct), d.absent, '{Bank.InTransit}');
+  lines.forEach(function (l) {
+    leg(assetEl, cents(l.stmtamt));
+    leg(transitEl, -cents(l.trxamt));
+    var chg = cents(l.chargeamt);
+    if (chg !== 0 && num(l.c_charge_id) > 0) {
+      var ch = getRow(db, 'SELECT ch_expense_acct AS acct FROM c_charge_acct WHERE c_charge_id=? AND c_acctschema_id=?', [num(l.c_charge_id), num(schema)]);
+      leg(elOf(db, vcAcct(db, ch && ch.acct), d.absent, '{Charge.Expense}'), -chg);   // >0→CR / <0→DR
+    }
+    var intr = cents(l.interestamt);
+    if (intr !== 0) {
+      var col = intr < 0 ? 'b_interestexp_acct' : 'b_interestrev_acct';
+      leg(elOf(db, vcAcct(db, ba[col]), d.absent, '{Bank.' + (intr < 0 ? 'InterestExp' : 'InterestRev') + '}'), -intr);
+    }
+  });
+  // Fact.balanceAccounting — the per-doc accounted imbalance lands on the schema CurrencyBalancing acct
+  if (num(docCur) !== (as ? num(as.c_currency_id) : num(docCur))) {
+    var dr = 0, cr = 0;
+    Object.keys(d.by).forEach(function (k) { dr += d.by[k].dr; cr += d.by[k].cr; });
+    if (dr !== cr) {
+      var gl = getRow(db, 'SELECT currencybalancing_acct AS acct FROM c_acctschema_gl WHERE c_acctschema_id=?', num(schema));
+      var balEl = elOf(db, vcAcct(db, gl && gl.acct), d.absent, '{Schema.CurrencyBalancing}');
+      if (balEl) d.add(dr < cr ? 'DR' : 'CR', balEl, Math.abs(dr - cr));
+    }
+  }
+  return d;
+}
+
+// Doc_MatchPO.createFacts:244-470 — the PPV pair posts ONLY under COSTINGMETHOD_StandardCosting
+// (Doc_MatchPO.java:429); this seed costs at 'A' Average → the REAL engine posted the EMPTY set for
+// all 37 docs (posted='Y', 0 fact rows — verified live 2026-07-18). ∅ is CONFIG-derived, not skipped:
+// under 'S' the manifest opens the PPV path (poCost vs standard cost via m_cost — absent-token when
+// the seed carries no standard-cost rows, which is itself the honest state).
+function deriveMatchPO(db, id, schema) {
+  var hdr = getRow(db, 'SELECT * FROM m_matchpo WHERE m_matchpo_id=?', num(id));
+  if (!hdr) return null;
+  var d = b3New();
+  if (num(hdr.m_product_id) === 0 || Number(hdr.qty) === 0) return d;      // :248-254
+  if (num(hdr.m_inoutline_id) === 0) return d;                             // :275-282 no shipment match
+  var as = schemaRow(db, schema);
+  var method = as ? String(as.costingmethod) : '';
+  // product-level override (m_product_category_acct costingmethod not captured — schema-level method,
+  // the same resolution the W-FOLD-MOVEMENT cost hop proved for this seed)
+  if (method !== 'S') return d;                                            // :429 gate → ∅ under Average
+  var cost = getRow(db,
+    "SELECT c.currentcostprice AS p FROM m_cost c JOIN m_costelement e ON e.m_costelement_id=c.m_costelement_id" +
+    " AND e.costelementtype='M' AND e.costingmethod='S' WHERE c.m_product_id=? AND c.c_acctschema_id=?",
+    [num(hdr.m_product_id), num(schema)]);
+  if (!cost || Number(cost.p) === 0) { d.absent.push('{Product.StandardCost}#' + hdr.m_product_id); return d; }
+  var ol = getRow(db, 'SELECT priceactual FROM c_orderline WHERE c_orderline_id=?', num(hdr.c_orderline_id));
+  if (!ol) { d.absent.push('c_orderline#' + hdr.c_orderline_id); return d; }
+  var ppv = Math.round((cents(ol.priceactual) - cents(cost.p)) * Number(hdr.qty));
+  if (ppv !== 0) {
+    var pc = getRow(db, 'SELECT a.p_purchasepricevariance_acct AS acct FROM m_product p JOIN m_product_category_acct a ON a.m_product_category_id=p.m_product_category_id AND a.c_acctschema_id=? WHERE p.m_product_id=?', [num(schema), num(hdr.m_product_id)]);
+    var ppvEl = elOf(db, vcAcct(db, pc && pc.acct), d.absent, '{Product.PPV}');
+    var offEl = elOf(db, vcAcct(db, null), d.absent, '{Schema.PPVOffset}');  // c_acctschema_gl ppvoffset not captured — named absent
+    if (ppvEl && offEl) { d.add(ppv > 0 ? 'DR' : 'CR', ppvEl, Math.abs(ppv)); d.add(ppv > 0 ? 'CR' : 'DR', offEl, Math.abs(ppv)); }
+  }
+  return d;
+}
+
+// Doc_Requisition.createFacts:121-156 — posts ONLY under MAcctSchema.isCreateReservation
+// (commitmenttype 'B'/'A', MAcctSchema.java:662-669); this seed = 'N' → the REAL engine posted ∅ for
+// the 1 posted doc. Under the flip: per line DR {Product.Expense}=LineNetAmt + CR CommitmentOffset=Σ.
+function deriveRequisition(db, id, schema) {
+  var hdr = getRow(db, 'SELECT * FROM m_requisition WHERE m_requisition_id=?', num(id));
+  if (!hdr) return null;
+  var d = b3New();
+  var as = schemaRow(db, schema);
+  var ct = as ? String(as.commitmenttype) : 'N';
+  if (ct !== 'B' && ct !== 'A') return d;                                  // isCreateReservation gate → ∅
+  var lines = allRows(db, 'SELECT * FROM m_requisitionline WHERE m_requisition_id=? ORDER BY m_requisitionline_id', num(id));
+  var total = 0;
+  lines.forEach(function (l) {
+    var amt = cents(l.linenetamt);
+    total += amt;
+    var pc = num(l.m_product_id) > 0
+      ? getRow(db, 'SELECT a.p_expense_acct AS acct FROM m_product p JOIN m_product_category_acct a ON a.m_product_category_id=p.m_product_category_id AND a.c_acctschema_id=? WHERE p.m_product_id=?', [num(schema), num(l.m_product_id)])
+      : getRow(db, 'SELECT ch_expense_acct AS acct FROM c_charge_acct WHERE c_charge_id=? AND c_acctschema_id=?', [num(l.c_charge_id), num(schema)]);
+    var el = elOf(db, vcAcct(db, pc && pc.acct), d.absent, '{Product.Expense}');
+    if (el) d.add('DR', el, amt);
+  });
+  var offEl = elOf(db, vcAcct(db, null), d.absent, '{Schema.CommitmentOffset}');  // not captured — named absent under the flip
+  if (offEl) d.add('CR', offEl, total);
+  return d;
+}
+
 function finish(d, basis) {
   if (!d) return { lines: [], balanced: false, sumDr: 0, sumCr: 0, absent: [], basis: 'none' };
   var lines = Object.keys(d.by).map(function (k) {
@@ -333,6 +446,10 @@ function derivePostings(db, recordRef, schema, R) {
   if (table === 'A_Asset_Transfer') return finish(deriveAssetTransfer(db, id, schema, recordRef.primarySchema), 'fa-transfer');
   if (table === 'A_Asset_Disposed') return finish(deriveAssetDisposed(db, id, schema), 'fa-disposal');
   if (table === 'C_ProjectIssue') return finish(deriveProjectIssue(db, id, schema), 'project-issue');
+  // W-POST-TAIL classes (HARDEN_MATRIX.md §W-POST-TAIL)
+  if (table === 'C_BankStatement') return finish(deriveBankStatement(db, id, schema), 'bank-statement');
+  if (table === 'M_MatchPO') return finish(deriveMatchPO(db, id, schema), 'matchpo');
+  if (table === 'M_Requisition') return finish(deriveRequisition(db, id, schema), 'requisition');
   return { lines: [], balanced: false, sumDr: 0, sumCr: 0, absent: [], basis: 'none' };
 }
 

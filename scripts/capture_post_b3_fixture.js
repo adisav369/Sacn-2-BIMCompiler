@@ -171,11 +171,13 @@ var CAPTURE = {
   },
   // Doc_AssetAddition posts in DOC currency (USD): schema-200000 (EUR) facts convert at the default
   // Spot rate — multiplyrate kept TEXT (exact NUMERIC, the W-ALLOC-FX precedent)
+  // isactive captured, NOT filtered — MConversionRate.getRate:251 filters IsActive='Y' itself and in
+  // this seed that clause (not client rank) is what excludes the 0.8006 twin row (corrected 2026-07-18)
   c_conversion_rate: {
-    cols: ['c_currency_id','c_currency_id_to','c_conversiontype_id','multiplyrate','validfrom','validto','ad_client_id','ad_org_id'],
+    cols: ['c_currency_id','c_currency_id_to','c_conversiontype_id','multiplyrate','validfrom','validto','ad_client_id','ad_org_id','isactive'],
     sql: "SELECT c_currency_id, c_currency_id_to, c_conversiontype_id, multiplyrate, validfrom::date, validto::date," +
-         " ad_client_id, ad_org_id" +
-         " FROM adempiere.c_conversion_rate WHERE ad_client_id IN (0,11) AND isactive='Y' ORDER BY c_currency_id, c_currency_id_to, validfrom"
+         " ad_client_id, ad_org_id, isactive" +
+         " FROM adempiere.c_conversion_rate WHERE ad_client_id IN (0,11) ORDER BY c_currency_id, c_currency_id_to, validfrom"
   },
   c_conversiontype: {
     cols: ['c_conversiontype_id','isdefault'],

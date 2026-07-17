@@ -75,14 +75,19 @@ cap c_bp_customer_acct      "c_bpartner_id,c_acctschema_id,c_receivable_acct"   
 cap c_bp_vendor_acct        "c_bpartner_id,c_acctschema_id,v_liability_acct"       "c_bpartner_id INT,c_acctschema_id INT,v_liability_acct INT"
 # p_inventoryclearing_acct = the matched AP-invoice line DR (51400 Inventory Clearing, via product->category). ADDITIVE.
 # p_averagecostvariance_acct added ADDITIVELY for the M_MatchInv avg-cost IPV split (variance share for qty NOT on hand).
-cap m_product_category_acct "m_product_category_id,c_acctschema_id,p_revenue_acct,p_cogs_acct,p_asset_acct,p_inventoryclearing_acct,p_averagecostvariance_acct" "m_product_category_id INT,c_acctschema_id INT,p_revenue_acct INT,p_cogs_acct INT,p_asset_acct INT,p_inventoryclearing_acct INT,p_averagecostvariance_acct INT"
+# p_expense_acct + p_purchasepricevariance_acct added ADDITIVELY (W-POST-TAIL: Doc_Requisition expense
+# lines under the reservation gate-flip; Doc_MatchPO PPV under the StandardCosting gate-flip).
+cap m_product_category_acct "m_product_category_id,c_acctschema_id,p_revenue_acct,p_cogs_acct,p_asset_acct,p_inventoryclearing_acct,p_averagecostvariance_acct,p_expense_acct,p_purchasepricevariance_acct" "m_product_category_id INT,c_acctschema_id INT,p_revenue_acct INT,p_cogs_acct INT,p_asset_acct INT,p_inventoryclearing_acct INT,p_averagecostvariance_acct INT,p_expense_acct INT,p_purchasepricevariance_acct INT"
 # t_credit_acct = input-VAT (AP tax DR), mirrors t_due_acct (output VAT). ADDITIVE.
 cap c_tax_acct              "c_tax_id,c_acctschema_id,t_due_acct,t_credit_acct"    "c_tax_id INT,c_acctschema_id INT,t_due_acct INT,t_credit_acct INT"
 cap c_validcombination      "c_validcombination_id,account_id"                    "c_validcombination_id INT,account_id INT"
 cap c_acctschema_default    "c_acctschema_id"                                     "c_acctschema_id INT"
 cap c_invoicetax            "c_invoice_id,c_tax_id,taxamt"                         "c_invoice_id INT,c_tax_id INT,taxamt REAL"
 # Bank account acct-config: Doc_Payment posts a receipt DR {Bank.InTransit} / CR {Bank.UnallocatedCash} at payamt.
-cap c_bankaccount_acct      "c_bankaccount_id,c_acctschema_id,b_intransit_acct,b_unallocatedcash_acct,b_paymentselect_acct,b_asset_acct" "c_bankaccount_id INT,c_acctschema_id INT,b_intransit_acct INT,b_unallocatedcash_acct INT,b_paymentselect_acct INT,b_asset_acct INT"
+# b_interestrev_acct/b_interestexp_acct added ADDITIVELY for W-POST-TAIL Doc_BankStatement interest legs.
+# c_charge_acct added ADDITIVELY for the same fold's charge leg (line.getChargeAccount → ch_expense_acct).
+cap c_charge_acct           "c_charge_id,c_acctschema_id,ch_expense_acct"           "c_charge_id INT,c_acctschema_id INT,ch_expense_acct INT"
+cap c_bankaccount_acct      "c_bankaccount_id,c_acctschema_id,b_intransit_acct,b_unallocatedcash_acct,b_paymentselect_acct,b_asset_acct,b_interestrev_acct,b_interestexp_acct" "c_bankaccount_id INT,c_acctschema_id INT,b_intransit_acct INT,b_unallocatedcash_acct INT,b_paymentselect_acct INT,b_asset_acct INT,b_interestrev_acct INT,b_interestexp_acct INT"
 
 echo "== capture inventory + cost oracle (F-1 shipment posting Doc_InOut + StorageOnHand spine, prompts/FOLD_MODEL_LOGIC.md §F-1 1b-ii / step-2) =="
 # Doc_InOut posts DR {Product.Cogs} / CR {Product.Asset} at the product's current cost. The accounts
@@ -147,9 +152,14 @@ sqlite3 "$DB" "DROP TABLE IF EXISTS c_cashline; CREATE TABLE c_cashline(c_cashli
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_cashline.csv c_cashline"
 # FX allocation (schema-200000 EUR): the Spot conversion rate (multiplyrate, USD 100 -> EUR 102, type 114 IsDefault)
 # + the CurrencyBalancing account that absorbs the per-doc rounding imbalance. ADDITIVE (H-1 balance preserved).
-PG "SELECT c_currency_id, c_currency_id_to, c_conversiontype_id, multiplyrate, validfrom, validto FROM adempiere.c_conversion_rate WHERE ad_client_id IN (0,11) ORDER BY c_currency_id, c_currency_id_to, validfrom;" > /tmp/c_conversion_rate.csv
+# ad_client_id/ad_org_id/isactive added ADDITIVELY (W-POST-TAIL/B-3): MConversionRate.getRate:243-252
+# filters IsActive='Y' and orders AD_Client_ID DESC — in THIS seed the 0.8006 twin row is the same
+# client 11 but INACTIVE, so IsActive is the live discriminator. The row is captured (not filtered)
+# so the engine's own isactive clause does the work — and poc_alloc_fx §FALSIFIER-B keeps its
+# wrong-rate prop. NON-INVENT: real columns, no row dropped.
+PG "SELECT c_currency_id, c_currency_id_to, c_conversiontype_id, multiplyrate, validfrom, validto, ad_client_id, ad_org_id, isactive FROM adempiere.c_conversion_rate WHERE ad_client_id IN (0,11) ORDER BY c_currency_id, c_currency_id_to, validfrom;" > /tmp/c_conversion_rate.csv
 # multiplyrate kept as TEXT to preserve the exact PG NUMERIC decimal (REAL would float-drift the HALF_UP rounding).
-sqlite3 "$DB" "DROP TABLE IF EXISTS c_conversion_rate; CREATE TABLE c_conversion_rate(c_currency_id INT, c_currency_id_to INT, c_conversiontype_id INT, multiplyrate TEXT, validfrom TEXT, validto TEXT);"
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_conversion_rate; CREATE TABLE c_conversion_rate(c_currency_id INT, c_currency_id_to INT, c_conversiontype_id INT, multiplyrate TEXT, validfrom TEXT, validto TEXT, ad_client_id INT, ad_org_id INT, isactive TEXT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_conversion_rate.csv c_conversion_rate"
 # intercompany due-to/from added ADDITIVELY for the inter-org M_Movement posting (schema-level GL accounts).
 cap c_acctschema_gl   "c_acctschema_id,currencybalancing_acct,intercompanydueto_acct,intercompanyduefrom_acct"  "c_acctschema_id INT,currencybalancing_acct INT,intercompanydueto_acct INT,intercompanyduefrom_acct INT"
@@ -214,6 +224,24 @@ sqlite3 "$DB" "DROP TABLE IF EXISTS m_matchinv; CREATE TABLE m_matchinv(m_matchi
 sqlite3 "$DB" ".mode csv" ".import /tmp/m_matchinv.csv m_matchinv"
 # NOTE: c_invoiceline is NOT re-captured here — the full table (incl. c_invoiceline_id/m_inoutline_id/qtyinvoiced
 # that completeInvoice reads) is already present from the base seed; a narrow re-cap would drop columns siblings need.
+
+echo "== capture M_MatchPO + M_RequisitionLine (W-POST-TAIL — the config-gated-∅ posters' source rows) =="
+# m_matchpo: 37 docs ALL posted='Y' with ZERO fact rows — the REAL engine posted the empty set (PPV block
+# gated on StandardCosting, Doc_MatchPO.java:429; GardenWorld costs at 'A'). Captured so the ∅==∅ diff runs
+# over the REAL population, not a vacuous empty set. NON-INVENT: straight copy.
+PG "SELECT m_matchpo_id, c_orderline_id, coalesce(m_inoutline_id,0), coalesce(c_invoiceline_id,0),
+       m_product_id, round(qty,2), posted, dateacct::date
+    FROM adempiere.m_matchpo WHERE ad_client_id=11 ORDER BY m_matchpo_id;" > /tmp/m_matchpo.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_matchpo; CREATE TABLE m_matchpo(m_matchpo_id INT, c_orderline_id INT, m_inoutline_id INT, c_invoiceline_id INT, m_product_id INT, qty REAL, posted TEXT, dateacct TEXT);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/m_matchpo.csv m_matchpo"
+# m_requisitionline: Doc_Requisition posts per-line {Product.Expense}=AmtSource + CommitmentOffset ONLY under
+# isCreateReservation (MAcctSchema.java:662-669; GardenWorld commitmenttype='N' → ∅). Lines captured for the
+# gate-flip §FALSIFIER manifest. NON-INVENT: real columns.
+PG "SELECT m_requisitionline_id, m_requisition_id, coalesce(m_product_id,0), coalesce(c_charge_id,0),
+       round(linenetamt,2), round(qty,2)
+    FROM adempiere.m_requisitionline WHERE ad_client_id=11 ORDER BY m_requisitionline_id;" > /tmp/m_requisitionline.csv
+sqlite3 "$DB" "DROP TABLE IF EXISTS m_requisitionline; CREATE TABLE m_requisitionline(m_requisitionline_id INT, m_requisition_id INT, m_product_id INT, c_charge_id INT, linenetamt REAL, qty REAL);"
+sqlite3 "$DB" ".mode csv" ".import /tmp/m_requisitionline.csv m_requisitionline"
 
 echo "== capture GL_Journal source (Doc_GLJournal posting — manual journal incl. inter-org balancing, fact_acct 224) =="
 # A GL journal's lines post DIRECTLY as fact lines: amtacct = round(amtsource × currencyrate, 2) (the journal is
@@ -301,9 +329,13 @@ PG "SELECT c_bankstatement_id, name, docstatus, docaction, processing, processed
     FROM adempiere.c_bankstatement WHERE ad_client_id=11 ORDER BY c_bankstatement_id;" > /tmp/c_bankstatement.csv
 sqlite3 "$DB" "DROP TABLE IF EXISTS c_bankstatement; CREATE TABLE c_bankstatement(c_bankstatement_id INT, name TEXT, docstatus TEXT, docaction TEXT, processing TEXT, processed TEXT, c_doctype_id INT, c_bankaccount_id INT, ad_org_id INT, ad_client_id INT, beginningbalance REAL, endingbalance REAL, statementdifference REAL, dateacct TEXT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_bankstatement.csv c_bankstatement"
-PG "SELECT c_bankstatementline_id, c_bankstatement_id, round(stmtamt,2), c_payment_id
+# trxamt/chargeamt/interestamt/c_charge_id/c_currency_id added ADDITIVELY for the W-POST-TAIL
+# Doc_BankStatement fold (per-line BankAsset=+StmtAmt / InTransit=−TrxAmt / charge / interest legs,
+# Doc_BankStatement.java:200-280). NON-INVENT: real columns.
+PG "SELECT c_bankstatementline_id, c_bankstatement_id, round(stmtamt,2), c_payment_id,
+       round(trxamt,2), round(chargeamt,2), round(interestamt,2), coalesce(c_charge_id,0), c_currency_id
     FROM adempiere.c_bankstatementline WHERE ad_client_id=11 ORDER BY c_bankstatementline_id;" > /tmp/c_bankstatementline.csv
-sqlite3 "$DB" "DROP TABLE IF EXISTS c_bankstatementline; CREATE TABLE c_bankstatementline(c_bankstatementline_id INT, c_bankstatement_id INT, stmtamt REAL, c_payment_id INT);"
+sqlite3 "$DB" "DROP TABLE IF EXISTS c_bankstatementline; CREATE TABLE c_bankstatementline(c_bankstatementline_id INT, c_bankstatement_id INT, stmtamt REAL, c_payment_id INT, trxamt REAL, chargeamt REAL, interestamt REAL, c_charge_id INT, c_currency_id INT);"
 sqlite3 "$DB" ".mode csv" ".import /tmp/c_bankstatementline.csv c_bankstatementline"
 # m_rma: MRMA.beforeSave shipment-derives (BP/currency/IsSOTrx-match/SalesRep, MRMA.java:256-297); m_inout already captured FULL.
 PG "SELECT m_rma_id, documentno, docstatus, docaction, processing, processed, c_doctype_id, inout_id,
