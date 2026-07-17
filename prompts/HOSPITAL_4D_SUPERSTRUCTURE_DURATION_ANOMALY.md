@@ -1,8 +1,52 @@
 # ⚠ DO NOT REMOVE — Hospital 4D Superstructure duration anomaly + share-button correction
-# SCOPE: all items DONE/DIAGNOSED as of 2026-07-18 — see each item's ✅ header. Item 2's root cause
-# (locale_loader.js productivity-map clobber) is found and evidenced but NOT YET FIXED — that needs
-# a product decision (see "Fix NOT implemented" below) before a future session codes it. Read the
-# log after every run. Read this whole file before touching code.
+# SCOPE: all items DONE/FIXED as of 2026-07-18 — see each item's ✅ header. Three PRs open against
+# bim-ootb: #852 (tm-share), #853 (locale productivity merge + gantt cache version), #856 (stream/TM
+# resweep, stacked on #853 — none merged yet as of this writing). Read the log after every run.
+# Read this whole file before touching code.
+
+## Item 3 — ✅ FIXED 2026-07-18, PR bim-ootb#856 (`fix/tm-stream-resweep`, stacked on #853):
+## scene doesn't clear at 0Hr on large buildings
+User-reported, live: "it does not clear the scene during 0 Hr Time Machine" on Hospital, after
+already clearing IndexedDB and regenerating 4D (ruling out stale-cache as the cause). Root cause:
+`streaming.js` has ZERO awareness of Time Machine — newly-flushed `BatchedMesh`/`InstancedMesh`
+geometry defaults to visible (normal viewer state) and is never swept against the active TM cursor
+until the cursor itself next changes (`renderAtTime()` only runs on cursor movement). Hospital
+(63K elements) streams progressively over 10+ seconds — a user sitting at 0Hr (cursor pinned, not
+scrubbing) watches the scene fill back up with fully-visible late-arriving geometry that should
+stay hidden.
+
+**Confirmed NOT a regression** — user pushed back ("it has been working so well, something
+broke") which was the right instinct to check, not assume. Ran the identical live reproduction
+against pre-session baseline `a13bb0d` (before Movie Export retirement, before Item 0's
+BatchedMesh edit, before anything this session touched): baseline shows the EXACT same race
+(`batchVisibleSlots` growing 1976/2151 → 10134/10309 over 20s while cursor stayed pinned at
+`_projectStart`). This is a longstanding architecture gap — streaming and TM were simply never
+coordinated — not something this session's edits caused. It likely wasn't noticed before because
+it only manifests when TM engages EARLY relative to streaming completion on a LARGE building.
+
+**Fix:** `time_machine.js` exposes `window.tmResweep()` (`if (_active) renderAtTime(_cursor)` —
+no-op when TM isn't active, zero cost for normal viewing). `streaming.js` calls it (feature-
+detected, same optional-consumer pattern as `window.__sfxTM`) from its three geometry-flush
+completion points: `_flushInstanced`, `_flushBboxBatched`, `_consolidateBatched`.
+
+**Verified live** (same reproduction, activate TM immediately after DB load — well before
+streaming settles — jump to 0Hr, poll visible counts every 2s for 20s): pre-fix, `batchVisibleSlots`
+grew from 1976/2151 to 10134/10309 while cursor never moved (confirmed on both current code AND
+baseline). Post-fix: `batchVisibleSlots`/`instVisible` stay pinned at exactly 0 for the full 20s
+window while `batchTotalSlots`/`instTotal` keep growing (2151→8159), confirming late arrivals now
+start correctly hidden and stay hidden.
+
+**Item 0's floating-beam side-question (same live session, before this item):** independently
+verified via a Node replica of the schedule + the app's own `§SUPPORT_CHECK` audit — 0/1970 beams
+in Hospital are scheduled before their structural support finishes (checked twice: once with a
+flawed "any class below" definition that gave 1952 false positives from counting MEP/walls/
+furniture as "support" — corrected to only count structural classes per `schedule_gate.js`'s own
+definition, which gave 0/1970, matching the app's built-in audit exactly). So a visually "floating"
+beam is NOT a scheduling-data bug — it's most likely this same Item 3 rendering-desync class of
+issue (a support column/beam whose mesh hasn't been swept to visible yet, even though the schedule
+says it should be) — this fix likely resolves it as a side effect, but wasn't re-verified visually
+against the ORIGINAL floating-beam report specifically. If it recurs after PR #856 lands, that's
+the next thing to check.
 
 ## Item 1 — ✅ DONE 2026-07-18: dropped `#tm-share`, PR #852
 Removed button markup + pointerup listener in `viewer/time_machine.js` (branch
