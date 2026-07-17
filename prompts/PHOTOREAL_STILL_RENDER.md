@@ -2075,6 +2075,17 @@ confirmed real today**, on the actual app, not assumed from static file inspecti
   §SESSION RECORD below.**
 - Aerial-angle pitch gate — spec'd (carried over from discussion), not implemented.
 
+## DEPLOYED (2026-07-17 — "push live", bim-ootb PR #839 merged, verified live)
+User lifted the push-pause for this work ("push live"). The whole Alt+P staffage feature +
+§ENTOURAGE material pass + BimWhale ground fix shipped to production: merged origin/main (v778)
+into `feat/photoreal-staffage-sprites` (clean base, no squash divergence), bumped sw.js
+CACHE_VERSION v778→**v779** (effects/scene/streaming/tools are all cache-first precached — the
+documented landmine), pushed (no LFS hang), PR #839, fast-checks + e2e green, squash-merged
+(`3bd4d42`). GitHub Pages redeployed and **confirmed live** via cache-busted fetch: `sw.js`=v779,
+`effects.js` carries `togglePopulate`, `scene.js` carries the Alt+P handler, staffage cutout PNGs
+return HTTP 200. Live at https://red1oon.github.io/bim-ootb/viewer/ — press **Alt+P**. The
+standing push-pause remains in effect for OTHER work unless the user lifts it again.
+
 ## SESSION RECORD (2026-07-17, continued — RPC entourage material-dispatch extension BUILT + verified)
 Implemented the real-data-first material-dispatch item above (the cheapest, zero-new-asset change
 the "Why this reordering matters" note prioritized). **Local commit only** (`0e7f284`,
@@ -2327,3 +2338,50 @@ checkable from console output, not eyeballed.
   fix above); a resumable/paused export, or exporting a sub-range of the timeline instead of the
   whole storyboard, is NOT — first version exports start-to-end, run-to-completion or cancel-and-
   discard.
+
+## SESSION RECORD (2026-07-17, continued) — implemented + verified, not pushed
+All 7 pieces above built as spec'd, in a fresh worktree (`/tmp/wt-tm-movie-export`, branch
+`feat/tm-movie-export`, off freshly-synced `origin/main` including #836/#837). `sw.js`
+`CACHE_VERSION` bumped v778→v779 (all four touched files are cache-first precached assets — this
+file's own repeated landmine, checked proactively this time instead of after a "still not there"
+report).
+
+**Two real bugs found and fixed via headless end-to-end testing, not assumed:**
+1. `A.stopStillRefine()`'s 500ms interaction-nudge grace window (`§STILL_REFINE_GRACE`, meant to
+   absorb an accidental mouse-jog on a human Alt+S keypress) silently no-op'd the teardown between
+   beats whenever a fold finished in under 500ms — confirmed live in the headless run, where AO
+   folds routinely completed in ~1.3ms/frame under SwiftShader's caching. Left `_stillRefineActive`
+   stuck `true`, freezing every subsequent beat's capture (the "instant done, no fresh render"
+   symptom). Fixed by calling `stopStillRefine(true)` — the `force` parameter is the exact,
+   already-existing escape hatch for a deliberate non-accidental stop; export's own programmatic
+   call has no mouse-jog to absorb in the first place.
+2. Cancelling mid-fold resolved `_tmExportCaptureBeat`'s promise without ever calling
+   `stopStillRefine()`, leaving `_stillRefineActive`/staging stuck applied until some unrelated
+   later interaction happened to touch the canvas — caught by a dedicated cancel-path test
+   (`stillRefineActive: true` after a clean-looking cancel). Fixed by tearing down on that path too.
+
+**Verified headless** (puppeteer, `--use-gl=angle --use-angle=swiftshader`, `warehouse_gardenworld`,
+3-beat storyboard, via the REAL `#tm-export` button click — not a direct function call):
+- Full export: `§TM_EXPORT start beats=3` → 3× `§TM_EXPORT frame idx=.../3` → `§TM_EXPORT done
+  frames=3 videoBytes=11939 type=video/webm;codecs=vp9`, a real `BIM_TimeMachine_GardenWorld_*.webm`
+  download fired, zero `pageerror` events, IDB frame store cleared after.
+- Cancel mid-run: button flips to "⏹ Cancel Export" while active, cancelling mid-beat produces
+  `§TM_EXPORT_CANCEL requested` → `§TM_EXPORT_CANCEL idx=0` → store cleared, button reverts to
+  "🎬 Export Movie", `_stillRefineActive` confirmed `false` (not stuck), a post-cancel canvas click
+  doesn't crash.
+- One test-harness-only false alarm, not a source bug: intercepting `document.body.appendChild` to
+  avoid a real file download in headless mode caused the source's own `removeChild(a)` (same pattern
+  Cinema Orbit already uses) to throw, since the node was never actually attached — fixed the test
+  (let the real `appendChild` run, just observe it) rather than the source, confirmed clean after.
+
+**Not verified this session:** real-GPU visual quality (headless SwiftShader proves the mechanism
+end-to-end, not photoreal fidelity — the per-frame timings above, ~12-19s/beat under SwiftShader,
+are not representative of real-GPU cost either); a large/heavy building (only tested on the small
+3-beat `warehouse_gardenworld` storyboard); the `TM_EXPORT_HOLD_SEC=2`/`TM_EXPORT_FPS=2` pacing
+constants are a reasonable starting default, not tuned against a real viewed video yet.
+
+Committed locally only (`1e9b313`, `feat/tm-movie-export`, `/tmp/wt-tm-movie-export`) — **not
+pushed**, per the standing localhost-only push-pause. Next session: real-GPU non-headless
+verification on Hospital or HHS_Office_Federated (the two buildings this file's earlier photoshoot
+work already established as stress-tests), then push/PR once the user lifts the pause or names the
+breakthrough.
