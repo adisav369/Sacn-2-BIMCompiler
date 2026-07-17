@@ -45,13 +45,14 @@ not push/open a PR unless the user explicitly lifts it for that session. `CLAUDE
   `W-DW-DENSITY-TE` D3) unexplained, low-priority — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- ✅ B-3 0-seed posting oracles (2026-07-17, Fable 5) — 6 G-seed classes `maxDiff=0c` vs real compiled
+  posters (OSGi harness, scratch clone); ledger 43→49; local only (PUSH PAUSE). `prompts/FABLE5_B3_POSTING_ORACLE.md`.
 - ✅ 2026-07-10 marathon branches (2026-07-17 verify) — `fix/grid-tilt-guard`, `fix/dw-rot-units`,
   `fable/dwprobe-dedup`, `fix/terminal-oracle-source` all confirmed fully superseded (exact fix
   content already verbatim on main via other commits) and pruned, local+origin, bim-ootb.
 - ✅ FLY_TOUR + walker translation-invariance cure chain (2026-07-16/17) — PRs #812,#815,#832-#835
   merged+Pages-deployed; §WALKER-PHASE-SENSITIVITY resolved. `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`.
-- ✅ Photoreal staffage + BimWhale ground fix (2026-07-17) — local only (PUSH PAUSE).
-  `prompts/PHOTOREAL_STILL_RENDER.md`.
+- ✅ Photoreal staffage + BimWhale ground fix (2026-07-17) — local only (PUSH PAUSE). `prompts/PHOTOREAL_STILL_RENDER.md`.
 - ✅ LTU krn-persist readonly-ops fix, LIVE (PR #808). `prompts/MOBILE_PERF.md`.
 - ✅ Room Lens §14/§26 (2026-07-15/16) — x-crossing, bbox threshold, door markers, §26 texture-
   serialization hang fixed LIVE (PR #811). `prompts/ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md`.
@@ -62,8 +63,7 @@ not push/open a PR unless the user explicitly lifts it for that session. `CLAUDE
 - ✅ Modeller glass parity + guide-quality pass (2026-07-13) — PR #735.
 - ✅ Building Parts Taxonomy — `prompts/BUILDING_PARTS_TAXONOMY.md`.
 - ✅ MANAGER housekeeping (2026-07-11/13) — stale branches/worktrees pruned.
-- ✅ pending merge only: `SCALE_AND_UX_SWEEP.md` (#665), `OFFLINE_GITHUB_RELEASE_BUNDLE.md` — just
-  need the human merge click.
+- ✅ pending merge only: `SCALE_AND_UX_SWEEP.md` (#665), `OFFLINE_GITHUB_RELEASE_BUNDLE.md` — human merge click.
 - 2026-07-05 arc (Save/Open, grid, Teams E2E, HBA mobile, UBBL) — ALL MERGED (#654-664).
 - Pre-2026-07-05: `prompts/archive/PROGRESS_DONE_ARCHIVE_pre_2026-07-05.md` / `_pre_2026-06-14.md`.
   Viewer S-series/DAGCompiler: MEMORY.md "Project — Shipped".

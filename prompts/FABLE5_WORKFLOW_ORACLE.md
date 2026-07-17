@@ -80,6 +80,8 @@ sub-surface is an honest skip with the reason — the trace diff (§W-2) still s
 - Do NOT expand into B-3 (0-seed posting oracles) here — it is the NAMED SEQUEL (same headless-compiled-classes
   technique pointed at generating real posted BankTransfer/DepositBatch/ProjectIssue/FA docs on a scratch PG copy);
   it gets its own card after this one banks.
+  **→ B-3 opened + BANKED 2026-07-17: `prompts/FABLE5_B3_POSTING_ORACLE.md` (W-POST-B3 green — 2 ∅-by-design +
+  6 G-seed classes `maxDiff=0c` vs the real compiled posters on a scratch clone; ledger 43→49).**
 
 # DONE — 2026-06-12, Fable 5 lane (MULTI_LANE_WAVE3 Lane A). Every claim = a § line in
 # `build/erp/poc_wf_harden.log` (exit 0, log READ, 0 FINDING). Run: `bash build/erp/run_witness.sh scripts/poc_wf_harden.js`.
