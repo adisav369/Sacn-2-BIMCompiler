@@ -1,9 +1,16 @@
 # ⚠ DO NOT REMOVE — Hospital 4D Superstructure duration anomaly + share-button correction
-# SCOPE: two items for a fresh session to pick up. Read the log after every run. Read this whole
-# file before touching code — item 1 is a quick correction, item 2 is a real investigation with
-# no assumed root cause yet.
+# SCOPE: all items DONE/DIAGNOSED as of 2026-07-18 — see each item's ✅ header. Item 2's root cause
+# (locale_loader.js productivity-map clobber) is found and evidenced but NOT YET FIXED — that needs
+# a product decision (see "Fix NOT implemented" below) before a future session codes it. Read the
+# log after every run. Read this whole file before touching code.
 
-## Item 1 — correction: drop `#tm-share`, do not restore it
+## Item 1 — ✅ DONE 2026-07-18: dropped `#tm-share`, PR #852
+Removed button markup + pointerup listener in `viewer/time_machine.js` (branch
+`fix/drop-tm-share-button`, worktree `/tmp/wt-drop-tm-share` off updated `main`@`a3fc220`).
+`node --check` passes, `grep tm-share` returns nothing. Pushed + PR opened:
+https://github.com/red1oon/bim-ootb/pull/852
+
+### Original spec (kept for the record)
 `bim-ootb` PR #850 (2026-07-18, `revert/tm-movie-export-and-gi-autoengage`) reverted the Movie
 Export feature (see `prompts/archive/TM_MOVIE_EXPORT_RETIRED_2026-07-18.md` for the full story)
 and, as part of that revert, restored the `#tm-share` button (`time_machine.js`, "Copy shareable
@@ -14,7 +21,20 @@ Next session: remove `#tm-share` (button markup ~`time_machine.js:1933`, listene
 ~`time_machine.js:2081-2089`) — do not replace it with anything unless told to; just drop it from
 the panel row.
 
-## Item 0 — VERIFY THIS FIRST: element-appearance regression from THIS session's own edits
+## Item 0 — ✅ VERIFIED 2026-07-18: NOT the BatchedMesh edit, safe to proceed to Item 2
+A/B ran to completion (`witness_appearance_regression.js`, `/tmp/wt-tm-baseline` @ `a13bb0d` on
+:8300 vs `/tmp/wt-tm-current` @ `a3fc220` on :8310, HHS_Office_Federated_extracted.db, identical
+Jump-to-start → 3s Build → Stop burst on both): both landed on the **identical cursor**
+`1780467199999` with **identical counts** — `visibleBatchSlots: 27/2716`, `visibleGuidMeshes: 0/0`
+— and zero page errors on either side. Per this file's own decision rule (below), identical
+counts at an identical cursor mean the regression is **not** in `renderAtTime`'s visibility logic
+— the `BatchedMesh` frontier-box removal is cleared. The user's "appearance broken" / "schedule
+hell on others too" report is a **separate, still-open question** — not yet re-diagnosed against
+a live symptom, just decoupled from this session's own edit as prime suspect. If it resurfaces,
+start fresh (don't assume it's the same root cause as Item 2's duration anomaly — that link was
+never established either, only hypothesized).
+
+## Item 0 (original spec, kept for the record) — element-appearance regression from THIS session's own edits
 Before touching duration/rate logic at all: the user reported, in the SAME session that produced
 this file, that "the appearance of elements are broken in this session" and, testing further,
 "on others also worse schedule hell" (i.e. not Hospital-specific — seen on other buildings too).
@@ -54,8 +74,92 @@ if it's gone).
    `renderAtTime`'s visibility logic, and item 2 below is a real, separate duration-generation
    question — proceed to item 2 as originally scoped.
 
-## Item 2 — Hospital: why does Superstructure complete "within an hour"?
-(Only proceed here after Item 0 is resolved — this may turn out to be the same bug.)
+## Item 2 — ✅ DIAGNOSED 2026-07-18 (root cause found, NOT yet fixed — needs a spec decision first)
+
+**PRIMARY root cause — `locale_loader.js:190-192` top-level REPLACES instead of deep-merges
+`LABOR_RATES[TRADE]`, silently dropping any IFC class the active locale file doesn't enumerate:**
+
+```js
+if (localeData.labor_rates && typeof LABOR_RATES !== 'undefined') {
+  for (var key in localeData.labor_rates) {
+    if (localeData.labor_rates.hasOwnProperty(key)) LABOR_RATES[key] = localeData.labor_rates[key];
+```
+
+Every `viewer/locales/*.js` file ships its OWN hand-authored, **partial** `labor_rates` block (meant
+to attribute a display source string like "RS Means 2024", not to be a complete productivity table).
+E.g. `en_US.js`'s `STEEL_ERECTOR.productivity` is only `{IfcBeam:6, IfcColumn:5}` — `IfcPlate` and
+`IfcMember` are simply absent; `CONCRETE_GANG.productivity` is only `{IfcSlab:30}` — `IfcFooting`,
+`IfcPile`, `IfcReinforcingBar`, `IfcRamp`, `IfcRampFlight` are absent. Because the loader does
+`LABOR_RATES[key] = localeData.labor_rates[key]` (whole-object replace, not a merge into the nested
+`.productivity` map), loading ANY locale wipes out the canonical `rates.js`/`sequence_rules.json`
+entries for every class the locale file didn't bother to list. `injectGantt()`'s `getInstallSecs()`
+then finds no productivity match for those classes and falls back to the generic **120-second
+(2-minute) per-element default** — vs. their real canonical durations (IfcFooting 4800s → 120s =
+**40x faster**, IfcPile 7200s → 120s = **60x faster**, IfcPlate 2400s → 120s = 20x, IfcMember 2880s →
+120s = 24x). `locale_loader.js` runs **unconditionally** on every `viewer.html` load (`<script
+src="locale_loader.js?v=7">`, self-triggering IIFE on `DOMContentLoaded` — not opt-in).
+
+**Live-browser proof** (headless Chrome, `navigator.language=en-US` → `en_US.js` locale auto-loads —
+this is Puppeteer's/most real users' default, NOT an edge case):
+```
+DROP CHECK: STEEL_ERECTOR_productivity: {IfcBeam:6, IfcColumn:5}   ← IfcPlate/IfcMember GONE
+            CONCRETE_GANG_productivity: {IfcSlab:30}                ← IfcFooting/IfcPile/... GONE
+            installSecs_IfcPlate: 120 (was 2400 canonical)
+            installSecs_IfcMember: 120 (was 2880 canonical)
+            installSecs_IfcFooting: 120 (was 4800 canonical)
+            installSecs_IfcPile: 120 (was 7200 canonical)
+```
+**Only 4 of 18 locales happen to match the canonical numbers exactly** (`en_MY`, `ms_MY`, `th_TH`,
+`zh_CN` — presumably the developer's own test locale + neighbours) — every other locale (`en_US`,
+`en_GB`, `de_DE`, `fr_FR`, `es_ES`, `ja_JP`, `ko_KR`, `pt_BR`, `ar_SA`, `en_AU`, `af_ZA`, `id_ID`,
+`bn_BD`, `bl_BD`) silently drops classes and collapses them to the 2-minute fallback. This is a
+**GENERAL, locale-triggered defect** — confirmed to affect every building via the same shared
+`locale_loader.js` code path, matching the user's own "worse on others too" observation exactly, not
+a Hospital-specific data quirk.
+
+**SECONDARY, compounding factor (real, smaller effect, independent of the above) — `schedule_gate.js`
+has no cap on concurrent crews per trade:** the resource-concurrency key `el.resource + '|' +
+Math.floor(el.top_z/3)` gives every distinct 3m Z-slice its OWN independent, uncapped "crew" per
+trade — a tall/many-band building effectively gets one full STEEL_ERECTOR/CONCRETE_GANG crew per
+floor-slice running in true parallel, with no global limit on how many crews of one trade can exist
+at once. Verified via a Node replica of `injectGantt()`+`ScheduleGate.computeSchedule()` against
+REAL element data (not synthetic) for 4 buildings, using CORRECT (non-locale-corrupted) canonical
+rates:
+
+| Building | Superstructure elements | parallel resource×band "crews" | compression (serial ÷ actual) |
+|---|---|---|---|
+| Hospital | 11,947 | 21 | 1.2x (whole-project: 1183 naive days → 366 actual, **3.2x**) |
+| HHS Office | 2,412 | 7 | 1.5x (whole-project: 80.8 → 69.5 days) |
+| Terminal | 35,061 | 20 | 1.0x (buckets so element-dense the queues stay long regardless) |
+| Duplex | 33 | 4 | 1.0x (too small to show the effect) |
+
+This alone does not collapse a phase to "an hour" — it's real but modest (1.2–3.2x) — but it
+compounds with the locale bug above, and confirms the concurrency model has no realistic total-crew
+cap (no real site runs 20+ independent full crews of one trade simultaneously). Worth a separate fix
+decision (e.g. a fixed project-wide crew-pool per trade instead of one per Z-band) — but the locale
+bug above is the dominant, order-of-magnitude driver of "built within an hour."
+
+**What's NOT the cause (ruled out this session, with evidence — don't re-check):**
+- Not Item 0's `BatchedMesh` edit (see Item 0 above — A/B identical, ruled out first as instructed).
+- Not a stale `§GANTT_CACHE_HIT` — Hospital's `tasks` table is empty (0 rows, confirmed via direct
+  query), so `_cap` is always null and the path is always `§GANTT_SOURCE generated` — no captured-4D
+  overlay masking anything.
+- Not `rates/sequence_rules.json` itself — its `LABOR_RATES`/`SEQUENCE_RULES` values are byte-for-byte
+  identical to the hardcoded `rates.js` fallback (both say IfcColumn:6, IfcBeam:8, IfcSlab:35, etc.).
+- Not a `rates/<locale>.json` template mismatch (the `loadRateTemplate()`/`initRateTemplate()` JSON
+  pipeline) — that function is **only called from `boq_charts.html`/`mep_report.html`**, never from
+  `viewer.html`/`time_machine.js`. `locale_loader.js` (a completely separate code path) is the actual
+  culprit, not the rate-template system the doc's original "where to start" hints pointed at.
+
+**Fix NOT implemented this session (Spec-First discipline — needs a decision, not invention):**
+the natural fix is changing `locale_loader.js:191-192`'s loop to merge into
+`LABOR_RATES[key].productivity` (only overriding classes the locale file actually lists) instead of
+replacing the whole trade object — mirrors the pattern already used correctly elsewhere. But whether
+locale files should be allowed to override productivity (schedule-affecting) at all, vs. only material
+cost/currency (display-affecting), is a product decision, not something to invent solo — flag for the
+user before implementing.
+
+### Original diagnosis brief (kept for the record — superseded by the findings above)
 User, live-observing Hospital's Time Machine playback: the Superstructure phase appears to
 complete in about an hour of simulated time — "built within an hour all of a sudden" — which reads
 as wrong for a building this size (Hospital: 63,182 elements, 101×151×43m, irregular multi-wing
@@ -108,3 +212,16 @@ every building's 4D playback, not just this one.
 `§GANTT_CACHE_HIT ops=<n>`, `§GANTT injected=<n> dbElements=<n> sceneMeshGUIDs=<n>, bands=<n>,
 <n> days`, `§GANTT_SOURCE generated|cached` — all already fire on TM activation per this session's
 own captured logs; read them first before adding new ones.
+
+## Item 2 witness scripts (2026-07-18 — scratchpad, may not survive to a new session; rebuild from
+this description if gone, same caveat as Item 0's script above)
+- `witness_superstructure_duration.js` — Node replica of `injectGantt()` + real `schedule_gate.js`
+  against REAL element data (better-sqlite3 direct DB read) for Hospital/HHS/Terminal/Duplex; produces
+  the per-building compression-ratio table above. Uses CANONICAL (non-locale-corrupted) rates since it
+  loads `rates.js` directly — this is what exposed the SECONDARY (concurrency-cap) finding.
+- `witness_hospital_tm_live.js` — headless-Chrome, drives the REAL `viewer.html` + real
+  `locale_loader.js`/`time_machine.js`, calls `window.tmGenerateTimeline()` directly (bypasses the
+  mesh-streaming gate that made the natural `?tm=1` activation path time out on Hospital's 63K
+  elements under headless swiftshader), then queries `kernel_ops` + `window.LABOR_RATES` directly —
+  this is what exposed the PRIMARY (locale_loader replace-not-merge) finding and its live proof.
+Both at `/tmp/claude-1000/-home-red1-bim-compiler/60d9b00e-e721-4cf2-9be7-2ca7cccba830/scratchpad/`.
