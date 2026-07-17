@@ -176,6 +176,29 @@ then go)
   `fly_regress6.log` 18→14 stops, corridors 3→5, pts 125→89; Clinic `fly_regress6c.log` 9→7,
   illegal 0/33, ghost-gate still holding.
 
+### 2026-07-17 — the cure chain, SHIPPED (PRs #832 → #835, all auto-merged to bim-ootb main + Pages-deployed)
+User's drag-imported TerminalMerged live-fly saga, root-caused layer by layer, each with witnesses:
+- **#832** walker §LOCAL-FRAME/§RASTER-EPS translation invariance (worker session, spec
+  ROOM_WALKER_PHASE_INVARIANCE.md; canonical py+js fix pushed on bim-compiler
+  `fix/room-walker-phase-invariance`). Bit-equal compile in any frame; door binding improved
+  fleet-wide (Terminal E1 26→28, Clinic 174→175, HHS 27→29).
+- **#833** §PATCH-FRAME-GUARD (two-half): the needle AND boot self-heal had applied
+  Terminal_extracted.db.sql (OCI, frame x≈630) onto imported TerminalMerged content (x≈88) —
+  rooms 550m off the walls, walker always skipped, every press re-poisoned. Extent-intersection
+  guard: §NEEDLE_PATCH_MISMATCH drops wrong-frame patches; §NEEDLE_FRAME_STALE recompiles
+  boot-poisoned compiled rooms.
+- **#834** §THIN-GRAPH-RECURE: rooms in-frame + compiler-owned + route-thin (stale weak compile
+  in IDB) — nothing static can fault them; the ✈ press now probes the route and re-cures once
+  via ensureRooms({force,skipPatch}). USER-CONFIRMED live: one L press → §FLY_RECURE rooms=45 →
+  §FLY_ROUTE 12/12 → CINE-GRAPH(34acts) up 4 stairs, down a different stair, out the door.
+- **#835** §MAJORITY-LEGAL gate: regression sweep caught Duplex's thin graph newly passing
+  coverage with a 100%-wall-illegal 3-pt route (v2 walker connected its 2 approx rooms); gate
+  rejects majority-illegal, engine residual (0–18%) welcome. Sweep green: Duplex → legacy
+  unchanged, Clinic/HHS/imported routes unchanged, ZERO guard/recure lines on healthy buildings.
+Follow-up lanes still open: browser-importer displaced wall transforms (owes imported↔extracted
+parity: 46 vs 54 rooms); loader-side _applyPendingPatch extent gate; deploy/dev (bim-compiler
+viewer) room-stack port (§R5).
+
 ### FINDING 2026-07-17 — §WALKER-PHASE-SENSITIVITY (user live GIGO challenge, proven not-GIGO)
 User's drag-imported `TerminalMerged.ifc` never gets the graph tour (live: 52 nodes/9 E1 edges
 → thin-path reject) while the extracted `Terminal_extracted.db` flies. User challenged the
