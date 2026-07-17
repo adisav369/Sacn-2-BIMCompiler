@@ -279,3 +279,50 @@ storey's room rects + wall-adjacent walkable band; when illegal, detour via inte
 waypoints (visibility-graph over door centers, edges only where the segment is legal). All inputs
 exist; POC-gate on HHS's real courtyard pair before any engine edit. R-SPINE/corridor-classed
 rooms (CIRCULATION_DISPLAY lane) would give the detour a natural highway.
+
+---
+
+# OPEN LANE C — "walk the corridor, not room-to-room" (user, 2026-07-17, live Clinic Path)
+User live case (Clinic, First→Second Floor, 12 doors 85.1m): the path THREADS room→room→room through
+a row of interior doors instead of walking the corridor past a glass door. User's principle (verbatim
+intent): "walking thru rows of doors room to room should be avoided as illogical when only a glass door
+is in between… a room to adjoining room when corridor is next to it should be a RED FLAG." Cross-ref
+`VIEWER_FIND_PANEL_ROOM_ACCURACY.md §9` (the two findings + the live GUID card `Storey: Unknown`).
+
+**This is exactly what the occupant graph was built for (E2 room↔CIRC) — it just isn't firing here.**
+Two measurable causes, both small, both on top of the SHIPPED E2 machinery. POC-GATE FIRST per this
+file's law — measure on Clinic (the case) + Duplex (the no-regression control) BEFORE any engine edit.
+
+### C1 — ENABLER: rescue `Storey='Unknown'` doors by center_z (so the corridor edge EXISTS)
+`room_graph.js:309` binds doors to `CIRC::<storey>` reading `m.storey` RAW. Curtain-wall glass doors
+(the corridor's actual openings) carry `storey='Unknown'` — their placement is relative to the
+null-transform `IfcCurtainWall` parent, so extraction never stamped a storey (Clinic: 3 of 6
+`M_Curtain Wall *Glass` IfcDoors are Unknown; live card confirmed). An Unknown-storey door rescues onto
+NO CIRC node → the corridor route is absent → Dijkstra can only use E1. Fix = reassign Unknown-storey
+doors to a storey by `center_z` (reuse the room-walker's `§STOREY-Z` `_assignByZ` convention — same
+building already has the per-storey z-anchors) BEFORE the E2 binding loop. Purely additive; a door that
+already has a real storey is untouched.
+
+### C2 — PREFERENCE: penalise E1 room↔room legs so circulation wins (the "red flag" as a weight)
+Even with C1, Dijkstra picks by raw distance, so a short room→adjoining-room hop can still beat the
+corridor. The simple solution: multiply E1 (room↔room direct-door) edge weight by a penalty factor λ>1
+so a path only cuts room-to-room when there is no circulation alternative — "rooms hang off the
+corridor, they don't chain into each other." λ is TUNED FROM MEASUREMENT, not chosen: sweep λ on Clinic
+until the 12-door thread collapses to a corridor-dominant route, then CONFIRM Duplex's 26 regression
+pairs are unchanged (Duplex rooms are legitimately door-connected with no corridor — λ must not break
+those). Keep E1 weight byte-identical when no CIRC alternative exists (only penalise when the endpoints
+are ALSO E2-reachable), so no building that genuinely needs room-to-room is harmed. This preserves the
+DONE-section's Duplex-regression invariant by construction.
+
+### POC GATE (calculation-only, before touching the engine — this file's standing law)
+Node script on Clinic + Duplex, building C1's rescued-door set + C2's penalised weights, logging:
+```
+§POCPATH-C Clinic unknown_doors_rescued=<n> corridor_reachable_pairs=<pct> (was <pct>)
+§POCPATH-C Clinic sample R1->R? hops_before=[room,door,room,door,...] hops_after=[room,doorwp,CIRC,doorwp,room] doors_before=<n> doors_after=<n>
+§POCPATH-C Duplex regression_pairs=26 mismatches=<n>   # MUST be 0 at the chosen λ
+§POCPATH-C λ_sweep λ=1.0->threaded  λ=<chosen>->corridor-dominant
+```
+Acceptance: the Clinic sample route changes from room-threading to corridor-dominant (fewer interior
+door hops, a CIRC hop appears) AND Duplex mismatches=0. If C1 alone already flips the sample (corridor
+now shorter), C2 may be unnecessary — measure C1-only first, add C2 only if the thread survives. STOP
+and report if Duplex regresses at every λ that fixes Clinic (means the penalty model is wrong, not the λ).
