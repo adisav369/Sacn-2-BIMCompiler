@@ -2212,3 +2212,118 @@ cancels it → back to single-pass. Never fires mid-playback (ticks <300ms apart
 Witness `§TM_GI_HOLD converge start` / `converged frames=24`. Dials: `MAX`(24 frames), 300ms delay.
 Built + syntax-clean + served on localhost; live-eyeball of the sharpen pending. See also memory
 `project_time_machine.md`.
+
+## IMPLEMENTATION SPEC (2026-07-17, continued) — Time Machine Movie Export
+
+Grounds the §NEXT SESSION SPEC above (2026-07-17, "hold each frame, apply the Alt-S effects, snap")
+in the actual current code, re-read this session function-by-function rather than re-guessing. User
+confirmed the two open decisions from that spec: **encoding = proxy-canvas + `MediaRecorder`, reusing
+Cinema Orbit's exact capture pattern** (not a new WebCodecs muxer, not a frame-zip); **UI slot =
+replace `#tm-share`** with "Export Movie" now, not deferred.
+
+### Correction to the earlier framing (found by reading the code, not assumed)
+The previous session record above states "any batch/offline/on-demand render path (incl. the
+movie-export spec) must use single-pass, not fight accumulate" — that constraint is about
+`renderAtTime`'s own lightweight `_giN8aoPass` (PR #836/#837), which rides the desktop render gate's
+wake-one-frame-then-park loop (`main.js §S286`) and genuinely cannot accumulate there. **It does NOT
+apply to this feature**, because the plan below reuses `A.startStillRefine()` — Alt+S's own AO fold
+(`effects.js` `_startStillAOPhase`, `STILL_AO_FRAMES=24`, `accumulate:true`) drives its **own
+self-contained `requestAnimationFrame` loop** (`stepAO()`, `effects.js:1422-1438`), independent of the
+main render-gate's park behavior — it already accumulates correctly today for a single manual Alt+S
+press, with no ghosting bug to inherit. Movie export gets the FULL 24-frame converged AO per frame,
+not the lighter single-pass playback AO. `A.startStillRefine()` itself also already disables TM's
+`_giN8aoPass` composer on entry (`§GI_EXCLUSION`, "one at a time") — no conflict to resolve, existing
+mutual-exclusion code handles the handoff.
+
+### Pipeline (one capture per `_cineStoryboard` beat — confirmed decision, not re-litigated)
+For each `scene` in `_cineStoryboard` (`time_machine.js:123`, populated by `computeStoryboard()`
+`time_machine.js:308`, shape `{center, guids, startIdx, endIdx, angle, count, type, firstTs, chain}`):
+1. **Position the camera directly at the scene's steady-state pose** — reuse the EXACT distance
+   formula the live Director's scene-transition code already computes (`time_machine.js:969-974`:
+   `nDist = type==='panoramic' ? _PANORAMIC_DIST : type==='hero' ? _HERO_DIST : _FLYTHROUGH_DIST`,
+   position `= center + cos(angle)*nDist` horizontally, `center.y + nDist*0.5` vertically, look-at
+   `= center`). **Do NOT drive the full tick-based Director state machine** (`_cineBeat`
+   opening/transit/closeup, easing, `performance.now()`-timed arcs) for export — that machinery
+   exists to make CONTINUOUS real-time camera motion look smooth; a discrete per-beat still has no
+   motion to smooth, so a direct jump-cut placement is correct here, not a shortcut. Optionally reuse
+   `peelObstructions(camPos, tgtPos)` (`time_machine.js:904-928`, desktop-only) per beat for a
+   cleaner shot — same proven line-of-sight declutter Director playback already relies on.
+2. Set construction-reveal state: `renderAtTime(scene.endTs || scene.firstTs)` (existing, reuse as-is
+   — `time_machine.js:615`).
+3. `A.controls.update()`, then `A.startStillRefine()` and **await genuine completion**, not a fixed
+   delay. This requires one small additive change (see §Completion callback below) — do not poll
+   `console.log` output programmatically to detect "done."
+4. Capture the frame: `A.renderer.domElement.toBlob(cb, 'image/png')` (canvas element, not
+   `toDataURL` — avoids the ~33% base64 bloat before it ever reaches storage). Store the `Blob`
+   directly in IndexedDB (IDB supports Blob values natively — no serialization needed).
+5. `A.stopStillRefine()` (full teardown, not soft) before moving to the next beat — each capture must
+   start from a clean, un-staged state so `_applyPhotoStaging()`/triplanar/staging re-apply
+   consistently; not sharing state across beats avoids a whole class of stale-flag bugs this file has
+   already hit repeatedly (`§STAGE1_ORBIT_PERSIST`, `§GI_HANDOFF_GHOST_FIX` above).
+6. Advance to the next beat, repeat. Progress = `(beatIndex+1)/_cineStoryboard.length`.
+7. After all beats: draw each captured Blob onto a proxy `<canvas>` (offscreen, same dimensions as
+   `A.renderer.domElement`), reusing Cinema Orbit's exact `captureStream(fps)` + `MediaRecorder`
+   pattern (`effects.js:1829-1849`) pointed at the PROXY instead of the live canvas. `captureStream(
+   fps)` with an explicit fps argument emits frames on that timer regardless of redraws (the same
+   mechanism that makes Cinema Orbit's own recording smooth), so "holding" a still for its beat's
+   duration is just leaving the proxy canvas undrawn between beats — no new muxer/encoder code, no
+   new dependency.
+
+### Completion callback (new, small, additive — the one real code change to existing files)
+`_finishStillRefine(idx)` (`effects.js:1264`) currently fires-and-forgets into
+`A.startStillSSGIPhase().then(...)` / `_startStillAOPhase()` with no way for a caller to know when
+the WHOLE fold (TAA + AO or SSGI) is actually done — only console logs (`§PHOTO_AO done`, `§PHOTO_SSGI
+done`) mark it today, fine for a human watching Alt+S, not fine for a programmatic batch loop. Add an
+optional `onComplete` callback threaded through:
+- `A.startStillRefine(onComplete)` → stash it, pass to `_finishStillRefine(idx, onComplete)` when the
+  16-sample TAA accumulation finishes.
+- `_startStillAOPhase(onComplete)`: call `onComplete()` at the existing `f >= STILL_AO_FRAMES` done
+  branch (`effects.js:1432-1436`), after the existing log line.
+- The SSGI branch mirrors `effects_gi_poc.js`'s own existing latch pattern (`_ssgiKickConverge(frames,
+  onDone)`, `effects_gi_poc.js:201-214`) — `A.startStillSSGIPhase` already resolves a promise; chain
+  `onComplete` off that same `.then()` in `_finishStillRefine`. `A._stillSSGIEnabled` defaults `false`
+  today (user's own opt-out, "not accurate or crisp") — so in practice this always resolves through
+  the AO branch unless a later session re-enables SSGI; the wiring stays correct either way.
+- No `onComplete` passed (existing Alt+S keypress call site) = `undefined`, called nowhere = zero
+  behavior change for the existing manual path.
+
+### Export must not be cancellable by incidental UI touch (found by reading the code, not assumed)
+`main.js:731-737` (`_photoCycleEngaged`/`_cancelStillRefine`/`_cancelStillRefineSoft`) wires
+`stopStillRefine()`/`softStopStillRefine()` to real pointerdown/wheel/controls-start signals — correct
+for a human manually toggling Alt+S, but this export loop calls `startStillRefine()` programmatically,
+unattended, for up to an hour; a stray mouse touch on the canvas or TM panel while checking progress
+must NOT tear down the frame mid-capture. Gate both cancel functions behind a new
+`!APP._tmExportActive` check. Export gets its OWN explicit stop control (a "Cancel Export" button in
+the TM panel), not the ambient touch-to-cancel behavior Alt+S relies on interactively.
+
+### Frame storage — new dedicated IndexedDB database, not the existing JSON cache
+`time_machine.js`'s `cachePut`/`cacheGet` (`time_machine.js:3571-3604`) is JSON-only, sized for
+100-500KB payloads (`§CACHE_PUT` comment says so explicitly) — wrong tool for potentially hundreds of
+PNG stills. Follow this codebase's own established pattern for purpose-specific IDB stores instead
+(`bom_extract.js` `BOM_IDB_STORE`, `import.js` `IMPORT_DB_NAME`, `doc_canvas.js` `DESIGN_IDB_NAME`,
+`issues.js` `bim_ootb_issues` — each feature owns its own small database, not a shared blob bucket):
+a new `bim_ootb_tm_export` database, one object store keyed by `beatIndex`, values = raw `Blob`.
+Clear it (or drop the whole DB) once the video is stitched and downloaded — frames are a transient
+intermediate, not something to keep around across sessions the way `cachePut('movie', ...)` is.
+
+### UI slot
+Replace `#tm-share` (`time_machine.js:1900` button markup, `time_machine.js:2048-2059` listener) with
+"Export Movie" — confirmed, nothing else in the codebase keys off the `tm-share` id (grepped this
+session, zero other references). Progress readout reuses the existing `#tm-status` text element
+(`time_machine.js:1912`, already the general-purpose status line) — `frame N/M`, no new panel chrome
+needed for v1.
+
+### Witness / log tags to add
+`§TM_EXPORT start beats=<n>`, `§TM_EXPORT frame idx=<i>/<n> elapsedMs=<ms>` per beat,
+`§TM_EXPORT_CANCEL idx=<i>` if stopped early, `§TM_EXPORT done frames=<n> totalMs=<ms>
+videoBytes=<n>` on final stitch — matching this file's existing `§`-tag convention so a real run is
+checkable from console output, not eyeballed.
+
+### Explicitly deferred, not forgotten (unchanged from the original spec's scope discipline)
+- Per-output-frame-gets-its-own-render vs one-capture-held-across-many-output-frames: RESOLVED above
+  (one capture per storyboard beat, discrete/stop-motion, matches construction-4D-timelapse industry
+  convention) — not re-open.
+- A dedicated "Cancel Export" UI control is IN SCOPE for v1 (required by the no-incidental-cancel
+  fix above); a resumable/paused export, or exporting a sub-range of the timeline instead of the
+  whole storyboard, is NOT — first version exports start-to-end, run-to-completion or cancel-and-
+  discard.
