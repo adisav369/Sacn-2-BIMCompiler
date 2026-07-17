@@ -32,6 +32,18 @@ MAX_AREA_ABS = 150.0  # m^2 — SUSPECT_LARGE flag threshold, no longer a drop t
 MAX_AREA_FRAC = 0.92  # still a hard drop — self-scaling (% of THIS building's own storey plan),
                        # catches a genuinely undivided/uncompiled floor regardless of building size
 SEAL = 2            # dilate walls this many cells (×RES) to close hairline corner/door gaps
+# §RASTER-EPS (ROOM_WALKER_PHASE_INVARIANCE.md S1/S2, 2026-07-17 — measured, not assumed): wall
+# edges routinely sit EXACTLY on a RES cell boundary relative to the data-derived grid origin
+# (xs0 = min - 2·RES keeps CAD-grid-nice offsets RES-aligned), so floor((x-xs0)/RES) is a knife
+# edge: translating the SAME geometry by a constant Δ perturbs (x-xs0) by ~1 ulp and flips those
+# cells — measured on Terminal_norooms: 8/14 constant translations changed the compile (rooms
+# 50-54 vs baseline 51; Python identical, 51→52 at Δ=(0.1,0.1)). Fix: treat a coordinate within
+# RASTER_EPS cell-fractions below a boundary as ON the boundary — floor(t + RASTER_EPS) for cell
+# indices, ceil(t - RASTER_EPS) for grid extents. RASTER_EPS is derived from the mechanism, not
+# fitted: FP error of (x-xs0)/RES is ≤ ~2 ulp of |x|/RES ≈ 5e-9 cells at |x|=1e5 m; 1e-6 cells
+# gives >100x headroom yet equals 0.2 µm of geometry — 5 orders below any real coordinate.
+# Post-fix the same sweep is 14/14 EQUAL (§W-FRAME-EQ).
+RASTER_EPS = 1e-6   # cell fractions — boundary snap band for raster quantization
 WALL_LIKE = ("IfcWall%", "IfcDoor%", "IfcCurtainWall%", "IfcColumn%", "IfcWindow%")
 # §STAIR-EXCLUDE: a stairwell is a wall-enclosed pocket, so the flood-fill flags it as a "room".
 # It is circulation, NOT a room. Reject any compiled pocket that a stair footprint substantially
@@ -320,8 +332,9 @@ def _stair_overlap_frac(rx0, ry0, rx1, ry1, stairs):
 
 def _rasterize(walls, nx, ny, xs0, ys0):
     """Flat bytearray raster (k = i*ny + j — identical indexing to the JS port's Uint8Array)."""
-    def ix(x): return min(nx - 1, max(0, int((x - xs0) / RES)))
-    def iy(y): return min(ny - 1, max(0, int((y - ys0) / RES)))
+    # §RASTER-EPS: floor(t + eps) — boundary-exact edges quantize identically in any frame
+    def ix(x): return min(nx - 1, max(0, int(math.floor((x - xs0) / RES + RASTER_EPS))))
+    def iy(y): return min(ny - 1, max(0, int(math.floor((y - ys0) / RES + RASTER_EPS))))
     raw = bytearray(nx * ny)
     for cx, cy, cz, bx, by_, bz in walls:
         i0, i1 = ix(cx - bx / 2), ix(cx + bx / 2)
@@ -544,8 +557,9 @@ def flood_rooms(walls, stairs=None, doors=None, door_w_med=0.0):
     ys0 = min(w[1] - w[4] / 2 for w in walls); ys1 = max(w[1] + w[4] / 2 for w in walls)
     pad = RES * 2
     xs0 -= pad; ys0 -= pad; xs1 += pad; ys1 += pad
-    nx = max(4, int(math.ceil((xs1 - xs0) / RES)))
-    ny = max(4, int(math.ceil((ys1 - ys0) / RES)))
+    # §RASTER-EPS: ceil(t - eps) — an exact-multiple span gets the same cell count in any frame
+    nx = max(4, int(math.ceil((xs1 - xs0) / RES - RASTER_EPS)))
+    ny = max(4, int(math.ceil((ys1 - ys0) / RES - RASTER_EPS)))
     raw = _rasterize(walls, nx, ny, xs0, ys0)
     # Morphological close: dilate walls SEAL cells to seal hairline corner/door-jamb gaps so the
     # exterior flood can't leak into a room through a 1–2 cell crack (it still leaves real ~1m
@@ -606,7 +620,12 @@ def flood_rooms(walls, stairs=None, doors=None, door_w_med=0.0):
             door_rescued = False
             has_door = _door_adjacent(wx0, wy0, wx1, wy1, doors)
             if area < MIN_AREA:
-                dims_ok = (wx1 - wx0) >= NOISE_FLOOR_DIM and (wy1 - wy0) >= NOISE_FLOOR_DIM
+                # §RASTER-EPS: the noise-floor test is a CELL-COUNT rule (3 cells) — test it in
+                # integer cells, not in metres reconstructed from xs0+i*RES (whose FP dirt made a
+                # 3-cell pocket flip at exact equality with NOISE_FLOOR_DIM=3*RES; same integer
+                # convention _decompose_region already uses via min_cells).
+                min_cells = int(round(NOISE_FLOOR_DIM / RES))
+                dims_ok = (mxi - mni + 1) >= min_cells and (mxj - mnj + 1) >= min_cells
                 if not (dims_ok and has_door):
                     continue
                 door_rescued = True
@@ -723,10 +742,11 @@ def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
     xs0 = min(w[0] - w[3] / 2 for w in walls); xs1 = max(w[0] + w[3] / 2 for w in walls)
     ys0 = min(w[1] - w[4] / 2 for w in walls); ys1 = max(w[1] + w[4] / 2 for w in walls)
     pad = RES * 2; xs0 -= pad; ys0 -= pad; xs1 += pad; ys1 += pad
-    nx = max(4, int(math.ceil((xs1 - xs0) / RES))); ny = max(4, int(math.ceil((ys1 - ys0) / RES)))
+    # §RASTER-EPS: same boundary-snap quantization as flood_rooms (translation invariance)
+    nx = max(4, int(math.ceil((xs1 - xs0) / RES - RASTER_EPS))); ny = max(4, int(math.ceil((ys1 - ys0) / RES - RASTER_EPS)))
     raw = _rasterize(walls, nx, ny, xs0, ys0)
-    def ix(x): return min(nx - 1, max(0, int((x - xs0) / RES)))
-    def iy(y): return min(ny - 1, max(0, int((y - ys0) / RES)))
+    def ix(x): return min(nx - 1, max(0, int(math.floor((x - xs0) / RES + RASTER_EPS))))
+    def iy(y): return min(ny - 1, max(0, int(math.floor((y - ys0) / RES + RASTER_EPS))))
     # §DOOR-PARTITION-EXT-EXCLUDE (2026-07-13, real HHS finding: R9's own footprint sampled 93%
     # exterior-reachable): the door-BFS must never claim exterior space as a room. Determine exterior
     # topology on the DILATED (SEAL-sealed) wall footprint — same band flood_rooms uses — so a
@@ -793,7 +813,9 @@ def partition_by_doors(walls, doors, stairs, door_w_med=0.0):
                 mni = min(mni, i); mxi = max(mxi, i); mnj = min(mnj, j); mxj = max(mxj, j)
         wx0 = xs0 + mni * RES; wx1 = xs0 + (mxi + 1) * RES
         wy0 = ys0 + mnj * RES; wy1 = ys0 + (mxj + 1) * RES
-        if (wx1 - wx0) < NOISE_FLOOR_DIM or (wy1 - wy0) < NOISE_FLOOR_DIM: continue
+        # §RASTER-EPS: integer-cell noise-floor test (see flood_rooms) — no FP knife edge
+        min_cells = int(round(NOISE_FLOOR_DIM / RES))
+        if (mxi - mni + 1) < min_cells or (mxj - mnj + 1) < min_cells: continue
         if area > plan_area * MAX_AREA_FRAC: continue   # §SUSPECT-LARGE: MAX_AREA_ABS flags below, never drops
         if _stair_overlap_frac(wx0, wy0, wx1, wy1, stairs) >= STAIR_OVERLAP_REJECT: continue
         # §ROOM-FORM + §RECT-HONESTY + §MULTI-RECT (ROOM_INJECTION_HYBRID.md §7/§8). No dilation on
@@ -1143,6 +1165,30 @@ def main():
     all_walls_raw_list = all_walls_raw(c)
     all_doors_raw_list = all_doors_raw(c)
     all_stairs_z_list = all_stairs_z(c)   # §STAIRWELL-STACK
+    # §LOCAL-FRAME (ROOM_WALKER_PHASE_INVARIANCE.md S2, 2026-07-17): rebase every x/y the compile
+    # touches to a building-local origin (the raster wall set's own min corner — pure EXTRACT) and
+    # quantize to QUANT. Under a constant frame translation Δ, (x+Δ)-(min+Δ) differs from (x-min)
+    # by only FP rounding (measured ≤ ~1e-10 m at |Δ|=1e6), so after 1µm quantization every number
+    # entering flood/partition/merge/reject is BIT-IDENTICAL in any frame — the compile provably
+    # cannot depend on the frame. Measured before this fix: 8/14 constant translations changed the
+    # room set (50-54 vs 51) via knife-edge comparisons on absolute coords (e.g. a 3-cell pocket's
+    # (wx1-wx0) >= NOISE_FLOOR_DIM at exact equality — §DOOR-RESCUE flips, door_rescued 7→8 at
+    # Δ=(0.1,0.1)). After: 14/14 EQUAL (§W-FRAME-EQ). Output rooms are un-rebased on emit, so
+    # written coords stay in the DB's own frame. z is untouched (no raster on z; anchors translate
+    # with the data). QUANT=1e-6 m: >=4 orders above worst FP jitter, 3 orders below data (mm).
+    QUANT = 1e-6
+    def _q(v): return math.floor(v / QUANT + 0.5) * QUANT
+    _rw = [w for lst in by.values() for w in lst]
+    org_x = min(w[0] - w[3] / 2 for w in _rw) if _rw else 0.0
+    org_y = min(w[1] - w[4] / 2 for w in _rw) if _rw else 0.0
+    def _rb6(t): return (_q(t[0] - org_x), _q(t[1] - org_y), t[2], _q(t[3]), _q(t[4]), t[5])
+    def _rb4(t): return (_q(t[0] - org_x), _q(t[1] - org_y), _q(t[2]), _q(t[3]))
+    by = {st: [_rb6(w) for w in lst] for st, lst in by.items()}
+    all_stairs = [_rb4(s) for s in all_stairs]
+    doors_by = {st: [_rb4(d) for d in lst] for st, lst in doors_by.items()}
+    all_walls_raw_list = [_rb6(w) for w in all_walls_raw_list]
+    all_doors_raw_list = [(_q(t[0] - org_x), _q(t[1] - org_y), t[2]) for t in all_doors_raw_list]
+    all_stairs_z_list = [(_q(t[0] - org_x), _q(t[1] - org_y), t[2], _q(t[3]), _q(t[4])) for t in all_stairs_z_list]
     total = 0; door_rescued_total = 0; door_partition_total = 0; allrooms = []; st_z = {}
     merged_total = 0; rejected_total = 0
     for st in sorted(by):
@@ -1168,6 +1214,12 @@ def main():
         rooms = _reject_rooms(rooms, all_walls_raw_list)
         rooms = _reject_stairwell(rooms, all_stairs_z_list)   # §STAIRWELL-STACK, after R-REJECT
         rejected_n = pre_reject_n - len(rooms)
+        # §LOCAL-FRAME: un-rebase on emit — everything after this point (report, no-overlap guard,
+        # write + element containment against absolute DB coords) sees the DB's own frame again.
+        for r in rooms:
+            r["cx"] += org_x; r["cy"] += org_y
+            for rc in r["rects"]:
+                rc["cx"] += org_x; rc["cy"] += org_y
         merged_total += merged_n; rejected_total += rejected_n
         if merged_n or rejected_n:
             print(f"    R-MERGE merged {merged_n} pocket(s) → {pre_reject_n} rooms; "
