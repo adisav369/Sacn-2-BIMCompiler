@@ -360,9 +360,23 @@ their discipline colour, room by room. This is the corrected placement too (2026
 version of this pipeline had a containment bug where roughly a quarter of placements landed outside the
 building's own walls — fixed (mesh-recovered true-midpoint host binding) and independently verified 5
 separate ways (containment count, real-oracle walk-back match, measured-pattern conformance, wall-clearance
-margin, mirror-symmetry residual on the Duplex's own A/B twin layout). The fixture mesh itself is still a
-box stand-in sized to each class's own measured dimensions, not a finished fixture model — a deliberate,
-honest choice: guessing at a fixture's real shape is exactly what this project's non-invent rule forbids.
+margin, mirror-symmetry residual on the Duplex's own A/B twin layout).
+
+**How real is the fixture mesh, up close?** It depends on whether the rule-set was mined from *this*
+building. Duplex is the building `duplex_rules.db`'s residential standard was mined from, so its own
+walked fixtures resolve to their own real extracted device mesh — a genuine ceiling fan, motor housing and
+all, not a box:
+
+![Close-up of a Duplex-walked ceiling fan — a real rule-mined LOD400 device mesh (motor housing, blades, mount stem), not a box stand-in](img/modeller/duplex-fixture-lod400-closeup.png)
+
+SampleCastle walks the *same* residential rule-set (it's a different building — see the table below), so
+it has no catalog match for its own fixture classes and falls back honestly to a measured box, sized from
+that class's real dimensions but not a finished model:
+
+![Close-up of a SampleCastle-walked fixture — an honest measured-box fallback (no catalog mesh match for this building's own classes) placed against its host wall](img/modeller/samplecastle-fixture-honestbox-closeup.png)
+
+Guessing at a fixture's real shape when no mesh is mined is exactly what this project's non-invent rule
+forbids — a plain box, correctly sized and positioned, beats an invented model every time.
 
 **One engine, two standards.** A single walker drives every discipline; the discipline is just a data
 filter. It carries two measured rule-sets and auto-selects by building class:
