@@ -20,6 +20,8 @@
 not push/open a PR unless the user explicitly lifts it for that session. `CLAUDE.md` §⏸ PUSH PAUSE.
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
+- `prompts/RESUME_ERP_POST_TAIL_AND_USERGUIDE.md` — SONNET: finish Cash/Inventory posting oracles
+  (generator built, reuse) + ERPUserGuide navigation + core S&D-flow chapter. Fresh branch off master.
 - `prompts/RESUME_HR_BIM_ASSET.md` §2026-07-06c — A/B/C bugs + E decision.
 - `prompts/RESUME_WORLD_HISTORY_DEDUP_RESTORE.md` §2026-07-06 — G6, Ph3, Pt1 parked.
 - `prompts/PILL_DRAWER_REORGANIZATION.md` — first-touch flicker.
