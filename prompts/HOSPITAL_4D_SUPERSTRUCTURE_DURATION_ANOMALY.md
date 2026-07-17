@@ -14,7 +14,48 @@ Next session: remove `#tm-share` (button markup ~`time_machine.js:1933`, listene
 ~`time_machine.js:2081-2089`) — do not replace it with anything unless told to; just drop it from
 the panel row.
 
+## Item 0 — VERIFY THIS FIRST: element-appearance regression from THIS session's own edits
+Before touching duration/rate logic at all: the user reported, in the SAME session that produced
+this file, that "the appearance of elements are broken in this session" and, testing further,
+"on others also worse schedule hell" (i.e. not Hospital-specific — seen on other buildings too).
+This was raised immediately after item 2's "Superstructure built within an hour" observation, and
+the user explicitly asked whether the two are connected ("So the duration anomaly is addressed") —
+**that connection was never confirmed, only hypothesized.** A live A/B diagnostic (baseline
+`a13bb0d`, pre-session, vs current `a3fc220`, post-revert PR #850) was set up but stopped
+mid-run at the user's request ("just note in the prompts/# for it to verify first, closing") —
+not completed, not ruled in or out.
+
+**Prime suspect, if it turns out to be a real code regression and not just a Hospital data
+quirk:** this session's own edit to the `BatchedMesh` frontier-visibility loop in `renderAtTime`
+(`time_machine.js`, removing the yellow edge-box — see
+`prompts/archive/TM_MOVIE_EXPORT_RETIRED_2026-07-18.md`). The edit looked structurally safe on
+inspection (only removed box-creation statements inside an existing `if (frontier[bg])` block,
+left `setVisibleAt`/`anyVis`/`_bmHasFrontier` untouched) and `node --check` passed, but it was
+never verified LIVE against a real construction-reveal sequence, and it's the most invasive touch
+to core visibility logic made this session. Do not assume it's guilty — confirm with the actual
+A/B test (script scaffolding left at
+`/tmp/claude-1000/-home-red1-bim-compiler/7b94e63d-d49b-4448-bcf1-9dc87c2f742e/scratchpad/
+witness_appearance_regression.js`, not yet run to completion — that scratchpad may not survive to
+a new session; treat it as a starting sketch, not a trusted artifact, and rebuild the comparison
+if it's gone).
+
+**How to verify (do this before anything else in this file):**
+1. Two worktrees, same building, same op-log: one at `a13bb0d` (last commit before this session's
+   PR #849/#850 touched `time_machine.js` at all), one at current `origin/main`.
+2. Drive TM to the identical cursor position on both (Jump-to-start, then an identical short
+   Build-then-Stop burst, or better — set `_cursor` directly to the same absolute timestamp on
+   both if a reliable hook exists).
+3. Count visible vs total guid-bearing meshes AND `BatchedMesh` visible-slot counts on both at
+   that identical cursor. If current shows dramatically MORE visible/placed than baseline at the
+   same cursor, that's the regression, and it directly explains "built within an hour" as a
+   visibility bug, not a duration/rate bug — **fix that first, then re-observe whether item 2's
+   complaint still exists at all before touching SEQUENCE_RULES/LABOR_RATES.**
+4. If baseline and current show IDENTICAL counts at the same cursor, the regression is NOT in
+   `renderAtTime`'s visibility logic, and item 2 below is a real, separate duration-generation
+   question — proceed to item 2 as originally scoped.
+
 ## Item 2 — Hospital: why does Superstructure complete "within an hour"?
+(Only proceed here after Item 0 is resolved — this may turn out to be the same bug.)
 User, live-observing Hospital's Time Machine playback: the Superstructure phase appears to
 complete in about an hour of simulated time — "built within an hour all of a sudden" — which reads
 as wrong for a building this size (Hospital: 63,182 elements, 101×151×43m, irregular multi-wing
