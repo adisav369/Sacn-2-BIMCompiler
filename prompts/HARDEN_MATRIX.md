@@ -93,6 +93,13 @@ DocAction table remains unwalked; the 0-seed classes (BankTransfer/DepositBatch/
 source-parse-only with stored-replay honestly ⛔. Matrix ledger = **41 oracle-equivalent**. Both cards carry
 §-lined `# DONE` appendices.
 
+**✅ B-3 POSTING band DONE 2026-07-17 (W-POST-B3, `prompts/FABLE5_B3_POSTING_ORACLE.md`):** the 0-seed classes'
+POSTING (the last un-oracled accounting surface) is closed — 2 ∅-by-design (no Doc_ in the factory: BankTransfer/
+DepositBatch) + **6 G-seed classes oracled `maxDiff=0c`** against the REAL compiled posters driven in iDempiere's
+own OSGi test harness over a GardenWorld-model seed on a scratch clone (`scripts/generate_post_oracle.sh` →
+`build/erp/oracle/post_b3_fixture.json`; USER RULING 2026-07-17 sanctioned seed-INPUT prep). `derivePostings`
+gained the 6 per-class manifests. Matrix ledger = **49 oracle-equivalent**. Log: `build/erp/poc_post_b3.log`.
+
 ### H-3 Spot-harden the declarative engines
 `ad_evaluator`/`ad_access`/`ad_valrule`/`ad_reference` are 🟡 on parse; oracle-diff a SAMPLE of each against
 `GridField`/`MRole`/`MValRule` outputs — confirm the verdict matches, not just that it parses. The master-data

@@ -33,7 +33,7 @@ the pointer that makes this the default.
 | 5 | Room habitability + Viewer self-heal | 9 | HHS 14→105 rooms, ships via SQL patch not binary, merged (PR #732) | — |
 | 6 | Room Lens volume-box render | 8 | Box-area exact match to ground truth (diff=0.000m²), merged (PR #733) | `_roomSelect()` sibling function still not room_guid-aware |
 | 7 | Terminal coordinate-frame fix | 9 | Root-caused to 2 cited pipeline bugs, <6mm accuracy | PR #41 open, unmerged (branch-sync conflict, unrelated) |
-| 8 | Room-type classifier | 5 | Real Gaussian fit, honest confidence, self-consistency miss disclosed | Only 2 buildings (Duplex+SampleHouse) have ground truth |
+| 8 | Room-type classifier | 6 | Real Gaussian fit + fixture-evidence signal (2026-07-13, `classifyRoomWithFixtures`), 18/18 Duplex ground-truth forward-replay match, symbiotic with size (evidence must agree with physical size, not override it) | Only 2 buildings (Duplex+SampleHouse) have ground truth; fixture signal can't recover a room that was never compiled (Terminal's real toilets exist but sit outside every compiled room) |
 | 9 | Door-access signal | 4 | 3 genuine real-data wins (Kitchen 0-door correction ×2, Entrance Hall false-match refused) | Net regression if defaulted on — correctly left off, not finished |
 | 10 | Primary/supplementary tier + BOM wiring | 7 | Duplex units A/B genuinely satisfy `required_spaces`, reused existing Java validator pattern | SampleHouse fails it honestly (sparse data, not a bug) |
 | 11 | OBB clash-gate narrow-phase | 8 | Real 0.0428m false-positive cleared, MANAGER-reran 22/22 independently, 535ns/pair | ~5× per-pair cost vs AABB (small absolute, real regardless) |
@@ -101,6 +101,98 @@ above, now confirmed with real evidence for a specific building — treat every 
 institutional building's row with this same suspicion until the classifier has non-residential
 ground truth to fit against.
 
+**Another concrete instance, same root cause (2026-07-13, user screenshot `RoomOverSize.png`):**
+HHS `≈ Level 2 R9` measures `size_x=2.2m size_y=30.0m` in `spatial_structure` — aspect 13.6:1,
+squarely inside the elongated-slivers range already named above.
+
+**CLOSED, 2026-07-13.** R9 is NOT flood-fill/door-rescue (the paragraph above mischaracterized
+it) — direct query (`/tmp/wt-fable-livewire/modeller/HHS_ARC.db`, 105 IfcSpace rows) shows R9 and
+every other elongated sliver carry `predefined_type='INTERNAL_DOORPART'` — i.e. the
+`§DOOR-PARTITION` nearest-door BFS fallback, which only fires when flood-fill structurally fails
+(HHS already carries the `SPARSE_WALLS` `§PHASE0-HEALTH` flag — dividing walls are genuinely
+missing from this extraction). The 3 old fix directions this doc + `HANDOFF_ghost_xray_rooms.md`
+named (wall-inner-face snap, per-face cuboid fallback, cell-outline polygon) all target the
+flood-fill bbox path, which no longer has this bug (superseded by `§MULTI-RECT` decomposition) —
+they do not apply to `partition_by_doors`'s BFS, which is the actual culprit. **Root cause:**
+absent dividing walls, nearest-door BFS assigns one door whatever long undivided free-floor span
+it reaches first. Measured HHS's own 105 door-partitioned rooms: clean bimodal aspect spread — 98
+climb smoothly 1.00→7.50 (same shape as every other building's genuine rooms), then a hard gap to
+7 outliers at 13.64→37.25 (R9 = smallest of the 7). **Fix shipped:** `§SUSPECT-ELONGATED`
+(`compile_rooms.py`, user go given 2026-07-13) — new suspect reason scoped ONLY to
+`INTERNAL_DOORPART` rooms, threshold `SUSPECT_ELONGATED_ASPECT_MIN=10.57` (measured gap midpoint,
+same derivation discipline as every other constant in the file). Zero geometry change — flagged
+rooms still compile, just lose element-containment trust the same way `SUSPECT_OPEN`/
+`SUSPECT_NO_DOOR` already do. Verified via deterministic synthetic witness (R9-shaped sliver →
+flagged; normal room → not flagged; HHS's own real R7 shape, aspect 6.9, below threshold → not
+flagged) — could not re-verify against a live re-compile of HHS's own DB because the source that
+produced the current 105-row/all-doorpart result has since diverged from `HHS_ARC.db`'s own
+`elements_meta` (re-running `compile_rooms.py` fresh against it now yields flood-fill, 33 rooms,
+0 door-partitioned) — this is the SAME standing `project_db_snapshot_divergence_landmine` already
+documented above, not a new issue. Re-running the fix against whichever snapshot is authoritative
+next time HHS is recompiled is the remaining step, not a code gap.
+
+**DEEPER ROOT CAUSE FOUND SAME DAY (2026-07-13, user pushed back after seeing the live Viewer and
+insisting the purple box was genuinely floating outside the building, not a camera-framing
+illusion — correctly, don't dismiss a direct visual report on a "the numbers look fine" check
+alone).** Sampled every cell in R9's own footprint against the compiler's own exterior-
+reachability test (the same border-seeded flood `flood_rooms` already runs): **93% of R9's
+footprint (1690/1812 sampled cells) is genuinely exterior space**, reachable from outside the
+building. `SUSPECT_ELONGATED` above caught R9 correctly, but only because it happens to also be
+long and skinny — it flags the symptom (unusual shape), not the actual defect. The real bug:
+`partition_by_doors` (unlike `flood_rooms`) never excludes exterior space at all — it floods
+through every non-wall cell with zero interior/exterior distinction, so a gap in the perimeter
+(e.g. an undetected glass/curtain wall — user's hypothesis, plausible given HHS's already-known
+`§WALL-VERT` curtain-wall gaps) lets a door's BFS balloon straight into real outdoor space. **Fix
+shipped, same commit series:** `partition_by_doors` now determines exterior topology on the
+dilated/sealed wall footprint (same SEAL band `flood_rooms` uses) and applies that mask against
+the raw free cells, excluding genuine exterior before a door can ever claim it. Ported to both
+`compile_rooms.py` and `build/room_walker.js` (the JS port the Viewer's needle button runs) —
+W-ROOM-WALKER-PARITY re-run 6/6 byte-identical after the port. Verified directly: a synthetic room
+with a deliberately missing wall segment now claims a bounded ~14.6m² (flagged `OPEN`) instead of
+ballooning into the padded exterior; a fully-enclosed control room is unaffected (~33.6m², same as
+before). **User also raised two follow-on ideas, not yet built, worth a deliberate look next time
+this area is touched:** (1) use floor/ceiling slab footprints as an independent envelope signal
+where walls (especially glazing) go undetected; (2) a per-building "uniformity" check — flag a
+compiled room as suspect if its SIZE (not just aspect ratio) is a wild outlier against this
+building's own room-size distribution, same self-scaling-to-real-data discipline as every other
+threshold in this file, just extended beyond aspect ratio.
+
+**Both investigated with real data same day — one built, two honest negatives:**
+- **Slab-based envelope signal: NOT built, real evidence it would give FALSE CONFIDENCE.** HHS's
+  main Level 2 slab bbox spans `x:[-26.3,31.4] y:[-7.9,36.9]` — R9's entire footprint falls inside
+  it, even though 93% of R9 is real exterior space (above). Slab data here is bbox-only, not real
+  polygon footprints, and a large slab's axis-aligned bbox spans right across the building's own
+  courtyard/notch. A bbox-based slab check would have VALIDATED R9 as legitimate, not caught it —
+  worse than no check. Doing this properly needs real mesh polygons (`component_geometries`), a
+  much heavier lift than this session's scope.
+- **Uniformity/size-outlier: NOT built, real evidence of false-positive risk.** Computed area ÷
+  building's-own-median across all 350 rooms in 6 buildings (SampleCastle/HHS/Clinic/Garage/
+  Hospital/Terminal) — the single largest outlier by ratio is Clinic's `First Floor R48` at 92.9m²,
+  15x that building's own median (6.2m²). Checked directly: Clinic is mostly small exam
+  rooms/closets, and a 93m² room is very plausibly a real waiting hall, not a defect. Unlike the
+  elongation test (clean gap, 0 false positives across every building), real facilities legitimately
+  mix small rooms with a few large halls — a naive ratio threshold would misflag genuine common
+  spaces. Not reliable enough as a standalone trigger without a much more careful multi-signal design.
+- **Overlap check: BUILT** (user's specific request — "rooms are stacked to each other, not
+  overlapping") as a permanent regression guard, `_verify_no_overlap()` in both `compile_rooms.py`
+  and `build/room_walker.js`. Checked 773 real compiled rect rows across all 6 buildings: 0
+  violations — both compile paths already guarantee disjointness by construction (flood-fill =
+  disjoint connected components, door-partition = disjoint BFS ownership). Doesn't surface new
+  defects today, but is a precise, zero-threshold invariant worth locking in against a future
+  R-MERGE/§MULTI-RECT regression, unlike the two fuzzy ideas above.
+- **Also directly verified (user asked "did you miss any potential rooms"):** A/B tested the
+  ext-exclusion fix across all 6 buildings by guid — 0 lost, 0 gained, 0 shrunk >50%, on any
+  building. Confirms (again) that fix currently has zero observable effect on live data — none of
+  today's 6 buildings still trigger door-partition — consistent with the earlier finding, not a
+  new gap.
+
+**Do not confuse with (2026-07-13, same screenshot, different bug, already fixed):** the
+screenshot also showed a SECOND, larger, stale wireframe box alongside the correctly-sized purple
+one — that was a pure rendering bug (`viewer/navigate_find.js` `_drawRoomCuboid()` never disposed
+the PREVIOUS selection's highlight mesh before drawing a new one), unrelated to room DATA accuracy.
+Fixed + shipped: bim-ootb PR #768 (merged). The room's stored SIZE (R9's 30m sliver above) is
+untouched by that fix and remains this doc's open gap.
+
 ## Open proposals (named, not yet dispatched — priority is the user's call)
 - **OmniClass Table 13 / Uniclass 2015 SL naming-convention mapping** — `config/room_templates.yaml`
   already has a `canonical_type` stub anticipating this. See `COMPETITIVE_PRIOR_ART_ANALYSIS.md`.
@@ -114,9 +206,39 @@ ground truth to fit against.
   normalized feature instead of raw area) would likely recover a real chunk of HHS/Clinic/Hospital's
   unclassified rooms. Not built — the external-dataset proposal below is one path in, but note
   RoomGraph/SAGC-A68 are apartment-focused too and may not close this specific gap.
-- **Fixture-in-room recognition** — `IfcFurnishingElement` data already extracted (61 rows,
-  confirmed this session) and completely unused by the classifier. Most human-like signal available,
-  zero new extraction needed.
+- ~~**Fixture-in-room recognition**~~ **BUILT 2026-07-13** — `classifyRoomWithFixtures()`, see
+  `COMPILE_ROOMS_TYPE_INFERENCE.md`'s dated update. 18/18 Duplex ground-truth forward-replay match.
 - **Graph-joint-inference (label propagation)** over the now-built room-adjacency graph — bootstraps
   from the same small ground truth via measured co-occurrence statistics, no external dataset
   required. Natural stepping stone toward a real GNN once external data lands.
+
+## Gaps & next-to-investigate (2026-07-13 session close, prioritized)
+
+1. **Terminal's restroom room-compile-coverage gap — NOT YET INVESTIGATED, highest priority next.**
+   4 real `Asian_Toilet` fixtures exist in Terminal's own extraction; all 4 sit outside every
+   currently-compiled room (nearest ~4m off) — that physical restroom area was never captured as a
+   room at all by flood-fill or door-partition. Unlike every other gap this session (which was a
+   classification/labeling problem on top of correctly-compiled geometry), this is a genuine
+   room-COMPILE miss. Next step: pull Terminal's real walls/doors in that specific XY neighborhood
+   (~149.5, -10.5/-11.0 on Aras 01/02) and check why neither compile path enclosed it — missing
+   walls (matching HHS's known pattern) or a rejection (R-REJECT/stair-overlap) firing wrongly.
+2. **Wall/door NAME keyword mining** — `COMPILE_ROOMS_TYPE_INFERENCE.md` §1 signal #1, ranked
+   STRONGEST of 5 candidate signals, real evidence already found (HHS's German wall names: `WC
+   Trennwand 5.0`) — still not built. Natural pairing with the now-built fixture signal (#3, that
+   section) for a combined confidence score.
+3. **Scale-tiered templates (residential vs institutional)** — open since 2026-07-11, reinforced
+   twice more this session (HHS corridor false-negatives, Terminal toilet false-negatives both trace
+   to the same residential-only n=2-5 template set). The single highest-leverage remaining gap in
+   the classifier — most institutional unclassified rooms trace to this one cause.
+4. **Getting today's HHS room-compile fix to actually reach a served building** — the canonical
+   bim-compiler source is fixed and verified (70 rooms, `SUSPECT_ELONGATED` working); the file
+   bim-ootb's Viewer/Modeller actually serve is still the older/different snapshot (the standing
+   `project_db_snapshot_divergence_landmine`). Deliberately NOT pushed to a served copy this
+   session — needs a user deploy-direction decision (OCI re-upload vs modeller ARC-strip re-run),
+   named here so it isn't silently forgotten.
+5. **Slab-based envelope signal** — tested, rejected (bbox-only slab data would have validated R9 as
+   legitimate, not caught it). Would need real mesh polygon data (`component_geometries`) to do
+   properly — a heavier, separate undertaking, not started.
+6. **Uniformity/size-outlier check** — tested, rejected (would misflag legitimate large common rooms
+   like Clinic's 93m² hall). Not built; would need a more careful multi-signal design (e.g. gated to
+   only corroborate an already-suspect room) to be safe, per this session's finding.

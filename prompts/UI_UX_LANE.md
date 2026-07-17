@@ -327,6 +327,22 @@ Target after D (user-locked 2026-06-13, payment flow revised):
   closes, but the pill that SUMMONS the panel (`#pos-pill-payment`) must also TOGGLE it shut when
   already open (tap-again-to-close, the dock convention — same control opens AND closes). `§POS-FLOAT
   toggle=close`. Confirm exactly which "cart icon" the user means while reproducing.
+  - **D-4b RECURRENCE, different bug, FIXED 2026-07-13** (bim-ootb worktree `/tmp/wt-pos-close`, branch
+    `fix/pos-lens-close-leak`, commit 056e980, LOCALHOST ONLY — not pushed, PUSH-PAUSE standing). User
+    report: "when we call up POS shop cart, that shop cart pill does not close when we exited the shop
+    cart mode." NOT the D-4 toggle bug (that shipped 2026-06-13) — a DIFFERENT leak: `pos_lens.js` mounts
+    the cart float panel (`#pos-float-panel`) and the ⋯ dock (`#pos-dock`) directly on `document.body`,
+    OUTSIDE the `#posted-overlay` the shared `_overlay()` helper creates. Only the buried ⋯→Home dock
+    button (`title:"Close POS"`) disposed all three; the overlay's OWN native ✕ (the obvious top-right
+    exit, `idempiere.html` `_overlay()`'s `x`/`close()`) only removed `#posted-overlay` — the cart panel +
+    dock survived, floating over iDempiere.html after "exiting." Fix: `_overlay(title, node, onClose)`
+    gained an optional `onClose` (fires from its internal `close()`, covers ✕ AND the back-gesture);
+    `pos_lens.js` wires its float+dock teardown through it (`_disposePosChrome`), and the dock Home button
+    now just triggers the SAME close path instead of a second copy of the dispose logic. Also added a
+    defensive guard on POS (re)open clearing any stale float/dock first (belt-and-suspenders against the
+    same leak via any other path). New witness `erp/tests/poc_pos_close_leak.js` 9/9 — confirmed 4/9
+    against pre-fix code (git stash), failing exactly the leak assertions. Regression green: `witness_pos_
+    pillbar.js` 15/15, `poc_zoom_across.js` 8/8. KitchenLens checked — no body-level floats, unaffected.
 - **D-5 Ship-later opens the WH Walk in a NEW TAB (demo POC, intended)** — after deliver-later commits +
   persists the op-log, `window.open('../viewer/viewer.html?db=../buildings/warehouse_gardenworld.db',
   '_blank')` IN THE SAME click handler (user gesture → no popup block). User mimics walking to fetch,

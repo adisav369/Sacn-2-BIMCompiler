@@ -670,6 +670,41 @@ merge), exactly `DistributedERP.md §6`'s "dumb async post office." Whoever pick
 port that doctrine, not redesign it — this is a reuse job, not a from-scratch one, even though it's still
 correctly "months" of real integration work, not a same-recipe wire like Tier 2.
 
+### Tier 2b — Spatial Dependency Graph: query/traversal + MEP flow + assembly-cloning gap (2026-07-13)
+A third-party review of the graph-cascade conformity layer (`docs/ModellerKernelFold.md`'s 2026-07-13
+extension) claimed capabilities beyond what's shipped — checked against source before writing anything
+down, not assumed (grepped `~/bim-ootb` directly; see that page's own "Named gaps" note for the short
+public-facing version). Tiered the same way as the rest of this doc, by real cost, not by how the review
+framed them:
+
+- **Graph-query API — Tier 1-shaped (hours, not days).** The relations already exist as SQL tables
+  (`rel_adjacency`/`rel_anchored`/`rel_fills_host`/`rel_spans`), read today only via raw SQL inline at
+  each call site. Wrapping a `graph.query({source, edgeType})`-style traversal is a thin convenience layer
+  over data that already exists — no new derivation, no new schema, no kernel binding to touch. Smaller
+  than any Tier 1 op above.
+- **Multi-hop traversal (zone/downstream queries) — Tier 2-shaped, known-solvable recipe.**
+  `sdg_cascade.js`'s cascade is explicitly ONE HOP, directional (host→fillings only) — "select everything
+  in this grid cell" or "everything downstream of this column" isn't a query you can run today. The
+  Viewer-side experimental `sdg_fold.js` (`SPATIAL_DEPENDENCY_GRAPH.md` §FORWARD, demo-only, never
+  publicly deployed) already proves multi-hop forward-fold works on `anchored-to`/`spans`/`contains` —
+  the real task is decoupling that proven traversal from its fold-and-mutate coupling into a read-only
+  collect, not inventing a new graph-walk from scratch.
+- **MEP flow/connectivity graph (`flows-into`) — Tier 2/3-shaped, size unknown until measured.**
+  Genuinely not started, no derivation exists anywhere. Unlike the edges above (recoverable from
+  `IfcRelFillsElement` / face-touch / measured cadence alone), pipe/duct connectivity typically needs
+  `IfcRelConnectsPorts` port-to-port relations, which this project's extractor doesn't currently mine.
+  First step is the same kind of measurement pass that confirmed `rel_fills_host` was recoverable before
+  Phase 1 was built on it — not yet run. Could be a same-recipe derivation, or a real gap in what the
+  source IFC data even carries; unknown until measured, not estimated.
+- **Assembly clone/duplicate-with-reconnect — Tier 3, depends on the above.** Needs the multi-hop
+  traversal (to even define "the assembly") plus a real re-anchoring engine (place a copy, re-resolve
+  `anchored-to`/`hosted-by` against the new location's own nearby datums/hosts) that doesn't exist in any
+  form. Genuinely months, and only sequenced after the first two items land.
+
+**Sequencing, not a calendar date:** query API first (cheap, immediate inspection/debugging value) →
+decouple `sdg_fold.js`'s traversal for read-only multi-hop queries → run the port-connectivity measurement
+pass before scoping the MEP flow graph → assembly-cloning only once both of those are real.
+
 ### ETA, honestly — not one number
 **Tier 1 (kernel op-count parity on cheap shoulders): days, not weeks** — the measured 20-30 min/op
 pattern from today generalizes directly, this doc already flagged these as zero-binding-work in June.

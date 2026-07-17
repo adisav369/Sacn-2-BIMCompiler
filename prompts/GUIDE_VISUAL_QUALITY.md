@@ -61,3 +61,26 @@ All witness scripts live in `~/bim-ootb/modeller/tests/`. `e2e_harness.js`'s `t.
   `witness_e2e_gridstretch.js`'s own proven X1-X6) rather than debugging app pick/mode logic — that's app-code
   territory, not this guide-only lane. Flagging here in case whoever next touches `bonsai_gridmove.js`/grid-move
   arming wants to chase it; not asserted as a confirmed bug.
+
+## §RETIRED (2026-07-13, MANAGER admin call) — Batch A/B never executed, closing this lane
+Checked the dispatch worktree (`/tmp/wt-viewer-rpr-port`, branch `lane/guide-samplecastle-swap`): **zero
+commits ahead of `origin/main`** — `git log origin/main..lane/guide-samplecastle-swap` is empty, and the
+branch tip is a plain ancestor of `origin/main`. The background agent dispatched 2026-07-08 never started
+Batch A/B at all (not "partially done," never picked up) — 5 days of real engine work (disc-walker fixes,
+room taxonomy, occupant pathfinder, stairwell-stack, path-legal-segments) shipped on `main` in the
+meantime, leaving the worktree hopelessly stale (271k-line diff vs current main, all drift, zero unique
+work). Worktree + branch pruned (nothing lost — confirmed empty first, see [[feedback_worktree_hook]]-style
+verify-before-prune discipline).
+
+**Decision: retire this lane, do not resume from where it left off.** Only `workspace-open.png` (item 0,
+user's own manual capture) and `insert-catalog.png`/`insert-placed.png` (item 1) ever actually landed on
+SampleCastle — everything else in the guide (~26 of ~29 screenshots) is still Duplex or synthetic scratch
+geometry, unchanged from before this spec was written. Reason to retire rather than re-dispatch: this was
+always a visual-richness nice-to-have (Duplex's real per-element geometry is honest, just visually plain),
+not a correctness gap — and re-doing it now means re-planning from scratch anyway (the witness-script
+survey table above is still valid and reusable, but the dispatch/worktree state is not). If picked up again
+later, treat as a fresh dispatch against this doc's still-good §SURVEY/§BATCHES tables, not a "resume."
+**Superseded, narrower thread that DID ship:** the render-material-parity glass fix (2026-07-11,
+`MODELLER_RENDER_MATERIAL_PARITY.md`) plus its guide-image follow-through (2026-07-13, glass now visibly
+see-through in `gizmo.png`/`rotate-yaw.png`/`scale-stretched.png`, Duplex, deployed live) — a real
+correctness fix, unrelated to and not blocked by this lane's retirement.

@@ -2,6 +2,19 @@
 
 # ⚠ DO NOT REMOVE
 
+## ▶ LATEST (2026-07-14): §SE-7c FOUND + FIXED + MERGED — the REAL Generate/Apply hang. User corrected
+the framing mid-session (TM never hangs, only Generate/Apply, "a pure SQL write of schedule") — right
+call, and it led straight to it: `injectGantt()`'s T3 overlay pass ran one
+`UPDATE kernel_ops WHERE output_guid=?` PER ELEMENT (up to 122,667×) against an UNINDEXED column —
+O(n²) full-table-scan, measured **34,000–123,000ms**. One index (`idx_kernel_ops_guid`) → **1,273ms**
+for the same work (25–100x). **PR #791 → main, CI-gated auto-merge.** §SE-7 (TM's own
+`saveVisibility` matrix-clone dedupe, real but only ~13% of block time) and §SE-8 (Editor ⚙ Generate +
+⤒ MS Project export) also shipped this session — **PR #789 → main, MERGED.** Remaining, smaller, not
+this session's scope: ambient per-frame render cost when TM is ALREADY active while Apply fires still
+compounds on top of the now-fixed O(n²) bug (§SE-7's own candidate directions still apply there).
+
+## ▶ PRIOR (2026-07-13): §SE-5 freeze-fix + MSP-polish MERGED (bim-ootb PR #769 → main `e644b1a`, CI green). §SE-6 persistence fix MERGED (bim-ootb PR #770 → main). Neither ✎ Author nor ↗ Editor discards schedule edits anymore; both write back to the shared IndexedDB building cache, witnessed with a REAL close+reopen (not mocked). NEXT UP: fold the authored schedule into ERP `C_Project`, real-Hospital blank-authoring demo, kernel_ops signed-op mirror, resource column/baseline bars/print/export, single-pane WBS+Gantt merge.
+
 ## ★ REVIEW CARD — for the next session (closeout 2026-06-23 → review 2026-06-24)
 The **§SCHEDULE-EDITOR arc is COMPLETE and LIVE** — this session built the MSP-grade Gantt editor end
 to end and shipped its UI entry point + published the User Guide. Nothing is committed-but-unpushed;
@@ -569,6 +582,412 @@ sender→receiver via `applyOp` → assert the receiver CONVERGES to the sender'
 the same critical set; echo-guard drops own ops; unknown op → `{ok:false}`. §SE-SYNC-SMOKE: open the editor
 in TWO headless tabs on the same building → drag a bar in tab-A → tab-B's matching bar/`schedule_start`
 updates live (BroadcastChannel across tabs).
+
+---
+
+## §SE-5 — Freeze fix + MS-Project-grade polish (user direction 2026-07-13)
+User compared the two 4D surfaces (✎ Author wizard vs ↗ Editor tab), picked the **Editor as the surface to
+invest in** (more organized: WBS+deps+CPM+Gantt vs Author's lighter first-draft wizard), reported the
+generate/materialize path "crashes the browser", and asked for (a) a fix so Generate never holds the tab,
+(b) a more MS-Project-like professional design for the Editor. Diagnosed BEFORE this section (this session):
+reproduced via headless Chromium against real building DBs (Duplex/Hospital/LTU_AHouse) — no memory blowup,
+no infinite loop; the real cause is `materializeDefault` (`viewer/schedule_author.js`) running one INSERT/
+DELETE statement per element with NO explicit SQL transaction — sql.js pays per-statement commit overhead
+per call. Measured in-page (`performance.now()` around the real engine call, not a guess):
+`materializeDefault` alone = **4.0s on Hospital (63,415 els)**, **7.2s on LTU_AHouse (122,667 els)**; the
+full button click (incl. `foldCost`+render) = **4.3s / 10.4s** of unbroken main-thread block — long enough
+for Chrome's own "Page Unresponsive" prompt, and exactly what a user would describe as a crash, especially
+if they click Regenerate again mid-freeze (queues a second block on top). Same unwrapped function is called
+by the Editor's own auto-seed-on-blank path (`schedule_editor_ui.js:421-426`), so it inherits the freeze too.
+
+### §SE-5a SPEC — wrap the bulk writes in one transaction (the actual fix)
+**Issue this proves/disproves:** does wrapping `materializeDefault`'s idempotent-rebuild delete loop +
+per-element insert loop in a single `BEGIN`/`COMMIT` eliminate the multi-second main-thread block on a
+real large building, with byte-identical output to the unwrapped version?
+- Engine: `viewer/schedule_author.js` `materializeDefault` — add `db.run('BEGIN TRANSACTION')` right after
+  the idempotent-delete block, `db.run('COMMIT')` right before the `return`. No logic change — same rows,
+  same order, same `§AUTHOR_MATERIALIZE` log line. Standard SQLite bulk-write practice (sql.js pays
+  transaction/journal overhead per implicit statement-commit; batching amortizes it — this is *why* 63k
+  single-row inserts took seconds instead of the tens-of-ms SQLite bulk inserts are known for).
+- Also fixes `scheduleContiguous`'s per-task UPDATE loop (§MI-FLOW "Schedule now") and `foldCost`'s query
+  path stays read-only (no write cost there — leave as is).
+- **Witness (this session, real DBs, `performance.now()` before/after, headless Chromium) — DONE, PASS:**
+  re-ran the exact in-page timing probe used to diagnose this, pre/post the transaction wrap:
+  `materializeDefault` Hospital 63,415 els **4040ms → 467ms** (8.6x); LTU_AHouse 122,667 els
+  **7174ms → 1131ms** (6.3x); full click-equivalent (materialize+foldCost) LTU_AHouse **10.4s → ~1.7s**.
+  Assignment/phase counts UNCHANGED (63,415/6 and 122,667/6 both runs) = no data-correctness regression.
+  Re-running `materializeDefault` a 2nd time (the idempotent-rebuild/"Regenerate" path, which now also
+  runs its delete-loop under the same transaction) showed NO further slowdown (601ms, same order as the
+  1st run) — ruling out unbounded DB-bloat-from-repeated-regenerate as a compounding risk.
+  **Honest correction to the pre-implementation estimate above:** actual post-fix times are ~500ms-1.1s
+  on the two largest local buildings, not "<200ms" — still a decisive fix (crossed from "trips Chrome's
+  Page-Unresponsive prompt" to "sub-2s, no freeze risk"), just not as dramatic as a bare SQLite-transaction
+  napkin estimate suggested; the remaining cost is per-element JS work (`matchRule`'s O(rules) substring
+  scan × elements, plus WASM/JS marshalling), not transaction overhead — a smaller, separate optimization
+  if ever needed, out of scope for this fix.
+- **Also added (this session, not in the original spec, cheap + real UX win):** the Editor's own
+  auto-seed-on-blank-load path (`schedule_editor_ui.js init()`) now paints a "Materializing default
+  schedule… please wait" status BEFORE running the heavy call (a `setTimeout` yield lets the status text
+  render first) — so even the residual ~1-2s on a huge building visibly acknowledges the load instead of
+  looking frozen, and a user can't stack up repeat clicks against an apparently-dead tab.
+- Non-invent: this is the standard, well-known SQLite fix for "many small writes are slow" — not a novel
+  algorithm, not a guess.
+
+### §SE-5b SPEC — MS-Project-style Editor polish (first slice, scoped)
+Full MSP parity is out of scope for one slice (per §SE-B rabbit-hole discipline — polish, not leveling).
+First slice picks the highest-visible-value, lowest-risk affordances, all on data the schema ALREADY
+carries (no invented columns):
+1. **Indent/Outdent** — WBS rows get ⇥/⇤ buttons that reparent a task (`wbs_parent`) up/down one level.
+   New engine verb `reparentTask(db, taskId, newParentId)` (validates: not self, not a cycle in the WBS
+   tree, target exists or null=root) in `schedule_author.js`, wired the same signed-op way as `addTask`/
+   `breakdownByAttribute` (broadcasts `{op:'reparent', taskId, wbsParent}` on the existing §SE-D rail).
+2. **Gantt zoom** — Day/Week/Month scale toggle (changes `pxPerDay`/tick granularity in `renderGantt`;
+   pure UI, no engine change — the existing day-axis math already parameterizes on `stepDays`).
+3. **Today marker** — a vertical line on the Gantt at the current date (if inside the project span);
+   pure UI/CSS, no engine change.
+4. **Milestone diamonds** — a task with `schedule_start === schedule_finish` (0-day duration) renders as
+   a ◆ marker instead of a bar; pure UI branch in `renderGantt`, no engine/schema change (0-day tasks
+   already possible via `moveTask`/manual dates).
+5. **Toolbar/chrome polish** — group existing buttons into a ribbon-style header (View: zoom controls ·
+   Edit: add/indent/outdent/import · Compute: CPM), consistent icon sizing, row striping + sticky
+   WBS/Gantt row alignment (visual only, `schedule_editor.html` CSS + minor DOM restructuring).
+- Out of scope this slice (next, lower priority, no user fact needed): resource histogram/leveling view
+  (§SE-B rabbit-hole — refuse leveling, a READ-ONLY resource column is fine later), baseline-vs-actual
+  comparison bars, print/export, single-pane WBS+Gantt merge (MSP's actual split-view — bigger
+  rearchitecture, flag as the natural NEXT slice once this one is live).
+- Witness: headless Chromium smoke on real SampleHouse — indent/outdent changes `wbs_parent` + WBS
+  re-nests correctly + cycle refused; zoom toggle changes rendered tick count/spacing; today-line present
+  when today falls in span; a 0-day task renders `.g-milestone` not `.g-bar`.
+
+**§SE-5b IMPLEMENTED + WITNESSED (this session).** New engine verb `reparentTask(db, scheduleId, taskId,
+newParentId)` in `schedule_author.js` (self/cycle/unknown-task/unknown-parent guards, DFS ancestor-walk
+cycle check mirroring `wouldCycle`'s style) + `reparent` case added to `schedule_sync.js applyOp` (so
+indent/outdent converges cross-tab like every other edit). UI: `schedule_editor_ui.js` renders ⇤/⇥
+buttons per WBS row (`_findNode`/`_siblingsAndIndex` locate a node + its ordered siblings from the
+already-fetched `wbsTree`), wired to `doIndent`/`doOutdent`; Gantt `renderGantt` gained zoom-aware tick
+density (`_zoom` day/week/month via `ZOOM_MIN_STEP`, `setZoom()`), a today-line (`.g-today-line`, drawn
+when "now" falls inside the rendered span), and milestone-diamond rendering (`.g-milestone` for any
+`start===finish` leaf, in place of a bar). `schedule_editor.html` restructured into a grouped ribbon
+toolbar (Import / Compute / Zoom clusters) + row striping + moved the lone CPM button out of the
+Dependencies pane into the ribbon (was duplicated, now singular).
+- **W-SCHED-REPARENT 11/11** (node, real SampleHouse, whitebox §-log): materialize → indent (reparent
+  onto a real sibling) → wbs_parent updated correctly → outdent back to root → re-nest → cycle attempt
+  (parent onto its own child) REFUSED + tree left unchanged → self-parent refused → unknown task/parent
+  refused → outdent-to-root (null parent) works.
+- **Headless Chromium smoke (real Duplex_extracted.db, this session), 10/10 checks green:** "please wait"
+  status paints before the heavy call resolves; editor loads+seeds with no crash/page-error; total
+  load+seed time <8s; WBS rows + indent/outdent buttons render; a live indent click fires `§SE_REPARENT`
+  and re-renders; all 3 zoom buttons present, clicking one applies `.active` + emits `§SE_ZOOM`; Gantt
+  renders non-empty. Today-line correctly ABSENT for this schedule's span (Jan-Jun 2026, ends before the
+  session's "now") — asserted as the correct negative, not a false claim of presence.
+- **Full Editor-tab end-to-end on the largest local building** (LTU_AHouse, 122,667 elements): open →
+  fetch+parse the 71MB DB → auto-seed the default schedule → WBS/Gantt rendered, **total elapsed 2.0s**,
+  no crash, no page error — down from the original bug's projected 10s+ freeze on this same building.
+- All new/changed files syntax-checked (`node -c`); `sw.js` `CACHE_VERSION` bumped v746→v747 and the 3
+  changed script tags in `schedule_editor.html` version-bumped (author v8→v9, sync v2→v3, editor_ui
+  v6→v7) so a real deployed tab actually picks up the fix instead of serving a stale SW-cached copy.
+- **Work done in `/tmp/wt-schedule-editor-mspro` (branch `fix/schedule-editor-mspro`, off fresh
+  origin/main)** per the shared-tree worktree hook + hygiene rule — `~/bim-ootb` itself untouched.
+  **MERGED same session** (user explicit go-ahead) — bim-ootb PR #769 → main `e644b1a`, CI green
+  (fast-checks + e2e-tests both pass). Worktree pruned after clean push.
+- **Next (open, lower priority, no user fact needed):** resource column (read-only), baseline-vs-actual
+  bars, print/export, the single-pane WBS+Gantt merge (MSP's real split-view — bigger rearchitecture).
+
+## §SE-6 — persist authored schedule edits (user, 2026-07-13: "discarding edits... is no accomplishment")
+**Issue this proves/disproves:** does an authored/edited schedule (phases, dependencies, dates, WBS
+reparenting) survive a REAL tab close + reopen, from EITHER surface?
+- **Root cause (verified by reading kernel_ops.js, not assumed):** `_persistToIdb(db)` — the ONLY
+  existing IDB-persistence path for the building db — fires exclusively from `commitOp()` (a signed
+  kernel_ops row). Schedule-table writes (`materializeDefault`/`assignElement`/`addDependency`/
+  `moveTask`/`reparentTask`/…) never call `commitOp` (kernel_ops mirroring is explicitly deferred, per
+  this file's own §AUTHOR-1 header) — so NEITHER surface persisted anything, including ✎ Author even
+  though it edits `APP.db` directly inside the main viewer tab.
+- **Fix:** one shared `ScheduleAuthor.persistDb(db, url, opts)` (debounced 1.2s, or `{immediate:true}`)
+  in `schedule_author.js` — ONE implementation, not two divergent per-UI copies. Writes `db.export()`
+  back to the exact IndexedDB slot (`bim_ootb_cache`/`dbs`, keyed by the building URL) that
+  `cachedFetch`/`_idbGetDb` already read from, so a reopened tab (Editor OR a fresh viewer load) picks
+  up the edited bytes automatically — no new read-path needed.
+  - Editor (`schedule_editor_ui.js`): hooked into `refreshFold()` + `onComputeCpm()` (the two mutation
+    choke points essentially every edit already funnels through) + the initial auto-seed + P6 import +
+    a `visibilitychange`-triggered immediate flush (safety net alongside the debounce).
+  - Author (`schedule_author_ui.js`): hooked into `render()`'s end (the wizard's own single choke
+    point — generateDraft/reassign/renamePhase/duration-steppers/scheduleNow ALL call render()) + an
+    immediate flush in `applyTo4D()` (a deliberate "commit" action) + the same `visibilitychange` flush.
+- **Second bug FOUND AND FIXED while proving this (not assumed, caught by the first witness run
+  failing):** the ↗ Editor tab never loads `scene.js`, so it has no `APP.openCacheDB()`. The naive
+  fallback — a bare unversioned `indexedDB.open('bim_ootb_cache')` — silently creates a STORE-LESS
+  database if the Editor is the FIRST surface to ever touch that IDB in a fresh profile (worse than
+  the landmine `kernel_ops.js`'s own comment already documents: at least that one just skipped a
+  mismatched version; this one creates a permanently broken v1 db with zero object stores). New
+  `ScheduleAuthor.openBuildingCache()` self-heals: version-opens at 2 with the SAME `onupgradeneeded`
+  schema as scene.js `A.openCacheDB` (`dbs` + `timestamps` stores) — usable from ANY surface, whichever
+  one runs first now creates a schema fully compatible with the other. `_idbGetDb` (the Editor's read
+  path) was routed through the same opener for consistency.
+- **Witness — REAL close+reopen, Playwright `launchPersistentContext` (NOT a mocked IndexedDB) —
+  DONE, PASS:**
+  - **Editor 7/7:** page A seeds Duplex, indents a task (a real edit, not just the pristine default),
+    `§SCHED_PERSIST` fires within the debounce window, page A closes. Page B (fresh page, same
+    profile) opens the SAME url → `§SE_DB_CACHE_HIT` (no re-download) → finds the EXISTING schedule
+    (no `§AUTHOR_MATERIALIZE` re-seed) → the specific indent survives (WBS row renders at the nested
+    depth, not root).
+  - **Author-in-viewer 5/5:** page A opens the viewer, opens ✎ Author, Generate first draft, `§SCHED_
+    PERSIST` fires. Page A closes. Page B — a FRESH viewer load, same url — `§CACHE_HIT` (not a fresh
+    fetch) and `ScheduleAuthor.activeSchedule(APP.db)` immediately finds `SCH_AUTHORED` with 6 tasks
+    (survived the reload it would previously NOT have survived).
+  - **All prior regressions re-run green** on the same build: W-SCHED-REPARENT 11/11, MSP-polish
+    headless smoke 10/10, LTU_AHouse (122,667 elements) end-to-end 1.58s total, no crash.
+- Work done in `/tmp/wt-schedule-persist` (branch `fix/schedule-persist`, off fresh origin/main).
+
+## §SE-7 — Generate/Apply/TM STILL hangs after §SE-5+§SE-6 (user report 2026-07-14; root-caused, not yet fixed)
+**Issue this proves/disproves:** §SE-5 claimed the freeze was fixed (materializeDefault SQL-write
+transaction wrap, merged PR #769) and §SE-6 shipped persistence (PR #770) — both confirmed MERGED on
+`main` (bim-ootb HEAD `3f7386d`, 2026-07-14). User reports the tab still hangs on Generate/Apply and on
+Time Machine itself. Is this a regression, a stale-deploy issue, or a DIFFERENT bug §SE-5 never touched?
+
+**Method (per `feedback_diagnose_in_session_fix_in_other_session`'s companion technique — instrument the
+REAL code path, don't theorize):** headless Playwright against the real localhost server (bim-ootb repo
+root, `python3 -m http.server 8080`), driving the ACTUAL buttons (`toggleTimeMachine()`,
+`#sa-draft`/`#sa-apply` clicks) on the real `LTU_AHouse_extracted.db` (122,667 elements, the largest
+local building). A "heartbeat prober" — a tight loop of trivial `page.evaluate(() => 1)` CDP calls
+running concurrently — measures ACTUAL main-thread block duration: if the renderer's JS thread is busy,
+the evaluate() round-trip queues behind it, so its latency IS the block time (the same mechanism behind
+Chrome's real "Page Unresponsive" prompt). Scripts: `/tmp/claude-.../scratchpad/repro_hang2.js` (this
+session's scratchpad, not repo-committed — reproducible from the description above if needed again).
+
+**Finding — §SE-5's fix is NOT regressed** (materializeDefault alone still ~1s on LTU_AHouse, matching
+the prior claim) **but a SEPARATE, un-fixed hang dominates**, in a DIFFERENT file `§SE-5` never touched:
+- Isolating cold-cache noise first (waited for `§SPLIT_GEO_LOADED` before touching TM/Author, so the
+  379MB geo-db first-load fetch — a real but unrelated one-time cost — doesn't get misattributed):
+  Time Machine toggle-ON alone blocked the main thread for **~29s total** across 6 stalls (max single
+  stall 12.9s) before `_tmOn` actually flipped true. Generate (`#sa-draft`) added another **~10.3s**
+  (2 stalls). Apply (`#sa-apply`, with `_tmOn` true so it chains into `tmRefoldSchedule()`) added
+  **~17s** (2 stalls, the second one 11.8s). **Caveat, stated plainly:** this headless Chromium runs
+  WebGL through **SwiftShader software rendering** (`§RENDERER_CAPS ... SwiftShader Device (Subzero)`)
+  — a real user's GPU-accelerated browser will NOT see these exact absolute numbers, they are inflated.
+  The QUALITATIVE finding — multi-second continuous blocks survive on a 122k-element building, well past
+  Chrome's unresponsive threshold — is not an artifact of that caveat; it reproduced identically in
+  shape (not magnitude) across 3 separate runs.
+- **Root cause, file:line:** `viewer/time_machine.js` `saveVisibility()` (~line 1744) and
+  `restoreVisibility()` (~line 1777) — called from `_finishActivate()` (~3693, every TM activate/toggle)
+  and from `deactivate()` (~3754, every TM close, including the deactivate-half of `refoldSchedule()`'s
+  cycle). `saveVisibility()` does `app.scene.traverse(...)` over the WHOLE Three.js scene graph, and for
+  EVERY `InstancedMesh` loops `for (i=0;i<metas.length;i++) { obj.getMatrixAt(i,tmpM); matrices[i] =
+  tmpM.clone(); }` — one `THREE.Matrix4` read + allocation PER INSTANCE, synchronously, no yielding.
+  `restoreVisibility()` does the mirror-image `setMatrixAt` loop. On a 122,330-element building rendered
+  substantially via InstancedMesh/BatchedMesh, this is O(elements) real allocation+copy work with no
+  chunking — and it fires on EVERY toggle, EVERY Apply (which cycles deactivate→activate), confirmed via
+  `§MOBILE_TM_TOGGLE method=setVisibleAt|setMatrixAt` in the log at exactly the block boundaries.
+  Verified this IS necessary work in general (not a redundant-call bug to just skip): TM hides
+  not-yet-built elements by zeroing their instance matrix (`_zeroMatrix`, line ~810) during playback, so
+  it genuinely needs the real matrix saved somewhere to restore later — this is real, unavoidable-as-
+  currently-designed O(n) cost, not a silly duplicate call.
+- **Why §SE-5 didn't catch this:** that fix's whole scope was `schedule_author.js`'s SQL bulk-write
+  overhead (`materializeDefault`/`scheduleContiguous`) — a DIFFERENT file, DIFFERENT layer (sql.js
+  per-statement commit cost vs. this session's finding, which is pure JS/Three.js scene-graph traversal
+  cost in `time_machine.js`, never instrumented before now). §SE-5a's own write-up even flagged the gap
+  and scoped it out: *"the remaining cost is per-element JS work ... plus WASM/JS marshalling, not
+  transaction overhead — a smaller, separate optimization if ever needed, out of scope for this fix."*
+  That "if ever needed" is now confirmed needed — this session's finding.
+- **NOT YET IMPLEMENTED.** This is real perf-surgery on a shared, stateful subsystem (TM's
+  save/restore pairing is genuinely load-bearing for playback correctness, not a redundant call to
+  delete) — needs its own Spec-First session, not a rushed patch. Candidate directions, none built yet:
+  (a) chunk the traversal/clone loop across `requestAnimationFrame` slices so the MAIN THREAD stays
+  responsive even if total wall-clock work is similar (turns "one 15s freeze" into "many sub-frame
+  slices, no browser Page-Unresponsive prompt, no PERCEIVED hang") — directly answers the user's actual
+  complaint (the tab freezing), independent of raw speed; (b) avoid the defensive per-instance
+  Matrix4 clone by reading base positions from an already-in-memory authoritative source
+  (`element_transforms` table / instance meta) instead of round-tripping through live Three.js objects;
+  (c) extend the existing `§S259_TM_LITE`/`_isLargeBuilding` (>50K elements) principle — which already
+  disables "sparks" for big buildings — to also skip/cheapen the full-fidelity matrix snapshot above
+  that same threshold.
+- **Handoff:** per `feedback_diagnose_in_session_fix_in_other_session` — diagnosed fully, root-caused
+  to exact file:line, proposed fix directions, NOT implemented this session (scope/risk on shared TM
+  state machinery warrants its own dedicated session). Pick up here: implement direction (a) first
+  (lowest risk — doesn't change what gets saved, only WHEN, so playback correctness can't regress),
+  witness on LTU_AHouse with the same heartbeat-prober methodology (script pattern documented above),
+  confirm max single stall drops to sub-1s (below the ~1s where the tab visually reads as "hung" even
+  without hitting Chrome's own dialog threshold).
+- **Fix committed + PR'd** (see §SE-8's PR #789, same commit): removed the ONE confirmed-redundant
+  cost — `saveVisibility()`'s duplicate `THREE.Matrix4` clone (`restoreVisibility()` now reads
+  `renderAtTime()`'s already-built lazy cache instead). Measured effect: total block time on
+  LTU_AHouse 60.9s → 52.8s (~13%). **This was real but NOT the dominant cost** — see §SE-7b below,
+  found later the SAME session after the user corrected the framing.
+
+### §SE-7b — CORRECTED root cause (user correction 2026-07-14, same session): it's Generate+Apply only, TM is fine, and it's the SQL/save path — not scene rendering
+User, after §SE-7's TM-rendering-cost fix was pushed: *"Time Machine has no hang issue ever. It is
+only the 4D generate and during Apply it hangs. Again, it is a pure SQL write of schedule."* This
+was right to push back on — re-tested with TM **never touched at all** (Author wizard only) and found
+the TRUE mechanism, which is neither of the two things §SE-7 chased (not TM's Matrix4 clone, and NOT
+a slow SQL/export call either — both measured genuinely fast):
+
+- **`materializeDefault`** (Generate's actual SQL work): 591ms-3s on LTU_AHouse (122,667 elements),
+  confirmed fast in Node AND in an isolated direct browser call — consistent with §SE-5's fix holding.
+- **`ScheduleAuthor.persistDb`** (`db.export()` + IndexedDB `put()` — the "save"): called DIRECTLY
+  and in isolation, resolves in **543ms** for a 42MB export. Also genuinely fast.
+- **But wired through the real UI (`schedule_author_ui.js`'s `persist()` wrapper, called from
+  `render()`'s end for Generate, and `applyTo4D()` with `{immediate:true}` for Apply), the SAME
+  `persistDb` call took 15,000-20,000+ ms to actually fire** — confirmed by monkey-patching
+  `ScheduleAuthor.persistDb` to log on ENTRY (fires immediately, correctly wired) vs. its own internal
+  `§SCHED_PERSIST` success log (didn't appear for 15-20+ seconds). This held even after a **45-second
+  idle settle** before ever touching Generate — ruling out "still catching up from initial load."
+- **Root cause: `persistDb` schedules its real work via `setTimeout`** (1200ms debounced for Generate,
+  0ms/"immediate" for Apply) — **a low-priority macrotask that must wait its turn behind LTU_AHouse's
+  continuous per-frame rendering cost** (the SAME ambient main-thread saturation §SE-7's idle-baseline
+  test proved exists independent of Time Machine — 8.7s blocked out of 8s idle on this building, 0ms
+  on a 1.1K-element building). The scheduled save isn't slow; it's **starved** — queued behind dozens
+  of seconds of unrelated per-frame work before the JS engine ever gives it a turn. Zero UI feedback
+  during that wait (`applyTo4D` shows "Applied." synchronously, then the ACTUAL save silently pends for
+  up to 20s with no indicator) — exactly what reads as "it hung."
+- **Reconciles §SE-7's finding, doesn't contradict it:** it's the SAME ambient per-frame rendering cost
+  (proportional to building size) — §SE-7 measured it blocking TM's OWN activation; this shows it ALSO
+  starves an unrelated background `setTimeout` (the schedule save), which is what the user actually
+  experiences as Generate/Apply hanging, while TM itself (once a building has settled and the user is
+  just scrubbing/viewing) genuinely doesn't hit this path the same way — explaining why the user sees
+  "TM is fine, only Generate/Apply hang" even though both symptoms trace to the same underlying cause.
+- **NOT YET FIXED.** Two directions, neither built this session:
+  (a) **Cheap, ships now, doesn't fix the delay:** show an explicit "Saving…" acknowledgment when
+  `persist()` is pending and confirm when `§SCHED_PERSIST` resolves, so a 15-20s wait is visibly a
+  save-in-progress, not silence that reads as a freeze — same idiom §SE-5a already used for
+  `materializeDefault`'s "please wait" status. Low risk, but honest: does not make the save faster.
+  (b) **Real fix, bigger scope:** reduce the ambient per-frame main-thread cost for 100K+-element
+  buildings so a scheduled macrotask doesn't have to wait 15-20s for a turn — this is the SAME
+  rendering-cost investigation §SE-7 already opened (candidate directions listed there), now confirmed
+  to matter for more than just TM's own responsiveness.
+- **Which building matters:** this entire mechanism is building-size-proportional (confirmed:
+  LTU_AHouse 122K elements — severe; Duplex 1.1K elements — zero idle blocking in the same test). If
+  the user's real hang is on a smaller/mid building, this diagnosis does NOT apply and the search
+  should restart on THAT building specifically, not assume it's the same cause.
+
+### §SE-7c — THE ACTUAL BUG: `kernel_ops.output_guid` had no index → O(n²) in the T3 overlay pass (FOUND + FIXED + MERGED, 2026-07-14)
+§SE-7b measured `persistDb` (materializeDefault + `db.export()`) as genuinely fast, but the DELAY was
+real (15-20s) and unexplained. Traced it one level further: `applyTo4D()` (when `_tmOn` is true, the
+realistic case — a user authoring a schedule usually has Time Machine open to see it) calls
+`tmRefoldSchedule()`, which `deactivate()`s then `activate()`s TM — and `activate()` → `_activateAsync`
+→ (cache invalidated by the refold itself) → `injectGantt()`, the SAME full recompute §SE-7 already
+profiled as fast in isolation (~1.6s for query+sort+`ScheduleGate.computeSchedule`+the batched INSERT).
+**But that profiling stopped short of the LAST stage** — the T3 overlay pass (`time_machine.js` ~2701,
+`if (_cap) {...}`) that patches the just-computed generic schedule with the REAL authored task dates.
+This is the "smart resolved routine" the user recalled (the `_cap` JSON built from 2 cheap `tasks`/
+`task_elements` queries) — but APPLYING it runs:
+```
+UPDATE kernel_ops SET timestamp=?, parameters=? WHERE op_type='ELEMENT_PLACE' AND output_guid=?
+```
+**once per element** — up to 122,667 times on LTU_AHouse (Author's `materializeDefault` assigns
+100% of elements to a phase, so `_cap` covers everything → every single `ELEMENT_PLACE` op gets
+patched). `kernel_ops` (`CREATE TABLE ... id INTEGER PRIMARY KEY, ..., output_guid TEXT, ...`) had
+**no index on `output_guid`** — so every one of those 122,667 UPDATEs did a full table scan of
+`kernel_ops` itself (also up to 122,667 rows). O(n²): up to ~1.5×10¹⁰ row comparisons.
+- **Measured (real browser, isolated stage timing via `performance.now()` brackets around each of
+  injectGantt's stages, LTU_AHouse, `_cap` covering 122,667/122,667 = 100%):** query+bands 582ms,
+  map+sort 163ms, `ScheduleGate.computeSchedule` 146ms, the batched INSERT 832ms, `auditFloating`
+  126ms, scene-guid-count traverse 14ms — **all fast, summing to ~1.9s** — then the overlay pass:
+  **34,205ms one run, 123,072ms a second run** (highly variable — consistent with O(n²) contending
+  for CPU against everything else running concurrently, not a fixed cost).
+- **Fix:** `db.run('CREATE INDEX IF NOT EXISTS idx_kernel_ops_guid ON kernel_ops(output_guid)')`
+  added right after `injectGantt()`'s own `CREATE TABLE IF NOT EXISTS kernel_ops` (its one entry
+  point — the OTHER `CREATE TABLE kernel_ops` call site, in `_activateAsync`'s cache-HIT fast path,
+  never runs the vulnerable UPDATE loop, so doesn't need its own copy). **Re-measured with the index:
+  the SAME overlay pass, SAME 122,667 rows: 1,273ms.** 25-100x, turning an O(n²) bug into a normal
+  indexed O(n log n) operation.
+- **Correctness (non-invent — an index cannot change query results, only performance, per SQLite
+  semantics; verified anyway):** re-ran with the index in place — `§GANTT_SOURCE captured tasks=6
+  covered=122667 generated=0 total=122667 pct=100`, byte-identical coverage to what the unindexed
+  version produced (just 25-100x faster to get there). `W-AUTHOR-4D-BLANK` 16/16 and
+  `test_schedule_gate.js` PASS unchanged (neither touches this code path, both still green as a
+  broader regression check).
+- **Honest reconciliation with §SE-7/§SE-7b, not a retraction:** this was the DOMINANT, previously-
+  unmeasured cost specifically in the "schedule was just authored/changed, now Time Machine must
+  reflect it" step — exactly the user's own "1. schedule change, 2. regenerate Time Machine" framing.
+  It compounds with (doesn't replace) §SE-7's separate ambient per-frame render-cost finding: re-timed
+  the FULL user flow (TM already ON → author a schedule → Apply) with the index fix in place — the
+  overlay piece itself is now ~1.3s, but the end-to-end Apply-to-refold-complete time was still ~31s
+  in that specific TM-already-rendering scenario, because §SE-7's ambient cost (main thread saturated
+  by continuous per-frame rendering of 122K elements) still delays this (now-fast) work from getting a
+  turn — the SAME mechanism §SE-7b already documented delaying `persistDb`'s `setTimeout`. §SE-7's own
+  candidate fix directions (chunk the render loop, reduce per-frame cost above the 50K threshold)
+  remain the next lever if that residual delay still matters in practice.
+- **Shipped:** worktree `/tmp/wt-kernel-ops-index` (cherry-picked off fresh `origin/main`, per the
+  squash-merge branch-reuse hazard — the original `fix/tm-hang-diagnosis-editor-gen-export` branch was
+  already squash-merged as PR #789 and can't be reused). **bim-ootb PR #791, CI-gated auto-merge
+  enabled** (`gh pr merge --auto --squash`) — `fast-checks` green at time of writing, `e2e-tests`
+  pending; no action needed, lands on green. `sw.js` CACHE_VERSION v750→v751, `time_machine.js`
+  v59→v60.
+
+### §SE-7d — CORRECTION to §SE-7's "ambient render cost": it's NOT Time Machine, it's `streaming.js`'s initial mesh-load queue (user challenge 2026-07-14, same session)
+User, on being told the residual delay was "ambient per-frame rendering cost while TM is active":
+*"But why must it be rendering when it has stopped or not in play? User usually focus on the 4D first
+before playing."* Right challenge — checked `main.js`'s render-loop gate directly rather than assuming,
+and the codebase agrees with the user, not with §SE-7's framing:
+```
+// §S286: ... No TM exception: Time Machine self-renders via its own setTimeout timer →
+// renderAtTime() (markDirty + direct render), so the loop is redundant even for TM.
+var _awake = _needsRender || APP.streaming || APP.walkModeActive || ... ;
+if (!_awake) { _rafId = null; /* §IDLE_GATE park */ return; }
+```
+The main render loop (`animate()`) is EXPLICITLY self-parking and has NO Time-Machine-specific
+exception — a stopped/non-playing TM costs genuinely nothing, exactly as the user expected.
+- **What §SE-7's "idle baseline" test actually measured (mis-attributed):** `APP.streaming` — the
+  ONE-TIME initial mesh-geometry load queue in `streaming.js`, entirely separate from
+  `time_machine.js` — was still `true` during that "idle" window, which is ITSELF one of `_awake`'s
+  conditions, keeping the render loop from ever parking. Re-tested by polling `APP.streaming`/
+  `APP.streamedCount` directly every 5s on LTU_AHouse (headless, same environment): **after 116
+  seconds, only 40,500 of 122,330 elements (33%) had streamed** — genuinely still loading (network +
+  IndexedDB blob fetches, 500-element batches), not stuck, but slow enough on a building this large
+  that it can run for MULTIPLE MINUTES. `SPLIT_GEO_LOADED` (the 379MB geo.db FILE finishing download)
+  — which §SE-7's "settled" tests waited for — is NOT the same thing as streaming completing; the geo
+  DATA existing locally and the STREAMING QUEUE actually converting it into rendered meshes are two
+  different stages, and the second one is much slower for 100K+-element buildings.
+- **Correction, not a new bug:** this is a real, known, expected cost of loading a building this large
+  over the network for the FIRST time in a session (matches `§S192 §DS_QUEUED`'s own
+  "elements=122330" log already being explicit about the scale) — not a defect in Generate/Apply/TM
+  code. If a user acts on Author/Generate soon after opening a 100K+-element building (a very
+  reasonable workflow — "focus on 4D first, before playing"), that ongoing streaming is genuinely
+  still competing for the main thread, independent of anything §SE-7c's index fix or §SE-7's own
+  matrix-clone dedupe touch. **§SE-7's "chunk the render loop" candidate direction was aimed at the
+  wrong file (`time_machine.js`) — if this residual delay ever needs a real fix, the target is
+  `streaming.js`'s batch-fetch/flush pipeline, not Time Machine.** No code change made this session —
+  this is a corrected diagnosis, recorded so a future session doesn't re-chase TM code for it.
+
+## §SE-8 — Editor tab: ⚙ Generate button + ⤒ MS Project (MSPDI) export (user ask 2026-07-14, mid-session)
+User, while §SE-7 was in progress: *"the separate Editor tab, also should have its Generate process
+button? Can u make it export to MSProject format? It already has P6 import."*
+
+- **Generate button:** the Editor (`schedule_editor_ui.js`) only ever auto-seeded the rule-based default
+  schedule ONCE, silently, on first load of a truly blank model (`init()`'s fallback branch) — there was
+  no user-facing way to (re)trigger it. New `doGenerate()` mirrors the ✎ Author wizard's "Generate first
+  draft"/"Regenerate" button exactly: same captured-schedule guard (never overwrites an imported P6/
+  Bonsai/Revit programme — offers a status message instead), same `materializeDefault` call (§SE-5a's
+  idempotent-rebuild transaction wrap already makes it safe to re-run). New `⚙ Generate` ribbon button in
+  `schedule_editor.html`.
+- **MS Project export:** new `⤒ MS Project` button, `exportMSProject()` builds an MSPDI XML file — the
+  write-side counterpart to the EXISTING P6/MSPDI import (`foreign_schedule.js` `parseMSPDI`, merged PR
+  #519). **Non-invent:** the XML schema/units were not assumed from general MSPDI knowledge — read
+  DIRECTLY off our own parser's comments+code (`foreign_schedule.js:165-176`) so export and import agree:
+  OutlineLevel-encoded hierarchy (MSPDI has no parent-id field — hierarchy is walked pre-order from
+  `ScheduleAuthor.wbsTree()` and re-derived from OutlineLevel nesting on read), `Duration` =
+  `PT{hours}H0M0S`, `LinkLag` = integer TENTHS OF A MINUTE, `PredecessorLink/Type` = 0=FF/1=FS/2=SF/3=SS
+  (exact reverse of the importer's own `MSP_TYPE` map), `MinutesPerDay`=480 (8h/day, the importer's own
+  fallback default).
+- **Witness — round-trip through OUR OWN parser (not just "looks like XML"):** node script
+  (`/tmp/claude-.../scratchpad/test_msp_export.js`) materializes a real default schedule on
+  `SampleHouse_extracted.db` (60 elements, 3 phases), adds 2 real `FS` dependencies via
+  `ScheduleAuthor.addDependency`, builds the export XML with the SAME logic now in
+  `schedule_editor_ui.js`, feeds it back through `ForeignSchedule.parseForeign`/`parseMSPDI` — **PASS**:
+  detected format=MSPDI, WBS+activity count matches emitted row count exactly (4=4), relationship count
+  matches (2=2), and a spot-checked leaf's start/finish dates round-trip byte-identical
+  (`2026-01-01`/`2026-01-31` in, same out). XML also validated well-formed via `xml.dom.minidom`.
+- **Witness — real browser, real DOM, real file download** (`/tmp/claude-.../scratchpad/test_editor_ui.js`,
+  Playwright against a worktree-local server on `Duplex_extracted.db`, 1,119 elements): loads → auto-seeds
+  → click `⚙ Generate` → regenerates (6 phases, 1,119 elements, status updates, no error) → click
+  `⤒ MS Project` → a REAL `download` event fires, saved file is well-formed XML with the `Tasks` tag and
+  `schemas.microsoft.com/project` namespace present, named `Duplex_extracted_schedule.xml`.
+- **Implemented, NOT pushed** (PUSH PAUSE standing, 2026-07-11 — localhost/commit-only): worktree
+  `/tmp/wt-tm-hang-fix`, branch `fix/tm-hang-diagnosis-editor-gen-export`, commit `ab06f0d` off fresh
+  `origin/main`. `schedule_editor_ui.js` v8→v9, `sw.js` CACHE_VERSION v749→v750 (bump applied now per
+  deploy convention even though not deploying yet, so it's correct whenever this does ship).
+- **Out of scope, not built:** exporting an ALREADY-imported P6 schedule back to MSPDI is the same code
+  path (works on `tasks`/`task_sequences` regardless of origin) — not separately tested this session,
+  should be a quick follow-up witness before shipping, not a design change.
 
 ---
 

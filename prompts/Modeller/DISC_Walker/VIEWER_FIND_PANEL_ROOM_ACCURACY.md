@@ -580,3 +580,30 @@ old code would have shown the fragmented yellow-silhouette look from the reporte
 A room tap shows the single translucent purple box/wireframe by default (no real-element seam
 artifacts), verified live on a building where the old path previously showed fragmented real
 geometry, § log confirms which highlight mode fired.
+
+## §8 CLOSEOUT — ✅ SHIPPED (recorded 2026-07-17, traceability backfill; code + live-test trail verified)
+Was previously un-closed in this file though the code shipped — this section resolves that gap.
+Verified in `~/bim-ootb/viewer/navigate_find.js` on the current branch:
+- The translucent cuboid is the PRIMARY highlight: `_drawRoomCuboid()` (`navigate_find.js:2041`)
+  is drawn whenever the room resolves, driven by `ROOM_CATEGORY_COLORS` (`:1975`) with the purple
+  fill/wire (`habitable: 0x6a1b9a / 0xd8b4fe`) the spec called for. `_drillSelect` still runs for
+  the storey-dim/x-ray/zoom side effects (`:2548`) but no longer IS the highlight — no fragmented
+  real-element seams by default.
+- The one real live-testing defect found after the initial ship was FIXED and is documented
+  in-code: `§CUBOID-PAINT-ORDER` (`navigate_find.js:2566-2581`, 2026-07-15) — user live report
+  "purple does not shine thru in solid or x-ray mode, only bbox mode"; root cause was
+  `renderer.sortObjects=false` + cuboid added before `_drillSelect`'s overlay meshes, so the cuboid
+  lost the depth race. Fix: call `_drillSelect` FIRST so the cuboid is added last and wins the
+  pixel in every mode. That user-live-testing round IS the live witness the DONE-WHEN asked for.
+- NOT re-captured this session: a fresh screenshot (the §-code trail + the dated user live-test
+  round above stand as the evidence; a new screenshot would only re-confirm the already-fixed state).
+- REMAINING colouring gaps — ✅ ADDRESSED 2026-07-17 (bim-ootb worktree `feat/room-restroom-colour`,
+  commits `9936f02`+amended): the 3-bucket cap and the real/synthetic blindness are both fixed.
+  `ROOM_CATEGORY_COLORS` now carries SIX buckets — habitable (purple), corridor (blue), **restroom
+  (brown)**, **kitchen (amber)**, **bedroom (teal)**, utilities (grey) — driven by deterministic
+  `RH.classifyRestroom/Kitchen/Bedroom(label)` name classifiers (order corridor→restroom→kitchen→
+  bedroom→utilities). Plus **§SYNTHETIC-HONESTY**: compiled `RM_`/`≈` rooms draw fainter (opacity
+  0.06 vs real 0.12) per WalkerDoctrine §14. Witness `common/witness_room_category_colour.js`
+  W-ROOM-CATEGORY-COLOUR on Duplex: names 21/21, 0 cross-match, synthetic-rule 6/6. Detection
+  confirmed corridors were all one uniform blue and restrooms were purple (habitable) before this.
+  Still open: corridor main-vs-minor differentiation (needs a graph-centrality signal — deferred).

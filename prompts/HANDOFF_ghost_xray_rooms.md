@@ -63,6 +63,12 @@ Rooms render but the flood-fill mis-classifies some volumes. **NEW symptom (user
   collapsing to a bbox. Needs a geometry column on `spatial_structure` + a polygon-extrude render path
   (today `_drawRoomShell` is hardwired to `BoxGeometry`).
 
+**Note, 2026-07-13 — these 3 directions target the flood-fill bbox path only.** The elongated-sliver
+symptom later reported against HHS R9 (`ROOM_INTELLIGENCE_SCOREBOARD.md` "Confirmed case in point") is
+NOT this bug — it's `partition_by_doors`'s nearest-door BFS fallback (a different code path, only used
+when flood-fill structurally fails), and was fixed separately via `§SUSPECT-ELONGATED` — see that doc for
+the closure. Don't reach for wall-snap/cuboid-fallback/cell-outline for a door-partition sliver.
+
 ## Probes (leak-safe; ≤1 browser, serviceWorkers:'block')
 - `tests/probe_live_ghost.js` — health-probe the LIVE GH url (OCI _prodBase form); checks
   `§NAV_FIND_VERSION`, `§SHELL_GHOST_BUILT`, page errors. `BLD=Terminal|Clinic|Hospital|LTU_AHouse`.

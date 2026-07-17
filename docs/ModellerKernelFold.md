@@ -3,9 +3,15 @@
 
 
 > **Defensive publication / authorship record.** First published **2026-06-18** by the BIM OOTB project
-> (red1oon). This page is a dated, public, enabling disclosure of the architecture described below so that
-> it stands as prior art. It is the geometry-side companion to the **[Feature Comparison](FeatureComparison.md)**
-> (BIM viewer) and **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** (the WASM event-sourced browser ERP).
+> (red1oon), extended **2026-07-13** with a second, related disclosure. This page is a dated, public,
+> enabling disclosure of the architecture described below so that it stands as prior art. It is the
+> geometry-side companion to the **[Feature Comparison](FeatureComparison.md)** (BIM viewer) and
+> **[Migrate & Compare (ERP)](MigrateComparisonPaper.md)** (the WASM event-sourced browser ERP).
+>
+> Two things are disclosed, dated separately below: (1) geometry as a deterministic fold over a signed
+> operation log, and (2) a typed dependency graph over real IFC relations that gates every edit's cascade
+> against that same log — the combination that lets the Modeller open a *complete, real, production* IFC
+> and safely edit *part* of it.
 
 ## What is disclosed
 
@@ -54,6 +60,25 @@ We **record as prior art**, as of the date above, the **specific combination** n
 The distinguishing intersection — **signed log + geometry-as-fold + unified ERP+BIM substrate + fully
 client-side** — is held by no prior system in the row above.
 
+**A second, independent axis** — added 2026-07-13, same disclosure lineage, full detail in the Extension
+section below — is whether a system can open a *complete, real, production* IFC and safely edit *part* of
+it via a dependency graph recovered from real IFC relations, not a generic parametric-feature DAG:
+
+| Capability | **BIM OOTB (this work)** | Bonsai / IfcOpenShell | FreeCAD |
+|---|:--:|:--:|:--:|
+| Opens a **complete, real, production** IFC and edits it in place | ✅ | ✅ | partial (BIM workbench, IFC import) |
+| Dependency graph **recovered from real IFC relations / measured geometry** (not a generic parametric-feature DAG) | ✅ | ❌ | ❌ |
+| **Delta-based** conformity check (flags only what an edit changed, not pre-existing conditions) | ✅ | ❌ | ❌ |
+| RED (hard) / ORANGE (soft) **gated exception on every edit**, not a silent accept | ✅ | ❌ | ❌ |
+| Cascade runs **within the same signed, replayable operation log** as the fold mechanism above | ✅ | n/a (no signed log) | n/a (in-memory undo, no signed log) |
+
+FreeCAD's own Dependency Graph is a real, related idea — a DAG of document objects so a parametric change
+propagates to its dependents — but it is a *general CAD* feature graph (sketch → pad → boolean, within one
+authored document), not derived from a real building's IFC relations, and it carries no delta-based
+RED/ORANGE gate. Bonsai edits real IFC entities directly via IfcOpenShell inside Blender with no
+graph-cascade or signed provenance at all — closer to a direct-mesh editor with IFC awareness than a
+dependency-aware one.
+
 ## Reference implementation (enabling disclosure)
 
 The mechanism is demonstrated, not merely asserted. The reference reuses the open-source **occt-wasm** kernel
@@ -89,10 +114,58 @@ establishes that the geometry is fully determined by the log row — i.e. geomet
 - The reused kernel is embedded as a **separately-loadable WebAssembly module**, preserving the open-source
   kernel's licence terms while the surrounding application remains independently licensed.
 
+---
+
+## Extension — a graph-cascade conformity layer on the same substrate
+*Published 2026-07-13, same disclosure lineage as above.*
+
+### What is disclosed
+
+Alongside the fold mechanism above, the same client-side substrate carries a second layer: a **typed
+dependency graph recovered from real IFC relations (or derived from measured geometry, never guessed),
+driving a delta-based conformity gate on every committed edit** — so that opening a *complete, real,
+production* IFC building and editing *only the part touched* is provably safe, not merely possible.
+
+On import, the tree already used for the BOM (parent→child `contains`) is extended with typed lateral
+edges: `hosted-by` (an opening's real host wall, recovered from `IfcRelFillsElement`), `abuts` (real
+face-touch adjacency, geometry-derived), `anchored-to` (element-to-datum-plane by measured face cadence,
+no `IfcGrid` required), `spans` (an element's bounding box reaching between two distinct datums). A drag
+on one datum/gridline folds forward through this graph as **one signed operation** (`GEOM_GRID_MOVE`) —
+hosted openings ride their host wall rather than stretch or divorce from it, spans stretch with sizes
+held, `contains` cascades en-bloc.
+
+After the fold, a **delta-based conformity gate** evaluates only what the edit changed — a pre-existing
+condition the building already shipped with is never flagged — against the same graph: **RED** for a
+hard constraint the edit broke (a hosted opening crushed by a shrunk host, a real volumetric clash),
+**ORANGE** for a soft, user-acceptable side effect (an abutting wall that now wants to realign). The gate
+runs live during the drag (a green/orange/red preview before commit) and again on the committed result.
+
+### Reference implementation
+
+`sdg_gate.js` (§GATE-1) evaluates `{red:[...], orange:[...]}` from before/after axis-aligned bounding
+boxes, the recovered relations, and which elements the fold actually moved — pure geometry over measured
+data, with exactly one tunable parameter (a residential clearance figure, itself mined from a real
+building's own MEP separations, not asserted). `bonsai_gridmove.js`'s `§PREDRAG` pipeline runs the same
+evaluator live, before commit. Handlers shipped and witnessed to date: hosted-opening ride, door-crush
+RED, abuts-realign ORANGE, an OBB-SAT narrow-phase clash upgrade, and a UBBL-bylaw-shaped demo case. Full
+build log: `prompts/SPATIAL_DEPENDENCY_GRAPH.md` and the project's `RESUME_MODELLER_CONFORMITY_GATE.md`.
+
+### Named gaps — real extensions the substrate makes possible, not yet built
+
+Stated plainly so the disclosure above isn't read as claiming more than it does: no general graph-query
+API, no multi-hop traversal (the cascade is one hop, directional, wall→door only), no MEP flow/
+connectivity graph (no `flows-into` edge type exists), no assembly clone/duplicate-with-reconnect. Each is
+a plausible extension of the same recovered, non-invented relations — not a different architecture — but
+none are shipped, and none should be read into the claims above. This is a fast-moving build, not a
+finished one; the tiered gap-and-sequencing plan is tracked internally, not restated here each time it
+moves — see `prompts/BONSAI_KERNEL_RESEARCH.md §GAP-TO-COMPETITIVE`.
+
+---
+
 ## Provenance
 
 This disclosure is timestamped by its publication to the project's public documentation site and by the
 project's version-control history. It is intended to establish the date and authorship of the combination
 described, and to serve as prior art against later claims to that combination.
 
-*BIM OOTB — red1oon — first published 2026-06-18.*
+*BIM OOTB — red1oon — first published 2026-06-18, extended 2026-07-13.*

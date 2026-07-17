@@ -281,7 +281,7 @@ WITNESS (node, on the REAL history_tap.js — `build/erp` style whitebox, §-log
 - This supersedes the read-only-tier half of `universal_history`'s PROFILES — verify nothing else depends on them
   before deleting (the `event`/`view`/`op` bucket significance moves into the tap STOP sets).
 
-## ▶ BUG — back-arrow snaps forward instead of stepping back (diagnosed 2026-07-12, NOT YET FIXED)
+## ▶ BUG — back-arrow snaps forward instead of stepping back (diagnosed 2026-07-12, ✅ FIXED 2026-07-13)
 User repro: press the ‹ back arrow once → instead of showing the older view, a NEW dot mints at the tip and
 the scrubber ends up pointing at it (looks like "back produces a dot forward"). Manually clicking a specific
 OLDER dot "works" — but only because that path masks the same bug, see below. Root-caused from a real
@@ -315,14 +315,25 @@ live code before landing the fix.
    `_viewCursor` to an ABSOLUTE idx and the scene already shows the correct restored look, so the same
    tip-snap happens invisibly right after — it only *looks* like dot-click is unaffected.
 
-**Proposed fix (both in `common/history_tap.js`, not yet applied):**
-1. `feedCrumb()` (L105) — add `if (_applyingView) return;` as a first check, alongside DENY_TAG/LIFECYCLE/
+**Fix applied (both in `common/history_tap.js`, bim-ootb branch `fix/history-viewnav-drain-forward-snap` @
+`2d4acb4`, committed locally — NOT pushed, PUSH PAUSE standing):**
+1. `feedCrumb()` (L105) — added `if (_applyingView) return;` as the first check, alongside DENY_TAG/LIFECYCLE/
    NOISE_LABEL, so restore-driven setter logs never enter `all[]` in the first place (symmetric with
    `recordEvent()`'s existing gate).
-2. `DENY_TAG` (L29-38) — add `HIST_VIEWNAV: 1`, closing the one gap in the otherwise-complete `HIST_*`
+2. `DENY_TAG` (L29-38) — added `HIST_VIEWNAV: 1`, closing the one gap in the otherwise-complete `HIST_*`
    control-tag denial (anti-recursion for the sniffer, same intent as the other 5).
-Both are small, additive, non-invasive — no restructuring of the tap/bar contract. Witness after fixing:
-drive a real back-arrow press on a moment that flips a real toggle (xray/section/ghost), confirm NO
-`§HIST_PUSH`/`§HIST_TAP_DOT` follows the `§HIST_VIEWNAV` line, and `_viewCursor` stays at the pressed idx
-(verify by pressing back-arrow twice in a row and reading successive `§HIST_VIEWNAV idx=` values — they must
-decrement, not oscillate back to the tip).
+Both small, additive, non-invasive — no restructuring of the tap/bar contract.
+
+**Witnessed** — `witness_history_viewnav_backarrow.js` (new, same branch/commit), real `#hist-back` DOM click
++ real `A.toggleXray()`, no fabricated results (only the "long-session filler" is synthetic §-lines, padding
+past `feedCrumb`'s unrelated last-3 dedupe window — documented in the script header; without that padding a
+short synthetic session masks the bug the same way an early dot-click can). Ran BEFORE (git-stashed back to
+the unfixed file) and AFTER, same script:
+- **BEFORE (unfixed, `witness_BEFORE.log`):** 1st back-press → correct `§HIST_VIEWNAV idx=4`, but immediately
+  followed by `§HIST_PUSH n=7 idx=6` + `§HIST_TAP_DOT tag=XRAY` (the bug). 2nd back-press → `idx=5`, i.e. it
+  moved to (new tip − 1), not (1st idx − 1) — the exact "can't make backward progress" symptom reported.
+  `RESULT: FAIL`.
+- **AFTER (fixed, `witness_AFTER.log`):** 1st back-press → `idx=4`, no push/tap_dot follows. 2nd back-press →
+  `idx=3` (monotonic, `idx1-1`), no push/tap_dot follows. `RESULT: PASS`.
+Logs: `/tmp/wt-hist-viewnav-fix/witness_{BEFORE,AFTER}.log`. Verified on localhost (`python3 -m http.server
+8955`), not CI, per PUSH PAUSE. Worktree not yet pruned (branch has unpushed commits).

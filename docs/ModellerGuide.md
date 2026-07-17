@@ -249,6 +249,15 @@ restores it.
 
 ## Transform
 
+Every transform below — move, scale, rotate, grid-stretch, delete — commits as one signed operation in
+the same tamper-evident log that drives undo/redo/history-scrub, and a move or stretch is checked against
+the building's own recovered relationships before it settles: a hosted door rides its host wall rather
+than divorcing from it, and a delta-based conformity gate flags only what the edit actually broke (RED)
+or softly disturbed (ORANGE) — never a pre-existing condition the building already shipped with. That
+combination — open a *complete, real, production* IFC and safely edit *part* of it — is what a
+Bonsai/FreeCAD-style direct editor doesn't do. Full dated disclosure:
+**[Event-Sourced Geometry & the Graph-Cascade Conformity Layer](ModellerKernelFold.md)**.
+
 Select an element and tap **Move** to raise the **transform gizmo** — the shared handle for moving,
 scaling and rotating.
 
@@ -341,15 +350,17 @@ it: it places that trade's elements at the **measured cadence** of a real coordi
 runs it can, gates the clashes, and **honestly refuses** when the building has nothing to hang the trade
 on. Nothing is invented — every placement uses a spacing/clearance rule *mined from a real IFC model*.
 
-![Walk · ELEC — 102 electrical fixtures placed across 19/21 real spaces in the Duplex; the building reads as one clean, well-formed shell from outside because every fixture landed correctly INSIDE the envelope](img/modeller/walk-fixtures.png)
+![Walk · ELEC, X-ray reveal — 102 electrical fixtures placed across 19/21 real spaces in the Duplex; structure goes near-transparent glass and every fixture glows in its discipline colour through the shell, on both floors](img/modeller/walk-fixtures.png)
 
-*Why you can't see any fixtures in this shot:* a real electrical outlet or light lives inside a room, not
-poking through an exterior wall — from outside the sealed shell it's naturally occluded, same as it would
-be in a real building. This is the corrected view (2026-07-12): a previous version of this pipeline had a
-containment bug where roughly a quarter of placements landed outside the building's own walls — fixed
-(mesh-recovered true-midpoint host binding) and independently verified 5 separate ways (containment count,
-real-oracle walk-back match, measured-pattern conformance, wall-clearance margin, mirror-symmetry residual
-on the Duplex's own A/B twin layout) before this screenshot was retaken. The fixture mesh itself is still a
+A normal (non-X-ray) view of this same walk is honestly near-empty: a real electrical outlet or light
+lives inside a room, not poking through an exterior wall, so from outside the sealed shell it's naturally
+occluded — same as it would be in a real building. Tap **X-ray** (or press `X`) to see the walk actually
+landed, as captured here: structure fades to near-transparent glass and the fixtures glow through it in
+their discipline colour, room by room. This is the corrected placement too (2026-07-12): a previous
+version of this pipeline had a containment bug where roughly a quarter of placements landed outside the
+building's own walls — fixed (mesh-recovered true-midpoint host binding) and independently verified 5
+separate ways (containment count, real-oracle walk-back match, measured-pattern conformance, wall-clearance
+margin, mirror-symmetry residual on the Duplex's own A/B twin layout). The fixture mesh itself is still a
 box stand-in sized to each class's own measured dimensions, not a finished fixture model — a deliberate,
 honest choice: guessing at a fixture's real shape is exactly what this project's non-invent rule forbids.
 
@@ -449,7 +460,7 @@ After walking a discipline, route its **service trunk** from a real entry.
 A corridor-aware trunk is routed from that entry through the walked fixtures — around walls, through real
 doors, up risers between storeys.
 
-![The Duplex after Route ▶ — a real ELEC trunk is now rendered (0→3,922 segments, verified by framebuffer diff), threaded through the walked fixtures; from this angle the trunk itself is a thin line hugging the interior wall, but the important thing this corrected view proves is that nothing renders outside the building anymore](img/modeller/seedtrunk-trunk.png)
+![The Duplex after Route ▶ — a real ELEC trunk is now rendered (0→3,922 segments, verified by framebuffer diff), threaded through the walked fixtures and recoloured magenta for this shot (its real default is gold, the same family as the ELEC fixture boxes, which read as low-contrast clutter against the wall in a static frame); the important thing this proves is that nothing renders outside the building anymore](img/modeller/seedtrunk-trunk.png)
 
 > **Deeper proof.** The full mining, round-trip, boundary and generalization analysis lives in the resume
 > cards `prompts/RESUME_DX_MEP_RESIDENTIAL_STANDARD.md`, `RESUME_TERMINAL_RULE_MINING.md` and

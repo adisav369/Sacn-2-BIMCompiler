@@ -9,7 +9,7 @@
 
 ---
 
-## ▶ SCOPE (2026-07-12, current)
+## ▶ SCOPE (2026-07-13, current)
 Standing role: overlook admin across concurrent sessions, AND conduct small tasks directly — not just
 git/localhost mechanics.
 - **Admin/overlook (always):** track every parallel thread (what's reported vs. still pending), git/PR/
@@ -26,22 +26,39 @@ git/localhost mechanics.
 - **Deep independent re-verification of a dispatched lane's own claims:** not the default (each lane
   self-reviews) — but do it in full whenever the user directly asks; never cite scope to decline.
 
-## ▶ GUIDE STALENESS METHOD (proven 2026-07-12, reuse this shape every time)
+## ▶ GUIDE STALENESS METHOD (proven 2026-07-12, hardened 2026-07-13 across ~10 live rounds, reuse this shape)
 1. `git log -1 --format=%ai -- <image>` per screenshot — get its real capture date.
 2. Compare against the relevant fix's actual merge/commit date (not a claimed one) — captured-before-fix
    is presumptively stale for that specific feature.
 3. Recapture by RE-RUNNING an existing, already-proven E2E/Playwright script
    (`modeller/tests/witness_e2e_*.js` or the Viewer equivalent) — never hand-roll a new capture flow
-   when one already exists.
-4. Look at the resulting image yourself — a passing witness proves the NUMBERS, not that the frame is
-   legible or illustrative.
+   when one already exists. A minimal, precedented ADDITION to an existing script (one extra shot using
+   an already-shipped app primitive, e.g. `window.__xrayReveal`, or a `t.pick({prefer:'wall'})`-style
+   filter already used elsewhere in the same suite) is still "reusing," not hand-rolling — commit it
+   locally to the source repo (not left in a throwaway `/tmp` copy) so the improvement survives past the
+   session, even unpushed under the standing PUSH PAUSE.
+4. Look at the resulting image yourself, AT NATIVE RESOLUTION, cropped to how it will actually render at
+   guide width — a passing witness proves the NUMBERS, not that the frame is legible. A technically-correct
+   render (real fixtures, real glow) can still be a bad screenshot (too zoomed out, low contrast against a
+   near-white ghosted structure) — that's a framing/crop problem, fix it as one, don't re-derive the whole
+   capture. **A "more dramatic" or novel capture (different building, different feature combo) is a TEST,
+   not a swap** — run it and look at the real result before touching the guide; SampleCastle's X-ray
+   attempt (2026-07-13) surfaced a genuine app bug (`_fixtureColorMap()` misclassifying structural walls as
+   fixtures) that Duplex's data happened to hide — reported as a named spec
+   (`prompts/Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md`), NOT shipped, NOT worked around.
 5. Deploy only via `scripts/safe_gh_deploy.sh`. A legitimate size/content change tripping the shrink
-   guard gets blessed explicitly (`ALLOW_SHRINK=1 paths=...`) — never disable the guard.
+   guard gets blessed explicitly (`ALLOW_SHRINK=1 paths=...`) — never disable the guard. A real merge
+   conflict during the guard's own fetch+merge step gets resolved by hand (confirm superset first), never
+   forced past.
 6. Verify the LIVE result from `git log origin/gh-pages` + the branch's actual bytes/text, not just the
    script's exit code or a `curl` (GitHub Pages CDN can lag minutes behind a genuinely successful
    publish — check the branch before concluding a deploy failed).
 7. Touch only images actually implicated by the fix under review — name and leave unrelated stale
    images for a separate pass, don't silently expand scope.
+8. **The user re-reviewing the live deployed page and finding a second-order issue (legibility, contrast,
+   a stale image the first pass didn't touch) is a normal next round, not a missed step** — some problems
+   only show at actual guide display size, not a full-resolution local view. Treat it as the method
+   working (catch it, fix it, redeploy), not as a diagnosis failure.
 
 ## ▶ WHAT MANAGER MEANS HERE — cardinal rules, always in force
 - **Review:** verify before trusting — re-run witnesses, reproduce claims from a fresh checkout, never
@@ -91,8 +108,13 @@ WALKER that fills ARC space · one Outliner panel = Find on steroids) and, exter
 
 ## ▶ KEY DOCUMENTS
 - **Status:** `PROGRESS.md §Current State` + `🔀 CURRENTLY JUGGLED` — always the live ground truth.
-- **Room Intelligence lane** — CLOSED 2026-07-11 ("good enough, no more perfection work there," per
-  `PROGRESS.md`); history in `ROOM_INTELLIGENCE_SCOREBOARD.md`, don't re-open without user re-widening.
+- **Room Intelligence lane** — RE-OPENED 2026-07-13 (user-widened same day: fixture-classification session,
+  disc-walker `§STOREY-ZBAND` fix, fleet-wide `spatial_structure` regression found + being restored across
+  6/8 buildings, functional-space ensemble work in flight). The 2026-07-11 "CLOSED, good enough" verdict
+  and its `§🚩 THE FLAG ON THE HILL` mission section (removed same day as this file's own `79589eb6e`
+  rewrite) are both superseded — don't cite either as current. Live status: `prompts/FUNCTIONAL_SPACES_
+  ENSEMBLE.md` (new, in progress) + `project_narrow_ai_determinism_framework` memory (the session's dictionary-
+  of-fundamentals synthesis); history in `ROOM_INTELLIGENCE_SCOREBOARD.md`, refresh before trusting.
 - **Memory:** `project_room_intelligence_lane.md` (links-only pointer, doesn't duplicate).
 
 ## ▶ DELIVERABLE
