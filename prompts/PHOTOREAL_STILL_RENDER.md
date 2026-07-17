@@ -2183,3 +2183,32 @@ name), mirroring Step 2's existing lowest-of-top5 selection. Identical for norma
 is both largest AND lowest), only differs — correctly — in the mixed-datum case. Witnessed: BimWhale
 z=27.85→-0.30 (sits on ground, screenshot `~/Pictures/Screenshots/BimWhale_ground_fixed_2026-07-17.png`);
 non-regression Duplex z=-0.13, Ifc4_Revit z=-1.80, 0 errors.
+
+## SESSION RECORD (2026-07-17) — Alt+G N8AO ambient-occlusion DURING Time Machine playback
+**Shipped: PR #836 (merged to main, live on GH Pages `cd93e4b2`).** User's find: pressing Alt+G then
+playing Time Machine already showed AO "for free" while the camera orbited (main.js's loop honors the
+GI composer). Two gaps surfaced on live test and got fixed:
+- **Static-camera scrub ghosted, intermittently.** Root cause (confirmed via `§IDLE_GATE` logs): the
+  desktop render gate (`main.js §S286`) wakes → draws ONE frame → self-parks the rAF chain. N8AO's
+  temporal accumulation (`accumulate:true`) needs a continuous multi-frame loop to converge; with
+  one-frame-then-park it never does, and `firstFrame()`'s clear racing the main-loop composer render
+  decided clean-vs-ghost per scrub. **Durable constraint: N8AO accumulate ⊥ the on-demand one-frame
+  render gate — any batch/offline/on-demand render path (incl. the movie-export spec above) must use
+  single-pass, not fight accumulate.**
+- **`renderAtTime` self-rendered raw** (`renderer.render`), bypassing the composer entirely.
+
+Fix (`viewer/time_machine.js`): `renderAtTime` renders through the GI composer in SINGLE-PASS
+(`accumulate=false`) — a complete AO frame in the one render the gate allows, deterministic, no ghost.
+Restored `accumulate=true` on `deactivate()`. **Auto-engage** Alt+G on TM activate / auto-off on
+deactivate — but only the instances TM itself turned on (manual Alt+G stays on). No-op when GI off /
+on mobile; byte-identical default. No Alt-S impact (separate composer `_giN8aoPass` vs `A._composer`).
+Witness `§TM_GI_RENDER`, `§TM_GI_AUTO`. Verified live both paths, HHS_Office_Federated, 0 errors.
+
+**Follow-up IN FLIGHT (branch `fix/tm-gi-hold-converge`, off updated main — PUSHING this session):**
+"re-accumulate after ~300ms hold" polish. While moving (scrub/playback tick) = single-pass (clean, no
+ghost); when motion STOPS for 300ms AND not `_playing` → switch N8AO to accumulate + drive a short 24-
+frame RAF loop so the held frame sharpens to full Alt+G quality; any new render/tick or playback-start
+cancels it → back to single-pass. Never fires mid-playback (ticks <300ms apart + `!_playing` gate).
+Witness `§TM_GI_HOLD converge start` / `converged frames=24`. Dials: `MAX`(24 frames), 300ms delay.
+Built + syntax-clean + served on localhost; live-eyeball of the sharpen pending. See also memory
+`project_time_machine.md`.
