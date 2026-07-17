@@ -398,3 +398,16 @@ onset": assess what the building actually models, THEN pick the routing layer:
 Real need: many IFC models are incomplete (no walls, ARCH not detailed). Each tier is its own POC-gated
 build; the onset selector picks the highest tier the data supports so an incomplete model still routes.
 Parked as a roadmap lane, not part of C1–C3.
+
+### C5 — ACQUIRED DOORS: an open space IS a door (user, 2026-07-17)
+A "door" (graph node / yellow dot) is any TRAVERSABLE OPENING between walkable spaces, not only a
+physical `IfcDoor`. Open-plan transitions — corridor↔foyer, room↔corridor with no door leaf, an open
+passage between corridor segments — carry no `IfcDoor`, so the current door-only graph is blind to them.
+Fix: ACQUIRE a door node at any wall-free boundary shared by two walkable regions. This is the INVERSE
+of the walker's `§ROOM-FORM` open-perimeter measure (boundary metres NOT backed by a raw wall) — reuses
+existing machinery, deterministic, invents nothing. Guard against noise: min passage width (~0.8m,
+`_calibrate`) + exclude window openings and sub-`NOISE_FLOOR` slivers. Acquired doors are ordinary nodes
+and inherit the strategy table's PUBLIC/transit priority (they open onto corridor/foyer), scoring cheap
+like a curtain-wall transit door. Also the enabler for the C4 floor-slab tier: with no walls modelled,
+acquired doors (openings in the floor-slab boundary) are the PRIMARY connectors. Encoded in
+`path_strategy.json` → `door_acquisition.sources.acquired`.

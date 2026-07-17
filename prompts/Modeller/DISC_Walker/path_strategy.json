@@ -19,8 +19,29 @@
     "validity_note": "A candidate is valid only if every leg actually connects AND is legal (chord stays inside walkable space — ties to OPEN LANE B chord-legality). Invalid candidates are discarded before scoring."
   },
 
+  "door_acquisition": {
+    "note": "A 'door' (graph node / yellow dot) is any TRAVERSABLE OPENING between walkable spaces, NOT only a physical IfcDoor. Open-plan transitions (corridor<->foyer, room<->corridor with no door leaf, an open passage between corridor segments) are ACQUIRED doors — otherwise the graph is blind to open-plan circulation.",
+    "sources": {
+      "physical": {
+        "signal": "IfcDoor element (with transform)",
+        "note": "explicit door leaf — the current door set"
+      },
+      "acquired": {
+        "signal": "wall_free_boundary_between_two_walkable_regions",
+        "detail": "A boundary segment shared by two distinct walkable regions (room/corridor/foyer) that is NOT backed by a raw wall = an open passage. INVERSE of the room-walker's §ROOM-FORM open-perimeter measure (metres of region boundary not backed by wall) — reuses existing machinery, deterministic, invents nothing. Place an acquired-door node (yellow dot) at the gap midpoint; it becomes an ordinary graph node.",
+        "min_passage_width_m": 0.8,
+        "_calibrate": true,
+        "exclude": [
+          "window openings (IfcWindow / opening not at floor level)",
+          "rasterization slivers below the walker NOISE_FLOOR (grid artefact, not a passage)"
+        ],
+        "note_c4": "When a building models NO walls (degradation tier floor_slab), acquired doors (openings in the floor-slab boundary) become the PRIMARY connectors — this is what makes the incomplete-model tiers route at all."
+      }
+    }
+  },
+
   "door_priority": {
-    "note": "Per-door cost multiplier on the base door-count. Grounded in REAL IFC signals, never hand-labelled. Two independent factors multiply.",
+    "note": "Per-door cost multiplier on the base door-count. Grounded in REAL IFC signals, never hand-labelled. Factors multiply. Applies to BOTH physical and acquired doors — an acquired open threshold onto a corridor/foyer is naturally PUBLIC/transit and scores cheap via by_adjacent_room_privacy, exactly like a curtain-wall transit door.",
 
     "by_host_class": {
       "note": "The door's HOST element class (from IfcRelVoidsElement / containment). Curtain-wall-hosted doors are transit connectors between corridor segments.",
