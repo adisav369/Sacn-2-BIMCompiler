@@ -221,6 +221,25 @@ Repro: import via `diag_import.js` on :8901 (persistent profile keeps the import
 `diag3.js` runs ensureRooms+graph on it; baseline via sqlite3 on
 `~/bim-ootb/buildings/Terminal_extracted.db`.
 
+### CORRECTION 2026-07-17 — §WALKER-PHASE-SENSITIVITY was MISDIAGNOSED (whitebox A/B, W-WALKER-PHASE-SWEEP)
+The 51-vs-45 divergence above is NOT coordinate-phase. Proven headless on the SAME
+`Terminal_extracted.db`, both walker versions, a 14-translation sweep (bim-compiler scratch
+`phase_witness/witness_sweep.js`, logs kept):
+- The room-compiler phase bug IS real but lives ONLY in code lacking #832: the PRE-#832 walker is
+  invariant just **7/14** (counts swing 50/51/54, baseline 51 — independently reproduces #832's own
+  "8/14 changed Terminal" claim). The #832 §LOCAL-FRAME walker is **14/14 EQUAL** (rock-solid 54).
+- Translating the extracted DB by the finding's OWN Δ (−545.6, −51.1, −14.7) yields 51 (stale) /
+  54 (#832) — **NEVER the imported's 45**. So imported≠extracted is NOT a pure-translation phase
+  effect; the importer emits genuinely different geometry (the "browser-importer displaced wall
+  transforms, 46 vs 54" follow-up). The walker is exonerated once #832 is applied.
+- ACTION TAKEN: #832 was NOT on bim-compiler `fable/meshdb-livewire` — `build/room_walker.js` +
+  `scripts/compile_rooms.py` were the buggy pre-#832 version, even though bim-ootb `viewer/lib/
+  room_walker.js` already had the fix. Cherry-picked `7c6399b33` onto this branch (commit
+  `c44ade97d`, LOCAL only per PUSH PAUSE): live walker now 8/8 invariant, py = js = 54 on Terminal.
+- REAL REMAINING CORRIDOR GAP (re-scoped): **browser-importer wall-transform parity** (imported↔
+  extracted geometry, NOT phase). The pocket-level-diff "NEXT BOUNDED TASK" above is SUPERSEDED —
+  it chased a phase bug #832 already fixed; the actual bug is in the IMPORT PATH's wall transforms.
+
 ### Rounds 3–5 — live-review fixes (2026-07-16/17, @ 6f0f110 / 44c0ac8 / 0b3cf01 / 6ddb290)
 - **R3 (@6f0f110):** §STREAM-FIRST — tour waits for streaming to drain before take-off (the
   first "Alt-X bboxes" report was placeholder boxes on a mid-stream take-off; `§FLY_STREAM_WAIT`).
