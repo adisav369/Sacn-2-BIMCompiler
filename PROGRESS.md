@@ -30,8 +30,6 @@ not push/open a PR unless the user explicitly lifts it for that session. `CLAUDE
 - `prompts/SPARSE_WALL_ROOM_INFERENCE.md` Phase 1 — sparse-wall fusion (HHS), 4-step follow-up.
 - `prompts/Modeller/DISC_Walker/XRAY_FIXTURE_CLASSIFICATION_FIX.md` — SampleCastle walls
   misclassified as glowing fixtures, root-caused, POC-gated.
-- 2026-07-10 marathon, unmerged: `fix/grid-tilt-guard`, `fix/dw-rot-units`, `fable/dwprobe-dedup`,
-  `fix/terminal-oracle-source` (bim-ootb, verified+pushed, no PR).
 - `prompts/FUNCTIONAL_SPACE_MGMT_NEXT_SESSION.md` — HHS's 2 remaining islands (storey='Unknown').
 - `prompts/ROOM_LENS_VISUAL_HIGHLIGHT_SPEC.md` §25 — large-group Find-panel filter-cheap opt;
   §14 — Hospital's real per-tab-switch number never captured (263MB DB wouldn't stream in sandbox).
@@ -47,6 +45,9 @@ not push/open a PR unless the user explicitly lifts it for that session. `CLAUDE
   `W-DW-DENSITY-TE` D3) unexplained, low-priority — `project_arc_meshreadpixels_branch_unmerged.md`.
 
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
+- ✅ 2026-07-10 marathon branches (2026-07-17 verify) — `fix/grid-tilt-guard`, `fix/dw-rot-units`,
+  `fable/dwprobe-dedup`, `fix/terminal-oracle-source` all confirmed fully superseded (exact fix
+  content already verbatim on main via other commits) and pruned, local+origin, bim-ootb.
 - ✅ FLY_TOUR + walker translation-invariance cure chain (2026-07-16/17) — PRs #812,#815,#832-#835
   merged+Pages-deployed; §WALKER-PHASE-SENSITIVITY resolved. `prompts/Viewer/FLY_TOUR_CORRIDOR_GRAPH.md`.
 - ✅ Photoreal staffage + BimWhale ground fix (2026-07-17) — local only (PUSH PAUSE).
