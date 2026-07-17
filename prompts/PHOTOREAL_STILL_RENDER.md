@@ -2385,3 +2385,21 @@ pushed**, per the standing localhost-only push-pause. Next session: real-GPU non
 verification on Hospital or HHS_Office_Federated (the two buildings this file's earlier photoshoot
 work already established as stress-tests), then push/PR once the user lifts the pause or names the
 breakthrough.
+
+## REMARK (2026-07-17) — §TM_GI_HOLD_CAMGUARD, a THIRD instance of this file's own ghost family
+User-reported live-production ghosting ("the usual ghosting from Alt-S/G", repro: TM on/off then
+orbit; also seen after Clash panel use) traced to the N8AO 300ms hold-converge loop (PR #837,
+shipped hours earlier, its own commit noting "live-eyeball of the sharpen pending" — never actually
+human-verified before this report landed). Root cause: identical to the two ghost fixes already on
+record in this file — TAA still-refine's `§STILL_REFINE_RESTART` and SSGI's
+`§SSGI_CONVERGE_CAMGUARD` (PR #816, "ghosted/doubled geometry and see-through floors") — a
+multi-frame accumulation loop with no camera-pose check, blending frames across a moving view. The
+hold-converge loop inherited neither guard. Fixed by porting the same pose-signature-restart
+pattern (`effects_gi_poc.js`'s `_ssgiCamSig()` shape) into `_giScheduleHoldConverge`'s step loop —
+see `time_machine.js` `§TM_GI_HOLD_CAMGUARD`. Shipped: PR #848, `fix/tm-gi-hold-camguard`, squash
+auto-merge armed pending CI. The Clash-panel correlation is very likely the SAME latent ghost
+persisting on screen from an earlier TM/Alt-S/Alt-G interaction, not a second bug in Clash itself —
+Clash's own code has zero references to the composer/GI pipeline (checked against the deployed
+file directly). **Pattern worth remembering for any FUTURE accumulation loop added to this
+composer stack: it needs the pose guard from day one, not after a live report** — this is the third
+time the same fix has had to be ported in after the fact.
