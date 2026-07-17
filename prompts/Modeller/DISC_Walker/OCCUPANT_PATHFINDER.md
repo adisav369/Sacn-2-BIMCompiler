@@ -353,9 +353,20 @@ Measured the SHIPPED graph before any edit — this REFOCUSES the lane on C2, no
   reassign to First Floor, Δz≈1.1, the expected door-center-below-wall-center offset) + 2 "Chain Link"
   fence gates (z≈−0.06, exterior). C1 rescues ≤3 corridor-relevant edges. Do it (cheap, correct) but it
   is NOT what fixes the thread.
-- **⟹ C2 is the lever.** With 124 E1 room↔room edges in play, penalising them (λ>1) is what forces the
-  corridor. REVISED next POC step: (1) measure the screenshot's actual sample pair (First Floor R1 → the
-  Second Floor target) hop-by-hop on the shipped graph — count E1 vs E2 hops in the returned path; (2)
-  apply C2 λ to E1 weights only, re-measure the SAME pair, find the λ where E1 hops give way to spine/E2;
-  (3) Duplex 26-pair regression = 0 at that λ. C1 folded in as the door-storey pre-pass. Not yet built —
-  baseline only, per POC-first law.
+- **⟹ C1 + C2 together** (measured, see C1 result below). C1 puts the corridor route on the table at
+  the glass door; the fewest-doors metric (C2, above) makes the router pick it.
+
+### POC C1 RESULT (2026-07-17, `poc_lane_c1_fast.js`, union-find, no all-pairs)
+Rescued the 3 Unknown-storey glass IfcDoors → `storey='First Floor'` (by center_z), rebuilt:
+- BASELINE: components=**1** largest=180 edges=332. AFTER-C1: components=1 largest=181 edges=**335 (+3)**.
+- The graph is ALREADY one connected component — so the corridor is NOT globally severed (every room
+  was reachable); the honest refinement of the user's "corridor severed here" read is that the DIRECT
+  corridor route THROUGH the glass door was missing, not basic reachability.
+- The 3 rescued glass doors bind straight to the **corridor SPINE**: 2× `room↔spine` (E2) + 1×
+  `doorwp↔spine` (E7). So C1 correctly adds the local corridor option at the glass opening.
+- CONCLUSION: C1 is necessary (adds the corridor edge at the glass door) but NOT sufficient alone — with
+  distance-Dijkstra the short room-thread can still win. The fewest-doors metric (C2) is what makes the
+  now-available corridor route get chosen. Both, as the user designed.
+- NEXT POC (not yet built): implement the door-count metric (`opts.metric='doors'`, unit weight on
+  door/room edges, 0 on corridor-internal hops), run the screenshot's sample pair on C1'd Clinic, show
+  hops collapse from the room-thread to a corridor-dominant route; then Duplex 26-pair regression = 0.
