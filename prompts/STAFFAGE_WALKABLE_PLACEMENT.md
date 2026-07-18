@@ -514,6 +514,52 @@ separate `_geo.db`, not folded into the `_extracted.db` the way small buildings 
 
 **Shipped:** PR #872 opened; merge once CI is green, same admin-scope convention as #868/#870.
 
+## SESSION RECORD 2026-07-18, cont. — explicit formula + randomization (PR #875)
+**User laid out the definitive recipe, verbatim, after I asked 3 clarifying questions and got pushed
+back on for it ("Read back, i laid it all down clearly in plain English... why ask dumb questions. My
+English cannot be clearer applying general intent and common sense"):**
+> "4 trees, 1 car, 3 standing pax at each alt-P in screen frame. But there is a cap to avoid clashing.
+> It may use up more open space between building and camera view as long in frame. This way user can
+> 'paint' own scene. If not happy, refresh and do again. Alt-p uses somewhat random placing so user can
+> experiment repeatedly... Indoors, should be 2 sitting at seats, the rest standing. Again repeatedly
+> adds on without clashing and in random placings."
+
+Follow-up corrections to my 3 questions: (1) car DOES repeat per press like trees ("Yes"); (2) walking
+indoors is NOT being dropped, keep it as part of the discretionary mix, just keep the algorithm simple;
+(3) clash-avoidance is THE guardrail — no other cap logic needed, stop asking.
+
+**Lesson for next time (don't re-ask this class of question):** when a user lays out a fully-specified
+formula with explicit numbers and an explicit philosophy ("cap = clash, not a count"), implement it
+directly — clarifying questions are for genuine forks the text doesn't resolve, not for re-confirming
+numbers that were already stated plainly.
+
+**Shipped (`viewer/effects.js`, commit `886cd8a`, PR #875):**
+- `PAX_CAP` 1→3, `TREE_CAP` 3→4 — exact per-press targets now, not the earlier "1 is a light first
+  press" figure (that was superseded by this explicit formula).
+- **Car is no longer one-time-only** — removed the `carPlaced` latch entirely; it now follows the exact
+  same additive/capped(1)/random pattern as trees/pax every press.
+- **Wider spatial search** ("may use up more open space between building and camera view as long in
+  frame"): multiple step-out distances per candidate instead of one fixed ring — pax 2.2/4/6.5/9.5m,
+  trees at radii 5/9/14/20m beyond the silhouette, cars 7.5/10/13m. Same frame+occlusion+clash gate as
+  before, just more spatial variety to draw candidates from.
+- **Randomization** — new shared `_shuffle()` (Fisher-Yates), moved to module scope so both
+  `_buildStaffage()` (exterior) and `_updateInFrameInterior()` (interior) can use it. Every candidate
+  list (pax spots, tree angle/radius pairs, car spots, interior furniture candidates, interior aisle
+  points) is shuffled before the greedy capped pick — replaces the old deterministic nearest-first/
+  angle-order iteration. Clash/occlusion/frame checks are unchanged and remain the only real limiter.
+- Interior SIT_CAP/WALK_CAP left at 2/2, unchanged — no new number was given for "the rest standing"
+  and walking was explicitly confirmed to stay, so no invented change there.
+
+**Verified live** (Duplex, SampleHouse): every press placed exactly 3 pax (dropping to 0 only once
+genuinely out of space — SampleHouse press 3-5) + 4 trees every press + up to 1 more car; car landed at
+4 visibly different positions/angles over 5 Duplex presses (`(-6.4,5.6)`, `(-6.9,-16.6)`, `(-2.4,11.9)`,
+`(17.7,-10.1)`) — real evidence the randomization works, not just present in code. Interior sit/walk
+unchanged in correctness (`WALK_CLEAR ok=2/2` every press, de-dup correctly shrinks `inView` on repeat
+presses). Zero JS errors across both buildings.
+
+**Shipped:** PR #875 opened; merge once CI green, same admin-scope convention as the prior PRs this
+session.
+
 ## ADDENDUM 2026-07-17 (same day) — floating-in-midair figures, a SECOND distinct defect, also fixed
 **User report (verbatim, viewing LTU_AHouse via a real screenshot):** "some human sprites gets floating
 on the air as if on first level when it is outside the wall in midair... perhaps this is from reading
