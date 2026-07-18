@@ -57,22 +57,50 @@ existing structural dependency (`geoGate`).
   v794→v795 per this project's deploy convention (PR bim-ootb#862 already established this
   pattern for Item 3's fix).
 
-**Open, not addressed this session — user asked mid-investigation, deferred pending a design
-question:** "can we have the mesh halo that is been created shine thru?" — the frontier
-(currently-being-built) highlight glow. `applyHighlight()` (single-mesh path only,
-`time_machine.js` ~line 1420) already sets `depthTest:false` so IT shines through occluding
-geometry — but the vast majority of real building geometry streams as `BatchedMesh`/
-`InstancedMesh` (confirmed via `sceneMeshGUIDs=0` in every witness this session — Hospital/HHS
-have ZERO single-guid meshes), and BOTH of those paths explicitly SKIP any highlight/glow
-("§S260f: No material swap on BatchedMesh"; "DO NOT highlight InstancedMesh — shared material
-affects ALL instances") — so in practice almost no frontier element gets a visible glow at all
-today, shine-through or otherwise. **Caution before implementing:** a near-identical feature (the
-`depthTest:false` yellow edge-box marker on BatchedMesh frontier elements) was RETIRED this same
-session (`§YELLOW_BOX_RETIRED`, see Item 0 above) specifically because the user reported it
-"bleeds badly for Hospital" — shone through walls/floors in a way that read as a bug. Don't
-silently reintroduce the same failure mode; clarify exactly what "shine thru" should look like
-(a soft glow/halo vs. a hard-edged marker; BatchedMesh per-slot tint via `setColorAt` — supported
-in modern THREE.js `BatchedMesh` — vs. a separate overlay object) before implementing.
+## Item 5 — ✅ SHIPPED 2026-07-18, PR bim-ootb#866 (`feat/frontier-halo-glow`):
+## frontier "shine thru" halo (feature, not a bug fix)
+User, mid-investigation: "can we have the mesh halo that is been created shine thru?" Almost no
+frontier (currently-being-built) element got ANY visual highlight before this — `applyHighlight()`
+(single-mesh path, already `depthTest:false`) barely applies since real building geometry streams
+almost entirely as `BatchedMesh`/`InstancedMesh` (confirmed `sceneMeshGUIDs=0` all session —
+Hospital/HHS have ZERO single-guid meshes), and both those paths explicitly SKIPPED highlighting.
+
+**Design, from the user across several follow-up messages (not guessed):**
+- "The halo bigger than mesh is a more wow effect. Even if small, a shining object is seen, why
+  can't it be?" → NOT a mesh-conforming outline (that's the retired `§YELLOW_BOX_RETIRED` hard-
+  edged marker that "bled badly" through walls) — a soft, billboarded glow SPRITE, sized bigger
+  than the element, `depthTest:false` so it deliberately shines through occluders (reads as an
+  intentional VFX beacon, not a geometry-bug artifact, precisely because it's soft/gradient not a
+  sharp box).
+- "isn't it simple, a sub function each item that gets laid, goes thru the shine?" → confirmed the
+  implementation shape: one `applyFrontierHalo(pos, t)` sub-function every frontier element
+  (single mesh / BatchedMesh slot / InstancedMesh instance) passes through each render tick, same
+  pattern as the existing `applyHighlight()`.
+- "during drone fly when encountering will be dramatic if add yellow burn glow turning to reddish
+  brown cool" → color follows install progress like cooling metal (`_haloColorFor(t)`: yellow →
+  orange → reddish-brown, two-segment `THREE.Color` lerp), not a flat single color.
+- "Those not in frame need not be highlighted" → per-tick camera-frustum check
+  (`_haloRefreshFrustum`/`_haloInFrame`) skips spawning a halo for anything outside the current
+  view — relevant in both normal viewing and the drone-fly cinematic mode.
+
+**Implementation:** a small reused `THREE.Sprite` pool (avoids per-tick allocation —
+`renderAtTime()` runs every playback tick), additive-blended radial-gradient texture (generated
+once via canvas), swept clean each tick (`_haloTickStart`/`_haloSweepUnused`) and on TM
+`deactivate()`.
+
+**Verified live**, real Hospital geometry: naive periodic polling initially showed 0 halos —
+turned out to be a TEST methodology gap (Item 4's crew-cap=3 means frontier windows are brief,
+easy to miss with coarse sampling), not an app bug — confirmed by deterministically computing a
+timestamp with real element overlap (`kernel_ops` query: found a moment with 9 overlapping
+elements) and jumping straight to it via `tmJumpToElement`, rather than guessing/polling blind.
+3 visible halos with distinct hot/cool colors (`#ffb11f`, `#b55811`) at correct world positions.
+Also confirmed halos clear to 0 at a 0Hr reset, and clear + TM reports inactive after deactivate.
+
+**Not yet done:** the user hasn't SEEN this live — I can verify the mechanism (spawns, colors,
+culls, clears) but not whether size/brightness/color actually reads as "wow" in practice. If they
+report it's too subtle/too much/wrong color balance, tune `_HALO_WORLD_SIZE` (currently 2.2m),
+the opacity (0.85) or the three `_haloColor*` hex values — all named constants near the top of the
+`§FRONTIER-HALO` block in `time_machine.js`, not scattered.
 
 ## Item 3 — ✅ FIXED 2026-07-18, PR bim-ootb#856 (`fix/tm-stream-resweep`, stacked on #853):
 ## scene doesn't clear at 0Hr on large buildings
