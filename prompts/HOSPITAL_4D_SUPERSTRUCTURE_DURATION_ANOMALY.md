@@ -116,10 +116,47 @@ cache-version bump) were both real and necessary, but neither was sufficient on 
 follow-up report surfaced a genuinely distinct layer of the same visual symptom. Don't treat a
 user's repeated "still not right" as the same bug restated — re-derive from real data each time.
 
-**Not yet done:** the user hasn't confirmed a clean fresh load with all three fixes (§STOREY-Z +
-cache bump + percentile trim) live yet. PR #873 was `BLOCKED` on pending CI checks as of this
-write-up (auto-merge armed). No `_GANTT_CACHE_VERSION` bump needed for #873 — it's pure display
-logic recomputed live on whatever `_ops` is already loaded, not itself cached.
+All 3 confirmed MERGED + LIVE (2026-07-18, verified via `git show origin/main:<file> | grep`, not
+just PR state): #869 (§STOREY-Z), #871 (cache-version bump), #873 (percentile trim).
+
+## Item 7 — ✅ FIXED 2026-07-18, PR bim-ootb#878 (`fix/idb-cache-version-fallback`):
+## "generated a 4D schedule and applied it, reopening the panel shows initial stage" — a FOURTH,
+## SYSTEMIC bug (not a Gantt bug at all)
+User, live, pasted a full console log from the Author-4D-Schedule flow on Terminal. The log showed
+the real cause immediately, no guessing needed: `[S203] §IDB_OPEN_ERR name=bim_ootb_cache
+err=VersionError: the stored database is a higher version than the version requested` +
+`§CACHE_DB_OPEN_FAIL — IDB unavailable`, repeating on EVERY single cache-DB open attempt for that
+browser profile — cascading into `§SCHED_PERSIST_ERR no cache store` (every "Apply to 4D" silently
+failed to persist) AND `§CACHE_SKIP url=ad_seed.db reason=IDB_unavailable` / `§CACHE_SKIP
+url=Terminal_geo.db` (building-DB caching broken too). **Not a schedule-specific bug at all** — the
+entire shared `bim_ootb_cache` IndexedDB opener was down for that profile.
+
+**Root cause:** `A.openCacheDB()` (`viewer/scene.js`) hardcodes `indexedDB.open('bim_ootb_cache',
+2)`. IndexedDB versions only ever increase — a browser profile whose `bim_ootb_cache` is ALREADY at
+a version higher than 2 (another tab/build/dev-residue having bumped it further at some point) makes
+this explicit open throw `VersionError` FOREVER, with no recovery short of the user manually
+clearing site storage. `kernel_ops.js` already proved the fix for this exact class of drift in its
+OWN fallback opener (`indexedDB.open('bim_ootb_cache')` — no version, whatever's actually stored,
+never throws) — but that fallback only ever ran when `APP.openCacheDB` was ABSENT; the bug was
+INSIDE `APP.openCacheDB` itself, so the existing workaround never engaged for this failure mode.
+
+**Fix:** on `VersionError` specifically, `A.openCacheDB()` now falls back to the same unversioned
+open — benefits every caller through the one shared opener (buildings, `kernel_ops`,
+`schedule_author`) with a single change.
+
+**Verified:** seeded `bim_ootb_cache` at v3 (simulating a profile already past 2), reloaded the
+viewer fresh — confirmed `§IDB_VERSION_MISMATCH` → `§IDB_VERSION_FALLBACK_OK`, `A.openCacheDB()`
+resolves a real DB with both object stores present, and an actual write+read-back through it
+succeeds end to end. This is the real fix for "reopening shows initial stage" — not a Gantt-display
+issue, a browser-profile-level cache corruption that this app had no self-heal path for until now.
+
+## Standing test sandbox (2026-07-18, see `reference_bim_ootb_sandbox.md` in memory)
+`/tmp/wt-sandbox` — one persistent worktree + `http://localhost:8399` server, refreshed via
+`/tmp/wt-sandbox/refresh.sh` (fetch + reset to `origin/main` + restart server, ~5s). Building DBs
+(Hospital/Terminal/Duplex/HHS_Office_Federated) already symlinked in. Use this instead of spinning
+up a new `/tmp/wt-*` + `python3 -m http.server <port>` per investigation — this session burned real
+time on wrong-port test-script bugs and a `git reset --hard` that discarded uncommitted fix work
+across throwaway worktrees before this existed.
 
 ## Item 6 (original handoff, kept for the record — superseded by the resolution above)
 User, after Item 4 (crew-cap) + Item 5 (halo) shipped and merged to `main`: **"that gantt chart
