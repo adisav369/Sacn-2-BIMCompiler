@@ -483,15 +483,19 @@ fallout): **pass=15 fail=0**, unchanged from before this session — the new opt
 introduced no regression on the pre-existing suite.
 
 ## Deferred / honestly not done
-- **C1 (Unknown-storey door rescue) was POC-verified again this session but NOT wired into
-  `buildGraph()`** — the Clinic sample collapse above (12→5/6 doors) happens via C2 alone, using
-  doors/spine already present in the shipped graph; C1's 5 rescued exterior doors (3 curtain-wall glass +
-  2 chain-link gates, all correctly z-rescued to First Floor once the two POC bugs above were fixed,
-  `edges baseline=332 after_c1=337 (+5)`) add real connectivity but weren't load-bearing for THIS demo.
-  Porting is mechanical — `poc_lane_c_doorpref.js`'s `buildRescueMap()` has the exact, already-verified
-  fix (compute a guid→storey map once via a dedicated query with real z, apply by GUID across every
-  door-query variant regardless of column layout) — left for a follow-up session rather than scope-creep
-  past what this session was asked to wire.
 - C3's collinearity tie-break, C4's degradation tiers, and C5's acquired-doors are still spec-only,
   unchanged from before this session (see their own sections above).
+
+## C1 wired (2026-07-18, follow-up) — `feat/c1-unknown-storey-door-rescue`, pushed
+Ported the exact, already-verified fix (`poc_lane_c_doorpref.js`'s `buildRescueMap()`) directly into
+`buildGraph()`, right after the existing §STOREY-Z step (real room z-anchors already computed there,
+no new query needed for that part) and before the corridor backbone / main door loop run — so both
+benefit from the rescue, not just the room-door binding. Additive only, low risk (a door that already
+carries a real storey is untouched byte-for-byte).
+
+Verified live on Clinic: `rescued=5`, `edges 332->337 (+5)`. `witness_room_graph_path.js` unaffected
+(Duplex has no Unknown-storey doors) `pass=15 fail=0`. **Unexpected bonus**: HHS's
+`fullConnectivity()` jumped from 87.3% (2 isolated glass-door corridor clusters, same root cause —
+"Türelement...Glas" curtain-wall doors) to **100% fully connected** — the same fix that was scoped for
+Clinic's 3 glass doors turned out to close a real gap on a completely different building.
 - Not tested on JKR/Terminal this session (Clinic + Duplex are this lane's own named acceptance corpora).
