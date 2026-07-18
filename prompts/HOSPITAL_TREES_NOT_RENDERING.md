@@ -93,3 +93,25 @@ storey list) before assuming this is the answer.
 - The M_RPC-prefix real-entourage detection/material system (`§ENTOURAGE`, `§RPC_M_PREFIX`) — already
   fixed and confirmed correct in an earlier session (`STAFFAGE_WALKABLE_PLACEMENT.md`, "SESSION RECORD"
   entries around 2026-07-17/18) — not the cause here, `realTrees=20` proves detection already works.
+
+## SESSION 2026-07-19 (4th) — STOREY LEAD CONFIRMED: all 20 trees are on "Level 3" (terrace level)
+First step from §FIRST STEPS run (read-only SQL against the local `deploy/buildings/
+Hospital_extracted.db` — no DB touched, per user directive this session "not to touch DBs"):
+```sql
+SELECT storey, COUNT(*), MIN(center_z), MAX(center_z) FROM elements_meta em
+JOIN element_transforms et ON em.guid=et.guid
+WHERE lower(element_name) LIKE '%tree%' GROUP BY storey
+→ Level 3 | 20 | 179.435 | 179.923      -- ALL twenty, one storey
+```
+Storey Z ranges for context: Level 1 starts ≈159.8, Level 3 spans ≈176.2–189.6, ground slab
+§GROUND_Y=165.36. **The trees are landscape planting on the Level-3 terrace/podium (~14m above
+street), exactly the hypothesis flagged last session — NOT street-level trees, and NOT a rendering
+bug in the "missing geometry" sense.** A ground-level Alt+P camera framing never has them in frame
+because they are three storeys up, by data, not by defect.
+
+## USER-FACING SYMPTOM FIXED SAME SESSION (via the staffage side, PR #883)
+The user's actual complaint ("Hospital still zero trees" on Alt+P) was killed by the zero-case
+elimination spec in `STAFFAGE_WALKABLE_PLACEMENT.md` (SPEC 2026-07-19): the `realTrees===0` wholesale
+gate is GONE — real entourage now dedups spatially instead of suppressing the whole kind. Witnessed
+live on Hospital: one Alt+P press → `thisPress(people=3 trees=4)` + car, `§STAFFAGE_REAL_DEDUP n=20`.
+Hospital now shows street trees on every press regardless of its terrace planting.

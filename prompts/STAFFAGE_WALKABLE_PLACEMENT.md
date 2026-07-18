@@ -904,3 +904,79 @@ out of this file's scope. Full writeup, all three sessions' evidence, and a conc
 trees sit ~14m above the ground floor — possibly a terrace/courtyard level, not street level) moved to
 its own file: **`prompts/HOSPITAL_TREES_NOT_RENDERING.md`** — read that file fresh, don't re-derive
 from this one.
+
+## SPEC 2026-07-19 — ZERO-CASE ELIMINATION + PER-CAR COLORS (user directive, verbatim)
+User: **"some other buildings still get zero case somewhere which is impossible as there is always
+room to plant a tree or person or car"** and **"the cars supposed to be different colours each time
+one is added to the scene. It was so, but it breaks back."** Also: **do not touch/modify any DB
+files** — all DB access this lane read-only; any needed DB change must be reported to the user first.
+
+### S1 — Real-entourage gates: wholesale suppression → spatial dedup (issue: gate-caused zeros)
+The three `if (realX === 0)` gates in `_buildStaffage()` (effects.js ~1001/1097/1122) and the
+`_realPeopleExist` wholesale skip in `_updateInFrameInterior()` guarantee PERMANENT zeros on any
+building with real RPC entourage (BimWhale: forever people=0/trees=0; Hospital: forever trees=0 —
+and its 20 real trees are on the Level-3 terrace, never street-visible, so the user sees zero,
+always). This DIRECTLY contradicts the new directive. Change: always run all three placement blocks
+(the 3-pax/4-tree/1-car per-press formula applies to every building), and carry the anti-duplication
+intent SPATIALLY instead: query real entourage element positions once per `_buildStaffage()` call
+(same SQL patterns as the realX counts, joined to element_transforms) and reject any synthetic
+candidate within clash radius of a REAL entourage element (people 3m / trees 4m / cars 6m) — same
+discipline as `_nearExisting` does for synthetic-vs-synthetic. Never place a synthetic ON a real one;
+never let a real one anywhere in the DB zero the whole kind.
+- Witness: `§STAFFAGE_REAL_DEDUP n=<real entourage rows collected> rejReal=<candidates rejected>`.
+
+### S2 — Last-resort camera-forward placement (issue: exhaustion-caused zeros)
+Even with gates gone, a press can still zero a kind when every ring/door candidate fails
+frustum/occlusion (the Terminal-class failure §STAFFAGE_WIDE_FALLBACK already fought once). Per the
+directive there is ALWAYS room: if a kind is still 0 after the normal + wide-fallback passes, walk
+the camera's ground-plane forward ray (points at ~8/12/18/25m ahead, ±small lateral jitter), take
+the first spot passing `_nearExisting` + real-dedup (frustum passes by construction; occlusion check
+kept, but on total failure place at the farthest candidate anyway — zero is the only forbidden
+outcome), and place exactly 1 of that kind there. Witness: `§STAFFAGE_ZERO_RESCUE kind=<pax|tree|car>
+spot=(x,y)` — a press that ends with any kind at 0 this-press AND no rescue line is the bug this
+spec kills; §PHOTO_STAFFAGE thisPress counts must never show a 0 again.
+
+### S3 — Per-car color (regression fix)
+`_carColorFor(A.activeBuilding)` hashes ONLY the building name → every car in a building gets the
+same paint. Restore the intended behavior (each added car differs) while keeping Save/Restore
+deterministic — the `staffage_instances` row `[kind,file,x,y,z,rotY]` has no color column and row
+ORDER is preserved, so color derives from (buildingName, carOrdinal): palette index = (buildingHash
++ carOrdinal) % len — consecutive cars ALWAYS differ (adjacent palette steps), same building+ordinal
+always reproduces the same color on restore. `_placeCarAt` passes the pre-increment cumulative car
+count; `_restoreStaffageInstances` passes a per-restore car counter. Each car gets its OWN material;
+`A._matCache` key becomes `staffage-car-beetle-<ordinal>` so Alt-S reasserts still reach every car.
+- Witness: `§STAFFAGE_CAR_COLOR idx=<ordinal> rgb=<hex>` on each placement/restore.
+
+### S4 — Verification (read the log, not the exit code)
+Puppeteer against a local worktree server, three buildings: (a) BimWhale_Advanced (real people+trees
++cars — the gate-caused permanent-zero case): 2 presses → thisPress pax/trees/cars all >0, zero
+placements within dedup radius of a real entourage row; (b) Duplex or LTU (no real entourage —
+regression guard): formula unchanged; (c) any framing that previously zeroed → §STAFFAGE_ZERO_RESCUE
+fires, no kind ends 0. Car color: 3+ presses on one building → §STAFFAGE_CAR_COLOR shows 3 distinct
+hexes; save→restore round-trip reproduces the same per-ordinal colors.
+
+### SESSION RECORD 2026-07-19 — spec above IMPLEMENTED, witnessed, PR #883 (auto-merge)
+All of S1/S2/S3 shipped in one branch: bim-ootb `fix/staffage-zero-case-car-colors` →
+**PR #883** (auto-squash-merge enabled), sw v801→v802. Puppeteer witness against a worktree server
+(localhost:8402), logs saved to session scratchpad (`staffage_zero_run4.log`, `rescue_hospital_run1.log`):
+- **S1 proven on BimWhale_Advanced** (realPeople=33 realTrees=27 realCars=26 — the permanent-zero
+  case): 3 presses → `thisPress(people=3 trees=4)` every press, `cumulative(people=9 trees=12
+  cars=3)`, `§STAFFAGE_REAL_DEDUP n=86` collected. Previously synthetic people/trees/cars were all
+  suppressed to 0 forever on this building.
+- **S1 proven on Hospital**: single press → `thisPress(people=3 trees=4)` + car, `§STAFFAGE_REAL_DEDUP
+  n=20` — the user's original "Hospital still zero trees" Alt+P symptom is FIXED (its 20 real trees
+  are all on storey "Level 3", Z≈179.5, a terrace ~14m above ground — see
+  HOSPITAL_TREES_NOT_RENDERING.md for that side).
+- **S2 proven** (Duplex, camera teleported 800m out looking away — every ring/door candidate out of
+  frame): `§STAFFAGE_ZERO_RESCUE kind=pax/tree/car` all fired (`forced=1`), press ended with no kind
+  at 0. `pSrc=zero-rescue+car-rescue`.
+- **S3 proven both buildings**: BimWhale cars #1a1a1a→#f2f2ed→#26592e, Duplex #a61a1a→#14296b→#1a1a1a
+  — consecutive distinct, per-building starting slot, ordinal-deterministic for Save/Restore.
+- **Duplex regression-clean** (no real entourage): formula/pSrc unchanged from before.
+- One real bug caught BY the witness mid-session: `A.ifc2three()` returns a plain `{x,y,z}`, not a
+  `THREE.Vector3` — first dedup draft called `.distanceTo` on it (TypeError live). Fixed by wrapping
+  in `new THREE.Vector3` at collection. `eslint viewer` clean, `audit_sw_precache` 106/106, zero
+  PAGEERROR in every run.
+Note: the BimWhale `realX>0 → place nothing synthetic` behavior recorded as "correct" in the
+2026-07-17 addendum above is SUPERSEDED by this spec (user directive 2026-07-19) — dedup is now
+spatial, not wholesale.
