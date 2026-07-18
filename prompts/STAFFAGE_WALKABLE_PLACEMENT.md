@@ -560,6 +560,47 @@ presses). Zero JS errors across both buildings.
 **Shipped:** PR #875 opened; merge once CI green, same admin-scope convention as the prior PRs this
 session.
 
+## SESSION RECORD 2026-07-19 — Terminal "0 pax" root-caused + fixed (PR #879)
+**User pasted a real console log (verbatim excerpt), verdict: "its not able to be abstract. See how
+Terminal has bad results."** The log showed, on `TerminalMerged`: `§PHOTO_STAFFAGE thisPress(people=0
+trees=4) ... pSrc=none-in-frame ... (realPeople=0 realTrees=0 realCars=0)` — zero pax placed, only
+trees, plus a `§HELPERS_QUERY_ERR no such table: staffage_instances` line on every load.
+
+**Root-caused via a NEW `§STAFFAGE_PAX_REJECT` witness** (tried/placed/rejFrustum/rejOcclude/rejDedup
+counters added to the pax loop, not guessed at from theory) — tested live against
+`modeller/Terminal_meta.db` (48,428 elements, 135 real `IfcDoor` rows): only **2 of 135 doors** passed
+the "beyond the measured silhouette" exterior test (`dr >= silR(angle) - 3.0`). `silR()`'s 96-bin
+smoothed envelope doesn't track a highly irregular, non-convex footprint (many wings/gates, a real
+terminal) closely enough — real exterior doors sitting in local recesses read as "interior" against the
+oversmoothed silhouette. That left only 8 raw candidate spots (2 doors × 4 step-outs) for the
+occlusion/frustum/clash gates to work with — trivially reducible to zero, and it was
+(`tried=8 placed=0/2 rejOcclude=4`, live evidence). This is the "not able to be abstract" the user meant
+— the pax algorithm's door classifier doesn't generalize to complex/large footprints the way the
+tree-ring approach already did.
+
+**Fix:** pax candidates are no longer door-XOR-silhouette-ring (the ring was previously ONLY a
+zero-doors fallback). Silhouette-ring candidates — the exact mechanism trees already use successfully,
+robust regardless of footprint complexity — are now ALWAYS generated alongside door-anchored ones.
+Doors still get tried/preferred (a real entrance reads better than a mid-air ring point), but a complex
+building is never starved down to a handful of spots. Verified live: Terminal went from `tried=8
+placed=0` to `tried=56 placed=3` (the full 3-pax formula) across 3 consecutive presses; zero regression
+on Duplex (still exactly 3/press, more candidate variety if anything — 84 tried vs the old ~24).
+
+**Also fixed:** the `§HELPERS_QUERY_ERR no such table: staffage_instances` noise on every building's
+first Alt+P press. Root cause: `A.dbQuery` (helpers.js) already catches its own SQL errors internally
+and returns `[]`, but it ALWAYS `console.warn`s regardless — so my earlier `try/catch` around the
+`SELECT ... FROM staffage_instances` call never actually helped (the query never throws to my catch,
+it just warns and returns empty). Fixed by checking `sqlite_master` for the table's existence first (a
+query that can never fail) and only running the SELECT when the table genuinely exists — silent for the
+normal "never saved with this feature" case, which is every building so far.
+
+**Branch hygiene note:** main had advanced through 3 more merges (#876 icon-row, #877 bbox-ghost-fix,
+#878 cache-fallback) while this fix was being written — `sw.js CACHE_VERSION` was already at v800 on
+main (not the v799 this branch's parent expected). Cut fresh off current `origin/main` rather than
+reusing/rebasing the stale branch, per standing worktree-hygiene rule; bumped v800→v801.
+
+**Shipped:** PR #879 opened; merge once CI green.
+
 ## ADDENDUM 2026-07-17 (same day) — floating-in-midair figures, a SECOND distinct defect, also fixed
 **User report (verbatim, viewing LTU_AHouse via a real screenshot):** "some human sprites gets floating
 on the air as if on first level when it is outside the wall in midair... perhaps this is from reading
