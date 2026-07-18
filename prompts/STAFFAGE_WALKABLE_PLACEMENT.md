@@ -890,3 +890,17 @@ it to fast-forward, just cut a fresh one).
   this was a read-only trace to answer the question; if the user wants Alt+P's on/off state (or the
   actual placed set) to survive save/reopen, that's a new feature (e.g. a flag/seed written into the
   exported DB) — not scoped or requested yet.
+  (Note: this answer predates the save/restore feature actually SHIPPED later in the 2026-07-18
+  session further up this file — `staffage_instances` table, `A._getStaffageInstances`/
+  `A._restoreStaffageInstances`. That superseded the "not scoped yet" line above; kept verbatim here
+  as the historical record of the question being asked and answered at the time.)
+
+## SPUN OFF 2026-07-19 — Hospital's real trees not rendering is NOT a staffage bug
+Confirmed a third time today (user's live console paste): `realTrees=20` is correctly detected on
+Hospital, `_buildStaffage()` correctly refrains from placing synthetic trees on top (by design — real
+data takes priority). **This file's own placement algorithm is not the problem.** The open question —
+whether those 20 real trees ever visibly render at all — is a `streaming.js`/real-geometry question,
+out of this file's scope. Full writeup, all three sessions' evidence, and a concrete new lead (the
+trees sit ~14m above the ground floor — possibly a terrace/courtyard level, not street level) moved to
+its own file: **`prompts/HOSPITAL_TREES_NOT_RENDERING.md`** — read that file fresh, don't re-derive
+from this one.

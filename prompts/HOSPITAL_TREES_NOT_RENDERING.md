@@ -1,0 +1,95 @@
+# ⚠ DO NOT REMOVE — Hospital's 20 real trees are detected but not visibly rendering
+# SCOPE: this is a REAL-GEOMETRY RENDERING question (streaming.js / the element-streaming pipeline),
+#   NOT a staffage-placement bug. It was DISCOVERED via Alt+P testing (spun off from
+#   prompts/STAFFAGE_WALKABLE_PLACEMENT.md, which owns the staffage placement algorithm itself — read
+#   that file only if the question turns out to be staffage-side after all, which three sessions of
+#   evidence below say it is NOT). Read the log / §-witness after every run — do NOT browser-test by
+#   hand without also reading the console, per this project's whitebox-first standing rule.
+
+## THE PROBLEM (user, verbatim, across three separate sessions)
+"Why Hospital has no trees when outside Alt-P?" / "Hospital still zero trees" — pressing Alt+P on the
+Hospital building never shows any trees, on any press, in any camera framing tried so far.
+
+## WHAT'S ALREADY RULED OUT (do not re-derive — three independent confirmations)
+Every session that checked has found the SAME thing: **the real tree data exists, is correctly
+detected, and the staffage system is correctly refraining from double-placing synthetic ones on top.**
+This is NOT a detection bug and NOT a staffage-placement bug. Confirmed three times, most recently
+today (2026-07-19) from the user's own live console paste:
+```
+§PHOTO_STAFFAGE thisPress(people=3 trees=0) cumulative(people=6 trees=0 cars=1) ...
+  (realPeople=0 realTrees=20 realCars=0)
+```
+`realTrees=20` — `effects.js`'s own DB count (`SELECT COUNT(*) FROM elements_meta WHERE
+lower(element_name) LIKE '%tree%'`) correctly finds 20 rows, so `_buildStaffage()`'s `if (realTrees ===
+0)` gate correctly skips synthetic tree placement EVERY time, by design — cumulative `trees` will stay
+0 forever regardless of how many times Alt+P is pressed, because the code believes (correctly, per the
+data) that real trees already exist and shouldn't be duplicated.
+
+**The actual open question is a different one: are those 20 real trees ever visibly rendering in the
+3D scene at all?** Nobody has confirmed either way yet — this needs investigating in `streaming.js`
+(the element-streaming/rendering pipeline), not `effects.js` (staffage).
+
+## THE REAL TREE DATA (confirmed via direct DB query, both a local fixture AND the live production DB)
+```sql
+SELECT guid, element_name, center_x, center_y, center_z, bbox_x, bbox_y, bbox_z
+FROM elements_meta em JOIN element_transforms et ON em.guid = et.guid
+WHERE lower(element_name) LIKE '%tree%'
+```
+Sample rows (Hospital, `ifc_class = IfcBuildingElementProxy`):
+```
+M_RPC Tree - Deciduous:Japanese Cherry - 4.5 Meters:794254   center=(-9.4, 66.4, 179.48)  bbox=(3.3,3.9,4.5)
+M_RPC Tree - Deciduous:Japanese Cherry - 4.5 Meters:794343   center=(26.0, 57.9, 179.48)  bbox=(3.3,3.9,4.5)
+M_RPC Tree - Deciduous:Golden Chain - 5.5 Meters:794725      center=(-0.4, 63.3, 179.92)  bbox=(4.6,4.5,5.5)
+```
+Building's overall Z range (all elements): **165.19 to 203.22** (a ~38m-tall building). Ground-floor
+slab Z (per `§GROUND_Y`, today's log): **165.36**. The trees sit at Z ≈ 179.5–180 — **~14m ABOVE the
+ground floor**, roughly a third of the way up the building's total height. This is a NEW observation
+this session (not previously flagged) and is the most promising concrete lead: **these may not be
+street-level trees at all — they could be on an elevated courtyard, terrace, or podium-roof garden**,
+which would explain why a typical ground-level Alt+P camera view never has them in frame even if they
+ARE rendering correctly. Not confirmed — needs checking against the actual storey this Z corresponds to
+(cross-reference `elements_meta.storey` for these guids, or `spatial_structure`, against the building's
+storey list) before assuming this is the answer.
+
+## WHY THIS WASN'T CONFIRMED YET — two failed attempts, both infrastructural, not conclusive
+1. **Local fixture `modeller/Hospital_ARC.db` is invalid for this test.** It has element metadata
+   (14,641 rows) but ZERO paired geometry library — every geometry-hash lookup logs `§BLOB_MISS`,
+   `totalStreamed=0`, only 2 placeholder bboxes ever render. This fixture was built for the
+   Modeller/Gantt tools, not the Viewer's real-geometry rendering path — don't use it for this
+   investigation, it will never show real trees (or anything else) regardless of the actual bug.
+2. **Real production data is genuinely large.** The real pair is `buildings/Hospital_extracted.db` +
+   `buildings/Hospital_geo.db` on OCI (found via the bucket's public listing, see `viewer/config.js`
+   `PROD_BASE`) — `Hospital_geo.db` alone is **123MB**, the building is **63,415 elements**. An
+   automated Playwright test waited 2+ minutes and only reached `streamedCount=18500` (≈29%) before
+   giving up — never got far enough to take a conclusive screenshot. This is a test-patience/timeout
+   problem, not evidence either way about whether trees render once streaming actually finishes.
+
+## FIRST STEPS FOR A FRESH SESSION
+1. **Check the storey Z lead first** — cheapest, most likely to actually explain it. Query
+   `elements_meta.storey` (or `spatial_structure`/`rel_contained_in_space`) for the tree guids above,
+   compare against the building's storey list and their Z ranges. If the trees are on a named upper
+   storey (a roof garden, terrace, courtyard level), that's the answer — the fix is either "this is
+   correct, camera needs to go up there to see them" (not a bug) or "the storey Z is a data/extraction
+   error" (a different, upstream problem, likely outside this repo's scope).
+2. **If ground-level, get a real screenshot** — don't repeat the 2-minute-timeout mistake. Either:
+   (a) let a Playwright script wait MUCH longer (10+ minutes, or poll `streamedCount >= totalElements`
+   with no ceiling) before screenshotting, or (b) do it as a manual live-browser session instead of an
+   automated one, since a human watching the load doesn't need a hard timeout.
+3. Once actually loaded, check for the real trees at the CAMERA position that would put them in frame
+   (their IFC XY is `(-9.4,66.4)`/`(26.0,57.9)`/`(-0.4,63.3)` roughly — well inside the building's
+   overall XY bbox per the earlier bbox check, so they're not off in some disconnected site-plan area).
+   If genuinely invisible at that vantage point with streaming complete, THEN start looking at
+   `streaming.js`: is this specific `ifc_class`/`element_name` pattern hitting a material/geometry
+   assignment path that fails silently? Is there a per-class or per-size culling/LOD gate that could be
+   dropping small `IfcBuildingElementProxy` instances in a 63k-element building specifically? (Terminal
+   also has a lot of MEP+proxy geometry and was NOT reported as missing trees — worth comparing what's
+   different about Hospital's specific tree rows vs any other building's real RPC entourage that DOES
+   render correctly, e.g. BimWhale's real people/car per `PHOTOREAL_STILL_RENDER.md`.)
+
+## RELATED, NOT THIS FILE'S SCOPE
+- Staffage placement algorithm itself (Alt+P behavior, candidate generation, clash-capping, formula) —
+  `prompts/STAFFAGE_WALKABLE_PLACEMENT.md`, fully separate and already working correctly for Hospital
+  (pax/car placement confirmed live today: `people=3 cars=1`, real evidence, no bug there).
+- The M_RPC-prefix real-entourage detection/material system (`§ENTOURAGE`, `§RPC_M_PREFIX`) — already
+  fixed and confirmed correct in an earlier session (`STAFFAGE_WALKABLE_PLACEMENT.md`, "SESSION RECORD"
+  entries around 2026-07-17/18) — not the cause here, `realTrees=20` proves detection already works.
