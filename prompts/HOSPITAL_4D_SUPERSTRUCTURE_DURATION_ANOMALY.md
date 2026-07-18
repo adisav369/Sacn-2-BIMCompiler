@@ -1,13 +1,75 @@
 # ⚠ DO NOT REMOVE — Hospital 4D Superstructure duration anomaly + share-button correction
-# SCOPE: Items 1-3 DONE/CONFIRMED on origin/main. Item 4 (crew-cap) shipped but user reports the
-# VISUAL symptom persists live — NOT yet re-diagnosed, do not assume the fix is wrong without
-# fresh investigation. Item 5 (halo) shipped, user reported it as an ACTIVE VISUAL REGRESSION
-# ("yellow cubes hell") — REVERTED same session, see Item 5 postscript for exact status/commit.
-# ⛔ NEXT SESSION: read "Item 6 — OPEN, handoff for fresh session" below FIRST, before touching
-# any code — it has the concrete next steps, not just the retrospective. Read the log after every
-# run. Read this whole file before touching code.
+# SCOPE: Items 1-5 DONE. Item 6 DIAGNOSED + FIXED 2026-07-18 (§STOREY-Z reassignment, PR bim-ootb#TBD,
+# branch fix/gantt-mini-unknown-storey-zband) — both open questions answered, see "Item 6 — RESOLVED"
+# below. Read the log after every run. Read this whole file before touching code.
 
-## Item 6 — ⛔ OPEN, handoff for a fresh session (2026-07-18 close-out)
+## Item 6 — ✅ RESOLVED 2026-07-18: mini-Gantt "still all at once" root cause found + fixed
+**Halo revert (Item 5) landed first this session:** the pending push from last session's close-out
+(`revert/frontier-halo-glow` @ `e960827`) completed cleanly on retry, PR bim-ootb#867 merged to
+`main` (`45682f9`), confirmed via `git show origin/main:viewer/time_machine.js | grep -c
+FRONTIER-HALO` → 0 and via an ACTUAL LIVE SCREENSHOT (not object counts — the exact gap the last
+session flagged) against `https://red1oon.github.io/bim-ootb/`: normal partial-streamed wireframe
+geometry, no yellow wash.
+
+**Q2 (was live serving Item 4's crew-cap fix?) — YES, confirmed:** live `viewer/rates.js` carries
+`max_crews` ×10, live `viewer/schedule_gate.js` carries `claimCrew`/`maxCrews` logic, live
+`viewer/time_machine.js` carries `_GANTT_CACHE_VERSION=3`. Not a deployment gap.
+
+**Q1 (does `drawGanttMini()` have its own display bug?) — NO, the bar-position math is correct.**
+The REAL root cause, found by reproducing `drawGanttMini()`'s own storey|phase grouping directly
+against live-generated `_ops` (Hospital): 9,457 of 63,415 elements (14.9%) carry a literal
+`storey='Unknown'` in `elements_meta` (not NULL — a real extracted value) — mostly secondary steel
+(7,122 `IfcMember` + 2,211 `IfcPlate` bracing/gusset-plates) scattered across the FULL Z-height of
+the building, not concentrated at one level. Because `drawGanttMini()` groups by `storey|phase`,
+ALL 9,457 of these collapse into ONE bar spanning day 13.8→159 — nearly the whole project — which
+visually dominates the drawer and reads as "still all at once", even though the properly-tagged
+Level 1→7 bars genuinely cascade (confirmed: day 0 → 17.5 → 30.4 → 63.6 → 101.4 → 138.4 → 155.3 →
+157.5 — Item 4's crew-cap fix IS working correctly for the 85% of elements that carry a real
+storey). **Confirmed a GENERAL defect, not Hospital-specific** — checked all 4 reference buildings:
+Hospital 14.9% Unknown, HHS 30.8%, Terminal 69.9%, **Duplex 87%**.
+
+**Fix — `§STOREY-Z` reassignment in `injectGantt()` (`viewer/time_machine.js`), not a display
+patch:** mirrors an already-proven pattern in `build/room_walker.js`'s `storeyZAnchors`/
+`_assignByZ` (its own comment: "HHS: all 716 vertical curtain children carry storey 'Unknown';
+their z clusters match Level 1/2/3 exactly" — the Room Injector Needle solved this exact class of
+problem for room compilation already; user pointed at this during the session). Per-building:
+compute median Z per REAL (non-Unknown) storey from the already-queried element rows, then for any
+element whose `storey` is `_UNKNOWN`/`'Unknown'`, reassign it to the nearest real storey by
+`|cz - medianZ|` — deterministic, uses only already-extracted Z data, nothing invented. Applied
+ONCE at the `elements[]` construction stage in `injectGantt()`, so the corrected `storey` flows
+through automatically to: the Gantt op's persisted `storey` field (`drawGanttMini()` needs zero
+changes), the storey-band ranking, and the roof-slab override (`/roof/i.test(storey)`) — no
+separate patch needed anywhere else. Falls back to unchanged `'Unknown'` behavior if a building has
+zero real storeys to anchor against (empty `storeyNames`).
+
+**Verified, real geometry, both buildings that were checked live:**
+- Hospital: `§GANTT_STOREY_Z reassigned=9457` — the "Unknown" Superstructure group (9,357 elements,
+  day13.8→159 span) disappears entirely; those elements fold into Level 1 (274→704), Level 3
+  (510→3096), Level 4 (394→3203), Level 5 (437→2823), Level 6 (310→818), Level 7A (64→188), Level 7
+  (80→82) — the SAME cascading start-days as before (confirming Item 4's scheduling itself is
+  untouched — this is purely a storey-attribution fix), now with each Level's bar honestly
+  reflecting its FULL population instead of a fraction.
+- HHS: 3 clean Level 1→2→3 Superstructure groups, zero Unknown bucket, cascading day 0→17.5→9.7→
+  24.9→20.2→27.7.
+- `tests/test_schedule_gate.js` regression: still PASS, 0/1970 beams / 0/7127 members / 0/35 slabs
+  floating (unaffected — the fix only touches storey ATTRIBUTION, never `base_z`/`top_z`/XY
+  footprint, which is what the support gate actually keys on).
+- **Actual rendered screenshot** of the mini-Gantt drawer (Hospital, live worktree server, real
+  `#tm-gantt` toggle + `tmJumpToElement`) — 35 distinct storey|phase rows, clean Level 1→7A cascade
+  visible, no dominant catch-all bar. Screenshot method, not object counts — the same lesson Item
+  5's postscript flagged, applied here before calling this done.
+
+**Branch/PR:** `fix/gantt-mini-unknown-storey-zband` off `origin/main`@`45682f9` (post-#867), 2
+commits' worth of change in `viewer/time_machine.js` (§STOREY-Z anchor computation + reassignment
+in `injectGantt()`). `node --check` passes. Not yet pushed/PR'd as of this write-up — do that next
+if picking this file up mid-session, or check `git -C ~/bim-ootb branch -a | grep gantt-mini` /
+`gh pr list` first to see if a later pass in this same session already did.
+
+**Not yet done:** the user hasn't seen this live yet — verify the deployed PR reads correctly on
+their own device/browser once merged, same "ask if it reproduces in Incognito" discipline as
+Item 3's postscript if they report anything still off.
+
+## Item 6 (original handoff, kept for the record — superseded by the resolution above)
 User, after Item 4 (crew-cap) + Item 5 (halo) shipped and merged to `main`: **"that gantt chart
 all at once is not solved!"** and **"The yellow halo does not transition right away to dark red.
 It is the same yellow cubes hell that persist, meaning u have not solved its source of error."**
