@@ -86,9 +86,40 @@ aggressively during scrub (stopping before a frame fully settles) if this persis
 gets a genuinely fresh v4/v797 load. **Do not assume the cache-bump above fixes this too** — it's
 an unconfirmed, separate lead; re-diagnose fresh if it's still reported after the cache fix lands.
 
-**Not yet done:** the user hasn't confirmed a clean fresh load yet — verify PR bim-ootb#871 merges
-(was `BLOCKED` on pending CI checks as of this write-up, auto-merge armed) and ask for a re-test
-once it's live.
+**Postscript 3 — a THIRD, distinct bug found by the user's direct pushback ("why are all the gantt
+bars the same spot... aren't they supposed to be staggered? for the 3rd time...") — 2026-07-18:**
+after #869/#871 landed, MEP Rough-in bars for different floors STILL visually clustered — but this
+time verified with real per-element data, not display math. `Level 1/2/5 MEP Rough-in` groups all
+showed `start=day0.0`. Drilled into WHY: for Level 5's group (n=7,627), the MEDIAN start is day
+258 and only 0.4% of elements start before day 100 — the underlying schedule genuinely IS gradual
+and correctly staggered. The group's reported MIN, though, is dragged to ~0 by a tiny cluster
+(~60 elements, 0.8%) of `IfcPipeFitting`s that carry a REAL, PRESENT storey tag ("Level 5") that
+disagrees sharply with their own extracted Z (~164m, below even Level 1's median 168.9m) — almost
+certainly risers/connectors whose IFC "Level" property reflects which floor's system they serve,
+not their physical position. `schedule_gate.js` correctly gates these by real geometry (not the
+tag), so they schedule to start almost immediately — genuinely correct per-element, but the
+drawer's true-min/max bar span let this handful of outliers define the WHOLE floor's displayed
+start.
+
+**Fix — `§GANTT_MINI_TRIM`, bim-ootb PR #873 (`fix/gantt-mini-percentile-trim`):** trim the bar's
+drawn span to the 2nd–98th percentile of real per-element start/end times instead of true min/max
+(tiny groups, n≤20, keep true min/max — percentile trimming is meaningless at that sample size).
+Pure display-layer change, does not touch scheduling/gating at all. Verified live (Hospital): MEP
+Rough-in bars now cascade cleanly `Level1(day10.5)→Level2(day32.3)→Level3(day56.3)→Level4(day90.5)
+→Level5(day128.1)→Level6(day159.1)→Level7(day311.7)` instead of 3 different floors all reading
+day 0 — confirmed via an actual rendered screenshot (clean staircase pattern) and
+`tests/test_schedule_gate.js` (still 0 floating).
+
+**Process note:** this was caught because the user pushed back a third time on a screenshot I'd
+already called "fixed" instead of accepting my explanation — the earlier two Item 6 fixes (§STOREY-Z,
+cache-version bump) were both real and necessary, but neither was sufficient on its own; each
+follow-up report surfaced a genuinely distinct layer of the same visual symptom. Don't treat a
+user's repeated "still not right" as the same bug restated — re-derive from real data each time.
+
+**Not yet done:** the user hasn't confirmed a clean fresh load with all three fixes (§STOREY-Z +
+cache bump + percentile trim) live yet. PR #873 was `BLOCKED` on pending CI checks as of this
+write-up (auto-merge armed). No `_GANTT_CACHE_VERSION` bump needed for #873 — it's pure display
+logic recomputed live on whatever `_ops` is already loaded, not itself cached.
 
 ## Item 6 (original handoff, kept for the record — superseded by the resolution above)
 User, after Item 4 (crew-cap) + Item 5 (halo) shipped and merged to `main`: **"that gantt chart
