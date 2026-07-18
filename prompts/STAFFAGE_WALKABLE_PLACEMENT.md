@@ -440,6 +440,80 @@ again, use the README path).
 **Shipped:** PR #868 merged (`d53a477`, live). PR #870 opened, CI pending at time of writing — merge
 once green, same admin-scope convention as #868.
 
+## SESSION RECORD 2026-07-18, cont. — PR #870 merged; 4 more live-test items, PR #872
+**PR #870 merged clean** (`f1cb4c9`) — same admin flow, CI green, auto-merge.
+
+**User's next round of live feedback, verbatim, four items plus one design confirmation:**
+1. "and they should be camera facing - facade. Don't generate anything out of frame. Wait till cam
+   switch to another angle. All populate only in frame opportunity" — the "don't generate out of
+   frame / wait for a new angle" half was already the shipped design (confirmed, no change needed);
+   the "camera facing" half was a real gap.
+2. "ie trees say 3 all appear in scene not behind or obscured by building" — a real gap: frustum
+   membership isn't the same as actually visible.
+3. "Car is still slightly tilted and should be another 2 meters away from wall." — distance is a
+   real, simple ask; tilt needed investigation (see below).
+4. "cars should have different metalic colour assigned."
+5. "Why Hospital has no trees when outside Alt-P?" — a question, not a placement bug (see below).
+
+**Shipped fixes (`viewer/effects.js`, commit `bdda3f7`, PR #872):**
+- **Occlusion check** — new `_inFrame()` behaviour: after the existing frustum-projection test passes,
+  cast a ray from `A.camera.position` to the candidate via a dedicated `THREE.Raycaster`, against real
+  building meshes collected ONCE per `_buildStaffage()` call (`A.collectMeshes`, excluding staffage's
+  own group). A candidate with any real-geometry hit closer than itself is rejected — same treatment as
+  an out-of-frustum candidate. Verified live: adds ~100-160ms on HHS's first press (a dense scene,
+  vs ~10-20ms before) — still well inside this feature's existing budget, zero errors.
+- **Facade-facing** — `outsidePoses` (already `role==='stand'` only, from the prior fix) now ALSO
+  requires `facing==='toward'` — drops the away-facing standing pose from the entrance/facade pool
+  entirely. Only one pose (`person_standing_casual_male`) now qualifies, which is fine — "1 set" was
+  always going to repeat the same look.
+- **Car clearance** 5.5m→7.5m from the wall, both the door-anchored and no-doors fallback branches.
+- **Car colour** — new `_CAR_COLORS` (7-shade real-paint palette) + `_carColorFor(buildingName)`
+  (string-hash → deterministic index, so the SAME building always gets the SAME colour — matters for
+  the Save/Restore round-trip staying visually consistent, not random-per-press). Metalness 0.15→0.55,
+  roughness 0.4→0.35 for a genuinely metallic paint read. Applied at both material-creation sites (live
+  placement AND the restore-from-saved-DB path — missed updating one of these once before in this
+  session's history, double-checked this time).
+
+**Investigated, NOT code-fixed — real evidence gathered, root cause differs from what was assumed:**
+- **Car "still tilted"/"floating" — DEFINITIVELY not a position or geometry bug.** Two independent
+  checks: (a) decoded `car_beetle.bin` directly (same axis-remap as the loader) — the 4 wheel-contact
+  vertices (bottom 2% of all verts) are at the EXACT same Y across all 4 XZ quadrants, to 4 decimal
+  places — the source geometry is genuinely flat, no baked-in tilt from extraction. (b) Live-queried
+  the RENDERED mesh's world-space wheel-bottom Y (`mesh.position.y + geometry.boundingBox.min.y`)
+  against `A.ground.position.y` with Shadow AND Night mode both toggled on — **identical to 14 decimal
+  places** (`-0.21200000000000002` vs `-0.21199999999999997`). A screenshot with Shadow on and the
+  ground plane visible (previously invisible by default — `A.ground.visible=false` until Shadow is
+  toggled on) still visually READS as floating despite the numeric proof, and shows no visible contact
+  shadow under the car at all despite `castShadow=true`/`shadowOn=true`. **Working conclusion:**
+  missing ground-contact visual cue (no soft AO/contact-shadow decal under the wheels, and the real
+  cast shadow may not actually be rendering — not confirmed why) makes a mathematically-exact placement
+  read as floating/tilted to the eye. This is a rendering-polish fix (a shadow-blob decal, or debugging
+  why `castShadow` isn't producing a visible shadow), NOT a placement-math fix — flagged as the next
+  concrete lever, not attempted blind this session (out of scope, needs its own investigation of the
+  shadow-map/frustum-coverage path).
+- **"Why Hospital has no trees when outside Alt-P" — inconclusive, real infra constraint hit.** First
+  attempt used the local `modeller/Hospital_ARC.db` fixture — discovered it has ZERO paired geometry
+  library (every geometry hash lookup logged `§BLOB_MISS`, `totalStreamed=0`, only 2 placeholder
+  bboxes) — that fixture is metadata-only (built for the Modeller/Gantt tools), not a valid Viewer
+  geometry test bed. Second attempt hit the REAL production site + REAL OCI-hosted geometry
+  (`buildings/Hospital_extracted.db` + `buildings/Hospital_geo.db`, found via the bucket's public
+  listing — `PROD_BASE` in `viewer/config.js`) — confirmed `realTrees=20` detected correctly even
+  against the real DB (so the detection/skip-synthetic-trees logic is NOT the problem). Could not get a
+  definitive rendered screenshot: Hospital's real geometry is a 123MB / 63,415-element stream that was
+  still only ~29% loaded (`streamedCount=18500`) after 2+ minutes of automated waiting — the test
+  environment's patience ran out before the page did, not a confirmed rendering bug. **Left open**,
+  same conclusion as the PRIOR session's identical finding — next step is either patient live testing
+  (let it fully stream, then look), or checking whether small proxy-classed elements like trees are
+  deprioritized behind bulk structural/MEP geometry in this building's streaming order (a real,
+  checkable hypothesis, not chased this session).
+
+**Tooling note:** found the real OCI bucket listing is public (`GET .../o?prefix=...` on the
+`objectstorage.ap-kulai-2.oraclecloud.com` bucket) — useful for finding a building's exact `db`/`lib`
+filenames without guessing (several buildings, Hospital included, are "split" — geometry lives in a
+separate `_geo.db`, not folded into the `_extracted.db` the way small buildings are).
+
+**Shipped:** PR #872 opened; merge once CI is green, same admin-scope convention as #868/#870.
+
 ## ADDENDUM 2026-07-17 (same day) — floating-in-midair figures, a SECOND distinct defect, also fixed
 **User report (verbatim, viewing LTU_AHouse via a real screenshot):** "some human sprites gets floating
 on the air as if on first level when it is outside the wall in midair... perhaps this is from reading
