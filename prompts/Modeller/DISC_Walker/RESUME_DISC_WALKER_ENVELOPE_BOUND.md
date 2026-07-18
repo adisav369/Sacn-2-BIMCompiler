@@ -1,5 +1,28 @@
 # RESUME — disc_walker: area-scaled n_measured + envelope-bound placement (RouteWalker alignment)
 
+# ▶ NOTE (not a task directive, doesn't supersede the ENTRY POINT below — 2026-07-18): room_graph.js's
+# occupant graph (OCCUPANT_PATHFINDER.md — connectivity check, corridor-preference routing, storey-rescue,
+# all shipped bim-ootb branches this session) is NOT currently wired into `disc_walker.js` — verified by
+# grep, zero `RoomGraph` references in `modeller/disc_walker.js` or `modeller/routewalker.js`. Its own
+# `spacesOf()` reads rooms independently; its class-3 "run without recorded joins" reconstruction
+# (WalkerDoctrine.md §3) is raw XY nearest-neighbor distance, no wall/circulation awareness. The design
+# intent already links them — OCCUPANT_PATHFINDER.md's own opening line, verbatim user quote: "this is a
+# pathfinder for human occupants and basis for conduit routing and Disc Walker too." Where a future wire-up
+# would concretely help, if picked up:
+#   1. Class-3 proximity-reconstructed runs (WalkerDoctrine §3.3, e.g. SC's 60 rainwater downpipes) could
+#      route via `RoomGraph.shortestPath(graph, from, to, {metric:'doors'})` instead of a straight air-line —
+#      a wall/corridor-respecting path instead of one that can cross a solid wall, closer to WalkerDoctrine
+#      §4's "no fabricated networks" spirit.
+#   2. `RoomGraph.fullConnectivity()`'s island report (bim-ootb `feat/full-connectivity-island-report`)
+#      could run as a PRE-WALK substrate gate — surfacing disconnected/fixable zones before the walker tries
+#      to place a networked run across a gap that doesn't architecturally exist. Same spirit as
+#      WalkerDoctrine §12/§13 ("verify the oracle/reference data is real before trusting it"), one layer
+#      earlier — verify the substrate before walking it.
+#   3. C1's storey-rescue (`feat/c1-unknown-storey-door-rescue`) improves the graph substrate itself,
+#      independent of when/whether DiscWalk gets wired to it.
+# Not scoped as a task here — flagging the connection for whoever next touches class-3 routing or a
+# substrate-quality gate, per the design intent already on record.
+
 # ▶▶▶▶▶▶▶▶▶ ENTRY POINT (2026-07-10 LATER STILL — supersedes every block below, including the one right
 # under it). MANAGER-verified + MERGED. Read this first, one task remains.
 #
