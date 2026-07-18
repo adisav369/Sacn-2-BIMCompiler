@@ -1,7 +1,7 @@
 # ⚠ DO NOT REMOVE — Hospital 4D Superstructure duration anomaly + share-button correction
-# SCOPE: Items 1-5 DONE. Item 6 DIAGNOSED + FIXED 2026-07-18 (§STOREY-Z reassignment, PR bim-ootb#TBD,
-# branch fix/gantt-mini-unknown-storey-zband) — both open questions answered, see "Item 6 — RESOLVED"
-# below. Read the log after every run. Read this whole file before touching code.
+# SCOPE: Items 1-8 DONE, user confirmed Item 8's fix "working" live 2026-07-19. Item 9 is OPEN,
+# handed off for a fresh session (not diagnosed/fixed yet, user explicitly asked to defer) — read
+# "Item 9 — OPEN" below FIRST before touching code. Read the log after every run.
 
 ## Item 6 — ✅ RESOLVED 2026-07-18: mini-Gantt "still all at once" root cause found + fixed
 **Halo revert (Item 5) landed first this session:** the pending push from last session's close-out
@@ -149,6 +149,43 @@ viewer fresh — confirmed `§IDB_VERSION_MISMATCH` → `§IDB_VERSION_FALLBACK_
 resolves a real DB with both object stores present, and an actual write+read-back through it
 succeeds end to end. This is the real fix for "reopening shows initial stage" — not a Gantt-display
 issue, a browser-profile-level cache corruption that this app had no self-heal path for until now.
+
+## Item 9 — ⛔ OPEN, handoff for a fresh session (2026-07-19) — "glowing thru each element
+## appearance and closeup burned red"
+User, after confirming Item 8's staircase fix is "working" live: new report, verbatim — "the
+glowing thru each element appearance and closeup burned red." **Explicitly deferred — user asked
+to update this file so a fresh session solves it, not fix it in this session.** Not yet
+investigated live (no screenshot/log captured for THIS specific report) — the lead below is a
+grounded code-reading finding, not a confirmed diagnosis. Verify against a real screenshot/log
+before assuming it's the cause.
+
+**Confirmed still-active mechanism that matches the symptom description** (found by reading
+`viewer/time_machine.js`, not guessed): `applyHighlight()` (~line 1420) is the per-element frontier
+glow that survived the Item 5 halo-sprite revert (a SEPARATE mechanism — the reverted sprite pool
+was `applyFrontierHalo()`/`_haloColorFor()`, fully gone; `applyHighlight()` is older, unrelated,
+still shipping). It explicitly sets:
+- `mat.depthTest = false` — comment at the call site literally says "shines through ground for
+  underground elements" — this IS a "glows thru" mechanism by design, not a bug in the sense of
+  being accidental, but may now read as unwanted/wrong given the user's report.
+- Color: `fColor = ft < 0.15 ? 0x44ffff : 0xff8c00` (cyan for the first 15% of an element's install
+  progress, then ORANGE `0xff8c00` — not literally red — for the remaining 85%), `emissiveIntensity
+  = 0.4`, `opacity = 0.85`, `renderOrder = 10`.
+- **Only applies to SINGLE-mesh objects** (`obj.userData.guid` path, ~line 749) — confirmed
+  elsewhere in this file that Hospital/Terminal stream almost entirely as BatchedMesh/InstancedMesh
+  (`sceneMeshGUIDs=0` all session), so this exact code barely engages for THOSE buildings. If the
+  user is testing on a building with substantial single-mesh content, this would fire constantly;
+  if still on Hospital/Terminal, this specific code path is NOT the explanation and the real cause
+  is elsewhere (check the `INSTANCED_FRONTIER`/`BATCHED` §WB_MAT log lines' own color values instead
+  — no `setColorAt`/`instanceColor` call was found anywhere in this file, meaning Instanced/Batched
+  frontier elements currently get NO per-instance color tint at all from this file; if they're
+  showing red up close anyway, the source is a DIFFERENT file/mechanism, not `applyHighlight()`).
+
+**What NOT to assume:** don't assume `applyHighlight()` is guilty without a live repro + screenshot
+confirming (a) which building/mesh-type the user is on, and (b) that orange-not-actually-red is
+what's being perceived up close (tone-mapping/emissive-intensity/bloom could shift 0xff8c00 toward
+red-looking at high exposure — check the ACTUAL rendered pixel color, don't assume from the hex
+constant alone — this project's own Item 5 lesson: verify visual claims with a screenshot, not
+object/property inspection).
 
 ## Item 8 — ✅ FIXED 2026-07-19, PR bim-ootb#882 (`fix/captured-schedule-per-element-stagger`):
 ## "the gantt chart bars are the SAME! why must those clusters be on same starting point?" — a
