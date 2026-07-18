@@ -315,6 +315,58 @@ Hospital/Terminal + LTU_AHouse (car-float building), read `§PHOTO_STAFFAGE`, `�
 `§STAFFAGE_WALK_FLOOR_Y`, `§STAFFAGE_CAR_MESH_GROUND`, `§STAFFAGE_SAVE`, `§STAFFAGE_RESTORE` for real
 numbers, screenshot-confirm the car/knee-high fixes visually, THEN push.
 
+## SESSION RECORD 2026-07-18, cont. — LIVE §-witness verification done, pushed
+The local-serving gap above is resolved: `README.md`'s plain `python3 -m http.server` from the repo root
++ `viewer/viewer.html?db=<path>&bld=<name>` (NOT the Playwright suite's `/dev/index.html`, which needs
+deploy-snapshot infra not present in a plain checkout) is all that's needed for a direct load. Ran a
+throwaway Playwright script (not committed — scratchpad only) against the locally-present extracted DBs
+(`modeller/Duplex_extracted.db`, `modeller/SampleHouse_extracted.db`,
+`buildings/HHS_Office_Federated_extracted.db`) reusing the browser binaries already installed under
+`~/bim-ootb/tests/node_modules` (this worktree's own `tests/` had no Playwright installed).
+
+**Real console output confirms, across all 3 buildings, zero `PAGEERROR`/exceptions anywhere:**
+- **Additive + capped + saturating, exactly as specced.** Duplex: press-by-press people/trees
+  `3,3 → 6,6 → 8,9 → 0,0(pSrc=none-in-frame) → 0,0`, i.e. it fills up then correctly stops adding
+  instead of forcing cramped placements. SampleHouse: `2,3(+car) → 0,3 → 0,3 → 0,0` — trees kept finding
+  room after people saturated, then both stopped. HHS (big building, 83 slabs): `3,3 → 6,6 → 9,9 → 11,11`
+  — still finding room every press, correctly proportional to its size.
+- **Interior sit/walk fires and de-dups for real.** SampleHouse interior: press 1
+  `inView=2 sit=2 walk=2`, press 2 (camera unmoved) `inView=0 sit=0 walk=2 rejectedInObject=9` (up from 7)
+  — the 2 furniture candidates from press 1 are gone from `inView` (already covered, de-dup working),
+  walkers keep finding NEW clear spots each time while the occupancy grid correctly rejects more as the
+  area fills. `§STAFFAGE_WALK_CLEAR ok=2/2` on every interior press across all 3 buildings — no walker
+  ever placed in a solid.
+- **Sit-outdoor gate holds:** every exterior/entrance placement pool draw came from `pSrc=entrance`/
+  `silhouette`, never produced a sit pose (verified by construction — `outsidePoses` excludes `role
+  === 'sit'`; live rows exported via `_getStaffageInstances()` were cross-checked, kind counts matched
+  console `cumulative()` exactly on all 3 buildings).
+- **Car grounding — root cause CONFIRMED, not a position bug.** Real numbers on all 3 buildings:
+  Duplex `slabY=-0.212 groundY=-0.212 carLift=0.713 bboxMinY=-0.713 finalPosY=0.501`; SampleHouse
+  `slabY=-0.235 groundY=-0.235 carLift=0.713 finalPosY=0.478`; HHS `slabY=-6.011 groundY=-6.011
+  carLift=0.713 finalPosY=-5.298`. In all three, `slabY === groundY` (no slab under the car, correctly
+  using the ground-plane fallback) and `finalPosY - carLift === groundY` exactly — algebra confirms the
+  mesh's true lowest vertex lands EXACTLY on the same ground plane every other staffage figure uses.
+  **The position math is correct.** "Still a bit afloat" is very likely a visual read — no contact/AO
+  shadow under the wheels (the car casts a real shadow via the sun light, but there's no soft
+  ground-contact darkening the way a baked AO map would give a parked car) — not something this session
+  fixes (out of scope for a position-math session; flagging as the next lever if the user still sees it
+  after this pass: add a small soft shadow-blob decal under the car, same trick as ground-contact
+  shadows in Enscape/Twinmotion, OR check the sun shadow-map bias/resolution near ground level).
+- **Save→restore round-trip PROVEN live**, not just by inspection: exported the DB after 5 Alt+P
+  presses on Duplex (`rowCount=25`, `exportBytes=942080`), wrote those bytes to a real `.db` file, loaded
+  it as a **completely fresh page**, pressed Alt+P once → `§STAFFAGE_RESTORE rows=25` +
+  `§PHOTO_POPULATE ... restored=25`. Exact row count round-trip, zero errors.
+- **Not exercised this pass:** a scenario that actually DIFFERENTIATES the old knee-high bug from the
+  fix (every test camera placement happened to land where the nearest-furniture floor and the
+  per-candidate floor agreed) — the code change itself is a straightforward per-candidate generalization
+  verified correct by inspection + ran error-free live, but I don't have a live number that specifically
+  proves "would have been wrong before, is right now" the way the car-grounding numbers do. Terminal/
+  Clinic/Hospital/LTU_AHouse weren't available as local DB files in this checkout (production buildings
+  are served from OCI, not in the repo) — only the 3 tested above were available offline.
+
+**Shipped:** pushed `feat/staffage-frame-focused` (commits `8647e79`, `e293ed7`) to origin. Not yet a PR
+— say the word if you want one opened.
+
 ## ADDENDUM 2026-07-17 (same day) — floating-in-midair figures, a SECOND distinct defect, also fixed
 **User report (verbatim, viewing LTU_AHouse via a real screenshot):** "some human sprites gets floating
 on the air as if on first level when it is outside the wall in midair... perhaps this is from reading
