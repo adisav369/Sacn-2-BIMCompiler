@@ -1,8 +1,9 @@
 # ⚠ DO NOT REMOVE — Hospital 4D Superstructure duration anomaly + share-button correction
-# SCOPE: all items DONE/FIXED as of 2026-07-18 — see each item's ✅ header. Three PRs open against
-# bim-ootb: #852 (tm-share), #853 (locale productivity merge + gantt cache version), #856 (stream/TM
-# resweep, stacked on #853 — none merged yet as of this writing). Read the log after every run.
-# Read this whole file before touching code.
+# SCOPE: all items DONE/FIXED as of 2026-07-18 and CONFIRMED on origin/main (bim-ootb) — see each
+# item's ✅ header. #852/#853/#859 merged into main. (#856 — see Item 3's "orphaned PR" postscript —
+# never actually landed despite showing "merged"; #859 re-lands it correctly, verified present in
+# origin/main:viewer/time_machine.js + streaming.js by direct `git show`, not just `gh pr view`
+# state.) Read the log after every run. Read this whole file before touching code.
 
 ## Item 3 — ✅ FIXED 2026-07-18, PR bim-ootb#856 (`fix/tm-stream-resweep`, stacked on #853):
 ## scene doesn't clear at 0Hr on large buildings
@@ -35,6 +36,22 @@ grew from 1976/2151 to 10134/10309 while cursor never moved (confirmed on both c
 baseline). Post-fix: `batchVisibleSlots`/`instVisible` stay pinned at exactly 0 for the full 20s
 window while `batchTotalSlots`/`instTotal` keep growing (2151→8159), confirming late arrivals now
 start correctly hidden and stay hidden.
+
+**Postscript — the fix was orphaned on first landing, caught by user re-test:** original PR #856
+was mistakenly branched off `fix/locale-productivity-deep-merge` (PR #853's source branch) instead
+of `main`. `gh pr view` reported ALL THREE PRs as `"state":"MERGED"` — but #853 squash-merged into
+`main` FIRST, and #856's own merge (into the now-stale `fix/locale-productivity-deep-merge` branch)
+never actually landed its diff into `main` — the tmResweep commits were reachable only from a
+dead-end branch, invisible to anyone testing `main`. User re-tested live after being told "all
+pushed" and hit the exact same bug — correctly didn't accept "the PRs say merged" at face value.
+Caught by checking `git branch -a --contains <commit>` against `origin/main` directly (not `gh pr
+view`'s merged-state alone), cherry-picked cleanly onto fresh `main` as **PR #859**, re-verified
+live against current `main` (post #854/#855/#857 too), auto-merge enabled, confirmed via `git show
+origin/main:<file>` (not just PR state) that `tmResweep` is genuinely present. **Lesson for any
+future stacked-PR workflow on this project: branch every fix off `main` directly, or if stacking is
+unavoidable, verify the FINAL merge target ref (`git log --oneline origin/main -N` + grep the actual
+file content) after each merge — `gh pr view --json state` alone is not proof of reachability from
+main.**
 
 **Item 0's floating-beam side-question (same live session, before this item):** independently
 verified via a Node replica of the schedule + the app's own `§SUPPORT_CHECK` audit — 0/1970 beams
