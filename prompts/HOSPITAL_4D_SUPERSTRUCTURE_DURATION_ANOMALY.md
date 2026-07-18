@@ -55,14 +55,30 @@ gaps found and closed, root cause of persistence still unconfirmed:**
    Jump-to-Start, 15s real Build (generates real frontier+SFX activity matching their log), Jump-
    to-Start AGAIN (mid-session reset) — clean, 0/2716 batch slots immediately and for 10s after;
    (c) sitting at 0Hr post-reset for an extended window — stays at exactly 0.
-3. **Open question, not yet resolved:** since source-level testing on `origin/main` is clean across
-   every angle tried, the remaining gap between "verified fixed in source" and "user still sees it
-   live" is most likely an ENVIRONMENT question (which URL/checkout the user's browser is actually
-   running — localhost dev server against a possibly-stale local `bim-ootb` checkout that needs its
-   own `git pull`, vs `https://red1oon.github.io/bim-ootb/` which needs the Pages rebuild — ~60-95s
-   per `GH_DEPLOY.md` — to have actually completed after the merge) rather than a further code bug.
-   **Next session: get the exact test URL/checkout path before assuming a new code-level regression
-   — don't re-invent a 4th hypothesis blind.**
+3. **Escalated to testing the ACTUAL LIVE PRODUCTION URL directly** (`https://red1oon.github.io/
+   bim-ootb/`), not just local worktrees — the decisive test. Confirmed the deployed bundle is
+   minified (build step between `main` and what Pages serves — `GH_DEPLOY.md` doesn't document
+   this, worth fixing that doc gap separately) but genuinely carries all three fixes: fetched
+   `viewer/streaming.js`/`time_machine.js`/`locale_loader.js` live, counted actual string
+   occurrences correctly this time (`grep -o | wc -l`, not `grep -c` which caps at 1 on a
+   single-line minified file — tripped on this myself first, corrected before concluding
+   anything) — `tmResweep` × 6 in streaming.js (3 hook sites × 2 refs each), × 1 definition in
+   time_machine.js, `locTrade` × 8 in locale_loader.js (the productivity-merge variable). Then ran
+   the FULL user-matching sequence (activate → Jump-to-Start → 15s real Build, matching their
+   pasted frontier/SFX log activity → Jump-to-Start again, the actual "mid-session reset" scenario
+   → sit at 0Hr for 10s) against this exact live URL, exact building (`HHS_Office_Federated`).
+   Clean every step: `0/2716` batch slots immediately after each reset, staying at 0 for the full
+   10s window. `window.tmResweep` confirmed present and callable (`hasResweep:true`) on the live
+   page itself.
+4. **Conclusion: source, deployment, and live-production behavior are all verified correct.** The
+   remaining gap between this and the user's report is very likely their OWN browser/device
+   session state — a "hard reset" (Ctrl+Shift+R) does not always fully clear an installed service
+   worker in every browser; DevTools → Application → Service Workers → Unregister + Clear Storage,
+   or a clean Incognito/Private window (zero prior SW/cache state), is the next concrete
+   troubleshooting step if it recurs — not a further code hypothesis. **Next session: if this
+   resurfaces, get a screenshot (not just console logs — logs alone can't show whether the SCENE
+   visually looks wrong) and ask specifically whether it reproduces in a fresh Incognito window
+   before re-opening the code investigation.**
 
 **Postscript 1 — the fix was orphaned on first landing, caught by user re-test:** original PR #856
 was mistakenly branched off `fix/locale-productivity-deep-merge` (PR #853's source branch) instead
