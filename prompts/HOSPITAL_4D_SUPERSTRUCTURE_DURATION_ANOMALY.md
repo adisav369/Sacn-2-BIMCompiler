@@ -150,6 +150,53 @@ resolves a real DB with both object stores present, and an actual write+read-bac
 succeeds end to end. This is the real fix for "reopening shows initial stage" — not a Gantt-display
 issue, a browser-profile-level cache corruption that this app had no self-heal path for until now.
 
+## Item 8 — ✅ FIXED 2026-07-19, PR bim-ootb#882 (`fix/captured-schedule-per-element-stagger`):
+## "the gantt chart bars are the SAME! why must those clusters be on same starting point?" — a
+## FOURTH, distinct root cause, in the CAPTURED-schedule path (not the generated one Items 6-7 fixed)
+User, live, after §STOREY-Z (#869) + cache-bump (#871) + percentile-trim (#873) were ALL verified
+working on the auto-generated path: kept insisting the bars were still identical. Correctly pushed
+back on me asking them to test/screenshot again — self-tested end to end instead, real data, no
+guessing. Root cause found in a COMPLETELY DIFFERENT code path than Items 6-7: once a user runs
+the Schedule Author wizard ("Generate first draft" → "Apply to 4D"), the phase-level dates it
+computes (`tasks.schedule_start/finish`, one contiguous range per phase e.g. Superstructure =
+2026-01-31..2026-03-02) get assigned VERBATIM, byte-identical, to every element covered by that
+phase — regardless of floor. Verified live (Hospital): ALL 8 Levels' Superstructure elements
+showed the EXACT SAME start+end timestamp. `§GANTT_SOURCE captured` (not `generated`) is the tell
+— once ANY captured/authored schedule exists and covers 100% of elements (common after using
+Schedule Author even once), it OVERRIDES the generated path entirely, so Items 6-7's fixes (which
+only touch the generated/uncovered subset) never mattered for this scenario. This explains the
+apparent contradiction: my sandbox tests (pure auto-generated path) showed clean staggering, while
+the user's own session — which had used Schedule Author's Apply-to-4D — was on the captured path
+the whole time.
+
+**Fix (`viewer/time_machine.js`, the T3 captured-overlay in `injectGantt()`):** bucket covered
+elements by task, sort each bucket bottom-up by real `cz` (same discipline the generative pass
+already uses via `elements[]`, built earlier in the same function), and linearly distribute them
+across the task's OWN `[w.s, w.e]` window instead of collapsing every element onto it verbatim.
+The phase's overall EDITABLE date range shown in the Schedule Author panel (`tasks.schedule_start/
+finish`) is completely unchanged — only the per-element position WITHIN that window is now
+real-Z-ordered, satisfying "construction 4D schedule hat: orderly, gradual appearance, not a whole
+big block suddenly appearing" without touching the user-facing WBS dates at all.
+
+**Verified live end-to-end** (real Generate+Apply flow, not a synthetic query): per-storey reveal
+timing (`kernel_ops.timestamp`/`_end_ts` — what actually drives both the mini-Gantt bars AND TM
+playback, NOT `tasks.schedule_start/finish` which stays phase-level by design) now cascades
+Level1→Level2→Level3→Level4→Level5→Level6→Level7A→Level7, each starting strictly later than the
+last, within the same ~30-day phase window. Actual rendered mini-Gantt screenshot confirms a clean
+staircase pattern (35 distinct task rows) — not identical bars.
+`tests/test_schedule_gate.js` regression: still 0 floating (this only changes per-element timing
+WITHIN an already-dated task window, never the support-gate geometry the audit checks).
+
+**Process note (repeat of Item 6's lesson, worth restating):** don't stop investigating just
+because an earlier, real, verified fix didn't resolve a symptom the user is STILL reporting.
+Four consecutive "same bars" reports from this user turned out to be FOUR genuinely distinct bugs
+(storey attribution, cache staleness, outlier-skewed percentile math, and now verbatim-phase-date
+collapse) — each fix was real and necessary, none was sufficient alone, because each investigation
+correctly re-derived from fresh real data instead of assuming the new report was the same bug
+restated. Also: when the user says "you test, not me" — actually run the full repro (generate →
+apply → query the REAL kernel_ops timing, not the tasks-table WBS dates) rather than asking for
+another screenshot/console paste.
+
 ## Standing test sandbox (2026-07-18, see `reference_bim_ootb_sandbox.md` in memory)
 `/tmp/wt-sandbox` — one persistent worktree + `http://localhost:8399` server, refreshed via
 `/tmp/wt-sandbox/refresh.sh` (fetch + reset to `origin/main` + restart server, ~5s). Building DBs
