@@ -1,9 +1,78 @@
 # ⚠ DO NOT REMOVE — Hospital 4D Superstructure duration anomaly + share-button correction
 # SCOPE: all items DONE/FIXED as of 2026-07-18 and CONFIRMED on origin/main (bim-ootb) — see each
-# item's ✅ header. #852/#853/#859 merged into main. (#856 — see Item 3's "orphaned PR" postscript —
-# never actually landed despite showing "merged"; #859 re-lands it correctly, verified present in
-# origin/main:viewer/time_machine.js + streaming.js by direct `git show`, not just `gh pr view`
-# state.) Read the log after every run. Read this whole file before touching code.
+# item's ✅ header. #852/#853/#859/#862/#864 merged into main (all verified via `git show
+# origin/main:<file>` directly, not just `gh pr view` state — #856 taught that lesson the hard
+# way, see Item 3's postscript). Read the log after every run. Read this whole file before
+# touching code.
+
+## Item 4 — ✅ FIXED 2026-07-18, PR bim-ootb#864 (`fix/schedule-crew-cap-cascade`):
+## every Level's Superstructure builds "at once" instead of cascading floor-by-floor
+User, live on Hospital, with a screenshot (mini-Gantt drawer): every Level's "Sup" bar appeared
+bunched together right after the Substructure bar. **"It is an impossible timed Gantt chart to
+have all such work at once, and within each the items should have a cascading flow."**
+
+Root cause, DIFFERENT from Item 2's locale-productivity bug (that one made individual elements
+too FAST; this one is a separate CONCURRENCY-MODEL defect that survives correct rates):
+`schedule_gate.js`'s resource-availability key was `resource + '|' + Math.floor(top_z/3)` — every
+distinct 3m Z-slice (~one per floor) got its OWN independent, UNCAPPED crew. A 9-storey building
+spun up as many simultaneous STEEL_ERECTOR/CONCRETE_GANG crews as it had Z-bands, with no shared
+project-wide labor pool — unrealistic (no real site runs a dozen full crews of one trade
+concurrently). This is exactly the "SECONDARY, compounding factor" flagged (but not yet fixed) in
+Item 2's original write-up — the user's screenshot is direct visual confirmation of it.
+
+**Fix:** crews are now a small FIXED number of slots per resource
+(`LABOR_RATES[resource].max_crews` — new field, same estimating-assumption category as the
+existing `rate_per_day`/`crew_size`, editable via `rates.js`/`rates/sequence_rules.json`, default
+3 for major trades STEEL_ERECTOR/CONCRETE_GANG, 1-2 for smaller specialty trades), shared
+PROJECT-WIDE (not per-band) and across BOTH scheduler passes (a resource like CONCRETE_GANG
+appears in both — foundations in PASS A, ramps in PASS B — real crews don't duplicate). Elements
+are already processed bottom-up by `base_z`, so capped crews naturally cascade: lower/earlier
+elements claim the limited crews first, higher ones wait for BOTH crew availability AND their
+existing structural dependency (`geoGate`).
+
+**Verified, real Hospital geometry:**
+- `tests/test_schedule_gate.js` regression: still 0/1970 beams, 0/7127 members, 0/35 slabs
+  floating — crew capping only changes WHEN a gated element's crew is free, never touches the
+  structural-support gate itself.
+- Per-Level Superstructure completion (p10/p50/p90 percentiles — a handful of straggler elements
+  skew pure min/max without reflecting when a Level is SUBSTANTIALLY built): confirmed clean
+  bottom-up cascade in BOTH before and after (geoGate was already enforcing level-order; the
+  fix's real effect is realistic overall PACING — one project-wide crew pool per trade instead of
+  one per floor — not fixing a broken cascade that didn't already exist). Superstructure phase
+  span: 339.9 days (before, uncapped) → 147.8 days offline / 159.0 days live-verified (after,
+  capped) — still realistic, not "an hour," not "all at once."
+- Live-verified via headless browser against the actual worktree server, matching the offline
+  Node replica order-of-magnitude.
+- **Also bumped `_GANTT_CACHE_VERSION` v2→v3** (`time_machine.js`) — this is a schedule-
+  GENERATION logic change (not just a rate value), so any browser that already generated+cached a
+  v2 schedule (correct rates, but pre-crew-cap unbounded parallelism) needed this to regenerate
+  instead of serving the stale "all levels at once" pattern forever. **This is almost certainly
+  what the "Day 37/198" screenshot was showing** — 198 days matches NEITHER the before (339.9/
+  365.8) nor after (147.8/314.3) calculated whole-project totals, meaning it was very likely a
+  stale v2-cached schedule from earlier in the same debugging session (generated after the Item 2
+  locale-fix went live, but before this crew-cap fix existed) — service-worker unregistration
+  (which fixed Item 3) does NOT clear this separate IndexedDB gantt-schedule cache; only the
+  version bump does. Verified live: seeded a fake `gantt:v2:{building}` entry, confirmed
+  `activate()` ignores it and regenerates fresh under v3. Also bumped `sw.js` `CACHE_VERSION`
+  v794→v795 per this project's deploy convention (PR bim-ootb#862 already established this
+  pattern for Item 3's fix).
+
+**Open, not addressed this session — user asked mid-investigation, deferred pending a design
+question:** "can we have the mesh halo that is been created shine thru?" — the frontier
+(currently-being-built) highlight glow. `applyHighlight()` (single-mesh path only,
+`time_machine.js` ~line 1420) already sets `depthTest:false` so IT shines through occluding
+geometry — but the vast majority of real building geometry streams as `BatchedMesh`/
+`InstancedMesh` (confirmed via `sceneMeshGUIDs=0` in every witness this session — Hospital/HHS
+have ZERO single-guid meshes), and BOTH of those paths explicitly SKIP any highlight/glow
+("§S260f: No material swap on BatchedMesh"; "DO NOT highlight InstancedMesh — shared material
+affects ALL instances") — so in practice almost no frontier element gets a visible glow at all
+today, shine-through or otherwise. **Caution before implementing:** a near-identical feature (the
+`depthTest:false` yellow edge-box marker on BatchedMesh frontier elements) was RETIRED this same
+session (`§YELLOW_BOX_RETIRED`, see Item 0 above) specifically because the user reported it
+"bleeds badly for Hospital" — shone through walls/floors in a way that read as a bug. Don't
+silently reintroduce the same failure mode; clarify exactly what "shine thru" should look like
+(a soft glow/halo vs. a hard-edged marker; BatchedMesh per-slot tint via `setColorAt` — supported
+in modern THREE.js `BatchedMesh` — vs. a separate overlay object) before implementing.
 
 ## Item 3 — ✅ FIXED 2026-07-18, PR bim-ootb#856 (`fix/tm-stream-resweep`, stacked on #853):
 ## scene doesn't clear at 0Hr on large buildings
