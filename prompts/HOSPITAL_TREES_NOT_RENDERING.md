@@ -115,3 +115,21 @@ elimination spec in `STAFFAGE_WALKABLE_PLACEMENT.md` (SPEC 2026-07-19): the `rea
 gate is GONE — real entourage now dedups spatially instead of suppressing the whole kind. Witnessed
 live on Hospital: one Alt+P press → `thisPress(people=3 trees=4)` + car, `§STAFFAGE_REAL_DEDUP n=20`.
 Hospital now shows street trees on every press regardless of its terrace planting.
+
+## RESOLVED 2026-07-19 — trees render correctly, and always did; this was a camera-framing question
+Full-stream witness (local worktree server, headless Chrome, NO progress ceiling — the fix for the
+2-minute-timeout dead end named above): Hospital streamed **63,182/63,182 in ~350s, `§BLOB_MISS`=0,
+`§CONTRACT_CHECK guidMap=63182 orphans=0`**. Then, whitebox:
+- **guidMap reverse-lookup, all 5 sampled tree guids: registered to VISIBLE rendered objects**
+  (4× BatchedMesh, 1× InstancedMesh — which is also why an earlier `findMeshByGuid` probe returned
+  false: that helper only scans standalone meshes with `userData.guid`, not batched/instanced slots;
+  wrong instrument, not a missing tree).
+- **Camera aimed at tree #1's DB position (Level-3 terrace, IFC (-9.4, 66.4, 179.5)): projects
+  dead-centre (ndc 0.000, 0.000), and the screenshot shows the ENTIRE Level-3 podium roof garden
+  rendering** — green terrace deck, all the RPC tree canopies, shrubs, planting beds. Saved:
+  `~/Pictures/Screenshots/hospital_level3_terrace_trees_2026-07-19.png`.
+**Verdict: NOT a streaming.js bug, NOT a staffage bug, NOT a data error. The 20 trees are a Level-3
+terrace garden that renders correctly; no ground-level Alt+P framing ever had it in frame.** The
+user-facing "zero trees" complaint was killed the same session by the staffage zero-case spec
+(street trees now always placed — `STAFFAGE_WALKABLE_PLACEMENT.md` SPEC 2026-07-19, bim-ootb PR
+#883, MERGED, live sw v802). **This file is DONE — nothing left to investigate.**
