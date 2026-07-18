@@ -65,9 +65,30 @@ in `injectGantt()`). `node --check` passes. Not yet pushed/PR'd as of this write
 if picking this file up mid-session, or check `git -C ~/bim-ootb branch -a | grep gantt-mini` /
 `gh pr list` first to see if a later pass in this same session already did.
 
-**Not yet done:** the user hasn't seen this live yet — verify the deployed PR reads correctly on
-their own device/browser once merged, same "ask if it reproduces in Incognito" discipline as
-Item 3's postscript if they report anything still off.
+**Postscript — cache-bust step missed on first landing, caught by user re-test (2026-07-18):**
+user reported live, after PR #869 merged, "still not happening though hard reset... must be not
+bumped v well" — correctly self-diagnosed the exact gap: `_GANTT_CACHE_VERSION` (IDB gantt-schedule
+cache, same mechanism Item 4/#853/#862 already hit once) was never bumped 3→4, so any browser that
+had already generated+cached a schedule kept serving the pre-fix version from IndexedDB forever — a
+hard reset does not clear this, only a version bump does. Fixed in a same-session follow-up PR
+bim-ootb#871 (`fix/gantt-cache-version-bump`): `_GANTT_CACHE_VERSION` 3→4, `sw.js` `CACHE_VERSION`
+v796→v797. Verified by seeding a fake `gantt:v3:Hospital` IDB entry and confirming `activate()`
+ignores it (no `§GANTT_CACHE_HIT`) and regenerates fresh under v4. **Lesson reinforced for any
+future `injectGantt()`/schedule-generation-logic change: the cache-version bump is not optional
+polish, it's the second half of the fix — ship both in the same PR next time, don't wait for a
+user re-test to catch the gap.**
+
+**Also flagged live, not yet investigated:** "Timeline not easily scrubable like before" — a
+separate symptom from the Gantt bar layout, reported in the same message. Console log shows dense,
+repeating `§IDLE_GATE park — rAF chain stopped (self-parking, 0 frames)` lines interleaved with
+every `§WB_MAT`/render-loop cycle — worth checking whether the render loop is self-parking overly
+aggressively during scrub (stopping before a frame fully settles) if this persists after the user
+gets a genuinely fresh v4/v797 load. **Do not assume the cache-bump above fixes this too** — it's
+an unconfirmed, separate lead; re-diagnose fresh if it's still reported after the cache fix lands.
+
+**Not yet done:** the user hasn't confirmed a clean fresh load yet — verify PR bim-ootb#871 merges
+(was `BLOCKED` on pending CI checks as of this write-up, auto-merge armed) and ask for a re-test
+once it's live.
 
 ## Item 6 (original handoff, kept for the record — superseded by the resolution above)
 User, after Item 4 (crew-cap) + Item 5 (halo) shipped and merged to `main`: **"that gantt chart
