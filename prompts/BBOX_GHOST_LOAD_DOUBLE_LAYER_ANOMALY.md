@@ -1,13 +1,15 @@
-# ⚠ DO NOT REMOVE
+# ⚠ DO NOT REMOVE — ✅ RESOLVED 2026-07-18 (PR #877 merged + live, sw v800)
 SCOPE: bim-ootb `viewer/streaming.js` (bbox load-placeholder system) — a user-reported visual
 anomaly during initial building load: an EXTRA flat, ground-level layer of long parallel bars
 ("a grating/comb pattern") renders BELOW the normal jumbled cluster of loading-placeholder boxes.
 User: "it was not there. This is beginning to happen more and all over... it could be injecting of
-some after element not supposed to." Read the log after every run. Read this whole file — the
-investigation below is real, not speculative filler — before re-deriving anything already ruled out.
+some after element not supposed to." (Later also confirmed on Hospital — building-independent.)
+STATUS: root cause diagnosed AND fixed — see §ROOT CAUSE + §FIX SHIPPED at bottom. Nothing left
+to investigate; kept for the record.
 
 ## Evidence
-- Screenshot: `~/Pictures/Screenshots/Screenshot from 2026-07-18 21-20-34.png` — Terminal building,
+- Screenshot: `~/Pictures/Screenshots/ghost_bbxes.png` (user-renamed from `Screenshot from
+  2026-07-18 21-20-34.png`) — Terminal building,
   `Terminal_geo.db` downloading (18%, 11/63MB). Shows the normal multicolor jumbled cluster of
   wireframe loading-placeholder boxes mid-air, PLUS a distinct flat layer of evenly-spaced parallel
   bars near ground level, spanning a rectangular footprint, sitting visually separate/below the
@@ -89,3 +91,65 @@ decide whether the correct fix is "stop double-injecting" or "this is correct, j
 Root cause identified and cited with real evidence (not guessed); if a genuine code defect, fixed
 and witnessed with a before/after; if honest new data, documented as such (no code change) and this
 file's own header updated to say so, so nobody re-investigates the same non-bug later.
+
+## ✅ ROOT CAUSE DIAGNOSED — 2026-07-18 (code-read, cited; NOT yet fixed — fix deliberately deferred)
+**Cause: commit `3bd4d42` (PR #839, Photoreal staffage, landed recently) shifted the
+`_drawBboxPlaceholders` row layout by one column but only updated 2 of its 5 row producers.**
+It inserted `m.element_name` at row index 12 (after `ifc_class`) in BOTH `streamBuilding()`
+SELECTs, and moved the bbox reads in `_drawBboxPlaceholders` from `r[12]/r[13]/r[14]` →
+`r[13]/r[14]/r[15]` (diff hunks: `viewer/streaming.js` — SELECTs + `var bx = r[13] || 0.3, by =
+r[14] || 0.3, bz = r[15] || 0.3;`). Three OTHER call sites still build 15-slot rows with bbox at
+indices **12–14** (no element_name slot) and were NOT updated — verified still stale at HEAD
+`f052fb0`:
+1. **Split-DB `positions.bin` preview** — `posRows` builder, `streaming.js` ~line 1700–1713
+   (bbox floats pushed at 12/13/14).
+2. **Split-DB `§BBOX_RECOLOR` pass** — `_colorRows` query ~line 1788–1793 selects 15 columns
+   ending `t.bbox_x, t.bbox_y, t.bbox_z` (indices 12–14, `element_name` absent). **This is the
+   pass whose output is on screen at 18% geo download — the screenshot's state.**
+3. **Single-DB `positions.bin` preview (§S281)** — `_posRows` builder ~line 1870–1877, same
+   12–14 layout.
+
+**Resulting misread for every placeholder drawn by those 3 paths:** `bx = r[13]` = actual
+**bbox_y**, `by = r[14]` = actual **bbox_z**, `bz = r[15]` = **undefined → 0.3 default**. Then
+`_scl.set(bx, bz, by)` → three.js scale = (x: bbox_y, y-up: **0.3 always**, z: bbox_z). Every
+box is squashed to a 0.3 m-tall slab with its axes rotated: e.g. a ground slab bbox
+(60, 40, 0.3) that used to render (60, 0.3, 40) now renders (40, 0.3, 0.3) — a long thin BAR.
+A family of evenly-spaced slabs/panels/long elements at ground storey ⇒ the flat parallel-bar
+"grating" below the (also distorted, but visually less obvious) jumbled cluster. Single uniform
+colour = one discipline's InstancedMesh, consistent with `DISC_COLORS`.
+
+**Why "new" and "all over":** #839 shipped to live days ago; the bug fires on EVERY building
+using the positions.bin/split preview paths — building-independent, matches the user's "beginning
+to happen more and all over." Not honest new data — it's a rendering regression (open-item #2's
+honest-data hypothesis is ruled out: the DB bbox values are fine, the reader indexes are wrong).
+
+**`tmResweep`/`8354c30` EXONERATED** (was the file's top candidate): `window.tmResweep()` is
+`function() { if (_active) renderAtTime(_cursor); }` — a no-op unless Time Machine is active, and
+it only toggles visibility of existing meshes, never creates geometry. Ruled out by code read.
+
+**Fix when authorized:** make the 3 stale producers emit the 16-slot layout (null/absent
+element_name at index 12 is fine — reader only needs bbox at 13–15), or better, have all
+producers share one row-shape helper so the next column insert can't desync them. Witnesses
+W-BBOX-GHOST-REPRO (before/after screenshot on Terminal split load) still apply; W-BBOX-GHOST-
+TMRESWEEP is unnecessary (exonerated above).
+
+## ✅ FIX SHIPPED — 2026-07-18, PR #877 (`6774257` on main), LIVE on GH Pages, sw v799→v800
+- The 2 positions.bin producers now emit the 16-slot layout (null element_name at 12); the
+  §BBOX_RECOLOR SELECT now includes `m.element_name`. All 5 producers ↔ reader aligned.
+- **Anti-recurrence guard** (the "without breaking again" clause): `_drawBboxPlaceholders` now
+  counts rows shorter than 16 slots and reports `short_rows=<n>` on the `§BBOX_PLACEHOLDERS`
+  line + a `§BBOX_ROW_SHIFT` console.warn when non-zero — a future layout desync warns loudly
+  instead of silently distorting geometry.
+- **W-BBOX-GHOST-REPRO (localhost, Terminal split load, geo.db held 30 s via Playwright route):**
+  BEFORE (main `cdcfdcd`): grating of flat parallel bars reproduced —
+  `~/Pictures/Screenshots/ghost_bbxes_before_localhost.png`. AFTER (fix):
+  `§BBOX_PLACEHOLDERS total=48428 shown=48428 step=1 discs=7 mobile=false short_rows=0`, true
+  element heights, no grating — `~/Pictures/Screenshots/ghost_bbxes_after_fix.png`.
+- **W-BBOX-GHOST-TMRESWEEP:** exonerated by code read (see §ROOT CAUSE) — not run, not needed.
+- **W-BBOX-GHOST-SCOPE:** settled by mechanism, not per-building repro — the desync is in the
+  shared preview path, so every building on the positions.bin/split path showed it (user
+  confirmed Hospital too); the fix is equally building-independent.
+- Live smoke: `red1oon.github.io/bim-ootb/viewer/streaming.js` contains the guard + fixed
+  SELECT; `sw.js` at v800. No other 13–15 index readers affected (line 930 reads streamQueue —
+  fed only by the two already-correct 16-col SELECTs; `_positionRows`' other consumers read
+  indices 4–6 only).
