@@ -1,9 +1,70 @@
 # ⚠ DO NOT REMOVE — Hospital 4D Superstructure duration anomaly + share-button correction
-# SCOPE: all items DONE/FIXED as of 2026-07-18 and CONFIRMED on origin/main (bim-ootb) — see each
-# item's ✅ header. #852/#853/#859/#862/#864 merged into main (all verified via `git show
-# origin/main:<file>` directly, not just `gh pr view` state — #856 taught that lesson the hard
-# way, see Item 3's postscript). Read the log after every run. Read this whole file before
-# touching code.
+# SCOPE: Items 1-3 DONE/CONFIRMED on origin/main. Item 4 (crew-cap) shipped but user reports the
+# VISUAL symptom persists live — NOT yet re-diagnosed, do not assume the fix is wrong without
+# fresh investigation. Item 5 (halo) shipped, user reported it as an ACTIVE VISUAL REGRESSION
+# ("yellow cubes hell") — REVERTED same session, see Item 5 postscript for exact status/commit.
+# ⛔ NEXT SESSION: read "Item 6 — OPEN, handoff for fresh session" below FIRST, before touching
+# any code — it has the concrete next steps, not just the retrospective. Read the log after every
+# run. Read this whole file before touching code.
+
+## Item 6 — ⛔ OPEN, handoff for a fresh session (2026-07-18 close-out)
+User, after Item 4 (crew-cap) + Item 5 (halo) shipped and merged to `main`: **"that gantt chart
+all at once is not solved!"** and **"The yellow halo does not transition right away to dark red.
+It is the same yellow cubes hell that persist, meaning u have not solved its source of error."**
+Screenshot: `~/Pictures/Screenshots/Screenshot from 2026-07-18 12-48-18.png` (also check for any
+NEWER ones — `ls -lt ~/Pictures/Screenshots/` — before assuming this is the latest evidence).
+
+**What the screenshot actually shows:** the ENTIRE visible 3D scene is a blown-out, blurry, solid
+yellow-cream wash — not a few small glowing halos, not individual "cubes" distinguishable from
+each other. The mini-Gantt drawer (same panel as the earlier screenshot) STILL shows every Level's
+"Sup" bar positioned adjacent/bunched right after "Sub", visually identical in LAYOUT to the
+PRE-Item-4 screenshot — despite Item 4's crew-cap fix being verified (regression test + percentile
+analysis) to produce genuine bottom-up cascading in the underlying schedule DATA.
+
+**Two open questions, do not assume either answer — investigate fresh:**
+1. **Is the mini-Gantt drawer's bar LAYOUT actually reading real schedule data, or does it have
+   its own independent scale/rendering bug** (e.g. a fixed/clipped time-axis window, or drawing
+   logic that doesn't scale bar position by the REAL day-offset) that would make it look
+   "unchanged" even with genuinely-fixed underlying data? Find `drawGanttMini()` in
+   `viewer/time_machine.js` and read it fully before touching `schedule_gate.js` again — don't
+   re-litigate Item 4's already-verified fix without first ruling out a DISPLAY-layer bug.
+2. Cross-check: is the LIVE site actually serving the Item 4 fix by the time this screenshot was
+   taken? Same class of gap as Item 3's orphaned-PR lesson — verify via `curl` + `grep -o | wc -l`
+   against `https://red1oon.github.io/bim-ootb/viewer/schedule_gate.js` for `claimCrew`/`max_crews`
+   occurrences (see Item 3 postscript for the exact technique — `grep -c` undercounts on minified
+   single-line files) AND check the IndexedDB gantt-cache version actually in play in the user's
+   OWN browser (not a fresh Puppeteer profile) if at all determinable.
+
+**Item 5 (halo) — REVERTED, not merely paused:** the "yellow cubes hell" symptom is most likely
+(not yet confirmed) the halo feature itself misbehaving — candidate causes, NONE confirmed yet:
+(a) `THREE.Sprite` + `AdditiveBlending` + `depthTest:false` stacking brightness when MANY halos
+overlap in screen space at a wide/blurred camera distance — additive blending trends toward
+blown-out white/yellow regardless of individual base colors when many layers stack, which would
+also explain "doesn't transition to dark red" (a few reddish-brown sprites get visually drowned by
+many yellow ones); (b) `_haloRefreshFrustum`/`_haloInFrame` not actually culling (letting far more
+than the true frontier set spawn halos); (c) sprite world-scale (`_HALO_WORLD_SIZE = 2.2`) somehow
+rendering far larger than 2.2m due to a units/`sizeAttenuation` mismatch not caught by this
+session's numeric verification (which only ever checked sprite COUNT and hex color values via
+`page.evaluate()` — never took an actual screenshot or checked rendered pixel size). **This gap —
+verifying a visual feature by object-count/property inspection instead of an actual rendered
+screenshot — is the root process mistake to fix next time a visual feature ships.**
+
+Reverted via `git revert --no-edit 28e4b9c` on branch `revert/frontier-halo-glow` (worktree
+`/tmp/wt-halo-revert` off `origin/main`@`28e4b9c`), `node --check` passed. **Push to origin was
+HANGING at session close** (matches the documented git-lfs pre-push-hook probe issue, `CLAUDE.md`
+§DB CHANGES — "a push may still hang regardless of DB policy... if a push doesn't return within
+~30s, stop and report, don't retry in a loop") — retried once (90s), still hung. **Next session:
+check `git -C ~/bim-ootb push -u origin revert/frontier-halo-glow` state first** — it may have
+completed after this session ended, or may need a fresh retry. If completed: open a PR, verify via
+`git show origin/main:viewer/time_machine.js | grep -c FRONTIER-HALO` returns 0, confirm live via
+an ACTUAL SCREENSHOT (not just object counts) that the wash is gone. If the branch/commit is lost
+entirely, the revert is trivial to redo — the original feature commit is `28e4b9c` on `main`
+history, `git revert --no-edit 28e4b9c` reproduces this exact revert.
+
+**Do NOT re-attempt the halo feature in the same session as fixing Item 6's gantt question** —
+they're two separate, unconfirmed problems; conflating their diagnosis (e.g. assuming the yellow
+wash somehow explains the gantt bar layout, or vice versa) risks a wrong fix for both. Treat them
+as two independent open items.
 
 ## Item 4 — ✅ FIXED 2026-07-18, PR bim-ootb#864 (`fix/schedule-crew-cap-cascade`):
 ## every Level's Superstructure builds "at once" instead of cascading floor-by-floor
