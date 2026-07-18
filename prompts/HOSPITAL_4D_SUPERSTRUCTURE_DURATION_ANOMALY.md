@@ -37,7 +37,34 @@ baseline). Post-fix: `batchVisibleSlots`/`instVisible` stay pinned at exactly 0 
 window while `batchTotalSlots`/`instTotal` keep growing (2151→8159), confirming late arrivals now
 start correctly hidden and stay hidden.
 
-**Postscript — the fix was orphaned on first landing, caught by user re-test:** original PR #856
+**Postscript 2 — exhaustive re-verification after user reported "still broken" post-#859, TWO more
+gaps found and closed, root cause of persistence still unconfirmed:**
+1. **`sw.js` `CACHE_VERSION` never bumped** across #852/#853/#859 — this project's own
+   `GH_DEPLOY.md` requires it on every deploy. Fixed: PR bim-ootb#862 (`v792`→`v793`), merged,
+   confirmed via `git show origin/main:viewer/sw.js`. Caveat: `.js` files are served **network-
+   first** (`sw.js`'s own `networkFirst()` — fetch live, cache only as an offline fallback), so
+   this likely was NOT actually blocking the streaming/TM fix from reaching a normally-online
+   browser; fixed anyway since it's a genuine process gap against this project's documented
+   convention (affects cache-first assets: wasm/images/css, and the offline fallback path).
+2. **Exhaustive re-reproduction on current `origin/main` (post #859+#860+#862), same building
+   the user tested (`HHS_Office_Federated`, not Hospital) — could NOT reproduce the bug.** Ran 3
+   separate scenarios via headless Puppeteer: (a) early-activation race — clean, 0 visible at 0Hr
+   throughout a 20s poll while streaming kept delivering geometry; (b) full sequence matching the
+   user's pasted log — activate (defaults to `_cursor=_projectEnd`, fully-built, by deliberate
+   design at `_finishActivate()` line ~3798 — unrelated to any fix this session, pre-existing),
+   Jump-to-Start, 15s real Build (generates real frontier+SFX activity matching their log), Jump-
+   to-Start AGAIN (mid-session reset) — clean, 0/2716 batch slots immediately and for 10s after;
+   (c) sitting at 0Hr post-reset for an extended window — stays at exactly 0.
+3. **Open question, not yet resolved:** since source-level testing on `origin/main` is clean across
+   every angle tried, the remaining gap between "verified fixed in source" and "user still sees it
+   live" is most likely an ENVIRONMENT question (which URL/checkout the user's browser is actually
+   running — localhost dev server against a possibly-stale local `bim-ootb` checkout that needs its
+   own `git pull`, vs `https://red1oon.github.io/bim-ootb/` which needs the Pages rebuild — ~60-95s
+   per `GH_DEPLOY.md` — to have actually completed after the merge) rather than a further code bug.
+   **Next session: get the exact test URL/checkout path before assuming a new code-level regression
+   — don't re-invent a 4th hypothesis blind.**
+
+**Postscript 1 — the fix was orphaned on first landing, caught by user re-test:** original PR #856
 was mistakenly branched off `fix/locale-productivity-deep-merge` (PR #853's source branch) instead
 of `main`. `gh pr view` reported ALL THREE PRs as `"state":"MERGED"` — but #853 squash-merged into
 `main` FIRST, and #856's own merge (into the now-stale `fix/locale-productivity-deep-merge` branch)
