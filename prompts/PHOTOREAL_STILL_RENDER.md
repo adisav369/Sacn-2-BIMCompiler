@@ -3468,3 +3468,19 @@ continuity guarantee that the film starts exactly at the user's camera.
 handling upside-down / looking-down / too-high / facing-a-wall) → timed exit with a spin that finds
 the way out → exterior script with the 45° look-down, held if the Sun is near that heading → standard
 ending. One routine.
+
+### §CINEMA_SIMPLE — the dive is TIME-BOXED, and that IS the remaining authoring lever
+*"During the dive takes also 4 secs, if cam start far, it does zooms fast, so user intuitively knows
+if want it to slow, then put above or outside but as near."*
+
+**The dive is a fixed 4 seconds, never a fixed speed.** Speed = distance ÷ 4s, so:
+- Start far → it covers the ground fast (a hard zoom in).
+- Start near (above or just outside, but close) → the same 4s becomes a slow, graceful move.
+
+**Do not "fix" the fast zoom** — it is not a bug and must not be clamped, eased-to-a-max-speed, or
+given a distance-proportional duration. It is the ONE lever the user keeps after the simplification,
+and it is learnable in exactly the way the whole feature is meant to be: *stand closer and the
+opening is calmer.* Clamping the speed would silently remove the last thing the start pose controls.
+
+This is what the ι/α/γ scalar layer was reaching for, achieved for free by holding duration constant
+and letting distance do the work — no normalization, no table, no branching. Same 4s for everyone.
