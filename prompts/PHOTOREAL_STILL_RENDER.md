@@ -2866,3 +2866,132 @@ cooking per 1s of movie). Witness: in-page timer cancel at frame 11/60 → `§MA
 stitching 11 frames (5.5s)` → `§MAXQ_DONE` + real webm download. Method note, third confirmation
 this session: CDP-injected calls (evaluate/synthetic keydown) can starve for the whole cook —
 witness in-page behavior with IN-PAGE timers, never CDP injection mid-cook.
+
+## §MAXQ_MP4 SPEC (2026-07-19) — mp4/H.264 output (backlog item 1, THE sharing blocker)
+
+### Why
+`§NEXT-SESSION BACKLOG` item 1: the MaxQ movie ships as webm/VP9. **webm does not play on
+iPhone or in WhatsApp** — for the outreach audience that is the whole point of making the movie,
+so the format, not the pixels, is the blocker. Route named in the backlog: WebCodecs H.264 +
+in-browser mp4 mux, CSP-clean (no CDN).
+
+### Support matrix — MEASURED on this machine, not assumed (2026-07-19)
+Probe: `isConfigSupported` across 4 avc1 profile/level strings × 3 `hardwareAcceleration` modes,
+**plus a real `configure()` + 5-frame `encode()` + `flush()` round-trip** (Mozilla bug 1918769:
+Firefox's `isConfigSupported` can answer `true` and then throw on `configure()` — detection by
+capability query alone is NOT trustworthy, only a real encode is).
+
+| Browser | `avc1.*` isConfigSupported | real configure+encode | avcC description |
+|---|---|---|---|
+| Chrome 150 headless (branded, `channel:'chrome'`) | true (no-preference / prefer-software) | **OK — 5 chunks, 1849 B** | 32 B |
+| Firefox 148 (Playwright build, this machine's system libs) | true (no-preference / prefer-software) | **OK — 5 chunks, 2401 B** | 39 B |
+| either, `prefer-hardware` | false | n/a | n/a |
+
+**Firefox CAN encode H.264 here.** On Linux Firefox routes WebCodecs H.264 encode through the
+*system* libavcodec/libx264 (NOT the OpenH264 GMP plugin) — so it works on this box because the
+distro ships a full ffmpeg. That also means it is **not universal**: a Firefox on a stripped
+`ffmpeg-free` distro (e.g. Fedora default) has no H.264 encoder and must fall back. Likewise
+distro/Playwright *chromium* builds (`proprietary_codecs=false`) fail where branded Chrome works.
+Conclusion: mp4 is the DEFAULT path, webm stays as a real, exercised fallback — not dead code.
+
+### Design
+1. **`viewer/lib/mp4_mux.js`** — hand-rolled ISO-BMFF writer, ~1 file, no third-party code, so no
+   license/vendoring question and every byte is auditable. Single AVC video track, non-fragmented,
+   **faststart layout (`ftyp` → `moov` → `mdat`)** so the file plays while still downloading and
+   satisfies the strictest mobile players. Boxes: `ftyp`/`mvhd`/`tkhd`/`mdhd`/`hdlr`/`vmhd`/
+   `dinf`+`dref`+`url `/`stsd`+`avc1`+`avcC`/`stts`/`stss`/`stsc`/`stsz`/`stco`. `moov` is built
+   twice — once with zero chunk offsets to learn its own size, then again with real offsets —
+   because `stco` entries are fixed-width so the second build cannot change the size.
+   `avcC` is taken **verbatim** from `EncodedVideoChunkMetadata.decoderConfig.description`
+   (`avc: {format:'avc'}` = AVCC; the MP4 `avcC` box IS that record — nothing is invented here).
+   Timescale = `fps*1000`, per-sample delta = `1000` → exact frame timing at any fps.
+2. **`_stitchMp4()` in `cinema_maxq.js`** — tries codec candidates high→baseline
+   (`avc1.640034`, `avc1.4d0034`, `avc1.42003c`, `avc1.640028`, `avc1.42001f`), each gated on
+   `isConfigSupported` AND a real `configure()`; first that survives wins. Encodes straight from
+   the IDB frames — **no real-time replay**, so stitching is no longer pinned to 1× wall-clock.
+   Even-dimension crop (H.264 requires even w/h; the renderer really does produce e.g. 1854×963).
+   Keyframe every 2s. Backpressure on `encodeQueueSize`.
+3. **Fallback is the EXISTING path, unchanged.** `_stitch()` (MediaRecorder→webm) is not edited.
+   Any failure — no `VideoEncoder`, no codec, `window.MP4Mux` missing (stale precache), a throw
+   mid-encode, zero chunks, no `avcC` — logs `§MAXQ_MP4_FALLBACK reason=…` and calls `_stitch()`.
+4. **Witness tags:** `§MAXQ_MP4 probe codec=… supported=…`, `§MAXQ_MP4 configured codec=… size=…
+   bitrate=… fps=…`, `§MAXQ_MP4 encoded chunks=… bytes=… ms=…`, `§MAXQ_MP4_FALLBACK reason=…`.
+   `§MAXQ_DONE … type=video/mp4` keeps the existing done-tag so old log habits still read.
+   A pasted console answers "mp4 or webm?" on its own, per the standing MAXQ logging rule.
+5. **Cache wiring (mandatory, both):** `MAXQ_V` → `v9`, `sw.js` `CACHE_VERSION` → `v812`, and
+   `lib/mp4_mux.js` added to `PRECACHE_ASSETS` + a `<script>` tag in `viewer.html`.
+
+### Verification contract
+- `node --check` on every edited JS file.
+- Headless puppeteer bake (pattern: `witness_maxq_idb_deadlock.js`), small frame count, real GPU
+  via ANGLE/SwiftShader, real building DB.
+- **The produced file must be `ffprobe`-valid**: container `mov,mp4,m4a`, codec `h264`, correct
+  frame count and duration. A file that downloads but does not play is a FAIL, not a pass.
+- The webm fallback must still reach `§MAXQ_DONE` when mp4 is forced unavailable.
+
+## §CINEMA_AUTHORED_POSE — DOCTRINE + SPEC (2026-07-19, user design dictation)
+**Status: SPEC ONLY, no code written.** Supersedes the earlier "fix the tight start pose" framing —
+that framing was WRONG and must not be revived (see P1). Recorded verbatim-in-substance from the
+user's own dictation; the reasoning is theirs, not derived.
+
+### The doctrine (read before touching any path/pose code, ever)
+**The start pose IS the authoring interface.** Where the user puts the camera and which way it faces
+is the entire authoring act. One decision — where to stand — yields a complete film. This is the
+product thesis: "the simplest fastest setting of a movie maker rather than the rest which invest so
+much prep time," and it is *more fun*, because the 10s `§MAXQ_PREVIEW` lets you cancel and repeat
+until it's right, and "in the end must have learned many tricks up the sleeve."
+
+- **P1 — NEVER normalize, correct, or override the authored start pose.** A tight radius is not an
+  error; it means the user deliberately stood in a **lobby / foyer / hall**, and "turning around is
+  meaningful as the intent of the user is that." A steep downward pitch from height is not a mistake;
+  it is a stated tactic ("make the cam face downwards from a higher position and the orbit eases back
+  or keeps the angle of attack as it is"). Any change that snaps these toward a default is a
+  REGRESSION against the feature's whole purpose, however "cinematic" the default looks.
+- **P2 — Pose determines a myriad of genuinely different paths.** The user must be able to see
+  intuitively that where/how the camera is placed "can influence a myriad of paths not entirely the
+  same." Sameness across different start poses is the failure mode to design against.
+- **P3 — The preview is the iteration loop.** 10s, free, cancellable, repeatable. Trial-and-error is
+  the intended UX; it beats configuration UI and must stay cheap enough to keep doing.
+- **P4 — The ENDING is a function of the BEGINNING.** "the ending also must be due to how the
+  beginning was — will be a good hack on our part." Worked example, user's own: a user wanting the
+  film to end zooming back near, or swinging to the same angle of attack from atop outside the
+  building pulling away, gets that *because of* the same angle inside the building and how far/off
+  from a floor they started. Start and end are one gesture.
+
+### The real defect (re-scoped under P1)
+The current `pushInRadius = Math.min(base.startRadius, fillDistance)` (`effects.js:2892`, comment
+"only ever draws NEARER, never out") silently no-ops the push-in AND the hold when the user starts
+nearer than `fillDistance`: with `CINEMA_PUSHIN_SEC=3` + `CINEMA_HOLD_SEC=5` at 24s duration, that is
+**~8 seconds / ~120 of 360 frames at a frozen radius** doing nothing expressive. Witnessed live on
+LTU (`§MAXQ_START radius=6.3 height=7.0`).
+**The fix is NOT to push the camera outward.** It is to give those beats something meaningful to do
+for an in-place start — the turnaround the user intended. Radius stays authored.
+
+### Derived-marker beats (the "creativity" layer — dynamic, never hardcoded)
+All derived at trigger time from the live building + the authored pose, per this file's standing
+determinism rule (any building, any angle, no hardcoding):
+- **B1 — In-place turnaround** for a tight/interior start: spin on the spot as the opening beat
+  instead of a dead frozen-radius push-in.
+- **B2 — Angle-of-attack carry.** A start pitched down from height either HOLDS that pitch through
+  the orbit or eases back from it — never snaps to the default level band.
+- **B3 — Room markers, from the existing room graph** (already built for §CINEMA_INDOOR): as the
+  spin passes a room, **if the room is big, linger a bit toward its centre**; otherwise **head for
+  the door out to a larger hallway, then head to the door.**
+- **B4 — Twist-back easing.** The snap back to face the building "is too sudden" — slow it by ~3
+  frames. ⚠ AMBIGUITY, do not silently guess: 3 frames @15fps = 0.2s, which reads small for the
+  complaint. Implement as a named tunable constant and confirm the value against a real preview
+  rather than hardcoding an assumption.
+- **B5 — Final orbit is too level.** It should "hobble to a higher angle" around the sun-reflection
+  beat (`§CINEMA_SWOOP`, where the sun reflects at eye level of the opposing wall). User was
+  explicitly flexible on placement: "after passing or before that part."
+- **B6 — Ending mirrors beginning (P4).** Pull-back angle/distance/height derived from the start's
+  angle of attack, radius, and **height above the floor beneath it** ("how far or off from a floor")
+  — so the close rhymes with the open by construction, not by a separate setting.
+
+### Witness / log tags to add
+`§CINEMA_POSE_AUTHORED radius= tilt= azimuth= floorOffset= inside= room=` at plan time (the pose must
+self-identify in a pasted log — standing rule from §PR #888), `§CINEMA_MARKER kind=linger|door
+room=<id> tNorm=` per derived beat, `§CINEMA_ENDING mode= derivedFrom=` for the P4 mirror.
+Determinism proof required before "done": ≥2 buildings × ≥3 materially DIFFERENT start poses
+(exterior-wide, interior-lobby, high-pitched-down) must produce visibly different plans — that is
+P2 stated as a test, and it is the check that would catch a normalization regression.
