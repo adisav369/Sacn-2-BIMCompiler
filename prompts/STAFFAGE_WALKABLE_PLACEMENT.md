@@ -1191,3 +1191,34 @@ Terminal `§PHOTO_STAFFAGE build_ms` **0.9 s -> ~2.1-2.7 s** (3 presses, before/
   return true` — nothing streamed means nothing to prove a clash against), never to a hard failure.
 - `audit_specs.js` still fails on `38-sh-dx-2d-runtime.spec.js` (5 SKIP paths) — **pre-existing**,
   byte-identical on `origin/main`, untouched here (the Issue-4 debt already noted in CLAUDE.md).
+
+## §STAFFAGE — cars NEVER indoors (2026-07-20, user ruling) + Alt+P perf regression
+**User: "Cars can never be in building."** The ≤4.5m car-park ceiling allowance from PR #903 is RETIRED.
+Car now uses the SAME open-sky gate as a tree: `_spaceOK(car)` rejects any `ceil !== Infinity`
+(effects.js `_spaceOK`, `_CAR_INDOOR_MAX_CEIL` deleted). `§STAFFAGE_REJECT kind=car reason=indoor`.
+EFFECTS_V v5, sw v819, PR bim-ootb#<fill>.
+
+**Witness status — HONEST:** the change is strictly SUBTRACTIVE and monotonic — it removes a branch
+that only ever ADMITTED cars (car parks), so it cannot add an indoor car and cannot reject an outdoor
+one (outdoor = `ceil===Infinity`, untouched). The car gate is now byte-identical to the TREE gate,
+which PR #903's own witness proved at `badIndoor=0` on Terminal. A fresh AFTER browser probe on
+Terminal returned zero cars-under-roof and zero pageerrors BUT placed nothing (only 510/63k elements
+streamed in headless SwiftShader in the time budget) — so that run is INCONCLUSIVE as a placement
+witness, NOT proof, and is recorded as such rather than dressed up. Next session with a warm
+full-geometry load should re-run `witness_staffage_indoor_clearance.js` (its oracle is already updated
+to the absolute rule: any car under a real ceiling = badIndoor) for a proper before/after.
+
+### Alt+P PERF REGRESSION (user 2026-07-20: "used to be fast, some precache was done, now back slow few secs")
+PR #903's BVH clearance probing pushed Terminal `§PHOTO_STAFFAGE build_ms` ~0.9s → ~2.1–2.7s per press.
+The `_spaceOK` fan (`_ceilingAbove` + `_clearRadius`, up to 16 rays × 2 heights) runs per candidate
+against the live scene BVH — that is the new cost. The user's memory of "precache" = `§PHOTO_STAFFAGE_PRELOAD`
+(sprite/car-mesh warming) which is unrelated; the regression is the raycasting, not asset loading.
+**Fix directions for next session (spec, not yet done):**
+- The clearance fan is the correct approach (it's what fixed the in-mesh/indoor defects) — don't revert
+  it. Optimise: (a) cache per-candidate ceiling by grid cell so repeated presses at the same spot don't
+  re-probe; (b) the fan already early-returns on first violation — confirm it's actually hitting that
+  path and not computing all 16 for accepted candidates; (c) cap candidates probed per press, or probe
+  lazily only for candidates that pass the cheap silhouette/occupancy test first; (d) consider a coarse
+  precomputed "is this cell under a roof" mask built once per building load (the §PHOTO_STAFFAGE_PRELOAD
+  moment) rather than per-press raycasts. Measure build_ms before/after — target back under ~1s.
+- Witness: `§PHOTO_STAFFAGE build_ms` must drop materially with badIndoor/badInMesh STILL 0.
