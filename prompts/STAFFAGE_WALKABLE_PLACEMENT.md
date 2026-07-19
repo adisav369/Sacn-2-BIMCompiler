@@ -1,4 +1,21 @@
 # ⚠ DO NOT REMOVE — Staffage Walkable-Placement: solve "people walking in objects" to ZERO
+
+## SESSION 2026-07-19 — §STAFFAGE_GROUNDSNAP: midair pax over atrium voids FIXED (PR #892)
+User live report: "standing pax in midair because it was trying to align to a corridor that has
+empty middle space to look down the main corridor. Such pax before placing should look for
+nearest ground or at least be placed to first open ground to land on."
+**Root cause (new, beyond this file's §A occupancy grid):** an atrium opening is a HOLE cut
+INSIDE a big slab's bbox — the bbox point-in-slab floor lookup (§STAFFAGE_WALK_FLOOR_FIX)
+reports floor where there is only air. Bbox tests are structurally blind to slab holes.
+**Fix:** every interior walker spot is verified by a REAL downward raycast against rendered
+triangles (three-mesh-bvh accelerated, `firstHitOnly`, sprites/sky filtered): hit ≈ expected
+floor → normal; hit far below → LAND on that first actual surface (user's exact ask); no hit →
+reject. Witness (HHS, camera mid-building): `§STAFFAGE_GROUNDSNAP checked=2 landedLower=2
+rejectedNoGround=0` — bbox floor was phantom both times, rays landed both walkers on the real
+surface. Same PR: `§STAFFAGE_TREE_CEILING` — trees rejected where a slab sits 2-9m overhead
+(user: "sometimes a tree appears too [inside]"); courtyards/terraces keep theirs. sw v809.
+**Lesson for this file's §A approach:** the occupancy grid + bbox floor model MUST be paired
+with the raycast ground truth — bbox floors lie over voids; triangles don't.
 # SCOPE: the Alt+P Populate staffage feature (people/tree cutouts) still places WALKING figures
 #   intersecting solid objects (columns, walls, desks, equipment) despite the furniture-clearance
 #   fix. This prompt is the spec for a NEW session to solve it completely. Read the log / §-witness
@@ -980,3 +997,89 @@ All of S1/S2/S3 shipped in one branch: bim-ootb `fix/staffage-zero-case-car-colo
 Note: the BimWhale `realX>0 → place nothing synthetic` behavior recorded as "correct" in the
 2026-07-17 addendum above is SUPERSEDED by this spec (user directive 2026-07-19) — dedup is now
 spatial, not wholesale.
+
+## SESSION RECORD 2026-07-20 — §STAFFAGE_SEAT_CLASS: seated figures inside tables, root-caused + fixed (PR #898)
+**User report:** "sitting figures are being placed INSIDE tables" — the seated sprite intersects table
+geometry instead of sitting at a chair.
+
+**Root cause — the seat-candidate search never discriminated chair vs table (candidate #1 of the four
+hypotheses, confirmed by DB query, the other three ruled out).** `_updateInFrameInterior()` selected sit
+anchors with `WHERE em.ifc_class IN ('IfcFurniture','IfcFurnishingElement')` — no class/name filter at
+all — then placed the sprite at the chosen element's own `center_x`/`center_y`. Tables, desks, counters
+and nurse stations ARE furniture, so a sit pick could anchor a figure at the geometric centre of a table.
+Measured on the real shipped DBs (all read-only, nothing mutated):
+| building | furniture | seats | non-seats |
+|---|---|---|---|
+| Hospital | 201 | 160 `M_Chair*` (0.47-0.68m plan) | 37 `M_Table*` (1.52-2.4m) + 4 nurse stations/info desks (12.68-25.51m) |
+| Clinic | 118 | **0** | 118 — all cabinets/countertops, no chairs anywhere |
+| Terminal | 176 | 4 (`Chair - Desk (2)`) | canteen tables, desks, combined seat+table units |
+| LTU_AHouse | 242 | 0 | names are bare codes — `-`, `WC`, `KÖK3`, `TRINETT`, `DUSCH` |
+
+**The other three hypotheses were checked and are NOT the cause** — the anchor point is already correct
+(`spr.center.set(0.5,0)` = feet-anchored, not centre), the sit path already does a per-candidate
+`floorY()` lookup (fixed in the 2026-07-18 knee-high work), and the occupancy grid is only used by the
+WALK path, never the sit path, so it was never implicated.
+
+**Data reality — no `predefined_type` column exists.** `elements_meta` is
+`(guid, ifc_class, element_name, storey, discipline, material_name, material_rgba, building)`. Seat-ness
+must come from `element_name` + the real bbox. Both extracted; nothing invented.
+
+**TWO NAMING LANDMINES, both real, both would silently recreate the bug — recorded so nobody "simplifies"
+the classifier back into them:**
+1. `M_Table-Dining Round w Chairs:1525mm Diameter` — **21 Hospital rows are TABLES whose name contains
+   "Chairs."** A naive `LIKE '%chair%'` classifies them as chairs and reproduces this exact defect.
+2. `Chair - Desk (2)` (Terminal) — a **genuine chair whose name contains "Desk."** Excluding on any
+   non-seat token anywhere in the name wrongly drops it (my first draft did exactly this: Terminal
+   `SEATS=0`).
+Resolved by **token POSITION within the Revit family name** (the text before the first `:` — that is
+where the family name lives in every DB checked): classification goes to whichever token appears FIRST.
+Plus a `<=1.2m` plan size guard, which drops combined units like Terminal's
+`Waiting_Room_Seat_-_4St_1Tbl_3750` (4 seats + 1 table in one 3.75m element — real seating, but its
+centre is the TABLE).
+
+**NOT a defect, deliberately not "fixed":** a chair legitimately overlapping a table bbox. Hospital's
+dining chairs ring a `M_Table-Dining Round w Chairs` whose bbox spans the whole setting, so **159/160
+chair centres fall inside a table bbox by construction**. A person seated AT a table is supposed to
+overlap it. The defect is the ANCHOR being a table. This distinction is what the witness's 0.4m
+seat-adjacency exemption encodes — without it the test would flag correct behaviour.
+
+**Zero-case is the correct outcome where the data can't support seating** (this file's own doctrine):
+Clinic and LTU_AHouse now place NO seated figures rather than a fabricated position. Their walk/stand/
+tree/car placement is unaffected.
+
+**Witness — `witness_staffage_sit_not_in_table.js`** (puppeteer, committed at bim-ootb repo root). Two
+trees served with identical DBs, camera and press counts; the ONLY difference is `viewer/effects.js`
+(`:8482` = `origin/main` before, `:8481` = the fix). `badSit` = placed sitting sprites whose IFC (x,y)
+falls inside a NON-seat furniture bbox with no seat within 0.4m — re-derived from the DB against the
+FINAL world positions, independent of the placement search (non-tautological, same discipline as
+`§STAFFAGE_WALK_CLEAR`).
+| case | BEFORE (origin/main) | AFTER (fix) |
+|---|---|---|
+| Hospital-dining (mixed chairs + tables) | sit=8 **bad=0** | sit=9 **bad=0** — no regression, still seats people |
+| Hospital-station (ED nurse stations, zero chairs in view) | sit=1 **bad=1** — inside `ED Nurse Station1` | sit=0 **bad=0** |
+| Clinic (zero seats, all casework) | sit=7 **bad=7** — counter tops, base cabinets | sit=0 **bad=0** |
+Zero page errors across all six runs. Logs: `/tmp/witness_sit_run1.log` (inconclusive first attempt),
+`/tmp/witness_sit_run2.log` (the PASS).
+
+**The harness exits 2 = INCONCLUSIVE if no building reproduces `bad>0` before the fix** — a run where
+both sides are zero cannot masquerade as a pass. **That guard fired on the first attempt** (run1: the
+Hospital camera happened to frame a pure chair cluster and Clinic never got an interior camera at all →
+`bad=0` on both sides, proving nothing). It forced better camera placement rather than letting a green
+run be reported. This is the project's "a test that passes without revealing whether the issue is solved
+is not a test" rule doing real work — keep the guard.
+
+**Shipped:** bim-ootb `fix/staffage-sit-not-in-table`, commit `132320a`, **PR #898**, auto-squash-merge
+armed. `sw.js` CACHE_VERSION v812→v813. `eslint` clean, `audit_sw_precache` 108/108.
+`audit_specs.js` fails on `38-sh-dx-2d-runtime.spec.js` (5 SKIP paths) — **pre-existing**, byte-identical
+output on `origin/main`, untouched here (this is the same Issue-4-class debt already noted in CLAUDE.md).
+
+**New `§` tags:** `§STAFFAGE_SEAT_CLASS furn=<n> seats=<n> rejNonSeat=<n> inViewSeats=<n>` (every
+interior press) and `§STAFFAGE_SIT_ANCHOR ifc=(x,y) seat=1` (per placed figure).
+
+**Could not verify:** the fix was witnessed on Hospital and Clinic only — the two locally-available DBs
+that discriminate. Terminal/BimWhale/Ifc4_Revit were classified from their DBs offline (seat counts 4/100/23
+respectively) but not run through the browser harness; their production geometry streams from OCI and
+Hospital alone was already a 262MB/63k-element load. The classifier is the same code path on every
+building, so the risk is a naming convention not represented in the DBs checked — if a building shows
+sitting figures in tables after this, the first thing to read is `§STAFFAGE_SEAT_CLASS`'s `seats` vs
+`rejNonSeat` split for that building's own names.
