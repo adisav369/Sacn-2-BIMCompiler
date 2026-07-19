@@ -3140,3 +3140,54 @@ Muxer also unit-witnessed standalone (30 synthetic frames, real WebCodecs, Chrom
   it as a side benefit, not a claim. What is NOT modest: at 6 frames the MediaRecorder path
   produced a **110-byte** webm (a real-time recorder has nothing to record in 0.4s) while the mp4
   came out at 80KB with actual content — short bakes and cancelled partials are strictly better off.
+
+## §CINEMA_CONTEXT — THE SURROUNDINGS MATRIX (2026-07-19, user extension to §CINEMA_RECIPROCAL)
+User: *"the surrounding makeup also influences the orbit plan ie as input matrix of some sort. There
+is something in each strategic pos/orient that chart the final path."* This is the correction that
+completes the formula: **the start pose alone is not the input — the input is the pose CROSSED WITH
+what the building is doing around that pose.** Two users standing at the same radius/angle/height,
+one in a tight stairwell and one in a double-height atrium, must not get the same film.
+
+### Restatement of the model
+`film = F(pose ⊗ κ)` where `pose` is the three scalars ι/α/γ (§CINEMA_RECIPROCAL) and `κ` is a
+**context vector sampled at that pose from the building's own semantics**. The pose is a QUERY
+POINT; the building ANSWERS; the path is a function of both. This is what makes a pose "strategic"
+rather than merely geometric — the same coordinates mean different things in different rooms.
+
+### κ — the context vector (all derived at plan time, all from existing data sources)
+| # | Component | Source (already in this codebase) | What it charts |
+|---|---|---|---|
+| κ₁ | **Enclosure** `E∈[0,1]` — fraction of a horizontal ray fan blocked within a radius | the occupancy/walkable raster already built for staffage | closet vs atrium vs open field |
+| κ₂ | **Sightline rose** `S(φ)` — free distance per azimuth bin (16 bins) | same raster, radial march | WHERE the view opens — the good reveal directions |
+| κ₃ | **Room scale** — containing room area ÷ storey area | injected room graph (§CINEMA_INDOOR already rides it) | B3: linger in a big room vs seek the door |
+| κ₄ | **Facade affinity** — nearest facade normal + distance | `_buildingBBoxArc` + the §PHOTO_FACING dot-product math (already proven) | which side the orbit should enter from |
+| κ₅ | **Vertical headroom** — ceiling above, floor below | the storey query behind `§GROUND_Y` | how much room there is to climb; grounds γ |
+| κ₆ | **Solar relation** — pose azimuth vs sun azimuth | `A.sun` (already used by §CINEMA_SWOOP) | where the hinge lands relative to the opening |
+
+### How κ changes the mappings (not new beats — better-aimed existing ones)
+- **The turnaround stops where the view opens.** §CINEMA_RECIPROCAL had `Δφ_I = ι·π` sweeping a blind
+  180°. Aim it instead: `φ_I_end = argmax S(φ)` over the rose, with ι setting how much of that turn
+  is spent. The camera turns *toward the opening* — reads as intent, not as a spin.
+- **Door-seek becomes a real choice.** B3's "head for the door out to a larger hallway" = argmax over
+  (room-graph doors) of (adjacent room area × sightline clearance), not the nearest door.
+- **Enclosure modulates the whole film's scale.** High E (tight interior) ⇒ shorter dwell, earlier
+  exit, wider reciprocal ending (you were boxed in, so the release is bigger). Low E (open) ⇒ the
+  push-in beat carries the opening on its own.
+- **Facade affinity picks the orbit's entry side** so the band is entered from the facade you were
+  nearest, rather than from wherever the azimuth math happened to land.
+- **κ₆ positions the hinge relative to your opening** — if you started already facing the sun
+  azimuth, the swoop lands early and the reciprocal act is long; start opposite it and the film holds
+  its glint for the finale. Same gesture, different dramatic shape, derived.
+
+### Why this matters for the product claim (P3)
+It is what makes the trick-learning real. "Stand in the atrium vs stand in the stairwell" is a
+DIFFERENT lever from "stand close vs far" — the user acquires two independent intuitions instead of
+one. The tricks compound because pose and context are orthogonal inputs.
+
+### Cost/risk note — do not skip
+κ₁/κ₂ need a ray-march over the occupancy raster at plan time. That raster already exists but the
+march is new work on the trigger path (which currently must stay responsive — the 10s preview starts
+immediately). Budget it, measure it, and cache per (pose, building) for the duration of one trigger.
+If it costs more than ~100ms, compute κ₁/κ₂ on a coarse bin count and log the cost —
+`§CINEMA_CONTEXT E= rose= room= facade= headroom= solarRel= ms=`.
+⚠ NOT YET IMPLEMENTED and NOT costed — this section is design, not measurement.
