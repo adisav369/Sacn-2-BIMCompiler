@@ -2995,3 +2995,78 @@ room=<id> tNorm=` per derived beat, `§CINEMA_ENDING mode= derivedFrom=` for the
 Determinism proof required before "done": ≥2 buildings × ≥3 materially DIFFERENT start poses
 (exterior-wide, interior-lobby, high-pitched-down) must produce visibly different plans — that is
 P2 stated as a test, and it is the check that would catch a normalization regression.
+
+## §CINEMA_RECIPROCAL — THE FIRST-ACT FORMULA (2026-07-19, spec, no code yet)
+The answer to §CINEMA_AUTHORED_POSE P2/P4: one formula turning the authored start pose into a whole
+film *including its ending*. **Core diagnosis: the current plan already reads the start pose, then
+throws most of it away by CLAMPING** — `targetTilt = clamp(startTilt, 8°, 45°)`,
+`targetRadius = clamp(startRadius, 0.9·env, 2.5·env)` (`effects.js:2878-2879`). Clamping is exactly
+what collapses different poses onto the same film. **The fix is to replace clamps with MAPPINGS.**
+
+### Three dimensionless scalars extracted from the first act
+Derived at plan time from the live camera + ARC bbox — nothing hardcoded, any building, any angle.
+| Symbol | Name | Formula | Reads as |
+|---|---|---|---|
+| ι | **Intimacy** | `clamp(1 − r₀/D_fill, 0, 1)` | how far *inside* the frame-filling shell you began |
+| α | **Attack** | `θ₀ = atan2(dy, horizR)` (raw, unclamped) | the angle you chose — your signature |
+| γ | **Lift** | `(camY − floorY_below) / storeyHeight` | "how far or off from a floor" (user's own words) |
+
+`r₀`, `θ₀`, `φ₀` are the existing `base.startRadius/startTilt/startAzimuth`; `D_fill` the existing
+`fillDistance`. Only `floorY_below` is new (nearest slab under the camera — the storey query already
+used by `§GROUND_Y`).
+
+### The pivot (the structural idea)
+**The sun-glint swoop `§CINEMA_SWOOP` is the film's hinge.** Before it, the building is revealed
+*from your pose*. After it, your pose is restated *onto the building from outside*. This makes B5
+(the "last orbit is too level, should hobble to a higher angle") not a cosmetic tweak but the
+opening of the final act: the climb out of the swoop IS the return toward your original angle.
+
+### The mappings
+1. **ι morphs Act I continuously — no branch, one knob.** Act-I azimuth sweep `Δφ_I = ι · Δφ_turn`
+   (`Δφ_turn ≥ π`), radius target stays `min(r₀, D_fill)` exactly as today (P1: never pushes out).
+   - ι = 0 (started at/beyond fill distance) → pure push-in, no extra spin — today's behaviour, intact.
+   - ι → 1 (lobby/foyer) → an in-place **turnaround**, radius untouched. Solves B1 *without*
+     normalizing the pose, and the dead 8 frozen seconds become the turn the user meant.
+2. **γ decides carry-vs-ease for the attack angle (B2).**
+   `targetTilt = lerp(clamp(θ₀, tiltMin, tiltMax), θ₀, min(1, γ/γ_carry))`, `γ_carry ≈ 2`.
+   Stood on a floor (γ≈0.5) → orbit eases to the normal band. Deliberately flew up high (γ≫1) →
+   your steep downward attack is **carried, not clamped**. Both of the user's stated tactics fall out
+   of one expression instead of a mode switch.
+3. **The Reciprocal Act (P4) — the ending IS the beginning, restated from outside.**
+   - `θ_end = α` — the same angle of attack returns. This is the rhyme.
+   - `r_end = D_fill · (1 + Λ·ι)`, `Λ ≈ 1.5` — **intimacy converts into distance**: the closer you
+     began, the wider the film pulls away. (Replaces the fixed `CINEMA_PULLBACK_SCALE = 1.4`.)
+   - `y_end = roofY + γ·storeyHeight` — **you end as far above the ROOF as you began above your
+     FLOOR.** This is the literal reading of "how far or off from a floor," and it is the hack: the
+     opening's floor-offset becomes the closing's roof-offset.
+   - `φ_end = φ₀ + 2π` — the loop already closes on the start azimuth; you finish facing from where
+     you began.
+   - The tilt ramp from swoop-level back up to `θ_end` runs over `tNorm ∈ [t_swoop, 1]`, which is
+     B5's climb and B4's twist-back easing in one motion (B4's ~3-frame softening applies here).
+
+### Worked examples — one gesture, three genuinely different films
+Illustrative building: envelope 40m, boundingRadius 25m, FOV 50°/aspect 1.9 → `D_fill ≈ 28.2m`,
+storey 3.5m. (Numbers are worked from the formula, NOT measured on a real building yet.)
+- **A "Establishing Walk"** — stand outside at 60m, eye level (θ₀=5°), on the ground (γ=0.5).
+  ι=0 → classic push-in 60→28.2m, no spin. Tilt eases to the band. Ends at `r=28.2m`, 1.75m above
+  the roof, at 5°. *Sweeps in, orbits low, settles just over the roofline. Intimate close.*
+- **B "Lobby Turn"** — stand inside at r₀=6.3m (the real LTU pose), θ₀=2°, on floor 1 (γ=0.5).
+  ι=0.78 → **~140° turnaround in place**, radius untouched. Ends at `r = 28.2·(1+1.5·0.78) = 61m`.
+  *Starts intimate and turning, ends far away at the same eye-level angle — the intimacy of the
+  opening literally becomes the distance of the close.*
+- **C "The Bird"** — 45m out, steep 55° down, hovering 30m over the roof (γ≈8.6).
+  ι=0, but γ≫γ_carry → **θ carried at 55°, not clamped to 45°**. Ends at `roof + 30m`, at 55°.
+  *The bird's-eye attack survives the whole film and closes at exactly the altitude it opened at.*
+
+### Why this is the teachable part (P3)
+Three scalars, each tied to one physical thing the user already controls with their hands: **how
+close** (ι), **what angle** (α), **how high off the floor** (γ). Each maps to a consequence they can
+see in the 10s preview and predict next time. That is the "many tricks up the sleeve" — the tricks
+are real and learnable because the mapping is monotonic and continuous, not a menu of modes.
+
+### Witness before "done"
+`§CINEMA_RECIPROCAL iota= alpha= gamma= rEnd= yEnd= thetaEnd=` at plan time. Determinism proof:
+poses A/B/C above × ≥2 buildings must yield **materially different** ι/α/γ and end poses — that is
+P2 as a test, and the check that catches a clamp regression sneaking back in.
+⚠ UNVERIFIED: constants Λ≈1.5, γ_carry≈2, Δφ_turn≥π are first-principles starting points, tuned
+against a real preview — not measured. Do not present them as measured.
