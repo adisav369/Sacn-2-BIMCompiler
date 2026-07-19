@@ -68,7 +68,10 @@
 var path = require('path'), http = require('http'), fs = require('fs');
 // ROOT = bim-ootb, NOT this repo — the live product UI under test (erp/idempiere.html, erp/crud_overlay.js,
 // erp/ad_seed.db) lives there; bim-compiler only hosts this witness script + its log (CLAUDE.md repo map).
-var ROOT = '/home/red1/bim-ootb';
+// OPLOG_WITNESS_ROOT override — Implementing ERP_OPLOG_APPEND_ONLY_FIX.md §WITNESS (BEFORE/AFTER pair):
+// lets the SAME script run against the live bim-ootb checkout (BEFORE, unfixed) or a fix worktree (AFTER,
+// e.g. /tmp/wt-oplog-append) without duplicating the file. Defaults to the live checkout, unchanged.
+var ROOT = process.env.OPLOG_WITNESS_ROOT || '/home/red1/bim-ootb';
 var MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css',
   '.db': 'application/octet-stream', '.wasm': 'application/wasm' };
 function reqPw() { try { return require('playwright'); } catch (e) { return require('/home/red1/bim-ootb/tests/node_modules/playwright'); } }

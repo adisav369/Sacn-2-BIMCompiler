@@ -61,7 +61,9 @@
 'use strict';
 var path = require('path'), http = require('http'), fs = require('fs');
 // ROOT = bim-ootb, NOT this repo — the live product UI under test lives there (CLAUDE.md repo map).
-var ROOT = '/home/red1/bim-ootb';
+// OPLOG_WITNESS_ROOT override — Implementing ERP_OPLOG_APPEND_ONLY_FIX.md §WITNESS (BEFORE/AFTER pair):
+// see witness_e2e_crud_blob_race.js's sibling comment. Defaults to the live checkout, unchanged.
+var ROOT = process.env.OPLOG_WITNESS_ROOT || '/home/red1/bim-ootb';
 var MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css',
   '.db': 'application/octet-stream', '.wasm': 'application/wasm' };
 function reqPw() { try { return require('playwright'); } catch (e) { return require('/home/red1/bim-ootb/tests/node_modules/playwright'); } }
@@ -125,36 +127,58 @@ function verifyChainAppPath(page) {
   });
 }
 
-// RAW-PATH read — bypass withSidecar()'s silent try/catch-to-empty entirely: read the raw ArrayBuffer
-// straight out of IndexedDB and reconstruct a DB from it using the page's ALREADY-hydrated SQL.Database
-// constructor (borrowed off kernelDb(), so no second initSqlJs() load). A constructor throw here is real,
-// un-maskable corruption in the persisted bytes — the app path alone cannot distinguish that from "empty".
+// RAW-PATH read — bypass withSidecar()'s silent try/catch-to-empty entirely: read the raw per-op
+// records straight out of IndexedDB and reconstruct a DB from them using the page's ALREADY-hydrated
+// KernelOps.replayRowsInto + the page's own SQL.Database constructor (borrowed off kernelDb(), so no
+// second initSqlJs() load). A constructor/replay/verifyChain failure here is real, un-maskable
+// corruption in the persisted per-op records — the app path alone cannot distinguish that from "empty".
+// UPDATED 2026-07-20 for ERP_OPLOG_APPEND_ONLY_FIX.md F1/F2: this witness originally read the LEGACY
+// whole-blob key (`log`/kernel_ops.db) directly, bypassing the app the same way. Post-fix, that key is
+// no longer where new commits land (F1 replaces the whole-blob put() with individual add()s into the
+// NEW `ops` store — see kernel_ops.js §OPLOG-APPEND) — reading the old key would legitimately show
+// "empty" for every POST-fix commit and misreport a clean fix as "all ops missing". The raw-path now
+// reads the `ops` store directly instead, preserving the ORIGINAL intent (an app-bypassing corruption
+// check) against the NEW storage shape, not the old one.
 function readSidecarRawPath(page) {
   return page.evaluate(function () {
     return new Promise(function (resolve) {
-      var K = window.__crud && window.__crud.kernelDb ? window.__crud.kernelDb() : null;
-      if (!K) { resolve({ ok: false, err: 'no-SIDE-to-borrow-ctor' }); return; }
-      var Ctor = K.constructor;
-      var req = indexedDB.open('glassbowl_kernel_ops', 1);
+      // No version arg — opens at WHATEVER version is already current (never triggers onupgradeneeded,
+      // never forces a stale literal). A hardcoded version LOWER than the app's own already-open
+      // connection (e.g. after the v1→v2 store-add bump) throws VersionError and makes this probe itself
+      // unreadable — a witness-script bug, not a finding about the app under test.
+      var req = indexedDB.open('glassbowl_kernel_ops');
       req.onerror = function () { resolve({ ok: false, err: 'idb-open-error' }); };
       req.onsuccess = function () {
         var db = req.result;
         try {
-          var g = db.transaction('log', 'readonly').objectStore('log').get('kernel_ops.db');
-          g.onsuccess = function () {
-            var buf = g.result;
-            if (!buf) { resolve({ ok: true, present: false, bytes: 0, rawOps: 0, ctorErr: null }); return; }
-            var bytes = buf.byteLength;
-            var rawOps = null, ctorErr = null;
+          if (!db.objectStoreNames.contains('ops')) { resolve({ ok: true, present: false, rawOps: 0, ctorErr: null, chainOk: null }); return; }
+          var out = [];
+          var cur = db.transaction('ops', 'readonly').objectStore('ops').openCursor();
+          cur.onsuccess = function (e) {
+            var c = e.target.result;
+            if (c) { out.push(c.value); c.continue(); return; }
+            // cursor exhausted — replay the RAW rows (independent of anything the app already built) into
+            // a fresh sql.js db via the page's own KernelOps.replayRowsInto + verifyChain; a throw/verify-
+            // fail here is real corruption in the persisted records, not merely "fewer ops than expected".
+            var rawOps = out.length, ctorErr = null;
             try {
-              var raw = new Ctor(new Uint8Array(buf));
-              var c = raw.exec('SELECT COUNT(*) FROM kernel_ops');
-              rawOps = c.length ? c[0].values[0][0] : 0;
-              if (raw.close) raw.close();
-            } catch (e) { ctorErr = String((e && e.message) || e); }
-            resolve({ ok: true, present: true, bytes: bytes, rawOps: rawOps, ctorErr: ctorErr });
+              var K = window.__crud && window.__crud.kernelDb ? window.__crud.kernelDb() : null;
+              var SQLCtor = K ? K.constructor : null;
+              if (SQLCtor && window.KernelOps) {
+                var raw = new SQLCtor();
+                window.KernelOps.ensureTable(raw);
+                window.KernelOps.replayRowsInto(raw, out);
+                Promise.resolve(window.KernelOps.verifyChain(raw)).then(function (v) {
+                  resolve({ ok: true, present: true, rawOps: rawOps, ctorErr: null, chainOk: !!(v && v.ok) });
+                }).catch(function (e2) {
+                  resolve({ ok: true, present: true, rawOps: rawOps, ctorErr: String((e2 && e2.message) || e2), chainOk: false });
+                });
+                return;
+              }
+            } catch (e3) { ctorErr = String((e3 && e3.message) || e3); }
+            resolve({ ok: true, present: true, rawOps: rawOps, ctorErr: ctorErr, chainOk: null });
           };
-          g.onerror = function () { resolve({ ok: false, err: 'get-error' }); };
+          cur.onerror = function () { resolve({ ok: false, err: 'cursor-error' }); };
         } catch (e) { resolve({ ok: false, err: 'tx-error:' + e.message }); }
       };
     });
@@ -233,7 +257,7 @@ function readSidecarRawPath(page) {
     var agree = raw.ok && raw.ctorErr === null && raw.rawOps === app.ops;
     var survivors = (raw.ok && raw.ctorErr === null) ? raw.rawOps : app.ops;   // ground truth = raw path when it's readable
 
-    console.log('   §N10-RAW bytes=' + raw.bytes + ' rawOps=' + raw.rawOps + ' ctorErr=' + (raw.ctorErr || 'none') +
+    console.log('   §N10-RAW rawOps=' + raw.rawOps + ' rawChainOk=' + raw.chainOk + ' ctorErr=' + (raw.ctorErr || 'none') +
       ' agreesWithAppPath=' + agree + ' (appOps=' + app.ops + ')');
     console.log('   §N10-FINAL survivors=' + survivors + '/' + N + ' chainValid=' + chainValid +
       ' tip=' + (chain && chain.tip ? chain.tip : app.tip) +
