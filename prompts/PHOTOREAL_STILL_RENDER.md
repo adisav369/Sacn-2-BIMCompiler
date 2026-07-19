@@ -3534,3 +3534,55 @@ it did — the user must be able to see the cause, since this is the lever they 
    ~150m, so Hospital's dive is roughly twice the speed for the same gesture. Per §time-boxed-dive
    this is the lever, not a defect. Flagged so nobody later "fixes" it: on the largest buildings the
    opening WILL read as a fast rush, and that is the rule working, not failing.
+
+### §CINEMA_SIMPLE — IMPLEMENTED 2026-07-20 (PR bim-ootb#902, `feat/cinema-simple`, v817)
+Built to the spec above and its addenda. `EFFECTS_V` → **v3**, `MAXQ_V` → **v10**, `CACHE_VERSION` →
+**v817**. Awaiting the user's live trial — everything below is what was MEASURED, not what it feels like.
+
+**Deleted (not commented out), per §CINEMA_SIMPLE decisions 1+2:** ι/α/γ + `§CINEMA_POSE_AUTHORED`;
+`CINEMA_ANCHOR_CHARACTER`, `CINEMA_ANCHOR_RADIUS_M`, `_cinemaPickCharacter`, `_cinemaAnchor`,
+`CINEMA_ANCHOR_NEUTRAL`, every `character.*` use, `§CINEMA_ANCHOR`; the `reciprocal` block,
+`CINEMA_PULLAWAY_GAIN`, the Act III handoff, `§CINEMA_RECIPROCAL`; the `§CINEMA_THEME` envelope (its
+only job was gating the character layer); `_cinemaFloorContext` (the `slab-stack(46)`/`storeyH=1.91`
+defect — **no storey-derived height survives in this path**, eye level is a downward BVH raycast); the
+push-in/hold/band-ease constants and `§CINEMA_SWOOP`.
+
+**Pivot fix (§CINEMA_PIVOT), the gate on everything else:** pivot is the ARC bbox centre;
+`controls.target` accepted only when BOTH near the real centre AND ≥ a quarter-envelope from the
+camera — a replanted nose-target fails by construction. Confirmed live: `targetOffCam=1.1/3.4/7.5`
+rejected; genuine framing poses still accepted as `controls-target(plausible)`.
+
+**Two defects the verification itself found — both now fixed, both worth remembering:**
+1. **The "largest space" was a ROOF TERRACE.** Duplex's top-scoring `IfcSpace` by area×centrality
+   (R301, 135m²) read **32/32 fan bearings clear to the 60m horizon** — outdoors. Area+centrality
+   alone does not mean "interior". The BVH fan is now also the ENCLOSURE TEST: rank candidates, fan
+   the top few, take the best-scoring one that is genuinely enclosed. Log shows
+   `rejectedOpen=[R301@0%]` → `space="A102" enclosed=100%`. Still no minimum-size gate (decision 3).
+2. **`CINEMA_EXIT_FACE_GAIN=0.3` silently collapsed the whole feature.** ±30% cost swing is drowned
+   by proximity: Hospital picked the SAME door from all 6 test poses, Terminal only 2 distinct across
+   6. At **0.8** (9× swing) heading genuinely steers. A comment in the code warns that lowering this
+   again kills the "myriad of paths" claim — re-run the divergence probe if anyone touches it.
+
+**§CINEMA_ROOMS — a real trap:** `_cinemaPathPlan` is SYNCHRONOUS but the room graph + exit doors
+live in the LAZY navigate bundle. A session that never opened Find has `A.getRoomGraph === undefined`,
+so the first probe run had every film falling back to bbox-centre + nearest-facade with
+`candidates=0`. Both async call sites (`startCinemaOrbit`, MaxQ `start`) now `await A.loadNavigate()`
++ `A.ensureRooms()` first. **The old `§CINEMA_INDOOR` had this same latent hole.**
+
+**Verified** headless Chromium (ANGLE/SwiftShader), `§`-tagged whitebox logs, no Playwright.
+Probe: `scratchpad/probe_cinema_simple.js`. Duplex + Terminal + Hospital, 6 poses each.
+- `poseAt(0)` vs actual camera = **0.0000 m on all 18 runs** (POV continuity not regressed).
+- Per-frame continuity at the 15fps cadence: max/median ratio **1.8–2.2×, ZERO spikes >6× median**.
+  Old code, same probe (Duplex inside-centre): **11.10 m max, 12.0×, 59 spikes** at t≈0.70–0.80 —
+  the Act III handoff. Gone with it.
+- Exit divergence: Duplex 2, Terminal 2, Hospital 3 distinct exits / 6 poses. **Acceptance case met
+  on all three:** two poses at the SAME position facing different ways pick DIFFERENT doors.
+- `§CINEMA_PLAN_MS`: Duplex ~20–70ms, Terminal/Hospital ~500–750ms (one-off, at Alt+C press).
+
+**NOT proven — do not claim these:**
+- No visual/screenshot review. This is numeric path verification only.
+- **Upside-down recovery untested.** The ease drives pitch → 0, but the camera's up-vector belongs to
+  OrbitControls and this change does not touch it.
+- **The Sun-hold branch never fired** (`hold=true` unexercised) — every test pose had `|delta| > 35°`.
+- Terminal's 5 `exit` nodes are clustered (runner-up cost within 0.1 of the winner on every pose).
+  That caps divergence there; it is Terminal's door data, not the selection logic.
