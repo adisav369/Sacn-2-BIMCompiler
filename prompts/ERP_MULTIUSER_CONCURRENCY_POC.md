@@ -82,7 +82,16 @@ in sequence — never by two independent browser processes racing against a shar
 distinction matters concretely here, because of a mechanism this session found by reading the live
 write path (not previously logged as a finding anywhere):
 
-**`build/erp/crud_overlay.js` `_sidePersist()` (~line 1632) is an unconditional whole-blob
+> ⚠ **CITATION CORRECTION 2026-07-19 — read `ERP_OPLOG_APPEND_ONLY_FIX.md` §FILE PROVENANCE.**
+> Every `build/erp/crud_overlay.js:<n>` line number in this document is actually a line number in
+> **`/home/red1/bim-ootb/erp/crud_overlay.js`** (2493 lines, the LIVE file the witnesses ran
+> against). The `bim-compiler/build/erp/` copy is a STALE 1841-line divergent file (857-line diff)
+> where `_sidePersist` is at 1081, not 1632. The defective mechanism is identical in both, so all
+> findings and witnesses stand — but do not edit code by these line numbers without checking which
+> file. Also: `_serializeCommit` DOES exist (bim-ootb:1725, *"run a signed commit EXCLUSIVELY"*);
+> it is a per-JS-context Promise mutex, which is why it could not prevent the cross-tab loss.
+
+**`crud_overlay.js` `_sidePersist()` (bim-ootb:1632) is an unconditional whole-blob
 overwrite, not a CAS.** The sidecar op-log lives in a **separate in-memory `sql.js` `Database`**
 per page-load (`withSidecar`, ~line 1644, hydrates once from IndexedDB when the page opens), and
 every commit calls `_sidePersist()`, which does:
@@ -448,3 +457,206 @@ Together with the already-witnessed S2/S3/S4, all four Case 1/2/3 concurrency sh
 session made no product change and did not touch `prompts/ERP_OPLOG_APPEND_ONLY_FIX.md` (owned by a
 concurrent session) — §Open Questions' two ⛔ items remain open, now with S5's live confirmation behind
 the second one.
+
+---
+
+## §N-User Concurrency (2026-07-20)
+
+Extends S1–S6 (above) from N=2 to N=10, and from "is the bug real" to "what does setting up N real
+users actually require." Nothing above is re-derived — this section builds strictly on the already-
+witnessed S1–S6 findings plus new extraction (the T6/W-CROSS-TAB-PERSIST fact below, not previously
+logged anywhere in this file).
+
+### §Setup Architecture
+
+**What EXISTS today, cited:**
+1. **Real multi-user login/identity — PROVEN (S1).** `erp/idempiere.html` `loginStep0→1→2` (~line 1048)
+   lets any real `AD_User` row log in; `applySession()` (~line 1093) sets `window.APP.actor`;
+   `crud_overlay.js sessionActor()` (~line 1273) reads it. S1 drove the REAL click-through funnel (not
+   the `?login=` shortcut) to two distinct real users in client 11 GardenWorld (`GardenAdmin`=101,
+   `GardenUser`=102 — verified against `ad_seed.db` as the only two with `hasRoles=true`). This part of
+   "N users" is real and reachable **today, no product change needed**.
+2. **No shared install/tenant server exists at all — this is deliberate doctrine, not a gap.**
+   `docs/DistributedERP.md` §8 (~line 378) names the model it explicitly REJECTS: *"a standard
+   corporate ERP install is three always-on tiers, per tenant, 24/7"* (app server + DB server +
+   cache/LB). This project's whole thesis (§0, §6) is the opposite: each device/browser is a
+   self-contained kernel over `sql.js`, with a **"dumb post office"** relay (§6) as the only
+   server-side component, doing pure sequencing, no business logic. **Consequence for "N users
+   sharing one dataset" today:** there is no "shared dataset" to point N users at — every browser
+   loads its own local `ad_seed.db` and its own local, per-origin IndexedDB sidecar
+   (`glassbowl_kernel_ops`/`kernel_ops.db`). S5 already proved this partition is real at the storage
+   layer (two `BrowserContext`s, two permanently divergent tips, §BC-CONTROL-equivalent isolation).
+   "N users on N devices" today = **N independent local copies**, not N seats into one install.
+3. **The relay ("dumb post office") is engine-built, not wired.** `build/erp/erp_relay_server.js`
+   (bim-compiler; the live-equivalent doesn't exist in bim-ootb's `erp/` at all — confirmed by search,
+   this session) exposes exactly the contract `DistributedERP.md` §6 describes: `POST /push`
+   (idempotent by `op_uuid`), `GET /snapshot?after=N`, `GET /head`, `GET /health` — proven by
+   `scripts/test_kernel_relay.js` (W-RELAY, §Current State). `teams/erp/erp_sync.js` (bim-ootb, 114
+   lines) is the client-side counterpart, proven by `teams/tests/poc_teams_erp_sync.js` (W-ERP-SYNC)
+   over the **Teams** transport only. Neither is imported by `crud_overlay.js` or `idempiere.html`
+   (grep-confirmed, this session and prior) — the CRUD sidecar has zero network code.
+4. **NEW THIS SESSION — a proven fix PATTERN for the same-context bug already SHIPPED elsewhere in
+   this exact codebase, just not wired to the CRUD sidecar.** `erp/kernel_ops.js`'s OWN generic
+   IndexedDB persist path (`_persistToIdb`, ~line 125, used by `pos_lens.js`/`kanban_host.js`'s
+   `bim_ootb_cache`/`dbs` cache — a *different* consumer, not `crud_overlay.js`) is guarded:
+   `navigator.locks.request('krn_persist:'+dbUrl, ...)` serializes same-origin tabs, and
+   `_storedTipIsAncestor(db, storedTip)` (~line 109) refuses to persist unless the currently-stored
+   tip is an ancestor of this tab's own chain — i.e. exactly the CAS/version check §Current State
+   above says is missing. This is **T6 / W-CROSS-TAB-PERSIST**, SHIPPED in bim-ootb PR #623 (kernel
+   v9→v10, 2026-07-03, `prompts/KERNEL_HARDENING_BATCH1_SPEC.md` §STATUS line 17-18), witnessed
+   9/9 red-before/green-after in `erp/tests/witness_cross_tab_persist.js` (§T6-GUARD-TRUTH /
+   §T6-NO-CLOBBER / §T6-FAST-FORWARD). **`crud_overlay.js`'s `_sidePersist()` does NOT call
+   `_persistToIdb` and does NOT use `_storedTipIsAncestor`** — it opens its OWN separate IndexedDB
+   database (`glassbowl_kernel_ops`, not `bim_ootb_cache`) and does a raw unconditional `put()`
+   (§Current State above, confirmed again by this session's `witness_e2e_n10_concurrent_today.log`).
+   The concurrent session's `prompts/ERP_OPLOG_APPEND_ONLY_FIX.md` (read, not edited, per this
+   session's boundary) specs an append-only-records redesign from scratch; this finding says a
+   **cheaper alternative already exists and is proven** — wiring `_sidePersist()`/`withSidecar()` to
+   the same tip-guard pattern `_persistToIdb` already uses, rather than only the larger storage
+   redesign. Named here as an extraction fact for whoever picks up gate item (1); not a redesign
+   proposal of this SPEC-ONLY session's own (§Boundaries).
+
+**What must be BUILT for N users to share ONE logical dataset (both required, neither optional):**
+- **Same-context regime fix** — either wire `crud_overlay.js`'s `_sidePersist()` to the SHIPPED T6
+  tip-guard pattern (fact 4 above) or land the append-only per-op-record redesign already specced in
+  `ERP_OPLOG_APPEND_ONLY_FIX.md`. Fixes Regime (a) below only.
+- **Relay wiring** — connect `teams/erp/erp_sync.js` / `build/erp/erp_relay_server.js` (proven, fact 3
+  above) into `crud_overlay.js`'s write path so N separate devices actually exchange ops instead of
+  maintaining silently-forked local copies. Fixes Regime (b) below only. This is the standing ⛔ from
+  the original PoC (§Open Questions), unchanged by this session.
+
+### §Two Concurrency Regimes
+
+**(a) Same-context N-tab** — one user, N browser windows/tabs, ONE shared storage origin (shared
+IndexedDB). This is §Concurrency Model Case 1/2, scaled: S3/S4 witnessed it at N=2 (2026-07-19); this
+session's `W-N10-CONCURRENT-TODAY` (§Results below) witnesses it at N=10. **Fixed by:** the
+same-context fix above (T6-pattern wiring OR append-only redesign) — **no relay involvement needed**,
+this regime never leaves one browser's storage origin.
+
+**(b) N-context (N devices/users)** — N separate storage origins (`BrowserContext` isolation, the same
+partition §BC-CONTROL already proved for `BroadcastChannel` and S5 proved for IndexedDB itself). This
+is §Concurrency Model Case 3. **Fixed by:** the relay wiring above only — a same-context fix (T6 or
+append-only) does nothing here, because there is no shared storage for a local guard to protect; the
+divergence is across two entirely separate machines/browsers with no channel between them at all today.
+
+Both regimes are real and independently gated — landing only one still leaves the other's failure mode
+live. A truthful "N-user setup" guide needs both landed and witnessed (§Gate).
+
+### §Target Witness `W-N10-CONVERGE` (DEFINE ONLY — not built this session, per §Boundaries)
+
+**Purpose:** once BOTH gate items (§Gate) land, prove that 10 real `BrowserContext`s (S1's proven
+distinct-`AD_User` login pattern, or 10 same-actor devices — either is valid), each performing ONE
+real signed UI write, all converge through the relay to ONE identical signed chain tip, with every
+contributed op accounted for (no silent loss — the exact failure this session's `W-N10-CONCURRENT-
+TODAY` finds at N=10 in the *unfixed* same-context regime, now asked of the *fixed* cross-device
+regime).
+
+**Design sketch (for whoever builds it — NOT built here):** launch `build/erp/erp_relay_server.js` on
+an ephemeral port (the same pattern `scripts/test_kernel_relay.js` already uses for W-RELAY); 10
+`BrowserContext`s, each logging in for real (S1's click-through pattern) and performing ONE real
+`page.fill`/`page.click` Save on a distinct field or record; each context's (now relay-wired)
+`crud_overlay.js` pushes its committed op(s) to the relay and pulls the relay's canonical order back;
+after all 10 finish plus a settle window, read all 10 contexts' local sidecar tips.
+
+**Exact `§` log tags + expected values (proposed, matching this project's `§`-tag convention):**
+```
+§N10C ctx=<i> actor=<id> wrote=<field>=<val> pushed=<bool>              — per-context, per-write
+§N10C-CONVERGE ctx=<i> finalTip=<hash> opsSeen=<n>                      — per-context, post-settle
+§N10C-VERDICT allTipsEqual=<bool> totalOps=<n> lostOps=<n>              — closing summary
+```
+Expected on a PASS: all 10 `finalTip` values IDENTICAL; every context's `opsSeen=10` (all 10
+contributions visible everywhere, not just its own); `allTipsEqual=true totalOps=10 lostOps=0`.
+**Falsifies to:** any two tips differ, any context's `opsSeen<10`, or `lostOps>0` — any of which means
+the relay wiring reintroduced a version of the same silent-loss bug this whole lane exists to close.
+
+### §Guide Skeleton (POST-GATE — do NOT write this into `ERPUserGuide.md` yet, §Boundaries)
+
+Each bullet is the FUTURE guide's likely content, tagged with the witness that must be green before
+that specific sentence is true. None of these are true to write today.
+
+- *"Each user installs the app (PWA) once per device and logs in as their own account."* — gated by:
+  **nothing — TRUE TODAY**, per S1 (`W-MULTIUSER-LOGIN`, already witnessed 2026-07-19). The only line
+  in this skeleton not behind a future gate.
+- *"Multiple browser windows on one device are safe to use at once without any special setup."* — gated
+  by: the same-context fix (T6-pattern wiring or append-only redesign) landing AND a rerun of
+  S3/S4/`W-N10-CONCURRENT-TODAY` showing 0 loss (today they show loss at both N=2 and N=10).
+- *"Point every device at your organization's shared relay address to see everyone's changes."* — gated
+  by: the relay-wiring feature (§Gate item 2) actually being built — today `crud_overlay.js` has no
+  relay client code of any kind to point anywhere.
+- *"Once connected, your changes and everyone else's converge automatically — no manual re-sync
+  needed."* — gated by: `W-N10-CONVERGE` (above) green.
+- *"If two people edit the same record at the same moment, [documented conflict behavior]."* — gated
+  by: the ⛔ open question in §Open Questions ("fix as intra-actor CAS extension, or document as a
+  limitation?") being resolved by the user, AND whichever remedy is chosen being landed + witnessed.
+  This bullet cannot be written honestly until that decision exists, independent of the two gate items.
+
+### §Gate
+
+A truthful ERPUserGuide "how multi-user is set up" section cannot be written until **both** land:
+1. **The same-context fix** — `prompts/ERP_OPLOG_APPEND_ONLY_FIX.md`'s append-only redesign, OR
+   (newly identified this session, cheaper) wiring `crud_overlay.js`'s `_sidePersist()` to the
+   already-SHIPPED T6/W-CROSS-TAB-PERSIST tip-guard pattern in `kernel_ops.js` (`_persistToIdb`/
+   `_storedTipIsAncestor`, PR #623). Stops same-store silent loss within one device.
+2. **Relay wiring** — connecting `teams/erp/erp_sync.js`/`build/erp/erp_relay_server.js` (engine-proven,
+   W-RELAY/W-ERP-SYNC) into the live `crud_overlay.js` sidecar. Gives cross-device CONVERGENCE. This
+   remains a real, unbuilt feature — the standing ⛔ from the original PoC, unchanged by this session.
+
+Today, 10 users on 10 devices = 10 permanent forks, no convergence (S5, confirmed again in spirit by
+this session's same-context finding at N=10). Documenting a "setup" for that would invent a capability
+that does not exist (Prime Directive). The guide section is the POST-GATE deliverable, not a task for
+this or any session until both items above are `✅ DONE (witness)`.
+
+---
+
+## §Results 2026-07-20 — `W-N10-CONCURRENT-TODAY` witnessed, REAL 10-tab browser run
+
+**Witness:** `scripts/witness_e2e_n10_concurrent_today.js` (bim-compiler) — adapts
+`witness_e2e_crud_blob_race.js`'s proven harness (real Playwright, one `BrowserContext`, real
+`page.fill`/`page.click`, `§`-log capture) to **10 tabs** racing the SAME key: `c_order` id=101,
+column `grandtotal`, live `bim-ootb/erp/idempiere.html` → real `crud_overlay.js`. All 10 tabs open
+and hydrate BEFORE any edits (the S4 "Case 2" precondition, scaled 10x); each fills a distinct,
+traceable value (`100000+i`); all 10 Saves fire via `Promise.all` with a 40ms-per-tab stagger so the
+export()+put() traffic genuinely overlaps rather than running strictly serial. **New question beyond
+S3/S4 (N=2):** does 10-way contention merely LOSE ops (clean last-write-wins) or can it CORRUPT the
+IndexedDB blob (torn/unreadable)? Answered via TWO independent final reads on a fresh 11th tab: the
+APP-PATH (`window.__crud.kernelDb()`, the same read S3/S4/S5 used — but this path silently falls back
+to an EMPTY db on any constructor failure, `crud_overlay.js` `withSidecar` build(), so it alone cannot
+tell "lost" from "corrupted") and a RAW-PATH (reads the raw `ArrayBuffer` straight out of IndexedDB and
+reconstructs a DB from it using the page's own already-loaded `SQL.Database` constructor, bypassing
+that fallback entirely — a constructor throw here is real, un-maskable corruption). Log:
+`build/erp/witness_e2e_n10_concurrent_today.log` (2026 lines) — READ in full before this summary (Log
+Mandate; grepped for `§N10`/`§CRUD-PERSIST`/`§CRUD-GATE`/🔴/🟢 to pull the signal out of ~2000 lines of
+per-tab app-boot noise, all 10 tabs' boot sequences logged identically). Run: `bash
+build/erp/run_witness.sh scripts/witness_e2e_n10_concurrent_today.js` — **exit 0, 5/5 harness
+assertions PASS** (exit 0 is correct per this file's own header: loss is an EXPECTED finding, not a
+harness failure — see the file's own exit-code contract).
+
+```
+§N10 tab=0 wrote=100000 committed=true   (repeats tab=1..9, ALL 10 committed=true)
+...
+§N10 tab=9 wrote=100009 committed=true
+🟢 all 10 tabs individually reported a successful signed commit (own verifyChain=ok, own owner-gate PASS) — 10/10 committed=true
+§N10-RAW bytes=20480 rawOps=1 ctorErr=none agreesWithAppPath=true (appOps=1)
+§N10-FINAL survivors=1/10 chainValid=true tip=94ccf38442a1d1b949715f5240f7f808d1640ee9f0ef6bdba39b706acef811fd detail=winner=tab9 val=100009 rawCtorErr=none rawAppAgree=true
+🟢 CLEAN: raw-path and app-path agree (1 op(s) persisted, no constructor error) — the blob is structurally VALID; this is loss-only (last-write-wins), not corruption.
+```
+Every one of the 10 tabs' OWN console independently reported `§CRUD-GATE ... verdict=PASS` and
+`§KRN_CHAIN verify OK len=1` and `§CRUD-PERSIST ... sealed=1 verifyChain=ok` — all 10 users would have
+seen a normal success, identical to S3/S4/S5's finding. **Only 1 of the 10 writes survived** (tab 9,
+the last to fire in the stagger order) — 9 of 10 real, individually-signed, individually-chain-valid
+commits are gone from the final state, with zero indication to any of the other 9 users. **The blob is
+NOT corrupted**: raw-path reconstruction from the persisted bytes succeeded with no constructor error,
+and its op count (`rawOps=1`) exactly agrees with the app-path's own read (`appOps=1`) —
+`window.KernelOps.verifyChain()` on the final blob returns `ok=true len=1`, a clean, internally
+consistent, tamper-evident chain. **Answer to the discovery question: loss-only, not corruption.**
+10-way same-key contention scales the SAME clean last-write-wins mechanism S3/S4 found at N=2 — it
+does not degrade into torn writes at N=10. This is consistent with IndexedDB's `put()` being
+transactionally atomic by spec (no partial-write state is observable), which this witness now confirms
+empirically at 10-way contention rather than assumes from the spec. **Net effect: 90% data loss at
+N=10 (vs 50% at N=2), same mechanism, worse blast radius, still clean/silent, never corrupt.** This
+sharpens (does not change) the case for gate item 1 in §Gate above — the failure mode gets worse with
+more concurrent users, not different in kind.
+
+This session made no product change, did not touch `ERPUserGuide.md`, and did not edit
+`ERP_OPLOG_APPEND_ONLY_FIX.md`/`ERP_CRUD_OVERLAY_ONE_SOURCE.md`/`ERP_BUSINESS_CYCLE_E2E.md` (all owned
+by concurrent sessions, read-only where read at all).
