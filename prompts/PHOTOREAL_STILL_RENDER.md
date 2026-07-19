@@ -3259,3 +3259,42 @@ Absence-of-evidence across ~20 searches; a negative cannot be proven. Two source
 Non-English and patent coverage was THIN (~4 patent queries, no professional patent-DB access).
 "Enscape has no auto-path" is likely-but-not-verified-at-source (from a comparison article, not Chaos).
 **If this matters commercially, commission a real FTO search — the patent finding is the weakest claim.**
+
+## §CINEMA_PAPER_BOAT — the user-facing explanation model (2026-07-19, user's metaphor)
+User's own framing, and it is the best teaching device produced in this whole thread — adopt it in
+docs/outreach over any of the engineering language above:
+> *"They can go the old tiresome many dials way, or like a way they put a paper boat and let go — it
+> does a different path from how they let it go, spot and drop."*
+
+**Why it is exactly right:** it carries `film = F(pose ⊗ κ)` in one image without a formula. *Spot*
+= where you drop it (ι, γ). *How you let go* = the angle you release at (α). *The water* = the
+building's own currents — rooms, doors, facades, sun (κ). The same drop in different water gives a
+different journey, which is precisely the §CINEMA_CONTEXT correction. Nobody needs the maths to
+predict it, which is the P3 claim ("many tricks up the sleeve") in a sentence.
+
+### ⚠ Refinement 1 — the boat must NOT imply randomness (this one matters)
+A paper boat in a real stream is *unpredictable*. Our system is **fully deterministic: the same drop
+always yields the identical film**, byte-for-byte (the PRNG is frozen per trigger — §PHOTO_PAINT_SEED).
+**Determinism is the whole reason tricks are learnable.** If users read the metaphor as "it's random,"
+they stop trying to learn it and the product thesis collapses — they would treat a bad result as luck
+rather than as their own placement. The precise characterization is **sensitivity to initial
+conditions, not chance**: a small change in where/how you drop it makes a large change in the path,
+and repeating the same drop reproduces the same path exactly. Say "same drop, same film — move a
+metre and it's a different film." That keeps the boat's intuition AND the learnability.
+
+### ⚠ Refinement 2 — "fuzzy logic" is defensible, but make it precise if challenged
+The user calls it a fuzzy-logic alternative to dials. Fair, and technically defensible: ι blends
+CONTINUOUSLY between two shot archetypes (push-in ↔ in-place turnaround) rather than switching modes,
+and γ blends between carry-the-angle and ease-to-band — which is structurally interpolation between
+rule consequents, i.e. Takagi-Sugeno-style inference. If a technical audience pushes back on "fuzzy
+logic," that is the precise term to fall back on. Do NOT claim a fuzzy inference *engine* (there are
+no membership functions or a rule base as such) — claim continuous blending between named shot rules.
+
+### ⚠ Refinement 3 — "first time" needs one word of care (see §CINEMA_PRIOR_ART)
+Way-Finder (CGF 2004) did automatic room-graph paths in research. So **"first time anyone conceived
+this" is falsifiable by a single citation** and costs credibility for no gain. The claim that survives
+scrutiny and is just as strong: **first time it SHIPS as a product — one gesture, in a browser, from
+the building's own BIM semantics, with no keyframes.** Research prototypes from 2004 never reached an
+archviz tool; the commercial baseline (Enscape/Revit/Twinmotion/D5, all keyframe-authored) is
+documented in §CINEMA_PRIOR_ART and is the real contrast. Position against the PRODUCTS, not against
+the literature — the products are where the claim is unambiguously true.
