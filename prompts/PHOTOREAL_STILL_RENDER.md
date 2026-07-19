@@ -3343,3 +3343,71 @@ verify the checker's ground truth before believing a red result.
 **Still UNVERIFIED:** Λ=1.5, γ_carry=2, Δφ_turn=π are first-principles constants, not measured —
 the 10s preview loop is what should settle them. And no real-GPU/visual confirmation yet: this is
 plan-level numeric proof, not "the film looks right."
+
+## §CINEMA_SIMPLE — NEW SESSION SPEC (2026-07-19, user dictation) — START HERE, supersedes the opening
+**Read this before §CINEMA_AUTHORED_POSE / §CINEMA_RECIPROCAL / §CINEMA_ANCHOR.** User verdict after
+testing live: *"I think we make it even simpler. No all those gimmicky way."* The pose-derived
+character layer over-reached into the opening; what the film needs first is a plain, legible settle.
+
+### THE OPENING, restated simply (authoritative)
+**First 4 seconds = easing time to EYE LEVEL at the CENTRE OF THE OPEN SPACE it finds itself in.**
+Whatever the camera was doing, it resolves to a normal, upright, human standing view:
+- **Upside down** → back to normal upright eye level.
+- **Looking down** → likewise, but at standing eye level.
+- **Too high up** → it must DROP to floor/person level during that same 4s ease.
+- **Already at normal level** → the ease is merely turning more (nothing else to correct).
+- **Facing a wall** → the 4s ease is BACKING AWAY. Then the NEXT 4s looks for the corridor out:
+  **take the largest empty space as the way out.**
+- **Outside** → it may take a **45° angle looking down** at the building. **But watch the Sun:** if
+  the sun is near that heading, DON'T — hold until right after, then head for the 45° look-down.
+
+### Why this supersedes the earlier doctrine — DO NOT let both stand unreconciled
+§CINEMA_AUTHORED_POSE **P1** said "never normalize the authored pose." This spec says the opening
+**does** normalize — to eye level, upright, centred in open space. **That is a deliberate reversal
+for the first 4–8 seconds and the user is the authority on it.** Reconcile as: the pose still decides
+WHERE you are and WHAT is around you (which space, which way out, which facade, sun relation), but
+the film always OPENS by settling into a legible human view. The authored angle is an input to the
+plan, not a thing the first shot preserves. Do not re-litigate this from the older sections.
+
+### OPEN QUESTION for the user — do not assume either way
+"No all those gimmicky way" may mean the §CINEMA_ANCHOR character layer (railing=wobbly, lamp=spin,
+wall=mundane) should be RETIRED, or merely kept out of the opening (where it already is, since v816).
+The user previously asked for that vocabulary explicitly and liked it. **ASK before deleting it.**
+
+### MUST FIX FIRST — the pivot bug (found 2026-07-19, root cause under all the symptoms)
+`_cinemaPathPlan` trusts `A.controls.target` as the orbit pivot UNCONDITIONALLY. After any
+precision-pivot navigation (`§precision RESET — target replanted 10 units ahead`, fires on the `a`
+key) the target is a point floating just in front of the camera — so the film orbits THAT, not the
+building. Live Terminal evidence: `r0=1.4` / `§MAXQ_START radius=0.3 height=1.4`, and a nonsense
+`iota=0.966` ("intimate") for a camera that was outside and high up. **This is why "from top outside
+it does not ease back" — there was nothing to ease back from.** Fix: pivot on the ARC bbox centre,
+using `controls.target` only when it is plausibly on/near the building. Everything else in this spec
+depends on the pivot being right; do not tune path maths before this is fixed.
+
+### Other confirmed defects to clear in the same session
+- **Indoor prelude ignores the pose entirely.** `§CINEMA_INDOOR` REPLACES the pose function for the
+  first half of an indoor film (drops to `EYE=1.7`, turns ≥180° to find the entrance, walks out) —
+  live: `alpha=61.1°` authored, `turnDeg=334`, and the downward look discarded. Under the NEW spec
+  the prelude is roughly right in spirit (it does settle to eye level) but must implement the rules
+  above: centre of the open space first, back-away-then-find-corridor when facing a wall.
+- **`storeyH=1.91` from `slab-stack(46)`** — mezzanines/ramps counted as storeys, so γ and any
+  "storeys above floor" reasoning is skewed (Terminal gave `gamma=14.57` and `0.45` for two poses
+  that were both high). Fix the storey stack before trusting any height-derived number.
+- A ~10.8m per-frame step remains at the Act III handoff (t≈0.80).
+
+### Implementation notes (grounded, so the next session doesn't re-derive)
+- **"Largest empty space" / "centre of the open space"**: the walkable raster is NOT dependable —
+  it ships as a patch for only 3 of 11 buildings and several live logs show
+  `§HELPERS_QUERY_ERR no such table: storey_walkable_raster`. Use a **raycast fan against the live
+  BVH** instead (`§BVH_INIT three-mesh-bvh` is already loaded and monkey-patched in every session):
+  cast N rays in the horizontal plane from the camera, take the free distance per bearing — that
+  gives both "am I facing a wall", "where is the largest empty space", and a centroid to settle on.
+  Works on every building with no extra data. Measured cost is not the concern (the raster march was
+  0.002–0.008ms; a BVH fan is heavier but still trivial at plan time — measure it anyway).
+- **Eye level**: floor beneath the camera + ~1.7m. The floor query exists (`_cinemaFloorContext`,
+  and `§GROUND_Y`'s slab convention) but see the storeyH defect above.
+- **Sun heading**: `A.sun` azimuth vs the intended 45°-look-down heading — the same comparison
+  §CINEMA_SWOOP already makes; reuse it rather than writing a second sun test.
+- **Fingerprint**: bump `EFFECTS_V` (`§EFFECTS_LOADED`, added v816) on EVERY behaviour change here.
+  It is what finally proved a stale-cache false alarm in this very session — a pasted console must
+  answer "is this live?" by itself.
