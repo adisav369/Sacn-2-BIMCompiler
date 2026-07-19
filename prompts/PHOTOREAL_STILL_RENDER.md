@@ -2977,10 +2977,16 @@ determinism rule (any building, any angle, no hardcoding):
 - **B3 — Room markers, from the existing room graph** (already built for §CINEMA_INDOOR): as the
   spin passes a room, **if the room is big, linger a bit toward its centre**; otherwise **head for
   the door out to a larger hallway, then head to the door.**
-- **B4 — Twist-back easing.** The snap back to face the building "is too sudden" — slow it by ~3
-  frames. ⚠ AMBIGUITY, do not silently guess: 3 frames @15fps = 0.2s, which reads small for the
-  complaint. Implement as a named tunable constant and confirm the value against a real preview
-  rather than hardcoding an assumption.
+- **B4 — Twist-back easing. RESOLVED (user, 2026-07-19): 10 frames, ≈ half a second more.** Verbatim:
+  "Slow it down say 10 frames then even though half more second for any sudden twist which breaks too
+  fast a perception." The earlier 3-frame reading was too small — confirmed, don't revive it.
+  ⚠ **Spec it in SECONDS, not frames**: the two consumers run at different rates (MaxQ 360f@15fps,
+  Cinema Orbit 576f@24fps), so a literal 10-frame constant would be 0.67s in one path and 0.42s in
+  the other — perceptually different for the same authored film. Use `CINEMA_TWIST_EASE_SEC ≈ 0.45`
+  (10 frames at the 24fps cinema cadence) and derive frames per path, so the softening feels
+  identical wherever it plays. This applies to EVERY sudden orientation change, not only the
+  twist-back to face the building — the user's stated reason is perceptual ("breaks too fast a
+  perception"), so it generalizes to the swoop climb and the reciprocal-act tilt ramp too.
 - **B5 — Final orbit is too level.** It should "hobble to a higher angle" around the sun-reflection
   beat (`§CINEMA_SWOOP`, where the sun reflects at eye level of the opposing wall). User was
   explicitly flexible on placement: "after passing or before that part."
