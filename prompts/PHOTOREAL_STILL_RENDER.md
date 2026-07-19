@@ -2748,7 +2748,14 @@ run it against a localhost server on the worktree with `Duplex_extracted.db` sym
   failed the run. Cleanup must never gate recoverability — flags reset first now.
 - Spec item 3 (zombie simulation) is the witness's CASE A. Spec item 4 (radius≪band start pose) NOT
   addressed — still open, unrelated to the deadlock.
-- Not yet confirmed against the user's real LTU repro; the class is proven, the specific live run isn't.
+- **CONFIRMED LIVE ON LTU (2026-07-19, user's own F12 paste) — caveat closed.** `§MAXQ_LOADED v8`
+  fingerprint present (no stale cache), then a real bake past the old freeze point: Alt+C → bake →
+  second Alt+C cancels → `§MAXQ_DONE frames=17 bytes=311313 type=video/webm`. `§MAXQ_DONE` is
+  unreachable without a successful `_idbOpen()`, so the deadlock is gone on the exact machine that
+  reported it. §MAXQ_PARTIAL also re-witnessed in passing (17 frames = 1.1s, over the ≥1s threshold).
+- Incidental, not a defect: on Firefox the mime falls back to plain `video/webm` (no vp9) — Chrome
+  witnesses show `video/webm;codecs=vp9`. `MediaRecorder.isTypeSupported` gating works as designed;
+  worth knowing when comparing file sizes across browsers, and relevant to backlog item 1 (mp4/H.264).
 
 ## 🐛 OPEN BUG (2026-07-19, user live report, LTU) — MaxQ STUCK after preview, undiagnosed-live
 **Repro (user, LTU_AHouse, v810/MAXQ v7):** Alt+C → `§MAXQ_START frames=360 path=cinema
