@@ -1083,3 +1083,111 @@ Hospital alone was already a 262MB/63k-element load. The classifier is the same 
 building, so the risk is a naming convention not represented in the DBs checked — if a building shows
 sitting figures in tables after this, the first thing to read is `§STAFFAGE_SEAT_CLASS`'s `seats` vs
 `rejNonSeat` split for that building's own names.
+
+## SESSION RECORD 2026-07-20 — §STAFFAGE_CLEARANCE: trees/cars in the Terminal hall + figures inside meshes (PR #903)
+**User report, live on TerminalMerged, two related defects:**
+1. "car and trees cannot appear in Terminal hall when not sufficient open space of a big potting
+   space to contain it"
+2. "indoors should only be pax stand and sit - not clashing with any prop ie not inside a mesh"
+
+### ROOT CAUSE — established from the BEFORE-fix §-log, not assumed
+**Nothing in the placement path ever measured the real space around a candidate.** Four separate
+holes, all confirmed live on Terminal (`/tmp/witness_indoor_run2.log`, `/tmp/witness_indoor_run3.log`;
+BEFORE tree = `origin/main`, AFTER = the fix, everything else identical):
+
+- **`§STAFFAGE_ZERO_RESCUE` is what actually put the car and the tree in the hall.** With the camera
+  INSIDE, every silhouette-ring candidate is occluded by the building's own wall, so each kind
+  reached 0 and spec S2's rescue walked the **camera-forward ray** — straight down the concourse —
+  and force-placed there. The BEFORE log shows it firing every press:
+  `§STAFFAGE_ZERO_RESCUE kind=car spot=(131.3,-30.6) forced=1` ×3 and
+  `§STAFFAGE_ZERO_RESCUE kind=tree spot=(131.3,-14.6) forced=1`. Cars had **no indoor test at all**.
+- **The tree indoor test was a bbox window that Terminal sails straight through.** `_ceilingOver()`
+  only matched a slab whose *bottom* sits **2–9 m** above ground. The concourse roof measured
+  **21.52 m** and a secondary deck **6.79 m** — the 21.5m one is outside the window entirely, and a
+  bbox is blind to atrium holes anyway (this file's own §STAFFAGE_GROUNDSNAP lesson).
+- **Standing pax had no clearance test whatsoever** — the exterior loop gated only on
+  frustum/occlusion/dedup, so a silhouette-ring point that lands inside a concave wing (Terminal is
+  all wings) puts a figure through a wall. Measured BEFORE: figures at **0.03 m, 0.03 m, 0.07 m,
+  0.21 m, 0.23 m** clearance — i.e. literally inside geometry.
+- **The interior walk path's occupancy grid is not sufficient either.** It is bbox-derived. On the
+  AFTER run it reported `rejectedInObject=0` (grid: all clear) while the raycast probe rejected
+  walkers at **0.03 m and 0.21 m** — `§STAFFAGE_WALK_CLEARANCE rejInMesh=2`. The grid genuinely
+  misses cases; it was kept as the cheap prefilter and the raycast added as the final gate.
+
+### THE FIX (`viewer/effects.js`, `§STAFFAGE_CLEARANCE`)
+Real **rendered triangles** via the BVH-accelerated raycaster (`§BVH_INIT`, loader.js) — the same
+ground truth §STAFFAGE_GROUNDSNAP already trusts over bboxes. Deliberately **not**
+`storey_walkable_raster`: it ships as a patch for only 3 of 11 buildings and live logs show
+`§HELPERS_QUERY_ERR no such table: storey_walkable_raster`, so it cannot carry a rule that must hold
+on every building.
+- `_solidMeshes()` — real geometry only. **Must not reuse `_occMeshes`**: that list keeps `A.sky`
+  and `A.ground`, and an upward ceiling ray would hit the sky dome from every outdoor spot, reporting
+  "indoors" everywhere and rejecting every tree.
+- `_ceilingAbove(feetPos)` — one upward ray, 120 m. `Infinity` = open sky. Works at **any** roof
+  height, which the 2–9 m bbox window could not.
+- `_clearRadius(feetPos, need)` — 16-direction horizontal fan at 0.25 m and 1.20 m (catches both
+  low props and full-height walls). Returns on the first violating ray, so a rejected candidate
+  costs a few rays not 32.
+- `_spaceOK(kind, feetPos)` — the single gate every placement site calls, on the **final rendered
+  position** (feet-anchored, `spr.center.set(0.5,0)`, PR #898).
+
+**Thresholds — each is a measured requirement of the object, not a taste call:**
+| kind | rule | why |
+|---|---|---|
+| pax | ≥0.45 m clear at ankle + torso | a standing adult's shoulder half-width; closer = inside a mesh |
+| tree | **open sky required** + 2.5 m canopy | the only indoor case the user allowed is "a big potting space", and a real planting court is open to the sky → `Infinity`. Courtyards/terraces keep their trees; a roofed concourse never gets one, at any roof height |
+| car | indoors only under a **≤4.5 m** ceiling + 2.5 m body clearance | **the car-indoors judgement call.** A car park / loading bay / porte-cochère is a plausible place for a parked car; a concourse is not. Ceiling height is the one real-geometry quantity that separates them — a clearance-only rule *cannot*, because a big hall has MORE clearance than a car park, not less |
+
+**Deliberate amendment to spec S2 (zero-case elimination, PR #883):** the rescue now carries the same
+space gate, and its last-resort "place at the farthest clash-free spot anyway" branch only considers
+spots that passed it. **This supersedes "zero is the only forbidden outcome" for indoor framings** —
+that rule was written for outdoor presses and is precisely what put the car and the tree in the hall.
+Outdoors nothing changes (forward-ray spots pass the gate, the guarantee still holds). A skipped
+rescue now says why: `§STAFFAGE_ZERO_RESCUE kind=car SKIPPED — no forward spot has the real space`.
+
+### WITNESS — `witness_staffage_indoor_clearance.js` (puppeteer, committed at bim-ootb repo root)
+Two trees, identical DBs/camera/press counts, the only difference being `viewer/effects.js`
+(`:8491` = `origin/main` BEFORE, `:8492` = the fix). Counts are **re-derived in-page from the FINAL
+world positions**, raycast against the rendered meshes — the harness never asks the placement code
+for its own opinion (same discipline as §STAFFAGE_WALK_CLEAR / PR #898's `badSit`). Seated figures
+are exempt from the mesh test: a person seated at a table is *supposed* to overlap it (PR #898).
+
+| case | BEFORE (origin/main) | AFTER (fix) |
+|---|---|---|
+| **Terminal-hall** (camera inside the concourse, 3 presses) | 24 placed — **badIndoor=4** (3 cars under a 6.1 m ceiling + 1 tree under a **0.3 m** ceiling, i.e. buried under a slab), **badInMesh=5** | 16 placed — **badIndoor=0 badInMesh=0** |
+| **Terminal-hall, independent rerun** | 26 placed — **badIndoor=2 badInMesh=3** | 17 placed — **badIndoor=0 badInMesh=0** |
+| **HHS_Office_Federated** (regression guard, camera inside) | 28 placed — badIndoor=0 badInMesh=0 | 30 placed (15 pax, 12 trees, 3 cars) — badIndoor=0 badInMesh=0 |
+
+HHS **did not reproduce** the defect and is reported as what it is — a regression guard, not a proof.
+Its value is the AFTER column: 30 items still placed (more than BEFORE), so the new gate is **not** a
+blanket suppressor on a building where placement was already correct. Zero PAGEERROR in all runs.
+`audit_sw_precache` 108/108. `eslint viewer/effects.js` clean.
+
+**The harness exits 2 = INCONCLUSIVE if no case reproduces `bad>0` before the fix** — a run where both
+sides are zero cannot masquerade as a pass. Kept from PR #898, and it earned its keep again here: the
+FIRST attempt (`/tmp/witness_indoor_run1.log`) was garbage and the log said so — Terminal streamed
+**0 meshes** and the camera came back `[null,null,null]`. Two real harness bugs, both worth recording:
+1. **`?db=buildings/Terminal_meta.db` is wrong for a split model.** scene.js `§DB_SPLIT_DETECT`
+   derives `<stem>_meta.db`/`<stem>_geo.db` from the param, so it went looking for
+   `Terminal_meta_meta.db` → 404 → `§BLOB_MISS hashes=…` forever, **no geometry, ever**. The correct
+   param is `buildings/Terminal_extracted.db`.
+2. **`THREE.Box3.expandByObject` returns NaN** over this scene's BatchedMesh/InstancedMesh (no
+   computed bounds), which silently NaN'd the camera and every downstream number. Replaced with the
+   model's own IFC bbox via `A.dbQuery` on `element_transforms` + `A.ifc2three`.
+
+### PERFORMANCE
+Terminal `§PHOTO_STAFFAGE build_ms` **0.9 s -> ~2.1-2.7 s** (3 presses, before/after, both measured live). The first draft was 3.8 s; `_clearRadius` now returns on the FIRST violating ray, so a rejected candidate costs a few rays instead of all 32 — only the <=4 candidates that actually get placed pay the full fan. Precedent in this file: 364 ms accepted on Hospital, +160 ms accepted for the occlusion raycast. One-time per Alt+P press, not per-frame.
+
+### NOT VERIFIED — be honest about the edge
+- **The ≤4.5 m car-indoors allowance is not positively witnessed.** No building available offline has
+  a genuine covered car park / loading bay to prove a car *is* correctly placed there. What IS proven
+  is the rejection side (Terminal's 21.52 m and 6.79 m ceilings both rejected). If it turns out no
+  building in the set ever has such a space, the rule is equivalent to "cars are outdoor-only" in
+  practice, and the ≤4.5 m branch is dead code that does no harm.
+- **Only Terminal and HHS were run through the browser harness.** Hospital/LTU_AHouse/BimWhale
+  weren't — Terminal alone is a 250 MB `_geo.db` stream. The gate is the same code path on every
+  building, so the risk is a building whose geometry streams too slowly for `_solidMeshes()` to be
+  populated at press time; that case degrades to the OLD behaviour by design (`if (!meshes.length)
+  return true` — nothing streamed means nothing to prove a clash against), never to a hard failure.
+- `audit_specs.js` still fails on `38-sh-dx-2d-runtime.spec.js` (5 SKIP paths) — **pre-existing**,
+  byte-identical on `origin/main`, untouched here (the Issue-4 debt already noted in CLAUDE.md).
