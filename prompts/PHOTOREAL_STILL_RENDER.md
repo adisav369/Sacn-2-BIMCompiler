@@ -3484,3 +3484,33 @@ opening is calmer.* Clamping the speed would silently remove the last thing the 
 
 This is what the ι/α/γ scalar layer was reaching for, achieved for free by holding duration constant
 and letting distance do the work — no normalization, no table, no branching. Same 4s for everyone.
+
+### §CINEMA_SIMPLE — how the pose STILL shapes the film: via the EXIT, not via parameters
+*"In fact the start and end is affected by where user puts ie the orientation angle. Say cam starts
+facing Sun and nearest exit is facing away thus it exits turns around to face building but since away
+it can rise to look down. When cam in building ends choosing another nearest exit due to at 4sec which
+angle it is facing. This only happens where the user place the cam nearest to and POV."*
+
+**This does NOT contradict "the ending belongs to the normal script" — read both together.** The
+script is identical for every film. What differs is **which exit the camera takes**, and that is
+decided by WHERE the camera is and WHICH WAY IT FACES at the 4-second mark. Everything downstream —
+which side it emerges on, which facade the exterior act sees, where it ends up — follows from that
+one physical choice. So:
+- The pose shapes the film **emergently, through geometry**, not through a derived-parameter table.
+  This is why the ι/α/γ scalar layer and the anchor verbs were the wrong shape: they tried to encode
+  as parameters what the building's own geometry already decides for free.
+- **Exit selection = nearest exit to the camera's position AND facing at t=4s.** Both matter — the
+  user's worked example is a camera facing the Sun whose nearest exit is behind it.
+- Worked example to preserve as the acceptance case: start facing the Sun → nearest exit is away from
+  the Sun → camera exits that way → **turns around to face the building** → and because it is now on
+  the far side it **rises to look down** (the 45° look-down, which is also the Sun-safe heading here).
+  The Sun rule and the exit choice reinforce each other; they are not two separate systems.
+- Same building, camera moved a few metres or turned to face another way → a different nearest exit →
+  a genuinely different film, with no per-pose code. **That is the "myriad of paths" claim, achieved
+  by geometry instead of by a mapping table.**
+
+**Implementation note:** exits come from the real door set the room graph already exposes
+(`§CINEMA_INDOOR entrance=widest-ground-door` today picks ONE globally — that is the thing to change:
+pick per-run by proximity + facing at the 4s mark, not a fixed "widest"). Log the choice
+(`§CINEMA_EXIT chosen=<guid> dist= facingDot=`) so a pasted console explains why a film went the way
+it did — the user must be able to see the cause, since this is the lever they are learning.
