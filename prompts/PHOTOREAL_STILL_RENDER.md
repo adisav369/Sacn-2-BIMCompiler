@@ -3439,3 +3439,32 @@ film, not a special case for indoor starts — generalise it (entry from outside
 central space, timed exit, spin-to-find-exit) rather than keeping two separate path builders.
 The pivot fix above is a prerequisite: "largest space at building centre" is meaningless while the
 plan orbits `controls.target` wherever it happens to sit.
+
+### §CINEMA_SIMPLE — DECISIONS (user answered directly, 2026-07-19). These are SETTLED.
+User's framing: *"basically i see only one routine. Start + normal script with Sun reflect
+consideration."* The START eases you in (pose-dependent); the NORMAL SCRIPT is the same for every
+film. Three forks resolved — implement these, do not re-open them:
+
+1. **RETIRE the §CINEMA_ANCHOR character vocabulary ENTIRELY.** Delete `CINEMA_ANCHOR_CHARACTER`,
+   `CINEMA_ANCHOR_RADIUS_M`, `_cinemaPickCharacter`, `_cinemaAnchor`, the `character.*` uses in the
+   pose factory, and the `§CINEMA_ANCHOR` log line. No per-element flavour at all — railing/lamp/
+   wall/beam verbs are gone. (The earlier §CINEMA_ANCHOR section stays in this file as HISTORY of a
+   rejected direction; it is no longer a spec. Do not resurrect it.)
+2. **The ENDING belongs to the normal script — RETIRE the reciprocal ending.** Same close for every
+   film regardless of start pose. Delete the `reciprocal` block, `CINEMA_PULLAWAY_GAIN`, the Act III
+   handoff branch and the `§CINEMA_RECIPROCAL` line. (This also removes the ~10.8m t≈0.80 step,
+   which lived in that handoff.) The start pose affects the EASE-IN ONLY.
+3. **Always dive to the largest space, regardless of size.** No minimum-size gate, no skip path, no
+   hover-outside fallback — every film has the same shape on every building. If a building's largest
+   interior space is small, the camera still goes there.
+
+**What survives from all the pose work:** essentially only the ease-in. ι/α/γ as published scalars
+are no longer needed by the script — if the ease-in wants "how high am I / am I upside down / am I
+facing a wall", read that directly at plan time (BVH fan + floor query) rather than keeping the
+normalized-scalar layer. Keep `§EFFECTS_LOADED` (the build fingerprint) and the §CINEMA_POV
+continuity guarantee that the film starts exactly at the user's camera.
+
+**Net shape to build:** pivot fix → ease to eye level at centre of the largest interior space (4s,
+handling upside-down / looking-down / too-high / facing-a-wall) → timed exit with a spin that finds
+the way out → exterior script with the 45° look-down, held if the Sun is near that heading → standard
+ending. One routine.
