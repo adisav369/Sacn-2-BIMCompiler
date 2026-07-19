@@ -3643,3 +3643,34 @@ simply avoid. In fact, even outside building it never goes to the hall. Same as 
 **Sequencing for the next session:** R2 first (it's the spine and the pivot/space selection everything
 rides on), then R3 (exterior act), then R1 (separate staffage path, independent). Bump EFFECTS_V +
 CACHE_VERSION. All three have concrete acceptance tests above — witness each, don't eyeball.
+
+## §CINEMA_SIMPLE — R2 STILL BROKEN after v818 deploy + hard reset (user, 2026-07-20) — START HERE
+User hard-reset (confirmed current code) and reports the dive STILL goes to the roof attic, not the
+main indoor area, on Terminal AND Hospital. So the §CINEMA_SIMPLE build (PR #902, EFFECTS_V v4/v5)
+did NOT fix R2 — the BVH enclosure test alone is insufficient. **This is the #1 open item; nothing
+else in this feature matters until the dive lands in the concourse.**
+
+**Directive for the fixing session — do this, in order:**
+1. **Reproduce with a probe, don't eyeball.** Adapt `scratchpad/probe_path_continuity.js` (or the
+   agent's own space-selection probe) to LOG the ranked space candidates on Terminal + Hospital:
+   `§CINEMA_SPACE cand=<guid> area= zLevelFrac= enclosed% chosen=`. Establish WHY the attic wins.
+   `zLevelFrac` = (space centre Z − buildingZmin) / (Zmax − Zmin), derived from the space's OWN Z,
+   NOT the storey stack (slab-stack(46) mezzanine bug makes storey index useless — see R2 above).
+2. **The fix is almost certainly a FLOOR-LEVEL PREFERENCE the current ranking lacks.** "Largest
+   enclosed" is picking a big enclosed attic/plant volume. Rank must demote high `zLevelFrac`
+   (attic) and very low (basement); a concourse sits low-to-mid. Try: score = area × enclosed% ×
+   floorLevelWeight(zLevelFrac), where floorLevelWeight peaks at ground/main level and falls off
+   toward roof and basement. The user's exact rule: "Only when outside, and attic/basement simply
+   avoid."
+3. **Also honor the already-inside short-circuit:** "if u are there [in a space], then dont look for
+   the next" — if the camera's start position is already inside a valid enclosed space, settle there,
+   don't run the largest-space search at all.
+4. **Acceptance test (numeric, both buildings):** an OUTSIDE start on Terminal must choose the
+   concourse (the big ground/main-level enclosed space), NOT a roof/plant space; Hospital likewise.
+   Log the chosen space's `zLevelFrac` — it must be low-to-mid, never ~1.0.
+5. Bump EFFECTS_V + CACHE_VERSION. Then R3 (reinstate §CINEMA_SWOOP sun-reflection level-off, deleted
+   in the simplification) and R1 (seated pax need no table — extend the PR #898 overlap exemption to
+   the PR #903 clearance gate). Full R1/R2/R3 detail is in the §CINEMA_SIMPLE LIVE TRIAL REGRESSIONS
+   section above; the §CINEMA_SIMPLE routine + DECISIONS + implementation calls precede it.
+Also open, lower priority: Alt+P perf regression (~0.9s→2.7s, BVH probing) — see
+`prompts/STAFFAGE_WALKABLE_PLACEMENT.md` §STAFFAGE cars-never-indoors + perf section.
