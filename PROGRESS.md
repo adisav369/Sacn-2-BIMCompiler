@@ -20,6 +20,10 @@
 fast-forward/PRs, verification habits unchanged) until the user pauses again. `CLAUDE.md` §⏸ PUSH PAUSE.
 
 ## OPEN — to be assigned to sessions (user dispatches from this list, check before starting cold)
+- `prompts/DB_IDENTITY_MANIFEST_WITNESS.md` — building manifest + §DB_IDENTITY load witness; S0
+  diagnoses the live Modeller low-LOD fallback first (data-plane vs code verdict from one log read).
+- `prompts/RENDER_FIDELITY_TRIPWIRE.md` — headless witness asserting real geometry rendered
+  (blobMiss=0 + triangle census); the check 32 witnesses lacked when Modeller shipped 100% boxes.
 - `prompts/RESUME_ERP_POST_TAIL_AND_USERGUIDE.md` — SONNET: finish Cash/Inventory posting oracles
   (generator built, reuse) + ERPUserGuide navigation + core S&D-flow chapter. Fresh branch off master.
 - `prompts/RESUME_HR_BIM_ASSET.md` §2026-07-06c — A/B/C bugs + E decision.
