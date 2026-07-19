@@ -6,16 +6,42 @@
 #   Enforces the UNBREAKABLE rule `feedback_no_fake_lod_unbreakable` mechanically.
 # Read the log after every run — exit code is not evidence.
 
-## WHY
-Every existing witness asserts counts/bbox-deltas/pixel-diffs — ALL of which a bounding box
-satisfies identically to real geometry (audited 2026-07-01: 32/32 Modeller witnesses blind to it).
-The §-log discipline is strong but the assertions test seams, not the user-visible truth
-(`feedback_test_real_user_path_not_seams`). Result: the one regression class users always notice is
-the one no witness can see. This week proved the enabling fact: even the 63k-element Hospital
-full-streams HEADLESS in ~6 min (small buildings in seconds) — so the real user path is automatable
-(`prompts/HOSPITAL_TREES_NOT_RENDERING.md` §RESOLVED for the working harness pattern:
-puppeteer + `--use-gl=angle --use-angle=swiftshader`, poll `streamedCount` to completion, NO
-progress ceiling).
+## BACKSTORY — read this first; it is the whole reason this file exists
+**2026-07-01, the scar:** the Modeller was discovered rendering EVERY element as a 12-triangle
+bounding box — 100% fake geometry — while the building's real meshes (`component_geometries`,
+keyed by `geometry_hash`) sat unread in the SAME .db file. Measured live, not inferred:
+SampleCastle `boxCount=3225, otherCount=0`. **Nothing automated caught it.** All 32 Modeller
+witnesses were green, because every one asserts something a box satisfies IDENTICALLY to the real
+mesh — element counts, bbox centres/extents, pixel-diffs. The only detector that fired was the
+user's own eye on a screenshot ("this cannot be true"). Full record: memory
+`project_modeller_lod400_real_geometry` + `feedback_test_real_user_path_not_seams`.
+
+**The fix was deep — the blindness was never fixed:** `modeller/real_geometry.js` + the
+`§GEOM-HARDFAIL` policy (loud + skip, never a silent box) shipped and were verified thoroughly.
+But no witness was ever taught to SEE the difference between fake and real — the suite is exactly
+as blind today as the day it missed 3,225 boxes. A fix without a tripwire only proves the bug was
+fixed once.
+
+**2026-07-19, the recurrence that triggered this spec:** user reports the Modeller "keep falling
+back to low LOD when this was cleared so deeply." Root cause TBD by
+`DB_IDENTITY_MANIFEST_WITNESS.md` S0 (likely data-plane: geometry-less `*_ARC.db` copies —
+`modeller/Hospital_ARC.db` has 14,641 meta rows and ZERO geometry, so only boxes CAN render).
+Whichever way S0's verdict lands, the structural fact stands: this is the one failure class users
+always notice and automation never does. It can regress silently any number of times until a
+witness measures what the user actually sees.
+
+**Why this is only possible NOW:** the old blocker was "the real user path can't be automated — a
+big building won't stream in a test window" (a 2-min Playwright timeout reached 29% of Hospital
+and gave up, see `HOSPITAL_TREES_NOT_RENDERING.md`). Disproven 2026-07-19: the full 63,182-element
+Hospital streams headless in ~6 min (small buildings in seconds) using puppeteer +
+`--use-gl=angle --use-angle=swiftshader`, polling `streamedCount` to completion with NO progress
+ceiling. The harness pattern is written and proven — the missing check is now cheap.
+
+**Why triangle census and not screenshots/counts:** those are exactly the assertions that already
+failed — a box passes them. Triangle counts provably separate the two states (12 tris/element vs
+hundreds-to-thousands for real meshes), and `§BLOB_MISS`/`§GEOM-HARDFAIL` counts name the cause in
+the same line. Enforces `feedback_no_fake_lod_unbreakable` (UNBREAKABLE: no non-LOD400 presented
+as real geometry, any building) mechanically instead of by eye.
 
 ## SPEC
 ### S1 — the metric: real-triangle dominance + zero misses
