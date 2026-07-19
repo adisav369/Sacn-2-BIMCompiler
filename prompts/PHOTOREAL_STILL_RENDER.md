@@ -2059,14 +2059,38 @@ census exactly: 4 real `RPC Male/Female` rows, 16 real `RPC Tree` rows, 1 real `
 confirmed real today**, on the actual app, not assumed from static file inspection.
 
 ### Open items, not resolved here
-- ~~Car census against the real DBs~~ — **RUN.** First pass (loose `LIKE '%car%'` etc.) returned noisy
-  counts (Terminal 149, Hospital 13, BimWhale_Advanced 11...) that turned out to be false positives on
-  manual name inspection (`Carbon Steel` pipe material, `MetricCarDoor` hardware, `Healthcare` sofas,
-  `IfcTransportElement`-class elevators). Real result after checking actual names: **1 genuine vehicle
-  entourage element in all 11 buildings** — `Semi Truck` in Hospital. Confirms vehicles are NOT
-  available as a real-data fallback anywhere meaningful — the earlier conclusion (sourcing stalled,
-  no clean vendorable CC0/permissive cutout found) stands and isn't going to be rescued by real IFC
-  data the way people/trees were.
+- ~~Car census against the real DBs~~ — **RUN, then CORRECTED 2026-07-17/18 (STAFFAGE_WALKABLE_PLACEMENT.md
+  session).** The original census here concluded "1 genuine vehicle entourage element in all 11
+  buildings (Semi Truck in Hospital), vehicles NOT available as a real-data fallback" — **this was
+  WRONG, same class of miss as the false positives it had just filtered out.** The `LIKE '%car%'`
+  substring pattern can't match a car by MODEL NAME (a Beetle isn't spelled "car"). A targeted search
+  for `RPC`/`Beetle` (prompted by the user spotting real cars in their own screenshots) found real
+  Revit RPC vehicle entourage in exactly the same 2 buildings that already have real RPC people/trees:
+  **`M_RPC Beetle` × 5 distinct geometry instances in BimWhale_Advanced**, **`RPC Beetle` × 1 in
+  Ifc4_Revit** — both `IfcBuildingElementProxy`, both genuine mesh geometry (not a placeholder), both
+  confirmed via `component_geometries` (Float32 vertices ~2058/instance, Uint32 face indices ~686-1372
+  tris/instance — same BLOB format `streaming.js` already decodes for every other element, nothing
+  special about these rows). Fixed same-session: `effects.js` `realPeople` detection and
+  `streaming.js` `§ENTOURAGE` material-variant matcher both now handle the `M_`-prefixed naming
+  convention (was matching bare `RPC Male%` only), added a `vehicle` material variant. Screenshot-
+  confirmed live: the real Beetle sits correctly grounded on the pavement once double-population
+  stopped hiding the real problem behind synthetic ghosts.
+  **Superseded plan for "cars in buildings that DON'T have one" (NOT implemented, next session):**
+  user's explicit direction — reuse the REAL extracted Beetle mesh as a cross-building library prop,
+  NOT a sourced cutout photo. This is the PRIME-RULE-clean path the earlier sourcing dead-end
+  (Kenney/freecutout.com/MrCutout.com, all licensing dead ends, see below) was never going to be:
+  genuine extracted geometry, not fabricated/licensed content. Mechanism sketched, not built: pull
+  ONE geometry_hash's vertices+faces BLOB from BimWhale_Advanced_extracted.db's `component_geometries`
+  once (build-time or first-use cache, not a per-frame query), decode via the exact same
+  Float32Array/Uint32Array path `streaming.js` already uses for normal geometry, build a reusable
+  `THREE.BufferGeometry`, then instance it into any OTHER building's exterior staffage placement
+  (parked near an entrance/road) the same way `_STAFFAGE_TREES` places tree sprites today — except as
+  a real mesh, not a billboard. Needs its own session: where does the decoded geometry/texture live
+  (a small vendored `.bin`/`.json` extracted once from BimWhale, checked into `viewer/textures/staffage/`
+  or a new `viewer/props/` dir — NOT the full source DB), what UV/material it renders with outside its
+  origin building's material palette, and where "parked near the road" anchors from (no road/driveway
+  IFC class confirmed extracted yet — would need its own check, don't assume `IfcPavement`/hardstand
+  exists generically).
 - "Hang a big poster" fabricated-dressing idea — needs its own scope: blank-wall detection logic +
   a sourced poster/ad-image asset. Nothing exists for this yet, unlike people/trees.
 - "Props" as a general category — undefined, needs its own scope before it's a checklist item.
@@ -2403,3 +2427,435 @@ Clash's own code has zero references to the composer/GI pipeline (checked agains
 file directly). **Pattern worth remembering for any FUTURE accumulation loop added to this
 composer stack: it needs the pose guard from day one, not after a live report** — this is the third
 time the same fix has had to be ported in after the fact.
+
+## SESSION 2026-07-18 — Cinema Orbit quality/fps discussion (user ask, not implemented — analysis only)
+**User ask:** make Cinema Orbit "full Alt-S quality," higher fps, "dispense more effort and code
+harness to ensure very good movie quality (discuss if not feasible)." Read the actual
+`A.startCinemaOrbit` code (`effects.js:2412-2599`) and this file's own `§TM_MOVIE_EXPORT_RETIRED`
+archive (`prompts/archive/TM_MOVIE_EXPORT_RETIRED_2026-07-18.md`, reverted a25418e→a3fc220 **hours
+before this ask, same session**) before answering — do not re-derive either from scratch next time.
+
+**"Full Alt+S quality" is not feasible AND not desirable — wrong algorithm, not an effort gap.**
+Alt+S's 16-sample TAA is *temporal* accumulation across a STATIC camera (same frame, subpixel-
+jittered, blended). Cinema Orbit's camera moves continuously the entire 24s. Accumulating samples
+across camera motion blurs/ghosts, doesn't sharpen — the existing code's own comment
+(`effects.js:2470-2472`) already states this: "accumulating supersamples across motion would just
+blur/ghost, not help." Turning on real Alt+S accumulation for the orbit would make it look WORSE.
+
+**The correct quality lever for a moving shot is SPATIAL supersampling (SSAA), not temporal.**
+`viewer/lib/SSAARenderPass.js` already exists in the repo — ported from three.js r185 alongside
+TAARenderPass (see this file's earlier LAYER 1 section), but has ZERO references anywhere (grepped
+this session) — a real, half-built, bounded next step if this is wanted. NOT implemented this
+session — needs real-hardware perf verification first (see below).
+
+**Could not get a representative FPS/perf number from this sandbox.** Tried: ran
+`A.startCinemaOrbit()` headless via Playwright and watched `§CINEMA_PERF` (already-existing
+telemetry, logs every 75 real `composer.render()` calls). Result: fewer than 75 real frames in 20+
+seconds — under ~3.75fps. This is NOT a real finding about the app; this sandbox's Chromium only has
+SwiftShader SOFTWARE rendering available (`gpu=ANGLE (..., SwiftShader Device...)`), 10-50x slower
+than any real GPU. Any FPS/quality recommendation quoting a specific number from this environment
+would be fiction — needs verifying on the user's own hardware, not guessed or sandbox-measured.
+
+**FPS bump (`CINEMA_FPS=15` today, `effects.js:2395`) is very likely safe but unverified.** The SAME
+`A._composer.render()` call Cinema Orbit uses (SSAO+Outline, no GI) already runs during ordinary
+interactive navigation at full display refresh rate — real headroom almost certainly exists for
+15→24fps. Scale `CINEMA_N_FRAMES` proportionally to hold the ~24s duration. One-line change, but
+should be spot-checked on real hardware before shipping, not assumed from this sandbox.
+
+**Recommended AGAINST: an offline/batch "render each frame at max quality, stitch after" harness.**
+This is architecturally the SAME SHAPE as the just-reverted TM Movie Export — proxy-canvas capture,
+per-frame accumulation, `MediaRecorder` stitch. That feature's own retrospective (`§TM_MOVIE_EXPORT
+_RETIRED` archive) hit real compounding bugs (SSAO composer-resize bug producing a white band,
+grainy fallback when full quality was too slow, sun-formula zenith wash-out) and its own verdict was
+"more pragmatic to screen-record the live experience than to keep building/fixing a scripted batch
+exporter." Rebuilding that same risk shape for Cinema Orbit, hours after retiring it for Time
+Machine, is not recommended without an explicit decision to accept that risk again.
+
+**Verdict / next step if wanted:** skip the batch-harness idea. If a real step up is wanted: (1) SSAA
+via the existing unused `SSAARenderPass.js`, (2) a measured (not guessed) FPS bump — both bounded,
+well-scoped follow-ups, NOT built this session (analysis/discussion only, per the user's own "discuss
+if not feasible" framing). Suitable for a fresh session once the user decides whether to proceed —
+either continued here or handed to Fable 5 for execution once scoped; the design call above (skip
+temporal-on-motion, skip the batch harness) should not be re-litigated, just executed if approved.
+
+## ⚠ DUPLICATE-WORK COLLISION 2026-07-19 — read before touching Cinema Orbit again
+A SEPARATE Fable 5 session was already assigned this exact file/topic by the user ("shall assign
+PhotoReal_Still_Render.md to Fable 5"). A different (bim-compiler-side) session misread that as an
+instruction to dispatch its OWN Fable 5 agent and did so — a duplicate, colliding dispatch (the
+mistake `feedback_dont_assign_agents_user_wants_to.md` exists to prevent: "shall we assign X" can
+mean the user is doing it themselves, not asking to be dispatched). Caught mid-flight and the
+duplicate agent was told to stop. **Real, usable work already landed before the stop order arrived**
+— summarized below so the OTHER (still-running) session can review/adopt/discard it instead of
+redoing the investigation from scratch.
+
+**PR #880** (`bim-ootb`, branch `feat/cinema-orbit-ssaa`, commit `6fcace5`, cut from `origin/main`
+@ `cdcfdcd`) — **NOT MERGED, auto-merge disarmed, main untouched.** Worktree `/tmp/wt-cinema-ssaa`
+left in place, not cleaned up, for review. Two files touched:
+- `viewer/effects.js` (+63/-6): wires `lib/SSAARenderPass.js` in as the composer head DURING
+  Cinema Orbit recording only (lazy-imported, attached/detached around the recording loop,
+  `sampleLevel=2`, excluded whenever the GI preview path is active) — matches this file's own
+  design call above (spatial SSAA, not temporal TAA-on-motion). `CINEMA_FPS` 15→24,
+  `CINEMA_N_FRAMES` 360→576 (holds ~24s duration). Camera-path math (push-in/swoop/pullback/
+  ellipticity) untouched, TAA-accumulate/Alt+S path untouched — both explicitly out of scope,
+  neither was touched.
+- `viewer/sw.js` (+14/-1): added the 8 composer-module transitive imports (including
+  `SSAARenderPass.js`, now load-bearing) to `SHELL_LIBS`, `CACHE_VERSION` v800→v801 — the exact
+  precache-completeness check this file's earlier session (offline mode / staffage textures) had
+  to fix twice already; done correctly this time, first pass.
+
+**Real GPU numbers, not sandbox-guessed:** this agent's dev environment reported an actual GPU
+(RTX 4060), not the SwiftShader-software-only sandbox the duplicate/stopped session was stuck with
+— `§CINEMA_PERF ssaa=2` converged to **avgFrameMs=18.0** across 15 real recorded samples. That's a
+real number worth trusting for the FPS decision, unlike anything guessed from a software-rendered
+sandbox. Verification artifacts (§-log witness + before/after edge-sharpness screenshots proving
+SSAA actually reduces jaggies, not just "should work") are sitting in that agent's own scratchpad —
+ask the still-running session to re-derive or request the specific files if needed, they were not
+committed anywhere durable.
+
+**What's NOT done:** this session-record itself (was mid-task when stopped, per its own report).
+No PROGRESS.md/witness-count update either.
+
+**Action for the other (still-running) session:** decide whether to adopt PR #880 as-is, cherry-pick
+pieces of it, or discard and redo — the numbers/approach look sound (matches this file's own design
+call precisely) but were not independently re-verified by a THIRD party before this note was written.
+Once a decision is made, close or merge #880 accordingly; don't leave it open indefinitely as a
+stray unreviewed PR.
+
+## SESSION 2026-07-19 — #880 independently verified on HHS + 5s user-judgeable sample produced
+User asked for a 5s Cinema Orbit sample "to confirm its quality is real." Done — this session (the
+one the collision note above calls "the still-running session") reviewed #880's diff (clean:
+attach/detach on all 3 exit paths, TAA head disabled not removed, GI path excluded) and re-verified
+it on real hardware. #880 was merged to main (`0acfcf8`) mid-session; #881 landed after.
+**Deliverables (all in `~/Pictures/Screenshots/`):** `cinema_5s_sample_HHS_ssaa24fps_2026-07-19.webm`
+(the requested 5s cut — push-in close pass), `cinema_full_HHS_ssaa24fps_2026-07-19.webm` (~20s full
+orbit), `cinema_still_HHS_ssaa_{closepass,wide}_2026-07-19.png`. Recorded on this machine's RTX 4060
+(headless Chromium, ANGLE-over-GL — real NVIDIA GL, verified via UNMASKED_RENDERER probe, not
+SwiftShader), HHS_Office_Federated, 1600×1000, full photoshoot staging + SSAA level 2.
+- **The real perf number the Duplex measurement didn't show: HHS + SSAA = 51-66ms/frame**
+  (§CINEMA_PERF ssaa=2, converging ~51ms warm) — BELOW the 41.7ms/24fps budget → effective ~17-19fps,
+  captureStream(24) duplicates frames to fill. Watchable, not slideshow, but the "2.3x headroom"
+  in #880's commit message is Duplex-only; heavier buildings eat it. Small buildings hold 24fps
+  (~17-18ms measured). If real-session HHS confirms the shortfall, options: accept (duplicated
+  frames ≈ 15fps look, same as pre-#880), drop SSAA to level 1 (2 samples), or scale fps by measured
+  §CINEMA_PERF at record time. NOT decided — needs the user's own live read first.
+- **Reasserts exonerated:** per-step instrumentation showed all five per-frame `_reassert*` calls
+  ≈0.1ms each on HHS; the cost is `composer.render()` itself. (An earlier "HHS starves the loop"
+  theory died against this measurement.)
+- **Sample-harness landmines, for any future scripted orbit capture** (cost 3 wasted recordings
+  tonight): (1) headed Chrome on :0 with the window occluded throttles rAF to near-zero even with
+  the anti-backgrounding flags — 0.6-0.9s videos; use headless-new + `--use-gl=angle --use-angle=gl
+  --enable-gpu` (still real NVIDIA on this machine). (2) a fresh headless load does NOT frame the
+  building — controls.target sits at origin and the whole orbit records empty ground; frame first
+  from `element_transforms` bbox via `A.ifc2three` (driver script:
+  `scratchpad/drive_cinema_sample.js`, session-local). (3) `warehouse_gardenworld.db` 404'd from
+  BOTH serve trees (LFS blob not checked out) and the viewer records the empty scene without
+  erroring — check §DB_SIZE_CHECK in the console log before trusting any recording.
+- Known cosmetic item visible in the sample, pre-existing: rooftop no-IFC-color elements render
+  teal (`IfcBuildingElementProxy` fallback) — that's the deferred ~20-material reference-library
+  item above, not a regression.
+
+### Same session, continued — user overrode the batch-harness caution: max-quality PoC BUILT, works
+User reviewed the SSAA sample and said it lacked "the Alt-G version in the Alt-S" (the §PHOTO_AO
+noise-shadow corners — correct: live-capture cinema only carries AO if Alt+G is pre-engaged, and
+then SSAA steps aside). Then explicitly authorized the offline batch path this file recommended
+against on 2026-07-18: "i know it will take about 3 secs for each frame but i can wait... we want
+to poc true breakthru." That decision gate is now CLOSED — the risk was accepted, the PoC built.
+**Result: `~/Pictures/Screenshots/cinema_POC_maxquality_HHS_5s_2026-07-19.webm`** — 120 frames,
+each one a COMPLETE Alt+S fold (staging + 16-sample TAA + full 24-frame §PHOTO_AO converge,
+witness: `§PHOTO_AO done` fired 120/120), Alt+P staffage placed, 75° sweep, stitched at 24fps.
+**~1s/frame on the RTX 4060 (118s total)** — far under the user's 3s/frame budget; a full 360°
+Cinema-pill clip at this quality ≈ 6 min production time.
+- **Harness is driver-only** (`scratchpad/export_orbit_stills.js`, session-local — promote to a
+  repo `tools/` script if this becomes a feature): no production code touched, no MediaRecorder —
+  per-frame element-screenshots of the canvas + ffmpeg stitch, which sidesteps the retired TM
+  exporter's captureStream/composer-resize failure modes entirely.
+- **Two techniques worth keeping**: (1) per-frame fold completion = poll `A._stillRefineBusy ===
+  false` (the §CINEMA_ROW_BUSY flag — cleared only after the AO phase's real completion, every
+  exit path covered); (2) staging flicker (per-trigger §PHOTO_PAINT_SEED re-roll + skyline/sparkle
+  randomness) frozen by seeding a deterministic PRNG over `Math.random` for the duration of each
+  trigger, restored after — identical staging all 120 frames, zero flicker, no code change needed.
+- **Also produced, live-capture comparison:** `cinema_live_HHS_gi24fps_2026-07-19.webm` — Alt+G
+  pre-engaged before the orbit (driver toggles `A.toggleGIPreview(true)`); §GI_CINEMA_PRESET path
+  measured 23-31ms/frame on HHS (true ~24fps, FASTER than the SSAA path's 51-66ms since SSAA is
+  skipped when GI records) — but its halfRes/4-sample AO is visibly coarser than the PoC's
+  full-quality per-frame fold. Ladder now: live SSAA (crisp edges, no AO) < live GI (AO, coarser)
+  < offline PoC (everything, ~1s/frame).
+- **Open decision for a next session:** productize the PoC as the Cinema-pill "offline movie"
+  (spec'd long ago above: 360 frames = 24s clip) vs leave as a driver-script tool. Needs: UI slot,
+  progress/cancel, and the frame-storage/stitch story if done in-browser (the retired TM exporter's
+  IDB pattern is the reference; or keep it out-of-browser exactly like this PoC and skip all of
+  that risk).
+
+### v2 — user reported flicker in the PoC movie; root-caused, fixed, parallelized
+- **Flicker root cause (diagnosed by amplified consecutive-frame diffs, not guessed):** frame
+  60→61 diff showed the WHOLE building shifted color uniformly (solid magenta fill) while 10→11
+  showed only normal motion edges — the per-frame `stopStillRefine(true)→startStillRefine` cycle
+  raced: the next staging captured mid-restore values as "original", oscillating the golden-hour
+  sun-tint/exposure between frames. NOT an AO-convergence problem (`§PHOTO_AO done` was 120/120
+  both runs — the user's "captured before full render" theory was reasonable but the witness count
+  ruled it out; a belt-and-braces double-rAF-after-converge guard was added anyway).
+  **Fix: 250ms + double-rAF settle between teardown and re-stage.** Verified by re-diff: the
+  uniform fill is gone, and PSNR across consecutive frames is uniform ~24-25dB everywhere.
+- **Parallel rendering (user ask "few frames at same time to cook"): works.** 3 headless Chrome
+  workers, each rendering a 40-frame slice of the same deterministic orbit into a shared frame
+  dir — 56s/slice → whole 120-frame movie in ~1.6 min wall. Slice-boundary continuity PROVEN:
+  PSNR at both worker boundaries (39→40, 79→80) matches within-slice pairs. The one hazard found
+  and handled: Alt+P staffage placement is randomized (PR #875) — every worker must place it under
+  the SAME frozen deterministic PRNG or the movie jumps at slice boundaries; seeded identically
+  (seed 424242) in all workers, layouts matched.
+- **Deliverable replaced:** `cinema_POC_maxquality_v2_noflicker_5s_2026-07-19.webm` (flickery v1
+  deleted). Harness: `scratchpad/export_orbit_stills.js` now takes `<totalFrames> <sweepDeg>
+  <sliceStart> <sliceCount>` for parallel workers.
+
+## §MAXQ SPEC (2026-07-19) — in-app Max-Quality Orbiter export ("deploy to test", user-approved)
+User confirmed v2 quality ("good enough") and asked to DEPLOY so they can start from any scene and
+have "the Orbiter path roll out nicely." Productization decision is MADE — build the in-app port of
+the proven PoC mechanics. Single-tab = serial: ~1.3s/frame → 360 frames/24s clip ≈ ~8 min cook
+(honest expectation, told to user; the 3-worker 5-min figure is dev-harness-only).
+**Design (all mechanics already proven by the PoC — port, don't reinvent):**
+- NEW FILE `viewer/cinema_maxq.js` (IIFE-wrapped per house rule) — NOT effects.js (another session
+  is active in that file; and everything needed is already on the public `A` surface).
+- Trigger: `Alt+M` (grepped free) + `A.startMaxQualityOrbit(opts)`. Orbit derived like Cinema
+  Orbit: current `controls.target` + current radius/tilt, full 360° from current azimuth,
+  `MAXQ_N_FRAMES=360 @ MAXQ_FPS=15` = 24s (opts-overridable). Alt+M during a run = cancel.
+- Per frame (the PoC loop, in-page): `stopStillRefine(true)` → **250ms + double-rAF settle**
+  (the flicker fix — mandatory) → freeze `Math.random` with the deterministic PRNG (seed reset
+  per trigger; staffage layout untouched — it's placed by the user before starting) → set pose →
+  `startStillRefine()` → poll `A._stillRefineBusy === false` → double-rAF → one explicit
+  `A._composer.render()` then IMMEDIATELY (same task, WebGL buffer validity) `drawImage` the
+  canvas into a 2D canvas (clash_snag.js's proven capture pattern) → `toBlob('image/webp', .92)`
+  → IDB.
+- Storage: own IDB DB `bim_ootb_cinema_maxq`, keyed by frame index, cleared after stitch (the
+  repo's per-feature-IDB convention; ~360 × 150-400KB webp ≈ 50-150MB transient).
+- Stitch: replay-record — draw stored frames onto a proxy 2D canvas at MAXQ_FPS in real time,
+  record via `captureStream(fps)`+MediaRecorder (Cinema Orbit's own proven recorder pattern, used
+  in its real-time happy path — NOT the frame-starved capture that sank the TM exporter), download
+  webm, clear IDB. Stitch adds 24s real-time playback to the cook.
+- Witness tags: `§MAXQ_START frames= fps=`, `§MAXQ_FRAME i=/n elapsedMs=`, `§MAXQ_STITCH`,
+  `§MAXQ_DONE bytes=`, `§MAXQ_CANCEL i=`. Progress → `A.status` text line.
+- sw.js: add `cinema_maxq.js` to precache + CACHE_VERSION bump (the standing landmine — checked
+  at spec time, not after a "still not there" report). viewer.html script tag.
+- Out of scope v1: pause/resume, sub-range export, fps/duration UI, parallelism (impossible
+  in-tab), Alt+G-GI variant.
+
+### §MAXQ BUILT + PR #884 (same session) — witnessed, auto-merge armed
+Implemented exactly per spec (`viewer/cinema_maxq.js` new file only + script tag + sw v802 —
+effects.js untouched, concurrent-session safety). Audits green (sw precache 107/0, script tags
+137/0). **Witness (headless, real GPU via ANGLE, HHS):** 10-frame run → `§MAXQ_START` →
+`§MAXQ_FRAME` → `§MAXQ_STITCH` → `§MAXQ_DONE bytes=50733 vp9` + real webm download, zero
+pageerror; 30-frame run likewise. Two findings recorded during witnessing:
+1. **CDP starvation, headless-only:** synthetic input (Alt+M via CDP) AND `page.evaluate` calls
+   queue ~unboundedly while the cook loop saturates the renderer thread — a queued Alt+M then
+   fires AFTER the run ends and starts a fresh one. Real OS keydown rides the browser's
+   high-priority input pipeline and is expected to work live — **but Alt+M-cancel-during-cook is
+   live-unverified; user should try it on first live test.** `A.cancelMaxQualityOrbit()` exposed
+   as the guaranteed console path either way.
+2. **Warm-up fold added (module + harness):** a slice/session whose first fold runs before the
+   async staging assets (sunset HDRI envMap, AO bundle) are resident bakes a globally different
+   lighting baseline — caught as a 21.6dB boundary vs 24.3dB within-slice PSNR when re-rendering
+   one parallel slice of the 24s movie in a fresh session. One discarded fold before frame 0
+   fixes it; also protects the in-app movie from an early-frames tint pop.
+PR: bim-ootb #884, auto-merge armed on CI. Live verify after merge: sw v802 served + Alt+M on a
+real session (quality + the cancel check above).
+
+### CLOSE-OUT (2026-07-19) — #884 MERGED + LIVE (v802); 24s movie DONE
+- **#884 merged** (`280f066` on main), GH Pages deploy CONFIRMED by direct fetch: live `sw.js` =
+  v802, live `cinema_maxq.js` served, live `viewer.html` references it. Alt+M is in production.
+  Worktree pruned (fully pushed + clean). Remaining user checks: live visual quality of an Alt+M
+  movie, and the Alt+M-cancel-during-cook behaviour (finding 1 above).
+- **24s max-quality movie delivered:** `~/Pictures/Screenshots/cinema_FULL_24s_maxquality_
+  2026-07-19.webm` (576 frames @24fps, full 360°, 62.6MB). The worker-2 slice was re-rendered with
+  the warm-up fix: boundary PSNR recovered 21.6→23.3dB (within-slice ~24.3); re-diff shows the
+  building fully clean at the boundary — residual ~1dB sits in the smooth HDRI sky gradient
+  (session-to-session background), possibly a subtle sky shift at t≈16s, user to judge.
+  Wraparound (frame 575→0) measures 22.9dB — same order as the slice boundary, inherent to
+  multi-session rendering.
+- Parallel-harness hardening from this run, in `scratchpad/export_orbit_stills.js` (promote with
+  the harness if ever moved to `tools/`): wait-for-DB-rows poll before bbox (a fresh page under
+  3-way load contention can exceed a 30s fixed settle — worker 2 died exactly there), plus the
+  warm-up fold.
+
+### PR #885 — MaxQ replaces Alt+C at the cinema icon (user correction: "supposed to replace
+### Alt-C at that icon", Alt+M was never the spec)
+Cinema icon + Alt+C now run `A.startMaxQualityOrbit`; pressing either again during the cook
+CANCELS (start() toggles). Alt+M binding removed. `A.startCinemaOrbit` (quick live-capture, the
+#880 SSAA path) stays console-callable and is the automatic fallback if the MaxQ module didn't
+load. Icon stays clickable during the cook (no pointerEvents lock) and tracks new `A._maxqActive`
+(still-refine's own flag flickers false between frames — insufficient alone). sw v803.
+Witnessed (headless real-GPU, in-page dispatched events — no CDP starvation): Alt+C →
+`§KBD_ROUTE` → `§MAXQ_START frames=360`; second Alt+C → `§MAXQ_CANCEL i=0`, clean state, zero
+pageerror. **This also resolves the #884 cancel-unverified caveat for the icon/Alt+C path** —
+in-page input provably cancels mid-cook.
+User Q&A recorded: RAM during cook ≈ 50-150MB of IDB webp blobs (disk, not RAM); ~8 min cook +
+~24s stitch; output = normal browser download (`~/Downloads/BIM_MaxQ_<building>_<ts>.webm`).
+**Offline during generation: yes** — fully client-side after warm-up; cold-start offline degrades
+gracefully if an async extra (HDRI/AO bundle) isn't in the SW cache.
+
+### PR #886 — §CINEMA_PATH shared plan: MaxQ flies the IDENTICAL cinematic path
+User caught that MaxQ v1 flew a plain circle at the current camera distance — not the Cinema
+Orbit formula ("zoom out to a good angle and go round elliptical"). Fixed by EXTRACTION, not
+duplication: the whole path formula (fill-frame push-in → hold → band ease-out → band,
+sun-glint swoop, elliptical radius modulation, pull-back flourish) moved verbatim out of
+`startCinemaOrbit` into `_cinemaPathPlan(durationSec)` → `{ base, poseAt(tNorm), … }`, exposed
+as `A.cinemaPathPlan`. Both features consume the one plan — no drift possible. MaxQ maps
+tNorm = i/(nFrames-1) so the pull-back completes on the final frame; `§MAXQ_START` now logs
+`path=cinema|circle` (circle = stale-cache fallback only). sw v804.
+Witness: full 24s live-capture orbit through the refactored plan → `§CINEMA_ORBIT saved`;
+MaxQ 8-frame run → `path=cinema` → `§MAXQ_DONE`; zero pageerror; audits green.
+
+### PR #889 — §CINEMA_INDOOR: indoor start = dramatic exit prelude ("easiest movie machine")
+User spec, approved WDYT: camera INSIDE → 0-5/24 in-place ≥180° turn acquiring the "north star"
+(main entrance), 5-10/24 travel out through it, 10-12/24 swing to face the building onto the
+orbit band, 12/24→end the untouched orbit formula from the entrance side. OUTSIDE start =
+original plan, byte-identical behavior. One shared plan → live orbit AND MaxQ both get it.
+- North-star priority (all extract-only): (1) injected room/corridor graph's lowest `exit` node,
+  wall-legal route via `RoomGraph.shortestPath` (route=graph — the Fly tour's own graph);
+  (2) widest lowest-storey IfcDoor (route=line); (3) nearest facade midpoint. **User doctrine,
+  verbatim: "Main entrance and corridors stairs to reach it should be in the building when user
+  injects first. Otherwise the orbit is not at fault to knock into walls"** — no-graph buildings
+  get the straight line and any clip is the model's data gap.
+- Phase math extracted into `_mkOrbitPose(base,...)` factory (reused for the entrance-side
+  re-entry, not duplicated). `§CINEMA_INDOOR inside/route/waypoints/entrance/turnDeg/pathLen`
+  self-identifies each run. sw v807.
+- Witness: outside run → no §CINEMA_INDOOR, unchanged; inside run → `route=line waypoints=3
+  entrance=widest-ground-door turnDeg=270`, stills show interior mid-turn → outside-facing
+  orbit. HHS witnessed route=line (graph not built headless); route=graph pending a live test
+  on a building with a warm room graph (open Fly/Find once first, then Alt+C).
+- USER LOSS RECORDED, same evening: cancelled a Hospital cook at frame 112 on a pre-#887 tab —
+  frames discarded (v804 behavior; §MAXQ_CANCEL with no PARTIAL/STITCH lines is the tell).
+  Post-reload builds save partials. Per-frame cost had also grown to ~8s during the push-in
+  (fill-frame on 63k elements) — the ETA line (#888) now surfaces this live.
+
+## ✅ RESOLVED (2026-07-19) — the OPEN BUG below is FIXED, PR #894 (MAXQ v8, sw v811)
+**The IDB prime suspect was RIGHT, and it is now proven, not inferred.** A control witness on the
+unmodified v7 build reproduces the user's report exactly — `§MAXQ_START` + `§MAXQ_WAKELOCK`, then
+**45 seconds of total silence**, `_maxqActive` stuck true, and the next Alt+C swallowed as a
+cancel-toggle (that last part explains why the feature stayed dead until reload). Same witness on v8:
+`§MAXQ_FAIL idb-open-timeout` at 10.0s, flags cleared, retry works. Normal 2-frame bake unaffected
+(`§MAXQ_IDB_READY` → 2× `§MAXQ_FRAME` → `§MAXQ_STITCH` → `§MAXQ_DONE`), zero pageerrors.
+Witness: bim-ootb `witness_maxq_idb_deadlock.js` (headless SwiftShader, Duplex, both cases + control);
+run it against a localhost server on the worktree with `Duplex_extracted.db` symlinked into
+`viewer/buildings/` (the DBs aren't in git — see the repo's DB policy).
+- Spec items 1/2 done: `_idbOpen()` gets a 5s timeout + `onblocked` → `§MAXQ_IDB_BLOCKED`, tracks its
+  connection with `db.onversionchange = close` (never becomes the zombie itself), `_idbDelete()` is
+  awaitable with its own blocked/timeout handling, and the run pre-purges any pending delete at start.
+- **The bare `await _idbOpen()` sitting OUTSIDE the try/finally was as much the bug as the hang**:
+  it meant the failure could reach neither `§MAXQ_FAIL` nor cleanup. Moved inside, and ahead of the
+  warm-up fold so a dead store costs 5s instead of a minute.
+- **Second defect, found BY the witness after the first fix round** (worth remembering — the abort was
+  clean but the feature was still unrecoverable): `finally` awaited `_idbDestroy()` *before* clearing
+  `_active`/`_maxqActive`, and that delete can itself block for seconds behind the very zombie that
+  failed the run. Cleanup must never gate recoverability — flags reset first now.
+- Spec item 3 (zombie simulation) is the witness's CASE A. Spec item 4 (radius≪band start pose) NOT
+  addressed — still open, unrelated to the deadlock.
+- Not yet confirmed against the user's real LTU repro; the class is proven, the specific live run isn't.
+
+## 🐛 OPEN BUG (2026-07-19, user live report, LTU) — MaxQ STUCK after preview, undiagnosed-live
+**Repro (user, LTU_AHouse, v810/MAXQ v7):** Alt+C → `§MAXQ_START frames=360 path=cinema
+radius=6.3 height=7.0` (very close-in start pose, no §CINEMA_INDOOR line = treated as outside)
+→ preview flew fine → `§MAXQ_PREVIEW done — camera restored, commencing capture` → **NOTHING.**
+No warm-up `§STILL_REFINE start`, no `§MAXQ_FRAME i=0`, no error, idle-gate parks. Wake lock was
+held. F12 pressed later — page alive, just no bake.
+**Prime suspect (from code order, not guessed from vibes):** the very next statement after that
+log line is `var db = await _idbOpen()`. IndexedDB `open()` queues FOREVER behind a pending
+`deleteDatabase()` if any connection was left open — and `_idbDestroy()` (every run's finally)
+does close+delete, but an earlier abnormal exit (e.g., the frame-112 cancel on the v804 tab, or
+any exception path that skipped close) leaves a zombie connection; the delete then blocks and
+every later `open()` hangs SILENTLY. Classic IDB deadlock; fits "stuck with zero log lines"
+exactly. Secondary suspects, check only if IDB exonerates: `A.startStillRefine()` early-return
+guard interacting with the NEW soft-cancel mechanism (log shows `§STILL_REFINE soft-cancel
+(camera move) … staging kept` pre-Alt+C — if soft-cancel leaves `_stillRefineActive` true at the
+wrong moment the warm-up no-ops, but then `_waitFoldDone` would time out at 30s and §MAXQ_FRAME
+would still appear — user saw none, which points back to IDB).
+**Fix directions for the next session (spec-first, this is the spec):**
+1. `_idbOpen()` must never hang silently: add `rq.onblocked` → `§MAXQ_IDB_BLOCKED` log, and race
+   the open against a ~5s timeout → on timeout, `§MAXQ_FAIL idb-open-timeout` + clean abort
+   (status message, wake lock released, _active reset) instead of a silent freeze.
+2. Track the module's open connection; `db.onversionchange = close`; close before any delete;
+   consider `indexedDB.deleteDatabase` BEFORE open at start of every run (idempotent hygiene)
+   rather than only in finally.
+3. Witness: simulate the zombie (open a second connection to the DB, skip closing, run a bake)
+   → must §MAXQ_FAIL cleanly, not hang. Regression: normal bake unaffected.
+4. While in there: `§MAXQ_START radius=6.3` shows a very tight start pose worked for preview —
+   confirm the bake phases behave at radius≪band (push-in is a no-op, band-ease does the work).
+
+## 📋 NEXT-SESSION BACKLOG — improvement list (ranked effort→payoff, discussed 2026-07-19)
+Pick top-down (WORK-TO-ZERO applies once a session adopts this list):
+1. **mp4/H.264 output** — the webm doesn't play on iPhone/WhatsApp; for the outreach audience
+   this is THE sharing blocker. Route: WebCodecs H.264 + in-browser mp4 mux (CSP: no CDN — a
+   vendored muxer lib or hand-rolled boxes; check codec support matrix first). Medium→HUGE.
+2. **Draft-quality mode** — half TAA samples (16→8) + half AO frames (24→12) ≈ half bake time,
+   softness barely visible at 15fps motion. Opts + maybe Shift+Alt+C. Small→large.
+3. **Skip per-frame teardown/restage** — ~1.2s/frame is spent tearing staging down and rebuilding
+   it identically; keeping staging applied between frames (re-fold only, pose-guard restarts
+   accumulation) is ~25% faster AND removes the settle-race class the 250ms flicker fix papers
+   over. Verify §PHOTO_FACING still refreshes per frame (it must — recompute is per-trigger
+   today). Medium→solid.
+4. **Resume interrupted bake** — frames already persist in IDB; store plan params + count,
+   offer "resume N/360?" on next load. Also the natural companion to bug-fix #1 above.
+   Small→solid.
+5. **Material reference library** (~20 curated materials, name-pattern lookup) — the teal
+   proxies are in every Hospital movie; long-deferred, touches streaming.js SQL + batching keys,
+   needs its own careful session (scoped earlier in this file). Large→large.
+6. **4K bake option** — offline can afford 2× offscreen render target; mind the composer-resize
+   white-band landmine (TM exporter retro). Medium→medium.
+7. **Multi-window parallel bake** — 3 coordinated browser windows ≈ 2.5× (proven by the dev
+   harness); slice claims via IDB/BroadcastChannel. Large→medium.
+8. **Bake-watching polish** — corner thumbnail of last baked frame + progress bar ("process as
+   spectacle" is already the user's favorite demo). Small→small-but-charming.
+Also pending live confirmation: `route=graph` (wall-legal indoor exit) has never been seen live —
+next indoor bake on a roomed building shows it in §CINEMA_INDOOR.
+
+### PR #893 — §MAXQ_WAKELOCK (user left bake unattended → screen slept → rAF throttled → pause)
+Bake was NOT lost — frames wait in IDB and resume on tab focus — but paused invisibly. MaxQ now
+holds a screen wake lock for bake+stitch (re-acquired on visibilitychange, released on all exit
+paths); MAXQ_LOADED v7, sw v810. STANDING USER GUIDANCE: the tab must stay VISIBLE (hidden-tab
+rAF throttling is browser-level and unfixable from JS); work in other apps beside it is fine.
+Offline is fine once the building+assets are cached (bake/stitch/save are fully local).
+
+### MILESTONE 2026-07-19 — first full-length LIVE run user-proven end to end
+User baked a complete 360-frame Hospital movie on their own machine (Firefox, 1854×963): indoor
+prelude → orbit → stitch → **8.5MB webm in Downloads**, judged "good enough… fast and above
+average res". Machine stayed quiet throughout (short GPU bursts per fold, frames on disk in IDB,
+not RAM; stitch is real-time replay ≈ idle). The v809 ground-snap/tree/ETA fixes were observed
+live the same evening. The whole Alt+C pipeline is now production-proven by the user, not just
+witness-proven. User positioning insight, recorded for the outreach lane: "auto mode for the
+long tail — one decision (where to stand), in a browser they already have" + "screen-record the
+bake itself as the demo" (process-as-spectacle, ticking SFX as progress metronome).
+
+### PR #890 — §MAXQ_PREVIEW: 10s real-time path rehearsal before the bake (user WDYT idea)
+User spec verbatim: "1. Fly exact cam orbit in 10 sec. 2. Return back to original position.
+3. Commence actual MaxQ orbit capture." Implemented as a free real-time flight of the SAME
+plan's poseAt (indoor prelude included) in plain nav look — no staging/folds (user: "the fast
+preview the scene wont be in Alt-S mode"). Alt+C during preview = zero-cost abort; camera
+restores exactly either way. `opts.preview=false` skips (programmatic). MAXQ_LOADED v5,
+sw v808. Witness: 10019ms preview → bake → download; 3s-in cancel → clean abort, camera
+restored <0.01, no stitch, zero pageerror.
+Also answered: room injection is NOT required to run the indoor prelude — the graph builds
+on demand from the DB when rooms exist (no prior Fly/Find needed; earlier warm-graph caveat
+retracted), and door/facade fallbacks cover room-less buildings; injection is what upgrades
+the exit to wall-legal.
+
+### LIVE-RUN READ (2026-07-19, user's F12 paste, Hospital) + PR #888 log fingerprints
+User pasted their live console asking "is the latest live?" — the log itself answered:
+`§MAXQ_START ... path=cinema` (v804+ fingerprint, shared orbit plan active) and
+`§PHOTO_PAINT_SEED seed=0.0653` IDENTICAL on every frame (warm-up rolled 0.2491, then frozen —
+the anti-flicker PRNG freeze witnessed working in production). **Real Hospital cost: 4.7s/frame**
+(`§MAXQ_FRAME i=15/360 elapsedMs=75056`, 1854×963, 63k elements) → ~28 min for the 24s clip,
+vs HHS's ~1.3s/frame (~8 min). Per-frame split on Hospital: TAA ~2-3s + AO ~1.5s (avgRenderMs
+~60) + staging/teardown ~1s.
+**RULE REINFORCED (user, verbatim: "u got to make the logs tell u, i not going to able dig
+that"):** a pasted console log must self-identify build + progress — never ask the user to run
+console probes. PR #888 (sw v806): `§MAXQ_LOADED v4` fingerprint at module load (bump `MAXQ_V`
+on EVERY behavior change to cinema_maxq.js — same convention as §MAIN_JS/§KERNEL_OPS), and
+`§MAXQ_FRAME` now carries `perFrameMs=`/`etaSec=` with "~N min left" in the status line.
+
+### PR #887 — MaxQ cancel saves the partial movie (§MAXQ_PARTIAL); sw v805
+User Q: "Does Alt-C cancel save what is done so far?" — it didn't (discarded). Now cancel
+stitches + downloads whatever is baked, threshold ≥1s of footage (= fps frames; below that a
+status message, nothing saved). Stale "Alt+M" status text corrected. User Q recorded: **frames
+per second of movie = 15** (MAXQ_FPS; 360 frames = 24s clip; ~1.3s cook per frame → ~20s of
+cooking per 1s of movie). Witness: in-page timer cancel at frame 11/60 → `§MAXQ_CANCEL_PARTIAL
+stitching 11 frames (5.5s)` → `§MAXQ_DONE` + real webm download. Method note, third confirmation
+this session: CDP-injected calls (evaluate/synthetic keydown) can starve for the whole cook —
+witness in-page behavior with IN-PAGE timers, never CDP injection mid-cook.
