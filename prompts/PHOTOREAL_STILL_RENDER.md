@@ -3514,3 +3514,23 @@ one physical choice. So:
 pick per-run by proximity + facing at the 4s mark, not a fixed "widest"). Log the choice
 (`§CINEMA_EXIT chosen=<guid> dist= facingDot=`) so a pasted console explains why a film went the way
 it did — the user must be able to see the cause, since this is the lever they are learning.
+
+### §CINEMA_SIMPLE — three implementation calls (assistant's instinct, user said "go with your
+### instincts first then i give trials and feedback"). Provisional — expect the user to revise.
+1. **The 4s ease PRESERVES YOUR HEADING.** It corrects pitch (upside-down/looking-down → level),
+   height (too high → person level), and position (→ the space), but it does NOT re-aim your azimuth.
+   **Reason this is the load-bearing one:** the exit at t=4s is chosen by position AND facing. If the
+   ease were free to turn you toward the space centre, every film on a building would end up facing
+   the same way at 4s, pick the SAME door, and the "myriad of paths" collapses to one film per
+   building. Your heading surviving the dive is what keeps the Sun example working (start facing the
+   Sun → nearest exit is behind → exit away → turn back to face the building → rise to look down).
+   "If already normal level its ease is merely turning more" = turn only as much as reaching the
+   space requires — never a re-aim.
+2. **"Largest space NEAREST TO the centre" wins over the strict geometric centre.** On a big building
+   the geometric centre can be a service core; the beat must land in a room that reads as a space.
+   Rank candidate interior spaces by (size, closeness to centre), take the best — don't assume the
+   centroid is the grand room.
+3. **4s is fixed, with NO clamp — accept the hard rush on large buildings.** Terminal ~69m, Hospital
+   ~150m, so Hospital's dive is roughly twice the speed for the same gesture. Per §time-boxed-dive
+   this is the lever, not a defect. Flagged so nobody later "fixes" it: on the largest buildings the
+   opening WILL read as a fast rush, and that is the rule working, not failing.
