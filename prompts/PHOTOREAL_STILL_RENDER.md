@@ -3411,3 +3411,31 @@ depends on the pivot being right; do not tune path maths before this is fixed.
 - **Fingerprint**: bump `EFFECTS_V` (`§EFFECTS_LOADED`, added v816) on EVERY behaviour change here.
   It is what finally proved a stale-cache false alarm in this very session — a pasted console must
   answer "is this live?" by itself.
+
+### §CINEMA_SIMPLE addendum — the UNIVERSAL move (user, same session, completes the spec)
+*"Thus even outside on top of building always go into the largest space in building centre to look,
+but 4 secs is up, thus right away it heads back out, but manage to make a spin to find back exit."*
+
+**This is the one theme, and it applies to EVERY start — inside, outside, or on the roof.** It
+replaces per-pose branching with a single dramatic arc:
+1. **0–4s — go IN.** Whatever the start pose, the camera moves to the **largest interior space at the
+   building centre** and settles there at eye level (per the rules above). From outside/on top this
+   means it dives in; from inside it is already most of the way there.
+2. **At 4s the clock is up — it immediately heads BACK OUT.** No dwelling. The turnaround is
+   driven by the timer, not by the geometry.
+3. **On the way out it makes a SPIN to find the exit** — the spin IS the search for the way out
+   (largest empty space / corridor), not decoration. This is where the earlier "turn in place to
+   acquire the entrance" behaviour belongs, motivated rather than arbitrary.
+4. Then the outside act as specified: the 45° look-down, held back if the Sun is near that heading.
+
+**Why this is better than what shipped:** every film gets the same legible three-beat shape —
+*in, look, out* — so the building is always revealed from its own heart before the exterior orbit.
+The pose decides the details (which space, which exit, which facade, sun timing); it no longer
+decides the STRUCTURE. That is the "theme to the path to make it cinematic and elegant" the user
+asked for, and it is far simpler to implement and reason about than the ι/α/γ character layer.
+
+**Implementation consequence:** the existing `§CINEMA_INDOOR` prelude is now the SPINE of every
+film, not a special case for indoor starts — generalise it (entry from outside, settle at the
+central space, timed exit, spin-to-find-exit) rather than keeping two separate path builders.
+The pivot fix above is a prerequisite: "largest space at building centre" is meaningless while the
+plan orbits `controls.target` wherever it happens to sit.
