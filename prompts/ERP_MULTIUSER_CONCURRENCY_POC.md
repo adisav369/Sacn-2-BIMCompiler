@@ -382,3 +382,69 @@ finding is strictly worse than what was predicted (total op loss, not just colum
 since the mechanism operates at the whole-DB-export granularity regardless of which columns
 changed). §Open Questions' two ⛔ items (fix-vs-document Case 2; wire cross-device sync) remain
 genuinely open — this session only witnessed, per its own boundary, and made no product change.
+
+---
+
+## §Results 2026-07-19 (cont.) — S1/S5 witnessed, REAL two-BrowserContext run
+
+**Witness:** `scripts/witness_e2e_multiuser_login_fork.js` (bim-compiler) — two genuinely SEPARATE
+Playwright `BrowserContext`s (not two tabs of one, per §Test Harness) against the LIVE product UI
+(`bim-ootb/erp/idempiere.html`). S1 drives the REAL click-through login funnel
+(`#idmp-login-clients`/`#idmp-login-users` rows + the real `#idmp-login-ok` button) — no `?login=`
+shortcut — to two real, distinct `AD_User` rows in client 11 GardenWorld (`GardenAdmin`=101,
+`GardenUser`=102 — the only two GardenWorld users with `hasRoles=true`, verified via sqlite3 against
+`ad_seed.db` before writing the file; the other three GardenWorld users have zero `ad_user_roles`
+rows and render as disabled/unclickable). S5 reuses the same real deep-link + `page.fill()`/
+`page.click()` Save pattern S3/S4 already proved clean (`?login=SuperUser&window=143&record=101`,
+same actor in both contexts, deliberately — isolates the storage-partition variable under test from
+the unrelated owner-gate-reject confound a non-owner actor would introduce; S1 already separately
+proves distinct-actor login works). Log: `build/erp/witness_e2e_multiuser_login_fork.log` (615
+lines) — READ in full before this summary (Log Mandate). Run: `bash build/erp/run_witness.sh
+scripts/witness_e2e_multiuser_login_fork.js` — **exit 0, 11/11 🟢**.
+
+**S1 / W-MULTIUSER-LOGIN — CONFIRMED clean.**
+```
+§E2E-LOGIN ctx=1 user=GardenAdmin actor=101
+§E2E-LOGIN ctx=2 user=GardenUser actor=102
+🟢 S1 ctx=1 reached a real logged-in actor (GardenAdmin) — actor=101
+🟢 S1 ctx=2 reached a real logged-in actor (GardenUser) — actor=102
+🟢 S1 ctx=1 and ctx=2 actor values DIFFER (two genuinely distinct real AD_User identities) — ctx1.actor=101 ctx2.actor=102
+```
+Two separate `BrowserContext`s independently drove `loginStep0`(tenant)→`loginStep1`(user)→
+`loginStep2`(role/org)→real Log-In-button click, each landing on its own `window.APP.actor`
+(confirmed also via the app's own `§ACTOR login user=101 app.actor=101 client=11 org=0` /
+`§ACTOR login user=102 app.actor=102 client=11 org=11` lines). Multi-user login is real and reachable
+by the actual click path, not just the `?login=` demo shortcut.
+
+**S5 / W-CROSS-DEVICE-FORK — CONFIRMED exactly as predicted (Case 3, §Concurrency Model).**
+```
+§E2E-SAVE ctx=1 grandtotal=7777.77 committed=true
+§E2E-SAVE ctx=2 grandtotal=8888.88 committed=true
+§E2E-TIP ctx=1 tip=0dc04c3b8e95cd7417c5ad4cafbb20013020178fd0b1ef1c6ef1b4742b2cda0c ops=1 grandtotal=7777.77
+§E2E-TIP ctx=2 tip=43aaf1c33d65eb8011476a22b63d28b0fbdb20fbe43dc9c6935db5dee9274c42 ops=1 grandtotal=8888.88
+🟢 S5 ctx=1 and ctx=2 sidecar tips DIVERGE (predicted: no sync path exists between separate contexts)
+🟢 S5 each context privately kept ITS OWN edit (A=7777.77, B=8888.88) — a true silent fork, not a merge or a shared last-write-wins
+§E2E-NO-SURFACE ctx=1 warn/err=[] toasts=["UPDATE Order — saved (signed)"]
+§E2E-NO-SURFACE ctx=2 warn/err=[] toasts=["UPDATE Order — saved (signed)"]
+🟢 S5 §E2E-NO-SURFACE — no console warning/error on EITHER page references divergence/conflict/staleness
+🟢 S5 §E2E-NO-SURFACE — no toast shown to EITHER user references divergence/conflict/staleness
+🟢 S5 §E2E-NO-SURFACE — BOTH users instead saw the NORMAL success toast ("saved (signed)")
+```
+Both contexts' own `§CRUD-GATE` line read `verdict=PASS actor=100 owner=100 cas=claimed_by` — the
+gate ran and passed cleanly on both (same actor, same owner, no rejection). Each context sealed its
+own chain (`§KRN_CHAIN verify OK len=1`), persisted its own 20.0KB sidecar blob, and each read back
+ONLY its own edit — `ops=1` on both sides, never 2, confirming there is truly no reconciliation, not
+merely a race. Zero console `warning`/`error` on either page (empty arrays, not filtered-to-empty),
+zero `pageerror` events, and the only toast either user saw was the normal
+`"UPDATE Order — saved (signed)"` success toast — the UI told both users their private, now-permanently-
+diverged edit succeeded, identically to what a real conflict-free save looks like. This is the silent
+fork named in §Concurrency Model Case 3, now witnessed live rather than read from the source.
+
+**Net verdict: both S1 and S5 land exactly on their predicted branch — no disproof.** S1 shows the
+real login path reaches two genuinely distinct identities; S5 shows two real devices editing the same
+order fork permanently and silently, with the UI actively telling both users "saved" and nothing else.
+Together with the already-witnessed S2/S3/S4, all four Case 1/2/3 concurrency shapes named in
+§Concurrency Model are now witnessed live in the real product UI, not just read from source. This
+session made no product change and did not touch `prompts/ERP_OPLOG_APPEND_ONLY_FIX.md` (owned by a
+concurrent session) — §Open Questions' two ⛔ items remain open, now with S5's live confirmation behind
+the second one.
