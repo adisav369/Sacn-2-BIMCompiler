@@ -3191,3 +3191,71 @@ immediately). Budget it, measure it, and cache per (pose, building) for the dura
 If it costs more than ~100ms, compute κ₁/κ₂ on a coarse bin count and log the cost —
 `§CINEMA_CONTEXT E= rose= room= facade= headroom= solarRel= ms=`.
 ⚠ NOT YET IMPLEMENTED and NOT costed — this section is design, not measurement.
+
+## §CINEMA_PRIOR_ART — novelty assessment (2026-07-19, researched, ~20 targeted searches)
+User asked directly: *"this i dunno is it a prior art?"* Answer: **partially novel, and narrower than
+it feels — but the distinctive part is real.** Recorded so it is neither over-claimed in outreach nor
+re-litigated later.
+
+### NOT novel — do not claim these
+- **Automatic camera paths through buildings: solved in 2004.** Way-Finder (Andújar, Vázquez, Fairén,
+  CGF 2004) generates exploration paths through walkthrough models "with little or no user
+  intervention" from a **cell-and-portal graph** (cells=rooms, portals=doors — a functional analogue
+  of our room graph, derived geometrically instead of from IFC) plus viewpoint entropy. **This is the
+  closest structural precedent and it predates us by 20+ years.** "Path from building topology" is
+  NOT a novel claim.
+- **Beat/module structure** (push-in, turnaround, marker, swoop) is exactly the idiom paradigm of
+  CamDroid (Drucker & Zeltzer 1995), Christianson et al. (AAAI 1996), He et al. Virtual
+  Cinematographer. Named parameterized shot primitives are standard, not new.
+- **"Linger where it's interesting"** — our sightline rose / big-room linger is a recognizable
+  instance of the viewpoint-entropy family (Vázquez et al. 2003, still standard).
+- **Few-parameter camera parameterization** — Toric Space (Lino & Christie, TOG 2015) is the same
+  spirit as our three scalars (though it encodes target FRAMING, not user INTENT).
+- Field surveys: Christie, Olivier & Normand, *Camera Control in Computer Graphics*, CGF 2008.
+
+### Appears genuinely distinctive (absence-of-evidence — see caveats)
+1. **The single start pose as the SOLE conditioning input.** The 2025 Camera Trajectory Generation
+   survey (arXiv 2506.00974, self-described first comprehensive review) lists the recognized
+   conditioning modalities as text, reference video, target objects, scene geometry. **"Whole
+   trajectory conditioned on one initial pose, read as an expression of intent" is not a named task
+   formulation.** Prior systems take a start pose as a boundary condition to interpolate FROM, not a
+   signal to read intent OUT OF. **The normalization is the actually-new part** — intimacy relative
+   to fill-frame distance, lift in storey heights — because dimensionless scalars are what make one
+   pose sufficient.
+2. **Cinematography driven by IFC semantics.** BIM room graphs are mature, and path planning over
+   3D scene graphs exists — but every BIM+camera result found is **robotics/inspection, not film**
+   (e.g. BIM-aware UAV path planning optimizes IFC component COVERAGE via ILP+TSP). Nobody appears
+   to read `IfcSpace` area / door adjacency / facade normals to decide what a shot should FEEL like.
+   **The seam between the two fields looks unoccupied.**
+3. **The reciprocal ending — the most distinctive single element.** Mirrored opening/closing images
+   are canonical film theory (circular bookends; Kubrick, Fincher), but **no computational system
+   was found that derives a closing pose from the opening's parameters.** The floor→roof
+   re-referencing (same lift, different datum) has no analogue found. Honest limit: few systems
+   generate complete short films at all, so absence partly reflects that.
+4. **Sun-azimuth-timed beats.** Sun-aware tools (SunTrace3D, Sun Seeker) are human planning aids;
+   nothing found schedules a camera move to a computed solar azimuth automatically.
+
+### The commercial baseline — "one decision, zero prep" IS a real differentiator
+Every mainstream tool requires manual keyframing: **Enscape** ("for the simplest scene you need at
+least two keyframes", then more for corners/stairs, then timestamp tuning); **Revit** (place each key
+frame, adjust camera/target per frame — one worked example cites ~1 hour + render); **Twinmotion**
+(no generative pathing by deliberate policy; 2026.1's Match Perspective still manual); **D5** (one-click
+presets are ENVIRONMENT, Orbit is a navigation mode, not a generated film); **Sketchfab** autospin is
+a constant-rate turntable — the degenerate case. **Matterport's auto Guided Tour is the nearest
+product**, but needs a completed scan, works over snapshot sequences, and is not seeded by the
+viewer's current pose.
+
+### Patent flags — LOW, but this was the weakest search
+- US 9,942,521 "Automatic configuration of cameras in BIM" — alarming title, **unrelated content**
+  (placing physical surveillance cameras for coverage). Not a risk.
+- Open Space Labs US 10,944,959 / 11,995,885 / 12,266,166 — floorplan traversability graph used to
+  RECONSTRUCT the path a human already walked (SLAM on captured 360° video). Retrospective from
+  capture, not prospective from a model. Different field of use.
+- Nothing found claiming path generation from a single viewpoint, or BIM-semantics camera choreography.
+
+### ⚠ Caveats — do not launder these away when quoting the above
+Absence-of-evidence across ~20 searches; a negative cannot be proven. Two source PDFs were corrupted
+(Way-Finder full text, the 2025 survey full text) — those reads rest on abstracts/secondary summaries.
+Non-English and patent coverage was THIN (~4 patent queries, no professional patent-DB access).
+"Enscape has no auto-path" is likely-but-not-verified-at-source (from a comparison article, not Chaos).
+**If this matters commercially, commission a real FTO search — the patent finding is the weakest claim.**
