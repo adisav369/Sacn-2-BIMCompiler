@@ -3076,3 +3076,67 @@ poses A/B/C above × ≥2 buildings must yield **materially different** ι/α/γ
 P2 as a test, and the check that catches a clamp regression sneaking back in.
 ⚠ UNVERIFIED: constants Λ≈1.5, γ_carry≈2, Δφ_turn≥π are first-principles starting points, tuned
 against a real preview — not measured. Do not present them as measured.
+
+### ✅ §MAXQ_MP4 BUILT + PR #895 (2026-07-19) — witnessed in BOTH browsers, auto-merge armed
+**Backlog item 1 DONE.** MaxQ now exports **mp4/H.264** by default; the webm MediaRecorder path is
+untouched and serves as the fallback. `MAXQ_V v9`, `sw CACHE_VERSION v812`, new
+`viewer/lib/mp4_mux.js` (precached + `<script>`-tagged), new `witness_maxq_mp4.js`.
+
+**Answer to the question the spec flagged as CRITICAL — does the primary user (Firefox) get mp4?
+YES.** Not a Chrome-only feature. Proven end-to-end on the real app, not just at the API level.
+
+**Two Firefox defects were found by measurement and are the reason this is not a 20-line change.**
+Both would have shipped a file that "downloads but doesn't play right" if the work had stopped at
+"isConfigSupported says true":
+1. **Firefox 148's `decoderConfig.description` (the avcC) is MALFORMED** — every parameter set
+   carries a **duplicated NAL header byte**: SPS `67 67 64 00 28 ac d9…`, length 24 for a 23-byte
+   SPS; PPS `68 68 eb ec b2 2c`, length 6 for 5 bytes. ffmpeg decodes it only by luck (warns
+   `sps_id 1 out of range`); a strict mobile player would reject the file outright — i.e. exactly
+   the iPhone this feature exists for. Firefox DOES emit a correct SPS/PPS **in-band** before the
+   first IDR, so `mp4_mux.js` validates the record and rebuilds it from the in-band NALs when it
+   fails → `§MAXQ_MP4 mux avcC=in-band-rebuild`. Chrome's record is clean and used verbatim.
+2. **Firefox's encoder uses B-frames** (`has_b_frames=2`) — decode order ≠ presentation order.
+   Without a `ctts` box a handful of frames play out of order. `ctts` is now emitted whenever the
+   chunk timestamps disagree with the decode timeline, plus an `elst` edit list so normalising to
+   non-negative (version-0) composition offsets doesn't push the clip off t=0. Chrome emits no
+   B-frames here and correctly gets neither box.
+
+**Witness — `witness_maxq_mp4.js`, headless puppeteer, ANGLE/SwiftShader, real `Duplex_extracted.db`:**
+- CASE A: 6-frame bake → `§MAXQ_MP4 probe codec=avc1.640034 supported=true` →
+  `§MAXQ_MP4 configured codec=avc1.640034 size=900x600 bitrate=2000000 fps=15 frames=6` →
+  `§MAXQ_MP4 encoded chunks=6 bytes=79635 avcCBytes=39 ms=578` →
+  `§MAXQ_DONE frames=6 bytes=80353 type=video/mp4`. **ffprobe on the DOWNLOADED file:**
+  `container=mov,mp4,m4a codec=h264 profile=High 900x600 fps=15/1 frames=6 dur=0.400 start=0.000`,
+  full `ffmpeg -f null` decode **clean**.
+- CASE B: `forceWebm` → `§MAXQ_MP4_FALLBACK reason=forced-webm` → `§MAXQ_STITCH` →
+  `§MAXQ_DONE type=video/webm;codecs=vp9` + real `.webm` download. The old path still works.
+- 0 pageerrors. **VERDICT PASS.**
+
+**Firefox witness (the user's own browser) — same real app, same real DB, Playwright FF148:**
+30-frame bake → `§MAXQ_MP4 mux samples=30 avcC=in-band-rebuild ctts=yes (B-frame reorder)` →
+`§MAXQ_DONE frames=30 bytes=478136 type=video/mp4`. ffprobe: `h264 High 900x600 30 frames
+dur=2.000 start=0.000 has_b_frames=2`, PTS monotonic over all 30, decode clean. Both Firefox
+repairs fire on the real user path — this is the proof that the fixes above are load-bearing.
+Muxer also unit-witnessed standalone (30 synthetic frames, real WebCodecs, Chrome + Firefox).
+
+**Honest limits — what was NOT verified:**
+- **Playback on an actual iPhone / in WhatsApp was not tested** — no device here. What IS proven is
+  that the file is a spec-valid faststart mp4/H.264-High with a well-formed `avcC`, correct `ctts`
+  and `stco`, which is what those players require. Confirming on a real handset is a 1-minute
+  user check and the only remaining unknown.
+- **System Firefox 152 could not be driven headlessly on this box** (`RenderCompositorSWGL failed
+  mapping default framebuffer` — it starts but never navigates), so the Firefox evidence is
+  **Playwright's FF148 build using this machine's system libavcodec**, which is the same encode
+  path system Firefox uses. Not identical; close enough to state the result, not so close that a
+  user paste of `§MAXQ_MP4 configured` on their own build is redundant. Ask for it.
+- **H.264 encode in Firefox is NOT universal.** On Linux it goes through the *system*
+  libavcodec/libx264, not the OpenH264 GMP plugin — a distro shipping stripped ffmpeg (e.g.
+  Fedora's `ffmpeg-free`) has no H.264 encoder and will silently take the webm fallback. Same for
+  distro/Playwright *chromium* builds (`proprietary_codecs=false`) vs branded Chrome. The
+  `§MAXQ_MP4_FALLBACK reason=…` line is how that is diagnosed from a pasted console.
+- **The "no real-time replay" speedup is real but modest, and is NOT the reason to take this PR.**
+  Measured: Firefox encoded 30 frames (2.0s of footage) in 846ms = ~2.4× faster than the 1×
+  wall-clock webm replay; Chrome under SwiftShader was roughly break-even (578ms for 0.4s). Treat
+  it as a side benefit, not a claim. What is NOT modest: at 6 frames the MediaRecorder path
+  produced a **110-byte** webm (a real-time recorder has nothing to record in 0.4s) while the mp4
+  came out at 80KB with actual content — short bakes and cancelled partials are strictly better off.
