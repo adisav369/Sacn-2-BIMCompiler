@@ -3586,3 +3586,60 @@ Probe: `scratchpad/probe_cinema_simple.js`. Duplex + Terminal + Hospital, 6 pose
 - **The Sun-hold branch never fired** (`hold=true` unexercised) — every test pose had `|delta| > 35°`.
 - Terminal's 5 `exit` nodes are clustered (runner-up cost within 0.1 of the winner on every pose).
   That caps divergence there; it is Terminal's door data, not the selection logic.
+
+## §CINEMA_SIMPLE — LIVE TRIAL REGRESSIONS (2026-07-19, user, v818/EFFECTS_V v4) — FIX NEXT
+Three defects from the user's own live test of the shipped §CINEMA_SIMPLE + staffage build. All three
+are things the simplification/clearance-gate REMOVED or got wrong; none is a new feature request.
+
+### R1 — no seated pax in the Terminal hall, though there ARE seats (staffage, PR #903 over-corrected)
+*"There are no more sitting pax in the Terminal hall though there are seats. They can always have
+their seats in open area floor anyway just for semblance."*
+- The §STAFFAGE_CLEARANCE BVH gate (PR #903) now suppresses seated figures in the hall. The seat-class
+  fix (PR #898) + the clearance gate together are too strict — a chair beside a table, or a chair in
+  an open concourse, is being rejected.
+- **User ruling: seated pax do NOT need a table.** Put them on the open-area floor "just for
+  semblance." So seated placement should anchor to a real seat/chair position (or, failing that, open
+  floor) and must NOT be rejected merely for lacking an adjacent table or for the clearance test that
+  a legitimately-seated figure at furniture will always partly fail (they overlap the chair/table by
+  construction — the PR #898 exemption must extend to the PR #903 clearance test, it currently doesn't).
+- Fix in the staffage path (effects.js `_updateInFrameInterior` + `§STAFFAGE_CLEARANCE`), NOT the
+  cinema path. Witness: Terminal hall must place >0 seated pax after the fix, still 0 in-mesh.
+
+### R2 — the dive lands in the ROOF ATTIC, never the hall (both Terminal AND Hospital)
+*"The orbit does look for nearest largest area which hits the roof attic area when it is looking into
+the hall. Thus if u are there, then dont look for the next. Only when outside, and attic/basement
+simply avoid. In fact, even outside building it never goes to the hall. Same as in Hospital."*
+- The §CINEMA_SIMPLE agent's own verification ALREADY caught a version of this (Duplex's "largest
+  space" was a roof terrace, rejected via the BVH enclosure fan) — but the enclosure test is not
+  enough on Terminal/Hospital: it still selects a roof attic / plant space over the main concourse.
+- **Three explicit rules from the user, implement all:**
+  1. **If the camera is already IN a space (e.g. standing in the hall), do NOT search for another** —
+     settle where the user put you. The "largest space" search is ONLY for when there is no containing
+     space (i.e. an outside/on-top start).
+  2. **From outside, AVOID attic and basement** as the dive target — they are never the hero space.
+     Rank by (enclosed, floor-level-ness, size): prefer a ground/main-level enclosed volume; demote
+     top-most and bottom-most storeys. `storeyH`/slab-stack is unreliable (mezzanine bug) so derive
+     level from the space's own Z within the building's Z-range, not from a storey index.
+  3. **The dive must actually reach the main hall/concourse** — currently it never does on Terminal or
+     Hospital. This is the acceptance test: an outside start on Terminal must land in the concourse,
+     not a plant room; Hospital likewise.
+- Likely root: "largest IfcSpace by area" + enclosure is picking a big enclosed attic/plant volume.
+  Add the floor-level preference AND the "already-inside → don't reselect" short-circuit. Log the
+  candidate ranking (`§CINEMA_SPACE cand=<guid> area= zLevelFrac= enclosed= chosen=`) so the console
+  shows WHY it picked what it picked.
+
+### R3 — it no longer levels off to catch the Sun reflection (I deleted §CINEMA_SWOOP)
+*"It no longer levels off to hit the Sun reflect."*
+- **This was my deletion, not a side effect.** §CINEMA_SIMPLE's cleanup removed `§CINEMA_SWOOP` /
+  `CINEMA_SWOOP_HALF_SEC` / `CINEMA_SWOOP_TILT_DEG` — the beat that dipped the tilt to building/eye
+  level at the one azimuth where the sun sits behind the camera, giving the specular hotspot on
+  glass/metal. The user wants it BACK — it is part of "the normal script," not gimmickry.
+- Reinstate the swoop in the new exterior act: once per loop, at the sun-behind-camera azimuth
+  crossing, ease the tilt toward level so the film passes low and facing the glint at least once.
+  This ALSO connects to the still-unexercised Sun-hold branch (the 45°-look-down should hold if the
+  sun is near that heading, THEN proceed) — R3 and the Sun-hold are the same sun-awareness, verify
+  together. Re-add `§CINEMA_SWOOP` logging.
+
+**Sequencing for the next session:** R2 first (it's the spine and the pivot/space selection everything
+rides on), then R3 (exterior act), then R1 (separate staffage path, independent). Bump EFFECTS_V +
+CACHE_VERSION. All three have concrete acceptance tests above — witness each, don't eyeball.
