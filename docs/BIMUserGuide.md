@@ -309,9 +309,21 @@ one icon:
 - **Clash Matrix** (key **C**) opens the clash-detection engine (discipline-pair grid, tolerance, Review /
   Resolve / Accept status, HTML + CSV export) — full coverage: **[Clash Detection guide](CLASH_DETECTION.md)**.
 - **Time Machine** (key **T**) opens the 4D construction timeline — author a schedule, play it back,
-  try a What-if slip, share a `?tm=play` link. Full authoring/playback walkthrough already lives in
+  try a What-if slip, share a `?tm=play` link. On a large building (100K+ elements), a box-cube pill
+  in the panel header trims GPU cost by rendering already-built-but-out-of-view elements as lightweight
+  wireframe boxes, keeping whatever you're actually looking at full LOD400.
+
+  <figure style="margin: 12px 0;">
+  <a href="https://youtu.be/juwOrpqKhFE" target="_blank"><img src="https://img.youtube.com/vi/juwOrpqKhFE/hqdefault.jpg" alt="Time Machine box-proxy demo" style="width:100%; max-width:480px; border:1px solid #333; border-radius:8px;"/></a>
+  <figcaption style="text-align:center; font-style:italic; color:#666; margin-top:6px;"><a href="https://youtu.be/juwOrpqKhFE">Watch on YouTube</a> — Time Machine playback on a large building with the box-cube proxy toggle.</figcaption>
+  </figure>
+
+  Full authoring/playback walkthrough already lives in
   **[Kernel-ERP User Guide → Time Machine](ERPUserGuide.md)** (not re-documented here — same building,
-  same feature, reached from either app).
+  same feature, reached from either app), including the
+  **[ERP-side entry point](ERPUserGuide.md#author-the-4d5d-schedule--build-it-up-from-the-model-live)** —
+  picking an element in 3D (or a red **Zoom Across** pill on an ERP record) jumps the Time Machine
+  straight to that element's construction moment.
 - **4D / 5D** (key **4**) opens the analytics dashboard (`boq_charts.html`) for the loaded building in a
   new tab — full coverage: **[4D/5D Analysis guide](4D5DAnalysis.md)**.
 
