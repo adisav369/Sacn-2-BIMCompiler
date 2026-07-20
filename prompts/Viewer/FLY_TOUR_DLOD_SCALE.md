@@ -21,7 +21,15 @@ partition) was itself RETRACTED after two more rounds of user pushback found it 
 and barely helps interior ones; §5's final shape is a two-track split (box-proxy for aerial, room-
 level occlusion blocked on data for interior). **§6 added same day**: real-code impact check on
 Find Panel + Clash — a required exemption clause (§6's last paragraph) is now part of the design,
-not optional, before any DLOD extension ships.
+not optional, before any DLOD extension ships. **§7 added same day**: real math found the §0-§4
+distance-radius test itself gets occlusion backwards (facade-far-but-visible boxed, next-room-near-
+but-hidden stays real) — line-of-sight via an existing unused R-tree index is the corrected axis,
+not yet designed. **§8 added same day, HARD GATE — read before touching ANY DLOD code in this
+repo:** this exact problem class (distance/geometry-threshold visibility swap) has failed FOUR
+times already (S258, S259, S261, S262) on edge-on flicker + TM visibility conflicts; hysteresis was
+already tried and was insufficient alone. §8 authorizes Fable to INVESTIGATE a cross-fade mitigation
+in an isolated prototype and REPORT BACK ONLY — no implementation, no live wiring, no PR, until the
+user reviews the findings and explicitly says to proceed.
 
 ## 0. What already exists — reuse, do not reinvent (all shipped, all proven)
 - **`viewer/time_machine.js`'s DLOD proxy** (`_dlodEngaged`, `_dlodBuildBoxes`, `_dlodUpdateBoxes`,
@@ -231,3 +239,85 @@ as TM's existing FRONTIER/RECENT-always-real rule — that also covers "GUID is 
 active Find isolation set" (`A.activeGuidFilter`, set by `filterByGuids` at `panels.js:840`, already
 resident in memory — check that, not a new lookup). Without it, isolate-then-fly on a large building
 will visibly flicker/revert the moment nav-scope DLOD engages. Clash needs no equivalent change.
+
+## 7. Distance is the wrong axis — line-of-sight (occlusion) is the right one (2026-07-20)
+
+Real math (SQL against LTU_AHouse_extracted.db) exposed that §0-§2's 50m-radius rule, reused
+verbatim from `TM_DLOD_SCALE.md` §9, gets BOTH directions wrong: at a central interior point,
+**54.5%** of ALL 125,698 elements (every storey — the building is only 17m tall but 425m×286m wide,
+so 50m trivially reaches vertically, it's a horizontal-only constraint in practice) fall within the
+"stays real" radius, including elements in adjacent rooms that ARE occluded by a wall 5m away. At
+the tour's own logged real orbit radius (`r=255`, from an actual `[WALK] Orbit: r=255 from 27°` log
+line earlier this session), **0% of elements** fall within 50m — the entire building would render
+as boxes during the tour's own opening orbit / closing bird's-eye shot. Distance is not a proxy for
+occlusion; it gets facade-at-255m (visible, nothing occluding it) and next-room-at-5m (invisible,
+a wall in the way) backwards.
+
+**Correct axis: line-of-sight / occlusion, not distance.** This codebase already has the
+infrastructure for a CPU-side version — `docs/internal/CINEMATIC_RENDERING.md` names an existing
+R-tree spatial index (built for clash detection + pick-proximity, explicitly "not a render
+optimization" today) that could drive a camera→element raycast test against nearby opaque geometry,
+without the GPU occlusion-query latency/driver-inconsistency/per-object overhead concerns raised
+earlier in this file's history (see the conversation this file's git history sits under). This
+would supersede, not sit alongside, §0-§2's distance-only test — it directly answers "is a wall in
+the way," which distance never could.
+
+**Not yet designed or witnessed — two prerequisites before any implementation:**
+1. CPU cost of ~125k R-tree-accelerated raycasts per frame/tick is UNVERIFIED — needs its own
+   measurement, same MEASURE BEFORE ESTIMATING discipline as everything else in this file.
+2. The pop/flicker risk of any hard visibility toggle — see §8, gated, do not build ahead of it.
+
+## 8. Cross-fade/hysteresis investigation — GATED, Fable to REPORT ONLY, no implementation without
+explicit user sign-off (filed 2026-07-20)
+
+**This section exists because this exact PROBLEM CLASS has already failed four times in this
+codebase** (`prompts/done/S259_BATCHEDMESH.md` §"Why DLOD broke before (S258 disable reasons)",
+`prompts/done/S261_DLOD_MILLION.md`, `prompts/done/S262_DLOD_REENABLE.md` — all Three.js/bim-ootb,
+not the unrelated Blender-side DLOD lineage in `prompts/done/S179_dlod_rtree_handoff.md`/
+`S193_dlod_auto_linker.md`, a DIFFERENT tool with its own separate history, cited here only as a
+secondary cross-check, not conflated with this one):
+- **S258**: DLOD disabled. Named causes: "wrong-angle onset — thin elements viewed edge-on flicker
+  between LOD levels" + "Hourglass conflicts — DLOD and Time Machine both control visibility, they
+  fight" (`S259_BATCHEDMESH.md` line 61-63).
+- **S259**: proposed BatchedMesh `setGeometryIdAt` as the fix for S258's flicker.
+- **S261**: fully built distance-threshold geometry swap (bbox↔real, `setGeometryAt`), INCLUDING a
+  **hysteresis band already** (promote at 50m, demote at 80m, explicitly "prevents flicker at
+  boundary" — `S261_DLOD_MILLION.md` line 95). Still retracted — hysteresis alone did not fix the
+  edge-on flicker or the TM-visibility-fight problem (`TM_DLOD_SCALE.md` §1: "Died on: edge-on
+  flicker on thin elements, TM visibility fights, pick broken until promotion completes").
+- **S262**: tried to re-enable it, argued "breaks pick" was overstated. Still disabled today
+  (`_useDlodPath = false`, hard-set, guarded by whitebox test `dlod_visibility_only`/`§WB_DLOD_VIS`
+  asserting `noSwapPath && noPromote` — **do not flip this guard**).
+- **Cross-fade/opacity-blend specifically was NAMED but never built or tested** —
+  `S261_DLOD_PBR_MILLION.md` lists "Bbox → full mesh fade transition" as a future-steps item; the
+  whole lineage was retracted before reaching it. Distinguish clearly from hysteresis (tried,
+  proven insufficient alone) — cross-fade is a genuinely untested idea, not a repeat of a known
+  failure, but also not a known success.
+- **One real difference worth testing on its own merits, not assumed identical:** S258-S262's
+  flicker trigger was DISTANCE-threshold crossing (thin element flips LOD at 50m/80m). §7's
+  line-of-sight idea triggers on OCCLUSION-boundary crossing (camera rounds a corner) — a different
+  geometric event. Same general risk CLASS (any hard per-frame visibility toggle can pop), not
+  guaranteed the same failure mode.
+
+**Fable's task — INVESTIGATE AND REPORT, explicitly NOT implement into any shipped path:**
+1. Build a small, isolated prototype (scratch/throwaway, not wired into the live viewer) that
+   reproduces the S258/S261 edge-on-flicker condition on a thin element (a wall or beam, viewed
+   near edge-on, crossing a hard visibility/geometry threshold) — confirm the failure reproduces
+   before testing any fix, per this project's `feedback_verify_checker_before_code_under_test.md`
+   doctrine (know the failure is real before claiming a fix addresses it).
+2. Add an opacity cross-fade (N frames, box and real mesh both rendered at complementary opacity
+   during the transition) across that SAME reproduced case. Measure and report: does the flicker
+   actually go away, does the transition read as smooth, what N (frame count/duration) was needed,
+   any new artifact introduced (z-fighting between the two overlapping representations during the
+   fade, since both are visible simultaneously — a risk unique to cross-fade that hysteresis never
+   had, since hysteresis never draws both at once).
+3. Report findings in this file (§8, dated entry) — reproduction confirmed y/n, cross-fade result,
+   concrete numbers, any new artifact found. **STOP THERE.** Do not wire it into `dlod.js`,
+   `streaming.js`, or any live path. Do not touch `_useDlodPath` or the `§WB_DLOD_VIS` guard test.
+   Do not open a PR. The user reviews the findings and decides whether to proceed — this is a
+   report-back task, not an implementation task, given four prior attempts in this exact problem
+   class all ended in retraction.
+4. **Not authorized without this report:** any live code change to DLOD/box-proxy visibility
+   mechanics in `viewer/dlod.js`, `viewer/streaming.js`, or `viewer/time_machine.js`'s DLOD
+   sections. §0-§4's nav-scope box-proxy extension and §7's R-tree line-of-sight idea both wait on
+   this investigation's outcome before any implementation work starts.
