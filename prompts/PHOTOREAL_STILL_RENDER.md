@@ -3674,3 +3674,66 @@ else in this feature matters until the dive lands in the concourse.**
    section above; the §CINEMA_SIMPLE routine + DECISIONS + implementation calls precede it.
 Also open, lower priority: Alt+P perf regression (~0.9s→2.7s, BVH probing) — see
 `prompts/STAFFAGE_WALKABLE_PLACEMENT.md` §STAFFAGE cars-never-indoors + perf section.
+
+## R2/R3/R1 SHIPPED (2026-07-20, PR bim-ootb#907) — the 3-item list above is DONE, witnessed on
+Terminal + Hospital. `EFFECTS_V` v5→v6, `CACHE_VERSION` v821→v822.
+
+## §CINEMA_SIMPLE — bbox-ghost-stuck root cause found for the R2 recurrence, SHIPPED (2026-07-20,
+PR bim-ootb#921) — "the orbit still goes to attic" resurfaced after #907's fix had already
+stress-tested clean across 24 pose/building combinations. Root cause: `_drillSelect()` silently
+auto-enables the merged-ghost bbox shell (hides real solids) on a Storey/Discipline Find-panel drill
+for large buildings, and `_setTreeMode()` only ever reset that state when leaving Room/Phase/Material
+— Storey/Discipline (the panel's DEFAULT axis) was never checked, so the shell (and hidden solids)
+stuck around indefinitely however the user navigated afterward. This is a DIFFERENT bug from R2's own
+space-ranking logic (which was, and remains, correct) — the cinema BVH fan was raycasting against
+coarse ghost boxes instead of real walls while the display was stuck in that state. Fixed: (1)
+`_setTreeMode()`'s ghost-reset made unconditional, not axis-gated; (2) `_cinemaFanMeshes()`/
+`_solidMeshes()` now exclude ghost/placeholder geometry via `_isGhostGeometry()`, matching the
+exclusion convention `picking.js`/`city.js`/`measure.js` already use. Verified on Duplex (real
+solids survive the filter, ghost never does, in both a solids-hidden and solids-visible scenario).
+
+## §CINEMA_FLAT_ENDING — the swoop ENDING redesigned per live-trial feedback, SHIPPED (2026-07-20,
+PR bim-ootb#923). User's verdict on the R3 swoop as shipped (a brief mid-loop dip toward the Sun that
+then CLIMBED BACK UP to the 45° look-down for the rest of the orbit): *"the last part of orbit, it
+should go last 5 secs at least to be flat eye level without the wobble. Catch the Sun is luck but
+from above then level then back above is not cinematic smooth. Thus the angle of start must also
+corelate dynamically so user changes angle to end up catching as user wants."*
+
+**Three requirements, read together:**
+1. **The final ≥5 SECONDS of the film must be FLAT (tilt≈0°, eye-level), holding — no wobble.**
+   "Wobble" = both the tilt re-climbing after the swoop dip AND the ellipticity radius modulation
+   still active while otherwise trying to look "settled".
+2. **Never climb back up after dipping.** The shipped swoop's shape (level → 45° look-down → dip to
+   catch the Sun → BACK UP to 45°) is explicitly what reads as un-cinematic. The fix is NOT "reinstate
+   the old dip-and-recover" — it is: once the film starts easing toward level, it must never re-climb.
+   The Sun-catch and the final level-off are the SAME event, not two.
+3. **"Catch the Sun is luck" — the user explicitly accepts this won't always align, but the START
+   ANGLE should be the lever that lets them steer toward it.** The existing §CINEMA_EXIT mechanism
+   already makes the chosen exit — and therefore `exitAz`, and therefore where in the final 360° loop
+   the camera's azimuth crosses the Sun's (`swoopU`) — an emergent consequence of where the user
+   started and which way they faced. That causal chain is the "aim" mechanism; it does not need a NEW
+   parameter, it needs the OUTCOME (the final descent) to actually look intentional/smooth regardless
+   of where `swoopU` happens to land, so the causal chain is worth learning rather than looking broken.
+
+**Design shipped:** replaced the isolated swoop dip with a single monotonic final descent to level:
+- A mandatory final HOLD window (`CINEMA_FLAT_HOLD_SEC`=5s, converted to the orbit act's own u-domain
+  the same way `swoopHalfU` used to be) — tilt is flat (0°) for that whole window, always.
+- The DESCENT into that hold starts at `max(riseEnd, min(swoopU, latestPossibleStart))`, where
+  `latestPossibleStart` leaves room for `CINEMA_DESCENT_MIN_SEC`=3s of glide before the hold begins.
+  So: if the Sun-crossing (`swoopU`) falls early/mid-loop, the descent starts THERE and glides all the
+  way down to level (no separate climb back to 45° first). If `swoopU` is too close to the end to
+  leave room for both the minimum descent and the mandatory hold, the descent starts at the
+  latest-possible point instead (still monotonic, still ends flat with ≥5s to spare) — the "luck"
+  case where the Sun and the ending don't line up, but the film still ends smoothly either way.
+- Ellipticity radius wobble ramps OUT to zero across the same descent window (mirroring how it
+  already ramps IN from zero at u=0), so the final hold is genuinely settled: level tilt, constant
+  radius, gentle azimuthal sweep only. The pull-back flourish (`CINEMA_PULLBACK_START=0.80`, a RADIUS
+  effect) is orthogonal to tilt and untouched — a level-and-pulled-back final shot is a normal,
+  intentional combination in the standard 24s film (hold starts u=0.583, pullback starts u=0.80).
+- `EFFECTS_V` v6→v7, `CACHE_VERSION` v830→v831.
+
+**Verified** (`witness_cinema_flat_ending.js`, Terminal + Hospital, two scenarios each — Sun-crossing
+forced to fall where it CAN be caught vs where it CAN'T): tilt monotonically non-increasing across
+the entire descent in all four cases (zero re-climb), exactly flat (0.000°) for a clean 5.00s hold,
+radius spread before the pullback flourish engages is 0.0000 (fully damped), and once the flourish
+engages radius grows strictly monotonically (no oscillation) in every case.
