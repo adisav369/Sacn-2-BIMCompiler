@@ -77,6 +77,11 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
   at the same time" section. `prompts/ERP_MULTIUSER_CONCURRENCY_POC.md`.
 - ✅ TM DLOD Phase 3 — view-based box-proxy for Time Machine on large buildings (2026-07-20, bim-ootb
   #918-#922), live + user-accepted on real LTU hardware. `prompts/TM_DLOD_SCALE.md`.
+- ✅ Fly Tour route cache re-fixed (2026-07-20) — live LTU regression: cache's own un-evicted stale
+  keys filled localStorage quota, silently disabling the 41× win. Self-heal (evict+retry, stale-
+  version prune) shipped bim-ootb PR #926, W-TOUR-CACHE-EVICT PASS. `prompts/done/TOUR_ROUTE_CACHE.md` §4.
+  ⛔ OPEN follow-up filed for Fable: extend the TM DLOD box-proxy to general Fly-Tour/nav rendering
+  for buildings ≥LTU scale. `prompts/Viewer/FLY_TOUR_DLOD_SCALE.md`.
 - ✅ 2026-07-10 marathon branches (2026-07-17 verify) — `fix/grid-tilt-guard`, `fix/dw-rot-units`,
   `fable/dwprobe-dedup`, `fix/terminal-oracle-source` all confirmed fully superseded (exact fix
   content already verbatim on main via other commits) and pruned, local+origin, bim-ootb.
