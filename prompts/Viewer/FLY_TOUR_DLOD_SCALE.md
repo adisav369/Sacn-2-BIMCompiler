@@ -15,9 +15,13 @@ re-litigate `TM_DLOD_SCALE.md` §1's settled DLOD-naming history.
 scale LTU above sizes") asked immediately after `prompts/done/TOUR_ROUTE_CACHE.md` §4's fix — the
 user's own framing tied the two together ("perhaps it is just the FlyTour isolated case... delve
 into its initial"), i.e. Fly Tour is the first real-world path this should cover. **§5 added same
-day**: a viability test for a DIFFERENT, structural culling axis (storey occlusion) the user's own
-domain pushback surfaced — see §5's "why this wasn't found earlier" note before assuming the
-box-proxy design in §0-§4 is the only lever worth pulling.
+day, then self-corrected same day**: a viability test for a structural culling axis (storey
+occlusion) the user's own domain pushback surfaced — the FIRST version of §5 (blanket storey-
+partition) was itself RETRACTED after two more rounds of user pushback found it breaks aerial views
+and barely helps interior ones; §5's final shape is a two-track split (box-proxy for aerial, room-
+level occlusion blocked on data for interior). **§6 added same day**: real-code impact check on
+Find Panel + Clash — a required exemption clause (§6's last paragraph) is now part of the design,
+not optional, before any DLOD extension ships.
 
 ## 0. What already exists — reuse, do not reinvent (all shipped, all proven)
 - **`viewer/time_machine.js`'s DLOD proxy** (`_dlodEngaged`, `_dlodBuildBoxes`, `_dlodUpdateBoxes`,
@@ -154,18 +158,76 @@ BLOCKED question** — checked `rel_contained_in_space` (element→IfcSpace cont
 problem — do not attempt room-level occlusion until containment extraction coverage is fixed
 (separate task, not this spec).
 
-**Recommended shape (not yet designed in full — this is a viability finding, not a spec):**
-1. Storey-aware culling: query (or cache) which storey the camera currently occupies (Fly
-   Tour/Cinema both already know their current stop's storey from the room-graph/dive-target data
-   they compute for path-planning — reuse that, don't recompute), then treat any element whose
-   `storey` differs as an occlusion candidate — box-proxy it (reuse §0-§2's existing box mechanism)
-   or outright skip its draw, pending a design decision on which is cheaper to toggle live.
-2. Exempt stairwell/atrium elements spanning the current storey and its immediate vertical
-   neighbor (a name/class filter — `IfcStair`/`IfcStairFlight`/void-openings — not a full 3D
-   containment test) from storey-based hiding, so vertical sightlines don't visibly break.
-3. This is ADDITIVE to §0-§2's distance+frustum box-proxy, not a replacement — storey occlusion
-   catches "wrong floor entirely" (the biggest single win per the numbers above); distance+frustum
-   still matters for same-floor far/background elements.
-4. Needs its own viability witness before implementation claims anything: confirm live on LTU that
-   the current-storey lookup is cheap/already-available at the exact point `_dlodUpdateBoxes`-style
-   code would need it, not just that the SQL partition looks good in isolation.
+**RETRACTED same day — blanket storey-partition is NOT a good design, don't build it as originally
+proposed above.** Two follow-up questions from the user exposed real cracks, confirmed with more
+SQL (not hand-waved):
+1. **Aerial/exterior views break it.** The tour's own action log (both Fly Tour and Alt+C) mixes an
+   opening `orbit`, interior `flyPath` legs at floor height, and a closing `Bird's eye`/`Final` shot.
+   A blanket "hide anything not on camera's current storey" rule is only even valid while the camera
+   is deep inside ONE floor — during the aerial/orbit legs there is no single "current storey," and
+   other floors' facade/roof genuinely ARE visible from outside. The naive rule would punch holes in
+   the building during exactly the establishing/closing shots — the same "go dark" failure as
+   envelope-only occlusion (§ intro), just triggered from the opposite direction.
+2. **Even where valid (camera genuinely inside one floor), storey-level is too coarse to matter
+   much.** Queried real room-level containment: the 181 rooms with data average **8.9 elements per
+   room** (`rel_contained_in_space`, 1,608 rows / 181 rooms). Compare to Plan 1's 44,374 elements.
+   Storey-partition only ever addressed the VERTICAL axis (other floors); the bigger win was always
+   the HORIZONTAL axis (other rooms on the SAME floor, 8.9 vs 44,374) — which storey-partition
+   cannot touch at all, and which needs room-level containment, currently blocked on the same
+   1.3%-coverage data gap named above.
+
+**Corrected shape — two separate tracks, not one storey-partition mechanism:**
+1. **Aerial/exterior legs:** use §0-§2's existing distance+frustum box-proxy (already-proven,
+   TM_DLOD_SCALE.md §9) — the correct lever for "camera can see a lot at once," not storey partition.
+2. **Interior/room legs:** the real win is room-level occlusion (8.9 vs 44k elements), not storey-
+   level — but this is gated on a PREREQUISITE, non-optional fix: `rel_contained_in_space` coverage
+   needs to go from 1.3% to something usable BEFORE any room-level culling logic is worth designing,
+   let alone building. That containment fix is its own task (extraction/compile work, not a render
+   change) and belongs in a separate spec — note it here, don't scope-creep it into this file.
+3. Storey membership itself is NOT thrown away — it's just not the culling axis. It remains useful
+   as an aerial/interior MODE SIGNAL (is the camera's current stop associated with one storey via
+   the room-graph/dive-target data both Fly Tour and Cinema already compute for path-planning, or is
+   it an orbit/bird's-eye action with no single storey?) — a cheap way to pick which of the two
+   tracks above applies at a given tour stop, reusing data already in memory.
+
+## 6. Cross-system impact — Find Panel, Clash (checked 2026-07-20, real code, not assumed)
+
+Any DLOD extension (nav-scope box-proxy from §0-§4, or a future room-level mechanism from §5) writes
+to the SAME per-slot visibility state (`_instanceMeta`/`_batchMeta`, `setMatrixAt`/`setVisibleAt`)
+that other features already use. Two were checked directly — do not assume the rest of the app is
+unaffected without checking each on its own terms; these two aren't a template that automatically
+covers everything else.
+
+- **Find Panel's element-precise highlight** (`navigate_find.js` §C, `_hlOverlay`): draws its OWN
+  `InstancedMesh` of unit boxes from `element_transforms`, entirely independent of the base scene's
+  render state. **Not affected** by DLOD — same architectural pattern as Clash below.
+- **Find Panel's isolate mode** (`A.filterByGuids`, `panels.js:839`; also used by `A.isolateRoom`,
+  `panels.js:870`, itself limited by the SAME `rel_contained_in_space` 1.3% coverage gap named in
+  §5 — not a new finding, the same data gap blocks BOTH room-level occlusion and today's shipped
+  room-isolate feature): manipulates the real mesh's per-slot visibility directly via
+  `A.collectMeshes`+`A.filterInstancedMesh`/`filterBatchedMesh` (`helpers.js:36-73`) — the exact
+  same state DLOD's per-tick traverse (`time_machine.js:1264`, `hideForProxy`) re-asserts every
+  tick with zero awareness of Find's isolation. **Confirmed real conflict, not hypothetical:** Find
+  isolates a GUID → `filterByGuids` force-shows the real mesh this instant → the very next DLOD
+  tick, if that element independently reads as "placed, not frontier/recent, out-of-view," DLOD
+  zeroes it back out and shows its box instead. The isolated element visibly reverts. `filterInstancedMesh`/
+  `filterBatchedMesh` DO silently no-op on DLOD's box `InstancedMesh` itself (`if (!meta) return`,
+  since box meshes are deliberately never registered in `_instanceMeta`/`_batchMeta` per
+  `TM_DLOD_SCALE.md` §5.1) — so Find's filter can't corrupt or crash on a box mesh, it just can't
+  see or protect a real mesh that DLOD independently decides to hide.
+- **Clash** (`measure.js:681-728`, both the full-opacity and clipped-overlap highlight meshes):
+  built fresh from `component_geometries` blobs into a separate `A.measureGroup`, not the streamed
+  base scene. **Architecturally immune** — always renders true geometry regardless of DLOD state.
+  Clash pair detection itself is DB-driven (`A._currentClashRules`), not scene-state-dependent.
+- **Picking** (`isBboxPlaceholder`, proven pick-exclusion, `picking.js:257`): clicking a DLOD box
+  today correctly no-ops by design — already-shipped, already-correct behavior. Net effect worth
+  stating explicitly, not just inherited silently: an element currently rendered as a box is
+  unclickable/unselectable until it promotes back to real mesh. Acceptable for TM today; carry the
+  same tradeoff into nav-scope DLOD rather than treating it as a new gap to close.
+
+**Required design addition, not optional:** any DLOD engage-condition (§2's `hideForProxy`-equivalent
+for nav-scope, and any future room-level mechanism) needs an explicit exemption clause — same shape
+as TM's existing FRONTIER/RECENT-always-real rule — that also covers "GUID is currently part of an
+active Find isolation set" (`A.activeGuidFilter`, set by `filterByGuids` at `panels.js:840`, already
+resident in memory — check that, not a new lookup). Without it, isolate-then-fly on a large building
+will visibly flicker/revert the moment nav-scope DLOD engages. Clash needs no equivalent change.
