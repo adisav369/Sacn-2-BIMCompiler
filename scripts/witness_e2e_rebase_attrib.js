@@ -1,9 +1,20 @@
 #!/usr/bin/env node
 // Copyright (c) 2025-2026 Redhuan D. Oon <red1org@gmail.com>
 // SPDX-License-Identifier: MIT
-// ⚠ DO NOT REMOVE — prompts/ERP_MULTIUSER_CONCURRENCY_POC.md §DocAction Cross-Device Attribution S7
-//   (W-REBASE-ATTRIB). Log Mandate: this file writes build/erp/<basename>.log and that log is READ
-//   before any pass/fail conclusion — exit code alone is never evidence.
+// ⚠ DO NOT REMOVE — prompts/ERP_MULTIUSER_CONCURRENCY_POC.md §DocAction Cross-Device Attribution
+//   S7 (W-REBASE-ATTRIB) + S8 corrected (W-MULTI-DEVICE-VERIFY). Log Mandate: this file writes
+//   build/erp/<basename>.log and that log is READ before any pass/fail conclusion — exit code alone
+//   is never evidence.
+//
+// S8 ADDENDUM: S8 was originally specced as "reuse erp_key_epochs.js's verifyEpochSigsOps as-is" —
+//   WRONG, found by a standalone probe before implementing: that function enforces a SINGLE activeKid
+//   per position (a key-ROTATION/REVOCATION state machine) and REJECTS a second concurrently-active
+//   device outright with no ROTATE between them — exactly the two-device-no-rotation shape real relay
+//   convergence produces. Corrected S8: a NEW function, erp_key_epochs.js verifyMultiDeviceOps(ops,
+//   {roster,verify}) — per-op INDEPENDENT verification against a flat roster, no rotation state. This
+//   section of the witness proves that correction: two real devices' ops, POST-rebase, both correctly
+//   attributed to their real originating device (not collapsed onto one key), and a tampered roster
+//   entry is rejected.
 //
 // ISSUE THIS PROVES OR DISPROVES: `erp/idempiere.html` loads `erp_signer.js` but never called
 //   `ErpSigner.installSigner()` — every op's `sig` column was permanently NULL on the live product UI
@@ -39,6 +50,17 @@ var MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'applicati
 function reqPw() { try { return require('playwright'); } catch (e) { return require('/home/red1/bim-ootb/tests/node_modules/playwright'); } }
 var RELAY = require(path.join(__dirname, '..', 'build', 'erp', 'erp_relay_server.js'));
 
+// S8 (W-MULTI-DEVICE-VERIFY): node-side roster verification — NOT wired into the live UI (Phase 3,
+// roster distribution, is out of scope per the spec); the witness constructs the roster itself, exactly
+// as witness_roster_verify.js already does for the Teams path. Same window-shim require pattern as that
+// file so erp_key_epochs.js's _kernel() resolves the SAME KernelOps instance used to compute content hashes.
+if (!global.window) global.window = {};
+if (!global.crypto || !global.crypto.subtle) global.crypto = require('crypto').webcrypto;
+require(path.join(ROOT, 'erp', 'kernel_ops.js'));
+var NODE_K = global.window.KernelOps;
+var SNAP_SIGN = require(path.join(ROOT, 'erp', 'erp_snapshot_sign.js'));
+var EPOCHS = require(path.join(ROOT, 'erp', 'erp_key_epochs.js'));
+
 var fails = 0, totalAssertions = 0;
 function verdict(ok, label, detail) { totalAssertions++; if (!ok) fails++; console.log('   ' + (ok ? '🟢' : '🔴') + ' ' + label + (detail ? ' — ' + detail : '')); }
 function log(m) { console.log('   ' + m); }
@@ -69,7 +91,7 @@ function readRows(page) {
   return page.evaluate(function () {
     var K = window.__crud && window.__crud.kernelDb ? window.__crud.kernelDb() : null;
     if (!K) return { ok: false, rows: [], tip: 'NO-SIDE', verify: null };
-    var r = K.exec('SELECT id,op_uuid,op_type,gid,branch_id,sig FROM kernel_ops ORDER BY id');
+    var r = K.exec('SELECT id,op_uuid,timestamp,op_type,parameters,input_guids,output_guid,op_hash,sig,gid,branch_id,user_tag FROM kernel_ops ORDER BY id');
     var cols = r.length ? r[0].columns : [];
     var rows = (r.length ? r[0].values : []).map(function (v) {
       var o = {}; cols.forEach(function (c, i) { o[c] = v[i]; }); return o;
@@ -129,7 +151,7 @@ function clickSync(page, waiter, tag) {
     }
 
     var vals = ['810101.00', '810202.00'];
-    var preRows = [];
+    var preRows = [], identities = [];
     for (var j = 0; j < N; j++) {
       await pages[j].goto(DEEP_URL, { waitUntil: 'load' });
       // §SYNC_RELAY_LOADED fires at module-parse time (synchronous); §SIGN installed fires later, after
@@ -140,6 +162,10 @@ function clickSync(page, waiter, tag) {
 
       var signInstalled = await waiters[j].wait([/§SIGN installed/], 15000);
       verdict(/alg=ECDSA-P256/.test(signInstalled.line), 'ctx=' + (j + 1) + ' real ECDSA-P256 device signer installed on boot (was never called before this fix)', signInstalled.line);
+
+      var identity = await pages[j].evaluate(function () { return { hex: window.ErpSigner && window.ErpSigner.pubKeyHex, jwk: window.ErpSigner && window.ErpSigner.pubKeyJwk }; });
+      verdict(!!(identity.hex && identity.jwk), 'ctx=' + (j + 1) + ' real device pubkey exposed as both the roster kid (hex) and verifiable material (JWK)', identity.hex ? identity.hex.slice(0, 16) + '…' : 'MISSING');
+      identities[j] = identity;
 
       await pages[j].waitForSelector('#idmp-inline-mount [data-col="grandtotal"]', { timeout: 20000 });
 
@@ -169,6 +195,31 @@ function clickSync(page, waiter, tag) {
 
     var tipsEqual = post.every(function (f) { return f.ok && f.tip === post[0].tip; });
     verdict(tipsEqual, 'POST-SYNC — both contexts converge to the IDENTICAL signed chain tip', 'tips=' + JSON.stringify(post.map(function (f) { return f.tip; })));
+
+    // ── S8 (W-MULTI-DEVICE-VERIFY) — roster-gated verification of the POST-SYNC merged log, node-side
+    //    (Phase 3 roster DISTRIBUTION is out of scope — this witness constructs the roster directly,
+    //    same convention witness_roster_verify.js already uses for the Teams path). Proves: (a) each
+    //    op is correctly attributed to the REAL device that signed it, on BOTH sides post-rebase; (b) a
+    //    tampered roster entry (wrong pubkey for a kid) is REJECTED — not a trivially-accepting no-op. ──
+    var roster = {};
+    for (var ri = 0; ri < N; ri++) roster[identities[ri].hex] = identities[ri].jwk;
+    var verifyFn = function (msg, sig, pub) { return SNAP_SIGN.verifyTip(msg, sig, pub); };
+    for (var side = 0; side < N; side++) {
+      var mdv = await EPOCHS.verifyMultiDeviceOps(post[side].rows, { roster: roster, verify: verifyFn });
+      console.log('   §MULTI-DEVICE-VERIFY ctx=' + (side + 1) + ' ' + JSON.stringify(mdv));
+      verdict(mdv.ok === true, 'ctx=' + (side + 1) + ' S8 — roster-gated multi-device verify passes on the POST-SYNC merged log (real content-sig, real ops, both concurrently-active devices)', JSON.stringify(mdv));
+      verdict(Object.keys(mdv.attributed || {}).length === N, 'ctx=' + (side + 1) + ' S8 — all ' + N + ' ops correctly attributed (none anonymous)', JSON.stringify(mdv.attributed));
+      var attribKids = Object.keys(mdv.attributed || {}).map(function (k) { return mdv.attributed[k]; });
+      var distinctKids = new Set(attribKids);
+      verdict(distinctKids.size === N, 'ctx=' + (side + 1) + ' S8 — the ' + N + ' attributions resolve to ' + N + ' DISTINCT devices (not all collapsed onto one puller\'s key, the pre-S7 failure mode)', JSON.stringify(attribKids));
+
+      // NEGATIVE control: swap in a WRONG pubkey for one real kid — verify must REJECT, not silently pass.
+      var evilRoster = {}; for (var ek in roster) evilRoster[ek] = roster[ek];
+      var realKids = Object.keys(evilRoster);
+      evilRoster[realKids[0]] = roster[realKids[realKids.length - 1]];   // swap ctx1's slot to hold ctx2's key (or vice versa)
+      var mdvEvil = await EPOCHS.verifyMultiDeviceOps(post[side].rows, { roster: evilRoster, verify: verifyFn });
+      verdict(mdvEvil.ok === false, 'ctx=' + (side + 1) + ' S8 NEGATIVE — a tampered roster entry (wrong pubkey for a real kid) is REJECTED, not silently accepted', JSON.stringify(mdvEvil));
+    }
 
     for (var pi = 0; pi < N; pi++) {
       var origRow = preRows[pi].rows[preRows[pi].rows.length - 1];

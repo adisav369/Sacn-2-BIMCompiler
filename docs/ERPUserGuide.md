@@ -270,13 +270,21 @@ hands back logs — it holds no business logic and makes no accounting decisions
 person its URL, and everyone keeps logging in as their own real user. The relay carries only the *log*;
 the accounting still folds from that log on each device, identical to single-user.
 
-> **One honest limit — read this before you rely on it for approvals.** Cross-device Sync is proven today
-> for **field edits** (change a value → save → sync). It does **not yet** carry full per-person, per-step
-> attribution of **document actions** — *Complete / Void / Close* and similar workflow steps — *across
-> devices*: when logs merge, those steps are re-signed under the receiving device's key. Everything on a
-> **single device** is unaffected. So if you need a multi-person **approval trail that holds up across
-> machines**, that is the next piece we are building (opt-in per-step signing) — not this one. We would
-> rather tell you here than have you find it during an audit.
+> **Where the attribution trail stands — read this before you rely on it for approvals.** Every device
+> now signs its own edits with its own device key, and that signature survives a cross-device sync intact
+> — proven with two real devices, real edits, real sync: each edit is independently verifiable back to
+> the device that actually made it, and a forged attribution is rejected, not silently accepted. Two
+> honest limits remain, both about *reach*, not the signing mechanism itself:
+> 1. **Checking a signature today means comparing it against a roster of device public keys you assemble
+>    yourself** — there is no built-in "share my device with the team" step yet, so this is a capability
+>    proven to work, not yet a one-click feature in the app.
+> 2. This has been proven on **field edits** (change a value → save → sync). *Document actions* —
+>    *Complete / Void / Close* and similar workflow steps — use the identical signing mechanism, so we
+>    expect it to carry the same guarantee, but that specific case has not yet been separately confirmed
+>    live (blocked by an unrelated rendering issue on the Complete button in this build, not by the
+>    signing mechanism).
+> Everything on a **single device** is, and always was, unaffected by either limit. We would rather tell
+> you where the edge of what's proven sits than have you find it during an audit.
 
 ---
 

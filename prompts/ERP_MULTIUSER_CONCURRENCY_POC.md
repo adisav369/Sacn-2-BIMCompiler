@@ -905,6 +905,102 @@ roster-gated verify (checks each op under the key that actually signed it) wired
 S8, not yet built.** The witness's own final assertion was corrected in-session to test for this exact
 failure shape rather than the originally-predicted (wrong) `ok:true`.
 
-**State:** committed on `fix/rebase-preserves-sig-gid`, NOT pushed/PR'd yet this session (push is next,
-following the same pattern as `fix/so-child-bind`/PR #928). S8 (roster wiring) remains open, now with a
-concrete, witnessed reason it's needed rather than a predicted one.
+**State:** landed — `fix/rebase-preserves-sig-gid` merged via
+[bim-ootb PR #930](https://github.com/red1oon/bim-ootb/pull/930) (auto-merge, same pattern as PR #928).
+
+### ⚠ §Spec CORRECTION 2026-07-21 (found by probing before implementing S8, not assumed) — S8 as originally
+### written CANNOT use `erp_key_epochs.js`'s `verifyEpochSigsOps` as-is
+
+S8's original wording said "reusing `erp_key_epochs.js` as-is." **That is wrong — verified by a standalone
+probe (`node` script, `erp_key_epochs.js` + `kernel_ops.js` loaded directly, no browser) before writing any
+production code for it.** `verifyEpochSigsOps`'s walk (`erp_key_epochs.js:100-131`) enforces a SINGLE
+`activeKid` at every position in the log: a normal op's `signed_by` MUST equal the current `activeKid` or
+it is REJECTED outright (`'op signed by non-active key ... — superseded key cannot sign new ops'`,
+line 127) — the ONLY way a second key becomes valid is an explicit `ROTATE` op counter-signed by the
+outgoing key. Probe result, two devices (`DEV_A`, `DEV_B`) each committing one op, NO rotation between
+them (exactly what two real concurrent devices produce once the relay merges their independent commits):
+```
+§EPOCH verify FAIL at id=2 why=op signed by non-active key DEV_B (active=DEV_A) — superseded key cannot sign new ops
+```
+**This module is a single-writer KEY-ROTATION/REVOCATION trust root** (device handoff, compromise
+recovery — its actual, correct, already-witnessed job for the Teams `importBranch` path, where one branch
+genuinely has one signer at a time). It is architecturally NOT a multi-device concurrent-attribution
+verifier. Wiring it onto the ERP-relay path as S8 originally imagined would have REJECTED every op from
+whichever device didn't happen to be `genesisKid` — actively breaking the N-device convergence
+`witness_e2e_n_converge.js`/`W-N10-CONCURRENT-TODAY` already proved works. This is exactly the kind of
+mismatch this project's own `feedback_verify_branch_conditions_before_applying_convention_fix.md` discipline
+exists to catch — grep memory / probe the actual code before porting a convention, don't assume "the
+primitive that solves signing" solves EVERY signing-shaped problem.
+
+**Corrected S8: a NEW, much simpler per-op independent verifier** — `erp_key_epochs.js`
+`verifyMultiDeviceOps(ops, {pubByKid, verify})`. No `activeKid`, no `ROTATE`/`REVOKE` state machine: each
+v2 (content-signed) op's `signed_by` kid is looked up directly in the roster and its sig is checked against
+THAT kid's own pubkey, independent of every other op's signer — the correct model for "N devices, all
+simultaneously valid, in any relay-merged order." `ROTATE`/`REVOKE`/`verifyEpochSigsOps` are UNTOUCHED and
+remain correct for their own single-writer-handoff use case (Teams `importBranch`) — this is an ADDITION,
+not a replacement.
+
+**Also newly required (not previously named):** no code path stamps `signed_by` into a live op's
+`parameters` at all — `kernel_ops.js`'s `_stampSigv()` (the existing, proven, additive seam that already
+stamps `_sigv:2`) needs `setSigner(signer, kid)` to accept the device's own kid (its `pubKeyHex`, already
+computed by `erp_signer.js installSigner()`) and stamp `signed_by:kid` alongside `_sigv:2` — same pattern,
+same seam, no new call sites in `crud_overlay.js`.
+
+### §Results 2026-07-21 — S8 (corrected) `W-MULTI-DEVICE-VERIFY` witnessed, REAL 2-context browser run — ✅ DONE
+
+**Built** on top of `fix/rebase-preserves-sig-gid` (same worktree/branch, PR #930 landing separately for
+S7 — S8 layered on before the PR merged, so it ships in the same PR): four small, additive changes, each
+probed/tested standalone BEFORE wiring into the full browser witness (cheap `node` probes caught the
+architecture mismatch above AND confirmed the corrected design, before any Playwright run):
+1. `erp/kernel_ops.js` — `setSigner(signer, kid)` now takes an optional second arg, stored as
+   `_signerKid`; `_stampSigv()` stamps `signed_by:kid` alongside `_sigv:2` (same additive gate, only for
+   v2 rows — a v1 sig can't survive a rebase regardless, so attribution would be moot).
+2. `erp/erp_signer.js` `installSigner()` — exports the public key as BOTH the existing SPKI hex
+   (`API.pubKeyHex`, used as the stable `signed_by` kid) and, newly, JWK (`API.pubKeyJwk`, the verifiable
+   key material a roster needs — `erp_snapshot_sign.js verifyTip` imports JWK, not the SPKI hex).
+3. `erp/erp_key_epochs.js` — NEW function `verifyMultiDeviceOps(ops, {roster, verify})`: per-op
+   INDEPENDENT verification (each op's `signed_by` kid looked up directly in a flat roster, sig checked
+   against that kid's own pubkey) — no `activeKid`, no rotation state, the corrected model for N
+   simultaneously-valid devices. `verifyEpochSigsOps`/`verifyEpochSigs`/`ROTATE`/`REVOKE` are UNTOUCHED,
+   confirmed by re-running `witness_roster_verify.js` unmodified — exit 0, ALL PASS, 0 🔴 (S9 regression).
+4. Node-side-only roster verification in the witness (Phase 3 — HQ-signed roster DISTRIBUTION over the
+   relay — stays explicitly out of scope; the witness constructs the roster directly, same convention
+   `witness_roster_verify.js` already uses for the Teams path). No new `<script>` tag added to
+   `idempiere.html` — the STAMPING is live (via #1/#2), the VERIFYING is witness-side for now.
+
+**Witness:** `scripts/witness_e2e_rebase_attrib.js` extended (same file, same 2-`BrowserContext` harness
+as S7) — captures each context's real `pubKeyHex`/`pubKeyJwk`, and after the real sync/rebase, runs
+`verifyMultiDeviceOps` against the POST-SYNC merged log on BOTH sides. Run: `WITNESS_ROOT=/tmp/wt-rebase-sig
+bash build/erp/run_witness.sh scripts/witness_e2e_rebase_attrib.js` — **exit 0, 37/37 🟢** (log read in
+full — Log Mandate, 0 occurrences of 🔴).
+
+```
+🟢 ctx=1 S8 — roster-gated multi-device verify passes on the POST-SYNC merged log (real content-sig, real ops, both concurrently-active devices)
+🟢 ctx=1 S8 — all 2 ops correctly attributed (none anonymous)
+🟢 ctx=1 S8 — the 2 attributions resolve to 2 DISTINCT devices (not all collapsed onto one puller's key, the pre-S7 failure mode)
+🟢 ctx=1 S8 NEGATIVE — a tampered roster entry (wrong pubkey for a real kid) is REJECTED, not silently accepted
+```
+(identical 4 assertions repeat for ctx=2, reading the SAME merged log from the other side)
+
+**Net result — the loop the guide opened is closed, honestly:** `ERPUserGuide.md`'s "Working at the same
+time" section named "opt-in per-step signing" as the next piece for cross-device DocAction attribution.
+That piece is now built and witnessed: two real devices, real UI clicks, real relay sync, real signatures
+— each op is correctly, verifiably attributed to the device that actually signed it, post-sync, on both
+sides, with a tampered attribution correctly rejected. `verifyChain`'s own single-signer check still (and
+correctly) cannot do this itself — `verifyMultiDeviceOps` is the piece that closes it, reusing
+`erp_key_epochs.js`'s existing content-hash/roster-verify primitives rather than inventing new crypto.
+
+**What's still explicitly open (named, not silently dropped):**
+- **Phase 3 — HQ-signed roster DISTRIBUTION over the relay.** Two devices that have never met still need
+  an out-of-band step to learn each other's `pubKeyJwk`. Not attempted here, same as originally scoped.
+- **Wiring `verifyMultiDeviceOps` into the live UI** (a real "Verify attribution" affordance, or an
+  automatic check on `syncNow()`) — today it only runs witness-side. A live wiring is a UI/UX decision
+  (where does a failed attribution surface to a user?), not assumed here.
+- **DocAction group attribution specifically** (Complete/Void/Close, not just a field edit) — this
+  witness proves the mechanism on a `CRUD_UPDATE`; a DocAction's `commitGroup` fan-out uses the exact same
+  `_stampSigv`/`signed_by` seam (proven generic, not table-specific), so the mechanism transfers, but has
+  not been separately witnessed on a real DocAction Complete click (blocked, unrelated: the DocAction CO
+  button doesn't currently render on this build's Sales Order, per `ERP_BUSINESS_CYCLE_E2E.md`).
+
+**Guide update:** still NOT touched this session — per §Gate, the guide update is the deliberate next
+step now that both S7 and S8 are `✅ DONE (witness)`, not a byproduct of landing them.
