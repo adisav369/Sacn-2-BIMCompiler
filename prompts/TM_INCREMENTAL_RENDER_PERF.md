@@ -10,6 +10,10 @@ already shipped a net regression that had to be reverted-in-effect.
 
 ---
 
+## 🎯 NEXT-SESSION BENCHMARK (LTU, one sentence)
+**Cut LTU's per-tick traverse ~74% (23ms → ~6ms) by making the delta skip engage under Shadow/Alt-G
+(Phase 2), then profile the real-GPU frame on hardware to set — never guess — the Phase-3 (DLOD) target.**
+
 ## 0. SHIPPED + WHAT'S NEXT (2026-07-20) — read this first
 **Phase 1 (DONE, live v821):** §PERF_INCR event-index skip + the waste-removal that actually moved
 the needle. A user on real LTU (125k) confirmed "much faster." The honest post-mortem of WHAT helped:
