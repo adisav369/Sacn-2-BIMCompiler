@@ -13,71 +13,77 @@
      or profession paper. Nothing asserts certification.
      ============================================================ -->
 <style>
+  /* LIGHT SKIN — matches the site's Material theme (blue-grey + orange) and the
+     4D / Migrate papers' green/red comparison semantics, on white. Print-friendly. */
   :root{
-    --bg:#12171d; --panel:#1a212a; --ink:#e7edf3; --dim:#94a3b1; --line:#28323d;
-    --green:#7cb342; --amber:#ffa000; --red:#ef5350; --blue:#42a5f5;
+    --bg:#ffffff; --panel:#eceff1; --ink:#20272e; --dim:#5b6670; --line:#dbe1e6;
+    --primary:#37474f;                 /* blue-grey — site Material primary */
+    --green:#4f7c2b; --amber:#d97a00; --red:#c62828; --blue:#1565c0;
   }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
   body{font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
     max-width:1040px;margin:0 auto;padding:40px 22px 64px;
     background:var(--bg);color:var(--ink);line-height:1.58}
-  a{color:#8fc3f7}
+  a{color:var(--blue)}
   sup a{font-weight:700;text-decoration:none;padding:0 1px}
-  .kicker{font-size:11px;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:var(--blue);margin:0 0 8px}
-  h1{font-size:29px;line-height:1.14;font-weight:850;margin:0 0 6px;letter-spacing:.2px}
-  .sub{font-size:14px;color:var(--dim);margin:0 0 20px}
-  h2{font-size:20px;font-weight:820;margin:38px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line)}
-  h3{font-size:15px;font-weight:800;margin:22px 0 6px;color:#dbe5ef}
-  p{font-size:14.5px;color:#cdd6df;max-width:82ch}
-  p b,li b{color:#fff}
-  .abstract{border-left:4px solid var(--blue);background:rgba(66,165,245,.06);
-    border-radius:0 9px 9px 0;padding:15px 19px;font-size:14px;color:#d4dde6;margin:6px 0 8px;max-width:none}
-  .abstract b{color:#cfe6ff}
+  .kicker{font-size:11px;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:var(--amber);margin:0 0 8px}
+  h1{font-size:33px;line-height:1.14;font-weight:850;margin:0 0 6px;letter-spacing:.2px;color:var(--primary)}
+  .sub{font-size:15.5px;color:var(--dim);margin:0 0 20px}
+  h2{font-size:23px;font-weight:820;margin:38px 0 12px;padding-bottom:7px;border-bottom:2px solid var(--line);color:var(--primary)}
+  h3{font-size:16.5px;font-weight:800;margin:22px 0 6px;color:#2f3a43}
+  p{font-size:16px;color:#37424b;max-width:80ch}
+  p b,li b{color:#161c22}
+  .abstract{border-left:4px solid var(--blue);background:rgba(21,101,192,.05);
+    border-radius:0 9px 9px 0;padding:16px 20px;font-size:15.5px;color:#33404a;margin:6px 0 8px;max-width:none}
+  .abstract b{color:#123f75}
 
   .legend{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;
-    margin:22px 0 10px;padding:13px 16px;background:var(--panel);border:1px solid var(--line);border-radius:11px;font-size:12.5px}
+    margin:22px 0 10px;padding:13px 16px;background:var(--panel);border:1px solid var(--line);border-radius:11px;font-size:13.5px;color:#37424b}
   .legend .k{display:inline-flex;align-items:center;gap:7px}
   .legend .dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
   .legend .sep{color:var(--dim);opacity:.5}
 
-  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:12.7px;display:block;overflow-x:auto}
-  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top;line-height:1.42}
-  th{background:var(--panel);color:#eaf1f8;font-weight:800;font-size:11.5px;letter-spacing:.3px}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top;line-height:1.42;color:#37424b}
+  th{background:var(--primary);color:#fff;font-weight:800;font-size:11.5px;letter-spacing:.3px}
+  tr:nth-child(even) td{background:#f7f9fa}
   td .st{font-weight:800;white-space:nowrap}
   .s-g{color:var(--green)} .s-a{color:var(--amber)} .s-r{color:var(--red)} .s-b{color:var(--blue)}
 
   .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:16px 0}
   @media (max-width:720px){.grid{grid-template-columns:1fr}}
   .band{--bc:var(--green);border:1px solid var(--line);border-top:4px solid var(--bc);border-radius:13px;
-    background:rgba(124,179,66,.05);display:flex;flex-direction:column;overflow:hidden}
-  .band.green{--bc:var(--green);background:rgba(124,179,66,.055)}
-  .band.amber{--bc:var(--amber);background:rgba(255,160,0,.05)}
-  .band.red{--bc:var(--red);background:rgba(239,83,80,.05)}
-  .band.blue{--bc:var(--blue);background:rgba(66,165,245,.05)}
+    background:#fff;box-shadow:0 1px 3px rgba(20,40,60,.06);display:flex;flex-direction:column;overflow:hidden}
+  .band.green{--bc:var(--green);background:rgba(79,124,43,.045)}
+  .band.amber{--bc:var(--amber);background:rgba(217,122,0,.05)}
+  .band.red{--bc:var(--red);background:rgba(198,40,40,.045)}
+  .band.blue{--bc:var(--blue);background:rgba(21,101,192,.045)}
   .bh{padding:15px 17px 11px}
   .tag{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--bc)}
-  .ttl{font-size:16px;font-weight:800;line-height:1.22;margin:6px 0 3px}
-  .gloss{font-size:12px;color:var(--dim);line-height:1.45}
-  .band ul{list-style:none;margin:0;padding:11px 17px 15px;border-top:1px solid rgba(128,128,128,.16)}
-  .band li{font-size:12.7px;line-height:1.46;margin:0 0 10px;padding-left:15px;position:relative;color:#dde4ec}
+  .ttl{font-size:17.5px;font-weight:800;line-height:1.22;margin:6px 0 3px;color:#1a2129}
+  .gloss{font-size:13px;color:var(--dim);line-height:1.45}
+  .band ul{list-style:none;margin:0;padding:11px 17px 15px;border-top:1px solid var(--line)}
+  .band li{font-size:14px;line-height:1.46;margin:0 0 10px;padding-left:15px;position:relative;color:#37424b}
   .band li:last-child{margin-bottom:0}
+  .band li b{color:#161c22}
   .band li::before{content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--bc);opacity:.85}
-  .ref{font-size:11px;font-weight:700;color:var(--bc);opacity:.9}
+  .ref{font-size:11px;font-weight:700;color:var(--bc);opacity:.95}
+  code{background:#eceff1;padding:1px 5px;border-radius:4px;font-size:.9em;color:#2f3a43}
 
-  .evidence{border:1px solid var(--line);border-left:4px solid var(--green);background:rgba(124,179,66,.05);
-    border-radius:0 10px 10px 0;padding:13px 17px;margin:14px 0;font-size:13px;color:#d8e2ea}
+  .evidence{border:1px solid var(--line);border-left:4px solid var(--green);background:rgba(79,124,43,.05);
+    border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0;font-size:14.5px;color:#37424b}
   .evidence b{color:var(--green)}
-  .evidence code{background:rgba(128,128,128,.18);padding:1px 5px;border-radius:4px;font-size:.9em}
+  .evidence code{background:#e8ede9}
 
-  .disclaimer{border:1px solid var(--amber);background:rgba(255,160,0,.06);border-radius:11px;
-    padding:14px 18px;margin:24px 0 8px;font-size:12.5px;color:#e7dcc6}
+  .disclaimer{border:1px solid rgba(217,122,0,.45);background:rgba(217,122,0,.07);border-radius:11px;
+    padding:14px 18px;margin:24px 0 8px;font-size:13.5px;color:#5a4a2a}
   .disclaimer b{color:var(--amber)}
 
-  ol.refs{font-size:12.3px;color:#c4cfd9;padding-left:26px;line-height:1.5}
+  ol.refs{font-size:13.5px;color:#37424b;padding-left:26px;line-height:1.55}
   ol.refs li{margin:0 0 8px}
-  ol.refs b{color:#e7edf3}
-  footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--dim)}
+  ol.refs b{color:#161c22}
+  footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
 </style>
 </head>
 <body>
@@ -89,8 +95,8 @@
   <div class="abstract">
     <b>The direction of travel.</b> Enterprise software is moving <i>off</i> the central server of record. Local-first and offline-first architectures place the authoritative copy of data on the user&rsquo;s own device — syncing peer-to-peer or through stateless relays rather than a cloud database that owns the truth<sup><a href="#r14">[14]</a></sup>; conflict-free replicated data types (CRDTs) have made multi-device convergence a solved primitive<sup><a href="#r15">[15]</a></sup>; and data-sovereignty regulation pushes the authoritative record toward the edge, not the centre<sup><a href="#r16">[16]</a></sup>. The assurance frameworks that govern financial reporting — SOX/PCAOB, COSO, ISO/IEC&nbsp;27001 — were written for the opposite world: a single locked database behind a corporate firewall.
   </div>
-  <div class="abstract" style="border-left-color:var(--green);background:rgba(124,179,66,.06)">
-    <b style="color:#bfe6a6">The claim — objectives endure, the approach must adapt.</b> This is <i>not</i> an argument to weaken control. The control <b>objectives</b> do not change — completeness, existence/occurrence, authorisation, segregation of duties, retention. What must change is the <b>audit approach and control-implementation guidance</b>: <i>where</i> each objective is satisfied, and <i>how</i> it is tested, when no server owns the record. The profession has already taken the first step — the PCAOB holds that on-chain proof is <b>&ldquo;not sufficient appropriate audit evidence&rdquo;</b><sup><a href="#r7">[7]</a></sup>, and COSO frames blockchain risk <i>inside</i> the unchanged 2013 framework<sup><a href="#r5">[5]</a></sup>. Below is a control-objective framework to apply: per objective, where cryptographic assurance is <b>strengthened</b>, where the control <b>relocates</b> and must be designed, where it stays <b>open</b>, and where the limit is <b>invariant</b> to any ledger. It is a control map, not a certification.
+  <div class="abstract" style="border-left-color:var(--green);background:rgba(79,124,43,.06)">
+    <b style="color:#3a6b1e">The claim — objectives endure, the approach must adapt.</b> This is <i>not</i> an argument to weaken control. The control <b>objectives</b> do not change — completeness, existence/occurrence, authorisation, segregation of duties, retention. What must change is the <b>audit approach and control-implementation guidance</b>: <i>where</i> each objective is satisfied, and <i>how</i> it is tested, when no server owns the record. The profession has already taken the first step — the PCAOB holds that on-chain proof is <b>&ldquo;not sufficient appropriate audit evidence&rdquo;</b><sup><a href="#r7">[7]</a></sup>, and COSO frames blockchain risk <i>inside</i> the unchanged 2013 framework<sup><a href="#r5">[5]</a></sup>. Below is a control-objective framework to apply: per objective, where cryptographic assurance is <b>strengthened</b>, where the control <b>relocates</b> and must be designed, where it stays <b>open</b>, and where the limit is <b>invariant</b> to any ledger. It is a control map, not a certification.
   </div>
 
   <div class="legend">
