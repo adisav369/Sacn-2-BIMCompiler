@@ -176,3 +176,81 @@ own prior dedup proofs used), not just wired and assumed to work.
    list-only and leave files in place?
 4. Does the mesh.db IDB-race need a real fix (change the wiring), or is a different embedding mechanism
    (e.g. one that avoids the two-near-simultaneous-`indexedDB.open` pattern entirely) preferred?
+
+---
+
+## 🔴 OPEN REGRESSION 2026-07-20 — SampleCastle renders BLOCKY now; the guide proves it did NOT before
+
+**USER REPORT (authoritative, historically proven — do NOT re-litigate it):** SampleCastle was never
+blocky. It renders blocky in the Modeller today via the pill-rail **Open** → `SampleCastle` resident.
+
+**THE PROOF THE USER IS RIGHT — look at this image first, before any measurement:**
+`/home/red1/bim-compiler/docs/img/modeller/workspace-open.png` (committed 2026-07-08). Its Outliner
+reads **`SampleCastle-ARC (3342)`** and the status bar `3342 features` — the same building and the
+same element count as today's `/tmp/wt-sandbox/modeller/SampleCastle_ARC.db` (`elements_meta`=3342).
+The render in that image has **pitched gabled roofs, dormers, recessed mullioned windows, a bay
+projection, articulated façade**. That is the "before" state. It is not blocky.
+
+### ⚠ HOW THE PREVIOUS SESSION GOT THIS WRONG — read this so you don't repeat it
+A 2026-07-20 session (this one) investigated and wrongly concluded **"faithful, nothing broke, no fix
+needed."** The reasoning chain and why each step was insufficient:
+1. Counted triangles: SampleCastle renders 73.6 tris/element, 46% of meshes at exactly 12 tris.
+2. Cross-checked rendered boxes (1,498) vs boxes expected from source (1,501) → matched → concluded
+   the renderer was faithful.
+3. Traced 2 `IfcRailing` elements to `/home/red1/bim-compiler/internal/sources/Ifc2x3_SampleCastle.ifc`
+   — one 6-face box (`afscheiding`), one 264-face detailed rail (`traphek`) — both extracted correctly.
+4. Aggregate: 1,785 of 4,202 `IFCCLOSEDSHELL` in that IFC have exactly 6 faces = 42.5%, matching ~45%
+   in every DB copy → concluded the source is simply coarse.
+
+**Every one of those measurements is probably CORRECT and the CONCLUSION still WRONG.** A ~45% box
+fraction is entirely compatible with the detailed render in `workspace-open.png` — walls, slabs and
+coverings are *legitimately* boxes; the visible detail (roofs, window frames, bay) lives in the other
+55%. So the box fraction NEVER discriminated between the good and bad states, and matching it proved
+nothing about the regression. **The session never once LOOKED at the current render.** The user had
+to say so twice. Triangle statistics are not a substitute for the screenshot.
+
+### THE ACTUAL NEXT STEP (do this FIRST, it is one screenshot)
+Render SampleCastle in the Modeller today and compare it side-by-side against
+`docs/img/modeller/workspace-open.png`. Only after seeing the two images is there a defined defect to
+chase. Harness that already works (no new setup needed):
+- Worktree `/tmp/wt-geom-truth` (branch `feat/geometry-truth-chain`), static server on **:8412**
+  (`cd /tmp/wt-geom-truth && setsid python3 -m http.server 8412 &`). Ports 8399/8401 belong to other
+  sessions — do not reuse, never `pkill` shared processes.
+- Open the resident exactly as the user does:
+  `window.STRWalkerOutliner._openResident(window.STRWalkerOutliner._residents.find(r=>r.key==='SampleCastle'))`
+  then wait for the `§GEOM-HARDFAIL total=` line (end-of-seed marker) and screenshot.
+
+### FACTS ALREADY ESTABLISHED (do not re-derive — these cost a session)
+- **Full paths of every SampleCastle copy, and their geometry stats:**
+  | path | bytes | geoms | ≤12-tri |
+  |---|---|---|---|
+  | `/tmp/wt-sandbox/modeller/SampleCastle_ARC.db` (Modeller resident, meta only) | — | meta 3342, inst 3225 | n/a |
+  | `/tmp/wt-sandbox/modeller/mesh.db` (shared substrate, `building='Ifc2x3_SampleCastle'`) | 120MB total | 1,924 | 869 (45.2%) |
+  | `/tmp/wt-sandbox/modeller/SampleCastle_ARC_extracted.db` | — | 2,314 | 1,040 (45%) |
+  | `/home/red1/bim-compiler/deploy/buildings/SampleCastle_extracted.db` | 7,897,088 | 2,314 | 1,040 (45%) |
+  | `/home/red1/bim-compiler/deploy/buildings/SampleCastle_library.db` | — | 2,081 | 975 (47%) |
+  | OCI live (`…/b/bim-ootb/o/buildings/SampleCastle_extracted.db`) | 8,040,448 | 2,314 | 1,040 (44.9%) |
+  **Three different byte sizes, identical geometry stats.** The byte divergence is UNEXPLAINED and was
+  never chased — it may matter.
+- **Modeller vs Viewer render, same building:** Viewer (via `SampleCastle_extracted.db`) 3,504 elements
+  / 261,420 tris / **74.6** tris-per-element; Modeller (ARC + mesh.db) 3,225 elements / 237,504 tris /
+  **73.6**. Nearly identical detail, but the Modeller path carries **279 fewer elements**
+  (meta 3,342 vs 3,621). **That 279-element gap is the most concrete unexplained delta — start there
+  if the screenshot shows missing/blocky parts.**
+- `mesh.db` dropped 390 geometries vs the extracted copy (2,314 → 1,924) via dedup/consolidation. The
+  BOX FRACTION was preserved, but *which* geometries were merged was never audited — a rotation-
+  consolidation that collapses distinct shapes onto one hash would look exactly like this.
+- Guardrail now in place: `/tmp/wt-geom-truth/scripts/check_mesh_db_integrity.js` +
+  `modeller/mesh_db_baseline.json` freeze per-building counts AND box fractions (bim-ootb PR #908,
+  commit `f828a7a`). Run it before/after any mesh.db work; re-baseline only deliberately.
+- Suspect commit range for the "before" state: `workspace-open.png` is dated **2026-07-08**; the
+  8-building `mesh.db` embed (`feat/embed-8-arc-buildings`, worktree `/tmp/wt-embed-8-arc`) is the
+  prime candidate for what changed after it. **`git log` that branch against 2026-07-08 first.**
+
+### STANDING RULE THIS INCIDENT ESTABLISHES
+**For any "renders wrong / looks blocky / low LOD" report: LOOK AT THE RENDER FIRST, and diff it
+against the last known-good image in `docs/img/`. Do not open with triangle counts.** Counts and
+coverage joins answer "is the data present", never "does it look right" — and a witness suite that
+only measures counts is exactly how the 2026-07-01 all-box scar stayed green for a month. See
+`prompts/GEOMETRY_TRUTH_CHAIN.md` (whose §RENDER_FIDELITY census has this same blind spot: it graded
+SampleCastle `verdict=REAL` at 73.6 tris/element while the user could see it was wrong).

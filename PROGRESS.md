@@ -55,11 +55,15 @@ no open PR (largest: `lane/hr-overlay` 68, `lane/teams-overlay` 56) — **backed
 ## Archive — DONE/shipped (one-line pointers; detail in cards + memory topic files)
 - ✅ GEOMETRY_TRUTH_CHAIN S0–S3 (2026-07-20) — §DB_IDENTITY (Modeller+Viewer) + §RENDER_FIDELITY.
   bim-ootb **PR #908 UNMERGED** (`76f5d1b`,`ee9ca9b`,`ef31a25`). All 8 residents REAL, 100% geo
-  coverage. **Low-LOD complaint RESOLVED: SampleCastle renders 1,498 boxes vs 1,501 expected from
-  source — faithful; the IFC is genuinely ~46% box solids. Not a render fault, no fix needed.**
-  Found: `§GEOM-HARDFAIL`/`§BLOB_MISS` stay 0 during 100% box render (guard blind to substrate
-  loss); a MEAN hides a bimodal population (fixed via `boxInstancesExpected`). ⛔ wire that
-  comparison into the witness verdict. `prompts/GEOMETRY_TRUTH_CHAIN.md`.
+  coverage. Found: `§GEOM-HARDFAIL`/`§BLOB_MISS` stay 0 during 100% box render (guard blind to
+  substrate loss); a MEAN hides a bimodal population (`boxInstancesExpected`); `mesh.db` frozen by
+  `§MESH_GUARD` (`f828a7a`). `prompts/GEOMETRY_TRUTH_CHAIN.md`.
+- 🔴 **OPEN — SampleCastle blocky = LIVE REGRESSION** (2026-07-20). An earlier same-day "RESOLVED,
+  faithful, no fix needed" verdict is **RETRACTED**: `docs/img/modeller/workspace-open.png`
+  (2026-07-08) shows `SampleCastle-ARC (3342)` rendering with roofs/dormers/mullioned windows — it
+  was never blocky. Counts were measured; **the render was never looked at.** Next step is ONE
+  screenshot diffed against that image, then the 279-element Modeller-vs-Viewer gap.
+  `prompts/Modeller/DISC_Walker/EMBED_8_ARC_BUILDINGS_MESH_DB.md` §OPEN REGRESSION.
 - ✅ Posting-tail CLOSED, all 20 factory posters resolved (2026-07-17/18) — B-3's 6 G-seed classes +
   BankStatement/MatchPO/Requisition `maxDiff=0c` (ledger 43→52, Fable 5); Cash/Inventory driven on a
   real scratch clone and found ∅-by-data-state (`IsActive='N'`, `@NoLines@`, no cost data — none worked

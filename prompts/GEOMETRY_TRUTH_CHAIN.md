@@ -256,7 +256,31 @@ the db's `vertex_count` is not the post-upload buffer's vert count), i.e. the te
 wrong, not the code. Same shape as `feedback_witness_gigo_facing` ("fix the test"). ⛔ Needs its own
 lane; do NOT "fix" the renderer to satisfy it without first re-deriving what `verts` SHOULD be.
 
-### ✅ RESOLVED 2026-07-20 — the low-LOD complaint: SampleCastle is FAITHFUL, the DATA is coarse
+### ❌ RETRACTED 2026-07-20 — the two sections below are WRONG. SampleCastle IS a live regression.
+**Do not act on the "RESOLVED" / "TRACE" conclusions that follow.** They are kept verbatim, not
+deleted, because HOW they went wrong is the lesson. The open item now lives in
+`prompts/Modeller/DISC_Walker/EMBED_8_ARC_BUILDINGS_MESH_DB.md` §OPEN REGRESSION — go there.
+
+**What overturned them:** `/home/red1/bim-compiler/docs/img/modeller/workspace-open.png` (committed
+2026-07-08). Its Outliner reads `SampleCastle-ARC (3342)`, status bar `3342 features` — same building,
+same element count as today — and the render has pitched gabled roofs, dormers, recessed mullioned
+windows, a bay projection. **SampleCastle was NOT blocky. The user's report was correct.**
+
+**Why every measurement below was right and the conclusion still wrong:** a ~45% box fraction is
+entirely compatible with that detailed image — walls/slabs/coverings are *legitimately* boxes; the
+visible detail lives in the other 55%. So the box fraction NEVER discriminated between the good and
+bad states, and matching rendered-vs-expected (1,498 vs 1,501) proved nothing about the regression.
+**The session never LOOKED at the current render** — it answered "is the data present" (yes) and
+reported that as "does it look right" (not established). The user had to say so twice.
+
+**The standing rule this establishes:** for any *"renders wrong / blocky / low LOD"* report, **LOOK at
+the render FIRST and diff it against the last known-good image in `docs/img/`.** Never open with
+triangle counts. A count-only witness suite is precisely how the 2026-07-01 all-box scar stayed green
+for a month — and §RENDER_FIDELITY below inherits that blind spot: it graded SampleCastle
+`verdict=REAL` at 73.6 tris/element while the user could see with their eyes that it was wrong.
+⚠ §S3's verdict must gain a visual/known-good-image comparison before it can be trusted on this class.
+
+### ❌ WRONG (kept for the lesson) — the low-LOD complaint: SampleCastle is FAITHFUL, the DATA is coarse
 User reported low LOD on **SampleCastle** via the pill-rail **Open** (the resident path S0 tested).
 Measured, and it closes the month-long mystery.
 
@@ -299,7 +323,10 @@ equal ⇒ faithful (SampleCastle 1,498 vs 1,501); **rendered ≫ expected ⇒ pr
 makes the RED case sharper — full substrate loss reads as rendered=100% vs expected=46%.
 ⛔ Remaining: wire the comparison into `witness_render_fidelity.js`'s verdict (manifest side done).
 
-### 🔬 TRACE 2026-07-20 — SampleCastle IS blocky IN THE SOURCE IFC. Nothing broke. Full chain FAITHFUL.
+### ❌ WRONG (kept for the lesson) — TRACE 2026-07-20 — "blocky in the source IFC, nothing broke"
+> ⚠ RETRACTED — see the RETRACTED banner above. The IFC facts in this section are accurate; the
+> INFERENCE ("therefore nothing broke") does not follow, because the source has always had ~43% box
+> solids AND rendered detailed on 2026-07-08. The regression is downstream of the IFC.
 User directive: *"SC was never blocky, investigate what broke it during mesh.db formulation."* Traced
 per-element to the source file. **The premise is disproven — by `Ifc2x3_SampleCastle.ifc` itself.**
 
