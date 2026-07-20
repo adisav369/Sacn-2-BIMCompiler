@@ -162,3 +162,43 @@ empirically mid-build, not assumed). Real seed data only (GardenWorld client 11)
 M_Warehouse 103 "HQ Warehouse". No product code was touched. Run:
 `bash build/erp/run_witness.sh scripts/witness_e2e_business_cycle.js` from bim-compiler; log at
 `build/erp/witness_e2e_business_cycle.log` (gitignored, regenerate to re-view).
+
+## §Fix — 2026-07-20, Gap 1 (Sales Order master/detail mis-selection) FIXED, not yet pushed
+
+**Root cause, confirmed exactly as §Gaps #1 predicted:** `erp/idempiere.html`'s `overlay:committed`
+handler's `CRUD_CREATE` branch (~line 2967) folds the new row into `_records` via `_overlayListTip()` and
+repaints, but never updated `_recIdx`/`_selByLevel` — master-detail child tabs filter by
+`_selByLevel[level-1]` (`renderActiveTab` ~line 1723), so it stayed pinned to whichever record was current
+at window open. Purchase Order (window 181) was never actually different code — it just hadn't been
+exercised New+Save+drill in a session state where the stale index pointed elsewhere.
+
+**One correction to the mechanism assumed going in:** the fix could NOT key off `overlay:committed`'s
+`id` field (`d.id`) as first suspected — `buildOp()` in `erp/crud_overlay.js` never sets `base.id` for a
+`CRUD_CREATE` (only update/delete/process do), so that field is always `null` on create. The new row's
+real synthetic pk (`-opId`) only becomes known inside `_overlayListTip`'s `listTip()` fold. Fix: capture
+that fold's `created` array into a new `_lastFoldCreated` var, and in the `CRUD_CREATE` branch use its
+last entry (the just-committed row) to locate the record in `_records`, set `_recIdx`, and call
+`_setSel(ct)` so `_selByLevel[ct.tabLevel]` updates to the real new pk. New `§CRUD-CREATE-SEL` log line
+proves the threading.
+
+**Witness: `W-SO-CHILD-BIND`** (`bim-compiler/scripts/witness_so_child_bind.js`, run via
+`bash build/erp/run_witness.sh scripts/witness_so_child_bind.js`) — single focused check: New+Save a
+Sales Order, drill into Order Line, assert `§IDEMPIERE-MD filter=C_Order_ID=<pk>` equals the new order's
+own pk. 🟢 on the fixed worktree:
+```
+§CRUD-CREATE-SEL table=c_order id=-1 recIdx=5 selLevel=0 sel=-1
+§IDEMPIERE-MD tab=Order Line level=1 parent=C_Order filter=C_Order_ID=-1
+🟢 W-SO-CHILD-BIND: Order Line child tab filters by the NEW order's pk, not a stale seed order
+```
+Before/after via the original `witness_e2e_business_cycle.js`: unfixed run (`/home/red1/bim-ootb` main,
+unmodified) — `§IDEMPIERE-MD ... filter=C_Order_ID=108` (the seed order) against new order pk `-1`, Stage 1
+throws exactly the predicted error. Same script re-run against the fixed worktree — `filter=C_Order_ID=-1`,
+matches; the parent-binding sub-check now passes. Stage 1's overall PASS/FAIL in that broader witness
+still shows FAIL, but for an **unrelated, separate reason**: the DocAction Complete (CO) button did not
+render on that run (`chip=null coButtonVisible=0`) — out of scope for this fix (not the parent-binding
+defect), reported as-is, not investigated further. Stages 2-4 remain blocked by the pre-existing,
+already-documented Gap 2/3/4 facts above (P2P absence, no receipt-linking path, no on-hand recompute),
+unchanged by this fix.
+
+**State:** committed locally only, `fix/so-child-bind` branch, worktree `/tmp/wt-so-bind`, commit
+`950af9f`. Per worker discipline, NOT pushed — push is the user's call.

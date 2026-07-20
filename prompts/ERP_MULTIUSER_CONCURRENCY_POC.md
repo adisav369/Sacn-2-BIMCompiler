@@ -660,3 +660,94 @@ more concurrent users, not different in kind.
 This session made no product change, did not touch `ERPUserGuide.md`, and did not edit
 `ERP_OPLOG_APPEND_ONLY_FIX.md`/`ERP_CRUD_OVERLAY_ONE_SOURCE.md`/`ERP_BUSINESS_CYCLE_E2E.md` (all owned
 by concurrent sessions, read-only where read at all).
+
+---
+
+## §Relay Wiring 2026-07-20 — `W-N-CONVERGE` witnessed, S5 REVERSED (N=2 and N=10, real browser)
+
+**Built on top of the append-only fix** (`fix/oplog-append-only`, commit `49798d2`, worktree
+`/tmp/wt-oplog-append`, NOT pushed/merged) — this session layers the relay wiring onto the SAME branch,
+per its own instructions, closing §Gate item 2 (the standing ⛔ from the original PoC and from
+§N-User Concurrency).
+
+**What was wired (all in the worktree, `erp/`):**
+- `erp/erp_relay_client.js` and `erp/erp_sync_fsm.js` — copied in **byte-identical, unmodified** from
+  `bim-compiler build/erp/` (the engine-proven push/snapshot/head client + the proven `rebase()` —
+  rewind→apply-canonical-order→replay-pending→re-seal, W-RELAY/W-REBASE, `scripts/test_kernel_relay.js`/
+  `scripts/test_kernel_rebase.js`). No merge/seal logic was reimplemented.
+- `erp/erp_sync_relay.js` (NEW) — a thin, caller-agnostic transport module: reads `?relay=<url>` off the
+  query string (same idiom as `?login=`/`?window=`/`?record=`), exposes `pushRows()` (fire-and-forget
+  registration of just-committed ops with the relay, dedup by `op_uuid`), and mounts a minimal
+  `#erp-sync-pill` button (opt-in — only appears when `?relay=` is present) that calls
+  `window.__crud.syncNow()`.
+- `erp/crud_overlay.js` — two additions: (1) `_sidePersist()` now also calls the new `_relayPush()` right
+  after it appends to the local `ops` IndexedDB store — the "push after commit" leg. (2) a new
+  `syncNow()` function (exposed as `window.__crud.syncNow` and `window.crudSyncNow`) that reuses
+  `_withFreshSide`'s SAME cross-tab lock a commit already uses, calls `window.ErpSyncFSM.rebase()`
+  **verbatim** against the freshly-hydrated sidecar + the relay client, then snapshots the merged
+  canonical table (`K.allRowsPlain` — the SAME primitive F10's legacy-blob migration already uses) and
+  appends it as NEW records into the append-only `ops` store (`K.appendOpsRecords`, `add()`-only, never a
+  `put()`/blob overwrite) so a reload or sibling tab converges too.
+- `erp/idempiere.html` — three new `<script>` tags after `crud_overlay.js` (`erp_relay_client.js`,
+  `erp_sync_fsm.js`, `erp_sync_relay.js`). Inert with no `?relay=` param — zero behavior change from the
+  append-only-fix baseline for every existing witness/user.
+- `build/erp/erp_relay_server.js` (bim-compiler) used **as-is**, spun up as a real localhost HTTP server
+  the Playwright-driven pages actually POST/GET to (CORS already handled by the server, unmodified).
+
+**Witness:** `scripts/witness_e2e_n_converge.js` (bim-compiler, NOT yet committed — see §Boundaries note
+below) — adapts `witness_e2e_multiuser_login_fork.js`'s S5 harness (real `browser.newContext()` ×N, real
+`page.fill()`/`page.click()` on the live `?login=SuperUser&window=143&record=101` deep link, same
+`c_order` id=101 `grandtotal` field) but points `ROOT` at the FIXED worktree
+(`/tmp/wt-oplog-append`, not live `bim-ootb`) and appends `&relay=<url>` to the deep link. The Sync step
+is a REAL `page.click('#erp-sync-pill')` — no `page.evaluate()` shortcut anywhere for a commit or a sync;
+the only `evaluate()` calls read already-persisted state via `window.__crud.kernelDb()`/`core.tipValues()`
+(same convention as S3/S4/S5). Run: `bash build/erp/run_witness.sh scripts/witness_e2e_n_converge.js`.
+
+**N=2 result — exit 0, 10/10 🟢.** Log: `build/erp/witness_e2e_n_converge.log` (479 lines, read in full —
+Log Mandate; 0 occurrences of 🔴, no thrown/timeout errors). Two SEPARATE `BrowserContext`s each save
+`grandtotal` (ctx1=7777.77, ctx2=8888.88) — PRE-SYNC tips DIVERGE exactly as S5 found (the reproduced
+baseline). Both auto-push on commit (`§SYNC_RELAY push accepted=1`). After clicking `#erp-sync-pill` on
+both (then both again, mirroring `test_kernel_relay.js`'s own two-pass convergence dance):
+```
+§N-CONVERGE contexts=2 tipsEqual=true totalOps=2 lost=0
+```
+Both contexts land on the IDENTICAL tip (`bad6c4655e7d…`), both see `ops=2` (BOTH contributed ops
+present — the union, not a last-write-wins loss), and the final `grandtotal` (8888.88, ctx2's op, later
+in the relay's canonical order) is IDENTICAL on both sides — this is normal field-level resolution by a
+shared total order, not data loss: the op-log itself retained both signed ops.
+
+**N=10 result — exit 0, 34/34 🟢 (stretch goal, also clean).** `N_CONVERGE=10 node
+scripts/witness_e2e_n_converge.js` (10 SEPARATE `BrowserContext`s, values `700000.00..700099.00`). Log:
+`build/erp/witness_e2e_n_converge_n10.log` (2367 lines, read in full — Log Mandate; grepped, 0 occurrences
+of 🔴, no THREW/Unhandled/TimeoutError; the only non-🟢 noise is pre-existing app-boot chatter identical
+across all 10 tabs — `§SYSTEM-TENANT insert-fail … UNIQUE constraint` idempotent-seed messages and
+`§BIM_OVERLAY none (NotFoundError)`, both present in the baseline app boot sequence, unrelated to this
+change, same class of noise the prior `witness_e2e_n10_concurrent_today.js` (unfixed-regime) run also had
+to grep past):
+```
+§N-CONVERGE contexts=10 tipsEqual=true totalOps=10 lost=0
+```
+All 10 contexts converge to the SAME tip, all 10 see `ops=10` (every one of the 10 contributed writes
+present, zero lost) — a direct reversal of `W-N10-CONCURRENT-TODAY`'s 2026-07-20 same-context finding
+(90% loss at N=10, unfixed regime) for the CROSS-DEVICE regime this session's wiring targets.
+
+**Local commit:** `fix/oplog-append-only`, worktree `/tmp/wt-oplog-append` — the relay-wiring files
+(`erp/crud_overlay.js`, `erp/idempiere.html`, `erp/erp_relay_client.js`, `erp/erp_sync_fsm.js`,
+`erp/erp_sync_relay.js`) are committed on top of `49798d2`. **NOT pushed, no PR, no merge, no deploy**
+(per this session's boundaries — the orchestrator pushes the whole append-only + relay story together
+once the guide is written).
+
+**§Boundaries note:** `scripts/witness_e2e_n_converge.js` and this dated section are the only bim-compiler
+changes; per this session's instruction to commit ONLY on `fix/oplog-append-only`, the new witness script
+is left **uncommitted** in the bim-compiler working tree (not a bim-ootb file, out of that branch's scope)
+for the orchestrator to pick up alongside this file's edit.
+
+**Known simplification, named honestly (not hidden):** `ErpSyncFSM.rebase()` is reused verbatim and only
+reads/writes the 6 core columns (`op_uuid,timestamp,op_type,parameters,input_guids,output_guid`) — a
+rebase drops `gid`/`branch_id` (DocAction op-groups un-group after a sync) and re-signs every op under
+the LOCAL device's own signer key (a `sig` cannot survive a canonical re-`id`, the same limitation
+`test_kernel_relay.js`'s own proven rebase already has — full per-device signature attribution needs the
+opt-in T2 content-addressed `_sigv:2` scheme, not wired here, out of this session's scope). Neither
+affects this witness's `c_order.grandtotal` single-field-edit shape (no groups involved), but a future
+session wiring a DocAction (Complete/Close) through this same relay path should know groups don't survive
+a rebase today.

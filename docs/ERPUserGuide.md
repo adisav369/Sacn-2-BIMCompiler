@@ -183,6 +183,46 @@ resident list (System, GardenWorld, and every installed tenant). Each tenant is 
 
 ---
 
+## Working at the same time — many tabs, many people  *(LIVE)*
+
+A classic ERP puts one database server between everyone, so concurrency is the server's problem. This
+one has **no server** — each browser holds its own signed op-log. That raises a fair question: *if two
+people (or two of my own windows) edit the same order at once, does someone's work get lost?* We tested
+it, found it did, and fixed it. Here is where it stands, plainly.
+
+**Two windows of your own** — e.g. the order header in one tab, its lines in another, or just two copies
+open. **Every edit is kept.** Each save appends to the log; nothing overwrites anything. Saving in one
+window no longer erases an unsaved-then-saved change in the other. (This was a real defect — a whole
+save could vanish while the screen still said *"saved (signed)."* It is closed: witnessed at **10
+windows editing at once, 10 of 10 edits survive**, the signed history intact.)
+
+**Two people on two machines** — each works fully **offline-first**, on their own copy, at local speed
+(no round-trip, no spinner, works with the network down). To bring them together you point both at a
+shared **relay** and hit **Sync** (the `⟳` pill; or open with `?relay=<url>`). Sync merges both logs
+into **one identical signed history on every device** — total order decided by the log, not by who saved
+last. Witnessed at **10 devices editing the same order, all 10 converging to the same signed tip, zero
+edits lost.**
+
+| You want | How | What you get |
+|---|---|---|
+| One person, many windows | Nothing to set up | Every edit kept; safe by default |
+| Many people, shared data | Point each at a relay → **⟳ Sync** | All devices fold to one identical signed log |
+| Work with no network | Just work | Local-speed edits; sync later when reconnected |
+
+**Setup, in short.** Run the relay (the "dumb post office" — it only orders and hands back op-logs, no
+business logic), give each user its URL, and Sync. Each person still logs in as their own real user; the
+relay carries the *log*, the accounting still folds from it exactly as single-user.
+
+> **Honest limit — read before relying on it for approvals.** Convergence is proven today for **field
+> edits** (change a value, save, sync). A cross-device **document action** — Complete / Void / Close and
+> other multi-step workflow steps — is **not yet** covered by cross-device sync: merging re-signs the
+> combined log under each device's own key and does not yet preserve per-step, per-person attribution of
+> those workflow actions across devices. Same-device workflows are unaffected. If you need multi-person
+> *approval* trails across machines, that is the next piece (opt-in per-op content-signing), not this
+> one. We would rather name the gap than have you discover it on an audit.
+
+---
+
 ## Spatial BIM → ERP — Find a selection → Project Order  *(LIVE)*
 
 ![The live 4D/5D twin — the Time Machine plays the build (here Day 88 of the program, RM501K committed) in the real model while the dashboard tracks phase progress, site resources, and the cost S-curve; the left readout folds Budget-vs-Actual variance (RM44.7M → +35%) straight off the same project. One signed op-log unifies what is normally four tools — schedule, cost, 4D, and 5D — with no drift.](figs/whatif_live_twin.png)
