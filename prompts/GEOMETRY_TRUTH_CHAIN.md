@@ -50,6 +50,80 @@ Open the Modeller on the building(s) the user sees fall back to low LOD. Read fr
 - misses = 0 and still boxes → **link 2 (code)**: genuine regression in the real-geometry layer →
   STOP, record findings here, open a separate fix lane (diagnose-in-session, fix-in-other-session).
 
+### S0 RESULT 2026-07-20 — ✅ DONE. Link 1 is CLEAN; link 2 is BLIND (and the spec's own premise was wrong)
+Measured, not argued. Data plane first (`sqlite3`, no browser), then live headless Modeller
+(`/tmp/wt-sandbox` @ `localhost:8399`, playwright-core + swiftshader; probe kept at
+`scratchpad/probe_geom_truth.js`, logs `s0_probe*.log` / `s0_red.log`).
+
+**(a) Link 1 (identity/pairing) — CLEAN, 100% coverage on all 8 Modeller residents.** The ARC dbs
+carry NO `component_geometries` BY DESIGN: `str_walker_outliner.js` RESIDENTS pairs every one of
+them with a SHARED `modeller/mesh.db` (9,198 geometries, all 8 buildings present), and the mesh link
+lives in `element_instances(guid, geometry_hash)` — NOT in `elements_meta` (which has no hash column
+at all). Joining each ARC db's `element_instances` against `mesh.db.component_geometries`:
+
+| resident | ARC db | meta | instances | distinct hashes | covered | cov% |
+|---|---|---|---|---|---|---|
+| SampleHouse | SampleHouse_ARC.db | 60 | 58 | 46 | 58 | **100%** |
+| Duplex | Duplex_ARC.db | 218 | 215 | 155 | 215 | **100%** |
+| SampleCastle | SampleCastle_ARC.db | 3342 | 3225 | 1924 | 3225 | **100%** |
+| HHS | HHS_ARC.db | 2560 | 2527 | 619 | 2527 | **100%** |
+| Clinic | Clinic_ARC.db | 2620 | 2586 | 1467 | 2586 | **100%** |
+| Hospital | Hospital_ARC.db | 14641 | 14409 | 3568 | 14409 | **100%** |
+| HospitalGarage | Garage_ARC.db | 1271 | 1252 | 476 | 1252 | **100%** |
+| Terminal | Terminal_ARC.db | 35552 | 35552 | 917 | 35552 | **100%** |
+
+⚠ **This CORRECTS this file's own BACKSTORY.** The claim "`modeller/Hospital_ARC.db` — 14,641 meta
+rows, ZERO geometry, only boxes CAN render from it" is **FALSE as stated**: it reads the ARC db in
+isolation and misses the `mesh.db` pairing, under which Hospital resolves 14,409/14,409. The lost
+session it cost was a *pairing-blindness* casualty — which is precisely the argument FOR `§DB_IDENTITY`
+(S2), but it means the S1/S2 manifest MUST record the **pair** (meta db + its geo substrate + join
+coverage), never a bare per-file `geo=` count. A per-file count would have "confirmed" the same
+wrong conclusion. The VERIFICATION section's red case is retargeted accordingly (see below).
+
+**(b) Live fidelity census — GREEN, and the 2026-07-01 scar is measurably dead.** Triangle census
+over `window.A.scene` after a full ARC seed:
+
+| building | elements | tris | tris/element | blobMiss | hardFail | verdict |
+|---|---|---|---|---|---|---|
+| SampleHouse | 38 | 24,564 | 646.4 | 0 | 0 | REAL |
+| Duplex | 196 | 24,852 | 126.8 | 0 | 0 | REAL |
+| SampleCastle | 3,225 | 237,504 | 73.6 | 0 | 0 | REAL |
+| HHS | 1,077 | 335,240 | 311.3 | 0 | 0 | REAL |
+
+SampleCastle's `elements=3225` is the **exact** 2026-07-01 scar population (`boxCount=3225,
+otherCount=0`). All-boxes would be 3225 × 12 = **38,700** tris; measured **237,504** = 6.1× that.
+Real geometry, proven numerically for the first time.
+
+**(c) 🔴 THE FINDING — the existing "no silent box" guard is BLIND to whole-substrate loss.**
+Fault injection (no DB touched — resident's `geoDb` repointed to a nonexistent file, so the loader
+takes its documented meta-only fallback), Duplex:
+
+`§GEOM_TRUTH_PROBE building=Duplex geoDb=NO_SUCH_mesh.db elements=196 tris=2354 trisPerElement=12.0 blobMiss=0 hardFail=0`
+
+- **`trisPerElement = 12.0` EXACTLY** — the 12-triangle box signature, hit dead-on. Against green
+  Duplex's 126.8 that is a **10.6× separation**: the metric the spec proposed works, unambiguously.
+- **`hardFail=0` and `blobMiss=0` — BOTH GUARDS STAYED SILENT while rendering 100% box proxies.**
+  `§GEOM-HARDFAIL` (`arc_editable.js:159`) only fires when the db *has* a geometry substrate but an
+  individual element's link into it is broken. When the substrate is absent ENTIRELY, `buildSeedOps`
+  falls back to the ARC db itself, nothing has a mesh, nothing is "broken" — and it reports
+  `total=0`, i.e. **"all clean" while 100% fake**. The only signal was one `console.warn`
+  (`§STRWALK-OPEN geoDb fetch failed … seeding meta-only`), which no witness asserts on.
+
+That is the 2026-07-01 scar shape, still fully live today, and it settles the design: **`§GEOM-HARDFAIL`
+is NOT sufficient as the S3 fidelity witness — the triangle census is load-bearing, not a nice-to-have.**
+S3 MUST assert on tris/element, and S2 MUST warn on a *substrate* that failed to load, not only on
+per-element misses.
+
+**S0 verdict per the spec's own fork:** misses = 0 AND geometry is real → the low-LOD complaint is
+**NOT** reproducible on the 8 residents at `origin/main` in a headless full seed. It is therefore
+neither a stale-copy (link 1) nor a general real-geometry regression (link 2) on this path. The
+live-site path is NOT yet ruled out — the deployed Modeller may serve a different `mesh.db`, and a
+`geoDb` fetch failure there (404 / SW cache miss / partial IDB) reproduces (c) EXACTLY: silent
+boxes, zero warnings in any witness. **That is the leading hypothesis and S2's `§DB_IDENTITY` is
+what makes it a one-line log read instead of a session.** ⛔ BLOCKED for user confirmation:
+*which building + which URL (live GH-Pages vs localhost) shows the low-LOD fallback?* — proceeding
+with S1–S3 regardless, since they are what turns that answer into evidence.
+
 ### S1 — Link 1a: `buildings_manifest.json` (per app root that serves DBs)
 Building name → { authoritative db path/URL, expected `elements_meta` count, expected geometry rows
 (`component_geometries` or paired `_geo.db`/`_library.db`), sha256 optional first pass — counts
@@ -79,6 +153,66 @@ Local DBs exist for all five (`deploy/buildings/`). Standalone `node tests/…` 
 server (same pattern as the 2026-07-19 staffage witnesses); CI-wiring optional second step (repo
 truth model is local-discipline-first, `docs/TestArchitecture.md` §Truth Model).
 
+### S1–S3 RESULT 2026-07-20 — ✅ ALL THREE BUILT, GREEN **and** RED witnessed
+Branch `feat/geometry-truth-chain` (bim-ootb), worktree `/tmp/wt-geom-truth`, server :8412.
+Logs: `s1_manifest.log`, `s3_green.log`, `s3_red.log`.
+
+**S1 ✅ `scripts/gen_buildings_manifest.js` → `modeller/buildings_manifest.json`.** Generated, never
+hand-typed. Parses the RESIDENTS table out of the shipped `str_walker_outliner.js` (so the manifest
+can never describe a pairing the app doesn't actually use) and COUNTs each pair out of the real DBs.
+Records `geoCovered`/`geoMissing` — the JOIN across the pair — as authoritative, plus
+`geoRowsInMetaDb` (0 = HEALTHY for ARC residents) so the S0(a) misread can't recur. `--check` mode
+re-derives and exits 1 on drift (CI-able). All 8 residents 100%; `mesh.db` = 9,198 geometries.
+
+**S2 ✅ `§DB_IDENTITY` in `str_walker_outliner.js`** (in `_seedArcEditable`, the one point where the
+meta db AND the resolved substrate are both open — so counts are the ACTUALLY-resolved state).
+Log-only, never blocks a load. Green line:
+`§DB_IDENTITY name=Duplex path=Duplex_ARC.db meta=218 inst=215 geo=215/215 substrate=mesh.db substrateRows=9198 manifest=match`
+Two independent loud paths: `manifest=MISMATCH` (wrong copy), and a `geo=0` guard that fires even
+when the manifest is absent (the silent-box state).
+
+**S3 ✅ `modeller/tests/witness_render_fidelity.js`** — triangle census, both directions.
+
+GREEN (exit 0, 4/4 REAL, all `manifest=match`, zero warns):
+| building | tris | elements | tris/element | verdict |
+|---|---|---|---|---|
+| SampleHouse | 24,564 | 38 | 646.4 | REAL |
+| Duplex | 24,852 | 196 | 126.8 | REAL |
+| SampleCastle | 237,504 | 3,225 | 73.6 | REAL |
+| HHS | 335,240 | 1,077 | 311.3 | REAL |
+
+RED (fault injection at the loader seam — resident `geoDb` repointed to a nonexistent file; **NO DB
+file touched**, honouring the 2026-07-19 directive):
+| building | tris | elements | tris/element | verdict | old guards |
+|---|---|---|---|---|---|
+| Duplex | 2,354 | 196 | **12.0** | FAKE | hardFail=0 blobMiss=0 (SILENT) |
+| SampleCastle | 38,702 | 3,225 | **12.0** | FAKE | hardFail=0 blobMiss=0 (SILENT) |
+
+**SampleCastle RED = 38,702 tris vs the predicted 3,225 × 12 = 38,700 — the 2026-07-01 scar
+reproduced numerically to within 2 triangles.** Both new witnesses trip on it; both pre-existing
+guards stay green. That is the blind spot, now covered.
+
+**Baselines (measured, never invented):** box signature = 12.0 tris/element exactly; lowest real
+fixture = 73.6. Threshold `REAL_MIN_TPE = 24` (2× box) sits with ~3× margin on both sides.
+`PARTIAL` verdict covers mixed populations between the two.
+
+### ⛔ SIDE-FINDING 2026-07-20 — `witness_e2e_lod_match.js` A3/A4 are RED ON `origin/main` (pre-existing, NOT this lane)
+Ran as a regression check on the S2 edit (it exercises the same ARC seed path). It FAILS — and fails
+**byte-identically on an untouched `origin/main` checkout** (`/tmp/wt-sandbox` @ `2b67445`), so it is
+NOT a regression from this work. Recorded, not fixed (diagnose-in-session, fix-in-other-session):
+```
+❌ A3 doorSig={verts:3230, tris:1476} dbTruth={verts:762, tris:1476}
+❌ A4 otherSig={verts:2532, tris:1248} dbTruth={verts:634, tris:1248}
+```
+**Read the numbers: `tris` match EXACTLY in both (1476=1476, 1248=1248); only `verts` diverge**
+(~4.2× and ~4.0×). Triangles are the geometry-truth signal and they are correct — the meshes ARE
+real (`§GEOM-HARDFAIL total=0 of 38 realResolved=38/38`, and this lane's own census independently
+rates SampleHouse REAL at 646.4 tris/element). So this is near-certainly **witness GIGO on the
+vert-count expectation** (a render-side split/dedup changes vert counts while preserving triangles —
+the db's `vertex_count` is not the post-upload buffer's vert count), i.e. the test's ground truth is
+wrong, not the code. Same shape as `feedback_witness_gigo_facing` ("fix the test"). ⛔ Needs its own
+lane; do NOT "fix" the renderer to satisfy it without first re-deriving what `verts` SHOULD be.
+
 ### S4 — The habit that makes it stick
 Any future "building has no X" / "renders wrong" report MUST quote its `§DB_IDENTITY` line and (if
 render-side) its `§RENDER_FIDELITY` line. The memory rule "name the exact source file path"
@@ -87,10 +221,16 @@ render-side) its `§RENDER_FIDELITY` line. The memory rule "name the exact sourc
 ## VERIFICATION (the tests must expose the issue, BOTH directions — read the log)
 - Green: Duplex, BimWhale_Advanced, Hospital-full → `§DB_IDENTITY manifest=match` + `§RENDER_FIDELITY
   verdict=REAL blobMiss=0`, baselines recorded here, zero warns.
-- Red (MANDATORY — a tripwire never shown to trip is not a tripwire): load `modeller/Hospital_ARC.db`
-  → `§DB_IDENTITY geo=0 MISMATCH` warn fires AND `§RENDER_FIDELITY verdict=FAKE` (or PARTIAL), exit
-  non-zero. Had these two lines existed, they would have saved at least three sessions this month —
-  that is the issue this spec exists to kill.
+- Red (MANDATORY — a tripwire never shown to trip is not a tripwire): **RETARGETED 2026-07-20 by S0(a)** —
+  the original red case (load `modeller/Hospital_ARC.db`, expect `geo=0`) is INVALID: that db is
+  geometry-less by design and pairs with `mesh.db` for 100% coverage, so "geo=0" is the CORRECT
+  reading of a HEALTHY pair, and asserting it would have hard-coded the very pairing-blindness that
+  cost the session. The real red case is **substrate loss**, already demonstrated live in S0(c):
+  repoint a resident's `geoDb` at a nonexistent file (fault injection, no DB edited) →
+  `§DB_IDENTITY … geo=0 manifest=MISMATCH` warn fires AND `§RENDER_FIDELITY verdict=FAKE
+  trisPerElement≈12`, exit non-zero. Measured baseline for this assertion: Duplex green 126.8 vs
+  broken 12.0. Note the red case must ALSO prove the old guards are insufficient — `hardFail=0`
+  and `blobMiss=0` in that same run — otherwise the new witness looks redundant when it is not.
 - Identity needs NO full stream (COUNT queries at open) — don't repeat the 2-min-streaming-timeout
   dead end; full streams are for the fidelity link only.
 
