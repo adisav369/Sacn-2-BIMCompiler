@@ -316,6 +316,40 @@ or the element, where name-matching schedulers would re-bind or break.
 > element's construction moment** instead of only lighting it in 3D — the Time Machine *consumes* the
 > pinpoint. With the Time Machine closed, the pinpoint goes to **Find** as before (cost/location first).
 
+### Playing back a large building — the box-cube LOD toggle *(LIVE)*
+
+On a big model (LTU-scale, 100K+ elements), scrubbing or playing the Time Machine forward keeps
+every already-built element rendered at full detail forever, even the parts nowhere near your
+camera — that's real GPU cost paid on every frame for geometry you can't currently see. The
+box-cube pill trims exactly that, without ever hiding or degrading anything you're actually
+looking at.
+
+**Where the button is:**
+
+1. Open a building with more than **50,000 elements** and open the **Time Machine** (the clock
+   pill, or press **`t`**).
+2. A small **cube-wireframe pill** appears in the panel's header row, next to the Day/Night and
+   Drone-Pilot icons — it only shows up at all on large buildings; smaller ones never need it.
+3. Click it to turn the proxy **on**. Click again to go back to today's full-detail rendering.
+
+**What it does:**
+
+- Anything **currently under construction** (the active build) or **just finished** (the short
+  amber "just placed" glow) always renders in full — the toggle never touches those.
+- Anything else that's already built stays **full detail (LOD400)** as long as it's **close to the
+  camera and inside your view** — so whatever you're actually looking at never loses quality.
+- Anything already built that's **far away or off to the side of what you're looking at** collapses
+  to a lightweight **wireframe box** in its discipline's colour — the same "not yet detailed" visual
+  language the model already uses while a building is still streaming in.
+
+![Time Machine mid-playback (Day 64/200) on a 122,000-element building with the box-cube LOD pill turned on — the storey directly in view stays full solid LOD400 geometry, while the surrounding structural frame and far bays, already built but outside the camera's immediate view, render as lightweight cyan wireframe boxes coloured by discipline.](img/viewer/time-machine-dlod-wireframe.png)
+
+- Boxes are **never pickable** as real elements — clicking one does nothing, the same as clicking
+  an ordinary loading placeholder.
+- Turning it off is instant and exact: every element goes back to its normal full-detail rendering,
+  nothing about the model itself ever changes — it's a display choice only, made per-session, never
+  saved into the model or the schedule.
+
 ### What-if schedule — slip a phase, watch the chain re-fold *(LIVE)*
 
 Once a building is folded into a project, you can ask **"what if this phase slips?"** without touching the
